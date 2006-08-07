@@ -4,7 +4,7 @@ require 'fileutils'
 from_d=File.expand_path(File.join(File.dirname(__FILE__),'lib','active_record'))
 to_d=File.expand_path(File.join(RAILS_ROOT,'lib','active_record'))
 
-FileUtils.cp from_d, to_d
+FileUtils.cp_r from_d, to_d
 
 env_file = File.expand_path(File.join(RAILS_ROOT,"config","environment.rb"))
 bck_file = File.expand_path(File.join(RAILS_ROOT,"config","~.environment.rb.before_jdbc"))
