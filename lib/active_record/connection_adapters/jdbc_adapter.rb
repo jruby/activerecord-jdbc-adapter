@@ -1,9 +1,19 @@
 require 'active_record/connection_adapters/abstract_adapter'
+require 'active_record/connection_adapters/jdbc_adapter_spec'
 
 module ActiveRecord
   class Base
     def self.jdbc_connection(config)
       ConnectionAdapters::JdbcAdapter.new(ConnectionAdapters::JdbcConnection.new(config), logger, config)
+    end
+
+    alias :attributes_with_quotes_pre_oracle :attributes_with_quotes
+    def attributes_with_quotes(include_primary_key = true) #:nodoc:
+      aq = attributes_with_quotes_pre_oracle(include_primary_key)
+      if connection.class == ConnectionAdapters::JdbcAdapter && connection.is_a?(JdbcSpec::Oracle)
+        aq[self.class.primary_key] = "?" if include_primary_key && aq[self.class.primary_key].nil?
+      end
+      aq
     end
   end
 
@@ -29,25 +39,28 @@ module ActiveRecord
       # type left.  If all the selectors are applied and there is still more than one
       # type, an exception will be raised.
       AR_TO_JDBC_TYPES = {
-        :string      => [ proc {|r| Jdbc::Types::VARCHAR == r['data_type']},
-                          proc {|r| r['type_name'] =~ /^varchar/i} ],
-        :text        => [ proc {|r| [Jdbc::Types::LONGVARCHAR, Jdbc::Types::CLOB].include?(r['data_type'])},
-                          proc {|r| r['type_name'] =~ /^(text|clob)/i} ],
-        :integer     => [ proc {|r| Jdbc::Types::INTEGER == r['data_type']},
-                          proc {|r| r['type_name'] =~ /^integer/i} ],
-        :float       => [ proc {|r| [Jdbc::Types::FLOAT,Jdbc::Types::DOUBLE].include?(r['data_type'])},
-                          proc {|r| r['type_name'] =~ /^float/i},
-                          proc {|r| r['type_name'] =~ /^double$/i} ],
-        :datetime    => [ proc {|r| Jdbc::Types::TIMESTAMP == r['data_type']},
-                          proc {|r| r['type_name'] =~ /^datetime/i} ],
-        :timestamp   => [ proc {|r| Jdbc::Types::TIMESTAMP == r['data_type']},
-                          proc {|r| r['type_name'] =~ /^timestamp/i},
-                          proc {|r| r['type_name'] =~ /^datetime/i} ],
-        :time        => [ proc {|r| Jdbc::Types::TIME == r['data_type']} ],
-        :date        => [ proc {|r| Jdbc::Types::DATE == r['data_type']} ],
-        :binary      => [ proc {|r| Jdbc::Types::LONGVARBINARY == r['data_type']},
-                          proc {|r| r['type_name'] =~ /^blob/i} ],
-        :boolean     => [ proc {|r| Jdbc::Types::TINYINT == r['data_type']} ]
+        :string      => [ lambda {|r| Jdbc::Types::VARCHAR == r['data_type']},
+                          lambda {|r| r['type_name'] =~ /^varchar/i} ],
+        :text        => [ lambda {|r| [Jdbc::Types::LONGVARCHAR, Jdbc::Types::CLOB].include?(r['data_type'])},
+                          lambda {|r| r['type_name'] =~ /^(text|clob)/i} ],
+        :integer     => [ lambda {|r| Jdbc::Types::INTEGER == r['data_type']},
+                          lambda {|r| r['type_name'] =~ /^integer|int4/i}],
+        :float       => [ lambda {|r| [Jdbc::Types::FLOAT,Jdbc::Types::DOUBLE].include?(r['data_type'])},
+                          lambda {|r| r['type_name'] =~ /^float/i},
+                          lambda {|r| r['type_name'] =~ /^double$/i} ],
+        :datetime    => [ lambda {|r| Jdbc::Types::TIMESTAMP == r['data_type']},
+                          lambda {|r| r['type_name'] =~ /^datetime/i},
+                          lambda {|r| r['type_name'] =~ /^timestamp$/i}],
+        :timestamp   => [ lambda {|r| Jdbc::Types::TIMESTAMP == r['data_type']},
+                          lambda {|r| r['type_name'] =~ /^timestamp$/i},
+                          lambda {|r| r['type_name'] =~ /^datetime/i} ],
+        :time        => [ lambda {|r| Jdbc::Types::TIME == r['data_type']},
+                          lambda {|r| r['type_name'] =~ /^time$/i}],
+        :date        => [ lambda {|r| Jdbc::Types::DATE == r['data_type']} ],
+        :binary      => [ lambda {|r| [Jdbc::Types::LONGVARBINARY,Jdbc::Types::BINARY,Jdbc::Types::BLOB].include?(r['data_type'])},
+                          lambda {|r| r['type_name'] =~ /^blob/i} ],
+        :boolean     => [ lambda {|r| [Jdbc::Types::TINYINT].include?(r['data_type'])},
+                          lambda {|r| r['type_name'] =~ /^bool/i}]
       }
 
       def initialize(types)
@@ -59,8 +72,9 @@ module ActiveRecord
         AR_TO_JDBC_TYPES.each_key do |k|
           typerow = choose_type(k)
           type_map[k] = { :name => typerow['type_name']  }
-          type_map[k][:limit] = typerow['precision'] if [:integer,:string].include?(k)
+          type_map[k][:limit] = typerow['precision'] if k == :integer
           type_map[k][:limit] = 1 if k == :boolean
+          type_map[k][:limit] = 255 if k == :string
         end
         type_map
       end
@@ -73,7 +87,7 @@ module ActiveRecord
           return new_types.first if new_types.length == 1
           types = new_types if new_types.length > 0
         end
-        raise "unable to choose type from: #{types.collect{|t| t['type_name']}.inspect}"
+        raise "unable to choose type from: #{types.collect{|t| t['type_name']}.inspect} for #{ar_type}"
       end
     end
 
@@ -105,29 +119,35 @@ module ActiveRecord
         JdbcDriver.load(driver)
         @connection = Jdbc::DriverManager.getConnection(url, user, pass)
         set_native_database_types
+
+        @stmts = {}
       end
 
+      def ps(sql)
+        @connection.prepareStatement(sql)
+      end
+      
       def set_native_database_types
         types = unmarshal_result(@connection.getMetaData.getTypeInfo)
         @native_types = JdbcTypeConverter.new(types).choose_best_types
       end
 
-      def native_database_types
+      def native_database_types(adapt)
         types = {
-          # TODO: this is copied from MySQL -- figure out how to
-          # generalize the primary key type
-          :primary_key => "int(11) DEFAULT NULL auto_increment PRIMARY KEY",
+          :primary_key => adapt.primary_key_string,
         }
         @native_types.each_pair {|k,v| types[k] = v.inject({}) {|memo,kv| memo.merge({kv.first => kv.last.dup})}}
         types
       end
-
+      
       def columns(table_name, name = nil)
         metadata = @connection.getMetaData
+        table_name.upcase! if metadata.storesUpperCaseIdentifiers
+        table_name.downcase! if metadata.storesLowerCaseIdentifiers
         results = metadata.getColumns(nil, nil, table_name, nil)
         columns = []
         unmarshal_result(results).each do |col|
-          columns << ActiveRecord::ConnectionAdapters::Column.new(col['column_name'], col['column_def'],
+          columns << ActiveRecord::ConnectionAdapters::Column.new(col['column_name'].downcase, col['column_def'],
               "#{col['type_name']}(#{col['column_size']})", col['is_nullable'] != 'NO')
         end
         columns
@@ -141,7 +161,7 @@ module ActiveRecord
 
       def execute_insert(sql, pk)
         stmt = @connection.createStatement
-        stmt.executeUpdate(sql, Jdbc::Statement::RETURN_GENERATED_KEYS)
+        stmt.executeUpdate(sql,Jdbc::Statement::RETURN_GENERATED_KEYS)
         row = unmarshal_result(stmt.getGeneratedKeys)
         row.first && row.first.values.first
       ensure
@@ -243,6 +263,11 @@ module ActiveRecord
       def initialize(connection, logger, config)
         super(connection, logger)
         @config = config
+        case config[:driver].to_s
+          when /oracle/i: self.extend(JdbcSpec::Oracle)
+          when /postgre/i: self.extend(JdbcSpec::PostgreSQL)
+          when /mysql/i: self.extend(JdbcSpec::MySQL)
+        end
       end
 
       def adapter_name #:nodoc:
@@ -254,7 +279,7 @@ module ActiveRecord
       end
 
       def native_database_types #:nodoc
-        @connection.native_database_types
+        @connection.native_database_types(self)
       end
 
       def active?
@@ -284,21 +309,6 @@ module ActiveRecord
         end
       end
 
-      # Oracle doesn't support limit and offset. Fake it instead.
-      def add_limit_offset!(sql, options) #:nodoc:
-        if /oracle/ =~ @config[:driver]
-          offset = options[:offset] || 0
-        
-          if limit = options[:limit]
-            sql.replace "select * from (select raw_sql_.*, rownum raw_rnum_ from (#{sql}) raw_sql_ where rownum <= #{offset+limit}) where raw_rnum_ > #{offset}"
-          elsif offset > 0
-            sql.replace "select * from (select raw_sql_.*, rownum raw_rnum_ from (#{sql}) raw_sql_) where raw_rnum_ > #{offset}"
-          end
-        else
-          super
-        end
-      end
-      
       alias :update :execute
       alias :delete :execute
 
