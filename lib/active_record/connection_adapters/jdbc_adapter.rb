@@ -44,7 +44,9 @@ module ActiveRecord
         :text        => [ lambda {|r| [Jdbc::Types::LONGVARCHAR, Jdbc::Types::CLOB].include?(r['data_type'])},
                           lambda {|r| r['type_name'] =~ /^(text|clob)/i} ],
         :integer     => [ lambda {|r| Jdbc::Types::INTEGER == r['data_type']},
-                          lambda {|r| r['type_name'] =~ /^integer|int4/i}],
+                          lambda {|r| r['type_name'] =~ /^integer$/i},
+                          lambda {|r| r['type_name'] =~ /^int4$/i},
+                          lambda {|r| r['type_name'] =~ /^int$/i}],
         :float       => [ lambda {|r| [Jdbc::Types::FLOAT,Jdbc::Types::DOUBLE].include?(r['data_type'])},
                           lambda {|r| r['type_name'] =~ /^float/i},
                           lambda {|r| r['type_name'] =~ /^double$/i} ],
@@ -55,12 +57,17 @@ module ActiveRecord
                           lambda {|r| r['type_name'] =~ /^timestamp$/i},
                           lambda {|r| r['type_name'] =~ /^datetime/i} ],
         :time        => [ lambda {|r| Jdbc::Types::TIME == r['data_type']},
-                          lambda {|r| r['type_name'] =~ /^time$/i}],
-        :date        => [ lambda {|r| Jdbc::Types::DATE == r['data_type']} ],
+                          lambda {|r| r['type_name'] =~ /^time$/i},
+                          lambda {|r| r['type_name'] =~ /^datetime$/i}],
+        :date        => [ lambda {|r| Jdbc::Types::DATE == r['data_type']},
+                          lambda {|r| r['type_name'] =~ /^datetime$/i}],
         :binary      => [ lambda {|r| [Jdbc::Types::LONGVARBINARY,Jdbc::Types::BINARY,Jdbc::Types::BLOB].include?(r['data_type'])},
-                          lambda {|r| r['type_name'] =~ /^blob/i} ],
+                          lambda {|r| r['type_name'] =~ /^blob/i},
+                          lambda {|r| r['type_name'] =~ /^binary$/i}, ],
         :boolean     => [ lambda {|r| [Jdbc::Types::TINYINT].include?(r['data_type'])},
-                          lambda {|r| r['type_name'] =~ /^bool/i}]
+                          lambda {|r| r['type_name'] =~ /^bool/i},
+                          lambda {|r| r['type_name'] =~ /^tinyint$/i},
+                          lambda {|r| r['type_name'] =~ /^decimal$/i}]
       }
 
       def initialize(types)
@@ -239,7 +246,7 @@ module ActiveRecord
             resultset.getString(row)
           when Jdbc::Types::SMALLINT, Jdbc::Types::INTEGER, Jdbc::Types::NUMERIC, Jdbc::Types::BIGINT
             resultset.getInt(row)
-          when Jdbc::Types::BIT, Jdbc::Types::BOOLEAN, Jdbc::Types::TINYINT
+          when Jdbc::Types::BIT, Jdbc::Types::BOOLEAN, Jdbc::Types::TINYINT, Jdbc::Types::DECIMAL
             resultset.getBoolean(row)
           when Jdbc::Types::TIMESTAMP
             to_ruby_time(resultset.getTimestamp(row))
@@ -264,6 +271,8 @@ module ActiveRecord
           when /oracle/i: self.extend(JdbcSpec::Oracle)
           when /postgre/i: self.extend(JdbcSpec::PostgreSQL)
           when /mysql/i: self.extend(JdbcSpec::MySQL)
+          when /sqlserver|tds/i: self.extend(JdbcSpec::MsSQL)
+          when /db2/i: self.extend(JdbcSpec::DB2)
         end
       end
 
