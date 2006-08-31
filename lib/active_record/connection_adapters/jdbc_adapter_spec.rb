@@ -1,6 +1,6 @@
 
 module JdbcSpec
-  module SequenceSupport
+  module OracleSequenceSupport
     def default_sequence_name(table, column) #:nodoc:
       "#{table}_seq"
     end
@@ -45,10 +45,11 @@ module JdbcSpec
   end
   
   module Oracle
-    include SequenceSupport 
+    include OracleSequenceSupport 
     
-    def primary_key_string
-      "NUMBER(38) NOT NULL PRIMARY KEY"
+    def modify_types(tp)
+      tp[:primary_key] = "NUMBER(38) NOT NULL PRIMARY KEY"
+      tp
     end
 
     def add_limit_offset!(sql, options) #:nodoc:
@@ -155,6 +156,12 @@ module JdbcSpec
   end
 
   module PostgreSQL
+    def modify_types(tp)
+      tp[:primary_key] = "serial primary key"
+      tp[:string][:limit] = 255
+      tp
+    end
+    
     def default_sequence_name(table_name, pk = nil)
       default_pk, default_seq = pk_and_sequence_for(table_name)
       default_seq || "#{table_name}_#{pk || default_pk || 'id'}_seq"
@@ -205,11 +212,6 @@ module JdbcSpec
         nil
       end
 
-                                                   
-    def primary_key_string
-      "serial primary key"
-    end
-
     def insert(sql, name = nil, pk = nil, id_value = nil, sequence_name = nil) #:nodoc:
       execute(sql, name)
       table = sql.split(" ", 4)[2]
@@ -222,8 +224,9 @@ module JdbcSpec
   end  
   
   module MySQL
-    def primary_key_string
-      "int(11) DEFAULT NULL auto_increment PRIMARY KEY"
+    def modify_types(tp)
+      tp[:primary_key] = "int(11) DEFAULT NULL auto_increment PRIMARY KEY"
+      tp
     end
   end
 end

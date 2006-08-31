@@ -72,9 +72,8 @@ module ActiveRecord
         AR_TO_JDBC_TYPES.each_key do |k|
           typerow = choose_type(k)
           type_map[k] = { :name => typerow['type_name']  }
-          type_map[k][:limit] = typerow['precision'] if k == :integer
+          type_map[k][:limit] = typerow['precision'] if [:integer, :string].include?(k)
           type_map[k][:limit] = 1 if k == :boolean
-          type_map[k][:limit] = 255 if k == :string
         end
         type_map
       end
@@ -133,11 +132,9 @@ module ActiveRecord
       end
 
       def native_database_types(adapt)
-        types = {
-          :primary_key => adapt.primary_key_string,
-        }
+        types = {}
         @native_types.each_pair {|k,v| types[k] = v.inject({}) {|memo,kv| memo.merge({kv.first => kv.last.dup})}}
-        types
+        adapt.modify_types(types)
       end
       
       def columns(table_name, name = nil)
@@ -270,6 +267,10 @@ module ActiveRecord
         end
       end
 
+      def modify_types(tp)
+        tp
+      end
+      
       def adapter_name #:nodoc:
         'JDBC'
       end
@@ -288,7 +289,7 @@ module ActiveRecord
 
       def reconnect!
         @connection.close rescue nil
-        @connection = JdbcConnection.new(@config)
+        @connection = JdbcConnection.new(@config,self)
       end
 
       def select_all(sql, name = nil)
