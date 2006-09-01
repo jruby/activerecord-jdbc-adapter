@@ -63,6 +63,7 @@ module ActiveRecord
                           lambda {|r| r['type_name'] =~ /^datetime$/i}],
         :binary      => [ lambda {|r| [Jdbc::Types::LONGVARBINARY,Jdbc::Types::BINARY,Jdbc::Types::BLOB].include?(r['data_type'])},
                           lambda {|r| r['type_name'] =~ /^blob/i},
+                          lambda {|r| r['type_name'] =~ /sub_type 0$/i}, # For FireBird
                           lambda {|r| r['type_name'] =~ /^binary$/i}, ],
         :boolean     => [ lambda {|r| [Jdbc::Types::TINYINT].include?(r['data_type'])},
                           lambda {|r| r['type_name'] =~ /^bool/i},
@@ -272,7 +273,14 @@ module ActiveRecord
           when /postgre/i: self.extend(JdbcSpec::PostgreSQL)
           when /mysql/i: self.extend(JdbcSpec::MySQL)
           when /sqlserver|tds/i: self.extend(JdbcSpec::MsSQL)
-          when /db2/i: self.extend(JdbcSpec::DB2)
+          when /derby/i: self.extend(JdbcSpec::Derby)
+          when /db2/i: 
+            if config[:url] =~ /^jdbc:derby:net:/
+              self.extend(JdbcSpec::Derby)
+            else
+              self.extend(JdbcSpec::DB2)
+            end
+          when /firebird/i: self.extend(JdbcSpec::FireBird)
         end
       end
 
