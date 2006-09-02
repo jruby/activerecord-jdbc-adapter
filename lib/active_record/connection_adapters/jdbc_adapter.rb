@@ -319,7 +319,7 @@ module ActiveRecord
 
       def execute(sql, name = nil)
         log_no_bench(sql, name) do
-          if sql =~ /^select/i
+          if sql =~ /^(select|show)/i
             @connection.execute_query(sql)
           else
             @connection.execute_update(sql)
