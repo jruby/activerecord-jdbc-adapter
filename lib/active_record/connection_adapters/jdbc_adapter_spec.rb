@@ -226,6 +226,7 @@ module JdbcSpec
   module MySQL
     def modify_types(tp)
       tp[:primary_key] = "int(11) DEFAULT NULL auto_increment PRIMARY KEY"
+      tp[:decimal] = { :name => "datetime" }
       tp
     end
     
