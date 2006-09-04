@@ -45,7 +45,7 @@ ActiveRecord::Schema.define do
  
   add_index :author, :name, :unique if /db2/ !~ ARGV[1]
   add_index :author, [:age,:female], :name => :is_age_female if /db2/ !~ ARGV[1]
-  
+ 
   remove_index :author, :name if /db2/ !~ ARGV[1]
   remove_index :author, :name => :is_age_female if /db2/ !~ ARGV[1]
   

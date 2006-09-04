@@ -40,7 +40,8 @@ module ActiveRecord
       # type, an exception will be raised.
       AR_TO_JDBC_TYPES = {
         :string      => [ lambda {|r| Jdbc::Types::VARCHAR == r['data_type']},
-                          lambda {|r| r['type_name'] =~ /^varchar/i} ],
+                          lambda {|r| r['type_name'] =~ /^varchar/i},
+                          lambda {|r| r['type_name'] =~ /^varchar$/i}],
         :text        => [ lambda {|r| [Jdbc::Types::LONGVARCHAR, Jdbc::Types::CLOB].include?(r['data_type'])},
                           lambda {|r| r['type_name'] =~ /^(text|clob)/i} ],
         :integer     => [ lambda {|r| Jdbc::Types::INTEGER == r['data_type']},
@@ -117,6 +118,7 @@ module ActiveRecord
           when /oracle/i: self.extend(JdbcSpec::Oracle::Column)
           when /postgre/i: self.extend(JdbcSpec::PostgreSQL::Column)
           when /sqlserver|tds/i: self.extend(JdbcSpec::MsSQL::Column)
+          when /hsqldb/i: self.extend(JdbcSpec::HSQLDB::Column)
           when /derby/i: self.extend(JdbcSpec::Derby::Column)
           when /db2/i: 
             if config[:url] =~ /^jdbc:derby:net:/
@@ -301,6 +303,7 @@ module ActiveRecord
           when /postgre/i: self.extend(JdbcSpec::PostgreSQL)
           when /mysql/i: self.extend(JdbcSpec::MySQL)
           when /sqlserver|tds/i: self.extend(JdbcSpec::MsSQL)
+          when /hsqldb/i: self.extend(JdbcSpec::HSQLDB)
           when /derby/i: self.extend(JdbcSpec::Derby)
           when /db2/i: 
             if config[:url] =~ /^jdbc:derby:net:/
