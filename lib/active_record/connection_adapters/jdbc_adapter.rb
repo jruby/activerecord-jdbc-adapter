@@ -111,13 +111,28 @@ module ActiveRecord
       end
     end
 
+    class JdbcColumn < Column
+      def initialize(config, name, default, *args)
+        case config[:driver].to_s
+          when /oracle/i: self.extend(JdbcSpec::Oracle::Column)
+          when /postgre/i: self.extend(JdbcSpec::PostgreSQL::Column)
+          when /sqlserver|tds/i: self.extend(JdbcSpec::MsSQL::Column)
+        end
+        super(name,default_value(default),*args)
+      end    
+
+      def default_value(val)
+        val
+      end
+    end
+    
     class JdbcConnection
       def initialize(config)
-        config = config.symbolize_keys
-        driver = config[:driver].to_s
-        user   = config[:username].to_s
-        pass   = config[:password].to_s
-        url    = config[:url].to_s
+        @config = config.symbolize_keys
+        driver = @config[:driver].to_s
+        user   = @config[:username].to_s
+        pass   = @config[:password].to_s
+        url    = @config[:url].to_s
 
         unless driver && url
           raise ArgumentError, "jdbc adapter requires driver class and url"
@@ -152,7 +167,7 @@ module ActiveRecord
         results = metadata.getColumns(nil, nil, table_name, nil)
         columns = []
         unmarshal_result(results).each do |col|
-          columns << ActiveRecord::ConnectionAdapters::Column.new(col['column_name'].downcase, col['column_def'],
+          columns << ActiveRecord::ConnectionAdapters::JdbcColumn.new(@config,col['column_name'].downcase, col['column_def'],
               "#{col['type_name']}(#{col['column_size']})", col['is_nullable'] != 'NO')
         end
         columns
@@ -243,18 +258,22 @@ module ActiveRecord
           decimal.to_f
         else
           case type
-          when Jdbc::Types::CHAR, Jdbc::Types::VARCHAR, Jdbc::Types::LONGVARCHAR
+          when Jdbc::Types::CHAR, Jdbc::Types::VARCHAR, Jdbc::Types::LONGVARCHAR, Jdbc::Types::CLOB
             resultset.getString(row)
           when Jdbc::Types::SMALLINT, Jdbc::Types::INTEGER, Jdbc::Types::NUMERIC, Jdbc::Types::BIGINT
             resultset.getInt(row)
           when Jdbc::Types::BIT, Jdbc::Types::BOOLEAN, Jdbc::Types::TINYINT, Jdbc::Types::DECIMAL
             resultset.getBoolean(row)
+          when Jdbc::Types::FLOAT, Jdbc::Types::DOUBLE
+            resultset.getDouble(row)
           when Jdbc::Types::TIMESTAMP
             to_ruby_time(resultset.getTimestamp(row))
           when Jdbc::Types::TIME
             to_ruby_time(resultset.getTime(row))
           when Jdbc::Types::DATE
             to_ruby_time(resultset.getDate(row))
+          when Jdbc::Types::LONGVARBINARY, Jdbc::Types::BLOB, Jdbc::Types::BINARY
+            resultset.getString(row)
           else
             types = Jdbc::Types.constants
             name = types.find {|t| Jdbc::Types.const_get(t.to_sym) == type}
@@ -300,6 +319,41 @@ module ActiveRecord
         @connection.native_database_types(self)
       end
 
+      def native_sql_to_type(tp)
+        if /^(.*?)\(([0-9]+)\)/ =~ tp
+          tname = $1
+          limit = $2.to_i
+          ntype = native_database_types
+          if ntype[:primary_key] == tp
+            return :primary_key,nil
+          else
+            ntype.each do |name,val|
+              if name == :primary_key
+                next
+              end
+              if val[:name].downcase == tname.downcase && (val[:limit].nil? || val[:limit].to_i == limit)
+                return name,limit
+              end
+            end
+          end
+        elsif /^(.*?)/ =~ tp
+          tname = $1
+          ntype = native_database_types
+          if ntype[:primary_key] == tp
+            return :primary_key,nil
+          else
+            ntype.each do |name,val|
+              if val[:name].downcase == tname.downcase && val[:limit].nil?
+                return name,nil
+              end
+            end
+          end
+        else
+          return :string,255
+        end
+        return nil,nil
+      end
+      
       def active?
         true
       end
@@ -358,7 +412,7 @@ module ActiveRecord
       end
 
       private
-      def select(sql, name)
+      def select(sql, name=nil)
         log_no_bench(sql, name) { @connection.execute_query(sql) }
       end
 
