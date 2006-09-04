@@ -117,6 +117,13 @@ module ActiveRecord
           when /oracle/i: self.extend(JdbcSpec::Oracle::Column)
           when /postgre/i: self.extend(JdbcSpec::PostgreSQL::Column)
           when /sqlserver|tds/i: self.extend(JdbcSpec::MsSQL::Column)
+          when /derby/i: self.extend(JdbcSpec::Derby::Column)
+          when /db2/i: 
+            if config[:url] =~ /^jdbc:derby:net:/
+              self.extend(JdbcSpec::Derby::Column)
+            else
+              self.extend(JdbcSpec::DB2::Column)
+            end
         end
         super(name,default_value(default),*args)
       end    
@@ -143,6 +150,8 @@ module ActiveRecord
         set_native_database_types
 
         @stmts = {}
+      rescue Exception => e
+        raise "The driver encounter an error: #{e}"
       end
 
       def ps(sql)

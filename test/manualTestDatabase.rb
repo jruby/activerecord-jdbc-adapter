@@ -20,6 +20,7 @@ ActiveRecord::Base.establish_connection(cfg)
 
 ActiveRecord::Schema.define do
   drop_table :authors rescue nil
+  drop_table :author rescue nil
   
   create_table :author, :force => true do |t|
     t.column :name, :string, :null => false
@@ -37,21 +38,23 @@ ActiveRecord::Schema.define do
   add_column :author, :private_key, :binary
   add_column :author, :female, :boolean, :default => true
 
-  change_column :author, :descr, :string, :limit => 100  #Only allow that much nonsense
-#  change_column_default :author, :female, false
-  remove_column :author, :died
-  rename_column :author, :wakeup_time, :waking_time
+  change_column :author, :descr, :string, :limit => 100 if /db2|derby/ !~ ARGV[1]
+  change_column_default :author, :female, false if /db2|derby|mssql|firebird/ !~ ARGV[1]
+  remove_column :author, :died if /db2|derby/ !~ ARGV[1]
+  rename_column :author, :wakeup_time, :waking_time if /db2|derby/ !~ ARGV[1]
+ 
+  add_index :author, :name, :unique if /db2/ !~ ARGV[1]
+  add_index :author, [:age,:female], :name => :is_age_female if /db2/ !~ ARGV[1]
   
-  add_index :author, :name, :unique
-  add_index :author, [:age,:female], :name => :is_age_female
+  remove_index :author, :name if /db2/ !~ ARGV[1]
+  remove_index :author, :name => :is_age_female if /db2/ !~ ARGV[1]
   
-  remove_index :author, :name
-  remove_index :author, :name => :is_age_female
-  
-  rename_table :author, :authors
+  rename_table :author, :authors if /db2|firebird/ !~ ARGV[1]
 end
 
-class Author < ActiveRecord::Base; end
+class Author < ActiveRecord::Base;
+  set_table_name "author" if /db2|firebird/ =~ ARGV[1]
+end
 
 1.times do 
   $stderr.print '.'
@@ -70,5 +73,5 @@ class Author < ActiveRecord::Base; end
 end
 
 ActiveRecord::Schema.define do 
-  drop_table :authors
+  drop_table((/db2|firebird/=~ARGV[1]? :author : :authors ))
 end
