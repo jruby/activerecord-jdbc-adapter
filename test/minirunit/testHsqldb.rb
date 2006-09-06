@@ -1,10 +1,5 @@
-# To run this script, run the following in a mysql instance:
-#
-#   drop database if exists weblog_development;
-#   create database weblog_development;
-#   grant all on weblog_development.* to blog@localhost;
 
-require 'test/minirunit'
+require 'minirunit'
 
 config = {
   :adapter => 'jdbc',
@@ -13,10 +8,14 @@ config = {
   :driver => 'org.hsqldb.jdbcDriver',
   :url => 'jdbc:hsqldb:test.db'
 }
+RAILS_CONNECTION_ADAPTERS = ['abstract', 'jdbc']
 
 require 'active_record'
 
 ActiveRecord::Base.establish_connection(config)
+require 'logger'
+ActiveRecord::Base.logger = Logger.new($stdout)
+ActiveRecord::Base.logger.level = Logger::DEBUG
 
 class CreateEntries < ActiveRecord::Migration
   def self.up
@@ -69,3 +68,6 @@ post.destroy
 test_equal 0, Entry.count
 
 CreateEntries.down
+
+# Clean up hsqldb when done
+Dir['test.db*'].each {|f| File.delete(f)}

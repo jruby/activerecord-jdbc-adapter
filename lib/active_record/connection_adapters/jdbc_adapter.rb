@@ -18,6 +18,12 @@ module ActiveRecord
   end
 
   module ConnectionAdapters
+    module Java
+      include_class 'java.lang.Class'
+      include_class 'java.net.URL'
+      include_class 'java.net.URLClassLoader'
+    end
+
     module Jdbc
       require 'java'
       include_class 'java.sql.DriverManager'
@@ -103,10 +109,18 @@ module ActiveRecord
       def self.load(driver)
         driver_class_const = (driver[0...1].capitalize + driver[1..driver.length]).gsub(/\./, '_')
         unless Jdbc.const_defined?(driver_class_const)
-          Jdbc.module_eval do
-            include_class(driver) {|p,c| driver_class_const }
+          driver_class = if defined?(RAILS_ROOT)
+            jars = Dir["#{RAILS_ROOT}/lib/*.jar"]
+            urls = Java::URL[].new(jars.length)
+            jars.each_with_index {|j,i| urls[i] = 'file:' + j }
+            classloader = Java::URLClassLoader.new(urls)
+            Jdbc.const_set(driver_class_const, Java::Class.forName(driver, true, classloader))
+          else
+            Jdbc.module_eval do
+              include_class(driver) {|p,c| driver_class_const }
+            end
+            Jdbc.const_get(driver_class_const)
           end
-          driver_class = Jdbc.const_get(driver_class_const.to_sym)
           Jdbc::DriverManager.registerDriver(driver_class.new)
         end
       end

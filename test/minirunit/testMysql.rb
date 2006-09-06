@@ -4,7 +4,7 @@
 #   create database weblog_development;
 #   grant all on weblog_development.* to blog@localhost;
 
-require 'test/minirunit'
+require 'minirunit'
 
 config = {
   :username => 'blog',
