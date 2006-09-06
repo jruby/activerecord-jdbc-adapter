@@ -109,19 +109,10 @@ module ActiveRecord
       def self.load(driver)
         driver_class_const = (driver[0...1].capitalize + driver[1..driver.length]).gsub(/\./, '_')
         unless Jdbc.const_defined?(driver_class_const)
-          driver_instance = if defined?(RAILS_ROOT)
-            jars = Dir["#{RAILS_ROOT}/lib/*.jar"]
-            urls = Java::URL[].new(jars.length)
-            jars.each_with_index {|j,i| urls[i] = Java::URL.new('file:' + File.expand_path(j)) }
-            classloader = Java::URLClassLoader.new(urls)
-            Jdbc.const_set(driver_class_const, Java::Class.forName(driver, true, classloader)).newInstance
-          else
-            Jdbc.module_eval do
-              include_class(driver) {|p,c| driver_class_const }
-            end
-            Jdbc.const_get(driver_class_const).new
+          Jdbc.module_eval do
+            include_class(driver) {|p,c| driver_class_const }
           end
-          Jdbc::DriverManager.registerDriver(driver_instance)
+          Jdbc::DriverManager.registerDriver(Jdbc.const_get(driver_class_const).new)
         end
       end
     end
