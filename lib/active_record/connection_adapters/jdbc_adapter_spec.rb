@@ -7,6 +7,7 @@ module JdbcSpec
         case type
         when :string    then value
         when :integer   then defined?(value.to_i) ? value.to_i : (value ? 1 : 0)
+        when :primary_key then defined?(value.to_i) ? value.to_i : (value ? 1 : 0) 
         when :float     then value.to_f
         when :datetime  then cast_to_date_or_time(value)
         when :timestamp then cast_to_time(value)
@@ -109,6 +110,7 @@ module JdbcSpec
         case type
         when :string   then value
         when :integer  then defined?(value.to_i) ? value.to_i : (value ? 1 : 0)
+        when :primary_key then defined?(value.to_i) ? value.to_i : (value ? 1 : 0) 
         when :float    then value.to_f
         when :datetime then cast_to_date_or_time(value)
         when :time     then cast_to_time(value)
@@ -321,6 +323,9 @@ module JdbcSpec
           %Q{empty_#{ column.sql_type rescue 'blob' }()}
         end
       else
+        if column && column.type == :primary_key
+          return value.to_s
+        end
         case value
         when String     : %Q{'#{quote_string(value)}'}
         when NilClass   : 'null'
@@ -341,6 +346,7 @@ module JdbcSpec
         case type
         when :string    then value
         when :integer   then defined?(value.to_i) ? value.to_i : (value ? 1 : 0)
+        when :primary_key then defined?(value.to_i) ? value.to_i : (value ? 1 : 0) 
         when :float     then value.to_f
         when :datetime  then cast_to_date_or_time(value)
         when :timestamp then cast_to_time(value)
@@ -456,6 +462,8 @@ module JdbcSpec
     def quote(value, column = nil)
       if value.kind_of?(String) && column && column.type == :binary
         "'#{escape_bytea(value)}'"
+      elsif column && column.type == :primary_key
+        return value.to_s
       else
         super
       end
@@ -513,7 +521,10 @@ module JdbcSpec
     # QUOTING ==================================================
     
     def quote(value, column = nil)
-        super
+      if column && column.type == :primary_key
+        return value.to_s
+      end
+      super
     end
     
     def quote_column_name(name) #:nodoc:
@@ -625,6 +636,7 @@ module JdbcSpec
         case type
         when :string    then value
         when :integer   then defined?(value.to_i) ? value.to_i : (value ? 1 : 0)
+        when :primary_key then defined?(value.to_i) ? value.to_i : (value ? 1 : 0) 
         when :float     then value.to_f
         when :datetime  then cast_to_date_or_time(value)
         when :timestamp then cast_to_time(value)
@@ -701,12 +713,20 @@ module JdbcSpec
     end
 
     def quote(value, column = nil) # :nodoc:
+      if column && column.type == :primary_key
+        return value.to_s
+      end
       case value
       when String                
         if column && column.type == :binary
           "CAST(x'#{quote_string(value).unpack("C*").collect {|v| v.to_s(16)}.join}' AS BLOB)"
         else
-          "'#{quote_string(value)}'"
+          vi = value.to_i
+          if vi.to_s == value
+            value
+          else
+            "'#{quote_string(value)}'"
+          end
         end
       else super
       end
@@ -785,6 +805,9 @@ module JdbcSpec
       if [Time, DateTime].include?(value.class)
         "CAST('#{value.strftime("%Y-%m-%d %H:%M:%S")}' AS TIMESTAMP)"
       else
+        if column && column.type == :primary_key
+          return value.to_s
+        end
         super
       end
     end
@@ -827,6 +850,7 @@ module JdbcSpec
         case type
         when :string    then value
         when :integer   then defined?(value.to_i) ? value.to_i : (value ? 1 : 0)
+        when :primary_key then defined?(value.to_i) ? value.to_i : (value ? 1 : 0) 
         when :float     then value.to_f
         when :datetime  then cast_to_date_or_time(value)
         when :timestamp then cast_to_time(value)
@@ -874,6 +898,9 @@ module JdbcSpec
     end
 
     def quote(value, column = nil) # :nodoc:
+      if column && column.type == :primary_key
+        return value.to_s
+      end
       case value
       when String                
         if column && column.type == :binary
@@ -920,6 +947,7 @@ module JdbcSpec
         case type
         when :string    then value
         when :integer   then value == true || value == false ? value == true ? 1 : 0 : value.to_i
+        when :primary_key then value == true || value == false ? value == true ? 1 : 0 : value.to_i 
         when :float     then value.to_f
         when :datetime  then cast_to_datetime(value)
         when :timestamp then cast_to_time(value)
@@ -985,6 +1013,9 @@ module JdbcSpec
     end
 
     def quote(value, column = nil)
+      if column && column.type == :primary_key
+        return value.to_s
+      end
         case value
           when String                
             if column && column.type == :binary && column.class.respond_to?(:string_to_binary)

@@ -16,7 +16,7 @@ File.open(bck_file,"r") {|inf|
     inf.each_line do |ln|
       if ln =~ /^Rails::Initializer\.run/
         out.puts "# Added by ActiveRecord JDBC plugin"
-        out.puts "RAILS_CONNECTION_ADAPTERS = %w( jdbc mysql postgresql sqlite firebird sqlserver db2 oracle sybase openbase )"
+        out.puts "require 'jdbc_adapter'"
         out.puts
       end
       out.puts ln
