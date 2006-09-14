@@ -41,7 +41,7 @@ ActiveRecord::Schema.define do
   change_column :author, :descr, :string, :limit => 100 if /db2|derby/ !~ ARGV[1]
   change_column_default :author, :female, false if /db2|derby|mssql|firebird/ !~ ARGV[1]
   remove_column :author, :died if /db2|derby/ !~ ARGV[1]
-  rename_column :author, :wakeup_time, :waking_time if /db2|derby/ !~ ARGV[1]
+  rename_column :author, :wakeup_time, :waking_time if /db2|derby|mimer/ !~ ARGV[1]
  
   add_index :author, :name, :unique if /db2/ !~ ARGV[1]
   add_index :author, [:age,:female], :name => :is_age_female if /db2/ !~ ARGV[1]
@@ -49,7 +49,7 @@ ActiveRecord::Schema.define do
   remove_index :author, :name if /db2/ !~ ARGV[1]
   remove_index :author, :name => :is_age_female if /db2/ !~ ARGV[1]
   
-  rename_table :author, :authors if /db2|firebird/ !~ ARGV[1]
+  rename_table :author, :authors if /db2|firebird|mimer/ !~ ARGV[1]
 
 
     create_table :products, :force => true do |t|
@@ -73,7 +73,7 @@ ActiveRecord::Schema.define do
 end
 
 class Author < ActiveRecord::Base;
-  set_table_name "author" if /db2|firebird/ =~ ARGV[1]
+  set_table_name "author" if /db2|firebird|mimer/ =~ ARGV[1]
 end
 
 class Order < ActiveRecord::Base
@@ -152,7 +152,7 @@ end
   $stderr.print '.'
   Author.destroy_all
   Author.create(:name => "Arne Svensson", :age => 30)
-  if /db2|derby/ !~ ARGV[1]
+  if /db2|derby|mimer/ !~ ARGV[1]
     Author.create(:name => "Pelle Gogolsson", :age => 15, :waking_time => Time.now, :private_key => "afbafddsfgsdfg")
   else
     Author.create(:name => "Pelle Gogolsson", :age => 15, :wakeup_time => Time.now, :private_key => "afbafddsfgsdfg")
@@ -191,5 +191,5 @@ ActiveRecord::Schema.define do
     drop_table :products
 
   
-  drop_table((/db2|firebird/=~ARGV[1]? :author : :authors ))
+  drop_table((/db2|firebird|mimer/=~ARGV[1]? :author : :authors ))
 end

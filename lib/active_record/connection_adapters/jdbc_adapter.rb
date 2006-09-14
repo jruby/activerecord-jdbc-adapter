@@ -10,7 +10,7 @@ module ActiveRecord
     alias :attributes_with_quotes_pre_oracle :attributes_with_quotes
     def attributes_with_quotes(include_primary_key = true) #:nodoc:
       aq = attributes_with_quotes_pre_oracle(include_primary_key)
-      if connection.class == ConnectionAdapters::JdbcAdapter && connection.is_a?(JdbcSpec::Oracle)
+      if connection.class == ConnectionAdapters::JdbcAdapter && (connection.is_a?(JdbcSpec::Oracle) || connection.is_a?(JdbcSpec::Mimer))
         aq[self.class.primary_key] = "?" if include_primary_key && aq[self.class.primary_key].nil?
       end
       aq
@@ -47,16 +47,20 @@ module ActiveRecord
       AR_TO_JDBC_TYPES = {
         :string      => [ lambda {|r| Jdbc::Types::VARCHAR == r['data_type']},
                           lambda {|r| r['type_name'] =~ /^varchar/i},
-                          lambda {|r| r['type_name'] =~ /^varchar$/i}],
+                          lambda {|r| r['type_name'] =~ /^varchar$/i},
+                          lambda {|r| r['type_name'] =~ /varying/i}],
         :text        => [ lambda {|r| [Jdbc::Types::LONGVARCHAR, Jdbc::Types::CLOB].include?(r['data_type'])},
-                          lambda {|r| r['type_name'] =~ /^(text|clob)/i} ],
+                          lambda {|r| r['type_name'] =~ /^(text|clob)/i},
+                          lambda {|r| r['type_name'] =~ /^character large object$/i},
+                          lambda {|r| r['sql_data_type'] == 2005}],
         :integer     => [ lambda {|r| Jdbc::Types::INTEGER == r['data_type']},
                           lambda {|r| r['type_name'] =~ /^integer$/i},
                           lambda {|r| r['type_name'] =~ /^int4$/i},
                           lambda {|r| r['type_name'] =~ /^int$/i}],
         :float       => [ lambda {|r| [Jdbc::Types::FLOAT,Jdbc::Types::DOUBLE].include?(r['data_type'])},
                           lambda {|r| r['type_name'] =~ /^float/i},
-                          lambda {|r| r['type_name'] =~ /^double$/i} ],
+                          lambda {|r| r['type_name'] =~ /^double$/i},
+                          lambda {|r| r['precision'] == 15}],
         :datetime    => [ lambda {|r| Jdbc::Types::TIMESTAMP == r['data_type']},
                           lambda {|r| r['type_name'] =~ /^datetime/i},
                           lambda {|r| r['type_name'] =~ /^timestamp$/i}],
@@ -71,6 +75,7 @@ module ActiveRecord
         :binary      => [ lambda {|r| [Jdbc::Types::LONGVARBINARY,Jdbc::Types::BINARY,Jdbc::Types::BLOB].include?(r['data_type'])},
                           lambda {|r| r['type_name'] =~ /^blob/i},
                           lambda {|r| r['type_name'] =~ /sub_type 0$/i}, # For FireBird
+                          lambda {|r| r['type_name'] =~ /^varbinary$/i}, # We want this sucker for Mimer
                           lambda {|r| r['type_name'] =~ /^binary$/i}, ],
         :boolean     => [ lambda {|r| [Jdbc::Types::TINYINT].include?(r['data_type'])},
                           lambda {|r| r['type_name'] =~ /^bool/i},
@@ -101,7 +106,7 @@ module ActiveRecord
           return new_types.first if new_types.length == 1
           types = new_types if new_types.length > 0
         end
-        raise "unable to choose type from: #{types.collect{|t| t['type_name']}.inspect} for #{ar_type}"
+        raise "unable to choose type from: #{types.collect{|t| [t['type_name'],t]}.inspect} for #{ar_type}"
       end
     end
 
@@ -288,7 +293,7 @@ module ActiveRecord
             to_ruby_time(resultset.getTime(row))
           when Jdbc::Types::DATE
             to_ruby_time(resultset.getDate(row))
-          when Jdbc::Types::LONGVARBINARY, Jdbc::Types::BLOB, Jdbc::Types::BINARY
+          when Jdbc::Types::LONGVARBINARY, Jdbc::Types::BLOB, Jdbc::Types::BINARY, Jdbc::Types::VARBINARY
             resultset.getString(row)
           else
             types = Jdbc::Types.constants
@@ -305,6 +310,7 @@ module ActiveRecord
         @config = config
         case config[:driver].to_s
           when /oracle/i: self.extend(JdbcSpec::Oracle)
+          when /mimer/i: self.extend(JdbcSpec::Mimer)
           when /postgre/i: self.extend(JdbcSpec::PostgreSQL)
           when /mysql/i: self.extend(JdbcSpec::MySQL)
           when /sqlserver|tds/i: self.extend(JdbcSpec::MsSQL)
@@ -449,6 +455,7 @@ module ActiveRecord
       rescue Exception => e
         # Log message and raise exception.
         message = "#{e.class.name}: #{e.message}: #{sql}"
+
         log_info(message, name, 0)
         raise ActiveRecord::StatementInvalid, message
       end
