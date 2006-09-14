@@ -203,7 +203,7 @@ module ActiveRecord
       def execute_insert(sql, pk)
         stmt = @connection.createStatement
         stmt.executeUpdate(sql,Jdbc::Statement::RETURN_GENERATED_KEYS)
-        row = unmarshal_result(stmt.getGeneratedKeys)
+        row = unmarshal_id_result(stmt.getGeneratedKeys)
         row.first && row.first.values.first
       ensure
         stmt.close
@@ -266,6 +266,30 @@ module ActiveRecord
         results
       end
 
+      def unmarshal_id_result(resultset)
+        metadata = resultset.getMetaData
+        column_count = metadata.getColumnCount
+        column_types = ['']
+        column_scale = ['']
+
+        1.upto(column_count) do |i|
+          column_types << metadata.getColumnType(i)
+          column_scale << metadata.getScale(i)
+        end
+
+        results = []
+
+        while resultset.next
+          row = {}
+          1.upto(column_count) do |i|
+            row[i] = row[i.to_s] = convert_jdbc_type_to_ruby(i, column_types[i], column_scale[i], resultset)
+          end
+          results << row
+        end
+
+        results
+      end
+      
       def to_ruby_time(java_date)
         if java_date
           tm = java_date.getTime
