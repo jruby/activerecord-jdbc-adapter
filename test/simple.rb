@@ -22,8 +22,8 @@ end
 module SimpleTestMethods
   include FixtureSetup
 
-  def test_entries_created
-    assert ActiveRecord::Base.connection.tables.include?('entries'), "entries not created"
+   def test_entries_created
+     assert ActiveRecord::Base.connection.tables.find{|t| t =~ /^entries$/i}, "entries not created"
    end
 
    def test_entries_empty
