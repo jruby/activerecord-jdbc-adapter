@@ -128,7 +128,7 @@ module ActiveRecord
           when /oracle/i: self.extend(JdbcSpec::Oracle::Column)
           when /postgre/i: self.extend(JdbcSpec::PostgreSQL::Column)
           when /sqlserver|tds/i: self.extend(JdbcSpec::MsSQL::Column)
-          when /hsqldb/i: self.extend(JdbcSpec::HSQLDB::Column)
+          when /hsqldb|\.h2\./i: self.extend(JdbcSpec::HSQLDB::Column)
           when /derby/i: self.extend(JdbcSpec::Derby::Column)
           when /db2/i: 
             if config[:url] =~ /^jdbc:derby:net:/
@@ -338,7 +338,7 @@ module ActiveRecord
           when /postgre/i: self.extend(JdbcSpec::PostgreSQL)
           when /mysql/i: self.extend(JdbcSpec::MySQL)
           when /sqlserver|tds/i: self.extend(JdbcSpec::MsSQL)
-          when /hsqldb/i: self.extend(JdbcSpec::HSQLDB)
+          when /hsqldb|\.h2\./i: self.extend(JdbcSpec::HSQLDB)
           when /derby/i: self.extend(JdbcSpec::Derby)
           when /db2/i: 
             if config[:url] =~ /^jdbc:derby:net:/
