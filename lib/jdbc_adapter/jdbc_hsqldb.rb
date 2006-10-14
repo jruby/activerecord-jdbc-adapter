@@ -32,6 +32,17 @@ module JdbcSpec
         (value.hour == 0 and value.min == 0 and value.sec == 0) ?
         Date.new(value.year, value.month, value.day) : value
       end
+      
+            
+      private
+      def simplified_type(field_type)
+        case field_type
+        when /longvarchar/i
+          :text
+        else
+          super(field_type)
+        end
+      end
     end
 
     def modify_types(tp)
