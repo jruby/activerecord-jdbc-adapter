@@ -130,7 +130,7 @@ module ActiveRecord
           when /sqlserver|tds/i: self.extend(JdbcSpec::MsSQL::Column)
           when /hsqldb|\.h2\./i: self.extend(JdbcSpec::HSQLDB::Column)
           when /derby/i: self.extend(JdbcSpec::Derby::Column)
-          when /db2/i: 
+          when /db2/i:
             if config[:url] =~ /^jdbc:derby:net:/
               self.extend(JdbcSpec::Derby::Column)
             else
@@ -138,13 +138,13 @@ module ActiveRecord
             end
         end
         super(name,default_value(default),*args)
-      end    
+      end
 
       def default_value(val)
         val
       end
     end
-    
+
     class JdbcConnection
       def initialize(config)
         @config = config.symbolize_keys
@@ -169,7 +169,7 @@ module ActiveRecord
       def ps(sql)
         @connection.prepareStatement(sql)
       end
-      
+
       def set_native_database_types
         types = unmarshal_result(@connection.getMetaData.getTypeInfo)
         @native_types = JdbcTypeConverter.new(types).choose_best_types
@@ -180,7 +180,7 @@ module ActiveRecord
         @native_types.each_pair {|k,v| types[k] = v.inject({}) {|memo,kv| memo.merge({kv.first => kv.last.dup})}}
         adapt.modify_types(types)
       end
-      
+
       def columns(table_name, name = nil)
         metadata = @connection.getMetaData
         table_name.upcase! if metadata.storesUpperCaseIdentifiers
@@ -197,7 +197,7 @@ module ActiveRecord
       def tables
         metadata = @connection.getMetaData
         results = metadata.getTables(nil, nil, nil, nil)
-        unmarshal_result(results).collect {|t| t['table_name']}
+        unmarshal_result(results).collect {|t| t['table_name'].downcase }
       end
 
       def execute_insert(sql, pk)
@@ -298,7 +298,7 @@ module ActiveRecord
       end
 
       def convert_jdbc_type_to_ruby(row, type, scale, resultset)
-        if scale != 0
+        if scale != 0 && type != Jdbc::Types::TIMESTAMP
           decimal = resultset.getString(row)
           decimal.to_f
         else
@@ -340,7 +340,7 @@ module ActiveRecord
           when /sqlserver|tds/i: self.extend(JdbcSpec::MsSQL)
           when /hsqldb|\.h2\./i: self.extend(JdbcSpec::HSQLDB)
           when /derby/i: self.extend(JdbcSpec::Derby)
-          when /db2/i: 
+          when /db2/i:
             if config[:url] =~ /^jdbc:derby:net:/
               self.extend(JdbcSpec::Derby)
             else
@@ -353,7 +353,7 @@ module ActiveRecord
       def modify_types(tp)
         tp
       end
-      
+
       def adapter_name #:nodoc:
         'JDBC'
       end
@@ -400,7 +400,7 @@ module ActiveRecord
         end
         return nil,nil
       end
-      
+
       def active?
         true
       end
