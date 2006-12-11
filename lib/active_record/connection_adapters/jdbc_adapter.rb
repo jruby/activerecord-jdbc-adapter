@@ -192,12 +192,26 @@ module ActiveRecord
               "#{col['type_name']}(#{col['column_size']})", col['is_nullable'] != 'NO')
         end
         columns
+      rescue
+        if @connection.is_closed
+          reconnect!
+          retry
+        else
+          raise
+        end
       end
 
       def tables
         metadata = @connection.getMetaData
         results = metadata.getTables(nil, nil, nil, nil)
         unmarshal_result(results).collect {|t| t['table_name'].downcase }
+      rescue
+        if @connection.is_closed
+          reconnect!
+          retry
+        else
+          raise
+        end
       end
 
       def execute_insert(sql, pk)
@@ -205,6 +219,13 @@ module ActiveRecord
         stmt.executeUpdate(sql,Jdbc::Statement::RETURN_GENERATED_KEYS)
         row = unmarshal_id_result(stmt.getGeneratedKeys)
         row.first && row.first.values.first
+      rescue
+        if @connection.is_closed
+          reconnect!
+          retry
+        else
+          raise
+        end
       ensure
         stmt.close
       end
@@ -212,6 +233,13 @@ module ActiveRecord
       def execute_update(sql)
         stmt = @connection.createStatement
         stmt.executeUpdate(sql)
+      rescue
+        if @connection.is_closed
+          reconnect!
+          retry
+        else
+          raise
+        end
       ensure
         stmt.close
       end
@@ -219,6 +247,13 @@ module ActiveRecord
       def execute_query(sql)
         stmt = @connection.createStatement
         unmarshal_result(stmt.executeQuery(sql))
+      rescue
+        if @connection.is_closed
+          reconnect!
+          retry
+        else
+          raise
+        end
       ensure
         stmt.close
       end
