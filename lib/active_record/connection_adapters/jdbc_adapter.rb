@@ -29,6 +29,16 @@ module ActiveRecord
       include_class 'java.sql.DriverManager'
       include_class 'java.sql.Statement'
       include_class 'java.sql.Types'
+      
+      # some symbolic constants for the benefit of the JDBC-based
+      # JdbcConnection#indexes method
+      module IndexMetaData
+        INDEX_NAME = 6
+        NON_UNIQUE = 4
+        TABLE_NAME = 3
+        COLUMN_NAME = 9
+      end
+      
     end
 
     # I want to use JDBC's DatabaseMetaData#getTypeInfo to choose the best native types to
@@ -213,6 +223,37 @@ module ActiveRecord
           raise
         end
       end
+      
+      # Default JDBC introspection for index metadata on the JdbcConnection.
+      # This is currently used for migrations by JdbcSpec::HSQDLB.indexes 
+      # with a little filtering tacked on.
+      def indexes(table_name, name = nil)
+        metadata = @connection.getMetaData
+        resultset = metadata.getIndexInfo(nil, nil, table_name, false, false)
+        indexes = []
+        current_index = nil
+        while resultset.next
+          index_name = resultset.get_string(Jdbc::IndexMetaData::INDEX_NAME)
+          if current_index != index_name
+            current_index = index_name
+            table_name = resultset.get_string(Jdbc::IndexMetaData::TABLE_NAME)
+            non_unique = resultset.get_boolean(Jdbc::IndexMetaData::NON_UNIQUE)
+            # empty list for column names, we'll add to that in just a bit
+            indexes << IndexDefinition.new(table_name, index_name, non_unique, [])
+          end
+          indexes.last.columns << resultset.get_string(Jdbc::IndexMetaData::COLUMN_NAME)
+        end
+        resultset.close
+        indexes
+      rescue
+        if @connection.is_closed
+          reconnect!
+          retry
+        else
+          raise
+        end
+      end
+      
 
       def execute_insert(sql, pk)
         stmt = @connection.createStatement
