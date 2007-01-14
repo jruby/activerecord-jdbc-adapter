@@ -381,7 +381,9 @@ module ActiveRecord
           case type
           when Jdbc::Types::CHAR, Jdbc::Types::VARCHAR, Jdbc::Types::LONGVARCHAR, Jdbc::Types::CLOB
             resultset.getString(row)
-          when Jdbc::Types::SMALLINT, Jdbc::Types::INTEGER, Jdbc::Types::NUMERIC, Jdbc::Types::BIGINT
+          when Jdbc::Types::NUMERIC, Jdbc::Types::BIGINT
+          	resultset.getLong(row)
+          when Jdbc::Types::SMALLINT, Jdbc::Types::INTEGER
             resultset.getInt(row)
           when Jdbc::Types::BIT, Jdbc::Types::BOOLEAN, Jdbc::Types::TINYINT, Jdbc::Types::DECIMAL
             resultset.getBoolean(row)
