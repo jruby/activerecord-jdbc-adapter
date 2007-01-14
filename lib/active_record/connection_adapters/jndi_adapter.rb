@@ -1,4 +1,4 @@
-require 'jdbc_adapter'
+require 'active_record/connection_adapters/jdbc_adapter'
 
 module ActiveRecord #:nodoc:
   class Base #:nodoc:
