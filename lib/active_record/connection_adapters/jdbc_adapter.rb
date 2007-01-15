@@ -33,10 +33,17 @@ module ActiveRecord
       # some symbolic constants for the benefit of the JDBC-based
       # JdbcConnection#indexes method
       module IndexMetaData
-        INDEX_NAME = 6
-        NON_UNIQUE = 4
-        TABLE_NAME = 3
+        INDEX_NAME  = 6
+        NON_UNIQUE  = 4
+        TABLE_NAME  = 3
         COLUMN_NAME = 9
+      end
+      
+      module TableMetaData
+        TABLE_CAT   = 1
+        TABLE_SCHEM = 2
+        TABLE_NAME  = 3
+        TABLE_TYPE  = 4
       end
       
     end
@@ -211,10 +218,10 @@ module ActiveRecord
         end
       end
 
-      def tables
+      def tables(&table_filter)
         metadata = @connection.getMetaData
         results = metadata.getTables(nil, nil, nil, nil)
-        unmarshal_result(results).collect {|t| t['table_name'].downcase }
+        unmarshal_result(results, &table_filter).collect {|t| t['table_name'].downcase }
       rescue
         if @connection.is_closed
           reconnect!
@@ -227,6 +234,11 @@ module ActiveRecord
       # Default JDBC introspection for index metadata on the JdbcConnection.
       # This is currently used for migrations by JdbcSpec::HSQDLB.indexes 
       # with a little filtering tacked on.
+      # 
+      # JDBC index metadata is denormalized (multiple rows may be returned for
+      # one index, one row per column in the index), so a simple block-based
+      # filter like that used for tables doesn't really work here.  Callers 
+      # should filter the return from this method instead.
       def indexes(table_name, name = nil)
         metadata = @connection.getMetaData
         resultset = metadata.getIndexInfo(nil, nil, table_name, false, false)
@@ -316,7 +328,7 @@ module ActiveRecord
       end
 
       private
-      def unmarshal_result(resultset)
+      def unmarshal_result(resultset, &row_filter)
         metadata = resultset.getMetaData
         column_count = metadata.getColumnCount
         column_names = ['']
@@ -330,13 +342,20 @@ module ActiveRecord
         end
 
         results = []
+        
+        # take all rows if block not supplied
+        row_filter = lambda{|result_row| true} unless block_given?
 
         while resultset.next
-          row = {}
-          1.upto(column_count) do |i|
-            row[column_names[i].downcase] = convert_jdbc_type_to_ruby(i, column_types[i], column_scale[i], resultset)
+          # let the supplied block look at this row from the resultset to
+          # see if we want to include it in our results
+          if row_filter.call(resultset)
+            row = {}
+            1.upto(column_count) do |i|
+              row[column_names[i].downcase] = convert_jdbc_type_to_ruby(i, column_types[i], column_scale[i], resultset)
+            end
+            results << row
           end
-          results << row
         end
 
         results

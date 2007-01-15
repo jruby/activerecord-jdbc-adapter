@@ -126,13 +126,20 @@ module JdbcSpec
     end
     
     # override to filter out system tables that otherwise end
-    # up in db/schema.rb during migrations
+    # up in db/schema.rb during migrations.  JdbcConnection#tables
+    # now takes an optional block filter so we can screen out 
+    # rows corresponding to system tables.  HSQLDB names its
+    # system tables SYSTEM.*, but H2 seems to name them without
+    # any kind of convention
     def tables
-      @connection.tables.find_all {|tbl| tbl !~ /^SYSTEM_/i}
+      @connection.tables do |result_row| 
+        result_row.get_string(ActiveRecord::ConnectionAdapters::Jdbc::TableMetaData::TABLE_TYPE) !~ /^SYSTEM TABLE$/i
+      end
     end
     
-    # for migrations, exclude the primary key index (recommended
-    # by HSQLDB docs)
+    # For migrations, exclude the primary key index as recommended
+    # by the HSQLDB docs.  This is not a great test for primary key
+    # index.
     def indexes(table_name)
       @connection.indexes(table_name).find_all do |idx|
         not (idx.columns.length == 1 and idx.columns[0].downcase == 'id')
