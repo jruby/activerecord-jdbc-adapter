@@ -2,7 +2,7 @@ require 'rubygems'
 
 spec = Gem::Specification.new do |s|
   s.name = "ActiveRecord-JDBC"
-  s.version = "0.2.2"
+  s.version = "0.2.3"
   s.author = "JRuby-extras"
   s.email = "ola@ologix.com"
   s.homepage = "http://jruby-extras.rubyforge.org/"

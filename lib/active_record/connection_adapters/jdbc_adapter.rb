@@ -1,4 +1,5 @@
 require 'active_record/connection_adapters/abstract_adapter'
+require 'java'
 require 'active_record/connection_adapters/jdbc_adapter_spec'
 
 module ActiveRecord
@@ -19,16 +20,15 @@ module ActiveRecord
 
   module ConnectionAdapters
     module Java
-      include_class 'java.lang.Class'
-      include_class 'java.net.URL'
-      include_class 'java.net.URLClassLoader'
+      Class = java.lang.Class
+      URL = java.net.URL
+      URLClassLoader = java.net.URLClassLoader
     end
 
     module Jdbc
-      require 'java'
-      include_class 'java.sql.DriverManager'
-      include_class 'java.sql.Statement'
-      include_class 'java.sql.Types'
+      DriverManager = java.sql.DriverManager
+      Statement = java.sql.Statement
+      Types = java.sql.Types
       
       # some symbolic constants for the benefit of the JDBC-based
       # JdbcConnection#indexes method
@@ -140,19 +140,26 @@ module ActiveRecord
     end
 
     class JdbcColumn < Column
+      COLUMN_TYPES = { 
+        /oracle/i => lambda {|cfg,col| col.extend(JdbcSpec::Oracle::Column)},
+        /postgre/i => lambda {|cfg,col| col.extend(JdbcSpec::PostgreSQL::Column)},
+        /sqlserver|tds/i => lambda {|cfg,col| col.extend(JdbcSpec::MsSQL::Column)},
+        /hsqldb|\.h2\./i => lambda {|cfg,col| col.extend(JdbcSpec::HSQLDB::Column)},
+        /derby/i => lambda {|cfg,col| col.extend(JdbcSpec::Derby::Column)},
+        /db2/i => lambda {|cfg,col| 
+          if cfg[:url] =~ /^jdbc:derby:net:/
+            col.extend(JdbcSpec::Derby::Column)
+          else
+            col.extend(JdbcSpec::DB2::Column)
+          end }
+      }
+      
       def initialize(config, name, default, *args)
-        case config[:driver].to_s
-          when /oracle/i: self.extend(JdbcSpec::Oracle::Column)
-          when /postgre/i: self.extend(JdbcSpec::PostgreSQL::Column)
-          when /sqlserver|tds/i: self.extend(JdbcSpec::MsSQL::Column)
-          when /hsqldb|\.h2\./i: self.extend(JdbcSpec::HSQLDB::Column)
-          when /derby/i: self.extend(JdbcSpec::Derby::Column)
-          when /db2/i:
-            if config[:url] =~ /^jdbc:derby:net:/
-              self.extend(JdbcSpec::Derby::Column)
-            else
-              self.extend(JdbcSpec::DB2::Column)
-            end
+        ds = config[:driver].to_s
+        for reg, func in COLUMN_TYPES
+          if reg === ds
+            func.call(config,self)
+          end
         end
         super(name,default_value(default),*args)
       end
@@ -426,24 +433,32 @@ module ActiveRecord
     end
 
     class JdbcAdapter < AbstractAdapter
+      ADAPTER_TYPES = { 
+        /oracle/i => lambda{|cfg,adapt| adapt.extend(JdbcSpec::Oracle)},
+        /mimer/i => lambda{|cfg,adapt| adapt.extend(JdbcSpec::Mimer)},
+        /postgre/i => lambda{|cfg,adapt| adapt.extend(JdbcSpec::PostgreSQL)},
+        /mysql/i => lambda{|cfg,adapt| adapt.extend(JdbcSpec::MySQL)},
+        /sqlserver|tds/i => lambda{|cfg,adapt| adapt.extend(JdbcSpec::MsSQL)},
+        /hsqldb|\.h2\./i => lambda{|cfg,adapt| adapt.extend(JdbcSpec::HSQLDB)},
+        /derby/i => lambda{|cfg,adapt| adapt.extend(JdbcSpec::Derby)},
+        /db2/i => lambda{|cfg,adapt| 
+          if cfg[:url] =~ /^jdbc:derby:net:/
+            adapt.extend(JdbcSpec::Derby)
+          else
+            adapt.extend(JdbcSpec::DB2)
+          end},
+        /firebird/i => lambda{|cfg,adapt| adapt.extend(JdbcSpec::FireBird)}
+        
+      }
+      
       def initialize(connection, logger, config)
         super(connection, logger)
         @config = config
-        case config[:driver].to_s
-          when /oracle/i: self.extend(JdbcSpec::Oracle)
-          when /mimer/i: self.extend(JdbcSpec::Mimer)
-          when /postgre/i: self.extend(JdbcSpec::PostgreSQL)
-          when /mysql/i: self.extend(JdbcSpec::MySQL)
-          when /sqlserver|tds/i: self.extend(JdbcSpec::MsSQL)
-          when /hsqldb|\.h2\./i: self.extend(JdbcSpec::HSQLDB)
-          when /derby/i: self.extend(JdbcSpec::Derby)
-          when /db2/i:
-            if config[:url] =~ /^jdbc:derby:net:/
-              self.extend(JdbcSpec::Derby)
-            else
-              self.extend(JdbcSpec::DB2)
-            end
-          when /firebird/i: self.extend(JdbcSpec::FireBird)
+        ds = config[:driver].to_s
+        for reg, func in ADAPTER_TYPES
+          if reg === ds
+            func.call(@config,self)
+          end
         end
       end
 
