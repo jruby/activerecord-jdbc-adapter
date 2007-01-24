@@ -1,6 +1,7 @@
 module JdbcSpec
   module MySQL
     class IndexDefinition < Struct.new(:table, :name, :unique, :columns) #:nodoc:
+    end
     
     def modify_types(tp)
       tp[:primary_key] = "int(11) DEFAULT NULL auto_increment PRIMARY KEY"
@@ -74,7 +75,7 @@ module JdbcSpec
       select_one("SELECT DATABASE() as db")["db"]
     end
     
-    def indexes(table_name, name = nil)#:nodoc:
+    def indexes(table_name, name = nil) #:nodoc:
       indexes = []
       current_index = nil
       execute("SHOW KEYS FROM #{table_name}", name).each do |row|
