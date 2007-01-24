@@ -201,7 +201,7 @@ module ActiveRecord
 
       def native_database_types(adapt)
         types = {}
-        @native_types.each_pair {|k,v| types[k] = v.inject({}) {|memo,kv| memo.merge({kv.first => kv.last.dup})}}
+        @native_types.each_pair {|k,v| types[k] = v.inject({}) {|memo,kv| memo.merge({kv.first => kv.last})}}
         adapt.modify_types(types)
       end
 
