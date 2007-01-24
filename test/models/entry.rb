@@ -2,6 +2,7 @@ if RUBY_PLATFORM =~ /java/
   RAILS_CONNECTION_ADAPTERS = ['abstract', 'jdbc']
 end
 
+require 'rubygems'
 require 'active_record'
 
 class CreateEntries < ActiveRecord::Migration

@@ -108,7 +108,7 @@ module ActiveRecord
         type_map = {}
         AR_TO_JDBC_TYPES.each_key do |k|
           typerow = choose_type(k)
-          type_map[k] = { :name => typerow['type_name']  }
+          type_map[k] = { :name => typerow['type_name'] }
           type_map[k][:limit] = typerow['precision'] if [:integer, :string].include?(k)
           type_map[k][:limit] = 1 if k == :boolean
         end
@@ -201,7 +201,7 @@ module ActiveRecord
 
       def native_database_types(adapt)
         types = {}
-        @native_types.each_pair {|k,v| types[k] = v.inject({}) {|memo,kv| memo.merge({kv.first => kv.last})}}
+        @native_types.each_pair {|k,v| types[k] = v.inject({}) {|memo,kv| memo.merge({kv.first => (kv.last.dup rescue kv.last)})}}
         adapt.modify_types(types)
       end
 
