@@ -29,7 +29,7 @@ module ActiveRecord
       DriverManager = java.sql.DriverManager
       Statement = java.sql.Statement
       Types = java.sql.Types
-      
+
       # some symbolic constants for the benefit of the JDBC-based
       # JdbcConnection#indexes method
       module IndexMetaData
@@ -38,14 +38,14 @@ module ActiveRecord
         TABLE_NAME  = 3
         COLUMN_NAME = 9
       end
-      
+
       module TableMetaData
         TABLE_CAT   = 1
         TABLE_SCHEM = 2
         TABLE_NAME  = 3
         TABLE_TYPE  = 4
       end
-      
+
     end
 
     # I want to use JDBC's DatabaseMetaData#getTypeInfo to choose the best native types to
@@ -97,6 +97,8 @@ module ActiveRecord
         :boolean     => [ lambda {|r| [Jdbc::Types::TINYINT].include?(r['data_type'])},
                           lambda {|r| r['type_name'] =~ /^bool/i},
                           lambda {|r| r['type_name'] =~ /^tinyint$/i},
+                          lambda {|r| r['type_name'] =~ /^decimal$/i}],
+        :decimal     => [ lambda {|r| Jdbc::Types::DECIMAL == r['data_type']},
                           lambda {|r| r['type_name'] =~ /^decimal$/i}]
       }
 
@@ -140,20 +142,20 @@ module ActiveRecord
     end
 
     class JdbcColumn < Column
-      COLUMN_TYPES = { 
+      COLUMN_TYPES = {
         /oracle/i => lambda {|cfg,col| col.extend(JdbcSpec::Oracle::Column)},
         /postgre/i => lambda {|cfg,col| col.extend(JdbcSpec::PostgreSQL::Column)},
         /sqlserver|tds/i => lambda {|cfg,col| col.extend(JdbcSpec::MsSQL::Column)},
         /hsqldb|\.h2\./i => lambda {|cfg,col| col.extend(JdbcSpec::HSQLDB::Column)},
         /derby/i => lambda {|cfg,col| col.extend(JdbcSpec::Derby::Column)},
-        /db2/i => lambda {|cfg,col| 
+        /db2/i => lambda {|cfg,col|
           if cfg[:url] =~ /^jdbc:derby:net:/
             col.extend(JdbcSpec::Derby::Column)
           else
             col.extend(JdbcSpec::DB2::Column)
           end }
       }
-      
+
       def initialize(config, name, default, *args)
         ds = config[:driver].to_s
         for reg, func in COLUMN_TYPES
@@ -237,14 +239,14 @@ module ActiveRecord
           raise
         end
       end
-      
+
       # Default JDBC introspection for index metadata on the JdbcConnection.
-      # This is currently used for migrations by JdbcSpec::HSQDLB.indexes 
+      # This is currently used for migrations by JdbcSpec::HSQDLB.indexes
       # with a little filtering tacked on.
-      # 
+      #
       # JDBC index metadata is denormalized (multiple rows may be returned for
       # one index, one row per column in the index), so a simple block-based
-      # filter like that used for tables doesn't really work here.  Callers 
+      # filter like that used for tables doesn't really work here.  Callers
       # should filter the return from this method instead.
       def indexes(table_name, name = nil)
         metadata = @connection.getMetaData
@@ -272,7 +274,7 @@ module ActiveRecord
           raise
         end
       end
-      
+
 
       def execute_insert(sql, pk)
         stmt = @connection.createStatement
@@ -349,7 +351,7 @@ module ActiveRecord
         end
 
         results = []
-        
+
         # take all rows if block not supplied
         row_filter = lambda{|result_row| true} unless block_given?
 
@@ -391,7 +393,7 @@ module ActiveRecord
 
         results
       end
-      
+
       def to_ruby_time(java_date)
         if java_date
           tm = java_date.getTime
@@ -407,11 +409,11 @@ module ActiveRecord
           case type
           when Jdbc::Types::CHAR, Jdbc::Types::VARCHAR, Jdbc::Types::LONGVARCHAR, Jdbc::Types::CLOB
             resultset.getString(row)
-          when Jdbc::Types::NUMERIC, Jdbc::Types::BIGINT
+          when Jdbc::Types::NUMERIC, Jdbc::Types::BIGINT, Jdbc::Types::DECIMAL
           	resultset.getLong(row)
           when Jdbc::Types::SMALLINT, Jdbc::Types::INTEGER
             resultset.getInt(row)
-          when Jdbc::Types::BIT, Jdbc::Types::BOOLEAN, Jdbc::Types::TINYINT, Jdbc::Types::DECIMAL
+          when Jdbc::Types::BIT, Jdbc::Types::BOOLEAN, Jdbc::Types::TINYINT
             resultset.getBoolean(row)
           when Jdbc::Types::FLOAT, Jdbc::Types::DOUBLE
             resultset.getDouble(row)
@@ -433,7 +435,7 @@ module ActiveRecord
     end
 
     class JdbcAdapter < AbstractAdapter
-      ADAPTER_TYPES = { 
+      ADAPTER_TYPES = {
         /oracle/i => lambda{|cfg,adapt| adapt.extend(JdbcSpec::Oracle)},
         /mimer/i => lambda{|cfg,adapt| adapt.extend(JdbcSpec::Mimer)},
         /postgre/i => lambda{|cfg,adapt| adapt.extend(JdbcSpec::PostgreSQL)},
@@ -441,16 +443,16 @@ module ActiveRecord
         /sqlserver|tds/i => lambda{|cfg,adapt| adapt.extend(JdbcSpec::MsSQL)},
         /hsqldb|\.h2\./i => lambda{|cfg,adapt| adapt.extend(JdbcSpec::HSQLDB)},
         /derby/i => lambda{|cfg,adapt| adapt.extend(JdbcSpec::Derby)},
-        /db2/i => lambda{|cfg,adapt| 
+        /db2/i => lambda{|cfg,adapt|
           if cfg[:url] =~ /^jdbc:derby:net:/
             adapt.extend(JdbcSpec::Derby)
           else
             adapt.extend(JdbcSpec::DB2)
           end},
         /firebird/i => lambda{|cfg,adapt| adapt.extend(JdbcSpec::FireBird)}
-        
+
       }
-      
+
       def initialize(connection, logger, config)
         super(connection, logger)
         @config = config
