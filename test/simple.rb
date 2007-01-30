@@ -62,4 +62,13 @@ module SimpleTestMethods
     assert_equal prev_count - 1, Entry.count
   end
 
+  def test_dumping_schema
+    require 'active_record/schema_dumper'
+    stio = StringIO.open('', 'w') do |io|
+      ActiveRecord::SchemaDumper.dump(ActiveRecord::Base.connection, io)
+    end
+    assert_match(/add_index "entries",/, stio.string)
+
+  end
+
 end

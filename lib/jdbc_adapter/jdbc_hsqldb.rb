@@ -6,7 +6,7 @@ module JdbcSpec
         case type
         when :string    then value
         when :integer   then defined?(value.to_i) ? value.to_i : (value ? 1 : 0)
-        when :primary_key then defined?(value.to_i) ? value.to_i : (value ? 1 : 0) 
+        when :primary_key then defined?(value.to_i) ? value.to_i : (value ? 1 : 0)
         when :float     then value.to_f
         when :datetime  then cast_to_date_or_time(value)
         when :timestamp then cast_to_time(value)
@@ -32,8 +32,8 @@ module JdbcSpec
         (value.hour == 0 and value.min == 0 and value.sec == 0) ?
         Date.new(value.year, value.month, value.day) : value
       end
-      
-            
+
+
       private
       def simplified_type(field_type)
         case field_type
@@ -43,7 +43,7 @@ module JdbcSpec
           super(field_type)
         end
       end
-      
+
       # Override of ActiveRecord::ConnectionAdapters::Column
       def extract_limit(sql_type)
         # HSQLDB appears to return "LONGVARCHAR(0)" for :text columns, which
@@ -61,7 +61,7 @@ module JdbcSpec
       # in migrations
       tp[:text][:limit] = nil
       tp[:float][:limit] = 17
-      tp[:string][:limit] = 255      
+      tp[:string][:limit] = 255
       tp[:datetime] = { :name => "DATETIME" }
       tp[:timestamp] = { :name => "DATETIME" }
       tp[:time] = { :name => "DATETIME" }
@@ -71,7 +71,7 @@ module JdbcSpec
 
     def quote(value, column = nil) # :nodoc:
       case value
-      when String                
+      when String
         if column && column.type == :binary
           "'#{quote_string(value).unpack("C*").collect {|v| v.to_s(16)}.join}'"
         else
@@ -124,27 +124,27 @@ module JdbcSpec
         sql.replace "select limit #{offset} 0 #{bef}"
       end
     end
-    
+
     # override to filter out system tables that otherwise end
     # up in db/schema.rb during migrations.  JdbcConnection#tables
-    # now takes an optional block filter so we can screen out 
+    # now takes an optional block filter so we can screen out
     # rows corresponding to system tables.  HSQLDB names its
     # system tables SYSTEM.*, but H2 seems to name them without
     # any kind of convention
     def tables
-      @connection.tables do |result_row| 
+      @connection.tables do |result_row|
         result_row.get_string(ActiveRecord::ConnectionAdapters::Jdbc::TableMetaData::TABLE_TYPE) !~ /^SYSTEM TABLE$/i
       end
     end
-    
+
     # For migrations, exclude the primary key index as recommended
     # by the HSQLDB docs.  This is not a great test for primary key
     # index.
-    def indexes(table_name)
+    def indexes(table_name, name = nil)
       @connection.indexes(table_name).find_all do |idx|
         not (idx.columns.length == 1 and idx.columns[0].downcase == 'id')
       end
     end
-    
+
   end
 end

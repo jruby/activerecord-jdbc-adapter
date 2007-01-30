@@ -12,9 +12,11 @@ class CreateEntries < ActiveRecord::Migration
       t.column :updated_on, :datetime
       t.column :content, :text
     end
+    add_index(:entries, :title)
   end
 
   def self.down
+    remove_index(:entries, :title)
     drop_table "entries"
   end
 end

@@ -1,8 +1,7 @@
+require 'active_record/connection_adapters/abstract/schema_definitions'
+
 module JdbcSpec
   module MySQL
-    class IndexDefinition < Struct.new(:table, :name, :unique, :columns) #:nodoc:
-    end
-    
     def modify_types(tp)
       tp[:primary_key] = "int(11) DEFAULT NULL auto_increment PRIMARY KEY"
       tp[:decimal] = { :name => "decimal" }
@@ -75,14 +74,17 @@ module JdbcSpec
       select_one("SELECT DATABASE() as db")["db"]
     end
     
-    def indexes(table_name, name = nil) #:nodoc:
+    def indexes(table_name, name = nil)#:nodoc:
       indexes = []
       current_index = nil
       execute("SHOW KEYS FROM #{table_name}", name).each do |row|
         if current_index != row["key_name"]
           next if row["key_name"] == "PRIMARY" # skip the primary key
           current_index = row["key_name"]
-          indexes << IndexDefinition.new(row["table"], row["key_name"], row["non_unique"] == "0", [])
+          indexes << ActiveRecord::ConnectionAdapters::IndexDefinition.new(row["table"], row["key_name"], row["non_unique"] == "0", [])
+        end
+        if indexes.last
+          indexes.last.columns << row["column_name"]
         end
         
         indexes.last.columns << row["column_name"]
