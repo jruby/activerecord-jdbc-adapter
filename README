@@ -90,6 +90,14 @@ The head of my environment.rb after these modifications look like this:
   Rails::Initializer.run do |config|
     # Settings in config/environments/* take precedence those specified here
 
+== Testing
+
+By default hsql, mysql, and derby are run.  In order to run all tests you 
+must download each of the databases about put their JDBC drivers in your
+classpath.  Here is an example of I use:
+
+  CLASSPATH=~/opt/derby/lib/derby.jar:~/opt/mysql/mysql-connector-java-3.1.14-bin.jar:~/opt/hsqldb/lib/hsqldb.jar ../jruby/bin/jruby ../jruby/bin/rake
+
 == Future developments
 
 There are two interesting roads ahead for the JDBC adapter. First of all,

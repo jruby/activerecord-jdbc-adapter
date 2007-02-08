@@ -7,10 +7,10 @@
 
 require 'models/auto_id'
 require 'models/entry'
-require 'db/mysql'
+require 'db/derby'
 require 'simple'
 require 'test/unit'
 
-class MysqlSimpleTest < Test::Unit::TestCase
+class DerbySimpleTest < Test::Unit::TestCase
   include SimpleTestMethods
 end

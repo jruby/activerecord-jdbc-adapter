@@ -141,9 +141,7 @@ module JdbcSpec
     # by the HSQLDB docs.  This is not a great test for primary key
     # index.
     def indexes(table_name, name = nil)
-      @connection.indexes(table_name).find_all do |idx|
-        not (idx.columns.length == 1 and idx.columns[0].downcase == 'id')
-      end
+      @connection.indexes(table_name.to_s)
     end
 
   end

@@ -1,3 +1,4 @@
+require 'models/auto_id'
 require 'models/entry'
 require 'db/hsqldb'
 require 'simple'

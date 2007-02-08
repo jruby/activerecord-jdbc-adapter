@@ -21,6 +21,6 @@ Rake::TestTask.new(:test_hsqldb) do |t|
 end
 
 Rake::TestTask.new(:test_derby) do |t|
-  t.test_files = FileList['test/activerecord/connection_adapters/type_conversion_test.rb']
+  t.test_files = FileList['test/derby_simple_test.rb', 'test/activerecord/connection_adapters/type_conversion_test.rb']
   t.libs << 'test'
 end

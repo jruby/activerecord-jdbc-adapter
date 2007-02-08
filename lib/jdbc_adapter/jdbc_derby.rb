@@ -82,10 +82,53 @@ module JdbcSpec
       execute "RENAME TABLE #{name} TO #{new_name}"
     end
 
+    # Support for removing columns added via derby bug issue:
+    # https://issues.apache.org/jira/browse/DERBY-1489
+    #
+    # This feature has not made it into a formal release and is not in Java 6.  We will
+    # need to conditionally support this somehow (supposed to arrive for 10.3.0.0)
+    #
+    # def remove_column(table_name, column_name)
+    #  execute "ALTER TABLE #{table_name} DROP COLUMN #{column_name} RESTRICT"
+    # end
+    
+    # Notes about changing in Derby:
+    #    http://db.apache.org/derby/docs/10.2/ref/rrefsqlj81859.html#rrefsqlj81859__rrefsqlj37860)
+    # Derby cannot: Change the column type or decrease the precision of an existing type, but
+    #   can increase the types precision only if it is a VARCHAR.
+    #
+    def change_column(table_name, column_name, type, options = {}) #:nodoc:
+      execute "ALTER TABLE #{table_name} ALTER COLUMN #{column_name} SET DATA TYPE #{type_to_sql(type, options[:limit])}"
+    end
+
+    def change_column_default(table_name, column_name, default) #:nodoc:
+      execute "ALTER TABLE #{table_name} ALTER COLUMN #{column_name} SET DEFAULT #{quote(default)}"
+    end
+
+    # Support for renaming columns:
+    # https://issues.apache.org/jira/browse/DERBY-1490
+    #
+    # This feature is expect to arrive in version 10.3.0.0:
+    # http://wiki.apache.org/db-derby/DerbyTenThreeRelease)
+    #
+    #def rename_column(table_name, column_name, new_column_name) #:nodoc:
+    #  execute "ALTER TABLE #{table_name} ALTER RENAME COLUMN #{column_name} TO #{new_column_name}"
+    #end
+    
+    def primary_keys(table_name)
+      @connection.primary_keys table_name.to_s.upcase
+    end
+    
+    # For migrations, exclude the primary key index as recommended
+    # by the HSQLDB docs.  This is not a great test for primary key
+    # index.
+    def indexes(table_name)
+      @connection.indexes(table_name)
+    end
+    
     def quote(value, column = nil) # :nodoc:
-      if column && column.type == :primary_key
-        return value.to_s
-      end
+      return value.to_s if column && column.type == :primary_key
+
       case value
       when String                
         if column && column.type == :binary
@@ -101,6 +144,11 @@ module JdbcSpec
       else super
       end
     end
+
+# For DDL it appears you can quote "" column names, but in queries (like insert it errors out?)
+#    def quote_column_name(name) #:nodoc:
+#        %Q{"#{name}"}
+#    end
     
     def quoted_true
       '1'

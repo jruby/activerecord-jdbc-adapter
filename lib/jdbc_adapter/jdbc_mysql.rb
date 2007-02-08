@@ -75,21 +75,7 @@ module JdbcSpec
     end
     
     def indexes(table_name, name = nil)#:nodoc:
-      indexes = []
-      current_index = nil
-      execute("SHOW KEYS FROM #{table_name}", name).each do |row|
-        if current_index != row["key_name"]
-          next if row["key_name"] == "PRIMARY" # skip the primary key
-          current_index = row["key_name"]
-          indexes << ActiveRecord::ConnectionAdapters::IndexDefinition.new(row["table"], row["key_name"], row["non_unique"] == "0", [])
-        end
-        if indexes.last
-          indexes.last.columns << row["column_name"]
-        end
-        
-        indexes.last.columns << row["column_name"]
-      end
-      indexes
+      @connection.indexes(table_name)      
     end
     
     def create_table(name, options = {}) #:nodoc:

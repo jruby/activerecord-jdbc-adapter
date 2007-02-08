@@ -46,6 +46,10 @@ module ActiveRecord
         TABLE_TYPE  = 4
       end
 
+      module PrimaryKeyMetaData
+        COLUMN_NAME = 4
+      end
+      
     end
 
     # I want to use JDBC's DatabaseMetaData#getTypeInfo to choose the best native types to
@@ -74,6 +78,8 @@ module ActiveRecord
                           lambda {|r| r['type_name'] =~ /^integer$/i},
                           lambda {|r| r['type_name'] =~ /^int4$/i},
                           lambda {|r| r['type_name'] =~ /^int$/i}],
+        :decimal     => [ lambda {|r| Jdbc::Types::DECIMAL == r['data_type']},
+                          lambda {|r| r['type_name'] =~ /^decimal$/i}],
         :float       => [ lambda {|r| [Jdbc::Types::FLOAT,Jdbc::Types::DOUBLE].include?(r['data_type'])},
                           lambda {|r| r['type_name'] =~ /^float/i},
                           lambda {|r| r['type_name'] =~ /^double$/i},
@@ -111,7 +117,7 @@ module ActiveRecord
         AR_TO_JDBC_TYPES.each_key do |k|
           typerow = choose_type(k)
           type_map[k] = { :name => typerow['type_name'] }
-          type_map[k][:limit] = typerow['precision'] if [:integer, :string].include?(k)
+          type_map[k][:limit] = typerow['precision'] if [:integer, :string, :decimal].include?(k)
           type_map[k][:limit] = 1 if k == :boolean
         end
         type_map
@@ -240,9 +246,22 @@ module ActiveRecord
         end
       end
 
+      # Get a list of all primary keys associated with the given table
+      def primary_keys(table_name) 
+        meta_data = @connection.getMetaData
+	    result_set = meta_data.get_primary_keys(nil, nil, table_name.to_s.upcase)
+	    key_names = []
+	    
+	    while result_set.next
+	      key_names << result_set.get_string(Jdbc::PrimaryKeyMetaData::COLUMN_NAME).downcase
+	    end
+	    
+	    key_names
+      end
+      
       # Default JDBC introspection for index metadata on the JdbcConnection.
-      # This is currently used for migrations by JdbcSpec::HSQDLB.indexes
-      # with a little filtering tacked on.
+      # This is currently used for migrations by JdbcSpec::HSQDLB and JdbcSpec::Derby
+      # indexes with a little filtering tacked on.
       #
       # JDBC index metadata is denormalized (multiple rows may be returned for
       # one index, one row per column in the index), so a simple block-based
@@ -250,19 +269,28 @@ module ActiveRecord
       # should filter the return from this method instead.
       def indexes(table_name, name = nil)
         metadata = @connection.getMetaData
-        resultset = metadata.getIndexInfo(nil, nil, table_name, false, false)
+        resultset = metadata.getIndexInfo(nil, nil, table_name.to_s.upcase, false, false)
+        primary_keys = primary_keys(table_name)
         indexes = []
         current_index = nil
         while resultset.next
-          index_name = resultset.get_string(Jdbc::IndexMetaData::INDEX_NAME)
+          index_name = resultset.get_string(Jdbc::IndexMetaData::INDEX_NAME).downcase
+          column_name = resultset.get_string(Jdbc::IndexMetaData::COLUMN_NAME).downcase
+          
+          next if primary_keys.include? column_name
+          
+          # We are working on a new index
           if current_index != index_name
             current_index = index_name
-            table_name = resultset.get_string(Jdbc::IndexMetaData::TABLE_NAME)
+            table_name = resultset.get_string(Jdbc::IndexMetaData::TABLE_NAME).downcase
             non_unique = resultset.get_boolean(Jdbc::IndexMetaData::NON_UNIQUE)
+
             # empty list for column names, we'll add to that in just a bit
-            indexes << IndexDefinition.new(table_name, index_name, non_unique, [])
+            indexes << IndexDefinition.new(table_name, index_name, !non_unique, [])
           end
-          indexes.last.columns << resultset.get_string(Jdbc::IndexMetaData::COLUMN_NAME)
+          
+          # One or more columns can be associated with an index
+          indexes.last.columns << column_name
         end
         resultset.close
         indexes
@@ -408,23 +436,32 @@ module ActiveRecord
         else
           case type
           when Jdbc::Types::CHAR, Jdbc::Types::VARCHAR, Jdbc::Types::LONGVARCHAR, Jdbc::Types::CLOB
-            resultset.getString(row)
+            value = resultset.getString(row)
+            resultset.wasNull ? nil : value
           when Jdbc::Types::NUMERIC, Jdbc::Types::BIGINT, Jdbc::Types::DECIMAL
-          	resultset.getLong(row)
+          	value = resultset.getLong(row)
+            resultset.wasNull ? nil : value
           when Jdbc::Types::SMALLINT, Jdbc::Types::INTEGER
-            resultset.getInt(row)
+            value = resultset.getInt(row) 
+            resultset.wasNull ? nil : value
           when Jdbc::Types::BIT, Jdbc::Types::BOOLEAN, Jdbc::Types::TINYINT
-            resultset.getBoolean(row)
-          when Jdbc::Types::FLOAT, Jdbc::Types::DOUBLE
-            resultset.getDouble(row)
+            value = resultset.getBoolean(row)
+            resultset.wasNull ? nil : value
+          when Jdbc::Types::FLOAT, Jdbc::Types::DOUBLE, Jdbc::Types::DECIMAL
+            value = resultset.getDouble(row)
+            resultset.wasNull ? nil : value
           when Jdbc::Types::TIMESTAMP
-            to_ruby_time(resultset.getTimestamp(row))
+            value = to_ruby_time(resultset.getTimestamp(row))
+            resultset.wasNull ? nil : value
           when Jdbc::Types::TIME
-            to_ruby_time(resultset.getTime(row))
+            value = to_ruby_time(resultset.getTime(row))
+            resultset.wasNull ? nil : value
           when Jdbc::Types::DATE
-            to_ruby_time(resultset.getDate(row))
+            value = to_ruby_time(resultset.getDate(row))
+            resultset.wasNull ? nil : value
           when Jdbc::Types::LONGVARBINARY, Jdbc::Types::BLOB, Jdbc::Types::BINARY, Jdbc::Types::VARBINARY
-            resultset.getString(row)
+            value = resultset.getString(row)
+            resultset.wasNull ? nil : value
           else
             types = Jdbc::Types.constants
             name = types.find {|t| Jdbc::Types.const_get(t.to_sym) == type}
