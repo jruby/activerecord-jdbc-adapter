@@ -81,6 +81,10 @@ module JdbcSpec
       end
     end
 
+    def quote_string(str)
+      str.gsub(/'/, "''")
+    end
+
     def quoted_true
       '1'
     end
