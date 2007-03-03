@@ -1,0 +1,13 @@
+== 0.2.3
+
+* Release coincides with JRuby 0.9.8 release
+* 8 bugs fixed: see http://rubyurl.com/0Da
+* Improvements and compatibility fixes for Rails 1.2.x
+
+== 0.2.1, 0.2.2
+
+* Early releases, added better support for multiple databases
+
+== 0.0.1
+
+* Initial, very alpha release
