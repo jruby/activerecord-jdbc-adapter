@@ -91,6 +91,7 @@ module SimpleTestMethods
       assert_equal ["updated_on"], indexes.first.columns
   	end
   end
+  
   def test_dumping_schema
     require 'active_record/schema_dumper'
     @connection.add_index :entries, :title
@@ -105,6 +106,11 @@ module SimpleTestMethods
   def test_nil_values
     test = AutoId.create('value' => '')
     assert_nil AutoId.find(test.id).value
+  end
+  
+  def test_invalid
+    e = Entry.new(:title => @title, :content => @content, :rating => ' ')
+    p e.valid?
   end
 
 end

@@ -94,7 +94,7 @@ module ActiveRecord
                           lambda {|r| r['type_name'] =~ /^time$/i},
                           lambda {|r| r['type_name'] =~ /^datetime$/i}],
         :date        => [ lambda {|r| Jdbc::Types::DATE == r['data_type']},
-                          lambda {|r| r['type_name'] =~ /^datetime$/i}],
+                          lambda {|r| r['type_name'] =~ /^date$/i}],
         :binary      => [ lambda {|r| [Jdbc::Types::LONGVARBINARY,Jdbc::Types::BINARY,Jdbc::Types::BLOB].include?(r['data_type'])},
                           lambda {|r| r['type_name'] =~ /^blob/i},
                           lambda {|r| r['type_name'] =~ /sub_type 0$/i}, # For FireBird
@@ -104,8 +104,6 @@ module ActiveRecord
                           lambda {|r| r['type_name'] =~ /^bool/i},
                           lambda {|r| r['type_name'] =~ /^tinyint$/i},
                           lambda {|r| r['type_name'] =~ /^decimal$/i}],
-        :decimal     => [ lambda {|r| Jdbc::Types::DECIMAL == r['data_type']},
-                          lambda {|r| r['type_name'] =~ /^decimal$/i}]
       }
 
       def initialize(types)
@@ -220,8 +218,16 @@ module ActiveRecord
         results = metadata.getColumns(nil, nil, table_name, nil)
         columns = []
         unmarshal_result(results).each do |col|
-          columns << ActiveRecord::ConnectionAdapters::JdbcColumn.new(@config,col['column_name'].downcase, col['column_def'],
-              "#{col['type_name']}(#{col['column_size']})", col['is_nullable'] != 'NO')
+          precision = col["column_size"]
+          scale = col["decimal_digits"]
+          coltype = col["type_name"]
+          if precision > 0
+            coltype << "(#{precision}"
+            coltype << ",#{scale}" if scale > 0
+            coltype << ")"
+          end
+          columns << ActiveRecord::ConnectionAdapters::JdbcColumn.new(@config,col['column_name'], col['column_def'],
+              coltype, col['is_nullable'] != 'NO')
         end
         columns
       rescue
@@ -377,7 +383,7 @@ module ActiveRecord
           column_types << metadata.getColumnType(i)
           column_scale << metadata.getScale(i)
         end
-
+        
         results = []
 
         # take all rows if block not supplied
@@ -422,52 +428,60 @@ module ActiveRecord
         results
       end
 
-      def to_ruby_time(java_date)
-        if java_date
-          tm = java_date.getTime
+      def to_ruby_time(java_time)
+        if java_time
+          tm = java_time.getTime
           Time.at(tm / 1000, (tm % 1000) * 1000)
         end
       end
 
-      def convert_jdbc_type_to_ruby(row, type, scale, resultset)
-        if scale != 0 && type != Jdbc::Types::TIMESTAMP
-          decimal = resultset.getString(row)
-          decimal.to_f
-        else
-          case type
-          when Jdbc::Types::CHAR, Jdbc::Types::VARCHAR, Jdbc::Types::LONGVARCHAR, Jdbc::Types::CLOB
-            value = resultset.getString(row)
-            resultset.wasNull ? nil : value
-          when Jdbc::Types::NUMERIC, Jdbc::Types::BIGINT, Jdbc::Types::DECIMAL
-          	value = resultset.getLong(row)
-            resultset.wasNull ? nil : value
-          when Jdbc::Types::SMALLINT, Jdbc::Types::INTEGER
-            value = resultset.getInt(row) 
-            resultset.wasNull ? nil : value
-          when Jdbc::Types::BIT, Jdbc::Types::BOOLEAN, Jdbc::Types::TINYINT
-            value = resultset.getBoolean(row)
-            resultset.wasNull ? nil : value
-          when Jdbc::Types::FLOAT, Jdbc::Types::DOUBLE, Jdbc::Types::DECIMAL
-            value = resultset.getDouble(row)
-            resultset.wasNull ? nil : value
-          when Jdbc::Types::TIMESTAMP
-            value = to_ruby_time(resultset.getTimestamp(row))
-            resultset.wasNull ? nil : value
-          when Jdbc::Types::TIME
-            value = to_ruby_time(resultset.getTime(row))
-            resultset.wasNull ? nil : value
-          when Jdbc::Types::DATE
-            value = to_ruby_time(resultset.getDate(row))
-            resultset.wasNull ? nil : value
-          when Jdbc::Types::LONGVARBINARY, Jdbc::Types::BLOB, Jdbc::Types::BINARY, Jdbc::Types::VARBINARY
-            value = resultset.getString(row)
-            resultset.wasNull ? nil : value
-          else
-            types = Jdbc::Types.constants
-            name = types.find {|t| Jdbc::Types.const_get(t.to_sym) == type}
-            raise "jdbc_adapter: type #{name} not supported yet"
-          end
+      def to_ruby_date(java_date)
+        if java_date
+          cal = java.util.Calendar.getInstance
+          cal.setTime(java_date)
+          Date.new(cal.get(java.util.Calendar::YEAR), cal.get(java.util.Calendar::MONTH)+1, cal.get(java.util.Calendar::DATE))
         end
+      end
+
+      def convert_jdbc_type_to_ruby(row, type, scale, resultset)
+        value = case type
+        when Jdbc::Types::CHAR, Jdbc::Types::VARCHAR, Jdbc::Types::LONGVARCHAR, Jdbc::Types::CLOB
+          resultset.getString(row)
+        when Jdbc::Types::NUMERIC, Jdbc::Types::BIGINT
+          if scale != 0
+            BigDecimal.new(resultset.getBigDecimal(row).toString)
+          else
+            resultset.getLong(row)
+          end
+        when Jdbc::Types::DECIMAL
+          BigDecimal.new(resultset.getBigDecimal(row).toString)
+        when Jdbc::Types::SMALLINT, Jdbc::Types::INTEGER
+          resultset.getInt(row) 
+        when Jdbc::Types::BIT, Jdbc::Types::BOOLEAN, Jdbc::Types::TINYINT
+          resultset.getBoolean(row)
+        when Jdbc::Types::FLOAT, Jdbc::Types::DOUBLE
+          resultset.getDouble(row)
+        when Jdbc::Types::TIMESTAMP
+          # FIXME: This should not be a catchall and it should move this to mysql since it
+          # is catching non-existent date 0000-00:00:00
+          begin         
+            to_ruby_time(resultset.getTimestamp(row))
+          rescue java.sql.SQLException
+            nil
+          end
+        when Jdbc::Types::TIME
+          to_ruby_time(resultset.getTime(row))
+        when Jdbc::Types::DATE
+          to_ruby_date(resultset.getDate(row))
+        when Jdbc::Types::LONGVARBINARY, Jdbc::Types::BLOB, Jdbc::Types::BINARY, Jdbc::Types::VARBINARY
+          resultset.getString(row)
+        else
+          raise "jdbc_adapter: type #{jdbc_type_name(type)} not supported yet"
+        end
+        resultset.wasNull ? nil : value
+      end
+      def jdbc_type_name(type)
+        Jdbc::Types.constants.find {|t| Jdbc::Types.const_get(t.to_sym) == type}
       end
     end
 
@@ -590,7 +604,7 @@ module ActiveRecord
       end
 
       def columns(table_name, name = nil)
-        @connection.columns(table_name)
+        @connection.columns(table_name.to_s)
       end
 
       def tables
