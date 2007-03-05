@@ -130,9 +130,21 @@ module JdbcSpec
       return value.to_s if column && column.type == :primary_key
 
       case value
-      when String                
-        if column && column.type == :binary
-          "CAST(x'#{quote_string(value).unpack("C*").collect {|v| v.to_s(16)}.join}' AS BLOB)"
+      when String
+        if column 
+          case column.type
+          when :binary
+            "CAST(x'#{quote_string(value).unpack("C*").collect {|v| v.to_s(16)}.join}' AS BLOB)"
+          when :string
+            "'#{quote_string(value)}'"
+          else
+            vi = value.to_i
+            if vi.to_s == value
+              value
+            else
+              "'#{quote_string(value)}'"
+            end
+          end
         else
           vi = value.to_i
           if vi.to_s == value
