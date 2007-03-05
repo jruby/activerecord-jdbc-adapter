@@ -1,7 +1,4 @@
-if RUBY_PLATFORM =~ /java/
-  RAILS_CONNECTION_ADAPTERS = ['abstract', 'jdbc']
-end
-
+require 'jdbc_adapter'
 require 'rubygems'
 require 'active_record'
 

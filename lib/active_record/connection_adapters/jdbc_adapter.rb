@@ -218,15 +218,17 @@ module ActiveRecord
         results = metadata.getColumns(nil, nil, table_name, nil)
         columns = []
         unmarshal_result(results).each do |col|
+          column_name = col['column_name']
+          column_name = column_name.downcase if metadata.storesUpperCaseIdentifiers
           precision = col["column_size"]
           scale = col["decimal_digits"]
           coltype = col["type_name"]
-          if precision > 0
+          if precision && precision > 0
             coltype << "(#{precision}"
-            coltype << ",#{scale}" if scale > 0
+            coltype << ",#{scale}" if scale && scale > 0
             coltype << ")"
           end
-          columns << ActiveRecord::ConnectionAdapters::JdbcColumn.new(@config,col['column_name'], col['column_def'],
+          columns << ActiveRecord::ConnectionAdapters::JdbcColumn.new(@config, column_name, col['column_def'],
               coltype, col['is_nullable'] != 'NO')
         end
         columns
@@ -255,14 +257,14 @@ module ActiveRecord
       # Get a list of all primary keys associated with the given table
       def primary_keys(table_name) 
         meta_data = @connection.getMetaData
-	    result_set = meta_data.get_primary_keys(nil, nil, table_name.to_s.upcase)
-	    key_names = []
-	    
-	    while result_set.next
-	      key_names << result_set.get_string(Jdbc::PrimaryKeyMetaData::COLUMN_NAME).downcase
-	    end
-	    
-	    key_names
+        result_set = meta_data.get_primary_keys(nil, nil, table_name.to_s.upcase)
+        key_names = []
+
+        while result_set.next
+          key_names << result_set.get_string(Jdbc::PrimaryKeyMetaData::COLUMN_NAME).downcase
+        end
+
+        key_names
       end
       
       # Default JDBC introspection for index metadata on the JdbcConnection.
