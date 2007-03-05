@@ -32,18 +32,20 @@ jruby-extras mailing-list[http://rubyforge.org/mail/?group_id=2014] to help us d
 
 === Standalone, with ActiveRecord
 
-Using this adapter is very simple, but requires that you manually add the
-adapter. So, to use it in a script, add this to the requires':
-  RAILS_CONNECTION_ADAPTERS = ['jdbc']
-  require 'active_record'
+1. Install the gem with JRuby:
+    jruby --command gem install ActiveRecord-JDBC
+2. Ensure the following code gets executed in your script:
+    require 'rubygems'
+    gem 'ActiveRecord-JDBC'
+    require 'jdbc_adapter'
+    require 'active_record'
 
-After this you can establish a JDBC connection like this:
-
-  ActiveRecord::Base.establish_connection(
-    :adapter => 'jdbc',
-    :driver => 'org.apache.derby.jdbc.EmbeddedDriver',
-    :url => 'jdbc:derby:test_ar;create=true'
-  )
+3. After this you can establish a JDBC connection like this:
+    ActiveRecord::Base.establish_connection(
+      :adapter => 'jdbc',
+      :driver => 'org.apache.derby.jdbc.EmbeddedDriver',
+      :url => 'jdbc:derby:test_ar;create=true'
+    )
 
 Provided you have the derby libraries in your classpath, this is enough
 to establish an in-memory JDBC connection. The required parameters to
@@ -65,6 +67,7 @@ To use ActiveRecord-JDBC with JRuby on Rails:
 2. Add one-time setup to your config/environment.rb file in your Rails application.  Add the following lines just before the <code>Rails::Initializer</code>.
     require 'rubygems'
     gem 'ActiveRecord-JDBC'
+    require 'jdbc_adapter'
 3. Configure your database.yml to use the <code>jdbc</code> adapter.  For now, you'll need to know the database driver class and URL.  Example:
     development:
       adapter: jdbc
