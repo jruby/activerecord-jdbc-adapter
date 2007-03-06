@@ -1,6 +1,6 @@
 == 0.2.3
 
-* Release coincides with JRuby 0.9.8 release
+* Release coincides (and compatible) with JRuby 0.9.8 release
 * 8 bugs fixed: see http://rubyurl.com/0Da
 * Improvements and compatibility fixes for Rails 1.2.x
 

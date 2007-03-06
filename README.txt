@@ -2,8 +2,9 @@ ActiveRecord-JDBC is a database adapter for Rails' ActiveRecord component that c
 
 ActiveRecord JDBC is a sub-project of jruby-extras at RubyForge.
 
+== Databases
 
-== Databases -- What's there, and what is not there
+What's there, and what is not there:
 
 * MySQL - Complete support
 * PostgreSQL - Complete support
@@ -76,13 +77,13 @@ To use ActiveRecord-JDBC with JRuby on Rails:
       driver: com.mysql.jdbc.Driver
       url: jdbc:mysql://localhost:3306/weblog_development
 
-== Testing
+== Running AR-JDBC's Tests
 
 By default hsql, mysql, and derby are run.  In order to run all tests you 
 must download each of the databases about put their JDBC drivers in your
 classpath.  Here is an example of I use:
 
-  CLASSPATH=~/opt/derby/lib/derby.jar:~/opt/mysql/mysql-connector-java-3.1.14-bin.jar:~/opt/hsqldb/lib/hsqldb.jar jruby ../jruby/bin/rake
+    CLASSPATH=~/opt/derby/lib/derby.jar:~/opt/mysql/mysql-connector-java-3.1.14-bin.jar:~/opt/hsqldb/lib/hsqldb.jar jruby ../jruby/bin/jruby --command rake
 
 == Authors
 
