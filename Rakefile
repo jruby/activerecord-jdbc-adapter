@@ -26,6 +26,11 @@ Rake::TestTask.new(:test_derby) do |t|
   t.libs << 'test'
 end
 
+Rake::TestTask.new(:test_jndi) do |t|
+  t.test_files = FileList['test/jndi_test.rb']
+  t.libs << 'test'
+end
+
 begin
   require 'hoe'
 
