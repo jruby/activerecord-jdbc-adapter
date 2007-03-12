@@ -1,5 +1,5 @@
 require 'fileutils'
-require 'active_record/connection_adapters/jndi_adapter'
+require 'active_record/connection_adapters/jdbc_adapter'
 
 System = java.lang.System
 Context = javax.naming.Context

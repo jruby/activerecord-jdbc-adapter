@@ -5,7 +5,14 @@ require 'active_record/connection_adapters/jdbc_adapter_spec'
 module ActiveRecord
   class Base
     def self.jdbc_connection(config)
-      ConnectionAdapters::JdbcAdapter.new(ConnectionAdapters::JdbcConnection.new(config), logger, config)
+      config.symbolize_keys
+      if config[:jndi]
+        require 'active_record/connection_adapters/jndi_adapter'
+        connection = ConnectionAdapters::JndiConnection.new(config)
+      else
+        connection = ConnectionAdapters::JdbcConnection.new(config)
+      end
+      ConnectionAdapters::JdbcAdapter.new(connection, logger, config)
     end
 
     alias :attributes_with_quotes_pre_oracle :attributes_with_quotes

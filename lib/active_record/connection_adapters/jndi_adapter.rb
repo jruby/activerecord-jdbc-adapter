@@ -1,17 +1,5 @@
-require 'active_record/connection_adapters/jdbc_adapter'
 
 module ActiveRecord #:nodoc:
-  class Base #:nodoc:
-    def self.jdbc_connection(config)
-      config.symbolize_keys
-      if config[:jndi]
-        connection = ConnectionAdapters::JndiConnection.new(config)
-      else
-        connection = ConnectionAdapters::JdbcConnection.new(config)
-      end
-      ConnectionAdapters::JdbcAdapter.new(connection, logger, config)
-    end
-  end
 
   module ConnectionAdapters #:nodoc:
     
@@ -22,12 +10,13 @@ module ActiveRecord #:nodoc:
     #       ActiveRecord::Base.establish_connection(
     #         :adapter => 'jdbc',
     #         :jndi => 'java:comp/env/jdbc/test',
-	  #					:driver => 'sqlserver'		
+    #	      :driver => 'sqlserver'		
     #       )
     #
     # Right now, enough driver information needs to be supplied so that AR-JDBC
     # can genrate the right flavor of SQL. However, it's not necessary to know
-    # exactly which driver is being used, just enough so the right SQL is generated.
+    # exactly which driver is being used, just enough so the right SQL 
+    # is generated.
     #
     class JndiConnection < JdbcConnection
 
