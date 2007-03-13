@@ -5,13 +5,7 @@ require 'active_record/connection_adapters/jdbc_adapter_spec'
 module ActiveRecord
   class Base
     def self.jdbc_connection(config)
-      config.symbolize_keys
-      if config[:jndi]
-        require 'active_record/connection_adapters/jndi_adapter'
-        connection = ConnectionAdapters::JndiConnection.new(config)
-      else
-        connection = ConnectionAdapters::JdbcConnection.new(config)
-      end
+      connection = ConnectionAdapters::JdbcConnection.new(config)
       ConnectionAdapters::JdbcAdapter.new(connection, logger, config)
     end
 
@@ -185,19 +179,12 @@ module ActiveRecord
     class JdbcConnection
       def initialize(config)
         @config = config.symbolize_keys
-        driver = @config[:driver].to_s
-        user   = @config[:username].to_s
-        pass   = @config[:password].to_s
-        url    = @config[:url].to_s
-
-        unless driver && url
-          raise ArgumentError, "jdbc adapter requires driver class and url"
+        if @config[:jndi]
+          configure_jndi
+        else
+          configure_jdbc
         end
-
-        JdbcDriver.load(driver)
-        @connection = Jdbc::DriverManager.getConnection(url, user, pass)
         set_native_database_types
-
         @stmts = {}
       rescue Exception => e
         raise "The driver encounter an error: #{e}"
@@ -380,6 +367,27 @@ module ActiveRecord
       end
 
       private
+      def configure_jndi
+        jndi = @config[:jndi].to_s
+        ctx = javax.naming.InitialContext.new
+        ds = ctx.lookup(jndi)
+        @connection = ds.connection
+      end
+
+      def configure_jdbc
+        driver = @config[:driver].to_s
+        user   = @config[:username].to_s
+        pass   = @config[:password].to_s
+        url    = @config[:url].to_s
+
+        unless driver && url
+          raise ArgumentError, "jdbc adapter requires driver class and url"
+        end
+
+        JdbcDriver.load(driver)
+        @connection = Jdbc::DriverManager.getConnection(url, user, pass)
+      end
+
       def unmarshal_result(resultset, &row_filter)
         metadata = resultset.getMetaData
         column_count = metadata.getColumnCount
