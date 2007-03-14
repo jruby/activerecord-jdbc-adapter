@@ -15,33 +15,16 @@ jdbc_dir = jndi_dir + '/jdbc'
 FileUtils.mkdir_p jdbc_dir unless File.exist?(jdbc_dir)
 
 System.set_property(Context::PROVIDER_URL, "file://#{jndi_dir}")
-reference = Reference.new('javax.sql.DataSource',
+derby_ref = Reference.new('javax.sql.DataSource',
                           'org.apache.commons.dbcp.BasicDataSourceFactory',
                           nil)
-reference.add StringRefAddr.new('driverClassName', 
+derby_ref.add StringRefAddr.new('driverClassName', 
                                 'org.apache.derby.jdbc.EmbeddedDriver')
-reference.add StringRefAddr.new('url', 
+derby_ref.add StringRefAddr.new('url', 
                                 'jdbc:derby:derby-testdb;create=true')
-reference.add StringRefAddr.new('username', 'sa')
-reference.add StringRefAddr.new('password', '')
+derby_ref.add StringRefAddr.new('username', 'sa')
+derby_ref.add StringRefAddr.new('password', '')
+
 ic = InitialContext.new
-ic.rebind("jdbc/testdb", reference)
+ic.rebind("jdbc/derbydb", derby_ref)
 
-require 'logger'
-
-config = { 
-  :adapter => 'jdbc',
-  :jndi => 'jdbc/testdb',
-  :driver => 'derby'
-}
-  
-ActiveRecord::Base.establish_connection(config)
-logger = Logger.new 'derby-jdbc.log'
-logger.level = Logger::DEBUG
-ActiveRecord::Base.logger = logger
-
-at_exit { 
-  require 'fileutils'
-  FileUtils.rm_rf('derby-testdb')
-  FileUtils.rm_rf(jndi_dir)
-}

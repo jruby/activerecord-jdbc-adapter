@@ -178,7 +178,7 @@ module ActiveRecord
 
     class JdbcConnection
       def initialize(config)
-        @config = config.symbolize_keys
+        @config = config.symbolize_keys!
         if @config[:jndi]
           configure_jndi
         else
@@ -372,6 +372,9 @@ module ActiveRecord
         ctx = javax.naming.InitialContext.new
         ds = ctx.lookup(jndi)
         @connection = ds.connection
+        unless @config[:driver]
+          @config[:driver] = @connection.meta_data.connection.java_class.name
+        end
       end
 
       def configure_jdbc
