@@ -4,6 +4,9 @@ if RUBY_PLATFORM =~ /java/
   else
     RAILS_CONNECTION_ADAPTERS = %w(jdbc)
   end
+  if RAILS_GEM_VERSION =~ /1\.1\.\d+/
+    require 'active_record/connection_adapters/jdbc_adapter'
+  end
 else
   raise "ActiveRecord-JDBC is for use with JRuby only"
 end
