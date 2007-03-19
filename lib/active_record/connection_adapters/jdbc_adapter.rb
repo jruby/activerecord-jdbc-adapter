@@ -80,7 +80,8 @@ module ActiveRecord
                           lambda {|r| r['type_name'] =~ /^int4$/i},
                           lambda {|r| r['type_name'] =~ /^int$/i}],
         :decimal     => [ lambda {|r| Jdbc::Types::DECIMAL == r['data_type']},
-                          lambda {|r| r['type_name'] =~ /^decimal$/i}],
+                          lambda {|r| r['type_name'] =~ /^decimal$/i},
+                          lambda {|r| r['type_name'] =~ /^numeric$/i}],
         :float       => [ lambda {|r| [Jdbc::Types::FLOAT,Jdbc::Types::DOUBLE].include?(r['data_type'])},
                           lambda {|r| r['type_name'] =~ /^float/i},
                           lambda {|r| r['type_name'] =~ /^double$/i},
@@ -130,7 +131,7 @@ module ActiveRecord
           return new_types.first if new_types.length == 1
           types = new_types if new_types.length > 0
         end
-        raise "unable to choose type from: #{types.collect{|t| [t['type_name'],t]}.inspect} for #{ar_type}"
+        raise "unable to choose type from: #{types.collect{|t| [t['type_name'],t]}.inspect} for #{ar_type}"        
       end
     end
 
@@ -187,7 +188,7 @@ module ActiveRecord
         set_native_database_types
         @stmts = {}
       rescue Exception => e
-        raise "The driver encounter an error: #{e}"
+        raise "The driver encountered an error: #{e}"
       end
 
       def ps(sql)

@@ -26,6 +26,13 @@ Rake::TestTask.new(:test_derby) do |t|
   t.libs << 'test'
 end
 
+Rake::TestTask.new(:test_postgresql) do |t|
+  t.test_files = FileList['test/postgres_simple_test.rb']
+  t.libs << 'test'
+end
+
+task :test_pgsql => [:test_postgresql]
+
 Rake::TestTask.new(:test_jndi) do |t|
   t.test_files = FileList['test/jndi_test.rb']
   t.libs << 'test'
