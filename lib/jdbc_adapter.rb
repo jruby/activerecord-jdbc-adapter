@@ -4,7 +4,7 @@ if RUBY_PLATFORM =~ /java/
   else
     RAILS_CONNECTION_ADAPTERS = %w(jdbc)
   end
-  if RAILS_GEM_VERSION =~ /1\.1\.\d+/
+  if defined?(RAILS_GEM_VERSION) && RAILS_GEM_VERSION =~ /1\.1\.\d+/
     require 'active_record/connection_adapters/jdbc_adapter'
   end
 else
