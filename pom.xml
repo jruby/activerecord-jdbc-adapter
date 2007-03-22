@@ -1,0 +1,67 @@
+<?xml version="1.0"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+  <parent>
+    <groupId>org.jruby</groupId>
+    <artifactId>shared</artifactId>
+    <version>0.9.9-SNAPSHOT</version>
+    <relativePath>../../jruby/pom.xml</relativePath>
+  </parent>
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>org.jruby.testsuites</groupId>
+  <artifactId>activerecord-jdbc</artifactId>
+  <packaging>pom</packaging>
+  <version>0.9.9-SNAPSHOT</version>
+  <name>JRuby ActiveRecord-JDBC testsuite</name>
+  <description>Test ActiveRecord-JDBC</description>
+
+  <build>
+    <directory>pkg</directory>
+    <plugins>
+      <plugin>
+        <groupId>org.jruby.plugins</groupId>
+        <artifactId>jruby-rake-plugin</artifactId>
+        <executions>
+          <execution>
+            <id>install-gems</id>
+            <phase>generate-resources</phase>
+            <goals><goal>install-gems</goal></goals>
+            <configuration>
+              <gems>ci_reporter activerecord</gems>
+            </configuration>
+          </execution>
+          <execution>
+            <id>runtests</id>
+            <phase>test</phase>
+            <goals><goal>rake</goal></goals>
+            <configuration>
+              <script>
+                gem 'ci_reporter'
+                require 'ci/reporter/rake/test_unit'
+                load 'Rakefile'
+              </script>
+              <args>ci:setup:testunit default</args>
+            </configuration>
+          </execution>
+        </executions>
+        <dependencies>
+          <dependency>
+            <groupId>mysql</groupId>
+            <artifactId>mysql-connector-java</artifactId>
+            <version>5.0.5</version>
+          </dependency>
+          <dependency>
+            <groupId>org.apache.derby</groupId>
+            <artifactId>derby</artifactId>
+            <version>10.2.2.0</version>
+          </dependency>
+          <dependency>
+            <groupId>hsqldb</groupId>
+            <artifactId>hsqldb</artifactId>
+            <version>1.8.0.7</version>
+          </dependency>
+        </dependencies>
+      </plugin>
+    </plugins>
+  </build>
+</project>

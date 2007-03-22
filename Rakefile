@@ -61,7 +61,7 @@ begin
   end
 
   task :package => :manifest
-rescue => e
+rescue LoadError
   # Install hoe in order to make a release
   # puts e.inspect
 end
