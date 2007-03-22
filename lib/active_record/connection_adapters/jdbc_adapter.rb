@@ -251,8 +251,11 @@ module ActiveRecord
 
       # Get a list of all primary keys associated with the given table
       def primary_keys(table_name) 
-        meta_data = @connection.getMetaData
-        result_set = meta_data.get_primary_keys(nil, nil, table_name.to_s.upcase)
+        metadata = @connection.getMetaData
+        table_name = table_name.to_s unless String === table_name
+        table_name.upcase! if metadata.storesUpperCaseIdentifiers
+        table_name.downcase! if metadata.storesLowerCaseIdentifiers
+        result_set = metadata.get_primary_keys(nil, nil, table_name)
         key_names = []
 
         while result_set.next
