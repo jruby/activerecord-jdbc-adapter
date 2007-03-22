@@ -1,11 +1,8 @@
 History.txt
-LICENSE
 Manifest.txt
 README.txt
 Rakefile
-diff.txt
-init.rb
-install.rb
+LICENSE
 lib/active_record/connection_adapters/jdbc_adapter.rb
 lib/active_record/connection_adapters/jdbc_adapter_spec.rb
 lib/jdbc_adapter.rb
@@ -18,11 +15,8 @@ lib/jdbc_adapter/jdbc_mssql.rb
 lib/jdbc_adapter/jdbc_mysql.rb
 lib/jdbc_adapter/jdbc_oracle.rb
 lib/jdbc_adapter/jdbc_postgre.rb
-pom.xml
 test/activerecord/connection_adapters/type_conversion_test.rb
 test/activerecord/connections/native_jdbc_mysql/connection.rb
-test/activerecord/jall.sh
-test/activerecord/jtest.sh
 test/db/derby.rb
 test/db/h2.rb
 test/db/hsqldb.rb

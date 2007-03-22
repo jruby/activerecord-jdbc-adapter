@@ -5,6 +5,7 @@ module JdbcSpec
     def modify_types(tp)
       tp[:primary_key] = "int(11) DEFAULT NULL auto_increment PRIMARY KEY"
       tp[:decimal] = { :name => "decimal" }
+      tp[:timestamp]= { :name => "datetime" }
       tp
     end
     
@@ -95,7 +96,9 @@ module JdbcSpec
     end
     
     def change_column(table_name, column_name, type, options = {}) #:nodoc:
-      options[:default] ||= select_one("SHOW COLUMNS FROM #{table_name} LIKE '#{column_name}'")["default"]
+      unless options.include?(:default) && !(options[:null] == false && options[:default].nil?)
+        options[:default] = select_one("SHOW COLUMNS FROM #{table_name} LIKE '#{column_name}'")["default"]
+      end
       
       change_column_sql = "ALTER TABLE #{table_name} CHANGE #{column_name} #{column_name} #{type_to_sql(type, options[:limit])}"
       add_column_options!(change_column_sql, options)
