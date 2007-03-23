@@ -148,8 +148,11 @@ module ActiveRecord
     end
 
     class JdbcColumn < Column
+      attr_writer :limit, :precision
+        
       COLUMN_TYPES = {
         /oracle/i => lambda {|cfg,col| col.extend(JdbcSpec::Oracle::Column)},
+        /mysql/i => lambda {|cfg,col| col.extend(JdbcSpec::MySQL::Column)},
         /postgre/i => lambda {|cfg,col| col.extend(JdbcSpec::PostgreSQL::Column)},
         /sqlserver|tds/i => lambda {|cfg,col| col.extend(JdbcSpec::MsSQL::Column)},
         /hsqldb|\.h2\./i => lambda {|cfg,col| col.extend(JdbcSpec::HSQLDB::Column)},
@@ -178,6 +181,8 @@ module ActiveRecord
     end
 
     class JdbcConnection
+      attr_accessor :adapter
+      
       def initialize(config)
         @config = config.symbolize_keys!
         if @config[:jndi]
@@ -206,12 +211,17 @@ module ActiveRecord
         adapt.modify_types(types)
       end
 
+      def database_name
+        @connection.get_catalog
+      end
+      
       def columns(table_name, name = nil)
         metadata = @connection.getMetaData
         table_name.upcase! if metadata.storesUpperCaseIdentifiers
         table_name.downcase! if metadata.storesLowerCaseIdentifiers
         results = metadata.getColumns(nil, nil, table_name, nil)
         columns = []
+        tps = self.adapter.native_database_types
         unmarshal_result(results).each do |col|
           column_name = col['column_name']
           column_name = column_name.downcase if metadata.storesUpperCaseIdentifiers
@@ -223,8 +233,13 @@ module ActiveRecord
             coltype << ",#{scale}" if scale && scale > 0
             coltype << ")"
           end
-          columns << ActiveRecord::ConnectionAdapters::JdbcColumn.new(@config, column_name, col['column_def'],
+          c = ActiveRecord::ConnectionAdapters::JdbcColumn.new(@config, column_name, col['column_def'],
               coltype, col['is_nullable'] != 'NO')
+          columns << c
+          if tps[c.type] && tps[c.type][:limit].nil?
+            c.limit = nil
+            c.precision = nil
+          end
         end
         columns
       rescue
@@ -530,6 +545,7 @@ module ActiveRecord
 
       def initialize(connection, logger, config)
         super(connection, logger)
+        connection.adapter = self
         @config = config
         ds = config[:driver].to_s
         for reg, func in ADAPTER_TYPES
@@ -551,10 +567,14 @@ module ActiveRecord
         true
       end
 
-      def native_database_types #:nodoc
+      def native_database_types #:nodoc:
         @connection.native_database_types(self)
       end
 
+      def database_name #:nodoc:
+        @connection.database_name
+      end
+      
       def native_sql_to_type(tp)
         if /^(.*?)\(([0-9]+)\)/ =~ tp
           tname = $1

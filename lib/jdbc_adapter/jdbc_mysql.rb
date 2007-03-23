@@ -2,10 +2,19 @@ require 'active_record/connection_adapters/abstract/schema_definitions'
 
 module JdbcSpec
   module MySQL
+    module Column
+      def simplified_type(field_type)
+        return :boolean if field_type =~ /tinyint\(1\)|bit\(1\)/i 
+        return :string  if field_type =~ /enum/i
+        super
+      end
+    end
+    
     def modify_types(tp)
       tp[:primary_key] = "int(11) DEFAULT NULL auto_increment PRIMARY KEY"
       tp[:decimal] = { :name => "decimal" }
-      tp[:timestamp]= { :name => "datetime" }
+      tp[:timestamp] = { :name => "datetime" }
+      tp[:datetime][:limit] = nil
       tp
     end
     
