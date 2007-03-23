@@ -1,6 +1,7 @@
 require 'active_record/connection_adapters/abstract_adapter'
 require 'java'
 require 'active_record/connection_adapters/jdbc_adapter_spec'
+require 'jdbc_adapter_internal'
 
 module ActiveRecord
   class Base
@@ -413,118 +414,6 @@ module ActiveRecord
         @connection = Jdbc::DriverManager.getConnection(url, user, pass)
       end
 
-      def unmarshal_result(resultset, &row_filter)
-        metadata = resultset.getMetaData
-        column_count = metadata.getColumnCount
-        column_names = ['']
-        column_types = ['']
-        column_scale = ['']
-
-        1.upto(column_count) do |i|
-          column_names << metadata.getColumnName(i)
-          column_types << metadata.getColumnType(i)
-          column_scale << metadata.getScale(i)
-        end
-        
-        results = []
-
-        # take all rows if block not supplied
-        row_filter = lambda{|result_row| true} unless block_given?
-
-        while resultset.next
-          # let the supplied block look at this row from the resultset to
-          # see if we want to include it in our results
-          if row_filter.call(resultset)
-            row = {}
-            1.upto(column_count) do |i|
-              row[column_names[i].downcase] = convert_jdbc_type_to_ruby(i, column_types[i], column_scale[i], resultset)
-            end
-            results << row
-          end
-        end
-
-        results
-      end
-
-      def unmarshal_id_result(resultset)
-        metadata = resultset.getMetaData
-        column_count = metadata.getColumnCount
-        column_types = ['']
-        column_scale = ['']
-
-        1.upto(column_count) do |i|
-          column_types << metadata.getColumnType(i)
-          column_scale << metadata.getScale(i)
-        end
-
-        results = []
-
-        while resultset.next
-          row = {}
-          1.upto(column_count) do |i|
-            row[i] = row[i.to_s] = convert_jdbc_type_to_ruby(i, column_types[i], column_scale[i], resultset)
-          end
-          results << row
-        end
-
-        results
-      end
-
-      def to_ruby_time(java_time)
-        if java_time
-          tm = java_time.getTime
-          Time.at(tm / 1000, (tm % 1000) * 1000)
-        end
-      end
-
-      def to_ruby_date(java_date)
-        if java_date
-          cal = java.util.Calendar.getInstance
-          cal.setTime(java_date)
-          Date.new(cal.get(java.util.Calendar::YEAR), cal.get(java.util.Calendar::MONTH)+1, cal.get(java.util.Calendar::DATE))
-        end
-      end
-
-      def convert_jdbc_type_to_ruby(row, type, scale, resultset)
-        value = case type
-        when Jdbc::Types::CHAR, Jdbc::Types::VARCHAR, Jdbc::Types::LONGVARCHAR, Jdbc::Types::CLOB
-          resultset.getString(row)
-        when Jdbc::Types::NUMERIC, Jdbc::Types::BIGINT
-          if scale != 0
-            BigDecimal.new(resultset.getBigDecimal(row).toString)
-          else
-            resultset.getLong(row)
-          end
-        when Jdbc::Types::DECIMAL
-          BigDecimal.new(resultset.getBigDecimal(row).toString)
-        when Jdbc::Types::SMALLINT, Jdbc::Types::INTEGER
-          resultset.getInt(row) 
-        when Jdbc::Types::BIT, Jdbc::Types::BOOLEAN, Jdbc::Types::TINYINT
-          resultset.getBoolean(row)
-        when Jdbc::Types::FLOAT, Jdbc::Types::DOUBLE
-          resultset.getDouble(row)
-        when Jdbc::Types::TIMESTAMP
-          # FIXME: This should not be a catchall and it should move this to mysql since it
-          # is catching non-existent date 0000-00:00:00
-          begin         
-            to_ruby_time(resultset.getTimestamp(row))
-          rescue java.sql.SQLException
-            nil
-          end
-        when Jdbc::Types::TIME
-          to_ruby_time(resultset.getTime(row))
-        when Jdbc::Types::DATE
-          to_ruby_date(resultset.getDate(row))
-        when Jdbc::Types::LONGVARBINARY, Jdbc::Types::BLOB, Jdbc::Types::BINARY, Jdbc::Types::VARBINARY
-          resultset.getString(row)
-        else
-          raise "jdbc_adapter: type #{jdbc_type_name(type)} not supported yet"
-        end
-        resultset.wasNull ? nil : value
-      end
-      def jdbc_type_name(type)
-        Jdbc::Types.constants.find {|t| Jdbc::Types.const_get(t.to_sym) == type}
-      end
     end
 
     class JdbcAdapter < AbstractAdapter

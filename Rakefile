@@ -3,6 +3,12 @@ require 'rake/testtask'
 
 task :default => :test
 
+task :java_compile do
+  `mkdir -p build`
+  `javac -d build -cp $JRUBY_HOME/lib/jruby.jar src/java/*.java`
+  `jar cf lib/jdbc_adapter_internal.jar -C build JdbcAdapterInternalService.class`
+end
+
 desc "Run AR-JDBC tests"
 if RUBY_PLATFORM =~ /java/
   task :test => [:test_mysql, :test_hsqldb, :test_derby]
