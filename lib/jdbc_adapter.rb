@@ -8,5 +8,5 @@ if RUBY_PLATFORM =~ /java/
     require 'active_record/connection_adapters/jdbc_adapter'
   end
 else
-  raise "ActiveRecord-JDBC is for use with JRuby only"
+  $stderr.print "warning: ActiveRecord-JDBC is for use with JRuby only\n"
 end

@@ -3,9 +3,9 @@ Manifest.txt
 README.txt
 Rakefile
 LICENSE
+lib/jdbc_adapter.rb
 lib/active_record/connection_adapters/jdbc_adapter.rb
 lib/active_record/connection_adapters/jdbc_adapter_spec.rb
-lib/jdbc_adapter.rb
 lib/jdbc_adapter/jdbc_db2.rb
 lib/jdbc_adapter/jdbc_derby.rb
 lib/jdbc_adapter/jdbc_firebird.rb
@@ -15,6 +15,15 @@ lib/jdbc_adapter/jdbc_mssql.rb
 lib/jdbc_adapter/jdbc_mysql.rb
 lib/jdbc_adapter/jdbc_oracle.rb
 lib/jdbc_adapter/jdbc_postgre.rb
+test/derby_simple_test.rb
+test/h2_simple_test.rb
+test/hsqldb_simple_test.rb
+test/jndi_test.rb
+test/manualTestDatabase.rb
+test/minirunit.rb
+test/mysql_simple_test.rb
+test/postgres_simple_test.rb
+test/simple.rb
 test/activerecord/connection_adapters/type_conversion_test.rb
 test/activerecord/connections/native_jdbc_mysql/connection.rb
 test/db/derby.rb
@@ -24,12 +33,6 @@ test/db/jndi_config.rb
 test/db/logger.rb
 test/db/mysql.rb
 test/db/postgres.rb
-test/derby_simple_test.rb
-test/h2_simple_test.rb
-test/hsqldb_simple_test.rb
-test/jndi_test.rb
-test/manualTestDatabase.rb
-test/minirunit.rb
 test/minirunit/testConnect.rb
 test/minirunit/testH2.rb
 test/minirunit/testHsqldb.rb
@@ -39,6 +42,3 @@ test/minirunit/testRawSelect.rb
 test/models/auto_id.rb
 test/models/data_types.rb
 test/models/entry.rb
-test/mysql_simple_test.rb
-test/postgres_simple_test.rb
-test/simple.rb
