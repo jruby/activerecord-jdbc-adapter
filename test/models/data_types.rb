@@ -1,4 +1,3 @@
-require 'jdbc_adapter'
 require 'rubygems'
 require 'active_record'
 

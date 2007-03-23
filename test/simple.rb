@@ -95,10 +95,10 @@ module SimpleTestMethods
   def test_dumping_schema
     require 'active_record/schema_dumper'
     @connection.add_index :entries, :title
-    stio = StringIO.open('', 'w') do |io|
+    StringIO.open do |io|
       ActiveRecord::SchemaDumper.dump(ActiveRecord::Base.connection, io)
+      assert_match(/add_index "entries",/, io.string)
     end
-    assert_match(/add_index "entries",/, stio.string)
     @connection.remove_index :entries, :title
 
   end

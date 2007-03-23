@@ -4,6 +4,11 @@
 #   create database weblog_development;
 #   grant all on weblog_development.* to blog@localhost;
 
+if RUBY_PLATFORM =~ /java/
+  require 'jdbc_adapter'
+end
+
+require 'rubygems'
 
 require 'models/auto_id'
 require 'models/entry'
