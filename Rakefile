@@ -48,7 +48,7 @@ begin
   require 'hoe'
 
   MANIFEST = FileList["History.txt", "Manifest.txt", "README.txt", 
-    "Rakefile", "LICENSE", "lib/**/*.rb", "test/**/*.rb"]
+    "Rakefile", "LICENSE", "lib/**/*.rb", "lib/**/*.jar", "test/**/*.rb"]
 
   Hoe.new("ActiveRecord-JDBC", "0.2.3") do |p|
     p.rubyforge_name = "jruby-extras"
