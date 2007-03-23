@@ -17,5 +17,5 @@ at_exit {
   # Clean up derby files
   require 'fileutils'
   Dir.glob('derby-testdb/**/*') {|f| File.delete(f)}
-  FileUtils.rm_r('derby-testdb')
+  FileUtils.rm_rf('derby-testdb')
 }
