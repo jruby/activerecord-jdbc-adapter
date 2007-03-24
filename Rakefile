@@ -3,10 +3,22 @@ require 'rake/testtask'
 
 task :default => :test
 
+def java_classpath_arg # myriad of ways to discover JRuby classpath
+  begin
+    require 'java' # already running in a JRuby JVM
+    jruby_cpath = Java::java.lang.System.getProperty('java.class.path')
+  rescue LoadError
+  end
+  unless jruby_cpath
+    jruby_cpath = ENV['JRUBY_PARENT_CLASSPATH'] || ENV['JRUBY_HOME'] &&
+      FileList["#{ENV['JRUBY_HOME']}/lib/*.jar"].join(File::PATH_SEPARATOR)
+  end
+  cpath_arg = jruby_cpath ? "-cp #{jruby_cpath}" : ""
+end
+
 task :java_compile do
   mkdir_p "pkg/classes"
-  jruby_cpath = ENV['JRUBY_PARENT_CLASSPATH'] || FileList["#{ENV['JRUBY_HOME']}/lib/*.jar"].join(File::PATH_SEPARATOR)
-  sh "javac -d pkg/classes -cp #{jruby_cpath} #{FileList['src/java/**/*.java'].join(' ')}"
+  sh "javac -d pkg/classes #{java_classpath_arg} #{FileList['src/java/**/*.java'].join(' ')}"
   sh "jar cf lib/jdbc_adapter_internal.jar -C pkg/classes/ ."
 end
 
