@@ -130,68 +130,11 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
     }
 
     private static IRubyObject jdbc_to_ruby(Ruby runtime, int row, int type, int scale, ResultSet rs) throws SQLException {
-        IRubyObject value;
-        switch(type) {
-        case Types.CHAR:
-        case Types.VARCHAR:
-        case Types.LONGVARCHAR:
-        case Types.CLOB:
-        case Types.LONGVARBINARY:
-        case Types.BLOB:
-        case Types.BINARY:
-        case Types.VARBINARY:
-            String vs = rs.getString(row);
-            if(vs == null) {
-                return runtime.getNil();
-            }
-            value = runtime.newString(vs);
-            break;
-        case Types.NUMERIC:
-        case Types.BIGINT:
-            if(scale != 0) {
-                value = new RubyBigDecimal(runtime, rs.getBigDecimal(row));
-            } else {
-                value = RubyNumeric.int2fix(runtime, rs.getLong(row));
-            }
-            break;
-        case Types.DECIMAL:
-            value = new RubyBigDecimal(runtime, rs.getBigDecimal(row));
-            break;
-        case Types.SMALLINT:
-        case Types.INTEGER:
-            value = runtime.newFixnum(rs.getInt(row));
-            break;
-        case Types.BIT:
-        case Types.BOOLEAN:
-        case Types.TINYINT:
-            value = rs.getBoolean(row) ? runtime.getTrue() : runtime.getFalse();
-            break;
-        case Types.FLOAT:
-        case Types.DOUBLE:
-            value = runtime.newFloat(rs.getDouble(row));
-            break;
-        case Types.TIMESTAMP:
-            // FIXME: This should not be a catchall and it should move this to mysql since it
-            // is catching non-existent date 0000-00:00:00
-            try {
-                value = to_ruby_time(runtime, rs.getTimestamp(row));
-            } catch(SQLException e) {
-                value = runtime.getNil();
-            }
-            break;
-        case Types.TIME:
-            value = to_ruby_time(runtime, rs.getTime(row));
-            break;
-        case Types.DATE:
-            value = to_ruby_date(runtime, rs.getDate(row));
-            break;
-        default:
-            throw runtime.newStandardError("jdbc_adapter: type " + type + " not supported yet");
-        }
-        if(rs.wasNull()) {
+        String vs = rs.getString(row);
+        if(vs == null) {
             return runtime.getNil();
         }
-        return value;
+        return runtime.newString(vs);
     }
 
     public static IRubyObject unmarshal_id_result(IRubyObject recv, IRubyObject resultset) throws SQLException {

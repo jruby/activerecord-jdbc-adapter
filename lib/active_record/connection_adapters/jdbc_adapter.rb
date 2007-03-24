@@ -68,42 +68,42 @@ module ActiveRecord
       # type left.  If all the selectors are applied and there is still more than one
       # type, an exception will be raised.
       AR_TO_JDBC_TYPES = {
-        :string      => [ lambda {|r| Jdbc::Types::VARCHAR == r['data_type']},
+        :string      => [ lambda {|r| Jdbc::Types::VARCHAR == r['data_type'].to_i},
                           lambda {|r| r['type_name'] =~ /^varchar/i},
                           lambda {|r| r['type_name'] =~ /^varchar$/i},
                           lambda {|r| r['type_name'] =~ /varying/i}],
-        :text        => [ lambda {|r| [Jdbc::Types::LONGVARCHAR, Jdbc::Types::CLOB].include?(r['data_type'])},
+        :text        => [ lambda {|r| [Jdbc::Types::LONGVARCHAR, Jdbc::Types::CLOB].include?(r['data_type'].to_i)},
                           lambda {|r| r['type_name'] =~ /^(text|clob)/i},
                           lambda {|r| r['type_name'] =~ /^character large object$/i},
                           lambda {|r| r['sql_data_type'] == 2005}],
-        :integer     => [ lambda {|r| Jdbc::Types::INTEGER == r['data_type']},
+        :integer     => [ lambda {|r| Jdbc::Types::INTEGER == r['data_type'].to_i},
                           lambda {|r| r['type_name'] =~ /^integer$/i},
                           lambda {|r| r['type_name'] =~ /^int4$/i},
                           lambda {|r| r['type_name'] =~ /^int$/i}],
-        :decimal     => [ lambda {|r| Jdbc::Types::DECIMAL == r['data_type']},
+        :decimal     => [ lambda {|r| Jdbc::Types::DECIMAL == r['data_type'].to_i},
                           lambda {|r| r['type_name'] =~ /^decimal$/i},
                           lambda {|r| r['type_name'] =~ /^numeric$/i}],
-        :float       => [ lambda {|r| [Jdbc::Types::FLOAT,Jdbc::Types::DOUBLE].include?(r['data_type'])},
+        :float       => [ lambda {|r| [Jdbc::Types::FLOAT,Jdbc::Types::DOUBLE].include?(r['data_type'].to_i)},
                           lambda {|r| r['type_name'] =~ /^float/i},
                           lambda {|r| r['type_name'] =~ /^double$/i},
-                          lambda {|r| r['precision'] == 15}],
-        :datetime    => [ lambda {|r| Jdbc::Types::TIMESTAMP == r['data_type']},
+                          lambda {|r| r['precision'] == '15'}],
+        :datetime    => [ lambda {|r| Jdbc::Types::TIMESTAMP == r['data_type'].to_i},
                           lambda {|r| r['type_name'] =~ /^datetime/i},
                           lambda {|r| r['type_name'] =~ /^timestamp$/i}],
-        :timestamp   => [ lambda {|r| Jdbc::Types::TIMESTAMP == r['data_type']},
+        :timestamp   => [ lambda {|r| Jdbc::Types::TIMESTAMP == r['data_type'].to_i},
                           lambda {|r| r['type_name'] =~ /^timestamp$/i},
                           lambda {|r| r['type_name'] =~ /^datetime/i} ],
-        :time        => [ lambda {|r| Jdbc::Types::TIME == r['data_type']},
+        :time        => [ lambda {|r| Jdbc::Types::TIME == r['data_type'].to_i},
                           lambda {|r| r['type_name'] =~ /^time$/i},
                           lambda {|r| r['type_name'] =~ /^datetime$/i}],
-        :date        => [ lambda {|r| Jdbc::Types::DATE == r['data_type']},
+        :date        => [ lambda {|r| Jdbc::Types::DATE == r['data_type'].to_i},
                           lambda {|r| r['type_name'] =~ /^date$/i}],
-        :binary      => [ lambda {|r| [Jdbc::Types::LONGVARBINARY,Jdbc::Types::BINARY,Jdbc::Types::BLOB].include?(r['data_type'])},
+        :binary      => [ lambda {|r| [Jdbc::Types::LONGVARBINARY,Jdbc::Types::BINARY,Jdbc::Types::BLOB].include?(r['data_type'].to_i)},
                           lambda {|r| r['type_name'] =~ /^blob/i},
                           lambda {|r| r['type_name'] =~ /sub_type 0$/i}, # For FireBird
                           lambda {|r| r['type_name'] =~ /^varbinary$/i}, # We want this sucker for Mimer
                           lambda {|r| r['type_name'] =~ /^binary$/i}, ],
-        :boolean     => [ lambda {|r| [Jdbc::Types::TINYINT].include?(r['data_type'])},
+        :boolean     => [ lambda {|r| [Jdbc::Types::TINYINT].include?(r['data_type'].to_i)},
                           lambda {|r| r['type_name'] =~ /^bool/i},
                           lambda {|r| r['type_name'] =~ /^tinyint$/i},
                           lambda {|r| r['type_name'] =~ /^decimal$/i}],
@@ -118,7 +118,7 @@ module ActiveRecord
         AR_TO_JDBC_TYPES.each_key do |k|
           typerow = choose_type(k)
           type_map[k] = { :name => typerow['type_name'] }
-          type_map[k][:limit] = typerow['precision'] if [:integer, :string, :decimal].include?(k)
+          type_map[k][:limit] = typerow['precision'] && typerow['precision'].to_i if [:integer, :string, :decimal].include?(k)
           type_map[k][:limit] = 1 if k == :boolean
         end
         type_map
@@ -228,6 +228,8 @@ module ActiveRecord
           column_name = column_name.downcase if metadata.storesUpperCaseIdentifiers
           precision = col["column_size"]
           scale = col["decimal_digits"]
+          precision = precision.to_i if precision
+          scale = scale.to_i if precision
           coltype = col["type_name"]
           if precision && precision > 0
             coltype << "(#{precision}"
@@ -333,7 +335,7 @@ module ActiveRecord
         stmt = @connection.createStatement
         stmt.executeUpdate(sql,Jdbc::Statement::RETURN_GENERATED_KEYS)
         row = unmarshal_id_result(stmt.getGeneratedKeys)
-        row.first && row.first.values.first
+        row.first && row.first.values.first && row.first.values.first.to_i
       rescue
         if @connection.is_closed
           reconnect!
@@ -533,7 +535,7 @@ module ActiveRecord
       alias :delete :execute
 
       def insert(sql, name = nil, pk = nil, id_value = nil, sequence_name = nil)
-        log_no_bench(sql, name) do
+        log_no_bench(sql, name=nil) do
           id = @connection.execute_insert(sql, pk)
           id_value || id
         end
