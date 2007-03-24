@@ -16,8 +16,26 @@
   <description>Test ActiveRecord-JDBC</description>
 
   <build>
-    <directory>pkg</directory>
+    <directory>${basedir}/pkg</directory>
+    <outputDirectory>${basedir}/pkg/classes</outputDirectory>
+    <testOutputDirectory>${basedir}/pkg/test-classes</testOutputDirectory>
     <plugins>
+      <plugin>
+        <artifactId>maven-clean-plugin</artifactId>
+        <configuration>
+          <filesets>
+            <fileset>
+              <directory>doc</directory>
+            </fileset>
+            <fileset>
+              <directory>lib</directory>
+              <includes>
+                <include>*.jar</include>
+              </includes>
+            </fileset>
+          </filesets>
+        </configuration>
+      </plugin>
       <plugin>
         <groupId>org.jruby.plugins</groupId>
         <artifactId>jruby-rake-plugin</artifactId>

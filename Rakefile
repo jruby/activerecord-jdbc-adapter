@@ -4,14 +4,28 @@ require 'rake/testtask'
 task :default => :test
 
 task :java_compile do
-  `mkdir -p build`
-  `javac -d build -cp $JRUBY_HOME/lib/jruby.jar src/java/*.java`
-  `jar cf lib/jdbc_adapter_internal.jar -C build JdbcAdapterInternalService.class`
+  mkdir_p "pkg/classes"
+  jruby_cpath = ENV['JRUBY_PARENT_CLASSPATH'] || FileList["#{ENV['JRUBY_HOME']}/lib/*.jar"].join(File::PATH_SEPARATOR)
+  sh "javac -d pkg/classes -cp #{jruby_cpath} #{FileList['src/java/**/*.java'].join(' ')}"
+  sh "jar cf lib/jdbc_adapter_internal.jar -C pkg/classes/ ."
+end
+
+task :more_clean do
+  rm_rf FileList['derby*']
+  rm_rf FileList['test.db.*']
+  rm_rf "test/reports"
+  rm_f FileList['lib/*.jar']
+end
+
+task :clean => :more_clean
+
+task :filelist do
+  puts FileList['pkg/**/*'].inspect
 end
 
 desc "Run AR-JDBC tests"
 if RUBY_PLATFORM =~ /java/
-  task :test => [:test_mysql, :test_hsqldb, :test_derby]
+  task :test => [:java_compile, :test_mysql, :test_hsqldb, :test_derby]
 else
   task :test => [:test_mysql]
 end
