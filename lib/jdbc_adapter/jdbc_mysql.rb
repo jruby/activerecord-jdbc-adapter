@@ -3,10 +3,28 @@ require 'active_record/connection_adapters/abstract/schema_definitions'
 module JdbcSpec
   module MySQL
     module Column
+      TYPES_ALLOWING_EMPTY_STRING_DEFAULT = Set.new([:binary, :string, :text])
+
       def simplified_type(field_type)
         return :boolean if field_type =~ /tinyint\(1\)|bit\(1\)/i 
         return :string  if field_type =~ /enum/i
         super
+      end
+
+      def init_column(name, default, *args)
+        @original_default = default
+        @default = nil if missing_default_forged_as_empty_string?
+      end
+      
+      # MySQL misreports NOT NULL column default when none is given.
+      # We can't detect this for columns which may have a legitimate ''
+      # default (string, text, binary) but we can for others (integer,
+      # datetime, boolean, and the rest).
+      #
+      # Test whether the column has default '', is not null, and is not
+      # a type allowing default ''.
+      def missing_default_forged_as_empty_string?
+        !null && @original_default == '' && !TYPES_ALLOWING_EMPTY_STRING_DEFAULT.include?(type)
       end
     end
     

@@ -174,6 +174,10 @@ module ActiveRecord
           end
         end
         super(name,default_value(default),*args)
+        init_column(name, default, *args)
+      end
+
+      def init_column(*args)
       end
 
       def default_value(val)
