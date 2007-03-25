@@ -92,7 +92,7 @@ begin
     File.open("Manifest.txt", "w") {|f| MANIFEST.each {|n| f << "#{n}\n"} }
   end
 
-  task :package => :manifest
+  task :package => [:manifest, :java_compile]
 rescue LoadError
   # Install hoe in order to make a release
   # puts e.inspect
