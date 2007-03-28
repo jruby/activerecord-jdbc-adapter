@@ -190,7 +190,7 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
         int[] col_scale = new int[col_count];
 
         for(int i=0;i<col_count;i++) {
-            col_names[i] = runtime.newString(metadata.getColumnName(i+1).toLowerCase());
+            col_names[i] = runtime.newString(metadata.getColumnName(i+1));
             col_types[i] = metadata.getColumnType(i+1);
             col_scale[i] = metadata.getScale(i+1);
         }
@@ -217,7 +217,7 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
         int[] col_scale = new int[col_count];
 
         for(int i=0;i<col_count;i++) {
-            col_names[i] = runtime.newString(metadata.getColumnName(i+1).toLowerCase());
+            col_names[i] = runtime.newString(metadata.getColumnName(i+1));
             col_types[i] = metadata.getColumnType(i+1);
             col_scale[i] = metadata.getScale(i+1);
         }

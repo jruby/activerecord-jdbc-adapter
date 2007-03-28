@@ -205,8 +205,18 @@ module ActiveRecord
         @connection.prepareStatement(sql)
       end
 
+      def downcase_each_key(val)
+        val.map{|ev| 
+          out = {}
+          ev.each do |k,v|
+            out[k.downcase] = v
+          end
+          out
+        }
+      end
+      
       def set_native_database_types
-        types = unmarshal_result(@connection.getMetaData.getTypeInfo)
+        types = downcase_each_key(unmarshal_result(@connection.getMetaData.getTypeInfo))
         @native_types = JdbcTypeConverter.new(types).choose_best_types
       end
 
@@ -227,7 +237,7 @@ module ActiveRecord
         results = metadata.getColumns(nil, nil, table_name, nil)
         columns = []
         tps = self.adapter.native_database_types
-        unmarshal_result(results).each do |col|
+        downcase_each_key(unmarshal_result(results)).each do |col|
           column_name = col['column_name']
           column_name = column_name.downcase if metadata.storesUpperCaseIdentifiers
           precision = col["column_size"]

@@ -41,6 +41,7 @@ test/minirunit/testRawSelect.rb
 test/models/auto_id.rb
 test/models/data_types.rb
 test/models/entry.rb
+test/mysql_profile.rb
 test/mysql_simple_test.rb
 test/postgres_simple_test.rb
 test/simple.rb
