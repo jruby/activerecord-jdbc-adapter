@@ -367,6 +367,12 @@ module ActiveRecord
         unless driver && url
           raise ArgumentError, "jdbc adapter requires driver class and url"
         end
+        
+        if driver =~ /mysql/i
+          div = url =~ /\?/ ? '&' : '?'
+          url = "#{url}#{div}zeroDateTimeBehavior=convertToNull"
+          @config[:url] = url
+        end
 
         JdbcDriver.load(driver)
         set_connection Jdbc::DriverManager.getConnection(url, user, pass)
