@@ -27,9 +27,11 @@
  ***** END LICENSE BLOCK *****/
 import java.io.IOException;
 
+import java.sql.Connection;
 import java.sql.ResultSetMetaData;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.sql.Types;
 
 import java.util.ArrayList;
@@ -57,12 +59,119 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
 
         CallbackFactory cf = runtime.callbackFactory(JdbcAdapterInternalService.class);
         cJdbcConn.defineMethod("unmarshal_result",cf.getSingletonMethod("unmarshal_result", IRubyObject.class));
-        cJdbcConn.defineFastMethod("unmarshal_id_result",cf.getFastSingletonMethod("unmarshal_id_result", IRubyObject.class));
+        cJdbcConn.defineFastMethod("set_connection",cf.getFastSingletonMethod("set_connection", IRubyObject.class));
+        cJdbcConn.defineFastMethod("execute_update",cf.getFastSingletonMethod("execute_update", IRubyObject.class));
+        cJdbcConn.defineFastMethod("execute_query",cf.getFastSingletonMethod("execute_query", IRubyObject.class)); 
+        cJdbcConn.defineFastMethod("execute_insert",cf.getFastSingletonMethod("execute_insert", IRubyObject.class, IRubyObject.class));
         return true;
     }
 
     private static ResultSet intoResultSet(IRubyObject inp) {
-        return (ResultSet)(((JavaObject)(inp.callMethod(inp.getRuntime().getCurrentContext(),"java_object"))).getValue());
+        return (ResultSet)(((JavaObject)(inp.getInstanceVariable("@java_object"))).getValue());
+    }   
+
+    public static IRubyObject set_connection(IRubyObject recv, IRubyObject conn) {
+        recv.setInstanceVariable("@connection",conn);
+        Connection c = (Connection)(((JavaObject)conn.getInstanceVariable("@java_object")).getValue());
+        recv.dataWrapStruct(c);
+        return recv;
+    }
+
+    public static IRubyObject execute_update(IRubyObject recv, IRubyObject sql) throws SQLException {
+        while(true) {
+            Connection c = (Connection)recv.dataGetStruct();
+            Statement stmt = null;
+            try {
+                stmt = c.createStatement();
+                stmt.executeUpdate(sql.toString());
+                return recv.getRuntime().getNil();
+            } catch(SQLException e) {
+                if(c.isClosed()) {
+                    recv.callMethod(recv.getRuntime().getCurrentContext(),"reconnect!");
+                    continue;
+                }
+                throw e;
+            } finally {
+                if(null != stmt) {
+                    try {
+                        stmt.close();
+                    } catch(Exception e) {}
+                }
+            }
+        }
+    }
+
+    public static IRubyObject execute_query(IRubyObject recv, IRubyObject sql) throws SQLException {
+        while(true) {
+            Connection c = (Connection)recv.dataGetStruct();
+            Statement stmt = null;
+            try {
+                stmt = c.createStatement();
+                return unmarshal_result(recv, stmt.executeQuery(sql.toString()));
+            } catch(SQLException e) {
+                if(c.isClosed()) {
+                    recv.callMethod(recv.getRuntime().getCurrentContext(),"reconnect!");
+                    continue;
+                }
+                throw e;
+            } finally {
+                if(null != stmt) {
+                    try {
+                        stmt.close();
+                    } catch(Exception e) {}
+                }
+            }
+        }
+    }
+
+    public static IRubyObject execute_insert(IRubyObject recv, IRubyObject sql, IRubyObject pk) throws SQLException {
+        while(true) {
+            Connection c = (Connection)recv.dataGetStruct();
+            Statement stmt = null;
+            try {
+                stmt = c.createStatement();
+                stmt.executeUpdate(sql.toString(), Statement.RETURN_GENERATED_KEYS);
+                return unmarshal_id_result(recv.getRuntime(), stmt.getGeneratedKeys());
+            } catch(SQLException e) {
+                if(c.isClosed()) {
+                    recv.callMethod(recv.getRuntime().getCurrentContext(),"reconnect!");
+                    continue;
+                }
+                throw e;
+            } finally {
+                if(null != stmt) {
+                    try {
+                        stmt.close();
+                    } catch(Exception e) {}
+                }
+            }
+        }
+    }
+
+    public static IRubyObject unmarshal_result(IRubyObject recv, ResultSet rs) throws SQLException {
+        Ruby runtime = recv.getRuntime();
+        ResultSetMetaData metadata = rs.getMetaData();
+        int col_count = metadata.getColumnCount();
+        IRubyObject[] col_names = new IRubyObject[col_count];
+        int[] col_types = new int[col_count];
+        int[] col_scale = new int[col_count];
+
+        for(int i=0;i<col_count;i++) {
+            col_names[i] = runtime.newString(metadata.getColumnName(i+1).toLowerCase());
+            col_types[i] = metadata.getColumnType(i+1);
+            col_scale[i] = metadata.getScale(i+1);
+        }
+
+        List results = new ArrayList();
+        while(rs.next()) {
+            RubyHash row = RubyHash.newHash(runtime);
+            for(int i=0;i<col_count;i++) {
+                row.aset(col_names[i], jdbc_to_ruby(runtime, i+1, col_types[i], col_scale[i], rs));
+            }
+            results.add(row);
+        }
+ 
+        return runtime.newArray(results);
     }
 
     public static IRubyObject unmarshal_result(IRubyObject recv, IRubyObject resultset, Block row_filter) throws SQLException {
@@ -70,12 +179,12 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
         ResultSet rs = intoResultSet(resultset);
         ResultSetMetaData metadata = rs.getMetaData();
         int col_count = metadata.getColumnCount();
-        String[] col_names = new String[col_count];
+        IRubyObject[] col_names = new IRubyObject[col_count];
         int[] col_types = new int[col_count];
         int[] col_scale = new int[col_count];
 
         for(int i=0;i<col_count;i++) {
-            col_names[i] = metadata.getColumnName(i+1);
+            col_names[i] = runtime.newString(metadata.getColumnName(i+1).toLowerCase());
             col_types[i] = metadata.getColumnType(i+1);
             col_scale[i] = metadata.getScale(i+1);
         }
@@ -85,18 +194,18 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
         if(row_filter.isGiven()) {
             while(rs.next()) {
                 if(row_filter.yield(runtime.getCurrentContext(),resultset).isTrue()) {
-                    Map row = RubyHash.newHash(runtime);
+                    RubyHash row = RubyHash.newHash(runtime);
                     for(int i=0;i<col_count;i++) {
-                        row.put(runtime.newString(col_names[i].toLowerCase()), jdbc_to_ruby(runtime, i+1, col_types[i], col_scale[i], rs));
+                        row.aset(col_names[i], jdbc_to_ruby(runtime, i+1, col_types[i], col_scale[i], rs));
                     }
                     results.add(row);
                 }
             }
         } else {
             while(rs.next()) {
-                Map row = RubyHash.newHash(runtime);
+                RubyHash row = RubyHash.newHash(runtime);
                 for(int i=0;i<col_count;i++) {
-                    row.put(runtime.newString(col_names[i].toLowerCase()), jdbc_to_ruby(runtime, i+1, col_types[i], col_scale[i], rs));
+                    row.aset(col_names[i], jdbc_to_ruby(runtime, i+1, col_types[i], col_scale[i], rs));
                 }
                 results.add(row);
             }
@@ -137,29 +246,12 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
         return runtime.newString(vs);
     }
 
-    public static IRubyObject unmarshal_id_result(IRubyObject recv, IRubyObject resultset) throws SQLException {
-        Ruby runtime = recv.getRuntime();
-        ResultSet rs = intoResultSet(resultset);
-        ResultSetMetaData metadata = rs.getMetaData();
-        int col_count = metadata.getColumnCount();
-        int[] col_types = new int[col_count];
-        int[] col_scale = new int[col_count];
-
-        for(int i=0;i<col_count;i++) {
-            col_types[i] = metadata.getColumnType(i+1);
-            col_scale[i] = metadata.getScale(i+1);
-        }
-
-        List results = new ArrayList();
-
-        while(rs.next()) {
-            Map row = RubyHash.newHash(runtime);
-            for(int i=0;i<col_count;i++) {
-                row.put(runtime.newString(""+(i+1)), jdbc_to_ruby(runtime, i+1, col_types[i], col_scale[i], rs));
+    public static IRubyObject unmarshal_id_result(Ruby runtime, ResultSet rs) throws SQLException {
+        if(rs.next()) {
+            if(rs.getMetaData().getColumnCount() > 0) {
+                return runtime.newFixnum(rs.getLong(1));
             }
-            results.add(row);
         }
-
-        return runtime.newArray(results);
+        return runtime.getNil();
     }
 }

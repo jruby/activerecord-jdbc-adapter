@@ -334,51 +334,6 @@ module ActiveRecord
         end
       end
 
-
-      def execute_insert(sql, pk)
-        stmt = @connection.createStatement
-        stmt.executeUpdate(sql,Jdbc::Statement::RETURN_GENERATED_KEYS)
-        row = unmarshal_id_result(stmt.getGeneratedKeys)
-        row.first && row.first.values.first && row.first.values.first.to_i
-      rescue
-        if @connection.is_closed
-          reconnect!
-          retry
-        else
-          raise
-        end
-      ensure
-        stmt.close
-      end
-
-      def execute_update(sql)
-        stmt = @connection.createStatement
-        stmt.executeUpdate(sql)
-      rescue
-        if @connection.is_closed
-          reconnect!
-          retry
-        else
-          raise
-        end
-      ensure
-        stmt.close
-      end
-
-      def execute_query(sql)
-        stmt = @connection.createStatement
-        unmarshal_result(stmt.executeQuery(sql))
-      rescue
-        if @connection.is_closed
-          reconnect!
-          retry
-        else
-          raise
-        end
-      ensure
-        stmt.close
-      end
-
       def begin
         @connection.setAutoCommit(false)
       end
@@ -400,7 +355,7 @@ module ActiveRecord
         jndi = @config[:jndi].to_s
         ctx = javax.naming.InitialContext.new
         ds = ctx.lookup(jndi)
-        @connection = ds.connection
+        set_connection ds.connection
         unless @config[:driver]
           @config[:driver] = @connection.meta_data.connection.java_class.name
         end
@@ -417,7 +372,7 @@ module ActiveRecord
         end
 
         JdbcDriver.load(driver)
-        @connection = Jdbc::DriverManager.getConnection(url, user, pass)
+        set_connection Jdbc::DriverManager.getConnection(url, user, pass)
       end
 
     end
