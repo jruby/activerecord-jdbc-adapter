@@ -117,8 +117,7 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
             Statement stmt = null;
             try {
                 stmt = c.createStatement();
-                stmt.executeUpdate(sql.toString());
-                return recv.getRuntime().getNil();
+                return recv.getRuntime().newFixnum(stmt.executeUpdate(sql.toString()));
             } catch(SQLException e) {
                 if(c.isClosed()) {
                     recv.callMethod(recv.getRuntime().getCurrentContext(),"reconnect!");
