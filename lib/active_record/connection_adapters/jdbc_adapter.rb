@@ -117,7 +117,7 @@ module ActiveRecord
         type_map = {}
         AR_TO_JDBC_TYPES.each_key do |k|
           typerow = choose_type(k)
-          type_map[k] = { :name => typerow['type_name'] }
+          type_map[k] = { :name => typerow['type_name'].downcase }
           type_map[k][:limit] = typerow['precision'] && typerow['precision'].to_i if [:integer, :string, :decimal].include?(k)
           type_map[k][:limit] = 1 if k == :boolean
         end
