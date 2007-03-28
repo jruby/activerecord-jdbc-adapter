@@ -41,11 +41,13 @@ import java.util.List;
 import java.util.Map;
 
 import org.jruby.Ruby;
+import org.jruby.RubyArray;
 import org.jruby.RubyBigDecimal;
 import org.jruby.RubyClass;
 import org.jruby.RubyHash;
 import org.jruby.RubyModule;
 import org.jruby.RubyNumeric;
+import org.jruby.RubyString;
 import org.jruby.javasupport.JavaObject;
 import org.jruby.runtime.Block;
 import org.jruby.runtime.CallbackFactory;
@@ -63,6 +65,7 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
         cJdbcConn.defineFastMethod("execute_update",cf.getFastSingletonMethod("execute_update", IRubyObject.class));
         cJdbcConn.defineFastMethod("execute_query",cf.getFastSingletonMethod("execute_query", IRubyObject.class)); 
         cJdbcConn.defineFastMethod("execute_insert",cf.getFastSingletonMethod("execute_insert", IRubyObject.class, IRubyObject.class));
+        cJdbcConn.defineMethod("tables",cf.getSingletonMethod("tables"));
         return true;
     }
 
@@ -75,6 +78,37 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
         Connection c = (Connection)(((JavaObject)conn.getInstanceVariable("@java_object")).getValue());
         recv.dataWrapStruct(c);
         return recv;
+    }
+
+    public static IRubyObject tables(IRubyObject recv, Block table_filter) throws SQLException {
+        Ruby runtime = recv.getRuntime();
+        while(true) {
+            Connection c = (Connection)recv.dataGetStruct();
+            try {
+                ResultSet rs = c.getMetaData().getTables(null,null,null,null);
+                if(table_filter.isGiven()) {
+                    RubyString ss = runtime.newString("table_name");
+                    List arr = new ArrayList();
+                    RubyArray aa = (RubyArray)unmarshal_result(recv, JavaObject.wrap(runtime, rs), table_filter);
+                    for(int i=0,j=aa.size();i<j;i++) {
+                        arr.add(((RubyString)(((RubyHash)aa.eltInternal(i)).aref(ss))).downcase());
+                    }
+                    return runtime.newArray(arr);
+                } else {
+                    List arr = new ArrayList();
+                    while(rs.next()) {
+                        arr.add(runtime.newString(rs.getString(3).toLowerCase()));
+                    }
+                    return runtime.newArray(arr);
+                }
+            } catch(SQLException e) {
+                if(c.isClosed()) {
+                    recv.callMethod(recv.getRuntime().getCurrentContext(),"reconnect!");
+                    continue;
+                }
+                throw e;
+            }
+        }
     }
 
     public static IRubyObject execute_update(IRubyObject recv, IRubyObject sql) throws SQLException {

@@ -258,19 +258,6 @@ module ActiveRecord
         end
       end
 
-      def tables(&table_filter)
-        metadata = @connection.getMetaData
-        results = metadata.getTables(nil, nil, nil, nil)
-        unmarshal_result(results, &table_filter).collect {|t| t['table_name'].downcase }
-      rescue
-        if @connection.is_closed
-          reconnect!
-          retry
-        else
-          raise
-        end
-      end
-
       # Get a list of all primary keys associated with the given table
       def primary_keys(table_name) 
         metadata = @connection.getMetaData
