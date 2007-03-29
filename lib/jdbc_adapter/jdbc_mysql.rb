@@ -115,25 +115,23 @@ module JdbcSpec
     end  
     
     def change_column_default(table_name, column_name, default) #:nodoc:
-      current_type = select_one("SHOW COLUMNS FROM #{table_name} LIKE '#{column_name}'")["type"]
+      current_type = select_one("SHOW COLUMNS FROM #{table_name} LIKE '#{column_name}'")["Type"]
 
-      type, limit = native_sql_to_type(current_type)
-      
-      change_column(table_name, column_name, type, { :default => default, :limit => limit })
+      execute("ALTER TABLE #{table_name} CHANGE #{column_name} #{column_name} #{current_type} DEFAULT #{quote(default)}")
     end
     
     def change_column(table_name, column_name, type, options = {}) #:nodoc:
       unless options.include?(:default) && !(options[:null] == false && options[:default].nil?)
-        options[:default] = select_one("SHOW COLUMNS FROM #{table_name} LIKE '#{column_name}'")["default"]
+        options[:default] = select_one("SHOW COLUMNS FROM #{table_name} LIKE '#{column_name}'")["Default"]
       end
       
-      change_column_sql = "ALTER TABLE #{table_name} CHANGE #{column_name} #{column_name} #{type_to_sql(type, options[:limit])}"
+      change_column_sql = "ALTER TABLE #{table_name} CHANGE #{column_name} #{column_name} #{type_to_sql(type, options[:limit], options[:precision], options[:scale])}"
       add_column_options!(change_column_sql, options)
       execute(change_column_sql)
     end
     
     def rename_column(table_name, column_name, new_column_name) #:nodoc:
-      current_type = select_one("SHOW COLUMNS FROM #{table_name} LIKE '#{column_name}'")["type"]
+      current_type = select_one("SHOW COLUMNS FROM #{table_name} LIKE '#{column_name}'")["Type"]
       execute "ALTER TABLE #{table_name} CHANGE #{column_name} #{new_column_name} #{current_type}"
     end
   end
