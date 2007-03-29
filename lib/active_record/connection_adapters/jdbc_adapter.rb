@@ -466,10 +466,6 @@ module ActiveRecord
         return nil,nil
       end
 
-      def active?
-        true
-      end
-
       def reconnect!
         @connection.close rescue nil
         @connection = JdbcConnection.new(@config,self)
@@ -493,8 +489,9 @@ module ActiveRecord
         end
       end
 
-      alias :update :execute
-      alias :delete :execute
+      def update(sql, name = nil) #:nodoc:
+        execute(sql, name)
+      end
 
       def insert(sql, name = nil, pk = nil, id_value = nil, sequence_name = nil)
         log_no_bench(sql, name=nil) do
@@ -525,7 +522,7 @@ module ActiveRecord
 
       private
       def select(sql, name=nil)
-        log_no_bench(sql, name) { @connection.execute_query(sql) }
+        execute(sql,name)
       end
 
       def log_no_bench(sql, name)
