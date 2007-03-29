@@ -184,13 +184,19 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
     public static IRubyObject unmarshal_result(IRubyObject recv, ResultSet rs) throws SQLException {
         Ruby runtime = recv.getRuntime();
         ResultSetMetaData metadata = rs.getMetaData();
+        boolean storesUpper = rs.getStatement().getConnection().getMetaData().storesUpperCaseIdentifiers();
         int col_count = metadata.getColumnCount();
         IRubyObject[] col_names = new IRubyObject[col_count];
         int[] col_types = new int[col_count];
         int[] col_scale = new int[col_count];
 
         for(int i=0;i<col_count;i++) {
-            col_names[i] = runtime.newString(metadata.getColumnName(i+1));
+            if(storesUpper) {
+                col_names[i] = runtime.newString(metadata.getColumnName(i+1).toLowerCase());
+            } else {
+                col_names[i] = runtime.newString(metadata.getColumnName(i+1));
+            }
+
             col_types[i] = metadata.getColumnType(i+1);
             col_scale[i] = metadata.getScale(i+1);
         }
