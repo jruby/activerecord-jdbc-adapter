@@ -2,6 +2,10 @@ require 'active_record/connection_adapters/abstract/schema_definitions'
 
 module JdbcSpec
   module MySQL
+    def self.extended(adapter)
+      adapter.execute("SET SQL_AUTO_IS_NULL=0")
+    end
+    
     module Column
       TYPES_ALLOWING_EMPTY_STRING_DEFAULT = Set.new([:binary, :string, :text])
 
