@@ -70,7 +70,7 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
     }
 
     private static ResultSet intoResultSet(IRubyObject inp) {
-        return (ResultSet)(((JavaObject)(inp.getInstanceVariable("@java_object"))).getValue());
+        return (ResultSet)((inp instanceof JavaObject ? ((JavaObject)inp) : (((JavaObject)(inp.getInstanceVariable("@java_object"))))).getValue());
     }   
 
     public static IRubyObject set_connection(IRubyObject recv, IRubyObject conn) {
