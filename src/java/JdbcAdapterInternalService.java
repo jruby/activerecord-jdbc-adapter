@@ -67,7 +67,7 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
         cJdbcConn.defineFastMethod("set_connection",cf.getFastSingletonMethod("set_connection", IRubyObject.class));
         cJdbcConn.defineFastMethod("execute_update",cf.getFastSingletonMethod("execute_update", IRubyObject.class));
         cJdbcConn.defineFastMethod("execute_query",cf.getFastSingletonMethod("execute_query", IRubyObject.class)); 
-        cJdbcConn.defineFastMethod("execute_insert",cf.getFastSingletonMethod("execute_insert", IRubyObject.class, IRubyObject.class));
+        cJdbcConn.defineFastMethod("execute_insert",cf.getFastSingletonMethod("execute_insert", IRubyObject.class));
         cJdbcConn.defineMethod("tables",cf.getSingletonMethod("tables"));
         return true;
     }
@@ -160,7 +160,7 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
         }
     }
 
-    public static IRubyObject execute_insert(IRubyObject recv, IRubyObject sql, IRubyObject pk) throws SQLException {
+    public static IRubyObject execute_insert(IRubyObject recv, IRubyObject sql) throws SQLException {
         while(true) {
             Connection c = (Connection)recv.dataGetStruct();
             Statement stmt = null;

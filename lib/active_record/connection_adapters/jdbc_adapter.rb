@@ -481,8 +481,11 @@ module ActiveRecord
 
       def execute(sql, name = nil)
         log_no_bench(sql, name) do
-          if sql.strip =~ /^(select|show)/i
-            @connection.execute_query(sql)
+          case sql.strip
+          when /^(select|show)/i:
+              @connection.execute_query(sql)
+          when /^insert/i:
+              @connection.execute_insert(sql)
           else
             @connection.execute_update(sql)
           end
@@ -494,10 +497,8 @@ module ActiveRecord
       end
 
       def insert(sql, name = nil, pk = nil, id_value = nil, sequence_name = nil)
-        log_no_bench(sql, name=nil) do
-          id = @connection.execute_insert(sql, pk)
-          id_value || id
-        end
+        id = execute(sql, name = nil)
+        id_value || id
       end
 
       def columns(table_name, name = nil)
