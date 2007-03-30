@@ -5,7 +5,6 @@ Rakefile
 LICENSE
 lib/active_record/connection_adapters/jdbc_adapter.rb
 lib/active_record/connection_adapters/jdbc_adapter_spec.rb
-lib/jdbc_adapter.rb
 lib/jdbc_adapter/jdbc_db2.rb
 lib/jdbc_adapter/jdbc_derby.rb
 lib/jdbc_adapter/jdbc_firebird.rb
@@ -15,6 +14,7 @@ lib/jdbc_adapter/jdbc_mssql.rb
 lib/jdbc_adapter/jdbc_mysql.rb
 lib/jdbc_adapter/jdbc_oracle.rb
 lib/jdbc_adapter/jdbc_postgre.rb
+lib/jdbc_adapter.rb
 lib/jdbc_adapter_internal.jar
 test/activerecord/connection_adapters/type_conversion_test.rb
 test/activerecord/connections/native_jdbc_mysql/connection.rb
@@ -31,17 +31,16 @@ test/hsqldb_simple_test.rb
 test/jdbc_common.rb
 test/jndi_test.rb
 test/manualTestDatabase.rb
-test/minirunit.rb
 test/minirunit/testConnect.rb
 test/minirunit/testH2.rb
 test/minirunit/testHsqldb.rb
 test/minirunit/testLoadActiveRecord.rb
 test/minirunit/testMysql.rb
 test/minirunit/testRawSelect.rb
+test/minirunit.rb
 test/models/auto_id.rb
 test/models/data_types.rb
 test/models/entry.rb
-test/mysql_profile.rb
 test/mysql_simple_test.rb
 test/postgres_simple_test.rb
 test/simple.rb

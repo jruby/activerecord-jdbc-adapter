@@ -16,11 +16,13 @@ def java_classpath_arg # myriad of ways to discover JRuby classpath
   cpath_arg = jruby_cpath ? "-cp #{jruby_cpath}" : ""
 end
 
+desc "Compile the native Java code."
 task :java_compile do
   mkdir_p "pkg/classes"
   sh "javac -d pkg/classes #{java_classpath_arg} #{FileList['src/java/**/*.java'].join(' ')}"
   sh "jar cf lib/jdbc_adapter_internal.jar -C pkg/classes/ ."
 end
+file 'lib/jdbc_adapter_internal.jar' => :java_compile
 
 task :more_clean do
   rm_rf FileList['derby*']
@@ -74,9 +76,9 @@ begin
   require 'hoe'
 
   MANIFEST = FileList["History.txt", "Manifest.txt", "README.txt", 
-    "Rakefile", "LICENSE", "lib/**/*.rb", "lib/**/*.jar", "test/**/*.rb"]
+    "Rakefile", "LICENSE", "lib/**/*.rb", "lib/jdbc_adapter_internal.jar", "test/**/*.rb"]
 
-  Hoe.new("ActiveRecord-JDBC", "0.2.3") do |p|
+  Hoe.new("ActiveRecord-JDBC", "0.2.4") do |p|
     p.rubyforge_name = "jruby-extras"
     p.url = "http://jruby-extras.rubyforge.org/ActiveRecord-JDBC"
     p.author = "Nick Sieger, Ola Bini and JRuby contributors"
@@ -92,7 +94,7 @@ begin
     File.open("Manifest.txt", "w") {|f| MANIFEST.each {|n| f << "#{n}\n"} }
   end
 
-  task :package => [:manifest, :java_compile]
+  task :package => [:manifest]
 rescue LoadError
   # Install hoe in order to make a release
   # puts e.inspect
