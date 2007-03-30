@@ -26,6 +26,8 @@
  * the terms of any one of the CPL, the GPL or the LGPL.
  ***** END LICENSE BLOCK *****/
 import java.io.IOException;
+import java.io.Reader;
+import java.io.InputStream;
 
 import java.sql.Connection;
 import java.sql.ResultSetMetaData;
@@ -53,6 +55,7 @@ import org.jruby.runtime.Block;
 import org.jruby.runtime.CallbackFactory;
 import org.jruby.runtime.builtin.IRubyObject;
 import org.jruby.runtime.load.BasicLibraryService;
+import org.jruby.util.ByteList;
 
 public class JdbcAdapterInternalService implements BasicLibraryService {
     public boolean basicLoad(final Ruby runtime) throws IOException {
@@ -80,7 +83,7 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
         return recv;
     }
 
-    public static IRubyObject tables(IRubyObject recv, Block table_filter) throws SQLException {
+    public static IRubyObject tables(IRubyObject recv, Block table_filter) throws SQLException, IOException {
         Ruby runtime = recv.getRuntime();
         while(true) {
             Connection c = (Connection)recv.dataGetStruct();
@@ -134,7 +137,7 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
         }
     }
 
-    public static IRubyObject execute_query(IRubyObject recv, IRubyObject sql) throws SQLException {
+    public static IRubyObject execute_query(IRubyObject recv, IRubyObject sql) throws SQLException, IOException {
         while(true) {
             Connection c = (Connection)recv.dataGetStruct();
             Statement stmt = null;
@@ -181,7 +184,7 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
         }
     }
 
-    public static IRubyObject unmarshal_result(IRubyObject recv, ResultSet rs) throws SQLException {
+    public static IRubyObject unmarshal_result(IRubyObject recv, ResultSet rs) throws SQLException, IOException {
         Ruby runtime = recv.getRuntime();
         ResultSetMetaData metadata = rs.getMetaData();
         boolean storesUpper = rs.getStatement().getConnection().getMetaData().storesUpperCaseIdentifiers();
@@ -213,7 +216,7 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
         return runtime.newArray(results);
     }
 
-    public static IRubyObject unmarshal_result(IRubyObject recv, IRubyObject resultset, Block row_filter) throws SQLException {
+    public static IRubyObject unmarshal_result(IRubyObject recv, IRubyObject resultset, Block row_filter) throws SQLException, IOException {
         Ruby runtime = recv.getRuntime();
         ResultSet rs = intoResultSet(resultset);
         ResultSetMetaData metadata = rs.getMetaData();
@@ -253,36 +256,44 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
         return runtime.newArray(results);
     }
 
-    private static IRubyObject to_ruby_time(Ruby runtime, Date t) {
-        if(t != null) {
-            long ti = t.getTime();
-            return runtime.getClass("Time").callMethod(runtime.getCurrentContext(),"at",new IRubyObject[]{
-                    runtime.newFixnum(ti/1000), runtime.newFixnum((ti%1000)*1000)});
-        } else {
-            return runtime.getNil();
+    private static IRubyObject jdbc_to_ruby(Ruby runtime, int row, int type, int scale, ResultSet rs) throws SQLException, IOException {
+        int n;
+        switch(type) {
+        case Types.BINARY:
+        case Types.BLOB:
+        case Types.LONGVARBINARY:
+        case Types.VARBINARY:
+            InputStream is = rs.getBinaryStream(row);
+            if(is == null || rs.wasNull()) {
+                return runtime.getNil();
+            }
+            ByteList str = new ByteList(2048);
+            byte[] buf = new byte[2048];
+            while((n = is.read(buf)) != -1) {
+                str.append(buf, 0, n);
+            }
+            is.close();
+            return runtime.newString(str);
+        case Types.LONGVARCHAR:
+        case Types.CLOB:
+            Reader rss = rs.getCharacterStream(row);
+            if(rss == null || rs.wasNull()) {
+                return runtime.getNil();
+            }
+            ByteList str2 = new ByteList(2048);
+            char[] cuf = new char[2048];
+            while((n = rss.read(cuf)) != -1) {
+                str2.append(ByteList.plain(cuf), 0, n);
+            }
+            rss.close();
+            return runtime.newString(str2);
+        default:
+            String vs = rs.getString(row);
+            if(vs == null || rs.wasNull()) {
+                return runtime.getNil();
+            }
+            return runtime.newString(vs);
         }
-    }
-
-    private static IRubyObject to_ruby_date(Ruby runtime, Date d) {
-        if(d != null) {
-            Calendar cal = Calendar.getInstance();
-            cal.setTime(d);
-            return runtime.getClass("Date").callMethod(runtime.getCurrentContext(),"new",new IRubyObject[]{
-                    runtime.newFixnum(cal.get(Calendar.YEAR)),
-                    runtime.newFixnum(cal.get(Calendar.MONTH)+1),
-                    runtime.newFixnum(cal.get(Calendar.DATE))
-                });
-        } else {
-            return runtime.getNil();
-        }
-    }
-
-    private static IRubyObject jdbc_to_ruby(Ruby runtime, int row, int type, int scale, ResultSet rs) throws SQLException {
-        String vs = rs.getString(row);
-        if(vs == null) {
-            return runtime.getNil();
-        }
-        return runtime.newString(vs);
     }
 
     public static IRubyObject unmarshal_id_result(Ruby runtime, ResultSet rs) throws SQLException {

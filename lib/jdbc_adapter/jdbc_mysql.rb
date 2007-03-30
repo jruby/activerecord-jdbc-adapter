@@ -40,9 +40,15 @@ module JdbcSpec
     
     def quote(value, column = nil)
       if column && column.type == :primary_key
-        return value.to_s
+        value.to_s
+      elsif value.kind_of?(String) && column && column.type == :binary && column.class.respond_to?(:string_to_binary)
+        s = column.class.string_to_binary(value).unpack("H*")[0]
+        "x'#{s}'"
+      elsif value.kind_of?(BigDecimal)
+        "'#{value.to_s("F")}'"
+      else
+        super
       end
-      super
     end
     
     def quote_column_name(name) #:nodoc:
