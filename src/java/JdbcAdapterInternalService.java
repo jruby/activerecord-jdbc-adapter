@@ -30,6 +30,7 @@ import java.io.Reader;
 import java.io.InputStream;
 
 import java.sql.Connection;
+import java.sql.DatabaseMetaData;
 import java.sql.ResultSetMetaData;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -41,6 +42,8 @@ import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
+import java.util.Iterator;
+import java.util.HashMap;
 
 import org.jruby.Ruby;
 import org.jruby.RubyArray;
@@ -53,6 +56,7 @@ import org.jruby.RubyString;
 import org.jruby.javasupport.JavaObject;
 import org.jruby.runtime.Block;
 import org.jruby.runtime.CallbackFactory;
+import org.jruby.runtime.ThreadContext;
 import org.jruby.runtime.builtin.IRubyObject;
 import org.jruby.runtime.load.BasicLibraryService;
 import org.jruby.util.ByteList;
@@ -68,6 +72,15 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
         cJdbcConn.defineFastMethod("execute_update",cf.getFastSingletonMethod("execute_update", IRubyObject.class));
         cJdbcConn.defineFastMethod("execute_query",cf.getFastSingletonMethod("execute_query", IRubyObject.class)); 
         cJdbcConn.defineFastMethod("execute_insert",cf.getFastSingletonMethod("execute_insert", IRubyObject.class));
+        cJdbcConn.defineFastMethod("ps",cf.getFastSingletonMethod("prepareStatement", IRubyObject.class));
+        cJdbcConn.defineFastMethod("primary_keys",cf.getFastSingletonMethod("primary_keys", IRubyObject.class));
+        cJdbcConn.defineFastMethod("set_native_database_types",cf.getFastSingletonMethod("set_native_database_types"));
+        cJdbcConn.defineFastMethod("native_database_types",cf.getFastSingletonMethod("native_database_types"));
+        cJdbcConn.defineFastMethod("begin",cf.getFastSingletonMethod("begin"));
+        cJdbcConn.defineFastMethod("commit",cf.getFastSingletonMethod("commit"));
+        cJdbcConn.defineFastMethod("rollback",cf.getFastSingletonMethod("rollback"));
+        cJdbcConn.defineFastMethod("database_name",cf.getFastSingletonMethod("database_name"));
+        cJdbcConn.defineFastMethod("columns",cf.getFastOptSingletonMethod("columns"));
         cJdbcConn.defineMethod("tables",cf.getSingletonMethod("tables"));
         return true;
     }
@@ -112,6 +125,191 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
                 throw e;
             }
         }
+    }
+
+    /*
+      # The hacks in this method is needed because of a bug in Rails. Check
+      # out type_to_sql in schema_definitions.rb and see if you can see it... =)
+    */
+    public static IRubyObject native_database_types(IRubyObject recv) {
+        RubyHash tps = (RubyHash)recv.getInstanceVariable("@tps");
+        Map val = new HashMap();
+        Map tpsmap = tps.getValueMap();
+        Ruby runtime = recv.getRuntime();
+        IRubyObject nameSym = runtime.newSymbol("name");
+        for(Iterator iter = tpsmap.entrySet().iterator();iter.hasNext();) {
+            Map.Entry me = (Map.Entry)iter.next();
+            IRubyObject v = (IRubyObject)me.getValue();
+            if(v instanceof RubyHash) {
+                RubyHash v2 = (RubyHash)(v.dup());
+                v2.put(nameSym, ((IRubyObject)(v2.getValueMap().get(nameSym))).dup());
+                val.put(me.getKey(), v2);
+            } else {
+                val.put(me.getKey(), ((IRubyObject)v).dup());
+            }
+        }
+        return RubyHash.newHash(runtime, val, runtime.getNil());
+    }    
+
+    public static IRubyObject set_native_database_types(IRubyObject recv) throws SQLException, IOException {
+        Ruby runtime = recv.getRuntime();
+        ThreadContext ctx = runtime.getCurrentContext();
+        IRubyObject types = unmarshal_result_downcase(recv, ((Connection)recv.dataGetStruct()).getMetaData().getTypeInfo());
+        recv.setInstanceVariable("@native_types", 
+                                 ((RubyModule)(runtime.getModule("ActiveRecord").getConstant("ConnectionAdapters"))).
+                                 getConstant("JdbcTypeConverter").callMethod(ctx,"new", types).
+                                 callMethod(ctx, "choose_best_types"));
+        return runtime.getNil();
+    }
+
+    public static IRubyObject database_name(IRubyObject recv) throws SQLException {
+        return recv.getRuntime().newString(((Connection)recv.dataGetStruct()).getCatalog());
+    }
+
+    public static IRubyObject begin(IRubyObject recv) throws SQLException {
+        ((Connection)recv.dataGetStruct()).setAutoCommit(false);
+        return recv.getRuntime().getNil();
+    }
+
+    public static IRubyObject commit(IRubyObject recv) throws SQLException {
+        try {
+            ((Connection)recv.dataGetStruct()).commit();
+            return recv.getRuntime().getNil();
+        } finally {
+            ((Connection)recv.dataGetStruct()).setAutoCommit(true);
+        }
+    }
+
+    public static IRubyObject rollback(IRubyObject recv) throws SQLException {
+        try {
+            ((Connection)recv.dataGetStruct()).rollback();
+            return recv.getRuntime().getNil();
+        } finally {
+            ((Connection)recv.dataGetStruct()).setAutoCommit(true);
+        }
+    }
+
+    /*
+          column_name = col['column_name']
+          column_name = column_name.downcase if metadata.storesUpperCaseIdentifiers
+          precision = col["column_size"]
+          scale = col["decimal_digits"]
+          precision = precision.to_i if precision
+          scale = scale.to_i if precision
+          coltype = col["type_name"]
+          if precision && precision > 0
+            coltype << "(#{precision}"
+            coltype << ",#{scale}" if scale && scale > 0
+            coltype << ")"
+          end
+          c = ActiveRecord::ConnectionAdapters::JdbcColumn.new(@config, column_name, col['column_def'],
+              coltype, col['is_nullable'] != 'NO')
+          columns << c
+          if tps[c.type] && tps[c.type][:limit].nil?
+            c.limit = nil
+            c.precision = nil unless c.type == :decimal
+          end
+*/
+    public static IRubyObject columns(IRubyObject recv, IRubyObject[] args) throws SQLException, IOException {
+        String table_name = args[0].toString();
+        while(true) {
+            Connection c = (Connection)recv.dataGetStruct();
+            try {
+                DatabaseMetaData metadata = c.getMetaData();
+                if(metadata.storesUpperCaseIdentifiers()) {
+                    table_name = table_name.toUpperCase();
+                } else if(metadata.storesLowerCaseIdentifiers()) {
+                    table_name = table_name.toLowerCase();
+                }
+                ResultSet results = metadata.getColumns(null,null,table_name,null);
+                return unmarshal_columns(recv, metadata, results);
+            } catch(SQLException e) {
+                if(c.isClosed()) {
+                    recv.callMethod(recv.getRuntime().getCurrentContext(),"reconnect!");
+                    continue;
+                }
+                throw e;
+            }
+        }    
+    }
+
+    private static IRubyObject unmarshal_columns(IRubyObject recv, DatabaseMetaData metadata, ResultSet rs) throws SQLException, IOException {
+        List columns = new ArrayList();
+        Ruby runtime = recv.getRuntime();
+        ThreadContext ctx = runtime.getCurrentContext();
+
+        Map tps = ((RubyHash)(recv.callMethod(ctx, "adapter").callMethod(ctx,"native_database_types"))).getValueMap();
+
+        IRubyObject jdbcCol = ((RubyModule)(runtime.getModule("ActiveRecord").getConstant("ConnectionAdapters"))).getConstant("JdbcColumn");
+
+        while(rs.next()) {
+            String column_name = rs.getString(4);
+            if(metadata.storesUpperCaseIdentifiers()) {
+                column_name = column_name.toLowerCase();
+            }
+
+            String prec = rs.getString(7);
+            String scal = rs.getString(9);
+            int precision = -1;
+            int scale = -1;
+            if(prec != null) {
+                precision = Integer.parseInt(prec);
+                scale = Integer.parseInt(scal);
+            }
+            String type = rs.getString(6);
+            if(prec != null && precision > 0) {
+                type += "(" + precision;
+                if(scal != null && scale > 0) {
+                    type += "," + scale;
+                }
+                type += ")";
+            }
+            String def = rs.getString(13);
+            IRubyObject _def;
+            if(def == null) {
+                _def = runtime.getNil();
+            } else {
+                _def = runtime.newString(def);
+            }
+
+            IRubyObject c = jdbcCol.callMethod(ctx,"new", new IRubyObject[]{recv.getInstanceVariable("@config"), runtime.newString(column_name),
+                                                                            _def, runtime.newString(type), 
+                                                                            runtime.newBoolean(!rs.getString(18).equals("NO"))});
+            columns.add(c);
+
+            IRubyObject tp = (IRubyObject)tps.get(c.callMethod(ctx,"type"));
+            if(!tp.isNil() && tp.callMethod(ctx,"[]",runtime.newSymbol("limit")).isNil()) {
+                c.callMethod(ctx,"limit=", runtime.getNil());
+                if(!c.callMethod(ctx,"type").equals(runtime.newSymbol("decimal"))) {
+                    c.callMethod(ctx,"precision=", runtime.getNil());
+                }
+            }
+        }
+
+        return runtime.newArray(columns);
+    }
+
+    public static IRubyObject primary_keys(IRubyObject recv, IRubyObject _table_name) throws SQLException {
+        Connection c = (Connection)recv.dataGetStruct();
+        DatabaseMetaData metadata = c.getMetaData();
+        String table_name = _table_name.toString();
+        if(metadata.storesUpperCaseIdentifiers()) {
+            table_name = table_name.toUpperCase();
+        } else if(metadata.storesLowerCaseIdentifiers()) {
+            table_name = table_name.toLowerCase();
+        }
+        ResultSet result_set = metadata.getPrimaryKeys(null,null,table_name);
+        List keyNames = new ArrayList();
+        Ruby runtime = recv.getRuntime();
+        while(result_set.next()) {
+            keyNames.add(runtime.newString(result_set.getString(4).toLowerCase()));
+        }
+        return runtime.newArray(keyNames);
+    }
+
+    public static IRubyObject prepareStatement(IRubyObject recv, IRubyObject sql) throws SQLException {
+        Connection c = (Connection)recv.dataGetStruct();
+        return JavaObject.wrap(recv.getRuntime(), c.prepareStatement(sql.toString()));
     }
 
     public static IRubyObject execute_update(IRubyObject recv, IRubyObject sql) throws SQLException {
@@ -182,6 +380,32 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
                 }
             }
         }
+    }
+
+    public static IRubyObject unmarshal_result_downcase(IRubyObject recv, ResultSet rs) throws SQLException, IOException {
+        Ruby runtime = recv.getRuntime();
+        ResultSetMetaData metadata = rs.getMetaData();
+        int col_count = metadata.getColumnCount();
+        IRubyObject[] col_names = new IRubyObject[col_count];
+        int[] col_types = new int[col_count];
+        int[] col_scale = new int[col_count];
+
+        for(int i=0;i<col_count;i++) {
+            col_names[i] = runtime.newString(metadata.getColumnName(i+1).toLowerCase());
+            col_types[i] = metadata.getColumnType(i+1);
+            col_scale[i] = metadata.getScale(i+1);
+        }
+
+        List results = new ArrayList();
+        while(rs.next()) {
+            RubyHash row = RubyHash.newHash(runtime);
+            for(int i=0;i<col_count;i++) {
+                row.aset(col_names[i], jdbc_to_ruby(runtime, i+1, col_types[i], col_scale[i], rs));
+            }
+            results.add(row);
+        }
+ 
+        return runtime.newArray(results);
     }
 
     public static IRubyObject unmarshal_result(IRubyObject recv, ResultSet rs) throws SQLException, IOException {
