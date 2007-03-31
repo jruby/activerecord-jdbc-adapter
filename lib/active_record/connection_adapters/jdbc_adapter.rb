@@ -255,7 +255,7 @@ module ActiveRecord
           columns << c
           if tps[c.type] && tps[c.type][:limit].nil?
             c.limit = nil
-            c.precision = nil
+            c.precision = nil unless c.type == :decimal
           end
         end
         columns
