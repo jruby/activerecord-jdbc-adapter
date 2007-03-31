@@ -186,7 +186,7 @@ module ActiveRecord
     end
 
     class JdbcConnection
-      attr_accessor :adapter
+      attr_reader :adapter
       
       def initialize(config)
         @config = config.symbolize_keys!
@@ -199,6 +199,13 @@ module ActiveRecord
         @stmts = {}
       rescue Exception => e
         raise "The driver encountered an error: #{e}"
+      end
+      
+      def adapter=(adapt)
+        @adapter = adapt
+        @tps = {}
+        @native_types.each_pair {|k,v| @tps[k] = v.inject({}) {|memo,kv| memo.merge({kv.first => (kv.last.dup rescue kv.last)})}}
+        adapt.modify_types(@tps)
       end
 
       def ps(sql)
@@ -220,10 +227,19 @@ module ActiveRecord
         @native_types = JdbcTypeConverter.new(types).choose_best_types
       end
 
+      # The hacks in this method is needed because of a bug in Rails. Check
+      # out type_to_sql in schema_definitions.rb and see if you can see it... =)
       def native_database_types(adapt)
-        types = {}
-        @native_types.each_pair {|k,v| types[k] = v.inject({}) {|memo,kv| memo.merge({kv.first => (kv.last.dup rescue kv.last)})}}
-        adapt.modify_types(types)
+        val = {}
+        @tps.each do |k,v|
+          if Hash === v
+            val[k] = v.dup
+            v[:name] = v[:name].dup
+          else
+            val[k] = v.dup
+          end
+        end
+        val
       end
 
       def database_name
@@ -401,7 +417,6 @@ module ActiveRecord
 
       def initialize(connection, logger, config)
         super(connection, logger)
-        connection.adapter = self
         @config = config
         ds = config[:driver].to_s
         for reg, func in ADAPTER_TYPES
@@ -409,6 +424,7 @@ module ActiveRecord
             func.call(@config,self)
           end
         end
+        connection.adapter = self
       end
 
       def modify_types(tp)
@@ -468,7 +484,7 @@ module ActiveRecord
 
       def reconnect!
         @connection.close rescue nil
-        @connection = JdbcConnection.new(@config,self)
+        @connection = JdbcConnection.new(@config)
       end
 
       def select_all(sql, name = nil)
