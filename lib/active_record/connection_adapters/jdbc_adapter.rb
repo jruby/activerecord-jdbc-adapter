@@ -207,6 +207,98 @@ module ActiveRecord
         @native_types.each_pair {|k,v| @tps[k] = v.inject({}) {|memo,kv| memo.merge({kv.first => (kv.last.dup rescue kv.last)})}}
         adapt.modify_types(@tps)
       end
+
+      def ps(sql)
+        @connection.prepareStatement(sql)
+      end
+
+      def downcase_each_key(val)
+        val.map{|ev| 
+          out = {}
+          ev.each do |k,v|
+            out[k.downcase] = v
+          end
+          out
+        }
+      end
+      
+      def set_native_database_types
+        types = downcase_each_key(unmarshal_result(@connection.getMetaData.getTypeInfo))
+        @native_types = JdbcTypeConverter.new(types).choose_best_types
+      end
+
+      # The hacks in this method is needed because of a bug in Rails. Check
+      # out type_to_sql in schema_definitions.rb and see if you can see it... =)
+      def native_database_types(adapt)
+        val = {}
+        @tps.each do |k,v|
+          if Hash === v
+            val[k] = v.dup
+            v[:name] = v[:name].dup
+          else
+            val[k] = v.dup
+          end
+        end
+        val
+      end
+
+      def database_name
+        @connection.get_catalog
+      end
+      
+      def columns(table_name, name = nil)
+        metadata = @connection.getMetaData
+        table_name.upcase! if metadata.storesUpperCaseIdentifiers
+        table_name.downcase! if metadata.storesLowerCaseIdentifiers
+        results = metadata.getColumns(nil, nil, table_name, nil)
+        columns = []
+        tps = self.adapter.native_database_types
+        downcase_each_key(unmarshal_result(results)).each do |col|
+          column_name = col['column_name']
+          column_name = column_name.downcase if metadata.storesUpperCaseIdentifiers
+          precision = col["column_size"]
+          scale = col["decimal_digits"]
+          precision = precision.to_i if precision
+          scale = scale.to_i if precision
+          coltype = col["type_name"]
+          if precision && precision > 0
+            coltype << "(#{precision}"
+            coltype << ",#{scale}" if scale && scale > 0
+            coltype << ")"
+          end
+          c = ActiveRecord::ConnectionAdapters::JdbcColumn.new(@config, column_name, col['column_def'],
+              coltype, col['is_nullable'] != 'NO')
+          columns << c
+          if tps[c.type] && tps[c.type][:limit].nil?
+            c.limit = nil
+            c.precision = nil unless c.type == :decimal
+          end
+        end
+        columns
+      rescue
+        if @connection.is_closed
+          reconnect!
+          retry
+        else
+          raise
+        end
+      end
+
+      # Get a list of all primary keys associated with the given table
+      def primary_keys(table_name) 
+        metadata = @connection.getMetaData
+        table_name = table_name.to_s unless String === table_name
+        table_name.upcase! if metadata.storesUpperCaseIdentifiers
+        table_name.downcase! if metadata.storesLowerCaseIdentifiers
+        result_set = metadata.get_primary_keys(nil, nil, table_name)
+        key_names = []
+
+        while result_set.next
+          key_names << result_set.get_string(Jdbc::PrimaryKeyMetaData::COLUMN_NAME).downcase
+        end
+
+        key_names
+      end
       
       # Default JDBC introspection for index metadata on the JdbcConnection.
       # This is currently used for migrations by JdbcSpec::HSQDLB and JdbcSpec::Derby
@@ -253,6 +345,22 @@ module ActiveRecord
         else
           raise
         end
+      end
+
+      def begin
+        @connection.setAutoCommit(false)
+      end
+
+      def commit
+        @connection.commit
+      ensure
+        @connection.setAutoCommit(true)
+      end
+
+      def rollback
+        @connection.rollback
+      ensure
+        @connection.setAutoCommit(true)
       end
 
       private
@@ -332,7 +440,7 @@ module ActiveRecord
       end
 
       def native_database_types #:nodoc:
-        @connection.native_database_types
+        @connection.native_database_types(self)
       end
 
       def database_name #:nodoc:
