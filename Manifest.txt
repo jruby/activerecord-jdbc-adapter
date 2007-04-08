@@ -26,7 +26,6 @@ test/jndi_test.rb
 test/h2_simple_test.rb
 test/derby_simple_test.rb
 test/postgres_simple_test.rb
-test/mysql_profile.rb
 test/activerecord/connections/native_jdbc_mysql/connection.rb
 test/activerecord/connection_adapters/type_conversion_test.rb
 test/minirunit/testHsqldb.rb

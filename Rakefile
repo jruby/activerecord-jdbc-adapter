@@ -19,7 +19,7 @@ end
 desc "Compile the native Java code."
 task :java_compile do
   mkdir_p "pkg/classes"
-  sh "javac -d pkg/classes #{java_classpath_arg} #{FileList['src/java/**/*.java'].join(' ')}"
+  sh "javac -target 1.4 -source 1.4 -d pkg/classes #{java_classpath_arg} #{FileList['src/java/**/*.java'].join(' ')}"
   sh "jar cf lib/jdbc_adapter_internal.jar -C pkg/classes/ ."
 end
 file 'lib/jdbc_adapter_internal.jar' => :java_compile
