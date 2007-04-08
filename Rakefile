@@ -96,6 +96,5 @@ begin
 
   task :package => [:manifest]
 rescue LoadError
-  # Install hoe in order to make a release
-  # puts e.inspect
+  puts "You really need Hoe installed to be able to package this gem"
 end

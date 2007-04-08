@@ -144,5 +144,10 @@ module JdbcSpec
       current_type = select_one("SHOW COLUMNS FROM #{table_name} LIKE '#{column_name}'")["Type"]
       execute "ALTER TABLE #{table_name} CHANGE #{column_name} #{new_column_name} #{current_type}"
     end
+    
+    private
+    def supports_views?
+      false
+    end
   end
 end
