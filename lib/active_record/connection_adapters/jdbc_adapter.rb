@@ -282,7 +282,7 @@ module ActiveRecord
         
         if driver =~ /mysql/i
           div = url =~ /\?/ ? '&' : '?'
-          url = "#{url}#{div}zeroDateTimeBehavior=convertToNull"
+          url = "#{url}#{div}zeroDateTimeBehavior=convertToNull&jdbcCompliantTruncation=false"
           @config[:url] = url
         end
 
