@@ -22,7 +22,7 @@ task :java_compile do
   sh "javac -target 1.4 -source 1.4 -d pkg/classes #{java_classpath_arg} #{FileList['src/java/**/*.java'].join(' ')}"
   sh "jar cf lib/jdbc_adapter_internal.jar -C pkg/classes/ ."
 end
-file 'lib/jdbc_adapter_internal.jar' => :java_compile
+file "lib/jdbc_adapter_internal.jar" => :java_compile
 
 task :more_clean do
   rm_rf FileList['derby*']
@@ -73,11 +73,16 @@ Rake::TestTask.new(:test_jndi) do |t|
 end
 
 begin
-  require 'hoe'
-
   MANIFEST = FileList["History.txt", "Manifest.txt", "README.txt", 
     "Rakefile", "LICENSE", "lib/**/*.rb", "lib/jdbc_adapter_internal.jar", "test/**/*.rb"]
 
+  file "Manifest.txt" => :manifest
+  task :manifest do
+    File.open("Manifest.txt", "w") {|f| MANIFEST.each {|n| f << "#{n}\n"} }
+  end
+  Rake::Task['manifest'].invoke # Always regen manifest, so Hoe has up-to-date list of files
+
+  require 'hoe'
   Hoe.new("ActiveRecord-JDBC", "0.2.4") do |p|
     p.rubyforge_name = "jruby-extras"
     p.url = "http://jruby-extras.rubyforge.org/ActiveRecord-JDBC"
@@ -87,14 +92,7 @@ begin
     p.changes = p.paragraphs_of('History.txt', 0..1).join("\n\n")
     p.description = p.paragraphs_of('README.txt', 0...1).join("\n\n")
     p.extra_deps.reject!{|d| d.first == "hoe"}
-  end.spec.files = MANIFEST
-
-  # Automated manifest
-  task :manifest do
-    File.open("Manifest.txt", "w") {|f| MANIFEST.each {|n| f << "#{n}\n"} }
   end
-
-  task :package => [:manifest]
 rescue LoadError
   puts "You really need Hoe installed to be able to package this gem"
 end
