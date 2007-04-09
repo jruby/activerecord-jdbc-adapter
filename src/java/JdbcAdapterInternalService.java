@@ -254,7 +254,9 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
             int scale = -1;
             if(prec != null) {
                 precision = Integer.parseInt(prec);
-                scale = Integer.parseInt(scal);
+                if(scal != null) {
+                    scale = Integer.parseInt(scal);
+                }
             }
             String type = rs.getString(6);
             if(prec != null && precision > 0) {
