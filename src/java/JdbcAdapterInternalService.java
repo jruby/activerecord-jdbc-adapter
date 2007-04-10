@@ -280,7 +280,7 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
             columns.add(c);
 
             IRubyObject tp = (IRubyObject)tps.get(c.callMethod(ctx,"type"));
-            if(!tp.isNil() && tp.callMethod(ctx,"[]",runtime.newSymbol("limit")).isNil()) {
+            if(tp != null && !tp.isNil() && tp.callMethod(ctx,"[]",runtime.newSymbol("limit")).isNil()) {
                 c.callMethod(ctx,"limit=", runtime.getNil());
                 if(!c.callMethod(ctx,"type").equals(runtime.newSymbol("decimal"))) {
                     c.callMethod(ctx,"precision=", runtime.getNil());
