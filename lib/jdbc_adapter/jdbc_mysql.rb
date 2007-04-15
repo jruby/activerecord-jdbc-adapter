@@ -45,10 +45,10 @@ module JdbcSpec
     def quote(value, column = nil)
       if column && column.type == :primary_key
         value.to_s
-      elsif value.kind_of?(String) && column && column.type == :binary && column.class.respond_to?(:string_to_binary)
+      elsif column && String === value && column.type == :binary && column.class.respond_to?(:string_to_binary)
         s = column.class.string_to_binary(value).unpack("H*")[0]
         "x'#{s}'"
-      elsif value.kind_of?(BigDecimal)
+      elsif BigDecimal === value
         "'#{value.to_s("F")}'"
       else
         super
@@ -61,15 +61,7 @@ module JdbcSpec
 
     # from active_record/vendor/mysql.rb
     def quote_string(str) #:nodoc:
-      str.gsub(/([\0\n\r\032\'\"\\])/) do
-        case $1
-        when "\0" then "\\0"
-        when "\n" then "\\n"
-        when "\r" then "\\r"
-        when "\032" then "\\Z"
-        else "\\"+$1
-        end
-      end
+      @connection.mysql_quote_string(str)
     end
     
     def quoted_true

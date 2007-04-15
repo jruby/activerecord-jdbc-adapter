@@ -81,6 +81,7 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
         cJdbcConn.defineFastMethod("rollback",cf.getFastSingletonMethod("rollback"));
         cJdbcConn.defineFastMethod("database_name",cf.getFastSingletonMethod("database_name"));
         cJdbcConn.defineFastMethod("columns",cf.getFastOptSingletonMethod("columns"));
+        cJdbcConn.defineFastMethod("mysql_quote_string",cf.getFastSingletonMethod("mysql_quote_string",IRubyObject.class));
         cJdbcConn.defineMethod("tables",cf.getSingletonMethod("tables"));
         return true;
     }
@@ -528,5 +529,41 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
             }
         }
         return runtime.getNil();
+    }
+
+    private final static ByteList ZERO = new ByteList(new byte[]{'\\','0'});
+    private final static ByteList NEWLINE = new ByteList(new byte[]{'\\','n'});
+    private final static ByteList CARRIAGE = new ByteList(new byte[]{'\\','r'});
+    private final static ByteList ZED = new ByteList(new byte[]{'\\','Z'});
+    private final static ByteList DBL = new ByteList(new byte[]{'\\','"'});
+    private final static ByteList SINGLE = new ByteList(new byte[]{'\\','\''});
+    private final static ByteList ESCAPE = new ByteList(new byte[]{'\\','\\'});
+
+    public static IRubyObject mysql_quote_string(IRubyObject recv, IRubyObject _str) {
+        RubyString str = (RubyString)_str;
+        boolean r = false;
+        ByteList bl = str.getByteList();
+        for(int i=bl.begin,j=i+bl.realSize;i<j;i++) {
+            ByteList rep = null;
+            switch(bl.bytes[i]) {
+            case 0: rep = ZERO; break;
+            case '\n': rep = NEWLINE; break;
+            case '\r': rep = CARRIAGE; break;
+            case 26: rep = ZED; break;
+            case '"': rep = DBL; break;
+            case '\'': rep = SINGLE; break;
+            case '\\': rep = ESCAPE; break;
+            default:
+                continue;
+            }
+            if(!r) {
+                bl = new ByteList(bl);
+                r = true;
+            }
+            j+=1;
+            bl.replace(i, 1, rep);
+            i+=1;
+        }
+        return recv.getRuntime().newStringShared(bl);
     }
 }
