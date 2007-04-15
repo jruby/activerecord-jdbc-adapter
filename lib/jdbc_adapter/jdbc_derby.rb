@@ -46,18 +46,14 @@ module JdbcSpec
     end
     
     def select_all(sql, name = nil)
-      @limit ||= -1
-      @offset ||= 0
-      select(sql, name)[@offset..(@offset+@limit)]
-    ensure
-      @limit = @offset = nil
+      execute(sql, name)
     end
     
     def select_one(sql, name = nil)
-      @offset ||= 0
-      select(sql, name)[@offset]
+      @limit = 1
+      execute(sql, name).first
     ensure
-      @limit = @offset = nil
+      @limit = nil
     end
 
     def execute(sql, name = nil)
