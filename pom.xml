@@ -10,13 +10,22 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>org.jruby.testsuites</groupId>
   <artifactId>activerecord-jdbc</artifactId>
-  <packaging>pom</packaging>
+  <packaging>jar</packaging>
   <version>0.9.9-SNAPSHOT</version>
   <name>JRuby ActiveRecord-JDBC testsuite</name>
   <description>Test ActiveRecord-JDBC</description>
 
+  <dependencies>
+    <dependency>
+      <groupId>org.jruby</groupId>
+      <artifactId>jruby</artifactId>
+      <version>0.9.9-SNAPSHOT</version>
+    </dependency>
+  </dependencies>
+
   <build>
     <directory>${basedir}/pkg</directory>
+    <sourceDirectory>${basedir}/src/java</sourceDirectory>
     <outputDirectory>${basedir}/pkg/classes</outputDirectory>
     <testOutputDirectory>${basedir}/pkg/test-classes</testOutputDirectory>
     <plugins>

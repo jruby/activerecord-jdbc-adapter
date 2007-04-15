@@ -134,15 +134,14 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
     public static IRubyObject native_database_types(IRubyObject recv) {
         RubyHash tps = (RubyHash)recv.getInstanceVariable("@tps");
         Map val = new HashMap();
-        Map tpsmap = tps.getValueMap();
         Ruby runtime = recv.getRuntime();
         IRubyObject nameSym = runtime.newSymbol("name");
-        for(Iterator iter = tpsmap.entrySet().iterator();iter.hasNext();) {
+        for(Iterator iter = tps.directEntrySet().iterator();iter.hasNext();) {
             Map.Entry me = (Map.Entry)iter.next();
             IRubyObject v = (IRubyObject)me.getValue();
             if(v instanceof RubyHash) {
                 RubyHash v2 = (RubyHash)(v.dup());
-                v2.put(nameSym, ((IRubyObject)(v2.getValueMap().get(nameSym))).dup());
+                v2.put(nameSym, ((IRubyObject)(v2.fastARef(nameSym))).dup());
                 val.put(me.getKey(), v2);
             } else {
                 val.put(me.getKey(), ((IRubyObject)v).dup());
@@ -238,7 +237,7 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
         Ruby runtime = recv.getRuntime();
         ThreadContext ctx = runtime.getCurrentContext();
 
-        Map tps = ((RubyHash)(recv.callMethod(ctx, "adapter").callMethod(ctx,"native_database_types"))).getValueMap();
+        RubyHash tps = ((RubyHash)(recv.callMethod(ctx, "adapter").callMethod(ctx,"native_database_types")));
 
         IRubyObject jdbcCol = ((RubyModule)(runtime.getModule("ActiveRecord").getConstant("ConnectionAdapters"))).getConstant("JdbcColumn");
 
@@ -279,7 +278,7 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
                                                                             runtime.newBoolean(!rs.getString(18).equals("NO"))});
             columns.add(c);
 
-            IRubyObject tp = (IRubyObject)tps.get(c.callMethod(ctx,"type"));
+            IRubyObject tp = (IRubyObject)tps.fastARef(c.callMethod(ctx,"type"));
             if(tp != null && !tp.isNil() && tp.callMethod(ctx,"[]",runtime.newSymbol("limit")).isNil()) {
                 c.callMethod(ctx,"limit=", runtime.getNil());
                 if(!c.callMethod(ctx,"type").equals(runtime.newSymbol("decimal"))) {
