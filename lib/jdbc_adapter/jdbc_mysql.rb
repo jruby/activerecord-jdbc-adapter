@@ -145,6 +145,16 @@ module JdbcSpec
       execute "ALTER TABLE #{table_name} CHANGE #{column_name} #{new_column_name} #{current_type}"
     end
     
+    def add_limit_offset!(sql, options) #:nodoc:
+      if limit = options[:limit]
+        unless offset = options[:offset]
+          sql << " LIMIT #{limit}"
+        else
+          sql << " LIMIT #{offset}, #{limit}"
+        end
+      end
+    end
+
     private
     def supports_views?
       false
