@@ -3,7 +3,7 @@ module JdbcSpec
     #Taken from SQLite adapter
 
     def alter_table(table_name, options = {}) #:nodoc:
-      table_name.down_case!
+      table_name.downcase!
       altered_table_name = "altered_#{table_name}"
       caller = lambda {|definition| yield definition if block_given?}
 
