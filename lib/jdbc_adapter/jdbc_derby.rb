@@ -50,7 +50,7 @@ module JdbcSpec
     end
     
     def select_one(sql, name = nil)
-      @limit = 1
+      @limit ||= 1
       execute(sql, name).first
     ensure
       @limit = nil
@@ -83,10 +83,13 @@ module JdbcSpec
     #
     # This feature has not made it into a formal release and is not in Java 6.  We will
     # need to conditionally support this somehow (supposed to arrive for 10.3.0.0)
-    #
-    # def remove_column(table_name, column_name)
-    #  execute "ALTER TABLE #{table_name} DROP COLUMN #{column_name} RESTRICT"
-    # end
+    def remove_column(table_name, column_name)
+      begin
+        execute "ALTER TABLE #{table_name} DROP COLUMN #{column_name} RESTRICT"
+      rescue
+        raise NotImplementedError, "remove_column is not support on this Derby version"
+      end
+    end
     
     # Notes about changing in Derby:
     #    http://db.apache.org/derby/docs/10.2/ref/rrefsqlj81859.html#rrefsqlj81859__rrefsqlj37860)
@@ -94,7 +97,16 @@ module JdbcSpec
     #   can increase the types precision only if it is a VARCHAR.
     #
     def change_column(table_name, column_name, type, options = {}) #:nodoc:
-      execute "ALTER TABLE #{table_name} ALTER COLUMN #{column_name} SET DATA TYPE #{type_to_sql(type, options[:limit])}"
+      # Derby can't change the datatype or size unless the type is varchar
+      execute "ALTER TABLE #{table_name} ALTER COLUMN #{column_name} SET DATA TYPE #{type_to_sql(type, options[:limit])}" if type == :string
+      if options.include? :null
+        # This seems to only work with 10.2 of Derby
+        if options[:null] == false
+          execute "ALTER TABLE #{table_name} ALTER COLUMN #{column_name} NOT NULL"
+        else
+          execute "ALTER TABLE #{table_name} ALTER COLUMN #{column_name} NULL"
+        end
+      end
     end
 
     def change_column_default(table_name, column_name, default) #:nodoc:
