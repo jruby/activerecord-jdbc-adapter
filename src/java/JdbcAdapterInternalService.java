@@ -539,13 +539,13 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
     private final static ByteList SINGLE = new ByteList(new byte[]{'\\','\''});
     private final static ByteList ESCAPE = new ByteList(new byte[]{'\\','\\'});
 
-    public static IRubyObject mysql_quote_string(IRubyObject recv, IRubyObject _str) {
-        RubyString str = (RubyString)_str;
-        boolean r = false;
-        ByteList bl = str.getByteList();
-        for(int i=bl.begin,j=i+bl.realSize;i<j;i++) {
+    public static IRubyObject mysql_quote_string(IRubyObject recv, IRubyObject string) {
+        boolean replacementFound = false;
+        ByteList bl = ((RubyString) string).getByteList();
+        
+        for(int i=bl.begin; i < bl.realSize; i++) {
             ByteList rep = null;
-            switch(bl.bytes[i]) {
+            switch (bl.bytes[i]) {
             case 0: rep = ZERO; break;
             case '\n': rep = NEWLINE; break;
             case '\r': rep = CARRIAGE; break;
@@ -553,14 +553,15 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
             case '"': rep = DBL; break;
             case '\'': rep = SINGLE; break;
             case '\\': rep = ESCAPE; break;
-            default:
-                continue;
+            default: continue;
             }
-            if(!r) {
+            
+            // On first replacement allocate a different bytelist so we don't manip original 
+            if(!replacementFound) {
                 bl = new ByteList(bl);
-                r = true;
+                replacementFound = true;
             }
-            j+=1;
+
             bl.replace(i, 1, rep);
             i+=1;
         }
