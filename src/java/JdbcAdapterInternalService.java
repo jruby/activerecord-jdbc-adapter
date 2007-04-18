@@ -543,7 +543,7 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
         boolean replacementFound = false;
         ByteList bl = ((RubyString) string).getByteList();
         
-        for(int i=bl.begin; i < bl.realSize; i++) {
+        for(int i = bl.begin; i < bl.begin + bl.realSize; i++) {
             ByteList rep = null;
             switch (bl.bytes[i]) {
             case 0: rep = ZERO; break;
