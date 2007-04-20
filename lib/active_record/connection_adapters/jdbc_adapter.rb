@@ -222,7 +222,11 @@ module ActiveRecord
       # should filter the return from this method instead.
       def indexes(table_name, name = nil)
         metadata = @connection.getMetaData
-        table_name = table_name.to_s unless String === table_name
+        unless String === table_name
+          table_name = table_name.to_s 
+        else
+          table_name = table_name.dup
+        end
         table_name.upcase! if metadata.storesUpperCaseIdentifiers
         table_name.downcase! if metadata.storesLowerCaseIdentifiers
         resultset = metadata.getIndexInfo(nil, nil, table_name, false, false)

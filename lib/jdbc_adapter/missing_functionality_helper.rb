@@ -3,7 +3,7 @@ module JdbcSpec
     #Taken from SQLite adapter
 
     def alter_table(table_name, options = {}) #:nodoc:
-      table_name.downcase!
+      table_name = table_name.downcase
       altered_table_name = "altered_#{table_name}"
       caller = lambda {|definition| yield definition if block_given?}
 
@@ -42,7 +42,7 @@ module JdbcSpec
     
     def copy_table_indexes(from, to) #:nodoc:
       indexes(from).each do |index|
-        name = index.name
+        name = index.name.downcase
         if to == "altered_#{from}"
           name = "temp_#{name}"
         elsif from == "altered_#{to}"
