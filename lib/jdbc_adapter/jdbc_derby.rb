@@ -59,6 +59,10 @@ module JdbcSpec
     ensure
       @limit = nil
     end
+    
+    def classes_for_table_name(table)
+      ActiveRecord::Base.send(:subclasses).select {|klass| klass.table_name == table}
+    end
 
     # Set the sequence to the max value of the table's column.
     def reset_sequence!(table, column, sequence = nil)
@@ -67,8 +71,12 @@ module JdbcSpec
     end
       
     def reset_pk_sequence!(table, pk = nil, sequence = nil)
-      pk = :id unless pk
-      reset_sequence!(table, pk, sequence)
+      klasses = classes_for_table_name(table)
+      klass   = klasses.nil? ? nil : klasses.first
+      pk      = klass.primary_key unless klass.nil?
+      if pk && klass.columns_hash[pk].type == :integer
+        reset_sequence!(klass.table_name, pk)
+      end
     end
     
     def execute(sql, name = nil)
