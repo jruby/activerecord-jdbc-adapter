@@ -60,6 +60,17 @@ module JdbcSpec
       @limit = nil
     end
 
+    # Set the sequence to the max value of the table's column.
+    def reset_sequence!(table, column, sequence = nil)
+      mpk = select_value("SELECT MAX(#{column}) FROM #{table}")
+      execute("ALTER TABLE #{table} ALTER COLUMN #{column} RESTART WITH #{mpk.to_i + 1}")      
+    end
+      
+    def reset_pk_sequence!(table, pk = nil, sequence = nil)
+      pk = :id unless pk
+      reset_sequence!(table, pk, sequence)
+    end
+    
     def execute(sql, name = nil)
       log_no_bench(sql, name) do
         if sql =~ /^select/i
