@@ -39,7 +39,8 @@ end
 
 desc "Run AR-JDBC tests"
 if RUBY_PLATFORM =~ /java/
-  task :test => [:java_compile, :test_mysql, :test_hsqldb, :test_derby]
+  # TODO: add more databases into the standard tests here.
+  task :test => [:java_compile, :test_mysql, :test_derby]
 else
   task :test => [:test_mysql]
 end
