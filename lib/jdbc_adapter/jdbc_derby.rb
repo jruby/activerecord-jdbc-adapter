@@ -149,9 +149,13 @@ module JdbcSpec
     # This feature is expect to arrive in version 10.3.0.0:
     # http://wiki.apache.org/db-derby/DerbyTenThreeRelease)
     #
-    #def rename_column(table_name, column_name, new_column_name) #:nodoc:
-    #  execute "ALTER TABLE #{table_name} ALTER RENAME COLUMN #{column_name} TO #{new_column_name}"
-    #end
+    def rename_column(table_name, column_name, new_column_name) #:nodoc:
+      begin
+        execute "ALTER TABLE #{table_name} ALTER RENAME COLUMN #{column_name} TO #{new_column_name}"
+      rescue
+        alter_table(table_name, :rename => {column_name => new_column_name})
+      end
+    end
     
     def primary_keys(table_name)
       @connection.primary_keys table_name.to_s.upcase
