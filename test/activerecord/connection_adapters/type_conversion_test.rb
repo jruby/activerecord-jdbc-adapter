@@ -6,11 +6,11 @@ require 'test/unit'
 JInteger = java.lang.Integer
 
 class TypeConversionTest < Test::Unit::TestCase
-
+  TEST_TIME = Time.at(1169964202)
   def setup
     DbTypeMigration.up  
     DbType.create(
-      :sample_timestamp => Time.at(1169964202),
+      :sample_timestamp => TEST_TIME,
       :sample_decimal => JInteger::MAX_VALUE + 1)
   end
   
@@ -20,7 +20,7 @@ class TypeConversionTest < Test::Unit::TestCase
   
   def test_timestamp
     types = DbType.find(:first)
-    assert_equal 'Sun Jan 28 06:03:22 UTC 2007', types.sample_timestamp.getutc.to_s
+    assert_equal TEST_TIME, types.sample_timestamp.getutc
   end
   
   def test_decimal
