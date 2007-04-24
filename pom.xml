@@ -4,14 +4,14 @@
   <parent>
     <groupId>org.jruby</groupId>
     <artifactId>shared</artifactId>
-    <version>0.9.9-SNAPSHOT</version>
+    <version>0.9.9</version>
     <relativePath>../../jruby/pom.xml</relativePath>
   </parent>
   <modelVersion>4.0.0</modelVersion>
   <groupId>org.jruby.testsuites</groupId>
   <artifactId>activerecord-jdbc</artifactId>
   <packaging>jar</packaging>
-  <version>0.9.9-SNAPSHOT</version>
+  <version>0.9.9</version>
   <name>JRuby ActiveRecord-JDBC testsuite</name>
   <description>Test ActiveRecord-JDBC</description>
 
@@ -19,7 +19,7 @@
     <dependency>
       <groupId>org.jruby</groupId>
       <artifactId>jruby</artifactId>
-      <version>0.9.9-SNAPSHOT</version>
+      <version>0.9.9</version>
     </dependency>
   </dependencies>
 

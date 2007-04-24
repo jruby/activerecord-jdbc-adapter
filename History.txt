@@ -1,3 +1,13 @@
+== 0.2.4
+
+* Release coincides with JRuby 0.9.9 release
+* JRuby 0.9.9 is required
+* MySQL close to 100% working
+* Derby improvements
+* DECIMAL/NUMERIC/FLOAT/REAL bugs fixed with type recognition for Oracle, Postgres, etc.
+* HSQLDB has regressed this release and may not be functioning; we'll get it fixed for the
+  next one
+
 == 0.2.3
 
 * Release coincides (and compatible) with JRuby 0.9.8 release
