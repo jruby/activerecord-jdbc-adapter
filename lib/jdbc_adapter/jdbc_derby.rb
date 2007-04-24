@@ -81,7 +81,7 @@ module JdbcSpec
     
     def execute(sql, name = nil)
       log_no_bench(sql, name) do
-        if sql =~ /^select/i
+        if sql.strip =~ /^(select|show)/i
           @limit ||= -1
           @offset ||= 0
           @connection.execute_query(sql)[@offset..(@offset+@limit)]
