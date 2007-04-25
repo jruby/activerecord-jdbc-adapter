@@ -91,9 +91,13 @@ module JdbcSpec
     end
     
     def select_all(sql, name = nil)
-      @limit ||= -1
       @offset ||= 0
-      select(sql, name)[@offset..(@offset+@limit)]
+      if !@limit || @limit == -1
+        range = @offset..-1
+      else
+        range = @offset...(@offset+@limit)
+      end
+      select(sql, name)[range]
     ensure
       @limit = @offset = nil
     end
@@ -108,9 +112,13 @@ module JdbcSpec
     def execute(sql, name = nil)
       log_no_bench(sql, name) do
         if sql =~ /^select/i
-          @limit ||= -1
           @offset ||= 0
-          @connection.execute_query(sql)[@offset..(@offset+@limit)]
+          if !@limit || @limit == -1
+            range = @offset..-1
+          else
+            range = @offset...(@offset+@limit)
+          end
+          @connection.execute_query(sql)[range]
         else
           @connection.execute_update(sql)
         end
