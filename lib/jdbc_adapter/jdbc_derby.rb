@@ -85,10 +85,12 @@ module JdbcSpec
           @offset ||= 0
           if !@limit || @limit == -1
             range = @offset..-1
+            max = 0
           else
             range = @offset...(@offset+@limit)
+            max = @offset+@limit+1
           end
-          @connection.execute_query(sql)[range]
+          @connection.execute_query(sql,max)[range]
         else
           @connection.execute_update(sql)
         end

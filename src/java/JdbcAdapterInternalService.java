@@ -70,7 +70,7 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
         cJdbcConn.defineMethod("unmarshal_result",cf.getSingletonMethod("unmarshal_result", IRubyObject.class));
         cJdbcConn.defineFastMethod("set_connection",cf.getFastSingletonMethod("set_connection", IRubyObject.class));
         cJdbcConn.defineFastMethod("execute_update",cf.getFastSingletonMethod("execute_update", IRubyObject.class));
-        cJdbcConn.defineFastMethod("execute_query",cf.getFastSingletonMethod("execute_query", IRubyObject.class)); 
+        cJdbcConn.defineFastMethod("execute_query",cf.getFastOptSingletonMethod("execute_query")); 
         cJdbcConn.defineFastMethod("execute_insert",cf.getFastSingletonMethod("execute_insert", IRubyObject.class));
         cJdbcConn.defineFastMethod("ps",cf.getFastSingletonMethod("prepareStatement", IRubyObject.class));
         cJdbcConn.defineFastMethod("primary_keys",cf.getFastSingletonMethod("primary_keys", IRubyObject.class));
@@ -337,12 +337,18 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
         }
     }
 
-    public static IRubyObject execute_query(IRubyObject recv, IRubyObject sql) throws SQLException, IOException {
+    public static IRubyObject execute_query(IRubyObject recv, IRubyObject[] args) throws SQLException, IOException {
+        IRubyObject sql = args[0];
+        int maxrows = 0;
+        if(args.length > 1) {
+            maxrows = RubyNumeric.fix2int(args[1]);
+        }
         while(true) {
             Connection c = (Connection)recv.dataGetStruct();
             Statement stmt = null;
             try {
                 stmt = c.createStatement();
+                stmt.setMaxRows(0);
                 return unmarshal_result(recv, stmt.executeQuery(sql.toString()));
             } catch(SQLException e) {
                 if(c.isClosed()) {
