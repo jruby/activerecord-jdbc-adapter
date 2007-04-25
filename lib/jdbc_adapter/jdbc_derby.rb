@@ -79,7 +79,7 @@ module JdbcSpec
       end
     end
     
-    def execute(sql, name = nil)
+    def _execute(sql, name = nil)
       log_no_bench(sql, name) do
         if sql.strip =~ /^(select|show)/i
           @offset ||= 0

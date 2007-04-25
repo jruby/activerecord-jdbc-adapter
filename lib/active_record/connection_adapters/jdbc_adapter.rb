@@ -397,6 +397,13 @@ module ActiveRecord
       end
 
       def execute(sql, name = nil)
+        _execute(sql,name)
+      end
+
+      # we need to do it this way, to allow Rails stupid tests to always work
+      # even if we define a new execute method. Instead of mixing in a new
+      # execute, an _execute should be mixed in.
+      def _execute(sql, name = nil)
         log_no_bench(sql, name) do
           case sql.strip
           when /^(select|show)/i:
@@ -408,7 +415,7 @@ module ActiveRecord
           end
         end
       end
-
+      
       def update(sql, name = nil) #:nodoc:
         execute(sql, name)
       end
