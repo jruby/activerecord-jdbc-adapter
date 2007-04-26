@@ -217,6 +217,10 @@ module JdbcSpec
       end
     end
 
+    def quote_string(s)
+      s.gsub(/'/, "''") # ' (for ruby-mode)
+    end
+    
 # For DDL it appears you can quote "" column names, but in queries (like insert it errors out?)
 #    def quote_column_name(name) #:nodoc:
 #        %Q{"#{name}"}
