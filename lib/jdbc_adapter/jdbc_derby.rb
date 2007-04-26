@@ -91,7 +91,7 @@ module JdbcSpec
             range = @offset...(@offset+@limit)
             max = @offset+@limit+1
           end
-          @connection.execute_query(sql,max)[range]
+          @connection.execute_query(sql,max)[range] || []
         when /^insert/i:
           @connection.execute_insert(sql)
         else
