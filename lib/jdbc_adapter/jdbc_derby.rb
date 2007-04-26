@@ -145,8 +145,17 @@ module JdbcSpec
       end
     end
 
+    # There seems to be more than one thing wrong with 
+    # changing defaults for VARCHAR columns right now... DERBY-2371
+    # among others
     def change_column_default(table_name, column_name, default) #:nodoc:
-      execute "ALTER TABLE #{table_name} ALTER COLUMN #{column_name} SET DEFAULT #{quote(default)}"
+      begin
+        execute "ALTER TABLE #{table_name} ALTER COLUMN #{column_name} DEFAULT #{quote(default)}"
+      rescue
+        alter_table(table_name) do |definition|
+          definition[column_name].default = default
+        end
+      end        
     end
 
     # Support for renaming columns:

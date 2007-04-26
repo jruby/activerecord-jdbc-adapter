@@ -235,6 +235,7 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
 
     private static IRubyObject unmarshal_columns(IRubyObject recv, DatabaseMetaData metadata, ResultSet rs) throws SQLException, IOException {
         List columns = new ArrayList();
+        boolean isDerby = metadata.getClass().getName().indexOf("derby") != -1;
         Ruby runtime = recv.getRuntime();
         ThreadContext ctx = runtime.getCurrentContext();
 
@@ -271,6 +272,9 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
             if(def == null) {
                 _def = runtime.getNil();
             } else {
+                if(isDerby && def.length() > 0 && def.charAt(0) == '\'') {
+                    def = def.substring(1, def.length()-1);
+                }
                 _def = runtime.newString(def);
             }
 
