@@ -228,9 +228,13 @@ module JdbcSpec
     end
     
 # For DDL it appears you can quote "" column names, but in queries (like insert it errors out?)
-#    def quote_column_name(name) #:nodoc:
-#        %Q{"#{name}"}
-#    end
+    def quote_column_name(name) #:nodoc:
+      if /^references$/i =~ name
+        %Q{"#{name.upcase}"}
+      else
+        name
+      end
+    end
     
     def quoted_true
       '1'
