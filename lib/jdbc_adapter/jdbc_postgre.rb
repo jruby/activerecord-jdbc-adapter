@@ -1,19 +1,11 @@
 module JdbcSpec
   module PostgreSQL
     module Column
-      def type_cast(value)
-        return nil if value.nil? || value =~ /^\s*null\s*$/i
-        case type
-        when :string    then value
-        when :integer   then defined?(value.to_i) ? value.to_i : (value ? 1 : 0)
-        when :primary_key then defined?(value.to_i) ? value.to_i : (value ? 1 : 0) 
-        when :float     then value.to_f
-        when :datetime  then cast_to_date_or_time(value)
-        when :timestamp then cast_to_time(value)
-        when :time      then cast_to_time(value)
-        else value
-        end
+      def simplified_type(field_type)
+        return :integer if field_type =~ /^serial/i 
+        super
       end
+
       def cast_to_date_or_time(value)
         return value if value.is_a? Date
         return nil if value.blank?
@@ -31,6 +23,7 @@ module JdbcSpec
         (value.hour == 0 and value.min == 0 and value.sec == 0) ?
         Date.new(value.year, value.month, value.day) : value
       end
+
       def default_value(value)
         # Boolean types
         return "t" if value =~ /true/i
@@ -38,7 +31,7 @@ module JdbcSpec
         
         # Char/String/Bytea type values
         return $1 if value =~ /^'(.*)'::(bpchar|text|character varying|bytea)$/
-          
+        
         # Numeric values
         return value if value =~ /^-?[0-9]+(\.[0-9]*)?/
         
@@ -50,7 +43,7 @@ module JdbcSpec
         return nil
       end
     end
-    
+
     def modify_types(tp)
       tp[:primary_key] = "serial primary key"
       tp[:string][:limit] = 255
@@ -179,6 +172,18 @@ module JdbcSpec
     
     def remove_index(table_name, options) #:nodoc:
       execute "DROP INDEX #{index_name(table_name, options)}"
+    end
+
+    def type_to_sql(type, limit = nil, precision = nil, scale = nil) #:nodoc:
+      return super unless type.to_s == 'integer'
+      
+      if limit.nil? || limit == 4
+        'integer'
+      elsif limit < 4
+        'smallint'
+      else
+        'bigint'
+      end
     end
   end  
 end
