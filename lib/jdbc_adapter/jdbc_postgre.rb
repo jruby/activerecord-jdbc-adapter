@@ -119,6 +119,17 @@ module JdbcSpec
       Integer(select_value("SELECT currval('#{sequence_name}')"))
     end
 
+    def _execute(sql, name = nil)
+      log_no_bench(sql, name) do
+        case sql.strip
+        when /^(select|show)/i:
+          @connection.execute_query(sql)
+        else
+          @connection.execute_update(sql)
+        end
+      end
+    end
+    
     def quote(value, column = nil)
       if value.kind_of?(String) && column && column.type == :binary
         "'#{escape_bytea(value)}'"

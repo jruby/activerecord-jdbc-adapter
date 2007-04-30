@@ -111,6 +111,7 @@ module ActiveRecord
                           lambda {|r| r['type_name'] =~ /^binary$/i}, ],
         :boolean     => [ lambda {|r| [Jdbc::Types::TINYINT].include?(r['data_type'].to_i)},
                           lambda {|r| r['type_name'] =~ /^bool/i},
+                          lambda {|r| r['data_type'] == '-7'},
                           lambda {|r| r['type_name'] =~ /^tinyint$/i},
                           lambda {|r| r['type_name'] =~ /^decimal$/i}],
       }
