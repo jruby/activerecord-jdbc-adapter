@@ -88,6 +88,7 @@ module ActiveRecord
                           lambda {|r| r['precision'] == '38'},
                           lambda {|r| r['data_type'] == '2'}],
         :float       => [ lambda {|r| [Jdbc::Types::FLOAT,Jdbc::Types::DOUBLE, Jdbc::Types::REAL].include?(r['data_type'].to_i)},
+                          lambda {|r| r['data_type'].to_i == Jdbc::Types::REAL}, #Prefer REAL to DOUBLE for Postgresql
                           lambda {|r| r['type_name'] =~ /^float/i},
                           lambda {|r| r['type_name'] =~ /^double$/i},
                           lambda {|r| r['type_name'] =~ /^real$/i},
