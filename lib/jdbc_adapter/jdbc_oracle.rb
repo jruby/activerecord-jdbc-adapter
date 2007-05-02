@@ -69,7 +69,7 @@ module JdbcSpec
       elsif id_value # Pre-assigned id
         log(sql, name) { @connection.execute_insert sql,pk }
       else # Assume the sql contains a bind-variable for the id
-        id_value = select_one("select #{sequence_name}.nextval id from dual")['id']
+        id_value = select_one("select #{sequence_name}.nextval id from dual")['id'].to_i
         log(sql, name) { 
           execute_prepared_insert(sql,id_value)
         }

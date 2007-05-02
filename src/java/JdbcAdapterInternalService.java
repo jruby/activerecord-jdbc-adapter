@@ -313,9 +313,8 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
         return runtime.newArray(keyNames);
     }
 
-    public static IRubyObject prepareStatement(IRubyObject recv, IRubyObject sql) throws SQLException {
-        Connection c = (Connection)recv.dataGetStruct();
-        return JavaObject.wrap(recv.getRuntime(), c.prepareStatement(sql.toString()));
+    public static IRubyObject prepareStatement(IRubyObject recv, IRubyObject sql) {
+        return recv.getInstanceVariable("@connection").callMethod(recv.getRuntime().getCurrentContext(),"prepareStatement",sql);
     }
 
     public static IRubyObject execute_update(IRubyObject recv, IRubyObject sql) throws SQLException {
