@@ -31,6 +31,7 @@ import java.io.InputStream;
 
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
+import java.sql.PreparedStatement;
 import java.sql.ResultSetMetaData;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -72,7 +73,7 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
         cJdbcConn.defineFastMethod("execute_update",cf.getFastSingletonMethod("execute_update", IRubyObject.class));
         cJdbcConn.defineFastMethod("execute_query",cf.getFastOptSingletonMethod("execute_query")); 
         cJdbcConn.defineFastMethod("execute_insert",cf.getFastSingletonMethod("execute_insert", IRubyObject.class));
-        cJdbcConn.defineFastMethod("ps",cf.getFastSingletonMethod("prepareStatement", IRubyObject.class));
+        cJdbcConn.defineFastMethod("execute_id_insert",cf.getFastSingletonMethod("execute_id_insert", IRubyObject.class, IRubyObject.class));
         cJdbcConn.defineFastMethod("primary_keys",cf.getFastSingletonMethod("primary_keys", IRubyObject.class));
         cJdbcConn.defineFastMethod("set_native_database_types",cf.getFastSingletonMethod("set_native_database_types"));
         cJdbcConn.defineFastMethod("native_database_types",cf.getFastSingletonMethod("native_database_types"));
@@ -313,8 +314,16 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
         return runtime.newArray(keyNames);
     }
 
-    public static IRubyObject prepareStatement(IRubyObject recv, IRubyObject sql) {
-        return recv.getInstanceVariable("@connection").callMethod(recv.getRuntime().getCurrentContext(),"prepareStatement",sql);
+    public static IRubyObject execute_id_insert(IRubyObject recv, IRubyObject sql, IRubyObject id) throws SQLException {
+        Connection c = (Connection)recv.dataGetStruct();
+        PreparedStatement ps = c.prepareStatement(sql.toString());
+        try {
+            ps.setLong(1,RubyNumeric.fix2long(id));
+            ps.executeUpdate();
+        } finally {
+            ps.close();
+        }
+        return id;
     }
 
     public static IRubyObject execute_update(IRubyObject recv, IRubyObject sql) throws SQLException {
@@ -416,6 +425,10 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
             results.add(row);
         }
  
+        try {
+            rs.close();
+        } catch(Exception e) {}
+
         return runtime.newArray(results);
     }
 
@@ -448,6 +461,10 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
             results.add(row);
         }
  
+        try {
+            rs.close();
+        } catch(Exception e) {}
+
         return runtime.newArray(results);
     }
 
@@ -488,6 +505,10 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
             }
         }
  
+        try {
+            rs.close();
+        } catch(Exception e) {}
+
         return runtime.newArray(results);
     }
 
@@ -532,12 +553,18 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
     }
 
     public static IRubyObject unmarshal_id_result(Ruby runtime, ResultSet rs) throws SQLException {
-        if(rs.next()) {
-            if(rs.getMetaData().getColumnCount() > 0) {
-                return runtime.newFixnum(rs.getLong(1));
+        try {
+            if(rs.next()) {
+                if(rs.getMetaData().getColumnCount() > 0) {
+                    return runtime.newFixnum(rs.getLong(1));
+                }
             }
+            return runtime.getNil();
+        } finally {
+            try {
+                rs.close();
+            } catch(Exception e) {}
         }
-        return runtime.getNil();
     }
 
     private final static ByteList ZERO = new ByteList(new byte[]{'\\','0'});

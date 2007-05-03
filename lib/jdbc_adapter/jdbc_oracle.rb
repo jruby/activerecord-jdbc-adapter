@@ -71,19 +71,10 @@ module JdbcSpec
       else # Assume the sql contains a bind-variable for the id
         id_value = select_one("select #{sequence_name}.nextval id from dual")['id'].to_i
         log(sql, name) { 
-          execute_prepared_insert(sql,id_value)
+          @connection.execute_id_insert(sql,id_value)
         }
       end
       id_value
-    end
-    
-    def execute_prepared_insert(sql, id)
-      @stmts ||= {}
-      @stmts[sql] ||= @connection.ps(sql)
-      stmt = @stmts[sql]
-      stmt.setLong(1,id)
-      stmt.executeUpdate
-      id
     end
 
     def _execute(sql, name = nil)
