@@ -22,7 +22,7 @@ module JdbcSpec
       execute "CREATE SEQUENCE #{name}_seq" unless options[:id] == false
     end
 
-    def drop_table(name) #:nodoc:
+    def drop_table(name, options = {}) #:nodoc:
       super(name) rescue nil
       execute "DROP SEQUENCE #{name}_seq" rescue nil
     end

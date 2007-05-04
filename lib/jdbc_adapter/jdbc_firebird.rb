@@ -42,7 +42,7 @@ module JdbcSpec
       execute "UPDATE RDB$GENERATORS SET RDB$GENERATOR_NAME='#{new_name}_seq' WHERE RDB$GENERATOR_NAME='#{name}_seq'" rescue nil
     end  
 
-    def drop_table(name) #:nodoc:
+    def drop_table(name, options = {}) #:nodoc:
       super(name)
       execute "DROP GENERATOR #{name}_seq" rescue nil
     end

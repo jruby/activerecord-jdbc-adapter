@@ -58,7 +58,7 @@ module JdbcSpec
       execute "RENAME #{name}_seq TO #{new_name}_seq" rescue nil
     end  
 
-    def drop_table(name) #:nodoc:
+    def drop_table(name, options = {}) #:nodoc:
       super(name)
       execute "DROP SEQUENCE #{name}_seq" rescue nil
     end
