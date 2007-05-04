@@ -264,6 +264,8 @@ module ActiveRecord
         else
           raise
         end
+      ensure
+        metadata.close rescue nil
       end
 
       private

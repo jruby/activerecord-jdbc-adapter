@@ -92,8 +92,14 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
     }   
 
     public static IRubyObject set_connection(IRubyObject recv, IRubyObject conn) {
+        Connection c = (Connection)recv.dataGetStruct();
+        if(c != null) {
+            try {
+                c.close();
+            } catch(Exception e) {}
+        }
         recv.setInstanceVariable("@connection",conn);
-        Connection c = (Connection)(((JavaObject)conn.getInstanceVariable("@java_object")).getValue());
+        c = (Connection)(((JavaObject)conn.getInstanceVariable("@java_object")).getValue());
         recv.dataWrapStruct(c);
         return recv;
     }
@@ -190,27 +196,6 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
         }
     }
 
-    /*
-          column_name = col['column_name']
-          column_name = column_name.downcase if metadata.storesUpperCaseIdentifiers
-          precision = col["column_size"]
-          scale = col["decimal_digits"]
-          precision = precision.to_i if precision
-          scale = scale.to_i if precision
-          coltype = col["type_name"]
-          if precision && precision > 0
-            coltype << "(#{precision}"
-            coltype << ",#{scale}" if scale && scale > 0
-            coltype << ")"
-          end
-          c = ActiveRecord::ConnectionAdapters::JdbcColumn.new(@config, column_name, col['column_def'],
-              coltype, col['is_nullable'] != 'NO')
-          columns << c
-          if tps[c.type] && tps[c.type][:limit].nil?
-            c.limit = nil
-            c.precision = nil unless c.type == :decimal
-          end
-*/
     public static IRubyObject columns(IRubyObject recv, IRubyObject[] args) throws SQLException, IOException {
         String table_name = args[0].toString();
         while(true) {
@@ -293,6 +278,10 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
             }
         }
 
+        try {
+            rs.close();
+        } catch(Exception e) {}
+
         return runtime.newArray(columns);
     }
 
@@ -311,6 +300,11 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
         while(result_set.next()) {
             keyNames.add(runtime.newString(result_set.getString(4).toLowerCase()));
         }
+        
+        try {
+            result_set.close();
+        } catch(Exception e) {}
+
         return runtime.newArray(keyNames);
     }
 
