@@ -4,13 +4,13 @@
   <parent>
     <groupId>org.jruby</groupId>
     <artifactId>shared</artifactId>
-    <version>1.0.0RC1</version>
+    <version>1.0.0RC2-SNAPSHOT</version>
   </parent>
   <modelVersion>4.0.0</modelVersion>
   <groupId>org.jruby.testsuites</groupId>
   <artifactId>activerecord-jdbc</artifactId>
   <packaging>jar</packaging>
-  <version>1.0.0RC1</version>
+  <version>1.0.0RC2-SNAPSHOT</version>
   <name>JRuby ActiveRecord-JDBC testsuite</name>
   <description>Test ActiveRecord-JDBC</description>
 
@@ -18,7 +18,7 @@
     <dependency>
       <groupId>org.jruby</groupId>
       <artifactId>jruby</artifactId>
-      <version>1.0.0RC1</version>
+      <version>1.0.0RC2-SNAPSHOT</version>
     </dependency>
   </dependencies>
 
