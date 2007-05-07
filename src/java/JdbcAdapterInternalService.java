@@ -170,7 +170,14 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
     }
 
     public static IRubyObject database_name(IRubyObject recv) throws SQLException {
-        return recv.getRuntime().newString(((Connection)recv.dataGetStruct()).getCatalog());
+        String name = ((Connection)recv.dataGetStruct()).getCatalog();
+        if(null == name) {
+            name = ((Connection)recv.dataGetStruct()).getMetaData().getUserName();
+            if(null == name) {
+                name = "db1";
+            }
+        }
+        return recv.getRuntime().newString(name);
     }
 
     public static IRubyObject begin(IRubyObject recv) throws SQLException {

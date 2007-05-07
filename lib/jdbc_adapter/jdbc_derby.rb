@@ -184,6 +184,12 @@ module JdbcSpec
     def primary_keys(table_name)
       @connection.primary_keys table_name.to_s.upcase
     end
+
+    def recreate_database(db_name)
+      tables.each do |t|
+        drop_table t
+      end
+    end    
     
     # For migrations, exclude the primary key index as recommended
     # by the HSQLDB docs.  This is not a great test for primary key

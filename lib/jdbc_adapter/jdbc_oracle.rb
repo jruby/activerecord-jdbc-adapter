@@ -111,31 +111,6 @@ module JdbcSpec
       select_one("select sys_context('userenv','db_name') db from dual")["db"]
     end
 
-    def indexes(table_name, name = nil) #:nodoc:
-      result = select_all(<<-SQL, name)
-      SELECT lower(i.index_name) as index_name, i.uniqueness, lower(c.column_name) as column_name
-      FROM user_indexes i, user_ind_columns c
-      WHERE i.table_name = '#{table_name.to_s.upcase}'
-      AND c.index_name = i.index_name
-      AND i.index_name NOT IN (SELECT index_name FROM user_constraints WHERE constraint_type = 'P')
-      ORDER BY i.index_name, c.column_position
-      SQL
-
-      current_index = nil
-      indexes = []
-
-      result.each do |row|
-        if current_index != row['index_name']
-          indexes << IndexDefinition.new(table_name, row['index_name'], row['uniqueness'] == "UNIQUE", [])
-          current_index = row['index_name']
-        end
-
-        indexes.last.columns << row['column_name']
-      end
-
-      indexes
-    end
-
     def remove_index(table_name, options = {}) #:nodoc:
       execute "DROP INDEX #{index_name(table_name, options)}"
     end
