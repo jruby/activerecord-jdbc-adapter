@@ -1,3 +1,9 @@
+== 0.3
+
+* Release coincides with JRuby 1.0.0RC1 release
+* Improvements for Derby, Postgres, and Oracle, all of which are running 
+  > 95% of AR tests
+
 == 0.2.4
 
 * Release coincides with JRuby 0.9.9 release

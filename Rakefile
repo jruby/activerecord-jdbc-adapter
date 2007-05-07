@@ -84,7 +84,7 @@ begin
   Rake::Task['manifest'].invoke # Always regen manifest, so Hoe has up-to-date list of files
 
   require 'hoe'
-  Hoe.new("ActiveRecord-JDBC", "0.2.4") do |p|
+  Hoe.new("ActiveRecord-JDBC", "0.3") do |p|
     p.rubyforge_name = "jruby-extras"
     p.url = "http://jruby-extras.rubyforge.org/ActiveRecord-JDBC"
     p.author = "Nick Sieger, Ola Bini and JRuby contributors"
