@@ -38,7 +38,7 @@ module JdbcSpec
         time_array[0] ||= 2000
         time_array[1] ||= 1
         time_array[2] ||= 1
-        Time.send(Base.default_timezone, *time_array) rescue nil
+        Time.send(ActiveRecord::Base.default_timezone, *time_array) rescue nil
       end
 
       def cast_to_datetime(value)
