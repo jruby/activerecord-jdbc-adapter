@@ -187,7 +187,7 @@ module JdbcSpec
 
     def recreate_database(db_name)
       tables.each do |t|
-        drop_table t
+        drop_table t rescue nil
       end
     end    
     
