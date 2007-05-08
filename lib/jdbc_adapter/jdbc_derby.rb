@@ -299,7 +299,12 @@ module JdbcSpec
             end
           end
         else
-          super
+          vi = value.to_i
+          if vi.to_s == value
+            value
+          else
+            "'#{quote_string(value)}'"
+          end
         end
       else super
       end
