@@ -119,7 +119,88 @@ module JdbcSpec
     def rename_table(name, new_name)
       execute "RENAME TABLE #{name} TO #{new_name}"
     end
+    
+    COLUMN_INFO_STMT = "SELECT C.COLUMNNAME, C.REFERENCEID, C.COLUMNNUMBER FROM SYS.SYSCOLUMNS C, SYS.SYSTABLES T WHERE T.TABLEID = '%s' AND T.TABLEID = C.REFERENCEID ORDER BY C.COLUMNNUMBER"
 
+    COLUMN_TYPE_STMT = "SELECT COLUMNDATATYPE, COLUMNDEFAULT FROM SYS.SYSCOLUMNS WHERE REFERENCEID = '%s' AND COLUMNNAME = '%s'"
+
+    AUTO_INC_STMT = "SELECT AUTOINCREMENTSTART, AUTOINCREMENTINC, COLUMNNAME, REFERENCEID, COLUMNDEFAULT FROM SYS.SYSCOLUMNS WHERE REFERENCEID = '%s' AND COLUMNNAME = '%s'"
+
+
+    def add_quotes(name)
+      return name unless name
+      %Q{"#{name}"}
+    end
+    
+    def strip_quotes(str)
+      return str unless str
+      return str unless /^(["']).*\1$/ =~ str
+      str[1..-2]
+    end
+
+    def expand_double_quotes(name)
+      return name unless name && name['"']
+      name.gsub(/"/,'""')
+    end
+    
+    def reinstate_auto_increment(name, refid, coldef)
+      stmt = AUTO_INC_STMT % [refid, strip_quotes(name)]
+      data = execute(stmt).first
+      if data
+        start = data['autoincrementstart']
+        if start
+          coldef << " GENERATED " << (data['columndefault'].nil? ? "ALWAYS" : "BY DEFAULT ")
+          coldef << "AS IDENTITY (START WITH "
+          coldef << start
+          coldef << ", INCREMENT BY "
+          coldef << data['autoincrementinc']
+          coldef << ")"
+          return true
+        end
+      end
+      false
+    end
+    
+    def create_column(name, refid, colno)
+      stmt = COLUMN_TYPE_STMT % [refid, strip_quotes(name)]
+      coldef = ""
+      data = execute(stmt).first
+      if data
+        coldef << add_quotes(expand_double_quotes(strip_quotes(name)))
+        coldef << " "
+        coldef << data['columndatatype']
+        if !reinstate_auto_increment(name, refid, coldef) && data['columndefault']
+          coldef << " DEFAULT " << data['columndefault']
+        end
+      end
+      coldef
+    end
+    
+    def structure_dump #:nodoc:
+      data = ""
+      execute("select tablename, tableid from sys.systables where schemaid not in (select schemaid from sys.sysschemas where schemaname LIKE 'SYS%')").each do |tbl|
+        tid = tbl["tableid"]
+        tname = tbl["tablename"]
+        data << "CREATE TABLE #{tname} (\n"
+        first_col = true
+        execute(COLUMN_INFO_STMT % tid).each do |col|
+          col_name = add_quotes(col['columnname']);
+          create_col_string = create_column(col_name, col['referenceid'],col['columnnumber'].to_i)
+          if !first_col
+            create_col_string = ",\n #{create_col_string}"
+          else
+            create_col_string = " #{create_col_string}"
+          end
+
+          data << create_col_string
+
+          first_col = false
+        end
+        data << ");\n\n"
+      end
+      data
+    end
+    
     # Support for removing columns added via derby bug issue:
     # https://issues.apache.org/jira/browse/DERBY-1489
     #
