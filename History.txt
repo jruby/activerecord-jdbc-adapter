@@ -1,3 +1,7 @@
+== 0.3.1
+
+* Derby critical fixes shortly after 0.3
+
 == 0.3
 
 * Release coincides with JRuby 1.0.0RC1 release
