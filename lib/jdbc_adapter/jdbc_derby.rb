@@ -299,12 +299,7 @@ module JdbcSpec
             end
           end
         else
-          vi = value.to_i
-          if vi.to_s == value
-            value
-          else
-            "'#{quote_string(value)}'"
-          end
+          super
         end
       else super
       end
@@ -332,3 +327,26 @@ module JdbcSpec
     end
   end
 end
+
+# Needed because Rails is broken wrt to quoting of 
+# some values. Most databases are nice about it,
+# but not Derby. The real issue is that you can't
+# compare a CHAR value to a NUMBER column.
+module ActiveRecord::Associations::ClassMethods
+  private
+
+  def select_limited_ids_list(options, join_dependency)
+    connection.select_all(
+      construct_finder_sql_for_association_limiting(options, join_dependency),
+      "#{name} Load IDs For Limited Eager Loading"
+    ).collect { |row| quote_primary_key(row[primary_key]) }.join(", ")
+  end
+
+  def quote_primary_key(value)
+    if parent.respond_to? :quote_value
+      parent.quote_value(value, parent.columns_hash[parent.primary_key])
+    else
+      connection.quote(value)
+    end
+  end
+end 
