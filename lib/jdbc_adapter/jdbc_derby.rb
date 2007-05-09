@@ -2,6 +2,43 @@ require 'jdbc_adapter/missing_functionality_helper'
 
 module JdbcSpec
   module Derby
+    def self.monkey_rails
+      unless @already_monkeyd
+        # Needed because Rails is broken wrt to quoting of 
+        # some values. Most databases are nice about it,
+        # but not Derby. The real issue is that you can't
+        # compare a CHAR value to a NUMBER column.
+        ::ActiveRecord::Associations::ClassMethods.module_eval do
+          private
+
+          def select_limited_ids_list(options, join_dependency)
+            connection.select_all(
+                                  construct_finder_sql_for_association_limiting(options, join_dependency),
+                                  "#{name} Load IDs For Limited Eager Loading"
+                                  ).collect { |row| quote_primary_key(row[primary_key]) }.join(", ")
+          end
+
+          def quote_primary_key(value)
+            if parent.respond_to? :quote_value
+              parent.quote_value(value, parent.columns_hash[parent.primary_key])
+            else
+              connection.quote(value)
+            end
+          end
+        end 
+
+        @already_monkeyd = true
+      end
+    end
+
+    def self.extended(*args)
+      monkey_rails
+    end
+
+    def self.included(*args)
+      monkey_rails
+    end
+    
     module Column
       def type_cast(value)
         return nil if value.nil? || value =~ /^\s*null\s*$/i
@@ -328,25 +365,3 @@ module JdbcSpec
   end
 end
 
-# Needed because Rails is broken wrt to quoting of 
-# some values. Most databases are nice about it,
-# but not Derby. The real issue is that you can't
-# compare a CHAR value to a NUMBER column.
-module ActiveRecord::Associations::ClassMethods
-  private
-
-  def select_limited_ids_list(options, join_dependency)
-    connection.select_all(
-      construct_finder_sql_for_association_limiting(options, join_dependency),
-      "#{name} Load IDs For Limited Eager Loading"
-    ).collect { |row| quote_primary_key(row[primary_key]) }.join(", ")
-  end
-
-  def quote_primary_key(value)
-    if parent.respond_to? :quote_value
-      parent.quote_value(value, parent.columns_hash[parent.primary_key])
-    else
-      connection.quote(value)
-    end
-  end
-end 
