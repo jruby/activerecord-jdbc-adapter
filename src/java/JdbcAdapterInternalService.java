@@ -226,6 +226,8 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
         }    
     }
 
+    private static final java.util.regex.Pattern HAS_SMALL = java.util.regex.Pattern.compile("[a-z]");
+    private static final java.util.regex.Pattern HAS_LARGE = java.util.regex.Pattern.compile("[A-Z]");
     private static IRubyObject unmarshal_columns(IRubyObject recv, DatabaseMetaData metadata, ResultSet rs) throws SQLException, IOException {
         List columns = new ArrayList();
         boolean isDerby = metadata.getClass().getName().indexOf("derby") != -1;
@@ -238,7 +240,7 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
 
         while(rs.next()) {
             String column_name = rs.getString(4);
-            if(metadata.storesUpperCaseIdentifiers()) {
+            if(metadata.storesUpperCaseIdentifiers() && !HAS_SMALL.matcher(column_name).find()) {
                 column_name = column_name.toLowerCase();
             }
 
@@ -305,7 +307,11 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
         List keyNames = new ArrayList();
         Ruby runtime = recv.getRuntime();
         while(result_set.next()) {
-            keyNames.add(runtime.newString(result_set.getString(4).toLowerCase()));
+            String s1 = result_set.getString(4);
+            if(metadata.storesUpperCaseIdentifiers() && !HAS_SMALL.matcher(s1).find()) {
+                s1 = s1.toLowerCase();
+            }
+            keyNames.add(runtime.newString(s1));
         }
         
         try {
@@ -443,12 +449,11 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
         int[] col_scale = new int[col_count];
 
         for(int i=0;i<col_count;i++) {
-            if(storesUpper) {
-                col_names[i] = runtime.newString(metadata.getColumnName(i+1).toLowerCase());
-            } else {
-                col_names[i] = runtime.newString(metadata.getColumnName(i+1));
+            String s1 = metadata.getColumnName(i+1);
+            if(storesUpper && !HAS_SMALL.matcher(s1).find()) {
+                s1 = s1.toLowerCase();
             }
-
+            col_names[i] = runtime.newString(s1);
             col_types[i] = metadata.getColumnType(i+1);
             col_scale[i] = metadata.getScale(i+1);
         }

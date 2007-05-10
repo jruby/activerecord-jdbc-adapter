@@ -10,6 +10,8 @@ module JdbcSpec
         when :float    then value.to_f
         when :datetime then cast_to_date_or_time(value)
         when :time     then cast_to_time(value)
+        when :decimal   then self.class.value_to_decimal(value)
+        when :boolean   then self.class.value_to_boolean(value)
         else value
         end
       end

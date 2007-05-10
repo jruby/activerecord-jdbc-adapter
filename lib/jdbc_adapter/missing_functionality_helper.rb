@@ -3,12 +3,12 @@ module JdbcSpec
     #Taken from SQLite adapter
 
     def alter_table(table_name, options = {}) #:nodoc:
-      table_name = table_name.downcase
+      table_name = table_name.to_s.downcase
       altered_table_name = "altered_#{table_name}"
       caller = lambda {|definition| yield definition if block_given?}
 
       transaction do
-        move_table(table_name, altered_table_name)
+        move_table(table_name, altered_table_name, options)
         move_table(altered_table_name, table_name, &caller)
       end
     end
@@ -25,7 +25,7 @@ module JdbcSpec
           (options[:rename][column.name] ||
            options[:rename][column.name.to_sym] ||
            column.name) : column.name
-
+          column_name = column_name.to_s
           @definition.column(column_name, column.type, 
                              :limit => column.limit, :default => column.default,
                              :null => column.null)

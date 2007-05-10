@@ -17,7 +17,7 @@ module JdbcSpec
                                   "#{name} Load IDs For Limited Eager Loading"
                                   ).collect { |row| connection.quote(row[primary_key], columns_hash[primary_key]) }.join(", ")
           end           
-        end 
+        end
 
         @already_monkeyd = true
       end
@@ -36,13 +36,17 @@ module JdbcSpec
         return nil if value.nil? || value =~ /^\s*null\s*$/i
         case type
         when :string    then value
+        when :text    then value
         when :integer   then defined?(value.to_i) ? value.to_i : (value ? 1 : 0)
         when :primary_key then defined?(value.to_i) ? value.to_i : (value ? 1 : 0) 
+        when :decimal   then self.class.value_to_decimal(value)
         when :float     then value.to_f
         when :datetime  then cast_to_date_or_time(value)
+        when :date      then self.class.string_to_date(value)
         when :timestamp then cast_to_time(value)
         when :binary    then value.scan(/[0-9A-Fa-f]{2}/).collect {|v| v.to_i(16)}.pack("C*")
         when :time      then cast_to_time(value)
+        when :boolean   then self.class.value_to_boolean(value)
         else value
         end
       end
@@ -104,8 +108,8 @@ module JdbcSpec
 
     # Set the sequence to the max value of the table's column.
     def reset_sequence!(table, column, sequence = nil)
-      mpk = select_value("SELECT MAX(#{column}) FROM #{table}")
-      execute("ALTER TABLE #{table} ALTER COLUMN #{column} RESTART WITH #{mpk.to_i + 1}")      
+      mpk = select_value("SELECT MAX(#{quote_column_name column}) FROM #{table}")
+      execute("ALTER TABLE #{table} ALTER COLUMN #{quote_column_name column} RESTART WITH #{mpk.to_i + 1}")      
     end
       
     def reset_pk_sequence!(table, pk = nil, sequence = nil)
@@ -345,6 +349,8 @@ module JdbcSpec
     def quote_column_name(name) #:nodoc:
       if /^references$/i =~ name
         %Q{"#{name.upcase}"}
+      elsif /[A-Z]/ =~ name && /[a-z]/ =~ name
+        %Q{"#{name}"}
       elsif name =~ /\s/
         %Q{"#{name.upcase}"}
       else
