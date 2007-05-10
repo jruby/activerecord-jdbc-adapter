@@ -66,6 +66,7 @@ module JdbcSpec
 
       def simplified_type(field_type)
         return :boolean if field_type =~ /smallint/i 
+        return :float if field_type =~ /real/i
         super
       end
     end
