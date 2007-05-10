@@ -46,6 +46,7 @@ module JdbcSpec
         else value
         end
       end
+      
       def cast_to_date_or_time(value)
         return value if value.is_a? Date
         return nil if value.blank?
@@ -343,6 +344,8 @@ module JdbcSpec
 # For DDL it appears you can quote "" column names, but in queries (like insert it errors out?)
     def quote_column_name(name) #:nodoc:
       if /^references$/i =~ name
+        %Q{"#{name.upcase}"}
+      elsif name =~ /\s/
         %Q{"#{name.upcase}"}
       else
         name
