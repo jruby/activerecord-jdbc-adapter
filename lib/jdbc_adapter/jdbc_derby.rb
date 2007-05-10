@@ -15,16 +15,8 @@ module JdbcSpec
             connection.select_all(
                                   construct_finder_sql_for_association_limiting(options, join_dependency),
                                   "#{name} Load IDs For Limited Eager Loading"
-                                  ).collect { |row| quote_primary_key(row[primary_key]) }.join(", ")
-          end
-
-          def quote_primary_key(value)
-            if parent.respond_to? :quote_value
-              parent.quote_value(value, parent.columns_hash[parent.primary_key])
-            else
-              connection.quote(value)
-            end
-          end
+                                  ).collect { |row| connection.quote(row[primary_key], columns_hash[primary_key]) }.join(", ")
+          end           
         end 
 
         @already_monkeyd = true
