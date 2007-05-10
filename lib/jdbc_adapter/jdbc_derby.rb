@@ -304,9 +304,13 @@ module JdbcSpec
 
     def recreate_database(db_name)
       tables.each do |t|
-        drop_table t rescue nil
+        drop_table t
       end
-    end    
+    end
+    
+    def tables
+      super.reject{|t| t =~ /^sys/ }
+    end
     
     # For migrations, exclude the primary key index as recommended
     # by the HSQLDB docs.  This is not a great test for primary key
