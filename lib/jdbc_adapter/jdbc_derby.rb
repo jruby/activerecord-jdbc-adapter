@@ -124,7 +124,7 @@ module JdbcSpec
     def _execute(sql, name = nil)
       log_no_bench(sql, name) do
         case sql.strip
-        when /^(select|show)/i:
+        when /^\(?\s*(select|show)/i:
           @offset ||= 0
           if !@limit || @limit == -1
             range = @offset..-1
