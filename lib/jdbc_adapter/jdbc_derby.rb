@@ -333,11 +333,27 @@ module JdbcSpec
           when :string
             "'#{quote_string(value)}'"
           else
-            super
+            vi = value.to_i
+            if vi.to_s == value
+              value
+            else
+              super
+            end
           end
         else
           super
         end
+      when Float, Fixnum, Bignum:
+          if column
+            case column.type
+            when :string
+              "'#{quote_string(value.to_s)}'"
+            else
+              super
+            end
+          else
+            super
+          end
       else super
       end
     end
