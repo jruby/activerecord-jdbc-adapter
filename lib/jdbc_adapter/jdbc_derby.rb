@@ -240,8 +240,10 @@ module JdbcSpec
     # Support for removing columns added via derby bug issue:
     # https://issues.apache.org/jira/browse/DERBY-1489
     #
-    # This feature has not made it into a formal release and is not in Java 6.  We will
-    # need to conditionally support this somehow (supposed to arrive for 10.3.0.0)
+    # This feature has not made it into a formal release and is not in Java 6.
+    # If the normal strategy fails we fall back on a strategy by creating a new
+    # table without the new column and there after moving the data to the new
+    # 
     def remove_column(table_name, column_name)
       begin
         execute "ALTER TABLE #{table_name} DROP COLUMN #{column_name} RESTRICT"
@@ -249,39 +251,46 @@ module JdbcSpec
         alter_table(table_name) do |definition|
           definition.columns.delete(definition[column_name])
         end
-#        raise NotImplementedError, "remove_column is not support on this Derby version"
       end
     end
     
     # Notes about changing in Derby:
     #    http://db.apache.org/derby/docs/10.2/ref/rrefsqlj81859.html#rrefsqlj81859__rrefsqlj37860)
-    # Derby cannot: Change the column type or decrease the precision of an existing type, but
-    #   can increase the types precision only if it is a VARCHAR.
     #
-    def change_column(table_name, column_name, type, options = {}) #:nodoc:
-      # Derby can't change the datatype or size unless the type is varchar
-      execute "ALTER TABLE #{table_name} ALTER COLUMN #{column_name} SET DATA TYPE #{type_to_sql(type, options[:limit])}" if type == :string
-      if options.include? :null
+    # We support changing columns using the strategy outlined in:
+    #    https://issues.apache.org/jira/browse/DERBY-1515
+    #
+    # This feature has not made it into a formal release and is not in Java 6.  We will
+    # need to conditionally support this somehow (supposed to arrive for 10.3.0.0)
+    def change_column(table_name, column_name, type, options = {})
+      # null/not nulling is easy, handle that separately
+      if options.include?(:null)
         # This seems to only work with 10.2 of Derby
-        if options[:null] == false
+        if options.delete(:null) == false
           execute "ALTER TABLE #{table_name} ALTER COLUMN #{column_name} NOT NULL"
         else
           execute "ALTER TABLE #{table_name} ALTER COLUMN #{column_name} NULL"
         end
       end
-    end
 
-    # There seems to be more than one thing wrong with 
-    # changing defaults for VARCHAR columns right now... DERBY-2371
-    # among others
-    def change_column_default(table_name, column_name, default) #:nodoc:
-      begin
-        execute "ALTER TABLE #{table_name} ALTER COLUMN #{column_name} DEFAULT #{quote(default)}"
-      rescue
-        alter_table(table_name) do |definition|
-          definition[column_name].default = default
+      # anything left to do?
+      unless options.empty?
+        begin
+          execute "ALTER TABLE #{table_name} ALTER COLUMN #{column_name} SET DATA TYPE #{type_to_sql(type, options[:limit])}"
+        rescue
+          transaction do
+            temp_new_column_name = "#{column_name}_newtype"
+            # 1) ALTER TABLE t ADD COLUMN c1_newtype NEWTYPE;
+            add_column table_name, temp_new_column_name, type, options
+            # 2) UPDATE t SET c1_newtype = c1;
+            execute "UPDATE #{table_name} SET #{temp_new_column_name} = CAST(#{column_name} AS #{type_to_sql(type, options[:limit])})"
+            # 3) ALTER TABLE t DROP COLUMN c1;
+            remove_column table_name, column_name
+            # 4) ALTER TABLE t RENAME COLUMN c1_newtype to c1;
+            rename_column table_name, temp_new_column_name, column_name
+          end
         end
-      end        
+      end
     end
 
     # Support for renaming columns:
@@ -343,7 +352,7 @@ module JdbcSpec
         else
           super
         end
-      when Float, Fixnum, Bignum:
+      when Float, Fixnum, Bignum
           if column
             case column.type
             when :string
