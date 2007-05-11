@@ -309,7 +309,7 @@ module JdbcSpec
     end
     
     def tables
-      super.reject{|t| t =~ /^sys/ }
+      super.reject{|t| t =~ /^sys/i }
     end
     
     # For migrations, exclude the primary key index as recommended
@@ -328,15 +328,12 @@ module JdbcSpec
           case column.type
           when :binary
             "CAST(x'#{quote_string(value).unpack("C*").collect {|v| v.to_s(16)}.join}' AS BLOB)"
+          when :text
+            "CAST('#{quote_string(value)}' AS CLOB)"
           when :string
             "'#{quote_string(value)}'"
           else
-            vi = value.to_i
-            if vi.to_s == value
-              value
-            else
-              "'#{quote_string(value)}'"
-            end
+            super
           end
         else
           super

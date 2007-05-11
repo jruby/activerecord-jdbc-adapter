@@ -36,7 +36,7 @@ module JdbcSpec
       
       copy_table_indexes(from, to)
       copy_table_contents(from, to, 
-                          @definition.columns.map {|column| column.name}, 
+                          @definition.columns, 
                           options[:rename] || {})
     end
     
@@ -57,13 +57,13 @@ module JdbcSpec
     end
     
     def copy_table_contents(from, to, columns, rename = {}) #:nodoc:
-      column_mappings = Hash[*columns.map {|name| [name, name]}.flatten]
+      column_mappings = Hash[*columns.map {|col| [col.name, col.name]}.flatten]
       rename.inject(column_mappings) {|map, a| map[a.last] = a.first; map}
       from_columns = columns(from).collect {|col| col.name}
-      columns = columns.find_all{|col| from_columns.include?(column_mappings[col])}
+      columns = columns.find_all{|col| from_columns.include?(column_mappings[col.name])}
       execute("SELECT * FROM #{from}").each do |row|
-        sql = "INSERT INTO #{to} ("+columns*','+") VALUES ("            
-        sql << columns.map {|col| quote row[column_mappings[col]]} * ', '
+        sql = "INSERT INTO #{to} ("+columns.map(&:name)*','+") VALUES ("            
+        sql << columns.map {|col| quote(row[column_mappings[col.name]],col)} * ', '
         sql << ')'
         execute sql
       end
