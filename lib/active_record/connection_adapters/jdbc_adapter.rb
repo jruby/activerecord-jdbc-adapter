@@ -118,6 +118,7 @@ module ActiveRecord
 
       def initialize(types)
         @types = types
+        @types.each {|t| t['type_name'] ||= t['local_type_name']} # Sybase driver seems to want 'local_type_name'
       end
 
       def choose_best_types
