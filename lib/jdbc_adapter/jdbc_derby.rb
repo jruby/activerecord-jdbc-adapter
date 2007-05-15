@@ -124,6 +124,8 @@ module JdbcSpec
     def _execute(sql, name = nil)
       log_no_bench(sql, name) do
         case sql.strip
+        when /^insert/i:
+          @connection.execute_insert(sql)
         when /^\(?\s*(select|show)/i:
           @offset ||= 0
           if !@limit || @limit == -1
@@ -134,8 +136,6 @@ module JdbcSpec
             max = @offset+@limit+1
           end
           @connection.execute_query(sql,max)[range] || []
-        when /^insert/i:
-          @connection.execute_insert(sql)
         else
           @connection.execute_update(sql)
         end

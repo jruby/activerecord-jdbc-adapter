@@ -411,10 +411,10 @@ module ActiveRecord
       def _execute(sql, name = nil)
         log_no_bench(sql, name) do
           case sql.strip
-          when /^(select|show)/i:
-              @connection.execute_query(sql)
           when /^insert/i:
-              @connection.execute_insert(sql)
+            @connection.execute_insert(sql)
+          when /^\(?\s*(select|show)/i:
+            @connection.execute_query(sql)
           else
             @connection.execute_update(sql)
           end
