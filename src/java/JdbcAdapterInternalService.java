@@ -204,7 +204,7 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
     }
 
     public static IRubyObject columns(IRubyObject recv, IRubyObject[] args) throws SQLException, IOException {
-        String table_name = args[0].toString();
+        String table_name = args[0].convertToString().getUnicodeValue();
         while(true) {
             Connection c = (Connection)recv.dataGetStruct();
             try {
@@ -323,7 +323,7 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
 
     public static IRubyObject execute_id_insert(IRubyObject recv, IRubyObject sql, IRubyObject id) throws SQLException {
         Connection c = (Connection)recv.dataGetStruct();
-        PreparedStatement ps = c.prepareStatement(sql.toString());
+        PreparedStatement ps = c.prepareStatement(sql.convertToString().getUnicodeValue());
         try {
             ps.setLong(1,RubyNumeric.fix2long(id));
             ps.executeUpdate();
@@ -339,7 +339,7 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
             Statement stmt = null;
             try {
                 stmt = c.createStatement();
-                return recv.getRuntime().newFixnum(stmt.executeUpdate(sql.toString()));
+                return recv.getRuntime().newFixnum(stmt.executeUpdate(sql.convertToString().getUnicodeValue()));
             } catch(SQLException e) {
                 if(c.isClosed()) {
                     recv.callMethod(recv.getRuntime().getCurrentContext(),"reconnect!");
@@ -368,7 +368,7 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
             try {
                 stmt = c.createStatement();
                 stmt.setMaxRows(0);
-                return unmarshal_result(recv, stmt.executeQuery(sql.toString()));
+                return unmarshal_result(recv, stmt.executeQuery(sql.convertToString().getUnicodeValue()));
             } catch(SQLException e) {
                 if(c.isClosed()) {
                     recv.callMethod(recv.getRuntime().getCurrentContext(),"reconnect!");
@@ -391,7 +391,7 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
             Statement stmt = null;
             try {
                 stmt = c.createStatement();
-                stmt.executeUpdate(sql.toString(), Statement.RETURN_GENERATED_KEYS);
+                stmt.executeUpdate(sql.convertToString().getUnicodeValue(), Statement.RETURN_GENERATED_KEYS);
                 return unmarshal_id_result(recv.getRuntime(), stmt.getGeneratedKeys());
             } catch(SQLException e) {
                 if(c.isClosed()) {
@@ -554,7 +554,7 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
             if(vs == null || rs.wasNull()) {
                 return runtime.getNil();
             }
-            return runtime.newString(vs);
+            return RubyString.newUnicodeString(runtime, vs);
         }
     }
 

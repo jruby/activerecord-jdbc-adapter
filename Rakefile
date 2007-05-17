@@ -50,6 +50,11 @@ Rake::TestTask.new(:test_mysql) do |t|
   t.libs << 'test'
 end
 
+Rake::TestTask.new(:test_mysql_multibyte) do |t|
+  t.test_files = FileList['test/mysql_multibyte_test.rb']
+  t.libs << 'test'
+end
+
 Rake::TestTask.new(:test_hsqldb) do |t|
   t.test_files = FileList['test/hsqldb_simple_test.rb']
   t.libs << 'test'
