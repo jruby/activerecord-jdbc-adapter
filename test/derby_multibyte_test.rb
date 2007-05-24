@@ -5,8 +5,8 @@
 #   grant all on weblog_development.* to blog@localhost;
 
 require 'jdbc_common'
-require 'db/mysql'
+require 'db/derby'
 
-class MysqlMultibyteTest < Test::Unit::TestCase
+class DerbyMultibyteTest < Test::Unit::TestCase
   include MultibyteTestMethods
 end

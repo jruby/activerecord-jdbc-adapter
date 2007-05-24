@@ -140,7 +140,7 @@ module ActiveRecord
           return new_types.first if new_types.length == 1
           types = new_types if new_types.length > 0
         end
-        raise "unable to choose type from: #{types.collect{|t| [t['type_name'],t]}.inspect} for #{ar_type}"        
+        raise "unable to choose type for #{ar_type} from:\n#{types.collect{|t| t['type_name']}.inspect}"
       end
     end
 

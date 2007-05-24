@@ -114,3 +114,40 @@ module SimpleTestMethods
   end
 
 end
+
+class ActiveRecord::Base
+  cattr_accessor :defined_connections
+end
+
+module MultibyteTestMethods
+  include MigrationSetup
+
+  def setup
+    super
+    config = ActiveRecord::Base.defined_connections["ActiveRecord::Base"].config
+    props = java.util.Properties.new
+    props.setProperty("user", config[:username])
+    props.setProperty("password", config[:password])
+    @java_con = java.sql.DriverManager.getConnection(config[:url], props)
+    @java_con.setAutoCommit(true)
+  end
+
+  def teardown
+    @java_con.close
+    super
+  end
+
+  def test_select_multibyte_string
+    @java_con.createStatement().execute("insert into entries (title) values ('テスト')")
+    entry = Entry.find(:first)
+    assert_equal "テスト", entry.title
+    assert_equal entry, Entry.find_by_title("テスト")
+  end
+
+  def test_update_multibyte_string
+    Entry.create!(:title => "テスト")
+    rs = @java_con.createStatement().executeQuery("select title from entries")
+    assert rs.next
+    assert_equal "テスト", rs.getString(1)
+  end
+end

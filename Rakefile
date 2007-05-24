@@ -46,12 +46,7 @@ else
 end
 
 Rake::TestTask.new(:test_mysql) do |t|
-  t.test_files = FileList['test/mysql_simple_test.rb']
-  t.libs << 'test'
-end
-
-Rake::TestTask.new(:test_mysql_multibyte) do |t|
-  t.test_files = FileList['test/mysql_multibyte_test.rb']
+  t.test_files = FileList['test/mysql_*_test.rb']
   t.libs << 'test'
 end
 
@@ -61,13 +56,13 @@ Rake::TestTask.new(:test_hsqldb) do |t|
 end
 
 Rake::TestTask.new(:test_derby) do |t|
-  t.test_files = FileList['test/derby_simple_test.rb', 
+  t.test_files = FileList['test/derby_*_test.rb', 
     'test/activerecord/connection_adapters/type_conversion_test.rb']
   t.libs << 'test'
 end
 
 Rake::TestTask.new(:test_postgresql) do |t|
-  t.test_files = FileList['test/postgres_simple_test.rb']
+  t.test_files = FileList['test/postgres_*_test.rb']
   t.libs << 'test'
 end
 
