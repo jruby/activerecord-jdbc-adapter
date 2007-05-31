@@ -4,13 +4,13 @@
   <parent>
     <groupId>org.jruby</groupId>
     <artifactId>shared</artifactId>
-    <version>1.0.0RC2-SNAPSHOT</version>
+    <version>1.0RC3-SNAPSHOT</version>
   </parent>
   <modelVersion>4.0.0</modelVersion>
   <groupId>org.jruby.testsuites</groupId>
   <artifactId>activerecord-jdbc</artifactId>
   <packaging>jar</packaging>
-  <version>1.0.0RC2-SNAPSHOT</version>
+  <version>1.0RC3-SNAPSHOT</version>
   <name>JRuby ActiveRecord-JDBC testsuite</name>
   <description>Test ActiveRecord-JDBC</description>
 
@@ -85,6 +85,11 @@
             <groupId>hsqldb</groupId>
             <artifactId>hsqldb</artifactId>
             <version>1.8.0.7</version>
+          </dependency>
+          <dependency>
+            <groupId>postgresql</groupId>
+            <artifactId>postgresql</artifactId>
+            <version>8.2-504.jdbc4</version>
           </dependency>
         </dependencies>
       </plugin>
