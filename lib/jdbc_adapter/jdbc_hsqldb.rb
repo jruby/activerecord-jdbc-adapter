@@ -110,7 +110,9 @@ module JdbcSpec
     end
 
     def insert(sql, name = nil, pk = nil, id_value = nil, sequence_name = nil) #:nodoc:
-      execute(sql, name)
+      log_no_bench(sql,name) do
+        @connection.execute_update(sql)
+      end
       table = sql.split(" ", 4)[2]
       id_value || last_insert_id(table, nil)
     end
@@ -136,9 +138,11 @@ module JdbcSpec
     # system tables SYSTEM.*, but H2 seems to name them without
     # any kind of convention
     def tables
-      @connection.tables do |result_row|
-        result_row.get_string(ActiveRecord::ConnectionAdapters::Jdbc::TableMetaData::TABLE_TYPE) !~ /^SYSTEM TABLE$/i
+      _results = []
+      @connection.tables.each do |result_row|
+        _results << result_row.to_s if result_row.to_s !~ /^system_/i
       end
+      _results
     end
 
     # For migrations, exclude the primary key index as recommended
