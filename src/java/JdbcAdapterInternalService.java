@@ -83,7 +83,7 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
         cJdbcConn.defineFastMethod("database_name",cf.getFastSingletonMethod("database_name"));
         cJdbcConn.defineFastMethod("columns",cf.getFastOptSingletonMethod("columns"));
         cJdbcConn.defineFastMethod("mysql_quote_string",cf.getFastSingletonMethod("mysql_quote_string",IRubyObject.class));
-        cJdbcConn.defineMethod("tables",cf.getSingletonMethod("tables"));
+        cJdbcConn.defineFastMethod("tables",cf.getFastOptSingletonMethod("tables"));
         return true;
     }
 
@@ -104,28 +104,43 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
         return recv;
     }
 
-    public static IRubyObject tables(IRubyObject recv, Block table_filter) throws SQLException, IOException {
+    public static IRubyObject tables(IRubyObject recv, IRubyObject[] args) throws SQLException, IOException {
         Ruby runtime = recv.getRuntime();
-        while(true) {
-            Connection c = (Connection)recv.dataGetStruct();
-            try {
-                ResultSet rs = c.getMetaData().getTables(null,null,null,null);
-                if(table_filter.isGiven()) {
-                    RubyString ss = runtime.newString("table_name");
-                    List arr = new ArrayList();
-                    RubyArray aa = (RubyArray)unmarshal_result(recv, JavaObject.wrap(runtime, rs), table_filter);
-                    for(int i=0,j=aa.size();i<j;i++) {
-                        arr.add(((RubyString)(((RubyHash)aa.eltInternal(i)).aref(ss))).downcase());
+        String catalog = null, schemapat = null, tablepat = null;
+        String[] types = null;
+        if (args != null) {
+            if (args.length > 0) {
+                catalog = convertToStringOrNull(args[0]);
+            }
+            if (args.length > 1) {
+                schemapat = convertToStringOrNull(args[1]);
+            }
+            if (args.length > 2) {
+                tablepat = convertToStringOrNull(args[2]);
+            }
+            if (args.length > 3) {
+                IRubyObject typearr = args[3];
+                if (typearr instanceof RubyArray) {
+                    IRubyObject[] arr = ((RubyArray) typearr).toJavaArray();
+                    types = new String[arr.length];
+                    for (int i = 0; i < types.length; i++) {
+                        types[i] = arr[i].toString();
                     }
-                    return runtime.newArray(arr);
                 } else {
-                    List arr = new ArrayList();
-                    while(rs.next()) {
-                        arr.add(runtime.newString(rs.getString(3).toLowerCase()));
-                    }
-                    return runtime.newArray(arr);
+                    types = new String[] {types.toString()};
                 }
-            } catch(SQLException e) {
+            }
+        }
+        while (true) {
+            Connection c = (Connection) recv.dataGetStruct();
+            try {
+                ResultSet rs = c.getMetaData().getTables(catalog, schemapat, tablepat, types);
+                List arr = new ArrayList();
+                while (rs.next()) {
+                    arr.add(runtime.newString(rs.getString(3).toLowerCase()));
+                }
+                return runtime.newArray(arr);
+            } catch (SQLException e) {
                 if(c.isClosed()) {
                     recv.callMethod(recv.getRuntime().getCurrentContext(),"reconnect!");
                     continue;
@@ -608,5 +623,12 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
             i+=1;
         }
         return recv.getRuntime().newStringShared(bl);
+    }
+    
+    private static String convertToStringOrNull(IRubyObject obj) {
+        if (obj.isNil()) {
+            return null;
+        }
+        return obj.toString();
     }
 }

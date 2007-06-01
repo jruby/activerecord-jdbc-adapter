@@ -321,13 +321,6 @@ module JdbcSpec
       super.reject{|t| t =~ /^sys/i }
     end
     
-    # For migrations, exclude the primary key index as recommended
-    # by the HSQLDB docs.  This is not a great test for primary key
-    # index.
-    def indexes(table_name)
-      @connection.indexes(table_name)
-    end
-    
     def quote(value, column = nil) # :nodoc:
       return value.to_s if column && column.type == :primary_key
 

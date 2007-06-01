@@ -57,6 +57,24 @@ module JdbcSpec
       default_seq || "#{table_name}_#{pk || default_pk || 'id'}_seq"
     end
 
+    # Resets sequence to the max value of the table's pk if present.
+    def reset_pk_sequence!(table, pk = nil, sequence = nil)
+      unless pk and sequence
+        default_pk, default_sequence = pk_and_sequence_for(table)
+        pk ||= default_pk
+        sequence ||= default_sequence
+      end
+      if pk
+        if sequence
+          select_value <<-end_sql, 'Reset sequence'
+            SELECT setval('#{sequence}', (SELECT COALESCE(MAX(#{pk})+(SELECT increment_by FROM #{sequence}), (SELECT min_value FROM #{sequence})) FROM #{table}), false)
+          end_sql
+        else
+          @logger.warn "#{table} has primary key #{pk} with no default sequence" if @logger
+        end
+      end
+    end
+
     # Find a table's primary key and sequence.
     def pk_and_sequence_for(table)
       # First try looking for a sequence with a dependency on the
@@ -184,6 +202,10 @@ module JdbcSpec
       else
         'bigint'
       end
+    end
+
+    def tables
+      @connection.tables(database_name, nil, nil, ["TABLE"])
     end
   end  
 end

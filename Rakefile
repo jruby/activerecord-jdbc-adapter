@@ -1,7 +1,7 @@
 require 'rake'
 require 'rake/testtask'
 
-task :default => :test
+task :default => [:java_compile, :test]
 
 def java_classpath_arg # myriad of ways to discover JRuby classpath
   begin
@@ -40,7 +40,7 @@ end
 desc "Run AR-JDBC tests"
 if RUBY_PLATFORM =~ /java/
   # TODO: add more databases into the standard tests here.
-  task :test => [:java_compile, :test_mysql, :test_derby, :test_hsqldb]
+  task :test => [:test_mysql, :test_derby, :test_hsqldb]
 else
   task :test => [:test_mysql]
 end

@@ -440,6 +440,10 @@ module ActiveRecord
         @connection.tables
       end
 
+      def indexes(table_name)
+        @connection.indexes(table_name)
+      end
+
       def begin_db_transaction
         @connection.begin
       end

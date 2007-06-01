@@ -138,19 +138,7 @@ module JdbcSpec
     # system tables SYSTEM.*, but H2 seems to name them without
     # any kind of convention
     def tables
-      _results = []
-      @connection.tables.each do |result_row|
-        _results << result_row.to_s if result_row.to_s !~ /^system_/i
-      end
-      _results
+      @connection.tables.select {|row| row.to_s !~ /^system_/i }
     end
-
-    # For migrations, exclude the primary key index as recommended
-    # by the HSQLDB docs.  This is not a great test for primary key
-    # index.
-    def indexes(table_name, name = nil)
-      @connection.indexes(table_name.to_s)
-    end
-
   end
 end

@@ -104,10 +104,6 @@ module JdbcSpec
       select_one("SELECT DATABASE() as db")["db"]
     end
     
-    def indexes(table_name, name = nil)#:nodoc:
-      @connection.indexes(table_name)      
-    end
-    
     def create_table(name, options = {}) #:nodoc:
       super(name, {:options => "ENGINE=InnoDB"}.merge(options))
     end
