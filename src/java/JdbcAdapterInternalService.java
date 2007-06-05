@@ -133,8 +133,9 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
         }
         while (true) {
             Connection c = (Connection) recv.dataGetStruct();
+            ResultSet rs = null;
             try {
-                ResultSet rs = c.getMetaData().getTables(catalog, schemapat, tablepat, types);
+                rs = c.getMetaData().getTables(catalog, schemapat, tablepat, types);
                 List arr = new ArrayList();
                 while (rs.next()) {
                     arr.add(runtime.newString(rs.getString(3).toLowerCase()));
@@ -146,7 +147,12 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
                     continue;
                 }
                 throw e;
+            } finally {
+                try {
+                    rs.close();
+                } catch(Exception e) {}
             }
+
         }
     }
 
@@ -244,69 +250,70 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
     private static final java.util.regex.Pattern HAS_SMALL = java.util.regex.Pattern.compile("[a-z]");
     private static final java.util.regex.Pattern HAS_LARGE = java.util.regex.Pattern.compile("[A-Z]");
     private static IRubyObject unmarshal_columns(IRubyObject recv, DatabaseMetaData metadata, ResultSet rs) throws SQLException, IOException {
-        List columns = new ArrayList();
-        boolean isDerby = metadata.getClass().getName().indexOf("derby") != -1;
-        Ruby runtime = recv.getRuntime();
-        ThreadContext ctx = runtime.getCurrentContext();
-
-        RubyHash tps = ((RubyHash)(recv.callMethod(ctx, "adapter").callMethod(ctx,"native_database_types")));
-
-        IRubyObject jdbcCol = ((RubyModule)(runtime.getModule("ActiveRecord").getConstant("ConnectionAdapters"))).getConstant("JdbcColumn");
-
-        while(rs.next()) {
-            String column_name = rs.getString(4);
-            if(metadata.storesUpperCaseIdentifiers() && !HAS_SMALL.matcher(column_name).find()) {
-                column_name = column_name.toLowerCase();
-            }
-
-            String prec = rs.getString(7);
-            String scal = rs.getString(9);
-            int precision = -1;
-            int scale = -1;
-            if(prec != null) {
-                precision = Integer.parseInt(prec);
-                if(scal != null) {
-                    scale = Integer.parseInt(scal);
-                }
-            }
-            String type = rs.getString(6);
-            if(prec != null && precision > 0) {
-                type += "(" + precision;
-                if(scal != null && scale > 0) {
-                    type += "," + scale;
-                }
-                type += ")";
-            }
-            String def = rs.getString(13);
-            IRubyObject _def;
-            if(def == null) {
-                _def = runtime.getNil();
-            } else {
-                if(isDerby && def.length() > 0 && def.charAt(0) == '\'') {
-                    def = def.substring(1, def.length()-1);
-                }
-                _def = runtime.newString(def);
-            }
-
-            IRubyObject c = jdbcCol.callMethod(ctx,"new", new IRubyObject[]{recv.getInstanceVariable("@config"), runtime.newString(column_name),
-                                                                            _def, runtime.newString(type), 
-                                                                            runtime.newBoolean(!rs.getString(18).equals("NO"))});
-            columns.add(c);
-
-            IRubyObject tp = (IRubyObject)tps.fastARef(c.callMethod(ctx,"type"));
-            if(tp != null && !tp.isNil() && tp.callMethod(ctx,"[]",runtime.newSymbol("limit")).isNil()) {
-                c.callMethod(ctx,"limit=", runtime.getNil());
-                if(!c.callMethod(ctx,"type").equals(runtime.newSymbol("decimal"))) {
-                    c.callMethod(ctx,"precision=", runtime.getNil());
-                }
-            }
-        }
-
         try {
-            rs.close();
-        } catch(Exception e) {}
+            List columns = new ArrayList();
+            boolean isDerby = metadata.getClass().getName().indexOf("derby") != -1;
+            Ruby runtime = recv.getRuntime();
+            ThreadContext ctx = runtime.getCurrentContext();
 
-        return runtime.newArray(columns);
+            RubyHash tps = ((RubyHash)(recv.callMethod(ctx, "adapter").callMethod(ctx,"native_database_types")));
+
+            IRubyObject jdbcCol = ((RubyModule)(runtime.getModule("ActiveRecord").getConstant("ConnectionAdapters"))).getConstant("JdbcColumn");
+
+            while(rs.next()) {
+                String column_name = rs.getString(4);
+                if(metadata.storesUpperCaseIdentifiers() && !HAS_SMALL.matcher(column_name).find()) {
+                    column_name = column_name.toLowerCase();
+                }
+
+                String prec = rs.getString(7);
+                String scal = rs.getString(9);
+                int precision = -1;
+                int scale = -1;
+                if(prec != null) {
+                    precision = Integer.parseInt(prec);
+                    if(scal != null) {
+                        scale = Integer.parseInt(scal);
+                    }
+                }
+                String type = rs.getString(6);
+                if(prec != null && precision > 0) {
+                    type += "(" + precision;
+                    if(scal != null && scale > 0) {
+                        type += "," + scale;
+                    }
+                    type += ")";
+                }
+                String def = rs.getString(13);
+                IRubyObject _def;
+                if(def == null) {
+                    _def = runtime.getNil();
+                } else {
+                    if(isDerby && def.length() > 0 && def.charAt(0) == '\'') {
+                        def = def.substring(1, def.length()-1);
+                    }
+                    _def = runtime.newString(def);
+                }
+
+                IRubyObject c = jdbcCol.callMethod(ctx,"new", new IRubyObject[]{recv.getInstanceVariable("@config"), runtime.newString(column_name),
+                                                                                _def, runtime.newString(type), 
+                                                                                runtime.newBoolean(!rs.getString(18).equals("NO"))});
+                columns.add(c);
+
+                IRubyObject tp = (IRubyObject)tps.fastARef(c.callMethod(ctx,"type"));
+                if(tp != null && !tp.isNil() && tp.callMethod(ctx,"[]",runtime.newSymbol("limit")).isNil()) {
+                    c.callMethod(ctx,"limit=", runtime.getNil());
+                    if(!c.callMethod(ctx,"type").equals(runtime.newSymbol("decimal"))) {
+                        c.callMethod(ctx,"precision=", runtime.getNil());
+                    }
+                }
+            }
+            return runtime.newArray(columns);
+        } finally {
+            try {
+                rs.close();
+            } catch(Exception e) {}
+        }
     }
 
     public static IRubyObject primary_keys(IRubyObject recv, IRubyObject _table_name) throws SQLException {
@@ -425,98 +432,21 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
     }
 
     public static IRubyObject unmarshal_result_downcase(IRubyObject recv, ResultSet rs) throws SQLException, IOException {
-        Ruby runtime = recv.getRuntime();
-        ResultSetMetaData metadata = rs.getMetaData();
-        int col_count = metadata.getColumnCount();
-        IRubyObject[] col_names = new IRubyObject[col_count];
-        int[] col_types = new int[col_count];
-        int[] col_scale = new int[col_count];
-
-        for(int i=0;i<col_count;i++) {
-            col_names[i] = runtime.newString(metadata.getColumnName(i+1).toLowerCase());
-            col_types[i] = metadata.getColumnType(i+1);
-            col_scale[i] = metadata.getScale(i+1);
-        }
-
         List results = new ArrayList();
-        while(rs.next()) {
-            RubyHash row = RubyHash.newHash(runtime);
-            for(int i=0;i<col_count;i++) {
-                row.aset(col_names[i], jdbc_to_ruby(runtime, i+1, col_types[i], col_scale[i], rs));
-            }
-            results.add(row);
-        }
- 
+        Ruby runtime = recv.getRuntime();
         try {
-            rs.close();
-        } catch(Exception e) {}
+            ResultSetMetaData metadata = rs.getMetaData();
+            int col_count = metadata.getColumnCount();
+            IRubyObject[] col_names = new IRubyObject[col_count];
+            int[] col_types = new int[col_count];
+            int[] col_scale = new int[col_count];
 
-        return runtime.newArray(results);
-    }
-
-    public static IRubyObject unmarshal_result(IRubyObject recv, ResultSet rs) throws SQLException, IOException {
-        Ruby runtime = recv.getRuntime();
-        ResultSetMetaData metadata = rs.getMetaData();
-        boolean storesUpper = rs.getStatement().getConnection().getMetaData().storesUpperCaseIdentifiers();
-        int col_count = metadata.getColumnCount();
-        IRubyObject[] col_names = new IRubyObject[col_count];
-        int[] col_types = new int[col_count];
-        int[] col_scale = new int[col_count];
-
-        for(int i=0;i<col_count;i++) {
-            String s1 = metadata.getColumnName(i+1);
-            if(storesUpper && !HAS_SMALL.matcher(s1).find()) {
-                s1 = s1.toLowerCase();
-            }
-            col_names[i] = runtime.newString(s1);
-            col_types[i] = metadata.getColumnType(i+1);
-            col_scale[i] = metadata.getScale(i+1);
-        }
-
-        List results = new ArrayList();
-        while(rs.next()) {
-            RubyHash row = RubyHash.newHash(runtime);
             for(int i=0;i<col_count;i++) {
-                row.aset(col_names[i], jdbc_to_ruby(runtime, i+1, col_types[i], col_scale[i], rs));
+                col_names[i] = runtime.newString(metadata.getColumnName(i+1).toLowerCase());
+                col_types[i] = metadata.getColumnType(i+1);
+                col_scale[i] = metadata.getScale(i+1);
             }
-            results.add(row);
-        }
- 
-        try {
-            rs.close();
-        } catch(Exception e) {}
 
-        return runtime.newArray(results);
-    }
-
-    public static IRubyObject unmarshal_result(IRubyObject recv, IRubyObject resultset, Block row_filter) throws SQLException, IOException {
-        Ruby runtime = recv.getRuntime();
-        ResultSet rs = intoResultSet(resultset);
-        ResultSetMetaData metadata = rs.getMetaData();
-        int col_count = metadata.getColumnCount();
-        IRubyObject[] col_names = new IRubyObject[col_count];
-        int[] col_types = new int[col_count];
-        int[] col_scale = new int[col_count];
-
-        for(int i=0;i<col_count;i++) {
-            col_names[i] = runtime.newString(metadata.getColumnName(i+1));
-            col_types[i] = metadata.getColumnType(i+1);
-            col_scale[i] = metadata.getScale(i+1);
-        }
-
-        List results = new ArrayList();
-
-        if(row_filter.isGiven()) {
-            while(rs.next()) {
-                if(row_filter.yield(runtime.getCurrentContext(),resultset).isTrue()) {
-                    RubyHash row = RubyHash.newHash(runtime);
-                    for(int i=0;i<col_count;i++) {
-                        row.aset(col_names[i], jdbc_to_ruby(runtime, i+1, col_types[i], col_scale[i], rs));
-                    }
-                    results.add(row);
-                }
-            }
-        } else {
             while(rs.next()) {
                 RubyHash row = RubyHash.newHash(runtime);
                 for(int i=0;i<col_count;i++) {
@@ -524,12 +454,94 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
                 }
                 results.add(row);
             }
+        } finally {
+            try {
+                rs.close();
+            } catch(Exception e) {}
         }
  
-        try {
-            rs.close();
-        } catch(Exception e) {}
+        return runtime.newArray(results);
+    }
 
+    public static IRubyObject unmarshal_result(IRubyObject recv, ResultSet rs) throws SQLException, IOException {
+        Ruby runtime = recv.getRuntime();
+        List results = new ArrayList();
+        try {
+            ResultSetMetaData metadata = rs.getMetaData();
+            boolean storesUpper = rs.getStatement().getConnection().getMetaData().storesUpperCaseIdentifiers();
+            int col_count = metadata.getColumnCount();
+            IRubyObject[] col_names = new IRubyObject[col_count];
+            int[] col_types = new int[col_count];
+            int[] col_scale = new int[col_count];
+
+            for(int i=0;i<col_count;i++) {
+                String s1 = metadata.getColumnName(i+1);
+                if(storesUpper && !HAS_SMALL.matcher(s1).find()) {
+                    s1 = s1.toLowerCase();
+                }
+                col_names[i] = runtime.newString(s1);
+                col_types[i] = metadata.getColumnType(i+1);
+                col_scale[i] = metadata.getScale(i+1);
+            }
+
+            while(rs.next()) {
+                RubyHash row = RubyHash.newHash(runtime);
+                for(int i=0;i<col_count;i++) {
+                    row.aset(col_names[i], jdbc_to_ruby(runtime, i+1, col_types[i], col_scale[i], rs));
+                }
+                results.add(row);
+            }
+        } finally {
+            try {
+                rs.close();
+            } catch(Exception e) {}
+        }
+        return runtime.newArray(results);
+    }
+
+    public static IRubyObject unmarshal_result(IRubyObject recv, IRubyObject resultset, Block row_filter) throws SQLException, IOException {
+        Ruby runtime = recv.getRuntime();
+        ResultSet rs = intoResultSet(resultset);
+        List results = new ArrayList();
+        try {
+            ResultSetMetaData metadata = rs.getMetaData();
+            int col_count = metadata.getColumnCount();
+            IRubyObject[] col_names = new IRubyObject[col_count];
+            int[] col_types = new int[col_count];
+            int[] col_scale = new int[col_count];
+
+            for(int i=0;i<col_count;i++) {
+                col_names[i] = runtime.newString(metadata.getColumnName(i+1));
+                col_types[i] = metadata.getColumnType(i+1);
+                col_scale[i] = metadata.getScale(i+1);
+            }
+
+            if(row_filter.isGiven()) {
+                while(rs.next()) {
+                    if(row_filter.yield(runtime.getCurrentContext(),resultset).isTrue()) {
+                        RubyHash row = RubyHash.newHash(runtime);
+                        for(int i=0;i<col_count;i++) {
+                            row.aset(col_names[i], jdbc_to_ruby(runtime, i+1, col_types[i], col_scale[i], rs));
+                        }
+                        results.add(row);
+                    }
+                }
+            } else {
+                while(rs.next()) {
+                    RubyHash row = RubyHash.newHash(runtime);
+                    for(int i=0;i<col_count;i++) {
+                        row.aset(col_names[i], jdbc_to_ruby(runtime, i+1, col_types[i], col_scale[i], rs));
+                    }
+                    results.add(row);
+                }
+            }
+
+        } finally {
+            try {
+                rs.close();
+            } catch(Exception e) {}
+        }
+ 
         return runtime.newArray(results);
     }
 
