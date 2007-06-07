@@ -75,7 +75,7 @@ end
 
 begin
   MANIFEST = FileList["History.txt", "Manifest.txt", "README.txt", 
-    "Rakefile", "LICENSE", "lib/**/*.rb", "lib/jdbc_adapter_internal.jar", "test/**/*.rb"]
+    "Rakefile", "LICENSE", "lib/**/*.rb", "lib/jdbc_adapter_internal.jar", "test/**/*.rb", "lib/**/*.rake"]
 
   file "Manifest.txt" => :manifest
   task :manifest do

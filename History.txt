@@ -1,3 +1,8 @@
+== 0.3.2
+
+- Shoring up PostgreSQL and HSQL
+- Fix timestamps on Oracle to use DATE (as everything else)
+
 == 0.3.1
 
 * Derby critical fixes shortly after 0.3
