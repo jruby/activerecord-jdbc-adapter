@@ -196,7 +196,7 @@ module ActiveRecord
     end
 
     class JdbcConnection
-      attr_reader :adapter
+      attr_reader :adapter, :connection
       
       def initialize(config)
         @config = config.symbolize_keys!

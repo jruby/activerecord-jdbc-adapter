@@ -82,8 +82,12 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
         cJdbcConn.defineFastMethod("rollback",cf.getFastSingletonMethod("rollback"));
         cJdbcConn.defineFastMethod("database_name",cf.getFastSingletonMethod("database_name"));
         cJdbcConn.defineFastMethod("columns",cf.getFastOptSingletonMethod("columns"));
-        cJdbcConn.defineFastMethod("mysql_quote_string",cf.getFastSingletonMethod("mysql_quote_string",IRubyObject.class));
         cJdbcConn.defineFastMethod("tables",cf.getFastOptSingletonMethod("tables"));
+
+        RubyModule jdbcSpec = runtime.getOrCreateModule("JdbcSpec");
+        JDBCMySQLSpec.load(runtime, jdbcSpec);
+        JDBCDerbySpec.load(runtime, jdbcSpec);
+
         return true;
     }
 
@@ -107,7 +111,7 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
     public static IRubyObject tables(IRubyObject recv, IRubyObject[] args) throws SQLException, IOException {
         Ruby runtime = recv.getRuntime();
         String catalog = null, schemapat = null, tablepat = null;
-        String[] types = null;
+        String[] types = new String[]{"TABLE"};
         if (args != null) {
             if (args.length > 0) {
                 catalog = convertToStringOrNull(args[0]);
@@ -600,43 +604,6 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
         }
     }
 
-    private final static ByteList ZERO = new ByteList(new byte[]{'\\','0'});
-    private final static ByteList NEWLINE = new ByteList(new byte[]{'\\','n'});
-    private final static ByteList CARRIAGE = new ByteList(new byte[]{'\\','r'});
-    private final static ByteList ZED = new ByteList(new byte[]{'\\','Z'});
-    private final static ByteList DBL = new ByteList(new byte[]{'\\','"'});
-    private final static ByteList SINGLE = new ByteList(new byte[]{'\\','\''});
-    private final static ByteList ESCAPE = new ByteList(new byte[]{'\\','\\'});
-
-    public static IRubyObject mysql_quote_string(IRubyObject recv, IRubyObject string) {
-        boolean replacementFound = false;
-        ByteList bl = ((RubyString) string).getByteList();
-        
-        for(int i = bl.begin; i < bl.begin + bl.realSize; i++) {
-            ByteList rep = null;
-            switch (bl.bytes[i]) {
-            case 0: rep = ZERO; break;
-            case '\n': rep = NEWLINE; break;
-            case '\r': rep = CARRIAGE; break;
-            case 26: rep = ZED; break;
-            case '"': rep = DBL; break;
-            case '\'': rep = SINGLE; break;
-            case '\\': rep = ESCAPE; break;
-            default: continue;
-            }
-            
-            // On first replacement allocate a different bytelist so we don't manip original 
-            if(!replacementFound) {
-                bl = new ByteList(bl);
-                replacementFound = true;
-            }
-
-            bl.replace(i, 1, rep);
-            i+=1;
-        }
-        return recv.getRuntime().newStringShared(bl);
-    }
-    
     private static String convertToStringOrNull(IRubyObject obj) {
         if (obj.isNil()) {
             return null;

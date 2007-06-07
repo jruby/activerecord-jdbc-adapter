@@ -58,11 +58,6 @@ module JdbcSpec
     def quote_column_name(name) #:nodoc:
         "`#{name}`"
     end
-
-    # from active_record/vendor/mysql.rb
-    def quote_string(str) #:nodoc:
-      @connection.mysql_quote_string(str)
-    end
     
     def quoted_true
         "1"

@@ -161,7 +161,7 @@ module JdbcSpec
     COLUMN_TYPE_STMT = "SELECT COLUMNDATATYPE, COLUMNDEFAULT FROM SYS.SYSCOLUMNS WHERE REFERENCEID = '%s' AND COLUMNNAME = '%s'"
 
     AUTO_INC_STMT = "SELECT AUTOINCREMENTSTART, AUTOINCREMENTINC, COLUMNNAME, REFERENCEID, COLUMNDEFAULT FROM SYS.SYSCOLUMNS WHERE REFERENCEID = '%s' AND COLUMNNAME = '%s'"
-
+    AUTO_INC_STMT2 = "SELECT AUTOINCREMENTSTART, AUTOINCREMENTINC, COLUMNNAME, REFERENCEID, COLUMNDEFAULT FROM SYS.SYSCOLUMNS WHERE REFERENCEID = (SELECT T.TABLEID FROM SYS.SYSTABLES T WHERE T.TABLENAME = '%s') AND COLUMNNAME = '%s'"
 
     def add_quotes(name)
       return name unless name
@@ -196,6 +196,43 @@ module JdbcSpec
       end
       false
     end
+
+    def reinstate_auto_increment(name, refid, coldef)
+      stmt = AUTO_INC_STMT % [refid, strip_quotes(name)]
+      data = execute(stmt).first
+      if data
+        start = data['autoincrementstart']
+        if start
+          coldef << " GENERATED " << (data['columndefault'].nil? ? "ALWAYS" : "BY DEFAULT ")
+          coldef << "AS IDENTITY (START WITH "
+          coldef << start
+          coldef << ", INCREMENT BY "
+          coldef << data['autoincrementinc']
+          coldef << ")"
+          return true
+        end
+      end
+      false
+    end
+
+    def auto_increment_stmt(tname, cname)
+      stmt = AUTO_INC_STMT2 % [tname, strip_quotes(cname)]
+      data = execute(stmt).first
+      if data
+        start = data['autoincrementstart']
+        if start
+          coldef = ""
+          coldef << " GENERATED " << (data['columndefault'].nil? ? "ALWAYS" : "BY DEFAULT ")
+          coldef << "AS IDENTITY (START WITH "
+          coldef << start
+          coldef << ", INCREMENT BY "
+          coldef << data['autoincrementinc']
+          coldef << ")"
+          return coldef
+        end
+      end
+      ""
+    end
     
     def create_column(name, refid, colno)
       stmt = COLUMN_TYPE_STMT % [refid, strip_quotes(name)]
@@ -212,29 +249,48 @@ module JdbcSpec
       coldef
     end
     
+    SIZEABLE = %w(VARCHAR CLOB BLOB)
+    
     def structure_dump #:nodoc:
-      data = ""
-      execute("select tablename, tableid from sys.systables where schemaid not in (select schemaid from sys.sysschemas where schemaname LIKE 'SYS%')").each do |tbl|
-        tid = tbl["tableid"]
-        tname = tbl["tablename"]
-        data << "CREATE TABLE #{tname} (\n"
+      definition=""
+      rs = @connection.connection.meta_data.getTables(nil,nil,nil,["TABLE"].to_java(:string))
+      while rs.next
+        tname = rs.getString(3)
+        definition << "CREATE TABLE #{tname} (\n"
+        rs2 = @connection.connection.meta_data.getColumns(nil,nil,tname,nil)
         first_col = true
-        execute(COLUMN_INFO_STMT % tid).each do |col|
-          col_name = add_quotes(col['columnname']);
-          create_col_string = create_column(col_name, col['referenceid'],col['columnnumber'].to_i)
+        while rs2.next
+          col_name = add_quotes(rs2.getString(4));
+          default = ""
+          d1 = rs2.getString(13)
+          if d1 =~ /^GENERATED_/
+            default = auto_increment_stmt(tname, col_name)
+          elsif d1
+            default = " DEFAULT #{d1}"
+          end
+          
+          type = rs2.getString(6)
+          col_size = rs2.getString(7)
+          nulling = (rs2.getString(18) == 'NO' ? " NOT NULL" : "")
+          create_col_string = add_quotes(expand_double_quotes(strip_quotes(col_name))) + 
+            " " + 
+            type +
+            (SIZEABLE.include?(type) ? "(#{col_size})" : "") + 
+            nulling +
+            default
           if !first_col
             create_col_string = ",\n #{create_col_string}"
           else
             create_col_string = " #{create_col_string}"
           end
-
-          data << create_col_string
-
+          
+          definition << create_col_string
+          
           first_col = false
         end
-        data << ");\n\n"
+        definition << ");\n\n"
       end
-      data
+      definition
     end
     
     # Support for removing columns added via derby bug issue:
@@ -315,10 +371,6 @@ module JdbcSpec
       tables.each do |t|
         drop_table t
       end
-    end
-    
-    def tables
-      super.reject{|t| t =~ /^sys/i }
     end
     
     def quote(value, column = nil) # :nodoc:
