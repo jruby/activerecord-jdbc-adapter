@@ -57,6 +57,9 @@ module JdbcSpec
       if column && column.type == :primary_key
         return value.to_s
       end
+      if column && column.type == :decimal && value
+        return value.to_s
+      end
       case value
       when String                
         if column && column.type == :binary
