@@ -84,16 +84,15 @@ begin
   Rake::Task['manifest'].invoke # Always regen manifest, so Hoe has up-to-date list of files
 
   require 'hoe'
-  Hoe.new("ActiveRecord-JDBC", "0.3.2") do |p|
+  Hoe.new("ActiveRecord-JDBC", "0.4") do |p|
     p.rubyforge_name = "jruby-extras"
     p.url = "http://jruby-extras.rubyforge.org/ActiveRecord-JDBC"
     p.author = "Nick Sieger, Ola Bini and JRuby contributors"
-    p.email = "nick@nicksieger.com, ola.bini@ki.se"
+    p.email = "nick@nicksieger.com, ola.bini@gmail.com"
     p.summary = "JDBC adapter for ActiveRecord, for use within JRuby on Rails."
     p.changes = p.paragraphs_of('History.txt', 0..1).join("\n\n")
     p.description = p.paragraphs_of('README.txt', 0...1).join("\n\n")
-    p.extra_deps.reject!{|d| d.first == "hoe"}
-  end
+  end.spec.dependencies.delete_if { |dep| dep.name == "hoe" }
 rescue LoadError
   puts "You really need Hoe installed to be able to package this gem"
 end

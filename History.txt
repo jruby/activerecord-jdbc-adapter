@@ -1,7 +1,10 @@
-== 0.3.2
+== 0.4
 
-- Shoring up PostgreSQL and HSQL
+- Release coincides with JRuby 1.0 release
+- Shoring up PostgreSQL (courtesy Dudley Flanders) and HSQL (courtesy Matthew Williams)
 - Fix timestamps on Oracle to use DATE (as everything else)
+- Derby fixes: Fix for open result set issue, better structure dump, quoting, column type changing
+- Sybase type recognition fix (courtesy Dean Mao)
 
 == 0.3.1
 
