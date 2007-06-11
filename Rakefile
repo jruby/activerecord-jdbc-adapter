@@ -73,16 +73,16 @@ Rake::TestTask.new(:test_jndi) do |t|
   t.libs << 'test'
 end
 
+MANIFEST = FileList["History.txt", "Manifest.txt", "README.txt", 
+  "Rakefile", "LICENSE", "lib/**/*.rb", "lib/jdbc_adapter_internal.jar", "test/**/*.rb", "lib/**/*.rake"]
+
+file "Manifest.txt" => :manifest
+task :manifest do
+  File.open("Manifest.txt", "w") {|f| MANIFEST.each {|n| f << "#{n}\n"} }
+end
+Rake::Task['manifest'].invoke # Always regen manifest, so Hoe has up-to-date list of files
+
 begin
-  MANIFEST = FileList["History.txt", "Manifest.txt", "README.txt", 
-    "Rakefile", "LICENSE", "lib/**/*.rb", "lib/jdbc_adapter_internal.jar", "test/**/*.rb", "lib/**/*.rake"]
-
-  file "Manifest.txt" => :manifest
-  task :manifest do
-    File.open("Manifest.txt", "w") {|f| MANIFEST.each {|n| f << "#{n}\n"} }
-  end
-  Rake::Task['manifest'].invoke # Always regen manifest, so Hoe has up-to-date list of files
-
   require 'hoe'
   Hoe.new("ActiveRecord-JDBC", "0.4") do |p|
     p.rubyforge_name = "jruby-extras"
@@ -95,4 +95,6 @@ begin
   end.spec.dependencies.delete_if { |dep| dep.name == "hoe" }
 rescue LoadError
   puts "You really need Hoe installed to be able to package this gem"
+rescue => e
+  puts "ignoring error while loading hoe: #{e.to_s}"
 end
