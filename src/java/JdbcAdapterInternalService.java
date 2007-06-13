@@ -573,13 +573,13 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
             if(rss == null || rs.wasNull()) {
                 return runtime.getNil();
             }
-            ByteList str2 = new ByteList(2048);
+            StringBuffer str2 = new StringBuffer(2048);
             char[] cuf = new char[2048];
             while((n = rss.read(cuf)) != -1) {
-                str2.append(ByteList.plain(cuf), 0, n);
+                str2.append(cuf, 0, n);
             }
             rss.close();
-            return runtime.newString(str2);
+            return RubyString.newUnicodeString(runtime, str2.toString());
         default:
             String vs = rs.getString(row);
             if(vs == null || rs.wasNull()) {
