@@ -162,7 +162,7 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
 
     /*
       # The hacks in this method is needed because of a bug in Rails. Check
-      # out type_to_sql in schema_definitions.rb and see if you can see it... =)
+      # out type_to_sql in schema_statements.rb and see if you can see it... =)
     */
     public static IRubyObject native_database_types(IRubyObject recv) {
         RubyHash tps = (RubyHash)recv.getInstanceVariable("@tps");

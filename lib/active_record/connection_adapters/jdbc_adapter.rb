@@ -210,6 +210,10 @@ module ActiveRecord
       rescue Exception => e
         raise "The driver encountered an error: #{e}"
       end
+
+      def reconnect!
+        self.adapter.reconnect!
+      end
       
       def adapter=(adapt)
         @adapter = adapt
