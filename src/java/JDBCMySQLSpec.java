@@ -70,6 +70,7 @@ public class JDBCMySQLSpec {
             
             // On first replacement allocate a different bytelist so we don't manip original 
             if(!replacementFound) {
+                i-= bl.begin;
                 bl = new ByteList(bl);
                 replacementFound = true;
             }
