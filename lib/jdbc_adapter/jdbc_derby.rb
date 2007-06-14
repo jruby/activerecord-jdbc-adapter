@@ -387,8 +387,7 @@ module JdbcSpec
           when :string
             "'#{quote_string(value)}'"
           else
-            vi = value.to_i
-            if vi.to_s == value
+            if value =~ /^\s*\d*\s*$/
               value
             else
               super
@@ -440,6 +439,10 @@ module JdbcSpec
       elsif /[A-Z]/ =~ name && /[a-z]/ =~ name
         %Q{"#{name}"}
       elsif name =~ /\s/
+        %Q{"#{name.upcase}"}
+      elsif name =~ /^_/
+        %Q{"#{name.upcase}"}
+      elsif name =~ /^\d/
         %Q{"#{name.upcase}"}
       else
         name
