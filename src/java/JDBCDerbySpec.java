@@ -56,24 +56,24 @@ public class JDBCDerbySpec {
         IRubyObject value = args[0];
         if(args.length > 1) {
             IRubyObject col = args[1];
+            IRubyObject type = col.callMethod(runtime.getCurrentContext(),"type");
             if(value instanceof RubyString) {
-                    IRubyObject type = col.callMethod(runtime.getCurrentContext(),"type");
-                    if(type == runtime.newSymbol("string")) {
-                        return quote_string_with_surround(runtime, "'", (RubyString)value, "'");
-                    } else if(type == runtime.newSymbol("text")) {
-                        return quote_string_with_surround(runtime, "CAST('", (RubyString)value, "' AS CLOB)");
-                    } else if(type == runtime.newSymbol("binary")) {
-                        return hexquote_string_with_surround(runtime, "CAST('", (RubyString)value, "' AS BLOB)");
+                if(type == runtime.newSymbol("string")) {
+                    return quote_string_with_surround(runtime, "'", (RubyString)value, "'");
+                } else if(type == runtime.newSymbol("text")) {
+                    return quote_string_with_surround(runtime, "CAST('", (RubyString)value, "' AS CLOB)");
+                } else if(type == runtime.newSymbol("binary")) {
+                    return hexquote_string_with_surround(runtime, "CAST('", (RubyString)value, "' AS BLOB)");
+                } else {
+                    // column type :integer or other numeric or date version
+                    if(only_digits((RubyString)value)) {
+                        return value;
                     } else {
-                        // column type :integer or other numeric or date version
-                        if(only_digits((RubyString)value)) {
-                            return value;
-                        } else {
-                            return super_quote(recv, runtime, value, col);
-                        }
+                        return super_quote(recv, runtime, value, col);
                     }
+                }
             } else if((value instanceof RubyFloat) || (value instanceof RubyFixnum) || (value instanceof RubyBignum)) {
-                if(col == runtime.newSymbol("string")) {
+                if(type == runtime.newSymbol("string")) {
                     return quote_string_with_surround(runtime, "'", RubyString.objAsString(value), "'");
                 }
             }
