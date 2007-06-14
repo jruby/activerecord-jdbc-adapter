@@ -90,7 +90,7 @@ public class JDBCDerbySpec {
         
         IRubyObject type = (col.isNil()) ? col : col.callMethod(runtime.getCurrentContext(),"type");
         if(value instanceof RubyString || 
-           value.isKindOf(runtime.getClassFromPath("ActiveSupport::Multibyte::Chars"))) {
+           value.isKindOf((RubyModule)(((RubyModule)((RubyModule)runtime.getModule("ActiveSupport")).getConstant("Multibyte")).getConstantAt("Chars")))) {
             RubyString svalue = RubyString.objAsString(value);
             if(type == runtime.newSymbol("binary") && col.getType().respondsTo("string_to_binary")) {
                 return quote_string_with_surround(runtime, "'", (RubyString)(col.getType().callMethod(runtime.getCurrentContext(), "string_to_binary", svalue)), "'"); 
