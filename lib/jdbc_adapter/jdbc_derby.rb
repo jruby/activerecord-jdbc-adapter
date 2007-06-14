@@ -387,7 +387,7 @@ module JdbcSpec
           when :string
             "'#{quote_string(value)}'"
           else
-            if value =~ /^\s*\d*\s*$/
+            if value =~ /^\d+$/
               value
             else
               super
