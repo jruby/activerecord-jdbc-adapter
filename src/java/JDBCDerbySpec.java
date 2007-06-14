@@ -28,14 +28,46 @@
 
 import org.jruby.Ruby;
 import org.jruby.RubyModule;
+import org.jruby.RubyString;
 
 import org.jruby.runtime.CallbackFactory;
 import org.jruby.runtime.ThreadContext;
 import org.jruby.runtime.builtin.IRubyObject;
 
+import org.jruby.util.ByteList;
+
 public class JDBCDerbySpec {
     public static void load(Ruby runtime, RubyModule jdbcSpec) {
         RubyModule derby = jdbcSpec.defineModuleUnder("Derby");
         CallbackFactory cf = runtime.callbackFactory(JDBCDerbySpec.class);
+        derby.defineFastMethod("quote_string",cf.getFastSingletonMethod("quote_string",IRubyObject.class));
+    }
+
+    private final static ByteList TWO_SINGLE = new ByteList(new byte[]{'\'','\''});
+
+    public static IRubyObject quote_string(IRubyObject recv, IRubyObject string) {
+        boolean replacementFound = false;
+        ByteList bl = ((RubyString) string).getByteList();
+        
+        for(int i = bl.begin; i < bl.begin + bl.realSize; i++) {
+            switch (bl.bytes[i]) {
+            case '\'': break;
+            default: continue;
+            }
+            
+            // On first replacement allocate a different bytelist so we don't manip original 
+            if(!replacementFound) {
+                bl = new ByteList(bl);
+                replacementFound = true;
+            }
+
+            bl.replace(i, 1, TWO_SINGLE);
+            i+=1;
+        }
+        if(replacementFound) {
+            return recv.getRuntime().newStringShared(bl);
+        } else {
+            return string;
+        }
     }
 }
