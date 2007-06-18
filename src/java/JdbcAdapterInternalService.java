@@ -711,19 +711,19 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
      */
     public static IRubyObject insert_bind(IRubyObject recv, IRubyObject[] args) throws SQLException {
         Ruby runtime = recv.getRuntime();
-        Arity.checkArgumentCount(runtime, args, 3, 4);
+        Arity.checkArgumentCount(runtime, args, 3, 7);
         Connection c = (Connection)recv.dataGetStruct();
         PreparedStatement ps = null;
         try {
-            ps = c.prepareStatement(RubyString.objAsString(args[0]).toString());
+            ps = c.prepareStatement(RubyString.objAsString(args[0]).toString(), Statement.RETURN_GENERATED_KEYS);
             setValuesOnPS(ps, runtime, args[1], args[2]);
             ps.executeUpdate();
+            return unmarshal_id_result(runtime, ps.getGeneratedKeys());
         } finally {
             try {
                 ps.close();
             } catch(Exception e) {}
         }
-        return args.length > 5 ? args[5] : runtime.getNil();
     }
 
     /*
@@ -731,7 +731,7 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
      */
     public static IRubyObject update_bind(IRubyObject recv, IRubyObject[] args) throws SQLException {
         Ruby runtime = recv.getRuntime();
-        Arity.checkArgumentCount(runtime, args, 3, 1);
+        Arity.checkArgumentCount(runtime, args, 3, 4);
         Connection c = (Connection)recv.dataGetStruct();
         PreparedStatement ps = null;
         try {
