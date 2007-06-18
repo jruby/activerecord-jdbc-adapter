@@ -653,8 +653,7 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
         }
     }
     
-    private final static DateFormat FORMAT = new SimpleDateFormat("%Y-%M-%d %H:%m:%s");
-
+    private final static DateFormat FORMAT = new SimpleDateFormat("%y-%M-%d %H:%m:%s");
 
     private static void setValue(PreparedStatement ps, int index, Ruby runtime, IRubyObject value, IRubyObject type) throws SQLException {
         final int tp = getTypeValueFor(runtime, type);
