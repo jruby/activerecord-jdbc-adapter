@@ -36,7 +36,11 @@ import java.sql.ResultSetMetaData;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.sql.PreparedStatement;
 import java.sql.Types;
+
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
 
 import java.util.ArrayList;
 import java.util.Calendar;
@@ -53,8 +57,11 @@ import org.jruby.RubyClass;
 import org.jruby.RubyHash;
 import org.jruby.RubyModule;
 import org.jruby.RubyNumeric;
+import org.jruby.RubyObject;
 import org.jruby.RubyString;
+import org.jruby.RubyTime;
 import org.jruby.javasupport.JavaObject;
+import org.jruby.runtime.Arity;
 import org.jruby.runtime.Block;
 import org.jruby.runtime.CallbackFactory;
 import org.jruby.runtime.ThreadContext;
@@ -83,6 +90,9 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
         cJdbcConn.defineFastMethod("database_name",cf.getFastSingletonMethod("database_name"));
         cJdbcConn.defineFastMethod("columns",cf.getFastOptSingletonMethod("columns"));
         cJdbcConn.defineFastMethod("tables",cf.getFastOptSingletonMethod("tables"));
+
+        cJdbcConn.defineFastMethod("insert_bind",cf.getFastOptSingletonMethod("insert_bind"));
+        cJdbcConn.defineFastMethod("update_bind",cf.getFastOptSingletonMethod("update_bind"));
 
         RubyModule jdbcSpec = runtime.getOrCreateModule("JdbcSpec");
         JDBCMySQLSpec.load(runtime, jdbcSpec);
@@ -609,5 +619,127 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
             return null;
         }
         return obj.toString();
+    }
+
+    private static int getTypeValueFor(Ruby runtime, IRubyObject type) throws SQLException {
+        if(type == runtime.newSymbol("string")) {
+            return Types.VARCHAR;
+        } else if(type == runtime.newSymbol("text")) {
+            return Types.CLOB;
+        } else if(type == runtime.newSymbol("integer")) {
+            return Types.INTEGER;
+        } else if(type == runtime.newSymbol("decimal")) {
+            return Types.DECIMAL;
+        } else if(type == runtime.newSymbol("float")) {
+            return Types.FLOAT;
+        } else if(type == runtime.newSymbol("datetime")) {
+            return Types.TIMESTAMP;
+        } else if(type == runtime.newSymbol("timestamp")) {
+            return Types.TIMESTAMP;
+        } else if(type == runtime.newSymbol("time")) {
+            return Types.TIME;
+        } else if(type == runtime.newSymbol("date")) {
+            return Types.DATE;
+        } else if(type == runtime.newSymbol("binary")) {
+            return Types.BLOB;
+        } else if(type == runtime.newSymbol("boolean")) {
+            return Types.BOOLEAN;
+        } else {
+            return -1;
+        }
+    }
+    
+    private final static DateFormat FORMAT = new SimpleDateFormat("%Y-%M-%d %H:%m:%s");
+
+
+    private static void setValue(PreparedStatement ps, int index, Ruby runtime, IRubyObject value, IRubyObject type) throws SQLException {
+        final int tp = getTypeValueFor(runtime, type);
+        if(value.isNil()) {
+            ps.setNull(index, tp);
+            return;
+        }
+
+        switch(tp) {
+        case Types.VARCHAR:
+        case Types.CLOB:
+            ps.setString(index, RubyString.objAsString(value).toString());
+            break;
+        case Types.INTEGER:
+            ps.setLong(index, RubyNumeric.fix2long(value));
+            break;
+        case Types.FLOAT:
+            ps.setDouble(index, ((RubyNumeric)value).getDoubleValue());
+            break;
+        case Types.TIMESTAMP:
+        case Types.TIME:
+        case Types.DATE:
+            java.sql.Date dt = null;
+            if(value instanceof RubyString) {
+                try {
+                    dt = new java.sql.Date(FORMAT.parse(value.toString()).getTime());
+                } catch(Exception e) {
+                    dt = java.sql.Date.valueOf(value.toString());
+                }
+            } else if(value instanceof RubyTime) {
+                dt = new java.sql.Date(((RubyTime)value).getJavaDate().getTime());
+            } else {
+                throw new RuntimeException("can't handle value of type " + ((RubyObject)value).type() + " for type " + type);
+            }
+            ps.setDate(index, dt);
+            break;
+        case Types.BOOLEAN:
+            ps.setBoolean(index, value.isTrue());
+            break;
+        default: throw new RuntimeException("type " + type + " not supported in _bind yet");
+        }
+    }
+
+    private static void setValuesOnPS(PreparedStatement ps, Ruby runtime, IRubyObject values, IRubyObject types) throws SQLException {
+        RubyArray vals = (RubyArray)values;
+        RubyArray tps = (RubyArray)types;
+
+        for(int i=0, j=vals.getLength(); i<j; i++) {
+            setValue(ps, i+1, runtime, vals.eltInternal(i), tps.eltInternal(i));
+        }
+    }
+
+    /*
+     * sql, values, types, name = nil, pk = nil, id_value = nil, sequence_name = nil
+     */
+    public static IRubyObject insert_bind(IRubyObject recv, IRubyObject[] args) throws SQLException {
+        Ruby runtime = recv.getRuntime();
+        Arity.checkArgumentCount(runtime, args, 3, 4);
+        Connection c = (Connection)recv.dataGetStruct();
+        PreparedStatement ps = null;
+        try {
+            ps = c.prepareStatement(RubyString.objAsString(args[0]).toString());
+            setValuesOnPS(ps, runtime, args[1], args[2]);
+            ps.executeUpdate();
+        } finally {
+            try {
+                ps.close();
+            } catch(Exception e) {}
+        }
+        return args.length > 5 ? args[5] : runtime.getNil();
+    }
+
+    /*
+     * sql, values, types, name = nil
+     */
+    public static IRubyObject update_bind(IRubyObject recv, IRubyObject[] args) throws SQLException {
+        Ruby runtime = recv.getRuntime();
+        Arity.checkArgumentCount(runtime, args, 3, 1);
+        Connection c = (Connection)recv.dataGetStruct();
+        PreparedStatement ps = null;
+        try {
+            ps = c.prepareStatement(RubyString.objAsString(args[0]).toString());
+            setValuesOnPS(ps, runtime, args[1], args[2]);
+            ps.executeUpdate();
+        } finally {
+            try {
+                ps.close();
+            } catch(Exception e) {}
+        }
+        return runtime.getNil();
     }
 }
