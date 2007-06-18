@@ -59,6 +59,7 @@ import org.jruby.RubyModule;
 import org.jruby.RubyNumeric;
 import org.jruby.RubyObject;
 import org.jruby.RubyString;
+import org.jruby.RubySymbol;
 import org.jruby.RubyTime;
 import org.jruby.javasupport.JavaObject;
 import org.jruby.runtime.Arity;
@@ -622,6 +623,9 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
     }
 
     private static int getTypeValueFor(Ruby runtime, IRubyObject type) throws SQLException {
+        if(!(type instanceof RubySymbol)) {
+            type = type.callMethod(runtime.getCurrentContext(),"type");
+        }
         if(type == runtime.newSymbol("string")) {
             return Types.VARCHAR;
         } else if(type == runtime.newSymbol("text")) {
