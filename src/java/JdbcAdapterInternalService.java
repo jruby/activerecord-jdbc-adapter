@@ -658,16 +658,14 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
         case Types.TIME:
         case Types.DATE:
             java.sql.Date dt = null;
-            if(value instanceof RubyString) {
+            if(!(value instanceof RubyTime)) {
                 try {
                     dt = new java.sql.Date(FORMAT.parse(value.toString()).getTime());
                 } catch(Exception e) {
                     dt = java.sql.Date.valueOf(value.toString());
                 }
-            } else if(value instanceof RubyTime) {
-                dt = new java.sql.Date(((RubyTime)value).getJavaDate().getTime());
             } else {
-                throw new RuntimeException("can't handle value of type " + ((RubyObject)value).type() + " for type " + type);
+                dt = new java.sql.Date(((RubyTime)value).getJavaDate().getTime());
             }
             ps.setDate(index, dt);
             break;
