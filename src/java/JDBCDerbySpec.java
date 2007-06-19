@@ -264,7 +264,7 @@ public class JDBCDerbySpec {
 
     public static IRubyObject select_one(IRubyObject recv, IRubyObject[] args) {
         IRubyObject limit = recv.getInstanceVariable("@limit");
-        if(limit.isNil()) {
+        if(limit == null || limit.isNil()) {
             recv.setInstanceVariable("@limit", recv.getRuntime().newFixnum(1));
         }
         try {
@@ -291,13 +291,13 @@ public class JDBCDerbySpec {
                 return JdbcAdapterInternalService.execute_insert(conn, args[0]);
             } else if(sql.startsWith("select") || sql.startsWith("show")) {
                 IRubyObject offset = recv.getInstanceVariable("@offset");
-                if(offset.isNil()) {
+                if(offset == null || offset.isNil()) {
                     offset = RubyFixnum.zero(runtime);
                 }
                 IRubyObject limit = recv.getInstanceVariable("@limit");
                 IRubyObject range;
                 IRubyObject max;
-                if(limit.isNil() || RubyNumeric.fix2int(limit) == -1) {
+                if(limit == null || limit.isNil() || RubyNumeric.fix2int(limit) == -1) {
                     range = RubyRange.newRange(runtime, offset, runtime.newFixnum(-1), false);
                     max = RubyFixnum.zero(runtime);
                 } else {
