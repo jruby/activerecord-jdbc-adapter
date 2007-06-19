@@ -657,9 +657,18 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
         case Types.TIMESTAMP:
         case Types.TIME:
         case Types.DATE:
-            java.sql.Timestamp ts = new java.sql.Timestamp(((RubyTime)value).getJavaDate().getTime());
-            ts.setNanos((int)(((RubyTime)value).getUSec()*1000));
-            ps.setTimestamp(index, ts, ((RubyTime)value).getJavaCalendar());
+            if(!(value instanceof RubyTime)) {
+                try {
+                    Date dd = FORMAT.parse(RubyString.objAsString(value).toString());
+                    ps.setTimestamp(index, new java.sql.Timestamp(dd.getTime()), Calendar.getInstance());
+                } catch(Exception e) {
+                    ps.setString(index, RubyString.objAsString(value).toString());
+                }
+            } else {
+                java.sql.Timestamp ts = new java.sql.Timestamp(((RubyTime)value).getJavaDate().getTime());
+                ts.setNanos((int)(((RubyTime)value).getUSec()*1000));
+                ps.setTimestamp(index, ts, ((RubyTime)value).getJavaCalendar());
+            }
             break;
         case Types.BOOLEAN:
             ps.setBoolean(index, value.isTrue());
