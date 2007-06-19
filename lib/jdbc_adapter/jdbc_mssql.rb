@@ -1,6 +1,8 @@
 module JdbcSpec
   module MsSQL
     module Column
+      attr_accessor :identity, :is_special
+      
       def simplified_type(field_type)
         case field_type
           when /int|bigint|smallint|tinyint/i                        then :integer
@@ -124,38 +126,38 @@ module JdbcSpec
         "[#{name}]"
       end
 
-    def add_limit_offset!(sql, options)
-      if options[:limit] and options[:offset]
-        total_rows = @connection.select_all("SELECT count(*) as TotalRows from (#{sql.gsub(/\bSELECT\b/i, "SELECT TOP 1000000000")}) tally")[0][:TotalRows].to_i
-        if (options[:limit] + options[:offset]) >= total_rows
-          options[:limit] = (total_rows - options[:offset] >= 0) ? (total_rows - options[:offset]) : 0
+      def add_limit_offset!(sql, options)
+        if options[:limit] and options[:offset]
+          total_rows = select_all("SELECT count(*) as TotalRows from (#{sql.gsub(/\bSELECT\b/i, "SELECT TOP 1000000000")}) tally")[0][:TotalRows].to_i
+          if (options[:limit] + options[:offset]) >= total_rows
+            options[:limit] = (total_rows - options[:offset] >= 0) ? (total_rows - options[:offset]) : 0
+          end
+          sql.sub!(/^\s*SELECT/i, "SELECT * FROM (SELECT TOP #{options[:limit]} * FROM (SELECT TOP #{options[:limit] + options[:offset]} ")
+          sql << ") AS tmp1"
+          if options[:order]
+            options[:order] = options[:order].split(',').map do |field|
+              parts = field.split(" ")
+              tc = parts[0]
+              if sql =~ /\.\[/ and tc =~ /\./ # if column quoting used in query
+                tc.gsub!(/\./, '\\.\\[')
+                tc << '\\]'
+              end
+              if sql =~ /#{tc} AS (t\d_r\d\d?)/
+                  parts[0] = $1
+              end
+              parts.join(' ')
+            end.join(', ')
+            sql << " ORDER BY #{change_order_direction(options[:order])}) AS tmp2 ORDER BY #{options[:order]}"
+          else
+            sql << " ) AS tmp2"
+          end
+        elsif sql !~ /^\s*SELECT (@@|COUNT\()/i
+          sql.sub!(/^\s*SELECT([\s]*distinct)?/i) do
+            "SELECT#{$1} TOP #{options[:limit]}"
+          end unless options[:limit].nil?
         end
-        sql.sub!(/^\s*SELECT/i, "SELECT * FROM (SELECT TOP #{options[:limit]} * FROM (SELECT TOP #{options[:limit] + options[:offset]} ")
-        sql << ") AS tmp1"
-        if options[:order]
-          options[:order] = options[:order].split(',').map do |field|
-            parts = field.split(" ")
-            tc = parts[0]
-            if sql =~ /\.\[/ and tc =~ /\./ # if column quoting used in query
-              tc.gsub!(/\./, '\\.\\[')
-              tc << '\\]'
-            end
-            if sql =~ /#{tc} AS (t\d_r\d\d?)/
-              parts[0] = $1
-            end
-            parts.join(' ')
-          end.join(', ')
-          sql << " ORDER BY #{change_order_direction(options[:order])}) AS tmp2 ORDER BY #{options[:order]}"
-        else
-          sql << " ) AS tmp2"
-        end
-      elsif sql !~ /^\s*SELECT (@@|COUNT\()/i
-        sql.sub!(/^\s*SELECT([\s]*distinct)?/i) do
-          "SELECT#{$1} TOP #{options[:limit]}"
-        end unless options[:limit].nil?
       end
-    end
-    
+      
     def recreate_database(name)
       drop_database(name)
       create_database(name)
@@ -202,6 +204,73 @@ module JdbcSpec
       
       def remove_index(table_name, options = {})
         execute "DROP INDEX #{table_name}.#{index_name(table_name, options)}"
+      end
+      
+
+      def columns(table_name, name = nil)
+        cc = super
+        cc.each do |col|
+          col.identity = true if col.sql_type =~ /identity/i
+          col.is_special = true if col.sql_type =~ /text|ntext|image/i
+        end
+        cc
+      end
+      
+      def _execute(sql, name = nil)
+        if sql.lstrip =~ /^INSERT/i && (table_name = query_requires_identity_insert?(sql))
+          with_identity_insert_enabled(table_name) do 
+              @connection.execute_insert(sql)
+            end
+        elsif sql.lstrip =~ /^\(?\s*(select|show)/i
+          @connection.execute_query(sql)
+        else
+          @connection.execute_update(sql)
+        end
+      end
+      
+      
+      private
+      # Turns IDENTITY_INSERT ON for table during execution of the block
+      # N.B. This sets the state of IDENTITY_INSERT to OFF after the
+      # block has been executed without regard to its previous state
+
+      def with_identity_insert_enabled(table_name, &block)
+        set_identity_insert(table_name, true)
+        yield
+      ensure
+        set_identity_insert(table_name, false)  
+      end
+      
+      def set_identity_insert(table_name, enable = true)
+        execute "SET IDENTITY_INSERT #{table_name} #{enable ? 'ON' : 'OFF'}"
+      rescue Exception => e
+        raise ActiveRecordError, "IDENTITY_INSERT could not be turned #{enable ? 'ON' : 'OFF'} for table #{table_name}"  
+      end
+
+      def get_table_name(sql)
+        if sql =~ /^\s*insert\s+into\s+([^\(\s]+)\s*|^\s*update\s+([^\(\s]+)\s*/i
+          $1
+        elsif sql =~ /from\s+([^\(\s]+)\s*/i
+          $1
+        else
+          nil
+        end
+      end
+
+      def identity_column(table_name)
+        @table_columns = {} unless @table_columns
+        @table_columns[table_name] = columns(table_name) if @table_columns[table_name] == nil
+        @table_columns[table_name].each do |col|
+          return col.name if col.identity
+        end
+
+        return nil
+      end
+
+      def query_requires_identity_insert?(sql)
+        table_name = get_table_name(sql)
+        id_column = identity_column(table_name)
+        sql =~ /\[#{id_column}\]/ ? table_name : nil
       end
   end
 end

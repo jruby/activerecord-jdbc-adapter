@@ -136,7 +136,8 @@ module ActiveRecord
                           lambda {|r| r['type_name'] =~ /^time$/i},
                           lambda {|r| r['type_name'] =~ /^date/i}],
         :date        => [ lambda {|r| Jdbc::Types::DATE == r['data_type'].to_i},
-                          lambda {|r| r['type_name'] =~ /^date$/i}],
+                          lambda {|r| r['type_name'] =~ /^date$/i},
+                          lambda {|r| r['type_name'] =~ /^date/i}],
         :binary      => [ lambda {|r| [Jdbc::Types::LONGVARBINARY,Jdbc::Types::BINARY,Jdbc::Types::BLOB].include?(r['data_type'].to_i)},
                           lambda {|r| r['type_name'] =~ /^blob/i},
                           lambda {|r| r['type_name'] =~ /sub_type 0$/i}, # For FireBird
