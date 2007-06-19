@@ -171,27 +171,8 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
         }
     }
 
-    /*
-      # The hacks in this method is needed because of a bug in Rails. Check
-      # out type_to_sql in schema_statements.rb and see if you can see it... =)
-    */
     public static IRubyObject native_database_types(IRubyObject recv) {
-        RubyHash tps = (RubyHash)recv.getInstanceVariable("@tps");
-        Map val = new HashMap();
-        Ruby runtime = recv.getRuntime();
-        IRubyObject nameSym = runtime.newSymbol("name");
-        for(Iterator iter = tps.directEntrySet().iterator();iter.hasNext();) {
-            Map.Entry me = (Map.Entry)iter.next();
-            IRubyObject v = (IRubyObject)me.getValue();
-            if(v instanceof RubyHash) {
-                RubyHash v2 = (RubyHash)(v.dup());
-                v2.put(nameSym, ((IRubyObject)(v2.fastARef(nameSym))).dup());
-                val.put(me.getKey(), v2);
-            } else {
-                val.put(me.getKey(), ((IRubyObject)v).dup());
-            }
-        }
-        return RubyHash.newHash(runtime, val, runtime.getNil());
+        return recv.getInstanceVariable("@tps");
     }    
 
     public static IRubyObject set_native_database_types(IRubyObject recv) throws SQLException, IOException {

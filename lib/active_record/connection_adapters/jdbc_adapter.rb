@@ -5,6 +5,37 @@ require 'jdbc_adapter_internal'
 require 'bigdecimal'
 
 module ActiveRecord
+  module ConnectionAdapters # :nodoc:
+    module SchemaStatements
+      # The original implementation of this had a bug, which modifies native_database_types.
+      # This version allows us to cache that value.
+      def type_to_sql(type, limit = nil, precision = nil, scale = nil) #:nodoc:
+        native = native_database_types[type]
+        column_type_sql = native.is_a?(Hash) ? native[:name] : native
+        if type == :decimal # ignore limit, use precison and scale
+          precision ||= native[:precision]
+          scale ||= native[:scale]
+          if precision
+            if scale
+              column_type_sql += "(#{precision},#{scale})"
+            else
+              column_type_sql += "(#{precision})"
+            end
+          else
+            raise ArgumentError, "Error adding decimal column: precision cannot be empty if scale if specified" if scale
+          end
+          column_type_sql
+        else
+          limit ||= native[:limit]
+          column_type_sql += "(#{limit})" if limit
+          column_type_sql
+        end
+      end
+    end
+  end
+end
+
+module ActiveRecord
   class Base
     def self.jdbc_connection(config)
       connection = ConnectionAdapters::JdbcConnection.new(config)

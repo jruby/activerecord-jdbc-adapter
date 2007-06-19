@@ -1,5 +1,6 @@
 require 'java'
 require 'models/data_types'
+require 'active_record/connection_adapters/jdbc_adapter'
 require 'db/derby'
 require 'test/unit'
 

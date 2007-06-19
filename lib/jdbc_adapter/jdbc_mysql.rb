@@ -138,23 +138,6 @@ module JdbcSpec
       end
     end
 
-    def native_database_types #:nodoc:
-      {
-        :primary_key => "int(11) DEFAULT NULL auto_increment PRIMARY KEY",
-        :string      => { :name => "varchar", :limit => 255 },
-        :text        => { :name => "text" },
-        :integer     => { :name => "int", :limit => 11 },
-        :float       => { :name => "float" },
-        :decimal     => { :name => "decimal" },
-        :datetime    => { :name => "datetime" },
-        :timestamp   => { :name => "datetime" },
-        :time        => { :name => "time" },
-        :date        => { :name => "date" },
-        :binary      => { :name => "blob" },
-        :boolean     => { :name => "tinyint", :limit => 1 }
-      }
-    end
-
     private
     def supports_views?
       false
