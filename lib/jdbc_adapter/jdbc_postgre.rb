@@ -131,14 +131,12 @@ module JdbcSpec
     end
 
     def _execute(sql, name = nil)
-      log_no_bench(sql, name) do
         case sql.strip
         when /^(select|show)/i:
           @connection.execute_query(sql)
         else
           @connection.execute_update(sql)
         end
-      end
     end
     
     def quote(value, column = nil)

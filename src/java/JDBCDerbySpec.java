@@ -34,13 +34,18 @@ import org.jruby.RubyFixnum;
 import org.jruby.RubyBignum;
 import org.jruby.RubyBoolean;
 import org.jruby.RubyBigDecimal;
+import org.jruby.RubyRange;
+import org.jruby.RubyNumeric;
 
 import org.jruby.runtime.Arity;
 import org.jruby.runtime.CallbackFactory;
+import org.jruby.runtime.MethodIndex;
 import org.jruby.runtime.ThreadContext;
 import org.jruby.runtime.builtin.IRubyObject;
 
 import org.jruby.util.ByteList;
+
+import java.sql.SQLException;
 
 public class JDBCDerbySpec {
     public static void load(Ruby runtime, RubyModule jdbcSpec) {
@@ -48,6 +53,60 @@ public class JDBCDerbySpec {
         CallbackFactory cf = runtime.callbackFactory(JDBCDerbySpec.class);
         derby.defineFastMethod("quote_string",cf.getFastSingletonMethod("quote_string",IRubyObject.class));
         derby.defineFastMethod("quote",cf.getFastOptSingletonMethod("quote"));
+        derby.defineFastMethod("_execute",cf.getFastOptSingletonMethod("_execute"));
+        derby.defineFastMethod("add_limit_offset!",cf.getFastSingletonMethod("add_limit_offset", IRubyObject.class, IRubyObject.class));
+        derby.defineFastMethod("select_all",cf.getFastOptSingletonMethod("select_all"));
+        derby.defineFastMethod("select_one",cf.getFastOptSingletonMethod("select_one"));
+        RubyModule col = derby.defineModuleUnder("Column");
+        col.defineFastMethod("type_cast",cf.getFastSingletonMethod("type_cast", IRubyObject.class));
+    }
+
+    /*
+     * JdbcSpec::Derby::Column.type_cast(value)
+     */
+    public static IRubyObject type_cast(IRubyObject recv, IRubyObject value) {
+        Ruby runtime = recv.getRuntime();
+
+        if(value.isNil() || ((value instanceof RubyString) && value.toString().trim().equalsIgnoreCase("null"))) {
+            return runtime.getNil();
+        }
+
+        String type = recv.getInstanceVariable("@type").toString();
+
+        switch(type.charAt(0)) {
+        case 's': //string
+            return value;
+        case 't': //text, timestamp, time
+            if(type.equals("text")) {
+                return value;
+            } else {
+                return recv.callMethod(runtime.getCurrentContext(), "cast_to_time", value);
+            }
+        case 'i': //integer
+        case 'p': //primary key
+            if(value.respondsTo("to_i")) {
+                return value.callMethod(runtime.getCurrentContext(), "to_i");
+            } else {
+                return runtime.newFixnum( value.isTrue() ? 1 : 0 );
+            }
+        case 'd': //decimal, datetime, date
+            if(type.equals("datetime")) {
+                return recv.callMethod(runtime.getCurrentContext(), "cast_to_date_or_time", value);
+            } else if(type.equals("date")) {
+                return recv.getMetaClass().callMethod(runtime.getCurrentContext(), "string_to_date", value);
+            } else {
+                return recv.getMetaClass().callMethod(runtime.getCurrentContext(), "value_to_decimal", value);
+            }
+        case 'f': //float
+            return value.callMethod(runtime.getCurrentContext(),"to_f");
+        case 'b': //binary, boolean
+            if(type.equals("binary")) {
+                return recv.callMethod(runtime.getCurrentContext(), "value_to_binary", value);
+            } else {
+                return recv.getMetaClass().callMethod(runtime.getCurrentContext(), "value_to_boolean", value);
+            }
+        }
+        return value;
     }
 
     public static IRubyObject quote(IRubyObject recv, IRubyObject[] args) {
@@ -196,6 +255,69 @@ public class JDBCDerbySpec {
             return recv.getRuntime().newStringShared(bl);
         } else {
             return string;
+        }
+    }
+
+    public static IRubyObject select_all(IRubyObject recv, IRubyObject[] args) {
+        return recv.callMethod(recv.getRuntime().getCurrentContext(),"execute",args);
+    }
+
+    public static IRubyObject select_one(IRubyObject recv, IRubyObject[] args) {
+        IRubyObject limit = recv.getInstanceVariable("@limit");
+        if(limit.isNil()) {
+            recv.setInstanceVariable("@limit", recv.getRuntime().newFixnum(1));
+        }
+        try {
+            return recv.callMethod(recv.getRuntime().getCurrentContext(),"execute",args).callMethod(recv.getRuntime().getCurrentContext(), "first");
+        } finally {
+            recv.setInstanceVariable("@limit", recv.getRuntime().getNil());
+        }
+    }
+
+    public static IRubyObject add_limit_offset(IRubyObject recv, IRubyObject sql, IRubyObject options) {
+        recv.setInstanceVariable("@limit", options.callMethod(recv.getRuntime().getCurrentContext(), MethodIndex.AREF, "[]", recv.getRuntime().newSymbol("limit")));
+        return recv.setInstanceVariable("@offset", options.callMethod(recv.getRuntime().getCurrentContext(), MethodIndex.AREF, "[]", recv.getRuntime().newSymbol("offset")));
+    }
+
+    public static IRubyObject _execute(IRubyObject recv, IRubyObject[] args) throws SQLException, java.io.IOException {
+        Ruby runtime = recv.getRuntime();
+        try {
+            IRubyObject conn = recv.getInstanceVariable("@connection");
+            String sql = args[0].toString().trim().toLowerCase();
+            if(sql.charAt(0) == '(') {
+                sql = sql.substring(1).trim();
+            }
+            if(sql.startsWith("insert")) {
+                return JdbcAdapterInternalService.execute_insert(conn, args[0]);
+            } else if(sql.startsWith("select") || sql.startsWith("show")) {
+                IRubyObject offset = recv.getInstanceVariable("@offset");
+                if(offset.isNil()) {
+                    offset = RubyFixnum.zero(runtime);
+                }
+                IRubyObject limit = recv.getInstanceVariable("@limit");
+                IRubyObject range;
+                IRubyObject max;
+                if(limit.isNil() || RubyNumeric.fix2int(limit) == -1) {
+                    range = RubyRange.newRange(runtime, offset, runtime.newFixnum(-1), false);
+                    max = RubyFixnum.zero(runtime);
+                } else {
+                    IRubyObject v1 = offset.callMethod(runtime.getCurrentContext(), MethodIndex.OP_PLUS, "+", limit);
+                    range = RubyRange.newRange(runtime, offset, v1, true);
+                    max = v1.callMethod(runtime.getCurrentContext(), MethodIndex.OP_PLUS, "+", RubyFixnum.one(runtime));
+                }
+                IRubyObject ret = JdbcAdapterInternalService.execute_query(conn, new IRubyObject[]{args[0], max}).
+                    callMethod(runtime.getCurrentContext(), MethodIndex.AREF, "[]", range);
+                if(ret.isNil()) {
+                    return runtime.newArray();
+                } else {
+                    return ret;
+                }
+            } else {
+                return JdbcAdapterInternalService.execute_update(conn, args[0]);
+            }
+        } finally {
+            recv.setInstanceVariable("@limit",runtime.getNil());
+            recv.setInstanceVariable("@offset",runtime.getNil());
         }
     }
 }

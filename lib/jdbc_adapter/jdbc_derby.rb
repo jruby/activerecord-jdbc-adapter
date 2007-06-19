@@ -32,23 +32,8 @@ module JdbcSpec
     end
     
     module Column
-      def type_cast(value)
-        return nil if value.nil? || value.to_s.strip.downcase == 'null'
-        case type
-        when :string    then value
-        when :text    then value
-        when :integer   then defined?(value.to_i) ? value.to_i : (value ? 1 : 0)
-        when :primary_key then defined?(value.to_i) ? value.to_i : (value ? 1 : 0) 
-        when :decimal   then self.class.value_to_decimal(value)
-        when :float     then value.to_f
-        when :datetime  then cast_to_date_or_time(value)
-        when :date      then self.class.string_to_date(value)
-        when :timestamp then cast_to_time(value)
-        when :binary    then value.scan(/[0-9A-Fa-f]{2}/).collect {|v| v.to_i(16)}.pack("C*")
-        when :time      then cast_to_time(value)
-        when :boolean   then self.class.value_to_boolean(value)
-        else value
-        end
+      def value_to_binary(value)
+        value.scan(/[0-9A-Fa-f]{2}/).collect {|v| v.to_i(16)}.pack("C*")
       end
       
       def cast_to_date_or_time(value)
@@ -85,22 +70,6 @@ module JdbcSpec
       tp[:boolean] = {:name => "smallint"}
       tp
     end
-
-    def add_limit_offset!(sql, options) # :nodoc:
-      @limit = options[:limit]
-      @offset = options[:offset]
-    end
-    
-    def select_all(sql, name = nil)
-      execute(sql, name)
-    end
-    
-    def select_one(sql, name = nil)
-      @limit ||= 1
-      execute(sql, name).first
-    ensure
-      @limit = nil
-    end
     
     def classes_for_table_name(table)
       ActiveRecord::Base.send(:subclasses).select {|klass| klass.table_name == table}
@@ -121,29 +90,6 @@ module JdbcSpec
       end
     end
     
-    def _execute(sql, name = nil)
-      log_no_bench(sql, name) do
-        case sql.strip
-        when /^insert/i:
-          @connection.execute_insert(sql)
-        when /^\(?\s*(select|show)/i:
-          @offset ||= 0
-          if !@limit || @limit == -1
-            range = @offset..-1
-            max = 0
-          else
-            range = @offset...(@offset+@limit)
-            max = @offset+@limit+1
-          end
-          @connection.execute_query(sql,max)[range] || []
-        else
-          @connection.execute_update(sql)
-        end
-      end
-    ensure
-      @limit = @offset = nil
-    end
-
     def primary_key(table_name) #:nodoc:
       primary_keys(table_name).first
     end

@@ -110,7 +110,6 @@ module JdbcSpec
     end
 
     def _execute(sql, name = nil)
-      log_no_bench(sql, name) do
         if sql =~ /^select/i
           @offset ||= 0
           if !@limit || @limit == -1
@@ -122,7 +121,6 @@ module JdbcSpec
         else
           @connection.execute_update(sql)
         end
-      end
     ensure
       @limit = @offset = nil
     end

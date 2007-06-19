@@ -447,25 +447,25 @@ module ActiveRecord
       end
 
       def execute(sql, name = nil)
-        _execute(sql,name)
+        log_no_bench(sql, name) do
+          _execute(sql,name)
+        end
       end
 
       # we need to do it this way, to allow Rails stupid tests to always work
       # even if we define a new execute method. Instead of mixing in a new
       # execute, an _execute should be mixed in.
       def _execute(sql, name = nil)
-        log_no_bench(sql, name) do
-          case sql.strip
-          when /^insert/i:
+        case sql.strip
+        when /^insert/i:
             @connection.execute_insert(sql)
-          when /^\(?\s*(select|show)/i:
+        when /^\(?\s*(select|show)/i:
             @connection.execute_query(sql)
-          else
-            @connection.execute_update(sql)
-          end
+        else
+          @connection.execute_update(sql)
         end
       end
-      
+
       def update(sql, name = nil) #:nodoc:
         execute(sql, name)
       end
