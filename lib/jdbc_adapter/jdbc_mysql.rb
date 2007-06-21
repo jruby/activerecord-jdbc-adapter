@@ -10,7 +10,7 @@ module JdbcSpec
       TYPES_ALLOWING_EMPTY_STRING_DEFAULT = Set.new([:binary, :string, :text])
 
       def simplified_type(field_type)
-        return :boolean if field_type =~ /tinyint\(1\)|bit\(1\)/i 
+        return :boolean if field_type =~ /tinyint\(1\)|bit/i 
         return :string  if field_type =~ /enum/i
         super
       end

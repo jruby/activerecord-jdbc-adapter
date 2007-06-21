@@ -371,14 +371,6 @@ module ActiveRecord
         connection.adapter = self
       end
 
-      def insert_bind(*args)
-        @connection.insert_bind *args
-      end
-
-      def update_bind(*args)
-        @connection.update_bind *args
-      end
-
       def modify_types(tp)
         tp
       end
