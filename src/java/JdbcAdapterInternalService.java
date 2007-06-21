@@ -385,7 +385,7 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
             Statement stmt = null;
             try {
                 stmt = c.createStatement();
-                stmt.setMaxRows(0);
+                stmt.setMaxRows(maxrows);
                 return unmarshal_result(recv, stmt.executeQuery(sql.convertToString().getUnicodeValue()));
             } catch(SQLException e) {
                 if(c.isClosed()) {
