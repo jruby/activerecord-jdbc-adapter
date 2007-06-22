@@ -231,7 +231,7 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
                 } else if(metadata.storesLowerCaseIdentifiers()) {
                     table_name = table_name.toLowerCase();
                 }
-                ResultSet results = metadata.getColumns(null,null,table_name,null);
+                ResultSet results = metadata.getColumns(c.getCatalog(),null,table_name,null);
                 return unmarshal_columns(recv, metadata, results);
             } catch(SQLException e) {
                 if(c.isClosed()) {

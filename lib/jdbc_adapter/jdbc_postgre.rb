@@ -246,6 +246,14 @@ module JdbcSpec
       end
     end
 
+    def escape_bytea(s)
+      if s
+        result = ''
+        s.each_byte { |c| result << sprintf('\\\\%03o', c) }
+        result
+      end
+    end
+    
     def quote_column_name(name)
       %("#{name}")
     end

@@ -194,17 +194,17 @@ module ActiveRecord
       attr_writer :limit, :precision
         
       COLUMN_TYPES = {
-        /oracle/i => lambda {|cfg,col| col.extend(JdbcSpec::Oracle::Column)},
-        /mysql/i => lambda {|cfg,col| col.extend(JdbcSpec::MySQL::Column)},
-        /postgre/i => lambda {|cfg,col| col.extend(JdbcSpec::PostgreSQL::Column)},
-        /sqlserver|tds/i => lambda {|cfg,col| col.extend(JdbcSpec::MsSQL::Column)},
-        /hsqldb|\.h2\./i => lambda {|cfg,col| col.extend(JdbcSpec::HSQLDB::Column)},
-        /derby/i => lambda {|cfg,col| col.extend(JdbcSpec::Derby::Column)},
+        /oracle/i => lambda {|cfg,col| col.extend(::JdbcSpec::Oracle::Column)},
+        /mysql/i => lambda {|cfg,col| col.extend(::JdbcSpec::MySQL::Column)},
+        /postgre/i => lambda {|cfg,col| col.extend(::JdbcSpec::PostgreSQL::Column)},
+        /sqlserver|tds/i => lambda {|cfg,col| col.extend(::JdbcSpec::MsSQL::Column)},
+        /hsqldb|\.h2\./i => lambda {|cfg,col| col.extend(::JdbcSpec::HSQLDB::Column)},
+        /derby/i => lambda {|cfg,col| col.extend(::JdbcSpec::Derby::Column)},
         /db2/i => lambda {|cfg,col|
           if cfg[:url] =~ /^jdbc:derby:net:/
-            col.extend(JdbcSpec::Derby::Column)
+            col.extend(::JdbcSpec::Derby::Column)
           else
-            col.extend(JdbcSpec::DB2::Column)
+            col.extend(::JdbcSpec::DB2::Column)
           end }
       }
 
@@ -342,20 +342,20 @@ module ActiveRecord
 
     class JdbcAdapter < AbstractAdapter
       ADAPTER_TYPES = {
-        /oracle/i => lambda{|cfg,adapt| adapt.extend(JdbcSpec::Oracle)},
-        /mimer/i => lambda{|cfg,adapt| adapt.extend(JdbcSpec::Mimer)},
-        /postgre/i => lambda{|cfg,adapt| adapt.extend(JdbcSpec::PostgreSQL)},
-        /mysql/i => lambda{|cfg,adapt| adapt.extend(JdbcSpec::MySQL)},
-        /sqlserver|tds/i => lambda{|cfg,adapt| adapt.extend(JdbcSpec::MsSQL)},
-        /hsqldb|\.h2\./i => lambda{|cfg,adapt| adapt.extend(JdbcSpec::HSQLDB)},
-        /derby/i => lambda{|cfg,adapt| adapt.extend(JdbcSpec::Derby)},
+        /oracle/i => lambda{|cfg,adapt| adapt.extend(::JdbcSpec::Oracle)},
+        /mimer/i => lambda{|cfg,adapt| adapt.extend(::JdbcSpec::Mimer)},
+        /postgre/i => lambda{|cfg,adapt| adapt.extend(::JdbcSpec::PostgreSQL)},
+        /mysql/i => lambda{|cfg,adapt| adapt.extend(::JdbcSpec::MySQL)},
+        /sqlserver|tds/i => lambda{|cfg,adapt| adapt.extend(::JdbcSpec::MsSQL)},
+        /hsqldb|\.h2\./i => lambda{|cfg,adapt| adapt.extend(::JdbcSpec::HSQLDB)},
+        /derby/i => lambda{|cfg,adapt| adapt.extend(::JdbcSpec::Derby)},
         /db2/i => lambda{|cfg,adapt|
           if cfg[:url] =~ /^jdbc:derby:net:/
-            adapt.extend(JdbcSpec::Derby)
+            adapt.extend(::JdbcSpec::Derby)
           else
-            adapt.extend(JdbcSpec::DB2)
+            adapt.extend(::JdbcSpec::DB2)
           end},
-        /firebird/i => lambda{|cfg,adapt| adapt.extend(JdbcSpec::FireBird)}
+        /firebird/i => lambda{|cfg,adapt| adapt.extend(::JdbcSpec::FireBird)}
 
       }
 
