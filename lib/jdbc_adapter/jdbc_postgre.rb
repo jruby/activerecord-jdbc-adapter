@@ -1,6 +1,12 @@
 module JdbcSpec
   module PostgreSQL
     module Column
+      def type_cast(value)
+        case type
+        when :boolean then cast_to_boolean(value)
+        else super
+        end
+      end
 
       def simplified_type(field_type)
         return :integer if field_type =~ /^serial/i 
@@ -9,7 +15,16 @@ module JdbcSpec
         return :datetime if field_type =~ /^timestamp/i
         return :float if field_type =~ /^real|^money/i
         return :binary if field_type =~ /^bytea/i
+        return :boolean if field_type =~ /^bool/i
         super
+      end
+      
+      def cast_to_boolean(value)
+        if value == true || value == false
+          value
+        else
+          %w(true t 1).include?(value.to_s.downcase)
+        end
       end
 
       def cast_to_date_or_time(value)
@@ -136,6 +151,47 @@ module JdbcSpec
       Integer(select_value("SELECT currval('#{sequence_name}')"))
     end
 
+    # the point here is really just to empty the database, not recreate it
+    # so we delete all tables
+    def recreate_database(name)
+      tables.each{|t| drop_table(t)}
+    end
+    
+    def structure_dump
+      abcs = ActiveRecord::Base.configurations
+
+      database = nil
+      if abcs[RAILS_ENV]["url"] =~ /\/([^\/]*)$/
+        database = $1
+      else
+        raise "Could not figure out what database this url is for #{abcs[RAILS_ENV]["url"]}"
+      end
+    
+      ENV['PGHOST']     = abcs[RAILS_ENV]["host"] if abcs[RAILS_ENV]["host"]
+      ENV['PGPORT']     = abcs[RAILS_ENV]["port"].to_s if abcs[RAILS_ENV]["port"]
+      ENV['PGPASSWORD'] = abcs[RAILS_ENV]["password"].to_s if abcs[RAILS_ENV]["password"]
+      search_path = abcs[RAILS_ENV]["schema_search_path"]
+      search_path = "--schema=#{search_path}" if search_path
+
+      @connection.connection.close
+      begin
+        file = "db/#{RAILS_ENV}_structure.sql"
+        `pg_dump -i -U "#{abcs[RAILS_ENV]["username"]}" -s -x -O -f #{file} #{search_path} #{database}`
+        raise "Error dumping database" if $?.exitstatus == 1
+        
+        # need to patch away any references to SQL_ASCII as it breaks the JDBC driver
+        lines = File.readlines(file)
+        File.open(file, "w") do |io|
+          lines.each do |line|
+            line.gsub!(/SQL_ASCII/, 'UNICODE')
+            io.write(line)
+          end
+        end
+      ensure
+        reconnect!
+      end  
+    end
+    
     def _execute(sql, name = nil)
         case sql.strip
         when /^(select|show)/i:
@@ -145,6 +201,41 @@ module JdbcSpec
         end
     end
     
+    # SELECT DISTINCT clause for a given set of columns and a given ORDER BY clause.
+    #
+    # PostgreSQL requires the ORDER BY columns in the select list for distinct queries, and
+    # requires that the ORDER BY include the distinct column.
+    #
+    #   distinct("posts.id", "posts.created_at desc")
+    def distinct(columns, order_by)
+      return "DISTINCT #{columns}" if order_by.blank?
+
+      # construct a clean list of column names from the ORDER BY clause, removing
+      # any asc/desc modifiers
+      order_columns = order_by.split(',').collect { |s| s.split.first }
+      order_columns.delete_if &:blank?
+      order_columns = order_columns.zip((0...order_columns.size).to_a).map { |s,i| "#{s} AS alias_#{i}" }
+
+      # return a DISTINCT ON() clause that's distinct on the columns we want but includes
+      # all the required columns for the ORDER BY to work properly
+      sql = "DISTINCT ON (#{columns}) #{columns}, "
+      sql << order_columns * ', '
+    end
+
+    # ORDER BY clause for the passed order option.
+    # 
+    # PostgreSQL does not allow arbitrary ordering when using DISTINCT ON, so we work around this
+    # by wrapping the sql as a sub-select and ordering in that query.
+    def add_order_by_for_association_limiting!(sql, options)
+      return sql if options[:order].blank?
+      
+      order = options[:order].split(',').collect { |s| s.strip }.reject(&:blank?)
+      order.map! { |s| 'DESC' if s =~ /\bdesc$/i }
+      order = order.zip((0...order.size).to_a).map { |s,i| "id_list.alias_#{i} #{s}" }.join(', ')
+      
+      sql.replace "SELECT * FROM (#{sql}) AS id_list ORDER BY #{order}"
+    end
+
     def quote(value, column = nil)
       if value.kind_of?(String) && column && column.type == :binary
         "'#{escape_bytea(value)}'"
