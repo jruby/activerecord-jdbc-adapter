@@ -115,16 +115,12 @@ module SimpleTestMethods
 
 end
 
-class ActiveRecord::Base
-  cattr_accessor :defined_connections
-end
-
 module MultibyteTestMethods
   include MigrationSetup
 
   def setup
     super
-    config = ActiveRecord::Base.defined_connections["ActiveRecord::Base"].config
+    config = ActiveRecord::Base.connection.config
     props = java.util.Properties.new
     props.setProperty("user", config[:username])
     props.setProperty("password", config[:password])

@@ -1,9 +1,6 @@
 config = {
-  :adapter => 'jdbc',
-  :username => 'sa',
-  :password => '',
-  :driver => 'org.h2.Driver',
-  :url => 'jdbc:h2:test.db'
+  :adapter => 'h2',
+  :database => 'test.db'
 }
 
 ActiveRecord::Base.establish_connection(config)

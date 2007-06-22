@@ -40,13 +40,18 @@ end
 desc "Run AR-JDBC tests"
 if RUBY_PLATFORM =~ /java/
   # TODO: add more databases into the standard tests here.
-  task :test => [:test_mysql, :test_derby, :test_hsqldb]
+  task :test => [:test_mysql, :test_jdbc, :test_derby, :test_hsqldb]
 else
   task :test => [:test_mysql]
 end
 
 Rake::TestTask.new(:test_mysql) do |t|
   t.test_files = FileList['test/mysql_*_test.rb']
+  t.libs << 'test'
+end
+
+Rake::TestTask.new(:test_jdbc) do |t|
+  t.test_files = FileList['test/generic_jdbc_connection_test.rb']
   t.libs << 'test'
 end
 
@@ -84,7 +89,7 @@ Rake::Task['manifest'].invoke # Always regen manifest, so Hoe has up-to-date lis
 
 begin
   require 'hoe'
-  Hoe.new("ActiveRecord-JDBC", "0.4") do |p|
+  Hoe.new("ActiveRecord-JDBC", "0.5") do |p|
     p.rubyforge_name = "jruby-extras"
     p.url = "http://jruby-extras.rubyforge.org/ActiveRecord-JDBC"
     p.author = "Nick Sieger, Ola Bini and JRuby contributors"

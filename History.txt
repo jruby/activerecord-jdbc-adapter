@@ -1,3 +1,10 @@
+== 0.5
+
+- It is no longer necessary to specify :driver and :url configuration parameters for the mysql, 
+  postgresql, oracle, derby, hsqldb, and h2 adapters.  The previous configuration is still
+  valid and compatible, but for new applications, this makes it possible to use the exact same
+  database.yml configuration as Rails applications running under Matz Ruby.
+
 == 0.4
 
 - Release coincides with JRuby 1.0 release

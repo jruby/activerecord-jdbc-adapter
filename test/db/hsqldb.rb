@@ -1,10 +1,6 @@
 config = {
-  :adapter => 'jdbc',
-  :username => 'sa',
-  :password => '',
-  :driver => 'org.hsqldb.jdbcDriver',
-  :url => 'jdbc:hsqldb:test.db'
-  #:url => 'jdbc:hsqldb:mem:test'
+  :adapter => 'hsqldb',
+  :database => 'test.db'
 }
 
 ActiveRecord::Base.establish_connection(config)

@@ -37,9 +37,54 @@ end
 
 module ActiveRecord
   class Base
-    def self.jdbc_connection(config)
-      connection = ConnectionAdapters::JdbcConnection.new(config)
-      ConnectionAdapters::JdbcAdapter.new(connection, logger, config)
+    class << self
+      def jdbc_connection(config)
+        connection = ConnectionAdapters::JdbcConnection.new(config)
+        ConnectionAdapters::JdbcAdapter.new(connection, logger, config)
+      end
+      alias jndi_connection jdbc_connection
+
+      def mysql_connection(config)
+        config[:url] ||= "jdbc:mysql://#{config[:host]}/#{config[:database]}"
+        config[:driver] = "com.mysql.jdbc.Driver"
+        jdbc_connection(config)
+      end
+
+      def postgresql_connection(config)
+        config[:url] ||= "jdbc:postgresql://#{config[:host]}/#{config[:database]}"
+        config[:driver] ||= "org.postgresql.Driver"
+        jdbc_connection(config)
+      end
+
+      def oracle_connection(config)
+        config[:url] ||= "jdbc:oracle:thin:@#{config[:host]}:#{config[:database]}"
+        config[:driver] ||= "oracle.jdbc.driver.OracleDriver"
+        jdbc_connection(config)
+      end
+      
+      def embedded_driver(config)
+        config[:username] ||= "sa"
+        config[:password] ||= ""
+        jdbc_connection(config)
+      end
+
+      def derby_connection(config)
+        config[:url] ||= "jdbc:derby:#{config[:database]};create=true"
+        config[:driver] ||= "org.apache.derby.jdbc.EmbeddedDriver"
+        embedded_driver(config)
+      end
+      
+      def hsqldb_connection(config)
+        config[:url] ||= "jdbc:hsqldb:#{config[:database]}"
+        config[:driver] ||= "org.hsqldb.jdbcDriver"
+        embedded_driver(config)
+      end
+      
+      def h2_connection(config)
+        config[:url] ||= "jdbc:h2:#{config[:database]}"
+        config[:driver] ||= "org.h2.Driver"
+        embedded_driver(config)
+      end
     end
 
     alias :attributes_with_quotes_pre_oracle :attributes_with_quotes
@@ -341,6 +386,8 @@ module ActiveRecord
     end
 
     class JdbcAdapter < AbstractAdapter
+      attr_reader :config
+
       ADAPTER_TYPES = {
         /oracle/i => lambda{|cfg,adapt| adapt.extend(::JdbcSpec::Oracle)},
         /mimer/i => lambda{|cfg,adapt| adapt.extend(::JdbcSpec::Mimer)},

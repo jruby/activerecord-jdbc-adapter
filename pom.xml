@@ -10,7 +10,7 @@
   <groupId>org.jruby.testsuites</groupId>
   <artifactId>activerecord-jdbc</artifactId>
   <packaging>jar</packaging>
-  <version>1.0</version>
+  <version>1.1-SNAPSHOT</version>
   <name>JRuby ActiveRecord-JDBC testsuite</name>
   <description>Test ActiveRecord-JDBC</description>
 
@@ -18,7 +18,7 @@
     <dependency>
       <groupId>org.jruby</groupId>
       <artifactId>jruby</artifactId>
-      <version>1.0</version>
+      <version>1.1-SNAPSHOT</version>
     </dependency>
   </dependencies>
 

@@ -1,11 +1,8 @@
 require 'logger'
 
 config = {
-  :adapter => 'jdbc',
-  :username => 'sa',
-  :password => '',
-  :driver => 'org.apache.derby.jdbc.EmbeddedDriver',
-  :url => 'jdbc:derby:derby-testdb;create=true'
+  :adapter => 'derby',
+  :database => "derby-testdb"
 }
 
 ActiveRecord::Base.establish_connection(config)
