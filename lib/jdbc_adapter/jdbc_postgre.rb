@@ -1,8 +1,14 @@
 module JdbcSpec
   module PostgreSQL
     module Column
+
       def simplified_type(field_type)
         return :integer if field_type =~ /^serial/i 
+        return :string if field_type =~ /\[\]$/i || field_type =~ /^interval/i
+        return :string if field_type =~ /^(?:point|lseg|box|"?path"?|polygon|circle)/i
+        return :datetime if field_type =~ /^timestamp/i
+        return :float if field_type =~ /^real|^money/i
+        return :binary if field_type =~ /^bytea/i
         super
       end
 
@@ -151,6 +157,10 @@ module JdbcSpec
 
     def quote_column_name(name)
       %("#{name}")
+    end
+
+    def quoted_date(value)
+      value.strftime("%Y-%m-%d %H:%M:%S.#{sprintf("%06d", value.usec)}")
     end
 
     def rename_table(name, new_name)
