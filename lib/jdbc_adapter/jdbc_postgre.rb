@@ -192,17 +192,13 @@ module JdbcSpec
       end  
     end
     
-     def _execute(sql, name = nil)
-      case sql.strip
-      when /^insert/i:
-        @connection.execute_update(sql)
-      when /^update/i:
-        @connection.execute_update(sql)
-      when /^\(?\s*(select|show)/i:
-        @connection.execute_query(sql)
-      else
-        @connection.execute_update(sql)
-      end
+    def _execute(sql, name = nil)
+        case sql.strip
+        when /\A(select|show)/i:
+          @connection.execute_query(sql)
+        else
+          @connection.execute_update(sql)
+        end
     end
     
     # SELECT DISTINCT clause for a given set of columns and a given ORDER BY clause.
