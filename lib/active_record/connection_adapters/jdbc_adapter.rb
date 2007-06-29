@@ -497,9 +497,9 @@ module ActiveRecord
       # execute, an _execute should be mixed in.
       def _execute(sql, name = nil)
         case sql.strip
-        when /^insert/i:
+        when /\Ainsert/i:
             @connection.execute_insert(sql)
-        when /^\(?\s*(select|show)/i:
+        when /\A\(?\s*(select|show)/i:
             @connection.execute_query(sql)
         else
           @connection.execute_update(sql)
