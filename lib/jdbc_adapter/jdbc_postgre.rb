@@ -147,6 +147,10 @@ module JdbcSpec
       id_value || last_insert_id(table, sequence_name || default_sequence_name(table, pk))
     end
 
+    def columns(table_name, name=nil)
+      super(table_name, name, "public")
+    end
+    
     def last_insert_id(table, sequence_name)
       Integer(select_value("SELECT currval('#{sequence_name}')"))
     end

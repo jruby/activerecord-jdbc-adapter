@@ -227,20 +227,25 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
             try {
                 DatabaseMetaData metadata = c.getMetaData();
                 String schemaName = null;
+                if(args.length>2) {
+                    schemaName = args[2].toString();
+                }
                 if(metadata.storesUpperCaseIdentifiers()) {
                     table_name = table_name.toUpperCase();
                 } else if(metadata.storesLowerCaseIdentifiers()) {
                     table_name = table_name.toLowerCase();
                 }
-                ResultSet schemas = metadata.getSchemas();
-                String username = metadata.getUserName();
-                while(schemas.next()) {
-                    if(schemas.getString(1).equalsIgnoreCase(username)) {
-                        schemaName = schemas.getString(1);
-                        break;
+                if(schemaName == null) {
+                    ResultSet schemas = metadata.getSchemas();
+                    String username = metadata.getUserName();
+                    while(schemas.next()) {
+                        if(schemas.getString(1).equalsIgnoreCase(username)) {
+                            schemaName = schemas.getString(1);
+                            break;
+                        }
                     }
+                    schemas.close();
                 }
-                schemas.close();
                 
                 ResultSet results = metadata.getColumns(c.getCatalog(),schemaName,table_name,null);
                 return unmarshal_columns(recv, metadata, results);
