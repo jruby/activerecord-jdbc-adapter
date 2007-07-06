@@ -158,8 +158,10 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
                 return runtime.newArray(arr);
             } catch (SQLException e) {
                 if(c.isClosed()) {
-                    recv.callMethod(recv.getRuntime().getCurrentContext(),"reconnect!");
-                    continue;
+                    recv = recv.callMethod(recv.getRuntime().getCurrentContext(),"reconnect!");
+                    if(!((Connection)recv.dataGetStruct()).isClosed()) {
+                        continue;
+                    }
                 }
                 throw e;
             } finally {
@@ -251,8 +253,10 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
                 return unmarshal_columns(recv, metadata, results);
             } catch(SQLException e) {
                 if(c.isClosed()) {
-                    recv.callMethod(recv.getRuntime().getCurrentContext(),"reconnect!");
-                    continue;
+                    recv = recv.callMethod(recv.getRuntime().getCurrentContext(),"reconnect!");
+                    if(!((Connection)recv.dataGetStruct()).isClosed()) {
+                        continue;
+                    }
                 }
                 throw e;
             }
@@ -376,8 +380,10 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
                 return recv.getRuntime().newFixnum(stmt.executeUpdate(sql.convertToString().getUnicodeValue()));
             } catch(SQLException e) {
                 if(c.isClosed()) {
-                    recv.callMethod(recv.getRuntime().getCurrentContext(),"reconnect!");
-                    continue;
+                    recv = recv.callMethod(recv.getRuntime().getCurrentContext(),"reconnect!");
+                    if(!((Connection)recv.dataGetStruct()).isClosed()) {
+                        continue;
+                    }
                 }
                 throw e;
             } finally {
@@ -405,8 +411,10 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
                 return unmarshal_result(recv, stmt.executeQuery(sql.convertToString().getUnicodeValue()));
             } catch(SQLException e) {
                 if(c.isClosed()) {
-                    recv.callMethod(recv.getRuntime().getCurrentContext(),"reconnect!");
-                    continue;
+                    recv = recv.callMethod(recv.getRuntime().getCurrentContext(),"reconnect!");
+                    if(!((Connection)recv.dataGetStruct()).isClosed()) {
+                        continue;
+                    }
                 }
                 throw e;
             } finally {
@@ -429,8 +437,10 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
                 return unmarshal_id_result(recv.getRuntime(), stmt.getGeneratedKeys());
             } catch(SQLException e) {
                 if(c.isClosed()) {
-                    recv.callMethod(recv.getRuntime().getCurrentContext(),"reconnect!");
-                    continue;
+                    recv = recv.callMethod(recv.getRuntime().getCurrentContext(),"reconnect!");
+                    if(!((Connection)recv.dataGetStruct()).isClosed()) {
+                        continue;
+                    }
                 }
                 throw e;
             } finally {

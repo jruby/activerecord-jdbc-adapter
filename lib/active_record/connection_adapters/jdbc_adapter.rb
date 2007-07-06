@@ -476,6 +476,8 @@ module ActiveRecord
       def reconnect!
         @connection.close rescue nil
         @connection = JdbcConnection.new(@config)
+        @connection.adapter = self
+        @connection
       end
 
       def select_all(sql, name = nil)
