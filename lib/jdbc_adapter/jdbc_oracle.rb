@@ -19,9 +19,9 @@ module JdbcSpec
       private
       def simplified_type(field_type)
         case field_type
-        when /char/i                          : :string
-        when /num|float|double|dec|real|int/i : @scale == 0 ? :integer : :float
-        when /date|time/i                     : @name =~ /_at$/ ? :time : :datetime
+        when /char/i                           : :string
+        when /num|float|double|dec|real|int/i  : @scale == 0 ? :integer : :float
+        when /date|time/i                      : :datetime
         when /clob/i                           : :text
         when /blob/i                           : :binary
         end
