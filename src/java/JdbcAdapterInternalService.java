@@ -89,7 +89,8 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
         cJdbcConn.defineFastMethod("commit",cf.getFastSingletonMethod("commit"));
         cJdbcConn.defineFastMethod("rollback",cf.getFastSingletonMethod("rollback"));
         cJdbcConn.defineFastMethod("database_name",cf.getFastSingletonMethod("database_name"));
-        cJdbcConn.defineFastMethod("columns",cf.getFastOptSingletonMethod("columns"));
+        cJdbcConn.defineFastMethod("columns",cf.getFastOptSingletonMethod("columns_internal"));
+        cJdbcConn.defineFastMethod("columns_internal",cf.getFastOptSingletonMethod("columns_internal"));
         cJdbcConn.defineFastMethod("tables",cf.getFastOptSingletonMethod("tables"));
 
         cJdbcConn.defineFastMethod("insert_bind",cf.getFastOptSingletonMethod("insert_bind"));
@@ -222,7 +223,7 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
         }
     }
 
-    public static IRubyObject columns(IRubyObject recv, IRubyObject[] args) throws SQLException, IOException {
+    public static IRubyObject columns_internal(IRubyObject recv, IRubyObject[] args) throws SQLException, IOException {
         String table_name = args[0].convertToString().getUnicodeValue();
         while(true) {
             Connection c = (Connection)recv.dataGetStruct();

@@ -148,7 +148,7 @@ module JdbcSpec
     end
 
     def columns(table_name, name=nil)
-      super(table_name, name, "public")
+      @connection.columns_internal(table_name, name, "public")
     end
     
     def last_insert_id(table, sequence_name)

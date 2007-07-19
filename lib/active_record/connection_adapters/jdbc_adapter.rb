@@ -307,6 +307,8 @@ module ActiveRecord
       # one index, one row per column in the index), so a simple block-based
       # filter like that used for tables doesn't really work here.  Callers
       # should filter the return from this method instead.
+      #
+      # TODO: fix to use reconnect correctly
       def indexes(table_name, name = nil)
         metadata = @connection.getMetaData
         unless String === table_name
