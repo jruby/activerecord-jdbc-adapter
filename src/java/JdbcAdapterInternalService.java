@@ -28,6 +28,8 @@
 import java.io.IOException;
 import java.io.Reader;
 import java.io.InputStream;
+import java.io.ByteArrayInputStream;
+import java.io.StringReader;
 
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
@@ -95,6 +97,8 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
 
         cJdbcConn.defineFastMethod("insert_bind",cf.getFastOptSingletonMethod("insert_bind"));
         cJdbcConn.defineFastMethod("update_bind",cf.getFastOptSingletonMethod("update_bind"));
+
+        cJdbcConn.defineFastMethod("write_large_object",cf.getFastOptSingletonMethod("write_large_object"));
 
         RubyModule jdbcSpec = runtime.getOrCreateModule("JdbcSpec");
         JDBCMySQLSpec.load(runtime, jdbcSpec);
@@ -744,6 +748,36 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
         try {
             ps = c.prepareStatement(RubyString.objAsString(args[0]).toString());
             setValuesOnPS(ps, runtime, args[1], args[2]);
+            ps.executeUpdate();
+        } finally {
+            try {
+                ps.close();
+            } catch(Exception e) {}
+        }
+        return runtime.getNil();
+    }
+
+
+    private final static String LOB_UPDATE = "UPDATE ? WHERE ";
+
+    /*
+     * (is binary?, colname, tablename, primary key, id, value)
+     */
+    public static IRubyObject write_large_object(IRubyObject recv, IRubyObject[] args) throws SQLException, IOException {
+        Ruby runtime = recv.getRuntime();
+        Arity.checkArgumentCount(runtime, args, 6, 6);
+        Connection c = (Connection)recv.dataGetStruct();
+        String sql = "UPDATE " + args[2].toString() + " SET " + args[1].toString() + " = ? WHERE " + args[3] + "=" + args[4];
+        PreparedStatement ps = null;
+        try {
+            ByteList outp = RubyString.objAsString(args[5]).getByteList();
+            ps = c.prepareStatement(sql);
+            if(args[0].isTrue()) { // binary
+                ps.setBinaryStream(1,new ByteArrayInputStream(outp.bytes, outp.begin, outp.realSize), outp.realSize);
+            } else { // clob
+                String ss = outp.toString();
+                ps.setCharacterStream(1,new StringReader(ss), ss.length());
+            }
             ps.executeUpdate();
         } finally {
             try {

@@ -489,6 +489,10 @@ module ActiveRecord
       def rollback_db_transaction
         @connection.rollback
       end
+      
+      def write_large_object(*args)
+        @connection.write_large_object(*args)
+      end
 
       private
       def select(sql, name=nil)
