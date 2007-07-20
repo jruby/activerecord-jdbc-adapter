@@ -1,5 +1,13 @@
 module JdbcSpec
   module MsSQL
+    def self.column_selector
+      [/sqlserver|tds/i, lambda {|cfg,col| col.extend(::JdbcSpec::MsSQL::Column)}]
+    end
+
+    def self.adapter_selector
+      [/sqlserver|tds/i, lambda {|cfg,adapt| adapt.extend(::JdbcSpec::MsSQL)}]
+    end
+    
     module Column
       attr_accessor :identity, :is_special
       

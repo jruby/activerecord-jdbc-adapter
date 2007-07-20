@@ -1,5 +1,22 @@
-module JdbcSpec
+module ::JdbcSpec
+  module ActiveRecordExtensions
+    def oracle_connection(config)
+      config[:port] ||= 1521
+      config[:url] ||= "jdbc:oracle:thin://#{config[:host]}:#{config[:port]}:#{config[:database]}"
+      config[:driver] ||= "oracle.jdbc.driver.OracleDriver"
+      jdbc_connection(config)
+    end
+  end
+  
   module Oracle
+    def self.column_selector
+      [/oracle/i, lambda {|cfg,col| col.extend(::JdbcSpec::Oracle::Column)}]
+    end
+
+    def self.adapter_selector
+      [/oracle/i, lambda {|cfg,adapt| adapt.extend(::JdbcSpec::Oracle)}]
+    end
+    
     module Column
       def type_cast(value)
         return nil if value.nil? || value =~ /^\s*null\s*$/i

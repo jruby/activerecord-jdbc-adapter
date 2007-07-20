@@ -1,7 +1,27 @@
 require 'active_record/connection_adapters/abstract/schema_definitions'
 
 module ::JdbcSpec
+  module ActiveRecordExtensions
+    def mysql_connection(config)
+      if config[:socket]
+        warn "AR-JDBC MySQL on JRuby does not support sockets"
+      end
+      config[:port] ||= 3306
+      config[:url] ||= "jdbc:mysql://#{config[:host]}:#{config[:port]}/#{config[:database]}"
+      config[:driver] = "com.mysql.jdbc.Driver"
+      jdbc_connection(config)
+    end
+  end
+
   module MySQL
+    def self.column_selector
+      [/mysql/i, lambda {|cfg,col| col.extend(::JdbcSpec::MySQL::Column)}]
+    end
+
+    def self.adapter_selector
+      [/mysql/i, lambda {|cfg,adapt| adapt.extend(::JdbcSpec::MySQL)}]
+    end
+    
     def self.extended(adapter)
       adapter.execute("SET SQL_AUTO_IS_NULL=0")
     end

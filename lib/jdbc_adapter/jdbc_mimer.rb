@@ -1,5 +1,9 @@
 module JdbcSpec
   module Mimer
+    def self.adapter_selector
+      [/mimer/i, lambda {|cfg,adapt| adapt.extend(::JdbcSpec::Mimer)}]
+    end
+
     def modify_types(tp)
       tp[:primary_key] = "INTEGER NOT NULL PRIMARY KEY"
       tp[:boolean][:limit] = nil

@@ -1,7 +1,23 @@
 require 'jdbc_adapter/missing_functionality_helper'
 
-module JdbcSpec
+module ::JdbcSpec
+  module ActiveRecordExtensions
+    def derby_connection(config)
+      config[:url] ||= "jdbc:derby:#{config[:database]};create=true"
+      config[:driver] ||= "org.apache.derby.jdbc.EmbeddedDriver"
+      embedded_driver(config)
+    end
+  end 
+
   module Derby
+    def self.column_selector
+      [/derby/i, lambda {|cfg,col| col.extend(::JdbcSpec::Derby::Column)}]
+    end
+
+    def self.adapter_selector
+      [/derby/i, lambda {|cfg,adapt| adapt.extend(::JdbcSpec::Derby)}]
+    end
+      
     def self.monkey_rails
       unless @already_monkeyd
         # Needed because Rails is broken wrt to quoting of 

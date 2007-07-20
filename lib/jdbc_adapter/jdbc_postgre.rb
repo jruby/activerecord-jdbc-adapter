@@ -1,5 +1,22 @@
-module JdbcSpec
+module ::JdbcSpec
+  module ActiveRecordExtensions
+    def postgresql_connection(config)
+      config[:port] ||= 5432
+      config[:url] ||= "jdbc:postgresql://#{config[:host]}:#{config[:port]}/#{config[:database]}"
+      config[:driver] ||= "org.postgresql.Driver"
+      jdbc_connection(config)
+    end
+  end
+
   module PostgreSQL
+    def self.column_selector
+      [/postgre/i, lambda {|cfg,col| col.extend(::JdbcSpec::PostgreSQL::Column)}]
+    end
+
+    def self.adapter_selector
+      [/postgre/i, lambda {|cfg,adapt| adapt.extend(::JdbcSpec::PostgreSQL)}]
+    end
+    
     module Column
       def type_cast(value)
         case type

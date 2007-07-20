@@ -1,5 +1,23 @@
 module JdbcSpec
   module DB2
+    def self.column_selector
+      [/db2/i, lambda {|cfg,col|
+         if cfg[:url] =~ /^jdbc:derby:net:/
+           col.extend(::JdbcSpec::Derby::Column)
+         else
+           col.extend(::JdbcSpec::DB2::Column)
+         end }]
+    end
+
+    def self.adapter_selector
+      [/db2/i, lambda {|cfg,adapt|
+         if cfg[:url] =~ /^jdbc:derby:net:/
+           adapt.extend(::JdbcSpec::Derby)
+         else
+           adapt.extend(::JdbcSpec::DB2)
+         end }]
+    end
+    
     module Column
       def type_cast(value)
         return nil if value.nil? || value =~ /^\s*null\s*$/i

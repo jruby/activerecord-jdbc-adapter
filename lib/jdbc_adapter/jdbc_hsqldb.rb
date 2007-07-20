@@ -1,5 +1,27 @@
-module JdbcSpec
+module ::JdbcSpec
+  module ActiveRecordExtensions
+    def hsqldb_connection(config)
+      config[:url] ||= "jdbc:hsqldb:#{config[:database]}"
+      config[:driver] ||= "org.hsqldb.jdbcDriver"
+      embedded_driver(config)
+    end
+      
+    def h2_connection(config)
+      config[:url] ||= "jdbc:h2:#{config[:database]}"
+      config[:driver] ||= "org.h2.Driver"
+      embedded_driver(config)
+    end
+  end
+  
   module HSQLDB
+    def self.column_selector
+      [/hsqldb|\.h2\./i, lambda {|cfg,col| col.extend(::JdbcSpec::HSQLDB::Column)}]
+    end
+
+    def self.adapter_selector
+      [/hsqldb|\.h2\./i, lambda {|cfg,adapt| adapt.extend(::JdbcSpec::HSQLDB)}]
+    end
+    
     module Column
       def type_cast(value)
         return nil if value.nil? || value =~ /^\s*null\s*$/i

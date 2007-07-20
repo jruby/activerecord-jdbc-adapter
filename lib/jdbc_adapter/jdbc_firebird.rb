@@ -1,5 +1,9 @@
-module JdbcSpec
+module ::JdbcSpec
   module FireBird
+    def self.adapter_selector
+      [/firebird/i, lambda{|cfg,adapt| adapt.extend(::JdbcSpec::FireBird)}]
+    end
+
     def modify_types(tp)
       tp[:primary_key] = 'INTEGER NOT NULL PRIMARY KEY'
       tp[:string][:limit] = 252

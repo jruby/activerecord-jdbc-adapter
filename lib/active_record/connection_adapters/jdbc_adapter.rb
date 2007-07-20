@@ -35,57 +35,25 @@ module ActiveRecord
   end
 end
 
+module JdbcSpec
+  module ActiveRecordExtensions
+    def jdbc_connection(config)
+      connection = ::ActiveRecord::ConnectionAdapters::JdbcConnection.new(config)
+      ::ActiveRecord::ConnectionAdapters::JdbcAdapter.new(connection, logger, config)
+    end
+    alias jndi_connection jdbc_connection
+
+    def embedded_driver(config)
+      config[:username] ||= "sa"
+      config[:password] ||= ""
+      jdbc_connection(config)
+    end
+  end
+end
+
 module ActiveRecord
   class Base
-    class << self
-      def jdbc_connection(config)
-        connection = ConnectionAdapters::JdbcConnection.new(config)
-        ConnectionAdapters::JdbcAdapter.new(connection, logger, config)
-      end
-      alias jndi_connection jdbc_connection
-
-      def mysql_connection(config)
-        config[:url] ||= "jdbc:mysql://#{config[:host]}/#{config[:database]}"
-        config[:driver] = "com.mysql.jdbc.Driver"
-        jdbc_connection(config)
-      end
-
-      def postgresql_connection(config)
-        config[:url] ||= "jdbc:postgresql://#{config[:host]}/#{config[:database]}"
-        config[:driver] ||= "org.postgresql.Driver"
-        jdbc_connection(config)
-      end
-
-      def oracle_connection(config)
-        config[:url] ||= "jdbc:oracle:thin:@#{config[:host]}:#{config[:database]}"
-        config[:driver] ||= "oracle.jdbc.driver.OracleDriver"
-        jdbc_connection(config)
-      end
-      
-      def embedded_driver(config)
-        config[:username] ||= "sa"
-        config[:password] ||= ""
-        jdbc_connection(config)
-      end
-
-      def derby_connection(config)
-        config[:url] ||= "jdbc:derby:#{config[:database]};create=true"
-        config[:driver] ||= "org.apache.derby.jdbc.EmbeddedDriver"
-        embedded_driver(config)
-      end
-      
-      def hsqldb_connection(config)
-        config[:url] ||= "jdbc:hsqldb:#{config[:database]}"
-        config[:driver] ||= "org.hsqldb.jdbcDriver"
-        embedded_driver(config)
-      end
-      
-      def h2_connection(config)
-        config[:url] ||= "jdbc:h2:#{config[:database]}"
-        config[:driver] ||= "org.h2.Driver"
-        embedded_driver(config)
-      end
-    end
+    extend JdbcSpec::ActiveRecordExtensions
 
     alias :attributes_with_quotes_pre_oracle :attributes_with_quotes
     def attributes_with_quotes(include_primary_key = true) #:nodoc:
@@ -238,21 +206,12 @@ module ActiveRecord
     class JdbcColumn < Column
       attr_writer :limit, :precision
         
-      COLUMN_TYPES = {
-        /oracle/i => lambda {|cfg,col| col.extend(::JdbcSpec::Oracle::Column)},
-        /mysql/i => lambda {|cfg,col| col.extend(::JdbcSpec::MySQL::Column)},
-        /postgre/i => lambda {|cfg,col| col.extend(::JdbcSpec::PostgreSQL::Column)},
-        /sqlserver|tds/i => lambda {|cfg,col| col.extend(::JdbcSpec::MsSQL::Column)},
-        /hsqldb|\.h2\./i => lambda {|cfg,col| col.extend(::JdbcSpec::HSQLDB::Column)},
-        /derby/i => lambda {|cfg,col| col.extend(::JdbcSpec::Derby::Column)},
-        /db2/i => lambda {|cfg,col|
-          if cfg[:url] =~ /^jdbc:derby:net:/
-            col.extend(::JdbcSpec::Derby::Column)
-          else
-            col.extend(::JdbcSpec::DB2::Column)
-          end }
-      }
-
+      COLUMN_TYPES = ::JdbcSpec.constants.map{|c| 
+        ::JdbcSpec.const_get c }.select{ |c| 
+        c.respond_to? :column_selector }.map{|c| 
+        c.column_selector }.inject({}) { |h,val| 
+        h[val[0]] = val[1]; h }
+        
       def initialize(config, name, default, *args)
         ds = config[:driver].to_s
         for reg, func in COLUMN_TYPES
@@ -390,23 +349,11 @@ module ActiveRecord
     class JdbcAdapter < AbstractAdapter
       attr_reader :config
 
-      ADAPTER_TYPES = {
-        /oracle/i => lambda{|cfg,adapt| adapt.extend(::JdbcSpec::Oracle)},
-        /mimer/i => lambda{|cfg,adapt| adapt.extend(::JdbcSpec::Mimer)},
-        /postgre/i => lambda{|cfg,adapt| adapt.extend(::JdbcSpec::PostgreSQL)},
-        /mysql/i => lambda{|cfg,adapt| adapt.extend(::JdbcSpec::MySQL)},
-        /sqlserver|tds/i => lambda{|cfg,adapt| adapt.extend(::JdbcSpec::MsSQL)},
-        /hsqldb|\.h2\./i => lambda{|cfg,adapt| adapt.extend(::JdbcSpec::HSQLDB)},
-        /derby/i => lambda{|cfg,adapt| adapt.extend(::JdbcSpec::Derby)},
-        /db2/i => lambda{|cfg,adapt|
-          if cfg[:url] =~ /^jdbc:derby:net:/
-            adapt.extend(::JdbcSpec::Derby)
-          else
-            adapt.extend(::JdbcSpec::DB2)
-          end},
-        /firebird/i => lambda{|cfg,adapt| adapt.extend(::JdbcSpec::FireBird)}
-
-      }
+      ADAPTER_TYPES = ::JdbcSpec.constants.map{|c| 
+        ::JdbcSpec.const_get c }.select{ |c|
+        c.respond_to? :adapter_selector }.map{|c| 
+        c.adapter_selector }.inject({}) { |h,val| 
+        h[val[0]] = val[1]; h }
 
       def initialize(connection, logger, config)
         super(connection, logger)
