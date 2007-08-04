@@ -102,6 +102,10 @@ module ::JdbcSpec
       execute "DROP SEQUENCE #{name}_seq" rescue nil
     end
 
+    def recreate_database(name)
+      tables.each{ |table| drop_table(table) }
+    end
+    
     def insert(sql, name = nil, pk = nil, id_value = nil, sequence_name = nil) #:nodoc:
       if pk.nil? # Who called us? What does the sql look like? No idea!
         execute sql, name
@@ -116,6 +120,10 @@ module ::JdbcSpec
       id_value
     end
 
+    def indexes(table, name = nil)
+      @connection.indexesr(table, name, @connection.connection.meta_data.user_name)
+    end
+    
     def _execute(sql, name = nil)
         case sql.strip
         when /^(select|show)/i:
@@ -182,7 +190,11 @@ module ::JdbcSpec
               from user_tab_columns
               where table_name = '#{table.to_a.first.last}'
               order by column_id
-            }).map do |row|              
+            }).map do |row|
+          row = row.inject({}) do |h,args| 
+            h[args[0].downcase] = args[1]
+            h 
+          end
           col = "#{row['column_name'].downcase} #{row['data_type'].downcase}"      
           if row['data_type'] =='NUMBER' and !row['data_precision'].nil?
             col << "(#{row['data_precision'].to_i}"

@@ -268,7 +268,7 @@ module ActiveRecord
       # should filter the return from this method instead.
       #
       # TODO: fix to use reconnect correctly
-      def indexes(table_name, name = nil)
+      def indexes(table_name, name = nil, schema_name = nil)
         metadata = @connection.getMetaData
         unless String === table_name
           table_name = table_name.to_s 
@@ -277,12 +277,14 @@ module ActiveRecord
         end
         table_name.upcase! if metadata.storesUpperCaseIdentifiers
         table_name.downcase! if metadata.storesLowerCaseIdentifiers
-        resultset = metadata.getIndexInfo(nil, nil, table_name, false, false)
+        resultset = metadata.getIndexInfo(nil, schema_name, table_name, false, false)
         primary_keys = primary_keys(table_name)
         indexes = []
         current_index = nil
         while resultset.next
-          index_name = resultset.get_string(Jdbc::IndexMetaData::INDEX_NAME).downcase
+          index_name = resultset.get_string(Jdbc::IndexMetaData::INDEX_NAME)
+          next unless index_name
+          index_name.downcase!
           column_name = resultset.get_string(Jdbc::IndexMetaData::COLUMN_NAME).downcase
           
           next if primary_keys.include? column_name
