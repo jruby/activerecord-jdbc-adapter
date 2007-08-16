@@ -27,7 +27,7 @@ module JdbcSpec
       end
 
       def type_cast(value)
-        return nil if value.nil? || value =~ /^\s*null\s*$/i
+        return nil if value.nil? || value == "(NULL)"
         case type
         when :string    then value
         when :integer   then value == true || value == false ? value == true ? 1 : 0 : value.to_i
