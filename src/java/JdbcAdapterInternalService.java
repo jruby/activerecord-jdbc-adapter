@@ -39,6 +39,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.PreparedStatement;
+import java.sql.Timestamp;
 import java.sql.Types;
 
 import java.text.DateFormat;
@@ -603,6 +604,12 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
             }
             rss.close();
             return RubyString.newUnicodeString(runtime, str2.toString());
+        case Types.TIMESTAMP:
+        	Timestamp time = rs.getTimestamp(row);
+        	if (time == null || rs.wasNull()) {
+        		return runtime.getNil();
+        	}
+        	return RubyString.newUnicodeString(runtime, time.toString());
         default:
             String vs = rs.getString(row);
             if(vs == null || rs.wasNull()) {

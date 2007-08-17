@@ -45,39 +45,46 @@ module ::JdbcSpec
         when :integer  then defined?(value.to_i) ? value.to_i : (value ? 1 : 0)
         when :primary_key then defined?(value.to_i) ? value.to_i : (value ? 1 : 0) 
         when :float    then value.to_f
-        when :datetime then cast_to_date_or_time(value)
-        when :time     then cast_to_time(value)
+        when :datetime then JdbcSpec::Oracle::Column.cast_to_date_or_time(value)
+        when :time     then JdbcSpec::Oracle::Column.cast_to_time(value)
         when :decimal   then self.class.value_to_decimal(value)
         when :boolean   then self.class.value_to_boolean(value)
         else value
         end
       end
       
+      def type_cast_code(var_name)
+        return "JdbcSpec::Oracle::Column.cast_to_date_or_time(#{var_name})" if type == :datetime
+        super
+      end
+      
       private
-      def simplified_type(field_type)
+      def simplified_type(field_type)      
         case field_type
         when /char/i                           : :string
-        when /num|float|double|dec|real|int/i  : @scale == 0 ? :integer : :float
+        when /float|double/i                   : :float
+        when /int/i                            : :integer
+        when /num|dec|real/i                   : @scale == 0 ? :integer : :decimal
         when /date|time/i                      : :datetime
         when /clob/i                           : :text
         when /blob/i                           : :binary
         end
       end
 
-      def cast_to_date_or_time(value)
+      def self.cast_to_date_or_time(value)
         return value if value.is_a? Date
         return nil if value.blank?
-        guess_date_or_time (value.is_a? Time) ? value : cast_to_time(value)
+        guess_date_or_time((value.is_a? Time) ? value : cast_to_time(value))
       end
 
-      def cast_to_time(value)
+      def self.cast_to_time(value)
         return value if value.is_a? Time
         time_array = ParseDate.parsedate value
         time_array[0] ||= 2000; time_array[1] ||= 1; time_array[2] ||= 1;
         Time.send(ActiveRecord::Base.default_timezone, *time_array) rescue nil
       end
 
-      def guess_date_or_time(value)
+      def self.guess_date_or_time(value)
         (value.hour == 0 and value.min == 0 and value.sec == 0) ?
         Date.new(value.year, value.month, value.day) : value
       end
@@ -121,7 +128,7 @@ module ::JdbcSpec
     end
 
     def indexes(table, name = nil)
-      @connection.indexesr(table, name, @connection.connection.meta_data.user_name)
+      @connection.indexes(table, name, @connection.connection.meta_data.user_name)
     end
     
     def _execute(sql, name = nil)
@@ -249,7 +256,7 @@ module ::JdbcSpec
           return value.to_s
         end
         case value
-        when String     : %Q{'#{quote_string(value)}'}
+        when String, ActiveSupport::Multibyte::Chars     : %Q{'#{quote_string(value)}'}
         when NilClass   : 'null'
         when TrueClass  : '1'
         when FalseClass : '0'
@@ -258,6 +265,17 @@ module ::JdbcSpec
         else              %Q{'#{quote_string(value.to_yaml)}'}
         end
       end
+    end
+    
+    private
+    
+    def select(sql, name = nil)
+      records = execute(sql, name)
+      records.map do |col|
+          col.delete('raw_rnum_')
+          col       
+      end
+      records
     end
   end
 end
