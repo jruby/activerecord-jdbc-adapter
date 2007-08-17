@@ -225,16 +225,21 @@ module JdbcSpec
       end
       
       def _execute(sql, name = nil)
-        if sql.lstrip =~ /^INSERT/i && (table_name = query_requires_identity_insert?(sql))
-          with_identity_insert_enabled(table_name) do 
-              @connection.execute_insert(sql)
-            end
-        elsif sql.lstrip =~ /^\(?\s*(select|show)/i
-          @connection.execute_query(sql)
-        else
-          @connection.execute_update(sql)
+        if sql.lstrip =~ /^insert/i
+         if query_requires_identity_insert?(sql)
+            table_name = get_table_name(sql)
+            with_identity_insert_enabled(table_name) do 
+            id = @connection.execute_insert(sql)
         end
+         else
+            @connection.execute_insert(sql)
+         end
+      elsif sql.lstrip =~ /^\(?\s*(select|show)/i
+      @connection.execute_query(sql)
+      else
+      @connection.execute_update(sql)
       end
+    end
       
       
       private
