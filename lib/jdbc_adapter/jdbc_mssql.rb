@@ -101,7 +101,7 @@ module JdbcSpec
         return value.to_s
       end
         case value
-          when String                
+          when String, ActiveSupport::Multibyte::Chars
             if column && column.type == :binary && column.class.respond_to?(:string_to_binary)
               val = quote_string(column.class.string_to_binary(value))
               "'#{val}'"
@@ -137,9 +137,6 @@ module JdbcSpec
       def add_limit_offset!(sql, options)
         if options[:limit] and options[:offset]
           total_rows = select_all("SELECT count(*) as TotalRows from (#{sql.gsub(/\bSELECT\b/i, "SELECT TOP 1000000000")}) tally")[0][:TotalRows].to_i
-          if (options[:limit] + options[:offset]) >= total_rows
-            options[:limit] = (total_rows - options[:offset] >= 0) ? (total_rows - options[:offset]) : 0
-          end
           sql.sub!(/^\s*SELECT/i, "SELECT * FROM (SELECT TOP #{options[:limit]} * FROM (SELECT TOP #{options[:limit] + options[:offset]} ")
           sql << ") AS tmp1"
           if options[:order]
@@ -165,6 +162,16 @@ module JdbcSpec
           end unless options[:limit].nil?
         end
       end
+      
+          def change_order_direction(order)
+            order.split(",").collect {|fragment|
+              case fragment
+                when  /\bDESC\b/i     then fragment.gsub(/\bDESC\b/i, "ASC")
+                when  /\bASC\b/i      then fragment.gsub(/\bASC\b/i, "DESC")
+                else                  String.new(fragment).split(',').join(' DESC,') + ' DESC'
+              end
+            }.join(",")
+          end
       
     def recreate_database(name)
       drop_database(name)
