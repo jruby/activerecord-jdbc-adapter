@@ -14,7 +14,7 @@ module JdbcSpec
       def simplified_type(field_type)
         case field_type
           when /int|bigint|smallint|tinyint/i                        then :integer
-          when /float|double|decimal|money|numeric|real|smallmoney/i then @scale == 0 ? :integer : :float
+          when /float|double|decimal|money|numeric|real|smallmoney/i then @scale == 0 ? :integer : :decimal
           when /datetime|smalldatetime/i                             then :datetime
           when /timestamp/i                                          then :timestamp
           when /time/i                                               then :time
@@ -30,14 +30,16 @@ module JdbcSpec
         return nil if value.nil? || value == "(NULL)"
         case type
         when :string    then value
-        when :integer   then value == true || value == false ? value == true ? 1 : 0 : value.to_i
+        when :integer
+            value.to_s =~ /^\(*(-?\d+)\)*$/ 
+            $1.to_i rescue value ? 1 : 0
         when :primary_key then value == true || value == false ? value == true ? 1 : 0 : value.to_i 
-        when :float     then value.to_f
+        when :decimal   then self.class.value_to_decimal(value)
         when :datetime  then cast_to_datetime(value)
         when :timestamp then cast_to_time(value)
         when :time      then cast_to_time(value)
         when :date      then cast_to_datetime(value)
-        when :boolean   then value == true or (value =~ /^t(rue)?$/i) == 0 or value.to_s == '1'
+        when :boolean   then value == true or (value =~ /^t(rue)?$/i) == 0 or (value =~ /^\(*1\)*$/) == 0
         else value
         end
       end
@@ -95,73 +97,59 @@ module JdbcSpec
       tp[:binary] = { :name => "image"}
       tp
     end
-
+    
     def quote(value, column = nil)
-      if column && column.type == :primary_key
-        return value.to_s
+      return value.quoted_id if value.respond_to?(:quoted_id)
+
+      case value
+        when TrueClass             then '1'
+        when FalseClass            then '0'
+        when Time, DateTime        then "'#{value.strftime("%Y%m%d %H:%M:%S")}'"
+        when Date                  then "'#{value.strftime("%Y%m%d")}'"
+        else                       super
       end
-        case value
-          when String, ActiveSupport::Multibyte::Chars
-            if column && column.type == :binary && column.class.respond_to?(:string_to_binary)
-              val = quote_string(column.class.string_to_binary(value))
-              "'#{val}'"
-            else
-              "'#{quote_string(value)}'"
-            end
-          when NilClass              then "NULL"
-          when TrueClass             then '1'
-          when FalseClass            then '0'
-          when Float, Fixnum, Bignum then value.to_s
-          when Date                  then "'#{value.to_s}'" 
-          when Time, DateTime        then "'#{value.strftime("%Y-%m-%d %H:%M:%S")}'"
-          else                            "'#{quote_string(value.to_yaml)}'"
-        end
-      end
+    end
 
       def quote_string(string)
         string.gsub(/\'/, "''")
       end
 
-      def quoted_true
-        "1"
-      end
-      
-      def quoted_false
-        "0"
-      end
-
       def quote_column_name(name)
         "[#{name}]"
       end
+      
+        def add_limit_offset!(sql, options)
+          if options[:limit] and options[:offset]
+            total_rows = select_all("SELECT count(*) as TotalRows from (#{sql.gsub(/\bSELECT(\s+DISTINCT)?\b/i, "SELECT#{$1} TOP 1000000000")}) tally")[0][:TotalRows].to_i
 
-      def add_limit_offset!(sql, options)
-        if options[:limit] and options[:offset]
-          total_rows = select_all("SELECT count(*) as TotalRows from (#{sql.gsub(/\bSELECT\b/i, "SELECT TOP 1000000000")}) tally")[0][:TotalRows].to_i
-          sql.sub!(/^\s*SELECT/i, "SELECT * FROM (SELECT TOP #{options[:limit]} * FROM (SELECT TOP #{options[:limit] + options[:offset]} ")
-          sql << ") AS tmp1"
-          if options[:order]
-            options[:order] = options[:order].split(',').map do |field|
-              parts = field.split(" ")
-              tc = parts[0]
-              if sql =~ /\.\[/ and tc =~ /\./ # if column quoting used in query
-                tc.gsub!(/\./, '\\.\\[')
-                tc << '\\]'
-              end
-              if sql =~ /#{tc} AS (t\d_r\d\d?)/
+            sql.sub!(/^\s*SELECT(\s+DISTINCT)?/i, "SELECT * FROM (SELECT TOP #{options[:limit]} * FROM (SELECT#{$1} TOP #{options[:limit] + options[:offset]} ")
+            sql << ") AS tmp1"
+            if options[:order]
+              options[:order] = options[:order].split(',').map do |field|
+                parts = field.split(" ")
+                tc = parts[0]
+                if sql =~ /\.\[/ and tc =~ /\./ # if column quoting used in query
+                  tc.gsub!(/\./, '\\.\\[')
+                  tc << '\\]'
+                end
+                if sql =~ /#{tc} AS (t\d_r\d\d?)/
                   parts[0] = $1
-              end
-              parts.join(' ')
-            end.join(', ')
-            sql << " ORDER BY #{change_order_direction(options[:order])}) AS tmp2 ORDER BY #{options[:order]}"
-          else
-            sql << " ) AS tmp2"
+                elsif parts[0] =~ /\w+\.(\w+)/
+                  parts[0] = $1
+                end
+                parts.join(' ')
+              end.join(', ')
+              sql << " ORDER BY #{change_order_direction(options[:order])}) AS tmp2 ORDER BY #{options[:order]}"
+            else
+              sql << " ) AS tmp2"
+            end
+          elsif sql !~ /^\s*SELECT (@@|COUNT\()/i
+            sql.sub!(/^\s*SELECT(\s+DISTINCT)?/i) do
+              "SELECT#{$1} TOP #{options[:limit]}"
+            end unless options[:limit].nil?
           end
-        elsif sql !~ /^\s*SELECT (@@|COUNT\()/i
-          sql.sub!(/^\s*SELECT([\s]*distinct)?/i) do
-            "SELECT#{$1} TOP #{options[:limit]}"
-          end unless options[:limit].nil?
         end
-      end
+    
       
           def change_order_direction(order)
             order.split(",").collect {|fragment|
