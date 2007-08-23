@@ -1,6 +1,7 @@
 config = { 
   :adapter => 'postgresql',
   :database => 'weblog_development',
+  :host => 'localhost',
   :username => 'blog',
   :password => ''
 }
