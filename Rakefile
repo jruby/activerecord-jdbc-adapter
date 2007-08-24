@@ -79,7 +79,8 @@ Rake::TestTask.new(:test_jndi) do |t|
 end
 
 MANIFEST = FileList["History.txt", "Manifest.txt", "README.txt", 
-  "Rakefile", "LICENSE", "lib/**/*.rb", "lib/jdbc_adapter_internal.jar", "test/**/*.rb", "lib/**/*.rake"]
+  "Rakefile", "LICENSE", "lib/**/*.rb", "lib/jdbc_adapter_internal.jar", "test/**/*.rb", "lib/**/*.rake",
+  "src/**/*.java"]
 
 file "Manifest.txt" => :manifest
 task :manifest do
