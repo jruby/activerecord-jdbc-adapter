@@ -1,9 +1,14 @@
 == 0.5
 
+- Release coincides with JRuby 1.0.1 release
 - It is no longer necessary to specify :driver and :url configuration parameters for the mysql, 
   postgresql, oracle, derby, hsqldb, and h2 adapters.  The previous configuration is still
   valid and compatible, but for new applications, this makes it possible to use the exact same
-  database.yml configuration as Rails applications running under Matz Ruby.
+  database.yml configuration as Rails applications running under native Ruby.
+- JDBC drivers can now be dynamically loaded by Ruby code, without being on the classpath prior to
+  launching JRuby. Simply use "require 'jdbc-driver.jar'" in JRuby code to add it to the runtime
+  classpath.
+- Updates to HSQL, MS SQLServer, Postgres, Oracle and Derby adapters
 
 == 0.4
 

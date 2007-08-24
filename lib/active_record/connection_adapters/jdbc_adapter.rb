@@ -197,8 +197,16 @@ module ActiveRecord
       end
       
       def driver_class
-        require 'jruby'
-        JRuby.runtime.getJRubyClassLoader.loadClass(@name)
+        @driver_class ||= begin
+          driver_class_const = (@name[0...1].capitalize + @name[1..@name.length]).gsub(/\./, '_')
+          unless Jdbc.const_defined?(driver_class_const)
+            driver_class_name = @name
+            Jdbc.module_eval do
+              include_class(driver_class_name) { driver_class_const }
+            end
+          end
+          Jdbc.const_get(driver_class_const)
+        end
       end
       
       def load
@@ -206,7 +214,7 @@ module ActiveRecord
       end
       
       def create
-        driver_class.newInstance
+        driver_class.new
       end
     end
 
