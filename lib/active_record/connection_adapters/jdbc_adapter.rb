@@ -197,7 +197,8 @@ module ActiveRecord
       end
       
       def driver_class
-        eval(@name)
+        require 'jruby'
+        JRuby.runtime.getJRubyClassLoader.loadClass(@name)
       end
       
       def load
@@ -205,7 +206,7 @@ module ActiveRecord
       end
       
       def create
-        driver_class.new
+        driver_class.newInstance
       end
     end
 
