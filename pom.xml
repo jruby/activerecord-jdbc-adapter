@@ -18,7 +18,7 @@
     <dependency>
       <groupId>org.jruby</groupId>
       <artifactId>jruby</artifactId>
-      <version>1.0.1</version>
+      <version>${jruby.version}</version>
     </dependency>
   </dependencies>
 
@@ -103,6 +103,7 @@
       </activation>
       <properties>
         <test.task>test</test.task>
+        <jruby.version>1.0.1</jruby.version>
       </properties>
     </profile>
   </profiles>
