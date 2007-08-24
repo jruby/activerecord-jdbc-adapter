@@ -192,14 +192,20 @@ module ActiveRecord
     end
 
     class JdbcDriver
-      def self.load(driver)
-        driver_class_const = (driver[0...1].capitalize + driver[1..driver.length]).gsub(/\./, '_')
-        unless Jdbc.const_defined?(driver_class_const)
-          Jdbc.module_eval do
-            include_class(driver) {|p,c| driver_class_const }
-          end
-          Jdbc::DriverManager.registerDriver(Jdbc.const_get(driver_class_const).new)
-        end
+      def initialize(name)
+        @name = name
+      end
+      
+      def driver_class
+        eval(@name)
+      end
+      
+      def load
+        Jdbc::DriverManager.registerDriver(create)
+      end
+      
+      def create
+        driver_class.new
       end
     end
 
@@ -342,8 +348,18 @@ module ActiveRecord
           @config[:url] = url
         end
 
-        JdbcDriver.load(driver)
-        set_connection Jdbc::DriverManager.getConnection(url, user, pass)
+        jdbc_driver = JdbcDriver.new(driver)
+        jdbc_driver.load
+        connection = begin
+            Jdbc::DriverManager.getConnection(url, user, pass)
+          rescue
+            # bypass DriverManager to get around problem with dynamically loaded jdbc drivers
+            props = java.util.Properties.new
+            props.setProperty("user", user)
+            props.setProperty("password", pass)
+            jdbc_driver.create.connect(url, props)
+          end
+        set_connection connection
       end
 
     end
