@@ -73,6 +73,7 @@ module ActiveRecord
     end
 
     module Jdbc
+      Mutex = java.lang.Object.new
       DriverManager = java.sql.DriverManager
       Statement = java.sql.Statement
       Types = java.sql.Types
@@ -199,10 +200,12 @@ module ActiveRecord
       def driver_class
         @driver_class ||= begin
           driver_class_const = (@name[0...1].capitalize + @name[1..@name.length]).gsub(/\./, '_')
-          unless Jdbc.const_defined?(driver_class_const)
-            driver_class_name = @name
-            Jdbc.module_eval do
-              include_class(driver_class_name) { driver_class_const }
+          Jdbc::Mutex.synchronized do
+            unless Jdbc.const_defined?(driver_class_const)
+              driver_class_name = @name
+              Jdbc.module_eval do
+                include_class(driver_class_name) { driver_class_const }
+              end
             end
           end
           Jdbc.const_get(driver_class_const)
