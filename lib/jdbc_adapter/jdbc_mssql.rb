@@ -184,9 +184,23 @@ module JdbcSpec
       def rename_column(table, column, new_column_name)
         execute "EXEC sp_rename '#{table}.#{column}', '#{new_column_name}'"
       end
-      
+       
+      def type_to_sql(type, limit = nil, precision = nil, scale = nil) #:nodoc:
+          return super unless type.to_s == 'integer'
+          
+        if limit.nil? || limit == 4
+          'int'
+        elsif limit == 2
+          'smallint'
+        elsif limit ==1
+          'tinyint'
+        else
+          'bigint'
+        end
+       end
+        
       def change_column(table_name, column_name, type, options = {}) #:nodoc:
-        sql_commands = ["ALTER TABLE #{table_name} ALTER COLUMN #{column_name} #{type_to_sql(type, options[:limit])}"]
+        sql_commands = ["ALTER TABLE #{table_name} ALTER COLUMN #{column_name} #{type_to_sql(type, options[:limit], options[:precision], options[:scale])}"]
         if options_include_default?(options)
           remove_default_constraint(table_name, column_name)
           sql_commands << "ALTER TABLE #{table_name} ADD CONSTRAINT DF_#{table_name}_#{column_name} DEFAULT #{quote(options[:default], options[:column])} FOR #{column_name}"
