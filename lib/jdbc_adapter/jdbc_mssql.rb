@@ -32,7 +32,7 @@ module JdbcSpec
         when :string then unquote value
         when :integer then unquote(value).to_i rescue value ? 1 : 0
         when :primary_key then value == true || value == false ? value == true ? 1 : 0 : value.to_i 
-        when :decimal   then self.class.value_to_decimal(value)
+        when :decimal   then self.class.value_to_decimal(unquote value)
         when :datetime  then cast_to_datetime(value)
         when :timestamp then cast_to_time(value)
         when :time      then cast_to_time(value)
