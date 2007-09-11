@@ -269,7 +269,12 @@ module ActiveRecord
       def initialize(config)
         @config = config.symbolize_keys!
         if @config[:jndi]
-          configure_jndi
+          begin
+            configure_jndi
+          rescue => e
+            warn "JNDI data source unavailable: #{e.message}; trying straight JDBC"
+            configure_jdbc
+          end
         else
           configure_jdbc
         end
