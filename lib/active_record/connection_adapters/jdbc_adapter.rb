@@ -97,7 +97,7 @@ module ActiveRecord
       module PrimaryKeyMetaData
         COLUMN_NAME = 4
       end
-      
+
     end
 
     # I want to use JDBC's DatabaseMetaData#getTypeInfo to choose the best native types to
@@ -119,7 +119,7 @@ module ActiveRecord
                           lambda {|r| r['type_name'] =~ /^varchar$/i},
                           lambda {|r| r['type_name'] =~ /varying/i}],
         :text        => [ lambda {|r| [Jdbc::Types::LONGVARCHAR, Jdbc::Types::CLOB].include?(r['data_type'].to_i)},
-                          lambda {|r| r['type_name'] =~ /^(text|clob)/i},
+                          lambda {|r| r['type_name'] =~ /^(text|clob)$/i},
                           lambda {|r| r['type_name'] =~ /^character large object$/i},
                           lambda {|r| r['sql_data_type'] == 2005}],
         :integer     => [ lambda {|r| Jdbc::Types::INTEGER == r['data_type'].to_i},
@@ -174,8 +174,12 @@ module ActiveRecord
         AR_TO_JDBC_TYPES.each_key do |k|
           typerow = choose_type(k)
           type_map[k] = { :name => typerow['type_name'].downcase }
-          type_map[k][:limit] = typerow['precision'] && typerow['precision'].to_i if [:integer, :string, :decimal].include?(k)
-          type_map[k][:limit] = 1 if k == :boolean
+          case k
+          when :integer, :string, :decimal
+            type_map[k][:limit] = typerow['precision'] && typerow['precision'].to_i
+          when :boolean
+            type_map[k][:limit] = 1
+          end
         end
         type_map
       end
@@ -196,7 +200,7 @@ module ActiveRecord
       def initialize(name)
         @name = name
       end
-      
+
       def driver_class
         @driver_class ||= begin
           driver_class_const = (@name[0...1].capitalize + @name[1..@name.length]).gsub(/\./, '_')
@@ -211,11 +215,11 @@ module ActiveRecord
           Jdbc.const_get(driver_class_const)
         end
       end
-      
+
       def load
         Jdbc::DriverManager.registerDriver(create)
       end
-      
+
       def connection(url, user, pass)
         Jdbc::DriverManager.getConnection(url, user, pass)
       rescue
@@ -233,13 +237,13 @@ module ActiveRecord
 
     class JdbcColumn < Column
       attr_writer :limit, :precision
-        
-      COLUMN_TYPES = ::JdbcSpec.constants.map{|c| 
-        ::JdbcSpec.const_get c }.select{ |c| 
-        c.respond_to? :column_selector }.map{|c| 
-        c.column_selector }.inject({}) { |h,val| 
+
+      COLUMN_TYPES = ::JdbcSpec.constants.map{|c|
+        ::JdbcSpec.const_get c }.select{ |c|
+        c.respond_to? :column_selector }.map{|c|
+        c.column_selector }.inject({}) { |h,val|
         h[val[0]] = val[1]; h }
-        
+
       def initialize(config, name, default, *args)
         ds = config[:driver].to_s
         for reg, func in COLUMN_TYPES
@@ -261,7 +265,7 @@ module ActiveRecord
 
     class JdbcConnection
       attr_reader :adapter, :connection
-      
+
       def initialize(config)
         @config = config.symbolize_keys!
         if @config[:jndi]
@@ -278,14 +282,14 @@ module ActiveRecord
       def reconnect!
         self.adapter.reconnect!
       end
-      
+
       def adapter=(adapt)
         @adapter = adapt
         @tps = {}
         @native_types.each_pair {|k,v| @tps[k] = v.inject({}) {|memo,kv| memo.merge({kv.first => (kv.last.dup rescue kv.last)})}}
         adapt.modify_types(@tps)
       end
-      
+
       # Default JDBC introspection for index metadata on the JdbcConnection.
       # This is currently used for migrations by JdbcSpec::HSQDLB and JdbcSpec::Derby
       # indexes with a little filtering tacked on.
@@ -299,7 +303,7 @@ module ActiveRecord
       def indexes(table_name, name = nil, schema_name = nil)
         metadata = @connection.getMetaData
         unless String === table_name
-          table_name = table_name.to_s 
+          table_name = table_name.to_s
         else
           table_name = table_name.dup
         end
@@ -314,9 +318,9 @@ module ActiveRecord
           next unless index_name
           index_name.downcase!
           column_name = resultset.get_string(Jdbc::IndexMetaData::COLUMN_NAME).downcase
-          
+
           next if primary_keys.include? column_name
-          
+
           # We are working on a new index
           if current_index != index_name
             current_index = index_name
@@ -326,7 +330,7 @@ module ActiveRecord
             # empty list for column names, we'll add to that in just a bit
             indexes << IndexDefinition.new(table_name, index_name, !non_unique, [])
           end
-          
+
           # One or more columns can be associated with an index
           indexes.last.columns << column_name
         end
@@ -363,7 +367,7 @@ module ActiveRecord
         unless driver && url
           raise ArgumentError, "jdbc adapter requires driver class and url"
         end
-        
+
         if driver =~ /mysql/i
           div = url =~ /\?/ ? '&' : '?'
           url = "#{url}#{div}zeroDateTimeBehavior=convertToNull&jdbcCompliantTruncation=false"
@@ -381,10 +385,10 @@ module ActiveRecord
     class JdbcAdapter < AbstractAdapter
       attr_reader :config
 
-      ADAPTER_TYPES = ::JdbcSpec.constants.map{|c| 
+      ADAPTER_TYPES = ::JdbcSpec.constants.map{|c|
         ::JdbcSpec.const_get c }.select{ |c|
-        c.respond_to? :adapter_selector }.map{|c| 
-        c.adapter_selector }.inject({}) { |h,val| 
+        c.respond_to? :adapter_selector }.map{|c|
+        c.adapter_selector }.inject({}) { |h,val|
         h[val[0]] = val[1]; h }
 
       def initialize(connection, logger, config)
@@ -418,7 +422,7 @@ module ActiveRecord
       def database_name #:nodoc:
         @connection.database_name
       end
-      
+
       def native_sql_to_type(tp)
         if /^(.*?)\(([0-9]+)\)/ =~ tp
           tname = $1
@@ -521,7 +525,7 @@ module ActiveRecord
       def rollback_db_transaction
         @connection.rollback
       end
-      
+
       def write_large_object(*args)
         @connection.write_large_object(*args)
       end

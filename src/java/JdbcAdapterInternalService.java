@@ -230,6 +230,7 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
 
     public static IRubyObject columns_internal(IRubyObject recv, IRubyObject[] args) throws SQLException, IOException {
         String table_name = args[0].convertToString().getUnicodeValue();
+        int tries = 10;
         while(true) {
             Connection c = (Connection)recv.dataGetStruct();
             try {
@@ -260,7 +261,7 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
             } catch(SQLException e) {
                 if(c.isClosed()) {
                     recv = recv.callMethod(recv.getRuntime().getCurrentContext(),"reconnect!");
-                    if(!((Connection)recv.dataGetStruct()).isClosed()) {
+                    if(!((Connection)recv.dataGetStruct()).isClosed() && --tries > 0) {
                         continue;
                     }
                 }
@@ -378,6 +379,7 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
     }
 
     public static IRubyObject execute_update(IRubyObject recv, IRubyObject sql) throws SQLException {
+        int tries = 10;
         while(true) {
             Connection c = (Connection)recv.dataGetStruct();
             Statement stmt = null;
@@ -387,7 +389,7 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
             } catch(SQLException e) {
                 if(c.isClosed()) {
                     recv = recv.callMethod(recv.getRuntime().getCurrentContext(),"reconnect!");
-                    if(!((Connection)recv.dataGetStruct()).isClosed()) {
+                    if(!((Connection)recv.dataGetStruct()).isClosed() && --tries > 0) {
                         continue;
                     }
                 }
@@ -408,6 +410,7 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
         if(args.length > 1) {
             maxrows = RubyNumeric.fix2int(args[1]);
         }
+        int tries = 10;
         while(true) {
             Connection c = (Connection)recv.dataGetStruct();
             Statement stmt = null;
@@ -418,7 +421,7 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
             } catch(SQLException e) {
                 if(c.isClosed()) {
                     recv = recv.callMethod(recv.getRuntime().getCurrentContext(),"reconnect!");
-                    if(!((Connection)recv.dataGetStruct()).isClosed()) {
+                    if(!((Connection)recv.dataGetStruct()).isClosed() && --tries > 0) {
                         continue;
                     }
                 }
@@ -434,6 +437,7 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
     }
 
     public static IRubyObject execute_insert(IRubyObject recv, IRubyObject sql) throws SQLException {
+        int tries = 10;
         while(true) {
             Connection c = (Connection)recv.dataGetStruct();
             Statement stmt = null;
@@ -444,7 +448,7 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
             } catch(SQLException e) {
                 if(c.isClosed()) {
                     recv = recv.callMethod(recv.getRuntime().getCurrentContext(),"reconnect!");
-                    if(!((Connection)recv.dataGetStruct()).isClosed()) {
+                    if(!((Connection)recv.dataGetStruct()).isClosed() && --tries > 0) {
                         continue;
                     }
                 }

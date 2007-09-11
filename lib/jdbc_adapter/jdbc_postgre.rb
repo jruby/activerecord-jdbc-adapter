@@ -165,7 +165,13 @@ module ::JdbcSpec
     end
 
     def columns(table_name, name=nil)
-      @connection.columns_internal(table_name, name, "public")
+      schema_name = "public"
+      if table_name =~ /\./
+        parts = table_name.split(/\./)
+        table_name = parts.pop
+        schema_name = parts.join(".")
+      end
+      @connection.columns_internal(table_name, name, schema_name)
     end
     
     def last_insert_id(table, sequence_name)
