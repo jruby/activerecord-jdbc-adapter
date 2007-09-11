@@ -45,36 +45,34 @@ else
   task :test => [:test_mysql]
 end
 
-FileList['drivers/*'].each do |d|
-  next unless File.directory?(d)
-  driver = File.basename(d)
+%w(mysql postgres derby).each do |driver|
   Rake::TestTask.new("test_#{driver}") do |t|
-    files = FileList["test/#{driver}*test.rb"]
-    if driver == "derby"
-      files << 'test/activerecord/connection_adapters/type_conversion_test.rb'
-    end
-    t.ruby_opts << "-r#{driver}"
-    t.test_files = files
-    t.libs << "test" << "#{d}/lib"
+    t.test_files = FileList["test/#{driver}_*_test.rb"]
+    t.test_files << 'test/activerecord/connection_adapters/type_conversion_test.rb' if driver == "derby"
+    t.libs << 'test' << "driver/#{driver}/test"
   end
 end
 
 Rake::TestTask.new(:test_jdbc) do |t|
   t.test_files = FileList['test/generic_jdbc_connection_test.rb']
-  t.libs << 'test' << 'drivers/mysql/lib'
+  t.libs << 'test' << "driver/mysql/test"
 end
+
+Rake::TestTask.new(:test_hsqldb) do |t|
+  t.test_files = FileList['test/hsqldb_simple_test.rb']
+  t.libs << 'test'
+end
+
+task :test_pgsql => :test_postgresql
 
 Rake::TestTask.new(:test_jndi) do |t|
   t.test_files = FileList['test/jndi_test.rb']
-  t.libs << 'test' << 'drivers/derby/lib'
+  t.libs << 'test'
 end
 
-task :test_postgresql => [:test_postgres]
-task :test_pgsql => [:test_postgres]
-
 MANIFEST = FileList["History.txt", "Manifest.txt", "README.txt", 
-  "Rakefile", "LICENSE", "lib/**/*.rb", "lib/jdbc_adapter_internal.jar", "test/**/*.rb",
-   "lib/**/*.rake", "src/**/*.java"]
+  "Rakefile", "LICENSE", "lib/**/*.rb", "lib/jdbc_adapter_internal.jar", "test/**/*.rb", "lib/**/*.rake",
+  "src/**/*.java"]
 
 file "Manifest.txt" => :manifest
 task :manifest do

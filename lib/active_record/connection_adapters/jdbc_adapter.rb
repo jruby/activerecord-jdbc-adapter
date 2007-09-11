@@ -216,6 +216,16 @@ module ActiveRecord
         Jdbc::DriverManager.registerDriver(create)
       end
       
+      def connection(url, user, pass)
+        Jdbc::DriverManager.getConnection(url, user, pass)
+      rescue
+        # bypass DriverManager to get around problem with dynamically loaded jdbc drivers
+        props = java.util.Properties.new
+        props.setProperty("user", user)
+        props.setProperty("password", pass)
+        create.connect(url, props)
+      end
+
       def create
         driver_class.new
       end
@@ -362,15 +372,7 @@ module ActiveRecord
 
         jdbc_driver = JdbcDriver.new(driver)
         jdbc_driver.load
-        connection = begin
-            Jdbc::DriverManager.getConnection(url, user, pass)
-          rescue
-            # bypass DriverManager to get around problem with dynamically loaded jdbc drivers
-            props = java.util.Properties.new
-            props.setProperty("user", user)
-            props.setProperty("password", pass)
-            jdbc_driver.create.connect(url, props)
-          end
+        connection = jdbc_driver.connection(url, user, pass)
         set_connection connection
       end
 
