@@ -1,1 +1,2 @@
-require 'mysql-connector-java-5.0.4-bin.jar'
+MYSQL_VERSION = "5.0.4"
+require "mysql-connector-java-#{MYSQL_VERSION}-bin.jar"

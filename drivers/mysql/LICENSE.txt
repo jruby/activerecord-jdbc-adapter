@@ -1,0 +1,1 @@
+This gem bundles the MySQL JDBC driver/connector for Java.  The MySQL connector is available from MySQL AB under the terms of the GPL, see http://www.gnu.org/copyleft/gpl.html for details.
