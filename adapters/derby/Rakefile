@@ -4,20 +4,23 @@ file "Manifest.txt" => :manifest
 task :manifest do
   File.open("Manifest.txt", "w") {|f| MANIFEST.each {|n| f << "#{n}\n"} }
 end
-Rake::Task['manifest'].invoke # Always regen manifest, so Hoe has up-to-date list of files
+Rake::Task['manifest'].invoke
 
-$LOAD_PATH << "lib"
-require "mysql"
+require File.dirname(__FILE__) + "/../../lib/jdbc_adapter/version"
+require File.dirname(__FILE__) + "/../../drivers/derby/lib/derby"
 begin
   require 'hoe'
-  Hoe.new("jdbc-mysql", MYSQL_VERSION) do |p|
+  Hoe.new("activerecord-jdbcderby-adapter", JdbcAdapter::Version::VERSION) do |p|
     p.rubyforge_name = "jruby-extras"
     p.url = "http://jruby-extras.rubyforge.org/ActiveRecord-JDBC"
     p.author = "Nick Sieger, Ola Bini and JRuby contributors"
     p.email = "nick@nicksieger.com, ola.bini@gmail.com"
-    p.summary = "MySQL JDBC driver for Java and MySQL/ActiveRecord-JDBC."
-    p.changes = "Updated to MySQL connector version #{MYSQL_VERSION}."
-    p.description = "Install this gem and require 'mysql' within JRuby to load the driver."
+    p.summary = "Derby JDBC adapter for JRuby on Rails."
+    p.changes = "Updated to Derby version #{DERBY_VERSION}."
+    p.description = "Install this gem to use Derby with JRuby on Rails."
+    p.extra_deps += [
+      ['activerecord-jdbc-adapter', ">= #{JdbcAdapter::Version::VERSION}"],
+      ['jdbc-derby', ">= #{DERBY_VERSION}"]]
   end.spec.dependencies.delete_if { |dep| dep.name == "hoe" }
 rescue LoadError
   puts "You really need Hoe installed to be able to package this gem"

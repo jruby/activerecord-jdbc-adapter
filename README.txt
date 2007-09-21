@@ -26,50 +26,42 @@ What's there, and what is not there:
   * rename_column
 * HSQLDB - Complete
 
-Other databases will require testing and likely a custom configuration module.  Please join the 
-jruby-extras mailing-list[http://rubyforge.org/mail/?group_id=2014] to help us discover support for more databases.
+Other databases will require testing and likely a custom configuration module. Please join the jruby-extras mailing-list[http://rubyforge.org/mail/?group_id=2014] to help us discover support for more databases.
 
 == Using ActiveRecord JDBC
-
-=== Standalone, with ActiveRecord
-
-1. Install the gem with JRuby:
-    jruby --command gem install ActiveRecord-JDBC
-2. Ensure the following code gets executed in your script:
-    require 'rubygems'
-    gem 'ActiveRecord-JDBC'
-    require 'jdbc_adapter'
-    require 'active_record'
-
-3. After this you can establish a JDBC connection like this:
-    ActiveRecord::Base.establish_connection(
-      :adapter => 'jdbc',
-      :driver => 'org.apache.derby.jdbc.EmbeddedDriver',
-      :url => 'jdbc:derby:test_ar;create=true'
-    )
-
-Provided you have the derby libraries in your classpath, this is enough
-to establish an in-memory JDBC connection. The required parameters to
-establish_connection for ActiveRecord JDBC are:
-
-* adapter
-* driver
-* url
-
-If provided, password and username will be used. After the connection is established
-Active Record can be used as usual.
 
 === Inside Rails
 
 To use ActiveRecord-JDBC with JRuby on Rails:
 
-1. Install the gem with JRuby:
-    jruby --command gem install ActiveRecord-JDBC
-2. Add one-time setup to your config/environment.rb file in your Rails application.  Add the following lines just before the <code>Rails::Initializer</code>.
-    require 'rubygems'
-    gem 'ActiveRecord-JDBC'
-    require 'jdbc_adapter'
-3. Configure your database.yml to use the <code>jdbc</code> adapter.  For now, you'll need to know the database driver class and URL.  Example:
+1. Choose the adapter you wish to gem install.  The following pre-packaged adapters are available:
+
+  * base jdbc (<tt>activerecord-jdbc-adapter</tt>). Supports all available databases via JDBC, but requires you to download and manually install the database vendor's JDBC driver .jar file.
+  * mysql (<tt>activerecord-jdbcmysql-adapter</tt>)
+  * postgres (<tt>activerecord-jdbcpostgres-adapter</tt>)
+  * derby (<tt>activerecord-jdbcderby-adapter</tt>)
+  * hsqldb (<tt>activerecord-jdbchsqldb-adapter</tt>)
+
+2. If you're using Rails 2.0, you may skip to the next step. For Rails prior to version 2.0,you'll need to add one-time setup to your config/environment.rb file in your Rails application. Add the following lines just before the <code>Rails::Initializer</code>.
+
+    if RUBY_PLATFORM =~ /java/
+      require 'rubygems'
+      gem 'activerecord-jdbc-adapter'
+      require 'jdbc_adapter'
+    end
+
+3. Configure your database.yml to use the <code>jdbc</code> adapter.
+For mysql, postgres, derby, oracle, hsqldb and h2 you can simply configure the database in the normal Rails style.
+
+    development:
+      adapter: mysql
+      username: blog
+      password:
+      hostname: localhost
+      database: weblog_development
+
+For other databases, you'll need to know the database driver class and URL.  Example:
+
     development:
       adapter: jdbc
       username: blog
@@ -77,13 +69,41 @@ To use ActiveRecord-JDBC with JRuby on Rails:
       driver: com.mysql.jdbc.Driver
       url: jdbc:mysql://localhost:3306/weblog_development
 
+=== Standalone, with ActiveRecord
+
+1. Install the gem with JRuby:
+
+    jruby -S gem install activerecord-jdbc-adapter
+
+   If you wish to use the adapter for a specific database, you can install it directly and a driver gem will be installed as well:
+
+    jruby -S gem install activerecord-jdbcderby-adapter
+
+2. If using ActiveRecord 2.0 (Rails 2.0) or greater, you can skip to the next step. Otherwise, ensure the following code gets executed in your script:
+
+    require 'rubygems'
+    gem 'activerecord-jdbc-adapter'
+    require 'jdbc_adapter'
+    require 'active_record'
+
+3. After this you can establish a JDBC connection like this:
+
+    ActiveRecord::Base.establish_connection(
+      :adapter => 'jdbcderby',
+      :database => "db/my-database"
+    )
+
+   or like this (but requires that you manually put the driver jar on the classpath):
+
+    ActiveRecord::Base.establish_connection(
+      :adapter => 'jdbc',
+      :driver => 'org.apache.derby.jdbc.EmbeddedDriver',
+      :url => 'jdbc:derby:test_ar;create=true'
+    )
+
 == Running AR-JDBC's Tests
 
-By default hsql, mysql, and derby are run.  In order to run all tests you 
-must download each of the databases about put their JDBC drivers in your
-classpath.  Here is an example of I use:
-
-    CLASSPATH=~/opt/derby/lib/derby.jar:~/opt/mysql/mysql-connector-java-3.1.14-bin.jar:~/opt/hsqldb/lib/hsqldb.jar jruby ../jruby/bin/jruby --command rake
+Drivers for 4 open-source databases are included.  Provided you have MySQL installed, you can simply type <tt>jruby -S rake</tt> to run the tests.  A database named <tt>weblog_development</tt> is needed beforehand with a connection user of "blog" and password empty.
 
 == Authors
 
@@ -92,3 +112,5 @@ This project was written by Nick Sieger <nick@nicksieger.com> and Ola Bini <ola@
 == License
 
 ActiveRecord-JDBC is released under a BSD license.  See the LICENSE file included with the distribution for details.
+
+Driver gems for ActiveRecord JDBC are licensed under the same license the database's drivers are licensed.  See each driver gem's LICENSE file for details.

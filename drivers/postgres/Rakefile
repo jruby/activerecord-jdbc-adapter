@@ -7,17 +7,17 @@ end
 Rake::Task['manifest'].invoke # Always regen manifest, so Hoe has up-to-date list of files
 
 $LOAD_PATH << "lib"
-require "mysql"
+require "postgres"
 begin
   require 'hoe'
-  Hoe.new("jdbc-mysql", MYSQL_VERSION) do |p|
+  Hoe.new("jdbc-postgres", POSTGRES_VERSION) do |p|
     p.rubyforge_name = "jruby-extras"
     p.url = "http://jruby-extras.rubyforge.org/ActiveRecord-JDBC"
     p.author = "Nick Sieger, Ola Bini and JRuby contributors"
     p.email = "nick@nicksieger.com, ola.bini@gmail.com"
-    p.summary = "MySQL JDBC driver for Java and MySQL/ActiveRecord-JDBC."
-    p.changes = "Updated to MySQL connector version #{MYSQL_VERSION}."
-    p.description = "Install this gem and require 'mysql' within JRuby to load the driver."
+    p.summary = "PostgreSQL JDBC driver for Java and PostgreSQL/ActiveRecord-JDBC."
+    p.changes = "Updated to PostgreSQL version #{POSTGRES_VERSION}."
+    p.description = "Install this gem and require 'postgres' within JRuby to load the driver."
   end.spec.dependencies.delete_if { |dep| dep.name == "hoe" }
 rescue LoadError
   puts "You really need Hoe installed to be able to package this gem"

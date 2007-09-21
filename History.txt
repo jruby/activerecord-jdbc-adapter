@@ -1,3 +1,10 @@
+== 0.6
+
+- Gem is renamed to "activerecord-jdbc-adapter" to follow new conventions introduced in Rails 2.0 for third-party adapters. Rails 2.0 compatibility is introduced.
+- Add dependency on ActiveRecord >= 1.14 (from the Rails 1.1.x release)
+- New drivers (jdbc-XXX) and adapter (activerecord-jdbcXXX-adapter) gems available separately. See the README.txt file for details.
+- Plain "jdbc" driver is still available if you want to use the full driver/url way of specifying the driver.
+
 == 0.5
 
 - Release coincides with JRuby 1.0.1 release
