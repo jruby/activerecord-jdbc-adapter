@@ -34,7 +34,18 @@ module ::JdbcSpec
     end
 
     def self.adapter_selector
-      [/oracle/i, lambda {|cfg,adapt| adapt.extend(::JdbcSpec::Oracle)}]
+      [/oracle/i, lambda {|cfg,adapt| adapt.extend(::JdbcSpec::Oracle)
+=begin
+         (adapt.methods - %w(send __send__ id class methods is_a? kind_of? verify! active?)).each do |name|
+           new_name = "__#{name}"
+           (class << adapt; self; end).send :alias_method, new_name, name
+           (class << adapt; self; end).send :define_method, name do |*args|
+             puts "#{name}(#{args.inspect})"
+             adapt.send new_name, *args
+           end
+         end
+=end
+       }]
     end
     
     module Column
@@ -90,6 +101,10 @@ module ::JdbcSpec
       end
     end
 
+    def table_alias_length
+      30
+    end
+
     def default_sequence_name(table, column) #:nodoc:
       "#{table}_seq"
     end
@@ -132,8 +147,8 @@ module ::JdbcSpec
     end
     
     def _execute(sql, name = nil)
-        case sql.strip
-        when /^(select|show)/i:
+      case sql.strip
+        when /\A\(?\s*(select|show)/i:
           @connection.execute_query(sql)
         else
           @connection.execute_update(sql)
@@ -230,6 +245,43 @@ module ::JdbcSpec
       end
     end
     
+    # SELECT DISTINCT clause for a given set of columns and a given ORDER BY clause.
+    #
+    # Oracle requires the ORDER BY columns to be in the SELECT list for DISTINCT
+    # queries. However, with those columns included in the SELECT DISTINCT list, you
+    # won't actually get a distinct list of the column you want (presuming the column
+    # has duplicates with multiple values for the ordered-by columns. So we use the 
+    # FIRST_VALUE function to get a single (first) value for each column, effectively
+    # making every row the same.
+    #
+    #   distinct("posts.id", "posts.created_at desc")
+    def distinct(columns, order_by)
+      return "DISTINCT #{columns}" if order_by.blank?
+
+      # construct a valid DISTINCT clause, ie. one that includes the ORDER BY columns, using
+      # FIRST_VALUE such that the inclusion of these columns doesn't invalidate the DISTINCT
+      order_columns = order_by.split(',').map { |s| s.strip }.reject(&:blank?)
+      order_columns = order_columns.zip((0...order_columns.size).to_a).map do |c, i|
+        "FIRST_VALUE(#{c.split.first}) OVER (PARTITION BY #{columns} ORDER BY #{c}) AS alias_#{i}__"
+      end
+      sql = "DISTINCT #{columns}, "
+      sql << order_columns * ", "
+    end
+
+    # ORDER BY clause for the passed order option.
+    # 
+    # Uses column aliases as defined by #distinct.
+    def add_order_by_for_association_limiting!(sql, options)
+      return sql if options[:order].blank?
+
+      order = options[:order].split(',').collect { |s| s.strip }.reject(&:blank?)
+      order.map! {|s| $1 if s =~ / (.*)/}
+      order = order.zip((0...order.size).to_a).map { |s,i| "alias_#{i}__ #{s}" }.join(', ')
+
+      sql << "ORDER BY #{order}"
+    end
+    
+    
     # QUOTING ==================================================
     #
     # see: abstract/quoting.rb
@@ -268,12 +320,10 @@ module ::JdbcSpec
     end
     
     private
-    
-    def select(sql, name = nil)
-      records = execute(sql, name)
-      records.map do |col|
+    def select(sql, name=nil)
+      records = execute(sql,name)
+      records.each do |col|
           col.delete('raw_rnum_')
-          col       
       end
       records
     end
