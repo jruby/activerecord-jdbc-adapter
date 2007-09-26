@@ -72,6 +72,7 @@ module ::JdbcSpec
       private
       def simplified_type(field_type)      
         case field_type
+        when /^number\(1\)$/i                  : :boolean
         when /char/i                           : :string
         when /float|double/i                   : :float
         when /int/i                            : :integer
@@ -111,7 +112,9 @@ module ::JdbcSpec
     
     def create_table(name, options = {}) #:nodoc:
       super(name, options)
-      execute "CREATE SEQUENCE #{name}_seq START WITH 10000" unless options[:id] == false
+      seq_name = options[:sequence_name] || "#{name}_seq"
+      raise ActiveRecord::StatementInvalid.new("name #{seq_name} too long") if seq_name.length > table_alias_length
+      execute "CREATE SEQUENCE #{seq_name} START WITH 10000" unless options[:id] == false
     end
 
     def rename_table(name, new_name) #:nodoc:
@@ -121,7 +124,8 @@ module ::JdbcSpec
 
     def drop_table(name, options = {}) #:nodoc:
       super(name)
-      execute "DROP SEQUENCE #{name}_seq" rescue nil
+      seq_name = options[:sequence_name] || "#{name}_seq"
+      execute "DROP SEQUENCE #{seq_name}" rescue nil
     end
 
     def recreate_database(name)
@@ -157,6 +161,7 @@ module ::JdbcSpec
     
     def modify_types(tp)
       tp[:primary_key] = "NUMBER(38) NOT NULL PRIMARY KEY"
+      tp[:integer] = { :name => "NUMBER", :limit => 38 }
       tp[:datetime] = { :name => "DATE" }
       tp[:timestamp] = { :name => "DATE" }
       tp[:time] = { :name => "DATE" }
