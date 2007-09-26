@@ -329,7 +329,7 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
                 }
                 String def = rs.getString(13);
                 IRubyObject _def;
-                if(def == null || (isOracle && def.toLowerCase().equals("null"))) {
+                if(def == null || (isOracle && def.toLowerCase().trim().equals("null"))) {
                     _def = runtime.getNil();
                 } else {
                     if(isOracle) {
