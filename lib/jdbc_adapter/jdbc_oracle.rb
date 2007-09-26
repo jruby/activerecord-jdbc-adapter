@@ -13,7 +13,6 @@ module ::ActiveRecord
         }
       end
     end
-
     private :write_lobs
   end
 end
@@ -70,7 +69,7 @@ module ::JdbcSpec
       end
       
       private
-      def simplified_type(field_type)      
+      def simplified_type(field_type)
         case field_type
         when /^number\(1\)$/i                  : :boolean
         when /char/i                           : :string
@@ -302,11 +301,11 @@ module ::JdbcSpec
     end
     
     def quote(value, column = nil) #:nodoc:
-      if column && column.type == :binary
+      if column && [:text, :binary].include?(column.type)
         if /(.*?)\([0-9]+\)/ =~ column.sql_type
-          %Q{empty_#{ $1 }()}
+          %Q{empty_#{ $1.downcase }()}
         else
-          %Q{empty_#{ column.sql_type rescue 'blob' }()}
+          %Q{empty_#{ column.sql_type.downcase rescue 'blob' }()}
         end
       else
         if column && column.type == :primary_key
