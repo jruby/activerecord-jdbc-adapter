@@ -135,7 +135,7 @@ module ::JdbcSpec
       if pk.nil? # Who called us? What does the sql look like? No idea!
         execute sql, name
       elsif id_value # Pre-assigned id
-        log(sql, name) { @connection.execute_insert sql,pk }
+        execute sql, name
       else # Assume the sql contains a bind-variable for the id
         id_value = select_one("select #{sequence_name}.nextval id from dual")['id'].to_i
         log(sql, name) { 
@@ -293,7 +293,7 @@ module ::JdbcSpec
     # camelCase column names need to be quoted; not that anyone using Oracle
     # would really do this, but handling this case means we pass the test...
     def quote_column_name(name) #:nodoc:
-      name =~ /[A-Z]/ ? "\"#{name}\"" : name
+      name.to_s =~ /[A-Z]/ ? "\"#{name}\"" : name.to_s
     end
 
     def quote_string(string) #:nodoc:
