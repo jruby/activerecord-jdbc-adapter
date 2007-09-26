@@ -64,6 +64,8 @@ module ::JdbcSpec
     end
     
     def quote(value, column = nil) # :nodoc:
+      return value.quoted_id if value.respond_to?(:quoted_id)
+      
       if [Time, DateTime].include?(value.class)
         "CAST('#{value.strftime("%Y-%m-%d %H:%M:%S")}' AS TIMESTAMP)"
       else

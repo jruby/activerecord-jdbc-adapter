@@ -67,6 +67,8 @@ module JdbcSpec
     end
 
     def quote(value, column = nil) #:nodoc:
+      return value.quoted_id if value.respond_to?(:quoted_id)
+      
       if String === value && column && column.type == :binary
         return "X'#{quote_string(value.unpack("C*").collect {|v| v.to_s(16)}.join)}'"
       end

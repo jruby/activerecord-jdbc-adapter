@@ -63,6 +63,8 @@ module ::JdbcSpec
     # QUOTING ==================================================
     
     def quote(value, column = nil)
+      return value.quoted_id if value.respond_to?(:quoted_id)
+      
       if column && column.type == :primary_key
         value.to_s
       elsif column && String === value && column.type == :binary && column.class.respond_to?(:string_to_binary)

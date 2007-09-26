@@ -92,6 +92,8 @@ module ::JdbcSpec
     end
 
     def quote(value, column = nil) # :nodoc:
+      return value.quoted_id if value.respond_to?(:quoted_id)
+      
       case value
       when String
         if column && column.type == :binary
