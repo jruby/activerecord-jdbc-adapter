@@ -636,7 +636,11 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
         	if (time == null || rs.wasNull()) {
         		return runtime.getNil();
         	}
-        	return RubyString.newUnicodeString(runtime, time.toString());
+            String sttr = time.toString();
+            if(sttr.endsWith(" 00:00:00.0")) {
+                sttr = sttr.substring(0, sttr.length()-(" 00:00:00.0".length()));
+            }
+        	return RubyString.newUnicodeString(runtime, sttr);
         default:
             String vs = rs.getString(row);
             if(vs == null || rs.wasNull()) {
