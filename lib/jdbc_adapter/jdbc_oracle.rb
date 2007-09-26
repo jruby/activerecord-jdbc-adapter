@@ -50,7 +50,7 @@ module ::JdbcSpec
     
     module Column
       def type_cast(value)
-        return nil if value.nil? || value =~ /^\s*null\s*$/i
+        return nil if value.nil?
         case type
         when :string   then value
         when :integer  then defined?(value.to_i) ? value.to_i : (value ? 1 : 0)
