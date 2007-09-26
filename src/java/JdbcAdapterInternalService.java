@@ -156,10 +156,28 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
             Connection c = (Connection) recv.dataGetStruct();
             ResultSet rs = null;
             try {
-                rs = c.getMetaData().getTables(catalog, schemapat, tablepat, types);
+                DatabaseMetaData metadata = c.getMetaData();
+                String clzName = metadata.getClass().getName().toLowerCase();
+                boolean isOracle = clzName.indexOf("oracle") != -1 || clzName.indexOf("oci") != -1;
+                
+                if(schemapat == null) {
+                    ResultSet schemas = metadata.getSchemas();
+                    String username = metadata.getUserName();
+                    while(schemas.next()) {
+                        if(schemas.getString(1).equalsIgnoreCase(username)) {
+                            schemapat = schemas.getString(1);
+                            break;
+                        }
+                    }
+                    schemas.close();
+                }
+                rs = metadata.getTables(catalog, schemapat, tablepat, types);
                 List arr = new ArrayList();
                 while (rs.next()) {
-                    arr.add(runtime.newString(rs.getString(3).toLowerCase()));
+                    String name = rs.getString(3).toLowerCase();
+                    if(!isOracle || !name.startsWith("bin$")) { //Handle stupid Oracle 10g RecycleBin feature
+                        arr.add(runtime.newString(name));
+                    }
                 }
                 return runtime.newArray(arr);
             } catch (SQLException e) {
