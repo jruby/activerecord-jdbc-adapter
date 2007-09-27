@@ -343,10 +343,9 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
                     }
                     _def = runtime.newString(def);
                 }
-
                 IRubyObject c = jdbcCol.callMethod(ctx,"new", new IRubyObject[]{recv.getInstanceVariable("@config"), runtime.newString(column_name),
                                                                                 _def, runtime.newString(type), 
-                                                                                runtime.newBoolean(!rs.getString(18).equals("NO"))});
+                                                                                runtime.newBoolean(!rs.getString(18).trim().equals("NO"))});
                 columns.add(c);
 
                 IRubyObject tp = (IRubyObject)tps.fastARef(c.callMethod(ctx,"type"));
