@@ -57,13 +57,13 @@ module JdbcSpec
         when :time      then cast_to_time(value)
         when :date      then cast_to_datetime(value)
         when :boolean   then value == true or (value =~ /^t(rue)?$/i) == 0 or unquote(value)=="1"
-        when :binary    then value
+        when :binary    then unquote value
         else value
         end
       end
       
       def unquote(value)
-        value.to_s.sub(/^\([\(\']?/, "").sub(/[\'\)]?\)$/, "")
+        value.to_s.sub(/\A\([\(\']?/, "").sub(/[\'\)]?\)\Z/, "")
       end
       
       def cast_to_time(value)
@@ -97,7 +97,7 @@ module JdbcSpec
     def modify_types(tp)
       tp[:primary_key] = "int NOT NULL IDENTITY(1, 1) PRIMARY KEY"
       tp[:integer][:limit] = nil
-      tp[:boolean][:limit] = nil
+      tp[:boolean] = {:name => "bit"}
       tp[:binary] = { :name => "image"}
       tp
     end
@@ -134,9 +134,11 @@ module JdbcSpec
       
         def add_limit_offset!(sql, options)
           if options[:limit] and options[:offset]
-            total_rows = select_all("SELECT count(*) as TotalRows from (#{sql.gsub(/\bSELECT(\s+DISTINCT)?\b/i, "SELECT#{$1} TOP 1000000000")}) tally")[0][:TotalRows].to_i
-
-            sql.sub!(/^\s*SELECT(\s+DISTINCT)?/i, "SELECT * FROM (SELECT TOP #{options[:limit]} * FROM (SELECT#{$1} TOP #{options[:limit] + options[:offset]} ")
+            total_rows = select_all("SELECT count(*) as TotalRows from (#{sql.gsub(/\bSELECT(\s+DISTINCT)?\b/i, "SELECT\\1 TOP 1000000000")}) tally")[0]["TotalRows"].to_i
+            if (options[:limit] + options[:offset]) >= total_rows
+              options[:limit] = (total_rows - options[:offset] >= 0) ? (total_rows - options[:offset]) : 0
+            end
+            sql.sub!(/^\s*SELECT(\s+DISTINCT)?/i, "SELECT * FROM (SELECT TOP #{options[:limit]} * FROM (SELECT\\1 TOP #{options[:limit] + options[:offset]} ")
             sql << ") AS tmp1"
             if options[:order]
               options[:order] = options[:order].split(',').map do |field|
@@ -165,15 +167,15 @@ module JdbcSpec
         end
     
       
-          def change_order_direction(order)
-            order.split(",").collect {|fragment|
-              case fragment
-                when  /\bDESC\b/i     then fragment.gsub(/\bDESC\b/i, "ASC")
-                when  /\bASC\b/i      then fragment.gsub(/\bASC\b/i, "DESC")
-                else                  String.new(fragment).split(',').join(' DESC,') + ' DESC'
-              end
-            }.join(",")
+      def change_order_direction(order)
+        order.split(",").collect {|fragment|
+          case fragment
+          when  /\bDESC\b/i     then fragment.gsub(/\bDESC\b/i, "ASC")
+          when  /\bASC\b/i      then fragment.gsub(/\bASC\b/i, "DESC")
+          else                  String.new(fragment).split(',').join(' DESC,') + ' DESC'
           end
+        }.join(",")
+      end
       
     def recreate_database(name)
       drop_database(name)
@@ -270,20 +272,21 @@ module JdbcSpec
       
       def _execute(sql, name = nil)
         if sql.lstrip =~ /^insert/i
-         if query_requires_identity_insert?(sql)
+          if query_requires_identity_insert?(sql)
             table_name = get_table_name(sql)
             with_identity_insert_enabled(table_name) do 
-            id = @connection.execute_insert(sql)
-        end
-         else
+              id = @connection.execute_insert(sql)
+            end
+          else
             @connection.execute_insert(sql)
-         end
-      elsif sql.lstrip =~ /^\(?\s*(select|show)/i
-      @connection.execute_query(sql)
-      else
-      @connection.execute_update(sql)
+          end
+        elsif sql.lstrip =~ /^\(?\s*(select|show)/i
+          repair_special_columns(sql)
+          @connection.execute_query(sql)
+        else
+          @connection.execute_update(sql)
+        end
       end
-    end
       
       
       private
@@ -329,6 +332,25 @@ module JdbcSpec
         id_column = identity_column(table_name)
         sql =~ /\[#{id_column}\]/ ? table_name : nil
       end
+      
+      def get_special_columns(table_name)
+        special = []
+        @table_columns ||= {}
+        @table_columns[table_name] ||= columns(table_name)
+        @table_columns[table_name].each do |col|
+          special << col.name if col.is_special
+        end
+        special
+      end
+
+      def repair_special_columns(sql)
+        special_cols = get_special_columns(get_table_name(sql))
+        for col in special_cols.to_a
+          sql.gsub!(Regexp.new(" #{col.to_s} = "), " #{col.to_s} LIKE ")
+          sql.gsub!(/ORDER BY #{col.to_s}/i, '')
+        end
+        sql
+      end
+    end
   end
-end
 
