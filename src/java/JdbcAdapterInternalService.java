@@ -160,7 +160,7 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
                 String clzName = metadata.getClass().getName().toLowerCase();
                 boolean isOracle = clzName.indexOf("oracle") != -1 || clzName.indexOf("oci") != -1;
                 
-                if(schemapat == null) {
+                if(schemapat == null && isOracle) {
                     ResultSet schemas = metadata.getSchemas();
                     String username = metadata.getUserName();
                     while(schemas.next()) {
