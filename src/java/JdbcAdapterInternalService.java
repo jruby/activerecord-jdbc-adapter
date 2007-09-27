@@ -253,6 +253,9 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
             Connection c = (Connection)recv.dataGetStruct();
             try {
                 DatabaseMetaData metadata = c.getMetaData();
+                String clzName = metadata.getClass().getName().toLowerCase();
+                boolean isDerby = clzName.indexOf("derby") != -1;
+                boolean isOracle = clzName.indexOf("oracle") != -1 || clzName.indexOf("oci") != -1;
                 String schemaName = null;
                 if(args.length>2) {
                     schemaName = args[2].toString();
@@ -262,7 +265,7 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
                 } else if(metadata.storesLowerCaseIdentifiers()) {
                     table_name = table_name.toLowerCase();
                 }
-                if(schemaName == null) {
+                if(schemaName == null && (isDerby || isOracle)) {
                     ResultSet schemas = metadata.getSchemas();
                     String username = metadata.getUserName();
                     while(schemas.next()) {
