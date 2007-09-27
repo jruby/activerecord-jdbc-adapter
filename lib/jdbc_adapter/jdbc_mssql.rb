@@ -1,3 +1,22 @@
+module ::ActiveRecord
+  class Base
+    # After setting large objects to empty, write data back with a helper method
+    after_save :write_lobs
+    def write_lobs() #:nodoc:
+      if connection.is_a?(JdbcSpec::MsSQL)
+        self.class.columns.select { |c| c.sql_type =~ /image/i }.each { |c|
+          value = self[c.name]
+          value = value.to_yaml if unserializable_attribute?(c.name, c)
+          next if value.nil?  || (value == '')
+
+          connection.write_large_object(c.type == :binary, c.name, self.class.table_name, self.class.primary_key, quote_value(id), value)
+        }
+      end
+    end
+    private :write_lobs
+  end
+end
+
 module JdbcSpec
   module MsSQL
     def self.column_selector
@@ -38,7 +57,7 @@ module JdbcSpec
         when :time      then cast_to_time(value)
         when :date      then cast_to_datetime(value)
         when :boolean   then value == true or (value =~ /^t(rue)?$/i) == 0 or unquote(value)=="1"
-        when :binary    then unquote value
+        when :binary    then value
         else value
         end
       end
@@ -71,25 +90,7 @@ module JdbcSpec
       # These methods will only allow the adapter to insert binary data with a length of 7K or less
       # because of a SQL Server statement length policy.
       def self.string_to_binary(value)
-        value.gsub(/(\r|\n|\0|\x1a)/) do
-          case $1
-            when "\r"   then  "%00"
-            when "\n"   then  "%01"
-            when "\0"   then  "%02"
-            when "\x1a" then  "%03"
-          end
-        end
-      end
-
-      def self.binary_to_string(value)
-        value.gsub(/(%00|%01|%02|%03)/) do
-          case $1
-            when "%00"    then  "\r"
-            when "%01"    then  "\n"
-            when "%02\0"  then  "\0"
-            when "%03"    then  "\x1a"
-          end
-        end
+        ''
       end
     end
     
@@ -105,6 +106,16 @@ module JdbcSpec
       return value.quoted_id if value.respond_to?(:quoted_id)
 
       case value
+      when String, ActiveSupport::Multibyte::Chars
+        value = value.to_s
+        if column && column.type == :binary
+          "'#{quote_string(JdbcSpec::MsSQL::Column.string_to_binary(value))}'" # ' (for ruby-mode)
+        elsif column && [:integer, :float].include?(column.type)
+          value = column.type == :integer ? value.to_i : value.to_f
+          value.to_s
+        else
+          "'#{quote_string(value)}'" # ' (for ruby-mode)
+        end
         when TrueClass             then '1'
         when FalseClass            then '0'
         when Time, DateTime        then "'#{value.strftime("%Y%m%d %H:%M:%S")}'"
@@ -181,6 +192,16 @@ module JdbcSpec
         execute "EXEC sp_rename '#{name}', '#{new_name}'"
       end
       
+      # Adds a new column to the named table.
+      # See TableDefinition#column for details of the options you can use.
+      def add_column(table_name, column_name, type, options = {})
+        add_column_sql = "ALTER TABLE #{table_name} ADD #{quote_column_name(column_name)} #{type_to_sql(type, options[:limit], options[:precision], options[:scale])}"
+        add_column_options!(add_column_sql, options)
+        # TODO: Add support to mimic date columns, using constraints to mark them as such in the database
+        # add_column_sql << " CONSTRAINT ck__#{table_name}__#{column_name}__date_only CHECK ( CONVERT(CHAR(12), #{quote_column_name(column_name)}, 14)='00:00:00:000' )" if type == :date       
+        execute(add_column_sql)
+      end
+
       def rename_column(table, column, new_column_name)
         execute "EXEC sp_rename '#{table}.#{column}', '#{new_column_name}'"
       end
@@ -213,8 +234,9 @@ module JdbcSpec
         execute "ALTER TABLE #{table_name} ADD CONSTRAINT DF_#{table_name}_#{column_name} DEFAULT #{quote(default, column_name)} FOR #{column_name}"
       end
       def remove_column(table_name, column_name)
+        remove_check_constraints(table_name, column_name)
         remove_default_constraint(table_name, column_name)
-        execute "ALTER TABLE #{table_name} DROP COLUMN #{column_name}"
+        execute "ALTER TABLE #{table_name} DROP COLUMN [#{column_name}]"
       end
       
       def remove_default_constraint(table_name, column_name)
@@ -222,6 +244,14 @@ module JdbcSpec
         defaults.each {|constraint|
           execute "ALTER TABLE #{table_name} DROP CONSTRAINT #{constraint["name"]}"
         }
+      end
+
+      def remove_check_constraints(table_name, column_name)
+        # TODO remove all constraints in single method
+        constraints = select "SELECT CONSTRAINT_NAME FROM INFORMATION_SCHEMA.CONSTRAINT_COLUMN_USAGE where TABLE_NAME = '#{table_name}' and COLUMN_NAME = '#{column_name}'"
+        constraints.each do |constraint|
+          execute "ALTER TABLE #{table_name} DROP CONSTRAINT #{constraint["CONSTRAINT_NAME"]}"
+        end
       end
       
       def remove_index(table_name, options = {})
