@@ -21,7 +21,7 @@ if RUBY_PLATFORM =~ /java/
   end
   if defined?(RAILS_ROOT)
     to_file = File.expand_path(File.join(RAILS_ROOT, 'lib', 'tasks', 'jdbc_databases.rake'))
-    from_file = File.expand_path(File.join(__FILE__, 'tasks', 'jdbc_databases.rake'))
+    from_file = File.expand_path(File.join(File.dirname(__FILE__), 'tasks', 'jdbc_databases.rake'))
     if !File.exist?(to_file) || (File.mtime(to_file) < File.mtime(from_file))
       require 'fileutils'
       FileUtils.cp from_file, to_file, :verbose => true
