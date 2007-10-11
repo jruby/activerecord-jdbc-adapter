@@ -47,7 +47,7 @@ module ::JdbcSpec
       def cast_to_date_or_time(value)
         return value if value.is_a? Date
         return nil if value.blank?
-        guess_date_or_time (value.is_a? Time) ? value : cast_to_time(value)
+        guess_date_or_time((value.is_a? Time) ? value : cast_to_time(value))
       end
 
       def cast_to_time(value)
@@ -240,7 +240,7 @@ module ::JdbcSpec
       # construct a clean list of column names from the ORDER BY clause, removing
       # any asc/desc modifiers
       order_columns = order_by.split(',').collect { |s| s.split.first }
-      order_columns.delete_if &:blank?
+      order_columns.delete_if(&:blank?)
       order_columns = order_columns.zip((0...order_columns.size).to_a).map { |s,i| "#{s} AS alias_#{i}" }
 
       # return a DISTINCT ON() clause that's distinct on the columns we want but includes
