@@ -7,7 +7,7 @@ module ::JdbcSpec
         warn "AR-JDBC MySQL on JRuby does not support sockets"
       end
       config[:port] ||= 3306
-      config[:url] ||= "jdbc:mysql://#{config[:host]}:#{config[:port]}/#{config[:database]}"
+      config[:url] ||= "jdbc:mysql://#{config[:host]}:#{config[:port]}/#{config[:database]}?zeroDateTimeBehavior=convertToNull&jdbcCompliantTruncation=false&useUnicode=true&characterEncoding=utf8"
       config[:driver] = "com.mysql.jdbc.Driver"
       jdbc_connection(config)
     end
@@ -122,7 +122,7 @@ module ::JdbcSpec
     end
     
     def create_table(name, options = {}) #:nodoc:
-      super(name, {:options => "ENGINE=InnoDB"}.merge(options))
+      super(name, {:options => "ENGINE=InnoDB CHARACTER SET utf8 COLLATE utf8_bin"}.merge(options))
     end
     
     def rename_table(name, new_name)

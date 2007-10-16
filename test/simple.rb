@@ -147,4 +147,11 @@ module MultibyteTestMethods
     assert_equal "テスト", rs.getString(1)
     assert_equal "本文", rs.getString(2)
   end
+  
+  def test_chinese_word
+    chinese_word = '中文'
+    new_entry = Entry.create(:title => chinese_word)
+    new_entry.reload
+    assert_equal chinese_word, new_entry.title
+  end
 end

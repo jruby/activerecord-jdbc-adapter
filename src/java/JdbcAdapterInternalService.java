@@ -648,6 +648,7 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
             if(vs == null || rs.wasNull()) {
                 return runtime.getNil();
             }
+
             return RubyString.newUnicodeString(runtime, vs);
         }
     }

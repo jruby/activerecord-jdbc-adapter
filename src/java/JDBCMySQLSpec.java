@@ -78,6 +78,12 @@ public class JDBCMySQLSpec {
             bl.replace(i, 1, rep);
             i+=1;
         }
+
+        if(!replacementFound) {
+            return string;
+        }
+
+
         return recv.getRuntime().newStringShared(bl);
     }
 }
