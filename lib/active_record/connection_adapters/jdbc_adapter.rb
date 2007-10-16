@@ -352,6 +352,14 @@ module ActiveRecord
         metadata.close rescue nil
       end
 
+#      def self.insert?(sql)
+#        /\A\s*insert/i =~ sql
+#      end
+      
+#      def self.select?(sql)
+#        /\A\s*\(?\s*(select|show)/i =~ sql
+#      end
+
       private
       def configure_jndi
         jndi = @config[:jndi].to_s
@@ -483,16 +491,16 @@ module ActiveRecord
           _execute(sql,name)
         end
       end
-
+      
+      
       # we need to do it this way, to allow Rails stupid tests to always work
       # even if we define a new execute method. Instead of mixing in a new
       # execute, an _execute should be mixed in.
       def _execute(sql, name = nil)
-        case sql.strip
-        when /\Ainsert/i:
-            @connection.execute_insert(sql)
-        when /\A\(?\s*(select|show)/i:
-            @connection.execute_query(sql)
+        if JdbcConnection::select?(sql)
+          @connection.execute_query(sql)
+        elsif JdbcConnection::insert?(sql)
+          @connection.execute_insert(sql)
         else
           @connection.execute_update(sql)
         end

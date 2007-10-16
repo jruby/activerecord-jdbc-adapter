@@ -101,11 +101,123 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
 
         cJdbcConn.defineFastMethod("write_large_object",cf.getFastOptSingletonMethod("write_large_object"));
 
+        cJdbcConn.getMetaClass().defineFastMethod("insert?",cf.getFastSingletonMethod("insert_p", IRubyObject.class));
+        cJdbcConn.getMetaClass().defineFastMethod("select?",cf.getFastSingletonMethod("select_p", IRubyObject.class));
+
         RubyModule jdbcSpec = runtime.getOrCreateModule("JdbcSpec");
         JDBCMySQLSpec.load(runtime, jdbcSpec);
         JDBCDerbySpec.load(runtime, jdbcSpec);
 
         return true;
+    }
+
+    private static int whitespace(int p, final int pend, ByteList bl) {
+        while(p < pend) {
+            switch(bl.bytes[p]) {
+            case ' ':
+            case '\n':
+            case '\r':
+            case '\t':
+                p++;
+                break;
+            default:
+                return p;
+            }
+        }
+        return p;
+    }
+
+    public static IRubyObject insert_p(IRubyObject recv, IRubyObject _sql) {
+        ByteList bl = _sql.convertToString().getByteList();
+
+        int p = bl.begin;
+        int pend = p + bl.realSize;
+
+        p = whitespace(p, pend, bl);
+
+        if(pend - p >= 6) {
+            switch(bl.bytes[p++]) {
+            case 'i':
+            case 'I':
+                switch(bl.bytes[p++]) {
+                case 'n':
+                case 'N':
+                    switch(bl.bytes[p++]) {
+                    case 's':
+                    case 'S':
+                        switch(bl.bytes[p++]) {
+                        case 'e':
+                        case 'E':
+                            switch(bl.bytes[p++]) {
+                            case 'r':
+                            case 'R':
+                                switch(bl.bytes[p++]) {
+                                case 't':
+                                case 'T':
+                                    return recv.getRuntime().getTrue();
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        return recv.getRuntime().getFalse();
+    }
+
+    public static IRubyObject select_p(IRubyObject recv, IRubyObject _sql) {
+        ByteList bl = _sql.convertToString().getByteList();
+
+        int p = bl.begin;
+        int pend = p + bl.realSize;
+
+        p = whitespace(p, pend, bl);
+
+        if(pend - p >= 6) {
+            if(bl.bytes[p] == '(') {
+                p++;
+                p = whitespace(p, pend, bl);
+            }
+            if(pend - p >= 6) {
+                switch(bl.bytes[p++]) {
+                case 's':
+                case 'S':
+                    switch(bl.bytes[p++]) {
+                    case 'e':
+                    case 'E':
+                        switch(bl.bytes[p++]) {
+                        case 'l':
+                        case 'L':
+                            switch(bl.bytes[p++]) {
+                            case 'e':
+                            case 'E':
+                                switch(bl.bytes[p++]) {
+                                case 'c':
+                                case 'C':
+                                    switch(bl.bytes[p++]) {
+                                    case 't':
+                                    case 'T':
+                                        return recv.getRuntime().getTrue();
+                                    }
+                                }
+                            }
+                        }
+                    case 'h':
+                    case 'H':
+                        switch(bl.bytes[p++]) {
+                        case 'o':
+                        case 'O':
+                            switch(bl.bytes[p++]) {
+                            case 'w':
+                            case 'W':
+                                return recv.getRuntime().getTrue();
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        return recv.getRuntime().getFalse();
     }
 
     private static ResultSet intoResultSet(IRubyObject inp) {
