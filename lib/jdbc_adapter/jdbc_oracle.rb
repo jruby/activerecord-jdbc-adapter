@@ -1,8 +1,9 @@
 module ::ActiveRecord
   class Base
     # After setting large objects to empty, write data back with a helper method
-    after_save :write_lobs
-    def write_lobs() #:nodoc:
+    alias after_save_without_oracle_lob after_save
+    
+    def after_save_with_oracle_lob() #:nodoc:
       if connection.is_a?(JdbcSpec::Oracle)
         self.class.columns.select { |c| c.sql_type =~ /LOB\(|LOB$/i }.each { |c|
           value = self[c.name]
@@ -12,8 +13,10 @@ module ::ActiveRecord
           connection.write_large_object(c.type == :binary, c.name, self.class.table_name, self.class.primary_key, quote_value(id), value)
         }
       end
+      after_save_without_oracle_lob
     end
-    private :write_lobs
+    
+    alias after_save after_save_with_oracle_lob
   end
 end
 
