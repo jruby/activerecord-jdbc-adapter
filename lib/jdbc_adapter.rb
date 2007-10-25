@@ -15,7 +15,7 @@ if RUBY_PLATFORM =~ /java/
     else
       RAILS_CONNECTION_ADAPTERS = %w(jdbc)
     end
-    if ActiveRecord::VERSION::MAJOR == 1 && (ActiveRecord::VERSION::MINOR == 14 || ActiveRecord::VERSION::MINOR == 15)
+    if ActiveRecord::VERSION::MAJOR == 1 && ActiveRecord::VERSION::MINOR == 14
       require 'active_record/connection_adapters/jdbc_adapter'
     end
   end
