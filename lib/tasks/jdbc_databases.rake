@@ -30,6 +30,16 @@ end
 
 if RUBY_PLATFORM =~ /java/
   namespace :db do
+    redefine_task :drop => :environment do 
+      begin 
+        config = ActiveRecord::Base.configurations[environment_name]
+        ActiveRecord::Base.establish_connection(config)
+        db = ActiveRecord::Base.connection.database_name
+        ActiveRecord::Base.connection.recreate_database(db)
+      rescue  
+      end
+    end
+
     namespace :structure do
       redefine_task :dump => :environment do
         abcs = ActiveRecord::Base.configurations
