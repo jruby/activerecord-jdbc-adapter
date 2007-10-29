@@ -299,7 +299,7 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
                         continue;
                     }
                 }
-                throw e;
+                throw wrap(recv, e);
             } finally {
                 try {
                     rs.close();
@@ -398,7 +398,7 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
                         continue;
                     }
                 }
-                throw e;
+                throw wrap(recv, e);
             }
         }    
     }
@@ -515,6 +515,10 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
         return id;
     }
 
+    private static RuntimeException wrap(IRubyObject recv, Throwable exception) {
+        return recv.getRuntime().newArgumentError(exception.getMessage());
+    }
+
     public static IRubyObject execute_update(IRubyObject recv, IRubyObject sql) throws SQLException {
         int tries = 10;
         while(true) {
@@ -530,7 +534,8 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
                         continue;
                     }
                 }
-                throw e;
+
+                throw wrap(recv, e);
             } finally {
                 if(null != stmt) {
                     try {
@@ -562,7 +567,7 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
                         continue;
                     }
                 }
-                throw e;
+                throw wrap(recv, e);
             } finally {
                 if(null != stmt) {
                     try {
@@ -589,7 +594,7 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
                         continue;
                     }
                 }
-                throw e;
+                throw wrap(recv, e);
             } finally {
                 if(null != stmt) {
                     try {
