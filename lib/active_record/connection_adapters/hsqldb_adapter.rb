@@ -1,6 +1,12 @@
+tried_gem = false
 begin
-  require 'hsqldb'
+  require "jdbc/hsqldb"
 rescue LoadError
-  # hope that the hsqldb jar is already present
-end
-require 'active_record/connection_adapters/jdbc_adapter'
+  unless tried_gem
+    require 'rubygems'
+    gem "jdbc-hsqldb"
+    tried_gem = true
+    retry
+  end
+  # trust that the hsqldb jar is already present
+endrequire 'active_record/connection_adapters/jdbc_adapter'

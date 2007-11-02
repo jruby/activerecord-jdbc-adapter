@@ -10,11 +10,11 @@ rescue LoadError
 end
 tried_gem = false
 begin
-  require ""
+  require "jdbc/derby"
 rescue LoadError
   raise if tried_gem
   require 'rubygems'
-  gem "activerecord-jdbc-adapter"
+  gem "jdbc-derby"
   tried_gem = true
   retry
 end

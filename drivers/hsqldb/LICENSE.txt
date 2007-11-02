@@ -1,0 +1,2 @@
+This gem bundles the HSQLDB driver for Java.  HSQL is available under the terms of the Hypersonic SQL license, see http://hsqldb.org/web/hsqlLicense.html for details.
+

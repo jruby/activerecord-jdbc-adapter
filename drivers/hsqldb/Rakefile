@@ -7,16 +7,16 @@ end
 Rake::Task['manifest'].invoke # Always regen manifest, so Hoe has up-to-date list of files
 
 $LOAD_PATH << "lib"
-require "hsqldb"
+require "jdbc/hsqldb"
 begin
   require 'hoe'
-  Hoe.new("jdbc-hsqldb", HSQLDB_VERSION) do |p|
+  Hoe.new("jdbc-hsqldb", Jdbc::HSQLDB::VERSION) do |p|
     p.rubyforge_name = "jruby-extras"
     p.url = "http://jruby-extras.rubyforge.org/ActiveRecord-JDBC"
     p.author = "Nick Sieger, Ola Bini and JRuby contributors"
     p.email = "nick@nicksieger.com, ola.bini@gmail.com"
     p.summary = "HSQLDB JDBC driver for Java and HSQLDB/ActiveRecord-JDBC."
-    p.changes = "Updated to HSQLDB version #{HSQLDB_VERSION}."
+    p.changes = "Updated to HSQLDB version #{Jdbc::HSQLDB::VERSION}."
     p.description = "Install this gem and require 'hsqldb' within JRuby to load the driver."
   end.spec.dependencies.delete_if { |dep| dep.name == "hoe" }
 rescue LoadError

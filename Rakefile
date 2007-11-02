@@ -37,7 +37,6 @@ task :filelist do
   puts FileList['pkg/**/*'].inspect
 end
 
-desc "Run AR-JDBC tests"
 if RUBY_PLATFORM =~ /java/
   # TODO: add more databases into the standard tests here.
   task :test => [:test_mysql, :test_jdbc, :test_derby, :test_hsqldb]
@@ -53,7 +52,7 @@ FileList['drivers/*'].each do |d|
     if driver == "derby"
       files << 'test/activerecord/connection_adapters/type_conversion_test.rb'
     end
-    t.ruby_opts << "-r#{driver}"
+    t.ruby_opts << "-rjdbc/#{driver}"
     t.test_files = files
     t.libs << "test" << "#{d}/lib"
   end
@@ -99,4 +98,47 @@ rescue LoadError
   puts "You really need Hoe installed to be able to package this gem"
 rescue => e
   puts "ignoring error while loading hoe: #{e.to_s}"
+end
+
+def rake(*args)
+  ruby "-S", "rake", *args
+end
+
+%w(test package install_gem release clean).each do |task|
+  desc "Run rake #{task} on all available adapters and drivers"
+  task "all:#{task}" => task
+end
+
+(Dir["drivers/*/Rakefile"] + Dir["adapters/*/Rakefile"]).each do |rakefile|
+  dir = File.dirname(rakefile)
+  prefix = dir.sub(%r{/}, ':')
+  tasks = %w(package install_gem clean)
+  tasks << "test" if File.directory?(File.join(dir, "test"))
+  tasks.each do |task|
+    desc "Run rake #{task} on #{dir}"
+    task "#{prefix}:#{task}" do
+      Dir.chdir(dir) do
+        rake task
+      end
+    end
+    task "all:#{task}" => "#{prefix}:#{task}"
+  end
+  desc "Run rake release on #{dir}"
+  task "#{prefix}:release" do
+    Dir.chdir(dir) do
+      if dir =~ /adapters/
+        version = ENV['VERSION']
+      else
+        Dir["dir/lib/**/*.rb"].each do |file|
+          version ||= File.open(file) {|f| f.read =~ /VERSION = "([^"]+)"/ && $1}
+        end
+      end
+      rake "release", "VERSION=#{version}"
+    end
+  end
+  # Only release adapters synchronously with main release. Drivers are versioned
+  # according to their JDBC driver versions.
+  if dir =~ /adapters/
+    task "all:release" => "#{prefix}:release"
+  end
 end

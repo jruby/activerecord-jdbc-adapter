@@ -1,0 +1,1 @@
+This gem bundles the Apache Derby database. Derby is available under the terms of the Apache Software License, version 2.0. See http://www.apache.org/licenses/LICENSE-2.0.txt for details.

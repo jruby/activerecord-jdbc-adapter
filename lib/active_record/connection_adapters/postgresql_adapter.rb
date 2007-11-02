@@ -1,6 +1,12 @@
+tried_gem = false
 begin
-  require 'postgres'
+  require "jdbc/postgres"
 rescue LoadError
-  # hope that the postgres jar is already present
-end
-require 'active_record/connection_adapters/jdbc_adapter'
+  unless tried_gem
+    require 'rubygems'
+    gem "jdbc-postgres"
+    tried_gem = true
+    retry
+  end
+  # trust that the postgres jar is already present
+endrequire 'active_record/connection_adapters/jdbc_adapter'

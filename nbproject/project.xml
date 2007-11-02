@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://www.netbeans.org/ns/project/1">
+    <type>org.netbeans.modules.ruby.rubyproject</type>
+    <configuration>
+        <data xmlns="http://www.netbeans.org/ns/ruby-project/1">
+            <name>activerecord-jdbc-adapter</name>
+            <source-roots>
+                <root id="src.dir"/>
+                <root id="java.dir"/>
+                <root id="lib.dir"/>
+                <root id="activerecord-jdbc-adapter2.dir"/>
+                <root id="activerecord-jdbc-adapter3.dir"/>
+                <root id="activerecord-jdbc-adapter4.dir"/>
+                <root id="activerecord-jdbc-adapter5.dir"/>
+            </source-roots>
+            <test-roots>
+                <root id="test.src.dir"/>
+            </test-roots>
+        </data>
+    </configuration>
+</project>

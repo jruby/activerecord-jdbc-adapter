@@ -7,7 +7,9 @@ end
 Rake::Task['manifest'].invoke
 
 require File.dirname(__FILE__) + "/../../lib/jdbc_adapter/version"
-require File.dirname(__FILE__) + "/../../drivers/derby/lib/derby"
+$LOAD_PATH << File.dirname(__FILE__) + "/../../drivers/derby/lib"
+require "jdbc/derby"
+
 begin
   require 'hoe'
   Hoe.new("activerecord-jdbcderby-adapter", JdbcAdapter::Version::VERSION) do |p|
@@ -16,11 +18,11 @@ begin
     p.author = "Nick Sieger, Ola Bini and JRuby contributors"
     p.email = "nick@nicksieger.com, ola.bini@gmail.com"
     p.summary = "Derby JDBC adapter for JRuby on Rails."
-    p.changes = "Updated to Derby version #{DERBY_VERSION}."
+    p.changes = "Updated to Derby version #{Jdbc::Derby::VERSION}."
     p.description = "Install this gem to use Derby with JRuby on Rails."
     p.extra_deps += [
       ['activerecord-jdbc-adapter', ">= #{JdbcAdapter::Version::VERSION}"],
-      ['jdbc-derby', ">= #{DERBY_VERSION}"]]
+      ['jdbc-derby', ">= #{Jdbc::Derby::VERSION}"]]
   end.spec.dependencies.delete_if { |dep| dep.name == "hoe" }
 rescue LoadError
   puts "You really need Hoe installed to be able to package this gem"

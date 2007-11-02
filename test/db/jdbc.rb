@@ -1,3 +1,5 @@
+require 'jdbc/mysql'
+
 config = {
   :username => 'blog',
   :password => '',
