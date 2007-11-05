@@ -127,10 +127,11 @@ end
   desc "Run rake release on #{dir}"
   task "#{prefix}:release" do
     Dir.chdir(dir) do
+      version = nil
       if dir =~ /adapters/
         version = ENV['VERSION']
       else
-        Dir["dir/lib/**/*.rb"].each do |file|
+        Dir["lib/**/*.rb"].each do |file|
           version ||= File.open(file) {|f| f.read =~ /VERSION = "([^"]+)"/ && $1}
         end
       end
