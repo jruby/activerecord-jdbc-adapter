@@ -24,7 +24,7 @@ require 'active_record/connection_adapters/jdbc_adapter'
 module ActiveRecord
   class Base
     class << self
-      alias_method :jdbcpostgres_connection, :postgresql_connection
+      alias_method :jdbcpostgresql_connection, :postgresql_connection
     end
   end
 end
