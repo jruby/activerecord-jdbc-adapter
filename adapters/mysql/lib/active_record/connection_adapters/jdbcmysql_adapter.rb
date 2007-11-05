@@ -10,11 +10,11 @@ rescue LoadError
 end
 tried_gem = false
 begin
-  require "jdbc/derby"
+  require "jdbc/mysql"
 rescue LoadError
   raise if tried_gem
   require 'rubygems'
-  gem "jdbc-derby"
+  gem "jdbc-mysql"
   tried_gem = true
   retry
 end
@@ -24,7 +24,7 @@ require 'active_record/connection_adapters/jdbc_adapter'
 module ActiveRecord
   class Base
     class << self
-      alias_method :jdbcderby_connection, :derby_connection
+      alias_method :jdbcmysql_connection, :mysql_connection
     end
   end
 end

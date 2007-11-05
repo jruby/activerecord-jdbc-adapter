@@ -1,4 +1,4 @@
-MANIFEST = FileList["Manifest.txt", "Rakefile", "LICENSE.txt", "lib/**/*"]
+MANIFEST = FileList["Manifest.txt", "Rakefile", "README.txt", "LICENSE.txt", "lib/**/*"]
 
 file "Manifest.txt" => :manifest
 task :manifest do

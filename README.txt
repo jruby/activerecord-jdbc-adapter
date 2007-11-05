@@ -1,6 +1,6 @@
 ActiveRecord-JDBC is a database adapter for Rails' ActiveRecord component that can be used with JRuby[http://www.jruby.org/].  It allows use of virtually any JDBC-compliant database with your JRuby on Rails application.
 
-ActiveRecord JDBC is a sub-project of jruby-extras at RubyForge.
+ActiveRecord-JDBC is a sub-project of jruby-extras at RubyForge.
 
 == Databases
 
@@ -38,11 +38,11 @@ To use ActiveRecord-JDBC with JRuby on Rails:
 
   * base jdbc (<tt>activerecord-jdbc-adapter</tt>). Supports all available databases via JDBC, but requires you to download and manually install the database vendor's JDBC driver .jar file.
   * mysql (<tt>activerecord-jdbcmysql-adapter</tt>)
-  * postgres (<tt>activerecord-jdbcpostgres-adapter</tt>)
+  * postgresql (<tt>activerecord-jdbcpostgresql-adapter</tt>)
   * derby (<tt>activerecord-jdbcderby-adapter</tt>)
   * hsqldb (<tt>activerecord-jdbchsqldb-adapter</tt>)
 
-2. If you're using Rails 2.0, you may skip to the next step. For Rails prior to version 2.0,you'll need to add one-time setup to your config/environment.rb file in your Rails application. Add the following lines just before the <code>Rails::Initializer</code>.
+2. If you're using Rails 2.0, you may skip to the next step. For Rails prior to version 2.0, you'll need to add one-time setup to your config/environment.rb file in your Rails application. Add the following lines just before the <code>Rails::Initializer</code>. (If you're using ActiveRecord-JDBC under the old gem name used in versions 0.5 and earlier, replace 'activerecord-jdbc-adapter' with 'ActiveRecord-JDBC' below.)
 
     if RUBY_PLATFORM =~ /java/
       require 'rubygems'
@@ -51,10 +51,10 @@ To use ActiveRecord-JDBC with JRuby on Rails:
     end
 
 3. Configure your database.yml to use the <code>jdbc</code> adapter.
-For mysql, postgres, derby, oracle, hsqldb and h2 you can simply configure the database in the normal Rails style.
+For mysql, postgres, derby, oracle, hsqldb and h2 you can simply configure the database in the normal Rails style. If you use one of the convenience 'activerecord-jdbcXXX-adapter' adapters, be sure and put a 'jdbc' prefix in front of the databas adapter name as below.
 
     development:
-      adapter: mysql
+      adapter: jdbcmysql
       username: blog
       password:
       hostname: localhost
@@ -113,4 +113,4 @@ This project was written by Nick Sieger <nick@nicksieger.com> and Ola Bini <ola@
 
 ActiveRecord-JDBC is released under a BSD license.  See the LICENSE file included with the distribution for details.
 
-Driver gems for ActiveRecord JDBC are licensed under the same license the database's drivers are licensed.  See each driver gem's LICENSE file for details.
+Open-source driver gems for ActiveRecord JDBC are licensed under the same license the database's drivers are licensed.  See each driver gem's LICENSE.txt file for details.

@@ -112,7 +112,7 @@ end
 (Dir["drivers/*/Rakefile"] + Dir["adapters/*/Rakefile"]).each do |rakefile|
   dir = File.dirname(rakefile)
   prefix = dir.sub(%r{/}, ':')
-  tasks = %w(package install_gem clean)
+  tasks = %w(package install_gem debug_gem clean)
   tasks << "test" if File.directory?(File.join(dir, "test"))
   tasks.each do |task|
     desc "Run rake #{task} on #{dir}"
@@ -121,6 +121,7 @@ end
         rake task
       end
     end
+    task "#{File.dirname(dir)}:#{task}" => "#{prefix}:#{task}"
     task "all:#{task}" => "#{prefix}:#{task}"
   end
   desc "Run rake release on #{dir}"
@@ -139,6 +140,7 @@ end
   # Only release adapters synchronously with main release. Drivers are versioned
   # according to their JDBC driver versions.
   if dir =~ /adapters/
+    task "adapters:release" => "#{prefix}:release"
     task "all:release" => "#{prefix}:release"
   end
 end

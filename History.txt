@@ -4,6 +4,7 @@
 - Add dependency on ActiveRecord >= 1.14 (from the Rails 1.1.x release)
 - New drivers (jdbc-XXX) and adapter (activerecord-jdbcXXX-adapter) gems available separately. See the README.txt file for details.
 - Plain "jdbc" driver is still available if you want to use the full driver/url way of specifying the driver.
+- More bugfixes to Oracle and SQLServer courtesy of Ola & ThoughtWorks
 
 == 0.5
 

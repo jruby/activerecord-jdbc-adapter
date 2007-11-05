@@ -9,4 +9,5 @@ rescue LoadError
     retry
   end
   # trust that the hsqldb jar is already present
-endrequire 'active_record/connection_adapters/jdbc_adapter'
+end
+require 'active_record/connection_adapters/jdbc_adapter'
