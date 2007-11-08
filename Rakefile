@@ -13,22 +13,22 @@ def java_classpath_arg # myriad of ways to discover JRuby classpath
     jruby_cpath = ENV['JRUBY_PARENT_CLASSPATH'] || ENV['JRUBY_HOME'] &&
       FileList["#{ENV['JRUBY_HOME']}/lib/*.jar"].join(File::PATH_SEPARATOR)
   end
-  cpath_arg = jruby_cpath ? "-cp #{jruby_cpath}" : ""
+  jruby_cpath ? "-cp #{jruby_cpath}" : ""
 end
 
 desc "Compile the native Java code."
 task :java_compile do
   mkdir_p "pkg/classes"
   sh "javac -target 1.4 -source 1.4 -d pkg/classes #{java_classpath_arg} #{FileList['src/java/**/*.java'].join(' ')}"
-  sh "jar cf lib/jdbc_adapter_internal.jar -C pkg/classes/ ."
+  sh "jar cf lib/jdbc_adapter/jdbc_adapter_internal.jar -C pkg/classes/ ."
 end
-file "lib/jdbc_adapter_internal.jar" => :java_compile
+file "lib/jdbc_adapter/jdbc_adapter_internal.jar" => :java_compile
 
 task :more_clean do
   rm_rf FileList['derby*']
   rm_rf FileList['test.db.*']
   rm_rf "test/reports"
-  rm_f FileList['lib/*.jar']
+  rm_f FileList['lib/**/*.jar']
 end
 
 task :clean => :more_clean
@@ -72,7 +72,7 @@ task :test_postgresql => [:test_postgres]
 task :test_pgsql => [:test_postgres]
 
 MANIFEST = FileList["History.txt", "Manifest.txt", "README.txt", 
-  "Rakefile", "LICENSE", "lib/**/*.rb", "lib/jdbc_adapter_internal.jar", "test/**/*.rb",
+  "Rakefile", "LICENSE", "lib/**/*.rb", "lib/jdbc_adapter/jdbc_adapter_internal.jar", "test/**/*.rb",
    "lib/**/*.rake", "src/**/*.java"]
 
 file "Manifest.txt" => :manifest
