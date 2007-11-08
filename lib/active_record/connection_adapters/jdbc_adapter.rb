@@ -265,8 +265,10 @@ module ActiveRecord
       end
     end
 
+    include_class "jdbc_adapter.JdbcConnectionFactory"
+
     class JdbcConnection
-      attr_reader :adapter, :connection
+      attr_reader :adapter, :connection_factory
 
       def initialize(config)
         @config = config.symbolize_keys!
@@ -280,14 +282,24 @@ module ActiveRecord
         else
           configure_jdbc
         end
+        connection # force the connection to load
         set_native_database_types
         @stmts = {}
       rescue Exception => e
         raise "The driver encountered an error: #{e}"
       end
 
+      def connection
+        unless @connection
+          self.connection = connection_factory.newConnection
+        end
+        @connection
+      end
+      
       def reconnect!
-        self.adapter.reconnect!
+        @connection.close rescue nil
+        @connection = nil
+        connection
       end
 
       def adapter=(adapt)
@@ -308,7 +320,7 @@ module ActiveRecord
       #
       # TODO: fix to use reconnect correctly
       def indexes(table_name, name = nil, schema_name = nil)
-        metadata = @connection.getMetaData
+        metadata = connection.getMetaData
         unless String === table_name
           table_name = table_name.to_s
         else
@@ -344,7 +356,7 @@ module ActiveRecord
         resultset.close
         indexes
       rescue
-        if @connection.is_closed
+        if connection.is_closed
           reconnect!
           retry
         else
@@ -359,9 +371,11 @@ module ActiveRecord
         jndi = @config[:jndi].to_s
         ctx = javax.naming.InitialContext.new
         ds = ctx.lookup(jndi)
-        set_connection ds.connection
+        @connection_factory = JdbcConnectionFactory.impl do
+          ds.connection
+        end
         unless @config[:driver]
-          @config[:driver] = @connection.meta_data.connection.java_class.name
+          @config[:driver] = connection.meta_data.connection.java_class.name
         end
       end
 
@@ -375,16 +389,17 @@ module ActiveRecord
           raise ArgumentError, "jdbc adapter requires driver class and url"
         end
 
-        if driver =~ /mysql/i
+        if driver =~ /mysql/i && url !~ /#{Regexp.quote(JdbcSpec::MySQL::URL_OPTIONS)}/
           div = url =~ /\?/ ? '&' : '?'
-          url = "#{url}#{div}zeroDateTimeBehavior=convertToNull&jdbcCompliantTruncation=false&useUnicode=true&characterEncoding=utf8"
+          url = "#{url}#{div}#{JdbcSpec::MySQL::URL_OPTIONS}"
           @config[:url] = url
         end
 
         jdbc_driver = JdbcDriver.new(driver)
         jdbc_driver.load
-        connection = jdbc_driver.connection(url, user, pass)
-        set_connection connection
+        @connection_factory = JdbcConnectionFactory.impl do
+          jdbc_driver.connection(url, user, pass)
+        end
       end
 
     end
@@ -466,9 +481,7 @@ module ActiveRecord
       end
 
       def reconnect!
-        @connection.close rescue nil
-        @connection = JdbcConnection.new(@config)
-        @connection.adapter = self
+        @connection.reconnect!
         @connection
       end
 

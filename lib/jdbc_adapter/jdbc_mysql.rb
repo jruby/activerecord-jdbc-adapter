@@ -7,13 +7,14 @@ module ::JdbcSpec
         warn "AR-JDBC MySQL on JRuby does not support sockets"
       end
       config[:port] ||= 3306
-      config[:url] ||= "jdbc:mysql://#{config[:host]}:#{config[:port]}/#{config[:database]}?zeroDateTimeBehavior=convertToNull&jdbcCompliantTruncation=false&useUnicode=true&characterEncoding=utf8"
+      config[:url] ||= "jdbc:mysql://#{config[:host]}:#{config[:port]}/#{config[:database]}?#{MySQL::URL_OPTIONS}"
       config[:driver] = "com.mysql.jdbc.Driver"
       jdbc_connection(config)
     end
   end
 
   module MySQL
+    URL_OPTIONS = "zeroDateTimeBehavior=convertToNull&jdbcCompliantTruncation=false&useUnicode=true&characterEncoding=utf8"
     def self.column_selector
       [/mysql/i, lambda {|cfg,col| col.extend(::JdbcSpec::MySQL::Column)}]
     end

@@ -74,7 +74,7 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
 
         CallbackFactory cf = runtime.callbackFactory(JdbcAdapterInternalService.class);
         cJdbcConn.defineMethod("unmarshal_result",cf.getSingletonMethod("unmarshal_result", IRubyObject.class));
-        cJdbcConn.defineFastMethod("set_connection",cf.getFastSingletonMethod("set_connection", IRubyObject.class));
+        cJdbcConn.defineFastMethod("connection=",cf.getFastSingletonMethod("set_connection", IRubyObject.class));
         cJdbcConn.defineFastMethod("execute_update",cf.getFastSingletonMethod("execute_update", IRubyObject.class));
         cJdbcConn.defineFastMethod("execute_query",cf.getFastOptSingletonMethod("execute_query")); 
         cJdbcConn.defineFastMethod("execute_insert",cf.getFastSingletonMethod("execute_insert", IRubyObject.class));
@@ -398,7 +398,6 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
     }
 
     private static final java.util.regex.Pattern HAS_SMALL = java.util.regex.Pattern.compile("[a-z]");
-    private static final java.util.regex.Pattern HAS_LARGE = java.util.regex.Pattern.compile("[A-Z]");
     private static IRubyObject unmarshal_columns(IRubyObject recv, DatabaseMetaData metadata, ResultSet rs) throws SQLException, IOException {
         try {
             List columns = new ArrayList();
