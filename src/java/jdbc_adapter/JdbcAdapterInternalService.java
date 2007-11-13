@@ -80,6 +80,7 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
         cJdbcConn.defineMethod("with_connection_retry_guard",cf.getSingletonMethod("with_connection_retry_guard"));
         cJdbcConn.defineFastMethod("connection",cf.getFastSingletonMethod("connection"));
         cJdbcConn.defineFastMethod("reconnect!",cf.getFastSingletonMethod("reconnect"));
+        cJdbcConn.defineFastMethod("disconnect!",cf.getFastSingletonMethod("disconnect"));
         cJdbcConn.defineFastMethod("execute_update",cf.getFastSingletonMethod("execute_update", IRubyObject.class));
         cJdbcConn.defineFastMethod("execute_query",cf.getFastOptSingletonMethod("execute_query")); 
         cJdbcConn.defineFastMethod("execute_insert",cf.getFastSingletonMethod("execute_insert", IRubyObject.class));
@@ -225,6 +226,11 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
             reconnect(recv);
         }
         return recv.getInstanceVariable("@connection");
+    }
+
+    public static IRubyObject disconnect(IRubyObject recv) {
+        setConnection(recv, null);
+        return recv;
     }
 
     public static IRubyObject reconnect(IRubyObject recv) {
@@ -1033,7 +1039,11 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
                 prev.close();
             } catch(Exception e) {}
         }
-        recv.setInstanceVariable("@connection", wrappedConnection(recv,c));
+        IRubyObject rubyconn = recv.getRuntime().getNil();
+        if (c != null) {
+            rubyconn = wrappedConnection(recv,c);
+        }
+        recv.setInstanceVariable("@connection", rubyconn);
         recv.dataWrapStruct(c);
         return recv;
     }

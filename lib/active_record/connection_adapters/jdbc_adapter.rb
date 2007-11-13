@@ -468,6 +468,10 @@ module ActiveRecord
         @connection.reconnect!
         @connection
       end
+      
+      def disconnect!
+	@connection.disconnect!
+      end
 
       def select_all(sql, name = nil)
         select(sql, name)

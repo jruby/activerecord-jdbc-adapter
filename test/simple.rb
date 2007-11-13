@@ -132,6 +132,11 @@ module SimpleTestMethods
       end
     end
   end
+
+  def test_disconnect
+    ActiveRecord::Base.clear_active_connections!
+    assert !ActiveRecord::Base.connected?
+  end
 end
 
 module MultibyteTestMethods
