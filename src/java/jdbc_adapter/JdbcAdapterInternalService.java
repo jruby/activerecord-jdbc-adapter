@@ -69,12 +69,14 @@ import org.jruby.runtime.load.BasicLibraryService;
 import org.jruby.util.ByteList;
 
 public class JdbcAdapterInternalService implements BasicLibraryService {
+
     public boolean basicLoad(final Ruby runtime) throws IOException {
         RubyClass cJdbcConn = ((RubyModule)(runtime.getModule("ActiveRecord").getConstant("ConnectionAdapters"))).
             defineClassUnder("JdbcConnection",runtime.getObject(),runtime.getObject().getAllocator());
 
         CallbackFactory cf = runtime.callbackFactory(JdbcAdapterInternalService.class);
         cJdbcConn.defineMethod("unmarshal_result",cf.getSingletonMethod("unmarshal_result", IRubyObject.class));
+        cJdbcConn.defineMethod("with_connection_retry_guard",cf.getSingletonMethod("with_connection_retry_guard"));
         cJdbcConn.defineFastMethod("connection",cf.getFastSingletonMethod("connection"));
         cJdbcConn.defineFastMethod("reconnect!",cf.getFastSingletonMethod("reconnect"));
         cJdbcConn.defineFastMethod("execute_update",cf.getFastSingletonMethod("execute_update", IRubyObject.class));
@@ -236,9 +238,7 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
                 prev.close();
             } catch(Exception e) {}
         }
-        IRubyObject conn_object = Java.java_to_ruby(recv,
-                JavaObject.wrap(recv.getRuntime(), c), Block.NULL_BLOCK);
-        recv.setInstanceVariable("@connection", conn_object);
+        recv.setInstanceVariable("@connection", wrappedConnection(recv,c));
         recv.dataWrapStruct(c);
         return recv;
     }
@@ -257,6 +257,16 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
                 ((JavaObject) connection_factory.getInstanceVariable("@java_object")).getValue();        
         setConnection(recv, factory.newConnection());
         return recv;
+    }
+
+    public static IRubyObject with_connection_retry_guard(final IRubyObject recv, final Block block) {
+        return withConnectionAndRetry(recv, new SQLBlock() {
+            public IRubyObject call(Connection c) throws SQLException {
+                return block.call(recv.getRuntime().getCurrentContext(), new IRubyObject[] {
+                    wrappedConnection(recv, c)
+                });
+            }
+        });
     }
 
     private static IRubyObject withConnectionAndRetry(IRubyObject recv, SQLBlock block) {
@@ -1008,5 +1018,9 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
 
     private static RuntimeException wrap(IRubyObject recv, Throwable exception) {
         return recv.getRuntime().newArgumentError(exception.getMessage());
+    }
+
+    private static IRubyObject wrappedConnection(IRubyObject recv, Connection c) {
+        return Java.java_to_ruby(recv, JavaObject.wrap(recv.getRuntime(), c), Block.NULL_BLOCK);
     }
 }
