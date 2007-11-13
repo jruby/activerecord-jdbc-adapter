@@ -116,12 +116,13 @@ module SimpleTestMethods
   end
 
   def test_reconnect
+    assert_equal 1, Entry.count
     @connection.reconnect!
     assert_equal 1, Entry.count
   end
 
   def test_connection_valid
-    assert_raises(ArgumentError) do
+    assert_raises(ActiveRecord::ActiveRecordError) do
       @connection.raw_connection.with_connection_retry_guard do |c|
         begin
           stmt = c.createStatement
@@ -134,8 +135,11 @@ module SimpleTestMethods
   end
 
   def test_disconnect
+    assert_equal 1, Entry.count
     ActiveRecord::Base.clear_active_connections!
     assert !ActiveRecord::Base.connected?
+    assert_equal 1, Entry.count
+    assert ActiveRecord::Base.connected?
   end
 end
 

@@ -1005,7 +1005,8 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
     }
 
     private static RuntimeException wrap(IRubyObject recv, Throwable exception) {
-        return recv.getRuntime().newArgumentError(exception.getMessage());
+        RubyClass err = recv.getRuntime().getModule("ActiveRecord").getClass("ActiveRecordError");
+        return (RuntimeException) new RaiseException(recv.getRuntime(), err, exception.getMessage(), false).initCause(exception);
     }
 
     private static ResultSet intoResultSet(IRubyObject inp) {

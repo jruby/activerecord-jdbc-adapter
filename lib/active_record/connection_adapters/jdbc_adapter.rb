@@ -370,7 +370,7 @@ module ActiveRecord
         url    = @config[:url].to_s
 
         unless driver && url
-          raise ArgumentError, "jdbc adapter requires driver class and url"
+          raise ::ActiveRecord::ConnectionFailed, "jdbc adapter requires driver class and url"
         end
 
         if driver =~ /mysql/i && url !~ /#{Regexp.quote(JdbcSpec::MySQL::URL_OPTIONS)}/
