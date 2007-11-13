@@ -68,6 +68,7 @@ import org.jruby.runtime.load.BasicLibraryService;
 import org.jruby.util.ByteList;
 
 public class JdbcAdapterInternalService implements BasicLibraryService {
+
     public boolean basicLoad(final Ruby runtime) throws IOException {
         RubyClass cJdbcConn = ((RubyModule)(runtime.getModule("ActiveRecord").getConstant("ConnectionAdapters"))).
             defineClassUnder("JdbcConnection",runtime.getObject(),runtime.getObject().getAllocator());
@@ -231,76 +232,119 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
         return recv;
     }
 
-    public static IRubyObject tables(IRubyObject recv, IRubyObject[] args) throws SQLException, IOException {
-        Ruby runtime = recv.getRuntime();
-        String catalog = null, schemapat = null, tablepat = null;
-        String[] types = new String[]{"TABLE"};
-        if (args != null) {
-            if (args.length > 0) {
-                catalog = convertToStringOrNull(args[0]);
+    private static boolean reconnect(Connection c, IRubyObject recv) {
+        try {
+            if (c.isClosed()) {
+                recv.callMethod(recv.getRuntime().getCurrentContext(), "reconnect!");
+                if (!getConnection(recv).isClosed()) {
+                    return true;
+                }
             }
-            if (args.length > 1) {
-                schemapat = convertToStringOrNull(args[1]);
-            }
-            if (args.length > 2) {
-                tablepat = convertToStringOrNull(args[2]);
-            }
-            if (args.length > 3) {
-                IRubyObject typearr = args[3];
-                if (typearr instanceof RubyArray) {
-                    IRubyObject[] arr = ((RubyArray) typearr).toJavaArray();
-                    types = new String[arr.length];
-                    for (int i = 0; i < types.length; i++) {
-                        types[i] = arr[i].toString();
-                    }
-                } else {
-                    types = new String[] {types.toString()};
+        } catch (SQLException sqlx) {
+            throw wrap(recv, sqlx);
+        }
+        return false;
+    }
+
+    private static IRubyObject withConnectionAndRetry(IRubyObject recv, SQLBlock block) {
+        final int TRIES = 10;
+        int i = 0;
+        Throwable toWrap = null;
+        while (i < TRIES) {
+            Connection c = getConnection(recv);
+            try {
+                return block.call(c);
+            } catch (SQLException e) {
+                i++;
+                toWrap = e;
+                if (reconnect(c, recv)) {
+                    continue;
                 }
             }
         }
-        while (true) {
-            Connection c = getConnection(recv);
-            ResultSet rs = null;
-            try {
-                DatabaseMetaData metadata = c.getMetaData();
-                String clzName = metadata.getClass().getName().toLowerCase();
-                boolean isOracle = clzName.indexOf("oracle") != -1 || clzName.indexOf("oci") != -1;
-                
-                if(schemapat == null && isOracle) {
-                    ResultSet schemas = metadata.getSchemas();
-                    String username = metadata.getUserName();
-                    while(schemas.next()) {
-                        if(schemas.getString(1).equalsIgnoreCase(username)) {
-                            schemapat = schemas.getString(1);
-                            break;
+        throw wrap(recv, toWrap);
+    }
+
+    public static IRubyObject tables(final IRubyObject recv, IRubyObject[] args) {
+        final Ruby runtime     = recv.getRuntime();
+        final String catalog   = getCatalog(args);
+        final String schemapat = getSchemaPattern(args);
+        final String tablepat  = getTablePattern(args);
+        final String[] types   = getTypes(args);
+
+        return withConnectionAndRetry(recv, new SQLBlock() {
+            public IRubyObject call(Connection c) throws SQLException {
+                ResultSet rs = null;
+                try {
+                    DatabaseMetaData metadata = c.getMetaData();
+                    String clzName = metadata.getClass().getName().toLowerCase();
+                    boolean isOracle = clzName.indexOf("oracle") != -1 || clzName.indexOf("oci") != -1;
+
+                    String realschema = schemapat;
+                    if (realschema == null && isOracle) {
+                        ResultSet schemas = metadata.getSchemas();
+                        String username = metadata.getUserName();
+                        while (schemas.next()) {
+                            if (schemas.getString(1).equalsIgnoreCase(username)) {
+                                realschema = schemas.getString(1);
+                                break;
+                            }
+                        }
+                        schemas.close();
+                    }
+                    rs = metadata.getTables(catalog, realschema, tablepat, types);
+                    List arr = new ArrayList();
+                    while (rs.next()) {
+                        String name = rs.getString(3).toLowerCase();
+                        // Handle stupid Oracle 10g RecycleBin feature
+                        if (!isOracle || !name.startsWith("bin$")) {
+                            arr.add(runtime.newString(name));
                         }
                     }
-                    schemas.close();
+                    return runtime.newArray(arr);
+                } finally {
+                    try { rs.close(); } catch (Exception e) { }
                 }
-                rs = metadata.getTables(catalog, schemapat, tablepat, types);
-                List arr = new ArrayList();
-                while (rs.next()) {
-                    String name = rs.getString(3).toLowerCase();
-                    if(!isOracle || !name.startsWith("bin$")) { //Handle stupid Oracle 10g RecycleBin feature
-                        arr.add(runtime.newString(name));
-                    }
-                }
-                return runtime.newArray(arr);
-            } catch (SQLException e) {
-                if(c.isClosed()) {
-                    recv = recv.callMethod(recv.getRuntime().getCurrentContext(),"reconnect!");
-                    if(!getConnection(recv).isClosed()) {
-                        continue;
-                    }
-                }
-                throw wrap(recv, e);
-            } finally {
-                try {
-                    rs.close();
-                } catch(Exception e) {}
             }
+        });
+    }
 
+    private static String getCatalog(IRubyObject[] args) {
+        if (args != null && args.length > 0) {
+            return convertToStringOrNull(args[0]);
         }
+        return null;
+    }
+
+    private static String getSchemaPattern(IRubyObject[] args) {
+        if (args != null && args.length > 1) {
+            return convertToStringOrNull(args[1]);
+        }
+        return null;
+    }
+
+    private static String getTablePattern(IRubyObject[] args) {
+        if (args != null && args.length > 2) {
+            return convertToStringOrNull(args[2]);
+        }
+        return null;
+    }
+
+    private static String[] getTypes(IRubyObject[] args) {
+        String[] types = new String[]{"TABLE"};
+        if (args != null && args.length > 3) {
+            IRubyObject typearr = args[3];
+            if (typearr instanceof RubyArray) {
+                IRubyObject[] arr = ((RubyArray) typearr).toJavaArray();
+                types = new String[arr.length];
+                for (int i = 0; i < types.length; i++) {
+                    types[i] = arr[i].toString();
+                }
+            } else {
+                types = new String[]{types.toString()};
+            }
+        }
+        return types;
     }
 
     public static IRubyObject native_database_types(IRubyObject recv) {
@@ -352,53 +396,48 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
         }
     }
 
-    public static IRubyObject columns_internal(IRubyObject recv, IRubyObject[] args) throws SQLException, IOException {
-        String table_name = args[0].convertToString().getUnicodeValue();
-        int tries = 10;
-        while(true) {
-            Connection c = getConnection(recv);
-            try {
-                DatabaseMetaData metadata = c.getMetaData();
-                String clzName = metadata.getClass().getName().toLowerCase();
-                boolean isDerby = clzName.indexOf("derby") != -1;
-                boolean isOracle = clzName.indexOf("oracle") != -1 || clzName.indexOf("oci") != -1;
-                String schemaName = null;
-                if(args.length>2) {
-                    schemaName = args[2].toString();
-                }
-                if(metadata.storesUpperCaseIdentifiers()) {
-                    table_name = table_name.toUpperCase();
-                } else if(metadata.storesLowerCaseIdentifiers()) {
-                    table_name = table_name.toLowerCase();
-                }
-                if(schemaName == null && (isDerby || isOracle)) {
-                    ResultSet schemas = metadata.getSchemas();
-                    String username = metadata.getUserName();
-                    while(schemas.next()) {
-                        if(schemas.getString(1).equalsIgnoreCase(username)) {
-                            schemaName = schemas.getString(1);
-                            break;
+    public static IRubyObject columns_internal(final IRubyObject recv, final IRubyObject[] args) throws SQLException, IOException {
+        return withConnectionAndRetry(recv, new SQLBlock() {
+            public IRubyObject call(Connection c) throws SQLException {
+                ResultSet results = null;
+                try {
+                    String table_name = args[0].convertToString().getUnicodeValue();
+                    DatabaseMetaData metadata = c.getMetaData();
+                    String clzName = metadata.getClass().getName().toLowerCase();
+                    boolean isDerby = clzName.indexOf("derby") != -1;
+                    boolean isOracle = clzName.indexOf("oracle") != -1 || clzName.indexOf("oci") != -1;
+                    String schemaName = null;
+                    if(args.length>2) {
+                        schemaName = args[2].toString();
+                    }
+                    if(metadata.storesUpperCaseIdentifiers()) {
+                        table_name = table_name.toUpperCase();
+                    } else if(metadata.storesLowerCaseIdentifiers()) {
+                        table_name = table_name.toLowerCase();
+                    }
+                    if(schemaName == null && (isDerby || isOracle)) {
+                        ResultSet schemas = metadata.getSchemas();
+                        String username = metadata.getUserName();
+                        while(schemas.next()) {
+                            if(schemas.getString(1).equalsIgnoreCase(username)) {
+                                schemaName = schemas.getString(1);
+                                break;
+                            }
                         }
+                        schemas.close();
                     }
-                    schemas.close();
+
+                    results = metadata.getColumns(c.getCatalog(),schemaName,table_name,null);
+                    return unmarshal_columns(recv, metadata, results);
+                } finally {
+                    try { if (results != null) results.close(); } catch (SQLException sqx) {}
                 }
-                
-                ResultSet results = metadata.getColumns(c.getCatalog(),schemaName,table_name,null);
-                return unmarshal_columns(recv, metadata, results);
-            } catch(SQLException e) {
-                if(c.isClosed()) {
-                    recv = recv.callMethod(recv.getRuntime().getCurrentContext(),"reconnect!");
-                    if(!getConnection(recv).isClosed() && --tries > 0) {
-                        continue;
-                    }
-                }
-                throw wrap(recv, e);
             }
-        }    
+        });
     }
 
     private static final java.util.regex.Pattern HAS_SMALL = java.util.regex.Pattern.compile("[a-z]");
-    private static IRubyObject unmarshal_columns(IRubyObject recv, DatabaseMetaData metadata, ResultSet rs) throws SQLException, IOException {
+    private static IRubyObject unmarshal_columns(IRubyObject recv, DatabaseMetaData metadata, ResultSet rs) throws SQLException {
         try {
             List columns = new ArrayList();
             String clzName = metadata.getClass().getName().toLowerCase();
@@ -469,133 +508,122 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
         }
     }
 
-    public static IRubyObject primary_keys(IRubyObject recv, IRubyObject _table_name) throws SQLException {
-        Connection c = getConnection(recv);
-        DatabaseMetaData metadata = c.getMetaData();
-        String table_name = _table_name.toString();
-        if(metadata.storesUpperCaseIdentifiers()) {
-            table_name = table_name.toUpperCase();
-        } else if(metadata.storesLowerCaseIdentifiers()) {
-            table_name = table_name.toLowerCase();
-        }
-        ResultSet result_set = metadata.getPrimaryKeys(null,null,table_name);
-        List keyNames = new ArrayList();
-        Ruby runtime = recv.getRuntime();
-        while(result_set.next()) {
-            String s1 = result_set.getString(4);
-            if(metadata.storesUpperCaseIdentifiers() && !HAS_SMALL.matcher(s1).find()) {
-                s1 = s1.toLowerCase();
-            }
-            keyNames.add(runtime.newString(s1));
-        }
-        
-        try {
-            result_set.close();
-        } catch(Exception e) {}
+    public static IRubyObject primary_keys(final IRubyObject recv, final IRubyObject _table_name) throws SQLException {
+        return withConnectionAndRetry(recv, new SQLBlock() {
+            public IRubyObject call(Connection c) throws SQLException {
+                DatabaseMetaData metadata = c.getMetaData();
+                String table_name = _table_name.toString();
+                if (metadata.storesUpperCaseIdentifiers()) {
+                    table_name = table_name.toUpperCase();
+                } else if (metadata.storesLowerCaseIdentifiers()) {
+                    table_name = table_name.toLowerCase();
+                }
+                ResultSet result_set = metadata.getPrimaryKeys(null, null, table_name);
+                List keyNames = new ArrayList();
+                Ruby runtime = recv.getRuntime();
+                while (result_set.next()) {
+                    String s1 = result_set.getString(4);
+                    if (metadata.storesUpperCaseIdentifiers() && !HAS_SMALL.matcher(s1).find()) {
+                        s1 = s1.toLowerCase();
+                    }
+                    keyNames.add(runtime.newString(s1));
+                }
 
-        return runtime.newArray(keyNames);
+                try {
+                    result_set.close();
+                } catch (Exception e) {
+                }
+
+                return runtime.newArray(keyNames);
+            }
+        });
     }
 
-    public static IRubyObject execute_id_insert(IRubyObject recv, IRubyObject sql, IRubyObject id) throws SQLException {
-        Connection c = getConnection(recv);
-        PreparedStatement ps = c.prepareStatement(sql.convertToString().getUnicodeValue());
-        try {
-            ps.setLong(1,RubyNumeric.fix2long(id));
-            ps.executeUpdate();
-        } finally {
-            ps.close();
-        }
-        return id;
+    public static IRubyObject execute_id_insert(IRubyObject recv, final IRubyObject sql, final IRubyObject id) throws SQLException {
+        return withConnectionAndRetry(recv, new SQLBlock() {
+            public IRubyObject call(Connection c) throws SQLException {
+                PreparedStatement ps = c.prepareStatement(sql.convertToString().getUnicodeValue());
+                try {
+                    ps.setLong(1, RubyNumeric.fix2long(id));
+                    ps.executeUpdate();
+                } finally {
+                    ps.close();
+                }
+                return id;
+            }
+        });
     }
 
     private static RuntimeException wrap(IRubyObject recv, Throwable exception) {
         return recv.getRuntime().newArgumentError(exception.getMessage());
     }
 
-    public static IRubyObject execute_update(IRubyObject recv, IRubyObject sql) throws SQLException {
-        int tries = 10;
-        while(true) {
-            Connection c = getConnection(recv);
-            Statement stmt = null;
-            try {
-                stmt = c.createStatement();
-                return recv.getRuntime().newFixnum(stmt.executeUpdate(sql.convertToString().getUnicodeValue()));
-            } catch(SQLException e) {
-                if(c.isClosed()) {
-                    recv = recv.callMethod(recv.getRuntime().getCurrentContext(),"reconnect!");
-                    if(!getConnection(recv).isClosed() && --tries > 0) {
-                        continue;
+    public static IRubyObject execute_update(final IRubyObject recv, final IRubyObject sql) throws SQLException {
+        return withConnectionAndRetry(recv, new SQLBlock() {
+            public IRubyObject call(Connection c) throws SQLException {
+                Statement stmt = null;
+                try {
+                    stmt = c.createStatement();
+                    return recv.getRuntime().newFixnum(stmt.executeUpdate(sql.convertToString().getUnicodeValue()));
+                } finally {
+                    if (null != stmt) {
+                        try {
+                            stmt.close();
+                        } catch (Exception e) {
+                        }
                     }
                 }
-
-                throw wrap(recv, e);
-            } finally {
-                if(null != stmt) {
-                    try {
-                        stmt.close();
-                    } catch(Exception e) {}
-                }
             }
-        }
+        });
     }
 
-    public static IRubyObject execute_query(IRubyObject recv, IRubyObject[] args) throws SQLException, IOException {
-        IRubyObject sql = args[0];
-        int maxrows = 0;
-        if(args.length > 1) {
+    public static IRubyObject execute_query(final IRubyObject recv, IRubyObject[] args) throws SQLException, IOException {
+        final IRubyObject sql = args[0];
+        final int maxrows;
+
+        if (args.length > 1) {
             maxrows = RubyNumeric.fix2int(args[1]);
+        } else {
+            maxrows = 0;
         }
-        int tries = 10;
-        while(true) {
-            Connection c = getConnection(recv);
-            Statement stmt = null;
-            try {
-                stmt = c.createStatement();
-                stmt.setMaxRows(maxrows);
-                return unmarshal_result(recv, stmt.executeQuery(sql.convertToString().getUnicodeValue()));
-            } catch(SQLException e) {
-                if(c.isClosed()) {
-                    recv = recv.callMethod(recv.getRuntime().getCurrentContext(),"reconnect!");
-                    if(!getConnection(recv).isClosed() && --tries > 0) {
-                        continue;
+        
+        return withConnectionAndRetry(recv, new SQLBlock() {
+            public IRubyObject call(Connection c) throws SQLException {
+                Statement stmt = null;
+                try {
+                    stmt = c.createStatement();
+                    stmt.setMaxRows(maxrows);
+                    return unmarshal_result(recv, stmt.executeQuery(sql.convertToString().getUnicodeValue()));
+                } finally {
+                    if (null != stmt) {
+                        try {
+                            stmt.close();
+                        } catch (Exception e) {
+                        }
                     }
                 }
-                throw wrap(recv, e);
-            } finally {
-                if(null != stmt) {
-                    try {
-                        stmt.close();
-                    } catch(Exception e) {}
-                }
             }
-        }
+        });
     }
 
-    public static IRubyObject execute_insert(IRubyObject recv, IRubyObject sql) throws SQLException {
-        int tries = 10;
-        while(true) {
-            Connection c = getConnection(recv);
-            Statement stmt = null;
-            try {
-                stmt = c.createStatement();
-                stmt.executeUpdate(sql.convertToString().getUnicodeValue(), Statement.RETURN_GENERATED_KEYS);
-                return unmarshal_id_result(recv.getRuntime(), stmt.getGeneratedKeys());
-            } catch(SQLException e) {
-                if(c.isClosed()) {
-                    recv = recv.callMethod(recv.getRuntime().getCurrentContext(),"reconnect!");
-                    if(!getConnection(recv).isClosed() && --tries > 0) {
-                        continue;
+    public static IRubyObject execute_insert(final IRubyObject recv, final IRubyObject sql) throws SQLException {
+        return withConnectionAndRetry(recv, new SQLBlock() {
+            public IRubyObject call(Connection c) throws SQLException {
+                Statement stmt = null;
+                try {
+                    stmt = c.createStatement();
+                    stmt.executeUpdate(sql.convertToString().getUnicodeValue(), Statement.RETURN_GENERATED_KEYS);
+                    return unmarshal_id_result(recv.getRuntime(), stmt.getGeneratedKeys());
+                } finally {
+                    if (null != stmt) {
+                        try {
+                            stmt.close();
+                        } catch (Exception e) {
+                        }
                     }
                 }
-                throw wrap(recv, e);
-            } finally {
-                if(null != stmt) {
-                    try {
-                        stmt.close();
-                    } catch(Exception e) {}
-                }
             }
-        }
+        });
     }
 
     public static IRubyObject unmarshal_result_downcase(IRubyObject recv, ResultSet rs) throws SQLException, IOException {
@@ -630,7 +658,7 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
         return runtime.newArray(results);
     }
 
-    public static IRubyObject unmarshal_result(IRubyObject recv, ResultSet rs) throws SQLException, IOException {
+    public static IRubyObject unmarshal_result(IRubyObject recv, ResultSet rs) throws SQLException {
         Ruby runtime = recv.getRuntime();
         List results = new ArrayList();
         try {
@@ -712,54 +740,60 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
         return runtime.newArray(results);
     }
 
-    private static IRubyObject jdbc_to_ruby(Ruby runtime, int row, int type, int scale, ResultSet rs) throws SQLException, IOException {
-        int n;
-        switch(type) {
-        case Types.BINARY:
-        case Types.BLOB:
-        case Types.LONGVARBINARY:
-        case Types.VARBINARY:
-            InputStream is = rs.getBinaryStream(row);
-            if(is == null || rs.wasNull()) {
-                return runtime.getNil();
-            }
-            ByteList str = new ByteList(2048);
-            byte[] buf = new byte[2048];
-            while((n = is.read(buf)) != -1) {
-                str.append(buf, 0, n);
-            }
-            is.close();
-            return runtime.newString(str);
-        case Types.LONGVARCHAR:
-        case Types.CLOB:
-            Reader rss = rs.getCharacterStream(row);
-            if(rss == null || rs.wasNull()) {
-                return runtime.getNil();
-            }
-            StringBuffer str2 = new StringBuffer(2048);
-            char[] cuf = new char[2048];
-            while((n = rss.read(cuf)) != -1) {
-                str2.append(cuf, 0, n);
-            }
-            rss.close();
-            return RubyString.newUnicodeString(runtime, str2.toString());
-        case Types.TIMESTAMP:
-        	Timestamp time = rs.getTimestamp(row);
-        	if (time == null || rs.wasNull()) {
-        		return runtime.getNil();
-        	}
-            String sttr = time.toString();
-            if(sttr.endsWith(" 00:00:00.0")) {
-                sttr = sttr.substring(0, sttr.length()-(" 00:00:00.0".length()));
-            }
-        	return RubyString.newUnicodeString(runtime, sttr);
-        default:
-            String vs = rs.getString(row);
-            if(vs == null || rs.wasNull()) {
-                return runtime.getNil();
-            }
+    private static IRubyObject jdbc_to_ruby(Ruby runtime, int row, int type, int scale, ResultSet rs) throws SQLException {
+        try {
+            int n;
+            switch (type) {
+                case Types.BINARY:
+                case Types.BLOB:
+                case Types.LONGVARBINARY:
+                case Types.VARBINARY:
+                    InputStream is = rs.getBinaryStream(row);
+                    if (is == null || rs.wasNull()) {
+                        return runtime.getNil();
+                    }
+                    ByteList str = new ByteList(2048);
+                    byte[] buf = new byte[2048];
 
-            return RubyString.newUnicodeString(runtime, vs);
+                    while ((n = is.read(buf)) != -1) {
+                        str.append(buf, 0, n);
+                    }
+                    is.close();
+
+                    return runtime.newString(str);
+                case Types.LONGVARCHAR:
+                case Types.CLOB:
+                    Reader rss = rs.getCharacterStream(row);
+                    if (rss == null || rs.wasNull()) {
+                        return runtime.getNil();
+                    }
+                    StringBuffer str2 = new StringBuffer(2048);
+                    char[] cuf = new char[2048];
+                    while ((n = rss.read(cuf)) != -1) {
+                        str2.append(cuf, 0, n);
+                    }
+                    rss.close();
+                    return RubyString.newUnicodeString(runtime, str2.toString());
+                case Types.TIMESTAMP:
+                    Timestamp time = rs.getTimestamp(row);
+                    if (time == null || rs.wasNull()) {
+                        return runtime.getNil();
+                    }
+                    String sttr = time.toString();
+                    if (sttr.endsWith(" 00:00:00.0")) {
+                        sttr = sttr.substring(0, sttr.length() - (" 00:00:00.0".length()));
+                    }
+                    return RubyString.newUnicodeString(runtime, sttr);
+                default:
+                    String vs = rs.getString(row);
+                    if (vs == null || rs.wasNull()) {
+                        return runtime.getNil();
+                    }
+
+                    return RubyString.newUnicodeString(runtime, vs);
+            }
+        } catch (IOException ioe) {
+            throw (SQLException) new SQLException(ioe.getMessage()).initCause(ioe);
         }
     }
 
@@ -877,68 +911,83 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
     /*
      * sql, values, types, name = nil, pk = nil, id_value = nil, sequence_name = nil
      */
-    public static IRubyObject insert_bind(IRubyObject recv, IRubyObject[] args) throws SQLException {
-        Ruby runtime = recv.getRuntime();
+    public static IRubyObject insert_bind(IRubyObject recv, final IRubyObject[] args) throws SQLException {
+        final Ruby runtime = recv.getRuntime();
         Arity.checkArgumentCount(runtime, args, 3, 7);
-        Connection c = getConnection(recv);
-        PreparedStatement ps = null;
-        try {
-            ps = c.prepareStatement(RubyString.objAsString(args[0]).toString(), Statement.RETURN_GENERATED_KEYS);
-            setValuesOnPS(ps, runtime, args[1], args[2]);
-            ps.executeUpdate();
-            return unmarshal_id_result(runtime, ps.getGeneratedKeys());
-        } finally {
-            try {
-                ps.close();
-            } catch(Exception e) {}
-        }
+        return withConnectionAndRetry(recv, new SQLBlock() {
+            public IRubyObject call(Connection c) throws SQLException {
+                PreparedStatement ps = null;
+                try {
+                    ps = c.prepareStatement(RubyString.objAsString(args[0]).toString(), Statement.RETURN_GENERATED_KEYS);
+                    setValuesOnPS(ps, runtime, args[1], args[2]);
+                    ps.executeUpdate();
+                    return unmarshal_id_result(runtime, ps.getGeneratedKeys());
+                } finally {
+                    try {
+                        ps.close();
+                    } catch (Exception e) {
+                    }
+                }
+            }
+        });
     }
 
     /*
      * sql, values, types, name = nil
      */
-    public static IRubyObject update_bind(IRubyObject recv, IRubyObject[] args) throws SQLException {
-        Ruby runtime = recv.getRuntime();
+    public static IRubyObject update_bind(IRubyObject recv, final IRubyObject[] args) throws SQLException {
+        final Ruby runtime = recv.getRuntime();
         Arity.checkArgumentCount(runtime, args, 3, 4);
-        Connection c = getConnection(recv);
-        PreparedStatement ps = null;
-        try {
-            ps = c.prepareStatement(RubyString.objAsString(args[0]).toString());
-            setValuesOnPS(ps, runtime, args[1], args[2]);
-            ps.executeUpdate();
-        } finally {
-            try {
-                ps.close();
-            } catch(Exception e) {}
-        }
-        return runtime.getNil();
+        return withConnectionAndRetry(recv, new SQLBlock() {
+            public IRubyObject call(Connection c) throws SQLException {
+                PreparedStatement ps = null;
+                try {
+                    ps = c.prepareStatement(RubyString.objAsString(args[0]).toString());
+                    setValuesOnPS(ps, runtime, args[1], args[2]);
+                    ps.executeUpdate();
+                } finally {
+                    try {
+                        ps.close();
+                    } catch (Exception e) {
+                    }
+                }
+                return runtime.getNil();
+            }
+        });
     }
 
     /*
      * (is binary?, colname, tablename, primary key, id, value)
      */
-    public static IRubyObject write_large_object(IRubyObject recv, IRubyObject[] args) throws SQLException, IOException {
-        Ruby runtime = recv.getRuntime();
+    public static IRubyObject write_large_object(IRubyObject recv, final IRubyObject[] args)
+            throws SQLException, IOException {
+        final Ruby runtime = recv.getRuntime();
         Arity.checkArgumentCount(runtime, args, 6, 6);
-        Connection c = getConnection(recv);
-        String sql = "UPDATE " + args[2].toString() + " SET " + args[1].toString() + " = ? WHERE " + args[3] + "=" + args[4];
-        PreparedStatement ps = null;
-        try {
-            ByteList outp = RubyString.objAsString(args[5]).getByteList();
-            ps = c.prepareStatement(sql);
-            if(args[0].isTrue()) { // binary
-                ps.setBinaryStream(1,new ByteArrayInputStream(outp.bytes, outp.begin, outp.realSize), outp.realSize);
-            } else { // clob
-                String ss = outp.toString();
-                ps.setCharacterStream(1,new StringReader(ss), ss.length());
+        return withConnectionAndRetry(recv, new SQLBlock() {
+            public IRubyObject call(Connection c) throws SQLException {
+                String sql = "UPDATE " + args[2].toString() + " SET " + args[1].toString() 
+                        + " = ? WHERE " + args[3] + "=" + args[4];
+                PreparedStatement ps = null;
+                try {
+                    ByteList outp = RubyString.objAsString(args[5]).getByteList();
+                    ps = c.prepareStatement(sql);
+                    if (args[0].isTrue()) { // binary
+                        ps.setBinaryStream(1, new ByteArrayInputStream(outp.bytes, 
+                                outp.begin, outp.realSize), outp.realSize);
+                    } else { // clob
+                        String ss = outp.toString();
+                        ps.setCharacterStream(1, new StringReader(ss), ss.length());
+                    }
+                    ps.executeUpdate();
+                } finally {
+                    try {
+                        ps.close();
+                    } catch (Exception e) {
+                    }
+                }
+                return runtime.getNil();
             }
-            ps.executeUpdate();
-        } finally {
-            try {
-                ps.close();
-            } catch(Exception e) {}
-        }
-        return runtime.getNil();
+        });
     }
 
     private static Connection getConnection(IRubyObject recv) {
