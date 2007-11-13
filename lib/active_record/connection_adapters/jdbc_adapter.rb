@@ -289,19 +289,6 @@ module ActiveRecord
         raise "The driver encountered an error: #{e}"
       end
 
-      def connection
-        unless @connection
-          self.connection = connection_factory.newConnection
-        end
-        @connection
-      end
-      
-      def reconnect!
-        @connection.close rescue nil
-        @connection = nil
-        connection
-      end
-
       def adapter=(adapt)
         @adapter = adapt
         @tps = {}
