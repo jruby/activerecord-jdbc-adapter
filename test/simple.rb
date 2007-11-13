@@ -1,3 +1,5 @@
+ActiveRecord::Schema.verbose = false
+
 module MigrationSetup
   def setup
     CreateEntries.up
@@ -110,9 +112,26 @@ module SimpleTestMethods
 
   def test_invalid
     e = Entry.new(:title => @title, :content => @content, :rating => ' ')
-    p e.valid?
+    assert e.valid?
   end
 
+  def test_reconnect
+    @connection.reconnect!
+    assert_equal 1, Entry.count
+  end
+
+  def test_connection_valid
+    assert_raises(ArgumentError) do
+      @connection.raw_connection.with_connection_retry_guard do |c|
+        begin
+          stmt = c.createStatement
+          stmt.execute "bogus sql"
+        ensure
+          stmt.close rescue nil
+        end
+      end
+    end
+  end
 end
 
 module MultibyteTestMethods

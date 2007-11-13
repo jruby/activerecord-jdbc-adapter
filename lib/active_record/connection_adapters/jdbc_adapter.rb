@@ -272,6 +272,8 @@ module ActiveRecord
 
       def initialize(config)
         @config = config.symbolize_keys!
+        @config[:retry_count] ||= 5
+        @config[:connection_alive_sql] ||= "select 1"
         if @config[:jndi]
           begin
             configure_jndi
@@ -304,8 +306,6 @@ module ActiveRecord
       # one index, one row per column in the index), so a simple block-based
       # filter like that used for tables doesn't really work here.  Callers
       # should filter the return from this method instead.
-      #
-      # TODO: fix to use reconnect correctly
       def indexes(table_name, name = nil, schema_name = nil)
         with_connection_retry_guard do |conn|
           metadata = conn.getMetaData

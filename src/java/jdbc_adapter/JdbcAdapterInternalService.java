@@ -58,6 +58,7 @@ import org.jruby.RubyNumeric;
 import org.jruby.RubyString;
 import org.jruby.RubySymbol;
 import org.jruby.RubyTime;
+import org.jruby.exceptions.RaiseException;
 import org.jruby.javasupport.Java;
 import org.jruby.javasupport.JavaObject;
 import org.jruby.runtime.Arity;
@@ -218,31 +219,6 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
         return recv.getRuntime().getFalse();
     }
 
-    private static ResultSet intoResultSet(IRubyObject inp) {
-        return (ResultSet)((inp instanceof JavaObject ? ((JavaObject)inp) : (((JavaObject)(inp.getInstanceVariable("@java_object"))))).getValue());
-    }   
-
-    private static boolean isConnectionBroken(Connection c) {
-        // TODO: better way of determining if the connection is active
-        try {
-            return c.isClosed();
-        } catch (SQLException sx) {
-            return true;
-        }
-    }
-
-    private static IRubyObject setConnection(IRubyObject recv, Connection c) {
-        Connection prev = getConnection(recv);
-        if (prev != null) {
-            try {
-                prev.close();
-            } catch(Exception e) {}
-        }
-        recv.setInstanceVariable("@connection", wrappedConnection(recv,c));
-        recv.dataWrapStruct(c);
-        return recv;
-    }
-
     public static IRubyObject connection(IRubyObject recv) {
         Connection c = getConnection(recv);
         if (c == null) {
@@ -252,10 +228,7 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
     }
 
     public static IRubyObject reconnect(IRubyObject recv) {
-        IRubyObject connection_factory = recv.getInstanceVariable("@connection_factory");
-        JdbcConnectionFactory factory = (JdbcConnectionFactory)
-                ((JavaObject) connection_factory.getInstanceVariable("@java_object")).getValue();        
-        setConnection(recv, factory.newConnection());
+        setConnection(recv, getConnectionFactory(recv).newConnection());
         return recv;
     }
 
@@ -270,17 +243,27 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
     }
 
     private static IRubyObject withConnectionAndRetry(IRubyObject recv, SQLBlock block) {
-        final int TRIES = 10;
+        int tries = 1;
         int i = 0;
         Throwable toWrap = null;
-        while (i < TRIES) {
+        while (i < tries) {
             Connection c = getConnection(recv);
             try {
                 return block.call(c);
-            } catch (SQLException e) {
+            } catch (Exception e) {
+                Throwable root = e;
+                while (root.getCause() != null && root.getCause() != root) {
+                    root = root.getCause();
+                }
+                if (i == 0) {
+                    tries = (int) config_value(recv, "retry_count").convertToInteger().getLongValue();
+                    if (tries <= 0) {
+                        tries = 1;
+                    }
+                }
                 i++;
                 toWrap = e;
-                if (isConnectionBroken(c)) {
+                if (isConnectionBroken(recv, c)) {
                     reconnect(recv);
                 } else {
                     throw wrap(recv, e);
@@ -1020,7 +1003,64 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
         return recv.getRuntime().newArgumentError(exception.getMessage());
     }
 
+    private static ResultSet intoResultSet(IRubyObject inp) {
+        return (ResultSet)((inp instanceof JavaObject ? ((JavaObject)inp) : (((JavaObject)(inp.getInstanceVariable("@java_object"))))).getValue());
+    }   
+
+    private static boolean isConnectionBroken(IRubyObject recv, Connection c) {
+        try {
+            IRubyObject alive = config_value(recv, "connection_alive_sql");
+            if (select_p(recv, alive).isTrue()) {
+                String connectionSQL = alive.toString();
+                Statement s = c.createStatement();
+                try {
+                    s.execute(connectionSQL);
+                } finally {
+                    try { s.close(); } catch (SQLException ignored) {}
+                }
+                return true;
+            } else {
+                return !c.isClosed();
+            }
+        } catch (SQLException sx) {
+            return true;
+        }
+    }
+
+    private static IRubyObject setConnection(IRubyObject recv, Connection c) {
+        Connection prev = getConnection(recv);
+        if (prev != null) {
+            try {
+                prev.close();
+            } catch(Exception e) {}
+        }
+        recv.setInstanceVariable("@connection", wrappedConnection(recv,c));
+        recv.dataWrapStruct(c);
+        return recv;
+    }
+
     private static IRubyObject wrappedConnection(IRubyObject recv, Connection c) {
         return Java.java_to_ruby(recv, JavaObject.wrap(recv.getRuntime(), c), Block.NULL_BLOCK);
+    }
+
+    private static JdbcConnectionFactory getConnectionFactory(IRubyObject recv) throws RaiseException {
+        IRubyObject connection_factory = recv.getInstanceVariable("@connection_factory");
+        JdbcConnectionFactory factory = null;
+        try {
+            factory = (JdbcConnectionFactory) ((JavaObject) connection_factory.getInstanceVariable("@java_object")).getValue();
+        } catch (Exception e) {
+            factory = null;
+        }
+        if (factory == null) {
+            throw recv.getRuntime().newRuntimeError("@connection_factory not set properly");
+        }
+        return factory;
+    }
+
+    private static IRubyObject config_value(IRubyObject recv, String key) {
+        Ruby runtime = recv.getRuntime();
+        IRubyObject config_hash = recv.getInstanceVariable("@config");
+        return config_hash.callMethod(runtime.getCurrentContext(), 
+                "[]", new IRubyObject[] {runtime.newSymbol(key)}, Block.NULL_BLOCK);
     }
 }
