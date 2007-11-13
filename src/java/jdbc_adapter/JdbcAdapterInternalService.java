@@ -251,9 +251,9 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
             try {
                 return block.call(c);
             } catch (Exception e) {
-                Throwable root = e;
-                while (root.getCause() != null && root.getCause() != root) {
-                    root = root.getCause();
+                toWrap = e;
+                while (toWrap.getCause() != null && toWrap.getCause() != toWrap) {
+                    toWrap = toWrap.getCause();
                 }
                 if (i == 0) {
                     tries = (int) config_value(recv, "retry_count").convertToInteger().getLongValue();
@@ -262,11 +262,10 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
                     }
                 }
                 i++;
-                toWrap = e;
                 if (isConnectionBroken(recv, c)) {
                     reconnect(recv);
                 } else {
-                    throw wrap(recv, e);
+                    throw wrap(recv, toWrap);
                 }
             }
         }
