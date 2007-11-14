@@ -141,6 +141,13 @@ module SimpleTestMethods
     assert_equal 1, Entry.count
     assert ActiveRecord::Base.connected?
   end
+
+  class Animal < ActiveRecord::Base; end
+  def test_fetching_columns_for_nonexistent_table_should_raise
+    assert_raises(ActiveRecord::ActiveRecordError) do
+      Animal.columns
+    end
+  end
 end
 
 module MultibyteTestMethods

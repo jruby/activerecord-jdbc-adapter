@@ -278,14 +278,10 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
         throw wrap(recv, toWrap);
     }
 
-    public static IRubyObject tables(final IRubyObject recv, IRubyObject[] args) {
-        final Ruby runtime     = recv.getRuntime();
-        final String catalog   = getCatalog(args);
-        final String schemapat = getSchemaPattern(args);
-        final String tablepat  = getTablePattern(args);
-        final String[] types   = getTypes(args);
-
-        return withConnectionAndRetry(recv, new SQLBlock() {
+    private static SQLBlock tableLookupBlock(final Ruby runtime, 
+            final String catalog, final String schemapat, 
+            final String tablepat, final String[] types) {
+        return new SQLBlock() {
             public IRubyObject call(Connection c) throws SQLException {
                 ResultSet rs = null;
                 try {
@@ -319,7 +315,17 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
                     try { rs.close(); } catch (Exception e) { }
                 }
             }
-        });
+        };
+    }
+
+    public static IRubyObject tables(final IRubyObject recv, IRubyObject[] args) {
+        final Ruby runtime     = recv.getRuntime();
+        final String catalog   = getCatalog(args);
+        final String schemapat = getSchemaPattern(args);
+        final String tablepat  = getTablePattern(args);
+        final String[] types   = getTypes(args);
+        return withConnectionAndRetry(recv, tableLookupBlock(runtime, catalog,
+                schemapat, tablepat, types));
     }
 
     private static String getCatalog(IRubyObject[] args) {
@@ -420,14 +426,17 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
                     boolean isDerby = clzName.indexOf("derby") != -1;
                     boolean isOracle = clzName.indexOf("oracle") != -1 || clzName.indexOf("oci") != -1;
                     String schemaName = null;
+
                     if(args.length>2) {
                         schemaName = args[2].toString();
                     }
+
                     if(metadata.storesUpperCaseIdentifiers()) {
                         table_name = table_name.toUpperCase();
                     } else if(metadata.storesLowerCaseIdentifiers()) {
                         table_name = table_name.toLowerCase();
                     }
+
                     if(schemaName == null && (isDerby || isOracle)) {
                         ResultSet schemas = metadata.getSchemas();
                         String username = metadata.getUserName();
@@ -438,6 +447,12 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
                             }
                         }
                         schemas.close();
+                    }
+
+                    RubyArray matchingTables = (RubyArray) tableLookupBlock(recv.getRuntime(), 
+                            c.getCatalog(), schemaName, table_name, getTypes(null)).call(c);
+                    if (matchingTables.isEmpty()) {
+                        throw new SQLException("Table " + table_name + " does not exist");
                     }
 
                     results = metadata.getColumns(c.getCatalog(),schemaName,table_name,null);
