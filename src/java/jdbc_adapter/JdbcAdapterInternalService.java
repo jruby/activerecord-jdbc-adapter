@@ -58,7 +58,8 @@ import org.jruby.RubyNumeric;
 import org.jruby.RubyString;
 import org.jruby.RubySymbol;
 import org.jruby.RubyTime;
-import org.jruby.exceptions.RaiseException;
+import org.jruby.
+exceptions.RaiseException;
 import org.jruby.javasupport.Java;
 import org.jruby.javasupport.JavaObject;
 import org.jruby.runtime.Arity;
@@ -993,13 +994,13 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
                         + " = ? WHERE " + args[3] + "=" + args[4];
                 PreparedStatement ps = null;
                 try {
-                    ByteList outp = RubyString.objAsString(args[5]).getByteList();
                     ps = c.prepareStatement(sql);
                     if (args[0].isTrue()) { // binary
+                        ByteList outp = RubyString.objAsString(args[5]).getByteList();
                         ps.setBinaryStream(1, new ByteArrayInputStream(outp.bytes, 
                                 outp.begin, outp.realSize), outp.realSize);
                     } else { // clob
-                        String ss = outp.toString();
+                        String ss = args[5].convertToString().getUnicodeValue();
                         ps.setCharacterStream(1, new StringReader(ss), ss.length());
                     }
                     ps.executeUpdate();
