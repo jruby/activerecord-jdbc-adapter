@@ -43,9 +43,11 @@ import org.jruby.runtime.builtin.IRubyObject;
 import org.jruby.util.ByteList;
 
 import java.sql.SQLException;
+import org.jruby.RubyObjectAdapter;
 
 public class JdbcDerbySpec {
-    public static void load(Ruby runtime, RubyModule jdbcSpec) {
+    private static RubyObjectAdapter rubyApi;
+    public static void load(Ruby runtime, RubyModule jdbcSpec, RubyObjectAdapter adapter) {
         RubyModule derby = jdbcSpec.defineModuleUnder("Derby");
         CallbackFactory cf = runtime.callbackFactory(JdbcDerbySpec.class);
         derby.defineFastMethod("quote_string",cf.getFastSingletonMethod("quote_string",IRubyObject.class));
@@ -56,6 +58,7 @@ public class JdbcDerbySpec {
         derby.defineFastMethod("select_one",cf.getFastOptSingletonMethod("select_one"));
         RubyModule col = derby.defineModuleUnder("Column");
         col.defineFastMethod("type_cast",cf.getFastSingletonMethod("type_cast", IRubyObject.class));
+        rubyApi = adapter;
     }
 
     /*
@@ -64,11 +67,11 @@ public class JdbcDerbySpec {
     public static IRubyObject type_cast(IRubyObject recv, IRubyObject value) {
         Ruby runtime = recv.getRuntime();
 
-        if(value.isNil() || ((value instanceof RubyString) && value.toString().trim().equalsIgnoreCase("null"))) {
+        if (value.isNil() || ((value instanceof RubyString) && value.toString().trim().equalsIgnoreCase("null"))) {
             return runtime.getNil();
         }
 
-        String type = recv.getInstanceVariable("@type").toString();
+        String type = rubyApi.getInstanceVariable(recv,"@type").toString();
 
         switch(type.charAt(0)) {
         case 's': //string
@@ -77,30 +80,30 @@ public class JdbcDerbySpec {
             if(type.equals("text")) {
                 return value;
             } else {
-                return recv.callMethod(runtime.getCurrentContext(), "cast_to_time", value);
+                return rubyApi.callMethod(recv, "cast_to_time", value);
             }
         case 'i': //integer
         case 'p': //primary key
-            if(value.respondsTo("to_i")) {
-                return value.callMethod(runtime.getCurrentContext(), "to_i");
+            if (value.respondsTo("to_i")) {
+                return rubyApi.callMethod(value, "to_i");
             } else {
-                return runtime.newFixnum( value.isTrue() ? 1 : 0 );
+                return runtime.newFixnum(value.isTrue() ? 1 : 0 );
             }
         case 'd': //decimal, datetime, date
             if(type.equals("datetime")) {
-                return recv.callMethod(runtime.getCurrentContext(), "cast_to_date_or_time", value);
+                return rubyApi.callMethod(recv, "cast_to_date_or_time", value);
             } else if(type.equals("date")) {
-                return recv.getMetaClass().callMethod(runtime.getCurrentContext(), "string_to_date", value);
+                return rubyApi.callMethod(recv.getMetaClass(), "string_to_date", value);
             } else {
-                return recv.getMetaClass().callMethod(runtime.getCurrentContext(), "value_to_decimal", value);
+                return rubyApi.callMethod(recv.getMetaClass(), "value_to_decimal", value);
             }
         case 'f': //float
-            return value.callMethod(runtime.getCurrentContext(),"to_f");
+            return rubyApi.callMethod(value,"to_f");
         case 'b': //binary, boolean
-            if(type.equals("binary")) {
-                return recv.callMethod(runtime.getCurrentContext(), "value_to_binary", value);
+            if (type.equals("binary")) {
+                return rubyApi.callMethod(recv, "value_to_binary", value);
             } else {
-                return recv.getMetaClass().callMethod(runtime.getCurrentContext(), "value_to_boolean", value);
+                return rubyApi.callMethod(recv.getMetaClass(), "value_to_boolean", value);
             }
         }
         return value;
@@ -110,26 +113,26 @@ public class JdbcDerbySpec {
         Ruby runtime = recv.getRuntime();
         Arity.checkArgumentCount(runtime, args, 1, 2);
         IRubyObject value = args[0];
-        if(args.length > 1) {
+        if (args.length > 1) {
             IRubyObject col = args[1];
-            IRubyObject type = col.callMethod(runtime.getCurrentContext(),"type");
-            if(value instanceof RubyString) {
-                if(type == runtime.newSymbol("string")) {
+            IRubyObject type = rubyApi.callMethod(col, "type");
+            if (value instanceof RubyString) {
+                if (type == runtime.newSymbol("string")) {
                     return quote_string_with_surround(runtime, "'", (RubyString)value, "'");
-                } else if(type == runtime.newSymbol("text")) {
+                } else if (type == runtime.newSymbol("text")) {
                     return quote_string_with_surround(runtime, "CAST('", (RubyString)value, "' AS CLOB)");
-                } else if(type == runtime.newSymbol("binary")) {
+                } else if (type == runtime.newSymbol("binary")) {
                     return hexquote_string_with_surround(runtime, "CAST('", (RubyString)value, "' AS BLOB)");
                 } else {
                     // column type :integer or other numeric or date version
-                    if(only_digits((RubyString)value)) {
+                    if (only_digits((RubyString)value)) {
                         return value;
                     } else {
                         return super_quote(recv, runtime, value, col);
                     }
                 }
-            } else if((value instanceof RubyFloat) || (value instanceof RubyFixnum) || (value instanceof RubyBignum)) {
-                if(type == runtime.newSymbol("string")) {
+            } else if ((value instanceof RubyFloat) || (value instanceof RubyFixnum) || (value instanceof RubyBignum)) {
+                if (type == runtime.newSymbol("string")) {
                     return quote_string_with_surround(runtime, "'", RubyString.objAsString(value), "'");
                 }
             }
@@ -140,39 +143,40 @@ public class JdbcDerbySpec {
     private final static ByteList NULL = new ByteList("NULL".getBytes());
 
     public static IRubyObject super_quote(IRubyObject recv, Ruby runtime, IRubyObject value, IRubyObject col) {
-        if(value.respondsTo("quoted_id")) {
-            return value.callMethod(runtime.getCurrentContext(), "quoted_id");
+        if (value.respondsTo("quoted_id")) {
+            return rubyApi.callMethod(value, "quoted_id");
         }
         
-        IRubyObject type = (col.isNil()) ? col : col.callMethod(runtime.getCurrentContext(),"type");
-        if(value instanceof RubyString || 
-           value.isKindOf((RubyModule)(((RubyModule)((RubyModule)runtime.getModule("ActiveSupport")).getConstant("Multibyte")).getConstantAt("Chars")))) {
+        IRubyObject type = (col.isNil()) ? col : rubyApi.callMethod(col, "type");
+        RubyModule multibyteChars = (RubyModule) 
+                ((RubyModule) ((RubyModule) runtime.getModule("ActiveSupport")).getConstant("Multibyte")).getConstantAt("Chars");
+        if (value instanceof RubyString || rubyApi.isKindOf(value, multibyteChars)) {
             RubyString svalue = RubyString.objAsString(value);
-            if(type == runtime.newSymbol("binary") && col.getType().respondsTo("string_to_binary")) {
-                return quote_string_with_surround(runtime, "'", (RubyString)(col.getType().callMethod(runtime.getCurrentContext(), "string_to_binary", svalue)), "'"); 
-            } else if(type == runtime.newSymbol("integer") || type == runtime.newSymbol("float")) {
+            if (type == runtime.newSymbol("binary") && col.getType().respondsTo("string_to_binary")) {
+                return quote_string_with_surround(runtime, "'", (RubyString)(rubyApi.callMethod(col.getType(), "string_to_binary", svalue)), "'"); 
+            } else if (type == runtime.newSymbol("integer") || type == runtime.newSymbol("float")) {
                 return RubyString.objAsString(((type == runtime.newSymbol("integer")) ? 
-                                               svalue.callMethod(runtime.getCurrentContext(), "to_i") : 
-                                               svalue.callMethod(runtime.getCurrentContext(), "to_f")));
+                                               rubyApi.callMethod(svalue, "to_i") : 
+                                               rubyApi.callMethod(svalue, "to_f")));
             } else {
                 return quote_string_with_surround(runtime, "'", svalue, "'"); 
             }
-        } else if(value.isNil()) {
+        } else if (value.isNil()) {
             return runtime.newStringShared(NULL);
-        } else if(value instanceof RubyBoolean) {
+        } else if (value instanceof RubyBoolean) {
             return (value.isTrue() ? 
-                    (type == runtime.newSymbol(":integer")) ? runtime.newString("1") : recv.callMethod(runtime.getCurrentContext(),"quoted_true") :
-                    (type == runtime.newSymbol(":integer")) ? runtime.newString("0") : recv.callMethod(runtime.getCurrentContext(),"quoted_false"));
+                    (type == runtime.newSymbol(":integer")) ? runtime.newString("1") : rubyApi.callMethod(recv, "quoted_true") :
+                    (type == runtime.newSymbol(":integer")) ? runtime.newString("0") : rubyApi.callMethod(recv, "quoted_false"));
         } else if((value instanceof RubyFloat) || (value instanceof RubyFixnum) || (value instanceof RubyBignum)) {
             return RubyString.objAsString(value);
         } else if(value instanceof RubyBigDecimal) {
-            return value.callMethod(runtime.getCurrentContext(), "to_s", runtime.newString("F"));
-        } else if(value.isKindOf(runtime.getModule("Date"))) {
+            return rubyApi.callMethod(value, "to_s", runtime.newString("F"));
+        } else if (rubyApi.isKindOf(value, runtime.getModule("Date"))) {
             return quote_string_with_surround(runtime, "'", RubyString.objAsString(value), "'"); 
-        } else if(value.isKindOf(runtime.getModule("Time")) || value.isKindOf(runtime.getModule("DateTime"))) {
-            return quote_string_with_surround(runtime, "'", (RubyString)(recv.callMethod(runtime.getCurrentContext(), "quoted_date", value)), "'"); 
+        } else if (rubyApi.isKindOf(value, runtime.getModule("Time")) || rubyApi.isKindOf(value, runtime.getModule("DateTime"))) {
+            return quote_string_with_surround(runtime, "'", (RubyString)(rubyApi.callMethod(recv, "quoted_date", value)), "'"); 
         } else {
-            return quote_string_with_surround(runtime, "'", (RubyString)(value.callMethod(runtime.getCurrentContext(), "to_yaml")), "'");
+            return quote_string_with_surround(runtime, "'", (RubyString)(rubyApi.callMethod(value, "to_yaml")), "'");
         }
     }
 
@@ -256,55 +260,58 @@ public class JdbcDerbySpec {
     }
 
     public static IRubyObject select_all(IRubyObject recv, IRubyObject[] args) {
-        return recv.callMethod(recv.getRuntime().getCurrentContext(),"execute",args);
+        return rubyApi.callMethod(recv, "execute", args);
     }
 
     public static IRubyObject select_one(IRubyObject recv, IRubyObject[] args) {
-        IRubyObject limit = recv.getInstanceVariable("@limit");
-        if(limit == null || limit.isNil()) {
-            recv.setInstanceVariable("@limit", recv.getRuntime().newFixnum(1));
+        IRubyObject limit = rubyApi.getInstanceVariable(recv, "@limit");
+        if (limit == null || limit.isNil()) {
+            rubyApi.setInstanceVariable(recv, "@limit", recv.getRuntime().newFixnum(1));
         }
         try {
-            return recv.callMethod(recv.getRuntime().getCurrentContext(),"execute",args).callMethod(recv.getRuntime().getCurrentContext(), "first");
+            IRubyObject result = rubyApi.callMethod(recv, "execute", args);
+            return rubyApi.callMethod(result, "first");
         } finally {
-            recv.setInstanceVariable("@limit", recv.getRuntime().getNil());
+            rubyApi.setInstanceVariable(recv, "@limit", recv.getRuntime().getNil());
         }
     }
 
     public static IRubyObject add_limit_offset(IRubyObject recv, IRubyObject sql, IRubyObject options) {
-        recv.setInstanceVariable("@limit", options.callMethod(recv.getRuntime().getCurrentContext(), MethodIndex.AREF, "[]", recv.getRuntime().newSymbol("limit")));
-        return recv.setInstanceVariable("@offset", options.callMethod(recv.getRuntime().getCurrentContext(), MethodIndex.AREF, "[]", recv.getRuntime().newSymbol("offset")));
+        IRubyObject limit = rubyApi.callMethod(options, "[]", recv.getRuntime().newSymbol("limit"));
+        rubyApi.setInstanceVariable(recv, "@limit",limit);
+        IRubyObject offset = rubyApi.callMethod(options, "[]", recv.getRuntime().newSymbol("offset"));
+        return rubyApi.setInstanceVariable(recv, "@offset",offset);
     }
 
     public static IRubyObject _execute(IRubyObject recv, IRubyObject[] args) throws SQLException, java.io.IOException {
         Ruby runtime = recv.getRuntime();
         try {
-            IRubyObject conn = recv.getInstanceVariable("@connection");
-            String sql = args[0].toString().trim().toLowerCase();
-            if(sql.charAt(0) == '(') {
+            IRubyObject conn = rubyApi.getInstanceVariable(recv, "@connection");
+            String sql = rubyApi.convertToRubyString(args[0]).toString().trim().toLowerCase();
+            if (sql.charAt(0) == '(') {
                 sql = sql.substring(1).trim();
             }
-            if(sql.startsWith("insert")) {
+            if (sql.startsWith("insert")) {
                 return JdbcAdapterInternalService.execute_insert(conn, args[0]);
-            } else if(sql.startsWith("select") || sql.startsWith("show")) {
-                IRubyObject offset = recv.getInstanceVariable("@offset");
+            } else if (sql.startsWith("select") || sql.startsWith("show")) {
+                IRubyObject offset = rubyApi.getInstanceVariable(recv, "@offset");
                 if(offset == null || offset.isNil()) {
                     offset = RubyFixnum.zero(runtime);
                 }
-                IRubyObject limit = recv.getInstanceVariable("@limit");
+                IRubyObject limit = rubyApi.getInstanceVariable(recv, "@limit");
                 IRubyObject range;
                 IRubyObject max;
-                if(limit == null || limit.isNil() || RubyNumeric.fix2int(limit) == -1) {
+                if (limit == null || limit.isNil() || RubyNumeric.fix2int(limit) == -1) {
                     range = RubyRange.newRange(runtime, offset, runtime.newFixnum(-1), false);
                     max = RubyFixnum.zero(runtime);
                 } else {
-                    IRubyObject v1 = offset.callMethod(runtime.getCurrentContext(), MethodIndex.OP_PLUS, "+", limit);
+                    IRubyObject v1 = rubyApi.callMethod(offset, "+", limit);
                     range = RubyRange.newRange(runtime, offset, v1, true);
-                    max = v1.callMethod(runtime.getCurrentContext(), MethodIndex.OP_PLUS, "+", RubyFixnum.one(runtime));
+                    max = rubyApi.callMethod(v1, "+", RubyFixnum.one(runtime));
                 }
-                IRubyObject ret = JdbcAdapterInternalService.execute_query(conn, new IRubyObject[]{args[0], max}).
-                    callMethod(runtime.getCurrentContext(), MethodIndex.AREF, "[]", range);
-                if(ret.isNil()) {
+                IRubyObject result = JdbcAdapterInternalService.execute_query(conn, new IRubyObject[]{args[0], max});
+                IRubyObject ret = rubyApi.callMethod(result, "[]", range);
+                if (ret.isNil()) {
                     return runtime.newArray();
                 } else {
                     return ret;
@@ -313,8 +320,8 @@ public class JdbcDerbySpec {
                 return JdbcAdapterInternalService.execute_update(conn, args[0]);
             }
         } finally {
-            recv.setInstanceVariable("@limit",runtime.getNil());
-            recv.setInstanceVariable("@offset",runtime.getNil());
+            rubyApi.setInstanceVariable(recv, "@limit", runtime.getNil());
+            rubyApi.setInstanceVariable(recv, "@offset", runtime.getNil());
         }
     }
 }
