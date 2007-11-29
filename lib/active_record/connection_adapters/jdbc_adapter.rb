@@ -56,10 +56,10 @@ module ActiveRecord
     extend JdbcSpec::ActiveRecordExtensions
 
     alias :attributes_with_quotes_pre_oracle :attributes_with_quotes
-    def attributes_with_quotes(include_primary_key = true) #:nodoc:
-      aq = attributes_with_quotes_pre_oracle(include_primary_key)
+    def attributes_with_quotes(*args) #:nodoc:
+      aq = attributes_with_quotes_pre_oracle(*args)
       if connection.class == ConnectionAdapters::JdbcAdapter && (connection.is_a?(JdbcSpec::Oracle) || connection.is_a?(JdbcSpec::Mimer))
-        aq[self.class.primary_key] = "?" if include_primary_key && aq[self.class.primary_key].nil?
+        aq[self.class.primary_key] = "?" if args.first && aq[self.class.primary_key].nil?
       end
       aq
     end
