@@ -287,7 +287,7 @@ public class JdbcDerbySpec {
         Ruby runtime = recv.getRuntime();
         try {
             IRubyObject conn = rubyApi.getInstanceVariable(recv, "@connection");
-            String sql = rubyApi.convertToRubyString(args[0]).toString().trim().toLowerCase();
+            String sql = args[0].toString().trim().toLowerCase();
             if (sql.charAt(0) == '(') {
                 sql = sql.substring(1).trim();
             }
