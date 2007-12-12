@@ -92,7 +92,6 @@ begin
     p.summary = "JDBC adapter for ActiveRecord, for use within JRuby on Rails."
     p.changes = p.paragraphs_of('History.txt', 0..1).join("\n\n")
     p.description = p.paragraphs_of('README.txt', 0...1).join("\n\n")
-    p.extra_deps << ['activerecord', ">= 1.14"]
   end.spec.dependencies.delete_if { |dep| dep.name == "hoe" }
 rescue LoadError
   puts "You really need Hoe installed to be able to package this gem"
