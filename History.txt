@@ -1,61 +1,77 @@
+== 0.7
+
+- PLEASE NOTE: This release is not compatible with JRuby releases earlier than
+  1.0.3 or 1.1b2. If you must use JRuby 1.0.2 or earlier, please install the
+  0.6 release.
+- Release coincides with JRuby 1.0.3 and JRuby 1.1b2 releases
+- Simultaneous support for JRuby trunk and 1.0 branch
+
 == 0.6
 
-- Gem is renamed to "activerecord-jdbc-adapter" to follow new conventions introduced in Rails 2.0 for third-party adapters. Rails 2.0 compatibility is introduced.
+- Gem is renamed to "activerecord-jdbc-adapter" to follow new conventions
+  introduced in Rails 2.0 for third-party adapters. Rails 2.0 compatibility is
+  introduced.
 - Add dependency on ActiveRecord >= 1.14 (from the Rails 1.1.x release)
-- New drivers (jdbc-XXX) and adapter (activerecord-jdbcXXX-adapter) gems available separately. See the README.txt file for details.
-- Plain "jdbc" driver is still available if you want to use the full driver/url way of specifying the driver.
+- New drivers (jdbc-XXX) and adapter (activerecord-jdbcXXX-adapter) gems
+  available separately. See the README.txt file for details.
+- Plain "jdbc" driver is still available if you want to use the full
+  driver/url way of specifying the driver.
 - More bugfixes to Oracle and SQLServer courtesy of Ola & ThoughtWorks
 
 == 0.5
 
 - Release coincides with JRuby 1.0.1 release
-- It is no longer necessary to specify :driver and :url configuration parameters for the mysql, 
-  postgresql, oracle, derby, hsqldb, and h2 adapters.  The previous configuration is still
-  valid and compatible, but for new applications, this makes it possible to use the exact same
-  database.yml configuration as Rails applications running under native Ruby.
-- JDBC drivers can now be dynamically loaded by Ruby code, without being on the classpath prior to
-  launching JRuby. Simply use "require 'jdbc-driver.jar'" in JRuby code to add it to the runtime
-  classpath.
+- It is no longer necessary to specify :driver and :url configuration
+  parameters for the mysql, postgresql, oracle, derby, hsqldb, and h2
+  adapters. The previous configuration is still valid and compatible, but for
+  new applications, this makes it possible to use the exact same database.yml
+  configuration as Rails applications running under native Ruby.
+- JDBC drivers can now be dynamically loaded by Ruby code, without being on
+  the classpath prior to launching JRuby. Simply use "require
+  'jdbc-driver.jar'" in JRuby code to add it to the runtime classpath.
 - Updates to HSQL, MS SQLServer, Postgres, Oracle and Derby adapters
 
 == 0.4
 
 - Release coincides with JRuby 1.0 release
-- Shoring up PostgreSQL (courtesy Dudley Flanders) and HSQL (courtesy Matthew Williams)
+- Shoring up PostgreSQL (courtesy Dudley Flanders) and HSQL (courtesy Matthew
+  Williams)
 - Fix timestamps on Oracle to use DATE (as everything else)
-- Derby fixes: Fix for open result set issue, better structure dump, quoting, column type changing
+- Derby fixes: Fix for open result set issue, better structure dump, quoting,
+  column type changing
 - Sybase type recognition fix (courtesy Dean Mao)
 
 == 0.3.1
 
-* Derby critical fixes shortly after 0.3
+- Derby critical fixes shortly after 0.3
 
 == 0.3
 
-* Release coincides with JRuby 1.0.0RC1 release
-* Improvements for Derby, Postgres, and Oracle, all of which are running 
+- Release coincides with JRuby 1.0.0RC1 release
+- Improvements for Derby, Postgres, and Oracle, all of which are running 
   > 95% of AR tests
 
 == 0.2.4
 
-* Release coincides with JRuby 0.9.9 release
-* JRuby 0.9.9 is required
-* MySQL close to 100% working
-* Derby improvements
-* DECIMAL/NUMERIC/FLOAT/REAL bugs fixed with type recognition for Oracle, Postgres, etc.
-* HSQLDB has regressed this release and may not be functioning; we'll get it fixed for the
-  next one
+- Release coincides with JRuby 0.9.9 release
+- JRuby 0.9.9 is required
+- MySQL close to 100% working
+- Derby improvements
+- DECIMAL/NUMERIC/FLOAT/REAL bugs fixed with type recognition for Oracle,
+  Postgres, etc.
+- HSQLDB has regressed this release and may not be functioning; we'll get it
+  fixed for the next one
 
 == 0.2.3
 
-* Release coincides (and compatible) with JRuby 0.9.8 release
-* 8 bugs fixed: see http://rubyurl.com/0Da
-* Improvements and compatibility fixes for Rails 1.2.x
+- Release coincides (and compatible) with JRuby 0.9.8 release
+- 8 bugs fixed: see http://rubyurl.com/0Da
+- Improvements and compatibility fixes for Rails 1.2.x
 
 == 0.2.1, 0.2.2
 
-* Early releases, added better support for multiple databases
+- Early releases, added better support for multiple databases
 
 == 0.0.1
 
-* Initial, very alpha release
+- Initial, very alpha release
