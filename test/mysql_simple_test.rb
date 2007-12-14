@@ -11,3 +11,7 @@ require 'db/mysql'
 class MysqlSimpleTest < Test::Unit::TestCase
   include SimpleTestMethods
 end
+
+class MysqlHasManyThroughTest < Test::Unit::TestCase
+  include HasManyThroughMethods
+end
