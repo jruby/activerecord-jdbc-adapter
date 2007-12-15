@@ -5,6 +5,9 @@
   0.6 release.
 - Release coincides with JRuby 1.0.3 and JRuby 1.1b2 releases
 - Simultaneous support for JRuby trunk and 1.0 branch
+- Get rid of log_no_bench method, so we time SQL execution again.
+- Implement #select_rows
+- MySQL migration and quoting updates
 
 == 0.6
 

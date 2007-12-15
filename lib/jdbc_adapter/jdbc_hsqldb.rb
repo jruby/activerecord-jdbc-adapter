@@ -134,7 +134,7 @@ module ::JdbcSpec
     end
 
     def insert(sql, name = nil, pk = nil, id_value = nil, sequence_name = nil) #:nodoc:
-      log_no_bench(sql,name) do
+      log(sql,name) do
         @connection.execute_update(sql)
       end
       table = sql.split(" ", 4)[2]

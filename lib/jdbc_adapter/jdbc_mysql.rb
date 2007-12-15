@@ -81,6 +81,10 @@ module ::JdbcSpec
     def quote_column_name(name) #:nodoc:
         "`#{name}`"
     end
+
+    def quote_table_name(name) #:nodoc:
+      quote_column_name(name).gsub('.', '`.`')
+    end
     
     def quoted_true
         "1"
@@ -90,6 +94,25 @@ module ::JdbcSpec
         "0"
     end
     
+    def begin_db_transaction #:nodoc:
+      @connection.begin
+    rescue Exception
+      # Transactions aren't supported
+    end
+
+    def commit_db_transaction #:nodoc:
+      @connection.commit
+    rescue Exception
+      # Transactions aren't supported
+    end
+
+    def rollback_db_transaction #:nodoc:
+      @connection.rollback
+    rescue Exception
+      # Transactions aren't supported
+    end
+
+
     # SCHEMA STATEMENTS ========================================
     
     def structure_dump #:nodoc:
@@ -101,7 +124,7 @@ module ::JdbcSpec
       
       select_all(sql).inject("") do |structure, table|
         table.delete('Table_type')
-        structure += select_one("SHOW CREATE TABLE #{table.to_a.first.last}")["Create Table"] + ";\n\n"
+        structure += select_one("SHOW CREATE TABLE #{quote_table_name(table.to_a.first.last)}")["Create Table"] + ";\n\n"
       end
     end
     
@@ -127,28 +150,32 @@ module ::JdbcSpec
     end
     
     def rename_table(name, new_name)
-      execute "RENAME TABLE #{name} TO #{new_name}"
+      execute "RENAME TABLE #{quote_table_name(name)} TO #{quote_table_name(new_name)}"
     end  
     
     def change_column_default(table_name, column_name, default) #:nodoc:
-      current_type = select_one("SHOW COLUMNS FROM #{table_name} LIKE '#{column_name}'")["Type"]
+      current_type = select_one("SHOW COLUMNS FROM #{quote_table_name(table_name)} LIKE '#{column_name}'")["Type"]
 
-      execute("ALTER TABLE #{table_name} CHANGE #{column_name} #{column_name} #{current_type} DEFAULT #{quote(default)}")
+      execute("ALTER TABLE #{quote_table_name(table_name)} CHANGE #{quote_column_name(column_name)} #{quote_column_name(column_name)} #{current_type} DEFAULT #{quote(default)}")
     end
     
     def change_column(table_name, column_name, type, options = {}) #:nodoc:
-      unless options.include?(:default) && !(options[:null] == false && options[:default].nil?)
-        options[:default] = select_one("SHOW COLUMNS FROM #{table_name} LIKE '#{column_name}'")["Default"]
+      unless options_include_default?(options)
+        if column = columns(table_name).find { |c| c.name == column_name.to_s }
+          options[:default] = column.default
+        else
+          raise "No such column: #{table_name}.#{column_name}"
+        end
       end
-      
-      change_column_sql = "ALTER TABLE #{table_name} CHANGE #{column_name} #{column_name} #{type_to_sql(type, options[:limit], options[:precision], options[:scale])}"
+
+      change_column_sql = "ALTER TABLE #{quote_table_name(table_name)} CHANGE #{quote_column_name(column_name)} #{quote_column_name(column_name)} #{type_to_sql(type, options[:limit], options[:precision], options[:scale])}"
       add_column_options!(change_column_sql, options)
       execute(change_column_sql)
     end
-    
+
     def rename_column(table_name, column_name, new_column_name) #:nodoc:
-      current_type = select_one("SHOW COLUMNS FROM #{table_name} LIKE '#{column_name}'")["Type"]
-      execute "ALTER TABLE #{table_name} CHANGE #{column_name} #{new_column_name} #{current_type}"
+      current_type = select_one("SHOW COLUMNS FROM #{quote_table_name(table_name)} LIKE '#{column_name}'")["Type"]
+      execute "ALTER TABLE #{quote_table_name(table_name)} CHANGE #{quote_table_name(column_name)} #{quote_column_name(new_column_name)} #{current_type}"
     end
     
     def add_limit_offset!(sql, options) #:nodoc:
@@ -159,6 +186,20 @@ module ::JdbcSpec
           sql << " LIMIT #{offset}, #{limit}"
         end
       end
+    end
+
+    def show_variable(var)
+      res = execute("show variables like '#{var}'")
+      row = res.detect {|row| row["Variable_name"] == var }
+      row && row["Value"]
+    end
+
+    def charset
+      show_variable("character_set_database")
+    end
+
+    def collation
+      show_variable("collation_database")
     end
 
     private

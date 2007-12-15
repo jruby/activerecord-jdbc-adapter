@@ -10,7 +10,7 @@ module ActiveRecord
       # The original implementation of this had a bug, which modifies native_database_types.
       # This version allows us to cache that value.
       def type_to_sql(type, limit = nil, precision = nil, scale = nil) #:nodoc:
-        native = native_database_types[type]
+        native = native_database_types[type.to_s.downcase.to_sym]
         column_type_sql = native.is_a?(Hash) ? native[:name] : native
         if type == :decimal # ignore limit, use precison and scale
           precision ||= native[:precision]
@@ -171,7 +171,14 @@ module ActiveRecord
 
       def choose_best_types
         type_map = {}
-        AR_TO_JDBC_TYPES.each_key do |k|
+        @types.each do |row|
+          name = row['type_name'].downcase
+          k = name.to_sym
+          type_map[k] = { :name => name }
+          type_map[k][:limit] = row['precision'].to_i if row['precision']
+        end
+
+        AR_TO_JDBC_TYPES.keys.each do |k|
           typerow = choose_type(k)
           type_map[k] = { :name => typerow['type_name'].downcase }
           case k
@@ -470,11 +477,17 @@ module ActiveRecord
       end
       
       def disconnect!
-	@connection.disconnect!
+        @connection.disconnect!
       end
 
       def select_all(sql, name = nil)
         select(sql, name)
+      end
+
+      def select_rows(sql, name = nil)
+        rows = []
+        select(sql, name).each {|row| rows << row.values }
+        rows
       end
 
       def select_one(sql, name = nil)
@@ -482,7 +495,7 @@ module ActiveRecord
       end
 
       def execute(sql, name = nil)
-        log_no_bench(sql, name) do
+        log(sql, name) do
           _execute(sql,name)
         end
       end
@@ -541,27 +554,6 @@ module ActiveRecord
       private
       def select(sql, name=nil)
         execute(sql,name)
-      end
-
-      def log_no_bench(sql, name)
-        if block_given?
-          if @logger and @logger.level <= Logger::INFO
-            result = yield
-            log_info(sql, name, 0)
-            result
-          else
-            yield
-          end
-        else
-          log_info(sql, name, 0)
-          nil
-        end
-      rescue Exception => e
-        # Log message and raise exception.
-        message = "#{e.class.name}: #{e.message}: #{sql}"
-
-        log_info(message, name, 0)
-        raise ActiveRecord::StatementInvalid, message
       end
     end
   end

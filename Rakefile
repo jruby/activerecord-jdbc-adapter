@@ -29,6 +29,7 @@ task :more_clean do
   rm_rf FileList['test.db.*']
   rm_rf "test/reports"
   rm_f FileList['lib/**/*.jar']
+  rm_f "manifest.mf"
 end
 
 task :clean => :more_clean
