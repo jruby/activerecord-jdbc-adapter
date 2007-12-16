@@ -1,0 +1,31 @@
+MANIFEST = FileList["Manifest.txt", "Rakefile", "README.txt", "LICENSE.txt", "lib/**/*"]
+
+file "Manifest.txt" => :manifest
+task :manifest do
+  File.open("Manifest.txt", "w") {|f| MANIFEST.each {|n| f << "#{n}\n"} }
+end
+Rake::Task['manifest'].invoke
+
+require File.dirname(__FILE__) + "/../../lib/jdbc_adapter/version"
+$LOAD_PATH << File.dirname(__FILE__) + "/../../drivers/h2/lib"
+require "jdbc/h2"
+
+begin
+  require 'hoe'
+  Hoe.new("activerecord-jdbch2-adapter", JdbcAdapter::Version::VERSION) do |p|
+    p.rubyforge_name = "jruby-extras"
+    p.url = "http://jruby-extras.rubyforge.org/ActiveRecord-JDBC"
+    p.author = "Nick Sieger, Ola Bini and JRuby contributors"
+    p.email = "nick@nicksieger.com, ola.bini@gmail.com"
+    p.summary = "H2 JDBC adapter for JRuby on Rails."
+    p.changes = "Updated to H2 version #{Jdbc::H2::VERSION}."
+    p.description = "Install this gem to use H2 with JRuby on Rails."
+    p.extra_deps += [
+      ['activerecord-jdbc-adapter', ">= #{JdbcAdapter::Version::VERSION}"],
+      ['jdbc-h2', ">= #{Jdbc::H2::VERSION}"]]
+  end.spec.dependencies.delete_if { |dep| dep.name == "hoe" }
+rescue LoadError
+  puts "You really need Hoe installed to be able to package this gem"
+rescue => e
+  puts "ignoring error while loading hoe: #{e.to_s}"
+end

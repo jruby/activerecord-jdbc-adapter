@@ -1,0 +1,2 @@
+This gem bundles the H2 driver for Java.  H2 is available under the terms of the H2 license, see http://www.h2database.com/html/license.html for details.
+
