@@ -40,7 +40,7 @@ end
 
 if RUBY_PLATFORM =~ /java/
   # TODO: add more databases into the standard tests here.
-  task :test => [:test_mysql, :test_jdbc, :test_derby, :test_hsqldb]
+  task :test => [:test_mysql, :test_jdbc, :test_derby, :test_hsqldb, :test_h2]
 else
   task :test => [:test_mysql]
 end

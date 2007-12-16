@@ -164,5 +164,9 @@ module ::JdbcSpec
     def tables
       @connection.tables.select {|row| row.to_s !~ /^system_/i }
     end
+
+    def remove_index(table_name, options = {})
+      execute "DROP INDEX #{quote_column_name(index_name(table_name, options))}"
+    end
   end
 end
