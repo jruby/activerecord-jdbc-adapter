@@ -4,6 +4,10 @@ require 'active_record/connection_adapters/jdbc_adapter_spec'
 require 'jdbc_adapter/jdbc_adapter_internal'
 require 'bigdecimal'
 
+if defined?(RAILS_ROOT)
+  require 'jdbc_adapter/rake_tasks'
+end
+
 module ActiveRecord
   module ConnectionAdapters # :nodoc:
     module SchemaStatements
