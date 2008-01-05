@@ -18,9 +18,11 @@ end
 
 desc "Compile the native Java code."
 task :java_compile do
-  mkdir_p "pkg/classes"
+  pkg_classes = File.join(*%w(pkg classes))
+  jar_name = File.join(*%w(lib jdbc_adapter jdbc_adapter_internal.jar))
+  mkdir_p pkg_classes
   sh "javac -target 1.4 -source 1.4 -d pkg/classes #{java_classpath_arg} #{FileList['src/java/**/*.java'].join(' ')}"
-  sh "jar cf lib/jdbc_adapter/jdbc_adapter_internal.jar -C pkg/classes/ ."
+  sh "jar cf #{jar_name} -C #{pkg_classes} ."
 end
 file "lib/jdbc_adapter/jdbc_adapter_internal.jar" => :java_compile
 
