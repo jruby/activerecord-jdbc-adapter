@@ -668,7 +668,7 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
             int[] col_scale = new int[col_count];
 
             for(int i=0;i<col_count;i++) {
-                col_names[i] = runtime.newString(metadata.getColumnName(i+1).toLowerCase());
+                col_names[i] = RubyString.newUnicodeString(runtime, metadata.getColumnName(i+1).toLowerCase());
                 col_types[i] = metadata.getColumnType(i+1);
                 col_scale[i] = metadata.getScale(i+1);
             }
@@ -707,7 +707,7 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
                 if(storesUpper && !HAS_SMALL.matcher(s1).find()) {
                     s1 = s1.toLowerCase();
                 }
-                col_names[i] = runtime.newString(s1);
+                col_names[i] = RubyString.newUnicodeString(runtime, s1);
                 col_types[i] = metadata.getColumnType(i+1);
                 col_scale[i] = metadata.getScale(i+1);
             }
@@ -741,7 +741,7 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
             int[] col_scale = new int[col_count];
 
             for (int i=0;i<col_count;i++) {
-                col_names[i] = runtime.newString(metadata.getColumnName(i+1));
+                col_names[i] = RubyString.newUnicodeString(runtime, metadata.getColumnName(i+1));
                 col_types[i] = metadata.getColumnType(i+1);
                 col_scale[i] = metadata.getScale(i+1);
             }

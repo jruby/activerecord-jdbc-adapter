@@ -167,6 +167,18 @@ module MultibyteTestMethods
     super
   end
 
+  def test_multibyte_aliasing
+    str = "テスト"
+    quoted_alias = Entry.connection.quote_column_name(str)
+    sql = "SELECT title AS #{quoted_alias} from entries"
+    records = Entry.connection.select_all(sql)
+    records.each do |rec|
+      rec.keys.each do |key|
+        assert_equal str, key
+      end
+    end
+  end
+  
   def test_select_multibyte_string
     @java_con.createStatement().execute("insert into entries (title, content) values ('テスト', '本文')")
     entry = Entry.find(:first)
