@@ -7,7 +7,11 @@ module ::JdbcSpec
         warn "AR-JDBC MySQL on JRuby does not support sockets"
       end
       config[:port] ||= 3306
-      config[:url] ||= "jdbc:mysql://#{config[:host]}:#{config[:port]}/#{config[:database]}?#{MySQL::URL_OPTIONS}"
+      if config[:url]
+        config[:url] = config[:url]['?'] ? "#{config[:url]}&#{MySQL::URL_OPTIONS}" : "#{config[:url]}?#{MySQL::URL_OPTIONS}"
+      else
+        config[:url] = "jdbc:mysql://#{config[:host]}:#{config[:port]}/#{config[:database]}?#{MySQL::URL_OPTIONS}"
+      end
       config[:driver] = "com.mysql.jdbc.Driver"
       jdbc_connection(config)
     end
