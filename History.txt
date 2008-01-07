@@ -1,6 +1,7 @@
 == 0.7.1
 
 - Add adapter and driver for H2 courtesy of Caleb Land
+- Fix "undefined method `last' for {}:Hash" error introduced with new Rake 0.8.1 (JRUBY-1859)
 
 == 0.7
 

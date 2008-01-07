@@ -25,6 +25,7 @@ What's there, and what is not there:
   * remove_column
   * rename_column
 * HSQLDB - Complete
+* H2 - Complete
 
 Other databases will require testing and likely a custom configuration module. Please join the jruby-extras mailing-list[http://rubyforge.org/mail/?group_id=2014] to help us discover support for more databases.
 
@@ -41,6 +42,7 @@ To use ActiveRecord-JDBC with JRuby on Rails:
   * postgresql (<tt>activerecord-jdbcpostgresql-adapter</tt>)
   * derby (<tt>activerecord-jdbcderby-adapter</tt>)
   * hsqldb (<tt>activerecord-jdbchsqldb-adapter</tt>)
+  * h2 (<tt>activerecord-jdbch2-adapter</tt>)
 
 2. If you're using Rails 2.0, you may skip to the next step. For Rails prior to version 2.0, you'll need to add one-time setup to your config/environment.rb file in your Rails application. Add the following lines just before the <code>Rails::Initializer</code>. (If you're using ActiveRecord-JDBC under the old gem name used in versions 0.5 and earlier, replace 'activerecord-jdbc-adapter' with 'ActiveRecord-JDBC' below.)
 
