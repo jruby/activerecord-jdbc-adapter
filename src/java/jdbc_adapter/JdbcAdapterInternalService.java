@@ -312,7 +312,7 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
                         String name = rs.getString(3).toLowerCase();
                         // Handle stupid Oracle 10g RecycleBin feature
                         if (!isOracle || !name.startsWith("bin$")) {
-                            arr.add(runtime.newString(name));
+                            arr.add(RubyString.newUnicodeString(runtime, name));
                         }
                     }
                     return runtime.newArray(arr);
@@ -516,13 +516,13 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
                     if((isDerby || isOracle) && def.length() > 0 && def.charAt(0) == '\'') {
                         def = def.substring(1, def.length()-1);
                     }
-                    _def = runtime.newString(def);
+                    _def = RubyString.newUnicodeString(runtime, def);
                 }
                 IRubyObject config = rubyApi.getInstanceVariable(recv, "@config");
                 IRubyObject c = rubyApi.callMethod(jdbcCol, "new",
                         new IRubyObject[]{
-                            config, runtime.newString(column_name),
-                            _def, runtime.newString(type),
+                                                       config, RubyString.newUnicodeString(runtime, column_name),
+                                                       _def, RubyString.newUnicodeString(runtime, type),
                             runtime.newBoolean(!rs.getString(18).trim().equals("NO"))
                         });
                 columns.add(c);
@@ -561,7 +561,7 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
                     if (metadata.storesUpperCaseIdentifiers() && !HAS_SMALL.matcher(s1).find()) {
                         s1 = s1.toLowerCase();
                     }
-                    keyNames.add(runtime.newString(s1));
+                    keyNames.add(RubyString.newUnicodeString(runtime,s1));
                 }
 
                 try {
@@ -668,7 +668,7 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
             int[] col_scale = new int[col_count];
 
             for(int i=0;i<col_count;i++) {
-                col_names[i] = RubyString.newUnicodeString(runtime, metadata.getColumnName(i+1).toLowerCase());
+                col_names[i] = RubyString.newUnicodeString(runtime, metadata.getColumnLabel(i+1).toLowerCase());
                 col_types[i] = metadata.getColumnType(i+1);
                 col_scale[i] = metadata.getScale(i+1);
             }
@@ -703,7 +703,7 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
             int[] col_scale = new int[col_count];
 
             for(int i=0;i<col_count;i++) {
-                String s1 = metadata.getColumnName(i+1);
+                String s1 = metadata.getColumnLabel(i+1);
                 if(storesUpper && !HAS_SMALL.matcher(s1).find()) {
                     s1 = s1.toLowerCase();
                 }
@@ -741,7 +741,7 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
             int[] col_scale = new int[col_count];
 
             for (int i=0;i<col_count;i++) {
-                col_names[i] = RubyString.newUnicodeString(runtime, metadata.getColumnName(i+1));
+                col_names[i] = RubyString.newUnicodeString(runtime, metadata.getColumnLabel(i+1));
                 col_types[i] = metadata.getColumnType(i+1);
                 col_scale[i] = metadata.getScale(i+1);
             }
