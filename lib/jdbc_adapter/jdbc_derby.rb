@@ -195,7 +195,21 @@ module ::JdbcSpec
       end
       ""
     end
-    
+
+
+    def add_column(table_name, column_name, type, options = {})
+      if option_not_null = options[:null] == false
+        option_not_null = options.delete(:null)
+      end
+      add_column_sql = "ALTER TABLE #{quote_table_name(table_name)} ADD #{quote_column_name(column_name)} #{type_to_sql(type, options[:limit], options[:precision], options[:scale])}"
+      add_column_options!(add_column_sql, options)
+      execute(add_column_sql)
+      if option_not_null
+        alter_column_sql = "ALTER TABLE #{quote_table_name(table_name)} ALTER #{quote_column_name(column_name)} NOT NULL"
+      end
+    end
+
+    # I don't think this method is ever called ??? (stepheneb)
     def create_column(name, refid, colno)
       stmt = COLUMN_TYPE_STMT % [refid, strip_quotes(name)]
       coldef = ""

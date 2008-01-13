@@ -297,8 +297,11 @@ module ::JdbcSpec
     
     def add_column(table_name, column_name, type, options = {})
       execute("ALTER TABLE #{table_name} ADD #{column_name} #{type_to_sql(type, options[:limit])}")
-      execute("ALTER TABLE #{table_name} ALTER #{column_name} SET NOT NULL") if options[:null] == false
       change_column_default(table_name, column_name, options[:default]) unless options[:default].nil?
+      if options[:null] == false
+        execute("UPDATE #{table_name} SET #{column_name} = '#{options[:default]}'") if options[:default]
+        execute("ALTER TABLE #{table_name} ALTER #{column_name} SET NOT NULL")
+      end
     end
 
     def change_column(table_name, column_name, type, options = {}) #:nodoc:

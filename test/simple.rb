@@ -142,6 +142,11 @@ module SimpleTestMethods
     assert ActiveRecord::Base.connected?
   end
 
+  def test_add_not_null_column_to_table
+    AddNotNullColumnToTable.up
+    AddNotNullColumnToTable.down
+  end
+
   class Animal < ActiveRecord::Base; end
   def test_fetching_columns_for_nonexistent_table_should_raise
     assert_raises(ActiveRecord::ActiveRecordError) do
