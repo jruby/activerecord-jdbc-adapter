@@ -11,6 +11,36 @@ if defined?(namespace) && RUBY_PLATFORM =~ /java/ && ENV["SKIP_AR_JDBC_RAKE_REDE
   end
 
   namespace :db do
+    redefine_task :create => :environment do
+      create_database(ActiveRecord::Base.configurations[RAILS_ENV])
+    end
+
+    def create_database(config)
+      begin
+        ActiveRecord::Base.establish_connection(config)
+        ActiveRecord::Base.connection
+      rescue
+        begin 
+          url = config['url']
+          if url
+            if url =~ /^(.*\/)/
+              url = $1
+            end
+          end
+
+          ActiveRecord::Base.establish_connection(config.merge({'database' => nil, 'url' => url}))
+          ActiveRecord::Base.connection.create_database(config['database'])
+          ActiveRecord::Base.establish_connection(config)
+        rescue
+          if (config['driver'] || config['adapter']) =~ /postgr/
+            `createdb "#{config['database']}" -E utf8`
+          else 
+            warn "couldn't create database #{config['database']}"
+          end
+        end
+      end
+    end
+    
     redefine_task :drop => :environment do
       begin
         config = ActiveRecord::Base.configurations[environment_name]
