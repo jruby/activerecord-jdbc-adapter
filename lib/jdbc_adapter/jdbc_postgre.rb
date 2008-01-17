@@ -1,6 +1,10 @@
 module ::JdbcSpec
+  # Don't need to load native postgres adapter
+  $LOADED_FEATURES << "active_record/connection_adapters/postgresql_adapter.rb"
+
   module ActiveRecordExtensions
     def postgresql_connection(config)
+      config[:host] ||= "localhost"
       config[:port] ||= 5432
       config[:url] ||= "jdbc:postgresql://#{config[:host]}:#{config[:port]}/#{config[:database]}"
       config[:driver] ||= "org.postgresql.Driver"

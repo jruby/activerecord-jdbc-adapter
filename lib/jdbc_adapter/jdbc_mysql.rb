@@ -1,6 +1,9 @@
 require 'active_record/connection_adapters/abstract/schema_definitions'
 
 module ::JdbcSpec
+  # Don't need to load native mysql adapter
+  $LOADED_FEATURES << "active_record/connection_adapters/mysql_adapter.rb"
+
   module ActiveRecordExtensions
     def mysql_connection(config)
       if config[:socket]

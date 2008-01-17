@@ -18,6 +18,9 @@ if RUBY_PLATFORM =~ /java/
     if ActiveRecord::VERSION::MAJOR == 1 && ActiveRecord::VERSION::MINOR == 14
       require 'active_record/connection_adapters/jdbc_adapter'
     end
+  else
+    require 'active_record'
+    require 'active_record/connection_adapters/jdbc_adapter'
   end
 else
   warn "ActiveRecord-JDBC is for use with JRuby only"
