@@ -452,6 +452,12 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
                         schemas.close();
                     }
 
+                    RubyArray matchingTables = (RubyArray) tableLookupBlock(recv.getRuntime(), 
+                                                                            c.getCatalog(), schemaName, table_name, new String[]{"TABLE","VIEW"}).call(c);
+                    if (matchingTables.isEmpty()) {
+                        throw new SQLException("Table " + table_name + " does not exist");
+                    }
+
                     results = metadata.getColumns(c.getCatalog(),schemaName,table_name,null);
                     return unmarshal_columns(recv, metadata, results);
                 } finally {
