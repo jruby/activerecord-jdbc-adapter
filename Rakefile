@@ -74,6 +74,12 @@ end
 task :test_postgresql => [:test_postgres]
 task :test_pgsql => [:test_postgres]
 
+# Ensure oracle driver is on your classpath before launching rake
+Rake::TestTask.new(:test_oracle) do |t|
+  t.test_files = FileList['test/oracle_simple_test.rb']
+  t.libs << 'test'
+end
+
 MANIFEST = FileList["History.txt", "Manifest.txt", "README.txt", 
   "Rakefile", "LICENSE", "lib/**/*.rb", "lib/jdbc_adapter/jdbc_adapter_internal.jar", "test/**/*.rb",
    "lib/**/*.rake", "src/**/*.java"]
