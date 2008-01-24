@@ -131,7 +131,14 @@ module ::JdbcSpec
       
       select_all(sql).inject("") do |structure, table|
         table.delete('Table_type')
-        structure += select_one("SHOW CREATE TABLE #{quote_table_name(table.to_a.first.last)}")["Create Table"] + ";\n\n"
+
+        hash = select_one("SHOW CREATE TABLE #{quote_table_name(table.to_a.first.last)}")
+
+        if(table = hash["Create Table"])
+          structure += table + ";\n\n"
+        elsif(view = hash["Create View"])
+          structure += view + ";\n\n"
+        end        
       end
     end
     
