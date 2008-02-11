@@ -424,11 +424,17 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
                 ResultSet results = null;
                 try {
                     String table_name = rubyApi.convertToRubyString(args[0]).getUnicodeValue();
+                    String schemaName = null;
+
+                    if(table_name.indexOf(".") != -1) {
+                        schemaName = table_name.substring(table_name.indexOf(".")+1);
+                        table_name = table_name.substring(0, table_name.indexOf(".")+1);
+                    }
+
                     DatabaseMetaData metadata = c.getMetaData();
                     String clzName = metadata.getClass().getName().toLowerCase();
                     boolean isDerby = clzName.indexOf("derby") != -1;
                     boolean isOracle = clzName.indexOf("oracle") != -1 || clzName.indexOf("oci") != -1;
-                    String schemaName = null;
 
                     if(args.length>2) {
                         schemaName = args[2].toString();
