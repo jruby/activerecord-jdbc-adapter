@@ -292,7 +292,7 @@ module ::JdbcSpec
     end
 
     def quoted_date(value)
-      value.strftime("%Y-%m-%d %H:%M:%S.#{sprintf("%06d", value.usec)}")
+      value.strftime("%Y-%m-%d %H:%M:%S")
     end
 
     def rename_table(name, new_name)
