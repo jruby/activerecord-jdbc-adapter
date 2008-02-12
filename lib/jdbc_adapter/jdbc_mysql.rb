@@ -188,7 +188,8 @@ module ::JdbcSpec
     end
 
     def rename_column(table_name, column_name, new_column_name) #:nodoc:
-      current_type = select_one("SHOW COLUMNS FROM #{quote_table_name(table_name)} LIKE '#{column_name}'")["Type"]
+      cols = select_one("SHOW COLUMNS FROM #{quote_table_name(table_name)} LIKE '#{column_name}'")
+      current_type = cols["Type"] || cols["COLUMN_TYPE"]
       execute "ALTER TABLE #{quote_table_name(table_name)} CHANGE #{quote_table_name(column_name)} #{quote_column_name(new_column_name)} #{current_type}"
     end
     

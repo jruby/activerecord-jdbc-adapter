@@ -75,7 +75,7 @@ module JdbcSpec
       if column && column.type == :primary_key
         return value.to_s
       end
-      if column && column.type == :decimal && value
+      if column && (column.type == :decimal || column.type == :integer) && value
         return value.to_s
       end
       case value

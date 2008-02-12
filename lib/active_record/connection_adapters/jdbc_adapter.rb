@@ -201,6 +201,10 @@ module ActiveRecord
         types = @types
         procs.each do |p|
           new_types = types.select(&p)
+          new_types = new_types.inject([]) do |typs,t|
+            typs << t unless typs.detect {|el| el['type_name'] == t['type_name']}
+            typs
+          end
           return new_types.first if new_types.length == 1
           types = new_types if new_types.length > 0
         end

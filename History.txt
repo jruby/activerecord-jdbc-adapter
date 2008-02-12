@@ -1,6 +1,19 @@
 == 0.7.2
 
-- Fix for add_column for derby, hsqldb, and postgresql (JRUBY-1905; Stephen Bannasch)
+- JRUBY-1905: add_column for derby, hsqldb, and postgresql (Stephen Bannasch)
+- Fix db:create for JDBC
+- Support Rails 2 with the old "require 'jdbc_adapter'" approach
+- JRUBY-1966: Instead of searching for just tables, search for views and tables.
+- JRUBY-1583: DB2 numeric quoting (Ryan Shillington)
+- JRUBY-1634: Oracle DATE type mapping (Daniel Wintschel)
+- JRUBY-1543: rename_column issue with more recent MySQL drivers (Oliver Schmelzle)
+- Rubyforge #15074: ConnectionAdapters::JdbcAdapter.indexes is missing name and
+  schema_name parameters in the method signature (Igor Minar)
+- Rubyforge #13558: definition for the indexes method (T Meyarivan)
+- JRUBY-2051: handle schemaname and tablename more correctly for columns
+- JRUBY-2102: Postgres Adapter cannot handle datetime type (Rainer Hahnekamp)
+- JRUBY-2018: Oracle behind ActiveRecord-JDBC fails with "Invalid column index" (K Venkatasubramaniyan)
+- JRUBY-2012: jdbc_mysql structure dump fails for mysql views (Tyler Jennings)
 
 == 0.7.1
 
