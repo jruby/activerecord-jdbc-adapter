@@ -536,8 +536,8 @@ module ActiveRecord
         @connection.tables
       end
 
-      def indexes(table_name, name = nil)
-        @connection.indexes(table_name, name)
+      def indexes(table_name, name = nil, schema_name = nil)
+        @connection.indexes(table_name, name, schema_name)
       end
 
       def begin_db_transaction
