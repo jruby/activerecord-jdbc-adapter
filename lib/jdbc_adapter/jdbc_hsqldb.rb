@@ -157,6 +157,17 @@ module ::JdbcSpec
       Integer(select_value("SELECT IDENTITY() FROM #{table}"))
     end
 
+    # Override normal #_execute: See Rubyforge #11567
+    def _execute(sql, name = nil)
+      if ::ActiveRecord::ConnectionAdapters::JdbcConnection::select?(sql)
+        @connection.execute_query(sql)
+      elsif ::ActiveRecord::ConnectionAdapters::JdbcConnection::insert?(sql)
+        insert(sql, name)
+      else
+        @connection.execute_update(sql)
+      end
+    end
+
     def add_limit_offset!(sql, options) #:nodoc:
       offset = options[:offset] || 0
       bef = sql[7..-1]
