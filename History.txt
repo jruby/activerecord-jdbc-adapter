@@ -1,3 +1,7 @@
+== 0.7.3
+
+- Fix for Rubyforge #11567 (Matt Williams)
+
 == 0.7.2
 
 - JRUBY-1905: add_column for derby, hsqldb, and postgresql (Stephen Bannasch)
