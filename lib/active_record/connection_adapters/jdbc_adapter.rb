@@ -342,19 +342,19 @@ module ActiveRecord
               next unless index_name
               index_name.downcase!
               column_name = resultset.get_string(Jdbc::IndexMetaData::COLUMN_NAME).downcase
-              
+
               next if primary_keys.include? column_name
-              
+
               # We are working on a new index
               if current_index != index_name
                 current_index = index_name
                 table_name = resultset.get_string(Jdbc::IndexMetaData::TABLE_NAME).downcase
                 non_unique = resultset.get_boolean(Jdbc::IndexMetaData::NON_UNIQUE)
-                
+
                 # empty list for column names, we'll add to that in just a bit
                 indexes << IndexDefinition.new(table_name, index_name, !non_unique, [])
               end
-              
+
               # One or more columns can be associated with an index
               indexes.last.columns << column_name
             end
@@ -404,7 +404,19 @@ module ActiveRecord
 
     end
 
+    module ShadowCoreMethods
+      def alias_chained_method(meth, feature, target)
+        if instance_methods.include?("#{meth}_without_#{feature}")
+          alias_method "#{meth}_without_#{feature}".to_sym, target
+        else
+          alis_method meth, target
+        end
+      end
+    end
+
     class JdbcAdapter < AbstractAdapter
+      extend ShadowCoreMethods
+
       attr_reader :config
 
       ADAPTER_TYPES = ::JdbcSpec.constants.map{|c|
@@ -484,14 +496,15 @@ module ActiveRecord
         @connection.reconnect!
         @connection
       end
-      
+
       def disconnect!
         @connection.disconnect!
       end
 
-      def select_all(sql, name = nil)
+      def jdbc_select_all(sql, name = nil)
         select(sql, name)
       end
+      alias_chained_method :select_all, :query_cache, :jdbc_select_all
 
       def select_rows(sql, name = nil)
         rows = []
@@ -508,8 +521,7 @@ module ActiveRecord
           _execute(sql,name)
         end
       end
-      
-      
+
       # we need to do it this way, to allow Rails stupid tests to always work
       # even if we define a new execute method. Instead of mixing in a new
       # execute, an _execute should be mixed in.
@@ -523,18 +535,21 @@ module ActiveRecord
         end
       end
 
-      def update(sql, name = nil) #:nodoc:
+      def jdbc_update(sql, name = nil) #:nodoc:
         execute(sql, name)
       end
+      alias_chained_method :update, :query_dirty, :jdbc_update
 
-      def insert(sql, name = nil, pk = nil, id_value = nil, sequence_name = nil)
+      def jdbc_insert(sql, name = nil, pk = nil, id_value = nil, sequence_name = nil)
         id = execute(sql, name = nil)
         id_value || id
       end
+      alias_chained_method :insert, :query_dirty, :jdbc_insert
 
-      def columns(table_name, name = nil)
+      def jdbc_columns(table_name, name = nil)
         @connection.columns(table_name.to_s)
       end
+      alias_chained_method :columns, :query_cache, :jdbc_columns
 
       def tables
         @connection.tables
