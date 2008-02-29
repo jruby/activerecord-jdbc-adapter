@@ -177,7 +177,41 @@ module ::JdbcSpec
       end
       @connection.columns_internal(table_name, name, schema_name)
     end
-    
+
+    # From postgresql_adapter.rb
+    def indexes(table_name, name = nil)
+      result = select_rows(<<-SQL, name)
+        SELECT i.relname, d.indisunique, a.attname
+          FROM pg_class t, pg_class i, pg_index d, pg_attribute a
+         WHERE i.relkind = 'i'
+           AND d.indexrelid = i.oid
+           AND d.indisprimary = 'f'
+           AND t.oid = d.indrelid
+           AND t.relname = '#{table_name}'
+           AND a.attrelid = t.oid
+           AND ( d.indkey[0]=a.attnum OR d.indkey[1]=a.attnum
+              OR d.indkey[2]=a.attnum OR d.indkey[3]=a.attnum
+              OR d.indkey[4]=a.attnum OR d.indkey[5]=a.attnum
+              OR d.indkey[6]=a.attnum OR d.indkey[7]=a.attnum
+              OR d.indkey[8]=a.attnum OR d.indkey[9]=a.attnum )
+        ORDER BY i.relname
+      SQL
+
+      current_index = nil
+      indexes = []
+
+      result.each do |row|
+        if current_index != row[0]
+          indexes << ::ActiveRecord::ConnectionAdapters::IndexDefinition.new(table_name, row[0], row[1] == "t", [])
+          current_index = row[0]
+        end
+
+        indexes.last.columns << row[2]
+      end
+
+      indexes
+    end
+
     def last_insert_id(table, sequence_name)
       Integer(select_value("SELECT currval('#{sequence_name}')"))
     end

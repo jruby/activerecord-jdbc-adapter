@@ -87,7 +87,7 @@ module SimpleTestMethods
         
       indexes = @connection.indexes(:entries)
       assert_equal(1, indexes.size)
-      assert_equal "entries", indexes.first.table
+      assert_equal "entries", indexes.first.table.to_s
       assert_equal index_name, indexes.first.name
       assert !indexes.first.unique
       assert_equal ["updated_on"], indexes.first.columns
