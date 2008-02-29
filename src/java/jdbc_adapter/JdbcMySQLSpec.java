@@ -49,8 +49,9 @@ public class JdbcMySQLSpec {
     private final static ByteList ESCAPE = new ByteList(new byte[]{'\\','\\'});
 
     public static IRubyObject quote_string(IRubyObject recv, IRubyObject string) {
-        boolean replacementFound = false;
         ByteList bl = ((RubyString) string).getByteList();
+        ByteList blNew = new ByteList();
+        int startOfExtend = bl.begin;
         
         for(int i = bl.begin; i < bl.begin + bl.realSize; i++) {
             ByteList rep = null;
@@ -64,23 +65,18 @@ public class JdbcMySQLSpec {
             case '\\': rep = ESCAPE; break;
             default: continue;
             }
-            
-            // On first replacement allocate a different bytelist so we don't manip original 
-            if(!replacementFound) {
-                i-= bl.begin;
-                bl = new ByteList(bl);
-                replacementFound = true;
-            }
-
-            bl.replace(i, 1, rep);
-            i+=1;
+            if(i > startOfExtend)
+              blNew.append(bl, startOfExtend, i-startOfExtend);
+            blNew.append(rep, 0, 2);
+            startOfExtend = i+1;
         }
-
-        if(!replacementFound) {
-            return string;
+        // Nothing changed, can return original
+        if (startOfExtend == bl.begin) {
+          return string;
         }
+        if (bl.begin + bl.realSize > startOfExtend)
+          blNew.append(bl, startOfExtend, bl.begin + bl.realSize - startOfExtend);
 
-
-        return recv.getRuntime().newStringShared(bl);
+        return recv.getRuntime().newStringShared(blNew);
     }
 }
