@@ -102,7 +102,7 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
         return p;
     }
 
-    @JRubyMethod(name = "insert?", required = 1)
+    @JRubyMethod(name = "insert?", required = 1, meta = true)
     public static IRubyObject insert_p(IRubyObject recv, IRubyObject _sql) {
         ByteList bl = rubyApi.convertToRubyString(_sql).getByteList();
 
@@ -141,7 +141,7 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
         return recv.getRuntime().getFalse();
     }
 
-    @JRubyMethod(name = "select?", required = 1)
+    @JRubyMethod(name = "select?", required = 1, meta = true)
     public static IRubyObject select_p(IRubyObject recv, IRubyObject _sql) {
         ByteList bl = rubyApi.convertToRubyString(_sql).getByteList();
 
@@ -206,13 +206,13 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
         return rubyApi.getInstanceVariable(recv, "@connection");
     }
 
-    @JRubyMethod(name = "disconnect")
+    @JRubyMethod(name = "disconnect!")
     public static IRubyObject disconnect(IRubyObject recv) {
         setConnection(recv, null);
         return recv;
     }
 
-    @JRubyMethod(name = "reconnect")
+    @JRubyMethod(name = "reconnect!")
     public static IRubyObject reconnect(IRubyObject recv) {
         setConnection(recv, getConnectionFactory(recv).newConnection());
         return recv;
@@ -401,7 +401,7 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
         }
     }
 
-    @JRubyMethod(name = {"columns", "columns_internal"})
+    @JRubyMethod(name = {"columns", "columns_internal"}, required = 1, optional = 2)
     public static IRubyObject columns_internal(final IRubyObject recv, final IRubyObject[] args) throws SQLException, IOException {
         return withConnectionAndRetry(recv, new SQLBlock() {
             public IRubyObject call(Connection c) throws SQLException {
