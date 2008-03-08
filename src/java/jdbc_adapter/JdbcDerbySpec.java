@@ -48,57 +48,61 @@ public class JdbcDerbySpec {
     private static RubyObjectAdapter rubyApi;
     public static void load(RubyModule jdbcSpec, RubyObjectAdapter adapter) {
         RubyModule derby = jdbcSpec.defineModuleUnder("Derby");
-        derby.defineModuleUnder("Column");
+        derby.defineAnnotatedMethods(JdbcDerbySpec.class);
+        RubyModule column = derby.defineModuleUnder("Column");
+        column.defineAnnotatedMethods(Column.class);
         rubyApi = adapter;
     }
 
-    /*
-     * JdbcSpec::Derby::Column.type_cast(value)
-     */
-    @JRubyMethod(name = "type_cast", required = 1)
-    public static IRubyObject type_cast(IRubyObject recv, IRubyObject value) {
-        Ruby runtime = recv.getRuntime();
+    public static class Column {
+        /*
+         * JdbcSpec::Derby::Column.type_cast(value)
+         */
+        @JRubyMethod(name = "type_cast", required = 1)
+        public static IRubyObject type_cast(IRubyObject recv, IRubyObject value) {
+            Ruby runtime = recv.getRuntime();
 
-        if (value.isNil() || ((value instanceof RubyString) && value.toString().trim().equalsIgnoreCase("null"))) {
-            return runtime.getNil();
-        }
+            if (value.isNil() || ((value instanceof RubyString) && value.toString().trim().equalsIgnoreCase("null"))) {
+                return runtime.getNil();
+            }
 
-        String type = rubyApi.getInstanceVariable(recv,"@type").toString();
+            String type = rubyApi.getInstanceVariable(recv, "@type").toString();
 
-        switch(type.charAt(0)) {
-        case 's': //string
+            switch (type.charAt(0)) {
+                case 's': //string
+                    return value;
+                case 't': //text, timestamp, time
+                    if (type.equals("text")) {
+                        return value;
+                    } else {
+                        return rubyApi.callMethod(recv, "cast_to_time", value);
+                    }
+                case 'i': //integer
+                case 'p': //primary key
+                    if (value.respondsTo("to_i")) {
+                        return rubyApi.callMethod(value, "to_i");
+                    } else {
+                        return runtime.newFixnum(value.isTrue() ? 1 : 0);
+                    }
+                case 'd': //decimal, datetime, date
+                    if (type.equals("datetime")) {
+                        return rubyApi.callMethod(recv, "cast_to_date_or_time", value);
+                    } else if (type.equals("date")) {
+                        return rubyApi.callMethod(recv.getMetaClass(), "string_to_date", value);
+                    } else {
+                        return rubyApi.callMethod(recv.getMetaClass(), "value_to_decimal", value);
+                    }
+                case 'f': //float
+                    return rubyApi.callMethod(value, "to_f");
+                case 'b': //binary, boolean
+                    if (type.equals("binary")) {
+                        return rubyApi.callMethod(recv, "value_to_binary", value);
+                    } else {
+                        return rubyApi.callMethod(recv.getMetaClass(), "value_to_boolean", value);
+                    }
+            }
             return value;
-        case 't': //text, timestamp, time
-            if(type.equals("text")) {
-                return value;
-            } else {
-                return rubyApi.callMethod(recv, "cast_to_time", value);
-            }
-        case 'i': //integer
-        case 'p': //primary key
-            if (value.respondsTo("to_i")) {
-                return rubyApi.callMethod(value, "to_i");
-            } else {
-                return runtime.newFixnum(value.isTrue() ? 1 : 0 );
-            }
-        case 'd': //decimal, datetime, date
-            if(type.equals("datetime")) {
-                return rubyApi.callMethod(recv, "cast_to_date_or_time", value);
-            } else if(type.equals("date")) {
-                return rubyApi.callMethod(recv.getMetaClass(), "string_to_date", value);
-            } else {
-                return rubyApi.callMethod(recv.getMetaClass(), "value_to_decimal", value);
-            }
-        case 'f': //float
-            return rubyApi.callMethod(value,"to_f");
-        case 'b': //binary, boolean
-            if (type.equals("binary")) {
-                return rubyApi.callMethod(recv, "value_to_binary", value);
-            } else {
-                return rubyApi.callMethod(recv.getMetaClass(), "value_to_boolean", value);
-            }
         }
-        return value;
     }
 
     @JRubyMethod(name = "quote", required = 1, optional = 1)

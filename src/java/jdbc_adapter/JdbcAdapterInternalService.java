@@ -75,8 +75,9 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
     private static RubyObjectAdapter rubyApi;
 
     public boolean basicLoad(final Ruby runtime) throws IOException {
-        ((RubyModule)(runtime.getModule("ActiveRecord").getConstant("ConnectionAdapters"))).
+        RubyModule jdbcConnection = ((RubyModule)(runtime.getModule("ActiveRecord").getConstant("ConnectionAdapters"))).
             defineClassUnder("JdbcConnection",runtime.getObject(),runtime.getObject().getAllocator());
+        jdbcConnection.defineAnnotatedMethods(JdbcAdapterInternalService.class);
         RubyModule jdbcSpec = runtime.getOrCreateModule("JdbcSpec");
 
         rubyApi = JavaEmbedUtils.newObjectAdapter();

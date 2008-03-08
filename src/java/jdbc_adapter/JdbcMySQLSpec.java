@@ -35,7 +35,8 @@ import org.jruby.util.ByteList;
 
 public class JdbcMySQLSpec {
     public static void load(RubyModule jdbcSpec) {
-        jdbcSpec.defineModuleUnder("MySQL");
+        RubyModule mysql = jdbcSpec.defineModuleUnder("MySQL");
+        mysql.defineAnnotatedMethods(JdbcMySQLSpec.class);
     }
 
     private final static ByteList ZERO = new ByteList(new byte[]{'\\','0'});
