@@ -56,7 +56,7 @@ public class JdbcDerbySpec {
 
     public static class Column {
         @JRubyMethod(name = "type_cast", required = 1)
-        public IRubyObject type_cast(IRubyObject recv, IRubyObject value) {
+        public static IRubyObject type_cast(IRubyObject recv, IRubyObject value) {
             Ruby runtime = recv.getRuntime();
 
             if (value.isNil() || ((value instanceof RubyString) && value.toString().trim().equalsIgnoreCase("null"))) {
@@ -272,7 +272,7 @@ public class JdbcDerbySpec {
         }
     }
 
-    @JRubyMethod(name = "add_limit_offset", required = 2)
+    @JRubyMethod(name = "add_limit_offset!", required = 2)
     public static IRubyObject add_limit_offset(IRubyObject recv, IRubyObject sql, IRubyObject options) {
         IRubyObject limit = rubyApi.callMethod(options, "[]", recv.getRuntime().newSymbol("limit"));
         rubyApi.setInstanceVariable(recv, "@limit",limit);
