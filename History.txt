@@ -1,3 +1,14 @@
+== 0.8
+
+- NOTE: This release is only compatible with JRuby 1.1RC3 or later.
+- Because of recent API changes in trunk in preparation for JRuby 1.1, this release is not
+  backward compatible with previous JRuby releases. Hence the version bump.
+- Internal: convert Java methods to be defined with annotations
+- Fix problem with reserved words coming back pre-quoted from #indexes in postgres
+- JRUBY-2205: Fix N^2 allocation of bytelists for mysql quoting (taw)
+- Attempt a fix for Rubyforge 18059
+- Upgrade derby to 10.3.2.1
+
 == 0.7.3
 
 - Fix for Rubyforge #11567 (Matt Williams)
