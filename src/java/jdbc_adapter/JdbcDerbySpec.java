@@ -55,11 +55,8 @@ public class JdbcDerbySpec {
     }
 
     public static class Column {
-        /*
-         * JdbcSpec::Derby::Column.type_cast(value)
-         */
         @JRubyMethod(name = "type_cast", required = 1)
-        public static IRubyObject type_cast(IRubyObject recv, IRubyObject value) {
+        public IRubyObject type_cast(IRubyObject recv, IRubyObject value) {
             Ruby runtime = recv.getRuntime();
 
             if (value.isNil() || ((value instanceof RubyString) && value.toString().trim().equalsIgnoreCase("null"))) {
@@ -138,7 +135,7 @@ public class JdbcDerbySpec {
 
     private final static ByteList NULL = new ByteList("NULL".getBytes());
 
-    public static IRubyObject super_quote(ThreadContext context, IRubyObject recv, Ruby runtime, IRubyObject value, IRubyObject col) {
+    private static IRubyObject super_quote(ThreadContext context, IRubyObject recv, Ruby runtime, IRubyObject value, IRubyObject col) {
         if (value.respondsTo("quoted_id")) {
             return rubyApi.callMethod(value, "quoted_id");
         }
@@ -178,7 +175,7 @@ public class JdbcDerbySpec {
 
     private final static ByteList TWO_SINGLE = new ByteList(new byte[]{'\'','\''});
 
-    public static IRubyObject quote_string_with_surround(Ruby runtime, String before, RubyString string, String after) {
+    private static IRubyObject quote_string_with_surround(Ruby runtime, String before, RubyString string, String after) {
         ByteList input = string.getByteList();
         ByteList output = new ByteList(before.getBytes());
         for(int i = input.begin; i< input.begin + input.realSize; i++) {
@@ -199,7 +196,7 @@ public class JdbcDerbySpec {
 
     private final static byte[] HEX = {'0','1','2','3','4','5','6','7','8','9','A','B','C','D','E','F'};
 
-    public static IRubyObject hexquote_string_with_surround(Ruby runtime, String before, RubyString string, String after) {
+    private static IRubyObject hexquote_string_with_surround(Ruby runtime, String before, RubyString string, String after) {
         ByteList input = string.getByteList();
         ByteList output = new ByteList(before.getBytes());
         for(int i = input.begin; i< input.begin + input.realSize; i++) {
