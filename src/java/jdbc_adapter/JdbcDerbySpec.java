@@ -35,35 +35,27 @@ import org.jruby.RubyBigDecimal;
 import org.jruby.RubyRange;
 import org.jruby.RubyNumeric;
 
-import org.jruby.runtime.Arity;
-import org.jruby.runtime.CallbackFactory;
-import org.jruby.runtime.MethodIndex;
 import org.jruby.runtime.builtin.IRubyObject;
 
 import org.jruby.util.ByteList;
 
 import java.sql.SQLException;
 import org.jruby.RubyObjectAdapter;
+import org.jruby.anno.JRubyMethod;
+import org.jruby.runtime.ThreadContext;
 
 public class JdbcDerbySpec {
     private static RubyObjectAdapter rubyApi;
-    public static void load(Ruby runtime, RubyModule jdbcSpec, RubyObjectAdapter adapter) {
+    public static void load(RubyModule jdbcSpec, RubyObjectAdapter adapter) {
         RubyModule derby = jdbcSpec.defineModuleUnder("Derby");
-        CallbackFactory cf = runtime.callbackFactory(JdbcDerbySpec.class);
-        derby.defineFastMethod("quote_string",cf.getFastSingletonMethod("quote_string",IRubyObject.class));
-        derby.defineFastMethod("quote",cf.getFastOptSingletonMethod("quote"));
-        derby.defineFastMethod("_execute",cf.getFastOptSingletonMethod("_execute"));
-        derby.defineFastMethod("add_limit_offset!",cf.getFastSingletonMethod("add_limit_offset", IRubyObject.class, IRubyObject.class));
-        derby.defineFastMethod("select_all",cf.getFastOptSingletonMethod("select_all"));
-        derby.defineFastMethod("select_one",cf.getFastOptSingletonMethod("select_one"));
-        RubyModule col = derby.defineModuleUnder("Column");
-        col.defineFastMethod("type_cast",cf.getFastSingletonMethod("type_cast", IRubyObject.class));
+        derby.defineModuleUnder("Column");
         rubyApi = adapter;
     }
 
     /*
      * JdbcSpec::Derby::Column.type_cast(value)
      */
+    @JRubyMethod(name = "type_cast", required = 1)
     public static IRubyObject type_cast(IRubyObject recv, IRubyObject value) {
         Ruby runtime = recv.getRuntime();
 
@@ -109,9 +101,9 @@ public class JdbcDerbySpec {
         return value;
     }
 
-    public static IRubyObject quote(IRubyObject recv, IRubyObject[] args) {
+    @JRubyMethod(name = "quote", required = 1, optional = 1)
+    public static IRubyObject quote(ThreadContext context, IRubyObject recv, IRubyObject[] args) {
         Ruby runtime = recv.getRuntime();
-        Arity.checkArgumentCount(runtime, args, 1, 2);
         IRubyObject value = args[0];
         if (args.length > 1) {
             IRubyObject col = args[1];
@@ -128,21 +120,21 @@ public class JdbcDerbySpec {
                     if (only_digits((RubyString)value)) {
                         return value;
                     } else {
-                        return super_quote(recv, runtime, value, col);
+                        return super_quote(context, recv, runtime, value, col);
                     }
                 }
             } else if ((value instanceof RubyFloat) || (value instanceof RubyFixnum) || (value instanceof RubyBignum)) {
                 if (type == runtime.newSymbol("string")) {
-                    return quote_string_with_surround(runtime, "'", RubyString.objAsString(value), "'");
+                    return quote_string_with_surround(runtime, "'", RubyString.objAsString(context, value), "'");
                 }
             }
         } 
-        return super_quote(recv, runtime, value, runtime.getNil());
+        return super_quote(context, recv, runtime, value, runtime.getNil());
     }
 
     private final static ByteList NULL = new ByteList("NULL".getBytes());
 
-    public static IRubyObject super_quote(IRubyObject recv, Ruby runtime, IRubyObject value, IRubyObject col) {
+    public static IRubyObject super_quote(ThreadContext context, IRubyObject recv, Ruby runtime, IRubyObject value, IRubyObject col) {
         if (value.respondsTo("quoted_id")) {
             return rubyApi.callMethod(value, "quoted_id");
         }
@@ -151,11 +143,11 @@ public class JdbcDerbySpec {
         RubyModule multibyteChars = (RubyModule) 
                 ((RubyModule) ((RubyModule) runtime.getModule("ActiveSupport")).getConstant("Multibyte")).getConstantAt("Chars");
         if (value instanceof RubyString || rubyApi.isKindOf(value, multibyteChars)) {
-            RubyString svalue = RubyString.objAsString(value);
+            RubyString svalue = RubyString.objAsString(context, value);
             if (type == runtime.newSymbol("binary") && col.getType().respondsTo("string_to_binary")) {
                 return quote_string_with_surround(runtime, "'", (RubyString)(rubyApi.callMethod(col.getType(), "string_to_binary", svalue)), "'"); 
             } else if (type == runtime.newSymbol("integer") || type == runtime.newSymbol("float")) {
-                return RubyString.objAsString(((type == runtime.newSymbol("integer")) ? 
+                return RubyString.objAsString(context, ((type == runtime.newSymbol("integer")) ?
                                                rubyApi.callMethod(svalue, "to_i") : 
                                                rubyApi.callMethod(svalue, "to_f")));
             } else {
@@ -168,11 +160,11 @@ public class JdbcDerbySpec {
                     (type == runtime.newSymbol(":integer")) ? runtime.newString("1") : rubyApi.callMethod(recv, "quoted_true") :
                     (type == runtime.newSymbol(":integer")) ? runtime.newString("0") : rubyApi.callMethod(recv, "quoted_false"));
         } else if((value instanceof RubyFloat) || (value instanceof RubyFixnum) || (value instanceof RubyBignum)) {
-            return RubyString.objAsString(value);
+            return RubyString.objAsString(context, value);
         } else if(value instanceof RubyBigDecimal) {
             return rubyApi.callMethod(value, "to_s", runtime.newString("F"));
         } else if (rubyApi.isKindOf(value, runtime.getModule("Date"))) {
-            return quote_string_with_surround(runtime, "'", RubyString.objAsString(value), "'"); 
+            return quote_string_with_surround(runtime, "'", RubyString.objAsString(context, value), "'");
         } else if (rubyApi.isKindOf(value, runtime.getModule("Time")) || rubyApi.isKindOf(value, runtime.getModule("DateTime"))) {
             return quote_string_with_surround(runtime, "'", (RubyString)(rubyApi.callMethod(recv, "quoted_date", value)), "'"); 
         } else {
@@ -232,6 +224,7 @@ public class JdbcDerbySpec {
         return true;
     }
 
+    @JRubyMethod(name = "quote_string", required = 1)
     public static IRubyObject quote_string(IRubyObject recv, IRubyObject string) {
         boolean replacementFound = false;
         ByteList bl = ((RubyString) string).getByteList();
@@ -259,10 +252,12 @@ public class JdbcDerbySpec {
         }
     }
 
+    @JRubyMethod(name = "select_all", rest = true)
     public static IRubyObject select_all(IRubyObject recv, IRubyObject[] args) {
         return rubyApi.callMethod(recv, "execute", args);
     }
 
+    @JRubyMethod(name = "select_one", rest = true)
     public static IRubyObject select_one(IRubyObject recv, IRubyObject[] args) {
         IRubyObject limit = rubyApi.getInstanceVariable(recv, "@limit");
         if (limit == null || limit.isNil()) {
@@ -276,6 +271,7 @@ public class JdbcDerbySpec {
         }
     }
 
+    @JRubyMethod(name = "add_limit_offset", required = 2)
     public static IRubyObject add_limit_offset(IRubyObject recv, IRubyObject sql, IRubyObject options) {
         IRubyObject limit = rubyApi.callMethod(options, "[]", recv.getRuntime().newSymbol("limit"));
         rubyApi.setInstanceVariable(recv, "@limit",limit);
@@ -283,7 +279,8 @@ public class JdbcDerbySpec {
         return rubyApi.setInstanceVariable(recv, "@offset",offset);
     }
 
-    public static IRubyObject _execute(IRubyObject recv, IRubyObject[] args) throws SQLException, java.io.IOException {
+    @JRubyMethod(name = "_execute", required = 1, optional = 1)
+    public static IRubyObject _execute(ThreadContext context, IRubyObject recv, IRubyObject[] args) throws SQLException, java.io.IOException {
         Ruby runtime = recv.getRuntime();
         try {
             IRubyObject conn = rubyApi.getInstanceVariable(recv, "@connection");
@@ -302,11 +299,11 @@ public class JdbcDerbySpec {
                 IRubyObject range;
                 IRubyObject max;
                 if (limit == null || limit.isNil() || RubyNumeric.fix2int(limit) == -1) {
-                    range = RubyRange.newRange(runtime, offset, runtime.newFixnum(-1), false);
+                    range = RubyRange.newRange(runtime, context, offset, runtime.newFixnum(-1), false);
                     max = RubyFixnum.zero(runtime);
                 } else {
                     IRubyObject v1 = rubyApi.callMethod(offset, "+", limit);
-                    range = RubyRange.newRange(runtime, offset, v1, true);
+                    range = RubyRange.newRange(runtime, context, offset, v1, true);
                     max = rubyApi.callMethod(v1, "+", RubyFixnum.one(runtime));
                 }
                 IRubyObject result = JdbcAdapterInternalService.execute_query(conn, new IRubyObject[]{args[0], max});

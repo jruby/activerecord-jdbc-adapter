@@ -20,7 +20,7 @@ task :java_compile do
   pkg_classes = File.join(*%w(pkg classes))
   jar_name = File.join(*%w(lib jdbc_adapter jdbc_adapter_internal.jar))
   mkdir_p pkg_classes
-  sh "javac -target 1.4 -source 1.4 -d pkg/classes #{java_classpath_arg} #{FileList['src/java/**/*.java'].join(' ')}"
+  sh "javac -target 1.5 -source 1.5 -d pkg/classes #{java_classpath_arg} #{FileList['src/java/**/*.java'].join(' ')}"
   sh "jar cf #{jar_name} -C #{pkg_classes} ."
 end
 file "lib/jdbc_adapter/jdbc_adapter_internal.jar" => :java_compile
@@ -87,7 +87,7 @@ end
 
 
 MANIFEST = FileList["History.txt", "Manifest.txt", "README.txt", 
-  "Rakefile", "LICENSE", "lib/**/*.rb", "lib/jdbc_adapter/jdbc_adapter_internal.jar", "test/**/*.rb",
+  "Rakefile", "LICENSE.txt", "lib/**/*.rb", "lib/jdbc_adapter/jdbc_adapter_internal.jar", "test/**/*.rb",
    "lib/**/*.rake", "src/**/*.java"]
 
 file "Manifest.txt" => :manifest

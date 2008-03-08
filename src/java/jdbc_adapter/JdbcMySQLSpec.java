@@ -28,16 +28,14 @@ import org.jruby.Ruby;
 import org.jruby.RubyModule;
 import org.jruby.RubyString;
 
-import org.jruby.runtime.CallbackFactory;
+import org.jruby.anno.JRubyMethod;
 import org.jruby.runtime.builtin.IRubyObject;
 
 import org.jruby.util.ByteList;
 
 public class JdbcMySQLSpec {
-    public static void load(Ruby runtime, RubyModule jdbcSpec) {
-        RubyModule mysql = jdbcSpec.defineModuleUnder("MySQL");
-        CallbackFactory cf = runtime.callbackFactory(JdbcMySQLSpec.class);
-        mysql.defineFastMethod("quote_string",cf.getFastSingletonMethod("quote_string",IRubyObject.class));
+    public static void load(RubyModule jdbcSpec) {
+        jdbcSpec.defineModuleUnder("MySQL");
     }
 
     private final static ByteList ZERO = new ByteList(new byte[]{'\\','0'});
@@ -48,6 +46,7 @@ public class JdbcMySQLSpec {
     private final static ByteList SINGLE = new ByteList(new byte[]{'\\','\''});
     private final static ByteList ESCAPE = new ByteList(new byte[]{'\\','\\'});
 
+    @JRubyMethod(name = "quote_string", required = 1)
     public static IRubyObject quote_string(IRubyObject recv, IRubyObject string) {
         ByteList bl = ((RubyString) string).getByteList();
         ByteList blNew = new ByteList();
