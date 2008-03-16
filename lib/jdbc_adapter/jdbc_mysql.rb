@@ -6,9 +6,6 @@ module ::JdbcSpec
 
   module ActiveRecordExtensions
     def mysql_connection(config)
-      if config[:socket]
-        warn "AR-JDBC MySQL on JRuby does not support sockets"
-      end
       config[:port] ||= 3306
       if config[:url]
         config[:url] = config[:url]['?'] ? "#{config[:url]}&#{MySQL::URL_OPTIONS}" : "#{config[:url]}?#{MySQL::URL_OPTIONS}"
