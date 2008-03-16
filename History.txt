@@ -8,6 +8,8 @@
 - JRUBY-2205: Fix N^2 allocation of bytelists for mysql quoting (taw)
 - Attempt a fix for Rubyforge 18059
 - Upgrade derby to 10.3.2.1
+- Fix db:create etc. in the case where JDBC is loaded in Rails' preinitializer.rb
+- Fix db:drop to actually work
 
 == 0.7.3
 
