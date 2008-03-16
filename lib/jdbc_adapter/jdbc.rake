@@ -11,7 +11,7 @@ end
 
 namespace :db do
   redefine_task :create => :environment do
-    jdbc_create_database(ActiveRecord::Base.configurations[RAILS_ENV])
+    create_database(ActiveRecord::Base.configurations[RAILS_ENV])
   end
 
   class << self; alias_method :previous_create_database, :create_database; end
