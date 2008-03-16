@@ -147,8 +147,12 @@ module ::JdbcSpec
       create_database(name)
     end
     
-    def create_database(name) #:nodoc:
-      execute "CREATE DATABASE `#{name}`"
+    def create_database(name, options = {}) #:nodoc:
+      if options[:collation]
+        execute "CREATE DATABASE `#{name}` DEFAULT CHARACTER SET `#{options[:charset] || 'utf8'}` COLLATE `#{options[:collation]}`"
+      else
+        execute "CREATE DATABASE `#{name}` DEFAULT CHARACTER SET `#{options[:charset] || 'utf8'}`"
+      end
     end
     
     def drop_database(name) #:nodoc:

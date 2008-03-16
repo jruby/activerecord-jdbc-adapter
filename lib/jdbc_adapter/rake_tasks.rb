@@ -12,10 +12,10 @@ if defined?(namespace) && RUBY_PLATFORM =~ /java/ && ENV["SKIP_AR_JDBC_RAKE_REDE
 
   namespace :db do
     redefine_task :create => :environment do
-      create_database(ActiveRecord::Base.configurations[RAILS_ENV])
+      jdbc_create_database(ActiveRecord::Base.configurations[RAILS_ENV])
     end
 
-    def create_database(config)
+    def jdbc_create_database(config)
       begin
         ActiveRecord::Base.establish_connection(config)
         ActiveRecord::Base.connection
@@ -32,22 +32,19 @@ if defined?(namespace) && RUBY_PLATFORM =~ /java/ && ENV["SKIP_AR_JDBC_RAKE_REDE
           ActiveRecord::Base.connection.create_database(config['database'])
           ActiveRecord::Base.establish_connection(config)
         rescue
-          if (config['driver'] || config['adapter']) =~ /postgr/
-            `createdb "#{config['database']}" -E utf8`
-          else 
-            warn "couldn't create database #{config['database']}"
-          end
+          create_database(config)
         end
       end
     end
     
     redefine_task :drop => :environment do
+      config = ActiveRecord::Base.configurations[RAILS_ENV]
       begin
-        config = ActiveRecord::Base.configurations[environment_name]
         ActiveRecord::Base.establish_connection(config)
         db = ActiveRecord::Base.connection.database_name
-        ActiveRecord::Base.connection.recreate_database(db)
+        ActiveRecord::Base.connection.drop_database(db)
       rescue
+        drop_database(config)
       end
     end
 
