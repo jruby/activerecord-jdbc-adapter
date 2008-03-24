@@ -10,41 +10,43 @@ def redefine_task(*args, &block)
 end
 
 namespace :db do
-  redefine_task :create => :environment do
-    create_database(ActiveRecord::Base.configurations[RAILS_ENV])
-  end
+  if respond_to?(:create_database)
+    redefine_task :create => :environment do
+      create_database(ActiveRecord::Base.configurations[RAILS_ENV])
+    end
 
-  class << self; alias_method :previous_create_database, :create_database; end
-  def create_database(config)
-    begin
-      ActiveRecord::Base.establish_connection(config)
-      ActiveRecord::Base.connection
-    rescue
+    class << self; alias_method :previous_create_database, :create_database; end
+    def create_database(config)
       begin
-        url = config['url']
-        if url
-          if url =~ /^(.*\/)/
-            url = $1
-          end
-        end
-
-        ActiveRecord::Base.establish_connection(config.merge({'database' => nil, 'url' => url}))
-        ActiveRecord::Base.connection.create_database(config['database'])
         ActiveRecord::Base.establish_connection(config)
+        ActiveRecord::Base.connection
       rescue
-        previous_create_database(config)
+        begin
+          url = config['url']
+          if url
+            if url =~ /^(.*\/)/
+              url = $1
+            end
+          end
+
+          ActiveRecord::Base.establish_connection(config.merge({'database' => nil, 'url' => url}))
+          ActiveRecord::Base.connection.create_database(config['database'])
+          ActiveRecord::Base.establish_connection(config)
+        rescue
+          previous_create_database(config)
+        end
       end
     end
-  end
 
-  redefine_task :drop => :environment do
-    config = ActiveRecord::Base.configurations[RAILS_ENV]
-    begin
-      ActiveRecord::Base.establish_connection(config)
-      db = ActiveRecord::Base.connection.database_name
-      ActiveRecord::Base.connection.drop_database(db)
-    rescue
-      drop_database(config)
+    redefine_task :drop => :environment do
+      config = ActiveRecord::Base.configurations[RAILS_ENV]
+      begin
+        ActiveRecord::Base.establish_connection(config)
+        db = ActiveRecord::Base.connection.database_name
+        ActiveRecord::Base.connection.drop_database(db)
+      rescue
+        drop_database(config)
+      end
     end
   end
 
