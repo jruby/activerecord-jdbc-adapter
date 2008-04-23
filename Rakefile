@@ -85,6 +85,11 @@ Rake::TestTask.new(:test_db2) do |t|
   t.libs << 'test'
 end
 
+# Ensure InterSystems CacheDB driver is on your classpath before launching rake
+Rake::TestTask.new(:test_cachedb) do | t |
+  t.test_files = FileList[ 'test/cachedb_simple_test.rb' ]
+  t.libs << 'test'
+end
 
 MANIFEST = FileList["History.txt", "Manifest.txt", "README.txt", 
   "Rakefile", "LICENSE.txt", "lib/**/*.rb", "lib/jdbc_adapter/jdbc_adapter_internal.jar", "test/**/*.rb",
