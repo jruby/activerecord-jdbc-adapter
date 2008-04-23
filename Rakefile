@@ -91,6 +91,12 @@ Rake::TestTask.new(:test_cachedb) do | t |
   t.libs << 'test'
 end
 
+# Ensure that the jTDS driver in on your classpath before launching rake
+Rake::TestTask.new(:test_mssql) do | t |
+  t.test_files = FileList[ 'test/mssql_simple_test.rb' ]
+  t.libs << 'test'
+end
+
 MANIFEST = FileList["History.txt", "Manifest.txt", "README.txt", 
   "Rakefile", "LICENSE.txt", "lib/**/*.rb", "lib/jdbc_adapter/jdbc_adapter_internal.jar", "test/**/*.rb",
    "lib/**/*.rake", "src/**/*.java"]

@@ -1,3 +1,5 @@
+require 'jdbc_adapter/tsql_helper'
+
 module ::JdbcSpec
   module ActiveRecordExtensions
     def cachedb_connection( config )
@@ -9,6 +11,7 @@ module ::JdbcSpec
   end
 
   module CacheDB
+    include TSqlMethods
 
     def self.column_selector
       [ /cache/i, lambda {  | cfg, col | col.extend( ::JdbcSpec::CacheDB::Column ) } ]
@@ -20,26 +23,7 @@ module ::JdbcSpec
 
     module Column
     end
-
-    def modify_types(tp)
-      tp[:primary_key] = "int NOT NULL IDENTITY(1, 1) PRIMARY KEY"
-      tp
-    end
-
-    def type_to_sql(type, limit = nil, precision = nil, scale = nil)
-      return super unless type.to_s == 'integer'
-      
-      if limit.nil? || limit == 4
-        'INT'
-      elsif limit == 2
-        'SMALLINT'
-      elsif limit == 1
-        'TINYINT'
-      else
-        'BIGINT'
-      end
-    end
-
+    
     def create_table(name, options = { })
       super(name, options)
       primary_key = options[:primary_key] || "id"

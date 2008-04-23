@@ -1,3 +1,5 @@
+require 'jdbc_adapter/tsql_helper'
+
 module ::ActiveRecord
   class Base
     # After setting large objects to empty, write data back with a helper method
@@ -19,6 +21,8 @@ end
 
 module JdbcSpec
   module MsSQL
+    include TSqlMethods
+    
     def self.column_selector
       [/sqlserver|tds/i, lambda {|cfg,col| col.extend(::JdbcSpec::MsSQL::Column)}]
     end
@@ -94,14 +98,6 @@ module JdbcSpec
       end
     end
     
-    def modify_types(tp)
-      tp[:primary_key] = "int NOT NULL IDENTITY(1, 1) PRIMARY KEY"
-      tp[:integer][:limit] = nil
-      tp[:boolean] = {:name => "bit"}
-      tp[:binary] = { :name => "image"}
-      tp
-    end
-    
     def quote(value, column = nil)
       return value.quoted_id if value.respond_to?(:quoted_id)
 
@@ -131,41 +127,6 @@ module JdbcSpec
       def quote_column_name(name)
         "[#{name}]"
       end
-      
-        def add_limit_offset!(sql, options)
-          if options[:limit] and options[:offset]
-            total_rows = select_all("SELECT count(*) as TotalRows from (#{sql.gsub(/\bSELECT(\s+DISTINCT)?\b/i, "SELECT\\1 TOP 1000000000")}) tally")[0]["TotalRows"].to_i
-            if (options[:limit] + options[:offset]) >= total_rows
-              options[:limit] = (total_rows - options[:offset] >= 0) ? (total_rows - options[:offset]) : 0
-            end
-            sql.sub!(/^\s*SELECT(\s+DISTINCT)?/i, "SELECT * FROM (SELECT TOP #{options[:limit]} * FROM (SELECT\\1 TOP #{options[:limit] + options[:offset]} ")
-            sql << ") AS tmp1"
-            if options[:order]
-              options[:order] = options[:order].split(',').map do |field|
-                parts = field.split(" ")
-                tc = parts[0]
-                if sql =~ /\.\[/ and tc =~ /\./ # if column quoting used in query
-                  tc.gsub!(/\./, '\\.\\[')
-                  tc << '\\]'
-                end
-                if sql =~ /#{tc} AS (t\d_r\d\d?)/
-                  parts[0] = $1
-                elsif parts[0] =~ /\w+\.(\w+)/
-                  parts[0] = $1
-                end
-                parts.join(' ')
-              end.join(', ')
-              sql << " ORDER BY #{change_order_direction(options[:order])}) AS tmp2 ORDER BY #{options[:order]}"
-            else
-              sql << " ) AS tmp2"
-            end
-          elsif sql !~ /^\s*SELECT (@@|COUNT\()/i
-            sql.sub!(/^\s*SELECT(\s+DISTINCT)?/i) do
-              "SELECT#{$1} TOP #{options[:limit]}"
-            end unless options[:limit].nil?
-          end
-        end
-    
       
       def change_order_direction(order)
         order.split(",").collect {|fragment|
@@ -208,20 +169,6 @@ module JdbcSpec
         execute "EXEC sp_rename '#{table}.#{column}', '#{new_column_name}'"
       end
        
-      def type_to_sql(type, limit = nil, precision = nil, scale = nil) #:nodoc:
-          return super unless type.to_s == 'integer'
-          
-        if limit.nil? || limit == 4
-          'int'
-        elsif limit == 2
-          'smallint'
-        elsif limit ==1
-          'tinyint'
-        else
-          'bigint'
-        end
-       end
-        
       def change_column(table_name, column_name, type, options = {}) #:nodoc:
         sql_commands = ["ALTER TABLE #{table_name} ALTER COLUMN #{column_name} #{type_to_sql(type, options[:limit], options[:precision], options[:scale])}"]
         if options_include_default?(options)
