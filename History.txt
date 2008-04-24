@@ -1,3 +1,9 @@
+== 0.8.1
+
+- Now sporting a JDBC sqlite3 adapter! Thanks Joseph Athman.
+- Added support for InterSystems Cache database (Ryan Bell)
+- Fix for JRUBY-2256
+
 == 0.8
 
 - NOTE: This release is only compatible with JRuby 1.1RC3 or later.

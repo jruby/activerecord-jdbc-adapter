@@ -29,6 +29,7 @@ task :more_clean do
   rm_rf FileList['derby*']
   rm_rf FileList['test.db.*']
   rm_rf "test/reports"
+  rm_f "test.sqlite3"
   rm_f FileList['lib/**/*.jar']
   rm_f "manifest.mf"
 end
@@ -41,7 +42,7 @@ end
 
 if RUBY_PLATFORM =~ /java/
   # TODO: add more databases into the standard tests here.
-  task :test => [:test_mysql, :test_jdbc, :test_derby, :test_hsqldb, :test_h2]
+  task :test => [:test_mysql, :test_jdbc, :test_derby, :test_hsqldb, :test_h2, :test_sqlite3]
 else
   task :test => [:test_mysql]
 end

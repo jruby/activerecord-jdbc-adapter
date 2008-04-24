@@ -26,6 +26,8 @@ What's there, and what is not there:
   * rename_column
 * HSQLDB - Complete
 * H2 - Complete
+* SQLite3 - work in progress, definitely not working:
+  * remove_column
 
 Other databases will require testing and likely a custom configuration module. Please join the jruby-extras mailing-list[http://rubyforge.org/mail/?group_id=2014] to help us discover support for more databases.
 
