@@ -11,6 +11,7 @@ module MigrationSetup
   def teardown
     CreateEntries.down
     CreateAutoIds.down
+    ActiveRecord::Base.clear_active_connections!
   end
 end
 
