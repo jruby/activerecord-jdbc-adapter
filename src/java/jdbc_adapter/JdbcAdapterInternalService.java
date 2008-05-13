@@ -1,7 +1,7 @@
 /***** BEGIN LICENSE BLOCK *****
- * Copyright (c) 2006-2007 Nick Sieger <nick@nicksieger.com>
+ * Copyright (c) 2006-2008 Nick Sieger <nick@nicksieger.com>
  * Copyright (c) 2006-2007 Ola Bini <ola.bini@gmail.com>
- * 
+ *
  * Permission is hereby granted, free of charge, to any person obtaining
  * a copy of this software and associated documentation files (the
  * "Software"), to deal in the Software without restriction, including
@@ -9,10 +9,10 @@
  * distribute, sublicense, and/or sell copies of the Software, and to
  * permit persons to whom the Software is furnished to do so, subject to
  * the following conditions:
- * 
+ *
  * The above copyright notice and this permission notice shall be
  * included in all copies or substantial portions of the Software.
- * 
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
  * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
@@ -259,8 +259,8 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
         throw wrap(recv, toWrap);
     }
 
-    private static SQLBlock tableLookupBlock(final Ruby runtime, 
-            final String catalog, final String schemapat, 
+    private static SQLBlock tableLookupBlock(final Ruby runtime,
+            final String catalog, final String schemapat,
             final String tablepat, final String[] types) {
         return new SQLBlock() {
             public IRubyObject call(Connection c) throws SQLException {
@@ -271,6 +271,16 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
                     boolean isOracle = clzName.indexOf("oracle") != -1 || clzName.indexOf("oci") != -1;
 
                     String realschema = schemapat;
+                    String realtablepat = tablepat;
+
+                    if(metadata.storesUpperCaseIdentifiers()) {
+                        if (realschema != null) realschema = realschema.toUpperCase();
+                        if (realtablepat != null) realtablepat = realtablepat.toUpperCase();
+                    } else if(metadata.storesLowerCaseIdentifiers()) {
+                        if (null != realschema) realschema = realschema.toLowerCase();
+                        if (realtablepat != null) realtablepat = realtablepat.toLowerCase();
+                    }
+
                     if (realschema == null && isOracle) {
                         ResultSet schemas = metadata.getSchemas();
                         String username = metadata.getUserName();
@@ -282,7 +292,7 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
                         }
                         schemas.close();
                     }
-                    rs = metadata.getTables(catalog, realschema, tablepat, types);
+                    rs = metadata.getTables(catalog, realschema, realtablepat, types);
                     List arr = new ArrayList();
                     while (rs.next()) {
                         String name = rs.getString(3).toLowerCase();
@@ -351,7 +361,7 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
     @JRubyMethod(name = "native_database_types")
     public static IRubyObject native_database_types(IRubyObject recv) {
         return rubyApi.getInstanceVariable(recv, "@tps");
-    }    
+    }
 
     @JRubyMethod(name = "set_native_database_types")
     public static IRubyObject set_native_database_types(IRubyObject recv) throws SQLException, IOException {
@@ -410,9 +420,10 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
                     String table_name = rubyApi.convertToRubyString(args[0]).getUnicodeValue();
                     String schemaName = null;
 
-                    if(table_name.indexOf(".") != -1) {
-                        schemaName = table_name.substring(table_name.indexOf(".")+1);
-                        table_name = table_name.substring(0, table_name.indexOf(".")+1);
+                    int index = table_name.indexOf(".");
+                    if(index != -1) {
+                        schemaName = table_name.substring(0, index);
+                        table_name = table_name.substring(index + 1);
                     }
 
                     DatabaseMetaData metadata = c.getMetaData();
@@ -425,8 +436,10 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
                     }
 
                     if(metadata.storesUpperCaseIdentifiers()) {
+                        if (null != schemaName) schemaName = schemaName.toUpperCase();
                         table_name = table_name.toUpperCase();
                     } else if(metadata.storesLowerCaseIdentifiers()) {
+                        if (null != schemaName) schemaName = schemaName.toLowerCase();
                         table_name = table_name.toLowerCase();
                     }
 
@@ -442,7 +455,7 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
                         schemas.close();
                     }
 
-                    RubyArray matchingTables = (RubyArray) tableLookupBlock(recv.getRuntime(), 
+                    RubyArray matchingTables = (RubyArray) tableLookupBlock(recv.getRuntime(),
                                                                             c.getCatalog(), schemaName, table_name, new String[]{"TABLE","VIEW"}).call(c);
                     if (matchingTables.isEmpty()) {
                         throw new SQLException("Table " + table_name + " does not exist");
@@ -485,6 +498,9 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
                     precision = Integer.parseInt(prec);
                     if(scal != null) {
                         scale = Integer.parseInt(scal);
+                    }
+                    else if(isOracle && rs.getInt(5) == java.sql.Types.DECIMAL) { // NUMBER type in Oracle
+                        prec = null;
                     }
                 }
                 String type = rs.getString(6);
@@ -611,7 +627,7 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
         } else {
             maxrows = 0;
         }
-        
+
         return withConnectionAndRetry(recv, new SQLBlock() {
             public IRubyObject call(Connection c) throws SQLException {
                 Statement stmt = null;
@@ -682,7 +698,7 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
                 rs.close();
             } catch(Exception e) {}
         }
- 
+
         return runtime.newArray(results);
     }
 
@@ -771,7 +787,7 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
                 rs.close();
             } catch(Exception e) {}
         }
- 
+
         return runtime.newArray(results);
     }
 
@@ -856,7 +872,7 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
 
     private static int getTypeValueFor(Ruby runtime, IRubyObject type) throws SQLException {
         if(!(type instanceof RubySymbol)) {
-            type = rubyApi.callMethod(type, "type");
+            type = rubyApi.callMethod(type, "class");
         }
         if(type == runtime.newSymbol("string")) {
             return Types.VARCHAR;
@@ -884,7 +900,7 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
             return -1;
         }
     }
-    
+
     private final static DateFormat FORMAT = new SimpleDateFormat("%y-%M-%d %H:%m:%s");
 
     private static void setValue(PreparedStatement ps, int index, Ruby runtime, ThreadContext context,
@@ -1012,7 +1028,7 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
                     ps = c.prepareStatement(sql);
                     if (args[0].isTrue()) { // binary
                         ByteList outp = rubyApi.convertToRubyString(args[5]).getByteList();
-                        ps.setBinaryStream(1, new ByteArrayInputStream(outp.bytes, 
+                        ps.setBinaryStream(1, new ByteArrayInputStream(outp.bytes,
                                 outp.begin, outp.realSize), outp.realSize);
                     } else { // clob
                         String ss = rubyApi.convertToRubyString(args[5]).getUnicodeValue();
@@ -1048,7 +1064,7 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
             jo = (JavaObject) rubyApi.getInstanceVariable(inp, "@java_object");
         }
         return (ResultSet) jo.getValue();
-    }   
+    }
 
     private static boolean isConnectionBroken(IRubyObject recv, Connection c) {
         try {
