@@ -186,7 +186,7 @@ module MultibyteTestMethods
   end
   
   def test_select_multibyte_string
-    @java_con.createStatement().execute("insert into entries (title, content) values ('テスト', '本文')")
+    @java_con.createStatement().execute("insert into entries (id, title, content) values (1, 'テスト', '本文')")
     entry = Entry.find(:first)
     assert_equal "テスト", entry.title
     assert_equal "本文", entry.content
