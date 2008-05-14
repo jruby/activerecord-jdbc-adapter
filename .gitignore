@@ -1,0 +1,10 @@
+Manifest.txt
+pkg
+*.gem
+*.tgz
+derby*
+lib/jdbc_adapter/jdbc_adapter_internal.jar
+test.*
+doc
+build.xml
+nbproject
