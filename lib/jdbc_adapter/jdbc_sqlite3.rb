@@ -113,7 +113,21 @@ module ::JdbcSpec
     end
 
     def remove_column(table_name, column_name) #:nodoc:
-      puts "not implemented in SQLite3"
+      cols = columns(table_name).collect {|col| col.name}
+      cols.delete(column_name)
+      cols = cols.join(', ')
+      table_backup = table_name + "_backup"
+
+      @connection.begin
+
+      execute "CREATE TEMPORARY TABLE #{table_backup}(#{cols})"
+      insert "INSERT INTO #{table_backup} SELECT #{cols} FROM #{table_name}"
+      execute "DROP TABLE #{table_name}"
+      execute "CREATE TABLE #{table_name}(#{cols})"
+      insert "INSERT INTO #{table_name} SELECT #{cols} FROM #{table_backup}"
+      execute "DROP TABLE #{table_backup}"
+
+      @connection.commit
     end
 
     def change_column(table_name, column_name, type, options = {}) #:nodoc:
@@ -144,17 +158,6 @@ module ::JdbcSpec
       Integer(select_value("SELECT SEQ FROM SQLITE_SEQUENCE WHERE NAME = '#{table}'"))
     end
 
-    # Override normal #_execute: See Rubyforge #11567
-    def _execute(sql, name = nil)
-      if ::ActiveRecord::ConnectionAdapters::JdbcConnection::select?(sql)
-        @connection.execute_query(sql)
-      elsif ::ActiveRecord::ConnectionAdapters::JdbcConnection::insert?(sql)
-        insert(sql, name)
-      else
-        @connection.execute_update(sql)
-      end
-    end
-
     def add_limit_offset!(sql, options) #:nodoc:
       if options[:limit]
         sql << " LIMIT #{options[:limit]}"
@@ -171,24 +174,15 @@ module ::JdbcSpec
     end
 
     def indexes(table_name, name = nil)
-      result = select_rows(<<-SQL, name)
-        SELECT name, sql
-          FROM sqlite_master
-         WHERE tbl_name = '#{table_name}'
-           AND type = 'index'
-      SQL
+      result = select_rows("SELECT name, sql FROM sqlite_master WHERE tbl_name = '#{table_name}' AND type = 'index'", name)
 
-      indexes = []
-
-      result.each do |row|
+      result.collect do |row|
         name = row[0]
         index_sql = row[1]
         unique = (index_sql =~ /unique/i)
         cols = index_sql.match(/\((.*)\)/)[1].gsub(/,/,' ').split
-        indexes << ::ActiveRecord::ConnectionAdapters::IndexDefinition.new(table_name, name, unique, cols)
+        ::ActiveRecord::ConnectionAdapters::IndexDefinition.new(table_name, name, unique, cols)
       end
-
-      indexes
     end
   end
 end
