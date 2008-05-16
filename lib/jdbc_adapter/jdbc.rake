@@ -60,10 +60,11 @@ namespace :db do
       end
     end
   end
+
   namespace :test do
     redefine_task :clone_structure => [ "db:structure:dump", "db:test:purge" ] do
       abcs = ActiveRecord::Base.configurations
-      ActiveRecord::Base.establish_connection(:test)
+      ActiveRecord::Base.establish_connection(abcs[:test])
       ActiveRecord::Base.connection.execute('SET foreign_key_checks = 0') if abcs["test"]["adapter"] =~ /mysql/i
       IO.readlines("db/#{RAILS_ENV}_structure.sql").join.split(";\n\n").each do |ddl|
         ActiveRecord::Base.connection.execute(ddl)
@@ -72,7 +73,7 @@ namespace :db do
 
     redefine_task :purge => :environment do
       abcs = ActiveRecord::Base.configurations
-      ActiveRecord::Base.establish_connection(:test)
+      ActiveRecord::Base.establish_connection(abcs[:test])
       db = ActiveRecord::Base.connection.database_name
       ActiveRecord::Base.connection.recreate_database(db)
     end

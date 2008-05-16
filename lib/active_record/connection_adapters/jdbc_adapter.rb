@@ -420,8 +420,19 @@ module ActiveRecord
       end
     end
 
+    module CompatibilityMethods
+      def self.needed?(base)
+        !base.instance_methods.include?("quote_table_name")
+      end
+
+      def quote_table_name(name)
+        quote_column_name(name)
+      end
+    end
+
     class JdbcAdapter < AbstractAdapter
       extend ShadowCoreMethods
+      include CompatibilityMethods if CompatibilityMethods.needed?(self)
 
       attr_reader :config
 
