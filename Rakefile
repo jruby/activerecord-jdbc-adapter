@@ -27,17 +27,6 @@ task :java_compile do
 end
 file "lib/jdbc_adapter/jdbc_adapter_internal.jar" => :java_compile
 
-task :more_clean do
-  rm_rf FileList['derby*']
-  rm_rf FileList['test.db.*']
-  rm_rf "test/reports"
-  rm_f "test.sqlite3"
-  rm_f FileList['lib/**/*.jar']
-  rm_f "manifest.mf"
-end
-
-task :clean => :more_clean
-
 task :filelist do
   puts FileList['pkg/**/*'].inspect
 end
@@ -173,3 +162,6 @@ end
     task "all:release" => "#{prefix}:release"
   end
 end
+
+require 'rake/clean'
+CLEAN.include 'derby*', 'test.db.*','test/reports', 'test.sqlite3','lib/**/*.jar','manifest.mf'
