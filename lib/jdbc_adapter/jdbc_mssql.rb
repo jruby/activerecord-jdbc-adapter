@@ -22,7 +22,7 @@ end
 module JdbcSpec
   module MsSQL
     include TSqlMethods
-    
+
     def self.column_selector
       [/sqlserver|tds/i, lambda {|cfg,col| col.extend(::JdbcSpec::MsSQL::Column)}]
     end
@@ -30,10 +30,10 @@ module JdbcSpec
     def self.adapter_selector
       [/sqlserver|tds/i, lambda {|cfg,adapt| adapt.extend(::JdbcSpec::MsSQL)}]
     end
-    
+
     module Column
       attr_accessor :identity, :is_special
-      
+
       def simplified_type(field_type)
         case field_type
           when /int|bigint|smallint|tinyint/i                        then :integer
@@ -50,9 +50,9 @@ module JdbcSpec
       end
 
       def type_cast(value)
-        return nil if value.nil? || value == "(NULL)"
+        return nil if value.nil? || value.downcase == "(null)"
         case type
-        when :string then unquote value
+        when :string then unquote_string value
         when :integer then unquote(value).to_i rescue value ? 1 : 0
         when :primary_key then value == true || value == false ? value == true ? 1 : 0 : value.to_i
         when :decimal   then self.class.value_to_decimal(unquote(value))
@@ -65,11 +65,16 @@ module JdbcSpec
         else value
         end
       end
-      
+
+      # JRUBY-2011: Match balanced quotes and parenthesis - 'text',('text') or (text)
+      def unquote_string(value)
+        value.sub(/^\((.*)\)$/,'\1').sub(/^'(.*)'$/,'\1')
+      end
+
       def unquote(value)
         value.to_s.sub(/\A\([\(\']?/, "").sub(/[\'\)]?\)\Z/, "")
       end
-      
+
       def cast_to_time(value)
         return value if value.is_a?(Time)
         time_array = ParseDate.parsedate(value)
@@ -97,7 +102,7 @@ module JdbcSpec
         ''
       end
     end
-    
+
     def quote(value, column = nil)
       return value.quoted_id if value.respond_to?(:quoted_id)
 
@@ -127,7 +132,7 @@ module JdbcSpec
       def quote_column_name(name)
         "[#{name}]"
       end
-      
+
       def change_order_direction(order)
         order.split(",").collect {|fragment|
           case fragment
@@ -137,12 +142,12 @@ module JdbcSpec
           end
         }.join(",")
       end
-      
+
     def recreate_database(name)
       drop_database(name)
       create_database(name)
     end
-    
+
     def drop_database(name)
       execute "DROP DATABASE #{name}"
     end
@@ -154,21 +159,21 @@ module JdbcSpec
       def rename_table(name, new_name)
         execute "EXEC sp_rename '#{name}', '#{new_name}'"
       end
-      
+
       # Adds a new column to the named table.
       # See TableDefinition#column for details of the options you can use.
       def add_column(table_name, column_name, type, options = {})
         add_column_sql = "ALTER TABLE #{table_name} ADD #{quote_column_name(column_name)} #{type_to_sql(type, options[:limit], options[:precision], options[:scale])}"
         add_column_options!(add_column_sql, options)
         # TODO: Add support to mimic date columns, using constraints to mark them as such in the database
-        # add_column_sql << " CONSTRAINT ck__#{table_name}__#{column_name}__date_only CHECK ( CONVERT(CHAR(12), #{quote_column_name(column_name)}, 14)='00:00:00:000' )" if type == :date       
+        # add_column_sql << " CONSTRAINT ck__#{table_name}__#{column_name}__date_only CHECK ( CONVERT(CHAR(12), #{quote_column_name(column_name)}, 14)='00:00:00:000' )" if type == :date
         execute(add_column_sql)
       end
 
       def rename_column(table, column, new_column_name)
         execute "EXEC sp_rename '#{table}.#{column}', '#{new_column_name}'"
       end
-       
+
       def change_column(table_name, column_name, type, options = {}) #:nodoc:
         sql_commands = ["ALTER TABLE #{table_name} ALTER COLUMN #{column_name} #{type_to_sql(type, options[:limit], options[:precision], options[:scale])}"]
         if options_include_default?(options)
@@ -187,7 +192,7 @@ module JdbcSpec
         remove_default_constraint(table_name, column_name)
         execute "ALTER TABLE #{table_name} DROP COLUMN [#{column_name}]"
       end
-      
+
       def remove_default_constraint(table_name, column_name)
         defaults = select "select def.name from sysobjects def, syscolumns col, sysobjects tab where col.cdefault = def.id and col.name = '#{column_name}' and tab.name = '#{table_name}' and col.id = tab.id"
         defaults.each {|constraint|
@@ -202,11 +207,11 @@ module JdbcSpec
           execute "ALTER TABLE #{table_name} DROP CONSTRAINT #{constraint["CONSTRAINT_NAME"]}"
         end
       end
-      
+
       def remove_index(table_name, options = {})
         execute "DROP INDEX #{table_name}.#{index_name(table_name, options)}"
       end
-      
+
 
       def columns(table_name, name = nil)
         cc = super
@@ -216,12 +221,12 @@ module JdbcSpec
         end
         cc
       end
-      
+
       def _execute(sql, name = nil)
         if sql.lstrip =~ /^insert/i
           if query_requires_identity_insert?(sql)
             table_name = get_table_name(sql)
-            with_identity_insert_enabled(table_name) do 
+            with_identity_insert_enabled(table_name) do
               id = @connection.execute_insert(sql)
             end
           else
@@ -234,8 +239,8 @@ module JdbcSpec
           @connection.execute_update(sql)
         end
       end
-      
-      
+
+
       private
       # Turns IDENTITY_INSERT ON for table during execution of the block
       # N.B. This sets the state of IDENTITY_INSERT to OFF after the
@@ -245,13 +250,13 @@ module JdbcSpec
         set_identity_insert(table_name, true)
         yield
       ensure
-        set_identity_insert(table_name, false)  
+        set_identity_insert(table_name, false)
       end
-      
+
       def set_identity_insert(table_name, enable = true)
         execute "SET IDENTITY_INSERT #{table_name} #{enable ? 'ON' : 'OFF'}"
       rescue Exception => e
-        raise ActiveRecordError, "IDENTITY_INSERT could not be turned #{enable ? 'ON' : 'OFF'} for table #{table_name}"  
+        raise ActiveRecordError, "IDENTITY_INSERT could not be turned #{enable ? 'ON' : 'OFF'} for table #{table_name}"
       end
 
       def get_table_name(sql)
@@ -279,7 +284,7 @@ module JdbcSpec
         id_column = identity_column(table_name)
         sql =~ /\[#{id_column}\]/ ? table_name : nil
       end
-      
+
       def get_special_columns(table_name)
         special = []
         @table_columns ||= {}

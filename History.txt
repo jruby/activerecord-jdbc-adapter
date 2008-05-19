@@ -7,6 +7,7 @@
 - Add structure dump and other DDL-ish for DB2 (courtesy abedra and stuarthalloway)
 - Fix missing quote_table_name function under Rails 1.2.6 and earlier
 - Small tweaks to jdbc.rake to select proper config
+- JRUBY-2011: Fix MSSQL string un-quoting issue (Silvio Fonseca)
 
 == 0.8
 
