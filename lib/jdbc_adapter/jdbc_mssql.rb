@@ -50,7 +50,7 @@ module JdbcSpec
       end
 
       def type_cast(value)
-        return nil if value.nil? || value.downcase == "(null)"
+        return nil if value.nil? || value == "(null)" || value == "(NULL)"
         case type
         when :string then unquote_string value
         when :integer then unquote(value).to_i rescue value ? 1 : 0
