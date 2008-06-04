@@ -66,7 +66,7 @@ public class JdbcMySQLSpec {
             default: continue;
             }
             if(i > startOfExtend)
-              blNew.append(bl, startOfExtend, i-startOfExtend);
+              blNew.append(bl, startOfExtend-bl.begin, i-startOfExtend);
             blNew.append(rep, 0, 2);
             startOfExtend = i+1;
         }
@@ -75,7 +75,7 @@ public class JdbcMySQLSpec {
           return string;
         }
         if (bl.begin + bl.realSize > startOfExtend)
-          blNew.append(bl, startOfExtend, bl.begin + bl.realSize - startOfExtend);
+          blNew.append(bl, startOfExtend-bl.begin, bl.begin + bl.realSize - startOfExtend);
 
         return recv.getRuntime().newStringShared(blNew);
     }
