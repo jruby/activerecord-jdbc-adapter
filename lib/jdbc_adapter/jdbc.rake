@@ -10,7 +10,7 @@ def redefine_task(*args, &block)
 end
 
 namespace :db do
-  if respond_to?(:create_database)
+  if Rake::Task["db:create"]
     redefine_task :create => :environment do
       create_database(ActiveRecord::Base.configurations[RAILS_ENV])
     end
