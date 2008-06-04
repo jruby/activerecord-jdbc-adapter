@@ -13,8 +13,10 @@
 - 20243: numerics improvements for MSSQL (Aslak Hellesøy)
 - 20172: don't quote table names for MSSQL (Thor Marius Henrichsen)
 - 19729: check for primary key existence in postgres during insert (Martin Luder)
-- 18846: retrying failing SQL statements is harmful when not autocommitting (Craig McMillan)
+- JRUBY-2297, 18846: retrying failing SQL statements is harmful when not autocommitting (Craig McMillan)
 - 10021: very preliminary sybase support. (Mark Atkinson) Not usable until collision w/ sqlserver driver is resolved.
+- JRUBY-2312, JRUBY-2319, JRUBY-2322: Oracle timestamping issues (Jesse Hu & Michael König)
+- JRUBY-2422: Fix MySQL referential integrity and rollback issues
 
 == 0.8
 

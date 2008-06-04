@@ -26,16 +26,16 @@ module ::JdbcSpec
     def self.adapter_selector
       [/mysql/i, lambda {|cfg,adapt| adapt.extend(::JdbcSpec::MySQL)}]
     end
-    
+
     def self.extended(adapter)
       adapter.execute("SET SQL_AUTO_IS_NULL=0")
     end
-    
+
     module Column
       TYPES_ALLOWING_EMPTY_STRING_DEFAULT = Set.new([:binary, :string, :text])
 
       def simplified_type(field_type)
-        return :boolean if field_type =~ /tinyint\(1\)|bit/i 
+        return :boolean if field_type =~ /tinyint\(1\)|bit/i
         return :string  if field_type =~ /enum/i
         super
       end
@@ -44,7 +44,7 @@ module ::JdbcSpec
         @original_default = default
         @default = nil if missing_default_forged_as_empty_string?
       end
-      
+
       # MySQL misreports NOT NULL column default when none is given.
       # We can't detect this for columns which may have a legitimate ''
       # default (string, text, binary) but we can for others (integer,
@@ -56,7 +56,7 @@ module ::JdbcSpec
         !null && @original_default == '' && !TYPES_ALLOWING_EMPTY_STRING_DEFAULT.include?(type)
       end
     end
-    
+
     def modify_types(tp)
       tp[:primary_key] = "int(11) DEFAULT NULL auto_increment PRIMARY KEY"
       tp[:decimal] = { :name => "decimal" }
@@ -64,12 +64,12 @@ module ::JdbcSpec
       tp[:datetime][:limit] = nil
       tp
     end
-    
+
     # QUOTING ==================================================
-    
+
     def quote(value, column = nil)
       return value.quoted_id if value.respond_to?(:quoted_id)
-      
+
       if column && column.type == :primary_key
         value.to_s
       elsif column && String === value && column.type == :binary && column.class.respond_to?(:string_to_binary)
@@ -81,7 +81,7 @@ module ::JdbcSpec
         super
       end
     end
-    
+
     def quote_column_name(name) #:nodoc:
         "`#{name}`"
     end
@@ -89,15 +89,15 @@ module ::JdbcSpec
     def quote_table_name(name) #:nodoc:
       quote_column_name(name).gsub('.', '`.`')
     end
-    
+
     def quoted_true
         "1"
     end
-    
+
     def quoted_false
         "0"
     end
-    
+
     def begin_db_transaction #:nodoc:
       @connection.begin
     rescue Exception
@@ -116,16 +116,25 @@ module ::JdbcSpec
       # Transactions aren't supported
     end
 
+    def disable_referential_integrity(&block) #:nodoc:
+      old = select_value("SELECT @@FOREIGN_KEY_CHECKS")
+      begin
+        update("SET FOREIGN_KEY_CHECKS = 0")
+        yield
+      ensure
+        update("SET FOREIGN_KEY_CHECKS = #{old}")
+      end
+    end
 
     # SCHEMA STATEMENTS ========================================
-    
+
     def structure_dump #:nodoc:
       if supports_views?
         sql = "SHOW FULL TABLES WHERE Table_type = 'BASE TABLE'"
       else
         sql = "SHOW TABLES"
       end
-      
+
       select_all(sql).inject("") do |structure, table|
         table.delete('Table_type')
 
@@ -135,15 +144,15 @@ module ::JdbcSpec
           structure += table + ";\n\n"
         elsif(view = hash["Create View"])
           structure += view + ";\n\n"
-        end        
+        end
       end
     end
-    
+
     def recreate_database(name) #:nodoc:
       drop_database(name)
       create_database(name)
     end
-    
+
     def create_database(name, options = {}) #:nodoc:
       if options[:collation]
         execute "CREATE DATABASE `#{name}` DEFAULT CHARACTER SET `#{options[:charset] || 'utf8'}` COLLATE `#{options[:collation]}`"
@@ -151,29 +160,29 @@ module ::JdbcSpec
         execute "CREATE DATABASE `#{name}` DEFAULT CHARACTER SET `#{options[:charset] || 'utf8'}`"
       end
     end
-    
+
     def drop_database(name) #:nodoc:
       execute "DROP DATABASE IF EXISTS `#{name}`"
     end
-    
+
     def current_database
       select_one("SELECT DATABASE() as db")["db"]
     end
-    
+
     def create_table(name, options = {}) #:nodoc:
       super(name, {:options => "ENGINE=InnoDB CHARACTER SET utf8 COLLATE utf8_bin"}.merge(options))
     end
-    
+
     def rename_table(name, new_name)
       execute "RENAME TABLE #{quote_table_name(name)} TO #{quote_table_name(new_name)}"
-    end  
-    
+    end
+
     def change_column_default(table_name, column_name, default) #:nodoc:
       current_type = select_one("SHOW COLUMNS FROM #{quote_table_name(table_name)} LIKE '#{column_name}'")["Type"]
 
       execute("ALTER TABLE #{quote_table_name(table_name)} CHANGE #{quote_column_name(column_name)} #{quote_column_name(column_name)} #{current_type} DEFAULT #{quote(default)}")
     end
-    
+
     def change_column(table_name, column_name, type, options = {}) #:nodoc:
       unless options_include_default?(options)
         if column = columns(table_name).find { |c| c.name == column_name.to_s }
@@ -193,7 +202,7 @@ module ::JdbcSpec
       current_type = cols["Type"] || cols["COLUMN_TYPE"]
       execute "ALTER TABLE #{quote_table_name(table_name)} CHANGE #{quote_table_name(column_name)} #{quote_column_name(new_column_name)} #{current_type}"
     end
-    
+
     def add_limit_offset!(sql, options) #:nodoc:
       if limit = options[:limit]
         unless offset = options[:offset]

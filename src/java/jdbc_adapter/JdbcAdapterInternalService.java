@@ -397,22 +397,28 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
 
     @JRubyMethod(name = "commit")
     public static IRubyObject commit(IRubyObject recv) throws SQLException {
-        try {
-            getConnection(recv).commit();
-            return recv.getRuntime().getNil();
-        } finally {
-            getConnection(recv).setAutoCommit(true);
+        Connection c = getConnection(recv);
+        if (!c.getAutoCommit()) {
+            try {
+                c.commit();
+            } finally {
+                c.setAutoCommit(true);
+            }
         }
+        return recv.getRuntime().getNil();
     }
 
     @JRubyMethod(name = "rollback")
     public static IRubyObject rollback(IRubyObject recv) throws SQLException {
-        try {
-            getConnection(recv).rollback();
-            return recv.getRuntime().getNil();
-        } finally {
-            getConnection(recv).setAutoCommit(true);
+        Connection c = getConnection(recv);
+        if (!c.getAutoCommit()) {
+            try {
+                c.rollback();
+            } finally {
+                c.setAutoCommit(true);
+            }
         }
+        return recv.getRuntime().getNil();
     }
 
     @JRubyMethod(name = {"columns", "columns_internal"}, required = 1, optional = 2)
@@ -1081,7 +1087,7 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
                 } finally {
                     try { s.close(); } catch (SQLException ignored) {}
                 }
-                return true;
+                return false;
             } else {
                 return !c.isClosed();
             }
