@@ -14,7 +14,7 @@ def java_classpath_arg # myriad of ways to discover JRuby classpath
     jruby_cpath = ENV['JRUBY_PARENT_CLASSPATH'] || ENV['JRUBY_HOME'] &&
       FileList["#{ENV['JRUBY_HOME']}/lib/*.jar"].join(File::PATH_SEPARATOR)
   end
-  jruby_cpath ? "-cp #{jruby_cpath}" : ""
+  jruby_cpath ? "-cp \"#{jruby_cpath}\"" : ""
 end
 
 desc "Compile the native Java code."
