@@ -1,5 +1,7 @@
-require 'jdbc_adapter'
 require 'rubygems'
+# Specify version of activerecord here if desired
+# gem 'activerecord', '=2.1'
+require 'jdbc_adapter'
 require 'models/auto_id'
 require 'models/entry'
 require 'models/add_not_null_column_to_table'
