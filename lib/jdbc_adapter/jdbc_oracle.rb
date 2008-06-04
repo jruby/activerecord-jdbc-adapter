@@ -65,12 +65,7 @@ module ::JdbcSpec
         else value
         end
       end
-      
-      def type_cast_code(var_name)
-        return "JdbcSpec::Oracle::Column.cast_to_date_or_time(#{var_name})" if type == :datetime
-        super
-      end
-      
+
       private
       def simplified_type(field_type)
         case field_type
@@ -317,7 +312,12 @@ module ::JdbcSpec
           return value.to_s
         end
         case value
-        when String, ActiveSupport::Multibyte::Chars     : %Q{'#{quote_string(value)}'}
+        when String, ActiveSupport::Multibyte::Chars
+          if column.type == :datetime
+            %Q{TIMESTAMP'#{value}'}
+          else
+            %Q{'#{quote_string(value)}'}
+          end
         when NilClass   : 'null'
         when TrueClass  : '1'
         when FalseClass : '0'
