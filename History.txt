@@ -13,6 +13,7 @@
 - 20243: numerics improvements for MSSQL (Aslak Hellesøy)
 - 20172: don't quote table names for MSSQL (Thor Marius Henrichsen)
 - 19729: check for primary key existence in postgres during insert (Martin Luder)
+- 18846: retrying failing SQL statements is harmful when not autocommitting (Craig McMillan)
 
 == 0.8
 

@@ -233,26 +233,30 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
         int tries = 1;
         int i = 0;
         Throwable toWrap = null;
+        boolean autoCommit = false;
         while (i < tries) {
             Connection c = getConnection(recv);
             try {
+                autoCommit = c.getAutoCommit();
                 return block.call(c);
             } catch (Exception e) {
                 toWrap = e;
                 while (toWrap.getCause() != null && toWrap.getCause() != toWrap) {
                     toWrap = toWrap.getCause();
                 }
-                if (i == 0) {
-                    tries = (int) rubyApi.convertToRubyInteger(config_value(recv, "retry_count")).getLongValue();
-                    if (tries <= 0) {
-                        tries = 1;
-                    }
-                }
                 i++;
-                if (isConnectionBroken(recv, c)) {
-                    reconnect(recv);
-                } else {
-                    throw wrap(recv, toWrap);
+                if (autoCommit) {
+                    if (i == 1) {
+                        tries = (int) rubyApi.convertToRubyInteger(config_value(recv, "retry_count")).getLongValue();
+                        if (tries <= 0) {
+                            tries = 1;
+                        }
+                    }
+                    if (isConnectionBroken(recv, c)) {
+                        reconnect(recv);
+                    } else {
+                        throw wrap(recv, toWrap);
+                    }
                 }
             }
         }
