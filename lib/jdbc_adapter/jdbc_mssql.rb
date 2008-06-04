@@ -185,6 +185,7 @@ module JdbcSpec
         }
       end
       def change_column_default(table_name, column_name, default) #:nodoc:
+        remove_default_constraint(table_name, column_name)
         execute "ALTER TABLE #{table_name} ADD CONSTRAINT DF_#{table_name}_#{column_name} DEFAULT #{quote(default, column_name)} FOR #{column_name}"
       end
       def remove_column(table_name, column_name)
@@ -214,6 +215,7 @@ module JdbcSpec
 
 
       def columns(table_name, name = nil)
+        return [] if table_name =~ /^information_schema\./i
         cc = super
         cc.each do |col|
           col.identity = true if col.sql_type =~ /identity/i

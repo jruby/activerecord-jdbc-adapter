@@ -172,11 +172,7 @@ end
   pelle.female = false
   pelle.save
 
-
-
-
-
-  prods = Product.find_all
+  prods = Product.find :all
   order = Order.new(:name => "Dalai Lama", :address => "Great Road 32", :email => "abc@dot.com", :pay_type => "cash")
   order.line_items << LineItem.new(:product => prods[0], :quantity => 3, :total_price => (prods[0].price * 3))
   order.line_items << LineItem.new(:product => prods[2], :quantity => 1, :total_price => (prods[2].price))

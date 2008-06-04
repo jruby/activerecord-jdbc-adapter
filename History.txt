@@ -8,6 +8,8 @@
 - Fix missing quote_table_name function under Rails 1.2.6 and earlier
 - Small tweaks to jdbc.rake to select proper config
 - JRUBY-2011: Fix MSSQL string un-quoting issue (Silvio Fonseca)
+- JRUBY-1977, 17427: Fix information_schema select issue with MSSQL (Matt Burke)
+
 
 == 0.8
 
