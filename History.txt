@@ -3,13 +3,13 @@
 - Now sporting a JDBC sqlite3 adapter! Thanks Joseph Athman.
 - Added support for InterSystems Cache database (Ryan Bell)
 - Fix for JRUBY-2256
-- JRUBY-1638, JRUBY-2404, JRUBY-2463: schema.table handling and Oracle NUMBER fixes (Thanks Darcy Schultz & Jesse Hu)
+- JRUBY-1638, JRUBY-2404, JRUBY-2463: schema.table handling and Oracle NUMBER fixes (Darcy Schultz & Jesse Hu)
 - Add structure dump and other DDL-ish for DB2 (courtesy abedra and stuarthalloway)
 - Fix missing quote_table_name function under Rails 1.2.6 and earlier
 - Small tweaks to jdbc.rake to select proper config
 - JRUBY-2011: Fix MSSQL string un-quoting issue (Silvio Fonseca)
 - JRUBY-1977, 17427: Fix information_schema select issue with MSSQL (Matt Burke)
-
+- 20479: Improve get_table_name for MSSQL (Aslak Hellesøy)
 
 == 0.8
 
