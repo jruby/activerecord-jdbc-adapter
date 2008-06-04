@@ -11,6 +11,7 @@
 - JRUBY-1977, 17427: Fix information_schema select issue with MSSQL (Matt Burke)
 - 20479: Improve get_table_name for MSSQL (Aslak Hellesøy)
 - 20243: numerics improvements for MSSQL (Aslak Hellesøy)
+- 20172: don't quote table names for MSSQL (Thor Marius Henrichsen)
 
 == 0.8
 

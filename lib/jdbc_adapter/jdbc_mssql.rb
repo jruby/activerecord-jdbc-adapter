@@ -118,31 +118,35 @@ module JdbcSpec
         else
           "'#{quote_string(value)}'" # ' (for ruby-mode)
         end
-        when TrueClass             then '1'
-        when FalseClass            then '0'
-        when Time, DateTime        then "'#{value.strftime("%Y%m%d %H:%M:%S")}'"
-        when Date                  then "'#{value.strftime("%Y%m%d")}'"
-        else                       super
+      when TrueClass             then '1'
+      when FalseClass            then '0'
+      when Time, DateTime        then "'#{value.strftime("%Y%m%d %H:%M:%S")}'"
+      when Date                  then "'#{value.strftime("%Y%m%d")}'"
+      else                       super
       end
     end
 
-      def quote_string(string)
-        string.gsub(/\'/, "''")
-      end
+    def quote_string(string)
+      string.gsub(/\'/, "''")
+    end
 
-      def quote_column_name(name)
-        "[#{name}]"
-      end
+    def quote_table_name(name)
+      name
+    end
 
-      def change_order_direction(order)
-        order.split(",").collect {|fragment|
-          case fragment
-          when  /\bDESC\b/i     then fragment.gsub(/\bDESC\b/i, "ASC")
-          when  /\bASC\b/i      then fragment.gsub(/\bASC\b/i, "DESC")
-          else                  String.new(fragment).split(',').join(' DESC,') + ' DESC'
-          end
-        }.join(",")
-      end
+    def quote_column_name(name)
+      "[#{name}]"
+    end
+
+    def change_order_direction(order)
+      order.split(",").collect {|fragment|
+        case fragment
+        when  /\bDESC\b/i     then fragment.gsub(/\bDESC\b/i, "ASC")
+        when  /\bASC\b/i      then fragment.gsub(/\bASC\b/i, "DESC")
+        else                  String.new(fragment).split(',').join(' DESC,') + ' DESC'
+        end
+      }.join(",")
+    end
 
     def recreate_database(name)
       drop_database(name)
@@ -259,7 +263,7 @@ module JdbcSpec
       def set_identity_insert(table_name, enable = true)
         execute "SET IDENTITY_INSERT #{table_name} #{enable ? 'ON' : 'OFF'}"
       rescue Exception => e
-        raise ActiveRecordError, "IDENTITY_INSERT could not be turned #{enable ? 'ON' : 'OFF'} for table #{table_name}"
+        raise ActiveRecord::ActiveRecordError, "IDENTITY_INSERT could not be turned #{enable ? 'ON' : 'OFF'} for table #{table_name}"
       end
 
       def get_table_name(sql)
