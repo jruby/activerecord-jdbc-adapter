@@ -37,7 +37,8 @@ module JdbcSpec
       def simplified_type(field_type)
         case field_type
           when /int|bigint|smallint|tinyint/i                        then :integer
-          when /float|double|decimal|money|numeric|real|smallmoney/i then @scale == 0 ? :integer : :decimal
+          when /numeric/i                                            then (@scale.nil? || @scale == 0) ? :integer : :decimal
+          when /float|double|decimal|money|real|smallmoney/i         then :decimal
           when /datetime|smalldatetime/i                             then :datetime
           when /timestamp/i                                          then :timestamp
           when /time/i                                               then :time

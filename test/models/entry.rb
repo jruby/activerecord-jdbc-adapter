@@ -7,7 +7,7 @@ class CreateEntries < ActiveRecord::Migration
       t.column :title, :string, :limit => 100
       t.column :updated_on, :datetime
       t.column :content, :text
-      t.column :rating, :decimal, :precision => 10
+      t.column :rating, :decimal, :precision => 10, :scale => 2
     end
   end
 

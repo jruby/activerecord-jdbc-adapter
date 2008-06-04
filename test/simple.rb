@@ -22,7 +22,7 @@ module FixtureSetup
     @title = "First post!"
     @content = "Hello from JRuby on Rails!"
     @new_title = "First post updated title"
-    @rating = 205
+    @rating = 205.76
     Entry.create :title => @title, :content => @content, :rating => @rating
   end
 end
