@@ -165,7 +165,7 @@ module ::JdbcSpec
     def insert(sql, name = nil, pk = nil, id_value = nil, sequence_name = nil) #:nodoc:
       execute(sql, name)
       table = sql.split(" ", 4)[2]
-      id_value || last_insert_id(table, sequence_name || default_sequence_name(table, pk))
+      id_value || pk && last_insert_id(table, sequence_name || default_sequence_name(table, pk))
     end
 
     def columns(table_name, name=nil)
