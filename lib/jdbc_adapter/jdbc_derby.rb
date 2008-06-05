@@ -90,7 +90,7 @@ module ::JdbcSpec
     # Override default -- fix case where ActiveRecord passes :default => nil, :null => true
     def add_column_options!(sql, options)
       options.delete(:default) if options.has_key?(:default) && options[:default].nil?
-      options.delete(:null) if options.has_key?(:null) && (options[:null].nil? || options[:null].true?)
+      options.delete(:null) if options.has_key?(:null) && (options[:null].nil? || options[:null] == true)
       super
     end
 
