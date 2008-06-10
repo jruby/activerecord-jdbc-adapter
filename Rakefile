@@ -89,6 +89,12 @@ Rake::TestTask.new(:test_mssql) do | t |
   t.libs << 'test'
 end
 
+# Tests for JDBC adapters that don't require a database.
+Rake::TestTask.new(:test_jdbc_adapters) do | t |
+  t.test_files = FileList[ 'test/jdbc_adapter/jdbc_sybase_test.rb' ]
+  t.libs << 'test'
+end
+
 MANIFEST = FileList["History.txt", "Manifest.txt", "README.txt", 
   "Rakefile", "LICENSE.txt", "lib/**/*.rb", "lib/jdbc_adapter/jdbc_adapter_internal.jar", "test/**/*.rb",
    "lib/**/*.rake", "src/**/*.java"]

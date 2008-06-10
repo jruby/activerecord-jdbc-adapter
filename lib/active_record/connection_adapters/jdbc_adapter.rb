@@ -269,9 +269,9 @@ module ActiveRecord
         h[val[0]] = val[1]; h }
 
       def initialize(config, name, default, *args)
-        ds = config[:driver].to_s
+        dialect = config[:dialect] || config[:driver]
         for reg, func in COLUMN_TYPES
-          if reg === ds
+          if reg === dialect.to_s
             func.call(config,self)
           end
         end
@@ -445,9 +445,9 @@ module ActiveRecord
       def initialize(connection, logger, config)
         super(connection, logger)
         @config = config
-        ds = config[:driver].to_s
+        dialect = config[:dialect] || config[:driver]
         for reg, func in ADAPTER_TYPES
-          if reg === ds
+          if reg === dialect.to_s
             func.call(@config,self)
           end
         end
