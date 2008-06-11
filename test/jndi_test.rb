@@ -12,18 +12,16 @@
 #
 # Finally, you'll need the jdbc driver, which is derby, for this test.
 
-require 'models/auto_id'
-require 'models/entry'
+require 'jdbc_common'
 require 'db/jndi_config'
-require 'simple'
-require 'test/unit'
-require 'logger'
 
 class DerbyJndiTest < Test::Unit::TestCase
   include SimpleTestMethods
   alias_method :setup_simple, :setup
   def setup
-    ActiveRecord::Base.establish_connection({ :jndi => 'jdbc/derbydb', :adapter => 'jdbc'})
+    ActiveRecord::Base.establish_connection({
+        :jndi => 'jdbc/derbydb',
+        :adapter => 'jdbc'})
     logger = Logger.new('jndi_test.log')
     logger.level = Logger::DEBUG
     ActiveRecord::Base.logger = logger
