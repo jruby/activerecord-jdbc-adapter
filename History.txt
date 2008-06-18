@@ -1,3 +1,14 @@
+== 0.8.2
+
+- Added an optional config key called :dialect. Using :dialect allows you to
+  override the default SQL dialect for the driver class being used. There are
+  a few cases for this:
+  - Using using Sybase w/ the jTDS driver.
+  - Using rebranded drivers.
+  - It makes more sense to use :dialect, rather then :driver when using JNDI.
+- JRUBY-2619: Typo with :test config causing problems with dev database (Igor Minar)
+- 20524, JRUBY-2612: Since when did I think that there was a #true? method on Object?
+
 == 0.8.1
 
 - Now sporting a JDBC sqlite3 adapter! Thanks Joseph Athman.
