@@ -614,7 +614,7 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
                 Statement stmt = null;
                 try {
                     stmt = c.createStatement();
-                    return recv.getRuntime().newFixnum(stmt.executeUpdate(rubyApi.convertToRubyString(sql).getUnicodeValue()));
+                    return recv.getRuntime().newFixnum((long)stmt.executeUpdate(rubyApi.convertToRubyString(sql).getUnicodeValue()));
                 } finally {
                     if (null != stmt) {
                         try {
