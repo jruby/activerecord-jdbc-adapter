@@ -30,8 +30,9 @@ TIMES = (ARGV[0] || 5).to_i
 Benchmark.bm(30) do |make|
   TIMES.times do
     make.report("Widget.new.valid?") do
+      widget = Widget.new
       100_000.times do
-        Widget.new.valid?
+        widget.valid?
       end
     end
   end
