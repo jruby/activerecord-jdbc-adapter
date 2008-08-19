@@ -235,7 +235,7 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
         Throwable toWrap = null;
         boolean autoCommit = false;
         while (i < tries) {
-            Connection c = getConnection(recv);
+            Connection c = getConnection(recv, true);
             try {
                 autoCommit = c.getAutoCommit();
                 return block.call(c);
@@ -370,7 +370,7 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
     @JRubyMethod(name = "set_native_database_types")
     public static IRubyObject set_native_database_types(IRubyObject recv) throws SQLException, IOException {
         Ruby runtime = recv.getRuntime();
-        IRubyObject types = unmarshal_result_downcase(recv, getConnection(recv).getMetaData().getTypeInfo());
+        IRubyObject types = unmarshal_result_downcase(recv, getConnection(recv, true).getMetaData().getTypeInfo());
         IRubyObject typeConverter = ((RubyModule) (runtime.getModule("ActiveRecord").getConstant("ConnectionAdapters"))).getConstant("JdbcTypeConverter");
         IRubyObject value = rubyApi.callMethod(rubyApi.callMethod(typeConverter, "new", types), "choose_best_types");
         rubyApi.setInstanceVariable(recv, "@native_types", value);
@@ -379,9 +379,9 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
 
     @JRubyMethod(name = "database_name")
     public static IRubyObject database_name(IRubyObject recv) throws SQLException {
-        String name = getConnection(recv).getCatalog();
+        String name = getConnection(recv, true).getCatalog();
         if(null == name) {
-            name = getConnection(recv).getMetaData().getUserName();
+            name = getConnection(recv, true).getMetaData().getUserName();
             if(null == name) {
                 name = "db1";
             }
@@ -391,13 +391,13 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
 
     @JRubyMethod(name = "begin")
     public static IRubyObject begin(IRubyObject recv) throws SQLException {
-        getConnection(recv).setAutoCommit(false);
+        getConnection(recv, true).setAutoCommit(false);
         return recv.getRuntime().getNil();
     }
 
     @JRubyMethod(name = "commit")
     public static IRubyObject commit(IRubyObject recv) throws SQLException {
-        Connection c = getConnection(recv);
+        Connection c = getConnection(recv, true);
         if (!c.getAutoCommit()) {
             try {
                 c.commit();
@@ -410,7 +410,7 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
 
     @JRubyMethod(name = "rollback")
     public static IRubyObject rollback(IRubyObject recv) throws SQLException {
-        Connection c = getConnection(recv);
+        Connection c = getConnection(recv, true);
         if (!c.getAutoCommit()) {
             try {
                 c.rollback();
@@ -1057,7 +1057,15 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
     }
 
     private static Connection getConnection(IRubyObject recv) {
+        return getConnection(recv, false);
+    }
+
+    private static Connection getConnection(IRubyObject recv, boolean error) {
         Connection conn = (Connection) recv.dataGetStruct();
+        if(error && conn == null) {
+            RubyClass err = recv.getRuntime().getModule("ActiveRecord").getClass("ConnectionNotEstablished");
+            throw new RaiseException(recv.getRuntime(), err, "no connection available", false);
+        }
         return conn;
     }
 
