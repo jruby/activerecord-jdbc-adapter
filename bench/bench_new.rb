@@ -1,9 +1,9 @@
 require File.dirname(__FILE__) + '/bench_model'
 
-TIMES = (ARGV[0] || 5).to_i
-Benchmark.bm(30) do |make|
+puts "Widget.new"
+Benchmark.bm do |make|
   TIMES.times do
-    make.report("Widget.new") do
+    make.report do
       100_000.times do
         Widget.new
       end

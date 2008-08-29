@@ -1,6 +1,5 @@
 require File.dirname(__FILE__) + '/bench_model'
 
-TIMES = (ARGV[0] || 5).to_i
 Benchmark.bm do |make|
   TIMES.times do
     make.report do

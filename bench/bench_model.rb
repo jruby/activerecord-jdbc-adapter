@@ -1,4 +1,9 @@
 =begin
+
+* Use ENV['LOGGER'] (=severe|warn|info|debug) to turn on the logger
+* Pass N as arg 1 to script to set the number of iterations.
+* Add ActiveRecord to load path to use a specific (non-gem version) for testing (e.g., edge).
+
 +----------+------+-----+---------+-----------------+----------------+
 | Field       | Type         | Null | Key | Default | Extra          |
 +-------------+--------------+------+-----+---------+----------------+
@@ -33,8 +38,15 @@ if defined? RUBY_ENGINE && RUBY_ENGINE == "jruby"
   require 'active_record/connection_adapters/jdbcmysql_adapter'
 end
 
-require 'logger'
-ActiveRecord::Base.logger = Logger.new(File.expand_path(File.dirname(__FILE__) + "/debug.log"))
+if ENV['LOGGER']
+  require 'logger'
+  ActiveRecord::Base.logger = Logger.new(File.expand_path(File.dirname(__FILE__) + "/debug.log"))
+  lvl = %(DEBUG INFO WARN ERROR FATAL).detect {|s| s =~ /#{ENV['LOGGER'].upcase}/}
+  ActiveRecord::Base.logger.level = lvl && Logger.const_get(lvl) || Logger::INFO
+else
+  ActiveRecord::Base.logger = Logger.new($stdout)
+  ActiveRecord::Base.logger.level = Logger::UNKNOWN
+end
 
 ActiveRecord::Base.establish_connection(
   :adapter => "mysql",
@@ -58,5 +70,8 @@ end
 CreateWidgets.up unless ActiveRecord::Base.connection.tables.include?("widgets")
 
 class Widget < ActiveRecord::Base; end
+Widget.create!(:name => "bench", :description => "Bench record") unless Widget.count > 0
 
 ActiveRecord::Base.clear_active_connections!
+
+TIMES = (ARGV[0] || 5).to_i
