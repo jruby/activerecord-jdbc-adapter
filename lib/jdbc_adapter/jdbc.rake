@@ -67,7 +67,7 @@ namespace :db do
       ActiveRecord::Base.establish_connection(abcs["test"])
       ActiveRecord::Base.connection.execute('SET foreign_key_checks = 0') if abcs["test"]["adapter"] =~ /mysql/i
       IO.readlines("db/#{RAILS_ENV}_structure.sql").join.split(";\n\n").each do |ddl|
-        ActiveRecord::Base.connection.execute(ddl)
+        ActiveRecord::Base.connection.execute(ddl.chomp(';'))
       end
     end
 
