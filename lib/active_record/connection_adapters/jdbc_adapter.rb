@@ -124,6 +124,7 @@ module ActiveRecord
                           lambda {|r| r['type_name'] =~ /^varchar$/i},
                           lambda {|r| r['type_name'] =~ /varying/i}],
         :text        => [ lambda {|r| [Jdbc::Types::LONGVARCHAR, Jdbc::Types::CLOB].include?(r['data_type'].to_i)},
+                          lambda {|r| r['type_name'] =~ /^text$/i},     # For Informix
                           lambda {|r| r['type_name'] =~ /^(text|clob)$/i},
                           lambda {|r| r['type_name'] =~ /^character large object$/i},
                           lambda {|r| r['sql_data_type'] == 2005}],
@@ -156,6 +157,7 @@ module ActiveRecord
                           lambda {|r| r['type_name'] =~ /^integer/i}],  #Num of milliseconds for SQLite3 JDBC Driver
         :time        => [ lambda {|r| Jdbc::Types::TIME == r['data_type'].to_i},
                           lambda {|r| r['type_name'] =~ /^time$/i},
+                          lambda {|r| r['type_name'] =~ /^datetime/i},  # For Informix
                           lambda {|r| r['type_name'] =~ /^date/i},
                           lambda {|r| r['type_name'] =~ /^integer/i}],  #Num of milliseconds for SQLite3 JDBC Driver
         :date        => [ lambda {|r| Jdbc::Types::DATE == r['data_type'].to_i},
