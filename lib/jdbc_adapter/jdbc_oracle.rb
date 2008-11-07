@@ -335,6 +335,14 @@ module ::JdbcSpec
       end
     end
     
+    def quoted_true
+      '1'
+    end
+    
+    def quoted_false
+      '0'
+    end
+    
     private
     def select(sql, name=nil)
       records = execute(sql,name)
