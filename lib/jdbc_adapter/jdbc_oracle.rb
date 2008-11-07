@@ -335,11 +335,11 @@ module ::JdbcSpec
       end
     end
     
-    def quoted_true
+    def quoted_true #:nodoc:
       '1'
     end
     
-    def quoted_false
+    def quoted_false #:nodoc:
       '0'
     end
     
