@@ -187,12 +187,20 @@ module ::JdbcSpec
       execute "ALTER TABLE #{table_name} MODIFY #{column_name} DEFAULT #{quote(default)}"
     end
 
+    def add_column_options!(sql, options) #:nodoc:
+      # handle case  of defaults for CLOB columns, which would otherwise get "quoted" incorrectly
+      if options_include_default?(options) && (column = options[:column]) && column.type == :text
+        sql << " DEFAULT #{quote(options.delete(:default))}" 
+      end
+      super
+    end
+
     def change_column(table_name, column_name, type, options = {}) #:nodoc:
       change_column_sql = "ALTER TABLE #{table_name} MODIFY #{column_name} #{type_to_sql(type, options[:limit])}"
       add_column_options!(change_column_sql, options)
       execute(change_column_sql)
     end
-
+    
     def rename_column(table_name, column_name, new_column_name) #:nodoc:
       execute "ALTER TABLE #{table_name} RENAME COLUMN #{column_name} to #{new_column_name}"
     end
