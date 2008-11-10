@@ -27,7 +27,7 @@ What's there, and what is not there:
 * HSQLDB - Complete
 * H2 - Complete
 * SQLite3 - work in progress
-* Informix - work in progress
+* Informix - Fairly complete support, all tests pass and migrations appear to work.  Comments welcome.
 
 Other databases will require testing and likely a custom configuration module. Please join the jruby-extras mailing-list[http://rubyforge.org/mail/?group_id=2014] to help us discover support for more databases.
 
