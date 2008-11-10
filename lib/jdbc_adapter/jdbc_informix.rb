@@ -105,6 +105,10 @@ module ::JdbcSpec
       end
     end
 
+    def table_alias_length
+      30
+    end
+
     def remove_index(table_name, options = {})
       @connection.execute_update("DROP INDEX #{index_name(table_name, options)}")
     end
