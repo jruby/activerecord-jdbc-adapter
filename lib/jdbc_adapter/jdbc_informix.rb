@@ -5,19 +5,19 @@ module ::ActiveRecord
   private
     def write_lobs
       if connection.is_a?(JdbcSpec::Informix)
-        self.class.columns.select do |c|
-          [:text, :binary].include? c.type
-        end.each do |c|
-          value = self[c.name]
-          value = value.to_yaml if unserializable_attribute?(c.name, c)
+        self.class.columns.each do |c|
+          if [:text, :binary].include? c.type
+            value = self[c.name]
+            value = value.to_yaml if unserializable_attribute?(c.name, c)
 
-          unless value.nil? || (value == '')
-            connection.write_large_object(c.type == :binary,
-                                          c.name,
-                                          self.class.table_name,
-                                          self.class.primary_key,
-                                          quote_value(id),
-                                          value)
+            unless value.nil? || (value == '')
+              connection.write_large_object(c.type == :binary,
+                                            c.name,
+                                            self.class.table_name,
+                                            self.class.primary_key,
+                                            quote_value(id),
+                                            value)
+            end
           end
         end
       end
