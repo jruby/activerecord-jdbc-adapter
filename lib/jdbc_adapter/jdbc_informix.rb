@@ -62,7 +62,6 @@ module ::JdbcSpec
       end
     end
 
-    # TODO: Look into using sequences instead for the PKs.
     def modify_types(tp)
       tp[:primary_key] = "SERIAL PRIMARY KEY"
       tp[:string]      = { :name => "VARCHAR", :limit => 255 }
@@ -78,6 +77,18 @@ module ::JdbcSpec
       tp
     end
 
+    def prefetch_primary_key?(table_name = nil)
+      true
+    end
+
+    def supports_migrations?
+      true
+    end
+
+    def default_sequence_name(table, column)
+      "#{table}_seq"
+    end
+
     def add_limit_offset!(sql, options)
       if options[:limit]
         limit = "FIRST #{options[:limit]}"
@@ -87,6 +98,10 @@ module ::JdbcSpec
         sql.sub!(/^select /i, "SELECT #{offset} #{limit} ")
       end
       sql
+    end
+
+    def next_sequence_value(sequence_name)
+      select_one("SELECT #{sequence_name}.nextval id FROM systables WHERE tabid=1")['id']
     end
 
     # TODO: Add some smart quoting for newlines in string and text fields.
@@ -105,8 +120,19 @@ module ::JdbcSpec
       end
     end
 
-    def table_alias_length
-      30
+    def create_table(name, options = {})
+      super(name, options)
+      execute("CREATE SEQUENCE #{name}_seq")
+    end
+ 
+    def rename_table(name, new_name)
+      execute("RENAME TABLE #{name} TO #{new_name}")
+      execute("RENAME SEQUENCE #{name}_seq TO #{new_name}_seq")
+    end
+ 
+    def drop_table(name)
+      super(name)
+      execute("DROP SEQUENCE #{name}_seq")
     end
 
     def remove_index(table_name, options = {})
