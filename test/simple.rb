@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 ActiveRecord::Schema.verbose = false
 
 module MigrationSetup
@@ -138,6 +139,7 @@ module SimpleTestMethods
   def test_disconnect
     assert_equal 1, Entry.count
     ActiveRecord::Base.clear_active_connections!
+    ActiveRecord::Base.connection_pool.disconnect! if ActiveRecord::Base.respond_to?(:connection_pool)
     assert !ActiveRecord::Base.connected?
     assert_equal 1, Entry.count
     assert ActiveRecord::Base.connected?
