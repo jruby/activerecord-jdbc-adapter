@@ -27,6 +27,7 @@ What's there, and what is not there:
 * HSQLDB - Complete
 * H2 - Complete
 * SQLite3 - work in progress
+* Informix - Fairly complete support, all tests pass and migrations appear to work.  Comments welcome.
 
 Other databases will require testing and likely a custom configuration module. Please join the jruby-extras mailing-list[http://rubyforge.org/mail/?group_id=2014] to help us discover support for more databases.
 
@@ -54,7 +55,7 @@ To use ActiveRecord-JDBC with JRuby on Rails:
     end
 
 3. Configure your database.yml to use the <code>jdbc</code> adapter.
-For mysql, postgres, derby, oracle, hsqldb and h2 you can simply configure the database in the normal Rails style. If you use one of the convenience 'activerecord-jdbcXXX-adapter' adapters, be sure and put a 'jdbc' prefix in front of the databas adapter name as below.
+For mysql, postgres, derby, oracle, hsqldb, h2, and informix you can simply configure the database in the normal Rails style. If you use one of the convenience 'activerecord-jdbcXXX-adapter' adapters, be sure and put a 'jdbc' prefix in front of the databas adapter name as below.
 
     development:
       adapter: jdbcmysql
