@@ -1,5 +1,5 @@
 module JdbcAdapter
   module Version
-    VERSION = "0.8.3"
+    VERSION = "0.9"
   end
 end
