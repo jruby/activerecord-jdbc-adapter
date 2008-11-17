@@ -5,23 +5,26 @@ module ::JdbcSpec
       config[:driver] ||= "org.hsqldb.jdbcDriver"
       embedded_driver(config)
     end
-      
+
     def h2_connection(config)
       config[:url] ||= "jdbc:h2:#{config[:database]}"
       config[:driver] ||= "org.h2.Driver"
       embedded_driver(config)
     end
   end
-  
+
   module HSQLDB
     def self.column_selector
       [/hsqldb|\.h2\./i, lambda {|cfg,col| col.extend(::JdbcSpec::HSQLDB::Column)}]
     end
 
     def self.adapter_selector
-      [/hsqldb|\.h2\./i, lambda {|cfg,adapt| adapt.extend(::JdbcSpec::HSQLDB)}]
+      [/hsqldb|\.h2\./i, lambda do |cfg,adapt|
+         adapt.extend(::JdbcSpec::HSQLDB)
+         def adapt.h2_adapter; true; end if cfg[:driver] =~ /\.h2\./
+       end]
     end
-    
+
     module Column
       def type_cast(value)
         return nil if value.nil? || value =~ /^\s*null\s*$/i
@@ -93,10 +96,12 @@ module ::JdbcSpec
 
     def quote(value, column = nil) # :nodoc:
       return value.quoted_id if value.respond_to?(:quoted_id)
-      
+
       case value
       when String
-        if column && column.type == :binary
+        if respond_to?(:h2_adapter) && value.empty?
+          "NULL"
+        elsif column && column.type == :binary
           "'#{quote_string(value).unpack("C*").collect {|v| v.to_s(16)}.join}'"
         else
           "'#{quote_string(value)}'"

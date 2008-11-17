@@ -1,7 +1,10 @@
 == 0.9
 
-- Now updated to support ActiveRecord 2.2. JNDI-based connections (assumed to
-  be backed by connection pools) will pass through ActiveRecord's connection pool.
+- Now updated to support ActiveRecord 2.2. JNDI-based connections will
+  automatically connect/disconnect for every AR connection pool
+  checkout/checkin. For best results, set your pool: parameter >= the
+  actual maximum size of the JNDI connection pool. (We'll look at how
+  to eliminate the need to configure AR's pool in the future.)
 - NEW! Informix support courtesy of Javier Fernandez-Ivern.
 - Backport another Oracle CLOB issue, thanks Edson César.
 - Rubyforge #22018: chomp final trailing semicolon for oracle

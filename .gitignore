@@ -10,3 +10,4 @@ build.xml
 nbproject
 TAGS
 *~
+*.log
