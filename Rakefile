@@ -53,7 +53,7 @@ FileList['drivers/*'].each do |d|
 end
 
 Rake::TestTask.new(:test_jdbc) do |t|
-  t.test_files = FileList['test/generic_jdbc_connection_test.rb']
+  t.test_files = FileList['test/generic_jdbc_connection_test.rb', 'test/jndi_callbacks_test.rb']
   t.libs << 'test' << 'drivers/mysql/lib'
 end
 

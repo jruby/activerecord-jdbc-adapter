@@ -374,6 +374,10 @@ module ActiveRecord
         end
       end
 
+      def jndi_connection?
+        @jndi_connection
+      end
+
       private
       def configure_jndi
         jndi = @config[:jndi].to_s
@@ -385,6 +389,7 @@ module ActiveRecord
         unless @config[:driver]
           @config[:driver] = connection.meta_data.connection.java_class.name
         end
+        @jndi_connection = true
       end
 
       def configure_jdbc
@@ -409,32 +414,68 @@ module ActiveRecord
           jdbc_driver.connection(url, user, pass)
         end
       end
-
-    end
-
-    module ShadowCoreMethods
-      def alias_chained_method(meth, feature, target)
-        if instance_methods.include?("#{meth}_without_#{feature}")
-          alias_method "#{meth}_without_#{feature}".to_sym, target
-        else
-          alias_method meth, target
-        end
-      end
-    end
-
-    module CompatibilityMethods
-      def self.needed?(base)
-        !base.instance_methods.include?("quote_table_name")
-      end
-
-      def quote_table_name(name)
-        quote_column_name(name)
-      end
     end
 
     class JdbcAdapter < AbstractAdapter
+      module ShadowCoreMethods
+        def alias_chained_method(meth, feature, target)
+          if instance_methods.include?("#{meth}_without_#{feature}")
+            alias_method "#{meth}_without_#{feature}".to_sym, target
+          else
+            alias_method meth, target
+          end
+        end
+      end
+
+      module CompatibilityMethods
+        def self.needed?(base)
+          !base.instance_methods.include?("quote_table_name")
+        end
+
+        def quote_table_name(name)
+          quote_column_name(name)
+        end
+      end
+
+      module ConnectionPoolCallbacks
+        def self.included(base)
+          base.checkin :on_checkin
+          base.checkout :on_checkout
+        end
+
+        def self.needed?
+          ActiveRecord::Base.respond_to?(:connection_pool)
+        end
+
+        def on_checkin
+          # default implementation does nothing
+        end
+
+        def on_checkout
+          # default implementation does nothing
+        end
+      end
+
+      module JndiConnectionPoolCallbacks
+        def self.prepare(adapter, conn)
+          if ActiveRecord::Base.respond_to?(:connection_pool) && conn.jndi_connection?
+            adapter.extend self
+            conn.disconnect! # disconnect initial connection in JdbcConnection#initialize
+          end
+        end
+
+        def on_checkin
+          disconnect!
+        end
+
+        def on_checkout
+          reconnect!
+        end
+      end
+
       extend ShadowCoreMethods
       include CompatibilityMethods if CompatibilityMethods.needed?(self)
+      include ConnectionPoolCallbacks if ConnectionPoolCallbacks.needed?
 
       attr_reader :config
 
@@ -454,6 +495,7 @@ module ActiveRecord
           end
         end
         connection.adapter = self
+        JndiConnectionPoolCallbacks.prepare(self, connection)
       end
 
       def modify_types(tp)
