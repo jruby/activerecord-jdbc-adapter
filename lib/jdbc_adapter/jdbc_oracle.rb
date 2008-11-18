@@ -53,17 +53,31 @@ module ::JdbcSpec
       def type_cast(value)
         return nil if value.nil?
         case type
-        when :string   then value
-        when :integer  then defined?(value.to_i) ? value.to_i : (value ? 1 : 0)
+        when :string      then value
+        when :integer     then defined?(value.to_i) ? value.to_i : (value ? 1 : 0)
         when :primary_key then defined?(value.to_i) ? value.to_i : (value ? 1 : 0) 
-        when :float    then value.to_f
-        when :datetime then JdbcSpec::Oracle::Column.cast_to_date_or_time(value)
-        when :time     then JdbcSpec::Oracle::Column.cast_to_time(value)
-        when :decimal   then self.class.value_to_decimal(value)
-        when :boolean   then self.class.value_to_boolean(value)
+        when :float       then value.to_f
+        when :datetime    then JdbcSpec::Oracle::Column.cast_to_date_or_time(value)
+        when :time        then JdbcSpec::Oracle::Column.cast_to_time(value)
+        when :decimal     then self.class.value_to_decimal(value)
+        when :boolean     then self.class.value_to_boolean(value)
         else value
         end
       end
+      
+      def type_cast_code(var_name)
+        case type
+        when :string      then nil
+        when :integer     then "(#{var_name}.to_i rescue #{var_name} ? 1 : 0)"
+        when :primary_key then "(#{var_name}.to_i rescue #{var_name} ? 1 : 0)"
+        when :float       then "#{var_name}.to_f"
+        when :datetime    then "JdbcSpec::Oracle::Column.cast_to_date_or_time(#{var_name})"
+        when :time        then "JdbcSpec::Oracle::Column.cast_to_time(#{var_name})"
+        when :decimal     then "#{self.class.name}.value_to_decimal(#{var_name})"
+        when :boolean     then "#{self.class.name}.value_to_boolean(#{var_name})"
+        else nil
+        end
+      end      
 
       private
       def simplified_type(field_type)
