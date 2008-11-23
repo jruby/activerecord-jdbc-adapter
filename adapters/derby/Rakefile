@@ -21,7 +21,7 @@ begin
     p.changes = "Updated to Derby version #{Jdbc::Derby::VERSION}."
     p.description = "Install this gem to use Derby with JRuby on Rails."
     p.extra_deps += [
-      ['activerecord-jdbc-adapter', ">= #{JdbcAdapter::Version::VERSION}"],
+      ['activerecord-jdbc-adapter', "= #{JdbcAdapter::Version::VERSION}"],
       ['jdbc-derby', ">= #{Jdbc::Derby::VERSION}"]]
   end.spec.dependencies.delete_if { |dep| dep.name == "hoe" }
 rescue LoadError

@@ -21,7 +21,7 @@ begin
     p.changes = "Updated to H2 version #{Jdbc::H2::VERSION}."
     p.description = "Install this gem to use H2 with JRuby on Rails."
     p.extra_deps += [
-      ['activerecord-jdbc-adapter', ">= #{JdbcAdapter::Version::VERSION}"],
+      ['activerecord-jdbc-adapter', "= #{JdbcAdapter::Version::VERSION}"],
       ['jdbc-h2', ">= #{Jdbc::H2::VERSION}"]]
   end.spec.dependencies.delete_if { |dep| dep.name == "hoe" }
 rescue LoadError

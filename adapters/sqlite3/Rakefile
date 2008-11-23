@@ -21,7 +21,7 @@ begin
     p.changes = "Updated to SQLite3 version #{Jdbc::SQLite3::VERSION}."
     p.description = "Install this gem to use SQLite3 with JRuby on Rails."
     p.extra_deps += [
-      ['activerecord-jdbc-adapter', ">= #{JdbcAdapter::Version::VERSION}"],
+      ['activerecord-jdbc-adapter', "= #{JdbcAdapter::Version::VERSION}"],
       ['jdbc-sqlite3', ">= #{Jdbc::SQLite3::VERSION}"]]
   end.spec.dependencies.delete_if { |dep| dep.name == "hoe" }
 rescue LoadError

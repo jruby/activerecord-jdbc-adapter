@@ -21,7 +21,7 @@ begin
     p.changes = "Updated to HSQLDB version #{Jdbc::HSQLDB::VERSION}."
     p.description = "Install this gem to use HSQLDB with JRuby on Rails."
     p.extra_deps += [
-      ['activerecord-jdbc-adapter', ">= #{JdbcAdapter::Version::VERSION}"],
+      ['activerecord-jdbc-adapter', "= #{JdbcAdapter::Version::VERSION}"],
       ['jdbc-hsqldb', ">= #{Jdbc::HSQLDB::VERSION}"]]
   end.spec.dependencies.delete_if { |dep| dep.name == "hoe" }
 rescue LoadError

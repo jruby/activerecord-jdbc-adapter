@@ -21,7 +21,7 @@ begin
     p.changes = "Updated to MySQL version #{Jdbc::MySQL::VERSION}."
     p.description = "Install this gem to use MySQL with JRuby on Rails."
     p.extra_deps += [
-      ['activerecord-jdbc-adapter', ">= #{JdbcAdapter::Version::VERSION}"],
+      ['activerecord-jdbc-adapter', "= #{JdbcAdapter::Version::VERSION}"],
       ['jdbc-mysql', ">= #{Jdbc::MySQL::VERSION}"]]
   end.spec.dependencies.delete_if { |dep| dep.name == "hoe" }
 rescue LoadError

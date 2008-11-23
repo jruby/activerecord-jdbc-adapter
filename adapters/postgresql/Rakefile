@@ -21,7 +21,7 @@ begin
     p.changes = "Updated to postgres version #{Jdbc::Postgres::VERSION}."
     p.description = "Install this gem to use Postgres with JRuby on Rails."
     p.extra_deps += [
-      ['activerecord-jdbc-adapter', ">= #{JdbcAdapter::Version::VERSION}"],
+      ['activerecord-jdbc-adapter', "= #{JdbcAdapter::Version::VERSION}"],
       ['jdbc-postgres', ">= #{Jdbc::Postgres::VERSION}"]]
   end.spec.dependencies.delete_if { |dep| dep.name == "hoe" }
 rescue LoadError
