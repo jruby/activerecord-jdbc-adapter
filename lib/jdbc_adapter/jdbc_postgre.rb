@@ -216,12 +216,19 @@ module ::JdbcSpec
       Integer(select_value("SELECT currval('#{sequence_name}')"))
     end
 
-    # the point here is really just to empty the database, not recreate it
-    # so we delete all tables
     def recreate_database(name)
-      tables.each{|t| drop_table(t)}
+      drop_database(name)
+      create_database(name)
     end
-    
+
+    def create_database(name, options = {})
+      execute "CREATE DATABASE \"#{name}\" ENCODING='#{options[:encoding] || 'utf8'}'"
+    end
+
+    def drop_database(name)
+      execute "DROP DATABASE \"#{name}\""
+    end
+
     def structure_dump
       abcs = ActiveRecord::Base.configurations
 
@@ -231,7 +238,7 @@ module ::JdbcSpec
       else
         raise "Could not figure out what database this url is for #{abcs[RAILS_ENV]["url"]}"
       end
-    
+
       ENV['PGHOST']     = abcs[RAILS_ENV]["host"] if abcs[RAILS_ENV]["host"]
       ENV['PGPORT']     = abcs[RAILS_ENV]["port"].to_s if abcs[RAILS_ENV]["port"]
       ENV['PGPASSWORD'] = abcs[RAILS_ENV]["password"].to_s if abcs[RAILS_ENV]["password"]
