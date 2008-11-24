@@ -11,6 +11,7 @@
 - JRUBY-2848: Fix NPE error in set_native_database_types
 - Rework oracle lob saving callback to be Rails 2.1 friendly (assist
   from court3nay)
+- JRUBY-2715: Add create/drop database methods to Postgres (Peter Williams)
 - Authoritative repository now hosted at
   git://github.com/nicksieger/activerecord-jdbc-adapter.git; rubyforge
   svn trunk cleaned out.
