@@ -7,6 +7,7 @@ module ::JdbcSpec
       config[:host] ||= "localhost"
       config[:port] ||= 5432
       config[:url] ||= "jdbc:postgresql://#{config[:host]}:#{config[:port]}/#{config[:database]}"
+      config[:url] << config[:pg_params] if config[:pg_params]
       config[:driver] ||= "org.postgresql.Driver"
       jdbc_connection(config)
     end
