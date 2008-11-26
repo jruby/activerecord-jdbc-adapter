@@ -336,6 +336,13 @@ module ::JdbcSpec
       value.strftime("%Y-%m-%d %H:%M:%S")
     end
 
+    def disable_referential_integrity(&block) #:nodoc:
+      execute(tables.collect { |name| "ALTER TABLE #{quote_table_name(name)} DISABLE TRIGGER ALL" }.join(";"))
+      yield
+    ensure
+      execute(tables.collect { |name| "ALTER TABLE #{quote_table_name(name)} ENABLE TRIGGER ALL" }.join(";"))
+    end
+
     def rename_table(name, new_name)
       execute "ALTER TABLE #{name} RENAME TO #{new_name}"
     end
