@@ -172,9 +172,18 @@ module ::JdbcSpec
       end
 
     def insert(sql, name = nil, pk = nil, id_value = nil, sequence_name = nil) #:nodoc:
-      execute(sql, name)
-      table = sql.split(" ", 4)[2]
-      id_value || pk && last_insert_id(table, sequence_name || default_sequence_name(table, pk))
+      table = sql.split(" ", 4)[2]      
+      execute(sql, name)      
+
+      # TODO: add support for INSERT RETURNING.
+
+      unless pk || sequence_name
+        pk, sequence_name = *pk_and_sequence_for(table)
+      end
+        
+      if pk && sequence_name ||= default_sequence_name(table, pk)
+        last_insert_id(table, sequence_name)
+      end    
     end
 
     def columns(table_name, name=nil)
