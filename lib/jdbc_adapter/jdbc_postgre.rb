@@ -87,6 +87,10 @@ module ::JdbcSpec
       end
     end
 
+    def supports_count_distinct? #:nodoc:
+      false
+    end
+
     def modify_types(tp)
       tp[:primary_key] = "serial primary key"
       tp[:string][:limit] = 255
@@ -110,12 +114,16 @@ module ::JdbcSpec
       if pk
         if sequence
           select_value <<-end_sql, 'Reset sequence'
-            SELECT setval('#{sequence}', (SELECT COALESCE(MAX(#{pk})+(SELECT increment_by FROM #{sequence}), (SELECT min_value FROM #{sequence})) FROM #{table}), false)
+            SELECT setval('#{sequence}', (SELECT COALESCE(MAX(#{quote_column_name(pk)})+(SELECT increment_by FROM #{sequence}), (SELECT min_value FROM #{sequence})) FROM #{quote_table_name(table)}), false)
           end_sql
         else
           @logger.warn "#{table} has primary key #{pk} with no default sequence" if @logger
         end
       end
+    end
+
+    def quote_regclass(table_name)
+      table_name.to_s.split('.').map { |part| quote_table_name(part) }.join('.')  
     end
 
     # Find a table's primary key and sequence.
@@ -137,7 +145,7 @@ module ::JdbcSpec
             AND attr.attrelid     = cons.conrelid
             AND attr.attnum       = cons.conkey[1]
             AND cons.contype      = 'p'
-            AND dep.refobjid      = '#{table}'::regclass
+            AND dep.refobjid      = '#{quote_regclass(table)}'::regclass
         end_sql
 
         if result.nil? or result.empty?
@@ -152,7 +160,7 @@ module ::JdbcSpec
             JOIN pg_attribute   attr ON (t.oid = attrelid)
             JOIN pg_attrdef     def  ON (adrelid = attrelid AND adnum = attnum)
             JOIN pg_constraint  cons ON (conrelid = adrelid AND adnum = conkey[1])
-            WHERE t.oid = '#{table}'::regclass
+            WHERE t.oid = '#{quote_regclass(table)}'::regclass
               AND cons.contype = 'p'
               AND def.adsrc ~* 'nextval'
           end_sql
