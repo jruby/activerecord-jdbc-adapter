@@ -357,17 +357,17 @@ module ::JdbcSpec
     end
 
     def add_column(table_name, column_name, type, options = {})
-      execute("ALTER TABLE #{table_name} ADD #{column_name} #{type_to_sql(type, options[:limit])}")
+      execute("ALTER TABLE #{quote_table_name(table_name)} ADD #{quote_column_name(column_name)} #{type_to_sql(type, options[:limit])}")
       change_column_default(table_name, column_name, options[:default]) unless options[:default].nil?
       if options[:null] == false
-        execute("UPDATE #{table_name} SET #{column_name} = '#{options[:default]}'") if options[:default]
-        execute("ALTER TABLE #{table_name} ALTER #{column_name} SET NOT NULL")
+        execute("UPDATE #{quote_table_name(table_name)} SET #{quote_column_name(column_name)} = '#{options[:default]}'") if options[:default]
+        execute("ALTER TABLE #{quote_table_name(table_name)} ALTER #{quote_column_name(column_name)} SET NOT NULL")
       end
     end
 
     def change_column(table_name, column_name, type, options = {}) #:nodoc:
       begin
-        execute "ALTER TABLE #{table_name} ALTER  #{column_name} TYPE #{type_to_sql(type, options[:limit])}"
+        execute "ALTER TABLE #{quote_table_name(table_name)} ALTER #{quote_column_name(column_name)} TYPE #{type_to_sql(type, options[:limit])}"
       rescue ActiveRecord::StatementInvalid
         # This is PG7, so we use a more arcane way of doing it.
         begin_db_transaction
@@ -381,11 +381,11 @@ module ::JdbcSpec
     end
 
     def change_column_default(table_name, column_name, default) #:nodoc:
-      execute "ALTER TABLE #{table_name} ALTER COLUMN #{column_name} SET DEFAULT '#{default}'"
+      execute "ALTER TABLE #{quote_table_name(table_name)} ALTER COLUMN #{quote_column_name(column_name)} SET DEFAULT '#{default}'"
     end
 
     def rename_column(table_name, column_name, new_column_name) #:nodoc:
-      execute "ALTER TABLE #{table_name} RENAME COLUMN #{column_name} TO #{new_column_name}"
+      execute "ALTER TABLE #{quote_table_name(table_name)} RENAME COLUMN #{quote_column_name(column_name)} TO #{quote_column_name(new_column_name)}"
     end
 
     def remove_index(table_name, options) #:nodoc:
