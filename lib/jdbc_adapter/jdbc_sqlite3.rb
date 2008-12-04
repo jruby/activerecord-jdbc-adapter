@@ -184,5 +184,10 @@ module ::JdbcSpec
         ::ActiveRecord::ConnectionAdapters::IndexDefinition.new(table_name, name, unique, cols)
       end
     end
+    
+    def recreate_database(name)
+      tables.each{ |table| drop_table(table) }
+    end
+    
   end
 end
