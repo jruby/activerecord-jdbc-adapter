@@ -189,5 +189,13 @@ module ::JdbcSpec
       tables.each{ |table| drop_table(table) }
     end
     
+    def _execute(sql, name = nil)
+      if ActiveRecord::ConnectionAdapters::JdbcConnection::select?(sql)
+        @connection.execute_query(sql)
+      else
+        @connection.execute_update(sql)
+      end
+    end
+    
   end
 end
