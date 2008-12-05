@@ -184,16 +184,17 @@ module ::JdbcSpec
         ::ActiveRecord::ConnectionAdapters::IndexDefinition.new(table_name, name, unique, cols)
       end
     end
-    
+
     def recreate_database(name)
       tables.each{ |table| drop_table(table) }
     end
-    
+
     def _execute(sql, name = nil)
       if ActiveRecord::ConnectionAdapters::JdbcConnection::select?(sql)
         @connection.execute_query(sql)
       else
-        @connection.execute_update(sql)
+        affected_rows = @connection.execute_update(sql)
+        ActiveRecord::ConnectionAdapters::JdbcConnection::insert?(sql) ? last_insert_id(sql.split(" ", 4)[2], nil) : affected_rows
       end
     end
     
