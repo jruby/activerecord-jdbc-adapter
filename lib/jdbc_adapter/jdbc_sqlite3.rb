@@ -66,10 +66,10 @@ module ::JdbcSpec
       tp[:primary_key] = "INTEGER PRIMARY KEY AUTOINCREMENT"
       tp[:float] = { :name => "REAL" }
       tp[:decimal] = { :name => "REAL" }
-      tp[:datetime] = { :name => "INTEGER" }
-      tp[:timestamp] = { :name => "INTEGER" }
-      tp[:time] = { :name => "INTEGER" }
-      tp[:date] = { :name => "INTEGER" }
+      tp[:datetime] = { :name => "DATETIME" }
+      tp[:timestamp] = { :name => "DATETIME" }
+      tp[:time] = { :name => "TIME" }
+      tp[:date] = { :name => "DATE" }
       tp[:boolean] = { :name => "INTEGER", :limit => 1}
       tp
     end

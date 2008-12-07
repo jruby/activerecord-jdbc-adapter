@@ -1,5 +1,7 @@
+require 'java'
 require 'jdbc_common'
 require 'db/sqlite3'
+require 'models/data_types'
 
 class SQLite3SimpleTest < Test::Unit::TestCase
   include SimpleTestMethods
@@ -26,7 +28,52 @@ class SQLite3SimpleTest < Test::Unit::TestCase
   end
   
 end
-
+  
 class SQLite3HasManyThroughTest < Test::Unit::TestCase
   include HasManyThroughMethods
+end
+
+
+JInteger = java.lang.Integer
+
+class SQLite3TypeConversionTest < Test::Unit::TestCase
+  TEST_TIME = Time.at(1169964202)
+  def setup
+    DbTypeMigration.up  
+    DbType.create(
+      :sample_timestamp => TEST_TIME,
+      :sample_datetime => TEST_TIME,
+      :sample_time => TEST_TIME,
+      :sample_date => TEST_TIME,
+      :sample_decimal => JInteger::MAX_VALUE + 1.01234)
+  end
+
+  def teardown
+    DbTypeMigration.down
+  end
+
+  def test_timestamp
+    types = DbType.find(:first)
+    assert_equal TEST_TIME, types.sample_timestamp.getutc
+  end
+
+  def test_datetime
+    types = DbType.find(:first)
+    assert_equal TEST_TIME, types.sample_datetime.getutc
+  end
+
+  def test_time
+    types = DbType.find(:first)
+    assert_equal TEST_TIME, types.sample_time.getutc
+  end
+
+  def test_date
+    types = DbType.find(:first)
+    assert_equal TEST_TIME, types.sample_date.getutc
+  end
+
+  def test_decimal
+    types = DbType.find(:first)
+    assert_equal((JInteger::MAX_VALUE + 1.01234), types.sample_decimal)
+  end
 end
