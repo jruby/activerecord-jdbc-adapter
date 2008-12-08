@@ -27,6 +27,10 @@ class SQLite3SimpleTest < Test::Unit::TestCase
     assert_equal 'Execute Update', Entry.first.title
   end
   
+  def test_columns
+    cols = ActiveRecord::Base.connection.columns("entries")
+    assert cols.find {|col| col.name == "title"}
+  end
 end
   
 class SQLite3HasManyThroughTest < Test::Unit::TestCase
