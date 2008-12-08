@@ -30,6 +30,21 @@ module ::JdbcSpec
         end
       end
 
+      def extract_precision(sql_type)
+        case sql_type
+          when /^(real)\((\d+)(,\d+)?\)/i then $2.to_i 
+          else super
+        end 
+      end
+      
+      def extract_scale(sql_type)
+        case sql_type
+          when /^(real)\((\d+)\)/i then 0
+          when /^(real)\((\d+)(,(\d+))\)/i then $4.to_i
+          else super
+        end
+      end
+
       def self.cast_to_date_or_time(value)
         return value if value.is_a? Date
         return nil if value.blank?

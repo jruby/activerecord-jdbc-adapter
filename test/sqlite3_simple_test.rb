@@ -31,6 +31,7 @@ class SQLite3SimpleTest < Test::Unit::TestCase
     cols = ActiveRecord::Base.connection.columns("entries")
     assert cols.find {|col| col.name == "title"}
   end
+  
 end
   
 class SQLite3HasManyThroughTest < Test::Unit::TestCase
@@ -49,7 +50,8 @@ class SQLite3TypeConversionTest < Test::Unit::TestCase
       :sample_datetime => TEST_TIME,
       :sample_time => TEST_TIME,
       :sample_date => TEST_TIME,
-      :sample_decimal => JInteger::MAX_VALUE + 1.01234)
+      :sample_decimal => JInteger::MAX_VALUE + 1,
+      :sample_small_decimal => 3.14)
   end
 
   def teardown
@@ -78,6 +80,17 @@ class SQLite3TypeConversionTest < Test::Unit::TestCase
 
   def test_decimal
     types = DbType.find(:first)
-    assert_equal((JInteger::MAX_VALUE + 1.01234), types.sample_decimal)
+    assert_equal((JInteger::MAX_VALUE + 1), types.sample_decimal)
   end
+
+  def test_decimal_scale
+    types = DbType.find(:first)
+    assert_equal(2, DbType.columns_hash["sample_small_decimal"].scale)
+  end
+
+  def test_decimal_precision
+    types = DbType.find(:first)
+    assert_equal(3, DbType.columns_hash["sample_small_decimal"].precision)
+  end
+
 end
