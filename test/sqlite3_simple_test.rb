@@ -43,6 +43,7 @@ JInteger = java.lang.Integer
 
 class SQLite3TypeConversionTest < Test::Unit::TestCase
   TEST_TIME = Time.at(1169964202)
+  TEST_BINARY = "Some random binary data % \0 and then some"
   def setup
     DbTypeMigration.up  
     DbType.create(
@@ -51,7 +52,8 @@ class SQLite3TypeConversionTest < Test::Unit::TestCase
       :sample_time => TEST_TIME,
       :sample_date => TEST_TIME,
       :sample_decimal => JInteger::MAX_VALUE + 1,
-      :sample_small_decimal => 3.14)
+      :sample_small_decimal => 3.14,
+      :sample_binary => TEST_BINARY)
   end
 
   def teardown
@@ -91,6 +93,11 @@ class SQLite3TypeConversionTest < Test::Unit::TestCase
   def test_decimal_precision
     types = DbType.find(:first)
     assert_equal(3, DbType.columns_hash["sample_small_decimal"].precision)
+  end
+  
+  def test_binary
+    types = DbType.find(:first)
+    assert_equal(TEST_BINARY, types.sample_binary)
   end
 
 end

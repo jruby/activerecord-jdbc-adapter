@@ -10,6 +10,7 @@ class DbTypeMigration < ActiveRecord::Migration
       t.column :sample_time, :time
       t.column :sample_decimal, :decimal, :precision => 15, :scale => 0
       t.column :sample_small_decimal, :decimal, :precision => 3, :scale => 2
+      t.column :sample_binary, :binary
     end
   end
 
