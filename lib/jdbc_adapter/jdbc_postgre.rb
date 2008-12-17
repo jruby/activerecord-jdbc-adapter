@@ -7,6 +7,7 @@ module ::JdbcSpec
       config[:host] ||= "localhost"
       config[:port] ||= 5432
       config[:url] ||= "jdbc:postgresql://#{config[:host]}:#{config[:port]}/#{config[:database]}"
+      config[:url] << config[:pg_params] if config[:pg_params]
       config[:driver] ||= "org.postgresql.Driver"
       jdbc_connection(config)
     end
@@ -20,7 +21,7 @@ module ::JdbcSpec
     def self.adapter_selector
       [/postgre/i, lambda {|cfg,adapt| adapt.extend(::JdbcSpec::PostgreSQL)}]
     end
-    
+
     module Column
       def type_cast(value)
         case type
@@ -30,7 +31,7 @@ module ::JdbcSpec
       end
 
       def simplified_type(field_type)
-        return :integer if field_type =~ /^serial/i 
+        return :integer if field_type =~ /^serial/i
         return :string if field_type =~ /\[\]$/i || field_type =~ /^interval/i
         return :string if field_type =~ /^(?:point|lseg|box|"?path"?|polygon|circle)/i
         return :datetime if field_type =~ /^timestamp/i
@@ -39,7 +40,7 @@ module ::JdbcSpec
         return :boolean if field_type =~ /^bool/i
         super
       end
-      
+
       def cast_to_boolean(value)
         if value == true || value == false
           value
@@ -70,16 +71,16 @@ module ::JdbcSpec
         # Boolean types
         return "t" if value =~ /true/i
         return "f" if value =~ /false/i
-        
+
         # Char/String/Bytea type values
         return $1 if value =~ /^'(.*)'::(bpchar|text|character varying|bytea)$/
-        
+
         # Numeric values
         return value if value =~ /^-?[0-9]+(\.[0-9]*)?/
-        
+
         # Fixed dates / timestamp
         return $1 if value =~ /^'(.+)'::(date|timestamp)/
-        
+
         # Anything else is blank, some user type, or some function
         # and we can't know the value of that, so return nil.
         return nil
@@ -93,7 +94,7 @@ module ::JdbcSpec
       tp[:boolean][:limit] = nil
       tp
     end
-    
+
     def default_sequence_name(table_name, pk = nil)
       default_pk, default_seq = pk_and_sequence_for(table_name)
       default_seq || "#{table_name}_#{pk || default_pk || 'id'}_seq"
@@ -230,27 +231,27 @@ module ::JdbcSpec
     end
 
     def structure_dump
-      abcs = ActiveRecord::Base.configurations
-
-      database = nil
-      if abcs[RAILS_ENV]["url"] =~ /\/([^\/]*)$/
-        database = $1
-      else
-        raise "Could not figure out what database this url is for #{abcs[RAILS_ENV]["url"]}"
+      database = @config[:database]
+      if database.nil?
+        if @config[:url] =~ /\/([^\/]*)$/
+          database = $1
+        else
+          raise "Could not figure out what database this url is for #{@config["url"]}"
+        end
       end
 
-      ENV['PGHOST']     = abcs[RAILS_ENV]["host"] if abcs[RAILS_ENV]["host"]
-      ENV['PGPORT']     = abcs[RAILS_ENV]["port"].to_s if abcs[RAILS_ENV]["port"]
-      ENV['PGPASSWORD'] = abcs[RAILS_ENV]["password"].to_s if abcs[RAILS_ENV]["password"]
-      search_path = abcs[RAILS_ENV]["schema_search_path"]
+      ENV['PGHOST']     = @config[:host] if @config[:host]
+      ENV['PGPORT']     = @config[:port].to_s if @config[:port]
+      ENV['PGPASSWORD'] = @config[:password].to_s if @config[:password]
+      search_path = @config[:schema_search_path]
       search_path = "--schema=#{search_path}" if search_path
 
       @connection.connection.close
       begin
         file = "db/#{RAILS_ENV}_structure.sql"
-        `pg_dump -i -U "#{abcs[RAILS_ENV]["username"]}" -s -x -O -f #{file} #{search_path} #{database}`
+        `pg_dump -i -U "#{@config[:username]}" -s -x -O -f #{file} #{search_path} #{database}`
         raise "Error dumping database" if $?.exitstatus == 1
-        
+
         # need to patch away any references to SQL_ASCII as it breaks the JDBC driver
         lines = File.readlines(file)
         File.open(file, "w") do |io|
@@ -261,9 +262,9 @@ module ::JdbcSpec
         end
       ensure
         reconnect!
-      end  
+      end
     end
-    
+
     def _execute(sql, name = nil)
         case sql.strip
         when /\A\(?\s*(select|show)/i:
@@ -272,7 +273,7 @@ module ::JdbcSpec
           @connection.execute_update(sql)
         end
     end
-    
+
     # SELECT DISTINCT clause for a given set of columns and a given ORDER BY clause.
     #
     # PostgreSQL requires the ORDER BY columns in the select list for distinct queries, and
@@ -295,22 +296,22 @@ module ::JdbcSpec
     end
 
     # ORDER BY clause for the passed order option.
-    # 
+    #
     # PostgreSQL does not allow arbitrary ordering when using DISTINCT ON, so we work around this
     # by wrapping the sql as a sub-select and ordering in that query.
     def add_order_by_for_association_limiting!(sql, options)
       return sql if options[:order].blank?
-      
+
       order = options[:order].split(',').collect { |s| s.strip }.reject(&:blank?)
       order.map! { |s| 'DESC' if s =~ /\bdesc$/i }
       order = order.zip((0...order.size).to_a).map { |s,i| "id_list.alias_#{i} #{s}" }.join(', ')
-      
+
       sql.replace "SELECT * FROM (#{sql}) AS id_list ORDER BY #{order}"
     end
 
     def quote(value, column = nil)
       return value.quoted_id if value.respond_to?(:quoted_id)
-      
+
       if value.kind_of?(String) && column && column.type == :binary
         "'#{escape_bytea(value)}'"
       elsif column && column.type == :primary_key
@@ -327,7 +328,7 @@ module ::JdbcSpec
         result
       end
     end
-    
+
     def quote_column_name(name)
       %("#{name}")
     end
@@ -336,10 +337,17 @@ module ::JdbcSpec
       value.strftime("%Y-%m-%d %H:%M:%S")
     end
 
+    def disable_referential_integrity(&block) #:nodoc:
+      execute(tables.collect { |name| "ALTER TABLE #{quote_table_name(name)} DISABLE TRIGGER ALL" }.join(";"))
+      yield
+    ensure
+      execute(tables.collect { |name| "ALTER TABLE #{quote_table_name(name)} ENABLE TRIGGER ALL" }.join(";"))
+    end
+
     def rename_table(name, new_name)
       execute "ALTER TABLE #{name} RENAME TO #{new_name}"
     end
-    
+
     def add_column(table_name, column_name, type, options = {})
       execute("ALTER TABLE #{table_name} ADD #{column_name} #{type_to_sql(type, options[:limit])}")
       change_column_default(table_name, column_name, options[:default]) unless options[:default].nil?
@@ -362,23 +370,23 @@ module ::JdbcSpec
         commit_db_transaction
       end
       change_column_default(table_name, column_name, options[:default]) unless options[:default].nil?
-    end      
-    
+    end
+
     def change_column_default(table_name, column_name, default) #:nodoc:
       execute "ALTER TABLE #{table_name} ALTER COLUMN #{column_name} SET DEFAULT '#{default}'"
     end
-      
+
     def rename_column(table_name, column_name, new_column_name) #:nodoc:
       execute "ALTER TABLE #{table_name} RENAME COLUMN #{column_name} TO #{new_column_name}"
     end
-    
+
     def remove_index(table_name, options) #:nodoc:
       execute "DROP INDEX #{index_name(table_name, options)}"
     end
 
     def type_to_sql(type, limit = nil, precision = nil, scale = nil) #:nodoc:
       return super unless type.to_s == 'integer'
-      
+
       if limit.nil? || limit == 4
         'integer'
       elsif limit < 4
@@ -391,5 +399,5 @@ module ::JdbcSpec
     def tables
       @connection.tables(database_name, nil, nil, ["TABLE"])
     end
-  end  
+  end
 end

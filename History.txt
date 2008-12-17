@@ -12,6 +12,9 @@
 - Rework oracle lob saving callback to be Rails 2.1 friendly (assist
   from court3nay)
 - JRUBY-2715: Add create/drop database methods to Postgres (Peter Williams)
+- JRUBY-3183: Fix structure dump for Postgres (Ryan Bell)
+- JRUBY-3184: recreate_database for test database working for PG (Ryan Bell)
+- JRUBY-3186: disable referential integrity for PG (Ryan Bell)
 - Authoritative repository now hosted at
   git://github.com/nicksieger/activerecord-jdbc-adapter.git; rubyforge
   svn trunk cleaned out.

@@ -64,6 +64,7 @@ namespace :db do
   namespace :test do
     redefine_task :clone_structure => [ "db:structure:dump", "db:test:purge" ] do
       abcs = ActiveRecord::Base.configurations
+      abcs['test']['pg_params'] = '?allowEncodingChanges=true' if abcs['test']['adapter'] =~ /postgresql/i
       ActiveRecord::Base.establish_connection(abcs["test"])
       ActiveRecord::Base.connection.execute('SET foreign_key_checks = 0') if abcs["test"]["adapter"] =~ /mysql/i
       IO.readlines("db/#{RAILS_ENV}_structure.sql").join.split(";\n\n").each do |ddl|
@@ -73,8 +74,20 @@ namespace :db do
 
     redefine_task :purge => :environment do
       abcs = ActiveRecord::Base.configurations
-      ActiveRecord::Base.establish_connection(abcs["test"])
-      db = ActiveRecord::Base.connection.database_name
+      config = abcs['test'].dup
+      if config['adapter'] =~ /postgresql/i
+        if config['url']
+          db = config['url'][/\/([^\/]*)$/, 1]
+          config['url'][/\/([^\/]*)$/, 1] if db_name
+        else
+          db = config['database']
+          config['database'] = 'postgres'
+        end
+        ActiveRecord::Base.establish_connection(config)
+      else
+        ActiveRecord::Base.establish_connection(config)
+        db = ActiveRecord::Base.connection.database_name
+      end
       ActiveRecord::Base.connection.recreate_database(db)
     end
   end
