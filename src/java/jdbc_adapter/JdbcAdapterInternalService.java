@@ -705,12 +705,10 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
     public static class ColumnData {
         public IRubyObject name;
         public int type;
-        public int scale;
 
-        public ColumnData(IRubyObject name, int type, int scale) {
+        public ColumnData(IRubyObject name, int type) {
             this.name = name;
             this.type = type;
-            this.scale = scale;
         }
 
         public static ColumnData[] setup(Ruby runtime, ResultSetMetaData metadata,
@@ -724,7 +722,7 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
                 if (!storesUpper || (storesUpper && !HAS_SMALL.matcher(name).find())) name = name.toLowerCase();
 
                 columns[i - 1] = new ColumnData(RubyString.newUnicodeString(runtime, name),
-                        metadata.getColumnType(i), metadata.getScale(i));
+                        metadata.getColumnType(i));
             }
 
             return columns;
@@ -739,8 +737,7 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
             RubyHash row = RubyHash.newHash(runtime);
 
             for (int i = 0; i < columnCount; i++) {
-                row.op_aset(context, columns[i].name,
-                        jdbc_to_ruby(runtime, i + 1, columns[i].type, columns[i].scale, resultSet));
+                row.op_aset(context, columns[i].name, jdbcToRuby(runtime, i + 1, columns[i].type, resultSet));
             }
             results.add(row);
         }
@@ -794,24 +791,25 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
         return RubyString.newUnicodeString(runtime, str);
     }
 
-    private static IRubyObject bytesToRuby(Ruby runtime, ResultSet rs, byte[] vs)
+    private static IRubyObject bytesToRuby(Ruby runtime, ResultSet resultSet, byte[] bytes)
             throws SQLException, IOException {
-        if (vs == null || rs.wasNull()) return runtime.getNil();
+        if (bytes == null || resultSet.wasNull()) return runtime.getNil();
 
-        return RubyString.newStringNoCopy(runtime, vs);
+        return RubyString.newStringNoCopy(runtime, bytes);
     }
 
-    private static IRubyObject jdbc_to_ruby(Ruby runtime, int row, int type, int scale, ResultSet resultSet) throws SQLException {
+    private static IRubyObject jdbcToRuby(Ruby runtime, int column, int type, ResultSet resultSet)
+            throws SQLException {
         try {
             switch (type) {
                 case Types.BINARY: case Types.BLOB: case Types.LONGVARBINARY: case Types.VARBINARY:
-                    return streamToRuby(runtime, resultSet, resultSet.getBinaryStream(row));
+                    return streamToRuby(runtime, resultSet, resultSet.getBinaryStream(column));
                 case Types.LONGVARCHAR: case Types.CLOB:
-                    return readerToRuby(runtime, resultSet, resultSet.getCharacterStream(row));
+                    return readerToRuby(runtime, resultSet, resultSet.getCharacterStream(column));
                 case Types.TIMESTAMP:
-                    return timestampToRuby(runtime, resultSet, resultSet.getTimestamp(row));
+                    return timestampToRuby(runtime, resultSet, resultSet.getTimestamp(column));
                 default:
-                    return bytesToRuby(runtime, resultSet, resultSet.getBytes(row));
+                    return bytesToRuby(runtime, resultSet, resultSet.getBytes(column));
             }
         } catch (IOException ioe) {
             throw (SQLException) new SQLException(ioe.getMessage()).initCause(ioe);
