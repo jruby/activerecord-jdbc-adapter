@@ -746,57 +746,72 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
         }
     }
 
-    private static IRubyObject jdbc_to_ruby(Ruby runtime, int row, int type, int scale, ResultSet rs) throws SQLException {
+    private static IRubyObject streamToRuby(Ruby runtime, ResultSet resultSet, InputStream is)
+            throws SQLException, IOException {
+        if (is == null || resultSet.wasNull()) return runtime.getNil();
+
+        ByteList str = new ByteList(2048);
         try {
-            int n;
+            byte[] buf = new byte[2048];
+
+            for (int n = is.read(buf); n != -1; n = is.read(buf)) {
+                str.append(buf, 0, n);
+            }
+        } finally {
+            is.close();
+        }
+
+        return runtime.newString(str);
+    }
+
+    private static IRubyObject readerToRuby(Ruby runtime, ResultSet resultSet, Reader reader)
+            throws SQLException, IOException {
+        if (reader == null || resultSet.wasNull()) return runtime.getNil();
+
+        StringBuffer str = new StringBuffer(2048);
+        try {
+            char[] buf = new char[2048];
+
+            for (int n = reader.read(buf); n != -1; n = reader.read(buf)) {
+                str.append(buf, 0, n);
+            }
+        } finally {
+            reader.close();
+        }
+
+        return RubyString.newUnicodeString(runtime, str.toString());
+    }
+
+    private static IRubyObject timestampToRuby(Ruby runtime, ResultSet resultSet, Timestamp time)
+            throws SQLException, IOException {
+        if (time == null || resultSet.wasNull()) return runtime.getNil();
+
+        String str = time.toString();
+        if (str.endsWith(" 00:00:00.0")) {
+            str = str.substring(0, str.length() - (" 00:00:00.0".length()));
+        }
+        
+        return RubyString.newUnicodeString(runtime, str);
+    }
+
+    private static IRubyObject bytesToRuby(Ruby runtime, ResultSet rs, byte[] vs)
+            throws SQLException, IOException {
+        if (vs == null || rs.wasNull()) return runtime.getNil();
+
+        return RubyString.newStringNoCopy(runtime, vs);
+    }
+
+    private static IRubyObject jdbc_to_ruby(Ruby runtime, int row, int type, int scale, ResultSet resultSet) throws SQLException {
+        try {
             switch (type) {
-                case Types.BINARY:
-                case Types.BLOB:
-                case Types.LONGVARBINARY:
-                case Types.VARBINARY:
-                    InputStream is = rs.getBinaryStream(row);
-                    if (is == null || rs.wasNull()) {
-                        return runtime.getNil();
-                    }
-                    ByteList str = new ByteList(2048);
-                    byte[] buf = new byte[2048];
-
-                    while ((n = is.read(buf)) != -1) {
-                        str.append(buf, 0, n);
-                    }
-                    is.close();
-
-                    return runtime.newString(str);
-                case Types.LONGVARCHAR:
-                case Types.CLOB:
-                    Reader rss = rs.getCharacterStream(row);
-                    if (rss == null || rs.wasNull()) {
-                        return runtime.getNil();
-                    }
-                    StringBuffer str2 = new StringBuffer(2048);
-                    char[] cuf = new char[2048];
-                    while ((n = rss.read(cuf)) != -1) {
-                        str2.append(cuf, 0, n);
-                    }
-                    rss.close();
-                    return RubyString.newUnicodeString(runtime, str2.toString());
+                case Types.BINARY: case Types.BLOB: case Types.LONGVARBINARY: case Types.VARBINARY:
+                    return streamToRuby(runtime, resultSet, resultSet.getBinaryStream(row));
+                case Types.LONGVARCHAR: case Types.CLOB:
+                    return readerToRuby(runtime, resultSet, resultSet.getCharacterStream(row));
                 case Types.TIMESTAMP:
-                    Timestamp time = rs.getTimestamp(row);
-                    if (time == null || rs.wasNull()) {
-                        return runtime.getNil();
-                    }
-                    String sttr = time.toString();
-                    if (sttr.endsWith(" 00:00:00.0")) {
-                        sttr = sttr.substring(0, sttr.length() - (" 00:00:00.0".length()));
-                    }
-                    return RubyString.newUnicodeString(runtime, sttr);
+                    return timestampToRuby(runtime, resultSet, resultSet.getTimestamp(row));
                 default:
-                    byte[] vs = rs.getBytes(row);
-                    if (vs == null || rs.wasNull()) {
-                        return runtime.getNil();
-                    }
-
-                    return RubyString.newStringNoCopy(runtime, vs);
+                    return bytesToRuby(runtime, resultSet, resultSet.getBytes(row));
             }
         } catch (IOException ioe) {
             throw (SQLException) new SQLException(ioe.getMessage()).initCause(ioe);
