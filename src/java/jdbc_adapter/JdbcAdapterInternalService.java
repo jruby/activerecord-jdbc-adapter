@@ -734,37 +734,37 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
     }
 
     private static String convertToStringOrNull(IRubyObject obj) {
-        if (obj.isNil()) {
-            return null;
-        }
-        return obj.toString();
+        return obj.isNil() ? null : obj.toString();
     }
 
     private static int getTypeValueFor(Ruby runtime, IRubyObject type) throws SQLException {
-        if(!(type instanceof RubySymbol)) {
-            type = rubyApi.callMethod(type, "class");
-        }
-        if(type == runtime.newSymbol("string")) {
+        // How could this ever yield anything useful?
+        if (!(type instanceof RubySymbol)) type = rubyApi.callMethod(type, "class");
+
+        // Assumption; If this is a symbol then it will be backed by an interned string. (enebo)
+        String internedValue = type.asJavaString();
+
+        if(internedValue == "string") {
             return Types.VARCHAR;
-        } else if(type == runtime.newSymbol("text")) {
+        } else if(internedValue == "text") {
             return Types.CLOB;
-        } else if(type == runtime.newSymbol("integer")) {
+        } else if(internedValue == "integer") {
             return Types.INTEGER;
-        } else if(type == runtime.newSymbol("decimal")) {
+        } else if(internedValue == "decimal") {
             return Types.DECIMAL;
-        } else if(type == runtime.newSymbol("float")) {
+        } else if(internedValue == "float") {
             return Types.FLOAT;
-        } else if(type == runtime.newSymbol("datetime")) {
+        } else if(internedValue == "datetime") {
             return Types.TIMESTAMP;
-        } else if(type == runtime.newSymbol("timestamp")) {
+        } else if(internedValue == "timestamp") {
             return Types.TIMESTAMP;
-        } else if(type == runtime.newSymbol("time")) {
+        } else if(internedValue == "time") {
             return Types.TIME;
-        } else if(type == runtime.newSymbol("date")) {
+        } else if(internedValue == "date") {
             return Types.DATE;
-        } else if(type == runtime.newSymbol("binary")) {
+        } else if(internedValue == "binary") {
             return Types.BLOB;
-        } else if(type == runtime.newSymbol("boolean")) {
+        } else if(internedValue == "boolean") {
             return Types.BOOLEAN;
         } else {
             return -1;
