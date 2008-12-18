@@ -791,11 +791,11 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
         return RubyString.newUnicodeString(runtime, str);
     }
 
-    private static IRubyObject bytesToRuby(Ruby runtime, ResultSet resultSet, byte[] bytes)
+    private static IRubyObject stringToRuby(Ruby runtime, ResultSet resultSet, String string)
             throws SQLException, IOException {
-        if (bytes == null || resultSet.wasNull()) return runtime.getNil();
+        if (string == null || resultSet.wasNull()) return runtime.getNil();
 
-        return RubyString.newStringNoCopy(runtime, bytes);
+        return RubyString.newUnicodeString(runtime, string);
     }
 
     private static IRubyObject jdbcToRuby(Ruby runtime, int column, int type, ResultSet resultSet)
@@ -809,7 +809,7 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
                 case Types.TIMESTAMP:
                     return timestampToRuby(runtime, resultSet, resultSet.getTimestamp(column));
                 default:
-                    return bytesToRuby(runtime, resultSet, resultSet.getBytes(column));
+                    return stringToRuby(runtime, resultSet, resultSet.getString(column));
             }
         } catch (IOException ioe) {
             throw (SQLException) new SQLException(ioe.getMessage()).initCause(ioe);
