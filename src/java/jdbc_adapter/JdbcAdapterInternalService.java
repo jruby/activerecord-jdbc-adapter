@@ -85,115 +85,45 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
         return true;
     }
 
-    private static int whitespace(int p, final int pend, ByteList bl) {
-        while(p < pend) {
-            switch(bl.bytes[p]) {
-            case ' ':
-            case '\n':
-            case '\r':
-            case '\t':
-                p++;
-                break;
-            default:
-                return p;
-            }
+    private static int whitespace(int start, ByteList bl) {
+        int end = bl.begin + bl.realSize;
+
+        for (int i = start; i < end; i++) {
+            if (!Character.isWhitespace(bl.bytes[i])) return i;
         }
-        return p;
+
+        return end;
+    }
+
+    private static byte[] INSERT = new byte[] {'i', 'n', 's', 'e', 'r', 't'};
+    private static byte[] SELECT = new byte[] {'s', 'e', 'l', 'e', 'c', 't'};
+    private static byte[] SHOW = new byte[] {'s', 'h', 'o', 'w'};
+
+    private static boolean startsWithNoCaseCmp(ByteList bytelist, byte[] compare) {
+        int p = whitespace(bytelist.begin, bytelist);
+
+        // What the hell is this for?
+        if (bytelist.bytes[p] == '(') p = whitespace(p, bytelist);
+
+        for (int i = 0; i < bytelist.realSize && i < compare.length; i++) {
+            if (Character.toLowerCase(bytelist.bytes[p + i]) != compare[i]) return false;
+        }
+
+        return true;
     }
 
     @JRubyMethod(name = "insert?", required = 1, meta = true)
     public static IRubyObject insert_p(IRubyObject recv, IRubyObject _sql) {
-        ByteList bl = rubyApi.convertToRubyString(_sql).getByteList();
+        ByteList sql = rubyApi.convertToRubyString(_sql).getByteList();
 
-        int p = bl.begin;
-        int pend = p + bl.realSize;
-
-        p = whitespace(p, pend, bl);
-
-        if(pend - p >= 6) {
-            switch(bl.bytes[p++]) {
-            case 'i':
-            case 'I':
-                switch(bl.bytes[p++]) {
-                case 'n':
-                case 'N':
-                    switch(bl.bytes[p++]) {
-                    case 's':
-                    case 'S':
-                        switch(bl.bytes[p++]) {
-                        case 'e':
-                        case 'E':
-                            switch(bl.bytes[p++]) {
-                            case 'r':
-                            case 'R':
-                                switch(bl.bytes[p++]) {
-                                case 't':
-                                case 'T':
-                                    return recv.getRuntime().getTrue();
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        return recv.getRuntime().getFalse();
+        return recv.getRuntime().newBoolean(startsWithNoCaseCmp(sql, INSERT));
     }
 
     @JRubyMethod(name = "select?", required = 1, meta = true)
     public static IRubyObject select_p(IRubyObject recv, IRubyObject _sql) {
-        ByteList bl = rubyApi.convertToRubyString(_sql).getByteList();
+        ByteList sql = rubyApi.convertToRubyString(_sql).getByteList();
 
-        int p = bl.begin;
-        int pend = p + bl.realSize;
-
-        p = whitespace(p, pend, bl);
-
-        if(pend - p >= 6) {
-            if(bl.bytes[p] == '(') {
-                p++;
-                p = whitespace(p, pend, bl);
-            }
-            if(pend - p >= 6) {
-                switch(bl.bytes[p++]) {
-                case 's':
-                case 'S':
-                    switch(bl.bytes[p++]) {
-                    case 'e':
-                    case 'E':
-                        switch(bl.bytes[p++]) {
-                        case 'l':
-                        case 'L':
-                            switch(bl.bytes[p++]) {
-                            case 'e':
-                            case 'E':
-                                switch(bl.bytes[p++]) {
-                                case 'c':
-                                case 'C':
-                                    switch(bl.bytes[p++]) {
-                                    case 't':
-                                    case 'T':
-                                        return recv.getRuntime().getTrue();
-                                    }
-                                }
-                            }
-                        }
-                    case 'h':
-                    case 'H':
-                        switch(bl.bytes[p++]) {
-                        case 'o':
-                        case 'O':
-                            switch(bl.bytes[p++]) {
-                            case 'w':
-                            case 'W':
-                                return recv.getRuntime().getTrue();
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        return recv.getRuntime().getFalse();
+        return recv.getRuntime().newBoolean(startsWithNoCaseCmp(sql, SELECT) || startsWithNoCaseCmp(sql, SHOW));
     }
 
     @JRubyMethod(name = "connection")
@@ -324,29 +254,20 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
     }
 
     private static String getCatalog(IRubyObject[] args) {
-        if (args != null && args.length > 0) {
-            return convertToStringOrNull(args[0]);
-        }
-        return null;
+        return args.length > 0 ? convertToStringOrNull(args[0]) : null;
     }
 
     private static String getSchemaPattern(IRubyObject[] args) {
-        if (args != null && args.length > 1) {
-            return convertToStringOrNull(args[1]);
-        }
-        return null;
+        return args.length > 1 ? convertToStringOrNull(args[1]) : null;
     }
 
     private static String getTablePattern(IRubyObject[] args) {
-        if (args != null && args.length > 2) {
-            return convertToStringOrNull(args[2]);
-        }
-        return null;
+        return args.length > 2 ? convertToStringOrNull(args[2]) : null;
     }
 
     private static String[] getTypes(IRubyObject[] args) {
         String[] types = new String[]{"TABLE"};
-        if (args != null && args.length > 3) {
+        if (args.length > 3) {
             IRubyObject typearr = args[3];
             if (typearr instanceof RubyArray) {
                 IRubyObject[] arr = rubyApi.convertToJavaArray(typearr);
@@ -1030,16 +951,6 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
     private static RuntimeException wrap(IRubyObject recv, Throwable exception) {
         RubyClass err = recv.getRuntime().getModule("ActiveRecord").getClass("ActiveRecordError");
         return (RuntimeException) new RaiseException(recv.getRuntime(), err, exception.getMessage(), false).initCause(exception);
-    }
-
-    private static ResultSet intoResultSet(IRubyObject inp) {
-        JavaObject jo;
-        if (inp instanceof JavaObject) {
-            jo = (JavaObject) inp;
-        } else {
-            jo = (JavaObject) rubyApi.getInstanceVariable(inp, "@java_object");
-        }
-        return (ResultSet) jo.getValue();
     }
 
     private static boolean isConnectionBroken(IRubyObject recv, Connection c) {
