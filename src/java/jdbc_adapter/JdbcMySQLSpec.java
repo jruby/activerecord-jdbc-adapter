@@ -24,7 +24,6 @@
 
 package jdbc_adapter;
 
-import org.jruby.Ruby;
 import org.jruby.RubyModule;
 import org.jruby.RubyString;
 

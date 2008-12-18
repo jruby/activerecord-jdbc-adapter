@@ -32,7 +32,6 @@ import java.io.StringReader;
 
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
-import java.sql.PreparedStatement;
 import java.sql.ResultSetMetaData;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -370,10 +369,12 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
     @JRubyMethod(name = "set_native_database_types")
     public static IRubyObject set_native_database_types(IRubyObject recv) throws SQLException, IOException {
         Ruby runtime = recv.getRuntime();
-        IRubyObject types = unmarshal_result_downcase(recv, getConnection(recv, true).getMetaData().getTypeInfo());
+        ThreadContext context = runtime.getCurrentContext();
+        IRubyObject types = unmarshalResult(context, getConnection(recv, true).getMetaData().getTypeInfo(), true);
         IRubyObject typeConverter = ((RubyModule) (runtime.getModule("ActiveRecord").getConstant("ConnectionAdapters"))).getConstant("JdbcTypeConverter");
         IRubyObject value = rubyApi.callMethod(rubyApi.callMethod(typeConverter, "new", types), "choose_best_types");
         rubyApi.setInstanceVariable(recv, "@native_types", value);
+
         return runtime.getNil();
     }
 
@@ -638,13 +639,14 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
             maxrows = 0;
         }
 
+        final ThreadContext context = recv.getRuntime().getCurrentContext();
         return withConnectionAndRetry(recv, new SQLBlock() {
             public IRubyObject call(Connection c) throws SQLException {
                 Statement stmt = null;
                 try {
                     stmt = c.createStatement();
                     stmt.setMaxRows(maxrows);
-                    return unmarshal_result(recv, stmt.executeQuery(rubyApi.convertToRubyString(sql).getUnicodeValue()));
+                    return unmarshalResult(context, stmt.executeQuery(rubyApi.convertToRubyString(sql).getUnicodeValue()), false);
                 } finally {
                     if (null != stmt) {
                         try {
@@ -678,127 +680,70 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
         });
     }
 
-    public static IRubyObject unmarshal_result_downcase(IRubyObject recv, ResultSet rs) throws SQLException, IOException {
+    /**
+     * Converts a jdbc resultset into an array (rows) of hashes (row) that AR expects.
+     *
+     * @param downCase should column names only be in lower case?
+     */
+    protected static IRubyObject unmarshalResult(ThreadContext context, ResultSet resultSet,
+            boolean downCase) throws SQLException {
+        Ruby runtime = context.getRuntime();
         List results = new ArrayList();
-        Ruby runtime = recv.getRuntime();
+        
         try {
-            ResultSetMetaData metadata = rs.getMetaData();
-            int col_count = metadata.getColumnCount();
-            IRubyObject[] col_names = new IRubyObject[col_count];
-            int[] col_types = new int[col_count];
-            int[] col_scale = new int[col_count];
+            boolean storesUpper = !downCase && resultSet.getStatement().getConnection().getMetaData().storesUpperCaseIdentifiers();
+            ColumnData[] columns = ColumnData.setup(runtime, resultSet.getMetaData(), storesUpper);
 
-            for(int i=0;i<col_count;i++) {
-                col_names[i] = RubyString.newUnicodeString(runtime, metadata.getColumnLabel(i+1).toLowerCase());
-                col_types[i] = metadata.getColumnType(i+1);
-                col_scale[i] = metadata.getScale(i+1);
-            }
-
-            while(rs.next()) {
-                RubyHash row = RubyHash.newHash(runtime);
-                for(int i=0;i<col_count;i++) {
-                    rubyApi.callMethod(row, "[]=", new IRubyObject[] {
-                        col_names[i], jdbc_to_ruby(runtime, i+1, col_types[i], col_scale[i], rs)
-                    });
-                }
-                results.add(row);
-            }
+            populateFromResultSet(context, runtime, results, resultSet, columns);
         } finally {
-            try {
-                rs.close();
-            } catch(Exception e) {}
+            try { resultSet.close(); } catch(Exception e) {}
         }
-
+        
         return runtime.newArray(results);
     }
 
-    public static IRubyObject unmarshal_result(IRubyObject recv, ResultSet rs) throws SQLException {
-        Ruby runtime = recv.getRuntime();
-        List results = new ArrayList();
-        try {
-            ResultSetMetaData metadata = rs.getMetaData();
-            boolean storesUpper = rs.getStatement().getConnection().getMetaData().storesUpperCaseIdentifiers();
-            int col_count = metadata.getColumnCount();
-            IRubyObject[] col_names = new IRubyObject[col_count];
-            int[] col_types = new int[col_count];
-            int[] col_scale = new int[col_count];
+    public static class ColumnData {
+        public IRubyObject name;
+        public int type;
+        public int scale;
 
-            for(int i=0;i<col_count;i++) {
-                String s1 = metadata.getColumnLabel(i+1);
-                if(storesUpper && !HAS_SMALL.matcher(s1).find()) {
-                    s1 = s1.toLowerCase();
-                }
-                col_names[i] = RubyString.newUnicodeString(runtime, s1);
-                col_types[i] = metadata.getColumnType(i+1);
-                col_scale[i] = metadata.getScale(i+1);
-            }
-
-            while(rs.next()) {
-                RubyHash row = RubyHash.newHash(runtime);
-                for(int i=0;i<col_count;i++) {
-                    rubyApi.callMethod(row, "[]=", new IRubyObject[] {
-                        col_names[i], jdbc_to_ruby(runtime, i+1, col_types[i], col_scale[i], rs)
-                    });
-                }
-                results.add(row);
-            }
-        } finally {
-            try {
-                rs.close();
-            } catch(Exception e) {}
+        public ColumnData(IRubyObject name, int type, int scale) {
+            this.name = name;
+            this.type = type;
+            this.scale = scale;
         }
-        return runtime.newArray(results);
+
+        public static ColumnData[] setup(Ruby runtime, ResultSetMetaData metadata,
+                boolean storesUpper) throws SQLException {
+            int columnsCount = metadata.getColumnCount();
+            ColumnData[] columns = new ColumnData[columnsCount];
+
+            for (int i = 1; i <= columnsCount; i++) { // metadata is one-based
+                String name = metadata.getColumnLabel(i);
+                // We don't want to lowercase mixed case columns
+                if (!storesUpper || (storesUpper && !HAS_SMALL.matcher(name).find())) name = name.toLowerCase();
+
+                columns[i - 1] = new ColumnData(RubyString.newUnicodeString(runtime, name),
+                        metadata.getColumnType(i), metadata.getScale(i));
+            }
+
+            return columns;
+        }
     }
 
-    @JRubyMethod(name = "unmarshal_result", required = 1)
-    public static IRubyObject unmarshal_result(IRubyObject recv, IRubyObject resultset, Block row_filter) throws SQLException, IOException {
-        Ruby runtime = recv.getRuntime();
-        ResultSet rs = intoResultSet(resultset);
-        List results = new ArrayList();
-        try {
-            ResultSetMetaData metadata = rs.getMetaData();
-            int col_count = metadata.getColumnCount();
-            IRubyObject[] col_names = new IRubyObject[col_count];
-            int[] col_types = new int[col_count];
-            int[] col_scale = new int[col_count];
+    private static void populateFromResultSet(ThreadContext context, Ruby runtime, List results,
+            ResultSet resultSet, ColumnData[] columns) throws SQLException {
+        int columnCount = columns.length;
 
-            for (int i=0;i<col_count;i++) {
-                col_names[i] = RubyString.newUnicodeString(runtime, metadata.getColumnLabel(i+1));
-                col_types[i] = metadata.getColumnType(i+1);
-                col_scale[i] = metadata.getScale(i+1);
+        while (resultSet.next()) {
+            RubyHash row = RubyHash.newHash(runtime);
+
+            for (int i = 0; i < columnCount; i++) {
+                row.op_aset(context, columns[i].name,
+                        jdbc_to_ruby(runtime, i + 1, columns[i].type, columns[i].scale, resultSet));
             }
-
-            if (row_filter.isGiven()) {
-                while (rs.next()) {
-                    if (row_filter.yield(runtime.getCurrentContext(),resultset).isTrue()) {
-                        RubyHash row = RubyHash.newHash(runtime);
-                        for (int i=0;i<col_count;i++) {
-                            rubyApi.callMethod(row, "[]=", new IRubyObject[] {
-                                col_names[i], jdbc_to_ruby(runtime, i+1, col_types[i], col_scale[i], rs)
-                            });
-                        }
-                        results.add(row);
-                    }
-                }
-            } else {
-                while (rs.next()) {
-                    RubyHash row = RubyHash.newHash(runtime);
-                    for (int i=0;i<col_count;i++) {
-                        rubyApi.callMethod(row, "[]=", new IRubyObject[] {
-                            col_names[i], jdbc_to_ruby(runtime, i+1, col_types[i], col_scale[i], rs)
-                        });
-                    }
-                    results.add(row);
-                }
-            }
-
-        } finally {
-            try {
-                rs.close();
-            } catch(Exception e) {}
+            results.add(row);
         }
-
-        return runtime.newArray(results);
     }
 
     private static IRubyObject jdbc_to_ruby(Ruby runtime, int row, int type, int scale, ResultSet rs) throws SQLException {
@@ -846,12 +791,12 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
                     }
                     return RubyString.newUnicodeString(runtime, sttr);
                 default:
-                    String vs = rs.getString(row);
+                    byte[] vs = rs.getBytes(row);
                     if (vs == null || rs.wasNull()) {
                         return runtime.getNil();
                     }
 
-                    return RubyString.newUnicodeString(runtime, vs);
+                    return RubyString.newStringNoCopy(runtime, vs);
             }
         } catch (IOException ioe) {
             throw (SQLException) new SQLException(ioe.getMessage()).initCause(ioe);
