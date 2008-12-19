@@ -2,11 +2,17 @@ def redefine_task(*args, &block)
   task_name = Hash === args.first ? args.first.keys[0] : args.first
   existing_task = Rake.application.lookup task_name
   if existing_task
-    class << existing_task; public :instance_variable_set; end
-    existing_task.instance_variable_set "@prerequisites", FileList[]
+    class << existing_task
+      public :instance_variable_set
+      attr_reader :actions
+    end
+    existing_task.instance_variable_set "@prerequisites", FileList[]    
+    existing_task.actions.shift
+    enhancements = existing_task.actions
     existing_task.instance_variable_set "@actions", []
   end
-  task(*args, &block)
+  redefined_task = task(*args, &block)
+  enhancements.each {|enhancement| redefined_task.actions << enhancement}
 end
 
 namespace :db do
@@ -78,7 +84,7 @@ namespace :db do
       if config['adapter'] =~ /postgresql/i
         if config['url']
           db = config['url'][/\/([^\/]*)$/, 1]
-          config['url'][/\/([^\/]*)$/, 1] if db_name
+          config['url'][/\/([^\/]*)$/, 1] = 'postgres' if db
         else
           db = config['database']
           config['database'] = 'postgres'
