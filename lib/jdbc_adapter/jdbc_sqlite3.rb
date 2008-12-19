@@ -18,6 +18,21 @@ module ::JdbcSpec
 
     module Column
 
+      def type_cast(value)
+        return nil if value.nil?
+        case type
+        when :string   then value
+        when :integer  then defined?(value.to_i) ? value.to_i : (value ? 1 : 0)
+        when :primary_key then defined?(value.to_i) ? value.to_i : (value ? 1 : 0)
+        when :float    then value.to_f
+        when :datetime then JdbcSpec::SQLite3::Column.cast_to_date_or_time(value)
+        when :time     then JdbcSpec::SQLite3::Column.cast_to_time(value)
+        when :decimal  then self.class.value_to_decimal(value)
+        when :boolean  then self.class.value_to_boolean(value)
+        else value
+        end
+      end
+
       private
       def simplified_type(field_type)
         case field_type
@@ -27,6 +42,21 @@ module ::JdbcSpec
         when /real/i                   then @scale == 0 ? :integer : :decimal
         when /date|time/i                      then :datetime
         when /blob/i                           then :binary
+        end
+      end
+
+      def extract_precision(sql_type)
+        case sql_type
+          when /^(real)\((\d+)(,\d+)?\)/i then $2.to_i 
+          else super
+        end 
+      end
+      
+      def extract_scale(sql_type)
+        case sql_type
+          when /^(real)\((\d+)\)/i then 0
+          when /^(real)\((\d+)(,(\d+))\)/i then $4.to_i
+          else super
         end
       end
 
@@ -47,40 +77,24 @@ module ::JdbcSpec
       end
     end
 
-    def type_cast(value)
-      return nil if value.nil?
-      case type
-      when :string   then value
-      when :integer  then defined?(value.to_i) ? value.to_i : (value ? 1 : 0)
-      when :primary_key then defined?(value.to_i) ? value.to_i : (value ? 1 : 0)
-      when :float    then value.to_f
-      when :datetime then JdbcSpec::SQLite3::Column.cast_to_date_or_time(value)
-      when :time     then JdbcSpec::SQLite3::Column.cast_to_time(value)
-      when :decimal   then self.class.value_to_decimal(value)
-      when :boolean   then self.class.value_to_boolean(value)
-      else value
-      end
-    end
-
     def modify_types(tp)
       tp[:primary_key] = "INTEGER PRIMARY KEY AUTOINCREMENT"
       tp[:float] = { :name => "REAL" }
       tp[:decimal] = { :name => "REAL" }
-      tp[:datetime] = { :name => "INTEGER" }
-      tp[:timestamp] = { :name => "INTEGER" }
-      tp[:time] = { :name => "INTEGER" }
-      tp[:date] = { :name => "INTEGER" }
+      tp[:datetime] = { :name => "DATETIME" }
+      tp[:timestamp] = { :name => "DATETIME" }
+      tp[:time] = { :name => "TIME" }
+      tp[:date] = { :name => "DATE" }
       tp[:boolean] = { :name => "INTEGER", :limit => 1}
       tp
     end
 
     def quote(value, column = nil) # :nodoc:
       return value.quoted_id if value.respond_to?(:quoted_id)
-
       case value
       when String
         if column && column.type == :binary
-          "'#{quote_string(value).unpack("C*").collect {|v| v.to_s(16)}.join}'"
+          "'#{quote_string(column.class.string_to_binary(value))}'"
         else
           "'#{quote_string(value)}'"
         end
@@ -182,6 +196,56 @@ module ::JdbcSpec
         unique = (index_sql =~ /unique/i)
         cols = index_sql.match(/\((.*)\)/)[1].gsub(/,/,' ').split
         ::ActiveRecord::ConnectionAdapters::IndexDefinition.new(table_name, name, unique, cols)
+      end
+    end
+
+    def recreate_database(name)
+      tables.each{ |table| drop_table(table) }
+    end
+
+    def _execute(sql, name = nil)
+      if ActiveRecord::ConnectionAdapters::JdbcConnection::select?(sql)
+        @connection.execute_query(sql)
+      else
+        affected_rows = @connection.execute_update(sql)
+        ActiveRecord::ConnectionAdapters::JdbcConnection::insert?(sql) ? last_insert_id(sql.split(" ", 4)[2], nil) : affected_rows
+      end
+    end
+    
+    def table_structure(table_name)
+      returning structure = @connection.execute_query("PRAGMA table_info('#{quote_table_name(table_name)}')") do
+        raise(ActiveRecord::StatementInvalid, "Could not find table '#{table_name}'") if structure.empty?
+      end
+    end
+    
+    def columns(table_name, name = nil) #:nodoc:        
+      table_structure(table_name).map do |field|
+        ::ActiveRecord::ConnectionAdapters::JdbcColumn.new(@config, field['name'], field['dflt_value'], field['type'], field['notnull'] == "0")
+      end
+    end
+
+  end
+end
+
+module ActiveRecord
+  module ConnectionAdapters
+    class JdbcColumn < Column
+      def self.string_to_binary(value)
+        value.gsub(/\0|%/n) do |b|
+          case b
+            when "\0" then "%00"
+            when "\%"  then "%25"
+          end
+        end
+      end
+
+      def self.binary_to_string(value)
+        value.gsub(/%00|%25/n) do |b|
+          case b
+            when "%00" then "\0"
+            when "%25" then "%"
+          end
+        end
       end
     end
   end
