@@ -87,6 +87,10 @@ module ::JdbcSpec
       end
     end
 
+    def supports_count_distinct? #:nodoc:
+      false
+    end
+
     def modify_types(tp)
       tp[:primary_key] = "serial primary key"
       tp[:string][:limit] = 255
@@ -110,12 +114,16 @@ module ::JdbcSpec
       if pk
         if sequence
           select_value <<-end_sql, 'Reset sequence'
-            SELECT setval('#{sequence}', (SELECT COALESCE(MAX(#{pk})+(SELECT increment_by FROM #{sequence}), (SELECT min_value FROM #{sequence})) FROM #{table}), false)
+            SELECT setval('#{sequence}', (SELECT COALESCE(MAX(#{quote_column_name(pk)})+(SELECT increment_by FROM #{sequence}), (SELECT min_value FROM #{sequence})) FROM #{quote_table_name(table)}), false)
           end_sql
         else
           @logger.warn "#{table} has primary key #{pk} with no default sequence" if @logger
         end
       end
+    end
+
+    def quote_regclass(table_name)
+      table_name.to_s.split('.').map { |part| quote_table_name(part) }.join('.')  
     end
 
     # Find a table's primary key and sequence.
@@ -137,7 +145,7 @@ module ::JdbcSpec
             AND attr.attrelid     = cons.conrelid
             AND attr.attnum       = cons.conkey[1]
             AND cons.contype      = 'p'
-            AND dep.refobjid      = '#{table}'::regclass
+            AND dep.refobjid      = '#{quote_regclass(table)}'::regclass
         end_sql
 
         if result.nil? or result.empty?
@@ -152,7 +160,7 @@ module ::JdbcSpec
             JOIN pg_attribute   attr ON (t.oid = attrelid)
             JOIN pg_attrdef     def  ON (adrelid = attrelid AND adnum = attnum)
             JOIN pg_constraint  cons ON (conrelid = adrelid AND adnum = conkey[1])
-            WHERE t.oid = '#{table}'::regclass
+            WHERE t.oid = '#{quote_regclass(table)}'::regclass
               AND cons.contype = 'p'
               AND def.adsrc ~* 'nextval'
           end_sql
@@ -164,9 +172,18 @@ module ::JdbcSpec
       end
 
     def insert(sql, name = nil, pk = nil, id_value = nil, sequence_name = nil) #:nodoc:
-      execute(sql, name)
-      table = sql.split(" ", 4)[2]
-      id_value || pk && last_insert_id(table, sequence_name || default_sequence_name(table, pk))
+      table = sql.split(" ", 4)[2]      
+      execute(sql, name)      
+
+      # TODO: add support for INSERT RETURNING.
+
+      unless pk || sequence_name
+        pk, sequence_name = *pk_and_sequence_for(table)
+      end
+        
+      if pk && sequence_name ||= default_sequence_name(table, pk)
+        last_insert_id(table, sequence_name)
+      end    
     end
 
     def columns(table_name, name=nil)
@@ -349,17 +366,17 @@ module ::JdbcSpec
     end
 
     def add_column(table_name, column_name, type, options = {})
-      execute("ALTER TABLE #{table_name} ADD #{column_name} #{type_to_sql(type, options[:limit])}")
+      execute("ALTER TABLE #{quote_table_name(table_name)} ADD #{quote_column_name(column_name)} #{type_to_sql(type, options[:limit])}")
       change_column_default(table_name, column_name, options[:default]) unless options[:default].nil?
       if options[:null] == false
-        execute("UPDATE #{table_name} SET #{column_name} = '#{options[:default]}'") if options[:default]
-        execute("ALTER TABLE #{table_name} ALTER #{column_name} SET NOT NULL")
+        execute("UPDATE #{quote_table_name(table_name)} SET #{quote_column_name(column_name)} = '#{options[:default]}'") if options[:default]
+        execute("ALTER TABLE #{quote_table_name(table_name)} ALTER #{quote_column_name(column_name)} SET NOT NULL")
       end
     end
 
     def change_column(table_name, column_name, type, options = {}) #:nodoc:
       begin
-        execute "ALTER TABLE #{table_name} ALTER  #{column_name} TYPE #{type_to_sql(type, options[:limit])}"
+        execute "ALTER TABLE #{quote_table_name(table_name)} ALTER #{quote_column_name(column_name)} TYPE #{type_to_sql(type, options[:limit])}"
       rescue ActiveRecord::StatementInvalid
         # This is PG7, so we use a more arcane way of doing it.
         begin_db_transaction
@@ -373,11 +390,11 @@ module ::JdbcSpec
     end
 
     def change_column_default(table_name, column_name, default) #:nodoc:
-      execute "ALTER TABLE #{table_name} ALTER COLUMN #{column_name} SET DEFAULT '#{default}'"
+      execute "ALTER TABLE #{quote_table_name(table_name)} ALTER COLUMN #{quote_column_name(column_name)} SET DEFAULT '#{default}'"
     end
 
     def rename_column(table_name, column_name, new_column_name) #:nodoc:
-      execute "ALTER TABLE #{table_name} RENAME COLUMN #{column_name} TO #{new_column_name}"
+      execute "ALTER TABLE #{quote_table_name(table_name)} RENAME COLUMN #{quote_column_name(column_name)} TO #{quote_column_name(new_column_name)}"
     end
 
     def remove_index(table_name, options) #:nodoc:

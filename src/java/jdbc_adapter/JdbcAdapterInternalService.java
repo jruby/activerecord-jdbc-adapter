@@ -202,6 +202,7 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
                     DatabaseMetaData metadata = c.getMetaData();
                     String clzName = metadata.getClass().getName().toLowerCase();
                     boolean isOracle = clzName.indexOf("oracle") != -1 || clzName.indexOf("oci") != -1;
+                    boolean isPostgres = metadata.getDatabaseProductName().equals("PostgreSQL");
 
                     String realschema = schemapat;
                     String realtablepat = tablepat;
@@ -209,7 +210,7 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
                     if(metadata.storesUpperCaseIdentifiers()) {
                         if (realschema != null) realschema = realschema.toUpperCase();
                         if (realtablepat != null) realtablepat = realtablepat.toUpperCase();
-                    } else if(metadata.storesLowerCaseIdentifiers()) {
+                    } else if(metadata.storesLowerCaseIdentifiers() && ! isPostgres) {
                         if (null != realschema) realschema = realschema.toLowerCase();
                         if (realtablepat != null) realtablepat = realtablepat.toLowerCase();
                     }
@@ -362,6 +363,7 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
                     String clzName = metadata.getClass().getName().toLowerCase();
                     boolean isDerby = clzName.indexOf("derby") != -1;
                     boolean isOracle = clzName.indexOf("oracle") != -1 || clzName.indexOf("oci") != -1;
+                    boolean isPostgres = metadata.getDatabaseProductName().equals("PostgreSQL");
 
                     if(args.length>2) {
                         schemaName = args[2].toString();
@@ -370,7 +372,7 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
                     if(metadata.storesUpperCaseIdentifiers()) {
                         if (null != schemaName) schemaName = schemaName.toUpperCase();
                         table_name = table_name.toUpperCase();
-                    } else if(metadata.storesLowerCaseIdentifiers()) {
+                    } else if(metadata.storesLowerCaseIdentifiers() && ! isPostgres) {
                         if (null != schemaName) schemaName = schemaName.toLowerCase();
                         table_name = table_name.toLowerCase();
                     }
@@ -484,10 +486,11 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
         return withConnectionAndRetry(recv, new SQLBlock() {
             public IRubyObject call(Connection c) throws SQLException {
                 DatabaseMetaData metadata = c.getMetaData();
+                boolean isPostgres = metadata.getDatabaseProductName().equals("PostgreSQL");
                 String table_name = _table_name.toString();
                 if (metadata.storesUpperCaseIdentifiers()) {
                     table_name = table_name.toUpperCase();
-                } else if (metadata.storesLowerCaseIdentifiers()) {
+                } else if (metadata.storesLowerCaseIdentifiers() && ! isPostgres) {
                     table_name = table_name.toLowerCase();
                 }
 

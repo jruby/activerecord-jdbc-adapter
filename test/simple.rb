@@ -40,6 +40,13 @@ module SimpleTestMethods
     assert_equal 0, Entry.count
   end
 
+  def test_insert_returns_id
+    value = ActiveRecord::Base.connection.insert("INSERT INTO entries (title, content, rating) VALUES('insert_title', 'some content', 1)")
+    assert !value.nil?
+    entry = Entry.find_by_title('insert_title')
+    assert_equal entry.id, value
+  end
+
   def test_create_new_entry
     Entry.delete_all
 
