@@ -223,7 +223,7 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
                                 break;
                             }
                         }
-                        schemas.close();
+                        close(schemas);
                     }
                     rs = metadata.getTables(catalog, realschema, realtablepat, types);
                     List arr = new ArrayList();
@@ -384,7 +384,7 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
                                 break;
                             }
                         }
-                        schemas.close();
+                        close(schemas);
                     }
 
                     RubyArray matchingTables = (RubyArray) tableLookupBlock(recv.getRuntime(),
@@ -475,9 +475,7 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
             }
             return runtime.newArray(columns);
         } finally {
-            try {
-                rs.close();
-            } catch(Exception e) {}
+            close(rs);
         }
     }
 
@@ -598,7 +596,7 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
 
             populateFromResultSet(context, runtime, results, resultSet, columns);
         } finally {
-            try { resultSet.close(); } catch(Exception e) {}
+            close(resultSet);
         }
         
         return runtime.newArray(results);
@@ -720,16 +718,12 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
 
     public static IRubyObject unmarshal_id_result(Ruby runtime, ResultSet rs) throws SQLException {
         try {
-            if(rs.next()) {
-                if(rs.getMetaData().getColumnCount() > 0) {
-                    return runtime.newFixnum(rs.getLong(1));
-                }
+            if (rs.next() && rs.getMetaData().getColumnCount() > 0) {
+                return runtime.newFixnum(rs.getLong(1));
             }
             return runtime.getNil();
         } finally {
-            try {
-                rs.close();
-            } catch(Exception e) {}
+            close(rs);
         }
     }
 
@@ -934,7 +928,7 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
                 try {
                     s.execute(connectionSQL);
                 } finally {
-                    try { s.close(); } catch (SQLException ignored) {}
+                    close(s);
                 }
                 return false;
             } else {
@@ -983,5 +977,21 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
         Ruby runtime = recv.getRuntime();
         IRubyObject config_hash = rubyApi.getInstanceVariable(recv, "@config");
         return rubyApi.callMethod(config_hash, "[]", runtime.newSymbol(key));
+    }
+
+    public static void close(Statement statement) {
+        if (statement != null) {
+            try {
+                statement.close();
+            } catch(Exception e) {}
+        }
+    }
+
+    public static void close(ResultSet resultSet) {
+        if (resultSet != null) {
+            try {
+                resultSet.close();
+            } catch(Exception e) {}
+        }
     }
 }
