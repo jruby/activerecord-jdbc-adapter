@@ -34,13 +34,13 @@ module JdbcSpec
         yield @definition if block_given?
       end
       
-      copy_table_indexes(from, to)
+      copy_table_indexes(from, to, options)
       copy_table_contents(from, to, 
                           @definition.columns, 
                           options[:rename] || {})
     end
     
-    def copy_table_indexes(from, to) #:nodoc:
+    def copy_table_indexes(from, to, options={}) #:nodoc:
       indexes(from).each do |index|
         name = index.name.downcase
         if to == "altered_#{from}"
@@ -52,7 +52,16 @@ module JdbcSpec
         # index name can't be the same
         opts = { :name => name.gsub(/_(#{from})_/, "_#{to}_") }
         opts[:unique] = true if index.unique
-        add_index(to, index.columns, opts)
+        if options[:rename]
+          new_columns = index.columns.map {|column_name|
+            (options[:rename][column_name] ||
+             options[:rename][column_name.to_sym] ||
+             column_name)
+          }
+        else
+          new_columns = index.columns
+        end
+        add_index(to, new_columns, opts)
       end
     end
     
