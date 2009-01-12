@@ -154,11 +154,13 @@ module JdbcSpec
     end
 
     def drop_database(name)
+      execute "USE master"
       execute "DROP DATABASE #{name}"
     end
 
     def create_database(name)
       execute "CREATE DATABASE #{name}"
+      execute "USE #{name}"
     end
 
       def rename_table(name, new_name)

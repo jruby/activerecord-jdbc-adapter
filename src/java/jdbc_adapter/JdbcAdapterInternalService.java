@@ -128,22 +128,22 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
 
     @JRubyMethod(name = "connection")
     public static IRubyObject connection(IRubyObject recv) {
-        Connection c = getConnection(recv);
-        if (c == null) {
-            reconnect(recv);
-        }
+        if (getConnection(recv) == null) reconnect(recv);
+
         return rubyApi.getInstanceVariable(recv, "@connection");
     }
 
     @JRubyMethod(name = "disconnect!")
     public static IRubyObject disconnect(IRubyObject recv) {
         setConnection(recv, null);
+
         return recv;
     }
 
     @JRubyMethod(name = "reconnect!")
     public static IRubyObject reconnect(IRubyObject recv) {
         setConnection(recv, getConnectionFactory(recv).newConnection());
+
         return recv;
     }
 
@@ -224,7 +224,7 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
                                 break;
                             }
                         }
-                        schemas.close();
+                        close(schemas);
                     }
                     rs = metadata.getTables(catalog, realschema, realtablepat, types);
                     List arr = new ArrayList();
@@ -245,13 +245,10 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
 
     @JRubyMethod(name = "tables", rest = true)
     public static IRubyObject tables(final IRubyObject recv, IRubyObject[] args) {
-        final Ruby runtime     = recv.getRuntime();
-        final String catalog   = getCatalog(args);
-        final String schemapat = getSchemaPattern(args);
-        final String tablepat  = getTablePattern(args);
-        final String[] types   = getTypes(args);
-        return withConnectionAndRetry(recv, tableLookupBlock(runtime, catalog,
-                schemapat, tablepat, types));
+        final Ruby runtime = recv.getRuntime();
+        
+        return withConnectionAndRetry(recv, tableLookupBlock(runtime, getCatalog(args),
+                getSchemaPattern(args), getTablePattern(args), getTypes(args)));
     }
 
     private static String getCatalog(IRubyObject[] args) {
@@ -267,7 +264,7 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
     }
 
     private static String[] getTypes(IRubyObject[] args) {
-        String[] types = new String[]{"TABLE"};
+        String[] types;
         if (args.length > 3) {
             IRubyObject typearr = args[3];
             if (typearr instanceof RubyArray) {
@@ -277,8 +274,10 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
                     types[i] = arr[i].toString();
                 }
             } else {
-                types = new String[]{types.toString()};
+                types = new String[]{ typearr.toString() };
             }
+        } else {
+            types = new String[]{"TABLE"};
         }
         return types;
     }
@@ -302,45 +301,52 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
 
     @JRubyMethod(name = "database_name")
     public static IRubyObject database_name(IRubyObject recv) throws SQLException {
-        String name = getConnection(recv, true).getCatalog();
-        if(null == name) {
-            name = getConnection(recv, true).getMetaData().getUserName();
-            if(null == name) {
-                name = "db1";
-            }
+        Connection connection = getConnection(recv, true);
+        String name = connection.getCatalog();
+
+        if (null == name) {
+            name = connection.getMetaData().getUserName();
+
+            if (null == name) name = "db1";
         }
+        
         return recv.getRuntime().newString(name);
     }
 
     @JRubyMethod(name = "begin")
     public static IRubyObject begin(IRubyObject recv) throws SQLException {
         getConnection(recv, true).setAutoCommit(false);
+        
         return recv.getRuntime().getNil();
     }
 
     @JRubyMethod(name = "commit")
     public static IRubyObject commit(IRubyObject recv) throws SQLException {
-        Connection c = getConnection(recv, true);
-        if (!c.getAutoCommit()) {
+        Connection connection = getConnection(recv, true);
+
+        if (!connection.getAutoCommit()) {
             try {
-                c.commit();
+                connection.commit();
             } finally {
-                c.setAutoCommit(true);
+                connection.setAutoCommit(true);
             }
         }
+        
         return recv.getRuntime().getNil();
     }
 
     @JRubyMethod(name = "rollback")
     public static IRubyObject rollback(IRubyObject recv) throws SQLException {
-        Connection c = getConnection(recv, true);
-        if (!c.getAutoCommit()) {
+        Connection connection = getConnection(recv, true);
+
+        if (!connection.getAutoCommit()) {
             try {
-                c.rollback();
+                connection.rollback();
             } finally {
-                c.setAutoCommit(true);
+                connection.setAutoCommit(true);
             }
         }
+        
         return recv.getRuntime().getNil();
     }
 
@@ -386,7 +392,7 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
                                 break;
                             }
                         }
-                        schemas.close();
+                        close(schemas);
                     }
 
                     RubyArray matchingTables = (RubyArray) tableLookupBlock(recv.getRuntime(),
@@ -477,9 +483,7 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
             }
             return runtime.newArray(columns);
         } finally {
-            try {
-                rs.close();
-            } catch(Exception e) {}
+            close(rs);
         }
     }
 
@@ -601,7 +605,7 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
 
             populateFromResultSet(context, runtime, results, resultSet, columns);
         } finally {
-            try { resultSet.close(); } catch(Exception e) {}
+            close(resultSet);
         }
         
         return runtime.newArray(results);
@@ -723,16 +727,12 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
 
     public static IRubyObject unmarshal_id_result(Ruby runtime, ResultSet rs) throws SQLException {
         try {
-            if(rs.next()) {
-                if(rs.getMetaData().getColumnCount() > 0) {
-                    return runtime.newFixnum(rs.getLong(1));
-                }
+            if (rs.next() && rs.getMetaData().getColumnCount() > 0) {
+                return runtime.newFixnum(rs.getLong(1));
             }
             return runtime.getNil();
         } finally {
-            try {
-                rs.close();
-            } catch(Exception e) {}
+            close(rs);
         }
     }
 
@@ -937,7 +937,7 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
                 try {
                     s.execute(connectionSQL);
                 } finally {
-                    try { s.close(); } catch (SQLException ignored) {}
+                    close(s);
                 }
                 return false;
             } else {
@@ -986,5 +986,21 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
         Ruby runtime = recv.getRuntime();
         IRubyObject config_hash = rubyApi.getInstanceVariable(recv, "@config");
         return rubyApi.callMethod(config_hash, "[]", runtime.newSymbol(key));
+    }
+
+    public static void close(Statement statement) {
+        if (statement != null) {
+            try {
+                statement.close();
+            } catch(Exception e) {}
+        }
+    }
+
+    public static void close(ResultSet resultSet) {
+        if (resultSet != null) {
+            try {
+                resultSet.close();
+            } catch(Exception e) {}
+        }
     }
 }

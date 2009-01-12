@@ -2,6 +2,7 @@
 
 - Many SQLite updates (thanks Nils Christian Haugen)
 - Cleanup of JdbcAdapterInternalService
+- JRUBY-2912: Fix MSSQL create/drop database (Joern Hartmann)
 
 == 0.9
 
