@@ -60,26 +60,6 @@ class SQLite3TypeConversionTest < Test::Unit::TestCase
     DbTypeMigration.down
   end
 
-  def test_timestamp
-    types = DbType.find(:first)
-    assert_equal TEST_TIME, types.sample_timestamp.getutc
-  end
-
-  def test_datetime
-    types = DbType.find(:first)
-    assert_equal TEST_TIME, types.sample_datetime.getutc
-  end
-
-  def test_time
-    types = DbType.find(:first)
-    assert_equal TEST_TIME, types.sample_time.getutc
-  end
-
-  def test_date
-    types = DbType.find(:first)
-    assert_equal TEST_TIME, types.sample_date.getutc
-  end
-
   def test_decimal
     types = DbType.find(:first)
     assert_equal((JInteger::MAX_VALUE + 1), types.sample_decimal)

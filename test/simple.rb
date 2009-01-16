@@ -1,8 +1,12 @@
 # -*- coding: utf-8 -*-
 ActiveRecord::Schema.verbose = false
+ActiveRecord::Base.time_zone_aware_attributes = true
+ActiveRecord::Base.default_timezone = :utc
+Time.zone = 'Moscow' #just a random zone, unlikely to be local, and not utc
 
 module MigrationSetup
   def setup
+    DbTypeMigration.up
     CreateEntries.up
     CreateAutoIds.up
 
@@ -10,6 +14,7 @@ module MigrationSetup
   end
 
   def teardown
+    DbTypeMigration.down
     CreateEntries.down
     CreateAutoIds.down
     ActiveRecord::Base.clear_active_connections!
@@ -25,6 +30,7 @@ module FixtureSetup
     @new_title = "First post updated title"
     @rating = 205.76
     Entry.create :title => @title, :content => @content, :rating => @rating
+    DbType.create 
   end
 end
 
@@ -83,6 +89,62 @@ module SimpleTestMethods
     post.destroy
 
     assert_equal prev_count - 1, Entry.count
+  end
+  
+  def test_save_time
+    t = Time.now
+    #precision will only be expected to the second.
+    time = Time.local(t.year, t.month, t.day, t.hour, t.min, t.sec)
+    e = DbType.find(:first)
+    e.sample_datetime = time
+    e.save!
+    e = DbType.find(:first)
+    assert_equal time.in_time_zone, e.sample_datetime
+  end
+  
+  def test_save_date_time
+    t = Time.now
+    #precision will only be expected to the second.
+    time = Time.local(t.year, t.month, t.day, t.hour, t.min, t.sec)
+    datetime = time.to_datetime
+    e = DbType.find(:first)
+    e.sample_datetime = datetime
+    e.save!
+    e = DbType.find(:first)
+    assert_equal time, e.sample_datetime.localtime
+  end  
+  
+  def test_save_time_with_zone
+    t = Time.now
+    #precision will only be expected to the second.
+    original_time = Time.local(t.year, t.month, t.day, t.hour, t.min, t.sec)
+    time = original_time.in_time_zone
+    e = DbType.find(:first)
+    e.sample_datetime = time
+    e.save!
+    e = DbType.find(:first)
+    assert_equal time, e.sample_datetime
+  end
+
+
+  def test_save_date
+    date = Date.new(2007)
+    e = DbType.find(:first)
+    e.sample_date = date
+    e.save!
+    e = DbType.find(:first)
+    assert_equal date, e.sample_date
+  end  
+  
+  def test_save_binary
+    #string is 60_000 bytes
+    binary_string = "\000ABCDEFGHIJKLMNOPQRSTUVWXYZ'\001\003"*1#2_000
+    e = DbType.find(:first)
+    e.sample_binary = binary_string
+    e.send(:write_attribute, :binary, binary_string)
+    e.save!
+    e = DbType.find(:first)
+    assert_equal binary_string, e.sample_binary
   end
 
   def test_indexes

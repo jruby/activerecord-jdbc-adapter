@@ -71,8 +71,10 @@ public class JdbcDerbySpec {
                 case 't': //text, timestamp, time
                     if (type.equals("text")) {
                         return value;
-                    } else {
-                        return rubyApi.callMethod(recv, "cast_to_time", value);
+                    } else if (type.equals("timestamp")) {
+                        return rubyApi.callMethod(recv.getMetaClass(), "string_to_time", value);
+                    } else { //time
+                        return rubyApi.callMethod(recv.getMetaClass(), "string_to_dummy_time", value);
                     }
                 case 'i': //integer
                 case 'p': //primary key
@@ -83,7 +85,7 @@ public class JdbcDerbySpec {
                     }
                 case 'd': //decimal, datetime, date
                     if (type.equals("datetime")) {
-                        return rubyApi.callMethod(recv, "cast_to_date_or_time", value);
+                        return rubyApi.callMethod(recv.getMetaClass(), "string_to_time", value);
                     } else if (type.equals("date")) {
                         return rubyApi.callMethod(recv.getMetaClass(), "string_to_date", value);
                     } else {
@@ -93,7 +95,7 @@ public class JdbcDerbySpec {
                     return rubyApi.callMethod(value, "to_f");
                 case 'b': //binary, boolean
                     if (type.equals("binary")) {
-                        return rubyApi.callMethod(recv, "value_to_binary", value);
+                        return rubyApi.callMethod(recv.getMetaClass(), "binary_to_string", value);
                     } else {
                         return rubyApi.callMethod(recv.getMetaClass(), "value_to_boolean", value);
                     }
@@ -115,7 +117,7 @@ public class JdbcDerbySpec {
                 } else if (type == runtime.newSymbol("text")) {
                     return quote_string_with_surround(runtime, "CAST('", (RubyString)value, "' AS CLOB)");
                 } else if (type == runtime.newSymbol("binary")) {
-                    return hexquote_string_with_surround(runtime, "CAST('", (RubyString)value, "' AS BLOB)");
+                    return hexquote_string_with_surround(runtime, "CAST(X'", (RubyString)value, "' AS BLOB)");
                 } else {
                     // column type :integer or other numeric or date version
                     if (only_digits((RubyString)value)) {
@@ -164,9 +166,7 @@ public class JdbcDerbySpec {
             return RubyString.objAsString(context, value);
         } else if(value instanceof RubyBigDecimal) {
             return rubyApi.callMethod(value, "to_s", runtime.newString("F"));
-        } else if (rubyApi.isKindOf(value, runtime.getModule("Date"))) {
-            return quote_string_with_surround(runtime, "'", RubyString.objAsString(context, value), "'");
-        } else if (rubyApi.isKindOf(value, runtime.getModule("Time")) || rubyApi.isKindOf(value, runtime.getModule("DateTime"))) {
+        } else if (rubyApi.callMethod(value, "acts_like?", runtime.newString("date")).isTrue() || rubyApi.callMethod(value, "acts_like?", runtime.newString("time")).isTrue()) {
             return quote_string_with_surround(runtime, "'", (RubyString)(rubyApi.callMethod(recv, "quoted_date", value)), "'"); 
         } else {
             return quote_string_with_surround(runtime, "'", (RubyString)(rubyApi.callMethod(value, "to_yaml")), "'");
@@ -199,16 +199,18 @@ public class JdbcDerbySpec {
     private static IRubyObject hexquote_string_with_surround(Ruby runtime, String before, RubyString string, String after) {
         ByteList input = string.getByteList();
         ByteList output = new ByteList(before.getBytes());
+        int written = 0;
         for(int i = input.begin; i< input.begin + input.realSize; i++) {
             byte b1 = input.bytes[i];
             byte higher = HEX[(((char)b1)>>4)%16];
             byte lower = HEX[((char)b1)%16];
-            if(b1 == '\'') {
-                output.append(higher);
-                output.append(lower);
-            }
             output.append(higher);
             output.append(lower);
+            written += 2;
+            if(written >= 16334) { // max hex length = 16334
+              output.append("'||X'".getBytes());
+              written = 0;
+            }
         }
 
         output.append(after.getBytes());

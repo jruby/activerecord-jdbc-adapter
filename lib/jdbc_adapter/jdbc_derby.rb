@@ -48,28 +48,6 @@ module ::JdbcSpec
     end
 
     module Column
-      def value_to_binary(value)
-        value.scan(/[0-9A-Fa-f]{2}/).collect {|v| v.to_i(16)}.pack("C*")
-      end
-
-      def cast_to_date_or_time(value)
-        return value if value.is_a? Date
-        return nil if value.blank?
-        guess_date_or_time((value.is_a? Time) ? value : cast_to_time(value))
-      end
-
-      def cast_to_time(value)
-        return value if value.is_a? Time
-        time_array = ParseDate.parsedate value
-        time_array[0] ||= 2000; time_array[1] ||= 1; time_array[2] ||= 1;
-        Time.send(ActiveRecord::Base.default_timezone, *time_array) rescue nil
-      end
-
-      def guess_date_or_time(value)
-        (value.hour == 0 and value.min == 0 and value.sec == 0) ?
-        Date.new(value.year, value.month, value.day) : value
-      end
-
       def simplified_type(field_type)
         return :boolean if field_type =~ /smallint/i
         return :float if field_type =~ /real/i
@@ -381,4 +359,5 @@ module ::JdbcSpec
     end
   end
 end
+
 

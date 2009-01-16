@@ -26,6 +26,7 @@ module ::JdbcSpec
         when :primary_key then defined?(value.to_i) ? value.to_i : (value ? 1 : 0)
         when :float    then value.to_f
         when :datetime then JdbcSpec::SQLite3::Column.cast_to_date_or_time(value)
+        when :date then JdbcSpec::SQLite3::Column.cast_to_date_or_time(value)
         when :time     then JdbcSpec::SQLite3::Column.cast_to_time(value)
         when :decimal  then self.class.value_to_decimal(value)
         when :boolean  then self.class.value_to_boolean(value)
@@ -39,8 +40,10 @@ module ::JdbcSpec
         when /^integer\(1\)$/i                  then :boolean
         when /text/i                           then :string
         when /int/i                            then :integer
-        when /real/i                   then @scale == 0 ? :integer : :decimal
-        when /date|time/i                      then :datetime
+        when /real/i                           then @scale == 0 ? :integer : :decimal
+        when /datetime/i                       then :datetime
+        when /date/i                           then :date
+        when /time/i                           then :time
         when /blob/i                           then :binary
         end
       end
@@ -64,11 +67,13 @@ module ::JdbcSpec
         return value if value.is_a? Date
         return nil if value.blank?
         guess_date_or_time((value.is_a? Time) ? value : cast_to_time(value))
-      end
+     end
 
       def self.cast_to_time(value)
         return value if value.is_a? Time
-        Time.at(value) rescue nil
+        time_array = ParseDate.parsedate value
+        time_array[0] ||= 2000; time_array[1] ||= 1; time_array[2] ||= 1;
+        Time.send(ActiveRecord::Base.default_timezone, *time_array) rescue nil
       end
 
       def self.guess_date_or_time(value)
