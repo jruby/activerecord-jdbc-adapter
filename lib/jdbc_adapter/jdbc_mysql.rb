@@ -153,12 +153,15 @@ module ::JdbcSpec
       create_database(name)
     end
 
+    def character_set(options) #:nodoc:
+      str = "CHARACTER SET `#{options[:charset] || 'utf8'}`"
+      str += " COLLATE `#{options[:collation]}`" if options[:collation]
+      str
+    end
+    private :character_set
+
     def create_database(name, options = {}) #:nodoc:
-      if options[:collation]
-        execute "CREATE DATABASE `#{name}` DEFAULT CHARACTER SET `#{options[:charset] || 'utf8'}` COLLATE `#{options[:collation]}`"
-      else
-        execute "CREATE DATABASE `#{name}` DEFAULT CHARACTER SET `#{options[:charset] || 'utf8'}`"
-      end
+      execute "CREATE DATABASE `#{name}` DEFAULT #{character_set(options)}"
     end
 
     def drop_database(name) #:nodoc:
@@ -170,7 +173,7 @@ module ::JdbcSpec
     end
 
     def create_table(name, options = {}) #:nodoc:
-      super(name, {:options => "ENGINE=InnoDB CHARACTER SET utf8 COLLATE utf8_bin"}.merge(options))
+      super(name, {:options => "ENGINE=InnoDB #{character_set(options)}"}.merge(options))
     end
 
     def rename_table(name, new_name)
