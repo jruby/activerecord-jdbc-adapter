@@ -1,7 +1,9 @@
 =begin
 
+* This scripts looks for an optional argv0 which is number of times to
+  execute the particular benchmark this file is getting required into. argv1
+  is an optional parameter which represents the number of rows to create.
 * Use ENV['LOGGER'] (=severe|warn|info|debug) to turn on the logger
-* Pass N as arg 1 to script to set the number of iterations.
 * Add ActiveRecord to load path to use a specific (non-gem version) for testing (e.g., edge).
 
 +----------+------+-----+---------+-----------------+----------------+
@@ -14,6 +16,9 @@
 | updated_at  | datetime     | YES  |     | NULL    |                |
 +-------------+--------------+------+-----+---------+----------------+
 =end
+
+TIMES = (ARGV[0] || 5).to_i
+ROW_COUNT = (ARGV[1] || 10).to_i
 
 ENV["RAILS_ENV"] = "production"
 begin
@@ -70,8 +75,11 @@ end
 CreateWidgets.up unless ActiveRecord::Base.connection.tables.include?("widgets")
 
 class Widget < ActiveRecord::Base; end
-Widget.create!(:name => "bench", :description => "Bench record") unless Widget.count > 0
+Widget.destroy_all if Widget.count > ROW_COUNT
+count = Widget.count
+while (count < ROW_COUNT)
+  Widget.create!(:name => "bench#{count}", :description => "Bench record#{count}")
+  count = Widget.count
+end
 
 ActiveRecord::Base.clear_active_connections!
-
-TIMES = (ARGV[0] || 5).to_i
