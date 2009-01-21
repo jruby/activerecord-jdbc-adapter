@@ -1,5 +1,5 @@
 /***** BEGIN LICENSE BLOCK *****
- * Copyright (c) 2006-2008 Nick Sieger <nick@nicksieger.com>
+ * Copyright (c) 2006-2009 Nick Sieger <nick@nicksieger.com>
  * Copyright (c) 2006-2007 Ola Bini <ola.bini@gmail.com>
  *
  * Permission is hereby granted, free of charge, to any person obtaining
@@ -696,18 +696,27 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
         return RubyString.newUnicodeString(runtime, string);
     }
 
+    private static IRubyObject integerToRuby(Ruby runtime, ResultSet resultSet, long l)
+            throws SQLException, IOException {
+        if (resultSet.wasNull()) return runtime.getNil();
+        return runtime.newFixnum(l);
+    }
+
     private static IRubyObject jdbcToRuby(Ruby runtime, int column, int type, ResultSet resultSet)
             throws SQLException {
         try {
             switch (type) {
-                case Types.BINARY: case Types.BLOB: case Types.LONGVARBINARY: case Types.VARBINARY:
-                    return streamToRuby(runtime, resultSet, resultSet.getBinaryStream(column));
-                case Types.LONGVARCHAR: case Types.CLOB:
-                    return readerToRuby(runtime, resultSet, resultSet.getCharacterStream(column));
-                case Types.TIMESTAMP:
-                    return timestampToRuby(runtime, resultSet, resultSet.getTimestamp(column));
-                default:
-                    return stringToRuby(runtime, resultSet, resultSet.getString(column));
+            case Types.BINARY: case Types.BLOB: case Types.LONGVARBINARY: case Types.VARBINARY:
+                return streamToRuby(runtime, resultSet, resultSet.getBinaryStream(column));
+            case Types.LONGVARCHAR: case Types.CLOB:
+                return readerToRuby(runtime, resultSet, resultSet.getCharacterStream(column));
+            case Types.TIMESTAMP:
+                return timestampToRuby(runtime, resultSet, resultSet.getTimestamp(column));
+            case Types.INTEGER:
+            case Types.SMALLINT:
+                return integerToRuby(runtime, resultSet, resultSet.getLong(column));
+            default:
+                return stringToRuby(runtime, resultSet, resultSet.getString(column));
             }
         } catch (IOException ioe) {
             throw (SQLException) new SQLException(ioe.getMessage()).initCause(ioe);
