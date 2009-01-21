@@ -112,28 +112,28 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
         return true;
     }
 
-    @JRubyMethod(name = "insert?", required = 1, meta = true)
-    public static IRubyObject insert_p(IRubyObject recv, IRubyObject _sql) {
+    @JRubyMethod(name = "insert?", required = 1, meta = true, frame = false)
+    public static IRubyObject insert_p(ThreadContext context, IRubyObject recv, IRubyObject _sql) {
         ByteList sql = rubyApi.convertToRubyString(_sql).getByteList();
 
-        return recv.getRuntime().newBoolean(startsWithNoCaseCmp(sql, INSERT));
+        return context.getRuntime().newBoolean(startsWithNoCaseCmp(sql, INSERT));
     }
 
-    @JRubyMethod(name = "select?", required = 1, meta = true)
-    public static IRubyObject select_p(IRubyObject recv, IRubyObject _sql) {
+    @JRubyMethod(name = "select?", required = 1, meta = true, frame = false)
+    public static IRubyObject select_p(ThreadContext context, IRubyObject recv, IRubyObject _sql) {
         ByteList sql = rubyApi.convertToRubyString(_sql).getByteList();
 
-        return recv.getRuntime().newBoolean(startsWithNoCaseCmp(sql, SELECT) || startsWithNoCaseCmp(sql, SHOW));
+        return context.getRuntime().newBoolean(startsWithNoCaseCmp(sql, SELECT) || startsWithNoCaseCmp(sql, SHOW));
     }
 
-    @JRubyMethod(name = "connection")
+    @JRubyMethod(name = "connection", frame = false)
     public static IRubyObject connection(IRubyObject recv) {
         if (getConnection(recv) == null) reconnect(recv);
 
         return rubyApi.getInstanceVariable(recv, "@connection");
     }
 
-    @JRubyMethod(name = "disconnect!")
+    @JRubyMethod(name = "disconnect!", frame = false)
     public static IRubyObject disconnect(IRubyObject recv) {
         setConnection(recv, null);
 
@@ -148,17 +148,15 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
     }
 
     @JRubyMethod(name = "with_connection_retry_guard", frame = true)
-    public static IRubyObject with_connection_retry_guard(final IRubyObject recv, final Block block) {
-        return withConnectionAndRetry(recv, new SQLBlock() {
+    public static IRubyObject with_connection_retry_guard(final ThreadContext context, final IRubyObject recv, final Block block) {
+        return withConnectionAndRetry(context, recv, new SQLBlock() {
             public IRubyObject call(Connection c) throws SQLException {
-                return block.call(recv.getRuntime().getCurrentContext(), new IRubyObject[] {
-                    wrappedConnection(recv, c)
-                });
+                return block.call(context, new IRubyObject[] { wrappedConnection(recv, c) });
             }
         });
     }
 
-    private static IRubyObject withConnectionAndRetry(IRubyObject recv, SQLBlock block) {
+    private static IRubyObject withConnectionAndRetry(ThreadContext context, IRubyObject recv, SQLBlock block) {
         int tries = 1;
         int i = 0;
         Throwable toWrap = null;
@@ -181,7 +179,7 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
                             tries = 1;
                         }
                     }
-                    if (isConnectionBroken(recv, c)) {
+                    if (isConnectionBroken(context, recv, c)) {
                         reconnect(recv);
                     } else {
                         throw wrap(recv, toWrap);
@@ -244,10 +242,10 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
     }
 
     @JRubyMethod(name = "tables", rest = true)
-    public static IRubyObject tables(final IRubyObject recv, IRubyObject[] args) {
-        final Ruby runtime = recv.getRuntime();
+    public static IRubyObject tables(ThreadContext context, final IRubyObject recv, IRubyObject[] args) {
+        final Ruby runtime = context.getRuntime();
         
-        return withConnectionAndRetry(recv, tableLookupBlock(runtime, getCatalog(args),
+        return withConnectionAndRetry(context, recv, tableLookupBlock(runtime, getCatalog(args),
                 getSchemaPattern(args), getTablePattern(args), getTypes(args)));
     }
 
@@ -288,9 +286,9 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
     }
 
     @JRubyMethod(name = "set_native_database_types")
-    public static IRubyObject set_native_database_types(IRubyObject recv) throws SQLException, IOException {
-        Ruby runtime = recv.getRuntime();
-        ThreadContext context = runtime.getCurrentContext();
+    public static IRubyObject set_native_database_types(ThreadContext context, IRubyObject recv)
+            throws SQLException, IOException {
+        Ruby runtime = context.getRuntime();
         IRubyObject types = unmarshalResult(context, getConnection(recv, true).getMetaData().getTypeInfo(), true);
         IRubyObject typeConverter = ((RubyModule) (runtime.getModule("ActiveRecord").getConstant("ConnectionAdapters"))).getConstant("JdbcTypeConverter");
         IRubyObject value = rubyApi.callMethod(rubyApi.callMethod(typeConverter, "new", types), "choose_best_types");
@@ -299,8 +297,8 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
         return runtime.getNil();
     }
 
-    @JRubyMethod(name = "database_name")
-    public static IRubyObject database_name(IRubyObject recv) throws SQLException {
+    @JRubyMethod(name = "database_name", frame=false)
+    public static IRubyObject database_name(ThreadContext context, IRubyObject recv) throws SQLException {
         Connection connection = getConnection(recv, true);
         String name = connection.getCatalog();
 
@@ -310,18 +308,18 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
             if (null == name) name = "db1";
         }
         
-        return recv.getRuntime().newString(name);
+        return context.getRuntime().newString(name);
     }
 
     @JRubyMethod(name = "begin")
-    public static IRubyObject begin(IRubyObject recv) throws SQLException {
+    public static IRubyObject begin(ThreadContext context, IRubyObject recv) throws SQLException {
         getConnection(recv, true).setAutoCommit(false);
         
-        return recv.getRuntime().getNil();
+        return context.getRuntime().getNil();
     }
 
     @JRubyMethod(name = "commit")
-    public static IRubyObject commit(IRubyObject recv) throws SQLException {
+    public static IRubyObject commit(ThreadContext context, IRubyObject recv) throws SQLException {
         Connection connection = getConnection(recv, true);
 
         if (!connection.getAutoCommit()) {
@@ -332,11 +330,11 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
             }
         }
         
-        return recv.getRuntime().getNil();
+        return context.getRuntime().getNil();
     }
 
     @JRubyMethod(name = "rollback")
-    public static IRubyObject rollback(IRubyObject recv) throws SQLException {
+    public static IRubyObject rollback(ThreadContext context, IRubyObject recv) throws SQLException {
         Connection connection = getConnection(recv, true);
 
         if (!connection.getAutoCommit()) {
@@ -347,12 +345,13 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
             }
         }
         
-        return recv.getRuntime().getNil();
+        return context.getRuntime().getNil();
     }
 
     @JRubyMethod(name = {"columns", "columns_internal"}, required = 1, optional = 2)
-    public static IRubyObject columns_internal(final IRubyObject recv, final IRubyObject[] args) throws SQLException, IOException {
-        return withConnectionAndRetry(recv, new SQLBlock() {
+    public static IRubyObject columns_internal(final ThreadContext context, final IRubyObject recv,
+            final IRubyObject[] args) throws SQLException, IOException {
+        return withConnectionAndRetry(context, recv, new SQLBlock() {
             public IRubyObject call(Connection c) throws SQLException {
                 ResultSet results = null;
                 try {
@@ -395,14 +394,14 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
                         close(schemas);
                     }
 
-                    RubyArray matchingTables = (RubyArray) tableLookupBlock(recv.getRuntime(),
+                    RubyArray matchingTables = (RubyArray) tableLookupBlock(context.getRuntime(),
                                                                             c.getCatalog(), schemaName, table_name, new String[]{"TABLE","VIEW"}).call(c);
                     if (matchingTables.isEmpty()) {
                         throw new SQLException("Table " + table_name + " does not exist");
                     }
 
                     results = metadata.getColumns(c.getCatalog(),schemaName,table_name,null);
-                    return unmarshal_columns(recv, metadata, results);
+                    return unmarshal_columns(context, recv, metadata, results);
                 } finally {
                     close(results);
                 }
@@ -411,13 +410,14 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
     }
 
     private static final java.util.regex.Pattern HAS_SMALL = java.util.regex.Pattern.compile("[a-z]");
-    private static IRubyObject unmarshal_columns(IRubyObject recv, DatabaseMetaData metadata, ResultSet rs) throws SQLException {
+    private static IRubyObject unmarshal_columns(ThreadContext context, IRubyObject recv,
+            DatabaseMetaData metadata, ResultSet rs) throws SQLException {
         try {
             List columns = new ArrayList();
             String clzName = metadata.getClass().getName().toLowerCase();
             boolean isDerby = clzName.indexOf("derby") != -1;
             boolean isOracle = clzName.indexOf("oracle") != -1 || clzName.indexOf("oci") != -1;
-            Ruby runtime = recv.getRuntime();
+            Ruby runtime = context.getRuntime();
 
             IRubyObject adapter = rubyApi.callMethod(recv, "adapter");
             RubyHash tps = (RubyHash) rubyApi.callMethod(adapter, "native_database_types");
@@ -488,8 +488,9 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
     }
 
     @JRubyMethod(name = "primary_keys", required = 1)
-    public static IRubyObject primary_keys(final IRubyObject recv, final IRubyObject _table_name) throws SQLException {
-        return withConnectionAndRetry(recv, new SQLBlock() {
+    public static IRubyObject primary_keys(final ThreadContext context, final IRubyObject recv,
+            final IRubyObject _table_name) throws SQLException {
+        return withConnectionAndRetry(context, recv, new SQLBlock() {
             public IRubyObject call(Connection c) throws SQLException {
                 DatabaseMetaData metadata = c.getMetaData();
                 boolean isPostgres = metadata.getDatabaseProductName().equals("PostgreSQL");
@@ -500,7 +501,7 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
                     table_name = table_name.toLowerCase();
                 }
 
-                Ruby runtime = recv.getRuntime();
+                Ruby runtime = context.getRuntime();
                 ResultSet result_set = null;
                 List keyNames = new ArrayList();
                 try {
@@ -523,8 +524,9 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
     }
 
     @JRubyMethod(name = "execute_id_insert", required = 2)
-    public static IRubyObject execute_id_insert(IRubyObject recv, final IRubyObject sql, final IRubyObject id) throws SQLException {
-        return withConnectionAndRetry(recv, new SQLBlock() {
+    public static IRubyObject execute_id_insert(ThreadContext context, IRubyObject recv,
+            final IRubyObject sql, final IRubyObject id) throws SQLException {
+        return withConnectionAndRetry(context, recv, new SQLBlock() {
             public IRubyObject call(Connection c) throws SQLException {
                 PreparedStatement ps = c.prepareStatement(rubyApi.convertToRubyString(sql).getUnicodeValue());
                 try {
@@ -539,13 +541,14 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
     }
 
     @JRubyMethod(name = "execute_update", required = 1)
-    public static IRubyObject execute_update(final IRubyObject recv, final IRubyObject sql) throws SQLException {
-        return withConnectionAndRetry(recv, new SQLBlock() {
+    public static IRubyObject execute_update(final ThreadContext context, final IRubyObject recv,
+            final IRubyObject sql) throws SQLException {
+        return withConnectionAndRetry(context, recv, new SQLBlock() {
             public IRubyObject call(Connection c) throws SQLException {
                 Statement stmt = null;
                 try {
                     stmt = c.createStatement();
-                    return recv.getRuntime().newFixnum((long)stmt.executeUpdate(rubyApi.convertToRubyString(sql).getUnicodeValue()));
+                    return context.getRuntime().newFixnum((long)stmt.executeUpdate(rubyApi.convertToRubyString(sql).getUnicodeValue()));
                 } finally {
                     close(stmt);
                 }
@@ -554,12 +557,11 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
     }
 
     @JRubyMethod(name = "execute_query", rest = true)
-    public static IRubyObject execute_query(final IRubyObject recv, IRubyObject[] args) throws SQLException, IOException {
+    public static IRubyObject execute_query(final ThreadContext context, final IRubyObject recv, IRubyObject[] args) throws SQLException, IOException {
         final IRubyObject sql = args[0];
         final int maxrows = args.length > 1 ? RubyNumeric.fix2int(args[1]) : 0;
-        final ThreadContext context = recv.getRuntime().getCurrentContext();
         
-        return withConnectionAndRetry(recv, new SQLBlock() {
+        return withConnectionAndRetry(context, recv, new SQLBlock() {
             public IRubyObject call(Connection c) throws SQLException {
                 Statement stmt = null;
                 try {
@@ -574,14 +576,14 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
     }
 
     @JRubyMethod(name = "execute_insert", required = 1)
-    public static IRubyObject execute_insert(final IRubyObject recv, final IRubyObject sql) throws SQLException {
-        return withConnectionAndRetry(recv, new SQLBlock() {
+    public static IRubyObject execute_insert(final ThreadContext context, final IRubyObject recv, final IRubyObject sql) throws SQLException {
+        return withConnectionAndRetry(context, recv, new SQLBlock() {
             public IRubyObject call(Connection c) throws SQLException {
                 Statement stmt = null;
                 try {
                     stmt = c.createStatement();
                     stmt.executeUpdate(rubyApi.convertToRubyString(sql).getUnicodeValue(), Statement.RETURN_GENERATED_KEYS);
-                    return unmarshal_id_result(recv.getRuntime(), stmt.getGeneratedKeys());
+                    return unmarshal_id_result(context.getRuntime(), stmt.getGeneratedKeys());
                 } finally {
                     close(stmt);
                 }
@@ -839,8 +841,8 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
      */
     @JRubyMethod(name = "insert_bind", required = 3, rest = true)
     public static IRubyObject insert_bind(final ThreadContext context, IRubyObject recv, final IRubyObject[] args) throws SQLException {
-        final Ruby runtime = recv.getRuntime();
-        return withConnectionAndRetry(recv, new SQLBlock() {
+        final Ruby runtime = context.getRuntime();
+        return withConnectionAndRetry(context, recv, new SQLBlock() {
             public IRubyObject call(Connection c) throws SQLException {
                 PreparedStatement ps = null;
                 try {
@@ -860,9 +862,9 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
      */
     @JRubyMethod(name = "update_bind", required = 3, rest = true)
     public static IRubyObject update_bind(final ThreadContext context, IRubyObject recv, final IRubyObject[] args) throws SQLException {
-        final Ruby runtime = recv.getRuntime();
+        final Ruby runtime = context.getRuntime();
         Arity.checkArgumentCount(runtime, args, 3, 4);
-        return withConnectionAndRetry(recv, new SQLBlock() {
+        return withConnectionAndRetry(context, recv, new SQLBlock() {
             public IRubyObject call(Connection c) throws SQLException {
                 PreparedStatement ps = null;
                 try {
@@ -881,10 +883,10 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
      * (is binary?, colname, tablename, primary key, id, value)
      */
     @JRubyMethod(name = "write_large_object", required = 6)
-    public static IRubyObject write_large_object(IRubyObject recv, final IRubyObject[] args)
+    public static IRubyObject write_large_object(ThreadContext context, IRubyObject recv, final IRubyObject[] args)
             throws SQLException, IOException {
-        final Ruby runtime = recv.getRuntime();
-        return withConnectionAndRetry(recv, new SQLBlock() {
+        final Ruby runtime = context.getRuntime();
+        return withConnectionAndRetry(context, recv, new SQLBlock() {
             public IRubyObject call(Connection c) throws SQLException {
                 String sql = "UPDATE " + rubyApi.convertToRubyString(args[2])
                         + " SET " + rubyApi.convertToRubyString(args[1])
@@ -928,10 +930,10 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
         return (RuntimeException) new RaiseException(recv.getRuntime(), err, exception.getMessage(), false).initCause(exception);
     }
 
-    private static boolean isConnectionBroken(IRubyObject recv, Connection c) {
+    private static boolean isConnectionBroken(ThreadContext context, IRubyObject recv, Connection c) {
         try {
             IRubyObject alive = config_value(recv, "connection_alive_sql");
-            if (select_p(recv, alive).isTrue()) {
+            if (select_p(context, recv, alive).isTrue()) {
                 String connectionSQL = rubyApi.convertToRubyString(alive).toString();
                 Statement s = c.createStatement();
                 try {

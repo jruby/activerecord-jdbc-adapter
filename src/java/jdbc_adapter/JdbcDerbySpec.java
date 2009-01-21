@@ -292,7 +292,7 @@ public class JdbcDerbySpec {
                 sql = sql.substring(1).trim();
             }
             if (sql.startsWith("insert")) {
-                return JdbcAdapterInternalService.execute_insert(conn, args[0]);
+                return JdbcAdapterInternalService.execute_insert(context, conn, args[0]);
             } else if (sql.startsWith("select") || sql.startsWith("show")) {
                 IRubyObject offset = rubyApi.getInstanceVariable(recv, "@offset");
                 if(offset == null || offset.isNil()) {
@@ -309,7 +309,7 @@ public class JdbcDerbySpec {
                     range = RubyRange.newRange(runtime, context, offset, v1, true);
                     max = rubyApi.callMethod(v1, "+", RubyFixnum.one(runtime));
                 }
-                IRubyObject result = JdbcAdapterInternalService.execute_query(conn, new IRubyObject[]{args[0], max});
+                IRubyObject result = JdbcAdapterInternalService.execute_query(context, conn, new IRubyObject[]{args[0], max});
                 IRubyObject ret = rubyApi.callMethod(result, "[]", range);
                 if (ret.isNil()) {
                     return runtime.newArray();
@@ -317,7 +317,7 @@ public class JdbcDerbySpec {
                     return ret;
                 }
             } else {
-                return JdbcAdapterInternalService.execute_update(conn, args[0]);
+                return JdbcAdapterInternalService.execute_update(context, conn, args[0]);
             }
         } finally {
             rubyApi.setInstanceVariable(recv, "@limit", runtime.getNil());
