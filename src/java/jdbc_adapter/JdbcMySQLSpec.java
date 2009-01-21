@@ -28,6 +28,7 @@ import org.jruby.RubyModule;
 import org.jruby.RubyString;
 
 import org.jruby.anno.JRubyMethod;
+import org.jruby.runtime.ThreadContext;
 import org.jruby.runtime.builtin.IRubyObject;
 
 import org.jruby.util.ByteList;
@@ -38,23 +39,27 @@ public class JdbcMySQLSpec {
         mysql.defineAnnotatedMethods(JdbcMySQLSpec.class);
     }
 
-    private final static ByteList ZERO = new ByteList(new byte[]{'\\','0'});
-    private final static ByteList NEWLINE = new ByteList(new byte[]{'\\','n'});
-    private final static ByteList CARRIAGE = new ByteList(new byte[]{'\\','r'});
-    private final static ByteList ZED = new ByteList(new byte[]{'\\','Z'});
-    private final static ByteList DBL = new ByteList(new byte[]{'\\','"'});
-    private final static ByteList SINGLE = new ByteList(new byte[]{'\\','\''});
-    private final static ByteList ESCAPE = new ByteList(new byte[]{'\\','\\'});
+    private final static byte BACKQUOTE = '`';
+    private final static byte[] QUOTED_DOT = new byte[] {'`', '.', '`'};
 
-    @JRubyMethod(name = "quote_string", required = 1)
-    public static IRubyObject quote_string(IRubyObject recv, IRubyObject string) {
-        ByteList bl = ((RubyString) string).getByteList();
-        ByteList blNew = new ByteList();
-        int startOfExtend = bl.begin;
+    private final static byte[] ZERO = new byte[] {'\\','0'};
+    private final static byte[] NEWLINE = new byte[] {'\\','n'};
+    private final static byte[] CARRIAGE = new byte[] {'\\','r'};
+    private final static byte[] ZED = new byte[] {'\\','Z'};
+    private final static byte[] DBL = new byte[] {'\\','"'};
+    private final static byte[] SINGLE = new byte[] {'\\','\''};
+    private final static byte[] ESCAPE = new byte[] {'\\','\\'};
+
+    @JRubyMethod(name = "quote_string", required = 1, frame=false)
+    public static IRubyObject quote_string(ThreadContext context, IRubyObject recv, IRubyObject string) {
+        ByteList bytes = ((RubyString) string).getByteList();
+        ByteList newBytes = new ByteList();
         
-        for(int i = bl.begin; i < bl.begin + bl.realSize; i++) {
-            ByteList rep = null;
-            switch (bl.bytes[i]) {
+        newBytes.append(bytes);
+        
+        for(int i = newBytes.begin; i < newBytes.begin + newBytes.realSize; i++) {
+            byte[] rep = null;
+            switch (newBytes.bytes[i]) {
             case 0: rep = ZERO; break;
             case '\n': rep = NEWLINE; break;
             case '\r': rep = CARRIAGE; break;
@@ -62,20 +67,45 @@ public class JdbcMySQLSpec {
             case '"': rep = DBL; break;
             case '\'': rep = SINGLE; break;
             case '\\': rep = ESCAPE; break;
-            default: continue;
             }
-            if(i > startOfExtend)
-              blNew.append(bl, startOfExtend-bl.begin, i-startOfExtend);
-            blNew.append(rep, 0, 2);
-            startOfExtend = i+1;
-        }
-        // Nothing changed, can return original
-        if (startOfExtend == bl.begin) {
-          return string;
-        }
-        if (bl.begin + bl.realSize > startOfExtend)
-          blNew.append(bl, startOfExtend-bl.begin, bl.begin + bl.realSize - startOfExtend);
 
-        return recv.getRuntime().newStringShared(blNew);
+            if (rep != null) {
+                newBytes.replace(i, 1, rep);
+                i += rep.length - 1; // We subtract one since for loop already adds one
+            }
+        }
+
+        // Nothing changed, can return original
+        if (newBytes.length() == bytes.length()) return string;
+
+        return context.getRuntime().newString(newBytes);
+    }
+
+    @JRubyMethod(name = "quote_column_name", frame=false)
+    public static IRubyObject quote_column_name(ThreadContext context, IRubyObject recv, IRubyObject arg) {
+        ByteList bytes = arg.asString().getByteList();
+        ByteList newBytes = new ByteList();
+
+        newBytes.insert(0, BACKQUOTE);
+        newBytes.append(bytes);
+        newBytes.append(BACKQUOTE);
+
+        return context.getRuntime().newString(newBytes);
+    }
+    
+    @JRubyMethod(name = "quote_table_name", frame=false)
+    public static IRubyObject quote_table_name(ThreadContext context, IRubyObject recv, IRubyObject arg) {
+        ByteList bytes = arg.asString().getByteList();
+        ByteList newBytes = new ByteList();
+
+        newBytes.insert(0, BACKQUOTE);
+        newBytes.append(bytes);
+        int i = 0;
+        while ((i = newBytes.indexOf('.')) != -1) {
+            newBytes.replace(i, 1, QUOTED_DOT);
+        }
+        newBytes.append(BACKQUOTE);
+
+        return context.getRuntime().newString(newBytes);
     }
 }

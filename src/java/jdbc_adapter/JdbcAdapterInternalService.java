@@ -170,7 +170,7 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
                 i++;
                 if (autoCommit) {
                     if (i == 1) {
-                        tries = (int) rubyApi.convertToRubyInteger(config_value(recv, "retry_count")).getLongValue();
+                        tries = (int) rubyApi.convertToRubyInteger(config_value(context, recv, "retry_count")).getLongValue();
                         if (tries <= 0) {
                             tries = 1;
                         }
@@ -178,12 +178,12 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
                     if (isConnectionBroken(context, recv, c)) {
                         reconnect(recv);
                     } else {
-                        throw wrap(recv, toWrap);
+                        throw wrap(context, toWrap);
                     }
                 }
             }
         }
-        throw wrap(recv, toWrap);
+        throw wrap(context, toWrap);
     }
 
     private static SQLBlock tableLookupBlock(final Ruby runtime,
@@ -922,14 +922,14 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
         return conn;
     }
 
-    private static RuntimeException wrap(IRubyObject recv, Throwable exception) {
-        RubyClass err = recv.getRuntime().getModule("ActiveRecord").getClass("ActiveRecordError");
-        return (RuntimeException) new RaiseException(recv.getRuntime(), err, exception.getMessage(), false).initCause(exception);
+    private static RuntimeException wrap(ThreadContext context, Throwable exception) {
+        RubyClass err = context.getRuntime().getModule("ActiveRecord").getClass("ActiveRecordError");
+        return (RuntimeException) new RaiseException(context.getRuntime(), err, exception.getMessage(), false).initCause(exception);
     }
 
     private static boolean isConnectionBroken(ThreadContext context, IRubyObject recv, Connection c) {
         try {
-            IRubyObject alive = config_value(recv, "connection_alive_sql");
+            IRubyObject alive = config_value(context, recv, "connection_alive_sql");
             if (select_p(context, recv, alive).isTrue()) {
                 String connectionSQL = rubyApi.convertToRubyString(alive).toString();
                 Statement s = c.createStatement();
@@ -948,16 +948,10 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
     }
 
     private static IRubyObject setConnection(IRubyObject recv, Connection c) {
-        Connection prev = getConnection(recv);
-        if (prev != null) {
-            try {
-                prev.close();
-            } catch(Exception e) {}
-        }
-        IRubyObject rubyconn = recv.getRuntime().getNil();
-        if (c != null) {
-            rubyconn = wrappedConnection(recv,c);
-        }
+        // Close previously open connection if there is one
+        close(getConnection(recv));
+
+        IRubyObject rubyconn = c != null ? wrappedConnection(recv, c) : recv.getRuntime().getNil();
         rubyApi.setInstanceVariable(recv, "@connection", rubyconn);
         recv.dataWrapStruct(c);
         return recv;
@@ -981,10 +975,10 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
         return factory;
     }
 
-    private static IRubyObject config_value(IRubyObject recv, String key) {
-        Ruby runtime = recv.getRuntime();
+    private static IRubyObject config_value(ThreadContext context, IRubyObject recv, String key) {
         IRubyObject config_hash = rubyApi.getInstanceVariable(recv, "@config");
-        return rubyApi.callMethod(config_hash, "[]", runtime.newSymbol(key));
+        
+        return rubyApi.callMethod(config_hash, "[]", context.getRuntime().newSymbol(key));
     }
 
     public static void close(Statement statement) {
@@ -999,6 +993,14 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
         if (resultSet != null) {
             try {
                 resultSet.close();
+            } catch(Exception e) {}
+        }
+    }
+
+    public static void close(Connection connection) {
+        if (connection != null) {
+            try {
+                connection.close();
             } catch(Exception e) {}
         }
     }
