@@ -135,16 +135,12 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
 
     @JRubyMethod(name = "disconnect!", frame = false)
     public static IRubyObject disconnect(IRubyObject recv) {
-        setConnection(recv, null);
-
-        return recv;
+        return setConnection(recv, null);
     }
 
     @JRubyMethod(name = "reconnect!")
     public static IRubyObject reconnect(IRubyObject recv) {
-        setConnection(recv, getConnectionFactory(recv).newConnection());
-
-        return recv;
+        return setConnection(recv, getConnectionFactory(recv).newConnection());
     }
 
     @JRubyMethod(name = "with_connection_retry_guard", frame = true)
@@ -243,22 +239,13 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
 
     @JRubyMethod(name = "tables", rest = true)
     public static IRubyObject tables(ThreadContext context, final IRubyObject recv, IRubyObject[] args) {
-        final Ruby runtime = context.getRuntime();
+        Ruby runtime = context.getRuntime();
+        String catalog = convertArgToStringOrNull(args, 0);
+        String schemaPattern = convertArgToStringOrNull(args, 1);
+        String tablePattern = convertArgToStringOrNull(args, 2);
         
-        return withConnectionAndRetry(context, recv, tableLookupBlock(runtime, getCatalog(args),
-                getSchemaPattern(args), getTablePattern(args), getTypes(args)));
-    }
-
-    private static String getCatalog(IRubyObject[] args) {
-        return args.length > 0 ? convertToStringOrNull(args[0]) : null;
-    }
-
-    private static String getSchemaPattern(IRubyObject[] args) {
-        return args.length > 1 ? convertToStringOrNull(args[1]) : null;
-    }
-
-    private static String getTablePattern(IRubyObject[] args) {
-        return args.length > 2 ? convertToStringOrNull(args[2]) : null;
+        return withConnectionAndRetry(context, recv,
+                tableLookupBlock(runtime, catalog, schemaPattern, tablePattern, getTypes(args)));
     }
 
     private static String[] getTypes(IRubyObject[] args) {
@@ -738,8 +725,9 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
         }
     }
 
-    private static String convertToStringOrNull(IRubyObject obj) {
-        return obj.isNil() ? null : obj.toString();
+    private static String convertArgToStringOrNull(IRubyObject[] args, int position) {
+        if (args.length > position) return args[position].isNil() ? null : args[position].toString();
+        return null;
     }
 
     private static int getTypeValueFor(Ruby runtime, IRubyObject type) throws SQLException {
