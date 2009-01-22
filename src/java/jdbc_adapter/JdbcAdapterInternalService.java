@@ -74,8 +74,8 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
     private static RubyObjectAdapter rubyApi;
 
     public boolean basicLoad(final Ruby runtime) throws IOException {
-        RubyModule jdbcConnection = ((RubyModule)(runtime.getModule("ActiveRecord").getConstant("ConnectionAdapters"))).
-            defineClassUnder("JdbcConnection",runtime.getObject(),runtime.getObject().getAllocator());
+        RubyModule jdbcConnection = getConnectionAdapters(runtime).defineClassUnder("JdbcConnection",
+                runtime.getObject(), runtime.getObject().getAllocator());
         jdbcConnection.defineAnnotatedMethods(JdbcAdapterInternalService.class);
         RubyModule jdbcSpec = runtime.getOrCreateModule("JdbcSpec");
 
@@ -277,7 +277,7 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
             throws SQLException, IOException {
         Ruby runtime = context.getRuntime();
         IRubyObject types = unmarshalResult(context, getConnection(recv, true).getMetaData().getTypeInfo(), true);
-        IRubyObject typeConverter = ((RubyModule) (runtime.getModule("ActiveRecord").getConstant("ConnectionAdapters"))).getConstant("JdbcTypeConverter");
+        IRubyObject typeConverter = getConnectionAdapters(runtime).getConstant("JdbcTypeConverter");
         IRubyObject value = rubyApi.callMethod(rubyApi.callMethod(typeConverter, "new", types), "choose_best_types");
         rubyApi.setInstanceVariable(recv, "@native_types", value);
 
@@ -408,8 +408,7 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
 
             IRubyObject adapter = rubyApi.callMethod(recv, "adapter");
             RubyHash tps = (RubyHash) rubyApi.callMethod(adapter, "native_database_types");
-
-            IRubyObject jdbcCol = ((RubyModule)(runtime.getModule("ActiveRecord").getConstant("ConnectionAdapters"))).getConstant("JdbcColumn");
+            IRubyObject jdbcCol = getConnectionAdapters(runtime).getConstant("JdbcColumn");
 
             while(rs.next()) {
                 String column_name = rs.getString(4);
@@ -699,6 +698,7 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
     private static IRubyObject integerToRuby(Ruby runtime, ResultSet resultSet, long l)
             throws SQLException, IOException {
         if (resultSet.wasNull()) return runtime.getNil();
+        
         return runtime.newFixnum(l);
     }
 
@@ -1003,5 +1003,9 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
                 connection.close();
             } catch(Exception e) {}
         }
+    }
+
+    private static RubyModule getConnectionAdapters(Ruby runtime) {
+        return (RubyModule) runtime.getModule("ActiveRecord").getConstant("ConnectionAdapters");
     }
 }
