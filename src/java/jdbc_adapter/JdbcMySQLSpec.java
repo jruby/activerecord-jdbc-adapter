@@ -1,5 +1,5 @@
 /***** BEGIN LICENSE BLOCK *****
- * Copyright (c) 2006-2007 Nick Sieger <nick@nicksieger.com>
+ * Copyright (c) 2006-2009 Nick Sieger <nick@nicksieger.com>
  * Copyright (c) 2006-2007 Ola Bini <ola.bini@gmail.com>
  * 
  * Permission is hereby granted, free of charge, to any person obtaining
@@ -23,6 +23,8 @@
  ***** END LICENSE BLOCK *****/
 
 package jdbc_adapter;
+
+import java.sql.Connection;
 
 import org.jruby.RubyModule;
 import org.jruby.RubyString;
@@ -107,5 +109,25 @@ public class JdbcMySQLSpec {
         newBytes.append(BACKQUOTE);
 
         return context.getRuntime().newString(newBytes);
+    }
+
+    /**
+     * HACK HACK HACK See http://bugs.mysql.com/bug.php?id=36565
+     * MySQL's statement cancel timer can cause memory leaks, so cancel it
+     * if we loaded MySQL classes from the same classloader as JRuby
+     */
+    @JRubyMethod(module = true, frame = false)
+    public static IRubyObject kill_cancel_timer(ThreadContext context, IRubyObject recv, IRubyObject raw_connection) {
+        Connection conn = (Connection) raw_connection.dataGetStruct();
+        if (conn != null && conn.getClass().getClassLoader() == recv.getRuntime().getJRubyClassLoader()) {
+            try {
+                java.lang.reflect.Field f = conn.getClass().getDeclaredField("cancelTimer");
+                f.setAccessible(true);
+                java.util.Timer timer = (java.util.Timer) f.get(null);
+                timer.cancel();
+            } catch (Exception e) {
+            }
+        }
+        return recv.getRuntime().getNil();
     }
 }
