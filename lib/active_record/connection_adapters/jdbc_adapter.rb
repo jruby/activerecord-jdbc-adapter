@@ -42,8 +42,14 @@ end
 
 module JdbcSpec
   module ActiveRecordExtensions
+    # Specific adapters can override this class if they need their own 
+    # implementation of a JdbcConnection. 
+    def jdbc_connection_class
+      ::ActiveRecord::ConnectionAdapters::JdbcConnection
+    end
+
     def jdbc_connection(config)
-      connection = ::ActiveRecord::ConnectionAdapters::JdbcConnection.new(config)
+      connection = jdbc_connection_class.new(config)
       ::ActiveRecord::ConnectionAdapters::JdbcAdapter.new(connection, logger, config)
     end
     alias jndi_connection jdbc_connection
