@@ -82,14 +82,6 @@ module ::JdbcSpec
       end
     end
 
-    def quote_column_name(name) #:nodoc:
-        "`#{name}`"
-    end
-
-    def quote_table_name(name) #:nodoc:
-      quote_column_name(name).gsub('.', '`.`')
-    end
-
     def quoted_true
         "1"
     end
