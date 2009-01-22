@@ -19,10 +19,10 @@ public abstract class SQLBlock {
     abstract IRubyObject call(Connection c) throws SQLException;
 
     public void close(Statement statement) {
-        JdbcAdapterInternalService.close(statement);
+        RubyJdbcConnection.close(statement);
     }
 
     public void close(ResultSet resultSet) {
-        JdbcAdapterInternalService.close(resultSet);
+        RubyJdbcConnection.close(resultSet);
     }
 }

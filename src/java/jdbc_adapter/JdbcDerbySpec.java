@@ -157,7 +157,7 @@ public class JdbcDerbySpec {
                 return quote_string_with_surround(runtime, "'", svalue, "'"); 
             }
         } else if (value.isNil()) {
-            return runtime.newStringShared(NULL);
+            return runtime.newString(NULL);
         } else if (value instanceof RubyBoolean) {
             return (value.isTrue() ? 
                     (type == runtime.newSymbol(":integer")) ? runtime.newString("1") : rubyApi.callMethod(recv, "quoted_true") :
@@ -191,7 +191,7 @@ public class JdbcDerbySpec {
 
         output.append(after.getBytes());
 
-        return runtime.newStringShared(output);
+        return runtime.newString(output);
     }
 
     private final static byte[] HEX = {'0','1','2','3','4','5','6','7','8','9','A','B','C','D','E','F'};
@@ -286,13 +286,14 @@ public class JdbcDerbySpec {
     public static IRubyObject _execute(ThreadContext context, IRubyObject recv, IRubyObject[] args) throws SQLException, java.io.IOException {
         Ruby runtime = recv.getRuntime();
         try {
-            IRubyObject conn = rubyApi.getInstanceVariable(recv, "@connection");
+            // TODO: Ouch....this looks fragile
+            RubyJdbcConnection conn = (RubyJdbcConnection) rubyApi.getInstanceVariable(recv, "@connection");
             String sql = args[0].toString().trim().toLowerCase();
             if (sql.charAt(0) == '(') {
                 sql = sql.substring(1).trim();
             }
             if (sql.startsWith("insert")) {
-                return JdbcAdapterInternalService.execute_insert(context, conn, args[0]);
+                return conn.execute_insert(context, args[0]);
             } else if (sql.startsWith("select") || sql.startsWith("show")) {
                 IRubyObject offset = rubyApi.getInstanceVariable(recv, "@offset");
                 if(offset == null || offset.isNil()) {
@@ -309,7 +310,7 @@ public class JdbcDerbySpec {
                     range = RubyRange.newRange(runtime, context, offset, v1, true);
                     max = rubyApi.callMethod(v1, "+", RubyFixnum.one(runtime));
                 }
-                IRubyObject result = JdbcAdapterInternalService.execute_query(context, conn, new IRubyObject[]{args[0], max});
+                IRubyObject result = conn.execute_query(context, new IRubyObject[]{args[0], max});
                 IRubyObject ret = rubyApi.callMethod(result, "[]", range);
                 if (ret.isNil()) {
                     return runtime.newArray();
@@ -317,7 +318,7 @@ public class JdbcDerbySpec {
                     return ret;
                 }
             } else {
-                return JdbcAdapterInternalService.execute_update(context, conn, args[0]);
+                return conn.execute_update(context, args[0]);
             }
         } finally {
             rubyApi.setInstanceVariable(recv, "@limit", runtime.getNil());
