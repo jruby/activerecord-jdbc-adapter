@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
 ActiveRecord::Schema.verbose = false
-ActiveRecord::Base.time_zone_aware_attributes = true
+ActiveRecord::Base.time_zone_aware_attributes = true if ActiveRecord::Base.respond_to?(:time_zone_aware_attributes)
 ActiveRecord::Base.default_timezone = :utc
-Time.zone = 'Moscow' #just a random zone, unlikely to be local, and not utc
+#just a random zone, unlikely to be local, and not utc
+Time.zone = 'Moscow' if Time.respond_to?(:zone)
 
 module MigrationSetup
   def setup
@@ -30,7 +31,7 @@ module FixtureSetup
     @new_title = "First post updated title"
     @rating = 205.76
     Entry.create :title => @title, :content => @content, :rating => @rating
-    DbType.create 
+    DbType.create
   end
 end
 
@@ -90,42 +91,43 @@ module SimpleTestMethods
 
     assert_equal prev_count - 1, Entry.count
   end
-  
-  def test_save_time
-    t = Time.now
-    #precision will only be expected to the second.
-    time = Time.local(t.year, t.month, t.day, t.hour, t.min, t.sec)
-    e = DbType.find(:first)
-    e.sample_datetime = time
-    e.save!
-    e = DbType.find(:first)
-    assert_equal time.in_time_zone, e.sample_datetime
-  end
-  
-  def test_save_date_time
-    t = Time.now
-    #precision will only be expected to the second.
-    time = Time.local(t.year, t.month, t.day, t.hour, t.min, t.sec)
-    datetime = time.to_datetime
-    e = DbType.find(:first)
-    e.sample_datetime = datetime
-    e.save!
-    e = DbType.find(:first)
-    assert_equal time, e.sample_datetime.localtime
-  end  
-  
-  def test_save_time_with_zone
-    t = Time.now
-    #precision will only be expected to the second.
-    original_time = Time.local(t.year, t.month, t.day, t.hour, t.min, t.sec)
-    time = original_time.in_time_zone
-    e = DbType.find(:first)
-    e.sample_datetime = time
-    e.save!
-    e = DbType.find(:first)
-    assert_equal time, e.sample_datetime
-  end
 
+  if Time.respond_to?(:zone)
+    def test_save_time
+      t = Time.now
+      #precision will only be expected to the second.
+      time = Time.local(t.year, t.month, t.day, t.hour, t.min, t.sec)
+      e = DbType.find(:first)
+      e.sample_datetime = time
+      e.save!
+      e = DbType.find(:first)
+      assert_equal time.in_time_zone, e.sample_datetime
+    end
+
+    def test_save_date_time
+      t = Time.now
+      #precision will only be expected to the second.
+      time = Time.local(t.year, t.month, t.day, t.hour, t.min, t.sec)
+      datetime = time.to_datetime
+      e = DbType.find(:first)
+      e.sample_datetime = datetime
+      e.save!
+      e = DbType.find(:first)
+      assert_equal time, e.sample_datetime.localtime
+    end
+
+    def test_save_time_with_zone
+      t = Time.now
+      #precision will only be expected to the second.
+      original_time = Time.local(t.year, t.month, t.day, t.hour, t.min, t.sec)
+      time = original_time.in_time_zone
+      e = DbType.find(:first)
+      e.sample_datetime = time
+      e.save!
+      e = DbType.find(:first)
+      assert_equal time, e.sample_datetime
+    end
+  end
 
   def test_save_date
     date = Date.new(2007)
@@ -134,8 +136,8 @@ module SimpleTestMethods
     e.save!
     e = DbType.find(:first)
     assert_equal date, e.sample_date
-  end  
-  
+  end
+
   def test_save_binary
     #string is 60_000 bytes
     binary_string = "\000ABCDEFGHIJKLMNOPQRSTUVWXYZ'\001\003"*1#2_000
@@ -152,10 +154,10 @@ module SimpleTestMethods
     if @connection.respond_to?(:indexes)
       indexes = @connection.indexes(:entries)
       assert_equal(0, indexes.size)
-        
+
       index_name = "entries_index"
       @connection.add_index(:entries, :updated_on, :name => index_name)
-        
+
       indexes = @connection.indexes(:entries)
       assert_equal(1, indexes.size)
       assert_equal "entries", indexes.first.table.to_s
@@ -255,7 +257,7 @@ module MultibyteTestMethods
       end
     end
   end
-  
+
   def test_select_multibyte_string
     @java_con.createStatement().execute("insert into entries (id, title, content) values (1, 'テスト', '本文')")
     entry = Entry.find(:first)
@@ -271,7 +273,7 @@ module MultibyteTestMethods
     assert_equal "テスト", rs.getString(1)
     assert_equal "本文", rs.getString(2)
   end
-  
+
   def test_chinese_word
     chinese_word = '中文'
     new_entry = Entry.create(:title => chinese_word)
