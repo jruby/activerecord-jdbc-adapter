@@ -194,14 +194,16 @@ module SimpleTestMethods
     assert_equal 1, Entry.count
   end
 
-  def test_connection_valid
-    assert_raises(ActiveRecord::ActiveRecordError) do
-      @connection.raw_connection.with_connection_retry_guard do |c|
-        begin
-          stmt = c.createStatement
-          stmt.execute "bogus sql"
-        ensure
-          stmt.close rescue nil
+  if defined?(JRUBY_VERSION)
+    def test_connection_valid
+      assert_raises(ActiveRecord::ActiveRecordError) do
+        @connection.raw_connection.with_connection_retry_guard do |c|
+          begin
+            stmt = c.createStatement
+            stmt.execute "bogus sql"
+          ensure
+            stmt.close rescue nil
+          end
         end
       end
     end
@@ -232,18 +234,36 @@ end
 module MultibyteTestMethods
   include MigrationSetup
 
-  def setup
-    super
-    config = ActiveRecord::Base.connection.config
-    jdbc_driver = ActiveRecord::ConnectionAdapters::JdbcDriver.new(config[:driver])
-    jdbc_driver.load
-    @java_con = jdbc_driver.connection(config[:url], config[:username], config[:password])
-    @java_con.setAutoCommit(true)
-  end
+  if defined?(JRUBY_VERSION)
+    def setup
+      super
+      config = ActiveRecord::Base.connection.config
+      jdbc_driver = ActiveRecord::ConnectionAdapters::JdbcDriver.new(config[:driver])
+      jdbc_driver.load
+      @java_con = jdbc_driver.connection(config[:url], config[:username], config[:password])
+      @java_con.setAutoCommit(true)
+    end
 
-  def teardown
-    @java_con.close
-    super
+    def teardown
+      @java_con.close
+      super
+    end
+
+    def test_select_multibyte_string
+      @java_con.createStatement().execute("insert into entries (id, title, content) values (1, 'テスト', '本文')")
+      entry = Entry.find(:first)
+      assert_equal "テスト", entry.title
+      assert_equal "本文", entry.content
+      assert_equal entry, Entry.find_by_title("テスト")
+    end
+
+    def test_update_multibyte_string
+      Entry.create!(:title => "テスト", :content => "本文")
+      rs = @java_con.createStatement().executeQuery("select title, content from entries")
+      assert rs.next
+      assert_equal "テスト", rs.getString(1)
+      assert_equal "本文", rs.getString(2)
+    end
   end
 
   def test_multibyte_aliasing
@@ -256,22 +276,6 @@ module MultibyteTestMethods
         assert_equal str, key
       end
     end
-  end
-
-  def test_select_multibyte_string
-    @java_con.createStatement().execute("insert into entries (id, title, content) values (1, 'テスト', '本文')")
-    entry = Entry.find(:first)
-    assert_equal "テスト", entry.title
-    assert_equal "本文", entry.content
-    assert_equal entry, Entry.find_by_title("テスト")
-  end
-
-  def test_update_multibyte_string
-    Entry.create!(:title => "テスト", :content => "本文")
-    rs = @java_con.createStatement().executeQuery("select title, content from entries")
-    assert rs.next
-    assert_equal "テスト", rs.getString(1)
-    assert_equal "本文", rs.getString(2)
   end
 
   def test_chinese_word
