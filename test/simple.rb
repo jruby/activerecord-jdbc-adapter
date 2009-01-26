@@ -1,8 +1,13 @@
 # -*- coding: utf-8 -*-
 ActiveRecord::Schema.verbose = false
+ActiveRecord::Base.time_zone_aware_attributes = true if ActiveRecord::Base.respond_to?(:time_zone_aware_attributes)
+ActiveRecord::Base.default_timezone = :utc
+#just a random zone, unlikely to be local, and not utc
+Time.zone = 'Moscow' if Time.respond_to?(:zone)
 
 module MigrationSetup
   def setup
+    DbTypeMigration.up
     CreateEntries.up
     CreateAutoIds.up
 
@@ -10,6 +15,7 @@ module MigrationSetup
   end
 
   def teardown
+    DbTypeMigration.down
     CreateEntries.down
     CreateAutoIds.down
     ActiveRecord::Base.clear_active_connections!
@@ -25,6 +31,7 @@ module FixtureSetup
     @new_title = "First post updated title"
     @rating = 205.76
     Entry.create :title => @title, :content => @content, :rating => @rating
+    DbType.create
   end
 end
 
@@ -85,15 +92,72 @@ module SimpleTestMethods
     assert_equal prev_count - 1, Entry.count
   end
 
+  if Time.respond_to?(:zone)
+    def test_save_time
+      t = Time.now
+      #precision will only be expected to the second.
+      time = Time.local(t.year, t.month, t.day, t.hour, t.min, t.sec)
+      e = DbType.find(:first)
+      e.sample_datetime = time
+      e.save!
+      e = DbType.find(:first)
+      assert_equal time.in_time_zone, e.sample_datetime
+    end
+
+    def test_save_date_time
+      t = Time.now
+      #precision will only be expected to the second.
+      time = Time.local(t.year, t.month, t.day, t.hour, t.min, t.sec)
+      datetime = time.to_datetime
+      e = DbType.find(:first)
+      e.sample_datetime = datetime
+      e.save!
+      e = DbType.find(:first)
+      assert_equal time, e.sample_datetime.localtime
+    end
+
+    def test_save_time_with_zone
+      t = Time.now
+      #precision will only be expected to the second.
+      original_time = Time.local(t.year, t.month, t.day, t.hour, t.min, t.sec)
+      time = original_time.in_time_zone
+      e = DbType.find(:first)
+      e.sample_datetime = time
+      e.save!
+      e = DbType.find(:first)
+      assert_equal time, e.sample_datetime
+    end
+  end
+
+  def test_save_date
+    date = Date.new(2007)
+    e = DbType.find(:first)
+    e.sample_date = date
+    e.save!
+    e = DbType.find(:first)
+    assert_equal date, e.sample_date
+  end
+
+  def test_save_binary
+    #string is 60_000 bytes
+    binary_string = "\000ABCDEFGHIJKLMNOPQRSTUVWXYZ'\001\003"*1#2_000
+    e = DbType.find(:first)
+    e.sample_binary = binary_string
+    e.send(:write_attribute, :binary, binary_string)
+    e.save!
+    e = DbType.find(:first)
+    assert_equal binary_string, e.sample_binary
+  end
+
   def test_indexes
     # Only test indexes if we have implemented it for the particular adapter
     if @connection.respond_to?(:indexes)
       indexes = @connection.indexes(:entries)
       assert_equal(0, indexes.size)
-        
+
       index_name = "entries_index"
       @connection.add_index(:entries, :updated_on, :name => index_name)
-        
+
       indexes = @connection.indexes(:entries)
       assert_equal(1, indexes.size)
       assert_equal "entries", indexes.first.table.to_s
@@ -130,14 +194,16 @@ module SimpleTestMethods
     assert_equal 1, Entry.count
   end
 
-  def test_connection_valid
-    assert_raises(ActiveRecord::ActiveRecordError) do
-      @connection.raw_connection.with_connection_retry_guard do |c|
-        begin
-          stmt = c.createStatement
-          stmt.execute "bogus sql"
-        ensure
-          stmt.close rescue nil
+  if defined?(JRUBY_VERSION)
+    def test_connection_valid
+      assert_raises(ActiveRecord::ActiveRecordError) do
+        @connection.raw_connection.with_connection_retry_guard do |c|
+          begin
+            stmt = c.createStatement
+            stmt.execute "bogus sql"
+          ensure
+            stmt.close rescue nil
+          end
         end
       end
     end
@@ -168,18 +234,36 @@ end
 module MultibyteTestMethods
   include MigrationSetup
 
-  def setup
-    super
-    config = ActiveRecord::Base.connection.config
-    jdbc_driver = ActiveRecord::ConnectionAdapters::JdbcDriver.new(config[:driver])
-    jdbc_driver.load
-    @java_con = jdbc_driver.connection(config[:url], config[:username], config[:password])
-    @java_con.setAutoCommit(true)
-  end
+  if defined?(JRUBY_VERSION)
+    def setup
+      super
+      config = ActiveRecord::Base.connection.config
+      jdbc_driver = ActiveRecord::ConnectionAdapters::JdbcDriver.new(config[:driver])
+      jdbc_driver.load
+      @java_con = jdbc_driver.connection(config[:url], config[:username], config[:password])
+      @java_con.setAutoCommit(true)
+    end
 
-  def teardown
-    @java_con.close
-    super
+    def teardown
+      @java_con.close
+      super
+    end
+
+    def test_select_multibyte_string
+      @java_con.createStatement().execute("insert into entries (id, title, content) values (1, 'テスト', '本文')")
+      entry = Entry.find(:first)
+      assert_equal "テスト", entry.title
+      assert_equal "本文", entry.content
+      assert_equal entry, Entry.find_by_title("テスト")
+    end
+
+    def test_update_multibyte_string
+      Entry.create!(:title => "テスト", :content => "本文")
+      rs = @java_con.createStatement().executeQuery("select title, content from entries")
+      assert rs.next
+      assert_equal "テスト", rs.getString(1)
+      assert_equal "本文", rs.getString(2)
+    end
   end
 
   def test_multibyte_aliasing
@@ -193,23 +277,7 @@ module MultibyteTestMethods
       end
     end
   end
-  
-  def test_select_multibyte_string
-    @java_con.createStatement().execute("insert into entries (id, title, content) values (1, 'テスト', '本文')")
-    entry = Entry.find(:first)
-    assert_equal "テスト", entry.title
-    assert_equal "本文", entry.content
-    assert_equal entry, Entry.find_by_title("テスト")
-  end
 
-  def test_update_multibyte_string
-    Entry.create!(:title => "テスト", :content => "本文")
-    rs = @java_con.createStatement().executeQuery("select title, content from entries")
-    assert rs.next
-    assert_equal "テスト", rs.getString(1)
-    assert_equal "本文", rs.getString(2)
-  end
-  
   def test_chinese_word
     chinese_word = '中文'
     new_entry = Entry.create(:title => chinese_word)

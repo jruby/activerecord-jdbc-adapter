@@ -11,5 +11,5 @@ ActiveRecord::Base.logger = logger
 at_exit {
   # Clean up hsqldb when done
   Dir['test.db*'].each {|f| File.delete(f)}
-  File.delete('hsqldb-testdb.log')
+  File.delete('hsqldb-testdb.log') rescue nil #can't delete on windows
 }

@@ -31,7 +31,7 @@ task :filelist do
   puts FileList['pkg/**/*'].inspect
 end
 
-if RUBY_PLATFORM =~ /java/
+if defined?(JRUBY_VERSION)
   # TODO: add more databases into the standard tests here.
   task :test => [:test_mysql, :test_jdbc, :test_derby, :test_hsqldb, :test_h2, :test_sqlite3]
 else
@@ -46,9 +46,12 @@ FileList['drivers/*'].each do |d|
     if driver == "derby"
       files << 'test/activerecord/connection_adapters/type_conversion_test.rb'
     end
-    t.ruby_opts << "-rjdbc/#{driver}"
+    t.ruby_opts << "-rjdbc/#{driver}" if defined?(JRUBY_VERSION)
     t.test_files = files
-    t.libs << "test" << "#{d}/lib"
+    t.libs = []
+    t.libs << "lib" << "#{d}/lib" if defined?(JRUBY_VERSION)
+    t.libs << "test"
+    t.verbose = true
   end
 end
 
