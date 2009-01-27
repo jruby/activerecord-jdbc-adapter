@@ -611,8 +611,9 @@ public class RubyJdbcConnection extends RubyObject {
         try {
             switch (type) {
             case Types.BINARY: case Types.BLOB: case Types.LONGVARBINARY: case Types.VARBINARY:
+            case Types.LONGVARCHAR:
                 return streamToRuby(runtime, resultSet, resultSet.getBinaryStream(column));
-            case Types.LONGVARCHAR: case Types.CLOB:
+            case Types.CLOB:
                 return readerToRuby(runtime, resultSet, resultSet.getCharacterStream(column));
             case Types.TIMESTAMP:
                 return timestampToRuby(runtime, resultSet, resultSet.getTimestamp(column));
