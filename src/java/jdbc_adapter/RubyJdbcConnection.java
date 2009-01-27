@@ -826,8 +826,7 @@ public class RubyJdbcConnection extends RubyObject {
             boolean isOracle = clzName.indexOf("oracle") != -1 || clzName.indexOf("oci") != -1;
             Ruby runtime = context.getRuntime();
 
-            IRubyObject adapter = callMethod(context, "adapter");
-            RubyHash tps = (RubyHash) adapter.callMethod(context, "native_database_types");
+            RubyHash tps = (RubyHash) native_database_types();
             IRubyObject jdbcCol = getConnectionAdapters(runtime).getConstant("JdbcColumn");
 
             while(rs.next()) {
