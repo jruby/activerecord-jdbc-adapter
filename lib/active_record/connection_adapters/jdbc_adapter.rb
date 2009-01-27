@@ -300,6 +300,14 @@ module ActiveRecord
     class JdbcConnection
       attr_reader :adapter, :connection_factory
 
+      # @native_database_types - setup properly by adapter= versus set_native_database_types.
+      #   This contains type information for the adapter.  Individual adapters can make tweaks
+      #   by defined modify_types
+      #
+      # @native_types - This is the default type settings sans any modifications by the 
+      # individual adapter.  My guess is that if we loaded two adapters of different types
+      # then this is used as a base to be tweaked by each adapter to create @native_database_types
+
       def initialize(config)
         @config = config.symbolize_keys!
         @config[:retry_count] ||= 5
@@ -321,12 +329,25 @@ module ActiveRecord
         raise "The driver encountered an error: #{e}"
       end
 
-      def adapter=(adapt)
-        @adapter = adapt
-        @tps = {}
-        @native_types.each_pair {|k,v| @tps[k] = v.inject({}) {|memo,kv| memo.merge({kv.first => (kv.last.dup rescue kv.last)})}}
-        adapt.modify_types(@tps)
+      def adapter=(adapter)
+        @adapter = adapter
+        @native_database_types = dup_native_types
+        @adapter.modify_types(@native_database_types)
       end
+
+      # Duplicate all native types into new hash structure so it can be modified
+      # without destroying original structure.  
+      def dup_native_types
+        types = {}
+        @native_types.each_pair do |k, v| 
+          types[k] = v.inject({}) do |memo, kv|
+            memo[kv.first] = begin kv.last.dup rescue kv.last end
+            memo
+          end
+        end
+        types
+      end
+      private :dup_native_types
 
       # Default JDBC introspection for index metadata on the JdbcConnection.
       # This is currently used for migrations by JdbcSpec::HSQDLB and JdbcSpec::Derby
