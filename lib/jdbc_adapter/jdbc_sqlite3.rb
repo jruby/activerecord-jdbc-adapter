@@ -82,6 +82,22 @@ module ::JdbcSpec
       end
     end
 
+    def adapter_name #:nodoc:
+      'SQLite'
+    end
+
+    def supports_count_distinct? #:nodoc:
+      sqlite_version >= '3.2.6'
+    end
+
+    def supports_autoincrement? #:nodoc:
+      sqlite_version >= '3.1.0'
+    end
+
+    def sqlite_version
+      @sqlite_version ||= select_value('select sqlite_version(*)')
+    end
+
     def modify_types(tp)
       tp[:primary_key] = "INTEGER PRIMARY KEY AUTOINCREMENT"
       tp[:float] = { :name => "REAL" }
@@ -104,6 +120,17 @@ module ::JdbcSpec
           "'#{quote_string(value)}'"
         end
       else super
+      end
+    end
+
+    def quote_column_name(name) #:nodoc:
+      name = name.to_s
+      # Did not find reference on values needing quoting, but these
+      # happen in AR unit tests
+      if name == "references" || name =~ /-/
+        %Q("#{name}") 
+      else
+        name
       end
     end
 
@@ -216,9 +243,9 @@ module ::JdbcSpec
         ActiveRecord::ConnectionAdapters::JdbcConnection::insert?(sql) ? last_insert_id(sql.split(" ", 4)[2], nil) : affected_rows
       end
     end
-    
+
     def table_structure(table_name)
-      returning structure = @connection.execute_query("PRAGMA table_info('#{quote_table_name(table_name)}')") do
+      returning structure = @connection.execute_query("PRAGMA table_info(#{quote_table_name(table_name)})") do
         raise(ActiveRecord::StatementInvalid, "Could not find table '#{table_name}'") if structure.empty?
       end
     end

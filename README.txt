@@ -133,6 +133,14 @@ installed, you can simply type <tt>jruby -S rake</tt> to run the tests. A
 database named <tt>weblog_development</tt> is needed beforehand with a
 connection user of "blog" and password empty.
 
+== Running AR Tests
+
+  # If you want to run MRI against Rails remember to re-export RUBYLIB to be
+  # empty (or whatever you normally have it set to when you are done).
+  export RUBYLIB=$(find $HOME/NetbeansProjects/activerecord-jdbc-adapter -name lib -type d | grep -v pkg | ruby -e 'puts $stdin.readlines.map{|l| l.chomp}.join(":")')
+  cd active_record_source_dir
+  jruby -S rake test_jdbcmysql (or specific adapter you want to test)
+
 == Authors
 
 This project was written by Nick Sieger <nick@nicksieger.com> and Ola Bini

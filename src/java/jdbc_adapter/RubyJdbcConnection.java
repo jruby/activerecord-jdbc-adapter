@@ -298,7 +298,7 @@ public class RubyJdbcConnection extends RubyObject {
                 PreparedStatement ps = null;
                 try {
                     ps = c.prepareStatement(rubyApi.convertToRubyString(args[0]).toString(), Statement.RETURN_GENERATED_KEYS);
-                    setValuesOnPS(ps, runtime, context, args[1], args[2]);
+                    setValuesOnPS(ps, context, args[1], args[2]);
                     ps.executeUpdate();
                     return unmarshal_id_result(runtime, ps.getGeneratedKeys());
                 } finally {
@@ -308,9 +308,9 @@ public class RubyJdbcConnection extends RubyObject {
         });
     }
 
-    @JRubyMethod(name = "native_database_types")
+    @JRubyMethod(name = "native_database_types", frame = false)
     public IRubyObject native_database_types() {
-        return getInstanceVariable("@tps");
+        return getInstanceVariable("@native_database_types");
     }
     
 
@@ -410,7 +410,7 @@ public class RubyJdbcConnection extends RubyObject {
                 PreparedStatement ps = null;
                 try {
                     ps = c.prepareStatement(rubyApi.convertToRubyString(args[0]).toString());
-                    setValuesOnPS(ps, runtime, context, args[1], args[2]);
+                    setValuesOnPS(ps, context, args[1], args[2]);
                     ps.executeUpdate();
                 } finally {
                     close(ps);
@@ -670,9 +670,9 @@ public class RubyJdbcConnection extends RubyObject {
 
     private final static DateFormat FORMAT = new SimpleDateFormat("%y-%M-%d %H:%m:%s");
 
-    private static void setValue(PreparedStatement ps, int index, Ruby runtime, ThreadContext context,
+    private static void setValue(PreparedStatement ps, int index, ThreadContext context,
             IRubyObject value, IRubyObject type) throws SQLException {
-        final int tp = getTypeValueFor(runtime, type);
+        final int tp = getTypeValueFor(context.getRuntime(), type);
         if(value.isNil()) {
             ps.setNull(index, tp);
             return;
@@ -718,13 +718,13 @@ public class RubyJdbcConnection extends RubyObject {
         }
     }
 
-    private static void setValuesOnPS(PreparedStatement ps, Ruby runtime, ThreadContext context,
-            IRubyObject values, IRubyObject types) throws SQLException {
-        RubyArray vals = (RubyArray)values;
-        RubyArray tps = (RubyArray)types;
+    private static void setValuesOnPS(PreparedStatement ps, ThreadContext context,
+            IRubyObject valuesArg, IRubyObject typesArg) throws SQLException {
+        RubyArray values = (RubyArray) valuesArg;
+        RubyArray types = (RubyArray) typesArg;
 
-        for(int i=0, j=vals.getLength(); i<j; i++) {
-            setValue(ps, i+1, runtime, context, vals.eltInternal(i), tps.eltInternal(i));
+        for(int i=0, j=values.getLength(); i<j; i++) {
+            setValue(ps, i+1, context, values.eltInternal(i), types.eltInternal(i));
         }
     }
 
@@ -826,8 +826,7 @@ public class RubyJdbcConnection extends RubyObject {
             boolean isOracle = clzName.indexOf("oracle") != -1 || clzName.indexOf("oci") != -1;
             Ruby runtime = context.getRuntime();
 
-            IRubyObject adapter = callMethod(context, "adapter");
-            RubyHash tps = (RubyHash) adapter.callMethod(context, "native_database_types");
+            RubyHash types = (RubyHash) native_database_types();
             IRubyObject jdbcCol = getConnectionAdapters(runtime).getConstant("JdbcColumn");
 
             while(rs.next()) {
@@ -879,7 +878,7 @@ public class RubyJdbcConnection extends RubyObject {
                         });
                 columns.add(c);
 
-                IRubyObject tp = (IRubyObject)tps.fastARef(c.callMethod(context,"type"));
+                IRubyObject tp = (IRubyObject)types.fastARef(c.callMethod(context,"type"));
                 if(tp != null && !tp.isNil() && tp.callMethod(context, "[]", runtime.newSymbol("limit")).isNil()) {
                     c.callMethod(context, "limit=", runtime.getNil());
                     if(!c.callMethod(context, "type").equals(runtime.newSymbol("decimal"))) {
