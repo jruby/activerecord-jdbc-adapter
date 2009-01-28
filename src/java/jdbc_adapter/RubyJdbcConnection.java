@@ -598,11 +598,11 @@ public class RubyJdbcConnection extends RubyObject {
         }
     }
 
-    private static IRubyObject integerToRuby(Ruby runtime, ResultSet resultSet, long l)
+    private static IRubyObject integerToRuby(Ruby runtime, ResultSet resultSet, long longValue)
             throws SQLException, IOException {
-        if (resultSet.wasNull()) return runtime.getNil();
+        if (longValue == 0 && resultSet.wasNull()) return runtime.getNil();
 
-        return runtime.newFixnum(l);
+        return runtime.newFixnum(longValue);
     }
 
     private static IRubyObject jdbcToRuby(Ruby runtime, int column, int type, ResultSet resultSet)
@@ -644,7 +644,7 @@ public class RubyJdbcConnection extends RubyObject {
 
     private static IRubyObject readerToRuby(Ruby runtime, ResultSet resultSet, Reader reader)
             throws SQLException, IOException {
-        if (reader == null || resultSet.wasNull()) return runtime.getNil();
+        if (reader == null && resultSet.wasNull()) return runtime.getNil();
 
         StringBuffer str = new StringBuffer(2048);
         try {
@@ -731,7 +731,7 @@ public class RubyJdbcConnection extends RubyObject {
 
     private static IRubyObject streamToRuby(Ruby runtime, ResultSet resultSet, InputStream is)
             throws SQLException, IOException {
-        if (is == null || resultSet.wasNull()) return runtime.getNil();
+        if (is == null && resultSet.wasNull()) return runtime.getNil();
 
         ByteList str = new ByteList(2048);
         try {
@@ -749,7 +749,7 @@ public class RubyJdbcConnection extends RubyObject {
 
     private static IRubyObject stringToRuby(Ruby runtime, ResultSet resultSet, String string)
             throws SQLException, IOException {
-        if (string == null || resultSet.wasNull()) return runtime.getNil();
+        if (string == null && resultSet.wasNull()) return runtime.getNil();
 
         return RubyString.newUnicodeString(runtime, string);
     }
@@ -807,7 +807,7 @@ public class RubyJdbcConnection extends RubyObject {
 
     private static IRubyObject timestampToRuby(Ruby runtime, ResultSet resultSet, Timestamp time)
             throws SQLException, IOException {
-        if (time == null || resultSet.wasNull()) return runtime.getNil();
+        if (time == null && resultSet.wasNull()) return runtime.getNil();
 
         String str = time.toString();
         if (str.endsWith(" 00:00:00.0")) {
