@@ -42,6 +42,7 @@ module ::JdbcSpec
       end
 
       def cast_to_boolean(value)
+        return nil if value.nil?
         if value == true || value == false
           value
         else

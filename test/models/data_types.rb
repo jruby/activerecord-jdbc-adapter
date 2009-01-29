@@ -11,6 +11,7 @@ class DbTypeMigration < ActiveRecord::Migration
       t.column :sample_decimal, :decimal, :precision => 15, :scale => 0
       t.column :sample_small_decimal, :decimal, :precision => 3, :scale => 2
       t.column :sample_binary, :binary
+      t.column :sample_boolean, :boolean
     end
   end
 

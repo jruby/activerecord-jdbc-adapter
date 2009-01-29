@@ -26,12 +26,13 @@ module ::JdbcSpec
     end
 
     module Column
-
       private
       def simplified_type(field_type)
         case field_type
         when /longvarchar/i
           :text
+        when /tinyint/i
+          :boolean
         else
           super(field_type)
         end
@@ -52,6 +53,7 @@ module ::JdbcSpec
       tp[:boolean][:limit] = nil
       # set text and float limits so we don't see odd scales tacked on
       # in migrations
+      tp[:boolean] = { :name => "tinyint" }
       tp[:text][:limit] = nil
       tp[:float][:limit] = 17
       tp[:string][:limit] = 255

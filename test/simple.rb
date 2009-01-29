@@ -138,6 +138,18 @@ module SimpleTestMethods
     assert_equal date, e.sample_date
   end
 
+  def test_boolean
+    # An unset boolean should default to nil
+    e = DbType.find(:first)
+    assert_equal(nil, e.sample_boolean)
+
+    e.sample_boolean = true
+    e.save!
+
+    e = DbType.find(:first)
+    assert_equal(true, e.sample_boolean)
+  end
+
   def test_save_binary
     #string is 60_000 bytes
     binary_string = "\000ABCDEFGHIJKLMNOPQRSTUVWXYZ'\001\003"*1#2_000
