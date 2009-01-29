@@ -244,19 +244,31 @@ public class RubyJdbcConnection extends RubyObject {
         });
     }
 
-    @JRubyMethod(name = "execute_query", rest = true)
-    public IRubyObject execute_query(final ThreadContext context, IRubyObject[] args)
+    @JRubyMethod(name = "execute_query", required = 1)
+    public IRubyObject execute_query(final ThreadContext context, IRubyObject _sql)
             throws SQLException, IOException {
-        final IRubyObject sql = args[0];
-        final int maxrows = args.length > 1 ? RubyNumeric.fix2int(args[1]) : 0;
+        String sql = rubyApi.convertToRubyString(_sql).getUnicodeValue();
 
+        return executeQuery(context, sql, 0);
+    }
+
+    @JRubyMethod(name = "execute_query", required = 2)
+    public IRubyObject execute_query(final ThreadContext context, IRubyObject _sql,
+            IRubyObject _maxRows) throws SQLException, IOException {
+        String sql = rubyApi.convertToRubyString(_sql).getUnicodeValue();
+        int maxrows = RubyNumeric.fix2int(_maxRows);
+
+        return executeQuery(context, sql, maxrows);
+    }
+
+    protected IRubyObject executeQuery(final ThreadContext context, final String query, final int maxRows) {
         return withConnectionAndRetry(context, new SQLBlock() {
             public IRubyObject call(Connection c) throws SQLException {
                 Statement stmt = null;
                 try {
                     stmt = c.createStatement();
-                    stmt.setMaxRows(maxrows);
-                    return unmarshalResult(context, stmt.executeQuery(rubyApi.convertToRubyString(sql).getUnicodeValue()), false);
+                    stmt.setMaxRows(maxRows);
+                    return unmarshalResult(context, stmt.executeQuery(query), false);
                 } finally {
                     close(stmt);
                 }
@@ -616,8 +628,7 @@ public class RubyJdbcConnection extends RubyObject {
                 return readerToRuby(runtime, resultSet, resultSet.getCharacterStream(column));
             case Types.TIMESTAMP:
                 return timestampToRuby(runtime, resultSet, resultSet.getTimestamp(column));
-            case Types.INTEGER:
-            case Types.SMALLINT:
+            case Types.INTEGER: case Types.SMALLINT: case Types.TINYINT:
                 return integerToRuby(runtime, resultSet, resultSet.getLong(column));
             default:
                 return stringToRuby(runtime, resultSet, resultSet.getString(column));
