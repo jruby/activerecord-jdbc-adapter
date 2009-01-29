@@ -310,7 +310,7 @@ public class JdbcDerbySpec {
                     range = RubyRange.newRange(runtime, context, offset, v1, true);
                     max = rubyApi.callMethod(v1, "+", RubyFixnum.one(runtime));
                 }
-                IRubyObject result = conn.execute_query(context, new IRubyObject[]{args[0], max});
+                IRubyObject result = conn.execute_query(context, args[0], max);
                 IRubyObject ret = rubyApi.callMethod(result, "[]", range);
                 if (ret.isNil()) {
                     return runtime.newArray();
