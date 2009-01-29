@@ -352,7 +352,11 @@ module ::JdbcSpec
     end
 
     def quoted_date(value)
-      value.strftime("%Y-%m-%d %H:%M:%S")
+      if value.acts_like?(:time) && value.respond_to?(:usec)
+        value.strftime("%Y-%m-%d %H:%M:%S.#{value.usec}")
+      else
+        value.strftime("%Y-%m-%d %H:%M:%S")
+      end
     end
 
     def disable_referential_integrity(&block) #:nodoc:
