@@ -386,7 +386,8 @@ public class RubyJdbcConnection extends RubyObject {
     public static IRubyObject select_p(ThreadContext context, IRubyObject recv, IRubyObject _sql) {
         ByteList sql = rubyApi.convertToRubyString(_sql).getByteList();
 
-        return context.getRuntime().newBoolean(startsWithNoCaseCmp(sql, SELECT) || startsWithNoCaseCmp(sql, SHOW));
+        return context.getRuntime().newBoolean(startsWithNoCaseCmp(sql, SELECT) || 
+                startsWithNoCaseCmp(sql, SHOW) || startsWithNoCaseCmp(sql, CALL));
     }
 
     @JRubyMethod(name = "set_native_database_types")
@@ -991,6 +992,7 @@ public class RubyJdbcConnection extends RubyObject {
         return end;
     }
     
+    private static byte[] CALL = new byte[]{'c', 'a', 'l', 'l'};
     private static byte[] INSERT = new byte[] {'i', 'n', 's', 'e', 'r', 't'};
     private static byte[] SELECT = new byte[] {'s', 'e', 'l', 'e', 'c', 't'};
     private static byte[] SHOW = new byte[] {'s', 'h', 'o', 'w'};
