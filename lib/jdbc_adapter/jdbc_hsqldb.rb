@@ -127,7 +127,7 @@ module ::JdbcSpec
     end
 
     def last_insert_id(table, sequence_name)
-      Integer(select_value("SELECT IDENTITY() FROM #{table}"))
+      Integer(select_value("CALL IDENTITY()"))
     end
 
     # Override normal #_execute: See Rubyforge #11567
