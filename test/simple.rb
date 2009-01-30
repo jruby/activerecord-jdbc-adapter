@@ -150,6 +150,22 @@ module SimpleTestMethods
     assert_equal(true, e.sample_boolean)
   end
 
+  def test_string
+    e = DbType.find(:first)
+
+    # FIXME: h2 and hsql seems to have no way of specifying a default '' value
+    adapter_name = ActiveRecord::Base.connection.adapter_name
+    if (adapter_name !~ /^(hsqldb|h2)$/)
+      assert_equal('', e.sample_string)
+    end
+
+    e.sample_string = "ooop"
+    e.save!
+
+    e = DbType.find(:first)
+    assert_equal("ooop", e.sample_string)
+  end
+
   def test_save_binary
     #string is 60_000 bytes
     binary_string = "\000ABCDEFGHIJKLMNOPQRSTUVWXYZ'\001\003"*1#2_000
