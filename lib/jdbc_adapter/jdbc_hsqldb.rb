@@ -80,6 +80,15 @@ module ::JdbcSpec
       end
     end
 
+    def quote_column_name(name) #:nodoc:
+      name = name.to_s
+      if name =~ /[-]/
+        %Q{"#{name.upcase}"}
+      else
+        name
+      end
+    end
+
     def quote_string(str)
       str.gsub(/'/, "''")
     end
