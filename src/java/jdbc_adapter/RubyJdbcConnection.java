@@ -244,19 +244,31 @@ public class RubyJdbcConnection extends RubyObject {
         });
     }
 
-    @JRubyMethod(name = "execute_query", rest = true)
-    public IRubyObject execute_query(final ThreadContext context, IRubyObject[] args)
+    @JRubyMethod(name = "execute_query", required = 1)
+    public IRubyObject execute_query(final ThreadContext context, IRubyObject _sql)
             throws SQLException, IOException {
-        final IRubyObject sql = args[0];
-        final int maxrows = args.length > 1 ? RubyNumeric.fix2int(args[1]) : 0;
+        String sql = rubyApi.convertToRubyString(_sql).getUnicodeValue();
 
+        return executeQuery(context, sql, 0);
+    }
+
+    @JRubyMethod(name = "execute_query", required = 2)
+    public IRubyObject execute_query(final ThreadContext context, IRubyObject _sql,
+            IRubyObject _maxRows) throws SQLException, IOException {
+        String sql = rubyApi.convertToRubyString(_sql).getUnicodeValue();
+        int maxrows = RubyNumeric.fix2int(_maxRows);
+
+        return executeQuery(context, sql, maxrows);
+    }
+
+    protected IRubyObject executeQuery(final ThreadContext context, final String query, final int maxRows) {
         return withConnectionAndRetry(context, new SQLBlock() {
             public IRubyObject call(Connection c) throws SQLException {
                 Statement stmt = null;
                 try {
                     stmt = c.createStatement();
-                    stmt.setMaxRows(maxrows);
-                    return unmarshalResult(context, stmt.executeQuery(rubyApi.convertToRubyString(sql).getUnicodeValue()), false);
+                    stmt.setMaxRows(maxRows);
+                    return unmarshalResult(context, stmt.executeQuery(query), false);
                 } finally {
                     close(stmt);
                 }
@@ -374,7 +386,8 @@ public class RubyJdbcConnection extends RubyObject {
     public static IRubyObject select_p(ThreadContext context, IRubyObject recv, IRubyObject _sql) {
         ByteList sql = rubyApi.convertToRubyString(_sql).getByteList();
 
-        return context.getRuntime().newBoolean(startsWithNoCaseCmp(sql, SELECT) || startsWithNoCaseCmp(sql, SHOW));
+        return context.getRuntime().newBoolean(startsWithNoCaseCmp(sql, SELECT) || 
+                startsWithNoCaseCmp(sql, SHOW) || startsWithNoCaseCmp(sql, CALL));
     }
 
     @JRubyMethod(name = "set_native_database_types")
@@ -598,11 +611,11 @@ public class RubyJdbcConnection extends RubyObject {
         }
     }
 
-    private static IRubyObject integerToRuby(Ruby runtime, ResultSet resultSet, long l)
+    private static IRubyObject integerToRuby(Ruby runtime, ResultSet resultSet, long longValue)
             throws SQLException, IOException {
-        if (resultSet.wasNull()) return runtime.getNil();
+        if (longValue == 0 && resultSet.wasNull()) return runtime.getNil();
 
-        return runtime.newFixnum(l);
+        return runtime.newFixnum(longValue);
     }
 
     private static IRubyObject jdbcToRuby(Ruby runtime, int column, int type, ResultSet resultSet)
@@ -610,13 +623,13 @@ public class RubyJdbcConnection extends RubyObject {
         try {
             switch (type) {
             case Types.BINARY: case Types.BLOB: case Types.LONGVARBINARY: case Types.VARBINARY:
+            case Types.LONGVARCHAR:
                 return streamToRuby(runtime, resultSet, resultSet.getBinaryStream(column));
-            case Types.LONGVARCHAR: case Types.CLOB:
+            case Types.CLOB:
                 return readerToRuby(runtime, resultSet, resultSet.getCharacterStream(column));
             case Types.TIMESTAMP:
                 return timestampToRuby(runtime, resultSet, resultSet.getTimestamp(column));
-            case Types.INTEGER:
-            case Types.SMALLINT:
+            case Types.INTEGER: case Types.SMALLINT: case Types.TINYINT:
                 return integerToRuby(runtime, resultSet, resultSet.getLong(column));
             default:
                 return stringToRuby(runtime, resultSet, resultSet.getString(column));
@@ -643,7 +656,7 @@ public class RubyJdbcConnection extends RubyObject {
 
     private static IRubyObject readerToRuby(Ruby runtime, ResultSet resultSet, Reader reader)
             throws SQLException, IOException {
-        if (reader == null || resultSet.wasNull()) return runtime.getNil();
+        if (reader == null && resultSet.wasNull()) return runtime.getNil();
 
         StringBuffer str = new StringBuffer(2048);
         try {
@@ -730,7 +743,7 @@ public class RubyJdbcConnection extends RubyObject {
 
     private static IRubyObject streamToRuby(Ruby runtime, ResultSet resultSet, InputStream is)
             throws SQLException, IOException {
-        if (is == null || resultSet.wasNull()) return runtime.getNil();
+        if (is == null && resultSet.wasNull()) return runtime.getNil();
 
         ByteList str = new ByteList(2048);
         try {
@@ -748,7 +761,7 @@ public class RubyJdbcConnection extends RubyObject {
 
     private static IRubyObject stringToRuby(Ruby runtime, ResultSet resultSet, String string)
             throws SQLException, IOException {
-        if (string == null || resultSet.wasNull()) return runtime.getNil();
+        if (string == null && resultSet.wasNull()) return runtime.getNil();
 
         return RubyString.newUnicodeString(runtime, string);
     }
@@ -806,7 +819,7 @@ public class RubyJdbcConnection extends RubyObject {
 
     private static IRubyObject timestampToRuby(Ruby runtime, ResultSet resultSet, Timestamp time)
             throws SQLException, IOException {
-        if (time == null || resultSet.wasNull()) return runtime.getNil();
+        if (time == null && resultSet.wasNull()) return runtime.getNil();
 
         String str = time.toString();
         if (str.endsWith(" 00:00:00.0")) {
@@ -979,6 +992,7 @@ public class RubyJdbcConnection extends RubyObject {
         return end;
     }
     
+    private static byte[] CALL = new byte[]{'c', 'a', 'l', 'l'};
     private static byte[] INSERT = new byte[] {'i', 'n', 's', 'e', 'r', 't'};
     private static byte[] SELECT = new byte[] {'s', 'e', 'l', 'e', 'c', 't'};
     private static byte[] SHOW = new byte[] {'s', 'h', 'o', 'w'};

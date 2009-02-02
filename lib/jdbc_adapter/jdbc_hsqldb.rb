@@ -26,12 +26,13 @@ module ::JdbcSpec
     end
 
     module Column
-
       private
       def simplified_type(field_type)
         case field_type
         when /longvarchar/i
           :text
+        when /tinyint/i
+          :boolean
         else
           super(field_type)
         end
@@ -52,6 +53,7 @@ module ::JdbcSpec
       tp[:boolean][:limit] = nil
       # set text and float limits so we don't see odd scales tacked on
       # in migrations
+      tp[:boolean] = { :name => "tinyint" }
       tp[:text][:limit] = nil
       tp[:float][:limit] = 17
       tp[:string][:limit] = 255
@@ -75,6 +77,15 @@ module ::JdbcSpec
           "'#{quote_string(value)}'"
         end
       else super
+      end
+    end
+
+    def quote_column_name(name) #:nodoc:
+      name = name.to_s
+      if name =~ /[-]/
+        %Q{"#{name.upcase}"}
+      else
+        name
       end
     end
 
@@ -127,7 +138,7 @@ module ::JdbcSpec
     end
 
     def last_insert_id(table, sequence_name)
-      Integer(select_value("SELECT IDENTITY() FROM #{table}"))
+      Integer(select_value("CALL IDENTITY()"))
     end
 
     # Override normal #_execute: See Rubyforge #11567
