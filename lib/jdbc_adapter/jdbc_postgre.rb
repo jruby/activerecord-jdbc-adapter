@@ -1,3 +1,4 @@
+
 module ::JdbcSpec
   # Don't need to load native postgres adapter
   $LOADED_FEATURES << "active_record/connection_adapters/postgresql_adapter.rb"
@@ -423,3 +424,4 @@ module ::JdbcSpec
     end
   end
 end
+
