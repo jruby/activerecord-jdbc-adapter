@@ -89,10 +89,6 @@ module ::JdbcSpec
       end
     end
 
-    def supports_count_distinct? #:nodoc:
-      false
-    end
-
     def modify_types(tp)
       tp[:primary_key] = "serial primary key"
       tp[:string][:limit] = 255
