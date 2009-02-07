@@ -73,7 +73,7 @@ import org.jruby.runtime.Block;
  * Part of our ActiveRecord::ConnectionAdapters::Connection impl.
  */
 public class RubyJdbcConnection extends RubyObject {
-
+    private static final String[] TABLE_TYPE = new String[]{"TABLE"};
 
     private static RubyObjectAdapter rubyApi;
     
@@ -400,15 +400,34 @@ public class RubyJdbcConnection extends RubyObject {
 
         return runtime.getNil();
     }
+    
+    @JRubyMethod(name = "tables")
+    public IRubyObject tables(ThreadContext context) {
+        return tables(context, null, null, null, TABLE_TYPE);
+    }
 
-    @JRubyMethod(name = "tables", rest = true)
+    @JRubyMethod(name = "tables")
+    public IRubyObject tables(ThreadContext context, IRubyObject catalog) {
+        return tables(context, toStringOrNull(catalog), null, null, TABLE_TYPE);
+    }
+
+    @JRubyMethod(name = "tables")
+    public IRubyObject tables(ThreadContext context, IRubyObject catalog, IRubyObject schemaPattern) {
+        return tables(context, toStringOrNull(catalog), toStringOrNull(schemaPattern), null, TABLE_TYPE);
+    }
+
+    @JRubyMethod(name = "tables")
+    public IRubyObject tables(ThreadContext context, IRubyObject catalog, IRubyObject schemaPattern, IRubyObject tablePattern) {
+        return tables(context, toStringOrNull(catalog), toStringOrNull(schemaPattern), toStringOrNull(tablePattern), TABLE_TYPE);
+    }
+
+    @JRubyMethod(name = "tables", required = 4, rest = true)
     public IRubyObject tables(ThreadContext context, IRubyObject[] args) {
-        Ruby runtime = context.getRuntime();
-        String catalog = convertArgToStringOrNull(args, 0);
-        String schemaPattern = convertArgToStringOrNull(args, 1);
-        String tablePattern = convertArgToStringOrNull(args, 2);
+        return tables(context, toStringOrNull(args[0]), toStringOrNull(args[1]), toStringOrNull(args[2]), getTypes(args[3]));
+    }
 
-        return withConnectionAndRetry(context, tableLookupBlock(runtime, catalog, schemaPattern, tablePattern, getTypes(args)));
+    protected IRubyObject tables(ThreadContext context, String catalog, String schemaPattern, String tablePattern, String[] types) {
+        return withConnectionAndRetry(context, tableLookupBlock(context.getRuntime(), catalog, schemaPattern, tablePattern, types));
     }
 
     /*
@@ -506,9 +525,8 @@ public class RubyJdbcConnection extends RubyObject {
         return config_hash.callMethod(context, "[]", context.getRuntime().newSymbol(key));
     }
 
-    private static String convertArgToStringOrNull(IRubyObject[] args, int position) {
-        if (args.length > position) return args[position].isNil() ? null : args[position].toString();
-        return null;
+    private static String toStringOrNull(IRubyObject arg) {
+        return arg.isNil() ? null : arg.toString();
     }
     
     protected Connection getConnection() {
@@ -538,22 +556,15 @@ public class RubyJdbcConnection extends RubyObject {
         return factory;
     }
 
-    private static String[] getTypes(IRubyObject[] args) {
-        String[] types;
-        if (args.length > 3) {
-            IRubyObject typearr = args[3];
-            if (typearr instanceof RubyArray) {
-                IRubyObject[] arr = rubyApi.convertToJavaArray(typearr);
-                types = new String[arr.length];
-                for (int i = 0; i < types.length; i++) {
-                    types[i] = arr[i].toString();
-                }
-            } else {
-                types = new String[]{ typearr.toString() };
-            }
-        } else {
-            types = new String[]{"TABLE"};
+    private static String[] getTypes(IRubyObject typeArg) {
+        if (!(typeArg instanceof RubyArray)) return new String[] { typeArg.toString() };
+
+        IRubyObject[] arr = rubyApi.convertToJavaArray(typeArg);
+        String[] types = new String[arr.length];
+        for (int i = 0; i < types.length; i++) {
+            types[i] = arr[i].toString();
         }
+
         return types;
     }
 
