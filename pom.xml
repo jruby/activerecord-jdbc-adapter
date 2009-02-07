@@ -1,0 +1,57 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>org.jruby.activerecord-jdbc</groupId>
+  <artifactId>activerecord-jdbc</artifactId>
+  <packaging>jar</packaging>
+  <version>0.9.1</version>
+  <name>activerecord-jdbc</name>
+  <description>
+    This POM for activerecord-jdbc is just for bootstrapping IDEs. You
+    can't use it to build the project at the moment.
+  </description>
+  <url>http://activerecord-jdbc.kenai.com/</url>
+
+  <issueManagement>
+    <system>JIRA</system>
+    <url>http://kenai.com/jira/browse/ACTIVERECORD_JDBC</url>
+  </issueManagement>
+
+  <scm>
+    <connection>scm:git:git://github.com/nicksieger/activerecord-jdbc-adapter.git</connection>
+    <developerConnection>scm:git:git@github.com:nicksieger/activerecord-jdbc-adapter.git</developerConnection>
+    <url>http://github.com/nicksieger/activerecord-jdbc-adapter</url>
+  </scm>
+
+  <licenses>
+    <license>
+      <name>BSD</name>
+      <url>http://www.opensource.org/licenses/bsd-license.php</url>
+      <distribution>repo</distribution>
+    </license>
+  </licenses>
+
+  <dependencies>
+    <dependency>
+      <groupId>org.jruby</groupId>
+      <artifactId>jruby-complete</artifactId>
+      <version>1.1.6</version>
+    </dependency>
+  </dependencies>
+
+  <build>
+    <outputDirectory>pkg/classes</outputDirectory>
+    <sourceDirectory>src/java</sourceDirectory>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <configuration>
+          <source>1.5</source>
+          <target>1.5</target>
+        </configuration>
+      </plugin>
+    </plugins>
+  </build>
+
+</project>
