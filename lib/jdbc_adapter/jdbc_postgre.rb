@@ -51,23 +51,23 @@ module ::JdbcSpec
         end
       end
 
-      def cast_to_date_or_time(value)
-        return value if value.is_a? Date
-        return nil if value.blank?
-        guess_date_or_time((value.is_a? Time) ? value : cast_to_time(value))
-      end
-
-      def cast_to_time(value)
-        return value if value.is_a? Time
-        time_array = ParseDate.parsedate value
-        time_array[0] ||= 2000; time_array[1] ||= 1; time_array[2] ||= 1;
-        Time.send(ActiveRecord::Base.default_timezone, *time_array) rescue nil
-      end
-
-      def guess_date_or_time(value)
-        (value.hour == 0 and value.min == 0 and value.sec == 0) ?
-        Date.new(value.year, value.month, value.day) : value
-      end
+#      def cast_to_date_or_time(value)
+#        return value if value.is_a? Date
+#        return nil if value.blank?
+#        guess_date_or_time((value.is_a? Time) ? value : cast_to_time(value))
+#      end
+#
+#      def cast_to_time(value)
+#        return value if value.is_a? Time
+#        time_array = ParseDate.parsedate value
+#        time_array[0] ||= 2000; time_array[1] ||= 1; time_array[2] ||= 1;
+#        Time.send(ActiveRecord::Base.default_timezone, *time_array) rescue nil
+#      end
+#
+#      def guess_date_or_time(value)
+#        (value.hour == 0 and value.min == 0 and value.sec == 0) ?
+#        Date.new(value.year, value.month, value.day) : value
+#      end
 
       def default_value(value)
         # Boolean types
@@ -348,11 +348,11 @@ module ::JdbcSpec
       %("#{name}")
     end
 
-    def quoted_date(value)
+    def quoted_date(value) #:nodoc:
       if value.acts_like?(:time) && value.respond_to?(:usec)
-        value.strftime("%Y-%m-%d %H:%M:%S.#{value.usec}")
+        "#{super}.#{sprintf("%06d", value.usec)}"
       else
-        value.strftime("%Y-%m-%d %H:%M:%S")
+        super
       end
     end
 
