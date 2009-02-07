@@ -121,7 +121,9 @@ module ::JdbcSpec
     end
 
     def quote_regclass(table_name)
-      table_name.to_s.split('.').map { |part| quote_table_name(part) }.join('.')  
+      table_name.to_s.split('.').map do |part| 
+        part =~ /".*"/i ? part : quote_table_name(part)
+      end.join('.')  
     end
 
     # Find a table's primary key and sequence.
