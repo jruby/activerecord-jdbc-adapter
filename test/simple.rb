@@ -153,9 +153,9 @@ module SimpleTestMethods
   def test_string
     e = DbType.find(:first)
 
-    # FIXME: h2 and hsql seems to have no way of specifying a default '' value
+    # FIXME: h2, hsql and sqlite3 seem to have no way of specifying a default '' value
     adapter_name = ActiveRecord::Base.connection.adapter_name
-    if (adapter_name !~ /^(hsqldb|h2)$/)
+    if adapter_name !~ /^(hsqldb|h2|sqlite)$/i
       assert_equal('', e.sample_string)
     end
 
@@ -256,6 +256,23 @@ module SimpleTestMethods
     assert_raises(ActiveRecord::ActiveRecordError) do
       Animal.columns
     end
+  end
+
+  class ChangeEntriesTable < ActiveRecord::Migration
+    def self.up
+      change_table :entries do |t|
+        t.string :author
+      end
+    end
+    def self.down
+      change_table :entries do |t|
+        t.remove :author
+      end
+    end
+  end
+  def test_change_table
+    ChangeEntriesTable.up
+    ChangeEntriesTable.down
   end
 end
 

@@ -9,40 +9,10 @@ begin
 rescue LoadError
 end if defined?(RAILS_ROOT)
 
-module ActiveRecord
-  module ConnectionAdapters # :nodoc:
-    module SchemaStatements
-      # Convert the speficied column type to a SQL string.
-      def type_to_sql(type, limit = nil, precision = nil, scale = nil)
-        native = native_database_types[type.to_s.downcase.to_sym]
-        column_type_sql = native.is_a?(Hash) ? native[:name] : native
-        if type == :decimal # ignore limit, use precison and scale
-          precision ||= native[:precision]
-          scale ||= native[:scale]
-          if precision
-            if scale
-              column_type_sql += "(#{precision},#{scale})"
-            else
-              column_type_sql += "(#{precision})"
-            end
-          else
-            raise ArgumentError, "Error adding decimal column: precision cannot be empty if scale if specified" if scale
-          end
-          column_type_sql
-        else
-          limit ||= native[:limit]
-          column_type_sql += "(#{limit})" if limit
-          column_type_sql
-        end
-      end
-    end
-  end
-end
-
 module JdbcSpec
   module ActiveRecordExtensions
-    # Specific adapters can override this class if they need their own 
-    # implementation of a JdbcConnection. 
+    # Specific adapters can override this class if they need their own
+    # implementation of a JdbcConnection.
     def jdbc_connection_class
       ::ActiveRecord::ConnectionAdapters::JdbcConnection
     end
