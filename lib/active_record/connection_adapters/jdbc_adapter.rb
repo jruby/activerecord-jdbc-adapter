@@ -213,7 +213,8 @@ module ActiveRecord
         procs = AR_TO_JDBC_TYPES[ar_type]
         types = @types
         procs.each do |p|
-          new_types = types.select(&p)
+          new_types = types.reject {|r| r["data_type"].to_i == Jdbc::Types::OTHER}
+          new_types = new_types.select(&p)
           new_types = new_types.inject([]) do |typs,t|
             typs << t unless typs.detect {|el| el['type_name'] == t['type_name']}
             typs
