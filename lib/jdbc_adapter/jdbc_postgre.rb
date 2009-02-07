@@ -1,3 +1,4 @@
+
 module ::JdbcSpec
   # Don't need to load native postgres adapter
   $LOADED_FEATURES << "active_record/connection_adapters/postgresql_adapter.rb"
@@ -86,10 +87,6 @@ module ::JdbcSpec
         # and we can't know the value of that, so return nil.
         return nil
       end
-    end
-
-    def supports_count_distinct? #:nodoc:
-      false
     end
 
     def modify_types(tp)
@@ -423,3 +420,4 @@ module ::JdbcSpec
     end
   end
 end
+

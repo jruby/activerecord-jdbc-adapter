@@ -11,3 +11,6 @@ nbproject
 TAGS
 *~
 *.log
+patches*
+*#
+.stgit-edit.txt

@@ -837,6 +837,7 @@ public class RubyJdbcConnection extends RubyObject {
             String clzName = metadata.getClass().getName().toLowerCase();
             boolean isDerby = clzName.indexOf("derby") != -1;
             boolean isOracle = clzName.indexOf("oracle") != -1 || clzName.indexOf("oci") != -1;
+            boolean isPostgres = clzName.indexOf("postgres") != -1;
             Ruby runtime = context.getRuntime();
 
             RubyHash types = (RubyHash) native_database_types();
@@ -844,7 +845,8 @@ public class RubyJdbcConnection extends RubyObject {
 
             while(rs.next()) {
                 String column_name = rs.getString(4);
-                if(metadata.storesUpperCaseIdentifiers() && !HAS_SMALL.matcher(column_name).find()) {
+                if((!metadata.storesUpperCaseIdentifiers() && !isPostgres)
+                   || (metadata.storesUpperCaseIdentifiers() && !HAS_SMALL.matcher(column_name).find())) {
                     column_name = column_name.toLowerCase();
                 }
 
@@ -927,8 +929,11 @@ public class RubyJdbcConnection extends RubyObject {
         Ruby runtime = context.getRuntime();
         List results = new ArrayList();
 
+        String clzName = resultSet.getClass().getName();
+        boolean isPostgres = clzName.indexOf("postgres") != -1;
+
         try {
-            boolean storesUpper = !downCase && resultSet.getStatement().getConnection().getMetaData().storesUpperCaseIdentifiers();
+            boolean storesUpper = !downCase && (resultSet.getStatement().getConnection().getMetaData().storesUpperCaseIdentifiers() || isPostgres);
             ColumnData[] columns = ColumnData.setup(runtime, resultSet.getMetaData(), storesUpper);
 
             populateFromResultSet(context, runtime, results, resultSet, columns);
@@ -1026,9 +1031,12 @@ public class RubyJdbcConnection extends RubyObject {
 
             for (int i = 1; i <= columnsCount; i++) { // metadata is one-based
                 String name = metadata.getColumnLabel(i);
-                // We don't want to lowercase mixed case columns
-                if (!storesUpper || (storesUpper && !HAS_SMALL.matcher(name).find())) name = name.toLowerCase();
 
+                // We don't want to lowercase mixed case columns
+                if (!storesUpper || (storesUpper && !HAS_SMALL.matcher(name).find())) {
+                    name = name.toLowerCase();
+                }
+                
                 columns[i - 1] = new ColumnData(RubyString.newUnicodeString(runtime, name),
                         metadata.getColumnType(i));
             }
