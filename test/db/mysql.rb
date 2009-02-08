@@ -8,7 +8,3 @@ config = {
 
 ActiveRecord::Base.establish_connection(config)
 
-logger = Logger.new 'mysql-testdb.log'
-logger.level = Logger::DEBUG
-ActiveRecord::Base.logger = logger
-

@@ -12,3 +12,6 @@ require 'models/add_not_null_column_to_table'
 require 'simple'
 require 'has_many_through'
 require 'test/unit'
+
+# Comment/uncomment to enable logging to be loaded for any of the database adapters
+# require 'db/logger'

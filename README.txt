@@ -133,6 +133,11 @@ installed, you can simply type <tt>jruby -S rake</tt> to run the tests. A
 database named <tt>weblog_development</tt> is needed beforehand with a
 connection user of "blog" and password empty.
 
+If you want rails logging enabled during these test runs you can edit 
+test/jdbc_common.rb and add the following line:
+
+require 'db/logger'
+
 == Running AR Tests
 
   # If you want to run MRI against Rails remember to re-export RUBYLIB to be
