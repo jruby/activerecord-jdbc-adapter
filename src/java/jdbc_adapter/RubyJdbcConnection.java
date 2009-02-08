@@ -125,28 +125,11 @@ public class RubyJdbcConnection extends RubyObject {
                     }
 
                     DatabaseMetaData metadata = c.getMetaData();
-                    String clzName = metadata.getClass().getName().toLowerCase();
-                    boolean isDerby = clzName.indexOf("derby") != -1;
-                    boolean isOracle = clzName.indexOf("oracle") != -1 || clzName.indexOf("oci") != -1;
 
-                    if(args.length>2) {
-                        schemaName = args[2].toString();
-                    }
+                    if(args.length > 2) schemaName = args[2].toString();
 
                     if (schemaName != null) schemaName = caseConvertIdentifierForJdbc(metadata, schemaName);
                     table_name = caseConvertIdentifierForJdbc(metadata, table_name);
-
-                    if(schemaName == null && (isDerby || isOracle)) {
-                        ResultSet schemas = metadata.getSchemas();
-                        String username = metadata.getUserName();
-                        while(schemas.next()) {
-                            if(schemas.getString(1).equalsIgnoreCase(username)) {
-                                schemaName = schemas.getString(1);
-                                break;
-                            }
-                        }
-                        close(schemas);
-                    }
 
                     RubyArray matchingTables = (RubyArray) tableLookupBlock(context.getRuntime(),
                                                                             c.getCatalog(), schemaName, table_name, new String[]{"TABLE","VIEW"}).call(c);
@@ -818,17 +801,6 @@ public class RubyJdbcConnection extends RubyObject {
                     if (realtablepat != null) realtablepat = caseConvertIdentifierForJdbc(metadata, realtablepat);
                     if (realschema != null) realschema = caseConvertIdentifierForJdbc(metadata, realschema);
 
-                    if (realschema == null && isOracle) {
-                        ResultSet schemas = metadata.getSchemas();
-                        String username = metadata.getUserName();
-                        while (schemas.next()) {
-                            if (schemas.getString(1).equalsIgnoreCase(username)) {
-                                realschema = schemas.getString(1);
-                                break;
-                            }
-                        }
-                        close(schemas);
-                    }
                     rs = metadata.getTables(catalog, realschema, realtablepat, types);
                     List arr = new ArrayList();
                     while (rs.next()) {

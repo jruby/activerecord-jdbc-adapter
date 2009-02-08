@@ -341,6 +341,14 @@ module ::JdbcSpec
       @connection.primary_keys table_name.to_s.upcase
     end
 
+    def columns(table_name, name=nil)
+      @connection.columns_internal(table_name, name, derby_schema)
+    end
+
+    def tables
+      @connection.tables(nil, derby_schema)
+    end
+
     def recreate_database(db_name)
       tables.each do |t|
         drop_table t
@@ -369,6 +377,12 @@ module ::JdbcSpec
 
     def quoted_false
       '0'
+    end
+
+    private
+    # Derby appears to define schemas using the username
+    def derby_schema
+      @config[:username].to_s
     end
   end
 end
