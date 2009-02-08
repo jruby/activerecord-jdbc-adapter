@@ -128,7 +128,6 @@ public class RubyJdbcConnection extends RubyObject {
                     String clzName = metadata.getClass().getName().toLowerCase();
                     boolean isDerby = clzName.indexOf("derby") != -1;
                     boolean isOracle = clzName.indexOf("oracle") != -1 || clzName.indexOf("oci") != -1;
-                    boolean isPostgres = metadata.getDatabaseProductName().equals("PostgreSQL");
 
                     if(args.length>2) {
                         schemaName = args[2].toString();
@@ -137,7 +136,7 @@ public class RubyJdbcConnection extends RubyObject {
                     if(metadata.storesUpperCaseIdentifiers()) {
                         if (null != schemaName) schemaName = schemaName.toUpperCase();
                         table_name = table_name.toUpperCase();
-                    } else if(metadata.storesLowerCaseIdentifiers() && ! isPostgres) {
+                    } else if(metadata.storesLowerCaseIdentifiers()) {
                         if (null != schemaName) schemaName = schemaName.toLowerCase();
                         table_name = table_name.toLowerCase();
                     }
@@ -332,11 +331,10 @@ public class RubyJdbcConnection extends RubyObject {
         return withConnectionAndRetry(context, new SQLBlock() {
             public IRubyObject call(Connection c) throws SQLException {
                 DatabaseMetaData metadata = c.getMetaData();
-                boolean isPostgres = metadata.getDatabaseProductName().equals("PostgreSQL");
                 String table_name = _table_name.toString();
                 if (metadata.storesUpperCaseIdentifiers()) {
                     table_name = table_name.toUpperCase();
-                } else if (metadata.storesLowerCaseIdentifiers() && ! isPostgres) {
+                } else if (metadata.storesLowerCaseIdentifiers()) {
                     table_name = table_name.toLowerCase();
                 }
 
@@ -787,7 +785,6 @@ public class RubyJdbcConnection extends RubyObject {
                     DatabaseMetaData metadata = c.getMetaData();
                     String clzName = metadata.getClass().getName().toLowerCase();
                     boolean isOracle = clzName.indexOf("oracle") != -1 || clzName.indexOf("oci") != -1;
-                    boolean isPostgres = metadata.getDatabaseProductName().equals("PostgreSQL");
 
                     String realschema = schemapat;
                     String realtablepat = tablepat;
@@ -795,7 +792,7 @@ public class RubyJdbcConnection extends RubyObject {
                     if(metadata.storesUpperCaseIdentifiers()) {
                         if (realschema != null) realschema = realschema.toUpperCase();
                         if (realtablepat != null) realtablepat = realtablepat.toUpperCase();
-                    } else if(metadata.storesLowerCaseIdentifiers() && ! isPostgres) {
+                    } else if(metadata.storesLowerCaseIdentifiers()) {
                         if (null != realschema) realschema = realschema.toLowerCase();
                         if (realtablepat != null) realtablepat = realtablepat.toLowerCase();
                     }
@@ -848,7 +845,6 @@ public class RubyJdbcConnection extends RubyObject {
             String clzName = metadata.getClass().getName().toLowerCase();
             boolean isDerby = clzName.indexOf("derby") != -1;
             boolean isOracle = clzName.indexOf("oracle") != -1 || clzName.indexOf("oci") != -1;
-            boolean isPostgres = clzName.indexOf("postgres") != -1;
             Ruby runtime = context.getRuntime();
 
             RubyHash types = (RubyHash) native_database_types();
@@ -856,8 +852,12 @@ public class RubyJdbcConnection extends RubyObject {
 
             while(rs.next()) {
                 String column_name = rs.getString(4);
-                if((!metadata.storesUpperCaseIdentifiers() && !isPostgres)
-                   || (metadata.storesUpperCaseIdentifiers() && !HAS_SMALL.matcher(column_name).find())) {
+
+                // Assumption: Rails identifiers will be quoted for mixed or will stay mixed
+                // as identifier names in Rails itself.  Otherwise, they expect identifiers to
+                // be lower-case.  Databases which store identifiers uppercase should be made
+                // lower-case.
+                if (metadata.storesUpperCaseIdentifiers()) {
                     column_name = column_name.toLowerCase();
                 }
 
@@ -940,11 +940,8 @@ public class RubyJdbcConnection extends RubyObject {
         Ruby runtime = context.getRuntime();
         List results = new ArrayList();
 
-        String clzName = resultSet.getClass().getName();
-        boolean isPostgres = clzName.indexOf("postgres") != -1;
-
         try {
-            boolean storesUpper = !downCase && (resultSet.getStatement().getConnection().getMetaData().storesUpperCaseIdentifiers() || isPostgres);
+            boolean storesUpper = !downCase && resultSet.getStatement().getConnection().getMetaData().storesUpperCaseIdentifiers();
             ColumnData[] columns = ColumnData.setup(runtime, resultSet.getMetaData(), storesUpper);
 
             populateFromResultSet(context, runtime, results, resultSet, columns);
