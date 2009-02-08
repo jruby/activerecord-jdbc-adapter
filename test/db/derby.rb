@@ -6,9 +6,6 @@ config = {
 }
 
 ActiveRecord::Base.establish_connection(config)
-logger = Logger.new 'derby-testdb.log'
-logger.level = Logger::DEBUG
-ActiveRecord::Base.logger = logger
 
 at_exit {  
   # Clean up derby files
