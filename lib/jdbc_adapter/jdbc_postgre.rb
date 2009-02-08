@@ -52,24 +52,6 @@ module ::JdbcSpec
         end
       end
 
-#      def cast_to_date_or_time(value)
-#        return value if value.is_a? Date
-#        return nil if value.blank?
-#        guess_date_or_time((value.is_a? Time) ? value : cast_to_time(value))
-#      end
-#
-#      def cast_to_time(value)
-#        return value if value.is_a? Time
-#        time_array = ParseDate.parsedate value
-#        time_array[0] ||= 2000; time_array[1] ||= 1; time_array[2] ||= 1;
-#        Time.send(ActiveRecord::Base.default_timezone, *time_array) rescue nil
-#      end
-#
-#      def guess_date_or_time(value)
-#        (value.hour == 0 and value.min == 0 and value.sec == 0) ?
-#        Date.new(value.year, value.month, value.day) : value
-#      end
-
       def default_value(value)
         # Boolean types
         return "t" if value =~ /true/i
@@ -98,13 +80,62 @@ module ::JdbcSpec
       tp
     end
 
+    def postgresql_version
+      @postgresql_version ||=
+        begin
+          select('SELECT version()').to_a[0][0] =~ /PostgreSQL (\d+)\.(\d+)\.(\d+)/
+          ($1.to_i * 10000) + ($2.to_i * 100) + $3.to_i
+        rescue
+          0
+        end
+    end
+
+    # Does PostgreSQL support migrations?
+    def supports_migrations?
+      true
+    end
+
+    # Does PostgreSQL support standard conforming strings?
+    def supports_standard_conforming_strings?
+      # Temporarily set the client message level above error to prevent unintentional
+      # error messages in the logs when working on a PostgreSQL database server that
+      # does not support standard conforming strings.
+      client_min_messages_old = client_min_messages
+      self.client_min_messages = 'panic'
+
+      # postgres-pr does not raise an exception when client_min_messages is set higher
+      # than error and "SHOW standard_conforming_strings" fails, but returns an empty
+      # PGresult instead.
+      has_support = select('SHOW standard_conforming_strings').to_a[0][0] rescue false
+      self.client_min_messages = client_min_messages_old
+      has_support
+    end
+
+    def supports_insert_with_returning?
+      postgresql_version >= 80200
+    end
+
+    def supports_ddl_transactions?
+      true
+    end
+
+    def supports_savepoints?
+      true
+    end
+
+    # Returns the configured supported identifier length supported by PostgreSQL,
+    # or report the default of 63 on PostgreSQL 7.x.
+    def table_alias_length
+      @table_alias_length ||= (postgresql_version >= 80000 ? select('SHOW max_identifier_length').to_a[0][0].to_i : 63)
+    end
+
     def default_sequence_name(table_name, pk = nil)
       default_pk, default_seq = pk_and_sequence_for(table_name)
       default_seq || "#{table_name}_#{pk || default_pk || 'id'}_seq"
     end
 
     # Resets sequence to the max value of the table's pk if present.
-    def reset_pk_sequence!(table, pk = nil, sequence = nil)
+    def reset_pk_sequence!(table, pk = nil, sequence = nil) #:nodoc:
       unless pk and sequence
         default_pk, default_sequence = pk_and_sequence_for(table)
         pk ||= default_pk
@@ -112,9 +143,11 @@ module ::JdbcSpec
       end
       if pk
         if sequence
+          quoted_sequence = quote_column_name(sequence)
+
           select_value <<-end_sql, 'Reset sequence'
-            SELECT setval('#{sequence}', (SELECT COALESCE(MAX(#{quote_column_name(pk)})+(SELECT increment_by FROM #{sequence}), (SELECT min_value FROM #{sequence})) FROM #{quote_table_name(table)}), false)
-          end_sql
+              SELECT setval('#{quoted_sequence}', (SELECT COALESCE(MAX(#{quote_column_name pk})+(SELECT increment_by FROM #{quoted_sequence}), (SELECT min_value FROM #{quoted_sequence})) FROM #{quote_table_name(table)}), false)
+            end_sql
         else
           @logger.warn "#{table} has primary key #{pk} with no default sequence" if @logger
         end
@@ -122,67 +155,86 @@ module ::JdbcSpec
     end
 
     def quote_regclass(table_name)
-      table_name.to_s.split('.').map { |part| quote_table_name(part) }.join('.')  
+      table_name.to_s.split('.').map do |part| 
+        part =~ /".*"/i ? part : quote_table_name(part)
+      end.join('.')  
     end
 
     # Find a table's primary key and sequence.
-    def pk_and_sequence_for(table)
+    def pk_and_sequence_for(table) #:nodoc:
       # First try looking for a sequence with a dependency on the
       # given table's primary key.
-        result = select(<<-end_sql, 'PK and serial sequence')[0]
-          SELECT attr.attname AS nm, name.nspname AS nsp, seq.relname AS rel
+      result = select(<<-end_sql, 'PK and serial sequence')[0]
+          SELECT attr.attname, seq.relname
           FROM pg_class      seq,
                pg_attribute  attr,
                pg_depend     dep,
                pg_namespace  name,
                pg_constraint cons
           WHERE seq.oid           = dep.objid
-            AND seq.relnamespace  = name.oid
             AND seq.relkind       = 'S'
             AND attr.attrelid     = dep.refobjid
             AND attr.attnum       = dep.refobjsubid
             AND attr.attrelid     = cons.conrelid
             AND attr.attnum       = cons.conkey[1]
             AND cons.contype      = 'p'
-            AND dep.refobjid      = '#{quote_regclass(table)}'::regclass
+            AND dep.refobjid      = '#{table}'::regclass
         end_sql
 
-        if result.nil? or result.empty?
-          # If that fails, try parsing the primary key's default value.
-          # Support the 7.x and 8.0 nextval('foo'::text) as well as
-          # the 8.1+ nextval('foo'::regclass).
-          # TODO: assumes sequence is in same schema as table.
-          result = select(<<-end_sql, 'PK and custom sequence')[0]
-            SELECT attr.attname AS nm, name.nspname AS nsp, split_part(def.adsrc, '\\\'', 2) AS rel
+      if result.nil? or result.empty?
+        # If that fails, try parsing the primary key's default value.
+        # Support the 7.x and 8.0 nextval('foo'::text) as well as
+        # the 8.1+ nextval('foo'::regclass).
+        result = query(<<-end_sql, 'PK and custom sequence')[0]
+            SELECT attr.attname,
+              CASE
+                WHEN split_part(def.adsrc, '''', 2) ~ '.' THEN
+                  substr(split_part(def.adsrc, '''', 2),
+                         strpos(split_part(def.adsrc, '''', 2), '.')+1)
+                ELSE split_part(def.adsrc, '''', 2)
+              END as relname
             FROM pg_class       t
-            JOIN pg_namespace   name ON (t.relnamespace = name.oid)
             JOIN pg_attribute   attr ON (t.oid = attrelid)
             JOIN pg_attrdef     def  ON (adrelid = attrelid AND adnum = attnum)
             JOIN pg_constraint  cons ON (conrelid = adrelid AND adnum = conkey[1])
-            WHERE t.oid = '#{quote_regclass(table)}'::regclass
+            WHERE t.oid = '#{table}'::regclass
               AND cons.contype = 'p'
               AND def.adsrc ~* 'nextval'
           end_sql
-        end
-        # check for existence of . in sequence name as in public.foo_sequence.  if it does not exist, join the current namespace
-        result['rel']['.'] ? [result['nm'], result['rel']] : [result['nm'], "#{result['nsp']}.#{result['rel']}"]
-      rescue
-        nil
       end
 
-    def insert(sql, name = nil, pk = nil, id_value = nil, sequence_name = nil) #:nodoc:
-      table = sql.split(" ", 4)[2]      
-      execute(sql, name)      
+      [result["attname"], result["relname"]]
+    rescue
+      nil
+    end
 
-      # TODO: add support for INSERT RETURNING.
+    def insert(sql, name = nil, pk = nil, id_value = nil, sequence_name = nil)
+      # Extract the table from the insert sql. Yuck.
+      table = sql.split(" ", 4)[2].gsub('"', '')
 
+      # Try an insert with 'returning id' if available (PG >= 8.2)
+      if supports_insert_with_returning?
+        pk, sequence_name = *pk_and_sequence_for(table) unless pk
+        if pk
+          id = select_value("#{sql} RETURNING #{quote_column_name(pk)}")
+          clear_query_cache
+          return id
+        end
+      end
+
+      # Otherwise, insert then grab last_insert_id.
+      execute(sql, name)
+
+      # If neither pk nor sequence name is given, look them up.
       unless pk || sequence_name
         pk, sequence_name = *pk_and_sequence_for(table)
       end
-        
+
+      # If a pk is given, fallback to default sequence name.
+      # Don't fetch last insert id for a table without a pk.
       if pk && sequence_name ||= default_sequence_name(table, pk)
         last_insert_id(table, sequence_name)
-      end    
+      end
     end
 
     def columns(table_name, name=nil)
