@@ -265,9 +265,10 @@ public class RubyJdbcConnection extends RubyObject {
             public IRubyObject call(Connection c) throws SQLException {
                 Statement stmt = null;
                 try {
+                    DatabaseMetaData metadata = c.getMetaData();
                     stmt = c.createStatement();
                     stmt.setMaxRows(maxRows);
-                    return unmarshalResult(context, stmt.executeQuery(query), false);
+                    return unmarshalResult(context, metadata, stmt.executeQuery(query));
                 } finally {
                     close(stmt);
                 }
@@ -345,11 +346,8 @@ public class RubyJdbcConnection extends RubyObject {
                     result_set = metadata.getPrimaryKeys(null, null, table_name);
 
                     while (result_set.next()) {
-                        String s1 = result_set.getString(4);
-                        if (metadata.storesUpperCaseIdentifiers() && !HAS_SMALL.matcher(s1).find()) {
-                            s1 = s1.toLowerCase();
-                        }
-                        keyNames.add(RubyString.newUnicodeString(runtime, s1));
+                        keyNames.add(RubyString.newUnicodeString(runtime,
+                                caseConvertIdentifierForRails(metadata, result_set.getString(4))));
                     }
                 } finally {
                     close(result_set);
@@ -391,7 +389,8 @@ public class RubyJdbcConnection extends RubyObject {
     @JRubyMethod(name = "set_native_database_types")
     public IRubyObject set_native_database_types(ThreadContext context) throws SQLException, IOException {
         Ruby runtime = context.getRuntime();
-        IRubyObject types = unmarshalResult(context, getConnection(true).getMetaData().getTypeInfo(), true);
+        DatabaseMetaData metadata = getConnection(true).getMetaData();
+        IRubyObject types = unmarshalResult(context, metadata, metadata.getTypeInfo());
         IRubyObject typeConverter = getConnectionAdapters(runtime).getConstant("JdbcTypeConverter");
         IRubyObject value = rubyApi.callMethod(rubyApi.callMethod(typeConverter, "new", types), "choose_best_types");
         setInstanceVariable("@native_types", value);
@@ -490,6 +489,23 @@ public class RubyJdbcConnection extends RubyObject {
                 return runtime.getNil();
             }
         });
+    }
+
+    private static final java.util.regex.Pattern HAS_SMALL = java.util.regex.Pattern.compile("[a-z]");
+
+    /**
+     * Convert an identifier coming back from the database to a case which Rails is expecting.
+     *
+     * Assumption: Rails identifiers will be quoted for mixed or will stay mixed
+     * as identifier names in Rails itself.  Otherwise, they expect identifiers to
+     * be lower-case.  Databases which store identifiers uppercase should be made
+     * lower-case.
+     *
+     * Assumption 2: It is always safe to convert all upper case names since it appears that
+     * some adapters do not report StoresUpper/Lower/Mixed correctly (am I right postgres/mysql?).
+     */
+    public static String caseConvertIdentifierForRails(DatabaseMetaData metadata, String value) throws SQLException {
+        return metadata.storesUpperCaseIdentifiers() || !HAS_SMALL.matcher(value).find() ? value.toLowerCase() : value;
     }
 
     // helpers
@@ -837,7 +853,6 @@ public class RubyJdbcConnection extends RubyObject {
         return RubyString.newUnicodeString(runtime, str);
     }
 
-    private static final java.util.regex.Pattern HAS_SMALL = java.util.regex.Pattern.compile("[a-z]");
     private IRubyObject unmarshal_columns(ThreadContext context, DatabaseMetaData metadata,
             ResultSet rs) throws SQLException {
         try {
@@ -851,16 +866,7 @@ public class RubyJdbcConnection extends RubyObject {
             IRubyObject jdbcCol = getConnectionAdapters(runtime).getConstant("JdbcColumn");
 
             while(rs.next()) {
-                String column_name = rs.getString(4);
-
-                // Assumption: Rails identifiers will be quoted for mixed or will stay mixed
-                // as identifier names in Rails itself.  Otherwise, they expect identifiers to
-                // be lower-case.  Databases which store identifiers uppercase should be made
-                // lower-case.
-                if (metadata.storesUpperCaseIdentifiers()) {
-                    column_name = column_name.toLowerCase();
-                }
-
+                String column_name = caseConvertIdentifierForRails(metadata, rs.getString(4));
                 String prec = rs.getString(7);
                 String scal = rs.getString(9);
                 int precision = -1;
@@ -935,14 +941,13 @@ public class RubyJdbcConnection extends RubyObject {
      *
      * @param downCase should column names only be in lower case?
      */
-    protected static IRubyObject unmarshalResult(ThreadContext context, ResultSet resultSet,
-            boolean downCase) throws SQLException {
+    protected static IRubyObject unmarshalResult(ThreadContext context, DatabaseMetaData metadata,
+            ResultSet resultSet) throws SQLException {
         Ruby runtime = context.getRuntime();
         List results = new ArrayList();
 
         try {
-            boolean storesUpper = !downCase && resultSet.getStatement().getConnection().getMetaData().storesUpperCaseIdentifiers();
-            ColumnData[] columns = ColumnData.setup(runtime, resultSet.getMetaData(), storesUpper);
+            ColumnData[] columns = ColumnData.setup(runtime, metadata, resultSet.getMetaData());
 
             populateFromResultSet(context, runtime, results, resultSet, columns);
         } finally {
@@ -1032,21 +1037,15 @@ public class RubyJdbcConnection extends RubyObject {
             this.type = type;
         }
 
-        public static ColumnData[] setup(Ruby runtime, ResultSetMetaData metadata,
-                boolean storesUpper) throws SQLException {
+        public static ColumnData[] setup(Ruby runtime, DatabaseMetaData databaseMetadata,
+                ResultSetMetaData metadata) throws SQLException {
             int columnsCount = metadata.getColumnCount();
             ColumnData[] columns = new ColumnData[columnsCount];
 
             for (int i = 1; i <= columnsCount; i++) { // metadata is one-based
-                String name = metadata.getColumnLabel(i);
+                String name = RubyJdbcConnection.caseConvertIdentifierForRails(databaseMetadata, metadata.getColumnLabel(i));
 
-                // We don't want to lowercase mixed case columns
-                if (!storesUpper || (storesUpper && !HAS_SMALL.matcher(name).find())) {
-                    name = name.toLowerCase();
-                }
-                
-                columns[i - 1] = new ColumnData(RubyString.newUnicodeString(runtime, name),
-                        metadata.getColumnType(i));
+                columns[i - 1] = new ColumnData(RubyString.newUnicodeString(runtime, name), metadata.getColumnType(i));
             }
 
             return columns;
