@@ -133,13 +133,8 @@ public class RubyJdbcConnection extends RubyObject {
                         schemaName = args[2].toString();
                     }
 
-                    if(metadata.storesUpperCaseIdentifiers()) {
-                        if (null != schemaName) schemaName = schemaName.toUpperCase();
-                        table_name = table_name.toUpperCase();
-                    } else if(metadata.storesLowerCaseIdentifiers()) {
-                        if (null != schemaName) schemaName = schemaName.toLowerCase();
-                        table_name = table_name.toLowerCase();
-                    }
+                    if (schemaName != null) schemaName = caseConvertIdentifierForJdbc(metadata, schemaName);
+                    table_name = caseConvertIdentifierForJdbc(metadata, table_name);
 
                     if(schemaName == null && (isDerby || isOracle)) {
                         ResultSet schemas = metadata.getSchemas();
@@ -331,15 +326,9 @@ public class RubyJdbcConnection extends RubyObject {
             throws SQLException {
         return withConnectionAndRetry(context, new SQLBlock() {
             public IRubyObject call(Connection c) throws SQLException {
-                DatabaseMetaData metadata = c.getMetaData();
-                String table_name = _table_name.toString();
-                if (metadata.storesUpperCaseIdentifiers()) {
-                    table_name = table_name.toUpperCase();
-                } else if (metadata.storesLowerCaseIdentifiers()) {
-                    table_name = table_name.toLowerCase();
-                }
-
                 Ruby runtime = context.getRuntime();
+                DatabaseMetaData metadata = c.getMetaData();
+                String table_name = caseConvertIdentifierForJdbc(metadata, _table_name.toString());
                 ResultSet result_set = null;
                 List keyNames = new ArrayList();
                 try {
@@ -504,8 +493,29 @@ public class RubyJdbcConnection extends RubyObject {
      * Assumption 2: It is always safe to convert all upper case names since it appears that
      * some adapters do not report StoresUpper/Lower/Mixed correctly (am I right postgres/mysql?).
      */
-    public static String caseConvertIdentifierForRails(DatabaseMetaData metadata, String value) throws SQLException {
+    public static String caseConvertIdentifierForRails(DatabaseMetaData metadata, String value)
+            throws SQLException {
+        assert value != null : "value is not null";
+        
         return metadata.storesUpperCaseIdentifiers() || !HAS_SMALL.matcher(value).find() ? value.toLowerCase() : value;
+    }
+
+    /**
+     * Convert an identifier destined for a method which cares about the databases internal
+     * storage case.  Methods like DatabaseMetaData.getPrimaryKeys() needs the table name to match
+     * the internal storage name.  Arbtrary queries and the like DO NOT need to do this.
+     */
+    public static String caseConvertIdentifierForJdbc(DatabaseMetaData metadata, String value) 
+            throws SQLException {
+        assert value != null : "value is not null";
+        
+        if (metadata.storesUpperCaseIdentifiers()) {
+            return value.toUpperCase();
+        } else if (metadata.storesLowerCaseIdentifiers()) {
+            return value.toLowerCase();
+        }
+
+        return value;
     }
 
     // helpers
@@ -804,14 +814,9 @@ public class RubyJdbcConnection extends RubyObject {
 
                     String realschema = schemapat;
                     String realtablepat = tablepat;
-
-                    if(metadata.storesUpperCaseIdentifiers()) {
-                        if (realschema != null) realschema = realschema.toUpperCase();
-                        if (realtablepat != null) realtablepat = realtablepat.toUpperCase();
-                    } else if(metadata.storesLowerCaseIdentifiers()) {
-                        if (null != realschema) realschema = realschema.toLowerCase();
-                        if (realtablepat != null) realtablepat = realtablepat.toLowerCase();
-                    }
+                    
+                    if (realtablepat != null) realtablepat = caseConvertIdentifierForJdbc(metadata, realtablepat);
+                    if (realschema != null) realschema = caseConvertIdentifierForJdbc(metadata, realschema);
 
                     if (realschema == null && isOracle) {
                         ResultSet schemas = metadata.getSchemas();
