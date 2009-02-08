@@ -10,6 +10,7 @@ module ::JdbcSpec
       config[:url] ||= "jdbc:postgresql://#{config[:host]}:#{config[:port]}/#{config[:database]}"
       config[:url] << config[:pg_params] if config[:pg_params]
       config[:driver] ||= "org.postgresql.Driver"
+      config[:jdbc_connection_class] = ::ActiveRecord::ConnectionAdapters::PostgresJdbcConnection
       jdbc_connection(config)
     end
   end

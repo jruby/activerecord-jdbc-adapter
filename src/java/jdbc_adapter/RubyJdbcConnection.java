@@ -97,7 +97,7 @@ public class RubyJdbcConnection extends RubyObject {
         }
     };
 
-    private static RubyModule getConnectionAdapters(Ruby runtime) {
+    protected static RubyModule getConnectionAdapters(Ruby runtime) {
         return (RubyModule) runtime.getModule("ActiveRecord").getConstant("ConnectionAdapters");
     }
 

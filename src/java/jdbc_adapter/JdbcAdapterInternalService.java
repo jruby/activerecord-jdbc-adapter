@@ -29,6 +29,7 @@ package jdbc_adapter;
 import java.io.IOException;
 
 import org.jruby.Ruby;
+import org.jruby.RubyClass;
 import org.jruby.RubyModule;
 import org.jruby.RubyObjectAdapter;
 import org.jruby.javasupport.JavaEmbedUtils;
@@ -38,7 +39,8 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
     private static RubyObjectAdapter rubyApi;
 
     public boolean basicLoad(final Ruby runtime) throws IOException {
-        RubyJdbcConnection.createJdbcConnectionClass(runtime);
+        RubyClass jdbcConnection = RubyJdbcConnection.createJdbcConnectionClass(runtime);
+        PostgresRubyJdbcConnection.createPostgresJdbcConnectionClass(runtime, jdbcConnection);
         RubyModule jdbcSpec = runtime.getOrCreateModule("JdbcSpec");
 
         rubyApi = JavaEmbedUtils.newObjectAdapter();
