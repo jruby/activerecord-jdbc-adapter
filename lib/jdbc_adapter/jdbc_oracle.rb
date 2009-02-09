@@ -276,6 +276,13 @@ module ::JdbcSpec
       sql << "ORDER BY #{order}"
     end
 
+    def tables
+      @connection.tables(nil, oracle_schema)
+    end
+
+    def columns(table_name, name=nil)
+      @connection.columns_internal(table_name, name, oracle_schema)
+    end
 
     # QUOTING ==================================================
     #
@@ -320,6 +327,12 @@ module ::JdbcSpec
     end
 
     private
+    # In Oracle, schemas are created under your username:
+    # http://www.oracle.com/technology/obe/2day_dba/schema/schema.htm
+    def oracle_schema
+      @config[:username].to_s
+    end
+
     def select(sql, name=nil)
       records = execute(sql,name)
       records.each do |col|
