@@ -48,10 +48,12 @@ module SimpleTestMethods
   end
 
   def test_insert_returns_id
-    value = ActiveRecord::Base.connection.insert("INSERT INTO entries (title, content, rating) VALUES('insert_title', 'some content', 1)")
-    assert !value.nil?
-    entry = Entry.find_by_title('insert_title')
-    assert_equal value, entry.id
+    unless ActiveRecord::Base.connection.adapter_name =~ /oracle/i
+      value = ActiveRecord::Base.connection.insert("INSERT INTO entries (title, content, rating) VALUES('insert_title', 'some content', 1)")
+      assert !value.nil?
+      entry = Entry.find_by_title('insert_title')
+      assert_equal value, entry.id
+    end
   end
 
   def test_create_new_entry
