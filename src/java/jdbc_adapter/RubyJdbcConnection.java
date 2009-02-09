@@ -830,68 +830,79 @@ public class RubyJdbcConnection extends RubyObject {
         return RubyString.newUnicodeString(runtime, str);
     }
 
+    private static final int COLUMN_NAME = 4;
+    private static final int DATA_TYPE = 5;
+    private static final int TYPE_NAME = 6;
+    private static final int COLUMN_SIZE = 7;
+    private static final int DECIMAL_DIGITS = 9;
+    private static final int COLUMN_DEF = 13;
+    private static final int IS_NULLABLE = 18;
+
+    private int intFromResultSet(ResultSet resultSet, int column) throws SQLException {
+        int precision = resultSet.getInt(column);
+
+        return precision == 0 && resultSet.wasNull() ? -1 : precision;
+    }
+
+    /**
+     * Create a string which represents a sql type usable by Rails from the resultSet column
+     * metadata object.
+     *
+     * @param numberHack some unknown hack we have for Oracle
+     */
+    private String typeFromResultSet(ResultSet resultSet, boolean numberHack) throws SQLException {
+        int precision = intFromResultSet(resultSet, COLUMN_SIZE);
+        int scale = intFromResultSet(resultSet, DECIMAL_DIGITS);
+
+        // FIXME: Find out what this is about
+        // NUMBER type in Oracle
+        if (numberHack && resultSet.getInt(DATA_TYPE) == java.sql.Types.DECIMAL) precision = -1;
+        
+        String type = resultSet.getString(TYPE_NAME);
+        if (precision > 0) {
+            type += "(" + precision;
+            if(scale > 0) type += "," + scale;
+            type += ")";
+        }
+        
+        return type;
+    }
+
+    private IRubyObject defaultValueFromResultSet(Ruby runtime, ResultSet resultSet)
+            throws SQLException {
+        String defaultValue = resultSet.getString(COLUMN_DEF);
+
+        return defaultValue == null ? runtime.getNil() : RubyString.newUnicodeString(runtime, defaultValue);
+    }
+
     private IRubyObject unmarshal_columns(ThreadContext context, DatabaseMetaData metadata,
             ResultSet rs) throws SQLException {
         try {
+            Ruby runtime = context.getRuntime();
             List columns = new ArrayList();
             String clzName = metadata.getClass().getName().toLowerCase();
-            boolean isDerby = clzName.indexOf("derby") != -1;
             boolean isOracle = clzName.indexOf("oracle") != -1 || clzName.indexOf("oci") != -1;
-            Ruby runtime = context.getRuntime();
 
             RubyHash types = (RubyHash) native_database_types();
             IRubyObject jdbcCol = getConnectionAdapters(runtime).getConstant("JdbcColumn");
 
             while(rs.next()) {
-                String column_name = caseConvertIdentifierForRails(metadata, rs.getString(4));
-                String prec = rs.getString(7);
-                String scal = rs.getString(9);
-                int precision = -1;
-                int scale = -1;
-                if(prec != null) {
-                    precision = Integer.parseInt(prec);
-                    if(scal != null) {
-                        scale = Integer.parseInt(scal);
-                    }
-                    else if(isOracle && rs.getInt(5) == java.sql.Types.DECIMAL) { // NUMBER type in Oracle
-                        prec = null;
-                    }
-                }
-                String type = rs.getString(6);
-                if(prec != null && precision > 0) {
-                    type += "(" + precision;
-                    if(scal != null && scale > 0) {
-                        type += "," + scale;
-                    }
-                    type += ")";
-                }
-                String def = rs.getString(13);
-                IRubyObject _def;
-                if(def == null || (isOracle && def.toLowerCase().trim().equals("null"))) {
-                    _def = runtime.getNil();
-                } else {
-                    if(isOracle) {
-                        def = def.trim();
-                    }
-                    if((isDerby || isOracle) && def.length() > 0 && def.charAt(0) == '\'') {
-                        def = def.substring(1, def.length()-1);
-                    }
-                    _def = RubyString.newUnicodeString(runtime, def);
-                }
-                IRubyObject config = getInstanceVariable("@config");
-                IRubyObject c = jdbcCol.callMethod(context, "new",
-                        new IRubyObject[]{
-                                                       config, RubyString.newUnicodeString(runtime, column_name),
-                                                       _def, RubyString.newUnicodeString(runtime, type),
-                            runtime.newBoolean(!rs.getString(18).trim().equals("NO"))
+                IRubyObject column = jdbcCol.callMethod(context, "new",
+                        new IRubyObject[] {
+                            getInstanceVariable("@config"),
+                            RubyString.newUnicodeString(runtime, 
+                                    caseConvertIdentifierForRails(metadata, rs.getString(COLUMN_NAME))),
+                            defaultValueFromResultSet(runtime, rs),
+                            RubyString.newUnicodeString(runtime, typeFromResultSet(rs, isOracle)),
+                            runtime.newBoolean(!rs.getString(IS_NULLABLE).trim().equals("NO"))
                         });
-                columns.add(c);
+                columns.add(column);
 
-                IRubyObject tp = (IRubyObject)types.fastARef(c.callMethod(context,"type"));
+                IRubyObject tp = (IRubyObject)types.fastARef(column.callMethod(context,"type"));
                 if(tp != null && !tp.isNil() && tp.callMethod(context, "[]", runtime.newSymbol("limit")).isNil()) {
-                    c.callMethod(context, "limit=", runtime.getNil());
-                    if(!c.callMethod(context, "type").equals(runtime.newSymbol("decimal"))) {
-                        c.callMethod(context, "precision=", runtime.getNil());
+                    column.callMethod(context, "limit=", runtime.getNil());
+                    if(!column.callMethod(context, "type").equals(runtime.newSymbol("decimal"))) {
+                        column.callMethod(context, "precision=", runtime.getNil());
                     }
                 }
             }

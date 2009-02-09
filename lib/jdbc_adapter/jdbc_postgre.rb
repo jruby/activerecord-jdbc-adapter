@@ -52,6 +52,7 @@ module ::JdbcSpec
         end
       end
 
+      # Post process default value from JDBC into a Rails-friendly format (columns{-internal})
       def default_value(value)
         # Boolean types
         return "t" if value =~ /true/i

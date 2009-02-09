@@ -93,6 +93,21 @@ module ::JdbcSpec
         end
       end
 
+      # Post process default value from JDBC into a Rails-friendly format (columns{-internal})
+      def default_value(value)
+        return nil unless value
+
+        # Not sure why we need this for Oracle?
+        value = value.strip
+
+        return nil if value == "null"
+
+        # jdbc returns column default strings with actual single quotes around the value.
+        return $1 if value =~ /^'(.*)'$/
+
+        value
+      end
+
       def self.cast_to_date_or_time(value)
         return value if value.is_a? Date
         return nil if value.blank?

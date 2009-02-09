@@ -153,11 +153,8 @@ module SimpleTestMethods
   def test_string
     e = DbType.find(:first)
 
-    # FIXME: h2, hsql and sqlite3 seem to have no way of specifying a default '' value
     adapter_name = ActiveRecord::Base.connection.adapter_name
-    if adapter_name !~ /^(hsqldb|h2|sqlite)$/i
-      assert_equal('', e.sample_string)
-    end
+    assert_equal('', e.sample_string)
 
     e.sample_string = "ooop"
     e.save!

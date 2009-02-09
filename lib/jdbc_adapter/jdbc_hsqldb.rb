@@ -45,6 +45,14 @@ module ::JdbcSpec
         return nil if sql_type =~ /\(0\)/
         super
       end
+
+      # Post process default value from JDBC into a Rails-friendly format (columns{-internal})
+      def default_value(value)
+        # jdbc returns column default strings with actual single quotes around the value.
+        return $1 if value =~ /^'(.*)'$/
+
+        value
+      end
     end
 
     def adapter_name #:nodoc:
@@ -74,7 +82,7 @@ module ::JdbcSpec
       case value
       when String
         if respond_to?(:h2_adapter) && value.empty?
-          "NULL"
+          "''"
         elsif column && column.type == :binary
           "'#{value.unpack("H*")}'"
         else

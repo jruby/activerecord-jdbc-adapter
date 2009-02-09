@@ -37,7 +37,7 @@ module ::JdbcSpec
       private
       def simplified_type(field_type)
         case field_type
-        when /^integer\(1\)$/i                  then :boolean
+        when /integer\(1\)/i                   then :boolean
         when /text/i                           then :string
         when /int/i                            then :integer
         when /real/i                           then @scale == 0 ? :integer : :decimal
@@ -63,11 +63,19 @@ module ::JdbcSpec
         end
       end
 
+      # Post process default value from JDBC into a Rails-friendly format (columns{-internal})
+      def default_value(value)
+        # jdbc returns column default strings with actual single quotes around the value.
+        return $1 if value =~ /^'(.*)'$/
+
+        value
+      end
+
       def self.cast_to_date_or_time(value)
         return value if value.is_a? Date
         return nil if value.blank?
         guess_date_or_time((value.is_a? Time) ? value : cast_to_time(value))
-     end
+      end
 
       def self.cast_to_time(value)
         return value if value.is_a? Time
@@ -250,12 +258,11 @@ module ::JdbcSpec
       end
     end
     
-    def columns(table_name, name = nil) #:nodoc:        
-      table_structure(table_name).map do |field|
-        ::ActiveRecord::ConnectionAdapters::JdbcColumn.new(@config, field['name'], field['dflt_value'], field['type'], field['notnull'] == "0")
-      end
-    end
-
+     def columns(table_name, name = nil) #:nodoc:        
+       table_structure(table_name).map do |field|
+         ::ActiveRecord::ConnectionAdapters::JdbcColumn.new(@config, field['name'], field['dflt_value'], field['type'], field['notnull'] == "0")
+       end
+     end
   end
 end
 

@@ -53,6 +53,14 @@ module ::JdbcSpec
         return :float if field_type =~ /real/i
         super
       end
+
+      # Post process default value from JDBC into a Rails-friendly format (columns{-internal})
+      def default_value(value)
+        # jdbc returns column default strings with actual single quotes around the value.
+        return $1 if value =~ /^'(.*)'$/
+
+        value
+      end
     end
 
     def adapter_name #:nodoc:
@@ -342,7 +350,7 @@ module ::JdbcSpec
     end
 
     def columns(table_name, name=nil)
-      @connection.columns_internal(table_name, name, derby_schema)
+      @connection.columns_internal(table_name.to_s, name, derby_schema)
     end
 
     def tables
