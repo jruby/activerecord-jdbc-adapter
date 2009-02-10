@@ -215,6 +215,19 @@ module ::JdbcSpec
       end
     end
 
+    def execute(sql, name = nil)
+      if sql =~ /^\s*(UPDATE|INSERT)/i
+        i = sql =~ /\swhere\s/im
+        if i
+          sql[i..-1] = sql[i..-1].gsub(/!=\s*NULL/, 'IS NOT NULL').gsub(/=\sNULL/i, 'IS NULL')
+        end
+      else
+        sql.gsub!(/= NULL/i, 'IS NULL')
+      end
+      super
+    end
+
+
     # I don't think this method is ever called ??? (stepheneb)
     def create_column(name, refid, colno)
       stmt = COLUMN_TYPE_STMT % [refid, strip_quotes(name)]
