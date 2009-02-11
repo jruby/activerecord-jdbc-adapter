@@ -1,7 +1,7 @@
 module JdbcSpec
   module Sybase
     def self.adapter_selector
-      [/sybase/i, lambda{|cfg,adapt| adapt.extend(JdbcSpec::Sybase)}]
+      [/sybase|tds/i, lambda{|cfg,adapt| adapt.extend(JdbcSpec::Sybase)}]
     end
 
       def add_limit_offset!(sql, options) # :nodoc:
@@ -35,5 +35,16 @@ module JdbcSpec
         !@limit.nil? && @limit == 0
       end
 
+      def modify_types(tp) #:nodoc:
+        tp[:primary_key] = "NUMERIC(22,0) IDENTITY PRIMARY KEY"
+        tp[:integer][:limit] = nil
+        tp[:boolean] = {:name => "bit"}
+        tp[:binary] = {:name => "image"}
+        tp
+      end
+
+      def remove_index(table_name, options = {})
+        execute "DROP INDEX #{table_name}.#{index_name(table_name, options)}"
+      end
   end
 end

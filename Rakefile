@@ -104,6 +104,18 @@ Rake::TestTask.new(:test_jdbc_adapters) do | t |
   t.libs << 'test'
 end
 
+# Ensure that the jTDS driver is in your classpath before launching rake
+Rake::TestTask.new(:test_sybase_jtds) do |t|
+  t.test_files = FileList['test/sybase_jtds_simple_test.rb']
+  t.libs << 'test' 
+end
+
+# Ensure that the jConnect driver is in your classpath before launching rake
+Rake::TestTask.new(:test_sybase_jconnect) do |t|
+  t.test_files = FileList['test/sybase_jconnect_simple_test.rb']
+  t.libs << 'test' 
+end
+
 MANIFEST = FileList["History.txt", "Manifest.txt", "README.txt", 
   "Rakefile", "LICENSE.txt", "lib/**/*.rb", "lib/jdbc_adapter/jdbc_adapter_internal.jar", "test/**/*.rb",
    "lib/**/*.rake", "src/**/*.java"]
