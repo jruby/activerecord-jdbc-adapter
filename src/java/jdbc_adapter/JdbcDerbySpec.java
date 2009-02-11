@@ -110,13 +110,13 @@ public class JdbcDerbySpec {
         IRubyObject value = args[0];
         if (args.length > 1) {
             IRubyObject col = args[1];
-            IRubyObject type = rubyApi.callMethod(col, "type");
+            String type = rubyApi.callMethod(col, "type").toString();
             if (value instanceof RubyString) {
-                if (type == runtime.newSymbol("string")) {
+                if (type.equals("string")) {
                     return quote_string_with_surround(runtime, "'", (RubyString)value, "'");
-                } else if (type == runtime.newSymbol("text")) {
+                } else if (type.equals("text")) {
                     return quote_string_with_surround(runtime, "CAST('", (RubyString)value, "' AS CLOB)");
-                } else if (type == runtime.newSymbol("binary")) {
+                } else if (type.equals("binary")) {
                     return hexquote_string_with_surround(runtime, "CAST(X'", (RubyString)value, "' AS BLOB)");
                 } else {
                     // column type :integer or other numeric or date version
@@ -127,7 +127,7 @@ public class JdbcDerbySpec {
                     }
                 }
             } else if ((value instanceof RubyFloat) || (value instanceof RubyFixnum) || (value instanceof RubyBignum)) {
-                if (type == runtime.newSymbol("string")) {
+                if (type.equals("string")) {
                     return quote_string_with_surround(runtime, "'", RubyString.objAsString(context, value), "'");
                 }
             }
