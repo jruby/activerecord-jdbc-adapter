@@ -131,8 +131,9 @@ public class RubyJdbcConnection extends RubyObject {
                     if (schemaName != null) schemaName = caseConvertIdentifierForJdbc(metadata, schemaName);
                     table_name = caseConvertIdentifierForJdbc(metadata, table_name);
 
+                    String[] tableTypes = new String[]{"TABLE","VIEW","SYNONYM"};
                     RubyArray matchingTables = (RubyArray) tableLookupBlock(context.getRuntime(),
-                                                                            c.getCatalog(), schemaName, table_name, new String[]{"TABLE","VIEW"}).call(c);
+                            c.getCatalog(), schemaName, table_name, tableTypes).call(c);
                     if (matchingTables.isEmpty()) {
                         throw new SQLException("Table " + table_name + " does not exist");
                     }
