@@ -315,58 +315,6 @@ module ActiveRecord
       end
       private :dup_native_types
 
-      # Default JDBC introspection for index metadata on the JdbcConnection.
-      # This is currently used for migrations by JdbcSpec::HSQDLB and JdbcSpec::Derby
-      # indexes with a little filtering tacked on.
-      #
-      # JDBC index metadata is denormalized (multiple rows may be returned for
-      # one index, one row per column in the index), so a simple block-based
-      # filter like that used for tables doesn't really work here.  Callers
-      # should filter the return from this method instead.
-      def indexes(table_name, name = nil, schema_name = nil)
-        with_connection_retry_guard do |conn|
-          metadata = conn.getMetaData
-          begin
-            unless String === table_name
-              table_name = table_name.to_s
-            else
-              table_name = table_name.dup
-            end
-            table_name.upcase! if metadata.storesUpperCaseIdentifiers
-            table_name.downcase! if metadata.storesLowerCaseIdentifiers
-            resultset = metadata.getIndexInfo(nil, schema_name, table_name, false, false)
-            primary_keys = primary_keys(table_name)
-            indexes = []
-            current_index = nil
-            while resultset.next
-              index_name = resultset.get_string(Jdbc::IndexMetaData::INDEX_NAME)
-              next unless index_name
-              index_name.downcase!
-              column_name = resultset.get_string(Jdbc::IndexMetaData::COLUMN_NAME).downcase
-
-              next if primary_keys.include? column_name
-
-              # We are working on a new index
-              if current_index != index_name
-                current_index = index_name
-                table_name = resultset.get_string(Jdbc::IndexMetaData::TABLE_NAME).downcase
-                non_unique = resultset.get_boolean(Jdbc::IndexMetaData::NON_UNIQUE)
-
-                # empty list for column names, we'll add to that in just a bit
-                indexes << IndexDefinition.new(table_name, index_name, !non_unique, [])
-              end
-
-              # One or more columns can be associated with an index
-              indexes.last.columns << column_name
-            end
-            resultset.close
-            indexes
-          ensure
-            metadata.close rescue nil
-          end
-        end
-      end
-
       def jndi_connection?
         @jndi_connection
       end

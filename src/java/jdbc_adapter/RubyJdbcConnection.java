@@ -111,8 +111,8 @@ public class RubyJdbcConnection extends RubyObject {
     @JRubyMethod(name = {"columns", "columns_internal"}, required = 1, optional = 2)
     public IRubyObject columns_internal(final ThreadContext context, final IRubyObject[] args)
             throws SQLException, IOException {
-        return withConnectionAndRetry(context, new SQLBlock() {
-            public IRubyObject call(Connection c) throws SQLException {
+        return (IRubyObject) withConnectionAndRetry(context, new SQLBlock() {
+            public Object call(Connection c) throws SQLException {
                 ResultSet results = null;
                 try {
                     String table_name = rubyApi.convertToRubyString(args[0]).getUnicodeValue();
@@ -190,8 +190,8 @@ public class RubyJdbcConnection extends RubyObject {
     @JRubyMethod(name = "execute_id_insert", required = 2)
     public IRubyObject execute_id_insert(ThreadContext context, final IRubyObject sql,
             final IRubyObject id) throws SQLException {
-        return withConnectionAndRetry(context, new SQLBlock() {
-            public IRubyObject call(Connection c) throws SQLException {
+        return (IRubyObject) withConnectionAndRetry(context, new SQLBlock() {
+            public Object call(Connection c) throws SQLException {
                 PreparedStatement ps = c.prepareStatement(rubyApi.convertToRubyString(sql).getUnicodeValue());
                 try {
                     ps.setLong(1, RubyNumeric.fix2long(id));
@@ -207,8 +207,8 @@ public class RubyJdbcConnection extends RubyObject {
     @JRubyMethod(name = "execute_insert", required = 1)
     public IRubyObject execute_insert(final ThreadContext context, final IRubyObject sql)
             throws SQLException {
-        return withConnectionAndRetry(context, new SQLBlock() {
-            public IRubyObject call(Connection c) throws SQLException {
+        return (IRubyObject) withConnectionAndRetry(context, new SQLBlock() {
+            public Object call(Connection c) throws SQLException {
                 Statement stmt = null;
                 try {
                     stmt = c.createStatement();
@@ -239,8 +239,8 @@ public class RubyJdbcConnection extends RubyObject {
     }
 
     protected IRubyObject executeQuery(final ThreadContext context, final String query, final int maxRows) {
-        return withConnectionAndRetry(context, new SQLBlock() {
-            public IRubyObject call(Connection c) throws SQLException {
+        return (IRubyObject) withConnectionAndRetry(context, new SQLBlock() {
+            public Object call(Connection c) throws SQLException {
                 Statement stmt = null;
                 try {
                     DatabaseMetaData metadata = c.getMetaData();
@@ -257,14 +257,94 @@ public class RubyJdbcConnection extends RubyObject {
     @JRubyMethod(name = "execute_update", required = 1)
     public IRubyObject execute_update(final ThreadContext context, final IRubyObject sql)
             throws SQLException {
-        return withConnectionAndRetry(context, new SQLBlock() {
-            public IRubyObject call(Connection c) throws SQLException {
+        return (IRubyObject) withConnectionAndRetry(context, new SQLBlock() {
+            public Object call(Connection c) throws SQLException {
                 Statement stmt = null;
                 try {
                     stmt = c.createStatement();
                     return context.getRuntime().newFixnum((long)stmt.executeUpdate(rubyApi.convertToRubyString(sql).getUnicodeValue()));
                 } finally {
                     close(stmt);
+                }
+            }
+        });
+    }
+
+    @JRubyMethod(name = "indexes")
+    public IRubyObject indexes(ThreadContext context, IRubyObject tableName, IRubyObject name, IRubyObject schemaName) {
+        return indexes(context, toStringOrNull(tableName), toStringOrNull(name), toStringOrNull(schemaName));
+    }
+
+    private static final int INDEX_TABLE_NAME = 3;
+    private static final int INDEX_NON_UNIQUE = 4;
+    private static final int INDEX_NAME = 6;
+    private static final int INDEX_COLUMN_NAME = 9;
+
+    /**
+     * Default JDBC introspection for index metadata on the JdbcConnection.
+     *
+     * JDBC index metadata is denormalized (multiple rows may be returned for
+     * one index, one row per column in the index), so a simple block-based
+     * filter like that used for tables doesn't really work here.  Callers
+     * should filter the return from this method instead.
+     */
+    protected IRubyObject indexes(final ThreadContext context, final String tableNameArg, final String name, final String schemaNameArg) {
+        return (IRubyObject) withConnectionAndRetry(context, new SQLBlock() {
+            public Object call(Connection c) throws SQLException {
+                Ruby runtime = context.getRuntime();
+                DatabaseMetaData metadata = c.getMetaData();
+                String tableName = caseConvertIdentifierForJdbc(metadata, tableNameArg);
+                String schemaName = caseConvertIdentifierForJdbc(metadata, schemaNameArg);
+                
+                ResultSet resultSet = null;
+                List indexes = new ArrayList();
+                try {
+                    resultSet = metadata.getIndexInfo(null, schemaName, tableName, false, false);
+                    List primaryKeys = primaryKeys(context, tableName);
+                    String currentIndex = null;
+                    RubyModule indexDefinitionClass = getConnectionAdapters(runtime).getClass("IndexDefinition");
+
+                    while (resultSet.next()) {
+                        String indexName = resultSet.getString(INDEX_NAME);
+
+                        if (indexName == null) continue;
+
+                        indexName = caseConvertIdentifierForRails(metadata, indexName);
+
+                        RubyString columnName = RubyString.newUnicodeString(runtime, caseConvertIdentifierForRails(metadata, resultSet.getString(INDEX_COLUMN_NAME)));
+
+                        if (primaryKeys.contains(columnName)) continue;
+
+                        // We are working on a new index
+                        if (!indexName.equals(currentIndex)) {
+                            currentIndex = indexName;
+
+                            tableName = caseConvertIdentifierForRails(metadata, resultSet.getString(INDEX_TABLE_NAME));
+                            boolean nonUnique = resultSet.getBoolean(INDEX_NON_UNIQUE);
+
+                            IRubyObject indexDefinition = indexDefinitionClass.callMethod(context, "new",
+                                    new IRubyObject[] {
+                                RubyString.newUnicodeString(runtime, tableName),
+                                RubyString.newUnicodeString(runtime, indexName),
+                                runtime.newBoolean(!nonUnique),
+                                runtime.newArray()
+                            });
+
+                            // empty list for column names, we'll add to that in just a bit
+                            indexes.add(indexDefinition);
+                        }
+
+                        // One or more columns can be associated with an index
+                        IRubyObject lastIndex = (IRubyObject) indexes.get(indexes.size() - 1);
+
+                        if (lastIndex != null) {
+                            lastIndex.callMethod(context, "columns").callMethod(context, "<<", columnName);
+                        }
+                    }
+
+                    return runtime.newArray(indexes);
+                } finally {
+                    close(resultSet);
                 }
             }
         });
@@ -283,8 +363,8 @@ public class RubyJdbcConnection extends RubyObject {
     @JRubyMethod(name = "insert_bind", required = 3, rest = true)
     public IRubyObject insert_bind(final ThreadContext context, final IRubyObject[] args) throws SQLException {
         final Ruby runtime = context.getRuntime();
-        return withConnectionAndRetry(context, new SQLBlock() {
-            public IRubyObject call(Connection c) throws SQLException {
+        return (IRubyObject) withConnectionAndRetry(context, new SQLBlock() {
+            public Object call(Connection c) throws SQLException {
                 PreparedStatement ps = null;
                 try {
                     ps = c.prepareStatement(rubyApi.convertToRubyString(args[0]).toString(), Statement.RETURN_GENERATED_KEYS);
@@ -305,27 +385,30 @@ public class RubyJdbcConnection extends RubyObject {
     
 
     @JRubyMethod(name = "primary_keys", required = 1)
-    public IRubyObject primary_keys(final ThreadContext context, final IRubyObject _table_name)
-            throws SQLException {
-        return withConnectionAndRetry(context, new SQLBlock() {
-            public IRubyObject call(Connection c) throws SQLException {
+    public IRubyObject primary_keys(ThreadContext context, IRubyObject tableName) throws SQLException {
+        return context.getRuntime().newArray(primaryKeys(context, tableName.toString()));
+    }
+    
+    protected List primaryKeys(final ThreadContext context, final String tableNameArg) {
+        return (List) withConnectionAndRetry(context, new SQLBlock() {
+            public Object call(Connection c) throws SQLException {
                 Ruby runtime = context.getRuntime();
                 DatabaseMetaData metadata = c.getMetaData();
-                String table_name = caseConvertIdentifierForJdbc(metadata, _table_name.toString());
-                ResultSet result_set = null;
+                String tableName = caseConvertIdentifierForJdbc(metadata, tableNameArg);
+                ResultSet resultSet = null;
                 List keyNames = new ArrayList();
                 try {
-                    result_set = metadata.getPrimaryKeys(null, null, table_name);
+                    resultSet = metadata.getPrimaryKeys(null, null, tableName);
 
-                    while (result_set.next()) {
+                    while (resultSet.next()) {
                         keyNames.add(RubyString.newUnicodeString(runtime,
-                                caseConvertIdentifierForRails(metadata, result_set.getString(4))));
+                                caseConvertIdentifierForRails(metadata, resultSet.getString(4))));
                     }
                 } finally {
-                    close(result_set);
+                    close(resultSet);
                 }
 
-                return runtime.newArray(keyNames);
+                return keyNames;
             }
         });
     }
@@ -396,7 +479,7 @@ public class RubyJdbcConnection extends RubyObject {
     }
 
     protected IRubyObject tables(ThreadContext context, String catalog, String schemaPattern, String tablePattern, String[] types) {
-        return withConnectionAndRetry(context, tableLookupBlock(context.getRuntime(), catalog, schemaPattern, tablePattern, types));
+        return (IRubyObject) withConnectionAndRetry(context, tableLookupBlock(context.getRuntime(), catalog, schemaPattern, tablePattern, types));
     }
 
     /*
@@ -406,8 +489,8 @@ public class RubyJdbcConnection extends RubyObject {
     public IRubyObject update_bind(final ThreadContext context, final IRubyObject[] args) throws SQLException {
         final Ruby runtime = context.getRuntime();
         Arity.checkArgumentCount(runtime, args, 3, 4);
-        return withConnectionAndRetry(context, new SQLBlock() {
-            public IRubyObject call(Connection c) throws SQLException {
+        return (IRubyObject) withConnectionAndRetry(context, new SQLBlock() {
+            public Object call(Connection c) throws SQLException {
                 PreparedStatement ps = null;
                 try {
                     ps = c.prepareStatement(rubyApi.convertToRubyString(args[0]).toString());
@@ -423,8 +506,8 @@ public class RubyJdbcConnection extends RubyObject {
 
     @JRubyMethod(name = "with_connection_retry_guard", frame = true)
     public IRubyObject with_connection_retry_guard(final ThreadContext context, final Block block) {
-        return withConnectionAndRetry(context, new SQLBlock() {
-            public IRubyObject call(Connection c) throws SQLException {
+        return (IRubyObject) withConnectionAndRetry(context, new SQLBlock() {
+            public Object call(Connection c) throws SQLException {
                 return block.call(context, new IRubyObject[] { wrappedConnection(c) });
             }
         });
@@ -437,8 +520,8 @@ public class RubyJdbcConnection extends RubyObject {
     public IRubyObject write_large_object(ThreadContext context, final IRubyObject[] args)
             throws SQLException, IOException {
         final Ruby runtime = context.getRuntime();
-        return withConnectionAndRetry(context, new SQLBlock() {
-            public IRubyObject call(Connection c) throws SQLException {
+        return (IRubyObject) withConnectionAndRetry(context, new SQLBlock() {
+            public Object call(Connection c) throws SQLException {
                 String sql = "UPDATE " + rubyApi.convertToRubyString(args[2])
                         + " SET " + rubyApi.convertToRubyString(args[1])
                         + " = ? WHERE " + rubyApi.convertToRubyString(args[3])
@@ -478,7 +561,7 @@ public class RubyJdbcConnection extends RubyObject {
      */
     public static String caseConvertIdentifierForRails(DatabaseMetaData metadata, String value)
             throws SQLException {
-        assert value != null : "value is not null";
+        if (value == null) return null;
         
         return metadata.storesUpperCaseIdentifiers() || !HAS_SMALL.matcher(value).find() ? value.toLowerCase() : value;
     }
@@ -490,7 +573,7 @@ public class RubyJdbcConnection extends RubyObject {
      */
     public static String caseConvertIdentifierForJdbc(DatabaseMetaData metadata, String value) 
             throws SQLException {
-        assert value != null : "value is not null";
+        if (value == null) return null;
         
         if (metadata.storesUpperCaseIdentifiers()) {
             return value.toUpperCase();
@@ -784,11 +867,13 @@ public class RubyJdbcConnection extends RubyObject {
         return RubyString.newUnicodeString(runtime, string);
     }
 
+    private static final int TABLE_NAME = 3;
+
     private SQLBlock tableLookupBlock(final Ruby runtime,
             final String catalog, final String schemapat,
             final String tablepat, final String[] types) {
         return new SQLBlock() {
-            public IRubyObject call(Connection c) throws SQLException {
+            public Object call(Connection c) throws SQLException {
                 ResultSet rs = null;
                 try {
                     DatabaseMetaData metadata = c.getMetaData();
@@ -804,7 +889,7 @@ public class RubyJdbcConnection extends RubyObject {
                     rs = metadata.getTables(catalog, realschema, realtablepat, types);
                     List arr = new ArrayList();
                     while (rs.next()) {
-                        String name = rs.getString(3).toLowerCase();
+                        String name = caseConvertIdentifierForRails(metadata, rs.getString(TABLE_NAME));
                         // Handle stupid Oracle 10g RecycleBin feature
                         if (!isOracle || !name.startsWith("bin$")) {
                             arr.add(RubyString.newUnicodeString(runtime, name));
@@ -945,7 +1030,7 @@ public class RubyJdbcConnection extends RubyObject {
         return runtime.newArray(results);
     }
 
-    private IRubyObject withConnectionAndRetry(ThreadContext context, SQLBlock block) {
+    private Object withConnectionAndRetry(ThreadContext context, SQLBlock block) {
         int tries = 1;
         int i = 0;
         Throwable toWrap = null;
