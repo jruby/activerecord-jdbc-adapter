@@ -261,12 +261,12 @@ module SimpleTestMethods
     def self.up
       change_table :entries do |t|
         t.string :author
-      end
+      end if respond_to?(:change_table)
     end
     def self.down
       change_table :entries do |t|
         t.remove :author
-      end
+      end if respond_to?(:change_table)
     end
   end
   def test_change_table

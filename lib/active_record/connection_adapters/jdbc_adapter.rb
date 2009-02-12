@@ -9,10 +9,44 @@ begin
 rescue LoadError
 end if defined?(RAILS_ROOT)
 
+# AR's 2.2 version of this method is sufficient, but we need it for
+# older versions
+if ActiveRecord::VERSION::MAJOR <= 2 && ActiveRecord::VERSION::MINOR < 2
+  module ActiveRecord
+    module ConnectionAdapters # :nodoc:
+      module SchemaStatements
+        # Convert the speficied column type to a SQL string.
+        def type_to_sql(type, limit = nil, precision = nil, scale = nil)
+          native = native_database_types[type.to_s.downcase.to_sym]
+          column_type_sql = native.is_a?(Hash) ? native[:name] : native
+          if type == :decimal # ignore limit, use precison and scale
+            precision ||= native[:precision]
+            scale ||= native[:scale]
+            if precision
+              if scale
+                column_type_sql += "(#{precision},#{scale})"
+              else
+                column_type_sql += "(#{precision})"
+              end
+            else
+              raise ArgumentError, "Error adding decimal column: precision cannot be empty if scale if specified" if scale
+            end
+            column_type_sql
+          else
+            limit ||= native[:limit]
+            column_type_sql += "(#{limit})" if limit
+            column_type_sql
+          end
+        end
+      end
+    end
+  end
+end
+
 module JdbcSpec
   module ActiveRecordExtensions
     def jdbc_connection(config)
-      connection_class = config[:jdbc_connection_class] || 
+      connection_class = config[:jdbc_connection_class] ||
         ::ActiveRecord::ConnectionAdapters::JdbcConnection
       connection = connection_class.new(config)
       ::ActiveRecord::ConnectionAdapters::JdbcAdapter.new(connection, logger, config)

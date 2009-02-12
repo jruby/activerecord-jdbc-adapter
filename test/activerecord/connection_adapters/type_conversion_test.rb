@@ -7,7 +7,7 @@ require 'test/unit'
 JInteger = java.lang.Integer
 
 class TypeConversionTest < Test::Unit::TestCase
-  TEST_TIME = Time.at(1169964202)
+  TEST_TIME = Time.at(1169964202).gmtime
   def setup
     DbTypeMigration.up  
     DbType.create(
