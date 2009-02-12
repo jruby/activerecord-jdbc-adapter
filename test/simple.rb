@@ -131,6 +131,15 @@ module SimpleTestMethods
     end
   end
 
+  def test_save_float
+    e = DbType.find(:first)
+    e.sample_float = 12.0
+    e.save!
+
+    e = DbType.find(:first)
+    assert_equal(12.0, e.sample_float)
+  end
+
   def test_save_date
     date = Date.new(2007)
     e = DbType.find(:first)

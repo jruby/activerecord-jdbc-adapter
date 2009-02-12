@@ -67,7 +67,7 @@ module ::JdbcSpec
       # in migrations
       tp[:boolean] = { :name => "tinyint" }
       tp[:text][:limit] = nil
-      tp[:float][:limit] = 17
+      tp[:float][:limit] = 17 if defined?(::Jdbc::H2)
       tp[:string][:limit] = 255
       tp[:datetime] = { :name => "DATETIME" }
       tp[:timestamp] = { :name => "DATETIME" }

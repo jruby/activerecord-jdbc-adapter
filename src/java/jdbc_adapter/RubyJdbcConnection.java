@@ -619,6 +619,13 @@ public class RubyJdbcConnection extends RubyObject {
     private static String toStringOrNull(IRubyObject arg) {
         return arg.isNil() ? null : arg.toString();
     }
+
+    private static IRubyObject floatToRuby(Ruby runtime, ResultSet resultSet, float floatValue)
+            throws SQLException, IOException {
+        if (floatValue == 0 && resultSet.wasNull()) return runtime.getNil();
+
+        return runtime.newFloat(floatValue);
+    }
     
     protected Connection getConnection() {
         return getConnection(false);
@@ -733,6 +740,8 @@ public class RubyJdbcConnection extends RubyObject {
                 return timestampToRuby(runtime, resultSet, resultSet.getTimestamp(column));
             case Types.INTEGER: case Types.SMALLINT: case Types.TINYINT:
                 return integerToRuby(runtime, resultSet, resultSet.getLong(column));
+            case Types.REAL:
+                return floatToRuby(runtime, resultSet, resultSet.getFloat(column));
             default:
                 return stringToRuby(runtime, resultSet, resultSet.getString(column));
             }
