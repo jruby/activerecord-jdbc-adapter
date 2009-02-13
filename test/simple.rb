@@ -160,6 +160,30 @@ module SimpleTestMethods
     e = DbType.find(:first)
     assert_equal(true, e.sample_boolean)
   end
+  
+  def test_integer
+    # An unset boolean should default to nil
+    e = DbType.find(:first)
+    assert_equal(nil, e.sample_integer)
+
+    e.sample_integer = 10
+    e.save!
+
+    e = DbType.find(:first)
+    assert_equal(10, e.sample_integer)
+  end
+
+  def test_text
+    # An unset boolean should default to nil
+    e = DbType.find(:first)
+    assert_equal(nil, e.sample_text)
+
+    e.sample_text = "ooop"
+    e.save!
+
+    e = DbType.find(:first)
+    assert_equal("ooop", e.sample_text)
+  end
 
   def test_string
     e = DbType.find(:first)

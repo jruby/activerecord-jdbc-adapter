@@ -14,6 +14,8 @@ class DbTypeMigration < ActiveRecord::Migration
       t.column :sample_binary, :binary
       t.column :sample_boolean, :boolean
       t.column :sample_string, :string, :default => ''
+      t.column :sample_integer, :integer, :limit => 5
+      t.column :sample_text, :text
     end
   end
 

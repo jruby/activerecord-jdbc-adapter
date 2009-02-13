@@ -137,6 +137,13 @@ module ::JdbcSpec
       execute "ALTER TABLE #{table_name} ALTER COLUMN #{column_name} RENAME TO #{new_column_name}"
     end
 
+    # Maps logical Rails types to MySQL-specific data types.
+    def type_to_sql(type, limit = nil, precision = nil, scale = nil)
+      return super if defined?(::Jdbc::H2) || type.to_s != 'integer' || limit == nil
+
+      type
+    end
+
     def rename_table(name, new_name)
       execute "ALTER TABLE #{name} RENAME TO #{new_name}"
     end
