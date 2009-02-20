@@ -320,18 +320,11 @@ module ::JdbcSpec
 
       @connection.connection.close
       begin
-        file = "db/#{RAILS_ENV}_structure.sql"
-        `pg_dump -i -U "#{@config[:username]}" -s -x -O -f #{file} #{search_path} #{database}`
+        definition = `pg_dump -i -U "#{@config[:username]}" -s -x -O #{search_path} #{database}`
         raise "Error dumping database" if $?.exitstatus == 1
 
         # need to patch away any references to SQL_ASCII as it breaks the JDBC driver
-        lines = File.readlines(file)
-        File.open(file, "w") do |io|
-          lines.each do |line|
-            line.gsub!(/SQL_ASCII/, 'UNICODE')
-            io.write(line)
-          end
-        end
+        definition.gsub(/SQL_ASCII/, 'UNICODE')
       ensure
         reconnect!
       end
