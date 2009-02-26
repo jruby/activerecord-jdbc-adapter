@@ -10,7 +10,6 @@ module ::JdbcSpec
       config[:url] ||= "jdbc:postgresql://#{config[:host]}:#{config[:port]}/#{config[:database]}"
       config[:url] << config[:pg_params] if config[:pg_params]
       config[:driver] ||= "org.postgresql.Driver"
-      config[:jdbc_connection_class] = ::ActiveRecord::ConnectionAdapters::PostgresJdbcConnection
       jdbc_connection(config)
     end
   end
@@ -71,6 +70,10 @@ module ::JdbcSpec
         # and we can't know the value of that, so return nil.
         return nil
       end
+    end
+
+    def jdbc_connection_class
+      ::ActiveRecord::ConnectionAdapters::PostgresJdbcConnection
     end
 
     def modify_types(tp)

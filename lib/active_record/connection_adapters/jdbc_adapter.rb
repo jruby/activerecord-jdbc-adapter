@@ -50,10 +50,7 @@ end
 module JdbcSpec
   module ActiveRecordExtensions
     def jdbc_connection(config)
-      connection_class = config[:jdbc_connection_class] ||
-        ::ActiveRecord::ConnectionAdapters::JdbcConnection
-      connection = connection_class.new(config)
-      ::ActiveRecord::ConnectionAdapters::JdbcAdapter.new(connection, logger, config)
+      ::ActiveRecord::ConnectionAdapters::JdbcAdapter.new(nil, logger, config)
     end
     alias jndi_connection jdbc_connection
 
@@ -465,8 +462,12 @@ module ActiveRecord
         h[val[0]] = val[1]; h }
 
       def initialize(connection, logger, config)
-        super(connection, logger)
         @config = config
+        unless connection
+          connection_class = jdbc_connection_class
+          connection = connection_class.new(config)
+        end
+        super(connection, logger)
         dialect = config[:dialect] || config[:driver]
         for reg, func in ADAPTER_TYPES
           if reg === dialect.to_s
@@ -475,6 +476,10 @@ module ActiveRecord
         end
         connection.adapter = self
         JndiConnectionPoolCallbacks.prepare(self, connection)
+      end
+
+      def jdbc_connection_class
+        ::ActiveRecord::ConnectionAdapters::JdbcConnection
       end
 
       def modify_types(tp)
