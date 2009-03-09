@@ -13,12 +13,12 @@ module ::JdbcSpec
   module CacheDB
     include TSqlMethods
 
-    def self.column_selector
-      [ /cache/i, lambda {  | cfg, col | col.extend( ::JdbcSpec::CacheDB::Column ) } ]
+    def self.adapter_matcher(name, *)
+     name =~ /cache/i ? self : false
     end
 
-    def self.adapter_selector
-      [ /cache/i, lambda {  | cfg, adapt | adapt.extend( ::JdbcSpec::CacheDB ) } ]
+    def self.column_selector
+      [ /cache/i, lambda {  | cfg, col | col.extend( ::JdbcSpec::CacheDB::Column ) } ]
     end
 
     module Column

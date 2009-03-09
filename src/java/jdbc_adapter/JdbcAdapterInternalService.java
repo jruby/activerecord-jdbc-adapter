@@ -41,6 +41,7 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
     public boolean basicLoad(final Ruby runtime) throws IOException {
         RubyClass jdbcConnection = RubyJdbcConnection.createJdbcConnectionClass(runtime);
         PostgresRubyJdbcConnection.createPostgresJdbcConnectionClass(runtime, jdbcConnection);
+        Sqlite3RubyJdbcConnection.createSqlite3JdbcConnectionClass(runtime, jdbcConnection);
         RubyModule jdbcSpec = runtime.getOrCreateModule("JdbcSpec");
 
         rubyApi = JavaEmbedUtils.newObjectAdapter();

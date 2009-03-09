@@ -133,7 +133,7 @@ public class RubyJdbcConnection extends RubyObject {
 
                     String[] tableTypes = new String[]{"TABLE","VIEW","SYNONYM"};
                     RubyArray matchingTables = (RubyArray) tableLookupBlock(context.getRuntime(),
-                            c.getCatalog(), schemaName, table_name, tableTypes).call(c);
+                            c.getCatalog(), schemaName, table_name, tableTypes, false).call(c);
                     if (matchingTables.isEmpty()) {
                         throw new SQLException("Table " + table_name + " does not exist");
                     }
@@ -247,7 +247,7 @@ public class RubyJdbcConnection extends RubyObject {
                     DatabaseMetaData metadata = c.getMetaData();
                     stmt = c.createStatement();
                     stmt.setMaxRows(maxRows);
-                    return unmarshalResult(context, metadata, stmt.executeQuery(query));
+                    return unmarshalResult(context, metadata, stmt.executeQuery(query), false);
                 } finally {
                     close(stmt);
                 }
@@ -446,7 +446,7 @@ public class RubyJdbcConnection extends RubyObject {
     public IRubyObject set_native_database_types(ThreadContext context) throws SQLException, IOException {
         Ruby runtime = context.getRuntime();
         DatabaseMetaData metadata = getConnection(true).getMetaData();
-        IRubyObject types = unmarshalResult(context, metadata, metadata.getTypeInfo());
+        IRubyObject types = unmarshalResult(context, metadata, metadata.getTypeInfo(), true);
         IRubyObject typeConverter = getConnectionAdapters(runtime).getConstant("JdbcTypeConverter");
         IRubyObject value = rubyApi.callMethod(rubyApi.callMethod(typeConverter, "new", types), "choose_best_types");
         setInstanceVariable("@native_types", value);
@@ -480,7 +480,7 @@ public class RubyJdbcConnection extends RubyObject {
     }
 
     protected IRubyObject tables(ThreadContext context, String catalog, String schemaPattern, String tablePattern, String[] types) {
-        return (IRubyObject) withConnectionAndRetry(context, tableLookupBlock(context.getRuntime(), catalog, schemaPattern, tablePattern, types));
+        return (IRubyObject) withConnectionAndRetry(context, tableLookupBlock(context.getRuntime(), catalog, schemaPattern, tablePattern, types, false));
     }
 
     /*
@@ -547,8 +547,6 @@ public class RubyJdbcConnection extends RubyObject {
         });
     }
 
-    private static final java.util.regex.Pattern HAS_SMALL = java.util.regex.Pattern.compile("[a-z]");
-
     /**
      * Convert an identifier coming back from the database to a case which Rails is expecting.
      *
@@ -564,7 +562,7 @@ public class RubyJdbcConnection extends RubyObject {
             throws SQLException {
         if (value == null) return null;
         
-        return metadata.storesUpperCaseIdentifiers() || !HAS_SMALL.matcher(value).find() ? value.toLowerCase() : value;
+        return metadata.storesUpperCaseIdentifiers() ? value.toLowerCase() : value;
     }
 
     /**
@@ -879,9 +877,9 @@ public class RubyJdbcConnection extends RubyObject {
 
     private static final int TABLE_NAME = 3;
 
-    private SQLBlock tableLookupBlock(final Ruby runtime,
+    protected SQLBlock tableLookupBlock(final Ruby runtime,
             final String catalog, final String schemapat,
-            final String tablepat, final String[] types) {
+            final String tablepat, final String[] types, final boolean downCase) {
         return new SQLBlock() {
             public Object call(Connection c) throws SQLException {
                 ResultSet rs = null;
@@ -899,7 +897,13 @@ public class RubyJdbcConnection extends RubyObject {
                     rs = metadata.getTables(catalog, realschema, realtablepat, types);
                     List arr = new ArrayList();
                     while (rs.next()) {
-                        String name = caseConvertIdentifierForRails(metadata, rs.getString(TABLE_NAME));
+                        String name;
+                        
+                        if (downCase) {
+                            name = rs.getString(TABLE_NAME).toLowerCase();
+                        } else {
+                            name = caseConvertIdentifierForRails(metadata, rs.getString(TABLE_NAME));
+                        }
                         // Handle stupid Oracle 10g RecycleBin feature
                         if (!isOracle || !name.startsWith("bin$")) {
                             arr.add(RubyString.newUnicodeString(runtime, name));
@@ -1025,12 +1029,12 @@ public class RubyJdbcConnection extends RubyObject {
      * @param downCase should column names only be in lower case?
      */
     protected static IRubyObject unmarshalResult(ThreadContext context, DatabaseMetaData metadata,
-            ResultSet resultSet) throws SQLException {
+            ResultSet resultSet, boolean downCase) throws SQLException {
         Ruby runtime = context.getRuntime();
         List results = new ArrayList();
 
         try {
-            ColumnData[] columns = ColumnData.setup(runtime, metadata, resultSet.getMetaData());
+            ColumnData[] columns = ColumnData.setup(runtime, metadata, resultSet.getMetaData(), downCase);
 
             populateFromResultSet(context, runtime, results, resultSet, columns);
         } finally {
@@ -1040,7 +1044,7 @@ public class RubyJdbcConnection extends RubyObject {
         return runtime.newArray(results);
     }
 
-    private Object withConnectionAndRetry(ThreadContext context, SQLBlock block) {
+    protected Object withConnectionAndRetry(ThreadContext context, SQLBlock block) {
         int tries = 1;
         int i = 0;
         Throwable toWrap = null;
@@ -1121,12 +1125,17 @@ public class RubyJdbcConnection extends RubyObject {
         }
 
         public static ColumnData[] setup(Ruby runtime, DatabaseMetaData databaseMetadata,
-                ResultSetMetaData metadata) throws SQLException {
+                ResultSetMetaData metadata, boolean downCase) throws SQLException {
             int columnsCount = metadata.getColumnCount();
             ColumnData[] columns = new ColumnData[columnsCount];
 
             for (int i = 1; i <= columnsCount; i++) { // metadata is one-based
-                String name = RubyJdbcConnection.caseConvertIdentifierForRails(databaseMetadata, metadata.getColumnLabel(i));
+                String name;
+                if (downCase) {
+                    name = metadata.getColumnLabel(i).toLowerCase();
+                } else {
+                    name = RubyJdbcConnection.caseConvertIdentifierForRails(databaseMetadata, metadata.getColumnLabel(i));
+                }
 
                 columns[i - 1] = new ColumnData(RubyString.newUnicodeString(runtime, name), metadata.getColumnType(i));
             }

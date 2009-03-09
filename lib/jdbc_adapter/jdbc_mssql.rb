@@ -23,12 +23,12 @@ module JdbcSpec
   module MsSQL
     include TSqlMethods
 
-    def self.column_selector
-      [/sqlserver|tds/i, lambda {|cfg,col| col.extend(::JdbcSpec::MsSQL::Column)}]
+    def self.adapter_matcher(name, *)
+      name =~ /sqlserver|tds/i ? self : false
     end
 
-    def self.adapter_selector
-      [/sqlserver|tds/i, lambda {|cfg,adapt| adapt.extend(::JdbcSpec::MsSQL)}]
+    def self.column_selector
+      [/sqlserver|tds/i, lambda {|cfg,col| col.extend(::JdbcSpec::MsSQL::Column)}]
     end
 
     module Column

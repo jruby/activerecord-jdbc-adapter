@@ -455,31 +455,35 @@ module ActiveRecord
 
       attr_reader :config
 
-      ADAPTER_TYPES = ::JdbcSpec.constants.map{|c|
-        ::JdbcSpec.const_get c }.select{ |c|
-        c.respond_to? :adapter_selector }.map{|c|
-        c.adapter_selector }.inject({}) { |h,val|
-        h[val[0]] = val[1]; h }
-
       def initialize(connection, logger, config)
         @config = config
+        spec = adapter_spec config
         unless connection
-          connection_class = jdbc_connection_class
-          connection = connection_class.new(config)
+          connection_class = jdbc_connection_class spec
+          connection = connection_class.new config
         end
         super(connection, logger)
-        dialect = config[:dialect] || config[:driver]
-        for reg, func in ADAPTER_TYPES
-          if reg === dialect.to_s
-            func.call(@config,self)
-          end
-        end
+        extend spec if spec
         connection.adapter = self
         JndiConnectionPoolCallbacks.prepare(self, connection)
       end
 
-      def jdbc_connection_class
-        ::ActiveRecord::ConnectionAdapters::JdbcConnection
+      def jdbc_connection_class(spec)
+        connection_class = spec.jdbc_connection_class if spec && spec.respond_to?(:jdbc_connection_class)
+        connection_class = ::ActiveRecord::ConnectionAdapters::JdbcConnection unless connection_class
+        connection_class
+      end
+
+      # Locate specialized adapter specification if one exists based on config data
+      def adapter_spec(config)
+        dialect = (config[:dialect] || config[:driver]).to_s
+        ::JdbcSpec.constants.map { |name| ::JdbcSpec.const_get name }.each do |constant|
+          if constant.respond_to? :adapter_matcher
+            spec = constant.adapter_matcher(dialect, config)
+            return spec if spec
+          end
+        end
+        nil
       end
 
       def modify_types(tp)

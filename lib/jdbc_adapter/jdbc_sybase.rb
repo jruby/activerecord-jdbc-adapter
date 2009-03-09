@@ -1,7 +1,7 @@
 module JdbcSpec
   module Sybase
-    def self.adapter_selector
-      [/sybase|tds/i, lambda{|cfg,adapt| adapt.extend(JdbcSpec::Sybase)}]
+    def self.adapter_matcher(name, *)
+      name =~ /sybase|tds/i ? self : false
     end
 
       def add_limit_offset!(sql, options) # :nodoc:

@@ -1,7 +1,7 @@
 module ::JdbcSpec
   module FireBird
-    def self.adapter_selector
-      [/firebird/i, lambda{|cfg,adapt| adapt.extend(::JdbcSpec::FireBird)}]
+    def self.adapter_matcher(name, *)
+      name =~ /firebird/i ? self : false
     end
 
     def modify_types(tp)

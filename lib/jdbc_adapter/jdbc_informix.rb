@@ -40,14 +40,13 @@ module ::JdbcSpec
       @@db_major_version = base.select_one("SELECT dbinfo('version', 'major') version FROM systables WHERE tabid = 1")['version'].to_i
     end
 
+    def self.adapter_matcher(name, *)
+      name =~ /informix/i ? self : false
+    end
+
     def self.column_selector
       [ /informix/i,
         lambda { |cfg, column| column.extend(::JdbcSpec::Informix::Column) } ]
-    end
-
-    def self.adapter_selector
-      [ /informix/i,
-        lambda { |cfg, adapter| adapter.extend(::JdbcSpec::Informix) } ]
     end
 
     module Column

@@ -15,12 +15,16 @@ module ::JdbcSpec
   end
 
   module PostgreSQL
+    def self.adapter_matcher(name, *)
+      name =~ /postgre/i ? self : false
+    end
+
     def self.column_selector
       [/postgre/i, lambda {|cfg,col| col.extend(::JdbcSpec::PostgreSQL::Column)}]
     end
 
-    def self.adapter_selector
-      [/postgre/i, lambda {|cfg,adapt| adapt.extend(::JdbcSpec::PostgreSQL)}]
+    def self.jdbc_connection_class
+      ::ActiveRecord::ConnectionAdapters::PostgresJdbcConnection
     end
 
     module Column
@@ -70,10 +74,6 @@ module ::JdbcSpec
         # and we can't know the value of that, so return nil.
         return nil
       end
-    end
-
-    def jdbc_connection_class
-      ::ActiveRecord::ConnectionAdapters::PostgresJdbcConnection
     end
 
     def modify_types(tp)

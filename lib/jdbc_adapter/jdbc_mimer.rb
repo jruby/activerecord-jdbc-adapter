@@ -1,7 +1,7 @@
 module JdbcSpec
   module Mimer
-    def self.adapter_selector
-      [/mimer/i, lambda {|cfg,adapt| adapt.extend(::JdbcSpec::Mimer)}]
+    def self.adapter_matcher(name, *)
+      name =~ /mimer/i ? self : false
     end
 
     def modify_types(tp)

@@ -8,12 +8,16 @@ module ::JdbcSpec
   end
 
   module SQLite3
+    def self.adapter_matcher(name, *)
+      name =~ /sqlite/i ? self : false
+    end
+
     def self.column_selector
       [/sqlite/i, lambda {|cfg,col| col.extend(::JdbcSpec::SQLite3::Column)}]
     end
 
-    def self.adapter_selector
-      [/sqlite/i, lambda {|cfg,adapt| adapt.extend(::JdbcSpec::SQLite3)}]
+    def self.jdbc_connection_class
+      ::ActiveRecord::ConnectionAdapters::Sqlite3JdbcConnection
     end
 
     module Column
@@ -258,11 +262,11 @@ module ::JdbcSpec
       end
     end
     
-     def columns(table_name, name = nil) #:nodoc:        
-       table_structure(table_name).map do |field|
-         ::ActiveRecord::ConnectionAdapters::JdbcColumn.new(@config, field['name'], field['dflt_value'], field['type'], field['notnull'] == "0")
-       end
-     end
+    def columns(table_name, name = nil) #:nodoc:        
+      table_structure(table_name).map do |field|
+        ::ActiveRecord::ConnectionAdapters::JdbcColumn.new(@config, field['name'], field['dflt_value'], field['type'], field['notnull'] == "0")
+      end
+    end
   end
 end
 

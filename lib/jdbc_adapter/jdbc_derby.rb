@@ -10,12 +10,12 @@ module ::JdbcSpec
   end
 
   module Derby
-    def self.column_selector
-      [/derby/i, lambda {|cfg,col| col.extend(::JdbcSpec::Derby::Column)}]
+    def self.adapter_matcher(name, *)
+      name =~ /derby/i ? self : false
     end
 
-    def self.adapter_selector
-      [/derby/i, lambda {|cfg,adapt| adapt.extend(::JdbcSpec::Derby)}]
+    def self.column_selector
+      [/derby/i, lambda {|cfg,col| col.extend(::JdbcSpec::Derby::Column)}]
     end
 
     def self.monkey_rails

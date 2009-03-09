@@ -14,15 +14,12 @@ module ::JdbcSpec
   end
 
   module HSQLDB
-    def self.column_selector
-      [/hsqldb|\.h2\./i, lambda {|cfg,col| col.extend(::JdbcSpec::HSQLDB::Column)}]
+    def self.adapter_matcher(name, *)
+      name =~ /hsqldb/i ? self : false
     end
 
-    def self.adapter_selector
-      [/hsqldb|\.h2\./i, lambda do |cfg,adapt|
-         adapt.extend(::JdbcSpec::HSQLDB)
-         def adapt.h2_adapter; true; end if cfg[:driver] =~ /\.h2\./
-       end]
+    def self.column_selector
+      [/hsqldb|\.h2\./i, lambda {|cfg,col| col.extend(::JdbcSpec::HSQLDB::Column)}]
     end
 
     module Column
@@ -193,6 +190,18 @@ module ::JdbcSpec
 
     def remove_index(table_name, options = {})
       execute "DROP INDEX #{quote_column_name(index_name(table_name, options))}"
+    end
+  end
+
+  module H2
+    include HSQLDB
+
+    def self.adapter_matcher(name, *)
+      name =~ /\.h2\./i ? self : false
+    end
+
+    def h2_adapter
+      true
     end
   end
 end

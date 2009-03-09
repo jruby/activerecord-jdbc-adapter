@@ -1,12 +1,10 @@
 module JdbcSpec
   module DB2
-    def self.column_selector
-      [/db2/i, lambda {|cfg,col|
-         if cfg[:url] =~ /^jdbc:derby:net:/
-           col.extend(::JdbcSpec::Derby::Column)
-         else
-           col.extend(::JdbcSpec::DB2::Column)
-         end }]
+    def self.adapter_matcher(name, config)
+      if name =~ /db2/i
+         return cfg[:url] =~ /^jdbc:derby:net:/ ? ::JdbcSpec::Derby : self
+      end
+      false
     end
 
     def self.adapter_selector

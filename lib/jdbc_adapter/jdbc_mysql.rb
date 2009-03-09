@@ -21,12 +21,12 @@ module ::JdbcSpec
 
   module MySQL
     URL_OPTIONS = "zeroDateTimeBehavior=convertToNull&jdbcCompliantTruncation=false&useUnicode=true&characterEncoding=utf8"
-    def self.column_selector
-      [/mysql/i, lambda {|cfg,col| col.extend(::JdbcSpec::MySQL::Column)}]
+    def self.adapter_matcher(name, *)
+      name =~ /mysql/i ? self : false
     end
 
-    def self.adapter_selector
-      [/mysql/i, lambda {|cfg,adapt| adapt.extend(::JdbcSpec::MySQL)}]
+    def self.column_selector
+      [/mysql/i, lambda {|cfg,col| col.extend(::JdbcSpec::MySQL::Column)}]
     end
 
     def self.extended(adapter)

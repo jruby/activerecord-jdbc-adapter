@@ -28,12 +28,12 @@ module ::JdbcSpec
       end
     end
 
-    def self.column_selector
-      [/oracle/i, lambda {|cfg,col| col.extend(::JdbcSpec::Oracle::Column)}]
+    def self.adapter_matcher(name, *)
+      name =~ /oracle/i ? self : false
     end
 
-    def self.adapter_selector
-      [/oracle/i, lambda {|cfg,adapt| adapt.extend(::JdbcSpec::Oracle)}]
+    def self.column_selector
+      [/oracle/i, lambda {|cfg,col| col.extend(::JdbcSpec::Oracle::Column)}]
     end
 
     module Column
