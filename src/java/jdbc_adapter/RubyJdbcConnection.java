@@ -947,15 +947,18 @@ public class RubyJdbcConnection extends RubyObject {
      * Create a string which represents a sql type usable by Rails from the resultSet column
      * metadata object.
      *
-     * @param numberHack some unknown hack we have for Oracle
+     * @param numberAsBoolean the database uses decimal as a boolean data type
+     * because it does not support optional SQL92 type or mandatory SQL99
+     * booleans.
      */
-    private String typeFromResultSet(ResultSet resultSet, boolean numberHack) throws SQLException {
+    private String typeFromResultSet(ResultSet resultSet, boolean numberAsBoolean) throws SQLException {
         int precision = intFromResultSet(resultSet, COLUMN_SIZE);
         int scale = intFromResultSet(resultSet, DECIMAL_DIGITS);
 
-        // FIXME: Find out what this is about
-        // NUMBER type in Oracle
-        if (numberHack && resultSet.getInt(DATA_TYPE) == java.sql.Types.DECIMAL) precision = -1;
+        // Assume db's which use decimal for boolean will not also specify a
+        // valid precision 1 decimal also.  Seems sketchy to me...
+        if (numberAsBoolean && precision != 1 &&
+            resultSet.getInt(DATA_TYPE) == java.sql.Types.DECIMAL) precision = -1;
         
         String type = resultSet.getString(TYPE_NAME);
         if (precision > 0) {
