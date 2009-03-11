@@ -11,8 +11,13 @@ ActiveRecord::Base.establish_connection(config)
 # Here are some notes of things I had to do to get running on Oracle
 # XE.
 #
+#   ON Linux:
 #   create tablespace weblog_development
 #     datafile '/usr/lib/oracle/xe/oradata/XE/weblog_development.dbf';
+#   ON Windows XP:
+#   create tablespace weblog_development 
+#     datafile 'C:\ORACLEXE\ORADATA\XE\WEBLOGD.DBF' size 16m;
+#
 #   create user blog identified by blog
 #     default tablespace weblog_development;
 #   grant all privileges to blog;
