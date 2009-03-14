@@ -1,4 +1,3 @@
-require 'java'
 require 'jdbc_common'
 require 'db/sqlite3'
 require 'models/data_types'
@@ -7,7 +6,7 @@ class SQLite3SimpleTest < Test::Unit::TestCase
   include SimpleTestMethods
   
   def test_recreate_database
-    assert @connection.tables.include? Entry.table_name
+    assert @connection.tables.include?(Entry.table_name)
     db = @connection.database_name
     @connection.recreate_database(db)
     assert (not @connection.tables.include? Entry.table_name)
@@ -17,6 +16,7 @@ class SQLite3SimpleTest < Test::Unit::TestCase
   def test_execute_insert
     assert_equal 1, Entry.count
     id = @connection.execute "INSERT INTO entries (title, content) VALUES ('Execute Insert', 'This now works with SQLite3')"
+p id, Entry.count
     assert_equal Entry.last.id, id
     assert_equal 2, Entry.count
   end
@@ -38,8 +38,15 @@ class SQLite3HasManyThroughTest < Test::Unit::TestCase
   include HasManyThroughMethods
 end
 
-
-JInteger = java.lang.Integer
+if jruby?
+  JInteger = java.lang.Integer
+else
+  JInteger = Fixnum
+  class Fixnum
+    # Arbitrary value...we could pick 
+    MAX_VALUE = 2
+  end
+end
 
 class SQLite3TypeConversionTest < Test::Unit::TestCase
   TEST_TIME = Time.at(1169964202)
