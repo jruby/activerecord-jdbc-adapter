@@ -16,7 +16,6 @@ class SQLite3SimpleTest < Test::Unit::TestCase
   def test_execute_insert
     assert_equal 1, Entry.count
     id = @connection.execute "INSERT INTO entries (title, content) VALUES ('Execute Insert', 'This now works with SQLite3')"
-p id, Entry.count
     assert_equal Entry.last.id, id
     assert_equal 2, Entry.count
   end
