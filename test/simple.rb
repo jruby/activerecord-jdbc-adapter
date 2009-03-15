@@ -188,9 +188,8 @@ module SimpleTestMethods
   def test_string
     e = DbType.find(:first)
 
-    adapter_name = ActiveRecord::Base.connection.adapter_name
-    assert_equal('', e.sample_string)
-
+    # An empty string is treated as a null value in Oracle: http://www.techonthenet.com/oracle/questions/empty_null.php
+    assert_equal('', e.sample_string) unless ActiveRecord::Base.connection.adapter_name =~ /oracle/i
     e.sample_string = "ooop"
     e.save!
 
