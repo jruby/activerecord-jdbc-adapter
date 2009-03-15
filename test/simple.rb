@@ -256,7 +256,7 @@ module SimpleTestMethods
     assert_equal 1, Entry.count
   end
 
-  if defined?(JRUBY_VERSION)
+  if jruby?
     def test_connection_valid
       assert_raises(ActiveRecord::ActiveRecordError) do
         @connection.raw_connection.with_connection_retry_guard do |c|
@@ -267,6 +267,15 @@ module SimpleTestMethods
             stmt.close rescue nil
           end
         end
+      end
+    end
+
+    class Animal < ActiveRecord::Base; end
+
+    # ENEBO: Is this really ar-jdbc-specific or a bug in our adapter?
+    def test_fetching_columns_for_nonexistent_table_should_raise
+      assert_raises(ActiveRecord::ActiveRecordError) do
+        Animal.columns
       end
     end
   end
@@ -283,13 +292,6 @@ module SimpleTestMethods
   def test_add_not_null_column_to_table
     AddNotNullColumnToTable.up
     AddNotNullColumnToTable.down
-  end
-
-  class Animal < ActiveRecord::Base; end
-  def test_fetching_columns_for_nonexistent_table_should_raise
-    assert_raises(ActiveRecord::ActiveRecordError) do
-      Animal.columns
-    end
   end
 
   class ChangeEntriesTable < ActiveRecord::Migration
