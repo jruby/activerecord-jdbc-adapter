@@ -19,6 +19,7 @@ class CreateRbac < ActiveRecord::Migration
       t.column :name, :string
       t.column :controller_name, :string
       t.column :actions, :string
+      t.column :hours, :float, :null => false
     end
   end
 
@@ -61,12 +62,18 @@ module HasManyThroughMethods
   end
 
   def test_has_many_through
-    role_rights   = Right.create( {:name => "Administrator - Full Access To Roles", :actions => "*", :controller_name => "Admin::RolesController"} )
-    right_rights  = Right.create( {:name => "Administrator - Full Access To Rights", :actions => "*", :controller_name => "Admin::RightsController"} )
-
     admin_role    = Role.create( {:name => "Administrator", :description => "System defined super user - access to right and role management."} )
+    admin_role.save
+
+    assert_equal(0, admin_role.rights.sum(:hours))
+
+    role_rights   = Right.create( {:name => "Administrator - Full Access To Roles", :actions => "*", :controller_name => "Admin::RolesController", :hours => 0} )
+    right_rights  = Right.create( {:name => "Administrator - Full Access To Rights", :actions => "*", :controller_name => "Admin::RightsController", :hours => 1.5} )
+
     admin_role.rights << role_rights
     admin_role.rights << right_rights
     admin_role.save
+
+    assert_equal(1.5, admin_role.rights.sum(:hours))
   end
 end
