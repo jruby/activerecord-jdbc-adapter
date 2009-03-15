@@ -1,17 +1,9 @@
-if jruby?
-  require 'jdbc/sqlite3'
+require 'jdbc/sqlite3' if jruby?
 
-  config = {
-    :adapter  => 'jdbc',
-    :driver   => 'org.sqlite.JDBC',
-    :url      => 'jdbc:sqlite:test.sqlite3.db'
-  }
-else
-  config = {
-    :adapter => 'sqlite3',
-    :dbfile  => 'test.sqlite3.db'
-  }
-end
+config = {
+  :adapter => jruby? ? 'jdbcsqlite3' : 'sqlite3',
+  :dbfile  => 'test.sqlite3.db'
+}
 
 ActiveRecord::Base.establish_connection(config)
 

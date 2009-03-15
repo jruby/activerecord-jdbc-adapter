@@ -1,9 +1,26 @@
 module ::JdbcSpec
   module ActiveRecordExtensions
     def sqlite3_connection(config)
+      parse_sqlite3_config!(config)
+
       config[:url] ||= "jdbc:sqlite:#{config[:database]}"
       config[:driver] ||= "org.sqlite.JDBC"
       jdbc_connection(config)
+    end
+
+    def parse_sqlite3_config!(config)
+      config[:database] ||= config[:dbfile]
+      # Require database.
+      unless config[:database]
+        raise ArgumentError, "No database file specified. Missing argument: database"
+      end
+
+      # Allow database path relative to RAILS_ROOT, but only if
+      # the database path is not the special path that tells
+      # Sqlite to build a database only in memory.
+      if Object.const_defined?(:RAILS_ROOT) && ':memory:' != config[:database]
+        config[:database] = File.expand_path(config[:database], RAILS_ROOT)
+      end
     end
   end
 
