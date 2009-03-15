@@ -303,10 +303,14 @@ module ::JdbcSpec
     #
     # see: abstract/quoting.rb
 
-    # camelCase column names need to be quoted; not that anyone using Oracle
-    # would really do this, but handling this case means we pass the test...
+    # Camelcase column names need to be quoted.
+    # Nonquoted identifiers can contain only alphanumeric characters from your 
+    # database character set and the underscore (_), dollar sign ($), and pound sign (#).
+    # Database links can also contain periods (.) and "at" signs (@).
+    # Oracle strongly discourages you from using $ and # in nonquoted identifiers.
+    # Source: http://download.oracle.com/docs/cd/B28359_01/server.111/b28286/sql_elements008.htm
     def quote_column_name(name) #:nodoc:
-      name.to_s =~ /[A-Z]/ ? "\"#{name}\"" : name.to_s
+      name.to_s =~ /^[a-z_$#]+$/ ? name.to_s : "\"#{name}\""
     end
 
     def quote_string(string) #:nodoc:
