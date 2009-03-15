@@ -176,7 +176,10 @@ module SimpleTestMethods
   def test_text
     # An unset boolean should default to nil
     e = DbType.find(:first)
-    assert_equal(nil, e.sample_text)
+
+    # Oracle adapter initializes all CLOB fields with empty_clob() function,
+    # so they all have a initial value of an empty string ''
+    assert_equal(nil, e.sample_text) unless ActiveRecord::Base.connection.adapter_name =~ /oracle/i
 
     e.sample_text = "ooop"
     e.save!
