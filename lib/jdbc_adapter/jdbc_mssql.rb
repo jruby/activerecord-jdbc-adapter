@@ -1,27 +1,27 @@
 require 'jdbc_adapter/tsql_helper'
 
-module ::ActiveRecord
-  class Base
-    # After setting large objects to empty, write data back with a helper method
-    after_save :write_lobs
-    def write_lobs() #:nodoc:
-      if connection.is_a?(JdbcSpec::MsSQL)
-        self.class.columns.select { |c| c.sql_type =~ /image/i }.each { |c|
-          value = self[c.name]
-          value = value.to_yaml if unserializable_attribute?(c.name, c)
-          next if value.nil?  || (value == '')
-
-          connection.write_large_object(c.type == :binary, c.name, self.class.table_name, self.class.primary_key, quote_value(id), value)
-        }
-      end
-    end
-    private :write_lobs
-  end
-end
-
-module JdbcSpec
+module ::JdbcSpec
   module MsSQL
     include TSqlMethods
+
+    def self.extended(mod)
+      unless @lob_callback_added
+        ActiveRecord::Base.class_eval do
+          def after_save_with_mssql_lob
+          self.class.columns.select { |c| c.sql_type =~ /image/i }.each do |c|
+            value = self[c.name]
+            value = value.to_yaml if unserializable_attribute?(c.name, c)
+            next if value.nil?  || (value == '')
+
+            connection.write_large_object(c.type == :binary, c.name, self.class.table_name, self.class.primary_key, quote_value(id), value)
+          end
+          end
+        end
+
+        ActiveRecord::Base.after_save :after_save_with_mssql_lob
+        @lob_callback_added = true
+      end
+    end
 
     def self.adapter_matcher(name, *)
       name =~ /sqlserver|tds/i ? self : false
