@@ -70,34 +70,14 @@ end
 task :test_postgresql => [:test_postgres]
 task :test_pgsql => [:test_postgres]
 
-# Ensure oracle driver is on your classpath before launching rake
-Rake::TestTask.new(:test_oracle) do |t|
-  t.test_files = FileList['test/oracle_simple_test.rb']
-  t.libs << 'test'
-end
-
-# Ensure DB2 driver is on your classpath before launching rake
-Rake::TestTask.new(:test_db2) do |t|
-  t.test_files = FileList['test/db2_simple_test.rb']
-  t.libs << 'test'
-end
-
-# Ensure InterSystems CacheDB driver is on your classpath before launching rake
-Rake::TestTask.new(:test_cachedb) do | t |
-  t.test_files = FileList[ 'test/cachedb_simple_test.rb' ]
-  t.libs << 'test'
-end
-
-# Ensure that the jTDS driver in on your classpath before launching rake
-Rake::TestTask.new(:test_mssql) do | t |
-  t.test_files = FileList[ 'test/mssql_simple_test.rb' ]
-  t.libs << 'test'
-end
-
-# Ensure that the Informix driver is on your classpath before launching rake
-Rake::TestTask.new(:test_informix) do |t|
-  t.test_files = FileList[ 'test/informix_simple_test.rb' ]
-  t.libs << 'test'
+# Ensure driver for these DBs is on your classpath
+%w(oracle db2 cachedb mssql informix).each do |d|
+  Rake::TestTask.new("test_#{d}") do |t|
+    t.test_files = FileList["test/#{d}_simple_test.rb"]
+    t.libs = []
+    t.libs << 'lib' if defined?(JRUBY_VERSION)
+    t.libs << 'test'
+  end
 end
 
 # Tests for JDBC adapters that don't require a database.
