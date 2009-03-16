@@ -165,11 +165,11 @@ module ::JdbcSpec
     end
 
     def quoted_true
-      '1'
+      %Q{'t'}
     end
 
     def quoted_false
-      '0'
+      %Q{'f'}
     end
 
     def add_column(table_name, column_name, type, options = {})
