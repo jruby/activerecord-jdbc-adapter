@@ -61,6 +61,7 @@ module ::JdbcSpec
         when /integer\(1\)/i                   then :boolean
         when /text/i                           then :string
         when /int/i                            then :integer
+        when /float/i                          then :float
         when /real/i                           then @scale == 0 ? :integer : :decimal
         when /datetime/i                       then :datetime
         when /date/i                           then :date
