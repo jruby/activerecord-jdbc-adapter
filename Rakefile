@@ -50,7 +50,7 @@ FileList['drivers/*'].each do |d|
     t.libs = []
     if defined?(JRUBY_VERSION)
       t.ruby_opts << "-rjdbc/#{driver}"
-      t.libs << "lib" << "#{d}/lib" << "adapters/#{driver}/lib"
+      t.libs << "lib" << "#{d}/lib" << FileList["adapters/#{driver}*/lib"]
     end
     t.libs << "test"
     t.verbose = true

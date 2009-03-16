@@ -7,10 +7,12 @@ module ::JdbcSpec
   module ActiveRecordExtensions
     def mysql_connection(config)
       config[:port] ||= 3306
+      url_options = "zeroDateTimeBehavior=convertToNull&jdbcCompliantTruncation=false&useUnicode=true&characterEncoding="
+      url_options << (config[:encoding] || 'utf8')
       if config[:url]
-        config[:url] = config[:url]['?'] ? "#{config[:url]}&#{MySQL::URL_OPTIONS}" : "#{config[:url]}?#{MySQL::URL_OPTIONS}"
+        config[:url] = config[:url]['?'] ? "#{config[:url]}&#{url_options}" : "#{config[:url]}?#{url_options}"
       else
-        config[:url] = "jdbc:mysql://#{config[:host]}:#{config[:port]}/#{config[:database]}?#{MySQL::URL_OPTIONS}"
+        config[:url] = "jdbc:mysql://#{config[:host]}:#{config[:port]}/#{config[:database]}?#{url_options}"
       end
       config[:driver] = "com.mysql.jdbc.Driver"
       connection = jdbc_connection(config)
@@ -20,7 +22,6 @@ module ::JdbcSpec
   end
 
   module MySQL
-    URL_OPTIONS = "zeroDateTimeBehavior=convertToNull&jdbcCompliantTruncation=false&useUnicode=true&characterEncoding=utf8"
     def self.adapter_matcher(name, *)
       name =~ /mysql/i ? self : false
     end

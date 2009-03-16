@@ -378,12 +378,6 @@ module ActiveRecord
           raise ::ActiveRecord::ConnectionFailed, "jdbc adapter requires driver class and url"
         end
 
-        if driver =~ /mysql/i && url !~ /#{Regexp.quote(JdbcSpec::MySQL::URL_OPTIONS)}/
-          div = url =~ /\?/ ? '&' : '?'
-          url = "#{url}#{div}#{JdbcSpec::MySQL::URL_OPTIONS}"
-          @config[:url] = url
-        end
-
         jdbc_driver = JdbcDriver.new(driver)
         jdbc_driver.load
         @connection_factory = JdbcConnectionFactory.impl do

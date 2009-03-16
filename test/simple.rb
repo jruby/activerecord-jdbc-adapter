@@ -366,3 +366,26 @@ module MultibyteTestMethods
     assert_equal chinese_word, new_entry.title
   end
 end
+
+module NonUTF8EncodingMethods
+  def setup
+    @connection = ActiveRecord::Base.remove_connection
+    latin2_connection = @connection.dup
+    latin2_connection[:encoding] = 'latin2'
+    latin2_connection.delete(:url) # pre-gen url gets stashed; remove to re-gen
+    ActiveRecord::Base.establish_connection latin2_connection
+    CreateEntries.up
+  end
+
+  def teardown
+    CreateEntries.down
+    ActiveRecord::Base.establish_connection @connection
+  end
+
+  def test_nonutf8_encoding_in_entry
+    prague_district = 'hradčany'
+    new_entry = Entry.create :title => prague_district
+    new_entry.reload
+    assert_equal prague_district, new_entry.title
+  end
+end
