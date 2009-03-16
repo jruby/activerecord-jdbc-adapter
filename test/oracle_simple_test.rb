@@ -26,4 +26,4 @@ class OracleSpecificTest < Test::Unit::TestCase
     obj = klass.find(:first)
     assert_equal 0.076, obj.value
   end
-end
+end if defined?(JRUBY_VERSION)
