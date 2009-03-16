@@ -54,7 +54,7 @@ module ::JdbcSpec
       private
       def simplified_type(field_type)
         case field_type
-        when /integer\(1\)/i                   then :boolean
+        when /boolean/i                        then :boolean
         when /text/i                           then :string
         when /int/i                            then :integer
         when /float/i                          then :float
@@ -132,7 +132,7 @@ module ::JdbcSpec
       tp[:timestamp] = { :name => "DATETIME" }
       tp[:time] = { :name => "TIME" }
       tp[:date] = { :name => "DATE" }
-      tp[:boolean] = { :name => "INTEGER", :limit => 1}
+      tp[:boolean] = { :name => "BOOLEAN" }
       tp
     end
 
