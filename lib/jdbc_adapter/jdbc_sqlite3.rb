@@ -10,10 +10,6 @@ module ::JdbcSpec
 
     def parse_sqlite3_config!(config)
       config[:database] ||= config[:dbfile]
-      # Require database.
-      unless config[:database]
-        raise ArgumentError, "No database file specified. Missing argument: database"
-      end
 
       # Allow database path relative to RAILS_ROOT, but only if
       # the database path is not the special path that tells
