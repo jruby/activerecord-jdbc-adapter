@@ -142,7 +142,7 @@ require 'db/logger'
 
   # If you want to run MRI against Rails remember to re-export RUBYLIB to be
   # empty (or whatever you normally have it set to when you are done).
-  export RUBYLIB=$(find $HOME/NetbeansProjects/activerecord-jdbc-adapter -name lib -type d | grep -v pkg | ruby -e 'puts $stdin.readlines.map{|l| l.chomp}.join(":")')
+  export RUBYLIB=$(find $PWD -name lib -type d | grep -v pkg | ruby -e 'puts $stdin.readlines.map{|l| l.chomp}.join(":")')
   cd active_record_source_dir
   jruby -S rake test_jdbcmysql (or specific adapter you want to test)
 
