@@ -1,8 +1,33 @@
 == 0.9.1
 
+- We did a lot of internal cleanup this release in the hopes of
+  simplifying the code and increasing performance.
 - Many SQLite updates (thanks Nils Christian Haugen)
-- Cleanup of JdbcAdapterInternalService
 - JRUBY-2912: Fix MSSQL create/drop database (Joern Hartmann)
+- JRUBY-2767: Mistake in selecting identity with H2/HSQLDB
+- JRUBY-2884: jdbc_postgre.rb issue handling nil booleans (also a fix
+  for hsqldb/h2) + tests
+- JRUBY-2995: activerecord jdbc derby adapter should quote columns
+  called 'year'
+- JRUBY-2897:  jdbc_postgre.rb needs microsecond support
+- JRUBY-3282: Upgrade to derby 10.4.2.0 to allow unique constraints
+  with nullable columns
+- Update h2 from 1.0.63 to 1.1.107 in driver
+- JRUBY-3026: [Derby] Allow select/delete/update conditions with
+  comparison to NULL using '='
+- JRUBY-2996: ...(actually this fixes only remaining issue of this bug
+  which was symbols making into quote were exploding
+- JRUBY-2691: Update sybase driver to pass simple unit tests with jtds
+  and verify it works with the new dialect keyword. patch by Leigh
+  Kennedy
+- Make :float type work on h2,hsql [returned as string]. Make :float
+  work on hsqldb (no paren value supported). Make REAL_TYPE just
+  return RubyFloat
+- JRUBY-3222: Upgrade #type_to_sql to variation of AR 2.1.2 version
+- Add patch supplied in JRUBY-3489 (patch by Jean-Dominique Morani)
+- Various Oracle fixes by edsono
+- JRUBY-2688: Don't hard-code MySQL connection character encoding to
+  utf8
 
 == 0.9
 
