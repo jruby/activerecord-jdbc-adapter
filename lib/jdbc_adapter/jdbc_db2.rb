@@ -2,7 +2,7 @@ module JdbcSpec
   module DB2
     def self.adapter_matcher(name, config)
       if name =~ /db2/i
-         return cfg[:url] =~ /^jdbc:derby:net:/ ? ::JdbcSpec::Derby : self
+         return config[:url] =~ /^jdbc:derby:net:/ ? ::JdbcSpec::Derby : self
       end
       false
     end
