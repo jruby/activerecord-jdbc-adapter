@@ -128,6 +128,10 @@ module ::JdbcSpec
       tables.each{ |table| drop_table(table) }
     end
 
+    def drop_database(name)
+      recreate_database(name)
+    end
+
     def insert(sql, name = nil, pk = nil, id_value = nil, sequence_name = nil) #:nodoc:
       if id_value # Pre-assigned id
         execute sql, name
