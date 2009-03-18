@@ -102,9 +102,10 @@ public class JdbcMySQLSpec {
 
         newBytes.insert(0, BACKQUOTE);
         newBytes.append(bytes);
-        int i = 0;
-        while ((i = newBytes.indexOf('.')) != -1) {
+        int i = 0, j = 0;
+        while ((i = newBytes.indexOf('.', j)) != -1) {
             newBytes.replace(i, 1, QUOTED_DOT);
+            j = i+3;
         }
         newBytes.append(BACKQUOTE);
 

@@ -19,6 +19,11 @@ class MysqlSimpleTest < Test::Unit::TestCase
     assert_equal "a'a", s2
     assert_equal "'a\\'a'", ActiveRecord::Base.connection.quote(s2)
   end
+
+  def test_table_name_quoting_with_dot
+    s = "weblog_development.posts"
+    assert_equal "`weblog_development`.`posts`", ActiveRecord::Base.connection.quote_table_name(s)
+  end
 end
 
 class MysqlHasManyThroughTest < Test::Unit::TestCase
