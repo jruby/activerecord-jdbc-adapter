@@ -249,6 +249,10 @@ module ::JdbcSpec
         end
       end
 
+      #SELECT .. FOR UPDATE is not supported on Microsoft SQL Server
+      def add_lock!(sql, options)
+        sql
+      end
 
       private
       # Turns IDENTITY_INSERT ON for table during execution of the block
