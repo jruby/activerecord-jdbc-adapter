@@ -237,6 +237,7 @@ module ::JdbcSpec
     def insert(sql, name = nil, pk = nil, id_value = nil, sequence_name = nil) #:nodoc:
       log(sql,name) do
         @connection.execute_update(sql)
+        clear_query_cache
       end
       table = sql.split(" ", 4)[2]
       id_value || last_insert_id(table, nil)
