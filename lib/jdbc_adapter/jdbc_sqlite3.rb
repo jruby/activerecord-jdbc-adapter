@@ -34,6 +34,10 @@ module ::JdbcSpec
     end
 
     module Column
+      
+      def init_column(name, default, *args)
+        @default = '' if default =~ /NULL/
+      end
 
       def type_cast(value)
         return nil if value.nil?
