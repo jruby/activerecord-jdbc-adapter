@@ -302,6 +302,11 @@ module ::JdbcSpec
         ::ActiveRecord::ConnectionAdapters::JdbcColumn.new(@config, field['name'], field['dflt_value'], field['type'], field['notnull'] == 0)
       end
     end
+    
+     # SELECT ... FOR UPDATE is redundant since the table is locked.
+    def add_lock!(sql, options) #:nodoc:
+      sql
+    end
   end
 end
 
