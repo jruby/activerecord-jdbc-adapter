@@ -299,7 +299,7 @@ module ::JdbcSpec
     
     def columns(table_name, name = nil) #:nodoc:        
       table_structure(table_name).map do |field|
-        ::ActiveRecord::ConnectionAdapters::JdbcColumn.new(@config, field['name'], field['dflt_value'], field['type'], field['notnull'] == "0")
+        ::ActiveRecord::ConnectionAdapters::JdbcColumn.new(@config, field['name'], field['dflt_value'], field['type'], field['notnull'] == 0)
       end
     end
   end
