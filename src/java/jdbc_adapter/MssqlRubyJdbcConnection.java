@@ -25,6 +25,9 @@
  ***** END LICENSE BLOCK *****/
 package jdbc_adapter;
 
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Types;
 import org.jruby.Ruby;
 import org.jruby.RubyClass;
 import org.jruby.runtime.ObjectAllocator;
@@ -32,24 +35,37 @@ import org.jruby.runtime.builtin.IRubyObject;
 
 /**
  *
- * @author enebo
+ * @author nicksieger
  */
-public class PostgresRubyJdbcConnection extends RubyJdbcConnection {
-    protected PostgresRubyJdbcConnection(Ruby runtime, RubyClass metaClass) {
+public class MssqlRubyJdbcConnection extends RubyJdbcConnection {
+
+    protected MssqlRubyJdbcConnection(Ruby runtime, RubyClass metaClass) {
         super(runtime, metaClass);
     }
 
-    public static RubyClass createPostgresJdbcConnectionClass(Ruby runtime, RubyClass jdbcConnection) {
-        RubyClass clazz = RubyJdbcConnection.getConnectionAdapters(runtime).defineClassUnder("PostgresJdbcConnection",
-                jdbcConnection, POSTGRES_JDBCCONNECTION_ALLOCATOR);
-        clazz.defineAnnotatedMethods(PostgresRubyJdbcConnection.class);
+    public static RubyClass createMssqlJdbcConnectionClass(Ruby runtime, RubyClass jdbcConnection) {
+        RubyClass clazz = RubyJdbcConnection.getConnectionAdapters(runtime).defineClassUnder("MssqlJdbcConnection",
+                jdbcConnection, MSSQL_JDBCCONNECTION_ALLOCATOR);
+        clazz.defineAnnotatedMethods(MssqlRubyJdbcConnection.class);
 
         return clazz;
     }
+    private static ObjectAllocator MSSQL_JDBCCONNECTION_ALLOCATOR = new ObjectAllocator() {
 
-    private static ObjectAllocator POSTGRES_JDBCCONNECTION_ALLOCATOR = new ObjectAllocator() {
         public IRubyObject allocate(Ruby runtime, RubyClass klass) {
-            return new PostgresRubyJdbcConnection(runtime, klass);
+            return new MssqlRubyJdbcConnection(runtime, klass);
         }
     };
+
+    /**
+     * Treat LONGVARCHAR as CLOB on Mssql for purposes of converting a JDBC value to Ruby.
+     */
+    @Override
+    protected IRubyObject jdbcToRuby(Ruby runtime, int column, int type, ResultSet resultSet)
+            throws SQLException {
+        if (type == Types.LONGVARCHAR) {
+            type = Types.CLOB;
+        }
+        return super.jdbcToRuby(runtime, column, type, resultSet);
+    }
 }
