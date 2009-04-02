@@ -31,6 +31,10 @@ module ::JdbcSpec
       [/sqlserver|tds/i, lambda {|cfg,col| col.extend(::JdbcSpec::MsSQL::Column)}]
     end
 
+    def self.jdbc_connection_class
+      ::ActiveRecord::ConnectionAdapters::MssqlJdbcConnection
+    end
+
     module Column
       attr_accessor :identity, :is_special
 

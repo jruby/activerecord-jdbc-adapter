@@ -618,7 +618,7 @@ public class RubyJdbcConnection extends RubyObject {
         return arg.isNil() ? null : arg.toString();
     }
 
-    private static IRubyObject floatToRuby(Ruby runtime, ResultSet resultSet, float floatValue)
+    protected IRubyObject floatToRuby(Ruby runtime, ResultSet resultSet, float floatValue)
             throws SQLException, IOException {
         if (floatValue == 0 && resultSet.wasNull()) return runtime.getNil();
 
@@ -718,18 +718,21 @@ public class RubyJdbcConnection extends RubyObject {
         }
     }
 
-    private static IRubyObject integerToRuby(Ruby runtime, ResultSet resultSet, long longValue)
+    protected IRubyObject integerToRuby(Ruby runtime, ResultSet resultSet, long longValue)
             throws SQLException, IOException {
         if (longValue == 0 && resultSet.wasNull()) return runtime.getNil();
 
         return runtime.newFixnum(longValue);
     }
 
-    private static IRubyObject jdbcToRuby(Ruby runtime, int column, int type, ResultSet resultSet)
+    protected IRubyObject jdbcToRuby(Ruby runtime, int column, int type, ResultSet resultSet)
             throws SQLException {
         try {
             switch (type) {
-            case Types.BINARY: case Types.BLOB: case Types.LONGVARBINARY: case Types.VARBINARY:
+            case Types.BINARY:
+            case Types.BLOB:
+            case Types.LONGVARBINARY:
+            case Types.VARBINARY:
             case Types.LONGVARCHAR:
                 return streamToRuby(runtime, resultSet, resultSet.getBinaryStream(column));
             case Types.CLOB:
@@ -748,7 +751,7 @@ public class RubyJdbcConnection extends RubyObject {
         }
     }
 
-    private static void populateFromResultSet(ThreadContext context, Ruby runtime, List results,
+    protected void populateFromResultSet(ThreadContext context, Ruby runtime, List results,
             ResultSet resultSet, ColumnData[] columns) throws SQLException {
         int columnCount = columns.length;
 
@@ -763,7 +766,7 @@ public class RubyJdbcConnection extends RubyObject {
     }
 
 
-    private static IRubyObject readerToRuby(Ruby runtime, ResultSet resultSet, Reader reader)
+    protected IRubyObject readerToRuby(Ruby runtime, ResultSet resultSet, Reader reader)
             throws SQLException, IOException {
         if (reader == null && resultSet.wasNull()) return runtime.getNil();
 
@@ -850,7 +853,7 @@ public class RubyJdbcConnection extends RubyObject {
         }
     }
 
-    private static IRubyObject streamToRuby(Ruby runtime, ResultSet resultSet, InputStream is)
+    protected IRubyObject streamToRuby(Ruby runtime, ResultSet resultSet, InputStream is)
             throws SQLException, IOException {
         if (is == null && resultSet.wasNull()) return runtime.getNil();
 
@@ -868,7 +871,7 @@ public class RubyJdbcConnection extends RubyObject {
         return runtime.newString(str);
     }
 
-    private static IRubyObject stringToRuby(Ruby runtime, ResultSet resultSet, String string)
+    protected IRubyObject stringToRuby(Ruby runtime, ResultSet resultSet, String string)
             throws SQLException, IOException {
         if (string == null && resultSet.wasNull()) return runtime.getNil();
 
@@ -917,7 +920,7 @@ public class RubyJdbcConnection extends RubyObject {
         };
     }
 
-    private static IRubyObject timestampToRuby(Ruby runtime, ResultSet resultSet, Timestamp time)
+    protected IRubyObject timestampToRuby(Ruby runtime, ResultSet resultSet, Timestamp time)
             throws SQLException, IOException {
         if (time == null && resultSet.wasNull()) return runtime.getNil();
 
@@ -1031,7 +1034,7 @@ public class RubyJdbcConnection extends RubyObject {
      *
      * @param downCase should column names only be in lower case?
      */
-    protected static IRubyObject unmarshalResult(ThreadContext context, DatabaseMetaData metadata,
+    protected IRubyObject unmarshalResult(ThreadContext context, DatabaseMetaData metadata,
             ResultSet resultSet, boolean downCase) throws SQLException {
         Ruby runtime = context.getRuntime();
         List results = new ArrayList();
