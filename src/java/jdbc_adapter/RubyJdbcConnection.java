@@ -103,7 +103,11 @@ public class RubyJdbcConnection extends RubyObject {
 
     @JRubyMethod(name = "begin")
     public IRubyObject begin(ThreadContext context) throws SQLException {
-        getConnection(true).setAutoCommit(false);
+        try {
+            getConnection(true).setAutoCommit(false);
+        } catch (Exception e) {
+            throw wrap(context, e);
+        }
 
         return context.getRuntime().getNil();
     }
@@ -421,17 +425,21 @@ public class RubyJdbcConnection extends RubyObject {
 
     @JRubyMethod(name = "rollback")
     public IRubyObject rollback(ThreadContext context) throws SQLException {
-        Connection connection = getConnection(true);
-
-        if (!connection.getAutoCommit()) {
-            try {
-                connection.rollback();
-            } finally {
-                connection.setAutoCommit(true);
+        try {
+            Connection connection = getConnection(true);
+    
+            if (!connection.getAutoCommit()) {
+                try {
+                    connection.rollback();
+                } finally {
+                    connection.setAutoCommit(true);
+                }
             }
+    
+            return context.getRuntime().getNil();
+        } catch (Exception e) {
+            throw wrap(context, e);
         }
-
-        return context.getRuntime().getNil();
     }
 
     @JRubyMethod(name = "select?", required = 1, meta = true, frame = false)
