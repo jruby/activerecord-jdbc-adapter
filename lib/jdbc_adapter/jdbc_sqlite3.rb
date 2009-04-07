@@ -290,7 +290,19 @@ module ::JdbcSpec
         ActiveRecord::ConnectionAdapters::JdbcConnection::insert?(sql) ? last_insert_id(sql.split(" ", 4)[2], nil) : affected_rows
       end
     end
-
+    
+    def select(sql, name=nil)
+      execute(sql, name).map do |row|
+        record = {}
+        row.each_key do |key|
+          if key.is_a?(String)
+            record[key.sub(/^"?\w+"?\./, '')] = row[key]
+          end
+        end
+        record
+      end
+    end
+    
     def table_structure(table_name)
       returning structure = @connection.execute_query("PRAGMA table_info(#{quote_table_name(table_name)})") do
         raise(ActiveRecord::StatementInvalid, "Could not find table '#{table_name}'") if structure.empty?
