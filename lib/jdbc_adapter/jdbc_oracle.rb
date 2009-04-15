@@ -329,6 +329,9 @@ module ::JdbcSpec
           %Q{empty_#{ column.sql_type.downcase rescue 'blob' }()}
         end
       else
+        if column.respond_to?(:primary) && column.primary
+          return value.to_i.to_s
+        end
         quoted = super
         if value.acts_like?(:date) || value.acts_like?(:time)
           quoted = "#{quoted_date(value)}"
