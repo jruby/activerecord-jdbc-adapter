@@ -17,4 +17,7 @@ class CreateEntries < ActiveRecord::Migration
 end
 
 class Entry < ActiveRecord::Base
+  def to_param
+    "#{id}-#{title.gsub(/[^a-zA-Z0-9]/, '-')}"
+  end
 end
