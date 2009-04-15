@@ -34,7 +34,6 @@ module ::JdbcSpec
     end
 
     module Column
-      
       def init_column(name, default, *args)
         @default = '' if default =~ /NULL/
       end
@@ -162,6 +161,8 @@ module ::JdbcSpec
       when String
         if column && column.type == :binary
           "'#{quote_string(column.class.string_to_binary(value))}'"
+        elsif column.respond_to?(:primary) && column.primary
+          value.to_i.to_s
         else
           "'#{quote_string(value)}'"
         end

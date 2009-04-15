@@ -82,10 +82,13 @@ module ::JdbcSpec
           "''"
         elsif column && column.type == :binary
           "'#{value.unpack("H*")}'"
+        elsif column.respond_to?(:primary) && column.primary
+          value.to_i.to_s
         else
           "'#{quote_string(value)}'"
         end
-      else super
+      else
+        super
       end
     end
 
