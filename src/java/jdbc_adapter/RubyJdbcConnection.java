@@ -103,13 +103,13 @@ public class RubyJdbcConnection extends RubyObject {
 
     @JRubyMethod(name = "begin")
     public IRubyObject begin(ThreadContext context) throws SQLException {
-        try {
+        final Ruby runtime = context.getRuntime();
+        return (IRubyObject) withConnectionAndRetry(context, new SQLBlock() {
+          public Object call(Connection c) throws SQLException {
             getConnection(true).setAutoCommit(false);
-        } catch (Exception e) {
-            throw wrap(context, e);
-        }
-
-        return context.getRuntime().getNil();
+            return runtime.getNil();
+          }
+        });
     }
 
     @JRubyMethod(name = {"columns", "columns_internal"}, required = 1, optional = 2)
@@ -423,9 +423,12 @@ public class RubyJdbcConnection extends RubyObject {
         return setConnection(getConnectionFactory().newConnection());
     }
 
+
     @JRubyMethod(name = "rollback")
     public IRubyObject rollback(ThreadContext context) throws SQLException {
-        try {
+        final Ruby runtime = context.getRuntime();
+        return (IRubyObject) withConnectionAndRetry(context, new SQLBlock() {
+          public Object call(Connection c) throws SQLException {
             Connection connection = getConnection(true);
     
             if (!connection.getAutoCommit()) {
@@ -436,10 +439,9 @@ public class RubyJdbcConnection extends RubyObject {
                 }
             }
     
-            return context.getRuntime().getNil();
-        } catch (Exception e) {
-            throw wrap(context, e);
-        }
+            return runtime.getNil();
+          }
+        });
     }
 
     @JRubyMethod(name = "select?", required = 1, meta = true, frame = false)
@@ -721,7 +723,7 @@ public class RubyJdbcConnection extends RubyObject {
             } else {
                 return !c.isClosed();
             }
-        } catch (SQLException sx) {
+        } catch (Exception sx) {
             return true;
         }
     }
