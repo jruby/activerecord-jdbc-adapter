@@ -141,6 +141,14 @@ module ::JdbcSpec
     def quote_column_name(name)
       "[#{name}]"
     end
+    
+    def quoted_true
+      quote true
+    end
+    
+    def quoted_false
+      quote false
+    end
 
     def change_order_direction(order)
       order.split(",").collect {|fragment|
