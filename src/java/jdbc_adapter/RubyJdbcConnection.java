@@ -76,7 +76,7 @@ public class RubyJdbcConnection extends RubyObject {
     private static final String[] TABLE_TYPE = new String[]{"TABLE"};
 
     private static RubyObjectAdapter rubyApi;
-    
+
     protected RubyJdbcConnection(Ruby runtime, RubyClass metaClass) {
         super(runtime, metaClass);
     }
@@ -103,13 +103,13 @@ public class RubyJdbcConnection extends RubyObject {
 
     @JRubyMethod(name = "begin")
     public IRubyObject begin(ThreadContext context) throws SQLException {
-        try {
+        final Ruby runtime = context.getRuntime();
+        return (IRubyObject) withConnectionAndRetry(context, new SQLBlock() {
+          public Object call(Connection c) throws SQLException {
             getConnection(true).setAutoCommit(false);
-        } catch (Exception e) {
-            throw wrap(context, e);
-        }
-
-        return context.getRuntime().getNil();
+            return runtime.getNil();
+          }
+        });
     }
 
     @JRubyMethod(name = {"columns", "columns_internal"}, required = 1, optional = 2)
@@ -300,7 +300,7 @@ public class RubyJdbcConnection extends RubyObject {
                 DatabaseMetaData metadata = c.getMetaData();
                 String tableName = caseConvertIdentifierForJdbc(metadata, tableNameArg);
                 String schemaName = caseConvertIdentifierForJdbc(metadata, schemaNameArg);
-                
+
                 ResultSet resultSet = null;
                 List indexes = new ArrayList();
                 try {
@@ -387,13 +387,13 @@ public class RubyJdbcConnection extends RubyObject {
     public IRubyObject native_database_types() {
         return getInstanceVariable("@native_database_types");
     }
-    
+
 
     @JRubyMethod(name = "primary_keys", required = 1)
     public IRubyObject primary_keys(ThreadContext context, IRubyObject tableName) throws SQLException {
         return context.getRuntime().newArray(primaryKeys(context, tableName.toString()));
     }
-    
+
     protected List primaryKeys(final ThreadContext context, final String tableNameArg) {
         return (List) withConnectionAndRetry(context, new SQLBlock() {
             public Object call(Connection c) throws SQLException {
@@ -423,11 +423,14 @@ public class RubyJdbcConnection extends RubyObject {
         return setConnection(getConnectionFactory().newConnection());
     }
 
+
     @JRubyMethod(name = "rollback")
     public IRubyObject rollback(ThreadContext context) throws SQLException {
-        try {
+        final Ruby runtime = context.getRuntime();
+        return (IRubyObject) withConnectionAndRetry(context, new SQLBlock() {
+          public Object call(Connection c) throws SQLException {
             Connection connection = getConnection(true);
-    
+
             if (!connection.getAutoCommit()) {
                 try {
                     connection.rollback();
@@ -435,18 +438,17 @@ public class RubyJdbcConnection extends RubyObject {
                     connection.setAutoCommit(true);
                 }
             }
-    
-            return context.getRuntime().getNil();
-        } catch (Exception e) {
-            throw wrap(context, e);
-        }
+
+            return runtime.getNil();
+          }
+        });
     }
 
     @JRubyMethod(name = "select?", required = 1, meta = true, frame = false)
     public static IRubyObject select_p(ThreadContext context, IRubyObject recv, IRubyObject _sql) {
         ByteList sql = rubyApi.convertToRubyString(_sql).getByteList();
 
-        return context.getRuntime().newBoolean(startsWithNoCaseCmp(sql, SELECT) || 
+        return context.getRuntime().newBoolean(startsWithNoCaseCmp(sql, SELECT) ||
                 startsWithNoCaseCmp(sql, SHOW) || startsWithNoCaseCmp(sql, CALL));
     }
 
@@ -461,7 +463,7 @@ public class RubyJdbcConnection extends RubyObject {
 
         return runtime.getNil();
     }
-    
+
     @JRubyMethod(name = "tables")
     public IRubyObject tables(ThreadContext context) {
         return tables(context, null, null, null, TABLE_TYPE);
@@ -569,7 +571,7 @@ public class RubyJdbcConnection extends RubyObject {
     public static String caseConvertIdentifierForRails(DatabaseMetaData metadata, String value)
             throws SQLException {
         if (value == null) return null;
-        
+
         return metadata.storesUpperCaseIdentifiers() ? value.toLowerCase() : value;
     }
 
@@ -578,10 +580,10 @@ public class RubyJdbcConnection extends RubyObject {
      * storage case.  Methods like DatabaseMetaData.getPrimaryKeys() needs the table name to match
      * the internal storage name.  Arbtrary queries and the like DO NOT need to do this.
      */
-    public static String caseConvertIdentifierForJdbc(DatabaseMetaData metadata, String value) 
+    public static String caseConvertIdentifierForJdbc(DatabaseMetaData metadata, String value)
             throws SQLException {
         if (value == null) return null;
-        
+
         if (metadata.storesUpperCaseIdentifiers()) {
             return value.toUpperCase();
         } else if (metadata.storesLowerCaseIdentifiers()) {
@@ -632,7 +634,7 @@ public class RubyJdbcConnection extends RubyObject {
 
         return runtime.newFloat(floatValue);
     }
-    
+
     protected Connection getConnection() {
         return getConnection(false);
     }
@@ -721,7 +723,7 @@ public class RubyJdbcConnection extends RubyObject {
             } else {
                 return !c.isClosed();
             }
-        } catch (SQLException sx) {
+        } catch (Exception sx) {
             return true;
         }
     }
@@ -901,7 +903,7 @@ public class RubyJdbcConnection extends RubyObject {
 
                     String realschema = schemapat;
                     String realtablepat = tablepat;
-                    
+
                     if (realtablepat != null) realtablepat = caseConvertIdentifierForJdbc(metadata, realtablepat);
                     if (realschema != null) realschema = caseConvertIdentifierForJdbc(metadata, realschema);
 
@@ -909,7 +911,7 @@ public class RubyJdbcConnection extends RubyObject {
                     List arr = new ArrayList();
                     while (rs.next()) {
                         String name;
-                        
+
                         if (downCase) {
                             name = rs.getString(TABLE_NAME).toLowerCase();
                         } else {
@@ -970,14 +972,14 @@ public class RubyJdbcConnection extends RubyObject {
         // valid precision 1 decimal also.  Seems sketchy to me...
         if (numberAsBoolean && precision != 1 &&
             resultSet.getInt(DATA_TYPE) == java.sql.Types.DECIMAL) precision = -1;
-        
+
         String type = resultSet.getString(TYPE_NAME);
         if (precision > 0) {
             type += "(" + precision;
             if(scale > 0) type += "," + scale;
             type += ")";
         }
-        
+
         return type;
     }
 
@@ -1003,7 +1005,7 @@ public class RubyJdbcConnection extends RubyObject {
                 IRubyObject column = jdbcCol.callMethod(context, "new",
                         new IRubyObject[] {
                             getInstanceVariable("@config"),
-                            RubyString.newUnicodeString(runtime, 
+                            RubyString.newUnicodeString(runtime,
                                     caseConvertIdentifierForRails(metadata, rs.getString(COLUMN_NAME))),
                             defaultValueFromResultSet(runtime, rs),
                             RubyString.newUnicodeString(runtime, typeFromResultSet(rs, isOracle)),
@@ -1110,7 +1112,7 @@ public class RubyJdbcConnection extends RubyObject {
 
         return end;
     }
-    
+
     private static byte[] CALL = new byte[]{'c', 'a', 'l', 'l'};
     private static byte[] INSERT = new byte[] {'i', 'n', 's', 'e', 'r', 't'};
     private static byte[] SELECT = new byte[] {'s', 'e', 'l', 'e', 'c', 't'};
