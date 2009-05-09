@@ -1,3 +1,12 @@
+== 0.9.2
+
+- Cleanup and reconnect if errors occur during begin/rollback
+  (Jean-Dominique Morani, Christian Seiler)
+- ACTIVERECORD_JDBC-1: Add #drop_database method for oracle (does the
+  same thing as recreate_database)
+- Sqlite3 and MSSQL fixes (Jean-Dominique Morani)
+- JRUBY-3512: Treat LONGVARCHAR as a CLOB for Mssql
+
 == 0.9.1
 
 - We did a lot of internal cleanup this release in the hopes of
