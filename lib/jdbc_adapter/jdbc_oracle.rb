@@ -356,7 +356,7 @@ module ::JdbcSpec
     # In Oracle, schemas are created under your username:
     # http://www.oracle.com/technology/obe/2day_dba/schema/schema.htm
     def oracle_schema
-      @config[:username].to_s
+      @config[:username].to_s if @config[:username]
     end
 
     def select(sql, name=nil)

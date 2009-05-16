@@ -130,7 +130,7 @@ public class RubyJdbcConnection extends RubyObject {
 
                     DatabaseMetaData metadata = c.getMetaData();
 
-                    if(args.length > 2) schemaName = args[2].toString();
+                    if(args.length > 2) schemaName = toStringOrNull(args[2]);
 
                     if (schemaName != null) schemaName = caseConvertIdentifierForJdbc(metadata, schemaName);
                     table_name = caseConvertIdentifierForJdbc(metadata, table_name);
