@@ -652,7 +652,8 @@ public class RubyJdbcConnection extends RubyObject {
         IRubyObject connection_factory = getInstanceVariable("@connection_factory");
         JdbcConnectionFactory factory = null;
         try {
-            factory = (JdbcConnectionFactory) ((JavaObject) rubyApi.getInstanceVariable(connection_factory, "@java_object")).getValue();
+            factory = (JdbcConnectionFactory) JavaEmbedUtils.rubyToJava(
+                    connection_factory.getRuntime(), connection_factory, JdbcConnectionFactory.class);
         } catch (Exception e) {
             factory = null;
         }
