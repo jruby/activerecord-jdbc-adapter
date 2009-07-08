@@ -123,6 +123,19 @@ module ::JdbcSpec
 
     # SCHEMA STATEMENTS ========================================
 
+    # Returns a table's primary key and belonging sequence.
+    def pk_and_sequence_for(table)
+      keys = nil
+      java_jdbc_result_set = @connection.connection.get_meta_data.get_primary_keys(nil, nil, table)
+      has_first = java_jdbc_result_set.first
+      if has_first
+        java_jdbc_result_set.first
+        keys = [java_jdbc_result_set.getString("COLUMN_NAME"), nil]
+      end
+
+      keys.blank? ? nil : keys
+    end
+
     def structure_dump #:nodoc:
       if supports_views?
         sql = "SHOW FULL TABLES WHERE Table_type = 'BASE TABLE'"

@@ -10,6 +10,10 @@
   support (Christopher Saunders)
 - JRUBY-3616: Fix postgres non-sequence primary keys (David Kellum)
 - JRUBY-3669: Fix Oracle case with unconfigured schema (Dan Powell)
+- Fixed quote_column_name of jdbc_oracle to accept numbers (Marcelo
+  Murad)
+- Fix for mysql tables with non standard primary keys such that the
+  schema dump is correct (Nick Zalabak)
 
 == 0.9.1
 
