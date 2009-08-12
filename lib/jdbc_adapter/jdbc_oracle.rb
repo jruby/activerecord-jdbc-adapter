@@ -90,6 +90,9 @@ module ::JdbcSpec
 
         return nil if value == "null"
 
+        # sysdate default should be treated like a null value
+        return nil if value.downcase == "sysdate"
+
         # jdbc returns column default strings with actual single quotes around the value.
         return $1 if value =~ /^'(.*)'$/
 
