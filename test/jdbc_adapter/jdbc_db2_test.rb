@@ -18,4 +18,9 @@ class JdbcSpec::DB2Test < Test::Unit::TestCase
     assert_equal %q{123.45}, @inst.quote("123.45", @column), "decimal columns should not have quotes"
   end
   
+  def test_primary_key_generation
+    @column.type = :primary_key
+    assert_equal 'int generated always as identity (start with 1) primary key', @inst.modify_types({:string => {}, :integer => {}, :boolean => {}})[:primary_key]
+  end
+  
 end
