@@ -73,13 +73,20 @@ module JdbcSpec
         return "X'#{quote_string(value.unpack("C*").collect {|v| v.to_s(16)}.join)}'"
       end
       case value
-      when String     : %Q{'#{quote_string(value)}'}
-      when NilClass   : 'NULL'
-      when TrueClass  : '1'
-      when FalseClass : '0'
-      when Numeric    : value.to_s
-      when Date, Time : %Q{TIMESTAMP '#{value.strftime("%Y-%m-%d %H:%M:%S")}'}
-      else              %Q{'#{quote_string(value.to_yaml)}'}
+      when String     
+        %Q{'#{quote_string(value)}'}
+      when NilClass   
+        'NULL'
+      when TrueClass  
+        '1'
+      when FalseClass 
+        '0'
+      when Numeric    
+        value.to_s
+      when Date, Time 
+        %Q{TIMESTAMP '#{value.strftime("%Y-%m-%d %H:%M:%S")}'}
+      else              
+        %Q{'#{quote_string(value.to_yaml)}'}
       end
     end
 

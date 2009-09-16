@@ -67,14 +67,14 @@ module ::JdbcSpec
       private
       def simplified_type(field_type)
         case field_type
-        when /^number\(1\)$/i                  : :boolean
-        when /char/i                           : :string
-        when /float|double/i                   : :float
-        when /int/i                            : :integer
-        when /num|dec|real/i                   : @scale == 0 ? :integer : :decimal
-        when /date|time/i                      : :datetime
-        when /clob/i                           : :text
-        when /blob/i                           : :binary
+        when /^number\(1\)$/i                  then :boolean
+        when /char/i                           then :string
+        when /float|double/i                   then :float
+        when /int/i                            then :integer
+        when /num|dec|real/i                   then @scale == 0 ? :integer : :decimal
+        when /date|time/i                      then :datetime
+        when /clob/i                           then :text
+        when /blob/i                           then :binary
         end
       end
 
@@ -153,7 +153,7 @@ module ::JdbcSpec
 
     def _execute(sql, name = nil)
       case sql.strip
-        when /\A\(?\s*(select|show)/i:
+        when /\A\(?\s*(select|show)/i then
           @connection.execute_query(sql)
         else
           @connection.execute_update(sql)
