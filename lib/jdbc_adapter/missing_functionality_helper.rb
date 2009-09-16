@@ -19,7 +19,8 @@ module JdbcSpec
     end
 
     def copy_table(from, to, options = {}) #:nodoc:
-      create_table(to, options) do |@definition|
+      create_table(to, options) do |definition|
+        @definition = definition
         columns(from).each do |column|
           column_name = options[:rename] ?
           (options[:rename][column.name] ||
