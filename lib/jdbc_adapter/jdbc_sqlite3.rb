@@ -236,7 +236,9 @@ module ::JdbcSpec
     end
 
     def change_column_default(table_name, column_name, default) #:nodoc:
-      execute "ALTER TABLE #{table_name} ALTER COLUMN #{column_name} SET DEFAULT #{quote(default)}"
+      alter_table(table_name) do |definition|
+        definition[column_name].default = default
+      end
     end
 
     def rename_column(table_name, column_name, new_column_name) #:nodoc:
