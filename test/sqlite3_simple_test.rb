@@ -31,6 +31,26 @@ class SQLite3SimpleTest < Test::Unit::TestCase
     assert cols.find {|col| col.name == "title"}
   end
   
+  def test_remove_column
+    assert_nothing_raised do
+      ActiveRecord::Schema.define do
+        add_column "entries", "test_remove_column", :string
+      end
+    end
+    
+    cols = ActiveRecord::Base.connection.columns("entries")
+    assert cols.find {|col| col.name == "test_remove_column"}
+    
+    assert_nothing_raised do
+      ActiveRecord::Schema.define do
+        remove_column "entries", "test_remove_column"
+      end
+    end
+    
+    cols = ActiveRecord::Base.connection.columns("entries")
+    assert !cols.find {|col| col.name == "test_remove_column"}
+  end
+  
   def test_rename_column
     assert_nothing_raised do
       ActiveRecord::Schema.define do
