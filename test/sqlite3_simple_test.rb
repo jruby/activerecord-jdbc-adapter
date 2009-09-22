@@ -31,6 +31,26 @@ class SQLite3SimpleTest < Test::Unit::TestCase
     assert cols.find {|col| col.name == "title"}
   end
   
+  def test_rename_column
+    assert_nothing_raised do
+      ActiveRecord::Schema.define do
+        rename_column "entries", "title", "name"
+      end
+      
+      cols = ActiveRecord::Base.connection.columns("entries")
+      assert cols.find {|col| col.name == "name"}
+      assert !cols.find {|col| col.name == "title"}
+    
+      ActiveRecord::Schema.define do
+        rename_column "entries", "name", "title"
+      end
+      
+      cols = ActiveRecord::Base.connection.columns("entries")
+      assert cols.find {|col| col.name == "title"}
+      assert !cols.find {|col| col.name == "name"}
+    end
+  end
+  
 end
   
 class SQLite3HasManyThroughTest < Test::Unit::TestCase
