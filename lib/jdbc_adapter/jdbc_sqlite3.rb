@@ -224,7 +224,15 @@ module ::JdbcSpec
     end
 
     def change_column(table_name, column_name, type, options = {}) #:nodoc:
-      execute "ALTER TABLE #{table_name} ALTER COLUMN #{column_name} #{type_to_sql(type, options[:limit])}"
+      alter_table(table_name) do |definition|
+        include_default = options_include_default?(options)
+        definition[column_name].instance_eval do
+          self.type    = type
+          self.limit   = options[:limit] if options.include?(:limit)
+          self.default = options[:default] if include_default
+          self.null    = options[:null] if options.include?(:null)
+        end
+      end
     end
 
     def change_column_default(table_name, column_name, default) #:nodoc:
