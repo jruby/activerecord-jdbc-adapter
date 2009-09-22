@@ -36,19 +36,45 @@ class SQLite3SimpleTest < Test::Unit::TestCase
       ActiveRecord::Schema.define do
         rename_column "entries", "title", "name"
       end
+    end
       
-      cols = ActiveRecord::Base.connection.columns("entries")
-      assert cols.find {|col| col.name == "name"}
-      assert !cols.find {|col| col.name == "title"}
+    cols = ActiveRecord::Base.connection.columns("entries")
+    assert cols.find {|col| col.name == "name"}
+    assert !cols.find {|col| col.name == "title"}
     
+    assert_nothing_raised do
       ActiveRecord::Schema.define do
         rename_column "entries", "name", "title"
       end
-      
-      cols = ActiveRecord::Base.connection.columns("entries")
-      assert cols.find {|col| col.name == "title"}
-      assert !cols.find {|col| col.name == "name"}
     end
+      
+    cols = ActiveRecord::Base.connection.columns("entries")
+    assert cols.find {|col| col.name == "title"}
+    assert !cols.find {|col| col.name == "name"}
+  end
+  
+  def test_change_column
+    assert_nothing_raised do
+      ActiveRecord::Schema.define do
+        add_column "entries", "test_change_column", :string
+      end
+    end
+      
+    cols = ActiveRecord::Base.connection.columns("entries")
+    col = cols.find{|col| col.name == "test_change_column"}
+    assert col
+    assert_equal col.type, :string
+    
+    assert_nothing_raised do  
+      ActiveRecord::Schema.define do
+        change_column "entries", "test_change_column", :integer
+      end
+    end
+    
+    cols = ActiveRecord::Base.connection.columns("entries")
+    col = cols.find{|col| col.name == "test_change_column"}
+    assert col
+    assert_equal col.type, :integer
   end
   
 end
