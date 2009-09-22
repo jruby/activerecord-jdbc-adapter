@@ -205,23 +205,14 @@ module ::JdbcSpec
       end
     end
 
-    def remove_column(table_name, column_name) #:nodoc:
-      cols = columns(table_name).collect {|col| col.name}
-      cols.delete(column_name)
-      cols = cols.join(', ')
-      table_backup = table_name + "_backup"
-
-      @connection.begin
-
-      execute "CREATE TEMPORARY TABLE #{table_backup}(#{cols})"
-      insert "INSERT INTO #{table_backup} SELECT #{cols} FROM #{table_name}"
-      execute "DROP TABLE #{table_name}"
-      execute "CREATE TABLE #{table_name}(#{cols})"
-      insert "INSERT INTO #{table_name} SELECT #{cols} FROM #{table_backup}"
-      execute "DROP TABLE #{table_backup}"
-
-      @connection.commit
+    def remove_column(table_name, *column_names) #:nodoc:
+      column_names.flatten.each do |column_name|
+        alter_table(table_name) do |definition|
+          definition.columns.delete(definition[column_name])
+        end
+      end
     end
+    alias :remove_columns :remove_column
 
     def change_column(table_name, column_name, type, options = {}) #:nodoc:
       alter_table(table_name) do |definition|
