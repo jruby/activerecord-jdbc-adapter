@@ -19,6 +19,9 @@
   - always quote strings using unicode identifier for MSSQL
 - Changes primary_key generation to use always instead of by default
   for DB2 (Amos King)
+- Improves the SQLite adapter by fixing rename_column, change_column,
+  change_column_default, changing remove_column, and adding
+  remove_columns (Ryan Baumann)
 
 == 0.9.1
 
