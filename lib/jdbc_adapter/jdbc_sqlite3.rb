@@ -205,34 +205,38 @@ module ::JdbcSpec
       end
     end
 
-    def remove_column(table_name, column_name) #:nodoc:
-      cols = columns(table_name).collect {|col| col.name}
-      cols.delete(column_name)
-      cols = cols.join(', ')
-      table_backup = table_name + "_backup"
-
-      @connection.begin
-
-      execute "CREATE TEMPORARY TABLE #{table_backup}(#{cols})"
-      insert "INSERT INTO #{table_backup} SELECT #{cols} FROM #{table_name}"
-      execute "DROP TABLE #{table_name}"
-      execute "CREATE TABLE #{table_name}(#{cols})"
-      insert "INSERT INTO #{table_name} SELECT #{cols} FROM #{table_backup}"
-      execute "DROP TABLE #{table_backup}"
-
-      @connection.commit
+    def remove_column(table_name, *column_names) #:nodoc:
+      column_names.flatten.each do |column_name|
+        alter_table(table_name) do |definition|
+          definition.columns.delete(definition[column_name])
+        end
+      end
     end
+    alias :remove_columns :remove_column
 
     def change_column(table_name, column_name, type, options = {}) #:nodoc:
-      execute "ALTER TABLE #{table_name} ALTER COLUMN #{column_name} #{type_to_sql(type, options[:limit])}"
+      alter_table(table_name) do |definition|
+        include_default = options_include_default?(options)
+        definition[column_name].instance_eval do
+          self.type    = type
+          self.limit   = options[:limit] if options.include?(:limit)
+          self.default = options[:default] if include_default
+          self.null    = options[:null] if options.include?(:null)
+        end
+      end
     end
 
     def change_column_default(table_name, column_name, default) #:nodoc:
-      execute "ALTER TABLE #{table_name} ALTER COLUMN #{column_name} SET DEFAULT #{quote(default)}"
+      alter_table(table_name) do |definition|
+        definition[column_name].default = default
+      end
     end
 
     def rename_column(table_name, column_name, new_column_name) #:nodoc:
-      execute "ALTER TABLE #{table_name} ALTER COLUMN #{column_name} RENAME TO #{new_column_name}"
+      unless columns(table_name).detect{|c| c.name == column_name.to_s }
+        raise ActiveRecord::ActiveRecordError, "Missing column #{table_name}.#{column_name}"
+      end
+      alter_table(table_name, :rename => {column_name.to_s => new_column_name.to_s})
     end
 
     def rename_table(name, new_name)
@@ -278,6 +282,11 @@ module ::JdbcSpec
         ::ActiveRecord::ConnectionAdapters::IndexDefinition.new(table_name, name, unique, cols)
       end
     end
+    
+    def primary_key(table_name) #:nodoc:
+      column = table_structure(table_name).find {|field| field['pk'].to_i == 1}
+      column ? column['name'] : nil
+    end
 
     def recreate_database(name)
       tables.each{ |table| drop_table(table) }
@@ -320,6 +329,9 @@ module ::JdbcSpec
     def add_lock!(sql, options) #:nodoc:
       sql
     end
+    
+    protected
+      include JdbcSpec::MissingFunctionalityHelper
   end
 end
 

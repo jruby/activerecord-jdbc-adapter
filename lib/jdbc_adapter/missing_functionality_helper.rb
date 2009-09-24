@@ -8,7 +8,8 @@ module JdbcSpec
       caller = lambda {|definition| yield definition if block_given?}
 
       transaction do
-        move_table(table_name, altered_table_name, options)
+        move_table(table_name, altered_table_name,
+          options.merge(:temporary => true))
         move_table(altered_table_name, table_name, &caller)
       end
     end
@@ -19,29 +20,30 @@ module JdbcSpec
     end
 
     def copy_table(from, to, options = {}) #:nodoc:
+      options = options.merge(:id => (!columns(from).detect{|c| c.name == 'id'}.nil? && 'id' == primary_key(from).to_s))
       create_table(to, options) do |definition|
         @definition = definition
         columns(from).each do |column|
           column_name = options[:rename] ?
-          (options[:rename][column.name] ||
-           options[:rename][column.name.to_sym] ||
-           column.name) : column.name
-          column_name = column_name.to_s
-          @definition.column(column_name, column.type, 
-                             :limit => column.limit, :default => column.default,
-                             :null => column.null)
+            (options[:rename][column.name] ||
+             options[:rename][column.name.to_sym] ||
+             column.name) : column.name
+          
+          @definition.column(column_name, column.type,
+            :limit => column.limit, :default => column.default,
+            :null => column.null)
         end
-        @definition.primary_key(primary_key(from))
+        @definition.primary_key(primary_key(from)) if primary_key(from)
         yield @definition if block_given?
       end
-      
-      copy_table_indexes(from, to, options)
-      copy_table_contents(from, to, 
-                          @definition.columns, 
-                          options[:rename] || {})
+
+      copy_table_indexes(from, to, options[:rename] || {})
+      copy_table_contents(from, to,
+        @definition.columns.map {|column| column.name},
+        options[:rename] || {})
     end
     
-    def copy_table_indexes(from, to, options={}) #:nodoc:
+    def copy_table_indexes(from, to, rename = {}) #:nodoc:
       indexes(from).each do |index|
         name = index.name.downcase
         if to == "altered_#{from}"
@@ -49,31 +51,32 @@ module JdbcSpec
         elsif from == "altered_#{to}"
           name = name[5..-1]
         end
-        
-        # index name can't be the same
-        opts = { :name => name.gsub(/_(#{from})_/, "_#{to}_") }
-        opts[:unique] = true if index.unique
-        if options[:rename]
-          new_columns = index.columns.map {|column_name|
-            (options[:rename][column_name] ||
-             options[:rename][column_name.to_sym] ||
-             column_name)
-          }
-        else
-          new_columns = index.columns
+
+        to_column_names = columns(to).map(&:name)
+        columns = index.columns.map {|c| rename[c] || c }.select do |column|
+          to_column_names.include?(column)
         end
-        add_index(to, new_columns, opts)
+
+        unless columns.empty?
+          # index name can't be the same
+          opts = { :name => name.gsub(/_(#{from})_/, "_#{to}_") }
+          opts[:unique] = true if index.unique
+          add_index(to, columns, opts)
+        end
       end
     end
     
     def copy_table_contents(from, to, columns, rename = {}) #:nodoc:
-      column_mappings = Hash[*columns.map {|col| [col.name, col.name]}.flatten]
+      column_mappings = Hash[*columns.map {|name| [name, name]}.flatten]
       rename.inject(column_mappings) {|map, a| map[a.last] = a.first; map}
       from_columns = columns(from).collect {|col| col.name}
-      columns = columns.find_all{|col| from_columns.include?(column_mappings[col.name])}
-      execute("SELECT * FROM #{from}").each do |row|
-        sql = "INSERT INTO #{to} ("+columns.map(&:name)*','+") VALUES ("            
-        sql << columns.map {|col| quote(row[column_mappings[col.name]],col)} * ', '
+      columns = columns.find_all{|col| from_columns.include?(column_mappings[col])}
+      quoted_columns = columns.map { |col| quote_column_name(col) } * ','
+
+      quoted_to = quote_table_name(to)
+      execute("SELECT * FROM #{quote_table_name(from)}").each do |row|
+        sql = "INSERT INTO #{quoted_to} (#{quoted_columns}) VALUES ("
+        sql << columns.map {|col| quote row[column_mappings[col]]} * ', '
         sql << ')'
         execute sql
       end
