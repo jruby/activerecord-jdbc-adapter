@@ -9,6 +9,7 @@
 - JRUBY-3624: Upgrade Derby to 10.5.3.0 and add native limit/offset
   support (Christopher Saunders)
 - JRUBY-3616: Fix postgres non-sequence primary keys (David Kellum)
+- JRUBY-3669: Fix Oracle case with unconfigured schema (Dan Powell)
 
 == 0.9.1
 
