@@ -18,7 +18,8 @@
   - add support conversions for java.sql types; BIGINT and BIT
   - add support for MSSQL uniqueidentifier datatype
   - always quote strings using unicode identifier for MSSQL
-
+- Changes primary_key generation to use always instead of by default
+  for DB2 (Amos King)
 
 == 0.9.1
 
