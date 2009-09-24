@@ -15,7 +15,6 @@
 - Fix for mysql tables with non standard primary keys such that the
   schema dump is correct (Nick Zalabak)
 - MSSQL fixes from Mike Luu:
-  - add support conversions for java.sql types; BIGINT and BIT
   - add support for MSSQL uniqueidentifier datatype
   - always quote strings using unicode identifier for MSSQL
 - Changes primary_key generation to use always instead of by default

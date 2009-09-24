@@ -750,7 +750,7 @@ public class RubyJdbcConnection extends RubyObject {
                 return readerToRuby(runtime, resultSet, resultSet.getCharacterStream(column));
             case Types.TIMESTAMP:
                 return timestampToRuby(runtime, resultSet, resultSet.getTimestamp(column));
-            case Types.INTEGER: case Types.SMALLINT: case Types.TINYINT: case Types.BIGINT: case Types.BIT:
+            case Types.INTEGER: case Types.SMALLINT: case Types.TINYINT:
                 return integerToRuby(runtime, resultSet, resultSet.getLong(column));
             case Types.REAL:
                 return floatToRuby(runtime, resultSet, resultSet.getFloat(column));
