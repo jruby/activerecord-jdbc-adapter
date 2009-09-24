@@ -6,6 +6,8 @@
   same thing as recreate_database)
 - Sqlite3 and MSSQL fixes (Jean-Dominique Morani)
 - JRUBY-3512: Treat LONGVARCHAR as a CLOB for Mssql
+- JRUBY-3624: Upgrade Derby to 10.5.3.0 and add native limit/offset
+  support (Christopher Saunders)
 
 == 0.9.1
 
