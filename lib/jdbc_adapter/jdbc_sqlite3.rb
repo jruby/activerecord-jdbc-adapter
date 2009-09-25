@@ -145,7 +145,7 @@ module ::JdbcSpec
     end
 
     def modify_types(tp)
-      tp[:primary_key] = "INTEGER PRIMARY KEY AUTOINCREMENT"
+      tp[:primary_key] = "INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL"
       tp[:string] = { :name => "VARCHAR", :limit => 255 }
       tp[:float] = { :name => "REAL" }
       tp[:decimal] = { :name => "REAL" }
