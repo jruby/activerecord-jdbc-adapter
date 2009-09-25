@@ -70,6 +70,7 @@ module ::JdbcSpec
         case field_type
         when /boolean/i                        then :boolean
         when /text/i                           then :string
+        when /varchar/i                        then :string
         when /int/i                            then :integer
         when /float/i                          then :float
         when /real/i                           then @scale == 0 ? :integer : :decimal
@@ -145,6 +146,7 @@ module ::JdbcSpec
 
     def modify_types(tp)
       tp[:primary_key] = "INTEGER PRIMARY KEY AUTOINCREMENT"
+      tp[:string] = { :name => "VARCHAR", :limit => 255 }
       tp[:float] = { :name => "REAL" }
       tp[:decimal] = { :name => "REAL" }
       tp[:datetime] = { :name => "DATETIME" }
