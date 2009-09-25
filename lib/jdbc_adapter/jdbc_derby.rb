@@ -400,6 +400,16 @@ module ::JdbcSpec
       '0'
     end
 
+    def add_limit_offset!(sql, options) #:nodoc:
+      if options[:offset]
+        sql << " OFFSET #{options[:offset]} ROWS"
+      end
+      if options[:limit]
+        #ROWS/ROW and FIRST/NEXT mean the same
+        sql << " FETCH FIRST #{options[:limit]} ROWS ONLY"
+      end
+    end
+
     private
     # Derby appears to define schemas using the username
     def derby_schema

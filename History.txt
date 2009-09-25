@@ -6,6 +6,22 @@
   same thing as recreate_database)
 - Sqlite3 and MSSQL fixes (Jean-Dominique Morani)
 - JRUBY-3512: Treat LONGVARCHAR as a CLOB for Mssql
+- JRUBY-3624: Upgrade Derby to 10.5.3.0 and add native limit/offset
+  support (Christopher Saunders)
+- JRUBY-3616: Fix postgres non-sequence primary keys (David Kellum)
+- JRUBY-3669: Fix Oracle case with unconfigured schema (Dan Powell)
+- Fixed quote_column_name of jdbc_oracle to accept numbers (Marcelo
+  Murad)
+- Fix for mysql tables with non standard primary keys such that the
+  schema dump is correct (Nick Zalabak)
+- MSSQL fixes from Mike Luu:
+  - add support for MSSQL uniqueidentifier datatype
+  - always quote strings using unicode identifier for MSSQL
+- Changes primary_key generation to use always instead of by default
+  for DB2 (Amos King)
+- Improves the SQLite adapter by fixing rename_column, change_column,
+  change_column_default, changing remove_column, and adding
+  remove_columns (Ryan Baumann)
 
 == 0.9.1
 

@@ -120,7 +120,7 @@ module ::JdbcSpec
           value = column.type == :integer ? value.to_i : value.to_f
           value.to_s
         else
-          "'#{quote_string(value)}'" # ' (for ruby-mode)
+          "N'#{quote_string(value)}'" # ' (for ruby-mode)
         end
       when TrueClass             then '1'
       when FalseClass            then '0'

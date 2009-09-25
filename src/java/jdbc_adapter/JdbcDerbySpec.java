@@ -274,55 +274,20 @@ public class JdbcDerbySpec {
         }
     }
 
-    @JRubyMethod(name = "add_limit_offset!", required = 2)
-    public static IRubyObject add_limit_offset(IRubyObject recv, IRubyObject sql, IRubyObject options) {
-        IRubyObject limit = rubyApi.callMethod(options, "[]", recv.getRuntime().newSymbol("limit"));
-        rubyApi.setInstanceVariable(recv, "@limit",limit);
-        IRubyObject offset = rubyApi.callMethod(options, "[]", recv.getRuntime().newSymbol("offset"));
-        return rubyApi.setInstanceVariable(recv, "@offset",offset);
-    }
-
     @JRubyMethod(name = "_execute", required = 1, optional = 1)
     public static IRubyObject _execute(ThreadContext context, IRubyObject recv, IRubyObject[] args) throws SQLException, java.io.IOException {
         Ruby runtime = recv.getRuntime();
-        try {
-            // TODO: Ouch....this looks fragile
-            RubyJdbcConnection conn = (RubyJdbcConnection) rubyApi.getInstanceVariable(recv, "@connection");
-            String sql = args[0].toString().trim().toLowerCase();
-            if (sql.charAt(0) == '(') {
-                sql = sql.substring(1).trim();
-            }
-            if (sql.startsWith("insert")) {
-                return conn.execute_insert(context, args[0]);
-            } else if (sql.startsWith("select") || sql.startsWith("show")) {
-                IRubyObject offset = rubyApi.getInstanceVariable(recv, "@offset");
-                if(offset == null || offset.isNil()) {
-                    offset = RubyFixnum.zero(runtime);
-                }
-                IRubyObject limit = rubyApi.getInstanceVariable(recv, "@limit");
-                IRubyObject range;
-                IRubyObject max;
-                if (limit == null || limit.isNil() || RubyNumeric.fix2int(limit) == -1) {
-                    range = RubyRange.newRange(runtime, context, offset, runtime.newFixnum(-1), false);
-                    max = RubyFixnum.zero(runtime);
-                } else {
-                    IRubyObject v1 = rubyApi.callMethod(offset, "+", limit);
-                    range = RubyRange.newRange(runtime, context, offset, v1, true);
-                    max = rubyApi.callMethod(v1, "+", RubyFixnum.one(runtime));
-                }
-                IRubyObject result = conn.execute_query(context, args[0], max);
-                IRubyObject ret = rubyApi.callMethod(result, "[]", range);
-                if (ret.isNil()) {
-                    return runtime.newArray();
-                } else {
-                    return ret;
-                }
-            } else {
-                return conn.execute_update(context, args[0]);
-            }
-        } finally {
-            rubyApi.setInstanceVariable(recv, "@limit", runtime.getNil());
-            rubyApi.setInstanceVariable(recv, "@offset", runtime.getNil());
+        RubyJdbcConnection conn = (RubyJdbcConnection) rubyApi.getInstanceVariable(recv, "@connection");
+        String sql = args[0].toString().trim().toLowerCase();
+        if (sql.charAt(0) == '(') {
+            sql = sql.substring(1).trim();
+        }
+        if (sql.startsWith("insert")) {
+            return conn.execute_insert(context, args[0]);
+        } else if (sql.startsWith("select") || sql.startsWith("show")) {
+            return conn.execute_query(context, args[0]);
+        } else {
+            return conn.execute_update(context, args[0]);
         }
     }
 }

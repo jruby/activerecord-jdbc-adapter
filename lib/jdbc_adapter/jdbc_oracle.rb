@@ -71,7 +71,7 @@ module ::JdbcSpec
         when /char/i                           then :string
         when /float|double/i                   then :float
         when /int/i                            then :integer
-        when /num|dec|real/i                   then @scale == 0 ? :integer : :decimal
+        when /num|dec|real/i                   then (@scale.nil? || @scale == 0) ? :integer : :decimal
         when /date|time/i                      then :datetime
         when /clob/i                           then :text
         when /blob/i                           then :binary
@@ -308,13 +308,13 @@ module ::JdbcSpec
     # see: abstract/quoting.rb
 
     # Camelcase column names need to be quoted.
-    # Nonquoted identifiers can contain only alphanumeric characters from your 
+    # Nonquoted identifiers can contain only alphanumeric characters from your
     # database character set and the underscore (_), dollar sign ($), and pound sign (#).
     # Database links can also contain periods (.) and "at" signs (@).
     # Oracle strongly discourages you from using $ and # in nonquoted identifiers.
     # Source: http://download.oracle.com/docs/cd/B28359_01/server.111/b28286/sql_elements008.htm
     def quote_column_name(name) #:nodoc:
-      name.to_s =~ /^[a-z_$#]+$/ ? name.to_s : "\"#{name}\""
+      name.to_s =~ /^[a-z0-9_$#]+$/ ? name.to_s : "\"#{name}\""
     end
 
     def quote_string(string) #:nodoc:
@@ -356,7 +356,7 @@ module ::JdbcSpec
     # In Oracle, schemas are created under your username:
     # http://www.oracle.com/technology/obe/2day_dba/schema/schema.htm
     def oracle_schema
-      @config[:username].to_s
+      @config[:username].to_s if @config[:username]
     end
 
     def select(sql, name=nil)
@@ -368,3 +368,4 @@ module ::JdbcSpec
     end
   end
 end
+

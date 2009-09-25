@@ -87,10 +87,12 @@ module ::JdbcSpec
     def postgresql_version
       @postgresql_version ||=
         begin
-          select('SELECT version()').to_a[0][0] =~ /PostgreSQL (\d+)\.(\d+)\.(\d+)/
-          ($1.to_i * 10000) + ($2.to_i * 100) + $3.to_i
-        rescue
-          0
+          value = select_value('SELECT version()')
+          if value =~ /PostgreSQL (\d+)\.(\d+)\.(\d+)/
+            ($1.to_i * 10000) + ($2.to_i * 100) + $3.to_i
+          else
+            0
+          end
         end
     end
 
@@ -217,28 +219,36 @@ module ::JdbcSpec
       table = sql.split(" ", 4)[2].gsub('"', '')
 
       # Try an insert with 'returning id' if available (PG >= 8.2)
-      if supports_insert_with_returning?
+      if supports_insert_with_returning? && id_value.nil? && false # FIXME:
+        # Disabled, as it causes:
+        # ActiveRecord::ActiveRecordError: A result was returned when none was expected
+        # This was previously disabled because postgresql_version returned 0
         pk, sequence_name = *pk_and_sequence_for(table) unless pk
         if pk
-          id = select_value("#{sql} RETURNING #{quote_column_name(pk)}")
-          clear_query_cache
-          return id
+          id_value = select_value("#{sql} RETURNING #{quote_column_name(pk)}")
+          clear_query_cache #FIXME: Why now?
+          return id_value
         end
       end
 
-      # Otherwise, insert then grab last_insert_id.
+      # Otherwise, plain insert
       execute(sql, name)
 
-      # If neither pk nor sequence name is given, look them up.
-      unless pk || sequence_name
-        pk, sequence_name = *pk_and_sequence_for(table)
-      end
+      # Don't need to look up id_value if we already have it.
+      # (and can't in case of non-sequence PK)
+      unless id_value
+        # If neither pk nor sequence name is given, look them up.
+        unless pk || sequence_name
+          pk, sequence_name = *pk_and_sequence_for(table)
+        end
 
-      # If a pk is given, fallback to default sequence name.
-      # Don't fetch last insert id for a table without a pk.
-      if pk && sequence_name ||= default_sequence_name(table, pk)
-        last_insert_id(table, sequence_name)
+        # If a pk is given, fallback to default sequence name.
+        # Don't fetch last insert id for a table without a pk.
+        if pk && sequence_name ||= default_sequence_name(table, pk)
+          id_value = last_insert_id(table, sequence_name)
+        end
       end
+      id_value
     end
 
     def columns(table_name, name=nil)

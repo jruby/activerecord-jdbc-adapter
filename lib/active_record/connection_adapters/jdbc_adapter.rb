@@ -618,6 +618,16 @@ module ActiveRecord
         @connection.write_large_object(*args)
       end
 
+      def pk_and_sequence_for(table)
+        result_set = @connection.connection.get_meta_data.get_primary_keys(nil, nil, table)
+        if result_set.next
+          keys = [result_set.getString("COLUMN_NAME"), nil]
+        end
+        keys.blank? ? nil : keys
+      ensure
+        result_set.close
+      end
+
       private
       def select(sql, name=nil)
         execute(sql,name)
