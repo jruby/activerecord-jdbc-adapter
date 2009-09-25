@@ -69,7 +69,7 @@ module ::JdbcSpec
       def simplified_type(field_type)
         case field_type
         when /boolean/i                        then :boolean
-        when /text/i                           then :string
+        when /text/i                           then :text
         when /varchar/i                        then :string
         when /int/i                            then :integer
         when /float/i                          then :float
