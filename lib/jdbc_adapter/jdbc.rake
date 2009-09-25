@@ -6,7 +6,7 @@ def redefine_task(*args, &block)
       public :instance_variable_set
       attr_reader :actions
     end
-    existing_task.instance_variable_set "@prerequisites", FileList[]    
+    existing_task.instance_variable_set "@prerequisites", FileList[]
     existing_task.actions.shift
     enhancements = existing_task.actions
     existing_task.instance_variable_set "@actions", []
@@ -17,8 +17,23 @@ end
 
 namespace :db do
   if Rake::Task["db:create"]
-    redefine_task :create => :environment do
-      create_database(ActiveRecord::Base.configurations[RAILS_ENV])
+    drop_dependency = "environment"
+    unless Rake::Task["load_config"]
+      drop_dependency = "load_config"
+      redefine_task :create => :environment do
+        create_database(ActiveRecord::Base.configurations[RAILS_ENV])
+      end
+    end
+
+    redefine_task :drop => drop_dependency do
+      config = ActiveRecord::Base.configurations[RAILS_ENV]
+      begin
+        ActiveRecord::Base.establish_connection(config)
+        db = ActiveRecord::Base.connection.database_name
+        ActiveRecord::Base.connection.drop_database(db)
+      rescue
+        drop_database(config)
+      end
     end
 
     class << self; alias_method :previous_create_database, :create_database; end
@@ -28,30 +43,16 @@ namespace :db do
         ActiveRecord::Base.connection
       rescue
         begin
-          url = config['url']
-          if url
-            if url =~ /^(.*\/)/
-              url = $1
-            end
+          if url = config['url'] && url =~ /^(.*(?<!\/)\/)(?=\w)/
+            url = $1
           end
 
           ActiveRecord::Base.establish_connection(config.merge({'database' => nil, 'url' => url}))
           ActiveRecord::Base.connection.create_database(config['database'])
           ActiveRecord::Base.establish_connection(config)
         rescue
-          previous_create_database(config)
+          previous_create_database(config.merge('adapter' => config['adapter'].sub(/^jdbc/, '')))
         end
-      end
-    end
-
-    redefine_task :drop => :environment do
-      config = ActiveRecord::Base.configurations[RAILS_ENV]
-      begin
-        ActiveRecord::Base.establish_connection(config)
-        db = ActiveRecord::Base.connection.database_name
-        ActiveRecord::Base.connection.drop_database(db)
-      rescue
-        drop_database(config)
       end
     end
   end

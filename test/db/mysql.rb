@@ -1,4 +1,4 @@
-config = {
+MYSQL_CONFIG = {
   :username => 'blog',
   :password => '',
   :adapter  => 'mysql',
@@ -6,5 +6,5 @@ config = {
   :host     => 'localhost'
 }
 
-ActiveRecord::Base.establish_connection(config)
+ActiveRecord::Base.establish_connection(MYSQL_CONFIG)
 
