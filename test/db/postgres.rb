@@ -1,4 +1,4 @@
-config = { 
+POSTGRES_CONFIG = {
   :adapter => 'postgresql',
   :database => 'weblog_development',
   :host => 'localhost',
@@ -6,4 +6,4 @@ config = {
   :password => ''
 }
 
-ActiveRecord::Base.establish_connection(config)
+ActiveRecord::Base.establish_connection(POSTGRES_CONFIG)
