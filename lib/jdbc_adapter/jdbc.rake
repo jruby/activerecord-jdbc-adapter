@@ -32,11 +32,13 @@ namespace :db do
         db = ActiveRecord::Base.connection.database_name
         ActiveRecord::Base.connection.drop_database(db)
       rescue
+        drop_database(config.merge('adapter' => config['adapter'].sub(/^jdbc/, '')))
         drop_database(config)
       end
     end
 
     class << self; alias_method :previous_create_database, :create_database; end
+
     def create_database(config)
       begin
         ActiveRecord::Base.establish_connection(config)

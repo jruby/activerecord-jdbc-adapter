@@ -128,10 +128,15 @@ The source for activerecord-jdbc-adapter is available using git.
 
 == Running AR-JDBC's Tests
 
-Drivers for 4 open-source databases are included. Provided you have MySQL
+Drivers for 6 open-source databases are included. Provided you have MySQL
 installed, you can simply type <tt>jruby -S rake</tt> to run the tests. A
 database named <tt>weblog_development</tt> is needed beforehand with a
-connection user of "blog" and password empty.
+connection user of "blog" and an empty password.
+
+If you also have PostgreSQL available, those tests will be run if the
+`psql' executable can be found. Also ensure you have a database named
+<tt>weblog_development</tt> and a user named "blog" and an empty
+password.
 
 If you want rails logging enabled during these test runs you can edit 
 test/jdbc_common.rb and add the following line:
@@ -140,11 +145,11 @@ require 'db/logger'
 
 == Running AR Tests
 
-  # If you want to run MRI against Rails remember to re-export RUBYLIB to be
-  # empty (or whatever you normally have it set to when you are done).
-  export RUBYLIB=$(find $PWD -name lib -type d | grep -v pkg | ruby -e 'puts $stdin.readlines.map{|l| l.chomp}.join(":")')
-  cd active_record_source_dir
-  jruby -S rake test_jdbcmysql (or specific adapter you want to test)
+To run the current AR-JDBC sources with ActiveRecord, just use the
+included "rails:test" task. Be sure to specify a driver and a path to
+the ActiveRecord sources.
+
+  jruby -S rake rails:test DRIVER=mysql RAILS=/path/activerecord_source_dir
 
 == Authors
 
