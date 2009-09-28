@@ -74,6 +74,24 @@ class SQLite3SimpleTest < Test::Unit::TestCase
     assert !cols.find {|col| col.name == "name"}
   end
   
+  def test_rename_column_preserves_content
+    post = Entry.find(:first)
+    assert_equal @title, post.title
+    assert_equal @content, post.content
+    assert_equal @rating, post.rating
+    
+    assert_nothing_raised do
+      ActiveRecord::Schema.define do
+        rename_column "entries", "title", "name"
+      end
+    end
+    
+    post = Entry.find(:first)
+    assert_equal @title, post.name
+    assert_equal @content, post.content
+    assert_equal @rating, post.rating
+  end
+  
   def test_change_column_default
     assert_nothing_raised do
       ActiveRecord::Schema.define do
