@@ -265,8 +265,16 @@ module ::JdbcSpec
       end
     end
 
-    def tables
-      @connection.tables.select {|row| row.to_s !~ /^sqlite_/i }
+    def tables(name = nil) #:nodoc:
+      sql = <<-SQL
+        SELECT name
+        FROM sqlite_master
+        WHERE type = 'table' AND NOT name = 'sqlite_sequence'
+      SQL
+
+      select_rows(sql, name).map do |row|
+        row[0]
+      end
     end
 
     def remove_index(table_name, options = {})
