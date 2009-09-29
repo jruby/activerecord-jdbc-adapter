@@ -33,7 +33,6 @@ namespace :db do
         ActiveRecord::Base.connection.drop_database(db)
       rescue
         drop_database(config.merge('adapter' => config['adapter'].sub(/^jdbc/, '')))
-        drop_database(config)
       end
     end
 
