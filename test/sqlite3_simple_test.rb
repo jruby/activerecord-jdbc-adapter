@@ -1,6 +1,7 @@
 require 'jdbc_common'
 require 'db/sqlite3'
 require 'models/data_types'
+require 'models/validates_uniqueness_of_string'
 
 class SQLite3SimpleTest < Test::Unit::TestCase
   include SimpleTestMethods
@@ -73,6 +74,56 @@ class SQLite3SimpleTest < Test::Unit::TestCase
     assert !cols.find {|col| col.name == "name"}
   end
   
+  def test_rename_column_preserves_content
+    post = Entry.find(:first)
+    assert_equal @title, post.title
+    assert_equal @content, post.content
+    assert_equal @rating, post.rating
+    
+    assert_nothing_raised do
+      ActiveRecord::Schema.define do
+        rename_column "entries", "title", "name"
+      end
+    end
+    
+    post = Entry.find(:first)
+    assert_equal @title, post.name
+    assert_equal @content, post.content
+    assert_equal @rating, post.rating
+  end
+  
+  def test_rename_column_preserves_index
+    assert_equal(0, @connection.indexes(:entries).size)
+    
+    index_name = "entries_index"
+    
+    assert_nothing_raised do
+      ActiveRecord::Schema.define do
+        add_index "entries", "title", :name => index_name
+      end
+    end
+    
+    indexes = @connection.indexes(:entries)
+    assert_equal(1, indexes.size)
+    assert_equal "entries", indexes.first.table.to_s
+    assert_equal index_name, indexes.first.name
+    assert !indexes.first.unique
+    assert_equal ["title"], indexes.first.columns
+    
+    assert_nothing_raised do
+      ActiveRecord::Schema.define do
+        rename_column "entries", "title", "name"
+      end
+    end
+    
+    indexes = @connection.indexes(:entries)
+    assert_equal(1, indexes.size)
+    assert_equal "entries", indexes.first.table.to_s
+    assert_equal index_name, indexes.first.name
+    assert !indexes.first.unique
+    assert_equal ["name"], indexes.first.columns
+  end
+  
   def test_change_column_default
     assert_nothing_raised do
       ActiveRecord::Schema.define do
@@ -122,6 +173,67 @@ class SQLite3SimpleTest < Test::Unit::TestCase
   end
   
 end
+
+class SQLite3ValidatesUniquenessOfStringsTest < Test::Unit::TestCase
+  def setup
+    CreateValidatesUniquenessOfStrings.up
+  end
+  def teardown
+    CreateValidatesUniquenessOfStrings.down
+  end
+
+  def test_validates_uniqueness_of_strings_case_sensitive
+    name_lower = ValidatesUniquenessOfString.new(:case_sensitive_string => "name", :case_insensitive_string => '1')
+    name_lower.save!
+    
+    name_upper = ValidatesUniquenessOfString.new(:case_sensitive_string => "NAME", :case_insensitive_string => '2')
+    assert_nothing_raised do
+      name_upper.save!
+    end
+    
+    name_lower_collision = ValidatesUniquenessOfString.new(:case_sensitive_string => "name", :case_insensitive_string => '3')
+    assert_raise ActiveRecord::RecordInvalid do
+      name_lower_collision.save!
+    end
+    
+    name_upper_collision = ValidatesUniquenessOfString.new(:case_sensitive_string => "NAME", :case_insensitive_string => '4')
+    assert_raise ActiveRecord::RecordInvalid do
+      name_upper_collision.save!
+    end
+  end
+  
+  def test_validates_uniqueness_of_strings_case_insensitive
+    name_lower = ValidatesUniquenessOfString.new(:case_sensitive_string => '1', :case_insensitive_string => "name")
+    name_lower.save!
+    
+    name_upper = ValidatesUniquenessOfString.new(:case_sensitive_string => '2', :case_insensitive_string => "NAME")
+    assert_raise ActiveRecord::RecordInvalid do
+      name_upper.save!
+    end
+    
+    name_lower_collision = ValidatesUniquenessOfString.new(:case_sensitive_string => '3', :case_insensitive_string => "name")
+    assert_raise ActiveRecord::RecordInvalid do
+      name_lower_collision.save!
+    end
+    
+    alternate_name_upper = ValidatesUniquenessOfString.new(:case_sensitive_string => '4', :case_insensitive_string => "ALTERNATE_NAME")
+    assert_nothing_raised do
+      alternate_name_upper.save!
+    end
+    
+    alternate_name_upper_collision = ValidatesUniquenessOfString.new(:case_sensitive_string => '5', :case_insensitive_string => "ALTERNATE_NAME")
+    assert_raise ActiveRecord::RecordInvalid do
+      alternate_name_upper_collision.save!
+    end
+    
+    alternate_name_lower = ValidatesUniquenessOfString.new(:case_sensitive_string => '6', :case_insensitive_string => "alternate_name")
+    assert_raise ActiveRecord::RecordInvalid do
+      alternate_name_lower.save!
+    end
+  end
+end
+
+# assert_raise ActiveRecord::RecordInvalid do
   
 class SQLite3HasManyThroughTest < Test::Unit::TestCase
   include HasManyThroughMethods

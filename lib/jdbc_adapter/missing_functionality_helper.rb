@@ -8,8 +8,10 @@ module JdbcSpec
       caller = lambda {|definition| yield definition if block_given?}
 
       transaction do
+        # A temporary table might improve performance here, but
+        # it doesn't seem to maintain indices across the whole move.
         move_table(table_name, altered_table_name,
-          options.merge(:temporary => true))
+          options)
         move_table(altered_table_name, table_name, &caller)
       end
     end
@@ -59,7 +61,7 @@ module JdbcSpec
 
         unless columns.empty?
           # index name can't be the same
-          opts = { :name => name.gsub(/_(#{from})_/, "_#{to}_") }
+          opts = { :name => name.gsub(/(_?)(#{from})_/, "\\1#{to}_") }
           opts[:unique] = true if index.unique
           add_index(to, columns, opts)
         end

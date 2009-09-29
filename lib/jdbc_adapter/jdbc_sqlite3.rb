@@ -69,7 +69,8 @@ module ::JdbcSpec
       def simplified_type(field_type)
         case field_type
         when /boolean/i                        then :boolean
-        when /text/i                           then :string
+        when /text/i                           then :text
+        when /varchar/i                        then :string
         when /int/i                            then :integer
         when /float/i                          then :float
         when /real/i                           then @scale == 0 ? :integer : :decimal
@@ -144,7 +145,8 @@ module ::JdbcSpec
     end
 
     def modify_types(tp)
-      tp[:primary_key] = "INTEGER PRIMARY KEY AUTOINCREMENT"
+      tp[:primary_key] = "INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL"
+      tp[:string] = { :name => "VARCHAR", :limit => 255 }
       tp[:float] = { :name => "REAL" }
       tp[:decimal] = { :name => "REAL" }
       tp[:datetime] = { :name => "DATETIME" }
@@ -263,8 +265,16 @@ module ::JdbcSpec
       end
     end
 
-    def tables
-      @connection.tables.select {|row| row.to_s !~ /^sqlite_/i }
+    def tables(name = nil) #:nodoc:
+      sql = <<-SQL
+        SELECT name
+        FROM sqlite_master
+        WHERE type = 'table' AND NOT name = 'sqlite_sequence'
+      SQL
+
+      select_rows(sql, name).map do |row|
+        row[0]
+      end
     end
 
     def remove_index(table_name, options = {})
