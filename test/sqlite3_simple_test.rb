@@ -92,6 +92,38 @@ class SQLite3SimpleTest < Test::Unit::TestCase
     assert_equal @rating, post.rating
   end
   
+  def test_rename_column_preserves_index
+    assert_equal(0, @connection.indexes(:entries).size)
+    
+    index_name = "entries_index"
+    
+    assert_nothing_raised do
+      ActiveRecord::Schema.define do
+        add_index "entries", "title", :name => index_name
+      end
+    end
+    
+    indexes = @connection.indexes(:entries)
+    assert_equal(1, indexes.size)
+    assert_equal "entries", indexes.first.table.to_s
+    assert_equal index_name, indexes.first.name
+    assert !indexes.first.unique
+    assert_equal ["title"], indexes.first.columns
+    
+    assert_nothing_raised do
+      ActiveRecord::Schema.define do
+        rename_column "entries", "title", "name"
+      end
+    end
+    
+    indexes = @connection.indexes(:entries)
+    assert_equal(1, indexes.size)
+    assert_equal "entries", indexes.first.table.to_s
+    assert_equal index_name, indexes.first.name
+    assert !indexes.first.unique
+    assert_equal ["name"], indexes.first.columns
+  end
+  
   def test_change_column_default
     assert_nothing_raised do
       ActiveRecord::Schema.define do
