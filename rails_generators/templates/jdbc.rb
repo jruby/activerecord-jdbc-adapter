@@ -1,1 +1,1 @@
-require 'jdbc_adapter'
+require 'jdbc_adapter' if defined?(JRUBY_VERSION)
