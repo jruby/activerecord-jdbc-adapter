@@ -11,7 +11,8 @@ Rake::Task['manifest'].invoke # Always regen manifest, so Hoe has up-to-date lis
 require File.dirname(__FILE__) + "/../lib/jdbc_adapter/version"
 begin
   require 'hoe'
-  Hoe.new("activerecord-jdbc-adapter", JdbcAdapter::Version::VERSION) do |p|
+  hoe = Hoe.spec("activerecord-jdbc-adapter") do |p|
+    p.version = JdbcAdapter::Version::VERSION
     p.rubyforge_name = "jruby-extras"
     p.url = "http://jruby-extras.rubyforge.org/activerecord-jdbc-adapter"
     p.author = "Nick Sieger, Ola Bini and JRuby contributors"
@@ -19,11 +20,15 @@ begin
     p.summary = "JDBC adapter for ActiveRecord, for use within JRuby on Rails."
     p.changes = p.paragraphs_of('History.txt', 0..1).join("\n\n")
     p.description = p.paragraphs_of('README.txt', 0...1).join("\n\n")
-  end.spec.dependencies.delete_if { |dep| dep.name == "hoe" }
-rescue LoadError
-  puts "You really need Hoe installed to be able to package this gem"
+  end
+  hoe.spec.files = MANIFEST
+  hoe.spec.dependencies.delete_if { |dep| dep.name == "hoe" }
+
+rescue LoadError => le
+  puts le.to_s, *le.backtrace
+  puts "Problem loading Hoe; please check the error above to ensure that Hoe is installed correctly"
 rescue => e
-  puts "ignoring error while loading hoe: #{e.to_s}"
+  puts "ignoring error while loading Hoe: #{e.to_s}"
 end
 
 def rake(*args)
