@@ -1,6 +1,5 @@
-require 'test/unit'
-require File.dirname(__FILE__) + '../../lib/active_record/connection_adapters/mysql_adapter'
 require 'jdbc_common'
+require 'db/mysql'
 
 class Project < ActiveRecord::Migration
   def self.up
