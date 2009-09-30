@@ -6,6 +6,7 @@ module ::JdbcSpec
 
   module ActiveRecordExtensions
     def mysql_connection(config)
+      require File.dirname(__FILE__) + "/../active_record/connection_adapters/mysql_adapter"
       config[:port] ||= 3306
       url_options = "zeroDateTimeBehavior=convertToNull&jdbcCompliantTruncation=false&useUnicode=true&characterEncoding="
       url_options << (config[:encoding] || 'utf8')

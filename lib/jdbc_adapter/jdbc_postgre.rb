@@ -5,6 +5,7 @@ module ::JdbcSpec
 
   module ActiveRecordExtensions
     def postgresql_connection(config)
+      require File.dirname(__FILE__) + "/../active_record/connection_adapters/postgresql_adapter"
       config[:host] ||= "localhost"
       config[:port] ||= 5432
       config[:url] ||= "jdbc:postgresql://#{config[:host]}:#{config[:port]}/#{config[:database]}"

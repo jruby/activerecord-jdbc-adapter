@@ -16,46 +16,57 @@ def redefine_task(*args, &block)
 end
 
 namespace :db do
-  if Rake::Task["db:create"]
-    drop_dependency = "environment"
-    unless Rake::Task["load_config"]
-      drop_dependency = "load_config"
-      redefine_task :create => :environment do
-        create_database(ActiveRecord::Base.configurations[RAILS_ENV])
-      end
+  redefine_task :create => :environment do
+    create_database(ActiveRecord::Base.configurations[RAILS_ENV])
+  end
+  task :create => :load_config if Rake::Task["load_config"]
+
+  redefine_task :drop => :environment do
+    config = ActiveRecord::Base.configurations[RAILS_ENV]
+    begin
+      ActiveRecord::Base.establish_connection(config)
+      db = ActiveRecord::Base.connection.database_name
+      ActiveRecord::Base.connection.drop_database(db)
+    rescue
+      drop_database(config.merge('adapter' => config['adapter'].sub(/^jdbc/, '')))
     end
+  end
+  task :drop => :load_config if Rake::Task["load_config"]
 
-    redefine_task :drop => drop_dependency do
-      config = ActiveRecord::Base.configurations[RAILS_ENV]
+  namespace :create do
+    task :all => :environment
+  end
+
+  namespace :drop do
+    task :all => :environment
+  end
+
+  class << self
+    alias_method :previous_create_database, :create_database
+    alias_method :previous_drop_database, :drop_database
+  end
+
+  def create_database(config)
+    begin
+      ActiveRecord::Base.establish_connection(config)
+      ActiveRecord::Base.connection
+    rescue
       begin
-        ActiveRecord::Base.establish_connection(config)
-        db = ActiveRecord::Base.connection.database_name
-        ActiveRecord::Base.connection.drop_database(db)
-      rescue
-        drop_database(config.merge('adapter' => config['adapter'].sub(/^jdbc/, '')))
-      end
-    end
-
-    class << self; alias_method :previous_create_database, :create_database; end
-
-    def create_database(config)
-      begin
-        ActiveRecord::Base.establish_connection(config)
-        ActiveRecord::Base.connection
-      rescue
-        begin
-          if url = config['url'] && url =~ /^(.*(?<!\/)\/)(?=\w)/
-            url = $1
-          end
-
-          ActiveRecord::Base.establish_connection(config.merge({'database' => nil, 'url' => url}))
-          ActiveRecord::Base.connection.create_database(config['database'])
-          ActiveRecord::Base.establish_connection(config)
-        rescue
-          previous_create_database(config.merge('adapter' => config['adapter'].sub(/^jdbc/, '')))
+        if url = config['url'] && url =~ /^(.*(?<!\/)\/)(?=\w)/
+          url = $1
         end
+
+        ActiveRecord::Base.establish_connection(config.merge({'database' => nil, 'url' => url}))
+        ActiveRecord::Base.connection.create_database(config['database'])
+        ActiveRecord::Base.establish_connection(config)
+      rescue
+        previous_create_database(config.merge('adapter' => config['adapter'].sub(/^jdbc/, '')))
       end
     end
+  end
+
+  def drop_database(config)
+    previous_drop_database(config.merge('adapter' => config['adapter'].sub(/^jdbc/, '')))
   end
 
   namespace :structure do

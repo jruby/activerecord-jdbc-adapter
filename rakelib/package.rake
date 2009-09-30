@@ -1,6 +1,6 @@
-MANIFEST = FileList["History.txt", "Manifest.txt", "README.txt", 
+MANIFEST = FileList["History.txt", "Manifest.txt", "README.txt",
   "Rakefile", "LICENSE.txt", "lib/**/*.rb", "lib/jdbc_adapter/jdbc_adapter_internal.jar", "test/**/*.rb",
-   "lib/**/*.rake", "src/**/*.java"]
+   "lib/**/*.rake", "src/**/*.java", "rakelib/*.rake", "rails_generators/**/*"]
 
 file "Manifest.txt" => :manifest
 task :manifest do

@@ -5,11 +5,6 @@ require 'active_record/connection_adapters/jdbc_adapter_spec'
 require 'jdbc_adapter/jdbc_adapter_internal'
 require 'bigdecimal'
 
-begin
-  require 'jdbc_adapter/rake_tasks'
-rescue LoadError
-end if defined?(RAILS_ROOT)
-
 # AR's 2.2 version of this method is sufficient, but we need it for
 # older versions
 if ActiveRecord::VERSION::MAJOR <= 2 && ActiveRecord::VERSION::MINOR < 2

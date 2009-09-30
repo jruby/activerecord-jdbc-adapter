@@ -1,6 +1,8 @@
 module ::JdbcSpec
   module ActiveRecordExtensions
     def sqlite3_connection(config)
+      require File.dirname(__FILE__) + "/../active_record/connection_adapters/sqlite3_adapter"
+
       parse_sqlite3_config!(config)
 
       config[:url] ||= "jdbc:sqlite:#{config[:database]}"

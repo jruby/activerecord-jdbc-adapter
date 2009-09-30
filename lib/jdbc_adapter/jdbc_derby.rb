@@ -3,6 +3,7 @@ require 'jdbc_adapter/missing_functionality_helper'
 module ::JdbcSpec
   module ActiveRecordExtensions
     def derby_connection(config)
+      require File.dirname(__FILE__) + "/../active_record/connection_adapters/derby_adapter"
       config[:url] ||= "jdbc:derby:#{config[:database]};create=true"
       config[:driver] ||= "org.apache.derby.jdbc.EmbeddedDriver"
       embedded_driver(config)

@@ -1,12 +1,14 @@
 module ::JdbcSpec
   module ActiveRecordExtensions
     def hsqldb_connection(config)
+      require File.dirname(__FILE__) + "/../active_record/connection_adapters/hsqldb_adapter"
       config[:url] ||= "jdbc:hsqldb:#{config[:database]}"
       config[:driver] ||= "org.hsqldb.jdbcDriver"
       embedded_driver(config)
     end
 
     def h2_connection(config)
+      require File.dirname(__FILE__) + "/../active_record/connection_adapters/h2_adapter"
       config[:url] ||= "jdbc:h2:#{config[:database]}"
       config[:driver] ||= "org.h2.Driver"
       embedded_driver(config)
