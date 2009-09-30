@@ -1,3 +1,4 @@
+require 'active_record/version'
 require 'active_record/connection_adapters/abstract_adapter'
 require 'java'
 require 'active_record/connection_adapters/jdbc_adapter_spec'
