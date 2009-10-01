@@ -1,4 +1,4 @@
-if RUBY_PLATFORM =~ /java/
+if defined?(JRUBY_VERSION)
   begin
     tried_gem ||= false
     require 'active_record/version'

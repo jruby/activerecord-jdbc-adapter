@@ -4,6 +4,8 @@ module ::JdbcSpec
   $LOADED_FEATURES << "active_record/connection_adapters/postgresql_adapter.rb"
 
   module ActiveRecordExtensions
+    add_method_to_remove_from_ar_base(:postgresql_connection)
+
     def postgresql_connection(config)
       require File.dirname(__FILE__) + "/../active_record/connection_adapters/postgresql_adapter"
       config[:host] ||= "localhost"
