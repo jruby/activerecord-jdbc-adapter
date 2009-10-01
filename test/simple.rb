@@ -10,7 +10,7 @@ module MigrationSetup
     DbTypeMigration.up
     CreateEntries.up
     CreateAutoIds.up
-    CreateValidatesUniquenessOfStrings.up
+    CreateValidatesUniquenessOf.up
 
     @connection = ActiveRecord::Base.connection
   end
@@ -19,7 +19,7 @@ module MigrationSetup
     DbTypeMigration.down
     CreateEntries.down
     CreateAutoIds.down
-    CreateValidatesUniquenessOfStrings.down
+    CreateValidatesUniquenessOf.down
     ActiveRecord::Base.clear_active_connections!
   end
 end
@@ -306,50 +306,50 @@ module SimpleTestMethods
     # MySQL string cmps are case-insensitive by default, so skip this test
     return if ActiveRecord::Base.connection.config[:adapter] =~ /mysql/
 
-    name_lower = ValidatesUniquenessOfString.new(:case_sensitive_string => "name", :case_insensitive_string => '1')
+    name_lower = ValidatesUniquenessOfString.new(:cs_string => "name", :ci_string => '1')
     name_lower.save!
 
-    name_upper = ValidatesUniquenessOfString.new(:case_sensitive_string => "NAME", :case_insensitive_string => '2')
+    name_upper = ValidatesUniquenessOfString.new(:cs_string => "NAME", :ci_string => '2')
     assert_nothing_raised do
       name_upper.save!
     end
 
-    name_lower_collision = ValidatesUniquenessOfString.new(:case_sensitive_string => "name", :case_insensitive_string => '3')
+    name_lower_collision = ValidatesUniquenessOfString.new(:cs_string => "name", :ci_string => '3')
     assert_raise ActiveRecord::RecordInvalid do
       name_lower_collision.save!
     end
 
-    name_upper_collision = ValidatesUniquenessOfString.new(:case_sensitive_string => "NAME", :case_insensitive_string => '4')
+    name_upper_collision = ValidatesUniquenessOfString.new(:cs_string => "NAME", :ci_string => '4')
     assert_raise ActiveRecord::RecordInvalid do
       name_upper_collision.save!
     end
   end
 
   def test_validates_uniqueness_of_strings_case_insensitive
-    name_lower = ValidatesUniquenessOfString.new(:case_sensitive_string => '1', :case_insensitive_string => "name")
+    name_lower = ValidatesUniquenessOfString.new(:cs_string => '1', :ci_string => "name")
     name_lower.save!
 
-    name_upper = ValidatesUniquenessOfString.new(:case_sensitive_string => '2', :case_insensitive_string => "NAME")
+    name_upper = ValidatesUniquenessOfString.new(:cs_string => '2', :ci_string => "NAME")
     assert_raise ActiveRecord::RecordInvalid do
       name_upper.save!
     end
 
-    name_lower_collision = ValidatesUniquenessOfString.new(:case_sensitive_string => '3', :case_insensitive_string => "name")
+    name_lower_collision = ValidatesUniquenessOfString.new(:cs_string => '3', :ci_string => "name")
     assert_raise ActiveRecord::RecordInvalid do
       name_lower_collision.save!
     end
 
-    alternate_name_upper = ValidatesUniquenessOfString.new(:case_sensitive_string => '4', :case_insensitive_string => "ALTERNATE_NAME")
+    alternate_name_upper = ValidatesUniquenessOfString.new(:cs_string => '4', :ci_string => "ALTERNATE_NAME")
     assert_nothing_raised do
       alternate_name_upper.save!
     end
 
-    alternate_name_upper_collision = ValidatesUniquenessOfString.new(:case_sensitive_string => '5', :case_insensitive_string => "ALTERNATE_NAME")
+    alternate_name_upper_collision = ValidatesUniquenessOfString.new(:cs_string => '5', :ci_string => "ALTERNATE_NAME")
     assert_raise ActiveRecord::RecordInvalid do
       alternate_name_upper_collision.save!
     end
 
-    alternate_name_lower = ValidatesUniquenessOfString.new(:case_sensitive_string => '6', :case_insensitive_string => "alternate_name")
+    alternate_name_lower = ValidatesUniquenessOfString.new(:cs_string => '6', :ci_string => "alternate_name")
     assert_raise ActiveRecord::RecordInvalid do
       alternate_name_lower.save!
     end

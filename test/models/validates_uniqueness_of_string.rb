@@ -1,18 +1,19 @@
-class CreateValidatesUniquenessOfStrings < ActiveRecord::Migration
+class CreateValidatesUniquenessOf < ActiveRecord::Migration
   def self.up
-    create_table "validates_uniqueness_of_strings", :force => true do |t|
-      t.column :case_sensitive_string, :string
-      t.column :case_insensitive_string, :string
+    create_table "validates_uniqueness_of", :force => true do |t|
+      t.column :cs_string, :string
+      t.column :ci_string, :string
       t.column :content, :text
     end
   end
 
   def self.down
-    drop_table "validates_uniqueness_of_strings"
+    drop_table "validates_uniqueness_of"
   end
 end
 
 class ValidatesUniquenessOfString < ActiveRecord::Base
-  validates_uniqueness_of :case_sensitive_string, :case_sensitive => true
-  validates_uniqueness_of :case_insensitive_string, :case_sensitive => false
+  self.set_table_name "validates_uniqueness_of"
+  validates_uniqueness_of :cs_string, :case_sensitive => true
+  validates_uniqueness_of :ci_string, :case_sensitive => false
 end
