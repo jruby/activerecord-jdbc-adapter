@@ -1,6 +1,3 @@
-require 'rubygems'
-require 'active_record'
-
 class CreateValidatesUniquenessOfStrings < ActiveRecord::Migration
   def self.up
     create_table "validates_uniqueness_of_strings", :force => true do |t|
