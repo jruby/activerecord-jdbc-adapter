@@ -458,6 +458,13 @@ module ::JdbcSpec
       execute "ALTER TABLE #{quote_table_name(table_name)} ALTER COLUMN #{quote_column_name(column_name)} SET DEFAULT '#{default}'"
     end
 
+    def change_column_null(table_name, column_name, null, default = nil)
+      unless null || default.nil?
+        execute("UPDATE #{quote_table_name(table_name)} SET #{quote_column_name(column_name)}=#{quote(default)} WHERE #{quote_column_name(column_name)} IS NULL")
+      end
+      execute("ALTER TABLE #{quote_table_name(table_name)} ALTER #{quote_column_name(column_name)} #{null ? 'DROP' : 'SET'} NOT NULL")
+    end
+
     def rename_column(table_name, column_name, new_column_name) #:nodoc:
       execute "ALTER TABLE #{quote_table_name(table_name)} RENAME COLUMN #{quote_column_name(column_name)} TO #{quote_column_name(new_column_name)}"
     end
