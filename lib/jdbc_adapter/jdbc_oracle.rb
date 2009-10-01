@@ -26,6 +26,9 @@ module ::JdbcSpec
         ActiveRecord::Base.after_save :after_save_with_oracle_lob
         @lob_callback_added = true
       end
+      mod.class_eval do
+        alias_chained_method :insert, :query_dirty, :jdbc_oracle_insert
+      end
     end
 
     def self.adapter_matcher(name, *)
@@ -132,7 +135,7 @@ module ::JdbcSpec
       recreate_database(name)
     end
 
-    def insert(sql, name = nil, pk = nil, id_value = nil, sequence_name = nil) #:nodoc:
+    def jdbc_oracle_insert(sql, name = nil, pk = nil, id_value = nil, sequence_name = nil) #:nodoc:
       if id_value # Pre-assigned id
         execute sql, name
       else # Assume the sql contains a bind-variable for the id
