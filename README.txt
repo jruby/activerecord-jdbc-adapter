@@ -2,6 +2,13 @@ activerecord-jdbc-adapter is a database adapter for Rails' ActiveRecord
 component that can be used with JRuby[http://www.jruby.org/]. It allows use of
 virtually any JDBC-compliant database with your JRuby on Rails application.
 
+== Project Info
+
+* Mailing Lists: http://kenai.com/projects/activerecord-jdbc/lists
+* Issues: http://kenai.com/jira/browse/ACTIVERECORD_JDBC
+* Source: git://kenai.com/activerecord-jdbc~main 
+  	  git://github.com/nicksieger/activerecord-jdbc-adapter.git
+
 == Databases
 
 What's there, and what is not there:
@@ -49,13 +56,23 @@ To use activerecord-jdbc-adapter with JRuby on Rails:
   * derby (<tt>activerecord-jdbcderby-adapter</tt>)
   * hsqldb (<tt>activerecord-jdbchsqldb-adapter</tt>)
   * h2 (<tt>activerecord-jdbch2-adapter</tt>)
+  * sqlite3 (<tt>activerecord-jdbcsqlite3-adapter</tt>)
 
-2. If you're using Rails 2.0, you may skip to the next step. For Rails prior to
-   version 2.0, you'll need to add one-time setup to your config/environment.rb
-   file in your Rails application. Add the following lines just before the
-   <code>Rails::Initializer</code>. (If you're using activerecord-jdbc-adapter
-   under the old gem name used in versions 0.5 and earlier (ActiveRecord-JDBC),
-   replace 'activerecord-jdbc-adapter' with 'ActiveRecord-JDBC' below.)
+2. Run the "jdbc" generator to prepare your Rails application for
+   JDBC.
+
+    jruby script/generate jdbc
+    
+   The initializer and rake task files generated are guarded such that
+   they won't be loaded if you still run your application un C Ruby.
+
+   Legacy: If you're using Rails prior to version 2.0, you'll need to
+   add one-time setup to your config/environment.rb file in your Rails
+   application. Add the following lines just before the
+   <code>Rails::Initializer</code>. (If you're using
+   activerecord-jdbc-adapter under the old gem name used in versions
+   0.5 and earlier (ActiveRecord-JDBC), replace
+   'activerecord-jdbc-adapter' with 'ActiveRecord-JDBC' below.)
 
     if RUBY_PLATFORM =~ /java/
       require 'rubygems'
@@ -63,11 +80,11 @@ To use activerecord-jdbc-adapter with JRuby on Rails:
       require 'jdbc_adapter'
     end
 
-3. Configure your database.yml to use the <code>jdbc</code> adapter. For mysql,
-   postgres, derby, oracle, hsqldb, h2, and informix you can simply configure
-   the database in the normal Rails style. If you use one of the convenience
-   'activerecord-jdbcXXX-adapter' adapters, be sure and put a 'jdbc' prefix in
-   front of the databas adapter name as below.
+3. Configure your database.yml in the normal Rails style. 
+
+   Legacy configuration: If you use one of the convenience
+   'activerecord-jdbcXXX-adapter' adapters, you can still put a 'jdbc'
+   prefix in front of the databas adapter name as below.
 
     development:
       adapter: jdbcmysql
@@ -76,8 +93,8 @@ To use activerecord-jdbc-adapter with JRuby on Rails:
       hostname: localhost
       database: weblog_development
 
-For other databases, you'll need to know the database driver class and URL.
-Example:
+   For other databases, you'll need to know the database driver class
+   and URL. Example:
 
     development:
       adapter: jdbc
@@ -125,6 +142,12 @@ Example:
 The source for activerecord-jdbc-adapter is available using git.
 
   git clone git://github.com/nicksieger/activerecord-jdbc-adapter.git
+
+== Feedback
+
+Please file bug reports at
+http://kenai.com/jira/browse/ACTIVERECORD_JDBC. If you're not sure if
+something's a bug, feel free to pre-report it on the mailing lists.
 
 == Running AR-JDBC's Tests
 

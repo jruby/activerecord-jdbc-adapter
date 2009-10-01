@@ -1,5 +1,10 @@
 == 0.9.2
 
+- The main, highly awaited fix for this release is a solution to the
+  rake db:create/db:drop issue. The main change is a new 'jdbc' rails
+  generator that should be run once to prepare a Rails application to
+  use JDBC. The upside of this generator is that you no longer will
+  need to alter database.yml for JDBC. See the README.txt for details.
 - Cleanup and reconnect if errors occur during begin/rollback
   (Jean-Dominique Morani, Christian Seiler)
 - ACTIVERECORD_JDBC-1: Add #drop_database method for oracle (does the
@@ -22,6 +27,9 @@
 - Improves the SQLite adapter by fixing rename_column, change_column,
   change_column_default, changing remove_column, and adding
   remove_columns (Ryan Baumann)
+- More oracle love courtesy Ben Browning and Jens Himmelreich
+- JRUBY-3608: Add missing change_column_null method for postgres
+- JRUBY-3508: Fix quoting of integer and float columns
 
 == 0.9.1
 
