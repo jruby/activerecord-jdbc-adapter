@@ -136,7 +136,7 @@ module ::JdbcSpec
     end
 
     def jdbc_oracle_insert(sql, name = nil, pk = nil, id_value = nil, sequence_name = nil) #:nodoc:
-      if id_value # Pre-assigned id
+      if id_value || pk.nil? # Pre-assigned id or table without a primary key
         execute sql, name
       else # Assume the sql contains a bind-variable for the id
         # Extract the table from the insert sql. Yuck.
