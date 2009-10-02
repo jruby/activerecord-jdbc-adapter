@@ -64,7 +64,7 @@ To use activerecord-jdbc-adapter with JRuby on Rails:
     jruby script/generate jdbc
     
    The initializer and rake task files generated are guarded such that
-   they won't be loaded if you still run your application un C Ruby.
+   they won't be loaded if you still run your application under C Ruby.
 
    Legacy: If you're using Rails prior to version 2.0, you'll need to
    add one-time setup to your config/environment.rb file in your Rails
@@ -84,7 +84,7 @@ To use activerecord-jdbc-adapter with JRuby on Rails:
 
    Legacy configuration: If you use one of the convenience
    'activerecord-jdbcXXX-adapter' adapters, you can still put a 'jdbc'
-   prefix in front of the databas adapter name as below.
+   prefix in front of the database adapter name as below.
 
     development:
       adapter: jdbcmysql
