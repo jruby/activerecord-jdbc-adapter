@@ -52,9 +52,16 @@ end
         rake task
       end
     end
+
     task "#{File.dirname(dir)}:#{task}" => "#{prefix}:#{task}"
     task "all:#{task}" => "#{prefix}:#{task}"
   end
+
+  # Copy all generated gems to the top-level pkg directory for convenience
+  task "#{prefix}:package" do
+    FileList["#{dir}/pkg/*.gem"].each {|gem| cp gem, "pkg"}
+  end
+
   desc "Run rake release on #{dir}"
   task "#{prefix}:release" do
     Dir.chdir(dir) do
