@@ -1,4 +1,7 @@
 module ::JdbcSpec
+  # Don't need to load native postgres adapter
+  $LOADED_FEATURES << "active_record/connection_adapters/sqlite3_adapter.rb"
+
   module ActiveRecordExtensions
     add_method_to_remove_from_ar_base(:sqlite3_connection)
 
