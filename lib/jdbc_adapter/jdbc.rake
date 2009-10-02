@@ -19,7 +19,7 @@ namespace :db do
   redefine_task :create => :environment do
     create_database(ActiveRecord::Base.configurations[RAILS_ENV])
   end
-  task :create => :load_config if Rake::Task["load_config"]
+  task :create => :load_config if Rake.application.lookup(:load_config)
 
   redefine_task :drop => :environment do
     config = ActiveRecord::Base.configurations[RAILS_ENV]
@@ -31,7 +31,7 @@ namespace :db do
       drop_database(config.merge('adapter' => config['adapter'].sub(/^jdbc/, '')))
     end
   end
-  task :drop => :load_config if Rake::Task["load_config"]
+  task :drop => :load_config if Rake.application.lookup(:load_config)
 
   namespace :create do
     task :all => :environment
