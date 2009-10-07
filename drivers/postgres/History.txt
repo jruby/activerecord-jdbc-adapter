@@ -1,3 +1,7 @@
+=== 8.4.701
+* Upgraded to 8.4-701 drivers, see PostgreSQL JDBC
+  {Change Log}[http://jdbc.postgresql.org/changes.html#version_8.4-701].
+
 === 8.3.605
 * Upgraded to 8.3-605 drivers, see PostgreSQL JDBC
   {Change Log}[http://jdbc.postgresql.org/changes.html#version_8.3-605].
