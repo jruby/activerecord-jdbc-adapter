@@ -16,14 +16,16 @@ module AbstractDbCreate
     require 'initializer'
     the_db_name = @db_name
     the_db_config = db_config
+    configurations = @configs = { "unittest" => the_db_config.merge({:database => the_db_name}).stringify_keys! }
     Rails::Configuration.class_eval do
-      define_method(:database_configuration) do
-        { "unittest" => the_db_config.merge({:database => the_db_name}).stringify_keys! }
-      end
+      define_method(:database_configuration) { configurations }
     end
     load rails_databases_rake_file
     load File.dirname(__FILE__) + '/../lib/jdbc_adapter/jdbc.rake' if jruby?
-    task :environment; task :rails_env           # dummy environment, rails_env tasks
+    task :environment do
+      ActiveRecord::Base.configurations = configurations
+    end
+    task :rails_env
   end
 
   def teardown
