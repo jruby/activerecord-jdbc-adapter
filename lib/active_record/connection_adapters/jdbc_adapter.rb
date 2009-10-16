@@ -405,8 +405,13 @@ module ActiveRecord
 
       module ConnectionPoolCallbacks
         def self.included(base)
-          base.checkin :on_checkin
-          base.checkout :on_checkout
+          if base.respond_to?(:set_callback) # Rails 3 callbacks
+            base.set_callback :checkin, :after, :on_checkin
+            base.set_callback :checkout, :before, :on_checkout
+          else
+            base.checkin :on_checkin
+            base.checkout :on_checkout
+          end
         end
 
         def self.needed?
