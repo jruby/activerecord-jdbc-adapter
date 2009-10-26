@@ -1,5 +1,5 @@
 /***** BEGIN LICENSE BLOCK *****
- * Copyright (c) 2006-2008 Nick Sieger <nick@nicksieger.com>
+ * Copyright (c) 2006-2009 Nick Sieger <nick@nicksieger.com>
  * Copyright (c) 2006-2007 Ola Bini <ola.bini@gmail.com>
  *
  * Permission is hereby granted, free of charge, to any person obtaining
@@ -1128,7 +1128,8 @@ public class JdbcAdapterInternalService implements BasicLibraryService {
         IRubyObject connection_factory = rubyApi.getInstanceVariable(recv, "@connection_factory");
         JdbcConnectionFactory factory = null;
         try {
-            factory = (JdbcConnectionFactory) ((JavaObject) rubyApi.getInstanceVariable(connection_factory, "@java_object")).getValue();
+            factory = (JdbcConnectionFactory) JavaEmbedUtils.rubyToJava(
+                    recv.getRuntime(), connection_factory, JdbcConnectionFactory.class);
         } catch (Exception e) {
             factory = null;
         }
