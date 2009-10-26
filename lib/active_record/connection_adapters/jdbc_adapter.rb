@@ -388,7 +388,7 @@ module ActiveRecord
           if instance_methods.include?("#{meth}_without_#{feature}")
             alias_method "#{meth}_without_#{feature}".to_sym, target
           else
-            alias_method meth, target
+            alias_method meth, target if meth != target
           end
         end
       end

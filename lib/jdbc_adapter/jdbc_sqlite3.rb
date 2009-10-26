@@ -28,6 +28,12 @@ module ::JdbcSpec
   end
 
   module SQLite3
+    def self.extended(base)
+      base.class_eval do
+        alias_chained_method :insert, :query_dirty, :insert
+      end
+    end
+
     def self.adapter_matcher(name, *)
       name =~ /sqlite/i ? self : false
     end
@@ -257,7 +263,6 @@ module ::JdbcSpec
     def insert(sql, name = nil, pk = nil, id_value = nil, sequence_name = nil) #:nodoc:
       log(sql,name) do
         @connection.execute_update(sql)
-        clear_query_cache
       end
       table = sql.split(" ", 4)[2]
       id_value || last_insert_id(table, nil)
@@ -333,9 +338,9 @@ module ::JdbcSpec
     end
     
     def table_structure(table_name)
-      returning structure = @connection.execute_query("PRAGMA table_info(#{quote_table_name(table_name)})") do
-        raise(ActiveRecord::StatementInvalid, "Could not find table '#{table_name}'") if structure.empty?
-      end
+      structure = @connection.execute_query("PRAGMA table_info(#{quote_table_name(table_name)})")
+      raise ActiveRecord::StatementInvalid, "Could not find table '#{table_name}'" if structure.empty?
+      structure
     end
     
     def columns(table_name, name = nil) #:nodoc:        
