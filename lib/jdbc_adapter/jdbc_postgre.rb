@@ -18,6 +18,12 @@ module ::JdbcSpec
   end
 
   module PostgreSQL
+    def self.extended(mod)
+      mod.class_eval do
+        alias_chained_method :insert, :query_dirty, :insert
+      end
+    end
+
     def self.adapter_matcher(name, *)
       name =~ /postgre/i ? self : false
     end
