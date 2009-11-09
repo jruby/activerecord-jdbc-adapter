@@ -124,8 +124,6 @@ module ::JdbcSpec
         end
       when TrueClass             then '1'
       when FalseClass            then '0'
-      when Time, DateTime        then "'#{value.strftime("%Y%m%d %H:%M:%S")}'"
-      when Date                  then "'#{value.strftime("%Y%m%d")}'"
       else                       super
       end
     end
