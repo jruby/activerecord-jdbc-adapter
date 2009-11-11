@@ -86,6 +86,10 @@ module ::JdbcSpec
         end
       end
 
+      def is_utf8?
+        sql_type =~ /nvarchar|ntext|nchar/i
+      end
+
       # JRUBY-2011: Match balanced quotes and parenthesis - 'text',('text') or (text)
       def unquote_string(value)
         value.to_s.sub(/^\((.*)\)$/,'\1').sub(/^N?'(.*)'$/,'\1')
@@ -139,8 +143,10 @@ module ::JdbcSpec
         elsif column && [:integer, :float].include?(column.type)
           value = column.type == :integer ? value.to_i : value.to_f
           value.to_s
-        else
+        elsif column && column.respond_to?(:is_utf8?) && column.is_utf8?
           "N'#{quote_string(value)}'" # ' (for ruby-mode)
+        else
+          super
         end
       when TrueClass             then '1'
       when FalseClass            then '0'
