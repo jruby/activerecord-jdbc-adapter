@@ -261,7 +261,7 @@ module ::JdbcSpec
     end
 
     def columns(table_name, name=nil)
-      schema_name = "public"
+      schema_name = nil
       if table_name =~ /\./
         parts = table_name.split(/\./)
         table_name = parts.pop
