@@ -36,7 +36,7 @@ rescue LoadError
 end
 require 'benchmark'
 
-if defined? RUBY_ENGINE && RUBY_ENGINE == "jruby"
+if defined?(RUBY_ENGINE) && RUBY_ENGINE == "jruby"
   $LOAD_PATH.unshift File.dirname(__FILE__) + '/../lib'
   $LOAD_PATH.unshift File.dirname(__FILE__) + '/../drivers/mysql/lib'
   $LOAD_PATH.unshift File.dirname(__FILE__) + '/../adapters/mysql/lib'
