@@ -6,7 +6,15 @@ module ::JdbcSpec
       require File.dirname(__FILE__) + "/../active_record/connection_adapters/derby_adapter"
       config[:url] ||= "jdbc:derby:#{config[:database]};create=true"
       config[:driver] ||= "org.apache.derby.jdbc.EmbeddedDriver"
-      embedded_driver(config)
+      check_version(embedded_driver(config))
+    end
+
+    def check_version(conn)
+      md = conn.raw_connection.connection.meta_data
+      if md.database_major_version < 10 || md.database_minor_version < 5
+        raise ::ActiveRecord::ConnectionFailed, "Derby adapter requires Derby 10.5 or later"
+      end
+      conn
     end
   end
 
