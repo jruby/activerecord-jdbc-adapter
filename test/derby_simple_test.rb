@@ -9,4 +9,13 @@ require 'db/derby'
 
 class DerbySimpleTest < Test::Unit::TestCase
   include SimpleTestMethods
+
+  # Check that a table-less VALUES(xxx) query (like SELECT  works.
+  def test_values
+    value = nil
+    assert_nothing_raised do
+      value = ActiveRecord::Base.connection.send(:select_rows, "VALUES('ur', 'doin', 'it', 'right')")
+    end
+    assert_equal [['ur', 'doin', 'it', 'right']], value
+  end
 end

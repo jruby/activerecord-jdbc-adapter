@@ -284,7 +284,7 @@ public class JdbcDerbySpec {
         }
         if (sql.startsWith("insert")) {
             return conn.execute_insert(context, args[0]);
-        } else if (sql.startsWith("select") || sql.startsWith("show")) {
+        } else if (sql.startsWith("select") || sql.startsWith("show") || sql.startsWith("values")) {
             return conn.execute_query(context, args[0]);
         } else {
             return conn.execute_update(context, args[0]);
