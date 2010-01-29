@@ -12,7 +12,10 @@ require "jdbc/h2"
 
 begin
   require 'hoe'
-  Hoe.new("activerecord-jdbch2-adapter", JdbcAdapter::Version::VERSION) do |p|
+  Hoe.plugin :gemcutter
+  Hoe.spec("activerecord-jdbch2-adapter") do |p|
+    p.version = JdbcAdapter::Version::VERSION
+    p.spec_extras[:platform] = Gem::Platform.new("java")
     p.rubyforge_name = "jruby-extras"
     p.url = "http://jruby-extras.rubyforge.org/ActiveRecord-JDBC"
     p.author = "Nick Sieger, Ola Bini and JRuby contributors"

@@ -1,4 +1,12 @@
-This is a HSQLDB JDBC driver gem for JRuby. Use
+= jdbc-hsqldb
+
+* http://jruby-extras.rubyforge.org/activerecord-jdbc-adapter/
+
+== DESCRIPTION:
+
+This is a HSQLDB JDBC driver gem for JRuby.
+
+Use
 
    require 'jdbc/hsqldb'
 

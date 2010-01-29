@@ -1,4 +1,12 @@
-This is a Derby JDBC driver gem for JRuby. Use
+= jdbc-derby
+
+* http://jruby-extras.rubyforge.org/activerecord-jdbc-adapter/
+
+== DESCRIPTION:
+
+This is a Derby JDBC driver gem for JRuby.
+
+Use
 
    require 'jdbc/derby'
 

@@ -10,7 +10,10 @@ $LOAD_PATH << "lib"
 require "jdbc/hsqldb"
 begin
   require 'hoe'
-  Hoe.new("jdbc-hsqldb", Jdbc::HSQLDB::VERSION) do |p|
+  Hoe.plugin :gemcutter
+  Hoe.spec("jdbc-hsqldb") do |p|
+    p.version = Jdbc::HSQLDB::VERSION
+    p.spec_extras[:platform] = Gem::Platform.new("java")
     p.rubyforge_name = "jruby-extras"
     p.url = "http://jruby-extras.rubyforge.org/ActiveRecord-JDBC"
     p.author = "Nick Sieger, Ola Bini and JRuby contributors"

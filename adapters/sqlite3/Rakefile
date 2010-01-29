@@ -12,7 +12,10 @@ require "jdbc/sqlite3"
 
 begin
   require 'hoe'
-  Hoe.new("activerecord-jdbcsqlite3-adapter", JdbcAdapter::Version::VERSION) do |p|
+  Hoe.plugin :gemcutter
+  Hoe.spec("activerecord-jdbcsqlite3-adapter") do |p|
+    p.version = JdbcAdapter::Version::VERSION
+    p.spec_extras[:platform] = Gem::Platform.new("java")
     p.rubyforge_name = "jruby-extras"
     p.url = "http://jruby-extras.rubyforge.org/ActiveRecord-JDBC"
     p.author = "Nick Sieger, Ola Bini and JRuby contributors"

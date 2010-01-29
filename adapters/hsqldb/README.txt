@@ -1,5 +1,7 @@
-This is an ActiveRecord driver for HSQLDB using JDBC running under JRuby. Please see
+= activerecord-jdbchsqldb-adapter
 
-http://jruby-extras.rubyforge.org/activerecord-jdbc-adapter/
+* http://jruby-extras.rubyforge.org/activerecord-jdbc-adapter/
 
-for more information.
+== DESCRIPTION:
+
+This is an ActiveRecord driver for HSQLDB using JDBC running under JRuby.
