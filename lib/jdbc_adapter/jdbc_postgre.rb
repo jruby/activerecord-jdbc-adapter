@@ -19,7 +19,7 @@ module ::JdbcSpec
 
   module PostgreSQL
     def self.extended(mod)
-      mod.class_eval do
+      mod.class.class_eval do
         alias_chained_method :insert, :query_dirty, :insert
       end
     end

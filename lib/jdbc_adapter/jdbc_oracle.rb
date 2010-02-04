@@ -26,7 +26,7 @@ module ::JdbcSpec
         ActiveRecord::Base.after_save :after_save_with_oracle_lob
         @lob_callback_added = true
       end
-      mod.class_eval do
+      mod.class.class_eval do
         alias_chained_method :insert, :query_dirty, :jdbc_oracle_insert
       end
     end

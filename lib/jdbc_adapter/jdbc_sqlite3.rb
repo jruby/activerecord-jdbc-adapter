@@ -29,7 +29,7 @@ module ::JdbcSpec
 
   module SQLite3
     def self.extended(base)
-      base.class_eval do
+      base.class.class_eval do
         alias_chained_method :insert, :query_dirty, :insert
       end
     end
