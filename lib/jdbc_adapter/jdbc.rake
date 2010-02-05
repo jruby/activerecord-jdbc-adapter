@@ -15,14 +15,18 @@ def redefine_task(*args, &block)
   enhancements.each {|enhancement| redefined_task.actions << enhancement}
 end
 
+def rails_env
+  defined?(Rails.env) ? Rails.env : RAILS_ENV
+end
+
 namespace :db do
   redefine_task :create => :environment do
-    create_database(ActiveRecord::Base.configurations[RAILS_ENV])
+    create_database(ActiveRecord::Base.configurations[rails_env])
   end
   task :create => :load_config if Rake.application.lookup(:load_config)
 
   redefine_task :drop => :environment do
-    config = ActiveRecord::Base.configurations[RAILS_ENV]
+    config = ActiveRecord::Base.configurations[rails_env]
     begin
       ActiveRecord::Base.establish_connection(config)
       db = ActiveRecord::Base.connection.database_name
@@ -72,10 +76,10 @@ namespace :db do
   namespace :structure do
     redefine_task :dump => :environment do
       abcs = ActiveRecord::Base.configurations
-      ActiveRecord::Base.establish_connection(abcs[RAILS_ENV])
-      File.open("db/#{RAILS_ENV}_structure.sql", "w+") { |f| f << ActiveRecord::Base.connection.structure_dump }
+      ActiveRecord::Base.establish_connection(abcs[rails_env])
+      File.open("db/#{rails_env}_structure.sql", "w+") { |f| f << ActiveRecord::Base.connection.structure_dump }
       if ActiveRecord::Base.connection.supports_migrations?
-        File.open("db/#{RAILS_ENV}_structure.sql", "a") { |f| f << ActiveRecord::Base.connection.dump_schema_information }
+        File.open("db/#{rails_env}_structure.sql", "a") { |f| f << ActiveRecord::Base.connection.dump_schema_information }
       end
     end
   end
@@ -86,7 +90,7 @@ namespace :db do
       abcs['test']['pg_params'] = '?allowEncodingChanges=true' if abcs['test']['adapter'] =~ /postgresql/i
       ActiveRecord::Base.establish_connection(abcs["test"])
       ActiveRecord::Base.connection.execute('SET foreign_key_checks = 0') if abcs["test"]["adapter"] =~ /mysql/i
-      IO.readlines("db/#{RAILS_ENV}_structure.sql").join.split(";\n\n").each do |ddl|
+      IO.readlines("db/#{rails_env}_structure.sql").join.split(";\n\n").each do |ddl|
         begin
           ActiveRecord::Base.connection.execute(ddl.chomp(';'))
         rescue Exception => ex
