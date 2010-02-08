@@ -1,0 +1,10 @@
+Description:
+    Creates stubs that ensure activerecord-jdbc is bootstrapped in
+    your Rails application. 
+
+Example:
+    ./script/generate jdbc
+
+    This will create:
+        config/initializers/jdbc.rb
+	lib/tasks/jdbc.rake
