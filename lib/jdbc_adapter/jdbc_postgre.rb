@@ -13,7 +13,9 @@ module ::JdbcSpec
       config[:url] ||= "jdbc:postgresql://#{config[:host]}:#{config[:port]}/#{config[:database]}"
       config[:url] << config[:pg_params] if config[:pg_params]
       config[:driver] ||= "org.postgresql.Driver"
-      jdbc_connection(config)
+      conn = jdbc_connection(config)
+      conn.execute("SET SEARCH_PATH TO #{config[:schema_search_path]}") if config[:schema_search_path]
+      conn
     end
   end
 
@@ -261,7 +263,7 @@ module ::JdbcSpec
     end
 
     def columns(table_name, name=nil)
-      schema_name = nil
+      schema_name = @config[:schema_search_path]
       if table_name =~ /\./
         parts = table_name.split(/\./)
         table_name = parts.pop

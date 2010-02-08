@@ -1,3 +1,8 @@
+== 0.9.3
+
+- ACTIVERECORD_JDBC-91: Fix schema search path for PostgreSQL (Alex
+  Kuebo)
+
 == 0.9.2
 
 - The main, highly awaited fix for this release is a solution to the
