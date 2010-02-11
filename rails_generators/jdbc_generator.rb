@@ -2,9 +2,9 @@ class JdbcGenerator < Rails::Generator::Base
   def manifest
     record do |m|
       m.directory 'config/initializers'
-      m.template 'jdbc.rb', File.join('config', 'initializers', 'jdbc.rb')
+      m.template 'config/initializers/jdbc.rb', File.join('config', 'initializers', 'jdbc.rb')
       m.directory 'lib/tasks'
-      m.template 'jdbc.rake', File.join('lib', 'tasks', 'jdbc.rake')
+      m.template 'lib/tasks/jdbc.rake', File.join('lib', 'tasks', 'jdbc.rake')
     end
   end
 
