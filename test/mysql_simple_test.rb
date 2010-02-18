@@ -10,6 +10,7 @@ require 'db/mysql'
 
 class MysqlSimpleTest < Test::Unit::TestCase
   include SimpleTestMethods
+  include ActiveRecord3TestMethods
 
   def test_string_quoting_oddity
     s = "0123456789a'a"

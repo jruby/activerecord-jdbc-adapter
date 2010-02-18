@@ -4,9 +4,7 @@ def jruby?
 end
 
 require 'rubygems'
-# Specify version of activerecord with ENV['AR_VERSION'] if desired
-gem 'rails', ENV['AR_VERSION'] if ENV['AR_VERSION']
-require 'active_record/version'
+require 'pick_rails_version'
 require 'jdbc_adapter' if jruby?
 puts "Using activerecord version #{ActiveRecord::VERSION::STRING}"
 puts "Specify version with AR_VERSION=={version} or RUBYLIB={path}"

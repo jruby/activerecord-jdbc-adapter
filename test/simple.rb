@@ -32,7 +32,7 @@ module FixtureSetup
     @content = "Hello from JRuby on Rails!"
     @new_title = "First post updated title"
     @rating = 205.76
-    Entry.create :title => @title, :content => @content, :rating => @rating
+    @entry = Entry.create :title => @title, :content => @content, :rating => @rating
     DbType.create
   end
 end
@@ -448,5 +448,18 @@ module NonUTF8EncodingMethods
     new_entry = Entry.create :title => prague_district
     new_entry.reload
     assert_equal prague_district, new_entry.title
+  end
+end
+
+module ActiveRecord3TestMethods
+  def self.included(base)
+    base.send :include, Tests if ActiveRecord::VERSION::MAJOR == 3
+  end
+
+  module Tests
+    def test_where
+      entries = Entry.where(:title => @entry.title)
+      assert_equal @entry, entries.first
+    end
   end
 end
