@@ -46,6 +46,7 @@ module ::JdbcSpec
           when /datetime|smalldatetime/i                             then :datetime
           when /timestamp/i                                          then :timestamp
           when /time/i                                               then :time
+          when /date/i                                               then :date
           when /text|ntext/i                                         then :text
           when /binary|image|varbinary/i                             then :binary
           when /char|nchar|nvarchar|string|varchar/i                 then :string
@@ -64,7 +65,7 @@ module ::JdbcSpec
         when :datetime  then cast_to_datetime(value)
         when :timestamp then cast_to_time(value)
         when :time      then cast_to_time(value)
-        when :date      then cast_to_datetime(value)
+        when :date      then cast_to_date(value)
         when :boolean   then value == true or (value =~ /^t(rue)?$/i) == 0 or unquote(value)=="1"
         when :binary    then unquote value
         else value
@@ -87,6 +88,11 @@ module ::JdbcSpec
         time_array[1] ||= 1
         time_array[2] ||= 1
         Time.send(ActiveRecord::Base.default_timezone, *time_array) rescue nil
+      end
+
+      def cast_to_date(value)
+        return value if value.is_a?(Date)
+        return Date.parse(value) rescue nil
       end
 
       def cast_to_datetime(value)
