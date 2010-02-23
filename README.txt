@@ -53,13 +53,35 @@ To use activerecord-jdbc-adapter with JRuby on Rails:
   * base jdbc (<tt>activerecord-jdbc-adapter</tt>). Supports all available databases via JDBC, but requires you to download and manually install the database vendor's JDBC driver .jar file.
   * mysql (<tt>activerecord-jdbcmysql-adapter</tt>)
   * postgresql (<tt>activerecord-jdbcpostgresql-adapter</tt>)
+  * sqlite3 (<tt>activerecord-jdbcsqlite3-adapter</tt>)
   * derby (<tt>activerecord-jdbcderby-adapter</tt>)
   * hsqldb (<tt>activerecord-jdbchsqldb-adapter</tt>)
   * h2 (<tt>activerecord-jdbch2-adapter</tt>)
-  * sqlite3 (<tt>activerecord-jdbcsqlite3-adapter</tt>)
 
-2. Run the "jdbc" generator to prepare your Rails application for
-   JDBC.
+2a. For Rails 3, if you're generating a new application, use the
+    following command to generate your application:
+
+   jruby -S rails myapp -m http://jruby.org/rails3.rb
+
+2b. Otherwise, you'll need to run the "jdbc" generator to prepare your
+    Rails application for JDBC.
+
+   If you're using Rails 3, first you'll need to modify your Gemfile
+   to use the activerecord-jdbc-adapter gem under JRuby. Change your
+   Gemfile to look like the following (using sqlite3 as an example):
+
+    if defined?(JRUBY_VERSION)
+      gem 'activerecord-jdbc-adapter', :require => false
+      gem 'jdbc-sqlite3, :require => false
+    else
+      gem sqlite3-ruby', :require => 'sqlite3'
+    end
+
+   Next, run the generator. With Rails 3:
+
+    jruby script/rails generate jdbc
+
+   With Rails 2:
 
     jruby script/generate jdbc
     
@@ -102,6 +124,13 @@ To use activerecord-jdbc-adapter with JRuby on Rails:
       password:
       driver: com.mysql.jdbc.Driver
       url: jdbc:mysql://localhost:3306/weblog_development
+
+   For JNDI data sources, you may simply specify the database type
+   using the adapter key and the JNDI location as follows:
+
+    production:
+      adapter: mysql
+      jndi: jdbc/mysqldb
 
 === Standalone, with ActiveRecord
 
