@@ -178,7 +178,7 @@ module ::JdbcSpec
           "'#{quote_string(column.class.string_to_binary(value))}'"
         elsif column && [:integer, :float].include?(column.type)
           (column.type == :integer ? value.to_i : value.to_f).to_s
-        elsif column && column.respond_to?(:primary) && column.primary
+        elsif column && column.respond_to?(:primary) && column.primary && column.klass != String
           value.to_i.to_s
         else
           "'#{quote_string(value)}'"

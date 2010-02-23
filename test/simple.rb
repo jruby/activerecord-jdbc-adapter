@@ -8,6 +8,7 @@ Time.zone = 'Moscow' if Time.respond_to?(:zone)
 module MigrationSetup
   def setup
     DbTypeMigration.up
+    CreateStringIds.up
     CreateEntries.up
     CreateAutoIds.up
     CreateValidatesUniquenessOf.up
@@ -17,6 +18,7 @@ module MigrationSetup
 
   def teardown
     DbTypeMigration.down
+    CreateStringIds.down
     CreateEntries.down
     CreateAutoIds.down
     CreateValidatesUniquenessOf.down
@@ -370,6 +372,14 @@ module SimpleTestMethods
   def test_change_table
     ChangeEntriesTable.up
     ChangeEntriesTable.down
+  end
+
+  def test_string_id
+    f = StringId.new
+    f.id = "some_string"
+    f.save
+    f = StringId.first #reload is essential
+    assert_equal "some_string", f.id
   end
 end
 
