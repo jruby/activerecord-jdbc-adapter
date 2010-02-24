@@ -1,3 +1,8 @@
+== 0.9.4
+
+- ACTIVERECORD_JDBC-96: DB2 JdbcSpec cannot dump schema correctly
+  (Youhei Kondou)
+
 == 0.9.3
 
 - Rails 3 compatibility

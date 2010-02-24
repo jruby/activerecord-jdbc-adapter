@@ -16,6 +16,11 @@ module JdbcSpec
          end }]
     end
 
+    def self.extended(obj)
+      # Ignore these 4 system tables
+      ActiveRecord::SchemaDumper.ignore_tables |= %w{hmon_atm_info hmon_collection policy stmg_dbsize_info}
+    end
+
     module Column
       def type_cast(value)
         return nil if value.nil? || value =~ /^\s*null\s*$/i
@@ -75,6 +80,16 @@ module JdbcSpec
         sql.gsub!(/SELECT/i, 'SELECT B.* FROM (SELECT A.*, row_number() over () AS internal$rownum FROM (SELECT')
         sql << ") A ) B WHERE B.internal$rownum > #{offset} AND B.internal$rownum <= #{limit + offset}"
       end
+    end
+
+    def pk_and_sequence_for(table)
+      # In JDBC/DB2 side, only upcase names of table and column are handled.
+      keys = super(table.upcase)
+      if keys[0]
+        # In ActiveRecord side, only downcase names of table and column are handled.
+        keys[0] = keys[0].downcase
+      end
+      keys
     end
 
     def quote_column_name(column_name)
