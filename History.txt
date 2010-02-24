@@ -2,6 +2,8 @@
 
 - ACTIVERECORD_JDBC-96: DB2 JdbcSpec cannot dump schema correctly
   (Youhei Kondou)
+- ACTIVERECORD_JDBC-97: Dont use Rails 3 deprecated constants (David
+  Calavera)
 
 == 0.9.3
 
