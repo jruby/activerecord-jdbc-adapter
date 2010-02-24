@@ -631,7 +631,9 @@ module ActiveRecord
 
       private
       def select(sql, name=nil)
-        execute(sql,name)
+        log(sql, name) do
+          @connection.execute_query(sql)
+        end
       end
     end
   end
