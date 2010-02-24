@@ -11,7 +11,7 @@ Gem::Specification.new do |s|
   s.description = %q{Install this gem to use H2 with JRuby on Rails.}
   s.email = %q{nick@nicksieger.com, ola.bini@gmail.com}
   s.extra_rdoc_files = ["Manifest.txt", "README.txt", "LICENSE.txt"]
-  s.files = ["Manifest.txt", "Rakefile", "README.txt", "LICENSE.txt", "lib/active_record", "lib/active_record/connection_adapters", "lib/active_record/connection_adapters/jdbch2_adapter.rb"]
+  s.files = ["Manifest.txt", "Rakefile", "README.txt", "LICENSE.txt", "lib/active_record/connection_adapters/jdbch2_adapter.rb"]
   s.homepage = %q{http://jruby-extras.rubyforge.org/ActiveRecord-JDBC}
   s.rdoc_options = ["--main", "README.txt"]
   s.require_paths = ["lib"]
