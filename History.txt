@@ -1,7 +1,17 @@
 == 0.9.3
 
+- Rails 3 compatibility
+- PLEASE NOTE: ActiveRecord in Rails 3 has changed in a way that
+  doesn't allow non-standard DBs (such as the Derby and H2 embedded
+  DBs) to work. We're investigating the effort required to support
+  these databases and hope to have something for a future release.
 - ACTIVERECORD_JDBC-91: Fix schema search path for PostgreSQL (Alex
   Kuebo)
+- ACTIVERECORD_JDBC-87: DB2 ID insert fix (Youhei Kondou)
+- ACTIVERECORD_JDBC-90: MSSQL fix for DATEs (jlangenauer)
+- ACTIVERECORD_JDBC-93: Fix string IDs for sqlite3, hsql/h2 (moser)
+- ACTIVERECORD_JDBC-86: Fix Derby queries starting with VALUES (Dwayne Litzenberger)
+- ACTIVERECORD_JDBC-95: Fix INSERT ... RETURNING for PostgreSQL
 
 == 0.9.2
 

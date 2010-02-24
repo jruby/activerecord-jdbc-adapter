@@ -25,7 +25,6 @@ begin
     p.description = p.paragraphs_of('README.txt', 0...1).join("\n\n")
   end
   hoe.spec.dependencies.delete_if { |dep| dep.name == "hoe" }
-
   task :gemspec do
     File.open("#{hoe.name}.gemspec", "w") {|f| f << hoe.spec.to_ruby }
   end
@@ -49,7 +48,7 @@ end
 (Dir["drivers/*/Rakefile"] + Dir["adapters/*/Rakefile"]).each do |rakefile|
   dir = File.dirname(rakefile)
   prefix = dir.sub(%r{/}, ':')
-  tasks = %w(package install_gem debug_gem clean)
+  tasks = %w(package install_gem debug_gem clean gemspec)
   tasks << "test" if File.directory?(File.join(dir, "test"))
   tasks.each do |task|
     desc "Run rake #{task} on #{dir}"

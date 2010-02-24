@@ -13,7 +13,7 @@ require "jdbc/derby"
 begin
   require 'hoe'
   Hoe.plugin :gemcutter
-  Hoe.spec("activerecord-jdbcderby-adapter") do |p|
+  hoe = Hoe.spec("activerecord-jdbcderby-adapter") do |p|
     p.version = JdbcAdapter::Version::VERSION
     p.spec_extras[:platform] = Gem::Platform.new("java")
     p.rubyforge_name = "jruby-extras"
@@ -26,7 +26,12 @@ begin
     p.extra_deps += [
       ['activerecord-jdbc-adapter', "= #{JdbcAdapter::Version::VERSION}"],
       ['jdbc-derby', ">= #{Jdbc::Derby::VERSION}"]]
-  end.spec.dependencies.delete_if { |dep| dep.name == "hoe" }
+  end
+  hoe.spec.dependencies.delete_if { |dep| dep.name == "hoe" }
+  task :gemspec do
+    File.open("#{hoe.name}.gemspec", "w") {|f| f << hoe.spec.to_ruby }
+  end
+  task :package => :gemspec
 rescue LoadError
   puts "You really need Hoe installed to be able to package this gem"
 rescue => e
