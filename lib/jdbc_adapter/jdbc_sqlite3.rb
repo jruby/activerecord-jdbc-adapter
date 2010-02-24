@@ -21,8 +21,10 @@ module ::JdbcSpec
       # Allow database path relative to RAILS_ROOT, but only if
       # the database path is not the special path that tells
       # Sqlite to build a database only in memory.
-      if Object.const_defined?(:RAILS_ROOT) && ':memory:' != config[:database]
-        config[:database] = File.expand_path(config[:database], RAILS_ROOT)
+      rails_root_defined = defined?(Rails.root) || Object.const_defined?(:RAILS_ROOT)
+      if rails_root_defined && ':memory:' != config[:database]
+        rails_root = defined?(Rails.root) ? Rails.root : RAILS_ROOT
+        config[:database] = File.expand_path(config[:database], rails_root)
       end
     end
   end
