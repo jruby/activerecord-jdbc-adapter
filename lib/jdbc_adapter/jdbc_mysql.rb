@@ -136,7 +136,7 @@ module ::JdbcSpec
       select_all(sql).inject("") do |structure, table|
         table.delete('Table_type')
 
-        hash = select_one("SHOW CREATE TABLE #{quote_table_name(table.to_a.first.last)}")
+        hash = show_create_table(table.to_a.first.last)
 
         if(table = hash["Create Table"])
           structure += table + ";\n\n"
@@ -168,6 +168,11 @@ module ::JdbcSpec
 
     def current_database
       select_one("SELECT DATABASE() as db")["db"]
+    end
+    
+    def primary_key(table)
+      m = show_create_table(table)["Create Table"].match(/.*KEY\s\(`(.+)\`/)
+      m ? m[1] : nil
     end
 
     def create_table(name, options = {}) #:nodoc:
@@ -229,6 +234,11 @@ module ::JdbcSpec
     end
 
     private
+    
+    def show_create_table(table)
+      select_one("SHOW CREATE TABLE #{quote_table_name(table)}")
+    end
+    
     def supports_views?
       false
     end
