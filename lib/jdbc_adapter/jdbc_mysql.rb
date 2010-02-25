@@ -171,8 +171,7 @@ module ::JdbcSpec
     end
     
     def primary_key(table)
-      m = show_create_table(table)["Create Table"].match(/.*KEY\s\(`(.+)\`/)
-      m ? m[1] : nil
+      show_create_table(table)["Create Table"][/.*KEY\s\(`(.+)\`/, 1]
     end
 
     def create_table(name, options = {}) #:nodoc:
