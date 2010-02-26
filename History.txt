@@ -4,6 +4,8 @@
   (Youhei Kondou)
 - ACTIVERECORD_JDBC-97: Dont use Rails 3 deprecated constants (David
   Calavera)
+- Updates for rake db:schema:dump compatibility with Rails 2.3+ and
+  MySQL (Joakim Kolsjö)
 
 == 0.9.3
 
