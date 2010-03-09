@@ -88,7 +88,7 @@ module ::JdbcSpec
 
       # JRUBY-2011: Match balanced quotes and parenthesis - 'text',('text') or (text)
       def unquote_string(value)
-        value.to_s.sub(/^\((.*)\)$/,'\1').sub(/^'(.*)'$/,'\1')
+        value.to_s.sub(/^\((.*)\)$/,'\1').sub(/^N?'(.*)'$/,'\1')
       end
 
       def unquote(value)
