@@ -14,25 +14,32 @@ else
   task :test => [:test_mysql]
 end
 
-FileList['drivers/*'].each do |d|
-  next unless File.directory?(d)
-  driver = File.basename(d)
-  Rake::TestTask.new("test_#{driver}") do |t|
-    files = FileList["test/#{driver}*test.rb"]
-    if driver == "derby"
+def declare_test_task_for(adapter, options = {})
+  driver = options[:driver] || adapter
+  Rake::TestTask.new("test_#{adapter}") do |t|
+    files = FileList["test/#{adapter}*test.rb"]
+    if adapter == "derby"
       files << 'test/activerecord/connection_adapters/type_conversion_test.rb'
     end
     t.test_files = files
     t.libs = []
     if defined?(JRUBY_VERSION)
       t.ruby_opts << "-rjdbc/#{driver}"
-      t.libs << "lib" << "#{d}/lib"
-      t.libs.push *FileList["adapters/#{driver}*/lib"]
+      t.libs << "lib" << "drivers/#{driver}/lib"
+      t.libs.push *FileList["adapters/#{adapter}*/lib"]
     end
     t.libs << "test"
     t.verbose = true
   end
 end
+
+declare_test_task_for :derby
+declare_test_task_for :h2
+declare_test_task_for :hsqldb
+declare_test_task_for :mssql, :driver => :jtds
+declare_test_task_for :mysql
+declare_test_task_for :postgres
+declare_test_task_for :sqlite3
 
 Rake::TestTask.new(:test_jdbc) do |t|
   t.test_files = FileList['test/generic_jdbc_connection_test.rb', 'test/jndi_callbacks_test.rb']
