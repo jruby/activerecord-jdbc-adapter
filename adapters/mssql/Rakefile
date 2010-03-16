@@ -1,0 +1,38 @@
+MANIFEST = FileList["Manifest.txt", "Rakefile", "README.txt", "LICENSE.txt", "lib/**/*"]
+
+file "Manifest.txt" => :manifest
+task :manifest do
+  File.open("Manifest.txt", "w") {|f| MANIFEST.each {|n| f << "#{n}\n"} }
+end
+Rake::Task['manifest'].invoke
+
+require File.dirname(__FILE__) + "/../../lib/jdbc_adapter/version"
+$LOAD_PATH << File.dirname(__FILE__) + "/../../drivers/jtds/lib"
+require "jdbc/jtds"
+
+begin
+  require 'hoe'
+  Hoe.plugin :gemcutter
+  hoe = Hoe.spec("activerecord-jdbcmssql-adapter") do |p|
+    p.version = JdbcAdapter::Version::VERSION
+    p.spec_extras[:platform] = Gem::Platform.new("java")
+    p.rubyforge_name = "jruby-extras"
+    p.url = "http://jruby-extras.rubyforge.org/ActiveRecord-JDBC"
+    p.author = "Nick Sieger, Ola Bini and JRuby contributors"
+    p.email = "nick@nicksieger.com, ola.bini@gmail.com"
+    p.summary = "MS-SQL JDBC adapter for JRuby on Rails."
+    p.description = "Install this gem to use MS-SQL with JRuby on Rails."
+    p.extra_deps += [
+      ['activerecord-jdbc-adapter', "= #{JdbcAdapter::Version::VERSION}"],
+      ['jdbc-jtds', ">= #{Jdbc::JTDS::VERSION}"]]
+  end
+  hoe.spec.dependencies.delete_if { |dep| dep.name == "hoe" }
+  task :gemspec do
+    File.open("#{hoe.name}.gemspec", "w") {|f| f << hoe.spec.to_ruby }
+  end
+  task :package => :gemspec
+rescue LoadError
+  puts "You really need Hoe installed to be able to package this gem"
+rescue => e
+  puts "ignoring error while loading hoe: #{e.to_s}"
+end
