@@ -331,7 +331,18 @@ module ::JdbcSpec
       def query_requires_identity_insert?(sql)
         table_name = get_table_name(sql)
         id_column = identity_column(table_name)
-        sql =~ /\[#{id_column}\]/ ? table_name : nil
+        if sql.squish =~ /insert into [^ ]+ ?\((.+?)\)/i
+          insert_columns = $1.split(/, */).map(&method(:unquote_column_name))
+          return table_name if insert_columns.include?(id_column)
+        end
+      end
+
+      def unquote_column_name(name)
+        if name =~ /^\[.*\]$/
+          name[1..-2]
+        else
+          name
+        end
       end
 
       def get_special_columns(table_name)
