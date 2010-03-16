@@ -55,7 +55,7 @@ task :test_postgresql => [:test_postgres]
 task :test_pgsql => [:test_postgres]
 
 # Ensure driver for these DBs is on your classpath
-%w(oracle db2 cachedb mssql informix).each do |d|
+%w(oracle db2 cachedb informix).each do |d|
   Rake::TestTask.new("test_#{d}") do |t|
     t.test_files = FileList["test/#{d}_simple_test.rb"]
     t.libs = []
