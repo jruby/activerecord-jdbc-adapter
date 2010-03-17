@@ -241,10 +241,10 @@ module ::JdbcSpec
     end
 
     def change_column(table_name, column_name, type, options = {}) #:nodoc:
-      sql_commands = ["ALTER TABLE #{table_name} ALTER COLUMN #{column_name} #{type_to_sql(type, options[:limit], options[:precision], options[:scale])}"]
+      sql_commands = ["ALTER TABLE #{table_name} ALTER COLUMN #{quote_column_name(column_name)} #{type_to_sql(type, options[:limit], options[:precision], options[:scale])}"]
       if options_include_default?(options)
         remove_default_constraint(table_name, column_name)
-        sql_commands << "ALTER TABLE #{table_name} ADD CONSTRAINT DF_#{table_name}_#{column_name} DEFAULT #{quote(options[:default], options[:column])} FOR #{column_name}"
+        sql_commands << "ALTER TABLE #{table_name} ADD CONSTRAINT DF_#{table_name}_#{column_name} DEFAULT #{quote(options[:default], options[:column])} FOR #{quote_column_name(column_name)}"
       end
       sql_commands.each {|c|
         execute(c)
