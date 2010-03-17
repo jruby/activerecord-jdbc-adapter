@@ -50,6 +50,13 @@ module ::JdbcSpec
       ::ActiveRecord::ConnectionAdapters::MssqlJdbcConnection
     end
 
+    def modify_types(tp) #:nodoc:
+      super(tp)
+      tp[:string] = {:name => "NVARCHAR", :limit => 255}
+      tp[:text]   = {:name => "NVARCHAR(MAX)"}
+      tp
+    end
+      
     module Column
       
       attr_accessor :identity, :is_special
@@ -146,7 +153,7 @@ module ::JdbcSpec
         elsif column && [:integer, :float].include?(column.type)
           value = column.type == :integer ? value.to_i : value.to_f
           value.to_s
-        elsif column && column.respond_to?(:is_utf8?) && column.is_utf8?
+        elsif !column.respond_to?(:is_utf8?) || column.is_utf8?
           "N'#{quote_string(value)}'" # ' (for ruby-mode)
         else
           super
