@@ -177,6 +177,22 @@ module ::JdbcSpec
       quote false
     end
 
+    def add_limit_offset!(sql, options)
+      limit = options[:limit]
+      if limit
+        offset = (options[:offset] || 0).to_i
+        start_row = offset + 1
+        end_row = offset + limit.to_i
+        order = (options[:order] || determine_order_clause(sql))
+        sql.sub!(/ ORDER BY.*$/i, '')
+        find_select = /\b(SELECT(?:\s+DISTINCT)?)\b(.*)/i
+        whole, select, rest_of_query = find_select.match(sql).to_a
+        new_sql = "#{select} t.* FROM (SELECT ROW_NUMBER() OVER(ORDER BY #{order}) AS row_num, #{rest_of_query}"
+        new_sql << ") AS t WHERE t.row_num BETWEEN #{start_row.to_s} AND #{end_row.to_s}"
+        sql.replace(new_sql)
+      end
+    end
+
     def change_order_direction(order)
       order.split(",").collect do |fragment|
         case fragment
@@ -370,6 +386,18 @@ module ::JdbcSpec
         sql.gsub!(/ORDER BY #{col.to_s}/i, '')
       end
       sql
+    end
+        
+    def determine_order_clause(sql)
+      return $1 if sql =~ /ORDER BY (.*)$/
+      sql =~ /FROM +(\w+?)\b/ || raise("can't determine table name")
+      table_name = $1 
+      "#{table_name}.#{determine_primary_key(table_name)}" 
+    end
+
+    def determine_primary_key(table_name)
+      primary_key = columns(table_name).detect { |column| column.primary || column.identity }
+      primary_key ? primary_key.name : "id"
     end
     
   end
