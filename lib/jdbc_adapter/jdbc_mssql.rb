@@ -188,6 +188,10 @@ module ::JdbcSpec
       end.join(",")
     end
 
+    def supports_ddl_transactions?
+      true
+    end
+
     def recreate_database(name)
       drop_database(name)
       create_database(name)
