@@ -57,6 +57,7 @@ To use activerecord-jdbc-adapter with JRuby on Rails:
   * derby (<tt>activerecord-jdbcderby-adapter</tt>)
   * hsqldb (<tt>activerecord-jdbchsqldb-adapter</tt>)
   * h2 (<tt>activerecord-jdbch2-adapter</tt>)
+  * mssql (<tt>activerecord-jdbcmssql-adapter</tt>)
 
 2a. For Rails 3, if you're generating a new application, use the
     following command to generate your application:
