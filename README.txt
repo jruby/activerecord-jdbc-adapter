@@ -16,7 +16,7 @@ What's there, and what is not there:
 * MySQL - Complete support
 * PostgreSQL - Complete support
 * Oracle - Complete support
-* Microsoft SQL Server - Complete support except for change_column_default
+* Microsoft SQL Server - Complete support
 * DB2 - Complete, except for the migrations:
   * change_column 
   * change_column_default

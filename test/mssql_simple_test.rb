@@ -20,4 +20,30 @@ class MsSQLSimpleTest < Test::Unit::TestCase
     end
   end
 
+  def test_change_column_default
+
+    Entry.connection.change_column "entries", "title", :string, :default => "new default"
+    Entry.reset_column_information
+    assert_equal("new default", Entry.new.title)
+
+    Entry.connection.change_column "entries", "title", :string, :default => nil
+    Entry.reset_column_information
+    assert_equal(nil, Entry.new.title)
+
+  end
+
+  def test_change_column_nullability
+    
+    Entry.connection.change_column "entries", "title", :string, :null => true
+    Entry.reset_column_information
+    title_column = Entry.columns.find { |c| c.name == "title" }
+    assert(title_column.null)
+
+    Entry.connection.change_column "entries", "title", :string, :null => false
+    Entry.reset_column_information
+    title_column = Entry.columns.find { |c| c.name == "title" }
+    assert(!title_column.null)
+
+  end
+
 end

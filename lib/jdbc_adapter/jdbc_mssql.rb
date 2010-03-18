@@ -248,19 +248,23 @@ module ::JdbcSpec
     end
 
     def change_column(table_name, column_name, type, options = {}) #:nodoc:
-      sql_commands = ["ALTER TABLE #{table_name} ALTER COLUMN #{quote_column_name(column_name)} #{type_to_sql(type, options[:limit], options[:precision], options[:scale])}"]
-      if options_include_default?(options)
-        remove_default_constraint(table_name, column_name)
-        sql_commands << "ALTER TABLE #{table_name} ADD CONSTRAINT DF_#{table_name}_#{column_name} DEFAULT #{quote(options[:default], options[:column])} FOR #{quote_column_name(column_name)}"
+      change_column_type(table_name, column_name, type, options)
+      change_column_default(table_name, column_name, options[:default]) if options_include_default?(options)
+    end
+    
+    def change_column_type(table_name, column_name, type, options = {}) #:nodoc:
+      sql = "ALTER TABLE #{table_name} ALTER COLUMN #{quote_column_name(column_name)} #{type_to_sql(type, options[:limit], options[:precision], options[:scale])}"
+      if options.has_key?(:null)
+        sql += (options[:null] ? " NULL" : " NOT NULL")
       end
-      sql_commands.each {|c|
-        execute(c)
-      }
+      execute(sql)
     end
     
     def change_column_default(table_name, column_name, default) #:nodoc:
       remove_default_constraint(table_name, column_name)
-      execute "ALTER TABLE #{table_name} ADD CONSTRAINT DF_#{table_name}_#{column_name} DEFAULT #{quote(default, column_name)} FOR #{column_name}"
+      unless default.nil?
+        execute "ALTER TABLE #{table_name} ADD CONSTRAINT DF_#{table_name}_#{column_name} DEFAULT #{quote(default)} FOR #{quote_column_name(column_name)}"
+      end
     end
     
     def remove_column(table_name, column_name)
