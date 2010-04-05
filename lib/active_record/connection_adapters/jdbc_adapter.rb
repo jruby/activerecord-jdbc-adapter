@@ -621,13 +621,16 @@ module ActiveRecord
       end
 
       def pk_and_sequence_for(table)
-        result_set = @connection.connection.get_meta_data.get_primary_keys(nil, nil, table)
-        if result_set.next
-          keys = [result_set.getString("COLUMN_NAME"), nil]
-        end
-        keys.blank? ? nil : keys
-      ensure
-        result_set.close
+        key = primary_key(table)
+        [key, nil] if key
+      end
+
+      def primary_key(table)
+        primary_keys(table).first
+      end
+
+      def primary_keys(table)
+        @connection.primary_keys(table)
       end
 
       private

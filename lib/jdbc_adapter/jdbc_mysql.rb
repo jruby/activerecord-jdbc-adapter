@@ -173,10 +173,6 @@ module ::JdbcSpec
     def current_database
       select_one("SELECT DATABASE() as db")["db"]
     end
-    
-    def primary_key(table)
-      show_create_table(table)["Create Table"][/.*KEY\s\(`(.+)\`/, 1]
-    end
 
     def create_table(name, options = {}) #:nodoc:
       super(name, {:options => "ENGINE=InnoDB #{character_set(options)}"}.merge(options))
@@ -237,11 +233,10 @@ module ::JdbcSpec
     end
 
     private
-    
     def show_create_table(table)
       select_one("SHOW CREATE TABLE #{quote_table_name(table)}")
     end
-    
+
     def supports_views?
       false
     end

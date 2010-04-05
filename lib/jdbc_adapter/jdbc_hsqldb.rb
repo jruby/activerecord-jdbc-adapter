@@ -38,6 +38,8 @@ module ::JdbcSpec
           :text
         when /tinyint/i
           :boolean
+        when /real/i
+          :float
         else
           super(field_type)
         end
@@ -61,7 +63,7 @@ module ::JdbcSpec
     end
 
     def adapter_name #:nodoc:
-      defined?(::Jdbc::H2) ? 'h2' : 'hsqldb'
+      defined?(::Jdbc::H2) ? 'H2' : 'Hsqldb'
     end
 
     def modify_types(tp)
@@ -90,7 +92,8 @@ module ::JdbcSpec
           "''"
         elsif column && column.type == :binary
           "'#{value.unpack("H*")}'"
-        elsif column.respond_to?(:primary) && column.primary && column.klass != String
+        elsif column && (column.type == :integer ||
+                         column.respond_to?(:primary) && column.primary && column.klass != String)
           value.to_i.to_s
         else
           "'#{quote_string(value)}'"

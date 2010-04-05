@@ -6,6 +6,8 @@
   Calavera)
 - Updates for rake db:schema:dump compatibility with Rails 2.3+ and
   MySQL (Joakim Kolsjö)
+- Rails 3.0.0.beta2 compatibility
+- Return of Derby, H2, Hsqldb support (requires AR >= 3.0.0.beta2)
 
 == 0.9.3
 

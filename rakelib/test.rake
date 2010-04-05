@@ -1,13 +1,8 @@
 require File.expand_path('../../test/helper', __FILE__)
 if defined?(JRUBY_VERSION)
-  databases = [:test_mysql, :test_jdbc, :test_sqlite3]
+  databases = [:test_mysql, :test_jdbc, :test_sqlite3, :test_derby, :test_hsqldb, :test_h2]
   if find_executable?("psql") && `psql -c '\\l'` && $?.exitstatus == 0
     databases << :test_postgres
-  end
-  require File.expand_path('../../test/pick_rails_version', __FILE__)
-  if ActiveRecord::VERSION::MAJOR < 3
-    # These databases not working with Rails3/Arel yet
-    databases += [:test_derby, :test_hsqldb, :test_h2]
   end
   task :test => databases
 else

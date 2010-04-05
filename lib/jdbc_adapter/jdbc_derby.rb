@@ -121,10 +121,6 @@ module ::JdbcSpec
       end
     end
 
-    def primary_key(table_name) #:nodoc:
-      primary_keys(table_name).first
-    end
-
     def remove_index(table_name, options) #:nodoc:
       execute "DROP INDEX #{index_name(table_name, options)}"
     end
