@@ -43,6 +43,7 @@ end
 %w(test package install_gem release clean).each do |task|
   desc "Run rake #{task} on all available adapters and drivers"
   task "all:#{task}" => task
+  task "adapters:#{task}" => task
 end
 
 (Dir["drivers/*/Rakefile"] + Dir["adapters/*/Rakefile"]).each do |rakefile|
