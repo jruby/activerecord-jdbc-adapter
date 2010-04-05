@@ -101,7 +101,7 @@ module ::JdbcSpec
     end
 
     def adapter_name
-      'oracle'
+      'Oracle'
     end
 
     def table_alias_length
