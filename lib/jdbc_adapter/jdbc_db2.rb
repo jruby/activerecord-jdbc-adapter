@@ -74,6 +74,10 @@ module JdbcSpec
       tp
     end
 
+    def adapter_name
+      'DB2'
+    end
+
     def add_limit_offset!(sql, options)
       if limit = options[:limit]
         offset = options[:offset] || 0
