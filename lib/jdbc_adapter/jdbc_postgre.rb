@@ -95,6 +95,10 @@ module ::JdbcSpec
       tp
     end
 
+    def adapter_name #:nodoc:
+      'PostgreSQL'
+    end
+
     def postgresql_version
       @postgresql_version ||=
         begin
@@ -202,7 +206,7 @@ module ::JdbcSpec
         # If that fails, try parsing the primary key's default value.
         # Support the 7.x and 8.0 nextval('foo'::text) as well as
         # the 8.1+ nextval('foo'::regclass).
-        result = query(<<-end_sql, 'PK and custom sequence')[0]
+        result = select(<<-end_sql, 'PK and custom sequence')[0]
             SELECT attr.attname,
               CASE
                 WHEN split_part(def.adsrc, '''', 2) ~ '.' THEN
@@ -318,6 +322,23 @@ module ::JdbcSpec
 
     def drop_database(name)
       execute "DROP DATABASE \"#{name}\""
+    end
+
+    def create_schema(schema_name, pg_username)
+      execute("CREATE SCHEMA \"#{schema_name}\" AUTHORIZATION \"#{pg_username}\"")
+    end
+
+    def drop_schema(schema_name)
+      execute("DROP SCHEMA \"#{schema_name}\"")
+    end
+
+    def all_schemas
+      select('select nspname from pg_namespace').map {|r| r["nspname"] }
+    end
+
+    def primary_key(table)
+      pk_and_sequence = pk_and_sequence_for(table)
+      pk_and_sequence && pk_and_sequence.first
     end
 
     def structure_dump

@@ -71,6 +71,10 @@ module ::JdbcSpec
       tp
     end
 
+    def adapter_name #:nodoc:
+      'mysql'
+    end
+
     # QUOTING ==================================================
 
     def quote(value, column = nil)

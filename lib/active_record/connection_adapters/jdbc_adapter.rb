@@ -61,14 +61,15 @@ end
 module ActiveRecord
   class Base
     extend JdbcSpec::ActiveRecordExtensions
-
-    alias :attributes_with_quotes_pre_oracle :attributes_with_quotes
-    def attributes_with_quotes(include_primary_key = true, *args) #:nodoc:
-      aq = attributes_with_quotes_pre_oracle(include_primary_key, *args)
-      if connection.class == ConnectionAdapters::JdbcAdapter && (connection.is_a?(JdbcSpec::Oracle) || connection.is_a?(JdbcSpec::Mimer))
-        aq[self.class.primary_key] = "?" if include_primary_key && aq[self.class.primary_key].nil?
+    if respond_to?(:attributes_with_quotes)
+      alias :attributes_with_quotes_pre_oracle :attributes_with_quotes
+      def attributes_with_quotes(include_primary_key = true, *args) #:nodoc:
+        aq = attributes_with_quotes_pre_oracle(include_primary_key, *args)
+        if connection.class == ConnectionAdapters::JdbcAdapter && (connection.is_a?(JdbcSpec::Oracle) || connection.is_a?(JdbcSpec::Mimer))
+          aq[self.class.primary_key] = "?" if include_primary_key && aq[self.class.primary_key].nil?
+        end
+        aq
       end
-      aq
     end
   end
 
