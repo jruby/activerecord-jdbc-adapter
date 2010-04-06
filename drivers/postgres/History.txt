@@ -1,7 +1,15 @@
+=== 8.4.701
+* Upgraded to 8.4-701 drivers, see PostgreSQL JDBC
+  {Change Log}[http://jdbc.postgresql.org/changes.html#version_8.4-701].
+
+=== 8.3.605
+* Upgraded to 8.3-605 drivers, see PostgreSQL JDBC
+  {Change Log}[http://jdbc.postgresql.org/changes.html#version_8.3-605].
+
 === 8.3.604
- * Upgraded to 8.3-604 drivers
- * Added runtime selection of either JDBC 3 or JDBC 4 (j2se 1.6+)
-   driver.
+* Upgraded to 8.3-604 drivers
+* Added runtime selection of either JDBC 3 or JDBC 4 (j2se 1.6+)
+  driver.
 
 === 8.2
- * Initial version
+* Initial version
