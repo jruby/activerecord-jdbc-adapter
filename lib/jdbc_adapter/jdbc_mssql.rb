@@ -312,6 +312,8 @@ module ::JdbcSpec
         else
           @connection.execute_insert(sql)
         end
+      elsif sql.lstrip =~ /^(create|exec)/i
+        @connection.execute_update(sql)
       elsif sql.lstrip =~ /^\(?\s*(select|show)/i
         repair_special_columns(sql)
         @connection.execute_query(sql)
