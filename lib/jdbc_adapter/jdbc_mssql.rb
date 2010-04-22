@@ -1,20 +1,35 @@
 require 'jdbc_adapter/tsql_helper'
 
 module ::JdbcSpec
+
+  module ActiveRecordExtensions
+
+    def mssql_connection(config)
+      require "active_record/connection_adapters/mssql_adapter"
+      config[:host] ||= "localhost"
+      config[:port] ||= 1433
+      config[:url] ||= "jdbc:jtds:sqlserver://#{config[:host]}:#{config[:port]}/#{config[:database]}"
+      config[:driver] ||= "net.sourceforge.jtds.jdbc.Driver"
+      embedded_driver(config)
+    end
+
+  end
+
   module MsSQL
+    
     include TSqlMethods
 
     def self.extended(mod)
       unless @lob_callback_added
         ActiveRecord::Base.class_eval do
           def after_save_with_mssql_lob
-          self.class.columns.select { |c| c.sql_type =~ /image/i }.each do |c|
-            value = self[c.name]
-            value = value.to_yaml if unserializable_attribute?(c.name, c)
-            next if value.nil?  || (value == '')
+            self.class.columns.select { |c| c.sql_type =~ /image/i }.each do |c|
+              value = self[c.name]
+              value = value.to_yaml if unserializable_attribute?(c.name, c)
+              next if value.nil?  || (value == '')
 
-            connection.write_large_object(c.type == :binary, c.name, self.class.table_name, self.class.primary_key, quote_value(id), value)
-          end
+              connection.write_large_object(c.type == :binary, c.name, self.class.table_name, self.class.primary_key, quote_value(id), value)
+            end
           end
         end
 
@@ -35,30 +50,42 @@ module ::JdbcSpec
       ::ActiveRecord::ConnectionAdapters::MssqlJdbcConnection
     end
 
+    def modify_types(tp) #:nodoc:
+      super(tp)
+      tp[:string] = {:name => "NVARCHAR", :limit => 255}
+      tp[:text]   = {:name => "NVARCHAR(MAX)"}
+      tp
+    end
+      
     module Column
+      
       attr_accessor :identity, :is_special
 
       def simplified_type(field_type)
         case field_type
-          when /int|bigint|smallint|tinyint/i                        then :integer
-          when /numeric/i                                            then (@scale.nil? || @scale == 0) ? :integer : :decimal
-          when /float|double|decimal|money|real|smallmoney/i         then :decimal
-          when /datetime|smalldatetime/i                             then :datetime
-          when /timestamp/i                                          then :timestamp
-          when /time/i                                               then :time
-          when /date/i                                               then :date
-          when /text|ntext/i                                         then :text
-          when /binary|image|varbinary/i                             then :binary
-          when /char|nchar|nvarchar|string|varchar/i                 then :string
-          when /bit/i                                                then :boolean
-          when /uniqueidentifier/i                                   then :string
+        when /int|bigint|smallint|tinyint/i                        then :integer
+        when /numeric/i                                            then (@scale.nil? || @scale == 0) ? :integer : :decimal
+        when /float|double|decimal|money|real|smallmoney/i         then :decimal
+        when /datetime|smalldatetime/i                             then :datetime
+        when /timestamp/i                                          then :timestamp
+        when /time/i                                               then :time
+        when /date/i                                               then :date
+        when /text|ntext/i                                         then :text
+        when /binary|image|varbinary/i                             then :binary
+        when /char|nchar|nvarchar|string|varchar/i                 then :string
+        when /bit/i                                                then :boolean
+        when /uniqueidentifier/i                                   then :string
         end
       end
 
+      def default_value(value)
+        return $1 if value =~ /^\(N?'(.*)'\)$/
+        value
+      end
+      
       def type_cast(value)
         return nil if value.nil? || value == "(null)" || value == "(NULL)"
         case type
-        when :string then unquote_string value
         when :integer then unquote(value).to_i rescue value ? 1 : 0
         when :primary_key then value == true || value == false ? value == true ? 1 : 0 : value.to_i
         when :decimal   then self.class.value_to_decimal(unquote(value))
@@ -70,11 +97,11 @@ module ::JdbcSpec
         when :binary    then unquote value
         else value
         end
+        
       end
 
-      # JRUBY-2011: Match balanced quotes and parenthesis - 'text',('text') or (text)
-      def unquote_string(value)
-        value.to_s.sub(/^\((.*)\)$/,'\1').sub(/^'(.*)'$/,'\1')
+      def is_utf8?
+        sql_type =~ /nvarchar|ntext|nchar/i
       end
 
       def unquote(value)
@@ -112,6 +139,7 @@ module ::JdbcSpec
       def self.string_to_binary(value)
         ''
       end
+      
     end
 
     def quote(value, column = nil)
@@ -125,8 +153,10 @@ module ::JdbcSpec
         elsif column && [:integer, :float].include?(column.type)
           value = column.type == :integer ? value.to_i : value.to_f
           value.to_s
-        else
+        elsif !column.respond_to?(:is_utf8?) || column.is_utf8?
           "N'#{quote_string(value)}'" # ' (for ruby-mode)
+        else
+          super
         end
       when TrueClass             then '1'
       when FalseClass            then '0'
@@ -154,14 +184,34 @@ module ::JdbcSpec
       quote false
     end
 
+    def add_limit_offset!(sql, options)
+      limit = options[:limit]
+      if limit
+        offset = (options[:offset] || 0).to_i
+        start_row = offset + 1
+        end_row = offset + limit.to_i
+        order = (options[:order] || determine_order_clause(sql))
+        sql.sub!(/ ORDER BY.*$/i, '')
+        find_select = /\b(SELECT(?:\s+DISTINCT)?)\b(.*)/i
+        whole, select, rest_of_query = find_select.match(sql).to_a
+        new_sql = "#{select} t.* FROM (SELECT ROW_NUMBER() OVER(ORDER BY #{order}) AS row_num, #{rest_of_query}"
+        new_sql << ") AS t WHERE t.row_num BETWEEN #{start_row.to_s} AND #{end_row.to_s}"
+        sql.replace(new_sql)
+      end
+    end
+
     def change_order_direction(order)
-      order.split(",").collect {|fragment|
+      order.split(",").collect do |fragment|
         case fragment
         when  /\bDESC\b/i     then fragment.gsub(/\bDESC\b/i, "ASC")
         when  /\bASC\b/i      then fragment.gsub(/\bASC\b/i, "DESC")
         else                  String.new(fragment).split(',').join(' DESC,') + ' DESC'
         end
-      }.join(",")
+      end.join(",")
+    end
+
+    def supports_ddl_transactions?
+      true
     end
 
     def recreate_database(name)
@@ -179,159 +229,189 @@ module ::JdbcSpec
       execute "USE #{name}"
     end
 
-      def rename_table(name, new_name)
-        execute "EXEC sp_rename '#{name}', '#{new_name}'"
+    def rename_table(name, new_name)
+      execute "EXEC sp_rename '#{name}', '#{new_name}'"
+    end
+
+    # Adds a new column to the named table.
+    # See TableDefinition#column for details of the options you can use.
+    def add_column(table_name, column_name, type, options = {})
+      add_column_sql = "ALTER TABLE #{table_name} ADD #{quote_column_name(column_name)} #{type_to_sql(type, options[:limit], options[:precision], options[:scale])}"
+      add_column_options!(add_column_sql, options)
+      # TODO: Add support to mimic date columns, using constraints to mark them as such in the database
+      # add_column_sql << " CONSTRAINT ck__#{table_name}__#{column_name}__date_only CHECK ( CONVERT(CHAR(12), #{quote_column_name(column_name)}, 14)='00:00:00:000' )" if type == :date
+      execute(add_column_sql)
+    end
+
+    def rename_column(table, column, new_column_name)
+      execute "EXEC sp_rename '#{table}.#{column}', '#{new_column_name}'"
+    end
+
+    def change_column(table_name, column_name, type, options = {}) #:nodoc:
+      change_column_type(table_name, column_name, type, options)
+      change_column_default(table_name, column_name, options[:default]) if options_include_default?(options)
+    end
+    
+    def change_column_type(table_name, column_name, type, options = {}) #:nodoc:
+      sql = "ALTER TABLE #{table_name} ALTER COLUMN #{quote_column_name(column_name)} #{type_to_sql(type, options[:limit], options[:precision], options[:scale])}"
+      if options.has_key?(:null)
+        sql += (options[:null] ? " NULL" : " NOT NULL")
       end
-
-      # Adds a new column to the named table.
-      # See TableDefinition#column for details of the options you can use.
-      def add_column(table_name, column_name, type, options = {})
-        add_column_sql = "ALTER TABLE #{table_name} ADD #{quote_column_name(column_name)} #{type_to_sql(type, options[:limit], options[:precision], options[:scale])}"
-        add_column_options!(add_column_sql, options)
-        # TODO: Add support to mimic date columns, using constraints to mark them as such in the database
-        # add_column_sql << " CONSTRAINT ck__#{table_name}__#{column_name}__date_only CHECK ( CONVERT(CHAR(12), #{quote_column_name(column_name)}, 14)='00:00:00:000' )" if type == :date
-        execute(add_column_sql)
-      end
-
-      def rename_column(table, column, new_column_name)
-        execute "EXEC sp_rename '#{table}.#{column}', '#{new_column_name}'"
-      end
-
-      def change_column(table_name, column_name, type, options = {}) #:nodoc:
-        sql_commands = ["ALTER TABLE #{table_name} ALTER COLUMN #{column_name} #{type_to_sql(type, options[:limit], options[:precision], options[:scale])}"]
-        if options_include_default?(options)
-          remove_default_constraint(table_name, column_name)
-          sql_commands << "ALTER TABLE #{table_name} ADD CONSTRAINT DF_#{table_name}_#{column_name} DEFAULT #{quote(options[:default], options[:column])} FOR #{column_name}"
-        end
-        sql_commands.each {|c|
-          execute(c)
-        }
-      end
-      def change_column_default(table_name, column_name, default) #:nodoc:
-        remove_default_constraint(table_name, column_name)
-        execute "ALTER TABLE #{table_name} ADD CONSTRAINT DF_#{table_name}_#{column_name} DEFAULT #{quote(default, column_name)} FOR #{column_name}"
-      end
-      def remove_column(table_name, column_name)
-        remove_check_constraints(table_name, column_name)
-        remove_default_constraint(table_name, column_name)
-        execute "ALTER TABLE #{table_name} DROP COLUMN [#{column_name}]"
-      end
-
-      def remove_default_constraint(table_name, column_name)
-        defaults = select "select def.name from sysobjects def, syscolumns col, sysobjects tab where col.cdefault = def.id and col.name = '#{column_name}' and tab.name = '#{table_name}' and col.id = tab.id"
-        defaults.each {|constraint|
-          execute "ALTER TABLE #{table_name} DROP CONSTRAINT #{constraint["name"]}"
-        }
-      end
-
-      def remove_check_constraints(table_name, column_name)
-        # TODO remove all constraints in single method
-        constraints = select "SELECT CONSTRAINT_NAME FROM INFORMATION_SCHEMA.CONSTRAINT_COLUMN_USAGE where TABLE_NAME = '#{table_name}' and COLUMN_NAME = '#{column_name}'"
-        constraints.each do |constraint|
-          execute "ALTER TABLE #{table_name} DROP CONSTRAINT #{constraint["CONSTRAINT_NAME"]}"
-        end
-      end
-
-      def remove_index(table_name, options = {})
-        execute "DROP INDEX #{table_name}.#{index_name(table_name, options)}"
-      end
-
-
-      def columns(table_name, name = nil)
-        return [] if table_name =~ /^information_schema\./i
-        cc = super
-        cc.each do |col|
-          col.identity = true if col.sql_type =~ /identity/i
-          col.is_special = true if col.sql_type =~ /text|ntext|image/i
-        end
-        cc
-      end
-
-      def _execute(sql, name = nil)
-        if sql.lstrip =~ /^insert/i
-          if query_requires_identity_insert?(sql)
-            table_name = get_table_name(sql)
-            with_identity_insert_enabled(table_name) do
-              id = @connection.execute_insert(sql)
-            end
-          else
-            @connection.execute_insert(sql)
-          end
-        elsif sql.lstrip =~ /^\(?\s*(select|show)/i
-          repair_special_columns(sql)
-          @connection.execute_query(sql)
-        else
-          @connection.execute_update(sql)
-        end
-      end
-
-      #SELECT .. FOR UPDATE is not supported on Microsoft SQL Server
-      def add_lock!(sql, options)
-        sql
-      end
-
-      private
-      # Turns IDENTITY_INSERT ON for table during execution of the block
-      # N.B. This sets the state of IDENTITY_INSERT to OFF after the
-      # block has been executed without regard to its previous state
-
-      def with_identity_insert_enabled(table_name, &block)
-        set_identity_insert(table_name, true)
-        yield
-      ensure
-        set_identity_insert(table_name, false)
-      end
-
-      def set_identity_insert(table_name, enable = true)
-        execute "SET IDENTITY_INSERT #{table_name} #{enable ? 'ON' : 'OFF'}"
-      rescue Exception => e
-        raise ActiveRecord::ActiveRecordError, "IDENTITY_INSERT could not be turned #{enable ? 'ON' : 'OFF'} for table #{table_name}"
-      end
-
-      def get_table_name(sql)
-        if sql =~ /^\s*insert\s+into\s+([^\(\s,]+)\s*|^\s*update\s+([^\(\s,]+)\s*/i
-          $1
-        elsif sql =~ /from\s+([^\(\s,]+)\s*/i
-          $1
-        else
-          nil
-        end
-      end
-
-      def identity_column(table_name)
-        @table_columns = {} unless @table_columns
-        @table_columns[table_name] = columns(table_name) if @table_columns[table_name] == nil
-        @table_columns[table_name].each do |col|
-          return col.name if col.identity
-        end
-
-        return nil
-      end
-
-      def query_requires_identity_insert?(sql)
-        table_name = get_table_name(sql)
-        id_column = identity_column(table_name)
-        sql =~ /\[#{id_column}\]/ ? table_name : nil
-      end
-
-      def get_special_columns(table_name)
-        special = []
-        @table_columns ||= {}
-        @table_columns[table_name] ||= columns(table_name)
-        @table_columns[table_name].each do |col|
-          special << col.name if col.is_special
-        end
-        special
-      end
-
-      def repair_special_columns(sql)
-        special_cols = get_special_columns(get_table_name(sql))
-        for col in special_cols.to_a
-          sql.gsub!(Regexp.new(" #{col.to_s} = "), " #{col.to_s} LIKE ")
-          sql.gsub!(/ORDER BY #{col.to_s}/i, '')
-        end
-        sql
+      execute(sql)
+    end
+    
+    def change_column_default(table_name, column_name, default) #:nodoc:
+      remove_default_constraint(table_name, column_name)
+      unless default.nil?
+        execute "ALTER TABLE #{table_name} ADD CONSTRAINT DF_#{table_name}_#{column_name} DEFAULT #{quote(default)} FOR #{quote_column_name(column_name)}"
       end
     end
+    
+    def remove_column(table_name, column_name)
+      remove_check_constraints(table_name, column_name)
+      remove_default_constraint(table_name, column_name)
+      execute "ALTER TABLE #{table_name} DROP COLUMN [#{column_name}]"
+    end
+
+    def remove_default_constraint(table_name, column_name)
+      defaults = select "select def.name from sysobjects def, syscolumns col, sysobjects tab where col.cdefault = def.id and col.name = '#{column_name}' and tab.name = '#{table_name}' and col.id = tab.id"
+      defaults.each {|constraint|
+        execute "ALTER TABLE #{table_name} DROP CONSTRAINT #{constraint["name"]}"
+      }
+    end
+
+    def remove_check_constraints(table_name, column_name)
+      # TODO remove all constraints in single method
+      constraints = select "SELECT CONSTRAINT_NAME FROM INFORMATION_SCHEMA.CONSTRAINT_COLUMN_USAGE where TABLE_NAME = '#{table_name}' and COLUMN_NAME = '#{column_name}'"
+      constraints.each do |constraint|
+        execute "ALTER TABLE #{table_name} DROP CONSTRAINT #{constraint["CONSTRAINT_NAME"]}"
+      end
+    end
+
+    def remove_index(table_name, options = {})
+      execute "DROP INDEX #{table_name}.#{index_name(table_name, options)}"
+    end
+
+    def columns(table_name, name = nil)
+      return [] if table_name =~ /^information_schema\./i
+      cc = super
+      cc.each do |col|
+        col.identity = true if col.sql_type =~ /identity/i
+        col.is_special = true if col.sql_type =~ /text|ntext|image/i
+      end
+      cc
+    end
+
+    def _execute(sql, name = nil)
+      if sql.lstrip =~ /^insert/i
+        if query_requires_identity_insert?(sql)
+          table_name = get_table_name(sql)
+          with_identity_insert_enabled(table_name) do
+            id = @connection.execute_insert(sql)
+          end
+        else
+          @connection.execute_insert(sql)
+        end
+      elsif sql.lstrip =~ /^\(?\s*(select|show)/i
+        repair_special_columns(sql)
+        @connection.execute_query(sql)
+      else
+        @connection.execute_update(sql)
+      end
+    end
+
+    #SELECT .. FOR UPDATE is not supported on Microsoft SQL Server
+    def add_lock!(sql, options)
+      sql
+    end
+
+    private
+
+    # Turns IDENTITY_INSERT ON for table during execution of the block
+    # N.B. This sets the state of IDENTITY_INSERT to OFF after the
+    # block has been executed without regard to its previous state
+    def with_identity_insert_enabled(table_name, &block)
+      set_identity_insert(table_name, true)
+      yield
+    ensure
+      set_identity_insert(table_name, false)
+    end
+
+    def set_identity_insert(table_name, enable = true)
+      execute "SET IDENTITY_INSERT #{table_name} #{enable ? 'ON' : 'OFF'}"
+    rescue Exception => e
+      raise ActiveRecord::ActiveRecordError, "IDENTITY_INSERT could not be turned #{enable ? 'ON' : 'OFF'} for table #{table_name}"
+    end
+
+    def get_table_name(sql)
+      if sql =~ /^\s*insert\s+into\s+([^\(\s,]+)\s*|^\s*update\s+([^\(\s,]+)\s*/i
+        $1
+      elsif sql =~ /from\s+([^\(\s,]+)\s*/i
+        $1
+      else
+        nil
+      end
+    end
+
+    def identity_column(table_name)
+      @table_columns = {} unless @table_columns
+      @table_columns[table_name] = columns(table_name) if @table_columns[table_name] == nil
+      @table_columns[table_name].each do |col|
+        return col.name if col.identity
+      end
+
+      return nil
+    end
+
+    def query_requires_identity_insert?(sql)
+      table_name = get_table_name(sql)
+      id_column = identity_column(table_name)
+      if sql.squish =~ /insert into [^ ]+ ?\((.+?)\)/i
+        insert_columns = $1.split(/, */).map(&method(:unquote_column_name))
+        return table_name if insert_columns.include?(id_column)
+      end
+    end
+
+    def unquote_column_name(name)
+      if name =~ /^\[.*\]$/
+        name[1..-2]
+      else
+        name
+      end
+    end
+
+    def get_special_columns(table_name)
+      special = []
+      @table_columns ||= {}
+      @table_columns[table_name] ||= columns(table_name)
+      @table_columns[table_name].each do |col|
+        special << col.name if col.is_special
+      end
+      special
+    end
+
+    def repair_special_columns(sql)
+      special_cols = get_special_columns(get_table_name(sql))
+      for col in special_cols.to_a
+        sql.gsub!(Regexp.new(" #{col.to_s} = "), " #{col.to_s} LIKE ")
+        sql.gsub!(/ORDER BY #{col.to_s}/i, '')
+      end
+      sql
+    end
+        
+    def determine_order_clause(sql)
+      return $1 if sql =~ /ORDER BY (.*)$/
+      sql =~ /FROM +(\w+?)\b/ || raise("can't determine table name")
+      table_name = $1 
+      "#{table_name}.#{determine_primary_key(table_name)}" 
+    end
+
+    def determine_primary_key(table_name)
+      primary_key = columns(table_name).detect { |column| column.primary || column.identity }
+      primary_key ? primary_key.name : "id"
+    end
+    
   end
+  
+end
 

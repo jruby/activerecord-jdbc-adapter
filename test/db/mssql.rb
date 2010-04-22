@@ -2,9 +2,8 @@ host = ENV['SQLHOST'] || 'localhost'
 config = {
   :username => 'blog',
   :password => '',
-  :adapter  => 'jdbc',
-  :url => "jdbc:jtds:sqlserver://#{host}:1433/weblog_development",
-  :driver => 'net.sourceforge.jtds.jdbc.Driver'
+  :adapter  => 'mssql',
+  :database => 'weblog_development'
 }
 
 ActiveRecord::Base.establish_connection( config )

@@ -1,0 +1,1 @@
+This gem bundles the jTDS driver for Java.  jTDS is made available under the terms of the GNU Lesser General Public License, see http://jtds.sourceforge.net/license.html for more details.

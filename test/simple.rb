@@ -305,9 +305,8 @@ module SimpleTestMethods
   end
 
   def test_validates_uniqueness_of_strings_case_sensitive
-    # MySQL and MSSQL string cmps are case-insensitive by default, so skip this test
-    config = ActiveRecord::Base.connection.config
-    return if config[:adapter] =~ /mysql/ || config[:url] =~ /sqlserver/
+    # In MySQL and MsSQL, string cmps are case-insensitive by default, so skip this test
+    return if ActiveRecord::Base.connection.config[:adapter] =~ /m[sy]sql/
 
     name_lower = ValidatesUniquenessOfString.new(:cs_string => "name", :ci_string => '1')
     name_lower.save!
