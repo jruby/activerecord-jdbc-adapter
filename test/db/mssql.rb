@@ -1,9 +1,9 @@
-config = {
+MSSQL_CONFIG = {
   :username => 'blog',
   :password => '',
   :adapter  => 'mssql',
   :database => 'weblog_development'
 }
-config[:host] = ENV['SQLHOST'] if ENV['SQLHOST']
+MSSQL_CONFIG[:host] = ENV['SQLHOST'] if ENV['SQLHOST']
 
-ActiveRecord::Base.establish_connection( config )
+ActiveRecord::Base.establish_connection(MSSQL_CONFIG)
