@@ -1,3 +1,14 @@
+== 0.9.5
+
+- The MSSQL release, courtesy of Mike Williams and Lonely
+  Planet.
+- JRuby + AR-JDBC is now seen as the hassle-free way of using Rails
+  with SQLServer!
+- Many fixes for MSSQL, including ACTIVERECORD_JDBC-18,
+  ACTIVERECORD_JDBC-41, ACTIVERECORD_JDBC-56, ACTIVERECORD_JDBC-94,
+  ACTIVERECORD_JDBC-99, JRUBY-3805, JRUBY-3793, JRUBY-4221
+- All tests pass on Rails 3.0.0.beta3!
+
 == 0.9.4
 
 - ACTIVERECORD_JDBC-96: DB2 JdbcSpec cannot dump schema correctly
