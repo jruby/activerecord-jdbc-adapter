@@ -27,7 +27,7 @@ module ::JdbcSpec
         @lob_callback_added = true
       end
       mod.class.class_eval do
-        alias_chained_method :insert, :query_dirty, :jdbc_oracle_insert
+        alias_chained_method :insert, :query_dirty, :insert
       end
     end
 
@@ -138,7 +138,7 @@ module ::JdbcSpec
       recreate_database(name)
     end
 
-    def jdbc_oracle_insert(sql, name = nil, pk = nil, id_value = nil, sequence_name = nil) #:nodoc:
+    def insert(sql, name = nil, pk = nil, id_value = nil, sequence_name = nil) #:nodoc:
       if id_value || pk.nil? # Pre-assigned id or table without a primary key
         execute sql, name
       else # Assume the sql contains a bind-variable for the id
