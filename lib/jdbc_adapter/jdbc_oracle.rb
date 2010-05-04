@@ -64,7 +64,7 @@ module ::JdbcSpec
       end
 
       def self.guess_date_or_time(value)
-        (value.hour == 0 && value.min == 0 && value.sec == 0) ?
+        (value && value.hour == 0 && value.min == 0 && value.sec == 0) ?
         Date.new(value.year, value.month, value.day) : value
       end
 

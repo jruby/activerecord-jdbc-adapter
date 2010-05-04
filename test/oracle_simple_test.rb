@@ -31,4 +31,10 @@ class OracleSpecificTest < Test::Unit::TestCase
     obj = @klass.find(:first)
     assert_not_nil obj.datum, "no date"
   end
+
+  def test_load_null_date
+    @java_con.createStatement.execute "UPDATE DEFAULT_NUMBER SET DATUM = NULL"
+    obj = @klass.find(:first)
+    assert obj.datum.nil?
+  end
 end if defined?(JRUBY_VERSION)
