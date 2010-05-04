@@ -1,5 +1,9 @@
 module JdbcSpec
   module Mimer
+    def self.extended(mod)
+      ActiveRecord::Base.extend JdbcSpec::QuotedPrimaryKeyExtension
+    end
+
     def self.adapter_matcher(name, *)
       name =~ /mimer/i ? self : false
     end

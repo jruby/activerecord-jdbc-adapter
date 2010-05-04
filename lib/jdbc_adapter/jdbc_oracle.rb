@@ -26,6 +26,7 @@ module ::JdbcSpec
         ActiveRecord::Base.after_save :after_save_with_oracle_lob
         @lob_callback_added = true
       end
+      ActiveRecord::Base.extend JdbcSpec::QuotedPrimaryKeyExtension
       mod.class.class_eval do
         alias_chained_method :insert, :query_dirty, :insert
       end
@@ -139,9 +140,13 @@ module ::JdbcSpec
     end
 
     def insert(sql, name = nil, pk = nil, id_value = nil, sequence_name = nil) #:nodoc:
-      if id_value || pk.nil? # Pre-assigned id or table without a primary key
+      if (id_value && !id_value.respond_to?(:to_sql)) || pk.nil?
+        # Pre-assigned id or table without a primary key
+        # Presence of #to_sql means an Arel literal bind variable
+        # that should use #execute_id_insert below
         execute sql, name
-      else # Assume the sql contains a bind-variable for the id
+      else
+        # Assume the sql contains a bind-variable for the id
         # Extract the table from the insert sql. Yuck.
         table = sql.split(" ", 4)[2].gsub('"', '')
         sequence_name ||= default_sequence_name(table)
