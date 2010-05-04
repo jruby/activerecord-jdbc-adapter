@@ -6,7 +6,7 @@ class OracleSimpleTest < Test::Unit::TestCase
 end
 
 class OracleSpecificTest < Test::Unit::TestCase
-  include MultibyteTestMethods
+  include MultibyteTestMethods  # so we can get @java_con
 
   def setup
     super

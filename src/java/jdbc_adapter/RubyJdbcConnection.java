@@ -1,6 +1,6 @@
 /*
  **** BEGIN LICENSE BLOCK *****
- * Copyright (c) 2006-2009 Nick Sieger <nick@nicksieger.com>
+ * Copyright (c) 2006-2010 Nick Sieger <nick@nicksieger.com>
  * Copyright (c) 2006-2007 Ola Bini <ola.bini@gmail.com>
  * Copyright (c) 2008-2009 Thomas E Enebo <enebo@acm.org>
  *
@@ -117,7 +117,7 @@ public class RubyJdbcConnection extends RubyObject {
             throws SQLException, IOException {
         return (IRubyObject) withConnectionAndRetry(context, new SQLBlock() {
             public Object call(Connection c) throws SQLException {
-                ResultSet results = null;
+                ResultSet results = null, pkeys = null;
                 try {
                     String table_name = rubyApi.convertToRubyString(args[0]).getUnicodeValue();
                     String schemaName = null;
@@ -143,9 +143,11 @@ public class RubyJdbcConnection extends RubyObject {
                     }
 
                     results = metadata.getColumns(c.getCatalog(),schemaName,table_name,null);
-                    return unmarshal_columns(context, metadata, results);
+                    pkeys = metadata.getPrimaryKeys(c.getCatalog(),schemaName,table_name);
+                    return unmarshal_columns(context, metadata, results, pkeys);
                 } finally {
                     close(results);
+                    close(pkeys);
                 }
             }
         });
@@ -991,22 +993,28 @@ public class RubyJdbcConnection extends RubyObject {
     }
 
     private IRubyObject unmarshal_columns(ThreadContext context, DatabaseMetaData metadata,
-            ResultSet rs) throws SQLException {
+                                          ResultSet rs, ResultSet pkeys) throws SQLException {
         try {
             Ruby runtime = context.getRuntime();
             List columns = new ArrayList();
+            List pkeyNames = new ArrayList();
             String clzName = metadata.getClass().getName().toLowerCase();
             boolean isOracle = clzName.indexOf("oracle") != -1 || clzName.indexOf("oci") != -1;
 
             RubyHash types = (RubyHash) native_database_types();
             IRubyObject jdbcCol = getConnectionAdapters(runtime).getConstant("JdbcColumn");
 
-            while(rs.next()) {
+            while (pkeys.next()) {
+                pkeyNames.add(pkeys.getString(COLUMN_NAME));
+            }
+
+            while (rs.next()) {
+                String colName = rs.getString(COLUMN_NAME);
                 IRubyObject column = jdbcCol.callMethod(context, "new",
                         new IRubyObject[] {
                             getInstanceVariable("@config"),
                             RubyString.newUnicodeString(runtime,
-                                    caseConvertIdentifierForRails(metadata, rs.getString(COLUMN_NAME))),
+                                    caseConvertIdentifierForRails(metadata, colName)),
                             defaultValueFromResultSet(runtime, rs),
                             RubyString.newUnicodeString(runtime, typeFromResultSet(rs, isOracle)),
                             runtime.newBoolean(!rs.getString(IS_NULLABLE).trim().equals("NO"))
@@ -1014,11 +1022,14 @@ public class RubyJdbcConnection extends RubyObject {
                 columns.add(column);
 
                 IRubyObject tp = (IRubyObject)types.fastARef(column.callMethod(context,"type"));
-                if(tp != null && !tp.isNil() && tp.callMethod(context, "[]", runtime.newSymbol("limit")).isNil()) {
+                if (tp != null && !tp.isNil() && tp.callMethod(context, "[]", runtime.newSymbol("limit")).isNil()) {
                     column.callMethod(context, "limit=", runtime.getNil());
                     if(!column.callMethod(context, "type").equals(runtime.newSymbol("decimal"))) {
                         column.callMethod(context, "precision=", runtime.getNil());
                     }
+                }
+                if (pkeyNames.contains(colName)) {
+                    column.callMethod(context, "primary=", runtime.getTrue());
                 }
             }
             return runtime.newArray(columns);

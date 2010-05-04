@@ -42,6 +42,13 @@ module ::JdbcSpec
     end
 
     module Column
+      def primary=(val)
+        super
+        if val && @sql_type =~ /^NUMBER$/i
+          @type = :integer
+        end
+      end
+
       def type_cast(value)
         return nil if value.nil?
         case type
@@ -81,11 +88,6 @@ module ::JdbcSpec
         when /clob/i                           then :text
         when /blob/i                           then :binary
         end
-      end
-
-      def extract_scale(sql_type)
-        scale = super
-        scale.nil? ? 0 : scale
       end
 
       # Post process default value from JDBC into a Rails-friendly format (columns{-internal})
