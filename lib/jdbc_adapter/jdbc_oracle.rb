@@ -124,8 +124,9 @@ module ::JdbcSpec
     def create_table(name, options = {}) #:nodoc:
       super(name, options)
       seq_name = options[:sequence_name] || "#{name}_seq"
+      start_value = options[:sequence_start_value] || 10000
       raise ActiveRecord::StatementInvalid.new("name #{seq_name} too long") if seq_name.length > table_alias_length
-      execute "CREATE SEQUENCE #{seq_name} START WITH 10000" unless options[:id] == false
+      execute "CREATE SEQUENCE #{seq_name} START WITH #{start_value}" unless options[:id] == false
     end
 
     def rename_table(name, new_name) #:nodoc:
