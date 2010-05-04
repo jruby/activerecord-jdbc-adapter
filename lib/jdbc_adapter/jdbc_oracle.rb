@@ -326,6 +326,12 @@ module ::JdbcSpec
     #
     # see: abstract/quoting.rb
 
+    # See ACTIVERECORD_JDBC-33 for details -- better to not quote
+    # table names, esp. if they have schemas.
+    def quote_table_name(name) #:nodoc:
+      name.to_s
+    end
+
     # Camelcase column names need to be quoted.
     # Nonquoted identifiers can contain only alphanumeric characters from your
     # database character set and the underscore (_), dollar sign ($), and pound sign (#).
