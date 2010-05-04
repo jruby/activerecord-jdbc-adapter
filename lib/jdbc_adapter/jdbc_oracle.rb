@@ -29,6 +29,7 @@ module ::JdbcSpec
       ActiveRecord::Base.extend JdbcSpec::QuotedPrimaryKeyExtension
       mod.class.class_eval do
         alias_chained_method :insert, :query_dirty, :insert
+        alias_chained_method :columns, :query_cache, :columns
       end
     end
 
@@ -75,11 +76,16 @@ module ::JdbcSpec
         when /char/i                           then :string
         when /float|double/i                   then :float
         when /int/i                            then :integer
-        when /num|dec|real/i                   then @scale == 0 ? :integer : :decimal
+        when /num|dec|real/i                   then extract_scale(field_type) == 0 ? :integer : :decimal
         when /date|time/i                      then :datetime
         when /clob/i                           then :text
         when /blob/i                           then :binary
         end
+      end
+
+      def extract_scale(sql_type)
+        scale = super
+        scale.nil? ? 0 : scale
       end
 
       # Post process default value from JDBC into a Rails-friendly format (columns{-internal})
@@ -340,7 +346,7 @@ module ::JdbcSpec
           %Q{empty_#{ column.sql_type.downcase rescue 'blob' }()}
         end
       else
-        if column.respond_to?(:primary) && column.primary
+        if column.respond_to?(:primary) && column.primary && column.klass != String
           return value.to_i.to_s
         end
         quoted = super
