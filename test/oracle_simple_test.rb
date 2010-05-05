@@ -19,6 +19,7 @@ class OracleSpecificTest < Test::Unit::TestCase
 
   def teardown
     @java_con.createStatement.execute "DROP TABLE DEFAULT_NUMBER"
+    @java_con.createStatement.execute "DROP SYNONYM POSTS"
     super
   end
 

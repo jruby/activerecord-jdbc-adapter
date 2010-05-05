@@ -367,7 +367,7 @@ module ::JdbcSpec
     end
 
     def quoted_date(value)
-      %Q{TIMESTAMP'#{value.strftime("%Y-%m-%d %H:%M:%S")}'}
+      %Q{TIMESTAMP'#{super}'}
     end
 
     def quoted_true #:nodoc:
