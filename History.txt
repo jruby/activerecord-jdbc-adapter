@@ -1,3 +1,17 @@
+== 0.9.6
+
+- The Oracle release!
+- Oracle should be working much better with this release. Also updated
+  to work with Rails 3.
+- Get all unit tests running cleanly on Oracle, fixing previous
+  datetime/timezone issues.
+- ACTIVERECORD_JDBC-83: Add :sequence_start_value option to
+  create_table, following oracle_enhanced adapter
+- ACTIVERECORD_JDBC-33: Don't double-quote table names in oracle
+- ACTIVERECORD_JDBC-17: Fix Oracle primary keys so that /^NUMBER$/ => :integer
+- Fix remaining blockers ACTIVERECORD_JDBC-82, JRUBY-3675,
+  ACTIVERECORD_JDBC-22, ACTIVERECORD_JDBC-27, JRUBY-4759
+
 == 0.9.5
 
 - The MSSQL release, courtesy of Mike Williams and Lonely

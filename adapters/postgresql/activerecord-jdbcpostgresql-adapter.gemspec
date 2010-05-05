@@ -2,12 +2,12 @@
 
 Gem::Specification.new do |s|
   s.name = %q{activerecord-jdbcpostgresql-adapter}
-  s.version = "0.9.5"
+  s.version = "0.9.6"
   s.platform = Gem::Platform.new([nil, "java", nil])
 
   s.required_rubygems_version = Gem::Requirement.new(">= 0") if s.respond_to? :required_rubygems_version=
   s.authors = ["Nick Sieger, Ola Bini and JRuby contributors"]
-  s.date = %q{2010-04-22}
+  s.date = %q{2010-05-05}
   s.description = %q{Install this gem to use Postgres with JRuby on Rails.}
   s.email = %q{nick@nicksieger.com, ola.bini@gmail.com}
   s.extra_rdoc_files = ["Manifest.txt", "README.txt", "LICENSE.txt"]
@@ -24,14 +24,14 @@ Gem::Specification.new do |s|
     s.specification_version = 3
 
     if Gem::Version.new(Gem::RubyGemsVersion) >= Gem::Version.new('1.2.0') then
-      s.add_runtime_dependency(%q<activerecord-jdbc-adapter>, ["= 0.9.5"])
+      s.add_runtime_dependency(%q<activerecord-jdbc-adapter>, ["= 0.9.6"])
       s.add_runtime_dependency(%q<jdbc-postgres>, [">= 8.4.701"])
     else
-      s.add_dependency(%q<activerecord-jdbc-adapter>, ["= 0.9.5"])
+      s.add_dependency(%q<activerecord-jdbc-adapter>, ["= 0.9.6"])
       s.add_dependency(%q<jdbc-postgres>, [">= 8.4.701"])
     end
   else
-    s.add_dependency(%q<activerecord-jdbc-adapter>, ["= 0.9.5"])
+    s.add_dependency(%q<activerecord-jdbc-adapter>, ["= 0.9.6"])
     s.add_dependency(%q<jdbc-postgres>, [">= 8.4.701"])
   end
 end

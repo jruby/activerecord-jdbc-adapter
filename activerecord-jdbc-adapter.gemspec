@@ -2,12 +2,12 @@
 
 Gem::Specification.new do |s|
   s.name = %q{activerecord-jdbc-adapter}
-  s.version = "0.9.5"
+  s.version = "0.9.6"
   s.platform = Gem::Platform.new([nil, "java", nil])
 
   s.required_rubygems_version = Gem::Requirement.new(">= 0") if s.respond_to? :required_rubygems_version=
   s.authors = ["Nick Sieger, Ola Bini and JRuby contributors"]
-  s.date = %q{2010-04-22}
+  s.date = %q{2010-05-05}
   s.description = %q{activerecord-jdbc-adapter is a database adapter for Rails' ActiveRecord
 component that can be used with JRuby[http://www.jruby.org/]. It allows use of
 virtually any JDBC-compliant database with your JRuby on Rails application.}
