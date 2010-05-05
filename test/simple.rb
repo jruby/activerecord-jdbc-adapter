@@ -170,7 +170,12 @@ module SimpleTestMethods
     e.sample_date = date
     e.save!
     e = DbType.find(:first)
-    assert_equal date, e.sample_date
+    if DbType.columns_hash["sample_date"].type == :datetime
+      # Oracle doesn't distinguish btw date/datetime
+      assert_equal date, e.sample_date.to_date
+    else
+      assert_equal date, e.sample_date
+    end
   end
 
   def test_boolean
