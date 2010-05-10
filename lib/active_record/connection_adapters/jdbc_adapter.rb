@@ -74,7 +74,9 @@ module JdbcSpec
           alias :#{meth}_pre_pk :#{meth}
           def #{meth}(include_primary_key = true, *args) #:nodoc:
             aq = #{meth}_pre_pk(include_primary_key, *args)
-            aq[#{pk_hash_key}] = #{pk_hash_value} if include_primary_key && aq[#{pk_hash_key}].nil?
+            if connection.is_a?(JdbcSpec::Oracle) || connection.is_a?(JdbcSpec::Mimer)
+              aq[#{pk_hash_key}] = #{pk_hash_value} if include_primary_key && aq[#{pk_hash_key}].nil?
+            end
             aq
           end
         }
