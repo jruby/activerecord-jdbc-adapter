@@ -1,3 +1,7 @@
+== 0.9.7
+
+- JRUBY-4781: Fix multiple database connection collision issue w/ Oracle
+
 == 0.9.6
 
 - The Oracle release!
