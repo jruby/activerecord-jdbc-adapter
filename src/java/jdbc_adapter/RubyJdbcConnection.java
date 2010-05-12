@@ -725,10 +725,24 @@ public class RubyJdbcConnection extends RubyObject {
         return runtime.newFixnum(longValue);
     }
 
+    // JWW HACK
+    private static IRubyObject booleanToRuby(Ruby runtime, ResultSet resultSet, boolean booleanValue)
+            throws SQLException, IOException {
+        if (booleanValue == false && resultSet.wasNull()) return runtime.getNil();
+
+        return runtime.newBoolean(booleanValue);
+    }
+    // JWW END HACK
+
     private static IRubyObject jdbcToRuby(Ruby runtime, int column, int type, ResultSet resultSet)
             throws SQLException {
         try {
             switch (type) {
+            // JWW HACK
+            // When merging this into the 1.9.2 version we should probably pull it out into the MsSql specific connection, at least the Types.BIT version
+            case Types.BOOLEAN: case Types.BIT:
+                return booleanToRuby(runtime, resultSet, resultSet.getBoolean(column));
+            // JWW END HACK
             case Types.BINARY: case Types.BLOB: case Types.LONGVARBINARY: case Types.VARBINARY:
             case Types.LONGVARCHAR:
                 return streamToRuby(runtime, resultSet, resultSet.getBinaryStream(column));

@@ -158,7 +158,7 @@ module ::JdbcSpec
     end
 
     # Override normal #_execute: See Rubyforge #11567
-    def _execute(sql, name = nil)
+    def _execute(sql, name = nil, hint = nil)
       if ::ActiveRecord::ConnectionAdapters::JdbcConnection::select?(sql)
         @connection.execute_query(sql)
       elsif ::ActiveRecord::ConnectionAdapters::JdbcConnection::insert?(sql)

@@ -261,7 +261,7 @@ module ::JdbcSpec
       tables.each{ |table| drop_table(table) }
     end
 
-    def _execute(sql, name = nil)
+    def _execute(sql, name = nil, hint = nil)
       if ActiveRecord::ConnectionAdapters::JdbcConnection::select?(sql)
         @connection.execute_query(sql)
       else

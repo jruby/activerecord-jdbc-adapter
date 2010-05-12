@@ -330,7 +330,7 @@ module ::JdbcSpec
       end
     end
 
-    def _execute(sql, name = nil)
+    def _execute(sql, name = nil, hint = nil)
         case sql.strip
         when /\A\(?\s*(select|show)/i:
           @connection.execute_query(sql)

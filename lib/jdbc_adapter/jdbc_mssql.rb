@@ -39,7 +39,7 @@ module ::JdbcSpec
           when /int|bigint|smallint|tinyint/i                        then :integer
           when /numeric/i                                            then (@scale.nil? || @scale == 0) ? :integer : :decimal
           when /float|double|decimal|money|real|smallmoney/i         then :decimal
-          when /datetime|smalldatetime/i                             then :datetime
+          when /date|datetime|smalldatetime/i                        then :datetime
           when /timestamp/i                                          then :timestamp
           when /time/i                                               then :time
           when /text|ntext/i                                         then :text
@@ -54,7 +54,10 @@ module ::JdbcSpec
         return nil if value.nil? || value == "(null)" || value == "(NULL)"
         case type
         when :string then unquote_string value
-        when :integer then unquote(value).to_i rescue value ? 1 : 0
+        # JWW START HACK
+        # when :integer then unquote(value).to_i rescue value ? 1 : 0
+        when :integer then value.to_i rescue unquote(value).to_i rescue value ? 1 : 0
+        # JWW END HACK
         when :primary_key then value == true || value == false ? value == true ? 1 : 0 : value.to_i
         when :decimal   then self.class.value_to_decimal(unquote(value))
         when :datetime  then cast_to_datetime(value)
@@ -69,7 +72,10 @@ module ::JdbcSpec
 
       # JRUBY-2011: Match balanced quotes and parenthesis - 'text',('text') or (text)
       def unquote_string(value)
-        value.sub(/^\((.*)\)$/,'\1').sub(/^'(.*)'$/,'\1')
+        # JWW imported change from git repo
+        # value.sub(/^\((.*)\)$/,'\1').sub(/^'(.*)'$/,'\1')
+        value.to_s.sub(/^\((.*)\)$/,'\1').sub(/^'(.*)'$/,'\1')
+        # JWW END import
       end
 
       def unquote(value)
@@ -79,10 +85,16 @@ module ::JdbcSpec
       def cast_to_time(value)
         return value if value.is_a?(Time)
         time_array = ParseDate.parsedate(value)
+        return nil if !time_array.any?
         time_array[0] ||= 2000
         time_array[1] ||= 1
         time_array[2] ||= 1
-        Time.send(ActiveRecord::Base.default_timezone, *time_array) rescue nil
+        # PD START HACKE
+        return Time.send(ActiveRecord::Base.default_timezone, *time_array) rescue nil
+
+        # Try DateTime instead
+        DateTime.new(*time_array[0..5]) rescue nil
+        # PD HACK ENDE
       end
 
       def cast_to_datetime(value)
@@ -93,8 +105,21 @@ module ::JdbcSpec
             return Time.mktime(2000, 1, 1, value.hour, value.min, value.sec) rescue nil
           end
         end
-        return cast_to_time(value) if value.is_a?(Date) or value.is_a?(String) rescue nil
-        value
+
+        # JWW START HACK
+        if value.is_a?(DateTime)
+          begin
+            return Time.mktime(value.year, value.mon, value.day, value.hour, value.min, value.sec)
+          rescue ArgumentError
+            return value
+          end
+        end
+        # JWW END HACK
+
+        return cast_to_time(value) if value.is_a?(Date)  || value.is_a?(String) rescue nil
+        # JWW START HACK
+        return value.is_a?(Date) ? value : nil
+        # JWW END HACK
       end
 
       # These methods will only allow the adapter to insert binary data with a length of 7K or less
@@ -120,9 +145,21 @@ module ::JdbcSpec
         end
       when TrueClass             then '1'
       when FalseClass            then '0'
-      when Time, DateTime        then "'#{value.strftime("%Y%m%d %H:%M:%S")}'"
-      when Date                  then "'#{value.strftime("%Y%m%d")}'"
-      else                       super
+      # JWW START HACK
+      #when Time, DateTime        then "'#{value.strftime("%Y%m%d %H:%M:%S")}'"
+      #when Date                  then "'#{value.strftime("%Y%m%d")}'"
+      #else                       super
+      else
+        if value.acts_like?(:time)
+          "'#{value.strftime("%d %B %Y %H:%M:%S")}'"
+        elsif value.acts_like?(:datetime)
+          "'#{value.strftime("%d %B %Y %H:%M:%S")}'"
+        elsif value.acts_like?(:date)
+          "'#{value.strftime("%d %B %Y")}'"
+        else
+          super
+        end
+      # JWW END HACK
       end
     end
 
@@ -137,6 +174,33 @@ module ::JdbcSpec
     def quote_column_name(name)
       "[#{name}]"
     end
+
+    # JWW imported from git repo
+    def quoted_true
+      quote true
+    end
+
+    def quoted_false
+      quote false
+    end
+    # JWW end import
+
+    # JWW added entire method from our other adapter
+    def add_limit_offset!(sql, options)
+      if options[:limit] and options[:offset]
+        order_by = options[:order] unless options[:order].nil?
+        order_by = "#{get_table_name( sql )}.id" if options[:order].nil?
+
+        sql.sub!(/^\s*SELECT(\s+DISTINCT)?/i,
+          "SELECT * FROM ( SELECT#{$1} TOP #{options[:offset] + options[:limit]} ROW_NUMBER() OVER (order by #{order_by}) as ss_rownum_, ")
+        sql << " ) as tmp1 where ss_rownum_ > #{options[:offset]} and ss_rownum_ <= #{options[:offset] + options[:limit]}"
+      elsif sql !~ /^\s*SELECT (@@|COUNT\()/i
+        sql.sub!(/^\s*SELECT(\s+DISTINCT)?/i) do
+          "SELECT#{$1} TOP #{options[:limit]}"
+        end unless options[:limit].nil?
+      end
+    end
+    # JWW END addition
 
     def change_order_direction(order)
       order.split(",").collect {|fragment|
@@ -222,6 +286,11 @@ module ::JdbcSpec
 
 
       def columns(table_name, name = nil)
+        # JWW HACK - copied from activerecord-sqlserver-adapter
+        return [] if table_name.blank?
+        table_name = table_name.to_s if table_name.is_a?(Symbol)
+        table_name = table_name.gsub(/[\[\]]/, '')
+        # JWW END HACK
         return [] if table_name =~ /^information_schema\./i
         cc = super
         cc.each do |col|
@@ -231,8 +300,8 @@ module ::JdbcSpec
         cc
       end
 
-      def _execute(sql, name = nil)
-        if sql.lstrip =~ /^insert/i
+      def _execute(sql, name = nil, hint = nil)
+        if hint == :insert or (hint.nil? and sql.lstrip =~ /^insert/i )
           if query_requires_identity_insert?(sql)
             table_name = get_table_name(sql)
             with_identity_insert_enabled(table_name) do
@@ -241,7 +310,7 @@ module ::JdbcSpec
           else
             @connection.execute_insert(sql)
           end
-        elsif sql.lstrip =~ /^\(?\s*(select|show)/i
+        elsif hint == :select or (hint.nil? and sql.lstrip =~ /^\(?\s*(select|show)/i )
           repair_special_columns(sql)
           @connection.execute_query(sql)
         else
@@ -272,7 +341,13 @@ module ::JdbcSpec
         if sql =~ /^\s*insert\s+into\s+([^\(\s,]+)\s*|^\s*update\s+([^\(\s,]+)\s*/i
           $1
         elsif sql =~ /from\s+([^\(\s,]+)\s*/i
-          $1
+          name = $1
+
+          if !name.split('.').empty? && name.split('.')[-1].start_with?('fn')
+            return nil # looks like a function
+          end
+
+          return name
         else
           nil
         end

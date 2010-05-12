@@ -215,7 +215,7 @@ module ::JdbcSpec
       end
     end
 
-    def execute(sql, name = nil)
+    def execute(sql, name = nil, hint = nil)
       if sql =~ /^\s*(UPDATE|INSERT)/i
         i = sql =~ /\swhere\s/im
         if i

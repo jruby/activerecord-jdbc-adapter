@@ -151,7 +151,7 @@ module ::JdbcSpec
       @connection.indexes(table, name, @connection.connection.meta_data.user_name)
     end
 
-    def _execute(sql, name = nil)
+    def _execute(sql, name = nil, hint = nil)
       case sql.strip
         when /\A\(?\s*(select|show)/i:
           @connection.execute_query(sql)

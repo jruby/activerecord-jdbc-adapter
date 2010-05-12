@@ -12,7 +12,9 @@ def redefine_task(*args, &block)
     existing_task.instance_variable_set "@actions", []
   end
   redefined_task = task(*args, &block)
-  enhancements.each {|enhancement| redefined_task.actions << enhancement}
+  # JWW HACK - add 'unless nil' check to following line
+  enhancements.each {|enhancement| redefined_task.actions << enhancement} unless enhancements.nil?
+  # JWW END HACK
 end
 
 namespace :db do
