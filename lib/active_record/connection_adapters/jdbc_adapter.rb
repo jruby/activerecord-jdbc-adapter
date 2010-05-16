@@ -319,7 +319,7 @@ module ActiveRecord
       #   This contains type information for the adapter.  Individual adapters can make tweaks
       #   by defined modify_types
       #
-      # @native_types - This is the default type settings sans any modifications by the 
+      # @native_types - This is the default type settings sans any modifications by the
       # individual adapter.  My guess is that if we loaded two adapters of different types
       # then this is used as a base to be tweaked by each adapter to create @native_database_types
 
@@ -351,10 +351,10 @@ module ActiveRecord
       end
 
       # Duplicate all native types into new hash structure so it can be modified
-      # without destroying original structure.  
+      # without destroying original structure.
       def dup_native_types
         types = {}
-        @native_types.each_pair do |k, v| 
+        @native_types.each_pair do |k, v|
           types[k] = v.inject({}) do |memo, kv|
             memo[kv.first] = begin kv.last.dup rescue kv.last end
             memo
@@ -387,6 +387,14 @@ module ActiveRecord
         user   = @config[:username].to_s
         pass   = @config[:password].to_s
         url    = @config[:url].to_s
+        # Support generation of url from a pattern which uses values from non-jdbc configuration
+        if ( url.blank? and @config[:database] and @config[:host] and @config[:url_pattern] )
+          database = @config[:database].to_s
+          url = @config[:url_pattern].to_s.gsub(/HOST/, @config[:host].to_s).gsub(/DATABASE/, database)
+          url = "#{url};instance=#{@config[:instance]}" if @config[:instance] && !(url =~ /;instance=/)
+          url = "#{url};domain=#{@config[:domain]}" if @config[:domain] && !(url =~ /;domain=/)
+          @config[:url] = url
+        end
 
         unless driver && url
           raise ::ActiveRecord::ConnectionFailed, "jdbc adapter requires driver class and url"
@@ -578,19 +586,21 @@ module ActiveRecord
         select(sql, name).first
       end
 
-      def execute(sql, name = nil)
+      # Support a hint which can be passed through to _execute, so that calls to stored procedures can be
+      # coerced into the right update or select behaviour
+      def execute(sql, name = nil, hint = nil)
         log(sql, name) do
-          _execute(sql,name)
+          _execute(sql,name,hint)
         end
       end
 
       # we need to do it this way, to allow Rails stupid tests to always work
       # even if we define a new execute method. Instead of mixing in a new
       # execute, an _execute should be mixed in.
-      def _execute(sql, name = nil)
-        if JdbcConnection::select?(sql)
+      def _execute(sql, name = nil, hint = nil)
+        if hint == :select or (hint.nil? and JdbcConnection::select?(sql))
           @connection.execute_query(sql)
-        elsif JdbcConnection::insert?(sql)
+        elsif hint == :insert or (hint.nil? and JdbcConnection::insert?(sql))
           @connection.execute_insert(sql)
         else
           @connection.execute_update(sql)
@@ -598,12 +608,12 @@ module ActiveRecord
       end
 
       def jdbc_update(sql, name = nil) #:nodoc:
-        execute(sql, name)
+        execute( sql, name, :update )
       end
       alias_chained_method :update, :query_dirty, :jdbc_update
 
       def jdbc_insert(sql, name = nil, pk = nil, id_value = nil, sequence_name = nil)
-        id = execute(sql, name = nil)
+        id = execute(sql, name = nil, :insert)
         id_value || id
       end
       alias_chained_method :insert, :query_dirty, :jdbc_insert
@@ -655,6 +665,8 @@ module ActiveRecord
         log(sql, name) do
           @connection.execute_query(sql)
         end
+        # TODO JWW Stock had been using
+        # execute(sql,name,:select)
       end
     end
   end

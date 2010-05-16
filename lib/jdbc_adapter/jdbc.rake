@@ -12,7 +12,7 @@ def redefine_task(*args, &block)
     existing_task.instance_variable_set "@actions", []
   end
   redefined_task = task(*args, &block)
-  enhancements.each {|enhancement| redefined_task.actions << enhancement}
+  enhancements.each {|enhancement| redefined_task.actions << enhancement} unless enhancements.nil?
 end
 
 def rails_env

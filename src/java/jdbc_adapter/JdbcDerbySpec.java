@@ -274,7 +274,7 @@ public class JdbcDerbySpec {
         }
     }
 
-    @JRubyMethod(name = "_execute", required = 1, optional = 1)
+    @JRubyMethod(name = "_execute", required = 1, optional = 2)
     public static IRubyObject _execute(ThreadContext context, IRubyObject recv, IRubyObject[] args) throws SQLException, java.io.IOException {
         Ruby runtime = recv.getRuntime();
         RubyJdbcConnection conn = (RubyJdbcConnection) rubyApi.getInstanceVariable(recv, "@connection");

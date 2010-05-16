@@ -126,7 +126,7 @@ module JdbcSpec
       @limit = @offset = nil
     end
 
-    def _execute(sql, name = nil)
+    def _execute(sql, name = nil, hint = nil)
         if sql =~ /^select/i
           @offset ||= 0
           if !@limit || @limit == -1

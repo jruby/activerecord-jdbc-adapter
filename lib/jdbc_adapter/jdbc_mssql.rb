@@ -86,7 +86,7 @@ module ::JdbcSpec
       def type_cast(value)
         return nil if value.nil? || value == "(null)" || value == "(NULL)"
         case type
-        when :integer then unquote(value).to_i rescue value ? 1 : 0
+        when :integer then value.to_i rescue unquote(value).to_i rescue value ? 1 : 0
         when :primary_key then value == true || value == false ? value == true ? 1 : 0 : value.to_i
         when :decimal   then self.class.value_to_decimal(unquote(value))
         when :datetime  then cast_to_datetime(value)
@@ -105,16 +105,22 @@ module ::JdbcSpec
       end
 
       def unquote(value)
-        value.to_s.sub(/\A\([\(\']?/, "").sub(/[\'\)]?\)\Z/, "")
+        value.to_s.sub(/\A\([\(\']?/, "").sub(/[\'\)]?\)\Z/, ""
+        # TODO JWW Stock had been using
+        # value.to_s.sub(/^\((.*)\)$/,'\1').sub(/^'(.*)'$/,'\1')
       end
 
       def cast_to_time(value)
         return value if value.is_a?(Time)
         time_array = ParseDate.parsedate(value)
+        return nil if !time_array.any?
         time_array[0] ||= 2000
         time_array[1] ||= 1
         time_array[2] ||= 1
-        Time.send(ActiveRecord::Base.default_timezone, *time_array) rescue nil
+        return Time.send(ActiveRecord::Base.default_timezone, *time_array) rescue nil
+
+        # Try DateTime instead - Time could fail to handle due to distant future
+        DateTime.new(*time_array[0..5]) rescue nil
       end
 
       def cast_to_date(value)
@@ -130,8 +136,17 @@ module ::JdbcSpec
             return Time.mktime(2000, 1, 1, value.hour, value.min, value.sec) rescue nil
           end
         end
+
+        if value.is_a?(DateTime)
+          begin
+            return Time.mktime(value.year, value.mon, value.day, value.hour, value.min, value.sec)
+          rescue ArgumentError
+            return value
+          end
+        end
+
         return cast_to_time(value) if value.is_a?(Date) or value.is_a?(String) rescue nil
-        value
+        return value.is_a?(Date) ? value : nil
       end
 
       # These methods will only allow the adapter to insert binary data with a length of 7K or less
@@ -160,7 +175,16 @@ module ::JdbcSpec
         end
       when TrueClass             then '1'
       when FalseClass            then '0'
-      else                       super
+      else
+        if value.acts_like?(:time)
+          "'#{value.strftime("%d %B %Y %H:%M:%S")}'"
+        elsif value.acts_like?(:datetime)
+          "'#{value.strftime("%d %B %Y %H:%M:%S")}'"
+        elsif value.acts_like?(:date)
+          "'#{value.strftime("%d %B %Y")}'"
+        else
+          super
+        end
       end
     end
 
@@ -293,6 +317,9 @@ module ::JdbcSpec
     end
 
     def columns(table_name, name = nil)
+      return [] if table_name.blank?
+      table_name = table_name.to_s if table_name.is_a?(Symbol)
+      table_name = table_name.gsub(/[\[\]]/, '')
       return [] if table_name =~ /^information_schema\./i
       cc = super
       cc.each do |col|
@@ -302,8 +329,8 @@ module ::JdbcSpec
       cc
     end
 
-    def _execute(sql, name = nil)
-      if sql.lstrip =~ /^insert/i
+    def _execute(sql, name = nil, hint = nil)
+      if hint == :insert or (hint.nil? and sql.lstrip =~ /^insert/i )
         if query_requires_identity_insert?(sql)
           table_name = get_table_name(sql)
           with_identity_insert_enabled(table_name) do
@@ -314,11 +341,13 @@ module ::JdbcSpec
         end
       elsif sql.lstrip =~ /^(create|exec)/i
         @connection.execute_update(sql)
-      elsif sql.lstrip =~ /^\(?\s*(select|show)/i
+      elsif hint == :select or (hint.nil? and sql.lstrip =~ /^\(?\s*(select|show)/i )
         repair_special_columns(sql)
         @connection.execute_query(sql)
       else
         @connection.execute_update(sql)
+        # TODO JWW Stock had been using
+        # @connection.execute_insert(sql)
       end
     end
 
@@ -349,7 +378,13 @@ module ::JdbcSpec
       if sql =~ /^\s*insert\s+into\s+([^\(\s,]+)\s*|^\s*update\s+([^\(\s,]+)\s*/i
         $1
       elsif sql =~ /from\s+([^\(\s,]+)\s*/i
-        $1
+        # It's possible to select from a function, in which case there is no table name 
+        name = $1
+        if !name.split('.').empty? && name.split('.')[-1].start_with?('fn')
+          nil
+        else
+          name
+        end
       else
         nil
       end
