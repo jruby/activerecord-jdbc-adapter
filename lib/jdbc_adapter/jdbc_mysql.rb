@@ -118,6 +118,22 @@ module ::JdbcSpec
       # Transactions aren't supported
     end
 
+    def supports_savepoints? #:nodoc:
+      true
+    end
+
+    def create_savepoint
+      execute("SAVEPOINT #{current_savepoint_name}")
+    end
+
+    def rollback_to_savepoint
+      execute("ROLLBACK TO SAVEPOINT #{current_savepoint_name}")
+    end
+
+    def release_savepoint
+      execute("RELEASE SAVEPOINT #{current_savepoint_name}")
+    end
+
     def disable_referential_integrity(&block) #:nodoc:
       old = select_value("SELECT @@FOREIGN_KEY_CHECKS")
       begin
