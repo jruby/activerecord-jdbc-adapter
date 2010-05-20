@@ -26,7 +26,6 @@ begin
       ['activerecord-jdbc-adapter', "= #{JdbcAdapter::Version::VERSION}"],
       ['jdbc-jtds', ">= #{Jdbc::JTDS::VERSION}"]]
   end
-  hoe.spec.dependencies.delete_if { |dep| dep.name == "hoe" }
   task :gemspec do
     File.open("#{hoe.name}.gemspec", "w") {|f| f << hoe.spec.to_ruby }
   end
