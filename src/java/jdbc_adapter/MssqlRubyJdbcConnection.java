@@ -58,7 +58,7 @@ public class MssqlRubyJdbcConnection extends RubyJdbcConnection {
     };
 
     protected static IRubyObject booleanToRuby(Ruby runtime, ResultSet resultSet, boolean booleanValue)
-            throws SQLException, IOException {
+            throws SQLException {
         if (booleanValue == false && resultSet.wasNull()) return runtime.getNil();
 
         return runtime.newBoolean(booleanValue);
@@ -71,7 +71,7 @@ public class MssqlRubyJdbcConnection extends RubyJdbcConnection {
     @Override
     protected IRubyObject jdbcToRuby(Ruby runtime, int column, int type, ResultSet resultSet)
             throws SQLException {
-        if ( Types.Boolean == type || Types.BIT == type ) {
+        if ( Types.BOOLEAN == type || Types.BIT == type ) {
           return booleanToRuby(runtime, resultSet, resultSet.getBoolean(column));
         }
         if (type == Types.LONGVARCHAR) {

@@ -105,7 +105,7 @@ module ::JdbcSpec
       end
 
       def unquote(value)
-        value.to_s.sub(/\A\([\(\']?/, "").sub(/[\'\)]?\)\Z/, ""
+        value.to_s.sub(/\A\([\(\']?/, "").sub(/[\'\)]?\)\Z/, "")
         # TODO JWW Stock had been using
         # value.to_s.sub(/^\((.*)\)$/,'\1').sub(/^'(.*)'$/,'\1')
       end
