@@ -16,7 +16,7 @@ module ::JdbcSpec
   end
 
   module MsSQL
-    
+
     include TSqlMethods
 
     def self.extended(mod)
@@ -36,8 +36,7 @@ module ::JdbcSpec
         ActiveRecord::Base.after_save :after_save_with_mssql_lob
         @lob_callback_added = true
       end
-      #adding a check for determining sqlserver version it will be cached so that we are not pinging the server too much
-      mod.sqlserver_version
+      mod.add_version_specific_add_limit_offset
     end
 
     def self.adapter_matcher(name, *)
@@ -51,26 +50,31 @@ module ::JdbcSpec
     def self.jdbc_connection_class
       ::ActiveRecord::ConnectionAdapters::MssqlJdbcConnection
     end
-    
-    #This has not been tested pre SQLServer pre 2000
+
     def sqlserver_version
-      @sqlserver_version ||= /Microsoft SQL Server\s+(\d{4})/.match(@connection.execute_query("SELECT @@version")[0].values[0])[1]
+      @sqlserver_version ||= select_value("select @@version")[/Microsoft SQL Server\s+(\d{4})/, 1]
+    end
+
+    def add_version_specific_add_limit_offset
+      if sqlserver_version == "2000"
+        extend SqlServer2000LimitOffset
+      else
+        extend SqlServerLimitOffset
+      end
     end
 
     def modify_types(tp) #:nodoc:
       super(tp)
       tp[:string] = {:name => "NVARCHAR", :limit => 255}
-      #NOTE:  I am not sure if I should be concerned with non unicode DB's here.
       if sqlserver_version == "2000"
-        tp[:text]   = {:name => "NTEXT"}
+        tp[:text] = {:name => "NTEXT"}
       else
-        tp[:text]   = {:name => "NVARCHAR(MAX)"}
+        tp[:text] = {:name => "NVARCHAR(MAX)"}
       end
       tp
     end
-      
+
     module Column
-      
       attr_accessor :identity, :is_special
 
       def simplified_type(field_type)
@@ -94,7 +98,7 @@ module ::JdbcSpec
         return $1 if value =~ /^\(N?'(.*)'\)$/
         value
       end
-      
+
       def type_cast(value)
         return nil if value.nil? || value == "(null)" || value == "(NULL)"
         case type
@@ -109,7 +113,7 @@ module ::JdbcSpec
         when :binary    then unquote value
         else value
         end
-        
+
       end
 
       def is_utf8?
@@ -151,7 +155,7 @@ module ::JdbcSpec
       def self.string_to_binary(value)
         ''
       end
-      
+
     end
 
     def quote(value, column = nil)
@@ -196,28 +200,24 @@ module ::JdbcSpec
       quote false
     end
 
-    def add_limit_offset!(sql, options)
-      limit = options[:limit]
-      if limit
-        offset = (options[:offset] || 0).to_i
-        start_row = offset + 1
-        end_row = offset + limit.to_i
-        order = (options[:order] || determine_order_clause(sql))
-        sql.sub!(/ ORDER BY.*$/i, '')
-        find_select = /\b(SELECT(?:\s+DISTINCT)?)\b(.*)/i
-        whole, select, rest_of_query = find_select.match(sql).to_a
-        if sqlserver_version != "2000"
-          new_sql = "#{select} t.* FROM (SELECT ROW_NUMBER() OVER(ORDER BY #{order}) AS row_num, #{rest_of_query}"
-          new_sql << ") AS t WHERE t.row_num BETWEEN #{start_row.to_s} AND #{end_row.to_s}"
-          sql.replace(new_sql)
-        else
+    module SqlServer2000LimitOffset
+      def add_limit_offset!(sql, options)
+        limit = options[:limit]
+        if limit
+          offset = (options[:offset] || 0).to_i
+          start_row = offset + 1
+          end_row = offset + limit.to_i
+          order = (options[:order] || determine_order_clause(sql))
+          sql.sub!(/ ORDER BY.*$/i, '')
+          find_select = /\b(SELECT(?:\s+DISTINCT)?)\b(.*)/i
+          whole, select, rest_of_query = find_select.match(sql).to_a
           if (start_row == 1) && (end_row ==1)
             new_sql = "#{select} TOP 1 #{rest_of_query}"
             sql.replace(new_sql)
           else
             #UGLY
             #KLUDGY?
-            #removing out stuff before the FROM... 
+            #removing out stuff before the FROM...
             rest = rest_of_query[/FROM/i=~ rest_of_query.. -1]
             #need the table name for avoiding amiguity
             table_name = get_table_name(sql)
@@ -227,6 +227,24 @@ module ::JdbcSpec
             new_sql = "#{select} TOP #{limit} #{rest_of_query} WHERE #{table_name}.id NOT IN (#{select} TOP #{offset} #{table_name}.id #{rest} ORDER BY #{new_order}) ORDER BY #{order} "
             sql.replace(new_sql)
           end
+        end
+      end
+    end
+
+    module SqlServerLimitOffset
+      def add_limit_offset!(sql, options)
+        limit = options[:limit]
+        if limit
+          offset = (options[:offset] || 0).to_i
+          start_row = offset + 1
+          end_row = offset + limit.to_i
+          order = (options[:order] || determine_order_clause(sql))
+          sql.sub!(/ ORDER BY.*$/i, '')
+          find_select = /\b(SELECT(?:\s+DISTINCT)?)\b(.*)/i
+          whole, select, rest_of_query = find_select.match(sql).to_a
+          new_sql = "#{select} t.* FROM (SELECT ROW_NUMBER() OVER(ORDER BY #{order}) AS row_num, #{rest_of_query}"
+          new_sql << ") AS t WHERE t.row_num BETWEEN #{start_row.to_s} AND #{end_row.to_s}"
+          sql.replace(new_sql)
         end
       end
     end
@@ -282,7 +300,7 @@ module ::JdbcSpec
       change_column_type(table_name, column_name, type, options)
       change_column_default(table_name, column_name, options[:default]) if options_include_default?(options)
     end
-    
+
     def change_column_type(table_name, column_name, type, options = {}) #:nodoc:
       sql = "ALTER TABLE #{table_name} ALTER COLUMN #{quote_column_name(column_name)} #{type_to_sql(type, options[:limit], options[:precision], options[:scale])}"
       if options.has_key?(:null)
@@ -290,14 +308,14 @@ module ::JdbcSpec
       end
       execute(sql)
     end
-    
+
     def change_column_default(table_name, column_name, default) #:nodoc:
       remove_default_constraint(table_name, column_name)
       unless default.nil?
         execute "ALTER TABLE #{table_name} ADD CONSTRAINT DF_#{table_name}_#{column_name} DEFAULT #{quote(default)} FOR #{quote_column_name(column_name)}"
       end
     end
-    
+
     def remove_column(table_name, column_name)
       remove_check_constraints(table_name, column_name)
       remove_default_constraint(table_name, column_name)
@@ -431,20 +449,20 @@ module ::JdbcSpec
       end
       sql
     end
-        
+
     def determine_order_clause(sql)
       return $1 if sql =~ /ORDER BY (.*)$/
       sql =~ /FROM +(\w+?)\b/ || raise("can't determine table name")
-      table_name = $1 
-      "#{table_name}.#{determine_primary_key(table_name)}" 
+      table_name = $1
+      "#{table_name}.#{determine_primary_key(table_name)}"
     end
 
     def determine_primary_key(table_name)
       primary_key = columns(table_name).detect { |column| column.primary || column.identity }
       primary_key ? primary_key.name : "id"
     end
-    
+
   end
-  
+
 end
 
