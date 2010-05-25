@@ -166,9 +166,9 @@ module ::JdbcSpec
       end
     end
 
-    def recreate_database(name) #:nodoc:
+    def recreate_database(name, options = {}) #:nodoc:
       drop_database(name)
-      create_database(name)
+      create_database(name, options)
     end
 
     def character_set(options) #:nodoc:
