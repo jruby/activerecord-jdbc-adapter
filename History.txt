@@ -1,6 +1,12 @@
 == 0.9.7
 
-- JRUBY-4781: Fix multiple database connection collision issue w/ Oracle
+- JRUBY-4781: Fix multiple database connection collision issue w/
+  Oracle
+- ACTIVERECORD_JDBC-115: Support SAVEPOINTS for MySQL and PG so that
+  nested transactions can be faked
+- ACTIVERECORD_JDBC-116: Handle schema.table better for MySQL
+- Fix 'Wrong # of arguments (2 for 1)' issue with #create_database for
+  MySQL and AR 3.0
 
 == 0.9.6
 
