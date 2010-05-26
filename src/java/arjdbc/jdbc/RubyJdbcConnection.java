@@ -972,10 +972,12 @@ public class RubyJdbcConnection extends RubyObject {
                     DatabaseMetaData metadata = c.getMetaData();
                     String clzName = metadata.getClass().getName().toLowerCase();
                     boolean isOracle = clzName.indexOf("oracle") != -1 || clzName.indexOf("oci") != -1;
+                    boolean isDerby = clzName.indexOf("derby") != 1;
 
                     String realschema = schemapat;
                     String realtablepat = tablepat;
 
+                    if (isDerby && realschema != null && realschema.equals("")) realschema = null;  // Derby doesn't like empty-string schema name
                     if (realtablepat != null) realtablepat = caseConvertIdentifierForJdbc(metadata, realtablepat);
                     if (realschema != null) realschema = caseConvertIdentifierForJdbc(metadata, realschema);
 
