@@ -16,3 +16,6 @@ TAGS
 patches*
 *#
 .stgit-edit.txt
+/.classpath
+/.project
+/bin
