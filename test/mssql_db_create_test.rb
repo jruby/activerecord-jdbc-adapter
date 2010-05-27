@@ -7,7 +7,7 @@ class MysqlDbCreateTest < Test::Unit::TestCase
   def db_config
     MSSQL_CONFIG
   end
-
+  
   def test_rake_db_create
     begin
       Rake::Task["db:create"].invoke
@@ -18,7 +18,9 @@ class MysqlDbCreateTest < Test::Unit::TestCase
       end
     end
     ActiveRecord::Base.establish_connection(db_config.merge(:database => "master"))
-    databases = ActiveRecord::Base.connection.select_rows("SELECT NAME FROM sys.sysdatabases").flatten
+    select = "SELECT NAME FROM sys.sysdatabases"
+    select = "SELECT name FROM master..sysdatabases ORDER BY name" if ActiveRecord::Base.connection.sqlserver_version == "2000"
+    databases = ActiveRecord::Base.connection.select_rows(select).flatten
     assert databases.include?(@db_name)
   end
 end

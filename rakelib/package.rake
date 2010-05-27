@@ -24,7 +24,6 @@ begin
     p.changes = p.paragraphs_of('History.txt', 0..1).join("\n\n")
     p.description = p.paragraphs_of('README.txt', 0...1).join("\n\n")
   end
-  hoe.spec.dependencies.delete_if { |dep| dep.name == "hoe" }
   task :gemspec do
     File.open("#{hoe.name}.gemspec", "w") {|f| f << hoe.spec.to_ruby }
   end

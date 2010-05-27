@@ -36,6 +36,7 @@ module ::JdbcSpec
         ActiveRecord::Base.after_save :after_save_with_mssql_lob
         @lob_callback_added = true
       end
+      mod.add_version_specific_add_limit_offset
     end
 
     def self.adapter_matcher(name, *)
@@ -50,15 +51,30 @@ module ::JdbcSpec
       ::ActiveRecord::ConnectionAdapters::MssqlJdbcConnection
     end
 
+    def sqlserver_version
+      @sqlserver_version ||= select_value("select @@version")[/Microsoft SQL Server\s+(\d{4})/, 1]
+    end
+
+    def add_version_specific_add_limit_offset
+      if sqlserver_version == "2000"
+        extend SqlServer2000LimitOffset
+      else
+        extend SqlServerLimitOffset
+      end
+    end
+
     def modify_types(tp) #:nodoc:
       super(tp)
       tp[:string] = {:name => "NVARCHAR", :limit => 255}
-      tp[:text]   = {:name => "NVARCHAR(MAX)"}
+      if sqlserver_version == "2000"
+        tp[:text] = {:name => "NTEXT"}
+      else
+        tp[:text] = {:name => "NVARCHAR(MAX)"}
+      end
       tp
     end
 
     module Column
-
       attr_accessor :identity, :is_special
 
       def simplified_type(field_type)
@@ -208,19 +224,52 @@ module ::JdbcSpec
       quote false
     end
 
-    def add_limit_offset!(sql, options)
-      limit = options[:limit]
-      if limit
-        offset = (options[:offset] || 0).to_i
-        start_row = offset + 1
-        end_row = offset + limit.to_i
-        order = (options[:order] || determine_order_clause(sql))
-        sql.sub!(/ ORDER BY.*$/i, '')
-        find_select = /\b(SELECT(?:\s+DISTINCT)?)\b(.*)/i
-        whole, select, rest_of_query = find_select.match(sql).to_a
-        new_sql = "#{select} t.* FROM (SELECT ROW_NUMBER() OVER(ORDER BY #{order}) AS row_num, #{rest_of_query}"
-        new_sql << ") AS t WHERE t.row_num BETWEEN #{start_row.to_s} AND #{end_row.to_s}"
-        sql.replace(new_sql)
+    module SqlServer2000LimitOffset
+      def add_limit_offset!(sql, options)
+        limit = options[:limit]
+        if limit
+          offset = (options[:offset] || 0).to_i
+          start_row = offset + 1
+          end_row = offset + limit.to_i
+          order = (options[:order] || determine_order_clause(sql))
+          sql.sub!(/ ORDER BY.*$/i, '')
+          find_select = /\b(SELECT(?:\s+DISTINCT)?)\b(.*)/i
+          whole, select, rest_of_query = find_select.match(sql).to_a
+          if (start_row == 1) && (end_row ==1)
+            new_sql = "#{select} TOP 1 #{rest_of_query}"
+            sql.replace(new_sql)
+          else
+            #UGLY
+            #KLUDGY?
+            #removing out stuff before the FROM...
+            rest = rest_of_query[/FROM/i=~ rest_of_query.. -1]
+            #need the table name for avoiding amiguity
+            table_name = get_table_name(sql)
+            #I am not sure this will cover all bases.  but all the tests pass
+            new_order = "#{order}, #{table_name}.id" if order.index("#{table_name}.id").nil?
+            new_order ||= order
+            new_sql = "#{select} TOP #{limit} #{rest_of_query} WHERE #{table_name}.id NOT IN (#{select} TOP #{offset} #{table_name}.id #{rest} ORDER BY #{new_order}) ORDER BY #{order} "
+            sql.replace(new_sql)
+          end
+        end
+      end
+    end
+
+    module SqlServerLimitOffset
+      def add_limit_offset!(sql, options)
+        limit = options[:limit]
+        if limit
+          offset = (options[:offset] || 0).to_i
+          start_row = offset + 1
+          end_row = offset + limit.to_i
+          order = (options[:order] || determine_order_clause(sql))
+          sql.sub!(/ ORDER BY.*$/i, '')
+          find_select = /\b(SELECT(?:\s+DISTINCT)?)\b(.*)/i
+          whole, select, rest_of_query = find_select.match(sql).to_a
+          new_sql = "#{select} t.* FROM (SELECT ROW_NUMBER() OVER(ORDER BY #{order}) AS row_num, #{rest_of_query}"
+          new_sql << ") AS t WHERE t.row_num BETWEEN #{start_row.to_s} AND #{end_row.to_s}"
+          sql.replace(new_sql)
+        end
       end
     end
 
@@ -438,7 +487,7 @@ module ::JdbcSpec
 
     def determine_order_clause(sql)
       return $1 if sql =~ /ORDER BY (.*)$/
-      table_name = get_table_name(sql)
+      table_name = get_table_name(sql) || raise("can't determine table name for #{sql}")
       "#{table_name}.#{determine_primary_key(table_name)}"
     end
 

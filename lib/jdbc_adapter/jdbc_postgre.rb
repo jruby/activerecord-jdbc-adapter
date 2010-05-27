@@ -144,6 +144,18 @@ module ::JdbcSpec
       true
     end
 
+    def create_savepoint
+      execute("SAVEPOINT #{current_savepoint_name}")
+    end
+
+    def rollback_to_savepoint
+      execute("ROLLBACK TO SAVEPOINT #{current_savepoint_name}")
+    end
+
+    def release_savepoint
+      execute("RELEASE SAVEPOINT #{current_savepoint_name}")
+    end
+
     # Returns the configured supported identifier length supported by PostgreSQL,
     # or report the default of 63 on PostgreSQL 7.x.
     def table_alias_length
