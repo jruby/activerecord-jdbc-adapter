@@ -16,7 +16,7 @@ module ::JdbcSpec
   end
 
   module MsSQL
-    
+
     include TSqlMethods
 
     def self.extended(mod)
@@ -56,9 +56,9 @@ module ::JdbcSpec
       tp[:text]   = {:name => "NVARCHAR(MAX)"}
       tp
     end
-      
+
     module Column
-      
+
       attr_accessor :identity, :is_special
 
       def simplified_type(field_type)
@@ -82,7 +82,7 @@ module ::JdbcSpec
         return $1 if value =~ /^\(N?'(.*)'\)$/
         value
       end
-      
+
       def type_cast(value)
         return nil if value.nil? || value == "(null)" || value == "(NULL)"
         case type
@@ -97,7 +97,7 @@ module ::JdbcSpec
         when :binary    then unquote value
         else value
         end
-        
+
       end
 
       def is_utf8?
@@ -154,7 +154,7 @@ module ::JdbcSpec
       def self.string_to_binary(value)
         ''
       end
-      
+
     end
 
     def quote(value, column = nil)
@@ -275,7 +275,7 @@ module ::JdbcSpec
       change_column_type(table_name, column_name, type, options)
       change_column_default(table_name, column_name, options[:default]) if options_include_default?(options)
     end
-    
+
     def change_column_type(table_name, column_name, type, options = {}) #:nodoc:
       sql = "ALTER TABLE #{table_name} ALTER COLUMN #{quote_column_name(column_name)} #{type_to_sql(type, options[:limit], options[:precision], options[:scale])}"
       if options.has_key?(:null)
@@ -283,14 +283,14 @@ module ::JdbcSpec
       end
       execute(sql)
     end
-    
+
     def change_column_default(table_name, column_name, default) #:nodoc:
       remove_default_constraint(table_name, column_name)
       unless default.nil?
         execute "ALTER TABLE #{table_name} ADD CONSTRAINT DF_#{table_name}_#{column_name} DEFAULT #{quote(default)} FOR #{quote_column_name(column_name)}"
       end
     end
-    
+
     def remove_column(table_name, column_name)
       remove_check_constraints(table_name, column_name)
       remove_default_constraint(table_name, column_name)
@@ -378,7 +378,7 @@ module ::JdbcSpec
       if sql =~ /^\s*insert\s+into\s+([^\(\s,]+)\s*|^\s*update\s+([^\(\s,]+)\s*/i
         $1
       elsif sql =~ /from\s+([^\(\s,]+)\s*/i
-        # It's possible to select from a function, in which case there is no table name 
+        # It's possible to select from a function, in which case there is no table name
         name = $1
         if !name.split('.').empty? && name.split('.')[-1].start_with?('fn')
           nil
@@ -435,20 +435,19 @@ module ::JdbcSpec
       end
       sql
     end
-        
+
     def determine_order_clause(sql)
       return $1 if sql =~ /ORDER BY (.*)$/
-      sql =~ /FROM +(\w+?)\b/ || raise("can't determine table name")
-      table_name = $1 
-      "#{table_name}.#{determine_primary_key(table_name)}" 
+      table_name = get_table_name(sql)
+      "#{table_name}.#{determine_primary_key(table_name)}"
     end
 
     def determine_primary_key(table_name)
       primary_key = columns(table_name).detect { |column| column.primary || column.identity }
       primary_key ? primary_key.name : "id"
     end
-    
+
   end
-  
+
 end
 
