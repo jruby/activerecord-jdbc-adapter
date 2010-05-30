@@ -264,7 +264,7 @@ module ::JdbcSpec
           end_row = offset + limit.to_i
           order = (options[:order] || determine_order_clause(sql))
           sql.sub!(/ ORDER BY.*$/i, '')
-          find_select = /\b(SELECT(?:\s+DISTINCT)?)\b(.*)/i
+          find_select = /\b(SELECT(?:\s+DISTINCT)?)\b(.*)/im
           whole, select, rest_of_query = find_select.match(sql).to_a
           new_sql = "#{select} t.* FROM (SELECT ROW_NUMBER() OVER(ORDER BY #{order}) AS row_num, #{rest_of_query}"
           new_sql << ") AS t WHERE t.row_num BETWEEN #{start_row.to_s} AND #{end_row.to_s}"
