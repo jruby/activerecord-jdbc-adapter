@@ -233,7 +233,7 @@ module ::JdbcSpec
           end_row = offset + limit.to_i
           order = (options[:order] || determine_order_clause(sql))
           sql.sub!(/ ORDER BY.*$/i, '')
-          find_select = /\b(SELECT(?:\s+DISTINCT)?)\b(.*)/i
+          find_select = /\b(SELECT(?:\s+DISTINCT)?)\b(.*)/im
           whole, select, rest_of_query = find_select.match(sql).to_a
           if (start_row == 1) && (end_row ==1)
             new_sql = "#{select} TOP 1 #{rest_of_query}"
