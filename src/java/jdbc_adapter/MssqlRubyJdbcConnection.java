@@ -79,4 +79,13 @@ public class MssqlRubyJdbcConnection extends RubyJdbcConnection {
         }
         return super.jdbcToRuby(runtime, column, type, resultSet);
     }
+    
+    /**
+     * SqlServer supports schemas so lets not go using the schema name as the catalog name
+     */
+    @Override
+    protected boolean databaseSupportsSchemas()
+    {
+        return true;
+    }
 }

@@ -136,7 +136,8 @@ public class RubyJdbcConnection extends RubyObject {
                     table_name = caseConvertIdentifierForJdbc(metadata, table_name);
 
                     String catalog = c.getCatalog();
-                    if (schemaName != null) { catalog = schemaName; }
+                    
+                    if (schemaName != null && !databaseSupportsSchemas()) { catalog = schemaName; }
 
                     String[] tableTypes = new String[]{"TABLE","VIEW","SYNONYM"};
                     RubyArray matchingTables = (RubyArray) tableLookupBlock(context.getRuntime(),
@@ -1172,5 +1173,10 @@ public class RubyJdbcConnection extends RubyObject {
 
             return columns;
         }
+    }
+    
+    protected boolean databaseSupportsSchemas()
+    {
+      return false;
     }
 }
