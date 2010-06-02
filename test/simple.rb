@@ -10,6 +10,7 @@ module MigrationSetup
     DbTypeMigration.up
     CreateStringIds.up
     CreateEntries.up
+    CreateUsers.up
     CreateAutoIds.up
     CreateValidatesUniquenessOf.up
 
@@ -20,6 +21,7 @@ module MigrationSetup
     DbTypeMigration.down
     CreateStringIds.down
     CreateEntries.down
+    CreateUsers.down
     CreateAutoIds.down
     CreateValidatesUniquenessOf.down
     ActiveRecord::Base.clear_active_connections!
@@ -34,7 +36,8 @@ module FixtureSetup
     @content = "Hello from JRuby on Rails!"
     @new_title = "First post updated title"
     @rating = 205.76
-    @entry = Entry.create :title => @title, :content => @content, :rating => @rating
+    @user = User.create :login=>"something"
+    @entry = Entry.create :title => @title, :content => @content, :rating => @rating, :user=>@user
     DbType.create
   end
 end
@@ -44,6 +47,10 @@ module SimpleTestMethods
 
   def test_entries_created
     assert ActiveRecord::Base.connection.tables.find{|t| t =~ /^entries$/i}, "entries not created"
+  end
+
+  def test_users_created
+    assert ActiveRecord::Base.connection.tables.find{|t| t =~ /^users$/i}, "users not created"
   end
 
   def test_entries_empty

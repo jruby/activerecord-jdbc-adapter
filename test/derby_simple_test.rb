@@ -18,4 +18,10 @@ class DerbySimpleTest < Test::Unit::TestCase
     end
     assert_equal [['ur', 'doin', 'it', 'right']], value
   end
+
+  def test_find_with_include_and_order
+    users = User.find(:all, :include=>[:entries], :order=>"entries.rating DESC", :limit=>2)
+
+    assert users.include?(@user)
+  end
 end
