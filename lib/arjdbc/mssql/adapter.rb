@@ -55,6 +55,23 @@ module ::ArJdbc
       tp
     end
 
+    def type_to_sql(type, limit = nil, precision = nil, scale = nil) #:nodoc:
+      # MSSQL's NVARCHAR(n | max) column supports either a number between 1 and
+      # 4000, or the word "MAX", which corresponds to 2**30-1 UCS-2 characters.
+      #
+      # It does not accept NVARCHAR(1073741823) here, so we have to change it
+      # to NVARCHAR(MAX), even though they are logically equivalent.
+      #
+      # MSSQL Server 2000 is skipped here because I don't know how it will behave.
+      #
+      # See: http://msdn.microsoft.com/en-us/library/ms186939.aspx
+      if type.to_s == 'string' and limit == 1073741823 and sqlserver_version != "2000"
+        'NVARCHAR(MAX)'
+      else
+        super
+      end
+    end
+
     module Column
       attr_accessor :identity, :is_special
 
