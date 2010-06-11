@@ -17,7 +17,7 @@ module ::JdbcSpec
       else
         config[:url] = "jdbc:mysql://#{config[:host]}:#{config[:port]}/#{config[:database]}?#{url_options}"
       end
-      config[:driver] = "com.mysql.jdbc.Driver"
+      config[:driver] ||= "com.mysql.jdbc.Driver"
       connection = jdbc_connection(config)
       ::JdbcSpec::MySQL.kill_cancel_timer(connection.raw_connection)
       connection
