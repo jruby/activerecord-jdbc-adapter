@@ -78,6 +78,10 @@ module ::JdbcSpec
 
     include JdbcSpec::MissingFunctionalityHelper
 
+    def index_name_length
+      128
+    end
+
     # Convert the speficied column type to a SQL string.  In Derby, :integers cannot specify
     # a limit.
     def type_to_sql(type, limit = nil, precision = nil, scale = nil) #:nodoc:

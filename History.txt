@@ -1,3 +1,7 @@
+== 0.9.8
+
+- JRUBY-4876: Bump up Derby's max index name length (Uwe Kubosch)
+
 == 0.9.7
 
 - JRUBY-4781: Fix multiple database connection collision issue w/
