@@ -266,12 +266,11 @@ module ::JdbcSpec
       log(sql,name) do
         @connection.execute_update(sql)
       end
-      table = sql.split(" ", 4)[2]
-      id_value || last_insert_id(table, nil)
+      id_value || last_insert_id
     end
 
-    def last_insert_id(table, sequence_name)
-      Integer(select_value("SELECT SEQ FROM SQLITE_SEQUENCE WHERE NAME = '#{table}'"))
+    def last_insert_id
+      Integer(select_value("SELECT last_insert_rowid()"))
     end
 
     def add_limit_offset!(sql, options) #:nodoc:
@@ -323,7 +322,7 @@ module ::JdbcSpec
         @connection.execute_query(sql)
       else
         affected_rows = @connection.execute_update(sql)
-        ActiveRecord::ConnectionAdapters::JdbcConnection::insert?(sql) ? last_insert_id(sql.split(" ", 4)[2], nil) : affected_rows
+        ActiveRecord::ConnectionAdapters::JdbcConnection::insert?(sql) ? last_insert_id : affected_rows
       end
     end
     
