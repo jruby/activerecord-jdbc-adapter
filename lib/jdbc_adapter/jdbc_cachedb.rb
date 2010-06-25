@@ -23,7 +23,7 @@ module ::JdbcSpec
 
     module Column
     end
-    
+
     def create_table(name, options = { })
       super(name, options)
       primary_key = options[:primary_key] || "id"

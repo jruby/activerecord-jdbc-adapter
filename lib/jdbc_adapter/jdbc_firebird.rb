@@ -10,7 +10,7 @@ module ::JdbcSpec
       tp[:integer][:limit] = nil
       tp
     end
-    
+
     def insert(sql, name = nil, pk = nil, id_value = nil, sequence_name = nil) # :nodoc:
       execute(sql, name)
       id_value
@@ -31,11 +31,11 @@ module ::JdbcSpec
     def default_sequence_name(table_name, primary_key) # :nodoc:
       "#{table_name}_seq"
     end
-    
+
     def next_sequence_value(sequence_name)
       select_one("SELECT GEN_ID(#{sequence_name}, 1 ) FROM RDB$DATABASE;")["gen_id"]
     end
-    
+
     def create_table(name, options = {}) #:nodoc:
       super(name, options)
       execute "CREATE GENERATOR #{name}_seq"
@@ -44,7 +44,7 @@ module ::JdbcSpec
     def rename_table(name, new_name) #:nodoc:
       execute "RENAME #{name} TO #{new_name}"
       execute "UPDATE RDB$GENERATORS SET RDB$GENERATOR_NAME='#{new_name}_seq' WHERE RDB$GENERATOR_NAME='#{name}_seq'" rescue nil
-    end  
+    end
 
     def drop_table(name, options = {}) #:nodoc:
       super(name)
@@ -62,10 +62,10 @@ module ::JdbcSpec
     def remove_index(table_name, options) #:nodoc:
       execute "DROP INDEX #{index_name(table_name, options)}"
     end
-    
+
     def quote(value, column = nil) # :nodoc:
       return value.quoted_id if value.respond_to?(:quoted_id)
-      
+
       if [Time, DateTime].include?(value.class)
         "CAST('#{value.strftime("%Y-%m-%d %H:%M:%S")}' AS TIMESTAMP)"
       else
@@ -79,27 +79,27 @@ module ::JdbcSpec
     def quote_string(string) # :nodoc:
       string.gsub(/'/, "''")
     end
-    
+
     def quote_column_name(column_name) # :nodoc:
       %Q("#{ar_to_fb_case(column_name)}")
     end
-    
+
     def quoted_true # :nodoc:
       quote(1)
     end
-    
+
     def quoted_false # :nodoc:
       quote(0)
     end
 
     private
-    
+
     # Maps uppercase Firebird column names to lowercase for ActiveRecord;
     # mixed-case columns retain their original case.
     def fb_to_ar_case(column_name)
       column_name =~ /[[:lower:]]/ ? column_name : column_name.to_s.downcase
     end
-    
+
     # Maps lowercase ActiveRecord column names to uppercase for Fierbird;
     # mixed-case columns retain their original case.
     def ar_to_fb_case(column_name)

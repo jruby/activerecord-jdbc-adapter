@@ -98,11 +98,11 @@ module ::JdbcSpec
 
       def extract_precision(sql_type)
         case sql_type
-          when /^(real)\((\d+)(,\d+)?\)/i then $2.to_i 
+          when /^(real)\((\d+)(,\d+)?\)/i then $2.to_i
           else super
-        end 
+        end
       end
-      
+
       def extract_scale(sql_type)
         case sql_type
           when /^(real)\((\d+)\)/i then 0
@@ -194,7 +194,7 @@ module ::JdbcSpec
       # Did not find reference on values needing quoting, but these
       # happen in AR unit tests
       if name == "references" || name =~ /-/
-        %Q("#{name}") 
+        %Q("#{name}")
       else
         name
       end
@@ -307,7 +307,7 @@ module ::JdbcSpec
         ::ActiveRecord::ConnectionAdapters::IndexDefinition.new(table_name, name, unique, cols)
       end
     end
-    
+
     def primary_key(table_name) #:nodoc:
       column = table_structure(table_name).find {|field| field['pk'].to_i == 1}
       column ? column['name'] : nil
@@ -325,7 +325,7 @@ module ::JdbcSpec
         ActiveRecord::ConnectionAdapters::JdbcConnection::insert?(sql) ? last_insert_id : affected_rows
       end
     end
-    
+
     def select(sql, name=nil)
       execute(sql, name).map do |row|
         record = {}
@@ -337,24 +337,24 @@ module ::JdbcSpec
         record
       end
     end
-    
+
     def table_structure(table_name)
       structure = @connection.execute_query("PRAGMA table_info(#{quote_table_name(table_name)})")
       raise ActiveRecord::StatementInvalid, "Could not find table '#{table_name}'" if structure.empty?
       structure
     end
-    
-    def columns(table_name, name = nil) #:nodoc:        
+
+    def columns(table_name, name = nil) #:nodoc:
       table_structure(table_name).map do |field|
         ::ActiveRecord::ConnectionAdapters::JdbcColumn.new(@config, field['name'], field['dflt_value'], field['type'], field['notnull'] == 0)
       end
     end
-    
+
      # SELECT ... FOR UPDATE is redundant since the table is locked.
     def add_lock!(sql, options) #:nodoc:
       sql
     end
-    
+
     protected
       include JdbcSpec::MissingFunctionalityHelper
   end

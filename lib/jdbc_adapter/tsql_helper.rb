@@ -12,7 +12,7 @@ module TSqlMethods
   def type_to_sql(type, limit = nil, precision = nil, scale = nil) #:nodoc:
     return 'uniqueidentifier' if (type.to_s == 'uniqueidentifier')
     return super unless type.to_s == 'integer'
-    
+
     if limit.nil? || limit == 4
       'int'
     elsif limit == 2

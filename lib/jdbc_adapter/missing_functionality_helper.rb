@@ -15,7 +15,7 @@ module JdbcSpec
         move_table(altered_table_name, table_name, &caller)
       end
     end
-    
+
     def move_table(from, to, options = {}, &block) #:nodoc:
       copy_table(from, to, options, &block)
       drop_table(from)
@@ -30,7 +30,7 @@ module JdbcSpec
             (options[:rename][column.name] ||
              options[:rename][column.name.to_sym] ||
              column.name) : column.name
-          
+
           @definition.column(column_name, column.type,
             :limit => column.limit, :default => column.default,
             :null => column.null)
@@ -44,7 +44,7 @@ module JdbcSpec
         @definition.columns.map {|column| column.name},
         options[:rename] || {})
     end
-    
+
     def copy_table_indexes(from, to, rename = {}) #:nodoc:
       indexes(from).each do |index|
         name = index.name.downcase
@@ -67,7 +67,7 @@ module JdbcSpec
         end
       end
     end
-    
+
     def copy_table_contents(from, to, columns, rename = {}) #:nodoc:
       column_mappings = Hash[*columns.map {|name| [name, name]}.flatten]
       rename.inject(column_mappings) {|map, a| map[a.last] = a.first; map}
