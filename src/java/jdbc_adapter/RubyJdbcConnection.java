@@ -1089,6 +1089,11 @@ public class RubyJdbcConnection extends RubyObject {
                 while (toWrap.getCause() != null && toWrap.getCause() != toWrap) {
                     toWrap = toWrap.getCause();
                 }
+
+                if (context.getRuntime().isDebug()) {
+                    toWrap.printStackTrace();
+                }
+
                 i++;
                 if (autoCommit) {
                     if (i == 1) {
