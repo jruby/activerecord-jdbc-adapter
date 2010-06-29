@@ -1000,6 +1000,9 @@ public class RubyJdbcConnection extends RubyObject {
         if (str.endsWith(" 00:00:00.0")) {
             str = str.substring(0, str.length() - (" 00:00:00.0".length()));
         }
+        if (str.endsWith(".0")) {
+            str = str.substring(0, str.length() - (".0".length()));
+        }
 
         return RubyString.newUnicodeString(runtime, str);
     }
