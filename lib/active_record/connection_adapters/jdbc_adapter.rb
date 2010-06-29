@@ -650,6 +650,8 @@ module ActiveRecord
       def primary_keys(table)
         @connection.primary_keys(table)
       end
+
+      alias_method :select, :execute
     end
   end
 end
