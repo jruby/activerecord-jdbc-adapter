@@ -651,7 +651,9 @@ module ActiveRecord
         @connection.primary_keys(table)
       end
 
-      alias_method :select, :execute
+      def select(*args)
+        execute(*args)
+      end
     end
   end
 end
