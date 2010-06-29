@@ -650,13 +650,6 @@ module ActiveRecord
       def primary_keys(table)
         @connection.primary_keys(table)
       end
-
-      private
-      def select(sql, name=nil)
-        log(sql, name) do
-          @connection.execute_query(sql)
-        end
-      end
     end
   end
 end
