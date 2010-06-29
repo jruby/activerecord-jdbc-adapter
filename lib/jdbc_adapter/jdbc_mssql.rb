@@ -371,6 +371,12 @@ module ::JdbcSpec
       end
     end
 
+    def select(sql, name = nil)
+      log(sql, name) do
+        @connection.execute_query(sql)
+      end
+    end
+
     #SELECT .. FOR UPDATE is not supported on Microsoft SQL Server
     def add_lock!(sql, options)
       sql
