@@ -287,7 +287,7 @@ module SimpleTestMethods
 
   if jruby?
     def test_connection_valid
-      assert_raises(ActiveRecord::ActiveRecordError) do
+      assert_raises(ActiveRecord::JDBCError) do
         @connection.raw_connection.with_connection_retry_guard do |c|
           begin
             stmt = c.createStatement
@@ -303,7 +303,7 @@ module SimpleTestMethods
 
     # ENEBO: Is this really ar-jdbc-specific or a bug in our adapter?
     def test_fetching_columns_for_nonexistent_table_should_raise
-      assert_raises(ActiveRecord::ActiveRecordError) do
+      assert_raises(ActiveRecord::JDBCError) do
         Animal.columns
       end
     end
