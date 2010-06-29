@@ -381,15 +381,6 @@ module ::JdbcSpec
       end
     end
 
-    def _execute(sql, name = nil)
-        case sql.strip
-        when /\A\(?\s*(select|show)/i then
-          @connection.execute_query(sql)
-        else
-          @connection.execute_update(sql)
-        end
-    end
-
     # SELECT DISTINCT clause for a given set of columns and a given ORDER BY clause.
     #
     # PostgreSQL requires the ORDER BY columns in the select list for distinct queries, and

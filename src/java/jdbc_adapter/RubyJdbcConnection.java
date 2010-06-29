@@ -197,15 +197,54 @@ public class RubyJdbcConnection extends RubyObject {
         return setConnection(null);
     }
 
+    @JRubyMethod
+    public IRubyObject execute(final ThreadContext context, final IRubyObject sql) {
+        return (IRubyObject) withConnectionAndRetry(context, new SQLBlock() {
+            public Object call(Connection c) throws SQLException {
+                Statement stmt = null;
+                String query = rubyApi.convertToRubyString(sql).getUnicodeValue();
+                try {
+                    stmt = c.createStatement();
+                    if (stmt.execute(query)) {
+                        return unmarshalResult(context, c.getMetaData(), stmt.getResultSet(), false);
+                    } else {
+                        IRubyObject key = context.getRuntime().getNil();
+                        if (c.getMetaData().supportsGetGeneratedKeys()) {
+                            key = unmarshal_id_result(context.getRuntime(), stmt.getGeneratedKeys());
+                        }
+                        if (key.isNil()) {
+                            return context.getRuntime().newFixnum(stmt.getUpdateCount());
+                        } else {
+                            return key;
+                        }
+                    }
+                } catch (SQLException sqe) {
+                    if (context.getRuntime().isDebug()) {
+                        System.out.println("Error SQL: " + query);
+                    }
+                    throw sqe;
+                } finally {
+                    close(stmt);
+                }
+            }
+        });
+    }
+
     @JRubyMethod(name = "execute_id_insert", required = 2)
-    public IRubyObject execute_id_insert(ThreadContext context, final IRubyObject sql,
+    public IRubyObject execute_id_insert(final ThreadContext context, final IRubyObject sql,
             final IRubyObject id) throws SQLException {
         return (IRubyObject) withConnectionAndRetry(context, new SQLBlock() {
             public Object call(Connection c) throws SQLException {
-                PreparedStatement ps = c.prepareStatement(rubyApi.convertToRubyString(sql).getUnicodeValue());
+                String insert = rubyApi.convertToRubyString(sql).getUnicodeValue();
+                PreparedStatement ps = c.prepareStatement(insert);
                 try {
                     ps.setLong(1, RubyNumeric.fix2long(id));
                     ps.executeUpdate();
+                } catch (SQLException sqe) {
+                    if (context.getRuntime().isDebug()) {
+                        System.out.println("Error SQL: " + insert);
+                    }
+                    throw sqe;
                 } finally {
                     close(ps);
                 }
@@ -220,10 +259,16 @@ public class RubyJdbcConnection extends RubyObject {
         return (IRubyObject) withConnectionAndRetry(context, new SQLBlock() {
             public Object call(Connection c) throws SQLException {
                 Statement stmt = null;
+                String insert = rubyApi.convertToRubyString(sql).getUnicodeValue();
                 try {
                     stmt = c.createStatement();
-                    stmt.executeUpdate(rubyApi.convertToRubyString(sql).getUnicodeValue(), Statement.RETURN_GENERATED_KEYS);
+                    stmt.executeUpdate(insert, Statement.RETURN_GENERATED_KEYS);
                     return unmarshal_id_result(context.getRuntime(), stmt.getGeneratedKeys());
+                } catch (SQLException sqe) {
+                    if (context.getRuntime().isDebug()) {
+                        System.out.println("Error SQL: " + insert);
+                    }
+                    throw sqe;
                 } finally {
                     close(stmt);
                 }
@@ -257,6 +302,11 @@ public class RubyJdbcConnection extends RubyObject {
                     stmt = c.createStatement();
                     stmt.setMaxRows(maxRows);
                     return unmarshalResult(context, metadata, stmt.executeQuery(query), false);
+                } catch (SQLException sqe) {
+                    if (context.getRuntime().isDebug()) {
+                        System.out.println("Error SQL: " + query);
+                    }
+                    throw sqe;
                 } finally {
                     close(stmt);
                 }
@@ -270,9 +320,15 @@ public class RubyJdbcConnection extends RubyObject {
         return (IRubyObject) withConnectionAndRetry(context, new SQLBlock() {
             public Object call(Connection c) throws SQLException {
                 Statement stmt = null;
+                String update = rubyApi.convertToRubyString(sql).getUnicodeValue();
                 try {
                     stmt = c.createStatement();
-                    return context.getRuntime().newFixnum((long)stmt.executeUpdate(rubyApi.convertToRubyString(sql).getUnicodeValue()));
+                    return context.getRuntime().newFixnum((long)stmt.executeUpdate(update));
+                } catch (SQLException sqe) {
+                    if (context.getRuntime().isDebug()) {
+                        System.out.println("Error SQL: " + update);
+                    }
+                    throw sqe;
                 } finally {
                     close(stmt);
                 }
@@ -1091,7 +1147,7 @@ public class RubyJdbcConnection extends RubyObject {
                 }
 
                 if (context.getRuntime().isDebug()) {
-                    toWrap.printStackTrace();
+                    toWrap.printStackTrace(System.out);
                 }
 
                 i++;

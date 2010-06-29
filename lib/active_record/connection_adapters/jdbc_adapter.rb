@@ -589,13 +589,7 @@ module ActiveRecord
       # even if we define a new execute method. Instead of mixing in a new
       # execute, an _execute should be mixed in.
       def _execute(sql, name = nil)
-        if JdbcConnection::select?(sql)
-          @connection.execute_query(sql)
-        elsif JdbcConnection::insert?(sql)
-          @connection.execute_insert(sql)
-        else
-          @connection.execute_update(sql)
-        end
+        @connection.execute(sql)
       end
 
       def jdbc_update(sql, name = nil) #:nodoc:

@@ -313,12 +313,8 @@ module ::JdbcSpec
     end
 
     def _execute(sql, name = nil)
-      if ActiveRecord::ConnectionAdapters::JdbcConnection::select?(sql)
-        @connection.execute_query(sql)
-      else
-        affected_rows = @connection.execute_update(sql)
-        ActiveRecord::ConnectionAdapters::JdbcConnection::insert?(sql) ? last_insert_id : affected_rows
-      end
+      result = super
+      ActiveRecord::ConnectionAdapters::JdbcConnection::insert?(sql) ? last_insert_id : result
     end
 
     def select(sql, name=nil)
