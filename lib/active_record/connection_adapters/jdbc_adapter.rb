@@ -70,7 +70,7 @@ module JdbcSpec
         pk_hash_value = "Arel::SqlLiteral.new(#{pk_hash_value})"
       end
       if meth
-        base.module_eval %{
+        base.module_eval <<-PK, __FILE__, __LINE__
           alias :#{meth}_pre_pk :#{meth}
           def #{meth}(include_primary_key = true, *args) #:nodoc:
             aq = #{meth}_pre_pk(include_primary_key, *args)
@@ -79,7 +79,7 @@ module JdbcSpec
             end
             aq
           end
-        }
+        PK
       end
     end
   end
