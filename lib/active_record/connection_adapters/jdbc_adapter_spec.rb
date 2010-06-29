@@ -14,7 +14,7 @@ end
 require 'jdbc_adapter/jdbc_mimer'
 require 'jdbc_adapter/jdbc_hsqldb'
 require 'jdbc_adapter/jdbc_oracle'
-require 'jdbc_adapter/jdbc_postgre'
+require 'jdbc_adapter/jdbc_postgresql'
 require 'jdbc_adapter/jdbc_mysql'
 require 'jdbc_adapter/jdbc_derby'
 require 'jdbc_adapter/jdbc_firebird'
