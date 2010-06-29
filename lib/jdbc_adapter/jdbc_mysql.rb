@@ -225,13 +225,15 @@ module ::JdbcSpec
     end
 
     def add_limit_offset!(sql, options) #:nodoc:
-      if limit = options[:limit]
-        unless offset = options[:offset]
-          sql << " LIMIT #{limit}"
-        else
-          sql << " LIMIT #{offset}, #{limit}"
-        end
+      limit, offset = options[:limit], options[:offset]
+      if limit && offset
+        sql << " LIMIT #{offset.to_i}, #{sanitize_limit(limit)}"
+      elsif limit
+        sql << " LIMIT #{sanitize_limit(limit)}"
+      elsif offset
+        sql << " OFFSET #{offset.to_i}"
       end
+      sql
     end
 
     def show_variable(var)
