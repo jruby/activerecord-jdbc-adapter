@@ -250,6 +250,20 @@ module ::JdbcSpec
       show_variable("collation_database")
     end
 
+    protected
+    def translate_exception(exception, message)
+      return super unless exception.respond_to?(:errno)
+
+      case exception.errno
+      when 1062
+        ::ActiveRecord::RecordNotUnique.new(message, exception)
+      when 1452
+        ::ActiveRecord::InvalidForeignKey.new(message, exception)
+      else
+        super
+      end
+    end
+
     private
     def show_create_table(table)
       select_one("SHOW CREATE TABLE #{quote_table_name(table)}")

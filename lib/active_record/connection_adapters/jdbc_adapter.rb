@@ -90,6 +90,10 @@ module ActiveRecord
     extend JdbcSpec::ActiveRecordExtensions
   end
 
+  class JDBCError < ActiveRecordError
+    attr_accessor :errno, :sql_exception
+  end
+
   module ConnectionAdapters
     module Java
       Class = java.lang.Class

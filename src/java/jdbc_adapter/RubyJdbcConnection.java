@@ -68,6 +68,7 @@ import org.jruby.javasupport.Java;
 import org.jruby.javasupport.JavaObject;
 import org.jruby.runtime.Arity;
 import org.jruby.runtime.Block;
+import org.jruby.javasupport.util.RuntimeHelpers;
 
 /**
  * Part of our ActiveRecord::ConnectionAdapters::Connection impl.
@@ -1169,9 +1170,24 @@ public class RubyJdbcConnection extends RubyObject {
         throw wrap(context, toWrap);
     }
 
-    private static RuntimeException wrap(ThreadContext context, Throwable exception) {
-        RubyClass err = context.getRuntime().getModule("ActiveRecord").getClass("ActiveRecordError");
-        return (RuntimeException) new RaiseException(context.getRuntime(), err, exception.getMessage(), false).initCause(exception);
+    protected RuntimeException wrap(ThreadContext context, Throwable exception) {
+        RubyModule activeRecord = context.getRuntime().getModule("ActiveRecord");
+        RubyClass errorClass;
+        if (exception instanceof SQLException) {
+            errorClass = activeRecord.getClass("JDBCError");
+        } else {
+            errorClass = activeRecord.getClass("ActiveRecordError");
+        }
+
+        RaiseException arError = new RaiseException(context.getRuntime(), errorClass, exception.getMessage(), true);
+        arError.initCause(exception);
+        if (exception instanceof SQLException) {
+            RuntimeHelpers.invoke(context, arError.getException(),
+                                  "errno=", context.getRuntime().newFixnum(((SQLException) exception).getErrorCode()));
+            RuntimeHelpers.invoke(context, arError.getException(),
+                                  "sql_exception=", JavaEmbedUtils.javaToRuby(context.getRuntime(), exception));
+        }
+        return (RuntimeException) arError;
     }
 
     private IRubyObject wrappedConnection(Connection c) {
