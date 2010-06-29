@@ -159,16 +159,13 @@ module ::JdbcSpec
       execute "ALTER TABLE #{name} RENAME TO #{new_name}"
     end
 
-    def insert(sql, name = nil, pk = nil, id_value = nil, sequence_name = nil) #:nodoc:
-      log(sql,name) do
-        @connection.execute_update(sql)
-      end
-      table = sql.split(" ", 4)[2]
-      id_value || last_insert_id(table, nil)
+    def last_insert_id
+      Integer(select_value("CALL IDENTITY()"))
     end
 
-    def last_insert_id(table, sequence_name)
-      Integer(select_value("CALL IDENTITY()"))
+    def _execute(sql, name = nil)
+      result = super
+      ActiveRecord::ConnectionAdapters::JdbcConnection::insert?(sql) ? last_insert_id : result
     end
 
     def add_limit_offset!(sql, options) #:nodoc:
