@@ -327,6 +327,7 @@ module ActiveRecord
         @config = config.symbolize_keys!
         @config[:retry_count] ||= 5
         @config[:connection_alive_sql] ||= "select 1"
+        @jndi_connection = false
         if @config[:jndi]
           begin
             configure_jndi
