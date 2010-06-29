@@ -614,7 +614,7 @@ module ActiveRecord
       end
       alias_chained_method :columns, :query_cache, :jdbc_columns
 
-      def tables
+      def tables(name = nil)
         @connection.tables
       end
 

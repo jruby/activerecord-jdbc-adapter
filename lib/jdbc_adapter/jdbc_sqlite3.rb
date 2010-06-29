@@ -1,5 +1,5 @@
 module ::JdbcSpec
-  # Don't need to load native postgres adapter
+  # Don't need to load native sqlite3 adapter
   $LOADED_FEATURES << "active_record/connection_adapters/sqlite3_adapter.rb"
 
   module ActiveRecordExtensions
@@ -190,14 +190,7 @@ module ::JdbcSpec
     end
 
     def quote_column_name(name) #:nodoc:
-      name = name.to_s
-      # Did not find reference on values needing quoting, but these
-      # happen in AR unit tests
-      if name == "references" || name =~ /-/
-        %Q("#{name}")
-      else
-        name
-      end
+      %Q("#{name}")
     end
 
     def quote_string(str)
@@ -303,7 +296,9 @@ module ::JdbcSpec
         name = row[0]
         index_sql = row[1]
         unique = (index_sql =~ /unique/i)
-        cols = index_sql.match(/\((.*)\)/)[1].gsub(/,/,' ').split
+        cols = index_sql.match(/\((.*)\)/)[1].gsub(/,/,' ').split.map do |c|
+          match = /^"(.+)"$/.match(c); match ? match[1] : c
+        end
         ::ActiveRecord::ConnectionAdapters::IndexDefinition.new(table_name, name, unique, cols)
       end
     end
