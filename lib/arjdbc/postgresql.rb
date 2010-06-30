@@ -11,3 +11,10 @@ rescue LoadError
   # trust that the postgres jar is already present
 end
 require 'arjdbc/jdbc'
+module ActiveRecord
+  class Base
+    class << self
+      alias_method :jdbcpostgresql_connection, :postgresql_connection
+    end
+  end
+end

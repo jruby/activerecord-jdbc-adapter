@@ -10,4 +10,13 @@ rescue LoadError
   end
   # trust that the derby jar is already present
 end
+
 require 'arjdbc/jdbc'
+
+module ActiveRecord
+  class Base
+    class << self
+      alias_method :jdbcderby_connection, :derby_connection
+    end
+  end
+end

@@ -11,3 +11,11 @@ rescue LoadError
   # trust that the mysql jar is already present
 end
 require 'arjdbc/jdbc'
+module ActiveRecord
+  class Base
+    class << self
+      alias_method :jdbcmysql_connection, :mysql_connection
+    end
+  end
+end
+

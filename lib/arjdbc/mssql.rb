@@ -11,3 +11,10 @@ rescue LoadError
   # trust that the jtds jar is already present
 end
 require 'arjdbc/jdbc'
+module ActiveRecord
+  class Base
+    class << self
+      alias_method :jdbcmssql_connection, :mssql_connection
+    end
+  end
+end

@@ -11,3 +11,10 @@ rescue LoadError
   # trust that the hsqldb jar is already present
 end
 require 'arjdbc/jdbc'
+module ActiveRecord
+  class Base
+    class << self
+      alias_method :jdbch2_connection, :h2_connection
+    end
+  end
+end

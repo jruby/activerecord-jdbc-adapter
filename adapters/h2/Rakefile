@@ -6,7 +6,7 @@ task :manifest do
 end
 Rake::Task['manifest'].invoke
 
-require File.dirname(__FILE__) + "/../../lib/jdbc_adapter/version"
+require File.dirname(__FILE__) + "/../../lib/arjdbc/version"
 $LOAD_PATH << File.dirname(__FILE__) + "/../../drivers/h2/lib"
 require "jdbc/h2"
 
@@ -14,7 +14,7 @@ begin
   require 'hoe'
   Hoe.plugin :gemcutter
   hoe = Hoe.spec("activerecord-jdbch2-adapter") do |p|
-    p.version = JdbcAdapter::Version::VERSION
+    p.version = ArJdbc::Version::VERSION
     p.spec_extras[:platform] = Gem::Platform.new("java")
     p.rubyforge_name = "jruby-extras"
     p.url = "http://jruby-extras.rubyforge.org/ActiveRecord-JDBC"
@@ -24,7 +24,7 @@ begin
     p.changes = "Updated to H2 version #{Jdbc::H2::VERSION}."
     p.description = "Install this gem to use H2 with JRuby on Rails."
     p.extra_deps += [
-      ['activerecord-jdbc-adapter', "= #{JdbcAdapter::Version::VERSION}"],
+      ['activerecord-jdbc-adapter', "= #{ArJdbc::Version::VERSION}"],
       ['jdbc-h2', ">= #{Jdbc::H2::VERSION}"]]
   end
   task :gemspec do
