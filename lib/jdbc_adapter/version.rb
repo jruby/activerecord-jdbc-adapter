@@ -1,5 +1,3 @@
-module JdbcAdapter
-  module Version
-    VERSION = "0.9.8"
-  end
-end
+warn "DEPRECATED: require 'arjdbc/version' instead of 'jdbc_adapter/version'."
+require 'arjdbc/version'
+

@@ -8,12 +8,12 @@ task :manifest do
 end
 Rake::Task['manifest'].invoke # Always regen manifest, so Hoe has up-to-date list of files
 
-require File.dirname(__FILE__) + "/../lib/jdbc_adapter/version"
+require File.dirname(__FILE__) + "/../lib/arjdbc/version"
 begin
   require 'hoe'
   Hoe.plugin :gemcutter
   hoe = Hoe.spec("activerecord-jdbc-adapter") do |p|
-    p.version = JdbcAdapter::Version::VERSION
+    p.version = ArJdbc::Version::VERSION
     p.spec_extras[:platform] = Gem::Platform.new("java")
     p.spec_extras[:files] = MANIFEST
     p.rubyforge_name = "jruby-extras"
