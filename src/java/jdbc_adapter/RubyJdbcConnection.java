@@ -1174,21 +1174,15 @@ public class RubyJdbcConnection extends RubyObject {
     }
 
     protected RuntimeException wrap(ThreadContext context, Throwable exception) {
-        RubyModule activeRecord = context.getRuntime().getModule("ActiveRecord");
-        RubyClass errorClass;
-        if (exception instanceof SQLException) {
-            errorClass = activeRecord.getClass("JDBCError");
-        } else {
-            errorClass = activeRecord.getClass("ActiveRecordError");
-        }
-
-        RaiseException arError = new RaiseException(context.getRuntime(), errorClass, exception.getMessage(), true);
+        Ruby runtime = context.getRuntime();
+        RaiseException arError = new RaiseException(runtime, runtime.getModule("ActiveRecord").getClass("JDBCError"),
+                                                    exception.getMessage(), true);
         arError.initCause(exception);
         if (exception instanceof SQLException) {
             RuntimeHelpers.invoke(context, arError.getException(),
-                                  "errno=", context.getRuntime().newFixnum(((SQLException) exception).getErrorCode()));
+                                  "errno=", runtime.newFixnum(((SQLException) exception).getErrorCode()));
             RuntimeHelpers.invoke(context, arError.getException(),
-                                  "sql_exception=", JavaEmbedUtils.javaToRuby(context.getRuntime(), exception));
+                                  "sql_exception=", JavaEmbedUtils.javaToRuby(runtime, exception));
         }
         return (RuntimeException) arError;
     }
