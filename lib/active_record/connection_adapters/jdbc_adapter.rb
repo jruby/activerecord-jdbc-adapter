@@ -512,6 +512,15 @@ module ActiveRecord
         'JDBC'
       end
 
+      def is_a?(klass)          # :nodoc:
+        # This is to fake out current_adapter? conditional logic in AR tests
+        if Class === klass && klass.name =~ /#{adapter_name}Adapter$/i
+          true
+        else
+          super
+        end
+      end
+
       def supports_migrations?
         true
       end

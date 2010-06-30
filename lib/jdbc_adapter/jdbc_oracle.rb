@@ -1,3 +1,7 @@
+module ActiveRecord::ConnectionAdapters
+  OracleAdapter = Class.new(AbstractAdapter) unless const_defined?(:OracleAdapter)
+end
+
 module ::JdbcSpec
   module ActiveRecordExtensions
     def oracle_connection(config)

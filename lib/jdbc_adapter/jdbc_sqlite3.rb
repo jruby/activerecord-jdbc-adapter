@@ -1,3 +1,7 @@
+module ActiveRecord::ConnectionAdapters
+  Sqlite3Adapter = Class.new(AbstractAdapter) unless const_defined?(:Sqlite3Adapter)
+end
+
 module ::JdbcSpec
   # Don't need to load native sqlite3 adapter
   $LOADED_FEATURES << "active_record/connection_adapters/sqlite3_adapter.rb"

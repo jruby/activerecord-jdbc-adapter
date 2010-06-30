@@ -1,3 +1,6 @@
+module ActiveRecord::ConnectionAdapters
+  PostgreSQLAdapter = Class.new(AbstractAdapter) unless const_defined?(:PostgreSQLAdapter)
+end
 
 module ::JdbcSpec
   # Don't need to load native postgres adapter

@@ -1,5 +1,9 @@
 require 'active_record/connection_adapters/abstract/schema_definitions'
 
+module ActiveRecord::ConnectionAdapters
+  MysqlAdapter = Class.new(AbstractAdapter) unless const_defined?(:MysqlAdapter)
+end
+
 module ::JdbcSpec
   # Don't need to load native mysql adapter
   $LOADED_FEATURES << "active_record/connection_adapters/mysql_adapter.rb"
