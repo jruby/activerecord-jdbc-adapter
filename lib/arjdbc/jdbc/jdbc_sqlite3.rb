@@ -1,3 +1,5 @@
+require 'arjdbc/jdbc/missing_functionality_helper'
+
 module ActiveRecord::ConnectionAdapters
   Sqlite3Adapter = Class.new(AbstractAdapter) unless const_defined?(:Sqlite3Adapter)
 end

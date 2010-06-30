@@ -1,23 +1,6 @@
 require 'arjdbc/jdbc/missing_functionality_helper'
 
 module ::JdbcSpec
-  module ActiveRecordExtensions
-    def derby_connection(config)
-      require "arjdbc/derby"
-      config[:url] ||= "jdbc:derby:#{config[:database]};create=true"
-      config[:driver] ||= "org.apache.derby.jdbc.EmbeddedDriver"
-      check_version(embedded_driver(config))
-    end
-
-    def check_version(conn)
-      md = conn.raw_connection.connection.meta_data
-      if md.database_major_version < 10 || md.database_minor_version < 5
-        raise ::ActiveRecord::ConnectionFailed, "Derby adapter requires Derby 10.5 or later"
-      end
-      conn
-    end
-  end
-
   module Derby
     def self.adapter_matcher(name, *)
       name =~ /derby/i ? self : false
