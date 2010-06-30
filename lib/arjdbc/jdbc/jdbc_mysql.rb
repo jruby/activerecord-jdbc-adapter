@@ -12,7 +12,7 @@ module ::JdbcSpec
     add_method_to_remove_from_ar_base(:mysql_connection)
 
     def mysql_connection(config)
-      require File.dirname(__FILE__) + "/../active_record/connection_adapters/mysql_adapter"
+      require "arjdbc/mysql"
       config[:port] ||= 3306
       url_options = "zeroDateTimeBehavior=convertToNull&jdbcCompliantTruncation=false&useUnicode=true&characterEncoding="
       url_options << (config[:encoding] || 'utf8')

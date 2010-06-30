@@ -1,5 +1,5 @@
 require 'fileutils'
-require 'active_record/connection_adapters/jdbc_adapter'
+require 'arjdbc'
 
 System = java.lang.System
 Context = javax.naming.Context

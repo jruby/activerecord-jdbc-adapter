@@ -16,11 +16,11 @@ if defined?(JRUBY_VERSION)
       RAILS_CONNECTION_ADAPTERS = %w(jdbc)
     end
     if ActiveRecord::VERSION::MAJOR == 1 && ActiveRecord::VERSION::MINOR == 14
-      require 'active_record/connection_adapters/jdbc_adapter'
+      require 'arjdbc/jdbc'
     end
   else
     require 'active_record'
-    require 'active_record/connection_adapters/jdbc_adapter'
+    require 'arjdbc/jdbc'
   end
 else
   warn "ActiveRecord-JDBC is for use with JRuby only"

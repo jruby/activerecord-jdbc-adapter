@@ -1,6 +1,6 @@
-require 'jdbc_adapter'
+require 'arjdbc'
 begin
-  require 'jdbc_adapter/railtie'
+  require 'arjdbc/railtie'
 rescue LoadError
   # Assume we don't have railties in this version of AR
 end

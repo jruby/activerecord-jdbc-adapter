@@ -22,7 +22,7 @@ module AbstractDbCreate
     setup_rails
     set_rails_constant("env", "unittest")
     set_rails_constant("root", ".")
-    load File.dirname(__FILE__) + '/../lib/jdbc_adapter/jdbc.rake' if jruby?
+    load File.dirname(__FILE__) + '/../lib/arjdbc/jdbc/jdbc.rake' if jruby?
     task :environment do
       ActiveRecord::Base.configurations = configurations
     end

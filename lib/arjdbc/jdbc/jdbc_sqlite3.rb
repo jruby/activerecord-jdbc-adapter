@@ -10,7 +10,7 @@ module ::JdbcSpec
     add_method_to_remove_from_ar_base(:sqlite3_connection)
 
     def sqlite3_connection(config)
-      require File.dirname(__FILE__) + "/../active_record/connection_adapters/sqlite3_adapter"
+      require "arjdbc/sqlite3"
 
       parse_sqlite3_config!(config)
 

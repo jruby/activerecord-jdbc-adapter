@@ -1,5 +1,5 @@
 require 'java'
-require 'lib/jdbc_adapter/jdbc_db2'
+require 'arjdbc/jdbc/jdbc_db2'
 require 'test/unit'
 
 class JdbcSpec::DB2Test < Test::Unit::TestCase

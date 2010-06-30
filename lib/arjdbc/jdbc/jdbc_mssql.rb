@@ -1,11 +1,11 @@
-require 'jdbc_adapter/tsql_helper'
+require 'arjdbc/jdbc/tsql_helper'
 
 module ::JdbcSpec
 
   module ActiveRecordExtensions
 
     def mssql_connection(config)
-      require "active_record/connection_adapters/mssql_adapter"
+      require "arjdbc/mssql"
       config[:host] ||= "localhost"
       config[:port] ||= 1433
       config[:url] ||= "jdbc:jtds:sqlserver://#{config[:host]}:#{config[:port]}/#{config[:database]}"

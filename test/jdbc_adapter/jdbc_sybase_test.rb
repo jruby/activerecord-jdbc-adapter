@@ -1,5 +1,4 @@
 require 'jdbc_common'
-require 'jdbc_adapter'
 
 class MockConnection 
   

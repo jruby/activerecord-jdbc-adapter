@@ -1,4 +1,4 @@
-require 'jdbc_adapter/tsql_helper'
+require 'arjdbc/jdbc/tsql_helper'
 
 module ::JdbcSpec
   module ActiveRecordExtensions
