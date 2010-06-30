@@ -3,6 +3,7 @@ pkg
 *.gem
 *.tgz
 derby*
+lib/arjdbc/jdbc/adapter_java.jar
 lib/jdbc_adapter/jdbc_adapter_internal.jar
 test.*
 doc

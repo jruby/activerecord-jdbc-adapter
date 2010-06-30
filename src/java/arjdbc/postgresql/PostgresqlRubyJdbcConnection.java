@@ -1,6 +1,6 @@
 /*
  **** BEGIN LICENSE BLOCK *****
- * Copyright (c) 2006-2009 Nick Sieger <nick@nicksieger.com>
+ * Copyright (c) 2006-2010 Nick Sieger <nick@nicksieger.com>
  * Copyright (c) 2006-2007 Ola Bini <ola.bini@gmail.com>
  * Copyright (c) 2008-2009 Thomas E Enebo <enebo@acm.org>
  *
@@ -23,11 +23,10 @@
  * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  ***** END LICENSE BLOCK *****/
-package jdbc_adapter;
+package arjdbc.postgresql;
 
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Types;
+import arjdbc.jdbc.RubyJdbcConnection;
+
 import org.jruby.Ruby;
 import org.jruby.RubyClass;
 import org.jruby.runtime.ObjectAllocator;
@@ -35,37 +34,24 @@ import org.jruby.runtime.builtin.IRubyObject;
 
 /**
  *
- * @author nicksieger
+ * @author enebo
  */
-public class MssqlRubyJdbcConnection extends RubyJdbcConnection {
-
-    protected MssqlRubyJdbcConnection(Ruby runtime, RubyClass metaClass) {
+public class PostgresqlRubyJdbcConnection extends RubyJdbcConnection {
+    protected PostgresqlRubyJdbcConnection(Ruby runtime, RubyClass metaClass) {
         super(runtime, metaClass);
     }
 
-    public static RubyClass createMssqlJdbcConnectionClass(Ruby runtime, RubyClass jdbcConnection) {
-        RubyClass clazz = RubyJdbcConnection.getConnectionAdapters(runtime).defineClassUnder("MssqlJdbcConnection",
-                jdbcConnection, MSSQL_JDBCCONNECTION_ALLOCATOR);
-        clazz.defineAnnotatedMethods(MssqlRubyJdbcConnection.class);
+    public static RubyClass createPostgresqlJdbcConnectionClass(Ruby runtime, RubyClass jdbcConnection) {
+        RubyClass clazz = RubyJdbcConnection.getConnectionAdapters(runtime).defineClassUnder("PostgresJdbcConnection",
+                jdbcConnection, POSTGRESQL_JDBCCONNECTION_ALLOCATOR);
+        clazz.defineAnnotatedMethods(PostgresqlRubyJdbcConnection.class);
 
         return clazz;
     }
-    private static ObjectAllocator MSSQL_JDBCCONNECTION_ALLOCATOR = new ObjectAllocator() {
 
+    private static ObjectAllocator POSTGRESQL_JDBCCONNECTION_ALLOCATOR = new ObjectAllocator() {
         public IRubyObject allocate(Ruby runtime, RubyClass klass) {
-            return new MssqlRubyJdbcConnection(runtime, klass);
+            return new PostgresqlRubyJdbcConnection(runtime, klass);
         }
     };
-
-    /**
-     * Treat LONGVARCHAR as CLOB on Mssql for purposes of converting a JDBC value to Ruby.
-     */
-    @Override
-    protected IRubyObject jdbcToRuby(Ruby runtime, int column, int type, ResultSet resultSet)
-            throws SQLException {
-        if (type == Types.LONGVARCHAR) {
-            type = Types.CLOB;
-        }
-        return super.jdbcToRuby(runtime, column, type, resultSet);
-    }
 }

@@ -2,7 +2,7 @@ require 'active_record/version'
 require 'active_record/connection_adapters/abstract_adapter'
 require 'java'
 require 'arjdbc/jdbc/adapters'
-require 'jdbc_adapter/jdbc_adapter_internal'
+require 'arjdbc/jdbc/adapter_java'
 require 'bigdecimal'
 
 # AR's 2.2 version of this method is sufficient, but we need it for
@@ -314,7 +314,7 @@ module ActiveRecord
       end
     end
 
-    include_class "jdbc_adapter.JdbcConnectionFactory"
+    java_import "arjdbc.jdbc.JdbcConnectionFactory"
 
     class JdbcConnection
       attr_reader :adapter, :connection_factory

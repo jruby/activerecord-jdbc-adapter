@@ -12,12 +12,13 @@ def java_classpath_arg # myriad of ways to discover JRuby classpath
   jruby_cpath ? "-cp \"#{jruby_cpath}\"" : ""
 end
 
+jar_name = File.join(*%w(lib arjdbc jdbc adapter_java.jar))
+
 desc "Compile the native Java code."
 task :java_compile do
   pkg_classes = File.join(*%w(pkg classes))
-  jar_name = File.join(*%w(lib jdbc_adapter jdbc_adapter_internal.jar))
   mkdir_p pkg_classes
   sh "javac -target 1.5 -source 1.5 -d pkg/classes #{java_classpath_arg} #{FileList['src/java/**/*.java'].join(' ')}"
   sh "jar cf #{jar_name} -C #{pkg_classes} ."
 end
-file "lib/jdbc_adapter/jdbc_adapter_internal.jar" => :java_compile
+file jar_name => :java_compile

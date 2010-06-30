@@ -1,7 +1,7 @@
 /***** BEGIN LICENSE BLOCK *****
- * Copyright (c) 2006-2009 Nick Sieger <nick@nicksieger.com>
+ * Copyright (c) 2006-2010 Nick Sieger <nick@nicksieger.com>
  * Copyright (c) 2006-2007 Ola Bini <ola.bini@gmail.com>
- * 
+ *
  * Permission is hereby granted, free of charge, to any person obtaining
  * a copy of this software and associated documentation files (the
  * "Software"), to deal in the Software without restriction, including
@@ -9,10 +9,10 @@
  * distribute, sublicense, and/or sell copies of the Software, and to
  * permit persons to whom the Software is furnished to do so, subject to
  * the following conditions:
- * 
+ *
  * The above copyright notice and this permission notice shall be
  * included in all copies or substantial portions of the Software.
- * 
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
  * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
@@ -22,7 +22,7 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  ***** END LICENSE BLOCK *****/
 
-package jdbc_adapter;
+package arjdbc.mysql;
 
 import java.sql.Connection;
 
@@ -35,10 +35,10 @@ import org.jruby.runtime.builtin.IRubyObject;
 
 import org.jruby.util.ByteList;
 
-public class JdbcMySQLSpec {
-    public static void load(RubyModule jdbcSpec) {
-        RubyModule mysql = jdbcSpec.defineModuleUnder("MySQL");
-        mysql.defineAnnotatedMethods(JdbcMySQLSpec.class);
+public class MySQLModule {
+    public static void load(RubyModule arJdbc) {
+        RubyModule mysql = arJdbc.defineModuleUnder("MySQL");
+        mysql.defineAnnotatedMethods(MySQLModule.class);
     }
 
     private final static byte BACKQUOTE = '`';
@@ -56,9 +56,9 @@ public class JdbcMySQLSpec {
     public static IRubyObject quote_string(ThreadContext context, IRubyObject recv, IRubyObject string) {
         ByteList bytes = ((RubyString) string).getByteList();
         ByteList newBytes = new ByteList();
-        
+
         newBytes.append(bytes);
-        
+
         for(int i = newBytes.begin; i < newBytes.begin + newBytes.realSize; i++) {
             byte[] rep = null;
             switch (newBytes.bytes[i]) {
@@ -94,7 +94,7 @@ public class JdbcMySQLSpec {
 
         return context.getRuntime().newString(newBytes);
     }
-    
+
     @JRubyMethod(name = "quote_table_name", frame=false)
     public static IRubyObject quote_table_name(ThreadContext context, IRubyObject recv, IRubyObject arg) {
         ByteList bytes = arg.asString().getByteList();
