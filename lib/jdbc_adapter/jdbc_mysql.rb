@@ -72,7 +72,7 @@ module ::JdbcSpec
     end
 
     def adapter_name #:nodoc:
-      'mysql'
+      'MySQL'
     end
 
     # QUOTING ==================================================
