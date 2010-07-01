@@ -12,7 +12,8 @@ module JdbcSpec
 end
 
 require 'arjdbc/jdbc/jdbc_mimer'
-require 'arjdbc/jdbc/jdbc_hsqldb'
+require 'arjdbc/hsqldb'
+require 'arjdbc/h2'
 require 'arjdbc/jdbc/jdbc_oracle'
 require 'arjdbc/jdbc/jdbc_postgresql'
 require 'arjdbc/jdbc/jdbc_mysql'

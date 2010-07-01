@@ -1,20 +1,4 @@
 module ::JdbcSpec
-  module ActiveRecordExtensions
-    def hsqldb_connection(config)
-      require "arjdbc/hsqldb"
-      config[:url] ||= "jdbc:hsqldb:#{config[:database]}"
-      config[:driver] ||= "org.hsqldb.jdbcDriver"
-      embedded_driver(config)
-    end
-
-    def h2_connection(config)
-      require "arjdbc/h2"
-      config[:url] ||= "jdbc:h2:#{config[:database]}"
-      config[:driver] ||= "org.h2.Driver"
-      embedded_driver(config)
-    end
-  end
-
   module HSQLDB
     def self.extended(mod)
       mod.class.class_eval do
@@ -63,7 +47,7 @@ module ::JdbcSpec
     end
 
     def adapter_name #:nodoc:
-      defined?(::Jdbc::H2) ? 'H2' : 'Hsqldb'
+      'Hsqldb'
     end
 
     def modify_types(tp)
@@ -190,18 +174,6 @@ module ::JdbcSpec
 
     def remove_index(table_name, options = {})
       execute "DROP INDEX #{quote_column_name(index_name(table_name, options))}"
-    end
-  end
-
-  module H2
-    include HSQLDB
-
-    def self.adapter_matcher(name, *)
-      name =~ /\.h2\./i ? self : false
-    end
-
-    def h2_adapter
-      true
     end
   end
 end

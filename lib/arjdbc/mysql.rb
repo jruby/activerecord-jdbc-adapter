@@ -1,16 +1,5 @@
-tried_gem = false
-begin
-  require "jdbc/mysql"
-rescue LoadError
-  unless tried_gem
-    require 'rubygems'
-    gem "jdbc-mysql"
-    tried_gem = true
-    retry
-  end
-  # trust that the mysql jar is already present
-end
 require 'arjdbc/jdbc'
+jdbc_require_driver 'jdbc/mysql'
 module ActiveRecord
   class Base
     class << self

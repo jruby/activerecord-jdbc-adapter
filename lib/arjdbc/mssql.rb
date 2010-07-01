@@ -1,16 +1,5 @@
-tried_gem = false
-begin
-  require "jdbc/jtds"
-rescue LoadError
-  unless tried_gem
-    require 'rubygems'
-    gem "jdbc-mssql"
-    tried_gem = true
-    retry
-  end
-  # trust that the jtds jar is already present
-end
 require 'arjdbc/jdbc'
+jdbc_require_driver 'jdbc/jtds', 'jdbc-mssql'
 module ActiveRecord
   class Base
     class << self
