@@ -35,3 +35,17 @@ if ActiveRecord::VERSION::MAJOR <= 2 && ActiveRecord::VERSION::MINOR < 2
     end
   end
 end
+
+module ActiveRecord
+  module ConnectionAdapters
+    module CompatibilityMethods
+      def self.needed?(base)
+        !base.instance_methods.include?("quote_table_name")
+      end
+
+      def quote_table_name(name)
+        quote_column_name(name)
+      end
+    end
+  end
+end

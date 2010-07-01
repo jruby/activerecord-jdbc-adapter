@@ -5,64 +5,14 @@ require 'arjdbc/jdbc/type_converter'
 require 'arjdbc/jdbc/driver'
 require 'arjdbc/jdbc/column'
 require 'arjdbc/jdbc/connection'
+require 'arjdbc/jdbc/callbacks'
 
 module ActiveRecord
   module ConnectionAdapters
     class JdbcAdapter < AbstractAdapter
-      module CompatibilityMethods
-        def self.needed?(base)
-          !base.instance_methods.include?("quote_table_name")
-        end
-
-        def quote_table_name(name)
-          quote_column_name(name)
-        end
-      end
-
-      module ConnectionPoolCallbacks
-        def self.included(base)
-          if base.respond_to?(:set_callback) # Rails 3 callbacks
-            base.set_callback :checkin, :after, :on_checkin
-            base.set_callback :checkout, :before, :on_checkout
-          else
-            base.checkin :on_checkin
-            base.checkout :on_checkout
-          end
-        end
-
-        def self.needed?
-          ActiveRecord::Base.respond_to?(:connection_pool)
-        end
-
-        def on_checkin
-          # default implementation does nothing
-        end
-
-        def on_checkout
-          # default implementation does nothing
-        end
-      end
-
-      module JndiConnectionPoolCallbacks
-        def self.prepare(adapter, conn)
-          if ActiveRecord::Base.respond_to?(:connection_pool) && conn.jndi_connection?
-            adapter.extend self
-            conn.disconnect! # disconnect initial connection in JdbcConnection#initialize
-          end
-        end
-
-        def on_checkin
-          disconnect!
-        end
-
-        def on_checkout
-          reconnect!
-        end
-      end
-
       extend ShadowCoreMethods
       include CompatibilityMethods if CompatibilityMethods.needed?(self)
-      include ConnectionPoolCallbacks if ConnectionPoolCallbacks.needed?
+      include JdbcConnectionPoolCallbacks if JdbcConnectionPoolCallbacks.needed?
 
       attr_reader :config
 
