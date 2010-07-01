@@ -4,7 +4,7 @@ module ActiveRecord::ConnectionAdapters
   Sqlite3Adapter = Class.new(AbstractAdapter) unless const_defined?(:Sqlite3Adapter)
 end
 
-module ::JdbcSpec
+module ::ArJdbc
   module SQLite3
     def self.extended(base)
       base.class.class_eval do
@@ -17,7 +17,7 @@ module ::JdbcSpec
     end
 
     def self.column_selector
-      [/sqlite/i, lambda {|cfg,col| col.extend(::JdbcSpec::SQLite3::Column)}]
+      [/sqlite/i, lambda {|cfg,col| col.extend(::ArJdbc::SQLite3::Column)}]
     end
 
     def self.jdbc_connection_class
@@ -33,12 +33,12 @@ module ::JdbcSpec
         return nil if value.nil?
         case type
         when :string   then value
-        when :integer  then JdbcSpec::SQLite3::Column.cast_to_integer(value)
+        when :integer  then ArJdbc::SQLite3::Column.cast_to_integer(value)
         when :primary_key then defined?(value.to_i) ? value.to_i : (value ? 1 : 0)
         when :float    then value.to_f
-        when :datetime then JdbcSpec::SQLite3::Column.cast_to_date_or_time(value)
-        when :date then JdbcSpec::SQLite3::Column.cast_to_date_or_time(value)
-        when :time     then JdbcSpec::SQLite3::Column.cast_to_time(value)
+        when :datetime then ArJdbc::SQLite3::Column.cast_to_date_or_time(value)
+        when :date then ArJdbc::SQLite3::Column.cast_to_date_or_time(value)
+        when :time     then ArJdbc::SQLite3::Column.cast_to_time(value)
         when :decimal  then self.class.value_to_decimal(value)
         when :boolean  then self.class.value_to_boolean(value)
         else value
@@ -47,10 +47,10 @@ module ::JdbcSpec
 
       def type_cast_code(var_name)
         case type
-          when :integer  then "JdbcSpec::SQLite3::Column.cast_to_integer(#{var_name})"
-          when :datetime then "JdbcSpec::SQLite3::Column.cast_to_date_or_time(#{var_name})"
-          when :date     then "JdbcSpec::SQLite3::Column.cast_to_date_or_time(#{var_name})"
-          when :time     then "JdbcSpec::SQLite3::Column.cast_to_time(#{var_name})"
+          when :integer  then "ArJdbc::SQLite3::Column.cast_to_integer(#{var_name})"
+          when :datetime then "ArJdbc::SQLite3::Column.cast_to_date_or_time(#{var_name})"
+          when :date     then "ArJdbc::SQLite3::Column.cast_to_date_or_time(#{var_name})"
+          when :time     then "ArJdbc::SQLite3::Column.cast_to_time(#{var_name})"
         else
           super
         end
@@ -323,7 +323,7 @@ module ::JdbcSpec
     end
 
     protected
-    include JdbcSpec::MissingFunctionalityHelper
+    include ArJdbc::MissingFunctionalityHelper
 
     def translate_exception(exception, message)
       case exception.message

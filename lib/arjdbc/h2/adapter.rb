@@ -1,6 +1,6 @@
 require 'arjdbc/hsqldb/adapter'
 
-module JdbcSpec
+module ArJdbc
   module H2
     include HSQLDB
 

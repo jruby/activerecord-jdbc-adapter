@@ -1,4 +1,4 @@
-module ::JdbcSpec
+module ::ArJdbc
   module HSQLDB
     def self.extended(mod)
       mod.class.class_eval do
@@ -11,7 +11,7 @@ module ::JdbcSpec
     end
 
     def self.column_selector
-      [/hsqldb|\.h2\./i, lambda {|cfg,col| col.extend(::JdbcSpec::HSQLDB::Column)}]
+      [/hsqldb|\.h2\./i, lambda {|cfg,col| col.extend(::ArJdbc::HSQLDB::Column)}]
     end
 
     module Column

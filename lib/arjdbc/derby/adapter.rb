@@ -1,13 +1,13 @@
 require 'arjdbc/jdbc/missing_functionality_helper'
 
-module ::JdbcSpec
+module ::ArJdbc
   module Derby
     def self.adapter_matcher(name, *)
       name =~ /derby/i ? self : false
     end
 
     def self.column_selector
-      [/derby/i, lambda {|cfg,col| col.extend(::JdbcSpec::Derby::Column)}]
+      [/derby/i, lambda {|cfg,col| col.extend(::ArJdbc::Derby::Column)}]
     end
 
     def self.monkey_rails
@@ -59,7 +59,7 @@ module ::JdbcSpec
       'Derby'
     end
 
-    include JdbcSpec::MissingFunctionalityHelper
+    include ArJdbc::MissingFunctionalityHelper
 
     def index_name_length
       128

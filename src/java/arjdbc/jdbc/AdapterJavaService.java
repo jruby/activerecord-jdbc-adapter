@@ -49,11 +49,11 @@ public class AdapterJavaService implements BasicLibraryService {
         PostgresqlRubyJdbcConnection.createPostgresqlJdbcConnectionClass(runtime, jdbcConnection);
         MssqlRubyJdbcConnection.createMssqlJdbcConnectionClass(runtime, jdbcConnection);
         Sqlite3RubyJdbcConnection.createSqlite3JdbcConnectionClass(runtime, jdbcConnection);
-        RubyModule jdbcSpec = runtime.getOrCreateModule("JdbcSpec");
+        RubyModule arJdbc = runtime.getOrCreateModule("ArJdbc");
 
         rubyApi = JavaEmbedUtils.newObjectAdapter();
-        MySQLModule.load(jdbcSpec);
-        DerbyModule.load(jdbcSpec, rubyApi);
+        MySQLModule.load(arJdbc);
+        DerbyModule.load(arJdbc, rubyApi);
         return true;
     }
 }

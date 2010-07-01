@@ -2,7 +2,7 @@ module ActiveRecord::ConnectionAdapters
   PostgreSQLAdapter = Class.new(AbstractAdapter) unless const_defined?(:PostgreSQLAdapter)
 end
 
-module ::JdbcSpec
+module ::ArJdbc
   module PostgreSQL
     def self.extended(mod)
       mod.class.class_eval do
@@ -15,7 +15,7 @@ module ::JdbcSpec
     end
 
     def self.column_selector
-      [/postgre/i, lambda {|cfg,col| col.extend(::JdbcSpec::PostgreSQL::Column)}]
+      [/postgre/i, lambda {|cfg,col| col.extend(::ArJdbc::PostgreSQL::Column)}]
     end
 
     def self.jdbc_connection_class

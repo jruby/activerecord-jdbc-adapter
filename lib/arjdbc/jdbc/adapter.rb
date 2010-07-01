@@ -36,7 +36,7 @@ if ActiveRecord::VERSION::MAJOR <= 2 && ActiveRecord::VERSION::MINOR < 2
   end
 end
 
-module JdbcSpec
+module ArJdbc
   module QuotedPrimaryKeyExtension
     def self.extended(base)
       #       Rails 3 method           Rails 2 method
@@ -54,7 +54,7 @@ module JdbcSpec
           alias :#{meth}_pre_pk :#{meth}
           def #{meth}(include_primary_key = true, *args) #:nodoc:
             aq = #{meth}_pre_pk(include_primary_key, *args)
-            if connection.is_a?(JdbcSpec::Oracle) || connection.is_a?(JdbcSpec::Mimer)
+            if connection.is_a?(ArJdbc::Oracle) || connection.is_a?(ArJdbc::Mimer)
               aq[#{pk_hash_key}] = #{pk_hash_value} if include_primary_key && aq[#{pk_hash_key}].nil?
             end
             aq
@@ -265,8 +265,8 @@ module ActiveRecord
     class JdbcColumn < Column
       attr_writer :limit, :precision
 
-      COLUMN_TYPES = ::JdbcSpec.constants.map{|c|
-        ::JdbcSpec.const_get c }.select{ |c|
+      COLUMN_TYPES = ::ArJdbc.constants.map{|c|
+        ::ArJdbc.const_get c }.select{ |c|
         c.respond_to? :column_selector }.map{|c|
         c.column_selector }.inject({}) { |h,val|
         h[val[0]] = val[1]; h }
@@ -471,7 +471,7 @@ module ActiveRecord
       # Locate specialized adapter specification if one exists based on config data
       def adapter_spec(config)
         dialect = (config[:dialect] || config[:driver]).to_s
-        ::JdbcSpec.constants.map { |name| ::JdbcSpec.const_get name }.each do |constant|
+        ::ArJdbc.constants.map { |name| ::ArJdbc.const_get name }.each do |constant|
           if constant.respond_to? :adapter_matcher
             spec = constant.adapter_matcher(dialect, config)
             return spec if spec

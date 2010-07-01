@@ -4,14 +4,14 @@ module ActiveRecord::ConnectionAdapters
   MysqlAdapter = Class.new(AbstractAdapter) unless const_defined?(:MysqlAdapter)
 end
 
-module ::JdbcSpec
+module ::ArJdbc
   module MySQL
     def self.adapter_matcher(name, *)
       name =~ /mysql/i ? self : false
     end
 
     def self.column_selector
-      [/mysql/i, lambda {|cfg,col| col.extend(::JdbcSpec::MySQL::Column)}]
+      [/mysql/i, lambda {|cfg,col| col.extend(::ArJdbc::MySQL::Column)}]
     end
 
     def self.extended(adapter)

@@ -6,7 +6,7 @@ Context = javax.naming.Context
 InitialContext = javax.naming.InitialContext
 Reference = javax.naming.Reference
 StringRefAddr = javax.naming.StringRefAddr
-  
+
 System.set_property(Context::INITIAL_CONTEXT_FACTORY,
                     'com.sun.jndi.fscontext.RefFSContextFactory')
 project_path = File.expand_path(File.dirname(__FILE__) + '/../..')
@@ -18,9 +18,9 @@ System.set_property(Context::PROVIDER_URL, "file://#{jndi_dir}")
 derby_ref = Reference.new('javax.sql.DataSource',
                           'org.apache.commons.dbcp.BasicDataSourceFactory',
                           nil)
-derby_ref.add StringRefAddr.new('driverClassName', 
+derby_ref.add StringRefAddr.new('driverClassName',
                                 'org.apache.derby.jdbc.EmbeddedDriver')
-derby_ref.add StringRefAddr.new('url', 
+derby_ref.add StringRefAddr.new('url',
                                 'jdbc:derby:derby-testdb;create=true')
 derby_ref.add StringRefAddr.new('username', 'sa')
 derby_ref.add StringRefAddr.new('password', '')

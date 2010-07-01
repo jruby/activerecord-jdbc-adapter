@@ -1,7 +1,7 @@
-module JdbcSpec
+module ArJdbc
   module Mimer
     def self.extended(mod)
-      ActiveRecord::Base.extend JdbcSpec::QuotedPrimaryKeyExtension
+      ActiveRecord::Base.extend ArJdbc::QuotedPrimaryKeyExtension
     end
 
     def self.adapter_matcher(name, *)

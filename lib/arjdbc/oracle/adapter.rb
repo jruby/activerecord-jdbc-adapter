@@ -2,7 +2,7 @@ module ActiveRecord::ConnectionAdapters
   OracleAdapter = Class.new(AbstractAdapter) unless const_defined?(:OracleAdapter)
 end
 
-module ::JdbcSpec
+module ::ArJdbc
   module Oracle
     def self.extended(mod)
       unless @lob_callback_added
@@ -21,7 +21,7 @@ module ::JdbcSpec
         ActiveRecord::Base.after_save :after_save_with_oracle_lob
         @lob_callback_added = true
       end
-      ActiveRecord::Base.extend JdbcSpec::QuotedPrimaryKeyExtension
+      ActiveRecord::Base.extend ArJdbc::QuotedPrimaryKeyExtension
       mod.class.class_eval do
         alias_chained_method :insert, :query_dirty, :insert
         alias_chained_method :columns, :query_cache, :columns
@@ -33,7 +33,7 @@ module ::JdbcSpec
     end
 
     def self.column_selector
-      [/oracle/i, lambda {|cfg,col| col.extend(::JdbcSpec::Oracle::Column)}]
+      [/oracle/i, lambda {|cfg,col| col.extend(::ArJdbc::Oracle::Column)}]
     end
 
     module Column
@@ -47,7 +47,7 @@ module ::JdbcSpec
       def type_cast(value)
         return nil if value.nil?
         case type
-        when :datetime then JdbcSpec::Oracle::Column.string_to_time(value, self.class)
+        when :datetime then ArJdbc::Oracle::Column.string_to_time(value, self.class)
         else
           super
         end
@@ -55,7 +55,7 @@ module ::JdbcSpec
 
       def type_cast_code(var_name)
         case type
-        when :datetime  then "JdbcSpec::Oracle::Column.string_to_time(#{var_name}, self.class)"
+        when :datetime  then "ArJdbc::Oracle::Column.string_to_time(#{var_name}, self.class)"
         else
           super
         end

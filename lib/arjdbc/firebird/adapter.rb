@@ -1,4 +1,4 @@
-module ::JdbcSpec
+module ::ArJdbc
   module FireBird
     def self.adapter_matcher(name, *)
       name =~ /firebird/i ? self : false

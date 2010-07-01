@@ -1,4 +1,4 @@
-module JdbcSpec
+module ArJdbc
   module Sybase
     def self.adapter_matcher(name, *)
       name =~ /sybase|tds/i ? self : false

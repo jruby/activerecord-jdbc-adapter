@@ -1,6 +1,6 @@
 require 'arjdbc/mssql/tsql_helper'
 
-module ::JdbcSpec
+module ::ArJdbc
   module CacheDB
     include TSqlMethods
 
@@ -9,7 +9,7 @@ module ::JdbcSpec
     end
 
     def self.column_selector
-      [ /cache/i, lambda {  | cfg, col | col.extend( ::JdbcSpec::CacheDB::Column ) } ]
+      [ /cache/i, lambda {  | cfg, col | col.extend( ::ArJdbc::CacheDB::Column ) } ]
     end
 
     module Column

@@ -15,7 +15,7 @@ class ActiveRecord::Base
       end
       config[:driver] ||= "com.mysql.jdbc.Driver"
       connection = jdbc_connection(config)
-      ::JdbcSpec::MySQL.kill_cancel_timer(connection.raw_connection)
+      ::ArJdbc::MySQL.kill_cancel_timer(connection.raw_connection)
       connection
     end
     alias_method :jdbcmysql_connection, :mysql_connection

@@ -1,4 +1,4 @@
-module JdbcSpec
+module ArJdbc
   module MissingFunctionalityHelper
     #Taken from SQLite adapter
 

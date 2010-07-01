@@ -1,8 +1,8 @@
-module JdbcSpec
+module ArJdbc
   module DB2
     def self.adapter_matcher(name, config)
       if name =~ /db2/i
-         return config[:url] =~ /^jdbc:derby:net:/ ? ::JdbcSpec::Derby : self
+         return config[:url] =~ /^jdbc:derby:net:/ ? ::ArJdbc::Derby : self
       end
       false
     end
@@ -10,9 +10,9 @@ module JdbcSpec
     def self.adapter_selector
       [/db2/i, lambda {|cfg,adapt|
          if cfg[:url] =~ /^jdbc:derby:net:/
-           adapt.extend(::JdbcSpec::Derby)
+           adapt.extend(::ArJdbc::Derby)
          else
-           adapt.extend(::JdbcSpec::DB2)
+           adapt.extend(::ArJdbc::DB2)
          end }]
     end
 

@@ -1,6 +1,6 @@
 require 'arjdbc/mssql/tsql_helper'
 
-module ::JdbcSpec
+module ::ArJdbc
   module MsSQL
     include TSqlMethods
 
@@ -29,7 +29,7 @@ module ::JdbcSpec
     end
 
     def self.column_selector
-      [/sqlserver|tds/i, lambda {|cfg,col| col.extend(::JdbcSpec::MsSQL::Column)}]
+      [/sqlserver|tds/i, lambda {|cfg,col| col.extend(::ArJdbc::MsSQL::Column)}]
     end
 
     def self.jdbc_connection_class
@@ -150,7 +150,7 @@ module ::JdbcSpec
       when String, ActiveSupport::Multibyte::Chars
         value = value.to_s
         if column && column.type == :binary
-          "'#{quote_string(JdbcSpec::MsSQL::Column.string_to_binary(value))}'" # ' (for ruby-mode)
+          "'#{quote_string(ArJdbc::MsSQL::Column.string_to_binary(value))}'" # ' (for ruby-mode)
         elsif column && [:integer, :float].include?(column.type)
           value = column.type == :integer ? value.to_i : value.to_f
           value.to_s

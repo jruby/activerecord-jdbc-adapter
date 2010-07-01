@@ -1,6 +1,6 @@
 require 'rails/railtie'
 
-module ::JdbcSpec
+module ::ArJdbc
   class Railtie < ::Rails::Railtie
     rake_tasks do
       load File.expand_path('../rake_tasks.rb', __FILE__)

@@ -4,7 +4,7 @@ module ::ActiveRecord
 
   private
     def write_lobs
-      if connection.is_a?(JdbcSpec::Informix)
+      if connection.is_a?(ArJdbc::Informix)
         self.class.columns.each do |c|
           if [:text, :binary].include? c.type
             value = self[c.name]
@@ -25,7 +25,7 @@ module ::ActiveRecord
   end
 end
 
-module ::JdbcSpec
+module ::ArJdbc
   module Informix
     def self.extended(base)
       @@db_major_version = base.select_one("SELECT dbinfo('version', 'major') version FROM systables WHERE tabid = 1")['version'].to_i
@@ -37,7 +37,7 @@ module ::JdbcSpec
 
     def self.column_selector
       [ /informix/i,
-        lambda { |cfg, column| column.extend(::JdbcSpec::Informix::Column) } ]
+        lambda { |cfg, column| column.extend(::ArJdbc::Informix::Column) } ]
     end
 
     module Column
@@ -135,4 +135,4 @@ module ::JdbcSpec
       execute(sql.gsub(/(!=|<>)\s*null/i, "IS NOT NULL").gsub(/=\s*null/i, "IS NULL"), name)
     end
   end # module Informix
-end # module ::JdbcSpec
+end # module ::ArJdbc
