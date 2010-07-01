@@ -21,6 +21,7 @@ module ::ArJdbc
         ActiveRecord::Base.after_save :after_save_with_oracle_lob
         @lob_callback_added = true
       end
+      require 'arjdbc/jdbc/quoted_primary_key'
       ActiveRecord::Base.extend ArJdbc::QuotedPrimaryKeyExtension
       mod.class.class_eval do
         alias_chained_method :insert, :query_dirty, :insert

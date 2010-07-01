@@ -1,5 +1,4 @@
 require 'arjdbc/jdbc/compatibility'
-require 'arjdbc/jdbc/quoted_primary_key'
 require 'arjdbc/jdbc/core_ext'
 require 'arjdbc/jdbc/java'
 require 'arjdbc/jdbc/type_converter'

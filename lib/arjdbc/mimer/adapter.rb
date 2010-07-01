@@ -1,6 +1,7 @@
 module ArJdbc
   module Mimer
     def self.extended(mod)
+      require 'arjdbc/jdbc/quoted_primary_key'
       ActiveRecord::Base.extend ArJdbc::QuotedPrimaryKeyExtension
     end
 
