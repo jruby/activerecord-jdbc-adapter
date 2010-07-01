@@ -1,5 +1,5 @@
 MANIFEST = FileList["History.txt", "Manifest.txt", "README.txt",
-  "Rakefile", "LICENSE.txt", "lib/**/*.rb", "lib/jdbc_adapter/jdbc_adapter_internal.jar", "test/**/*.rb",
+  "Rakefile", "LICENSE.txt", "lib/**/*.rb", "lib/arjdbc/jdbc/adapter_java.jar", "test/**/*.rb",
    "lib/**/*.rake", "src/**/*.java", "rakelib/*.rake", "rails_generators/**/*"]
 
 file "Manifest.txt" => :manifest
