@@ -1,6 +1,5 @@
 require 'active_record/version'
 require 'active_record/connection_adapters/abstract_adapter'
-require 'java'
 require 'arjdbc/jdbc/require_driver'
 require 'arjdbc/jdbc/connection_methods'
 
@@ -20,6 +19,5 @@ require 'arjdbc/postgresql'
 require 'arjdbc/sqlite3'
 require 'arjdbc/sybase'
 
-require 'arjdbc/jdbc/adapter_java'
 require 'arjdbc/jdbc/adapter'
 require 'bigdecimal'

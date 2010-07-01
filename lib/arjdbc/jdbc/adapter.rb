@@ -1,43 +1,10 @@
 require 'arjdbc/jdbc/compatibility'
 require 'arjdbc/jdbc/quoted_primary_key'
 require 'arjdbc/jdbc/core_ext'
+require 'arjdbc/jdbc/java'
 
 module ActiveRecord
   module ConnectionAdapters
-    module Java
-      Class = java.lang.Class
-      URL = java.net.URL
-      URLClassLoader = java.net.URLClassLoader
-    end
-
-    module Jdbc
-      Mutex = java.lang.Object.new
-      DriverManager = java.sql.DriverManager
-      Statement = java.sql.Statement
-      Types = java.sql.Types
-
-      # some symbolic constants for the benefit of the JDBC-based
-      # JdbcConnection#indexes method
-      module IndexMetaData
-        INDEX_NAME  = 6
-        NON_UNIQUE  = 4
-        TABLE_NAME  = 3
-        COLUMN_NAME = 9
-      end
-
-      module TableMetaData
-        TABLE_CAT   = 1
-        TABLE_SCHEM = 2
-        TABLE_NAME  = 3
-        TABLE_TYPE  = 4
-      end
-
-      module PrimaryKeyMetaData
-        COLUMN_NAME = 4
-      end
-
-    end
-
     # I want to use JDBC's DatabaseMetaData#getTypeInfo to choose the best native types to
     # use for ActiveRecord's Adapter#native_database_types in a database-independent way,
     # but apparently a database driver can return multiple types for a given
@@ -222,8 +189,6 @@ module ActiveRecord
         val
       end
     end
-
-    java_import "arjdbc.jdbc.JdbcConnectionFactory"
 
     class JdbcConnection
       attr_reader :adapter, :connection_factory
