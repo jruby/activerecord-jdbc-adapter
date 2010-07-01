@@ -1,11 +1,8 @@
 require 'arjdbc/jdbc/compatibility'
 require 'arjdbc/jdbc/quoted_primary_key'
+require 'arjdbc/jdbc/core_ext'
 
 module ActiveRecord
-  class JDBCError < ActiveRecordError
-    attr_accessor :errno, :sql_exception
-  end
-
   module ConnectionAdapters
     module Java
       Class = java.lang.Class
@@ -318,16 +315,6 @@ module ActiveRecord
     end
 
     class JdbcAdapter < AbstractAdapter
-      module ShadowCoreMethods
-        def alias_chained_method(meth, feature, target)
-          if instance_methods.include?("#{meth}_without_#{feature}")
-            alias_method "#{meth}_without_#{feature}".to_sym, target
-          else
-            alias_method meth, target if meth != target
-          end
-        end
-      end
-
       module CompatibilityMethods
         def self.needed?(base)
           !base.instance_methods.include?("quote_table_name")
