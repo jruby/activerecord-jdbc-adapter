@@ -1,1 +1,1 @@
-require 'arjdbc/jdbc'
+require 'arjdbc/informix'

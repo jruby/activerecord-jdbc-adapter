@@ -5,29 +5,6 @@ module ActiveRecord::ConnectionAdapters
 end
 
 module ::JdbcSpec
-  # Don't need to load native mysql adapter
-  $LOADED_FEATURES << "active_record/connection_adapters/mysql_adapter.rb"
-
-  module ActiveRecordExtensions
-    add_method_to_remove_from_ar_base(:mysql_connection)
-
-    def mysql_connection(config)
-      require "arjdbc/mysql"
-      config[:port] ||= 3306
-      url_options = "zeroDateTimeBehavior=convertToNull&jdbcCompliantTruncation=false&useUnicode=true&characterEncoding="
-      url_options << (config[:encoding] || 'utf8')
-      if config[:url]
-        config[:url] = config[:url]['?'] ? "#{config[:url]}&#{url_options}" : "#{config[:url]}?#{url_options}"
-      else
-        config[:url] = "jdbc:mysql://#{config[:host]}:#{config[:port]}/#{config[:database]}?#{url_options}"
-      end
-      config[:driver] ||= "com.mysql.jdbc.Driver"
-      connection = jdbc_connection(config)
-      ::JdbcSpec::MySQL.kill_cancel_timer(connection.raw_connection)
-      connection
-    end
-  end
-
   module MySQL
     def self.adapter_matcher(name, *)
       name =~ /mysql/i ? self : false

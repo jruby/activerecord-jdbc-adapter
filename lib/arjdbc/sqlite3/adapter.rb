@@ -5,36 +5,6 @@ module ActiveRecord::ConnectionAdapters
 end
 
 module ::JdbcSpec
-  # Don't need to load native sqlite3 adapter
-  $LOADED_FEATURES << "active_record/connection_adapters/sqlite3_adapter.rb"
-
-  module ActiveRecordExtensions
-    add_method_to_remove_from_ar_base(:sqlite3_connection)
-
-    def sqlite3_connection(config)
-      require "arjdbc/sqlite3"
-
-      parse_sqlite3_config!(config)
-
-      config[:url] ||= "jdbc:sqlite:#{config[:database]}"
-      config[:driver] ||= "org.sqlite.JDBC"
-      jdbc_connection(config)
-    end
-
-    def parse_sqlite3_config!(config)
-      config[:database] ||= config[:dbfile]
-
-      # Allow database path relative to RAILS_ROOT, but only if
-      # the database path is not the special path that tells
-      # Sqlite to build a database only in memory.
-      rails_root_defined = defined?(Rails.root) || Object.const_defined?(:RAILS_ROOT)
-      if rails_root_defined && ':memory:' != config[:database]
-        rails_root = defined?(Rails.root) ? Rails.root : RAILS_ROOT
-        config[:database] = File.expand_path(config[:database], rails_root)
-      end
-    end
-  end
-
   module SQLite3
     def self.extended(base)
       base.class.class_eval do

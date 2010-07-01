@@ -1,22 +1,7 @@
-require 'arjdbc/jdbc/tsql_helper'
+require 'arjdbc/mssql/tsql_helper'
 
 module ::JdbcSpec
-
-  module ActiveRecordExtensions
-
-    def mssql_connection(config)
-      require "arjdbc/mssql"
-      config[:host] ||= "localhost"
-      config[:port] ||= 1433
-      config[:url] ||= "jdbc:jtds:sqlserver://#{config[:host]}:#{config[:port]}/#{config[:database]}"
-      config[:driver] ||= "net.sourceforge.jtds.jdbc.Driver"
-      embedded_driver(config)
-    end
-
-  end
-
   module MsSQL
-
     include TSqlMethods
 
     def self.extended(mod)
@@ -467,8 +452,6 @@ module ::JdbcSpec
       primary_key = columns(table_name).detect { |column| column.primary || column.identity }
       primary_key ? primary_key.name : "id"
     end
-
   end
-
 end
 

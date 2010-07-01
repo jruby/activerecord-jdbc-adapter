@@ -20,7 +20,7 @@ module JdbcSpec
       tp[:date] = { :name => "TIMESTAMP" }
       tp
     end
-    
+
     def default_sequence_name(table, column) #:nodoc:
       "#{table}_seq"
     end
@@ -54,13 +54,13 @@ module JdbcSpec
         log(sql, name) { @connection.execute_insert sql,pk }
       else # Assume the sql contains a bind-variable for the id
         id_value = select_one("SELECT NEXT_VALUE OF #{sequence_name} AS val FROM MIMER.ONEROW")['val']
-        log(sql, name) { 
+        log(sql, name) {
           execute_prepared_insert(sql,id_value)
         }
       end
       id_value
     end
-    
+
     def execute_prepared_insert(sql, id)
       @stmts ||= {}
       @stmts[sql] ||= @connection.ps(sql)
@@ -72,24 +72,24 @@ module JdbcSpec
 
     def quote(value, column = nil) #:nodoc:
       return value.quoted_id if value.respond_to?(:quoted_id)
-      
+
       if String === value && column && column.type == :binary
         return "X'#{quote_string(value.unpack("C*").collect {|v| v.to_s(16)}.join)}'"
       end
       case value
-      when String     
+      when String
         %Q{'#{quote_string(value)}'}
-      when NilClass   
+      when NilClass
         'NULL'
-      when TrueClass  
+      when TrueClass
         '1'
-      when FalseClass 
+      when FalseClass
         '0'
-      when Numeric    
+      when Numeric
         value.to_s
-      when Date, Time 
+      when Date, Time
         %Q{TIMESTAMP '#{value.strftime("%Y-%m-%d %H:%M:%S")}'}
-      else              
+      else
         %Q{'#{quote_string(value.to_yaml)}'}
       end
     end
@@ -106,7 +106,7 @@ module JdbcSpec
       @limit = options[:limit]
       @offset = options[:offset]
     end
-    
+
     def select_all(sql, name = nil)
       @offset ||= 0
       if !@limit || @limit == -1
@@ -118,7 +118,7 @@ module JdbcSpec
     ensure
       @limit = @offset = nil
     end
-    
+
     def select_one(sql, name = nil)
       @offset ||= 0
       select(sql, name)[@offset]

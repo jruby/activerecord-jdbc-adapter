@@ -26,15 +26,6 @@ module ::ActiveRecord
 end
 
 module ::JdbcSpec
-  module ActiveRecordExtensions
-    def informix_connection(config)
-      config[:port] ||= 9088
-      config[:url] ||= "jdbc:informix-sqli://#{config[:host]}:#{config[:port]}/#{config[:database]}:INFORMIXSERVER=#{config[:servername]}"
-      config[:driver] = 'com.informix.jdbc.IfxDriver'
-      jdbc_connection(config)
-    end
-  end
-
   module Informix
     def self.extended(base)
       @@db_major_version = base.select_one("SELECT dbinfo('version', 'major') version FROM systables WHERE tabid = 1")['version'].to_i
@@ -123,12 +114,12 @@ module ::JdbcSpec
       super(name, options)
       execute("CREATE SEQUENCE #{name}_seq")
     end
- 
+
     def rename_table(name, new_name)
       execute("RENAME TABLE #{name} TO #{new_name}")
       execute("RENAME SEQUENCE #{name}_seq TO #{new_name}_seq")
     end
- 
+
     def drop_table(name)
       super(name)
       execute("DROP SEQUENCE #{name}_seq")

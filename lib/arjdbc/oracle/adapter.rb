@@ -3,15 +3,6 @@ module ActiveRecord::ConnectionAdapters
 end
 
 module ::JdbcSpec
-  module ActiveRecordExtensions
-    def oracle_connection(config)
-      config[:port] ||= 1521
-      config[:url] ||= "jdbc:oracle:thin:@#{config[:host]}:#{config[:port]}:#{config[:database]}"
-      config[:driver] ||= "oracle.jdbc.driver.OracleDriver"
-      jdbc_connection(config)
-    end
-  end
-
   module Oracle
     def self.extended(mod)
       unless @lob_callback_added
