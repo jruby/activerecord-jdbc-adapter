@@ -4,37 +4,10 @@ require 'arjdbc/jdbc/core_ext'
 require 'arjdbc/jdbc/java'
 require 'arjdbc/jdbc/type_converter'
 require 'arjdbc/jdbc/driver'
+require 'arjdbc/jdbc/column'
 
 module ActiveRecord
   module ConnectionAdapters
-    class JdbcColumn < Column
-      attr_writer :limit, :precision
-
-      COLUMN_TYPES = ::ArJdbc.constants.map{|c|
-        ::ArJdbc.const_get c }.select{ |c|
-        c.respond_to? :column_selector }.map{|c|
-        c.column_selector }.inject({}) { |h,val|
-        h[val[0]] = val[1]; h }
-
-      def initialize(config, name, default, *args)
-        dialect = config[:dialect] || config[:driver]
-        for reg, func in COLUMN_TYPES
-          if reg === dialect.to_s
-            func.call(config,self)
-          end
-        end
-        super(name,default_value(default),*args)
-        init_column(name, default, *args)
-      end
-
-      def init_column(*args)
-      end
-
-      def default_value(val)
-        val
-      end
-    end
-
     class JdbcConnection
       attr_reader :adapter, :connection_factory
 
