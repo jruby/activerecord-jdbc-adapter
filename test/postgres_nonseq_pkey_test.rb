@@ -1,5 +1,3 @@
-require 'rubygems'
-require 'active_record'
 require 'jdbc_common'
 require 'db/postgres'
 
