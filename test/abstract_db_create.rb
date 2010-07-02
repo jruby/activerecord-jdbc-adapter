@@ -9,6 +9,9 @@ module Rails
       @config ||= Object.new
     end
   end
+  def self.application
+    Rails::Application
+  end
 end
 
 module AbstractDbCreate
