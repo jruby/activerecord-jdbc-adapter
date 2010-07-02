@@ -443,8 +443,7 @@ module ::ArJdbc
 
     def determine_order_clause(sql)
       return $1 if sql =~ /ORDER BY (.*)$/
-      sql =~ /FROM +(\w+?)\b/ || raise("can't determine table name")
-      table_name = $1
+      table_name = get_table_name(sql)
       "#{table_name}.#{determine_primary_key(table_name)}"
     end
 
