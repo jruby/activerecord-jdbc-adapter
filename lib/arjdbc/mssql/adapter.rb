@@ -450,7 +450,7 @@ module ::ArJdbc
 
     def determine_primary_key(table_name)
       primary_key = columns(table_name).detect { |column| column.primary || column.identity }
-      return primary_key if primary_key
+      return primary_key.name if primary_key
       # Look for an id column.  Return it, without changing case, to cover dbs with a case-sensitive collation.
       columns(table_name).each { |column| return column.name if column.name =~ /^id$/i }
       # Give up and provide something which is going to crash almost certainly
