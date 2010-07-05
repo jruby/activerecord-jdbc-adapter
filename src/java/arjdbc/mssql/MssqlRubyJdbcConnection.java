@@ -60,15 +60,33 @@ public class MssqlRubyJdbcConnection extends RubyJdbcConnection {
         }
     };
 
+    protected static IRubyObject booleanToRuby(Ruby runtime, ResultSet resultSet, boolean booleanValue)
+            throws SQLException {
+        if (booleanValue == false && resultSet.wasNull()) return runtime.getNil();
+        return runtime.newBoolean(booleanValue);
+    }
+
     /**
      * Treat LONGVARCHAR as CLOB on Mssql for purposes of converting a JDBC value to Ruby.
+     * Treat BOOLEAN/BIT as Boolean, rather than the default behaviour of conversion to string
      */
     @Override
     protected IRubyObject jdbcToRuby(Ruby runtime, int column, int type, ResultSet resultSet)
             throws SQLException {
+        if ( Types.BOOLEAN == type || Types.BIT == type ) {
+          return booleanToRuby(runtime, resultSet, resultSet.getBoolean(column));
+        }
         if (type == Types.LONGVARCHAR) {
             type = Types.CLOB;
         }
         return super.jdbcToRuby(runtime, column, type, resultSet);
+    }
+
+    /**
+     * Microsoft SQL 2000+ support schemas
+     */
+    protected boolean databaseSupportsSchemas()
+    {
+        return true;
     }
 }

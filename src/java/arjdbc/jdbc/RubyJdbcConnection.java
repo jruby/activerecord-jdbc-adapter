@@ -139,7 +139,7 @@ public class RubyJdbcConnection extends RubyObject {
                     table_name = caseConvertIdentifierForJdbc(metadata, table_name);
 
                     String catalog = c.getCatalog();
-                    if (schemaName != null && !isDB2) { catalog = schemaName; }
+                    if (schemaName != null && !databaseSupportsSchemas()) { catalog = schemaName; }
 
                     String[] tableTypes = new String[]{"TABLE","VIEW","SYNONYM"};
                     RubyArray matchingTables = (RubyArray) tableLookupBlock(context.getRuntime(),
@@ -1192,6 +1192,15 @@ public class RubyJdbcConnection extends RubyObject {
 
     private IRubyObject wrappedConnection(Connection c) {
         return Java.java_to_ruby(this, JavaObject.wrap(getRuntime(), c), Block.NULL_BLOCK);
+    }
+
+    /**
+     * Some databases support schemas and others do not.
+     * For ones which do this method should return true, aiding in decisions regarding schema vs database determination.
+     */
+    protected boolean databaseSupportsSchemas()
+    {
+        return false;
     }
 
     private static int whitespace(int start, ByteList bl) {
