@@ -94,7 +94,6 @@ module ::ArJdbc
         when :binary    then unquote value
         else value
         end
-
       end
 
       def is_utf8?
@@ -108,10 +107,14 @@ module ::ArJdbc
       def cast_to_time(value)
         return value if value.is_a?(Time)
         time_array = ParseDate.parsedate(value)
+        return nil if !time_array.any?
         time_array[0] ||= 2000
         time_array[1] ||= 1
         time_array[2] ||= 1
-        Time.send(ActiveRecord::Base.default_timezone, *time_array) rescue nil
+        return Time.send(ActiveRecord::Base.default_timezone, *time_array) rescue nil
+
+        # Try DateTime instead - the date may be outside the time period support by Time.
+        DateTime.new(*time_array[0..5]) rescue nil
       end
 
       def cast_to_date(value)
@@ -127,8 +130,18 @@ module ::ArJdbc
             return Time.mktime(2000, 1, 1, value.hour, value.min, value.sec) rescue nil
           end
         end
+        if value.is_a?(DateTime)
+          begin
+            # Attempt to convert back to a Time, but it could fail for dates significantly in the past/future.
+            return Time.mktime(value.year, value.mon, value.day, value.hour, value.min, value.sec)
+          rescue ArgumentError
+            return value
+          end
+        end
+
         return cast_to_time(value) if value.is_a?(Date) or value.is_a?(String) rescue nil
-        value
+
+        return value.is_a?(Date) ? value : nil
       end
 
       # These methods will only allow the adapter to insert binary data with a length of 7K or less
