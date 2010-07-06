@@ -327,6 +327,14 @@ module ::ArJdbc
     end
 
     def columns(table_name, name = nil)
+      # It's possible for table_name to be an empty string, or nil, if something attempts to issue SQL
+      # which doesn't involve a table.  IE. "SELECT 1" or "SELECT * from someFunction()".
+      return [] if table_name.blank?
+      table_name = table_name.to_s if table_name.is_a?(Symbol)
+
+      # Remove []'s from around the table name, valid in a select statement, but not when matching metadata.
+      table_name = table_name.gsub(/[\[\]]/, '')
+
       return [] if table_name =~ /^information_schema\./i
       cc = super
       cc.each do |col|
