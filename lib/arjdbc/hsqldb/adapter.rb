@@ -1,11 +1,5 @@
 module ::ArJdbc
   module HSQLDB
-    def self.extended(mod)
-      mod.class.class_eval do
-        alias_chained_method :insert, :query_dirty, :insert
-      end
-    end
-
     def self.adapter_matcher(name, *)
       name =~ /hsqldb/i ? self : false
     end
