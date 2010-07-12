@@ -4,10 +4,6 @@ module ::ArJdbc
   module CacheDB
     include TSqlMethods
 
-    def self.adapter_matcher(name, *)
-     name =~ /cache/i ? self : false
-    end
-
     def self.column_selector
       [ /cache/i, lambda {  | cfg, col | col.extend( ::ArJdbc::CacheDB::Column ) } ]
     end

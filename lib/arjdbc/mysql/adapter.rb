@@ -6,10 +6,6 @@ end
 
 module ::ArJdbc
   module MySQL
-    def self.adapter_matcher(name, *)
-      name =~ /mysql/i ? self : false
-    end
-
     def self.column_selector
       [/mysql/i, lambda {|cfg,col| col.extend(::ArJdbc::MySQL::Column)}]
     end

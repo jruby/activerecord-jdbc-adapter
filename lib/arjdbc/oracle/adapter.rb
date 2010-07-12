@@ -29,10 +29,6 @@ module ::ArJdbc
       end
     end
 
-    def self.adapter_matcher(name, *)
-      name =~ /oracle/i ? self : false
-    end
-
     def self.column_selector
       [/oracle/i, lambda {|cfg,col| col.extend(::ArJdbc::Oracle::Column)}]
     end

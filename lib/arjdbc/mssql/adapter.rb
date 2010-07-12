@@ -24,10 +24,6 @@ module ::ArJdbc
       mod.add_version_specific_add_limit_offset
     end
 
-    def self.adapter_matcher(name, *)
-      name =~ /sqlserver|tds/i ? self : false
-    end
-
     def self.column_selector
       [/sqlserver|tds/i, lambda {|cfg,col| col.extend(::ArJdbc::MsSQL::Column)}]
     end

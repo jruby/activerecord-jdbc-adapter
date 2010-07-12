@@ -2,10 +2,6 @@ require 'arjdbc/jdbc/missing_functionality_helper'
 
 module ::ArJdbc
   module Derby
-    def self.adapter_matcher(name, *)
-      name =~ /derby/i ? self : false
-    end
-
     def self.column_selector
       [/derby/i, lambda {|cfg,col| col.extend(::ArJdbc::Derby::Column)}]
     end
@@ -207,7 +203,7 @@ module ::ArJdbc
       end
     end
 
-    def _execute(sql, name = nil)
+    def execute(sql, name = nil)
       if sql =~ /^\s*(UPDATE|INSERT)/i
         i = sql =~ /\swhere\s/im
         if i
@@ -218,7 +214,6 @@ module ::ArJdbc
       end
       super
     end
-
 
     # I don't think this method is ever called ??? (stepheneb)
     def create_column(name, refid, colno)

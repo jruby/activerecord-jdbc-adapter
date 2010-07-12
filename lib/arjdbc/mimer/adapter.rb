@@ -5,10 +5,6 @@ module ArJdbc
       ActiveRecord::Base.extend ArJdbc::QuotedPrimaryKeyExtension
     end
 
-    def self.adapter_matcher(name, *)
-      name =~ /mimer/i ? self : false
-    end
-
     def modify_types(tp)
       tp[:primary_key] = "INTEGER NOT NULL PRIMARY KEY"
       tp[:boolean][:limit] = nil

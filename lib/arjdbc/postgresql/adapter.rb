@@ -10,10 +10,6 @@ module ::ArJdbc
       end
     end
 
-    def self.adapter_matcher(name, *)
-      name =~ /postgre/i ? self : false
-    end
-
     def self.column_selector
       [/postgre/i, lambda {|cfg,col| col.extend(::ArJdbc::PostgreSQL::Column)}]
     end

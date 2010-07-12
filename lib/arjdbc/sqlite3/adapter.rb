@@ -12,10 +12,6 @@ module ::ArJdbc
       end
     end
 
-    def self.adapter_matcher(name, *)
-      name =~ /sqlite/i ? self : false
-    end
-
     def self.column_selector
       [/sqlite/i, lambda {|cfg,col| col.extend(::ArJdbc::SQLite3::Column)}]
     end

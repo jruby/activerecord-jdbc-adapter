@@ -1,21 +1,5 @@
 module ArJdbc
   module DB2
-    def self.adapter_matcher(name, config)
-      if name =~ /db2/i
-         return config[:url] =~ /^jdbc:derby:net:/ ? ::ArJdbc::Derby : self
-      end
-      false
-    end
-
-    def self.adapter_selector
-      [/db2/i, lambda {|cfg,adapt|
-         if cfg[:url] =~ /^jdbc:derby:net:/
-           adapt.extend(::ArJdbc::Derby)
-         else
-           adapt.extend(::ArJdbc::DB2)
-         end }]
-    end
-
     def self.extended(obj)
       # Ignore these 4 system tables
       ActiveRecord::SchemaDumper.ignore_tables |= %w{hmon_atm_info hmon_collection policy stmg_dbsize_info}

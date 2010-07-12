@@ -1,9 +1,5 @@
 module ::ArJdbc
   module FireBird
-    def self.adapter_matcher(name, *)
-      name =~ /firebird/i ? self : false
-    end
-
     def modify_types(tp)
       tp[:primary_key] = 'INTEGER NOT NULL PRIMARY KEY'
       tp[:string][:limit] = 252

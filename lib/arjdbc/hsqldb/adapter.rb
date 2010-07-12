@@ -1,9 +1,5 @@
 module ::ArJdbc
   module HSQLDB
-    def self.adapter_matcher(name, *)
-      name =~ /hsqldb/i ? self : false
-    end
-
     def self.column_selector
       [/hsqldb|\.h2\./i, lambda {|cfg,col| col.extend(::ArJdbc::HSQLDB::Column)}]
     end
