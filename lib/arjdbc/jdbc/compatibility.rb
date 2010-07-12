@@ -49,3 +49,6 @@ module ActiveRecord
     end
   end
 end
+
+# Compatibility with older versions of ar-jdbc for other extensions out there
+JdbcSpec = ArJdbc
