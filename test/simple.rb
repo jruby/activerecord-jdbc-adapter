@@ -62,7 +62,7 @@ module SimpleTestMethods
       value = ActiveRecord::Base.connection.insert("INSERT INTO entries (title, content, rating) VALUES('insert_title', 'some content', 1)")
       assert !value.nil?
       entry = Entry.find_by_title('insert_title')
-      assert_equal value, entry.id
+      assert_equal entry.id, value
     end
   end
 
