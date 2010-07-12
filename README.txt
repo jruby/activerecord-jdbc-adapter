@@ -100,11 +100,11 @@ To use activerecord-jdbc-adapter with JRuby on Rails:
       driver: com.mysql.jdbc.Driver
       url: jdbc:mysql://localhost:3306/weblog_development
 
-   For JNDI data sources, you may simply specify the database type
-   using the adapter key and the JNDI location as follows:
+   For JNDI data sources, you may simply specify the JNDI location as follows
+   (the adapter will be automatically detected):
 
     production:
-      adapter: mysql
+      adapter: jdbc
       jndi: jdbc/mysqldb
 
 === Standalone, with ActiveRecord
