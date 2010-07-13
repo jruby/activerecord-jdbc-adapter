@@ -1,114 +1,96 @@
-# Built-in vendor adapters
 module ::ArJdbc
   # Adapters built-in to AR are required up-front so we can override
   # the native ones
   require 'arjdbc/mysql'
-  module MySQL
-    def self.adapter_matcher(name, *)
-      name =~ /mysql/i ? self : false
-    end
+  extension :MySQL do |name|
+    name =~ /mysql/i
   end
 
   require 'arjdbc/postgresql'
-  module PostgreSQL
-    def self.adapter_matcher(name, *)
-      name =~ /postgre/i ? self : false
-    end
+  extension :PostgreSQL do |name|
+    name =~ /postgre/i
   end
 
   require 'arjdbc/sqlite3'
-  module SQLite3
-    def self.adapter_matcher(name, *)
-      name =~ /sqlite/i ? self : false
-    end
+  extension :SQLite3 do |name|
+    name =~ /sqlite/i
   end
 
   # Other adapters are lazy-loaded
-  module CacheDB
-    def self.adapter_matcher(name, *)
-      return false unless name =~ /cache/i
+  extension :CacheDB do |name|
+    if name =~ /cache/i
       require 'arjdbc/cachedb'
-      self
+      true
     end
   end
 
-  module DB2
-    def self.adapter_matcher(name, config)
-      return false unless name =~ /db2/i && config[:url] !~ /^jdbc:derby:net:/
+  extension :DB2 do |name, config|
+    if name =~ /db2/i && config[:url] !~ /^jdbc:derby:net:/
       require 'arjdbc/db2'
-      self
+      true
     end
   end
 
-  module Derby
-    def self.adapter_matcher(name, *)
-      return false unless name =~ /derby/i
+  extension :Derby do |name|
+    if name =~ /derby/i
       require 'arjdbc/derby'
-      self
+      true
     end
   end
 
-  module FireBird
-    def self.adapter_matcher(name, *)
-      return false unless name =~ /firebird/i
+  extension :FireBird do |name|
+    if name =~ /firebird/i
       require 'arjdbc/firebird'
-      self
+      true
     end
   end
 
-  module H2
-    def self.adapter_matcher(name, *)
-      return false unless name =~ /\.h2\./i
+  extension :H2 do |name|
+    if name =~ /\.h2\./i
       require 'arjdbc/h2'
-      self
+      true
     end
   end
 
-  module HSQLDB
-    def self.adapter_matcher(name, *)
-      return false unless name =~ /hsqldb/i
+  extension :HSQLDB do |name|
+    if name =~ /hsqldb/i
       require 'arjdbc/hsqldb'
-      self
+      true
     end
   end
 
-  module Informix
-    def self.adapter_matcher(name, *)
-      return false unless name =~ /informix/i
+  extension :Informix do |name|
+    if name =~ /informix/i
       require 'arjdbc/informix'
-      self
+      true
     end
   end
 
-  module Mimer
-    def self.adapter_matcher(name, *)
-      return false unless name =~ /mimer/i
+  extension :Mimer do |name|
+    if name =~ /mimer/i
       require 'arjdbc/mimer'
-      self
+      true
     end
   end
 
-  module MsSQL
-    def self.adapter_matcher(name, *)
-      return false unless name =~ /sqlserver|tds/i
+  extension :MsSQL do |name|
+    if name =~ /sqlserver|tds/i
       require 'arjdbc/mssql'
-      self
+      true
     end
   end
 
-  module Oracle
-    def self.adapter_matcher(name, *)
-      return false unless name =~ /oracle/i
+  extension :Oracle do |name|
+    if name =~ /oracle/i
       require 'arjdbc/oracle'
-      self
+      true
     end
   end
 
-  module Sybase
-    def self.adapter_matcher(name, *)
-      return false unless name =~ /sybase|tds/i
+  extension :Sybase do |name|
+    if name =~ /sybase|tds/i
       require 'arjdbc/sybase'
-      self
+      true
     end
   end
 end
