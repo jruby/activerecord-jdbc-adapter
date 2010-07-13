@@ -1,3 +1,6 @@
+# arjdbc/discover.rb: Declare ArJdbc.extension modules in this file
+# that loads a custom module and adapter.
+
 module ::ArJdbc
   # Adapters built-in to AR are required up-front so we can override
   # the native ones
