@@ -1,9 +1,5 @@
 require 'active_record/connection_adapters/abstract/schema_definitions'
 
-module ActiveRecord::ConnectionAdapters
-  MysqlAdapter = Class.new(AbstractAdapter) unless const_defined?(:MysqlAdapter)
-end
-
 module ::ArJdbc
   module MySQL
     def self.column_selector
@@ -248,6 +244,16 @@ module ::ArJdbc
 
     def supports_views?
       false
+    end
+  end
+end
+
+module ActiveRecord::ConnectionAdapters
+  class MysqlAdapter < JdbcAdapter
+    include ArJdbc::MySQL
+
+    def adapter_spec(config)
+      # return nil to avoid extending ArJdbc::MySQL, which we've already done
     end
   end
 end

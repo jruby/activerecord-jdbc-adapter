@@ -14,6 +14,7 @@ class ActiveRecord::Base
         config[:url] = "jdbc:mysql://#{config[:host]}:#{config[:port]}/#{config[:database]}?#{url_options}"
       end
       config[:driver] ||= "com.mysql.jdbc.Driver"
+      config[:adapter_class] = ActiveRecord::ConnectionAdapters::MysqlAdapter
       connection = jdbc_connection(config)
       ::ArJdbc::MySQL.kill_cancel_timer(connection.raw_connection)
       connection
