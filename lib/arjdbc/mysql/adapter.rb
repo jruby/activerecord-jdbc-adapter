@@ -249,11 +249,22 @@ module ::ArJdbc
 end
 
 module ActiveRecord::ConnectionAdapters
+  class MysqlColumn < JdbcColumn
+    include ArJdbc::MySQL::Column
+
+    def call_discovered_column_callbacks(*)
+    end
+  end
+
   class MysqlAdapter < JdbcAdapter
     include ArJdbc::MySQL
 
     def adapter_spec(config)
       # return nil to avoid extending ArJdbc::MySQL, which we've already done
+    end
+
+    def jdbc_column_class
+      ActiveRecord::ConnectionAdapters::MysqlColumn
     end
   end
 end

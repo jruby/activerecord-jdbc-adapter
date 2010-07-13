@@ -709,6 +709,14 @@ public class RubyJdbcConnection extends RubyObject {
         return conn;
     }
 
+    protected IRubyObject getAdapter(ThreadContext context) {
+        return callMethod(context, "adapter");
+    }
+
+    protected IRubyObject getJdbcColumnClass(ThreadContext context) {
+        return getAdapter(context).callMethod(context, "jdbc_column_class");
+    }
+
     protected JdbcConnectionFactory getConnectionFactory() throws RaiseException {
         IRubyObject connection_factory = getInstanceVariable("@connection_factory");
         JdbcConnectionFactory factory = null;
@@ -1065,7 +1073,7 @@ public class RubyJdbcConnection extends RubyObject {
             boolean isOracle = clzName.indexOf("oracle") != -1 || clzName.indexOf("oci") != -1;
 
             RubyHash types = (RubyHash) native_database_types();
-            IRubyObject jdbcCol = getConnectionAdapters(runtime).getConstant("JdbcColumn");
+            IRubyObject jdbcCol = getJdbcColumnClass(context);
 
             while (pkeys.next()) {
                 pkeyNames.add(pkeys.getString(COLUMN_NAME));

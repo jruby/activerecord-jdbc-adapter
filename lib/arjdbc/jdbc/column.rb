@@ -4,12 +4,7 @@ module ActiveRecord
       attr_writer :limit, :precision
 
       def initialize(config, name, default, *args)
-        dialect = config[:dialect] || config[:driver]
-        for reg, func in JdbcColumn.column_types
-          if reg === dialect.to_s
-            func.call(config,self)
-          end
-        end
+        call_discovered_column_callbacks(config)
         super(name,default_value(default),*args)
         init_column(name, default, *args)
       end
@@ -27,6 +22,16 @@ module ActiveRecord
           c.respond_to? :column_selector }.map{|c|
           c.column_selector }.inject({}) { |h,val|
           h[val[0]] = val[1]; h }
+      end
+
+      protected
+      def call_discovered_column_callbacks(config)
+        dialect = config[:dialect] || config[:driver]
+        for reg, func in JdbcColumn.column_types
+          if reg === dialect.to_s
+            func.call(config,self)
+          end
+        end
       end
     end
   end

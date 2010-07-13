@@ -42,6 +42,10 @@ module ActiveRecord
         connection_class
       end
 
+      def jdbc_column_class
+        ActiveRecord::ConnectionAdapters::JdbcColumn
+      end
+
       # Locate specialized adapter specification if one exists based on config data
       def adapter_spec(config)
         dialect = (config[:dialect] || config[:driver]).to_s
