@@ -1,3 +1,8 @@
+require 'active_record/version'
+require 'active_record/connection_adapters/abstract_adapter'
+require 'arjdbc/version'
+require 'arjdbc/jdbc/require_driver'
+require 'arjdbc/jdbc/connection_methods'
 require 'arjdbc/jdbc/compatibility'
 require 'arjdbc/jdbc/core_ext'
 require 'arjdbc/jdbc/java'
@@ -6,6 +11,8 @@ require 'arjdbc/jdbc/driver'
 require 'arjdbc/jdbc/column'
 require 'arjdbc/jdbc/connection'
 require 'arjdbc/jdbc/callbacks'
+require 'arjdbc/jdbc/extension'
+require 'bigdecimal'
 
 module ActiveRecord
   module ConnectionAdapters
