@@ -211,30 +211,57 @@ module ::ArJdbc
       execute "RENAME TABLE #{quote_table_name(name)} TO #{quote_table_name(new_name)}"
     end
 
-    def change_column_default(table_name, column_name, default) #:nodoc:
-      current_type = select_one("SHOW COLUMNS FROM #{quote_table_name(table_name)} LIKE '#{column_name}'")["Type"]
+    def add_column(table_name, column_name, type, options = {})
+      add_column_sql = "ALTER TABLE #{quote_table_name(table_name)} ADD #{quote_column_name(column_name)} #{type_to_sql(type, options[:limit], options[:precision], options[:scale])}"
+      add_column_options!(add_column_sql, options)
+      add_column_position!(add_column_sql, options)
+      execute(add_column_sql)
+    end
 
-      execute("ALTER TABLE #{quote_table_name(table_name)} CHANGE #{quote_column_name(column_name)} #{quote_column_name(column_name)} #{current_type} DEFAULT #{quote(default)}")
+    def change_column_default(table_name, column_name, default) #:nodoc:
+      column = column_for(table_name, column_name)
+      change_column table_name, column_name, column.sql_type, :default => default
+    end
+
+    def change_column_null(table_name, column_name, null, default = nil)
+      column = column_for(table_name, column_name)
+
+      unless null || default.nil?
+        execute("UPDATE #{quote_table_name(table_name)} SET #{quote_column_name(column_name)}=#{quote(default)} WHERE #{quote_column_name(column_name)} IS NULL")
+      end
+
+      change_column table_name, column_name, column.sql_type, :null => null
     end
 
     def change_column(table_name, column_name, type, options = {}) #:nodoc:
+      column = column_for(table_name, column_name)
+
       unless options_include_default?(options)
-        if column = columns(table_name).find { |c| c.name == column_name.to_s }
-          options[:default] = column.default
-        else
-          raise "No such column: #{table_name}.#{column_name}"
-        end
+        options[:default] = column.default
+      end
+
+      unless options.has_key?(:null)
+        options[:null] = column.null
       end
 
       change_column_sql = "ALTER TABLE #{quote_table_name(table_name)} CHANGE #{quote_column_name(column_name)} #{quote_column_name(column_name)} #{type_to_sql(type, options[:limit], options[:precision], options[:scale])}"
       add_column_options!(change_column_sql, options)
+      add_column_position!(change_column_sql, options)
       execute(change_column_sql)
     end
 
     def rename_column(table_name, column_name, new_column_name) #:nodoc:
-      cols = select_one("SHOW COLUMNS FROM #{quote_table_name(table_name)} LIKE '#{column_name}'")
-      current_type = cols["Type"] || cols["COLUMN_TYPE"]
-      execute "ALTER TABLE #{quote_table_name(table_name)} CHANGE #{quote_table_name(column_name)} #{quote_column_name(new_column_name)} #{current_type}"
+      options = {}
+      if column = columns(table_name).find { |c| c.name == column_name.to_s }
+        options[:default] = column.default
+        options[:null] = column.null
+      else
+        raise ActiveRecord::ActiveRecordError, "No such column: #{table_name}.#{column_name}"
+      end
+      current_type = select_one("SHOW COLUMNS FROM #{quote_table_name(table_name)} LIKE '#{column_name}'")["Type"]
+      rename_column_sql = "ALTER TABLE #{quote_table_name(table_name)} CHANGE #{quote_column_name(column_name)} #{quote_column_name(new_column_name)} #{current_type}"
+      add_column_options!(rename_column_sql, options)
+      execute(rename_column_sql)
     end
 
     def add_limit_offset!(sql, options) #:nodoc:
@@ -276,6 +303,14 @@ module ::ArJdbc
       end
     end
 
+    def add_column_position!(sql, options)
+      if options[:first]
+        sql << " FIRST"
+      elsif options[:after]
+        sql << " AFTER #{quote_column_name(options[:after])}"
+      end
+    end
+
     protected
     def translate_exception(exception, message)
       return super unless exception.respond_to?(:errno)
@@ -291,6 +326,13 @@ module ::ArJdbc
     end
 
     private
+    def column_for(table_name, column_name)
+      unless column = columns(table_name).find { |c| c.name == column_name.to_s }
+        raise "No such column: #{table_name}.#{column_name}"
+      end
+      column
+    end
+
     def show_create_table(table)
       select_one("SHOW CREATE TABLE #{quote_table_name(table)}")
     end
