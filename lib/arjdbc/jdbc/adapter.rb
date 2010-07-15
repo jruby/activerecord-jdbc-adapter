@@ -131,10 +131,12 @@ module ActiveRecord
         @connection.disconnect!
       end
 
-      def jdbc_select_all(sql, name = nil)
-        select(sql, name)
+      if ActiveRecord::VERSION::MAJOR < 3
+        def jdbc_select_all(sql, name = nil)
+          select(sql, name)
+        end
+        alias_chained_method :select_all, :query_cache, :jdbc_select_all
       end
-      alias_chained_method :select_all, :query_cache, :jdbc_select_all
 
       def select_rows(sql, name = nil)
         rows = []
