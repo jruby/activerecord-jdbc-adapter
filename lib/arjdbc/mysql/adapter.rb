@@ -7,7 +7,11 @@ module ::ArJdbc
     end
 
     def self.extended(adapter)
-      adapter.execute("SET SQL_AUTO_IS_NULL=0")
+      adapter.configure_connection
+    end
+
+    def configure_connection
+      execute("SET SQL_AUTO_IS_NULL=0")
     end
 
     module Column
@@ -315,6 +319,11 @@ module ActiveRecord::ConnectionAdapters
 
   class MysqlAdapter < JdbcAdapter
     include ArJdbc::MySQL
+
+    def initialize(*args)
+      super
+      configure_connection
+    end
 
     def adapter_spec(config)
       # return nil to avoid extending ArJdbc::MySQL, which we've already done
