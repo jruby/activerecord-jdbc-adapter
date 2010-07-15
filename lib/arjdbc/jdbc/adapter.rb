@@ -122,6 +122,10 @@ module ActiveRecord
         return nil,nil
       end
 
+      def active?
+        @connection.active?
+      end
+
       def reconnect!
         @connection.reconnect!
         @connection

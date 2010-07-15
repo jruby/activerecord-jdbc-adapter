@@ -16,6 +16,7 @@ module ActiveRecord
         @config[:retry_count] ||= 5
         @config[:connection_alive_sql] ||= "select 1"
         @jndi_connection = false
+        @connection = nil
         if @config[:jndi]
           begin
             configure_jndi
@@ -55,6 +56,10 @@ module ActiveRecord
 
       def jndi_connection?
         @jndi_connection
+      end
+
+      def active?
+        @connection
       end
 
       private
