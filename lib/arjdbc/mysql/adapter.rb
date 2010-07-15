@@ -325,3 +325,9 @@ module ActiveRecord::ConnectionAdapters
     end
   end
 end
+
+module Mysql                    # :nodoc:
+  def self.client_version
+    50400                       # faked out for AR tests
+  end
+end
