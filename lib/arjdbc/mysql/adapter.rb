@@ -88,6 +88,10 @@ module ::ArJdbc
       'MySQL'
     end
 
+    def case_sensitive_equality_operator
+      "= BINARY"
+    end
+
     # QUOTING ==================================================
 
     def quote(value, column = nil)
