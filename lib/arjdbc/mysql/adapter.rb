@@ -11,7 +11,24 @@ module ::ArJdbc
     end
 
     module Column
-      TYPES_ALLOWING_EMPTY_STRING_DEFAULT = Set.new([:binary, :string, :text])
+      def extract_default(default)
+        if sql_type =~ /blob/i || type == :text
+          if default.blank?
+            return null ? nil : ''
+          else
+            raise ArgumentError, "#{type} columns cannot have a default value: #{default.inspect}"
+          end
+        elsif missing_default_forged_as_empty_string?(default)
+          nil
+        else
+          super
+        end
+      end
+
+      def has_default?
+        return false if sql_type =~ /blob/i || type == :text #mysql forbids defaults on blob and text columns
+        super
+      end
 
       def simplified_type(field_type)
         return :boolean if field_type =~ /tinyint\(1\)|bit/i
@@ -19,20 +36,15 @@ module ::ArJdbc
         super
       end
 
-      def init_column(name, default, *args)
-        @original_default = default
-        @default = nil if missing_default_forged_as_empty_string?
-      end
-
       # MySQL misreports NOT NULL column default when none is given.
       # We can't detect this for columns which may have a legitimate ''
-      # default (string, text, binary) but we can for others (integer,
-      # datetime, boolean, and the rest).
+      # default (string) but we can for others (integer, datetime, boolean,
+      # and the rest).
       #
       # Test whether the column has default '', is not null, and is not
       # a type allowing default ''.
-      def missing_default_forged_as_empty_string?
-        !null && @original_default == '' && !TYPES_ALLOWING_EMPTY_STRING_DEFAULT.include?(type)
+      def missing_default_forged_as_empty_string?(default)
+        type != :string && !null && default == ''
       end
     end
 
