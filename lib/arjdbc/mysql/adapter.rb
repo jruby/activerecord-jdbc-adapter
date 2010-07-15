@@ -36,6 +36,29 @@ module ::ArJdbc
         super
       end
 
+      def extract_limit(sql_type)
+        case sql_type
+        when /blob|text/i
+          case sql_type
+          when /tiny/i
+            255
+          when /medium/i
+            16777215
+          when /long/i
+            2147483647 # mysql only allows 2^31-1, not 2^32-1, somewhat inconsistently with the tiny/medium/normal cases
+          else
+            super # we could return 65535 here, but we leave it undecorated by default
+          end
+        when /^bigint/i;    8
+        when /^int/i;       4
+        when /^mediumint/i; 3
+        when /^smallint/i;  2
+        when /^tinyint/i;   1
+        else
+          super
+        end
+      end
+
       # MySQL misreports NOT NULL column default when none is given.
       # We can't detect this for columns which may have a legitimate ''
       # default (string) but we can for others (integer, datetime, boolean,
@@ -277,6 +300,14 @@ end
 module ActiveRecord::ConnectionAdapters
   class MysqlColumn < JdbcColumn
     include ArJdbc::MySQL::Column
+
+    def initialize(name, *args)
+      if Hash === name
+        super
+      else
+        super(nil, name, *args)
+      end
+    end
 
     def call_discovered_column_callbacks(*)
     end
