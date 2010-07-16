@@ -140,6 +140,21 @@ module ActiveRecord
           select(sql, name)
         end
         alias_chained_method :select_all, :query_cache, :jdbc_select_all
+
+        def jdbc_update(sql, name = nil) #:nodoc:
+          execute(sql, name)
+        end
+        alias_chained_method :update, :query_dirty, :jdbc_update
+
+        def jdbc_insert(sql, name = nil, pk = nil, id_value = nil, sequence_name = nil)
+          id = execute(sql, name = nil)
+          id_value || id
+        end
+        alias_chained_method :insert, :query_dirty, :jdbc_insert
+
+        def select_one(sql, name = nil)
+          select(sql, name).first
+        end
       end
 
       def select_rows(sql, name = nil)
@@ -148,8 +163,9 @@ module ActiveRecord
         rows
       end
 
-      def select_one(sql, name = nil)
-        select(sql, name).first
+      def insert_sql(sql, name = nil, pk = nil, id_value = nil, sequence_name = nil)
+        id = execute(sql, name = nil)
+        id_value || id
       end
 
       def execute(sql, name = nil)
@@ -166,17 +182,6 @@ module ActiveRecord
       def _execute(sql, name = nil)
         @connection.execute(sql)
       end
-
-      def jdbc_update(sql, name = nil) #:nodoc:
-        execute(sql, name)
-      end
-      alias_chained_method :update, :query_dirty, :jdbc_update
-
-      def jdbc_insert(sql, name = nil, pk = nil, id_value = nil, sequence_name = nil)
-        id = execute(sql, name = nil)
-        id_value || id
-      end
-      alias_chained_method :insert, :query_dirty, :jdbc_insert
 
       def jdbc_columns(table_name, name = nil)
         @connection.columns(table_name.to_s)
