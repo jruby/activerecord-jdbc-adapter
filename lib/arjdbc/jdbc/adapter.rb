@@ -153,8 +153,10 @@ module ActiveRecord
       end
 
       def execute(sql, name = nil)
-        log(sql, name) do
-          _execute(sql,name)
+        if name == :skip_logging
+          _execute(sql)
+        else
+          log(sql, name) { _execute(sql) }
         end
       end
 
