@@ -21,6 +21,7 @@ class JndiConnectionPoolCallbacksTest < Test::Unit::TestCase
   end
 
   def test_should_call_hooks_on_checkout_and_checkin
+    @connection.stubs(:active?).returns(true)
     @connection.expects(:disconnect!)
     @adapter = ActiveRecord::ConnectionAdapters::JdbcAdapter.new @connection, @logger, @config
     Entry.connection_pool.instance_variable_set "@connections", [@adapter]
