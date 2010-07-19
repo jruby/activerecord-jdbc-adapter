@@ -160,7 +160,9 @@ module ::ArJdbc
       return value.quoted_id if value.respond_to?(:quoted_id)
 
       case value
-      when String, ActiveSupport::Multibyte::Chars
+      # SQL Server 2000 doesn't let you insert an integer into a NVARCHAR
+      # column, so we include Integer here.
+      when String, ActiveSupport::Multibyte::Chars, Integer
         value = value.to_s
         if column && column.type == :binary
           "'#{quote_string(ArJdbc::MsSQL::Column.string_to_binary(value))}'" # ' (for ruby-mode)
