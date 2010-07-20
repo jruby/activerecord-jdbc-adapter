@@ -28,7 +28,7 @@ module ::ArJdbc
   end
 
   extension :DB2 do |name, config|
-    if name =~ /db2/i && config[:url] !~ /^jdbc:derby:net:/
+    if name =~ /(db2|as400)/i && config[:url] !~ /^jdbc:derby:net:/
       require 'arjdbc/db2'
       true
     end
