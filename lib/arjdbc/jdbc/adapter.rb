@@ -135,23 +135,39 @@ module ActiveRecord
         @connection.disconnect!
       end
 
+      def execute(sql, name = nil)
+        if name == :skip_logging
+          _execute(sql)
+        else
+          log(sql, name) { _execute(sql) }
+        end
+      end
+
+      # we need to do it this way, to allow Rails stupid tests to always work
+      # even if we define a new execute method. Instead of mixing in a new
+      # execute, an _execute should be mixed in.
+      def _execute(sql, name = nil)
+        @connection.execute(sql)
+      end
+
+      def jdbc_insert(sql, name = nil, pk = nil, id_value = nil, sequence_name = nil)
+        insert_sql(sql, name, pk, id_value, sequence_name)
+      end
+
+      def jdbc_update(sql, name = nil) #:nodoc:
+        execute(sql, name)
+      end
+      def jdbc_select_all(sql, name = nil)
+        select(sql, name)
+      end
+
       if ActiveRecord::VERSION::MAJOR < 3
-        def jdbc_select_all(sql, name = nil)
-          select(sql, name)
-        end
+        # Allow query caching to work even when we override alias_method_chain'd methods
         alias_chained_method :select_all, :query_cache, :jdbc_select_all
-
-        def jdbc_update(sql, name = nil) #:nodoc:
-          execute(sql, name)
-        end
         alias_chained_method :update, :query_dirty, :jdbc_update
-
-        def jdbc_insert(sql, name = nil, pk = nil, id_value = nil, sequence_name = nil)
-          id = execute(sql, name = nil)
-          id_value || id
-        end
         alias_chained_method :insert, :query_dirty, :jdbc_insert
 
+        # Do we need this? Not in AR 3.
         def select_one(sql, name = nil)
           select(sql, name).first
         end
@@ -168,20 +184,6 @@ module ActiveRecord
         id_value || id
       end
 
-      def execute(sql, name = nil)
-        if name == :skip_logging
-          _execute(sql)
-        else
-          log(sql, name) { _execute(sql) }
-        end
-      end
-
-      # we need to do it this way, to allow Rails stupid tests to always work
-      # even if we define a new execute method. Instead of mixing in a new
-      # execute, an _execute should be mixed in.
-      def _execute(sql, name = nil)
-        @connection.execute(sql)
-      end
 
       def jdbc_columns(table_name, name = nil)
         @connection.columns(table_name.to_s)
