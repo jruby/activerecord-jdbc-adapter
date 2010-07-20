@@ -238,13 +238,6 @@ module ::ArJdbc
       Integer(select_value("SELECT last_insert_rowid()"))
     end
 
-    def add_limit_offset!(sql, options) #:nodoc:
-      if options[:limit]
-        sql << " LIMIT #{options[:limit]}"
-        sql << " OFFSET #{options[:offset]}" if options[:offset]
-      end
-    end
-
     def tables(name = nil) #:nodoc:
       sql = <<-SQL
         SELECT name
@@ -324,7 +317,7 @@ module ::ArJdbc
     def translate_exception(exception, message)
       case exception.message
       when /column(s)? .* (is|are) not unique/
-        RecordNotUnique.new(message, exception)
+        ActiveRecord::RecordNotUnique.new(message, exception)
       else
         super
       end
