@@ -1092,13 +1092,6 @@ public class RubyJdbcConnection extends RubyObject {
                         });
                 columns.add(column);
 
-                IRubyObject tp = (IRubyObject)types.fastARef(column.callMethod(context,"type"));
-                if (tp != null && !tp.isNil() && tp.callMethod(context, "[]", runtime.newSymbol("limit")).isNil()) {
-                    column.callMethod(context, "limit=", runtime.getNil());
-                    if(!column.callMethod(context, "type").equals(runtime.newSymbol("decimal"))) {
-                        column.callMethod(context, "precision=", runtime.getNil());
-                    }
-                }
                 if (pkeyNames.contains(colName)) {
                     column.callMethod(context, "primary=", runtime.getTrue());
                 }
