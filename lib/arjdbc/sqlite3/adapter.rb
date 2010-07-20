@@ -6,12 +6,6 @@ end
 
 module ::ArJdbc
   module SQLite3
-    def self.extended(base)
-      base.class.class_eval do
-        alias_chained_method :insert, :query_dirty, :insert
-      end
-    end
-
     def self.column_selector
       [/sqlite/i, lambda {|cfg,col| col.extend(::ArJdbc::SQLite3::Column)}]
     end
@@ -227,10 +221,8 @@ module ::ArJdbc
       execute "ALTER TABLE #{name} RENAME TO #{new_name}"
     end
 
-    def insert(sql, name = nil, pk = nil, id_value = nil, sequence_name = nil) #:nodoc:
-      log(sql,name) do
-        @connection.execute_update(sql)
-      end
+    def insert_sql(sql, name = nil, pk = nil, id_value = nil, sequence_name = nil) #:nodoc:
+      @connection.execute_update(sql)
       id_value || last_insert_id
     end
 
@@ -325,26 +317,72 @@ module ::ArJdbc
   end
 end
 
-module ActiveRecord
-  module ConnectionAdapters
-    class JdbcColumn < Column
-      def self.string_to_binary(value)
-        value.gsub(/\0|%/n) do |b|
-          case b
-            when "\0" then "%00"
-            when "\%"  then "%25"
-          end
-        end
-      end
+module ActiveRecord::ConnectionAdapters
+  class SQLiteColumn < JdbcColumn
+    include ArJdbc::SQLite3::Column
 
-      def self.binary_to_string(value)
-        value.gsub(/%00|%25/n) do |b|
-          case b
-            when "%00" then "\0"
-            when "%25" then "%"
-          end
+    def initialize(name, *args)
+      if Hash === name
+        super
+      else
+        super(nil, name, *args)
+      end
+    end
+
+    def call_discovered_column_callbacks(*)
+    end
+
+    def self.string_to_binary(value)
+      value.gsub(/\0|%/n) do |b|
+        case b
+        when "\0" then "%00"
+        when "\%"  then "%25"
         end
       end
+    end
+
+    def self.binary_to_string(value)
+      value.gsub(/%00|%25/n) do |b|
+        case b
+        when "%00" then "\0"
+        when "%25" then "%"
+        end
+      end
+    end
+
+    def self.cast_to_integer(value)
+      return nil if value =~ /NULL/ or value.to_s.empty? or value.nil?
+      return (value.to_i) ? value.to_i : (value ? 1 : 0)
+    end
+
+    def self.cast_to_date_or_time(value)
+      return value if value.is_a? Date
+      return nil if value.blank?
+      guess_date_or_time((value.is_a? Time) ? value : cast_to_time(value))
+    end
+
+    def self.cast_to_time(value)
+      return value if value.is_a? Time
+      time_array = ParseDate.parsedate value
+      time_array[0] ||= 2000; time_array[1] ||= 1; time_array[2] ||= 1;
+      Time.send(ActiveRecord::Base.default_timezone, *time_array) rescue nil
+    end
+
+    def self.guess_date_or_time(value)
+      (value.hour == 0 and value.min == 0 and value.sec == 0) ?
+      Date.new(value.year, value.month, value.day) : value
+    end
+  end
+
+  class SQLite3Adapter < JdbcAdapter
+    include ArJdbc::SQLite3
+
+    def adapter_spec(config)
+      # return nil to avoid extending ArJdbc::SQLite3, which we've already done
+    end
+
+    def jdbc_column_class
+      ActiveRecord::ConnectionAdapters::SQLiteColumn
     end
   end
 end
