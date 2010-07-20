@@ -51,7 +51,7 @@ module ::ArJdbc
           when /long/i
             2147483647 # mysql only allows 2^31-1, not 2^32-1, somewhat inconsistently with the tiny/medium/normal cases
           else
-            super # we could return 65535 here, but we leave it undecorated by default
+            nil # we could return 65535 here, but we leave it undecorated by default
           end
         when /^bigint/i;    8
         when /^int/i;       4
