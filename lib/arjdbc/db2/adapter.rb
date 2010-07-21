@@ -38,16 +38,17 @@ module ArJdbc
       end
     end
 
-    def insert(sql, name = nil, pk = nil, id_value = nil, sequence_name = nil)
-      id = super
-      unless id
-        table_name = sql.split(/\s/)[2]
-        result = select(ActiveRecord::Base.send(:sanitize_sql,
-            %[select IDENTITY_VAL_LOCAL() as last_insert_id from #{table_name}],
-            nil))
-        id = result.last['last_insert_id']
-      end
-      id
+    def _execute(sql, name = nil)
+      result = super
+      ActiveRecord::ConnectionAdapters::JdbcConnection::insert?(sql) ? last_insert_id(sql) : result
+    end
+
+    def last_insert_id(sql)
+      table_name = sql.split(/\s/)[2]
+      result = select(ActiveRecord::Base.send(:sanitize_sql,
+          %[select IDENTITY_VAL_LOCAL() as last_insert_id from #{table_name}],
+          nil))
+      result.last['last_insert_id']
     end
 
     def modify_types(tp)
