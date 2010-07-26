@@ -1,5 +1,12 @@
-== 0.9.8
+== 1.0.0
 
+- (1.0.0.beta1)
+- Make database-specific extensions only load when necessary
+- Allow for discovery of database extensions outside of ar-jdbc
+  proper. This should allow for custom database development to be
+  developed and released without relying on AR-JDBC core.
+- Get AR's own tests running as close to 100% as possible. MySQL is
+  currently 100%, SQLite3 is close.
 - JRUBY-4876: Bump up Derby's max index name length (Uwe Kubosch)
 
 == 0.9.7
