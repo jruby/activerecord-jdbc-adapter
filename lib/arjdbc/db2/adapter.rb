@@ -124,12 +124,7 @@ um <= #{sanitize_limit(limit) + offset}"
     end
 
     def recreate_database(name)
-      do_not_drop = ["stmg_dbsize_info","hmon_atm_info","hmon_collection","policy"]
-      tables.each do |table|
-        unless do_not_drop.include?(table)
-          drop_table(table)
-        end
-      end
+      tables.each {|table| drop_table("#{db2_schema}.#{table}")}
     end
 
     def remove_index(table_name, options = { })
@@ -154,6 +149,10 @@ um <= #{sanitize_limit(limit) + offset}"
     # http://publib.boulder.ibm.com/infocenter/db2luw/v9r7/topic/com.ibm.db2.luw.sql.ref.doc/doc/r0000980.html
     def rename_table(name, new_name) #:nodoc:
       execute "RENAME TABLE #{name} TO #{new_name}"
+    end
+
+    def tables
+      @connection.tables(nil, db2_schema, nil, ["TABLE"])
     end
 
     # This method makes tests pass without understanding why.
@@ -231,5 +230,20 @@ um <= #{sanitize_limit(limit) + offset}"
       end
     end
 
+    private
+    def db2_schema
+      if @config[:schema].blank?
+        if @config[:url] =~ /^jdbc:as400:/
+          # AS400 implementation takes schema from library name (last part of url)
+          schema = @config[:url].split('/').last.strip
+          (schema[-1..-1] == ";") ? schema.chop : schema
+        else
+          # LUW implementation uses schema name of username by default
+          @config[:username] or ENV['USER']
+        end
+      else
+        @config[:schema]
+      end
+    end
   end
 end
