@@ -23,7 +23,8 @@ module ArJdbc
         when :timestamp then ArJdbc::DB2::Column.cast_to_time(value)
         when :time      then ArJdbc::DB2::Column.cast_to_time(value)
         # TODO AS400 stores binary strings in EBCDIC (CCSID 65535), need to convert back to ASCII
-        else value
+        else
+          super
         end
       end
 
