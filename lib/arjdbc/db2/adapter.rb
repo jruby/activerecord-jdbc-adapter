@@ -5,6 +5,11 @@ module ArJdbc
       ActiveRecord::SchemaDumper.ignore_tables |= %w{hmon_atm_info hmon_collection policy stmg_dbsize_info}
     end
 
+    def self.column_selector
+      [ /(db2|as400)/i,
+        lambda { |cfg, column| column.extend(::ArJdbc::DB2::Column) } ]
+    end
+
     module Column
       def type_cast(value)
         return nil if value.nil? || value =~ /^\s*null\s*$/i
