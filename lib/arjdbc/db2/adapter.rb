@@ -59,10 +59,22 @@ module ArJdbc
       end
 
       private
+      # <b>DEPRECATED:</b> SMALLINT is now used for boolean field types. Please
+      # convert your tables using DECIMAL(5) for boolean values to SMALLINT instead.
+      def use_decimal5_for_boolean
+        warn "[DEPRECATION] using DECIMAL(5) for boolean is deprecated. Convert your columns to SMALLINT instead."
+        :boolean
+      end
+
       def simplified_type(field_type)
-        return :boolean if field_type =~ /smallint/i
-        return :float if field_type =~ /real/i
-        super
+        case field_type
+        # old jdbc_db2.rb used decimal(5,0) as boolean
+        when /^smallint/i           then :boolean
+        when /^decimal\(5\)$/i      then use_decimal5_for_boolean
+        when /^real/i               then :float
+        else
+          super
+        end
       end
 
       # Post process default value from JDBC into a Rails-friendly format (columns{-internal})
