@@ -18,26 +18,41 @@ module ArJdbc
         when :integer   then defined?(value.to_i) ? value.to_i : (value ? 1 : 0)
         when :primary_key then defined?(value.to_i) ? value.to_i : (value ? 1 : 0)
         when :float     then value.to_f
-        when :datetime  then cast_to_date_or_time(value)
-        when :timestamp then cast_to_time(value)
-        when :time      then cast_to_time(value)
+        when :datetime  then ArJdbc::DB2::Column.cast_to_date_or_time(value)
+        when :date      then ArJdbc::DB2::Column.cast_to_date_or_time(value)
+        when :timestamp then ArJdbc::DB2::Column.cast_to_time(value)
+        when :time      then ArJdbc::DB2::Column.cast_to_time(value)
+        # TODO AS400 stores binary strings in EBCDIC (CCSID 65535), need to convert back to ASCII
         else value
         end
       end
-      def cast_to_date_or_time(value)
+
+      def type_cast_code(var_name)
+        case type
+        when :datetime  then "ArJdbc::DB2::Column.cast_to_date_or_time(#{var_name})"
+        when :date      then "ArJdbc::DB2::Column.cast_to_date_or_time(#{var_name})"
+        when :timestamp then "ArJdbc::DB2::Column.cast_to_time(#{var_name})"
+        when :time      then "ArJdbc::DB2::Column.cast_to_time(#{var_name})"
+        else
+          super
+        end
+      end
+
+      def self.cast_to_date_or_time(value)
         return value if value.is_a? Date
         return nil if value.blank?
         guess_date_or_time((value.is_a? Time) ? value : cast_to_time(value))
       end
 
-      def cast_to_time(value)
+      def self.cast_to_time(value)
         return value if value.is_a? Time
-        time_array = ParseDate.parsedate value
+        # AS400 returns a 2 digit year, LUW returns a 4 digit year, so comp = true to help out AS400
+        time_array = ParseDate.parsedate(value, true)
         time_array[0] ||= 2000; time_array[1] ||= 1; time_array[2] ||= 1;
         Time.send(ActiveRecord::Base.default_timezone, *time_array) rescue nil
       end
 
-      def guess_date_or_time(value)
+      def self.guess_date_or_time(value)
         (value.hour == 0 and value.min == 0 and value.sec == 0) ?
         Date.new(value.year, value.month, value.day) : value
       end
