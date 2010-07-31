@@ -48,6 +48,17 @@ module ArJdbc
         return :float if field_type =~ /real/i
         super
       end
+
+      # Post process default value from JDBC into a Rails-friendly format (columns{-internal})
+      def default_value(value)
+        # IBM i (AS400) will return an empty string instead of null for no default
+        return nil if value.blank?
+
+        # string defaults are surrounded by single quotes
+        return $1 if value =~ /^'(.*)'$/
+
+        value
+      end
     end
 
     def _execute(sql, name = nil)
