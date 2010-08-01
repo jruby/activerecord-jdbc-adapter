@@ -273,6 +273,13 @@ um <= #{sanitize_limit(limit) + offset}"
       @connection.tables(nil, db2_schema, nil, ["TABLE"])
     end
 
+    # only record precision and scale for types that can set
+    # them via CREATE TABLE:
+    # http://publib.boulder.ibm.com/infocenter/db2luw/v9r7/topic/com.ibm.db2.luw.sql.ref.doc/doc/r0000927.html
+    HAVE_LIMIT = %w(FLOAT DECFLOAT CHAR VARCHAR CLOB BLOB NCHAR NCLOB DBCLOB GRAPHIC VARGRAPHIC) #TIMESTAMP
+    HAVE_PRECISION = %w(DECIMAL NUMERIC)
+    HAVE_SCALE = %w(DECIMAL NUMERIC)
+
     # This method makes tests pass without understanding why.
     # Don't use this in production.
     def columns(table_name, name = nil)
@@ -298,27 +305,39 @@ um <= #{sanitize_limit(limit) + offset}"
       name.gsub(/"/,'""')
     end
 
-
     def structure_dump #:nodoc:
       definition=""
-      rs = @connection.connection.meta_data.getTables(nil,nil,nil,["TABLE"].to_java(:string))
+      rs = @connection.connection.meta_data.getTables(nil,db2_schema.upcase,nil,["TABLE"].to_java(:string))
       while rs.next
         tname = rs.getString(3)
         definition << "CREATE TABLE #{tname} (\n"
-        rs2 = @connection.connection.meta_data.getColumns(nil,nil,tname,nil)
+        rs2 = @connection.connection.meta_data.getColumns(nil,db2_schema.upcase,tname,nil)
         first_col = true
         while rs2.next
           col_name = add_quotes(rs2.getString(4));
           default = ""
           d1 = rs2.getString(13)
-          default = d1 ? " DEFAULT #{d1}" : ""
+          # IBM i (as400 toolbox driver) will return an empty string if there is no default
+          if @config[:url] =~ /^jdbc:as400:/
+            default = !d1.blank? ? " DEFAULT #{d1}" : ""
+          else
+            default = d1 ? " DEFAULT #{d1}" : ""
+          end
 
           type = rs2.getString(6)
-          col_size = rs2.getString(7)
+          col_precision = rs2.getString(7)
+          col_scale = rs2.getString(9)
+          col_size = ""
+          if HAVE_SCALE.include?(type) and col_scale
+            col_size = "(#{col_precision},#{col_scale})"
+          elsif (HAVE_LIMIT + HAVE_PRECISION).include?(type) and col_precision
+            col_size = "(#{col_precision})"
+          end
           nulling = (rs2.getString(18) == 'NO' ? " NOT NULL" : "")
           create_col_string = add_quotes(expand_double_quotes(strip_quotes(col_name))) +
             " " +
             type +
+            col_size +
             "" +
             nulling +
             default
@@ -335,17 +354,6 @@ um <= #{sanitize_limit(limit) + offset}"
         definition << ");\n\n"
       end
       definition
-    end
-
-    def dump_schema_information
-      begin
-        if (current_schema = ActiveRecord::Migrator.current_version) > 0
-          #TODO: Find a way to get the DB2 instace name to properly form the statement
-          return "INSERT INTO DB2INST2.SCHEMA_INFO (version) VALUES (#{current_schema})"
-        end
-      rescue ActiveRecord::StatementInvalid
-        # No Schema Info
-      end
     end
 
     private
