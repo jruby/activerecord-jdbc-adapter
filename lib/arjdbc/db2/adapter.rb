@@ -178,6 +178,12 @@ um <= #{sanitize_limit(limit) + offset}"
       '0'
     end
 
+    def reorg_table(table_name)
+      unless @config[:url] =~ /as400/
+        @connection.execute_update "call sysproc.admin_cmd ('REORG TABLE #{table_name}')"
+      end
+    end
+
     def recreate_database(name)
       tables.each {|table| drop_table("#{db2_schema}.#{table}")}
     end
@@ -193,17 +199,20 @@ um <= #{sanitize_limit(limit) + offset}"
         raise NotImplementedError, "rename_column is not supported on IBM i"
       else
         execute "ALTER TABLE #{table_name} RENAME COLUMN #{column_name} TO #{new_column_name}"
+        reorg_table(table_name)
       end
     end
 
     # http://publib.boulder.ibm.com/infocenter/db2luw/v9r7/topic/com.ibm.db2.luw.admin.dbobj.doc/doc/t0020132.html
     def remove_column(table_name, column_name) #:nodoc:
       execute "ALTER TABLE #{table_name} DROP COLUMN #{column_name}"
+      reorg_table(table_name)
     end
 
     # http://publib.boulder.ibm.com/infocenter/db2luw/v9r7/topic/com.ibm.db2.luw.sql.ref.doc/doc/r0000980.html
     def rename_table(name, new_name) #:nodoc:
       execute "RENAME TABLE #{name} TO #{new_name}"
+      reorg_table(table_name)
     end
 
     def tables
