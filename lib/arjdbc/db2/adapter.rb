@@ -1,10 +1,5 @@
 module ArJdbc
   module DB2
-    def self.extended(obj)
-      # Ignore these 4 system tables
-      ActiveRecord::SchemaDumper.ignore_tables |= %w{hmon_atm_info hmon_collection policy stmg_dbsize_info}
-    end
-
     def self.column_selector
       [ /(db2|as400)/i,
         lambda { |cfg, column| column.extend(::ArJdbc::DB2::Column) } ]
@@ -66,12 +61,14 @@ module ArJdbc
         :boolean
       end
 
+      # http://publib.boulder.ibm.com/infocenter/db2luw/v9r7/topic/com.ibm.db2.luw.apdv.java.doc/doc/rjvjdata.html
       def simplified_type(field_type)
         case field_type
         # old jdbc_db2.rb used decimal(5,0) as boolean
         when /^smallint/i           then :boolean
         when /^decimal\(5\)$/i      then use_decimal5_for_boolean
         when /^real/i               then :float
+        when /^timestamp/i          then :datetime
         else
           super
         end
@@ -280,13 +277,26 @@ um <= #{sanitize_limit(limit) + offset}"
     HAVE_PRECISION = %w(DECIMAL NUMERIC)
     HAVE_SCALE = %w(DECIMAL NUMERIC)
 
-    # This method makes tests pass without understanding why.
-    # Don't use this in production.
     def columns(table_name, name = nil)
-      super.select do |col|
+      # FIXME: SYSCAT table columns appear to merge with application tables
+      # of same name. The "magic" columns here appear because Role
+      # (from has_many_through.rb) is also defined as SYSCAT.ROLES.
+      # See ACTIVERECORD_JDBC-119. Need to filter by schema.
+      cols = super.select do |col|
         # strip out "magic" columns from DB2 (?)
         !/rolename|roleid|create_time|auditpolicyname|auditpolicyid|remarks/.match(col.name)
       end
+
+      # scrub out sizing info when CREATE TABLE doesn't support it
+      # but JDBC reports it (doh!)
+      for col in cols
+        base_sql_type = col.sql_type.sub(/\(.*/, "").upcase
+        col.limit = nil unless HAVE_LIMIT.include?(base_sql_type)
+        col.precision = nil unless HAVE_PRECISION.include?(base_sql_type)
+        #col.scale = nil unless HAVE_SCALE.include?(base_sql_type)
+      end
+
+      cols
     end
 
     def add_quotes(name)

@@ -17,8 +17,8 @@ What's there, and what is not there:
 * PostgreSQL - Complete support
 * Oracle - Complete support
 * Microsoft SQL Server - Complete support
-* DB2 (LUW) - Complete, except for schema:dump
-* DB2 (IBM i: AS400 Toolbox driver) - Complete, except for binary, rename_column and schema:dump
+* DB2 (LUW) - Complete support
+* DB2 (IBM i: AS400 Toolbox driver) - Complete, except for binary and rename_column
 * DB2 (z/OS) - Unknown
 * FireBird - Complete, except for change_column_default and rename_column
 * Derby - Complete, except for:
