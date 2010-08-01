@@ -205,7 +205,21 @@ um <= #{sanitize_limit(limit) + offset}"
 
     # http://publib.boulder.ibm.com/infocenter/db2luw/v9r7/topic/com.ibm.db2.luw.admin.dbobj.doc/doc/t0020132.html
     def remove_column(table_name, column_name) #:nodoc:
-      execute "ALTER TABLE #{table_name} DROP COLUMN #{column_name}"
+      sql = "ALTER TABLE #{table_name} DROP COLUMN #{column_name}"
+
+      # holy moly batman! all this to tell AS400 "yes i really would like to drop the column"
+      if @config[:url] =~ /as400/
+        @connection.execute_update "call qsys.qcmdexc('QSYS/CHGJOB INQMSGRPY(*SYSRPYL)',0000000031.00000)"
+        begin
+          @connection.execute_update "call qsys.qcmdexc('ADDRPYLE SEQNBR(9876) MSGID(CPA32B2) RPY(''I'')',0000000045.00000)"
+          execute sql
+        ensure
+          @connection.execute_update "call qsys.qcmdexc('QSYS/CHGJOB INQMSGRPY(*DFT)',0000000027.00000)"
+          @connection.execute_update "call qsys.qcmdexc('RMVRPYLE SEQNBR(9876)',0000000021.00000) "
+        end
+      else
+        execute sql
+      end
       reorg_table(table_name)
     end
 
