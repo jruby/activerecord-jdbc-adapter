@@ -203,6 +203,46 @@ um <= #{sanitize_limit(limit) + offset}"
       end
     end
 
+    def change_column_null(table_name, column_name, null)
+      if null
+        execute "ALTER TABLE #{table_name} ALTER COLUMN #{column_name} DROP NOT NULL"
+      else
+        execute "ALTER TABLE #{table_name} ALTER COLUMN #{column_name} SET NOT NULL"
+      end
+      reorg_table(table_name)
+    end
+
+    def change_column_default(table_name, column_name, default)
+      if default.nil?
+        execute "ALTER TABLE #{table_name} ALTER COLUMN #{column_name} DROP DEFAULT"
+      else
+        execute "ALTER TABLE #{table_name} ALTER COLUMN #{column_name} SET WITH DEFAULT #{quote(default)}"
+      end
+      reorg_table(table_name)
+    end
+
+    def change_column(table_name, column_name, type, options = {})
+      data_type = type_to_sql(type, options[:limit], options[:precision], options[:scale])
+      execute "ALTER TABLE #{table_name} ALTER COLUMN #{column_name} SET DATA TYPE #{data_type}"
+
+      reorg_table(table_name)
+
+      if options.include?(:default) and options.include?(:null)
+        # which to run first?
+        if options[:null] or options[:default].nil?
+          change_column_null(table_name, column_name, options[:null])
+          change_column_default(table_name, column_name, options[:default])
+        else
+          change_column_default(table_name, column_name, options[:default])
+          change_column_null(table_name, column_name, options[:null])
+        end
+      elsif options.include?(:default)
+        change_column_default(table_name, column_name, options[:default])
+      elsif options.include?(:null)
+        change_column_null(table_name, column_name, options[:null])
+      end
+    end
+
     # http://publib.boulder.ibm.com/infocenter/db2luw/v9r7/topic/com.ibm.db2.luw.admin.dbobj.doc/doc/t0020132.html
     def remove_column(table_name, column_name) #:nodoc:
       sql = "ALTER TABLE #{table_name} DROP COLUMN #{column_name}"
