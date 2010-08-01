@@ -137,7 +137,7 @@ um <= #{sanitize_limit(limit) + offset}"
     def pk_and_sequence_for(table)
       # In JDBC/DB2 side, only upcase names of table and column are handled.
       keys = super(table.upcase)
-      if keys[0]
+      if keys && keys[0]
         # In ActiveRecord side, only downcase names of table and column are handled.
         keys[0] = keys[0].downcase
       end
