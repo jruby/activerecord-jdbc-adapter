@@ -179,7 +179,7 @@ um <= #{sanitize_limit(limit) + offset}"
     end
 
     def reorg_table(table_name)
-      unless @config[:url] =~ /as400/
+      unless as400?
         @connection.execute_update "call sysproc.admin_cmd ('REORG TABLE #{table_name}')"
       end
     end
@@ -195,7 +195,7 @@ um <= #{sanitize_limit(limit) + offset}"
     # http://publib.boulder.ibm.com/infocenter/db2luw/v9r7/topic/com.ibm.db2.luw.admin.dbobj.doc/doc/t0020130.html
     # ...not supported on IBM i, so we raise in this case
     def rename_column(table_name, column_name, new_column_name) #:nodoc:
-      if config[:url] =~ /as400/
+      if as400?
         raise NotImplementedError, "rename_column is not supported on IBM i"
       else
         execute "ALTER TABLE #{table_name} RENAME COLUMN #{column_name} TO #{new_column_name}"
@@ -248,7 +248,7 @@ um <= #{sanitize_limit(limit) + offset}"
       sql = "ALTER TABLE #{table_name} DROP COLUMN #{column_name}"
 
       # holy moly batman! all this to tell AS400 "yes i really would like to drop the column"
-      if @config[:url] =~ /as400/
+      if as400?
         @connection.execute_update "call qsys.qcmdexc('QSYS/CHGJOB INQMSGRPY(*SYSRPYL)',0000000031.00000)"
         begin
           @connection.execute_update "call qsys.qcmdexc('ADDRPYLE SEQNBR(9876) MSGID(CPA32B2) RPY(''I'')',0000000045.00000)"
@@ -349,9 +349,13 @@ um <= #{sanitize_limit(limit) + offset}"
     end
 
     private
+    def as400?
+        @config[:url] =~ /^jdbc:as400:/
+    end
+
     def db2_schema
       if @config[:schema].blank?
-        if @config[:url] =~ /^jdbc:as400:/
+        if as400?
           # AS400 implementation takes schema from library name (last part of url)
           schema = @config[:url].split('/').last.strip
           (schema[-1..-1] == ";") ? schema.chop : schema
