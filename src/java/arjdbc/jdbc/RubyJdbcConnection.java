@@ -130,6 +130,8 @@ public class RubyJdbcConnection extends RubyObject {
                     }
 
                     DatabaseMetaData metadata = c.getMetaData();
+                    String clzName = metadata.getClass().getName().toLowerCase();
+                    boolean isDB2 = clzName.indexOf("db2") != -1 || clzName.indexOf("as400") != -1;
 
                     if(args.length > 2 && schemaName == null) schemaName = toStringOrNull(args[2]);
 
@@ -137,7 +139,7 @@ public class RubyJdbcConnection extends RubyObject {
                     table_name = caseConvertIdentifierForJdbc(metadata, table_name);
 
                     String catalog = c.getCatalog();
-                    if (schemaName != null) { catalog = schemaName; }
+                    if (schemaName != null && !isDB2) { catalog = schemaName; }
 
                     String[] tableTypes = new String[]{"TABLE","VIEW","SYNONYM"};
                     RubyArray matchingTables = (RubyArray) tableLookupBlock(context.getRuntime(),

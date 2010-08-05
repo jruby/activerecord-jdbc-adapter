@@ -278,14 +278,7 @@ um <= #{sanitize_limit(limit) + offset}"
     HAVE_SCALE = %w(DECIMAL NUMERIC)
 
     def columns(table_name, name = nil)
-      # FIXME: SYSCAT table columns appear to merge with application tables
-      # of same name. The "magic" columns here appear because Role
-      # (from has_many_through.rb) is also defined as SYSCAT.ROLES.
-      # See ACTIVERECORD_JDBC-119. Need to filter by schema.
-      cols = super.select do |col|
-        # strip out "magic" columns from DB2 (?)
-        !/rolename|roleid|create_time|auditpolicyname|auditpolicyid|remarks/.match(col.name)
-      end
+      cols = @connection.columns(table_name, name, db2_schema)
 
       # scrub out sizing info when CREATE TABLE doesn't support it
       # but JDBC reports it (doh!)
