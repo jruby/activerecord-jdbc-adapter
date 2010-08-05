@@ -62,46 +62,25 @@ To use activerecord-jdbc-adapter with JRuby on Rails:
 2a. For Rails 3, if you're generating a new application, use the
     following command to generate your application:
 
-   jruby -S rails myapp -m http://jruby.org/rails3.rb
+   jruby -S rails new sweetapp -m http://jruby.org/rails3.rb
 
-2b. Otherwise, you'll need to run the "jdbc" generator to prepare your
-    Rails application for JDBC.
+2b. Otherwise, you'll need to perform some extra configuration steps
+    to prepare your Rails application for JDBC.
 
-   If you're using Rails 3, first you'll need to modify your Gemfile
+   If you're using Rails 3, you'll need to modify your Gemfile
    to use the activerecord-jdbc-adapter gem under JRuby. Change your
    Gemfile to look like the following (using sqlite3 as an example):
 
     if defined?(JRUBY_VERSION)
-      gem 'activerecord-jdbc-adapter', :require => false
-      gem 'jdbc-sqlite3, :require => false
+      gem 'activerecord-jdbc-adapter'
+      gem 'jdbc-sqlite3'
     else
-      gem sqlite3-ruby', :require => 'sqlite3'
+      gem 'sqlite3'
     end
 
-   Next, run the generator. With Rails 3:
-
-    jruby script/rails generate jdbc
-
-   With Rails 2:
+   If you're using Rails 2:
 
     jruby script/generate jdbc
-    
-   The initializer and rake task files generated are guarded such that
-   they won't be loaded if you still run your application under C Ruby.
-
-   Legacy: If you're using Rails prior to version 2.0, you'll need to
-   add one-time setup to your config/environment.rb file in your Rails
-   application. Add the following lines just before the
-   <code>Rails::Initializer</code>. (If you're using
-   activerecord-jdbc-adapter under the old gem name used in versions
-   0.5 and earlier (ActiveRecord-JDBC), replace
-   'activerecord-jdbc-adapter' with 'ActiveRecord-JDBC' below.)
-
-    if RUBY_PLATFORM =~ /java/
-      require 'rubygems'
-      gem 'activerecord-jdbc-adapter'
-      require 'jdbc_adapter'
-    end
 
 3. Configure your database.yml in the normal Rails style. 
 
@@ -144,15 +123,7 @@ To use activerecord-jdbc-adapter with JRuby on Rails:
 
     jruby -S gem install activerecord-jdbcderby-adapter
 
-2. If using ActiveRecord 2.0 (Rails 2.0) or greater, you can skip to the next
-   step. Otherwise, ensure the following code gets executed in your script:
-
-    require 'rubygems'
-    gem 'activerecord-jdbc-adapter'
-    require 'jdbc_adapter'
-    require 'active_record'
-
-3. After this you can establish a JDBC connection like this:
+2. After this you can establish a JDBC connection like this:
 
     ActiveRecord::Base.establish_connection(
       :adapter => 'jdbcderby',
