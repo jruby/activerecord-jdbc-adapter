@@ -292,6 +292,10 @@ um <= #{sanitize_limit(limit) + offset}"
       cols
     end
 
+    def indexes(table_name, name = nil)
+      @connection.indexes(table_name, name, db2_schema)
+    end
+
     def add_quotes(name)
       return name unless name
       %Q{"#{name}"}
