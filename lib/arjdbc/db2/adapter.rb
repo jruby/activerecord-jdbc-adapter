@@ -96,6 +96,18 @@ module ArJdbc
       end
     end
 
+    # holy moly batman! all this to tell AS400 "yes i am sure"
+    def execute_and_auto_confirm(sql)
+      @connection.execute_update "call qsys.qcmdexc('QSYS/CHGJOB INQMSGRPY(*SYSRPYL)',0000000031.00000)"
+      begin
+        @connection.execute_update "call qsys.qcmdexc('ADDRPYLE SEQNBR(9876) MSGID(CPA32B2) RPY(''I'')',0000000045.00000)"
+        execute sql
+      ensure
+        @connection.execute_update "call qsys.qcmdexc('QSYS/CHGJOB INQMSGRPY(*DFT)',0000000027.00000)"
+        @connection.execute_update "call qsys.qcmdexc('RMVRPYLE SEQNBR(9876)',0000000021.00000) "
+      end
+    end
+
     def last_insert_id(sql)
       table_name = sql.split(/\s/)[2]
       result = select(ActiveRecord::Base.send(:sanitize_sql,
@@ -220,8 +232,8 @@ um <= #{sanitize_limit(limit) + offset}"
 
     def change_column(table_name, column_name, type, options = {})
       data_type = type_to_sql(type, options[:limit], options[:precision], options[:scale])
-      execute "ALTER TABLE #{table_name} ALTER COLUMN #{column_name} SET DATA TYPE #{data_type}"
-
+      sql = "ALTER TABLE #{table_name} ALTER COLUMN #{column_name} SET DATA TYPE #{data_type}"
+      as400? ? execute_and_auto_confirm(sql) : execute(sql)
       reorg_table(table_name)
 
       if options.include?(:default) and options.include?(:null)
@@ -244,19 +256,7 @@ um <= #{sanitize_limit(limit) + offset}"
     def remove_column(table_name, column_name) #:nodoc:
       sql = "ALTER TABLE #{table_name} DROP COLUMN #{column_name}"
 
-      # holy moly batman! all this to tell AS400 "yes i really would like to drop the column"
-      if as400?
-        @connection.execute_update "call qsys.qcmdexc('QSYS/CHGJOB INQMSGRPY(*SYSRPYL)',0000000031.00000)"
-        begin
-          @connection.execute_update "call qsys.qcmdexc('ADDRPYLE SEQNBR(9876) MSGID(CPA32B2) RPY(''I'')',0000000045.00000)"
-          execute sql
-        ensure
-          @connection.execute_update "call qsys.qcmdexc('QSYS/CHGJOB INQMSGRPY(*DFT)',0000000027.00000)"
-          @connection.execute_update "call qsys.qcmdexc('RMVRPYLE SEQNBR(9876)',0000000021.00000) "
-        end
-      else
-        execute sql
-      end
+      as400? ? execute_and_auto_confirm(sql) : execute(sql)
       reorg_table(table_name)
     end
 
