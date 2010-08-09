@@ -352,7 +352,7 @@ module ::ArJdbc
     end
 
     def _execute(sql, name = nil)
-      if sql.lstrip =~ /^insert/i
+      if sql.lstrip =~ /\Ainsert/i
         if query_requires_identity_insert?(sql)
           table_name = get_table_name(sql)
           with_identity_insert_enabled(table_name) do
@@ -361,9 +361,9 @@ module ::ArJdbc
         else
           @connection.execute_insert(sql)
         end
-      elsif sql.lstrip =~ /^(create|exec)/i
+      elsif sql.lstrip =~ /\A(create|exec)/i
         @connection.execute_update(sql)
-      elsif sql.lstrip =~ /^\(?\s*(select|show)/i
+      elsif sql.lstrip =~ /\A\(?\s*(select|show)/i
         repair_special_columns(sql)
         @connection.execute_query(sql)
       else

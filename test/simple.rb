@@ -348,6 +348,15 @@ module SimpleTestMethods
     assert_nil AutoId.find(test.id).value
   end
 
+  # These should make no difference, but might due to the wacky regexp SQL rewriting we do.
+  def test_save_value_containing_sql
+    e = DbType.first
+    e.save
+
+    e.sample_string = e.sample_text = "\n\nselect from nothing where id = 'foo'"
+    e.save
+  end
+
   def test_invalid
     e = Entry.new(:title => @title, :content => @content, :rating => ' ')
     assert e.valid?
