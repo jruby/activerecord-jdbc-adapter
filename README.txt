@@ -70,7 +70,7 @@ To use activerecord-jdbc-adapter with JRuby on Rails:
       gem 'activerecord-jdbc-adapter'
       gem 'jdbc-sqlite3'
     else
-      gem 'sqlite3'
+      gem 'sqlite3-ruby', :require => 'sqlite3'
     end
 
    If you're using Rails 2:
