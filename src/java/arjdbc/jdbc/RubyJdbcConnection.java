@@ -217,7 +217,7 @@ public class RubyJdbcConnection extends RubyObject {
                 String query = rubyApi.convertToRubyString(sql).getUnicodeValue();
                 try {
                     stmt = c.createStatement();
-                    if (stmt.execute(query)) {
+                    if (stmt.execute(query, Statement.RETURN_GENERATED_KEYS)) {
                         return unmarshalResult(context, c.getMetaData(), stmt.getResultSet(), false);
                     } else {
                         IRubyObject key = context.getRuntime().getNil();
