@@ -1,5 +1,7 @@
 == 1.0.0
 
+- BIG set of DB2 updates (Thanks Nick Kreucher)
+- Deprecate jdbc_adapter/rake_tasks
 - (1.0.0.beta1)
 - Make database-specific extensions only load when necessary
 - Allow for discovery of database extensions outside of ar-jdbc
