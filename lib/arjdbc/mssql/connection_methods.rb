@@ -19,7 +19,11 @@ class ActiveRecord::Base
       url << ";appname=#{config[:appname]}" if config[:appname]
       config[:url] ||= url
 
-      embedded_driver(config)
+      if !config[:domain]
+        config[:username] ||= "sa"
+        config[:password] ||= ""
+      end
+      jdbc_connection(config)
     end
     alias_method :jdbcmssql_connection, :mssql_connection
   end
