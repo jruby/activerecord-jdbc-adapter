@@ -132,10 +132,12 @@ something's a bug, feel free to pre-report it on the mailing lists.
 
 == Running AR-JDBC's Tests
 
-Drivers for 6 open-source databases are included. Provided you have MySQL
-installed, you can simply type <tt>jruby -S rake</tt> to run the tests. A
-database named <tt>weblog_development</tt> is needed beforehand with a
-connection user of "blog" and an empty password.
+Drivers for 6 open-source databases are included. Provided you have
+MySQL installed, you can simply type <tt>jruby -S rake</tt> to run the
+tests. A database named <tt>weblog_development</tt> is needed
+beforehand with a connection user of "blog" and an empty password. You
+alse need to grant "blog" create privileges on
+'test_rake_db_create.*'.
 
 If you also have PostgreSQL available, those tests will be run if the
 `psql' executable can be found. Also ensure you have a database named
