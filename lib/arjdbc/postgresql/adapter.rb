@@ -313,7 +313,7 @@ module ::ArJdbc
     end
 
     def drop_database(name)
-      execute "DROP DATABASE \"#{name}\""
+      execute "DROP DATABASE IF EXISTS \"#{name}\""
     end
 
     def create_schema(schema_name, pg_username)
