@@ -20,7 +20,7 @@ def rails_env
 end
 
 namespace :db do
-  redefine_task :create => :environment do
+  redefine_task :create => :rails_env do
     create_database(ActiveRecord::Base.configurations[rails_env])
   end
   task :create => :load_config if Rake.application.lookup(:load_config)
@@ -38,7 +38,7 @@ namespace :db do
   task :drop => :load_config if Rake.application.lookup(:load_config)
 
   namespace :create do
-    task :all => :environment
+    task :all => :rails_env
   end
 
   namespace :drop do
