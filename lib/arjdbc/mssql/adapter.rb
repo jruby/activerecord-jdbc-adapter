@@ -349,12 +349,15 @@ module ::ArJdbc
       table_name = table_name.gsub(/[\[\]]/, '')
 
       return [] if table_name =~ /^information_schema\./i
-      cc = super
-      cc.each do |col|
-        col.identity = true if col.sql_type =~ /identity/i
-        col.is_special = true if col.sql_type =~ /text|ntext|image/i
+      @table_columns = {} unless @table_columns
+      if @table_columns[table_name] == nil
+        @table_columns[table_name] = super
+        @table_columns[table_name].each do |col|
+          col.identity = true if col.sql_type =~ /identity/i
+          col.is_special = true if col.sql_type =~ /text|ntext|image|xml/i
+        end
       end
-      cc
+      @table_columns[table_name]
     end
 
     def _execute(sql, name = nil)
@@ -420,12 +423,9 @@ module ::ArJdbc
     end
 
     def identity_column(table_name)
-      @table_columns = {} unless @table_columns
-      @table_columns[table_name] = columns(table_name) if @table_columns[table_name] == nil
-      @table_columns[table_name].each do |col|
+      columns(table_name).each do |col|
         return col.name if col.identity
       end
-
       return nil
     end
 
@@ -448,9 +448,7 @@ module ::ArJdbc
 
     def get_special_columns(table_name)
       special = []
-      @table_columns ||= {}
-      @table_columns[table_name] ||= columns(table_name)
-      @table_columns[table_name].each do |col|
+      columns(table_name).each do |col|
         special << col.name if col.is_special
       end
       special
