@@ -67,7 +67,7 @@ module ::ArJdbc
         when /timestamp/i                                          then :timestamp
         when /time/i                                               then :time
         when /date/i                                               then :date
-        when /text|ntext/i                                         then :text
+        when /text|ntext|xml/i                                     then :text
         when /binary|image|varbinary/i                             then :binary
         when /char|nchar|nvarchar|string|varchar/i                 then :string
         when /bit/i                                                then :boolean
