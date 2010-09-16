@@ -1,5 +1,6 @@
 # Don't need to load native mysql adapter
 $LOADED_FEATURES << "active_record/connection_adapters/mysql_adapter.rb"
+$LOADED_FEATURES << "active_record/connection_adapters/mysql2_adapter.rb"
 
 class ActiveRecord::Base
   class << self
@@ -19,6 +20,7 @@ class ActiveRecord::Base
       connection
     end
     alias_method :jdbcmysql_connection, :mysql_connection
+    alias_method :mysql2_connection, :mysql_connection
   end
 end
 
