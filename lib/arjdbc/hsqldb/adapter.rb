@@ -143,12 +143,14 @@ module ::ArJdbc
     end
 
     def add_limit_offset!(sql, options) #:nodoc:
-      offset = options[:offset] || 0
-      bef = sql[7..-1]
-      if limit = options[:limit]
-        sql.replace "select limit #{offset} #{limit} #{bef}"
-      elsif offset > 0
-        sql.replace "select limit #{offset} 0 #{bef}"
+      if sql =~ /^select/i
+        offset = options[:offset] || 0
+        bef = sql[7..-1]
+        if limit = options[:limit]
+          sql.replace "SELECT LIMIT #{offset} #{limit} #{bef}"
+        elsif offset > 0
+          sql.replace "SELECT LIMIT #{offset} 0 #{bef}"
+        end
       end
     end
 
