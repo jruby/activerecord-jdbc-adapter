@@ -158,8 +158,8 @@ um <= #{sanitize_limit(limit) + offset}"
     end
 
     def quote(value, column = nil) # :nodoc:
-      if column && column.type == :primary_key
-        return value.to_s
+      if column && column.respond_to?(:primary) && column.primary && column.klass != String
+        return value.to_i.to_s
       end
       if column && (column.type == :decimal || column.type == :integer) && value
         return value.to_s
