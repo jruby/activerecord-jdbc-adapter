@@ -20,6 +20,7 @@ module ActiveRecord
                           lambda {|r| r['type_name'] =~ /varying/i}],
         :text        => [ lambda {|r| [Jdbc::Types::LONGVARCHAR, Jdbc::Types::CLOB].include?(r['data_type'].to_i)},
                           lambda {|r| r['type_name'] =~ /^text$/i},     # For Informix
+                          lambda {|r| r['type_name'] =~ /sub_type 1$/i}, # For FireBird
                           lambda {|r| r['type_name'] =~ /^(text|clob)$/i},
                           lambda {|r| r['type_name'] =~ /^character large object$/i},
                           lambda {|r| r['sql_data_type'] == 2005}],

@@ -59,4 +59,10 @@ class MysqlInfoTest < Test::Unit::TestCase
     assert dump.include?('CREATE TABLE `cats`')
   end
 
+  def test_verify_url_has_options
+    url = @connection.config[:url]
+    assert url =~ /characterEncoding=utf8/
+    assert url =~ /useUnicode=true/
+    assert url =~ /zeroDateTimeBehavior=convertToNull/
+  end
 end

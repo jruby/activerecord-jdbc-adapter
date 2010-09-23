@@ -139,7 +139,7 @@ module ::ArJdbc
     # Returns the configured supported identifier length supported by PostgreSQL,
     # or report the default of 63 on PostgreSQL 7.x.
     def table_alias_length
-      @table_alias_length ||= (postgresql_version >= 80000 ? select('SHOW max_identifier_length').to_a[0][0].to_i : 63)
+      @table_alias_length ||= (postgresql_version >= 80000 ? select_one('SHOW max_identifier_length')['max_identifier_length'].to_i : 63)
     end
 
     def default_sequence_name(table_name, pk = nil)

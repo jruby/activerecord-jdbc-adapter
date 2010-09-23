@@ -46,6 +46,11 @@ module ActiveRecord
         ActiveRecord::ConnectionAdapters::JdbcColumn
       end
 
+      # Retrieve the raw java.sql.Connection object.
+      def jdbc_connection
+        raw_connection.connection
+      end
+
       # Locate specialized adapter specification if one exists based on config data
       def adapter_spec(config)
         2.times do

@@ -201,7 +201,11 @@ module ::ArJdbc
     def quoted_false
       quote false
     end
-
+    
+    def adapter_name #:nodoc:
+      'MsSQL'
+    end
+    
     module SqlServer2000LimitOffset
       def add_limit_offset!(sql, options)
         limit = options[:limit]

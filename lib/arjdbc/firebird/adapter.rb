@@ -1,5 +1,28 @@
 module ::ArJdbc
   module FireBird
+
+    def self.extended(mod)
+      unless @lob_callback_added
+        ActiveRecord::Base.class_eval do
+          def after_save_with_firebird_blob
+            self.class.columns.select { |c| c.sql_type =~ /blob/i }.each do |c|
+              value = self[c.name]
+              value = value.to_yaml if unserializable_attribute?(c.name, c)
+              next if value.nil?
+              connection.write_large_object(c.type == :binary, c.name, self.class.table_name, self.class.primary_key, quote_value(id), value)
+            end
+          end
+        end
+
+        ActiveRecord::Base.after_save :after_save_with_firebird_blob
+        @lob_callback_added = true
+      end
+    end
+
+    def adapter_name
+      'Firebird'
+    end
+
     def modify_types(tp)
       tp[:primary_key] = 'INTEGER NOT NULL PRIMARY KEY'
       tp[:string][:limit] = 252
@@ -61,6 +84,9 @@ module ::ArJdbc
 
     def quote(value, column = nil) # :nodoc:
       return value.quoted_id if value.respond_to?(:quoted_id)
+
+      # BLOBs are updated separately by an after_save trigger.
+      return value.nil? ? "NULL" : "'#{quote_string(value[0..1])}'" if column && [:binary, :text].include?(column.type)
 
       if [Time, DateTime].include?(value.class)
         "CAST('#{value.strftime("%Y-%m-%d %H:%M:%S")}' AS TIMESTAMP)"
