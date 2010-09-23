@@ -64,12 +64,17 @@ module ActiveRecord
 
           # If nothing matches and we're using jndi, try to automatically detect the database.
           break unless config[:jndi] and !config[:dialect]
-          config[:dialect] = Java::javax.naming.InitialContext.new.lookup(config[:jndi]).getConnection.getMetaData.getClass.getName.downcase
+          begin
+            conn = Java::javax.naming.InitialContext.new.lookup(config[:jndi]).getConnection
+            config[:dialect] = conn.getMetaData.getClass.getName.downcase
 
-          # Derby-specific hack
-          if ::ArJdbc::Derby.adapter_matcher(config[:dialect])
-            # Needed to set the correct database schema name
-            config[:username] ||= Java::javax.naming.InitialContext.new.lookup(config[:jndi]).getConnection.getMetaData.getUserName
+            # Derby-specific hack
+            if ::ArJdbc::Derby.adapter_matcher(config[:dialect], config)
+              # Needed to set the correct database schema name
+              config[:username] ||= conn.getMetaData.getUserName
+            end
+          rescue
+            conn.close
           end
         end
         nil

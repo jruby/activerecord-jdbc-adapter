@@ -1,4 +1,5 @@
 require 'jdbc_common'
+require 'db/jndi_config'
 
 begin
   require 'mocha'
@@ -9,7 +10,7 @@ class JndiConnectionPoolCallbacksTest < Test::Unit::TestCase
     @connection.stubs(:jndi_connection?).returns(true)
     @connection.stubs(:adapter=)
     @logger = mock "logger"
-    @config = { :jndi => "jdbc/some_pool", :adapter => "mysql" }
+    @config = JNDI_CONFIG
     Entry.connection_pool.disconnect!
     assert !Entry.connection_pool.connected?
     class << Entry.connection_pool; public :instance_variable_set; end

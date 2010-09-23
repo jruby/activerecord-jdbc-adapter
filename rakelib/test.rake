@@ -4,6 +4,9 @@ if defined?(JRUBY_VERSION)
   if find_executable?("psql") && `psql -c '\\l'` && $?.exitstatus == 0
     databases << :test_postgres
   end
+  if File.exist?('test/fscontext.jar')
+    databases << :test_jndi
+  end
   task :test => databases
 else
   task :test => [:test_mysql]
@@ -37,12 +40,12 @@ declare_test_task_for :postgres
 declare_test_task_for :sqlite3
 
 Rake::TestTask.new(:test_jdbc) do |t|
-  t.test_files = FileList['test/generic_jdbc_connection_test.rb', 'test/jndi_callbacks_test.rb']
+  t.test_files = FileList['test/generic_jdbc_connection_test.rb']
   t.libs << 'test' << 'drivers/mysql/lib'
 end
 
 Rake::TestTask.new(:test_jndi) do |t|
-  t.test_files = FileList['test/jndi_test.rb']
+  t.test_files = FileList['test/jndi*_test.rb']
   t.libs << 'test' << 'drivers/derby/lib'
 end
 
