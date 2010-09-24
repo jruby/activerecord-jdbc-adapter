@@ -25,6 +25,10 @@ class MysqlSimpleTest < Test::Unit::TestCase
     s = "weblog_development.posts"
     assert_equal "`weblog_development`.`posts`", ActiveRecord::Base.connection.quote_table_name(s)
   end
+
+  def test_update_all_with_limit
+    assert_nothing_raised { Entry.update_all({:title => "test"}, {}, {:limit => 1}) }
+  end
 end
 
 class MysqlHasManyThroughTest < Test::Unit::TestCase

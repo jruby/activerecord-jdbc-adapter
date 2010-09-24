@@ -92,6 +92,10 @@ module ::ArJdbc
       "= BINARY"
     end
 
+    def limited_update_conditions(where_sql, quoted_table_name, quoted_primary_key)
+      where_sql
+    end
+
     # QUOTING ==================================================
 
     def quote(value, column = nil)
