@@ -298,12 +298,14 @@ module ::ArJdbc
     end
 
     def rename_table(name, new_name)
+      clear_cached_table(name)
       execute "EXEC sp_rename '#{name}', '#{new_name}'"
     end
 
     # Adds a new column to the named table.
     # See TableDefinition#column for details of the options you can use.
     def add_column(table_name, column_name, type, options = {})
+      clear_cached_table(table_name)
       add_column_sql = "ALTER TABLE #{table_name} ADD #{quote_column_name(column_name)} #{type_to_sql(type, options[:limit], options[:precision], options[:scale])}"
       add_column_options!(add_column_sql, options)
       # TODO: Add support to mimic date columns, using constraints to mark them as such in the database
@@ -312,15 +314,18 @@ module ::ArJdbc
     end
 
     def rename_column(table, column, new_column_name)
+      clear_cached_table(table)
       execute "EXEC sp_rename '#{table}.#{column}', '#{new_column_name}'"
     end
 
     def change_column(table_name, column_name, type, options = {}) #:nodoc:
+      clear_cached_table(table_name)
       change_column_type(table_name, column_name, type, options)
       change_column_default(table_name, column_name, options[:default]) if options_include_default?(options)
     end
 
     def change_column_type(table_name, column_name, type, options = {}) #:nodoc:
+      clear_cached_table(table_name)
       sql = "ALTER TABLE #{table_name} ALTER COLUMN #{quote_column_name(column_name)} #{type_to_sql(type, options[:limit], options[:precision], options[:scale])}"
       if options.has_key?(:null)
         sql += (options[:null] ? " NULL" : " NOT NULL")
@@ -329,6 +334,7 @@ module ::ArJdbc
     end
 
     def change_column_default(table_name, column_name, default) #:nodoc:
+      clear_cached_table(table_name)
       remove_default_constraint(table_name, column_name)
       unless default.nil?
         execute "ALTER TABLE #{table_name} ADD CONSTRAINT DF_#{table_name}_#{column_name} DEFAULT #{quote(default)} FOR #{quote_column_name(column_name)}"
@@ -336,12 +342,14 @@ module ::ArJdbc
     end
 
     def remove_column(table_name, column_name)
+      clear_cached_table(table_name)
       remove_check_constraints(table_name, column_name)
       remove_default_constraint(table_name, column_name)
       execute "ALTER TABLE #{table_name} DROP COLUMN [#{column_name}]"
     end
 
     def remove_default_constraint(table_name, column_name)
+      clear_cached_table(table_name)
       defaults = select "select def.name from sysobjects def, syscolumns col, sysobjects tab where col.cdefault = def.id and col.name = '#{column_name}' and tab.name = '#{table_name}' and col.id = tab.id"
       defaults.each {|constraint|
         execute "ALTER TABLE #{table_name} DROP CONSTRAINT #{constraint["name"]}"
@@ -349,6 +357,7 @@ module ::ArJdbc
     end
 
     def remove_check_constraints(table_name, column_name)
+      clear_cached_table(table_name)
       # TODO remove all constraints in single method
       constraints = select "SELECT CONSTRAINT_NAME FROM INFORMATION_SCHEMA.CONSTRAINT_COLUMN_USAGE where TABLE_NAME = '#{table_name}' and COLUMN_NAME = '#{column_name}'"
       constraints.each do |constraint|
@@ -371,7 +380,7 @@ module ::ArJdbc
 
       return [] if table_name =~ /^information_schema\./i
       @table_columns = {} unless @table_columns
-      if @table_columns[table_name] == nil
+      unless @table_columns[table_name]
         @table_columns[table_name] = super
         @table_columns[table_name].each do |col|
           col.identity = true if col.sql_type =~ /identity/i
@@ -497,6 +506,10 @@ module ::ArJdbc
       columns(table_name).each { |column| return column.name if column.name =~ /^id$/i }
       # Give up and provide something which is going to crash almost certainly
       columns(table_name)[0].name
+    end
+
+    def clear_cached_table(name)
+      (@table_columns ||= {}).delete(name)
     end
   end
 end
