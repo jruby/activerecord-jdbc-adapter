@@ -88,7 +88,7 @@ module ::ArJdbc
         when /date/i                                               then :date
         when /text|ntext|xml/i                                     then :text
         when /binary|image|varbinary/i                             then :binary
-        when /char|nchar|nvarchar|string|varchar/i                 then :string
+        when /char|nchar|nvarchar|string|varchar/i                 then (@limit == 1073741823 ? (@limit = nil; :text) : :string)
         when /bit/i                                                then :boolean
         when /uniqueidentifier/i                                   then :string
         end
@@ -112,6 +112,15 @@ module ::ArJdbc
         when :boolean   then value == true or (value =~ /^t(rue)?$/i) == 0 or unquote(value)=="1"
         when :binary    then unquote value
         else value
+        end
+      end
+
+      def extract_limit(sql_type)
+        case sql_type
+        when /text|ntext|xml|binary|image|varbinary|bit/
+          nil
+        else
+          super
         end
       end
 
