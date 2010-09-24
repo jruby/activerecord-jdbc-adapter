@@ -28,9 +28,7 @@ namespace :db do
   redefine_task :drop => :environment do
     config = ActiveRecord::Base.configurations[rails_env]
     begin
-      ActiveRecord::Base.establish_connection(config)
-      db = ActiveRecord::Base.connection.database_name
-      ActiveRecord::Base.connection.drop_database(db)
+      ActiveRecord::Base.connection.drop_database(find_database_name(config))
     rescue
       drop_database(config.merge('adapter' => config['adapter'].sub(/^jdbc/, '')))
     end
@@ -48,6 +46,24 @@ namespace :db do
   class << self
     alias_method :previous_create_database, :create_database
     alias_method :previous_drop_database, :drop_database
+  end
+
+  def find_database_name(config)
+    if config['adapter'] =~ /postgresql/i
+      config = config.dup
+      if config['url']
+        db = config['url'][/\/([^\/]*)$/, 1]
+        config['url'][/\/([^\/]*)$/, 1] = 'postgres' if db
+      else
+        db = config['database']
+        config['database'] = 'postgres'
+      end
+      ActiveRecord::Base.establish_connection(config)
+    else
+      ActiveRecord::Base.establish_connection(config)
+      db = ActiveRecord::Base.connection.database_name
+    end
+    db
   end
 
   def create_database(config)
@@ -102,21 +118,7 @@ namespace :db do
 
     redefine_task :purge => :environment do
       abcs = ActiveRecord::Base.configurations
-      config = abcs['test'].dup
-      if config['adapter'] =~ /postgresql/i
-        if config['url']
-          db = config['url'][/\/([^\/]*)$/, 1]
-          config['url'][/\/([^\/]*)$/, 1] = 'postgres' if db
-        else
-          db = config['database']
-          config['database'] = 'postgres'
-        end
-        ActiveRecord::Base.establish_connection(config)
-      else
-        ActiveRecord::Base.establish_connection(config)
-        db = ActiveRecord::Base.connection.database_name
-      end
-      ActiveRecord::Base.connection.recreate_database(db)
+      ActiveRecord::Base.connection.recreate_database(find_database_name(abcs['test']))
     end
   end
 end
