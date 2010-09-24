@@ -123,23 +123,32 @@ public class RubyJdbcConnection extends RubyObject {
                     String table_name = rubyApi.convertToRubyString(args[0]).getUnicodeValue();
                     String schemaName = null;
 
-                    int index = table_name.indexOf(".");
-                    if(index != -1) {
-                        schemaName = table_name.substring(0, index);
-                        table_name = table_name.substring(index + 1);
+                    final String[] name_parts = table_name.split( "\\." );
+                    if ( name_parts.length > 3 ) {
+                        throw new SQLException("Table name '" + table_name + "' should not contain more than 2 '.'");
                     }
 
                     DatabaseMetaData metadata = c.getMetaData();
                     String clzName = metadata.getClass().getName().toLowerCase();
                     boolean isDB2 = clzName.indexOf("db2") != -1 || clzName.indexOf("as400") != -1;
 
+                    String catalog = c.getCatalog();
+                    if( name_parts.length == 2 ) {
+                        schemaName = name_parts[0];
+                        table_name = name_parts[1];
+                    }
+                    else if ( name_parts.length == 3 ) {
+                        catalog = name_parts[0];
+                        schemaName = name_parts[1];
+                        table_name = name_parts[2];
+                    }
+
                     if(args.length > 2 && schemaName == null) schemaName = toStringOrNull(args[2]);
 
                     if (schemaName != null) schemaName = caseConvertIdentifierForJdbc(metadata, schemaName);
                     table_name = caseConvertIdentifierForJdbc(metadata, table_name);
 
-                    String catalog = c.getCatalog();
-                    if (schemaName != null && !isDB2) { catalog = schemaName; }
+                    if (schemaName != null && !isDB2 && !databaseSupportsSchemas()) { catalog = schemaName; }
 
                     String[] tableTypes = new String[]{"TABLE","VIEW","SYNONYM"};
                     RubyArray matchingTables = (RubyArray) tableLookupBlock(context.getRuntime(),
@@ -1194,6 +1203,15 @@ public class RubyJdbcConnection extends RubyObject {
 
     private IRubyObject wrappedConnection(Connection c) {
         return Java.java_to_ruby(this, JavaObject.wrap(getRuntime(), c), Block.NULL_BLOCK);
+    }
+
+    /**
+     * Some databases support schemas and others do not.
+     * For ones which do this method should return true, aiding in decisions regarding schema vs database determination.
+     */
+    protected boolean databaseSupportsSchemas()
+    {
+        return false;
     }
 
     private static int whitespace(int start, ByteList bl) {

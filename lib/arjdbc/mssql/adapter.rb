@@ -86,7 +86,7 @@ module ::ArJdbc
         when /timestamp/i                                          then :timestamp
         when /time/i                                               then :time
         when /date/i                                               then :date
-        when /text|ntext/i                                         then :text
+        when /text|ntext|xml/i                                     then :text
         when /binary|image|varbinary/i                             then :binary
         when /char|nchar|nvarchar|string|varchar/i                 then :string
         when /bit/i                                                then :boolean
@@ -113,7 +113,6 @@ module ::ArJdbc
         when :binary    then unquote value
         else value
         end
-
       end
 
       def is_utf8?
@@ -127,10 +126,14 @@ module ::ArJdbc
       def cast_to_time(value)
         return value if value.is_a?(Time)
         time_array = ParseDate.parsedate(value)
+        return nil if !time_array.any?
         time_array[0] ||= 2000
         time_array[1] ||= 1
         time_array[2] ||= 1
-        Time.send(ActiveRecord::Base.default_timezone, *time_array) rescue nil
+        return Time.send(ActiveRecord::Base.default_timezone, *time_array) rescue nil
+
+        # Try DateTime instead - the date may be outside the time period support by Time.
+        DateTime.new(*time_array[0..5]) rescue nil
       end
 
       def cast_to_date(value)
@@ -146,8 +149,18 @@ module ::ArJdbc
             return Time.mktime(2000, 1, 1, value.hour, value.min, value.sec) rescue nil
           end
         end
+        if value.is_a?(DateTime)
+          begin
+            # Attempt to convert back to a Time, but it could fail for dates significantly in the past/future.
+            return Time.mktime(value.year, value.mon, value.day, value.hour, value.min, value.sec)
+          rescue ArgumentError
+            return value
+          end
+        end
+
         return cast_to_time(value) if value.is_a?(Date) or value.is_a?(String) rescue nil
-        value
+
+        return value.is_a?(Date) ? value : nil
       end
 
       # These methods will only allow the adapter to insert binary data with a length of 7K or less
@@ -201,11 +214,11 @@ module ::ArJdbc
     def quoted_false
       quote false
     end
-    
+
     def adapter_name #:nodoc:
       'MsSQL'
     end
-    
+
     module SqlServer2000LimitOffset
       def add_limit_offset!(sql, options)
         limit = options[:limit]
@@ -348,16 +361,30 @@ module ::ArJdbc
     end
 
     def columns(table_name, name = nil)
+      # It's possible for table_name to be an empty string, or nil, if something attempts to issue SQL
+      # which doesn't involve a table.  IE. "SELECT 1" or "SELECT * from someFunction()".
+      return [] if table_name.blank?
+      table_name = table_name.to_s if table_name.is_a?(Symbol)
+
+      # Remove []'s from around the table name, valid in a select statement, but not when matching metadata.
+      table_name = table_name.gsub(/[\[\]]/, '')
+
       return [] if table_name =~ /^information_schema\./i
-      cc = super
-      cc.each do |col|
-        col.identity = true if col.sql_type =~ /identity/i
-        col.is_special = true if col.sql_type =~ /text|ntext|image/i
+      @table_columns = {} unless @table_columns
+      if @table_columns[table_name] == nil
+        @table_columns[table_name] = super
+        @table_columns[table_name].each do |col|
+          col.identity = true if col.sql_type =~ /identity/i
+          col.is_special = true if col.sql_type =~ /text|ntext|image|xml/i
+        end
       end
-      cc
+      @table_columns[table_name]
     end
 
     def _execute(sql, name = nil)
+      # Match the start of the sql to determine appropriate behaviour.  Be aware of
+      # multi-line sql which might begin with 'create stored_proc' and contain 'insert into ...' lines.
+      # Possible improvements include ignoring comment blocks prior to the first statement.
       if sql.lstrip =~ /\Ainsert/i
         if query_requires_identity_insert?(sql)
           table_name = get_table_name(sql)
@@ -417,12 +444,9 @@ module ::ArJdbc
     end
 
     def identity_column(table_name)
-      @table_columns = {} unless @table_columns
-      @table_columns[table_name] = columns(table_name) if @table_columns[table_name] == nil
-      @table_columns[table_name].each do |col|
+      columns(table_name).each do |col|
         return col.name if col.identity
       end
-
       return nil
     end
 
@@ -445,9 +469,7 @@ module ::ArJdbc
 
     def get_special_columns(table_name)
       special = []
-      @table_columns ||= {}
-      @table_columns[table_name] ||= columns(table_name)
-      @table_columns[table_name].each do |col|
+      columns(table_name).each do |col|
         special << col.name if col.is_special
       end
       special
