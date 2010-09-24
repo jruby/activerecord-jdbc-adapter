@@ -270,7 +270,10 @@ module ::ArJdbc
           sql.sub!(/ ORDER BY.*$/i, '')
           find_select = /\b(SELECT(?:\s+DISTINCT)?)\b(.*)/im
           whole, select, rest_of_query = find_select.match(sql).to_a
-          new_sql = "#{select} t.* FROM (SELECT ROW_NUMBER() OVER(ORDER BY #{order}) AS row_num, #{rest_of_query}"
+          if rest_of_query.strip!.first == '*'
+            from_table = /.*FROM\s*\b(\w*)\b/i.match(rest_of_query).to_a[1]
+          end
+          new_sql = "#{select} t.* FROM (SELECT ROW_NUMBER() OVER(ORDER BY #{order}) AS row_num, #{from_table + '.' if from_table}#{rest_of_query}"
           new_sql << ") AS t WHERE t.row_num BETWEEN #{start_row.to_s} AND #{end_row.to_s}"
           sql.replace(new_sql)
         end
