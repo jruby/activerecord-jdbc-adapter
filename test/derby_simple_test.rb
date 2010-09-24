@@ -50,11 +50,16 @@ class DerbySimpleTest < Test::Unit::TestCase
     end
     assert_nothing_raised do
       value = Time.now
+      if ActiveRecord::VERSION::MAJOR >= 3
+        str = value.utc.to_s(:db)
+      else                      # AR 2 #quoted_date did not do TZ conversions
+        str = value.to_s(:db)
+      end
       e.sample_string = value
       e.sample_text = value
       e.save!
       e.reload
-      assert_equal [value.utc.to_s(:db)]*2, [e.sample_string, e.sample_text]
+      assert_equal [str]*2, [e.sample_string, e.sample_text]
     end
     assert_nothing_raised do
       value = Date.today
