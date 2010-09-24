@@ -252,7 +252,13 @@ module ::ArJdbc
             #I am not sure this will cover all bases.  but all the tests pass
             new_order = "#{order}, #{table_name}.id" if order.index("#{table_name}.id").nil?
             new_order ||= order
-            new_sql = "#{select} TOP #{limit} #{rest_of_query} WHERE #{table_name}.id NOT IN (#{select} TOP #{offset} #{table_name}.id #{rest} ORDER BY #{new_order}) ORDER BY #{order} "
+
+            if (rest_of_query.match(/WHERE/).nil?)
+              new_sql = "#{select} TOP #{limit} #{rest_of_query} WHERE #{table_name}.id NOT IN (#{select} TOP #{offset} #{table_name}.id #{rest} ORDER BY #{new_order}) ORDER BY #{order} "
+            else
+              new_sql = "#{select} TOP #{limit} #{rest_of_query} AND #{table_name}.id NOT IN (#{select} TOP #{offset} #{table_name}.id #{rest} ORDER BY #{new_order}) ORDER BY #{order} "
+            end
+
             sql.replace(new_sql)
           end
         end
