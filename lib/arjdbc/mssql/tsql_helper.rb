@@ -10,7 +10,7 @@ module TSqlMethods
   end
 
   def type_to_sql(type, limit = nil, precision = nil, scale = nil) #:nodoc:
-    limit = nil if type.to_s == 'text'
+    limit = nil if %w(text binary).include? type.to_s
     return 'uniqueidentifier' if (type.to_s == 'uniqueidentifier')
     return super unless type.to_s == 'integer'
 
