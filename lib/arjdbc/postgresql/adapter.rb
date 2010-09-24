@@ -124,6 +124,10 @@ module ::ArJdbc
       true
     end
 
+    def supports_count_distinct? #:nodoc:
+      false
+    end
+
     def create_savepoint
       execute("SAVEPOINT #{current_savepoint_name}")
     end
@@ -167,12 +171,6 @@ module ::ArJdbc
       end
     end
 
-    def quote_regclass(table_name)
-      table_name.to_s.split('.').map do |part|
-        part =~ /".*"/i ? part : quote_table_name(part)
-      end.join('.')
-    end
-
     # Find a table's primary key and sequence.
     def pk_and_sequence_for(table) #:nodoc:
       # First try looking for a sequence with a dependency on the
@@ -191,7 +189,7 @@ module ::ArJdbc
             AND attr.attrelid     = cons.conrelid
             AND attr.attnum       = cons.conkey[1]
             AND cons.contype      = 'p'
-            AND dep.refobjid      = '#{table}'::regclass
+            AND dep.refobjid      = '#{quote_table_name(table)}'::regclass
         end_sql
 
       if result.nil? or result.empty?
@@ -210,7 +208,7 @@ module ::ArJdbc
             JOIN pg_attribute   attr ON (t.oid = attrelid)
             JOIN pg_attrdef     def  ON (adrelid = attrelid AND adnum = attnum)
             JOIN pg_constraint  cons ON (conrelid = adrelid AND adnum = conkey[1])
-            WHERE t.oid = '#{table}'::regclass
+            WHERE t.oid = '#{quote_table_name(table)}'::regclass
               AND cons.contype = 'p'
               AND def.adsrc ~* 'nextval'
           end_sql
@@ -396,13 +394,23 @@ module ::ArJdbc
       sql.replace "SELECT * FROM (#{sql}) AS id_list ORDER BY #{order}"
     end
 
-    def quote(value, column = nil)
-      return value.quoted_id if value.respond_to?(:quoted_id)
+    def quote(value, column = nil) #:nodoc:
+      return super unless column
 
-      if value.kind_of?(String) && column && column.type == :binary
+      if value.kind_of?(String) && column.type == :binary
         "'#{escape_bytea(value)}'"
-      elsif column && column.type == :primary_key
-        return value.to_s
+      elsif value.kind_of?(String) && column.sql_type == 'xml'
+        "xml '#{quote_string(value)}'"
+      elsif value.kind_of?(Numeric) && column.sql_type == 'money'
+        # Not truly string input, so doesn't require (or allow) escape string syntax.
+        "'#{value}'"
+      elsif value.kind_of?(String) && column.sql_type =~ /^bit/
+        case value
+        when /^[01]*$/
+          "B'#{value}'" # Bit-string notation
+        when /^[0-9A-F]*$/i
+          "X'#{value}'" # Hexadecimal notation
+        end
       else
         super
       end
@@ -413,6 +421,17 @@ module ::ArJdbc
         result = ''
         s.each_byte { |c| result << sprintf('\\\\%03o', c) }
         result
+      end
+    end
+
+    def quote_table_name(name)
+      schema, name_part = extract_pg_identifier_from_name(name.to_s)
+
+      unless name_part
+        quote_column_name(schema)
+      else
+        table_name, name_part = extract_pg_identifier_from_name(name_part)
+        "#{quote_column_name(schema)}.#{quote_column_name(table_name)}"
       end
     end
 
@@ -496,6 +515,17 @@ module ::ArJdbc
 
     def tables
       @connection.tables(database_name, nil, nil, ["TABLE"])
+    end
+
+    private
+    def extract_pg_identifier_from_name(name)
+      match_data = name[0,1] == '"' ? name.match(/\"([^\"]+)\"/) : name.match(/([^\.]+)/)
+
+      if match_data
+        rest = name[match_data[0].length..-1]
+        rest = rest[1..-1] if rest[0,1] == "."
+        [match_data[1], (rest.length > 0 ? rest : nil)]
+      end
     end
   end
 end

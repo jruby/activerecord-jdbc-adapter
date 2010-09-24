@@ -656,10 +656,11 @@ public class RubyJdbcConnection extends RubyObject {
     public static String caseConvertIdentifierForJdbc(DatabaseMetaData metadata, String value)
             throws SQLException {
         if (value == null) return null;
+        boolean isPostgres = metadata.getDatabaseProductName().equals("PostgreSQL");
 
         if (metadata.storesUpperCaseIdentifiers()) {
             return value.toUpperCase();
-        } else if (metadata.storesLowerCaseIdentifiers()) {
+        } else if (metadata.storesLowerCaseIdentifiers() && ! isPostgres) {
             return value.toLowerCase();
         }
 
