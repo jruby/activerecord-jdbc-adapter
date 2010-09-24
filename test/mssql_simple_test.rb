@@ -12,7 +12,7 @@ class MsSQLSimpleTest < Test::Unit::TestCase
   undef_method :test_validates_uniqueness_of_strings_case_sensitive
 
   def test_does_not_munge_quoted_strings
-    example_quoted_values = [%{'quoted'}, %{D'oh!}]
+    example_quoted_values = [%{'quoted'}, %{D\'oh!}]
     example_quoted_values.each do |value|
       entry = Entry.create!(:title => value)
       entry.reload
@@ -46,4 +46,10 @@ class MsSQLSimpleTest < Test::Unit::TestCase
 
   end
 
+  # ACTIVERECORD_JDBC-124
+  def test_model_does_not_have_row_num_column
+    entry = Entry.first
+    assert !entry.attributes.keys.include?("_row_num")
+    assert !entry.respond_to?(:_row_num)
+  end
 end

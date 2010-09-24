@@ -850,8 +850,9 @@ public class RubyJdbcConnection extends RubyObject {
             RubyHash row = RubyHash.newHash(runtime);
 
             for (int i = 0; i < columnCount; i++) {
-                row.op_aset(context, columns[i].name, jdbcToRuby(runtime, i + 1, columns[i].type, resultSet));
+                row.op_aset(context, columns[i].name, jdbcToRuby(runtime, columns[i].index, columns[i].type, resultSet));
             }
+
             results.add(row);
         }
     }
@@ -1209,8 +1210,7 @@ public class RubyJdbcConnection extends RubyObject {
      * Some databases support schemas and others do not.
      * For ones which do this method should return true, aiding in decisions regarding schema vs database determination.
      */
-    protected boolean databaseSupportsSchemas()
-    {
+    protected boolean databaseSupportsSchemas() {
         return false;
     }
 
@@ -1244,11 +1244,13 @@ public class RubyJdbcConnection extends RubyObject {
 
     public static class ColumnData {
         public IRubyObject name;
+        public int index;
         public int type;
 
-        public ColumnData(IRubyObject name, int type) {
+        public ColumnData(IRubyObject name, int type, int idx) {
             this.name = name;
             this.type = type;
+            this.index = idx;
         }
 
         public static ColumnData[] setup(Ruby runtime, DatabaseMetaData databaseMetadata,
@@ -1264,7 +1266,7 @@ public class RubyJdbcConnection extends RubyObject {
                     name = RubyJdbcConnection.caseConvertIdentifierForRails(databaseMetadata, metadata.getColumnLabel(i));
                 }
 
-                columns[i - 1] = new ColumnData(RubyString.newUnicodeString(runtime, name), metadata.getColumnType(i));
+                columns[i - 1] = new ColumnData(RubyString.newUnicodeString(runtime, name), metadata.getColumnType(i), i);
             }
 
             return columns;
