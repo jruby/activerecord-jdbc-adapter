@@ -1,5 +1,9 @@
 == 1.0.0
 
+- Thanks to David Kellum, Dmitry Denisov, Dwayne Litzenberger, Gregor
+  Schmidt, James Walker, John Duff, Joshua Suggs, Nicholas J Kreucher,
+  Peter Donald, Geoff Longman, and Ryan Bell for their contributions
+  to this release.
 - BIG set of DB2 updates (Thanks Nick Kreucher)
 - Deprecate jdbc_adapter/rake_tasks
 - (1.0.0.beta1)
@@ -10,6 +14,37 @@
 - Get AR's own tests running as close to 100% as possible. MySQL is
   currently 100%, SQLite3 is close.
 - JRUBY-4876: Bump up Derby's max index name length (Uwe Kubosch)
+- (1.0.0.beta2)
+- 98 commits since beta1
+- MSSQL updates from dlitz and realityforge
+- ACTIVERECORD_JDBC-131: Fix string slug issue for DB2 (Youhei Kondou)
+- JRUBY-1642: Don't use H2 INFORMATION_SCHEMA in table or column
+  searches
+- JRUBY-4972: Attempt to deal with type(0)/:limit => 0 by not setting
+  it808e213 JRUBY-5040: Fix issue with limits on timestamps in MySQL
+- JRUBY-3555: Allow setting Derby schema with 'schema:' option917ebd9
+  ACTIVERECORD_JDBC-98: Make sure we actuall raise an error when
+  inappropriately configured
+- ACTIVERECORD_JDBC-112: Add schema dumper tests for already-fixed
+  MySQL type limits
+- ACTIVERECORD_JDBC-113: Fix PG float precision issue2c6b1aa No longer
+  need M[ys]SQL escape hatch on case-sensitive test
+- ACTIVERECORD_JDBC-103: Fix decimal options for PG add/change column
+  (Michael Pitman)
+- ACTIVERECORD_JDBC-127: Fix quoting of Date vs. Time(stamp) for
+  Oracle (Lenny Marks)
+- Oracle: Sort out theNUMBER vs NUMBER(x) vs NUMBER(x,y) situation.
+- JRUBY-3051: Think we finally got the PG mixed-case patches applied.
+- JRUBY-5081: Consolidate code for dropping DB via postgres
+- ACTIVERECORD_JDBC-101: Add override of LONGVARCHAR => CLOB for
+  informix
+- ACTIVERECORD_JDBC-107: Fix MySQL update_all issue on AR 2.3
+- ACTIVERECORD_JDBC-124: Filter out special _row_num column
+- ACTIVERECORD_JDBC-126: Fix sql 2000 limit/offset per Michael Pitman
+- ACTIVERECORD_JDBC-125: Add tweak to limit/offset code for HABTM
+  queries (alex b)
+- ACTIVERECORD_JDBC-129: Don't have limits for text, binary or bit
+  fields
 
 == 0.9.7
 
