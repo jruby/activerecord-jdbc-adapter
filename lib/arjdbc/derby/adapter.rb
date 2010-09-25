@@ -423,7 +423,11 @@ module ::ArJdbc
     private
     # Derby appears to define schemas using the username
     def derby_schema
-      @config[:username].to_s
+      if @config.has_key?(:schema)
+        config[:schema]
+      else
+        (@config[:username] && @config[:username].to_s) || ''
+      end
     end
   end
 end
