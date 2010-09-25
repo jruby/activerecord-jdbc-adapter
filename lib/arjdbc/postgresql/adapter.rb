@@ -31,7 +31,7 @@ module ::ArJdbc
         return :string if field_type =~ /\[\]$/i || field_type =~ /^interval/i
         return :string if field_type =~ /^(?:point|lseg|box|"?path"?|polygon|circle)/i
         return :datetime if field_type =~ /^timestamp/i
-        return :float if field_type =~ /^real|^money/i
+        return :float if field_type =~ /^(?:real|double precision)$/i
         return :binary if field_type =~ /^bytea/i
         return :boolean if field_type =~ /^bool/i
         super
@@ -72,6 +72,8 @@ module ::ArJdbc
       tp[:string][:limit] = 255
       tp[:integer][:limit] = nil
       tp[:boolean][:limit] = nil
+      tp[:float] = { :name => "float" }
+      tp[:decimal] = { :name => "decimal" }
       tp
     end
 

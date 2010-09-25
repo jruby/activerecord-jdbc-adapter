@@ -11,3 +11,20 @@ class PostgresSimpleTest < Test::Unit::TestCase
   include SimpleTestMethods
   include ActiveRecord3TestMethods
 end
+
+class PostgresDeserializationTest < Test::Unit::TestCase
+  def setup
+    DbTypeMigration.up
+  end
+
+  def teardown
+    DbTypeMigration.down
+  end
+
+  def test_should_keep_float_precision
+    expected = DbType.create(:sample_float => 7.3)
+    actual = DbType.find(expected.id)
+
+    assert_equal expected.sample_float, actual.sample_float
+  end
+end
