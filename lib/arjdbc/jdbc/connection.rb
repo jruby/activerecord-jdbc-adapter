@@ -54,14 +54,14 @@ module ActiveRecord
         end
 
         def configure_jdbc
+          unless config[:driver] && config[:url]
+            raise ::ActiveRecord::ConnectionNotEstablished, "jdbc adapter requires driver class and url"
+          end
+
           driver = config[:driver].to_s
           user   = config[:username].to_s
           pass   = config[:password].to_s
           url    = configure_url
-
-          unless driver && url
-            raise ::ActiveRecord::ConnectionFailed, "jdbc adapter requires driver class and url"
-          end
 
           jdbc_driver = JdbcDriver.new(driver)
           jdbc_driver.load
@@ -87,8 +87,10 @@ module ActiveRecord
         connection # force the connection to load
         set_native_database_types
         @stmts = {}
+      rescue ::ActiveRecord::ActiveRecordError
+        raise
       rescue Exception => e
-        raise "The driver encountered an error: #{e}"
+        raise "The driver encountered an unknown error: #{e}"
       end
 
       def adapter=(adapter)

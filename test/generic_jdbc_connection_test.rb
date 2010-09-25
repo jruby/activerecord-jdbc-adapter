@@ -16,4 +16,14 @@ class GenericJdbcConnectionTest < Test::Unit::TestCase
     connection.config = { :url => "jdbc://somehost?param=0", :options => { :hoge => "true", :fuya => "false"} }
     assert_equal "jdbc://somehost?param=0&hoge=true&fuya=false", connection.configure_url
   end
+
+  def test_connection_fails_without_driver_and_url
+    conn = ActiveRecord::Base.remove_connection
+    assert_raises(ActiveRecord::ConnectionNotEstablished) do
+      ActiveRecord::Base.establish_connection :adapter => 'jdbc'
+      ActiveRecord::Base.connection
+    end
+  ensure
+    ActiveRecord::Base.establish_connection conn
+  end
 end
