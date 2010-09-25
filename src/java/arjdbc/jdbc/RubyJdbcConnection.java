@@ -1030,15 +1030,15 @@ public class RubyJdbcConnection extends RubyObject {
         return RubyString.newUnicodeString(runtime, str);
     }
 
-    private static final int COLUMN_NAME = 4;
-    private static final int DATA_TYPE = 5;
-    private static final int TYPE_NAME = 6;
-    private static final int COLUMN_SIZE = 7;
-    private static final int DECIMAL_DIGITS = 9;
-    private static final int COLUMN_DEF = 13;
-    private static final int IS_NULLABLE = 18;
+    protected static final int COLUMN_NAME = 4;
+    protected static final int DATA_TYPE = 5;
+    protected static final int TYPE_NAME = 6;
+    protected static final int COLUMN_SIZE = 7;
+    protected static final int DECIMAL_DIGITS = 9;
+    protected static final int COLUMN_DEF = 13;
+    protected static final int IS_NULLABLE = 18;
 
-    private int intFromResultSet(ResultSet resultSet, int column) throws SQLException {
+    protected int intFromResultSet(ResultSet resultSet, int column) throws SQLException {
         int precision = resultSet.getInt(column);
 
         return precision == 0 && resultSet.wasNull() ? -1 : precision;
@@ -1047,19 +1047,10 @@ public class RubyJdbcConnection extends RubyObject {
     /**
      * Create a string which represents a sql type usable by Rails from the resultSet column
      * metadata object.
-     *
-     * @param numberAsBoolean the database uses decimal as a boolean data type
-     * because it does not support optional SQL92 type or mandatory SQL99
-     * booleans.
      */
-    private String typeFromResultSet(ResultSet resultSet, boolean numberAsBoolean) throws SQLException {
+    protected String typeFromResultSet(ResultSet resultSet) throws SQLException {
         int precision = intFromResultSet(resultSet, COLUMN_SIZE);
         int scale = intFromResultSet(resultSet, DECIMAL_DIGITS);
-
-        // Assume db's which use decimal for boolean will not also specify a
-        // valid precision 1 decimal also.  Seems sketchy to me...
-        if (numberAsBoolean && precision != 1 &&
-            resultSet.getInt(DATA_TYPE) == java.sql.Types.DECIMAL) precision = -1;
 
         String type = resultSet.getString(TYPE_NAME);
         if (precision > 0) {
@@ -1085,7 +1076,6 @@ public class RubyJdbcConnection extends RubyObject {
             List columns = new ArrayList();
             List pkeyNames = new ArrayList();
             String clzName = metadata.getClass().getName().toLowerCase();
-            boolean isOracle = clzName.indexOf("oracle") != -1 || clzName.indexOf("oci") != -1;
 
             RubyHash types = (RubyHash) native_database_types();
             IRubyObject jdbcCol = getJdbcColumnClass(context);
@@ -1102,7 +1092,7 @@ public class RubyJdbcConnection extends RubyObject {
                             RubyString.newUnicodeString(runtime,
                                     caseConvertIdentifierForRails(metadata, colName)),
                             defaultValueFromResultSet(runtime, rs),
-                            RubyString.newUnicodeString(runtime, typeFromResultSet(rs, isOracle)),
+                            RubyString.newUnicodeString(runtime, typeFromResultSet(rs)),
                             runtime.newBoolean(!rs.getString(IS_NULLABLE).trim().equals("NO"))
                         });
                 columns.add(column);

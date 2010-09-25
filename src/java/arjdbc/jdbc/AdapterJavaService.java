@@ -32,6 +32,7 @@ import arjdbc.derby.DerbyModule;
 import arjdbc.informix.InformixRubyJdbcConnection;
 import arjdbc.mssql.MssqlRubyJdbcConnection;
 import arjdbc.mysql.MySQLModule;
+import arjdbc.oracle.OracleRubyJdbcConnection;
 import arjdbc.postgresql.PostgresqlRubyJdbcConnection;
 import arjdbc.sqlite3.Sqlite3RubyJdbcConnection;
 
@@ -50,6 +51,7 @@ public class AdapterJavaService implements BasicLibraryService {
         PostgresqlRubyJdbcConnection.createPostgresqlJdbcConnectionClass(runtime, jdbcConnection);
         MssqlRubyJdbcConnection.createMssqlJdbcConnectionClass(runtime, jdbcConnection);
         InformixRubyJdbcConnection.createInformixJdbcConnectionClass(runtime, jdbcConnection);
+        OracleRubyJdbcConnection.createOracleJdbcConnectionClass(runtime, jdbcConnection);
         Sqlite3RubyJdbcConnection.createSqlite3JdbcConnectionClass(runtime, jdbcConnection);
         RubyModule arJdbc = runtime.getOrCreateModule("ArJdbc");
 

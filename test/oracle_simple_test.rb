@@ -3,6 +3,10 @@ require 'db/oracle'
 
 class OracleSimpleTest < Test::Unit::TestCase
   include SimpleTestMethods
+
+  def test_default_id_type_is_integer
+    assert Integer === Entry.first.id
+  end
 end
 
 class OracleSpecificTest < Test::Unit::TestCase
@@ -10,8 +14,8 @@ class OracleSpecificTest < Test::Unit::TestCase
 
   def setup
     super
-    @java_con.createStatement.execute "CREATE TABLE DEFAULT_NUMBER (VALUE NUMBER, DATUM DATE)"
-    @java_con.createStatement.execute "INSERT INTO DEFAULT_NUMBER (VALUE, DATUM) VALUES (0.076, TIMESTAMP'2009-11-05 00:00:00')"
+    @java_con.createStatement.execute "CREATE TABLE DEFAULT_NUMBER (VALUE NUMBER, DATUM DATE, FPOINT NUMBER(10,2), VALUE2 NUMBER(15))"
+    @java_con.createStatement.execute "INSERT INTO DEFAULT_NUMBER (VALUE, DATUM, FPOINT, VALUE2) VALUES (0.076, TIMESTAMP'2009-11-05 00:00:00', 1000.01, 1234)"
     @java_con.createStatement.execute "CREATE SYNONYM POSTS FOR ENTRIES"
     @klass = Class.new(ActiveRecord::Base)
     @klass.set_table_name "DEFAULT_NUMBER"
@@ -24,8 +28,21 @@ class OracleSpecificTest < Test::Unit::TestCase
   end
 
   def test_default_number_precision
-    obj = @klass.find(:first)
-    assert_equal 0.076, obj.value
+    assert_equal 0.076, @klass.find(:first).value
+  end
+
+  def test_number_with_precision_and_scale
+    assert_equal 1000.01, @klass.find(:first).fpoint
+  end
+
+  def test_number_with_precision
+    assert_equal 1234, @klass.find(:first).value2
+  end
+
+  def test_number_type_with_precision_and_scale_is_reported_correctly
+    assert_equal 'NUMBER', @klass.columns_hash['value'].sql_type
+    assert_equal 'NUMBER(10,2)', @klass.columns_hash['fpoint'].sql_type
+    assert_equal 'NUMBER(15)', @klass.columns_hash['value2'].sql_type
   end
 
   # JRUBY-3675, ACTIVERECORD_JDBC-22

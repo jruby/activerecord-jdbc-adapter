@@ -33,6 +33,10 @@ module ::ArJdbc
       [/oracle/i, lambda {|cfg,col| col.extend(::ArJdbc::Oracle::Column)}]
     end
 
+    def self.jdbc_connection_class
+      ::ActiveRecord::ConnectionAdapters::OracleJdbcConnection
+    end
+
     module Column
       def primary=(val)
         super
