@@ -7,6 +7,7 @@ class DBSetup < ActiveRecord::Migration
   def self.up
     create_table :books do |t|
       t.string :title
+      t.timestamps
     end
 
     create_table :cars, :primary_key => 'legacy_id' do |t|
@@ -72,6 +73,14 @@ class MysqlInfoTest < Test::Unit::TestCase
     assert_match %r{t.text\s+"text",\s+:limit => 2147483647$}, dump
   end
 
+  # JRUBY-5040
+  def test_schema_dump_should_not_have_limits_on_datetime
+    strio = StringIO.new
+    ActiveRecord::SchemaDumper::dump(@connection, strio)
+    dump = strio.string
+    dump.grep(/datetime/).each {|line| assert line !~ /limit/ }
+  end
+
   def test_should_include_limit
     text_column = @connection.columns('memos').find { |c| c.name == 'text' }
     assert_equal 2147483647, text_column.limit
@@ -85,7 +94,7 @@ class MysqlInfoTest < Test::Unit::TestCase
   def test_should_set_type_to_text
     text_column = @connection.columns('memos').find { |c| c.name == 'text' }
     assert_equal :text, text_column.type
-   end
+  end
 
   def test_verify_url_has_options
     url = @connection.config[:url]

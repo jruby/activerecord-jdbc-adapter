@@ -58,6 +58,8 @@ module ::ArJdbc
         when /^mediumint/i; 3
         when /^smallint/i;  2
         when /^tinyint/i;   1
+        when /^(datetime|timestamp)/
+          nil
         else
           super
         end
