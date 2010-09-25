@@ -84,7 +84,7 @@ module ActiveRecord
           name = row['type_name'].downcase
           k = name.to_sym
           type_map[k] = { :name => name }
-          type_map[k][:limit] = row['precision'].to_i if row['precision']
+          set_limit_to_nonzero_precision(type_map[k], row)
         end
 
         AR_TO_JDBC_TYPES.keys.each do |k|
@@ -92,7 +92,7 @@ module ActiveRecord
           type_map[k] = { :name => typerow['type_name'].downcase }
           case k
           when :integer, :string, :decimal
-            type_map[k][:limit] = typerow['precision'] && typerow['precision'].to_i
+            set_limit_to_nonzero_precision(type_map[k], typerow)
           when :boolean
             type_map[k][:limit] = 1
           end
@@ -114,6 +114,12 @@ module ActiveRecord
           types = new_types if new_types.length > 0
         end
         raise "unable to choose type for #{ar_type} from:\n#{types.collect{|t| t['type_name']}.inspect}"
+      end
+
+      def set_limit_to_nonzero_precision(map, row)
+        if row['precision'] && row['precision'].to_i > 0
+          map[:limit] = row['precision'].to_i
+        end
       end
     end
   end
