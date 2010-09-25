@@ -459,7 +459,7 @@ module ::ArJdbc
     end
 
     def add_column(table_name, column_name, type, options = {})
-      execute("ALTER TABLE #{quote_table_name(table_name)} ADD #{quote_column_name(column_name)} #{type_to_sql(type, options[:limit])}")
+      execute("ALTER TABLE #{quote_table_name(table_name)} ADD #{quote_column_name(column_name)} #{type_to_sql(type, options[:limit], options[:precision], options[:scale])}")
       change_column_default(table_name, column_name, options[:default]) unless options[:default].nil?
       if options[:null] == false
         execute("UPDATE #{quote_table_name(table_name)} SET #{quote_column_name(column_name)} = '#{options[:default]}'") if options[:default]
@@ -469,12 +469,12 @@ module ::ArJdbc
 
     def change_column(table_name, column_name, type, options = {}) #:nodoc:
       begin
-        execute "ALTER TABLE #{quote_table_name(table_name)} ALTER #{quote_column_name(column_name)} TYPE #{type_to_sql(type, options[:limit])}"
+        execute "ALTER TABLE #{quote_table_name(table_name)} ALTER #{quote_column_name(column_name)} TYPE #{type_to_sql(type, options[:limit], options[:precision], options[:scale])}"
       rescue ActiveRecord::StatementInvalid
         # This is PG7, so we use a more arcane way of doing it.
         begin_db_transaction
         add_column(table_name, "#{column_name}_ar_tmp", type, options)
-        execute "UPDATE #{table_name} SET #{column_name}_ar_tmp = CAST(#{column_name} AS #{type_to_sql(type, options[:limit])})"
+        execute "UPDATE #{table_name} SET #{column_name}_ar_tmp = CAST(#{column_name} AS #{type_to_sql(type, options[:limit], options[:precision], options[:scale])})"
         remove_column(table_name, column_name)
         rename_column(table_name, "#{column_name}_ar_tmp", column_name)
         commit_db_transaction
