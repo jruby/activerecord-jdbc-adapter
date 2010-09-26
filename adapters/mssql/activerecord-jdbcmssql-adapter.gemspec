@@ -7,7 +7,7 @@ Gem::Specification.new do |s|
 
   s.required_rubygems_version = Gem::Requirement.new("> 1.3.1") if s.respond_to? :required_rubygems_version=
   s.authors = ["Nick Sieger, Ola Bini and JRuby contributors"]
-  s.date = %q{2010-09-24}
+  s.date = %q{2010-09-25}
   s.description = %q{Install this gem to use MS-SQL with JRuby on Rails.}
   s.email = %q{nick@nicksieger.com, ola.bini@gmail.com}
   s.extra_rdoc_files = ["Manifest.txt", "README.txt", "LICENSE.txt"]

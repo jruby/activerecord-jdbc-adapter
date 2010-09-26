@@ -2,8 +2,9 @@
 
 - Thanks to David Kellum, Dmitry Denisov, Dwayne Litzenberger, Gregor
   Schmidt, James Walker, John Duff, Joshua Suggs, Nicholas J Kreucher,
-  Peter Donald, Geoff Longman, and Ryan Bell for their contributions
-  to this release.
+  Peter Donald, Geoff Longman, Uwe Kubosch, Youhei Kondou, Michael
+  Pitman, Alex B, and Ryan Bell for their contributions to this
+  release.
 - BIG set of DB2 updates (Thanks Nick Kreucher)
 - Deprecate jdbc_adapter/rake_tasks
 - (1.0.0.beta1)
@@ -22,18 +23,17 @@
   searches
 - JRUBY-4972: Attempt to deal with type(0)/:limit => 0 by not setting
   it808e213 JRUBY-5040: Fix issue with limits on timestamps in MySQL
-- JRUBY-3555: Allow setting Derby schema with 'schema:' option917ebd9
-  ACTIVERECORD_JDBC-98: Make sure we actuall raise an error when
+- JRUBY-3555: Allow setting Derby schema with 'schema:' option
+- ACTIVERECORD_JDBC-98: Make sure we actuall raise an error when
   inappropriately configured
 - ACTIVERECORD_JDBC-112: Add schema dumper tests for already-fixed
   MySQL type limits
-- ACTIVERECORD_JDBC-113: Fix PG float precision issue2c6b1aa No longer
-  need M[ys]SQL escape hatch on case-sensitive test
+- ACTIVERECORD_JDBC-113: Fix PG float precision issue
 - ACTIVERECORD_JDBC-103: Fix decimal options for PG add/change column
   (Michael Pitman)
 - ACTIVERECORD_JDBC-127: Fix quoting of Date vs. Time(stamp) for
   Oracle (Lenny Marks)
-- Oracle: Sort out theNUMBER vs NUMBER(x) vs NUMBER(x,y) situation.
+- Oracle: Sort out the NUMBER vs NUMBER(x) vs NUMBER(x,y) situation.
 - JRUBY-3051: Think we finally got the PG mixed-case patches applied.
 - JRUBY-5081: Consolidate code for dropping DB via postgres
 - ACTIVERECORD_JDBC-101: Add override of LONGVARCHAR => CLOB for
