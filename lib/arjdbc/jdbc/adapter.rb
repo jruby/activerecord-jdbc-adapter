@@ -32,6 +32,7 @@ module ActiveRecord
         end
         super(connection, logger)
         extend spec if spec
+        configure_arel2_visitors
         connection.adapter = self
         JndiConnectionPoolCallbacks.prepare(self, connection)
       end
@@ -86,6 +87,19 @@ module ActiveRecord
 
       def adapter_name #:nodoc:
         'JDBC'
+      end
+
+      def arel2_visitors
+        {}
+      end
+
+      def configure_arel2_visitors
+        if defined?(::Arel::Visitors::VISITORS)
+          visitors = ::Arel::Visitors::VISITORS
+          arel2_visitors.each do |k,v|
+            visitors[k] = v unless visitors.has_key?(k)
+          end
+        end
       end
 
       def is_a?(klass)          # :nodoc:

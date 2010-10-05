@@ -90,6 +90,10 @@ module ::ArJdbc
       'MySQL'
     end
 
+    def arel2_visitors
+      {'jdbcmysql' => ::Arel::Visitors::MySQL}
+    end
+
     def case_sensitive_equality_operator
       "= BINARY"
     end
