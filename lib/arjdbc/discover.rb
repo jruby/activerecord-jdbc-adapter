@@ -20,13 +20,6 @@ module ::ArJdbc
   end
 
   # Other adapters are lazy-loaded
-  extension :CacheDB do |name|
-    if name =~ /cache/i
-      require 'arjdbc/cachedb'
-      true
-    end
-  end
-
   extension :DB2 do |name, config|
     if name =~ /(db2|as400)/i && config[:url] !~ /^jdbc:derby:net:/
       require 'arjdbc/db2'
