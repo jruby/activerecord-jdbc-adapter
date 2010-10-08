@@ -273,7 +273,7 @@ um <= #{sanitize_limit(limit) + offset}"
     # http://publib.boulder.ibm.com/infocenter/db2luw/v9r7/topic/com.ibm.db2.luw.sql.ref.doc/doc/r0000980.html
     def rename_table(name, new_name) #:nodoc:
       execute "RENAME TABLE #{name} TO #{new_name}"
-      reorg_table(table_name)
+      reorg_table(new_name)
     end
 
     def tables
