@@ -16,9 +16,10 @@ jar_name = File.join(*%w(lib arjdbc jdbc adapter_java.jar))
 
 desc "Compile the native Java code."
 task :java_compile do
+  debug = ENV['DEBUG'] ? '-g' : ''
   pkg_classes = File.join(*%w(pkg classes))
   mkdir_p pkg_classes
-  sh "javac -target 1.5 -source 1.5 -d pkg/classes #{java_classpath_arg} #{FileList['src/java/**/*.java'].join(' ')}"
+  sh "javac -target 1.5 -source 1.5 #{debug} -d pkg/classes #{java_classpath_arg} #{FileList['src/java/**/*.java'].join(' ')}"
   sh "jar cf #{jar_name} -C #{pkg_classes} ."
 end
 file jar_name => :java_compile
