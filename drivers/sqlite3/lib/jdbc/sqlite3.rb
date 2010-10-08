@@ -1,6 +1,6 @@
 module Jdbc
   module SQLite3
-    VERSION = "3.6.3.054" # Based on SQLite 3.6.3
+    VERSION = "3.6.14.2.056" # Based on SQLite 3.6.14.2
   end
 end
 if RUBY_PLATFORM =~ /java/
