@@ -8,8 +8,9 @@ class ActiveRecord::Base
       require "arjdbc/sqlite3"
 
       parse_sqlite3_config!(config)
-
-      config[:url] ||= "jdbc:sqlite:#{config[:database]}"
+      database = config[:database]
+      database = '' if database == ':memory:'
+      config[:url] ||= "jdbc:sqlite:#{database}"
       config[:driver] ||= "org.sqlite.JDBC"
       config[:adapter_class] = ActiveRecord::ConnectionAdapters::SQLite3Adapter
       jdbc_connection(config)
