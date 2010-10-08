@@ -10,6 +10,7 @@ module MigrationSetup
     DbTypeMigration.up
     CreateStringIds.up
     CreateEntries.up
+    CreateUsers.up
     CreateAutoIds.up
     CreateValidatesUniquenessOf.up
 
@@ -20,6 +21,7 @@ module MigrationSetup
     DbTypeMigration.down
     CreateStringIds.down
     CreateEntries.down
+    CreateUsers.down
     CreateAutoIds.down
     CreateValidatesUniquenessOf.down
     ActiveRecord::Base.clear_active_connections!
@@ -34,7 +36,8 @@ module FixtureSetup
     @content = "Hello from JRuby on Rails!"
     @new_title = "First post updated title"
     @rating = 205.76
-    @entry = Entry.create :title => @title, :content => @content, :rating => @rating
+    @user = User.create :login=>"something"
+    @entry = Entry.create :title => @title, :content => @content, :rating => @rating, :user=>@user
     DbType.create
   end
 end
@@ -44,6 +47,10 @@ module SimpleTestMethods
 
   def test_entries_created
     assert ActiveRecord::Base.connection.tables.find{|t| t =~ /^entries$/i}, "entries not created"
+  end
+
+  def test_users_created
+    assert ActiveRecord::Base.connection.tables.find{|t| t =~ /^users$/i}, "users not created"
   end
 
   def test_entries_empty
@@ -274,6 +281,15 @@ module SimpleTestMethods
     assert_nil AutoId.find(test.id).value
   end
 
+  # These should make no difference, but might due to the wacky regexp SQL rewriting we do.
+  def test_save_value_containing_sql
+    e = DbType.first
+    e.save
+
+    e.sample_string = e.sample_text = "\n\nselect from nothing where id = 'foo'"
+    e.save
+  end
+
   def test_invalid
     e = Entry.new(:title => @title, :content => @content, :rating => ' ')
     assert e.valid?
@@ -324,9 +340,6 @@ module SimpleTestMethods
   end
 
   def test_validates_uniqueness_of_strings_case_sensitive
-    # In MySQL and MsSQL, string cmps are case-insensitive by default, so skip this test
-    return if ActiveRecord::Base.connection.config[:adapter] =~ /m[sy]sql/
-
     name_lower = ValidatesUniquenessOfString.new(:cs_string => "name", :ci_string => '1')
     name_lower.save!
 

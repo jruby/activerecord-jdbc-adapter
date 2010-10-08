@@ -31,7 +31,7 @@ module ::ArJdbc
         return :string if field_type =~ /\[\]$/i || field_type =~ /^interval/i
         return :string if field_type =~ /^(?:point|lseg|box|"?path"?|polygon|circle)/i
         return :datetime if field_type =~ /^timestamp/i
-        return :float if field_type =~ /^real|^money/i
+        return :float if field_type =~ /^(?:real|double precision)$/i
         return :binary if field_type =~ /^bytea/i
         return :boolean if field_type =~ /^bool/i
         super
@@ -72,6 +72,8 @@ module ::ArJdbc
       tp[:string][:limit] = 255
       tp[:integer][:limit] = nil
       tp[:boolean][:limit] = nil
+      tp[:float] = { :name => "float" }
+      tp[:decimal] = { :name => "decimal" }
       tp
     end
 
@@ -124,6 +126,10 @@ module ::ArJdbc
       true
     end
 
+    def supports_count_distinct? #:nodoc:
+      false
+    end
+
     def create_savepoint
       execute("SAVEPOINT #{current_savepoint_name}")
     end
@@ -139,7 +145,7 @@ module ::ArJdbc
     # Returns the configured supported identifier length supported by PostgreSQL,
     # or report the default of 63 on PostgreSQL 7.x.
     def table_alias_length
-      @table_alias_length ||= (postgresql_version >= 80000 ? select('SHOW max_identifier_length').to_a[0][0].to_i : 63)
+      @table_alias_length ||= (postgresql_version >= 80000 ? select_one('SHOW max_identifier_length')['max_identifier_length'].to_i : 63)
     end
 
     def default_sequence_name(table_name, pk = nil)
@@ -167,12 +173,6 @@ module ::ArJdbc
       end
     end
 
-    def quote_regclass(table_name)
-      table_name.to_s.split('.').map do |part|
-        part =~ /".*"/i ? part : quote_table_name(part)
-      end.join('.')
-    end
-
     # Find a table's primary key and sequence.
     def pk_and_sequence_for(table) #:nodoc:
       # First try looking for a sequence with a dependency on the
@@ -191,7 +191,7 @@ module ::ArJdbc
             AND attr.attrelid     = cons.conrelid
             AND attr.attnum       = cons.conkey[1]
             AND cons.contype      = 'p'
-            AND dep.refobjid      = '#{table}'::regclass
+            AND dep.refobjid      = '#{quote_table_name(table)}'::regclass
         end_sql
 
       if result.nil? or result.empty?
@@ -210,7 +210,7 @@ module ::ArJdbc
             JOIN pg_attribute   attr ON (t.oid = attrelid)
             JOIN pg_attrdef     def  ON (adrelid = attrelid AND adnum = attnum)
             JOIN pg_constraint  cons ON (conrelid = adrelid AND adnum = conkey[1])
-            WHERE t.oid = '#{table}'::regclass
+            WHERE t.oid = '#{quote_table_name(table)}'::regclass
               AND cons.contype = 'p'
               AND def.adsrc ~* 'nextval'
           end_sql
@@ -313,7 +313,7 @@ module ::ArJdbc
     end
 
     def drop_database(name)
-      execute "DROP DATABASE \"#{name}\""
+      execute "DROP DATABASE IF EXISTS \"#{name}\""
     end
 
     def create_schema(schema_name, pg_username)
@@ -396,13 +396,23 @@ module ::ArJdbc
       sql.replace "SELECT * FROM (#{sql}) AS id_list ORDER BY #{order}"
     end
 
-    def quote(value, column = nil)
-      return value.quoted_id if value.respond_to?(:quoted_id)
+    def quote(value, column = nil) #:nodoc:
+      return super unless column
 
-      if value.kind_of?(String) && column && column.type == :binary
+      if value.kind_of?(String) && column.type == :binary
         "'#{escape_bytea(value)}'"
-      elsif column && column.type == :primary_key
-        return value.to_s
+      elsif value.kind_of?(String) && column.sql_type == 'xml'
+        "xml '#{quote_string(value)}'"
+      elsif value.kind_of?(Numeric) && column.sql_type == 'money'
+        # Not truly string input, so doesn't require (or allow) escape string syntax.
+        "'#{value}'"
+      elsif value.kind_of?(String) && column.sql_type =~ /^bit/
+        case value
+        when /^[01]*$/
+          "B'#{value}'" # Bit-string notation
+        when /^[0-9A-F]*$/i
+          "X'#{value}'" # Hexadecimal notation
+        end
       else
         super
       end
@@ -413,6 +423,17 @@ module ::ArJdbc
         result = ''
         s.each_byte { |c| result << sprintf('\\\\%03o', c) }
         result
+      end
+    end
+
+    def quote_table_name(name)
+      schema, name_part = extract_pg_identifier_from_name(name.to_s)
+
+      unless name_part
+        quote_column_name(schema)
+      else
+        table_name, name_part = extract_pg_identifier_from_name(name_part)
+        "#{quote_column_name(schema)}.#{quote_column_name(table_name)}"
       end
     end
 
@@ -440,7 +461,7 @@ module ::ArJdbc
     end
 
     def add_column(table_name, column_name, type, options = {})
-      execute("ALTER TABLE #{quote_table_name(table_name)} ADD #{quote_column_name(column_name)} #{type_to_sql(type, options[:limit])}")
+      execute("ALTER TABLE #{quote_table_name(table_name)} ADD #{quote_column_name(column_name)} #{type_to_sql(type, options[:limit], options[:precision], options[:scale])}")
       change_column_default(table_name, column_name, options[:default]) unless options[:default].nil?
       if options[:null] == false
         execute("UPDATE #{quote_table_name(table_name)} SET #{quote_column_name(column_name)} = '#{options[:default]}'") if options[:default]
@@ -450,12 +471,12 @@ module ::ArJdbc
 
     def change_column(table_name, column_name, type, options = {}) #:nodoc:
       begin
-        execute "ALTER TABLE #{quote_table_name(table_name)} ALTER #{quote_column_name(column_name)} TYPE #{type_to_sql(type, options[:limit])}"
+        execute "ALTER TABLE #{quote_table_name(table_name)} ALTER #{quote_column_name(column_name)} TYPE #{type_to_sql(type, options[:limit], options[:precision], options[:scale])}"
       rescue ActiveRecord::StatementInvalid
         # This is PG7, so we use a more arcane way of doing it.
         begin_db_transaction
         add_column(table_name, "#{column_name}_ar_tmp", type, options)
-        execute "UPDATE #{table_name} SET #{column_name}_ar_tmp = CAST(#{column_name} AS #{type_to_sql(type, options[:limit])})"
+        execute "UPDATE #{table_name} SET #{column_name}_ar_tmp = CAST(#{column_name} AS #{type_to_sql(type, options[:limit], options[:precision], options[:scale])})"
         remove_column(table_name, column_name)
         rename_column(table_name, "#{column_name}_ar_tmp", column_name)
         commit_db_transaction
@@ -496,6 +517,17 @@ module ::ArJdbc
 
     def tables
       @connection.tables(database_name, nil, nil, ["TABLE"])
+    end
+
+    private
+    def extract_pg_identifier_from_name(name)
+      match_data = name[0,1] == '"' ? name.match(/\"([^\"]+)\"/) : name.match(/([^\.]+)/)
+
+      if match_data
+        rest = name[match_data[0].length..-1]
+        rest = rest[1..-1] if rest[0,1] == "."
+        [match_data[1], (rest.length > 0 ? rest : nil)]
+      end
     end
   end
 end

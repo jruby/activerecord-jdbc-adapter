@@ -55,6 +55,25 @@ module ::ArJdbc
       tp
     end
 
+    def type_to_sql(type, limit = nil, precision = nil, scale = nil) #:nodoc:
+      # MSSQL's NVARCHAR(n | max) column supports either a number between 1 and
+      # 4000, or the word "MAX", which corresponds to 2**30-1 UCS-2 characters.
+      #
+      # It does not accept NVARCHAR(1073741823) here, so we have to change it
+      # to NVARCHAR(MAX), even though they are logically equivalent.
+      #
+      # MSSQL Server 2000 is skipped here because I don't know how it will behave.
+      #
+      # See: http://msdn.microsoft.com/en-us/library/ms186939.aspx
+      if type.to_s == 'string' and limit == 1073741823 and sqlserver_version != "2000"
+        'NVARCHAR(MAX)'
+      elsif %w( boolean date datetime ).include?(type.to_s)
+        super(type)   # cannot specify limit/precision/scale with these types
+      else
+        super
+      end
+    end
+
     module Column
       attr_accessor :identity, :is_special
 
@@ -67,9 +86,9 @@ module ::ArJdbc
         when /timestamp/i                                          then :timestamp
         when /time/i                                               then :time
         when /date/i                                               then :date
-        when /text|ntext/i                                         then :text
+        when /text|ntext|xml/i                                     then :text
         when /binary|image|varbinary/i                             then :binary
-        when /char|nchar|nvarchar|string|varchar/i                 then :string
+        when /char|nchar|nvarchar|string|varchar/i                 then (@limit == 1073741823 ? (@limit = nil; :text) : :string)
         when /bit/i                                                then :boolean
         when /uniqueidentifier/i                                   then :string
         end
@@ -94,7 +113,15 @@ module ::ArJdbc
         when :binary    then unquote value
         else value
         end
+      end
 
+      def extract_limit(sql_type)
+        case sql_type
+        when /text|ntext|xml|binary|image|varbinary|bit/
+          nil
+        else
+          super
+        end
       end
 
       def is_utf8?
@@ -108,10 +135,14 @@ module ::ArJdbc
       def cast_to_time(value)
         return value if value.is_a?(Time)
         time_array = ParseDate.parsedate(value)
+        return nil if !time_array.any?
         time_array[0] ||= 2000
         time_array[1] ||= 1
         time_array[2] ||= 1
-        Time.send(ActiveRecord::Base.default_timezone, *time_array) rescue nil
+        return Time.send(ActiveRecord::Base.default_timezone, *time_array) rescue nil
+
+        # Try DateTime instead - the date may be outside the time period support by Time.
+        DateTime.new(*time_array[0..5]) rescue nil
       end
 
       def cast_to_date(value)
@@ -127,8 +158,18 @@ module ::ArJdbc
             return Time.mktime(2000, 1, 1, value.hour, value.min, value.sec) rescue nil
           end
         end
+        if value.is_a?(DateTime)
+          begin
+            # Attempt to convert back to a Time, but it could fail for dates significantly in the past/future.
+            return Time.mktime(value.year, value.mon, value.day, value.hour, value.min, value.sec)
+          rescue ArgumentError
+            return value
+          end
+        end
+
         return cast_to_time(value) if value.is_a?(Date) or value.is_a?(String) rescue nil
-        value
+
+        return value.is_a?(Date) ? value : nil
       end
 
       # These methods will only allow the adapter to insert binary data with a length of 7K or less
@@ -143,7 +184,9 @@ module ::ArJdbc
       return value.quoted_id if value.respond_to?(:quoted_id)
 
       case value
-      when String, ActiveSupport::Multibyte::Chars
+      # SQL Server 2000 doesn't let you insert an integer into a NVARCHAR
+      # column, so we include Integer here.
+      when String, ActiveSupport::Multibyte::Chars, Integer
         value = value.to_s
         if column && column.type == :binary
           "'#{quote_string(ArJdbc::MsSQL::Column.string_to_binary(value))}'" # ' (for ruby-mode)
@@ -181,6 +224,10 @@ module ::ArJdbc
       quote false
     end
 
+    def adapter_name #:nodoc:
+      'MsSQL'
+    end
+
     module SqlServer2000LimitOffset
       def add_limit_offset!(sql, options)
         limit = options[:limit]
@@ -205,7 +252,13 @@ module ::ArJdbc
             #I am not sure this will cover all bases.  but all the tests pass
             new_order = "#{order}, #{table_name}.id" if order.index("#{table_name}.id").nil?
             new_order ||= order
-            new_sql = "#{select} TOP #{limit} #{rest_of_query} WHERE #{table_name}.id NOT IN (#{select} TOP #{offset} #{table_name}.id #{rest} ORDER BY #{new_order}) ORDER BY #{order} "
+
+            if (rest_of_query.match(/WHERE/).nil?)
+              new_sql = "#{select} TOP #{limit} #{rest_of_query} WHERE #{table_name}.id NOT IN (#{select} TOP #{offset} #{table_name}.id #{rest} ORDER BY #{new_order}) ORDER BY #{order} "
+            else
+              new_sql = "#{select} TOP #{limit} #{rest_of_query} AND #{table_name}.id NOT IN (#{select} TOP #{offset} #{table_name}.id #{rest} ORDER BY #{new_order}) ORDER BY #{order} "
+            end
+
             sql.replace(new_sql)
           end
         end
@@ -223,8 +276,11 @@ module ::ArJdbc
           sql.sub!(/ ORDER BY.*$/i, '')
           find_select = /\b(SELECT(?:\s+DISTINCT)?)\b(.*)/im
           whole, select, rest_of_query = find_select.match(sql).to_a
-          new_sql = "#{select} t.* FROM (SELECT ROW_NUMBER() OVER(ORDER BY #{order}) AS row_num, #{rest_of_query}"
-          new_sql << ") AS t WHERE t.row_num BETWEEN #{start_row.to_s} AND #{end_row.to_s}"
+          if rest_of_query.strip!.first == '*'
+            from_table = /.*FROM\s*\b(\w*)\b/i.match(rest_of_query).to_a[1]
+          end
+          new_sql = "#{select} t.* FROM (SELECT ROW_NUMBER() OVER(ORDER BY #{order}) AS _row_num, #{from_table + '.' if from_table}#{rest_of_query}"
+          new_sql << ") AS t WHERE t._row_num BETWEEN #{start_row.to_s} AND #{end_row.to_s}"
           sql.replace(new_sql)
         end
       end
@@ -260,12 +316,14 @@ module ::ArJdbc
     end
 
     def rename_table(name, new_name)
+      clear_cached_table(name)
       execute "EXEC sp_rename '#{name}', '#{new_name}'"
     end
 
     # Adds a new column to the named table.
     # See TableDefinition#column for details of the options you can use.
     def add_column(table_name, column_name, type, options = {})
+      clear_cached_table(table_name)
       add_column_sql = "ALTER TABLE #{table_name} ADD #{quote_column_name(column_name)} #{type_to_sql(type, options[:limit], options[:precision], options[:scale])}"
       add_column_options!(add_column_sql, options)
       # TODO: Add support to mimic date columns, using constraints to mark them as such in the database
@@ -274,15 +332,18 @@ module ::ArJdbc
     end
 
     def rename_column(table, column, new_column_name)
+      clear_cached_table(table)
       execute "EXEC sp_rename '#{table}.#{column}', '#{new_column_name}'"
     end
 
     def change_column(table_name, column_name, type, options = {}) #:nodoc:
+      clear_cached_table(table_name)
       change_column_type(table_name, column_name, type, options)
       change_column_default(table_name, column_name, options[:default]) if options_include_default?(options)
     end
 
     def change_column_type(table_name, column_name, type, options = {}) #:nodoc:
+      clear_cached_table(table_name)
       sql = "ALTER TABLE #{table_name} ALTER COLUMN #{quote_column_name(column_name)} #{type_to_sql(type, options[:limit], options[:precision], options[:scale])}"
       if options.has_key?(:null)
         sql += (options[:null] ? " NULL" : " NOT NULL")
@@ -291,6 +352,7 @@ module ::ArJdbc
     end
 
     def change_column_default(table_name, column_name, default) #:nodoc:
+      clear_cached_table(table_name)
       remove_default_constraint(table_name, column_name)
       unless default.nil?
         execute "ALTER TABLE #{table_name} ADD CONSTRAINT DF_#{table_name}_#{column_name} DEFAULT #{quote(default)} FOR #{quote_column_name(column_name)}"
@@ -298,12 +360,14 @@ module ::ArJdbc
     end
 
     def remove_column(table_name, column_name)
+      clear_cached_table(table_name)
       remove_check_constraints(table_name, column_name)
       remove_default_constraint(table_name, column_name)
       execute "ALTER TABLE #{table_name} DROP COLUMN [#{column_name}]"
     end
 
     def remove_default_constraint(table_name, column_name)
+      clear_cached_table(table_name)
       defaults = select "select def.name from sysobjects def, syscolumns col, sysobjects tab where col.cdefault = def.id and col.name = '#{column_name}' and tab.name = '#{table_name}' and col.id = tab.id"
       defaults.each {|constraint|
         execute "ALTER TABLE #{table_name} DROP CONSTRAINT #{constraint["name"]}"
@@ -311,6 +375,7 @@ module ::ArJdbc
     end
 
     def remove_check_constraints(table_name, column_name)
+      clear_cached_table(table_name)
       # TODO remove all constraints in single method
       constraints = select "SELECT CONSTRAINT_NAME FROM INFORMATION_SCHEMA.CONSTRAINT_COLUMN_USAGE where TABLE_NAME = '#{table_name}' and COLUMN_NAME = '#{column_name}'"
       constraints.each do |constraint|
@@ -323,17 +388,31 @@ module ::ArJdbc
     end
 
     def columns(table_name, name = nil)
+      # It's possible for table_name to be an empty string, or nil, if something attempts to issue SQL
+      # which doesn't involve a table.  IE. "SELECT 1" or "SELECT * from someFunction()".
+      return [] if table_name.blank?
+      table_name = table_name.to_s if table_name.is_a?(Symbol)
+
+      # Remove []'s from around the table name, valid in a select statement, but not when matching metadata.
+      table_name = table_name.gsub(/[\[\]]/, '')
+
       return [] if table_name =~ /^information_schema\./i
-      cc = super
-      cc.each do |col|
-        col.identity = true if col.sql_type =~ /identity/i
-        col.is_special = true if col.sql_type =~ /text|ntext|image/i
+      @table_columns = {} unless @table_columns
+      unless @table_columns[table_name]
+        @table_columns[table_name] = super
+        @table_columns[table_name].each do |col|
+          col.identity = true if col.sql_type =~ /identity/i
+          col.is_special = true if col.sql_type =~ /text|ntext|image|xml/i
+        end
       end
-      cc
+      @table_columns[table_name]
     end
 
     def _execute(sql, name = nil)
-      if sql.lstrip =~ /^insert/i
+      # Match the start of the sql to determine appropriate behaviour.  Be aware of
+      # multi-line sql which might begin with 'create stored_proc' and contain 'insert into ...' lines.
+      # Possible improvements include ignoring comment blocks prior to the first statement.
+      if sql.lstrip =~ /\Ainsert/i
         if query_requires_identity_insert?(sql)
           table_name = get_table_name(sql)
           with_identity_insert_enabled(table_name) do
@@ -342,9 +421,9 @@ module ::ArJdbc
         else
           @connection.execute_insert(sql)
         end
-      elsif sql.lstrip =~ /^(create|exec)/i
+      elsif sql.lstrip =~ /\A(create|exec)/i
         @connection.execute_update(sql)
-      elsif sql.lstrip =~ /^\(?\s*(select|show)/i
+      elsif sql.lstrip =~ /\A\(?\s*(select|show)/i
         repair_special_columns(sql)
         @connection.execute_query(sql)
       else
@@ -392,12 +471,9 @@ module ::ArJdbc
     end
 
     def identity_column(table_name)
-      @table_columns = {} unless @table_columns
-      @table_columns[table_name] = columns(table_name) if @table_columns[table_name] == nil
-      @table_columns[table_name].each do |col|
+      columns(table_name).each do |col|
         return col.name if col.identity
       end
-
       return nil
     end
 
@@ -420,9 +496,7 @@ module ::ArJdbc
 
     def get_special_columns(table_name)
       special = []
-      @table_columns ||= {}
-      @table_columns[table_name] ||= columns(table_name)
-      @table_columns[table_name].each do |col|
+      columns(table_name).each do |col|
         special << col.name if col.is_special
       end
       special
@@ -449,7 +523,11 @@ module ::ArJdbc
       # Look for an id column.  Return it, without changing case, to cover dbs with a case-sensitive collation.
       columns(table_name).each { |column| return column.name if column.name =~ /^id$/i }
       # Give up and provide something which is going to crash almost certainly
-      "id"
+      columns(table_name)[0].name
+    end
+
+    def clear_cached_table(name)
+      (@table_columns ||= {}).delete(name)
     end
   end
 end

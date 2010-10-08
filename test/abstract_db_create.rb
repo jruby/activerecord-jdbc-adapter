@@ -28,8 +28,11 @@ module AbstractDbCreate
     load File.dirname(__FILE__) + '/../lib/arjdbc/jdbc/jdbc.rake' if jruby?
     task :environment do
       ActiveRecord::Base.configurations = configurations
+      @full_env_loaded = true
     end
-    task :rails_env
+    task :rails_env do
+      @rails_env_set = true
+    end
   end
 
   def teardown
@@ -38,6 +41,8 @@ module AbstractDbCreate
     restore_rails
     ActiveRecord::Base.configurations = @prevconfigs
     ActiveRecord::Base.establish_connection(db_config)
+    @rails_env_set = nil
+    @full_env_loaded = nil
   end
 
   def setup_rails

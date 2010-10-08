@@ -33,6 +33,10 @@ module ::ArJdbc
       [/oracle/i, lambda {|cfg,col| col.extend(::ArJdbc::Oracle::Column)}]
     end
 
+    def self.jdbc_connection_class
+      ::ActiveRecord::ConnectionAdapters::OracleJdbcConnection
+    end
+
     module Column
       def primary=(val)
         super
@@ -351,15 +355,13 @@ module ::ArJdbc
           return value.to_i.to_s
         end
         quoted = super
-        if value.acts_like?(:date) || value.acts_like?(:time)
-          quoted = "#{quoted_date(value)}"
+        if value.acts_like?(:date)
+          quoted = %Q{DATE'#{quoted_date(value)}'}
+        elsif value.acts_like?(:time)
+          quoted = %Q{TIMESTAMP'#{quoted_date(value)}'}
         end
         quoted
       end
-    end
-
-    def quoted_date(value)
-      %Q{TIMESTAMP'#{super}'}
     end
 
     def quoted_true #:nodoc:

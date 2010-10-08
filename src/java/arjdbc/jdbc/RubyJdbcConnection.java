@@ -123,23 +123,32 @@ public class RubyJdbcConnection extends RubyObject {
                     String table_name = rubyApi.convertToRubyString(args[0]).getUnicodeValue();
                     String schemaName = null;
 
-                    int index = table_name.indexOf(".");
-                    if(index != -1) {
-                        schemaName = table_name.substring(0, index);
-                        table_name = table_name.substring(index + 1);
+                    final String[] name_parts = table_name.split( "\\." );
+                    if ( name_parts.length > 3 ) {
+                        throw new SQLException("Table name '" + table_name + "' should not contain more than 2 '.'");
                     }
 
                     DatabaseMetaData metadata = c.getMetaData();
                     String clzName = metadata.getClass().getName().toLowerCase();
                     boolean isDB2 = clzName.indexOf("db2") != -1 || clzName.indexOf("as400") != -1;
 
+                    String catalog = c.getCatalog();
+                    if( name_parts.length == 2 ) {
+                        schemaName = name_parts[0];
+                        table_name = name_parts[1];
+                    }
+                    else if ( name_parts.length == 3 ) {
+                        catalog = name_parts[0];
+                        schemaName = name_parts[1];
+                        table_name = name_parts[2];
+                    }
+
                     if(args.length > 2 && schemaName == null) schemaName = toStringOrNull(args[2]);
 
                     if (schemaName != null) schemaName = caseConvertIdentifierForJdbc(metadata, schemaName);
                     table_name = caseConvertIdentifierForJdbc(metadata, table_name);
 
-                    String catalog = c.getCatalog();
-                    if (schemaName != null && !isDB2) { catalog = schemaName; }
+                    if (schemaName != null && !isDB2 && !databaseSupportsSchemas()) { catalog = schemaName; }
 
                     String[] tableTypes = new String[]{"TABLE","VIEW","SYNONYM"};
                     RubyArray matchingTables = (RubyArray) tableLookupBlock(context.getRuntime(),
@@ -647,10 +656,11 @@ public class RubyJdbcConnection extends RubyObject {
     public static String caseConvertIdentifierForJdbc(DatabaseMetaData metadata, String value)
             throws SQLException {
         if (value == null) return null;
+        boolean isPostgres = metadata.getDatabaseProductName().equals("PostgreSQL");
 
         if (metadata.storesUpperCaseIdentifiers()) {
             return value.toUpperCase();
-        } else if (metadata.storesLowerCaseIdentifiers()) {
+        } else if (metadata.storesLowerCaseIdentifiers() && ! isPostgres) {
             return value.toLowerCase();
         }
 
@@ -841,8 +851,9 @@ public class RubyJdbcConnection extends RubyObject {
             RubyHash row = RubyHash.newHash(runtime);
 
             for (int i = 0; i < columnCount; i++) {
-                row.op_aset(context, columns[i].name, jdbcToRuby(runtime, i + 1, columns[i].type, resultSet));
+                row.op_aset(context, columns[i].name, jdbcToRuby(runtime, columns[i].index, columns[i].type, resultSet));
             }
+
             results.add(row);
         }
     }
@@ -972,10 +983,12 @@ public class RubyJdbcConnection extends RubyObject {
                     DatabaseMetaData metadata = c.getMetaData();
                     String clzName = metadata.getClass().getName().toLowerCase();
                     boolean isOracle = clzName.indexOf("oracle") != -1 || clzName.indexOf("oci") != -1;
+                    boolean isDerby = clzName.indexOf("derby") != 1;
 
                     String realschema = schemapat;
                     String realtablepat = tablepat;
 
+                    if (isDerby && realschema != null && realschema.equals("")) realschema = null;  // Derby doesn't like empty-string schema name
                     if (realtablepat != null) realtablepat = caseConvertIdentifierForJdbc(metadata, realtablepat);
                     if (realschema != null) realschema = caseConvertIdentifierForJdbc(metadata, realschema);
 
@@ -1017,15 +1030,15 @@ public class RubyJdbcConnection extends RubyObject {
         return RubyString.newUnicodeString(runtime, str);
     }
 
-    private static final int COLUMN_NAME = 4;
-    private static final int DATA_TYPE = 5;
-    private static final int TYPE_NAME = 6;
-    private static final int COLUMN_SIZE = 7;
-    private static final int DECIMAL_DIGITS = 9;
-    private static final int COLUMN_DEF = 13;
-    private static final int IS_NULLABLE = 18;
+    protected static final int COLUMN_NAME = 4;
+    protected static final int DATA_TYPE = 5;
+    protected static final int TYPE_NAME = 6;
+    protected static final int COLUMN_SIZE = 7;
+    protected static final int DECIMAL_DIGITS = 9;
+    protected static final int COLUMN_DEF = 13;
+    protected static final int IS_NULLABLE = 18;
 
-    private int intFromResultSet(ResultSet resultSet, int column) throws SQLException {
+    protected int intFromResultSet(ResultSet resultSet, int column) throws SQLException {
         int precision = resultSet.getInt(column);
 
         return precision == 0 && resultSet.wasNull() ? -1 : precision;
@@ -1034,19 +1047,10 @@ public class RubyJdbcConnection extends RubyObject {
     /**
      * Create a string which represents a sql type usable by Rails from the resultSet column
      * metadata object.
-     *
-     * @param numberAsBoolean the database uses decimal as a boolean data type
-     * because it does not support optional SQL92 type or mandatory SQL99
-     * booleans.
      */
-    private String typeFromResultSet(ResultSet resultSet, boolean numberAsBoolean) throws SQLException {
+    protected String typeFromResultSet(ResultSet resultSet) throws SQLException {
         int precision = intFromResultSet(resultSet, COLUMN_SIZE);
         int scale = intFromResultSet(resultSet, DECIMAL_DIGITS);
-
-        // Assume db's which use decimal for boolean will not also specify a
-        // valid precision 1 decimal also.  Seems sketchy to me...
-        if (numberAsBoolean && precision != 1 &&
-            resultSet.getInt(DATA_TYPE) == java.sql.Types.DECIMAL) precision = -1;
 
         String type = resultSet.getString(TYPE_NAME);
         if (precision > 0) {
@@ -1072,7 +1076,6 @@ public class RubyJdbcConnection extends RubyObject {
             List columns = new ArrayList();
             List pkeyNames = new ArrayList();
             String clzName = metadata.getClass().getName().toLowerCase();
-            boolean isOracle = clzName.indexOf("oracle") != -1 || clzName.indexOf("oci") != -1;
 
             RubyHash types = (RubyHash) native_database_types();
             IRubyObject jdbcCol = getJdbcColumnClass(context);
@@ -1089,7 +1092,7 @@ public class RubyJdbcConnection extends RubyObject {
                             RubyString.newUnicodeString(runtime,
                                     caseConvertIdentifierForRails(metadata, colName)),
                             defaultValueFromResultSet(runtime, rs),
-                            RubyString.newUnicodeString(runtime, typeFromResultSet(rs, isOracle)),
+                            RubyString.newUnicodeString(runtime, typeFromResultSet(rs)),
                             runtime.newBoolean(!rs.getString(IS_NULLABLE).trim().equals("NO"))
                         });
                 columns.add(column);
@@ -1194,6 +1197,14 @@ public class RubyJdbcConnection extends RubyObject {
         return Java.java_to_ruby(this, JavaObject.wrap(getRuntime(), c), Block.NULL_BLOCK);
     }
 
+    /**
+     * Some databases support schemas and others do not.
+     * For ones which do this method should return true, aiding in decisions regarding schema vs database determination.
+     */
+    protected boolean databaseSupportsSchemas() {
+        return false;
+    }
+
     private static int whitespace(int start, ByteList bl) {
         int end = bl.begin + bl.realSize;
 
@@ -1224,11 +1235,13 @@ public class RubyJdbcConnection extends RubyObject {
 
     public static class ColumnData {
         public IRubyObject name;
+        public int index;
         public int type;
 
-        public ColumnData(IRubyObject name, int type) {
+        public ColumnData(IRubyObject name, int type, int idx) {
             this.name = name;
             this.type = type;
+            this.index = idx;
         }
 
         public static ColumnData[] setup(Ruby runtime, DatabaseMetaData databaseMetadata,
@@ -1244,7 +1257,7 @@ public class RubyJdbcConnection extends RubyObject {
                     name = RubyJdbcConnection.caseConvertIdentifierForRails(databaseMetadata, metadata.getColumnLabel(i));
                 }
 
-                columns[i - 1] = new ColumnData(RubyString.newUnicodeString(runtime, name), metadata.getColumnType(i));
+                columns[i - 1] = new ColumnData(RubyString.newUnicodeString(runtime, name), metadata.getColumnType(i), i);
             }
 
             return columns;

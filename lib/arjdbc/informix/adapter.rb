@@ -36,6 +36,10 @@ module ::ArJdbc
         lambda { |cfg, column| column.extend(::ArJdbc::Informix::Column) } ]
     end
 
+    def self.jdbc_connection_class
+      ::ActiveRecord::ConnectionAdapters::InformixJdbcConnection
+    end
+
     module Column
     private
       # TODO: Test all Informix column types.

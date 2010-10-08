@@ -16,3 +16,9 @@ TAGS
 patches*
 *#
 .stgit-edit.txt
+/.classpath
+/.project
+/bin
+/jndi_test/jdbc/.bindings
+/test/fscontext.jar
+/test/providerutil.jar

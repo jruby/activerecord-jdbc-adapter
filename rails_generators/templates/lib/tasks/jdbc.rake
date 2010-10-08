@@ -4,5 +4,5 @@
 # This file allows you to use Rails' various db:* tasks with JDBC.
 if defined?(JRUBY_VERSION)
   require 'arjdbc'
-  require 'arjdbc/rake_tasks'
+  require 'arjdbc/jdbc/rake_tasks'
 end

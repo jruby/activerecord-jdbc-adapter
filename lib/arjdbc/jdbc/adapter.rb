@@ -32,6 +32,7 @@ module ActiveRecord
         end
         super(connection, logger)
         extend spec if spec
+        configure_arel2_visitors
         connection.adapter = self
         JndiConnectionPoolCallbacks.prepare(self, connection)
       end
@@ -46,13 +47,35 @@ module ActiveRecord
         ActiveRecord::ConnectionAdapters::JdbcColumn
       end
 
+      # Retrieve the raw java.sql.Connection object.
+      def jdbc_connection
+        raw_connection.connection
+      end
+
       # Locate specialized adapter specification if one exists based on config data
       def adapter_spec(config)
-        dialect = (config[:dialect] || config[:driver]).to_s
-        ::ArJdbc.constants.map { |name| ::ArJdbc.const_get name }.each do |constant|
-          if constant.respond_to? :adapter_matcher
-            spec = constant.adapter_matcher(dialect, config)
-            return spec if spec
+        2.times do
+          dialect = (config[:dialect] || config[:driver]).to_s
+          ::ArJdbc.constants.map { |name| ::ArJdbc.const_get name }.each do |constant|
+            if constant.respond_to? :adapter_matcher
+              spec = constant.adapter_matcher(dialect, config)
+              return spec if spec
+            end
+          end
+
+          # If nothing matches and we're using jndi, try to automatically detect the database.
+          break unless config[:jndi] and !config[:dialect]
+          begin
+            conn = Java::javax.naming.InitialContext.new.lookup(config[:jndi]).getConnection
+            config[:dialect] = conn.getMetaData.getClass.getName.downcase
+
+            # Derby-specific hack
+            if ::ArJdbc::Derby.adapter_matcher(config[:dialect], config)
+              # Needed to set the correct database schema name
+              config[:username] ||= conn.getMetaData.getUserName
+            end
+          rescue
+            conn.close
           end
         end
         nil
@@ -64,6 +87,19 @@ module ActiveRecord
 
       def adapter_name #:nodoc:
         'JDBC'
+      end
+
+      def arel2_visitors
+        {}
+      end
+
+      def configure_arel2_visitors
+        if defined?(::Arel::Visitors::VISITORS)
+          visitors = ::Arel::Visitors::VISITORS
+          arel2_visitors.each do |k,v|
+            visitors[k] = v unless visitors.has_key?(k)
+          end
+        end
       end
 
       def is_a?(klass)          # :nodoc:

@@ -215,6 +215,29 @@ module ::ArJdbc
       super
     end
 
+    # SELECT DISTINCT clause for a given set of columns and a given ORDER BY clause.
+    #
+    # Derby requires the ORDER BY columns in the select list for distinct queries, and
+    # requires that the ORDER BY include the distinct column.
+    #
+    #   distinct("posts.id", "posts.created_at desc")
+    #
+    # Based on distinct method for PostgreSQL Adapter
+    def distinct(columns, order_by)
+      return "DISTINCT #{columns}" if order_by.blank?
+
+      # construct a clean list of column names from the ORDER BY clause, removing
+      # any asc/desc modifiers
+      order_columns = order_by.split(',').collect { |s| s.split.first }
+      order_columns.delete_if(&:blank?)
+      order_columns = order_columns.zip((0...order_columns.size).to_a).map { |s,i| "#{s} AS alias_#{i}" }
+
+      # return a DISTINCT clause that's distinct on the columns we want but includes
+      # all the required columns for the ORDER BY to work properly
+      sql = "DISTINCT #{columns}, #{order_columns * ', '}"
+      sql
+    end
+
     # I don't think this method is ever called ??? (stepheneb)
     def create_column(name, refid, colno)
       stmt = COLUMN_TYPE_STMT % [refid, strip_quotes(name)]
@@ -400,7 +423,11 @@ module ::ArJdbc
     private
     # Derby appears to define schemas using the username
     def derby_schema
-      @config[:username].to_s
+      if @config.has_key?(:schema)
+        config[:schema]
+      else
+        (@config[:username] && @config[:username].to_s) || ''
+      end
     end
   end
 end

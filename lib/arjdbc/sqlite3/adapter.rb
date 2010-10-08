@@ -23,26 +23,11 @@ module ::ArJdbc
         return nil if value.nil?
         case type
         when :string   then value
-        when :integer  then ArJdbc::SQLite3::Column.cast_to_integer(value)
         when :primary_key then defined?(value.to_i) ? value.to_i : (value ? 1 : 0)
         when :float    then value.to_f
-        when :datetime then ArJdbc::SQLite3::Column.cast_to_date_or_time(value)
-        when :date then ArJdbc::SQLite3::Column.cast_to_date_or_time(value)
-        when :time     then ArJdbc::SQLite3::Column.cast_to_time(value)
         when :decimal  then self.class.value_to_decimal(value)
         when :boolean  then self.class.value_to_boolean(value)
-        else value
-        end
-      end
-
-      def type_cast_code(var_name)
-        case type
-          when :integer  then "ArJdbc::SQLite3::Column.cast_to_integer(#{var_name})"
-          when :datetime then "ArJdbc::SQLite3::Column.cast_to_date_or_time(#{var_name})"
-          when :date     then "ArJdbc::SQLite3::Column.cast_to_date_or_time(#{var_name})"
-          when :time     then "ArJdbc::SQLite3::Column.cast_to_time(#{var_name})"
-        else
-          super
+        else super
         end
       end
 
@@ -83,29 +68,6 @@ module ::ArJdbc
         return $1 if value =~ /^'(.*)'$/
 
         value
-      end
-
-      def self.cast_to_integer(value)
-        return nil if value =~ /NULL/ or value.to_s.empty? or value.nil?
-        return (value.to_i) ? value.to_i : (value ? 1 : 0)
-      end
-
-      def self.cast_to_date_or_time(value)
-        return value if value.is_a? Date
-        return nil if value.blank?
-        guess_date_or_time((value.is_a? Time) ? value : cast_to_time(value))
-      end
-
-      def self.cast_to_time(value)
-        return value if value.is_a? Time
-        time_array = ParseDate.parsedate value
-        time_array[0] ||= 2000; time_array[1] ||= 1; time_array[2] ||= 1;
-        Time.send(ActiveRecord::Base.default_timezone, *time_array) rescue nil
-      end
-
-      def self.guess_date_or_time(value)
-        (value.hour == 0 and value.min == 0 and value.sec == 0) ?
-        Date.new(value.year, value.month, value.day) : value
       end
     end
 
@@ -348,29 +310,6 @@ module ActiveRecord::ConnectionAdapters
         when "%25" then "%"
         end
       end
-    end
-
-    def self.cast_to_integer(value)
-      return nil if value =~ /NULL/ or value.to_s.empty? or value.nil?
-      return (value.to_i) ? value.to_i : (value ? 1 : 0)
-    end
-
-    def self.cast_to_date_or_time(value)
-      return value if value.is_a? Date
-      return nil if value.blank?
-      guess_date_or_time((value.is_a? Time) ? value : cast_to_time(value))
-    end
-
-    def self.cast_to_time(value)
-      return value if value.is_a? Time
-      time_array = ParseDate.parsedate value
-      time_array[0] ||= 2000; time_array[1] ||= 1; time_array[2] ||= 1;
-      Time.send(ActiveRecord::Base.default_timezone, *time_array) rescue nil
-    end
-
-    def self.guess_date_or_time(value)
-      (value.hour == 0 and value.min == 0 and value.sec == 0) ?
-      Date.new(value.year, value.month, value.day) : value
     end
   end
 

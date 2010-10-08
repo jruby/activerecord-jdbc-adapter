@@ -1,6 +1,18 @@
 require 'fileutils'
 require 'arjdbc'
 
+JNDI_CONFIG = {
+  :adapter => "jdbc",
+  :jndi => 'jdbc/derbydb'
+}
+
+# To test JNDI, grab fscontext-1_2-beta3.zip from
+# http://java.sun.com/products/jndi/downloads/index.html
+# and put fscontext.jar and providerutil.jar in test/
+require 'test/fscontext.jar'
+require 'test/providerutil.jar'
+require 'jdbc/derby'
+
 System = java.lang.System
 Context = javax.naming.Context
 InitialContext = javax.naming.InitialContext
@@ -15,16 +27,14 @@ jdbc_dir = jndi_dir + '/jdbc'
 FileUtils.mkdir_p jdbc_dir unless File.exist?(jdbc_dir)
 
 System.set_property(Context::PROVIDER_URL, "file://#{jndi_dir}")
-derby_ref = Reference.new('javax.sql.DataSource',
-                          'org.apache.commons.dbcp.BasicDataSourceFactory',
-                          nil)
-derby_ref.add StringRefAddr.new('driverClassName',
-                                'org.apache.derby.jdbc.EmbeddedDriver')
-derby_ref.add StringRefAddr.new('url',
-                                'jdbc:derby:derby-testdb;create=true')
-derby_ref.add StringRefAddr.new('username', 'sa')
-derby_ref.add StringRefAddr.new('password', '')
 
 ic = InitialContext.new
-ic.rebind("jdbc/derbydb", derby_ref)
+ic.rebind(JNDI_CONFIG[:jndi],
+          org.apache.derby.jdbc.EmbeddedDataSource.new.tap {|ds|
+            ds.database_name = "derby-testdb"
+            ds.create_database = "create"
+            ds.user = "sa"
+            ds.password = ""})
 
+
+ActiveRecord::Base.establish_connection(JNDI_CONFIG)

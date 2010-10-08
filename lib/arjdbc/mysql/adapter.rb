@@ -58,6 +58,8 @@ module ::ArJdbc
         when /^mediumint/i; 3
         when /^smallint/i;  2
         when /^tinyint/i;   1
+        when /^(datetime|timestamp)/
+          nil
         else
           super
         end
@@ -88,8 +90,16 @@ module ::ArJdbc
       'MySQL'
     end
 
+    def arel2_visitors
+      {'jdbcmysql' => ::Arel::Visitors::MySQL}
+    end
+
     def case_sensitive_equality_operator
       "= BINARY"
+    end
+
+    def limited_update_conditions(where_sql, quoted_table_name, quoted_primary_key)
+      where_sql
     end
 
     # QUOTING ==================================================

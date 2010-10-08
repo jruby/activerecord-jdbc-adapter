@@ -111,6 +111,10 @@ public class DerbyModule {
         if (args.length > 1) {
             IRubyObject col = args[1];
             String type = rubyApi.callMethod(col, "type").toString();
+            // intercept and change value, maybe, if the column type is :text or :string
+            if (type.equals("text") || type.equals("string")) {
+            	value = make_ruby_string_for_text_column(context, recv, runtime, value);
+            }
             if (value instanceof RubyString) {
                 if (type.equals("string")) {
                     return quote_string_with_surround(runtime, "'", (RubyString)value, "'");
@@ -135,7 +139,32 @@ public class DerbyModule {
         return super_quote(context, recv, runtime, value, runtime.getNil());
     }
 
-    private final static ByteList NULL = new ByteList("NULL".getBytes());
+    /* 
+     * Derby is not permissive like MySql. Try and send an Integer to a CLOB or VARCHAR column and Derby will vomit.
+     * This method turns non stringy things into strings.
+     */
+    private static IRubyObject make_ruby_string_for_text_column(ThreadContext context, IRubyObject recv, Ruby runtime, IRubyObject value) {
+    	RubyModule multibyteChars = (RubyModule) 
+        ((RubyModule) ((RubyModule) runtime.getModule("ActiveSupport")).getConstant("Multibyte")).getConstantAt("Chars");
+		if (value instanceof RubyString || rubyApi.isKindOf(value, multibyteChars) || value.isNil()) {
+			return value;
+		}
+		if (value instanceof RubyBoolean) {
+            return value.isTrue() ? runtime.newString("1") : runtime.newString("0");
+		} else if (value instanceof RubyFloat || value instanceof RubyFixnum || value instanceof RubyBignum) {
+			return RubyString.objAsString(context, value);
+		} else if ( value instanceof RubyBigDecimal) {
+			return rubyApi.callMethod(value, "to_s", runtime.newString("F"));
+		} else {
+			if (rubyApi.callMethod(value, "acts_like?", runtime.newString("date")).isTrue() || rubyApi.callMethod(value, "acts_like?", runtime.newString("time")).isTrue()) {
+	            return (RubyString)rubyApi.callMethod(recv, "quoted_date", value); 
+	        } else {
+	            return (RubyString)rubyApi.callMethod(value, "to_yaml");
+	        }
+		}
+	}
+
+	private final static ByteList NULL = new ByteList("NULL".getBytes());
 
     private static IRubyObject super_quote(ThreadContext context, IRubyObject recv, Ruby runtime, IRubyObject value, IRubyObject col) {
         if (value.respondsTo("quoted_id")) {

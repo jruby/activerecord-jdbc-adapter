@@ -28,11 +28,13 @@ package arjdbc.jdbc;
 
 import java.io.IOException;
 
-import arjdbc.postgresql.PostgresqlRubyJdbcConnection;
-import arjdbc.mssql.MssqlRubyJdbcConnection;
-import arjdbc.sqlite3.Sqlite3RubyJdbcConnection;
-import arjdbc.mysql.MySQLModule;
 import arjdbc.derby.DerbyModule;
+import arjdbc.informix.InformixRubyJdbcConnection;
+import arjdbc.mssql.MssqlRubyJdbcConnection;
+import arjdbc.mysql.MySQLModule;
+import arjdbc.oracle.OracleRubyJdbcConnection;
+import arjdbc.postgresql.PostgresqlRubyJdbcConnection;
+import arjdbc.sqlite3.Sqlite3RubyJdbcConnection;
 
 import org.jruby.Ruby;
 import org.jruby.RubyClass;
@@ -48,6 +50,8 @@ public class AdapterJavaService implements BasicLibraryService {
         RubyClass jdbcConnection = RubyJdbcConnection.createJdbcConnectionClass(runtime);
         PostgresqlRubyJdbcConnection.createPostgresqlJdbcConnectionClass(runtime, jdbcConnection);
         MssqlRubyJdbcConnection.createMssqlJdbcConnectionClass(runtime, jdbcConnection);
+        InformixRubyJdbcConnection.createInformixJdbcConnectionClass(runtime, jdbcConnection);
+        OracleRubyJdbcConnection.createOracleJdbcConnectionClass(runtime, jdbcConnection);
         Sqlite3RubyJdbcConnection.createSqlite3JdbcConnectionClass(runtime, jdbcConnection);
         RubyModule arJdbc = runtime.getOrCreateModule("ArJdbc");
 

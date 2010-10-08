@@ -42,18 +42,46 @@ class Viking < ActiveRecord::Base
   belongs_to :long_ship
 end
 
+
+class CreateNoIdVikings < ActiveRecord::Migration
+  def self.up
+    create_table "no_id_vikings", :force => true do |t|
+      t.string "name", :limit => 50, :default => "Sven"
+    end
+    remove_column "no_id_vikings", "id"
+  end
+
+  def self.down
+    drop_table "no_id_vikings"
+  end
+end
+
+class NoIdViking < ActiveRecord::Base
+end
+
+
+
 class MsSQLLimitOffsetTest < Test::Unit::TestCase
 
   def setup
     CreateLongShips.up
     CreateVikings.up
+    CreateNoIdVikings.up
     @connection = ActiveRecord::Base.connection
   end
 
   def teardown
     CreateVikings.down
     CreateLongShips.down
+    CreateNoIdVikings.down
     ActiveRecord::Base.clear_active_connections!
+  end
+
+  def test_limit_with_no_id_column_available
+    NoIdViking.create!(:name => 'Erik')
+    assert_nothing_raised(ActiveRecord::StatementInvalid) do 
+      NoIdViking.find(:first)
+    end
   end
 
   def test_limit_and_offset
