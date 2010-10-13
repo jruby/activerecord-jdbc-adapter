@@ -75,6 +75,10 @@ module ::ArJdbc
       'SQLite'
     end
 
+    def supports_add_column?
+      sqlite_version >= '3.1.6'
+    end
+
     def supports_count_distinct? #:nodoc:
       sqlite_version >= '3.2.6'
     end
@@ -115,56 +119,6 @@ module ::ArJdbc
 
     def quoted_false
       %Q{'f'}
-    end
-
-    def add_column(table_name, column_name, type, options = {})
-      if option_not_null = options[:null] == false
-        option_not_null = options.delete(:null)
-      end
-      add_column_sql = "ALTER TABLE #{quote_table_name(table_name)} ADD #{quote_column_name(column_name)} #{type_to_sql(type, options[:limit], options[:precision], options[:scale])}"
-      add_column_options!(add_column_sql, options)
-      execute(add_column_sql)
-      if option_not_null
-        alter_column_sql = "ALTER TABLE #{quote_table_name(table_name)} ALTER #{quote_column_name(column_name)} NOT NULL"
-      end
-    end
-
-    def remove_column(table_name, *column_names) #:nodoc:
-      column_names.flatten.each do |column_name|
-        alter_table(table_name) do |definition|
-          definition.columns.delete(definition[column_name])
-        end
-      end
-    end
-    alias :remove_columns :remove_column
-
-    def change_column(table_name, column_name, type, options = {}) #:nodoc:
-      alter_table(table_name) do |definition|
-        include_default = options_include_default?(options)
-        definition[column_name].instance_eval do
-          self.type    = type
-          self.limit   = options[:limit] if options.include?(:limit)
-          self.default = options[:default] if include_default
-          self.null    = options[:null] if options.include?(:null)
-        end
-      end
-    end
-
-    def change_column_default(table_name, column_name, default) #:nodoc:
-      alter_table(table_name) do |definition|
-        definition[column_name].default = default
-      end
-    end
-
-    def rename_column(table_name, column_name, new_column_name) #:nodoc:
-      unless columns(table_name).detect{|c| c.name == column_name.to_s }
-        raise ActiveRecord::ActiveRecordError, "Missing column #{table_name}.#{column_name}"
-      end
-      alter_table(table_name, :rename => {column_name.to_s => new_column_name.to_s})
-    end
-
-    def rename_table(name, new_name)
-      execute "ALTER TABLE #{name} RENAME TO #{new_name}"
     end
 
     def insert_sql(sql, name = nil, pk = nil, id_value = nil, sequence_name = nil) #:nodoc:
@@ -240,13 +194,92 @@ module ::ArJdbc
 
     def columns(table_name, name = nil) #:nodoc:
       table_structure(table_name).map do |field|
-        ::ActiveRecord::ConnectionAdapters::JdbcColumn.new(@config, field['name'], field['dflt_value'], field['type'], field['notnull'] == 0)
+        ::ActiveRecord::ConnectionAdapters::SQLite3Column.new(@config, field['name'], field['dflt_value'], field['type'], field['notnull'] == 0)
       end
+    end
+
+    def primary_key(table_name) #:nodoc:
+      column = table_structure(table_name).find { |field|
+        field['pk'].to_i == 1
+      }
+      column && column['name']
+    end
+
+    def remove_index!(table_name, index_name) #:nodoc:
+      execute "DROP INDEX #{quote_column_name(index_name)}"
+    end
+
+    def rename_table(name, new_name)
+      execute "ALTER TABLE #{quote_table_name(name)} RENAME TO #{quote_table_name(new_name)}"
+    end
+
+    # See: http://www.sqlite.org/lang_altertable.html
+    # SQLite has an additional restriction on the ALTER TABLE statement
+    def valid_alter_table_options( type, options)
+      type.to_sym != :primary_key
+    end
+
+    def add_column(table_name, column_name, type, options = {}) #:nodoc:
+      if supports_add_column? && valid_alter_table_options( type, options )
+        super(table_name, column_name, type, options)
+      else
+        alter_table(table_name) do |definition|
+          definition.column(column_name, type, options)
+        end
+      end
+    end
+
+    def remove_column(table_name, *column_names) #:nodoc:
+      raise ArgumentError.new("You must specify at least one column name.  Example: remove_column(:people, :first_name)") if column_names.empty?
+      column_names.flatten.each do |column_name|
+        alter_table(table_name) do |definition|
+          definition.columns.delete(definition[column_name])
+        end
+      end
+    end
+    alias :remove_columns :remove_column
+
+    def change_column_default(table_name, column_name, default) #:nodoc:
+      alter_table(table_name) do |definition|
+        definition[column_name].default = default
+      end
+    end
+
+    def change_column_null(table_name, column_name, null, default = nil)
+      unless null || default.nil?
+        execute("UPDATE #{quote_table_name(table_name)} SET #{quote_column_name(column_name)}=#{quote(default)} WHERE #{quote_column_name(column_name)} IS NULL")
+      end
+      alter_table(table_name) do |definition|
+        definition[column_name].null = null
+      end
+    end
+
+    def change_column(table_name, column_name, type, options = {}) #:nodoc:
+      alter_table(table_name) do |definition|
+        include_default = options_include_default?(options)
+        definition[column_name].instance_eval do
+          self.type    = type
+          self.limit   = options[:limit] if options.include?(:limit)
+          self.default = options[:default] if include_default
+          self.null    = options[:null] if options.include?(:null)
+        end
+      end
+    end
+
+    def rename_column(table_name, column_name, new_column_name) #:nodoc:
+      unless columns(table_name).detect{|c| c.name == column_name.to_s }
+        raise ActiveRecord::ActiveRecordError, "Missing column #{table_name}.#{column_name}"
+      end
+      alter_table(table_name, :rename => {column_name.to_s => new_column_name.to_s})
     end
 
      # SELECT ... FOR UPDATE is redundant since the table is locked.
     def add_lock!(sql, options) #:nodoc:
       sql
+    end
+
+    def empty_insert_statement_value
+      "VALUES(NULL)"
     end
 
     protected
@@ -264,7 +297,7 @@ module ::ArJdbc
 end
 
 module ActiveRecord::ConnectionAdapters
-  class SQLiteColumn < JdbcColumn
+  class SQLite3Column < JdbcColumn
     include ArJdbc::SQLite3::Column
 
     def initialize(name, *args)
@@ -302,8 +335,20 @@ module ActiveRecord::ConnectionAdapters
       # return nil to avoid extending ArJdbc::SQLite3, which we've already done
     end
 
-    def jdbc_column_class
-      ActiveRecord::ConnectionAdapters::SQLiteColumn
+    def jdbc_connection_class(spec)
+      ArJdbc::SQLite3.jdbc_connection_class
     end
+
+    def jdbc_column_class
+      ActiveRecord::ConnectionAdapters::SQLite3Column
+    end
+  end
+end
+
+# Fake out sqlite3/version driver for AR tests
+$LOADED_FEATURES << 'sqlite3/version.rb'
+module SQLite3
+  module Version
+    VERSION = '1.2.6' # query_cache_test.rb requires SQLite3::Version::VERSION > '1.2.5'
   end
 end
