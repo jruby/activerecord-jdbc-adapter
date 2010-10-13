@@ -241,7 +241,6 @@ module SimpleTestMethods
     binary_string = "\000ABCDEFGHIJKLMNOPQRSTUVWXYZ'\001\003"*1#2_000
     e = DbType.find(:first)
     e.sample_binary = binary_string
-    e.send(:write_attribute, :binary, binary_string)
     e.save!
     e = DbType.find(:first)
     assert_equal binary_string, e.sample_binary
