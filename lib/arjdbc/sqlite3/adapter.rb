@@ -97,24 +97,8 @@ module ::ArJdbc
       tp[:time] = { :name => "TIME" }
       tp[:date] = { :name => "DATE" }
       tp[:boolean] = { :name => "BOOLEAN" }
+      tp[:binary] = { :name => "BLOB" }
       tp
-    end
-
-    def quote(value, column = nil) # :nodoc:
-      return value.quoted_id if value.respond_to?(:quoted_id)
-      case value
-      when String
-        if column && column.type == :binary
-          "'#{quote_string(column.class.string_to_binary(value))}'"
-        elsif column && [:integer, :float].include?(column.type)
-          (column.type == :integer ? value.to_i : value.to_f).to_s
-        elsif column && column.respond_to?(:primary) && column.primary && column.klass != String
-          value.to_i.to_s
-        else
-          "'#{quote_string(value)}'"
-        end
-      else super
-      end
     end
 
     def quote_column_name(name) #:nodoc:
@@ -295,20 +279,18 @@ module ActiveRecord::ConnectionAdapters
     end
 
     def self.string_to_binary(value)
-      value.gsub(/\0|%/n) do |b|
-        case b
-        when "\0" then "%00"
-        when "\%"  then "%25"
-        end
-      end
+      "\000b64" + [value].pack('m*').split("\n").join('')
     end
 
     def self.binary_to_string(value)
-      value.gsub(/%00|%25/n) do |b|
-        case b
-        when "%00" then "\0"
-        when "%25" then "%"
-        end
+      if value.respond_to?(:force_encoding) && value.encoding != Encoding::ASCII_8BIT
+        value = value.force_encoding(Encoding::ASCII_8BIT)
+      end
+
+      if value[0..3] == "\000b64"
+        value[4..-1].unpack('m*').first
+      else
+        value
       end
     end
   end
