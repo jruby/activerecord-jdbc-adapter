@@ -110,6 +110,15 @@ or like this (but requires that you manually put the driver jar on the classpath
       :url => 'jdbc:derby:test_ar;create=true'
     )
 
+== Extending AR-JDBC
+
+You can create your own extension to AR-JDBC for a JDBC-based database
+that core AR-JDBC does not support. We've created an example project
+for the Intersystems Cache database that you can examine as a
+template. See the project for more information at the following URL:
+
+  http://github.com/nicksieger/activerecord-cachedb-adapter
+
 == Getting the source
 
 The source for activerecord-jdbc-adapter is available using git.
