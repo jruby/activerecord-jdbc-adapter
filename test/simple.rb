@@ -111,6 +111,16 @@ module SimpleTestMethods
     assert_equal prev_count - 1, Entry.count
   end
 
+  if Entry.respond_to?(:limit)
+    def test_limit
+      Entry.limit(10).to_a
+    end
+
+    def test_count_with_limit
+      assert_equal Entry.count, Entry.limit(10).count
+    end
+  end
+
   if Time.respond_to?(:zone)
     def test_save_time_with_utc
       current_zone = Time.zone
@@ -241,7 +251,6 @@ module SimpleTestMethods
     binary_string = "\000ABCDEFGHIJKLMNOPQRSTUVWXYZ'\001\003"*1#2_000
     e = DbType.find(:first)
     e.sample_binary = binary_string
-    e.send(:write_attribute, :binary, binary_string)
     e.save!
     e = DbType.find(:first)
     assert_equal binary_string, e.sample_binary

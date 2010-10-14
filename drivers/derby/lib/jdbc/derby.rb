@@ -1,6 +1,6 @@
 module Jdbc
   module Derby
-    VERSION = "10.5.3.0"
+    VERSION = "10.6.2.1"
   end
 end
 
