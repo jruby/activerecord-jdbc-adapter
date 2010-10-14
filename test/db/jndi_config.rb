@@ -31,7 +31,7 @@ System.set_property(Context::PROVIDER_URL, "file://#{jndi_dir}")
 ic = InitialContext.new
 ic.rebind(JNDI_CONFIG[:jndi],
           org.apache.derby.jdbc.EmbeddedDataSource.new.tap {|ds|
-            ds.database_name = "derby-testdb"
+            ds.database_name = "derby-testdb-jndi"
             ds.create_database = "create"
             ds.user = "sa"
             ds.password = ""})

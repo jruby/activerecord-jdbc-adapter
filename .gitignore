@@ -2,7 +2,7 @@ Manifest.txt
 pkg
 *.gem
 *.tgz
-derby-testdb
+derby-testdb*
 derby.log
 lib/arjdbc/jdbc/adapter_java.jar
 lib/jdbc_adapter/jdbc_adapter_internal.jar
