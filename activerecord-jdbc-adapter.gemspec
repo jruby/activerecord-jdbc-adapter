@@ -2,7 +2,7 @@
 
 Gem::Specification.new do |s|
   s.name = %q{activerecord-jdbc-adapter}
-  s.version = "1.0.0"
+  s.version = "1.0.1"
   s.platform = Gem::Platform.new([nil, "java", nil])
 
   s.required_rubygems_version = Gem::Requirement.new(">= 0") if s.respond_to? :required_rubygems_version=

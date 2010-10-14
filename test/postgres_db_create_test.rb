@@ -14,6 +14,11 @@ class PostgresDbCreateTest < Test::Unit::TestCase
       output = `psql -c '\\l'`
       assert output =~ /#{@db_name}/m
     end
+
+    def test_rake_db_test_purge
+      Rake::Task["db:create"].invoke
+      Rake::Task["db:test:purge"].invoke
+    end
   else
     def test_skipped
     end

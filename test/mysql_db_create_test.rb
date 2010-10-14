@@ -18,6 +18,11 @@ class MysqlDbCreateTest < Test::Unit::TestCase
         assert mysql.read =~ /#{@db_name}/m
       end
     end
+
+    def test_rake_db_test_purge
+      Rake::Task["db:create"].invoke
+      Rake::Task["db:test:purge"].invoke
+    end
   else
     def test_skipped
     end

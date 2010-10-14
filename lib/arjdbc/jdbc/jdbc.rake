@@ -28,7 +28,8 @@ namespace :db do
   redefine_task :drop => :environment do
     config = ActiveRecord::Base.configurations[rails_env]
     begin
-      ActiveRecord::Base.connection.drop_database(find_database_name(config))
+      db = find_database_name(config)
+      ActiveRecord::Base.connection.drop_database(db)
     rescue
       drop_database(config.merge('adapter' => config['adapter'].sub(/^jdbc/, '')))
     end
@@ -49,6 +50,7 @@ namespace :db do
   end
 
   def find_database_name(config)
+    db = config['database']
     if config['adapter'] =~ /postgresql/i
       config = config.dup
       if config['url']
@@ -118,7 +120,8 @@ namespace :db do
 
     redefine_task :purge => :environment do
       abcs = ActiveRecord::Base.configurations
-      ActiveRecord::Base.connection.recreate_database(find_database_name(abcs['test']))
+      db = find_database_name(abcs['test'])
+      ActiveRecord::Base.connection.recreate_database(db)
     end
   end
 end
