@@ -57,6 +57,8 @@ module AbstractDbCreate
     the_db_name = @db_name
     the_db_config = db_config
     @configs = { "unittest" => the_db_config.merge({:database => the_db_name}).stringify_keys! }
+    @configs["test"] = @configs["unittest"].dup
+    @configs
   end
 
   def setup_rails2
