@@ -22,7 +22,8 @@
 - JRUBY-1642: Don't use H2 INFORMATION_SCHEMA in table or column
   searches
 - JRUBY-4972: Attempt to deal with type(0)/:limit => 0 by not setting
-  it808e213 JRUBY-5040: Fix issue with limits on timestamps in MySQL
+  it808e213
+- JRUBY-5040: Fix issue with limits on timestamps in MySQL
 - JRUBY-3555: Allow setting Derby schema with 'schema:' option
 - ACTIVERECORD_JDBC-98: Make sure we actuall raise an error when
   inappropriately configured
@@ -45,6 +46,10 @@
   queries (alex b)
 - ACTIVERECORD_JDBC-129: Don't have limits for text, binary or bit
   fields
+- (1.0.0 final)
+- Fix a few more SQLite3 AR tests
+- SQLite3: handle ":memory:" database
+- Release new SQLite3 driver 3.6.14.2 and new Derby driver 10.6.2.1
 
 == 0.9.7
 
