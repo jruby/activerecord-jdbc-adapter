@@ -110,7 +110,7 @@ module ::ArJdbc
     end
 
     def rename_table(name, new_name)
-      execute "RENAME TABLE #{name} TO #{new_name}"
+      execute "RENAME TABLE #{quote_table_name(name)} TO #{quote_table_name(new_name)}"
     end
 
     AUTO_INC_STMT2 = "SELECT AUTOINCREMENTSTART, AUTOINCREMENTINC, COLUMNNAME, REFERENCEID, COLUMNDEFAULT FROM SYS.SYSCOLUMNS WHERE REFERENCEID = (SELECT T.TABLEID FROM SYS.SYSTABLES T WHERE T.TABLENAME = '%s') AND COLUMNNAME = '%s'"
@@ -286,18 +286,8 @@ module ::ArJdbc
       end
     end
 
-    # Support for renaming columns:
-    # https://issues.apache.org/jira/browse/DERBY-1490
-    #
-    # This feature is expect to arrive in version 10.3.0.0:
-    # http://wiki.apache.org/db-derby/DerbyTenThreeRelease)
-    #
     def rename_column(table_name, column_name, new_column_name) #:nodoc:
-      begin
-        execute "ALTER TABLE #{table_name} ALTER RENAME COLUMN #{column_name} TO #{new_column_name}"
-      rescue
-        alter_table(table_name, :rename => {column_name => new_column_name})
-      end
+      execute "RENAME COLUMN #{quote_table_name(table_name)}.#{quote_column_name(column_name)} TO #{quote_column_name(new_column_name)}"
     end
 
     def primary_keys(table_name)
