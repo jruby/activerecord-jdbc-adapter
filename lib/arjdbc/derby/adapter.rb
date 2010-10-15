@@ -243,21 +243,8 @@ module ::ArJdbc
       definition
     end
 
-    # Support for removing columns added via derby bug issue:
-    # https://issues.apache.org/jira/browse/DERBY-1489
-    #
-    # This feature has not made it into a formal release and is not in Java 6.
-    # If the normal strategy fails we fall back on a strategy by creating a new
-    # table without the new column and there after moving the data to the new
-    #
     def remove_column(table_name, column_name)
-      begin
-        execute "ALTER TABLE #{table_name} DROP COLUMN #{column_name} RESTRICT"
-      rescue
-        alter_table(table_name) do |definition|
-          definition.columns.delete(definition[column_name])
-        end
-      end
+      execute "ALTER TABLE #{quote_table_name(table_name)} DROP COLUMN #{quote_column_name(column_name)} RESTRICT"
     end
 
     # Notes about changing in Derby:
