@@ -165,7 +165,7 @@ module ::ArJdbc
     end
 
     def execute(sql, name = nil)
-      if sql =~ /^\s*(UPDATE|INSERT)/i
+      if sql =~ /\A\s*(UPDATE|INSERT)/i
         i = sql =~ /\swhere\s/im
         if i
           sql[i..-1] = sql[i..-1].gsub(/!=\s*NULL/, 'IS NOT NULL').gsub(/=\sNULL/i, 'IS NULL')
