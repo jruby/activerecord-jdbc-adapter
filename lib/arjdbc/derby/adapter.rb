@@ -193,14 +193,15 @@ module ::ArJdbc
 
 
     def add_column(table_name, column_name, type, options = {})
-      if option_not_null = options[:null] == false
-        option_not_null = options.delete(:null)
+      if option_not_null = (options[:null] == false)
+        options.delete(:null)
       end
       add_column_sql = "ALTER TABLE #{quote_table_name(table_name)} ADD #{quote_column_name(column_name)} #{type_to_sql(type, options[:limit], options[:precision], options[:scale])}"
       add_column_options!(add_column_sql, options)
       execute(add_column_sql)
       if option_not_null
         alter_column_sql = "ALTER TABLE #{quote_table_name(table_name)} ALTER #{quote_column_name(column_name)} NOT NULL"
+        execute(alter_column_sql)
       end
     end
 
