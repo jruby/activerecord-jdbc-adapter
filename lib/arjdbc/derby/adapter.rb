@@ -82,6 +82,7 @@ module ::ArJdbc
     def add_column_options!(sql, options)
       options.delete(:default) if options.has_key?(:default) && options[:default].nil?
       options.delete(:null) if options.has_key?(:null) && (options[:null].nil? || options[:null] == true)
+      sql << " DEFAULT #{quote(options.delete(:default))}" if options.has_key?(:default)
       super
     end
 
