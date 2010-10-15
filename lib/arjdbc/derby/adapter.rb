@@ -314,20 +314,8 @@ module ::ArJdbc
       end
     end
 
-    # For DDL it appears you can quote "" column names, but in queries (like insert it errors out?)
     def quote_column_name(name) #:nodoc:
-      name = name.to_s
-      if /^(references|integer|key|group|year)$/i =~ name
-        %Q{"#{name.upcase}"}
-      elsif /[A-Z]/ =~ name && /[a-z]/ =~ name
-        %Q{"#{name}"}
-      elsif name =~ /[\s-]/
-        %Q{"#{name.upcase}"}
-      elsif name =~ /^[_\d]/
-        %Q{"#{name.upcase}"}
-      else
-        name
-      end
+      %Q{"#{name.to_s.upcase.gsub(/"/, '""')}"}
     end
 
     def quoted_true
