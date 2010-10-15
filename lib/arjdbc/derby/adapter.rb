@@ -260,23 +260,23 @@ module ::ArJdbc
       if options.include?(:null)
         # This seems to only work with 10.2 of Derby
         if options.delete(:null) == false
-          execute "ALTER TABLE #{table_name} ALTER COLUMN #{column_name} NOT NULL"
+          execute "ALTER TABLE #{quote_table_name(table_name)} ALTER COLUMN #{quote_column_name(column_name)} NOT NULL"
         else
-          execute "ALTER TABLE #{table_name} ALTER COLUMN #{column_name} NULL"
+          execute "ALTER TABLE #{quote_table_name(table_name)} ALTER COLUMN #{quote_column_name(column_name)} NULL"
         end
       end
 
       # anything left to do?
       unless options.empty?
         begin
-          execute "ALTER TABLE #{table_name} ALTER COLUMN #{column_name} SET DATA TYPE #{type_to_sql(type, options[:limit])}"
+          execute "ALTER TABLE #{quote_table_name(table_name)} ALTER COLUMN #{quote_column_name(column_name)} SET DATA TYPE #{type_to_sql(type, options[:limit])}"
         rescue
           transaction do
             temp_new_column_name = "#{column_name}_newtype"
             # 1) ALTER TABLE t ADD COLUMN c1_newtype NEWTYPE;
             add_column table_name, temp_new_column_name, type, options
             # 2) UPDATE t SET c1_newtype = c1;
-            execute "UPDATE #{table_name} SET #{temp_new_column_name} = CAST(#{column_name} AS #{type_to_sql(type, options[:limit])})"
+            execute "UPDATE #{quote_table_name(table_name)} SET #{quote_column_name(temp_new_column_name)} = CAST(#{quote_column_name(column_name)} AS #{type_to_sql(type, options[:limit])})"
             # 3) ALTER TABLE t DROP COLUMN c1;
             remove_column table_name, column_name
             # 4) ALTER TABLE t RENAME COLUMN c1_newtype to c1;
