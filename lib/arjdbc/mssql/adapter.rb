@@ -25,7 +25,7 @@ module ::ArJdbc
     end
 
     def self.column_selector
-      [/sqlserver|tds/i, lambda {|cfg,col| col.extend(::ArJdbc::MsSQL::Column)}]
+      [/sqlserver|tds|Microsoft SQL/i, lambda {|cfg,col| col.extend(::ArJdbc::MsSQL::Column)}]
     end
 
     def self.jdbc_connection_class
