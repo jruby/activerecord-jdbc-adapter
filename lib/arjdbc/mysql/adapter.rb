@@ -14,6 +14,10 @@ module ::ArJdbc
       execute("SET SQL_AUTO_IS_NULL=0")
     end
 
+    def self.jdbc_connection_class
+      ::ActiveRecord::ConnectionAdapters::MySQLJdbcConnection
+    end
+
     module Column
       def extract_default(default)
         if sql_type =~ /blob/i || type == :text
@@ -58,7 +62,7 @@ module ::ArJdbc
         when /^mediumint/i; 3
         when /^smallint/i;  2
         when /^tinyint/i;   1
-        when /^(datetime|timestamp)/
+        when /^(datetime|timestamp)/i
           nil
         else
           super
@@ -190,6 +194,13 @@ module ::ArJdbc
         elsif(view = hash["Create View"])
           structure += view + ";\n\n"
         end
+      end
+    end
+
+    def jdbc_columns(table_name, name = nil)#:nodoc:
+      sql = "SHOW FIELDS FROM #{quote_table_name(table_name)}"
+      execute(sql, :skip_logging).map do |field|
+        ::ActiveRecord::ConnectionAdapters::MysqlColumn.new(field["Field"], field["Default"], field["Type"], field["Null"] == "YES")
       end
     end
 
@@ -385,9 +396,15 @@ module ActiveRecord::ConnectionAdapters
       # return nil to avoid extending ArJdbc::MySQL, which we've already done
     end
 
+    def jdbc_connection_class(spec)
+      ArJdbc::MySQL.jdbc_connection_class
+    end
+
     def jdbc_column_class
       ActiveRecord::ConnectionAdapters::MysqlColumn
     end
+
+    alias_chained_method :columns, :query_cache, :jdbc_columns
   end
 end
 
