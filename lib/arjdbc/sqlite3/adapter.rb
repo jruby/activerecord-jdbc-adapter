@@ -336,7 +336,7 @@ module ActiveRecord::ConnectionAdapters
     end
 
     def jdbc_connection_class(spec)
-      ArJdbc::SQLite3.jdbc_connection_class
+      ::ArJdbc::SQLite3.jdbc_connection_class
     end
 
     def jdbc_column_class
