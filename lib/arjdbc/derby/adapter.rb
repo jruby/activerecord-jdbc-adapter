@@ -113,11 +113,6 @@ module ::ArJdbc
       execute "RENAME TABLE #{name} TO #{new_name}"
     end
 
-    COLUMN_INFO_STMT = "SELECT C.COLUMNNAME, C.REFERENCEID, C.COLUMNNUMBER FROM SYS.SYSCOLUMNS C, SYS.SYSTABLES T WHERE T.TABLEID = '%s' AND T.TABLEID = C.REFERENCEID ORDER BY C.COLUMNNUMBER"
-
-    COLUMN_TYPE_STMT = "SELECT COLUMNDATATYPE, COLUMNDEFAULT FROM SYS.SYSCOLUMNS WHERE REFERENCEID = '%s' AND COLUMNNAME = '%s'"
-
-    AUTO_INC_STMT = "SELECT AUTOINCREMENTSTART, AUTOINCREMENTINC, COLUMNNAME, REFERENCEID, COLUMNDEFAULT FROM SYS.SYSCOLUMNS WHERE REFERENCEID = '%s' AND COLUMNNAME = '%s'"
     AUTO_INC_STMT2 = "SELECT AUTOINCREMENTSTART, AUTOINCREMENTINC, COLUMNNAME, REFERENCEID, COLUMNDEFAULT FROM SYS.SYSCOLUMNS WHERE REFERENCEID = (SELECT T.TABLEID FROM SYS.SYSTABLES T WHERE T.TABLENAME = '%s') AND COLUMNNAME = '%s'"
 
     def add_quotes(name)
@@ -134,42 +129,6 @@ module ::ArJdbc
     def expand_double_quotes(name)
       return name unless name && name['"']
       name.gsub(/"/,'""')
-    end
-
-    def reinstate_auto_increment(name, refid, coldef)
-      stmt = AUTO_INC_STMT % [refid, strip_quotes(name)]
-      data = execute(stmt).first
-      if data
-        start = data['autoincrementstart']
-        if start
-          coldef << " GENERATED " << (data['columndefault'].nil? ? "ALWAYS" : "BY DEFAULT ")
-          coldef << "AS IDENTITY (START WITH "
-          coldef << start
-          coldef << ", INCREMENT BY "
-          coldef << data['autoincrementinc']
-          coldef << ")"
-          return true
-        end
-      end
-      false
-    end
-
-    def reinstate_auto_increment(name, refid, coldef)
-      stmt = AUTO_INC_STMT % [refid, strip_quotes(name)]
-      data = execute(stmt).first
-      if data
-        start = data['autoincrementstart']
-        if start
-          coldef << " GENERATED " << (data['columndefault'].nil? ? "ALWAYS" : "BY DEFAULT ")
-          coldef << "AS IDENTITY (START WITH "
-          coldef << start
-          coldef << ", INCREMENT BY "
-          coldef << data['autoincrementinc']
-          coldef << ")"
-          return true
-        end
-      end
-      false
     end
 
     def auto_increment_stmt(tname, cname)
@@ -238,22 +197,6 @@ module ::ArJdbc
       # all the required columns for the ORDER BY to work properly
       sql = "DISTINCT #{columns}, #{order_columns * ', '}"
       sql
-    end
-
-    # I don't think this method is ever called ??? (stepheneb)
-    def create_column(name, refid, colno)
-      stmt = COLUMN_TYPE_STMT % [refid, strip_quotes(name)]
-      coldef = ""
-      data = execute(stmt).first
-      if data
-        coldef << add_quotes(expand_double_quotes(strip_quotes(name)))
-        coldef << " "
-        coldef << data['columndatatype']
-        if !reinstate_auto_increment(name, refid, coldef) && data['columndefault']
-          coldef << " DEFAULT " << data['columndefault']
-        end
-      end
-      coldef
     end
 
     SIZEABLE = %w(VARCHAR CLOB BLOB)
