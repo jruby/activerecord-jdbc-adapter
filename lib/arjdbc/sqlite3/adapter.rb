@@ -297,6 +297,8 @@ module ::ArJdbc
 end
 
 module ActiveRecord::ConnectionAdapters
+  remove_const(:SQLite3Adapter) if const_defined?(:SQLite3Adapter)
+
   class SQLite3Column < JdbcColumn
     include ArJdbc::SQLite3::Column
 

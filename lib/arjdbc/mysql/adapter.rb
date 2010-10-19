@@ -369,6 +369,10 @@ module ::ArJdbc
 end
 
 module ActiveRecord::ConnectionAdapters
+  # Remove any vestiges of core/Ruby MySQL adapter
+  remove_const(:MysqlColumn) if const_defined?(:MysqlColumn)
+  remove_const(:MysqlAdapter) if const_defined?(:MysqlAdapter)
+
   class MysqlColumn < JdbcColumn
     include ArJdbc::MySQL::Column
 
@@ -397,7 +401,7 @@ module ActiveRecord::ConnectionAdapters
     end
 
     def jdbc_connection_class(spec)
-      ArJdbc::MySQL.jdbc_connection_class
+      ::ArJdbc::MySQL.jdbc_connection_class
     end
 
     def jdbc_column_class
