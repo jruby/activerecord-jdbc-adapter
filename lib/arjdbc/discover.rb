@@ -70,7 +70,7 @@ module ::ArJdbc
   end
 
   extension :MsSQL do |name|
-    if name =~ /sqlserver|tds/i
+    if name =~ /sqlserver|tds|Microsoft SQL/i
       require 'arjdbc/mssql'
       true
     end
