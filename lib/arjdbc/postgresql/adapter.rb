@@ -26,6 +26,15 @@ module ::ArJdbc
         end
       end
 
+      def extract_limit(sql_type)
+        case sql_type
+        when /^bigint/i;    8
+        when /^smallint/i;  2
+        when /^bool/i;      nil # ACTIVERECORD_JDBC-135
+        else super
+        end
+      end
+
       def simplified_type(field_type)
         return :integer if field_type =~ /^serial/i
         return :string if field_type =~ /\[\]$/i || field_type =~ /^interval/i
@@ -71,7 +80,7 @@ module ::ArJdbc
       tp[:primary_key] = "serial primary key"
       tp[:string][:limit] = 255
       tp[:integer][:limit] = nil
-      tp[:boolean][:limit] = nil
+      tp[:boolean] = { :name => "boolean" }
       tp[:float] = { :name => "float" }
       tp[:decimal] = { :name => "decimal" }
       tp

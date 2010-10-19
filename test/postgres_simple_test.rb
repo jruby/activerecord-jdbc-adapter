@@ -28,3 +28,24 @@ class PostgresDeserializationTest < Test::Unit::TestCase
     assert_equal expected.sample_float, actual.sample_float
   end
 end
+
+class PostgresSchemaDumperTest < Test::Unit::TestCase
+  def setup
+    DbTypeMigration.up
+    @connection = ActiveRecord::Base.connection
+    strio = StringIO.new
+    ActiveRecord::SchemaDumper::dump(ActiveRecord::Base.connection, strio)
+    @dump = strio.string
+  end
+
+  def teardown
+    DbTypeMigration.down
+  end
+
+  # http://kenai.com/jira/browse/ACTIVERECORD_JDBC-135
+  def test_schema_dump_should_not_have_limits_on_boolean
+    lines = @dump.grep(/boolean/)
+    assert !lines.empty?
+    lines.each {|line| assert line !~ /limit/ }
+  end
+end
