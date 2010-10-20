@@ -298,6 +298,7 @@ end
 
 module ActiveRecord::ConnectionAdapters
   remove_const(:SQLite3Adapter) if const_defined?(:SQLite3Adapter)
+  remove_const(:SQLiteAdapter) if const_defined?(:SQLiteAdapter)
 
   class SQLite3Column < JdbcColumn
     include ArJdbc::SQLite3::Column
@@ -345,6 +346,8 @@ module ActiveRecord::ConnectionAdapters
       ActiveRecord::ConnectionAdapters::SQLite3Column
     end
   end
+
+  SQLiteAdapter = SQLite3Adapter
 end
 
 # Fake out sqlite3/version driver for AR tests
