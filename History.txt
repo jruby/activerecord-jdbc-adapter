@@ -1,3 +1,9 @@
+== 1.0.2
+
+- ACTIVERECORD_JDBC-134: Fix conflicting adapter/column superclasses
+- ACTIVERECORD_JDBC-135: Fix regression on PG with boolean and :limit
+- Slew of Derby fixes courtesy of Denis Odorcic
+
 == 1.0.1
 
 - Fix db:test:purge issue affecting all adapters in 1.0.0 due to

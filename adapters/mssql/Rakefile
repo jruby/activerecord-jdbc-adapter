@@ -22,9 +22,13 @@ begin
     p.email = "nick@nicksieger.com, ola.bini@gmail.com"
     p.summary = "MS-SQL JDBC adapter for JRuby on Rails."
     p.description = "Install this gem to use MS-SQL with JRuby on Rails."
+    driver = 'jdbc-jtds'
+    version = Jdbc::JTDS::VERSION
+    compat_version = "~> #{version.split(/\./)[0..1].join('.')}.0"
+    puts "#{p.name}: current #{driver} version #{version}, compat #{compat_version}"
     p.extra_deps += [
       ['activerecord-jdbc-adapter', "= #{ArJdbc::Version::VERSION}"],
-      ['jdbc-jtds', ">= #{Jdbc::JTDS::VERSION}"]]
+      [driver, compat_version]]
   end
   task :gemspec do
     File.open("#{hoe.name}.gemspec", "w") {|f| f << hoe.spec.to_ruby }

@@ -23,9 +23,13 @@ begin
     p.summary = "SQLite3 JDBC adapter for JRuby on Rails."
     p.changes = "Updated to SQLite3 version #{Jdbc::SQLite3::VERSION}."
     p.description = "Install this gem to use SQLite3 with JRuby on Rails."
+    driver = 'jdbc-sqlite3'
+    version = Jdbc::SQLite3::VERSION
+    compat_version = "~> #{version.split(/\./)[0..1].join('.')}.0"
+    puts "#{p.name}: current #{driver} version #{version}, compat #{compat_version}"
     p.extra_deps += [
       ['activerecord-jdbc-adapter', "= #{ArJdbc::Version::VERSION}"],
-      ['jdbc-sqlite3', ">= #{Jdbc::SQLite3::VERSION}"]]
+      [driver, compat_version]]
   end
   task :gemspec do
     File.open("#{hoe.name}.gemspec", "w") {|f| f << hoe.spec.to_ruby }
