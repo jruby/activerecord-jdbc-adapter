@@ -216,12 +216,13 @@ public class RubyJdbcConnection extends RubyObject {
                 Statement stmt = null;
                 String query = rubyApi.convertToRubyString(sql).getUnicodeValue();
                 try {
+                    boolean supportsGeneratedKeys = c.getMetaData().supportsGetGeneratedKeys();
                     stmt = c.createStatement();
-                    if (stmt.execute(query, Statement.RETURN_GENERATED_KEYS)) {
+                    if (supportsGeneratedKeys ? stmt.execute(query, Statement.RETURN_GENERATED_KEYS) : stmt.execute(query)) {
                         return unmarshalResult(context, c.getMetaData(), stmt.getResultSet(), false);
                     } else {
                         IRubyObject key = context.getRuntime().getNil();
-                        if (c.getMetaData().supportsGetGeneratedKeys()) {
+                        if (supportsGeneratedKeys) {
                             key = unmarshal_id_result(context.getRuntime(), stmt.getGeneratedKeys());
                         }
                         if (key.isNil()) {
