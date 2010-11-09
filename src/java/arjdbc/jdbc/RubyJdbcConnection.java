@@ -242,6 +242,39 @@ public class RubyJdbcConnection extends RubyObject {
         });
     }
 
+    @JRubyMethod(name = "execute_many")
+    public IRubyObject execute_many(final ThreadContext context, final IRubyObject sql) {
+        return (IRubyObject) withConnectionAndRetry(context, new SQLBlock() {
+            public Object call(Connection c) throws SQLException {
+                Statement stmt = null;
+                String query = rubyApi.convertToRubyString(sql).getUnicodeValue();
+                try {
+                    stmt = c.createStatement();
+                    if (stmt.execute(query)) {
+                        return unmarshalResults(context, c.getMetaData(), stmt, false);
+                    } else {
+                        IRubyObject key = context.getRuntime().getNil();
+                        if (c.getMetaData().supportsGetGeneratedKeys()) {
+                            key = unmarshal_id_result(context.getRuntime(), stmt.getGeneratedKeys());
+                        }
+                        if (key.isNil()) {
+                            return context.getRuntime().newFixnum(stmt.getUpdateCount());
+                        } else {
+                            return key;
+                        }
+                    }
+                } catch (SQLException sqe) {
+                    if (context.getRuntime().isDebug()) {
+                        System.out.println("Error SQL: " + query);
+                    }
+                    throw sqe;
+                } finally {
+                    close(stmt);
+                }
+            }
+        });
+    }
+
     @JRubyMethod(name = "execute_id_insert", required = 2)
     public IRubyObject execute_id_insert(final ThreadContext context, final IRubyObject sql,
             final IRubyObject id) throws SQLException {
@@ -1138,6 +1171,23 @@ public class RubyJdbcConnection extends RubyObject {
         }
 
         return runtime.newArray(results);
+    }
+
+    protected IRubyObject unmarshalResults(ThreadContext context, DatabaseMetaData metadata,
+            Statement cstmt, boolean downCase) throws SQLException {
+        Ruby runtime = context.getRuntime();
+        List sets = new ArrayList();
+
+        ResultSet rs;
+        List results;
+        boolean resultsAvailable = new Boolean("True");
+        while (resultsAvailable) {
+          rs = cstmt.getResultSet();
+          sets.add(unmarshalResult(context, metadata, rs, downCase));
+          resultsAvailable = cstmt.getMoreResults();
+        }
+
+        return runtime.newArray(sets);
     }
 
     protected Object withConnectionAndRetry(ThreadContext context, SQLBlock block) {
