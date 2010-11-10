@@ -210,7 +210,11 @@ public class RubyJdbcConnection extends RubyObject {
     }
 
     @JRubyMethod
-    public IRubyObject execute(final ThreadContext context, final IRubyObject sql) {
+    public IRubyObject execute(final ThreadContext context, final IRubyObject sql ) {
+      return execute(context, sql, false);
+    }
+
+    public IRubyObject execute(final ThreadContext context, final IRubyObject sql, final boolean multiStatement ) {
         return (IRubyObject) withConnectionAndRetry(context, new SQLBlock() {
             public Object call(Connection c) throws SQLException {
                 Statement stmt = null;
@@ -218,7 +222,11 @@ public class RubyJdbcConnection extends RubyObject {
                 try {
                     stmt = c.createStatement();
                     if (stmt.execute(query)) {
-                        return unmarshalResult(context, c.getMetaData(), stmt.getResultSet(), false);
+                        if (multiStatement) {
+                          return unmarshalResults(context, c.getMetaData(), stmt, false);
+                        } else {
+                          return unmarshalResult(context, c.getMetaData(), stmt.getResultSet(), false);
+                        }
                     } else {
                         IRubyObject key = context.getRuntime().getNil();
                         if (c.getMetaData().supportsGetGeneratedKeys()) {
@@ -244,35 +252,7 @@ public class RubyJdbcConnection extends RubyObject {
 
     @JRubyMethod(name = "execute_many")
     public IRubyObject execute_many(final ThreadContext context, final IRubyObject sql) {
-        return (IRubyObject) withConnectionAndRetry(context, new SQLBlock() {
-            public Object call(Connection c) throws SQLException {
-                Statement stmt = null;
-                String query = rubyApi.convertToRubyString(sql).getUnicodeValue();
-                try {
-                    stmt = c.createStatement();
-                    if (stmt.execute(query)) {
-                        return unmarshalResults(context, c.getMetaData(), stmt, false);
-                    } else {
-                        IRubyObject key = context.getRuntime().getNil();
-                        if (c.getMetaData().supportsGetGeneratedKeys()) {
-                            key = unmarshal_id_result(context.getRuntime(), stmt.getGeneratedKeys());
-                        }
-                        if (key.isNil()) {
-                            return context.getRuntime().newFixnum(stmt.getUpdateCount());
-                        } else {
-                            return key;
-                        }
-                    }
-                } catch (SQLException sqe) {
-                    if (context.getRuntime().isDebug()) {
-                        System.out.println("Error SQL: " + query);
-                    }
-                    throw sqe;
-                } finally {
-                    close(stmt);
-                }
-            }
-        });
+        return execute(context, sql, true);
     }
 
     @JRubyMethod(name = "execute_id_insert", required = 2)
