@@ -55,6 +55,11 @@ module ::ArJdbc
       'Derby'
     end
 
+    def arel2_visitors
+      require 'arel/visitors/derby'
+      {'derby' => ::Arel::Visitors::Derby, 'jdbcderby' => ::Arel::Visitors::Derby}
+    end
+
     include ArJdbc::MissingFunctionalityHelper
 
     def index_name_length
