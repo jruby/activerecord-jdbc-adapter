@@ -32,7 +32,7 @@ module ActiveRecord
         end
         super(connection, logger)
         extend spec if spec
-        configure_arel2_visitors
+        configure_arel2_visitors(config)
         connection.adapter = self
         JndiConnectionPoolCallbacks.prepare(self, connection)
       end
@@ -93,11 +93,16 @@ module ActiveRecord
         {}
       end
 
-      def configure_arel2_visitors
+      def configure_arel2_visitors(config)
         if defined?(::Arel::Visitors::VISITORS)
           visitors = ::Arel::Visitors::VISITORS
+          visitor = nil
           arel2_visitors.each do |k,v|
+            visitor = v
             visitors[k] = v unless visitors.has_key?(k)
+          end
+          if visitor && config[:dialect] && config[:adapter] =~ /^(jdbc|jndi)$/
+            visitors[config[:adapter]] = visitor
           end
         end
       end
