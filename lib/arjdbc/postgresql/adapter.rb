@@ -90,6 +90,10 @@ module ::ArJdbc
       'PostgreSQL'
     end
 
+    def arel2_visitors
+      {'jdbcpostgresql' => ::Arel::Visitors::PostgreSQL}
+    end
+
     def postgresql_version
       @postgresql_version ||=
         begin
