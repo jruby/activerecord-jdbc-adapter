@@ -345,6 +345,11 @@ module SimpleTestMethods
 
   def test_add_not_null_column_to_table
     AddNotNullColumnToTable.up
+    created_columns = Entry.connection.columns('entries')
+
+    color = created_columns.detect { |c| c.name == 'color' }
+    assert !color.null
+
     AddNotNullColumnToTable.down
   end
 
