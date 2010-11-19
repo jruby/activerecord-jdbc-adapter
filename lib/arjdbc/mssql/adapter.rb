@@ -4,6 +4,7 @@ require 'arjdbc/mssql/limit_helpers'
 module ::ArJdbc
   module MsSQL
     include TSqlMethods
+    include LimitHelpers
 
     def self.extended(mod)
       unless @lob_callback_added
@@ -31,6 +32,12 @@ module ::ArJdbc
 
     def self.jdbc_connection_class
       ::ActiveRecord::ConnectionAdapters::MssqlJdbcConnection
+    end
+
+    def arel2_visitors
+      require 'arel/visitors/mssql'
+      visitor_class = sqlserver_version == "2000" ? ::Arel::Visitors::SQLServer2000 : ::Arel::Visitors::SQLServer
+      { 'mssql' => visitor_class, 'jdbcmssql' => visitor_class}
     end
 
     def sqlserver_version
@@ -386,8 +393,6 @@ module ::ArJdbc
     end
 
     private
-    include LimitHelpers
-
     # Turns IDENTITY_INSERT ON for table during execution of the block
     # N.B. This sets the state of IDENTITY_INSERT to OFF after the
     # block has been executed without regard to its previous state
