@@ -345,12 +345,37 @@ module SimpleTestMethods
 
   def test_add_not_null_column_to_table
     AddNotNullColumnToTable.up
+    AddNotNullColumnToTable.down
+  end
+
+  def test_add_null_column_with_default
+    Entry.connection.add_column :entries, :color, :string, :null => false, :default => "blue"
     created_columns = Entry.connection.columns('entries')
 
     color = created_columns.detect { |c| c.name == 'color' }
     assert !color.null
+  end
 
-    AddNotNullColumnToTable.down
+  def test_add_null_column_with_no_default
+    # You must specify a default value with sqlite, derby, hsqldb and h2
+    unless ActiveRecord::Base.connection.adapter_name =~ /sqlite|derby|hsqldb|h2/i
+      Entry.connection.add_column :entries, :color, :string, :null => false
+      created_columns = Entry.connection.columns('entries')
+
+      color = created_columns.detect { |c| c.name == 'color' }
+      assert !color.null
+    end
+  end
+
+  def test_add_null_column_with_nil_default
+    # You must specify a default value with sqlite, derby, hsqldb and h2
+    unless ActiveRecord::Base.connection.adapter_name =~ /sqlite|derby|hsqldb|h2/i
+      Entry.connection.add_column :entries, :color, :string, :null => false, :default => nil
+      created_columns = Entry.connection.columns('entries')
+
+      color = created_columns.detect { |c| c.name == 'color' }
+      assert !color.null
+    end
   end
 
   def test_validates_uniqueness_of_strings_case_sensitive
