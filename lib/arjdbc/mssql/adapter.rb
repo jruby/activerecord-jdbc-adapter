@@ -46,9 +46,9 @@ module ::ArJdbc
 
     def add_version_specific_add_limit_offset
       if sqlserver_version == "2000"
-        extend LimitHelpers::SqlServer2000LimitOffset
+        extend LimitHelpers::SqlServer2000AddLimitOffset
       else
-        extend LimitHelpers::SqlServerLimitOffset
+        extend LimitHelpers::SqlServerAddLimitOffset
       end
     end
 
@@ -392,7 +392,6 @@ module ::ArJdbc
       sql
     end
 
-    private
     # Turns IDENTITY_INSERT ON for table during execution of the block
     # N.B. This sets the state of IDENTITY_INSERT to OFF after the
     # block has been executed without regard to its previous state
