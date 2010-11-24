@@ -271,6 +271,12 @@ module ActiveRecord
       def select(*args)
         execute(*args)
       end
+
+      def translate_exception(e, message)
+        puts e.backtrace if $DEBUG || ENV['DEBUG']
+        super
+      end
+      protected :translate_exception
     end
   end
 end
