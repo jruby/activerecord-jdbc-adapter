@@ -92,7 +92,6 @@ module ::ArJdbc
     # Override default -- fix case where ActiveRecord passes :default => nil, :null => true
     def add_column_options!(sql, options)
       options.delete(:default) if options.has_key?(:default) && options[:default].nil?
-      options.delete(:null) if options.has_key?(:null) && (options[:null].nil? || options[:null] == true)
       sql << " DEFAULT #{quote(options.delete(:default))}" if options.has_key?(:default)
       super
     end
@@ -163,16 +162,9 @@ module ::ArJdbc
 
 
     def add_column(table_name, column_name, type, options = {})
-      if option_not_null = (options[:null] == false)
-        options.delete(:null)
-      end
       add_column_sql = "ALTER TABLE #{quote_table_name(table_name)} ADD #{quote_column_name(column_name)} #{type_to_sql(type, options[:limit], options[:precision], options[:scale])}"
       add_column_options!(add_column_sql, options)
       execute(add_column_sql)
-      if option_not_null
-        alter_column_sql = "ALTER TABLE #{quote_table_name(table_name)} ALTER #{quote_column_name(column_name)} NOT NULL"
-        execute(alter_column_sql)
-      end
     end
 
     def execute(sql, name = nil)
