@@ -465,7 +465,7 @@ module ::ArJdbc
     end
 
     def clear_cached_table(name)
-      (@table_columns ||= {}).delete(name)
+      (@table_columns ||= {}).delete(name.to_s)
     end
   end
 end
