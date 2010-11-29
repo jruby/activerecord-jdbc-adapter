@@ -29,6 +29,19 @@ class MysqlSimpleTest < Test::Unit::TestCase
   def test_update_all_with_limit
     assert_nothing_raised { Entry.update_all({:title => "test"}, {}, {:limit => 1}) }
   end
+
+  def test_find_in_other_schema_with_include
+    old_entries_table_name = Entry.table_name
+    old_users_table_name   = User.table_name
+    begin
+      User.set_table_name 'weblog_development.users'
+      Entry.set_table_name 'weblog_development.entries'
+      assert !Entry.all(:include => :user).empty?
+    ensure
+      Entry.set_table_name old_entries_table_name
+      User.set_table_name old_users_table_name
+    end
+  end
 end
 
 class MysqlHasManyThroughTest < Test::Unit::TestCase

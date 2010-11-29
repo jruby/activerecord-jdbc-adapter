@@ -225,7 +225,6 @@ module ActiveRecord
         id_value || id
       end
 
-
       def jdbc_columns(table_name, name = nil)
         @connection.columns(table_name.to_s)
       end
@@ -233,6 +232,10 @@ module ActiveRecord
 
       def tables(name = nil)
         @connection.tables
+      end
+
+      def table_exists?(name)
+        jdbc_columns(name) rescue nil
       end
 
       def indexes(table_name, name = nil, schema_name = nil)
