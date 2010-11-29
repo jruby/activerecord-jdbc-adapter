@@ -8,9 +8,9 @@ class MysqlDbCreateTest < Test::Unit::TestCase
     MYSQL_CONFIG
   end
 
-  if find_executable?("mysql")
-    def test_rake_db_create
-      Rake::Task["db:create"].invoke
+  def test_rake_db_create
+    Rake::Task["db:create"].invoke
+    if find_executable?("mysql")
       output = nil
       IO.popen("mysql -u #{MYSQL_CONFIG[:username]} --password=#{MYSQL_CONFIG[:password]}", "r+") do |mysql|
         mysql << "show databases where `Database` = '#{@db_name}';"
@@ -18,13 +18,10 @@ class MysqlDbCreateTest < Test::Unit::TestCase
         assert mysql.read =~ /#{@db_name}/m
       end
     end
+  end
 
-    def test_rake_db_test_purge
-      Rake::Task["db:create"].invoke
-      Rake::Task["db:test:purge"].invoke
-    end
-  else
-    def test_skipped
-    end
+  def test_rake_db_test_purge
+    Rake::Task["db:create"].invoke
+    Rake::Task["db:test:purge"].invoke
   end
 end
