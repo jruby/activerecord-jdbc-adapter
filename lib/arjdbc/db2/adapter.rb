@@ -149,7 +149,10 @@ module ArJdbc
     end
 
     def add_limit_offset!(sql, options)
-      limit, offset = options[:limit], options[:offset]
+      replace_limit_offset!(sql, options[:limit], options[:offset])
+    end
+
+    def replace_limit_offset!(sql, limit, offset)
       if limit && !offset
         if limit == 1
           sql << " FETCH FIRST ROW ONLY"
@@ -160,6 +163,7 @@ module ArJdbc
         sql.gsub!(/SELECT/i, 'SELECT B.* FROM (SELECT A.*, row_number() over () AS internal$rownum FROM (SELECT')
         sql << ") A ) B WHERE B.internal$rownum > #{offset} AND B.internal$rownum <= #{sanitize_limit(limit) + offset}"
       end
+      sql
     end
 
     def pk_and_sequence_for(table)

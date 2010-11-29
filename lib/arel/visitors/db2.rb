@@ -8,18 +8,7 @@ module Arel
       end
 
       def add_limit_offset(sql, o)
-        limit, offset = o.limit, o.offset
-        if limit && !offset
-          if limit == 1
-            sql << " FETCH FIRST ROW ONLY"
-          else
-            sql << " FETCH FIRST #{limit} ROWS ONLY"
-          end
-        elsif limit && offset
-          sql.gsub!(/SELECT/i, 'SELECT B.* FROM (SELECT A.*, row_number() over () AS internal$rownum FROM (SELECT')
-          sql << ") A ) B WHERE B.internal$rownum > #{offset} AND B.internal$rownum <= #{limit + offset}"
-        end
-        sql
+        @connection.replace_limit_offset! sql, o.limit, o.offset
       end
     end
   end
