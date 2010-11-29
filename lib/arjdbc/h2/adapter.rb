@@ -8,6 +8,10 @@ module ArJdbc
       'H2'
     end
 
+    def arel2_visitors
+      super.merge 'h2' => ::Arel::Visitors::HSQLDB, 'jdbch2' => ::Arel::Visitors::HSQLDB
+    end
+
     def h2_adapter
       true
     end
