@@ -154,7 +154,8 @@ module ::ArJdbc
     end
 
     def next_sequence_value(sequence_name)
-      select_one("select #{sequence_name}.nextval id from dual")['id'].to_i
+      # avoid #select or #select_one so that the sequence values aren't cached
+      execute("select #{sequence_name}.nextval id from dual").first['id'].to_i
     end
 
     def sql_literal?(value)
