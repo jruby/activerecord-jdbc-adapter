@@ -101,7 +101,7 @@ module ActiveRecord
             visitor = v
             visitors[k] = v unless visitors.has_key?(k)
           end
-          if visitor && config[:dialect] && config[:adapter] =~ /^(jdbc|jndi)$/
+          if visitor && config[:adapter] =~ /^(jdbc|jndi)$/
             visitors[config[:adapter]] = visitor
           end
         end
