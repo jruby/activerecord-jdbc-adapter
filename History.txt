@@ -1,3 +1,12 @@
+== 1.0.3 (11/29/10)
+
+- ACTIVERECORD_JDBC-143: Implement table_exists? fixing association
+  table names with schema prefixes
+- Cleanup of column code for hsqldb (Denis Odorcic)
+- Rails 3.0.3 support - add Arel 2 visitors for all adapters
+- Fix MySQL date types to not have limits (Chris Lowder)
+- ACTIVERECORD_JDBC-141: Better schema support in H2
+
 == 1.0.2
 
 - ACTIVERECORD_JDBC-134: Fix conflicting adapter/column superclasses
