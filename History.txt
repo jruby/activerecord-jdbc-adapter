@@ -1,3 +1,9 @@
+== 1.0.4
+
+- ACTIVERECORD_JDBC-144: Fix limits appearing in schema dump for some
+  datatypes (Uwe Kubosch)
+- Fixes for DB2 limit/offset
+
 == 1.0.3 (11/29/10)
 
 - ACTIVERECORD_JDBC-143: Implement table_exists? fixing association
