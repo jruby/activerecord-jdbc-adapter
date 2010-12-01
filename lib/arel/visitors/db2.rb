@@ -8,7 +8,7 @@ module Arel
       end
 
       def add_limit_offset(sql, o)
-        @connection.replace_limit_offset! sql, o.limit, o.offset
+        @connection.replace_limit_offset! sql, o.limit, o.offset && o.offset.value
       end
     end
   end
