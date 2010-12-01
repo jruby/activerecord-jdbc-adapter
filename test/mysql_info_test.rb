@@ -110,4 +110,14 @@ class MysqlInfoTest < Test::Unit::TestCase
     assert url =~ /useUnicode=true/
     assert url =~ /zeroDateTimeBehavior=convertToNull/
   end
+
+  def test_no_limits_for_some_data_types
+    DbTypeMigration.up
+    strio = StringIO.new
+    ActiveRecord::SchemaDumper.dump(@connection, strio)
+    dump_lines = strio.string
+    assert_nil dump_lines.find {|l| l =~ /\.(float|date|datetime|integer|time|timestamp) .* :limit/ && l !~ /sample_integer/ }
+  ensure
+    DbTypeMigration.down
+  end
 end
