@@ -74,7 +74,7 @@ namespace :db do
       ActiveRecord::Base.connection
     rescue
       begin
-        if url = config['url'] && url =~ /^(.*(?<!\/)\/)(?=\w)/
+        if url = config['url'] and url =~ /^(.*(?<!\/)\/)(?=\w)/
           url = $1
         end
 
