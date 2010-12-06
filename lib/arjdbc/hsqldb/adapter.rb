@@ -166,5 +166,19 @@ module ::ArJdbc
     def remove_index(table_name, options = {})
       execute "DROP INDEX #{quote_column_name(index_name(table_name, options))}"
     end
+
+    def recreate_database(name)
+      drop_database(name)
+    end
+    
+    # do nothing since database gets created upon connection. However
+    # this method gets called by rails db rake tasks so now we're
+    # avoiding method_missing error
+    def create_database(name)
+    end
+
+    def drop_database(name)
+      execute("DROP ALL OBJECTS")
+    end    
   end
 end
