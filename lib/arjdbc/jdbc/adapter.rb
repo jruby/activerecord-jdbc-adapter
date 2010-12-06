@@ -67,7 +67,7 @@ module ActiveRecord
           break unless config[:jndi] and !config[:dialect]
           begin
             conn = Java::javax.naming.InitialContext.new.lookup(config[:jndi]).getConnection
-            config[:dialect] = conn.getMetaData.getClass.getName.downcase
+            config[:dialect] = conn.getMetaData.getDatabaseProductName
 
             # Derby-specific hack
             if ::ArJdbc::Derby.adapter_matcher(config[:dialect], config)
