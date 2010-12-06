@@ -3,6 +3,13 @@
 - ACTIVERECORD_JDBC-144: Fix limits appearing in schema dump for some
   datatypes (Uwe Kubosch)
 - Fixes for DB2 limit/offset
+- Fix rake db:create for 'jdbc' adapter (Joeri Samson)
+- add create/drop database methods to h2 adapter (sahglie)
+- Use connection getDatabaseProductName instead of getClass.getName
+  when detecting JNDI dialects (Denis Odorcic)
+- Add multi-statement support, idea from oruen. For use with MySQL,
+  you need to add "options:\n    allowMultiQueries: true" in
+  database.yml.
 
 == 1.0.3 (11/29/10)
 
