@@ -23,7 +23,7 @@ if defined?(JRUBY_VERSION)
     require 'arjdbc/jdbc'
   end
 else
-  warn "ActiveRecord-JDBC is for use with JRuby only"
+  warn "activerecord-jdbc-adapter is for use with JRuby only"
 end
 
 require 'arjdbc/version'

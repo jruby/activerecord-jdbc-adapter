@@ -14,7 +14,6 @@ begin
   Hoe.plugin :gemcutter
   hoe = Hoe.spec("activerecord-jdbc-adapter") do |p|
     p.version = ArJdbc::Version::VERSION
-    p.spec_extras[:platform] = Gem::Platform.new("java")
     p.spec_extras[:files] = MANIFEST
     p.rubyforge_name = "jruby-extras"
     p.url = "http://jruby-extras.rubyforge.org/activerecord-jdbc-adapter"

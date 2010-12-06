@@ -12,8 +12,9 @@ begin
   require 'hoe'
   Hoe.plugin :gemcutter
   Hoe.spec("jdbc-mysql") do |p|
-    p.version = Jdbc::MySQL::VERSION
-    p.spec_extras[:platform] = Gem::Platform.new("java")
+    version = Jdbc::MySQL::VERSION
+    version += '.' + ENV['DRIVER_REV'] if ENV['DRIVER_REV']
+    p.version = version
     p.rubyforge_name = "jruby-extras"
     p.url = "http://jruby-extras.rubyforge.org/ActiveRecord-JDBC"
     p.author = "Nick Sieger, Ola Bini and JRuby contributors"
