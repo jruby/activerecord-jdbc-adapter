@@ -10,6 +10,13 @@ require 'db/postgres'
 class PostgresSimpleTest < Test::Unit::TestCase
   include SimpleTestMethods
   include ActiveRecord3TestMethods
+
+  def test_multi_statement_support
+    results = @connection.execute "SELECT title from entries; SELECT login from users"
+    assert_equal 2, results.length
+    assert_equal ["title"], results[0].first.keys
+    assert_equal ["login"], results[1].first.keys
+  end
 end
 
 class PostgresDeserializationTest < Test::Unit::TestCase

@@ -218,7 +218,7 @@ public class RubyJdbcConnection extends RubyObject {
                 try {
                     stmt = c.createStatement();
                     if (stmt.execute(query)) {
-                        return unmarshalResult(context, c.getMetaData(), stmt.getResultSet(), false);
+                        return unmarshalResults(context, c.getMetaData(), stmt, false);
                     } else {
                         IRubyObject key = context.getRuntime().getNil();
                         if (c.getMetaData().supportsGetGeneratedKeys()) {
@@ -1119,13 +1119,32 @@ public class RubyJdbcConnection extends RubyObject {
         }
     }
 
+    protected IRubyObject unmarshalResults(ThreadContext context, DatabaseMetaData metadata,
+                                           Statement stmt, boolean downCase) throws SQLException {
+        Ruby runtime = context.getRuntime();
+        List<IRubyObject> sets = new ArrayList<IRubyObject>();
+
+        while (true) {
+            sets.add(unmarshalResult(context, metadata, stmt.getResultSet(), downCase));
+            if (!stmt.getMoreResults()) {
+                break;
+            }
+        }
+
+        if (sets.size() > 1) {
+            return runtime.newArray(sets);
+        } else {
+            return sets.get(0);
+        }
+    }
+
     /**
      * Converts a jdbc resultset into an array (rows) of hashes (row) that AR expects.
      *
      * @param downCase should column names only be in lower case?
      */
     protected IRubyObject unmarshalResult(ThreadContext context, DatabaseMetaData metadata,
-            ResultSet resultSet, boolean downCase) throws SQLException {
+                                          ResultSet resultSet, boolean downCase) throws SQLException {
         Ruby runtime = context.getRuntime();
         List results = new ArrayList();
 
