@@ -217,18 +217,10 @@ public class RubyJdbcConnection extends RubyObject {
                 String query = rubyApi.convertToRubyString(sql).getUnicodeValue();
                 try {
                     stmt = c.createStatement();
-                    if (stmt.execute(query)) {
+                    if (genericExecute(stmt, query)) {
                         return unmarshalResults(context, c.getMetaData(), stmt, false);
                     } else {
-                        IRubyObject key = context.getRuntime().getNil();
-                        if (c.getMetaData().supportsGetGeneratedKeys()) {
-                            key = unmarshal_id_result(context.getRuntime(), stmt.getGeneratedKeys());
-                        }
-                        if (key.isNil()) {
-                            return context.getRuntime().newFixnum(stmt.getUpdateCount());
-                        } else {
-                            return key;
-                        }
+                        return unmarshalKeysOrUpdateCount(context, c, stmt);
                     }
                 } catch (SQLException sqe) {
                     if (context.getRuntime().isDebug()) {
@@ -240,6 +232,22 @@ public class RubyJdbcConnection extends RubyObject {
                 }
             }
         });
+    }
+
+    protected boolean genericExecute(Statement stmt, String query) throws SQLException {
+        return stmt.execute(query);
+    }
+
+    protected IRubyObject unmarshalKeysOrUpdateCount(ThreadContext context, Connection c, Statement stmt) throws SQLException {
+        IRubyObject key = context.getRuntime().getNil();
+        if (c.getMetaData().supportsGetGeneratedKeys()) {
+            key = unmarshal_id_result(context.getRuntime(), stmt.getGeneratedKeys());
+        }
+        if (key.isNil()) {
+            return context.getRuntime().newFixnum(stmt.getUpdateCount());
+        } else {
+            return key;
+        }
     }
 
     @JRubyMethod(name = "execute_id_insert", required = 2)

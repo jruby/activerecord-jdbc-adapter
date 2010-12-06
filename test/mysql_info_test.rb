@@ -96,7 +96,7 @@ class MysqlInfoTest < Test::Unit::TestCase
 
   def test_should_set_sqltype_to_longtext
     text_column = @connection.columns('memos').find { |c| c.name == 'text' }
-    assert text_column.sql_type =~ /^longtext/
+    assert text_column.sql_type =~ /^longtext/i
   end
 
   def test_should_set_type_to_text
