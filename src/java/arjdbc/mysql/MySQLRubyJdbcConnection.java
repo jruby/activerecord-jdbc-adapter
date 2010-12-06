@@ -27,7 +27,9 @@ package arjdbc.mysql;
 
 import java.sql.Connection;
 import java.sql.SQLException;
+import java.sql.ResultSet;
 import java.sql.Statement;
+import java.sql.Types;
 
 import org.jruby.Ruby;
 import org.jruby.RubyClass;
@@ -46,16 +48,27 @@ public class MySQLRubyJdbcConnection extends RubyJdbcConnection {
         super(runtime, metaClass);
     }
 
+    @Override
     protected boolean genericExecute(Statement stmt, String query) throws SQLException {
         return stmt.execute(query, Statement.RETURN_GENERATED_KEYS);
     }
 
+    @Override
     protected IRubyObject unmarshalKeysOrUpdateCount(ThreadContext context, Connection c, Statement stmt) throws SQLException {
         IRubyObject key = unmarshal_id_result(context.getRuntime(), stmt.getGeneratedKeys());
         if (key.isNil()) {
             return context.getRuntime().newFixnum(stmt.getUpdateCount());
         }
         return key;
+    }
+
+    @Override
+    protected IRubyObject jdbcToRuby(Ruby runtime, int column, int type, ResultSet resultSet)
+            throws SQLException {
+        if (Types.BOOLEAN == type || Types.BIT == type) {
+            return integerToRuby(runtime, resultSet, resultSet.getBoolean(column) ? 1 : 0);
+        }
+        return super.jdbcToRuby(runtime, column, type, resultSet);
     }
 
     public static RubyClass createMySQLJdbcConnectionClass(Ruby runtime, RubyClass jdbcConnection) {

@@ -819,7 +819,7 @@ public class RubyJdbcConnection extends RubyObject {
     }
 
     protected IRubyObject integerToRuby(Ruby runtime, ResultSet resultSet, long longValue)
-            throws SQLException, IOException {
+            throws SQLException {
         if (longValue == 0 && resultSet.wasNull()) return runtime.getNil();
 
         return runtime.newFixnum(longValue);
