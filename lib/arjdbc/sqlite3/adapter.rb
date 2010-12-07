@@ -125,6 +125,16 @@ module ::ArJdbc
       %Q{'f'}
     end
 
+    # Quote date/time values for use in SQL input. Includes microseconds
+    # if the value is a Time responding to usec.
+    def quoted_date(value) #:nodoc:
+      if value.respond_to?(:usec)
+        "#{super}.#{sprintf("%06d", value.usec)}"
+      else
+        super
+      end
+    end
+
     def insert_sql(sql, name = nil, pk = nil, id_value = nil, sequence_name = nil) #:nodoc:
       @connection.execute_update(sql)
       id_value || last_insert_id
