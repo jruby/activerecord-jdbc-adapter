@@ -1036,7 +1036,7 @@ public class RubyJdbcConnection extends RubyObject {
     }
 
     protected IRubyObject timestampToRuby(Ruby runtime, ResultSet resultSet, Timestamp time)
-            throws SQLException, IOException {
+            throws SQLException {
         if (time == null && resultSet.wasNull()) return runtime.getNil();
 
         String str = time.toString();
