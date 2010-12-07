@@ -75,6 +75,10 @@ module ::ArJdbc
       'SQLite'
     end
 
+    def arel2_visitors
+      {'jdbcsqlite3' => ::Arel::Visitors::SQLite}
+    end
+
     def supports_add_column?
       sqlite_version >= '3.1.6'
     end
