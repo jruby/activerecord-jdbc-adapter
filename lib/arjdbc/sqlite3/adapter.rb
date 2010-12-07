@@ -96,16 +96,16 @@ module ::ArJdbc
     end
 
     def modify_types(tp)
-      tp[:primary_key] = "INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL"
-      tp[:string] = { :name => "VARCHAR", :limit => 255 }
-      tp[:float] = { :name => "REAL" }
-      tp[:decimal] = { :name => "REAL" }
-      tp[:datetime] = { :name => "DATETIME" }
-      tp[:timestamp] = { :name => "DATETIME" }
-      tp[:time] = { :name => "TIME" }
-      tp[:date] = { :name => "DATE" }
-      tp[:boolean] = { :name => "BOOLEAN" }
-      tp[:binary] = { :name => "BLOB" }
+      tp[:primary_key] = "integer primary key autoincrement not null"
+      tp[:string] = { :name => "varchar", :limit => 255 }
+      tp[:float] = { :name => "real" }
+      tp[:decimal] = { :name => "real" }
+      tp[:datetime] = { :name => "datetime" }
+      tp[:timestamp] = { :name => "datetime" }
+      tp[:time] = { :name => "time" }
+      tp[:date] = { :name => "date" }
+      tp[:boolean] = { :name => "boolean" }
+      tp[:binary] = { :name => "blob" }
       tp
     end
 
