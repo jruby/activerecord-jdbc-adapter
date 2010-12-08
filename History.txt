@@ -20,6 +20,8 @@
 - add create/drop database methods to h2 adapter (sahglie)
 - Use connection getDatabaseProductName instead of getClass.getName
   when detecting JNDI dialects (Denis Odorcic)
+- ACTIVERECORD_JDBC-146: Fix create_table to not append encoding (Marc Slemko)
+- All green on SQLite3 Rails master ActiveRecord tests
 
 == 1.0.3 (11/29/10)
 
