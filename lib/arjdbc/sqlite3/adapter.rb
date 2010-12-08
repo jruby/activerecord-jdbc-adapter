@@ -39,7 +39,7 @@ module ::ArJdbc
         when /varchar/i                        then :string
         when /int/i                            then :integer
         when /float/i                          then :float
-        when /real/i                           then @scale == 0 ? :integer : :decimal
+        when /real|decimal/i                   then @scale == 0 ? :integer : :decimal
         when /datetime/i                       then :datetime
         when /date/i                           then :date
         when /time/i                           then :time
@@ -104,8 +104,8 @@ module ::ArJdbc
       tp[:primary_key] = "integer primary key autoincrement not null"
       tp[:string] = { :name => "varchar", :limit => 255 }
       tp[:text] = { :name => "text" }
-      tp[:float] = { :name => "real" }
-      tp[:decimal] = { :name => "real" }
+      tp[:float] = { :name => "decimal" }
+      tp[:decimal] = { :name => "decimal" }
       tp[:datetime] = { :name => "datetime" }
       tp[:timestamp] = { :name => "datetime" }
       tp[:time] = { :name => "time" }
@@ -210,7 +210,6 @@ module ::ArJdbc
 
     def jdbc_columns(table_name, name = nil) #:nodoc:
       table_structure(table_name).map do |field|
-        p field if field['name'] =~ /atoms/i
         ::ActiveRecord::ConnectionAdapters::SQLite3Column.new(@config, field['name'], field['dflt_value'], field['type'], field['notnull'] == 0)
       end
     end
