@@ -47,6 +47,11 @@ module ::ArJdbc
         end
       end
 
+      def extract_limit(sql_type)
+        return nil if sql_type =~ /^(real)\(\d+/i
+        super
+      end
+
       def extract_precision(sql_type)
         case sql_type
           when /^(real)\((\d+)(,\d+)?\)/i then $2.to_i
@@ -98,6 +103,7 @@ module ::ArJdbc
     def modify_types(tp)
       tp[:primary_key] = "integer primary key autoincrement not null"
       tp[:string] = { :name => "varchar", :limit => 255 }
+      tp[:text] = { :name => "text" }
       tp[:float] = { :name => "real" }
       tp[:decimal] = { :name => "real" }
       tp[:datetime] = { :name => "datetime" }
@@ -202,8 +208,9 @@ module ::ArJdbc
       structure
     end
 
-    def columns(table_name, name = nil) #:nodoc:
+    def jdbc_columns(table_name, name = nil) #:nodoc:
       table_structure(table_name).map do |field|
+        p field if field['name'] =~ /atoms/i
         ::ActiveRecord::ConnectionAdapters::SQLite3Column.new(@config, field['name'], field['dflt_value'], field['type'], field['notnull'] == 0)
       end
     end
@@ -355,6 +362,8 @@ module ActiveRecord::ConnectionAdapters
     def jdbc_column_class
       ActiveRecord::ConnectionAdapters::SQLite3Column
     end
+
+    alias_chained_method :columns, :query_cache, :jdbc_columns
   end
 
   SQLiteAdapter = SQLite3Adapter
