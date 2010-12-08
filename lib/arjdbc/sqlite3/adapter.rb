@@ -156,12 +156,8 @@ module ::ArJdbc
       end
     end
 
-    def remove_index(table_name, options = {})
-      execute "DROP INDEX #{quote_column_name(index_name(table_name, options))}"
-    end
-
     def indexes(table_name, name = nil)
-      result = select_rows("SELECT name, sql FROM sqlite_master WHERE tbl_name = '#{table_name}' AND type = 'index'", name)
+      result = select_rows("SELECT name, sql FROM sqlite_master WHERE tbl_name = #{quote_table_name(table_name)} AND type = 'index'", name)
 
       result.collect do |row|
         name = row[0]
