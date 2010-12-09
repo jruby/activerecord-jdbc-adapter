@@ -1,4 +1,4 @@
-== 1.1.0
+== 1.1.0 (12/09/10)
 
 - Don't narrow platform to '-java' only: revert back to 0.9.2 where
   ar-jdbc can be installed under any Ruby (for easier Bundler/Warbler
