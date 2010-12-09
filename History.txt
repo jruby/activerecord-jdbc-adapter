@@ -23,6 +23,7 @@
 - ACTIVERECORD_JDBC-146: Fix create_table to not append encoding (Marc Slemko)
 - All green on SQLite3 Rails master ActiveRecord tests
 - ACTIVERECORD_JDBC-140: Sync postgres add/change column code from Rails master
+- ACTIVERECORD_JDBC-139: TEXT/DATE on PostgreSQL should not have limits
 
 == 1.0.3 (11/29/10)
 

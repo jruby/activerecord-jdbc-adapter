@@ -55,4 +55,11 @@ class PostgresSchemaDumperTest < Test::Unit::TestCase
     assert !lines.empty?
     lines.each {|line| assert line !~ /limit/ }
   end
+
+  # http://kenai.com/jira/browse/ACTIVERECORD_JDBC-139
+  def test_schema_dump_should_not_have_limits_on_text_or_date
+    lines = @dump.grep(/date|text/)
+    assert !lines.empty?
+    lines.each {|line| assert line !~ /limit/ }
+  end
 end

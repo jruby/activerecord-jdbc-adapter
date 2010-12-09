@@ -30,7 +30,7 @@ module ::ArJdbc
         case sql_type
         when /^bigint/i;    8
         when /^smallint/i;  2
-        when /^bool/i;      nil # ACTIVERECORD_JDBC-135
+        when /^(bool|text|date|time)/i; nil # ACTIVERECORD_JDBC-135,139
         else super
         end
       end
@@ -82,6 +82,11 @@ module ::ArJdbc
       tp[:integer][:limit] = nil
       tp[:boolean] = { :name => "boolean" }
       tp[:float] = { :name => "float" }
+      tp[:text] = { :name => "text" }
+      tp[:datetime] = { :name => "timestamp" }
+      tp[:timestamp] = { :name => "timestamp" }
+      tp[:time] = { :name => "time" }
+      tp[:date] = { :name => "date" }
       tp[:decimal] = { :name => "decimal" }
       tp
     end
