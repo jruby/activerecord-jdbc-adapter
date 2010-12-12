@@ -110,7 +110,9 @@ module ::ArJdbc
     end
 
     def change_column(table_name, column_name, type, options = {}) #:nodoc:
-      execute "ALTER TABLE #{table_name} ALTER COLUMN #{column_name} #{type_to_sql(type, options[:limit])}"
+      change_column_sql = "ALTER TABLE #{table_name} ALTER COLUMN #{column_name} #{type_to_sql(type, options[:limit])}"
+      add_column_options!(change_column_sql, options)
+      execute(change_column_sql)
     end
 
     def change_column_default(table_name, column_name, default) #:nodoc:
