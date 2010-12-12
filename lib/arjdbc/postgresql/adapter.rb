@@ -495,6 +495,7 @@ module ::ArJdbc
         commit_db_transaction
       end
       change_column_default(table_name, column_name, options[:default]) unless options[:default].nil?
+      change_column_null(table_name, column_name, options[:null], options[:default]) if options.key?(:null)
     end
 
     def change_column_default(table_name, column_name, default) #:nodoc:
