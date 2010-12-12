@@ -89,13 +89,6 @@ module ::ArJdbc
       tp
     end
 
-    # Override default -- fix case where ActiveRecord passes :default => nil, :null => true
-    def add_column_options!(sql, options)
-      options.delete(:default) if options.has_key?(:default) && options[:default].nil?
-      sql << " DEFAULT #{quote(options.delete(:default))}" if options.has_key?(:default)
-      super
-    end
-
     def classes_for_table_name(table)
       ActiveRecord::Base.send(:subclasses).select {|klass| klass.table_name == table}
     end
