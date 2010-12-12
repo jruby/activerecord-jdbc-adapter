@@ -32,20 +32,6 @@ class MsSQLSimpleTest < Test::Unit::TestCase
 
   end
 
-  def test_change_column_nullability
-    
-    Entry.connection.change_column "entries", "title", :string, :null => true
-    Entry.reset_column_information
-    title_column = Entry.columns.find { |c| c.name == "title" }
-    assert(title_column.null)
-
-    Entry.connection.change_column "entries", "title", :string, :null => false
-    Entry.reset_column_information
-    title_column = Entry.columns.find { |c| c.name == "title" }
-    assert(!title_column.null)
-
-  end
-
   # ACTIVERECORD_JDBC-124
   def test_model_does_not_have_row_num_column
     entry = Entry.first

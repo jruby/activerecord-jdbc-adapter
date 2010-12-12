@@ -390,6 +390,18 @@ module SimpleTestMethods
     end
   end
 
+  def test_change_column_nullability
+    Entry.connection.change_column "entries", "title", :string, :null => true
+    Entry.reset_column_information
+    title_column = Entry.columns.find { |c| c.name == "title" }
+    assert(title_column.null)
+
+    Entry.connection.change_column "entries", "title", :string, :null => false
+    Entry.reset_column_information
+    title_column = Entry.columns.find { |c| c.name == "title" }
+    assert(!title_column.null)
+  end
+
   def test_change_column_default
     Entry.connection.add_column :entries, :test_change_column_default, :string, :default => "unchanged"
 
