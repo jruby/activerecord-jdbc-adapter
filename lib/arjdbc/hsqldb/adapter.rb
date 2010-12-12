@@ -119,6 +119,16 @@ module ::ArJdbc
       execute "ALTER TABLE #{table_name} ALTER COLUMN #{column_name} SET DEFAULT #{quote(default)}"
     end
 
+    def change_column_null(table_name, column_name, null, default = nil)
+      column = column_for(table_name, column_name)
+
+      unless null || default.nil?
+        execute("UPDATE #{quote_table_name(table_name)} SET #{quote_column_name(column_name)}=#{quote(default)} WHERE #{quote_column_name(column_name)} IS NULL")
+      end
+
+      change_column(table_name, column_name, column.sql_type, :null => null)
+    end
+
     def rename_column(table_name, column_name, new_column_name) #:nodoc:
       execute "ALTER TABLE #{table_name} ALTER COLUMN #{column_name} RENAME TO #{new_column_name}"
     end
@@ -181,6 +191,14 @@ module ::ArJdbc
 
     def drop_database(name)
       execute("DROP ALL OBJECTS")
-    end    
+    end
+
+    private
+    def column_for(table_name, column_name)
+      unless column = columns(table_name).find { |c| c.name == column_name.to_s }
+        raise "No such column: #{table_name}.#{column_name}"
+      end
+      column
+    end
   end
 end
