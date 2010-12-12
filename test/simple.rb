@@ -418,6 +418,18 @@ module SimpleTestMethods
     assert_equal col.default, 'changed'
   end
 
+  def test_change_column_null
+    Entry.connection.change_column_null "entries", "title", true
+    Entry.reset_column_information
+    title_column = Entry.columns.find { |c| c.name == "title" }
+    assert title_column.null
+
+    Entry.connection.change_column_null "entries", "title", false
+    Entry.reset_column_information
+    title_column = Entry.columns.find { |c| c.name == "title" }
+    assert !title_column.null
+  end
+
   def test_change_column_type
     # FIXME - Fix this in Derby
     unless ActiveRecord::Base.connection.adapter_name =~ /derby/i
