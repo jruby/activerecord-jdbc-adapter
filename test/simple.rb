@@ -354,6 +354,10 @@ module SimpleTestMethods
 
     color = created_columns.detect { |c| c.name == 'color' }
     assert !color.null
+
+    Entry.reset_column_information
+    assert_equal "blue", Entry.new.color
+    Entry.reset_column_information
   end
 
   def test_add_null_column_with_no_default
@@ -364,6 +368,10 @@ module SimpleTestMethods
 
       color = created_columns.detect { |c| c.name == 'color' }
       assert !color.null
+
+      Entry.reset_column_information
+      assert_nil Entry.new.color
+      Entry.reset_column_information
     end
   end
 
@@ -375,6 +383,10 @@ module SimpleTestMethods
 
       color = created_columns.detect { |c| c.name == 'color' }
       assert !color.null
+
+      Entry.reset_column_information
+      assert_nil Entry.new.color
+      Entry.reset_column_information
     end
   end
 
