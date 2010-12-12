@@ -446,6 +446,69 @@ module SimpleTestMethods
     assert_equal col.type, :integer
   end
 
+  def test_remove_column
+    Entry.connection.add_column :entries, :test_remove_column, :string
+
+    cols = ActiveRecord::Base.connection.columns("entries")
+    assert cols.find {|col| col.name == "test_remove_column"}
+
+    Entry.connection.remove_column :entries, :test_remove_column
+
+    cols = ActiveRecord::Base.connection.columns("entries")
+    assert !cols.find {|col| col.name == "test_remove_column"}
+  end
+
+  def test_rename_column
+    Entry.connection.rename_column :entries, :title, :name
+
+    cols = ActiveRecord::Base.connection.columns("entries")
+    assert cols.find {|col| col.name == "name"}
+    assert !cols.find {|col| col.name == "title"}
+
+    Entry.connection.rename_column :entries, :name, :title
+
+    cols = ActiveRecord::Base.connection.columns("entries")
+    assert cols.find {|col| col.name == "title"}
+    assert !cols.find {|col| col.name == "name"}
+  end
+
+  def test_rename_column_preserves_content
+    post = Entry.find(:first)
+    assert_equal @title, post.title
+    assert_equal @content, post.content
+    assert_equal @rating, post.rating
+
+    Entry.connection.rename_column :entries, :title, :name
+
+    post = Entry.find(:first)
+    assert_equal @title, post.name
+    assert_equal @content, post.content
+    assert_equal @rating, post.rating
+  end
+
+  def test_rename_column_preserves_index
+    assert_equal(0, @connection.indexes(:entries).size)
+    index_name = "entries_index"
+
+    Entry.connection.add_index :entries, :title, :name => index_name
+
+    indexes = @connection.indexes(:entries)
+    assert_equal(1, indexes.size)
+    assert_equal "entries", indexes.first.table.to_s
+    assert_equal index_name, indexes.first.name
+    assert !indexes.first.unique
+    assert_equal ["title"], indexes.first.columns
+
+    Entry.connection.rename_column :entries, :title, :name
+
+    indexes = @connection.indexes(:entries)
+    assert_equal(1, indexes.size)
+    assert_equal "entries", indexes.first.table.to_s
+    assert_equal index_name, indexes.first.name
+    assert !indexes.first.unique
+    assert_equal ["name"], indexes.first.columns
+  end
+
   def test_validates_uniqueness_of_strings_case_sensitive
     name_lower = ValidatesUniquenessOfString.new(:cs_string => "name", :ci_string => '1')
     name_lower.save!
