@@ -431,22 +431,19 @@ module SimpleTestMethods
   end
 
   def test_change_column_type
-    # FIXME - Fix this in Derby
-    unless ActiveRecord::Base.connection.adapter_name =~ /derby/i
-      Entry.connection.add_column :entries, :test_change_column, :string
+    Entry.connection.add_column :entries, :test_change_column, :string
 
-      cols = ActiveRecord::Base.connection.columns("entries")
-      col = cols.find{|col| col.name == "test_change_column"}
-      assert col
-      assert_equal col.type, :string
+    cols = ActiveRecord::Base.connection.columns("entries")
+    col = cols.find{|col| col.name == "test_change_column"}
+    assert col
+    assert_equal col.type, :string
 
-      Entry.connection.change_column :entries, :test_change_column, :integer
+    Entry.connection.change_column :entries, :test_change_column, :integer
 
-      cols = ActiveRecord::Base.connection.columns("entries")
-      col = cols.find{|col| col.name == "test_change_column"}
-      assert col
-      assert_equal col.type, :integer
-    end
+    cols = ActiveRecord::Base.connection.columns("entries")
+    col = cols.find{|col| col.name == "test_change_column"}
+    assert col
+    assert_equal col.type, :integer
   end
 
   def test_validates_uniqueness_of_strings_case_sensitive

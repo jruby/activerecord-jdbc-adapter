@@ -252,34 +252,23 @@ module ::ArJdbc
     # This feature has not made it into a formal release and is not in Java 6.  We will
     # need to conditionally support this somehow (supposed to arrive for 10.3.0.0)
     def change_column(table_name, column_name, type, options = {})
-      # null/not nulling is easy, handle that separately
-      if options.include?(:null)
-        # This seems to only work with 10.2 of Derby
-        if options.delete(:null) == false
-          execute "ALTER TABLE #{quote_table_name(table_name)} ALTER COLUMN #{quote_column_name(column_name)} NOT NULL"
-        else
-          execute "ALTER TABLE #{quote_table_name(table_name)} ALTER COLUMN #{quote_column_name(column_name)} NULL"
+      begin
+        execute "ALTER TABLE #{quote_table_name(table_name)} ALTER COLUMN #{quote_column_name(column_name)} SET DATA TYPE #{type_to_sql(type, options[:limit])}"
+      rescue
+        transaction do
+          temp_new_column_name = "#{column_name}_newtype"
+          # 1) ALTER TABLE t ADD COLUMN c1_newtype NEWTYPE;
+          add_column table_name, temp_new_column_name, type, options
+          # 2) UPDATE t SET c1_newtype = c1;
+          execute "UPDATE #{quote_table_name(table_name)} SET #{quote_column_name(temp_new_column_name)} = CAST(#{quote_column_name(column_name)} AS #{type_to_sql(type, options[:limit])})"
+          # 3) ALTER TABLE t DROP COLUMN c1;
+          remove_column table_name, column_name
+          # 4) ALTER TABLE t RENAME COLUMN c1_newtype to c1;
+          rename_column table_name, temp_new_column_name, column_name
         end
       end
-
-      # anything left to do?
-      unless options.empty?
-        begin
-          execute "ALTER TABLE #{quote_table_name(table_name)} ALTER COLUMN #{quote_column_name(column_name)} SET DATA TYPE #{type_to_sql(type, options[:limit])}"
-        rescue
-          transaction do
-            temp_new_column_name = "#{column_name}_newtype"
-            # 1) ALTER TABLE t ADD COLUMN c1_newtype NEWTYPE;
-            add_column table_name, temp_new_column_name, type, options
-            # 2) UPDATE t SET c1_newtype = c1;
-            execute "UPDATE #{quote_table_name(table_name)} SET #{quote_column_name(temp_new_column_name)} = CAST(#{quote_column_name(column_name)} AS #{type_to_sql(type, options[:limit])})"
-            # 3) ALTER TABLE t DROP COLUMN c1;
-            remove_column table_name, column_name
-            # 4) ALTER TABLE t RENAME COLUMN c1_newtype to c1;
-            rename_column table_name, temp_new_column_name, column_name
-          end
-        end
-      end
+      change_column_default(table_name, column_name, options[:default]) if options_include_default?(options)
+      change_column_null(table_name, column_name, options[:null], options[:default]) if options.key?(:null)
     end
 
     def change_column_default(table_name, column_name, default) #:nodoc:
