@@ -390,6 +390,41 @@ module SimpleTestMethods
     end
   end
 
+  def test_change_column_default
+    Entry.connection.add_column :entries, :test_change_column_default, :string, :default => "unchanged"
+
+    cols = ActiveRecord::Base.connection.columns("entries")
+    col = cols.find{|col| col.name == "test_change_column_default"}
+    assert col
+    assert_equal col.default, 'unchanged'
+
+    Entry.connection.change_column_default :entries, :test_change_column_default, "changed"
+
+    cols = ActiveRecord::Base.connection.columns("entries")
+    col = cols.find{|col| col.name == "test_change_column_default"}
+    assert col
+    assert_equal col.default, 'changed'
+  end
+
+  def test_change_column_type
+    # FIXME - Fix this in Derby
+    unless ActiveRecord::Base.connection.adapter_name =~ /derby/i
+      Entry.connection.add_column :entries, :test_change_column, :string
+
+      cols = ActiveRecord::Base.connection.columns("entries")
+      col = cols.find{|col| col.name == "test_change_column"}
+      assert col
+      assert_equal col.type, :string
+
+      Entry.connection.change_column :entries, :test_change_column, :integer
+
+      cols = ActiveRecord::Base.connection.columns("entries")
+      col = cols.find{|col| col.name == "test_change_column"}
+      assert col
+      assert_equal col.type, :integer
+    end
+  end
+
   def test_validates_uniqueness_of_strings_case_sensitive
     name_lower = ValidatesUniquenessOfString.new(:cs_string => "name", :ci_string => '1')
     name_lower.save!

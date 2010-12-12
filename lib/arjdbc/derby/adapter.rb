@@ -282,6 +282,10 @@ module ::ArJdbc
       end
     end
 
+    def change_column_default(table_name, column_name, default) #:nodoc:
+      execute "ALTER TABLE #{quote_table_name(table_name)} ALTER COLUMN #{quote_column_name(column_name)} DEFAULT #{quote(default)}"
+    end
+
     def rename_column(table_name, column_name, new_column_name) #:nodoc:
       execute "RENAME COLUMN #{quote_table_name(table_name)}.#{quote_column_name(column_name)} TO #{quote_column_name(new_column_name)}"
     end
