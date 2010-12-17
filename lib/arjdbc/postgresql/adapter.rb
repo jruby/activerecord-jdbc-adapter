@@ -26,6 +26,15 @@ module ::ArJdbc
         end
       end
 
+      def extract_limit(sql_type)
+        case sql_type
+        when /^bigint/i;    8
+        when /^smallint/i;  2
+        when /^(bool|text|date|time)/i; nil # ACTIVERECORD_JDBC-135,139
+        else super
+        end
+      end
+
       def simplified_type(field_type)
         return :integer if field_type =~ /^serial/i
         return :string if field_type =~ /\[\]$/i || field_type =~ /^interval/i
@@ -71,14 +80,23 @@ module ::ArJdbc
       tp[:primary_key] = "serial primary key"
       tp[:string][:limit] = 255
       tp[:integer][:limit] = nil
-      tp[:boolean][:limit] = nil
+      tp[:boolean] = { :name => "boolean" }
       tp[:float] = { :name => "float" }
+      tp[:text] = { :name => "text" }
+      tp[:datetime] = { :name => "timestamp" }
+      tp[:timestamp] = { :name => "timestamp" }
+      tp[:time] = { :name => "time" }
+      tp[:date] = { :name => "date" }
       tp[:decimal] = { :name => "decimal" }
       tp
     end
 
     def adapter_name #:nodoc:
       'PostgreSQL'
+    end
+
+    def arel2_visitors
+      {'jdbcpostgresql' => ::Arel::Visitors::PostgreSQL}
     end
 
     def postgresql_version
@@ -460,32 +478,48 @@ module ::ArJdbc
       execute "ALTER TABLE #{name} RENAME TO #{new_name}"
     end
 
+    # Adds a new column to the named table.
+    # See TableDefinition#column for details of the options you can use.
     def add_column(table_name, column_name, type, options = {})
-      execute("ALTER TABLE #{quote_table_name(table_name)} ADD #{quote_column_name(column_name)} #{type_to_sql(type, options[:limit], options[:precision], options[:scale])}")
-      change_column_default(table_name, column_name, options[:default]) unless options[:default].nil?
-      if options[:null] == false
-        execute("UPDATE #{quote_table_name(table_name)} SET #{quote_column_name(column_name)} = '#{options[:default]}'") if options[:default]
-        execute("ALTER TABLE #{quote_table_name(table_name)} ALTER #{quote_column_name(column_name)} SET NOT NULL")
-      end
+      default = options[:default]
+      notnull = options[:null] == false
+
+      # Add the column.
+      execute("ALTER TABLE #{quote_table_name(table_name)} ADD COLUMN #{quote_column_name(column_name)} #{type_to_sql(type, options[:limit], options[:precision], options[:scale])}")
+
+      change_column_default(table_name, column_name, default) if options_include_default?(options)
+      change_column_null(table_name, column_name, false, default) if notnull
     end
 
-    def change_column(table_name, column_name, type, options = {}) #:nodoc:
+    # Changes the column of a table.
+    def change_column(table_name, column_name, type, options = {})
+      quoted_table_name = quote_table_name(table_name)
+
       begin
-        execute "ALTER TABLE #{quote_table_name(table_name)} ALTER #{quote_column_name(column_name)} TYPE #{type_to_sql(type, options[:limit], options[:precision], options[:scale])}"
-      rescue ActiveRecord::StatementInvalid
-        # This is PG7, so we use a more arcane way of doing it.
-        begin_db_transaction
-        add_column(table_name, "#{column_name}_ar_tmp", type, options)
-        execute "UPDATE #{table_name} SET #{column_name}_ar_tmp = CAST(#{column_name} AS #{type_to_sql(type, options[:limit], options[:precision], options[:scale])})"
-        remove_column(table_name, column_name)
-        rename_column(table_name, "#{column_name}_ar_tmp", column_name)
-        commit_db_transaction
+        execute "ALTER TABLE #{quoted_table_name} ALTER COLUMN #{quote_column_name(column_name)} TYPE #{type_to_sql(type, options[:limit], options[:precision], options[:scale])}"
+      rescue ActiveRecord::StatementInvalid => e
+        raise e if postgresql_version > 80000
+        # This is PostgreSQL 7.x, so we have to use a more arcane way of doing it.
+        begin
+          begin_db_transaction
+          tmp_column_name = "#{column_name}_ar_tmp"
+          add_column(table_name, tmp_column_name, type, options)
+          execute "UPDATE #{quoted_table_name} SET #{quote_column_name(tmp_column_name)} = CAST(#{quote_column_name(column_name)} AS #{type_to_sql(type, options[:limit], options[:precision], options[:scale])})"
+          remove_column(table_name, column_name)
+          rename_column(table_name, tmp_column_name, column_name)
+          commit_db_transaction
+        rescue
+          rollback_db_transaction
+        end
       end
-      change_column_default(table_name, column_name, options[:default]) unless options[:default].nil?
+
+      change_column_default(table_name, column_name, options[:default]) if options_include_default?(options)
+      change_column_null(table_name, column_name, options[:null], options[:default]) if options.key?(:null)
     end
 
-    def change_column_default(table_name, column_name, default) #:nodoc:
-      execute "ALTER TABLE #{quote_table_name(table_name)} ALTER COLUMN #{quote_column_name(column_name)} SET DEFAULT '#{default}'"
+    # Changes the default value of a table column.
+    def change_column_default(table_name, column_name, default)
+      execute "ALTER TABLE #{quote_table_name(table_name)} ALTER COLUMN #{quote_column_name(column_name)} SET DEFAULT #{quote(default)}"
     end
 
     def change_column_null(table_name, column_name, null, default = nil)

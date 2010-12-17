@@ -12,6 +12,7 @@ class DBSetup < ActiveRecord::Migration
 
     create_table :cars, :primary_key => 'legacy_id' do |t|
       t.string :name
+      t.date :production_started_on
     end
 
     create_table :cats, :id => false do |t|
@@ -80,6 +81,13 @@ class MysqlInfoTest < Test::Unit::TestCase
     dump = strio.string
     dump.grep(/datetime/).each {|line| assert line !~ /limit/ }
   end
+  
+  def test_schema_dump_should_not_have_limits_on_date
+    strio = StringIO.new
+    ActiveRecord::SchemaDumper::dump(@connection, strio)
+    dump = strio.string
+    dump.grep(/date/).each {|line| assert line !~ /limit/ }
+  end
 
   def test_should_include_limit
     text_column = @connection.columns('memos').find { |c| c.name == 'text' }
@@ -88,7 +96,7 @@ class MysqlInfoTest < Test::Unit::TestCase
 
   def test_should_set_sqltype_to_longtext
     text_column = @connection.columns('memos').find { |c| c.name == 'text' }
-    assert text_column.sql_type =~ /^longtext/
+    assert text_column.sql_type =~ /^longtext/i
   end
 
   def test_should_set_type_to_text
@@ -101,5 +109,15 @@ class MysqlInfoTest < Test::Unit::TestCase
     assert url =~ /characterEncoding=utf8/
     assert url =~ /useUnicode=true/
     assert url =~ /zeroDateTimeBehavior=convertToNull/
+  end
+
+  def test_no_limits_for_some_data_types
+    DbTypeMigration.up
+    strio = StringIO.new
+    ActiveRecord::SchemaDumper.dump(@connection, strio)
+    dump_lines = strio.string
+    assert_nil dump_lines.find {|l| l =~ /\.(float|date|datetime|integer|time|timestamp) .* :limit/ && l !~ /sample_integer/ }
+  ensure
+    DbTypeMigration.down
   end
 end

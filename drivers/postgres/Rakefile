@@ -13,8 +13,9 @@ begin
   require 'hoe'
   Hoe.plugin :gemcutter
   Hoe.spec("jdbc-postgres") do |p|
-    p.version = Jdbc::Postgres::VERSION
-    p.spec_extras[:platform] = Gem::Platform.new("java")
+    version = Jdbc::Postgres::VERSION
+    version += '.' + ENV['DRIVER_REV'] if ENV['DRIVER_REV']
+    p.version = version
     p.rubyforge_name = "jruby-extras"
     p.url = "http://jruby-extras.rubyforge.org/ActiveRecord-JDBC"
     p.author = "Nick Sieger, Ola Bini and JRuby contributors"

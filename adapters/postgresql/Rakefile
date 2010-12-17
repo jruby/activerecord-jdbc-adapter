@@ -15,7 +15,6 @@ begin
   Hoe.plugin :gemcutter
   hoe = Hoe.spec("activerecord-jdbcpostgresql-adapter") do |p|
     p.version = ArJdbc::Version::VERSION
-    p.spec_extras[:platform] = Gem::Platform.new("java")
     p.rubyforge_name = "jruby-extras"
     p.url = "http://jruby-extras.rubyforge.org/ActiveRecord-JDBC"
     p.author = "Nick Sieger, Ola Bini and JRuby contributors"
@@ -23,9 +22,13 @@ begin
     p.summary = "Postgres JDBC adapter for JRuby on Rails."
     p.changes = "Updated to postgres version #{Jdbc::Postgres::VERSION}."
     p.description = "Install this gem to use Postgres with JRuby on Rails."
+    driver = 'jdbc-postgres'
+    version = Jdbc::Postgres::VERSION
+    compat_version = "~> #{version.split(/\./)[0..1].join('.')}.0"
+    puts "#{p.name}: current #{driver} version #{version}, compat #{compat_version}"
     p.extra_deps += [
       ['activerecord-jdbc-adapter', "= #{ArJdbc::Version::VERSION}"],
-      ['jdbc-postgres', ">= #{Jdbc::Postgres::VERSION}"]]
+      [driver, compat_version]]
   end
   task :gemspec do
     File.open("#{hoe.name}.gemspec", "w") {|f| f << hoe.spec.to_ruby }

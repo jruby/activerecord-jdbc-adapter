@@ -30,18 +30,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.Reader;
 import java.io.StringReader;
-import org.jruby.Ruby;
-import org.jruby.RubyClass;
-import org.jruby.RubyModule;
-import org.jruby.RubyObject;
-import org.jruby.RubyObjectAdapter;
-import org.jruby.anno.JRubyMethod;
-import org.jruby.javasupport.JavaEmbedUtils;
-import org.jruby.runtime.ObjectAllocator;
-import org.jruby.runtime.ThreadContext;
-import org.jruby.runtime.builtin.IRubyObject;
-import org.jruby.util.ByteList;
-
+import java.math.BigInteger;
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.PreparedStatement;
@@ -57,18 +46,31 @@ import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
+
+import org.jruby.Ruby;
 import org.jruby.RubyArray;
+import org.jruby.RubyBignum;
+import org.jruby.RubyClass;
 import org.jruby.RubyHash;
+import org.jruby.RubyModule;
 import org.jruby.RubyNumeric;
+import org.jruby.RubyObject;
+import org.jruby.RubyObjectAdapter;
 import org.jruby.RubyString;
 import org.jruby.RubySymbol;
 import org.jruby.RubyTime;
+import org.jruby.anno.JRubyMethod;
 import org.jruby.exceptions.RaiseException;
 import org.jruby.javasupport.Java;
+import org.jruby.javasupport.JavaEmbedUtils;
 import org.jruby.javasupport.JavaObject;
+import org.jruby.javasupport.util.RuntimeHelpers;
 import org.jruby.runtime.Arity;
 import org.jruby.runtime.Block;
-import org.jruby.javasupport.util.RuntimeHelpers;
+import org.jruby.runtime.ObjectAllocator;
+import org.jruby.runtime.ThreadContext;
+import org.jruby.runtime.builtin.IRubyObject;
+import org.jruby.util.ByteList;
 
 /**
  * Part of our ActiveRecord::ConnectionAdapters::Connection impl.
@@ -217,18 +219,10 @@ public class RubyJdbcConnection extends RubyObject {
                 String query = rubyApi.convertToRubyString(sql).getUnicodeValue();
                 try {
                     stmt = c.createStatement();
-                    if (stmt.execute(query)) {
-                        return unmarshalResult(context, c.getMetaData(), stmt.getResultSet(), false);
+                    if (genericExecute(stmt, query)) {
+                        return unmarshalResults(context, c.getMetaData(), stmt, false);
                     } else {
-                        IRubyObject key = context.getRuntime().getNil();
-                        if (c.getMetaData().supportsGetGeneratedKeys()) {
-                            key = unmarshal_id_result(context.getRuntime(), stmt.getGeneratedKeys());
-                        }
-                        if (key.isNil()) {
-                            return context.getRuntime().newFixnum(stmt.getUpdateCount());
-                        } else {
-                            return key;
-                        }
+                        return unmarshalKeysOrUpdateCount(context, c, stmt);
                     }
                 } catch (SQLException sqe) {
                     if (context.getRuntime().isDebug()) {
@@ -240,6 +234,22 @@ public class RubyJdbcConnection extends RubyObject {
                 }
             }
         });
+    }
+
+    protected boolean genericExecute(Statement stmt, String query) throws SQLException {
+        return stmt.execute(query);
+    }
+
+    protected IRubyObject unmarshalKeysOrUpdateCount(ThreadContext context, Connection c, Statement stmt) throws SQLException {
+        IRubyObject key = context.getRuntime().getNil();
+        if (c.getMetaData().supportsGetGeneratedKeys()) {
+            key = unmarshal_id_result(context.getRuntime(), stmt.getGeneratedKeys());
+        }
+        if (key.isNil()) {
+            return context.getRuntime().newFixnum(stmt.getUpdateCount());
+        } else {
+            return key;
+        }
     }
 
     @JRubyMethod(name = "execute_id_insert", required = 2)
@@ -811,10 +821,16 @@ public class RubyJdbcConnection extends RubyObject {
     }
 
     protected IRubyObject integerToRuby(Ruby runtime, ResultSet resultSet, long longValue)
-            throws SQLException, IOException {
+            throws SQLException {
         if (longValue == 0 && resultSet.wasNull()) return runtime.getNil();
 
         return runtime.newFixnum(longValue);
+    }
+
+    protected IRubyObject bigIntegerToRuby(Ruby runtime, ResultSet resultSet, String bigint) throws SQLException {
+        if (bigint == null && resultSet.wasNull()) return runtime.getNil();
+
+        return RubyBignum.bignorm(runtime, new BigInteger(bigint));
     }
 
     protected IRubyObject jdbcToRuby(Ruby runtime, int column, int type, ResultSet resultSet)
@@ -831,10 +847,14 @@ public class RubyJdbcConnection extends RubyObject {
                 return readerToRuby(runtime, resultSet, resultSet.getCharacterStream(column));
             case Types.TIMESTAMP:
                 return timestampToRuby(runtime, resultSet, resultSet.getTimestamp(column));
-            case Types.INTEGER: case Types.SMALLINT: case Types.TINYINT:
+            case Types.INTEGER:
+            case Types.SMALLINT:
+            case Types.TINYINT:
                 return integerToRuby(runtime, resultSet, resultSet.getLong(column));
             case Types.REAL:
                 return doubleToRuby(runtime, resultSet, resultSet.getDouble(column));
+            case Types.BIGINT:
+                return bigIntegerToRuby(runtime, resultSet, resultSet.getString(column));
             default:
                 return stringToRuby(runtime, resultSet, resultSet.getString(column));
             }
@@ -1016,7 +1036,7 @@ public class RubyJdbcConnection extends RubyObject {
     }
 
     protected IRubyObject timestampToRuby(Ruby runtime, ResultSet resultSet, Timestamp time)
-            throws SQLException, IOException {
+            throws SQLException {
         if (time == null && resultSet.wasNull()) return runtime.getNil();
 
         String str = time.toString();
@@ -1119,13 +1139,32 @@ public class RubyJdbcConnection extends RubyObject {
         }
     }
 
+    protected IRubyObject unmarshalResults(ThreadContext context, DatabaseMetaData metadata,
+                                           Statement stmt, boolean downCase) throws SQLException {
+        Ruby runtime = context.getRuntime();
+        List<IRubyObject> sets = new ArrayList<IRubyObject>();
+
+        while (true) {
+            sets.add(unmarshalResult(context, metadata, stmt.getResultSet(), downCase));
+            if (!stmt.getMoreResults()) {
+                break;
+            }
+        }
+
+        if (sets.size() > 1) {
+            return runtime.newArray(sets);
+        } else {
+            return sets.get(0);
+        }
+    }
+
     /**
      * Converts a jdbc resultset into an array (rows) of hashes (row) that AR expects.
      *
      * @param downCase should column names only be in lower case?
      */
     protected IRubyObject unmarshalResult(ThreadContext context, DatabaseMetaData metadata,
-            ResultSet resultSet, boolean downCase) throws SQLException {
+                                          ResultSet resultSet, boolean downCase) throws SQLException {
         Ruby runtime = context.getRuntime();
         List results = new ArrayList();
 

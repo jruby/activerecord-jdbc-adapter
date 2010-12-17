@@ -39,12 +39,17 @@ module ::ArJdbc
         when /varchar/i                        then :string
         when /int/i                            then :integer
         when /float/i                          then :float
-        when /real/i                           then @scale == 0 ? :integer : :decimal
+        when /real|decimal/i                   then @scale == 0 ? :integer : :decimal
         when /datetime/i                       then :datetime
         when /date/i                           then :date
         when /time/i                           then :time
         when /blob/i                           then :binary
         end
+      end
+
+      def extract_limit(sql_type)
+        return nil if sql_type =~ /^(real)\(\d+/i
+        super
       end
 
       def extract_precision(sql_type)
@@ -75,6 +80,14 @@ module ::ArJdbc
       'SQLite'
     end
 
+    def arel2_visitors
+      {'jdbcsqlite3' => ::Arel::Visitors::SQLite}
+    end
+
+    def supports_ddl_transactions?
+      true # sqlite_version >= '2.0.0'
+    end
+
     def supports_add_column?
       sqlite_version >= '3.1.6'
     end
@@ -92,16 +105,17 @@ module ::ArJdbc
     end
 
     def modify_types(tp)
-      tp[:primary_key] = "INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL"
-      tp[:string] = { :name => "VARCHAR", :limit => 255 }
-      tp[:float] = { :name => "REAL" }
-      tp[:decimal] = { :name => "REAL" }
-      tp[:datetime] = { :name => "DATETIME" }
-      tp[:timestamp] = { :name => "DATETIME" }
-      tp[:time] = { :name => "TIME" }
-      tp[:date] = { :name => "DATE" }
-      tp[:boolean] = { :name => "BOOLEAN" }
-      tp[:binary] = { :name => "BLOB" }
+      tp[:primary_key] = "integer primary key autoincrement not null"
+      tp[:string] = { :name => "varchar", :limit => 255 }
+      tp[:text] = { :name => "text" }
+      tp[:float] = { :name => "decimal" }
+      tp[:decimal] = { :name => "decimal" }
+      tp[:datetime] = { :name => "datetime" }
+      tp[:timestamp] = { :name => "datetime" }
+      tp[:time] = { :name => "time" }
+      tp[:date] = { :name => "date" }
+      tp[:boolean] = { :name => "boolean" }
+      tp[:binary] = { :name => "blob" }
       tp
     end
 
@@ -119,6 +133,16 @@ module ::ArJdbc
 
     def quoted_false
       %Q{'f'}
+    end
+
+    # Quote date/time values for use in SQL input. Includes microseconds
+    # if the value is a Time responding to usec.
+    def quoted_date(value) #:nodoc:
+      if value.respond_to?(:usec)
+        "#{super}.#{sprintf("%06d", value.usec)}"
+      else
+        super
+      end
     end
 
     def insert_sql(sql, name = nil, pk = nil, id_value = nil, sequence_name = nil) #:nodoc:
@@ -142,12 +166,8 @@ module ::ArJdbc
       end
     end
 
-    def remove_index(table_name, options = {})
-      execute "DROP INDEX #{quote_column_name(index_name(table_name, options))}"
-    end
-
     def indexes(table_name, name = nil)
-      result = select_rows("SELECT name, sql FROM sqlite_master WHERE tbl_name = '#{table_name}' AND type = 'index'", name)
+      result = select_rows("SELECT name, sql FROM sqlite_master WHERE tbl_name = #{quote_table_name(table_name)} AND type = 'index'", name)
 
       result.collect do |row|
         name = row[0]
@@ -192,7 +212,7 @@ module ::ArJdbc
       structure
     end
 
-    def columns(table_name, name = nil) #:nodoc:
+    def jdbc_columns(table_name, name = nil) #:nodoc:
       table_structure(table_name).map do |field|
         ::ActiveRecord::ConnectionAdapters::SQLite3Column.new(@config, field['name'], field['dflt_value'], field['type'], field['notnull'] == 0)
       end
@@ -297,6 +317,9 @@ module ::ArJdbc
 end
 
 module ActiveRecord::ConnectionAdapters
+  remove_const(:SQLite3Adapter) if const_defined?(:SQLite3Adapter)
+  remove_const(:SQLiteAdapter) if const_defined?(:SQLiteAdapter)
+
   class SQLite3Column < JdbcColumn
     include ArJdbc::SQLite3::Column
 
@@ -336,13 +359,17 @@ module ActiveRecord::ConnectionAdapters
     end
 
     def jdbc_connection_class(spec)
-      ArJdbc::SQLite3.jdbc_connection_class
+      ::ArJdbc::SQLite3.jdbc_connection_class
     end
 
     def jdbc_column_class
       ActiveRecord::ConnectionAdapters::SQLite3Column
     end
+
+    alias_chained_method :columns, :query_cache, :jdbc_columns
   end
+
+  SQLiteAdapter = SQLite3Adapter
 end
 
 # Fake out sqlite3/version driver for AR tests

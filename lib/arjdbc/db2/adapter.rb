@@ -143,19 +143,31 @@ module ArJdbc
       'DB2'
     end
 
+    def arel2_visitors
+      require 'arel/visitors/db2'
+      {'db2' => ::Arel::Visitors::DB2, 'as400' => ::Arel::Visitors::DB2}
+    end
+
     def add_limit_offset!(sql, options)
-      limit, offset = options[:limit], options[:offset]
-      if limit && !offset
-        if limit == 1
-          sql << " FETCH FIRST ROW ONLY"
+      replace_limit_offset!(sql, options[:limit], options[:offset])
+    end
+
+    def replace_limit_offset!(sql, limit, offset)
+      if limit
+        limit = limit.to_i
+        if !offset
+          if limit == 1
+            sql << " FETCH FIRST ROW ONLY"
+          else
+            sql << " FETCH FIRST #{limit} ROWS ONLY"
+          end
         else
-          sql << " FETCH FIRST #{sanitize_limit(limit)} ROWS ONLY"
+          offset = offset.to_i
+          sql.gsub!(/SELECT/i, 'SELECT B.* FROM (SELECT A.*, row_number() over () AS internal$rownum FROM (SELECT')
+          sql << ") A ) B WHERE B.internal$rownum > #{offset} AND B.internal$rownum <= #{limit + offset}"
         end
-      elsif limit && offset
-        sql.gsub!(/SELECT/i, 'SELECT B.* FROM (SELECT A.*, row_number() over () AS internal$rownum FROM (SELECT')
-        sql << ") A ) B WHERE B.internal$rownum > #{offset} AND B.internal$rown
-um <= #{sanitize_limit(limit) + offset}"
       end
+      sql
     end
 
     def pk_and_sequence_for(table)

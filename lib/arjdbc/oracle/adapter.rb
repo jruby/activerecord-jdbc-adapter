@@ -109,6 +109,15 @@ module ::ArJdbc
       'Oracle'
     end
 
+    def arel2_visitors
+      { 'oracle' => Arel::Visitors::Oracle }
+    end
+
+    # TODO: use this instead of the QuotedPrimaryKey logic and execute_id_insert?
+    # def prefetch_primary_key?(table_name = nil)
+    #   columns(table_name).detect {|c| c.primary } if table_name
+    # end
+
     def table_alias_length
       30
     end
@@ -144,8 +153,17 @@ module ::ArJdbc
       recreate_database(name)
     end
 
+    def next_sequence_value(sequence_name)
+      # avoid #select or #select_one so that the sequence values aren't cached
+      execute("select #{sequence_name}.nextval id from dual").first['id'].to_i
+    end
+
+    def sql_literal?(value)
+      defined?(::Arel::SqlLiteral) && ::Arel::SqlLiteral === value
+    end
+
     def insert(sql, name = nil, pk = nil, id_value = nil, sequence_name = nil) #:nodoc:
-      if (id_value && !id_value.respond_to?(:to_sql)) || pk.nil?
+      if (id_value && !sql_literal?(id_value)) || pk.nil?
         # Pre-assigned id or table without a primary key
         # Presence of #to_sql means an Arel literal bind variable
         # that should use #execute_id_insert below
@@ -155,7 +173,7 @@ module ::ArJdbc
         # Extract the table from the insert sql. Yuck.
         table = sql.split(" ", 4)[2].gsub('"', '')
         sequence_name ||= default_sequence_name(table)
-        id_value = select_one("select #{sequence_name}.nextval id from dual")['id'].to_i
+        id_value = next_sequence_value(sequence_name)
         log(sql, name) do
           @connection.execute_id_insert(sql,id_value)
         end
@@ -344,6 +362,9 @@ module ::ArJdbc
     end
 
     def quote(value, column = nil) #:nodoc:
+      # Arel 2 passes SqlLiterals through
+      return value if sql_literal?(value)
+
       if column && [:text, :binary].include?(column.type)
         if /(.*?)\([0-9]+\)/ =~ column.sql_type
           %Q{empty_#{ $1.downcase }()}

@@ -348,6 +348,36 @@ module SimpleTestMethods
     AddNotNullColumnToTable.down
   end
 
+  def test_add_null_column_with_default
+    Entry.connection.add_column :entries, :color, :string, :null => false, :default => "blue"
+    created_columns = Entry.connection.columns('entries')
+
+    color = created_columns.detect { |c| c.name == 'color' }
+    assert !color.null
+  end
+
+  def test_add_null_column_with_no_default
+    # You must specify a default value with most databases
+    if ActiveRecord::Base.connection.adapter_name =~ /mysql/i
+      Entry.connection.add_column :entries, :color, :string, :null => false
+      created_columns = Entry.connection.columns('entries')
+
+      color = created_columns.detect { |c| c.name == 'color' }
+      assert !color.null
+    end
+  end
+
+  def test_add_null_column_with_nil_default
+    # You must specify a default value with most databases
+    if ActiveRecord::Base.connection.adapter_name =~ /mysql/i
+      Entry.connection.add_column :entries, :color, :string, :null => false, :default => nil
+      created_columns = Entry.connection.columns('entries')
+
+      color = created_columns.detect { |c| c.name == 'color' }
+      assert !color.null
+    end
+  end
+
   def test_validates_uniqueness_of_strings_case_sensitive
     name_lower = ValidatesUniquenessOfString.new(:cs_string => "name", :ci_string => '1')
     name_lower.save!

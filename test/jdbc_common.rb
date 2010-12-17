@@ -20,6 +20,6 @@ require 'helper'
 require 'test/unit'
 
 # Comment/uncomment to enable logging to be loaded for any of the database adapters
-# require 'db/logger'
+require 'db/logger' if $DEBUG || ENV['DEBUG']
 
 

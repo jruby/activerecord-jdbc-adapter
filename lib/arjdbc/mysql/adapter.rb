@@ -14,6 +14,10 @@ module ::ArJdbc
       execute("SET SQL_AUTO_IS_NULL=0")
     end
 
+    def self.jdbc_connection_class
+      ::ActiveRecord::ConnectionAdapters::MySQLJdbcConnection
+    end
+
     module Column
       def extract_default(default)
         if sql_type =~ /blob/i || type == :text
@@ -58,7 +62,7 @@ module ::ArJdbc
         when /^mediumint/i; 3
         when /^smallint/i;  2
         when /^tinyint/i;   1
-        when /^(datetime|timestamp)/
+        when /^(bool|date|float|int|time)/i
           nil
         else
           super
@@ -193,20 +197,24 @@ module ::ArJdbc
       end
     end
 
+    def jdbc_columns(table_name, name = nil)#:nodoc:
+      sql = "SHOW FIELDS FROM #{quote_table_name(table_name)}"
+      execute(sql, :skip_logging).map do |field|
+        ::ActiveRecord::ConnectionAdapters::MysqlColumn.new(field["Field"], field["Default"], field["Type"], field["Null"] == "YES")
+      end
+    end
+
     def recreate_database(name, options = {}) #:nodoc:
       drop_database(name)
       create_database(name, options)
     end
 
-    def character_set(options) #:nodoc:
-      str = "CHARACTER SET `#{options[:charset] || 'utf8'}`"
-      str += " COLLATE `#{options[:collation]}`" if options[:collation]
-      str
-    end
-    private :character_set
-
     def create_database(name, options = {}) #:nodoc:
-      execute "CREATE DATABASE `#{name}` DEFAULT #{character_set(options)}"
+      if options[:collation]
+        execute "CREATE DATABASE `#{name}` DEFAULT CHARACTER SET `#{options[:charset] || 'utf8'}` COLLATE `#{options[:collation]}`"
+      else
+        execute "CREATE DATABASE `#{name}` DEFAULT CHARACTER SET `#{options[:charset] || 'utf8'}`"
+      end
     end
 
     def drop_database(name) #:nodoc:
@@ -218,7 +226,7 @@ module ::ArJdbc
     end
 
     def create_table(name, options = {}) #:nodoc:
-      super(name, {:options => "ENGINE=InnoDB #{character_set(options)}"}.merge(options))
+      super(name, {:options => "ENGINE=InnoDB"}.merge(options))
     end
 
     def rename_table(name, new_name)
@@ -358,6 +366,10 @@ module ::ArJdbc
 end
 
 module ActiveRecord::ConnectionAdapters
+  # Remove any vestiges of core/Ruby MySQL adapter
+  remove_const(:MysqlColumn) if const_defined?(:MysqlColumn)
+  remove_const(:MysqlAdapter) if const_defined?(:MysqlAdapter)
+
   class MysqlColumn < JdbcColumn
     include ArJdbc::MySQL::Column
 
@@ -385,9 +397,15 @@ module ActiveRecord::ConnectionAdapters
       # return nil to avoid extending ArJdbc::MySQL, which we've already done
     end
 
+    def jdbc_connection_class(spec)
+      ::ArJdbc::MySQL.jdbc_connection_class
+    end
+
     def jdbc_column_class
       ActiveRecord::ConnectionAdapters::MysqlColumn
     end
+
+    alias_chained_method :columns, :query_cache, :jdbc_columns
   end
 end
 

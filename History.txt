@@ -1,3 +1,49 @@
+== 1.1.1
+
+- Upgrade to PostgreSQL 9.0.801 JDBC drivers (David Kellum)
+
+== 1.1.0 (12/09/10)
+
+- Don't narrow platform to '-java' only: revert back to 0.9.2 where
+  ar-jdbc can be installed under any Ruby (for easier Bundler/Warbler
+  usage and less confusion on rubygems.org).
+- Upgrade MySQL execute code to use RETURN_GENERATED_KEYS.
+- Upgrade to MySQL driver version 5.1.13
+- Add multi-statement support, idea from oruen. For databases that
+  support it, you can now do:
+      results = Model.connection.execute("select 1; select 2")
+  and receive back an array of multiple result set arrays. For use with
+  MySQL, you need to add
+      options:
+        allowMultiQueries: true
+  in database.yml.
+- ACTIVERECORD_JDBC-144: Fix limits appearing in schema dump for some
+  datatypes (Uwe Kubosch)
+- Fixes for DB2 limit/offset
+- Fix rake db:create for 'jdbc' adapter (Joeri Samson)
+- add create/drop database methods to h2 adapter (sahglie)
+- Use connection getDatabaseProductName instead of getClass.getName
+  when detecting JNDI dialects (Denis Odorcic)
+- ACTIVERECORD_JDBC-146: Fix create_table to not append encoding (Marc Slemko)
+- All green on SQLite3 Rails master ActiveRecord tests
+- ACTIVERECORD_JDBC-140: Sync postgres add/change column code from Rails master
+- ACTIVERECORD_JDBC-139: TEXT/DATE on PostgreSQL should not have limits
+
+== 1.0.3 (11/29/10)
+
+- ACTIVERECORD_JDBC-143: Implement table_exists? fixing association
+  table names with schema prefixes
+- Cleanup of column code for hsqldb (Denis Odorcic)
+- Rails 3.0.3 support - add Arel 2 visitors for all adapters
+- Fix MySQL date types to not have limits (Chris Lowder)
+- ACTIVERECORD_JDBC-141: Better schema support in H2
+
+== 1.0.2
+
+- ACTIVERECORD_JDBC-134: Fix conflicting adapter/column superclasses
+- ACTIVERECORD_JDBC-135: Fix regression on PG with boolean and :limit
+- Slew of Derby fixes courtesy of Denis Odorcic
+
 == 1.0.1
 
 - Fix db:test:purge issue affecting all adapters in 1.0.0 due to

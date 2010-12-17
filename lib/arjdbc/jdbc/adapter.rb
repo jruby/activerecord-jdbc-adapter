@@ -32,7 +32,7 @@ module ActiveRecord
         end
         super(connection, logger)
         extend spec if spec
-        configure_arel2_visitors
+        configure_arel2_visitors(config)
         connection.adapter = self
         JndiConnectionPoolCallbacks.prepare(self, connection)
       end
@@ -67,7 +67,7 @@ module ActiveRecord
           break unless config[:jndi] and !config[:dialect]
           begin
             conn = Java::javax.naming.InitialContext.new.lookup(config[:jndi]).getConnection
-            config[:dialect] = conn.getMetaData.getClass.getName.downcase
+            config[:dialect] = conn.getMetaData.getDatabaseProductName
 
             # Derby-specific hack
             if ::ArJdbc::Derby.adapter_matcher(config[:dialect], config)
@@ -93,11 +93,16 @@ module ActiveRecord
         {}
       end
 
-      def configure_arel2_visitors
+      def configure_arel2_visitors(config)
         if defined?(::Arel::Visitors::VISITORS)
           visitors = ::Arel::Visitors::VISITORS
+          visitor = nil
           arel2_visitors.each do |k,v|
+            visitor = v
             visitors[k] = v unless visitors.has_key?(k)
+          end
+          if visitor && config[:adapter] =~ /^(jdbc|jndi)$/
+            visitors[config[:adapter]] = visitor
           end
         end
       end
@@ -220,7 +225,6 @@ module ActiveRecord
         id_value || id
       end
 
-
       def jdbc_columns(table_name, name = nil)
         @connection.columns(table_name.to_s)
       end
@@ -228,6 +232,10 @@ module ActiveRecord
 
       def tables(name = nil)
         @connection.tables
+      end
+
+      def table_exists?(name)
+        jdbc_columns(name) rescue nil
       end
 
       def indexes(table_name, name = nil, schema_name = nil)
@@ -266,6 +274,12 @@ module ActiveRecord
       def select(*args)
         execute(*args)
       end
+
+      def translate_exception(e, message)
+        puts e.backtrace if $DEBUG || ENV['DEBUG']
+        super
+      end
+      protected :translate_exception
     end
   end
 end

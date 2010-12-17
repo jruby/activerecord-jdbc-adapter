@@ -19,11 +19,16 @@ module AbstractDbCreate
     @prevapp = Rake.application
     Rake.application = Rake::Application.new
     verbose(true)
+    do_setup
+  end
+
+  def do_setup(env = 'unittest', db = 'test_rake_db_create')
+    @env = env
     @prevconfigs = ActiveRecord::Base.configurations
     ActiveRecord::Base.connection.disconnect!
-    @db_name = 'test_rake_db_create'
+    @db_name = db
     setup_rails
-    set_rails_constant("env", "unittest")
+    set_rails_constant("env", @env)
     set_rails_constant("root", ".")
     load File.dirname(__FILE__) + '/../lib/arjdbc/jdbc/jdbc.rake' if jruby?
     task :environment do
@@ -56,8 +61,10 @@ module AbstractDbCreate
   def configurations
     the_db_name = @db_name
     the_db_config = db_config
-    @configs = { "unittest" => the_db_config.merge({:database => the_db_name}).stringify_keys! }
-    @configs["test"] = @configs["unittest"].dup
+    the_db_config = the_db_config.merge({:database => the_db_name}) if the_db_name
+    the_db_config.stringify_keys!
+    @configs = { @env => the_db_config }
+    @configs["test"] = @configs[@env].dup
     @configs
   end
 

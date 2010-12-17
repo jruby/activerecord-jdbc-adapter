@@ -15,7 +15,6 @@ begin
   Hoe.plugin :gemcutter
   hoe = Hoe.spec("activerecord-jdbcderby-adapter") do |p|
     p.version = ArJdbc::Version::VERSION
-    p.spec_extras[:platform] = Gem::Platform.new("java")
     p.rubyforge_name = "jruby-extras"
     p.url = "http://jruby-extras.rubyforge.org/ActiveRecord-JDBC"
     p.author = "Nick Sieger, Ola Bini and JRuby contributors"
@@ -23,9 +22,13 @@ begin
     p.summary = "Derby JDBC adapter for JRuby on Rails."
     p.changes = "Updated to Derby version #{Jdbc::Derby::VERSION}."
     p.description = "Install this gem to use Derby with JRuby on Rails."
+    driver = 'jdbc-derby'
+    version = Jdbc::Derby::VERSION
+    compat_version = "~> #{version.split(/\./)[0..1].join('.')}.0"
+    puts "#{p.name}: current #{driver} version #{version}, compat #{compat_version}"
     p.extra_deps += [
       ['activerecord-jdbc-adapter', "= #{ArJdbc::Version::VERSION}"],
-      ['jdbc-derby', ">= #{Jdbc::Derby::VERSION}"]]
+      [driver, compat_version]]
   end
   task :gemspec do
     File.open("#{hoe.name}.gemspec", "w") {|f| f << hoe.spec.to_ruby }
