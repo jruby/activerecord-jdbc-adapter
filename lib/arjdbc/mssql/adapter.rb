@@ -37,7 +37,7 @@ module ::ArJdbc
     def arel2_visitors
       require 'arel/visitors/sql_server'
       visitor_class = sqlserver_version == "2000" ? ::Arel::Visitors::SQLServer2000 : ::Arel::Visitors::SQLServer
-      { 'mssql' => visitor_class, 'jdbcmssql' => visitor_class}
+      { 'mssql' => visitor_class, 'sqlserver' => visitor_class, 'jdbcmssql' => visitor_class}
     end
 
     def sqlserver_version
