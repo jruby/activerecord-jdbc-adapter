@@ -99,7 +99,7 @@ module ActiveRecord
           visitor = nil
           arel2_visitors.each do |k,v|
             visitor = v
-            visitors[k] = v unless visitors.has_key?(k)
+            visitors[k] = v
           end
           if visitor && config[:adapter] =~ /^(jdbc|jndi)$/
             visitors[config[:adapter]] = visitor
