@@ -1,3 +1,5 @@
+require 'arel/visitors/compat'
+
 module Arel
   module Visitors
     class HSQLDB < Arel::Visitors::ToSql
@@ -12,7 +14,7 @@ module Arel
         offset = o.offset || 0
         bef = sql[7..-1]
         if limit = o.limit
-          "SELECT LIMIT #{offset} #{limit} #{bef}"
+          "SELECT LIMIT #{offset} #{limit_for(limit)} #{bef}"
         elsif offset > 0
           "SELECT LIMIT #{offset} 0 #{bef}"
         else

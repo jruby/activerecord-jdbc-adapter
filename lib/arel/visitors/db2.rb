@@ -1,3 +1,5 @@
+require 'arel/visitors/compat'
+
 module Arel
   module Visitors
     class DB2 < Arel::Visitors::ToSql
@@ -8,7 +10,7 @@ module Arel
       end
 
       def add_limit_offset(sql, o)
-        @connection.replace_limit_offset! sql, o.limit, o.offset && o.offset.value
+        @connection.replace_limit_offset! sql, limit_for(o.limit), o.offset && o.offset.value
       end
     end
   end

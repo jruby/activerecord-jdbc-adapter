@@ -1,3 +1,5 @@
+require 'arel/visitors/compat'
+
 module Arel
   module Visitors
     class SQLServer < Arel::Visitors::ToSql
@@ -26,7 +28,7 @@ module Arel
           end
 
           order ||= "ORDER BY #{@connection.determine_order_clause(sql)}"
-          replace_limit_offset!(sql, o.limit.to_i, o.offset && o.offset.value.to_i, order)
+          replace_limit_offset!(sql, limit_for(o.limit).to_i, o.offset && o.offset.value.to_i, order)
           sql = "SELECT COUNT(*) AS count_id FROM (#{sql}) AS subquery" if subquery
         elsif order
           sql << " #{order}"
