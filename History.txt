@@ -1,5 +1,9 @@
 == 1.1.1
 
+- Arel 2.0.7 compatibility: fix bugs arising from use of Arel 2.0.7 +
+  ArJdbc 1.1.0.
+  - Gracefully handle changes to limit in Arel's AST
+  - Avoid conflict with Arel 2.0.7's mssql visitor
 - Upgrade to PostgreSQL 9.0.801 JDBC drivers (David Kellum)
 
 == 1.1.0 (12/09/10)
