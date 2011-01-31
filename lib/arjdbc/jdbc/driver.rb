@@ -3,6 +3,7 @@ module ActiveRecord
     class JdbcDriver
       def initialize(name)
         @name = name
+        @driver = driver_class.new
       end
 
       def driver_class
@@ -12,32 +13,22 @@ module ActiveRecord
             unless Jdbc.const_defined?(driver_class_const)
               driver_class_name = @name
               Jdbc.module_eval do
-                include_class(driver_class_name) { driver_class_const }
+                java_import(driver_class_name) { driver_class_const }
               end
             end
           end
           driver_class = Jdbc.const_get(driver_class_const)
-          raise "You specify a driver for your JDBC connection" unless driver_class
+          raise "You must specify a driver for your JDBC connection" unless driver_class
           driver_class
         end
       end
 
-      def load
-        Jdbc::DriverManager.registerDriver(create)
-      end
-
       def connection(url, user, pass)
-        Jdbc::DriverManager.getConnection(url, user, pass)
-      rescue
         # bypass DriverManager to get around problem with dynamically loaded jdbc drivers
         props = java.util.Properties.new
         props.setProperty("user", user)
         props.setProperty("password", pass)
-        create.connect(url, props)
-      end
-
-      def create
-        driver_class.new
+        @driver.connect(url, props)
       end
     end
   end
