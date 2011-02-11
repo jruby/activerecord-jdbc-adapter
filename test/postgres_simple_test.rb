@@ -56,6 +56,13 @@ class PostgresSchemaDumperTest < Test::Unit::TestCase
     lines.each {|line| assert line !~ /limit/ }
   end
 
+
+  def test_schema_dump_should_not_have_limits_on_binaries
+    lines = @dump.grep(/binary/)
+    assert !lines.empty?, 'no binary type definitions found'
+    lines.each {|line| assert line !~ /limit/, 'binary definition contains limit' }
+  end
+
   # http://kenai.com/jira/browse/ACTIVERECORD_JDBC-139
   def test_schema_dump_should_not_have_limits_on_text_or_date
     lines = @dump.grep(/date|text/)
