@@ -132,7 +132,6 @@ public class RubyJdbcConnection extends RubyObject {
 
                     DatabaseMetaData metadata = c.getMetaData();
                     String clzName = metadata.getClass().getName().toLowerCase();
-                    boolean isDB2 = clzName.indexOf("db2") != -1 || clzName.indexOf("as400") != -1;
 
                     String catalog = c.getCatalog();
                     if( name_parts.length == 2 ) {
@@ -150,7 +149,7 @@ public class RubyJdbcConnection extends RubyObject {
                     if (schemaName != null) schemaName = caseConvertIdentifierForJdbc(metadata, schemaName);
                     table_name = caseConvertIdentifierForJdbc(metadata, table_name);
 
-                    if (schemaName != null && !isDB2 && !databaseSupportsSchemas()) { catalog = schemaName; }
+                    if (schemaName != null && !databaseSupportsSchemas()) { catalog = schemaName; }
 
                     String[] tableTypes = new String[]{"TABLE","VIEW","SYNONYM"};
                     RubyArray matchingTables = (RubyArray) tableLookupBlock(context.getRuntime(),

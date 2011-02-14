@@ -28,6 +28,7 @@ package arjdbc.jdbc;
 
 import java.io.IOException;
 
+import arjdbc.db2.DB2RubyJdbcConnection;
 import arjdbc.derby.DerbyModule;
 import arjdbc.h2.H2RubyJdbcConnection;
 import arjdbc.informix.InformixRubyJdbcConnection;
@@ -57,6 +58,7 @@ public class AdapterJavaService implements BasicLibraryService {
         Sqlite3RubyJdbcConnection.createSqlite3JdbcConnectionClass(runtime, jdbcConnection);
         H2RubyJdbcConnection.createH2JdbcConnectionClass(runtime, jdbcConnection);
         MySQLRubyJdbcConnection.createMySQLJdbcConnectionClass(runtime, jdbcConnection);
+        DB2RubyJdbcConnection.createDB2JdbcConnectionClass(runtime, jdbcConnection);
         RubyModule arJdbc = runtime.getOrCreateModule("ArJdbc");
         rubyApi = JavaEmbedUtils.newObjectAdapter();
         MySQLModule.load(arJdbc);

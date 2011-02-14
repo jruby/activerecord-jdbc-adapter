@@ -5,6 +5,10 @@ module ArJdbc
         lambda { |cfg, column| column.extend(::ArJdbc::DB2::Column) } ]
     end
 
+    def self.jdbc_connection_class
+      ::ActiveRecord::ConnectionAdapters::DB2JdbcConnection
+    end
+
     module Column
       def type_cast(value)
         return nil if value.nil? || value =~ /^\s*null\s*$/i
