@@ -14,8 +14,8 @@ module Arel
       # Need to mimic the subquery logic in ARel 1.x for select count with limit
       # See arel/engines/sql/compilers/mssql_compiler.rb for details
       def visit_Arel_Nodes_SelectStatement o
-        order = "ORDER BY #{o.orders.map { |x| visit x }.join(', ')}" unless o.orders.empty?
         if o.limit
+          order = "ORDER BY #{o.orders.map { |x| visit x }.join(', ')}" unless o.orders.empty?
           if select_count?(o)
             subquery = true
             sql = o.cores.map do |x|
@@ -30,8 +30,6 @@ module Arel
           order ||= "ORDER BY #{@connection.determine_order_clause(sql)}"
           replace_limit_offset!(sql, limit_for(o.limit).to_i, o.offset && o.offset.value.to_i, order)
           sql = "SELECT COUNT(*) AS count_id FROM (#{sql}) AS subquery" if subquery
-        elsif order
-          sql << " #{order}"
         else
           sql = super
         end
