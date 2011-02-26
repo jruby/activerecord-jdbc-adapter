@@ -982,7 +982,7 @@ public class RubyJdbcConnection extends RubyObject {
                     DatabaseMetaData metadata = c.getMetaData();
                     String clzName = metadata.getClass().getName().toLowerCase();
                     boolean isOracle = clzName.indexOf("oracle") != -1 || clzName.indexOf("oci") != -1;
-                    boolean isDerby = clzName.indexOf("derby") != 1;
+                    boolean isDerby = clzName.indexOf("derby") != -1;
 
                     String realschema = schemapat;
                     String realtablepat = tablepat;
