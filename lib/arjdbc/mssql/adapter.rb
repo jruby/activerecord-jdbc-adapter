@@ -115,7 +115,7 @@ module ::ArJdbc
       end
 
       def type_cast(value)
-        return nil if value.nil? || value == "(null)" || value == "(NULL)"
+        return nil if value.nil?
         case type
         when :integer then value.delete('()').to_i rescue unquote(value).to_i rescue value ? 1 : 0
         when :primary_key then value == true || value == false ? value == true ? 1 : 0 : value.to_i
