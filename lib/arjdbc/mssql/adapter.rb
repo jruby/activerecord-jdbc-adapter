@@ -462,6 +462,10 @@ module ::ArJdbc
     def clear_cached_table(name)
       (@table_columns ||= {}).delete(name.to_s)
     end
+
+    def reset_column_information
+      @table_columns = nil
+    end
   end
 end
 
