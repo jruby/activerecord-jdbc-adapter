@@ -108,7 +108,7 @@ module ::ArJdbc
       tp[:primary_key] = "integer primary key autoincrement not null"
       tp[:string] = { :name => "varchar", :limit => 255 }
       tp[:text] = { :name => "text" }
-      tp[:float] = { :name => "decimal" }
+      tp[:float] = { :name => "float" }
       tp[:decimal] = { :name => "decimal" }
       tp[:datetime] = { :name => "datetime" }
       tp[:timestamp] = { :name => "datetime" }
