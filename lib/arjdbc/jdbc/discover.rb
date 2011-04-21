@@ -1,7 +1,7 @@
 module ArJdbc
   def self.discover_extensions
-    if defined?(::Gem)
-      files = Gem.find_files('arjdbc/discover')
+    if defined?(::Gem) && ::Gem.respond_to?(:find_files)
+      files = ::Gem.find_files('arjdbc/discover')
     else
       files = $LOAD_PATH.map do |p|
         discover = File.join(p, 'arjdbc','discover.rb')
