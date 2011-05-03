@@ -140,7 +140,7 @@ module ::ArJdbc
     end
 
     def drop_table(name, options = {}) #:nodoc:
-      super(name)
+      super(name) rescue nil
       seq_name = options[:sequence_name] || "#{name}_seq"
       execute "DROP SEQUENCE #{seq_name}" rescue nil
     end
