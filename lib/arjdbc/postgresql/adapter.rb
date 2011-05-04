@@ -285,7 +285,20 @@ module ::ArJdbc
         table_name = parts.pop
         schema_name = parts.join(".")
       end
-      @connection.columns_internal(table_name, name, schema_name)
+      schema_list = if schema_name.nil?
+          []
+        else
+          schema_name.split(/\s*,\s*/)
+        end
+      while schema_list.size > 1
+        s = schema_list.shift
+        begin
+          return @connection.columns_internal(table_name, name, s)
+        rescue ActiveRecord::JDBCError=>ignored_for_next_schema
+        end
+      end
+      s = schema_list.shift
+      return @connection.columns_internal(table_name, name, s)
     end
 
     # From postgresql_adapter.rb
