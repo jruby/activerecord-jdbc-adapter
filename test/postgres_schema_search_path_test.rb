@@ -16,7 +16,7 @@ class CreateSchema < ActiveRecord::Migration
 end
 
 class Person < ActiveRecord::Base
-  establish_connection POSTGRES_CONFIG.merge(:schema_search_path => 'test')
+  establish_connection POSTGRES_CONFIG.merge(:schema_search_path => 'test,public')
 end
 
 class PostgresSchemaSearchPathTest < Test::Unit::TestCase
@@ -40,5 +40,9 @@ class PostgresSchemaSearchPathTest < Test::Unit::TestCase
     assert_raise NoMethodError do
       Person.find_by_wrongname("Alex")
     end
+  end
+  def test_column_information
+    assert Person.columns.map{|col| col.name}.include?("name")
+    assert !Person.columns.map{|col| col.name}.include?("wrongname")
   end
 end
