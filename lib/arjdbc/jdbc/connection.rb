@@ -5,7 +5,7 @@ module ActiveRecord
         attr_reader :config
 
         def config=(config)
-          @config = config.symbolize_keys!
+          @config = config.symbolize_keys
         end
 
         def configure_connection
