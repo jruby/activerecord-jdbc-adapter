@@ -2,11 +2,11 @@
 
 Gem::Specification.new do |s|
   s.name = %q{activerecord-jdbc-adapter}
-  s.version = "1.1.1"
+  s.version = "1.1.2"
 
   s.required_rubygems_version = Gem::Requirement.new(">= 0") if s.respond_to? :required_rubygems_version=
   s.authors = ["Nick Sieger, Ola Bini and JRuby contributors"]
-  s.date = %q{2011-01-14}
+  s.date = %q{2011-03-18}
   s.description = %q{activerecord-jdbc-adapter is a database adapter for Rails' ActiveRecord
 component that can be used with JRuby[http://www.jruby.org/]. It allows use of
 virtually any JDBC-compliant database with your JRuby on Rails application.}
@@ -17,7 +17,7 @@ virtually any JDBC-compliant database with your JRuby on Rails application.}
   s.rdoc_options = ["--main", "README.txt", "-SHN", "-f", "darkfish"]
   s.require_paths = ["lib"]
   s.rubyforge_project = %q{jruby-extras}
-  s.rubygems_version = %q{1.4.2}
+  s.rubygems_version = %q{1.5.1}
   s.summary = %q{JDBC adapter for ActiveRecord, for use within JRuby on Rails.}
 
   if s.respond_to? :specification_version then
