@@ -30,7 +30,7 @@ module ::ArJdbc
         case sql_type
         when /^bigint/i;    8
         when /^smallint/i;  2
-        when /^(bool|text|date|time)/i; nil # ACTIVERECORD_JDBC-135,139
+        when /^(bool|text|date|time|bytea)/i; nil # ACTIVERECORD_JDBC-135,139
         else super
         end
       end
