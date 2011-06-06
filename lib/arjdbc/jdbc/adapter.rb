@@ -176,7 +176,7 @@ module ActiveRecord
         @connection.disconnect!
       end
 
-      def execute(sql, name = nil)
+      def execute(sql, name = nil, binds = [])
         if name == :skip_logging
           _execute(sql)
         else
