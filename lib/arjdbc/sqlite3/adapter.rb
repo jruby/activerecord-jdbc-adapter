@@ -194,8 +194,8 @@ module ::ArJdbc
       ActiveRecord::ConnectionAdapters::JdbcConnection::insert?(sql) ? last_insert_id : result
     end
 
-    def select(sql, name=nil)
-      execute(sql, name).map do |row|
+    def select(sql, name=nil, binds = [])
+      execute(sql, name, binds = []).map do |row|
         record = {}
         row.each_key do |key|
           if key.is_a?(String)
@@ -367,6 +367,12 @@ module ActiveRecord::ConnectionAdapters
     end
 
     alias_chained_method :columns, :query_cache, :jdbc_columns
+
+    protected
+
+    def last_inserted_id(result)
+      last_insert_id
+    end
   end
 
   SQLiteAdapter = SQLite3Adapter
