@@ -30,7 +30,7 @@ module ::ArJdbc
         case sql_type
         when /^bigint/i;    8
         when /^smallint/i;  2
-        when /^(bool|text|date|time)/i; nil # ACTIVERECORD_JDBC-135,139
+        when /^(bool|text|date|time|bytea)/i; nil # ACTIVERECORD_JDBC-135,139
         else super
         end
       end
@@ -557,9 +557,9 @@ module ::ArJdbc
     def translate_exception(exception, message)
       case exception.message
       when /duplicate key value violates unique constraint/
-        RecordNotUnique.new(message, exception)
+        ::ActiveRecord::RecordNotUnique.new(message, exception)
       when /violates foreign key constraint/
-        InvalidForeignKey.new(message, exception)
+        ::ActiveRecord::InvalidForeignKey.new(message, exception)
       else
         super
       end

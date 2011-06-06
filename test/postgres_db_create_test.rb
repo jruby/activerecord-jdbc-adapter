@@ -11,7 +11,7 @@ class PostgresDbCreateTest < Test::Unit::TestCase
   if find_executable?("psql")
     def test_rake_db_create
       Rake::Task["db:create"].invoke
-      output = `psql -c '\\l'`
+      output = `psql -d template1 -c '\\l'`
       assert output =~ /#{@db_name}/m
     end
 
