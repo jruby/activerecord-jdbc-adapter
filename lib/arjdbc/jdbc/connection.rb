@@ -95,6 +95,7 @@ module ActiveRecord
         @adapter = adapter
         @native_database_types = dup_native_types
         @adapter.modify_types(@native_database_types)
+        @adapter.config.replace(config)
       end
 
       # Duplicate all native types into new hash structure so it can be modified
