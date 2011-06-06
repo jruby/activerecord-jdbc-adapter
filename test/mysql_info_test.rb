@@ -81,7 +81,7 @@ class MysqlInfoTest < Test::Unit::TestCase
     dump = strio.string
     dump.grep(/datetime/).each {|line| assert line !~ /limit/ }
   end
-  
+
   def test_schema_dump_should_not_have_limits_on_date
     strio = StringIO.new
     ActiveRecord::SchemaDumper::dump(@connection, strio)
