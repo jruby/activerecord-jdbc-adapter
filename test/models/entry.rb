@@ -1,6 +1,3 @@
-require 'rubygems'
-require 'active_record'
-
 class CreateEntries < ActiveRecord::Migration
   def self.up
     create_table "entries", :force => true do |t|
