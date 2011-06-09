@@ -31,14 +31,15 @@ module ::ArJdbc
               rest = rest_of_query[/FROM/i=~ rest_of_query.. -1]
               #need the table name for avoiding amiguity
               table_name = LimitHelpers.get_table_name(sql)
+              primary_key = order[/(\w*id\w*)/i]
               #I am not sure this will cover all bases.  but all the tests pass
-              new_order = "ORDER BY #{order}, #{table_name}.id" if order.index("#{table_name}.id").nil?
+              new_order = "ORDER BY #{order}, #{table_name}.#{primary_key}" if order.index("#{table_name}.#{primary_key}").nil?
               new_order ||= order
 
               if (rest_of_query.match(/WHERE/).nil?)
-                new_sql = "#{select} TOP #{limit} #{rest_of_query} WHERE #{table_name}.id NOT IN (#{select} TOP #{offset} #{table_name}.id #{rest} #{new_order}) #{order} "
+                new_sql = "#{select} TOP #{limit} #{rest_of_query} WHERE #{table_name}.#{primary_key} NOT IN (#{select} TOP #{offset} #{table_name}.#{primary_key} #{rest} #{new_order}) #{order} "
               else
-                new_sql = "#{select} TOP #{limit} #{rest_of_query} AND #{table_name}.id NOT IN (#{select} TOP #{offset} #{table_name}.id #{rest} #{new_order}) #{order} "
+                new_sql = "#{select} TOP #{limit} #{rest_of_query} AND #{table_name}.#{primary_key} NOT IN (#{select} TOP #{offset} #{table_name}.#{primary_key} #{rest} #{new_order}) #{order} "
               end
 
               sql.replace(new_sql)
