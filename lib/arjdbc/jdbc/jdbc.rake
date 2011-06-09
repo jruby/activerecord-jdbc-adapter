@@ -54,8 +54,12 @@ namespace :db do
     if config['adapter'] =~ /postgresql/i
       config = config.dup
       if config['url']
-        db = config['url'][/\/([^\/]*)$/, 1]
-        config['url'][/\/([^\/]*)$/, 1] = 'postgres' if db
+        url = config['url'].dup
+        db = url[/\/([^\/]*)$/, 1]
+        if db
+          url[/\/([^\/]*)$/, 1] = 'postgres'
+          config['url'] = url
+        end
       else
         db = config['database']
         config['database'] = 'postgres'
