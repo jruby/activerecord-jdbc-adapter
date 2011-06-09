@@ -1,6 +1,17 @@
 == 1.1.2
 
-- Update version of H2 driver from 1.1.107 to 1.3.153
+- Update version of H2 driver from 1.1.107 to 1.3.153 (Ketan
+  Padegaonkar, )
+- Fix errors in db:test:clone_structure with PostgreSQL (Andrea Campi)
+- Fixing limit for sqlServer2000 if primary key is not named 'id'
+  (Luca Simone)
+- DB2: define jdbc_columns (fixes table_exists? bug) (Nick Kreucher)
+- ACTIVERECORD_JDBC-152 - omitting limit when dumping bytea fields
+  (Gregor Schmidt)
+- Postgres doesn't support a limit for bytea columns (Alex Tambellini)
+- JRUBY-5642: Default to schema public if no schema given for postgres
+  (Anthony Juckel)
+- Sqlite3 supports float data type so use float (Alex Tambellini)
 
 == 1.1.1
 
