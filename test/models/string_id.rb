@@ -1,6 +1,3 @@
-require 'rubygems'
-require 'active_record'
-
 class CreateStringIds < ActiveRecord::Migration
   def self.up
     create_table "string_ids", :force => true, :id => false do |t|

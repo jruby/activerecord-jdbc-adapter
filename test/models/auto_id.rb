@@ -1,6 +1,3 @@
-require 'rubygems'
-require 'active_record'
-
 class CreateAutoIds < ActiveRecord::Migration
   def self.up
     create_table "auto_ids", :force => true do |t|

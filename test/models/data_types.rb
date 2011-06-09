@@ -1,6 +1,3 @@
-require 'rubygems'
-require 'active_record'
-
 class DbTypeMigration < ActiveRecord::Migration
   def self.up
     create_table "db_types", :force => true do |t|

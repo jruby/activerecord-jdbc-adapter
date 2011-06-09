@@ -1,6 +1,3 @@
-require 'rubygems'
-require 'active_record'
-
 module Migration
   class MixedCase < ActiveRecord::Migration
 
