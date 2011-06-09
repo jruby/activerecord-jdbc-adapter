@@ -1,6 +1,6 @@
 /*
  **** BEGIN LICENSE BLOCK *****
- * Copyright (c) 2006-2010 Nick Sieger <nick@nicksieger.com>
+ * Copyright (c) 2006-2011 Nick Sieger <nick@nicksieger.com>
  * Copyright (c) 2006-2007 Ola Bini <ola.bini@gmail.com>
  * Copyright (c) 2008-2009 Thomas E Enebo <enebo@acm.org>
  *
@@ -132,7 +132,6 @@ public class RubyJdbcConnection extends RubyObject {
 
                     DatabaseMetaData metadata = c.getMetaData();
                     String clzName = metadata.getClass().getName().toLowerCase();
-                    boolean isDB2 = clzName.indexOf("db2") != -1 || clzName.indexOf("as400") != -1;
                     boolean isPostgres = clzName.indexOf("postgresql") != -1;
 
                     String catalog = c.getCatalog();
@@ -154,7 +153,7 @@ public class RubyJdbcConnection extends RubyObject {
                     if (schemaName != null) schemaName = caseConvertIdentifierForJdbc(metadata, schemaName);
                     table_name = caseConvertIdentifierForJdbc(metadata, table_name);
 
-                    if (schemaName != null && !isDB2 && !databaseSupportsSchemas()) { catalog = schemaName; }
+                    if (schemaName != null && !databaseSupportsSchemas()) { catalog = schemaName; }
 
                     String[] tableTypes = new String[]{"TABLE","VIEW","SYNONYM"};
                     RubyArray matchingTables = (RubyArray) tableLookupBlock(context.getRuntime(),
