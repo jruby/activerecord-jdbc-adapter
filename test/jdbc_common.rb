@@ -3,8 +3,6 @@ def jruby?
   defined?(RUBY_ENGINE) && RUBY_ENGINE == "jruby"
 end
 
-require 'rubygems'
-require 'pick_rails_version'
 require 'arjdbc' if jruby?
 puts "Using activerecord version #{ActiveRecord::VERSION::STRING}"
 puts "Specify version with AR_VERSION=={version} or RUBYLIB={path}"
