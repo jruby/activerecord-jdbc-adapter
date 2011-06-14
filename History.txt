@@ -1,7 +1,7 @@
 == 1.1.2
 
 - Update version of H2 driver from 1.1.107 to 1.3.153 (Ketan
-  Padegaonkar, )
+  Padegaonkar, Jeremy Stephens)
 - Fix errors in db:test:clone_structure with PostgreSQL (Andrea Campi)
 - Fixing limit for sqlServer2000 if primary key is not named 'id'
   (Luca Simone)
@@ -12,6 +12,8 @@
 - JRUBY-5642: Default to schema public if no schema given for postgres
   (Anthony Juckel)
 - Sqlite3 supports float data type so use float (Alex Tambellini)
+- GH #21: Now using sqlite3 driver from
+  http://www.xerial.org/trac/Xerial/wiki/SQLiteJDBC (thanks Ukabu)
 
 == 1.1.1
 
