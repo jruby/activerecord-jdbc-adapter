@@ -28,8 +28,12 @@ module ::ArJdbc
 
       def extract_limit(sql_type)
         case sql_type
-        when /^bigint/i;    8
+        when /^int2/i;      2
         when /^smallint/i;  2
+        when /^int4/i;      nil
+        when /^integer/i;   nil
+        when /^int8/i;      8
+        when /^bigint/i;    8
         when /^(bool|text|date|time|bytea)/i; nil # ACTIVERECORD_JDBC-135,139
         else super
         end
