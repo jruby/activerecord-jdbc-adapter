@@ -69,4 +69,22 @@ class PostgresSchemaDumperTest < Test::Unit::TestCase
     assert !lines.empty?
     lines.each {|line| assert line !~ /limit/ }
   end
+
+  def test_schema_dump_integer_with_no_limit_should_have_no_limit
+    lines = @dump.grep(/sample_integer_no_limit/)
+    assert !lines.empty?
+    lines.each {|line| assert line !~ / limit/ }
+  end
+
+  def test_schema_dump_integer_with_limit_2_should_have_limit_2
+    lines = @dump.grep(/sample_integer_with_limit_2/)
+    assert !lines.empty?
+    lines.each {|line| assert line =~ /limit => 2/ }
+  end
+
+  def test_schema_dump_integer_with_limit_8_should_have_limit_8
+    lines = @dump.grep(/sample_integer_with_limit_8/)
+    assert !lines.empty?
+    lines.each {|line| assert line =~ /limit => 8/ }
+  end
 end
