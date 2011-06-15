@@ -422,7 +422,7 @@ module ::ArJdbc
       return super unless column
 
       if value.kind_of?(String) && column.type == :binary
-        "'#{escape_bytea(value)}'"
+        "E'#{escape_bytea(value)}'"
       elsif value.kind_of?(String) && column.sql_type == 'xml'
         "xml '#{quote_string(value)}'"
       elsif value.kind_of?(Numeric) && column.sql_type == 'money'
