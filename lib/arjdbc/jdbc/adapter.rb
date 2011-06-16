@@ -75,7 +75,7 @@ module ActiveRecord
               config[:username] ||= conn.getMetaData.getUserName
             end
           rescue
-            conn.close
+            conn.close if conn
           end
         end
         nil
