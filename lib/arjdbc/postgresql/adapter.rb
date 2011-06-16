@@ -5,8 +5,9 @@ end
 module ::ArJdbc
   module PostgreSQL
     def self.extended(mod)
-      mod.class.class_eval do
-        alias_chained_method :insert, :query_dirty, :insert
+      (class << mod; self; end).class_eval do
+        alias_chained_method :insert, :query_dirty, :pg_insert
+        alias_chained_method :columns, :query_cache, :pg_columns
       end
     end
 
@@ -243,7 +244,7 @@ module ::ArJdbc
       nil
     end
 
-    def insert(sql, name = nil, pk = nil, id_value = nil, sequence_name = nil)
+    def pg_insert(sql, name = nil, pk = nil, id_value = nil, sequence_name = nil)
       # Extract the table from the insert sql. Yuck.
       table = sql.split(" ", 4)[2].gsub('"', '')
 
@@ -277,7 +278,7 @@ module ::ArJdbc
       id_value
     end
 
-    def columns(table_name, name=nil)
+    def pg_columns(table_name, name=nil)
       schema_name = @config[:schema_search_path]
       if table_name =~ /\./
         parts = table_name.split(/\./)

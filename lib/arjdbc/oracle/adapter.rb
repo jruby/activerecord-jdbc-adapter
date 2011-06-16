@@ -23,9 +23,9 @@ module ::ArJdbc
       end
       require 'arjdbc/jdbc/quoted_primary_key'
       ActiveRecord::Base.extend ArJdbc::QuotedPrimaryKeyExtension
-      mod.class.class_eval do
-        alias_chained_method :insert, :query_dirty, :insert
-        alias_chained_method :columns, :query_cache, :columns
+      (class << mod; self; end).class_eval do
+        alias_chained_method :insert, :query_dirty, :ora_insert
+        alias_chained_method :columns, :query_cache, :ora_columns
       end
     end
 
@@ -163,7 +163,7 @@ module ::ArJdbc
       defined?(::Arel::SqlLiteral) && ::Arel::SqlLiteral === value
     end
 
-    def insert(sql, name = nil, pk = nil, id_value = nil, sequence_name = nil) #:nodoc:
+    def ora_insert(sql, name = nil, pk = nil, id_value = nil, sequence_name = nil) #:nodoc:
       if (id_value && !sql_literal?(id_value)) || pk.nil?
         # Pre-assigned id or table without a primary key
         # Presence of #to_sql means an Arel literal bind variable
@@ -334,7 +334,7 @@ module ::ArJdbc
       @connection.tables(nil, oracle_schema)
     end
 
-    def columns(table_name, name=nil)
+    def ora_columns(table_name, name=nil)
       @connection.columns_internal(table_name, name, oracle_schema)
     end
 
