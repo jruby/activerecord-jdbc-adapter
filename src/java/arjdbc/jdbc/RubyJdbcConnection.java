@@ -122,48 +122,20 @@ public class RubyJdbcConnection extends RubyObject {
             public Object call(Connection c) throws SQLException {
                 ResultSet results = null, pkeys = null;
                 try {
-                    String table_name = rubyApi.convertToRubyString(args[0]).getUnicodeValue();
-                    String schemaName = null;
-
-                    final String[] name_parts = table_name.split( "\\." );
-                    if ( name_parts.length > 3 ) {
-                        throw new SQLException("Table name '" + table_name + "' should not contain more than 2 '.'");
-                    }
-
-                    DatabaseMetaData metadata = c.getMetaData();
-                    String clzName = metadata.getClass().getName().toLowerCase();
-                    boolean isPostgres = clzName.indexOf("postgresql") != -1;
-
-                    String catalog = c.getCatalog();
-                    if( name_parts.length == 2 ) {
-                        schemaName = name_parts[0];
-                        table_name = name_parts[1];
-                    }
-                    else if ( name_parts.length == 3 ) {
-                        catalog = name_parts[0];
-                        schemaName = name_parts[1];
-                        table_name = name_parts[2];
-                    }
-
-                    if(args.length > 2 && schemaName == null) schemaName = toStringOrNull(args[2]);
-
-                    // The postgres JDBC driver will default to searching every schema if no
-                    // schema search path is given.  Default to the public schema instead.
-                    if (schemaName == null && isPostgres) schemaName = "public";
-                    if (schemaName != null) schemaName = caseConvertIdentifierForJdbc(metadata, schemaName);
-                    table_name = caseConvertIdentifierForJdbc(metadata, table_name);
-
-                    if (schemaName != null && !databaseSupportsSchemas()) { catalog = schemaName; }
+                    String defaultSchema = args.length > 2 ? toStringOrNull(args[2]) : null;
+                    String tableName = rubyApi.convertToRubyString(args[0]).getUnicodeValue();
+                    TableNameComponents components = extractTableNameComponents(c, defaultSchema, tableName);
 
                     String[] tableTypes = new String[]{"TABLE","VIEW","SYNONYM"};
                     RubyArray matchingTables = (RubyArray) tableLookupBlock(context.getRuntime(),
-                            catalog, schemaName, table_name, tableTypes, false).call(c);
+                            components.catalog, components.schema, components.table, tableTypes, false).call(c);
                     if (matchingTables.isEmpty()) {
-                        throw new SQLException("Table " + table_name + " does not exist");
+                        throw new SQLException("Table " + tableName + " does not exist");
                     }
 
-                    results = metadata.getColumns(catalog,schemaName,table_name,null);
-                    pkeys = metadata.getPrimaryKeys(catalog,schemaName,table_name);
+                    DatabaseMetaData metadata = c.getMetaData();
+                    results = metadata.getColumns(components.catalog, components.schema, components.table, null);
+                    pkeys = metadata.getPrimaryKeys(components.catalog, components.schema, components.table);
                     return unmarshal_columns(context, metadata, results, pkeys);
                 } finally {
                     close(results);
@@ -489,7 +461,8 @@ public class RubyJdbcConnection extends RubyObject {
                 ResultSet resultSet = null;
                 List keyNames = new ArrayList();
                 try {
-                    resultSet = metadata.getPrimaryKeys(null, null, tableName);
+                    TableNameComponents components = extractTableNameComponents(c, null, tableName);
+                    resultSet = metadata.getPrimaryKeys(components.catalog, components.schema, components.table);
 
                     while (resultSet.next()) {
                         keyNames.add(RubyString.newUnicodeString(runtime,
@@ -1275,6 +1248,41 @@ public class RubyJdbcConnection extends RubyObject {
         return true;
     }
 
+    private TableNameComponents extractTableNameComponents(Connection connection, String defaultSchema, String tableName) throws SQLException {
+        String schemaName = null;
+
+        final String[] name_parts = tableName.split("\\.");
+        if (name_parts.length > 3) {
+            throw new SQLException("Table name '" + tableName + "' should not contain more than 2 '.'");
+        }
+
+        DatabaseMetaData metadata = connection.getMetaData();
+        String clzName = metadata.getClass().getName().toLowerCase();
+        boolean isPostgres = clzName.contains("postgresql");
+
+        String catalog = connection.getCatalog();
+        if (name_parts.length == 2) {
+            schemaName = name_parts[0];
+            tableName = name_parts[1];
+        } else if (name_parts.length == 3) {
+            catalog = name_parts[0];
+            schemaName = name_parts[1];
+            tableName = name_parts[2];
+        }
+
+        if (schemaName == null && defaultSchema != null) schemaName = defaultSchema;
+
+        // The postgres JDBC driver will default to searching every schema if no
+        // schema search path is given.  Default to the public schema instead.
+        if (schemaName == null && isPostgres) schemaName = "public";
+        if (schemaName != null) schemaName = caseConvertIdentifierForJdbc(metadata, schemaName);
+        tableName = caseConvertIdentifierForJdbc(metadata, tableName);
+
+        if (schemaName != null && !databaseSupportsSchemas()) { catalog = schemaName; }
+
+        return new TableNameComponents(catalog, schemaName, tableName);
+    }
+
     public static class ColumnData {
         public IRubyObject name;
         public int index;
@@ -1303,6 +1311,18 @@ public class RubyJdbcConnection extends RubyObject {
             }
 
             return columns;
+        }
+    }
+
+    private static class TableNameComponents {
+        private String catalog;
+        private String schema;
+        private String table;
+
+        private TableNameComponents(String catalog, String schema, String table) {
+            this.catalog = catalog;
+            this.schema = schema;
+            this.table = table;
         }
     }
 }
