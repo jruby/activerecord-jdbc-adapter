@@ -217,7 +217,7 @@ module ::ArJdbc
     end
 
     def quote_table_name(name)
-      name
+      quote_column_name(name)
     end
 
     def quote_column_name(name)
