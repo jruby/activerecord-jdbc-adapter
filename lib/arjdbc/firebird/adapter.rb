@@ -23,6 +23,11 @@ module ::ArJdbc
       'Firebird'
     end
 
+    def arel2_visitors
+      require 'arel/visitors/firebird'
+      {'firebird' => ::Arel::Visitors::Firebird, 'firebirdsql' => ::Arel::Visitors::Firebird}
+    end
+
     def modify_types(tp)
       tp[:primary_key] = 'INTEGER NOT NULL PRIMARY KEY'
       tp[:string][:limit] = 252
