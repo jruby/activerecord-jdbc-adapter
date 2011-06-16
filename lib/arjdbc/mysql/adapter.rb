@@ -39,9 +39,13 @@ module ::ArJdbc
       end
 
       def simplified_type(field_type)
-        return :boolean if field_type =~ /tinyint\(1\)|bit/i
-        return :string  if field_type =~ /enum/i
-        super
+        case field_type
+        when /tinyint\(1\)|bit/i then :boolean
+        when /enum/i             then :string
+        when /decimal/i          then :decimal
+        else
+          super
+        end
       end
 
       def extract_limit(sql_type)
