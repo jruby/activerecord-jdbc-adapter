@@ -8,14 +8,12 @@ module ::ArJdbc
       private
       def simplified_type(field_type)
         case field_type
-        when /longvarchar/i
-          :text
-        when /tinyint/i
-          :boolean
-        when /real/i
-          :float
+        when /longvarchar/i then :text
+        when /tinyint/i  then :boolean
+        when /real/i     then :float
+        when /decimal/i  then :decimal
         else
-          super(field_type)
+          super
         end
       end
 

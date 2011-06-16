@@ -256,6 +256,12 @@ module SimpleTestMethods
     assert_equal binary_string, e.sample_binary
   end
 
+  def test_default_decimal_should_keep_fractional_part
+    expected = 7.3
+    actual = DbType.create(:sample_default_decimal => expected).sample_default_decimal
+    assert_equal expected, actual
+  end
+
   def test_indexes
     # Only test indexes if we have implemented it for the particular adapter
     if @connection.respond_to?(:indexes)

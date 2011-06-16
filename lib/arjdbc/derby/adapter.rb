@@ -37,9 +37,13 @@ module ::ArJdbc
 
     module Column
       def simplified_type(field_type)
-        return :boolean if field_type =~ /smallint/i
-        return :float if field_type =~ /real/i
-        super
+        case field_type
+        when /smallint/i  then :boolean
+        when /real/i      then :float
+        when /decimal/i   then :decimal
+        else
+          super
+        end
       end
 
       # Post process default value from JDBC into a Rails-friendly format (columns{-internal})
