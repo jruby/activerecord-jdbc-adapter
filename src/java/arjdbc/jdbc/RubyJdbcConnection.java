@@ -362,7 +362,7 @@ public class RubyJdbcConnection extends RubyObject {
                 ResultSet resultSet = null;
                 List indexes = new ArrayList();
                 try {
-                    resultSet = metadata.getIndexInfo(null, schemaName, tableName, false, false);
+                    resultSet = metadata.getIndexInfo(null, schemaName, tableName, false, true);
                     List primaryKeys = primaryKeys(context, tableName);
                     String currentIndex = null;
                     RubyModule indexDefinitionClass = getConnectionAdapters(runtime).getClass("IndexDefinition");
