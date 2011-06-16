@@ -17,11 +17,20 @@ module ActiveRecord
       end
 
       def self.column_types
-        @column_types ||= ::ArJdbc.constants.map{|c|
-          ::ArJdbc.const_get c }.select{ |c|
-          c.respond_to? :column_selector }.map{|c|
-          c.column_selector }.inject({}) { |h,val|
+        # GH #25: reset the column types if the # of constants changed
+        # since last call
+        if ::ArJdbc.constants.size != driver_constants.size
+          @driver_constants = nil
+          @column_types = nil
+        end
+        @column_types ||= driver_constants.select {|c|
+          c.respond_to? :column_selector }.map {|c|
+          c.column_selector }.inject({}) {|h,val|
           h[val[0]] = val[1]; h }
+      end
+
+      def self.driver_constants
+        @driver_constants ||= ::ArJdbc.constants.map {|c| ::ArJdbc.const_get c }
       end
 
       protected
