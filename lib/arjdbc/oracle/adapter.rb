@@ -129,7 +129,7 @@ module ::ArJdbc
 
     def create_table(name, options = {}) #:nodoc:
       super(name, options)
-      seq_name = options[:sequence_name] || "#{name}_seq"
+      seq_name = options[:sequence_name] || default_sequence_name(name)
       start_value = options[:sequence_start_value] || 10000
       raise ActiveRecord::StatementInvalid.new("name #{seq_name} too long") if seq_name.length > table_alias_length
       execute "CREATE SEQUENCE #{seq_name} START WITH #{start_value}" unless options[:id] == false
@@ -142,7 +142,7 @@ module ::ArJdbc
 
     def drop_table(name, options = {}) #:nodoc:
       super(name) rescue nil
-      seq_name = options[:sequence_name] || "#{name}_seq"
+      seq_name = options[:sequence_name] || default_sequence_name(name)
       execute "DROP SEQUENCE #{seq_name}" rescue nil
     end
 
