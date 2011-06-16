@@ -395,10 +395,15 @@ module ::ArJdbc
     end
 
     private
-    # In Oracle, schemas are created under your username:
+    # In Oracle, schemas are usually created under your username:
     # http://www.oracle.com/technology/obe/2day_dba/schema/schema.htm
+    # But allow separate configuration as "schema:" anyway (GH #53)
     def oracle_schema
-      @config[:username].to_s if @config[:username]
+      if @config[:schema]
+        @config[:schema].to_s
+      elsif @config[:username]
+        @config[:username].to_s
+      end
     end
 
     def select(sql, name=nil)
