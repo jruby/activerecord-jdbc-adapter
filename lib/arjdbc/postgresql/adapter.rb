@@ -71,7 +71,7 @@ module ::ArJdbc
         return $1 if value =~ /^'(.*)'::(bpchar|text|character varying|bytea)$/
 
         # Numeric values
-        return value if value =~ /^-?[0-9]+(\.[0-9]*)?/
+        return value.delete("()") if value =~ /^\(?-?[0-9]+(\.[0-9]*)?\)?/
 
         # Fixed dates / timestamp
         return $1 if value =~ /^'(.+)'::(date|timestamp)/
