@@ -88,7 +88,10 @@ module ActiveRecord
       rescue ::ActiveRecord::ActiveRecordError
         raise
       rescue Exception => e
-        raise "The driver encountered an unknown error: #{e}"
+        raise ::ActiveRecord::JDBCError.new("The driver encountered an unknown error: #{e}").tap do |err|
+          err.errno = 0
+          err.sql_exception = e
+        end
       end
 
       def adapter=(adapter)
