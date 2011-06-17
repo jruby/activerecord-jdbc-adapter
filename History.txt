@@ -14,6 +14,28 @@
 - Sqlite3 supports float data type so use float (Alex Tambellini)
 - GH #21: Now using sqlite3 driver from
   http://www.xerial.org/trac/Xerial/wiki/SQLiteJDBC (thanks Ukabu)
+- GH #65: PG: Respect integer sizes (Alex Tambellini)
+- GH #59: PG: Properly escape bytea-escaped string
+- GH #53: oracle: allow configuration of schema through schema: key
+- GH #50: PG: support multiple schema in search_path (Daniel
+  Schreiber)
+- GH #25: Reload ArJdbc.column_types if number of constants changed
+- GH #47: Allow table statistics for indexes to be approximate; speeds
+  up Oracle
+- GH #67: Change primary_keys to use the same catalog/schema/table
+  separation logic as columns_internal (Marcus Brito). This change
+  allows set_table_name to specify a custom schema.
+- GH #49: mssql: quote table names like column names
+- GH #56: mssql: Fix 'select 1' behavior introduced by AR 3.0.7
+- GH #55: Make decimal columns with no precision or scale stay
+  decimals
+- GH #45: Add Arel limit support for Firebird (Systho))
+- GH #39: PG: allow negative integer default values
+- GH #19: Make a stub Mysql::Error class
+- ACTIVERECORD_JDBC-148: mssql: Ensure regex doesn't match 'from' in a
+  field name
+- GH#31: mssql: Remove extra code breaking mssql w/o limit
+- ACTIVERECORD_JDBC-156: mssql: Logic fix for detecting select_count?
 
 == 1.1.1
 
