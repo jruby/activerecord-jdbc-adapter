@@ -12,6 +12,7 @@ require File.dirname(__FILE__) + "/../lib/arjdbc/version"
 begin
   require 'hoe'
   Hoe.plugin :gemcutter
+  Hoe.plugin :rubyforge
   hoe = Hoe.spec("activerecord-jdbc-adapter") do |p|
     p.version = ArJdbc::Version::VERSION
     p.spec_extras[:files] = MANIFEST

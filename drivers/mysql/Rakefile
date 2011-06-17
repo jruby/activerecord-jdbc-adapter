@@ -11,6 +11,7 @@ require "jdbc/mysql"
 begin
   require 'hoe'
   Hoe.plugin :gemcutter
+  Hoe.plugin :rubyforge
   Hoe.spec("jdbc-mysql") do |p|
     version = Jdbc::MySQL::VERSION
     version += '.' + ENV['DRIVER_REV'] if ENV['DRIVER_REV']

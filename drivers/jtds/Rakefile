@@ -11,6 +11,7 @@ require "jdbc/jtds"
 begin
   require 'hoe'
   Hoe.plugin :gemcutter
+  Hoe.plugin :rubyforge
   Hoe.spec("jdbc-jtds") do |p|
     version = Jdbc::JTDS::VERSION
     version += '.' + ENV['DRIVER_REV'] if ENV['DRIVER_REV']

@@ -13,6 +13,7 @@ require "jdbc/hsqldb"
 begin
   require 'hoe'
   Hoe.plugin :gemcutter
+  Hoe.plugin :rubyforge
   hoe = Hoe.spec("activerecord-jdbchsqldb-adapter") do |p|
     p.version = ArJdbc::Version::VERSION
     p.rubyforge_name = "jruby-extras"

@@ -12,6 +12,7 @@ require "jdbc/postgres"
 begin
   require 'hoe'
   Hoe.plugin :gemcutter
+  Hoe.plugin :rubyforge
   Hoe.spec("jdbc-postgres") do |p|
     version = Jdbc::Postgres::VERSION
     version += '.' + ENV['DRIVER_REV'] if ENV['DRIVER_REV']

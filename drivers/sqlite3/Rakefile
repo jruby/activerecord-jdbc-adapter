@@ -11,6 +11,7 @@ require "jdbc/sqlite3"
 begin
   require 'hoe'
   Hoe.plugin :gemcutter
+  Hoe.plugin :rubyforge
   Hoe.spec("jdbc-sqlite3") do |p|
     version = Jdbc::SQLite3::VERSION
     version += '.' + ENV['DRIVER_REV'] if ENV['DRIVER_REV']

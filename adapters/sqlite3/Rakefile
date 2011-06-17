@@ -13,6 +13,7 @@ require "jdbc/sqlite3"
 begin
   require 'hoe'
   Hoe.plugin :gemcutter
+  Hoe.plugin :rubyforge
   hoe = Hoe.spec("activerecord-jdbcsqlite3-adapter") do |p|
     p.version = ArJdbc::Version::VERSION
     p.rubyforge_name = "jruby-extras"

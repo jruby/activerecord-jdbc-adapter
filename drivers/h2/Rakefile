@@ -11,6 +11,7 @@ require "jdbc/h2"
 begin
   require 'hoe'
   Hoe.plugin :gemcutter
+  Hoe.plugin :rubyforge
   Hoe.spec("jdbc-h2") do |p|
     version = Jdbc::H2::VERSION
     version += '.' + ENV['DRIVER_REV'] if ENV['DRIVER_REV']
