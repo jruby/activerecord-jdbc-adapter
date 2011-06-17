@@ -7,8 +7,8 @@ module Arel
 
       def select_count? o
         sel = o.cores.length == 1 && o.cores.first
-        projections = sel.projections.length == 1 && sel.projections
-        Arel::Nodes::Count === projections.first
+        projections = sel && sel.projections.length == 1 && sel.projections
+        projections && Arel::Nodes::Count === projections.first
       end
 
       # Need to mimic the subquery logic in ARel 1.x for select count with limit
