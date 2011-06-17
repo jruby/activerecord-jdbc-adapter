@@ -262,6 +262,11 @@ module SimpleTestMethods
     assert_equal expected, actual
   end
 
+  def test_negative_default_value
+    assert_equal -1, DbType.columns_hash['sample_integer_negative_default'].default
+    assert_equal -1, DbType.new.sample_integer_negative_default
+  end
+
   def test_indexes
     # Only test indexes if we have implemented it for the particular adapter
     if @connection.respond_to?(:indexes)

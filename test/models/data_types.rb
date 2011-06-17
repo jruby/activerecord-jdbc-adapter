@@ -16,6 +16,7 @@ class DbTypeMigration < ActiveRecord::Migration
       t.column :sample_integer_with_limit_2, :integer, :limit => 2
       t.column :sample_integer_with_limit_8, :integer, :limit => 8
       t.column :sample_integer_no_limit, :integer
+      t.column :sample_integer_negative_default, :integer, :default => -1
       t.column :sample_text, :text
     end
   end
