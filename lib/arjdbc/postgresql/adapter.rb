@@ -41,52 +41,15 @@ module ::ArJdbc
       end
 
       def simplified_type(field_type)
-        case field_type
-          # Numeric and monetary types
-        when /^(?:real|double precision)$/
-          :float
-          # Monetary types
-        when 'money', 'numeric(131089)'
-          :decimal
-          # Character types
-        when /^(?:character varying|bpchar)(?:\(\d+\))?$/
-          :string
-          # Binary data types
-        when 'bytea'
-          :binary
-          # Date/time types
-        when /^timestamp with(?:out)? time zone$/
-          :datetime
-        when 'interval'
-          :string
-          # Geometric types
-        when /^(?:point|line|lseg|box|"?path"?|polygon|circle)$/
-          :string
-          # Network address types
-        when /^(?:cidr|inet|macaddr)$/
-          :string
-          # Bit strings
-        when /^bit(?: varying)?(?:\(\d+\))?$/
-          :string
-          # XML type
-        when 'xml'
-          :xml
-          # Arrays
-        when /^\D+\[\]$/
-          :string
-          # Object identifier types
-        when 'oid'
-          :integer
-          # UUID type
-        when 'uuid'
-          :string
-          # Small and big integer types
-        when /^(?:small|big)int$/
-          :integer
-          # Pass through all types that are not specific to PostgreSQL.
-        else
-          super
-        end
+        return :integer if field_type =~ /^serial/i
+        return :string if field_type =~ /\[\]$/i || field_type =~ /^interval/i
+        return :string if field_type =~ /^(?:point|lseg|box|"?path"?|polygon|circle)/i
+        return :datetime if field_type =~ /^timestamp/i
+        return :float if field_type =~ /^(?:real|double precision)$/i
+        return :binary if field_type =~ /^bytea/i
+        return :boolean if field_type =~ /^bool/i
+        return :decimal if field_type == 'numeric(131089)'
+        super
       end
 
       def cast_to_boolean(value)
