@@ -11,6 +11,7 @@ require "jdbc/hsqldb"
 begin
   require 'hoe'
   Hoe.plugin :gemcutter
+  Hoe.plugin :rubyforge
   Hoe.spec("jdbc-hsqldb") do |p|
     version = Jdbc::HSQLDB::VERSION
     version += '.' + ENV['DRIVER_REV'] if ENV['DRIVER_REV']

@@ -11,6 +11,7 @@ require "jdbc/derby"
 begin
   require 'hoe'
   Hoe.plugin :gemcutter
+  Hoe.plugin :rubyforge
   Hoe.spec("jdbc-derby") do |p|
     version = Jdbc::Derby::VERSION
     version += '.' + ENV['DRIVER_REV'] if ENV['DRIVER_REV']

@@ -13,6 +13,7 @@ require "jdbc/h2"
 begin
   require 'hoe'
   Hoe.plugin :gemcutter
+  Hoe.plugin :rubyforge
   hoe = Hoe.spec("activerecord-jdbch2-adapter") do |p|
     p.version = ArJdbc::Version::VERSION
     p.rubyforge_name = "jruby-extras"
