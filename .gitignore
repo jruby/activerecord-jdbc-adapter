@@ -1,11 +1,8 @@
-Manifest.txt
 pkg
 *.gem
 *.tgz
 derby-testdb*
 derby.log
-lib/arjdbc/jdbc/adapter_java.jar
-lib/jdbc_adapter/jdbc_adapter_internal.jar
 test.*
 doc
 build.xml
@@ -20,6 +17,4 @@ patches*
 /.project
 /bin
 /jndi_test/jdbc/.bindings
-/test/fscontext.jar
-/test/providerutil.jar
 target
