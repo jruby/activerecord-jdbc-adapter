@@ -12,6 +12,7 @@ task :build => :java_compile
 task :install => :java_compile
 
 ADAPTERS = %w[derby h2 hsqldb mssql mysql postgresql sqlite3].map {|a| "activerecord-jdbc#{a}-adapter" }
+DRIVERS  = %w[derby h2 hsqldb jtds mysql postgres sqlite3].map {|a| "jdbc-#{a}" }
 
 root    = File.expand_path("..", __FILE__)
 version = File.read("#{root}/ARJDBC_VERSION").strip
@@ -20,7 +21,7 @@ def rake(args)
   ruby "-S", "rake", *args
 end
 
-ADAPTERS.each do |adapter|
+(ADAPTERS + DRIVERS).each do |adapter|
   namespace adapter do
 
     task :build do
@@ -47,12 +48,15 @@ end
 
 namespace :all do
   desc "Build all adapters"
+  task :build   => "build"
   task :build   => ADAPTERS.map { |f| "#{f}:build"       }
 
   desc "Install all adapters"
+  task :install => "install"
   task :install => ADAPTERS.map { |f| "#{f}:install"     }
 
   desc "Release all adapters"
+  task :release    => "release"
   task :release    => ADAPTERS.map { |f| "#{f}:release"  }
 end
 
