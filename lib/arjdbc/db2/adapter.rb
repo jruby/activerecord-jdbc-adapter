@@ -1,7 +1,29 @@
 module ArJdbc
   module DB2
+    def self.extended(base)
+      if base.zos?
+        unless @lob_callback_added
+          ActiveRecord::Base.class_eval do
+            def after_save_with_db2zos_blob
+              lobfields = self.class.columns.select { |c| c.sql_type =~ /blob|clob/i }
+              lobfields.each do |c|
+                value = self[c.name]
+                value = value.to_yaml if unserializable_attribute?(c.name, c)
+                next if value.nil?
+                connection.write_large_object(c.type == :binary, c.name, self.class.table_name, self.class.primary_key, quote_value(id), value)
+              end
+            end
+          end
+
+          ActiveRecord::Base.after_save :after_save_with_db2zos_blob
+
+          @lob_callback_added = true
+        end
+      end
+    end
+
     def self.column_selector
-      [ /(db2|as400)/i,
+      [ /(db2|as400|zos)/i,
         lambda { |cfg, column| column.extend(::ArJdbc::DB2::Column) } ]
     end
 
@@ -156,6 +178,44 @@ module ArJdbc
       replace_limit_offset!(sql, options[:limit], options[:offset])
     end
 
+
+    def create_table(name, options = {}) #:nodoc:
+      if zos?
+        table_definition = ActiveRecord::ConnectionAdapters::TableDefinition.new(self)
+
+        table_definition.primary_key(options[:primary_key] || ActiveRecord::Base.get_primary_key(name)) unless options[:id] == false
+
+        yield table_definition
+
+        # Clobs in DB2 Host have to be created after the Table with an auxiliary Table.
+        # First: Save them for later in Array "clobs"
+        clobs =table_definition.columns.select { |x| x.type == "text" }
+
+        # Second: and delete them from the original Colums-Array
+        table_definition.columns.delete_if { |x| x.type=="text" }
+
+        if options[:force] && table_exists?(name)
+          super.drop_table(name, options)
+        end
+
+        create_sql = "CREATE#{' TEMPORARY' if options[:temporary]} TABLE "
+        create_sql << "#{quote_table_name(name)} ("
+        create_sql << table_definition.to_sql
+        create_sql << ") #{options[:options]}"
+        create_sql << " IN #{@config[:database]}.#{@config[:tablespace]}"
+
+        execute create_sql
+
+        clobs.each do |clob_column|
+          execute "ALTER TABLE #{name+" ADD COLUMN "+clob_column.name.to_s+" clob"}"
+          execute "CREATE AUXILIARY TABLE #{name+"_"+clob_column.name.to_s+"_CD_"} IN #{@config[:database]}.#{@config[:lob_tablespaces][name.split(".")[1]]} STORES #{name} COLUMN "+clob_column.name.to_s
+          execute "CREATE UNIQUE INDEX #{name+"_"+clob_column.name.to_s+"_CD_"} ON #{name+"_"+clob_column.name.to_s+"_CD_"};"
+        end
+      else
+        super(name, options)
+      end
+    end
+
     def replace_limit_offset!(sql, limit, offset)
       if limit
         limit = limit.to_i
@@ -200,7 +260,11 @@ module ArJdbc
         if column && column.type == :binary
           "BLOB('#{quote_string(value)}')"
         else
-          "'#{quote_string(value)}'"
+          if zos? && column.type == :text
+            "'if_you_see_this_value_the_after_save_hook_in_db2_zos_adapter_went_wrong'"
+          else
+            "'#{quote_string(value)}'"
+          end
         end
       else super
       end
@@ -227,6 +291,21 @@ module ArJdbc
     def recreate_database(name)
       tables.each {|table| drop_table("#{db2_schema}.#{table}")}
     end
+
+    def add_index(table_name, column_name, options = {})
+      if (!zos? || (table_name.to_s ==  ActiveRecord::Migrator.schema_migrations_table_name.to_s))
+        super
+      else
+        statement ="CREATE"
+        statement << " UNIQUE " if options[:unique]
+        statement << " INDEX "+"#{ActiveRecord::Base.table_name_prefix}#{options[:name]} "
+
+        statement << " ON #{table_name}(#{column_name})"
+
+        execute statement
+      end
+    end
+
 
     def remove_index(table_name, options = { })
       execute "DROP INDEX #{quote_column_name(index_name(table_name, options))}"
@@ -311,6 +390,10 @@ module ArJdbc
     def columns(table_name, name = nil)
       cols = @connection.columns(table_name, name, db2_schema)
 
+      if zos?
+        # Remove the mighty db2_generated_rowid_for_lobs from the list of columns
+        cols = cols.reject { |col| "db2_generated_rowid_for_lobs" == col.name }
+      end
       # scrub out sizing info when CREATE TABLE doesn't support it
       # but JDBC reports it (doh!)
       for col in cols
@@ -396,6 +479,10 @@ module ArJdbc
         definition << ");\n\n"
       end
       definition
+    end
+
+    def zos?
+      @config[:driver] == "com.ibm.db2.jcc.DB2Driver"
     end
 
     private
