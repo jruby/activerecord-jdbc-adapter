@@ -84,6 +84,21 @@ URL. Example:
       adapter: jdbc
       jndi: jdbc/mysqldb
 
+   If you're really old school you might want to use ARJDBC with a DB2 on z/OS.
+
+    development:
+      adapter: jdbc
+      encoding: unicode
+      url: jdbc:db2j:net://mightyzoshost:446/RAILS_DBT1
+      driver: com.ibm.db2.jcc.DB2Driver
+      schema: DB2XB12
+      database: RAILS_DB1
+      tablespace: TSDE911
+      lob_tablespaces:
+        first_table: TSDE912
+      username: scott
+      password: lion
+
 === Standalone, with ActiveRecord
 
 1. Install the gem with JRuby:
