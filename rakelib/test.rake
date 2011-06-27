@@ -23,8 +23,8 @@ def declare_test_task_for(adapter, options = {})
     t.libs = []
     if defined?(JRUBY_VERSION)
       t.ruby_opts << "-rjdbc/#{driver}"
-      t.libs << "lib" << "drivers/#{driver}/lib"
-      t.libs.push *FileList["adapters/#{adapter}*/lib"]
+      t.libs << "lib" << "jdbc-#{driver}/lib"
+      t.libs.push *FileList["activerecord-jdbc#{adapter}*/lib"]
     end
     t.libs << "test"
     t.verbose = true
@@ -41,12 +41,12 @@ declare_test_task_for :sqlite3
 
 Rake::TestTask.new(:test_jdbc) do |t|
   t.test_files = FileList['test/generic_jdbc_connection_test.rb']
-  t.libs << 'test' << 'drivers/mysql/lib'
+  t.libs << 'test' << 'jdbc-mysql/lib'
 end
 
 Rake::TestTask.new(:test_jndi) do |t|
   t.test_files = FileList['test/jndi*_test.rb']
-  t.libs << 'test' << 'drivers/derby/lib'
+  t.libs << 'test' << 'jdbc-derby/lib'
 end
 
 task :test_postgresql => [:test_postgres]
@@ -71,11 +71,11 @@ end
 # Ensure that the jTDS driver is in your classpath before launching rake
 Rake::TestTask.new(:test_sybase_jtds) do |t|
   t.test_files = FileList['test/sybase_jtds_simple_test.rb']
-  t.libs << 'test' 
+  t.libs << 'test'
 end
 
 # Ensure that the jConnect driver is in your classpath before launching rake
 Rake::TestTask.new(:test_sybase_jconnect) do |t|
   t.test_files = FileList['test/sybase_jconnect_simple_test.rb']
-  t.libs << 'test' 
+  t.libs << 'test'
 end

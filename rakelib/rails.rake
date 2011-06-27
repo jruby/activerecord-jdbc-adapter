@@ -33,7 +33,7 @@ namespace :rails do
     raise "need location of RAILS source code" unless activerecord
     activerecord = File.join(activerecord, 'activerecord') unless activerecord =~ /activerecord$/
     ar_jdbc = File.expand_path(File.dirname(__FILE__) + '/..')
-    rubylib = "#{ar_jdbc}/lib:#{ar_jdbc}/drivers/#{_driver(driver)}/lib:#{ar_jdbc}/adapters/#{_adapter(driver)}/lib"
+    rubylib = "#{ar_jdbc}/lib:#{ar_jdbc}/jdbc-#{_driver(driver)}/lib:#{ar_jdbc}/activerecord-jdbc#{_adapter(driver)}-adapter/lib"
     Dir.chdir(activerecord) do
       rake "RUBYLIB=#{rubylib}", "#{_target(driver)}"
     end
