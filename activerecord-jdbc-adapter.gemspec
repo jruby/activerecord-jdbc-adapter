@@ -1,6 +1,7 @@
 # -*- encoding: utf-8 -*-
 $:.push File.expand_path("../lib", __FILE__)
-version = File.read(File.expand_path("ARJDBC_VERSION")).strip
+require 'arjdbc/version'
+version = ArJdbc::Version::VERSION
 Gem::Specification.new do |s|
   s.name        = "activerecord-jdbc-adapter"
   s.version     = version
