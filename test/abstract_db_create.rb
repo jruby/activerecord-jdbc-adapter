@@ -15,6 +15,10 @@ module Rails
 end
 
 module AbstractDbCreate
+  def self.included(base)
+    base.module_eval { include Rake::DSL } if defined?(Rake::DSL)
+  end
+
   def setup
     @prevapp = Rake.application
     Rake.application = Rake::Application.new
