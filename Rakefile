@@ -4,6 +4,7 @@ CLEAN.include 'derby*', 'test.db.*','test/reports', 'test.sqlite3','lib/**/*.jar
 
 require 'bundler'
 Bundler::GemHelper.install_tasks
+require 'bundler/setup'
 
 task :default => [:java_compile, :test]
 
@@ -13,9 +14,6 @@ task :install => :java_compile
 
 ADAPTERS = %w[derby h2 hsqldb mssql mysql postgresql sqlite3].map {|a| "activerecord-jdbc#{a}-adapter" }
 DRIVERS  = %w[derby h2 hsqldb jtds mysql postgres sqlite3].map {|a| "jdbc-#{a}" }
-
-root    = File.expand_path("..", __FILE__)
-version = File.read("#{root}/ARJDBC_VERSION").strip
 
 def rake(args)
   ruby "-S", "rake", *args

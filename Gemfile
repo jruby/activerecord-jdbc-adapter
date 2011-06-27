@@ -1,4 +1,7 @@
 source "http://rubygems.org"
 
-gemspec
+# This may wreak havoc on the lockfile, but we need a way to test
+# different AR versions
+gem 'activerecord', ENV['AR_VERSION']
 
+gem 'rake'

@@ -19,7 +19,5 @@ virtually any JDBC-compliant database with your JRuby on Rails application.}
   s.require_paths = ["lib"]
   s.rdoc_options = ["--main", "README.txt", "-SHN", "-f", "darkfish"]
   s.rubyforge_project = %q{jruby-extras}
-
-  # s.add_dependency 'activerecord', "3.1.0.rc4"
 end
 
