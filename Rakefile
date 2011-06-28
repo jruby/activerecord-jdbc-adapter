@@ -45,19 +45,13 @@ end
 end
 
 desc "Build all adapters"
-task "all:release" => "release"
+task "all:release" => ["release", *ADAPTERS.map { |f| "#{f}:release" }]
 
 desc "Install all adapters"
-task "all:install" => "install"
+task "all:install" => ["install", *ADAPTERS.map { |f| "#{f}:install" }]
 
 desc "Release all adapters"
-task "all:build"   => "build"
-
-namespace :all do
-  task :build   => ADAPTERS.map { |f| "#{f}:build"    }
-  task :install => ADAPTERS.map { |f| "#{f}:install"  }
-  task :release => ADAPTERS.map { |f| "#{f}:release"  }
-end
+task "all:build"   => ["build", *ADAPTERS.map { |f| "#{f}:build" }]
 
 task :filelist do
   puts FileList['pkg/**/*'].inspect
