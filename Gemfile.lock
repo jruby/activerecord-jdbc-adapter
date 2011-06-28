@@ -15,7 +15,7 @@ GEM
     builder (2.1.2)
     i18n (0.5.0)
     rake (0.9.2)
-    tzinfo (0.3.28)
+    tzinfo (0.3.29)
 
 PLATFORMS
   java

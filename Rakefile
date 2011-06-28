@@ -26,6 +26,7 @@ end
       Dir.chdir(adapter) do
         rake "build"
       end
+      cp FileList["#{adapter}/pkg/#{adapter}-*.gem"], "pkg"
     end
 
     # bundler handles install => build itself
@@ -43,19 +44,19 @@ end
   end
 end
 
+desc "Build all adapters"
+task "all:release" => "release"
+
+desc "Install all adapters"
+task "all:install" => "install"
+
+desc "Release all adapters"
+task "all:build"   => "build"
 
 namespace :all do
-  desc "Build all adapters"
-  task :build   => "build"
-  task :build   => ADAPTERS.map { |f| "#{f}:build"       }
-
-  desc "Install all adapters"
-  task :install => "install"
-  task :install => ADAPTERS.map { |f| "#{f}:install"     }
-
-  desc "Release all adapters"
-  task :release    => "release"
-  task :release    => ADAPTERS.map { |f| "#{f}:release"  }
+  task :build   => ADAPTERS.map { |f| "#{f}:build"    }
+  task :install => ADAPTERS.map { |f| "#{f}:install"  }
+  task :release => ADAPTERS.map { |f| "#{f}:release"  }
 end
 
 task :filelist do
