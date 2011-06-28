@@ -69,10 +69,10 @@ module ::ArJdbc
             find_select = /\b(SELECT(?:\s+DISTINCT)?)\b(.*)/im
             whole, select, rest_of_query = find_select.match(sql).to_a
             rest_of_query.strip!
-            if rest_of_query.first == "1"
+            if rest_of_query[0] == "1"
               rest_of_query[0] = "*"
             end
-            if rest_of_query.first == "*"
+            if rest_of_query[0] == "*"
               from_table = LimitHelpers.get_table_name(rest_of_query)
               rest_of_query = from_table + '.' + rest_of_query
             end
