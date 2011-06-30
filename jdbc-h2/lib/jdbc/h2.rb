@@ -1,6 +1,5 @@
 module Jdbc
   module H2
-    VERSION = "1.3.153"
     VERSION = "1.3.154"
   end
 end
