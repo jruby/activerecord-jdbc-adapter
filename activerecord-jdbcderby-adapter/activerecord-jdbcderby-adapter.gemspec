@@ -1,5 +1,6 @@
 # -*- encoding: utf-8 -*-
-$:.push File.expand_path("../../lib", __FILE__)
+arjdbc_lib = File.expand_path("../../lib", __FILE__)
+$:.push arjdbc_lib unless $:.include?(arjdbc_lib)
 require 'arjdbc/version'
 version = ArJdbc::Version::VERSION
 Gem::Specification.new do |s|
