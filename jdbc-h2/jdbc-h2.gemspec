@@ -13,7 +13,7 @@ Gem::Specification.new do |s|
   s.email = %q{nick@nicksieger.com, ola.bini@gmail.com}
   s.files = [
     "Rakefile", "README.txt", "LICENSE.txt",
-    *Dir["lib/**/*"].to_a  
+    *Dir["lib/**/*"].to_a
   ]
   s.homepage = %q{http://jruby-extras.rubyforge.org/ActiveRecord-JDBC}
   s.rdoc_options = ["--main", "README.txt"]

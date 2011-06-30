@@ -1,7 +1,7 @@
 # -*- encoding: utf-8 -*-
 
 $LOAD_PATH << File.expand_path('../lib', __FILE__)
-require 'jdbc/postgres
+require 'jdbc/postgres'
 version = Jdbc::Postgres::VERSION
 Gem::Specification.new do |s|
   s.name = %q{jdbc-postgres}
