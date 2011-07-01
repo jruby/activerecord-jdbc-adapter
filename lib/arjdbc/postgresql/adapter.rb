@@ -41,7 +41,7 @@ module ::ArJdbc
       end
 
       def simplified_type(field_type)
-        return :integer if field_type =~ /^serial/i
+        return :integer if field_type =~ /^(big|)serial/i
         return :string if field_type =~ /\[\]$/i || field_type =~ /^interval/i
         return :string if field_type =~ /^(?:point|lseg|box|"?path"?|polygon|circle)/i
         return :datetime if field_type =~ /^timestamp/i
