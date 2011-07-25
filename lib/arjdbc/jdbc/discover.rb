@@ -5,7 +5,7 @@ module ArJdbc
     else
       files = $LOAD_PATH.map do |p|
         discover = File.join(p, 'arjdbc','discover.rb')
-        File.exist?(p) ? discover : nil
+        File.exist?(discover) ? discover : nil
       end.compact
     end
     files.each do |f|
