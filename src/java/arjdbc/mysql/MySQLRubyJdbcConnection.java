@@ -63,12 +63,12 @@ public class MySQLRubyJdbcConnection extends RubyJdbcConnection {
     }
 
     @Override
-    protected IRubyObject jdbcToRuby(Ruby runtime, int column, int type, ResultSet resultSet)
+    protected IRubyObject jdbcToRuby(ThreadContext context, Ruby runtime, int column, int type, ResultSet resultSet)
             throws SQLException {
         if (Types.BOOLEAN == type || Types.BIT == type) {
             return integerToRuby(runtime, resultSet, resultSet.getBoolean(column) ? 1 : 0);
         }
-        return super.jdbcToRuby(runtime, column, type, resultSet);
+        return super.jdbcToRuby(context, runtime, column, type, resultSet);
     }
 
     public static RubyClass createMySQLJdbcConnectionClass(Ruby runtime, RubyClass jdbcConnection) {

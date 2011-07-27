@@ -78,7 +78,7 @@ public class MssqlRubyJdbcConnection extends RubyJdbcConnection {
      * Treat BOOLEAN/BIT as Boolean, rather than the default behaviour of conversion to string
      */
     @Override
-    protected IRubyObject jdbcToRuby(Ruby runtime, int column, int type, ResultSet resultSet)
+    protected IRubyObject jdbcToRuby(ThreadContext context, Ruby runtime, int column, int type, ResultSet resultSet)
             throws SQLException {
         if ( Types.BOOLEAN == type || Types.BIT == type ) {
           return booleanToRuby(runtime, resultSet, resultSet.getBoolean(column));
@@ -86,7 +86,7 @@ public class MssqlRubyJdbcConnection extends RubyJdbcConnection {
         if (type == Types.LONGVARCHAR) {
             type = Types.CLOB;
         }
-        return super.jdbcToRuby(runtime, column, type, resultSet);
+        return super.jdbcToRuby(context, runtime, column, type, resultSet);
     }
 
     /**
