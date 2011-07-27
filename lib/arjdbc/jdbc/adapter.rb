@@ -177,6 +177,7 @@ module ActiveRecord
       end
 
       def execute(sql, name = nil, binds = [])
+        sql = sql.gsub('?') { quote(*binds.shift.reverse) } unless binds.empty?
         if name == :skip_logging
           _execute(sql)
         else
