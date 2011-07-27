@@ -7,7 +7,7 @@
 - #71: fix yield called out of block error
 - Silence Rake::DSL warnings for Rake > 0.9
 
-== 1.1.2 (06/20/11))
+== 1.1.2 (06/20/11)
 
 - Update version of H2 driver from 1.1.107 to 1.3.153 (Ketan
   Padegaonkar, Jeremy Stephens)
@@ -46,7 +46,7 @@
 - GH#31: mssql: Remove extra code breaking mssql w/o limit
 - ACTIVERECORD_JDBC-156: mssql: Logic fix for detecting select_count?
 
-== 1.1.1 (01/14/11))
+== 1.1.1 (01/14/11)
 
 - Arel 2.0.7 compatibility: fix bugs arising from use of Arel 2.0.7 +
   ArJdbc 1.1.0.
