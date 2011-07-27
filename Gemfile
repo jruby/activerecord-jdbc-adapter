@@ -5,3 +5,7 @@ source "http://rubygems.org"
 gem 'activerecord', ENV['AR_VERSION']
 
 gem 'rake'
+
+group :test do
+  gem 'mocha'
+end
