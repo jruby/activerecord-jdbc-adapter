@@ -35,7 +35,6 @@ import arjdbc.jdbc.RubyJdbcConnection;
 import org.jruby.Ruby;
 import org.jruby.RubyClass;
 import org.jruby.runtime.ObjectAllocator;
-import org.jruby.runtime.ThreadContext;
 import org.jruby.runtime.builtin.IRubyObject;
 
 /**
@@ -65,11 +64,11 @@ public class InformixRubyJdbcConnection extends RubyJdbcConnection {
      * Treat LONGVARCHAR as CLOB on Informix for purposes of converting a JDBC value to Ruby.
      */
     @Override
-    protected IRubyObject jdbcToRuby(ThreadContext context, Ruby runtime, int column, int type, ResultSet resultSet)
+    protected IRubyObject jdbcToRuby(Ruby runtime, int column, int type, ResultSet resultSet)
             throws SQLException {
         if (type == Types.LONGVARCHAR) {
             type = Types.CLOB;
         }
-        return super.jdbcToRuby(context, runtime, column, type, resultSet);
+        return super.jdbcToRuby(runtime, column, type, resultSet);
     }
 }

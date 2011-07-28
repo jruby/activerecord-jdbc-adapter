@@ -72,9 +72,6 @@ import org.jruby.runtime.ThreadContext;
 import org.jruby.runtime.builtin.IRubyObject;
 import org.jruby.util.ByteList;
 
-import org.jcodings.Encoding;
-import org.jcodings.specific.UTF8Encoding;
-
 /**
  * Part of our ActiveRecord::ConnectionAdapters::Connection impl.
  */
@@ -812,7 +809,7 @@ public class RubyJdbcConnection extends RubyObject {
         return RubyBignum.bignorm(runtime, new BigInteger(bigint));
     }
 
-    protected IRubyObject jdbcToRuby(ThreadContext context, Ruby runtime, int column, int type, ResultSet resultSet)
+    protected IRubyObject jdbcToRuby(Ruby runtime, int column, int type, ResultSet resultSet)
             throws SQLException {
         try {
             switch (type) {
@@ -822,11 +819,9 @@ public class RubyJdbcConnection extends RubyObject {
             case Types.VARBINARY:
                 return streamToRuby(runtime, resultSet, resultSet.getBinaryStream(column));
             case Types.LONGVARCHAR:
-                IRubyObject result = streamToRuby(runtime, resultSet, resultSet.getBinaryStream(column));
-                if (runtime.is1_9() && (result instanceof RubyString)) {
-                    ((RubyString)result).associateEncoding(UTF8Encoding.INSTANCE);
-                }
-                return result;
+                return runtime.is1_9() ?
+                    readerToRuby(runtime, resultSet, resultSet.getCharacterStream(column)) :
+                    streamToRuby(runtime, resultSet, resultSet.getBinaryStream(column));
             case Types.CLOB:
                 return readerToRuby(runtime, resultSet, resultSet.getCharacterStream(column));
             case Types.TIMESTAMP:
@@ -855,7 +850,7 @@ public class RubyJdbcConnection extends RubyObject {
             RubyHash row = RubyHash.newHash(runtime);
 
             for (int i = 0; i < columnCount; i++) {
-                row.op_aset(context, columns[i].name, jdbcToRuby(context, runtime, columns[i].index, columns[i].type, resultSet));
+                row.op_aset(context, columns[i].name, jdbcToRuby(runtime, columns[i].index, columns[i].type, resultSet));
             }
 
             results.add(row);
