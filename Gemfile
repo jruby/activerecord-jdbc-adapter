@@ -7,5 +7,6 @@ gem 'activerecord', ENV['AR_VERSION']
 gem 'rake'
 
 group :test do
+  gem 'ruby-debug'
   gem 'mocha'
 end

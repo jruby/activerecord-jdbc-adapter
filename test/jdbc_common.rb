@@ -18,6 +18,9 @@ require 'helper'
 require 'test/unit'
 
 # Comment/uncomment to enable logging to be loaded for any of the database adapters
-require 'db/logger' if $DEBUG || ENV['DEBUG']
+if $DEBUG || ENV['DEBUG']
+  require 'db/logger'
+  require 'ruby-debug'
+end
 
 
