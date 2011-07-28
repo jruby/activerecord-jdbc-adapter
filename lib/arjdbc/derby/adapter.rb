@@ -171,7 +171,8 @@ module ::ArJdbc
       execute(add_column_sql)
     end
 
-    def execute(sql, name = nil)
+    def execute(sql, name = nil, binds = [])
+      sql = substitute_binds(sql, binds)
       if sql =~ /\A\s*(UPDATE|INSERT)/i
         i = sql =~ /\swhere\s/im
         if i
@@ -316,7 +317,7 @@ module ::ArJdbc
     end
 
     def quote_column_name(name) #:nodoc:
-      %Q{"#{name.to_s.upcase.gsub(/"/, '""')}"}
+      %Q{"#{name.to_s.upcase.gsub(/\"/, '""')}"}
     end
 
     def quoted_true

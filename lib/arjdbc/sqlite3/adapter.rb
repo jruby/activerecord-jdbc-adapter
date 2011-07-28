@@ -145,7 +145,8 @@ module ::ArJdbc
       end
     end
 
-    def insert_sql(sql, name = nil, pk = nil, id_value = nil, sequence_name = nil) #:nodoc:
+    def insert_sql(sql, name = nil, pk = nil, id_value = nil, sequence_name = nil, binds = []) #:nodoc:
+      sql = substitute_binds(sql, binds)
       @connection.execute_update(sql)
       id_value || last_insert_id
     end
