@@ -176,8 +176,16 @@ module ActiveRecord
         @connection.disconnect!
       end
 
+      def substitute_binds(sql, binds = [])
+        if binds.empty?
+          sql
+        else
+          sql.gsub('?') { quote(*binds.shift.reverse) }
+        end
+      end
+
       def execute(sql, name = nil, binds = [])
-        sql = sql.gsub('?') { quote(*binds.shift.reverse) } unless binds.empty?
+        sql = substitute_binds(sql, binds)
         if name == :skip_logging
           _execute(sql)
         else
@@ -192,15 +200,15 @@ module ActiveRecord
         @connection.execute(sql)
       end
 
-      def jdbc_insert(sql, name = nil, pk = nil, id_value = nil, sequence_name = nil)
-        insert_sql(sql, name, pk, id_value, sequence_name)
+      def jdbc_insert(sql, name = nil, pk = nil, id_value = nil, sequence_name = nil, binds = [])
+        insert_sql(sql, name, pk, id_value, sequence_name, binds)
       end
 
-      def jdbc_update(sql, name = nil) #:nodoc:
-        execute(sql, name)
+      def jdbc_update(sql, name = nil, binds = []) #:nodoc:
+        execute(sql, name, binds)
       end
-      def jdbc_select_all(sql, name = nil)
-        select(sql, name)
+      def jdbc_select_all(sql, name = nil, binds = [])
+        select(sql, name, binds)
       end
 
       # Allow query caching to work even when we override alias_method_chain'd methods
@@ -219,9 +227,40 @@ module ActiveRecord
         rows
       end
 
-      def insert_sql(sql, name = nil, pk = nil, id_value = nil, sequence_name = nil)
-        id = execute(sql, name = nil)
+      def insert_sql(sql, name = nil, pk = nil, id_value = nil, sequence_name = nil, binds = [])
+        p sql, id_value, binds
+        id = execute(sql, name = nil, binds)
         id_value || id
+      end
+
+      ### Rails 3.1 prepared statement support
+
+      # Executes +sql+ statement in the context of this connection using
+      # +binds+ as the bind substitutes.  +name+ is logged along with
+      # the executed +sql+ statement.
+      def exec_query(sql, name = 'SQL', binds = [])
+        execute(sql, name, binds)
+      end
+
+      # Executes insert +sql+ statement in the context of this connection using
+      # +binds+ as the bind substitutes. +name+ is the logged along with
+      # the executed +sql+ statement.
+      def exec_insert(sql, name, binds)
+        exec_query(sql, name, binds)
+      end
+
+      # Executes delete +sql+ statement in the context of this connection using
+      # +binds+ as the bind substitutes. +name+ is the logged along with
+      # the executed +sql+ statement.
+      def exec_delete(sql, name, binds)
+        exec_query(sql, name, binds)
+      end
+
+      # Executes update +sql+ statement in the context of this connection using
+      # +binds+ as the bind substitutes. +name+ is the logged along with
+      # the executed +sql+ statement.
+      def exec_update(sql, name, binds)
+        exec_query(sql, name, binds)
       end
 
       def jdbc_columns(table_name, name = nil)

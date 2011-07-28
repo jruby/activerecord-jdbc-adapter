@@ -245,7 +245,7 @@ module ::ArJdbc
       nil
     end
 
-    def pg_insert(sql, name = nil, pk = nil, id_value = nil, sequence_name = nil)
+    def pg_insert(sql, name = nil, pk = nil, id_value = nil, sequence_name = nil, binds = [])
       # Extract the table from the insert sql. Yuck.
       table = sql.split(" ", 4)[2].gsub('"', '')
 
@@ -253,6 +253,7 @@ module ::ArJdbc
       if supports_insert_with_returning? && id_value.nil?
         pk, sequence_name = *pk_and_sequence_for(table) unless pk
         if pk
+          sql = substitute_binds(sql, binds)
           id_value = select_value("#{sql} RETURNING #{quote_column_name(pk)}")
           clear_query_cache #FIXME: Why now?
           return id_value
@@ -260,7 +261,7 @@ module ::ArJdbc
       end
 
       # Otherwise, plain insert
-      execute(sql, name)
+      execute(sql, name, binds)
 
       # Don't need to look up id_value if we already have it.
       # (and can't in case of non-sequence PK)

@@ -8,6 +8,9 @@ module Rails
     def self.config
       @config ||= Object.new
     end
+    def self.paths
+      @paths ||= Hash.new { [] }
+    end
   end
   def self.application
     Rails::Application
