@@ -228,7 +228,6 @@ module ActiveRecord
       end
 
       def insert_sql(sql, name = nil, pk = nil, id_value = nil, sequence_name = nil, binds = [])
-        p sql, id_value, binds
         id = execute(sql, name = nil, binds)
         id_value || id
       end

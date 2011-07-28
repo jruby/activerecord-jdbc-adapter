@@ -106,6 +106,10 @@ module ::ArJdbc
       "= BINARY"
     end
 
+    def case_sensitive_modifier(node)
+      Arel::Nodes::Bin.new(node)
+    end
+
     def limited_update_conditions(where_sql, quoted_table_name, quoted_primary_key)
       where_sql
     end

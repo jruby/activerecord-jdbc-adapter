@@ -12,4 +12,6 @@ end
 
 class StringId < ActiveRecord::Base
   def self.table_name () "string_ids" end
+  # Fake out a table without a primary key
+  self.primary_key = "id"
 end
