@@ -35,8 +35,8 @@ module ::ArJdbc
       tp
     end
 
-    def insert(sql, name = nil, pk = nil, id_value = nil, sequence_name = nil) # :nodoc:
-      execute(sql, name)
+    def insert(sql, name = nil, pk = nil, id_value = nil, sequence_name = nil, binds = []) # :nodoc:
+      execute(sql, name, binds)
       id_value
     end
 

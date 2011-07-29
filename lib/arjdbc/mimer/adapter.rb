@@ -44,9 +44,9 @@ module ArJdbc
       execute "DROP INDEX #{index_name(table_name, options)}"
     end
 
-    def insert(sql, name = nil, pk = nil, id_value = nil, sequence_name = nil) #:nodoc:
+    def insert(sql, name = nil, pk = nil, id_value = nil, sequence_name = nil, binds = []) #:nodoc:
       if pk.nil? # Who called us? What does the sql look like? No idea!
-        execute sql, name
+        execute sql, name, binds
       elsif id_value # Pre-assigned id
         log(sql, name) { @connection.execute_insert sql,pk }
       else # Assume the sql contains a bind-variable for the id
@@ -104,14 +104,14 @@ module ArJdbc
       @offset = options[:offset]
     end
 
-    def select_all(sql, name = nil)
+    def select_all(sql, name = nil, binds = [])
       @offset ||= 0
       if !@limit || @limit == -1
         range = @offset..-1
       else
         range = @offset...(@offset+@limit)
       end
-      select(sql, name)[range]
+      select(sql, name, binds)[range]
     ensure
       @limit = @offset = nil
     end

@@ -130,9 +130,9 @@ module ::ArJdbc
     end
 
   private
-    def select(sql, name = nil)
+    def select(sql, *rest)
       # Informix does not like "= NULL", "!= NULL", or "<> NULL".
-      execute(sql.gsub(/(!=|<>)\s*null/i, "IS NOT NULL").gsub(/=\s*null/i, "IS NULL"), name)
+      execute(sql.gsub(/(!=|<>)\s*null/i, "IS NOT NULL").gsub(/=\s*null/i, "IS NULL"), *rest)
     end
   end # module Informix
 end # module ::ArJdbc

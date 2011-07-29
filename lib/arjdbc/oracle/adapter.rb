@@ -163,12 +163,12 @@ module ::ArJdbc
       defined?(::Arel::SqlLiteral) && ::Arel::SqlLiteral === value
     end
 
-    def ora_insert(sql, name = nil, pk = nil, id_value = nil, sequence_name = nil) #:nodoc:
+    def ora_insert(sql, name = nil, pk = nil, id_value = nil, sequence_name = nil, binds = []) #:nodoc:
       if (id_value && !sql_literal?(id_value)) || pk.nil?
         # Pre-assigned id or table without a primary key
         # Presence of #to_sql means an Arel literal bind variable
         # that should use #execute_id_insert below
-        execute sql, name
+        execute sql, name, binds
       else
         # Assume the sql contains a bind-variable for the id
         # Extract the table from the insert sql. Yuck.
@@ -406,8 +406,8 @@ module ::ArJdbc
       end
     end
 
-    def select(sql, name=nil)
-      records = execute(sql,name)
+    def select(sql, name = nil, binds = [])
+      records = execute(sql, name, binds)
       records.each do |col|
           col.delete('raw_rnum_')
       end

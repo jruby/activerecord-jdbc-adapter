@@ -381,7 +381,8 @@ module ::ArJdbc
       end
     end
 
-    def select(sql, name = nil)
+    def select(sql, name = nil, binds = [])
+      sql = substitute_binds(sql, binds)
       log(sql, name) do
         @connection.execute_query(sql)
       end
