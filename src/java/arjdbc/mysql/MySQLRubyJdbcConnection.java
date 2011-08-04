@@ -26,13 +26,20 @@
 package arjdbc.mysql;
 
 import java.sql.Connection;
+import java.sql.DatabaseMetaData;
+import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.sql.ResultSet;
 import java.sql.Statement;
 import java.sql.Types;
+import java.util.ArrayList;
+import java.util.List;
 
+import arjdbc.jdbc.SQLBlock;
 import org.jruby.Ruby;
 import org.jruby.RubyClass;
+import org.jruby.RubyModule;
+import org.jruby.RubyString;
 import org.jruby.runtime.ObjectAllocator;
 import org.jruby.runtime.ThreadContext;
 import org.jruby.runtime.builtin.IRubyObject;
@@ -84,4 +91,69 @@ public class MySQLRubyJdbcConnection extends RubyJdbcConnection {
             return new MySQLRubyJdbcConnection(runtime, klass);
         }
     };
+
+  @Override
+  protected IRubyObject indexes(final ThreadContext context, final String tableNameArg, String name, final String schemaNameArg) {
+    return (IRubyObject) withConnectionAndRetry(context, new SQLBlock() {
+      @Override
+      public Object call(Connection connection) throws SQLException {
+        Ruby runtime = context.getRuntime();
+        DatabaseMetaData metadata = connection.getMetaData();
+        String jdbcTableName = caseConvertIdentifierForJdbc(metadata, tableNameArg);
+        String jdbcSchemaName = caseConvertIdentifierForJdbc(metadata, schemaNameArg);
+
+        StringBuilder buffer = new StringBuilder("SHOW KEYS FROM ");
+        if (jdbcSchemaName != null) buffer.append(jdbcSchemaName).append(".");
+        buffer.append(jdbcTableName);
+        buffer.append(" WHERE key_name != 'PRIMARY'");
+        String query = buffer.toString();
+
+        List<IRubyObject> indexes = new ArrayList<IRubyObject>();
+        PreparedStatement stmt = null;
+        ResultSet rs = null;
+
+        try {
+          stmt = connection.prepareStatement(query);
+          rs = stmt.executeQuery();
+
+          IRubyObject rubyTableName = RubyString.newUnicodeString(runtime, caseConvertIdentifierForJdbc(metadata, tableNameArg));
+          RubyModule indexDefinitionClass = getConnectionAdapters(runtime).getClass("IndexDefinition");
+          String currentKeyName = null;
+
+          while (rs.next()) {
+            String keyName = caseConvertIdentifierForRails(metadata, rs.getString("key_name"));
+
+            if (!keyName.equals(currentKeyName)) {
+              currentKeyName = keyName;
+
+              boolean nonUnique = rs.getBoolean("non_unique");
+              IRubyObject indexDefinition = indexDefinitionClass.callMethod(context, "new", new IRubyObject[]{
+                rubyTableName,
+                RubyString.newUnicodeString(runtime, keyName),
+                runtime.newBoolean(!nonUnique),
+                runtime.newArray(),
+                runtime.newArray()
+              });
+
+              indexes.add(indexDefinition);
+            }
+
+            IRubyObject lastIndex = indexes.get(indexes.size() - 1);
+            if (lastIndex != null) {
+              String columnName = caseConvertIdentifierForRails(metadata, rs.getString("column_name"));
+              int length = rs.getInt("sub_part");
+
+              lastIndex.callMethod(context, "columns").callMethod(context, "<<", RubyString.newUnicodeString(runtime, columnName));
+              lastIndex.callMethod(context, "lengths").callMethod(context, "<<", runtime.newFixnum(length));
+            }
+          }
+
+          return runtime.newArray(indexes);
+        } finally {
+          close(rs);
+          close(stmt);
+        }
+      }
+    });
+  }
 }
