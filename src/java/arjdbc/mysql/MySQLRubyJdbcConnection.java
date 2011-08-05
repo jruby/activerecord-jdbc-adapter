@@ -39,6 +39,7 @@ import arjdbc.jdbc.SQLBlock;
 import org.jruby.Ruby;
 import org.jruby.RubyClass;
 import org.jruby.RubyModule;
+import org.jruby.RubyNil;
 import org.jruby.RubyString;
 import org.jruby.runtime.ObjectAllocator;
 import org.jruby.runtime.ThreadContext;
@@ -142,9 +143,10 @@ public class MySQLRubyJdbcConnection extends RubyJdbcConnection {
             if (lastIndex != null) {
               String columnName = caseConvertIdentifierForRails(metadata, rs.getString("column_name"));
               int length = rs.getInt("sub_part");
+              boolean lengthIsNull = rs.wasNull();
 
               lastIndex.callMethod(context, "columns").callMethod(context, "<<", RubyString.newUnicodeString(runtime, columnName));
-              lastIndex.callMethod(context, "lengths").callMethod(context, "<<", runtime.newFixnum(length));
+              lastIndex.callMethod(context, "lengths").callMethod(context, "<<", lengthIsNull ? runtime.getNil() : runtime.newFixnum(length));
             }
           }
 
