@@ -342,6 +342,19 @@ module ::ArJdbc
     end
 
     protected
+    def quoted_columns_for_index(column_names, options = {})
+      length = options[:length] if options.is_a?(Hash)
+
+      case length
+        when Hash
+          column_names.map { |name| length[name] ? "#{quote_column_name(name)}(#{length[name]})" : quote_column_name(name) }
+        when Fixnum
+          column_names.map { |name| "#{quote_column_name(name)}(#{length})" }
+        else
+          column_names.map { |name| quote_column_name(name) }
+      end
+    end
+
     def translate_exception(exception, message)
       return super unless exception.respond_to?(:errno)
 
