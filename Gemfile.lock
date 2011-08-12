@@ -28,7 +28,7 @@ PLATFORMS
   java
 
 DEPENDENCIES
-  activerecord (= 3.0.9)
+  activerecord
   mocha
   rake
   ruby-debug
