@@ -36,7 +36,7 @@ import java.sql.Statement;
  * @author nicksieger
  */
 public abstract class SQLBlock {
-    abstract Object call(Connection c) throws SQLException;
+    protected abstract Object call(Connection c) throws SQLException;
 
     public void close(Statement statement) {
         RubyJdbcConnection.close(statement);
