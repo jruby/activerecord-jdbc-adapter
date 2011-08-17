@@ -303,22 +303,32 @@ module ::ArJdbc
       return @connection.columns_internal(table_name, name, s)
     end
 
-    # From postgresql_adapter.rb
+    # Sets the maximum number columns postgres has, default 32
+    def multi_column_index_limit=(limit)
+      @multi_column_index_limit = limit
+    end
+    
+    # Gets the maximum number columns postgres has, default 32
+    def multi_column_index_limit
+      @multi_column_index_limit || 32
+    end
+
+    # Based on postgresql_adapter.rb
     def indexes(table_name, name = nil)
+      schema_search_path = @config[:schema_search_path] || select_rows('SHOW search_path')[0][0]
+      schemas = schema_search_path.split(/,/).map { |p| quote(p) }.join(',')
       result = select_rows(<<-SQL, name)
         SELECT i.relname, d.indisunique, a.attname, a.attnum, d.indkey
-          FROM pg_class t, pg_class i, pg_index d, pg_attribute a
+          FROM pg_class t, pg_class i, pg_index d, pg_attribute a,
+          generate_series(0,#{multi_column_index_limit - 1}) AS s(i)
          WHERE i.relkind = 'i'
            AND d.indexrelid = i.oid
            AND d.indisprimary = 'f'
            AND t.oid = d.indrelid
            AND t.relname = '#{table_name}'
+           AND i.relnamespace IN (SELECT oid FROM pg_namespace WHERE nspname IN (#{schemas}) )
            AND a.attrelid = t.oid
-           AND ( d.indkey[0]=a.attnum OR d.indkey[1]=a.attnum
-              OR d.indkey[2]=a.attnum OR d.indkey[3]=a.attnum
-              OR d.indkey[4]=a.attnum OR d.indkey[5]=a.attnum
-              OR d.indkey[6]=a.attnum OR d.indkey[7]=a.attnum
-              OR d.indkey[8]=a.attnum OR d.indkey[9]=a.attnum )
+           AND d.indkey[s.i]=a.attnum
         ORDER BY i.relname
       SQL
 
@@ -336,8 +346,8 @@ module ::ArJdbc
           current_index = row[0]
         end
         insertion_order = row[3]
-        insertion_index = index_order.index(insertion_order)
-        indexes.last.columns[insertion_index] = row[2]
+        ind = index_order.index(insertion_order)
+        indexes.last.columns[ind] = row[2]
       end
 
       indexes
