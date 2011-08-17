@@ -306,7 +306,7 @@ module ::ArJdbc
     # From postgresql_adapter.rb
     def indexes(table_name, name = nil)
       result = select_rows(<<-SQL, name)
-        SELECT i.relname, d.indisunique, a.attname
+        SELECT i.relname, d.indisunique, a.attname, a.attnum, d.indkey
           FROM pg_class t, pg_class i, pg_index d, pg_attribute a
          WHERE i.relkind = 'i'
            AND d.indexrelid = i.oid
@@ -325,13 +325,19 @@ module ::ArJdbc
       current_index = nil
       indexes = []
 
+      insertion_order = []
+      index_order = nil
+      
       result.each do |row|
         if current_index != row[0]
+        
+          (index_order = row[4].split(' ')).each_with_index{ |v, i| index_order[i] = v.to_i }
           indexes << ::ActiveRecord::ConnectionAdapters::IndexDefinition.new(table_name, row[0], row[1] == "t", [])
           current_index = row[0]
         end
-
-        indexes.last.columns << row[2]
+        insertion_order = row[3]
+        insertion_index = index_order.index(insertion_order)
+        indexes.last.columns[insertion_index] = row[2]
       end
 
       indexes
