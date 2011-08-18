@@ -176,7 +176,8 @@ module ActiveRecord
         @connection.disconnect!
       end
 
-      def substitute_binds(sql, binds = [])
+      def substitute_binds(manager, binds = [])
+        sql = extract_sql(manager)
         if binds.empty?
           sql
         else
@@ -316,7 +317,16 @@ module ActiveRecord
         puts e.backtrace if $DEBUG || ENV['DEBUG']
         super
       end
-      protected :translate_exception
+
+      def extract_sql(obj)
+        if obj.respond_to? :to_sql
+          obj.send :to_sql
+        else
+          obj
+        end
+      end
+
+      protected :translate_exception, :extract_sql
     end
   end
 end
