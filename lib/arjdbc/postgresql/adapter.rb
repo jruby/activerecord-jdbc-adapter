@@ -101,8 +101,9 @@ module ::ArJdbc
       'PostgreSQL'
     end
 
-    def arel2_visitors
-      {'jdbcpostgresql' => ::Arel::Visitors::PostgreSQL}
+
+    def visitor_for(pool) # :nodoc:
+      ::Arel::Visitors::PostgreSQL.new(pool)
     end
 
     def postgresql_version
@@ -246,6 +247,8 @@ module ::ArJdbc
     end
 
     def pg_insert(sql, name = nil, pk = nil, id_value = nil, sequence_name = nil, binds = [])
+      sql = substitute_binds(sql, binds)
+
       # Extract the table from the insert sql. Yuck.
       table = sql.split(" ", 4)[2].gsub('"', '')
 
