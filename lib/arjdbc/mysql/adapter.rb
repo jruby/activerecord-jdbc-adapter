@@ -414,6 +414,10 @@ module ActiveRecord::ConnectionAdapters
       configure_connection
     end
 
+    def self.visitor_for(pool) # :nodoc:
+      ::Arel::Visitors::MySQL.new(pool)
+    end
+
     def adapter_spec(config)
       # return nil to avoid extending ArJdbc::MySQL, which we've already done
     end
