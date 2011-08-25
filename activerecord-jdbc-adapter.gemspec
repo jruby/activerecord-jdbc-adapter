@@ -10,10 +10,10 @@ Gem::Specification.new do |s|
   s.email       = %q{nick@nicksieger.com, ola.bini@gmail.com}
   s.homepage = %q{http://jruby-extras.rubyforge.org/activerecord-jdbc-adapter}
   s.summary = %q{JDBC adapter for ActiveRecord, for use within JRuby on Rails.}
-  s.description = %q{activerecord-jdbc-adapter is a database adapter for Rails' ActiveRecord
+  s.description = %q{activerecord-jdbc-adapter is a database adapter for Rails\' ActiveRecord
 component that can be used with JRuby[http://www.jruby.org/]. It allows use of
 virtually any JDBC-compliant database with your JRuby on Rails application.}
-  s.files         = `git ls-files | grep -v activerecord-jdbc[^-]`.split("\n")
+  s.files         = `git ls-files`.split("\n").reject {|v| v =~ /^(activerecord-jdbc[^-]|jdbc-)/}
   s.test_files    = `git ls-files -- {test,spec,features}/*`.split("\n")
   s.executables   = `git ls-files -- bin/*`.split("\n").map{|f| File.basename(f) }
   s.require_paths = ["lib"]
