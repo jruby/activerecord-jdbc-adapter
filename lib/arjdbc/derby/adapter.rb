@@ -50,7 +50,7 @@ module ::ArJdbc
       def default_value(value)
         # jdbc returns column default strings with actual single quotes around the value.
         return $1 if value =~ /^'(.*)'$/
-
+        return nil if value == "GENERATED_BY_DEFAULT"
         value
       end
     end
@@ -172,7 +172,7 @@ module ::ArJdbc
     end
 
     def execute(sql, name = nil, binds = [])
-      sql = substitute_binds(sql, binds)
+      sql = extract_sql(sql)
       if sql =~ /\A\s*(UPDATE|INSERT)/i
         i = sql =~ /\swhere\s/im
         if i
