@@ -196,7 +196,7 @@ module ::ArJdbc
     end
 
     def select(sql, name=nil, binds = [])
-      execute(sql, name, binds = []).map do |row|
+      execute(sql, name, binds).map do |row|
         record = {}
         row.each_key do |key|
           if key.is_a?(String)
