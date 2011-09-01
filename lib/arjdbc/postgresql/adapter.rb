@@ -102,8 +102,8 @@ module ::ArJdbc
     end
 
 
-    def visitor_for(pool) # :nodoc:
-      ::Arel::Visitors::PostgreSQL.new(pool)
+    def self.arel2_visitors(config)
+      {}.tap {|v| %w(postgresql pg jdbcpostgresql).each {|a| v[a] = ::Arel::Visitors::PostgreSQL } }
     end
 
     def postgresql_version

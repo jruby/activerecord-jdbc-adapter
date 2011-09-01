@@ -25,13 +25,16 @@ module ActiveRecord
 
       def initialize(connection, logger, config)
         @config = config
-        spec = adapter_spec config
+        spec = config[:adapter_spec] || adapter_spec(config)
         unless connection
           connection_class = jdbc_connection_class spec
           connection = connection_class.new config
         end
         super(connection, logger)
-        extend spec if spec
+        if spec && (config[:adapter_class].nil? || config[:adapter_class] == JdbcAdapter)
+          extend spec
+          config[:adapter_spec] = spec
+        end
         configure_arel2_visitors(config)
         connection.adapter = self
         JndiConnectionPoolCallbacks.prepare(self, connection)
@@ -89,15 +92,26 @@ module ActiveRecord
         'JDBC'
       end
 
-      def arel2_visitors
-        {}
+      def self.visitor_for(pool)
+        config = pool.spec.config
+        adapter = config[:adapter]
+        adapter_spec = config[:adapter_spec] || self
+        if adapter =~ /^(jdbc|jndi)$/
+          adapter_spec.arel2_visitors(config).values.first.new(pool)
+        else
+          adapter_spec.arel2_visitors(config)[adapter].new(pool)
+        end
+      end
+
+      def self.arel2_visitors(config)
+        { 'jdbc' => ::Arel::Visitors::ToSql }
       end
 
       def configure_arel2_visitors(config)
         if defined?(::Arel::Visitors::VISITORS)
           visitors = ::Arel::Visitors::VISITORS
           visitor = nil
-          arel2_visitors.each do |k,v|
+          self.class.arel2_visitors(config).each do |k,v|
             visitor = v
             visitors[k] = v
           end

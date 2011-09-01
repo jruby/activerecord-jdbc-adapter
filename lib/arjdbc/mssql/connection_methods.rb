@@ -5,6 +5,7 @@ class ActiveRecord::Base
       config[:host] ||= "localhost"
       config[:port] ||= 1433
       config[:driver] ||= "net.sourceforge.jtds.jdbc.Driver"
+      config[:adapter_spec] = ::ArJdbc::MsSQL
 
       url = "jdbc:jtds:sqlserver://#{config[:host]}:#{config[:port]}/#{config[:database]}"
 

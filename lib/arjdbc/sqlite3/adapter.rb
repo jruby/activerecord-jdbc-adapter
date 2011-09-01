@@ -80,8 +80,8 @@ module ::ArJdbc
       'SQLite'
     end
 
-    def arel2_visitors
-      {'jdbcsqlite3' => ::Arel::Visitors::SQLite}
+    def self.arel2_visitors(config)
+      {}.tap {|v| %w(sqlite3 jdbcsqlite3).each {|x| v[x] = ::Arel::Visitors::SQLite } }
     end
 
     def supports_ddl_transactions?
@@ -354,10 +354,6 @@ module ActiveRecord::ConnectionAdapters
 
   class SQLite3Adapter < JdbcAdapter
     include ArJdbc::SQLite3
-
-    def adapter_spec(config)
-      # return nil to avoid extending ArJdbc::SQLite3, which we've already done
-    end
 
     def jdbc_connection_class(spec)
       ::ArJdbc::SQLite3.jdbc_connection_class

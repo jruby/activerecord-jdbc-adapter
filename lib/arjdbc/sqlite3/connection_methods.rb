@@ -13,6 +13,7 @@ class ActiveRecord::Base
       config[:url] ||= "jdbc:sqlite:#{database}"
       config[:driver] ||= "org.sqlite.JDBC"
       config[:adapter_class] = ActiveRecord::ConnectionAdapters::SQLite3Adapter
+      config[:adapter_spec] = ::ArJdbc::SQLite3
       jdbc_connection(config)
     end
 

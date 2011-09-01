@@ -38,9 +38,9 @@ module ::ArJdbc
       'Hsqldb'
     end
 
-    def arel2_visitors
+    def self.arel2_visitors(config)
       require 'arel/visitors/hsqldb'
-      {'hsqldb' => ::Arel::Visitors::HSQLDB, 'jdbchsqldb' => ::Arel::Visitors::HSQLDB}
+      {}.tap {|v| %w(hsqldb jdbchsqldb).each {|a| v[a] = ::Arel::Visitors::HSQLDB } }
     end
 
     def modify_types(tp)

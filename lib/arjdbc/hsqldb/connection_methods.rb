@@ -5,6 +5,7 @@ module ActiveRecord
         require "arjdbc/hsqldb"
         config[:url] ||= "jdbc:hsqldb:#{config[:database]}"
         config[:driver] ||= "org.hsqldb.jdbcDriver"
+        config[:adapter_spec] = ::ArJdbc::HSQLDB
         embedded_driver(config)
       end
 

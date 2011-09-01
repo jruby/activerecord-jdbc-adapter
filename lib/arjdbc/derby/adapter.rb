@@ -59,9 +59,9 @@ module ::ArJdbc
       'Derby'
     end
 
-    def arel2_visitors
+    def self.arel2_visitors(config)
       require 'arel/visitors/derby'
-      {'derby' => ::Arel::Visitors::Derby, 'jdbcderby' => ::Arel::Visitors::Derby}
+      {}.tap {|v| %w(derby jdbcderby).each {|a| v[a] = ::Arel::Visitors::Derby } }
     end
 
     include ArJdbc::MissingFunctionalityHelper

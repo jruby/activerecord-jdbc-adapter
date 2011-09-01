@@ -169,9 +169,9 @@ module ArJdbc
       'DB2'
     end
 
-    def arel2_visitors
+    def self.arel2_visitors(config)
       require 'arel/visitors/db2'
-      {'db2' => ::Arel::Visitors::DB2, 'as400' => ::Arel::Visitors::DB2}
+      {}.tap {|v| %w(db2 as400).each {|a| v[a] = ::Arel::Visitors::DB2 } }
     end
 
     def add_limit_offset!(sql, options)

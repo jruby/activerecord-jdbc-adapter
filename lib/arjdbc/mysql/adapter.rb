@@ -98,8 +98,8 @@ module ::ArJdbc
       'MySQL'
     end
 
-    def arel2_visitors
-      {'jdbcmysql' => ::Arel::Visitors::MySQL}
+    def self.arel2_visitors(config)
+      {}.tap {|v| %w(mysql mysql2 jdbcmysql).each {|a| v[a] = ::Arel::Visitors::MySQL } }
     end
 
     def case_sensitive_equality_operator
@@ -414,14 +414,6 @@ module ActiveRecord::ConnectionAdapters
       configure_connection
     end
 
-    def self.visitor_for(pool) # :nodoc:
-      ::Arel::Visitors::MySQL.new(pool)
-    end
-
-    def adapter_spec(config)
-      # return nil to avoid extending ArJdbc::MySQL, which we've already done
-    end
-
     def jdbc_connection_class(spec)
       ::ArJdbc::MySQL.jdbc_connection_class
     end
@@ -431,8 +423,8 @@ module ActiveRecord::ConnectionAdapters
     end
 
     alias_chained_method :columns, :query_cache, :jdbc_columns
-    protected
 
+    protected
     def exec_insert(sql, name, binds)
       binds = binds.dup
 

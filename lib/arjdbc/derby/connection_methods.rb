@@ -4,6 +4,7 @@ module ActiveRecord
       def derby_connection(config)
         config[:url] ||= "jdbc:derby:#{config[:database]};create=true"
         config[:driver] ||= "org.apache.derby.jdbc.EmbeddedDriver"
+        config[:adapter_spec] = ::ArJdbc::Derby
         conn = embedded_driver(config)
         md = conn.jdbc_connection.meta_data
         if md.database_major_version < 10 || (md.database_major_version == 10 && md.database_minor_version < 5)

@@ -34,10 +34,10 @@ module ::ArJdbc
       ::ActiveRecord::ConnectionAdapters::MssqlJdbcConnection
     end
 
-    def arel2_visitors
+    def self.arel2_visitors(config)
       require 'arel/visitors/sql_server'
-      visitor_class = sqlserver_version == "2000" ? ::Arel::Visitors::SQLServer2000 : ::Arel::Visitors::SQLServer
-      { 'mssql' => visitor_class, 'sqlserver' => visitor_class, 'jdbcmssql' => visitor_class}
+      visitor_class = config[:sqlserver_version] == "2000" ? ::Arel::Visitors::SQLServer2000 : ::Arel::Visitors::SQLServer
+      {}.tap {|v| %w(mssql sqlserver jdbcmssql).each {|x| v[x] = visitor_class } }
     end
 
     def sqlserver_version
@@ -45,7 +45,8 @@ module ::ArJdbc
     end
 
     def add_version_specific_add_limit_offset
-      if sqlserver_version == "2000"
+      config[:sqlserver_version] = version = sqlserver_version
+      if version == "2000"
         extend LimitHelpers::SqlServer2000AddLimitOffset
       else
         extend LimitHelpers::SqlServerAddLimitOffset

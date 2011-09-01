@@ -23,9 +23,9 @@ module ::ArJdbc
       'Firebird'
     end
 
-    def arel2_visitors
+    def self.arel2_visitors(config)
       require 'arel/visitors/firebird'
-      {'firebird' => ::Arel::Visitors::Firebird, 'firebirdsql' => ::Arel::Visitors::Firebird}
+      {}.tap {|v| %w(firebird firebirdsql).each {|a| v[a] = ::Arel::Visitors::Firebird } }
     end
 
     def modify_types(tp)

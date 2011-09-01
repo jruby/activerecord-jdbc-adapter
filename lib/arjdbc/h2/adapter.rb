@@ -12,8 +12,9 @@ module ArJdbc
       'H2'
     end
 
-    def arel2_visitors
-      super.merge 'h2' => ::Arel::Visitors::HSQLDB, 'jdbch2' => ::Arel::Visitors::HSQLDB
+    def self.arel2_visitors(config)
+      v = HSQLDB.arel2_visitors(config)
+      v.merge({}.tap {|v| %w(h2 jdbch2).each {|a| v[a] = ::Arel::Visitors::HSQLDB } })
     end
 
     def h2_adapter

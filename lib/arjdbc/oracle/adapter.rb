@@ -110,7 +110,7 @@ module ::ArJdbc
       'Oracle'
     end
 
-    def arel2_visitors
+    def self.arel2_visitors(config)
       { 'oracle' => Arel::Visitors::Oracle }
     end
 
