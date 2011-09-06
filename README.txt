@@ -9,8 +9,7 @@ MySQL, PostgreSQL, SQLite3, Oracle, Microsoft SQL Server, DB2,
 FireBird, Derby, HSQLDB, H2, and Informix.
 
 Other databases will require testing and likely a custom configuration module.
-Please join the activerecord-jdbc
-mailing-lists[http://kenai.com/projects/activerecord-jdbc/lists] to help us discover
+Please join the JRuby mailing-list[http://jruby.org/community] to help us discover
 support for more databases.
 
 == Using ActiveRecord JDBC
@@ -34,7 +33,7 @@ adapters are available:
 2a. For Rails 3, if you're generating a new application, use the
 following command to generate your application:
 
-   jruby -S rails new sweetapp -m http://jruby.org/rails3.rb
+   jruby -S rails new sweetapp
 
 2b. Otherwise, you'll need to perform some extra configuration steps
 to prepare your Rails application for JDBC.
@@ -43,11 +42,13 @@ If you're using Rails 3, you'll need to modify your Gemfile to use the
 activerecord-jdbc-adapter gem under JRuby. Change your Gemfile to look
 like the following (using sqlite3 as an example):
 
-    if defined?(JRUBY_VERSION)
-      gem 'activerecord-jdbc-adapter'
-      gem 'jdbc-sqlite3'
-    else
-      gem 'sqlite3-ruby', :require => 'sqlite3'
+    platforms :ruby do
+      gem 'sqlite3'
+    end
+
+    platforms :jruby do
+      gem 'jruby-openssl'
+      gem 'activerecord-jdbcsqlite3-adapter'
     end
 
 If you're using Rails 2:
@@ -148,11 +149,9 @@ something's a bug, feel free to pre-report it on the mailing lists.
 
 == Project Info
 
-* Mailing Lists: http://kenai.com/projects/activerecord-jdbc/lists
-* Issues: http://kenai.com/jira/browse/ACTIVERECORD_JDBC
-* Source:
- git://github.com/nicksieger/activerecord-jdbc-adapter.git
- git://kenai.com/activerecord-jdbc~main 
+* Mailing Lists: http://jruby.org/community
+* Issues: https://github.com/jruby/activerecord-jdbc-adapter/issues
+* Source: git://github.com/jruby/activerecord-jdbc-adapter.git
 
 == Running AR-JDBC's Tests
 
