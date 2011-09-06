@@ -1,3 +1,5 @@
+= Activerecord-jdbc-adapter
+
 activerecord-jdbc-adapter is a database adapter for Rails' ActiveRecord
 component that can be used with JRuby[http://www.jruby.org/]. It allows use of
 virtually any JDBC-compliant database with your JRuby on Rails application.
