@@ -26,6 +26,7 @@ module ActiveRecord
       def initialize(connection, logger, config)
         @config = config
         spec = config[:adapter_spec] || adapter_spec(config)
+        config[:adapter_spec] ||= spec
         unless connection
           connection_class = jdbc_connection_class spec
           connection = connection_class.new config
@@ -33,7 +34,6 @@ module ActiveRecord
         super(connection, logger)
         if spec && (config[:adapter_class].nil? || config[:adapter_class] == JdbcAdapter)
           extend spec
-          config[:adapter_spec] = spec
         end
         configure_arel2_visitors(config)
         connection.adapter = self
