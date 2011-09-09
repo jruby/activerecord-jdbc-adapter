@@ -12,6 +12,13 @@ else
   task :test => [:test_mysql]
 end
 
+def set_compat_version(task)
+  task.ruby_opts << '-v'
+  if defined?(JRUBY_VERSION)
+    task.ruby_opts << "--#{RUBY_VERSION[/^(\d+\.\d+)/, 1]}"
+  end
+end
+
 def declare_test_task_for(adapter, options = {})
   driver = options[:driver] || adapter
   Rake::TestTask.new("test_#{adapter}") do |t|
@@ -21,6 +28,7 @@ def declare_test_task_for(adapter, options = {})
     end
     t.test_files = files
     t.libs = []
+    set_compat_version(t)
     if defined?(JRUBY_VERSION)
       t.ruby_opts << "-rjdbc/#{driver}"
       t.libs << "lib" << "jdbc-#{driver}/lib"
@@ -42,11 +50,13 @@ declare_test_task_for :sqlite3
 Rake::TestTask.new(:test_jdbc) do |t|
   t.test_files = FileList['test/generic_jdbc_connection_test.rb']
   t.libs << 'test' << 'jdbc-mysql/lib'
+  set_compat_version(t)
 end
 
 Rake::TestTask.new(:test_jndi) do |t|
   t.test_files = FileList['test/jndi*_test.rb']
   t.libs << 'test' << 'jdbc-derby/lib'
+  set_compat_version(t)
 end
 
 task :test_postgresql => [:test_postgres]
@@ -59,6 +69,7 @@ task :test_pgsql => [:test_postgres]
     t.libs = []
     t.libs << 'lib' if defined?(JRUBY_VERSION)
     t.libs << 'test'
+    set_compat_version(t)
   end
 end
 
@@ -66,16 +77,19 @@ end
 Rake::TestTask.new(:test_jdbc_adapters) do | t |
   t.test_files = FileList[ 'test/jdbc_adapter/jdbc_sybase_test.rb' ]
   t.libs << 'test'
+  set_compat_version(t)
 end
 
 # Ensure that the jTDS driver is in your classpath before launching rake
 Rake::TestTask.new(:test_sybase_jtds) do |t|
   t.test_files = FileList['test/sybase_jtds_simple_test.rb']
   t.libs << 'test'
+  set_compat_version(t)
 end
 
 # Ensure that the jConnect driver is in your classpath before launching rake
 Rake::TestTask.new(:test_sybase_jconnect) do |t|
   t.test_files = FileList['test/sybase_jconnect_simple_test.rb']
   t.libs << 'test'
+  set_compat_version(t)
 end
