@@ -227,14 +227,16 @@ module ActiveRecord
         select(sql, name, binds)
       end
 
-      # Allow query caching to work even when we override alias_method_chain'd methods
-      alias_chained_method :select_all, :query_cache, :jdbc_select_all
-      alias_chained_method :update, :query_dirty, :jdbc_update
-      alias_chained_method :insert, :query_dirty, :jdbc_insert
+      if ActiveRecord::VERSION::MAJOR < 3
+        # Allow query caching to work even when we override alias_method_chain'd methods
+        alias_chained_method :select_all, :query_cache, :jdbc_select_all
+        alias_chained_method :update, :query_dirty, :jdbc_update
+        alias_chained_method :insert, :query_dirty, :jdbc_insert
 
-      # Do we need this? Not in AR 3.
-      def select_one(sql, name = nil)
-        select(sql, name).first
+        # Do we need this? Not in AR 3.
+        def select_one(sql, name = nil)
+          select(sql, name).first
+        end
       end
 
       def select_rows(sql, name = nil)
