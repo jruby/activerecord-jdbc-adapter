@@ -239,6 +239,10 @@ module ActiveRecord
         end
       end
 
+      def last_inserted_id(result)
+        result
+      end
+
       def select_rows(sql, name = nil)
         rows = []
         select(sql, name).each {|row| rows << row.values }
