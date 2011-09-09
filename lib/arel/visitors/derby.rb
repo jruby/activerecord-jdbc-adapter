@@ -7,10 +7,14 @@ module Arel
         [
          o.cores.map { |x| visit_Arel_Nodes_SelectCore x }.join,
          ("ORDER BY #{o.orders.map { |x| visit x }.join(', ')}" unless o.orders.empty?),
-         ("FETCH FIRST #{limit_for(o.limit)} ROWS ONLY" if o.limit),
+         (visit_Arel_Nodes_Limit(o.limit) if o.limit),
          (visit(o.offset) if o.offset),
          (visit(o.lock) if o.lock),
         ].compact.join ' '
+      end
+
+      def visit_Arel_Nodes_Limit o
+        "FETCH FIRST #{limit_for(o)} ROWS ONLY"
       end
 
       def visit_Arel_Nodes_Offset o

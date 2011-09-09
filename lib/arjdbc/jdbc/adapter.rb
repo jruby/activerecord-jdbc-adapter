@@ -111,7 +111,8 @@ module ActiveRecord
         if defined?(::Arel::Visitors::VISITORS)
           visitors = ::Arel::Visitors::VISITORS
           visitor = nil
-          self.class.arel2_visitors(config).each do |k,v|
+          adapter_spec = config[:adapter_spec] || self
+          adapter_spec.arel2_visitors(config).each do |k,v|
             visitor = v
             visitors[k] = v
           end

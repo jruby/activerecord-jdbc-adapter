@@ -197,7 +197,7 @@ module ::ArJdbc
 
       # construct a clean list of column names from the ORDER BY clause, removing
       # any asc/desc modifiers
-      order_columns = order_by.split(',').collect { |s| s.split.first }
+      order_columns = [order_by].flatten.map{|o| o.split(',').collect { |s| s.split.first } }.flatten
       order_columns.delete_if(&:blank?)
       order_columns = order_columns.zip((0...order_columns.size).to_a).map { |s,i| "#{s} AS alias_#{i}" }
 
