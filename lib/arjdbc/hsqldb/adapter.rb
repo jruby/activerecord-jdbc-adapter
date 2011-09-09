@@ -27,6 +27,9 @@ module ::ArJdbc
 
       # Post process default value from JDBC into a Rails-friendly format (columns{-internal})
       def default_value(value)
+        # H2 auto-generated key default value
+        return nil if value =~ /^\(NEXT VALUE FOR/i
+
         # jdbc returns column default strings with actual single quotes around the value.
         return $1 if value =~ /^'(.*)'$/
 
