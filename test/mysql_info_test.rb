@@ -79,14 +79,14 @@ class MysqlInfoTest < Test::Unit::TestCase
     strio = StringIO.new
     ActiveRecord::SchemaDumper::dump(@connection, strio)
     dump = strio.string
-    dump.grep(/datetime/).each {|line| assert line !~ /limit/ }
+    dump.lines.grep(/datetime/).each {|line| assert line !~ /limit/ }
   end
 
   def test_schema_dump_should_not_have_limits_on_date
     strio = StringIO.new
     ActiveRecord::SchemaDumper::dump(@connection, strio)
     dump = strio.string
-    dump.grep(/date/).each {|line| assert line !~ /limit/ }
+    dump.lines.grep(/date/).each {|line| assert line !~ /limit/ }
   end
 
   def test_should_include_limit
@@ -116,7 +116,7 @@ class MysqlInfoTest < Test::Unit::TestCase
     strio = StringIO.new
     ActiveRecord::SchemaDumper.dump(@connection, strio)
     dump_lines = strio.string
-    assert_nil dump_lines.find {|l| l =~ /\.(float|date|datetime|integer|time|timestamp) .* :limit/ && l !~ /sample_integer/ }
+    assert_nil dump_lines.lines.detect {|l| l =~ /\.(float|date|datetime|integer|time|timestamp) .* :limit/ && l !~ /sample_integer/ }
   ensure
     DbTypeMigration.down
   end
