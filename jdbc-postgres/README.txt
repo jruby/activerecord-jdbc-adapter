@@ -1,6 +1,6 @@
 = jdbc-postgres
 
-* http://jruby-extras.rubyforge.org/activerecord-jdbc-adapter/
+* https://github.com/jruby/activerecord-jdbc-adapter/
 
 == DESCRIPTION:
 

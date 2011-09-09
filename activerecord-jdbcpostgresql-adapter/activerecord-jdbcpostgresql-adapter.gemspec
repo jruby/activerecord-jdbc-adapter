@@ -16,7 +16,7 @@ Gem::Specification.new do |s|
     "LICENSE.txt",
     "lib/active_record/connection_adapters/jdbcpostgresql_adapter.rb"
   ]
-  s.homepage = %q{http://jruby-extras.rubyforge.org/ActiveRecord-JDBC}
+  s.homepage = %q{https://github.com/jruby/activerecord-jdbc-adapter}
   s.require_paths = ["lib"]
   s.rubyforge_project = %q{jruby-extras}
   s.summary = %q{Postgres JDBC adapter for JRuby on Rails.}
