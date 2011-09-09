@@ -16,7 +16,7 @@ Gem::Specification.new do |s|
     *Dir["lib/**/*"].to_a
   ]
 
-  s.homepage = %q{http://jruby-extras.rubyforge.org/ActiveRecord-JDBC}
+  s.homepage = %q{https://github.com/jruby/activerecord-jdbc-adapter}
   s.rdoc_options = ["--main", "README.txt"]
   s.require_paths = ["lib"]
   s.rubyforge_project = %q{jruby-extras}

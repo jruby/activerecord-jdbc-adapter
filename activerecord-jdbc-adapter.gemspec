@@ -8,7 +8,7 @@ Gem::Specification.new do |s|
   s.platform    = Gem::Platform::RUBY
   s.authors     = ["Nick Sieger, Ola Bini and JRuby contributors"]
   s.email       = %q{nick@nicksieger.com, ola.bini@gmail.com}
-  s.homepage = %q{http://jruby-extras.rubyforge.org/activerecord-jdbc-adapter}
+  s.homepage = %q{https://github.com/jruby/activerecord-jdbc-adapter}
   s.summary = %q{JDBC adapter for ActiveRecord, for use within JRuby on Rails.}
   s.description = %q{activerecord-jdbc-adapter is a database adapter for Rails\' ActiveRecord
 component that can be used with JRuby[http://www.jruby.org/]. It allows use of

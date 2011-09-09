@@ -141,7 +141,7 @@ template. See the project for more information at the following URL:
 
 The source for activerecord-jdbc-adapter is available using git.
 
-  git clone git://github.com/nicksieger/activerecord-jdbc-adapter.git
+  git clone git://github.com/jruby/activerecord-jdbc-adapter.git
 
 == Feedback
 
