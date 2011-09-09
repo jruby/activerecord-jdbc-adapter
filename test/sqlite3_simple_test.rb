@@ -11,7 +11,7 @@ class SQLite3SimpleTest < Test::Unit::TestCase
     assert @connection.tables.include?(Entry.table_name)
     db = @connection.database_name
     @connection.recreate_database(db)
-    assert (not @connection.tables.include? Entry.table_name)
+    assert !@connection.tables.include?(Entry.table_name)
     self.setup # avoid teardown complaining
   end
 

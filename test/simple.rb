@@ -263,8 +263,8 @@ module SimpleTestMethods
   end
 
   def test_negative_default_value
-    assert_equal -1, DbType.columns_hash['sample_integer_neg_default'].default
-    assert_equal -1, DbType.new.sample_integer_neg_default
+    assert_equal(-1, DbType.columns_hash['sample_integer_neg_default'].default)
+    assert_equal(-1, DbType.new.sample_integer_neg_default)
   end
 
   def test_indexes

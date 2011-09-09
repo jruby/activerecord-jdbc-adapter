@@ -7,7 +7,7 @@ module ::ArJdbc
     end
 
     def self.monkey_rails
-      unless @already_monkeyd
+      unless defined?(@already_monkeyd)
         # Needed because Rails is broken wrt to quoting of
         # some values. Most databases are nice about it,
         # but not Derby. The real issue is that you can't

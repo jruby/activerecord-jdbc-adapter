@@ -27,6 +27,6 @@ class PostgresDbCreateTest < Test::Unit::TestCase
   def test_rake_db_create_does_not_load_full_environment
     Rake::Task["db:create"].invoke
     assert @rails_env_set
-    assert !@full_environment_loaded
+    assert !defined?(@full_environment_loaded) || !@full_environment_loaded
   end
 end

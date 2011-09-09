@@ -310,10 +310,10 @@ module ::ArJdbc
     def multi_column_index_limit=(limit)
       @multi_column_index_limit = limit
     end
-    
+
     # Gets the maximum number columns postgres has, default 32
     def multi_column_index_limit
-      @multi_column_index_limit || 32
+      defined?(@multi_column_index_limit) && @multi_column_index_limit || 32
     end
 
     # Based on postgresql_adapter.rb
