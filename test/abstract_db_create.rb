@@ -92,8 +92,12 @@ module AbstractDbCreate
     (class << Rails::Application.config; self ; end).instance_eval do
       define_method(:database_configuration) { configs }
     end
+    require 'pathname'
     ar_version = $LOADED_FEATURES.grep(%r{active_record/version}).first
-    ar_lib_path = $LOAD_PATH.detect {|p| p if File.exist?File.join(p, ar_version)}
+    ar_lib_path = $LOAD_PATH.detect do |p|
+      Pathname.new(p).absolute? && ar_version.start_with?(p) ||
+        File.exist?(File.join(p, ar_version))
+    end
     load "#{ar_lib_path}/active_record/railties/databases.rake"
   end
 
