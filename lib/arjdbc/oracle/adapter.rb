@@ -5,7 +5,7 @@ end
 module ::ArJdbc
   module Oracle
     def self.extended(mod)
-      unless @lob_callback_added
+      unless defined?(@lob_callback_added)
         ActiveRecord::Base.class_eval do
           def after_save_with_oracle_lob
             self.class.columns.select { |c| c.sql_type =~ /LOB\(|LOB$/i }.each do |c|
@@ -21,8 +21,12 @@ module ::ArJdbc
         ActiveRecord::Base.after_save :after_save_with_oracle_lob
         @lob_callback_added = true
       end
-      require 'arjdbc/jdbc/quoted_primary_key'
-      ActiveRecord::Base.extend ArJdbc::QuotedPrimaryKeyExtension
+
+      unless ActiveRecord::ConnectionAdapters::AbstractAdapter.instance_methods(false).detect {|m| m.to_s == "prefetch_primary_key?"}
+        require 'arjdbc/jdbc/quoted_primary_key'
+        ActiveRecord::Base.extend ArJdbc::QuotedPrimaryKeyExtension
+      end
+
       (class << mod; self; end).class_eval do
         alias_chained_method :insert, :query_dirty, :ora_insert
         alias_chained_method :columns, :query_cache, :ora_columns
@@ -114,10 +118,9 @@ module ::ArJdbc
       { 'oracle' => Arel::Visitors::Oracle }
     end
 
-    # TODO: use this instead of the QuotedPrimaryKey logic and execute_id_insert?
-    # def prefetch_primary_key?(table_name = nil)
-    #   columns(table_name).detect {|c| c.primary } if table_name
-    # end
+    def prefetch_primary_key?(table_name = nil)
+      columns(table_name).detect {|c| c.primary } if table_name
+    end
 
     def table_alias_length
       30
