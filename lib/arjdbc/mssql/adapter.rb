@@ -7,7 +7,7 @@ module ::ArJdbc
     include LimitHelpers
 
     def self.extended(mod)
-      unless @lob_callback_added
+      unless defined?(@lob_callback_added)
         ActiveRecord::Base.class_eval do
           def after_save_with_mssql_lob
             self.class.columns.select { |c| c.sql_type =~ /image/i }.each do |c|
@@ -348,7 +348,7 @@ module ::ArJdbc
       table_name = table_name.gsub(/[\[\]]/, '')
 
       return [] if table_name =~ /^information_schema\./i
-      @table_columns = {} unless @table_columns
+      @table_columns ||= {}
       unless @table_columns[table_name]
         @table_columns[table_name] = super
         @table_columns[table_name].each do |col|
