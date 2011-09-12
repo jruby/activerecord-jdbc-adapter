@@ -16,7 +16,7 @@ module ::ArJdbc
 
     module Column
       def init_column(name, default, *args)
-        @default = '' if default =~ /NULL/
+        @default = nil if default =~ /NULL/
       end
 
       def type_cast(value)

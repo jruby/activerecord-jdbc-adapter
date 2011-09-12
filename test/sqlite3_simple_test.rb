@@ -30,7 +30,7 @@ class SQLite3SimpleTest < Test::Unit::TestCase
 
   def test_columns
     cols = ActiveRecord::Base.connection.columns("entries")
-    assert cols.find {|col| col.name == "title"}
+    assert cols.find {|col| col.name == "title"}    
   end
 
   def test_remove_column
@@ -125,6 +125,20 @@ class SQLite3SimpleTest < Test::Unit::TestCase
     assert_equal ["name"], indexes.first.columns
   end
 
+  def test_column_default
+    assert_nothing_raised do
+      ActiveRecord::Schema.define do
+        add_column "entries", "test_column_default", :string
+      end
+    end
+
+    cols = ActiveRecord::Base.connection.columns("entries")
+    col = cols.find{|col| col.name == "test_column_default"}
+    assert col
+    assert_equal col.default, nil
+    
+  end
+  
   def test_change_column_default
     assert_nothing_raised do
       ActiveRecord::Schema.define do
