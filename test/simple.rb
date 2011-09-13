@@ -13,7 +13,7 @@ module MigrationSetup
     CreateUsers.up
     CreateAutoIds.up
     CreateValidatesUniquenessOf.up
-
+    CreateThings.up
     @connection = ActiveRecord::Base.connection
   end
 
@@ -24,6 +24,7 @@ module MigrationSetup
     CreateUsers.down
     CreateAutoIds.down
     CreateValidatesUniquenessOf.down
+    CreateThings.down
     ActiveRecord::Base.clear_active_connections!
   end
 end
@@ -462,6 +463,13 @@ module SimpleTestMethods
     f.save
     f = StringId.first #reload is essential
     assert_equal "some_string", f.id
+  end
+
+  def test_model_with_no_id
+    assert_nothing_raised do
+      Thing.create! :name => "a thing"
+    end
+    assert_equal 1, Thing.find(:all).size
   end
 end
 
