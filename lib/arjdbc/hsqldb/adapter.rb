@@ -11,7 +11,6 @@ module ::ArJdbc
         when /longvarchar/i then :text
         when /tinyint/i  then :boolean
         when /real/i     then :float
-        when /decimal/i  then :decimal
         else
           super
         end
