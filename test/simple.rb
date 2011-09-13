@@ -259,10 +259,10 @@ module SimpleTestMethods
 
   def test_default_decimal_should_keep_fractional_part
     expected = 7.3
-    db_type = DbType.new(:sample_default_decimal => expected)
+    db_type = DbType.new(:sample_small_decimal => expected)
     assert db_type.save
     db_type = DbType.find(db_type.id)
-    assert_equal BigDecimal.new(expected.to_s), db_type.sample_default_decimal
+    assert_equal BigDecimal.new(expected.to_s), db_type.sample_small_decimal
   end
   
   def test_decimal_with_scale
