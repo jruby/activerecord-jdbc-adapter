@@ -6,6 +6,8 @@ gem 'activerecord', ENV['AR_VERSION']
 
 gem 'rake'
 
+gem 'jruby-openssl', :group => :development
+
 group :test do
   gem 'ruby-debug'
   gem 'mocha'
