@@ -5,6 +5,6 @@ module Jdbc
 end
 if RUBY_PLATFORM =~ /java/
   require "h2-#{Jdbc::H2::VERSION}.jar"
-else
+elsif $VERBOSE
   warn "jdbc-h2 is only for use with JRuby"
 end
