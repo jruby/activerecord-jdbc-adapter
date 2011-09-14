@@ -82,21 +82,9 @@ public class Sqlite3RubyJdbcConnection extends RubyJdbcConnection {
             case Types.LONGVARCHAR:
                 return runtime.is1_9() ?
                     readerToRuby(runtime, resultSet, resultSet.getCharacterStream(column)) :
-                    streamToRuby(runtime, resultSet, new ByteArrayInputStream(resultSet.getBytes(column)));
-            case Types.CLOB:
-                return readerToRuby(runtime, resultSet, resultSet.getCharacterStream(column));
-            case Types.TIMESTAMP:
-                return timestampToRuby(runtime, resultSet, resultSet.getTimestamp(column));
-            case Types.INTEGER:
-            case Types.SMALLINT:
-            case Types.TINYINT:
-                return integerToRuby(runtime, resultSet, resultSet.getLong(column));
-            case Types.REAL:
-                return doubleToRuby(runtime, resultSet, resultSet.getDouble(column));
-            case Types.BIGINT:
-                return bigIntegerToRuby(runtime, resultSet, resultSet.getString(column));
+                    streamToRuby(runtime, resultSet, new ByteArrayInputStream(resultSet.getBytes(column)));            
             default:
-                return stringToRuby(runtime, resultSet, resultSet.getString(column));
+                return super.jdbcToRuby(runtime, column, type, resultSet);
             }
         } catch (IOException ioe) {
             throw (SQLException) new SQLException(ioe.getMessage()).initCause(ioe);
