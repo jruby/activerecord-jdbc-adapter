@@ -42,7 +42,6 @@ module ::ArJdbc
         case field_type
         when /tinyint\(1\)|bit/i then :boolean
         when /enum/i             then :string
-        when /decimal/i          then :decimal
         else
           super
         end

@@ -40,7 +40,6 @@ module ::ArJdbc
         case field_type
         when /smallint/i  then :boolean
         when /real/i      then :float
-        when /decimal/i   then :decimal
         else
           super
         end
