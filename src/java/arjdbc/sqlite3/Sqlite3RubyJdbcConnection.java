@@ -26,6 +26,13 @@
 
 package arjdbc.sqlite3;
 
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Types;
+
+
 import arjdbc.jdbc.RubyJdbcConnection;
 
 import org.jruby.Ruby;
@@ -61,4 +68,38 @@ public class Sqlite3RubyJdbcConnection extends RubyJdbcConnection {
     protected IRubyObject tables(ThreadContext context, String catalog, String schemaPattern, String tablePattern, String[] types) {
         return (IRubyObject) withConnectionAndRetry(context, tableLookupBlock(context.getRuntime(), catalog, schemaPattern, tablePattern, types, true));
     }
+
+    @Override
+    protected IRubyObject jdbcToRuby(Ruby runtime, int column, int type, ResultSet resultSet)
+            throws SQLException {
+        try {
+            switch (type) {
+            case Types.BINARY:
+            case Types.BLOB:
+            case Types.LONGVARBINARY:
+            case Types.VARBINARY:
+                    return streamToRuby(runtime, resultSet, new ByteArrayInputStream(resultSet.getBytes(column)));
+            case Types.LONGVARCHAR:
+                return runtime.is1_9() ?
+                    readerToRuby(runtime, resultSet, resultSet.getCharacterStream(column)) :
+                    streamToRuby(runtime, resultSet, new ByteArrayInputStream(resultSet.getBytes(column)));
+            case Types.CLOB:
+                return readerToRuby(runtime, resultSet, resultSet.getCharacterStream(column));
+            case Types.TIMESTAMP:
+                return timestampToRuby(runtime, resultSet, resultSet.getTimestamp(column));
+            case Types.INTEGER:
+            case Types.SMALLINT:
+            case Types.TINYINT:
+                return integerToRuby(runtime, resultSet, resultSet.getLong(column));
+            case Types.REAL:
+                return doubleToRuby(runtime, resultSet, resultSet.getDouble(column));
+            case Types.BIGINT:
+                return bigIntegerToRuby(runtime, resultSet, resultSet.getString(column));
+            default:
+                return stringToRuby(runtime, resultSet, resultSet.getString(column));
+            }
+        } catch (IOException ioe) {
+            throw (SQLException) new SQLException(ioe.getMessage()).initCause(ioe);
+        }
+    }    
 }
