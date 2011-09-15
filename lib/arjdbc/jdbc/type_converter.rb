@@ -34,7 +34,7 @@ module ActiveRecord
                           lambda {|r| r['type_name'] =~ /^number$/i},
                           lambda {|r| r['type_name'] =~ /^real$/i},
                           lambda {|r| r['precision'] == '38'},
-                          lambda {|r| r['data_type'] == '2'}],
+                          lambda {|r| r['data_type'].to_i == Jdbc::Types::DECIMAL}],
         :float       => [ lambda {|r| [Jdbc::Types::FLOAT,Jdbc::Types::DOUBLE, Jdbc::Types::REAL].include?(r['data_type'].to_i)},
                           lambda {|r| r['data_type'].to_i == Jdbc::Types::REAL}, #Prefer REAL to DOUBLE for Postgresql
                           lambda {|r| r['type_name'] =~ /^float/i},
@@ -67,7 +67,7 @@ module ActiveRecord
                           lambda {|r| r['type_name'] =~ /^binary$/i}, ],
         :boolean     => [ lambda {|r| [Jdbc::Types::TINYINT].include?(r['data_type'].to_i)},
                           lambda {|r| r['type_name'] =~ /^bool/i},
-                          lambda {|r| r['data_type'] == '-7'},
+                          lambda {|r| r['data_type'].to_i == Jdbc::Types::BIT},
                           lambda {|r| r['type_name'] =~ /^tinyint$/i},
                           lambda {|r| r['type_name'] =~ /^decimal$/i},
                           lambda {|r| r['type_name'] =~ /^integer$/i}]
