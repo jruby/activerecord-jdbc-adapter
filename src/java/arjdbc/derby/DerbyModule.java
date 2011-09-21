@@ -29,6 +29,7 @@ import java.sql.SQLException;
 import arjdbc.jdbc.RubyJdbcConnection;
 
 import org.jruby.Ruby;
+import org.jruby.RubyBoolean;
 import org.jruby.RubyModule;
 import org.jruby.RubyObjectAdapter;
 import org.jruby.RubyRange;
@@ -148,7 +149,7 @@ public class DerbyModule {
 
         String metaClass = value.getMetaClass().getName();
 
-        if (metaClass.equals("Boolean")) {
+        if (value instanceof RubyBoolean) {
             return value.isTrue() ? runtime.newString("1") : runtime.newString("0");
         } else if (metaClass.equals("Float") || metaClass.equals("Fixnum") || metaClass.equals("Bignum")) {
             return RubyString.objAsString(context, value);
@@ -188,7 +189,7 @@ public class DerbyModule {
             }
         } else if (value.isNil()) {
             return runtime.newString(NULL);
-        } else if (metaClass.equals("Boolean")) {
+        } else if (value instanceof RubyBoolean) {
             return (value.isTrue() ?
                     (type == runtime.newSymbol(":integer")) ? runtime.newString("1") : rubyApi.callMethod(recv, "quoted_true") :
                     (type == runtime.newSymbol(":integer")) ? runtime.newString("0") : rubyApi.callMethod(recv, "quoted_false"));
