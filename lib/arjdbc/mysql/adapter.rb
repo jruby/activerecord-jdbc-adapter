@@ -40,7 +40,7 @@ module ::ArJdbc
 
       def simplified_type(field_type)
         case field_type
-        when (/tinyint\(1\)|bit/i and not ActiveRecord::ConnectionAdapters::MysqlAdapter.emulate_booleans) then :boolean
+        when /tinyint\(1\)|bit/i then :boolean
         when /enum/i             then :string
         else
           super
@@ -406,9 +406,6 @@ module ActiveRecord::ConnectionAdapters
   end
 
   class MysqlAdapter < JdbcAdapter
-    cattr_accessor :emulate_booleans
-    self.emulate_booleans = true
-    
     include ArJdbc::MySQL
 
     def initialize(*args)
