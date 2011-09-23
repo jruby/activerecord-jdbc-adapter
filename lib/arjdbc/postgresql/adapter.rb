@@ -487,7 +487,7 @@ module ::ArJdbc
     end
 
     def quote_column_name(name)
-      %("#{name}")
+      %("#{name.to_s.gsub("\"", "\"\"")}")
     end
 
     def quoted_date(value) #:nodoc:
