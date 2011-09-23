@@ -4,13 +4,6 @@ end
 
 module ::ArJdbc
   module PostgreSQL
-    def self.extended(mod)
-      (class << mod; self; end).class_eval do
-        alias_chained_method :insert, :query_dirty, :pg_insert
-        alias_chained_method :columns, :query_cache, :pg_columns
-      end
-    end
-
     def self.column_selector
       [/postgre/i, lambda {|cfg,col| col.extend(::ArJdbc::PostgreSQL::Column)}]
     end
@@ -615,3 +608,36 @@ module ::ArJdbc
   end
 end
 
+module ActiveRecord::ConnectionAdapters
+  remove_const(:PostgreSQLAdapter) if const_defined?(:PostgreSQLAdapter)
+
+  class PostgreSQLColumn < JdbcColumn
+    include ArJdbc::PostgreSQL::Column
+
+    def initialize(name, *args)
+      if Hash === name
+        super
+      else
+        super(nil, name, *args)
+      end
+    end
+
+    def call_discovered_column_callbacks(*)
+    end
+  end
+
+  class PostgreSQLAdapter < JdbcAdapter
+    include ArJdbc::PostgreSQL
+
+    def jdbc_connection_class(spec)
+      ::ArJdbc::PostgreSQL.jdbc_connection_class
+    end
+
+    def jdbc_column_class
+      ActiveRecord::ConnectionAdapters::PostgreSQLColumn
+    end
+    
+    alias_chained_method :insert, :query_dirty, :pg_insert
+    alias_chained_method :columns, :query_cache, :pg_columns
+  end
+end
