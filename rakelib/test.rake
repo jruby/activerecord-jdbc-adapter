@@ -13,7 +13,7 @@ else
 end
 
 def set_compat_version(task)
-  task.ruby_opts << '-v'
+  task.ruby_opts << '-v' if RUBY_VERSION =~ /1\.8/
   if defined?(JRUBY_VERSION)
     task.ruby_opts << "--#{RUBY_VERSION[/^(\d+\.\d+)/, 1]}"
   end
