@@ -70,7 +70,7 @@ module ::ArJdbc
         if respond_to?(:h2_adapter) && value.empty?
           "''"
         elsif column && column.type == :binary
-          "'#{value.unpack("H*")}'"
+          "'#{value.unpack("H*")[0]}'"
         elsif column && (column.type == :integer ||
                          column.respond_to?(:primary) && column.primary && column.klass != String)
           value.to_i.to_s
