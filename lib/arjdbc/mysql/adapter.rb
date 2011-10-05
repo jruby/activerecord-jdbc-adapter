@@ -130,12 +130,16 @@ module ::ArJdbc
       end
     end
 
+    def quote_column_name(name)
+      "`#{name.to_s.gsub('`', '``')}`"
+    end
+    
     def quoted_true
-        "1"
+      "1"
     end
 
     def quoted_false
-        "0"
+      "0"
     end
 
     def begin_db_transaction #:nodoc:

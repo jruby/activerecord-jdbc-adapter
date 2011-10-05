@@ -43,6 +43,29 @@ module FixtureSetup
   end
 end
 
+module ColumnNameQuotingTests
+  def self.included(base)
+    base.class_eval do
+      @@column_quote_char = "\""
+      
+      def self.column_quote_char(char)
+        @@column_quote_char = char
+      end
+    end
+  end
+
+  def test_column_names_are_escaped
+    conn = ActiveRecord::Base.connection
+    quoted = conn.quote_column_name "foo#{column_quote_char}bar"
+    assert_equal "#{column_quote_char}foo#{column_quote_char * 2}bar#{column_quote_char}", quoted
+  end
+  
+  protected
+  def column_quote_char
+    @@column_quote_char || "\""
+  end
+end
+
 module SimpleTestMethods
   include FixtureSetup
 
