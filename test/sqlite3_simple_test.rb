@@ -218,6 +218,14 @@ class SQLite3TypeConversionTest < Test::Unit::TestCase
       :sample_decimal => JInteger::MAX_VALUE + 1,
       :sample_small_decimal => 3.14,
       :sample_binary => TEST_BINARY)
+    DbType.create(
+      :sample_timestamp => TEST_TIME,
+      :sample_datetime => TEST_TIME,
+      :sample_time => TEST_TIME,
+      :sample_date => TEST_TIME,
+      :sample_decimal => JInteger::MAX_VALUE + 1,
+      :sample_small_decimal => 1.0,
+      :sample_binary => TEST_BINARY)
   end
 
   def teardown
@@ -244,4 +252,16 @@ class SQLite3TypeConversionTest < Test::Unit::TestCase
     assert_equal(TEST_BINARY, types.sample_binary)
   end
 
+  def test_small_decimal
+    types = DbType.find(:all, :order => ["sample_small_decimal desc"])
+    assert_equal(3.14, types[0].sample_small_decimal)
+    assert_equal(1.0, types[1].sample_small_decimal)
+  end
+
+  def test_small_decimal_with_ordering
+    types = DbType.find(:all, :order => ["sample_small_decimal asc"])
+    types[1].sample_small_decimal
+    assert_equal(1.0, types[0].sample_small_decimal)
+    assert_equal(3.14, types[1].sample_small_decimal)
+  end
 end
