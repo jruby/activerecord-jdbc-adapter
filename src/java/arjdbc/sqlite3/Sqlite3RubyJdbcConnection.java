@@ -29,9 +29,9 @@ package arjdbc.sqlite3;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Types;
-
 
 import arjdbc.jdbc.RubyJdbcConnection;
 
@@ -73,21 +73,28 @@ public class Sqlite3RubyJdbcConnection extends RubyJdbcConnection {
     protected IRubyObject jdbcToRuby(Ruby runtime, int column, int type, ResultSet resultSet)
             throws SQLException {
         try {
+            // This is rather gross, and only needed because the resultset metadata for SQLite tries to be overly
+            // clever, and returns a type for the column of the "current" row, so an integer value stored in a 
+            // decimal column is returned as Types.INTEGER.  Therefore, if the first row of a resultset was an
+            // integer value, all rows of that result set would get truncated.
+            if( resultSet instanceof ResultSetMetaData ) {
+                type = ((ResultSetMetaData)resultSet).getColumnType(column);
+            }
             switch (type) {
             case Types.BINARY:
             case Types.BLOB:
             case Types.LONGVARBINARY:
             case Types.VARBINARY:
-                    return streamToRuby(runtime, resultSet, new ByteArrayInputStream(resultSet.getBytes(column)));
+                return streamToRuby(runtime, resultSet, new ByteArrayInputStream(resultSet.getBytes(column)));
             case Types.LONGVARCHAR:
                 return runtime.is1_9() ?
                     readerToRuby(runtime, resultSet, resultSet.getCharacterStream(column)) :
-                    streamToRuby(runtime, resultSet, new ByteArrayInputStream(resultSet.getBytes(column)));            
+                    streamToRuby(runtime, resultSet, new ByteArrayInputStream(resultSet.getBytes(column)));
             default:
                 return super.jdbcToRuby(runtime, column, type, resultSet);
             }
         } catch (IOException ioe) {
             throw (SQLException) new SQLException(ioe.getMessage()).initCause(ioe);
         }
-    }    
+    }
 }
