@@ -6,6 +6,7 @@ require 'models/validates_uniqueness_of_string'
 class SQLite3SimpleTest < Test::Unit::TestCase
   include SimpleTestMethods
   include ActiveRecord3TestMethods
+  include ColumnNameQuotingTests
 
   def test_recreate_database
     assert @connection.tables.include?(Entry.table_name)
