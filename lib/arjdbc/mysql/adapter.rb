@@ -432,7 +432,10 @@ module ActiveRecord::ConnectionAdapters
       binds = binds.dup
 
       # Pretend to support bind parameters
-      execute sql.gsub('?') { quote(*binds.shift.reverse) }, name
+      unless binds.empty?
+        sql = sql.gsub('?') { quote(*binds.shift.reverse) }
+      end
+      execute sql, name
     end
     alias :exec_update :exec_insert
     alias :exec_delete :exec_insert
