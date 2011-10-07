@@ -251,11 +251,11 @@ module SimpleTestMethods
     # so they all have a initial value of an empty string ''
     assert_equal(nil, e.sample_text) unless ActiveRecord::Base.connection.adapter_name =~ /oracle/i
 
-    e.sample_text = "ooop"
+    e.sample_text = "ooop?"
     e.save!
 
     e = DbType.find(:first)
-    assert_equal("ooop", e.sample_text)
+    assert_equal("ooop?", e.sample_text)
   end
 
   def test_string
@@ -263,11 +263,11 @@ module SimpleTestMethods
 
     # An empty string is treated as a null value in Oracle: http://www.techonthenet.com/oracle/questions/empty_null.php
     assert_equal('', e.sample_string) unless ActiveRecord::Base.connection.adapter_name =~ /oracle/i
-    e.sample_string = "ooop"
+    e.sample_string = "ooop?"
     e.save!
 
     e = DbType.find(:first)
-    assert_equal("ooop", e.sample_string)
+    assert_equal("ooop?", e.sample_string)
   end
 
   def test_save_binary
