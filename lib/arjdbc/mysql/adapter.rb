@@ -311,8 +311,8 @@ module ::ArJdbc
 
     def show_variable(var)
       res = execute("show variables like '#{var}'")
-      row = res.detect {|row| row["Variable_name"] == var }
-      row && row["Value"]
+      result_row = res.detect {|row| row["Variable_name"] == var }
+      result_row && result_row["Value"]
     end
 
     def charset
