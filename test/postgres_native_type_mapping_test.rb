@@ -16,7 +16,8 @@ class CreateNativeTypeMappingTestSchema < ActiveRecord::Migration
           real_should_be_float real,
           bool_should_be_boolean bool,
           interval_should_be_string interval,
-          bigint_should_be_integer bigint
+          bigint_should_be_integer bigint,
+          uuid_should_be_string uuid
       )}
   end
 
@@ -42,6 +43,10 @@ class PostgresNativeTypeMappingTest < Test::Unit::TestCase
     Customer.columns.detect { |c| c.name == column_name }.type
   end
 
+  def test_uuid_column_should_map_to_string
+    assert_equal :string, column_type("uuid_should_be_string")
+  end
+  
   def test_bigint_serial_should_be_mapped_to_integer
     assert_equal :integer, column_type("bigint_serial_should_be_integer")
   end
