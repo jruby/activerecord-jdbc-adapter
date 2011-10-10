@@ -142,24 +142,6 @@ module ::ArJdbc
       "0"
     end
 
-    def begin_db_transaction #:nodoc:
-      @connection.begin
-    rescue Exception
-      # Transactions aren't supported
-    end
-
-    def commit_db_transaction #:nodoc:
-      @connection.commit
-    rescue Exception
-      # Transactions aren't supported
-    end
-
-    def rollback_db_transaction #:nodoc:
-      @connection.rollback
-    rescue Exception
-      # Transactions aren't supported
-    end
-
     def supports_savepoints? #:nodoc:
       true
     end
