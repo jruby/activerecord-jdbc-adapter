@@ -4,6 +4,13 @@ end
 
 module ::ArJdbc
   module PostgreSQL
+    def self.extended(mod)
+      (class << mod; self; end).class_eval do
+        alias_chained_method :insert, :query_dirty, :pg_insert
+        alias_chained_method :columns, :query_cache, :pg_columns
+      end
+    end
+
     def self.column_selector
       [/postgre/i, lambda {|cfg,col| col.extend(::ArJdbc::PostgreSQL::Column)}]
     end
