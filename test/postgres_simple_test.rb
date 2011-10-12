@@ -10,7 +10,13 @@ require 'db/postgres'
 class PostgresSimpleTest < Test::Unit::TestCase
   include SimpleTestMethods
   include ActiveRecord3TestMethods
+  include ColumnNameQuotingTests
 
+  def test_adapter_class_name_equals_native_adapter_class_name
+    classname = @connection.class.name[/[^:]*$/]
+    assert_equal 'PostgreSQLAdapter', classname
+  end
+  
   def test_multi_statement_support
     results = @connection.execute "SELECT title from entries; SELECT login from users"
     assert_equal 2, results.length

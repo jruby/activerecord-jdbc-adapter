@@ -43,6 +43,29 @@ module FixtureSetup
   end
 end
 
+module ColumnNameQuotingTests
+  def self.included(base)
+    base.class_eval do
+      @@column_quote_char = "\""
+      
+      def self.column_quote_char(char)
+        @@column_quote_char = char
+      end
+    end
+  end
+
+  def test_column_names_are_escaped
+    conn = ActiveRecord::Base.connection
+    quoted = conn.quote_column_name "foo#{column_quote_char}bar"
+    assert_equal "#{column_quote_char}foo#{column_quote_char * 2}bar#{column_quote_char}", quoted
+  end
+  
+  protected
+  def column_quote_char
+    @@column_quote_char || "\""
+  end
+end
+
 module SimpleTestMethods
   include FixtureSetup
 
@@ -228,11 +251,11 @@ module SimpleTestMethods
     # so they all have a initial value of an empty string ''
     assert_equal(nil, e.sample_text) unless ActiveRecord::Base.connection.adapter_name =~ /oracle/i
 
-    e.sample_text = "ooop"
+    e.sample_text = "ooop?"
     e.save!
 
     e = DbType.find(:first)
-    assert_equal("ooop", e.sample_text)
+    assert_equal("ooop?", e.sample_text)
   end
 
   def test_string
@@ -240,11 +263,11 @@ module SimpleTestMethods
 
     # An empty string is treated as a null value in Oracle: http://www.techonthenet.com/oracle/questions/empty_null.php
     assert_equal('', e.sample_string) unless ActiveRecord::Base.connection.adapter_name =~ /oracle/i
-    e.sample_string = "ooop"
+    e.sample_string = "ooop?"
     e.save!
 
     e = DbType.find(:first)
-    assert_equal("ooop", e.sample_string)
+    assert_equal("ooop?", e.sample_string)
   end
 
   def test_save_binary

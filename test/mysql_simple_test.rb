@@ -11,6 +11,18 @@ require 'db/mysql'
 class MysqlSimpleTest < Test::Unit::TestCase
   include SimpleTestMethods
   include ActiveRecord3TestMethods
+  include ColumnNameQuotingTests
+
+  column_quote_char "`"
+
+  def test_column_class_instantiation
+    text_column = nil
+    assert_nothing_raised do
+      text_column = ActiveRecord::ConnectionAdapters::MysqlAdapter::Column.
+        new("title", nil, "text")
+    end
+    assert_not_nil text_column
+  end
 
   def test_string_quoting_oddity
     s = "0123456789a'a"

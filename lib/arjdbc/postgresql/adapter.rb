@@ -4,13 +4,6 @@ end
 
 module ::ArJdbc
   module PostgreSQL
-    def self.extended(mod)
-      (class << mod; self; end).class_eval do
-        alias_chained_method :insert, :query_dirty, :pg_insert
-        alias_chained_method :columns, :query_cache, :pg_columns
-      end
-    end
-
     def self.column_selector
       [/postgre/i, lambda {|cfg,col| col.extend(::ArJdbc::PostgreSQL::Column)}]
     end
@@ -44,6 +37,7 @@ module ::ArJdbc
         return :integer if field_type =~ /^(big|)serial/i
         return :string if field_type =~ /\[\]$/i || field_type =~ /^interval/i
         return :string if field_type =~ /^(?:point|lseg|box|"?path"?|polygon|circle)/i
+        return :string if field_type =~ /^uuid/i
         return :datetime if field_type =~ /^timestamp/i
         return :float if field_type =~ /^(?:real|double precision)$/i
         return :binary if field_type =~ /^bytea/i
@@ -494,7 +488,7 @@ module ::ArJdbc
     end
 
     def quote_column_name(name)
-      %("#{name}")
+      %("#{name.to_s.gsub("\"", "\"\"")}")
     end
 
     def quoted_date(value) #:nodoc:
@@ -615,3 +609,36 @@ module ::ArJdbc
   end
 end
 
+module ActiveRecord::ConnectionAdapters
+  remove_const(:PostgreSQLAdapter) if const_defined?(:PostgreSQLAdapter)
+
+  class PostgreSQLColumn < JdbcColumn
+    include ArJdbc::PostgreSQL::Column
+
+    def initialize(name, *args)
+      if Hash === name
+        super
+      else
+        super(nil, name, *args)
+      end
+    end
+
+    def call_discovered_column_callbacks(*)
+    end
+  end
+
+  class PostgreSQLAdapter < JdbcAdapter
+    include ArJdbc::PostgreSQL
+
+    def jdbc_connection_class(spec)
+      ::ArJdbc::PostgreSQL.jdbc_connection_class
+    end
+
+    def jdbc_column_class
+      ActiveRecord::ConnectionAdapters::PostgreSQLColumn
+    end
+    
+    alias_chained_method :insert, :query_dirty, :pg_insert
+    alias_chained_method :columns, :query_cache, :pg_columns
+  end
+end

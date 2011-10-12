@@ -3,7 +3,7 @@ require 'active_record/connection_adapters/abstract/schema_definitions'
 module ::ArJdbc
   module MySQL
     def self.column_selector
-      [/mysql/i, lambda {|cfg,col| col.extend(::ArJdbc::MySQL::Column)}]
+      [/mysql/i, lambda {|cfg,col| col.extend(::ArJdbc::MySQL::ColumnExtensions)}]
     end
 
     def self.extended(adapter)
@@ -18,7 +18,7 @@ module ::ArJdbc
       ::ActiveRecord::ConnectionAdapters::MySQLJdbcConnection
     end
 
-    module Column
+    module ColumnExtensions
       def extract_default(default)
         if sql_type =~ /blob/i || type == :text
           if default.blank?
@@ -130,30 +130,16 @@ module ::ArJdbc
       end
     end
 
+    def quote_column_name(name)
+      "`#{name.to_s.gsub('`', '``')}`"
+    end
+    
     def quoted_true
-        "1"
+      "1"
     end
 
     def quoted_false
-        "0"
-    end
-
-    def begin_db_transaction #:nodoc:
-      @connection.begin
-    rescue Exception
-      # Transactions aren't supported
-    end
-
-    def commit_db_transaction #:nodoc:
-      @connection.commit
-    rescue Exception
-      # Transactions aren't supported
-    end
-
-    def rollback_db_transaction #:nodoc:
-      @connection.rollback
-    rescue Exception
-      # Transactions aren't supported
+      "0"
     end
 
     def supports_savepoints? #:nodoc:
@@ -207,7 +193,7 @@ module ::ArJdbc
     def jdbc_columns(table_name, name = nil)#:nodoc:
       sql = "SHOW FIELDS FROM #{quote_table_name(table_name)}"
       execute(sql, :skip_logging).map do |field|
-        ::ActiveRecord::ConnectionAdapters::MysqlColumn.new(field["Field"], field["Default"], field["Type"], field["Null"] == "YES")
+        ::ActiveRecord::ConnectionAdapters::MysqlAdapter::Column.new(field["Field"], field["Default"], field["Type"], field["Null"] == "YES")
       end
     end
 
@@ -307,8 +293,8 @@ module ::ArJdbc
 
     def show_variable(var)
       res = execute("show variables like '#{var}'")
-      row = res.detect {|row| row["Variable_name"] == var }
-      row && row["Value"]
+      result_row = res.detect {|row| row["Variable_name"] == var }
+      result_row && result_row["Value"]
     end
 
     def charset
@@ -390,21 +376,6 @@ module ActiveRecord::ConnectionAdapters
   remove_const(:MysqlColumn) if const_defined?(:MysqlColumn)
   remove_const(:MysqlAdapter) if const_defined?(:MysqlAdapter)
 
-  class MysqlColumn < JdbcColumn
-    include ArJdbc::MySQL::Column
-
-    def initialize(name, *args)
-      if Hash === name
-        super
-      else
-        super(nil, name, *args)
-      end
-    end
-
-    def call_discovered_column_callbacks(*)
-    end
-  end
-
   class MysqlAdapter < JdbcAdapter
     include ArJdbc::MySQL
 
@@ -418,17 +389,36 @@ module ActiveRecord::ConnectionAdapters
     end
 
     def jdbc_column_class
-      ActiveRecord::ConnectionAdapters::MysqlColumn
+      ActiveRecord::ConnectionAdapters::MysqlAdapter::Column
     end
 
     alias_chained_method :columns, :query_cache, :jdbc_columns
 
+    remove_const(:Column) if const_defined?(:Column)
+    class Column < JdbcColumn
+      include ArJdbc::MySQL::ColumnExtensions
+
+      def initialize(name, *args)
+        if Hash === name
+          super
+        else
+          super(nil, name, *args)
+        end
+      end
+
+      def call_discovered_column_callbacks(*)
+      end
+    end
+    
     protected
     def exec_insert(sql, name, binds)
       binds = binds.dup
 
       # Pretend to support bind parameters
-      execute sql.gsub('?') { quote(*binds.shift.reverse) }, name
+      unless binds.empty?
+        sql = sql.gsub('?') { quote(*binds.shift.reverse) }
+      end
+      execute sql, name
     end
     alias :exec_update :exec_insert
     alias :exec_delete :exec_insert
