@@ -42,6 +42,7 @@ module ::ArJdbc
         case field_type
         when /tinyint\(1\)|bit/i then :boolean
         when /enum/i             then :string
+        when /year/i             then :integer
         else
           super
         end
@@ -60,6 +61,7 @@ module ::ArJdbc
           else
             nil # we could return 65535 here, but we leave it undecorated by default
           end
+        when /^enum/i;     255
         when /^bigint/i;    8
         when /^int/i;       4
         when /^mediumint/i; 3
