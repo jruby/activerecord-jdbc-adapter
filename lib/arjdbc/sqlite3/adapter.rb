@@ -152,7 +152,7 @@ module ::ArJdbc
     end
 
     def last_insert_id
-      Integer(select_value("SELECT last_insert_rowid()"))
+      @connection.last_insert_row_id
     end
 
     def tables(name = nil) #:nodoc:
