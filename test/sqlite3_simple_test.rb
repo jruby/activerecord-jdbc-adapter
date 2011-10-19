@@ -7,6 +7,7 @@ class SQLite3SimpleTest < Test::Unit::TestCase
   include SimpleTestMethods
   include ActiveRecord3TestMethods
   include ColumnNameQuotingTests
+  include DirtyAttributeTests
 
   def test_recreate_database
     assert @connection.tables.include?(Entry.table_name)
@@ -31,7 +32,7 @@ class SQLite3SimpleTest < Test::Unit::TestCase
 
   def test_columns
     cols = ActiveRecord::Base.connection.columns("entries")
-    assert cols.find {|col| col.name == "title"}    
+    assert cols.find {|col| col.name == "title"}
   end
 
   def test_remove_column
@@ -137,9 +138,9 @@ class SQLite3SimpleTest < Test::Unit::TestCase
     col = cols.find{|col| col.name == "test_column_default"}
     assert col
     assert_equal col.default, nil
-    
+
   end
-  
+
   def test_change_column_default
     assert_nothing_raised do
       ActiveRecord::Schema.define do
