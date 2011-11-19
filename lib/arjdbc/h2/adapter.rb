@@ -29,7 +29,24 @@ module ArJdbc
       @connection.columns_internal(table_name.to_s, name, h2_schema)
     end
 
+    def change_column(table_name, column_name, type, options = {}) #:nodoc:
+      execute "ALTER TABLE #{table_name} ALTER COLUMN #{column_name} #{type_to_sql(type, options[:limit])}"
+      change_column_default(table_name, column_name, options[:default]) if options_include_default?(options)
+      change_column_null(table_name, column_name, options[:null], options[:default]) if options.key?(:null)
+    end
+
     private
+    def change_column_null(table_name, column_name, null, default = nil)
+      if !null && !default.nil?
+        execute("UPDATE #{table_name} SET #{column_name}=#{quote(default)} WHERE #{column_name} IS NULL")
+      end
+      if null
+        execute "ALTER TABLE #{table_name} ALTER COLUMN #{column_name} SET NULL"
+      else
+        execute "ALTER TABLE #{table_name} ALTER COLUMN #{column_name} SET NOT NULL"
+      end
+    end
+
     def h2_schema
       @config[:schema] || ''
     end
