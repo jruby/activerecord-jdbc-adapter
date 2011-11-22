@@ -175,11 +175,11 @@ module ::ArJdbc
       else
         # Assume the sql contains a bind-variable for the id
         # Extract the table from the insert sql. Yuck.
-        table = sql.split(" ", 4)[2].gsub('"', '')
+        table = sql.to_sql.split(" ", 4)[2].gsub('"', '')
         sequence_name ||= default_sequence_name(table)
         id_value = next_sequence_value(sequence_name)
-        log(sql, name) do
-          @connection.execute_id_insert(sql,id_value)
+        log(sql.to_sql, name) do
+          @connection.execute_id_insert(sql.to_sql,id_value)
         end
       end
       id_value
