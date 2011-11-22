@@ -167,7 +167,7 @@ module ::ArJdbc
     end
 
     def ora_insert(sql, name = nil, pk = nil, id_value = nil, sequence_name = nil, binds = []) #:nodoc:
-      if (id_value && !sql_literal?(id_value)) || pk.nil?
+	  if (id_value && !sql_literal?(id_value)) || pk.nil?
         # Pre-assigned id or table without a primary key
         # Presence of #to_sql means an Arel literal bind variable
         # that should use #execute_id_insert below
@@ -175,11 +175,13 @@ module ::ArJdbc
       else
         # Assume the sql contains a bind-variable for the id
         # Extract the table from the insert sql. Yuck.
-        table = sql.split(" ", 4)[2].gsub('"', '')
+        table = sql.to_sql.split(" ", 4)[2].gsub('"', '')
         sequence_name ||= default_sequence_name(table)
         id_value = next_sequence_value(sequence_name)
-        log(sql, name) do
-          @connection.execute_id_insert(sql,id_value)
+		
+		binds = sql.columns.map { |col| col.name == pk ? [col, id_value] : binds.detect{ |bind| bind.first.name == col.name } }
+        log(sql.to_sql, name) do
+		  execute sql, name, binds
         end
       end
       id_value
