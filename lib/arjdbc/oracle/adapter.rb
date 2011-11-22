@@ -178,8 +178,12 @@ module ::ArJdbc
         table = sql.to_sql.split(" ", 4)[2].gsub('"', '')
         sequence_name ||= default_sequence_name(table)
         id_value = next_sequence_value(sequence_name)
+		
+		id_col = binds.detect{ |b| b.first.name == pk }
+		id_col[1] = id_value if id_col
         log(sql.to_sql, name) do
-          @connection.execute_id_insert(sql.to_sql,id_value)
+		  execute sql, name, binds
+          #@connection.execute_id_insert(sql.to_sql,id_value)
         end
       end
       id_value
