@@ -183,7 +183,6 @@ module ::ArJdbc
 		id_col[1] = id_value if id_col
         log(sql.to_sql, name) do
 		  execute sql, name, binds
-          #@connection.execute_id_insert(sql.to_sql,id_value)
         end
       end
       id_value
