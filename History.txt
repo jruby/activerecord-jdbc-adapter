@@ -1,3 +1,13 @@
+== 1.2.1 (11/23/11)
+
+- #117: Skip ? substitution when no bind parameters are given
+- #115: Work around bug in ResultSetMetaData in SQLite
+- Enhance the 'change_column' in H2 adapter to support additional options
+- Deal with changes in RubyBigDecimal in trunk
+- Decimal with scale zero handling (George Murphy)
+- Fix blob handling for SQLite3 since SQLiteJDBC does not support
+  getBinary (Jean-Dominique Morani)
+
 == 1.2.0 (09/13/11)
 
 - Support for Rails 3.1

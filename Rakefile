@@ -44,13 +44,13 @@ end
   end
 end
 
-desc "Build all adapters"
+desc "Release all adapters"
 task "all:release" => ["release", *ADAPTERS.map { |f| "#{f}:release" }]
 
 desc "Install all adapters"
 task "all:install" => ["install", *ADAPTERS.map { |f| "#{f}:install" }]
 
-desc "Release all adapters"
+desc "Build all adapters"
 task "all:build"   => ["build", *ADAPTERS.map { |f| "#{f}:build" }]
 
 task :filelist do
