@@ -21,7 +21,7 @@ end
 
 def declare_test_task_for(adapter, options = {})
   driver = options[:driver] || adapter
-  Rake::TestTask.new("test_#{adapter}") do |t|
+  Rake::TestTask.new("test_#{adapter}" => (options[:prereqs] || [])) do |t|
     files = FileList["test/#{adapter}*test.rb"]
     if adapter == "derby"
       files << 'test/activerecord/connection_adapters/type_conversion_test.rb'
@@ -43,8 +43,8 @@ declare_test_task_for :derby
 declare_test_task_for :h2
 declare_test_task_for :hsqldb
 declare_test_task_for :mssql, :driver => :jtds
-declare_test_task_for :mysql
-declare_test_task_for :postgres
+declare_test_task_for :mysql, :prereqs => "db:mysql"
+declare_test_task_for :postgres, :prereqs => "db:postgres"
 declare_test_task_for :sqlite3
 
 Rake::TestTask.new(:test_jdbc) do |t|

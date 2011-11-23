@@ -1,8 +1,8 @@
 MYSQL_CONFIG = {
-  :username => 'blog',
-  :password => '',
+  :username => 'arjdbc',
+  :password => 'arjdbc',
   :adapter  => 'mysql',
-  :database => 'weblog_development',
+  :database => 'arjdbc_test',
   :host     => 'localhost'
 }
 

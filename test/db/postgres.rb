@@ -1,9 +1,9 @@
 POSTGRES_CONFIG = {
   :adapter => 'postgresql',
-  :database => 'weblog_development',
+  :database => 'arjdbc_test',
   :host => 'localhost',
-  :username => 'blog',
-  :password => ''
+  :username => 'arjdbc',
+  :password => 'arjdbc'
 }
 
 ActiveRecord::Base.establish_connection(POSTGRES_CONFIG)
