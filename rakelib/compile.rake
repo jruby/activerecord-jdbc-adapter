@@ -1,25 +1,23 @@
-def java_classpath_arg # myriad of ways to discover JRuby classpath
-  begin
-    cpath  = Java::java.lang.System.getProperty('java.class.path').split(File::PATH_SEPARATOR)
-    cpath += Java::java.lang.System.getProperty('sun.boot.class.path').split(File::PATH_SEPARATOR)
-    jruby_cpath = cpath.compact.join(File::PATH_SEPARATOR)
-  rescue => e
-  end
-  unless jruby_cpath
-    jruby_cpath = ENV['JRUBY_PARENT_CLASSPATH'] || ENV['JRUBY_HOME'] &&
-      FileList["#{ENV['JRUBY_HOME']}/lib/*.jar"].join(File::PATH_SEPARATOR)
-  end
-  jruby_cpath ? "-cp \"#{jruby_cpath}\"" : ""
-end
+jar_file = File.join(*%w(lib arjdbc jdbc adapter_java.jar))
+begin
+  require 'ant'
+  directory "pkg/classes"
+  CLEAN << "pkg"
 
-jar_name = File.join(*%w(lib arjdbc jdbc adapter_java.jar))
+  file jar_file => FileList['src/java/**/*.java', 'pkg/classes'] do
+    rm_rf FileList['pkg/classes/**/*']
+    ant.javac :srcdir => "src/java", :destdir => "pkg/classes",
+      :source => "1.5", :target => "1.5", :debug => true,
+      :classpath => "${java.class.path}:${sun.boot.class.path}",
+      :includeantRuntime => false
 
-desc "Compile the native Java code."
-task :java_compile do
-  debug = ENV['DEBUG'] ? '-g' : ''
-  pkg_classes = File.join(*%w(pkg classes))
-  mkdir_p pkg_classes
-  sh "javac -target 1.5 -source 1.5 #{debug} -d pkg/classes #{java_classpath_arg} #{FileList['src/java/**/*.java'].join(' ')}"
-  sh "jar cf #{jar_name} -C #{pkg_classes} ."
+    ant.jar :basedir => "pkg/classes", :destfile => jar_file, :includes => "**/*.class"
+  end
+
+  desc "Compile the native Java code."
+  task :jar => jar_file
+rescue LoadError
+  task :jar do
+    puts "Run 'jar' with JRuby to re-compile the agent extension class"
+  end
 end
-file jar_name => :java_compile

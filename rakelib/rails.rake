@@ -26,7 +26,7 @@ namespace :rails do
     end
   end
 
-  task :test => "java_compile" do
+  task :test => :jar do
     driver = ENV['DRIVER']
     raise "need a DRIVER" unless driver
     activerecord = ENV['RAILS']

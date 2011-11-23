@@ -6,11 +6,11 @@ require 'bundler'
 Bundler::GemHelper.install_tasks
 require 'bundler/setup'
 
-task :default => [:java_compile, :test]
+task :default => [:jar, :test]
 
 #ugh, bundler doesn't use tasks, so gotta hook up to both tasks.
-task :build => :java_compile
-task :install => :java_compile
+task :build => :jar
+task :install => :jar
 
 ADAPTERS = %w[derby h2 hsqldb mssql mysql postgresql sqlite3].map {|a| "activerecord-jdbc#{a}-adapter" }
 DRIVERS  = %w[derby h2 hsqldb jtds mysql postgres sqlite3].map {|a| "jdbc-#{a}" }
