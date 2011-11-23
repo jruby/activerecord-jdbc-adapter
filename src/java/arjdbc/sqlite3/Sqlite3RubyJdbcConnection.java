@@ -28,15 +28,19 @@ package arjdbc.sqlite3;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.sql.Types;
 
 import arjdbc.jdbc.RubyJdbcConnection;
+import arjdbc.jdbc.SQLBlock;
 
 import org.jruby.Ruby;
 import org.jruby.RubyClass;
+import org.jruby.anno.JRubyMethod;
 import org.jruby.runtime.ObjectAllocator;
 import org.jruby.runtime.ThreadContext;
 import org.jruby.runtime.builtin.IRubyObject;
@@ -63,6 +67,28 @@ public class Sqlite3RubyJdbcConnection extends RubyJdbcConnection {
             return new Sqlite3RubyJdbcConnection(runtime, klass);
         }
     };
+
+    @JRubyMethod(name = "last_insert_row_id")
+    public IRubyObject getLastInsertRowId(final ThreadContext context) 
+        throws SQLException {
+        return (IRubyObject) withConnectionAndRetry(context, new SQLBlock() {
+                public Object call(Connection c) throws SQLException {
+                    Statement stmt = null;
+                    try {
+                        stmt = c.createStatement();
+                        return unmarshal_id_result(context.getRuntime(),
+                                                   stmt.getGeneratedKeys());
+                    } catch (SQLException sqe) {
+                        if (context.getRuntime().isDebug()) {
+                            System.out.println("Error SQL:" + sqe.getMessage());
+                        }
+                        throw sqe;
+                    } finally {
+                        close(stmt);
+                    }
+                }
+            });
+    }
 
     @Override
     protected IRubyObject tables(ThreadContext context, String catalog, String schemaPattern, String tablePattern, String[] types) {

@@ -47,7 +47,7 @@ module ColumnNameQuotingTests
   def self.included(base)
     base.class_eval do
       @@column_quote_char = "\""
-      
+
       def self.column_quote_char(char)
         @@column_quote_char = char
       end
@@ -59,10 +59,39 @@ module ColumnNameQuotingTests
     quoted = conn.quote_column_name "foo#{column_quote_char}bar"
     assert_equal "#{column_quote_char}foo#{column_quote_char * 2}bar#{column_quote_char}", quoted
   end
-  
+
   protected
   def column_quote_char
     @@column_quote_char || "\""
+  end
+end
+
+module DirtyAttributeTests
+  def test_partial_update
+    entry = Entry.new(:title => 'foo')
+    old_updated_on = 1.hour.ago.beginning_of_day
+
+    with_partial_updates Entry, false do
+      assert_queries(2) { 2.times { entry.save! } }
+      Entry.update_all({ :updated_on => old_updated_on }, :id => entry.id)
+    end
+
+    with_partial_updates Entry, true do
+      assert_queries(0) { 2.times { entry.save! } }
+      assert_equal old_updated_on, entry.reload.updated_on
+
+      assert_queries(1) { entry.title = 'bar'; entry.save! }
+      assert_not_equal old_updated_on, entry.reload.updated_on
+    end
+  end
+
+  private
+  def with_partial_updates(klass, on = true)
+    old = klass.partial_updates?
+    klass.partial_updates = on
+    yield
+  ensure
+    klass.partial_updates = old
   end
 end
 
@@ -287,7 +316,7 @@ module SimpleTestMethods
     db_type = DbType.find(db_type.id)
     assert_equal BigDecimal.new(expected.to_s), db_type.sample_small_decimal
   end
-  
+
   def test_decimal_with_scale
     test_value = 7.3
     db_type = DbType.new(:sample_small_decimal => test_value)
