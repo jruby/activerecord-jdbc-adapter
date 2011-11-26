@@ -196,7 +196,8 @@ module ActiveRecord
         if binds.empty?
           sql
         else
-          sql.gsub('?') { quote(*binds.shift.reverse) }
+          copy = binds.dup
+          sql.gsub('?') { quote(*copy.shift.reverse) }
         end
       end
 

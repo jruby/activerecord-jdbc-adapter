@@ -98,6 +98,14 @@ end
 module SimpleTestMethods
   include FixtureSetup
 
+  def test_substitute_binds_has_no_side_effect_on_binds_parameter
+    binds = [[Entry.columns_hash['title'], 'test1']]
+    binds2 = binds.dup
+    sql = 'select * from entries where title = ?'
+    Entry.connection.substitute_binds(sql, binds)
+    assert_equal binds2, binds
+  end
+
   def test_entries_created
     assert ActiveRecord::Base.connection.tables.find{|t| t =~ /^entries$/i}, "entries not created"
   end
