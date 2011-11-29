@@ -209,7 +209,13 @@ module ::ArJdbc
 
     def table_structure(table_name)
       structure = @connection.execute_query("PRAGMA table_info(#{quote_table_name(table_name)})")
-      raise ActiveRecord::StatementInvalid, "Could not find table '#{table_name}'" if structure.empty?
+    # if the query causes an exception like this: "query does not return ResultSet"
+    rescue ActiveRecord::JDBCError => error
+      structure = nil
+    ensure
+      if structure.nil? || structure.empty?
+        raise ActiveRecord::StatementInvalid, "Could not find table '#{table_name}'"
+      end
       structure
     end
 
