@@ -1,5 +1,8 @@
 rvm:
   - jruby
+env:
+  - JRUBY_OPTS=
+  - JRUBY_OPTS=--1.9
 branches:
   only:
     - master
