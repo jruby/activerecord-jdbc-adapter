@@ -418,9 +418,9 @@ module SimpleTestMethods
 
     class Animal < ActiveRecord::Base; end
 
-    # ENEBO: Is this really ar-jdbc-specific or a bug in our adapter?
     def test_fetching_columns_for_nonexistent_table_should_raise
-      assert_raises(ActiveRecord::JDBCError) do
+      assert_raises(ActiveRecord::ActiveRecordError,
+                    ActiveRecord::StatementInvalid, ActiveRecord::JDBCError) do
         Animal.columns
       end
     end
