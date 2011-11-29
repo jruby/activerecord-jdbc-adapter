@@ -1,8 +1,12 @@
 require File.expand_path('../../test/helper', __FILE__)
 if defined?(JRUBY_VERSION)
   databases = [:test_mysql, :test_jdbc, :test_sqlite3, :test_derby, :test_hsqldb, :test_h2]
-  if find_executable?("psql") && `psql -c '\\l'` && $?.exitstatus == 0
-    databases << :test_postgres
+  if find_executable?("psql")
+    if `psql -c '\\l' -U postgres 2>&1` && $?.exitstatus == 0
+      databases << :test_postgres
+    else
+      warn "No \"postgres\" role? You might need to execute `createuser postgres -drs' first."
+    end
   end
   if File.exist?('test/fscontext.jar')
     databases << :test_jndi
