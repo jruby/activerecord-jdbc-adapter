@@ -1,3 +1,14 @@
+def have_postgres?
+  if find_executable?("psql")
+    if `psql -c '\\l' -U postgres 2>&1` && $?.exitstatus == 0
+      true
+    else
+      warn "No \"postgres\" role? You might need to execute `createuser postgres -drs' first."
+      false
+    end
+  end
+end
+
 namespace :db do
   desc "Creates the test database for MySQL."
   task :mysql do
@@ -17,6 +28,7 @@ SQL
 
   desc "Creates the test database for PostgreSQL."
   task :postgres do
+    fail unless have_postgres?
     load 'test/db/postgres.rb' rescue nil
     t = Tempfile.new("psql")
     t.puts <<-SQL
@@ -27,8 +39,6 @@ CREATE DATABASE #{POSTGRES_CONFIG[:database]} OWNER #{POSTGRES_CONFIG[:username]
 SQL
     t.close
     at_exit { t.unlink }
-    sh("cat #{t.path} | psql -U postgres") do |ok,res|
-      fail "No \"postgres\" role? You might need to execute `createuser postgres -drs' first." unless ok
-    end
+    sh "cat #{t.path} | psql -U postgres"
   end
 end
