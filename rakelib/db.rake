@@ -23,7 +23,9 @@ SET PASSWORD FOR #{MYSQL_CONFIG[:username]}@localhost = PASSWORD('#{MYSQL_CONFIG
 SQL
     t.close
     at_exit { t.unlink }
-    sh("cat #{t.path} | mysql -u root")
+    password = ""
+    password = " --password=#{ENV['MYSQL_PASS']}" if ENV['MYSQL_PASS']
+    sh("cat #{t.path} | mysql -u root#{password}")
   end
 
   desc "Creates the test database for PostgreSQL."
