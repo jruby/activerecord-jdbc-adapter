@@ -18,7 +18,7 @@ SQL
       password = YAML.load(File.new(ENV['DATABASE_YML']))["production"]["password"]
       password_arg = " --password=#{password}"
     end
-    sh("cat #{t.path} | mysql -u root#{password}")
+    sh "cat #{t.path} | mysql -u root#{password_arg}", :verbose => false # so password is not echoed
   end
 
   desc "Creates the test database for PostgreSQL."
