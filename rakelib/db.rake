@@ -1,14 +1,3 @@
-def have_postgres?
-  if find_executable?("psql")
-    if `psql -c '\\l' -U postgres 2>&1` && $?.exitstatus == 0
-      true
-    else
-      warn "No \"postgres\" role? You might need to execute `createuser postgres -drs' first."
-      false
-    end
-  end
-end
-
 namespace :db do
   desc "Creates the test database for MySQL."
   task :mysql do
@@ -24,7 +13,11 @@ SQL
     t.close
     at_exit { t.unlink }
     password = ""
-    password = " --password=#{ENV['MYSQL_PASS']}" if ENV['MYSQL_PASS']
+    if ENV['DATABASE_YML']
+      require 'yaml'
+      password = YAML.load(File.new(ENV['DATABASE_YML']))["production"]["password"]
+      password_arg = " --password=#{password}"
+    end
     sh("cat #{t.path} | mysql -u root#{password}")
   end
 

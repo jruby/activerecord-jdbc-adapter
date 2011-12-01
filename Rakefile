@@ -6,6 +6,8 @@ require 'bundler'
 Bundler::GemHelper.install_tasks
 require 'bundler/setup'
 
+require File.expand_path('../test/helper', __FILE__)
+
 task :default => [:jar, :test]
 
 #ugh, bundler doesn't use tasks, so gotta hook up to both tasks.
@@ -56,4 +58,3 @@ task "all:build"   => ["build", *ADAPTERS.map { |f| "#{f}:build" }]
 task :filelist do
   puts FileList['pkg/**/*'].inspect
 end
-

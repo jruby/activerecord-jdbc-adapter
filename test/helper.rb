@@ -2,6 +2,17 @@ module Kernel
   def find_executable?(name)
     ENV['PATH'].split(File::PATH_SEPARATOR).detect {|p| File.executable?(File.join(p, name))}
   end
+
+  def have_postgres?
+    if find_executable?("psql")
+      if `psql -c '\\l' -U postgres 2>&1` && $?.exitstatus == 0
+        true
+      else
+        warn "No \"postgres\" role? You might need to execute `createuser postgres -drs' first."
+        false
+      end
+    end
+  end
 end
 
 # assert_queries and SQLCounter taken from rails active_record tests
