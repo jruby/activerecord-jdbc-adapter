@@ -135,7 +135,7 @@ module ::ArJdbc
     def quote_column_name(name)
       "`#{name.to_s.gsub('`', '``')}`"
     end
-    
+
     def quoted_true
       "1"
     end
@@ -195,7 +195,7 @@ module ::ArJdbc
     def jdbc_columns(table_name, name = nil)#:nodoc:
       sql = "SHOW FIELDS FROM #{quote_table_name(table_name)}"
       execute(sql, :skip_logging).map do |field|
-        ::ActiveRecord::ConnectionAdapters::MysqlAdapter::Column.new(field["Field"], field["Default"], field["Type"], field["Null"] == "YES")
+        ::ActiveRecord::ConnectionAdapters::MysqlColumn.new(field["Field"], field["Default"], field["Type"], field["Null"] == "YES")
       end
     end
 
@@ -333,12 +333,12 @@ module ::ArJdbc
       length = options[:length] if options.is_a?(Hash)
 
       case length
-        when Hash
-          column_names.map { |name| length[name] ? "#{quote_column_name(name)}(#{length[name]})" : quote_column_name(name) }
-        when Fixnum
-          column_names.map { |name| "#{quote_column_name(name)}(#{length})" }
-        else
-          column_names.map { |name| quote_column_name(name) }
+      when Hash
+        column_names.map { |name| length[name] ? "#{quote_column_name(name)}(#{length[name]})" : quote_column_name(name) }
+      when Fixnum
+        column_names.map { |name| "#{quote_column_name(name)}(#{length})" }
+      else
+        column_names.map { |name| quote_column_name(name) }
       end
     end
 
@@ -373,31 +373,13 @@ module ::ArJdbc
   end
 end
 
-module ActiveRecord::ConnectionAdapters
-  # Remove any vestiges of core/Ruby MySQL adapter
-  remove_const(:MysqlColumn) if const_defined?(:MysqlColumn)
-  remove_const(:MysqlAdapter) if const_defined?(:MysqlAdapter)
+module ActiveRecord
+  module ConnectionAdapters
+    # Remove any vestiges of core/Ruby MySQL adapter
+    remove_const(:MysqlColumn) if const_defined?(:MysqlColumn)
+    remove_const(:MysqlAdapter) if const_defined?(:MysqlAdapter)
 
-  class MysqlAdapter < JdbcAdapter
-    include ArJdbc::MySQL
-
-    def initialize(*args)
-      super
-      configure_connection
-    end
-
-    def jdbc_connection_class(spec)
-      ::ArJdbc::MySQL.jdbc_connection_class
-    end
-
-    def jdbc_column_class
-      ActiveRecord::ConnectionAdapters::MysqlAdapter::Column
-    end
-
-    alias_chained_method :columns, :query_cache, :jdbc_columns
-
-    remove_const(:Column) if const_defined?(:Column)
-    class Column < JdbcColumn
+    class MysqlColumn < JdbcColumn
       include ArJdbc::MySQL::ColumnExtensions
 
       def initialize(name, *args)
@@ -411,20 +393,39 @@ module ActiveRecord::ConnectionAdapters
       def call_discovered_column_callbacks(*)
       end
     end
-    
-    protected
-    def exec_insert(sql, name, binds)
-      binds = binds.dup
 
-      # Pretend to support bind parameters
-      unless binds.empty?
-        sql = sql.gsub('?') { quote(*binds.shift.reverse) }
+    class MysqlAdapter < JdbcAdapter
+      include ArJdbc::MySQL
+
+      def initialize(*args)
+        super
+        configure_connection
       end
-      execute sql, name
-    end
-    alias :exec_update :exec_insert
-    alias :exec_delete :exec_insert
 
+      def jdbc_connection_class(spec)
+        ::ArJdbc::MySQL.jdbc_connection_class
+      end
+
+      def jdbc_column_class
+        ActiveRecord::ConnectionAdapters::MysqlColumn
+      end
+
+      alias_chained_method :columns, :query_cache, :jdbc_columns
+
+      protected
+      def exec_insert(sql, name, binds)
+        binds = binds.dup
+
+        # Pretend to support bind parameters
+        unless binds.empty?
+          sql = sql.gsub('?') { quote(*binds.shift.reverse) }
+        end
+        execute sql, name
+      end
+      alias :exec_update :exec_insert
+      alias :exec_delete :exec_insert
+
+    end
   end
 end
 
