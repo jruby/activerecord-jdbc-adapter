@@ -293,6 +293,29 @@ module ::ArJdbc
       sql
     end
 
+    # Taken from: https://github.com/gfmurphy/rails/blob/3-1-stable/activerecord/lib/active_record/connection_adapters/mysql_adapter.rb#L540
+    #
+    # In the simple case, MySQL allows us to place JOINs directly into the UPDATE
+    # query. However, this does not allow for LIMIT, OFFSET and ORDER. To support
+    # these, we must use a subquery. However, MySQL is too stupid to create a
+    # temporary table for this automatically, so we have to give it some prompting
+    # in the form of a subsubquery. Ugh!
+    def join_to_update(update, select) #:nodoc:
+      if select.limit || select.offset || select.orders.any?
+        subsubselect = select.clone
+        subsubselect.projections = [update.key]
+
+        subselect = Arel::SelectManager.new(select.engine)
+        subselect.project Arel.sql(update.key.name)
+        subselect.from subsubselect.as('__active_record_temp')
+
+        update.where update.key.in(subselect)
+      else
+        update.table select.source
+        update.wheres = select.constraints
+      end
+    end
+
     def show_variable(var)
       res = execute("show variables like '#{var}'")
       result_row = res.detect {|row| row["Variable_name"] == var }

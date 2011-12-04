@@ -42,6 +42,24 @@ class MysqlSimpleTest < Test::Unit::TestCase
     assert_nothing_raised { Entry.update_all({:title => "test"}, {}, {:limit => 1}) }
   end
 
+  def test_update_all_with_joins_and_offset_and_order
+    user_1 = User.create :login => 'user_1'
+    user_2 = User.create :login => 'user_2'
+
+    entry_1 = Entry.create :title => 'title_1', :content => 'content_1', :rating => 0,
+    :user_id => user_1.id
+    entry_2 = Entry.create :title => 'title_2', :content => 'content_2', :rating => 1,
+    :user_id => user_2.id
+
+    all_entries = Entry.joins(:user).where('users.id' => user_1.id).
+      order('users.id', 'entries.id')
+    count   = all_entries.count
+    entries = all_entries.offset(1)
+
+    assert_equal count - 1, entries.update_all(:user_id => user_2.id)
+    assert_equal user_2, Entry.find_by_title('title_2').user
+  end
+
   def test_find_in_other_schema_with_include
     old_entries_table_name = Entry.table_name
     old_users_table_name   = User.table_name
