@@ -182,6 +182,8 @@ the ActiveRecord sources.
 
   jruby -S rake rails:test DRIVER=mysql RAILS=/path/activerecord_source_dir
 
+== Travis Build Status {<img src="https://secure.travis-ci.org/jruby/activerecord-jdbc-adapter.png"/>}[http://travis-ci.org/#!/jruby/activerecord-jdbc-adapter]
+
 == Authors
 
 This project was written by Nick Sieger <nick@nicksieger.com> and Ola Bini
