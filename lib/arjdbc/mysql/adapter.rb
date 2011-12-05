@@ -192,11 +192,30 @@ module ::ArJdbc
       end
     end
 
+    # based on:
+    # https://github.com/rails/rails/blob/3-1-stable/activerecord/lib/active_record/connection_adapters/mysql_adapter.rb#L756
+    # Required for passing rails column caching tests
+    # Returns a table's primary key and belonging sequence.
+    def pk_and_sequence_for(table) #:nodoc:
+      keys = []
+      result = execute("SHOW INDEX FROM #{quote_table_name(table)} WHERE Key_name = 'PRIMARY'", 'SCHEMA')
+      result.each do |h|
+        keys << h["Column_name"]
+      end
+      keys.length == 1 ? [keys.first, nil] : nil
+    end
+
     def jdbc_columns(table_name, name = nil)#:nodoc:
       sql = "SHOW FIELDS FROM #{quote_table_name(table_name)}"
-      execute(sql, :skip_logging).map do |field|
+      execute(sql, 'SCHEMA').map do |field|
         ::ActiveRecord::ConnectionAdapters::MysqlColumn.new(field["Field"], field["Default"], field["Type"], field["Null"] == "YES")
       end
+    end
+
+    # Returns just a table's primary key
+    def primary_key(table)
+      pk_and_sequence = pk_and_sequence_for(table)
+      pk_and_sequence && pk_and_sequence.first
     end
 
     def recreate_database(name, options = {}) #:nodoc:

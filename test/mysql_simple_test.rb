@@ -42,6 +42,7 @@ class MysqlSimpleTest < Test::Unit::TestCase
     assert_nothing_raised { Entry.update_all({:title => "test"}, {}, {:limit => 1}) }
   end
 
+  # from rails active record tests
   def test_update_all_with_joins_and_offset_and_order
     user_1 = User.create :login => 'user_1'
     user_2 = User.create :login => 'user_2'
@@ -58,6 +59,20 @@ class MysqlSimpleTest < Test::Unit::TestCase
 
     assert_equal count - 1, entries.update_all(:user_id => user_2.id)
     assert_equal user_2, Entry.find_by_title('title_2').user
+  end
+
+  # from rails active record tests
+  def test_caching_of_columns
+    user = User.create :login => 'test'
+    # clear cache possibly created by other tests
+    user.entries.reset_column_information
+
+    # One query for columns, one for primary key
+    assert_queries(2) { user.entries.columns; user.entries.columns }
+
+    ## and again to verify that reset_column_information clears the cache correctly
+    user.entries.reset_column_information
+    assert_queries(2) { user.entries.columns; user.entries.columns }
   end
 
   def test_find_in_other_schema_with_include
