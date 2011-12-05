@@ -147,7 +147,7 @@ module ::ArJdbc
 
     def insert_sql(sql, name = nil, pk = nil, id_value = nil, sequence_name = nil, binds = []) #:nodoc:
       sql = substitute_binds(sql, binds)
-      log(sql, name) { @connection.execute_update(sql) }      
+      log(sql, name) { @connection.execute_update(sql) }
       id_value || last_insert_id
     end
 
@@ -208,15 +208,12 @@ module ::ArJdbc
     end
 
     def table_structure(table_name)
-      structure = @connection.execute_query("PRAGMA table_info(#{quote_table_name(table_name)})")
-    # if the query causes an exception like this: "query does not return ResultSet"
+      sql = "PRAGMA table_info(#{quote_table_name(table_name)})"
+      log(sql, 'SCHEMA') { @connection.execute_query(sql) }
     rescue ActiveRecord::JDBCError => error
-      structure = nil
-    ensure
-      if structure.nil? || structure.empty?
-        raise ActiveRecord::StatementInvalid, "Could not find table '#{table_name}'"
-      end
-      structure
+      e = ActiveRecord::StatementInvalid.new("Could not find table '#{table_name}'")
+      e.set_backtrace error.backtrace
+      raise e
     end
 
     def jdbc_columns(table_name, name = nil) #:nodoc:
