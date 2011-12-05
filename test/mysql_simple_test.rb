@@ -18,7 +18,7 @@ class MysqlSimpleTest < Test::Unit::TestCase
   def test_column_class_instantiation
     text_column = nil
     assert_nothing_raised do
-      text_column = ActiveRecord::ConnectionAdapters::MysqlAdapter::Column.
+      text_column = ActiveRecord::ConnectionAdapters::MysqlColumn.
         new("title", nil, "text")
     end
     assert_not_nil text_column
@@ -40,6 +40,54 @@ class MysqlSimpleTest < Test::Unit::TestCase
 
   def test_update_all_with_limit
     assert_nothing_raised { Entry.update_all({:title => "test"}, {}, {:limit => 1}) }
+  end
+
+  # from rails active record tests
+  def test_update_all_with_joins_and_offset_and_order
+    user_1 = User.create :login => 'user_1'
+    user_2 = User.create :login => 'user_2'
+
+    entry_1 = Entry.create :title => 'title_1', :content => 'content_1', :rating => 0,
+    :user_id => user_1.id
+    entry_2 = Entry.create :title => 'title_2', :content => 'content_2', :rating => 1,
+    :user_id => user_2.id
+
+    all_entries = Entry.joins(:user).where('users.id' => user_1.id).
+      order('users.id', 'entries.id')
+    count   = all_entries.count
+    entries = all_entries.offset(1)
+
+    assert_equal count - 1, entries.update_all(:user_id => user_2.id)
+    assert_equal user_2, Entry.find_by_title('title_2').user
+  end
+
+  # from rails active record tests
+  def test_caching_of_columns
+    user = User.create :login => 'test'
+    # clear cache possibly created by other tests
+    user.entries.reset_column_information
+
+    # One query for columns, one for primary key
+    assert_queries(2) { user.entries.columns; user.entries.columns }
+
+    ## and again to verify that reset_column_information clears the cache correctly
+    user.entries.reset_column_information
+    assert_queries(2) { user.entries.columns; user.entries.columns }
+  end
+
+  # from rails active record tests
+  def test_drop_index_from_table_named_values
+    connection = Entry.connection
+    connection.create_table :values, :force => true do |t|
+      t.integer :value
+    end
+
+    assert_nothing_raised do
+      connection.add_index :values, :value
+      connection.remove_index :values, :column => :value
+    end
+
+    connection.drop_table :values rescue nil
   end
 
   def test_find_in_other_schema_with_include

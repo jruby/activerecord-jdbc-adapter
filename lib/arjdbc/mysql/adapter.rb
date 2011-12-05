@@ -135,7 +135,7 @@ module ::ArJdbc
     def quote_column_name(name)
       "`#{name.to_s.gsub('`', '``')}`"
     end
-    
+
     def quoted_true
       "1"
     end
@@ -192,11 +192,52 @@ module ::ArJdbc
       end
     end
 
+    # based on:
+    # https://github.com/rails/rails/blob/3-1-stable/activerecord/lib/active_record/connection_adapters/mysql_adapter.rb#L756
+    # Required for passing rails column caching tests
+    # Returns a table's primary key and belonging sequence.
+    def pk_and_sequence_for(table) #:nodoc:
+      keys = []
+      result = execute("SHOW INDEX FROM #{quote_table_name(table)} WHERE Key_name = 'PRIMARY'", 'SCHEMA')
+      result.each do |h|
+        keys << h["Column_name"]
+      end
+      keys.length == 1 ? [keys.first, nil] : nil
+    end
+
+    # based on:
+    # https://github.com/rails/rails/blob/3-1-stable/activerecord/lib/active_record/connection_adapters/mysql_adapter.rb#L647
+    # Returns an array of indexes for the given table.
+    def indexes(table_name, name = nil)#:nodoc:
+      indexes = []
+      current_index = nil
+      result = execute("SHOW KEYS FROM #{quote_table_name(table_name)}", name)
+      result.each do |row|
+        key_name = row["Key_name"]
+        if current_index != key_name
+          next if key_name == "PRIMARY" # skip the primary key
+          current_index = key_name
+          indexes << ::ActiveRecord::ConnectionAdapters::IndexDefinition.new(
+            row["Table"], key_name, row["Non_unique"] == 0, [], [])
+        end
+
+        indexes.last.columns << row["Column_name"]
+        indexes.last.lengths << row["Sub_part"]
+      end
+      indexes
+    end
+
     def jdbc_columns(table_name, name = nil)#:nodoc:
       sql = "SHOW FIELDS FROM #{quote_table_name(table_name)}"
-      execute(sql, :skip_logging).map do |field|
-        ::ActiveRecord::ConnectionAdapters::MysqlAdapter::Column.new(field["Field"], field["Default"], field["Type"], field["Null"] == "YES")
+      execute(sql, 'SCHEMA').map do |field|
+        ::ActiveRecord::ConnectionAdapters::MysqlColumn.new(field["Field"], field["Default"], field["Type"], field["Null"] == "YES")
       end
+    end
+
+    # Returns just a table's primary key
+    def primary_key(table)
+      pk_and_sequence = pk_and_sequence_for(table)
+      pk_and_sequence && pk_and_sequence.first
     end
 
     def recreate_database(name, options = {}) #:nodoc:
@@ -293,6 +334,29 @@ module ::ArJdbc
       sql
     end
 
+    # Taken from: https://github.com/gfmurphy/rails/blob/3-1-stable/activerecord/lib/active_record/connection_adapters/mysql_adapter.rb#L540
+    #
+    # In the simple case, MySQL allows us to place JOINs directly into the UPDATE
+    # query. However, this does not allow for LIMIT, OFFSET and ORDER. To support
+    # these, we must use a subquery. However, MySQL is too stupid to create a
+    # temporary table for this automatically, so we have to give it some prompting
+    # in the form of a subsubquery. Ugh!
+    def join_to_update(update, select) #:nodoc:
+      if select.limit || select.offset || select.orders.any?
+        subsubselect = select.clone
+        subsubselect.projections = [update.key]
+
+        subselect = Arel::SelectManager.new(select.engine)
+        subselect.project Arel.sql(update.key.name)
+        subselect.from subsubselect.as('__active_record_temp')
+
+        update.where update.key.in(subselect)
+      else
+        update.table select.source
+        update.wheres = select.constraints
+      end
+    end
+
     def show_variable(var)
       res = execute("show variables like '#{var}'")
       result_row = res.detect {|row| row["Variable_name"] == var }
@@ -333,12 +397,12 @@ module ::ArJdbc
       length = options[:length] if options.is_a?(Hash)
 
       case length
-        when Hash
-          column_names.map { |name| length[name] ? "#{quote_column_name(name)}(#{length[name]})" : quote_column_name(name) }
-        when Fixnum
-          column_names.map { |name| "#{quote_column_name(name)}(#{length})" }
-        else
-          column_names.map { |name| quote_column_name(name) }
+      when Hash
+        column_names.map { |name| length[name] ? "#{quote_column_name(name)}(#{length[name]})" : quote_column_name(name) }
+      when Fixnum
+        column_names.map { |name| "#{quote_column_name(name)}(#{length})" }
+      else
+        column_names.map { |name| quote_column_name(name) }
       end
     end
 
@@ -373,31 +437,13 @@ module ::ArJdbc
   end
 end
 
-module ActiveRecord::ConnectionAdapters
-  # Remove any vestiges of core/Ruby MySQL adapter
-  remove_const(:MysqlColumn) if const_defined?(:MysqlColumn)
-  remove_const(:MysqlAdapter) if const_defined?(:MysqlAdapter)
+module ActiveRecord
+  module ConnectionAdapters
+    # Remove any vestiges of core/Ruby MySQL adapter
+    remove_const(:MysqlColumn) if const_defined?(:MysqlColumn)
+    remove_const(:MysqlAdapter) if const_defined?(:MysqlAdapter)
 
-  class MysqlAdapter < JdbcAdapter
-    include ArJdbc::MySQL
-
-    def initialize(*args)
-      super
-      configure_connection
-    end
-
-    def jdbc_connection_class(spec)
-      ::ArJdbc::MySQL.jdbc_connection_class
-    end
-
-    def jdbc_column_class
-      ActiveRecord::ConnectionAdapters::MysqlAdapter::Column
-    end
-
-    alias_chained_method :columns, :query_cache, :jdbc_columns
-
-    remove_const(:Column) if const_defined?(:Column)
-    class Column < JdbcColumn
+    class MysqlColumn < JdbcColumn
       include ArJdbc::MySQL::ColumnExtensions
 
       def initialize(name, *args)
@@ -411,20 +457,39 @@ module ActiveRecord::ConnectionAdapters
       def call_discovered_column_callbacks(*)
       end
     end
-    
-    protected
-    def exec_insert(sql, name, binds)
-      binds = binds.dup
 
-      # Pretend to support bind parameters
-      unless binds.empty?
-        sql = sql.gsub('?') { quote(*binds.shift.reverse) }
+    class MysqlAdapter < JdbcAdapter
+      include ArJdbc::MySQL
+
+      def initialize(*args)
+        super
+        configure_connection
       end
-      execute sql, name
-    end
-    alias :exec_update :exec_insert
-    alias :exec_delete :exec_insert
 
+      def jdbc_connection_class(spec)
+        ::ArJdbc::MySQL.jdbc_connection_class
+      end
+
+      def jdbc_column_class
+        ActiveRecord::ConnectionAdapters::MysqlColumn
+      end
+
+      alias_chained_method :columns, :query_cache, :jdbc_columns
+
+      protected
+      def exec_insert(sql, name, binds)
+        binds = binds.dup
+
+        # Pretend to support bind parameters
+        unless binds.empty?
+          sql = sql.gsub('?') { quote(*binds.shift.reverse) }
+        end
+        execute sql, name
+      end
+      alias :exec_update :exec_insert
+      alias :exec_delete :exec_insert
+
+    end
   end
 end
 
