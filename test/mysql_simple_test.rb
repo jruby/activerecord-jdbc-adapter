@@ -75,6 +75,21 @@ class MysqlSimpleTest < Test::Unit::TestCase
     assert_queries(2) { user.entries.columns; user.entries.columns }
   end
 
+  # from rails active record tests
+  def test_drop_index_from_table_named_values
+    connection = Entry.connection
+    connection.create_table :values, :force => true do |t|
+      t.integer :value
+    end
+
+    assert_nothing_raised do
+      connection.add_index :values, :value
+      connection.remove_index :values, :column => :value
+    end
+
+    connection.drop_table :values rescue nil
+  end
+
   def test_find_in_other_schema_with_include
     old_entries_table_name = Entry.table_name
     old_users_table_name   = User.table_name

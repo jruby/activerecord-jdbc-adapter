@@ -205,6 +205,28 @@ module ::ArJdbc
       keys.length == 1 ? [keys.first, nil] : nil
     end
 
+    # based on:
+    # https://github.com/rails/rails/blob/3-1-stable/activerecord/lib/active_record/connection_adapters/mysql_adapter.rb#L647
+    # Returns an array of indexes for the given table.
+    def indexes(table_name, name = nil)#:nodoc:
+      indexes = []
+      current_index = nil
+      result = execute("SHOW KEYS FROM #{quote_table_name(table_name)}", name)
+      result.each do |row|
+        key_name = row["Key_name"]
+        if current_index != key_name
+          next if key_name == "PRIMARY" # skip the primary key
+          current_index = key_name
+          indexes << ::ActiveRecord::ConnectionAdapters::IndexDefinition.new(
+            row["Table"], key_name, row["Non_unique"] == 0, [], [])
+        end
+
+        indexes.last.columns << row["Column_name"]
+        indexes.last.lengths << row["Sub_part"]
+      end
+      indexes
+    end
+
     def jdbc_columns(table_name, name = nil)#:nodoc:
       sql = "SHOW FIELDS FROM #{quote_table_name(table_name)}"
       execute(sql, 'SCHEMA').map do |field|
