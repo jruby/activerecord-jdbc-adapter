@@ -6,7 +6,6 @@ module ::ArJdbc
   module PostgreSQL
     def self.extended(mod)
       (class << mod; self; end).class_eval do
-        alias_chained_method :insert, :query_dirty, :pg_insert
         alias_chained_method :columns, :query_cache, :pg_columns
       end
     end
@@ -247,41 +246,31 @@ module ::ArJdbc
       nil
     end
 
-    def pg_insert(sql, name = nil, pk = nil, id_value = nil, sequence_name = nil, binds = [])
-      sql = substitute_binds(sql, binds)
+    # Returns just a table's primary key
+    def primary_key(table)
+      row = exec_query(<<-end_sql, 'SCHEMA', [[nil, table]]).rows.first
+          SELECT DISTINCT(attr.attname)
+          FROM pg_attribute attr
+          INNER JOIN pg_depend dep ON attr.attrelid = dep.refobjid AND attr.attnum = dep.refobjsubid
+          INNER JOIN pg_constraint cons ON attr.attrelid = cons.conrelid AND attr.attnum = cons.conkey[1]
+          WHERE cons.contype = 'p'
+            AND dep.refobjid = $1::regclass
+        end_sql
 
-      # Extract the table from the insert sql. Yuck.
-      table = sql.split(" ", 4)[2].gsub('"', '')
+        row && row.first
+    end
 
-      # Try an insert with 'returning id' if available (PG >= 8.2)
-      if supports_insert_with_returning? && id_value.nil?
-        pk, sequence_name = *pk_and_sequence_for(table) unless pk
-        if pk
-          sql = substitute_binds(sql, binds)
-          id_value = select_value("#{sql} RETURNING #{quote_column_name(pk)}")
-          clear_query_cache #FIXME: Why now?
-          return id_value
-        end
+    # taken from rails postgresql adapter
+    # https://github.com/gfmurphy/rails/blob/master/activerecord/lib/active_record/connection_adapters/postgresql_adapter.rb#L611
+    def sql_for_insert(sql, pk, id_value, sequence_name, binds)
+      unless pk
+        table_ref = extract_table_ref_from_insert_sql(sql)
+        pk = primary_key(table_ref) if table_ref
       end
 
-      # Otherwise, plain insert
-      execute(sql, name, binds)
+      sql = "#{sql} RETURNING #{quote_column_name(pk)}" if pk
 
-      # Don't need to look up id_value if we already have it.
-      # (and can't in case of non-sequence PK)
-      unless id_value
-        # If neither pk nor sequence name is given, look them up.
-        unless pk || sequence_name
-          pk, sequence_name = *pk_and_sequence_for(table)
-        end
-
-        # If a pk is given, fallback to default sequence name.
-        # Don't fetch last insert id for a table without a pk.
-        if pk && sequence_name ||= default_sequence_name(table, pk)
-          id_value = last_insert_id(table, sequence_name)
-        end
-      end
-      id_value
+      [sql, binds]
     end
 
     def pg_columns(table_name, name=nil)
@@ -341,10 +330,10 @@ module ::ArJdbc
 
       insertion_order = []
       index_order = nil
-      
+
       result.each do |row|
         if current_index != row[0]
-        
+
           (index_order = row[4].split(' ')).each_with_index{ |v, i| index_order[i] = v.to_i }
           indexes << ::ActiveRecord::ConnectionAdapters::IndexDefinition.new(table_name, row[0], row[1] == "t", [])
           current_index = row[0]
@@ -355,6 +344,11 @@ module ::ArJdbc
       end
 
       indexes
+    end
+
+    # take id from result of insert query
+    def last_inserted_id(result)
+      Hash[Array(*result)].fetch("id") { result }
     end
 
     def last_insert_id(table, sequence_name)
@@ -613,6 +607,12 @@ module ::ArJdbc
         [match_data[1], (rest.length > 0 ? rest : nil)]
       end
     end
+
+    # from rails postgresl_adapter
+    def extract_table_ref_from_insert_sql(sql)
+      sql[/into\s+([^\(]*).*values\s*\(/i]
+      $1.strip if $1
+    end
   end
 end
 
@@ -644,8 +644,7 @@ module ActiveRecord::ConnectionAdapters
     def jdbc_column_class
       ActiveRecord::ConnectionAdapters::PostgreSQLColumn
     end
-    
-    alias_chained_method :insert, :query_dirty, :pg_insert
+
     alias_chained_method :columns, :query_cache, :pg_columns
   end
 end
