@@ -16,12 +16,41 @@ class PostgresSimpleTest < Test::Unit::TestCase
     classname = @connection.class.name[/[^:]*$/]
     assert_equal 'PostgreSQLAdapter', classname
   end
-  
+
   def test_multi_statement_support
     results = @connection.execute "SELECT title from entries; SELECT login from users"
     assert_equal 2, results.length
     assert_equal ["title"], results[0].first.keys
     assert_equal ["login"], results[1].first.keys
+  end
+end
+
+class PostgresTimestampTest < Test::Unit::TestCase
+  def setup
+    DbTypeMigration.up
+  end
+
+  def teardown
+    DbTypeMigration.down
+  end
+
+  # infinite timestamp tests based on rails tests for postgresql_adapter.rb
+  def test_load_infinity_and_beyond
+    d = DbType.find_by_sql("select 'infinity'::timestamp as sample_timestamp")
+    assert d.first.sample_timestamp.infinite?, 'timestamp should be infinite'
+
+    d = DbType.find_by_sql "select '-infinity'::timestamp as sample_timestamp"
+    time = d.first.sample_timestamp
+    assert time.infinite?, "timestamp should be infinte"
+    assert_operator time, :<, 0
+  end
+
+  def test_save_infinity_and_beyond
+    d = DbType.create!(:sample_timestamp => 1.0 / 0.0)
+    assert_equal(1.0 / 0.0, d.sample_timestamp)
+
+    e = DbType.create!(:sample_timestamp => -1.0 / 0.0)
+    assert_equal(-1.0 / 0.0, e.sample_timestamp)
   end
 end
 
