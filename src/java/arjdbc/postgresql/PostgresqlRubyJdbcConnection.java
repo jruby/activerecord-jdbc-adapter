@@ -27,6 +27,10 @@ package arjdbc.postgresql;
 
 import arjdbc.jdbc.RubyJdbcConnection;
 
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Types;
+
 import org.jruby.Ruby;
 import org.jruby.RubyClass;
 import org.jruby.runtime.ObjectAllocator;
@@ -47,6 +51,27 @@ public class PostgresqlRubyJdbcConnection extends RubyJdbcConnection {
         clazz.defineAnnotatedMethods(PostgresqlRubyJdbcConnection.class);
 
         return clazz;
+    }
+
+    /**
+     * Override jdbcToRuby type conversions to handle infinite timestamps.
+     * Handing timestamp off to ruby as string so adapter can perform type
+     * conversion to timestamp
+     */
+    @Override
+    protected IRubyObject jdbcToRuby(Ruby runtime, int column, int type, 
+                                     ResultSet resultSet)
+        throws SQLException {
+        if(type == Types.TIMESTAMP) {
+            try {
+                return stringToRuby(runtime, resultSet, 
+                                    resultSet.getString(column));
+            } catch(java.io.IOException ioe) {
+                SQLException ex = new SQLException(ioe.getMessage());
+                throw (SQLException) ex.initCause(ioe);
+            }
+        }
+        return super.jdbcToRuby(runtime, column, type, resultSet);
     }
 
     private static ObjectAllocator POSTGRESQL_JDBCCONNECTION_ALLOCATOR = new ObjectAllocator() {
