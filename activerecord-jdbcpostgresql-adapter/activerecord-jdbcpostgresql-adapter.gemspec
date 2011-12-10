@@ -22,6 +22,6 @@ Gem::Specification.new do |s|
   s.summary = %q{Postgres JDBC adapter for JRuby on Rails.}
 
   s.add_dependency 'activerecord-jdbc-adapter', "~>#{version}"
-  s.add_dependency 'jdbc-postgres', '~> 9.0.0'
+  s.add_dependency 'jdbc-postgres', '>= 9.0', '< 9.2'
 end
 
