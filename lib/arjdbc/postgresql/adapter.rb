@@ -506,22 +506,31 @@ module ::ArJdbc
       sql.replace "SELECT * FROM (#{sql}) AS id_list ORDER BY #{order}"
     end
 
+    # from postgres_adapter.rb in rails project
+    # https://github.com/rails/rails/blob/3-1-stable/activerecord/lib/active_record/connection_adapters/postgresql_adapter.rb#L412
+    # Quotes PostgreSQL-specific data types for SQL input.
     def quote(value, column = nil) #:nodoc:
       return super unless column
 
-      if value.kind_of?(String) && column.type == :binary
-        "E'#{escape_bytea(value)}'"
-      elsif value.kind_of?(String) && column.sql_type == 'xml'
-        "xml '#{quote_string(value)}'"
-      elsif value.kind_of?(Numeric) && column.sql_type == 'money'
+      case value
+      when Float
+        return super unless value.infinite? && column.type == :datetime
+        "'#{value.to_s.downcase}'"
+      when Numeric
+        return super unless column.sql_type == 'money'
         # Not truly string input, so doesn't require (or allow) escape string syntax.
         "'#{value}'"
-      elsif value.kind_of?(String) && column.sql_type =~ /^bit/
-        case value
-        when /^[01]*$/
-          "B'#{value}'" # Bit-string notation
-        when /^[0-9A-F]*$/i
-          "X'#{value}'" # Hexadecimal notation
+      when String
+        case column.sql_type
+        when 'bytea' then "'#{escape_bytea(value)}'"
+        when 'xml'   then "xml '#{quote_string(value)}'"
+        when /^bit/
+          case value
+          when /^[01]*$/      then "B'#{value}'" # Bit-string notation
+          when /^[0-9A-F]*$/i then "X'#{value}'" # Hexadecimal notation
+          end
+        else
+          super
         end
       else
         super
