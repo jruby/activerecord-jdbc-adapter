@@ -17,11 +17,45 @@ class PostgresSimpleTest < Test::Unit::TestCase
     assert_equal 'PostgreSQLAdapter', classname
   end
 
+  def test_encoding
+    assert_not_nil @connection.encoding
+  end
+
   def test_multi_statement_support
     results = @connection.execute "SELECT title from entries; SELECT login from users"
     assert_equal 2, results.length
     assert_equal ["title"], results[0].first.keys
     assert_equal ["login"], results[1].first.keys
+  end
+
+  def test_create_xml_column
+    assert_nothing_raised do
+      @connection.create_table :xml_testings do |t|
+        t.column :xml_test, :xml
+      end
+    end
+
+    xml_test = @connection.columns(:xml_testings).detect do
+      |c| c.name == "xml_test"
+    end
+
+    assert_equal "xml", xml_test.sql_type
+  ensure
+    @connection.drop_table :xml_testings rescue nil
+  end
+
+  def test_create_table_with_limits
+    assert_nothing_raised do
+      @connection.create_table :testings do |t|
+        t.column :eleven_int, :integer, :limit => 11
+      end
+    end
+
+    columns = @connection.columns(:testings)
+    eleven = columns.detect { |c| c.name == "eleven_int" }
+    assert_equal "integer", eleven.sql_type
+  ensure
+    @connection.drop_table :testings rescue nil
   end
 end
 
@@ -32,6 +66,14 @@ class PostgresTimestampTest < Test::Unit::TestCase
 
   def teardown
     DbTypeMigration.down
+  end
+
+  def test_string_is_character_varying
+    sample_string = DbType.connection.columns(:db_types).detect do |c|
+      c.name == "sample_string"
+    end
+
+    assert_match(/^character varying/, sample_string.sql_type)
   end
 
   # infinite timestamp tests based on rails tests for postgresql_adapter.rb

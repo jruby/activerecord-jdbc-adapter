@@ -1,5 +1,12 @@
 module ActiveRecord::ConnectionAdapters
   PostgreSQLAdapter = Class.new(AbstractAdapter) unless const_defined?(:PostgreSQLAdapter)
+
+  TableDefinition.class_eval do
+    def xml(*args)
+      options = args.extract_options!
+      column(args[0], 'xml', options)
+    end
+  end
 end
 
 module ::ArJdbc
@@ -98,7 +105,7 @@ module ::ArJdbc
 
       def extract_limit(sql_type)
         case sql_type
-        when /^bigin/i then 8
+        when /^bigint/i then 8
         when /^smallint/i then 2
         else super
         end
@@ -191,6 +198,10 @@ module ::ArJdbc
             0
           end
         end
+    end
+
+    def native_database_types
+      super.merge(:string => { :name => "character varying", :limit => 255 })
     end
 
     # Does PostgreSQL support migrations?
@@ -634,19 +645,24 @@ module ::ArJdbc
       execute "ALTER TABLE #{quote_table_name(table_name)} RENAME COLUMN #{quote_column_name(column_name)} TO #{quote_column_name(new_column_name)}"
     end
 
-    def remove_index(table_name, options) #:nodoc:
-      execute "DROP INDEX #{index_name(table_name, options)}"
+    def remove_index!(table_name, index_name) #:nodoc:
+      execute "DROP INDEX #{quote_table_name(index_name)}"
     end
 
-    def type_to_sql(type, limit = nil, precision = nil, scale = nil) #:nodoc:
-      return super unless type.to_s == 'integer'
+    def index_name_length
+      63
+    end
 
-      if limit.nil? || limit == 4
-        'integer'
-      elsif limit < 4
-        'smallint'
-      else
-        'bigint'
+    # Maps logical Rails types to PostgreSQL-specific data types.
+    def type_to_sql(type, limit = nil, precision = nil, scale = nil)
+      return super unless type.to_s == 'integer'
+      return 'integer' unless limit
+
+      case limit
+      when 1, 2; 'smallint'
+      when 3, 4; 'integer'
+      when 5..8; 'bigint'
+      else raise(ActiveRecordError, "No integer type has byte size #{limit}. Use a numeric with precision 0 instead.")
       end
     end
 
