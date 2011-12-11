@@ -367,6 +367,21 @@ module ::ArJdbc
       end
     end
 
+    # current database name
+    def current_database
+      exec_query("select current_database() as database").
+        first["database"]
+    end
+
+    # current database encoding
+    def encoding
+      exec_query(<<-end_sql).first["encoding"]
+        SELECT pg_encoding_to_char(pg_database.encoding) as encoding
+        FROM pg_database
+        WHERE pg_database.datname LIKE '#{current_database}'
+      end_sql
+    end
+
     # Sets the maximum number columns postgres has, default 32
     def multi_column_index_limit=(limit)
       @multi_column_index_limit = limit
