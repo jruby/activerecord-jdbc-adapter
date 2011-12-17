@@ -366,6 +366,19 @@ module SimpleTestMethods
     end
   end
 
+  def test_remove_nonexistent_index
+    assert_raise(ArgumentError) do
+      @connection.remove_index :entries, :nonexistent_index
+    end
+  end
+
+  def test_add_index_with_invalid_name_length
+    index_name = 'x' * (@connection.index_name_length + 1)
+    assert_raise(ArgumentError) do
+      @connection.add_index "entries", "title", :name => index_name
+    end
+  end
+
   def test_dumping_schema
     require 'active_record/schema_dumper'
     @connection.add_index :entries, :title
