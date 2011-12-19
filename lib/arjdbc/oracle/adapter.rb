@@ -58,6 +58,13 @@ module ::ArJdbc
         end
       end
 
+      def extract_limit(sql_type)
+        case sql_type
+        when /^(clob|date)/i; nil
+        else super
+        end
+      end
+
       def type_cast_code(var_name)
         case type
         when :datetime  then "ArJdbc::Oracle::Column.string_to_time(#{var_name}, self.class)"
