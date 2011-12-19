@@ -143,15 +143,7 @@ module ::ArJdbc
 
       def cast_to_time(value)
         return value if value.is_a?(Time)
-        time_array = ParseDate.parsedate(value)
-        return nil if !time_array.any?
-        time_array[0] ||= 2000
-        time_array[1] ||= 1
-        time_array[2] ||= 1
-        return Time.send(ActiveRecord::Base.default_timezone, *time_array) rescue nil
-
-        # Try DateTime instead - the date may be outside the time period support by Time.
-        DateTime.new(*time_array[0..5]) rescue nil
+        DateTime.parse(value).to_time rescue nil
       end
 
       def cast_to_date(value)
