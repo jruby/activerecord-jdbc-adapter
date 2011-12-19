@@ -1,12 +1,18 @@
 module ActiveRecord::ConnectionAdapters
   PostgreSQLAdapter = Class.new(AbstractAdapter) unless const_defined?(:PostgreSQLAdapter)
+
+  TableDefinition.class_eval do
+    def xml(*args)
+      options = args.extract_options!
+      column(args[0], 'xml', options)
+    end
+  end
 end
 
 module ::ArJdbc
   module PostgreSQL
     def self.extended(mod)
       (class << mod; self; end).class_eval do
-        alias_chained_method :insert, :query_dirty, :pg_insert
         alias_chained_method :columns, :query_cache, :pg_columns
       end
     end
@@ -19,67 +25,143 @@ module ::ArJdbc
       ::ActiveRecord::ConnectionAdapters::PostgresJdbcConnection
     end
 
+    # column behavior based on postgresql_adapter in rails project
+    # https://github.com/rails/rails/blob/3-1-stable/activerecord/lib/active_record/connection_adapters/postgresql_adapter.rb#L41
     module Column
-      def type_cast(value)
-        case type
-        when :boolean then cast_to_boolean(value)
-        else super
+      def self.included(base)
+        class << base
+          attr_accessor :money_precision
+          def string_to_time(string)
+            return string unless String === string
+
+            case string
+            when 'infinity' then 1.0 / 0.0
+            when '-infinity' then -1.0 / 0.0
+            else
+              super
+            end
+          end
+        end
+      end
+
+      private
+      # Extracts the value from a Postgresql column default definition
+      def default_value(default)
+        case default
+          # This is a performance optimization for Ruby 1.9.2 in development.
+          # If the value is nil, we return nil straight away without checking
+          # the regular expressions. If we check each regular expression,
+          # Regexp#=== will call NilClass#to_str, which will trigger
+          # method_missing (defined by whiny nil in ActiveSupport) which
+          # makes this method very very slow.
+        when NilClass
+          nil
+          # Numeric types
+        when /\A\(?(-?\d+(\.\d*)?\)?)\z/
+          $1
+          # Character types
+        when /\A'(.*)'::(?:character varying|bpchar|text)\z/m
+          $1
+          # Character types (8.1 formatting)
+        when /\AE'(.*)'::(?:character varying|bpchar|text)\z/m
+          $1.gsub(/\\(\d\d\d)/) { $1.oct.chr }
+          # Binary data types
+        when /\A'(.*)'::bytea\z/m
+          $1
+          # Date/time types
+        when /\A'(.+)'::(?:time(?:stamp)? with(?:out)? time zone|date)\z/
+          $1
+        when /\A'(.*)'::interval\z/
+          $1
+          # Boolean type
+        when 'true'
+          true
+        when 'false'
+          false
+          # Geometric types
+        when /\A'(.*)'::(?:point|line|lseg|box|"?path"?|polygon|circle)\z/
+          $1
+          # Network address types
+        when /\A'(.*)'::(?:cidr|inet|macaddr)\z/
+          $1
+          # Bit string types
+        when /\AB'(.*)'::"?bit(?: varying)?"?\z/
+          $1
+          # XML type
+        when /\A'(.*)'::xml\z/m
+          $1
+          # Arrays
+        when /\A'(.*)'::"?\D+"?\[\]\z/
+          $1
+          # Object identifier types
+        when /\A-?\d+\z/
+          $1
+        else
+          # Anything else is blank, some user type, or some function
+          # and we can't know the value of that, so return nil.
+          nil
         end
       end
 
       def extract_limit(sql_type)
         case sql_type
-        when /^int2/i;      2
-        when /^smallint/i;  2
-        when /^int4/i;      nil
-        when /^integer/i;   nil
-        when /^int8/i;      8
-        when /^bigint/i;    8
-        when /^(bool|text|date|time|bytea)/i; nil # ACTIVERECORD_JDBC-135,139
+        when /^bigint/i then 8
+        when /^smallint/i then 2
         else super
         end
       end
 
-      def simplified_type(field_type)
-        return :integer if field_type =~ /^(big|)serial/i
-        return :string if field_type =~ /\[\]$/i || field_type =~ /^interval/i
-        return :string if field_type =~ /^(?:point|lseg|box|"?path"?|polygon|circle)/i
-        return :string if field_type =~ /^uuid/i
-        return :datetime if field_type =~ /^timestamp/i
-        return :float if field_type =~ /^(?:real|double precision)$/i
-        return :binary if field_type =~ /^bytea/i
-        return :boolean if field_type =~ /^bool/i
-        return :decimal if field_type == 'numeric(131089)'
-        super
+      # Extracts the scale from PostgreSQL-specific data types.
+      def extract_scale(sql_type)
+        # Money type has a fixed scale of 2.
+        sql_type =~ /^money/ ? 2 : super
       end
 
-      def cast_to_boolean(value)
-        return nil if value.nil?
-        if value == true || value == false
-          value
+      # Extracts the precision from PostgreSQL-specific data types.
+      def extract_precision(sql_type)
+        if sql_type == 'money'
+          self.class.money_precision
         else
-          %w(true t 1).include?(value.to_s.downcase)
+          super
         end
       end
 
-      # Post process default value from JDBC into a Rails-friendly format (columns{-internal})
-      def default_value(value)
-        # Boolean types
-        return "t" if value =~ /true/i
-        return "f" if value =~ /false/i
-
-        # Char/String/Bytea type values
-        return $1 if value =~ /^'(.*)'::(bpchar|text|character varying|bytea)$/
-
-        # Numeric values
-        return value.delete("()") if value =~ /^\(?-?[0-9]+(\.[0-9]*)?\)?/
-
-        # Fixed dates / timestamp
-        return $1 if value =~ /^'(.+)'::(date|timestamp)/
-
-        # Anything else is blank, some user type, or some function
-        # and we can't know the value of that, so return nil.
-        return nil
+      # Maps PostgreSQL-specific data types to logical Rails types.
+      def simplified_type(field_type)
+        case field_type
+          # Numeric and monetary types
+        when /^(?:real|double precision)$/ then :float
+          # Monetary types
+        when 'money' then :decimal
+          # Character types
+        when /^(?:character varying|bpchar)(?:\(\d+\))?$/ then :string
+          # Binary data types
+        when 'bytea' then :binary
+          # Date/time types
+        when /^timestamp with(?:out)? time zone$/ then :datetime
+        when 'interval' then :string
+          # Geometric types
+        when /^(?:point|line|lseg|box|"?path"?|polygon|circle)$/ then :string
+          # Network address types
+        when /^(?:cidr|inet|macaddr)$/ then :string
+          # Bit strings
+        when /^bit(?: varying)?(?:\(\d+\))?$/ then :string
+          # XML type
+        when 'xml' then :xml
+          # tsvector type
+        when 'tsvector' then :tsvector
+          # Arrays
+        when /^\D+\[\]$/ then :string
+          # Object identifier types
+        when 'oid' then :integer
+          # UUID type
+        when 'uuid' then :string
+          # Small and big integer types
+        when /^(?:small|big)int$/ then :integer
+          # Pass through all types that are not specific to PostgreSQL.
+        else
+          super
+        end
       end
     end
 
@@ -102,7 +184,6 @@ module ::ArJdbc
       'PostgreSQL'
     end
 
-
     def self.arel2_visitors(config)
       {}.tap {|v| %w(postgresql pg jdbcpostgresql).each {|a| v[a] = ::Arel::Visitors::PostgreSQL } }
     end
@@ -117,6 +198,10 @@ module ::ArJdbc
             0
           end
         end
+    end
+
+    def native_database_types
+      super.merge(:string => { :name => "character varying", :limit => 255 })
     end
 
     # Does PostgreSQL support migrations?
@@ -247,64 +332,54 @@ module ::ArJdbc
       nil
     end
 
-    def pg_insert(sql, name = nil, pk = nil, id_value = nil, sequence_name = nil, binds = [])
-      sql = substitute_binds(sql, binds)
+    # Returns just a table's primary key
+    def primary_key(table)
+      row = exec_query(<<-end_sql, 'SCHEMA', [[nil, table]]).rows.first
+          SELECT DISTINCT(attr.attname)
+          FROM pg_attribute attr
+          INNER JOIN pg_depend dep ON attr.attrelid = dep.refobjid AND attr.attnum = dep.refobjsubid
+          INNER JOIN pg_constraint cons ON attr.attrelid = cons.conrelid AND attr.attnum = cons.conkey[1]
+          WHERE cons.contype = 'p'
+            AND dep.refobjid = $1::regclass
+        end_sql
 
-      # Extract the table from the insert sql. Yuck.
-      table = sql.split(" ", 4)[2].gsub('"', '')
+      row && row.first
+    end
 
-      # Try an insert with 'returning id' if available (PG >= 8.2)
-      if supports_insert_with_returning? && id_value.nil?
-        pk, sequence_name = *pk_and_sequence_for(table) unless pk
-        if pk
-          sql = substitute_binds(sql, binds)
-          id_value = select_value("#{sql} RETURNING #{quote_column_name(pk)}")
-          clear_query_cache #FIXME: Why now?
-          return id_value
-        end
+    # taken from rails postgresql adapter
+    # https://github.com/gfmurphy/rails/blob/master/activerecord/lib/active_record/connection_adapters/postgresql_adapter.rb#L611
+    def sql_for_insert(sql, pk, id_value, sequence_name, binds)
+      unless pk
+        table_ref = extract_table_ref_from_insert_sql(sql)
+        pk = primary_key(table_ref) if table_ref
       end
 
-      # Otherwise, plain insert
-      execute(sql, name, binds)
+      sql = "#{sql} RETURNING #{quote_column_name(pk)}" if pk
 
-      # Don't need to look up id_value if we already have it.
-      # (and can't in case of non-sequence PK)
-      unless id_value
-        # If neither pk nor sequence name is given, look them up.
-        unless pk || sequence_name
-          pk, sequence_name = *pk_and_sequence_for(table)
-        end
-
-        # If a pk is given, fallback to default sequence name.
-        # Don't fetch last insert id for a table without a pk.
-        if pk && sequence_name ||= default_sequence_name(table, pk)
-          id_value = last_insert_id(table, sequence_name)
-        end
-      end
-      id_value
+      [sql, binds]
     end
 
     def pg_columns(table_name, name=nil)
-      schema_name = @config[:schema_search_path]
-      if table_name =~ /\./
-        parts = table_name.split(/\./)
-        table_name = parts.pop
-        schema_name = parts.join(".")
+      column_definitions(table_name).map do |row|
+        ::ActiveRecord::ConnectionAdapters::PostgreSQLColumn.new(
+          row["column_name"], row["column_default"], row["column_type"],
+          row["column_not_null"] == "f")
       end
-      schema_list = if schema_name.nil?
-          []
-        else
-          schema_name.split(/\s*,\s*/)
-        end
-      while schema_list.size > 1
-        s = schema_list.shift
-        begin
-          return @connection.columns_internal(table_name, name, s)
-        rescue ActiveRecord::JDBCError=>ignored_for_next_schema
-        end
-      end
-      s = schema_list.shift
-      return @connection.columns_internal(table_name, name, s)
+    end
+
+    # current database name
+    def current_database
+      exec_query("select current_database() as database").
+        first["database"]
+    end
+
+    # current database encoding
+    def encoding
+      exec_query(<<-end_sql).first["encoding"]
+        SELECT pg_encoding_to_char(pg_database.encoding) as encoding
+        FROM pg_database
+        WHERE pg_database.datname LIKE '#{current_database}'
+      end_sql
     end
 
     # Sets the maximum number columns postgres has, default 32
@@ -341,10 +416,10 @@ module ::ArJdbc
 
       insertion_order = []
       index_order = nil
-      
+
       result.each do |row|
         if current_index != row[0]
-        
+
           (index_order = row[4].split(' ')).each_with_index{ |v, i| index_order[i] = v.to_i }
           indexes << ::ActiveRecord::ConnectionAdapters::IndexDefinition.new(table_name, row[0], row[1] == "t", [])
           current_index = row[0]
@@ -355,6 +430,11 @@ module ::ArJdbc
       end
 
       indexes
+    end
+
+    # take id from result of insert query
+    def last_inserted_id(result)
+      Hash[Array(*result)].fetch("id") { result }
     end
 
     def last_insert_id(table, sequence_name)
@@ -425,18 +505,17 @@ module ::ArJdbc
     # requires that the ORDER BY include the distinct column.
     #
     #   distinct("posts.id", "posts.created_at desc")
-    def distinct(columns, order_by)
-      return "DISTINCT #{columns}" if order_by.blank?
+    def distinct(columns, orders) #:nodoc:
+      return "DISTINCT #{columns}" if orders.empty?
 
-      # construct a clean list of column names from the ORDER BY clause, removing
-      # any asc/desc modifiers
-      order_columns = [order_by].flatten.map{|o| o.split(',').collect { |s| s.split.first } }.flatten.reject(&:blank?)
-      order_columns = order_columns.zip((0...order_columns.size).to_a).map { |s,i| "#{s} AS alias_#{i}" }
+      # Construct a clean list of column names from the ORDER BY clause, removing
+      # any ASC/DESC modifiers
+      order_columns = orders.collect { |s| s.gsub(/\s+(ASC|DESC)\s*/i, '') }.
+        reject(&:blank?)
+      order_columns = order_columns.
+        zip((0...order_columns.size).to_a).map { |s,i| "#{s} AS alias_#{i}" }
 
-      # return a DISTINCT ON() clause that's distinct on the columns we want but includes
-      # all the required columns for the ORDER BY to work properly
-      sql = "DISTINCT ON (#{columns}) #{columns}, "
-      sql << order_columns * ', '
+      "DISTINCT #{columns}, #{order_columns * ', '}"
     end
 
     # ORDER BY clause for the passed order option.
@@ -453,22 +532,31 @@ module ::ArJdbc
       sql.replace "SELECT * FROM (#{sql}) AS id_list ORDER BY #{order}"
     end
 
+    # from postgres_adapter.rb in rails project
+    # https://github.com/rails/rails/blob/3-1-stable/activerecord/lib/active_record/connection_adapters/postgresql_adapter.rb#L412
+    # Quotes PostgreSQL-specific data types for SQL input.
     def quote(value, column = nil) #:nodoc:
       return super unless column
 
-      if value.kind_of?(String) && column.type == :binary
-        "E'#{escape_bytea(value)}'"
-      elsif value.kind_of?(String) && column.sql_type == 'xml'
-        "xml '#{quote_string(value)}'"
-      elsif value.kind_of?(Numeric) && column.sql_type == 'money'
+      case value
+      when Float
+        return super unless value.infinite? && column.type == :datetime
+        "'#{value.to_s.downcase}'"
+      when Numeric
+        return super unless column.sql_type == 'money'
         # Not truly string input, so doesn't require (or allow) escape string syntax.
         "'#{value}'"
-      elsif value.kind_of?(String) && column.sql_type =~ /^bit/
-        case value
-        when /^[01]*$/
-          "B'#{value}'" # Bit-string notation
-        when /^[0-9A-F]*$/i
-          "X'#{value}'" # Hexadecimal notation
+      when String
+        case column.sql_type
+        when 'bytea' then "'#{escape_bytea(value)}'"
+        when 'xml'   then "xml '#{quote_string(value)}'"
+        when /^bit/
+          case value
+          when /^[01]*$/      then "B'#{value}'" # Bit-string notation
+          when /^[0-9A-F]*$/i then "X'#{value}'" # Hexadecimal notation
+          end
+        else
+          super
         end
       else
         super
@@ -572,19 +660,24 @@ module ::ArJdbc
       execute "ALTER TABLE #{quote_table_name(table_name)} RENAME COLUMN #{quote_column_name(column_name)} TO #{quote_column_name(new_column_name)}"
     end
 
-    def remove_index(table_name, options) #:nodoc:
-      execute "DROP INDEX #{index_name(table_name, options)}"
+    def remove_index!(table_name, index_name) #:nodoc:
+      execute "DROP INDEX #{quote_table_name(index_name)}"
     end
 
-    def type_to_sql(type, limit = nil, precision = nil, scale = nil) #:nodoc:
-      return super unless type.to_s == 'integer'
+    def index_name_length
+      63
+    end
 
-      if limit.nil? || limit == 4
-        'integer'
-      elsif limit < 4
-        'smallint'
-      else
-        'bigint'
+    # Maps logical Rails types to PostgreSQL-specific data types.
+    def type_to_sql(type, limit = nil, precision = nil, scale = nil)
+      return super unless type.to_s == 'integer'
+      return 'integer' unless limit
+
+      case limit
+      when 1, 2; 'smallint'
+      when 3, 4; 'integer'
+      when 5..8; 'bigint'
+      else raise(ActiveRecordError, "No integer type has byte size #{limit}. Use a numeric with precision 0 instead.")
       end
     end
 
@@ -604,6 +697,35 @@ module ::ArJdbc
       end
     end
 
+    # Returns the list of a table's column names, data types, and default values.
+    #
+    # The underlying query is roughly:
+    #  SELECT column.name, column.type, default.value
+    #    FROM column LEFT JOIN default
+    #      ON column.table_id = default.table_id
+    #     AND column.num = default.column_num
+    #   WHERE column.table_id = get_table_id('table_name')
+    #     AND column.num > 0
+    #     AND NOT column.is_dropped
+    #   ORDER BY column.num
+    #
+    # If the table name is not prefixed with a schema, the database will
+    # take the first match from the schema search path.
+    #
+    # Query implementation notes:
+    #  - format_type includes the column size constraint, e.g. varchar(50)
+    #  - ::regclass is a function that gives the id for a table name
+    def column_definitions(table_name) #:nodoc:
+      exec_query(<<-end_sql, 'SCHEMA')
+            SELECT a.attname as column_name, format_type(a.atttypid, a.atttypmod) as column_type, d.adsrc as column_default, a.attnotnull as column_not_null
+              FROM pg_attribute a LEFT JOIN pg_attrdef d
+                ON a.attrelid = d.adrelid AND a.attnum = d.adnum
+             WHERE a.attrelid = '#{quote_table_name(table_name)}'::regclass
+               AND a.attnum > 0 AND NOT a.attisdropped
+             ORDER BY a.attnum
+          end_sql
+    end
+
     def extract_pg_identifier_from_name(name)
       match_data = name[0,1] == '"' ? name.match(/\"([^\"]+)\"/) : name.match(/([^\.]+)/)
 
@@ -612,6 +734,12 @@ module ::ArJdbc
         rest = rest[1..-1] if rest[0,1] == "."
         [match_data[1], (rest.length > 0 ? rest : nil)]
       end
+    end
+
+    # from rails postgresl_adapter
+    def extract_table_ref_from_insert_sql(sql)
+      sql[/into\s+([^\(]*).*values\s*\(/i]
+      $1.strip if $1
     end
   end
 end
@@ -644,8 +772,7 @@ module ActiveRecord::ConnectionAdapters
     def jdbc_column_class
       ActiveRecord::ConnectionAdapters::PostgreSQLColumn
     end
-    
-    alias_chained_method :insert, :query_dirty, :pg_insert
+
     alias_chained_method :columns, :query_cache, :pg_columns
   end
 end
