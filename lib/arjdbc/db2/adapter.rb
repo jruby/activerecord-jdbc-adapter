@@ -69,7 +69,9 @@ module ArJdbc
       def self.cast_to_time(value)
         return value if value.is_a? Time
         # AS400 returns a 2 digit year, LUW returns a 4 digit year, so comp = true to help out AS400
-        time_array = ParseDate.parsedate(value, true)
+        time = DateTime.parse(value).to_time rescue nil
+        return nil unless time
+        time_array = [time.year, time.month, time.day, time.hour, time.min, time.sec]
         time_array[0] ||= 2000; time_array[1] ||= 1; time_array[2] ||= 1;
         Time.send(ActiveRecord::Base.default_timezone, *time_array) rescue nil
       end
