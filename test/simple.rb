@@ -367,7 +367,7 @@ module SimpleTestMethods
   end
 
   def test_remove_nonexistent_index
-    assert_raise(ArgumentError) do
+    assert_raise(ArgumentError, ActiveRecord::StatementInvalid, ActiveRecord::JDBCError) do
       @connection.remove_index :entries, :nonexistent_index
     end
   end
