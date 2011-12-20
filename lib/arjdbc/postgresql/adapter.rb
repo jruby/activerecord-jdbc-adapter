@@ -345,18 +345,9 @@ module ::ArJdbc
       nil
     end
 
-    # Returns just a table's primary key
     def primary_key(table)
-      row = exec_query(<<-end_sql, 'SCHEMA', [[nil, table]]).rows.first
-          SELECT DISTINCT(attr.attname)
-          FROM pg_attribute attr
-          INNER JOIN pg_depend dep ON attr.attrelid = dep.refobjid AND attr.attnum = dep.refobjsubid
-          INNER JOIN pg_constraint cons ON attr.attrelid = cons.conrelid AND attr.attnum = cons.conkey[1]
-          WHERE cons.contype = 'p'
-            AND dep.refobjid = $1::regclass
-        end_sql
-
-      row && row.first
+      pk_and_sequence = pk_and_sequence_for(table)
+      pk_and_sequence && pk_and_sequence.first
     end
 
     # taken from rails postgresql adapter
@@ -477,11 +468,6 @@ module ::ArJdbc
 
     def all_schemas
       select('select nspname from pg_namespace').map {|r| r["nspname"] }
-    end
-
-    def primary_key(table)
-      pk_and_sequence = pk_and_sequence_for(table)
-      pk_and_sequence && pk_and_sequence.first
     end
 
     def structure_dump
@@ -694,8 +680,43 @@ module ::ArJdbc
       end
     end
 
-    def tables
-      @connection.tables(database_name, nil, nil, ["TABLE"])
+    def tables(name = nil)
+      exec_query(<<-SQL, 'SCHEMA').map { |row| row["tablename"] }
+          SELECT tablename
+          FROM pg_tables
+          WHERE schemaname = ANY (current_schemas(false))
+      SQL
+    end
+
+    def table_exists?(name)
+      schema, table = extract_schema_and_table(name.to_s)
+      return false unless table # Abstract classes is having nil table name
+
+      binds = [[nil, table.gsub(/(^"|"$)/,'')]]
+      binds << [nil, schema] if schema
+
+      exec_query(<<-SQL, 'SCHEMA', binds).first["table_count"] > 0
+          SELECT COUNT(*) as table_count
+          FROM pg_tables
+          WHERE tablename = ?
+          AND schemaname = #{schema ? "?" : "ANY (current_schemas(false))"}
+      SQL
+    end
+
+    # Extracts the table and schema name from +name+
+    def extract_schema_and_table(name)
+      schema, table = name.split('.', 2)
+
+      unless table # A table was provided without a schema
+        table  = schema
+        schema = nil
+      end
+
+      if name =~ /^"/ # Handle quoted table names
+        table  = name
+        schema = nil
+      end
+      [schema, table]
     end
 
     private
