@@ -1,12 +1,5 @@
 module ActiveRecord::ConnectionAdapters
   PostgreSQLAdapter = Class.new(AbstractAdapter) unless const_defined?(:PostgreSQLAdapter)
-
-  TableDefinition.class_eval do
-    def xml(*args)
-      options = args.extract_options!
-      column(args[0], 'xml', options)
-    end
-  end
 end
 
 module ::ArJdbc
@@ -764,6 +757,22 @@ module ActiveRecord::ConnectionAdapters
 
   class PostgreSQLAdapter < JdbcAdapter
     include ArJdbc::PostgreSQL
+
+    class TableDefinition < ActiveRecord::ConnectionAdapters::TableDefinition
+      def xml(*args)
+        options = args.extract_options!
+        column(args[0], "xml", options)
+      end
+
+      def tsvector(*args)
+        options = args.extract_options!
+        column(args[0], "tsvector", options)
+      end
+    end
+
+    def table_definition
+      TableDefinition.new(self)
+    end
 
     def jdbc_connection_class(spec)
       ::ArJdbc::PostgreSQL.jdbc_connection_class
