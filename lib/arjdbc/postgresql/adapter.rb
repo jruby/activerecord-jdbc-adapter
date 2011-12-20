@@ -158,6 +158,26 @@ module ::ArJdbc
       end
     end
 
+    # constants taken from postgresql_adapter in rails project
+    ADAPTER_NAME = 'PostgreSQL'
+
+    NATIVE_DATABASE_TYPES = {
+      :primary_key => "serial primary key",
+      :string      => { :name => "character varying", :limit => 255 },
+      :text        => { :name => "text" },
+      :integer     => { :name => "integer" },
+      :float       => { :name => "float" },
+      :decimal     => { :name => "decimal" },
+      :datetime    => { :name => "timestamp" },
+      :timestamp   => { :name => "timestamp" },
+      :time        => { :name => "time" },
+      :date        => { :name => "date" },
+      :binary      => { :name => "bytea" },
+      :boolean     => { :name => "boolean" },
+      :xml         => { :name => "xml" },
+      :tsvector    => { :name => "tsvector" }
+    }
+
     def modify_types(tp)
       tp[:primary_key] = "serial primary key"
       tp[:string][:limit] = 255
@@ -174,7 +194,7 @@ module ::ArJdbc
     end
 
     def adapter_name #:nodoc:
-      'PostgreSQL'
+      ADAPTER_NAME
     end
 
     def self.arel2_visitors(config)
@@ -194,7 +214,7 @@ module ::ArJdbc
     end
 
     def native_database_types
-      super.merge(:string => { :name => "character varying", :limit => 255 })
+      NATIVE_DATABASE_TYPES
     end
 
     # Does PostgreSQL support migrations?
