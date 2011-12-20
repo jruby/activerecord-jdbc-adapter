@@ -107,7 +107,11 @@ module ActiveRecord
         types = {}
         @native_types.each_pair do |k, v|
           types[k] = v.inject({}) do |memo, kv|
-            memo[kv.first] = begin kv.last.dup rescue kv.last end
+            memo[kv.first] = if kv.last.is_a? Numeric
+                               kv.last
+                             else
+                               begin kv.last.dup rescue kv.last end
+                             end
             memo
           end
         end
