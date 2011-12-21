@@ -1,12 +1,5 @@
 module ActiveRecord::ConnectionAdapters
   PostgreSQLAdapter = Class.new(AbstractAdapter) unless const_defined?(:PostgreSQLAdapter)
-
-  TableDefinition.class_eval do
-    def xml(*args)
-      options = args.extract_options!
-      column(args[0], 'xml', options)
-    end
-  end
 end
 
 module ::ArJdbc
@@ -165,23 +158,28 @@ module ::ArJdbc
       end
     end
 
-    def modify_types(tp)
-      tp[:primary_key] = "serial primary key"
-      tp[:string][:limit] = 255
-      tp[:integer][:limit] = nil
-      tp[:boolean] = { :name => "boolean" }
-      tp[:float] = { :name => "float" }
-      tp[:text] = { :name => "text" }
-      tp[:datetime] = { :name => "timestamp" }
-      tp[:timestamp] = { :name => "timestamp" }
-      tp[:time] = { :name => "time" }
-      tp[:date] = { :name => "date" }
-      tp[:decimal] = { :name => "decimal" }
-      tp
-    end
+    # constants taken from postgresql_adapter in rails project
+    ADAPTER_NAME = 'PostgreSQL'
+
+    NATIVE_DATABASE_TYPES = {
+      :primary_key => "serial primary key",
+      :string      => { :name => "character varying", :limit => 255 },
+      :text        => { :name => "text" },
+      :integer     => { :name => "integer" },
+      :float       => { :name => "float" },
+      :decimal     => { :name => "decimal" },
+      :datetime    => { :name => "timestamp" },
+      :timestamp   => { :name => "timestamp" },
+      :time        => { :name => "time" },
+      :date        => { :name => "date" },
+      :binary      => { :name => "bytea" },
+      :boolean     => { :name => "boolean" },
+      :xml         => { :name => "xml" },
+      :tsvector    => { :name => "tsvector" }
+    }
 
     def adapter_name #:nodoc:
-      'PostgreSQL'
+      ADAPTER_NAME
     end
 
     def self.arel2_visitors(config)
@@ -201,7 +199,7 @@ module ::ArJdbc
     end
 
     def native_database_types
-      super.merge(:string => { :name => "character varying", :limit => 255 })
+      NATIVE_DATABASE_TYPES
     end
 
     # Does PostgreSQL support migrations?
@@ -332,18 +330,9 @@ module ::ArJdbc
       nil
     end
 
-    # Returns just a table's primary key
     def primary_key(table)
-      row = exec_query(<<-end_sql, 'SCHEMA', [[nil, table]]).rows.first
-          SELECT DISTINCT(attr.attname)
-          FROM pg_attribute attr
-          INNER JOIN pg_depend dep ON attr.attrelid = dep.refobjid AND attr.attnum = dep.refobjsubid
-          INNER JOIN pg_constraint cons ON attr.attrelid = cons.conrelid AND attr.attnum = cons.conkey[1]
-          WHERE cons.contype = 'p'
-            AND dep.refobjid = $1::regclass
-        end_sql
-
-      row && row.first
+      pk_and_sequence = pk_and_sequence_for(table)
+      pk_and_sequence && pk_and_sequence.first
     end
 
     # taken from rails postgresql adapter
@@ -464,11 +453,6 @@ module ::ArJdbc
 
     def all_schemas
       select('select nspname from pg_namespace').map {|r| r["nspname"] }
-    end
-
-    def primary_key(table)
-      pk_and_sequence = pk_and_sequence_for(table)
-      pk_and_sequence && pk_and_sequence.first
     end
 
     def structure_dump
@@ -681,8 +665,43 @@ module ::ArJdbc
       end
     end
 
-    def tables
-      @connection.tables(database_name, nil, nil, ["TABLE"])
+    def tables(name = nil)
+      exec_query(<<-SQL, 'SCHEMA').map { |row| row["tablename"] }
+          SELECT tablename
+          FROM pg_tables
+          WHERE schemaname = ANY (current_schemas(false))
+      SQL
+    end
+
+    def table_exists?(name)
+      schema, table = extract_schema_and_table(name.to_s)
+      return false unless table # Abstract classes is having nil table name
+
+      binds = [[nil, table.gsub(/(^"|"$)/,'')]]
+      binds << [nil, schema] if schema
+
+      exec_query(<<-SQL, 'SCHEMA', binds).first["table_count"] > 0
+          SELECT COUNT(*) as table_count
+          FROM pg_tables
+          WHERE tablename = ?
+          AND schemaname = #{schema ? "?" : "ANY (current_schemas(false))"}
+      SQL
+    end
+
+    # Extracts the table and schema name from +name+
+    def extract_schema_and_table(name)
+      schema, table = name.split('.', 2)
+
+      unless table # A table was provided without a schema
+        table  = schema
+        schema = nil
+      end
+
+      if name =~ /^"/ # Handle quoted table names
+        table  = name
+        schema = nil
+      end
+      [schema, table]
     end
 
     private
@@ -762,8 +781,36 @@ module ActiveRecord::ConnectionAdapters
     end
   end
 
+  class PostgresJdbcConnection < JdbcConnection
+    alias :java_native_database_types :set_native_database_types
+
+    # override to prevent connection from loading hash from jdbc
+    # metadata, which can be expensive. We can do this since
+    # native_database_types is defined in the adapter to use a static hash
+    # not relying on the driver's metadata
+    def set_native_database_types
+      @native_types = {}
+    end
+  end
+
   class PostgreSQLAdapter < JdbcAdapter
     include ArJdbc::PostgreSQL
+
+    class TableDefinition < ActiveRecord::ConnectionAdapters::TableDefinition
+      def xml(*args)
+        options = args.extract_options!
+        column(args[0], "xml", options)
+      end
+
+      def tsvector(*args)
+        options = args.extract_options!
+        column(args[0], "tsvector", options)
+      end
+    end
+
+    def table_definition
+      TableDefinition.new(self)
+    end
 
     def jdbc_connection_class(spec)
       ::ArJdbc::PostgreSQL.jdbc_connection_class
