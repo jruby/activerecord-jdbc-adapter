@@ -178,21 +178,6 @@ module ::ArJdbc
       :tsvector    => { :name => "tsvector" }
     }
 
-    def modify_types(tp)
-      tp[:primary_key] = "serial primary key"
-      tp[:string][:limit] = 255
-      tp[:integer][:limit] = nil
-      tp[:boolean] = { :name => "boolean" }
-      tp[:float] = { :name => "float" }
-      tp[:text] = { :name => "text" }
-      tp[:datetime] = { :name => "timestamp" }
-      tp[:timestamp] = { :name => "timestamp" }
-      tp[:time] = { :name => "time" }
-      tp[:date] = { :name => "date" }
-      tp[:decimal] = { :name => "decimal" }
-      tp
-    end
-
     def adapter_name #:nodoc:
       ADAPTER_NAME
     end
@@ -793,6 +778,18 @@ module ActiveRecord::ConnectionAdapters
     end
 
     def call_discovered_column_callbacks(*)
+    end
+  end
+
+  class PostgresJdbcConnection < JdbcConnection
+    alias :java_native_database_types :set_native_database_types
+
+    # override to prevent connection from loading hash from jdbc
+    # metadata, which can be expensive. We can do this since
+    # native_database_types is defined in the adapter to use a static hash
+    # not relying on the driver's metadata
+    def set_native_database_types
+      @native_types = {}
     end
   end
 
