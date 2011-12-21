@@ -102,6 +102,22 @@ class MysqlSimpleTest < Test::Unit::TestCase
       User.set_table_name old_users_table_name
     end
   end
+
+  def test_create_xml_column
+    assert_nothing_raised do
+      @connection.create_table :xml_testings do |t|
+        t.xml :xml_test
+      end
+    end
+
+    xml_test = @connection.columns(:xml_testings).detect do |c|
+      c.name == "xml_test"
+    end
+
+    assert_equal "text", xml_test.sql_type
+  ensure
+    @connection.drop_table :xml_testings rescue nil
+  end
 end
 
 class MysqlHasManyThroughTest < Test::Unit::TestCase
