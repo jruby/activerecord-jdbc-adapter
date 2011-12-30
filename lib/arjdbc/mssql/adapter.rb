@@ -88,18 +88,18 @@ module ::ArJdbc
 
       def simplified_type(field_type)
         case field_type
-        when /int|bigint|smallint|tinyint/i                        then :integer
-        when /numeric/i                                            then (@scale.nil? || @scale == 0) ? :integer : :decimal
-        when /float|double|money|real|smallmoney/i                 then :decimal
-        when /datetime|smalldatetime/i                             then :datetime
-        when /timestamp/i                                          then :timestamp
-        when /time/i                                               then :time
-        when /date/i                                               then :date
-        when /text|ntext|xml/i                                     then :text
-        when /binary|image|varbinary/i                             then :binary
-        when /char|nchar|nvarchar|string|varchar/i                 then (@limit == 1073741823 ? (@limit = nil; :text) : :string)
-        when /bit/i                                                then :boolean
-        when /uniqueidentifier/i                                   then :string
+        when /int|bigint|smallint|tinyint/i           then :integer
+        when /numeric/i                               then (@scale.nil? || @scale == 0) ? :integer : :decimal
+        when /float|double|money|real|smallmoney/i    then :decimal
+        when /datetime|smalldatetime/i                then :datetime
+        when /timestamp/i                             then :timestamp
+        when /time/i                                  then :time
+        when /date/i                                  then :date
+        when /text|ntext|xml/i                        then :text
+        when /binary|image|varbinary/i                then :binary
+        when /char|nchar|nvarchar|string|varchar/i    then (@limit == 1073741823 ? (@limit = nil; :text) : :string)
+        when /bit/i                                   then :boolean
+        when /uniqueidentifier/i                      then :string
         else
           super
         end
