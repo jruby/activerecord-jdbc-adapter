@@ -90,7 +90,7 @@ module ::ArJdbc
         case field_type
         when /int|bigint|smallint|tinyint/i                        then :integer
         when /numeric/i                                            then (@scale.nil? || @scale == 0) ? :integer : :decimal
-        when /float|double|decimal|money|real|smallmoney/i         then :decimal
+        when /float|double|money|real|smallmoney/i                 then :decimal
         when /datetime|smalldatetime/i                             then :datetime
         when /timestamp/i                                          then :timestamp
         when /time/i                                               then :time
@@ -100,6 +100,8 @@ module ::ArJdbc
         when /char|nchar|nvarchar|string|varchar/i                 then (@limit == 1073741823 ? (@limit = nil; :text) : :string)
         when /bit/i                                                then :boolean
         when /uniqueidentifier/i                                   then :string
+        else
+          super
         end
       end
 
