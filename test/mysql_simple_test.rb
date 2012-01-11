@@ -94,12 +94,12 @@ class MysqlSimpleTest < Test::Unit::TestCase
     old_entries_table_name = Entry.table_name
     old_users_table_name   = User.table_name
     begin
-      User.set_table_name "#{MYSQL_CONFIG[:database]}.users"
-      Entry.set_table_name "#{MYSQL_CONFIG[:database]}.entries"
+      User.table_name  = "#{MYSQL_CONFIG[:database]}.users"
+      Entry.table_name = "#{MYSQL_CONFIG[:database]}.entries"
       assert !Entry.all(:include => :user).empty?
     ensure
-      Entry.set_table_name old_entries_table_name
-      User.set_table_name old_users_table_name
+      Entry.table_name = old_entries_table_name
+      User.table_name  = old_users_table_name
     end
   end
 

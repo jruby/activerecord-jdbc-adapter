@@ -70,7 +70,7 @@ class OracleSpecificTest < Test::Unit::TestCase
 
   def test_model_access_by_synonym
     @klass = Class.new(ActiveRecord::Base)
-    @klass.set_table_name "POSTS"
+    @klass.table_name = "POSTS"
     entry_columns = Entry.columns_hash
     @klass.columns.each do |c|
       ec = entry_columns[c.name]

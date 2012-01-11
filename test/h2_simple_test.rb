@@ -15,8 +15,8 @@ class H2SchemaTest < Test::Unit::TestCase
     @connection.execute("set schema s2");
     CreateUsers.up
     @connection.execute("set schema public");
-    Entry.set_table_name 's1.entries'
-    User.set_table_name 's2.users'
+    Entry.table_name = 's1.entries'
+    User.table_name = 's2.users'
     user = User.create! :login => "something"
     Entry.create! :title => "title", :content => "content", :rating => 123.45, :user => user
   end
