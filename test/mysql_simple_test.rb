@@ -64,15 +64,15 @@ class MysqlSimpleTest < Test::Unit::TestCase
   # from rails active record tests
   def test_caching_of_columns
     user = User.create :login => 'test'
+
     # clear cache possibly created by other tests
     user.entries.reset_column_information
 
-    # One query for columns, one for primary key
-    assert_queries(2) { user.entries.columns; user.entries.columns }
+    assert_queries(1) { user.entries.columns; user.entries.columns }
 
     ## and again to verify that reset_column_information clears the cache correctly
     user.entries.reset_column_information
-    assert_queries(2) { user.entries.columns; user.entries.columns }
+    assert_queries(1) { user.entries.columns; user.entries.columns }
   end
 
   # from rails active record tests
