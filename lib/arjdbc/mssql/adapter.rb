@@ -1,5 +1,7 @@
 require 'arjdbc/mssql/tsql_helper'
 require 'arjdbc/mssql/limit_helpers'
+require 'arjdbc/mssql/lock_helpers'
+require 'strscan'
 
 module ::ArJdbc
   module MsSQL
@@ -84,6 +86,8 @@ module ::ArJdbc
     end
 
     module Column
+      include LockHelpers::SqlServerAddLock
+
       attr_accessor :identity, :is_special
 
       def simplified_type(field_type)
@@ -381,11 +385,6 @@ module ::ArJdbc
       log(sql, name) do
         @connection.execute_query(sql)
       end
-    end
-
-    #SELECT .. FOR UPDATE is not supported on Microsoft SQL Server
-    def add_lock!(sql, options)
-      sql
     end
 
     # Turns IDENTITY_INSERT ON for table during execution of the block
