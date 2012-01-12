@@ -5,9 +5,9 @@ module Arel
     class Derby < Arel::Visitors::ToSql
       def visit_Arel_Nodes_SelectStatement o
         [
-         o.cores.map { |x| visit_Arel_Nodes_SelectCore x }.join,
+         o.cores.map { |x| visit(x) }.join,
          ("ORDER BY #{o.orders.map { |x| visit x }.join(', ')}" unless o.orders.empty?),
-         (visit_Arel_Nodes_Limit(o.limit) if o.limit),
+         (visit(o.limit) if o.limit),
          (visit(o.offset) if o.offset),
          (visit(o.lock) if o.lock),
         ].compact.join ' '
