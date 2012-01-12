@@ -20,6 +20,13 @@ module Arel
       def visit_Arel_Nodes_Offset o
         "OFFSET #{visit o.value} ROWS"
       end
+
+      # This generates SELECT...FOR UPDATE, but it will only work if the
+      # current transaction isolation level is set to SERIALIZABLE.  Otherwise,
+      # locks aren't held for the entire transaction.
+      def visit_Arel_Nodes_Lock o
+        visit o.expr
+      end
     end
   end
 end

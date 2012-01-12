@@ -27,12 +27,17 @@ module ::ArJdbc
       end
     end
 
-    def self.extended(*args)
+    def self.extended(adapter)
       monkey_rails
+      adapter.configure_connection
     end
 
     def self.included(*args)
       monkey_rails
+    end
+
+    def configure_connection
+      execute("SET ISOLATION = SERIALIZABLE")   # This must be done or SELECT...FOR UPDATE won't work how we expect
     end
 
     module Column
