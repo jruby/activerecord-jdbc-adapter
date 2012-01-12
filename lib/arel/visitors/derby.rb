@@ -7,8 +7,8 @@ module Arel
         [
          o.cores.map { |x| visit(x) }.join,
          ("ORDER BY #{o.orders.map { |x| visit x }.join(', ')}" unless o.orders.empty?),
-         (visit(o.limit) if o.limit),
          (visit(o.offset) if o.offset),
+         (visit(o.limit) if o.limit),
          (visit(o.lock) if o.lock),
         ].compact.join ' '
       end
