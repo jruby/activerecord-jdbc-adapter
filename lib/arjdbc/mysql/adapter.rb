@@ -262,7 +262,7 @@ module ::ArJdbc
     end
 
     def create_table(name, options = {}) #:nodoc:
-      super(name, {:options => "ENGINE=InnoDB"}.merge(options))
+      super(name, {:options => "ENGINE=InnoDB DEFAULT CHARSET=utf8"}.merge(options))
     end
 
     def rename_table(name, new_name)

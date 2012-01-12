@@ -1,5 +1,7 @@
 require 'arjdbc/mssql/tsql_helper'
 require 'arjdbc/mssql/limit_helpers'
+require 'arjdbc/mssql/lock_helpers'
+require 'strscan'
 
 module ::ArJdbc
   module MsSQL
@@ -84,6 +86,8 @@ module ::ArJdbc
     end
 
     module Column
+      include LockHelpers::SqlServerAddLock
+
       attr_accessor :identity, :is_special
 
       def simplified_type(field_type)
@@ -111,7 +115,7 @@ module ::ArJdbc
       end
 
       def type_cast(value)
-        return nil if value.nil? || value == "(null)" || value == "(NULL)"
+        return nil if value.nil?
         case type
         when :integer then value.delete('()').to_i rescue unquote(value).to_i rescue value ? 1 : 0
         when :primary_key then value == true || value == false ? value == true ? 1 : 0 : value.to_i
@@ -383,11 +387,6 @@ module ::ArJdbc
       end
     end
 
-    #SELECT .. FOR UPDATE is not supported on Microsoft SQL Server
-    def add_lock!(sql, options)
-      sql
-    end
-
     # Turns IDENTITY_INSERT ON for table during execution of the block
     # N.B. This sets the state of IDENTITY_INSERT to OFF after the
     # block has been executed without regard to its previous state
@@ -462,6 +461,10 @@ module ::ArJdbc
 
     def clear_cached_table(name)
       (@table_columns ||= {}).delete(name.to_s)
+    end
+
+    def reset_column_information
+      @table_columns = nil
     end
   end
 end
