@@ -189,6 +189,38 @@ class SQLite3SimpleTest < Test::Unit::TestCase
     assert_equal col.type, :integer
   end
 
+  def test_change_column_with_new_precision_and_scale
+    Entry.delete_all
+    Entry.
+      connection.
+      change_column "entries", "rating", :decimal, :precision => 9, :scale => 7
+    Entry.reset_column_information
+    change_column = Entry.columns_hash["rating"]
+    assert_equal 9, change_column.precision
+    assert_equal 7, change_column.scale
+  end
+
+  def test_change_column_preserve_other_column_precision_and_scale
+    Entry.delete_all
+    Entry.
+      connection.
+      change_column "entries", "rating", :decimal, :precision => 9, :scale => 7
+    Entry.reset_column_information
+
+    rating_column = Entry.columns_hash["rating"]
+    assert_equal 9, rating_column.precision
+    assert_equal 7, rating_column.scale
+
+    Entry.
+      connection.
+      change_column "entries", "title", :string, :null => false
+    Entry.reset_column_information
+
+    rating_column = Entry.columns_hash["rating"]
+    assert_equal 9, rating_column.precision
+    assert_equal 7, rating_column.scale
+  end
+
   def test_create_xml_column
     assert_nothing_raised do
       @connection.create_table :xml_testings do |t|
