@@ -650,6 +650,16 @@ module ActiveRecord3TestMethods
   end
 
   module Tests
+    if ActiveRecord::VERSION::MINOR == 2
+      def test_visitor_accessor
+        adapter = Entry.connection
+        expected_visitors = adapter.config[:adapter_spec].
+          arel2_visitors(adapter).values
+        assert !adapter.visitor.nil?
+        assert expected_visitors.include?(adapter.visitor.class)
+      end
+    end
+
     def test_where
       entries = Entry.where(:title => @entry.title)
       assert_equal @entry, entries.first

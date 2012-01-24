@@ -33,6 +33,7 @@ module ArJdbc
 
           @definition.column(column_name, column.type,
             :limit => column.limit, :default => column.default,
+            :precision => column.precision, :scale => column.scale,
             :null => column.null)
         end
         @definition.primary_key(primary_key(from)) if primary_key(from)

@@ -13,7 +13,7 @@ class CreateValidatesUniquenessOf < ActiveRecord::Migration
 end
 
 class ValidatesUniquenessOfString < ActiveRecord::Base
-  self.set_table_name "validates_uniqueness_of"
+  self.table_name = "validates_uniqueness_of"
   validates_uniqueness_of :cs_string, :case_sensitive => true
   validates_uniqueness_of :ci_string, :case_sensitive => false
 end

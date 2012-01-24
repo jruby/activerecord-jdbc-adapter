@@ -119,6 +119,7 @@ module ActiveRecord
           if visitor && config[:adapter] =~ /^(jdbc|jndi)$/
             visitors[config[:adapter]] = visitor
           end
+          @visitor = visitors[config[:adapter]].new(self)
         end
       end
 

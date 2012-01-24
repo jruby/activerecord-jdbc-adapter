@@ -1,6 +1,6 @@
 #!/usr/bin/env jruby
 
-if ARGV.length < 2  
+if ARGV.length < 2
   $stderr.puts "syntax: #{__FILE__} [filename] [configuration-name]"
   $stderr.puts "  where filename points to a YAML database configuration file"
   $stderr.puts "  and the configuration name is in this file"
@@ -21,7 +21,7 @@ ActiveRecord::Base.establish_connection(cfg)
 ActiveRecord::Schema.define do
   drop_table :authors rescue nil
   drop_table :author rescue nil
-  
+
   create_table :author, :force => true do |t|
     t.column :name, :string, :null => false
   end
@@ -42,13 +42,13 @@ ActiveRecord::Schema.define do
   change_column_default :author, :female, false if /db2|derby|mssql|firebird/ !~ ARGV[1]
   remove_column :author, :died if /db2|derby/ !~ ARGV[1]
   rename_column :author, :wakeup_time, :waking_time if /db2|derby|mimer/ !~ ARGV[1]
- 
+
   add_index :author, :name, :unique if /db2/ !~ ARGV[1]
   add_index :author, [:age,:female], :name => :is_age_female if /db2/ !~ ARGV[1]
- 
+
   remove_index :author, :name if /db2/ !~ ARGV[1]
   remove_index :author, :name => :is_age_female if /db2/ !~ ARGV[1]
-  
+
   rename_table :author, :authors if /db2|firebird|mimer/ !~ ARGV[1]
 
 
@@ -73,7 +73,7 @@ ActiveRecord::Schema.define do
 end
 
 class Author < ActiveRecord::Base;
-  set_table_name "author" if /db2|firebird|mimer/ =~ ARGV[1]
+  self.table_name = "author" if /db2|firebird|mimer/ =~ ARGV[1]
 end
 
 class Order < ActiveRecord::Base
@@ -83,7 +83,7 @@ end
 class Product < ActiveRecord::Base
   has_many :orders, :through => :line_items
   has_many :line_items
-  
+
   def self.find_products_for_sale
     find(:all, :order => "title")
   end
@@ -95,51 +95,51 @@ class LineItem < ActiveRecord::Base
 end
 
     Product.create(:title => 'Pragmatic Project Automation',
-    :description => 
+    :description =>
     %{<p>
-       <em>Pragmatic Project Automation</em> shows you how to improve the 
-       consistency and repeatability of your project's procedures using 
+       <em>Pragmatic Project Automation</em> shows you how to improve the
+       consistency and repeatability of your project's procedures using
        automation to reduce risk and errors.
       </p>
       <p>
-        Simply put, we're going to put this thing called a computer to work 
-        for you doing the mundane (but important) project stuff. That means 
-        you'll have more time and energy to do the really 
+        Simply put, we're going to put this thing called a computer to work
+        for you doing the mundane (but important) project stuff. That means
+        you'll have more time and energy to do the really
         exciting---and difficult---stuff, like writing quality code.
       </p>},
-    :image_url =>   '/images/auto.jpg',    
+    :image_url =>   '/images/auto.jpg',
     :price => 29.95)
 
 
     Product.create(:title => 'Pragmatic Version Control',
       :description =>
       %{<p>
-         This book is a recipe-based approach to using Subversion that will 
-         get you up and 
-         running quickly---and correctly. All projects need version control: 
-         it's a foundational piece of any project's infrastructure. Yet half 
-         of all project teams in the U.S. don't use any version control at all. 
+         This book is a recipe-based approach to using Subversion that will
+         get you up and
+         running quickly---and correctly. All projects need version control:
+         it's a foundational piece of any project's infrastructure. Yet half
+         of all project teams in the U.S. don't use any version control at all.
          Many others don't use it well, and end up experiencing time-consuming problems.
       </p>},
     :image_url => '/images/svn.jpg',
     :price => 28.50)
-    
+
     # . . .
 
 
     Product.create(:title => 'Pragmatic Unit Testing (C#)',
-    :description => 
+    :description =>
     %{<p>
-        Pragmatic programmers use feedback to drive their development and 
-        personal processes. The most valuable feedback you can get while 
+        Pragmatic programmers use feedback to drive their development and
+        personal processes. The most valuable feedback you can get while
         coding comes from unit testing.
       </p>
       <p>
-        Without good tests in place, coding can become a frustrating game of 
-        "whack-a-mole." That's the carnival game where the player strikes at a 
-        mechanical mole; it retreats and another mole pops up on the opposite side 
-        of the field. The moles pop up and down so fast that you end up flailing 
-        your mallet helplessly as the moles continue to pop up where you least 
+        Without good tests in place, coding can become a frustrating game of
+        "whack-a-mole." That's the carnival game where the player strikes at a
+        mechanical mole; it retreats and another mole pops up on the opposite side
+        of the field. The moles pop up and down so fast that you end up flailing
+        your mallet helplessly as the moles continue to pop up where you least
         expect them.
       </p>},
     :image_url => '/images/utc.jpg',
@@ -148,7 +148,7 @@ end
 
 
 
-1.times do 
+1.times do
   $stderr.print '.'
   Author.destroy_all
   Author.create(:name => "Arne Svensson", :age => 30)
@@ -181,11 +181,11 @@ end
   puts "order: #{order.line_items.inspect}, with id: #{order.id} and name: #{order.name}"
 end
 
-ActiveRecord::Schema.define do 
+ActiveRecord::Schema.define do
     drop_table :line_items
     drop_table :orders
     drop_table :products
 
-  
+
   drop_table((/db2|firebird|mimer/=~ARGV[1]? :author : :authors ))
 end
