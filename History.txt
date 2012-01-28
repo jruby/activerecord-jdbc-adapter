@@ -1,3 +1,22 @@
+== 1.2.2 (01/27/12)
+
+- Thanks George Murphy and Dwayne Litzenberger for their significant
+  work this release!
+- AR 3.2.x compatibility via #156 (thanks George Murphy)
+- #152: Bunch of derby and mssql fixes (thanks Dwayne Litzenberger)
+- #137: Fix configure_arel2_visitors for vanilla JDBC adapters
+- #136: query cache fix
+- #138: error message improvement for #table_structure (threez)
+- #130, #139: sqlite3 should log inserts (Uwe Kubosch)
+- #141 column queries logging (George Murphy)
+- #142 MySQL fixes for AR 3-1-stable tests (George Murphy)
+- #147, #149 Improve speed of PG metadata queries (George Murphy)
+- #148 PostgreSQL fixes for AR 3-1-stable tests (George Murphy)
+- #128, #129 Fix for invalid :limit on date columns in schema.rb (Lenny Marks)
+- #144 Stop using ParseDate (not 1.9 friendly) (Bill Koch)
+- #146 Upgrade PG drivers (David Kellum)
+- #150 avoid 'TypeError: can't dup Fixnum' for performance (Bruce Adams)
+
 == 1.2.1 (11/23/11)
 
 - #117: Skip ? substitution when no bind parameters are given
