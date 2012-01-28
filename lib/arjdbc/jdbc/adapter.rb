@@ -12,6 +12,7 @@ require 'arjdbc/jdbc/column'
 require 'arjdbc/jdbc/connection'
 require 'arjdbc/jdbc/callbacks'
 require 'arjdbc/jdbc/extension'
+require 'arjdbc/jdbc/base_ext'
 require 'bigdecimal'
 
 module ActiveRecord

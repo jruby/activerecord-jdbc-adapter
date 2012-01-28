@@ -970,11 +970,13 @@ public class RubyJdbcConnection extends RubyObject {
         return RubyString.newUnicodeString(runtime, string);
     }
 
-    private static final int TABLE_NAME = 3;
 
     protected SQLBlock tableLookupBlock(final Ruby runtime,
             final String catalog, final String schemapat,
             final String tablepat, final String[] types, final boolean downCase) {
+        final int TABLE_SCHEM = 2;
+        final int TABLE_NAME = 3;
+        final int TABLE_TYPE = 4;
         return new SQLBlock() {
             public Object call(Connection c) throws SQLException {
                 ResultSet rs = null;
@@ -982,7 +984,8 @@ public class RubyJdbcConnection extends RubyObject {
                     DatabaseMetaData metadata = c.getMetaData();
                     String clzName = metadata.getClass().getName().toLowerCase();
                     boolean isOracle = clzName.indexOf("oracle") != -1 || clzName.indexOf("oci") != -1;
-                    boolean isDerby = clzName.indexOf("derby") != 1;
+                    boolean isDerby = clzName.indexOf("derby") != -1;
+                    boolean isMssql = clzName.indexOf("sqlserver") != -1 || clzName.indexOf("tds") != -1;
 
                     String realschema = schemapat;
                     String realtablepat = tablepat;
@@ -995,6 +998,7 @@ public class RubyJdbcConnection extends RubyObject {
                     List arr = new ArrayList();
                     while (rs.next()) {
                         String name;
+                        String schema = rs.getString(TABLE_SCHEM) != null ? rs.getString(TABLE_SCHEM).toLowerCase() : null;
 
                         if (downCase) {
                             name = rs.getString(TABLE_NAME).toLowerCase();
@@ -1002,9 +1006,15 @@ public class RubyJdbcConnection extends RubyObject {
                             name = caseConvertIdentifierForRails(metadata, rs.getString(TABLE_NAME));
                         }
                         // Handle stupid Oracle 10g RecycleBin feature
-                        if (!isOracle || !name.startsWith("bin$")) {
-                            arr.add(RubyString.newUnicodeString(runtime, name));
+                        if (isOracle && name.startsWith("bin$")) {
+                            continue;
                         }
+                        // Under mssql, don't return system tables/views unless they're explicitly asked for.
+                        if (isMssql && realschema==null &&
+                            ("sys".equals(schema) || "information_schema".equals(schema))) {
+                            continue;
+                        }
+                        arr.add(RubyString.newUnicodeString(runtime, name));
                     }
                     return runtime.newArray(arr);
                 } finally {

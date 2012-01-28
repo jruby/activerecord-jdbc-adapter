@@ -27,12 +27,17 @@ module ::ArJdbc
       end
     end
 
-    def self.extended(*args)
+    def self.extended(adapter)
       monkey_rails
+      adapter.configure_connection
     end
 
     def self.included(*args)
       monkey_rails
+    end
+
+    def configure_connection
+      execute("SET ISOLATION = SERIALIZABLE")   # This must be done or SELECT...FOR UPDATE won't work how we expect
     end
 
     module Column
@@ -40,6 +45,7 @@ module ::ArJdbc
         case field_type
         when /smallint/i  then :boolean
         when /real/i      then :float
+        when /^timestamp/i then :datetime
         else
           super
         end
@@ -73,10 +79,10 @@ module ::ArJdbc
     # In Derby, the following cannot specify a limit:
     # - integer
     # - boolean (smallint)
-    # - timestamp
+    # - datetime (timestamp)
     # - date
     def type_to_sql(type, limit = nil, precision = nil, scale = nil) #:nodoc:
-      return super unless [:integer, :boolean, :timestamp, :date].include? type
+      return super unless [:integer, :boolean, :timestamp, :datetime, :date].include? type
 
       native = native_database_types[type.to_s.downcase.to_sym]
       native.is_a?(Hash) ? native[:name] : native
@@ -87,6 +93,7 @@ module ::ArJdbc
       tp[:string][:limit] = 256
       tp[:integer][:limit] = nil
       tp[:boolean] = {:name => "smallint"}
+      tp[:datetime] = {:name => "timestamp", :limit => nil}
       tp[:timestamp][:limit] = nil
       tp[:date][:limit] = nil
       tp

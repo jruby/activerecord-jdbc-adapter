@@ -16,6 +16,7 @@ require 'models/thing'
 require 'simple'
 require 'has_many_through'
 require 'helper'
+require 'row_locking'
 require 'test/unit'
 
 # Comment/uncomment to enable logging to be loaded for any of the database adapters

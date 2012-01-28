@@ -4,6 +4,7 @@ module Arel
   module Visitors
     class SQLServer < Arel::Visitors::ToSql
       include ArJdbc::MsSQL::LimitHelpers::SqlServerReplaceLimitOffset
+      include ArJdbc::MsSQL::LockHelpers::SqlServerAddLock
 
       def select_count? o
         sel = o.cores.length == 1 && o.cores.first
@@ -33,6 +34,7 @@ module Arel
         else
           sql = super
         end
+        add_lock!(sql, :lock => o.lock && true)
         sql
       end
     end
