@@ -18,11 +18,13 @@ end
 # assert_queries and SQLCounter taken from rails active_record tests
 require 'test/unit'
 class Test::Unit::TestCase
-  def assert_queries(num = 1)
+  def assert_queries(num = 1, matching = nil)
     ActiveRecord::SQLCounter.log = []
     yield
   ensure
-    assert_equal num, ActiveRecord::SQLCounter.log.size, "#{ActiveRecord::SQLCounter.log.size} instead of #{num} queries were executed.#{ActiveRecord::SQLCounter.log.size == 0 ? '' : "\nQueries:\n#{ActiveRecord::SQLCounter.log.join("\n")}"}"
+    queries = nil
+    ActiveRecord::SQLCounter.log.tap {|log| queries = (matching ? log.select {|s| s =~ matching } : log) }
+    assert_equal num, queries.size, "#{queries.size} instead of #{num} queries were executed.#{queries.size == 0 ? '' : "\nQueries:\n#{queries.join("\n")}"}"
   end
 end
 

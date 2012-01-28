@@ -14,7 +14,13 @@ module ::ArJdbc
           def after_save_with_mssql_lob
             self.class.columns.select { |c| c.sql_type =~ /image/i }.each do |c|
               value = self[c.name]
-              value = value.to_yaml if unserializable_attribute?(c.name, c)
+              if coder = self.class.serialized_attributes[c.name]
+                if coder.respond_to?(:dump)
+                  value = coder.dump(value)
+                else
+                  value = value.to_yaml
+                end
+              end
               next if value.nil?  || (value == '')
 
               connection.write_large_object(c.type == :binary, c.name, self.class.table_name, self.class.primary_key, quote_value(id), value)

@@ -286,6 +286,8 @@ module ::ArJdbc
           self.limit   = options[:limit] if options.include?(:limit)
           self.default = options[:default] if include_default
           self.null    = options[:null] if options.include?(:null)
+          self.precision = options[:precision] if options.include?(:precision)
+          self.scale   = options[:scale] if options.include?(:scale)
         end
       end
     end
