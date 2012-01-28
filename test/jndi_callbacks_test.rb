@@ -9,7 +9,7 @@ class JndiConnectionPoolCallbacksTest < Test::Unit::TestCase
     @connection = mock "JdbcConnection"
     @connection.stubs(:jndi_connection?).returns(true)
     @connection.stubs(:adapter=)
-    @logger = mock "logger"
+    @logger = stub_everything "logger"
     @config = JNDI_CONFIG
     Entry.connection_pool.disconnect!
     assert !Entry.connection_pool.connected?
