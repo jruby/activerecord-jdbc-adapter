@@ -19,6 +19,11 @@ end
 require 'test/unit'
 class Test::Unit::TestCase
   def assert_queries(num = 1, matching = nil)
+    if !ActiveRecord::SQLCounter.enabled?
+      warn "SQLCounter assert_queries skipped"
+      return
+    end
+
     ActiveRecord::SQLCounter.log = []
     yield
   ensure
@@ -28,9 +33,13 @@ class Test::Unit::TestCase
   end
 end
 
-require 'active_support/notifications'
 module ActiveRecord
   class SQLCounter
+    @@enabled = true
+    def self.enabled?
+      @@enabled
+    end
+
     def self.ignored_sql
       @@ignored_sql
     end
@@ -83,5 +92,10 @@ module ActiveRecord
     end
   end
 
-  ActiveSupport::Notifications.subscribe('sql.active_record', SQLCounter.new)
+  begin
+    require 'active_support/notifications'
+    ActiveSupport::Notifications.subscribe('sql.active_record', SQLCounter.new)
+  rescue LoadError
+    @@enabled = false
+  end
 end
