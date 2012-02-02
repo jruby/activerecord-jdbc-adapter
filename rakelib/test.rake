@@ -17,9 +17,23 @@ def set_compat_version(task)
   end
 end
 
+def all_appraisal_names
+  @names ||= begin
+               names = []
+               Appraisal::File.each {|a| names << a.name }
+               names
+             end
+end
+
 def declare_test_task_for(adapter, options = {})
   driver = options[:driver] || adapter
-  Rake::TestTask.new("test_#{adapter}" => (options[:prereqs] || [])) do |t|
+  prereqs = options[:prereqs] || []
+  prereqs = [prereqs].flatten
+  task "test_#{adapter}_pre" do
+    puts "Specify AR version with 'rake appraisal:{version} test_#{adapter}' where version=(#{all_appraisal_names.join('|')})"
+  end
+  prereqs << "test_#{adapter}_pre"
+  Rake::TestTask.new("test_#{adapter}" => prereqs) do |t|
     files = FileList["test/#{adapter}*test.rb"]
     if adapter == "derby"
       files << 'test/activerecord/connection_adapters/type_conversion_test.rb'
