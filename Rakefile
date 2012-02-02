@@ -6,6 +6,8 @@ require 'bundler'
 Bundler::GemHelper.install_tasks
 require 'bundler/setup'
 
+require 'appraisal'
+
 require File.expand_path('../test/helper', __FILE__)
 
 task :default => [:jar, :test]

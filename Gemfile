@@ -5,7 +5,7 @@ source "http://rubygems.org"
 gem 'activerecord', ENV['AR_VERSION']
 
 gem 'rake'
-
+gem 'appraisal'
 gem 'jruby-openssl', :group => :development
 
 group :test do
