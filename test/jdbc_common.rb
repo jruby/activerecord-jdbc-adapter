@@ -5,7 +5,7 @@ end
 
 require 'arjdbc' if jruby?
 puts "Using activerecord version #{ActiveRecord::VERSION::STRING}"
-puts "Specify version with AR_VERSION={version} or RUBYLIB={path}"
+puts "Specify version with 'rake appraisal:{version} default'. See 'rake -T'."
 require 'models/auto_id'
 require 'models/entry'
 require 'models/data_types'
