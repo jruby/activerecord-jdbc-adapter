@@ -3,6 +3,12 @@ rvm:
 env:
   - JRUBY_OPTS=
   - JRUBY_OPTS=--1.9
+gemfile:
+  - Gemfile
+  - gemfiles/rails23.gemfile
+  - gemfiles/rails30.gemfile
+  - gemfiles/rails31.gemfile
+  - gemfiles/rails32.gemfile
 branches:
   only:
     - master
