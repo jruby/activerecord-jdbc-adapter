@@ -178,10 +178,11 @@ To execute a single test case, you can run:
 
   rake appraisal:{version} test_{db} TEST=test/{tests file}
 
-Substitute the version of ActiveRecord for version, which can be one 
-of (rails23|rails30|rails31|rails32). The db can be one of these: 
-(mssql|mysql|oracle|postgres|sybase|sqlite3|db2|derby|h2). Finally,
-the tests file will be whichever test case you want to run.
+Substitute the version of ActiveRecord for version, which can be one of: 
+  rails23, rails30, rails31, or rails32
+The db can be one of these: 
+  mssql, mysql, oracle, postgres, sybase, sqlite3, db2, derby, h2 
+Finally, the tests file will be whichever test case you want to run.
 
 == Running AR Tests
 
