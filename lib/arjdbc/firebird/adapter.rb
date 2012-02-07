@@ -7,7 +7,11 @@ module ::ArJdbc
           def after_save_with_firebird_blob
             self.class.columns.select { |c| c.sql_type =~ /blob/i }.each do |c|
               value = self[c.name]
-              value = value.to_yaml if unserializable_attribute?(c.name, c)
+              if respond_to?(:unserializable_attribute?)
+                value = value.to_yaml if unserializable_attribute?(c.name, c)
+              else
+                value = value.to_yaml if value.is_a?(Hash)
+              end
               next if value.nil?
               connection.write_large_object(c.type == :binary, c.name, self.class.table_name, self.class.primary_key, quote_value(id), value)
             end
