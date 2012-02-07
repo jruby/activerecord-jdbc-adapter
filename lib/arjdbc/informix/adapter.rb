@@ -8,7 +8,11 @@ module ::ActiveRecord
         self.class.columns.each do |c|
           if [:text, :binary].include? c.type
             value = self[c.name]
-            value = value.to_yaml if unserializable_attribute?(c.name, c)
+            if respond_to?(:unserializable_attribute?)
+              value = value.to_yaml if unserializable_attribute?(c.name, c)
+            else
+              value = value.to_yaml if value.is_a?(Hash)
+            end
 
             unless value.nil? || (value == '')
               connection.write_large_object(c.type == :binary,
