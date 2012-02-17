@@ -330,6 +330,42 @@ module ::ArJdbc
       nil
     end
 
+    # Insert logic for pre-AR-3.1 adapters
+    def insert_sql(sql, name = nil, pk = nil, id_value = nil, sequence_name = nil, binds = [])
+      # Extract the table from the insert sql. Yuck.
+      table = sql.split(" ", 4)[2].gsub('"', '')
+
+      # Try an insert with 'returning id' if available (PG >= 8.2)
+      if supports_insert_with_returning? && id_value.nil?
+        pk, sequence_name = *pk_and_sequence_for(table) unless pk
+        if pk
+          sql = substitute_binds(sql, binds)
+          id_value = select_value("#{sql} RETURNING #{quote_column_name(pk)}")
+          clear_query_cache #FIXME: Why now?
+          return id_value
+        end
+      end
+
+      # Otherwise, plain insert
+      execute(sql, name, binds)
+
+      # Don't need to look up id_value if we already have it.
+      # (and can't in case of non-sequence PK)
+      unless id_value
+        # If neither pk nor sequence name is given, look them up.
+        unless pk || sequence_name
+          pk, sequence_name = *pk_and_sequence_for(table)
+        end
+
+        # If a pk is given, fallback to default sequence name.
+        # Don't fetch last insert id for a table without a pk.
+        if pk && sequence_name ||= default_sequence_name(table, pk)
+          id_value = last_insert_id(table, sequence_name)
+        end
+      end
+      id_value
+    end
+
     def primary_key(table)
       pk_and_sequence = pk_and_sequence_for(table)
       pk_and_sequence && pk_and_sequence.first
