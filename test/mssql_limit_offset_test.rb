@@ -3,6 +3,26 @@ require 'db/mssql'
 
 ActiveRecord::Schema.verbose = false
 
+class CreateLegacyShips < ActiveRecord::Migration
+
+  def self.up
+    create_table "legacy_ships",{:primary_key => :ShipKey} do |t|
+      t.string "name", :limit => 50, :null => false
+      t.integer "width", :default => 123
+      t.integer "length", :default => 456
+    end
+  end
+
+  def self.down
+    drop_table "legacy_ships"
+  end
+
+end
+
+class LegacyShip < ActiveRecord::Base
+  self.primary_key = "ShipKey"
+end
+
 class CreateLongShips < ActiveRecord::Migration
 
   def self.up
@@ -64,6 +84,7 @@ end
 class MsSQLLimitOffsetTest < Test::Unit::TestCase
 
   def setup
+    CreateLegacyShips.up
     CreateLongShips.up
     CreateVikings.up
     CreateNoIdVikings.up
@@ -71,6 +92,7 @@ class MsSQLLimitOffsetTest < Test::Unit::TestCase
   end
 
   def teardown
+    CrearteLegacyShips.down
     CreateVikings.down
     CreateLongShips.down
     CreateNoIdVikings.down
@@ -82,6 +104,15 @@ class MsSQLLimitOffsetTest < Test::Unit::TestCase
     assert_nothing_raised(ActiveRecord::StatementInvalid) do 
       NoIdViking.find(:first)
     end
+  end
+
+  def test_limit_with_alternate_named_primary_key
+    %w(one two three four five six seven eight).each do |name|
+      LegacyShip.create!(:name => name)
+    end
+
+    ship_names = LegacyShip.find(3).map(&:name)
+    assert_equal(%w(one tow three), ship_names)
   end
 
   def test_limit_and_offset
