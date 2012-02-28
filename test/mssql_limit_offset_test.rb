@@ -92,7 +92,7 @@ class MsSQLLimitOffsetTest < Test::Unit::TestCase
   end
 
   def teardown
-    CrearteLegacyShips.down
+    CreateLegacyShips.down
     CreateVikings.down
     CreateLongShips.down
     CreateNoIdVikings.down
@@ -110,9 +110,8 @@ class MsSQLLimitOffsetTest < Test::Unit::TestCase
     %w(one two three four five six seven eight).each do |name|
       LegacyShip.create!(:name => name)
     end
-
-    ship_names = LegacyShip.find(3).map(&:name)
-    assert_equal(%w(one tow three), ship_names)
+    ships = LegacyShip.limit(3)
+    assert_equal(3, ships.size)
   end
 
   def test_limit_and_offset
