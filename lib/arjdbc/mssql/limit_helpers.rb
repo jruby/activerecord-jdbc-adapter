@@ -12,6 +12,14 @@ module ::ArJdbc
         end
       end
 
+      def get_primary_key(sql)
+        if sql =~ /.*\.(.*)/i
+	  $1
+	else
+	  'id'
+	end
+      end
+
       module SqlServer2000ReplaceLimitOffset
         module_function
         def replace_limit_offset!(sql, limit, offset, order)
@@ -31,7 +39,7 @@ module ::ArJdbc
               rest = rest_of_query[/FROM/i=~ rest_of_query.. -1]
               #need the table name for avoiding amiguity
               table_name = LimitHelpers.get_table_name(sql)
-              primary_key = order[/(\w*id\w*)/i] || "id"
+              primary_key = LimitHelpers.get_primary_key(order)
               #I am not sure this will cover all bases.  but all the tests pass
               if order[/ORDER/].nil?
                 new_order = "ORDER BY #{order}, #{table_name}.#{primary_key}" if order.index("#{table_name}.#{primary_key}").nil?
