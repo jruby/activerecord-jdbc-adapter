@@ -17,7 +17,14 @@ module ::ArJdbc
           $1
         else
           table_name[/\[+(.*)\]+/i]
-          models = ActiveRecord::Base.descendants
+
+          # rails 2 vs rails 3
+          if ActiveRecord::VERSION::MAJOR >= 3
+            models = ActiveRecord::Base.descendants
+          else
+            models = ActiveRecord::Base.send(:subclasses)
+          end
+
           model = models.select{|model| model.table_name == $1}.first
           if model then
             model.primary_key
