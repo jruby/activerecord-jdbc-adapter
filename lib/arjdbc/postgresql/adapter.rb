@@ -459,7 +459,7 @@ module ::ArJdbc
 
     # take id from result of insert query
     def last_inserted_id(result)
-      Hash[Array(*result)].fetch("id") { result }
+      Hash[Array(*result)].fetch("id") { result.class.to_s == 'Fixnum' ? result : Hash[Array(*result)].first[1] }
     end
 
     def last_insert_id(table, sequence_name)
