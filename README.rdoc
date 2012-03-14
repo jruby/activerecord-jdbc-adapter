@@ -67,7 +67,7 @@ prefix in front of the database adapter name as below.
       adapter: jdbcmysql
       username: blog
       password:
-      hostname: localhost
+      host: localhost
       database: weblog_development
 
 For other databases, you'll need to know the database driver class and
