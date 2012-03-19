@@ -235,10 +235,6 @@ module ::ArJdbc
       true
     end
 
-    def supports_count_distinct? #:nodoc:
-      false
-    end
-
     def create_savepoint
       execute("SAVEPOINT #{current_savepoint_name}")
     end
