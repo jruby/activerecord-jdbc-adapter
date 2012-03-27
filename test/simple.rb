@@ -14,6 +14,7 @@ module MigrationSetup
     CreateAutoIds.up
     CreateValidatesUniquenessOf.up
     CreateThings.up
+    CreateCustomPkName.up
     @connection = ActiveRecord::Base.connection
   end
 
@@ -25,6 +26,7 @@ module MigrationSetup
     CreateAutoIds.down
     CreateValidatesUniquenessOf.down
     CreateThings.down
+    CreateCustomPkName.down
     ActiveRecord::Base.clear_active_connections!
   end
 end
@@ -131,6 +133,18 @@ module SimpleTestMethods
       assert !value.nil?
       entry = Entry.find_by_title('insert_title')
       assert_equal entry.id, value
+
+      # Ensure we get the id even if the PK column is not named 'id'
+      1.upto(4) do |i|
+        cpn_name = "return id test#{i}"
+        cpn = CustomPkName.new
+        cpn.name = cpn_name
+        cpn.save
+        value = cpn.custom_id
+        assert !value.nil?
+        cpn = CustomPkName.find_by_name(cpn_name)
+        assert_equal cpn.custom_id, value
+      end
     end
   end
 
