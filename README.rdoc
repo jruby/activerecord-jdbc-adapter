@@ -167,7 +167,8 @@ alse need to grant "blog" create privileges on
 If you also have PostgreSQL available, those tests will be run if the
 `psql' executable can be found. Also ensure you have a database named
 <tt>weblog_development</tt> and a user named "blog" and an empty
-password.
+password.  You can control the host and port the tests will attempt to
+by setting the environment variables PGHOST and PGPORT.
 
 If you want rails logging enabled during these test runs you can edit 
 test/jdbc_common.rb and add the following line:

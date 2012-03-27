@@ -29,6 +29,7 @@ class PostgresSimpleTest < Test::Unit::TestCase
   end
 
   def test_create_xml_column
+    return unless PG_VERSION >= 80300
     assert_nothing_raised do
       @connection.create_table :xml_testings do |t|
         t.column :xml_test, :xml
