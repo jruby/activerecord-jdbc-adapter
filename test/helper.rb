@@ -3,9 +3,16 @@ module Kernel
     ENV['PATH'].split(File::PATH_SEPARATOR).detect {|p| File.executable?(File.join(p, name))}
   end
 
+  def pg_cmdline_params
+    params = ""
+    params += "-h #{ENV['PGHOST']} " if ENV['PGHOST']
+    params += "-p #{ENV['PGPORT']} " if ENV['PGPORT']
+    params
+  end
+
   def have_postgres?
     if find_executable?("psql")
-      if `psql -c '\\l' -U postgres 2>&1` && $?.exitstatus == 0
+      if `psql -c '\\l' -U postgres #{pg_cmdline_params}2>&1` && $?.exitstatus == 0
         true
       else
         warn "No \"postgres\" role? You might need to execute `createuser postgres -drs' first."
