@@ -34,11 +34,11 @@ module ArJdbc
     end
     (class << mod; self; end).instance_eval do
       unless respond_to?(:adapter_matcher)
-        define_method :adapter_matcher do |name, config|
+        define_method :adapter_matcher do |_name, config|
           if block.arity == 1
-            block.call(name) ? mod : false
+            block.call(_name) ? mod : false
           else
-            block.call(name, config) ? mod : false
+            block.call(_name, config) ? mod : false
           end
         end
       end
