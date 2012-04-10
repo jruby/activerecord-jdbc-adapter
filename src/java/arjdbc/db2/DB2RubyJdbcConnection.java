@@ -37,8 +37,15 @@ import arjdbc.jdbc.RubyJdbcConnection;
  * @author mikestone
  */
 public class DB2RubyJdbcConnection extends RubyJdbcConnection {
+    private static final String[] TABLE_TYPES = new String[]{"TABLE", "VIEW", "SYNONYM", "MATERIALIZED QUERY TABLE", "ALIAS"};
+
     protected DB2RubyJdbcConnection(Ruby runtime, RubyClass metaClass) {
         super(runtime, metaClass);
+    }
+
+    @Override
+    protected String[] getTableTypes() {
+        return TABLE_TYPES;
     }
 
     @Override

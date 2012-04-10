@@ -77,6 +77,7 @@ import org.jruby.util.ByteList;
  */
 public class RubyJdbcConnection extends RubyObject {
     private static final String[] TABLE_TYPE = new String[]{"TABLE"};
+    private static final String[] TABLE_TYPES = new String[]{"TABLE", "VIEW", "SYNONYM"};
 
     private static RubyObjectAdapter rubyApi;
 
@@ -104,6 +105,10 @@ public class RubyJdbcConnection extends RubyObject {
         return (RubyModule) runtime.getModule("ActiveRecord").getConstant("ConnectionAdapters");
     }
 
+    protected String[] getTableTypes() {
+        return TABLE_TYPES;
+    }
+
     @JRubyMethod(name = "begin")
     public IRubyObject begin(ThreadContext context) throws SQLException {
         final Ruby runtime = context.getRuntime();
@@ -126,9 +131,8 @@ public class RubyJdbcConnection extends RubyObject {
                     String tableName = rubyApi.convertToRubyString(args[0]).getUnicodeValue();
                     TableNameComponents components = extractTableNameComponents(c, defaultSchema, tableName);
 
-                    String[] tableTypes = new String[]{"TABLE","VIEW","SYNONYM"};
                     RubyArray matchingTables = (RubyArray) tableLookupBlock(context.getRuntime(),
-                            components.catalog, components.schema, components.table, tableTypes, false).call(c);
+                            components.catalog, components.schema, components.table, getTableTypes(), false).call(c);
                     if (matchingTables.isEmpty()) {
                         throw new SQLException("Table " + tableName + " does not exist");
                     }
