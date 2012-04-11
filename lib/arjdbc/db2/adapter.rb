@@ -67,6 +67,7 @@ module ArJdbc
       def self.cast_to_date_or_time(value)
         return value if value.is_a? Date
         return nil if value.blank?
+        return Time.now if value =~ /^CURRENT/
         guess_date_or_time((value.is_a? Time) ? value : cast_to_time(value))
       end
 
@@ -208,7 +209,7 @@ module ArJdbc
         create_sql << "#{quote_table_name(name)} ("
         create_sql << table_definition.to_sql
         create_sql << ") #{options[:options]}"
-        create_sql << " IN #{@config[:database]}.#{@config[:tablespace]}"
+        create_sql << " IN #{@config[:database]}.#{@config[:tablespace]}" if @config[:database] && @config[:tablespace]
 
         execute create_sql
 
@@ -300,6 +301,7 @@ module ArJdbc
 
     def add_index(table_name, column_name, options = {})
       if (!zos? || (table_name.to_s ==  ActiveRecord::Migrator.schema_migrations_table_name.to_s))
+        column_name = column_name.to_s
         super
       else
         statement ="CREATE"
