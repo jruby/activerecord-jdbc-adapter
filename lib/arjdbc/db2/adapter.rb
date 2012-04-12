@@ -35,6 +35,19 @@ module ArJdbc
       ::ActiveRecord::ConnectionAdapters::DB2JdbcConnection
     end
 
+    NATIVE_DATABASE_TYPES = {
+      :double    => { :name => "double" },
+      :bigint    => { :name => "bigint" }
+    }
+
+    def native_database_types
+      super.merge(NATIVE_DATABASE_TYPES)
+    end
+
+    def explain(query, *binds)
+      # TODO: Explain this!
+    end
+
     module Column
       def type_cast(value)
         return nil if value.nil? || value =~ /^\s*null\s*$/i
@@ -234,7 +247,7 @@ module ArJdbc
           end
         else
           offset = offset.to_i
-          sql.gsub!(/SELECT/i, 'SELECT B.* FROM (SELECT A.*, row_number() over () AS internal$rownum FROM (SELECT')
+          sql.sub!(/SELECT/i, 'SELECT B.* FROM (SELECT A.*, row_number() over () AS internal$rownum FROM (SELECT')
           sql << ") A ) B WHERE B.internal$rownum > #{offset} AND B.internal$rownum <= #{limit + offset}"
         end
       end
@@ -252,7 +265,7 @@ module ArJdbc
     end
 
     def quote_column_name(column_name)
-      column_name
+      column_name.to_s
     end
 
     def quote(value, column = nil) # :nodoc:
@@ -295,13 +308,17 @@ module ArJdbc
       end
     end
 
+    def runstats_for_table(tablename, priority=10)
+      @connection.execute_update "call sysproc.admin_cmd('RUNSTATS ON TABLE #{tablename} WITH DISTRIBUTION AND DETAILED INDEXES ALL UTIL_IMPACT_PRIORITY #{priority}')"
+    end
+
     def recreate_database(name)
       tables.each {|table| drop_table("#{db2_schema}.#{table}")}
     end
 
     def add_index(table_name, column_name, options = {})
       if (!zos? || (table_name.to_s ==  ActiveRecord::Migrator.schema_migrations_table_name.to_s))
-        column_name = column_name.to_s
+        column_name = column_name.to_s if column_name.is_a?(Symbol)
         super
       else
         statement ="CREATE"
@@ -440,11 +457,12 @@ module ArJdbc
 
     def structure_dump #:nodoc:
       definition=""
-      rs = @connection.connection.meta_data.getTables(nil,db2_schema.upcase,nil,["TABLE"].to_java(:string))
+      db2_schema = db2_schema.upcase if db2_schema.present?
+      rs = @connection.connection.meta_data.getTables(nil,db2_schema,nil,["TABLE"].to_java(:string))
       while rs.next
         tname = rs.getString(3)
         definition << "CREATE TABLE #{tname} (\n"
-        rs2 = @connection.connection.meta_data.getColumns(nil,db2_schema.upcase,tname,nil)
+        rs2 = @connection.connection.meta_data.getColumns(nil,db2_schema,tname,nil)
         first_col = true
         while rs2.next
           col_name = add_quotes(rs2.getString(4));
@@ -490,12 +508,12 @@ module ArJdbc
     end
 
     def zos?
-      @config[:driver] == "com.ibm.db2.jcc.DB2Driver"
+      @config[:url] =~ /^jdbc:db2j:net:/ && @config[:driver] == "com.ibm.db2.jcc.DB2Driver"
     end
 
     private
     def as400?
-        @config[:url] =~ /^jdbc:as400:/
+      @config[:url] =~ /^jdbc:as400:/
     end
 
     def db2_schema
