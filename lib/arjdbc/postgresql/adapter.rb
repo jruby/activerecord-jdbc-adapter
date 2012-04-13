@@ -435,7 +435,10 @@ module ::ArJdbc
     end
 
     def create_database(name, options = {})
-      execute "CREATE DATABASE \"#{name}\" ENCODING='#{options[:encoding] || 'utf8'}'"
+      options = options.with_indifferent_access
+      create_query = "CREATE DATABASE \"#{name}\" ENCODING='#{options[:encoding] || 'utf8'}'"
+      create_query << " TEMPLATE=#{options[:template]}" if options[:template].present?
+      execute create_query
     end
 
     def drop_database(name)
