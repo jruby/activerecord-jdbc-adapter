@@ -30,7 +30,7 @@ adapters are available:
   * derby (activerecord-jdbcderby-adapter)
   * hsqldb (activerecord-jdbchsqldb-adapter)
   * h2 (activerecord-jdbch2-adapter)
-  * mssql (activerecord-jdbcmssql-adapter). Does not support SQL Azure by default, see the project's readme for more information.
+  * mssql (activerecord-jdbcmssql-adapter). Does not support SQL Azure by default, see the project's readme[/jruby/activerecord-jdbc-adapter/blob/master/activerecord-jdbcmssql-adapter/README.rdoc] for more information.
 
 2a. For Rails 3, if you're generating a new application, use the
 following command to generate your application:
