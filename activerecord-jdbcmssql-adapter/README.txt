@@ -5,3 +5,16 @@
 == DESCRIPTION:
 
 This is an ActiveRecord driver for MS-SQL using JDBC running under JRuby.
+
+== SQL Azure
+
+To use this driver with SQL Azure you will need to follow these steps:
+  1. Add the official Microsoft SQL Server JDBC driver to your classpath.  The quick way is to include http://rubygems.org/gems/jdbc-mssql-azure in your gemfile.
+     If you want to include the jar manually it can be downloaded here http://www.microsoft.com/download/en/details.aspx?displaylang=en&id=19847
+  2. Configure your database.yml as follows: 
+      production:
+        adapter: jdbcmssql
+        driver: com.microsoft.sqlserver.jdbc.SQLServerDriver
+        url: 'jdbc:sqlserver://mydatabase.database.windows.net;databaseName=my_database'
+        username: foo@mydatabase.database.windows.net
+        password: bar

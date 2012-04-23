@@ -23,14 +23,14 @@ To use activerecord-jdbc-adapter with JRuby on Rails:
 1. Choose the adapter you wish to gem install. The following pre-packaged
 adapters are available:
 
-  * base jdbc (<tt>activerecord-jdbc-adapter</tt>). Supports all available databases via JDBC, but requires you to download and manually install the database vendor's JDBC driver .jar file.
-  * mysql (<tt>activerecord-jdbcmysql-adapter</tt>)
-  * postgresql (<tt>activerecord-jdbcpostgresql-adapter</tt>)
-  * sqlite3 (<tt>activerecord-jdbcsqlite3-adapter</tt>)
-  * derby (<tt>activerecord-jdbcderby-adapter</tt>)
-  * hsqldb (<tt>activerecord-jdbchsqldb-adapter</tt>)
-  * h2 (<tt>activerecord-jdbch2-adapter</tt>)
-  * mssql (<tt>activerecord-jdbcmssql-adapter</tt>)
+  * base jdbc (activerecord-jdbc-adapter). Supports all available databases via JDBC, but requires you to download and manually install the database vendor's JDBC driver .jar file.
+  * mysql (activerecord-jdbcmysql-adapter)
+  * postgresql (activerecord-jdbcpostgresql-adapter)
+  * sqlite3 (activerecord-jdbcsqlite3-adapter)
+  * derby (activerecord-jdbcderby-adapter)
+  * hsqldb (activerecord-jdbchsqldb-adapter)
+  * h2 (activerecord-jdbch2-adapter)
+  * mssql (activerecord-jdbcmssql-adapter). Does not support SQL Azure by default, see the project's readme for more information.
 
 2a. For Rails 3, if you're generating a new application, use the
 following command to generate your application:
