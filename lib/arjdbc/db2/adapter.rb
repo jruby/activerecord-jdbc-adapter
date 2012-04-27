@@ -48,6 +48,19 @@ module ArJdbc
       # TODO: Explain this!
     end
 
+    def prefetch_primary_key?(table_name = nil)
+      # TRUE if the table has no identity column
+      names = table_name.upcase.split(".")
+      sql = "SELECT 1 FROM SYSCAT.COLUMNS WHERE IDENTITY = 'Y' "
+      sql += "AND TABSCHEMA = '#{names.first}' " if names.size == 2
+      sql += "AND TABNAME = '#{names.last}'"
+      select_one(sql).nil?
+    end
+
+    def next_sequence_value(sequence_name)
+      select_value("select next value for #{sequence_name} from sysibm.sysdummy1")
+    end
+
     module Column
       def type_cast(value)
         return nil if value.nil? || value =~ /^\s*null\s*$/i
