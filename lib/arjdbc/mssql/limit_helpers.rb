@@ -57,7 +57,7 @@ module ::ArJdbc
           if options[:limit]
             order = "ORDER BY #{options[:order] || determine_order_clause(sql)}"
             sql.sub!(/ ORDER BY.*$/i, '')
-            SqlServerReplaceLimitOffset.replace_limit_offset!(sql, options[:limit], options[:offset], order)
+            SqlServer2000ReplaceLimitOffset.replace_limit_offset!(sql, options[:limit], options[:offset], order)
           end
         end
       end
