@@ -226,7 +226,8 @@ module ::ArJdbc
     end
 
     def quote_column_name(name)
-      "[#{name}]"
+      #do not enclose in brackets for sql server 2000; can't reference table from another owner
+      sqlserver_version == "2000" ? "#{name}" : "[#{name}]"
     end
 
     def quoted_true
