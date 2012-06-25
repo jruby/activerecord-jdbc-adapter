@@ -19,7 +19,7 @@ task :install => :jar
 ADAPTERS = %w[derby h2 hsqldb mssql mysql postgresql sqlite3].map {|a| "activerecord-jdbc#{a}-adapter" }
 DRIVERS  = %w[derby h2 hsqldb jtds mysql postgres sqlite3].map {|a| "jdbc-#{a}" }
 
-def rake(args)
+def rake(*args)
   ruby "-S", "rake", *args
 end
 
