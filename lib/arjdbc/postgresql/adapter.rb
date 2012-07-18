@@ -415,8 +415,6 @@ module ::ArJdbc
 
     # Based on postgresql_adapter.rb
     def indexes(table_name, name = nil)
-      schema_search_path = @config[:schema_search_path] || select_rows('SHOW search_path')[0][0]
-      schemas = schema_search_path.split(/,/).map { |p| quote(p) }.join(',')
       result = select_rows(<<-SQL, name)
         SELECT i.relname, d.indisunique, a.attname, a.attnum, d.indkey
           FROM pg_class t, pg_class i, pg_index d, pg_attribute a,
@@ -426,7 +424,7 @@ module ::ArJdbc
            AND d.indisprimary = 'f'
            AND t.oid = d.indrelid
            AND t.relname = '#{table_name}'
-           AND i.relnamespace IN (SELECT oid FROM pg_namespace WHERE nspname IN (#{schemas}) )
+           AND i.relnamespace IN (SELECT oid FROM pg_namespace WHERE nspname = ANY (current_schemas(false)) )
            AND a.attrelid = t.oid
            AND d.indkey[s.i]=a.attnum
         ORDER BY i.relname
@@ -517,6 +515,17 @@ module ::ArJdbc
       ensure
         reconnect!
       end
+    end
+
+    def schema_search_path=(path)
+      if path
+        execute "SET search_path TO #{path}"
+        @schema_search_path = nil
+      end
+    end
+
+    def schema_search_path
+      @schema_search_path ||= select_rows('SHOW search_path')[0][0]
     end
 
     # SELECT DISTINCT clause for a given set of columns and a given ORDER BY clause.
