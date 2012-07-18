@@ -467,13 +467,15 @@ module ArJdbc
             col_size = "(#{col_precision})"
           end
           nulling = (rs2.getString(18) == 'NO' ? " NOT NULL" : "")
+          autoincrement = (rs2.getString(23) == 'YES' ? " GENERATED ALWAYS AS IDENTITY" : "")
           create_col_string = add_quotes(expand_double_quotes(strip_quotes(col_name))) +
             " " +
             type +
             col_size +
             "" +
             nulling +
-            default
+            default +
+            autoincrement
           if !first_col
             create_col_string = ",\n #{create_col_string}"
           else
