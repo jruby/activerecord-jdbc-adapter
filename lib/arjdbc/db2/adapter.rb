@@ -485,6 +485,19 @@ module ArJdbc
           first_col = false
         end
         definition << ");\n\n"
+
+        pkrs = @connection.connection.meta_data.getPrimaryKeys(nil,db2_schema.upcase,tname)
+        primary_key = {}
+        while pkrs.next
+          name = pkrs.getString(6)
+          primary_key[name] = [] unless primary_key[name]
+          primary_key[name] << pkrs.getString(4)
+        end
+        primary_key.each do |name, cols|
+          definition << "ALTER TABLE #{tname}\n"
+          definition << "  ADD CONSTRAINT #{name}\n"
+          definition << "      PRIMARY KEY (#{cols.join(', ')});\n\n"
+        end
       end
       definition
     end
