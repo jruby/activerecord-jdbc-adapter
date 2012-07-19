@@ -106,6 +106,15 @@ namespace :db do
         File.open(filename, "a") { |f| f << ActiveRecord::Base.connection.dump_schema_information }
       end
     end
+
+    redefine_task :load => :environment do
+      abcs = ActiveRecord::Base.configurations
+      ActiveRecord::Base.establish_connection(abcs[rails_env])
+      filename = ENV['DB_STRUCTURE'] || "db/#{rails_env}_structure.sql"
+      IO.read(filename).split(/;\n*/).each do |ddl|
+        ActiveRecord::Base.connection.execute(ddl)
+      end
+    end
   end
 
   namespace :test do
