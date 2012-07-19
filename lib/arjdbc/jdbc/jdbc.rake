@@ -111,7 +111,7 @@ namespace :db do
       abcs = ActiveRecord::Base.configurations
       ActiveRecord::Base.establish_connection(abcs[rails_env])
       filename = ENV['DB_STRUCTURE'] || "db/#{rails_env}_structure.sql"
-      IO.read(filename).split(/;\n*/).each do |ddl|
+      IO.read(filename).split(/;\n*/m).each do |ddl|
         ActiveRecord::Base.connection.execute(ddl)
       end
     end
