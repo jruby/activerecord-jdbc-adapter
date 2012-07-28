@@ -646,6 +646,11 @@ module ::ArJdbc
 
     def rename_table(name, new_name)
       execute "ALTER TABLE #{name} RENAME TO #{new_name}"
+      pk, seq = pk_and_sequence_for(new_name)
+      if seq == "#{name}_#{pk}_seq"
+        new_seq = "#{new_name}_#{pk}_seq"
+        execute "ALTER TABLE #{quote_table_name(seq)} RENAME TO #{quote_table_name(new_seq)}"
+      end
     end
 
     # Adds a new column to the named table.
