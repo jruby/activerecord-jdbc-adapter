@@ -415,7 +415,6 @@ module ::ArJdbc
 
     # Based on postgresql_adapter.rb
     def indexes(table_name, name = nil)
-      schema_search_path = @config[:schema_search_path] || select_rows('SHOW search_path')[0][0]
       schemas = schema_search_path.split(/,/).map { |p| quote(p) }.join(',')
       result = select_rows(<<-SQL, name)
         SELECT i.relname, d.indisunique, a.attname, a.attnum, d.indkey
@@ -426,7 +425,7 @@ module ::ArJdbc
            AND d.indisprimary = 'f'
            AND t.oid = d.indrelid
            AND t.relname = '#{table_name}'
-           AND i.relnamespace IN (SELECT oid FROM pg_namespace WHERE nspname IN (#{schemas}) )
+           AND i.relnamespace IN (SELECT oid FROM pg_namespace WHERE nspname = ANY (current_schemas(false)) )
            AND a.attrelid = t.oid
            AND d.indkey[s.i]=a.attnum
         ORDER BY i.relname
@@ -472,7 +471,10 @@ module ::ArJdbc
     end
 
     def create_database(name, options = {})
-      execute "CREATE DATABASE \"#{name}\" ENCODING='#{options[:encoding] || 'utf8'}'"
+      options = options.with_indifferent_access
+      create_query = "CREATE DATABASE \"#{name}\" ENCODING='#{options[:encoding] || 'utf8'}'"
+      create_query << " TEMPLATE=#{options[:template]}" if options[:template].present?
+      execute create_query
     end
 
     def drop_database(name)
@@ -504,8 +506,7 @@ module ::ArJdbc
       ENV['PGHOST']     = @config[:host] if @config[:host]
       ENV['PGPORT']     = @config[:port].to_s if @config[:port]
       ENV['PGPASSWORD'] = @config[:password].to_s if @config[:password]
-      search_path = @config[:schema_search_path]
-      search_path = "--schema=#{search_path}" if search_path
+      search_path = "--schema=#{schema_search_path}" if schema_search_path
 
       @connection.connection.close
       begin
@@ -517,6 +518,28 @@ module ::ArJdbc
       ensure
         reconnect!
       end
+    end
+
+    # Sets the schema search path to a string of comma-separated schema names.
+    # Names beginning with $ have to be quoted (e.g. $user => '$user').
+    # See: http://www.postgresql.org/docs/current/static/ddl-schemas.html
+    #
+    # This should be not be called manually but set in database.yml.
+    def schema_search_path=(schema_csv)
+      if schema_csv
+        execute "SET search_path TO #{schema_csv}"
+        @schema_search_path = schema_csv
+      end
+    end
+
+    # Returns the active schema search path.
+    def schema_search_path
+      @schema_search_path ||= exec_query('SHOW search_path', 'SCHEMA')[0]['search_path']
+    end
+
+    # Returns the current schema name.
+    def current_schema
+      exec_query('SELECT current_schema', 'SCHEMA')[0]["current_schema"]
     end
 
     # SELECT DISTINCT clause for a given set of columns and a given ORDER BY clause.
