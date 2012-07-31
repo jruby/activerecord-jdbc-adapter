@@ -461,12 +461,12 @@ module ArJdbc
 
     def structure_dump #:nodoc:
       definition=""
-      db2_schema = db2_schema.upcase if db2_schema.present?
-      rs = @connection.connection.meta_data.getTables(nil,db2_schema,nil,["TABLE"].to_java(:string))
+      schema_name = db2_schema.upcase if db2_schema.present?
+      rs = @connection.connection.meta_data.getTables(nil,schema_name,nil,["TABLE"].to_java(:string))
       while rs.next
         tname = rs.getString(3)
         definition << "CREATE TABLE #{tname} (\n"
-        rs2 = @connection.connection.meta_data.getColumns(nil,db2_schema,tname,nil)
+        rs2 = @connection.connection.meta_data.getColumns(nil,schema_name,tname,nil)
         first_col = true
         while rs2.next
           col_name = add_quotes(rs2.getString(4));
@@ -510,7 +510,7 @@ module ArJdbc
         end
         definition << ");\n\n"
 
-        pkrs = @connection.connection.meta_data.getPrimaryKeys(nil,db2_schema,tname)
+        pkrs = @connection.connection.meta_data.getPrimaryKeys(nil,schema_name,tname)
         primary_key = {}
         while pkrs.next
           name = pkrs.getString(6)
