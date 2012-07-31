@@ -510,7 +510,7 @@ module ArJdbc
         end
         definition << ");\n\n"
 
-        pkrs = @connection.connection.meta_data.getPrimaryKeys(nil,db2_schema.upcase,tname)
+        pkrs = @connection.connection.meta_data.getPrimaryKeys(nil,db2_schema,tname)
         primary_key = {}
         while pkrs.next
           name = pkrs.getString(6)
