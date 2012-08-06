@@ -1,5 +1,3 @@
-#! /usr/bin/env jruby
-
 require 'jdbc_common'
 require 'db/mssql'
 

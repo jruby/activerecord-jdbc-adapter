@@ -1,5 +1,3 @@
-#! /usr/bin/env jruby
-
 require 'arjdbc/mssql/adapter'
 require 'test/unit'
 
