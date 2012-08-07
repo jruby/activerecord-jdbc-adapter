@@ -1,5 +1,3 @@
-#! /usr/bin/env jruby
-
 require 'thread'
 
 module RowLockingTestMethods
