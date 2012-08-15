@@ -77,6 +77,7 @@ module ArJdbc
         return value if value.is_a? Time
         # AS400 returns a 2 digit year, LUW returns a 4 digit year, so comp = true to help out AS400
         time = DateTime.parse(value).to_time rescue nil
+        return value if time.nil? && value.is_a?( String ) && /\d{2}\/\d{2}\/\d{2}/.match( value ) # has a two didgit year, better to leave a string then guess
         return nil unless time
         time_array = [time.year, time.month, time.day, time.hour, time.min, time.sec]
         time_array[0] ||= 2000; time_array[1] ||= 1; time_array[2] ||= 1;
@@ -84,6 +85,7 @@ module ArJdbc
       end
 
       def self.guess_date_or_time(value)
+        return value if value.is_a? String # has a two didgit year, better to leave a string then guess
         (value.hour == 0 and value.min == 0 and value.sec == 0) ?
         Date.new(value.year, value.month, value.day) : value
       end
