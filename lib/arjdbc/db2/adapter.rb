@@ -68,7 +68,9 @@ module ArJdbc
         return value if value.is_a? Date
         return nil if value.blank?
         return Time.now if value =~ /^CURRENT/
-        guess_date_or_time((value.is_a? Time) ? value : cast_to_time(value))
+          guess_date_or_time((value.is_a? Time) ? value : cast_to_time(value))
+      rescue
+          value
       end
 
       def self.cast_to_time(value)
