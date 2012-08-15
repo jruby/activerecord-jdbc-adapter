@@ -17,6 +17,14 @@ class PostgresSimpleTest < Test::Unit::TestCase
     assert_equal 'PostgreSQLAdapter', classname
   end
 
+  def test_schema_search_path
+    assert_equal @connection.schema_search_path, "\"$user\",public"
+  end
+
+  def test_current_schema
+    assert_equal @connection.current_schema, "public"
+  end
+
   def test_encoding
     assert_not_nil @connection.encoding
   end

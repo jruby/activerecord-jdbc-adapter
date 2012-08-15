@@ -12,6 +12,28 @@ module ::ArJdbc
         end
       end
 
+      def get_primary_key(order, table_name)
+        if order =~ /(\w*id\w*)/i
+          $1
+        else
+          table_name[/\[+(.*)\]+/i]
+
+          # rails 2 vs rails 3
+          if ActiveRecord::VERSION::MAJOR >= 3
+            models = ActiveRecord::Base.descendants
+          else
+            models = ActiveRecord::Base.send(:subclasses)
+          end
+
+          model = models.select{|model| model.table_name == $1}.first
+          if model then
+            model.primary_key
+          else
+           'id'
+          end
+        end
+      end
+
       module SqlServer2000ReplaceLimitOffset
         module_function
         def replace_limit_offset!(sql, limit, offset, order)
@@ -31,7 +53,7 @@ module ::ArJdbc
               rest = rest_of_query[/FROM/i=~ rest_of_query.. -1]
               #need the table name for avoiding amiguity
               table_name = LimitHelpers.get_table_name(sql)
-              primary_key = order[/(\w*id\w*)/i] || "id"
+              primary_key = LimitHelpers.get_primary_key(order, table_name)
               #I am not sure this will cover all bases.  but all the tests pass
               if order[/ORDER/].nil?
                 new_order = "ORDER BY #{order}, #{table_name}.#{primary_key}" if order.index("#{table_name}.#{primary_key}").nil?
@@ -57,7 +79,7 @@ module ::ArJdbc
           if options[:limit]
             order = "ORDER BY #{options[:order] || determine_order_clause(sql)}"
             sql.sub!(/ ORDER BY.*$/i, '')
-            SqlServerReplaceLimitOffset.replace_limit_offset!(sql, options[:limit], options[:offset], order)
+            SqlServer2000ReplaceLimitOffset.replace_limit_offset!(sql, options[:limit], options[:offset], order)
           end
         end
       end

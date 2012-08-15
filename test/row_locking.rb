@@ -1,8 +1,12 @@
-#! /usr/bin/env jruby
-
 require 'thread'
 
 module RowLockingTestMethods
+
+  # Simple SELECT ... FOR UPDATE test
+  def test_select_all_for_update
+    @row1_id = Entry.create!(:title => "row1").id
+    assert Entry.lock(true).all.map{|row| row.id}.include?(@row1_id)
+  end
 
   def test_row_locking
     row_locking_test_template

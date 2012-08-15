@@ -100,9 +100,19 @@ namespace :db do
     redefine_task :dump => :environment do
       abcs = ActiveRecord::Base.configurations
       ActiveRecord::Base.establish_connection(abcs[rails_env])
-      File.open("db/#{rails_env}_structure.sql", "w+") { |f| f << ActiveRecord::Base.connection.structure_dump }
+      filename = ENV['DB_STRUCTURE'] || "db/#{rails_env}_structure.sql"
+      File.open(filename, "w+") { |f| f << ActiveRecord::Base.connection.structure_dump }
       if ActiveRecord::Base.connection.supports_migrations?
-        File.open("db/#{rails_env}_structure.sql", "a") { |f| f << ActiveRecord::Base.connection.dump_schema_information }
+        File.open(filename, "a") { |f| f << ActiveRecord::Base.connection.dump_schema_information }
+      end
+    end
+
+    redefine_task :load => :environment do
+      abcs = ActiveRecord::Base.configurations
+      ActiveRecord::Base.establish_connection(abcs[rails_env])
+      filename = ENV['DB_STRUCTURE'] || "db/#{rails_env}_structure.sql"
+      IO.read(filename).split(/;\n*/m).each do |ddl|
+        ActiveRecord::Base.connection.execute(ddl)
       end
     end
   end
