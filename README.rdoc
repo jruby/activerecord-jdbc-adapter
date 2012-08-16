@@ -206,8 +206,8 @@ This project was written by Nick Sieger <nick@nicksieger.com> and Ola Bini
 
 == License
 
-activerecord-jdbc-adapter is released under a BSD license. See the LICENSE file
-included with the distribution for details.
+activerecord-jdbc-adapter is released under a BSD license. See the LICENSE.txt
+file included with the distribution for details.
 
 Open-source driver gems for activerecord-jdbc-adapter are licensed under the
 same license the database's drivers are licensed. See each driver gem's

@@ -13,6 +13,7 @@ Gem::Specification.new do |s|
   s.description = %q{activerecord-jdbc-adapter is a database adapter for Rails\' ActiveRecord
 component that can be used with JRuby[http://www.jruby.org/]. It allows use of
 virtually any JDBC-compliant database with your JRuby on Rails application.}
+  s.license     = "BSD"
   s.files         = `git ls-files`.split("\n").reject {|v| v =~ /^(activerecord-jdbc[^-]|jdbc-)/}
   s.test_files    = `git ls-files -- {test,spec,features}/*`.split("\n")
   s.executables   = `git ls-files -- bin/*`.split("\n").map{|f| File.basename(f) }
