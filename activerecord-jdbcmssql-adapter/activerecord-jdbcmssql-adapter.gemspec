@@ -12,7 +12,7 @@ Gem::Specification.new do |s|
   s.email = %q{nick@nicksieger.com, ola.bini@gmail.com}
   s.files = [
     "Rakefile",
-    "README.txt",
+    "README.rdoc",
     "LICENSE.txt",
     "lib/active_record/connection_adapters/jdbcmssql_adapter.rb"
   ]
