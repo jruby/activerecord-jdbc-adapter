@@ -10,10 +10,12 @@ module ::ArJdbc
           def after_save_with_oracle_lob
             self.class.columns.select { |c| c.sql_type =~ /LOB\(|LOB$/i }.each do |c|
               value = self[c.name]
-              if respond_to?(:unserializable_attribute?)
-                value = value.to_yaml if unserializable_attribute?(c.name, c)
-              else
-                value = value.to_yaml if value.is_a?(Hash)
+              if coder = self.class.serialized_attributes[c.name]
+                if coder.respond_to?(:dump)
+                  value = coder.dump(value)
+                else
+                  value = value.to_yaml
+                end
               end
               next if value.nil?  || (value == '')
 
