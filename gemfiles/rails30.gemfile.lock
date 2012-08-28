@@ -1,16 +1,16 @@
 GEM
   remote: http://rubygems.org/
   specs:
-    activemodel (3.0.15)
-      activesupport (= 3.0.15)
+    activemodel (3.0.17)
+      activesupport (= 3.0.17)
       builder (~> 2.1.2)
       i18n (~> 0.5.0)
-    activerecord (3.0.15)
-      activemodel (= 3.0.15)
-      activesupport (= 3.0.15)
+    activerecord (3.0.17)
+      activemodel (= 3.0.17)
+      activesupport (= 3.0.17)
       arel (~> 2.0.10)
       tzinfo (~> 0.3.23)
-    activesupport (3.0.15)
+    activesupport (3.0.17)
     appraisal (0.4.0)
       bundler
       rake
@@ -27,7 +27,7 @@ PLATFORMS
   java
 
 DEPENDENCIES
-  activerecord (~> 3.0.15)
+  activerecord (~> 3.0.17)
   appraisal
   jruby-openssl
   rake

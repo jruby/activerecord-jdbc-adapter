@@ -4,13 +4,13 @@ appraise "rails23" do
 end
 
 appraise "rails30" do
-  gem "activerecord", "~> 3.0.15"
+  gem "activerecord", "~> 3.0.17"
 end
 
 appraise "rails31" do
-  gem "activerecord", "~> 3.1.6"
+  gem "activerecord", "~> 3.1.8"
 end
 
 appraise "rails32" do
-  gem "activerecord", "~> 3.2.6"
+  gem "activerecord", "~> 3.2.8"
 end
