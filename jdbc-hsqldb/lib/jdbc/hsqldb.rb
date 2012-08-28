@@ -1,6 +1,6 @@
 module Jdbc
   module HSQLDB
-    VERSION = "1.8.1.3"
+    VERSION = "2.2.9"
   end
 end
 if RUBY_PLATFORM =~ /java/
