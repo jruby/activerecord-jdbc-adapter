@@ -353,19 +353,21 @@ module ArJdbc
 
     def change_column_null(table_name, column_name, null)
       if null
-        execute_and_auto_confirm "ALTER TABLE #{table_name} ALTER COLUMN #{column_name} DROP NOT NULL"
+        sql = "ALTER TABLE #{table_name} ALTER COLUMN #{column_name} DROP NOT NULL"
       else
-        execute_and_auto_confirm "ALTER TABLE #{table_name} ALTER COLUMN #{column_name} SET NOT NULL"
+        sql = "ALTER TABLE #{table_name} ALTER COLUMN #{column_name} SET NOT NULL"
       end
+      as400? ? execute_and_auto_confirm(sql) : execute(sql)
       reorg_table(table_name)
     end
 
     def change_column_default(table_name, column_name, default)
       if default.nil?
-        execute_and_auto_confirm "ALTER TABLE #{table_name} ALTER COLUMN #{column_name} DROP DEFAULT"
+        sql = "ALTER TABLE #{table_name} ALTER COLUMN #{column_name} DROP DEFAULT"
       else
-        execute_and_auto_confirm "ALTER TABLE #{table_name} ALTER COLUMN #{column_name} SET WITH DEFAULT #{quote(default)}"
+        sql = "ALTER TABLE #{table_name} ALTER COLUMN #{column_name} SET WITH DEFAULT #{quote(default)}"
       end
+      as400? ? execute_and_auto_confirm(sql) : execute(sql)
       reorg_table(table_name)
     end
 
@@ -461,12 +463,12 @@ module ArJdbc
 
     def structure_dump #:nodoc:
       definition=""
-      db2_schema = db2_schema.upcase if db2_schema.present?
-      rs = @connection.connection.meta_data.getTables(nil,db2_schema,nil,["TABLE"].to_java(:string))
+      schema_name = db2_schema.upcase if db2_schema.present?
+      rs = @connection.connection.meta_data.getTables(nil,schema_name,nil,["TABLE"].to_java(:string))
       while rs.next
         tname = rs.getString(3)
         definition << "CREATE TABLE #{tname} (\n"
-        rs2 = @connection.connection.meta_data.getColumns(nil,db2_schema,tname,nil)
+        rs2 = @connection.connection.meta_data.getColumns(nil,schema_name,tname,nil)
         first_col = true
         while rs2.next
           col_name = add_quotes(rs2.getString(4));
@@ -510,7 +512,7 @@ module ArJdbc
         end
         definition << ");\n\n"
 
-        pkrs = @connection.connection.meta_data.getPrimaryKeys(nil,db2_schema.upcase,tname)
+        pkrs = @connection.connection.meta_data.getPrimaryKeys(nil,schema_name,tname)
         primary_key = {}
         while pkrs.next
           name = pkrs.getString(6)
