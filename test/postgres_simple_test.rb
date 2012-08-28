@@ -54,15 +54,27 @@ class PostgresSimpleTest < Test::Unit::TestCase
   end
 
   def test_create_table_with_limits
-    assert_nothing_raised do
-      @connection.create_table :testings do |t|
-        t.column :eleven_int, :integer, :limit => 11
+    # NOTE: this one is ActiveRecord::VERSION specific ...
+    # seems that 4.0 does the right thing not swallowing errors :
+    if ActiveRecord::VERSION::MAJOR >= 4
+      assert_raises ActiveRecord::ActiveRecordError do
+        @connection.create_table :testings do |t|
+          t.column :eleven_int, :integer, :limit => 11
+        end
       end
-    end
+    else
+      # swallowed by AR::ConnectionAdapters::ColumnDefinition due :
+      # type_to_sql(type.to_sym, limit, precision, scale) rescue type
+      assert_nothing_raised do
+        @connection.create_table :testings do |t|
+          t.column :eleven_int, :integer, :limit => 11
+        end
+      end
 
-    columns = @connection.columns(:testings)
-    eleven = columns.detect { |c| c.name == "eleven_int" }
-    assert_equal "integer", eleven.sql_type
+      columns = @connection.columns(:testings)
+      eleven = columns.detect { |c| c.name == "eleven_int" }
+      assert_equal "integer", eleven.sql_type
+    end
   ensure
     @connection.drop_table :testings rescue nil
   end
