@@ -58,10 +58,10 @@ module AbstractDbCreate
   end
 
   def setup_rails
-    if ActiveRecord::VERSION::MAJOR == 3
-      setup_rails3
-    else
+    if ActiveRecord::VERSION::MAJOR <= 2
       setup_rails2
+    else
+      setup_rails
     end
   end
 
@@ -91,7 +91,7 @@ module AbstractDbCreate
     load "#{rails_lib_path}/tasks/databases.rake"
   end
 
-  def setup_rails3
+  def setup_rails
     configs = configurations
     (class << Rails::Application.config; self ; end).instance_eval do
       define_method(:database_configuration) { configs }
