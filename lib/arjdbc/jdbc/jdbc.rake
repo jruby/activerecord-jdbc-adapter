@@ -20,8 +20,10 @@ def rails_env
 end
 
 namespace :db do
+
   redefine_task :create => :rails_env do
-    create_database(ActiveRecord::Base.configurations[rails_env])
+    config = ActiveRecord::Base.configurations[rails_env]
+    create_database(config)
   end
   task :create => :load_config if Rake.application.lookup(:load_config)
 
@@ -31,69 +33,109 @@ namespace :db do
       db = find_database_name(config)
       ActiveRecord::Base.connection.drop_database(db)
     rescue
-      drop_database(config.merge('adapter' => config['adapter'].sub(/^jdbc/, '')))
+      drop_database(config)
     end
   end
   task :drop => :load_config if Rake.application.lookup(:load_config)
 
-  namespace :create do
-    task :all => :rails_env
-  end
+  if defined? ActiveRecord::Tasks::DatabaseTasks # 4.0
 
-  namespace :drop do
-    task :all => :environment
-  end
+    tasks = ActiveRecord::Tasks::DatabaseTasks.instance_variable_get :@tasks
+    tasks = tasks.values.unshift( ActiveRecord::Tasks::DatabaseTasks )
+    tasks.each do |task_class|
+      task_class.class_eval do # e.g. ActiveRecord::Tasks::MySQLDatabaseTasks
 
-  class << self
-    alias_method :previous_create_database, :create_database
-    alias_method :previous_drop_database, :drop_database
-  end
+        alias_method :previous_create, :create unless method_defined?(:previous_create)
+        alias_method :previous_drop,   :drop   unless method_defined?(:previous_drop)
 
-  def find_database_name(config)
-    db = config['database']
-    if config['adapter'] =~ /postgresql/i
-      config = config.dup
-      if config['url']
-        url = config['url'].dup
-        db = url[/\/([^\/]*)$/, 1]
-        if db
-          url[/\/([^\/]*)$/, 1] = 'postgres'
-          config['url'] = url
+        def create(*args)
+          if defined? @configuration # ActiveRecord::Tasks::PostgresDatabaseTasks
+            config = @configuration
+            @configuration = config.merge('adapter' => config['adapter'].sub(/^jdbc/, ''))
+            previous_create *args
+          else # ActiveRecord::Tasks::DatabaseTasks
+            config = args.first
+            previous_create *[ config.merge('adapter' => config['adapter'].sub(/^jdbc/, '')) ]
+          end
         end
-      else
-        db = config['database']
-        config['database'] = 'postgres'
-      end
-      ActiveRecord::Base.establish_connection(config)
-    else
-      ActiveRecord::Base.establish_connection(config)
-      db = ActiveRecord::Base.connection.database_name
-    end
-    db
-  end
 
-  def create_database(config)
-    begin
-      ActiveRecord::Base.establish_connection(config)
-      ActiveRecord::Base.connection
-    rescue
+        def drop(*args)
+          if defined? @configuration
+            config = @configuration
+            @configuration = config.merge('adapter' => config['adapter'].sub(/^jdbc/, ''))
+            previous_drop *args
+          else
+            config = args.first
+            previous_drop *[ config.merge('adapter' => config['adapter'].sub(/^jdbc/, '')) ]
+          end
+        end
+
+      end
+    end
+
+    def create_database(config)
       begin
-        if url = config['url'] and url =~ /^(.*(?<!\/)\/)(?=\w)/
-          url = $1
-        end
-
-        ActiveRecord::Base.establish_connection(config.merge({'database' => nil, 'url' => url}))
-        ActiveRecord::Base.connection.create_database(config['database'])
         ActiveRecord::Base.establish_connection(config)
-      rescue => e
-        raise e unless config['adapter'] =~ /mysql|postgresql|sqlite/
-        previous_create_database(config.merge('adapter' => config['adapter'].sub(/^jdbc/, '')))
+        ActiveRecord::Base.connection
+      rescue
+        begin
+          if url = config['url'] and url =~ /^(.*(?<!\/)\/)(?=\w)/
+            url = $1
+          end
+
+          ActiveRecord::Base.establish_connection(config.merge({'database' => nil, 'url' => url}))
+          ActiveRecord::Base.connection.create_database(config['database'])
+          ActiveRecord::Base.establish_connection(config)
+        rescue => e
+          raise e if config['adapter'] && config['adapter'] !~ /mysql|postgresql|sqlite/
+          ActiveRecord::Tasks::DatabaseTasks.create_current
+        end
       end
     end
-  end
 
-  def drop_database(config)
-    previous_drop_database(config.merge('adapter' => config['adapter'].sub(/^jdbc/, '')))
+    def drop_database(config)
+      ActiveRecord::Tasks::DatabaseTasks.drop_current
+    end
+
+  else # 3.x
+
+    namespace :create do
+      task :all => :rails_env
+    end
+
+    namespace :drop do
+      task :all => :environment
+    end
+
+    class << self
+      alias_method :previous_create_database, :create_database
+      alias_method :previous_drop_database,   :drop_database
+    end
+
+    def create_database(config)
+      begin
+        ActiveRecord::Base.establish_connection(config)
+        ActiveRecord::Base.connection
+      rescue
+        begin
+          if url = config['url'] and url =~ /^(.*(?<!\/)\/)(?=\w)/
+            url = $1
+          end
+
+          ActiveRecord::Base.establish_connection(config.merge({'database' => nil, 'url' => url}))
+          ActiveRecord::Base.connection.create_database(config['database'])
+          ActiveRecord::Base.establish_connection(config)
+        rescue => e
+          raise e unless config['adapter'] =~ /mysql|postgresql|sqlite/
+          previous_create_database(config.merge('adapter' => config['adapter'].sub(/^jdbc/, '')))
+        end
+      end
+    end
+
+    def drop_database(config)
+      previous_drop_database(config.merge('adapter' => config['adapter'].sub(/^jdbc/, '')))
+    end
+
   end
 
   namespace :structure do
@@ -134,8 +176,32 @@ namespace :db do
 
     redefine_task :purge => :environment do
       abcs = ActiveRecord::Base.configurations
-      db = find_database_name(abcs['test'])
+      db = find_database_name( abcs['test'] )
       ActiveRecord::Base.connection.recreate_database(db)
     end
   end
+
+  def find_database_name(config)
+    db = config['database']
+    if config['adapter'] =~ /postgresql/i
+      config = config.dup
+      if config['url']
+        url = config['url'].dup
+        db = url[/\/([^\/]*)$/, 1]
+        if db
+          url[/\/([^\/]*)$/, 1] = 'postgres'
+          config['url'] = url
+        end
+      else
+        db = config['database']
+        config['database'] = 'postgres'
+      end
+      ActiveRecord::Base.establish_connection(config)
+    else
+      ActiveRecord::Base.establish_connection(config)
+      db = ActiveRecord::Base.connection.database_name
+    end
+    db
+  end
+
 end
