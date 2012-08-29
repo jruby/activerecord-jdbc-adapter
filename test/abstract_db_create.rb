@@ -1,12 +1,16 @@
 require 'jdbc_common'
 require 'rake'
+require 'pathname'
 
 module Rails
   class Configuration
+    def root
+      defined?(RAILS_ROOT) ? Pathname.new(File.realpath(RAILS_ROOT)) : raise("Rails.root not set")
+    end
   end
   class Application
     def self.config
-      @config ||= Object.new
+      @config ||= Configuration.new
     end
     def self.paths
       @paths ||= Hash.new { [] }
@@ -14,6 +18,16 @@ module Rails
   end
   def self.application
     Rails::Application
+  end
+  def self.configuration
+    application.config
+  end
+  def self.root
+    application && application.config.root
+  end
+  def self.env
+    env = defined?(RAILS_ENV) ? RAILS_ENV : ( ENV["RAILS_ENV"] || "development" )
+    ActiveSupport::StringInquirer.new(env)
   end
 end
 
@@ -35,8 +49,8 @@ module AbstractDbCreate
     ActiveRecord::Base.connection.disconnect!
     @db_name = db
     setup_rails
-    set_rails_constant("env", @env)
-    set_rails_constant("root", ".")
+    set_rails_env(@env)
+    set_rails_root(".")
     load File.dirname(__FILE__) + '/../lib/arjdbc/jdbc/jdbc.rake' if jruby?
     task :environment do
       ActiveRecord::Base.configurations = configurations
@@ -58,10 +72,10 @@ module AbstractDbCreate
   end
 
   def setup_rails
-    if ActiveRecord::VERSION::MAJOR == 3
-      setup_rails3
-    else
+    if ActiveRecord::VERSION::MAJOR <= 2
       setup_rails2
+    else
+      setup_rails
     end
   end
 
@@ -87,7 +101,7 @@ module AbstractDbCreate
     load "#{rails_lib_path}/tasks/databases.rake"
   end
 
-  def setup_rails3
+  def setup_rails
     configs = configurations
     (class << Rails::Application.config; self ; end).instance_eval do
       define_method(:database_configuration) { configs }
@@ -99,6 +113,14 @@ module AbstractDbCreate
         File.exist?(File.join(p, ar_version))
     end
     load "#{ar_lib_path}/active_record/railties/databases.rake"
+  end
+
+  def set_rails_env(env)
+    set_rails_constant("env", env)
+  end
+
+  def set_rails_root(root = '.')
+    set_rails_constant("root", root)
   end
 
   def set_rails_constant(name, value)

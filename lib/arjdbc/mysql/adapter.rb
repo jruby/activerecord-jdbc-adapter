@@ -558,11 +558,10 @@ module ActiveRecord
       alias_chained_method :columns, :query_cache, :jdbc_columns
 
       protected
-      def exec_insert(sql, name, binds)
-        binds = binds.dup
-
+      def exec_insert(sql, name, binds, pk = nil, sequence_name = nil)
         # Pretend to support bind parameters
         unless binds.empty?
+          binds = binds.dup
           sql = sql.gsub('?') { quote(*binds.shift.reverse) }
         end
         execute sql, name
