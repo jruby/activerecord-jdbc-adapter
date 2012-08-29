@@ -7,5 +7,5 @@ ActiveRecord::Base.establish_connection(config)
 
 at_exit {
   # Clean up hsqldb when done
-  Dir['test.db*'].each {|f| File.delete(f)}
+  Dir['test.db*'].each {|f| FileUtils.rm_rf(f) }
 }
