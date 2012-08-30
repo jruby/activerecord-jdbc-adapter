@@ -1,8 +1,8 @@
+language: ruby
+before_script: "bundle exec rake appraisal:install"
 rvm:
-  - jruby
-env:
-  - JRUBY_OPTS=
-  - JRUBY_OPTS=--1.9
+  - jruby-18mode
+  - jruby-19mode
 gemfile:
   - Gemfile
   - gemfiles/rails23.gemfile
