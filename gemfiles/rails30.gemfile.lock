@@ -1,24 +1,24 @@
 GEM
   remote: http://rubygems.org/
   specs:
-    activemodel (3.0.15)
-      activesupport (= 3.0.15)
+    activemodel (3.0.17)
+      activesupport (= 3.0.17)
       builder (~> 2.1.2)
       i18n (~> 0.5.0)
-    activerecord (3.0.15)
-      activemodel (= 3.0.15)
-      activesupport (= 3.0.15)
+    activerecord (3.0.17)
+      activemodel (= 3.0.17)
+      activesupport (= 3.0.17)
       arel (~> 2.0.10)
       tzinfo (~> 0.3.23)
-    activesupport (3.0.15)
-    appraisal (0.4.0)
+    activesupport (3.0.17)
+    appraisal (0.4.1)
       bundler
       rake
     arel (2.0.10)
     bouncy-castle-java (1.5.0146.1)
     builder (2.1.2)
     i18n (0.5.0)
-    jruby-openssl (0.7.5)
+    jruby-openssl (0.7.7)
       bouncy-castle-java (>= 1.5.0146.1)
     rake (0.9.2.2)
     tzinfo (0.3.33)
