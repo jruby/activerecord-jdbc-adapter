@@ -591,7 +591,7 @@ module ::ArJdbc
         "'#{value}'"
       when String
         case column.sql_type
-        when 'bytea' then "'#{escape_bytea(value)}'"
+        when 'bytea' then "E'#{escape_bytea(value)}'::bytea"
         when 'xml'   then "xml '#{quote_string(value)}'"
         when /^bit/
           case value
