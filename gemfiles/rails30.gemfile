@@ -6,4 +6,5 @@ gem "rake"
 gem "appraisal"
 gem "jruby-openssl", :group=>:development
 gem "activerecord", "~> 3.0.15"
+gem "rails", "~> 3.0.15"
 

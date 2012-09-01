@@ -1,8 +1,15 @@
 language: ruby
-before_script: "bundle exec rake appraisal:install"
+before_script: bundle exec rake appraisal:install
+script: bundle exec rake test_$DB
 rvm:
   - jruby-18mode
   - jruby-19mode
+env:
+  - DB=mysql
+  - DB=postgresql
+  - DB=h2
+  - DB=hsqldb
+  - DB=sqlite3
 gemfile:
   - Gemfile
   - gemfiles/rails23.gemfile
