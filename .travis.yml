@@ -1,5 +1,4 @@
 language: ruby
-before_script: bundle exec rake appraisal:install
 script: bundle exec rake test_$DB
 rvm:
   - jruby-18mode
@@ -11,7 +10,6 @@ env:
   - DB=hsqldb
   - DB=sqlite3
 gemfile:
-  - Gemfile
   - gemfiles/rails23.gemfile
   - gemfiles/rails30.gemfile
   - gemfiles/rails31.gemfile

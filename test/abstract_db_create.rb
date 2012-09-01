@@ -82,6 +82,10 @@ module AbstractDbCreate
     end
     ar_version = $LOADED_FEATURES.grep(%r{active_record/version}).first
     ar_lib_path = $LOAD_PATH.detect {|p| p if File.exist?File.join(p, ar_version)}
+    # if the old style finder didn't work, assume we have the absolute path already
+    if ar_lib_path.nil? && File.exist?(ar_version)
+      ar_lib_path = ar_version.sub(%r{/active_record/version.*}, '')
+    end
     ar_lib_path = ar_lib_path.sub(%r{activerecord/lib}, 'railties/lib') # edge rails
     rails_lib_path = ar_lib_path.sub(/activerecord-([\d\.]+)/, 'rails-\1') # gem rails
     load "#{rails_lib_path}/tasks/databases.rake"
