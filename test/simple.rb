@@ -380,19 +380,6 @@ module SimpleTestMethods
     end
   end
 
-  def test_remove_nonexistent_index
-    assert_raise(ArgumentError, ActiveRecord::StatementInvalid, ActiveRecord::JDBCError) do
-      @connection.remove_index :entries, :nonexistent_index
-    end
-  end
-
-  def test_add_index_with_invalid_name_length
-    index_name = 'x' * (@connection.index_name_length + 1)
-    assert_raise(ArgumentError) do
-      @connection.add_index "entries", "title", :name => index_name
-    end
-  end
-
   def test_dumping_schema
     require 'active_record/schema_dumper'
     @connection.add_index :entries, :title
@@ -571,13 +558,6 @@ module SimpleTestMethods
     f = StringId.first #reload is essential
     assert_equal "some_string", f.id
   end
-
-  def test_model_with_no_id
-    assert_nothing_raised do
-      Thing.create! :name => "a thing"
-    end
-    assert_equal 1, Thing.find(:all).size
-  end
 end
 
 module MultibyteTestMethods
@@ -677,6 +657,26 @@ module ActiveRecord3TestMethods
     def test_where
       entries = Entry.where(:title => @entry.title)
       assert_equal @entry, entries.first
+    end
+
+    def test_remove_nonexistent_index
+      assert_raise(ArgumentError, ActiveRecord::StatementInvalid, ActiveRecord::JDBCError) do
+        @connection.remove_index :entries, :nonexistent_index
+      end
+    end
+
+    def test_add_index_with_invalid_name_length
+      index_name = 'x' * (@connection.index_name_length + 1)
+      assert_raise(ArgumentError) do
+        @connection.add_index "entries", "title", :name => index_name
+      end
+    end
+
+    def test_model_with_no_id
+      assert_nothing_raised do
+        Thing.create! :name => "a thing"
+      end
+      assert_equal 1, Thing.find(:all).size
     end
   end
 end
