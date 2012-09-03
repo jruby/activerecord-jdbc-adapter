@@ -3,6 +3,8 @@ def jruby?
   defined?(RUBY_ENGINE) && RUBY_ENGINE == "jruby"
 end
 
+require 'bundler'
+Bundler.require(:default, :test)
 require 'arjdbc' if jruby?
 puts "Using activerecord version #{ActiveRecord::VERSION::STRING}"
 require 'models/auto_id'
@@ -18,11 +20,14 @@ require 'has_many_through'
 require 'helper'
 require 'row_locking'
 require 'test/unit'
+require 'logger'
 
-# Comment/uncomment to enable logging to be loaded for any of the database adapters
+# we always require logger (some tests fail if ActiveRecord::Base.logger is nil), but level
+# is set to warn unless $DEBUG or ENV['DEBUG'] is set
+require 'db/logger'
 if $DEBUG || ENV['DEBUG']
-  require 'db/logger'
   require 'ruby-debug'
+else
 end
 
 
