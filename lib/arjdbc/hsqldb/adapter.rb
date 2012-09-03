@@ -133,7 +133,8 @@ module ::ArJdbc
     end
 
     def last_insert_id
-      Integer(select_value("CALL IDENTITY()"))
+      identity = select_value("CALL IDENTITY()")
+      Integer(identity.nil? ? 0 : identity)
     end
 
     def _execute(sql, name = nil)

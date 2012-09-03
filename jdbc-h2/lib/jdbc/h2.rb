@@ -1,6 +1,6 @@
 module Jdbc
   module H2
-    VERSION = "1.3.154"
+    VERSION = "1.3.168"
   end
 end
 if RUBY_PLATFORM =~ /java/
