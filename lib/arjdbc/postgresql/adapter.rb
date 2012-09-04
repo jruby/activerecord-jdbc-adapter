@@ -223,6 +223,10 @@ module ::ArJdbc
       has_support
     end
 
+    def supports_hex_escaped_bytea?
+      postgresql_version >= 90000
+    end
+
     def supports_insert_with_returning?
       postgresql_version >= 80200
     end
@@ -608,9 +612,13 @@ module ::ArJdbc
 
     def escape_bytea(s)
       if s
-        result = ''
-        s.each_byte { |c| result << sprintf('\\\\%03o', c) }
-        result
+        if supports_hex_escaped_bytea?
+          s.unpack("H*")[0]
+        else
+          result = ''
+          s.each_byte { |c| result << sprintf('\\\\%03o', c) }
+          result
+        end
       end
     end
 
