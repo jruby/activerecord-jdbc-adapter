@@ -613,7 +613,7 @@ module ::ArJdbc
     def escape_bytea(s)
       if s
         if supports_hex_escaped_bytea?
-          s.unpack("H*")[0]
+          "\\\\x#{s.unpack("H*")[0]}"
         else
           result = ''
           s.each_byte { |c| result << sprintf('\\\\%03o', c) }
