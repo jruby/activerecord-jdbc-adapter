@@ -88,7 +88,7 @@ module ActiveRecord
       rescue ::ActiveRecord::ActiveRecordError
         raise
       rescue Exception => e
-        raise ::ActiveRecord::JDBCError.new("The driver encountered an unknown error: #{e}").tap { |err|
+        raise ::ActiveRecord::JDBCError.new("The driver encountered an unknown error: #{e.inspect}").tap { |err|
           err.errno = 0
           err.sql_exception = e
         }
