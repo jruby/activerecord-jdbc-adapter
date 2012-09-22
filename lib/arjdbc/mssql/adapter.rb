@@ -64,11 +64,17 @@ module ::ArJdbc
     def modify_types(tp) #:nodoc:
       super(tp)
       tp[:string] = {:name => "NVARCHAR", :limit => 255}
+
       if sqlserver_version == "2000"
         tp[:text] = {:name => "NTEXT"}
       else
         tp[:text] = {:name => "NVARCHAR(MAX)"}
       end
+
+      tp[:primary_key] = "int NOT NULL IDENTITY(1, 1) PRIMARY KEY"
+      tp[:integer][:limit] = nil
+      tp[:boolean] = {:name => "bit"}
+      tp[:binary] = {:name => "image"}
       tp
     end
 

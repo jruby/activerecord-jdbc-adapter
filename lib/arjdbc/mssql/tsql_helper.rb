@@ -1,14 +1,6 @@
 # Common methods for handling TSQL databases.
 module TSqlMethods
 
-  def modify_types(tp) #:nodoc:
-    tp[:primary_key] = "int NOT NULL IDENTITY(1, 1) PRIMARY KEY"
-    tp[:integer][:limit] = nil
-    tp[:boolean] = {:name => "bit"}
-    tp[:binary] = { :name => "image"}
-    tp
-  end
-
   def type_to_sql(type, limit = nil, precision = nil, scale = nil) #:nodoc:
     limit = nil if %w(text binary).include? type.to_s
     return 'uniqueidentifier' if (type.to_s == 'uniqueidentifier')
