@@ -37,9 +37,8 @@ module ::ArJdbc
         end
       end
 
-      private
       # Extracts the value from a Postgresql column default definition
-      def default_value(default)
+      def extract_value_from_default(default)
         case default
           # This is a performance optimization for Ruby 1.9.2 in development.
           # If the value is nil, we return nil straight away without checking
@@ -94,6 +93,11 @@ module ::ArJdbc
           # and we can't know the value of that, so return nil.
           nil
         end
+      end
+
+      private
+      def default_value(default)
+        self.extract_value_from_default(default)
       end
 
       def extract_limit(sql_type)
@@ -239,6 +243,10 @@ module ::ArJdbc
       true
     end
 
+    def supports_explain?
+      true
+    end
+
     def create_savepoint
       execute("SAVEPOINT #{current_savepoint_name}")
     end
@@ -328,6 +336,48 @@ module ::ArJdbc
       [result["attname"], result["relname"]]
     rescue
       nil
+    end
+
+    def explain(arel, binds = [])
+      sql = "EXPLAIN #{to_sql(arel, binds)}"
+      ExplainPrettyPrinter.new.pp(exec_query(sql, 'EXPLAIN', binds))
+    end
+
+    class ExplainPrettyPrinter # :nodoc:
+      # Pretty prints the result of a EXPLAIN in a way that resembles the output of the
+      # PostgreSQL shell:
+      #
+      #                                     QUERY PLAN
+      #   ------------------------------------------------------------------------------
+      #    Nested Loop Left Join  (cost=0.00..37.24 rows=8 width=0)
+      #      Join Filter: (posts.user_id = users.id)
+      #      ->  Index Scan using users_pkey on users  (cost=0.00..8.27 rows=1 width=4)
+      #            Index Cond: (id = 1)
+      #      ->  Seq Scan on posts  (cost=0.00..28.88 rows=8 width=4)
+      #            Filter: (posts.user_id = 1)
+      #   (6 rows)
+      #
+      def pp(result)
+        header = result.columns.first
+        lines  = result.rows.map(&:first)
+
+        # We add 2 because there's one char of padding at both sides, note
+        # the extra hyphens in the example above.
+        width = [header, *lines].map(&:length).max + 2
+
+        pp = []
+
+        pp << header.center(width).rstrip
+        pp << '-' * width
+
+        pp += lines.map {|line| " #{line}"}
+
+        nrows = result.rows.length
+        rows_label = nrows == 1 ? 'row' : 'rows'
+        pp << "(#{nrows} #{rows_label})"
+
+        pp.join("\n") + "\n"
+      end
     end
 
     # Insert logic for pre-AR-3.1 adapters
@@ -664,14 +714,11 @@ module ::ArJdbc
     # Adds a new column to the named table.
     # See TableDefinition#column for details of the options you can use.
     def add_column(table_name, column_name, type, options = {})
-      default = options[:default]
-      notnull = options[:null] == false
+      #clear_cache!
+      add_column_sql = "ALTER TABLE #{quote_table_name(table_name)} ADD COLUMN #{quote_column_name(column_name)} #{type_to_sql(type, options[:limit], options[:precision], options[:scale])}"
+      add_column_options!(add_column_sql, options)
 
-      # Add the column.
-      execute("ALTER TABLE #{quote_table_name(table_name)} ADD COLUMN #{quote_column_name(column_name)} #{type_to_sql(type, options[:limit], options[:precision], options[:scale])}")
-
-      change_column_default(table_name, column_name, default) if options_include_default?(options)
-      change_column_null(table_name, column_name, false, default) if notnull
+      execute add_column_sql
     end
 
     # Changes the column of a table.
@@ -726,14 +773,25 @@ module ::ArJdbc
 
     # Maps logical Rails types to PostgreSQL-specific data types.
     def type_to_sql(type, limit = nil, precision = nil, scale = nil)
-      return super unless type.to_s == 'integer'
-      return 'integer' unless limit
+      case type.to_s
+      when 'binary'
+        # PostgreSQL doesn't support limits on binary (bytea) columns.
+        # The hard limit is 1Gb, because of a 32-bit size field, and TOAST.
+        case limit
+        when nil, 0..0x3fffffff; super(type)
+        else raise(ActiveRecordError, "No binary type has byte size #{limit}.")
+        end
+      when 'integer'
+        return 'integer' unless limit
 
-      case limit
-      when 1, 2; 'smallint'
-      when 3, 4; 'integer'
-      when 5..8; 'bigint'
-      else raise(ActiveRecordError, "No integer type has byte size #{limit}. Use a numeric with precision 0 instead.")
+        case limit
+          when 1, 2; 'smallint'
+          when 3, 4; 'integer'
+          when 5..8; 'bigint'
+          else raise(ActiveRecordError, "No integer type has byte size #{limit}. Use a numeric with precision 0 instead.")
+        end
+      else
+        super
       end
     end
 
