@@ -15,6 +15,9 @@ module Arel
       # Need to mimic the subquery logic in ARel 1.x for select count with limit
       # See arel/engines/sql/compilers/mssql_compiler.rb for details
       def visit_Arel_Nodes_SelectStatement o
+        if !o.limit && o.offset
+          raise ActiveRecord::ActiveRecordError, "You must specify :limit with :offset."
+        end
         order = "ORDER BY #{o.orders.map { |x| visit x }.join(', ')}" unless o.orders.empty?
         if o.limit
           if select_count?(o)
