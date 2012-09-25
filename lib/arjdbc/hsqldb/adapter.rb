@@ -168,7 +168,7 @@ module ::ArJdbc
       execute "DROP INDEX #{quote_column_name(index_name(table_name, options))}"
     end
 
-    def recreate_database(name)
+    def recreate_database(name, options = {})
       drop_database(name)
     end
     

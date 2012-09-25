@@ -316,7 +316,7 @@ module ArJdbc
       @connection.execute_update "call sysproc.admin_cmd('RUNSTATS ON TABLE #{tablename} WITH DISTRIBUTION AND DETAILED INDEXES ALL UTIL_IMPACT_PRIORITY #{priority}')"
     end
 
-    def recreate_database(name)
+    def recreate_database(name, options = {})
       tables.each {|table| drop_table("#{db2_schema}.#{table}")}
     end
 

@@ -190,7 +190,12 @@ module ::ArJdbc
       end
     end
 
-    def recreate_database(name)
+    def primary_key(table_name) #:nodoc:
+      column = table_structure(table_name).find {|field| field['pk'].to_i == 1}
+      column ? column['name'] : nil
+    end
+
+    def recreate_database(name, options = {})
       tables.each{ |table| drop_table(table) }
     end
 
