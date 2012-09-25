@@ -186,7 +186,7 @@ module ::ArJdbc
       column ? column['name'] : nil
     end
 
-    def recreate_database(name)
+    def recreate_database(name, options = {})
       tables.each{ |table| drop_table(table) }
     end
 

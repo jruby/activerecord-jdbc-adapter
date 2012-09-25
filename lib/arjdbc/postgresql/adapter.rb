@@ -469,15 +469,28 @@ module ::ArJdbc
       Integer(select_value("SELECT currval('#{sequence_name}')"))
     end
 
-    def recreate_database(name)
+    def recreate_database(name, options = {})
       drop_database(name)
-      create_database(name)
+      create_database(name, options)
     end
 
     def create_database(name, options = {})
       options = options.with_indifferent_access
       create_query = "CREATE DATABASE \"#{name}\" ENCODING='#{options[:encoding] || 'utf8'}'"
-      create_query << " TEMPLATE=#{options[:template]}" if options[:template].present?
+      create_query += options.symbolize_keys.sum do |key, value|
+        case key
+          when :owner
+            " OWNER = \"#{value}\""
+          when :template
+            " TEMPLATE = \"#{value}\""
+          when :tablespace
+            " TABLESPACE = \"#{value}\""
+          when :connection_limit
+            " CONNECTION LIMIT = #{value}"
+          else
+            ""
+        end
+      end
       execute create_query
     end
 

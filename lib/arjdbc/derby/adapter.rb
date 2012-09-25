@@ -315,7 +315,7 @@ module ::ArJdbc
       @connection.tables(nil, derby_schema)
     end
 
-    def recreate_database(db_name)
+    def recreate_database(db_name, options = {})
       tables.each do |t|
         drop_table t
       end
