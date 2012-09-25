@@ -162,5 +162,15 @@ class MsSQLLimitOffsetTest < Test::Unit::TestCase
     assert_equal(["Adam", "Carl", "Ben"], vikings.map(&:name))
 
   end
-  
+ 
+  def test_offset_without_limit
+    %w(one two three four five six seven eight).each do |name|
+      LongShip.create!(:name => name)
+    end
+    error = assert_raise ActiveRecord::ActiveRecordError do
+      LongShip.find(:all, :offset => 2)
+    end
+    assert_equal("You must specify :limit with :offset.", error.message)
+  end
+
 end
