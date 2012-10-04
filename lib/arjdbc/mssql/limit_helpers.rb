@@ -97,7 +97,7 @@ module ::ArJdbc
             if rest_of_query[0...1] == "1" && rest_of_query !~ /1 AS/i
               rest_of_query[0] = "*"
             end
-            if rest_of_query[0] == "*"
+            if rest_of_query[0...1] == "*"
               from_table = LimitHelpers.get_table_name(rest_of_query)
               rest_of_query = from_table + '.' + rest_of_query
             end
