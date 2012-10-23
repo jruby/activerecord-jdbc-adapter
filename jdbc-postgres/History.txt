@@ -1,3 +1,9 @@
+=== 9.1.903
+* Upgraded to 9.1-903 drivers (still compatible with PostgreSQL 7.2+).
+
+  See PostgreSQL JDBC {Change Log}[http://jdbc.postgresql.org/changes.html#version_9.1-903].
+  Though change logging has been a bit spotty of late.
+
 === 9.1.901
 * Upgraded to 9.1-901 drivers (still compatible with PostgreSQL 7.2+).
 

@@ -1,6 +1,6 @@
 module Jdbc
   module Postgres
-    VERSION = "9.1.901"
+    VERSION = "9.1.903"
 
     def self.require_driver_jar
       vers  = VERSION.split( '.' )
