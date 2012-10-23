@@ -8,6 +8,8 @@ module ::ArJdbc
       (class << mod; self; end).class_eval do
         alias_chained_method :columns, :query_cache, :pg_columns
       end
+
+      mod.configure_connection
     end
 
     def self.column_selector
@@ -16,6 +18,10 @@ module ::ArJdbc
 
     def self.jdbc_connection_class
       ::ActiveRecord::ConnectionAdapters::PostgresJdbcConnection
+    end
+
+    def configure_connection
+      standard_conforming_strings = true
     end
 
     # column behavior based on postgresql_adapter in rails project
@@ -207,20 +213,39 @@ module ::ArJdbc
       true
     end
 
+    # Enable standard-conforming strings if available.
+    def standard_conforming_strings=(enable)
+      old, self.client_min_messages = client_min_messages, 'panic'
+      value = if(enable) then "on" else "off" end
+      execute("SET standard_conforming_strings = #{value}", 'SCHEMA')
+      @standard_conforming_strings = (value == "on")
+    rescue
+      @standard_conforming_strings = :unsupported
+    ensure
+      self.client_min_messages = old
+    end
+
+    def standard_conforming_strings? #:nodoc:
+      if @standard_conforming_strings.nil?
+        begin
+          old, self.client_min_messages = client_min_messages, 'panic'
+          value = select_one('SHOW standard_conforming_strings', 'SCHEMA')['standard_conforming_strings']
+          @standard_conforming_strings = (value == "on")
+        rescue
+          @standard_conforming_strings = :unsupported
+        ensure
+          self.client_min_messages = old
+        end
+      end
+
+      # Return false if unsupported.
+      @standard_conforming_strings == true
+    end
+
     # Does PostgreSQL support standard conforming strings?
     def supports_standard_conforming_strings?
-      # Temporarily set the client message level above error to prevent unintentional
-      # error messages in the logs when working on a PostgreSQL database server that
-      # does not support standard conforming strings.
-      client_min_messages_old = client_min_messages
-      self.client_min_messages = 'panic'
-
-      # postgres-pr does not raise an exception when client_min_messages is set higher
-      # than error and "SHOW standard_conforming_strings" fails, but returns an empty
-      # PGresult instead.
-      has_support = select('SHOW standard_conforming_strings').to_a[0][0] rescue false
-      self.client_min_messages = client_min_messages_old
-      has_support
+      standard_conforming_strings?
+      @standard_conforming_strings != :unsupported
     end
 
     def supports_hex_escaped_bytea?
@@ -546,6 +571,16 @@ module ::ArJdbc
       exec_query('SELECT current_schema', 'SCHEMA')[0]["current_schema"]
     end
 
+    # Returns the current client message level.
+    def client_min_messages
+      exec_query('SHOW client_min_messages', 'SCHEMA')[0]['client_min_messages']
+    end
+
+    # Set the client message level.
+    def client_min_messages=(level)
+      execute("SET client_min_messages TO '#{level}'", 'SCHEMA')
+    end
+
     # SELECT DISTINCT clause for a given set of columns and a given ORDER BY clause.
     #
     # PostgreSQL requires the ORDER BY columns in the select list for distinct queries, and
@@ -608,6 +643,17 @@ module ::ArJdbc
       else
         super
       end
+    end
+
+    # Quotes a string, escaping any ' (single quote) and \ (backslash)
+    # characters.
+    def quote_string(s)
+      quoted = s.gsub(/'/, "''")
+      if !standard_conforming_strings?
+        quoted.gsub!(/\\/, '\&\&')
+      end
+
+      quoted
     end
 
     def escape_bytea(s)
