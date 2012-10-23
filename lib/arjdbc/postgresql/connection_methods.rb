@@ -14,6 +14,7 @@ class ActiveRecord::Base
       config[:adapter_spec] = ::ArJdbc::PostgreSQL
       conn = jdbc_connection(config)
       conn.execute("SET SEARCH_PATH TO #{config[:schema_search_path]}") if config[:schema_search_path]
+      conn.execute("SET standard_conforming_strings=off")
       conn
     end
     alias_method :jdbcpostgresql_connection, :postgresql_connection
