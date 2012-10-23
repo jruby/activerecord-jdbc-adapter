@@ -66,6 +66,32 @@ class PostgresSimpleTest < Test::Unit::TestCase
   ensure
     @connection.drop_table :testings rescue nil
   end
+
+  def test_supports_standard_conforming_string
+    assert([true, false].include?(@connection.supports_standard_conforming_strings?))
+  end
+
+  def test_default_standard_conforming_string
+    if @connection.supports_standard_conforming_strings?
+      assert_equal true, @connection.standard_conforming_strings?
+    else
+      assert_equal false, @connection.standard_conforming_strings?
+    end
+  end
+
+  def test_string_quoting_with_standard_conforming_strings
+    if @connection.supports_standard_conforming_strings?
+      s = "\\m it's \\M"
+      assert_equal "'\\m it''s \\M'", @connection.quote(s)
+    end
+  end
+
+  def test_string_quoting_without_standard_conforming_strings
+    @connection.standard_conforming_strings = false
+    s = "\\m it's \\M"
+    assert_equal "'\\\\m it''s \\\\M'", @connection.quote(s)
+    @connection.standard_conforming_strings = true
+  end
 end
 
 class PostgresTimestampTest < Test::Unit::TestCase
