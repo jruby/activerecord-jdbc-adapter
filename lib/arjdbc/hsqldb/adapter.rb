@@ -57,7 +57,7 @@ module ::ArJdbc
       tp[:string][:limit] = 255
       tp[:datetime] = { :name => "DATETIME" }
       tp[:timestamp] = { :name => "DATETIME" }
-      tp[:time] = { :name => "TIME" }
+      tp[:time] = { :name => "DATETIME" }
       tp[:date] = { :name => "DATE" }
       tp
     end
