@@ -255,9 +255,9 @@ module ::ArJdbc
       true
     end
 
-    def recreate_database(name)
+    def recreate_database(name, options = {})
       drop_database(name)
-      create_database(name)
+      create_database(name, options)
     end
 
     def drop_database(name)
@@ -265,7 +265,7 @@ module ::ArJdbc
       execute "DROP DATABASE #{name}"
     end
 
-    def create_database(name)
+    def create_database(name, options={})
       execute "CREATE DATABASE #{name}"
       execute "USE #{name}"
     end

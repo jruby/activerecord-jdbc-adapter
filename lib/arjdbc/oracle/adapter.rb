@@ -160,7 +160,7 @@ module ::ArJdbc
       execute "DROP SEQUENCE #{seq_name}" rescue nil
     end
 
-    def recreate_database(name)
+    def recreate_database(name, options = {})
       tables.each{ |table| drop_table(table) }
     end
 
