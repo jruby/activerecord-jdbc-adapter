@@ -236,6 +236,18 @@ class SQLite3SimpleTest < Test::Unit::TestCase
   ensure
     @connection.drop_table :xml_testings rescue nil
   end
+  
+  def test_supports_explain
+    assert_nothing_raised do
+      assert_equal @connection.supports_explain?, true
+    end
+  end
+  
+  def test_explain
+    assert_nothing_raised do
+      Entry.joins(:user).explain
+    end
+  end
 end
 
 # assert_raise ActiveRecord::RecordInvalid do
