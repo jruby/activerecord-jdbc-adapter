@@ -104,6 +104,23 @@ module ::ArJdbc
       @sqlite_version ||= select_value('select sqlite_version(*)')
     end
 
+    def supports_explain?
+      true
+    end
+    
+    def explain(arel, binds = [])
+      sql = "EXPLAIN QUERY PLAN #{to_sql(arel,binds.dup)}"
+      ExplainPrettyPrinter.new.pp(exec_query(sql, 'EXPLAIN', binds))  
+    end
+    
+    class ExplainPrettyPrinter
+      def pp(result)
+        result.map do |row|
+          row.to_a.join('|')
+        end.join("\n") + "\n"
+      end
+    end
+    
     def modify_types(tp)
       tp[:primary_key] = "integer primary key autoincrement not null"
       tp[:string] = { :name => "varchar", :limit => 255 }
@@ -118,7 +135,7 @@ module ::ArJdbc
       tp[:binary] = { :name => "blob" }
       tp
     end
-
+    
     def quote_column_name(name) #:nodoc:
       %Q("#{name.to_s.gsub('"', '""')}")
     end
