@@ -21,7 +21,7 @@ module ::ArJdbc
     end
 
     def configure_connection
-      standard_conforming_strings = true
+      self.standard_conforming_strings = true
     end
 
     # column behavior based on postgresql_adapter in rails project
@@ -913,6 +913,11 @@ module ActiveRecord::ConnectionAdapters
 
   class PostgreSQLAdapter < JdbcAdapter
     include ArJdbc::PostgreSQL
+
+    def initialize(*args)
+      super
+      configure_connection
+    end
 
     class TableDefinition < ActiveRecord::ConnectionAdapters::TableDefinition
       def xml(*args)
