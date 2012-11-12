@@ -71,6 +71,11 @@ class PostgresSimpleTest < Test::Unit::TestCase
     assert([true, false].include?(@connection.supports_standard_conforming_strings?))
   end
 
+  def test_standard_conforming_string_default_set_on_new_connections
+    c = ActiveRecord::Base.postgresql_connection(POSTGRES_CONFIG)
+    assert_equal true, c.instance_variable_get("@standard_conforming_strings")
+  end
+
   def test_default_standard_conforming_string
     if @connection.supports_standard_conforming_strings?
       assert_equal true, @connection.standard_conforming_strings?
