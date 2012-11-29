@@ -1,3 +1,5 @@
+require File.expand_path('../../test/helper', __FILE__)
+
 namespace :db do
   desc "Creates the test database for MySQL."
   task :mysql do
@@ -23,7 +25,7 @@ SQL
 
   desc "Creates the test database for PostgreSQL."
   task :postgres do
-    fail unless have_postgres?
+    fail unless PostgresHelper.have_postgres?
     load 'test/db/postgres.rb' rescue nil
     t = Tempfile.new("psql")
     t.puts <<-SQL

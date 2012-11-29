@@ -1,11 +1,17 @@
 require File.expand_path('../../test/helper', __FILE__)
+
 if defined?(JRUBY_VERSION)
   databases = [:test_mysql, :test_jdbc, :test_sqlite3, :test_derby, :test_hsqldb, :test_h2]
-  databases << :test_postgres if have_postgres?
+  databases << :test_postgres if PostgresHelper.have_postgres?(false)
   if File.exist?('test/fscontext.jar')
     databases << :test_jndi
   end
-  task :test => databases
+  task :test do
+    unless PostgresHelper.have_postgres?
+      warn "... won't run test_postgres tests"
+    end
+    databases.each { |task| Rake::Task[task.to_s].invoke }
+  end
 else
   task :test => [:test_mysql]
 end

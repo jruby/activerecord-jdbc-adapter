@@ -1,0 +1,15 @@
+=== 5.1.22
+
+* upgraded to 5.1.22 JDBC driver, changes since previous release (5.1.13) :
+  - http://dev.mysql.com/doc/refman/5.1/en/cj-news-5-1-15.html
+  - http://dev.mysql.com/doc/refman/5.1/en/cj-news-5-1-16.html
+  - http://dev.mysql.com/doc/refman/5.1/en/cj-news-5-1-17.html
+  - http://dev.mysql.com/doc/refman/5.1/en/cj-news-5-1-18.html
+  - http://dev.mysql.com/doc/refman/5.1/en/cj-news-5-1-19.html
+  - http://dev.mysql.com/doc/refman/5.1/en/cj-news-5-1-20.html
+  - http://dev.mysql.com/doc/refman/5.1/en/cj-news-5-1-21.html
+  - http://dev.mysql.com/doc/refman/5.1/en/cj-news-5-1-22.html
+
+=== 5.1.13
+
+* using MySQL driver 5.1.13

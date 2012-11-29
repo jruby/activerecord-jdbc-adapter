@@ -1,3 +1,10 @@
+=== 9.2.1002
+* Upgraded to 9.2-1002 drivers (still compatible with PostgreSQL 7.2+).
+* 9.2 supports hstore among others
+
+  See PostgreSQL JDBC {Change Log}[http://jdbc.postgresql.org/changes.html#version_9.2-1002].
+  First 9.2 release: {9.2-1000}[http://jdbc.postgresql.org/changes.html#version_9.2-1000].
+
 === 9.1.903
 * Upgraded to 9.1-903 drivers (still compatible with PostgreSQL 7.2+).
 
