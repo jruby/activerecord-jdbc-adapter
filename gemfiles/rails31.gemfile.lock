@@ -29,7 +29,7 @@ PLATFORMS
   java
 
 DEPENDENCIES
-  activerecord (~> 3.1.6)
+  activerecord (~> 3.1.8)
   appraisal
   jruby-openssl
   rake

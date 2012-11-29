@@ -5,5 +5,5 @@ source "http://rubygems.org"
 gem "rake"
 gem "appraisal"
 gem "jruby-openssl", :group=>:development
-gem "activerecord", "~> 3.2.6"
+gem "activerecord", "~> 3.2.9"
 
