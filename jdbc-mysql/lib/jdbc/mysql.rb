@@ -1,6 +1,6 @@
 module Jdbc
   module MySQL
-    VERSION = "5.1.13"
+    VERSION = "5.1.22"
   end
 end
 if RUBY_PLATFORM =~ /java/

@@ -1,21 +1,27 @@
 module Kernel
   def find_executable?(name)
-    ENV['PATH'].split(File::PATH_SEPARATOR).detect {|p| File.executable?(File.join(p, name))}
+    (ENV['PATH'] || '').split(File::PATH_SEPARATOR).
+      detect { |p| File.executable?(File.join(p, name)) }
   end
+end
 
-  def pg_cmdline_params
+module PostgresHelper
+  def self.pg_cmdline_params
     params = ""
     params += "-h #{ENV['PGHOST']} " if ENV['PGHOST']
     params += "-p #{ENV['PGPORT']} " if ENV['PGPORT']
     params
   end
 
-  def have_postgres?
+  def self.have_postgres?(warn = nil)
     if find_executable?("psql")
       if `psql -c '\\l' -U postgres #{pg_cmdline_params}2>&1` && $?.exitstatus == 0
         true
       else
-        warn "No \"postgres\" role? You might need to execute `createuser postgres -drs' first."
+        if warn.nil?
+          warn = "No \"postgres\" role? You might need to execute `createuser postgres -drs' first."
+        end
+        send(:warn, warn) if warn # warn == false disables warnings
         false
       end
     end
