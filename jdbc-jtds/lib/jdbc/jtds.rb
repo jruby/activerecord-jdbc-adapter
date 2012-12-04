@@ -1,6 +1,6 @@
 module Jdbc
   module JTDS
-    VERSION = "1.2.5"
+    VERSION = "1.3.0"
   end
 end
 if RUBY_PLATFORM =~ /java/
