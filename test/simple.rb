@@ -83,7 +83,7 @@ module DirtyAttributeTests
       assert_equal old_updated_on, entry.reload.updated_on
 
       assert_queries(1) { entry.title = 'bar'; entry.save! }
-      assert_not_equal old_updated_on, entry.reload.updated_on
+      refute_equal old_updated_on, entry.reload.updated_on
     end
   end
 

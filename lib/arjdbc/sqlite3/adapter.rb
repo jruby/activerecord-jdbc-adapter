@@ -119,8 +119,17 @@ module ::ArJdbc
       tp
     end
 
+    def quote(value, column = nil)
+      if value.kind_of?(String) && column && column.type == :binary && column.class.respond_to?(:string_to_binary)
+        s = column.class.string_to_binary(value).unpack("H*")[0]
+        "x'#{s}'"
+      else
+        super
+      end
+    end
+
     def quote_column_name(name) #:nodoc:
-      %Q("#{name.to_s.gsub('"', '""')}")
+      %Q("#{name.to_s.gsub('"', '""')}") # "' kludge for emacs font-lock
     end
 
     def quote_string(str)
@@ -179,11 +188,6 @@ module ::ArJdbc
         end
         ::ActiveRecord::ConnectionAdapters::IndexDefinition.new(table_name, name, unique, cols)
       end
-    end
-
-    def primary_key(table_name) #:nodoc:
-      column = table_structure(table_name).find {|field| field['pk'].to_i == 1}
-      column ? column['name'] : nil
     end
 
     def recreate_database(name)
@@ -341,19 +345,14 @@ module ActiveRecord::ConnectionAdapters
     end
 
     def self.string_to_binary(value)
-      "\000b64" + [value].pack('m*').split("\n").join('')
+      value
     end
 
     def self.binary_to_string(value)
       if value.respond_to?(:force_encoding) && value.encoding != Encoding::ASCII_8BIT
         value = value.force_encoding(Encoding::ASCII_8BIT)
       end
-
-      if value[0..3] == "\000b64"
-        value[4..-1].unpack('m*').first
-      else
-        value
-      end
+      value
     end
   end
 
