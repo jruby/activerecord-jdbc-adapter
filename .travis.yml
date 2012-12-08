@@ -10,7 +10,6 @@ env:
   - DB=hsqldb
   - DB=sqlite3
 gemfile:
-  - gemfiles/rails23.gemfile
   - gemfiles/rails30.gemfile
   - gemfiles/rails31.gemfile
   - gemfiles/rails32.gemfile
