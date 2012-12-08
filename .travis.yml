@@ -10,11 +10,13 @@ env:
   - DB=hsqldb
   - DB=sqlite3
 gemfile:
+  - gemfiles/rails23.gemfile
   - gemfiles/rails30.gemfile
   - gemfiles/rails31.gemfile
   - gemfiles/rails32.gemfile
-  allow_failures:
-    - gemfiles/rails23.gemfile
 branches:
   only:
     - master
+matrix:
+  allow_failures:
+    - gemfile: gemfiles/rails23.gemfile
