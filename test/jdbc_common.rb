@@ -27,11 +27,9 @@ require 'logger'
 require 'db/logger'
 if $DEBUG || ENV['DEBUG']
   require 'ruby-debug'
-else
 end
 
 # assert_queries and SQLCounter taken from rails active_record tests
-require 'test/unit'
 class Test::Unit::TestCase
   def assert_queries(num = 1, matching = nil)
     if !ActiveRecord::SQLCounter.enabled?
@@ -45,6 +43,13 @@ class Test::Unit::TestCase
     queries = nil
     ActiveRecord::SQLCounter.log.tap {|log| queries = (matching ? log.select {|s| s =~ matching } : log) }
     assert_equal num, queries.size, "#{queries.size} instead of #{num} queries were executed.#{queries.size == 0 ? '' : "\nQueries:\n#{queries.join("\n")}"}"
+  end
+
+  def self.ar_version(version)
+    match = version.match /(\d+)\.(\d+)(?:\.(\d+))?/
+    ActiveRecord::VERSION::MAJOR > match[1].to_i ||
+      (ActiveRecord::VERSION::MAJOR == match[1].to_i &&
+       ActiveRecord::VERSION::MINOR >= match[2].to_i)
   end
 end
 

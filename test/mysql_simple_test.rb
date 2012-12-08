@@ -42,7 +42,7 @@ class MysqlSimpleTest < Test::Unit::TestCase
     assert_nothing_raised { Entry.update_all({:title => "test"}, {}, {:limit => 1}) }
   end
 
-  # from rails active record tests
+  # from rails active record tests, only meant to work in AR 3.2 and higher
   def test_update_all_with_joins_and_offset_and_order
     user_1 = User.create :login => 'user_1'
     user_2 = User.create :login => 'user_2'
@@ -59,7 +59,7 @@ class MysqlSimpleTest < Test::Unit::TestCase
 
     assert_equal count - 1, entries.update_all(:user_id => user_2.id)
     assert_equal user_2, Entry.find_by_title('title_2').user
-  end
+  end if ar_version("3.2")
 
   # from rails active record tests
   def test_caching_of_columns
