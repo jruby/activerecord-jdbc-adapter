@@ -1,5 +1,3 @@
-require File.expand_path('../../test/helper', __FILE__)
-
 if defined?(JRUBY_VERSION)
   databases = [:test_mysql, :test_jdbc, :test_sqlite3, :test_derby, :test_hsqldb, :test_h2]
   databases << :test_postgres if PostgresHelper.have_postgres?(false)
