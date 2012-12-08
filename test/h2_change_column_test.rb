@@ -1,7 +1,7 @@
 require 'jdbc_common'
 require 'db/h2'
 
-class H2ChangeColumnTest < Test::Unit::TestCase
+class H2ChangeColumnTest < MiniTest::Unit::TestCase
 
   class Person < ActiveRecord::Base; end
 

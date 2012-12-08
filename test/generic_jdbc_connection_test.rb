@@ -1,7 +1,7 @@
 require 'jdbc_common'
 require 'db/jdbc'
 
-class GenericJdbcConnectionTest < Test::Unit::TestCase
+class GenericJdbcConnectionTest < MiniTest::Unit::TestCase
   def test_connection_available_through_jdbc_adapter
     ActiveRecord::Base.connection.execute("show databases");
     assert ActiveRecord::Base.connected?

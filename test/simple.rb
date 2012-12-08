@@ -489,17 +489,15 @@ module SimpleTestMethods
     name_lower.save!
 
     name_upper = ValidatesUniquenessOfString.new(:cs_string => "NAME", :ci_string => '2')
-    assert_nothing_raised do
-      name_upper.save!
-    end
+    name_upper.save!
 
     name_lower_collision = ValidatesUniquenessOfString.new(:cs_string => "name", :ci_string => '3')
-    assert_raise ActiveRecord::RecordInvalid do
+    assert_raises ActiveRecord::RecordInvalid do
       name_lower_collision.save!
     end
 
     name_upper_collision = ValidatesUniquenessOfString.new(:cs_string => "NAME", :ci_string => '4')
-    assert_raise ActiveRecord::RecordInvalid do
+    assert_raises ActiveRecord::RecordInvalid do
       name_upper_collision.save!
     end
   end
@@ -509,27 +507,25 @@ module SimpleTestMethods
     name_lower.save!
 
     name_upper = ValidatesUniquenessOfString.new(:cs_string => '2', :ci_string => "NAME")
-    assert_raise ActiveRecord::RecordInvalid do
+    assert_raises ActiveRecord::RecordInvalid do
       name_upper.save!
     end
 
     name_lower_collision = ValidatesUniquenessOfString.new(:cs_string => '3', :ci_string => "name")
-    assert_raise ActiveRecord::RecordInvalid do
+    assert_raises ActiveRecord::RecordInvalid do
       name_lower_collision.save!
     end
 
     alternate_name_upper = ValidatesUniquenessOfString.new(:cs_string => '4', :ci_string => "ALTERNATE_NAME")
-    assert_nothing_raised do
-      alternate_name_upper.save!
-    end
+    alternate_name_upper.save!
 
     alternate_name_upper_collision = ValidatesUniquenessOfString.new(:cs_string => '5', :ci_string => "ALTERNATE_NAME")
-    assert_raise ActiveRecord::RecordInvalid do
+    assert_raises ActiveRecord::RecordInvalid do
       alternate_name_upper_collision.save!
     end
 
     alternate_name_lower = ValidatesUniquenessOfString.new(:cs_string => '6', :ci_string => "alternate_name")
-    assert_raise ActiveRecord::RecordInvalid do
+    assert_raises ActiveRecord::RecordInvalid do
       alternate_name_lower.save!
     end
   end
@@ -660,22 +656,20 @@ module ActiveRecord3TestMethods
     end
 
     def test_remove_nonexistent_index
-      assert_raise(ArgumentError, ActiveRecord::StatementInvalid, ActiveRecord::JDBCError) do
+      assert_raises(ArgumentError, ActiveRecord::StatementInvalid, ActiveRecord::JDBCError) do
         @connection.remove_index :entries, :nonexistent_index
       end
     end
 
     def test_add_index_with_invalid_name_length
       index_name = 'x' * (@connection.index_name_length + 1)
-      assert_raise(ArgumentError) do
+      assert_raises(ArgumentError) do
         @connection.add_index "entries", "title", :name => index_name
       end
     end
 
     def test_model_with_no_id
-      assert_nothing_raised do
-        Thing.create! :name => "a thing"
-      end
+      Thing.create! :name => "a thing"
       assert_equal 1, Thing.find(:all).size
     end
   end

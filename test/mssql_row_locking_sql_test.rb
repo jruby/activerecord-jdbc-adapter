@@ -2,7 +2,7 @@ require 'arjdbc/mssql/adapter'
 require 'test/unit'
 
 # This tests ArJdbc::MsSQL#add_lock! without actually connecting to the database.
-class MssqlRowLockingSqlTest < Test::Unit::TestCase
+class MssqlRowLockingSqlTest < MiniTest::Unit::TestCase
 
   def test_find_all
     add_lock_test "Appointment.find(:all)",

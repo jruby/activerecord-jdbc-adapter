@@ -3,7 +3,7 @@ require 'db/sqlite3'
 require 'models/data_types'
 require 'models/validates_uniqueness_of_string'
 
-class SQLite3SimpleTest < Test::Unit::TestCase
+class SQLite3SimpleTest < MiniTest::Unit::TestCase
   include SimpleTestMethods
   include ActiveRecord3TestMethods
   include ColumnNameQuotingTests
@@ -36,19 +36,15 @@ class SQLite3SimpleTest < Test::Unit::TestCase
   end
 
   def test_remove_column
-    assert_nothing_raised do
-      ActiveRecord::Schema.define do
-        add_column "entries", "test_remove_column", :string
-      end
+    ActiveRecord::Schema.define do
+      add_column "entries", "test_remove_column", :string
     end
 
     cols = ActiveRecord::Base.connection.columns("entries")
     assert cols.find {|col| col.name == "test_remove_column"}
 
-    assert_nothing_raised do
-      ActiveRecord::Schema.define do
-        remove_column "entries", "test_remove_column"
-      end
+    ActiveRecord::Schema.define do
+      remove_column "entries", "test_remove_column"
     end
 
     cols = ActiveRecord::Base.connection.columns("entries")
@@ -56,20 +52,16 @@ class SQLite3SimpleTest < Test::Unit::TestCase
   end
 
   def test_rename_column
-    assert_nothing_raised do
-      ActiveRecord::Schema.define do
-        rename_column "entries", "title", "name"
-      end
+    ActiveRecord::Schema.define do
+      rename_column "entries", "title", "name"
     end
 
     cols = ActiveRecord::Base.connection.columns("entries")
     assert cols.find {|col| col.name == "name"}
     assert !cols.find {|col| col.name == "title"}
 
-    assert_nothing_raised do
-      ActiveRecord::Schema.define do
-        rename_column "entries", "name", "title"
-      end
+    ActiveRecord::Schema.define do
+      rename_column "entries", "name", "title"
     end
 
     cols = ActiveRecord::Base.connection.columns("entries")
@@ -83,10 +75,8 @@ class SQLite3SimpleTest < Test::Unit::TestCase
     assert_equal @content, post.content
     assert_equal @rating, post.rating
 
-    assert_nothing_raised do
-      ActiveRecord::Schema.define do
-        rename_column "entries", "title", "name"
-      end
+    ActiveRecord::Schema.define do
+      rename_column "entries", "title", "name"
     end
 
     post = Entry.find(:first)
@@ -100,10 +90,8 @@ class SQLite3SimpleTest < Test::Unit::TestCase
 
     index_name = "entries_index"
 
-    assert_nothing_raised do
-      ActiveRecord::Schema.define do
-        add_index "entries", "title", :name => index_name
-      end
+    ActiveRecord::Schema.define do
+      add_index "entries", "title", :name => index_name
     end
 
     indexes = @connection.indexes(:entries)
@@ -113,10 +101,8 @@ class SQLite3SimpleTest < Test::Unit::TestCase
     assert !indexes.first.unique
     assert_equal ["title"], indexes.first.columns
 
-    assert_nothing_raised do
-      ActiveRecord::Schema.define do
-        rename_column "entries", "title", "name"
-      end
+    ActiveRecord::Schema.define do
+      rename_column "entries", "title", "name"
     end
 
     indexes = @connection.indexes(:entries)
@@ -128,10 +114,8 @@ class SQLite3SimpleTest < Test::Unit::TestCase
   end
 
   def test_column_default
-    assert_nothing_raised do
-      ActiveRecord::Schema.define do
-        add_column "entries", "test_column_default", :string
-      end
+    ActiveRecord::Schema.define do
+      add_column "entries", "test_column_default", :string
     end
 
     cols = ActiveRecord::Base.connection.columns("entries")
@@ -142,10 +126,8 @@ class SQLite3SimpleTest < Test::Unit::TestCase
   end
 
   def test_change_column_default
-    assert_nothing_raised do
-      ActiveRecord::Schema.define do
-        add_column "entries", "test_change_column_default", :string, :default => "unchanged"
-      end
+    ActiveRecord::Schema.define do
+      add_column "entries", "test_change_column_default", :string, :default => "unchanged"
     end
 
     cols = ActiveRecord::Base.connection.columns("entries")
@@ -153,10 +135,8 @@ class SQLite3SimpleTest < Test::Unit::TestCase
     assert col
     assert_equal col.default, 'unchanged'
 
-    assert_nothing_raised do
-      ActiveRecord::Schema.define do
-        change_column_default "entries", "test_change_column_default", "changed"
-      end
+    ActiveRecord::Schema.define do
+      change_column_default "entries", "test_change_column_default", "changed"
     end
 
     cols = ActiveRecord::Base.connection.columns("entries")
@@ -166,10 +146,8 @@ class SQLite3SimpleTest < Test::Unit::TestCase
   end
 
   def test_change_column
-    assert_nothing_raised do
-      ActiveRecord::Schema.define do
-        add_column "entries", "test_change_column", :string
-      end
+    ActiveRecord::Schema.define do
+      add_column "entries", "test_change_column", :string
     end
 
     cols = ActiveRecord::Base.connection.columns("entries")
@@ -177,10 +155,8 @@ class SQLite3SimpleTest < Test::Unit::TestCase
     assert col
     assert_equal col.type, :string
 
-    assert_nothing_raised do
-      ActiveRecord::Schema.define do
-        change_column "entries", "test_change_column", :integer
-      end
+    ActiveRecord::Schema.define do
+      change_column "entries", "test_change_column", :integer
     end
 
     cols = ActiveRecord::Base.connection.columns("entries")
@@ -222,10 +198,8 @@ class SQLite3SimpleTest < Test::Unit::TestCase
   end
 
   def test_create_xml_column
-    assert_nothing_raised do
-      @connection.create_table :xml_testings do |t|
-        t.xml :xml_test
-      end
+    @connection.create_table :xml_testings do |t|
+      t.xml :xml_test
     end
 
     xml_test = @connection.columns(:xml_testings).detect do |c|
@@ -238,9 +212,9 @@ class SQLite3SimpleTest < Test::Unit::TestCase
   end
 end
 
-# assert_raise ActiveRecord::RecordInvalid do
+# assert_raises ActiveRecord::RecordInvalid do
 
-class SQLite3HasManyThroughTest < Test::Unit::TestCase
+class SQLite3HasManyThroughTest < MiniTest::Unit::TestCase
   include HasManyThroughMethods
 end
 
@@ -254,7 +228,7 @@ else
   end
 end
 
-class SQLite3TypeConversionTest < Test::Unit::TestCase
+class SQLite3TypeConversionTest < MiniTest::Unit::TestCase
   TEST_TIME = Time.at(1169964202)
   TEST_BINARY = "Some random binary data % \0 and then some"
   def setup

@@ -1,7 +1,7 @@
 require 'abstract_db_create'
 require 'db/mysql'
 
-class MysqlDbCreateTest < Test::Unit::TestCase
+class MysqlDbCreateTest < MiniTest::Unit::TestCase
   include AbstractDbCreate
 
   def db_config

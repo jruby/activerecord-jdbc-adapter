@@ -1,7 +1,7 @@
 require 'jdbc_common'
 require 'db/mssql'
 
-class IgnoreSystemViewsTest < Test::Unit::TestCase
+class IgnoreSystemViewsTest < MiniTest::Unit::TestCase
 
   include MigrationSetup
 

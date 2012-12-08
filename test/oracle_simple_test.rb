@@ -1,7 +1,7 @@
 require 'jdbc_common'
 require 'db/oracle'
 
-class OracleSimpleTest < Test::Unit::TestCase
+class OracleSimpleTest < MiniTest::Unit::TestCase
   include SimpleTestMethods
 
   def test_default_id_type_is_integer

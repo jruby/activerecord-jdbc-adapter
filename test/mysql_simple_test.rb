@@ -8,7 +8,7 @@
 require 'jdbc_common'
 require 'db/mysql'
 
-class MysqlSimpleTest < Test::Unit::TestCase
+class MysqlSimpleTest < MiniTest::Unit::TestCase
   include SimpleTestMethods
   include ActiveRecord3TestMethods
   include ColumnNameQuotingTests
@@ -16,12 +16,9 @@ class MysqlSimpleTest < Test::Unit::TestCase
   column_quote_char "`"
 
   def test_column_class_instantiation
-    text_column = nil
-    assert_nothing_raised do
-      text_column = ActiveRecord::ConnectionAdapters::MysqlColumn.
-        new("title", nil, "text")
-    end
-    assert_not_nil text_column
+    text_column = ActiveRecord::ConnectionAdapters::MysqlColumn.
+      new("title", nil, "text")
+    refute_nil text_column
   end
 
   def test_string_quoting_oddity
@@ -39,7 +36,7 @@ class MysqlSimpleTest < Test::Unit::TestCase
   end
 
   def test_update_all_with_limit
-    assert_nothing_raised { Entry.update_all({:title => "test"}, {}, {:limit => 1}) }
+    Entry.update_all({:title => "test"}, {}, {:limit => 1})
   end
 
   # from rails active record tests
@@ -82,10 +79,8 @@ class MysqlSimpleTest < Test::Unit::TestCase
       t.integer :value
     end
 
-    assert_nothing_raised do
-      connection.add_index :values, :value
-      connection.remove_index :values, :column => :value
-    end
+    connection.add_index :values, :value
+    connection.remove_index :values, :column => :value
 
     connection.drop_table :values rescue nil
   end
@@ -104,10 +99,8 @@ class MysqlSimpleTest < Test::Unit::TestCase
   end
 
   def test_create_xml_column
-    assert_nothing_raised do
-      @connection.create_table :xml_testings do |t|
-        t.xml :xml_test
-      end
+    @connection.create_table :xml_testings do |t|
+      t.xml :xml_test
     end
 
     xml_test = @connection.columns(:xml_testings).detect do |c|
@@ -120,6 +113,6 @@ class MysqlSimpleTest < Test::Unit::TestCase
   end
 end
 
-class MysqlHasManyThroughTest < Test::Unit::TestCase
+class MysqlHasManyThroughTest < MiniTest::Unit::TestCase
   include HasManyThroughMethods
 end

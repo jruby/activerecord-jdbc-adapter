@@ -1,11 +1,11 @@
 require 'jdbc_common'
 require 'db/h2'
 
-class H2SimpleTest < Test::Unit::TestCase
+class H2SimpleTest < MiniTest::Unit::TestCase
   include SimpleTestMethods
 end
 
-class H2SchemaTest < Test::Unit::TestCase
+class H2SchemaTest < MiniTest::Unit::TestCase
   def setup
     @connection = ActiveRecord::Base.connection
     @connection.execute("create schema s1");

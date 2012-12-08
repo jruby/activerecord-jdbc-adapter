@@ -17,7 +17,7 @@ class Project < ActiveRecord::Migration
 
 end
 
-class MysqlNonstandardPrimaryKeyTest < Test::Unit::TestCase
+class MysqlNonstandardPrimaryKeyTest < MiniTest::Unit::TestCase
 
   def setup
     Project.up

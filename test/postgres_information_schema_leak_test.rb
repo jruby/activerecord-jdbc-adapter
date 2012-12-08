@@ -14,7 +14,7 @@ end
 class Domain < ActiveRecord::Base
 end
 
-class PostgresInformationSchemaLeakTest < Test::Unit::TestCase
+class PostgresInformationSchemaLeakTest < MiniTest::Unit::TestCase
   def setup
     CreateISLSchema.up
   end

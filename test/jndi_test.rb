@@ -15,7 +15,7 @@
 require 'jdbc_common'
 require 'db/jndi_config'
 
-class DerbyJndiTest < Test::Unit::TestCase
+class DerbyJndiTest < MiniTest::Unit::TestCase
   include SimpleTestMethods
 end
 

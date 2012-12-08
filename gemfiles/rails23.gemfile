@@ -5,6 +5,7 @@ source "http://rubygems.org"
 gem "rake"
 gem "appraisal"
 gem "jruby-openssl", :group=>:development
+gem "minitest", "~> 4.3.3"
 gem "activerecord", "~> 2.3.14"
 gem "rails", "~> 2.3.14"
 

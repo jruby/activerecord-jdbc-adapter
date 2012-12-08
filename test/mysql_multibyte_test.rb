@@ -1,10 +1,10 @@
 require 'jdbc_common'
 require 'db/mysql'
 
-class MySQLMultibyteTest < Test::Unit::TestCase
+class MySQLMultibyteTest < MiniTest::Unit::TestCase
   include MultibyteTestMethods
 end
 
-class MySQLNonUTF8EncodingTest < Test::Unit::TestCase
+class MySQLNonUTF8EncodingTest < MiniTest::Unit::TestCase
   include NonUTF8EncodingMethods
 end

@@ -19,7 +19,7 @@ class MySQLIndexLengthDBSetup < ActiveRecord::Migration
   end
 end
 
-class MySQLIndexLengthTest < Test::Unit::TestCase
+class MySQLIndexLengthTest < MiniTest::Unit::TestCase
   def setup
     MySQLIndexLengthDBSetup.up
     @connection = ActiveRecord::Base.connection
@@ -31,7 +31,7 @@ class MySQLIndexLengthTest < Test::Unit::TestCase
 
   def test_index_length
     index = @connection.indexes('index_length_test').find { |idx| idx.name == 'ix_length_text' }
-    assert_not_nil index
+    refute_nil index
     assert_equal "index_length_test", index.table
     assert_equal "ix_length_text", index.name
     assert !index.unique
@@ -44,14 +44,14 @@ class MySQLIndexLengthTest < Test::Unit::TestCase
       :name => 'added_index', :length => {'text_column' => 32, 'second_text_column' => 64}
 
     index = @connection.indexes('index_length_test').find { |idx| idx.name == 'added_index' }
-    assert_not_nil index
+    refute_nil index
     assert_equal ['text_column', 'second_text_column'], index.columns
     assert_equal [32, 64], index.lengths
   end
 
   def test_index_without_length
     index = @connection.indexes('index_length_test').find { |idx| idx.name == 'ix_int' }
-    assert_not_nil index
+    refute_nil index
     assert_equal ['int_column'], index.columns
     assert_equal [nil], index.lengths
   end

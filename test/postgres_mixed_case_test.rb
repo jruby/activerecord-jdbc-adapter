@@ -2,7 +2,7 @@ require 'jdbc_common'
 require 'models/entry'
 require 'models/mixed_case'
 
-class MixedCaseTest < Test::Unit::TestCase
+class MixedCaseTest < MiniTest::Unit::TestCase
   def setup
     Migration::MixedCase.up
     @table_name = User.table_name

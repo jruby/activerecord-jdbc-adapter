@@ -1,7 +1,7 @@
 require 'jdbc_common'
 require 'db/db2'
 
-class DB2SimpleTest < Test::Unit::TestCase
+class DB2SimpleTest < MiniTest::Unit::TestCase
   include SimpleTestMethods
 
   # For backwards compatibility with how the DB2 code in
@@ -39,11 +39,11 @@ class DB2SimpleTest < Test::Unit::TestCase
   end
 end
 
-class DB2HasManyThroughTest < Test::Unit::TestCase
+class DB2HasManyThroughTest < MiniTest::Unit::TestCase
   include HasManyThroughMethods
 end
 
-class DB2Test < Test::Unit::TestCase
+class DB2Test < MiniTest::Unit::TestCase
   def setup
     @inst = Object.new
     @inst.extend ArJdbc::DB2

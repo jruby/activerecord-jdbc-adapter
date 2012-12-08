@@ -4,7 +4,7 @@ require 'db/jndi_config'
 begin
   require 'mocha'
 
-class JndiConnectionPoolCallbacksTest < Test::Unit::TestCase
+class JndiConnectionPoolCallbacksTest < MiniTest::Unit::TestCase
   def setup
     @logger = stub_everything "logger"
     @config = JNDI_CONFIG

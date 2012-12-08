@@ -16,7 +16,7 @@ end
 class Boolean < ActiveRecord::Base
 end
 
-class PostgresTypeConversionTest < Test::Unit::TestCase
+class PostgresTypeConversionTest < MiniTest::Unit::TestCase
   def setup
     BooleanSchema.up
   end
@@ -26,9 +26,7 @@ class PostgresTypeConversionTest < Test::Unit::TestCase
   end
 
   def test_should_handle_bool_conversion_with_boolean_relation
-    assert_nothing_raised do
-      ActiveRecord::Base.connection.raw_connection.set_native_database_types
-    end
+    ActiveRecord::Base.connection.raw_connection.set_native_database_types
   end
 end
 

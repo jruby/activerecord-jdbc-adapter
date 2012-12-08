@@ -19,7 +19,7 @@ class Url < ActiveRecord::Base
   #Shouldn't be needed: set_sequence_name nil
 end
 
-class PostgresNonSeqPKey < Test::Unit::TestCase
+class PostgresNonSeqPKey < MiniTest::Unit::TestCase
   def setup
     CreateUrls.up
   end

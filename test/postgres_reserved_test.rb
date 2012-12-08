@@ -2,7 +2,7 @@ require 'jdbc_common'
 require 'db/postgres'
 require 'models/reserved_word'
 
-class PostgresReservedWordsTest < Test::Unit::TestCase
+class PostgresReservedWordsTest < MiniTest::Unit::TestCase
   def setup
     CreateReservedWords.up
   end

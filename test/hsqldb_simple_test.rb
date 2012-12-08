@@ -1,6 +1,6 @@
 require 'jdbc_common'
 require 'db/hsqldb'
 
-class HsqldbSimpleTest < Test::Unit::TestCase
+class HsqldbSimpleTest < MiniTest::Unit::TestCase
   include SimpleTestMethods
 end

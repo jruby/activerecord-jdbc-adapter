@@ -19,7 +19,7 @@ class Person < ActiveRecord::Base
   establish_connection POSTGRES_CONFIG.merge(:schema_search_path => 'test,public')
 end
 
-class PostgresSchemaSearchPathTest < Test::Unit::TestCase
+class PostgresSchemaSearchPathTest < MiniTest::Unit::TestCase
   def setup
     CreateSchema.up
   end
@@ -33,11 +33,11 @@ class PostgresSchemaSearchPathTest < Test::Unit::TestCase
   end
 
   def test_find_right
-    assert_not_nil Person.find_by_name("Alex")
+    refute_nil Person.find_by_name("Alex")
   end
 
   def test_find_wrong
-    assert_raise NoMethodError do
+    assert_raises NoMethodError do
       Person.find_by_wrongname("Alex")
     end
   end

@@ -7,6 +7,6 @@
 require 'jdbc_common'
 require 'db/derby'
 
-class DerbyMultibyteTest < Test::Unit::TestCase
+class DerbyMultibyteTest < MiniTest::Unit::TestCase
   include MultibyteTestMethods
 end

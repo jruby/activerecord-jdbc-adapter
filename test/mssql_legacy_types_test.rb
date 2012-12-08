@@ -25,7 +25,7 @@ end
 class Article < ActiveRecord::Base
 end
 
-class MsSQLLegacyTypesTest < Test::Unit::TestCase
+class MsSQLLegacyTypesTest < MiniTest::Unit::TestCase
 
   def setup
     CreateArticles.up

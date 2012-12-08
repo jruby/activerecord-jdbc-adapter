@@ -1,7 +1,7 @@
 require 'abstract_db_create'
 require 'db/postgres'
 
-class PostgresDbDropTest < Test::Unit::TestCase
+class PostgresDbDropTest < MiniTest::Unit::TestCase
   include AbstractDbCreate
 
   def db_config
@@ -9,8 +9,6 @@ class PostgresDbDropTest < Test::Unit::TestCase
   end
 
   def test_dropping_nonexistent_database_does_not_raise_exception
-    assert_nothing_raised do
-      Rake::Task["db:drop"].invoke
-    end
+    Rake::Task["db:drop"].invoke
   end
 end

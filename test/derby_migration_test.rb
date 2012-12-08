@@ -48,7 +48,7 @@ class CreateIndex < ActiveRecord::Migration
 
 end
 
-class DerbyMigrationTest < Test::Unit::TestCase
+class DerbyMigrationTest < MiniTest::Unit::TestCase
   include FixtureSetup
 
   def test_create_table_column_quoting_vs_keywords

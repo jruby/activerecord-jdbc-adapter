@@ -4,7 +4,7 @@ require 'db/oracle'
 class DefaultNumber < ActiveRecord::Base
 end
 
-class OracleSpecificTest < Test::Unit::TestCase
+class OracleSpecificTest < MiniTest::Unit::TestCase
   include MultibyteTestMethods  # so we can get @java_con
 
   def setup
@@ -46,7 +46,7 @@ class OracleSpecificTest < Test::Unit::TestCase
   # JRUBY-3675, ACTIVERECORD_JDBC-22
   def test_load_date
     obj = DefaultNumber.find(:first)
-    assert_not_nil obj.datum, "no date"
+    refute_nil obj.datum, "no date"
   end
 
   # ACTIVERECORD_JDBC-127

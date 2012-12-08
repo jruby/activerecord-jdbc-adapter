@@ -1,7 +1,7 @@
 require 'jdbc_common'
 require 'db/postgres'
 
-class PostgresTableAliasLengthTest < Test::Unit::TestCase
+class PostgresTableAliasLengthTest < MiniTest::Unit::TestCase
   def test_table_alias_length
     result = ActiveRecord::Base.connection.select_one("SELECT 1 AS " + "a" * 2048)
 

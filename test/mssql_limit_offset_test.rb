@@ -81,7 +81,7 @@ end
 
 
 
-class MsSQLLimitOffsetTest < Test::Unit::TestCase
+class MsSQLLimitOffsetTest < MiniTest::Unit::TestCase
 
   def setup
     CreateLegacyShips.up
@@ -101,9 +101,7 @@ class MsSQLLimitOffsetTest < Test::Unit::TestCase
 
   def test_limit_with_no_id_column_available
     NoIdViking.create!(:name => 'Erik')
-    assert_nothing_raised(ActiveRecord::StatementInvalid) do 
-      NoIdViking.find(:first)
-    end
+    NoIdViking.find(:first)
   end
 
   def test_limit_with_alternate_named_primary_key

@@ -5,7 +5,7 @@ rvm:
   - jruby-19mode
 env:
   - DB=mysql
-  - DB=postgresql
+  - DB=postgres
   - DB=h2
   - DB=hsqldb
   - DB=sqlite3

@@ -1,7 +1,7 @@
 require 'abstract_db_create'
 require 'db/postgres'
 
-class PostgresDbCreateTest < Test::Unit::TestCase
+class PostgresDbCreateTest < MiniTest::Unit::TestCase
   include AbstractDbCreate
 
   def db_config

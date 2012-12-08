@@ -1,7 +1,7 @@
 require 'jdbc_common'
 require 'db/mssql'
 
-class MsSQLNullTest < Test::Unit::TestCase
+class MsSQLNullTest < MiniTest::Unit::TestCase
   include MigrationSetup
 
   [nil, "NULL", "null", "(null)", "(NULL)"].each_with_index do |v, i|

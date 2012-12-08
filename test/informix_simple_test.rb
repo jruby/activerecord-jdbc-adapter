@@ -9,7 +9,7 @@
 require 'jdbc_common'
 require 'db/informix'
 
-class InformixSimpleTest < Test::Unit::TestCase
+class InformixSimpleTest < MiniTest::Unit::TestCase
   include SimpleTestMethods
 
   # Informix does not like "= NULL".
@@ -29,7 +29,7 @@ class InformixSimpleTest < Test::Unit::TestCase
   end
 end
 
-class InformixMultibyteTest < Test::Unit::TestCase
+class InformixMultibyteTest < MiniTest::Unit::TestCase
   include MultibyteTestMethods
 
   # Overriding the included test since we can't create text fields via a
@@ -43,6 +43,6 @@ class InformixMultibyteTest < Test::Unit::TestCase
   end
 end
 
-class InformixHasManyThroughTest < Test::Unit::TestCase
+class InformixHasManyThroughTest < MiniTest::Unit::TestCase
   include HasManyThroughMethods
 end

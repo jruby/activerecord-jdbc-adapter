@@ -7,7 +7,7 @@
 require 'jdbc_common'
 require 'db/postgres'
 
-class PostgresSimpleTest < Test::Unit::TestCase
+class PostgresSimpleTest < MiniTest::Unit::TestCase
   include SimpleTestMethods
   include ActiveRecord3TestMethods
   include ColumnNameQuotingTests
@@ -26,7 +26,7 @@ class PostgresSimpleTest < Test::Unit::TestCase
   end
 
   def test_encoding
-    assert_not_nil @connection.encoding
+    refute_nil @connection.encoding
   end
 
   def test_multi_statement_support
@@ -38,10 +38,8 @@ class PostgresSimpleTest < Test::Unit::TestCase
 
   def test_create_xml_column
     return unless PG_VERSION >= 80300
-    assert_nothing_raised do
-      @connection.create_table :xml_testings do |t|
-        t.column :xml_test, :xml
-      end
+    @connection.create_table :xml_testings do |t|
+      t.column :xml_test, :xml
     end
 
     xml_test = @connection.columns(:xml_testings).detect do
@@ -54,10 +52,8 @@ class PostgresSimpleTest < Test::Unit::TestCase
   end
 
   def test_create_table_with_limits
-    assert_nothing_raised do
-      @connection.create_table :testings do |t|
-        t.column :eleven_int, :integer, :limit => 11
-      end
+    @connection.create_table :testings do |t|
+      t.column :eleven_int, :integer, :limit => 11
     end
 
     columns = @connection.columns(:testings)
@@ -99,7 +95,7 @@ class PostgresSimpleTest < Test::Unit::TestCase
   end
 end
 
-class PostgresTimestampTest < Test::Unit::TestCase
+class PostgresTimestampTest < MiniTest::Unit::TestCase
   def setup
     DbTypeMigration.up
   end
@@ -136,7 +132,7 @@ class PostgresTimestampTest < Test::Unit::TestCase
   end
 end
 
-class PostgresDeserializationTest < Test::Unit::TestCase
+class PostgresDeserializationTest < MiniTest::Unit::TestCase
   def setup
     DbTypeMigration.up
   end
@@ -153,7 +149,7 @@ class PostgresDeserializationTest < Test::Unit::TestCase
   end
 end
 
-class PostgresSchemaDumperTest < Test::Unit::TestCase
+class PostgresSchemaDumperTest < MiniTest::Unit::TestCase
   def setup
     DbTypeMigration.up
     @connection = ActiveRecord::Base.connection

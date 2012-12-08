@@ -1,11 +1,11 @@
 require 'jdbc_common'
 require 'db/sybase_jtds'
 
-class SybaseJtdsSimpleTest < Test::Unit::TestCase
+class SybaseJtdsSimpleTest < MiniTest::Unit::TestCase
   include SimpleTestMethods
 end
 
-class SybaseAdapterSelectionTest < Test::Unit::TestCase
+class SybaseAdapterSelectionTest < MiniTest::Unit::TestCase
   class MockConnection
     def adapter=(adapt)
     end

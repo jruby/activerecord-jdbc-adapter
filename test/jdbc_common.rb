@@ -19,7 +19,7 @@ require 'simple'
 require 'has_many_through'
 require 'helper'
 require 'row_locking'
-require 'test/unit'
+require 'minitest/unit'
 require 'logger'
 
 # we always require logger (some tests fail if ActiveRecord::Base.logger is nil), but level

@@ -33,7 +33,7 @@ class DBSetup < ActiveRecord::Migration
 
 end
 
-class MysqlInfoTest < Test::Unit::TestCase
+class MysqlInfoTest < MiniTest::Unit::TestCase
 
   def setup
     DBSetup.up

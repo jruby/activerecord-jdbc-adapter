@@ -29,8 +29,10 @@ module PostgresHelper
 end
 
 # assert_queries and SQLCounter taken from rails active_record tests
-require 'test/unit'
-class Test::Unit::TestCase
+require 'minitest/unit'
+require 'minitest/autorun'
+
+class MiniTest::Unit::TestCase
   def assert_queries(num = 1, matching = nil)
     if !ActiveRecord::SQLCounter.enabled?
       warn "SQLCounter assert_queries skipped"

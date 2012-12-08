@@ -1,7 +1,7 @@
 require 'jdbc_common'
 require 'db/mssql'
 
-class MsSQLIdentityInsertTest < Test::Unit::TestCase
+class MsSQLIdentityInsertTest < MiniTest::Unit::TestCase
 
   include MigrationSetup
   

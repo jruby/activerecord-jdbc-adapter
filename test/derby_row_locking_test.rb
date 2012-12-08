@@ -1,7 +1,7 @@
 require 'jdbc_common'
 require 'db/derby'
 
-class DerbyRowLockingTest < Test::Unit::TestCase
+class DerbyRowLockingTest < MiniTest::Unit::TestCase
   include MigrationSetup
   include RowLockingTestMethods
 end

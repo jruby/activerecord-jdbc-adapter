@@ -34,7 +34,7 @@ end
 class Customer < ActiveRecord::Base
 end
 
-class PostgresNativeTypeMappingTest < Test::Unit::TestCase
+class PostgresNativeTypeMappingTest < MiniTest::Unit::TestCase
   def setup
     CreateNativeTypeMappingTestSchema.up
   end

@@ -2,7 +2,7 @@
 require 'jdbc_common'
 require 'db/mssql'
 
-class MsSQLMultibyteTest < Test::Unit::TestCase
+class MsSQLMultibyteTest < MiniTest::Unit::TestCase
   
   include MultibyteTestMethods
 
