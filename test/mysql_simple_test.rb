@@ -12,6 +12,7 @@ class MysqlSimpleTest < Test::Unit::TestCase
   include SimpleTestMethods
   include ActiveRecord3TestMethods
   include ColumnNameQuotingTests
+  include XmlColumnTests
 
   column_quote_char "`"
 
@@ -101,22 +102,6 @@ class MysqlSimpleTest < Test::Unit::TestCase
       Entry.table_name = old_entries_table_name
       User.table_name  = old_users_table_name
     end
-  end
-
-  def test_create_xml_column
-    assert_nothing_raised do
-      @connection.create_table :xml_testings do |t|
-        t.xml :xml_test
-      end
-    end
-
-    xml_test = @connection.columns(:xml_testings).detect do |c|
-      c.name == "xml_test"
-    end
-
-    assert_equal "text", xml_test.sql_type
-  ensure
-    @connection.drop_table :xml_testings rescue nil
   end
 end
 

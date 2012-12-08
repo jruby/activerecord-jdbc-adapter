@@ -638,6 +638,29 @@ module NonUTF8EncodingMethods
   end
 end
 
+module XmlColumnTests
+  def self.included(base)
+    base.send :include, Tests if ActiveRecord::VERSION::MAJOR > 3 ||
+      (ActiveRecord::VERSION::MAJOR == 3 && ActiveRecord::VERSION::MINOR >= 1)
+  end
+  module Tests
+    def test_create_xml_column
+      assert_nothing_raised do
+        @connection.create_table :xml_testings do |t|
+          t.xml :xml_test
+        end
+      end
+
+      xml_test = @connection.columns(:xml_testings).detect do |c|
+        c.name == "xml_test"
+      end
+
+      assert_equal "text", xml_test.sql_type
+    ensure
+      @connection.drop_table :xml_testings rescue nil
+    end
+  end
+end
 module ActiveRecord3TestMethods
   def self.included(base)
     base.send :include, Tests if ActiveRecord::VERSION::MAJOR == 3

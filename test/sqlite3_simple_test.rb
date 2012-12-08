@@ -8,6 +8,7 @@ class SQLite3SimpleTest < Test::Unit::TestCase
   include ActiveRecord3TestMethods
   include ColumnNameQuotingTests
   include DirtyAttributeTests
+  include XmlColumnTests
 
   def test_recreate_database
     assert @connection.tables.include?(Entry.table_name)
@@ -219,22 +220,6 @@ class SQLite3SimpleTest < Test::Unit::TestCase
     rating_column = Entry.columns_hash["rating"]
     assert_equal 9, rating_column.precision
     assert_equal 7, rating_column.scale
-  end
-
-  def test_create_xml_column
-    assert_nothing_raised do
-      @connection.create_table :xml_testings do |t|
-        t.xml :xml_test
-      end
-    end
-
-    xml_test = @connection.columns(:xml_testings).detect do |c|
-      c.name == "xml_test"
-    end
-
-    assert_equal "text", xml_test.sql_type
-  ensure
-    @connection.drop_table :xml_testings rescue nil
   end
 end
 
