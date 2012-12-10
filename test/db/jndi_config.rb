@@ -1,5 +1,6 @@
 require 'fileutils'
 require 'arjdbc'
+require 'jdbc_common'
 
 JNDI_CONFIG = {
   :adapter => "jdbc",

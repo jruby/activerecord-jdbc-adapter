@@ -1,5 +1,4 @@
 require 'jdbc_common'
-require 'db/postgres'
 
 class CreateUrls < ActiveRecord::Migration
   def self.up

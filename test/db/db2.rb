@@ -1,3 +1,5 @@
+require 'jdbc_common'
+
 config = {
 # DB2 uses $USER if running locally, just add
 # yourself to your db2 groups in /etc/group

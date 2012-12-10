@@ -5,7 +5,6 @@
 #   grant all on weblog_development.* to blog@localhost;
 
 require 'jdbc_common'
-require 'db/derby'
 
 class DerbySimpleTest < Test::Unit::TestCase
   include SimpleTestMethods

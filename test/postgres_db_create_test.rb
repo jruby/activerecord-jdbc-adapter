@@ -1,5 +1,4 @@
 require 'abstract_db_create'
-require 'db/postgres'
 
 class PostgresDbCreateTest < Test::Unit::TestCase
   include AbstractDbCreate

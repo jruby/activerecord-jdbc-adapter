@@ -1,5 +1,4 @@
 require 'jdbc_common'
-require 'db/postgres'
 
 class CreateNativeTypeMappingTestSchema < ActiveRecord::Migration
   def self.up

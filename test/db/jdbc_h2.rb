@@ -1,8 +1,11 @@
 require 'jdbc_common'
 
+Jdbc::H2.load_driver :require
+
 config = {
-  :adapter => 'h2',
-  :database => 'test.db'
+  :adapter => 'jdbc',
+  :driver => 'org.h2.Driver',
+  :url => 'jdbc:h2:test.db'
 }
 
 ActiveRecord::Base.establish_connection(config)
