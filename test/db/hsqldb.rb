@@ -1,3 +1,5 @@
+require 'jdbc_common'
+
 config = {
   :adapter => 'hsqldb',
   :database => 'test.db'

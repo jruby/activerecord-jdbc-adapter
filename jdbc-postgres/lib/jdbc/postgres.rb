@@ -2,11 +2,17 @@ module Jdbc
   module Postgres
     VERSION = "9.2.1002"
 
-    def self.require_driver_jar
-      vers  = VERSION.split( '.' )
-      vers << jdbc_version
-      require( "postgresql-%s.%s-%s.jdbc%d.jar" % vers )
+    def self.driver_jar
+      version_jdbc_version = VERSION.split( '.' )
+      version_jdbc_version << jdbc_version
+      'postgresql-%s.%s-%s.jdbc%d.jar' % version_jdbc_version
     end
+
+    def self.load_driver(method = :load)
+      send method, driver_jar
+    end
+
+    private
 
     # JDBC version 4 if Java >=1.6, else 3
     def self.jdbc_version
@@ -14,12 +20,9 @@ module Jdbc
       vers = vers.split( '.' ).map { |v| v.to_i }
       ( ( vers <=> [ 1, 6 ] ) >= 0 ) ? 4 : 3
     end
-
   end
 end
 
-if RUBY_PLATFORM =~ /java/
-  Jdbc::Postgres::require_driver_jar
-elsif $VERBOSE
-  warn "jdbc-postgres is only for use with JRuby"
+if $VERBOSE && (JRUBY_VERSION.nil? rescue true)
+  warn "Jdbc-Postgres is only for use with JRuby"
 end

@@ -38,8 +38,10 @@ def declare_test_task_for(adapter, options = {})
     puts "Specify AR version with 'rake appraisal:{version} test_#{adapter}' where version=(#{all_appraisal_names.join('|')})"
   end
   prereqs << "test_#{adapter}_pre"
-  Rake::TestTask.new("test_#{adapter}" => prereqs) do |t|
+  test_task = lambda do |t|
+    task_name = t.name.keys.first
     files = FileList["test/#{adapter}*test.rb"]
+    files.unshift "test/db/#{task_name.sub('test_','')}.rb"
     if adapter == "derby"
       files << 'test/activerecord/connection_adapters/type_conversion_test.rb'
     end
@@ -54,6 +56,8 @@ def declare_test_task_for(adapter, options = {})
     t.libs << "test"
     t.verbose = true
   end
+  Rake::TestTask.new("test_#{adapter}" => prereqs) { |t| test_task.call t }
+  Rake::TestTask.new("test_jdbc_#{adapter}" => prereqs) { |t| test_task.call t }
 end
 
 declare_test_task_for :derby

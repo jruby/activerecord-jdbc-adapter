@@ -1,5 +1,4 @@
 require 'jdbc_common'
-require 'db/postgres'
 
 class CreateISLSchema < ActiveRecord::Migration
   def self.up

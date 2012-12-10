@@ -1,3 +1,5 @@
+require 'jdbc_common'
+
 config = {
   :adapter => 'sqlite3',
   :database  => 'test.sqlite3.db'

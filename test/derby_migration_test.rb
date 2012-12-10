@@ -1,5 +1,4 @@
 require 'jdbc_common'
-require 'db/derby'
 
 class CreateDummies < ActiveRecord::Migration
   def self.up

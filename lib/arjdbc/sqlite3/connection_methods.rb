@@ -5,7 +5,7 @@ $LOADED_FEATURES << "active_record/connection_adapters/sqlite3_adapter.rb"
 class ActiveRecord::Base
   class << self
     def sqlite3_connection(config)
-      require "arjdbc/sqlite3"
+      require 'active_record/connection_adapters/jdbcsqlite3_adapter'
 
       parse_sqlite3_config!(config)
       database = config[:database]
@@ -16,6 +16,7 @@ class ActiveRecord::Base
       config[:adapter_spec] = ::ArJdbc::SQLite3
       jdbc_connection(config)
     end
+    alias_method :jdbcsqlite3_connection, :sqlite3_connection
 
     def parse_sqlite3_config!(config)
       config[:database] ||= config[:dbfile]
@@ -29,7 +30,5 @@ class ActiveRecord::Base
         config[:database] = File.expand_path(config[:database], rails_root)
       end
     end
-
-    alias_method :jdbcsqlite3_connection, :sqlite3_connection
   end
 end
