@@ -7,20 +7,19 @@ module Jdbc
       version_jdbc_version << jdbc_version
       'postgresql-%s.%s-%s.jdbc%d.jar' % version_jdbc_version
     end
-    
+
     def self.load_driver(method = :load)
       send method, driver_jar
     end
 
     private
-    
+
     # JDBC version 4 if Java >=1.6, else 3
     def self.jdbc_version
       vers = Java::java.lang.System::get_property( "java.specification.version" )
       vers = vers.split( '.' ).map { |v| v.to_i }
       ( ( vers <=> [ 1, 6 ] ) >= 0 ) ? 4 : 3
     end
-
   end
 end
 

@@ -5,7 +5,6 @@
 #
 
 require 'jdbc_common'
-require 'db/postgres'
 
 class PostgresSimpleTest < Test::Unit::TestCase
   include SimpleTestMethods

@@ -46,7 +46,7 @@ class Test::Unit::TestCase
   end
 
   def self.ar_version(version)
-    match = version.match /(\d+)\.(\d+)(?:\.(\d+))?/
+    match = version.match(/(\d+)\.(\d+)(?:\.(\d+))?/)
     ActiveRecord::VERSION::MAJOR > match[1].to_i ||
       (ActiveRecord::VERSION::MAJOR == match[1].to_i &&
        ActiveRecord::VERSION::MINOR >= match[2].to_i)

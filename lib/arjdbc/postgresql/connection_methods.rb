@@ -5,7 +5,7 @@ class ActiveRecord::Base
   class << self
     def postgresql_connection(config)
       require 'active_record/connection_adapters/jdbcpostgresql_adapter'
-      
+
       config[:host] ||= "localhost"
       config[:port] ||= 5432
       config[:url] ||= "jdbc:postgresql://#{config[:host]}:#{config[:port]}/#{config[:database]}"

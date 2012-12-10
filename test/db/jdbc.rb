@@ -1,3 +1,4 @@
+require 'jdbc_common'
 require 'jdbc/mysql'
 
 config = {

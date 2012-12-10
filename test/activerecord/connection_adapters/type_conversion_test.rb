@@ -1,7 +1,6 @@
 require 'java'
 require 'models/data_types'
 require 'arjdbc'
-require 'db/derby'
 require 'test/unit'
 
 JInteger = java.lang.Integer

@@ -1,3 +1,5 @@
+require 'jdbc_common'
+
 config = {
   :username => 'blog',
   :password => 'blog',

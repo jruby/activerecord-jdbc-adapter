@@ -1,3 +1,5 @@
+require 'jdbc_common'
+
 MSSQL_CONFIG = {
   :username => 'blog',
   :password => '',

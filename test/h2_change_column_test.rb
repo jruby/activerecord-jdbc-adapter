@@ -1,5 +1,4 @@
 require 'jdbc_common'
-require 'db/h2'
 
 class H2ChangeColumnTest < Test::Unit::TestCase
 
