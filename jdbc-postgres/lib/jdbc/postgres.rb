@@ -12,6 +12,10 @@ module Jdbc
       send method, driver_jar
     end
 
+    def self.driver_name
+      'org.postgresql.Driver'
+    end
+
     private
 
     # JDBC version 4 if Java >=1.6, else 3
