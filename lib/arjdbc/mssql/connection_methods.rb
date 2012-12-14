@@ -1,7 +1,8 @@
 class ActiveRecord::Base
   class << self
     def mssql_connection(config)
-      require "arjdbc/mssql"
+      require 'active_record/connection_adapters/jdbcmssql_adapter'
+
       config[:host] ||= "localhost"
       config[:port] ||= 1433
       config[:driver] ||= "net.sourceforge.jtds.jdbc.Driver"
@@ -20,7 +21,7 @@ class ActiveRecord::Base
       url << ";appname=#{config[:appname]}" if config[:appname]
       config[:url] ||= url
 
-      if !config[:domain]
+      unless config[:domain]
         config[:username] ||= "sa"
         config[:password] ||= ""
       end

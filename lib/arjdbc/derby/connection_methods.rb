@@ -2,6 +2,8 @@ module ActiveRecord
   class Base
     class << self
       def derby_connection(config)
+        require 'active_record/connection_adapters/jdbcderby_adapter'
+
         config[:url] ||= "jdbc:derby:#{config[:database]};create=true"
         config[:driver] ||= "org.apache.derby.jdbc.EmbeddedDriver"
         config[:adapter_spec] = ::ArJdbc::Derby
@@ -12,7 +14,6 @@ module ActiveRecord
         end
         conn
       end
-
       alias_method :jdbcderby_connection, :derby_connection
     end
   end

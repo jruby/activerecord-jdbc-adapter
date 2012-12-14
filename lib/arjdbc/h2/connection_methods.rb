@@ -2,6 +2,8 @@ module ActiveRecord
   class Base
     class << self
       def h2_connection(config)
+        require 'active_record/connection_adapters/jdbch2_adapter'
+
         config[:url] ||= "jdbc:h2:#{config[:database]}"
         config[:driver] ||= "org.h2.Driver"
         config[:adapter_spec] = ::ArJdbc::H2
