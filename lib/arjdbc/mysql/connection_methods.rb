@@ -5,7 +5,8 @@ $LOADED_FEATURES << "active_record/connection_adapters/mysql2_adapter.rb"
 class ActiveRecord::Base
   class << self
     def mysql_connection(config)
-      require "arjdbc/mysql"
+      require 'active_record/connection_adapters/jdbcmysql_adapter'
+
       config[:port] ||= 3306
       options = (config[:options] ||= {})
       options['zeroDateTimeBehavior'] ||= 'convertToNull'
@@ -13,7 +14,7 @@ class ActiveRecord::Base
       options['useUnicode'] ||= 'true'
       options['characterEncoding'] = config[:encoding] || 'utf8'
       config[:url] ||= "jdbc:mysql://#{config[:host]}:#{config[:port]}/#{config[:database]}"
-      config[:driver] ||= "com.mysql.jdbc.Driver"
+      config[:driver] ||= ::Jdbc::MySQL.driver_name # com.mysql.jdbc.Driver
       config[:adapter_class] = ActiveRecord::ConnectionAdapters::MysqlAdapter
       config[:adapter_spec] = ::ArJdbc::MySQL
       connection = jdbc_connection(config)
@@ -24,5 +25,3 @@ class ActiveRecord::Base
     alias_method :mysql2_connection, :mysql_connection
   end
 end
-
-

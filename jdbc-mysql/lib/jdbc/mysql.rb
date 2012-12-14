@@ -1,10 +1,21 @@
 module Jdbc
   module MySQL
     VERSION = "5.1.22"
+
+    def self.driver_jar
+      "mysql-connector-java-#{VERSION}.jar"
+    end
+
+    def self.load_driver(method = :load)
+      send method, driver_jar
+    end
+
+    def self.driver_name
+      'com.mysql.jdbc.Driver'
+    end
   end
 end
-if RUBY_PLATFORM =~ /java/
-  require "mysql-connector-java-#{Jdbc::MySQL::VERSION}.jar"
-elsif $VERBOSE
-  warn "jdbc-mysql is only for use with JRuby"
+
+if $VERBOSE && (JRUBY_VERSION.nil? rescue true)
+  warn "Jdbc-MySQL is only for use with JRuby"
 end
