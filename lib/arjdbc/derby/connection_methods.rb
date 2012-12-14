@@ -5,7 +5,7 @@ module ActiveRecord
         require 'active_record/connection_adapters/jdbcderby_adapter'
 
         config[:url] ||= "jdbc:derby:#{config[:database]};create=true"
-        config[:driver] ||= "org.apache.derby.jdbc.EmbeddedDriver"
+        config[:driver] ||= ::Jdbc::Derby.driver_name # org.apache.derby.jdbc.EmbeddedDriver
         config[:adapter_spec] = ::ArJdbc::Derby
         conn = embedded_driver(config)
         md = conn.jdbc_connection.meta_data

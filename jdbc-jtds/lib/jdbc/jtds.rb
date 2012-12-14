@@ -9,6 +9,10 @@ module Jdbc
     def self.load_driver(method = :load)
       send method, driver_jar
     end
+
+    def self.driver_name
+      'net.sourceforge.jtds.jdbc.Driver'
+    end
   end
 end
 

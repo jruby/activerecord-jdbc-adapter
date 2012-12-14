@@ -10,6 +10,9 @@ module Jdbc
       send method, driver_jar
     end
 
+    def self.driver_name
+      'org.sqlite.JDBC'
+    end
   end
 end
 

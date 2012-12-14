@@ -14,7 +14,7 @@ class ActiveRecord::Base
       options['useUnicode'] ||= 'true'
       options['characterEncoding'] = config[:encoding] || 'utf8'
       config[:url] ||= "jdbc:mysql://#{config[:host]}:#{config[:port]}/#{config[:database]}"
-      config[:driver] ||= "com.mysql.jdbc.Driver"
+      config[:driver] ||= ::Jdbc::MySQL.driver_name # com.mysql.jdbc.Driver
       config[:adapter_class] = ActiveRecord::ConnectionAdapters::MysqlAdapter
       config[:adapter_spec] = ::ArJdbc::MySQL
       connection = jdbc_connection(config)
