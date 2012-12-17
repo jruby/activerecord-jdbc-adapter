@@ -8,7 +8,7 @@ module ActiveRecord # :nodoc:
     attr_accessor :sql_exception
   end
 
-  module ConnectionAdapters     # :nodoc:
+  module ConnectionAdapters # :nodoc:
     # Allows properly re-wrapping/re-defining methods that may already
     # be alias_method_chain'd.
     module ShadowCoreMethods

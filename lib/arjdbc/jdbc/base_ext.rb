@@ -1,6 +1,6 @@
 module ActiveRecord
   class Base  # reopen
-    class <<self
+    class << self
       # Allow adapters to provide their own reset_column_information methods
       #
       # NOTE: This only affects the current thread's connection.
