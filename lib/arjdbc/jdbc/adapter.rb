@@ -1,4 +1,3 @@
-require 'bigdecimal'
 require 'active_record/version'
 require 'active_record/connection_adapters/abstract_adapter'
 require 'arjdbc/version'

@@ -1,3 +1,4 @@
+require 'bigdecimal'
 require 'active_record/connection_adapters/abstract/schema_definitions'
 
 module ::ArJdbc

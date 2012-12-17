@@ -1,7 +1,7 @@
+require 'strscan'
 require 'arjdbc/mssql/tsql_helper'
 require 'arjdbc/mssql/limit_helpers'
 require 'arjdbc/mssql/lock_helpers'
-require 'strscan'
 
 module ::ArJdbc
   module MsSQL
