@@ -21,5 +21,5 @@ Gem::Specification.new do |s|
   s.summary = %q{Derby JDBC adapter for JRuby on Rails.}
 
   s.add_dependency 'activerecord-jdbc-adapter', "~>#{version}"
-  s.add_dependency 'jdbc-derby', '~> 10.6.0'
+  s.add_dependency 'jdbc-derby', '~> 10.6'
 end

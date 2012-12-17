@@ -4,7 +4,7 @@ module ArJdbc
       files = ::Gem.find_files('arjdbc/discover')
     else
       files = $LOAD_PATH.map do |p|
-        discover = File.join(p, 'arjdbc','discover.rb')
+        discover = File.join(p, 'arjdbc', 'discover.rb')
         File.exist?(discover) ? discover : nil
       end.compact
     end
