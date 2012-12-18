@@ -1,6 +1,6 @@
 module Jdbc
   module H2
-    VERSION = "1.3.168"
+    VERSION = "1.3.170"
 
     def self.driver_jar
       "h2-#{VERSION}.jar"

@@ -31,3 +31,5 @@ module PostgresHelper
     end
   end
 end
+
+require 'fileutils'

@@ -22,5 +22,5 @@ Gem::Specification.new do |s|
   s.summary = %q{HSQLDB JDBC adapter for JRuby on Rails.}
 
   s.add_dependency 'activerecord-jdbc-adapter', "~>#{version}"
-  s.add_dependency 'jdbc-hsqldb', '~> 1.8.0'
+  s.add_dependency 'jdbc-hsqldb', '>= 1.8' # ~> 2.2.9
 end
