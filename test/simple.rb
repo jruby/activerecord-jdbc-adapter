@@ -200,13 +200,16 @@ module SimpleTestMethods
     def test_save_time_with_utc
       current_zone = Time.zone
       default_zone = ActiveRecord::Base.default_timezone
-      ActiveRecord::Base.default_timezone = Time.zone = :utc
+      Time.zone = 'UTC'
+      ActiveRecord::Base.default_timezone = :utc
+      ActiveRecord::Base.clear_all_connections!
+
       now = Time.now
       my_time = Time.local now.year, now.month, now.day, now.hour, now.min, now.sec
       m = DbType.create! :sample_datetime => my_time
       m.reload
       assert_equal my_time, m.sample_datetime
-    rescue
+    ensure
       Time.zone = current_zone
       ActiveRecord::Base.default_timezone = default_zone
     end
