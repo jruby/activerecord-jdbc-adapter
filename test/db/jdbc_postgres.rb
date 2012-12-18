@@ -1,8 +1,6 @@
 require 'jdbc_common'
 require 'db/postgres_config'
 
-Jdbc::Postgres::load_driver :require
-
 JDBC_POSTGRES_CONFIG = POSTGRES_CONFIG.dup
 JDBC_POSTGRES_CONFIG[:adapter] = 'jdbc'
 JDBC_POSTGRES_CONFIG[:driver] = 'org.postgresql.Driver'
@@ -11,6 +9,10 @@ JDBC_POSTGRES_CONFIG[:url] = "jdbc:postgresql://#{JDBC_POSTGRES_CONFIG[:host]}/#
 JDBC_POSTGRES_CONFIG.delete(:host)
 JDBC_POSTGRES_CONFIG.delete(:database)
 puts "Using JDBC URL: #{JDBC_POSTGRES_CONFIG[:url]}"
+
+require 'jdbc/postgres' # driver not loaded for plain JDBC
+Jdbc::Postgres::load_driver :require
+
 ActiveRecord::Base.establish_connection(JDBC_POSTGRES_CONFIG)
 
 begin

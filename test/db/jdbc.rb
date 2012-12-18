@@ -1,5 +1,4 @@
 require 'jdbc_common'
-require 'jdbc/mysql'
 
 config = {
   # see db/mysql.rb
@@ -9,5 +8,8 @@ config = {
   :driver   => 'com.mysql.jdbc.Driver',
   :url      => 'jdbc:mysql://localhost:3306/arjdbc_test'
 }
+
+require 'jdbc/mysql' # driver not loaded for plain JDBC
+Jdbc::MySQL.load_driver(:require)
 
 ActiveRecord::Base.establish_connection(config)
