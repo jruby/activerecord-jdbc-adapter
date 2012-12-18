@@ -1,7 +1,5 @@
 require 'jdbc_common'
 
-Jdbc::H2.load_driver :require
-
 config = {
   :adapter => 'jdbc',
   :driver => 'org.h2.Driver',
