@@ -8,4 +8,7 @@ JDBC_MYSQL_CONFIG[:url] = "jdbc:mysql://#{JDBC_MYSQL_CONFIG[:host]}/#{JDBC_MYSQL
 JDBC_MYSQL_CONFIG.delete(:host)
 JDBC_MYSQL_CONFIG.delete(:database)
 
+require 'jdbc/mysql' # driver not loaded for plain JDBC
+Jdbc::MySQL.load_driver(:require)
+
 ActiveRecord::Base.establish_connection(JDBC_MYSQL_CONFIG)
