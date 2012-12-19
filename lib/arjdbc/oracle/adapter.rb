@@ -34,8 +34,14 @@ module ::ArJdbc
       (class << mod; self; end).class_eval do
         alias_chained_method :insert, :query_dirty, :ora_insert
         alias_chained_method :columns, :query_cache, :ora_columns
+        
+        # Prevent ORA-01795 for in clauses with more than 1000 
+        def in_clause_length
+          1000
+        end
       end
     end
+    
 
     def self.column_selector
       [/oracle/i, lambda {|cfg,col| col.extend(::ArJdbc::Oracle::Column)}]
