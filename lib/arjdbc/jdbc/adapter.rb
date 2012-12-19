@@ -56,30 +56,34 @@ module ActiveRecord
 
       # Locate specialized adapter specification if one exists based on config data
       def adapter_spec(config)
-        2.times do
-          dialect = (config[:dialect] || config[:driver]).to_s
-          ::ArJdbc.constants.map { |name| ::ArJdbc.const_get name }.each do |constant|
-            if constant.respond_to? :adapter_matcher
-              spec = constant.adapter_matcher(dialect, config)
-              return spec if spec
-            end
-          end
+        dialect = (config[:dialect] || config[:driver]).to_s
+        ::ArJdbc.constants.sort.each do |constant|
+          constant = ::ArJdbc.const_get(constant) # e.g. ArJdbc::MySQL
 
-          # If nothing matches and we're using jndi, try to automatically detect the database.
-          break unless config[:jndi] and !config[:dialect]
+          if constant.respond_to?(:adapter_matcher)
+            spec = constant.adapter_matcher(dialect, config)
+            return spec if spec
+          end
+        end
+
+        if config[:jndi] && ! config[:dialect]
           begin
-            conn = Java::javax.naming.InitialContext.new.lookup(config[:jndi]).getConnection
-            config[:dialect] = conn.getMetaData.getDatabaseProductName
+            data_source = Java::JavaxNaming::InitialContext.new.lookup(config[:jndi])
+            connection = data_source.getConnection
+            config[:dialect] = connection.getMetaData.getDatabaseProductName
 
             # Derby-specific hack
             if ::ArJdbc::Derby.adapter_matcher(config[:dialect], config)
               # Needed to set the correct database schema name
-              config[:username] ||= conn.getMetaData.getUserName
+              config[:username] ||= connection.getMetaData.getUserName
             end
           rescue
-            conn.close if conn
+            connection.close if connection
+          else
+            return adapter_spec(config) # re-try matching a spec with set config[:dialect]
           end
         end
+
         nil
       end
 
