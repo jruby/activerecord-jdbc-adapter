@@ -41,7 +41,6 @@ import org.joda.time.DateTimeZone;
 
 import arjdbc.jdbc.SQLBlock;
 import org.jruby.Ruby;
-import org.jruby.RubyBigDecimal;
 import org.jruby.RubyClass;
 import org.jruby.RubyModule;
 import org.jruby.RubyNil;
@@ -93,7 +92,7 @@ public class MySQLRubyJdbcConnection extends RubyJdbcConnection {
         if (Types.BOOLEAN == type || Types.BIT == type) {
             return integerToRuby(runtime, resultSet, resultSet.getBoolean(column) ? 1 : 0);
         } else if (Types.DECIMAL == type) {
-            return decimalToRuby(runtime, resultSet, resultSet.getBigDecimal(column));
+            return decimalToRuby(runtime, resultSet, resultSet.getString(column));
         }
         return super.jdbcToRuby(runtime, column, type, resultSet);
     }
@@ -111,11 +110,11 @@ public class MySQLRubyJdbcConnection extends RubyJdbcConnection {
         return RubyTime.newTime(runtime, dt);
     }
 
-    protected IRubyObject decimalToRuby(Ruby runtime, ResultSet resultSet, BigDecimal decimal) 
+    protected IRubyObject decimalToRuby(Ruby runtime, ResultSet resultSet, String decimalString)
             throws SQLException {
-        if (decimal == null && resultSet.wasNull()) return runtime.getNil();
+        if (decimalString == null && resultSet.wasNull()) return runtime.getNil();
 
-        return new RubyBigDecimal(runtime, decimal);
+        return runtime.getKernel().callMethod("BigDecimal", runtime.newString(decimalString));
     }
 
     public static RubyClass createMySQLJdbcConnectionClass(Ruby runtime, RubyClass jdbcConnection) {
