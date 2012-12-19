@@ -270,6 +270,27 @@ module SimpleTestMethods
     end
   end
 
+  def test_save_timestamp
+    timestamp = Time.new(2012, 12, 18, 21, 10, 15, "00:00")
+    e = DbType.find(:first)
+    e.sample_timestamp = timestamp
+    e.save!
+    e = DbType.find(:first)
+    assert_equal timestamp, e.sample_timestamp
+  end
+
+  def test_save_time
+    # Ruby doesn't have a plain Time class without a date.
+    timestamp = Time.new(2012, 12, 18, 21, 10, 15, "00:00")
+    e = DbType.find(:first)
+    e.sample_time = timestamp
+    e.save!
+    e = DbType.find(:first)
+    [:hour, :min, :sec].each do |method|
+      assert_equal timestamp.send(method), e.sample_time.send(method)
+    end
+  end
+
   def test_boolean
     # An unset boolean should default to nil
     e = DbType.find(:first)
