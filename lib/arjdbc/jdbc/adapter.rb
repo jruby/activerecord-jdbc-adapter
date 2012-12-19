@@ -71,16 +71,12 @@ module ActiveRecord
             data_source = Java::JavaxNaming::InitialContext.new.lookup(config[:jndi])
             connection = data_source.getConnection
             config[:dialect] = connection.getMetaData.getDatabaseProductName
-
-            # Derby-specific hack
-            if ::ArJdbc::Derby.adapter_matcher(config[:dialect], config)
-              # Needed to set the correct database schema name
-              config[:username] ||= connection.getMetaData.getUserName
-            end
-          rescue
-            connection.close if connection
+          rescue Java::JavaSql::SQLException => e
+            warn "failed to set database :dialect from connection meda-data (#{e})"
           else
             return adapter_spec(config) # re-try matching a spec with set config[:dialect]
+          ensure
+            connection.close if connection  # return to the pool
           end
         end
 

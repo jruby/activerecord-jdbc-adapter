@@ -17,6 +17,20 @@ class DerbyJndiTest < Test::Unit::TestCase
     assert_true connection.jndi_connection?
   end
 
+  test "fills username from data source meta-data if missing" do
+    connection = ActiveRecord::Base.connection.raw_connection
+    assert_true connection.jndi_connection?
+
+    config = { :jndi => JNDI_CONFIG[:jndi] }
+    ArJdbc::Derby.adapter_matcher('Derby', config)
+    assert_equal 'sa', config[:username]
+
+    # but only for Derby of course :
+    config = { :jndi => JNDI_CONFIG[:jndi] }
+    ArJdbc::Derby.adapter_matcher('DB42', config)
+    assert_nil config[:username]
+  end
+
 end
 
 require 'db/jndi_pooled_config'
