@@ -1,41 +1,34 @@
-require 'fileutils'
 require 'arjdbc'
 require 'jdbc_common'
 
 JNDI_CONFIG = {
-  :adapter => "jdbc",
-  :jndi => 'jdbc/derbydb'
+  :adapter => 'jdbc', :jndi => 'jdbc/DerbyDB'
 }
 
-# To test JNDI, grab fscontext-1_2-beta3.zip from
-# http://java.sun.com/products/jndi/downloads/index.html
-# and put fscontext.jar and providerutil.jar in test/
-require 'test/fscontext.jar'
-require 'test/providerutil.jar'
+# FS based JNDI impl borrowed from tomcat :
+load 'test/jars/tomcat-juli.jar'
+load 'test/jars/tomcat-catalina.jar'
+
+java.lang.System.set_property(
+    javax.naming.Context::INITIAL_CONTEXT_FACTORY,
+    'org.apache.naming.java.javaURLContextFactory'
+)
+java.lang.System.set_property(
+    javax.naming.Context::URL_PKG_PREFIXES,
+    'org.apache.naming'
+)
+
 require 'jdbc/derby'
+Jdbc::Derby.load_driver
 
-System = java.lang.System
-Context = javax.naming.Context
-InitialContext = javax.naming.InitialContext
-Reference = javax.naming.Reference
-StringRefAddr = javax.naming.StringRefAddr
+data_source = org.apache.derby.jdbc.EmbeddedDataSource.new
+data_source.database_name = "memory:DerbyDB-JNDI"
+data_source.create_database = "create"
+data_source.user = "sa"
+data_source.password = ""
 
-System.set_property(Context::INITIAL_CONTEXT_FACTORY,
-                    'com.sun.jndi.fscontext.RefFSContextFactory')
-project_path = File.expand_path(File.dirname(__FILE__) + '/../..')
-jndi_dir = project_path + '/jndi_test'
-jdbc_dir = jndi_dir + '/jdbc'
-FileUtils.mkdir_p jdbc_dir unless File.exist?(jdbc_dir)
+init_context = javax.naming.InitialContext.new
+init_context.create_subcontext 'jdbc'
+init_context.bind JNDI_CONFIG[:jndi], data_source
 
-System.set_property(Context::PROVIDER_URL, "file://#{jndi_dir}")
-
-ic = InitialContext.new
-ic.rebind(JNDI_CONFIG[:jndi],
-          org.apache.derby.jdbc.EmbeddedDataSource.new.tap {|ds|
-            ds.database_name = "derby-testdb-jndi"
-            ds.create_database = "create"
-            ds.user = "sa"
-            ds.password = ""})
-
-
-ActiveRecord::Base.establish_connection(JNDI_CONFIG)
+ActiveRecord::Base.establish_connection JNDI_CONFIG

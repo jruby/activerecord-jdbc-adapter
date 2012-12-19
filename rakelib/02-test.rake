@@ -23,17 +23,13 @@ def set_compat_version(task)
 end
 
 def all_appraisal_names
-  @names ||= begin
-               names = []
-               Appraisal::File.each {|a| names << a.name }
-               names
-             end
+  @appraisal_names ||= begin names = []; Appraisal::File.each { |file| names << file.name }; names end
 end
 
 def declare_test_task_for(adapter, options = {})
   driver = options[:driver] || adapter
   prereqs = options[:prereqs] || []
-  prereqs = [prereqs].flatten
+  prereqs = [ prereqs ].flatten
   task "test_#{adapter}_pre" do
     puts "Specify AR version with 'rake appraisal:{version} test_#{adapter}' where version=(#{all_appraisal_names.join('|')})"
   end
@@ -75,7 +71,8 @@ Rake::TestTask.new(:test_jdbc) do |t|
 end
 
 Rake::TestTask.new(:test_jndi) do |t|
-  t.test_files = FileList['test/jndi*_test.rb']
+  Rake::Task['tomcat-jndi:check'].invoke
+  t.test_files = FileList['test/jndi_test.rb']
   t.libs << 'test' << 'jdbc-derby/lib'
   set_compat_version(t)
 end
