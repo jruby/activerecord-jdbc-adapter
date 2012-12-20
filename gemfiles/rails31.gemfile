@@ -2,8 +2,10 @@
 
 source "http://rubygems.org"
 
-gem "rake"
+gem "jruby-openssl", :platform=>:jruby
 gem "appraisal"
-gem "jruby-openssl", :group=>:development
+gem "rake", :require=>nil
+gem "test-unit", :group=>:test
+gem "mocha", :group=>:test
 gem "activerecord", "~> 3.1.8"
 

@@ -9,6 +9,7 @@ env:
   - DB=h2
   - DB=hsqldb
   - DB=sqlite3
+  - DB=jndi
 gemfile:
   - gemfiles/rails23.gemfile
   - gemfiles/rails30.gemfile

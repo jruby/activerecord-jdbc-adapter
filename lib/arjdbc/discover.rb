@@ -27,9 +27,24 @@ module ::ArJdbc
     end
   end
 
-  extension :Derby do |name|
+  extension :Derby do |name, config|
     if name =~ /derby/i
       require 'arjdbc/derby'
+
+      # Derby-specific hack
+      if config && ! config[:username] && ( config[:jndi] || config[:data_source] )
+        # Needed to set the correct database schema name (:username)
+        begin
+          data_source = config[:data_source] || Java::JavaxNaming::InitialContext.new.lookup(config[:jndi])
+          connection = data_source.getConnection
+          config[:username] = connection.getMetaData.getUserName
+        rescue Java::JavaSql::SQLException => e
+          warn "failed to set (derby) database :username from connection meda-data (#{e})"
+        ensure
+          ( connection.close rescue nil ) if connection # return to the pool
+        end
+      end
+
       true
     end
   end
