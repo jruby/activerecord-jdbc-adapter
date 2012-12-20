@@ -1,8 +1,8 @@
 require 'arjdbc'
 require 'jdbc_common'
 
-JNDI_CONFIG = {
-  :adapter => 'jdbc', :jndi => 'jdbc/DerbyDB'
+JNDI_POOLED_CONFIG = {
+  :adapter => 'jdbc', :jndi => 'jdbc/PooledDerbyDB'
 }
 
 # FS based JNDI impl borrowed from tomcat :
@@ -21,8 +21,8 @@ java.lang.System.set_property(
 require 'jdbc/derby'
 Jdbc::Derby.load_driver
 
-data_source = org.apache.derby.jdbc.EmbeddedDataSource.new
-data_source.database_name = "memory:DerbyDB-JNDI"
+data_source = org.apache.derby.jdbc.EmbeddedConnectionPoolDataSource.new
+data_source.database_name = "memory:PooledDerbyDB-JNDI"
 data_source.create_database = "create"
 data_source.user = "sa"
 data_source.password = ""
@@ -32,4 +32,4 @@ begin
   init_context.create_subcontext 'jdbc'
 rescue javax.naming.NameAlreadyBoundException
 end
-init_context.bind JNDI_CONFIG[:jndi], data_source
+init_context.bind JNDI_POOLED_CONFIG[:jndi], data_source

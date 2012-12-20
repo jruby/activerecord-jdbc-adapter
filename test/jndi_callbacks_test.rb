@@ -1,10 +1,14 @@
 require 'jdbc_common'
 require 'db/jndi_config'
 
-begin
-  require 'mocha'
+require 'mocha'
 
 class JndiConnectionPoolCallbacksTest < Test::Unit::TestCase
+
+  def self.startup
+    ActiveRecord::Base.establish_connection JNDI_CONFIG
+  end
+
   def setup
     @logger = stub_everything "logger"
     @config = JNDI_CONFIG
@@ -29,8 +33,5 @@ class JndiConnectionPoolCallbacksTest < Test::Unit::TestCase
     Entry.connection_pool.checkin @adapter
     assert !@connection.active?
   end
-end
 
-rescue LoadError
-  warn "mocha not found, disabling mocha-based tests"
 end if ActiveRecord::Base.respond_to?(:connection_pool)

@@ -56,30 +56,30 @@ module ActiveRecord
 
       # Locate specialized adapter specification if one exists based on config data
       def adapter_spec(config)
-        2.times do
-          dialect = (config[:dialect] || config[:driver]).to_s
-          ::ArJdbc.constants.map { |name| ::ArJdbc.const_get name }.each do |constant|
-            if constant.respond_to? :adapter_matcher
-              spec = constant.adapter_matcher(dialect, config)
-              return spec if spec
-            end
-          end
+        dialect = (config[:dialect] || config[:driver]).to_s
+        ::ArJdbc.constants.sort.each do |constant|
+          constant = ::ArJdbc.const_get(constant) # e.g. ArJdbc::MySQL
 
-          # If nothing matches and we're using jndi, try to automatically detect the database.
-          break unless config[:jndi] and !config[:dialect]
-          begin
-            conn = Java::javax.naming.InitialContext.new.lookup(config[:jndi]).getConnection
-            config[:dialect] = conn.getMetaData.getDatabaseProductName
-
-            # Derby-specific hack
-            if ::ArJdbc::Derby.adapter_matcher(config[:dialect], config)
-              # Needed to set the correct database schema name
-              config[:username] ||= conn.getMetaData.getUserName
-            end
-          rescue
-            conn.close if conn
+          if constant.respond_to?(:adapter_matcher)
+            spec = constant.adapter_matcher(dialect, config)
+            return spec if spec
           end
         end
+
+        if config[:jndi] && ! config[:dialect]
+          begin
+            data_source = Java::JavaxNaming::InitialContext.new.lookup(config[:jndi])
+            connection = data_source.getConnection
+            config[:dialect] = connection.getMetaData.getDatabaseProductName
+          rescue Java::JavaSql::SQLException => e
+            warn "failed to set database :dialect from connection meda-data (#{e})"
+          else
+            return adapter_spec(config) # re-try matching a spec with set config[:dialect]
+          ensure
+            connection.close if connection  # return to the pool
+          end
+        end
+
         nil
       end
 

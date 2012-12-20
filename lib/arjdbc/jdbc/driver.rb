@@ -16,7 +16,7 @@ module ActiveRecord
                 java_import(driver_class_name) { driver_class_const }
               end
             end
-          end
+          end unless Jdbc.const_defined?(driver_class_const)
           driver_class = Jdbc.const_get(driver_class_const)
           raise "You must specify a driver for your JDBC connection" unless driver_class
           driver_class
