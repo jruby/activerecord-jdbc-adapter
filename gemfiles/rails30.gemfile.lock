@@ -20,7 +20,11 @@ GEM
     i18n (0.5.0)
     jruby-openssl (0.7.7)
       bouncy-castle-java (>= 1.5.0146.1)
-    rake (0.9.2.2)
+    metaclass (0.0.1)
+    mocha (0.11.4)
+      metaclass (~> 0.0.1)
+    rake (10.0.3)
+    test-unit (2.5.3)
     tzinfo (0.3.33)
 
 PLATFORMS
@@ -30,4 +34,6 @@ DEPENDENCIES
   activerecord (~> 3.0.17)
   appraisal
   jruby-openssl
+  mocha
   rake
+  test-unit
