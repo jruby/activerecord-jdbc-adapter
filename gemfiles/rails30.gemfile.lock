@@ -11,7 +11,7 @@ GEM
       arel (~> 2.0.10)
       tzinfo (~> 0.3.23)
     activesupport (3.0.17)
-    appraisal (0.4.1)
+    appraisal (0.5.1)
       bundler
       rake
     arel (2.0.10)
