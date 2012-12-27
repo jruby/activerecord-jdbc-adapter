@@ -5,7 +5,7 @@ class ActiveRecord::Base
 
       config[:host] ||= "localhost"
       config[:port] ||= 1433
-      config[:driver] ||= ::Jdbc::JTDS.driver_name # net.sourceforge.jtds.jdbc.Driver
+      config[:driver] ||= defined?(::Jdbc::JTDS.driver_name) ? ::Jdbc::JTDS.driver_name : 'net.sourceforge.jtds.jdbc.Driver'
       config[:adapter_spec] = ::ArJdbc::MsSQL
 
       config[:url] ||= begin
