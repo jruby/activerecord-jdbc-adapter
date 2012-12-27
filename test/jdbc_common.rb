@@ -5,6 +5,13 @@ end
 
 require 'bundler'
 Bundler.require(:default, :test)
+
+if ENV['COVERAGE']
+  require 'simplecov'
+  SimpleCov.start
+  puts 'required simplecov'
+end
+
 require 'arjdbc' if jruby?
 puts "Using activerecord version #{ActiveRecord::VERSION::STRING}"
 require 'models/auto_id'
