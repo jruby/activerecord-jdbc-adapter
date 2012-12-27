@@ -19,3 +19,4 @@ patches*
 /jndi_test/jdbc/.bindings
 target
 test/jars
+coverage

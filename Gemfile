@@ -12,6 +12,7 @@ gem 'rake', :require => nil
 # appraisal ignores group block declarations :
 gem 'test-unit', :group => :test
 gem 'mocha', :require => nil, :group => :test # '>= 0.13.0'
+gem 'simplecov', :require => nil, :group => :test
 
 group :rails do
   gem 'erubis', :require => nil
