@@ -11,7 +11,7 @@ class ActiveRecord::Base
       database = config[:database]
       database = '' if database == ':memory:'
       config[:url] ||= "jdbc:sqlite:#{database}"
-      config[:driver] ||= ::Jdbc::SQLite3.driver_name # org.sqlite.JDBC
+      config[:driver] ||= defined?(::Jdbc::SQLite3.driver_name) ? ::Jdbc::SQLite3.driver_name : 'org.sqlite.JDBC'
       config[:adapter_class] = ActiveRecord::ConnectionAdapters::SQLite3Adapter
       config[:adapter_spec] = ::ArJdbc::SQLite3
       jdbc_connection(config)
