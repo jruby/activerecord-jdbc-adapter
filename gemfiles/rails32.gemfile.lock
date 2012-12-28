@@ -12,7 +12,7 @@ GEM
     activesupport (3.2.9)
       i18n (~> 0.6)
       multi_json (~> 1.0)
-    appraisal (0.4.1)
+    appraisal (0.5.1)
       bundler
       rake
     arel (3.0.2)

@@ -11,7 +11,7 @@ GEM
     activeresource (2.3.14)
       activesupport (= 2.3.14)
     activesupport (2.3.14)
-    appraisal (0.4.1)
+    appraisal (0.5.1)
       bundler
       rake
     bouncy-castle-java (1.5.0146.1)
