@@ -16,44 +16,47 @@ task :install => :jar
 
 ADAPTERS = %w[derby h2 hsqldb mssql mysql postgresql sqlite3].map {|a| "activerecord-jdbc#{a}-adapter" }
 DRIVERS  = %w[derby h2 hsqldb jtds mysql postgres sqlite3].map {|a| "jdbc-#{a}" }
+TARGETS = (ADAPTERS+DRIVERS)
 
 def rake(*args)
   ruby "-S", "rake", *args
 end
 
-(ADAPTERS + DRIVERS).each do |adapter|
-  namespace adapter do
+TARGETS.each do |target|
+  namespace target do
 
     task :build do
-      Dir.chdir(adapter) do
+      Dir.chdir(target) do
         rake "build"
       end
-      cp FileList["#{adapter}/pkg/#{adapter}-*.gem"], "pkg"
+      cp FileList["#{target}/pkg/#{target}-*.gem"], "pkg"
     end
 
     # bundler handles install => build itself
     task :install do
-      Dir.chdir(adapter) do
+      Dir.chdir(target) do
         rake "install"
       end
     end
 
     task :release do
-      Dir.chdir(adapter) do
+      Dir.chdir(target) do
         rake "release"
       end
     end
   end
 end
 
-desc "Release all adapters"
-task "all:release" => ["release", *ADAPTERS.map { |f| "#{f}:release" }]
+{"all" => TARGETS, "adapters" => ADAPTERS, "drivers" => DRIVERS}.each_pair do |name, targets|
+  desc "Release #{name}"
+  task "#{name}:release" => ["release", *targets.map { |f| "#{f}:release" }]
 
-desc "Install all adapters"
-task "all:install" => ["install", *ADAPTERS.map { |f| "#{f}:install" }]
+  desc "Install #{name}"
+  task "#{name}:install" => ["install", *targets.map { |f| "#{f}:install" }]
 
-desc "Build all adapters"
-task "all:build"   => ["build", *ADAPTERS.map { |f| "#{f}:build" }]
+  desc "Build #{name}"
+  task "#{name}:build"   => ["build", *targets.map { |f| "#{f}:build" }]
+end
 
 task :filelist do
   puts FileList['pkg/**/*'].inspect
