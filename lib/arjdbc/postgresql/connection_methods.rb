@@ -10,7 +10,7 @@ class ActiveRecord::Base
       config[:port] ||= 5432
       config[:url] ||= "jdbc:postgresql://#{config[:host]}:#{config[:port]}/#{config[:database]}"
       config[:url] << config[:pg_params] if config[:pg_params]
-      config[:driver] ||= ::Jdbc::Postgres.driver_name # org.postgresql.Driver
+      config[:driver] ||= defined?(::Jdbc::Postgres.driver_name) ? ::Jdbc::Postgres.driver_name : 'org.postgresql.Driver'
       config[:adapter_class] = ActiveRecord::ConnectionAdapters::PostgreSQLAdapter
       config[:adapter_spec] = ::ArJdbc::PostgreSQL
       conn = jdbc_connection(config)
