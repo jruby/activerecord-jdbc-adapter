@@ -18,7 +18,7 @@ virtually any JDBC-compliant database with your JRuby on Rails application.}
   s.test_files    = `git ls-files -- {test,spec,features}/*`.split("\n")
   s.executables   = `git ls-files -- bin/*`.split("\n").map{|f| File.basename(f) }
   s.require_paths = ["lib"]
-  s.rdoc_options = ["--main", "README.rdoc", "-SHN", "-f", "darkfish"]
+  s.rdoc_options = ["--main", "README.md", "-SHN", "-f", "darkfish"]
   s.rubyforge_project = %q{jruby-extras}
 end
 
