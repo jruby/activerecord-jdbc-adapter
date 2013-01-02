@@ -1,3 +1,56 @@
+== 1.2.5 (01/02/13)
+
+- backwards compat with older jdbc- (driver) gems (#279)
+- no need to set the :driver for jndi config (did not work anyways) when jdbc is being 
+  configured + do not raise if there's a :driver_instance setup instead of the :driver
+- support extra options with recreate_database (for postgres)
+- [jdbc-derby] update Derby to 10.8.2.2
+- [jdbc-h2] update H2 to 1.3.170
+- no need for poluting Kernel (#jdbc_require_driver) anymore
+- [sqlite3] updated sqlite3 binary handling
+- [jdbc-jtds] upgrade to jtds (driver) 1.3.0
+- JDBC driver names should be on one (re-usable) place
+- make sure that (jdbc-xxx gem) .jars are only loaded (required) when first connection 
+  is attempted (this avoids e.g. sqlite-jdbc.jar being always among loaded features)
+- jdbc-* gems should expose the driver_jar instead of (auto) loading it
+- [oracle] adding in_clause_limit override to properly handle Oracle's 1000 entry limit
+- [jdbc-mysql] upgrade to mysql connector 5.1.22
+- [jdbc-postgres] upgade to postgresql-9.2 jar version 9.2-1002
+- [postgres] fix standard_conforming_strings's default not being set and 
+  backslash escaping to account for standard_conforming_strings
+- [jdbc-postgres] upgrade to postgres.jar 9.1.903 driver
+- [jdbc-h2] update h2.jar to 1.3.168
+- [postgres] use newer hex-encoding for postgresql >= 9.0
+- [postgres] use updated postgres string escaping for byte arrays
+- [hsqldb] fix binary data quoting
+- [jdbc-hsqldb] update hsqldb.jar to 2.2.9
+- [db2] if guessing the date or time fails return the value
+- [db2] fix crasher regression on dump of primary keys
+- [db2] fix change_column always executing as as400
+- [db2] add support for primary keys to structure_dump
+- [db2] detect identity columns in db2 structure_dump
+- [mysql] added support for Rails 3.2 explain feature (#159)
+- add support for DB_STRUCTURE in db:structure:dump 
+  (and db:structure:load task) (#203)
+- [postgres] rename sequence during table rename
+- [db2] iseries returns date with two digit year - leave it as string
+- [mssql] fix pessimistic locking
+- [mssql] fix row_number errors on SQL Server 2000
+- [db2] support WITH statements in select
+- [db2] use DECIMAL(1) for boolean fields
+- [db2] fetch a sequence value manually for tables with no identity columns
+- [postgres] add support for template in PostgreSQLAdapter
+- [db2] add recognition of MQTs and ALIASes as table types for DB2
+- [postgres] remove count distinct restriction to match native ruby adapter
+- [mssql] pull back primary key using table name via AR
+- [db2] return nil if using jndi and schema/user is not set
+- fixed support for AR 3.2.1
+- [postgres] implemented dynamic search path management
+
+== 1.2.2.1 (10/18/12)
+
+- [postgresql] fix regression on insert for Rails 2.3 (#173)
+
 == 1.2.2 (01/27/12)
 
 - Thanks George Murphy and Dwayne Litzenberger for their significant
