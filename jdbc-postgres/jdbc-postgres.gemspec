@@ -8,8 +8,6 @@ Gem::Specification.new do |s|
   s.version = version
 
   s.authors = ["Nick Sieger, Ola Bini and JRuby contributors"]
-  s.date = %q{2010-12-15}
-  s.description = %q{Install this gem and require 'postgres' within JRuby to load the driver.}
   s.email = %q{nick@nicksieger.com, ola.bini@gmail.com}
 
   s.files = [
@@ -21,5 +19,7 @@ Gem::Specification.new do |s|
   s.rdoc_options = ["--main", "README.txt"]
   s.require_paths = ["lib"]
   s.rubyforge_project = %q{jruby-extras}
-  s.summary = %q{PostgreSQL JDBC driver for Java and PostgreSQL/ActiveRecord-JDBC.}
+
+  s.summary = %q{PostgreSQL JDBC driver for JRuby and PostgreSQL/ActiveRecord-JDBC (activerecord-jdbcpostgresql-adapter).}
+  s.description = %q{Install this gem `require 'jdbc/postgres'` and invoke `Jdbc::Postgres.load_driver` within JRuby to load the driver.}
 end

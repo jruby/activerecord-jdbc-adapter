@@ -9,9 +9,7 @@ Gem::Specification.new do |s|
 
   s.required_rubygems_version = Gem::Requirement.new(">= 0") if s.respond_to? :required_rubygems_version=
   s.authors = ["Nick Sieger, Ola Bini and JRuby contributors"]
-  s.date = %q{2010-10-12}
 
-  s.description = %q{Install this gem and require 'derby' within JRuby to load the driver.}
   s.email = %q{nick@nicksieger.com, ola.bini@gmail.com}
   s.files = [
     "Rakefile", "README.txt", "LICENSE.txt",
@@ -21,5 +19,7 @@ Gem::Specification.new do |s|
   s.rdoc_options = ["--main", "README.txt"]
   s.require_paths = ["lib"]
   s.rubyforge_project = %q{jruby-extras}
-  s.summary = %q{Derby/JavaDB JDBC driver for Java and Derby/ActiveRecord-JDBC.}
+
+  s.summary = %q{Derby/JavaDB JDBC driver for JRuby and Derby/ActiveRecord-JDBC (activerecord-jdbcderby-adapter).}
+  s.description = %q{Install this gem `require 'jdbc/derby'` and invoke `Jdbc::Derby.load_driver` within JRuby to load the driver.}
 end
