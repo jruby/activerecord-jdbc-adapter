@@ -8,7 +8,6 @@ Gem::Specification.new do |s|
   s.version = version
 
   s.authors = ["Nick Sieger, Ola Bini and JRuby contributors"]
-  s.description = %q{Install this gem and require 'hsqldb' within JRuby to load the driver.}
   s.email = %q{nick@nicksieger.com, ola.bini@gmail.com}
 
   s.files = [
@@ -19,5 +18,7 @@ Gem::Specification.new do |s|
   s.rdoc_options = ["--main", "README.txt"]
   s.require_paths = ["lib"]
   s.rubyforge_project = %q{jruby-extras}
-  s.summary = %q{HSQLDB JDBC driver for Java and HSQLDB/ActiveRecord-JDBC.}
+
+  s.summary = %q{HSQLDB JDBC driver for JRuby and HSQLDB/ActiveRecord-JDBC (activerecord-jdbchsqldb-adapter).}
+  s.description = %q{Install this gem `require 'jdbc/hsqldb'` and invoke `Jdbc::HSQLDB.load_driver` within JRuby to load the driver.}
 end
