@@ -8,7 +8,6 @@ Gem::Specification.new do |s|
   s.version = version
 
   s.authors = ["Nick Sieger, Ola Bini and JRuby contributors"]
-  s.date = %q{2010-12-15}
   s.description = %q{Install this gem and require 'postgres' within JRuby to load the driver.}
   s.email = %q{nick@nicksieger.com, ola.bini@gmail.com}
 

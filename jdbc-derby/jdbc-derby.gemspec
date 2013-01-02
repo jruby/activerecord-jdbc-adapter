@@ -9,7 +9,6 @@ Gem::Specification.new do |s|
 
   s.required_rubygems_version = Gem::Requirement.new(">= 0") if s.respond_to? :required_rubygems_version=
   s.authors = ["Nick Sieger, Ola Bini and JRuby contributors"]
-  s.date = %q{2010-10-12}
 
   s.description = %q{Install this gem and require 'derby' within JRuby to load the driver.}
   s.email = %q{nick@nicksieger.com, ola.bini@gmail.com}

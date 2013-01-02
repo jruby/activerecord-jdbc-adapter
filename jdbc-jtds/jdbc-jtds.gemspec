@@ -7,7 +7,6 @@ Gem::Specification.new do |s|
   s.name = %q{jdbc-jtds}
   s.version = version
   s.authors = ["Nick Sieger, Ola Bini and JRuby contributors"]
-  s.date = %q{2010-04-21}
   s.description = %q{Install this gem and require 'jtds' within JRuby to load the driver.}
   s.email = %q{nick@nicksieger.com, ola.bini@gmail.com}
 
