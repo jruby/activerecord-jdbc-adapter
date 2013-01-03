@@ -2,7 +2,11 @@ module ActiveRecord
   class Base
     class << self
       def hsqldb_connection(config)
-        require 'active_record/connection_adapters/jdbchsqldb_adapter'
+        begin
+          require 'jdbc/hsqldb'
+          ::Jdbc::HSQLDB.load_driver(:require) if defined?(::Jdbc::HSQLDB.load_driver)
+        rescue LoadError # assuming driver.jar is on the class-path
+        end
 
         config[:url] ||= "jdbc:hsqldb:#{config[:database]}"
         config[:driver] ||= defined?(::Jdbc::HSQLDB.driver_name) ? ::Jdbc::HSQLDB.driver_name : 'org.hsqldb.jdbcDriver'

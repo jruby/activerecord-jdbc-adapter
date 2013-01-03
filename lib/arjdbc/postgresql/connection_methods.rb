@@ -4,7 +4,11 @@ $LOADED_FEATURES << "active_record/connection_adapters/postgresql_adapter.rb"
 class ActiveRecord::Base
   class << self
     def postgresql_connection(config)
-      require 'active_record/connection_adapters/jdbcpostgresql_adapter'
+      begin
+        require 'jdbc/postgres'
+        ::Jdbc::Postgres.load_driver(:require) if defined?(::Jdbc::Postgres.load_driver)
+      rescue LoadError # assuming driver.jar is on the class-path
+      end
 
       config[:host] ||= "localhost"
       config[:port] ||= 5432
