@@ -1,8 +1,6 @@
 require 'jdbc_common'
 require 'db/jndi_config'
 
-require 'mocha'
-
 class JndiConnectionPoolCallbacksTest < Test::Unit::TestCase
 
   def self.startup
