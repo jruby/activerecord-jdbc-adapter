@@ -2,7 +2,11 @@ module ActiveRecord
   class Base
     class << self
       def h2_connection(config)
-        require 'active_record/connection_adapters/jdbch2_adapter'
+        begin
+          require 'jdbc/h2'
+          ::Jdbc::H2.load_driver(:require) if defined?(::Jdbc::H2.load_driver)
+        rescue LoadError # assuming driver.jar is on the class-path
+        end
 
         config[:url] ||= "jdbc:h2:#{config[:database]}"
         config[:driver] ||= defined?(::Jdbc::H2.driver_name) ? ::Jdbc::H2.driver_name : 'org.h2.Driver'

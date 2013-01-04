@@ -1,7 +1,13 @@
 class ActiveRecord::Base
   class << self
     def mssql_connection(config)
-      require 'active_record/connection_adapters/jdbcmssql_adapter'
+      begin
+        require 'jdbc/jtds'
+        # NOTE: the adapter has only support for working with the
+        # open-source jTDS driver (won't work with MS's driver) !
+        ::Jdbc::JTDS.load_driver(:require) if defined?(::Jdbc::JTDS.load_driver)
+      rescue LoadError # assuming driver.jar is on the class-path
+      end
 
       config[:host] ||= "localhost"
       config[:port] ||= 1433

@@ -11,4 +11,11 @@ gem 'appraisal'
 gem 'rake', :require => nil
 # appraisal ignores group block declarations :
 gem 'test-unit', :group => :test
-gem 'mocha', :group => :test
+gem 'mocha', :require => nil, :group => :test # '>= 0.13.0'
+
+group :rails do
+  gem 'erubis', :require => nil
+  gem 'bcrypt-ruby', '~> 3.0.0', :require => nil
+  # NOTE: due rails/activerecord/test/cases/session_store/session_test.rb
+  gem 'actionpack', :require => nil
+end
