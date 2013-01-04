@@ -5,7 +5,11 @@ $LOADED_FEATURES << "active_record/connection_adapters/sqlite3_adapter.rb"
 class ActiveRecord::Base
   class << self
     def sqlite3_connection(config)
-      require 'active_record/connection_adapters/jdbcsqlite3_adapter'
+      begin
+        require 'jdbc/sqlite3'
+        ::Jdbc::SQLite3.load_driver(:require) if defined?(::Jdbc::SQLite3.load_driver)
+      rescue LoadError # assuming driver.jar is on the class-path
+      end
 
       parse_sqlite3_config!(config)
       database = config[:database]

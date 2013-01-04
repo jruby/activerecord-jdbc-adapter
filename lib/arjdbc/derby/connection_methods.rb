@@ -2,7 +2,11 @@ module ActiveRecord
   class Base
     class << self
       def derby_connection(config)
-        require 'active_record/connection_adapters/jdbcderby_adapter'
+        begin
+          require 'jdbc/derby'
+          ::Jdbc::Derby.load_driver(:require) if defined?(::Jdbc::Derby.load_driver)
+        rescue LoadError # assuming driver.jar is on the class-path
+        end
 
         config[:url] ||= "jdbc:derby:#{config[:database]};create=true"
         config[:driver] ||= defined?(::Jdbc::Derby.driver_name) ? ::Jdbc::Derby.driver_name : 'org.apache.derby.jdbc.EmbeddedDriver'

@@ -1,4 +1,5 @@
-require 'jdbc/jtds'
-# NOTE: the adapter has only support for working with the
-# open-source jTDS driver (won't work with MS's driver) !
-Jdbc::JTDS.load_driver(:require) if Jdbc::JTDS.respond_to?(:load_driver)
+# NOTE: required by AR resolver with 'jdbcmssql' adapter configuration :
+# we should make sure a jdbcmssql_connection is setup on ActiveRecord::Base
+require 'arjdbc/mssql'
+# all setup should be performed in arjdbc/mssql to avoid circular requires
+# this should not be required from any loads perormed by arjdbc/mssql code

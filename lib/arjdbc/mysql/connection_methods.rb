@@ -5,7 +5,11 @@ $LOADED_FEATURES << "active_record/connection_adapters/mysql2_adapter.rb"
 class ActiveRecord::Base
   class << self
     def mysql_connection(config)
-      require 'active_record/connection_adapters/jdbcmysql_adapter'
+      begin
+        require 'jdbc/mysql'
+        ::Jdbc::MySQL.load_driver(:require) if defined?(::Jdbc::MySQL.load_driver)
+      rescue LoadError # assuming driver.jar is on the class-path
+      end
 
       config[:port] ||= 3306
       options = (config[:options] ||= {})
