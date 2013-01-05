@@ -7,7 +7,13 @@ module Jdbc
     end
 
     def self.load_driver(method = :load)
-      send method, driver_jar
+      vers = Java::java.lang.System::get_property( "java.specification.version" )
+      vers = vers.split( '.' ).map { |v| v.to_i }
+      if ( ( vers <=> [ 1, 7 ] ) >= 0 )
+        send method, driver_jar
+      else
+        raise LoadError.new("Driver not loaded!  Version #{VERSION} of jdbc-jtds requires Java 1.7 or later.")
+      end
     end
 
     def self.driver_name
