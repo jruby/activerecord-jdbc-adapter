@@ -10,6 +10,7 @@ class ActiveRecord::Base
       rescue LoadError # assuming driver.jar is on the class-path
       end
 
+      config[:username] ||= Java::JavaLang::System.get_property("user.name")
       config[:host] ||= "localhost"
       config[:port] ||= 5432
       config[:url] ||= "jdbc:postgresql://#{config[:host]}:#{config[:port]}/#{config[:database]}"
