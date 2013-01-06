@@ -1,0 +1,9 @@
+=== 10.8.2.2
+
+* http://db.apache.org/derby/releases/release-10.8.2.2.html
+* http://db.apache.org/derby/releases/release-10.8.1.2.html
+* http://db.apache.org/derby/releases/release-10.7.1.1.html
+
+=== 10.6.2.1
+
+* http://db.apache.org/derby/releases/release-10.6.2.1.html
