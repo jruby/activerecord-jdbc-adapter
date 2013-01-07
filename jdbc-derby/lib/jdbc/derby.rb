@@ -1,6 +1,6 @@
 module Jdbc
   module Derby
-    VERSION = "10.8.2.2"
+    VERSION = "10.8.3.0"
 
     def self.driver_jar
       "derby-#{VERSION}.jar"
