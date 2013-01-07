@@ -19,3 +19,8 @@ end
 if $VERBOSE && (JRUBY_VERSION.nil? rescue true)
   warn "Jdbc-HSQLDB is only for use with JRuby"
 end
+
+unless Java::JavaLang::Boolean.get_boolean("arjdbc.skip.autoload")
+  warn "Autoloading driver which is now deprecated.  Set arjdbc.skip.autoload=true to disable autoload."
+  Jdbc::HSQLDB::load_driver :require
+end

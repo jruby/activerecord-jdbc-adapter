@@ -11,12 +11,12 @@ Gem::Specification.new do |s|
   s.email = %q{nick@nicksieger.com, ola.bini@gmail.com}
 
   s.files = [
-    "History.txt", "LICENSE.txt", "README.txt", "Rakefile",
+    "LICENSE.txt", "README.md", "Rakefile",
     *Dir["lib/**/*"].to_a
   ]
 
   s.homepage = %q{https://github.com/jruby/activerecord-jdbc-adapter}
-  s.rdoc_options = ["--main", "README.txt"]
+  s.rdoc_options = ["--main", "README.md"]
   s.require_paths = ["lib"]
   s.rubyforge_project = %q{jruby-extras}
 
