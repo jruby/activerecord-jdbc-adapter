@@ -43,7 +43,6 @@ def declare_test_task_for(adapter, options = {})
     t.libs = []
     set_compat_version(t)
     if defined?(JRUBY_VERSION)
-      t.ruby_opts << "-rjdbc/#{driver}"
       t.libs << "lib" << "jdbc-#{driver}/lib"
       t.libs.push *FileList["activerecord-jdbc#{adapter}*/lib"]
     end
@@ -64,7 +63,7 @@ declare_test_task_for :sqlite3
 
 Rake::TestTask.new(:test_jdbc) do |t|
   t.test_files = FileList['test/generic_jdbc_connection_test.rb']
-  t.libs << 'test' << 'jdbc-mysql/lib'
+  t.libs << 'test' << 'jdbc-mysql/lib' << 'jdbc-derby/lib'
   set_compat_version(t)
 end
 
