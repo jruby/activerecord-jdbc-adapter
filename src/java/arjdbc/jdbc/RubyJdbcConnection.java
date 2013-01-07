@@ -85,9 +85,15 @@ public class RubyJdbcConnection extends RubyObject {
         super(runtime, metaClass);
     }
 
-    public static RubyClass createJdbcConnectionClass(Ruby runtime) {
-        RubyClass jdbcConnection = getConnectionAdapters(runtime).defineClassUnder("JdbcConnection",
-                runtime.getObject(), JDBCCONNECTION_ALLOCATOR);
+    private static ObjectAllocator JDBCCONNECTION_ALLOCATOR = new ObjectAllocator() {
+        public IRubyObject allocate(Ruby runtime, RubyClass klass) {
+            return new RubyJdbcConnection(runtime, klass);
+        }
+    };
+    
+    public static RubyClass createJdbcConnectionClass(final Ruby runtime) {
+        RubyClass jdbcConnection = getConnectionAdapters(runtime).
+            defineClassUnder("JdbcConnection", runtime.getObject(), JDBCCONNECTION_ALLOCATOR);
         jdbcConnection.defineAnnotatedMethods(RubyJdbcConnection.class);
 
         rubyApi = JavaEmbedUtils.newObjectAdapter();
@@ -95,16 +101,10 @@ public class RubyJdbcConnection extends RubyObject {
         return jdbcConnection;
     }
 
-    private static ObjectAllocator JDBCCONNECTION_ALLOCATOR = new ObjectAllocator() {
-        public IRubyObject allocate(Ruby runtime, RubyClass klass) {
-            return new RubyJdbcConnection(runtime, klass);
-        }
-    };
-
     protected static RubyModule getConnectionAdapters(Ruby runtime) {
         return (RubyModule) runtime.getModule("ActiveRecord").getConstant("ConnectionAdapters");
     }
-
+    
     protected String[] getTableTypes() {
         return TABLE_TYPES;
     }
@@ -1134,21 +1134,20 @@ public class RubyJdbcConnection extends RubyObject {
 
     protected IRubyObject unmarshalResults(ThreadContext context, DatabaseMetaData metadata,
                                            Statement stmt, boolean downCase) throws SQLException {
-        Ruby runtime = context.getRuntime();
-        List<IRubyObject> sets = new ArrayList<IRubyObject>();
-
-        while (true) {
-            sets.add(unmarshalResult(context, metadata, stmt.getResultSet(), downCase));
-            if (!stmt.getMoreResults()) {
-                break;
-            }
+        
+        IRubyObject result = unmarshalResult(context, metadata, stmt.getResultSet(), downCase);
+        
+        if ( ! stmt.getMoreResults() ) return result;
+        
+        final List<IRubyObject> results = new ArrayList<IRubyObject>();
+        results.add(result);
+        do {
+            result = unmarshalResult(context, metadata, stmt.getResultSet(), downCase);
+            results.add(result);
         }
+        while ( stmt.getMoreResults() );
 
-        if (sets.size() > 1) {
-            return runtime.newArray(sets);
-        } else {
-            return sets.get(0);
-        }
+        return context.getRuntime().newArray(results);
     }
 
     /**
