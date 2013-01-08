@@ -852,6 +852,7 @@ public class RubyJdbcConnection extends RubyObject {
                 return doubleToRuby(runtime, resultSet, resultSet.getDouble(column));
             case Types.BIGINT:
                 return bigIntegerToRuby(runtime, resultSet, resultSet.getString(column));
+            case Types.FLOAT:
             case Types.DECIMAL:
               return decimalToRuby(runtime, resultSet, resultSet.getString(column));
             default:
