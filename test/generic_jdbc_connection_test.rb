@@ -27,6 +27,58 @@ class GenericJdbcConnectionTest < Test::Unit::TestCase
       ActiveRecord::Base.establish_connection JDBC_CONFIG
     end
   end
+
+  test 'driver runtime errors do not get swallowed' do
+    config = JDBC_CONFIG.dup
+    config[:properties] = Java::JavaUtil::Properties.new
+    config[:properties]['invalid_property'] = java.lang.Object.new
+    ActiveRecord::Base.remove_connection
+    begin
+      ActiveRecord::Base.establish_connection config
+      ActiveRecord::Base.connection.jdbc_connection
+      fail "exception not thrown"
+    rescue Java::JavaLang::NullPointerException # OK :
+      # java.util.Hashtable.put(Hashtable.java:394)
+      # java.util.Properties.setProperty(Properties.java:143)
+      # com.mysql.jdbc.NonRegisteringDriver.parseURL(NonRegisteringDriver.java:849)
+      # com.mysql.jdbc.NonRegisteringDriver.connect(NonRegisteringDriver.java:325)
+    ensure
+      ActiveRecord::Base.establish_connection JDBC_CONFIG
+    end
+  end
+
+  class MockDriver < ActiveRecord::ConnectionAdapters::JdbcDriver
+    
+    class DriverImpl 
+      include Java::JavaSql::Driver
+      
+      def connect(url, info)
+        reason = "#{url} connect with #{info.inspect} failed"
+        raise Java::JavaSql::SQLException.new(reason, '42000', 1042)
+      end
+      
+    end
+    
+    def driver_class; DriverImpl; end
+    
+  end
+  
+  test 'driver sql exceptions are wrapped into jdbc errors' do
+    config = JDBC_CONFIG.dup
+    config[:driver_instance] = MockDriver.new('MockDriver')
+    ActiveRecord::Base.remove_connection
+    begin
+      ActiveRecord::Base.establish_connection config
+      ActiveRecord::Base.connection.jdbc_connection
+      fail "jdbc error not thrown"
+    rescue  ActiveRecord::JDBCError => e
+      assert_match /connect with {"user"=>"arjdbc", "password"=>"arjdbc"} failed/, e.message
+      assert_equal 1042, e.errno
+      assert_kind_of Java::JavaSql::SQLException, e.sql_exception
+    ensure
+      ActiveRecord::Base.establish_connection JDBC_CONFIG
+    end
+  end
   
   class ConfigHelperTest < Test::Unit::TestCase
 

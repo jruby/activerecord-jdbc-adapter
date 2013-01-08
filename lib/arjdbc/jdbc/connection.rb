@@ -85,11 +85,12 @@ module ActiveRecord
         @stmts = {}
       rescue ::ActiveRecord::ActiveRecordError
         raise
-      rescue Exception => e
-        raise ::ActiveRecord::JDBCError.new("The driver encountered an unknown error: #{e}").tap { |err|
-          err.errno = 0
-          err.sql_exception = e
-        }
+      rescue Java::JavaSql::SQLException => e
+        error = e.getMessage || e.getSQLState
+        error = ::ActiveRecord::JDBCError.new("The driver encountered an unknown error: #{error}")
+        error.errno = e.getErrorCode
+        error.sql_exception = e
+        raise error
       end
 
       def adapter=(adapter)
