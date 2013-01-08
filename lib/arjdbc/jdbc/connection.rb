@@ -41,7 +41,8 @@ module ActiveRecord
           url = configure_url
           username = config[:username].to_s
           password = config[:password].to_s
-          jdbc_driver = ( config[:driver_instance] ||= JdbcDriver.new(config[:driver].to_s) )
+          jdbc_driver = ( config[:driver_instance] ||= 
+              JdbcDriver.new(config[:driver].to_s, config[:properties]) )
 
           @connection_factory = JdbcConnectionFactory.impl do
             jdbc_driver.connection(url, username, password)
