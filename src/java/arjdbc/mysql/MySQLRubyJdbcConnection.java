@@ -25,19 +25,15 @@
  ***** END LICENSE BLOCK *****/
 package arjdbc.mysql;
 
-import java.math.BigDecimal;
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.sql.ResultSet;
 import java.sql.Statement;
-import java.sql.Timestamp;
 import java.sql.Types;
 import java.util.ArrayList;
 import java.util.List;
-import org.joda.time.DateTime;
-import org.joda.time.DateTimeZone;
 
 import arjdbc.jdbc.SQLBlock;
 import org.jruby.Ruby;
@@ -45,7 +41,6 @@ import org.jruby.RubyClass;
 import org.jruby.RubyModule;
 import org.jruby.RubyNil;
 import org.jruby.RubyString;
-import org.jruby.RubyTime;
 import org.jruby.runtime.ObjectAllocator;
 import org.jruby.runtime.ThreadContext;
 import org.jruby.runtime.builtin.IRubyObject;
@@ -57,19 +52,8 @@ import arjdbc.jdbc.RubyJdbcConnection;
  * @author nicksieger
  */
 public class MySQLRubyJdbcConnection extends RubyJdbcConnection {
-    private boolean timezoneUTC = false;
-
     protected MySQLRubyJdbcConnection(Ruby runtime, RubyClass metaClass) {
         super(runtime, metaClass);
-
-        IRubyObject activeRecordBase = runtime.getModule("ActiveRecord").getConstant("Base");
-        if (activeRecordBase.respondsTo("default_timezone")) {
-            IRubyObject defaultTimezone = activeRecordBase.callMethod(runtime.getCurrentContext(), "default_timezone");
-
-            if (defaultTimezone.toString().equals("utc")) {
-                timezoneUTC = true;
-            }
-        }
     }
 
     @Override
@@ -91,30 +75,8 @@ public class MySQLRubyJdbcConnection extends RubyJdbcConnection {
             throws SQLException {
         if (Types.BOOLEAN == type || Types.BIT == type) {
             return integerToRuby(runtime, resultSet, resultSet.getBoolean(column) ? 1 : 0);
-        } else if (Types.DECIMAL == type) {
-            return decimalToRuby(runtime, resultSet, resultSet.getString(column));
         }
         return super.jdbcToRuby(runtime, column, type, resultSet);
-    }
-
-    @Override
-    protected IRubyObject timestampToRuby(Ruby runtime, ResultSet resultSet, Timestamp time) 
-            throws SQLException {
-        if (time == null && resultSet.wasNull()) return runtime.getNil();
-
-        DateTime dt = new DateTime(time);
-        if (timezoneUTC) {
-           dt = dt.withZoneRetainFields(DateTimeZone.UTC);
-        }
-
-        return RubyTime.newTime(runtime, dt);
-    }
-
-    protected IRubyObject decimalToRuby(Ruby runtime, ResultSet resultSet, String decimalString)
-            throws SQLException {
-        if (decimalString == null && resultSet.wasNull()) return runtime.getNil();
-
-        return runtime.getKernel().callMethod("BigDecimal", runtime.newString(decimalString));
     }
 
     public static RubyClass createMySQLJdbcConnectionClass(Ruby runtime, RubyClass jdbcConnection) {

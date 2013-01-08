@@ -30,6 +30,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.Reader;
 import java.io.StringReader;
+import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
@@ -46,6 +47,8 @@ import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
+import org.joda.time.DateTime;
+import org.joda.time.DateTimeZone;
 
 import org.jruby.Ruby;
 import org.jruby.RubyArray;
@@ -81,8 +84,19 @@ public class RubyJdbcConnection extends RubyObject {
 
     private static RubyObjectAdapter rubyApi;
 
+    private boolean timezoneUTC = false;
+
     protected RubyJdbcConnection(Ruby runtime, RubyClass metaClass) {
         super(runtime, metaClass);
+
+        IRubyObject activeRecordBase = runtime.getModule("ActiveRecord").getConstant("Base");
+        if (activeRecordBase.respondsTo("default_timezone")) {
+            IRubyObject defaultTimezone = activeRecordBase.callMethod(runtime.getCurrentContext(), "default_timezone");
+
+            if (defaultTimezone.toString().equals("utc")) {
+                timezoneUTC = true;
+            }
+        }
     }
 
     public static RubyClass createJdbcConnectionClass(Ruby runtime) {
@@ -838,6 +852,8 @@ public class RubyJdbcConnection extends RubyObject {
                 return doubleToRuby(runtime, resultSet, resultSet.getDouble(column));
             case Types.BIGINT:
                 return bigIntegerToRuby(runtime, resultSet, resultSet.getString(column));
+            case Types.DECIMAL:
+              return decimalToRuby(runtime, resultSet, resultSet.getString(column));
             default:
                 return stringToRuby(runtime, resultSet, resultSet.getString(column));
             }
@@ -1028,19 +1044,23 @@ public class RubyJdbcConnection extends RubyObject {
         };
     }
 
-    protected IRubyObject timestampToRuby(Ruby runtime, ResultSet resultSet, Timestamp time)
+    protected IRubyObject timestampToRuby(Ruby runtime, ResultSet resultSet, Timestamp time) 
             throws SQLException {
         if (time == null && resultSet.wasNull()) return runtime.getNil();
 
-        String str = time.toString();
-        if (str.endsWith(" 00:00:00.0")) {
-            str = str.substring(0, str.length() - (" 00:00:00.0".length()));
-        }
-        if (str.endsWith(".0")) {
-            str = str.substring(0, str.length() - (".0".length()));
+        DateTime dt = new DateTime(time);
+        if (timezoneUTC) {
+           dt = dt.withZoneRetainFields(DateTimeZone.UTC);
         }
 
-        return RubyString.newUnicodeString(runtime, str);
+        return RubyTime.newTime(runtime, dt);
+    }
+
+    protected IRubyObject decimalToRuby(Ruby runtime, ResultSet resultSet, String decimalString)
+            throws SQLException {
+        if (decimalString == null && resultSet.wasNull()) return runtime.getNil();
+
+        return runtime.getKernel().callMethod("BigDecimal", runtime.newString(decimalString));
     }
 
     protected static final int COLUMN_NAME = 4;
