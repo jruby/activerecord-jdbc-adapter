@@ -1,9 +1,17 @@
 module ActiveRecord
   module ConnectionAdapters
     class JdbcDriver
-      def initialize(name)
+      attr_reader :name, :properties
+      
+      def initialize(name, properties = {})
         @name = name
         @driver = driver_class.new
+        if properties.is_a?(Java::JavaUtil::Properties)
+          @properties = properties # allow programmatically set properties
+        else
+          @properties = Java::JavaUtil::Properties.new
+          properties.each { |key, val| @properties[key] = val.to_s } if properties
+        end
       end
 
       def driver_class
@@ -25,10 +33,10 @@ module ActiveRecord
 
       def connection(url, user, pass)
         # bypass DriverManager to get around problem with dynamically loaded jdbc drivers
-        props = java.util.Properties.new
-        props.setProperty("user", user)
-        props.setProperty("password", pass)
-        @driver.connect(url, props)
+        properties = self.properties.clone
+        properties.setProperty("user", user) if user
+        properties.setProperty("password", pass) if pass
+        @driver.connect(url, properties)
       end
     end
   end
