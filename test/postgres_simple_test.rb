@@ -204,3 +204,7 @@ class PostgresSchemaDumperTest < Test::Unit::TestCase
     lines.each {|line| assert line =~ /limit => 8/ }
   end
 end
+
+class PostgresHasManyThroughTest < Test::Unit::TestCase
+  include HasManyThroughMethods
+end

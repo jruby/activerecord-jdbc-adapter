@@ -136,3 +136,7 @@ class DerbySimpleTest < Test::Unit::TestCase
     assert_equal expected_types, result
   end
 end
+
+class DerbyHasManyThroughTest < Test::Unit::TestCase
+  include HasManyThroughMethods
+end

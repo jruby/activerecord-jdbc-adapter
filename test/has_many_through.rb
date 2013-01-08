@@ -11,8 +11,8 @@ class CreateRbac < ActiveRecord::Migration
     end 
 
     create_table :permission_groups do |t|
-      t.column :right_id, :integer
-      t.column :role_id, :integer
+      t.column :right_id, :integer, :null => false
+      t.column :role_id, :integer, :null => false
     end 
 
     create_table :rights do |t| 
@@ -40,6 +40,10 @@ class Role < ActiveRecord::Base
   has_many :permission_groups, :dependent => :destroy
   has_many :rights, :through => :permission_groups
   has_many :role_assignments, :dependent => :destroy
+  
+  def has_right?(right)
+    rights.include? right
+  end
 end
 
 class PermissionGroup < ActiveRecord::Base
@@ -63,7 +67,7 @@ module HasManyThroughMethods
 
   def test_has_many_through
     admin_role    = Role.create( {:name => "Administrator", :description => "System defined super user - access to right and role management."} )
-    admin_role.save
+    admin_role.save!
 
     assert_equal(0, admin_role.rights.sum(:hours))
 
@@ -72,8 +76,18 @@ module HasManyThroughMethods
 
     admin_role.rights << role_rights
     admin_role.rights << right_rights
-    admin_role.save
+    admin_role.save!
 
     assert_equal(1.5, admin_role.rights.sum(:hours))
+    
+    rights_only_role = Role.create!(:name => "Rights Manager", :description => "access to rights management")
+    rights_only_role.rights << right_rights
+    rights_only_role.save!
+    rights_only_role.reload
+    
+    assert admin_role.has_right?(right_rights)
+    assert rights_only_role.has_right?(right_rights)
+    assert admin_role.reload.has_right?(role_rights)
+    assert ! rights_only_role.has_right?(role_rights)
   end
 end

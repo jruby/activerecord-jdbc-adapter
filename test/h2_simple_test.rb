@@ -38,3 +38,7 @@ class H2SchemaTest < Test::Unit::TestCase
     assert !Entry.all(:include => :user).empty?
   end
 end
+
+class H2HasManyThroughTest < Test::Unit::TestCase
+  include HasManyThroughMethods
+end
