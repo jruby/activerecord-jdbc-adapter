@@ -20,16 +20,16 @@ def set_compat_version(task)
   end
 end
 
-def all_appraisal_names
-  @appraisal_names ||= begin names = []; Appraisal::File.each { |file| names << file.name }; names end
-end
-
 def declare_test_task_for(adapter, options = {})
   driver = options[:driver] || adapter
   prereqs = options[:prereqs] || []
   prereqs = [ prereqs ].flatten
   task "test_#{adapter}_pre" do
-    puts "Specify AR version with 'rake appraisal:{version} test_#{adapter}' where version=(#{all_appraisal_names.join('|')})"
+    unless (ENV['BUNDLE_GEMFILE'] rescue '') =~ /gemfiles\/.*?\.gemfile/
+      appraisals = []; Appraisal::File.each { |file| appraisals << file.name }
+      puts "Specify AR version with `rake appraisal:{version} test_#{adapter}'" + 
+           " where version=(#{appraisals.join('|')})"
+    end
   end
   prereqs << "test_#{adapter}_pre"
   test_task = lambda do |t|
