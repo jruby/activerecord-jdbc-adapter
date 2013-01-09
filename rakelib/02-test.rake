@@ -67,8 +67,7 @@ Rake::TestTask.new(:test_jdbc) do |t|
   set_compat_version(t)
 end
 
-Rake::TestTask.new(:test_jndi) do |t|
-  Rake::Task['tomcat-jndi:check'].invoke
+Rake::TestTask.new(:test_jndi => 'tomcat-jndi:check') do |t|
   t.test_files = FileList['test/jndi_test.rb']
   t.libs << 'test' << 'jdbc-derby/lib'
   set_compat_version(t)
