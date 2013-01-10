@@ -274,6 +274,7 @@ module SimpleTestMethods
     found = DbType.find(:first, :conditions => "id = #{created.id}",
                           :select => 'sample_datetime AS custom_sample_datetime')
     assert_equal(my_time, found.custom_sample_datetime)
+    assert_instance_of(Time, found.custom_sample_datetime)
   end
 
   def test_custom_select_decimal_conversion
@@ -283,6 +284,17 @@ module SimpleTestMethods
     found = DbType.find(:first, :conditions => "id = #{created.id}",
                           :select => 'sample_small_decimal AS custom_sample_small_decimal')
     assert_equal(decimal, found.custom_sample_small_decimal)
+    assert_instance_of(BigDecimal, found.custom_sample_small_decimal)
+  end
+
+  def test_custom_select_float_conversion
+    float = 1.25
+    created = DbType.create! :sample_float => float
+
+    found = DbType.find(:first, :conditions => "id = #{created.id}",
+                          :select => 'sample_float AS custom_sample_float')
+    assert_equal(float, found.custom_sample_float)
+    assert_instance_of(Float, found.custom_sample_float)
   end
 
   def test_save_float

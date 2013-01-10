@@ -221,6 +221,33 @@ class SQLite3SimpleTest < Test::Unit::TestCase
     assert_equal 9, rating_column.precision
     assert_equal 7, rating_column.scale
   end
+
+  # @Override
+  # Reimplemented method from SimpleTestMethods - SQLite3 returns Float for
+  # columns created with decimal type.
+  def test_custom_select_decimal_conversion
+    decimal = BigDecimal.new('5.45')
+    created = DbType.create! :sample_small_decimal => decimal
+
+    found = DbType.find(:first, :conditions => "id = #{created.id}",
+                          :select => 'sample_small_decimal AS custom_sample_small_decimal')
+    assert_equal(5.45, found.custom_sample_small_decimal)
+    assert_instance_of(Float, found.custom_sample_small_decimal)
+  end
+
+  # @Override
+  # Reimplemented method from SimpleTestMethods - SQLite3 returns String for
+  # columns created with DATETIME type.
+  def test_custom_select_time_conversion
+    now = Time.now
+    my_time = Time.local now.year, now.month, now.day, now.hour, now.min, now.sec
+    created = DbType.create! :sample_datetime => my_time
+
+    found = DbType.find(:first, :conditions => "id = #{created.id}",
+                          :select => 'sample_datetime AS custom_sample_datetime')
+    assert_equal(my_time, found.custom_sample_datetime)
+    assert_instance_of(String, found.custom_sample_datetime)
+  end
 end
 
 # assert_raise ActiveRecord::RecordInvalid do
