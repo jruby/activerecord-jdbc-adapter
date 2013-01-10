@@ -245,7 +245,7 @@ class SQLite3SimpleTest < Test::Unit::TestCase
 
     found = DbType.find(:first, :conditions => "id = #{created.id}",
                           :select => 'sample_datetime AS custom_sample_datetime')
-    assert_equal(my_time, found.custom_sample_datetime)
+    assert_equal(my_time, found.custom_sample_datetime.to_time)
     assert_instance_of(String, found.custom_sample_datetime)
   end
 end
