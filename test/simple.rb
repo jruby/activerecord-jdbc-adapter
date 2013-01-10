@@ -200,13 +200,32 @@ module SimpleTestMethods
     def test_save_time_with_utc
       current_zone = Time.zone
       default_zone = ActiveRecord::Base.default_timezone
-      ActiveRecord::Base.default_timezone = Time.zone = :utc
+      Time.zone = 'UTC'
+      ActiveRecord::Base.default_timezone = :utc
+      ActiveRecord::Base.clear_all_connections!
+
       now = Time.now
       my_time = Time.local now.year, now.month, now.day, now.hour, now.min, now.sec
       m = DbType.create! :sample_datetime => my_time
       m.reload
       assert_equal my_time, m.sample_datetime
-    rescue
+    ensure
+      Time.zone = current_zone
+      ActiveRecord::Base.default_timezone = default_zone
+    end
+
+    def test_save_time_with_local
+      current_zone = Time.zone
+      default_zone = ActiveRecord::Base.default_timezone
+      ActiveRecord::Base.default_timezone = :local
+      ActiveRecord::Base.clear_all_connections!
+
+      now = Time.now
+      my_time = Time.local now.year, now.month, now.day, now.hour, now.min, now.sec
+      m = DbType.create! :sample_datetime => my_time
+      m.reload
+      assert_equal my_time, m.sample_datetime
+    ensure
       Time.zone = current_zone
       ActiveRecord::Base.default_timezone = default_zone
     end
@@ -245,6 +264,37 @@ module SimpleTestMethods
       e = DbType.find(:first)
       assert_equal time, e.sample_datetime
     end
+  end
+
+  def test_custom_select_time_conversion
+    now = Time.now
+    my_time = Time.local now.year, now.month, now.day, now.hour, now.min, now.sec
+    created = DbType.create! :sample_datetime => my_time
+
+    found = DbType.find(:first, :conditions => "id = #{created.id}",
+                          :select => 'sample_datetime AS custom_sample_datetime')
+    assert_equal(my_time, found.custom_sample_datetime)
+    assert_instance_of(Time, found.custom_sample_datetime)
+  end
+
+  def test_custom_select_decimal_conversion
+    decimal = BigDecimal.new('5.45')
+    created = DbType.create! :sample_small_decimal => decimal
+
+    found = DbType.find(:first, :conditions => "id = #{created.id}",
+                          :select => 'sample_small_decimal AS custom_sample_small_decimal')
+    assert_equal(decimal, found.custom_sample_small_decimal)
+    assert_instance_of(BigDecimal, found.custom_sample_small_decimal)
+  end
+
+  def test_custom_select_float_conversion
+    float = 1.25
+    created = DbType.create! :sample_float => float
+
+    found = DbType.find(:first, :conditions => "id = #{created.id}",
+                          :select => 'sample_float AS custom_sample_float')
+    assert_equal(float, found.custom_sample_float)
+    assert_instance_of(Float, found.custom_sample_float)
   end
 
   def test_save_float

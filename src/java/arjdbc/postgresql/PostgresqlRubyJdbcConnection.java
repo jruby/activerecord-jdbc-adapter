@@ -33,6 +33,7 @@ import java.sql.Types;
 
 import org.jruby.Ruby;
 import org.jruby.RubyClass;
+import org.jruby.RubyFloat;
 import org.jruby.runtime.ObjectAllocator;
 import org.jruby.runtime.builtin.IRubyObject;
 
@@ -63,12 +64,14 @@ public class PostgresqlRubyJdbcConnection extends RubyJdbcConnection {
                                      ResultSet resultSet)
         throws SQLException {
         if(type == Types.TIMESTAMP) {
-            try {
-                return stringToRuby(runtime, resultSet, 
-                                    resultSet.getString(column));
-            } catch(java.io.IOException ioe) {
-                SQLException ex = new SQLException(ioe.getMessage());
-                throw (SQLException) ex.initCause(ioe);
+            String stringValue = resultSet.getString(column);
+
+            if (stringValue != null && stringValue.equals("infinity")) {
+                return runtime.newFloat(RubyFloat.INFINITY);
+            } else if (stringValue != null && stringValue.equals("-infinity")) {
+                return runtime.newFloat(-RubyFloat.INFINITY);
+            } else {
+                return timestampToRuby(runtime, resultSet, resultSet.getTimestamp(column));
             }
         }
         return super.jdbcToRuby(runtime, column, type, resultSet);
