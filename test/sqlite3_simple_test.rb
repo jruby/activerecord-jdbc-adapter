@@ -244,7 +244,7 @@ class SQLite3SimpleTest < Test::Unit::TestCase
       "SELECT * FROM entries JOIN users on entries.user_id = users.id WHERE entries.rating > ?", binds
     )
     puts "\n"; puts pp if print
-  end
+  end if ar_version("3.1")
   
 end
 
