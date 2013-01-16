@@ -240,7 +240,7 @@ module SimpleTestMethods
 
   def test_save_time
     # Ruby doesn't have a plain Time class without a date.
-    time = Time.new(2012, 12, 18, 21, 10, 15, "00:00")
+    time = Time.utc(2012, 12, 18, 21, 10, 15, 0)
     e = DbType.first
     e.sample_time = time
     e.save!
@@ -251,7 +251,7 @@ module SimpleTestMethods
   end
   
   def test_save_timestamp
-    timestamp = Time.new(2012, 12, 18, 21, 10, 15, "00:00")
+    timestamp = Time.utc(2012, 12, 18, 21, 10, 15, 0)
     e = DbType.first
     e.sample_timestamp = timestamp
     e.save!
