@@ -7,5 +7,5 @@ gem "appraisal"
 gem "rake", :require=>nil
 gem "test-unit", :group=>:test
 gem "mocha", :require=>nil, :group=>:test
-gem "activerecord", "~> 3.0.17"
+gem "activerecord", "~> 3.0.19"
 
