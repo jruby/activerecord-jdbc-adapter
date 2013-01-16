@@ -53,8 +53,12 @@ class GenericJdbcConnectionTest < Test::Unit::TestCase
       include Java::JavaSql::Driver
       
       def connect(url, info)
-        reason = "#{url} connect with #{info.inspect} failed"
-        raise Java::JavaSql::SQLException.new(reason, '42000', 1042)
+        if url =~ /invalid_authorization_spec/i
+          raise Java::JavaSql::SQLInvalidAuthorizationSpecException.new
+        else
+          reason = "#{url} connect with #{info.inspect} failed"
+          raise Java::JavaSql::SQLException.new(reason, '42000', 1042)
+        end
       end
       
     end
@@ -72,9 +76,26 @@ class GenericJdbcConnectionTest < Test::Unit::TestCase
       ActiveRecord::Base.connection.jdbc_connection
       fail "jdbc error not thrown"
     rescue  ActiveRecord::JDBCError => e
-      assert_match /connect with {"user"=>"arjdbc", "password"=>"arjdbc"} failed/, e.message
+      assert_match /connect with {"user"=>"arjdbc", "password"=>"arjdbc"} failed/, e.to_s
       assert_equal 1042, e.errno
       assert_kind_of Java::JavaSql::SQLException, e.sql_exception
+    ensure
+      ActiveRecord::Base.establish_connection JDBC_CONFIG
+    end
+  end
+
+  test 'driver sql exceptions without message and sql state' do
+    config = JDBC_CONFIG.dup
+    config[:url] = 'jdbc:mysql://127.0.0.1:1234/invalid_authorization_spec'
+    config[:driver_instance] = MockDriver.new('MockDriver')
+    ActiveRecord::Base.remove_connection
+    begin
+      ActiveRecord::Base.establish_connection config
+      ActiveRecord::Base.connection.jdbc_connection
+      fail "jdbc error not thrown"
+    rescue  ActiveRecord::JDBCError => e
+      assert_match /driver encountered an unknown error: java.sql.SQLInvalidAuthorizationSpecException/, e.to_s
+      assert_kind_of Java::JavaSql::SQLNonTransientException, e.sql_exception
     ensure
       ActiveRecord::Base.establish_connection JDBC_CONFIG
     end

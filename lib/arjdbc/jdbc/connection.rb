@@ -87,6 +87,7 @@ module ActiveRecord
         raise
       rescue Java::JavaSql::SQLException => e
         error = e.getMessage || e.getSQLState
+        error = error ? "#{e.java_class.name}: #{error}" : e.java_class.name
         error = ::ActiveRecord::JDBCError.new("The driver encountered an unknown error: #{error}")
         error.errno = e.getErrorCode
         error.sql_exception = e
