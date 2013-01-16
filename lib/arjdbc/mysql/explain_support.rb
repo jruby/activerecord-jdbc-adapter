@@ -1,36 +1,36 @@
 module ::ArJdbc
   module MySQL
     module ExplainSupport
-      ## EXPLAIN support lifted from the mysql2 gem with slight modifications
-      ## to work in the JDBC adapter gem.
       def supports_explain?
         true
       end
 
       def explain(arel, binds = [])
-        sql     = "EXPLAIN #{to_sql(arel, binds.dup)}"
-        start   = Time.now.to_f
-        raw_result  = execute(sql, "EXPLAIN") # TODO refactor to exec_query
-        ar_result = ActiveRecord::Result.new(raw_result[0].keys, raw_result)
+        sql = "EXPLAIN #{to_sql(arel, binds)}"
+        start = Time.now.to_f
+        raw_result = execute(sql, "EXPLAIN", binds)
         elapsed = Time.now.to_f - start
-        ExplainPrettyPrinter.new.pp(ar_result, elapsed)
+        # TODO we should refactor to exce_query once it returns Result ASAP :
+        keys = raw_result[0] ? raw_result[0].keys : {}
+        rows = raw_result.map { |hash| hash.values }
+        ExplainPrettyPrinter.new.pp ActiveRecord::Result.new(keys, rows), elapsed
       end
 
       class ExplainPrettyPrinter # :nodoc:
         # Pretty prints the result of a EXPLAIN in a way that resembles the output of the
         # MySQL shell:
         #
-        #   +----+-------------+-------+-------+---------------+---------+---------+-------+------+-------------+
-        #   | id | select_type | table | type  | possible_keys | key     | key_len | ref   | rows | Extra       |
-        #   +----+-------------+-------+-------+---------------+---------+---------+-------+------+-------------+
-        #   |  1 | SIMPLE      | users | const | PRIMARY       | PRIMARY | 4       | const |    1 |             |
-        #   |  1 | SIMPLE      | posts | ALL   | NULL          | NULL    | NULL    | NULL  |    1 | Using where |
-        #   +----+-------------+-------+-------+---------------+---------+---------+-------+------+-------------+
-        #   2 rows in set (0.00 sec)
+        # +----+-------------+-------+-------+---------------+---------+---------+-------+------+-------------+
+        # | id | select_type | table | type | possible_keys | key | key_len | ref | rows | Extra |
+        # +----+-------------+-------+-------+---------------+---------+---------+-------+------+-------------+
+        # | 1 | SIMPLE | users | const | PRIMARY | PRIMARY | 4 | const | 1 | |
+        # | 1 | SIMPLE | posts | ALL | NULL | NULL | NULL | NULL | 1 | Using where |
+        # +----+-------------+-------+-------+---------------+---------+---------+-------+------+-------------+
+        # 2 rows in set (0.00 sec)
         #
         # This is an exercise in Ruby hyperrealism :).
         def pp(result, elapsed)
-          widths    = compute_column_widths(result)
+          widths = compute_column_widths(result)
           separator = build_separator(widths)
 
           pp = []
@@ -40,7 +40,7 @@ module ::ArJdbc
           pp << separator
 
           result.rows.each do |row|
-            pp << build_cells(row.values, widths)
+            pp << build_cells(row, widths)
           end
 
           pp << separator
@@ -53,12 +53,11 @@ module ::ArJdbc
 
         def compute_column_widths(result)
           [].tap do |widths|
-            result.columns.each do |col|
-              cells_in_column = [col] + result.rows.map {|r| r[col].nil? ? 'NULL' : r[col].to_s}
+            result.columns.each_with_index do |column, i|
+              cells_in_column = [column] + result.rows.map {|r| r[i].nil? ? 'NULL' : r[i].to_s}
               widths << cells_in_column.map(&:length).max
             end
           end
-
         end
 
         def build_separator(widths)

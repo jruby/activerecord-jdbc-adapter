@@ -108,10 +108,17 @@ class PostgresSimpleTest < Test::Unit::TestCase
     Entry.create :title => 'title_3', :content => 'content', :rating => 0, :user_id => user_1.id
     Entry.create :title => 'title_4', :content => 'content', :rating => 0, :user_id => user_1.id
     
+    print = false
     pp = ActiveRecord::Base.connection.explain(
       "SELECT * FROM entries JOIN users on entries.user_id = users.id WHERE entries.rating > 0"
     )
-    #puts "\n"; puts pp
+    puts "\n"; puts pp if print
+    
+    binds = [ [ Entry.columns.find { |col| col.name.to_s == 'rating' }, 0 ] ] 
+    pp = ActiveRecord::Base.connection.explain(
+      "SELECT * FROM entries JOIN users on entries.user_id = users.id WHERE entries.rating > ?", binds
+    )
+    puts "\n"; puts pp if print
   end
   
 end
