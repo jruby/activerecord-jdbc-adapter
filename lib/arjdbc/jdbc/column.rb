@@ -17,22 +17,28 @@ module ActiveRecord
       end
 
       def self.column_types
-        # GH #25: reset the column types if the # of constants changed
-        # since last call
-        if ::ArJdbc.constants.size != driver_constants.size
-          @driver_constants = nil
-          @column_types = nil
+        # reset the column types if the # of constants changed since last call
+        @column_types ||= begin 
+          types = driver_constants.select { |c| c.respond_to? :column_selector }
+          types.map! { |c| c.column_selector }
+          types.inject({}) { |h, val| h[ val[0] ] = val[1]; h }
         end
-        @column_types ||= driver_constants.select {|c|
-          c.respond_to? :column_selector }.map {|c|
-          c.column_selector }.inject({}) {|h,val|
-          h[val[0]] = val[1]; h }
       end
 
       def self.driver_constants
-        @driver_constants ||= ::ArJdbc.constants.map {|c| ::ArJdbc.const_get c }
+        reset_constants
+        @driver_constants ||= ::ArJdbc.constants.map { |c| ::ArJdbc.const_get c }
       end
 
+      def self.reset_constants!
+        @driver_constants = nil; @column_types = nil
+      end
+      
+      def self.reset_constants
+        return unless @driver_constants
+        reset_constants! if ::ArJdbc.constants.size != @driver_constants.size
+      end
+      
       protected
       def call_discovered_column_callbacks(config)
         dialect = config[:dialect] || config[:driver]
