@@ -1,4 +1,5 @@
 require 'arjdbc/jdbc/missing_functionality_helper'
+require 'arjdbc/sqlite3/explain_support'
 
 module ::ArJdbc
   module SQLite3
@@ -354,6 +355,7 @@ module ActiveRecord::ConnectionAdapters
 
   class SQLite3Adapter < JdbcAdapter
     include ArJdbc::SQLite3
+    include ArJdbc::SQLite3::ExplainSupport
 
     def jdbc_connection_class(spec)
       ::ArJdbc::SQLite3.jdbc_connection_class
