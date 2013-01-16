@@ -284,7 +284,7 @@ module ArJdbc
         if column && column.type == :binary
           "BLOB('#{quote_string(value)}')"
         else
-          if zos? && column.type == :text
+          if zos? && column && column.type == :text
             "'if_you_see_this_value_the_after_save_hook_in_db2_zos_adapter_went_wrong'"
           else
             "'#{quote_string(value)}'"
