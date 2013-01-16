@@ -161,8 +161,8 @@ module SimpleTestMethods
   end
 
   def test_create_partial_new_entry
-    new_entry = Entry.create(:title => "Blah")
-    new_entry2 = Entry.create(:title => "Bloh")
+    Entry.create(:title => "Blah")
+    Entry.create(:title => "Bloh")
   end
 
   def test_find_and_update_entry
@@ -195,8 +195,9 @@ module SimpleTestMethods
       assert_equal Entry.count, Entry.limit(10).count
     end
   end
-
+  
   if Time.respond_to?(:zone)
+    
     def test_save_time_with_utc
       current_zone = Time.zone
       default_zone = ActiveRecord::Base.default_timezone
@@ -211,15 +212,16 @@ module SimpleTestMethods
       ActiveRecord::Base.default_timezone = default_zone
     end
 
-    def test_save_time
+    def test_save_time_with_zone
       t = Time.now
       #precision will only be expected to the second.
-      time = Time.local(t.year, t.month, t.day, t.hour, t.min, t.sec)
+      original_time = Time.local(t.year, t.month, t.day, t.hour, t.min, t.sec)
+      time = original_time.in_time_zone
       e = DbType.find(:first)
       e.sample_datetime = time
       e.save!
       e = DbType.find(:first)
-      assert_equal time.in_time_zone, e.sample_datetime
+      assert_equal time, e.sample_datetime
     end
 
     def test_save_date_time
@@ -233,29 +235,30 @@ module SimpleTestMethods
       e = DbType.find(:first)
       assert_equal time, e.sample_datetime.localtime
     end
+    
+  end
 
-    def test_save_time_with_zone
-      t = Time.now
-      #precision will only be expected to the second.
-      original_time = Time.local(t.year, t.month, t.day, t.hour, t.min, t.sec)
-      time = original_time.in_time_zone
-      e = DbType.find(:first)
-      e.sample_datetime = time
-      e.save!
-      e = DbType.find(:first)
-      assert_equal time, e.sample_datetime
+  def test_save_time
+    # Ruby doesn't have a plain Time class without a date.
+    time = Time.new(2012, 12, 18, 21, 10, 15, "00:00")
+    e = DbType.first
+    e.sample_time = time
+    e.save!
+    e = DbType.first
+    [:hour, :min, :sec].each do |method|
+      assert_equal time.send(method), e.sample_time.send(method)
     end
   end
-
-  def test_save_float
-    e = DbType.find(:first)
-    e.sample_float = 12.0
+  
+  def test_save_timestamp
+    timestamp = Time.new(2012, 12, 18, 21, 10, 15, "00:00")
+    e = DbType.first
+    e.sample_timestamp = timestamp
     e.save!
-
-    e = DbType.find(:first)
-    assert_equal(12.0, e.sample_float)
+    e = DbType.first
+    assert_equal timestamp, e.sample_timestamp
   end
-
+  
   def test_save_date
     date = Date.new(2007)
     e = DbType.find(:first)
@@ -268,6 +271,15 @@ module SimpleTestMethods
     else
       assert_equal date, e.sample_date
     end
+  end
+  
+  def test_save_float
+    e = DbType.find(:first)
+    e.sample_float = 12.0
+    e.save!
+
+    e = DbType.find(:first)
+    assert_equal(12.0, e.sample_float)
   end
 
   def test_boolean

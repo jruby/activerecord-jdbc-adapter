@@ -77,6 +77,12 @@ module ::ArJdbc
         else
           "'#{quote_string(value)}'"
         end
+      when Time
+        if column && column.type == :time
+          "'#{value.strftime("%H:%M:%S")}'"
+        else
+          super
+        end
       else
         super
       end
