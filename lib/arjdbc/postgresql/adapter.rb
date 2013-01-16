@@ -926,6 +926,7 @@ module ActiveRecord::ConnectionAdapters
 
   class PostgreSQLAdapter < JdbcAdapter
     include ArJdbc::PostgreSQL
+    include ArJdbc::ExplainSupport
 
     def initialize(*args)
       super
