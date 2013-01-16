@@ -96,6 +96,24 @@ class PostgresSimpleTest < Test::Unit::TestCase
     assert_equal "'\\\\m it''s \\\\M'", @connection.quote(s)
     @connection.standard_conforming_strings = true
   end
+  
+  def test_explain_works
+    assert ActiveRecord::Base.connection.supports_explain?
+    
+    user_1 = User.create :login => 'user_1'
+    user_2 = User.create :login => 'user_2'
+
+    Entry.create :title => 'title_1', :content => 'content_1', :rating => 1, :user_id => user_1.id
+    Entry.create :title => 'title_2', :content => 'content_2', :rating => 2, :user_id => user_2.id
+    Entry.create :title => 'title_3', :content => 'content', :rating => 0, :user_id => user_1.id
+    Entry.create :title => 'title_4', :content => 'content', :rating => 0, :user_id => user_1.id
+    
+    pp = ActiveRecord::Base.connection.explain(
+      "SELECT * FROM entries JOIN users on entries.user_id = users.id WHERE entries.rating > 0"
+    )
+    #puts "\n"; puts pp
+  end
+  
 end
 
 class PostgresTimestampTest < Test::Unit::TestCase
