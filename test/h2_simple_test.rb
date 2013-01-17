@@ -2,6 +2,7 @@ require 'jdbc_common'
 
 class H2SimpleTest < Test::Unit::TestCase
   include SimpleTestMethods
+  include ExplainSupportTestMethods if ar_version("3.1")
 end
 
 class H2SchemaTest < Test::Unit::TestCase

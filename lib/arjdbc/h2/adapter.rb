@@ -35,6 +35,16 @@ module ArJdbc
       change_column_null(table_name, column_name, options[:null], options[:default]) if options.key?(:null)
     end
 
+    # EXPLAIN support :
+    
+    def supports_explain?; true; end
+
+    def explain(arel, binds = [])
+      sql = "EXPLAIN #{to_sql(arel, binds)}"
+      raw_result  = execute(sql, "EXPLAIN", binds)
+      raw_result[0].values.join("\n") # [ "SELECT \n ..." ].to_s
+    end
+    
     private
     def change_column_null(table_name, column_name, null, default = nil)
       if !null && !default.nil?

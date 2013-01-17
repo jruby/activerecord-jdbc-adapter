@@ -1,5 +1,9 @@
+require 'arjdbc/hsqldb/explain_support'
+
 module ::ArJdbc
   module HSQLDB
+    include ExplainSupport
+    
     def self.column_selector
       [/hsqldb|\.h2\./i, lambda {|cfg,col| col.extend(::ArJdbc::HSQLDB::Column)}]
     end
