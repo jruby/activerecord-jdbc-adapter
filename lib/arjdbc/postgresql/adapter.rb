@@ -500,7 +500,7 @@ module ::ArJdbc
     def create_database(name, options = {})
       options = options.with_indifferent_access
       create_query = "CREATE DATABASE \"#{name}\" ENCODING='#{options[:encoding] || 'utf8'}'"
-      create_query += options.symbolize_keys.sum do |key, value|
+      create_query += options.symbolize_keys.sum('') do |key, value|
         case key
           when :owner
             " OWNER = \"#{value}\""
