@@ -232,7 +232,7 @@ class SQLite3HasManyThroughTest < Test::Unit::TestCase
   include HasManyThroughMethods
 end
 
-if jruby?
+if defined?(JRUBY_VERSION)
   JInteger = java.lang.Integer
 else
   JInteger = Fixnum

@@ -428,9 +428,9 @@ module SimpleTestMethods
     assert_equal 1, Entry.count
   end
 
-  if jruby?
+  if defined?(JRUBY_VERSION)
     def test_connection_valid
-      assert_raises(ActiveRecord::JDBCError) do
+      assert_raise(ActiveRecord::JDBCError) do
         @connection.raw_connection.with_connection_retry_guard do |c|
           begin
             stmt = c.createStatement
@@ -445,7 +445,7 @@ module SimpleTestMethods
     class Animal < ActiveRecord::Base; end
 
     def test_fetching_columns_for_nonexistent_table_should_raise
-      assert_raises(ActiveRecord::ActiveRecordError,
+      assert_raise(ActiveRecord::ActiveRecordError,
                     ActiveRecord::StatementInvalid, ActiveRecord::JDBCError) do
         Animal.columns
       end
