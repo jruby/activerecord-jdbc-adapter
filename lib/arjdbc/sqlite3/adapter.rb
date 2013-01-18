@@ -377,6 +377,10 @@ module ActiveRecord::ConnectionAdapters
   SQLiteAdapter = SQLite3Adapter
 end
 
+# Don't need to load native sqlite3 adapter
+$LOADED_FEATURES << 'active_record/connection_adapters/sqlite_adapter.rb'
+$LOADED_FEATURES << 'active_record/connection_adapters/sqlite3_adapter.rb'
+
 # Fake out sqlite3/version driver for AR tests
 $LOADED_FEATURES << 'sqlite3/version.rb'
 module SQLite3

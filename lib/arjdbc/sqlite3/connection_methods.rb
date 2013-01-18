@@ -1,7 +1,3 @@
-# Don't need to load native sqlite3 adapter
-$LOADED_FEATURES << "active_record/connection_adapters/sqlite_adapter.rb"
-$LOADED_FEATURES << "active_record/connection_adapters/sqlite3_adapter.rb"
-
 class ActiveRecord::Base
   class << self
     def sqlite3_connection(config)

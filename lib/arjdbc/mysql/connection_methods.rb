@@ -1,7 +1,3 @@
-# Don't need to load native mysql adapter
-$LOADED_FEATURES << "active_record/connection_adapters/mysql_adapter.rb"
-$LOADED_FEATURES << "active_record/connection_adapters/mysql2_adapter.rb"
-
 class ActiveRecord::Base
   class << self
     def mysql_connection(config)

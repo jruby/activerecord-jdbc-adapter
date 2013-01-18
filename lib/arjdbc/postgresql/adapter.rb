@@ -958,3 +958,6 @@ module ActiveRecord::ConnectionAdapters
     alias_chained_method :columns, :query_cache, :pg_columns
   end
 end
+
+# Don't need to load native postgres adapter
+$LOADED_FEATURES << 'active_record/connection_adapters/postgresql_adapter.rb'
