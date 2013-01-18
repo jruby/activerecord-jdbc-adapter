@@ -9,7 +9,7 @@ class ActiveRecord::Base
           "jdbc:db2:#{config[:database]}"
         end
       end
-      config[:driver] ||= 'com.ibm.db2.jcc.DB2Driver'
+      config[:driver] ||= ::ArJdbc::DB2::DRIVER_NAME
       config[:adapter_spec] = ::ArJdbc::DB2
       jdbc_connection(config)
     end
