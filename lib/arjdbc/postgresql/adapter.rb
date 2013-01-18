@@ -1,9 +1,5 @@
 require 'arjdbc/postgresql/explain_support'
 
-module ActiveRecord::ConnectionAdapters
-  PostgreSQLAdapter = Class.new(AbstractAdapter) unless const_defined?(:PostgreSQLAdapter)
-end
-
 module ::ArJdbc
   module PostgreSQL
     def self.extended(mod)
