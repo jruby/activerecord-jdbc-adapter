@@ -1,8 +1,8 @@
 module ArJdbc
   module DB2
     def self.extended(base)
-      if base.zos?
-        unless @lob_callback_added
+      if base.send(:zos?)
+        unless @_lob_callback_added
           ActiveRecord::Base.class_eval do
             def after_save_with_db2zos_blob
               lobfields = self.class.columns.select { |c| c.sql_type =~ /blob|clob/i }
@@ -18,17 +18,14 @@ module ArJdbc
               end
             end
           end
-
           ActiveRecord::Base.after_save :after_save_with_db2zos_blob
-
-          @lob_callback_added = true
+          @_lob_callback_added = true
         end
       end
     end
 
     def self.column_selector
-      [ /(db2|as400|zos)/i,
-        lambda { |cfg, column| column.extend(::ArJdbc::DB2::Column) } ]
+      [ /(db2|as400|zos)/i, lambda { |cfg, column| column.extend(::ArJdbc::DB2::Column) } ]
     end
 
     def self.jdbc_connection_class
@@ -42,10 +39,6 @@ module ArJdbc
 
     def native_database_types
       super.merge(NATIVE_DATABASE_TYPES)
-    end
-
-    def explain(query, *binds)
-      # TODO: Explain this!
     end
 
     def prefetch_primary_key?(table_name = nil)
@@ -527,16 +520,9 @@ module ArJdbc
       end
       definition
     end
-
-    def zos?
-      @config[:url] =~ /^jdbc:db2j:net:/ && @config[:driver] == "com.ibm.db2.jcc.DB2Driver"
-    end
-
+    
     private
-    def as400?
-      @config[:url] =~ /^jdbc:as400:/
-    end
-
+    
     def db2_schema
       if @config[:schema].blank?
         if as400?
@@ -556,5 +542,14 @@ module ArJdbc
         @config[:schema]
       end
     end
+    
+    def zos?
+      @config[:url] =~ /^jdbc:db2j:net:/ && @config[:driver] == "com.ibm.db2.jcc.DB2Driver"
+    end
+    
+    def as400?
+      @config[:url] =~ /^jdbc:as400:/
+    end
+
   end
 end
