@@ -527,8 +527,8 @@ module ArJdbc
       if @config[:schema].blank?
         if as400?
           # AS400 implementation takes schema from library name (last part of url)
+          url = @config[:url].split(';').first.strip
           schema = @config[:url].split('/').last.strip
-          (schema[-1..-1] == ";") ? schema.chop : schema
         elsif @config[:username].present?
           # LUW implementation uses schema name of username by default
           @config[:username]
