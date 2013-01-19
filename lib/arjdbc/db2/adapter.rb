@@ -404,8 +404,7 @@ module ArJdbc
       @connection.tables(nil, db2_schema, nil, ["TABLE"])
     end
 
-    # only record precision and scale for types that can set
-    # them via CREATE TABLE:
+    # only record precision and scale for types that can set them via CREATE TABLE:
     # http://publib.boulder.ibm.com/infocenter/db2luw/v9r7/topic/com.ibm.db2.luw.sql.ref.doc/doc/r0000927.html
     HAVE_LIMIT = %w(FLOAT DECFLOAT CHAR VARCHAR CLOB BLOB NCHAR NCLOB DBCLOB GRAPHIC VARGRAPHIC) #TIMESTAMP
     HAVE_PRECISION = %w(DECIMAL NUMERIC)
@@ -455,9 +454,9 @@ module ArJdbc
     end
 
     def structure_dump #:nodoc:
-      definition=""
       schema_name = db2_schema.upcase if db2_schema.present?
-      rs = @connection.connection.meta_data.getTables(nil,schema_name,nil,["TABLE"].to_java(:string))
+      rs = @connection.connection.meta_data.getTables(nil, schema_name, nil, ["TABLE"].to_java(:string))
+      definition = ''
       while rs.next
         tname = rs.getString(3)
         definition << "CREATE TABLE #{tname} (\n"
@@ -523,39 +522,44 @@ module ArJdbc
     
     DRIVER_NAME = 'com.ibm.db2.jcc.DB2Driver'.freeze
     
-    private
-    
-    def db2_schema
-      return @config[:schema] unless @config[:schema].blank?
-      if @config[:jndi].present?
-        nil # let JNDI worry about schema
-      elsif as400?
-        # AS400 implementation takes schema from library name (last part of URL)
-        # jdbc:as400://localhost/schema;naming=system;libraries=lib1,lib2
-        @config[:url].split('/').last.split(';').first.strip
-      elsif @config[:username].present?
-        # LUW implementation uses schema name of username by default
-        @config[:username]
-      else
-        ENV['USER']
-      end
-    end
-    
     def zos?
-      if url = @config[:url]
-        url =~ /^jdbc:db2j:net:/ && @config[:driver] == DRIVER_NAME
-      else
-        nil
-      end
+      return @zos unless @zos.nil?
+      @zos = 
+        if url = @config[:url]
+          !!( url =~ /^jdbc:db2j:net:/ && @config[:driver] == DRIVER_NAME )
+        else
+          nil
+        end
     end
     
     def as400?
-      if url = @config[:url]
-        url =~ /^jdbc:as400:/
-      else
-        nil
-      end
+      return @as400 unless @as400.nil?
+      @as400 = 
+        if url = @config[:url]
+          !!( url =~ /^jdbc:as400:/ )
+        else
+          nil
+        end
     end
 
+    private
+    
+    def db2_schema
+      return @db2_schema unless @db2_schema.nil?
+      @db2_schema = 
+        if @config[:schema].present?
+          @config[:schema]
+        elsif @config[:jndi].present?
+          nil # let JNDI worry about schema
+        elsif as400?
+          # AS400 implementation takes schema from library name (last part of URL)
+          # jdbc:as400://localhost/schema;naming=system;libraries=lib1,lib2
+          @config[:url].split('/').last.split(';').first.strip
+        else
+          # LUW implementation uses schema name of username by default
+          @config[:username].presence || ENV['USER']
+        end
+    end
+    
   end
 end
