@@ -35,6 +35,22 @@ class PostgresSimpleTest < Test::Unit::TestCase
     assert_equal ["login"], results[1].first.keys
   end
 
+  def test_find_by_sql_WITH_statement
+    user = User.create! :login => 'ferko'
+    Entry.create! :title => 'aaa', :user_id => user.id
+    entries = Entry.find_by_sql '' + 
+      'WITH EntryAndUser (title, login, updated_on) AS ' +
+      '(' +
+      ' SELECT e.title, u.login, e.updated_on ' + 
+      ' FROM entries e INNER JOIN users u ON e.user_id = u.id ' +
+      ')' +
+      ' ' +
+      'SELECT * FROM EntryAndUser ORDER BY title ASC'
+    assert entries.first
+    assert entries.first.title
+    assert entries.first.login
+  end
+  
   def test_create_xml_column
     return unless PG_VERSION >= 80300
     assert_nothing_raised do

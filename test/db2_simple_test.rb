@@ -37,6 +37,23 @@ class DB2SimpleTest < Test::Unit::TestCase
     assert_equal false, e.sample_boolean
     assert_equal false, e.sample_boolean?
   end
+  
+  def test_find_by_sql_WITH_statement
+    user = User.create! :login => 'ferko'
+    Entry.create! :title => 'aaa', :user_id => user.id
+    entries = Entry.find_by_sql '' + 
+      'WITH EntryAndUser (title, login, updated_on) AS ' +
+      '(' +
+      ' SELECT e.title, u.login, e.updated_on ' + 
+      ' FROM entries e INNER JOIN users u ON e.user_id = u.id ' +
+      ')' +
+      ' ' +
+      'SELECT * FROM EntryAndUser ORDER BY title ASC'
+    assert entries.first
+    assert entries.first.title
+    assert entries.first.login
+  end
+  
 end
 
 class DB2HasManyThroughTest < Test::Unit::TestCase
