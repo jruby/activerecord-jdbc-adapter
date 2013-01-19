@@ -15,7 +15,17 @@ task :build => :jar
 task :install => :jar
 
 ADAPTERS = %w[derby h2 hsqldb mssql mysql postgresql sqlite3].map {|a| "activerecord-jdbc#{a}-adapter" }
-DRIVERS  = %w[derby h2 hsqldb jtds mysql postgres sqlite3].map {|a| "jdbc-#{a}" }
+DRIVERS  = %w[derby h2 hsqldb mysql postgres sqlite3].map {|a| "jdbc-#{a}" }
+
+# Only include jtds driver if compiling on Java 7
+begin
+  java_version = Java::JavaLang::System.get_property( "java.specification.version" )
+  java_version = java_version.split( '.' ).map { |v| v.to_i }
+  if ( ( java_version <=> [ 1, 7 ] ) >= 0 )
+    DRIVERS << "jdbc-jtds"
+  end
+end
+
 TARGETS = (ADAPTERS+DRIVERS)
 
 def rake(*args)
