@@ -1,9 +1,9 @@
 module Jdbc
   module HSQLDB
-    VERSION = "2.2.9"
+    VERSION = "2.2.9.1"
 
     def self.driver_jar
-      "hsqldb-#{VERSION}.jar"
+      "hsqldb-#{VERSION.split('.')[0..2].join('.')}.jar"
     end
 
     def self.load_driver(method = :load)

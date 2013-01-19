@@ -1,9 +1,9 @@
 module Jdbc
   module Postgres
-    VERSION = "9.2.1002"
+    VERSION = "9.2.1002.1"
 
     def self.driver_jar
-      version_jdbc_version = VERSION.split( '.' )
+      version_jdbc_version = VERSION.split( '.' )[0..2]
       version_jdbc_version << jdbc_version
       'postgresql-%s.%s-%s.jdbc%d.jar' % version_jdbc_version
     end

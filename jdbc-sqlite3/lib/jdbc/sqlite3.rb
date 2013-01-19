@@ -1,9 +1,9 @@
 module Jdbc
   module SQLite3
-    VERSION = "3.7.2"
+    VERSION = "3.7.2.1"
 
     def self.driver_jar
-      "sqlite-jdbc-#{VERSION}.jar"
+      "sqlite-jdbc-#{VERSION.split('.')[0..2].join('.')}.jar"
     end
 
     def self.load_driver(method = :load)

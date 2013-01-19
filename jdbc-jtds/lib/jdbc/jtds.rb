@@ -1,9 +1,9 @@
 module Jdbc
   module JTDS
-    VERSION = "1.3.0"
+    VERSION = "1.3.0.1"
 
     def self.driver_jar
-      "jtds-#{VERSION}.jar"
+      "jtds-#{VERSION.split('.')[0..2].join('.')}.jar"
     end
 
     def self.load_driver(method = :load)

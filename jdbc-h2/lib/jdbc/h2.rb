@@ -1,9 +1,9 @@
 module Jdbc
   module H2
-    VERSION = "1.3.170"
+    VERSION = "1.3.170.1"
 
     def self.driver_jar
-      "h2-#{VERSION}.jar"
+      "h2-#{VERSION.split('.')[0..2].join('.')}.jar"
     end
 
     def self.load_driver(method = :load)

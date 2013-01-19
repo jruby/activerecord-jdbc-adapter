@@ -1,9 +1,9 @@
 module Jdbc
   module Derby
-    VERSION = "10.8.3.0"
+    VERSION = "10.8.3.0.1"
 
     def self.driver_jar
-      "derby-#{VERSION}.jar"
+      "derby-#{VERSION.split('.')[0..3].join('.')}.jar"
     end
 
     def self.load_driver(method = :load)

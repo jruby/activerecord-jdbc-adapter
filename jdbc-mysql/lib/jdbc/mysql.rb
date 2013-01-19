@@ -1,9 +1,9 @@
 module Jdbc
   module MySQL
-    VERSION = "5.1.22"
+    VERSION = "5.1.22.1"
 
     def self.driver_jar
-      "mysql-connector-java-#{VERSION}.jar"
+      "mysql-connector-java-#{VERSION.split('.')[0..2].join('.')}.jar"
     end
 
     def self.load_driver(method = :load)
