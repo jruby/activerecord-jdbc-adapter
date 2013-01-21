@@ -1,6 +1,11 @@
 require 'helper'
 
-require 'bundler'
+begin
+  require 'bundler'
+rescue LoadError => e
+  require('rubygems') && retry
+  raise e
+end
 Bundler.require(:default, :test)
 
 require 'test/unit'
