@@ -7,6 +7,6 @@ class ActiveRecord::Base
       config[:adapter_spec] = ::ArJdbc::Oracle
       jdbc_connection(config)
     end
+    alias_method :jdbcoracle_connection, :oracle_connection
   end
 end
-
