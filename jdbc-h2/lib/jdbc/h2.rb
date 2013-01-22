@@ -1,9 +1,10 @@
 module Jdbc
   module H2
-    VERSION = "1.3.170.1"
+    DRIVER_VERSION = '1.3.170'
+    VERSION = DRIVER_VERSION + '.1'
 
     def self.driver_jar
-      "h2-#{VERSION.split('.')[0..2].join('.')}.jar"
+      "h2-#{DRIVER_VERSION}.jar"
     end
 
     def self.load_driver(method = :load)
@@ -20,7 +21,7 @@ if $VERBOSE && (JRUBY_VERSION.nil? rescue true)
   warn "Jdbc-H2 is only for use with JRuby"
 end
 
-unless Java::JavaLang::Boolean.get_boolean("arjdbc.skip.autoload")
-  warn "Autoloading driver which is now deprecated.  Set arjdbc.skip.autoload=true to disable autoload."
+if Java::JavaLang::Boolean.get_boolean("arjdbc.force.autoload")
+  warn "Autoloading driver which is now deprecated."
   Jdbc::H2::load_driver :require
 end

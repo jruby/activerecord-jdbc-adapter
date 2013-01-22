@@ -1,9 +1,10 @@
 module Jdbc
   module Derby
-    VERSION = "10.8.3.0.1"
+    DRIVER_VERSION = "10.8.3.0"
+    VERSION = DRIVER_VERSION
 
     def self.driver_jar
-      "derby-#{VERSION.split('.')[0..3].join('.')}.jar"
+      "derby-#{DRIVER_VERSION}.jar"
     end
 
     def self.load_driver(method = :load)
@@ -20,7 +21,7 @@ if $VERBOSE && (JRUBY_VERSION.nil? rescue true)
   warn "Jdbc-Derby is only for use with JRuby"
 end
 
-unless Java::JavaLang::Boolean.get_boolean("arjdbc.skip.autoload")
-  warn "Autoloading driver which is now deprecated.  Set arjdbc.skip.autoload=true to disable autoload."
+if Java::JavaLang::Boolean.get_boolean("arjdbc.force.autoload")
+  warn "Autoloading driver which is now deprecated."
   Jdbc::Derby::load_driver :require
 end
