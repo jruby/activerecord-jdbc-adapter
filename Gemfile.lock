@@ -26,6 +26,7 @@ GEM
       bundler
       rake
     arel (3.0.2)
+    bcrypt-ruby (3.0.1)
     bcrypt-ruby (3.0.1-java)
     bouncy-castle-java (1.5.0146.1)
     builder (3.0.4)
@@ -36,6 +37,7 @@ GEM
     journey (1.0.4)
     jruby-openssl (0.8.2)
       bouncy-castle-java (>= 1.5.0146.1)
+    linecache (0.46-java)
     metaclass (0.0.1)
     mocha (0.13.1)
       metaclass (~> 0.0.1)
@@ -49,6 +51,8 @@ GEM
     ruby-debug (0.10.4)
       columnize (>= 0.1)
       ruby-debug-base (~> 0.10.4.0)
+    ruby-debug-base (0.10.4)
+      linecache (>= 0.3)
     ruby-debug-base (0.10.4-java)
     simplecov (0.7.1)
       multi_json (~> 1.0)
