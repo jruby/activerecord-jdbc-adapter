@@ -1,9 +1,10 @@
 module Jdbc
   module MySQL
-    VERSION = "5.1.22.1"
+    DRIVER_VERSION = '5.1.22'
+    VERSION = DRIVER_VERSION + '.1'
 
     def self.driver_jar
-      "mysql-connector-java-#{VERSION.split('.')[0..2].join('.')}.jar"
+      "mysql-connector-java-#{DRIVER_VERSION}.jar"
     end
 
     def self.load_driver(method = :load)
@@ -20,7 +21,7 @@ if $VERBOSE && (JRUBY_VERSION.nil? rescue true)
   warn "Jdbc-MySQL is only for use with JRuby"
 end
 
-unless Java::JavaLang::Boolean.get_boolean("arjdbc.skip.autoload")
-  warn "Autoloading driver which is now deprecated.  Set arjdbc.skip.autoload=true to disable autoload."
+if Java::JavaLang::Boolean.get_boolean("arjdbc.force.autoload")
+  warn "Autoloading driver which is now deprecated."
   Jdbc::MySQL::load_driver :require
 end

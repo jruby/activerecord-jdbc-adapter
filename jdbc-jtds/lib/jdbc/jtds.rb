@@ -1,9 +1,10 @@
 module Jdbc
   module JTDS
-    VERSION = "1.3.0.1"
+    DRIVER_VERSION = '1.3.0'
+    VERSION = DRIVER_VERSION = '.1'
 
     def self.driver_jar
-      "jtds-#{VERSION.split('.')[0..2].join('.')}.jar"
+      "jtds-#{DRIVER_VERSION}.jar"
     end
 
     def self.load_driver(method = :load)
@@ -26,7 +27,7 @@ if $VERBOSE && (JRUBY_VERSION.nil? rescue true)
   warn "Jdbc-JTDS is only for use with JRuby"
 end
 
-unless Java::JavaLang::Boolean.get_boolean("arjdbc.skip.autoload")
-  warn "Autoloading driver which is now deprecated.  Set arjdbc.skip.autoload=true to disable autoload."
+if Java::JavaLang::Boolean.get_boolean("arjdbc.force.autoload")
+  warn "Autoloading driver which is now deprecated."
   Jdbc::JTDS::load_driver :require
 end

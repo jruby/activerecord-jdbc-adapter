@@ -1,9 +1,10 @@
 module Jdbc
   module Postgres
-    VERSION = "9.2.1002.1"
+    DRIVER_VERSION = '9.2.1002'
+    VERSION = DRIVER_VERSION + '.1'
 
     def self.driver_jar
-      version_jdbc_version = VERSION.split( '.' )[0..2]
+      version_jdbc_version = DRIVER_VERSION.split( '.' )
       version_jdbc_version << jdbc_version
       'postgresql-%s.%s-%s.jdbc%d.jar' % version_jdbc_version
     end
@@ -31,7 +32,7 @@ if $VERBOSE && (JRUBY_VERSION.nil? rescue true)
   warn "Jdbc-Postgres is only for use with JRuby"
 end
 
-unless Java::JavaLang::Boolean.get_boolean("arjdbc.skip.autoload")
-  warn "Autoloading driver which is now deprecated.  Set arjdbc.skip.autoload=true to disable autoload."
+if Java::JavaLang::Boolean.get_boolean("arjdbc.force.autoload")
+  warn "Autoloading driver which is now deprecated."
   Jdbc::Postgres::load_driver :require
 end
