@@ -193,7 +193,7 @@ module ::ArJdbc
 
     def _execute(sql, name = nil)
       result = super
-      ActiveRecord::ConnectionAdapters::JdbcConnection::insert?(sql) ? last_insert_id : result
+      self.class.insert?(sql) ? last_insert_id : result
     end
 
     def select(sql, name=nil, binds = [])

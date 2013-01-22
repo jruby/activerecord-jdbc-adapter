@@ -132,9 +132,9 @@ module ArJdbc
     end
 
     def _execute(sql, name = nil)
-      if ActiveRecord::ConnectionAdapters::JdbcConnection::select?(sql)
+      if self.class.select?(sql)
         @connection.execute_query(sql)
-      elsif ActiveRecord::ConnectionAdapters::JdbcConnection::insert?(sql)
+      elsif self.class.insert?(sql)
         (@connection.execute_insert(sql) or last_insert_id(sql)).to_i
       else
         @connection.execute_update(sql)

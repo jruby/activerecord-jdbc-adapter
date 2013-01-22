@@ -335,6 +335,8 @@ module ActiveRecord
         execute(*args)
       end
 
+      protected
+ 
       def translate_exception(e, message)
         puts e.backtrace if $DEBUG || ENV['DEBUG']
         super
@@ -348,7 +350,18 @@ module ActiveRecord
         end
       end
 
-      protected :translate_exception, :extract_sql
+      def self.select?(sql)
+        JdbcConnection::select?(sql)
+      end
+
+      def self.insert?(sql)
+        JdbcConnection::insert?(sql)
+      end
+
+      def self.update?(sql)
+        ! select?(sql) && ! insert?(sql)
+      end
+
     end
   end
 end
