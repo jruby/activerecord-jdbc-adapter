@@ -1061,18 +1061,21 @@ public class RubyJdbcConnection extends RubyObject {
      * Create a string which represents a sql type usable by Rails from the resultSet column
      * metadata object.
      */
-    protected String typeFromResultSet(ResultSet resultSet) throws SQLException {
-        int precision = intFromResultSet(resultSet, COLUMN_SIZE);
-        int scale = intFromResultSet(resultSet, DECIMAL_DIGITS);
+    protected String typeFromResultSet(final ResultSet resultSet) throws SQLException {
+        final int precision = intFromResultSet(resultSet, COLUMN_SIZE);
+        final int scale = intFromResultSet(resultSet, DECIMAL_DIGITS);
 
-        String type = resultSet.getString(TYPE_NAME);
-        if (precision > 0) {
-            type += "(" + precision;
-            if(scale > 0) type += "," + scale;
-            type += ")";
-        }
+        final String type = resultSet.getString(TYPE_NAME);
+        return formatTypeWithPrecisionAndScale(type, precision, scale);
+    }
 
-        return type;
+    protected static String formatTypeWithPrecisionAndScale(final String type, final int precision, final int scale) {
+        if ( precision <= 0 ) return type;
+
+        final StringBuilder typeStr = new StringBuilder().append(type);
+        typeStr.append('(').append(precision); // type += "(" + precision;
+        if ( scale > 0 ) typeStr.append(',').append(scale); // type += "," + scale;
+        return typeStr.append(')').toString(); // type += ")";
     }
 
     private IRubyObject defaultValueFromResultSet(Ruby runtime, ResultSet resultSet)

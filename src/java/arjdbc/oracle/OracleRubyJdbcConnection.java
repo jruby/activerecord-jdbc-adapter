@@ -63,23 +63,18 @@ public class OracleRubyJdbcConnection extends RubyJdbcConnection {
      * from NUMBER(x) or NUMBER(x,y).
      */
     @Override
-    protected String typeFromResultSet(ResultSet resultSet) throws SQLException {
+    protected String typeFromResultSet(final ResultSet resultSet) throws SQLException {
         int precision = intFromResultSet(resultSet, COLUMN_SIZE);
         int scale = intFromResultSet(resultSet, DECIMAL_DIGITS);
 
         // According to http://forums.oracle.com/forums/thread.jspa?threadID=658646
         // Unadorned NUMBER reports scale == null, so we look for that here.
-        if (scale < 0 && resultSet.getInt(DATA_TYPE) == java.sql.Types.DECIMAL) {
+        if ( scale < 0 && resultSet.getInt(DATA_TYPE) == java.sql.Types.DECIMAL ) {
             precision = -1;
         }
 
-        String type = resultSet.getString(TYPE_NAME);
-        if (precision > 0) {
-            type += "(" + precision;
-            if(scale > 0) type += "," + scale;
-            type += ")";
-        }
-
-        return type;
+        final String type = resultSet.getString(TYPE_NAME);
+        return formatTypeWithPrecisionAndScale(type, precision, scale);
     }
+
 }
