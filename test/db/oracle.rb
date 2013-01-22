@@ -25,5 +25,3 @@ rescue NameError
 end
 
 ActiveRecord::Base.establish_connection(config)
-
-#ActiveRecord::Base.connection.execute "SELECT 1"

@@ -184,7 +184,7 @@ module ::ArJdbc
     end
 
     def ora_insert(sql, name = nil, pk = nil, id_value = nil, sequence_name = nil, binds = []) #:nodoc:
-      if (id_value && !sql_literal?(id_value)) || pk.nil?
+      if (id_value && ! sql_literal?(id_value)) || pk.nil?
         # Pre-assigned id or table without a primary key
         # Presence of #to_sql means an Arel literal bind variable
         # that should use #execute_id_insert below
@@ -204,15 +204,6 @@ module ::ArJdbc
 
     def indexes(table, name = nil)
       @connection.indexes(table, name, @connection.connection.meta_data.user_name)
-    end
-
-    def _execute(sql, name = nil)
-      case sql.strip
-        when /\A\(?\s*(select|show)/i then
-          @connection.execute_query(sql)
-        else
-          @connection.execute_update(sql)
-        end
     end
 
     def modify_types(tp)
@@ -277,19 +268,16 @@ module ::ArJdbc
       select_all("select table_name from user_tables").inject(s) do |structure, table|
         ddl = "create table #{table.to_a.first.last} (\n "
         cols = select_all(%Q{
-              select column_name, data_type, data_length, data_precision, data_scale, data_default, nullable
-              from user_tab_columns
-              where table_name = '#{table.to_a.first.last}'
-              order by column_id
-            }).map do |row|
-          row = row.inject({}) do |h,args|
-            h[args[0].downcase] = args[1]
-            h
-          end
+          select column_name, data_type, data_length, data_precision, data_scale, data_default, nullable
+          from user_tab_columns
+          where table_name = '#{table.to_a.first.last}'
+          order by column_id
+        }).map do |row|
+          row = row.inject({}) { |h, args| h[ args[0].downcase ] = args[1]; h }
           col = "#{row['column_name'].downcase} #{row['data_type'].downcase}"
-          if row['data_type'] =='NUMBER' and !row['data_precision'].nil?
+          if row['data_type'] == 'NUMBER' and ! row['data_precision'].nil?
             col << "(#{row['data_precision'].to_i}"
-            col << ",#{row['data_scale'].to_i}" if !row['data_scale'].nil?
+            col << ",#{row['data_scale'].to_i}" if ! row['data_scale'].nil?
             col << ')'
           elsif row['data_type'].include?('CHAR')
             col << "(#{row['data_length'].to_i})"
@@ -414,7 +402,22 @@ module ::ArJdbc
       '0'
     end
 
+    def _execute(sql, name = nil)
+      if self.class.select?(sql)
+        @connection.execute_query(sql)
+      else
+        @connection.execute_update(sql)
+      end
+    end
+
     private
+
+    def select(sql, name = nil, binds = [])
+      records = execute(sql, name, binds)
+      records.each { |col| col.delete('raw_rnum_') }
+      records
+    end
+
     # In Oracle, schemas are usually created under your username:
     # http://www.oracle.com/technology/obe/2day_dba/schema/schema.htm
     # But allow separate configuration as "schema:" anyway (GH #53)
@@ -426,13 +429,6 @@ module ::ArJdbc
       end
     end
 
-    def select(sql, name = nil, binds = [])
-      records = execute(sql, name, binds)
-      records.each do |col|
-          col.delete('raw_rnum_')
-      end
-      records
-    end
   end
 end
 
