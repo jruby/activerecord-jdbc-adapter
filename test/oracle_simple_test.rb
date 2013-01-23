@@ -32,4 +32,23 @@ class OracleSimpleTest < Test::Unit::TestCase
     assert entries.first.login
   end
   
+  protected
+
+  def assert_empty_string value
+    # An empty string is treated as a null value in Oracle :
+    # http://www.techonthenet.com/oracle/questions/empty_null.php
+    assert_equal nil, value
+  end
+
+  def assert_null_text value
+    # Oracle adapter initializes all CLOB fields with empty_clob() 
+    # fn, so they all have a initial value of an empty string ''
+    assert_equal '', value
+  end
+
+  def assert_date_equal expected, actual
+    # Oracle doesn't distinguish btw date/datetime
+    assert_equal expected, actual.to_date
+  end
+
 end

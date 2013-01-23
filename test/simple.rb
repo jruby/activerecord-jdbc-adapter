@@ -6,7 +6,26 @@ ActiveRecord::Base.default_timezone = :utc
 Time.zone = 'Moscow' if Time.respond_to?(:zone)
 
 module MigrationSetup
-  def setup
+
+  def setup 
+    setup!
+    @connection = ActiveRecord::Base.connection
+  end
+
+  def teardown
+    teardown!
+    ActiveRecord::Base.clear_active_connections!
+  end
+
+  def setup!
+    MigrationSetup.setup!
+  end
+
+  def teardown!
+    MigrationSetup.teardown!
+  end
+
+  def self.setup!
     DbTypeMigration.up
     CreateStringIds.up
     CreateEntries.up
@@ -15,10 +34,9 @@ module MigrationSetup
     CreateValidatesUniquenessOf.up
     CreateThings.up
     CreateCustomPkName.up
-    @connection = ActiveRecord::Base.connection
   end
 
-  def teardown
+  def self.teardown!
     DbTypeMigration.down
     CreateStringIds.down
     CreateEntries.down
@@ -27,12 +45,13 @@ module MigrationSetup
     CreateValidatesUniquenessOf.down
     CreateThings.down
     CreateCustomPkName.down
-    ActiveRecord::Base.clear_active_connections!
   end
+
 end
 
 module FixtureSetup
   include MigrationSetup
+
   def setup
     super
     @title = "First post!"
@@ -195,7 +214,7 @@ module SimpleTestMethods
       assert_equal Entry.count, Entry.limit(10).count
     end
   end
-  
+
   if Time.respond_to?(:zone)
     
     def test_save_time_with_utc
@@ -206,6 +225,7 @@ module SimpleTestMethods
       my_time = Time.local now.year, now.month, now.day, now.hour, now.min, now.sec
       m = DbType.create! :sample_datetime => my_time
       m.reload
+
       assert_equal my_time, m.sample_datetime
     rescue
       Time.zone = current_zone
@@ -221,6 +241,7 @@ module SimpleTestMethods
       e.sample_datetime = time
       e.save!
       e = DbType.find(:first)
+
       assert_equal time, e.sample_datetime
     end
 
@@ -245,9 +266,8 @@ module SimpleTestMethods
     e.sample_time = time
     e.save!
     e = DbType.first
-    [:hour, :min, :sec].each do |method|
-      assert_equal time.send(method), e.sample_time.send(method)
-    end
+
+    assert_time_equal time, e.sample_time
   end
   
   def test_save_timestamp
@@ -256,23 +276,28 @@ module SimpleTestMethods
     e.sample_timestamp = timestamp
     e.save!
     e = DbType.first
-    assert_equal timestamp, e.sample_timestamp
+    assert_timestamp_equal timestamp, e.sample_timestamp
   end
   
+  # TODO we do not support precision beyond seconds !
+  # def test_save_timestamp_with_usec
+  #   timestamp = Time.utc(1942, 11, 30, 01, 53, 59, 123_456)
+  #   e = DbType.first
+  #   e.sample_timestamp = timestamp
+  #   e.save!
+  #   e = DbType.first
+  #   assert_timestamp_equal timestamp, e.sample_timestamp
+  # end
+
   def test_save_date
     date = Date.new(2007)
     e = DbType.find(:first)
     e.sample_date = date
     e.save!
     e = DbType.find(:first)
-    if DbType.columns_hash["sample_date"].type == :datetime
-      # Oracle doesn't distinguish btw date/datetime
-      assert_equal date, e.sample_date.to_date
-    else
-      assert_equal date, e.sample_date
-    end
+    assert_date_equal date, e.sample_date
   end
-  
+
   def test_save_float
     e = DbType.find(:first)
     e.sample_float = 12.0
@@ -310,9 +335,7 @@ module SimpleTestMethods
     # An unset boolean should default to nil
     e = DbType.find(:first)
 
-    # Oracle adapter initializes all CLOB fields with empty_clob() function,
-    # so they all have a initial value of an empty string ''
-    assert_equal(nil, e.sample_text) unless ActiveRecord::Base.connection.adapter_name =~ /oracle/i
+    assert_null_text e.sample_text
 
     e.sample_text = "ooop?"
     e.save!
@@ -324,8 +347,8 @@ module SimpleTestMethods
   def test_string
     e = DbType.find(:first)
 
-    # An empty string is treated as a null value in Oracle: http://www.techonthenet.com/oracle/questions/empty_null.php
-    assert_equal('', e.sample_string) unless ActiveRecord::Base.connection.adapter_name =~ /oracle/i
+    assert_empty_string e.sample_string
+
     e.sample_string = "ooop?"
     e.save!
 
@@ -570,6 +593,41 @@ module SimpleTestMethods
     f = StringId.first #reload is essential
     assert_equal "some_string", f.id
   end
+
+  protected
+
+  # re-defined by Oracle
+  def assert_empty_string value
+    assert_equal '', value
+  end
+
+  # re-defined by Oracle
+  def assert_null_text value
+    assert_nil value
+  end
+
+  def assert_date_equal expected, actual
+    assert_equal expected, actual
+  end
+
+  def assert_time_equal expected, actual
+    [ :hour, :min, :sec ].each do |method|
+      assert_equal expected.send(method), actual.send(method), "<#{expected}> but was <#{actual}> (differ at #{method.inspect})"
+    end
+  end
+
+  def assert_timestamp_equal expected, actual
+    e_utc = expected.utc; a_utc = actual.utc
+    [ :year, :month, :day, :hour, :min, :sec ].each do |method|
+      assert_equal e_utc.send(method), a_utc.send(method), "<#{expected}> but was <#{actual}> (differ at #{method.inspect})"
+    end
+    assert_equal e_utc.usec, a_utc.usec, "<#{expected}> but was <#{actual}> (differ at :usec)"
+    # :usec Ruby Time precision: 123_456 (although JRuby only supports ms with Time.now) :
+    #e_usec = ( e_utc.usec / 1000 ) * 1000
+    #a_usec = ( a_utc.usec / 1000 ) * 1000
+    #assert_equal e_usec, a_usec, "<#{expected}> but was <#{actual}> (differ at :usec / 1000)"
+  end
+
 end
 
 module MultibyteTestMethods
