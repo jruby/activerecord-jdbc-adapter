@@ -604,6 +604,21 @@ module SimpleTestMethods
     assert_equal "some_string", f.id
   end
 
+  def test_handles_quotes_inside_of_strings
+    content_json = {
+      "comments" => [
+        "First I was like, \"What, you've got crazy pants\"",
+        "And then he was like, \"Yeah dude, total crazy pantalones\""
+      ]
+    }.to_json
+
+    post = Entry.new :title => 'comment entry'
+    post.content = content_json
+    post.save!
+
+    assert_equal content_json, post.reload.content
+  end
+
   protected
 
   # re-defined by Oracle
