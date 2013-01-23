@@ -79,7 +79,7 @@ class SQLite3SimpleTest < Test::Unit::TestCase
   end
 
   def test_rename_column_preserves_content
-    post = Entry.find(:first)
+    post = Entry.first
     assert_equal @title, post.title
     assert_equal @content, post.content
     assert_equal @rating, post.rating
@@ -90,7 +90,7 @@ class SQLite3SimpleTest < Test::Unit::TestCase
       end
     end
 
-    post = Entry.find(:first)
+    post = Entry.first
     assert_equal @title, post.name
     assert_equal @content, post.content
     assert_equal @rating, post.rating
@@ -270,22 +270,20 @@ class SQLite3TypeConversionTest < Test::Unit::TestCase
   end
 
   def test_decimal
-    types = DbType.find(:first)
+    types = DbType.first
     assert_equal((JInteger::MAX_VALUE + 1), types.sample_decimal)
   end
 
   def test_decimal_scale
-    types = DbType.find(:first)
     assert_equal(2, DbType.columns_hash["sample_small_decimal"].scale)
   end
 
   def test_decimal_precision
-    types = DbType.find(:first)
     assert_equal(3, DbType.columns_hash["sample_small_decimal"].precision)
   end
 
   def test_binary
-    types = DbType.find(:first)
+    types = DbType.first
     assert_equal(TEST_BINARY, types.sample_binary)
   end
 

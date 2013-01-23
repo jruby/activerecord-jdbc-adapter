@@ -185,7 +185,7 @@ module SimpleTestMethods
   end
 
   def test_find_and_update_entry
-    post = Entry.find(:first)
+    post = Entry.first
     assert_equal @title, post.title
     assert_equal @content, post.content
     assert_equal @rating, post.rating
@@ -193,13 +193,13 @@ module SimpleTestMethods
     post.title = @new_title
     post.save
 
-    post = Entry.find(:first)
+    post = Entry.first
     assert_equal @new_title, post.title
   end
 
   def test_destroy_entry
     prev_count = Entry.count
-    post = Entry.find(:first)
+    post = Entry.first
     post.destroy
 
     assert_equal prev_count - 1, Entry.count
@@ -237,10 +237,10 @@ module SimpleTestMethods
       #precision will only be expected to the second.
       original_time = Time.local(t.year, t.month, t.day, t.hour, t.min, t.sec)
       time = original_time.in_time_zone
-      e = DbType.find(:first)
+      e = DbType.first
       e.sample_datetime = time
       e.save!
-      e = DbType.find(:first)
+      e = DbType.first
 
       assert_equal time, e.sample_datetime
     end
@@ -250,10 +250,10 @@ module SimpleTestMethods
       #precision will only be expected to the second.
       time = Time.local(t.year, t.month, t.day, t.hour, t.min, t.sec)
       datetime = time.to_datetime
-      e = DbType.find(:first)
+      e = DbType.first
       e.sample_datetime = datetime
       e.save!
-      e = DbType.find(:first)
+      e = DbType.first
       assert_equal time, e.sample_datetime.localtime
     end
     
@@ -291,78 +291,78 @@ module SimpleTestMethods
 
   def test_save_date
     date = Date.new(2007)
-    e = DbType.find(:first)
+    e = DbType.first
     e.sample_date = date
     e.save!
-    e = DbType.find(:first)
+    e = DbType.first
     assert_date_equal date, e.sample_date
   end
 
   def test_save_float
-    e = DbType.find(:first)
+    e = DbType.first
     e.sample_float = 12.0
     e.save!
 
-    e = DbType.find(:first)
+    e = DbType.first
     assert_equal(12.0, e.sample_float)
   end
 
   def test_boolean
     # An unset boolean should default to nil
-    e = DbType.find(:first)
+    e = DbType.first
     assert_equal(nil, e.sample_boolean)
 
     e.sample_boolean = true
     e.save!
 
-    e = DbType.find(:first)
+    e = DbType.first
     assert_equal(true, e.sample_boolean)
   end
 
   def test_integer
     # An unset boolean should default to nil
-    e = DbType.find(:first)
+    e = DbType.first
     assert_equal(nil, e.sample_integer)
 
     e.sample_integer = 10
     e.save!
 
-    e = DbType.find(:first)
+    e = DbType.first
     assert_equal(10, e.sample_integer)
   end
 
   def test_text
     # An unset boolean should default to nil
-    e = DbType.find(:first)
+    e = DbType.first
 
     assert_null_text e.sample_text
 
     e.sample_text = "ooop?"
     e.save!
 
-    e = DbType.find(:first)
+    e = DbType.first
     assert_equal("ooop?", e.sample_text)
   end
 
   def test_string
-    e = DbType.find(:first)
+    e = DbType.first
 
     assert_empty_string e.sample_string
 
     e.sample_string = "ooop?"
     e.save!
 
-    e = DbType.find(:first)
+    e = DbType.first
     assert_equal("ooop?", e.sample_string)
   end
 
   def test_save_binary
     #string is 60_000 bytes
     binary_string = "\000ABCDEFGHIJKLMNOPQRSTUVWXYZ'\001\003"*1#2_000
-    e = DbType.find(:first)
+    e = DbType.first
     e.sample_binary = binary_string
     e.save!
-    e = DbType.find(:first)
+    e = DbType.first
     assert_equal binary_string, e.sample_binary
   end
 
@@ -650,7 +650,7 @@ module MultibyteTestMethods
 
     def test_select_multibyte_string
       @java_con.createStatement().execute("insert into entries (id, title, content) values (1, 'テスト', '本文')")
-      entry = Entry.find(:first)
+      entry = Entry.first
       assert_equal "テスト", entry.title
       assert_equal "本文", entry.content
       assert_equal entry, Entry.find_by_title("テスト")

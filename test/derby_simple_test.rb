@@ -25,7 +25,7 @@ class DerbySimpleTest < Test::Unit::TestCase
   end
 
   def test_text_and_string_conversions
-    e = DbType.find(:first)
+    e = DbType.first
 
     # Derby will normally reject any non text value.
     # The adapter has been patched to convert non text values to strings

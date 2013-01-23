@@ -15,7 +15,7 @@ class DB2SimpleTest < Test::Unit::TestCase
   # type cast's it to a Ruby boolean. Need to make sure we don't
   # break existing apps!
   def test_boolean_as_integer
-    e = DbType.find(:first)
+    e = DbType.first
 
     # true
     e.sample_boolean = 1
@@ -23,7 +23,7 @@ class DB2SimpleTest < Test::Unit::TestCase
     assert_equal true, e.sample_boolean?
     e.save!
 
-    e = DbType.find(:first)
+    e = DbType.first
     assert_equal true, e.sample_boolean
     assert_equal true, e.sample_boolean?
 
@@ -33,7 +33,7 @@ class DB2SimpleTest < Test::Unit::TestCase
     assert_equal false, e.sample_boolean?
     e.save!
 
-    e = DbType.find(:first)
+    e = DbType.first
     assert_equal false, e.sample_boolean
     assert_equal false, e.sample_boolean?
   end

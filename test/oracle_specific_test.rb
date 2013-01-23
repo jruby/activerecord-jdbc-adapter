@@ -26,15 +26,15 @@ class OracleSpecificTest < Test::Unit::TestCase
   end
 
   def test_default_number_precision
-    assert_equal 0.076, DefaultNumber.find(:first).value
+    assert_equal 0.076, DefaultNumber.first.value
   end
 
   def test_number_with_precision_and_scale
-    assert_equal 1000.01, DefaultNumber.find(:first).fpoint
+    assert_equal 1000.01, DefaultNumber.first.fpoint
   end
 
   def test_number_with_precision
-    assert_equal 1234, DefaultNumber.find(:first).value2
+    assert_equal 1234, DefaultNumber.first.value2
   end
 
   def test_number_type_with_precision_and_scale_is_reported_correctly
@@ -45,26 +45,26 @@ class OracleSpecificTest < Test::Unit::TestCase
 
   # JRUBY-3675, ACTIVERECORD_JDBC-22
   def test_load_date
-    obj = DefaultNumber.find(:first)
+    obj = DefaultNumber.first
     assert_not_nil obj.datum, "no date"
   end
 
   # ACTIVERECORD_JDBC-127
   def test_save_date
-    obj = DefaultNumber.find(:first)
+    obj = DefaultNumber.first
     obj.datum = '01Jan2010'
     obj.save!
   end
 
   def test_save_timestamp
-    obj = DefaultNumber.find(:first)
+    obj = DefaultNumber.first
     obj.datum = Time.now
     obj.save!
   end
 
   def test_load_null_date
     @java_con.createStatement.execute "UPDATE DEFAULT_NUMBERS SET DATUM = NULL"
-    obj = DefaultNumber.find(:first)
+    obj = DefaultNumber.first
     assert obj.datum.nil?
   end
 

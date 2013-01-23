@@ -102,7 +102,7 @@ class MsSQLLimitOffsetTest < Test::Unit::TestCase
   def test_limit_with_no_id_column_available
     NoIdViking.create!(:name => 'Erik')
     assert_nothing_raised(ActiveRecord::StatementInvalid) do 
-      NoIdViking.find(:first)
+      NoIdViking.first
     end
   end
 

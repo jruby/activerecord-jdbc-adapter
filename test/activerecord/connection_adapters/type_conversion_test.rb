@@ -19,12 +19,12 @@ class TypeConversionTest < Test::Unit::TestCase
   end
   
   def test_timestamp
-    types = DbType.find(:first)
+    types = DbType.first
     assert_equal TEST_TIME, types.sample_timestamp.getutc
   end
   
   def test_decimal
-    types = DbType.find(:first)
+    types = DbType.first
     assert_equal((JInteger::MAX_VALUE + 1), types.sample_decimal)
   end
 end
