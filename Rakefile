@@ -14,19 +14,9 @@ task :default => [:jar, :test]
 task :build => :jar
 task :install => :jar
 
-ADAPTERS = %w[derby h2 hsqldb mssql mysql postgresql sqlite3].map {|a| "activerecord-jdbc#{a}-adapter" }
-DRIVERS  = %w[derby h2 hsqldb mysql postgres sqlite3].map {|a| "jdbc-#{a}" }
-
-# Only include jtds driver if compiling on Java 7
-begin
-  java_version = Java::JavaLang::System.get_property( "java.specification.version" )
-  java_version = java_version.split( '.' ).map { |v| v.to_i }
-  if ( ( java_version <=> [ 1, 7 ] ) >= 0 )
-    DRIVERS << "jdbc-jtds"
-  end
-end
-
-TARGETS = (ADAPTERS+DRIVERS)
+ADAPTERS = %w[derby h2 hsqldb mssql mysql postgresql sqlite3].map { |a| "activerecord-jdbc#{a}-adapter" }
+DRIVERS  = %w[derby h2 hsqldb jtds mysql postgres sqlite3].map { |a| "jdbc-#{a}" }
+TARGETS = ( ADAPTERS + DRIVERS )
 
 def rake(*args)
   ruby "-S", "rake", *args
@@ -34,39 +24,45 @@ end
 
 TARGETS.each do |target|
   namespace target do
-
     task :build do
-      Dir.chdir(target) do
-        rake "build"
-      end
+      Dir.chdir(target) { rake "build" }
       cp FileList["#{target}/pkg/#{target}-*.gem"], "pkg"
     end
-
-    # bundler handles install => build itself
     task :install do
-      Dir.chdir(target) do
-        rake "install"
-      end
+      Dir.chdir(target) { rake "install" }
     end
-
     task :release do
-      Dir.chdir(target) do
-        rake "release"
-      end
+      Dir.chdir(target) { rake "release" }
     end
   end
 end
 
-{"all" => TARGETS, "adapters" => ADAPTERS, "drivers" => DRIVERS}.each_pair do |name, targets|
-  desc "Release #{name}"
-  task "#{name}:release" => ["release", *targets.map { |f| "#{f}:release" }]
+# DRIVERS
 
-  desc "Install #{name}"
-  task "#{name}:install" => ["install", *targets.map { |f| "#{f}:install" }]
+desc "Build drivers"
+task "drivers:build" => DRIVERS.map { |name| "#{name}:build" }
 
-  desc "Build #{name}"
-  task "#{name}:build"   => ["build", *targets.map { |f| "#{f}:build" }]
-end
+desc "Install drivers"
+task "drivers:install" => DRIVERS.map { |name| "#{name}:install" }
+
+desc "Release drivers"
+task "drivers:release" => DRIVERS.map { |name| "#{name}:release" }
+
+# ADAPTERS
+
+desc "Build adapters"
+task "adapters:build" => [ 'build' ] + ADAPTERS.map { |name| "#{name}:build" }
+
+desc "Install adapters"
+task "adapters:install" => [ 'install' ] + ADAPTERS.map { |name| "#{name}:install" }
+
+desc "Release adapters"
+task "adapters:release" => [ 'release' ] + ADAPTERS.map { |name| "#{name}:release" }
+
+# ALL
+
+task "all:build" => [ 'build' ] + TARGETS.map { |name| "#{name}:build" }
+task "all:install" => [ 'install' ] + TARGETS.map { |name| "#{name}:install" }
 
 task :filelist do
   puts FileList['pkg/**/*'].inspect
