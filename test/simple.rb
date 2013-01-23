@@ -119,14 +119,6 @@ end
 module SimpleTestMethods
   include FixtureSetup
 
-  def test_substitute_binds_has_no_side_effect_on_binds_parameter
-    binds = [[Entry.columns_hash['title'], 'test1']]
-    binds2 = binds.dup
-    sql = 'select * from entries where title = ?'
-    Entry.connection.substitute_binds(sql, binds)
-    assert_equal binds2, binds
-  end
-
   def test_entries_created
     assert ActiveRecord::Base.connection.tables.find{|t| t =~ /^entries$/i}, "entries not created"
   end
@@ -569,6 +561,23 @@ module SimpleTestMethods
     end
   end
 
+  def test_substitute_binds_has_no_side_effect_on_binds_parameter
+    binds = [ [ Entry.columns_hash['title'], 'test1' ] ]
+    binds_dup = binds.dup
+    sql = 'SELECT * FROM entries WHERE title = ?'
+    Entry.connection.substitute_binds(sql, binds)
+    assert_equal binds_dup, binds
+  end
+
+  def test_find_by_sql_with_binds
+    Entry.create!(:title => 'qqq', :content => '', :rating => 4)
+    Entry.create!(:title => 'www', :content => '', :rating => 5)
+    Entry.create!(:title => 'www', :content => '', :rating => 6)
+    sql = 'SELECT * FROM entries WHERE ( title = ? OR title = ? ) AND rating < ? AND rating > ?'
+    entries = Entry.find_by_sql [ sql, 'qqq', 'www', 6, 4 ]
+    assert_equal 1, entries.size
+  end
+
   class ChangeEntriesTable < ActiveRecord::Migration
     def self.up
       change_table :entries do |t|
@@ -581,6 +590,7 @@ module SimpleTestMethods
       end if respond_to?(:change_table)
     end
   end
+
   def test_change_table
     ChangeEntriesTable.up
     ChangeEntriesTable.down
