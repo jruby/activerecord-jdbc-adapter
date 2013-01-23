@@ -100,6 +100,12 @@ end
 module SimpleTestMethods
   include FixtureSetup
 
+  def test_substitute_binds_does_substitutions_in_correct_order_without_corruption
+    binds = ['foo', 'bar', 'baz']
+    sql = 'select * from entries where a = ? and b = ? and c = ?'
+    assert_match /foo.*bar.*baz/, Entry.connection.substitute_binds(sql, binds)
+  end
+  
   def test_substitute_binds_has_no_side_effect_on_binds_parameter
     binds = [[Entry.columns_hash['title'], 'test1']]
     binds2 = binds.dup

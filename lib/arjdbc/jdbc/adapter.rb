@@ -197,7 +197,7 @@ module ActiveRecord
           sql
         else
           copy = binds.dup
-          sql.gsub('?') { quote(*copy.shift.reverse) }
+          sql.gsub('?') { quote(copy.shift) }
         end
       end
 
