@@ -1,3 +1,5 @@
+warn "Jdbc-JTDS is only for use with JRuby" if (JRUBY_VERSION.nil? rescue true)
+
 module Jdbc
   module JTDS
     DRIVER_VERSION = '1.3.0'
@@ -13,21 +15,20 @@ module Jdbc
       if ( ( vers <=> [ 1, 7 ] ) >= 0 )
         send method, driver_jar
       else
-        raise LoadError.new("Driver not loaded!  Version #{VERSION} of jdbc-jtds requires Java 1.7 or later.")
+        raise LoadError, "Version #{VERSION} of Jdbc-JTDS requires Java 1.7 " + 
+                         "or later (try using gem 'jdbc-jtds', '~> 1.2.7'). "
       end
     end
 
     def self.driver_name
       'net.sourceforge.jtds.jdbc.Driver'
     end
+
+    if defined?(JRUBY_VERSION) && # enable backwards-compat behavior :
+      ( Java::JavaLang::Boolean.get_boolean("jdbc.driver.autoload") || 
+        Java::JavaLang::Boolean.get_boolean("jdbc.jtds.autoload") )
+      warn "autoloading JDBC driver on require 'jdbc/jtds'" if $VERBOSE
+      load_driver :require
+    end
   end
-end
-
-if $VERBOSE && (JRUBY_VERSION.nil? rescue true)
-  warn "Jdbc-JTDS is only for use with JRuby"
-end
-
-if Java::JavaLang::Boolean.get_boolean("arjdbc.force.autoload")
-  warn "Autoloading driver which is now deprecated."
-  Jdbc::JTDS::load_driver :require
 end

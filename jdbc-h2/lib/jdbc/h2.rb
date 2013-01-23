@@ -1,3 +1,5 @@
+warn "Jdbc-H2 is only for use with JRuby" if (JRUBY_VERSION.nil? rescue true)
+
 module Jdbc
   module H2
     DRIVER_VERSION = '1.3.170'
@@ -14,14 +16,12 @@ module Jdbc
     def self.driver_name
       'org.h2.Driver'
     end
+
+    if defined?(JRUBY_VERSION) && # enable backwards-compat behavior :
+      ( Java::JavaLang::Boolean.get_boolean("jdbc.driver.autoload") || 
+        Java::JavaLang::Boolean.get_boolean("jdbc.h2.autoload") )
+      warn "autoloading JDBC driver on require 'jdbc/h2'" if $VERBOSE
+      load_driver :require
+    end
   end
-end
-
-if $VERBOSE && (JRUBY_VERSION.nil? rescue true)
-  warn "Jdbc-H2 is only for use with JRuby"
-end
-
-if Java::JavaLang::Boolean.get_boolean("arjdbc.force.autoload")
-  warn "Autoloading driver which is now deprecated."
-  Jdbc::H2::load_driver :require
 end
