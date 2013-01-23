@@ -20,7 +20,7 @@ module Jdbc
     if defined?(JRUBY_VERSION) && # enable backwards-compat behavior :
       ( Java::JavaLang::Boolean.get_boolean("jdbc.driver.autoload") || 
         Java::JavaLang::Boolean.get_boolean("jdbc.hsqldb.autoload") )
-      warn "[deprecated] autoloading JDBC driver on require 'jdbc/hsqldb'" if $VERBOSE
+      warn "autoloading JDBC driver on require 'jdbc/hsqldb'" if $VERBOSE
       load_driver :require
     end
   end
