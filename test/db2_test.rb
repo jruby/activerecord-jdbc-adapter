@@ -43,13 +43,20 @@ class DB2Test < Test::Unit::TestCase
     assert_equal 'db2inst1', new_adapter_stub(config).send(:db2_schema)
   end
   
+  test 'quote column name returns string' do
+    adapter = new_adapter_stub
+    assert_equal 'version', adapter.quote_column_name(:version)
+    assert_equal 'column1', adapter.quote_column_name("column1")
+  end
+  
   private
   
-  def new_adapter_stub(config = nil)
-    adapter = Object.new
+  def new_adapter_stub(config = {})
+    config = config.merge({ :adapter => 'jdbc', :adapter_spec => ArJdbc::DB2 })
+    connection = stub('connection'); logger = nil
+    connection.stub_everything
+    adapter = ActiveRecord::ConnectionAdapters::JdbcAdapter.new connection, logger, config
     def adapter.zos?; false; end
-    adapter.extend ArJdbc::DB2
-    adapter.instance_variable_set :@config, config if config
     adapter
   end
 

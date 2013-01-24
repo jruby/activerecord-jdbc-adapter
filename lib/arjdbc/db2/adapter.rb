@@ -86,6 +86,7 @@ module ArJdbc
       def self.cast_to_date_or_time(value)
         return value if value.is_a? Date
         return nil if value.blank?
+        # https://github.com/jruby/activerecord-jdbc-adapter/commit/c225126e025df2e98ba3386c67e2a5bc5e5a73e6
         return Time.now if value =~ /^CURRENT/
         guess_date_or_time((value.is_a? Time) ? value : cast_to_time(value))
       rescue
