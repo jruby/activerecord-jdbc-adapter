@@ -783,17 +783,22 @@ module ::ArJdbc
 
     # Maps logical Rails types to PostgreSQL-specific data types.
     def type_to_sql(type, limit = nil, precision = nil, scale = nil)
-      return super unless type.to_s == 'integer'
-      return 'integer' unless limit
-
-      case limit
-      when 1, 2; 'smallint'
-      when 3, 4; 'integer'
-      when 5..8; 'bigint'
-      else raise(ActiveRecordError, "No integer type has byte size #{limit}. Use a numeric with precision 0 instead.")
+      case type.to_sym
+      when :integer
+        return 'integer' unless limit
+        case limit.to_i
+          when 1, 2; 'smallint'
+          when 3, 4; 'integer'
+          when 5..8; 'bigint'
+          else raise(ActiveRecordError, "No integer type has byte size #{limit}. Use a numeric with precision 0 instead.")
+        end
+      when :binary
+        super(type, nil, nil, nil)
+      else
+        super
       end
     end
-
+    
     def tables(name = nil)
       exec_query(<<-SQL, 'SCHEMA').map { |row| row["tablename"] }
           SELECT tablename
