@@ -32,6 +32,8 @@ class OracleSimpleTest < Test::Unit::TestCase
     assert entries.first.login
   end
   
+  include ExplainSupportTestMethods if ar_version("3.1")
+  
   protected
 
   def assert_empty_string value

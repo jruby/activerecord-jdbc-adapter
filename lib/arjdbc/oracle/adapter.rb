@@ -69,7 +69,8 @@ module ::ArJdbc
       def type_cast(value)
         return nil if value.nil?
         case type
-        when :datetime then ArJdbc::Oracle::Column.string_to_time(value, self.class)
+        when :datetime  then ArJdbc::Oracle::Column.string_to_time(value)
+        when :timestamp then ArJdbc::Oracle::Column.string_to_time(value)
         else
           super
         end
@@ -77,21 +78,29 @@ module ::ArJdbc
 
       def type_cast_code(var_name)
         case type
-        when :datetime  then "ArJdbc::Oracle::Column.string_to_time(#{var_name}, self.class)"
+        when :datetime  then "ArJdbc::Oracle::Column.string_to_time(#{var_name})"
+        when :timestamp then "ArJdbc::Oracle::Column.string_to_time(#{var_name})"
         else
           super
         end
       end
 
-      def self.string_to_time(string, klass)
-        time = klass.string_to_time(string)
-        guess_date_or_time(time)
+      def self.string_to_time(string)
+        return string unless string.is_a?(String)
+        return nil if string.empty?
+        return Time.now if string.index('CURRENT') == 0 # TODO seems very wrong
+        
+        ::ActiveRecord::ConnectionAdapters::JdbcColumn.string_to_time(string)
+      end
+
+      def self.string_to_dummy_time(string)
+        ::ActiveRecord::ConnectionAdapters::JdbcColumn.string_to_dummy_time(string)
       end
 
       def self.guess_date_or_time(value)
-        return value if Date === value
-        (value && value.hour == 0 && value.min == 0 && value.sec == 0) ?
-        Date.new(value.year, value.month, value.day) : value
+        return value if value.is_a? Date
+        ( value && value.hour == 0 && value.min == 0 && value.sec == 0 ) ? 
+          Date.new(value.year, value.month, value.day) : value
       end
 
       private
@@ -239,7 +248,7 @@ module ::ArJdbc
       types[:primary_key] = "NUMBER(38) NOT NULL PRIMARY KEY"
       types[:integer] = { :name => "NUMBER", :limit => 38 }
       types[:datetime] = { :name => "DATE" }
-      types[:timestamp] = { :name => "DATE" }
+      types[:timestamp] = { :name => "TIMESTAMP" }
       types[:time] = { :name => "DATE" }
       types[:date] = { :name => "DATE" }
       types
@@ -429,6 +438,17 @@ module ::ArJdbc
 
     def quoted_false #:nodoc:
       '0'
+    end
+    
+    def supports_explain?
+      true
+    end
+
+    def explain(arel, binds = [])
+      sql = "EXPLAIN PLAN FOR #{to_sql(arel)}"
+      return if sql =~ /FROM all_/
+      exec_query(sql, 'EXPLAIN', binds)
+      select_values("SELECT * FROM TABLE(DBMS_XPLAN.DISPLAY)", 'EXPLAIN').join("\n")
     end
 
     def select(sql, name = nil, binds = [])
