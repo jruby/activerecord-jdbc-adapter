@@ -101,19 +101,20 @@ module ::ArJdbc
       @sqlite_version ||= select_value('select sqlite_version(*)')
     end
 
-    def modify_types(tp)
-      tp[:primary_key] = "integer primary key autoincrement not null"
-      tp[:string] = { :name => "varchar", :limit => 255 }
-      tp[:text] = { :name => "text" }
-      tp[:float] = { :name => "float" }
-      tp[:decimal] = { :name => "decimal" }
-      tp[:datetime] = { :name => "datetime" }
-      tp[:timestamp] = { :name => "datetime" }
-      tp[:time] = { :name => "time" }
-      tp[:date] = { :name => "date" }
-      tp[:boolean] = { :name => "boolean" }
-      tp[:binary] = { :name => "blob" }
-      tp
+    def modify_types(types)
+      super(types)
+      types[:primary_key] = "integer primary key autoincrement not null"
+      types[:string] = { :name => "varchar", :limit => 255 }
+      types[:text] = { :name => "text" }
+      types[:float] = { :name => "float" }
+      types[:decimal] = { :name => "decimal" }
+      types[:datetime] = { :name => "datetime" }
+      types[:timestamp] = { :name => "datetime" }
+      types[:time] = { :name => "time" }
+      types[:date] = { :name => "date" }
+      types[:boolean] = { :name => "boolean" }
+      types[:binary] = { :name => "blob" }
+      types
     end
 
     def quote(value, column = nil)

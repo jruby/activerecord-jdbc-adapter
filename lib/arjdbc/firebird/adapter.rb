@@ -32,11 +32,12 @@ module ::ArJdbc
       {}.tap {|v| %w(firebird firebirdsql).each {|a| v[a] = ::Arel::Visitors::Firebird } }
     end
 
-    def modify_types(tp)
-      tp[:primary_key] = 'INTEGER NOT NULL PRIMARY KEY'
-      tp[:string][:limit] = 252
-      tp[:integer][:limit] = nil
-      tp
+    def modify_types(types)
+      super(types)
+      types[:primary_key] = 'INTEGER NOT NULL PRIMARY KEY'
+      types[:string][:limit] = 252
+      types[:integer][:limit] = nil
+      types
     end
 
     def insert(sql, name = nil, pk = nil, id_value = nil, sequence_name = nil, binds = []) # :nodoc:

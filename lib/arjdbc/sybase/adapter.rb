@@ -31,12 +31,13 @@ module ArJdbc
       !@limit.nil? && @limit == 0
     end
 
-    def modify_types(tp) #:nodoc:
-      tp[:primary_key] = "NUMERIC(22,0) IDENTITY PRIMARY KEY"
-      tp[:integer][:limit] = nil
-      tp[:boolean] = {:name => "bit"}
-      tp[:binary] = {:name => "image"}
-      tp
+    def modify_types(types) # :nodoc:
+      super(types)
+      types[:primary_key] = "NUMERIC(22,0) IDENTITY PRIMARY KEY"
+      types[:integer][:limit] = nil
+      types[:boolean] = {:name => "bit"}
+      types[:binary] = {:name => "image"}
+      types
     end
 
     def remove_index(table_name, options = {})

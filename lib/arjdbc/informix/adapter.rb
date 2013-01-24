@@ -56,19 +56,20 @@ module ::ArJdbc
       end
     end
 
-    def modify_types(tp)
-      tp[:primary_key] = "SERIAL PRIMARY KEY"
-      tp[:string]      = { :name => "VARCHAR", :limit => 255 }
-      tp[:integer]     = { :name => "INTEGER" }
-      tp[:float]       = { :name => "FLOAT" }
-      tp[:decimal]     = { :name => "DECIMAL" }
-      tp[:datetime]    = { :name => "DATETIME YEAR TO FRACTION(5)" }
-      tp[:timestamp]   = { :name => "DATETIME YEAR TO FRACTION(5)" }
-      tp[:time]        = { :name => "DATETIME HOUR TO FRACTION(5)" }
-      tp[:date]        = { :name => "DATE" }
-      tp[:binary]      = { :name => "BYTE" }
-      tp[:boolean]     = { :name => "BOOLEAN" }
-      tp
+    def modify_types(types)
+      super(types)
+      types[:primary_key] = "SERIAL PRIMARY KEY"
+      types[:string]      = { :name => "VARCHAR", :limit => 255 }
+      types[:integer]     = { :name => "INTEGER" }
+      types[:float]       = { :name => "FLOAT" }
+      types[:decimal]     = { :name => "DECIMAL" }
+      types[:datetime]    = { :name => "DATETIME YEAR TO FRACTION(5)" }
+      types[:timestamp]   = { :name => "DATETIME YEAR TO FRACTION(5)" }
+      types[:time]        = { :name => "DATETIME HOUR TO FRACTION(5)" }
+      types[:date]        = { :name => "DATE" }
+      types[:binary]      = { :name => "BYTE" }
+      types[:boolean]     = { :name => "BOOLEAN" }
+      types
     end
 
     def prefetch_primary_key?(table_name = nil)
