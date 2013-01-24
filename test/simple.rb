@@ -565,7 +565,7 @@ module SimpleTestMethods
     binds = [ [ Entry.columns_hash['title'], 'test1' ] ]
     binds_dup = binds.dup
     sql = 'SELECT * FROM entries WHERE title = ?'
-    Entry.connection.substitute_binds(sql, binds)
+    Entry.connection.send :substitute_binds, sql, binds
     assert_equal binds_dup, binds
   end
 

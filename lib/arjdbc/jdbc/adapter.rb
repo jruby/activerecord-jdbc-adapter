@@ -122,7 +122,7 @@ module ActiveRecord
         end
       end
 
-      def is_a?(klass)          # :nodoc:
+      def is_a?(klass) # :nodoc:
         # This is to fake out current_adapter? conditional logic in AR tests
         if Class === klass && klass.name =~ /#{adapter_name}Adapter$/i
           true
@@ -191,16 +191,6 @@ module ActiveRecord
         @connection.disconnect!
       end
 
-      def substitute_binds(manager, binds = [])
-        sql = extract_sql(manager)
-        if binds.empty?
-          sql
-        else
-          copy = binds.dup
-          sql.gsub('?') { quote(*copy.shift.reverse) }
-        end
-      end
-
       def execute(sql, name = nil, binds = [])
         sql = substitute_binds(sql, binds)
         if name == :skip_logging
@@ -216,19 +206,22 @@ module ActiveRecord
       def _execute(sql, name = nil)
         @connection.execute(sql)
       end
-
-      def jdbc_insert(sql, name = nil, pk = nil, id_value = nil, sequence_name = nil, binds = [])
-        insert_sql(sql, name, pk, id_value, sequence_name, binds)
-      end
-
-      def jdbc_update(sql, name = nil, binds = []) #:nodoc:
-        execute(sql, name, binds)
-      end
-      def jdbc_select_all(sql, name = nil, binds = [])
-        select(sql, name, binds)
-      end
-
+      private :_execute
+      
       if ActiveRecord::VERSION::MAJOR < 3
+        
+        def jdbc_insert(sql, name = nil, pk = nil, id_value = nil, sequence_name = nil, binds = [])  # :nodoc:
+          insert_sql(sql, name, pk, id_value, sequence_name, binds)
+        end
+        
+        def jdbc_update(sql, name = nil, binds = []) # :nodoc:
+          execute(sql, name, binds)
+        end
+        
+        def jdbc_select_all(sql, name = nil, binds = []) # :nodoc:
+          select(sql, name, binds)
+        end
+        
         # Allow query caching to work even when we override alias_method_chain'd methods
         alias_chained_method :select_all, :query_cache, :jdbc_select_all
         alias_chained_method :update, :query_dirty, :jdbc_update
@@ -238,12 +231,18 @@ module ActiveRecord
         def select_one(sql, name = nil)
           select(sql, name).first
         end
+        
       end
 
-      def last_inserted_id(result)
-        result
+      def jdbc_columns(table_name, name = nil)
+        @connection.columns(table_name.to_s)
       end
-
+      alias_chained_method :columns, :query_cache, :jdbc_columns
+      
+      def select(*args)
+        execute(*args)
+      end
+      
       def select_rows(sql, name = nil)
         rows = []
         select(sql, name).each {|row| rows << row.values }
@@ -254,8 +253,6 @@ module ActiveRecord
         id = execute(sql, name = nil, binds)
         id_value || id
       end
-
-      ### Rails 3.1 prepared statement support
 
       # Executes +sql+ statement in the context of this connection using
       # +binds+ as the bind substitutes.  +name+ is logged along with
@@ -284,11 +281,6 @@ module ActiveRecord
       def exec_update(sql, name, binds)
         exec_query(sql, name, binds)
       end
-
-      def jdbc_columns(table_name, name = nil)
-        @connection.columns(table_name.to_s)
-      end
-      alias_chained_method :columns, :query_cache, :jdbc_columns
 
       def tables(name = nil)
         @connection.tables
@@ -331,10 +323,6 @@ module ActiveRecord
         @connection.primary_keys(table)
       end
 
-      def select(*args)
-        execute(*args)
-      end
-
       protected
  
       def translate_exception(e, message)
@@ -342,14 +330,28 @@ module ActiveRecord
         super
       end
 
-      def extract_sql(obj)
-        if obj.respond_to? :to_sql
-          obj.send :to_sql
+      private
+      
+      def substitute_binds(sql, binds = [])
+        sql = extract_sql(sql)
+        if binds.empty?
+          sql
         else
-          obj
+          copy = binds.dup
+          sql.gsub('?') { quote(*copy.shift.reverse) }
         end
       end
-
+      
+      def extract_sql(obj)
+        obj.respond_to?(:to_sql) ? obj.send(:to_sql) : obj
+      end
+      
+      def last_inserted_id(result)
+        result
+      end
+      
+      protected
+      
       def self.select?(sql)
         JdbcConnection::select?(sql)
       end
