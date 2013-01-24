@@ -1,13 +1,9 @@
 require 'bigdecimal'
 require 'active_record/connection_adapters/abstract/schema_definitions'
-
 require 'arjdbc/mysql/explain_support'
 
 module ::ArJdbc
   module MySQL
-    def self.column_selector
-      [/mysql/i, lambda {|cfg,col| col.extend(::ArJdbc::MySQL::ColumnExtensions)}]
-    end
 
     def self.extended(adapter)
       adapter.configure_connection
@@ -15,6 +11,10 @@ module ::ArJdbc
 
     def configure_connection
       execute("SET SQL_AUTO_IS_NULL=0")
+    end
+
+    def self.column_selector
+      [ /mysql/i, lambda { |_,column| column.extend(::ArJdbc::MySQL::ColumnExtensions) } ]
     end
 
     def self.jdbc_connection_class
@@ -447,7 +447,7 @@ module ActiveRecord
     remove_const(:MysqlAdapter) if const_defined?(:MysqlAdapter)
 
     class MysqlColumn < JdbcColumn
-      include ArJdbc::MySQL::ColumnExtensions
+      include ::ArJdbc::MySQL::ColumnExtensions
 
       def initialize(name, *args)
         if Hash === name
@@ -462,8 +462,8 @@ module ActiveRecord
     end
 
     class MysqlAdapter < JdbcAdapter
-      include ArJdbc::MySQL
-      include ArJdbc::MySQL::ExplainSupport
+      include ::ArJdbc::MySQL
+      include ::ArJdbc::MySQL::ExplainSupport
 
       def initialize(*args)
         super
@@ -475,20 +475,14 @@ module ActiveRecord
       end
 
       def jdbc_column_class
-        ActiveRecord::ConnectionAdapters::MysqlColumn
+        MysqlColumn
       end
 
       alias_chained_method :columns, :query_cache, :jdbc_columns
 
       protected
       def exec_insert(sql, name, binds)
-        binds = binds.dup
-
-        # Pretend to support bind parameters
-        unless binds.empty?
-          sql = sql.gsub('?') { quote(*binds.shift.reverse) }
-        end
-        execute sql, name
+        execute sql, name, binds
       end
       alias :exec_update :exec_insert
       alias :exec_delete :exec_insert
