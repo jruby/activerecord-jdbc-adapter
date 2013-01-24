@@ -208,10 +208,9 @@ module ArJdbc
 
         # Clobs in DB2 Host have to be created after the Table with an auxiliary Table.
         # First: Save them for later in Array "clobs"
-        clobs =table_definition.columns.select { |x| x.type == "text" }
-
+        clobs = table_definition.columns.select { |x| x.type == "text" }
         # Second: and delete them from the original Colums-Array
-        table_definition.columns.delete_if { |x| x.type=="text" }
+        table_definition.columns.delete_if { |x| x.type == "text" }
 
         if options[:force] && table_exists?(name)
           super.drop_table(name, options)

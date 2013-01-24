@@ -83,8 +83,8 @@ module ActiveRecord
         nil
       end
 
-      def modify_types(tp)
-        tp
+      def modify_types(types)
+        types
       end
 
       def adapter_name #:nodoc:
@@ -143,39 +143,39 @@ module ActiveRecord
         @connection.database_name
       end
 
-      def native_sql_to_type(tp)
-        if /^(.*?)\(([0-9]+)\)/ =~ tp
-          tname = $1
-          limit = $2.to_i
-          ntype = native_database_types
-          if ntype[:primary_key] == tp
-            return :primary_key,nil
+      def native_sql_to_type(type)
+        if /^(.*?)\(([0-9]+)\)/ =~ type
+          tname, limit = $1, $2.to_i
+          ntypes = native_database_types
+          if ntypes[:primary_key] == type
+            return :primary_key, nil
           else
-            ntype.each do |name,val|
+            ntypes.each do |name, val|
               if name == :primary_key
                 next
               end
-              if val[:name].downcase == tname.downcase && (val[:limit].nil? || val[:limit].to_i == limit)
-                return name,limit
+              if val[:name].downcase == tname.downcase && 
+                  ( val[:limit].nil? || val[:limit].to_i == limit )
+                return name, limit
               end
             end
           end
-        elsif /^(.*?)/ =~ tp
+        elsif /^(.*?)/ =~ type
           tname = $1
-          ntype = native_database_types
-          if ntype[:primary_key] == tp
-            return :primary_key,nil
+          ntypes = native_database_types
+          if ntypes[:primary_key] == type
+            return :primary_key, nil
           else
-            ntype.each do |name,val|
+            ntypes.each do |name, val|
               if val[:name].downcase == tname.downcase && val[:limit].nil?
-                return name,nil
+                return name, nil
               end
             end
           end
         else
-          return :string,255
+          return :string, 255
         end
-        return nil,nil
+        return nil, nil
       end
 
       def active?
@@ -191,6 +191,7 @@ module ActiveRecord
         @connection.disconnect!
       end
 
+      # Executes the SQL statement in the context of this connection.
       def execute(sql, name = nil, binds = [])
         sql = substitute_binds(sql, binds)
         if name == :skip_logging
@@ -207,7 +208,7 @@ module ActiveRecord
         @connection.execute(sql)
       end
       private :_execute
-      
+
       if ActiveRecord::VERSION::MAJOR < 3
         
         def jdbc_insert(sql, name = nil, pk = nil, id_value = nil, sequence_name = nil, binds = [])  # :nodoc:

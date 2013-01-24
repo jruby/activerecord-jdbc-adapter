@@ -1,11 +1,7 @@
-module ActiveRecord::ConnectionAdapters
-  OracleAdapter = Class.new(AbstractAdapter) unless const_defined?(:OracleAdapter)
-end
-
 module ::ArJdbc
   module Oracle
     def self.extended(mod)
-      unless defined?(@lob_callback_added)
+      unless @_lob_callback_added
         ActiveRecord::Base.class_eval do
           def after_save_with_oracle_lob
             self.class.columns.select { |c| c.sql_type =~ /LOB\(|LOB$/i }.each do |c|
@@ -15,7 +11,7 @@ module ::ArJdbc
               else
                 value = value.to_yaml if value.is_a?(Hash)
               end
-              next if value.nil?  || (value == '')
+              next if value.nil? || (value == '')
 
               connection.write_large_object(c.type == :binary, c.name, self.class.table_name, self.class.primary_key, quote_value(id), value)
             end
@@ -23,7 +19,7 @@ module ::ArJdbc
         end
 
         ActiveRecord::Base.after_save :after_save_with_oracle_lob
-        @lob_callback_added = true
+        @_lob_callback_added = true
       end
 
       unless ActiveRecord::ConnectionAdapters::AbstractAdapter.instance_methods(false).detect {|m| m.to_s == "prefetch_primary_key?"}
@@ -41,17 +37,21 @@ module ::ArJdbc
         end
       end
     end
-    
 
     def self.column_selector
-      [/oracle/i, lambda {|cfg,col| col.extend(::ArJdbc::Oracle::Column)}]
+      [ /oracle/i, lambda { |cfg, column| column.extend(::ArJdbc::Oracle::Column) } ]
     end
 
     def self.jdbc_connection_class
       ::ActiveRecord::ConnectionAdapters::OracleJdbcConnection
     end
 
+    def jdbc_column_class
+      ::ActiveRecord::ConnectionAdapters::OracleColumn
+    end
+
     module Column
+      
       def primary=(val)
         super
         if val && @sql_type =~ /^NUMBER$/i
@@ -59,19 +59,19 @@ module ::ArJdbc
         end
       end
 
+      def extract_limit(sql_type)
+        case sql_type
+        when /^(clob|date)/i; nil
+        else super
+        end
+      end
+      
       def type_cast(value)
         return nil if value.nil?
         case type
         when :datetime then ArJdbc::Oracle::Column.string_to_time(value, self.class)
         else
           super
-        end
-      end
-
-      def extract_limit(sql_type)
-        case sql_type
-        when /^(clob|date)/i; nil
-        else super
         end
       end
 
@@ -95,6 +95,7 @@ module ::ArJdbc
       end
 
       private
+      
       def simplified_type(field_type)
         case field_type
         when /^number\(1\)$/i                  then :boolean
@@ -102,29 +103,32 @@ module ::ArJdbc
         when /float|double/i                   then :float
         when /int/i                            then :integer
         when /num|dec|real/i                   then extract_scale(field_type) == 0 ? :integer : :decimal
-        when /date|time/i                      then :datetime
-        when /clob/i                           then :text
-        when /blob/i                           then :binary
+        # Oracle TIMESTAMP stores the date and time to up to 9 digits of sub-second precision
+        when /TIMESTAMP/i                      then :timestamp
+        # Oracle DATE stores the date and time to the second
+        when /DATE|TIME/i                      then :datetime
+        when /CLOB/i                           then :text
+        when /BLOB/i                           then :binary
+        else
+          super
         end
       end
 
       # Post process default value from JDBC into a Rails-friendly format (columns{-internal})
       def default_value(value)
         return nil unless value
+        value = value.strip # Not sure why we need this for Oracle?
+        upcase = value.upcase
 
-        # Not sure why we need this for Oracle?
-        value = value.strip
-
-        return nil if value == "null"
-
-        # sysdate default should be treated like a null value
-        return nil if value.downcase == "sysdate"
-
+        return nil if upcase == "NULL"
+        # SYSDATE default should be treated like a NULL value
+        return nil if upcase == "SYSDATE"
         # jdbc returns column default strings with actual single quotes around the value.
         return $1 if value =~ /^'(.*)'$/
 
         value
       end
+      
     end
 
     def adapter_name
@@ -173,10 +177,34 @@ module ::ArJdbc
     def drop_database(name)
       recreate_database(name)
     end
-
+    
+    def type_to_sql(type, limit = nil, precision = nil, scale = nil) #:nodoc:
+      case type.to_sym
+      when :binary
+        # { BLOB | BINARY LARGE OBJECT } [ ( length [{K |M |G }] ) ]
+        # although sOracle does not like limit (length) with BLOB (or CLOB) :
+        # 
+        # CREATE TABLE binaries (data BLOB, short_data BLOB(1024));
+        # ORA-00907: missing right parenthesis             *
+        #
+        # TODO do we need to worry about NORMAL vs. non IN-TABLE BLOBs ?!
+        # http://dba.stackexchange.com/questions/8770/improve-blob-writing-performance-in-oracle-11g
+        # - if the LOB is smaller than 3900 bytes it can be stored inside the 
+        #   table row; by default this is enabled, 
+        #   unless you specify DISABLE STORAGE IN ROW
+        # - normal LOB - stored in a separate segment, outside of table, 
+        #   you may even put it in another tablespace;
+        super(type, nil, nil, nil)
+      when :text
+        super(type, nil, nil, nil)
+      else
+        super
+      end
+    end
+    
     def next_sequence_value(sequence_name)
       # avoid #select or #select_one so that the sequence values aren't cached
-      execute("select #{sequence_name}.nextval id from dual").first['id'].to_i
+      execute("SELECT #{sequence_name}.nextval id FROM dual").first['id'].to_i
     end
 
     def sql_literal?(value)
@@ -206,14 +234,15 @@ module ::ArJdbc
       @connection.indexes(table, name, @connection.connection.meta_data.user_name)
     end
 
-    def modify_types(tp)
-      tp[:primary_key] = "NUMBER(38) NOT NULL PRIMARY KEY"
-      tp[:integer] = { :name => "NUMBER", :limit => 38 }
-      tp[:datetime] = { :name => "DATE" }
-      tp[:timestamp] = { :name => "DATE" }
-      tp[:time] = { :name => "DATE" }
-      tp[:date] = { :name => "DATE" }
-      tp
+    def modify_types(types)
+      super(types)
+      types[:primary_key] = "NUMBER(38) NOT NULL PRIMARY KEY"
+      types[:integer] = { :name => "NUMBER", :limit => 38 }
+      types[:datetime] = { :name => "DATE" }
+      types[:timestamp] = { :name => "DATE" }
+      types[:time] = { :name => "DATE" }
+      types[:date] = { :name => "DATE" }
+      types
     end
 
     def add_limit_offset!(sql, options) #:nodoc:
@@ -227,7 +256,7 @@ module ::ArJdbc
     end
 
     def current_database #:nodoc:
-      select_one("select sys_context('userenv','db_name') db from dual")["db"]
+      select_one("SELECT sys_context('userenv','db_name') db FROM dual")["db"]
     end
 
     def remove_index(table_name, options = {}) #:nodoc:
@@ -402,20 +431,22 @@ module ::ArJdbc
       '0'
     end
 
+    def select(sql, name = nil, binds = [])
+      records = execute(sql, name, binds)
+      for column in records
+        column.delete('raw_rnum_')
+      end
+      records
+    end
+    
+    private
+    
     def _execute(sql, name = nil)
       if self.class.select?(sql)
         @connection.execute_query(sql)
       else
         @connection.execute_update(sql)
       end
-    end
-
-    private
-
-    def select(sql, name = nil, binds = [])
-      records = execute(sql, name, binds)
-      records.each { |col| col.delete('raw_rnum_') }
-      records
     end
 
     # In Oracle, schemas are usually created under your username:
@@ -432,3 +463,13 @@ module ::ArJdbc
   end
 end
 
+module ActiveRecord::ConnectionAdapters
+  OracleAdapter = Class.new(AbstractAdapter) unless const_defined?(:OracleAdapter)
+
+  class OracleColumn < JdbcColumn
+    include ArJdbc::Oracle::Column
+
+    def call_discovered_column_callbacks(*)
+    end
+  end
+end

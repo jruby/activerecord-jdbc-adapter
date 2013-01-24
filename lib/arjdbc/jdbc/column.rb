@@ -16,6 +16,17 @@ module ActiveRecord
         val
       end
 
+      protected
+
+      def call_discovered_column_callbacks(config)
+        dialect = (config[:dialect] || config[:driver]).to_s
+        for matcher, block in self.class.column_types
+          block.call(config, self) if matcher === dialect
+        end
+      end
+
+      public
+
       def self.column_types
         # reset the column types if the # of constants changed since last call
         @column_types ||= begin 
@@ -39,15 +50,6 @@ module ActiveRecord
         reset_constants! if ::ArJdbc.constants.size != @driver_constants.size
       end
       
-      protected
-      def call_discovered_column_callbacks(config)
-        dialect = config[:dialect] || config[:driver]
-        for reg, func in JdbcColumn.column_types
-          if reg === dialect.to_s
-            func.call(config,self)
-          end
-        end
-      end
     end
   end
 end
