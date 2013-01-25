@@ -1,29 +1,48 @@
 module ArJdbc
   module DB2
+    
+    # TODO kind of standard AR configuration option for this would be nice :
+    ADD_LOB_CALLBACK = true unless const_defined?(:ADD_LOB_CALLBACK) # :nodoc
+
+    def self.lob_callback_added? # :nodoc
+      @_lob_callback_added
+    end
+    
+    def self.lob_callback_added! # :nodoc
+      @_lob_callback_added = true
+    end
+    
     def self.extended(base)
-      if base.send(:zos?)
-        unless @_lob_callback_added
-          ActiveRecord::Base.class_eval do
-            def after_save_with_db2zos_blob
-              lobfields = self.class.columns.select { |c| c.sql_type =~ /blob|clob/i }
-              lobfields.each do |c|
-                value = self[c.name]
-                if respond_to?(:unserializable_attribute?)
-                  value = value.to_yaml if unserializable_attribute?(c.name, c)
-                else
-                  value = value.to_yaml if value.is_a?(Hash)
-                end
-                next if value.nil?
-                connection.write_large_object(c.type == :binary, c.name, self.class.table_name, self.class.primary_key, quote_value(id), value)
+      if ADD_LOB_CALLBACK && ! lob_callback_added?
+        ActiveRecord::Base.class_eval do
+          def after_save_with_db2_lob
+            lob_columns = self.class.columns.select { |c| c.sql_type =~ /blob|clob/i }
+            lob_columns.each do |column|
+              value = self[column.name]
+
+              if respond_to?(:unserializable_attribute?)
+                value = value.to_yaml if unserializable_attribute?(column.name, column)
+              else
+                value = value.to_yaml if value.is_a?(Hash)
               end
+              next if value.nil? # already set NULL
+
+              connection.write_large_object(
+                column.type == :binary, column.name, 
+                self.class.table_name, 
+                self.class.primary_key, 
+                quote_value(id), value
+              )
             end
           end
-          ActiveRecord::Base.after_save :after_save_with_db2zos_blob
-          @_lob_callback_added = true
+          alias after_save_with_db2zos_blob after_save_with_db2_lob # <-compat
         end
+
+        ActiveRecord::Base.after_save :after_save_with_db2zos_blob # <-compat
+        lob_callback_added!
       end
     end
-
+    
     def self.column_selector
       [ /(db2|as400|zos)/i, lambda { |cfg, column| column.extend(::ArJdbc::DB2::Column) } ]
     end
@@ -35,7 +54,7 @@ module ArJdbc
     NATIVE_DATABASE_TYPES = {
       :double => { :name => "double" },
       :bigint => { :name => "bigint" }
-    }
+    } # TODO this is really BARE and should be extended - see 'ibm_db' gem
 
     def native_database_types
       super.merge(NATIVE_DATABASE_TYPES)
@@ -298,34 +317,57 @@ module ArJdbc
       keys
     end
 
-    def quote_column_name(column_name)
-      column_name.to_s
-    end
-
+    # Properly quotes the various data types.
+    # +value+ contains the data, +column+ is optional and contains info on the field
     def quote(value, column = nil) # :nodoc:
-      if column && column.respond_to?(:primary) && column.primary && column.klass != String
-        return value.to_i.to_s
+      return value.quoted_id if value.respond_to?(:quoted_id)
+      
+      if column
+        if column.respond_to?(:primary) && column.primary && column.klass != String
+          return value.to_i.to_s
+        end
+        if value && (column.type.to_sym == :decimal || column.type.to_sym == :integer)
+          return value.to_s
+        end
       end
-      if column && (column.type == :decimal || column.type == :integer) && value
-        return value.to_s
-      end
+      
+      column_type = column && column.type.to_sym
+      
       case value
-      when String
-        if column && column.type == :binary
-          "BLOB('#{quote_string(value)}')"
+      when nil then "NULL"
+      when Numeric # IBM_DB doesn't accept quotes on numeric types
+        # if the column type is text or string, return the quote value
+        if column_type == :text || column_type == :string
+          "'#{value}'"
         else
-          if zos? && column && column.type == :text
-            "'if_you_see_this_value_the_after_save_hook_in_db2_zos_adapter_went_wrong'"
+          value.to_s
+        end
+      when String, ActiveSupport::Multibyte::Chars
+        if column_type == :binary && !(column.sql_type =~ /for bit data/i)
+          if ArJdbc::DB2.lob_callback_added?
+            "NULL" # '@@@IBMBINARY@@@'"
+          else
+            "BLOB('#{quote_string(value)}')"
+          end
+        elsif column && column.sql_type =~ /clob/ # :text
+          if ArJdbc::DB2.lob_callback_added?
+            "NULL" # "'@@@IBMTEXT@@@'"
           else
             "'#{quote_string(value)}'"
           end
+        elsif column_type == :xml
+          "#{value}" # "'<ibm>@@@IBMXML@@@</ibm>'"
+        else
+          "'#{quote_string(value)}'"
         end
+      when Symbol then "'#{quote_string(value.to_s)}'"
       else super
       end
     end
 
     def quote_string(string)
-      string.gsub(/'/, "''") # ' (for ruby-mode)
+      # escaping single quote (') characters.
+      string.gsub("'", "''") # ' (for ruby-mode)
     end
 
     def quoted_true
@@ -336,11 +378,40 @@ module ArJdbc
       '0'
     end
 
+    def quote_column_name(column_name)
+      column_name.to_s
+    end
+    
+    def add_column_options!(sql, options) # :nodoc:
+      # handle case of defaults for CLOB columns, 
+      # which might get incorrect if we write LOBs in the after_save callback
+      if options_include_default?(options)
+        column = options[:column]
+        if column && column.type == :text
+          sql << " DEFAULT #{quote(options.delete(:default))}"
+        end
+        if column && column.type == :binary
+          # quoting required for the default value of a column :
+          value = options.delete(:default)
+          # DB2 z/OS only allows NULL or "" (empty) string as DEFAULT value 
+          # for a BLOB column. non-empty string and non-NULL, return error!
+          if value.nil?
+            sql_value = "NULL"
+          else
+            sql_value = zos? ? "#{value}" : "BLOB('#{quote_string(value)}'"
+          end
+          sql << " DEFAULT #{sql_value}"
+        end
+      end
+      super
+    end
+    
     def reorg_table(table_name)
       unless as400?
         @connection.execute_update "call sysproc.admin_cmd ('REORG TABLE #{table_name}')"
       end
     end
+    private :reorg_table
 
     def runstats_for_table(tablename, priority=10)
       @connection.execute_update "call sysproc.admin_cmd('RUNSTATS ON TABLE #{tablename} WITH DISTRIBUTION AND DETAILED INDEXES ALL UTIL_IMPACT_PRIORITY #{priority}')"
@@ -364,7 +435,6 @@ module ArJdbc
         execute statement
       end
     end
-
 
     def remove_index(table_name, options = { })
       execute "DROP INDEX #{quote_column_name(index_name(table_name, options))}"
@@ -436,7 +506,7 @@ module ArJdbc
       execute "RENAME TABLE #{name} TO #{new_name}"
       reorg_table(new_name)
     end
-
+    
     def tables
       @connection.tables(nil, db2_schema, nil, ["TABLE"])
     end
