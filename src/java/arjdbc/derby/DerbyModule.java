@@ -105,7 +105,7 @@ public class DerbyModule {
         IRubyObject value = args[0];
         if (args.length > 1) {
             IRubyObject col = args[1];
-            String type = rubyApi.callMethod(col, "type").toString();
+            String type = col.isNil() ? "" : rubyApi.callMethod(col, "type").toString();
             // intercept and change value, maybe, if the column type is :text or :string
             if (type.equals("text") || type.equals("string")) {
             	value = make_ruby_string_for_text_column(context, recv, runtime, value);
@@ -208,7 +208,7 @@ public class DerbyModule {
 
     private static IRubyObject quote_string_with_surround(Ruby runtime, String before, RubyString string, String after) {
         ByteList input = string.getByteList();
-        ByteList output = new ByteList(before.getBytes());
+        ByteList output = new ByteList(before.getBytes(), input.encoding);
         for(int i = input.begin; i< input.begin + input.realSize; i++) {
             switch(input.bytes[i]) {
             case '\'':
