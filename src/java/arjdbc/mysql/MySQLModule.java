@@ -26,90 +26,80 @@ package arjdbc.mysql;
 
 import java.sql.Connection;
 
+import org.jcodings.specific.UTF8Encoding;
+
+import org.jruby.Ruby;
 import org.jruby.RubyModule;
 import org.jruby.RubyString;
-
 import org.jruby.anno.JRubyMethod;
 import org.jruby.runtime.ThreadContext;
 import org.jruby.runtime.builtin.IRubyObject;
-
 import org.jruby.util.ByteList;
 
 public class MySQLModule {
+    
     public static void load(RubyModule arJdbc) {
-        RubyModule mysql = arJdbc.defineModuleUnder("MySQL");
-        mysql.defineAnnotatedMethods(MySQLModule.class);
+        RubyModule mySQL = arJdbc.defineModuleUnder("MySQL");
+        mySQL.defineAnnotatedMethods(MySQLModule.class);
     }
 
-    private final static byte BACKQUOTE = '`';
-    private final static byte[] QUOTED_DOT = new byte[] {'`', '.', '`'};
+    //private final static byte[] ZERO = new byte[] {'\\','0'};
+    //private final static byte[] NEWLINE = new byte[] {'\\','n'};
+    //private final static byte[] CARRIAGE = new byte[] {'\\','r'};
+    //private final static byte[] ZED = new byte[] {'\\','Z'};
+    //private final static byte[] DBL = new byte[] {'\\','"'};
+    //private final static byte[] SINGLE = new byte[] {'\\','\''};
+    //private final static byte[] ESCAPE = new byte[] {'\\','\\'};
 
-    private final static byte[] ZERO = new byte[] {'\\','0'};
-    private final static byte[] NEWLINE = new byte[] {'\\','n'};
-    private final static byte[] CARRIAGE = new byte[] {'\\','r'};
-    private final static byte[] ZED = new byte[] {'\\','Z'};
-    private final static byte[] DBL = new byte[] {'\\','"'};
-    private final static byte[] SINGLE = new byte[] {'\\','\''};
-    private final static byte[] ESCAPE = new byte[] {'\\','\\'};
-
-    @JRubyMethod(name = "quote_string", required = 1, frame=false)
-    public static IRubyObject quote_string(ThreadContext context, IRubyObject recv, IRubyObject string) {
-        ByteList bytes = ((RubyString) string).getByteList();
-        ByteList newBytes = new ByteList();
-
-        newBytes.append(bytes);
-
-        for(int i = newBytes.begin; i < newBytes.begin + newBytes.realSize; i++) {
-            byte[] rep = null;
-            switch (newBytes.bytes[i]) {
-            case 0: rep = ZERO; break;
-            case '\n': rep = NEWLINE; break;
-            case '\r': rep = CARRIAGE; break;
-            case 26: rep = ZED; break;
-            case '"': rep = DBL; break;
-            case '\'': rep = SINGLE; break;
-            case '\\': rep = ESCAPE; break;
+    private static final int STRING_QUOTES_OPTIMISTIC_QUESS = 24;
+    
+    @JRubyMethod(name = "quote_string", required = 1, frame = false)
+    public static IRubyObject quote_string(final ThreadContext context, 
+        final IRubyObject recv, final IRubyObject string) {
+        
+        final ByteList stringBytes = ((RubyString) string).getByteList();
+        final byte[] bytes = stringBytes.bytes; // unsafeBytes();
+        final int begin = stringBytes.begin; // getBegin();
+        final int realSize = stringBytes.realSize; // getRealSize();
+        
+        ByteList quotedBytes = null; int appendFrom = begin;
+        for ( int i = begin; i < begin + realSize; i++ ) {
+            final byte byte2;
+            switch ( bytes[i] ) {
+                case   0  : byte2 = '0';  break;
+                case '\n' : byte2 = 'n';  break;
+                case '\r' : byte2 = 'r';  break;
+                case  26  : byte2 = 'Z';  break;
+                case '"'  : byte2 = '"';  break;
+                case '\'' : byte2 = '\''; break;
+                case '\\' : byte2 = '\\'; break;
+                default   : byte2 = 0;
             }
-
-            if (rep != null) {
-                newBytes.replace(i, 1, rep);
-                i += rep.length - 1; // We subtract one since for loop already adds one
+            if ( byte2 != 0 ) {
+                if ( quotedBytes == null ) {
+                    quotedBytes = new ByteList(
+                        new byte[realSize + STRING_QUOTES_OPTIMISTIC_QUESS], 
+                        stringBytes.encoding // getEncoding()
+                    );
+                    quotedBytes.begin = 0; // setBegin(0);
+                    quotedBytes.realSize = 0; // setRealSize(0);
+                } // copy string on-first quote we "optimize" for non-quoted
+                quotedBytes.append(bytes, appendFrom, i - appendFrom);
+                quotedBytes.append('\\').append(byte2);
+                appendFrom = i + 1;
             }
         }
-
-        // Nothing changed, can return original
-        if (newBytes.length() == bytes.length()) return string;
-
-        return context.getRuntime().newString(newBytes);
-    }
-
-    @JRubyMethod(name = "quote_column_name", frame=false)
-    public static IRubyObject quote_column_name(ThreadContext context, IRubyObject recv, IRubyObject arg) {
-        ByteList bytes = arg.asString().getByteList();
-        ByteList newBytes = new ByteList();
-
-        newBytes.insert(0, BACKQUOTE);
-        newBytes.append(bytes);
-        newBytes.append(BACKQUOTE);
-
-        return context.getRuntime().newString(newBytes);
-    }
-
-    @JRubyMethod(name = "quote_table_name", frame=false)
-    public static IRubyObject quote_table_name(ThreadContext context, IRubyObject recv, IRubyObject arg) {
-        ByteList bytes = arg.asString().getByteList();
-        ByteList newBytes = new ByteList();
-
-        newBytes.insert(0, BACKQUOTE);
-        newBytes.append(bytes);
-        int i = 0, j = 0;
-        while ((i = newBytes.indexOf('.', j)) != -1) {
-            newBytes.replace(i, 1, QUOTED_DOT);
-            j = i+3;
+        if ( quotedBytes != null ) { // append what's left in the end :
+            quotedBytes.append(bytes, appendFrom, begin + realSize - appendFrom);
         }
-        newBytes.append(BACKQUOTE);
+        else return string; // nothing changed, can return original
 
-        return context.getRuntime().newString(newBytes);
+        final Ruby runtime = context.getRuntime();
+        final RubyString quoted = runtime.newString(quotedBytes);
+        if ( runtime.is1_9() ) { // only due mysql2 compatibility
+            quoted.associateEncoding( UTF8Encoding.INSTANCE );
+        }
+        return quoted;
     }
 
     /**
@@ -118,16 +108,18 @@ public class MySQLModule {
      * if we loaded MySQL classes from the same classloader as JRuby
      */
     @JRubyMethod(module = true, frame = false)
-    public static IRubyObject kill_cancel_timer(ThreadContext context, IRubyObject recv, IRubyObject raw_connection) {
-        Connection conn = (Connection) raw_connection.dataGetStruct();
+    public static IRubyObject kill_cancel_timer(final ThreadContext context, 
+        final IRubyObject recv, final IRubyObject raw_connection) {
+        
+        final Connection conn = (Connection) raw_connection.dataGetStruct();
         if (conn != null && conn.getClass().getClassLoader() == recv.getRuntime().getJRubyClassLoader()) {
             try {
                 java.lang.reflect.Field f = conn.getClass().getDeclaredField("cancelTimer");
                 f.setAccessible(true);
                 java.util.Timer timer = (java.util.Timer) f.get(null);
                 timer.cancel();
-            } catch (Exception e) {
             }
+            catch (Exception e) { /* ignored */ }
         }
         return recv.getRuntime().getNil();
     }

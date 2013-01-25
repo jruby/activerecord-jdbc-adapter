@@ -89,21 +89,27 @@ module ::ArJdbc
       end
     end
 
-    def modify_types(tp)
-      tp[:primary_key] = "int(11) DEFAULT NULL auto_increment PRIMARY KEY"
-      tp[:integer] = { :name => 'int', :limit => 4 }
-      tp[:decimal] = { :name => "decimal" }
-      tp[:timestamp] = { :name => "datetime" }
-      tp[:datetime][:limit] = nil
-      tp
+    def modify_types(types)
+      types[:primary_key] = "int(11) DEFAULT NULL auto_increment PRIMARY KEY"
+      types[:integer] = { :name => 'int', :limit => 4 }
+      types[:decimal] = { :name => "decimal" }
+      types[:timestamp] = { :name => "datetime" }
+      types[:datetime][:limit] = nil
+      types
     end
 
+    ADAPTER_NAME = 'MySQL'.freeze
+    
     def adapter_name #:nodoc:
-      'MySQL'
+      ADAPTER_NAME
     end
 
     def self.arel2_visitors(config)
-      {}.tap {|v| %w(mysql mysql2 jdbcmysql).each {|a| v[a] = ::Arel::Visitors::MySQL } }
+      {
+        'mysql' => ::Arel::Visitors::MySQL,
+        'mysql2' => ::Arel::Visitors::MySQL,
+        'jdbcmysql' => ::Arel::Visitors::MySQL
+      }
     end
 
     def case_sensitive_equality_operator
@@ -122,32 +128,44 @@ module ::ArJdbc
 
     def quote(value, column = nil)
       return value.quoted_id if value.respond_to?(:quoted_id)
-
-      if column && column.type == :primary_key
-        value.to_s
-      elsif column && String === value && column.type == :binary && column.class.respond_to?(:string_to_binary)
-        s = column.class.string_to_binary(value).unpack("H*")[0]
-        "x'#{s}'"
-      elsif BigDecimal === value
-        "'#{value.to_s("F")}'"
+      return value.to_s if column && column.type == :primary_key
+      
+      if value.kind_of?(String) && column && column.type == :binary && column.class.respond_to?(:string_to_binary)
+        "x'#{column.class.string_to_binary(value).unpack("H*")[0]}'"
+      elsif value.kind_of?(BigDecimal)
+        value.to_s("F")
       else
         super
       end
     end
 
-    def quote_column_name(name)
-      "`#{name.to_s.gsub('`', '``')}`"
+    @@quoted_column_names = {} # :nodoc:
+    
+    def quote_column_name(name) # :nodoc:
+      unless quoted = @@quoted_column_names[name]
+        quoted = "`#{name.to_s.gsub('`', '``')}`"
+        @@quoted_column_names[name] = quoted.freeze
+      end
+      quoted
     end
 
-    def quoted_true
-      "1"
+    @@quoted_table_names = {} # :nodoc:
+    
+    def quote_table_name(name) # :nodoc:
+      unless quoted = @@quoted_table_names[name]
+        quoted = quote_column_name(name).gsub('.', '`.`')
+        @@quoted_table_names[name] = quoted.freeze
+      end
+      quoted
     end
 
-    def quoted_false
-      "0"
-    end
-
-    def supports_savepoints? #:nodoc:
+    QUOTED_TRUE, QUOTED_FALSE = '1', '0' # :nodoc
+    
+    def quoted_true; QUOTED_TRUE; end # :nodoc
+    def quoted_false; QUOTED_FALSE; end # :nodoc
+    
+    
+    def supports_savepoints? # :nodoc:
       true
     end
 
