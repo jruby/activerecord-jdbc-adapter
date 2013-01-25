@@ -86,6 +86,7 @@ module ActiveRecord
       rescue ::ActiveRecord::ActiveRecordError
         raise
       rescue Java::JavaSql::SQLException => e
+        e = e.cause if defined?(NativeException) && e.is_a?(NativeException) # JRuby-1.6.8
         error = e.getMessage || e.getSQLState
         error = error ? "#{e.java_class.name}: #{error}" : e.java_class.name
         error = ::ActiveRecord::JDBCError.new("The driver encountered an unknown error: #{error}")
