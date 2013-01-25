@@ -1,7 +1,7 @@
 require 'jdbc_common'
 require 'row_locking'
 
-class DerbyRowLockingTest < Test::Unit::TestCase
+class PostgresRowLockingTest < Test::Unit::TestCase
   include MigrationSetup
   include RowLockingTestMethods
   
