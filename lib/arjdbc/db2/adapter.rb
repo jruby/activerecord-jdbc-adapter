@@ -33,8 +33,8 @@ module ArJdbc
     end
 
     NATIVE_DATABASE_TYPES = {
-      :double    => { :name => "double" },
-      :bigint    => { :name => "bigint" }
+      :double => { :name => "double" },
+      :bigint => { :name => "bigint" }
     }
 
     def native_database_types
@@ -56,7 +56,7 @@ module ArJdbc
 
     module Column
       def type_cast(value)
-        return nil if value.nil? || value =~ /^\s*null\s*$/i
+        return nil if value.nil? || value == 'NULL' || value =~ /^\s*NULL\s*$/i
         case type
         when :string    then value
         when :integer   then defined?(value.to_i) ? value.to_i : (value ? 1 : 0)
@@ -113,9 +113,21 @@ module ArJdbc
       # http://publib.boulder.ibm.com/infocenter/db2luw/v9r7/topic/com.ibm.db2.luw.apdv.java.doc/doc/rjvjdata.html
       def simplified_type(field_type)
         case field_type
-        when /^decimal\(1\)$/i  then :boolean
-        when /^real/i           then :float
-        when /^timestamp/i      then :datetime
+        when /^decimal\(1\)$/i   then :boolean
+        when /smallint|boolean/i then :boolean
+        when /^real|double/i     then :float
+        when /int|serial/i       then :integer
+        when /numeric|decfloat/i then :decimal
+        when /timestamp/i        then :timestamp
+        when /datetime/i         then :datetime
+        when /time/i             then :time
+        when /date/i             then :date
+        when /clob/i             then :text
+        when /for bit data/i     then :binary
+        #when /xml/i              then :xml
+        #when /vargraphic/i       then :vargraphic
+        #when /graphic/i          then :graphic
+        #when /rowid/i            then :rowid # rowid is a supported datatype on z/OS and i/5
         else
           super
         end
@@ -191,49 +203,72 @@ module ArJdbc
 
     def self.arel2_visitors(config)
       require 'arel/visitors/db2'
-      {}.tap {|v| %w(db2 as400).each {|a| v[a] = ::Arel::Visitors::DB2 } }
+      {
+        'db2'   => ::Arel::Visitors::DB2,
+        'as400' => ::Arel::Visitors::DB2,
+      }
     end
 
     def add_limit_offset!(sql, options)
       replace_limit_offset!(sql, options[:limit], options[:offset])
     end
-
-
+    
     def create_table(name, options = {}) #:nodoc:
       if zos?
-        table_definition = ActiveRecord::ConnectionAdapters::TableDefinition.new(self)
-
-        table_definition.primary_key(options[:primary_key] || ActiveRecord::Base.get_primary_key(name)) unless options[:id] == false
-
-        yield table_definition
-
-        # Clobs in DB2 Host have to be created after the Table with an auxiliary Table.
-        # First: Save them for later in Array "clobs"
-        clobs = table_definition.columns.select { |x| x.type == "text" }
-        # Second: and delete them from the original Colums-Array
-        table_definition.columns.delete_if { |x| x.type == "text" }
-
-        if options[:force] && table_exists?(name)
-          super.drop_table(name, options)
-        end
-
-        create_sql = "CREATE#{' TEMPORARY' if options[:temporary]} TABLE "
-        create_sql << "#{quote_table_name(name)} ("
-        create_sql << table_definition.to_sql
-        create_sql << ") #{options[:options]}"
-        create_sql << " IN #{@config[:database]}.#{@config[:tablespace]}" if @config[:database] && @config[:tablespace]
-
-        execute create_sql
-
-        clobs.each do |clob_column|
-          execute "ALTER TABLE #{name+" ADD COLUMN "+clob_column.name.to_s+" clob"}"
-          execute "CREATE AUXILIARY TABLE #{name+"_"+clob_column.name.to_s+"_CD_"} IN #{@config[:database]}.#{@config[:lob_tablespaces][name.split(".")[1]]} STORES #{name} COLUMN "+clob_column.name.to_s
-          execute "CREATE UNIQUE INDEX #{name+"_"+clob_column.name.to_s+"_CD_"} ON #{name+"_"+clob_column.name.to_s+"_CD_"};"
-        end
+        zos_create_table(name, options)
       else
         super(name, options)
       end
     end
+    
+    def zos_create_table(name, options = {}) #:nodoc:
+      table_definition = ActiveRecord::ConnectionAdapters::TableDefinition.new(self)
+      table_definition.primary_key(options[:primary_key] || ActiveRecord::Base.get_primary_key(name)) unless options[:id] == false
+
+      yield table_definition
+
+      # Clobs in DB2 Host have to be created after the Table with an auxiliary Table.
+      # First: Save them for later in Array "clobs"
+      clobs = table_definition.columns.select { |x| x.type.to_s == "text" }
+      # Second: and delete them from the original Colums-Array
+      table_definition.columns.delete_if { |x| x.type.to_s == "text" }
+
+      drop_table(name, options) if options[:force] && table_exists?(name)
+
+      create_sql = "CREATE#{' TEMPORARY' if options[:temporary]} TABLE "
+      create_sql << "#{quote_table_name(name)} ("
+      create_sql << table_definition.to_sql
+      create_sql << ") #{options[:options]}"
+      if @config[:database] && @config[:tablespace]
+        in_db_table_space = " IN #{@config[:database]}.#{@config[:tablespace]}"
+      else
+        in_db_table_space = ''
+      end
+      create_sql << in_db_table_space
+
+      execute create_sql
+
+      # Table definition is complete only when a unique index is created on the primary_key column for DB2 V8 on zOS
+      # create index on id column if options[:id] is nil or id ==true
+      # else check if options[:primary_key]is not nil then create an unique index on that column
+      # TODO someone on Z/OS should test this out - also not needed for V9 ?
+      #primary_column = options[:id] == true ? 'id' : options[:primary_key]
+      #add_index(name, (primary_column || 'id').to_s, :unique => true)
+
+      clobs.each do |clob_column|
+        column_name = clob_column.name.to_s
+        execute "ALTER TABLE #{name + ' ADD COLUMN ' + column_name + ' clob'}"
+        clob_table_name = name + '_' + column_name + '_CD_'
+        if @config[:database] && @config[:lob_tablespaces]
+          in_lob_table_space = " IN #{@config[:database]}.#{@config[:lob_tablespaces][name.split(".")[1]]}"
+        else
+          in_lob_table_space = ''
+        end
+        execute "CREATE AUXILIARY TABLE #{clob_table_name} #{in_lob_table_space} STORES #{name} COLUMN #{column_name}"
+        execute "CREATE UNIQUE INDEX #{clob_table_name} ON #{clob_table_name};"
+      end
+    end
+    private :zos_create_table
 
     def replace_limit_offset!(sql, limit, offset)
       if limit
