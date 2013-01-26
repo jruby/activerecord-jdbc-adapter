@@ -53,6 +53,8 @@ class Test::Unit::TestCase
        ActiveRecord::VERSION::MINOR >= match[2].to_i)
   end
   
+  def ar_version(version); self.class.ar_version(version); end
+  
 end
 
 module ActiveRecord

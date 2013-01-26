@@ -5,6 +5,7 @@
 #
 
 require 'jdbc_common'
+require 'db/postgres'
 
 class PostgresSimpleTest < Test::Unit::TestCase
   include SimpleTestMethods
@@ -119,11 +120,12 @@ class PostgresSimpleTest < Test::Unit::TestCase
 end
 
 class PostgresTimestampTest < Test::Unit::TestCase
-  def setup
+  
+  def self.startup
     DbTypeMigration.up
   end
 
-  def teardown
+  def self.shutdown
     DbTypeMigration.down
   end
 
@@ -148,19 +150,29 @@ class PostgresTimestampTest < Test::Unit::TestCase
 
   def test_save_infinity_and_beyond
     d = DbType.create!(:sample_timestamp => 1.0 / 0.0)
-    assert_equal(1.0 / 0.0, d.sample_timestamp)
+    if ar_version('3.0')
+      assert_equal(1.0 / 0.0, d.sample_timestamp)
+    else # 2.3
+      assert_equal(nil, d.sample_timestamp)
+    end
 
     e = DbType.create!(:sample_timestamp => -1.0 / 0.0)
-    assert_equal(-1.0 / 0.0, e.sample_timestamp)
+    if ar_version('3.0')
+      assert_equal(-1.0 / 0.0, e.sample_timestamp)
+    else # 2.3
+      assert_equal(nil, e.sample_timestamp)
+    end
   end
+  
 end
 
 class PostgresDeserializationTest < Test::Unit::TestCase
-  def setup
+
+  def self.startup
     DbTypeMigration.up
   end
 
-  def teardown
+  def self.shutdown
     DbTypeMigration.down
   end
 
@@ -173,16 +185,21 @@ class PostgresDeserializationTest < Test::Unit::TestCase
 end
 
 class PostgresSchemaDumperTest < Test::Unit::TestCase
-  def setup
+  
+  def self.startup
     DbTypeMigration.up
+  end
+
+  def self.shutdown
+    DbTypeMigration.down
+  end
+  
+  def setup
+    super
     @connection = ActiveRecord::Base.connection
     strio = StringIO.new
     ActiveRecord::SchemaDumper::dump(ActiveRecord::Base.connection, strio)
     @dump = strio.string
-  end
-
-  def teardown
-    DbTypeMigration.down
   end
 
   # http://kenai.com/jira/browse/ACTIVERECORD_JDBC-135
