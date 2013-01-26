@@ -658,42 +658,53 @@ module ::ArJdbc
 
     # Quotes a string, escaping any ' (single quote) and \ (backslash)
     # characters.
-    def quote_string(s)
-      quoted = s.gsub(/'/, "''")
-      if !standard_conforming_strings?
+    def quote_string(string)
+      quoted = string.gsub("'", "''")
+      unless standard_conforming_strings?
         quoted.gsub!(/\\/, '\&\&')
       end
-
       quoted
     end
 
-    def escape_bytea(s)
-      if s
+    def escape_bytea(string)
+      if string
         if supports_hex_escaped_bytea?
-          "\\\\x#{s.unpack("H*")[0]}"
+          "\\\\x#{string.unpack("H*")[0]}"
         else
           result = ''
-          s.each_byte { |c| result << sprintf('\\\\%03o', c) }
+          string.each_byte { |c| result << sprintf('\\\\%03o', c) }
           result
         end
       end
     end
 
+    @@quoted_table_names = {}
+    
     def quote_table_name(name)
-      schema, name_part = extract_pg_identifier_from_name(name.to_s)
-
-      unless name_part
-        quote_column_name(schema)
-      else
-        table_name, name_part = extract_pg_identifier_from_name(name_part)
-        "#{quote_column_name(schema)}.#{quote_column_name(table_name)}"
+      unless quoted = @@quoted_table_names[name]
+        schema, name_part = extract_pg_identifier_from_name(name.to_s)
+        
+        quoted = unless name_part
+          quote_column_name(schema)
+        else
+          table_name, name_part = extract_pg_identifier_from_name(name_part)
+          "#{quote_column_name(schema)}.#{quote_column_name(table_name)}"
+        end
+        @@quoted_table_names[name] = quoted.freeze
       end
+      quoted
     end
-
+    
+    @@quoted_column_names = {}
+    
     def quote_column_name(name)
-      %("#{name.to_s.gsub("\"", "\"\"")}")
+      unless quoted = @@quoted_column_names[name]
+        quoted = %("#{name.to_s.gsub("\"", "\"\"")}")
+        @@quoted_column_names[name] = quoted.freeze
+      end
+      quoted
     end
-
+    
     def quoted_date(value) #:nodoc:
       if value.acts_like?(:time) && value.respond_to?(:usec)
         "#{super}.#{sprintf("%06d", value.usec)}"
@@ -702,7 +713,7 @@ module ::ArJdbc
       end
     end
 
-    def disable_referential_integrity(&block) #:nodoc:
+    def disable_referential_integrity # :nodoc:
       execute(tables.collect { |name| "ALTER TABLE #{quote_table_name(name)} DISABLE TRIGGER ALL" }.join(";"))
       yield
     ensure
