@@ -99,7 +99,7 @@ module DirtyAttributeTests
 
     with_partial_updates Entry, true do
       assert_queries(0) { 2.times { entry.save! } }
-      assert_equal old_updated_on, entry.reload.updated_on
+      assert_datetime_equal old_updated_on, entry.reload.updated_on
 
       assert_queries(1) { entry.title = 'bar'; entry.save! }
       assert_not_equal old_updated_on, entry.reload.updated_on
@@ -287,6 +287,7 @@ module SimpleTestMethods
     e.sample_date = date
     e.save!
     e = DbType.first
+    assert_date_type e.sample_date
     assert_date_equal date, e.sample_date
   end
 
@@ -620,39 +621,11 @@ module SimpleTestMethods
   end
 
   protected
-
-  # re-defined by Oracle
-  def assert_empty_string value
-    assert_equal '', value
+  
+  def assert_date_type(value)
+    assert_instance_of Date, value
   end
-
-  # re-defined by Oracle
-  def assert_null_text value
-    assert_nil value
-  end
-
-  def assert_date_equal expected, actual
-    assert_equal expected, actual
-  end
-
-  def assert_time_equal expected, actual
-    [ :hour, :min, :sec ].each do |method|
-      assert_equal expected.send(method), actual.send(method), "<#{expected}> but was <#{actual}> (differ at #{method.inspect})"
-    end
-  end
-
-  def assert_timestamp_equal expected, actual
-    e_utc = expected.utc; a_utc = actual.utc
-    [ :year, :month, :day, :hour, :min, :sec ].each do |method|
-      assert_equal e_utc.send(method), a_utc.send(method), "<#{expected}> but was <#{actual}> (differ at #{method.inspect})"
-    end
-    assert_equal e_utc.usec, a_utc.usec, "<#{expected}> but was <#{actual}> (differ at :usec)"
-    # :usec Ruby Time precision: 123_456 (although JRuby only supports ms with Time.now) :
-    #e_usec = ( e_utc.usec / 1000 ) * 1000
-    #a_usec = ( a_utc.usec / 1000 ) * 1000
-    #assert_equal e_usec, a_usec, "<#{expected}> but was <#{actual}> (differ at :usec / 1000)"
-  end
-
+  
 end
 
 module MultibyteTestMethods
