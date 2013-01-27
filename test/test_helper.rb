@@ -31,20 +31,6 @@ require 'ruby-debug' if $DEBUG || ENV['DEBUG']
 
 # assert_queries and SQLCounter taken from rails active_record tests
 class Test::Unit::TestCase
-  
-  def assert_queries(num = 1, matching = nil)
-    if ! ActiveRecord::SQLCounter.enabled?
-      warn "SQLCounter assert_queries skipped"
-      return
-    end
-
-    ActiveRecord::SQLCounter.log = []
-    yield
-  ensure
-    queries = nil
-    ActiveRecord::SQLCounter.log.tap {|log| queries = (matching ? log.select {|s| s =~ matching } : log) }
-    assert_equal num, queries.size, "#{queries.size} instead of #{num} queries were executed.#{queries.size == 0 ? '' : "\nQueries:\n#{queries.join("\n")}"}"
-  end
 
   def self.ar_version(version)
     match = version.match(/(\d+)\.(\d+)(?:\.(\d+))?/)
@@ -54,6 +40,25 @@ class Test::Unit::TestCase
   end
   
   def ar_version(version); self.class.ar_version(version); end
+  
+  protected
+  
+  def assert_queries(count, matching = nil)
+    if ActiveRecord::SQLCounter.enabled?
+      log = ActiveRecord::SQLCounter.log = []
+      begin
+        yield
+      ensure
+        queries = queries = ( matching ? log.select { |s| s =~ matching } : log )
+        assert_equal count, queries.size, 
+          "#{ queries.size } instead of #{ count } queries were executed." + 
+          "#{ queries.size == 0 ? '' : "\nQueries:\n#{queries.join("\n")}" }" 
+      end
+    else
+      warn "assert_queries skipped as SQLCounter is not enabled"
+      yield
+    end
+  end
   
 end
 
