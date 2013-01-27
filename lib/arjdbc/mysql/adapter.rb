@@ -290,6 +290,11 @@ module ::ArJdbc
       execute "RENAME TABLE #{quote_table_name(name)} TO #{quote_table_name(new_name)}"
     end
 
+    def remove_index!(table_name, index_name) #:nodoc:
+      # missing table_name quoting in AR-2.3
+      execute "DROP INDEX #{quote_column_name(index_name)} ON #{quote_table_name(table_name)}"
+    end
+    
     def add_column(table_name, column_name, type, options = {})
       add_column_sql = "ALTER TABLE #{quote_table_name(table_name)} ADD #{quote_column_name(column_name)} #{type_to_sql(type, options[:limit], options[:precision], options[:scale])}"
       add_column_options!(add_column_sql, options)
@@ -495,7 +500,6 @@ module ActiveRecord
       def jdbc_column_class
         MysqlColumn
       end
-
       alias_chained_method :columns, :query_cache, :jdbc_columns
 
       protected
