@@ -1,4 +1,5 @@
 require 'jdbc_common'
+require 'db/postgres'
 require 'row_locking'
 
 class PostgresRowLockingTest < Test::Unit::TestCase

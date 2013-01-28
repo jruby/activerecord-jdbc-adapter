@@ -165,6 +165,30 @@ module ::ArJdbc
     # constants taken from postgresql_adapter in rails project
     ADAPTER_NAME = 'PostgreSQL'
 
+    def adapter_name #:nodoc:
+      ADAPTER_NAME
+    end
+
+    def self.arel2_visitors(config)
+      {
+        'postgresql' => ::Arel::Visitors::PostgreSQL,
+        'jdbcpostgresql' => ::Arel::Visitors::PostgreSQL,
+        'pg' => ::Arel::Visitors::PostgreSQL
+      }
+    end
+
+    def postgresql_version
+      @postgresql_version ||=
+        begin
+          value = select_value('SELECT version()')
+          if value =~ /PostgreSQL (\d+)\.(\d+)\.(\d+)/
+            ($1.to_i * 10000) + ($2.to_i * 100) + $3.to_i
+          else
+            0
+          end
+        end
+    end
+
     NATIVE_DATABASE_TYPES = {
       :primary_key => "serial primary key",
       :string      => { :name => "character varying", :limit => 255 },
@@ -181,27 +205,7 @@ module ::ArJdbc
       :xml         => { :name => "xml" },
       :tsvector    => { :name => "tsvector" }
     }
-
-    def adapter_name #:nodoc:
-      ADAPTER_NAME
-    end
-
-    def self.arel2_visitors(config)
-      {}.tap {|v| %w(postgresql pg jdbcpostgresql).each {|a| v[a] = ::Arel::Visitors::PostgreSQL } }
-    end
-
-    def postgresql_version
-      @postgresql_version ||=
-        begin
-          value = select_value('SELECT version()')
-          if value =~ /PostgreSQL (\d+)\.(\d+)\.(\d+)/
-            ($1.to_i * 10000) + ($2.to_i * 100) + $3.to_i
-          else
-            0
-          end
-        end
-    end
-
+    
     def native_database_types
       NATIVE_DATABASE_TYPES
     end
@@ -213,31 +217,33 @@ module ::ArJdbc
 
     # Enable standard-conforming strings if available.
     def standard_conforming_strings=(enable)
-      old, self.client_min_messages = client_min_messages, 'panic'
-      value = if(enable) then "on" else "off" end
-      execute("SET standard_conforming_strings = #{value}", 'SCHEMA')
-      @standard_conforming_strings = (value == "on")
-    rescue
-      @standard_conforming_strings = :unsupported
-    ensure
-      self.client_min_messages = old
+      client_min_messages = self.client_min_messages
+      begin
+        self.client_min_messages = 'panic'
+        value = enable ? "on" : "off"
+        execute("SET standard_conforming_strings = #{value}", 'SCHEMA')
+        @standard_conforming_strings = ( value == "on" )
+      rescue
+        @standard_conforming_strings = :unsupported
+      ensure
+        self.client_min_messages = client_min_messages
+      end
     end
 
-    def standard_conforming_strings? #:nodoc:
+    def standard_conforming_strings? # :nodoc:
       if @standard_conforming_strings.nil?
+        client_min_messages = self.client_min_messages
         begin
-          old, self.client_min_messages = client_min_messages, 'panic'
+          self.client_min_messages = 'panic'
           value = select_one('SHOW standard_conforming_strings', 'SCHEMA')['standard_conforming_strings']
-          @standard_conforming_strings = (value == "on")
+          @standard_conforming_strings = ( value == "on" )
         rescue
           @standard_conforming_strings = :unsupported
         ensure
-          self.client_min_messages = old
+          self.client_min_messages = client_min_messages
         end
       end
-
-      # Return false if unsupported.
-      @standard_conforming_strings == true
+      @standard_conforming_strings == true # return false if :unsupported
     end
 
     # Does PostgreSQL support standard conforming strings?
@@ -641,10 +647,16 @@ module ::ArJdbc
         "'#{value}'"
       when String
         case column.sql_type
-        when 'bytea' then "E'#{escape_bytea(value)}'::bytea"
+        when 'bytea' then "E'#{escape_bytea(value)}'::bytea" # "'#{escape_bytea(value)}'"
         when 'xml'   then "xml '#{quote_string(value)}'"
         when /^bit/
           case value
+          # NOTE: as reported with #60 this is not quite "right" :
+          #  "0103" will be treated as hexadecimal string
+          #  "0102" will be treated as hexadecimal string
+          #  "0101" will be treated as binary string
+          #  "0100" will be treated as binary string
+          # ... but is kept due Rails compatibility
           when /^[01]*$/      then "B'#{value}'" # Bit-string notation
           when /^[0-9A-F]*$/i then "X'#{value}'" # Hexadecimal notation
           end

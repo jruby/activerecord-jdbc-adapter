@@ -1,4 +1,5 @@
 require 'jdbc_common'
+require 'db/postgres'
 
 class CreateSchema < ActiveRecord::Migration
   def self.up

@@ -1,21 +1,22 @@
 require 'jdbc_common'
+require 'db/postgres'
 
 class CreateNativeTypeMappingTestSchema < ActiveRecord::Migration
   def self.up
     execute "DROP SEQUENCE IF EXISTS seq_pk_customers"
     execute "CREATE SEQUENCE seq_pk_customers"
     columns = [
-               "bigint_serial_should_be_integer bigint default nextval('seq_pk_customers')",
-               "integer_serial_should_be_integer integer default nextval('seq_pk_customers')",
-               "varchar_should_be_string varchar(2)",
-               "timestamp_should_be_datetime timestamp",
-               "bytea_should_be_binary bytea",
-               "double_precision_should_be_float double precision",
-               "real_should_be_float real",
-               "bool_should_be_boolean bool",
-               "interval_should_be_string interval",
-               "bigint_should_be_integer bigint"
-              ]
+      "bigint_serial_should_be_integer bigint default nextval('seq_pk_customers')",
+      "integer_serial_should_be_integer integer default nextval('seq_pk_customers')",
+      "varchar_should_be_string varchar(2)",
+      "timestamp_should_be_datetime timestamp",
+      "bytea_should_be_binary bytea",
+      "double_precision_should_be_float double precision",
+      "real_should_be_float real",
+      "bool_should_be_boolean bool",
+      "interval_should_be_string interval",
+      "bigint_should_be_integer bigint"
+    ]
     columns << "uuid_should_be_string uuid" if PG_VERSION >= 80300
     table_sql = %Q{
       CREATE TABLE customers (

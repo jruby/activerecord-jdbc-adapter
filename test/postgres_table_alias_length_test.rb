@@ -1,4 +1,5 @@
 require 'jdbc_common'
+require 'db/postgres'
 
 class PostgresTableAliasLengthTest < Test::Unit::TestCase
   def test_table_alias_length
