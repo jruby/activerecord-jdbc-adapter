@@ -42,14 +42,12 @@ import arjdbc.sqlite3.Sqlite3RubyJdbcConnection;
 import org.jruby.Ruby;
 import org.jruby.RubyClass;
 import org.jruby.RubyModule;
-import org.jruby.RubyObjectAdapter;
-import org.jruby.javasupport.JavaEmbedUtils;
 import org.jruby.runtime.load.BasicLibraryService;
 
 public class AdapterJavaService implements BasicLibraryService {
-    private static RubyObjectAdapter rubyApi;
 
     public boolean basicLoad(final Ruby runtime) throws IOException {
+        // ActiveRecord::ConnectionAdapter-s :
         RubyClass jdbcConnection = RubyJdbcConnection.createJdbcConnectionClass(runtime);
         PostgresqlRubyJdbcConnection.createPostgresqlJdbcConnectionClass(runtime, jdbcConnection);
         MssqlRubyJdbcConnection.createMssqlJdbcConnectionClass(runtime, jdbcConnection);
@@ -59,10 +57,10 @@ public class AdapterJavaService implements BasicLibraryService {
         H2RubyJdbcConnection.createH2JdbcConnectionClass(runtime, jdbcConnection);
         MySQLRubyJdbcConnection.createMySQLJdbcConnectionClass(runtime, jdbcConnection);
         DB2RubyJdbcConnection.createDB2JdbcConnectionClass(runtime, jdbcConnection);
+        // ArJdbc :
         RubyModule arJdbc = runtime.getOrCreateModule("ArJdbc");
-        rubyApi = JavaEmbedUtils.newObjectAdapter();
         MySQLModule.load(arJdbc);
-        DerbyModule.load(arJdbc, rubyApi);
+        DerbyModule.load(arJdbc);
         return true;
     }
 }

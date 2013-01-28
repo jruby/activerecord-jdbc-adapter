@@ -35,18 +35,21 @@ import org.jruby.RubyObjectAdapter;
 import org.jruby.RubyRange;
 import org.jruby.RubyString;
 import org.jruby.anno.JRubyMethod;
+import org.jruby.javasupport.JavaEmbedUtils;
 import org.jruby.runtime.ThreadContext;
 import org.jruby.runtime.builtin.IRubyObject;
 import org.jruby.util.ByteList;
 
 public class DerbyModule {
+    
     private static RubyObjectAdapter rubyApi;
-    public static void load(RubyModule arJdbc, RubyObjectAdapter adapter) {
+    
+    public static void load(final RubyModule arJdbc) {
         RubyModule derby = arJdbc.defineModuleUnder("Derby");
         derby.defineAnnotatedMethods(DerbyModule.class);
         RubyModule column = derby.defineModuleUnder("Column");
         column.defineAnnotatedMethods(Column.class);
-        rubyApi = adapter;
+        rubyApi = JavaEmbedUtils.newObjectAdapter();
     }
 
     public static class Column {
