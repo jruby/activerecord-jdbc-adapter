@@ -4,13 +4,13 @@ require 'arjdbc/sqlite3/explain_support'
 module ::ArJdbc
   module SQLite3
     def self.column_selector
-      [/sqlite/i, lambda {|cfg,col| col.extend(::ArJdbc::SQLite3::Column)}]
+      [ /sqlite/i, lambda { |cfg,col| col.extend(::ArJdbc::SQLite3::Column) } ]
     end
 
     def self.jdbc_connection_class
-      ::ActiveRecord::ConnectionAdapters::Sqlite3JdbcConnection
+      ::ActiveRecord::ConnectionAdapters::SQLite3JdbcConnection
     end
-
+    
     module Column
       def init_column(name, default, *args)
         @default = nil if default =~ /NULL/
@@ -19,7 +19,7 @@ module ::ArJdbc
       def type_cast(value)
         return nil if value.nil?
         case type
-        when :string   then value
+        when :string then value
         when :primary_key then defined?(value.to_i) ? value.to_i : (value ? 1 : 0)
         when :float    then value.to_f
         when :decimal  then self.class.value_to_decimal(value)
@@ -27,20 +27,21 @@ module ::ArJdbc
         else super
         end
       end
-
+      
       private
       def simplified_type(field_type)
         case field_type
-        when /boolean/i                        then :boolean
-        when /text/i                           then :text
-        when /varchar/i                        then :string
-        when /int/i                            then :integer
-        when /float/i                          then :float
-        when /real|decimal/i                   then @scale == 0 ? :integer : :decimal
-        when /datetime/i                       then :datetime
-        when /date/i                           then :date
-        when /time/i                           then :time
-        when /blob/i                           then :binary
+        when /boolean/i       then :boolean
+        when /text/i          then :text
+        when /varchar/i       then :string
+        when /int/i           then :integer
+        when /float/i         then :float
+        when /real|decimal/i  then @scale == 0 ? :integer : :decimal
+        when /datetime/i      then :datetime
+        when /date/i          then :date
+        when /time/i          then :time
+        when /blob/i          then :binary
+        else super
         end
       end
 
@@ -78,7 +79,10 @@ module ::ArJdbc
     end
 
     def self.arel2_visitors(config)
-      {}.tap {|v| %w(sqlite3 jdbcsqlite3).each {|x| v[x] = ::Arel::Visitors::SQLite } }
+      {
+        'sqlite3' => ::Arel::Visitors::SQLite,
+        'jdbcsqlite3' => ::Arel::Visitors::SQLite
+      }
     end
 
     def supports_ddl_transactions?
@@ -116,42 +120,34 @@ module ::ArJdbc
       types[:binary] = { :name => "blob" }
       types
     end
-
+    
     def quote(value, column = nil)
-      if value.kind_of?(String) && column && column.type == :binary && column.class.respond_to?(:string_to_binary)
-        s = column.class.string_to_binary(value).unpack("H*")[0]
-        "x'#{s}'"
+      if value.kind_of?(String)
+        column_type = column && column.type
+        if column_type == :binary && column.class.respond_to?(:string_to_binary)
+          "x'#{column.class.string_to_binary(value).unpack("H*")[0]}'"
+        else
+          super
+        end
       else
         super
       end
     end
 
-    def quote_column_name(name) #:nodoc:
+    def quote_column_name(name) # :nodoc:
       %Q("#{name.to_s.gsub('"', '""')}") # "' kludge for emacs font-lock
-    end
-
-    def quote_string(str)
-      str.gsub(/'/, "''")
-    end
-
-    def quoted_true
-      %Q{'t'}
-    end
-
-    def quoted_false
-      %Q{'f'}
     end
 
     # Quote date/time values for use in SQL input. Includes microseconds
     # if the value is a Time responding to usec.
-    def quoted_date(value) #:nodoc:
+    def quoted_date(value) # :nodoc:
       if value.respond_to?(:usec)
         "#{super}.#{sprintf("%06d", value.usec)}"
       else
         super
       end
     end
-
+    
     def insert_sql(sql, name = nil, pk = nil, id_value = nil, sequence_name = nil, binds = []) #:nodoc:
       sql = substitute_binds(sql, binds)
       log(sql, name) { @connection.execute_update(sql) }
@@ -220,7 +216,9 @@ module ::ArJdbc
 
     def jdbc_columns(table_name, name = nil) #:nodoc:
       table_structure(table_name).map do |field|
-        ::ActiveRecord::ConnectionAdapters::SQLite3Column.new(@config, field['name'], field['dflt_value'], field['type'], field['notnull'] == 0)
+        ::ActiveRecord::ConnectionAdapters::SQLite3Column.new(
+          @config, field['name'], field['dflt_value'], field['type'], field['notnull'] == 0
+        )
       end
     end
 
@@ -311,6 +309,7 @@ module ::ArJdbc
     end
 
     protected
+    
     include ArJdbc::MissingFunctionalityHelper
 
     def translate_exception(exception, message)
@@ -321,6 +320,7 @@ module ::ArJdbc
         super
       end
     end
+    
   end
 end
 
@@ -347,7 +347,7 @@ module ActiveRecord::ConnectionAdapters
     end
 
     def self.binary_to_string(value)
-      if value.respond_to?(:force_encoding) && value.encoding != Encoding::ASCII_8BIT
+      if value.respond_to?(:encoding) && value.encoding != Encoding::ASCII_8BIT
         value = value.force_encoding(Encoding::ASCII_8BIT)
       end
       value
