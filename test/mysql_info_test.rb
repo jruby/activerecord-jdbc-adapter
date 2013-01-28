@@ -156,7 +156,7 @@ class MysqlInfoTest < Test::Unit::TestCase
     #
     dump = schema_dump
     if ar_version('3.0')
-      assert_nil dump.detect {|l| l =~ /\.(float|date|datetime|integer|time|timestamp) .* :limit/ && l !~ /sample_integer/ }, dump
+      assert_nil dump.lines.detect {|l| l =~ /\.(float|date|datetime|integer|time|timestamp) .* :limit/ && l !~ /sample_integer/ }, dump
     else
       puts "test_no_limits_for_some_data_types assertion skipped on #{ActiveRecord::VERSION::STRING}"
     end
