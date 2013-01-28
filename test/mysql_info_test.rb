@@ -34,7 +34,7 @@ class DBSetup < ActiveRecord::Migration
 end
 
 class MysqlInfoTest < Test::Unit::TestCase
-
+  
   def setup
     DBSetup.up
     @connection = ActiveRecord::Base.connection
@@ -76,16 +76,12 @@ class MysqlInfoTest < Test::Unit::TestCase
 
   # JRUBY-5040
   def test_schema_dump_should_not_have_limits_on_datetime
-    strio = StringIO.new
-    ActiveRecord::SchemaDumper::dump(@connection, strio)
-    dump = strio.string
+    dump = schema_dump
     dump.lines.grep(/datetime/).each {|line| assert line !~ /limit/ }
   end
 
   def test_schema_dump_should_not_have_limits_on_date
-    strio = StringIO.new
-    ActiveRecord::SchemaDumper::dump(@connection, strio)
-    dump = strio.string
+    dump = schema_dump
     dump.lines.grep(/date/).each {|line| assert line !~ /limit/ }
   end
 
@@ -113,11 +109,67 @@ class MysqlInfoTest < Test::Unit::TestCase
 
   def test_no_limits_for_some_data_types
     DbTypeMigration.up
-    strio = StringIO.new
-    ActiveRecord::SchemaDumper.dump(@connection, strio)
-    dump_lines = strio.string
-    assert_nil dump_lines.lines.detect {|l| l =~ /\.(float|date|datetime|integer|time|timestamp) .* :limit/ && l !~ /sample_integer/ }
+    #
+    # AR-3.2 :
+    # 
+    #  create_table "db_types", :force => true do |t|
+    #    t.datetime "sample_timestamp"
+    #    t.datetime "sample_datetime"
+    #    t.date     "sample_date"
+    #    t.time     "sample_time"
+    #    t.decimal  "sample_decimal",                           :precision => 15, :scale => 0
+    #    t.decimal  "sample_small_decimal",                     :precision => 3,  :scale => 2
+    #    t.decimal  "sample_default_decimal",                   :precision => 10, :scale => 0
+    #    t.float    "sample_float"
+    #    t.binary   "sample_binary"
+    #    t.boolean  "sample_boolean"
+    #    t.string   "sample_string",                                                           :default => ""
+    #    t.integer  "sample_integer",              :limit => 8
+    #    t.integer  "sample_integer_with_limit_2", :limit => 2
+    #    t.integer  "sample_integer_with_limit_8", :limit => 8
+    #    t.integer  "sample_integer_no_limit"
+    #    t.integer  "sample_integer_neg_default",                                              :default => -1
+    #    t.text     "sample_text"
+    #  end
+    #
+    # AR-2.3 :
+    # 
+    #  create_table "db_types", :force => true do |t|
+    #    t.datetime "sample_timestamp"
+    #    t.datetime "sample_datetime"
+    #    t.date     "sample_date"
+    #    t.time     "sample_time"
+    #    t.integer  "sample_decimal",              :limit => 15, :precision => 15, :scale => 0
+    #    t.decimal  "sample_small_decimal",                      :precision => 3,  :scale => 2
+    #    t.integer  "sample_default_decimal",      :limit => 10, :precision => 10, :scale => 0
+    #    t.float    "sample_float"
+    #    t.binary   "sample_binary"
+    #    t.boolean  "sample_boolean"
+    #    t.string   "sample_string",                                                            :default => ""
+    #    t.integer  "sample_integer",              :limit => 8
+    #    t.integer  "sample_integer_with_limit_2", :limit => 2
+    #    t.integer  "sample_integer_with_limit_8", :limit => 8
+    #    t.integer  "sample_integer_no_limit"
+    #    t.integer  "sample_integer_neg_default",                                               :default => -1
+    #    t.text     "sample_text"
+    #  end
+    #
+    dump = schema_dump
+    if ar_version('3.0')
+      assert_nil dump.detect {|l| l =~ /\.(float|date|datetime|integer|time|timestamp) .* :limit/ && l !~ /sample_integer/ }, dump
+    else
+      puts "test_no_limits_for_some_data_types assertion skipped on #{ActiveRecord::VERSION::STRING}"
+    end
   ensure
     DbTypeMigration.down
   end
+  
+  private
+  
+  def schema_dump
+    strio = StringIO.new
+    ActiveRecord::SchemaDumper::dump(@connection, strio)
+    strio.string
+  end
+  
 end
