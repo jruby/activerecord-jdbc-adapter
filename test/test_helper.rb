@@ -27,7 +27,11 @@ require 'logger'
 ActiveRecord::Base.logger = Logger.new($stdout)
 ActiveRecord::Base.logger.level = $DEBUG || ENV['DEBUG'] ? Logger::DEBUG : Logger::WARN
 
-require 'ruby-debug' if $DEBUG || ENV['DEBUG']
+begin
+  require 'ruby-debug' if $DEBUG || ENV['DEBUG']
+rescue LoadError
+  puts "ruby-debug missing thus won't be loaded"
+end
 
 # assert_queries and SQLCounter taken from rails active_record tests
 class Test::Unit::TestCase

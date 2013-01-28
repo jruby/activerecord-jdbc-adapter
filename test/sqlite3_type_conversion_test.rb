@@ -55,13 +55,13 @@ class SQLite3TypeConversionTest < Test::Unit::TestCase
   end
 
   def test_small_decimal
-    types = DbType.find(:all, :order => ["sample_small_decimal desc"])
+    types = DbType.all :order => "sample_small_decimal DESC"
     assert_equal(3.14, types[0].sample_small_decimal)
     assert_equal(1.0, types[1].sample_small_decimal)
   end
 
   def test_small_decimal_with_ordering
-    types = DbType.find(:all, :order => ["sample_small_decimal asc"])
+    types = DbType.all :order => "sample_small_decimal ASC"
     types[1].sample_small_decimal
     assert_equal(1.0, types[0].sample_small_decimal)
     assert_equal(3.14, types[1].sample_small_decimal)
