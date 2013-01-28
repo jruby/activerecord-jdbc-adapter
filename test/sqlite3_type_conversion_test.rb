@@ -83,13 +83,19 @@ class SQLite3TypeConversionTest < Test::Unit::TestCase
         data binary
       )
     eosql
-    str = "01 \x80".force_encoding('ASCII-8BIT')
+    str = "01 \x80"
+    str.force_encoding('ASCII-8BIT') if str.respond_to?(:force_encoding)
     binary = DualEncoding.new :name => '12ščťžýáííéúäô', :data => str
     binary.save!
     assert_equal str, binary.data
     binary.reload
-    assert_equal '12ščťžýáííéúäô'.force_encoding('UTF-8'), binary.name
-    assert_equal "01 \x80".force_encoding('ASCII-8BIT'), binary.data
+    if str.respond_to?(:force_encoding)
+      assert_equal '12ščťžýáííéúäô'.force_encoding('UTF-8'), binary.name
+      assert_equal "01 \x80".force_encoding('ASCII-8BIT'), binary.data
+    else
+      assert_equal '12ščťžýáííéúäô', binary.name
+      assert_equal "01 \x80", binary.data
+    end
   end
   
 end
