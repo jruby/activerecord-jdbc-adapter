@@ -1,25 +1,27 @@
-module ::ArJdbc
+require 'arjdbc/jdbc/serialized_attributes_helper'
+
+module ArJdbc
   module FireBird
 
     def self.extended(mod)
-      unless @lob_callback_added
+      unless @_lob_callback_added
         ActiveRecord::Base.class_eval do
           def after_save_with_firebird_blob
-            self.class.columns.select { |c| c.sql_type =~ /blob/i }.each do |c|
-              value = self[c.name]
-              if respond_to?(:unserializable_attribute?)
-                value = value.to_yaml if unserializable_attribute?(c.name, c)
-              else
-                value = value.to_yaml if value.is_a?(Hash)
-              end
+            self.class.columns.select { |c| c.sql_type =~ /blob/i }.each do |column|
+              value = ::ArJdbc::SerializedAttributesHelper.dump_column_value(self, column)
               next if value.nil?
-              connection.write_large_object(c.type == :binary, c.name, self.class.table_name, self.class.primary_key, quote_value(id), value)
+              
+              connection.write_large_object(
+                column.type == :binary, column.name, 
+                self.class.table_name, self.class.primary_key, 
+                quote_value(id), value
+              )
             end
           end
         end
 
         ActiveRecord::Base.after_save :after_save_with_firebird_blob
-        @lob_callback_added = true
+        @_lob_callback_added = true
       end
     end
 
@@ -29,7 +31,10 @@ module ::ArJdbc
 
     def self.arel2_visitors(config)
       require 'arel/visitors/firebird'
-      {}.tap {|v| %w(firebird firebirdsql).each {|a| v[a] = ::Arel::Visitors::Firebird } }
+      {
+        'firebird' => ::Arel::Visitors::Firebird,
+        'firebirdsql' => ::Arel::Visitors::Firebird
+      }
     end
 
     def modify_types(types)

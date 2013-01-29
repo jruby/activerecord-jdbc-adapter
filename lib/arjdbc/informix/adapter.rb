@@ -1,43 +1,33 @@
-module ::ActiveRecord
-  class Base
-    after_save :write_lobs
+require 'arjdbc/jdbc/serialized_attributes_helper'
 
-  private
-    def write_lobs
-      if connection.is_a?(ArJdbc::Informix)
-        self.class.columns.each do |c|
-          if [:text, :binary].include? c.type
-            value = self[c.name]
-            if respond_to?(:unserializable_attribute?)
-              value = value.to_yaml if unserializable_attribute?(c.name, c)
-            else
-              value = value.to_yaml if value.is_a?(Hash)
-            end
-
-            unless value.nil? || (value == '')
-              connection.write_large_object(c.type == :binary,
-                                            c.name,
-                                            self.class.table_name,
-                                            self.class.primary_key,
-                                            quote_value(id),
-                                            value)
+module ArJdbc
+  module Informix
+    
+    def self.extended(base)
+      unless @_lob_callback_added
+        ActiveRecord::Base.class_eval do
+          def after_save_with_informix_lob
+            lob_columns = self.class.columns.select { |c| [:text, :binary].include?(c.type) }
+            lob_columns.each do |column|
+              value = ::ArJdbc::SerializedAttributesHelper.dump_column_value(self, column)
+              next if value.nil? || (value == '')
+              
+              connection.write_large_object(
+                column.type == :binary, column.name, 
+                self.class.table_name, self.class.primary_key, 
+                quote_value(id), value
+              )
             end
           end
         end
-      end
-    end
-  end
-end
 
-module ::ArJdbc
-  module Informix
-    def self.extended(base)
-      @@db_major_version = base.select_one("SELECT dbinfo('version', 'major') version FROM systables WHERE tabid = 1")['version'].to_i
+        ActiveRecord::Base.after_save :after_save_with_informix_lob
+        @_lob_callback_added = true
+      end
     end
 
     def self.column_selector
-      [ /informix/i,
-        lambda { |cfg, column| column.extend(::ArJdbc::Informix::Column) } ]
+      [ /informix/i, lambda { |cfg, column| column.extend(::ArJdbc::Informix::Column) } ]
     end
 
     def self.jdbc_connection_class
@@ -45,7 +35,8 @@ module ::ArJdbc
     end
 
     module Column
-    private
+      
+      private
       # TODO: Test all Informix column types.
       def simplified_type(field_type)
         if field_type =~ /serial/i
@@ -54,6 +45,7 @@ module ::ArJdbc
           super
         end
       end
+      
     end
 
     def modify_types(types)
@@ -86,11 +78,9 @@ module ::ArJdbc
 
     def add_limit_offset!(sql, options)
       if options[:limit]
-        limit = "FIRST #{options[:limit]}"
-        # SKIP available only in IDS >= 10
-        offset = (@@db_major_version >= 10 && options[:offset]?
-                  "SKIP #{options[:offset]}" : "")
-        sql.sub!(/^select /i, "SELECT #{offset} #{limit} ")
+        limit = "FIRST #{options[:limit]}" # SKIP available only in IDS >= 10 :
+        offset = (db_major_version >= 10 && options[:offset] ? "SKIP #{options[:offset]}" : "")
+        sql.sub!(/^\s*?select /i, "SELECT #{offset} #{limit} ")
       end
       sql
     end
@@ -133,11 +123,18 @@ module ::ArJdbc
     def remove_index(table_name, options = {})
       @connection.execute_update("DROP INDEX #{index_name(table_name, options)}")
     end
-
-  private
+    
     def select(sql, *rest)
       # Informix does not like "= NULL", "!= NULL", or "<> NULL".
       execute(sql.gsub(/(!=|<>)\s*null/i, "IS NOT NULL").gsub(/=\s*null/i, "IS NULL"), *rest)
     end
+    
+    private
+    
+    def db_major_version
+      @@db_major_version ||= 
+        select_one("SELECT dbinfo('version', 'major') version FROM systables WHERE tabid = 1")['version'].to_i
+    end
+    
   end # module Informix
 end # module ::ArJdbc
