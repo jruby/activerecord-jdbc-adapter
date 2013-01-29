@@ -39,7 +39,7 @@ GEM
       bouncy-castle-java (>= 1.5.0146.1)
     linecache (0.46-java)
     metaclass (0.0.1)
-    mocha (0.13.1)
+    mocha (0.13.2)
       metaclass (~> 0.0.1)
     multi_json (1.5.0)
     rack (1.4.4)
@@ -63,7 +63,7 @@ GEM
       multi_json (~> 1.0)
       rack (~> 1.0)
       tilt (~> 1.1, != 1.3.0)
-    test-unit (2.5.3)
+    test-unit (2.5.4)
     tilt (1.3.3)
     tzinfo (0.3.35)
 

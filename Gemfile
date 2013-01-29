@@ -13,10 +13,10 @@ gem 'rake', :require => nil
 gem 'test-unit', :group => :test
 gem 'mocha', :require => nil, :group => :test # '>= 0.13.0'
 gem 'simplecov', :require => nil, :group => :test
+gem 'bcrypt-ruby', '~> 3.0.0', :require => nil, :group => :test
 
 group :rails do
   gem 'erubis', :require => nil
-  gem 'bcrypt-ruby', '~> 3.0.0', :require => nil
   # NOTE: due rails/activerecord/test/cases/session_store/session_test.rb
   gem 'actionpack', :require => nil
 end

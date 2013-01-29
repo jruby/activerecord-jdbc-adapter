@@ -8,5 +8,6 @@ gem "rake", :require=>nil
 gem "test-unit", :group=>:test
 gem "mocha", :require=>nil, :group=>:test
 gem "simplecov", :require=>nil, :group=>:test
+gem "bcrypt-ruby", "~> 3.0.0", :require=>nil, :group=>:test
 gem "activerecord", "~> 3.2.11"
 
