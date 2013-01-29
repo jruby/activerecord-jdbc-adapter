@@ -1,19 +1,20 @@
-module ::ArJdbc
+require 'arjdbc/jdbc/serialized_attributes_helper'
+
+module ArJdbc
   module Oracle
     def self.extended(mod)
       unless @_lob_callback_added
         ActiveRecord::Base.class_eval do
           def after_save_with_oracle_lob
-            self.class.columns.select { |c| c.sql_type =~ /LOB\(|LOB$/i }.each do |c|
-              value = self[c.name]
-              if respond_to?(:unserializable_attribute?)
-                value = value.to_yaml if unserializable_attribute?(c.name, c)
-              else
-                value = value.to_yaml if value.is_a?(Hash)
-              end
+            self.class.columns.select { |c| c.sql_type =~ /LOB\(|LOB$/i }.each do |column|
+              value = ::ArJdbc::SerializedAttributesHelper.dump_column_value(self, column)
               next if value.nil? || (value == '')
 
-              connection.write_large_object(c.type == :binary, c.name, self.class.table_name, self.class.primary_key, quote_value(id), value)
+              connection.write_large_object(
+                column.type == :binary, column.name, 
+                self.class.table_name, self.class.primary_key, 
+                quote_value(id), value
+              )
             end
           end
         end
@@ -191,7 +192,7 @@ module ::ArJdbc
       case type.to_sym
       when :binary
         # { BLOB | BINARY LARGE OBJECT } [ ( length [{K |M |G }] ) ]
-        # although sOracle does not like limit (length) with BLOB (or CLOB) :
+        # although Oracle does not like limit (length) with BLOB (or CLOB) :
         # 
         # CREATE TABLE binaries (data BLOB, short_data BLOB(1024));
         # ORA-00907: missing right parenthesis             *
