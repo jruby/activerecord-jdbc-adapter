@@ -227,7 +227,29 @@ module SerializeTestMethods
   ensure
     Topic.serialize(:content)
   end if Test::Unit::TestCase.ar_version('3.1')
+  
+  def test_serialize_with_bcrypt_coder
+    require 'bcrypt'
+    crypt_coder = Class.new {
+      def load(thing)
+        return unless thing
+        BCrypt::Password.new thing
+      end
 
+      def dump(thing)
+        BCrypt::Password.create(thing).to_s
+      end
+    }.new
+
+    Topic.serialize(:content, crypt_coder)
+    password = 'password'
+    topic = Topic.new(:content => password)
+    assert topic.save
+    topic = topic.reload
+    assert_kind_of BCrypt::Password, topic.content
+    assert_equal(true, topic.content == password, 'password should equal')
+  end if Test::Unit::TestCase.ar_version('3.1')
+  
   def test_serialize_attribute_via_select_method_when_time_zone_available
     ActiveRecord::Base.time_zone_aware_attributes = true
     Topic.serialize(:content, MyObject)
