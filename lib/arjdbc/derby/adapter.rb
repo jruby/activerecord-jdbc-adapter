@@ -3,7 +3,7 @@ require 'arjdbc/jdbc/missing_functionality_helper'
 module ::ArJdbc
   module Derby
     def self.column_selector
-      [/derby/i, lambda {|cfg,col| col.extend(::ArJdbc::Derby::Column)}]
+      [ /derby/i, lambda { |cfg, column| column.extend(::ArJdbc::Derby::Column) } ]
     end
 
     def self.monkey_rails
@@ -14,12 +14,11 @@ module ::ArJdbc
         # compare a CHAR value to a NUMBER column.
         ::ActiveRecord::Associations::ClassMethods.module_eval do
           private
-
           def select_limited_ids_list(options, join_dependency)
             connection.select_all(
-                                  construct_finder_sql_for_association_limiting(options, join_dependency),
-                                  "#{name} Load IDs For Limited Eager Loading"
-                                  ).collect { |row| connection.quote(row[primary_key], columns_hash[primary_key]) }.join(", ")
+              construct_finder_sql_for_association_limiting(options, join_dependency),
+              "#{name} Load IDs For Limited Eager Loading"
+            ).collect { |row| connection.quote(row[primary_key], columns_hash[primary_key]) }.join(", ")
           end
         end
 
@@ -66,7 +65,10 @@ module ::ArJdbc
 
     def self.arel2_visitors(config)
       require 'arel/visitors/derby'
-      {}.tap {|v| %w(derby jdbcderby).each {|a| v[a] = ::Arel::Visitors::Derby } }
+      {
+        'derby' => ::Arel::Visitors::Derby,
+        'jdbcderby' => ::Arel::Visitors::Derby,
+      }
     end
 
     include ArJdbc::MissingFunctionalityHelper

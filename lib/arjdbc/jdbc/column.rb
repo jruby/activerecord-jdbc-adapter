@@ -5,16 +5,13 @@ module ActiveRecord
 
       def initialize(config, name, default, *args)
         call_discovered_column_callbacks(config)
-        super(name,default_value(default),*args)
+        super(name, default_value(default), *args)
         init_column(name, default, *args)
       end
 
-      def init_column(*args)
-      end
+      def init_column(*args); end
 
-      def default_value(val)
-        val
-      end
+      def default_value(value); value; end
 
       protected
 
