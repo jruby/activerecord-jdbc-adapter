@@ -24,6 +24,9 @@
 
 package arjdbc.mysql;
 
+import static arjdbc.util.QuotingUtils.BYTES_0;
+import static arjdbc.util.QuotingUtils.BYTES_1;
+
 import java.sql.Connection;
 
 import org.jcodings.specific.UTF8Encoding;
@@ -102,6 +105,20 @@ public class MySQLModule {
         return quoted;
     }
 
+    @JRubyMethod(name = "quoted_true", required = 0, frame = false)
+    public static IRubyObject quoted_true(
+            final ThreadContext context, 
+            final IRubyObject self) {
+        return RubyString.newString(context.getRuntime(), BYTES_1);
+    }
+    
+    @JRubyMethod(name = "quoted_false", required = 0, frame = false)
+    public static IRubyObject quoted_false(
+            final ThreadContext context, 
+            final IRubyObject self) {
+        return RubyString.newString(context.getRuntime(), BYTES_0);
+    }
+    
     /**
      * HACK HACK HACK See http://bugs.mysql.com/bug.php?id=36565
      * MySQL's statement cancel timer can cause memory leaks, so cancel it

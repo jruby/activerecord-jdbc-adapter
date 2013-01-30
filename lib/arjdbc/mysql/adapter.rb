@@ -146,12 +146,6 @@ module ::ArJdbc
     def quote_table_name(name) # :nodoc:
       quote_column_name(name).gsub('.', '`.`')
     end
-
-    QUOTED_TRUE, QUOTED_FALSE = '1', '0' # :nodoc
-    
-    def quoted_true; QUOTED_TRUE; end # :nodoc
-    def quoted_false; QUOTED_FALSE; end # :nodoc
-    
     
     def supports_savepoints? # :nodoc:
       true
@@ -169,13 +163,13 @@ module ::ArJdbc
       execute("RELEASE SAVEPOINT #{current_savepoint_name}")
     end
 
-    def disable_referential_integrity(&block) #:nodoc:
-      old = select_value("SELECT @@FOREIGN_KEY_CHECKS")
+    def disable_referential_integrity # :nodoc:
+      fk_checks = select_value("SELECT @@FOREIGN_KEY_CHECKS")
       begin
         update("SET FOREIGN_KEY_CHECKS = 0")
         yield
       ensure
-        update("SET FOREIGN_KEY_CHECKS = #{old}")
+        update("SET FOREIGN_KEY_CHECKS = #{fk_checks}")
       end
     end
 
