@@ -209,12 +209,7 @@ module ::ArJdbc
     def native_database_types
       NATIVE_DATABASE_TYPES
     end
-
-    # Does PostgreSQL support migrations?
-    def supports_migrations?
-      true
-    end
-
+    
     # Enable standard-conforming strings if available.
     def standard_conforming_strings=(enable)
       client_min_messages = self.client_min_messages
@@ -246,28 +241,42 @@ module ::ArJdbc
       @standard_conforming_strings == true # return false if :unsupported
     end
 
+    # Does PostgreSQL support migrations?
+    def supports_migrations? # :nodoc:
+      true
+    end
+
+    # Does PostgreSQL support finding primary key on non-Active Record tables?
+    def supports_primary_key? # :nodoc:
+      true
+    end
+    
     # Does PostgreSQL support standard conforming strings?
-    def supports_standard_conforming_strings?
+    def supports_standard_conforming_strings? # :nodoc:
       standard_conforming_strings?
       @standard_conforming_strings != :unsupported
     end
 
-    def supports_hex_escaped_bytea?
+    def supports_hex_escaped_bytea? # :nodoc:
       postgresql_version >= 90000
     end
 
-    def supports_insert_with_returning?
+    def supports_insert_with_returning? # :nodoc:
       postgresql_version >= 80200
     end
 
-    def supports_ddl_transactions?
+    def supports_ddl_transactions? # :nodoc:
       true
     end
 
-    def supports_savepoints?
+    def supports_index_sort_order? # :nodoc:
       true
     end
-
+    
+    def supports_savepoints? # :nodoc:
+      true
+    end
+    
     def create_savepoint
       execute("SAVEPOINT #{current_savepoint_name}")
     end
@@ -395,13 +404,7 @@ module ::ArJdbc
       id_value
     end
 
-    def primary_key(table)
-      pk_and_sequence = pk_and_sequence_for(table)
-      pk_and_sequence && pk_and_sequence.first
-    end
-
-    # taken from rails postgresql adapter
-    # https://github.com/gfmurphy/rails/blob/master/activerecord/lib/active_record/connection_adapters/postgresql_adapter.rb#L611
+    # taken from rails postgresql_adapter.rb
     def sql_for_insert(sql, pk, id_value, sequence_name, binds)
       unless pk
         table_ref = extract_table_ref_from_insert_sql(sql)
@@ -411,6 +414,11 @@ module ::ArJdbc
       sql = "#{sql} RETURNING #{quote_column_name(pk)}" if pk
 
       [sql, binds]
+    end
+    
+    def primary_key(table)
+      pk_and_sequence = pk_and_sequence_for(table)
+      pk_and_sequence && pk_and_sequence.first
     end
 
     def pg_columns(table_name, name=nil)
@@ -689,32 +697,20 @@ module ::ArJdbc
         end
       end
     end
-
-    @@quoted_table_names = {}
     
     def quote_table_name(name)
-      unless quoted = @@quoted_table_names[name]
-        schema, name_part = extract_pg_identifier_from_name(name.to_s)
+      schema, name_part = extract_pg_identifier_from_name(name.to_s)
         
-        quoted = unless name_part
-          quote_column_name(schema)
-        else
-          table_name, name_part = extract_pg_identifier_from_name(name_part)
-          "#{quote_column_name(schema)}.#{quote_column_name(table_name)}"
-        end
-        @@quoted_table_names[name] = quoted.freeze
+      unless name_part
+        quote_column_name(schema)
+      else
+        table_name, name_part = extract_pg_identifier_from_name(name_part)
+        "#{quote_column_name(schema)}.#{quote_column_name(table_name)}"
       end
-      quoted
     end
     
-    @@quoted_column_names = {}
-    
     def quote_column_name(name)
-      unless quoted = @@quoted_column_names[name]
-        quoted = %("#{name.to_s.gsub("\"", "\"\"")}")
-        @@quoted_column_names[name] = quoted.freeze
-      end
-      quoted
+      %("#{name.to_s.gsub("\"", "\"\"")}")
     end
     
     def quoted_date(value) #:nodoc:
@@ -912,11 +908,12 @@ module ::ArJdbc
       end
     end
 
-    # from rails postgresl_adapter
-    def extract_table_ref_from_insert_sql(sql)
+    # taken from rails postgresql_adapter.rb
+    def extract_table_ref_from_insert_sql(sql) # :nodoc:
       sql[/into\s+([^\(]*).*values\s*\(/i]
       $1.strip if $1
     end
+    
   end
 end
 
@@ -984,6 +981,29 @@ module ActiveRecord::ConnectionAdapters
     end
 
     alias_chained_method :columns, :query_cache, :pg_columns
+    
+    # some QUOTING caching :
+    
+    @@quoted_table_names = {}
+    
+    def quote_table_name(name)
+      unless quoted = @@quoted_table_names[name]
+        quoted = super
+        @@quoted_table_names[name] = quoted.freeze
+      end
+      quoted
+    end
+    
+    @@quoted_column_names = {}
+    
+    def quote_column_name(name)
+      unless quoted = @@quoted_column_names[name]
+        quoted = super
+        @@quoted_column_names[name] = quoted.freeze
+      end
+      quoted
+    end
+    
   end
 end
 

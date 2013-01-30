@@ -138,25 +138,13 @@ module ::ArJdbc
         super
       end
     end
-
-    @@quoted_column_names = {} # :nodoc:
     
     def quote_column_name(name) # :nodoc:
-      unless quoted = @@quoted_column_names[name]
-        quoted = "`#{name.to_s.gsub('`', '``')}`"
-        @@quoted_column_names[name] = quoted.freeze
-      end
-      quoted
+      "`#{name.to_s.gsub('`', '``')}`"
     end
-
-    @@quoted_table_names = {} # :nodoc:
     
     def quote_table_name(name) # :nodoc:
-      unless quoted = @@quoted_table_names[name]
-        quoted = quote_column_name(name).gsub('.', '`.`')
-        @@quoted_table_names[name] = quoted.freeze
-      end
-      quoted
+      quote_column_name(name).gsub('.', '`.`')
     end
 
     QUOTED_TRUE, QUOTED_FALSE = '1', '0' # :nodoc
@@ -509,6 +497,28 @@ module ActiveRecord
       alias :exec_update :exec_insert
       alias :exec_delete :exec_insert
 
+      # some QUOTING caching :
+
+      @@quoted_table_names = {}
+
+      def quote_table_name(name)
+        unless quoted = @@quoted_table_names[name]
+          quoted = super
+          @@quoted_table_names[name] = quoted.freeze
+        end
+        quoted
+      end
+
+      @@quoted_column_names = {}
+
+      def quote_column_name(name)
+        unless quoted = @@quoted_column_names[name]
+          quoted = super
+          @@quoted_column_names[name] = quoted.freeze
+        end
+        quoted
+      end
+      
     end
   end
 end
