@@ -377,7 +377,7 @@ module ::ArJdbc
       if supports_insert_with_returning? && id_value.nil?
         pk, sequence_name = *pk_and_sequence_for(table) unless pk
         if pk
-          sql = substitute_binds(sql, binds)
+          sql = to_sql(sql, binds)
           id_value = select_value("#{sql} RETURNING #{quote_column_name(pk)}")
           clear_query_cache #FIXME: Why now?
           return id_value

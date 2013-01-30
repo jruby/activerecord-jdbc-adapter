@@ -181,16 +181,18 @@ module ::ArJdbc
     end
 
     def execute(sql, name = nil, binds = [])
-      sql = extract_sql(sql)
+      sql = to_sql(sql)
       if sql =~ /\A\s*(UPDATE|INSERT)/i
-        i = sql =~ /\swhere\s/im
-        if i
-          sql[i..-1] = sql[i..-1].gsub(/!=\s*NULL/, 'IS NOT NULL').gsub(/=\sNULL/i, 'IS NULL')
+        if ( i = sql =~ /\sWHERE\s/im )
+          where_part = sql[i..-1]; sql = sql.dup
+          where_part.gsub!(/!=\s*NULL/, 'IS NOT NULL')
+          where_part.gsub!(/=\sNULL/i, 'IS NULL')
+          sql[i..-1] = where_part
         end
       else
-        sql.gsub!(/= NULL/i, 'IS NULL')
+        sql = sql.gsub(/=\sNULL/i, 'IS NULL')
       end
-      super
+      super(sql, name, binds)
     end
 
     # SELECT DISTINCT clause for a given set of columns and a given ORDER BY clause.

@@ -4,7 +4,7 @@ require 'arjdbc/mssql/limit_helpers'
 require 'arjdbc/mssql/lock_helpers'
 require 'arjdbc/jdbc/serialized_attributes_helper'
 
-module ::ArJdbc
+module ArJdbc
   module MsSQL
     include TSqlMethods
     include LimitHelpers
@@ -215,9 +215,9 @@ module ::ArJdbc
         else
           super
         end
-      when TrueClass             then '1'
-      when FalseClass            then '0'
-      else                       super
+      when TrueClass  then '1'
+      when FalseClass then '0'
+      else            super
       end
     end
 
@@ -367,36 +367,6 @@ module ::ArJdbc
       @table_columns[table_name]
     end
 
-    def _execute(sql, name = nil)
-      # Match the start of the sql to determine appropriate behaviour.  Be aware of
-      # multi-line sql which might begin with 'create stored_proc' and contain 'insert into ...' lines.
-      # Possible improvements include ignoring comment blocks prior to the first statement.
-      if sql.lstrip =~ /\Ainsert/i
-        if query_requires_identity_insert?(sql)
-          table_name = get_table_name(sql)
-          with_identity_insert_enabled(table_name) do
-            id = @connection.execute_insert(sql)
-          end
-        else
-          @connection.execute_insert(sql)
-        end
-      elsif sql.lstrip =~ /\A(create|exec)/i
-        @connection.execute_update(sql)
-      elsif sql.lstrip =~ /\A\(?\s*(select|show)/i
-        repair_special_columns(sql)
-        @connection.execute_query(sql)
-      else
-        @connection.execute_update(sql)
-      end
-    end
-
-    def select(sql, name = nil, binds = [])
-      sql = substitute_binds(sql, binds)
-      log(sql, name) do
-        @connection.execute_query(sql)
-      end
-    end
-
     # Turns IDENTITY_INSERT ON for table during execution of the block
     # N.B. This sets the state of IDENTITY_INSERT to OFF after the
     # block has been executed without regard to its previous state
@@ -476,6 +446,32 @@ module ::ArJdbc
     def reset_column_information
       @table_columns = nil
     end
+    
+    private
+    
+    def _execute(sql, name = nil)
+      # Match the start of the SQL to determine appropriate behavior.
+      # Be aware of multi-line SQL which might begin with 'create stored_proc' 
+      # and contain 'insert into ...' lines.
+      # TODO test and refactor using `self.class.insert?(sql)` etc
+      # NOTE: ignoring comment blocks prior to the first statement ?!
+      if sql.lstrip =~ /\Ainsert/i # self.class.insert?(sql)
+        if query_requires_identity_insert?(sql)
+          table_name = get_table_name(sql)
+          with_identity_insert_enabled(table_name) do
+            @connection.execute_insert(sql)
+          end
+        else
+          @connection.execute_insert(sql)
+        end
+      elsif sql.lstrip =~ /\A\(?\s*(select|show)/i # self.class.select?(sql)
+        repair_special_columns(sql)
+        @connection.execute_query(sql)
+      else # sql.lstrip =~ /\A(create|exec)/i
+        @connection.execute_update(sql)
+      end
+    end
+    
   end
 end
 
