@@ -28,6 +28,7 @@ package arjdbc.jdbc;
 
 import java.io.IOException;
 
+import arjdbc.db2.DB2Module;
 import arjdbc.db2.DB2RubyJdbcConnection;
 import arjdbc.derby.DerbyModule;
 import arjdbc.h2.H2RubyJdbcConnection;
@@ -65,6 +66,7 @@ public class AdapterJavaService implements BasicLibraryService {
         DerbyModule.load(arJdbc);
         SQLite3Module.load(arJdbc);
         OracleModule.load(arJdbc);
+        DB2Module.load(arJdbc);
         return true;
     }
     

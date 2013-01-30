@@ -58,9 +58,22 @@ module ArJdbc
     end
     
     NATIVE_DATABASE_TYPES = {
-      :double => { :name => "double" },
-      :bigint => { :name => "bigint" }
-    } # TODO this is really BARE and should be extended - see 'ibm_db' gem
+      :double     => { :name => "double" },
+      :bigint     => { :name => "bigint" },
+      :string     => { :name => "varchar", :limit => 255 },
+      :text       => { :name => "clob" },
+      :date       => { :name => "date" },
+      :binary     => { :name => "blob" },
+      :boolean    => { :name => "smallint" }, # no native boolean type
+      :xml        => { :name => "xml"},
+      :decimal    => { :name => "decimal" },
+      :char       => { :name => "char" },
+      :decfloat   => { :name => "decfloat" },
+      #:rowid      => { :name => "rowid" }, # supported datatype on z/OS and i/5
+      #:graphic    => { :name => "graphic", :limit => 1 },
+      #:vargraphic => { :name => "vargraphic", :limit => 1 },
+      # TODO datetime / timestamp / time mapping
+    }
 
     def native_database_types
       super.merge(NATIVE_DATABASE_TYPES)
@@ -136,7 +149,7 @@ module ArJdbc
         when /date/i             then :date
         when /clob/i             then :text
         when /for bit data/i     then :binary
-        #when /xml/i              then :xml
+        when /xml/i              then :xml
         #when /vargraphic/i       then :vargraphic
         #when /graphic/i          then :graphic
         #when /rowid/i            then :rowid # rowid is a supported datatype on z/OS and i/5
@@ -321,19 +334,6 @@ module ArJdbc
       when Symbol then "'#{quote_string(value.to_s)}'"
       else super
       end
-    end
-
-    def quote_string(string)
-      # escaping single quote (') characters.
-      string.gsub("'", "''") # ' (for ruby-mode)
-    end
-
-    def quoted_true
-      '1'
-    end
-
-    def quoted_false
-      '0'
     end
 
     def quote_column_name(column_name)
