@@ -560,7 +560,7 @@ module ::ArJdbc
       ENV['PGHOST']     = @config[:host] if @config[:host]
       ENV['PGPORT']     = @config[:port].to_s if @config[:port]
       ENV['PGPASSWORD'] = @config[:password].to_s if @config[:password]
-      search_path = "--schema=#{schema_search_path}" if schema_search_path
+      search_path = "--schema=#{@config[:schema_search_path]}" if @config[:schema_search_path]
 
       @connection.connection.close
       begin
