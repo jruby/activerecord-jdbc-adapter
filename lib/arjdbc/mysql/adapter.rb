@@ -179,8 +179,16 @@ module ::ArJdbc
       end
     end
 
+    # DATABASE STATEMENTS ======================================
+    
+    def exec_insert(sql, name, binds)
+      execute sql, name, binds
+    end
+    alias :exec_update :exec_insert
+    alias :exec_delete :exec_insert
+    
     # SCHEMA STATEMENTS ========================================
-
+    
     def structure_dump #:nodoc:
       if supports_views?
         sql = "SHOW FULL TABLES WHERE Table_type = 'BASE TABLE'"
@@ -489,13 +497,6 @@ module ActiveRecord
         MysqlColumn
       end
       alias_chained_method :columns, :query_cache, :jdbc_columns
-
-      protected
-      def exec_insert(sql, name, binds)
-        execute sql, name, binds
-      end
-      alias :exec_update :exec_insert
-      alias :exec_delete :exec_insert
 
       # some QUOTING caching :
 
