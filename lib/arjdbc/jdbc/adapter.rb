@@ -250,7 +250,8 @@ module ActiveRecord
         rows
       end
 
-      def insert_sql(sql, name = nil, pk = nil, id_value = nil, sequence_name = nil, binds = [])
+      # NOTE: we have an extra binds argument at the end due 2.3 support (due {#jdbc_insert}).
+      def insert_sql(sql, name = nil, pk = nil, id_value = nil, sequence_name = nil, binds = []) # :nodoc:
         id = execute(sql, name = nil, binds)
         id_value || id
       end
@@ -331,6 +332,10 @@ module ActiveRecord
         super
       end
 
+      def last_inserted_id(result)
+        result
+      end
+      
       private
       
       def substitute_binds(sql, binds = [])
@@ -342,13 +347,9 @@ module ActiveRecord
           sql.gsub('?') { quote(*copy.shift.reverse) }
         end
       end
-      
+
       def extract_sql(obj)
         obj.respond_to?(:to_sql) ? obj.send(:to_sql) : obj
-      end
-      
-      def last_inserted_id(result)
-        result
       end
       
       protected

@@ -221,6 +221,11 @@ class SQLite3SimpleTest < Test::Unit::TestCase
     assert_equal 9, rating_column.precision
     assert_equal 7, rating_column.scale
   end
+
+  def test_delete_sql
+    ActiveRecord::Base.connection.send :delete_sql, "DELETE FROM entries"
+    assert Entry.all.empty?
+  end
   
   include ExplainSupportTestMethods if ar_version("3.1")
   

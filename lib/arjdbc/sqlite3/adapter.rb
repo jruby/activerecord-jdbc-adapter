@@ -85,25 +85,34 @@ module ::ArJdbc
       }
     end
 
-    def supports_ddl_transactions?
+    def supports_ddl_transactions? # :nodoc:
       true # sqlite_version >= '2.0.0'
     end
-
-    def supports_add_column?
+    
+    def supports_savepoints? # :nodoc:
+      sqlite_version >= '3.6.8'
+    end
+    
+    def supports_add_column? # :nodoc:
       sqlite_version >= '3.1.6'
     end
 
-    def supports_count_distinct? #:nodoc:
+    def supports_count_distinct? # :nodoc:
       sqlite_version >= '3.2.6'
     end
 
-    def supports_autoincrement? #:nodoc:
+    def supports_autoincrement? # :nodoc:
       sqlite_version >= '3.1.0'
     end
 
+    def supports_index_sort_order? # :nodoc:
+      sqlite_version >= '3.3.0'
+    end
+    
     def sqlite_version
       @sqlite_version ||= select_value('select sqlite_version(*)')
     end
+    private :sqlite_version
 
     def modify_types(types)
       super(types)
@@ -148,16 +157,12 @@ module ::ArJdbc
       end
     end
     
-    def insert_sql(sql, name = nil, pk = nil, id_value = nil, sequence_name = nil, binds = []) #:nodoc:
-      sql = substitute_binds(sql, binds)
-      log(sql, name) { @connection.execute_update(sql) }
+    # NOTE: we have an extra binds argument at the end due 2.3 support.
+    def insert_sql(sql, name = nil, pk = nil, id_value = nil, sequence_name = nil, binds = []) # :nodoc:
+      execute(sql, name, binds)
       id_value || last_insert_id
     end
-
-    def last_insert_id
-      @connection.last_insert_row_id
-    end
-
+    
     def tables(name = nil) #:nodoc:
       sql = <<-SQL
         SELECT name
@@ -184,16 +189,23 @@ module ::ArJdbc
       end
     end
 
+    def create_savepoint
+      execute("SAVEPOINT #{current_savepoint_name}")
+    end
+
+    def rollback_to_savepoint
+      execute("ROLLBACK TO SAVEPOINT #{current_savepoint_name}")
+    end
+
+    def release_savepoint
+      execute("RELEASE SAVEPOINT #{current_savepoint_name}")
+    end
+    
     def recreate_database(name, options = {})
       tables.each{ |table| drop_table(table) }
     end
 
-    def _execute(sql, name = nil)
-      result = super
-      self.class.insert?(sql) ? last_insert_id : result
-    end
-
-    def select(sql, name=nil, binds = [])
+    def select(sql, name = nil, binds = [])
       execute(sql, name, binds).map do |row|
         record = {}
         row.each_key do |key|
@@ -320,6 +332,21 @@ module ::ArJdbc
         super
       end
     end
+
+    def last_insert_id
+      @connection.last_insert_row_id
+    end
+    
+    def last_inserted_id(result)
+      last_insert_id
+    end
+    
+    private
+    
+    def _execute(sql, name = nil)
+      result = super
+      self.class.insert?(sql) ? last_insert_id : result
+    end
     
   end
 end
@@ -367,12 +394,7 @@ module ActiveRecord::ConnectionAdapters
     end
 
     alias_chained_method :columns, :query_cache, :jdbc_columns
-
-    protected
-
-    def last_inserted_id(result)
-      last_insert_id
-    end
+    
   end
 
   SQLiteAdapter = SQLite3Adapter
