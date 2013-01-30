@@ -39,6 +39,10 @@ import org.jruby.util.ByteList;
  */
 public abstract class QuotingUtils {
     
+    public static final ByteList BYTES_0 = new ByteList(new byte[] { '0' }, false);
+    
+    public static final ByteList BYTES_1 = new ByteList(new byte[] { '1' }, false);
+    
     // e.g. string.gsub("'", "''") -> quoteCharWith(string, '\'', '\'');
     public static RubyString quoteCharWith(
             final ThreadContext context, 

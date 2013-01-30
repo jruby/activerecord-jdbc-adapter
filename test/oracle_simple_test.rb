@@ -52,5 +52,28 @@ class OracleSimpleTest < Test::Unit::TestCase
     # Oracle doesn't distinguish btw date/datetime
     assert_equal expected, actual.to_date
   end
+  
+  def assert_date_type(value)
+    # NOTE: no support for bare Date type in Oracle :
+    assert_instance_of Date, value.to_date
+  end
+  
+end
 
+class OracleMultibyteTest < Test::Unit::TestCase
+  include MultibyteTestMethods
+
+  def self.startup
+    super
+    MigrationSetup.setup!
+  end
+  
+  def self.shutdown
+    MigrationSetup.teardown!
+    super
+  end
+
+  def setup!; end # MigrationSetup#setup!
+  def teardown!; end # MigrationSetup#teardown!
+  
 end

@@ -57,6 +57,10 @@ class Test::Unit::TestCase
     end
   end
   
+  def connection
+    @connection ||= ActiveRecord::Base.connection
+  end
+  
   protected
   
   def assert_queries(count, matching = nil)

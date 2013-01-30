@@ -19,5 +19,6 @@ class OracleLimitTest < Test::Unit::TestCase
     assert_nothing_thrown do 
       Entry.includes(:user).all
     end
-  end 
+  end if ar_version('3.1') # in_clause_limit not supported in AR <= 3.0
+  
 end 

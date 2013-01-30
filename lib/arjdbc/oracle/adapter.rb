@@ -2,8 +2,11 @@ require 'arjdbc/jdbc/serialized_attributes_helper'
 
 module ArJdbc
   module Oracle
+    
+    @@_lob_callback_added = nil
+    
     def self.extended(mod)
-      unless @_lob_callback_added
+      unless @@_lob_callback_added
         ActiveRecord::Base.class_eval do
           def after_save_with_oracle_lob
             self.class.columns.select { |c| c.sql_type =~ /LOB\(|LOB$/i }.each do |column|
@@ -20,22 +23,19 @@ module ArJdbc
         end
 
         ActiveRecord::Base.after_save :after_save_with_oracle_lob
-        @_lob_callback_added = true
+        
+        @@_lob_callback_added = true
       end
 
-      unless ActiveRecord::ConnectionAdapters::AbstractAdapter.instance_methods(false).detect {|m| m.to_s == "prefetch_primary_key?"}
+      unless ActiveRecord::ConnectionAdapters::AbstractAdapter.
+          instance_methods(false).detect { |m| m.to_s == "prefetch_primary_key?" }
         require 'arjdbc/jdbc/quoted_primary_key'
         ActiveRecord::Base.extend ArJdbc::QuotedPrimaryKeyExtension
       end
-
+      
       (class << mod; self; end).class_eval do
         alias_chained_method :insert, :query_dirty, :ora_insert
         alias_chained_method :columns, :query_cache, :ora_columns
-        
-        # Prevent ORA-01795 for in clauses with more than 1000 
-        def in_clause_length
-          1000
-        end
       end
     end
 
@@ -153,9 +153,17 @@ module ArJdbc
       columns(table_name).detect {|c| c.primary } if table_name
     end
 
-    def table_alias_length
-      30
+    # Prevent ORA-01795 for in clauses with more than 1000
+    def in_clause_length # :nodoc:
+      1000
     end
+    alias_method :ids_in_list_limit, :in_clause_length
+    
+    # maximum length of Oracle identifiers is 30
+    def table_alias_length; 30; end # :nodoc:
+    def table_name_length;  30; end # :nodoc:
+    def index_name_length;  30; end # :nodoc:
+    def column_name_length; 30; end # :nodoc:
 
     def default_sequence_name(table, column = nil) #:nodoc:
       "#{table}_seq"
@@ -214,7 +222,7 @@ module ArJdbc
     
     def next_sequence_value(sequence_name)
       # avoid #select or #select_one so that the sequence values aren't cached
-      execute("SELECT #{sequence_name}.nextval id FROM dual").first['id'].to_i
+      execute("SELECT #{quote_table_name(sequence_name)}.nextval id FROM dual").first['id'].to_i
     end
 
     def sql_literal?(value)
@@ -234,7 +242,7 @@ module ArJdbc
         sequence_name ||= default_sequence_name(table)
         id_value = next_sequence_value(sequence_name)
         log(sql, name) do
-          @connection.execute_id_insert(sql,id_value)
+          @connection.execute_id_insert(sql, id_value)
         end
       end
       id_value
@@ -265,16 +273,41 @@ module ArJdbc
       end
     end
 
-    def current_database #:nodoc:
-      select_one("SELECT sys_context('userenv','db_name') db FROM dual")["db"]
+    def current_user # :nodoc:
+      @current_user ||= execute("SELECT sys_context('userenv', 'session_user') su FROM dual").first['su']
+    end
+    
+    def current_database # :nodoc:
+      @current_database ||= execute("SELECT sys_context('userenv', 'db_name') db FROM dual").first['db']
     end
 
+    def current_schema # :nodoc:
+      execute("SELECT sys_context('userenv', 'current_schema') schema FROM dual").first['schema']
+    end
+
+    def current_schema=(schema_owner)
+      execute("ALTER SESSION SET current_schema=#{schema_owner}")
+    end
+    
+    def create_savepoint # :nodoc:
+      execute("SAVEPOINT #{current_savepoint_name}")
+    end
+
+    def rollback_to_savepoint # :nodoc:
+      execute("ROLLBACK TO #{current_savepoint_name}")
+    end
+
+    def release_savepoint # :nodoc:
+      # no RELEASE SAVEPOINT statement in Oracle
+    end
+    
     def remove_index(table_name, options = {}) #:nodoc:
       execute "DROP INDEX #{index_name(table_name, options)}"
     end
 
     def change_column_default(table_name, column_name, default) #:nodoc:
-      execute "ALTER TABLE #{table_name} MODIFY #{column_name} DEFAULT #{quote(default)}"
+      execute "ALTER TABLE #{quote_table_name(table_name)} " + 
+        "MODIFY #{quote_column_name(column_name)} DEFAULT #{quote(default)}"
     end
 
     def add_column_options!(sql, options) #:nodoc:
@@ -286,17 +319,20 @@ module ArJdbc
     end
 
     def change_column(table_name, column_name, type, options = {}) #:nodoc:
-      change_column_sql = "ALTER TABLE #{table_name} MODIFY #{column_name} #{type_to_sql(type, options[:limit])}"
+      change_column_sql = "ALTER TABLE #{quote_table_name(table_name)} " + 
+        "MODIFY #{quote_column_name(column_name)} #{type_to_sql(type, options[:limit])}"
       add_column_options!(change_column_sql, options)
       execute(change_column_sql)
     end
 
     def rename_column(table_name, column_name, new_column_name) #:nodoc:
-      execute "ALTER TABLE #{table_name} RENAME COLUMN #{column_name} to #{new_column_name}"
+      execute "ALTER TABLE #{quote_table_name(table_name)} " + 
+        "RENAME COLUMN #{quote_column_name(column_name)} to #{quote_column_name(new_column_name)}"
     end
 
     def remove_column(table_name, column_name) #:nodoc:
-      execute "ALTER TABLE #{table_name} DROP COLUMN #{column_name}"
+      execute "ALTER TABLE #{quote_table_name(table_name)} " + 
+        "DROP COLUMN #{quote_column_name(column_name)}"
     end
 
     def structure_dump #:nodoc:
@@ -356,8 +392,7 @@ module ArJdbc
 
       # construct a valid DISTINCT clause, ie. one that includes the ORDER BY columns, using
       # FIRST_VALUE such that the inclusion of these columns doesn't invalidate the DISTINCT
-      order_columns = order_by.split(',').map { |s| s.strip }.reject(&:blank?)
-      order_columns = order_columns.zip((0...order_columns.size).to_a).map do |c, i|
+      order_columns = extract_order_columns(order_by).map do |c, i|
         "FIRST_VALUE(#{c.split.first}) OVER (PARTITION BY #{columns} ORDER BY #{c}) AS alias_#{i}__"
       end
       sql = "DISTINCT #{columns}, "
@@ -366,32 +401,41 @@ module ArJdbc
 
     # ORDER BY clause for the passed order option.
     #
-    # Uses column aliases as defined by #distinct.
+    # Uses column aliases as defined by {#distinct}.
     def add_order_by_for_association_limiting!(sql, options)
       return sql if options[:order].blank?
 
-      order = options[:order].split(',').collect { |s| s.strip }.reject(&:blank?)
-      order.map! {|s| $1 if s =~ / (.*)/}
-      order = order.zip((0...order.size).to_a).map { |s,i| "alias_#{i}__ #{s}" }.join(', ')
+      order_columns = extract_order_columns(options[:order]) do |columns|
+        columns.map! { |s| $1 if s =~ / (.*)/ }; columns
+      end
+      order = order_columns.map { |s, i| "alias_#{i}__ #{s}" } # @see {#distinct}
 
-      sql << "ORDER BY #{order}"
+      sql << "ORDER BY #{order.join(', ')}"
     end
-
+    
+    def extract_order_columns(order_by)
+      columns = order_by.split(',')
+      columns.map!(&:strip); columns.reject!(&:blank?)
+      columns = yield(columns) if block_given?
+      columns.zip( (0...columns.size).to_a )
+    end
+    private :extract_order_columns
+    
     def tables
       @connection.tables(nil, oracle_schema)
     end
 
-    def ora_columns(table_name, name=nil)
+    # NOTE: better to use current_schema instead of the configured one ?!
+    
+    def ora_columns(table_name, name = nil)
       @connection.columns_internal(table_name, name, oracle_schema)
     end
 
     # QUOTING ==================================================
-    #
-    # see: abstract/quoting.rb
 
     # See ACTIVERECORD_JDBC-33 for details -- better to not quote
     # table names, esp. if they have schemas.
-    def quote_table_name(name) #:nodoc:
+    def quote_table_name(name) # :nodoc:
       name.to_s
     end
 
@@ -404,12 +448,8 @@ module ArJdbc
     def quote_column_name(name) #:nodoc:
       name.to_s =~ /^[a-z0-9_$#]+$/ ? name.to_s : "\"#{name}\""
     end
-
-    def quote_string(string) #:nodoc:
-      string.gsub(/'/, "''")
-    end
-
-    def quote(value, column = nil) #:nodoc:
+    
+    def quote(value, column = nil) # :nodoc:
       # Arel 2 passes SqlLiterals through
       return value if sql_literal?(value)
 
@@ -432,16 +472,20 @@ module ArJdbc
         quoted
       end
     end
-
-    def quoted_true #:nodoc:
-      '1'
+    
+    def supports_migrations? # :nodoc:
+      true
     end
 
-    def quoted_false #:nodoc:
-      '0'
+    def supports_primary_key? # :nodoc:
+      true
+    end
+
+    def supports_savepoints? # :nodoc:
+      true
     end
     
-    def supports_explain?
+    def supports_explain? # :nodoc:
       true
     end
 
@@ -470,9 +514,13 @@ module ArJdbc
       end
     end
 
-    # In Oracle, schemas are usually created under your username:
+    # In Oracle, schemas are usually created under your username :
     # http://www.oracle.com/technology/obe/2day_dba/schema/schema.htm
-    # But allow separate configuration as "schema:" anyway (GH #53)
+    # 
+    # A schema is the set of objects (tables, views, indexes, etc) that belongs
+    # to an user, often used as another way to refer to an Oracle user account.
+    # 
+    # But allow separate configuration as "schema:" anyway (see #53)
     def oracle_schema
       if @config[:schema]
         @config[:schema].to_s

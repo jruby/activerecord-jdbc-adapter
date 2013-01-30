@@ -35,6 +35,7 @@ import arjdbc.informix.InformixRubyJdbcConnection;
 import arjdbc.mssql.MssqlRubyJdbcConnection;
 import arjdbc.mysql.MySQLModule;
 import arjdbc.mysql.MySQLRubyJdbcConnection;
+import arjdbc.oracle.OracleModule;
 import arjdbc.oracle.OracleRubyJdbcConnection;
 import arjdbc.postgresql.PostgresqlRubyJdbcConnection;
 import arjdbc.sqlite3.SQLite3Module;
@@ -63,6 +64,8 @@ public class AdapterJavaService implements BasicLibraryService {
         MySQLModule.load(arJdbc);
         DerbyModule.load(arJdbc);
         SQLite3Module.load(arJdbc);
+        OracleModule.load(arJdbc);
         return true;
     }
+    
 }
