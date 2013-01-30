@@ -43,7 +43,7 @@ module ActiveRecord
       end
       
       def self.reset_constants
-        return unless @driver_constants
+        return false if ! defined?(@driver_constants) || ! @driver_constants
         reset_constants! if ::ArJdbc.constants.size != @driver_constants.size
       end
       

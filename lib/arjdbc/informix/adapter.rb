@@ -3,8 +3,10 @@ require 'arjdbc/jdbc/serialized_attributes_helper'
 module ArJdbc
   module Informix
     
+    @@_lob_callback_added = nil
+    
     def self.extended(base)
-      unless @_lob_callback_added
+      unless @@_lob_callback_added
         ActiveRecord::Base.class_eval do
           def after_save_with_informix_lob
             lob_columns = self.class.columns.select { |c| [:text, :binary].include?(c.type) }
@@ -22,7 +24,7 @@ module ArJdbc
         end
 
         ActiveRecord::Base.after_save :after_save_with_informix_lob
-        @_lob_callback_added = true
+        @@_lob_callback_added = true
       end
     end
 
@@ -95,10 +97,11 @@ module ArJdbc
     end
 
     def quote(value, column = nil)
-      if column && [:binary, :text].include?(column.type)
+      column_type = column && column.type
+      if column_type == :binary || column_type == :text
         # LOBs are updated separately by an after_save trigger.
         "NULL"
-      elsif column && column.type == :date
+      elsif column_type == :date
         "'#{value.mon}/#{value.day}/#{value.year}'"
       else
         super

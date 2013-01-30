@@ -6,12 +6,13 @@ module ArJdbc
     # TODO kind of standard AR configuration option for this would be nice :
     ADD_LOB_CALLBACK = true unless const_defined?(:ADD_LOB_CALLBACK) # :nodoc
 
+    @@_lob_callback_added = nil
     def self.lob_callback_added? # :nodoc
-      @_lob_callback_added
+      @@_lob_callback_added
     end
     
     def self.lob_callback_added! # :nodoc
-      @_lob_callback_added = true
+      @@_lob_callback_added = true
     end
     
     def self.extended(base)

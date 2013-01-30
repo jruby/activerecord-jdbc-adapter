@@ -3,8 +3,10 @@ require 'arjdbc/jdbc/serialized_attributes_helper'
 module ArJdbc
   module FireBird
 
+    @@_lob_callback_added = nil
+    
     def self.extended(mod)
-      unless @_lob_callback_added
+      unless @@_lob_callback_added
         ActiveRecord::Base.class_eval do
           def after_save_with_firebird_blob
             self.class.columns.select { |c| c.sql_type =~ /blob/i }.each do |column|
@@ -21,7 +23,7 @@ module ArJdbc
         end
 
         ActiveRecord::Base.after_save :after_save_with_firebird_blob
-        @_lob_callback_added = true
+        @@_lob_callback_added = true
       end
     end
 
