@@ -569,16 +569,31 @@ module SimpleTestMethods
     Entry.connection.send :substitute_binds, sql, binds
     assert_equal binds_dup, binds
   end
-
+  
   def test_find_by_sql_with_binds
     Entry.create!(:title => 'qqq', :content => '', :rating => 4)
     Entry.create!(:title => 'www', :content => '', :rating => 5)
     Entry.create!(:title => 'www', :content => '', :rating => 6)
+    #ActiveRecord::Base.logger.level = Logger::DEBUG
     sql = 'SELECT * FROM entries WHERE ( title = ? OR title = ? ) AND rating < ? AND rating > ?'
     entries = Entry.find_by_sql [ sql, 'qqq', 'www', 6, 4 ]
     assert_equal 1, entries.size
+  ensure
+    #ActiveRecord::Base.logger.level = Logger::WARN
   end
 
+  def test_find_by_sql_with_named_binds
+    Entry.create!(:title => 'qqq', :content => '', :rating => 4)
+    Entry.create!(:title => 'www', :content => '', :rating => 5)
+    Entry.create!(:title => 'www', :content => '', :rating => 6)
+    #ActiveRecord::Base.logger.level = Logger::DEBUG
+    sql = 'SELECT * FROM entries WHERE ( title = :title OR title = :title ) AND rating < :upper AND rating > :lower'
+    entries = Entry.find_by_sql [ sql, { :title => 'www', :upper => 6, :lower => 4 } ]
+    assert_equal 1, entries.size
+  ensure
+    #ActiveRecord::Base.logger.level = Logger::WARN
+  end
+  
   class ChangeEntriesTable < ActiveRecord::Migration
     def self.up
       change_table :entries do |t|

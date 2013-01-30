@@ -45,6 +45,18 @@ class Test::Unit::TestCase
   
   def ar_version(version); self.class.ar_version(version); end
   
+  def with_java_connection(config = nil)
+    config ||= ActiveRecord::Base.connection.config
+    jdbc_driver = ActiveRecord::ConnectionAdapters::JdbcDriver.new(config[:driver])
+    begin
+      java_connection = jdbc_driver.connection(config[:url], config[:username], config[:password])
+      java_connection.setAutoCommit(true)
+      yield(java_connection)
+    ensure
+      java_connection.close rescue nil
+    end
+  end
+  
   protected
   
   def assert_queries(count, matching = nil)

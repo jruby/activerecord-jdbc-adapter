@@ -191,24 +191,6 @@ module ActiveRecord
         @connection.disconnect!
       end
 
-      # Executes the SQL statement in the context of this connection.
-      def execute(sql, name = nil, binds = [])
-        sql = substitute_binds(sql, binds)
-        if name == :skip_logging
-          _execute(sql)
-        else
-          log(sql, name) { _execute(sql) }
-        end
-      end
-
-      # we need to do it this way, to allow Rails stupid tests to always work
-      # even if we define a new execute method. Instead of mixing in a new
-      # execute, an _execute should be mixed in.
-      def _execute(sql, name = nil)
-        @connection.execute(sql)
-      end
-      private :_execute
-
       if ActiveRecord::VERSION::MAJOR < 3
         
         def jdbc_insert(sql, name = nil, pk = nil, id_value = nil, sequence_name = nil, binds = [])  # :nodoc:
@@ -240,22 +222,6 @@ module ActiveRecord
       end
       alias_chained_method :columns, :query_cache, :jdbc_columns
       
-      def select(*args)
-        execute(*args)
-      end
-      
-      def select_rows(sql, name = nil)
-        rows = []
-        select(sql, name).each {|row| rows << row.values }
-        rows
-      end
-
-      # NOTE: we have an extra binds argument at the end due 2.3 support (due {#jdbc_insert}).
-      def insert_sql(sql, name = nil, pk = nil, id_value = nil, sequence_name = nil, binds = []) # :nodoc:
-        id = execute(sql, name = nil, binds)
-        id_value || id
-      end
-
       # Executes +sql+ statement in the context of this connection using
       # +binds+ as the bind substitutes.  +name+ is logged along with
       # the executed +sql+ statement.
@@ -282,6 +248,78 @@ module ActiveRecord
       # the executed +sql+ statement.
       def exec_update(sql, name, binds)
         exec_query(sql, name, binds)
+      end
+      
+      if ActiveRecord::VERSION::MAJOR < 3 # 2.3.x
+        
+      # NOTE: 2.3 log(sql, name) while does not like `name == nil`
+      
+      # Executes the SQL statement in the context of this connection.
+      def execute(sql, name = nil, binds = [])
+        sql = to_sql(sql, binds)
+        if name == :skip_logging
+          _execute(sql, name)
+        else
+          log(sql, name) { _execute(sql, name ||= "SQL") }
+        end
+      end
+
+      elsif ActiveRecord::VERSION::MAJOR == 3 && ActiveRecord::VERSION::MINOR == 0
+      
+      # NOTE: 3.0 log(sql, name) allow `name == nil` (handles `name ||= "SQL"`)
+      
+      # Executes the SQL statement in the context of this connection.
+      def execute(sql, name = nil, binds = [])
+        sql = to_sql(sql, binds)
+        if name == :skip_logging
+          _execute(sql, name)
+        else
+          log(sql, name) { _execute(sql, name) }
+        end
+      end
+      
+      else # >= 3.1.0
+      
+      # NOTE: 3.1 log(sql, name = "SQL", binds = []) `name == nil` is fine
+      
+      # Executes the SQL statement in the context of this connection.
+      def execute(sql, name = nil, binds = [])
+        sql = to_sql(sql, binds)
+        if name == :skip_logging
+          _execute(sql, name)
+        else
+          log(sql, name, binds) { _execute(sql, name) }
+        end
+      end
+      
+      end
+
+      # we need to do it this way, to allow Rails stupid tests to always work
+      # even if we define a new execute method. Instead of mixing in a new
+      # execute, an _execute should be mixed in.
+      def _execute(sql, name = nil)
+        @connection.execute(sql)
+      end
+      private :_execute
+      
+      # Returns an array of record hashes with the column names as keys and
+      # column values as values.
+      # @note on AR-3.2 expects "only" 2 arguments `select(sql, name = nil)`
+      #  we accept 3 arguments as well `select(sql, name = nil, binds = [])`
+      def select(*args)
+        execute(*args)
+      end
+      
+      def select_rows(sql, name = nil)
+        rows = []
+        select(sql, name).each {|row| rows << row.values }
+        rows
+      end
+
+      # NOTE: we have an extra binds argument at the end due 2.3 support (due {#jdbc_insert}).
+      def insert_sql(sql, name = nil, pk = nil, id_value = nil, sequence_name = nil, binds = []) # :nodoc:
+        id = execute(sql, name = nil, binds)
+        id_value || id
       end
 
       def tables(name = nil)
@@ -325,6 +363,34 @@ module ActiveRecord
         @connection.primary_keys(table)
       end
 
+      if ActiveRecord::VERSION::MAJOR < 3
+        
+      # Converts an arel AST to SQL
+      def to_sql(arel, binds = [])
+        if arel.respond_to?(:ast)
+          visitor.accept(arel.ast) do
+            quote(*binds.shift.reverse)
+          end
+        else # for backwards compatibility :
+          sql = arel.respond_to?(:to_sql) ? arel.send(:to_sql) : arel
+          return sql if binds.blank?
+          copy = binds.dup # NOTE: this shall not happen, right ?!
+          sql.gsub('?') { quote(*copy.shift.reverse) }
+        end
+      end
+      
+      else # AR-2.3 no #to_sql method
+        
+      # Substitutes SQL bind (?) parameters
+      def to_sql(sql, binds = [])
+        sql = sql.send(:to_sql) if sql.respond_to?(:to_sql)
+        return sql if binds.blank?
+        copy = binds.dup
+        sql.gsub('?') { quote(*copy.shift.reverse) }
+      end
+        
+      end
+      
       protected
  
       def translate_exception(e, message)
@@ -338,6 +404,7 @@ module ActiveRecord
       
       private
       
+      # #deprecated no longer used
       def substitute_binds(sql, binds = [])
         sql = extract_sql(sql)
         if binds.empty?
@@ -348,6 +415,7 @@ module ActiveRecord
         end
       end
 
+      # #deprecated no longer used
       def extract_sql(obj)
         obj.respond_to?(:to_sql) ? obj.send(:to_sql) : obj
       end
