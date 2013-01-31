@@ -88,7 +88,7 @@ class MsSQLLimitOffsetTest < Test::Unit::TestCase
     CreateLongShips.up
     CreateVikings.up
     CreateNoIdVikings.up
-    @connection = ActiveRecord::Base.connection
+    ActiveRecord::Base.connection
   end
 
   def teardown

@@ -35,6 +35,10 @@ module ArJdbc
       change_column_null(table_name, column_name, options[:null], options[:default]) if options.key?(:null)
     end
 
+    def current_schema
+      execute('CALL SCHEMA()')[0].values[0]
+    end
+    
     # EXPLAIN support :
     
     def supports_explain?; true; end

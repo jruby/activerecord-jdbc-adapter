@@ -52,7 +52,7 @@ class H2ChangeColumnTest < Test::Unit::TestCase
   def test_should_set_non_null_restriction
     ActiveRecord::Migration.change_column :people, :phone, :string, :null => false
     Person.reset_column_information
-    assert_raises(ActiveRecord::StatementInvalid) { Person.create! }
+    assert_raise(ActiveRecord::StatementInvalid) { Person.create! }
   end
 
   def test_should_set_null_restriction_with_default

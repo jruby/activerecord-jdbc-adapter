@@ -1,4 +1,5 @@
 require 'helper'
+require 'stringio'
 
 begin
   require 'bundler'
@@ -60,6 +61,20 @@ class Test::Unit::TestCase
   def connection
     @connection ||= ActiveRecord::Base.connection
   end
+  
+  def schema_dump
+    strio = StringIO.new
+    ActiveRecord::SchemaDumper::dump(connection, strio)
+    strio.string
+  end
+  
+#  def teardown
+#    clear_active_connections!
+#  end
+#
+#  def clear_active_connections!
+#    ActiveRecord::Base.clear_active_connections!
+#  end
   
   protected
   

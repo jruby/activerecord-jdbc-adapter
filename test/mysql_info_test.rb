@@ -35,32 +35,31 @@ end
 
 class MysqlInfoTest < Test::Unit::TestCase
   
-  def setup
+  def self.startup
     DBSetup.up
-    @connection = ActiveRecord::Base.connection
   end
 
-  def teardown
+  def self.shutdown
     DBSetup.down
   end
 
   ## primary_key
   def test_should_return_the_primary_key_of_a_table
-    assert_equal 'id', @connection.primary_key('books')
+    assert_equal 'id', connection.primary_key('books')
   end
 
   def test_should_be_able_to_return_a_custom_primary_key
-    assert_equal 'legacy_id', @connection.primary_key('cars')
+    assert_equal 'legacy_id', connection.primary_key('cars')
   end
 
   def test_should_return_nil_for_a_table_without_a_primary_key
-    assert_nil @connection.primary_key('cats')
+    assert_nil connection.primary_key('cats')
   end
 
   ## structure_dump
   def test_should_include_the_tables_in_a_structure_dump
     # TODO: Improve these tests, I added this one because no other tests exists for this method.
-    dump = @connection.structure_dump
+    dump = connection.structure_dump
     assert dump.include?('CREATE TABLE `books`')
     assert dump.include?('CREATE TABLE `cars`')
     assert dump.include?('CREATE TABLE `cats`')
@@ -69,7 +68,7 @@ class MysqlInfoTest < Test::Unit::TestCase
 
   def test_should_include_longtext_in_schema_dump
     strio = StringIO.new
-    ActiveRecord::SchemaDumper::dump(@connection, strio)
+    ActiveRecord::SchemaDumper::dump(connection, strio)
     dump = strio.string
     assert_match %r{t.text\s+"text",\s+:limit => 2147483647$}, dump
   end
@@ -86,22 +85,22 @@ class MysqlInfoTest < Test::Unit::TestCase
   end
 
   def test_should_include_limit
-    text_column = @connection.columns('memos').find { |c| c.name == 'text' }
+    text_column = connection.columns('memos').find { |c| c.name == 'text' }
     assert_equal 2147483647, text_column.limit
   end
 
   def test_should_set_sqltype_to_longtext
-    text_column = @connection.columns('memos').find { |c| c.name == 'text' }
+    text_column = connection.columns('memos').find { |c| c.name == 'text' }
     assert text_column.sql_type =~ /^longtext/i
   end
 
   def test_should_set_type_to_text
-    text_column = @connection.columns('memos').find { |c| c.name == 'text' }
+    text_column = connection.columns('memos').find { |c| c.name == 'text' }
     assert_equal :text, text_column.type
   end
 
   def test_verify_url_has_options
-    url = @connection.config[:url]
+    url = connection.config[:url]
     assert url =~ /characterEncoding=utf8/
     assert url =~ /useUnicode=true/
     assert url =~ /zeroDateTimeBehavior=convertToNull/
@@ -162,14 +161,6 @@ class MysqlInfoTest < Test::Unit::TestCase
     end
   ensure
     DbTypeMigration.down
-  end
-  
-  private
-  
-  def schema_dump
-    strio = StringIO.new
-    ActiveRecord::SchemaDumper::dump(@connection, strio)
-    strio.string
   end
   
 end

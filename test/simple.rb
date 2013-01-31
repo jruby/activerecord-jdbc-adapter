@@ -9,12 +9,10 @@ module MigrationSetup
 
   def setup 
     setup!
-    @connection = ActiveRecord::Base.connection
   end
 
   def teardown
     teardown!
-    ActiveRecord::Base.clear_active_connections!
   end
 
   def setup!
@@ -392,31 +390,34 @@ module SimpleTestMethods
 
   def test_indexes
     # Only test indexes if we have implemented it for the particular adapter
-    if @connection.respond_to?(:indexes)
-      indexes = @connection.indexes(:entries)
+    if connection.respond_to?(:indexes)
+      indexes = connection.indexes(:entries)
       assert_equal(0, indexes.size)
 
       index_name = "entries_index"
-      @connection.add_index(:entries, :updated_on, :name => index_name)
+      connection.add_index(:entries, :updated_on, :name => index_name)
 
-      indexes = @connection.indexes(:entries)
+      indexes = connection.indexes(:entries)
       assert_equal(1, indexes.size)
       assert_equal "entries", indexes.first.table.to_s
       assert_equal index_name, indexes.first.name
       assert !indexes.first.unique
       assert_equal ["updated_on"], indexes.first.columns
+    else
+      puts "indexes not implemented for adapter: #{connection}"
     end
   end
 
   def test_dumping_schema
+    connection = ActiveRecord::Base.connection
+    connection.add_index :entries, :title
     require 'active_record/schema_dumper'
-    @connection.add_index :entries, :title
     StringIO.open do |io|
-      ActiveRecord::SchemaDumper.dump(ActiveRecord::Base.connection, io)
+      ActiveRecord::SchemaDumper.dump(connection, io)
       assert_match(/add_index "entries",/, io.string)
     end
-    @connection.remove_index :entries, :title
-
+  ensure
+    connection.remove_index :entries, :title
   end
 
   def test_nil_values
@@ -440,14 +441,15 @@ module SimpleTestMethods
 
   def test_reconnect
     assert_equal 1, Entry.count
-    @connection.reconnect!
+    ActiveRecord::Base.connection.reconnect!
     assert_equal 1, Entry.count
   end
 
   if defined?(JRUBY_VERSION)
     def test_connection_valid
       assert_raise(ActiveRecord::JDBCError) do
-        @connection.raw_connection.with_connection_retry_guard do |c|
+        connection = ActiveRecord::Base.connection
+        connection.raw_connection.with_connection_retry_guard do |c|
           begin
             stmt = c.createStatement
             stmt.execute "bogus sql"
@@ -598,19 +600,46 @@ module SimpleTestMethods
     def self.up
       change_table :entries do |t|
         t.string :author
-      end if respond_to?(:change_table)
+      end
     end
     def self.down
       change_table :entries do |t|
         t.remove :author
-      end if respond_to?(:change_table)
+      end
     end
   end
 
   def test_change_table
+    #level, ActiveRecord::Base.logger.level = 
+      #ActiveRecord::Base.logger.level, Logger::DEBUG
+
+    attributes = {
+      :title => 'welcome to the real world',
+      :content => '... TO BE CONTINUED ...', 
+      :author => 'kares'
+    }
+    assert_raise ActiveRecord::UnknownAttributeError do
+      Entry.create! attributes
+    end
+    
     ChangeEntriesTable.up
-    ChangeEntriesTable.down
-  end
+    Entry.reset_column_information
+    begin
+      Entry.create! attributes
+      if Entry.respond_to?(:where)
+        e = Entry.where :author => 'kares'
+      else # 2.3
+        e = Entry.all :conditions => { :author => 'kares' }
+      end
+      assert e.first
+    ensure
+      ChangeEntriesTable.down
+      Entry.reset_column_information
+    end
+    
+  ensure
+    #ActiveRecord::Base.logger.level = level
+  end # if Test::Unit::TestCase.ar_version('3.0')
 
   def test_string_id
     f = StringId.new
@@ -650,19 +679,19 @@ module MultibyteTestMethods
     def setup
       super
       config = ActiveRecord::Base.connection.config
-      @jdbc_driver = ActiveRecord::ConnectionAdapters::JdbcDriver.new(config[:driver])
-      @java_con = @jdbc_driver.connection(config[:url], config[:username], config[:password])
-      @java_con.setAutoCommit(true)
+      jdbc_driver = ActiveRecord::ConnectionAdapters::JdbcDriver.new(config[:driver])
+      @java_connection = jdbc_driver.connection(config[:url], config[:username], config[:password])
+      @java_connection.setAutoCommit(true)
     end
 
     def teardown
-      @java_con.close
-      @jdbc_driver = nil
+      @java_connection.close
       super
     end
 
     def test_select_multibyte_string
-      @java_con.createStatement().execute("insert into entries (id, title, content) values (1, 'テスト', '本文')")
+      @java_connection.createStatement().
+        execute("insert into entries (id, title, content) values (1, 'テスト', '本文')")
       entry = Entry.first
       assert_equal "テスト", entry.title
       assert_equal "本文", entry.content
@@ -671,7 +700,8 @@ module MultibyteTestMethods
 
     def test_update_multibyte_string
       Entry.create!(:title => "テスト", :content => "本文")
-      rs = @java_con.createStatement().executeQuery("select title, content from entries")
+      rs = @java_connection.createStatement().
+        executeQuery("select title, content from entries")
       assert rs.next
       assert_equal "テスト", rs.getString(1)
       assert_equal "本文", rs.getString(2)
@@ -722,29 +752,34 @@ module NonUTF8EncodingMethods
 end
 
 module XmlColumnTests
+  
   def self.included(base)
     base.send :include, Tests if ActiveRecord::VERSION::MAJOR > 3 ||
       (ActiveRecord::VERSION::MAJOR == 3 && ActiveRecord::VERSION::MINOR >= 1)
   end
+  
   module Tests
     def test_create_xml_column
       assert_nothing_raised do
-        @connection.create_table :xml_testings do |t|
+        connection.create_table :xml_testings do |t|
           t.xml :xml_test
         end
       end
 
-      xml_test = @connection.columns(:xml_testings).detect do |c|
+      xml_test = connection.columns(:xml_testings).detect do |c|
         c.name == "xml_test"
       end
 
       assert_equal "text", xml_test.sql_type
     ensure
-      @connection.drop_table :xml_testings rescue nil
+      connection.drop_table :xml_testings rescue nil
     end
   end
+  
 end
+
 module ActiveRecord3TestMethods
+  
   def self.included(base)
     base.send :include, Tests if ActiveRecord::VERSION::MAJOR == 3
   end
@@ -767,14 +802,14 @@ module ActiveRecord3TestMethods
 
     def test_remove_nonexistent_index
       assert_raise(ArgumentError, ActiveRecord::StatementInvalid, ActiveRecord::JDBCError) do
-        @connection.remove_index :entries, :nonexistent_index
+        connection.remove_index :entries, :nonexistent_index
       end
     end
 
     def test_add_index_with_invalid_name_length
-      index_name = 'x' * (@connection.index_name_length + 1)
+      index_name = 'x' * (connection.index_name_length + 1)
       assert_raise(ArgumentError) do
-        @connection.add_index "entries", "title", :name => index_name
+        connection.add_index "entries", "title", :name => index_name
       end
     end
 
@@ -785,6 +820,7 @@ module ActiveRecord3TestMethods
       assert_equal 1, Thing.find(:all).size
     end
   end
+  
 end
 
 module ResetColumnInformationTestMethods

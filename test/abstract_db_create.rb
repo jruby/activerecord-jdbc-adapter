@@ -66,11 +66,11 @@ module AbstractDbCreate
   end
 
   def configurations
-    the_db_name = @db_name
-    the_db_config = db_config
-    the_db_config = the_db_config.merge({:database => the_db_name}) if the_db_name
-    the_db_config.stringify_keys!
-    @configs = { @env => the_db_config }
+    db_name = @db_name
+    db_config = self.db_config
+    db_config = db_config.merge({:database => db_name}) if db_name
+    db_config.stringify_keys!
+    @configs = { @env => db_config }
     @configs["test"] = @configs[@env].dup
     @configs
   end

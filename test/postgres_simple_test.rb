@@ -13,24 +13,24 @@ class PostgresSimpleTest < Test::Unit::TestCase
   include ColumnNameQuotingTests
 
   def test_adapter_class_name_equals_native_adapter_class_name
-    classname = @connection.class.name[/[^:]*$/]
+    classname = connection.class.name[/[^:]*$/]
     assert_equal 'PostgreSQLAdapter', classname
   end
 
   def test_schema_search_path
-    assert_equal @connection.schema_search_path, "\"$user\",public"
+    assert_equal connection.schema_search_path, "\"$user\",public"
   end
 
   def test_current_schema
-    assert_equal @connection.current_schema, "public"
+    assert_equal connection.current_schema, "public"
   end
 
   def test_encoding
-    assert_not_nil @connection.encoding
+    assert_not_nil connection.encoding
   end
 
   def test_multi_statement_support
-    results = @connection.execute "SELECT title from entries; SELECT login from users"
+    results = connection.execute "SELECT title from entries; SELECT login from users"
     assert_equal 2, results.length
     assert_equal ["title"], results[0].first.keys
     assert_equal ["login"], results[1].first.keys
@@ -56,36 +56,36 @@ class PostgresSimpleTest < Test::Unit::TestCase
   def test_create_xml_column
     return unless PG_VERSION >= 80300
     assert_nothing_raised do
-      @connection.create_table :xml_testings do |t|
+      connection.create_table :xml_testings do |t|
         t.column :xml_test, :xml
       end
     end
 
-    xml_test = @connection.columns(:xml_testings).detect do
+    xml_test = connection.columns(:xml_testings).detect do
       |c| c.name == "xml_test"
     end
 
     assert_equal "xml", xml_test.sql_type
   ensure
-    @connection.drop_table :xml_testings rescue nil
+    connection.drop_table :xml_testings rescue nil
   end
 
   def test_create_table_with_limits
     assert_nothing_raised do
-      @connection.create_table :testings do |t|
+      connection.create_table :testings do |t|
         t.column :eleven_int, :integer, :limit => 11
       end
     end
 
-    columns = @connection.columns(:testings)
+    columns = connection.columns(:testings)
     eleven = columns.detect { |c| c.name == "eleven_int" }
     assert_equal "integer", eleven.sql_type
   ensure
-    @connection.drop_table :testings rescue nil
+    connection.drop_table :testings rescue nil
   end
 
   def test_supports_standard_conforming_string
-    assert([true, false].include?(@connection.supports_standard_conforming_strings?))
+    assert([true, false].include?(connection.supports_standard_conforming_strings?))
   end
 
   def test_standard_conforming_string_default_set_on_new_connections
@@ -94,25 +94,25 @@ class PostgresSimpleTest < Test::Unit::TestCase
   end
 
   def test_default_standard_conforming_string
-    if @connection.supports_standard_conforming_strings?
-      assert_equal true, @connection.standard_conforming_strings?
+    if connection.supports_standard_conforming_strings?
+      assert_equal true, connection.standard_conforming_strings?
     else
-      assert_equal false, @connection.standard_conforming_strings?
+      assert_equal false, connection.standard_conforming_strings?
     end
   end
 
   def test_string_quoting_with_standard_conforming_strings
-    if @connection.supports_standard_conforming_strings?
+    if connection.supports_standard_conforming_strings?
       s = "\\m it's \\M"
-      assert_equal "'\\m it''s \\M'", @connection.quote(s)
+      assert_equal "'\\m it''s \\M'", connection.quote(s)
     end
   end
 
   def test_string_quoting_without_standard_conforming_strings
-    @connection.standard_conforming_strings = false
+    connection.standard_conforming_strings = false
     s = "\\m it's \\M"
-    assert_equal "'\\\\m it''s \\\\M'", @connection.quote(s)
-    @connection.standard_conforming_strings = true
+    assert_equal "'\\\\m it''s \\\\M'", connection.quote(s)
+    connection.standard_conforming_strings = true
   end
   
   include ExplainSupportTestMethods if ar_version("3.1")
@@ -196,7 +196,6 @@ class PostgresSchemaDumperTest < Test::Unit::TestCase
   
   def setup
     super
-    @connection = ActiveRecord::Base.connection
     strio = StringIO.new
     ActiveRecord::SchemaDumper::dump(ActiveRecord::Base.connection, strio)
     @dump = strio.string

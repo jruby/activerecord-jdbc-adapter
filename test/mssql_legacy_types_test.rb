@@ -29,7 +29,7 @@ class MsSQLLegacyTypesTest < Test::Unit::TestCase
 
   def setup
     CreateArticles.up
-    @connection = ActiveRecord::Base.connection
+    ActiveRecord::Base.connection
   end
 
   def teardown

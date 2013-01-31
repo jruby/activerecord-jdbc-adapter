@@ -159,7 +159,7 @@ class GenericJdbcConnectionTest < Test::Unit::TestCase
         assert_nothing_raised do
           ActiveRecord::Base.connection
         end
-        assert config = ActiveRecord::Base.connection_config
+        assert config = ActiveRecord::Base.connection.config
         assert_instance_of ActiveRecord::ConnectionAdapters::JdbcDriver, config[:driver_instance]
         assert_equal 'org.apache.derby.jdbc.EmbeddedDriver', config[:driver_instance].name
       end

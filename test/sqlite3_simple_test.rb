@@ -11,22 +11,22 @@ class SQLite3SimpleTest < Test::Unit::TestCase
   include XmlColumnTests
 
   def test_recreate_database
-    assert @connection.tables.include?(Entry.table_name)
-    db = @connection.database_name
-    @connection.recreate_database(db)
-    assert !@connection.tables.include?(Entry.table_name)
+    assert connection.tables.include?(Entry.table_name)
+    db = connection.database_name
+    connection.recreate_database(db)
+    assert ! connection.tables.include?(Entry.table_name)
     self.setup # avoid teardown complaining
   end
 
   def test_execute_insert
     assert_equal 1, Entry.count
-    id = @connection.execute "INSERT INTO entries (title, content) VALUES ('Execute Insert', 'This now works with SQLite3')"
+    id = connection.execute "INSERT INTO entries (title, content) VALUES ('Execute Insert', 'This now works with SQLite3')"
     assert_equal Entry.last.id, id
     assert_equal 2, Entry.count
   end
 
   def test_execute_update
-    affected_rows = @connection.execute "UPDATE entries SET title = 'Execute Update' WHERE id = #{Entry.first.id}"
+    affected_rows = connection.execute "UPDATE entries SET title = 'Execute Update' WHERE id = #{Entry.first.id}"
     assert_equal 1, affected_rows
     assert_equal 'Execute Update', Entry.first.title
   end
@@ -97,7 +97,7 @@ class SQLite3SimpleTest < Test::Unit::TestCase
   end
 
   def test_rename_column_preserves_index
-    assert_equal(0, @connection.indexes(:entries).size)
+    assert_equal(0, connection.indexes(:entries).size)
 
     index_name = "entries_index"
 
@@ -107,7 +107,7 @@ class SQLite3SimpleTest < Test::Unit::TestCase
       end
     end
 
-    indexes = @connection.indexes(:entries)
+    indexes = connection.indexes(:entries)
     assert_equal(1, indexes.size)
     assert_equal "entries", indexes.first.table.to_s
     assert_equal index_name, indexes.first.name
@@ -120,7 +120,7 @@ class SQLite3SimpleTest < Test::Unit::TestCase
       end
     end
 
-    indexes = @connection.indexes(:entries)
+    indexes = connection.indexes(:entries)
     assert_equal(1, indexes.size)
     assert_equal "entries", indexes.first.table.to_s
     assert_equal index_name, indexes.first.name
