@@ -1,17 +1,22 @@
 # ActiveRecord JDBC Adapter
 
-Activerecord-jdbc-adapter is a database adapter for Rails' *ActiveRecord*
-component that can be used with [JRuby][0]. It allows use of virtually any 
-JDBC-compliant database with your JRuby on Rails application.
+ActiveRecord-JDBC-Adapter (AR-JDBC) is a database adapter for Rails' 
+*ActiveRecord* component that can be used with [JRuby][0]. It allows use of 
+virtually any JDBC-compliant database with your JRuby on Rails application.
+
+AR-JDBC **1.2.x** officially supports ActiveRecord 3.x as well as 2.3, it's 
+latest version is compatible with JRuby 1.6.8+ (but as always we recommend to 
+use the latest and greatest of JRubies) thus requires Java 1.6 at minimum.
 
 ## Databases
 
-Activerecord-jdbc-adapter provides full or nearly full support for:
+ActiveRecord-JDBC-Adapter provides full or nearly full support for:
 **MySQL**, **PostgreSQL**, **SQLite3**, **Oracle**, **Microsoft SQL Server**, 
 **DB2**, **FireBird**, **Derby**, **HSQLDB**, **H2**, and **Informix**.
 
 Other databases will require testing and likely a custom configuration module.
-Please join the JRuby [mailing list][1] to help us discover support for more databases.
+Please join the JRuby [mailing list][1] to help us discover support for more 
+databases.
 
 ## Using ActiveRecord JDBC
 
@@ -95,6 +100,20 @@ production:
   jndi: jdbc/mysqldb
 ```
 
+JDBC driver specific properties might be set if you use an URL to specify the DB
+or using the *properties:* syntax (since AR-JDBC **1.2.6**) :
+
+```yml
+production:
+  adapter: mysql
+  username: blog
+  password: blog
+  url: "jdbc:mysql://localhost:3306/weblog?profileSQL=true"
+  properties: # specific to com.mysql.jdbc.Driver
+    socketTimeout:  60000
+    connectTimeout: 60000
+```
+
 If you're really old school you might want to use AR-JDBC with a DB2 on z/OS :
 
 ```yml
@@ -127,7 +146,7 @@ directly and the driver gem (dependency) will be installed as well :
 
 ```ruby
 ActiveRecord::Base.establish_connection(
-  :adapter => 'jdbcderby',
+  :adapter => 'derby', # or 'jdbcderby'
   :database => "db/my-database"
 )
 ```
@@ -138,7 +157,7 @@ or like (but requires that you manually put the driver jar on the classpath) :
 ActiveRecord::Base.establish_connection(
   :adapter => 'jdbc',
   :driver => 'org.apache.derby.jdbc.EmbeddedDriver',
-  :url => 'jdbc:derby:test_ar;create=true'
+  :url => 'jdbc:derby:sample_db;create=true'
 )
 ```
 
@@ -158,12 +177,6 @@ gem 'activerecord-jdbcmysql-adapter', :github => 'jruby/activerecord-jdbc-adapte
 gem 'jdbc-mysql', :github => 'jruby/activerecord-jdbc-adapter'
 ```
 
-## Feedback
-
-Please report bugs at our [issue tracker][3]. If you're not sure if 
-something's a bug, feel free to pre-report it on the [mailing lists][1] or
-ask on the #JRuby IRC channel on http://freenode.net/.
-
 ## Running AR-JDBC Tests
 
 [![Build Status][9]](http://travis-ci.org/#!/jruby/activerecord-jdbc-adapter)
@@ -180,9 +193,6 @@ If you also have PostgreSQL available, those tests will be run if the
 You can control the host and port the tests will attempt to by setting
 the environment variables `PGHOST` and `PGPORT`.
 
-If you want Rails logging enabled during these test runs you can edit 
-*test/jdbc_common.rb* and add the line `require 'db/logger'`.
-
 To execute a single test case, you can run:
 
     rake appraisal:{version} test_{db} TEST=test/{tests_file}
@@ -193,14 +203,14 @@ Substitute the *version* of ActiveRecord for version, which can be one of :
 The db can be one of these : *sqlite3*, *mysql*, *postgres*, 
   *mssql*, *sybase*, *oracle*, *db2*, *derby*, *h2* or *hssql*.
 
-Finally, the *tests_file* will be whichever test case you want to run.
+Finally, the *tests_file* will be whichever (.rb) test case you want to run.
 
 ### Running AR Tests
 
 To run the current AR-JDBC sources with `ActiveRecord`, just use the included 
 `rails:test` task. Be sure to specify a driver and a path to the AR's sources :
 
-    jruby -S rake rails:test DRIVER=mysql RAILS=/path/activerecord_source_dir
+    jruby -S rake rails:test DRIVER=mysql RAILS=/path/rails_source_dir
 
 ## Extending AR-JDBC
 
@@ -209,6 +219,12 @@ that core AR-JDBC does not support. We've created an example project
 for the Intersystems Cache database that you can examine as a template. 
 See the [cachedb-adapter project][4] for more information.
 
+## Feedback
+
+Please report bugs at our [issue tracker][3]. If you're not sure if 
+something's a bug, feel free to pre-report it on the [mailing lists][1] or
+ask on the #JRuby IRC channel on http://freenode.net/.
+
 ## Authors
 
 This project was written by Nick Sieger <nick@nicksieger.com> and Ola Bini
@@ -216,12 +232,11 @@ This project was written by Nick Sieger <nick@nicksieger.com> and Ola Bini
 
 ## License
 
-activerecord-jdbc-adapter is released under a BSD license. 
+ActiveRecord-JDBC-Adapter is released under the BSD/MIT license. 
 See the LICENSE.txt file included with the distribution for details.
 
-Open-source driver gems for activerecord-jdbc-adapter are licensed under the
-same license the database's drivers are licensed. See each driver gem's
-LICENSE.txt file for details.
+Open-source driver gems within AR-JDBC's sources are licensed under the same 
+license the database's drivers are licensed. See each driver gem's LICENSE.txt.
 
 [0]: http://www.jruby.org/
 [1]: http://jruby.org/community

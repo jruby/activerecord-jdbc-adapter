@@ -47,7 +47,7 @@ def declare_test_task_for(adapter, options = {})
       t.libs.push *FileList["activerecord-jdbc#{adapter}*/lib"]
     end
     t.libs << "test"
-    t.verbose = true
+    t.verbose = true if $VERBOSE
   end
   Rake::TestTask.new("test_#{adapter}" => prereqs) { |t| test_task.call t }
   Rake::TestTask.new("test_jdbc_#{adapter}" => prereqs) { |t| test_task.call t }

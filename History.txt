@@ -1,3 +1,50 @@
+== 1.2.6 (01/31/13)
+
+- [postgres] only set --schema (to seach path) for pg_dump if configured (#315)
+- [oracle] id limits + quoting; current user/db/schema + savepoint support
+- execute "log" (sql) name correctly based on AR version 
+- deprecate substitute_binds and extract_sql 
+- [derby] make sure we never modify the passed sql param
+- [sqlite3] execute on insert_sql + savepoint support
+- [mssql] [firebird] [informix] (shared) serialized attribute support
+- [oracle] (shared) serialized attribute support
+- [sqlite3] fix binary column handling failure (#51)
+- renamed Sqlite3RubyJdbcConnection to SQLite3RubyJdbcConnection
+- [mysql] re-define remove_index! for "better" AR-2.3 compatibility
+- [derby] avoid failures with #quote when second arg nil + keep string encoding
+- [db2] binary support & improved quoting + 
+  use lob callback for all since it was failing on BLOB/CLOB inserts otherwise
+- [db2] better (simplified) type handling for DB2
+- JRuby 1.6.8 compatibility when rescue-ing Java exception
+- [mysql] avoid encoding issues with MySQL's quoting methods (#185)
+- [postgres] ignore binary precision / limit for bytea
+- [oracle] explain (query) support
+- [oracle] since Oracle supports TIMESTAMP for quite a while we should not 
+  create DATE columns for a :timestamp column type
+- [oracle] avoid CREATE DDL failure when BLOB has length specified
+- [jdbc-] review autoloading backwards-incompatible change in jdbc- gems 
+  auto-load (backwards-compat) can be enabled back using jdbc.driver.autoload
+  system property or using the driver specific autoload option as well
+- [jdbc-] Update version handling introduce DRIVER_VERSION constant
+- [oracle] should support WITH statements (as SELECTs)
+- expose select? and insert? helpers on JdbcAdapter class
+- [postgres] bug in create_database without options (#306)
+- [db2] correct DB2 schema selection (when as400 url has parameters)
+- [db2] DB2 becomes a first-class citizen (adapter) `adapter: db2`
+- [h2] [hsqldb] explain support for H2 and HSQLDB
+- [db2] column should be checked if ain't nil when quoting on DB2
+- [mssql] raise exception when offset is specified but limit is not
+- [sqlite3] SQLite3 explain support (Rails style)
+- [postgres] (re-usable) explain support for PostgreSQL (based on Rails)
+- [h2] update handling of time fields on H2/HSQLDB (#252)
+- rescue (and wrap) only SQLExceptions from driver.connect this caused 
+  swallowing of runtime exceptions from JDBC drivers
+- support for setting (custom) jdbc driver properties in config
+- when a new adapter (constant) gets loaded column types should pick it up
+- [jdbc-derby] updated to 10.8.3.0
+- raise LoadError with explanation on with jTDS 1.3.0 on non Java 1.7
+- setup the connection methods when adapter is loaded (broken in 1.2.5)
+
 == 1.2.5 (01/02/13)
 
 - backwards compat with older jdbc- (driver) gems (#279)
@@ -287,7 +334,7 @@
 - ACTIVERECORD_JDBC-97: Dont use Rails 3 deprecated constants (David
   Calavera)
 - Updates for rake db:schema:dump compatibility with Rails 2.3+ and
-  MySQL (Joakim Kolsjö)
+  MySQL (Joakim Kolsjï¿½)
 - Rails 3.0.0.beta2 compatibility
 - Return of Derby, H2, Hsqldb support (requires AR >= 3.0.0.beta2)
 
@@ -378,7 +425,7 @@
   actual maximum size of the JNDI connection pool. (We'll look at how
   to eliminate the need to configure AR's pool in the future.)
 - NEW! Informix support courtesy of Javier Fernandez-Ivern.
-- Backport another Oracle CLOB issue, thanks Edson César.
+- Backport another Oracle CLOB issue, thanks Edson Cï¿½sar.
 - Rubyforge #22018: chomp final trailing semicolon for oracle
 - JRUBY-2848: Fix NPE error in set_native_database_types
 - Rework oracle lob saving callback to be Rails 2.1 friendly (assist
