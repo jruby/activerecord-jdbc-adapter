@@ -6,10 +6,13 @@ rvm:
 env:
   - DB=mysql
   - DB=postgresql
+  - DB=sqlite3
+  # derby - tested with test_jndi
+  #- DB=derby
   - DB=h2
   - DB=hsqldb
-  - DB=sqlite3
   - DB=jndi
+  - DB=jdbc
 gemfile:
   - gemfiles/rails23.gemfile
   - gemfiles/rails30.gemfile
