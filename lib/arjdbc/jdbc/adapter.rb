@@ -264,7 +264,8 @@ module ActiveRecord
         end
       end
 
-      elsif ActiveRecord::VERSION::MAJOR == 3 && ActiveRecord::VERSION::MINOR == 0
+      else
+      #elsif ActiveRecord::VERSION::MAJOR == 3 && ActiveRecord::VERSION::MINOR == 0
       
       # NOTE: 3.0 log(sql, name) allow `name == nil` (handles `name ||= "SQL"`)
       
@@ -277,21 +278,11 @@ module ActiveRecord
           log(sql, name) { _execute(sql, name) }
         end
       end
-      
-      else # >= 3.1.0
-      
+
       # NOTE: 3.1 log(sql, name = "SQL", binds = []) `name == nil` is fine
+      # TODO skip logging the binds (twice) until prepared-statement support
       
-      # Executes the SQL statement in the context of this connection.
-      def execute(sql, name = nil, binds = [])
-        sql = to_sql(sql, binds)
-        if name == :skip_logging
-          _execute(sql, name)
-        else
-          log(sql, name, binds) { _execute(sql, name) }
-        end
-      end
-      
+      #else
       end
 
       # we need to do it this way, to allow Rails stupid tests to always work
