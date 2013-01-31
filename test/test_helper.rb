@@ -186,3 +186,24 @@ module ActiveRecord
     
   end
 end
+
+# less (2.3) warnings otherwise the test console output is hard to read :
+if ActiveRecord::VERSION::MAJOR == 2 && ActiveRecord::VERSION::MINOR == 3
+  ActiveRecord::Migration.class_eval do
+    class << self # warning: instance variable @version not initialized
+      alias_method :_announce, :announce
+      def announce(message)
+        @version = nil unless defined?(@version)
+        _announce(message)
+      end
+    end
+  end
+  ActiveRecord::Base.class_eval do
+    def destroyed? # warning: instance variable @destroyed not initialized
+      defined?(@destroyed) && @destroyed # @destroyed
+    end
+    def new_record? # warning: instance variable @new_record not initialized
+      @new_record ||= false # @new_record || false
+    end
+  end
+end
