@@ -1,2 +1,2 @@
-require 'arjdbc/jdbc'
+require 'arjdbc'
 require 'arjdbc/mimer/adapter'
