@@ -1,9 +1,2 @@
-require 'rails/railtie'
-
-module ::ArJdbc
-  class Railtie < ::Rails::Railtie
-    rake_tasks do
-      load File.expand_path('../rake_tasks.rb', __FILE__)
-    end
-  end
-end
+warn "DEPRECATED: require 'arjdbc/railtie' instead of 'arjdbc/jdbc/railtie' "
+require 'arjdbc/railtie'

@@ -15,6 +15,11 @@ if defined?(JRUBY_VERSION)
     raise e
   end
   require 'arjdbc/jdbc'
+  begin
+    require 'arjdbc/railtie'
+  rescue LoadError => e
+    warn "activerecord-jdbc-adapter failed to load railtie: #{e.inspect}"
+  end if defined?(Rails) && ActiveRecord::VERSION::MAJOR >= 3
 else
   warn "activerecord-jdbc-adapter is for use with JRuby only"
 end
