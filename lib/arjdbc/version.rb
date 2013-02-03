@@ -1,8 +1,9 @@
 module ArJdbc
-  module Version
-    VERSION = "1.2.6"
+  VERSION = "1.3.0.DEV"
+  module Version # :nodoc:
+    VERSION = ArJdbc::VERSION # :nodoc: 1.2.x compatibility
   end
 end
 # Compatibility with older versions of ar-jdbc for other extensions out there
-JdbcAdapter = ArJdbc
-JdbcSpec = ArJdbc
+JdbcAdapter = ArJdbc # :nodoc:
+JdbcSpec = ArJdbc # :nodoc:

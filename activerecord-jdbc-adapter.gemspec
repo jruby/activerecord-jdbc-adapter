@@ -1,10 +1,10 @@
 # -*- encoding: utf-8 -*-
 $:.push File.expand_path("../lib", __FILE__)
 require 'arjdbc/version'
-version = ArJdbc::Version::VERSION
+
 Gem::Specification.new do |s|
   s.name        = "activerecord-jdbc-adapter"
-  s.version     = version
+  s.version     = ArJdbc::VERSION
   s.platform    = Gem::Platform::RUBY
   s.authors     = ["Nick Sieger, Ola Bini and JRuby contributors"]
   s.email       = %q{nick@nicksieger.com, ola.bini@gmail.com}
