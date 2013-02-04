@@ -1,10 +1,14 @@
 require 'jdbc_common'
+require 'simple'
 require 'db/db2'
 
 class DB2SimpleTest < Test::Unit::TestCase
   include SimpleTestMethods
   include ActiveRecord3TestMethods
   include DirtyAttributeTests
+  include XmlColumnTests
+  
+  def xml_sql_type; 'XML'; end
 
   # For backwards compatibility with how the DB2 code in
   # jdbc_adapter 0.9.x handled booleans.

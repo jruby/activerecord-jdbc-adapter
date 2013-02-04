@@ -169,6 +169,17 @@ module ArJdbc
         value
       end
     end
+
+    class TableDefinition < ::ActiveRecord::ConnectionAdapters::TableDefinition # :nodoc:
+      def xml(*args)
+        options = args.extract_options!
+        column(args[0], 'xml', options)
+      end
+    end
+
+    def table_definition
+      TableDefinition.new(self)
+    end
     
     def prefetch_primary_key?(table_name = nil)
       # TRUE if the table has no identity column
