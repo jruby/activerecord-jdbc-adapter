@@ -428,7 +428,7 @@ module ArJdbc
     # NOTE: better to use current_schema instead of the configured one ?!
     
     def ora_columns(table_name, name = nil)
-      @connection.columns_internal(table_name, name, oracle_schema)
+      @connection.columns_internal(table_name.to_s, name, oracle_schema)
     end
 
     # QUOTING ==================================================
