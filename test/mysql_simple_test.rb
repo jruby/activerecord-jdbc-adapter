@@ -118,6 +118,11 @@ class MysqlSimpleTest < Test::Unit::TestCase
     assert_equal 'updated content', e2.reload.content
   end
 
+  def test_reports_server_version
+    assert_instance_of Array, ActiveRecord::Base.connection.send(:version)
+    assert_equal 3, ActiveRecord::Base.connection.send(:version).size
+  end
+  
 end
 
 class MysqlHasManyThroughTest < Test::Unit::TestCase

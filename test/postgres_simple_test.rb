@@ -184,63 +184,6 @@ class PostgresDeserializationTest < Test::Unit::TestCase
   end
 end
 
-class PostgresSchemaDumperTest < Test::Unit::TestCase
-  
-  def self.startup
-    DbTypeMigration.up
-  end
-
-  def self.shutdown
-    DbTypeMigration.down
-  end
-  
-  def setup
-    super
-    strio = StringIO.new
-    ActiveRecord::SchemaDumper::dump(ActiveRecord::Base.connection, strio)
-    @dump = strio.string
-  end
-
-  # http://kenai.com/jira/browse/ACTIVERECORD_JDBC-135
-  def test_schema_dump_should_not_have_limits_on_boolean
-    lines = @dump.lines.grep(/boolean/)
-    assert !lines.empty?
-    lines.each {|line| assert line !~ /limit/ }
-  end
-
-
-  def test_schema_dump_should_not_have_limits_on_binaries
-    lines = @dump.lines.grep(/binary/)
-    assert !lines.empty?, 'no binary type definitions found'
-    lines.each {|line| assert line !~ /limit/, 'binary definition contains limit' }
-  end
-
-  # http://kenai.com/jira/browse/ACTIVERECORD_JDBC-139
-  def test_schema_dump_should_not_have_limits_on_text_or_date
-    lines = @dump.lines.grep(/date|text/)
-    assert !lines.empty?
-    lines.each {|line| assert line !~ /limit/ }
-  end
-
-  def test_schema_dump_integer_with_no_limit_should_have_no_limit
-    lines = @dump.lines.grep(/sample_integer_no_limit/)
-    assert !lines.empty?
-    lines.each {|line| assert line !~ /:limit/ }
-  end
-
-  def test_schema_dump_integer_with_limit_2_should_have_limit_2
-    lines = @dump.lines.grep(/sample_integer_with_limit_2/)
-    assert !lines.empty?
-    lines.each {|line| assert line =~ /limit => 2/ }
-  end
-
-  def test_schema_dump_integer_with_limit_8_should_have_limit_8
-    lines = @dump.lines.grep(/sample_integer_with_limit_8/)
-    assert !lines.empty?
-    lines.each {|line| assert line =~ /limit => 8/ }
-  end
-end
-
 class PostgresHasManyThroughTest < Test::Unit::TestCase
   include HasManyThroughMethods
 end
