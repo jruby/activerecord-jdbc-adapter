@@ -8,15 +8,15 @@ class ActiveRecord::Base
       end
 
       config[:port] ||= 3306
+      config[:url] ||= "jdbc:mysql://#{config[:host]}:#{config[:port]}/#{config[:database]}"
+      config[:driver] ||= defined?(::Jdbc::MySQL.driver_name) ? ::Jdbc::MySQL.driver_name : 'com.mysql.jdbc.Driver'
+      config[:adapter_class] = ActiveRecord::ConnectionAdapters::MysqlAdapter
+      config[:adapter_spec] = ::ArJdbc::MySQL
       options = (config[:options] ||= {})
       options['zeroDateTimeBehavior'] ||= 'convertToNull'
       options['jdbcCompliantTruncation'] ||= 'false'
       options['useUnicode'] ||= 'true'
       options['characterEncoding'] = config[:encoding] || 'utf8'
-      config[:url] ||= "jdbc:mysql://#{config[:host]}:#{config[:port]}/#{config[:database]}"
-      config[:driver] ||= defined?(::Jdbc::MySQL.driver_name) ? ::Jdbc::MySQL.driver_name : 'com.mysql.jdbc.Driver'
-      config[:adapter_class] = ActiveRecord::ConnectionAdapters::MysqlAdapter
-      config[:adapter_spec] = ::ArJdbc::MySQL
       connection = jdbc_connection(config)
       ::ArJdbc::MySQL.kill_cancel_timer(connection.raw_connection)
       connection

@@ -1,46 +1,100 @@
-require 'jdbc_common'
 require 'db/mysql'
+require 'schema_dump'
 begin; require 'active_support/core_ext/numeric/bytes'; rescue LoadError; end
 
-class DBSetup < ActiveRecord::Migration
-
-  def self.up
-    create_table :books do |t|
-      t.string :title
-      t.timestamps
-    end
-
-    create_table :cars, :primary_key => 'legacy_id' do |t|
-      t.string :name
-      t.date :production_started_on
-    end
-
-    create_table :cats, :id => false do |t|
-      t.string :name
-    end
-
-    create_table :memos do |t|
-      t.text :text, :limit => 16.megabytes
-    end
+class MysqlSchemaDumpTest < Test::Unit::TestCase
+  include SchemaDumpTestMethods
+  
+  def self.startup
+    super
+    MigrationSetup.setup!
+  end
+  
+  def self.shutdown
+    MigrationSetup.teardown!
+    super
   end
 
-  def self.down
-    drop_table :books
-    drop_table :cars
-    drop_table :cats
-    drop_table :memos
+  def setup!; end # MigrationSetup#setup!
+  def teardown!; end # MigrationSetup#teardown!
+  
+  ActiveRecord::Schema.define do
+    create_table :big_fields, :force => true do |t|
+      t.binary :tiny_blob,   :limit => 255
+      t.binary :normal_blob, :limit => 65535
+      t.binary :medium_blob, :limit => 16777215
+      t.binary :long_blob,   :limit => 2147483647
+      t.text   :tiny_text,   :limit => 255
+      t.text   :normal_text, :limit => 65535
+      t.text   :medium_text, :limit => 16777215
+      t.text   :long_text,   :limit => 2147483647
+      t.text   :just_text, :null => false
+      # MySQL does not allow default values for blobs. 
+      # Fake it out with a big varchar below.
+      t.string :string_col, :null => true, :default => '', :limit => 1024
+    end
   end
-
+  
+  def test_schema_dump_should_not_add_default_value_for_mysql_text_field
+    output = standard_dump
+    assert_match %r{t.text\s+"just_text",\s+:null => false$}, output
+  end
+  
+  def test_schema_dump_includes_length_for_mysql_blob_and_text_fields
+    output = standard_dump   
+    assert_match %r{t.binary\s+"tiny_blob",\s+:limit => 255$}, output
+    assert_match %r{t.binary\s+"normal_blob"$}, output
+    assert_match %r{t.binary\s+"medium_blob",\s+:limit => 16777215$}, output
+    assert_match %r{t.binary\s+"long_blob",\s+:limit => 2147483647$}, output
+    assert_match %r{t.text\s+"tiny_text",\s+:limit => 255$}, output
+    assert_match %r{t.text\s+"normal_text"$}, output
+    assert_match %r{t.text\s+"medium_text",\s+:limit => 16777215$}, output
+    assert_match %r{t.text\s+"long_text",\s+:limit => 2147483647$}, output
+  end
+  
 end
 
 class MysqlInfoTest < Test::Unit::TestCase
   
+  class DBSetup < ActiveRecord::Migration
+
+    def self.up
+      create_table :books do |t|
+        t.string :title
+        t.timestamps
+      end
+
+      create_table :cars, :primary_key => 'legacy_id' do |t|
+        t.string :name
+        t.date :production_started_on
+      end
+
+      create_table :cats, :id => false do |t|
+        t.string :name
+      end
+
+      create_table :memos do |t|
+        t.text :text, :limit => 16.megabytes
+      end
+    end
+
+    def self.down
+      drop_table :books
+      drop_table :cars
+      drop_table :cats
+      drop_table :memos
+    end
+
+  end
+  
   def self.startup
+    super
     DBSetup.up
   end
 
   def self.shutdown
     DBSetup.down
+    super
   end
 
   ## primary_key
