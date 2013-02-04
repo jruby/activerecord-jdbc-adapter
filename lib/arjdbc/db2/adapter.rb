@@ -65,7 +65,7 @@ module ArJdbc
       :date       => { :name => "date" },
       :binary     => { :name => "blob" },
       :boolean    => { :name => "smallint" }, # no native boolean type
-      :xml        => { :name => "xml"},
+      :xml        => { :name => "xml" },
       :decimal    => { :name => "decimal" },
       :char       => { :name => "char" },
       :decfloat   => { :name => "decfloat" },
@@ -169,7 +169,7 @@ module ArJdbc
         value
       end
     end
-
+    
     def prefetch_primary_key?(table_name = nil)
       # TRUE if the table has no identity column
       names = table_name.upcase.split(".")
@@ -180,7 +180,7 @@ module ArJdbc
     end
 
     def next_sequence_value(sequence_name)
-      select_value("select next value for #{sequence_name} from sysibm.sysdummy1")
+      select_value("SELECT NEXT VALUE FOR #{sequence_name} FROM sysibm.sysdummy1")
     end
 
     # holy moly batman! all this to tell AS400 "yes i am sure"
@@ -217,7 +217,7 @@ module ArJdbc
     
     def last_insert_id(sql)
       table_name = sql.split(/\s/)[2]
-      result = select(ActiveRecord::Base.send(:sanitize_sql, %[select IDENTITY_VAL_LOCAL() as last_insert_id from #{table_name}], nil))
+      result = select(ActiveRecord::Base.send(:sanitize_sql, %[SELECT IDENTITY_VAL_LOCAL() AS last_insert_id FROM #{table_name}], nil))
       result.last['last_insert_id']
     end
     
@@ -511,22 +511,22 @@ module ArJdbc
     HAVE_SCALE = %w(DECIMAL NUMERIC)
 
     def columns(table_name, name = nil)
-      cols = @connection.columns(table_name, name, db2_schema)
+      columns = @connection.columns(table_name.to_s, name, db2_schema)
 
       if zos?
         # Remove the mighty db2_generated_rowid_for_lobs from the list of columns
-        cols = cols.reject { |col| "db2_generated_rowid_for_lobs" == col.name }
+        columns = columns.reject { |col| "db2_generated_rowid_for_lobs" == col.name }
       end
       # scrub out sizing info when CREATE TABLE doesn't support it
       # but JDBC reports it (doh!)
-      for col in cols
-        base_sql_type = col.sql_type.sub(/\(.*/, "").upcase
-        col.limit = nil unless HAVE_LIMIT.include?(base_sql_type)
-        col.precision = nil unless HAVE_PRECISION.include?(base_sql_type)
-        #col.scale = nil unless HAVE_SCALE.include?(base_sql_type)
+      for column in columns
+        base_sql_type = column.sql_type.sub(/\(.*/, "").upcase
+        column.limit = nil unless HAVE_LIMIT.include?(base_sql_type)
+        column.precision = nil unless HAVE_PRECISION.include?(base_sql_type)
+        #column.scale = nil unless HAVE_SCALE.include?(base_sql_type)
       end
 
-      cols
+      columns
     end
 
     def jdbc_columns(table_name, name = nil)
