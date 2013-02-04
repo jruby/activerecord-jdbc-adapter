@@ -50,8 +50,20 @@ module ActiveRecord
       end
 
       # Retrieve the raw java.sql.Connection object.
-      def jdbc_connection
-        raw_connection.connection
+      # The unwrap parameter is useful if an attempt to unwrap a pooled (JNDI) 
+      # connection should be made - to really return the native (SQL) object.
+      def jdbc_connection(unwrap = nil)
+        java_connection = raw_connection.connection
+        return java_connection unless unwrap
+        connection_class = java.sql.Connection.java_class
+        if java_connection.wrapper_for?(connection_class)
+          java_connection.unwrap(connection_class) # java.sql.Wrapper.unwrap
+        elsif java_connection.respond_to?(:connection)
+          # e.g. org.apache.tomcat.jdbc.pool.PooledConnection
+          java_connection.connection # getConnection
+        else
+          java_connection
+        end
       end
 
       # Locate specialized adapter specification if one exists based on config data
