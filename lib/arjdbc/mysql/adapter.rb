@@ -518,17 +518,17 @@ module ArJdbc
     end
     
     def version
-      return @version || [] unless @version.nil?
-      java_connection = jdbc_connection(true)
-      if java_connection.is_a?(Java::ComMysqlJdbc::ConnectionImpl)
+      return @version ||= begin
         version = []
-        version << jdbc_connection.serverMajorVersion
-        version << jdbc_connection.serverMinorVersion
-        version << jdbc_connection.serverSubMinorVersion
-        @version = version
-      else
-        warn "INFO: failed to resolve MySQL server version using: #{java_connection}"
-        @version = false
+        java_connection = jdbc_connection(true)
+        if java_connection.is_a?(Java::ComMysqlJdbc::ConnectionImpl)
+          version << jdbc_connection.serverMajorVersion
+          version << jdbc_connection.serverMinorVersion
+          version << jdbc_connection.serverSubMinorVersion
+        else
+          warn "INFO: failed to resolve MySQL server version using: #{java_connection}"
+        end
+        version
       end
     end
     
