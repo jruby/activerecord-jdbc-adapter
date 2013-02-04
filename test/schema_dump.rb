@@ -92,57 +92,6 @@ module SchemaDumpTestMethods
     assert_match %r{:null => false}, output
   end
 
-#  def test_schema_dump_includes_limit_constraint_for_integer_columns
-#    stream = StringIO.new
-#
-#    ActiveRecord::SchemaDumper.ignore_tables = [/^(?!integer_limits)/]
-#    ActiveRecord::SchemaDumper.dump(ActiveRecord::Base.connection, stream)
-#    output = stream.string
-#
-#    if current_adapter?(:PostgreSQLAdapter)
-#      assert_match %r{c_int_1.*:limit => 2}, output
-#      assert_match %r{c_int_2.*:limit => 2}, output
-#
-#      # int 3 is 4 bytes in postgresql
-#      assert_match %r{c_int_3.*}, output
-#      assert_no_match %r{c_int_3.*:limit}, output
-#
-#      assert_match %r{c_int_4.*}, output
-#      assert_no_match %r{c_int_4.*:limit}, output
-#    elsif current_adapter?(:MysqlAdapter) or current_adapter?(:Mysql2Adapter)
-#      assert_match %r{c_int_1.*:limit => 1}, output
-#      assert_match %r{c_int_2.*:limit => 2}, output
-#      assert_match %r{c_int_3.*:limit => 3}, output
-#
-#      assert_match %r{c_int_4.*}, output
-#      assert_no_match %r{c_int_4.*:limit}, output
-#    elsif current_adapter?(:SQLite3Adapter)
-#      assert_match %r{c_int_1.*:limit => 1}, output
-#      assert_match %r{c_int_2.*:limit => 2}, output
-#      assert_match %r{c_int_3.*:limit => 3}, output
-#      assert_match %r{c_int_4.*:limit => 4}, output
-#    end
-#    assert_match %r{c_int_without_limit.*}, output
-#    assert_no_match %r{c_int_without_limit.*:limit}, output
-#
-#    if current_adapter?(:SQLite3Adapter)
-#      assert_match %r{c_int_5.*:limit => 5}, output
-#      assert_match %r{c_int_6.*:limit => 6}, output
-#      assert_match %r{c_int_7.*:limit => 7}, output
-#      assert_match %r{c_int_8.*:limit => 8}, output
-#    elsif current_adapter?(:OracleAdapter)
-#      assert_match %r{c_int_5.*:limit => 5}, output
-#      assert_match %r{c_int_6.*:limit => 6}, output
-#      assert_match %r{c_int_7.*:limit => 7}, output
-#      assert_match %r{c_int_8.*:limit => 8}, output
-#    else
-#      assert_match %r{c_int_5.*:limit => 8}, output
-#      assert_match %r{c_int_6.*:limit => 8}, output
-#      assert_match %r{c_int_7.*:limit => 8}, output
-#      assert_match %r{c_int_8.*:limit => 8}, output
-#    end
-#  end
-
   def test_schema_dump_with_string_ignored_table
     stream = StringIO.new
 
@@ -181,38 +130,43 @@ module SchemaDumpTestMethods
     assert_match %r{:precision => 3,[[:space:]]+:scale => 2,[[:space:]]+:default => 3.14}, output
   end
 
-#  def test_schema_dump_keeps_large_precision_integer_columns_as_decimal
-#    output = standard_dump
-#    # Oracle supports precision up to 38 and it identifies decimals with scale 0 as integers
-#    if current_adapter?(:OracleAdapter)
-#      assert_match %r{t.integer\s+"atoms_in_universe",\s+:precision => 38,\s+:scale => 0}, output
-#    else
-#      assert_match %r{t.decimal\s+"atoms_in_universe",\s+:precision => 55,\s+:scale => 0}, output
-#    end
-#  end
+  def test_schema_dump_keeps_large_precision_integer_columns_as_decimal
+    output = standard_dump
+    # Oracle supports precision up to 38 and it identifies decimals with scale 0 as integers
+    #if current_adapter?(:OracleAdapter)
+    #  assert_match %r{t.integer\s+"atoms_in_universe",\s+:precision => 38,\s+:scale => 0}, output
+    #else
+    assert_match %r{t.decimal\s+"atoms_in_universe",\s+:precision => 38,\s+:scale => 0}, output
+    #end
+  end
 
-#  def test_schema_dump_keeps_id_column_when_id_is_false_and_id_column_added
-#    output = standard_dump
-#    match = output.match(%r{create_table "goofy_string_id"(.*)do.*\n(.*)\n})
-#    assert_not_nil(match, "goofy_string_id table not found")
-#    assert_match %r(:id => false), match[1], "no table id not preserved"
-#    assert_match %r{t.string[[:space:]]+"id",[[:space:]]+:null => false$}, match[2], "non-primary key id column not preserved"
-#  end
-#
-#  def test_schema_dump_keeps_id_false_when_id_is_false_and_unique_not_null_column_added
-#    output = standard_dump
-#    assert_match %r{create_table "subscribers", :id => false}, output
-#  end
+  def test_schema_dump_keeps_id_column_when_id_is_false_and_id_column_added
+    output = standard_dump
+    match = output.match(%r{create_table "string_ids"(.*)do.*\n(.*)\n})
+    assert_not_nil(match, "string_ids table not found")
+    assert_match %r(:id => false), match[1], "no table id not preserved"
+    assert_match %r{t.string[[:space:]]+"id",[[:space:]]+:null => false$}, match[2], "non-primary key id column not preserved"
+  end
 
+  def test_schema_dump_keeps_id_false_when_id_is_false_and_unique_not_null_column_added
+    migration = CreateDogMigration.new
+    migration.migrate(:up)
+    
+    output = standard_dump
+    assert_match %r{create_table "dogs", :id => false}, output
+  ensure
+    migration.migrate(:down)
+  end
+  
   class CreateDogMigration < ActiveRecord::Migration
     def up
-      create_table("dogs") do |t|
+      create_table :dogs, :id => false do |t|
         t.column :name, :string
       end
-      add_index "dogs", [:name]
+      add_index :dogs, :name, :unique => true
     end
     def down
-      drop_table("dogs")
+      drop_table :dogs
     end
   end
 

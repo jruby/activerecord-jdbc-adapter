@@ -107,6 +107,11 @@ class MysqlSimpleTest < Test::Unit::TestCase
 
   include ExplainSupportTestMethods if ar_version("3.1")
   
+  def test_reports_server_version
+    assert_instance_of Array, ActiveRecord::Base.connection.send(:version)
+    assert_equal 3, ActiveRecord::Base.connection.send(:version).size
+  end
+  
 end
 
 class MysqlHasManyThroughTest < Test::Unit::TestCase

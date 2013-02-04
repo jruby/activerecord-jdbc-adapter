@@ -18,6 +18,9 @@ class DbTypeMigration < ActiveRecord::Migration
       t.column :sample_integer_no_limit, :integer
       t.column :sample_integer_neg_default, :integer, :default => -1
       t.column :sample_text, :text
+      # Oracle/SQLServer supports precision up to 38
+      t.decimal :atoms_in_universe, :precision => 38, :scale => 0
+      #t.decimal :atoms_in_universe, :precision => 55, :scale => 0
     end
   end
 
