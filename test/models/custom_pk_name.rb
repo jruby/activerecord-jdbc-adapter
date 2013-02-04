@@ -9,6 +9,7 @@ class CreateCustomPkName < ActiveRecord::Migration
     drop_table :custom_pk_names
   end
 end
+
 class CustomPkName < ActiveRecord::Base
   self.primary_key = "custom_id"
 end

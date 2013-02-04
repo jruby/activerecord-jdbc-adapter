@@ -25,7 +25,7 @@ end
 class CreateUsers < ActiveRecord::Migration
   def self.up
     create_table "users", :force => true do |t|
-      t.column :login, :string, :limit => 100
+      t.column :login, :string, :limit => 100, :null => false
     end
   end
 

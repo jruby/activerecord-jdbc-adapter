@@ -1,7 +1,7 @@
 class CreateStringIds < ActiveRecord::Migration
   def self.up
     create_table "string_ids", :force => true, :id => false do |t|
-      t.string :id
+      t.string :id, :null => false
     end
   end
 
@@ -11,7 +11,7 @@ class CreateStringIds < ActiveRecord::Migration
 end
 
 class StringId < ActiveRecord::Base
-  def self.table_name () "string_ids" end
+  def self.table_name; "string_ids"; end
   # Fake out a table without a primary key
   self.primary_key = "id"
 end

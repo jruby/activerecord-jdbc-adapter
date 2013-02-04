@@ -2,7 +2,7 @@ require 'bigdecimal'
 require 'active_record/connection_adapters/abstract/schema_definitions'
 require 'arjdbc/mysql/explain_support'
 
-module ::ArJdbc
+module ArJdbc
   module MySQL
 
     def self.extended(adapter)
@@ -62,14 +62,15 @@ module ::ArJdbc
           when /long/i
             2147483647 # mysql only allows 2^31-1, not 2^32-1, somewhat inconsistently with the tiny/medium/normal cases
           else
-            nil # we could return 65535 here, but we leave it undecorated by default
+            super # we could return 65535 here, but we leave it undecorated by default
           end
-        when /^enum/i;     255
         when /^bigint/i;    8
         when /^int/i;       4
         when /^mediumint/i; 3
         when /^smallint/i;  2
         when /^tinyint/i;   1
+        when /^enum\((.+)\)/i # 255
+          $1.split(',').map{ |enum| enum.strip.length - 2 }.max
         when /^(bool|date|float|int|time)/i
           nil
         else
@@ -89,6 +90,25 @@ module ::ArJdbc
       end
     end
 
+    NATIVE_DATABASE_TYPES = {
+      :primary_key => "int(11) DEFAULT NULL auto_increment PRIMARY KEY",
+      :string => { :name => "varchar", :limit => 255 },
+      :text => { :name => "text" },
+      :integer => { :name => "int", :limit => 4 },
+      :float => { :name => "float" },
+      :decimal => { :name => "decimal" },
+      :datetime => { :name => "datetime" },
+      :timestamp => { :name => "datetime" },
+      :time => { :name => "time" },
+      :date => { :name => "date" },
+      :binary => { :name => "blob" },
+      :boolean => { :name => "tinyint", :limit => 1 }
+    }
+
+    def native_database_types
+      NATIVE_DATABASE_TYPES
+    end
+    
     def modify_types(types)
       types[:primary_key] = "int(11) DEFAULT NULL auto_increment PRIMARY KEY"
       types[:integer] = { :name => 'int', :limit => 4 }
@@ -145,6 +165,37 @@ module ::ArJdbc
     
     def quote_table_name(name) # :nodoc:
       quote_column_name(name).gsub('.', '`.`')
+    end
+    
+    # Returns true, since this connection adapter supports migrations.
+    def supports_migrations?
+      true
+    end
+
+    def supports_primary_key? # :nodoc:
+      true
+    end
+
+    def supports_bulk_alter? # :nodoc:
+      true
+    end
+
+    # Technically MySQL allows to create indexes with the sort order syntax
+    # but at the moment (5.5) it doesn't yet implement them
+    def supports_index_sort_order? # :nodoc:
+      true
+    end
+
+    # MySQL 4 technically support transaction isolation, but it is affected by a bug
+    # where the transaction level gets persisted for the whole session:
+    #
+    # http://bugs.mysql.com/bug.php?id=39170
+    def supports_transaction_isolation? # :nodoc:
+      version[0] && version[0] >= 5
+    end
+    
+    def supports_views? # :nodoc:
+      version[0] && version[0] >= 5
     end
     
     def supports_savepoints? # :nodoc:
@@ -388,15 +439,33 @@ module ::ArJdbc
     end
 
     def type_to_sql(type, limit = nil, precision = nil, scale = nil)
-      return super unless type.to_s == 'integer'
-
-      case limit
-      when 1; 'tinyint'
-      when 2; 'smallint'
-      when 3; 'mediumint'
-      when nil, 4, 11; 'int(11)'  # compatibility with MySQL default
-      when 5..8; 'bigint'
-      else raise(ActiveRecordError, "No integer type has byte size #{limit}")
+      case type.to_s
+      when 'binary'
+        case limit
+        when 0..0xfff; "varbinary(#{limit})"
+        when nil; "blob"
+        when 0x1000..0xffffffff; "blob(#{limit})"
+        else raise(ActiveRecordError, "No binary type has character length #{limit}")
+        end
+      when 'integer'
+        case limit
+        when 1; 'tinyint'
+        when 2; 'smallint'
+        when 3; 'mediumint'
+        when nil, 4, 11; 'int(11)' # compatibility with MySQL default
+        when 5..8; 'bigint'
+        else raise(ActiveRecordError, "No integer type has byte size #{limit}")
+        end
+      when 'text'
+        case limit
+        when 0..0xff; 'tinytext'
+        when nil, 0x100..0xffff; 'text'
+        when 0x10000..0xffffff; 'mediumtext'
+        when 0x1000000..0xffffffff; 'longtext'
+        else raise(ActiveRecordError, "No text type has character length #{limit}")
+        end
+      else
+        super
       end
     end
 
@@ -436,6 +505,7 @@ module ::ArJdbc
     end
 
     private
+    
     def column_for(table_name, column_name)
       unless column = columns(table_name).find { |c| c.name == column_name.to_s }
         raise "No such column: #{table_name}.#{column_name}"
@@ -446,10 +516,22 @@ module ::ArJdbc
     def show_create_table(table)
       select_one("SHOW CREATE TABLE #{quote_table_name(table)}")
     end
-
-    def supports_views?
-      false
+    
+    def version
+      return @version || [] unless @version.nil?
+      java_connection = jdbc_connection(true)
+      if java_connection.is_a?(Java::ComMysqlJdbc::ConnectionImpl)
+        version = []
+        version << jdbc_connection.serverMajorVersion
+        version << jdbc_connection.serverMinorVersion
+        version << jdbc_connection.serverSubMinorVersion
+        @version = version
+      else
+        warn "INFO: failed to resolve MySQL server version using: #{java_connection}"
+        @version = false
+      end
     end
+    
   end
 end
 
