@@ -3,6 +3,8 @@ require 'db/db2'
 
 class DB2SimpleTest < Test::Unit::TestCase
   include SimpleTestMethods
+  include ActiveRecord3TestMethods
+  include DirtyAttributeTests
 
   # For backwards compatibility with how the DB2 code in
   # jdbc_adapter 0.9.x handled booleans.

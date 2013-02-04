@@ -3,6 +3,7 @@ require 'jdbc_common'
 
 class DerbySimpleTest < Test::Unit::TestCase
   include SimpleTestMethods
+  include ActiveRecord3TestMethods
 
   # Check that a table-less VALUES(xxx) query (like SELECT  works.
   def test_values

@@ -86,24 +86,28 @@ module ColumnNameQuotingTests
 end
 
 module DirtyAttributeTests
+  
   def test_partial_update
-    entry = Entry.new(:title => 'foo')
+    entry = Entry.create!(:title => 'foo')
     old_updated_on = 1.hour.ago.beginning_of_day
+    
+    Entry.update_all({ :updated_on => old_updated_on }, :id => entry.id)
 
     with_partial_updates Entry, false do
       assert_queries(2) { 2.times { entry.save! } }
-      Entry.update_all({ :updated_on => old_updated_on }, :id => entry.id)
     end
 
+    Entry.update_all({ :updated_on => old_updated_on }, :id => entry.id)
+    
     with_partial_updates Entry, true do
       assert_queries(0) { 2.times { entry.save! } }
       assert_datetime_equal old_updated_on, entry.reload.updated_on
 
       assert_queries(1) { entry.title = 'bar'; entry.save! }
-      assert_not_equal old_updated_on, entry.reload.updated_on
+      assert_datetime_not_equal old_updated_on, entry.reload.updated_on
     end
   end
-
+  
   private
   def with_partial_updates(klass, on = true)
     old = klass.partial_updates?
@@ -112,6 +116,7 @@ module DirtyAttributeTests
   ensure
     klass.partial_updates = old
   end
+  
 end
 
 module SimpleTestMethods
@@ -663,7 +668,7 @@ module SimpleTestMethods
 
     assert_equal content_json, post.reload.content
   end
-
+  
   protected
   
   def assert_date_type(value)
@@ -754,11 +759,10 @@ end
 module XmlColumnTests
   
   def self.included(base)
-    base.send :include, Tests if ActiveRecord::VERSION::MAJOR > 3 ||
-      (ActiveRecord::VERSION::MAJOR == 3 && ActiveRecord::VERSION::MINOR >= 1)
+    base.send :include, TestMethods if base.ar_version('3.1')
   end
   
-  module Tests
+  module TestMethods
     def test_create_xml_column
       assert_nothing_raised do
         connection.create_table :xml_testings do |t|
@@ -781,20 +785,19 @@ end
 module ActiveRecord3TestMethods
   
   def self.included(base)
-    base.send :include, Tests if ActiveRecord::VERSION::MAJOR == 3
+    base.send :include, TestMethods if base.ar_version('3.0')
   end
 
-  module Tests
-    if ActiveRecord::VERSION::MINOR == 2
-      def test_visitor_accessor
-        adapter = Entry.connection
-        expected_visitors = adapter.config[:adapter_spec].
-          arel2_visitors(adapter).values
-        assert !adapter.visitor.nil?
-        assert expected_visitors.include?(adapter.visitor.class)
-      end
-    end
-
+  module TestMethods
+    
+    def test_visitor_accessor
+      adapter = Entry.connection
+      expected_visitors = adapter.config[:adapter_spec].
+        arel2_visitors(adapter).values
+      assert !adapter.visitor.nil?
+      assert expected_visitors.include?(adapter.visitor.class)
+    end if Test::Unit::TestCase.ar_version('3.2') # >= 3.2
+    
     def test_where
       entries = Entry.where(:title => @entry.title)
       assert_equal @entry, entries.first
@@ -819,6 +822,7 @@ module ActiveRecord3TestMethods
       end
       assert_equal 1, Thing.find(:all).size
     end
+    
   end
   
 end

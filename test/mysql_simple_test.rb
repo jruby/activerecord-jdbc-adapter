@@ -12,6 +12,7 @@ class MysqlSimpleTest < Test::Unit::TestCase
   include SimpleTestMethods
   include ActiveRecord3TestMethods
   include ColumnNameQuotingTests
+  include DirtyAttributeTests
   include XmlColumnTests
 
   column_quote_char "`"

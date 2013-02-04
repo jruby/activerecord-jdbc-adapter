@@ -4,6 +4,7 @@ require 'db/h2'
 class H2SimpleTest < Test::Unit::TestCase
   include SimpleTestMethods
   include ExplainSupportTestMethods if ar_version("3.1")
+  include ActiveRecord3TestMethods
 end
 
 class H2HasManyThroughTest < Test::Unit::TestCase
