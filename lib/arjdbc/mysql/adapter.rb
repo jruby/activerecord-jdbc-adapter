@@ -226,11 +226,17 @@ module ArJdbc
 
     # DATABASE STATEMENTS ======================================
     
-    def exec_insert(sql, name, binds)
+    def exec_insert(sql, name, binds, pk = nil, sequence_name = nil) # :nodoc:
       execute sql, name, binds
     end
-    alias :exec_update :exec_insert
-    alias :exec_delete :exec_insert
+    
+    def exec_update(sql, name, binds) # :nodoc:
+      execute sql, name, binds
+    end
+    
+    def exec_delete(sql, name, binds) # :nodoc:
+      execute sql, name, binds
+    end
     
     # Make it public just like native MySQL adapter does.
     def update_sql(sql, name = nil) # :nodoc:
