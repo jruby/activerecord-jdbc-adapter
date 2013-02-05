@@ -106,6 +106,18 @@ class MysqlSimpleTest < Test::Unit::TestCase
 
   include ExplainSupportTestMethods if ar_version("3.1")
   
+  def test_update_sql_public_and_returns_rows_affected
+    ActiveRecord::Base.connection.update_sql "UPDATE entries SET title = NULL"
+    
+    e1 = Entry.create! :title => 'a some', :content => 'brrrr', :rating => 10.8
+    e2 = Entry.create! :title => 'another', :content => 'meee', :rating => 40.2
+    rows_affected = ActiveRecord::Base.connection.update_sql "UPDATE entries " + 
+      "SET content='updated content' WHERE rating > 10 AND title IS NOT NULL"
+    assert_equal 2, rows_affected
+    assert_equal 'updated content', e1.reload.content
+    assert_equal 'updated content', e2.reload.content
+  end
+
 end
 
 class MysqlHasManyThroughTest < Test::Unit::TestCase
