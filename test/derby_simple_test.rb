@@ -4,6 +4,8 @@ require 'jdbc_common'
 class DerbySimpleTest < Test::Unit::TestCase
   include SimpleTestMethods
 
+  DbTypeMigration.big_decimal_precision = 31
+  
   # Check that a table-less VALUES(xxx) query (like SELECT  works.
   def test_values
     value = nil

@@ -1,4 +1,10 @@
 class DbTypeMigration < ActiveRecord::Migration
+  
+  @@big_decimal_precision = 38
+  
+  def self.big_decimal_precision; @@big_decimal_precision; end
+  def self.big_decimal_precision=(precision); @@big_decimal_precision = precision; end
+  
   def self.up
     create_table "db_types", :force => true do |t|
       t.column :sample_timestamp, :timestamp
@@ -19,7 +25,7 @@ class DbTypeMigration < ActiveRecord::Migration
       t.column :sample_integer_neg_default, :integer, :default => -1
       t.column :sample_text, :text
       # Oracle/SQLServer supports precision up to 38
-      t.decimal :atoms_in_universe, :precision => 38, :scale => 0
+      t.decimal :atoms_in_universe, :precision => big_decimal_precision, :scale => 0
       #t.decimal :atoms_in_universe, :precision => 55, :scale => 0
     end
   end
