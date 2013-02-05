@@ -15,20 +15,18 @@ module SchemaDumpTestMethods
     connection.remove_index :entries, :title
   end
   
-  def standard_dump(io = StringIO.new)
+  def standard_dump(io = StringIO.new, ignore_tables = [])
     io = StringIO.new
-    ActiveRecord::SchemaDumper.ignore_tables = []
+    ActiveRecord::SchemaDumper.ignore_tables = ignore_tables
     ActiveRecord::SchemaDumper.dump(ActiveRecord::Base.connection, io)
     io.string
   end
   private :standard_dump
 
-  if "string".encoding_aware?
-    def test_magic_comment
-      standard_dump(strio = StringIO.new)
-      assert_match "# encoding: #{strio.external_encoding.name}", standard_dump
-    end
-  end
+  def test_magic_comment
+    standard_dump(strio = StringIO.new)
+    assert_match "# encoding: #{strio.external_encoding.name}", standard_dump
+  end if ( "string".encoding_aware? rescue nil )
 
   def test_schema_dump
     output = standard_dump
@@ -84,11 +82,7 @@ module SchemaDumpTestMethods
   end
 
   def test_schema_dump_includes_not_null_columns
-    stream = StringIO.new
-
-    ActiveRecord::SchemaDumper.ignore_tables = [ /^[^u]/ ] # keep users
-    ActiveRecord::SchemaDumper.dump(ActiveRecord::Base.connection, stream)
-    output = stream.string
+    output = standard_dump(StringIO.new, [/^[^u]/]) # keep users
     assert_match %r{:null => false}, output
   end
 
@@ -104,11 +98,7 @@ module SchemaDumpTestMethods
   end
 
   def test_schema_dump_with_regexp_ignored_table
-    stream = StringIO.new
-
-    ActiveRecord::SchemaDumper.ignore_tables = [/^user/]
-    ActiveRecord::SchemaDumper.dump(ActiveRecord::Base.connection, stream)
-    output = stream.string
+    output = standard_dump(StringIO.new, [/^user/]) # ignore users
     assert_no_match %r{create_table "users"}, output
     assert_match %r{create_table "entries"}, output
     assert_no_match %r{create_table "schema_migrations"}, output
@@ -122,10 +112,7 @@ module SchemaDumpTestMethods
   end
 
   def test_schema_dump_includes_decimal_options
-    stream = StringIO.new
-    ActiveRecord::SchemaDumper.ignore_tables = [/^[^d]/] # keep data_types
-    ActiveRecord::SchemaDumper.dump(ActiveRecord::Base.connection, stream)
-    output = stream.string
+    output = standard_dump(StringIO.new, [/^[^d]/]) # keep db_types
     # t.column :sample_small_decimal, :decimal, :precision => 3, :scale => 2, :default => 3.14
     assert_match %r{:precision => 3,[[:space:]]+:scale => 2,[[:space:]]+:default => 3.14}, output
   end
@@ -138,7 +125,8 @@ module SchemaDumpTestMethods
     #else
     assert_match %r{t.decimal\s+"atoms_in_universe",\s+:precision => 38,\s+:scale => 0}, output
     #end
-  end
+  end if Test::Unit::TestCase.ar_version('3.0') # does not work in 2.3 :
+  # t.integer  "atoms_in_universe", :limit => 38, :precision => 38, :scale => 0
 
   def test_schema_dump_keeps_id_column_when_id_is_false_and_id_column_added
     output = standard_dump
@@ -149,21 +137,15 @@ module SchemaDumpTestMethods
   end
 
   def test_schema_dump_keeps_id_false_when_id_is_false_and_unique_not_null_column_added
-    migration = CreateDogMigration.new
-    migration.migrate(:up)
-    
     output = standard_dump
-    assert_match %r{create_table "dogs", :id => false}, output
-  ensure
-    migration.migrate(:down)
+    assert_match %r{create_table "things", :id => false}, output
   end
   
   class CreateDogMigration < ActiveRecord::Migration
     def up
-      create_table :dogs, :id => false do |t|
+      create_table :dogs do |t|
         t.column :name, :string
       end
-      add_index :dogs, :name, :unique => true
     end
     def down
       drop_table :dogs
@@ -171,7 +153,6 @@ module SchemaDumpTestMethods
   end
 
   def test_schema_dump_with_table_name_prefix_and_suffix
-    original, $stdout = $stdout, StringIO.new
     ActiveRecord::Base.table_name_prefix = 'foo_'
     ActiveRecord::Base.table_name_suffix = '_bar'
 
@@ -186,7 +167,6 @@ module SchemaDumpTestMethods
     migration.migrate(:down)
 
     ActiveRecord::Base.table_name_suffix = ActiveRecord::Base.table_name_prefix = ''
-    $stdout = original
-  end
+  end if Test::Unit::TestCase.ar_version('3.2')
 
 end
