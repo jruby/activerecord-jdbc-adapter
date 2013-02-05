@@ -1,5 +1,11 @@
-class ActiveRecord::Base
-  class << self
+module ArJdbc
+  if defined? ActiveRecord::ConnectionHandling # 4.0
+    ConnectionMethods = ActiveRecord::ConnectionHandling
+  else # 3.x
+    ConnectionMethods = (class << ActiveRecord::Base; self; end)
+  end
+  ConnectionMethods.module_eval do
+    
     def jdbc_connection(config)
       adapter_class = config[:adapter_class]
       adapter_class ||= ::ActiveRecord::ConnectionAdapters::JdbcAdapter
@@ -12,5 +18,6 @@ class ActiveRecord::Base
       config[:password] ||= ""
       jdbc_connection(config)
     end
+    
   end
 end
