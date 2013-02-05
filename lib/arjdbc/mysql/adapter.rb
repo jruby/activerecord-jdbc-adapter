@@ -232,6 +232,11 @@ module ArJdbc
     alias :exec_update :exec_insert
     alias :exec_delete :exec_insert
     
+    # Make it public just like native MySQL adapter does.
+    def update_sql(sql, name = nil) # :nodoc:
+      super
+    end
+    
     # SCHEMA STATEMENTS ========================================
     
     def structure_dump #:nodoc:
