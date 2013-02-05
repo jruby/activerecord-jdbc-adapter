@@ -5,6 +5,8 @@ class DerbySimpleTest < Test::Unit::TestCase
   include SimpleTestMethods
   include ActiveRecord3TestMethods
 
+  DbTypeMigration.big_decimal_precision = 31
+  
   # Check that a table-less VALUES(xxx) query (like SELECT  works.
   def test_values
     value = nil
