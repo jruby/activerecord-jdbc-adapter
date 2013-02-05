@@ -135,11 +135,53 @@ class Test::Unit::TestCase
     #assert_equal e_usec, a_usec, "<#{expected}> but was <#{actual}> (differ at :usec / 1000)"
   end
   
+  def assert_date_not_equal expected, actual
+    actual = actual_in_expected_time_zone(expected, actual)
+    actual = actual.to_date if actual.is_a?(Time)
+    assert_not_equal(expected.nil? ? nil : expected.to_date, actual)
+  end
+  
+  def assert_time_not_equal expected, actual, msg = nil
+    actual = actual_in_expected_time_zone(expected, actual)
+    equal = true
+    [ :hour, :min, :sec ].each do |method|
+      equal &&= ( expected.send(method) == actual.send(method) )
+    end
+    assert ! equal, msg || "<#{expected}> to not (time) equal to <#{actual}> but did"
+  end
+  
+  def assert_datetime_not_equal expected, actual
+    if date_equal?(expected, actual) && time_equal?(expected, actual)
+      assert false, "<#{expected}> to not (datetime) equal to <#{actual}> but did"
+    end
+  end 
+  
   private
   
+  def date_equal?(expected, actual)
+    actual = actual_in_expected_time_zone(expected, actual)
+    actual = actual.to_date if actual.is_a?(Time)
+    (expected.nil? ? nil : expected.to_date) == actual
+  end
+  
+  def time_equal?(expected, actual)
+    actual = actual_in_expected_time_zone(expected, actual)
+    equal = true; [ :hour, :min, :sec ].each do |method|
+      equal &&= ( expected.send(method) == actual.send(method) )
+    end
+    equal
+  end
+  
   def actual_in_expected_time_zone(expected, actual)
-    if actual.is_a?(Time) && expected.respond_to?(:time_zone)
-      return actual.in_time_zone expected.time_zone
+    if actual.respond_to?(:in_time_zone)
+      if expected.respond_to?(:time_zone)
+        return actual.in_time_zone expected.time_zone
+      end
+      if expected.is_a?(Time) # due AR 2.3
+        #expected = expected.in_time_zone
+        #return actual.in_time_zone expected.time_zone
+        return actual.in_time_zone ActiveSupport::TimeZone[expected.zone]
+      end
     end
     actual
   end

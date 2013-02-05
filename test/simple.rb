@@ -86,9 +86,38 @@ module ColumnNameQuotingTests
 end
 
 module DirtyAttributeTests
-  def test_partial_update
-    entry = Entry.new(:title => 'foo')
-    old_updated_on = 1.hour.ago.beginning_of_day
+
+  def test_partial_update_with_updated_at
+    #ActiveRecord::Base.logger.level = Logger::DEBUG
+    
+    user = User.create!(:login => 'cicina')
+    old_updated_at = 61.minutes.ago.in_time_zone
+    
+    User.update_all({ :updated_at => old_updated_at }, :login => user.login)
+
+    with_partial_updates User, false do
+      assert_queries(1) { user.save! }
+    end
+
+    User.update_all({ :updated_at => old_updated_at }, :login => user.login)
+    
+    with_partial_updates User, true do
+      assert_queries(0) { user.save! }
+      assert_datetime_equal old_updated_at, user.reload.updated_at
+
+      assert_queries(1) { user.login = 'cicinbrus'; user.save! }
+      assert_datetime_not_equal old_updated_at, user.reload.updated_at
+    end
+  ensure
+    #ActiveRecord::Base.logger.level = Logger::WARN
+  end
+  
+  def test_partial_update_with_updated_on
+    #ActiveRecord::Base.logger.level = Logger::DEBUG
+    entry = Entry.create!(:title => 'foo')
+    old_updated_on = 25.hours.ago.beginning_of_day.in_time_zone
+    
+    Entry.update_all({ :updated_on => old_updated_on }, :id => entry.id)
 
     with_partial_updates Entry, false do
       assert_queries(2) { 2.times { entry.save! } }
@@ -97,11 +126,13 @@ module DirtyAttributeTests
 
     with_partial_updates Entry, true do
       assert_queries(0) { 2.times { entry.save! } }
-      assert_datetime_equal old_updated_on, entry.reload.updated_on
+      assert_date_equal old_updated_on, entry.reload.updated_on
 
       assert_queries(1) { entry.title = 'bar'; entry.save! }
-      assert_not_equal old_updated_on, entry.reload.updated_on
+      assert_date_not_equal old_updated_on, entry.reload.updated_on
     end
+  ensure
+    #ActiveRecord::Base.logger.level = Logger::WARN
   end
 
   private
