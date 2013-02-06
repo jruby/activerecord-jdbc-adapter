@@ -14,14 +14,15 @@ module ArJdbc
     end
 
     def self.column_selector
-      [ /mysql/i, lambda { |_,column| column.extend(::ArJdbc::MySQL::ColumnExtensions) } ]
+      [ /mysql/i, lambda { |_,column| column.extend(::ArJdbc::MySQL::Column) } ]
     end
 
     def self.jdbc_connection_class
       ::ActiveRecord::ConnectionAdapters::MySQLJdbcConnection
     end
 
-    module ColumnExtensions
+    module Column
+      
       def extract_default(default)
         if sql_type =~ /blob/i || type == :text
           if default.blank?
@@ -88,8 +89,11 @@ module ArJdbc
       def missing_default_forged_as_empty_string?(default)
         type != :string && !null && default == ''
       end
+      
     end
 
+    ColumnExtensions = Column # :nodoc: backwards-compatibility
+    
     NATIVE_DATABASE_TYPES = {
       :primary_key => "int(11) DEFAULT NULL auto_increment PRIMARY KEY",
       :string => { :name => "varchar", :limit => 255 },
@@ -553,7 +557,7 @@ module ActiveRecord
     remove_const(:MysqlAdapter) if const_defined?(:MysqlAdapter)
 
     class MysqlColumn < JdbcColumn
-      include ::ArJdbc::MySQL::ColumnExtensions
+      include ::ArJdbc::MySQL::Column
 
       def initialize(name, *args)
         if Hash === name
