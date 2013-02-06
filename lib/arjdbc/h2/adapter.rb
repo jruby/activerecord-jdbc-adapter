@@ -8,24 +8,58 @@ module ArJdbc
       ::ActiveRecord::ConnectionAdapters::H2JdbcConnection
     end
 
-    def adapter_name #:nodoc:
-      'H2'
+    def self.column_selector
+      [ /\.h2\./i, lambda { |cfg, column| column.extend(::ArJdbc::H2::Column) } ]
+    end
+    
+    module Column
+      include HSQLDB::Column
+      
+      private
+      
+      def simplified_type(field_type)
+        super
+      end
+
+      # Post process default value from JDBC into a Rails-friendly format (columns{-internal})
+      def default_value(value)
+        # H2 auto-generated key default value
+        return nil if value =~ /^\(NEXT VALUE FOR/i
+        super
+      end
+      
+    end
+    
+    ADAPTER_NAME = 'H2' # :nodoc:
+    
+    def adapter_name # :nodoc:
+      ADAPTER_NAME
     end
 
     def self.arel2_visitors(config)
-      v = HSQLDB.arel2_visitors(config)
-      v.merge({}.tap {|v| %w(h2 jdbch2).each {|a| v[a] = ::Arel::Visitors::HSQLDB } })
+      visitors = HSQLDB.arel2_visitors(config)
+      visitors.merge({
+        'h2' => ::Arel::Visitors::HSQLDB,
+        'jdbch2' => ::Arel::Visitors::HSQLDB,
+      })
     end
-
-    def h2_adapter
+    
+    # #deprecated
+    def h2_adapter # :nodoc:
       true
     end
 
+    def modify_types(types)
+      super(types)
+      types[:float][:limit] = 17
+      types
+    end
+    
     def tables
       @connection.tables(nil, h2_schema)
     end
 
-    def columns(table_name, name=nil)
+    def columns(table_name, name = nil)
       @connection.columns_internal(table_name.to_s, name, h2_schema)
     end
 
@@ -39,6 +73,19 @@ module ArJdbc
       execute('CALL SCHEMA()')[0].values[0]
     end
     
+    def quote(value, column = nil) # :nodoc:
+      case value
+      when String
+        if value.empty?
+          "''"
+        else
+          super
+        end
+      else
+        super
+      end
+    end
+    
     # EXPLAIN support :
     
     def supports_explain?; true; end
@@ -50,6 +97,7 @@ module ArJdbc
     end
     
     private
+    
     def change_column_null(table_name, column_name, null, default = nil)
       if !null && !default.nil?
         execute("UPDATE #{table_name} SET #{column_name}=#{quote(default)} WHERE #{column_name} IS NULL")
@@ -64,5 +112,6 @@ module ArJdbc
     def h2_schema
       @config[:schema] || ''
     end
+    
   end
 end
