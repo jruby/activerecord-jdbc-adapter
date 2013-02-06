@@ -120,9 +120,9 @@ module SchemaDumpTestMethods
   def test_schema_dump_keeps_large_precision_integer_columns_as_decimal
     output = standard_dump
     precision = DbTypeMigration.big_decimal_precision
-    assert_match %r{t.decimal\s+"atoms_in_universe",\s+:precision => #{precision},\s+:scale => 0}, output
+    assert_match %r{t.decimal\s+"big_decimal",\s+:precision => #{precision},\s+:scale => 0}, output
   end if Test::Unit::TestCase.ar_version('3.0') # does not work in 2.3 :
-  # t.integer  "atoms_in_universe", :limit => 38, :precision => 38, :scale => 0
+  # t.integer  "big_decimal", :limit => 38, :precision => 38, :scale => 0
 
   def test_schema_dump_keeps_id_column_when_id_is_false_and_id_column_added
     output = standard_dump
