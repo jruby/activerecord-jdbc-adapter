@@ -12,6 +12,7 @@ module ::ArJdbc
     end
     
     module Column
+      
       def init_column(name, default, *args)
         @default = nil if default =~ /NULL/
       end
@@ -20,7 +21,8 @@ module ::ArJdbc
         return nil if value.nil?
         case type
         when :string then value
-        when :primary_key then defined?(value.to_i) ? value.to_i : (value ? 1 : 0)
+        when :primary_key 
+          value.respond_to?(:to_i) ? value.to_i : ( value ? 1 : 0 )
         when :float    then value.to_f
         when :decimal  then self.class.value_to_decimal(value)
         when :boolean  then self.class.value_to_boolean(value)
@@ -72,10 +74,7 @@ module ::ArJdbc
 
         value
       end
-    end
-
-    def adapter_name #:nodoc:
-      'SQLite'
+      
     end
 
     def self.arel2_visitors(config)
@@ -84,7 +83,42 @@ module ::ArJdbc
         'jdbcsqlite3' => ::Arel::Visitors::SQLite
       }
     end
+    
+    ADAPTER_NAME = 'SQLite'
+    
+    def adapter_name # :nodoc:
+      ADAPTER_NAME
+    end
 
+    NATIVE_DATABASE_TYPES = {
+      :primary_key => nil,
+      :string => { :name => "varchar", :limit => 255 },
+      :text => { :name => "text" },
+      :integer => { :name => "integer" },
+      :float => { :name => "float" },
+      :decimal => { :name => "decimal" },
+      :datetime => { :name => "datetime" },
+      :timestamp => { :name => "datetime" },
+      :time => { :name => "time" },
+      :date => { :name => "date" },
+      :binary => { :name => "blob" },
+      :boolean => { :name => "boolean" }
+    }
+
+    def native_database_types
+      types = super.merge(NATIVE_DATABASE_TYPES)
+      types[:primary_key] = default_primary_key_type
+      types
+    end
+
+    def default_primary_key_type
+      if supports_autoincrement?
+        'integer PRIMARY KEY AUTOINCREMENT NOT NULL'
+      else
+        'integer PRIMARY KEY NOT NULL'
+      end
+    end
+    
     def supports_ddl_transactions? # :nodoc:
       true # sqlite_version >= '2.0.0'
     end
@@ -163,18 +197,18 @@ module ::ArJdbc
       id_value || last_insert_id
     end
     
-    def tables(name = nil) #:nodoc:
-      sql = <<-SQL
-        SELECT name
-        FROM sqlite_master
-        WHERE type = 'table' AND NOT name = 'sqlite_sequence'
-      SQL
+    def tables(name = nil, table_name = nil) # :nodoc:
+      sql = "SELECT name FROM sqlite_master " +
+      "WHERE type = 'table' AND NOT name = 'sqlite_sequence'"
+      sql << " AND name = #{quote_table_name(table_name)}" if table_name
 
-      select_rows(sql, name).map do |row|
-        row[0]
-      end
+      select_rows(sql, name).map { |row| row[0] }
     end
 
+    def table_exists?(table_name)
+      table_name && tables(nil, table_name).any?
+    end
+    
     def indexes(table_name, name = nil)
       result = select_rows("SELECT name, sql FROM sqlite_master WHERE tbl_name = #{quote_table_name(table_name)} AND type = 'index'", name)
 
