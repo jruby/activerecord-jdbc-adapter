@@ -32,6 +32,7 @@ import arjdbc.db2.DB2Module;
 import arjdbc.db2.DB2RubyJdbcConnection;
 import arjdbc.derby.DerbyModule;
 import arjdbc.h2.H2RubyJdbcConnection;
+import arjdbc.hsqldb.HSQLDBModule;
 import arjdbc.informix.InformixRubyJdbcConnection;
 import arjdbc.mssql.MssqlRubyJdbcConnection;
 import arjdbc.mysql.MySQLModule;
@@ -64,6 +65,7 @@ public class AdapterJavaService implements BasicLibraryService {
         RubyModule arJdbc = runtime.getOrCreateModule("ArJdbc");
         MySQLModule.load(arJdbc);
         DerbyModule.load(arJdbc);
+        HSQLDBModule.load(arJdbc);
         SQLite3Module.load(arJdbc);
         OracleModule.load(arJdbc);
         DB2Module.load(arJdbc);

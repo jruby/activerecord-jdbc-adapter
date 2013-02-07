@@ -25,14 +25,13 @@ package arjdbc.db2;
 
 import static arjdbc.util.QuotingUtils.BYTES_0;
 import static arjdbc.util.QuotingUtils.BYTES_1;
-import static arjdbc.util.QuotingUtils.quoteCharWith;
+import static arjdbc.util.QuotingUtils.quoteSingleQuotesWithFallback;
 
 import org.jruby.RubyModule;
 import org.jruby.RubyString;
 import org.jruby.anno.JRubyMethod;
 import org.jruby.runtime.ThreadContext;
 import org.jruby.runtime.builtin.IRubyObject;
-import org.jruby.util.ByteList;
 
 /**
  * ArJdbc::DB2
@@ -46,29 +45,12 @@ public class DB2Module {
         db2.defineAnnotatedMethods( DB2Module.class );
     }
     
-    private static final ByteList SINGLE_Q = new ByteList(new byte[] { '\'' }, false);
-    private static final ByteList QUOTED_SINGLE_Q = new ByteList(new byte[] { '\'', '\'' }, false);
-    
     @JRubyMethod(name = "quote_string", required = 1, frame = false)
     public static IRubyObject quote_string(
             final ThreadContext context, 
             final IRubyObject self, 
-            final IRubyObject string) { // string.gsub("'", "''") :
-        if ( string instanceof RubyString ) {
-            final char single = '\'';
-            final RubyString quoted = quoteCharWith(
-                context, (RubyString) string, single, single
-            );
-            return quoted;
-        }
-        else { // ActiveSupport::Multibyte::Chars
-            return string.callMethod(context, "gsub", 
-                new IRubyObject[] {
-                    context.getRuntime().newString(SINGLE_Q),
-                    context.getRuntime().newString(QUOTED_SINGLE_Q)
-                }
-            );
-        }
+            final IRubyObject string) {
+        return quoteSingleQuotesWithFallback(context, string);
     }
     
     @JRubyMethod(name = "quoted_true", required = 0, frame = false)
