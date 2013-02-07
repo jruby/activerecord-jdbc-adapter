@@ -36,6 +36,7 @@ module ArJdbc
         when /^timestamp/i   then @sql_type = 'timestamp'; limit = nil
         when /^time/i        then @sql_type = 'time'; limit = nil
         when /^date/i        then @sql_type = 'date'; limit = nil
+        when /^xml/i         then @sql_type = 'xml'; limit = nil
         else
           limit = super
           # handle maximum length for a VARCHAR string :
@@ -52,6 +53,7 @@ module ArJdbc
         when /^dec/i         then # DEC is a DECIMAL alias
           extract_scale(field_type) == 0 ? :integer : :decimal
         when /^timestamp/i   then :datetime
+        when /^xml/i         then :xml
         else
           super
         end
@@ -104,6 +106,7 @@ module ArJdbc
       :time => { :name => "time" },
       :datetime => { :name => "timestamp" },
       :timestamp => { :name => "timestamp" },
+      :xml => { :name => "xml" },
       :boolean => { :name => "smallint" },
     }
     
@@ -115,7 +118,7 @@ module ArJdbc
       super(types)
       types[:primary_key] = NATIVE_DATABASE_TYPES[:primary_key]
       [ :string, :float, :decimal, :numeric, :integer, 
-        :smallint, :bigint, :real, :double ].each do |type|
+        :smallint, :bigint, :real, :double, :xml ].each do |type|
         types[type] = NATIVE_DATABASE_TYPES[type].dup
       end
       types[:boolean] = NATIVE_DATABASE_TYPES[:boolean].dup
@@ -133,6 +136,19 @@ module ArJdbc
       native_type.is_a?(Hash) ? native_type[:name] : native_type
     end
 
+    class TableDefinition < ActiveRecord::ConnectionAdapters::TableDefinition # :nodoc:
+      
+      def xml(*args)
+        options = args.extract_options!
+        column(args[0], 'xml', options)
+      end
+      
+    end
+
+    def table_definition
+      TableDefinition.new(self)
+    end
+    
     # Override default -- fix case where ActiveRecord passes :default => nil, :null => true
     def add_column_options!(sql, options)
       options.delete(:default) if options.has_key?(:default) && options[:default].nil?
