@@ -49,7 +49,8 @@ module ArJdbc
         when /^smallint/i    then :boolean
         when /^bigint|int/i  then :integer
         when /^real|double/i then :float
-        when /^dec/i         then :decimal
+        when /^dec/i         then # DEC is a DECIMAL alias
+          extract_scale(field_type) == 0 ? :integer : :decimal
         when /^timestamp/i   then :datetime
         else
           super
