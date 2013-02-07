@@ -26,13 +26,15 @@ package arjdbc.derby;
 
 import java.sql.SQLException;
 
+import static arjdbc.util.QuotingUtils.BYTES_0;
+import static arjdbc.util.QuotingUtils.BYTES_1;
+
 import arjdbc.jdbc.RubyJdbcConnection;
 
 import org.jruby.Ruby;
 import org.jruby.RubyBoolean;
 import org.jruby.RubyModule;
 import org.jruby.RubyObjectAdapter;
-import org.jruby.RubyRange;
 import org.jruby.RubyString;
 import org.jruby.anno.JRubyMethod;
 import org.jruby.javasupport.JavaEmbedUtils;
@@ -289,6 +291,20 @@ public class DerbyModule {
         }
     }
 
+    @JRubyMethod(name = "quoted_true", required = 0, frame = false)
+    public static IRubyObject quoted_true(
+            final ThreadContext context, 
+            final IRubyObject self) {
+        return RubyString.newString(context.getRuntime(), BYTES_1);
+    }
+    
+    @JRubyMethod(name = "quoted_false", required = 0, frame = false)
+    public static IRubyObject quoted_false(
+            final ThreadContext context, 
+            final IRubyObject self) {
+        return RubyString.newString(context.getRuntime(), BYTES_0);
+    }
+    
     @JRubyMethod(name = "select_all", rest = true)
     public static IRubyObject select_all(IRubyObject recv, IRubyObject[] args) {
         return rubyApi.callMethod(recv, "execute", args);
