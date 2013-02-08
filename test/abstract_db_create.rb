@@ -58,10 +58,10 @@ module AbstractDbCreate
   end
 
   def setup_rails
-    if ActiveRecord::VERSION::MAJOR <= 2
-      setup_rails2
-    else
+    if ActiveRecord::VERSION::MAJOR == 3
       setup_rails3
+    else
+      setup_rails2
     end
   end
 

@@ -237,28 +237,28 @@ module ActiveRecord
       # Executes +sql+ statement in the context of this connection using
       # +binds+ as the bind substitutes.  +name+ is logged along with
       # the executed +sql+ statement.
-      def exec_query(sql, name = 'SQL', binds = []) # :nodoc:
+      def exec_query(sql, name = 'SQL', binds = [])
         execute(sql, name, binds)
       end
 
       # Executes insert +sql+ statement in the context of this connection using
       # +binds+ as the bind substitutes. +name+ is the logged along with
       # the executed +sql+ statement.
-      def exec_insert(sql, name, binds, pk = nil, sequence_name = nil) # :nodoc:
+      def exec_insert(sql, name, binds)
         exec_query(sql, name, binds)
       end
 
       # Executes delete +sql+ statement in the context of this connection using
       # +binds+ as the bind substitutes. +name+ is the logged along with
       # the executed +sql+ statement.
-      def exec_delete(sql, name, binds) # :nodoc:
+      def exec_delete(sql, name, binds)
         exec_query(sql, name, binds)
       end
 
       # Executes update +sql+ statement in the context of this connection using
       # +binds+ as the bind substitutes. +name+ is the logged along with
       # the executed +sql+ statement.
-      def exec_update(sql, name, binds) # :nodoc:
+      def exec_update(sql, name, binds)
         exec_query(sql, name, binds)
       end
       

@@ -38,8 +38,6 @@ require 'db/jndi_pooled_config'
 class DerbyJndiPooledTest < Test::Unit::TestCase
   include SimpleTestMethods
 
-  DbTypeMigration.big_decimal_precision = 31
-  
   def self.startup
     ActiveRecord::Base.establish_connection JNDI_POOLED_CONFIG
   end

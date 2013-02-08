@@ -63,7 +63,6 @@ module FixtureSetup
 end
 
 module ColumnNameQuotingTests
-  
   def self.included(base)
     base.class_eval do
       @@column_quote_char = "\""
@@ -84,40 +83,13 @@ module ColumnNameQuotingTests
   def column_quote_char
     @@column_quote_char || "\""
   end
-  
 end
 
 module DirtyAttributeTests
-
-  def test_partial_update_with_updated_at
-    #ActiveRecord::Base.logger.level = Logger::DEBUG
-    
-    user = User.create!(:login => 'cicina')
-    old_updated_at = 61.minutes.ago.in_time_zone
-    
-    User.update_all({ :updated_at => old_updated_at }, :login => user.login)
-
-    with_partial_updates User, false do
-      assert_queries(1) { user.save! }
-    end
-
-    User.update_all({ :updated_at => old_updated_at }, :login => user.login)
-    
-    with_partial_updates User, true do
-      assert_queries(0) { user.save! }
-      assert_datetime_equal old_updated_at, user.reload.updated_at
-
-      assert_queries(1) { user.login = 'cicinbrus'; user.save! }
-      assert_datetime_not_equal old_updated_at, user.reload.updated_at
-    end
-  ensure
-    #ActiveRecord::Base.logger.level = Logger::WARN
-  end
   
-  def test_partial_update_with_updated_on
-    #ActiveRecord::Base.logger.level = Logger::DEBUG
+  def test_partial_update
     entry = Entry.create!(:title => 'foo')
-    old_updated_on = 25.hours.ago.beginning_of_day.in_time_zone
+    old_updated_on = 1.hour.ago.beginning_of_day
     
     Entry.update_all({ :updated_on => old_updated_on }, :id => entry.id)
 
@@ -129,13 +101,11 @@ module DirtyAttributeTests
     
     with_partial_updates Entry, true do
       assert_queries(0) { 2.times { entry.save! } }
-      assert_date_equal old_updated_on, entry.reload.updated_on
+      assert_datetime_equal old_updated_on, entry.reload.updated_on
 
       assert_queries(1) { entry.title = 'bar'; entry.save! }
-      assert_date_not_equal old_updated_on, entry.reload.updated_on
+      assert_datetime_not_equal old_updated_on, entry.reload.updated_on
     end
-  ensure
-    #ActiveRecord::Base.logger.level = Logger::WARN
   end
   
   private
@@ -384,7 +354,7 @@ module SimpleTestMethods
 
   def test_save_binary
     #string is 60_000 bytes
-    binary_string = "\000ABCDEFGHIJKLMNOPQRSTUVWXYZ'\001\003" * 1 # 2_000
+    binary_string = "\000ABCDEFGHIJKLMNOPQRSTUVWXYZ'\001\003"*1#2_000
     e = DbType.first
     e.sample_binary = binary_string
     e.save!
@@ -392,31 +362,32 @@ module SimpleTestMethods
     assert_equal binary_string, e.sample_binary
   end
 
-  def test_small_decimal
+  def test_default_decimal_should_keep_fractional_part
+    expected = 7.3
+    db_type = DbType.new(:sample_small_decimal => expected)
+    assert db_type.save
+    db_type = DbType.find(db_type.id)
+    assert_equal BigDecimal.new(expected.to_s), db_type.sample_small_decimal
+  end
+
+  def test_decimal_with_scale
     test_value = 7.3
     db_type = DbType.new(:sample_small_decimal => test_value)
-    db_type.save!
+    assert db_type.save
     db_type = DbType.find(db_type.id)
     assert_kind_of BigDecimal, db_type.sample_small_decimal
     assert_equal BigDecimal.new(test_value.to_s), db_type.sample_small_decimal
   end
 
-  def test_decimal # _with_zero_scale
+  def test_decimal_with_zero_scale
     test_value = 7000.0
-    db_type = DbType.create!(:sample_decimal => test_value)
+    db_type = DbType.new(:sample_decimal => test_value)
+    assert db_type.save
     db_type = DbType.find(db_type.id)
     assert_kind_of Integer, db_type.sample_decimal
     assert_equal test_value.to_i, db_type.sample_decimal
   end
 
-  def test_big_decimal
-    test_value = 9876543210_9876543210_9876543210.0
-    db_type = DbType.create!(:big_decimal => test_value)
-    db_type = DbType.find(db_type.id)
-    assert_kind_of Bignum, db_type.big_decimal
-    assert_equal test_value, db_type.big_decimal
-  end
-  
   def test_negative_default_value
     assert_equal(-1, DbType.columns_hash['sample_integer_neg_default'].default)
     assert_equal(-1, DbType.new.sample_integer_neg_default)
