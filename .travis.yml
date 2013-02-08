@@ -21,6 +21,7 @@ gemfile:
 branches:
   only:
     - master
+    - 1-2-stable
 matrix:
   allow_failures:
     - gemfile: gemfiles/rails23.gemfile
