@@ -3,6 +3,7 @@ require 'arjdbc/sqlite3/explain_support'
 
 module ::ArJdbc
   module SQLite3
+    
     def self.column_selector
       [ /sqlite/i, lambda { |cfg,col| col.extend(::ArJdbc::SQLite3::Column) } ]
     end
@@ -13,10 +14,16 @@ module ::ArJdbc
     
     module Column
       
+      # #override {JdbcColumn#init_column}
       def init_column(name, default, *args)
-        @default = nil if default =~ /NULL/
+        if default =~ /NULL/
+          @default = nil
+        else
+          super
+        end
       end
 
+      # #override {ActiveRecord::ConnectionAdapters::Column#type_cast}
       def type_cast(value)
         return nil if value.nil?
         case type
@@ -31,6 +38,7 @@ module ::ArJdbc
       end
       
       private
+      
       def simplified_type(field_type)
         case field_type
         when /boolean/i       then :boolean
@@ -38,7 +46,8 @@ module ::ArJdbc
         when /varchar/i       then :string
         when /int/i           then :integer
         when /float/i         then :float
-        when /real|decimal/i  then @scale == 0 ? :integer : :decimal
+        when /real|decimal/i  then
+          extract_scale(field_type) == 0 ? :integer : :decimal
         when /datetime/i      then :datetime
         when /date/i          then :date
         when /time/i          then :time
@@ -111,6 +120,12 @@ module ::ArJdbc
       types
     end
 
+    def modify_types(types)
+      super(types)
+      types.merge! NATIVE_DATABASE_TYPES
+      types
+    end
+    
     def default_primary_key_type
       if supports_autoincrement?
         'integer PRIMARY KEY AUTOINCREMENT NOT NULL'
@@ -144,25 +159,9 @@ module ::ArJdbc
     end
     
     def sqlite_version
-      @sqlite_version ||= select_value('select sqlite_version(*)')
+      @sqlite_version ||= select_value('SELECT sqlite_version(*)')
     end
     private :sqlite_version
-
-    def modify_types(types)
-      super(types)
-      types[:primary_key] = "integer primary key autoincrement not null"
-      types[:string] = { :name => "varchar", :limit => 255 }
-      types[:text] = { :name => "text" }
-      types[:float] = { :name => "float" }
-      types[:decimal] = { :name => "decimal" }
-      types[:datetime] = { :name => "datetime" }
-      types[:timestamp] = { :name => "datetime" }
-      types[:time] = { :name => "time" }
-      types[:date] = { :name => "date" }
-      types[:boolean] = { :name => "boolean" }
-      types[:binary] = { :name => "blob" }
-      types
-    end
     
     def quote(value, column = nil)
       if value.kind_of?(String)
@@ -198,9 +197,12 @@ module ::ArJdbc
     end
     
     def tables(name = nil, table_name = nil) # :nodoc:
-      sql = "SELECT name FROM sqlite_master " +
-      "WHERE type = 'table' AND NOT name = 'sqlite_sequence'"
-      sql << " AND name = #{quote_table_name(table_name)}" if table_name
+      sql = "SELECT name FROM sqlite_master WHERE type = 'table'"
+      if table_name
+        sql << " AND name = #{quote_table_name(table_name)}"
+      else
+        sql << " AND NOT name = 'sqlite_sequence'"
+      end
 
       select_rows(sql, name).map { |row| row[0] }
     end
@@ -210,11 +212,11 @@ module ::ArJdbc
     end
     
     def indexes(table_name, name = nil)
-      result = select_rows("SELECT name, sql FROM sqlite_master WHERE tbl_name = #{quote_table_name(table_name)} AND type = 'index'", name)
+      result = select_rows("SELECT name, sql FROM sqlite_master" <<
+      " WHERE tbl_name = #{quote_table_name(table_name)} AND type = 'index'", name)
 
       result.collect do |row|
-        name = row[0]
-        index_sql = row[1]
+        name, index_sql = row[0], row[1]
         unique = (index_sql =~ /unique/i)
         cols = index_sql.match(/\((.*)\)/)[1].gsub(/,/,' ').split.map do |c|
           match = /^"(.+)"$/.match(c); match ? match[1] : c
@@ -236,7 +238,7 @@ module ::ArJdbc
     end
     
     def recreate_database(name, options = {})
-      tables.each{ |table| drop_table(table) }
+      tables.each { |table| drop_table(table) }
     end
 
     def select(sql, name = nil, binds = [])
@@ -300,7 +302,12 @@ module ::ArJdbc
     end
 
     def remove_column(table_name, *column_names) #:nodoc:
-      raise ArgumentError.new("You must specify at least one column name.  Example: remove_column(:people, :first_name)") if column_names.empty?
+      if column_names.empty?
+        raise ArgumentError.new(
+          "You must specify at least one column name." + 
+          "  Example: remove_column(:people, :first_name)"
+        )
+      end
       column_names.flatten.each do |column_name|
         alter_table(table_name) do |definition|
           definition.columns.delete(definition[column_name])

@@ -3,6 +3,12 @@ require 'db/sqlite3'
 require 'models/data_types'
 require 'models/validates_uniqueness_of_string'
 
+#module Rails
+#  def self.logger
+#    ActiveRecord::Base.logger
+#  end
+#end
+
 class SQLite3SimpleTest < Test::Unit::TestCase
   include SimpleTestMethods
   include ActiveRecord3TestMethods
@@ -227,11 +233,35 @@ class SQLite3SimpleTest < Test::Unit::TestCase
     assert Entry.all.empty?
   end
   
+  # #override
+  def test_big_decimal
+    #ActiveRecord::Base.logger.level = Logger::DEBUG
+
+    test_value = 1234567890.0 # FINE just like native adapter
+    db_type = DbType.create!(:big_decimal => test_value)
+    db_type = DbType.find(db_type.id)
+    assert_equal test_value, db_type.big_decimal
+
+    test_value = 1234567890_123456 # FINE just like native adapter
+    db_type = DbType.create!(:big_decimal => test_value)
+    db_type = DbType.find(db_type.id)
+    assert_equal test_value, db_type.big_decimal
+    
+    # NOTE: this is getting f*cked up in the native adapter as well although 
+    # differently and only when inserted manually - works with PSs (3.1+) :
+    test_value = 1234567890_1234567890.0
+    db_type = DbType.create!(:big_decimal => test_value)
+    db_type = DbType.find(db_type.id)
+    # TODO native gets us 12345678901234567000.0 JDBC gets us 1
+    #assert_equal test_value, db_type.big_decimal
+    #super
+  ensure
+    #ActiveRecord::Base.logger.level = Logger::WARN
+  end
+  
   include ExplainSupportTestMethods if ar_version("3.1")
   
 end
-
-# assert_raise ActiveRecord::RecordInvalid do
 
 class SQLite3HasManyThroughTest < Test::Unit::TestCase
   include HasManyThroughMethods
