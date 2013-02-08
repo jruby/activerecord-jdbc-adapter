@@ -331,7 +331,7 @@ module ArJdbc
 
     def remove_default_constraint(table_name, column_name)
       clear_cached_table(table_name)
-      defaults = select "select def.name from sysobjects def, syscolumns col, sysobjects tab where col.cdefault = def.id and col.name = '#{column_name}' and tab.name = '#{table_name}' and col.id = tab.id"
+      defaults = select "select def.name from dbo.sysobjects def, dbo.syscolumns col, dbo.sysobjects tab where col.cdefault = def.id and col.name = '#{column_name}' and tab.name = '#{table_name}' and col.id = tab.id"
       defaults.each {|constraint|
         execute "ALTER TABLE #{table_name} DROP CONSTRAINT #{constraint["name"]}"
       }
