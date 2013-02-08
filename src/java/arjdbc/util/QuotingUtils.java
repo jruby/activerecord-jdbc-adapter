@@ -26,7 +26,6 @@ package arjdbc.util;
 import org.jruby.Ruby;
 import org.jruby.RubyString;
 import org.jruby.runtime.ThreadContext;
-import org.jruby.runtime.builtin.IRubyObject;
 import org.jruby.util.ByteList;
 
 /**
@@ -78,27 +77,6 @@ public abstract class QuotingUtils {
 
         final Ruby runtime = context.getRuntime();
         return runtime.newString(quotedBytes);
-    }
-    
-    static final ByteList SINGLE_Q = new ByteList(new byte[] { '\'' }, false);
-    static final ByteList QUOTED_SINGLE_Q = new ByteList(new byte[] { '\'', '\'' }, false);
-    
-    // string.gsub("'", "''") :
-    public static IRubyObject quoteSingleQuotesWithFallback(
-        final ThreadContext context, final IRubyObject string) { 
-        // string.gsub("'", "''") :
-        if ( string instanceof RubyString ) {
-            final char single = '\'';
-            return quoteCharWith(context, (RubyString) string, single, single);
-        }
-        else { // ActiveSupport::Multibyte::Chars
-            return string.callMethod(context, "gsub", 
-                new IRubyObject[] {
-                    context.getRuntime().newString(SINGLE_Q),
-                    context.getRuntime().newString(QUOTED_SINGLE_Q)
-                }
-            );
-        }
     }
     
 }

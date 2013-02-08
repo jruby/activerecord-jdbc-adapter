@@ -2,10 +2,10 @@ class CreateEntries < ActiveRecord::Migration
   def self.up
     create_table "entries", :force => true do |t|
       t.column :title, :string, :limit => 100
+      t.column :updated_on, :datetime
       t.column :content, :text
       t.column :rating, :decimal, :precision => 10, :scale => 2
       t.column :user_id, :integer
-      t.column :updated_on, :datetime # treated as date "_on" convention
     end
   end
 
@@ -26,7 +26,6 @@ class CreateUsers < ActiveRecord::Migration
   def self.up
     create_table "users", :force => true do |t|
       t.column :login, :string, :limit => 100, :null => false
-      t.timestamps # created_at / updated_at
     end
   end
 

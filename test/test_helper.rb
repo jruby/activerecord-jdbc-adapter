@@ -173,15 +173,8 @@ class Test::Unit::TestCase
   end
   
   def actual_in_expected_time_zone(expected, actual)
-    if actual.respond_to?(:in_time_zone)
-      if expected.respond_to?(:time_zone)
-        return actual.in_time_zone expected.time_zone
-      end
-      if expected.is_a?(Time) # due AR 2.3
-        #expected = expected.in_time_zone
-        #return actual.in_time_zone expected.time_zone
-        return actual.in_time_zone ActiveSupport::TimeZone[expected.zone]
-      end
+    if actual.is_a?(Time) && expected.respond_to?(:time_zone)
+      return actual.in_time_zone expected.time_zone
     end
     actual
   end
