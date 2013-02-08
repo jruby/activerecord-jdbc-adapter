@@ -366,7 +366,7 @@ module ActiveRecord
         @connection.primary_keys(table)
       end
 
-      if ActiveRecord::VERSION::MAJOR < 3
+      if ActiveRecord::VERSION::MAJOR >= 3
         
       # Converts an arel AST to SQL
       def to_sql(arel, binds = [])
