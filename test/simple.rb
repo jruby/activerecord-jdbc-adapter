@@ -596,6 +596,16 @@ module SimpleTestMethods
     #ActiveRecord::Base.logger.level = Logger::WARN
   end
   
+  def test_string_bind_with_q_mark
+    str = "Don' botharrr talkin' like one, savvy? Right?!?"
+    db_type = DbType.create! :sample_string => str.dup
+    assert_equal str, db_type.reload.sample_string
+    
+    entry = Entry.create! :title => 'foo!', :content => 'bar?'
+    assert_equal 'foo!', entry.reload.title
+    assert_equal 'bar?', entry.content
+  end
+  
   class ChangeEntriesTable < ActiveRecord::Migration
     def self.up
       change_table :entries do |t|
