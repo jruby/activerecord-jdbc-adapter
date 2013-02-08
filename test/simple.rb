@@ -686,6 +686,21 @@ module SimpleTestMethods
     assert_equal content_json, post.reload.content
   end
   
+  def test_exec_insert
+    name_column = Thing.columns.detect { |column| column.name.to_s == 'name' }
+    created_column = Thing.columns.detect { |column| column.name.to_s == 'created_at' }
+    updated_column = Thing.columns.detect { |column| column.name.to_s == 'updated_at' }
+    now = Time.zone.now
+    
+    binds = [ [ name_column, 'ferko' ], [ created_column, now ], [ updated_column, now ] ]
+    connection.exec_insert "INSERT INTO things VALUES (?,?,?)", 'INSERT_1', binds
+    assert Thing.find_by_name 'ferko'
+    # NOTE: #exec_insert accepts 5 arguments on AR-4.0 :
+    binds = [ [ name_column, 'jozko' ], [ created_column, now ], [ updated_column, now ] ]
+    connection.exec_insert "INSERT INTO things VALUES (?,?,?)", 'INSERT_2', binds, nil, nil
+    assert Thing.find_by_name 'jozko'
+  end
+  
   protected
   
   def assert_date_type(value)
