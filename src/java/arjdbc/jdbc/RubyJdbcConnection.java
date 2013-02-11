@@ -61,9 +61,8 @@ import org.jruby.RubySymbol;
 import org.jruby.RubyTime;
 import org.jruby.anno.JRubyMethod;
 import org.jruby.exceptions.RaiseException;
-import org.jruby.javasupport.Java;
 import org.jruby.javasupport.JavaEmbedUtils;
-import org.jruby.javasupport.JavaObject;
+import org.jruby.javasupport.JavaUtil;
 import org.jruby.javasupport.util.RuntimeHelpers;
 import org.jruby.runtime.Arity;
 import org.jruby.runtime.Block;
@@ -109,17 +108,6 @@ public class RubyJdbcConnection extends RubyObject {
         return TABLE_TYPES;
     }
 
-    @JRubyMethod(name = "begin")
-    public IRubyObject begin(ThreadContext context) throws SQLException {
-        final Ruby runtime = context.getRuntime();
-        return (IRubyObject) withConnectionAndRetry(context, new SQLBlock() {
-          public Object call(Connection c) throws SQLException {
-            getConnection(true).setAutoCommit(false);
-            return runtime.getNil();
-          }
-        });
-    }
-
     @JRubyMethod(name = {"columns", "columns_internal"}, required = 1, optional = 2)
     public IRubyObject columns_internal(final ThreadContext context, final IRubyObject[] args)
             throws SQLException, IOException {
@@ -149,6 +137,17 @@ public class RubyJdbcConnection extends RubyObject {
         });
     }
 
+    @JRubyMethod(name = "begin")
+    public IRubyObject begin(ThreadContext context) throws SQLException {
+        final Ruby runtime = context.getRuntime();
+        return (IRubyObject) withConnectionAndRetry(context, new SQLBlock() {
+          public Object call(Connection c) throws SQLException {
+            getConnection(true).setAutoCommit(false);
+            return runtime.getNil();
+          }
+        });
+    }
+    
     @JRubyMethod(name = "commit")
     public IRubyObject commit(ThreadContext context) throws SQLException {
         Connection connection = getConnection(true);
@@ -164,14 +163,24 @@ public class RubyJdbcConnection extends RubyObject {
         return context.getRuntime().getNil();
     }
 
-    @JRubyMethod(name = "connection", frame = false)
+    @JRubyMethod(name = "connection")
     public IRubyObject connection() {
-        if (getConnection() == null) reconnect();
+        if ( getConnection(false) == null ) reconnect();
 
         return getInstanceVariable("@connection");
     }
 
-    @JRubyMethod(name = "database_name", frame = false)
+    @JRubyMethod(name = "disconnect!")
+    public IRubyObject disconnect() {
+        return setConnection(null);
+    }
+
+    @JRubyMethod(name = "reconnect!")
+    public IRubyObject reconnect() {
+        return setConnection( getConnectionFactory().newConnection() );
+    }
+    
+    @JRubyMethod(name = "database_name")
     public IRubyObject database_name(ThreadContext context) throws SQLException {
         Connection connection = getConnection(true);
         String name = connection.getCatalog();
@@ -185,12 +194,7 @@ public class RubyJdbcConnection extends RubyObject {
         return context.getRuntime().newString(name);
     }
 
-    @JRubyMethod(name = "disconnect!", frame = false)
-    public IRubyObject disconnect() {
-        return setConnection(null);
-    }
-
-    @JRubyMethod
+    @JRubyMethod(name = "execute", required = 1)
     public IRubyObject execute(final ThreadContext context, final IRubyObject sql) {
         return (IRubyObject) withConnectionAndRetry(context, new SQLBlock() {
             public Object call(Connection c) throws SQLException {
@@ -481,11 +485,6 @@ public class RubyJdbcConnection extends RubyObject {
         });
     }
 
-    @JRubyMethod(name = "reconnect!")
-    public IRubyObject reconnect() {
-        return setConnection(getConnectionFactory().newConnection());
-    }
-
 
     @JRubyMethod(name = "rollback")
     public IRubyObject rollback(ThreadContext context) throws SQLException {
@@ -698,19 +697,6 @@ public class RubyJdbcConnection extends RubyObject {
         return runtime.newFloat(doubleValue);
     }
 
-    protected Connection getConnection() {
-        return getConnection(false);
-    }
-
-    protected Connection getConnection(boolean error) {
-        Connection conn = (Connection) dataGetStruct();
-        if(error && conn == null) {
-            RubyClass err = getRuntime().getModule("ActiveRecord").getClass("ConnectionNotEstablished");
-            throw new RaiseException(getRuntime(), err, "no connection available", false);
-        }
-        return conn;
-    }
-
     protected IRubyObject getAdapter(ThreadContext context) {
         return callMethod(context, "adapter");
     }
@@ -880,12 +866,26 @@ public class RubyJdbcConnection extends RubyObject {
         return RubyString.newUnicodeString(runtime, str.toString());
     }
 
-    private IRubyObject setConnection(Connection c) {
-        close(getConnection()); // Close previously open connection if there is one
+    protected final Connection getConnection() {
+        return getConnection(false);
+    }
 
-        IRubyObject rubyconn = c != null ? wrappedConnection(c) : getRuntime().getNil();
-        setInstanceVariable("@connection", rubyconn);
-        dataWrapStruct(c);
+    protected Connection getConnection(boolean error) {
+        final Connection connection = (Connection) dataGetStruct();
+        if ( connection == null && error ) {
+            RubyClass err = getRuntime().getModule("ActiveRecord").getClass("ConnectionNotEstablished");
+            throw new RaiseException(getRuntime(), err, "no connection available", false);
+        }
+        return connection;
+    }
+    
+    private RubyJdbcConnection setConnection(final Connection connection) {
+        close( getConnection(false) ); // close previously open connection if there is one
+
+        final IRubyObject rubyConnectionObject = 
+            connection != null ? wrappedConnection(connection) : getRuntime().getNil();
+        setInstanceVariable( "@connection", rubyConnectionObject );
+        dataWrapStruct(connection);
         return this;
     }
 
@@ -1227,8 +1227,8 @@ public class RubyJdbcConnection extends RubyObject {
         return (RuntimeException) arError;
     }
 
-    private IRubyObject wrappedConnection(Connection c) {
-        return Java.java_to_ruby(this, JavaObject.wrap(getRuntime(), c), Block.NULL_BLOCK);
+    private IRubyObject wrappedConnection(final Connection connection) {
+        return JavaUtil.convertJavaToRuby( getRuntime(), connection );
     }
 
     /**
