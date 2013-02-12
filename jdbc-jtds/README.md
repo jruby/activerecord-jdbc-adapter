@@ -12,12 +12,12 @@ For more information see http://jtds.sourceforge.net/
 To make the driver (Java class) accessible to JDBC and ActiveRecord code running in JRuby :
 
     require 'jdbc/jtds'
-    Jdbc::JDTS.load_driver
+    Jdbc::JTDS.load_driver
 
 For backwards compatibility with older (**1.2.5**) versions of the gem use :
 
     require 'jdbc/jtds'
-    Jdbc::JDTS.load_driver(:require) if Jdbc::JDTS.respond_to?(:load_driver)
+    Jdbc::JTDS.load_driver(:require) if Jdbc::JTDS.respond_to?(:load_driver)
 
 NOTE: jTDS **1.3.0** requires Java 7 or newer, if you're on older Java please use **1.2.x**.
 
