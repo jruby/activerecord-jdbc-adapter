@@ -68,6 +68,7 @@ import org.jruby.runtime.Arity;
 import org.jruby.runtime.Block;
 import org.jruby.runtime.ObjectAllocator;
 import org.jruby.runtime.ThreadContext;
+import org.jruby.runtime.backtrace.RubyStackTraceElement;
 import org.jruby.runtime.builtin.IRubyObject;
 import org.jruby.util.ByteList;
 
@@ -165,13 +166,28 @@ public class RubyJdbcConnection extends RubyObject {
 
     @JRubyMethod(name = "connection")
     public IRubyObject connection() {
-        if ( getConnection(false) == null ) reconnect();
-
+        if ( getConnection(false) == null ) { 
+            synchronized (this) {
+                if ( getConnection(false) == null ) {
+                    reconnect();
+                }
+            }
+        }
         return getInstanceVariable("@connection");
     }
 
     @JRubyMethod(name = "disconnect!")
-    public IRubyObject disconnect() {
+    public IRubyObject disconnect(final ThreadContext context) {
+        // TODO: only here to try resolving multi-thread issues :
+        // https://github.com/jruby/activerecord-jdbc-adapter/issues/197
+        // https://github.com/jruby/activerecord-jdbc-adapter/issues/198
+        if ( Boolean.getBoolean("arjdbc.disconnect.debug") ) {
+            final Ruby runtime = context.getRuntime();
+            List backtrace = (List) context.createCallerBacktrace(runtime, 0);
+            runtime.getOut().println(this + " connection.disconnect! occured: ");
+            for ( Object element : backtrace ) runtime.getOut().println(element);
+            runtime.getOut().flush();
+        }
         return setConnection(null);
     }
 
@@ -707,17 +723,21 @@ public class RubyJdbcConnection extends RubyObject {
 
     protected JdbcConnectionFactory getConnectionFactory() throws RaiseException {
         IRubyObject connection_factory = getInstanceVariable("@connection_factory");
-        JdbcConnectionFactory factory = null;
-        try {
-            factory = (JdbcConnectionFactory) JavaEmbedUtils.rubyToJava(
-                    connection_factory.getRuntime(), connection_factory, JdbcConnectionFactory.class);
-        } catch (Exception e) {
-            factory = null;
+        if (connection_factory == null) {
+            throw getRuntime().newRuntimeError("@connection_factory not set");
         }
-        if (factory == null) {
+        JdbcConnectionFactory connectionFactory;
+        try {
+            connectionFactory = (JdbcConnectionFactory) 
+                connection_factory.toJava(JdbcConnectionFactory.class);
+        }
+        catch (Exception e) { // TODO debug this !
+            connectionFactory = null;
+        }
+        if (connectionFactory == null) {
             throw getRuntime().newRuntimeError("@connection_factory not set properly");
         }
-        return factory;
+        return connectionFactory;
     }
 
     private static String[] getTypes(IRubyObject typeArg) {
@@ -879,9 +899,9 @@ public class RubyJdbcConnection extends RubyObject {
         return connection;
     }
     
-    private RubyJdbcConnection setConnection(final Connection connection) {
+    private synchronized RubyJdbcConnection setConnection(final Connection connection) {
         close( getConnection(false) ); // close previously open connection if there is one
-
+        
         final IRubyObject rubyConnectionObject = 
             connection != null ? wrappedConnection(connection) : getRuntime().getNil();
         setInstanceVariable( "@connection", rubyConnectionObject );
