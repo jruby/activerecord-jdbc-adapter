@@ -1,6 +1,16 @@
+== 1.2.7 (02/12/13)
+
+- add some (probably redundant) synchronization + "arjdbc.disconnect.debug" flag
+  as an attempt to detect when connection is set to null (#197 and #198)
+  avoid (deprecated) Java.java_to_ruby when wrapping java.sql.Connection
+- follow Column-naming convention in MySQL adapter ArJdbc module
+- make sure update_sql is public in mysql adapter (Rails compatibility)
+- fix 1.2.6 regression - incorrectly setup to_sql method based on Rails version 
+  this caused double '?' bind substitution issues (#322)
+
 == 1.2.6 (01/31/13)
 
-- [postgres] only set --schema (to seach path) for pg_dump if configured (#315)
+- [postgres] only set --schema (to search path) for pg_dump if configured (#315)
 - [oracle] id limits + quoting; current user/db/schema + savepoint support
 - execute "log" (sql) name correctly based on AR version 
 - deprecate substitute_binds and extract_sql 
