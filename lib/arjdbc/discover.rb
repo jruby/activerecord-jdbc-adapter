@@ -84,7 +84,7 @@ module ::ArJdbc
     end
   end
 
-  extension :MsSQL do |name|
+  extension :MSSQL do |name|
     if name =~ /sqlserver|tds|Microsoft SQL/i
       require 'arjdbc/mssql'
       true

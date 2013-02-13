@@ -1,7 +1,9 @@
-module ::ArJdbc
-  module MsSQL
+module ArJdbc
+  module MSSQL
     module LimitHelpers
+      
       module_function
+      
       def get_table_name(sql)
         if sql =~ /^\s*insert\s+into\s+([^\(\s,]+)\s*|^\s*update\s+([^\(\s,]+)\s*/i
           $1
@@ -17,25 +19,22 @@ module ::ArJdbc
           $1
         else
           table_name[/\[+(.*)\]+/i]
-
-          # rails 2 vs rails 3
-          if ActiveRecord::VERSION::MAJOR >= 3
-            models = ActiveRecord::Base.descendants
-          else
-            models = ActiveRecord::Base.send(:subclasses)
-          end
-
-          model = models.select{|model| model.table_name == $1}.first
-          if model then
-            model.primary_key
-          else
-           'id'
-          end
+          model = descendants.select { |m| m.table_name == $1 }.first
+          model ? model.primary_key : 'id'
         end
       end
 
+      private
+      if ActiveRecord::VERSION::MAJOR >= 3
+        def descendants; ::ActiveRecord::Base.descendants; end
+      else
+        def descendants; ::ActiveRecord::Base.send(:subclasses) end
+      end
+      
       module SqlServer2000ReplaceLimitOffset
+        
         module_function
+        
         def replace_limit_offset!(sql, limit, offset, order)
           if limit
             offset ||= 0
@@ -75,6 +74,7 @@ module ::ArJdbc
       end
 
       module SqlServer2000AddLimitOffset
+        
         def add_limit_offset!(sql, options)
           if options[:limit]
             order = "ORDER BY #{options[:order] || determine_order_clause(sql)}"
@@ -82,10 +82,13 @@ module ::ArJdbc
             SqlServer2000ReplaceLimitOffset.replace_limit_offset!(sql, options[:limit], options[:offset], order)
           end
         end
+        
       end
 
       module SqlServerReplaceLimitOffset
+        
         module_function
+        
         def replace_limit_offset!(sql, limit, offset, order)
           if limit
             offset ||= 0
@@ -110,6 +113,7 @@ module ::ArJdbc
       end
 
       module SqlServerAddLimitOffset
+        
         def add_limit_offset!(sql, options)
           if options[:limit]
             order = "ORDER BY #{options[:order] || determine_order_clause(sql)}"
@@ -117,7 +121,9 @@ module ::ArJdbc
             SqlServerReplaceLimitOffset.replace_limit_offset!(sql, options[:limit], options[:offset], order)
           end
         end
+        
       end
+      
     end
   end
 end

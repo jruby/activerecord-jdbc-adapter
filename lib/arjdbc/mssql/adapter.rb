@@ -5,7 +5,7 @@ require 'arjdbc/mssql/lock_helpers'
 require 'arjdbc/jdbc/serialized_attributes_helper'
 
 module ArJdbc
-  module MsSQL
+  module MSSQL
     include TSqlMethods
     include LimitHelpers
 
@@ -35,11 +35,11 @@ module ArJdbc
     end
 
     def self.column_selector
-      [/sqlserver|tds|Microsoft SQL/i, lambda {|cfg,col| col.extend(::ArJdbc::MsSQL::Column)}]
+      [ /sqlserver|tds|Microsoft SQL/i, lambda {|cfg, column| column.extend(ArJdbc::MSSQL::Column)} ]
     end
 
     def self.jdbc_connection_class
-      ::ActiveRecord::ConnectionAdapters::MssqlJdbcConnection
+      ::ActiveRecord::ConnectionAdapters::MSSQLJdbcConnection
     end
 
     def self.arel2_visitors(config)
@@ -91,7 +91,7 @@ module ArJdbc
       if type.to_s == 'string' and limit == 1073741823 and sqlserver_version != "2000"
         'NVARCHAR(MAX)'
       elsif %w( boolean date datetime ).include?(type.to_s)
-        super(type)   # cannot specify limit/precision/scale with these types
+        super(type) # cannot specify limit/precision/scale with these types
       else
         super
       end
@@ -208,7 +208,7 @@ module ArJdbc
       when String, ActiveSupport::Multibyte::Chars, Integer
         value = value.to_s
         if column && column.type == :binary
-          "'#{quote_string(ArJdbc::MsSQL::Column.string_to_binary(value))}'" # ' (for ruby-mode)
+          "'#{quote_string(ArJdbc::MSSQL::Column.string_to_binary(value))}'" # ' (for ruby-mode)
         elsif column && [:integer, :float].include?(column.type)
           value = column.type == :integer ? value.to_i : value.to_f
           value.to_s
@@ -219,12 +219,8 @@ module ArJdbc
         end
       when TrueClass  then '1'
       when FalseClass then '0'
-      else            super
+      else super
       end
-    end
-
-    def quote_string(string)
-      string.gsub(/\'/, "''")
     end
 
     def quote_table_name(name)
@@ -235,6 +231,10 @@ module ArJdbc
       "[#{name}]"
     end
 
+    def quote_string(string)
+      string.gsub("'", "''")
+    end
+    
     def quoted_true
       quote true
     end
@@ -243,8 +243,10 @@ module ArJdbc
       quote false
     end
 
-    def adapter_name #:nodoc:
-      'MsSQL'
+    ADAPTER_NAME = 'MSSQL'
+    
+    def adapter_name # :nodoc:
+      ADAPTER_NAME
     end
 
     def change_order_direction(order)
@@ -372,7 +374,7 @@ module ArJdbc
     # Turns IDENTITY_INSERT ON for table during execution of the block
     # N.B. This sets the state of IDENTITY_INSERT to OFF after the
     # block has been executed without regard to its previous state
-    def with_identity_insert_enabled(table_name, &block)
+    def with_identity_insert_enabled(table_name)
       set_identity_insert(table_name, true)
       yield
     ensure
@@ -382,7 +384,8 @@ module ArJdbc
     def set_identity_insert(table_name, enable = true)
       execute "SET IDENTITY_INSERT #{table_name} #{enable ? 'ON' : 'OFF'}"
     rescue Exception => e
-      raise ActiveRecord::ActiveRecordError, "IDENTITY_INSERT could not be turned #{enable ? 'ON' : 'OFF'} for table #{table_name}"
+      raise ActiveRecord::ActiveRecordError, "IDENTITY_INSERT could not be turned" + 
+            " #{enable ? 'ON' : 'OFF'} for table #{table_name} due : #{e.inspect}"
     end
 
     def identity_column(table_name)

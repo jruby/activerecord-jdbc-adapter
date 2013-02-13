@@ -1,8 +1,8 @@
-require 'arjdbc/mssql/adapter'
-require 'test/unit'
+require 'test_helper'
+require 'arjdbc/mssql'
 
-# This tests ArJdbc::MsSQL#add_lock! without actually connecting to the database.
-class MssqlRowLockingSqlTest < Test::Unit::TestCase
+# This tests ArJdbc::MSSQL#add_lock! without actually connecting to the database.
+class MSSQLRowLockingSqlTest < Test::Unit::TestCase
 
   def test_find_all
     add_lock_test "Appointment.find(:all)",
@@ -136,22 +136,22 @@ class MssqlRowLockingSqlTest < Test::Unit::TestCase
       }
   end
 
+  class Dummy
+    include ::ArJdbc::MSSQL::LockHelpers::SqlServerAddLock
+  end
 
   private
 
-    class Dummy
-      include ::ArJdbc::MsSQL::LockHelpers::SqlServerAddLock
-    end
+  def add_lock!(sql, options={})
+    result = sql.dup
+    Dummy.new.add_lock!(result, {:lock=>true}.merge(options))
+    result
+  end
 
-    def add_lock!(sql, options={})
-      result = sql.dup
-      Dummy.new.add_lock!(result, {:lock=>true}.merge(options))
-      result
-    end
-
-    def add_lock_test(message, before, after, options={})
-      before = before.gsub(/\s*\n\s*/m, " ").strip
-      after = after.gsub(/\s*\n\s*/m, " ").strip
-      assert_equal after, add_lock!(before, options).strip, message
-    end
+  def add_lock_test(message, before, after, options={})
+    before = before.gsub(/\s*\n\s*/m, " ").strip
+    after = after.gsub(/\s*\n\s*/m, " ").strip
+    assert_equal after, add_lock!(before, options).strip, message
+  end
+  
 end

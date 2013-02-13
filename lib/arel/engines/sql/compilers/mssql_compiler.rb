@@ -1,6 +1,6 @@
 module Arel
   module SqlCompiler
-    class MsSQLCompiler < GenericCompiler
+    class MSSQLCompiler < GenericCompiler
       def select_sql
         projections = @relation.projections
         offset = relation.skipped
