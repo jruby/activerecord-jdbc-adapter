@@ -711,6 +711,13 @@ module SimpleTestMethods
     assert Thing.find_by_name 'jozko'
   end
   
+  def test_connection_alive_sql
+    connection = ActiveRecord::Base.connection
+    alive_sql = connection.config[:connection_alive_sql]
+    assert_not_nil alive_sql, "no :connection_alive_sql for #{connection}"
+    connection.execute alive_sql
+  end
+  
   protected
   
   def assert_date_type(value)
