@@ -4,7 +4,8 @@ module ActiveRecord
       attr_writer :limit, :precision
 
       def initialize(config, name, default, *args)
-        call_discovered_column_callbacks(config)
+        # NOTE: extending classes do not want this if they do they shall call
+        call_discovered_column_callbacks(config) if self.class == JdbcColumn
         super(name, default_value(default), *args)
         init_column(name, default, *args)
       end

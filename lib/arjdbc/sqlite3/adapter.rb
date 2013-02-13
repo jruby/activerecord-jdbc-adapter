@@ -407,9 +407,6 @@ module ActiveRecord::ConnectionAdapters
       end
     end
 
-    def call_discovered_column_callbacks(*)
-    end
-
     def self.string_to_binary(value)
       value
     end

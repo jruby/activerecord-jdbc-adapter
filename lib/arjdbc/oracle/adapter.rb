@@ -537,8 +537,5 @@ module ActiveRecord::ConnectionAdapters
 
   class OracleColumn < JdbcColumn
     include ArJdbc::Oracle::Column
-
-    def call_discovered_column_callbacks(*)
-    end
   end
 end

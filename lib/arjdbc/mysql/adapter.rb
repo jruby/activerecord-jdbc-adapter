@@ -566,9 +566,7 @@ module ActiveRecord
           super(nil, name, *args)
         end
       end
-
-      def call_discovered_column_callbacks(*)
-      end
+      
     end
 
     class MysqlAdapter < JdbcAdapter
