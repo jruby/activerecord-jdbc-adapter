@@ -1,6 +1,86 @@
 require 'test_helper'
 require 'arjdbc/mssql'
 
+class MSSQLTest < Test::Unit::TestCase
+  
+  # NOTE: lot of tests kindly borrowed from __activerecord-sqlserver-adapter__
+  
+  test "get table name" do
+    insert_sql = "INSERT INTO [funny_jokes] ([name]) VALUES('Knock knock')"
+    update_sql = "UPDATE [customers] SET [address_street] = NULL WHERE [id] = 2"
+    select_sql = "SELECT * FROM [customers] WHERE ([customers].[id] = 1)"
+    
+    connection = new_adapter_stub
+    assert_equal 'funny_jokes', connection.send(:get_table_name, insert_sql)
+    assert_equal 'customers', connection.send(:get_table_name, update_sql)
+    assert_equal 'customers', connection.send(:get_table_name, select_sql)
+
+    assert_equal '[funny_jokes]', connection.send(:get_table_name, insert_sql, true)
+    assert_equal '[customers]', connection.send(:get_table_name, update_sql, true)
+    assert_equal '[customers]', connection.send(:get_table_name, select_sql, true)
+    
+    select_sql = " SELECT * FROM  customers  WHERE ( customers.id = 1 ) "
+    assert_equal 'customers', connection.send(:get_table_name, select_sql)
+    assert_equal 'customers', connection.send(:get_table_name, select_sql, true)
+    
+    assert_nil connection.send(:get_table_name, 'SELECT 1')
+    # NOTE: this has been failing even before refactoring - not sure if it's needed :
+    #assert_nil connection.send(:get_table_name, 'SELECT * FROM someFunction()')
+    #assert_nil connection.send(:get_table_name, 'SELECT * FROM someFunction() WHERE 1 > 2')
+  end
+  
+  context "Utils" do
+    
+    setup do
+      @expected_table_name = 'baz'
+      @expected_db_name = 'foo'
+      @first_second_table_names = ['[baz]','baz','[bar].[baz]','bar.baz']
+      @third_table_names = ['[foo].[bar].[baz]','foo.bar.baz']
+      @qualifed_table_names = @first_second_table_names + @third_table_names
+    end
+
+    test 'return clean table_name from Utils.unqualify_table_name' do
+      @qualifed_table_names.each do |qtn|
+        assert_equal @expected_table_name,
+          ArJdbc::MSSQL::Utils.send(:unqualify_table_name, qtn),
+          "This qualifed_table_name #{qtn} did not unqualify correctly."
+      end
+    end
+
+    test 'return nil from Utils.unqualify_db_name when table_name is less than 2 qualified' do
+      @first_second_table_names.each do |qtn|
+        assert_equal nil, ArJdbc::MSSQL::Utils.send(:unqualify_db_name, qtn),
+          "This qualifed_table_name #{qtn} did not return nil."
+      end
+    end
+
+    test 'return clean db_name from Utils.unqualify_db_name when table is thrid level qualified' do
+      @third_table_names.each do |qtn|
+        assert_equal @expected_db_name,
+          ArJdbc::MSSQL::Utils.send(:unqualify_db_name, qtn),
+          "This qualifed_table_name #{qtn} did not unqualify the db_name correctly."
+      end
+    end
+    
+  end
+  
+  private
+  
+  def new_adapter_stub(config = {})
+    config = config.merge({ 
+        :adapter => 'jdbc', 
+        :adapter_spec => ArJdbc::MSSQL, 
+        :sqlserver_version => 2008
+    })
+    connection = stub('connection'); logger = nil
+    connection.stub_everything
+    adapter = ActiveRecord::ConnectionAdapters::JdbcAdapter.new connection, logger, config
+    yield(adapter) if block_given?
+    adapter
+  end
+  
+end
+
 # This tests ArJdbc::MSSQL#add_lock! without actually connecting to the database.
 class MSSQLRowLockingSqlTest < Test::Unit::TestCase
 
