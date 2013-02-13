@@ -11,7 +11,7 @@ module ArJdbc
 
     @@_lob_callback_added = nil
     
-    def self.extended(mod)
+    def self.extended(base)
       unless @@_lob_callback_added
         ActiveRecord::Base.class_eval do
           def after_save_with_mssql_lob
@@ -31,11 +31,17 @@ module ArJdbc
         ActiveRecord::Base.after_save :after_save_with_mssql_lob
         @@_lob_callback_added = true
       end
-      mod.add_version_specific_add_limit_offset
+      
+      if ( version = base.sqlserver_version ) == '2000'
+        extend LimitHelpers::SqlServer2000AddLimitOffset
+      else
+        extend LimitHelpers::SqlServerAddLimitOffset
+      end
+      base.config[:sqlserver_version] ||= version
     end
 
     def self.column_selector
-      [ /sqlserver|tds|Microsoft SQL/i, lambda {|cfg, column| column.extend(ArJdbc::MSSQL::Column)} ]
+      [ /sqlserver|tds|Microsoft SQL/i, lambda { |cfg, column| column.extend(::ArJdbc::MSSQL::Column) } ]
     end
 
     def self.jdbc_connection_class
@@ -44,38 +50,32 @@ module ArJdbc
 
     def self.arel2_visitors(config)
       require 'arel/visitors/sql_server'
-      visitor_class = config[:sqlserver_version] == "2000" ? ::Arel::Visitors::SQLServer2000 : ::Arel::Visitors::SQLServer
-      {}.tap {|v| %w(mssql sqlserver jdbcmssql).each {|x| v[x] = visitor_class } }
+      visitors = config[:sqlserver_version] == '2000' ? 
+        ::Arel::Visitors::SQLServer2000 : ::Arel::Visitors::SQLServer
+      { 'mssql' => visitors, 'jdbcmssql' => visitors, 'sqlserver' => visitors }
     end
 
     def sqlserver_version
-      @sqlserver_version ||= select_value("select @@version")[/Microsoft SQL Server\s+(\d{4})/, 1]
-    end
-
-    def add_version_specific_add_limit_offset
-      config[:sqlserver_version] = version = sqlserver_version
-      if version == "2000"
-        extend LimitHelpers::SqlServer2000AddLimitOffset
-      else
-        extend LimitHelpers::SqlServerAddLimitOffset
+      @sqlserver_version ||= begin
+        config_version = config[:sqlserver_version]
+        config_version ? config_version.to_s :
+          select_value("SELECT @@version")[/Microsoft SQL Server\s+(\d{4})/, 1]
       end
     end
 
-    def modify_types(tp) #:nodoc:
-      super(tp)
-      tp[:string] = {:name => "NVARCHAR", :limit => 255}
-
-      if sqlserver_version == "2000"
-        tp[:text] = {:name => "NTEXT"}
+    def modify_types(types) #:nodoc:
+      super(types)
+      types[:string] = { :name => "NVARCHAR", :limit => 255 }
+      if sqlserver_2000?
+        types[:text] = { :name => "NTEXT" }
       else
-        tp[:text] = {:name => "NVARCHAR(MAX)"}
+        types[:text] = { :name => "NVARCHAR(MAX)" }
       end
-
-      tp[:primary_key] = "int NOT NULL IDENTITY(1, 1) PRIMARY KEY"
-      tp[:integer][:limit] = nil
-      tp[:boolean] = {:name => "bit"}
-      tp[:binary] = {:name => "image"}
-      tp
+      types[:primary_key] = "int NOT NULL IDENTITY(1, 1) PRIMARY KEY"
+      types[:integer][:limit] = nil
+      types[:boolean] = { :name => "bit" }
+      types[:binary] = { :name => "image" }
+      types
     end
 
     def type_to_sql(type, limit = nil, precision = nil, scale = nil) #:nodoc:
@@ -88,7 +88,7 @@ module ArJdbc
       # MSSQL Server 2000 is skipped here because I don't know how it will behave.
       #
       # See: http://msdn.microsoft.com/en-us/library/ms186939.aspx
-      if type.to_s == 'string' and limit == 1073741823 and sqlserver_version != "2000"
+      if type.to_s == 'string' && limit == 1073741823 && ! sqlserver_2000?
         'NVARCHAR(MAX)'
       elsif %w( boolean date datetime ).include?(type.to_s)
         super(type) # cannot specify limit/precision/scale with these types
@@ -231,18 +231,6 @@ module ArJdbc
       "[#{name}]"
     end
 
-    def quote_string(string)
-      string.gsub("'", "''")
-    end
-    
-    def quoted_true
-      quote true
-    end
-
-    def quoted_false
-      quote false
-    end
-
     ADAPTER_NAME = 'MSSQL'
     
     def adapter_name # :nodoc:
@@ -250,11 +238,12 @@ module ArJdbc
     end
 
     def change_order_direction(order)
+      asc, desc = /\bASC\b/i, /\bDESC\b/i
       order.split(",").collect do |fragment|
         case fragment
-        when  /\bDESC\b/i     then fragment.gsub(/\bDESC\b/i, "ASC")
-        when  /\bASC\b/i      then fragment.gsub(/\bASC\b/i, "DESC")
-        else                  String.new(fragment).split(',').join(' DESC,') + ' DESC'
+        when desc  then fragment.gsub(desc, "ASC")
+        when asc   then fragment.gsub(asc, "DESC")
+        else "#{fragment.split(',').join(' DESC,')} DESC"
         end
       end.join(",")
     end
@@ -273,7 +262,7 @@ module ArJdbc
       execute "DROP DATABASE #{name}"
     end
 
-    def create_database(name, options={})
+    def create_database(name, options = {})
       execute "CREATE DATABASE #{name}"
       execute "USE #{name}"
     end
@@ -333,18 +322,31 @@ module ArJdbc
 
     def remove_default_constraint(table_name, column_name)
       clear_cached_table(table_name)
-      defaults = select "select def.name from dbo.sysobjects def, dbo.syscolumns col, dbo.sysobjects tab where col.cdefault = def.id and col.name = '#{column_name}' and tab.name = '#{table_name}' and col.id = tab.id"
-      defaults.each {|constraint|
-        execute "ALTER TABLE #{table_name} DROP CONSTRAINT #{constraint["name"]}"
-      }
+      if sqlserver_2000?
+        # NOTE: since SQLServer 2005 these are provided as sys.sysobjects etc.
+        # but only due backwards-compatibility views and should be avoided ...
+        defaults = select_values "SELECT d.name" <<
+          " FROM sysobjects d, syscolumns c, sysobjects t" <<
+          " WHERE c.cdefault = d.id AND c.name = '#{column_name}'" <<
+          " AND t.name = '#{table_name}' AND c.id = t.id"
+      else
+        defaults = select_values "SELECT d.name FROM sys.tables t" <<
+          " JOIN sys.default_constraints d ON d.parent_object_id = t.object_id" <<
+          " JOIN sys.columns c ON c.object_id = t.object_id AND c.column_id = d.parent_column_id" <<
+          " WHERE t.name = '#{table_name}' AND c.name = '#{column_name}'"
+      end
+      defaults.each do |def_name|
+        execute "ALTER TABLE #{table_name} DROP CONSTRAINT #{def_name}"
+      end
     end
 
     def remove_check_constraints(table_name, column_name)
       clear_cached_table(table_name)
-      # TODO remove all constraints in single method
-      constraints = select "SELECT CONSTRAINT_NAME FROM INFORMATION_SCHEMA.CONSTRAINT_COLUMN_USAGE where TABLE_NAME = '#{table_name}' and COLUMN_NAME = '#{column_name}'"
-      constraints.each do |constraint|
-        execute "ALTER TABLE #{table_name} DROP CONSTRAINT #{constraint["CONSTRAINT_NAME"]}"
+      constraints = select_values "SELECT constraint_name" <<
+        " FROM information_schema.constraint_column_usage" <<
+        " WHERE table_name = '#{table_name}' AND column_name = '#{column_name}'"
+      constraints.each do |constraint_name|
+        execute "ALTER TABLE #{table_name} DROP CONSTRAINT #{constraint_name}"
       end
     end
 
@@ -455,6 +457,10 @@ module ArJdbc
     end
     
     private
+    
+    def sqlserver_2000?
+      sqlserver_version <= '2000'
+    end
     
     def _execute(sql, name = nil)
       # Match the start of the SQL to determine appropriate behavior.
