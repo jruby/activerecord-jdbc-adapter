@@ -231,7 +231,9 @@ module ArJdbc
     end
 
     def quote_column_name(name)
-      "[#{name}]"
+      name.to_s.split('.').map do |n| # "[#{name}]"
+        n =~ /^\[.*\]$/ ? n : "[#{n.gsub(']', ']]')}]"
+      end.join('.')
     end
 
     ADAPTER_NAME = 'MSSQL'

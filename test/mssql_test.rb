@@ -64,6 +64,13 @@ class MSSQLTest < Test::Unit::TestCase
     
   end
   
+  test "quote column name" do
+    connection = new_adapter_stub
+    assert_equal "[foo]", connection.quote_column_name("foo")
+    assert_equal "[bar]", connection.quote_column_name("[bar]")
+    assert_equal "[foo]]bar]", connection.quote_column_name("foo]bar")
+  end
+  
   private
   
   def new_adapter_stub(config = {})
