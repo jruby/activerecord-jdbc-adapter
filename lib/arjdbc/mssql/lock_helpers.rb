@@ -1,5 +1,5 @@
-module ::ArJdbc
-  module MsSQL
+module ArJdbc
+  module MSSQL
     module LockHelpers
       module SqlServerAddLock
         # Microsoft SQL Server uses its own syntax for SELECT .. FOR UPDATE:

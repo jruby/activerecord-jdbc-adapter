@@ -2,9 +2,9 @@ require 'arel/visitors/compat'
 
 module Arel
   module Visitors
-    class SQLServer < Arel::Visitors::ToSql
-      include ArJdbc::MsSQL::LimitHelpers::SqlServerReplaceLimitOffset
-      include ArJdbc::MsSQL::LockHelpers::SqlServerAddLock
+    class SQLServer < ToSql
+      include ArJdbc::MSSQL::LimitHelpers::SqlServerReplaceLimitOffset
+      include ArJdbc::MSSQL::LockHelpers::SqlServerAddLock
 
       def select_count? o
         sel = o.cores.length == 1 && o.cores.first
@@ -50,7 +50,7 @@ module Arel
     end
 
     class SQLServer2000 < SQLServer
-      include ArJdbc::MsSQL::LimitHelpers::SqlServer2000ReplaceLimitOffset
+      include ArJdbc::MSSQL::LimitHelpers::SqlServer2000ReplaceLimitOffset
     end
   end
 end

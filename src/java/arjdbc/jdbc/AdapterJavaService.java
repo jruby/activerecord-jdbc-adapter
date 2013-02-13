@@ -34,7 +34,8 @@ import arjdbc.derby.DerbyModule;
 import arjdbc.h2.H2RubyJdbcConnection;
 import arjdbc.hsqldb.HSQLDBModule;
 import arjdbc.informix.InformixRubyJdbcConnection;
-import arjdbc.mssql.MssqlRubyJdbcConnection;
+import arjdbc.mssql.MSSQLModule;
+import arjdbc.mssql.MSSQLRubyJdbcConnection;
 import arjdbc.mysql.MySQLModule;
 import arjdbc.mysql.MySQLRubyJdbcConnection;
 import arjdbc.oracle.OracleModule;
@@ -54,7 +55,7 @@ public class AdapterJavaService implements BasicLibraryService {
         // ActiveRecord::ConnectionAdapter-s :
         RubyClass jdbcConnection = RubyJdbcConnection.createJdbcConnectionClass(runtime);
         PostgresqlRubyJdbcConnection.createPostgresqlJdbcConnectionClass(runtime, jdbcConnection);
-        MssqlRubyJdbcConnection.createMssqlJdbcConnectionClass(runtime, jdbcConnection);
+        MSSQLRubyJdbcConnection.createMSSQLJdbcConnectionClass(runtime, jdbcConnection);
         InformixRubyJdbcConnection.createInformixJdbcConnectionClass(runtime, jdbcConnection);
         OracleRubyJdbcConnection.createOracleJdbcConnectionClass(runtime, jdbcConnection);
         SQLite3RubyJdbcConnection.createSQLite3JdbcConnectionClass(runtime, jdbcConnection);
@@ -64,6 +65,7 @@ public class AdapterJavaService implements BasicLibraryService {
         // ArJdbc :
         RubyModule arJdbc = runtime.getOrCreateModule("ArJdbc");
         MySQLModule.load(arJdbc);
+        MSSQLModule.load(arJdbc);
         DerbyModule.load(arJdbc);
         HSQLDBModule.load(arJdbc);
         SQLite3Module.load(arJdbc);

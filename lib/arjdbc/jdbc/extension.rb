@@ -26,7 +26,7 @@ module ArJdbc
   #         true
   #       end
   #     end
-  def self.extension(name,&block)
+  def self.extension(name, &block)
     if const_defined?(name)
       mod = const_get(name)
     else
