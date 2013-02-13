@@ -42,10 +42,23 @@ class MSSQLSimpleTest < Test::Unit::TestCase
     assert(!title_column.null)
   end
 
+  [nil, "NULL", "null", "(null)", "(NULL)"].each_with_index do |v, i|
+    define_method "test_null_#{i}" do
+      entry = Entry.create!(:title => v, :content => v)
+      entry = Entry.find(entry.id)
+      assert_equal [v, v], [entry.title, entry.content], "writing #{v.inspect} " + 
+        "should read back as #{v.inspect} for both string and text columns"
+    end
+  end
+  
   # ACTIVERECORD_JDBC-124
   def test_model_does_not_have_row_num_column
     entry = Entry.first
     assert_false entry.attributes.keys.include?("_row_num")
     assert_false entry.respond_to?(:_row_num)
   end
+end
+
+class MSSQLHasManyThroughTest < Test::Unit::TestCase
+  include HasManyThroughMethods
 end

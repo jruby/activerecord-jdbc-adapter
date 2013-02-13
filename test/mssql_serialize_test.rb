@@ -1,6 +1,6 @@
 require 'db/mssql'
 require 'serialize'
 
-class MsSQLSerializeTest < Test::Unit::TestCase
+class MSSQLSerializeTest < Test::Unit::TestCase
   include SerializeTestMethods
 end
