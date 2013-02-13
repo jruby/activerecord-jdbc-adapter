@@ -840,9 +840,9 @@ module ActiveRecord3TestMethods
     
     def test_visitor_accessor
       adapter = Entry.connection
-      expected_visitors = adapter.config[:adapter_spec].
-        arel2_visitors(adapter).values
-      assert !adapter.visitor.nil?
+      adapter_spec = adapter.config[:adapter_spec]
+      expected_visitors = adapter_spec.arel2_visitors(adapter.config).values
+      assert_not_nil adapter.visitor
       assert expected_visitors.include?(adapter.visitor.class)
     end if Test::Unit::TestCase.ar_version('3.2') # >= 3.2
     
