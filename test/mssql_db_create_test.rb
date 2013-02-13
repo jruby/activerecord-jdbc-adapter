@@ -18,8 +18,11 @@ class MysqlDbCreateTest < Test::Unit::TestCase
       end
     end
     ActiveRecord::Base.establish_connection(db_config.merge(:database => "master"))
-    select = "SELECT NAME FROM sys.sysdatabases"
-    select = "SELECT name FROM master..sysdatabases ORDER BY name" if ActiveRecord::Base.connection.sqlserver_version == "2000"
+    if ActiveRecord::Base.connection.send(:sqlserver_2000?)
+      select = "SELECT name FROM master..sysdatabases ORDER BY name"
+    else
+      select = "SELECT name FROM sys.sysdatabases"
+    end
     databases = ActiveRecord::Base.connection.select_rows(select).flatten
     assert databases.include?(@db_name)
   end

@@ -1,13 +1,14 @@
 require 'strscan'
-require 'arjdbc/mssql/tsql_helper'
+require 'arjdbc/mssql/utils'
+require 'arjdbc/mssql/tsql_methods'
 require 'arjdbc/mssql/limit_helpers'
 require 'arjdbc/mssql/lock_helpers'
 require 'arjdbc/jdbc/serialized_attributes_helper'
 
 module ArJdbc
   module MSSQL
+    include Utils
     include TSqlMethods
-    include LimitHelpers
 
     @@_lob_callback_added = nil
     
@@ -93,7 +94,7 @@ module ArJdbc
       elsif %w( boolean date datetime ).include?(type.to_s)
         super(type) # cannot specify limit/precision/scale with these types
       else
-        super
+        super # TSqlMethods#type_to_sql
       end
     end
 
@@ -207,12 +208,14 @@ module ArJdbc
       # column, so we include Integer here.
       when String, ActiveSupport::Multibyte::Chars, Integer
         value = value.to_s
-        if column && column.type == :binary
+        column_type = column && column.type
+        if column_type == :binary
           "'#{quote_string(ArJdbc::MSSQL::Column.string_to_binary(value))}'" # ' (for ruby-mode)
-        elsif column && [:integer, :float].include?(column.type)
-          value = column.type == :integer ? value.to_i : value.to_f
-          value.to_s
-        elsif !column.respond_to?(:is_utf8?) || column.is_utf8?
+        elsif column_type == :integer
+          value.to_i.to_s
+        elsif column_type == :float
+          value.to_f.to_s
+        elsif ! column.respond_to?(:is_utf8?) || column.is_utf8?
           "N'#{quote_string(value)}'" # ' (for ruby-mode)
         else
           super
@@ -356,22 +359,27 @@ module ArJdbc
       execute "DROP INDEX #{table_name}.#{index_name(table_name, options)}"
     end
 
+    def table_exists?(name)
+      jdbc_columns(name) rescue nil
+    end
+    
+    SKIP_COLUMNS_TABLE_NAMES_RE = /^information_schema\./i # :nodoc:
+    
     def columns(table_name, name = nil)
-      # It's possible for table_name to be an empty string, or nil, if something attempts to issue SQL
-      # which doesn't involve a table.  IE. "SELECT 1" or "SELECT * from someFunction()".
+      # It's possible for table_name to be an empty string, or nil, if something 
+      # attempts to issue SQL which doesn't involve a table. 
+      # IE. "SELECT 1" or "SELECT * FROM someFunction()".
       return [] if table_name.blank?
-      table_name = table_name.to_s if table_name.is_a?(Symbol)
+      
+      table_name = unquote_table_name(table_name)
 
-      # Remove []'s from around the table name, valid in a select statement, but not when matching metadata.
-      table_name = table_name.gsub(/[\[\]]/, '')
-
-      return [] if table_name =~ /^information_schema\./i
-      @table_columns ||= {}
-      unless @table_columns[table_name]
+      return [] if table_name =~ SKIP_COLUMNS_TABLE_NAMES_RE
+      
+      unless (@table_columns ||= {})[table_name]
         @table_columns[table_name] = super
-        @table_columns[table_name].each do |col|
-          col.identity = true if col.sql_type =~ /identity/i
-          col.is_special = true if col.sql_type =~ /text|ntext|image|xml/i
+        @table_columns[table_name].each do |column|
+          column.identity = true if column.sql_type =~ /identity/i
+          column.is_special = true if column.sql_type =~ /text|ntext|image|xml/i
         end
       end
       @table_columns[table_name]
@@ -395,12 +403,12 @@ module ArJdbc
     end
 
     def identity_column(table_name)
-      columns(table_name).each do |col|
-        return col.name if col.identity
+      for column in columns(table_name)
+        return column.name if column.identity
       end
-      return nil
+      nil
     end
-
+    
     def query_requires_identity_insert?(sql)
       table_name = get_table_name(sql)
       id_column = identity_column(table_name)
@@ -409,32 +417,7 @@ module ArJdbc
         return table_name if insert_columns.include?(id_column)
       end
     end
-
-    def unquote_column_name(name)
-      if name =~ /^\[.*\]$/
-        name[1..-2]
-      else
-        name
-      end
-    end
-
-    def get_special_columns(table_name)
-      special = []
-      columns(table_name).each do |col|
-        special << col.name if col.is_special
-      end
-      special
-    end
-
-    def repair_special_columns(sql)
-      special_cols = get_special_columns(get_table_name(sql))
-      for col in special_cols.to_a
-        sql.gsub!(Regexp.new(" #{col.to_s} = "), " #{col.to_s} LIKE ")
-        sql.gsub!(/ORDER BY #{col.to_s}/i, '')
-      end
-      sql
-    end
-
+    
     def determine_order_clause(sql)
       return $1 if sql =~ /ORDER BY (.*)$/
       table_name = get_table_name(sql)
@@ -444,7 +427,8 @@ module ArJdbc
     def determine_primary_key(table_name)
       primary_key = columns(table_name).detect { |column| column.primary || column.identity }
       return primary_key.name if primary_key
-      # Look for an id column.  Return it, without changing case, to cover dbs with a case-sensitive collation.
+      # Look for an id column and return it, 
+      # without changing case, to cover DBs with a case-sensitive collation :
       columns(table_name).each { |column| return column.name if column.name =~ /^id$/i }
       # Give up and provide something which is going to crash almost certainly
       columns(table_name)[0].name
@@ -455,14 +439,10 @@ module ArJdbc
     end
 
     def reset_column_information
-      @table_columns = nil
+      @table_columns = nil if defined? @table_columns
     end
     
     private
-    
-    def sqlserver_2000?
-      sqlserver_version <= '2000'
-    end
     
     def _execute(sql, name = nil)
       # Match the start of the SQL to determine appropriate behavior.
@@ -480,11 +460,33 @@ module ArJdbc
           @connection.execute_insert(sql)
         end
       elsif sql.lstrip =~ /\A\(?\s*(select|show)/i # self.class.select?(sql)
-        repair_special_columns(sql)
+        sql = repair_special_columns(sql)
         @connection.execute_query(sql)
       else # sql.lstrip =~ /\A(create|exec)/i
         @connection.execute_update(sql)
       end
+    end
+    
+    def repair_special_columns(sql)
+      qualified_table_name = get_table_name(sql, true)
+      special_columns = get_special_columns(qualified_table_name)
+      for column in special_columns.to_a
+        sql.gsub!(Regexp.new(" #{column} = "), " #{column} LIKE ")
+        sql.gsub!(/ORDER BY #{column.to_s}/i, '')
+      end if special_columns
+      sql
+    end
+
+    def get_special_columns(qualified_table_name)
+      special = []
+      columns(qualified_table_name).each do |column|
+        special << column.name if column.is_special
+      end
+      special
+    end
+    
+    def sqlserver_2000?
+      sqlserver_version <= '2000'
     end
     
   end
