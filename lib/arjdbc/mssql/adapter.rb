@@ -444,6 +444,10 @@ module ArJdbc
     
     private
     
+    def sqlserver_2000?
+      sqlserver_version <= '2000'
+    end
+    
     def _execute(sql, name = nil)
       # Match the start of the SQL to determine appropriate behavior.
       # Be aware of multi-line SQL which might begin with 'create stored_proc' 
