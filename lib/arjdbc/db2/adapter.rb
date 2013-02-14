@@ -240,9 +240,11 @@ module ArJdbc
       end
     end
     
-    def zos_create_table(name, options = {}) #:nodoc:
+    def zos_create_table(name, options = {}) # :nodoc:
       table_definition = ActiveRecord::ConnectionAdapters::TableDefinition.new(self)
-      table_definition.primary_key(options[:primary_key] || ActiveRecord::Base.get_primary_key(name)) unless options[:id] == false
+      unless options[:id] == false
+        table_definition.primary_key(options[:primary_key] || primary_key(name))
+      end
 
       yield table_definition
 
