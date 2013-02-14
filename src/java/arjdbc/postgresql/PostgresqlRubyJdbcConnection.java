@@ -26,6 +26,7 @@
 package arjdbc.postgresql;
 
 import arjdbc.jdbc.RubyJdbcConnection;
+import java.sql.DatabaseMetaData;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -52,7 +53,19 @@ public class PostgresqlRubyJdbcConnection extends RubyJdbcConnection {
 
         return clazz;
     }
-
+    
+    @Override
+    protected String caseConvertIdentifierForJdbc(final DatabaseMetaData metaData, final String value)
+        throws SQLException {
+        if ( value != null ) {
+            if ( metaData.storesUpperCaseIdentifiers() ) {
+                return value.toUpperCase();
+            }
+            // for PostgreSQL we do not care about storesLowerCaseIdentifiers()
+        }
+        return value;
+    }
+    
     /**
      * Override jdbcToRuby type conversions to handle infinite timestamps.
      * Handing timestamp off to ruby as string so adapter can perform type

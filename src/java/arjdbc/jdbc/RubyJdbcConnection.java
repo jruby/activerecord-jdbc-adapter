@@ -646,11 +646,11 @@ public class RubyJdbcConnection extends RubyObject {
      * Assumption 2: It is always safe to convert all upper case names since it appears that
      * some adapters do not report StoresUpper/Lower/Mixed correctly (am I right postgres/mysql?).
      */
-    public static String caseConvertIdentifierForRails(DatabaseMetaData metadata, String value)
-            throws SQLException {
-        if (value == null) return null;
-
-        return metadata.storesUpperCaseIdentifiers() ? value.toLowerCase() : value;
+    protected static String caseConvertIdentifierForRails(final DatabaseMetaData metaData, final String value)
+        throws SQLException {
+        if ( value == null ) return null;
+        
+        return metaData.storesUpperCaseIdentifiers() ? value.toLowerCase() : value;
     }
 
     /**
@@ -658,14 +658,14 @@ public class RubyJdbcConnection extends RubyObject {
      * storage case.  Methods like DatabaseMetaData.getPrimaryKeys() needs the table name to match
      * the internal storage name.  Arbtrary queries and the like DO NOT need to do this.
      */
-    public static String caseConvertIdentifierForJdbc(DatabaseMetaData metadata, String value)
-            throws SQLException {
-        if (value == null) return null;
-        boolean isPostgres = metadata.getDatabaseProductName().equals("PostgreSQL");
-
-        if (metadata.storesUpperCaseIdentifiers()) {
+    protected String caseConvertIdentifierForJdbc(final DatabaseMetaData metaData, final String value)
+        throws SQLException {
+        if ( value == null ) return null;
+        
+        if ( metaData.storesUpperCaseIdentifiers() ) {
             return value.toUpperCase();
-        } else if (metadata.storesLowerCaseIdentifiers() && ! isPostgres) {
+        }
+        else if ( metaData.storesLowerCaseIdentifiers() ) {
             return value.toLowerCase();
         }
 
