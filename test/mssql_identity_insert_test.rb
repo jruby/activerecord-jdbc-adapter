@@ -1,8 +1,7 @@
 require 'jdbc_common'
 require 'db/mssql'
 
-class MsSQLIdentityInsertTest < Test::Unit::TestCase
-
+class MSSQLIdentityInsertTest < Test::Unit::TestCase
   include MigrationSetup
   
   def test_enable_identity_insert_when_necessary

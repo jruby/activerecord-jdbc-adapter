@@ -69,6 +69,11 @@ class MSSQLTest < Test::Unit::TestCase
     assert_equal "[foo]", connection.quote_column_name("foo")
     assert_equal "[bar]", connection.quote_column_name("[bar]")
     assert_equal "[foo]]bar]", connection.quote_column_name("foo]bar")
+    
+    assert_equal "[dbo].[foo]", connection.quote_column_name("dbo.foo")
+    assert_equal "[dbo].[bar]", connection.quote_column_name("[dbo].[bar]")
+    assert_equal "[foo].[bar]", connection.quote_column_name("[foo].bar")
+    assert_equal "[foo].[bar]", connection.quote_column_name("foo.[bar]")
   end
   
   private

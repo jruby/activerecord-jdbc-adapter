@@ -1,88 +1,84 @@
 require 'jdbc_common'
 require 'db/mssql'
 
-ActiveRecord::Schema.verbose = false
+class MSSQLLimitOffsetTest < Test::Unit::TestCase
 
-class CreateLegacyShips < ActiveRecord::Migration
+  class CreateLegacyShips < ActiveRecord::Migration
 
-  def self.up
-    create_table "legacy_ships",{:primary_key => :ShipKey} do |t|
-      t.string "name", :limit => 50, :null => false
-      t.integer "width", :default => 123
-      t.integer "length", :default => 456
+    def self.up
+      create_table "legacy_ships",{:primary_key => :ShipKey} do |t|
+        t.string "name", :limit => 50, :null => false
+        t.integer "width", :default => 123
+        t.integer "length", :default => 456
+      end
+    end
+
+    def self.down
+      drop_table "legacy_ships"
+    end
+
+  end
+
+  class LegacyShip < ActiveRecord::Base
+    self.primary_key = "ShipKey"
+  end
+
+  class CreateLongShips < ActiveRecord::Migration
+
+    def self.up
+      create_table "long_ships", :force => true do |t|
+        t.string "name", :limit => 50, :null => false
+        t.integer "width", :default => 123
+        t.integer "length", :default => 456
+      end
+    end
+
+    def self.down
+      drop_table "long_ships"
+    end
+
+  end
+
+  class LongShip < ActiveRecord::Base
+    has_many :vikings
+  end
+
+  class CreateVikings < ActiveRecord::Migration
+
+    def self.up
+      create_table "vikings", :force => true do |t|
+        t.integer "long_ship_id", :null => false
+        t.string "name", :limit => 50, :default => "Sven"
+      end
+    end
+
+    def self.down
+      drop_table "vikings"
+    end
+
+  end
+
+  class Viking < ActiveRecord::Base
+    belongs_to :long_ship
+  end
+
+
+  class CreateNoIdVikings < ActiveRecord::Migration
+    def self.up
+      create_table "no_id_vikings", :force => true do |t|
+        t.string "name", :limit => 50, :default => "Sven"
+      end
+      remove_column "no_id_vikings", "id"
+    end
+
+    def self.down
+      drop_table "no_id_vikings"
     end
   end
 
-  def self.down
-    drop_table "legacy_ships"
+  class NoIdViking < ActiveRecord::Base
   end
-
-end
-
-class LegacyShip < ActiveRecord::Base
-  self.primary_key = "ShipKey"
-end
-
-class CreateLongShips < ActiveRecord::Migration
-
-  def self.up
-    create_table "long_ships", :force => true do |t|
-      t.string "name", :limit => 50, :null => false
-      t.integer "width", :default => 123
-      t.integer "length", :default => 456
-    end
-  end
-
-  def self.down
-    drop_table "long_ships"
-  end
-
-end
-
-class LongShip < ActiveRecord::Base
-  has_many :vikings
-end
-
-class CreateVikings < ActiveRecord::Migration
-
-  def self.up
-    create_table "vikings", :force => true do |t|
-      t.integer "long_ship_id", :null => false
-      t.string "name", :limit => 50, :default => "Sven"
-    end
-  end
-
-  def self.down
-    drop_table "vikings"
-  end
-
-end
-
-class Viking < ActiveRecord::Base
-  belongs_to :long_ship
-end
-
-
-class CreateNoIdVikings < ActiveRecord::Migration
-  def self.up
-    create_table "no_id_vikings", :force => true do |t|
-      t.string "name", :limit => 50, :default => "Sven"
-    end
-    remove_column "no_id_vikings", "id"
-  end
-
-  def self.down
-    drop_table "no_id_vikings"
-  end
-end
-
-class NoIdViking < ActiveRecord::Base
-end
-
-
-
-class MsSQLLimitOffsetTest < Test::Unit::TestCase
-
+  
   def setup
     CreateLegacyShips.up
     CreateLongShips.up

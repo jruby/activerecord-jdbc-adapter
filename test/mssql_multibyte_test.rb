@@ -2,8 +2,7 @@
 require 'jdbc_common'
 require 'db/mssql'
 
-class MsSQLMultibyteTest < Test::Unit::TestCase
-  
+class MSSQLMultibyteTest < Test::Unit::TestCase
   include MultibyteTestMethods
 
   def test_select_multibyte_string

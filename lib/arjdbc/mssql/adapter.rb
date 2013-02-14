@@ -358,7 +358,7 @@ module ArJdbc
     end
 
     def table_exists?(name)
-      jdbc_columns(name) rescue nil
+      !! ( jdbc_columns(name) rescue nil )
     end
     
     SKIP_COLUMNS_TABLE_NAMES_RE = /^information_schema\./i # :nodoc:
