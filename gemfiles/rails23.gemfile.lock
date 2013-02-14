@@ -19,7 +19,7 @@ GEM
     jruby-openssl (0.7.7)
       bouncy-castle-java (>= 1.5.0146.1)
     metaclass (0.0.1)
-    mocha (0.11.4)
+    mocha (0.12.8)
       metaclass (~> 0.0.1)
     multi_json (1.5.0)
     rack (1.1.5)
@@ -36,6 +36,8 @@ GEM
       simplecov-html (~> 0.7.1)
     simplecov-html (0.7.1)
     test-unit (2.5.3)
+    test-unit-context (0.3.0)
+      test-unit (>= 2.4.0)
 
 PLATFORMS
   java
@@ -45,8 +47,9 @@ DEPENDENCIES
   appraisal
   bcrypt-ruby (~> 3.0.0)
   jruby-openssl
-  mocha
+  mocha (~> 0.12.1)
   rails (~> 2.3.16)
   rake
   simplecov
   test-unit
+  test-unit-context
