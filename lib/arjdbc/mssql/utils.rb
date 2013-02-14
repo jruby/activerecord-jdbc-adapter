@@ -21,16 +21,6 @@ module ArJdbc
         end
       end
       
-      def get_primary_key(order, table_name)
-        if order =~ /(\w*id\w*)/i
-          $1
-        else
-          name = unquote_table_name(table_name)
-          model = descendants.select { |m| m.table_name == name }.first
-          model ? model.primary_key : 'id'
-        end
-      end
-      
       # protected
 
       def unquote_table_name(table_name)
@@ -56,14 +46,6 @@ module ArJdbc
       def unqualify_db_name(table_name)
         table_names = table_name.to_s.split('.')
         table_names.length == 3 ? table_names.first.tr('[]', '') : nil
-      end
-      
-      private
-      
-      if ActiveRecord::VERSION::MAJOR >= 3
-        def descendants; ::ActiveRecord::Base.descendants; end
-      else
-        def descendants; ::ActiveRecord::Base.send(:subclasses) end
       end
       
     end
