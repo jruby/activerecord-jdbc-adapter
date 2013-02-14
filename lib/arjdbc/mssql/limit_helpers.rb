@@ -51,8 +51,8 @@ module ArJdbc
               #removing out stuff before the FROM...
               rest = rest_of_query[/FROM/i=~ rest_of_query.. -1]
               #need the table name for avoiding amiguity
-              table_name = LimitHelpers.get_table_name(sql)
-              primary_key = LimitHelpers.get_primary_key(order, table_name)
+              table_name = Utils.get_table_name(sql, true)
+              primary_key = get_primary_key(order, table_name)
               #I am not sure this will cover all bases.  but all the tests pass
               if order[/ORDER/].nil?
                 new_order = "ORDER BY #{order}, #{table_name}.#{primary_key}" if order.index("#{table_name}.#{primary_key}").nil?
@@ -71,6 +71,25 @@ module ArJdbc
           end
           sql
         end
+        
+        def get_primary_key(order, table_name) # table_name might be quoted
+          if order =~ /(\w*id\w*)/i
+            $1
+          else
+            unquoted_name = unquote_table_name(table_name)
+            model = descendants.find { |m| m.table_name == table_name || m.table_name == unquoted_name }
+            model ? model.primary_key : 'id'
+          end
+        end
+
+        private
+        
+        if ActiveRecord::VERSION::MAJOR >= 3
+          def descendants; ::ActiveRecord::Base.descendants; end
+        else
+          def descendants; ::ActiveRecord::Base.send(:subclasses) end
+        end
+        
       end
 
       module SqlServer2000AddLimitOffset
