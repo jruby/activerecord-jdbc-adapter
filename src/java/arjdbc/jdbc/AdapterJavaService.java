@@ -43,6 +43,7 @@ import arjdbc.oracle.OracleRubyJdbcConnection;
 import arjdbc.postgresql.PostgresqlRubyJdbcConnection;
 import arjdbc.sqlite3.SQLite3Module;
 import arjdbc.sqlite3.SQLite3RubyJdbcConnection;
+import arjdbc.sybase.SybaseASERubyJdbcConnection;
 
 import org.jruby.Ruby;
 import org.jruby.RubyClass;
@@ -62,6 +63,7 @@ public class AdapterJavaService implements BasicLibraryService {
         H2RubyJdbcConnection.createH2JdbcConnectionClass(runtime, jdbcConnection);
         MySQLRubyJdbcConnection.createMySQLJdbcConnectionClass(runtime, jdbcConnection);
         DB2RubyJdbcConnection.createDB2JdbcConnectionClass(runtime, jdbcConnection);
+		SybaseASERubyJdbcConnection.createSybaseASEJdbcConnectionClass(runtime, jdbcConnection);
         // ArJdbc :
         RubyModule arJdbc = runtime.getOrCreateModule("ArJdbc");
         MySQLModule.load(arJdbc);
