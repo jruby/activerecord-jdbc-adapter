@@ -52,23 +52,26 @@ module ArJdbc
             start_row = offset + 1
             end_row = offset + limit.to_i
             _, select, rest_of_query = FIND_SELECT.match(sql).to_a
+			
+            #need the table name for avoiding amiguity
+            table_name  = Utils.get_table_name(sql, true)
+            primary_key = get_primary_key(order, table_name)
+			
+            #I am not sure this will cover all bases.  but all the tests pass
+            if order[/ORDER/].nil?
+              new_order = "ORDER BY #{order}, [#{table_name}].[#{primary_key}]" if order.index("#{table_name}.#{primary_key}").nil?
+            else
+              new_order ||= order
+            end
+			
             if (start_row == 1) && (end_row ==1)
-              new_sql = "#{select} TOP 1 #{rest_of_query}"
+              new_sql = "#{select} TOP 1 #{rest_of_query} #{new_order}"
               sql.replace(new_sql)
             else
               #UGLY
               #KLUDGY?
               #removing out stuff before the FROM...
               rest = rest_of_query[/FROM/i=~ rest_of_query.. -1]
-              #need the table name for avoiding amiguity
-              table_name = Utils.get_table_name(sql, true)
-              primary_key = get_primary_key(order, table_name)
-              #I am not sure this will cover all bases.  but all the tests pass
-              if order[/ORDER/].nil?
-                new_order = "ORDER BY #{order}, #{table_name}.#{primary_key}" if order.index("#{table_name}.#{primary_key}").nil?
-              else
-                new_order ||= order
-              end
 
               if (rest_of_query.match(/WHERE/).nil?)
                 new_sql = "#{select} TOP #{limit} #{rest_of_query} WHERE #{table_name}.#{primary_key} NOT IN (#{select} TOP #{offset} #{table_name}.#{primary_key} #{rest} #{new_order}) #{order} "
