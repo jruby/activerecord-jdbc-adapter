@@ -32,11 +32,6 @@ module ArJdbc
         require 'arjdbc/jdbc/quoted_primary_key'
         ActiveRecord::Base.extend ArJdbc::QuotedPrimaryKeyExtension
       end
-      
-      (class << mod; self; end).class_eval do
-        alias_chained_method :insert, :query_dirty, :ora_insert
-        alias_chained_method :columns, :query_cache, :ora_columns
-      end
     end
 
     def self.column_selector
@@ -159,14 +154,16 @@ module ArJdbc
     end
     alias_method :ids_in_list_limit, :in_clause_length
     
+    IDENTIFIER_LENGTH = 30 # :nodoc:
+    
     # maximum length of Oracle identifiers is 30
-    def table_alias_length; 30; end # :nodoc:
-    def table_name_length;  30; end # :nodoc:
-    def index_name_length;  30; end # :nodoc:
-    def column_name_length; 30; end # :nodoc:
+    def table_alias_length; IDENTIFIER_LENGTH; end # :nodoc:
+    def table_name_length;  IDENTIFIER_LENGTH; end # :nodoc:
+    def index_name_length;  IDENTIFIER_LENGTH; end # :nodoc:
+    def column_name_length; IDENTIFIER_LENGTH; end # :nodoc:
 
-    def default_sequence_name(table, column = nil) #:nodoc:
-      "#{table}_seq"
+    def default_sequence_name(table_name, column = nil) # :nodoc:
+      "#{table_name.to_s[0, IDENTIFIER_LENGTH - 4]}_seq"
     end
 
     def create_table(name, options = {}) #:nodoc:
@@ -229,25 +226,26 @@ module ArJdbc
       defined?(::Arel::SqlLiteral) && ::Arel::SqlLiteral === value
     end
 
-    def ora_insert(sql, name = nil, pk = nil, id_value = nil, sequence_name = nil, binds = []) #:nodoc:
+    def insert(sql, name = nil, pk = nil, id_value = nil, sequence_name = nil, binds = []) # :nodoc:
       if (id_value && ! sql_literal?(id_value)) || pk.nil?
         # Pre-assigned id or table without a primary key
         # Presence of #to_sql means an Arel literal bind variable
         # that should use #execute_id_insert below
-        execute sql, name, binds
+        value = exec_insert(to_sql(sql, binds), name, binds)
+        id_value || last_inserted_id(value) # super
       else
         # Assume the sql contains a bind-variable for the id
         # Extract the table from the insert sql. Yuck.
-        table = sql.split(" ", 4)[2].gsub('"', '')
-        sequence_name ||= default_sequence_name(table)
-        id_value = next_sequence_value(sequence_name)
-        log(sql, name) do
-          @connection.execute_id_insert(sql, id_value)
+        sequence_name ||= begin
+          table = extract_table_ref_from_insert_sql(sql)
+          default_sequence_name(table)
         end
+        id_value = next_sequence_value(sequence_name)
+        log(sql, name) { @connection.execute_id_insert(sql, id_value) }
+        id_value
       end
-      id_value
     end
-
+    
     def indexes(table, name = nil)
       @connection.indexes(table, name, @connection.connection.meta_data.user_name)
     end
@@ -424,13 +422,13 @@ module ArJdbc
     def tables
       @connection.tables(nil, oracle_schema)
     end
-
+    
     # NOTE: better to use current_schema instead of the configured one ?!
     
-    def ora_columns(table_name, name = nil)
+    def columns(table_name, name = nil) # :nodoc:
       @connection.columns_internal(table_name.to_s, name, oracle_schema)
     end
-
+    
     # QUOTING ==================================================
 
     # See ACTIVERECORD_JDBC-33 for details -- better to not quote
@@ -514,6 +512,10 @@ module ArJdbc
       end
     end
 
+    def extract_table_ref_from_insert_sql(sql) # :nodoc:
+      sql.split(" ", 4)[2].gsub('"', '')
+    end
+    
     # In Oracle, schemas are usually created under your username :
     # http://www.oracle.com/technology/obe/2day_dba/schema/schema.htm
     # 
