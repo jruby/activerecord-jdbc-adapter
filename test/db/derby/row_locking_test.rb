@@ -1,12 +1,9 @@
-require 'db/derby'
-require 'jdbc_common'
+require File.expand_path('test_helper', File.dirname(__FILE__))
 require 'row_locking'
 
 class DerbyRowLockingTest < Test::Unit::TestCase
   include MigrationSetup
   include RowLockingTestMethods
-  
-  DbTypeMigration.big_decimal_precision = 31
   
 #  def self.startup
 #    MigrationSetup.setup!

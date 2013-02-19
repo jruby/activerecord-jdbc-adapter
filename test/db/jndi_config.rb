@@ -1,5 +1,3 @@
-require 'arjdbc'
-require 'jdbc_common'
 
 JNDI_CONFIG = {
   :adapter => 'jdbc', :jndi => 'jdbc/DerbyDB'
@@ -32,4 +30,5 @@ begin
   init_context.create_subcontext 'jdbc'
 rescue javax.naming.NameAlreadyBoundException
 end
+
 init_context.bind JNDI_CONFIG[:jndi], data_source

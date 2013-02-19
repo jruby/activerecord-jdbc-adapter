@@ -1,7 +1,7 @@
 require 'test_helper'
 require 'arjdbc/db2'
 
-class DB2Test < Test::Unit::TestCase
+class DB2UnitTest < Test::Unit::TestCase
   
   def setup
     @adapter = Object.new

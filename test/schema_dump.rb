@@ -1,4 +1,5 @@
 require 'stringio'
+require 'test_helper'
 require 'active_record/schema_dumper'
 
 module SchemaDumpTestMethods

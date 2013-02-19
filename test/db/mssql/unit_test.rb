@@ -1,7 +1,7 @@
 require 'test_helper'
 require 'arjdbc/mssql'
 
-class MSSQLTest < Test::Unit::TestCase
+class MSSQLUnitTest < Test::Unit::TestCase
   
   # NOTE: lot of tests kindly borrowed from __activerecord-sqlserver-adapter__
   
@@ -94,7 +94,7 @@ class MSSQLTest < Test::Unit::TestCase
 end
 
 # This tests ArJdbc::MSSQL#add_lock! without actually connecting to the database.
-class MSSQLRowLockingSqlTest < Test::Unit::TestCase
+class MSSQLRowLockingUnitTest < Test::Unit::TestCase
 
   def test_find_all
     add_lock_test "Appointment.find(:all)",

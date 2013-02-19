@@ -1,4 +1,4 @@
-require 'jdbc_common'
+require 'test_helper'
 require 'db/postgres_config'
 
 require 'jdbc/postgres' # driver not loaded for plain JDBC

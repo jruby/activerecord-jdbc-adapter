@@ -1,5 +1,8 @@
 require 'thread'
 
+require 'test_helper'
+require 'models/entry'
+
 module RowLockingTestMethods
 
   # Simple SELECT ... FOR UPDATE test

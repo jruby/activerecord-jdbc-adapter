@@ -1,4 +1,4 @@
-require 'jdbc_common'
+require 'test_helper'
 require 'db/mysql_config'
 
 require 'jdbc/mysql' # driver not loaded for plain JDBC

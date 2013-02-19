@@ -1,13 +1,8 @@
-require 'jdbc_common'
 require 'db/sqlite3'
 require 'models/data_types'
 require 'models/validates_uniqueness_of_string'
-
-#module Rails
-#  def self.logger
-#    ActiveRecord::Base.logger
-#  end
-#end
+require 'simple'
+require 'jdbc_common'
 
 class SQLite3SimpleTest < Test::Unit::TestCase
   include SimpleTestMethods
@@ -260,9 +255,5 @@ class SQLite3SimpleTest < Test::Unit::TestCase
   end
   
   include ExplainSupportTestMethods if ar_version("3.1")
-  
-end
 
-class SQLite3HasManyThroughTest < Test::Unit::TestCase
-  include HasManyThroughMethods
 end

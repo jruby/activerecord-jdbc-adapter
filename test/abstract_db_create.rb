@@ -1,4 +1,4 @@
-require 'jdbc_common'
+require 'test_helper'
 require 'rake'
 
 module Rails

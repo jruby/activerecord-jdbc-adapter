@@ -1,7 +1,7 @@
 # encoding: ASCII-8BIT
 require 'test_helper'
 
-class MySQLTest < Test::Unit::TestCase
+class MySQLUnitTest < Test::Unit::TestCase
 
   class MySQLImpl
     include ArJdbc::MySQL

@@ -1,6 +1,6 @@
 require 'test_helper'
 
-class PostgresTest < Test::Unit::TestCase
+class PostgresUnitTest < Test::Unit::TestCase
 
   test 'create_database (with options)' do
     connection = connection_stub

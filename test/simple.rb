@@ -1,8 +1,18 @@
 # -*- coding: utf-8 -*-
+require 'test_helper'
+require 'models/data_types'
+require 'models/entry'
+require 'models/auto_id'
+require 'models/string_id'
+require 'models/thing'
+require 'models/custom_pk_name'
+require 'models/validates_uniqueness_of_string'
+require 'models/add_not_null_column_to_table'
+
 ActiveRecord::Schema.verbose = false
 ActiveRecord::Base.time_zone_aware_attributes = true if ActiveRecord::Base.respond_to?(:time_zone_aware_attributes)
 ActiveRecord::Base.default_timezone = :utc
-#just a random zone, unlikely to be local, and not utc
+# just a random zone, unlikely to be local, and not utc
 Time.zone = 'Moscow' if Time.respond_to?(:zone)
 
 module MigrationSetup

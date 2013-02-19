@@ -1,4 +1,4 @@
-require 'jdbc_common'
+require 'test_helper'
 
 MSSQL_CONFIG = { :adapter  => 'mssql' }
 MSSQL_CONFIG[:database] = ENV['SQLDATABASE'] || 'weblog_development'

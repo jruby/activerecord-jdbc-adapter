@@ -1,10 +1,9 @@
-require 'jdbc_common'
-require 'simple'
 require 'db/db2'
+require 'simple'
 
 class DB2SimpleTest < Test::Unit::TestCase
   include SimpleTestMethods
-  include ActiveRecord3TestMethods
+  #include ActiveRecord3TestMethods
   include DirtyAttributeTests
   include XmlColumnTests
   
@@ -60,8 +59,4 @@ class DB2SimpleTest < Test::Unit::TestCase
     assert entries.first.login
   end
   
-end
-
-class DB2HasManyThroughTest < Test::Unit::TestCase
-  include HasManyThroughMethods
 end

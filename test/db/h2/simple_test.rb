@@ -1,5 +1,5 @@
-require 'jdbc_common'
 require 'db/h2'
+require 'jdbc_common'
 
 class H2SimpleTest < Test::Unit::TestCase
   include SimpleTestMethods

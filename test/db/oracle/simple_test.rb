@@ -1,8 +1,10 @@
-require 'jdbc_common'
 require 'db/oracle'
+require 'simple'
 
 class OracleSimpleTest < Test::Unit::TestCase
   include SimpleTestMethods
+  include ActiveRecord3TestMethods
+  include DirtyAttributeTests
 
   def test_default_id_type_is_integer
     assert Integer === Entry.first.id
@@ -57,23 +59,5 @@ class OracleSimpleTest < Test::Unit::TestCase
     # NOTE: no support for bare Date type in Oracle :
     assert_instance_of Date, value.to_date
   end
-  
-end
-
-class OracleMultibyteTest < Test::Unit::TestCase
-  include MultibyteTestMethods
-
-  def self.startup
-    super
-    MigrationSetup.setup!
-  end
-  
-  def self.shutdown
-    MigrationSetup.teardown!
-    super
-  end
-
-  def setup!; end # MigrationSetup#setup!
-  def teardown!; end # MigrationSetup#teardown!
   
 end
