@@ -10,6 +10,7 @@ ArJdbc::ConnectionMethods.module_eval do
     end
     config[:driver] ||= ::ArJdbc::DB2::DRIVER_NAME
     config[:adapter_spec] = ::ArJdbc::DB2
+    config[:connection_alive_sql] ||= 'SELECT 1 FROM syscat.tables FETCH FIRST 1 ROWS ONLY'
     jdbc_connection(config)
   end
   alias_method :jdbcdb2_connection, :db2_connection
