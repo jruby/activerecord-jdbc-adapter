@@ -68,6 +68,19 @@ task :test_postgresql => :test_postgres # alias
 task :test_pgsql => :test_postgres # alias
 declare_test_task_for :sqlite3
 
+# ensure driver for these DBs is on your class-path
+%w(oracle db2 cachedb informix).each do |adapter|
+  Rake::TestTask.new("test_#{adapter}") do |task|
+    test_files = FileList["test/#{adapter}*_test.rb"]
+    test_files += FileList["test/db/#{adapter}/*_test.rb"]
+    task.test_files = test_files
+    task.libs = []
+    task.libs << 'lib' if defined?(JRUBY_VERSION)
+    task.libs << 'test'
+    set_compat_version(task)
+  end
+end
+
 Rake::TestTask.new(:test_jdbc) do |t|
   t.test_files = FileList['test/generic_jdbc_connection_test.rb']
   t.libs << 'test' << 'jdbc-mysql/lib' << 'jdbc-derby/lib'
@@ -78,17 +91,6 @@ Rake::TestTask.new(:test_jndi => 'tomcat-jndi:check') do |t|
   t.test_files = FileList['test/jndi_test.rb']
   t.libs << 'test' << 'jdbc-derby/lib'
   set_compat_version(t)
-end
-
-# ensure driver for these DBs is on your class-path
-%w(oracle db2 cachedb informix).each do |db|
-  Rake::TestTask.new("test_#{db}") do |task|
-    task.test_files = FileList["test/#{db}*_test.rb"]
-    task.libs = []
-    task.libs << 'lib' if defined?(JRUBY_VERSION)
-    task.libs << 'test'
-    set_compat_version(task)
-  end
 end
 
 # tests for JDBC adapters that don't require a database :
