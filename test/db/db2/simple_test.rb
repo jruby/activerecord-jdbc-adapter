@@ -1,9 +1,8 @@
-require 'db/db2'
-require 'simple'
+require File.expand_path('test_helper', File.dirname(__FILE__))
 
 class DB2SimpleTest < Test::Unit::TestCase
   include SimpleTestMethods
-  #include ActiveRecord3TestMethods
+  include ActiveRecord3TestMethods
   include DirtyAttributeTests
   include XmlColumnTests
   

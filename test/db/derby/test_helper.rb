@@ -1,5 +1,4 @@
 require 'db/derby'
-require 'jdbc_common'
 require 'simple'
 require 'row_locking'
 require 'schema_dump'
