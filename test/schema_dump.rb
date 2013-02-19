@@ -1,5 +1,6 @@
 require 'stringio'
 require 'test_helper'
+require 'simple' # due MigrationSetup
 require 'active_record/schema_dumper'
 
 module SchemaDumpTestMethods

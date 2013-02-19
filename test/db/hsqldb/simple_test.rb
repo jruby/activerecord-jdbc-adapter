@@ -1,5 +1,5 @@
-require 'jdbc_common'
 require 'db/hsqldb'
+require 'simple'
 
 class HsqldbSimpleTest < Test::Unit::TestCase
   include SimpleTestMethods
