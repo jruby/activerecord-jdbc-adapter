@@ -44,6 +44,7 @@ import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.Collection;
 import java.util.Date;
 import java.util.List;
 
@@ -68,7 +69,6 @@ import org.jruby.runtime.Arity;
 import org.jruby.runtime.Block;
 import org.jruby.runtime.ObjectAllocator;
 import org.jruby.runtime.ThreadContext;
-import org.jruby.runtime.backtrace.RubyStackTraceElement;
 import org.jruby.runtime.builtin.IRubyObject;
 import org.jruby.util.ByteList;
 
@@ -121,7 +121,7 @@ public class RubyJdbcConnection extends RubyObject {
                     TableNameComponents components = extractTableNameComponents(c, defaultSchema, tableName);
 
                     RubyArray matchingTables = (RubyArray) tableLookupBlock(context.getRuntime(),
-                            components.catalog, components.schema, components.table, getTableTypes(), false).call(c);
+                            components.catalog, components.schema, components.table, getTableTypes()).call(c);
                     if (matchingTables.isEmpty()) {
                         throw new SQLException("Table " + tableName + " does not exist");
                     }
@@ -568,7 +568,7 @@ public class RubyJdbcConnection extends RubyObject {
     }
 
     protected IRubyObject tables(ThreadContext context, String catalog, String schemaPattern, String tablePattern, String[] types) {
-        return (IRubyObject) withConnectionAndRetry(context, tableLookupBlock(context.getRuntime(), catalog, schemaPattern, tablePattern, types, false));
+        return (IRubyObject) withConnectionAndRetry(context, tableLookupBlock(context.getRuntime(), catalog, schemaPattern, tablePattern, types));
     }
 
     /*
@@ -993,61 +993,53 @@ public class RubyJdbcConnection extends RubyObject {
 
         return RubyString.newUnicodeString(runtime, string);
     }
-
-
-    protected SQLBlock tableLookupBlock(final Ruby runtime,
-            final String catalog, final String schemapat,
-            final String tablepat, final String[] types, final boolean downCase) {
-        final int TABLE_SCHEM = 2;
-        final int TABLE_NAME = 3;
-        final int TABLE_TYPE = 4;
+    
+    private SQLBlock tableLookupBlock(final Ruby runtime,
+            final String catalog, final String schemaPattern,
+            final String tablePattern, final String[] types) {
         return new SQLBlock() {
-            public Object call(Connection c) throws SQLException {
-                ResultSet rs = null;
+            public Object call(final Connection connection) throws SQLException {
+                ResultSet tablesSet = null;
                 try {
-                    DatabaseMetaData metadata = c.getMetaData();
-                    String clzName = metadata.getClass().getName().toLowerCase();
-                    boolean isOracle = clzName.indexOf("oracle") != -1 || clzName.indexOf("oci") != -1;
+                    final DatabaseMetaData metaData = connection.getMetaData();
+                    
+                    String _tablePattern = tablePattern;
+                    if (_tablePattern != null) _tablePattern = caseConvertIdentifierForJdbc(metaData, _tablePattern);
+                    
+                    String _schemaPattern = schemaPattern;
+                    String clzName = metaData.getClass().getName().toLowerCase();
                     boolean isDerby = clzName.indexOf("derby") != -1;
-                    boolean isMssql = clzName.indexOf("sqlserver") != -1 || clzName.indexOf("tds") != -1;
-
-                    String realschema = schemapat;
-                    String realtablepat = tablepat;
-
-                    if (isDerby && realschema != null && realschema.equals("")) realschema = null;  // Derby doesn't like empty-string schema name
-                    if (realtablepat != null) realtablepat = caseConvertIdentifierForJdbc(metadata, realtablepat);
-                    if (realschema != null) realschema = caseConvertIdentifierForJdbc(metadata, realschema);
-
-                    rs = metadata.getTables(catalog, realschema, realtablepat, types);
-                    List arr = new ArrayList();
-                    while (rs.next()) {
-                        String name;
-                        String schema = rs.getString(TABLE_SCHEM) != null ? rs.getString(TABLE_SCHEM).toLowerCase() : null;
-
-                        if (downCase) {
-                            name = rs.getString(TABLE_NAME).toLowerCase();
-                        } else {
-                            name = caseConvertIdentifierForRails(metadata, rs.getString(TABLE_NAME));
-                        }
-                        // Handle stupid Oracle 10g RecycleBin feature
-                        if (isOracle && name.startsWith("bin$")) {
-                            continue;
-                        }
-                        // Under mssql, don't return system tables/views unless they're explicitly asked for.
-                        if (isMssql && realschema==null &&
-                            ("sys".equals(schema) || "information_schema".equals(schema))) {
-                            continue;
-                        }
-                        arr.add(RubyString.newUnicodeString(runtime, name));
+                    if ( isDerby && _schemaPattern != null && _schemaPattern.equals("") ) { 
+                        _schemaPattern = null; // Derby doesn't like empty-string schema name
                     }
-                    return runtime.newArray(arr);
-                } finally {
-                    close(rs);
+                    if (_schemaPattern != null) _schemaPattern = caseConvertIdentifierForJdbc(metaData, _schemaPattern);
+
+                    tablesSet = metaData.getTables(catalog, _schemaPattern, _tablePattern, types);
+                    return mapTables(runtime, metaData, catalog, _schemaPattern, _tablePattern, tablesSet);
                 }
+                finally { close(tablesSet); }
             }
         };
     }
 
+    // NOTE java.sql.DatabaseMetaData.getTables :
+    protected final static int TABLES_TABLE_CAT = 1;
+    protected final static int TABLES_TABLE_SCHEM = 2;
+    protected final static int TABLES_TABLE_NAME = 3;
+    protected final static int TABLES_TABLE_TYPE = 4;
+    
+    protected RubyArray mapTables(final Ruby runtime, final DatabaseMetaData metaData, 
+            final String catalog, final String schemaPattern, final String tablePattern, 
+            final ResultSet tablesSet) throws SQLException {
+        final List<RubyString> tables = new ArrayList<RubyString>(32);
+        while ( tablesSet.next() ) {
+            String name = tablesSet.getString(TABLES_TABLE_NAME);
+            name = caseConvertIdentifierForRails(metaData, name);
+            tables.add(RubyString.newUnicodeString(runtime, name));
+        }
+        return runtime.newArray((List) tables);
+    }
+    
     protected IRubyObject timestampToRuby(Ruby runtime, ResultSet resultSet, Timestamp time)
             throws SQLException {
         if (time == null && resultSet.wasNull()) return runtime.getNil();

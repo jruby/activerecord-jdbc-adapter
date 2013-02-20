@@ -26,6 +26,9 @@
 
 package arjdbc.sqlite3;
 
+import arjdbc.jdbc.RubyJdbcConnection;
+import arjdbc.jdbc.SQLBlock;
+
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.sql.Connection;
@@ -34,12 +37,14 @@ import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Types;
-
-import arjdbc.jdbc.RubyJdbcConnection;
-import arjdbc.jdbc.SQLBlock;
+import java.sql.DatabaseMetaData;
+import java.util.ArrayList;
+import java.util.List;
 
 import org.jruby.Ruby;
+import org.jruby.RubyArray;
 import org.jruby.RubyClass;
+import org.jruby.RubyString;
 import org.jruby.anno.JRubyMethod;
 import org.jruby.runtime.ObjectAllocator;
 import org.jruby.runtime.ThreadContext;
@@ -92,11 +97,6 @@ public class SQLite3RubyJdbcConnection extends RubyJdbcConnection {
     }
 
     @Override
-    protected IRubyObject tables(ThreadContext context, String catalog, String schemaPattern, String tablePattern, String[] types) {
-        return (IRubyObject) withConnectionAndRetry(context, tableLookupBlock(context.getRuntime(), catalog, schemaPattern, tablePattern, types, true));
-    }
-
-    @Override
     protected IRubyObject jdbcToRuby(Ruby runtime, int column, int type, ResultSet resultSet)
             throws SQLException {
         try {
@@ -124,4 +124,18 @@ public class SQLite3RubyJdbcConnection extends RubyJdbcConnection {
             throw (SQLException) new SQLException(ioe.getMessage()).initCause(ioe);
         }
     }
+    
+    @Override
+    protected RubyArray mapTables(final Ruby runtime, final DatabaseMetaData metaData, 
+            final String catalog, final String schemaPattern, final String tablePattern, 
+            final ResultSet tablesSet) throws SQLException {
+        final List<IRubyObject> tables = new ArrayList<IRubyObject>(32);
+        while ( tablesSet.next() ) {
+            String name = tablesSet.getString(TABLES_TABLE_NAME);
+            name = name.toLowerCase(); // simply lower-case for SQLite3
+            tables.add(RubyString.newUnicodeString(runtime, name));
+        }
+        return runtime.newArray(tables);
+    }
+    
 }

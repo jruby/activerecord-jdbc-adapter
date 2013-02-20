@@ -25,6 +25,9 @@
  ***** END LICENSE BLOCK *****/
 package arjdbc.mysql;
 
+import arjdbc.jdbc.RubyJdbcConnection;
+import arjdbc.jdbc.SQLBlock;
+
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.PreparedStatement;
@@ -35,23 +38,20 @@ import java.sql.Types;
 import java.util.ArrayList;
 import java.util.List;
 
-import arjdbc.jdbc.SQLBlock;
 import org.jruby.Ruby;
 import org.jruby.RubyClass;
 import org.jruby.RubyModule;
-import org.jruby.RubyNil;
 import org.jruby.RubyString;
 import org.jruby.runtime.ObjectAllocator;
 import org.jruby.runtime.ThreadContext;
 import org.jruby.runtime.builtin.IRubyObject;
-
-import arjdbc.jdbc.RubyJdbcConnection;
 
 /**
  *
  * @author nicksieger
  */
 public class MySQLRubyJdbcConnection extends RubyJdbcConnection {
+    
     protected MySQLRubyJdbcConnection(Ruby runtime, RubyClass metaClass) {
         super(runtime, metaClass);
     }

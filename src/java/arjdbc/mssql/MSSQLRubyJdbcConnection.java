@@ -25,15 +25,17 @@
  ***** END LICENSE BLOCK *****/
 package arjdbc.mssql;
 
+import arjdbc.jdbc.RubyJdbcConnection;
+
+import java.sql.DatabaseMetaData;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Types;
 import java.util.List;
-
-import arjdbc.jdbc.RubyJdbcConnection;
-import static arjdbc.jdbc.RubyJdbcConnection.ColumnData;
+import java.util.ArrayList;
 
 import org.jruby.Ruby;
+import org.jruby.RubyArray;
 import org.jruby.RubyClass;
 import org.jruby.RubyString;
 import org.jruby.runtime.ObjectAllocator;
@@ -123,6 +125,27 @@ public class MSSQLRubyJdbcConnection extends RubyJdbcConnection {
         }
 
         return columns;
+    }
+ 
+    @Override
+    protected RubyArray mapTables(final Ruby runtime, final DatabaseMetaData metaData, 
+            final String catalog, final String schemaPattern, final String tablePattern, 
+            final ResultSet tablesSet) throws SQLException {
+        final List<RubyString> tables = new ArrayList<RubyString>(32);
+        while ( tablesSet.next() ) {
+            String name = tablesSet.getString(TABLES_TABLE_NAME);
+            name = caseConvertIdentifierForRails(metaData, name);
+            
+            String schema = tablesSet.getString(TABLES_TABLE_SCHEM);
+            if ( schema != null ) schema = schema.toLowerCase();
+            // Under MS-SQL, don't return system tables/views unless explicitly asked for :
+            if ( schemaPattern == null && 
+                ( "sys".equals(schema) || "information_schema".equals(schema) ) ) {
+                continue;
+            }
+            tables.add(RubyString.newUnicodeString(runtime, name));
+        }
+        return runtime.newArray((List) tables);
     }
     
 }
