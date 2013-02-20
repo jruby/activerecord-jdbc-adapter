@@ -8,8 +8,19 @@ module Jdbc
       end
     end
 
+    def self.optional_jars
+      [ 'xdb6.jar', 'orai18n.jar' ] # 'xmlparserv2.jar'
+    end
+    
     def self.load_driver(method = :load)
       send method, driver_jar
+      optional_jars.each do |optional_jar|
+        begin
+          send method, optional_jar
+        rescue LoadError => e
+          puts "failed to load optional driver jar: #{optional_jar} (#{e})"
+        end
+      end
     end
 
     def self.driver_name

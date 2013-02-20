@@ -5,7 +5,7 @@ module ArJdbc
     
     @@_lob_callback_added = nil
     
-    def self.extended(mod)
+    def self.extended(base)
       unless @@_lob_callback_added
         ActiveRecord::Base.class_eval do
           def after_save_with_oracle_lob
@@ -14,7 +14,7 @@ module ArJdbc
               next if value.nil? || (value == '')
 
               connection.write_large_object(
-                column.type == :binary, column.name, 
+                column.type == :binary, column.name,
                 self.class.table_name, self.class.primary_key, 
                 quote_value(id), value
               )
@@ -52,13 +52,6 @@ module ArJdbc
         super
         if val && @sql_type =~ /^NUMBER$/i
           @type = :integer
-        end
-      end
-
-      def extract_limit(sql_type)
-        case sql_type
-        when /^(clob|date)/i; nil
-        else super
         end
       end
       
@@ -101,19 +94,28 @@ module ArJdbc
 
       private
       
+      def extract_limit(sql_type)
+        case sql_type
+        when /^(clob|date)/i then nil
+        when /^xml/i then @sql_type = 'XMLTYPE'; nil
+        else super
+        end
+      end
+      
       def simplified_type(field_type)
         case field_type
-        when /^number\(1\)$/i                  then :boolean
-        when /char/i                           then :string
-        when /float|double/i                   then :float
-        when /int/i                            then :integer
-        when /num|dec|real/i                   then extract_scale(field_type) == 0 ? :integer : :decimal
+        when /^number\(1\)$/i   then :boolean
+        when /char/i            then :string
+        when /float|double/i    then :float
+        when /int/i             then :integer
+        when /num|dec|real/i    then extract_scale(field_type) == 0 ? :integer : :decimal
         # Oracle TIMESTAMP stores the date and time to up to 9 digits of sub-second precision
-        when /TIMESTAMP/i                      then :timestamp
+        when /TIMESTAMP/i       then :timestamp
         # Oracle DATE stores the date and time to the second
-        when /DATE|TIME/i                      then :datetime
-        when /CLOB/i                           then :text
-        when /BLOB/i                           then :binary
+        when /DATE|TIME/i       then :datetime
+        when /CLOB/i            then :text
+        when /BLOB/i            then :binary
+        when /XML/i             then :xml
         else
           super
         end
@@ -134,6 +136,22 @@ module ArJdbc
         value
       end
       
+    end
+    
+    class TableDefinition < ::ActiveRecord::ConnectionAdapters::TableDefinition # :nodoc:
+      def raw(*args)
+        options = args.extract_options!
+        column(args[0], 'raw', options)
+      end
+      
+      def xml(*args)
+        options = args.extract_options!
+        column(args[0], 'xml', options)
+      end
+    end
+
+    def table_definition
+      TableDefinition.new(self)
     end
 
     def self.arel2_visitors(config)
@@ -160,6 +178,7 @@ module ArJdbc
       :binary => { :name => "BLOB" },
       :boolean => { :name => "NUMBER", :limit => 1 },
       :raw => { :name => "RAW", :limit => 2000 },
+      :xml => { :name => 'XMLTYPE' }
     }
 
     def native_database_types
@@ -473,12 +492,15 @@ module ArJdbc
       # Arel 2 passes SqlLiterals through
       return value if sql_literal?(value)
 
-      if column && [:text, :binary].include?(column.type)
+      column_type = column && column.type
+      if column_type == :text || column_type == :binary
         if /(.*?)\([0-9]+\)/ =~ column.sql_type
           %Q{empty_#{ $1.downcase }()}
         else
           %Q{empty_#{ column.sql_type.downcase rescue 'blob' }()}
         end
+      elsif column_type == :xml
+        "XMLTYPE('#{quote_string(value)}')" # XMLTYPE ?
       else
         if column.respond_to?(:primary) && column.primary && column.klass != String
           return value.to_i.to_s

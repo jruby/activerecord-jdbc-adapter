@@ -5,6 +5,9 @@ class OracleSimpleTest < Test::Unit::TestCase
   include SimpleTestMethods
   include ActiveRecord3TestMethods
   include DirtyAttributeTests
+  include XmlColumnTests
+  
+  def xml_sql_type; 'XMLTYPE'; end
 
   # #override
   def test_insert_returns_id
@@ -57,6 +60,7 @@ class OracleSimpleTest < Test::Unit::TestCase
 
   def assert_date_equal expected, actual
     # Oracle doesn't distinguish btw date/datetime
+    expected = expected.respond_to?(:to_date) ? expected.to_date : expected
     assert_equal expected, actual.to_date
   end
   
