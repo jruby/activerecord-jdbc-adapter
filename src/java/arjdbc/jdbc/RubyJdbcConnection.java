@@ -104,39 +104,6 @@ public class RubyJdbcConnection extends RubyObject {
     protected static RubyModule getConnectionAdapters(Ruby runtime) {
         return (RubyModule) runtime.getModule("ActiveRecord").getConstant("ConnectionAdapters");
     }
-    
-    protected String[] getTableTypes() {
-        return TABLE_TYPES;
-    }
-
-    @JRubyMethod(name = {"columns", "columns_internal"}, required = 1, optional = 2)
-    public IRubyObject columns_internal(final ThreadContext context, final IRubyObject[] args)
-            throws SQLException, IOException {
-        return (IRubyObject) withConnectionAndRetry(context, new SQLBlock() {
-            public Object call(Connection c) throws SQLException {
-                ResultSet results = null, pkeys = null;
-                try {
-                    String defaultSchema = args.length > 2 ? toStringOrNull(args[2]) : null;
-                    String tableName = rubyApi.convertToRubyString(args[0]).getUnicodeValue();
-                    TableNameComponents components = extractTableNameComponents(c, defaultSchema, tableName);
-
-                    RubyArray matchingTables = (RubyArray) tableLookupBlock(context.getRuntime(),
-                            components.catalog, components.schema, components.table, getTableTypes()).call(c);
-                    if (matchingTables.isEmpty()) {
-                        throw new SQLException("Table " + tableName + " does not exist");
-                    }
-
-                    DatabaseMetaData metadata = c.getMetaData();
-                    results = metadata.getColumns(components.catalog, components.schema, components.table, null);
-                    pkeys = metadata.getPrimaryKeys(components.catalog, components.schema, components.table);
-                    return unmarshal_columns(context, metadata, results, pkeys);
-                } finally {
-                    close(results);
-                    close(pkeys);
-                }
-            }
-        });
-    }
 
     @JRubyMethod(name = "begin")
     public IRubyObject begin(ThreadContext context) throws SQLException {
@@ -357,86 +324,6 @@ public class RubyJdbcConnection extends RubyObject {
         });
     }
 
-    @JRubyMethod(name = "indexes")
-    public IRubyObject indexes(ThreadContext context, IRubyObject tableName, IRubyObject name, IRubyObject schemaName) {
-        return indexes(context, toStringOrNull(tableName), toStringOrNull(name), toStringOrNull(schemaName));
-    }
-
-    private static final int INDEX_TABLE_NAME = 3;
-    private static final int INDEX_NON_UNIQUE = 4;
-    private static final int INDEX_NAME = 6;
-    private static final int INDEX_COLUMN_NAME = 9;
-
-    /**
-     * Default JDBC introspection for index metadata on the JdbcConnection.
-     *
-     * JDBC index metadata is denormalized (multiple rows may be returned for
-     * one index, one row per column in the index), so a simple block-based
-     * filter like that used for tables doesn't really work here.  Callers
-     * should filter the return from this method instead.
-     */
-    protected IRubyObject indexes(final ThreadContext context, final String tableNameArg, final String name, final String schemaNameArg) {
-        return (IRubyObject) withConnectionAndRetry(context, new SQLBlock() {
-            public Object call(Connection c) throws SQLException {
-                Ruby runtime = context.getRuntime();
-                DatabaseMetaData metadata = c.getMetaData();
-                String tableName = caseConvertIdentifierForJdbc(metadata, tableNameArg);
-                String schemaName = caseConvertIdentifierForJdbc(metadata, schemaNameArg);
-
-                ResultSet resultSet = null;
-                List indexes = new ArrayList();
-                try {
-                    resultSet = metadata.getIndexInfo(null, schemaName, tableName, false, true);
-                    List primaryKeys = primaryKeys(context, tableName);
-                    String currentIndex = null;
-                    RubyModule indexDefinitionClass = getConnectionAdapters(runtime).getClass("IndexDefinition");
-
-                    while (resultSet.next()) {
-                        String indexName = resultSet.getString(INDEX_NAME);
-
-                        if (indexName == null) continue;
-
-                        indexName = caseConvertIdentifierForRails(metadata, indexName);
-
-                        RubyString columnName = RubyString.newUnicodeString(runtime, caseConvertIdentifierForRails(metadata, resultSet.getString(INDEX_COLUMN_NAME)));
-
-                        if (primaryKeys.contains(columnName)) continue;
-
-                        // We are working on a new index
-                        if (!indexName.equals(currentIndex)) {
-                            currentIndex = indexName;
-
-                            tableName = caseConvertIdentifierForRails(metadata, resultSet.getString(INDEX_TABLE_NAME));
-                            boolean nonUnique = resultSet.getBoolean(INDEX_NON_UNIQUE);
-
-                            IRubyObject indexDefinition = indexDefinitionClass.callMethod(context, "new",
-                                    new IRubyObject[] {
-                                RubyString.newUnicodeString(runtime, tableName),
-                                RubyString.newUnicodeString(runtime, indexName),
-                                runtime.newBoolean(!nonUnique),
-                                runtime.newArray()
-                            });
-
-                            // empty list for column names, we'll add to that in just a bit
-                            indexes.add(indexDefinition);
-                        }
-
-                        // One or more columns can be associated with an index
-                        IRubyObject lastIndex = (IRubyObject) indexes.get(indexes.size() - 1);
-
-                        if (lastIndex != null) {
-                            lastIndex.callMethod(context, "columns").callMethod(context, "<<", columnName);
-                        }
-                    }
-
-                    return runtime.newArray(indexes);
-                } finally {
-                    close(resultSet);
-                }
-            }
-        });
-    }
-
     @JRubyMethod(name = "insert?", required = 1, meta = true, frame = false)
     public static IRubyObject insert_p(ThreadContext context, IRubyObject recv, IRubyObject _sql) {
         ByteList sql = rubyApi.convertToRubyString(_sql).getByteList();
@@ -473,29 +360,30 @@ public class RubyJdbcConnection extends RubyObject {
 
     @JRubyMethod(name = "primary_keys", required = 1)
     public IRubyObject primary_keys(ThreadContext context, IRubyObject tableName) throws SQLException {
-        return context.getRuntime().newArray(primaryKeys(context, tableName.toString()));
+        return context.getRuntime().newArray((List) primaryKeys(context, tableName.toString()));
     }
 
-    protected List primaryKeys(final ThreadContext context, final String tableNameArg) {
-        return (List) withConnectionAndRetry(context, new SQLBlock() {
+    private static final int PRIMARY_KEYS_COLUMN_NAME = 4;
+    
+    protected List<RubyString> primaryKeys(final ThreadContext context, final String tableName) {
+        return (List<RubyString>) withConnectionAndRetry(context, new SQLBlock() {
             public Object call(Connection c) throws SQLException {
-                Ruby runtime = context.getRuntime();
-                DatabaseMetaData metadata = c.getMetaData();
-                String tableName = caseConvertIdentifierForJdbc(metadata, tableNameArg);
+                final Ruby runtime = context.getRuntime();
+                DatabaseMetaData metaData = c.getMetaData();
+                final String _tableName = caseConvertIdentifierForJdbc(metaData, tableName);
                 ResultSet resultSet = null;
-                List keyNames = new ArrayList();
+                final List<RubyString> keyNames = new ArrayList<RubyString>();
                 try {
-                    TableNameComponents components = extractTableNameComponents(c, null, tableName);
-                    resultSet = metadata.getPrimaryKeys(components.catalog, components.schema, components.table);
+                    TableNameComponents components = extractTableNameComponents(c, null, _tableName);
+                    resultSet = metaData.getPrimaryKeys(components.catalog, components.schema, components.table);
 
                     while (resultSet.next()) {
-                        keyNames.add(RubyString.newUnicodeString(runtime,
-                                caseConvertIdentifierForRails(metadata, resultSet.getString(4))));
+                        String columnName = resultSet.getString(PRIMARY_KEYS_COLUMN_NAME);
+                        columnName = caseConvertIdentifierForRails(metaData, columnName);
+                        keyNames.add( RubyString.newUnicodeString(runtime, columnName) );
                     }
-                } finally {
-                    close(resultSet);
                 }
-
+                finally { close(resultSet); }
                 return keyNames;
             }
         });
@@ -571,6 +459,120 @@ public class RubyJdbcConnection extends RubyObject {
         return (IRubyObject) withConnectionAndRetry(context, tableLookupBlock(context.getRuntime(), catalog, schemaPattern, tablePattern, types));
     }
 
+    protected String[] getTableTypes() {
+        return TABLE_TYPES;
+    }
+
+    @JRubyMethod(name = {"columns", "columns_internal"}, required = 1, optional = 2)
+    public IRubyObject columns_internal(final ThreadContext context, final IRubyObject[] args)
+            throws SQLException, IOException {
+        return (IRubyObject) withConnectionAndRetry(context, new SQLBlock() {
+            public Object call(final Connection connection) throws SQLException {
+                ResultSet columns = null, primaryKeys = null;
+                try {
+                    String defaultSchema = args.length > 2 ? toStringOrNull(args[2]) : null;
+                    String tableName = rubyApi.convertToRubyString(args[0]).getUnicodeValue();
+                    TableNameComponents components = extractTableNameComponents(connection, defaultSchema, tableName);
+
+                    RubyArray matchingTables = (RubyArray) tableLookupBlock(context.getRuntime(),
+                            components.catalog, components.schema, components.table, getTableTypes()).call(connection);
+                    if (matchingTables.isEmpty()) {
+                        throw new SQLException("Table " + tableName + " does not exist");
+                    }
+
+                    final DatabaseMetaData metaData = connection.getMetaData();
+                    columns = metaData.getColumns(components.catalog, components.schema, components.table, null);
+                    primaryKeys = metaData.getPrimaryKeys(components.catalog, components.schema, components.table);
+                    return unmarshal_columns(context, metaData, columns, primaryKeys);
+                }
+                finally {
+                    close(columns);
+                    close(primaryKeys);
+                }
+            }
+        });
+    }
+    
+    @JRubyMethod(name = "indexes")
+    public IRubyObject indexes(ThreadContext context, IRubyObject tableName, IRubyObject name, IRubyObject schemaName) {
+        return indexes(context, toStringOrNull(tableName), toStringOrNull(name), toStringOrNull(schemaName));
+    }
+
+    // NOTE: metaData.getIndexInfo row mappings :
+    private static final int INDEX_INFO_TABLE_NAME = 3;
+    private static final int INDEX_INFO_NON_UNIQUE = 4;
+    private static final int INDEX_INFO_NAME = 6;
+    private static final int INDEX_INFO_COLUMN_NAME = 9;
+
+    /**
+     * Default JDBC introspection for index metadata on the JdbcConnection.
+     *
+     * JDBC index metadata is denormalized (multiple rows may be returned for
+     * one index, one row per column in the index), so a simple block-based
+     * filter like that used for tables doesn't really work here.  Callers
+     * should filter the return from this method instead.
+     */
+    protected IRubyObject indexes(final ThreadContext context, final String tableName, final String name, final String schemaName) {
+        return (IRubyObject) withConnectionAndRetry(context, new SQLBlock() {
+            public Object call(final Connection connection) throws SQLException {
+                final Ruby runtime = context.getRuntime();
+                final RubyModule indexDefinition = getConnectionAdapters(runtime).getClass("IndexDefinition");
+                
+                final DatabaseMetaData metaData = connection.getMetaData();
+                String _tableName = caseConvertIdentifierForJdbc(metaData, tableName);
+                String _schemaName = caseConvertIdentifierForJdbc(metaData, schemaName);
+                
+                final List<RubyString> primaryKeys = primaryKeys(context, _tableName);
+                ResultSet indexInfoSet = null;
+                final List<IRubyObject> indexes = new ArrayList<IRubyObject>();
+                try {
+                    indexInfoSet = metaData.getIndexInfo(null, _schemaName, _tableName, false, true);
+                    String currentIndex = null;
+
+                    while ( indexInfoSet.next() ) {
+                        String indexName = indexInfoSet.getString(INDEX_INFO_NAME);
+                        if ( indexName == null ) continue;
+                        indexName = caseConvertIdentifierForRails(metaData, indexName);
+
+                        final String columnName = indexInfoSet.getString(INDEX_INFO_COLUMN_NAME);
+                        final RubyString rubyColumnName = RubyString.newUnicodeString(
+                                runtime, caseConvertIdentifierForRails(metaData, columnName)
+                        );
+                        if ( primaryKeys.contains(rubyColumnName) ) continue;
+
+                        // We are working on a new index
+                        if ( ! indexName.equals(currentIndex) ) {
+                            currentIndex = indexName;
+
+                            String indexTableName = indexInfoSet.getString(INDEX_INFO_TABLE_NAME);
+                            indexTableName = caseConvertIdentifierForRails(metaData, indexTableName);
+                            
+                            final boolean nonUnique = indexInfoSet.getBoolean(INDEX_INFO_NON_UNIQUE);
+                            
+                            IRubyObject[] args = new IRubyObject[] {
+                                RubyString.newUnicodeString(runtime, indexTableName), // table_name
+                                RubyString.newUnicodeString(runtime, indexName), // index_name
+                                runtime.newBoolean( ! nonUnique ), // unique
+                                runtime.newArray() // [] for column names, we'll add to that in just a bit
+                            };
+
+                            indexes.add( indexDefinition.callMethod(context, "new", args) ); // IndexDefinition.new
+                        }
+
+                        // One or more columns can be associated with an index
+                        IRubyObject lastIndexDef = indexes.isEmpty() ? null : indexes.get(indexes.size() - 1);
+                        if (lastIndexDef != null) {
+                            lastIndexDef.callMethod(context, "columns").callMethod(context, "<<", rubyColumnName);
+                        }
+                    }
+
+                    return runtime.newArray(indexes);
+                    
+                } finally { close(indexInfoSet); }
+            }
+        });
+    }
+    
     /*
      * sql, values, types, name = nil
      */
