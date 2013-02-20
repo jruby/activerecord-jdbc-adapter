@@ -37,6 +37,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
+import java.sql.SQLXML;
 import java.sql.Statement;
 import java.sql.Timestamp;
 import java.sql.Types;
@@ -872,6 +873,9 @@ public class RubyJdbcConnection extends RubyObject {
                 return doubleToRuby(runtime, resultSet, resultSet.getDouble(column));
             case Types.BIGINT:
                 return bigIntegerToRuby(runtime, resultSet, resultSet.getString(column));
+            case Types.SQLXML:
+                final SQLXML xml = resultSet.getSQLXML(column);
+                return stringToRuby(runtime, resultSet, xml.getString());
             default:
                 return stringToRuby(runtime, resultSet, resultSet.getString(column));
             }
@@ -1195,16 +1199,14 @@ public class RubyJdbcConnection extends RubyObject {
      */
     protected IRubyObject unmarshalResult(ThreadContext context, DatabaseMetaData metadata,
                                           ResultSet resultSet, boolean downCase) throws SQLException {
-        Ruby runtime = context.getRuntime();
-        List results = new ArrayList();
-
+        final Ruby runtime = context.getRuntime();
+        final List<IRubyObject> results = new ArrayList<IRubyObject>();
         try {
             ColumnData[] columns = ColumnData.setup(runtime, metadata, resultSet.getMetaData(), downCase);
 
             populateFromResultSet(context, runtime, results, resultSet, columns);
-        } finally {
-            close(resultSet);
         }
+        finally { close(resultSet); }
 
         return runtime.newArray(results);
     }
