@@ -356,10 +356,6 @@ module ArJdbc
     def remove_index(table_name, options = {})
       execute "DROP INDEX #{table_name}.#{index_name(table_name, options)}"
     end
-
-    def table_exists?(name)
-      !! ( jdbc_columns(name) rescue nil )
-    end
     
     SKIP_COLUMNS_TABLE_NAMES_RE = /^information_schema\./i # :nodoc:
     

@@ -162,12 +162,16 @@ end
 module SimpleTestMethods
   include FixtureSetup
 
-  def test_entries_created
-    assert ActiveRecord::Base.connection.tables.find{|t| t =~ /^entries$/i}, "entries not created"
+  def test_tables
+    assert_not_empty ActiveRecord::Base.connection.tables
+    tables = ActiveRecord::Base.connection.tables
+    assert tables.find { |t| t =~ /^entries$/i }, "entries not created: #{tables.inspect}"
+    assert tables.map(&:downcase).include?('users'), "users table not found: #{tables.inspect}"
   end
 
-  def test_users_created
-    assert ActiveRecord::Base.connection.tables.find{|t| t =~ /^users$/i}, "users not created"
+  def test_table_exists?
+    assert_true  ActiveRecord::Base.connection.table_exists? 'entries'
+    assert_false ActiveRecord::Base.connection.table_exists? 'blahbls'
   end
 
   def test_entries_empty
@@ -182,23 +186,21 @@ module SimpleTestMethods
   end
 
   def test_insert_returns_id
-    unless ActiveRecord::Base.connection.adapter_name =~ /oracle/i
-      value = ActiveRecord::Base.connection.insert("INSERT INTO entries (title, content, rating) VALUES('insert_title', 'some content', 1)")
-      assert !value.nil?
-      entry = Entry.find_by_title('insert_title')
-      assert_equal entry.id, value
+    value = ActiveRecord::Base.connection.insert("INSERT INTO entries (title, content, rating) VALUES('insert_title', 'some content', 1)")
+    assert !value.nil?
+    entry = Entry.find_by_title('insert_title')
+    assert_equal entry.id, value
 
-      # Ensure we get the id even if the PK column is not named 'id'
-      1.upto(4) do |i|
-        cpn_name = "return id test#{i}"
-        cpn = CustomPkName.new
-        cpn.name = cpn_name
-        cpn.save
-        value = cpn.custom_id
-        assert !value.nil?
-        cpn = CustomPkName.find_by_name(cpn_name)
-        assert_equal cpn.custom_id, value
-      end
+    # Ensure we get the id even if the PK column is not named 'id'
+    1.upto(4) do |i|
+      cpn_name = "return id test#{i}"
+      cpn = CustomPkName.new
+      cpn.name = cpn_name
+      cpn.save
+      value = cpn.custom_id
+      assert !value.nil?
+      cpn = CustomPkName.find_by_name(cpn_name)
+      assert_equal cpn.custom_id, value
     end
   end
 

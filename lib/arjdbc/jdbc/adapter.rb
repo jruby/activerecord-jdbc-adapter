@@ -330,7 +330,7 @@ module ActiveRecord
       end
 
       def table_exists?(name)
-        jdbc_columns(name) rescue nil
+        @connection.table_exists?(name) # schema_name = nil
       end
 
       def indexes(table_name, name = nil, schema_name = nil)

@@ -6,6 +6,11 @@ class OracleSimpleTest < Test::Unit::TestCase
   include ActiveRecord3TestMethods
   include DirtyAttributeTests
 
+  # #override
+  def test_insert_returns_id
+    # TODO not supported/implemented
+  end
+  
   def test_default_id_type_is_integer
     assert Integer === Entry.first.id
   end

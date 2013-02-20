@@ -51,6 +51,7 @@ import java.util.List;
 import org.jruby.Ruby;
 import org.jruby.RubyArray;
 import org.jruby.RubyBignum;
+import org.jruby.RubyBoolean;
 import org.jruby.RubyClass;
 import org.jruby.RubyHash;
 import org.jruby.RubyModule;
@@ -182,7 +183,7 @@ public class RubyJdbcConnection extends RubyObject {
         return (IRubyObject) withConnectionAndRetry(context, new SQLBlock() {
             public Object call(Connection c) throws SQLException {
                 Statement stmt = null;
-                String query = rubyApi.convertToRubyString(sql).getUnicodeValue();
+                String query = sql.convertToString().getUnicodeValue();
                 try {
                     stmt = c.createStatement();
                     if (genericExecute(stmt, query)) {
@@ -223,7 +224,7 @@ public class RubyJdbcConnection extends RubyObject {
             final IRubyObject id) throws SQLException {
         return (IRubyObject) withConnectionAndRetry(context, new SQLBlock() {
             public Object call(Connection c) throws SQLException {
-                String insert = rubyApi.convertToRubyString(sql).getUnicodeValue();
+                String insert = sql.convertToString().getUnicodeValue();
                 PreparedStatement ps = c.prepareStatement(insert);
                 try {
                     ps.setLong(1, RubyNumeric.fix2long(id));
@@ -265,20 +266,18 @@ public class RubyJdbcConnection extends RubyObject {
     }
 
     @JRubyMethod(name = "execute_query", required = 1)
-    public IRubyObject execute_query(final ThreadContext context, IRubyObject _sql)
+    public IRubyObject execute_query(final ThreadContext context, IRubyObject sql)
             throws SQLException, IOException {
-        String sql = rubyApi.convertToRubyString(_sql).getUnicodeValue();
-
-        return executeQuery(context, sql, 0);
+        String query = sql.convertToString().getUnicodeValue();
+        return executeQuery(context, query, 0);
     }
 
     @JRubyMethod(name = "execute_query", required = 2)
-    public IRubyObject execute_query(final ThreadContext context, IRubyObject _sql,
-            IRubyObject _maxRows) throws SQLException, IOException {
-        String sql = rubyApi.convertToRubyString(_sql).getUnicodeValue();
-        int maxrows = RubyNumeric.fix2int(_maxRows);
-
-        return executeQuery(context, sql, maxrows);
+    public IRubyObject execute_query(final ThreadContext context, IRubyObject sql,
+            IRubyObject max_rows) throws SQLException, IOException {
+        String query = sql.convertToString().getUnicodeValue();
+        final int maxRows = RubyNumeric.fix2int(max_rows);
+        return executeQuery(context, query, maxRows);
     }
 
     protected IRubyObject executeQuery(final ThreadContext context, final String query, final int maxRows) {
@@ -308,7 +307,7 @@ public class RubyJdbcConnection extends RubyObject {
         return (IRubyObject) withConnectionAndRetry(context, new SQLBlock() {
             public Object call(Connection c) throws SQLException {
                 Statement stmt = null;
-                String update = rubyApi.convertToRubyString(sql).getUnicodeValue();
+                String update = sql.convertToString().getUnicodeValue();
                 try {
                     stmt = c.createStatement();
                     return context.getRuntime().newFixnum((long)stmt.executeUpdate(update));
@@ -411,11 +410,14 @@ public class RubyJdbcConnection extends RubyObject {
     }
 
     @JRubyMethod(name = "select?", required = 1, meta = true, frame = false)
-    public static IRubyObject select_p(ThreadContext context, IRubyObject recv, IRubyObject _sql) {
-        ByteList sql = rubyApi.convertToRubyString(_sql).getByteList();
-
-        return context.getRuntime().newBoolean(startsWithNoCaseCmp(sql, SELECT) || startsWithNoCaseCmp(sql, WITH) ||
-                startsWithNoCaseCmp(sql, SHOW) || startsWithNoCaseCmp(sql, CALL));
+    public static IRubyObject select_p(ThreadContext context, IRubyObject self, IRubyObject sql) {
+        final ByteList sqlBytes = sql.convertToString().getByteList();
+        return context.getRuntime().newBoolean(
+                startsWithNoCaseCmp(sqlBytes, SELECT) || 
+                startsWithNoCaseCmp(sqlBytes, WITH) ||
+                startsWithNoCaseCmp(sqlBytes, SHOW) || 
+                startsWithNoCaseCmp(sqlBytes, CALL)
+        );
     }
 
     @JRubyMethod(name = "set_native_database_types")
@@ -463,6 +465,30 @@ public class RubyJdbcConnection extends RubyObject {
         return TABLE_TYPES;
     }
 
+    @JRubyMethod(name = "table_exists?", required = 1, optional = 1)
+    public IRubyObject table_exists_p(final ThreadContext context, final IRubyObject[] args) {
+        IRubyObject name = args[0], schema_name = args.length > 1 ? args[1] : null;
+        if ( ! ( name instanceof RubyString ) ) {
+            name = name.callMethod(context, "to_s");
+        }
+        final String tableName = ((RubyString) name).getUnicodeValue();
+        final String tableSchema = schema_name == null ? null : schema_name.convertToString().getUnicodeValue();
+        final Ruby runtime = context.getRuntime();
+        
+        return (RubyBoolean) withConnectionAndRetry(context, new SQLBlock() {
+            public Object call(final Connection connection) throws SQLException {
+                final TableNameComponents components = 
+                    extractTableNameComponents(connection, tableSchema, tableName);
+                
+                final Collection matchingTables = (Collection) tableLookupBlock(
+                    runtime, components.catalog, components.schema, components.table, getTableTypes()
+                ).call(connection);
+                
+                return runtime.newBoolean( ! matchingTables.isEmpty() );
+            }
+        });
+    }
+    
     @JRubyMethod(name = {"columns", "columns_internal"}, required = 1, optional = 2)
     public IRubyObject columns_internal(final ThreadContext context, final IRubyObject[] args)
             throws SQLException, IOException {
@@ -474,10 +500,10 @@ public class RubyJdbcConnection extends RubyObject {
                     String tableName = rubyApi.convertToRubyString(args[0]).getUnicodeValue();
                     TableNameComponents components = extractTableNameComponents(connection, defaultSchema, tableName);
 
-                    RubyArray matchingTables = (RubyArray) tableLookupBlock(context.getRuntime(),
+                    Collection matchingTables = (Collection) tableLookupBlock(context.getRuntime(),
                             components.catalog, components.schema, components.table, getTableTypes()).call(connection);
                     if (matchingTables.isEmpty()) {
-                        throw new SQLException("Table " + tableName + " does not exist");
+                        throw new SQLException("table: " + tableName + " does not exist");
                     }
 
                     final DatabaseMetaData metaData = connection.getMetaData();
