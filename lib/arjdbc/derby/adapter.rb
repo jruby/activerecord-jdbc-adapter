@@ -15,6 +15,10 @@ module ArJdbc
     def self.column_selector
       [ /derby/i, lambda { |cfg, column| column.extend(::ArJdbc::Derby::Column) } ]
     end
+
+    def self.jdbc_connection_class
+      ::ActiveRecord::ConnectionAdapters::DerbyJdbcConnection
+    end
     
     def configure_connection
       execute("SET ISOLATION = SERIALIZABLE")

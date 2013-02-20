@@ -994,7 +994,7 @@ public class RubyJdbcConnection extends RubyObject {
         return RubyString.newUnicodeString(runtime, string);
     }
     
-    private SQLBlock tableLookupBlock(final Ruby runtime,
+    protected SQLBlock tableLookupBlock(final Ruby runtime,
             final String catalog, final String schemaPattern,
             final String tablePattern, final String[] types) {
         return new SQLBlock() {
@@ -1007,11 +1007,6 @@ public class RubyJdbcConnection extends RubyObject {
                     if (_tablePattern != null) _tablePattern = caseConvertIdentifierForJdbc(metaData, _tablePattern);
                     
                     String _schemaPattern = schemaPattern;
-                    String clzName = metaData.getClass().getName().toLowerCase();
-                    boolean isDerby = clzName.indexOf("derby") != -1;
-                    if ( isDerby && _schemaPattern != null && _schemaPattern.equals("") ) { 
-                        _schemaPattern = null; // Derby doesn't like empty-string schema name
-                    }
                     if (_schemaPattern != null) _schemaPattern = caseConvertIdentifierForJdbc(metaData, _schemaPattern);
 
                     tablesSet = metaData.getTables(catalog, _schemaPattern, _tablePattern, types);

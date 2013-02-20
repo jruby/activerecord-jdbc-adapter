@@ -31,6 +31,7 @@ import java.io.IOException;
 import arjdbc.db2.DB2Module;
 import arjdbc.db2.DB2RubyJdbcConnection;
 import arjdbc.derby.DerbyModule;
+import arjdbc.derby.DerbyRubyJdbcConnection;
 import arjdbc.h2.H2RubyJdbcConnection;
 import arjdbc.hsqldb.HSQLDBModule;
 import arjdbc.informix.InformixRubyJdbcConnection;
@@ -40,7 +41,7 @@ import arjdbc.mysql.MySQLModule;
 import arjdbc.mysql.MySQLRubyJdbcConnection;
 import arjdbc.oracle.OracleModule;
 import arjdbc.oracle.OracleRubyJdbcConnection;
-import arjdbc.postgresql.PostgresqlRubyJdbcConnection;
+import arjdbc.postgresql.PostgreSQLRubyJdbcConnection;
 import arjdbc.sqlite3.SQLite3Module;
 import arjdbc.sqlite3.SQLite3RubyJdbcConnection;
 
@@ -53,24 +54,34 @@ public class AdapterJavaService implements BasicLibraryService {
 
     public boolean basicLoad(final Ruby runtime) throws IOException {
         // ActiveRecord::ConnectionAdapter-s :
-        RubyClass jdbcConnection = RubyJdbcConnection.createJdbcConnectionClass(runtime);
-        PostgresqlRubyJdbcConnection.createPostgresqlJdbcConnectionClass(runtime, jdbcConnection);
-        MSSQLRubyJdbcConnection.createMSSQLJdbcConnectionClass(runtime, jdbcConnection);
-        InformixRubyJdbcConnection.createInformixJdbcConnectionClass(runtime, jdbcConnection);
-        OracleRubyJdbcConnection.createOracleJdbcConnectionClass(runtime, jdbcConnection);
-        SQLite3RubyJdbcConnection.createSQLite3JdbcConnectionClass(runtime, jdbcConnection);
-        H2RubyJdbcConnection.createH2JdbcConnectionClass(runtime, jdbcConnection);
-        MySQLRubyJdbcConnection.createMySQLJdbcConnectionClass(runtime, jdbcConnection);
-        DB2RubyJdbcConnection.createDB2JdbcConnectionClass(runtime, jdbcConnection);
-        // ArJdbc :
-        RubyModule arJdbc = runtime.getOrCreateModule("ArJdbc");
+        final RubyClass jdbcConnection = RubyJdbcConnection.createJdbcConnectionClass(runtime);
+        final RubyModule arJdbc = runtime.getOrCreateModule("ArJdbc");
+        // MySQL
         MySQLModule.load(arJdbc);
-        MSSQLModule.load(arJdbc);
-        DerbyModule.load(arJdbc);
-        HSQLDBModule.load(arJdbc);
+        MySQLRubyJdbcConnection.createMySQLJdbcConnectionClass(runtime, jdbcConnection);
+        // PostgreSQL
+        PostgreSQLRubyJdbcConnection.createPostgreSQLJdbcConnectionClass(runtime, jdbcConnection);
+        // SQLite3
         SQLite3Module.load(arJdbc);
+        SQLite3RubyJdbcConnection.createSQLite3JdbcConnectionClass(runtime, jdbcConnection);
+        // Oracle
         OracleModule.load(arJdbc);
+        OracleRubyJdbcConnection.createOracleJdbcConnectionClass(runtime, jdbcConnection);
+        // MS-SQL
+        MSSQLModule.load(arJdbc);
+        MSSQLRubyJdbcConnection.createMSSQLJdbcConnectionClass(runtime, jdbcConnection);
+        // DB2
         DB2Module.load(arJdbc);
+        DB2RubyJdbcConnection.createDB2JdbcConnectionClass(runtime, jdbcConnection);
+        // Derby
+        DerbyModule.load(arJdbc);
+        DerbyRubyJdbcConnection.createDerbyJdbcConnectionClass(runtime, jdbcConnection);
+        // HSQLDB
+        HSQLDBModule.load(arJdbc);
+        // H2
+        H2RubyJdbcConnection.createH2JdbcConnectionClass(runtime, jdbcConnection);
+        // Informix
+        InformixRubyJdbcConnection.createInformixJdbcConnectionClass(runtime, jdbcConnection);
         return true;
     }
     
