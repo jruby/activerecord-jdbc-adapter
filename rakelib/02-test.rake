@@ -20,15 +20,15 @@ def set_compat_version(task)
   end
 end
 
-ADAPTERS.each do |adapter|
-  name = adapter.sub('activerecord-jdbc', '').sub('-adapter', '')
-  task "test_#{name}_pre" do
+%w(derby h2 hsqldb mysql sqlite3 postgres mssql oracle db2 informix sybase).each do 
+  |adapter| 
+  task "test_#{adapter}_pre" do
     unless (ENV['BUNDLE_GEMFILE'] rescue '') =~ /gemfiles\/.*?\.gemfile/
       appraisals = []; Appraisal::File.each { |file| appraisals << file.name }
-      puts "Specify AR version with `rake appraisal:{version} test_#{name}'" + 
+      puts "Specify AR version with `rake appraisal:{version} test_#{adapter}'" + 
            " where version=(#{appraisals.join('|')})"
     end
-  end
+  end  
 end
 
 Rake::TestTask.class_eval { attr_reader :test_files }
@@ -69,7 +69,7 @@ task :test_pgsql => :test_postgres # alias
 declare_test_task_for :sqlite3
 
 # ensure driver for these DBs is on your class-path
-%w(oracle db2 cachedb informix).each do |adapter|
+[ :oracle, :db2, :informix, :cachedb ].each do |adapter|
   Rake::TestTask.new("test_#{adapter}") do |task|
     test_files = FileList["test/#{adapter}*_test.rb"]
     test_files += FileList["test/db/#{adapter}/*_test.rb"]
