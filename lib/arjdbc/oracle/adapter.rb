@@ -136,14 +136,44 @@ module ArJdbc
       
     end
 
-    def adapter_name
-      'Oracle'
-    end
-
     def self.arel2_visitors(config)
       { 'oracle' => Arel::Visitors::Oracle }
     end
 
+    ADAPTER_NAME = 'Oracle'
+    
+    def adapter_name
+      ADAPTER_NAME
+    end
+    
+    NATIVE_DATABASE_TYPES = {
+      :primary_key => "NUMBER(38) NOT NULL PRIMARY KEY",
+      :string => { :name => "VARCHAR2", :limit => 255 },
+      :text => { :name => "CLOB" },
+      :integer => { :name => "NUMBER", :limit => 38 },
+      :float => { :name => "NUMBER" },
+      :decimal => { :name => "DECIMAL" },
+      :datetime => { :name => "DATE" },
+      :timestamp => { :name => "TIMESTAMP" },
+      :time => { :name => "DATE" },
+      :date => { :name => "DATE" },
+      :binary => { :name => "BLOB" },
+      :boolean => { :name => "NUMBER", :limit => 1 },
+      :raw => { :name => "RAW", :limit => 2000 },
+    }
+
+    def native_database_types
+      super.merge(NATIVE_DATABASE_TYPES)
+    end
+    
+    def modify_types(types)
+      super(types)
+      NATIVE_DATABASE_TYPES.each do |key, value|
+        types[key] = value.dup
+      end
+      types
+    end
+    
     def prefetch_primary_key?(table_name = nil)
       columns(table_name).detect {|c| c.primary } if table_name
     end
@@ -248,17 +278,6 @@ module ArJdbc
     
     def indexes(table, name = nil)
       @connection.indexes(table, name, @connection.connection.meta_data.user_name)
-    end
-
-    def modify_types(types)
-      super(types)
-      types[:primary_key] = "NUMBER(38) NOT NULL PRIMARY KEY"
-      types[:integer] = { :name => "NUMBER", :limit => 38 }
-      types[:datetime] = { :name => "DATE" }
-      types[:timestamp] = { :name => "TIMESTAMP" }
-      types[:time] = { :name => "DATE" }
-      types[:date] = { :name => "DATE" }
-      types
     end
 
     def add_limit_offset!(sql, options) #:nodoc:
