@@ -53,8 +53,10 @@ module ArJdbc
       { 'db2'   => ::Arel::Visitors::DB2, 'as400' => ::Arel::Visitors::DB2 }
     end
     
+    ADAPTER_NAME = 'DB2'
+    
     def adapter_name
-      'DB2'
+      ADAPTER_NAME
     end
     
     NATIVE_DATABASE_TYPES = {
@@ -340,7 +342,7 @@ module ArJdbc
             "'#{quote_string(value)}'"
           end
         elsif column_type == :xml
-          "#{value}" # "'<ibm>@@@IBMXML@@@</ibm>'"
+          value.nil? ? "NULL" : "'#{quote_string(value)}'" # "'<ibm>@@@IBMXML@@@</ibm>'"
         else
           "'#{quote_string(value)}'"
         end
