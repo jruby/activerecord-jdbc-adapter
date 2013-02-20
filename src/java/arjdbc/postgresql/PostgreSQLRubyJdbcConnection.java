@@ -26,8 +26,9 @@
 package arjdbc.postgresql;
 
 import arjdbc.jdbc.RubyJdbcConnection;
-import java.sql.DatabaseMetaData;
 
+import java.sql.Connection;
+import java.sql.DatabaseMetaData;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Types;
@@ -54,6 +55,12 @@ public class PostgreSQLRubyJdbcConnection extends RubyJdbcConnection {
         getConnectionAdapters(runtime).setConstant("PostgresJdbcConnection", clazz); // backwards-compat
         return clazz;
     }
+    
+    private static ObjectAllocator POSTGRESQL_JDBCCONNECTION_ALLOCATOR = new ObjectAllocator() {
+        public IRubyObject allocate(Ruby runtime, RubyClass klass) {
+            return new PostgreSQLRubyJdbcConnection(runtime, klass);
+        }
+    };
     
     @Override
     protected String caseConvertIdentifierForJdbc(final DatabaseMetaData metaData, final String value)
@@ -87,10 +94,15 @@ public class PostgreSQLRubyJdbcConnection extends RubyJdbcConnection {
         }
         return super.jdbcToRuby(runtime, column, type, resultSet);
     }
-
-    private static ObjectAllocator POSTGRESQL_JDBCCONNECTION_ALLOCATOR = new ObjectAllocator() {
-        public IRubyObject allocate(Ruby runtime, RubyClass klass) {
-            return new PostgreSQLRubyJdbcConnection(runtime, klass);
-        }
-    };
+    
+    @Override
+    protected TableName extractTableName(
+            final Connection connection, 
+            String defaultSchema, final String tableName) throws SQLException {
+        // The postgres JDBC driver will default to searching every schema if no
+        // schema search path is given.  Default to the public schema instead :
+        if ( defaultSchema == null ) defaultSchema = "public";
+        return super.extractTableName(connection, defaultSchema, tableName);
+    }
+    
 }

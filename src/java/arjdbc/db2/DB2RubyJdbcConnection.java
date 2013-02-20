@@ -25,19 +25,20 @@
  ***** END LICENSE BLOCK *****/
 package arjdbc.db2;
 
+import arjdbc.jdbc.RubyJdbcConnection;
+
 import org.jruby.Ruby;
 import org.jruby.RubyClass;
 import org.jruby.runtime.ObjectAllocator;
 import org.jruby.runtime.builtin.IRubyObject;
-
-import arjdbc.jdbc.RubyJdbcConnection;
 
 /**
  *
  * @author mikestone
  */
 public class DB2RubyJdbcConnection extends RubyJdbcConnection {
-    private static final String[] TABLE_TYPES = new String[]{"TABLE", "VIEW", "SYNONYM", "MATERIALIZED QUERY TABLE", "ALIAS"};
+    
+    private static final String[] TABLE_TYPES = new String[]{ "TABLE", "VIEW", "SYNONYM", "MATERIALIZED QUERY TABLE", "ALIAS" };
 
     protected DB2RubyJdbcConnection(Ruby runtime, RubyClass metaClass) {
         super(runtime, metaClass);

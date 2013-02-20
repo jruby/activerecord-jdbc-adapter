@@ -374,8 +374,8 @@ public class RubyJdbcConnection extends RubyObject {
                 ResultSet resultSet = null;
                 final List<RubyString> keyNames = new ArrayList<RubyString>();
                 try {
-                    TableNameComponents components = extractTableNameComponents(c, null, _tableName);
-                    resultSet = metaData.getPrimaryKeys(components.catalog, components.schema, components.table);
+                    TableName components = extractTableName(c, null, _tableName);
+                    resultSet = metaData.getPrimaryKeys(components.catalog, components.schema, components.name);
 
                     while (resultSet.next()) {
                         String columnName = resultSet.getString(PRIMARY_KEYS_COLUMN_NAME);
@@ -478,11 +478,11 @@ public class RubyJdbcConnection extends RubyObject {
         
         return (RubyBoolean) withConnectionAndRetry(context, new SQLBlock() {
             public Object call(final Connection connection) throws SQLException {
-                final TableNameComponents components = 
-                    extractTableNameComponents(connection, tableSchema, tableName);
+                final TableName components = 
+                    extractTableName(connection, tableSchema, tableName);
                 
                 final Collection matchingTables = (Collection) tableLookupBlock(
-                    runtime, components.catalog, components.schema, components.table, getTableTypes()
+                    runtime, components.catalog, components.schema, components.name, getTableTypes()
                 ).call(connection);
                 
                 return runtime.newBoolean( ! matchingTables.isEmpty() );
@@ -499,17 +499,17 @@ public class RubyJdbcConnection extends RubyObject {
                 try {
                     String defaultSchema = args.length > 2 ? toStringOrNull(args[2]) : null;
                     String tableName = rubyApi.convertToRubyString(args[0]).getUnicodeValue();
-                    TableNameComponents components = extractTableNameComponents(connection, defaultSchema, tableName);
+                    TableName components = extractTableName(connection, defaultSchema, tableName);
 
                     Collection matchingTables = (Collection) tableLookupBlock(context.getRuntime(),
-                            components.catalog, components.schema, components.table, getTableTypes()).call(connection);
+                            components.catalog, components.schema, components.name, getTableTypes()).call(connection);
                     if (matchingTables.isEmpty()) {
                         throw new SQLException("table: " + tableName + " does not exist");
                     }
 
                     final DatabaseMetaData metaData = connection.getMetaData();
-                    columns = metaData.getColumns(components.catalog, components.schema, components.table, null);
-                    primaryKeys = metaData.getPrimaryKeys(components.catalog, components.schema, components.table);
+                    columns = metaData.getColumns(components.catalog, components.schema, components.name, null);
+                    primaryKeys = metaData.getPrimaryKeys(components.catalog, components.schema, components.name);
                     return unmarshal_columns(context, metaData, columns, primaryKeys);
                 }
                 finally {
@@ -1305,42 +1305,59 @@ public class RubyJdbcConnection extends RubyObject {
         return true;
     }
 
-    private TableNameComponents extractTableNameComponents(Connection connection, String defaultSchema, String tableName) throws SQLException {
-        String schemaName = null;
+    protected static final class TableName {
+        
+        public final String catalog, schema, name;
 
-        final String[] name_parts = tableName.split("\\.");
-        if (name_parts.length > 3) {
-            throw new SQLException("Table name '" + tableName + "' should not contain more than 2 '.'");
+        public TableName(String catalog, String schema, String table) {
+            this.catalog = catalog;
+            this.schema = schema;
+            this.name = table;
+        }
+        
+    }
+    
+    protected TableName extractTableName(
+            final Connection connection, 
+            final String defaultSchema, 
+            final String tableName) throws IllegalArgumentException, SQLException {
+
+        final String[] nameParts = tableName.split("\\.");
+        if (nameParts.length > 3) {
+            throw new IllegalArgumentException("table name: " + tableName + " should not contain more than 2 '.'");
         }
 
-        DatabaseMetaData metadata = connection.getMetaData();
-        String clzName = metadata.getClass().getName().toLowerCase();
-        boolean isPostgres = clzName.contains("postgresql");
-
-        String catalog = connection.getCatalog();
-        if (name_parts.length == 2) {
-            schemaName = name_parts[0];
-            tableName = name_parts[1];
-        } else if (name_parts.length == 3) {
-            catalog = name_parts[0];
-            schemaName = name_parts[1];
-            tableName = name_parts[2];
+        String catalog = null;
+        String schemaName = defaultSchema;
+        String name = tableName;
+        
+        if (nameParts.length == 2) {
+            schemaName = nameParts[0];
+            name = nameParts[1];
         }
+        else if (nameParts.length == 3) {
+            catalog = nameParts[0];
+            schemaName = nameParts[1];
+            name = nameParts[2];
+        }
+        
+        final DatabaseMetaData metaData = connection.getMetaData();
+        
+        if (schemaName != null) { 
+            schemaName = caseConvertIdentifierForJdbc(metaData, schemaName);
+        }
+        name = caseConvertIdentifierForJdbc(metaData, name);
 
-        if (schemaName == null && defaultSchema != null) schemaName = defaultSchema;
+        if (schemaName != null && ! databaseSupportsSchemas()) {
+            catalog = schemaName;
+        }
+        if (catalog == null) catalog = connection.getCatalog();
 
-        // The postgres JDBC driver will default to searching every schema if no
-        // schema search path is given.  Default to the public schema instead.
-        if (schemaName == null && isPostgres) schemaName = "public";
-        if (schemaName != null) schemaName = caseConvertIdentifierForJdbc(metadata, schemaName);
-        tableName = caseConvertIdentifierForJdbc(metadata, tableName);
-
-        if (schemaName != null && !databaseSupportsSchemas()) { catalog = schemaName; }
-
-        return new TableNameComponents(catalog, schemaName, tableName);
+        return new TableName(catalog, schemaName, name);
     }
 
-    public static class ColumnData {
+    protected static class ColumnData {
+        
         public IRubyObject name;
         public int index;
         public int type;
@@ -1351,35 +1368,29 @@ public class RubyJdbcConnection extends RubyObject {
             this.index = idx;
         }
 
-        public static ColumnData[] setup(Ruby runtime, DatabaseMetaData databaseMetadata,
-                ResultSetMetaData metadata, boolean downCase) throws SQLException {
-            int columnsCount = metadata.getColumnCount();
-            ColumnData[] columns = new ColumnData[columnsCount];
+        public static ColumnData[] setup(
+                final Ruby runtime, 
+                final DatabaseMetaData metaData,
+                final ResultSetMetaData resultMetaData, 
+                final boolean downCase) throws SQLException {
+            
+            final int columnCount = resultMetaData.getColumnCount();
+            final ColumnData[] columns = new ColumnData[columnCount];
 
-            for (int i = 1; i <= columnsCount; i++) { // metadata is one-based
-                String name;
+            for ( int i = 1; i <= columnCount; i++ ) { // metadata is one-based
+                final String name;
                 if (downCase) {
-                    name = metadata.getColumnLabel(i).toLowerCase();
+                    name = resultMetaData.getColumnLabel(i).toLowerCase();
                 } else {
-                    name = RubyJdbcConnection.caseConvertIdentifierForRails(databaseMetadata, metadata.getColumnLabel(i));
+                    name = caseConvertIdentifierForRails(metaData, resultMetaData.getColumnLabel(i));
                 }
-
-                columns[i - 1] = new ColumnData(RubyString.newUnicodeString(runtime, name), metadata.getColumnType(i), i);
+                final int columnType = resultMetaData.getColumnType(i);
+                columns[i - 1] = new ColumnData(RubyString.newUnicodeString(runtime, name), columnType, i);
             }
 
             return columns;
         }
+        
     }
-
-    private static class TableNameComponents {
-        private String catalog;
-        private String schema;
-        private String table;
-
-        private TableNameComponents(String catalog, String schema, String table) {
-            this.catalog = catalog;
-            this.schema = schema;
-            this.table = table;
-        }
-    }
+    
 }
