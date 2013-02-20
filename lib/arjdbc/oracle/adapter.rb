@@ -419,14 +419,17 @@ module ArJdbc
     end
     private :extract_order_columns
     
-    def tables
+    def tables # :nodoc:
       @connection.tables(nil, oracle_schema)
     end
     
     # NOTE: better to use current_schema instead of the configured one ?!
-    
     def columns(table_name, name = nil) # :nodoc:
       @connection.columns_internal(table_name.to_s, name, oracle_schema)
+    end
+    
+    def tablespace(table_name)
+      select_value "SELECT tablespace_name FROM user_tables WHERE table_name='#{table_name.to_s.upcase}'"
     end
     
     # QUOTING ==================================================
