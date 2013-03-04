@@ -331,27 +331,6 @@ public class RubyJdbcConnection extends RubyObject {
         return context.getRuntime().newBoolean(startsWithNoCaseCmp(sql, INSERT));
     }
 
-    /*
-     * sql, values, types, name = nil, pk = nil, id_value = nil, sequence_name = nil
-     */
-    @JRubyMethod(name = "insert_bind", required = 3, rest = true)
-    public IRubyObject insert_bind(final ThreadContext context, final IRubyObject[] args) throws SQLException {
-        final Ruby runtime = context.getRuntime();
-        return (IRubyObject) withConnectionAndRetry(context, new SQLBlock() {
-            public Object call(Connection c) throws SQLException {
-                PreparedStatement ps = null;
-                try {
-                    ps = c.prepareStatement(rubyApi.convertToRubyString(args[0]).toString(), Statement.RETURN_GENERATED_KEYS);
-                    setValuesOnPS(ps, context, args[1], args[2]);
-                    ps.executeUpdate();
-                    return unmarshal_id_result(runtime, ps.getGeneratedKeys());
-                } finally {
-                    close(ps);
-                }
-            }
-        });
-    }
-
     @JRubyMethod(name = "native_database_types", frame = false)
     public IRubyObject native_database_types() {
         return getInstanceVariable("@native_database_types");
@@ -600,23 +579,47 @@ public class RubyJdbcConnection extends RubyObject {
         });
     }
     
+    // NOTE: this seems to be not used ... at all, deprecate ?
+    /*
+     * sql, values, types, name = nil, pk = nil, id_value = nil, sequence_name = nil
+     */
+    @JRubyMethod(name = "insert_bind", required = 3, rest = true)
+    public IRubyObject insert_bind(final ThreadContext context, final IRubyObject[] args) throws SQLException {
+        final Ruby runtime = context.getRuntime();
+        return (IRubyObject) withConnectionAndRetry(context, new SQLBlock() {
+            public Object call(final Connection connection) throws SQLException {
+                final String sql = args[0].convertToString().toString();
+                PreparedStatement statement = null;
+                try {
+                    statement = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
+                    setValues(context, args[1], args[2], statement);
+                    statement.executeUpdate();
+                    return unmarshal_id_result(runtime, statement.getGeneratedKeys());
+                }
+                finally { close(statement); }
+            }
+        });
+    }
+    
+    // NOTE: this seems to be not used ... at all, deprecate ?
     /*
      * sql, values, types, name = nil
      */
+    @Deprecated
     @JRubyMethod(name = "update_bind", required = 3, rest = true)
     public IRubyObject update_bind(final ThreadContext context, final IRubyObject[] args) throws SQLException {
         final Ruby runtime = context.getRuntime();
         Arity.checkArgumentCount(runtime, args, 3, 4);
         return (IRubyObject) withConnectionAndRetry(context, new SQLBlock() {
-            public Object call(Connection c) throws SQLException {
-                PreparedStatement ps = null;
+            public Object call(final Connection connection) throws SQLException {
+                final String sql = args[0].convertToString().toString();
+                PreparedStatement statement = null;
                 try {
-                    ps = c.prepareStatement(rubyApi.convertToRubyString(args[0]).toString());
-                    setValuesOnPS(ps, context, args[1], args[2]);
-                    ps.executeUpdate();
-                } finally {
-                    close(ps);
+                    statement = connection.prepareStatement(sql);
+                    setValues(context, args[1], args[2], statement);
+                    statement.executeUpdate();
                 }
+                finally { close(statement); }
                 return runtime.getNil();
             }
         });
@@ -632,33 +635,39 @@ public class RubyJdbcConnection extends RubyObject {
     }
 
     /*
-     * (is binary?, colname, tablename, primary key, id, value)
+     * (is binary?, colname, tablename, primary_key, id, lob_value)
      */
     @JRubyMethod(name = "write_large_object", required = 6)
-    public IRubyObject write_large_object(ThreadContext context, final IRubyObject[] args)
-            throws SQLException, IOException {
+    public IRubyObject write_large_object(final ThreadContext context, final IRubyObject[] args)
+        throws SQLException, IOException {
+        
+        final boolean isBinary = args[0].isTrue(); 
+        final RubyString columnName = args[1].convertToString();
+        final RubyString tableName = args[2].convertToString();
+        final RubyString idKey = args[3].convertToString();
+        final RubyString idVal = args[4].convertToString();
+        final IRubyObject lobValue = args[5];
+        
         final Ruby runtime = context.getRuntime();
         return (IRubyObject) withConnectionAndRetry(context, new SQLBlock() {
-            public Object call(Connection c) throws SQLException {
-                String sql = "UPDATE " + rubyApi.convertToRubyString(args[2])
-                        + " SET " + rubyApi.convertToRubyString(args[1])
-                        + " = ? WHERE " + rubyApi.convertToRubyString(args[3])
-                        + "=" + rubyApi.convertToRubyString(args[4]);
-                PreparedStatement ps = null;
+            public Object call(final Connection connection) throws SQLException {
+                final String sql = "UPDATE "+ tableName +
+                    " SET "+ columnName +" = ? WHERE "+ idKey +" = "+ idVal;
+                PreparedStatement statement = null;
                 try {
-                    ps = c.prepareStatement(sql);
-                    if (args[0].isTrue()) { // binary
-                        ByteList outp = rubyApi.convertToRubyString(args[5]).getByteList();
-                        ps.setBinaryStream(1, new ByteArrayInputStream(outp.bytes,
-                                outp.begin, outp.realSize), outp.realSize);
+                    statement = connection.prepareStatement(sql);
+                    if ( isBinary ) { // binary
+                        ByteList blob = lobValue.convertToString().getByteList();
+                        statement.setBinaryStream(1, 
+                            new ByteArrayInputStream(blob.bytes, blob.begin, blob.realSize), blob.realSize
+                        );
                     } else { // clob
-                        String ss = rubyApi.convertToRubyString(args[5]).getUnicodeValue();
-                        ps.setCharacterStream(1, new StringReader(ss), ss.length());
+                        String clob = lobValue.convertToString().getUnicodeValue();
+                        statement.setCharacterStream(1, new StringReader(clob), clob.length());
                     }
-                    ps.executeUpdate();
-                } finally {
-                    close(ps);
+                    statement.executeUpdate();
                 }
+                finally { close(statement); }
                 return runtime.getNil();
             }
         });
@@ -726,10 +735,17 @@ public class RubyJdbcConnection extends RubyObject {
         }
     }
 
+    protected IRubyObject getConfigValue(final ThreadContext context, final String key) {
+        final IRubyObject config = getInstanceVariable("@config");
+        return config.callMethod(context, "[]", context.getRuntime().newSymbol(key));
+    }
+    
+    /**
+     * @deprecated renamed to {@link #getConfigValue(ThreadContext, String)}
+     */
+    @Deprecated
     protected IRubyObject config_value(ThreadContext context, String key) {
-        IRubyObject config_hash = getInstanceVariable("@config");
-
-        return config_hash.callMethod(context, "[]", context.getRuntime().newSymbol(key));
+        return getConfigValue(context, key);
     }
 
     private static String toStringOrNull(IRubyObject arg) {
@@ -780,39 +796,40 @@ public class RubyJdbcConnection extends RubyObject {
 
         return types;
     }
-
-    private static int getTypeValueFor(Ruby runtime, IRubyObject type) throws SQLException {
-        // How could this ever yield anything useful?
-        if (!(type instanceof RubySymbol)) type = rubyApi.callMethod(type, "class");
+    
+    private static int jdbcTypeFor(final ThreadContext context, IRubyObject type) 
+        throws SQLException {
+        if ( ! ( type instanceof RubySymbol ) ) {
+            if ( type instanceof RubyString ) { // to_sym
+                if ( context.getRuntime().is1_9() ) {
+                    type = ( (RubyString) type ).intern19();
+                }
+                else {
+                    type = ( (RubyString) type ).intern();
+                }
+            }
+            else {
+                throw new IllegalArgumentException(
+                    "expected a Ruby string/symbol but got: " + type + " (" + type.getMetaClass().getName() + ")"
+                );
+            }
+        }
 
         // Assumption; If this is a symbol then it will be backed by an interned string. (enebo)
-        String internedValue = type.asJavaString();
+        final String internedValue = type.asJavaString();
 
-        if(internedValue == "string") {
-            return Types.VARCHAR;
-        } else if(internedValue == "text") {
-            return Types.CLOB;
-        } else if(internedValue == "integer") {
-            return Types.INTEGER;
-        } else if(internedValue == "decimal") {
-            return Types.DECIMAL;
-        } else if(internedValue == "float") {
-            return Types.FLOAT;
-        } else if(internedValue == "datetime") {
-            return Types.TIMESTAMP;
-        } else if(internedValue == "timestamp") {
-            return Types.TIMESTAMP;
-        } else if(internedValue == "time") {
-            return Types.TIME;
-        } else if(internedValue == "date") {
-            return Types.DATE;
-        } else if(internedValue == "binary") {
-            return Types.BLOB;
-        } else if(internedValue == "boolean") {
-            return Types.BOOLEAN;
-        } else {
-            return -1;
-        }
+        if ( internedValue == (Object) "string" ) return Types.VARCHAR;
+        else if ( internedValue == (Object) "text" ) return Types.CLOB;
+        else if ( internedValue == (Object) "integer" ) return Types.INTEGER;
+        else if ( internedValue == (Object) "decimal" ) return Types.DECIMAL;
+        else if ( internedValue == (Object) "float" ) return Types.FLOAT;
+        else if ( internedValue == (Object) "datetime") return Types.TIMESTAMP;
+        else if ( internedValue == (Object) "timestamp" ) return Types.TIMESTAMP;
+        else if ( internedValue == (Object) "time" ) return Types.TIME;
+        else if ( internedValue == (Object) "date" ) return Types.DATE;
+        else if ( internedValue == (Object) "binary" ) return Types.BLOB;
+        else if ( internedValue == (Object) "boolean" ) return Types.BOOLEAN;
+        else return -1;
     }
 
     protected void populateFromResultSet(ThreadContext context, Ruby runtime, List results,
@@ -914,7 +931,7 @@ public class RubyJdbcConnection extends RubyObject {
         final Ruby runtime, final ResultSet resultSet, final Timestamp time)
         throws SQLException {
         if ( time == null && resultSet.wasNull() ) return runtime.getNil();
-
+        
         String str = time.toString();
         if (str.endsWith(" 00:00:00.0")) {
             str = str.substring(0, str.length() - (" 00:00:00.0".length()));
@@ -922,7 +939,7 @@ public class RubyJdbcConnection extends RubyObject {
         if (str.endsWith(".0")) {
             str = str.substring(0, str.length() - (".0".length()));
         }
-
+        
         return RubyString.newUnicodeString(runtime, str);
     }
     
@@ -971,7 +988,7 @@ public class RubyJdbcConnection extends RubyObject {
 
     private boolean isConnectionBroken(final ThreadContext context, final Connection connection) {
         try {
-            final IRubyObject alive_sql = config_value(context, "connection_alive_sql");
+            final IRubyObject alive_sql = getConfigValue(context, "connection_alive_sql");
             if ( select_p(context, this, alive_sql).isTrue() ) {
                 String aliveSQL = rubyApi.convertToRubyString(alive_sql).toString();
                 Statement statement = connection.createStatement();
@@ -991,61 +1008,69 @@ public class RubyJdbcConnection extends RubyObject {
     
     private final static DateFormat FORMAT = new SimpleDateFormat("%y-%M-%d %H:%m:%s");
 
-    private static void setValue(PreparedStatement ps, int index, ThreadContext context,
-            IRubyObject value, IRubyObject type) throws SQLException {
-        final int tp = getTypeValueFor(context.getRuntime(), type);
-        if(value.isNil()) {
-            ps.setNull(index, tp);
+    private static void setValue(final ThreadContext context,
+            final IRubyObject value, final IRubyObject type, 
+            final PreparedStatement statement, final int index) throws SQLException {
+        
+        final int jdbcType = jdbcTypeFor(context, type);
+        
+        if ( value.isNil() ) {
+            statement.setNull(index, jdbcType);
             return;
         }
 
-        switch(tp) {
+        switch (jdbcType) {
         case Types.VARCHAR:
         case Types.CLOB:
-            ps.setString(index, RubyString.objAsString(context, value).toString());
+            statement.setString(index, RubyString.objAsString(context, value).toString());
             break;
         case Types.INTEGER:
-            ps.setLong(index, RubyNumeric.fix2long(value));
+            statement.setLong(index, RubyNumeric.fix2long(value));
             break;
         case Types.FLOAT:
-            ps.setDouble(index, ((RubyNumeric)value).getDoubleValue());
+            statement.setDouble(index, ((RubyNumeric) value).getDoubleValue());
             break;
         case Types.TIMESTAMP:
         case Types.TIME:
         case Types.DATE:
-            if(!(value instanceof RubyTime)) {
+            if ( ! ( value instanceof RubyTime ) ) {
+                final String stringValue = RubyString.objAsString(context, value).toString();
                 try {
-                    Date dd = FORMAT.parse(RubyString.objAsString(context, value).toString());
-                    ps.setTimestamp(index, new java.sql.Timestamp(dd.getTime()), Calendar.getInstance());
-                } catch(Exception e) {
-                    ps.setString(index, RubyString.objAsString(context, value).toString());
+                    Timestamp timestamp = new Timestamp( FORMAT.parse( stringValue ).getTime() );
+                    statement.setTimestamp( index, timestamp, Calendar.getInstance() );
+                }
+                catch (Exception e) {
+                    statement.setString( index, stringValue );
                 }
             } else {
-                RubyTime rubyTime = (RubyTime) value;
-                java.util.Date date = rubyTime.getJavaDate();
-                long millis = date.getTime();
-                long micros = rubyTime.microseconds() - millis / 1000;
-                java.sql.Timestamp ts = new java.sql.Timestamp(millis);
-                java.util.Calendar cal = Calendar.getInstance();
-                cal.setTime(date);
-                ts.setNanos((int)(micros * 1000));
-                ps.setTimestamp(index, ts, cal);
+                final RubyTime timeValue = (RubyTime) value;
+                final Date dateValue = timeValue.getJavaDate();
+                
+                long millis = dateValue.getTime();
+                Timestamp timestamp = new Timestamp(millis);
+                Calendar calendar = Calendar.getInstance();
+                calendar.setTime(dateValue);
+                if ( jdbcType != Types.DATE ) {
+                    int micros = (int) timeValue.microseconds();
+                    timestamp.setNanos( micros * 1000 ); // time.nsec ~ time.usec * 1000
+                }
+                statement.setTimestamp( index, timestamp, calendar );
             }
             break;
         case Types.BOOLEAN:
-            ps.setBoolean(index, value.isTrue());
+            statement.setBoolean(index, value.isTrue());
             break;
-        default: throw new RuntimeException("type " + type + " not supported in _bind yet");
+        default: throw new RuntimeException("type " + jdbcType + " not supported in _bind (yet)");
         }
     }
 
-    private static void setValuesOnPS(PreparedStatement ps, ThreadContext context,
-            IRubyObject valuesArg, IRubyObject typesArg) throws SQLException {
-        RubyArray values = (RubyArray) valuesArg;
-        RubyArray types = (RubyArray) typesArg;
-
-        for(int i=0, j=values.getLength(); i<j; i++) {
-            setValue(ps, i+1, context, values.eltInternal(i), types.eltInternal(i));
+    private static void setValues(final ThreadContext context,
+            final IRubyObject valuesArg, final IRubyObject typesArg,
+            final PreparedStatement statement) throws SQLException {
+        final RubyArray values = (RubyArray) valuesArg;
+        final RubyArray types = (RubyArray) typesArg;
+        for( int i = 0, j = values.getLength(); i < j; i++ ) {
+            setValue(context, values.eltInternal(i), types.eltInternal(i), statement, i + 1);
         }
     }
     
@@ -1229,7 +1254,8 @@ public class RubyJdbcConnection extends RubyObject {
             try {
                 autoCommit = c.getAutoCommit();
                 return block.call(c);
-            } catch (Exception e) {
+            }
+            catch (Exception e) {
                 toWrap = e;
                 while (toWrap.getCause() != null && toWrap.getCause() != toWrap) {
                     toWrap = toWrap.getCause();
@@ -1242,10 +1268,9 @@ public class RubyJdbcConnection extends RubyObject {
                 i++;
                 if (autoCommit) {
                     if (i == 1) {
-                        tries = (int) rubyApi.convertToRubyInteger(config_value(context, "retry_count")).getLongValue();
-                        if (tries <= 0) {
-                            tries = 1;
-                        }
+                        IRubyObject retryCount = getConfigValue(context, "retry_count");
+                        tries = (int) retryCount.convertToInteger().getLongValue();
+                        if ( tries <= 0 ) tries = 1;
                     }
                     if (isConnectionBroken(context, c)) {
                         reconnect();
