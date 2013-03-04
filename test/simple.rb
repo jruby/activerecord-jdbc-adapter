@@ -12,11 +12,9 @@ require 'models/add_not_null_column_to_table'
 ActiveRecord::Schema.verbose = false
 ActiveRecord::Base.time_zone_aware_attributes = true if ActiveRecord::Base.respond_to?(:time_zone_aware_attributes)
 ActiveRecord::Base.default_timezone = :utc
-# just a random zone, unlikely to be local, and not utc
-Time.zone = 'Moscow' if Time.respond_to?(:zone)
 
 module MigrationSetup
-
+  
   def setup 
     setup!
   end
@@ -60,16 +58,29 @@ end
 module FixtureSetup
   include MigrationSetup
 
+  @@_time_zone = Time.respond_to?(:zone) ? Time.zone : nil
+  
   def setup
     super
+    #
+    # just a random zone, unlikely to be local, and not utc
+    Time.zone = 'Moscow' if Time.respond_to?(:zone)
+    #
     @title = "First post!"
     @content = "Hello from JRuby on Rails!"
     @new_title = "First post updated title"
     @rating = 205.76
-    @user = User.create :login=>"something"
-    @entry = Entry.create :title => @title, :content => @content, :rating => @rating, :user=>@user
+    @user = User.create :login => "something"
+    @entry = Entry.create :title => @title, :content => @content, :rating => @rating, :user => @user
     DbType.create
   end
+  
+  def teardown
+    super
+    #
+    Time.zone = @@_time_zone if Time.respond_to?(:zone)
+  end
+  
 end
 
 module ColumnNameQuotingTests
@@ -830,6 +841,7 @@ module XmlColumnTests
     def teardown
       super
       drop_xml_models! rescue false
+      
     end
     
     def test_create_xml_column
@@ -844,9 +856,9 @@ module XmlColumnTests
 
     def test_use_xml_column
       if ( ( create_xml_models! || true ) rescue nil )
-        
+
         XmlModel.create! :xml_col => "<xml><LoVE><![CDATA[Rubyist's <3 XML!]]></LoVE></xml>"
-        
+    
         assert xml_model = XmlModel.first
 
         unless xml_sql_type =~ /text/i
