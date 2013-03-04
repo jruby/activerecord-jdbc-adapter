@@ -10,7 +10,10 @@ class MSSQLDateTimeTypesTest < Test::Unit::TestCase
     )
   SQL
   
+  @@default_timezone = ActiveRecord::Base.default_timezone
+  
   def self.startup
+    ActiveRecord::Base.default_timezone = :local
     ActiveRecord::Base.connection.execute TABLE_DEFINITION
     # ActiveRecord::Base.logger.level = Logger::DEBUG
   end
@@ -18,6 +21,7 @@ class MSSQLDateTimeTypesTest < Test::Unit::TestCase
   def self.shutdown
     # ActiveRecord::Base.logger.level = Logger::WARN
     ActiveRecord::Base.connection.execute "DROP TABLE date_and_times"
+    ActiveRecord::Base.default_timezone = @@default_timezone
   end
   
   class DateAndTime < ActiveRecord::Base; end
@@ -38,9 +42,9 @@ class MSSQLDateTimeTypesTest < Test::Unit::TestCase
         [id] int NOT NULL IDENTITY(1, 1), 
         [datetime] DATETIME,
         [date] DATE,
-        [datetime2] DATETIME2, 
-        [datetime25] DATETIME2(5), 
-        [smalldatetime] SMALLDATETIME, 
+        [datetime2] DATETIME2,
+        [datetime25] DATETIME2(5),
+        [smalldatetime] SMALLDATETIME,
         [time] TIME
         PRIMARY KEY CLUSTERED ( [id] ASC ) WITH ( 
           PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, 
@@ -63,13 +67,22 @@ class MSSQLDateTimeTypesTest < Test::Unit::TestCase
       model = DateAndTime.create! :datetime2 => datetime
       assert_not_nil model.datetime2
       assert_datetime_equal datetime, model.reload.datetime2
-      
-#      datetime = Time.local(1982, 7, 13, 02, 24, 56, 12345)
-#      model = DateAndTime.create! :datetime25 => datetime
-#      assert_not_nil model.datetime25
-#      assert_equal datetime, model.reload.datetime25
     end
 
+    def test_datetime25
+#      id = DateAndTime.connection.insert 'INSERT INTO date_and_times ([datetime25])' + 
+#        " VALUES ('1982-07-13 02:24:56.12345')"
+#      model = DateAndTime.find(id)
+#      assert_not_nil model.datetime25
+#      datetime = Time.local(1982, 7, 13, 02, 24, 56, 123450)
+#      assert_equal datetime, model.datetime25
+      
+      datetime = Time.local(1982, 7, 13, 02, 24, 56, 123000)
+      model = DateAndTime.create! :datetime25 => datetime
+      assert_not_nil model.datetime25
+      assert_equal datetime, model.reload.datetime25
+    end
+    
     def test_smalldatetime
       # 1900-01-01 through 2079-06-06 + 00:00:00 through 23:59:59
       # with seconds always zero - rounded to the nearest minute
@@ -84,13 +97,22 @@ class MSSQLDateTimeTypesTest < Test::Unit::TestCase
       assert_datetime_equal datetime, model.reload.smalldatetime
     end
     
-#    def test_time
-#      # 00:00:00.0000000 through 23:59:59.9999999
-#      time = Time.local(0000, 1, 01, 23, 59, 58, 0)
-#      model = DateAndTime.create! :time => time
-#      assert_not_nil model.time
-#      assert_time_equal time, model.reload.time
-#    end
+    def test_time
+      # 00:00:00.0000000 through 23:59:59.9999999
+      time = Time.local(0000, 1, 01, 23, 59, 58, 987000)
+      model = DateAndTime.create! :time => time
+      assert_not_nil model.time
+      assert_time_equal time, model.reload.time
+      assert_equal 987000, model.time.usec
+      
+      id = DateAndTime.connection.insert 'INSERT INTO date_and_times ([time])' + 
+        " VALUES ('22:05:59.123456')"
+      model = DateAndTime.find(id)
+      assert_not_nil model.time
+      time = Time.local(2000, 1, 01, 22, 05, 59, 123456)
+      assert_time_equal time, model.time
+      assert_equal time.usec, model.time.usec
+    end
     
   end
   
@@ -128,16 +150,9 @@ class MSSQLLegacyTypesTest < Test::Unit::TestCase
   end
   
   def test_varchar_column
-    
-    ActiveRecord::Base.logger.level = Logger::DEBUG
-    
     Article.create! :title => "Blah blah"
     article = Article.first
     assert_equal("Blah blah", article.title)
-  ensure
-    
-    ActiveRecord::Base.logger.level = Logger::WARN
-    
   end
   
   def test_text_column

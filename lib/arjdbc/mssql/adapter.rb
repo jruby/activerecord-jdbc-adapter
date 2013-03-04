@@ -228,12 +228,71 @@ module ArJdbc
         else
           super
         end
+      when Date, Time
+        if column && column.type == :time
+          "'#{quoted_time(value)}'"
+        elsif column && column.sql_type.index('datetimeoffset')
+          "'#{quoted_full_iso8601(value)}'"
+        elsif column && column.sql_type.index('datetime')
+          "'#{quoted_datetime(value)}'"
+        else
+          super
+        end
       when TrueClass  then '1'
       when FalseClass then '0'
       else super
       end
     end
+    
+    def quoted_date(value)
+      if value.respond_to?(:usec)
+        "#{super}.#{sprintf("%03d", value.usec / 1000)}"
+      else
+        super
+      end
+    end
 
+    def quoted_datetime(value)
+      if value.acts_like?(:time)
+        time_zone_qualified_value = quoted_value_acts_like_time_filter(value)
+        if value.is_a?(Date)
+          time_zone_qualified_value.to_time.xmlschema.to(18)
+        else
+          if value.is_a?(ActiveSupport::TimeWithZone) && RUBY_VERSION < '1.9'
+            time_zone_qualified_value = time_zone_qualified_value.to_time
+          end
+          time_zone_qualified_value.iso8601(3).to(22)
+        end
+      else
+        quoted_date(value)
+      end
+    end
+    
+    def quoted_time(value)
+      if value.acts_like?(:time)
+        tz_value = quoted_value_acts_like_time_filter(value)
+        sprintf("%02d:%02d:%02d.%03d", tz_value.hour, tz_value.min, tz_value.sec, value.usec / 1000)
+      else
+        quoted_date(value)
+      end
+    end
+    
+    def quoted_full_iso8601(value)
+      if value.acts_like?(:time)
+        value.is_a?(Date) ? 
+          quoted_value_acts_like_time_filter(value).to_time.xmlschema.to(18) : 
+            quoted_value_acts_like_time_filter(value).iso8601(7).to(22)
+      else
+        quoted_date(value)
+      end
+    end
+        
+    def quoted_value_acts_like_time_filter(value)
+      method = ActiveRecord::Base.default_timezone == :utc ? :getutc : :getlocal
+      value.respond_to?(method) ? value.send(method) : value
+    end
+    protected :quoted_value_acts_like_time_filter
+    
     def quote_table_name(name)
       quote_column_name(name)
     end
