@@ -145,6 +145,14 @@ module ArJdbc
 
       def extract_limit(sql_type)
         case sql_type
+        when /^smallint/i
+          2
+        when /^int/i
+          4
+        when /^bigint/i
+          8
+        when /\(max\)/, /decimal/, /numeric/
+          nil
         when /text|ntext|xml|binary|image|varbinary|bit/
           nil
         else
@@ -153,7 +161,7 @@ module ArJdbc
       end
 
       def is_utf8?
-        sql_type =~ /nvarchar|ntext|nchar/i
+        !!( sql_type =~ /nvarchar|ntext|nchar/i )
       end
 
       def unquote(value)
