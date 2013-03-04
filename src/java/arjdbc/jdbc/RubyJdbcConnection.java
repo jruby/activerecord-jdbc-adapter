@@ -815,41 +815,23 @@ public class RubyJdbcConnection extends RubyObject {
         }
     }
 
-    private boolean isConnectionBroken(ThreadContext context, Connection c) {
-        try {
-            IRubyObject alive = config_value(context, "connection_alive_sql");
-            if (select_p(context, this, alive).isTrue()) {
-                String connectionSQL = rubyApi.convertToRubyString(alive).toString();
-                Statement s = c.createStatement();
-                try {
-                    s.execute(connectionSQL);
-                } finally {
-                    close(s);
-                }
-                return false;
-            } else {
-                return !c.isClosed();
+    protected void populateFromResultSet(ThreadContext context, Ruby runtime, List results,
+            ResultSet resultSet, ColumnData[] columns) throws SQLException {
+        int columnCount = columns.length;
+
+        while (resultSet.next()) {
+            RubyHash row = RubyHash.newHash(runtime);
+
+            for (int i = 0; i < columnCount; i++) {
+                row.op_aset(context, columns[i].name, jdbcToRuby(runtime, columns[i].index, columns[i].type, resultSet));
             }
-        } catch (Exception sx) {
-            return true;
+
+            results.add(row);
         }
     }
-
-    protected IRubyObject integerToRuby(Ruby runtime, ResultSet resultSet, long longValue)
-            throws SQLException {
-        if (longValue == 0 && resultSet.wasNull()) return runtime.getNil();
-
-        return runtime.newFixnum(longValue);
-    }
-
-    protected IRubyObject bigIntegerToRuby(Ruby runtime, ResultSet resultSet, String bigint) throws SQLException {
-        if (bigint == null && resultSet.wasNull()) return runtime.getNil();
-
-        return RubyBignum.bignorm(runtime, new BigInteger(bigint));
-    }
-
+    
     protected IRubyObject jdbcToRuby(Ruby runtime, int column, int type, ResultSet resultSet)
-            throws SQLException {
+        throws SQLException {
         try {
             switch (type) {
             case Types.BINARY:
@@ -879,42 +861,88 @@ public class RubyJdbcConnection extends RubyObject {
             default:
                 return stringToRuby(runtime, resultSet, resultSet.getString(column));
             }
-        } catch (IOException ioe) {
+        }
+        catch (IOException ioe) {
             throw (SQLException) new SQLException(ioe.getMessage()).initCause(ioe);
         }
     }
 
-    protected void populateFromResultSet(ThreadContext context, Ruby runtime, List results,
-            ResultSet resultSet, ColumnData[] columns) throws SQLException {
-        int columnCount = columns.length;
+    protected IRubyObject integerToRuby(
+        final Ruby runtime, final ResultSet resultSet, final long longValue)
+        throws SQLException {
+        if ( longValue == 0 && resultSet.wasNull() ) return runtime.getNil();
 
-        while (resultSet.next()) {
-            RubyHash row = RubyHash.newHash(runtime);
-
-            for (int i = 0; i < columnCount; i++) {
-                row.op_aset(context, columns[i].name, jdbcToRuby(runtime, columns[i].index, columns[i].type, resultSet));
-            }
-
-            results.add(row);
-        }
+        return runtime.newFixnum(longValue);
     }
 
+    protected IRubyObject bigIntegerToRuby(
+        final Ruby runtime, final ResultSet resultSet, final String bigint) 
+        throws SQLException {
+        if ( bigint == null && resultSet.wasNull() ) return runtime.getNil();
 
-    protected IRubyObject readerToRuby(Ruby runtime, ResultSet resultSet, Reader reader)
-            throws SQLException, IOException {
-        if (reader == null && resultSet.wasNull()) return runtime.getNil();
+        return RubyBignum.bignorm(runtime, new BigInteger(bigint));
+    }
+    
+    protected IRubyObject streamToRuby(
+        final Ruby runtime, final ResultSet resultSet, final InputStream is)
+        throws SQLException, IOException {
+        if ( is == null && resultSet.wasNull() ) return runtime.getNil();
 
-        StringBuffer str = new StringBuffer(2048);
+        ByteList str = new ByteList(2048);
+        try {
+            byte[] buf = new byte[2048];
+
+            for (int n = is.read(buf); n != -1; n = is.read(buf)) {
+                str.append(buf, 0, n);
+            }
+        } finally {
+            is.close();
+        }
+
+        return runtime.newString(str);
+    }
+
+    protected IRubyObject stringToRuby(
+        final Ruby runtime, final ResultSet resultSet, final String string)
+        throws SQLException, IOException {
+        if ( string == null && resultSet.wasNull() ) return runtime.getNil();
+
+        return RubyString.newUnicodeString(runtime, string);
+    }
+    
+    protected IRubyObject timestampToRuby(
+        final Ruby runtime, final ResultSet resultSet, final Timestamp time)
+        throws SQLException {
+        if ( time == null && resultSet.wasNull() ) return runtime.getNil();
+
+        String str = time.toString();
+        if (str.endsWith(" 00:00:00.0")) {
+            str = str.substring(0, str.length() - (" 00:00:00.0".length()));
+        }
+        if (str.endsWith(".0")) {
+            str = str.substring(0, str.length() - (".0".length()));
+        }
+
+        return RubyString.newUnicodeString(runtime, str);
+    }
+    
+    protected IRubyObject readerToRuby(
+        final Ruby runtime, final ResultSet resultSet, final Reader reader)
+        throws SQLException, IOException {
+        if ( reader == null && resultSet.wasNull() ) return runtime.getNil();
+
+        final StringBuilder str = new StringBuilder(2048);
         try {
             char[] buf = new char[2048];
 
             for (int n = reader.read(buf); n != -1; n = reader.read(buf)) {
                 str.append(buf, 0, n);
             }
-        } finally {
+        }
+        finally {
             reader.close();
         }
-
+        
         return RubyString.newUnicodeString(runtime, str.toString());
     }
 
@@ -941,6 +969,26 @@ public class RubyJdbcConnection extends RubyObject {
         return this;
     }
 
+    private boolean isConnectionBroken(final ThreadContext context, final Connection connection) {
+        try {
+            final IRubyObject alive_sql = config_value(context, "connection_alive_sql");
+            if ( select_p(context, this, alive_sql).isTrue() ) {
+                String aliveSQL = rubyApi.convertToRubyString(alive_sql).toString();
+                Statement statement = connection.createStatement();
+                try {
+                    statement.execute(aliveSQL);
+                }
+                finally { close(statement); }
+                return false;
+            } else {
+                return ! connection.isClosed();
+            }
+        }
+        catch (Exception e) { // TODO log this
+            return true;
+        }
+    }
+    
     private final static DateFormat FORMAT = new SimpleDateFormat("%y-%M-%d %H:%m:%s");
 
     private static void setValue(PreparedStatement ps, int index, ThreadContext context,
@@ -1000,31 +1048,6 @@ public class RubyJdbcConnection extends RubyObject {
             setValue(ps, i+1, context, values.eltInternal(i), types.eltInternal(i));
         }
     }
-
-    protected IRubyObject streamToRuby(Ruby runtime, ResultSet resultSet, InputStream is)
-            throws SQLException, IOException {
-        if (is == null && resultSet.wasNull()) return runtime.getNil();
-
-        ByteList str = new ByteList(2048);
-        try {
-            byte[] buf = new byte[2048];
-
-            for (int n = is.read(buf); n != -1; n = is.read(buf)) {
-                str.append(buf, 0, n);
-            }
-        } finally {
-            is.close();
-        }
-
-        return runtime.newString(str);
-    }
-
-    protected IRubyObject stringToRuby(Ruby runtime, ResultSet resultSet, String string)
-            throws SQLException, IOException {
-        if (string == null && resultSet.wasNull()) return runtime.getNil();
-
-        return RubyString.newUnicodeString(runtime, string);
-    }
     
     protected SQLBlock tableLookupBlock(final Ruby runtime,
             final String catalog, final String schemaPattern,
@@ -1065,21 +1088,6 @@ public class RubyJdbcConnection extends RubyObject {
             tables.add(RubyString.newUnicodeString(runtime, name));
         }
         return runtime.newArray((List) tables);
-    }
-    
-    protected IRubyObject timestampToRuby(Ruby runtime, ResultSet resultSet, Timestamp time)
-            throws SQLException {
-        if (time == null && resultSet.wasNull()) return runtime.getNil();
-
-        String str = time.toString();
-        if (str.endsWith(" 00:00:00.0")) {
-            str = str.substring(0, str.length() - (" 00:00:00.0".length()));
-        }
-        if (str.endsWith(".0")) {
-            str = str.substring(0, str.length() - (".0".length()));
-        }
-
-        return RubyString.newUnicodeString(runtime, str);
     }
 
     protected static final int COLUMN_NAME = 4;
@@ -1202,7 +1210,7 @@ public class RubyJdbcConnection extends RubyObject {
         final Ruby runtime = context.getRuntime();
         final List<IRubyObject> results = new ArrayList<IRubyObject>();
         try {
-            ColumnData[] columns = ColumnData.setup(runtime, metadata, resultSet.getMetaData(), downCase);
+            ColumnData[] columns = setupColumns(runtime, metadata, resultSet.getMetaData(), downCase);
 
             populateFromResultSet(context, runtime, results, resultSet, columns);
         }
@@ -1356,41 +1364,42 @@ public class RubyJdbcConnection extends RubyObject {
         return new TableName(catalog, schemaName, name);
     }
 
-    protected static class ColumnData {
+    protected static final class ColumnData {
         
-        public IRubyObject name;
-        public int index;
-        public int type;
+        public final RubyString name;
+        public final int index;
+        public final int type;
 
-        public ColumnData(IRubyObject name, int type, int idx) {
+        public ColumnData(RubyString name, int type, int idx) {
             this.name = name;
             this.type = type;
             this.index = idx;
         }
-
-        public static ColumnData[] setup(
-                final Ruby runtime, 
-                final DatabaseMetaData metaData,
-                final ResultSetMetaData resultMetaData, 
-                final boolean downCase) throws SQLException {
-            
-            final int columnCount = resultMetaData.getColumnCount();
-            final ColumnData[] columns = new ColumnData[columnCount];
-
-            for ( int i = 1; i <= columnCount; i++ ) { // metadata is one-based
-                final String name;
-                if (downCase) {
-                    name = resultMetaData.getColumnLabel(i).toLowerCase();
-                } else {
-                    name = caseConvertIdentifierForRails(metaData, resultMetaData.getColumnLabel(i));
-                }
-                final int columnType = resultMetaData.getColumnType(i);
-                columns[i - 1] = new ColumnData(RubyString.newUnicodeString(runtime, name), columnType, i);
-            }
-
-            return columns;
-        }
         
+    }
+    
+    private static ColumnData[] setupColumns(
+            final Ruby runtime, 
+            final DatabaseMetaData metaData,
+            final ResultSetMetaData resultMetaData, 
+            final boolean downCase) throws SQLException {
+
+        final int columnCount = resultMetaData.getColumnCount();
+        final ColumnData[] columns = new ColumnData[columnCount];
+
+        for ( int i = 1; i <= columnCount; i++ ) { // metadata is one-based
+            final String name;
+            if (downCase) {
+                name = resultMetaData.getColumnLabel(i).toLowerCase();
+            } else {
+                name = caseConvertIdentifierForRails(metaData, resultMetaData.getColumnLabel(i));
+            }
+            final int columnType = resultMetaData.getColumnType(i);
+            final RubyString columnName = RubyString.newUnicodeString(runtime, name);
+            columns[i - 1] = new ColumnData(columnName, columnType, i);
+        }
+
+        return columns;
     }
     
 }

@@ -98,14 +98,14 @@ public class SQLite3RubyJdbcConnection extends RubyJdbcConnection {
 
     @Override
     protected IRubyObject jdbcToRuby(Ruby runtime, int column, int type, ResultSet resultSet)
-            throws SQLException {
+        throws SQLException {
         try {
             // This is rather gross, and only needed because the resultset metadata for SQLite tries to be overly
             // clever, and returns a type for the column of the "current" row, so an integer value stored in a 
             // decimal column is returned as Types.INTEGER.  Therefore, if the first row of a resultset was an
             // integer value, all rows of that result set would get truncated.
             if( resultSet instanceof ResultSetMetaData ) {
-                type = ((ResultSetMetaData)resultSet).getColumnType(column);
+                type = ((ResultSetMetaData) resultSet).getColumnType(column);
             }
             switch (type) {
             case Types.BINARY:
@@ -120,7 +120,8 @@ public class SQLite3RubyJdbcConnection extends RubyJdbcConnection {
             default:
                 return super.jdbcToRuby(runtime, column, type, resultSet);
             }
-        } catch (IOException ioe) {
+        }
+        catch (IOException ioe) {
             throw (SQLException) new SQLException(ioe.getMessage()).initCause(ioe);
         }
     }

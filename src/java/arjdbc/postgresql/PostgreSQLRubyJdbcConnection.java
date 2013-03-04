@@ -27,6 +27,7 @@ package arjdbc.postgresql;
 
 import arjdbc.jdbc.RubyJdbcConnection;
 
+import java.io.IOException;
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.ResultSet;
@@ -80,16 +81,16 @@ public class PostgreSQLRubyJdbcConnection extends RubyJdbcConnection {
      * conversion to timestamp
      */
     @Override
-    protected IRubyObject jdbcToRuby(Ruby runtime, int column, int type, 
-                                     ResultSet resultSet)
+    protected IRubyObject jdbcToRuby(final Ruby runtime, 
+        final int column, final int type, final ResultSet resultSet)
         throws SQLException {
-        if(type == Types.TIMESTAMP) {
+        if ( type == Types.TIMESTAMP ) {
             try {
-                return stringToRuby(runtime, resultSet, 
-                                    resultSet.getString(column));
-            } catch(java.io.IOException ioe) {
-                SQLException ex = new SQLException(ioe.getMessage());
-                throw (SQLException) ex.initCause(ioe);
+                return stringToRuby(runtime, resultSet, resultSet.getString(column));
+            }
+            catch (IOException e) {
+                SQLException sqle = new SQLException(e.getMessage());
+                throw (SQLException) sqle.initCause(e);
             }
         }
         return super.jdbcToRuby(runtime, column, type, resultSet);
