@@ -521,7 +521,6 @@ module ArJdbc
       # Match the start of the SQL to determine appropriate behavior.
       # Be aware of multi-line SQL which might begin with 'create stored_proc' 
       # and contain 'insert into ...' lines.
-      # TODO test and refactor using `self.class.insert?(sql)` etc
       # NOTE: ignoring comment blocks prior to the first statement ?!
       if self.class.insert?(sql)
         if query_requires_identity_insert?(sql)
@@ -535,7 +534,9 @@ module ArJdbc
       elsif self.class.select?(sql)
         sql = repair_special_columns(sql)
         @connection.execute_query(sql)
-      else # create | exec
+      elsif @connection.class.exec?(sql)
+        @connection.execute_query(sql)
+      else # create
         @connection.execute_update(sql)
       end
     end

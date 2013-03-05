@@ -74,6 +74,16 @@ class MSSQLSimpleTest < Test::Unit::TestCase
     assert entries.first.login
   end
   
+  def test_exec
+    ActiveRecord::Base.connection.execute "CREATE PROCEDURE usp_allentries AS SELECT * FROM entries"
+    
+    exec_sql = "EXEC sp_msforeachdb 'SELECT count(*) FROM sys.objects'"
+    assert_not_empty ActiveRecord::Base.connection.execute(exec_sql) # [ { '' => 42 }]
+    ActiveRecord::Base.connection.exec_query(" exec usp_allentries ")
+  ensure
+    ActiveRecord::Base.connection.execute "DROP PROCEDURE usp_allentries" rescue nil
+  end
+  
 end
 
 class MSSQLHasManyThroughTest < Test::Unit::TestCase

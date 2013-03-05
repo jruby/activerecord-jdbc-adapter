@@ -38,9 +38,11 @@ import org.jruby.Ruby;
 import org.jruby.RubyArray;
 import org.jruby.RubyClass;
 import org.jruby.RubyString;
+import org.jruby.anno.JRubyMethod;
 import org.jruby.runtime.ObjectAllocator;
 import org.jruby.runtime.ThreadContext;
 import org.jruby.runtime.builtin.IRubyObject;
+import org.jruby.util.ByteList;
 
 /**
  *
@@ -68,7 +70,15 @@ public class MSSQLRubyJdbcConnection extends RubyJdbcConnection {
             return new MSSQLRubyJdbcConnection(runtime, klass);
         }
     };
-
+   
+    private static final byte[] EXEC = new byte[] { 'e', 'x', 'e', 'c' };
+    
+    @JRubyMethod(name = "exec?", required = 1, meta = true, frame = false)
+    public static IRubyObject exec_p(ThreadContext context, IRubyObject self, IRubyObject sql) {
+        final ByteList sqlBytes = sql.convertToString().getByteList();
+        return context.getRuntime().newBoolean( startsWithIgnoreCase(sqlBytes, EXEC) );
+    }
+    
     /**
      * Treat LONGVARCHAR as CLOB on MSSQL for purposes of converting a JDBC value to Ruby.
      * Treat BOOLEAN/BIT as Boolean, rather than the default behaviour of conversion to string
