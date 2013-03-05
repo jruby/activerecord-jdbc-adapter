@@ -324,13 +324,6 @@ public class RubyJdbcConnection extends RubyObject {
         });
     }
 
-    @JRubyMethod(name = "insert?", required = 1, meta = true, frame = false)
-    public static IRubyObject insert_p(ThreadContext context, IRubyObject recv, IRubyObject _sql) {
-        ByteList sql = rubyApi.convertToRubyString(_sql).getByteList();
-
-        return context.getRuntime().newBoolean(startsWithNoCaseCmp(sql, INSERT));
-    }
-
     @JRubyMethod(name = "native_database_types", frame = false)
     public IRubyObject native_database_types() {
         return getInstanceVariable("@native_database_types");
@@ -388,18 +381,7 @@ public class RubyJdbcConnection extends RubyObject {
           }
         });
     }
-
-    @JRubyMethod(name = "select?", required = 1, meta = true, frame = false)
-    public static IRubyObject select_p(ThreadContext context, IRubyObject self, IRubyObject sql) {
-        final ByteList sqlBytes = sql.convertToString().getByteList();
-        return context.getRuntime().newBoolean(
-                startsWithNoCaseCmp(sqlBytes, SELECT) || 
-                startsWithNoCaseCmp(sqlBytes, WITH) ||
-                startsWithNoCaseCmp(sqlBytes, SHOW) || 
-                startsWithNoCaseCmp(sqlBytes, CALL)
-        );
-    }
-
+    
     @JRubyMethod(name = "set_native_database_types")
     public IRubyObject set_native_database_types(ThreadContext context) throws SQLException, IOException {
         Ruby runtime = context.getRuntime();
@@ -1309,35 +1291,49 @@ public class RubyJdbcConnection extends RubyObject {
         return false;
     }
 
-    private static int whitespace(int start, ByteList bl) {
-        int end = bl.begin + bl.realSize;
-
-        for (int i = start; i < end; i++) {
-            if (!Character.isWhitespace(bl.bytes[i])) return i;
-        }
-
-        return end;
+    private static final byte[] SELECT = new byte[] { 's', 'e', 'l', 'e', 'c', 't' };
+    private static final byte[] WITH = new byte[] { 'w', 'i', 't', 'h' };
+    private static final byte[] SHOW = new byte[] { 's', 'h', 'o', 'w' };
+    private static final byte[] CALL = new byte[]{ 'c', 'a', 'l', 'l' };
+    
+    @JRubyMethod(name = "select?", required = 1, meta = true, frame = false)
+    public static IRubyObject select_p(ThreadContext context, IRubyObject self, IRubyObject sql) {
+        final ByteList sqlBytes = sql.convertToString().getByteList();
+        return context.getRuntime().newBoolean(
+                startsWithIgnoreCase(sqlBytes, SELECT) || 
+                startsWithIgnoreCase(sqlBytes, WITH) ||
+                startsWithIgnoreCase(sqlBytes, SHOW) || 
+                startsWithIgnoreCase(sqlBytes, CALL)
+        );
     }
 
-    private static byte[] CALL = new byte[]{'c', 'a', 'l', 'l'};
-    private static byte[] INSERT = new byte[] {'i', 'n', 's', 'e', 'r', 't'};
-    private static byte[] SELECT = new byte[] {'s', 'e', 'l', 'e', 'c', 't'};
-    private static byte[] WITH = new byte[] {'w', 'i', 't', 'h'};
-    private static byte[] SHOW = new byte[] {'s', 'h', 'o', 'w'};
+    private static final byte[] INSERT = new byte[] { 'i', 'n', 's', 'e', 'r', 't' };
+    
+    @JRubyMethod(name = "insert?", required = 1, meta = true, frame = false)
+    public static IRubyObject insert_p(ThreadContext context, IRubyObject recv, IRubyObject _sql) {
+        ByteList sql = rubyApi.convertToRubyString(_sql).getByteList();
 
-    private static boolean startsWithNoCaseCmp(ByteList bytelist, byte[] compare) {
-        int p = whitespace(bytelist.begin, bytelist);
+        return context.getRuntime().newBoolean(startsWithIgnoreCase(sql, INSERT));
+    }
 
-        // What the hell is this for?
-        if (bytelist.bytes[p] == '(') p = whitespace(p, bytelist);
+    protected static boolean startsWithIgnoreCase(final ByteList string, final byte[] start) {
+        int p = skipWhitespace(string, string.begin);
+        if ( string.bytes[p] == '(' ) p = skipWhitespace(string, p + 1);
 
-        for (int i = 0; i < bytelist.realSize && i < compare.length; i++) {
-            if (Character.toLowerCase(bytelist.bytes[p + i]) != compare[i]) return false;
+        for ( int i = 0; i < string.realSize && i < start.length; i++ ) {
+            if ( Character.toLowerCase(string.bytes[p + i]) != start[i] ) return false;
         }
-
         return true;
     }
 
+    private static int skipWhitespace(final ByteList string, final int from) {
+        final int end = string.begin + string.realSize;
+        for ( int i = from; i < end; i++ ) {
+            if ( ! Character.isWhitespace( string.bytes[i] ) ) return i;
+        }
+        return end;
+    }
+    
     protected static final class TableName {
         
         public final String catalog, schema, name;
