@@ -49,6 +49,10 @@ module ArJdbc
       ::ActiveRecord::ConnectionAdapters::MSSQLJdbcConnection
     end
 
+    def jdbc_column_class
+      ::ActiveRecord::ConnectionAdapters::MSSQLColumn
+    end
+    
     def self.arel2_visitors(config)
       require 'arel/visitors/sql_server'
       visitors = config[:sqlserver_version] == '2000' ? 
@@ -101,7 +105,8 @@ module ArJdbc
     module Column
       include LockHelpers::SqlServerAddLock
 
-      attr_accessor :identity, :is_special
+      attr_accessor :identity, :special
+      alias_method :is_special, :special # #deprecated
 
       def simplified_type(field_type)
         case field_type
@@ -296,7 +301,7 @@ module ArJdbc
     def quote_table_name(name)
       quote_column_name(name)
     end
-
+    
     def quote_column_name(name)
       name.to_s.split('.').map do |n| # "[#{name}]"
         n =~ /^\[.*\]$/ ? n : "[#{n.gsub(']', ']]')}]"
@@ -425,25 +430,32 @@ module ArJdbc
     end
     
     SKIP_COLUMNS_TABLE_NAMES_RE = /^information_schema\./i # :nodoc:
+    IDENTITY_COLUMN_TYPE_RE = /identity/i # :nodoc:
+    # NOTE: these do not handle = equality as expected {#repair_special_columns}
+    # (TEXT, NTEXT, and IMAGE data types are deprecated)
+    SPECIAL_COLUMN_TYPE_RE = /text|ntext|image|xml/i # :nodoc:
     
-    def columns(table_name, name = nil)
+    EMPTY_ARRAY = [].freeze # :nodoc:
+    
+    def columns(table_name, name = nil, default = EMPTY_ARRAY)
       # It's possible for table_name to be an empty string, or nil, if something 
       # attempts to issue SQL which doesn't involve a table. 
       # IE. "SELECT 1" or "SELECT * FROM someFunction()".
-      return [] if table_name.blank?
+      return default if table_name.blank?
       
       table_name = unquote_table_name(table_name)
 
-      return [] if table_name =~ SKIP_COLUMNS_TABLE_NAMES_RE
+      return default if table_name =~ SKIP_COLUMNS_TABLE_NAMES_RE
       
-      unless (@table_columns ||= {})[table_name]
-        @table_columns[table_name] = super
-        @table_columns[table_name].each do |column|
-          column.identity = true if column.sql_type =~ /identity/i
-          column.is_special = true if column.sql_type =~ /text|ntext|image|xml/i
+      unless columns = ( @table_columns ||= {} )[table_name]
+        columns = super(table_name, name)
+        for column in columns
+          column.identity = true if column.sql_type =~ IDENTITY_COLUMN_TYPE_RE
+          column.special = true if column.sql_type =~ SPECIAL_COLUMN_TYPE_RE
         end
+        @table_columns[table_name] = columns
       end
-      @table_columns[table_name]
+      columns
     end
 
     # Turns IDENTITY_INSERT ON for table during execution of the block
@@ -530,19 +542,22 @@ module ArJdbc
     
     def repair_special_columns(sql)
       qualified_table_name = get_table_name(sql, true)
-      special_columns = get_special_columns(qualified_table_name)
-      for column in special_columns.to_a
-        sql.gsub!(Regexp.new(" #{column} = "), " #{column} LIKE ")
-        sql.gsub!(/ORDER BY #{column.to_s}/i, '')
-      end if special_columns
+      if special_columns = special_column_names(qualified_table_name)
+        return sql if special_columns.empty?
+        special_columns = special_columns.sort { |n1, n2| n2.size <=> n1.size }
+        for column in special_columns
+          sql.gsub!(/\s?\[?#{column}\]?\s?=\s?/, " [#{column}] LIKE ")
+          sql.gsub!(/ORDER BY \[?#{column}\]?/i, '') # NOTE: a bit stupid
+        end
+      end
       sql
     end
 
-    def get_special_columns(qualified_table_name)
+    def special_column_names(qualified_table_name)
+      columns = self.columns(qualified_table_name, nil, nil)
+      return columns if ! columns || columns.empty?
       special = []
-      columns(qualified_table_name).each do |column|
-        special << column.name if column.is_special
-      end
+      columns.each { |column| special << column.name if column.special }
       special
     end
     
@@ -553,3 +568,8 @@ module ArJdbc
   end
 end
 
+module ActiveRecord::ConnectionAdapters
+  class MSSQLColumn < JdbcColumn
+    include ArJdbc::MSSQL::Column
+  end
+end

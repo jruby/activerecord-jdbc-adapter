@@ -128,7 +128,9 @@ class MSSQLLegacyTypesTest < Test::Unit::TestCase
           [id] int NOT NULL IDENTITY(1, 1) PRIMARY KEY, 
           [title] VARCHAR(100), 
           [author] VARCHAR(60) DEFAULT 'anonymous', 
-          [body] TEXT
+          [text] TEXT,
+          [ntext] NTEXT,
+          [image] IMAGE
         )
       SQL
     end
@@ -150,20 +152,53 @@ class MSSQLLegacyTypesTest < Test::Unit::TestCase
   end
   
   def test_varchar_column
-    Article.create! :title => "Blah blah"
-    article = Article.first
-    assert_equal("Blah blah", article.title)
-  end
-  
-  def test_text_column
-    sample_text = "Lorem ipsum dolor sit amet ..."
-    Article.create! :body => sample_text.dup
-    article = Article.first
-    assert_equal(sample_text, article.body)
+    article = Article.create! :title => "Blah blah"
+    assert_equal("Blah blah", article.reload.title)
   end
   
   def test_varchar_default_value
     assert_equal("anonymous", Article.new.author)
+  end
+  
+  def test_text_column
+    sample_text = "Lorem ipsum dolor sit amet ..."
+    article = Article.create! :text => sample_text.dup
+    assert_equal(sample_text, article.reload.text)
+  end
+
+  def test_ntext_column
+    sample_text = "Lorem ipsum dolor sit amet ..."
+    article = Article.create! :ntext => sample_text.dup
+    assert_equal(sample_text, article.reload.ntext)
+  end
+
+  test "text, ntext and image are treated as special" do
+    assert_not_empty columns = Article.columns
+    assert_true columns.find { |column| column.name == 'text' }.special
+    assert_true columns.find { |column| column.name == 'ntext' }.special
+    assert_true columns.find { |column| column.name == 'image' }.special
+    assert ! Article.columns.find { |column| column.name == 'id' }.special
+    assert ! Article.columns.find { |column| column.name == 'title' }.special
+    assert ! Article.columns.find { |column| column.name == 'author' }.special
+    
+    special_column_names = Article.connection.send(:special_column_names, 'articles')
+    assert_equal ['text', 'ntext', 'image'], special_column_names
+    special_column_names = Article.connection.send(:special_column_names, '[articles]')
+    assert_equal ['text', 'ntext', 'image'], special_column_names
+  end
+  
+  test "repairs select equlity comparison for special columns" do
+    sql = "SELECT * FROM articles WHERE text = '1' ORDER BY text"
+    r_sql = Article.connection.send(:repair_special_columns, sql)
+    assert_equal "SELECT * FROM articles WHERE [text] LIKE '1' ", r_sql
+    
+    sql = "SELECT * FROM [articles] WHERE [text]='1' AND [ntext]= '2' ORDER BY [ntext]"
+    r_sql = Article.connection.send(:repair_special_columns, sql)
+    assert_equal "SELECT * FROM [articles] WHERE [text] LIKE '1' AND [ntext] LIKE '2' ", r_sql
+    
+    sql = "SELECT * FROM [articles] WHERE [text] = 'text' AND [title] = 't' ORDER BY title"
+    r_sql = Article.connection.send(:repair_special_columns, sql)
+    assert_equal "SELECT * FROM [articles] WHERE [text] LIKE 'text' AND [title] = 't' ORDER BY title", r_sql
   end
   
 end
