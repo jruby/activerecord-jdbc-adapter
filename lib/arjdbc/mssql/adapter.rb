@@ -3,12 +3,15 @@ require 'arjdbc/mssql/utils'
 require 'arjdbc/mssql/tsql_methods'
 require 'arjdbc/mssql/limit_helpers'
 require 'arjdbc/mssql/lock_helpers'
+require 'arjdbc/mssql/explain_support'
 require 'arjdbc/jdbc/serialized_attributes_helper'
 
 module ArJdbc
   module MSSQL
     include Utils
     include TSqlMethods
+    
+    include ExplainSupport
 
     @@_lob_callback_added = nil
     

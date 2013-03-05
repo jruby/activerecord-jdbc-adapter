@@ -6,6 +6,8 @@ class MSSQLSimpleTest < Test::Unit::TestCase
   include ActiveRecord3TestMethods
   include DirtyAttributeTests
 
+  include ExplainSupportTestMethods if ar_version("3.1")
+  
   # MS SQL 2005 doesn't have a DATE class, only TIMESTAMP
 
   # String comparisons are insensitive by default
