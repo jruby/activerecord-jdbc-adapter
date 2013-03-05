@@ -523,7 +523,7 @@ module ArJdbc
       # and contain 'insert into ...' lines.
       # TODO test and refactor using `self.class.insert?(sql)` etc
       # NOTE: ignoring comment blocks prior to the first statement ?!
-      if sql.lstrip =~ /\Ainsert/i # self.class.insert?(sql)
+      if self.class.insert?(sql)
         if query_requires_identity_insert?(sql)
           table_name = get_table_name(sql)
           with_identity_insert_enabled(table_name) do
@@ -532,10 +532,10 @@ module ArJdbc
         else
           @connection.execute_insert(sql)
         end
-      elsif sql.lstrip =~ /\A\(?\s*(select|show)/i # self.class.select?(sql)
+      elsif self.class.select?(sql)
         sql = repair_special_columns(sql)
         @connection.execute_query(sql)
-      else # sql.lstrip =~ /\A(create|exec)/i
+      else # create | exec
         @connection.execute_update(sql)
       end
     end
