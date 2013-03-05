@@ -329,6 +329,10 @@ module ArJdbc
       true
     end
 
+    def current_database
+      select_value 'SELECT DB_NAME()'
+    end
+    
     def recreate_database(name, options = {})
       drop_database(name)
       create_database(name, options)
@@ -336,17 +340,17 @@ module ArJdbc
 
     def drop_database(name)
       execute "USE master"
-      execute "DROP DATABASE #{name}"
+      execute "DROP DATABASE #{quote_table_name(name)}"
     end
 
     def create_database(name, options = {})
-      execute "CREATE DATABASE #{name}"
-      execute "USE #{name}"
+      execute "CREATE DATABASE #{quote_table_name(name)}"
+      execute "USE #{quote_table_name(name)}"
     end
-
+    
     def rename_table(name, new_name)
       clear_cached_table(name)
-      execute "EXEC sp_rename '#{name}', '#{new_name}'"
+      execute "EXEC sp_rename '#{quote_table_name(name)}', '#{quote_table_name(new_name)}'"
     end
 
     # Adds a new column to the named table.
