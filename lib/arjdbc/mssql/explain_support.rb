@@ -32,10 +32,9 @@ module ArJdbc
       def set_showplan_option(enable = true)
         option = 'SHOWPLAN_TEXT'
         execute "SET #{option} #{enable ? 'ON' : 'OFF'}"
-      #rescue => e
-        #raise ActiveRecord::ActiveRecordError, 
-          #"#{option} could not be turned #{enable ? 'ON' : 'OFF'}, " <<
-          #"perhaps you do not have SHOWPLAN permissions ? (#{e})"
+      rescue Exception => e
+        raise ActiveRecord::ActiveRecordError, "#{option} could not be turned" + 
+              " #{enable ? 'ON' : 'OFF'} (check SHOWPLAN permissions) due : #{e.inspect}"
       end
       
       class PrinterTable # :nodoc:
