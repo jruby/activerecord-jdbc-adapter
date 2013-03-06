@@ -80,7 +80,8 @@ class MSSQLDateTimeTypesTest < Test::Unit::TestCase
       datetime = Time.local(1982, 7, 13, 02, 24, 56, 123000)
       model = DateAndTime.create! :datetime25 => datetime
       assert_not_nil model.datetime25
-      assert_equal datetime, model.reload.datetime25
+      assert_datetime_equal datetime, model.reload.datetime25
+      assert_equal datetime.usec, model.datetime25.usec if ar_version('3.2')
     end
     
     def test_smalldatetime
