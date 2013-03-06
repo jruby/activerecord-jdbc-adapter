@@ -42,8 +42,12 @@ module ArJdbc
         extend LimitHelpers::SqlServerAddLimitOffset
       end
       base.config[:sqlserver_version] ||= version
+      base.configure_connection
     end
 
+    def configure_connection
+    end
+    
     def self.column_selector
       [ /sqlserver|tds|Microsoft SQL/i, lambda { |cfg, column| column.extend(::ArJdbc::MSSQL::Column) } ]
     end
@@ -351,25 +355,25 @@ module ArJdbc
       execute "USE #{quote_table_name(name)}"
     end
     
-    def rename_table(name, new_name)
-      clear_cached_table(name)
-      execute "EXEC sp_rename '#{quote_table_name(name)}', '#{quote_table_name(new_name)}'"
+    def rename_table(table_name, new_table_name)
+      clear_cached_table(table_name)
+      execute "EXEC sp_rename '#{table_name}', '#{new_table_name}'"
     end
 
     # Adds a new column to the named table.
     # See TableDefinition#column for details of the options you can use.
     def add_column(table_name, column_name, type, options = {})
       clear_cached_table(table_name)
-      add_column_sql = "ALTER TABLE #{table_name} ADD #{quote_column_name(column_name)} #{type_to_sql(type, options[:limit], options[:precision], options[:scale])}"
+      add_column_sql = "ALTER TABLE #{quote_table_name(table_name)} ADD #{quote_column_name(column_name)} #{type_to_sql(type, options[:limit], options[:precision], options[:scale])}"
       add_column_options!(add_column_sql, options)
       # TODO: Add support to mimic date columns, using constraints to mark them as such in the database
       # add_column_sql << " CONSTRAINT ck__#{table_name}__#{column_name}__date_only CHECK ( CONVERT(CHAR(12), #{quote_column_name(column_name)}, 14)='00:00:00:000' )" if type == :date
       execute(add_column_sql)
     end
 
-    def rename_column(table, column, new_column_name)
-      clear_cached_table(table)
-      execute "EXEC sp_rename '#{table}.#{column}', '#{new_column_name}'"
+    def rename_column(table_name, column_name, new_column_name)
+      clear_cached_table(table_name)
+      execute "EXEC sp_rename '#{table_name}.#{column_name}', '#{new_column_name}', 'COLUMN'"
     end
 
     def change_column(table_name, column_name, type, options = {}) #:nodoc:
@@ -380,7 +384,7 @@ module ArJdbc
 
     def change_column_type(table_name, column_name, type, options = {}) #:nodoc:
       clear_cached_table(table_name)
-      sql = "ALTER TABLE #{table_name} ALTER COLUMN #{quote_column_name(column_name)} #{type_to_sql(type, options[:limit], options[:precision], options[:scale])}"
+      sql = "ALTER TABLE #{quote_table_name(table_name)} ALTER COLUMN #{quote_column_name(column_name)} #{type_to_sql(type, options[:limit], options[:precision], options[:scale])}"
       if options.has_key?(:null)
         sql += (options[:null] ? " NULL" : " NOT NULL")
       end
@@ -391,15 +395,20 @@ module ArJdbc
       clear_cached_table(table_name)
       remove_default_constraint(table_name, column_name)
       unless default.nil?
-        execute "ALTER TABLE #{table_name} ADD CONSTRAINT DF_#{table_name}_#{column_name} DEFAULT #{quote(default)} FOR #{quote_column_name(column_name)}"
+        execute "ALTER TABLE #{quote_table_name(table_name)} ADD CONSTRAINT DF_#{table_name}_#{column_name} DEFAULT #{quote(default)} FOR #{quote_column_name(column_name)}"
       end
     end
-
-    def remove_column(table_name, column_name)
+    
+    def remove_column(table_name, *column_names)
+      raise ArgumentError.new("You must specify at least one column name. Example: remove_column(:people, :first_name)") if column_names.empty?
+      # remove_columns(:posts, :foo, :bar) old syntax : remove_columns(:posts, [:foo, :bar])
       clear_cached_table(table_name)
-      remove_check_constraints(table_name, column_name)
-      remove_default_constraint(table_name, column_name)
-      execute "ALTER TABLE #{table_name} DROP COLUMN [#{column_name}]"
+      column_names.flatten.each do |column_name|
+        remove_check_constraints(table_name, column_name)
+        remove_default_constraint(table_name, column_name)
+        remove_indexes(table_name, column_name) unless sqlserver_2000?
+        execute "ALTER TABLE #{quote_table_name(table_name)} DROP COLUMN #{quote_column_name(column_name)}"
+      end
     end
 
     def remove_default_constraint(table_name, column_name)
@@ -432,8 +441,15 @@ module ArJdbc
       end
     end
 
+    def remove_indexes(table_name, column_name)
+      indexes = self.indexes(table_name)
+      indexes.select{ |index| index.columns.include?(column_name.to_s) }.each do |index|
+        remove_index(table_name, { :name => index.name })
+      end
+    end
+    
     def remove_index(table_name, options = {})
-      execute "DROP INDEX #{table_name}.#{index_name(table_name, options)}"
+      execute "DROP INDEX #{quote_table_name(table_name)}.#{index_name(table_name, options)}"
     end
     
     SKIP_COLUMNS_TABLE_NAMES_RE = /^information_schema\./i # :nodoc:
@@ -465,6 +481,14 @@ module ArJdbc
       columns
     end
 
+    def clear_cached_table(table_name)
+      ( @table_columns ||= {} ).delete(table_name.to_s)
+    end
+
+    def reset_column_information
+      @table_columns = nil if defined? @table_columns
+    end
+    
     # Turns IDENTITY_INSERT ON for table during execution of the block
     # N.B. This sets the state of IDENTITY_INSERT to OFF after the
     # block has been executed without regard to its previous state
@@ -481,45 +505,21 @@ module ArJdbc
       raise ActiveRecord::ActiveRecordError, "IDENTITY_INSERT could not be turned" + 
             " #{enable ? 'ON' : 'OFF'} for table #{table_name} due : #{e.inspect}"
     end
-
-    def identity_column(table_name)
-      for column in columns(table_name)
-        return column.name if column.identity
-      end
-      nil
-    end
     
-    def query_requires_identity_insert?(sql)
-      table_name = get_table_name(sql)
-      id_column = identity_column(table_name)
-      if sql.strip =~ /insert into [^ ]+ ?\((.+?)\)/i
-        insert_columns = $1.split(/, */).map(&method(:unquote_column_name))
-        return table_name if insert_columns.include?(id_column)
-      end
-    end
-    
+    # @see ArJdbc::MSSQL::LimitHelpers
     def determine_order_clause(sql)
-      return $1 if sql =~ /ORDER BY (.*)$/
+      return $1 if sql =~ /ORDER BY (.*)$/i
       table_name = get_table_name(sql)
-      "#{table_name}.#{determine_primary_key(table_name)}"
-    end
-
-    def determine_primary_key(table_name)
-      primary_key = columns(table_name).detect { |column| column.primary || column.identity }
-      return primary_key.name if primary_key
-      # Look for an id column and return it, 
-      # without changing case, to cover DBs with a case-sensitive collation :
-      columns(table_name).each { |column| return column.name if column.name =~ /^id$/i }
-      # Give up and provide something which is going to crash almost certainly
-      columns(table_name)[0].name
-    end
-
-    def clear_cached_table(name)
-      (@table_columns ||= {}).delete(name.to_s)
-    end
-
-    def reset_column_information
-      @table_columns = nil if defined? @table_columns
+      # determine primary key for table :
+      columns = self.columns(table_name)
+      primary_column = columns.find { |column| column.primary || column.identity }
+      unless primary_column # look for an id column and return it,
+        # without changing case, to cover DBs with a case-sensitive collation :
+        primary_column = columns.find { |column| column.name =~ /^id$/i }
+        raise "no columns for table: #{table_name}" if columns.empty?
+      end
+      # NOTE: if still no PK column simply get something for ORDER BY ...
+      "#{table_name}.#{(primary_column || columns.first).name}"
     end
     
     private
@@ -530,8 +530,8 @@ module ArJdbc
       # and contain 'insert into ...' lines.
       # NOTE: ignoring comment blocks prior to the first statement ?!
       if self.class.insert?(sql)
-        if query_requires_identity_insert?(sql)
-          table_name = get_table_name(sql)
+        table_name = get_table_name(sql)
+        if table_name && requires_identity_insert?(sql, table_name)
           with_identity_insert_enabled(table_name) do
             @connection.execute_insert(sql)
           end
@@ -546,6 +546,21 @@ module ArJdbc
       else # create
         @connection.execute_update(sql)
       end
+    end
+    
+    def requires_identity_insert?(sql, table_name)
+      id_column = identity_column_name(table_name)
+      if id_column && sql.strip =~ /INSERT INTO [^ ]+ ?\((.+?)\)/i
+        insert_columns = $1.split(/, */).map(&method(:unquote_column_name))
+        return table_name if insert_columns.include?(id_column)
+      end
+    end
+    
+    def identity_column_name(table_name)
+      for column in columns(table_name)
+        return column.name if column.identity
+      end
+      nil
     end
     
     def repair_special_columns(sql)
