@@ -337,6 +337,10 @@ module ArJdbc
       true
     end
 
+    def charset
+      select_value "SELECT SERVERPROPERTY('SqlCharSetName')"
+    end
+    
     def current_database
       select_value 'SELECT DB_NAME()'
     end

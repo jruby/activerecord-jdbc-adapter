@@ -60,6 +60,10 @@ class MSSQLSimpleTest < Test::Unit::TestCase
     assert_false entry.respond_to?(:_row_num)
   end
   
+  def test_returns_charset
+    assert_not_nil ActiveRecord::Base.connection.charset
+  end
+  
   def test_find_by_sql_WITH_statement
     user = User.create! :login => 'ferko'
     Entry.create! :title => 'aaa', :user_id => user.id
