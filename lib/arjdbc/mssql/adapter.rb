@@ -403,9 +403,7 @@ module ArJdbc
     def change_column_type(table_name, column_name, type, options = {}) #:nodoc:
       clear_cached_table(table_name)
       sql = "ALTER TABLE #{quote_table_name(table_name)} ALTER COLUMN #{quote_column_name(column_name)} #{type_to_sql(type, options[:limit], options[:precision], options[:scale])}"
-      if options.has_key?(:null)
-        sql += (options[:null] ? " NULL" : " NOT NULL")
-      end
+      sql += (options[:null] ? " NULL" : " NOT NULL") if options.has_key?(:null)
       execute(sql)
     end
 
@@ -559,6 +557,21 @@ module ArJdbc
     end
     alias_method :execute_procedure, :exec_proc # AR-SQLServer-Adapter naming
     
+    protected
+    
+    # NOTE: we allow to execute the SQL as explicitly requested by this,
+    # {#exec_query} won't route to {#_execute} and analyze if it's a select 
+    # e.g. this allows to use SQLServer's EXEC with a result set ...
+    def do_exec(sql, name, binds, type)
+      case type
+      when :query # exec_query
+        log(sql, name) { do_exec_query(sql) }
+      when :update # exec_update
+        log(sql, name) { @connection.execute_update(sql) }
+      else super
+      end
+    end
+    
     private
     
     def _execute(sql, name = nil)
@@ -567,25 +580,27 @@ module ArJdbc
       # and contain 'insert into ...' lines.
       # NOTE: ignoring comment blocks prior to the first statement ?!
       if self.class.insert?(sql)
-        table_name = get_table_name(sql)
-        if table_name && requires_identity_insert?(sql, table_name)
-          with_identity_insert_enabled(table_name) do
+        if id_insert_table_name = identity_insert_table_name(sql)
+          with_identity_insert_enabled(id_insert_table_name) do
             @connection.execute_insert(sql)
           end
         else
           @connection.execute_insert(sql)
         end
       elsif self.class.select?(sql)
-        sql = repair_special_columns(sql)
-        @connection.execute_query(sql)
-      elsif @connection.class.exec?(sql)
-        @connection.execute_query(sql)
-      else # create
+        do_exec_query(sql)
+      # cac1391f80462d2e8f6c9718cf3db7cbb879b161
+      else # create | exec
         @connection.execute_update(sql)
       end
     end
     
-    def requires_identity_insert?(sql, table_name)
+    def do_exec_query(sql)
+      @connection.execute_query repair_special_columns(sql)
+    end
+    
+    def identity_insert_table_name(sql)
+      table_name = get_table_name(sql)
       id_column = identity_column_name(table_name)
       if id_column && sql.strip =~ /INSERT INTO [^ ]+ ?\((.+?)\)/i
         insert_columns = $1.split(/, */).map(&method(:unquote_column_name))
