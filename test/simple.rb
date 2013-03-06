@@ -446,23 +446,31 @@ module SimpleTestMethods
   end
 
   def test_indexes
-    # Only test indexes if we have implemented it for the particular adapter
-    if connection.respond_to?(:indexes)
-      indexes = connection.indexes(:entries)
-      assert_equal(0, indexes.size)
+    indexes = connection.indexes(:entries)
+    assert_equal 0, indexes.size
 
-      index_name = "entries_index"
-      connection.add_index(:entries, :updated_on, :name => index_name)
+    connection.add_index :entries, :updated_on, :name => "entries_updated_index"
+    connection.add_index :entries, [ :title, :user_id ], :unique => true
 
-      indexes = connection.indexes(:entries)
-      assert_equal(1, indexes.size)
-      assert_equal "entries", indexes.first.table.to_s
-      assert_equal index_name, indexes.first.name
-      assert !indexes.first.unique
-      assert_equal ["updated_on"], indexes.first.columns
-    else
-      puts "indexes not implemented for adapter: #{connection}"
-    end
+    indexes = connection.indexes(:entries)
+    assert_equal 2, indexes.size
+    
+    assert_not_nil title_index = indexes.find { |index| index.unique }
+
+    assert_equal "entries", title_index.table.to_s
+    assert_true title_index.unique
+    assert_equal [ 'title', 'user_id' ], title_index.columns
+    
+    updated_index = (indexes - [ title_index ]).first
+    
+    assert_equal "entries", updated_index.table.to_s
+    assert_equal "entries_updated_index", updated_index.name
+    assert ! updated_index.unique
+    assert_equal [ 'updated_on' ], updated_index.columns
+    
+    connection.remove_index :entries, :name => "entries_updated_index"
+    indexes = connection.indexes(:entries)
+    assert_equal 1, indexes.size
   end
 
   def test_nil_values
