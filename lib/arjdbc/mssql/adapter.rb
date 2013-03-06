@@ -46,6 +46,7 @@ module ArJdbc
     end
 
     def configure_connection
+      use_database # config[:database]
     end
     
     def self.column_selector
@@ -340,19 +341,32 @@ module ArJdbc
       select_value 'SELECT DB_NAME()'
     end
     
+    def use_database(database = nil)
+      database ||= config[:database]
+      execute "USE #{quote_table_name(database)}" unless database.blank?
+    end
+    
     def recreate_database(name, options = {})
       drop_database(name)
       create_database(name, options)
     end
 
+    def recreate_database!(database = nil)
+      current_db = current_database
+      database ||= current_db
+      use_database('master') if this_db = ( database.to_s == current_db )
+      drop_database(database)
+      create_database(database)
+    ensure
+      use_database(current_db) if this_db
+    end
+    
     def drop_database(name)
-      execute "USE master"
       execute "DROP DATABASE #{quote_table_name(name)}"
     end
 
     def create_database(name, options = {})
       execute "CREATE DATABASE #{quote_table_name(name)}"
-      execute "USE #{quote_table_name(name)}"
     end
     
     def rename_table(table_name, new_table_name)
