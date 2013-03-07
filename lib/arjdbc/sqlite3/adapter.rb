@@ -211,17 +211,19 @@ module ::ArJdbc
       table_name && tables(nil, table_name).any?
     end
     
+    IndexDefinition = ::ActiveRecord::ConnectionAdapters::IndexDefinition # :nodoc:
+    
     def indexes(table_name, name = nil)
       result = select_rows("SELECT name, sql FROM sqlite_master" <<
       " WHERE tbl_name = #{quote_table_name(table_name)} AND type = 'index'", name)
 
-      result.collect do |row|
+      result.map do |row|
         name, index_sql = row[0], row[1]
-        unique = (index_sql =~ /unique/i)
-        cols = index_sql.match(/\((.*)\)/)[1].gsub(/,/,' ').split.map do |c|
-          match = /^"(.+)"$/.match(c); match ? match[1] : c
+        unique = !! (index_sql =~ /unique/i)
+        columns = index_sql.match(/\((.*)\)/)[1].gsub(/,/,' ').split.map do |col|
+          match = /^"(.+)"$/.match(col); match ? match[1] : col
         end
-        ::ActiveRecord::ConnectionAdapters::IndexDefinition.new(table_name, name, unique, cols)
+        IndexDefinition.new(table_name, name, unique, columns)
       end
     end
 
