@@ -301,10 +301,10 @@ public class RubyJdbcConnection extends RubyObject {
             }
         });
     }
-
-    @JRubyMethod(name = "execute_update", required = 1)
+    
+    @JRubyMethod(name = {"execute_update", "execute_delete"}, required = 1)
     public IRubyObject execute_update(final ThreadContext context, final IRubyObject sql)
-            throws SQLException {
+        throws SQLException {
         return (IRubyObject) withConnectionAndRetry(context, new SQLBlock() {
             public Object call(Connection c) throws SQLException {
                 Statement stmt = null;
