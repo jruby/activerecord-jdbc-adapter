@@ -144,10 +144,3 @@ end
 class DerbyHasManyThroughTest < Test::Unit::TestCase
   include HasManyThroughMethods
 end
-
-class DerbyXmlColumnTest < Test::Unit::TestCase
-  include FixtureSetup
-  include XmlColumnTests
-  
-  def xml_sql_type; 'xml'; end
-end
