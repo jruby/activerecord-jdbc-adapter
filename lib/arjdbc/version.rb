@@ -1,6 +1,6 @@
 module ArJdbc
   module Version
-    VERSION = "1.2.7"
+    VERSION = "1.2.8"
   end
 end
 # Compatibility with older versions of ar-jdbc for other extensions out there
