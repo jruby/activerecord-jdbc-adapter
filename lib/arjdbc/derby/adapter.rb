@@ -294,8 +294,10 @@ module ArJdbc
     end
     private :auto_increment_stmt
     
-    def remove_column(table_name, column_name)
-      execute "ALTER TABLE #{quote_table_name(table_name)} DROP COLUMN #{quote_column_name(column_name)} RESTRICT"
+    def remove_column(table_name, *column_names) # :nodoc:
+      for column_name in column_names.flatten
+        execute "ALTER TABLE #{quote_table_name(table_name)} DROP COLUMN #{quote_column_name(column_name)} RESTRICT"
+      end
     end
 
     # Notes about changing in Derby:
@@ -357,7 +359,7 @@ module ArJdbc
       tables.each { |table| drop_table table }
     end
 
-    def quote_column_name(name) #:nodoc:
+    def quote_column_name(name) # :nodoc:
       %Q{"#{name.to_s.upcase.gsub(/\"/, '""')}"}
     end
 

@@ -719,9 +719,6 @@ module SimpleTestMethods
   end
 
   def test_change_table
-    #level, ActiveRecord::Base.logger.level = 
-      #ActiveRecord::Base.logger.level, Logger::DEBUG
-
     attributes = {
       :title => 'welcome to the real world',
       :content => '... TO BE CONTINUED ...', 
@@ -742,12 +739,9 @@ module SimpleTestMethods
       end
       assert e.first
     ensure
-      ChangeEntriesTable.down
+      ChangeEntriesTable.down # rescue nil
       Entry.reset_column_information
     end
-    
-  ensure
-    #ActiveRecord::Base.logger.level = level
   end # if Test::Unit::TestCase.ar_version('3.0')
 
   def test_string_id
