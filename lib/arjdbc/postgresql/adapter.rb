@@ -378,9 +378,7 @@ module ::ArJdbc
         pk, sequence_name = *pk_and_sequence_for(table) unless pk
         if pk
           sql = to_sql(sql, binds)
-          id_value = select_value("#{sql} RETURNING #{quote_column_name(pk)}")
-          clear_query_cache #FIXME: Why now?
-          return id_value
+          return select_value("#{sql} RETURNING #{quote_column_name(pk)}")
         end
       end
 
@@ -403,7 +401,7 @@ module ::ArJdbc
       end
       id_value
     end
-
+    
     # taken from rails postgresql_adapter.rb
     def sql_for_insert(sql, pk, id_value, sequence_name, binds)
       unless pk
