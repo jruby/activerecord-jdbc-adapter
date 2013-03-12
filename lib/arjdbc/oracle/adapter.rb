@@ -355,20 +355,21 @@ module ArJdbc
     end
 
     def change_column(table_name, column_name, type, options = {}) #:nodoc:
-      change_column_sql = "ALTER TABLE #{quote_table_name(table_name)} " + 
+      change_column_sql = "ALTER TABLE #{quote_table_name(table_name)} " <<
         "MODIFY #{quote_column_name(column_name)} #{type_to_sql(type, options[:limit])}"
       add_column_options!(change_column_sql, options)
       execute(change_column_sql)
     end
 
     def rename_column(table_name, column_name, new_column_name) #:nodoc:
-      execute "ALTER TABLE #{quote_table_name(table_name)} " + 
+      execute "ALTER TABLE #{quote_table_name(table_name)} " <<
         "RENAME COLUMN #{quote_column_name(column_name)} to #{quote_column_name(new_column_name)}"
     end
-
-    def remove_column(table_name, column_name) #:nodoc:
-      execute "ALTER TABLE #{quote_table_name(table_name)} " + 
-        "DROP COLUMN #{quote_column_name(column_name)}"
+    
+    def remove_column(table_name, *column_names) #:nodoc:
+      for column_name in column_names.flatten
+        execute "ALTER TABLE #{quote_table_name(table_name)} DROP COLUMN #{quote_column_name(column_name)}"
+      end
     end
 
     def structure_dump #:nodoc:
