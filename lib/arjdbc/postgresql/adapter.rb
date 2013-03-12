@@ -726,13 +726,14 @@ module ::ArJdbc
       execute(tables.collect { |name| "ALTER TABLE #{quote_table_name(name)} ENABLE TRIGGER ALL" }.join(";"))
     end
 
-    def rename_table(name, new_name)
-      execute "ALTER TABLE #{name} RENAME TO #{new_name}"
+    def rename_table(table_name, new_name)
+      execute "ALTER TABLE #{quote_table_name(table_name)} RENAME TO #{quote_table_name(new_name)}"
       pk, seq = pk_and_sequence_for(new_name)
-      if seq == "#{name}_#{pk}_seq"
+      if seq == "#{table_name}_#{pk}_seq"
         new_seq = "#{new_name}_#{pk}_seq"
         execute "ALTER TABLE #{quote_table_name(seq)} RENAME TO #{quote_table_name(new_seq)}"
       end
+      rename_table_indexes(table_name, new_name) if respond_to?(:rename_table_indexes) # AR-4.0 SchemaStatements
     end
 
     # Adds a new column to the named table.
@@ -788,6 +789,7 @@ module ::ArJdbc
 
     def rename_column(table_name, column_name, new_column_name) #:nodoc:
       execute "ALTER TABLE #{quote_table_name(table_name)} RENAME COLUMN #{quote_column_name(column_name)} TO #{quote_column_name(new_column_name)}"
+      rename_column_indexes(table_name, column_name, new_column_name) if respond_to?(:rename_column_indexes) # AR-4.0 SchemaStatements
     end
 
     def remove_index!(table_name, index_name) #:nodoc:

@@ -342,10 +342,11 @@ module ArJdbc
       super(name, {:options => "ENGINE=InnoDB DEFAULT CHARSET=utf8"}.merge(options))
     end
 
-    def rename_table(name, new_name)
-      execute "RENAME TABLE #{quote_table_name(name)} TO #{quote_table_name(new_name)}"
+    def rename_table(table_name, new_name)
+      execute "RENAME TABLE #{quote_table_name(table_name)} TO #{quote_table_name(new_name)}"
+      rename_table_indexes(table_name, new_name) if respond_to?(:rename_table_indexes) # AR-4.0 SchemaStatements
     end
-
+    
     def remove_index!(table_name, index_name) #:nodoc:
       # missing table_name quoting in AR-2.3
       execute "DROP INDEX #{quote_column_name(index_name)} ON #{quote_table_name(table_name)}"
@@ -393,8 +394,7 @@ module ArJdbc
     def rename_column(table_name, column_name, new_column_name) #:nodoc:
       options = {}
       if column = columns(table_name).find { |c| c.name == column_name.to_s }
-        options[:default] = column.default
-        options[:null] = column.null
+        options[:default] = column.default; options[:null] = column.null
       else
         raise ActiveRecord::ActiveRecordError, "No such column: #{table_name}.#{column_name}"
       end
@@ -402,8 +402,9 @@ module ArJdbc
       rename_column_sql = "ALTER TABLE #{quote_table_name(table_name)} CHANGE #{quote_column_name(column_name)} #{quote_column_name(new_column_name)} #{current_type}"
       add_column_options!(rename_column_sql, options)
       execute(rename_column_sql)
+      rename_column_indexes(table_name, column_name, new_column_name) if respond_to?(:rename_column_indexes) # AR-4.0 SchemaStatements
     end
-
+    
     def add_limit_offset!(sql, options) #:nodoc:
       limit, offset = options[:limit], options[:offset]
       if limit && offset
