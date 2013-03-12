@@ -500,12 +500,13 @@ module ArJdbc
         change_column_null(table_name, column_name, options[:null])
       end
     end
-
+    
     # http://publib.boulder.ibm.com/infocenter/db2luw/v9r7/topic/com.ibm.db2.luw.admin.dbobj.doc/doc/t0020132.html
-    def remove_column(table_name, column_name) #:nodoc:
-      sql = "ALTER TABLE #{table_name} DROP COLUMN #{column_name}"
-
-      as400? ? execute_and_auto_confirm(sql) : execute(sql)
+    def remove_column(table_name, *column_names) #:nodoc:
+      for column_name in column_names.flatten
+        sql = "ALTER TABLE #{table_name} DROP COLUMN #{column_name}"
+        as400? ? execute_and_auto_confirm(sql) : execute(sql)
+      end
       reorg_table(table_name)
     end
 
