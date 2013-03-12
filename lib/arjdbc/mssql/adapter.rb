@@ -319,12 +319,14 @@ module ArJdbc
         execute "ALTER TABLE #{table_name} ADD CONSTRAINT DF_#{table_name}_#{column_name} DEFAULT #{quote(default)} FOR #{quote_column_name(column_name)}"
       end
     end
-
-    def remove_column(table_name, column_name)
+    
+    def remove_column(table_name, *column_names) #:nodoc:
       clear_cached_table(table_name)
-      remove_check_constraints(table_name, column_name)
-      remove_default_constraint(table_name, column_name)
-      execute "ALTER TABLE #{table_name} DROP COLUMN [#{column_name}]"
+      for column_name in column_names.flatten
+        remove_check_constraints(table_name, column_name)
+        remove_default_constraint(table_name, column_name)
+        execute "ALTER TABLE #{table_name} DROP COLUMN [#{column_name}]"
+      end
     end
 
     def remove_default_constraint(table_name, column_name)
