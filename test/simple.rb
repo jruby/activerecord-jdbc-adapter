@@ -649,7 +649,7 @@ module SimpleTestMethods
     #ActiveRecord::Base.logger.level = Logger::WARN
   end
   
-  def test_string_bind_with_q_mark
+  def test_create_bind_param_with_q_mark
     str = "Don' botharrr talkin' like one, savvy? Right?!?"
     db_type = DbType.create! :sample_string => str.dup
     assert_equal str, db_type.reload.sample_string
@@ -658,6 +658,52 @@ module SimpleTestMethods
     assert_equal 'foo!', entry.reload.title
     assert_equal 'bar?', entry.content
   end
+
+  def test_exec_update_bind_param_with_q_mark
+    entry = Entry.create! :title => 'foo!'
+    
+    sql = "UPDATE entries SET title = ? WHERE id = #{entry.id}"
+    connection.exec_update sql, 'UPDATE(with_q_mark)', [ [ nil, "bar?" ] ]
+    assert_equal 'bar?', entry.reload.title
+  end
+
+  def test_exec_insert_bind_param_with_q_mark
+    sql = "INSERT INTO entries(title) VALUES (?)"
+    connection.exec_insert sql, 'INSERT(with_q_mark)', [ [ nil, "bar?!?" ] ]
+    
+    entries = Entry.find_by_sql "SELECT * FROM entries WHERE title = 'bar?!?'"
+    assert entries.first
+  end
+
+  def test_raw_insert_bind_param_with_q_mark
+    sql = "INSERT INTO entries(title) VALUES (?)"
+    name = "INSERT(raw_with_q_mark)"
+    pk = nil; id_value = nil; sequence_name = nil
+    connection.insert sql, name, pk, id_value, sequence_name, [ [ nil, "?!huu!?" ] ]
+    assert Entry.exists?([ 'title LIKE ?', "%?!huu!?%" ])
+  end if Test::Unit::TestCase.ar_version('3.1') # no binds argument for <= 3.0
+  
+  def test_raw_update_bind_param_with_q_mark
+    entry = Entry.create! :title => 'foo!'
+    
+    sql = "UPDATE entries SET title = ? WHERE id = #{entry.id}"
+    name = "UPDATE(raw_with_q_mark)"
+    connection.update sql, name, [ [ nil, "bar?" ] ]
+    assert_equal 'bar?', entry.reload.title
+    
+    sql = "UPDATE entries SET title = ? WHERE id = ?"
+    connection.update sql, name, [ [ nil, "?baz?!?" ], [ nil, entry.id ] ]
+    assert_equal '?baz?!?', entry.reload.title
+  end if Test::Unit::TestCase.ar_version('3.1') # no binds argument for <= 3.0
+  
+  def test_raw_delete_bind_param_with_q_mark
+    entry = Entry.create! :title => 'foo?!?'
+    
+    sql = "DELETE FROM entries WHERE title = ?"
+    name = "DELETE(raw_with_q_mark)"
+    connection.delete sql, name, [ [ nil, "foo?!?" ] ]
+    assert ! Entry.exists?(entry.id)
+  end if Test::Unit::TestCase.ar_version('3.1') # no binds argument for <= 3.0
   
   class ChangeEntriesTable < ActiveRecord::Migration
     def self.up

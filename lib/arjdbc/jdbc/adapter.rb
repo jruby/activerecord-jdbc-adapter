@@ -382,8 +382,7 @@ module ActiveRecord
         else # for backwards compatibility :
           sql = arel.respond_to?(:to_sql) ? arel.send(:to_sql) : arel
           return sql if binds.blank?
-          copy = binds.dup # NOTE: this shall not happen, right ?!
-          sql.gsub('?') { quote(*copy.shift.reverse) }
+          sql.gsub('?') { quote(*binds.shift.reverse) }
         end
       end
       
