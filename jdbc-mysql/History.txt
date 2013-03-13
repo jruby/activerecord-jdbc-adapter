@@ -1,3 +1,9 @@
+=== 5.1.24
+
+* upgraded to 5.1.24 JDBC driver, changes since previous release (5.1.22) :
+  - http://dev.mysql.com/doc/refman/5.1/en/cj-news-5-1-23.html
+  - http://dev.mysql.com/doc/refman/5.1/en/cj-news-5-1-24.html
+
 === 5.1.22
 
 * upgraded to 5.1.22 JDBC driver, changes since previous release (5.1.13) :
