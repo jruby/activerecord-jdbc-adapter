@@ -1,13 +1,13 @@
 require 'arjdbc/postgresql/explain_support'
 
-module ::ArJdbc
+module ArJdbc
   module PostgreSQL
-    def self.extended(mod)
-      (class << mod; self; end).class_eval do
+    def self.extended(adapter)
+      (class << adapter; self; end).class_eval do
         alias_chained_method :columns, :query_cache, :pg_columns
       end
-
-      mod.configure_connection
+      
+      adapter.configure_connection
     end
 
     def self.column_selector
@@ -17,9 +17,38 @@ module ::ArJdbc
     def self.jdbc_connection_class
       ::ActiveRecord::ConnectionAdapters::PostgresJdbcConnection
     end
-
+    
+    # Configures the encoding, verbosity, schema search path, and time zone of the connection.
+    # This is called by #connect and should not be called manually.
     def configure_connection
-      self.standard_conforming_strings = true
+      if encoding = config[:encoding]
+        self.set_client_encoding(encoding)
+      end
+      self.client_min_messages = config[:min_messages] || 'warning'
+      self.schema_search_path = config[:schema_search_path] || config[:schema_order]
+
+      # Use standard-conforming strings if available so we don't have to do the E'...' dance.
+      set_standard_conforming_strings
+
+      # If using Active Record's time zone support configure the connection to return
+      # TIMESTAMP WITH ZONE types in UTC.
+      # (SET TIME ZONE does not use an equals sign like other SET variables)
+      if ActiveRecord::Base.default_timezone == :utc
+        execute("SET time zone 'UTC'", 'SCHEMA')
+      elsif defined?(@local_tz) && @local_tz
+        execute("SET time zone '#{@local_tz}'", 'SCHEMA')
+      end # if defined? ActiveRecord::Base.default_timezone
+
+      # SET statements from :variables config hash
+      # http://www.postgresql.org/docs/8.3/static/sql-set.html
+      (config[:variables] || {}).map do |k, v|
+        if v == ':default' || v == :default
+          # Sets the value to the global or compile default
+          execute("SET SESSION #{k.to_s} TO DEFAULT", 'SCHEMA')
+        elsif ! v.nil?
+          execute("SET SESSION #{k.to_s} TO #{quote(v)}", 'SCHEMA')
+        end
+      end
     end
 
     # column behavior based on postgresql_adapter in rails project
@@ -208,6 +237,11 @@ module ::ArJdbc
     
     def native_database_types
       NATIVE_DATABASE_TYPES
+    end
+    
+    # Enable standard-conforming strings if available.
+    def set_standard_conforming_strings # native adapter API compatibility
+      self.standard_conforming_strings=(true)
     end
     
     # Enable standard-conforming strings if available.
@@ -572,6 +606,11 @@ module ::ArJdbc
       end
     end
 
+    # Returns the active schema search path.
+    def schema_search_path
+      @schema_search_path ||= exec_query('SHOW search_path', 'SCHEMA')[0]['search_path']
+    end
+    
     # Sets the schema search path to a string of comma-separated schema names.
     # Names beginning with $ have to be quoted (e.g. $user => '$user').
     # See: http://www.postgresql.org/docs/current/static/ddl-schemas.html
@@ -582,11 +621,6 @@ module ::ArJdbc
         execute "SET search_path TO #{schema_csv}"
         @schema_search_path = schema_csv
       end
-    end
-
-    # Returns the active schema search path.
-    def schema_search_path
-      @schema_search_path ||= exec_query('SHOW search_path', 'SCHEMA')[0]['search_path']
     end
 
     # Returns the current schema name.
@@ -953,7 +987,14 @@ module ActiveRecord::ConnectionAdapters
 
     def initialize(*args)
       super
+      
+      # @local_tz is initialized as nil to avoid warnings when connect tries to use it
+      @local_tz = nil
+      @table_alias_length = nil
+      
       configure_connection
+
+      @local_tz = execute('SHOW TIME ZONE', 'SCHEMA').first["TimeZone"]
     end
 
     class TableDefinition < ActiveRecord::ConnectionAdapters::TableDefinition
