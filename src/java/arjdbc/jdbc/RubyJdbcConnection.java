@@ -108,31 +108,41 @@ public class RubyJdbcConnection extends RubyObject {
     }
 
     @JRubyMethod(name = "begin")
-    public IRubyObject begin(ThreadContext context) throws SQLException {
-        final Ruby runtime = context.getRuntime();
+    public IRubyObject begin(final ThreadContext context) throws SQLException {
         return (IRubyObject) withConnectionAndRetry(context, new SQLBlock() {
           public Object call(Connection c) throws SQLException {
             getConnection(true).setAutoCommit(false);
-            return runtime.getNil();
+            return context.getRuntime().getNil();
           }
         });
     }
     
     @JRubyMethod(name = "commit")
-    public IRubyObject commit(ThreadContext context) throws SQLException {
-        Connection connection = getConnection(true);
-
-        if (!connection.getAutoCommit()) {
+    public IRubyObject commit(final ThreadContext context) throws SQLException {
+        final Connection connection = getConnection(true);
+        if ( ! connection.getAutoCommit() ) {
             try {
                 connection.commit();
             } finally {
                 connection.setAutoCommit(true);
             }
         }
-
         return context.getRuntime().getNil();
     }
 
+    @JRubyMethod(name = "rollback")
+    public IRubyObject rollback(final ThreadContext context) throws SQLException {
+        final Connection connection = getConnection(true);
+        if ( ! connection.getAutoCommit() ) {
+            try {
+                connection.rollback();
+            } finally {
+                connection.setAutoCommit(true);
+            }
+        }
+        return context.getRuntime().getNil();
+    }
+    
     @JRubyMethod(name = "connection")
     public IRubyObject connection() {
         if ( getConnection(false) == null ) { 
@@ -358,27 +368,6 @@ public class RubyJdbcConnection extends RubyObject {
                 finally { close(resultSet); }
                 return keyNames;
             }
-        });
-    }
-
-
-    @JRubyMethod(name = "rollback")
-    public IRubyObject rollback(ThreadContext context) throws SQLException {
-        final Ruby runtime = context.getRuntime();
-        return (IRubyObject) withConnectionAndRetry(context, new SQLBlock() {
-          public Object call(Connection c) throws SQLException {
-            Connection connection = getConnection(true);
-
-            if (!connection.getAutoCommit()) {
-                try {
-                    connection.rollback();
-                } finally {
-                    connection.setAutoCommit(true);
-                }
-            }
-
-            return runtime.getNil();
-          }
         });
     }
     
