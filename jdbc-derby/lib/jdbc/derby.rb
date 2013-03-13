@@ -2,7 +2,7 @@ warn "Jdbc-Derby is only for use with JRuby" if (JRUBY_VERSION.nil? rescue true)
 
 module Jdbc
   module Derby
-    DRIVER_VERSION = "10.8.3.0"
+    DRIVER_VERSION = "10.9.1.0"
     VERSION = DRIVER_VERSION + ''
 
     def self.driver_jar
