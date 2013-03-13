@@ -10,8 +10,9 @@ use the latest and greatest of JRubies) thus requires Java 1.6 at minimum.
 
 **NOTE:** activerecord-jdbc-adapter gem **1.2.6** contains a SQL injection
 [security vulnerability](http://cl.ly/code/0n381E353414) and has been yanked, 
-please update ASAP (to version >= 1.2.7) if you happen to be still using it !
-Caused by a [regression](http://git.io/MDmiGQ) introduced in 1.2.6 release.
+please update ASAP (to version >= 1.2.8) if you happen to be still using it !
+Caused by a [regression](http://git.io/MDmiGQ) introduced in the 1.2.6 release, 
+which was still not completely been fixed in 1.2.7 thus has been yanked as well.
 
 ## Databases
 

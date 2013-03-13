@@ -1,3 +1,17 @@
+== 1.2.8 (03/13/13)
+
+- [derby] (native) types review & cleanup, externalize AR patch-ing
+- [h2] correct schema dump (jdbc detected sql types)
+- [hsqldb] correct schema dump (jdbc detected sql types)
+- cleanup H2 / HSQLDB adapter - HSQLDB should not know about H2
+- [mssql] [oracle] [db2] [derby] remove_column 3.x compatibility
+- [sqlite3] setup native types + make sure tables accepts table_name as well
+- [mysql] version + support_"feature" (as Rails)
+- jdbc_connection unwrap parameter for unwrapping (pooled) connections
+- (native) connection #columns #columns_internal expects string table_name
+- [postgres] no need to clear_query_cache after insert on AR-2.3's #insert_sql
+- there's still a double bind when "raw" crud methods used (re-closing #322)
+
 == 1.2.7 (02/12/13)
 
 - add some (probably redundant) synchronization + "arjdbc.disconnect.debug" flag
