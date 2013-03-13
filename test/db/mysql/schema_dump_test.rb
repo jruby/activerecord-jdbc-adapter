@@ -28,10 +28,12 @@ class MysqlSchemaDumpTest < Test::Unit::TestCase
       t.text   :normal_text, :limit => 65535
       t.text   :medium_text, :limit => 16777215
       t.text   :long_text,   :limit => 2147483647
-      t.text   :just_text, :null => false
+      t.text   :just_text,    :null => false
       # MySQL does not allow default values for blobs. 
       # Fake it out with a big varchar below.
       t.string :string_col, :null => true, :default => '', :limit => 1024
+      t.binary :var_binary, :limit => 255
+      t.binary :var_binary_large, :limit => 4095
     end
   end
   
@@ -50,6 +52,12 @@ class MysqlSchemaDumpTest < Test::Unit::TestCase
     assert_match %r{t.text\s+"normal_text"$}, output
     assert_match %r{t.text\s+"medium_text",\s+:limit => 16777215$}, output
     assert_match %r{t.text\s+"long_text",\s+:limit => 2147483647$}, output
+  end
+  
+  def test_schema_dump_includes_length_for_mysql_binary_fields
+    output = standard_dump
+    assert_match %r{t.binary\s+"var_binary",[\s|:]+limit[\s\:\=\>]+255$}, output
+    assert_match %r{t.binary\s+"var_binary_large",[\s|:]+limit[\s\:\=\>]+4095$}, output
   end
   
 end
