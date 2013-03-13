@@ -1,5 +1,9 @@
 == 1.2.8 (03/13/13)
 
+- [derby] (native) types review & cleanup, externalize AR patch-ing
+- [h2] correct schema dump (jdbc detected sql types)
+- [hsqldb] correct schema dump (jdbc detected sql types)
+- cleanup H2 / HSQLDB adapter - HSQLDB should not know about H2
 - [mssql] [oracle] [db2] [derby] remove_column 3.x compatibility
 - [sqlite3] setup native types + make sure tables accepts table_name as well
 - [mysql] version + support_"feature" (as Rails)
