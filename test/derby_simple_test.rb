@@ -2,10 +2,11 @@
 require 'jdbc_common'
 require 'db/derby'
 
+DbTypeMigration.big_decimal_precision = 31
+
 class DerbySimpleTest < Test::Unit::TestCase
   include SimpleTestMethods
-
-  DbTypeMigration.big_decimal_precision = 31
+  include ActiveRecord3TestMethods
   
   # Check that a table-less VALUES(xxx) query (like SELECT  works.
   def test_values

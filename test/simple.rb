@@ -349,7 +349,7 @@ module SimpleTestMethods
 
   def test_save_binary
     #string is 60_000 bytes
-    binary_string = "\000ABCDEFGHIJKLMNOPQRSTUVWXYZ'\001\003"*1#2_000
+    binary_string = "\000ABCDEFGHIJKLMNOPQRSTUVWXYZ'\001\003" * 1 # 2_000
     e = DbType.first
     e.sample_binary = binary_string
     e.save!
@@ -357,32 +357,31 @@ module SimpleTestMethods
     assert_equal binary_string, e.sample_binary
   end
 
-  def test_default_decimal_should_keep_fractional_part
-    expected = 7.3
-    db_type = DbType.new(:sample_small_decimal => expected)
-    assert db_type.save
-    db_type = DbType.find(db_type.id)
-    assert_equal BigDecimal.new(expected.to_s), db_type.sample_small_decimal
-  end
-
-  def test_decimal_with_scale
+  def test_small_decimal
     test_value = 7.3
     db_type = DbType.new(:sample_small_decimal => test_value)
-    assert db_type.save
+    db_type.save!
     db_type = DbType.find(db_type.id)
     assert_kind_of BigDecimal, db_type.sample_small_decimal
     assert_equal BigDecimal.new(test_value.to_s), db_type.sample_small_decimal
   end
 
-  def test_decimal_with_zero_scale
+  def test_decimal # _with_zero_scale
     test_value = 7000.0
-    db_type = DbType.new(:sample_decimal => test_value)
-    assert db_type.save
+    db_type = DbType.create!(:sample_decimal => test_value)
     db_type = DbType.find(db_type.id)
     assert_kind_of Integer, db_type.sample_decimal
     assert_equal test_value.to_i, db_type.sample_decimal
   end
 
+  def test_big_decimal
+    test_value = 9876543210_9876543210_9876543210.0
+    db_type = DbType.create!(:big_decimal => test_value)
+    db_type = DbType.find(db_type.id)
+    assert_kind_of Bignum, db_type.big_decimal
+    assert_equal test_value, db_type.big_decimal
+  end
+  
   def test_negative_default_value
     assert_equal(-1, DbType.columns_hash['sample_integer_neg_default'].default)
     assert_equal(-1, DbType.new.sample_integer_neg_default)
