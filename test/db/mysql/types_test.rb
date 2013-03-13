@@ -1,5 +1,4 @@
 require 'db/mysql'
-require 'serialize'
 
 class MySQLTypesTest < Test::Unit::TestCase
   

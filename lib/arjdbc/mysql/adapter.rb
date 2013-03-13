@@ -11,6 +11,7 @@ module ArJdbc
 
     def configure_connection
       execute("SET SQL_AUTO_IS_NULL=0")
+      execute("SET SQL_MODE='STRICT_ALL_TABLES'", :skip_logging) if strict_mode?
     end
 
     def self.column_selector
@@ -21,6 +22,10 @@ module ArJdbc
       ::ActiveRecord::ConnectionAdapters::MySQLJdbcConnection
     end
 
+    def strict_mode? # strict_mode is default since AR 4.0
+      config.key?(:strict) ? config[:strict] : ::ActiveRecord::VERSION::MAJOR > 3
+    end
+    
     module Column
       
       def extract_default(default)
