@@ -11,6 +11,7 @@ class PostgresSimpleTest < Test::Unit::TestCase
   include SimpleTestMethods
   include ActiveRecord3TestMethods
   include ColumnNameQuotingTests
+  include XmlColumnTests
 
   def test_adapter_class_name_equals_native_adapter_class_name
     classname = connection.class.name[/[^:]*$/]
@@ -55,21 +56,10 @@ class PostgresSimpleTest < Test::Unit::TestCase
   
   def test_create_xml_column
     return unless PG_VERSION >= 80300
-    assert_nothing_raised do
-      connection.create_table :xml_testings do |t|
-        t.column :xml_test, :xml
-      end
-    end
-
-    xml_test = connection.columns(:xml_testings).detect do
-      |c| c.name == "xml_test"
-    end
-
-    assert_equal "xml", xml_test.sql_type
-  ensure
-    connection.drop_table :xml_testings rescue nil
-  end
-
+    super
+  end if ar_version('3.1')
+  def xml_sql_type; 'xml'; end
+  
   def test_create_table_with_limits
     assert_nothing_raised do
       connection.create_table :testings do |t|

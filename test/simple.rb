@@ -408,18 +408,6 @@ module SimpleTestMethods
     end
   end
 
-  def test_dumping_schema
-    connection = ActiveRecord::Base.connection
-    connection.add_index :entries, :title
-    require 'active_record/schema_dumper'
-    StringIO.open do |io|
-      ActiveRecord::SchemaDumper.dump(connection, io)
-      assert_match(/add_index "entries",/, io.string)
-    end
-  ensure
-    connection.remove_index :entries, :title
-  end
-
   def test_nil_values
     test = AutoId.create('value' => '')
     assert_nil AutoId.find(test.id).value
@@ -809,21 +797,27 @@ module XmlColumnTests
   end
   
   module Tests
+    
     def test_create_xml_column
-      assert_nothing_raised do
-        connection.create_table :xml_testings do |t|
-          t.xml :xml_test
-        end
+      connection.create_table :xml_testings do |t|
+        t.xml :xml_test
       end
 
-      xml_test = connection.columns(:xml_testings).detect do |c|
+      xml_column = connection.columns(:xml_testings).detect do |c|
         c.name == "xml_test"
       end
-
-      assert_equal "text", xml_test.sql_type
+      
+      assert_equal xml_sql_type, xml_column.sql_type
     ensure
       connection.drop_table :xml_testings rescue nil
     end
+    
+    protected
+    
+    def xml_sql_type
+      'text'
+    end
+    
   end
   
 end
