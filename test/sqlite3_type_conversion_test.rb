@@ -9,38 +9,41 @@ class SQLite3TypeConversionTest < Test::Unit::TestCase
   else
     JInteger = Fixnum
     class Fixnum
-      # Arbitrary value...we could pick
-      MAX_VALUE = 2
+      MAX_VALUE = 1024 * 1024 # arbitrary value ... we could pick
     end
   end
-  
-  TEST_TIME = Time.at(1169964202)
-  TEST_BINARY = "Some random binary data % \0 and then some"
   
   def self.startup; DbTypeMigration.up; end
   def self.shutdown; DbTypeMigration.down; end
   
-  def setup
-    super
+  TEST_BINARY = "Some random binary data % \0 and then some"
+  
+  @@time_zone = Time.zone
+  
+  setup do
+    Time.zone = ActiveSupport::TimeZone['UTC']
     DbType.delete_all
-    DbType.create(
-      :sample_timestamp => TEST_TIME,
-      :sample_datetime => TEST_TIME,
-      :sample_time => TEST_TIME,
-      :sample_date => TEST_TIME,
+    some_time = Time.now
+    DbType.create!(
+      :sample_timestamp => some_time,
+      :sample_datetime => some_time.to_datetime,
+      :sample_time => some_time.to_time,
+      :sample_date => some_time.to_date,
       :sample_decimal => JInteger::MAX_VALUE + 1,
       :sample_small_decimal => 3.14,
       :sample_binary => TEST_BINARY)
-    DbType.create(
-      :sample_timestamp => TEST_TIME,
-      :sample_datetime => TEST_TIME,
-      :sample_time => TEST_TIME,
-      :sample_date => TEST_TIME,
+    DbType.create!(
+      :sample_timestamp => some_time,
+      :sample_datetime => some_time.to_datetime,
+      :sample_time => some_time.to_time,
+      :sample_date => some_time.to_date,
       :sample_decimal => JInteger::MAX_VALUE + 1,
       :sample_small_decimal => 1.0,
       :sample_binary => TEST_BINARY)
   end
 
+  teardown { Time.zone = @@time_zone; DbType.delete_all }
+  
   def test_decimal
     types = DbType.first
     assert_equal((JInteger::MAX_VALUE + 1), types.sample_decimal)
