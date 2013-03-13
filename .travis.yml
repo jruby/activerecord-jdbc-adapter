@@ -24,4 +24,4 @@ branches:
     - 1-2-stable
 matrix:
   allow_failures:
-    - gemfile: gemfiles/rails23.gemfile
+    - env: DB=jdbc
