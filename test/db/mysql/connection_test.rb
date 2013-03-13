@@ -13,6 +13,25 @@ class MySQLConnectionTest < Test::Unit::TestCase
     end
   end
   
+  def test_mysql_set_session_variable
+    run_without_connection do |orig_connection|
+      ActiveRecord::Base.establish_connection(orig_connection.deep_merge({:variables => {:default_week_format => 3}}))
+      rows = select_rows("SELECT @@SESSION.DEFAULT_WEEK_FORMAT")
+      assert_equal 3, rows.first.first.to_i
+    end
+  end
+
+  def test_mysql_set_session_variable_to_default
+    run_without_connection do |orig_connection|
+      ActiveRecord::Base.establish_connection(orig_connection.deep_merge({:variables => {:default_week_format => :default}}))
+      global_mode_rows = select_rows "SELECT @@GLOBAL.DEFAULT_WEEK_FORMAT"
+      session_mode_rows = select_rows "SELECT @@SESSION.DEFAULT_WEEK_FORMAT"
+      assert_equal global_mode_rows, session_mode_rows
+    end
+  end
+  
+  protected
+  
   def select_rows(sql)
     result = ActiveRecord::Base.connection.exec_query(sql)
     result.respond_to?(:rows) ? result.rows : [ result.first.map { |_,value| value } ]
