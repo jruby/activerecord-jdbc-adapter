@@ -157,6 +157,30 @@ module ::ArJdbc
     def supports_index_sort_order? # :nodoc:
       sqlite_version >= '3.3.0'
     end
+
+    def supports_migrations? # :nodoc:
+      true
+    end
+
+    def supports_primary_key? # :nodoc:
+      true
+    end
+
+    def supports_add_column? # :nodoc:
+      true
+    end
+
+    def supports_count_distinct? # :nodoc:
+      true
+    end
+
+    def supports_autoincrement? # :nodoc:
+      true
+    end
+
+    def supports_index_sort_order? # :nodoc:
+      true
+    end
     
     def sqlite_version
       @sqlite_version ||= select_value('SELECT sqlite_version(*)')
@@ -225,6 +249,13 @@ module ::ArJdbc
         end
         IndexDefinition.new(table_name, name, unique, columns)
       end
+    end
+    
+    # Returns 62. SQLite supports index names up to 64
+    # characters. The rest is used by rails internally to perform
+    # temporary rename operations
+    def allowed_index_name_length
+      index_name_length - 2
     end
 
     def create_savepoint
