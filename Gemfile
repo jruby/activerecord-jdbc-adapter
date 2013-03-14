@@ -10,9 +10,9 @@ end
 gem 'appraisal'
 gem 'rake', :require => nil
 # appraisal ignores group block declarations :
-gem 'test-unit', :group => :test
+gem 'test-unit', '2.5.4', :group => :test
 gem 'test-unit-context', :group => :test
-gem 'mocha', '~> 0.12.1', :require => nil, :group => :test # '>= 0.13.0'
+gem 'mocha', '~> 0.12.10', :require => nil, :group => :test # '>= 0.13.0'
 gem 'simplecov', :require => nil, :group => :test
 gem 'bcrypt-ruby', '~> 3.0.0', :require => nil, :group => :test
 
