@@ -109,8 +109,10 @@ public class MSSQLRubyJdbcConnection extends RubyJdbcConnection {
     }
 
     @Override
-    protected void populateFromResultSet(ThreadContext context, Ruby runtime, List results,
-                                         ResultSet resultSet, ColumnData[] columns) throws SQLException {
+    protected void populateFromResultSet(
+            final ThreadContext context, final Ruby runtime, 
+            final List<IRubyObject> results, final ResultSet resultSet, 
+            final ColumnData[] columns) throws SQLException {
         super.populateFromResultSet(context, runtime, results, resultSet, filterRowNumFromColumns(columns));
     }
 
@@ -140,7 +142,7 @@ public class MSSQLRubyJdbcConnection extends RubyJdbcConnection {
     protected RubyArray mapTables(final Ruby runtime, final DatabaseMetaData metaData, 
             final String catalog, final String schemaPattern, final String tablePattern, 
             final ResultSet tablesSet) throws SQLException {
-        final List<RubyString> tables = new ArrayList<RubyString>(32);
+        final List<IRubyObject> tables = new ArrayList<IRubyObject>(32);
         while ( tablesSet.next() ) {
             String name = tablesSet.getString(TABLES_TABLE_NAME);
             name = caseConvertIdentifierForRails(metaData, name);
@@ -154,7 +156,7 @@ public class MSSQLRubyJdbcConnection extends RubyJdbcConnection {
             }
             tables.add(RubyString.newUnicodeString(runtime, name));
         }
-        return runtime.newArray((List) tables);
+        return runtime.newArray(tables);
     }
     
 }

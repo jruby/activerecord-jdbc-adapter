@@ -26,8 +26,8 @@
 
 package arjdbc.sqlite3;
 
+import arjdbc.jdbc.Callable;
 import arjdbc.jdbc.RubyJdbcConnection;
-import arjdbc.jdbc.SQLBlock;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -77,23 +77,22 @@ public class SQLite3RubyJdbcConnection extends RubyJdbcConnection {
     @JRubyMethod(name = "last_insert_row_id")
     public IRubyObject getLastInsertRowId(final ThreadContext context) 
         throws SQLException {
-        return (IRubyObject) withConnectionAndRetry(context, new SQLBlock() {
-                public Object call(Connection c) throws SQLException {
-                    Statement stmt = null;
-                    try {
-                        stmt = c.createStatement();
-                        return unmarshal_id_result(context.getRuntime(),
-                                                   stmt.getGeneratedKeys());
-                    } catch (SQLException sqe) {
-                        if (context.getRuntime().isDebug()) {
-                            System.out.println("Error SQL:" + sqe.getMessage());
-                        }
-                        throw sqe;
-                    } finally {
-                        close(stmt);
-                    }
+        return withConnection(context, new Callable<IRubyObject>() {
+            public IRubyObject call(final Connection connection) throws SQLException {
+                Statement statement = null;
+                try {
+                    statement = connection.createStatement();
+                    return unmarshalIdResult(context.getRuntime(), statement);
                 }
-            });
+                catch (SQLException sqe) {
+                    if (context.getRuntime().isDebug()) {
+                        System.out.println("Error SQL:" + sqe.getMessage());
+                    }
+                    throw sqe;
+                }
+                finally { close(statement); }
+            }
+        });
     }
 
     @Override
@@ -121,8 +120,8 @@ public class SQLite3RubyJdbcConnection extends RubyJdbcConnection {
                 return super.jdbcToRuby(runtime, column, type, resultSet);
             }
         }
-        catch (IOException ioe) {
-            throw (SQLException) new SQLException(ioe.getMessage()).initCause(ioe);
+        catch (IOException e) {
+            throw new SQLException(e.getMessage(), e);
         }
     }
     

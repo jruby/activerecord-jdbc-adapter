@@ -26,7 +26,7 @@
 package arjdbc.mysql;
 
 import arjdbc.jdbc.RubyJdbcConnection;
-import arjdbc.jdbc.SQLBlock;
+import arjdbc.jdbc.Callable;
 
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
@@ -62,12 +62,11 @@ public class MySQLRubyJdbcConnection extends RubyJdbcConnection {
     }
 
     @Override
-    protected IRubyObject unmarshalKeysOrUpdateCount(ThreadContext context, Connection c, Statement stmt) throws SQLException {
-        IRubyObject key = unmarshal_id_result(context.getRuntime(), stmt.getGeneratedKeys());
-        if (key.isNil()) {
-            return context.getRuntime().newFixnum(stmt.getUpdateCount());
-        }
-        return key;
+    protected IRubyObject unmarshalKeysOrUpdateCount(final ThreadContext context, 
+        final Connection connection, final Statement statement) throws SQLException {
+        final Ruby runtime = context.getRuntime();
+        final IRubyObject key = unmarshalIdResult(runtime, statement);
+        return key.isNil() ? runtime.newFixnum(statement.getUpdateCount()) : key;
     }
 
     @Override
@@ -94,11 +93,10 @@ public class MySQLRubyJdbcConnection extends RubyJdbcConnection {
 
     @Override
     protected IRubyObject indexes(final ThreadContext context, final String tableName, final String name, final String schemaName) {
-        return (IRubyObject) withConnectionAndRetry(context, new SQLBlock() {
-            @Override
-            public Object call(Connection connection) throws SQLException {
+        return withConnection(context, new Callable<IRubyObject>() {
+            public IRubyObject call(final Connection connection) throws SQLException {
                 final Ruby runtime = context.getRuntime();
-                final RubyModule indexDefinition = getConnectionAdapters(runtime).getClass("IndexDefinition");
+                final RubyModule indexDefinition = getIndexDefinition(runtime);
                 final DatabaseMetaData metaData = connection.getMetaData();
                 final String jdbcTableName = caseConvertIdentifierForJdbc(metaData, tableName);
                 final String jdbcSchemaName = caseConvertIdentifierForJdbc(metaData, schemaName);
@@ -106,20 +104,19 @@ public class MySQLRubyJdbcConnection extends RubyJdbcConnection {
                     runtime, caseConvertIdentifierForJdbc(metaData, tableName)
                 );
                 
-                StringBuilder buffer = new StringBuilder("SHOW KEYS FROM ");
+                StringBuilder query = new StringBuilder("SHOW KEYS FROM ");
                 if (jdbcSchemaName != null) {
-                    buffer.append(jdbcSchemaName).append(".");
+                    query.append(jdbcSchemaName).append(".");
                 }
-                buffer.append(jdbcTableName);
-                buffer.append(" WHERE key_name != 'PRIMARY'");
+                query.append(jdbcTableName);
+                query.append(" WHERE key_name != 'PRIMARY'");
                 
-                final String query = buffer.toString();
                 final List<IRubyObject> indexes = new ArrayList<IRubyObject>();
                 PreparedStatement statement = null;
                 ResultSet keySet = null;
 
                 try {
-                    statement = connection.prepareStatement(query);
+                    statement = connection.prepareStatement(query.toString());
                     keySet = statement.executeQuery();
                     
                     String currentKeyName = null;
@@ -156,9 +153,9 @@ public class MySQLRubyJdbcConnection extends RubyJdbcConnection {
                         }
                     }
                     
-                    return runtime.newArray(indexes);
-                    
-                } finally {
+                    return runtime.newArray(indexes);    
+                }
+                finally {
                     close(keySet);
                     close(statement);
                 }

@@ -23,10 +23,11 @@
  */
 package arjdbc.derby;
 
+import arjdbc.jdbc.Callable;
 import arjdbc.jdbc.RubyJdbcConnection;
-import arjdbc.jdbc.SQLBlock;
 
 import org.jruby.Ruby;
+import org.jruby.RubyArray;
 import org.jruby.RubyClass;
 import org.jruby.runtime.ObjectAllocator;
 import org.jruby.runtime.builtin.IRubyObject;
@@ -56,7 +57,7 @@ public class DerbyRubyJdbcConnection extends RubyJdbcConnection {
     };
     
     @Override
-    protected SQLBlock tableLookupBlock(final Ruby runtime,
+    protected Callable<RubyArray> tableLookupBlock(final Ruby runtime,
             final String catalog, String schemaPattern,
             final String tablePattern, final String[] types) {
         if (schemaPattern != null && schemaPattern.equals("")) { 
