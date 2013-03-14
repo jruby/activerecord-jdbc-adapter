@@ -354,13 +354,23 @@ module ActiveRecord
         @connection.rollback
       end
 
+      def begin_isolated_db_transaction(isolation)
+        @connection.begin(isolation)
+      end
+      
+      # Does this adapter support setting the isolation level for a transaction?
+      # @note We allow to ask for a specified transaction isolation level ...
+      def supports_transaction_isolation?(level = nil)
+        @connection.supports_transaction_isolation?(level)
+      end 
+      
       def write_large_object(*args)
         @connection.write_large_object(*args)
       end
 
       def pk_and_sequence_for(table)
         key = primary_key(table)
-        [key, nil] if key
+        [ key, nil ] if key
       end
 
       def primary_key(table)

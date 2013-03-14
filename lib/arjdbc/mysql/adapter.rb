@@ -242,6 +242,10 @@ module ArJdbc
       true
     end
 
+    def supports_transaction_isolation?(level = nil)
+      version[0] >= 5 # MySQL 5+
+    end
+    
     def create_savepoint
       execute("SAVEPOINT #{current_savepoint_name}")
     end

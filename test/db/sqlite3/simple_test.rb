@@ -10,6 +10,7 @@ class SQLite3SimpleTest < Test::Unit::TestCase
   include ColumnNameQuotingTests
   include DirtyAttributeTests
   include XmlColumnTests
+  include ExplainSupportTestMethods if ar_version("3.1")
 
   def test_recreate_database
     assert connection.tables.include?(Entry.table_name)
@@ -248,6 +249,4 @@ class SQLite3SimpleTest < Test::Unit::TestCase
     #ActiveRecord::Base.logger.level = Logger::WARN
   end
   
-  include ExplainSupportTestMethods if ar_version("3.1")
-
 end

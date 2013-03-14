@@ -311,6 +311,10 @@ module ArJdbc
       true
     end
     
+    def supports_transaction_isolation?(level = nil)
+      true
+    end
+    
     def create_savepoint
       execute("SAVEPOINT #{current_savepoint_name}")
     end
