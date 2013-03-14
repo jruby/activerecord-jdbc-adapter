@@ -85,10 +85,8 @@ class SQLite3SimpleTest < Test::Unit::TestCase
     assert_equal @content, post.content
     assert_equal @rating, post.rating
 
-    assert_nothing_raised do
-      ActiveRecord::Schema.define do
-        rename_column "entries", "title", "name"
-      end
+    ActiveRecord::Schema.define do
+      rename_column "entries", "title", "name"
     end
 
     post = Entry.first
@@ -102,10 +100,8 @@ class SQLite3SimpleTest < Test::Unit::TestCase
 
     index_name = "entries_index"
 
-    assert_nothing_raised do
-      ActiveRecord::Schema.define do
-        add_index "entries", "title", :name => index_name
-      end
+    ActiveRecord::Schema.define do
+      add_index "entries", "title", :name => index_name
     end
 
     indexes = connection.indexes(:entries)
@@ -115,10 +111,8 @@ class SQLite3SimpleTest < Test::Unit::TestCase
     assert !indexes.first.unique
     assert_equal ["title"], indexes.first.columns
 
-    assert_nothing_raised do
-      ActiveRecord::Schema.define do
-        rename_column "entries", "title", "name"
-      end
+    ActiveRecord::Schema.define do
+      rename_column "entries", "title", "name"
     end
 
     indexes = connection.indexes(:entries)
