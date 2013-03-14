@@ -14,6 +14,10 @@ module ArJdbc
     def self.lob_callback_added! # :nodoc
       @@_lob_callback_added = true
     end
+
+    def explain(query, *binds)
+      # TODO: Explain this! Do not remove !
+    end
     
     def self.extended(base)
       if ADD_LOB_CALLBACK && ! lob_callback_added?
@@ -173,9 +177,16 @@ module ArJdbc
     def prefetch_primary_key?(table_name = nil)
       # TRUE if the table has no identity column
       names = table_name.upcase.split(".")
-      sql = "SELECT 1 FROM SYSCAT.COLUMNS WHERE IDENTITY = 'Y' "
-      sql += "AND TABSCHEMA = '#{names.first}' " if names.size == 2
-      sql += "AND TABNAME = '#{names.last}'"
+      sql = ""
+      if as400?
+        sql = "SELECT 1 FROM SYSIBM.SQLPRIMARYKEYS WHERE "
+        sql += "TABLE_SCHEM = '#{names.first}' AND " if names.size == 2
+        sql += "TABLE_NAME = '#{names.last}'"
+      else
+        sql = "SELECT 1 FROM SYSCAT.COLUMNS WHERE IDENTITY = 'Y' "
+        sql += "AND TABSCHEMA = '#{names.first}' " if names.size == 2
+        sql += "AND TABNAME = '#{names.last}'"
+      end
       select_one(sql).nil?
     end
 
