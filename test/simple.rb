@@ -70,9 +70,10 @@ module FixtureSetup
     @content = "Hello from JRuby on Rails!"
     @new_title = "First post updated title"
     @rating = 205.76
-    @user = User.create :login => "something"
-    @entry = Entry.create :title => @title, :content => @content, :rating => @rating, :user => @user
-    DbType.create
+    @user = User.create! :login => "something"
+    @entry = Entry.create! :title => @title, :content => @content, :rating => @rating, :user => @user
+    DbType.create! :big_decimal => 42 # NOTE: 4.0 seems to fail on bare create, 
+    # (empty attributes Hash) generates SQL: INSERT INTO "db_types" VALUES(NULL)
   end
   
   def teardown
@@ -102,6 +103,7 @@ module ColumnNameQuotingTests
   end
 
   protected
+  
   def column_quote_char
     @@column_quote_char || "\""
   end
@@ -111,8 +113,6 @@ end
 module DirtyAttributeTests
 
   def test_partial_update_with_updated_at
-    #ActiveRecord::Base.logger.level = Logger::DEBUG
-    
     user = User.create!(:login => 'cicina')
     old_updated_at = 61.minutes.ago.in_time_zone
     
@@ -131,12 +131,9 @@ module DirtyAttributeTests
       assert_queries(1) { user.login = 'cicinbrus'; user.save! }
       assert_datetime_not_equal old_updated_at, user.reload.updated_at
     end
-  ensure
-    #ActiveRecord::Base.logger.level = Logger::WARN
   end
   
   def test_partial_update_with_updated_on
-    #ActiveRecord::Base.logger.level = Logger::DEBUG
     entry = Entry.create!(:title => 'foo')
     old_updated_on = 25.hours.ago.beginning_of_day.in_time_zone
     
@@ -155,11 +152,10 @@ module DirtyAttributeTests
       assert_queries(1) { entry.title = 'bar'; entry.save! }
       assert_date_not_equal old_updated_on, entry.reload.updated_on
     end
-  ensure
-    #ActiveRecord::Base.logger.level = Logger::WARN
   end
   
   private
+  
   def with_partial_updates(klass, on = true)
     old = klass.partial_updates?
     klass.partial_updates = on
@@ -886,12 +882,6 @@ module XmlColumnTests
   
   module TestMethods
     
-    def teardown
-      super
-      drop_xml_models! rescue false
-      
-    end
-    
     def test_create_xml_column
       create_xml_models!
 
@@ -900,10 +890,12 @@ module XmlColumnTests
       end
       
       assert_xml_type xml_column.sql_type
+    ensure
+      drop_xml_models! rescue false
     end
 
     def test_use_xml_column
-      if ( ( create_xml_models! || true ) rescue nil )
+      if created = ( ( create_xml_models! || true ) rescue nil )
 
         XmlModel.create! :xml_col => "<xml><LoVE><![CDATA[Rubyist's <3 XML!]]></LoVE></xml>"
     
@@ -918,6 +910,8 @@ module XmlColumnTests
       else
         puts "test_use_xml_column skipped"
       end
+    ensure
+      drop_xml_models! if created
     end
     
     protected
