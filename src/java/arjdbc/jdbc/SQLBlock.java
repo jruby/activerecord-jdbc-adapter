@@ -32,11 +32,17 @@ import java.sql.SQLException;
 import java.sql.Statement;
 
 /**
- *
+ * @deprecated implement a {@link Callable} directly instead.
+ * 
  * @author nicksieger
  */
-public abstract class SQLBlock {
-    protected abstract Object call(Connection c) throws SQLException;
+@Deprecated
+public abstract class SQLBlock implements Callable {
+    
+    /**
+     * @see Callable#call(Connection)
+     */
+    public abstract Object call(final Connection connection) throws SQLException;
 
     public void close(Statement statement) {
         RubyJdbcConnection.close(statement);
