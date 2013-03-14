@@ -78,8 +78,9 @@ import org.jruby.util.ByteList;
  * Part of our ActiveRecord::ConnectionAdapters::Connection impl.
  */
 public class RubyJdbcConnection extends RubyObject {
-    private static final String[] TABLE_TYPE = new String[]{"TABLE"};
-    private static final String[] TABLE_TYPES = new String[]{"TABLE", "VIEW", "SYNONYM"};
+    
+    private static final String[] TABLE_TYPE = new String[] { "TABLE" };
+    private static final String[] TABLE_TYPES = new String[] { "TABLE", "VIEW", "SYNONYM" };
 
     private static RubyObjectAdapter rubyApi;
 
@@ -103,44 +104,156 @@ public class RubyJdbcConnection extends RubyObject {
         return jdbcConnection;
     }
 
-    protected static RubyModule getConnectionAdapters(Ruby runtime) {
-        return (RubyModule) runtime.getModule("ActiveRecord").getConstant("ConnectionAdapters");
+    /**
+     * @param runtime
+     * @return <code>ActiveRecord::ConnectionAdapters</code>
+     */
+    protected static RubyModule getConnectionAdapters(final Ruby runtime) {
+        return (RubyModule) runtime.fastGetModule("ActiveRecord").fastGetConstant("ConnectionAdapters");
     }
 
-    @JRubyMethod(name = "begin")
-    public IRubyObject begin(final ThreadContext context) throws SQLException {
-        return (IRubyObject) withConnectionAndRetry(context, new SQLBlock() {
-          public Object call(Connection c) throws SQLException {
-            getConnection(true).setAutoCommit(false);
-            return context.getRuntime().getNil();
-          }
+    /**
+     * @param runtime
+     * @return <code>ActiveRecord::TransactionIsolationError</code>
+     */
+    protected static RubyClass getJDBCError(final Ruby runtime) {
+        return runtime.fastGetModule("ActiveRecord").fastGetClass("JDBCError");
+    }
+
+    /**
+     * NOTE: Only available since AR-4.0
+     * @param runtime
+     * @return <code>ActiveRecord::TransactionIsolationError</code>
+     */
+    protected static RubyClass getTransactionIsolationError(final Ruby runtime) {
+        return (RubyClass) runtime.fastGetModule("ActiveRecord").fastGetConstant("TransactionIsolationError");
+    }
+    
+    /*
+      def transaction_isolation_levels
+        {
+          read_uncommitted: "READ UNCOMMITTED",
+          read_committed:   "READ COMMITTED",
+          repeatable_read:  "REPEATABLE READ",
+          serializable:     "SERIALIZABLE"
+        }
+      end 
+    */
+    
+    //private static final ByteList READ_UNCOMMITTED = new ByteList(
+        //new byte[] { 'R','E','A','D',' ','U','N','C','O','M','M','I','T','T','E','D' }, false);
+    
+    //private static final ByteList READ_COMMITTED = new ByteList(
+        //new byte[] { 'R','E','A','D',' ','C','O','M','M','I','T','T','E','D' }, false);
+
+    //private static final ByteList REPEATABLE_READ = new ByteList(
+        //new byte[] { 'R','E','P','E','A','T','A','B','L','E',' ','R','E','A','D' }, false);
+
+    //private static final ByteList SERIALIZABLE = new ByteList(
+        //new byte[] { 'S','E','R','I','A','L','I','Z','A','B','L','E' }, false);
+
+    public static int mapTransactionIsolationLevel(IRubyObject isolation) {
+        if ( ! ( isolation instanceof RubySymbol ) ) {
+            isolation = isolation.convertToString().callMethod("intern");
+        }
+        
+        final Object isolationString = isolation.toString(); // RubySymbol.toString
+        if ( isolationString == "read_committed" ) return Connection.TRANSACTION_READ_COMMITTED;
+        if ( isolationString == "read_uncommitted" ) return Connection.TRANSACTION_READ_UNCOMMITTED;
+        if ( isolationString == "repeatable_read" ) return Connection.TRANSACTION_REPEATABLE_READ;
+        if ( isolationString == "serializable" ) return Connection.TRANSACTION_SERIALIZABLE;
+        
+        throw new IllegalArgumentException(
+                "unexpected isolation level: " + isolation + " (" + isolationString + ")"
+        );
+    }
+
+    @JRubyMethod(name = "supports_transaction_isolation?", optional = 1)
+    public IRubyObject supports_transaction_isolation_p(final ThreadContext context, 
+        final IRubyObject[] args) throws SQLException {
+        final IRubyObject isolation = args.length > 0 ? args[0] : null;
+        
+        return withConnection(context, new Callable<IRubyObject>() {
+            public IRubyObject call(final Connection connection) throws SQLException {
+                final DatabaseMetaData metaData = connection.getMetaData();
+                final boolean supported;
+                if ( isolation != null && ! isolation.isNil() ) {
+                    final int level = mapTransactionIsolationLevel(isolation);
+                    supported = metaData.supportsTransactionIsolationLevel(level);
+                }
+                else {
+                    final int level = metaData.getDefaultTransactionIsolation();
+                    supported = level != Connection.TRANSACTION_NONE; // != 0
+                }
+                return context.getRuntime().newBoolean(supported);
+            }
         });
     }
     
-    @JRubyMethod(name = "commit")
-    public IRubyObject commit(final ThreadContext context) throws SQLException {
-        final Connection connection = getConnection(true);
-        if ( ! connection.getAutoCommit() ) {
-            try {
-                connection.commit();
-            } finally {
-                connection.setAutoCommit(true);
-            }
+    @JRubyMethod(name = "begin", optional = 1) // optional isolation argument for AR-4.0
+    public IRubyObject begin(final ThreadContext context, final IRubyObject[] args) {
+        final IRubyObject isolation = args.length > 0 ? args[0] : null;
+        try { // handleException == false so we can handle setTXIsolation
+            return withConnection(context, false, new Callable<IRubyObject>() {
+                public IRubyObject call(final Connection connection) throws SQLException {
+                    connection.setAutoCommit(false);
+                    if ( isolation != null && ! isolation.isNil() ) {
+                        final int level = mapTransactionIsolationLevel(isolation);
+                        try {
+                            connection.setTransactionIsolation(level);
+                        } 
+                        catch (SQLException e) {
+                            RubyClass txError = getTransactionIsolationError(context.getRuntime());
+                            if ( txError != null ) throw wrapException(context, txError, e);
+                            throw e; // let it roll - will be wrapped into a JDBCError (non 4.0)
+                        }
+                    }
+                    return context.getRuntime().getNil();
+                }
+            });
         }
-        return context.getRuntime().getNil();
+        catch (SQLException e) {
+            return handleException(context, e);
+        }
+    }
+    
+    @JRubyMethod(name = "commit")
+    public IRubyObject commit(final ThreadContext context) {
+        final Connection connection = getConnection(true);
+        try {
+            if ( ! connection.getAutoCommit() ) {
+                try {
+                    connection.commit();
+                    return context.getRuntime().newBoolean(true);
+                }
+                finally {
+                    connection.setAutoCommit(true);
+                }
+            }
+            return context.getRuntime().getNil();
+        }
+        catch (SQLException e) {
+            return handleException(context, e);
+        }
     }
 
     @JRubyMethod(name = "rollback")
-    public IRubyObject rollback(final ThreadContext context) throws SQLException {
+    public IRubyObject rollback(final ThreadContext context) {
         final Connection connection = getConnection(true);
-        if ( ! connection.getAutoCommit() ) {
-            try {
-                connection.rollback();
-            } finally {
-                connection.setAutoCommit(true);
+        try {
+            if ( ! connection.getAutoCommit() ) {
+                try {
+                    connection.rollback();
+                    return context.getRuntime().newBoolean(true);
+                } finally {
+                    connection.setAutoCommit(true);
+                }
             }
+            return context.getRuntime().getNil();
         }
-        return context.getRuntime().getNil();
+        catch (SQLException e) {
+            return handleException(context, e);
+        }
     }
     
     @JRubyMethod(name = "connection")
@@ -599,8 +712,8 @@ public class RubyJdbcConnection extends RubyObject {
     @JRubyMethod(name = "with_connection_retry_guard", frame = true)
     public IRubyObject with_connection_retry_guard(final ThreadContext context, final Block block) {
         return (IRubyObject) withConnectionAndRetry(context, new SQLBlock() {
-            public Object call(Connection c) throws SQLException {
-                return block.call(context, new IRubyObject[] { wrappedConnection(c) });
+            public Object call(final Connection connection) throws SQLException {
+                return block.call(context, new IRubyObject[] { convertJavaToRuby(connection) });
             }
         });
     }
@@ -679,31 +792,6 @@ public class RubyJdbcConnection extends RubyObject {
         }
 
         return value;
-    }
-
-    // helpers
-    protected static void close(Connection connection) {
-        if (connection != null) {
-            try {
-                connection.close();
-            } catch(Exception e) {}
-        }
-    }
-
-    public static void close(ResultSet resultSet) {
-        if (resultSet != null) {
-            try {
-                resultSet.close();
-            } catch(Exception e) {}
-        }
-    }
-
-    public static void close(Statement statement) {
-        if (statement != null) {
-            try {
-                statement.close();
-            } catch(Exception e) {}
-        }
     }
 
     protected IRubyObject getConfigValue(final ThreadContext context, final String key) {
@@ -951,30 +1039,29 @@ public class RubyJdbcConnection extends RubyObject {
         close( getConnection(false) ); // close previously open connection if there is one
         
         final IRubyObject rubyConnectionObject = 
-            connection != null ? wrappedConnection(connection) : getRuntime().getNil();
+            connection != null ? convertJavaToRuby(connection) : getRuntime().getNil();
         setInstanceVariable( "@connection", rubyConnectionObject );
         dataWrapStruct(connection);
         return this;
     }
 
     private boolean isConnectionBroken(final ThreadContext context, final Connection connection) {
+        Statement statement = null;
         try {
-            final IRubyObject alive_sql = getConfigValue(context, "connection_alive_sql");
-            if ( select_p(context, this, alive_sql).isTrue() ) {
-                String aliveSQL = rubyApi.convertToRubyString(alive_sql).toString();
-                Statement statement = connection.createStatement();
-                try {
-                    statement.execute(aliveSQL);
-                }
-                finally { close(statement); }
-                return false;
-            } else {
-                return ! connection.isClosed();
+            final RubyString aliveSQL = getConfigValue(context, "connection_alive_sql").convertToString();
+            if ( isSelect(aliveSQL) ) { // expect a SELECT/CALL SQL statement
+                statement = connection.createStatement();
+                statement.execute( aliveSQL.toString() );
+                return false; // connection ain't broken
+            }
+            else { // alive_sql nil (or not a statement we can execute)
+                return ! connection.isClosed(); // if closed than broken
             }
         }
         catch (Exception e) { // TODO log this
             return true;
         }
+        finally { close(statement); }
     }
     
     private final static DateFormat FORMAT = new SimpleDateFormat("%y-%M-%d %H:%m:%s");
@@ -1214,61 +1301,114 @@ public class RubyJdbcConnection extends RubyObject {
 
         return runtime.newArray(results);
     }
+    
+    /**
+     * @deprecated renamed and parameterized to {@link #withConnection(ThreadContext, SQLBlock)}
+     */
+    @Deprecated
+    protected Object withConnectionAndRetry(final ThreadContext context, final SQLBlock block) 
+        throws RaiseException {
+        return withConnection(context, block);
+    }
 
-    protected Object withConnectionAndRetry(ThreadContext context, SQLBlock block) {
-        int tries = 1;
-        int i = 0;
-        Throwable toWrap = null;
-        boolean autoCommit = false;
-        while (i < tries) {
-            Connection c = getConnection(true);
+    protected <T> T withConnection(final ThreadContext context, final Callable<T> block) 
+        throws RaiseException {
+        try {
+            return withConnection(context, true, block);
+        }
+        catch (final SQLException e) {
+            return handleException(context, e); // should never happen
+        }
+    }
+    
+    private <T> T withConnection(final ThreadContext context, final boolean handleException, final Callable<T> block) 
+        throws RaiseException, RuntimeException, SQLException {
+        
+        Throwable exception = null; int tries = 1; int i = 0;
+        
+        while ( i++ < tries ) {
+            final Connection connection = getConnection(true);
+            boolean autoCommit = true; // retry in-case getAutoCommit throws
             try {
-                autoCommit = c.getAutoCommit();
-                return block.call(c);
+                autoCommit = connection.getAutoCommit();
+                return block.call(connection);
             }
-            catch (Exception e) {
-                toWrap = e;
-                while (toWrap.getCause() != null && toWrap.getCause() != toWrap) {
-                    toWrap = toWrap.getCause();
+            catch (final Exception e) { // SQLException or RuntimeException
+                if ( context.getRuntime().isDebug() ) {
+                    e.printStackTrace(System.out);
                 }
+                exception = e;
 
-                if (context.getRuntime().isDebug()) {
-                    toWrap.printStackTrace(System.out);
-                }
-
-                i++;
-                if (autoCommit) {
-                    if (i == 1) {
+                if ( autoCommit ) { // do not retry if (inside) transactions
+                    if ( i == 1 ) {
                         IRubyObject retryCount = getConfigValue(context, "retry_count");
                         tries = (int) retryCount.convertToInteger().getLongValue();
                         if ( tries <= 0 ) tries = 1;
                     }
-                    if (isConnectionBroken(context, c)) {
-                        reconnect();
-                    } else {
-                        throw wrap(context, toWrap);
+                    if ( isConnectionBroken(context, connection) ) {
+                        reconnect(); continue; // retry connection (block) again
                     }
+                    break; // connection not broken yet failed
                 }
             }
         }
-        throw wrap(context, toWrap);
-    }
-
-    protected RuntimeException wrap(ThreadContext context, Throwable exception) {
-        Ruby runtime = context.getRuntime();
-        RaiseException arError = new RaiseException(runtime, runtime.getModule("ActiveRecord").getClass("JDBCError"),
-                                                    exception.getMessage(), true);
-        arError.initCause(exception);
-        if (exception instanceof SQLException) {
-            RuntimeHelpers.invoke(context, arError.getException(),
-                                  "errno=", runtime.newFixnum(((SQLException) exception).getErrorCode()));
-            RuntimeHelpers.invoke(context, arError.getException(),
-                                  "sql_exception=", JavaEmbedUtils.javaToRuby(runtime, exception));
+        // (retry) loop ended and we did not return ... exception != null
+        if ( handleException ) {
+            return handleException(context, getCause(exception)); // throws
         }
-        return (RuntimeException) arError;
+        else {
+            if ( exception instanceof SQLException ) {
+                throw (SQLException) exception;
+            }
+            if ( exception instanceof RuntimeException ) {
+                throw (RuntimeException) exception;
+            }
+            // won't happen - our try block only throws SQL or Runtime exceptions
+            throw new RuntimeException(exception);
+        }
     }
 
-    private IRubyObject wrappedConnection(final Connection connection) {
+    private static Throwable getCause(Throwable exception) {
+        Throwable cause = exception.getCause();
+        while (cause != null && cause != exception) {
+            exception = cause; cause = exception.getCause();
+        }
+        return exception;
+    }
+
+    protected <T> T handleException(final ThreadContext context, final Throwable exception) 
+        throws RaiseException {
+        throw wrapException(context, exception);
+    }
+    
+    /**
+     * @deprecated use {@link #wrapException(ThreadContext, Throwable)} instead
+     */
+    @Deprecated
+    protected RuntimeException wrap(final ThreadContext context, final Throwable exception) {
+        return wrapException(context, exception);
+    }
+    
+    protected static RaiseException wrapException(final ThreadContext context, final Throwable exception) {
+        final Ruby runtime = context.getRuntime();
+        final RaiseException error = wrapException(context, getJDBCError(runtime), exception);
+        if ( exception instanceof SQLException ) {
+            final int errorCode = ((SQLException) exception).getErrorCode();
+            RuntimeHelpers.invoke( context, error.getException(),
+                "errno=", runtime.newFixnum(errorCode) );
+            RuntimeHelpers.invoke( context, error.getException(),
+                "sql_exception=", JavaEmbedUtils.javaToRuby(runtime, exception) );
+        }
+        return error;
+    }
+
+    protected static RaiseException wrapException(final ThreadContext context, final RubyClass errorClass, final Throwable exception) {
+        final RaiseException error = new RaiseException(context.getRuntime(), errorClass, exception.getMessage(), true);
+        error.initCause(exception);
+        return error;
+    }
+    
+    private IRubyObject convertJavaToRuby(final Connection connection) {
         return JavaUtil.convertJavaToRuby( getRuntime(), connection );
     }
 
@@ -1287,15 +1427,17 @@ public class RubyJdbcConnection extends RubyObject {
     
     @JRubyMethod(name = "select?", required = 1, meta = true, frame = false)
     public static IRubyObject select_p(ThreadContext context, IRubyObject self, IRubyObject sql) {
-        final ByteList sqlBytes = sql.convertToString().getByteList();
-        return context.getRuntime().newBoolean(
-                startsWithIgnoreCase(sqlBytes, SELECT) || 
-                startsWithIgnoreCase(sqlBytes, WITH) ||
-                startsWithIgnoreCase(sqlBytes, SHOW) || 
-                startsWithIgnoreCase(sqlBytes, CALL)
-        );
+        return context.getRuntime().newBoolean( isSelect(sql.convertToString()) );
     }
 
+    private static boolean isSelect(final RubyString sql) {
+        final ByteList sqlBytes = sql.getByteList();
+        return startsWithIgnoreCase(sqlBytes, SELECT) || 
+               startsWithIgnoreCase(sqlBytes, WITH) ||
+               startsWithIgnoreCase(sqlBytes, SHOW) || 
+               startsWithIgnoreCase(sqlBytes, CALL);
+    }
+    
     private static final byte[] INSERT = new byte[] { 'i', 'n', 's', 'e', 'r', 't' };
     
     @JRubyMethod(name = "insert?", required = 1, meta = true, frame = false)
@@ -1410,6 +1552,29 @@ public class RubyJdbcConnection extends RubyObject {
         }
 
         return columns;
+    }
+    
+    // JDBC API Helpers :
+    
+    protected static void close(final Connection connection) {
+        if ( connection != null ) {
+            try { connection.close(); }
+            catch (final Exception e) { /* NOOP */ }
+        }
+    }
+
+    public static void close(final ResultSet resultSet) {
+        if (resultSet != null) {
+            try { resultSet.close(); }
+            catch (final Exception e) { /* NOOP */ }
+        }
+    }
+
+    public static void close(final Statement statement) {
+        if (statement != null) {
+            try { statement.close(); }
+            catch (final Exception e) { /* NOOP */ }
+        }
     }
     
 }
