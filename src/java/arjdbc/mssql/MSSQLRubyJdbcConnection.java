@@ -34,6 +34,8 @@ import java.sql.Types;
 import java.util.List;
 import java.util.ArrayList;
 
+import org.jcodings.specific.UTF8Encoding;
+
 import org.jruby.Ruby;
 import org.jruby.RubyArray;
 import org.jruby.RubyClass;
@@ -50,11 +52,8 @@ import org.jruby.util.ByteList;
  */
 public class MSSQLRubyJdbcConnection extends RubyJdbcConnection {
 
-    private RubyString _row_num;
-
     protected MSSQLRubyJdbcConnection(Ruby runtime, RubyClass metaClass) {
         super(runtime, metaClass);
-        _row_num = runtime.newString("_row_num");
     }
 
     public static RubyClass createMSSQLJdbcConnectionClass(Ruby runtime, RubyClass jdbcConnection) {
@@ -79,55 +78,6 @@ public class MSSQLRubyJdbcConnection extends RubyJdbcConnection {
         return context.getRuntime().newBoolean( startsWithIgnoreCase(sqlBytes, EXEC) );
     }
     
-    /**
-     * Treat LONGVARCHAR as CLOB on MSSQL for purposes of converting a JDBC value to Ruby.
-     * Treat BOOLEAN/BIT as Boolean, rather than the default behaviour of conversion to string
-     */
-    @Override
-    protected IRubyObject jdbcToRuby(Ruby runtime, int column, int type, ResultSet resultSet)
-        throws SQLException {
-        if ( type == Types.LONGVARCHAR || type == Types.LONGNVARCHAR ) type = Types.CLOB;
-        return super.jdbcToRuby(runtime, column, type, resultSet);
-    }
-    
-    /**
-     * Microsoft SQL 2000+ support schemas
-     */
-    @Override
-    protected boolean databaseSupportsSchemas() {
-        return true;
-    }
-
-    @Override
-    protected void populateFromResultSet(
-            final ThreadContext context, final Ruby runtime, 
-            final List<IRubyObject> results, final ResultSet resultSet, 
-            final ColumnData[] columns) throws SQLException {
-        super.populateFromResultSet(context, runtime, results, resultSet, filterRowNumFromColumns(columns));
-    }
-
-    /**
-     * Filter out the <tt>_row_num</tt> column from results.
-     */
-    private ColumnData[] filterRowNumFromColumns(ColumnData[] columns) {
-        for (int i = 0; i < columns.length; i++) {
-            if (columns[i].name.equals(_row_num)) {
-                ColumnData[] filtered = new ColumnData[columns.length - 1];
-                if (i > 0) {
-                    System.arraycopy(columns, 0, filtered, 0, i);
-                }
-
-                if (i + 1 < columns.length) {
-                    System.arraycopy(columns, i + 1, filtered, i, columns.length - (i + 1));
-                }
-
-                return filtered;
-            }
-        }
-
-        return columns;
-    }
- 
     @Override
     protected RubyArray mapTables(final Ruby runtime, final DatabaseMetaData metaData, 
             final String catalog, final String schemaPattern, final String tablePattern, 
@@ -147,6 +97,60 @@ public class MSSQLRubyJdbcConnection extends RubyJdbcConnection {
             tables.add(RubyString.newUnicodeString(runtime, name));
         }
         return runtime.newArray(tables);
+    }
+    
+    /**
+     * Microsoft SQL 2000+ support schemas
+     */
+    @Override
+    protected boolean databaseSupportsSchemas() {
+        return true;
+    }
+    
+    /**
+     * Treat LONGVARCHAR as CLOB on MSSQL for purposes of converting a JDBC value to Ruby.
+     */
+    @Override
+    protected IRubyObject jdbcToRuby(Ruby runtime, int column, int type, ResultSet resultSet)
+        throws SQLException {
+        if ( type == Types.LONGVARCHAR || type == Types.LONGNVARCHAR ) type = Types.CLOB;
+        return super.jdbcToRuby(runtime, column, type, resultSet);
+    }
+
+    @Override
+    protected void populateFromResultSet(
+            final ThreadContext context, final Ruby runtime, 
+            final List<IRubyObject> results, final ResultSet resultSet, 
+            final ColumnData[] columns) throws SQLException {
+        super.populateFromResultSet(context, runtime, results, resultSet, filterRowNumFromColumns(columns));
+    }
+
+    private static final ByteList _row_num; // "_row_num"
+    static {
+        _row_num = new ByteList(new byte[] { '_','r','o','w','_','n','u','m' }, false);
+        _row_num.setEncoding(UTF8Encoding.INSTANCE);
+    }
+    
+    /**
+     * Filter out the <tt>_row_num</tt> column from results.
+     */
+    private static ColumnData[] filterRowNumFromColumns(final ColumnData[] columns) {
+        for ( int i = 0; i < columns.length; i++ ) {
+            if ( _row_num.equal( columns[i].name.getByteList() ) ) {
+                final ColumnData[] filtered = new ColumnData[columns.length - 1];
+                
+                if ( i > 0 ) {
+                    System.arraycopy(columns, 0, filtered, 0, i);
+                }
+
+                if ( i + 1 < columns.length ) {
+                    System.arraycopy(columns, i + 1, filtered, i, columns.length - (i + 1));
+                }
+
+                return filtered;
+            }
+        }
+        return columns;
     }
     
 }
