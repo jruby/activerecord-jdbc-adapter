@@ -1073,3 +1073,29 @@ module ExplainSupportTestMethods
   end
   
 end
+
+module CustomSelectTestMethods
+  
+  def test_custom_select_float
+    model = DbType.create! :sample_float => 1.42
+    if ActiveRecord::VERSION::MAJOR >= 3
+      model = DbType.where("id = #{model.id}").select('sample_float AS custom_sample_float').first
+    else
+      model = DbType.find(:first, :conditions => "id = #{model.id}", :select => 'sample_float AS custom_sample_float')
+    end
+    assert_equal 1.42, model.custom_sample_float
+    assert_instance_of Float, model.custom_sample_float
+  end
+
+  def test_custom_select_decimal
+    model = DbType.create! :sample_small_decimal => ( decimal = BigDecimal.new('5.45') )
+    if ActiveRecord::VERSION::MAJOR >= 3
+      model = DbType.where("id = #{model.id}").select('sample_small_decimal AS custom_decimal').first
+    else
+      model = DbType.find(:first, :conditions => "id = #{model.id}", :select => 'sample_small_decimal AS custom_decimal')
+    end
+    assert_equal decimal, model.custom_decimal
+    assert_instance_of BigDecimal, model.custom_decimal
+  end
+  
+end

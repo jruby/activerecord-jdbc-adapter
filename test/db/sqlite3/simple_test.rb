@@ -11,6 +11,7 @@ class SQLite3SimpleTest < Test::Unit::TestCase
   include DirtyAttributeTests
   include XmlColumnTests
   include ExplainSupportTestMethods if ar_version("3.1")
+  include CustomSelectTestMethods
 
   def test_recreate_database
     assert connection.tables.include?(Entry.table_name)
@@ -223,10 +224,8 @@ class SQLite3SimpleTest < Test::Unit::TestCase
     assert Entry.all.empty?
   end
   
-  # #override
+  # @override
   def test_big_decimal
-    #ActiveRecord::Base.logger.level = Logger::DEBUG
-
     test_value = 1234567890.0 # FINE just like native adapter
     db_type = DbType.create!(:big_decimal => test_value)
     db_type = DbType.find(db_type.id)
@@ -245,8 +244,18 @@ class SQLite3SimpleTest < Test::Unit::TestCase
     # TODO native gets us 12345678901234567000.0 JDBC gets us 1
     #assert_equal test_value, db_type.big_decimal
     #super
-  ensure
-    #ActiveRecord::Base.logger.level = Logger::WARN
+  end
+  
+  # @override SQLite3 returns FLOAT (JDBC type) for DECIMAL columns
+  def test_custom_select_decimal
+    model = DbType.create! :sample_small_decimal => ( decimal = BigDecimal.new('5.45') )
+    if ActiveRecord::VERSION::MAJOR >= 3
+      model = DbType.where("id = #{model.id}").select('sample_small_decimal AS custom_decimal').first
+    else
+      model = DbType.find(:first, :conditions => "id = #{model.id}", :select => 'sample_small_decimal AS custom_decimal')
+    end
+    assert_equal decimal, model.custom_decimal
+    #assert_instance_of BigDecimal, model.custom_decimal
   end
   
 end

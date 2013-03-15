@@ -14,6 +14,7 @@ class MysqlSimpleTest < Test::Unit::TestCase
   include ColumnNameQuotingTests
   include DirtyAttributeTests
   include XmlColumnTests
+  include CustomSelectTestMethods
 
   column_quote_char "`"
 

@@ -6,6 +6,7 @@ require 'has_many_through'
 class DerbySimpleTest < Test::Unit::TestCase
   include SimpleTestMethods
   include ActiveRecord3TestMethods
+  include CustomSelectTestMethods
   
   # Check that a table-less VALUES(xxx) query (like SELECT  works.
   def test_values
@@ -135,6 +136,19 @@ class DerbySimpleTest < Test::Unit::TestCase
 
     assert_equal expected_types, result
   end
+  
+  # @override Derby is made in IBM thus it needs to get complicated with 1.42
+  def test_custom_select_float
+    model = DbType.create! :sample_float => 1.42
+    if ActiveRecord::VERSION::MAJOR >= 3
+      model = DbType.where("id = #{model.id}").select('sample_float AS custom_sample_float').first
+    else
+      model = DbType.find(:first, :conditions => "id = #{model.id}", :select => 'sample_float AS custom_sample_float')
+    end
+    assert_instance_of Float, model.custom_sample_float
+    assert_equal 1.42, model.custom_sample_float.round(2) # 1.4199999570846558
+  end
+  
 end
 
 class DerbyMultibyteTest < Test::Unit::TestCase
