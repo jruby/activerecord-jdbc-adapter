@@ -31,6 +31,7 @@ import java.io.InputStream;
 import java.io.Reader;
 import java.io.StringReader;
 import java.math.BigInteger;
+import java.sql.Array;
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.PreparedStatement;
@@ -1001,6 +1002,17 @@ public class RubyJdbcConnection extends RubyObject {
                 finally { xml.free(); }
             case Types.NULL:
                 return runtime.getNil();
+            // NOTE: (JDBC) exotic stuff just cause it's so easy with JRuby :)
+            case Types.JAVA_OBJECT:
+            case Types.OTHER:
+                return objectToRuby(runtime, resultSet, resultSet.getObject(column));
+            case Types.ARRAY: // we handle JDBC Array into (Ruby) []
+                final Array array = resultSet.getArray(column);
+                try {
+                    return arrayToRuby(runtime, resultSet, array);
+                }
+                finally { array.free(); }
+            // (default) String
             case Types.CHAR:
             case Types.VARCHAR:
             case Types.NCHAR: // JDBC 4.0
@@ -1009,11 +1021,8 @@ public class RubyJdbcConnection extends RubyObject {
                 return stringToRuby(runtime, resultSet, resultSet.getString(column));
             }
             // NOTE: not mapped types :
-            //case Types.OTHER: // getObject
-            //case Types.JAVA_OBJECT: // getObject
             //case Types.DISTINCT:
             //case Types.STRUCT:
-            //case Types.ARRAY:
             //case Types.REF:
             //case Types.DATALINK:
         }
@@ -1111,6 +1120,30 @@ public class RubyJdbcConnection extends RubyObject {
         return RubyString.newUnicodeString(runtime, string.toString());
     }
 
+    private IRubyObject objectToRuby(
+        final Ruby runtime, final ResultSet resultSet, final Object object)
+        throws SQLException {
+        if ( object == null && resultSet.wasNull() ) return runtime.getNil();
+        
+        return JavaUtil.convertJavaToRuby(runtime, object);
+    }
+    
+    private IRubyObject arrayToRuby(
+        final Ruby runtime, final ResultSet resultSet, final Array array)
+        throws SQLException {
+        if ( array == null && resultSet.wasNull() ) return runtime.getNil();
+        
+        final RubyArray rubyArray = runtime.newArray();
+        
+        final ResultSet arrayResult = array.getResultSet(); // 1: index, 2: value
+        final int baseType = array.getBaseType();
+        while ( arrayResult.next() ) {
+            IRubyObject element = jdbcToRuby(runtime, 2, baseType, arrayResult);
+            rubyArray.append(element);
+        }
+        return rubyArray;
+    }
+    
     protected final Connection getConnection() {
         return getConnection(false);
     }
