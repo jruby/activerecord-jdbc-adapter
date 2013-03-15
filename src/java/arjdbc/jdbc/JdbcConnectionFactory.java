@@ -25,12 +25,20 @@
 package arjdbc.jdbc;
 
 import java.sql.Connection;
+import java.sql.SQLException;
 
 /**
- * Interface to be implemented in Ruby for retrieving a new connection
+ * Interface to be implemented in Ruby for retrieving a new connection.
  *
  * @author nicksieger
  */
 public interface JdbcConnectionFactory {
-    Connection newConnection();
+    
+    /**
+     * Retrieve a (new) connection from the factory.
+     * @return a connection
+     * @throws SQLException 
+     */
+    Connection newConnection() throws SQLException;
+    
 }
