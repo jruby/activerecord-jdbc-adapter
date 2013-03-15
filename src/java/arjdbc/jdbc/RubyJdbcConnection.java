@@ -115,6 +115,14 @@ public class RubyJdbcConnection extends RubyObject {
 
     /**
      * @param runtime
+     * @return <code>ActiveRecord::Result</code>
+     */
+    protected static RubyClass getResult(final Ruby runtime) {
+        return runtime.fastGetModule("ActiveRecord").fastGetClass("Result");
+    }
+    
+    /**
+     * @param runtime
      * @return <code>ActiveRecord::ConnectionAdapters::IndexDefinition</code>
      */
     protected static RubyClass getIndexDefinition(final Ruby runtime) {
@@ -167,10 +175,10 @@ public class RubyJdbcConnection extends RubyObject {
         }
         
         final Object isolationString = isolation.toString(); // RubySymbol.toString
-        if ( isolationString == "read_committed" ) return Connection.TRANSACTION_READ_COMMITTED;
-        if ( isolationString == "read_uncommitted" ) return Connection.TRANSACTION_READ_UNCOMMITTED;
-        if ( isolationString == "repeatable_read" ) return Connection.TRANSACTION_REPEATABLE_READ;
-        if ( isolationString == "serializable" ) return Connection.TRANSACTION_SERIALIZABLE;
+        if ( isolationString == "read_uncommitted" ) return Connection.TRANSACTION_READ_UNCOMMITTED; // 1
+        if ( isolationString == "read_committed" ) return Connection.TRANSACTION_READ_COMMITTED; // 2
+        if ( isolationString == "repeatable_read" ) return Connection.TRANSACTION_REPEATABLE_READ; // 4
+        if ( isolationString == "serializable" ) return Connection.TRANSACTION_SERIALIZABLE; // 8
         
         throw new IllegalArgumentException(
                 "unexpected isolation level: " + isolation + " (" + isolationString + ")"
@@ -192,7 +200,7 @@ public class RubyJdbcConnection extends RubyObject {
                 }
                 else {
                     final int level = metaData.getDefaultTransactionIsolation();
-                    supported = level != Connection.TRANSACTION_NONE; // != 0
+                    supported = level > Connection.TRANSACTION_NONE; // > 0
                 }
                 return context.getRuntime().newBoolean(supported);
             }
@@ -419,12 +427,13 @@ public class RubyJdbcConnection extends RubyObject {
     protected IRubyObject executeQuery(final ThreadContext context, final String query, final int maxRows) {
         return withConnection(context, new Callable<IRubyObject>() {
             public IRubyObject call(final Connection connection) throws SQLException {
+                final Ruby runtime = context.getRuntime();
                 Statement statement = null;
                 try {
                     final DatabaseMetaData metaData = connection.getMetaData();
                     statement = connection.createStatement();
                     statement.setMaxRows(maxRows);
-                    return unmarshalResult(context, metaData, statement.executeQuery(query), false);
+                    return unmarshalResult(context, runtime, metaData, statement.executeQuery(query), false);
                 }
                 catch (SQLException sqe) {
                     if (context.getRuntime().isDebug()) {
@@ -503,7 +512,7 @@ public class RubyJdbcConnection extends RubyObject {
     public IRubyObject set_native_database_types(ThreadContext context) throws SQLException, IOException {
         final Ruby runtime = context.getRuntime();
         final DatabaseMetaData metaData = getConnection(true).getMetaData();
-        IRubyObject types = unmarshalResult(context, metaData, metaData.getTypeInfo(), true);
+        IRubyObject types = unmarshalResult(context, runtime, metaData, metaData.getTypeInfo(), true);
         IRubyObject typeConverter = getConnectionAdapters(runtime).getConstant("JdbcTypeConverter");
         IRubyObject value = rubyApi.callMethod(rubyApi.callMethod(typeConverter, "new", types), "choose_best_types");
         setInstanceVariable("@native_types", value);
@@ -911,10 +920,10 @@ public class RubyJdbcConnection extends RubyObject {
             final ColumnData[] columns) throws SQLException {
         final int columnCount = columns.length;
         
-        while (resultSet.next()) {
+        while ( resultSet.next() ) {
             RubyHash row = RubyHash.newHash(runtime);
 
-            for (int i = 0; i < columnCount; i++) {
+            for ( int i = 0; i < columnCount; i++ ) {
                 final ColumnData column = columns[i];
                 row.op_aset(context, column.name, jdbcToRuby(runtime, column.index, column.type, resultSet));
             }
@@ -1306,14 +1315,15 @@ public class RubyJdbcConnection extends RubyObject {
             final DatabaseMetaData metaData, final Statement statement, 
             final boolean downCase) throws SQLException {
         
-        IRubyObject result = unmarshalResult(context, metaData, statement.getResultSet(), downCase);
+        final Ruby runtime = context.getRuntime();
+        IRubyObject result = unmarshalResult(context, runtime, metaData, statement.getResultSet(), downCase);
         
         if ( ! statement.getMoreResults() ) return result;
         
         final List<IRubyObject> results = new ArrayList<IRubyObject>();
         results.add(result);
         do {
-            result = unmarshalResult(context, metaData, statement.getResultSet(), downCase);
+            result = unmarshalResult(context, runtime, metaData, statement.getResultSet(), downCase);
             results.add(result);
         }
         while ( statement.getMoreResults() );
