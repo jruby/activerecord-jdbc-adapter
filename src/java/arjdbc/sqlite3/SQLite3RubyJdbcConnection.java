@@ -96,7 +96,7 @@ public class SQLite3RubyJdbcConnection extends RubyJdbcConnection {
     }
 
     @Override
-    protected IRubyObject jdbcToRuby(Ruby runtime, int column, int type, ResultSet resultSet)
+    protected IRubyObject jdbcToRuby(final Ruby runtime, final int column, int type, final ResultSet resultSet)
         throws SQLException {
         try {
             // This is rather gross, and only needed because the resultset metadata for SQLite tries to be overly
@@ -107,12 +107,13 @@ public class SQLite3RubyJdbcConnection extends RubyJdbcConnection {
                 type = ((ResultSetMetaData) resultSet).getColumnType(column);
             }
             switch (type) {
-            case Types.BINARY:
             case Types.BLOB:
-            case Types.LONGVARBINARY:
+            case Types.BINARY:
             case Types.VARBINARY:
+            case Types.LONGVARBINARY:
                 return streamToRuby(runtime, resultSet, new ByteArrayInputStream(resultSet.getBytes(column)));
             case Types.LONGVARCHAR:
+            case Types.LONGNVARCHAR: // JDBC 4.0
                 return runtime.is1_9() ?
                     readerToRuby(runtime, resultSet, resultSet.getCharacterStream(column)) :
                     streamToRuby(runtime, resultSet, new ByteArrayInputStream(resultSet.getBytes(column)));

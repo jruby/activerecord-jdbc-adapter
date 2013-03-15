@@ -89,8 +89,7 @@ public class PostgreSQLRubyJdbcConnection extends RubyJdbcConnection {
                 return stringToRuby(runtime, resultSet, resultSet.getString(column));
             }
             catch (IOException e) {
-                SQLException sqle = new SQLException(e.getMessage());
-                throw (SQLException) sqle.initCause(e);
+                throw new SQLException(e.getMessage(), e);
             }
         }
         return super.jdbcToRuby(runtime, column, type, resultSet);
