@@ -567,7 +567,7 @@ module ArJdbc
       when :query # exec_query
         log(sql, name) { do_exec_query(sql) }
       when :update # exec_update
-        log(sql, name) { @connection.execute_update(sql) }
+        log(sql, name) { @connection.execute_update(to_sql(sql, binds)) }
       else super
       end
     end
