@@ -894,8 +894,7 @@ public class RubyJdbcConnection extends RubyObject {
                 );
             }
         }
-
-        // Assumption; If this is a symbol then it will be backed by an interned string. (enebo)
+        
         final String internedValue = type.asJavaString();
 
         if ( internedValue == (Object) "string" ) return Types.VARCHAR;
@@ -909,6 +908,8 @@ public class RubyJdbcConnection extends RubyObject {
         else if ( internedValue == (Object) "date" ) return Types.DATE;
         else if ( internedValue == (Object) "binary" ) return Types.BLOB;
         else if ( internedValue == (Object) "boolean" ) return Types.BOOLEAN;
+        else if ( internedValue == (Object) "xml" ) return Types.SQLXML;
+        else if ( internedValue == (Object) "array" ) return Types.ARRAY;
         else return -1;
     }
 
