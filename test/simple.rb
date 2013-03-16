@@ -72,8 +72,7 @@ module FixtureSetup
     @rating = 205.76
     @user = User.create! :login => "something"
     @entry = Entry.create! :title => @title, :content => @content, :rating => @rating, :user => @user
-    DbType.create! :big_decimal => 42 # NOTE: 4.0 seems to fail on bare create, 
-    # (empty attributes Hash) generates SQL: INSERT INTO "db_types" VALUES(NULL)
+    DbType.create!
   end
   
   def teardown

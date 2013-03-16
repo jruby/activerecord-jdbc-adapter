@@ -110,7 +110,7 @@ class SQLite3SimpleTest < Test::Unit::TestCase
     assert_equal(1, indexes.size)
     assert_equal "entries", indexes.first.table.to_s
     assert_equal index_name, indexes.first.name
-    assert !indexes.first.unique
+    assert ! indexes.first.unique
     assert_equal ["title"], indexes.first.columns
 
     ActiveRecord::Schema.define do
@@ -121,7 +121,7 @@ class SQLite3SimpleTest < Test::Unit::TestCase
     assert_equal(1, indexes.size)
     assert_equal "entries", indexes.first.table.to_s
     assert_equal index_name, indexes.first.name
-    assert !indexes.first.unique
+    assert ! indexes.first.unique
     assert_equal ["name"], indexes.first.columns
   end
 
@@ -132,11 +132,9 @@ class SQLite3SimpleTest < Test::Unit::TestCase
       end
     end
 
-    cols = ActiveRecord::Base.connection.columns("entries")
-    col = cols.find{|col| col.name == "test_column_default"}
-    assert col
-    assert_equal col.default, nil
-
+    columns = ActiveRecord::Base.connection.columns("entries")
+    assert column = columns.find{ |c| c.name == "test_column_default" }
+    assert_equal column.default, nil
   end
 
   def test_change_column_default
@@ -146,10 +144,9 @@ class SQLite3SimpleTest < Test::Unit::TestCase
       end
     end
 
-    cols = ActiveRecord::Base.connection.columns("entries")
-    col = cols.find{|col| col.name == "test_change_column_default"}
-    assert col
-    assert_equal col.default, 'unchanged'
+    columns = ActiveRecord::Base.connection.columns("entries")
+    assert column = columns.find{ |c| c.name == "test_change_column_default" }
+    assert_equal column.default, 'unchanged'
 
     assert_nothing_raised do
       ActiveRecord::Schema.define do
@@ -157,10 +154,9 @@ class SQLite3SimpleTest < Test::Unit::TestCase
       end
     end
 
-    cols = ActiveRecord::Base.connection.columns("entries")
-    col = cols.find{|col| col.name == "test_change_column_default"}
-    assert col
-    assert_equal col.default, 'changed'
+    columns = ActiveRecord::Base.connection.columns("entries")
+    assert column = columns.find{ |c| c.name == "test_change_column_default" }
+    assert_equal column.default, 'changed'
   end
 
   def test_change_column
@@ -170,10 +166,9 @@ class SQLite3SimpleTest < Test::Unit::TestCase
       end
     end
 
-    cols = ActiveRecord::Base.connection.columns("entries")
-    col = cols.find{|col| col.name == "test_change_column"}
-    assert col
-    assert_equal col.type, :string
+    columns = ActiveRecord::Base.connection.columns("entries")
+    assert column = columns.find{ |c| c.name == "test_change_column" }
+    assert_equal column.type, :string
 
     assert_nothing_raised do
       ActiveRecord::Schema.define do
@@ -181,10 +176,9 @@ class SQLite3SimpleTest < Test::Unit::TestCase
       end
     end
 
-    cols = ActiveRecord::Base.connection.columns("entries")
-    col = cols.find{|col| col.name == "test_change_column"}
-    assert col
-    assert_equal col.type, :integer
+    columns = ActiveRecord::Base.connection.columns("entries")
+    assert column = columns.find{ |c| c.name == "test_change_column" }
+    assert_equal column.type, :integer
   end
 
   def test_change_column_with_new_precision_and_scale

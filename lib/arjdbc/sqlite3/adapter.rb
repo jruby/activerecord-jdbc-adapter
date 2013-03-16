@@ -394,8 +394,8 @@ module ::ArJdbc
 
     def empty_insert_statement_value
       "VALUES(NULL)"
-    end
-
+    end unless ActiveRecord::VERSION::MAJOR > 3
+    
     protected
     
     include ArJdbc::MissingFunctionalityHelper
