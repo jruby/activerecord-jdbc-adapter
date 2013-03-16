@@ -1,8 +1,7 @@
 require 'jdbc_common'
 require 'db/mssql'
 
-class IgnoreSystemViewsTest < Test::Unit::TestCase
-
+class MSSQLIgnoreSystemViewsTest < Test::Unit::TestCase
   include MigrationSetup
 
   def test_system_views_ignored
@@ -23,8 +22,9 @@ class IgnoreSystemViewsTest < Test::Unit::TestCase
 
   private
 
-    def table_exists?(*args)
-      !!ActiveRecord::Base.connection.table_exists?(*args)
-    end
+  def table_exists?(*args)
+    ActiveRecord::Base.connection.table_exists?(*args)
+  end
+    
 end
 
