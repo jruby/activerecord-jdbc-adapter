@@ -533,6 +533,10 @@ module ArJdbc
       end
     end
 
+    def empty_insert_statement_value
+      "VALUES ()"
+    end
+    
     protected
     def quoted_columns_for_index(column_names, options = {})
       length = options[:length] if options.is_a?(Hash)
