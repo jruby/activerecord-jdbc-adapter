@@ -60,7 +60,6 @@ import org.jruby.RubyInteger;
 import org.jruby.RubyModule;
 import org.jruby.RubyNumeric;
 import org.jruby.RubyObject;
-import org.jruby.RubyObjectAdapter;
 import org.jruby.RubyString;
 import org.jruby.RubySymbol;
 import org.jruby.RubyTime;
@@ -84,8 +83,6 @@ public class RubyJdbcConnection extends RubyObject {
     private static final String[] TABLE_TYPE = new String[] { "TABLE" };
     private static final String[] TABLE_TYPES = new String[] { "TABLE", "VIEW", "SYNONYM" };
 
-    private static RubyObjectAdapter rubyApi;
-
     protected RubyJdbcConnection(Ruby runtime, RubyClass metaClass) {
         super(runtime, metaClass);
     }
@@ -100,9 +97,6 @@ public class RubyJdbcConnection extends RubyObject {
         RubyClass jdbcConnection = getConnectionAdapters(runtime).
             defineClassUnder("JdbcConnection", runtime.getObject(), JDBCCONNECTION_ALLOCATOR);
         jdbcConnection.defineAnnotatedMethods(RubyJdbcConnection.class);
-
-        rubyApi = JavaEmbedUtils.newObjectAdapter();
-
         return jdbcConnection;
     }
 
@@ -147,6 +141,14 @@ public class RubyJdbcConnection extends RubyObject {
         return (RubyClass) runtime.fastGetModule("ActiveRecord").fastGetConstant("TransactionIsolationError");
     }
     
+    /**
+     * @param runtime
+     * @return <code>ActiveRecord::ConnectionAdapters::JdbcTypeConverter</code>
+     */
+    private static RubyClass getJdbcTypeConverter(final Ruby runtime) {
+        return getConnectionAdapters(runtime).fastGetClass("JdbcTypeConverter");
+    }
+    
     /*
       def transaction_isolation_levels
         {
@@ -157,18 +159,6 @@ public class RubyJdbcConnection extends RubyObject {
         }
       end 
     */
-    
-    //private static final ByteList READ_UNCOMMITTED = new ByteList(
-        //new byte[] { 'R','E','A','D',' ','U','N','C','O','M','M','I','T','T','E','D' }, false);
-    
-    //private static final ByteList READ_COMMITTED = new ByteList(
-        //new byte[] { 'R','E','A','D',' ','C','O','M','M','I','T','T','E','D' }, false);
-
-    //private static final ByteList REPEATABLE_READ = new ByteList(
-        //new byte[] { 'R','E','P','E','A','T','A','B','L','E',' ','R','E','A','D' }, false);
-
-    //private static final ByteList SERIALIZABLE = new ByteList(
-        //new byte[] { 'S','E','R','I','A','L','I','Z','A','B','L','E' }, false);
 
     public static int mapTransactionIsolationLevel(IRubyObject isolation) {
         if ( ! ( isolation instanceof RubySymbol ) ) {
@@ -515,13 +505,14 @@ public class RubyJdbcConnection extends RubyObject {
     }
     
     @JRubyMethod(name = "set_native_database_types")
-    public IRubyObject set_native_database_types(ThreadContext context) throws SQLException, IOException {
+    public IRubyObject set_native_database_types(final ThreadContext context) 
+        throws SQLException, IOException { // TODO we should handle exceptions !
         final Ruby runtime = context.getRuntime();
         final DatabaseMetaData metaData = getConnection(true).getMetaData();
         IRubyObject types = unmarshalResult(context, runtime, metaData, metaData.getTypeInfo(), true);
-        IRubyObject typeConverter = getConnectionAdapters(runtime).getConstant("JdbcTypeConverter");
-        IRubyObject value = rubyApi.callMethod(rubyApi.callMethod(typeConverter, "new", types), "choose_best_types");
-        setInstanceVariable("@native_types", value);
+        
+        IRubyObject typeConverter = getJdbcTypeConverter(runtime).callMethod("new", types);
+        setInstanceVariable("@native_types", typeConverter.callMethod(context, "choose_best_types"));
 
         return runtime.getNil();
     }
@@ -590,7 +581,7 @@ public class RubyJdbcConnection extends RubyObject {
                 ResultSet columns = null, primaryKeys = null;
                 try {
                     String defaultSchema = args.length > 2 ? toStringOrNull(args[2]) : null;
-                    String tableName = rubyApi.convertToRubyString(args[0]).getUnicodeValue();
+                    String tableName = args[0].convertToString().getUnicodeValue();
                     TableName components = extractTableName(connection, defaultSchema, tableName);
 
                     final Collection matchingTables = tableLookupBlock(context.getRuntime(),
@@ -873,16 +864,17 @@ public class RubyJdbcConnection extends RubyObject {
         return connectionFactory;
     }
 
-    private static String[] getTypes(IRubyObject typeArg) {
-        if (!(typeArg instanceof RubyArray)) return new String[] { typeArg.toString() };
-
-        IRubyObject[] arr = rubyApi.convertToJavaArray(typeArg);
-        String[] types = new String[arr.length];
-        for (int i = 0; i < types.length; i++) {
-            types[i] = arr[i].toString();
+    private static String[] getTypes(final IRubyObject typeArg) {
+        if ( typeArg instanceof RubyArray ) {
+            IRubyObject[] rubyTypes = ((RubyArray) typeArg).toJavaArray();
+            
+            final String[] types = new String[rubyTypes.length];
+            for ( int i = 0; i < types.length; i++ ) {
+                types[i] = rubyTypes[i].toString();
+            }
+            return types;
         }
-
-        return types;
+        return new String[] { typeArg.toString() }; // expect a RubyString
     }
     
     private static int jdbcTypeFor(final ThreadContext context, IRubyObject type) 
@@ -1276,7 +1268,7 @@ public class RubyJdbcConnection extends RubyObject {
             }
         };
     }
-
+    
     // NOTE java.sql.DatabaseMetaData.getTables :
     protected final static int TABLES_TABLE_CAT = 1;
     protected final static int TABLES_TABLE_SCHEM = 2;
@@ -1582,7 +1574,8 @@ public class RubyJdbcConnection extends RubyObject {
     private static final byte[] CALL = new byte[]{ 'c', 'a', 'l', 'l' };
     
     @JRubyMethod(name = "select?", required = 1, meta = true, frame = false)
-    public static IRubyObject select_p(ThreadContext context, IRubyObject self, IRubyObject sql) {
+    public static IRubyObject select_p(final ThreadContext context, 
+        final IRubyObject self, final IRubyObject sql) {
         return context.getRuntime().newBoolean( isSelect(sql.convertToString()) );
     }
 
@@ -1597,10 +1590,10 @@ public class RubyJdbcConnection extends RubyObject {
     private static final byte[] INSERT = new byte[] { 'i', 'n', 's', 'e', 'r', 't' };
     
     @JRubyMethod(name = "insert?", required = 1, meta = true, frame = false)
-    public static IRubyObject insert_p(ThreadContext context, IRubyObject recv, IRubyObject _sql) {
-        ByteList sql = rubyApi.convertToRubyString(_sql).getByteList();
-
-        return context.getRuntime().newBoolean(startsWithIgnoreCase(sql, INSERT));
+    public static IRubyObject insert_p(final ThreadContext context, 
+        final IRubyObject self, final IRubyObject sql) {
+        final ByteList sqlBytes = sql.convertToString().getByteList();
+        return context.getRuntime().newBoolean(startsWithIgnoreCase(sqlBytes, INSERT));
     }
 
     protected static boolean startsWithIgnoreCase(final ByteList string, final byte[] start) {
