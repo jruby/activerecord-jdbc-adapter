@@ -40,6 +40,8 @@ import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.SQLXML;
 import java.sql.Statement;
+import java.sql.Date;
+import java.sql.Time;
 import java.sql.Timestamp;
 import java.sql.Types;
 import java.text.DateFormat;
@@ -47,7 +49,6 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collection;
-import java.util.Date;
 import java.util.List;
 
 import org.jruby.Ruby;
@@ -575,7 +576,7 @@ public class RubyJdbcConnection extends RubyObject {
     
     @JRubyMethod(name = {"columns", "columns_internal"}, required = 1, optional = 2)
     public IRubyObject columns_internal(final ThreadContext context, final IRubyObject[] args)
-            throws SQLException, IOException {
+        throws SQLException, IOException {
         return withConnection(context, new Callable<IRubyObject>() {
             public IRubyObject call(final Connection connection) throws SQLException {
                 ResultSet columns = null, primaryKeys = null;
@@ -980,8 +981,10 @@ public class RubyJdbcConnection extends RubyObject {
             case Types.NUMERIC:
             case Types.DECIMAL:
                 return decimalToRuby(runtime, resultSet, resultSet.getString(column));
-            //case Types.DATE: TODO
-            //case Types.TIME: TODO
+            case Types.DATE:
+                return dateToRuby(runtime, resultSet, resultSet.getDate(column));
+            case Types.TIME:
+                return timeToRuby(runtime, resultSet, resultSet.getTime(column));
             case Types.TIMESTAMP:
                 return timestampToRuby(runtime, resultSet, resultSet.getTimestamp(column));
             case Types.BIT:
@@ -1054,6 +1057,22 @@ public class RubyJdbcConnection extends RubyObject {
         if ( decValue == null && resultSet.wasNull() ) return runtime.getNil();
         // NOTE: JRuby 1.6 -> 1.7 API change : moved org.jruby.RubyBigDecimal
         return runtime.getKernel().callMethod("BigDecimal", runtime.newString(decValue));
+    }
+    
+    private static boolean parseDateTime = false; // TODO
+    
+    protected IRubyObject dateToRuby( // TODO
+        final Ruby runtime, final ResultSet resultSet, final Date date)
+        throws SQLException {
+        if ( date == null && resultSet.wasNull() ) return runtime.getNil();
+        return RubyString.newUnicodeString(runtime, date.toString());
+    }
+
+    protected IRubyObject timeToRuby( // TODO
+        final Ruby runtime, final ResultSet resultSet, final Time time)
+        throws SQLException {
+        if ( time == null && resultSet.wasNull() ) return runtime.getNil();
+        return RubyString.newUnicodeString(runtime, time.toString());
     }
     
     protected IRubyObject timestampToRuby(
@@ -1217,7 +1236,7 @@ public class RubyJdbcConnection extends RubyObject {
                 }
             } else {
                 final RubyTime timeValue = (RubyTime) value;
-                final Date dateValue = timeValue.getJavaDate();
+                final java.util.Date dateValue = timeValue.getJavaDate();
                 
                 long millis = dateValue.getTime();
                 Timestamp timestamp = new Timestamp(millis);
@@ -1551,8 +1570,14 @@ public class RubyJdbcConnection extends RubyObject {
         return error;
     }
 
-    protected static RaiseException wrapException(final ThreadContext context, final RubyClass errorClass, final Throwable exception) {
-        final RaiseException error = new RaiseException(context.getRuntime(), errorClass, exception.getMessage(), true);
+    protected static RaiseException wrapException(final ThreadContext context, 
+        final RubyClass errorClass, final Throwable exception) {
+        return wrapException(context, errorClass, exception, exception.toString());
+    }
+
+    protected static RaiseException wrapException(final ThreadContext context, 
+        final RubyClass errorClass, final Throwable exception, final String message) {
+        final RaiseException error = new RaiseException(context.getRuntime(), errorClass, message, true);
         error.initCause(exception);
         return error;
     }
