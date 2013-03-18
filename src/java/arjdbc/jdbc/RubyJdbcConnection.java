@@ -332,11 +332,9 @@ public class RubyJdbcConnection extends RubyObject {
                         return unmarshalKeysOrUpdateCount(context, connection, statement);
                     }
                 }
-                catch (SQLException sqe) {
-                    if (context.getRuntime().isDebug()) {
-                        System.out.println("Error SQL: " + query);
-                    }
-                    throw sqe;
+                catch (final SQLException e) {
+                    debugErrorSQL(context, query);
+                    throw e;
                 }
                 finally { close(statement); }
             }
@@ -372,11 +370,9 @@ public class RubyJdbcConnection extends RubyObject {
                     statement.setLong(1, RubyNumeric.fix2long(id));
                     statement.executeUpdate();
                 }
-                catch (SQLException sqe) {
-                    if (context.getRuntime().isDebug()) {
-                        System.out.println("Error SQL: " + insertSQL);
-                    }
-                    throw sqe;
+                catch (final SQLException e) {
+                    debugErrorSQL(context, insertSQL);
+                    throw e;
                 }
                 finally { close(statement); }
                 return id;
@@ -396,11 +392,9 @@ public class RubyJdbcConnection extends RubyObject {
                     statement.executeUpdate(insertSQL, Statement.RETURN_GENERATED_KEYS);
                     return unmarshal_id_result(context.getRuntime(), statement.getGeneratedKeys());
                 }
-                catch (SQLException sqe) {
-                    if (context.getRuntime().isDebug()) {
-                        System.out.println("Error SQL: " + insertSQL);
-                    }
-                    throw sqe;
+                catch (final SQLException e) {
+                    debugErrorSQL(context, insertSQL);
+                    throw e;
                 }
                 finally { close(statement); }
             }
@@ -432,11 +426,9 @@ public class RubyJdbcConnection extends RubyObject {
                     statement.setMaxRows(maxRows);
                     return unmarshalResult(context, runtime, metaData, statement.executeQuery(query), false);
                 }
-                catch (SQLException sqe) {
-                    if (context.getRuntime().isDebug()) {
-                        System.out.println("Error SQL: " + query);
-                    }
-                    throw sqe;
+                catch (final SQLException e) {
+                    debugErrorSQL(context, query);
+                    throw e;
                 }
                 finally { close(statement); }
             }
@@ -454,14 +446,11 @@ public class RubyJdbcConnection extends RubyObject {
                     statement = connection.createStatement();
                     return context.getRuntime().newFixnum(statement.executeUpdate(updateSQL));
                 }
-                catch (SQLException sqe) {
-                    if (context.getRuntime().isDebug()) {
-                        System.out.println("Error SQL: " + updateSQL);
-                    }
-                    throw sqe;
-                } finally {
-                    close(statement);
+                catch (final SQLException e) {
+                    debugErrorSQL(context, updateSQL);
+                    throw e;
                 }
+                finally { close(statement); }
             }
         });
     }
@@ -1502,9 +1491,6 @@ public class RubyJdbcConnection extends RubyObject {
                 return block.call(connection);
             }
             catch (final Exception e) { // SQLException or RuntimeException
-                if ( context.getRuntime().isDebug() ) {
-                    e.printStackTrace(System.out);
-                }
                 exception = e;
 
                 if ( autoCommit ) { // do not retry if (inside) transactions
@@ -1546,6 +1532,13 @@ public class RubyJdbcConnection extends RubyObject {
 
     protected <T> T handleException(final ThreadContext context, final Throwable exception) 
         throws RaiseException {
+        // NOTE: we shall not wrap unchecked (runtime) exceptions into AR::Error
+        // if it's really a misbehavior of the driver throwing a RuntimeExcepion
+        // instead of SQLException than this should be overriden for the adapter
+        if ( exception instanceof RuntimeException ) {
+            throw (RuntimeException) exception;
+        }
+        debugStackTrace(context, exception);
         throw wrapException(context, exception);
     }
     
@@ -1749,6 +1742,34 @@ public class RubyJdbcConnection extends RubyObject {
         if (statement != null) {
             try { statement.close(); }
             catch (final Exception e) { /* NOOP */ }
+        }
+    }
+    
+    // DEBUG-ing helpers :
+    
+    private static boolean debug = Boolean.getBoolean("arjdbc.debug");
+
+    public static boolean isDebug() { return debug; }
+    
+    public static void setDebug(boolean debug) {
+        RubyJdbcConnection.debug = debug;
+    }
+    
+    protected static void debugMessage(final ThreadContext context, final String msg) {
+        if ( debug || context.runtime.isDebug() ) {
+            context.runtime.getOut().println(msg);
+        }
+    }
+    
+    protected static void debugErrorSQL(final ThreadContext context, final String sql) {
+        if ( debug || context.runtime.isDebug() ) {
+            context.runtime.getOut().println("Error SQL: " + sql);
+        }
+    }
+    
+    private static void debugStackTrace(final ThreadContext context, final Throwable e) {
+        if ( debug || context.runtime.isDebug() ) {
+            e.printStackTrace(context.runtime.getOut());
         }
     }
     

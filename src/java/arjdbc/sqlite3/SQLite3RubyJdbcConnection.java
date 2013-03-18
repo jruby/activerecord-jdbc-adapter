@@ -84,11 +84,9 @@ public class SQLite3RubyJdbcConnection extends RubyJdbcConnection {
                     statement = connection.createStatement();
                     return unmarshalIdResult(context.getRuntime(), statement);
                 }
-                catch (SQLException sqe) {
-                    if (context.getRuntime().isDebug()) {
-                        System.out.println("Error SQL:" + sqe.getMessage());
-                    }
-                    throw sqe;
+                catch (final SQLException e) {
+                    debugMessage(context, "Failed to get generated keys: " + e.getMessage());
+                    throw e;
                 }
                 finally { close(statement); }
             }
