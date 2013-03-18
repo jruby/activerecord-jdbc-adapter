@@ -51,7 +51,7 @@ import org.jruby.util.ByteList;
  * @author nicksieger
  */
 public class MSSQLRubyJdbcConnection extends RubyJdbcConnection {
-
+    
     protected MSSQLRubyJdbcConnection(Ruby runtime, RubyClass metaClass) {
         super(runtime, metaClass);
     }
@@ -81,12 +81,11 @@ public class MSSQLRubyJdbcConnection extends RubyJdbcConnection {
     @Override
     protected RubyArray mapTables(final Ruby runtime, final DatabaseMetaData metaData, 
             final String catalog, final String schemaPattern, final String tablePattern, 
-            final ResultSet tablesSet) throws SQLException {
-        final List<IRubyObject> tables = new ArrayList<IRubyObject>(32);
+            final ResultSet tablesSet) throws SQLException, IllegalStateException {
+        
+        final RubyArray tables = runtime.newArray();
+        
         while ( tablesSet.next() ) {
-            String name = tablesSet.getString(TABLES_TABLE_NAME);
-            name = caseConvertIdentifierForRails(metaData, name);
-            
             String schema = tablesSet.getString(TABLES_TABLE_SCHEM);
             if ( schema != null ) schema = schema.toLowerCase();
             // Under MS-SQL, don't return system tables/views unless explicitly asked for :
@@ -94,9 +93,21 @@ public class MSSQLRubyJdbcConnection extends RubyJdbcConnection {
                 ( "sys".equals(schema) || "information_schema".equals(schema) ) ) {
                 continue;
             }
+            String name = tablesSet.getString(TABLES_TABLE_NAME);
+            if ( name == null ) {
+                // NOTE: seems there's a jTDS but when doing getColumns while
+                // EXPLAIN is on (e.g. `SET SHOWPLAN_TEXT ON`) not returning
+                // correct result set with table info (null NAME, invalid CAT)
+                throw new IllegalStateException("got null name while matching table(s): [" +
+                    catalog + "." + schemaPattern + "." + tablePattern + "] check " + 
+                    "if this happened during EXPLAIN (SET SHOWPLAN_TEXT ON) if so please try " + 
+                    "turning it off using the system property 'arjdbc.mssql.explain_support.disabled=true' " + 
+                    "or programatically by changing: `ArJdbc::MSSQL::ExplainSupport::DISABLED`");
+            }
+            name = caseConvertIdentifierForRails(metaData, name);
             tables.add(RubyString.newUnicodeString(runtime, name));
         }
-        return runtime.newArray(tables);
+        return tables;
     }
     
     /**

@@ -3,16 +3,20 @@ require 'active_support/core_ext/string'
 module ArJdbc
   module MSSQL
     module ExplainSupport
+      
+      DISABLED = Java::JavaLang::Boolean.getBoolean('arjdbc.mssql.explain_support.disabled')
+      
       def supports_explain?
-        true
+        ! DISABLED
       end
 
       def explain(arel, binds = [])
+        return if DISABLED
         sql = to_sql(arel)
         result = with_showplan_on do 
           # exec_query(sql, 'EXPLAIN', binds)
           raw_result = execute(sql, 'EXPLAIN', binds)
-          # TODO we should refactor to exce_query once it returns Result :
+          # TODO we should refactor to exec_query once it returns Result :
           keys = raw_result[0] ? raw_result[0].keys : {}
           rows = raw_result.map { |hash| hash.values }
           ActiveRecord::Result.new(keys, rows)
