@@ -411,7 +411,10 @@ module ActiveRecord
       protected
  
       def translate_exception(e, message)
-        puts e.backtrace if $DEBUG || ENV['DEBUG']
+        # we shall not translate native "Java" exceptions as they might
+        # swallow an ArJdbc / driver bug into a AR::StatementInvalid ...
+        return e if e.is_a?(NativeException) # JRuby 1.6
+        return e if e.is_a?(Java::JavaLang::Throwable)
         super
       end
 
