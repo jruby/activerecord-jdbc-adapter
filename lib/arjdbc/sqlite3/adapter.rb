@@ -393,8 +393,12 @@ module ::ArJdbc
     end
 
     def empty_insert_statement_value
-      "VALUES(NULL)"
-    end unless ActiveRecord::VERSION::MAJOR > 3
+      # inherited (default) on 3.2 : "VALUES(DEFAULT)"
+      # inherited (default) on 4.0 : "DEFAULT VALUES"
+      # re-defined in native adapter on 3.2 "VALUES(NULL)"
+      # on 4.0 no longer re-defined (thus inherits default)
+      "DEFAULT VALUES"
+    end
     
     protected
     
