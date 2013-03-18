@@ -348,7 +348,7 @@ module ArJdbc
     end
 
     def columns(table_name, name = nil)
-      @connection.columns_internal(table_name.to_s, name, derby_schema)
+      @connection.columns_internal(table_name.to_s, nil, derby_schema)
     end
 
     def tables

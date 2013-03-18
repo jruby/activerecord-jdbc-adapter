@@ -464,7 +464,7 @@ module ArJdbc
     
     # NOTE: better to use current_schema instead of the configured one ?!
     def columns(table_name, name = nil) # :nodoc:
-      @connection.columns_internal(table_name.to_s, name, oracle_schema)
+      @connection.columns_internal(table_name.to_s, nil, oracle_schema)
     end
     
     def tablespace(table_name)

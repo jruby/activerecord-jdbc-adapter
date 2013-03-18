@@ -152,7 +152,7 @@ module ArJdbc
     end
 
     def columns(table_name, name = nil)
-      @connection.columns_internal(table_name.to_s, name, h2_schema)
+      @connection.columns_internal(table_name.to_s, nil, h2_schema)
     end
 
     def change_column(table_name, column_name, type, options = {}) #:nodoc:

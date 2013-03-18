@@ -538,7 +538,7 @@ module ArJdbc
     HAVE_SCALE = %w(DECIMAL NUMERIC)
 
     def columns(table_name, name = nil)
-      columns = @connection.columns(table_name.to_s, name, db2_schema)
+      columns = @connection.columns_internal(table_name.to_s, nil, db2_schema)
 
       if zos?
         # Remove the mighty db2_generated_rowid_for_lobs from the list of columns

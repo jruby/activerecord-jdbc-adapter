@@ -403,14 +403,14 @@ public class RubyJdbcConnection extends RubyObject {
 
     @JRubyMethod(name = "execute_query", required = 1)
     public IRubyObject execute_query(final ThreadContext context, IRubyObject sql)
-            throws SQLException, IOException {
+        throws SQLException {
         String query = sql.convertToString().getUnicodeValue();
         return executeQuery(context, query, 0);
     }
 
     @JRubyMethod(name = "execute_query", required = 2)
     public IRubyObject execute_query(final ThreadContext context, 
-        final IRubyObject sql, final IRubyObject maxRows) throws SQLException, IOException {
+        final IRubyObject sql, final IRubyObject maxRows) throws SQLException {
         final String query = sql.convertToString().getUnicodeValue();
         return executeQuery(context, query, RubyNumeric.fix2int(maxRows));
     }
@@ -496,7 +496,7 @@ public class RubyJdbcConnection extends RubyObject {
     
     @JRubyMethod(name = "set_native_database_types")
     public IRubyObject set_native_database_types(final ThreadContext context) 
-        throws SQLException, IOException { // TODO we should handle exceptions !
+        throws SQLException { // TODO we should handle exceptions !
         final Ruby runtime = context.getRuntime();
         final DatabaseMetaData metaData = getConnection(true).getMetaData();
         IRubyObject types = unmarshalResult(context, runtime, metaData, metaData.getTypeInfo(), true);
@@ -565,17 +565,27 @@ public class RubyJdbcConnection extends RubyObject {
     
     @JRubyMethod(name = {"columns", "columns_internal"}, required = 1, optional = 2)
     public IRubyObject columns_internal(final ThreadContext context, final IRubyObject[] args)
-        throws SQLException, IOException {
+        throws SQLException {
         return withConnection(context, new Callable<IRubyObject>() {
             public IRubyObject call(final Connection connection) throws SQLException {
                 ResultSet columns = null, primaryKeys = null;
                 try {
-                    String defaultSchema = args.length > 2 ? toStringOrNull(args[2]) : null;
-                    String tableName = args[0].convertToString().getUnicodeValue();
-                    TableName components = extractTableName(connection, defaultSchema, tableName);
+                    final String tableName = args[0].convertToString().getUnicodeValue();
+                    // optionals (NOTE: catalog argumnet was never used before 1.3.0) :
+                    final String catalog = args.length > 1 ? toStringOrNull(args[1]) : null;
+                    final String defaultSchema = args.length > 2 ? toStringOrNull(args[2]) : null;
+                    
+                    final TableName components;
+                    if ( catalog == null ) { // backwards-compatibility with < 1.3.0
+                        components = extractTableName(connection, defaultSchema, tableName);
+                    }
+                    else {
+                        components = extractTableName(connection, catalog, defaultSchema, tableName);
+                    }
 
                     final Collection matchingTables = tableLookupBlock(context.getRuntime(),
-                            components.catalog, components.schema, components.name, getTableTypes()).call(connection);
+                        components.catalog, components.schema, components.name, getTableTypes()
+                    ).call(connection);
                     if ( matchingTables.isEmpty() ) {
                         throw new SQLException("table: " + tableName + " does not exist");
                     }
@@ -733,7 +743,7 @@ public class RubyJdbcConnection extends RubyObject {
      */
     @JRubyMethod(name = "write_large_object", required = 6)
     public IRubyObject write_large_object(final ThreadContext context, final IRubyObject[] args)
-        throws SQLException, IOException {
+        throws SQLException {
         
         final boolean isBinary = args[0].isTrue(); 
         final RubyString columnName = args[1].convertToString();
@@ -819,12 +829,6 @@ public class RubyJdbcConnection extends RubyObject {
 
     private static String toStringOrNull(IRubyObject arg) {
         return arg.isNil() ? null : arg.toString();
-    }
-
-    protected IRubyObject doubleToRuby(Ruby runtime, ResultSet resultSet, double doubleValue)
-            throws SQLException, IOException {
-        if (doubleValue == 0 && resultSet.wasNull()) return runtime.getNil();
-        return runtime.newFloat(doubleValue);
     }
 
     protected IRubyObject getAdapter(ThreadContext context) {
@@ -1024,9 +1028,15 @@ public class RubyJdbcConnection extends RubyObject {
         return runtime.newFixnum(longValue);
     }
 
+    protected IRubyObject doubleToRuby(Ruby runtime, ResultSet resultSet, double doubleValue)
+        throws SQLException {
+        if ( doubleValue == 0 && resultSet.wasNull() ) return runtime.getNil();
+        return runtime.newFloat(doubleValue);
+    }
+    
     protected IRubyObject stringToRuby(
         final Ruby runtime, final ResultSet resultSet, final String string)
-        throws SQLException, IOException {
+        throws SQLException {
         if ( string == null && resultSet.wasNull() ) return runtime.getNil();
 
         return RubyString.newUnicodeString(runtime, string);
@@ -1651,43 +1661,63 @@ public class RubyJdbcConnection extends RubyObject {
         
     }
     
+    /**
+     * Extract the table name components for the given name e.g. "mycat.sys.entries"
+     * 
+     * @param connection
+     * @param catalog (optional) catalog to use if table name does not contain 
+     *                 the catalog prefix
+     * @param schema (optional) schema to use if table name does not have one
+     * @param tableName the table name
+     * @return (parsed) table name
+     * 
+     * @throws IllegalArgumentException for invalid table name format
+     * @throws SQLException 
+     */
     protected TableName extractTableName(
-            final Connection connection, 
-            final String defaultSchema, 
+            final Connection connection, String catalog, String schema, 
             final String tableName) throws IllegalArgumentException, SQLException {
 
         final String[] nameParts = tableName.split("\\.");
-        if (nameParts.length > 3) {
+        if ( nameParts.length > 3 ) {
             throw new IllegalArgumentException("table name: " + tableName + " should not contain more than 2 '.'");
         }
 
-        String catalog = null;
-        String schemaName = defaultSchema;
         String name = tableName;
         
-        if (nameParts.length == 2) {
-            schemaName = nameParts[0];
+        if ( nameParts.length == 2 ) {
+            schema = nameParts[0];
             name = nameParts[1];
         }
-        else if (nameParts.length == 3) {
+        else if ( nameParts.length == 3 ) {
             catalog = nameParts[0];
-            schemaName = nameParts[1];
+            schema = nameParts[1];
             name = nameParts[2];
         }
         
         final DatabaseMetaData metaData = connection.getMetaData();
         
-        if (schemaName != null) { 
-            schemaName = caseConvertIdentifierForJdbc(metaData, schemaName);
+        if (schema != null) {
+            schema = caseConvertIdentifierForJdbc(metaData, schema);
         }
         name = caseConvertIdentifierForJdbc(metaData, name);
 
-        if (schemaName != null && ! databaseSupportsSchemas()) {
-            catalog = schemaName;
+        if (schema != null && ! databaseSupportsSchemas()) {
+            catalog = schema;
         }
         if (catalog == null) catalog = connection.getCatalog();
 
-        return new TableName(catalog, schemaName, name);
+        return new TableName(catalog, schema, name);
+    }
+    
+    /**
+     * @deprecated use {@link #extractTableName(Connection, String, String, String)}
+     */
+    @Deprecated
+    protected TableName extractTableName(
+            final Connection connection, final String schema, 
+            final String tableName) throws IllegalArgumentException, SQLException {
+        return extractTableName(connection, null, schema, tableName);
     }
 
     protected static final class ColumnData {

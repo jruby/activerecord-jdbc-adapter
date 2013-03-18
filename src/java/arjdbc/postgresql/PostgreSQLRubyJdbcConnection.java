@@ -27,7 +27,6 @@ package arjdbc.postgresql;
 
 import arjdbc.jdbc.RubyJdbcConnection;
 
-import java.io.IOException;
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.ResultSet;
@@ -85,24 +84,19 @@ public class PostgreSQLRubyJdbcConnection extends RubyJdbcConnection {
         final int column, final int type, final ResultSet resultSet)
         throws SQLException {
         if ( type == Types.TIMESTAMP ) {
-            try {
-                return stringToRuby(runtime, resultSet, resultSet.getString(column));
-            }
-            catch (IOException e) {
-                throw new SQLException(e.getMessage(), e);
-            }
+            return stringToRuby(runtime, resultSet, resultSet.getString(column));
         }
         return super.jdbcToRuby(runtime, column, type, resultSet);
     }
     
     @Override
     protected TableName extractTableName(
-            final Connection connection, 
-            String defaultSchema, final String tableName) throws SQLException {
+        final Connection connection, String catalog, String schema, 
+        final String tableName) throws IllegalArgumentException, SQLException {
         // The postgres JDBC driver will default to searching every schema if no
-        // schema search path is given.  Default to the public schema instead :
-        if ( defaultSchema == null ) defaultSchema = "public";
-        return super.extractTableName(connection, defaultSchema, tableName);
+        // schema search path is given.  Default to the 'public' schema instead:
+        if ( schema == null ) schema = "public";
+        return super.extractTableName(connection, catalog, schema, tableName);
     }
     
 }
