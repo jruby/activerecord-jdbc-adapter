@@ -337,6 +337,44 @@ module ArJdbc
       true
     end
 
+    # NOTE: Dynamic Name Resolution - SQL Server 2000 vs. 2005
+    # 
+    # A query such as "select * from table1" in SQL Server 2000 goes through 
+    # a set of steps to resolve and validate the object references before 
+    # execution. 
+    # The search first looks at the identity of the connection executing 
+    # the query.
+    # 
+    # However SQL Server 2005 provides a mechanism to allow finer control over
+    # name resolution to the administrators. By manipulating the value of the 
+    # default_schema_name columns in the sys.database_principals.
+    # 
+    # http://blogs.msdn.com/b/mssqlisv/archive/2007/03/23/upgrading-to-sql-server-2005-and-default-schema-setting.aspx
+    
+    # Returns the default schema (to be used for table resolution) used for 
+    # the {#current_user}.
+    def default_schema
+      return current_user if sqlserver_2000?
+      @default_schema ||= 
+        select_value("SELECT default_schema_name FROM sys.database_principals WHERE name = CURRENT_USER")
+    end
+    alias_method :current_schema, :default_schema
+
+    # Allows for changing of the default schema (to be used during unqualified
+    # table name resolution).
+    # @note This is not supported on SQL Server 2000 !
+    def default_schema=(default_schema) # :nodoc:
+      raise "changing DEFAULT_SCHEMA only supported on SQLServer 2005+" if sqlserver_2000?
+      execute("ALTER #{current_user} WITH DEFAULT_SCHEMA=#{default_schema}")
+      @default_schema = nil if defined?(@default_schema)
+    end
+    alias_method :current_schema=, :default_schema=
+    
+    # `SELECT CURRENT_USER`
+    def current_user
+      @current_user ||= select_value("SELECT CURRENT_USER")
+    end
+    
     def charset
       select_value "SELECT SERVERPROPERTY('SqlCharSetName')"
     end

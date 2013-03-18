@@ -122,6 +122,16 @@ class MSSQLSimpleTest < Test::Unit::TestCase
     ActiveRecord::Base.connection.execute "DROP PROCEDURE usp_allentries" rescue nil
   end
   
+  def test_current_user
+    # skip if ActiveRecord::Base.connection.send(:sqlserver_2000?)
+    assert_equal 'dbo', ActiveRecord::Base.connection.current_user
+  end
+
+  def test_default_schema
+    # skip if ActiveRecord::Base.connection.send(:sqlserver_2000?)
+    assert_equal 'dbo', ActiveRecord::Base.connection.default_schema
+  end
+  
 end
 
 class MSSQLHasManyThroughTest < Test::Unit::TestCase
