@@ -1467,7 +1467,7 @@ public class RubyJdbcConnection extends RubyObject {
         throws RaiseException {
         return withConnection(context, block);
     }
-
+    
     protected <T> T withConnection(final ThreadContext context, final Callable<T> block) 
         throws RaiseException {
         try {
@@ -1525,12 +1525,14 @@ public class RubyJdbcConnection extends RubyObject {
     private static Throwable getCause(Throwable exception) {
         Throwable cause = exception.getCause();
         while (cause != null && cause != exception) {
+            // SQLException's cause might be DB specific (checked/unchecked) :
+            if ( exception instanceof SQLException ) break;
             exception = cause; cause = exception.getCause();
         }
         return exception;
     }
 
-    protected <T> T handleException(final ThreadContext context, final Throwable exception) 
+    protected <T> T handleException(final ThreadContext context, Throwable exception) 
         throws RaiseException {
         // NOTE: we shall not wrap unchecked (runtime) exceptions into AR::Error
         // if it's really a misbehavior of the driver throwing a RuntimeExcepion
@@ -1544,23 +1546,27 @@ public class RubyJdbcConnection extends RubyObject {
     
     /**
      * @deprecated use {@link #wrapException(ThreadContext, Throwable)} instead
+     * for overriding how exceptions are handled use {@link #handleException(ThreadContext, Throwable)}
      */
     @Deprecated
     protected RuntimeException wrap(final ThreadContext context, final Throwable exception) {
         return wrapException(context, exception);
     }
     
-    protected static RaiseException wrapException(final ThreadContext context, final Throwable exception) {
+    protected RaiseException wrapException(final ThreadContext context, final Throwable exception) {
         final Ruby runtime = context.getRuntime();
-        final RaiseException error = wrapException(context, getJDBCError(runtime), exception);
         if ( exception instanceof SQLException ) {
+            final String message = SQLException.class == exception.getClass() ? 
+                exception.getMessage() : exception.toString(); // useful to easily see type on Ruby side
+            final RaiseException error = wrapException(context, getJDBCError(runtime), exception, message);
             final int errorCode = ((SQLException) exception).getErrorCode();
             RuntimeHelpers.invoke( context, error.getException(),
                 "errno=", runtime.newFixnum(errorCode) );
             RuntimeHelpers.invoke( context, error.getException(),
                 "sql_exception=", JavaEmbedUtils.javaToRuby(runtime, exception) );
+            return error;
         }
-        return error;
+        return wrapException(context, getJDBCError(runtime), exception);
     }
 
     protected static RaiseException wrapException(final ThreadContext context, 
@@ -1587,10 +1593,10 @@ public class RubyJdbcConnection extends RubyObject {
         return false;
     }
 
-    private static final byte[] SELECT = new byte[] { 's', 'e', 'l', 'e', 'c', 't' };
-    private static final byte[] WITH = new byte[] { 'w', 'i', 't', 'h' };
-    private static final byte[] SHOW = new byte[] { 's', 'h', 'o', 'w' };
-    private static final byte[] CALL = new byte[]{ 'c', 'a', 'l', 'l' };
+    private static final byte[] SELECT = new byte[] { 's','e','l','e','c','t' };
+    private static final byte[] WITH = new byte[] { 'w','i','t','h' };
+    private static final byte[] SHOW = new byte[] { 's','h','o','w' };
+    private static final byte[] CALL = new byte[]{ 'c','a','l','l' };
     
     @JRubyMethod(name = "select?", required = 1, meta = true, frame = false)
     public static IRubyObject select_p(final ThreadContext context, 
@@ -1606,7 +1612,7 @@ public class RubyJdbcConnection extends RubyObject {
                startsWithIgnoreCase(sqlBytes, CALL);
     }
     
-    private static final byte[] INSERT = new byte[] { 'i', 'n', 's', 'e', 'r', 't' };
+    private static final byte[] INSERT = new byte[] { 'i','n','s','e','r','t' };
     
     @JRubyMethod(name = "insert?", required = 1, meta = true, frame = false)
     public static IRubyObject insert_p(final ThreadContext context, 
