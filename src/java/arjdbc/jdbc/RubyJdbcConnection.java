@@ -532,8 +532,13 @@ public class RubyJdbcConnection extends RubyObject {
         return tables(context, toStringOrNull(args[0]), toStringOrNull(args[1]), toStringOrNull(args[2]), getTypes(args[3]));
     }
 
-    protected IRubyObject tables(ThreadContext context, String catalog, String schemaPattern, String tablePattern, String[] types) {
-        return withConnection(context, tableLookupBlock(context.getRuntime(), catalog, schemaPattern, tablePattern, types));
+    protected IRubyObject tables(final ThreadContext context, 
+        final String catalog, final String schemaPattern, final String tablePattern, final String[] types) {
+        return withConnection(context, new Callable<IRubyObject>() {
+            public IRubyObject call(final Connection connection) throws SQLException {
+                return matchTables(context.getRuntime(), connection, catalog, schemaPattern, tablePattern, types, false);
+            }
+        });
     }
 
     protected String[] getTableTypes() {
@@ -553,12 +558,7 @@ public class RubyJdbcConnection extends RubyObject {
         return withConnection(context, new Callable<RubyBoolean>() {
             public RubyBoolean call(final Connection connection) throws SQLException {
                 final TableName components = extractTableName(connection, tableSchema, tableName);
-                
-                final Collection matchingTables = tableLookupBlock(
-                    runtime, components.catalog, components.schema, components.name, getTableTypes()
-                ).call(connection);
-                
-                return runtime.newBoolean( ! matchingTables.isEmpty() );
+                return runtime.newBoolean( tableExists(runtime, connection, components) );
             }
         });
     }
@@ -582,11 +582,8 @@ public class RubyJdbcConnection extends RubyObject {
                     else {
                         components = extractTableName(connection, catalog, defaultSchema, tableName);
                     }
-
-                    final Collection matchingTables = tableLookupBlock(context.getRuntime(),
-                        components.catalog, components.schema, components.name, getTableTypes()
-                    ).call(connection);
-                    if ( matchingTables.isEmpty() ) {
+                    
+                    if ( ! tableExists(context.getRuntime(), connection, components) ) {
                         throw new SQLException("table: " + tableName + " does not exist");
                     }
 
@@ -1265,27 +1262,53 @@ public class RubyJdbcConnection extends RubyObject {
         }
     }
     
-    protected Callable<RubyArray> tableLookupBlock(final Ruby runtime,
+    private boolean tableExists(final Ruby runtime, 
+        final Connection connection, final TableName tableName) throws SQLException {
+        final IRubyObject matchedTables = 
+            matchTables(runtime, connection, tableName.catalog, tableName.schema, tableName.name, getTableTypes(), true);
+        // NOTE: allow implementers to ignore checkExistsOnly paramater - empty array means does not exists
+        return matchedTables != null && ! matchedTables.isNil() &&
+            ( ! (matchedTables instanceof RubyArray) || ! ((RubyArray) matchedTables).isEmpty() );
+    }
+    
+    /**
+     * Match table names for given table name (pattern).
+     * @param runtime
+     * @param connection
+     * @param catalog
+     * @param schemaPattern
+     * @param tablePattern
+     * @param types table types
+     * @param checkExistsOnly an optimization flag (that might be ignored by sub-classes) 
+     * whether the result really matters if true no need to map table names and a truth-y 
+     * value is sufficient (except for an empty array which is considered that the table
+     * did not exists).
+     * @return matched (and Ruby mapped) table names
+     * @see #mapTables(Ruby, DatabaseMetaData, String, String, String, ResultSet) 
+     * @throws SQLException 
+     */
+    protected IRubyObject matchTables(final Ruby runtime, 
+            final Connection connection,
             final String catalog, final String schemaPattern,
-            final String tablePattern, final String[] types) {
-        return new Callable<RubyArray>() {
-            public RubyArray call(final Connection connection) throws SQLException {
-                ResultSet tablesSet = null;
-                try {
-                    final DatabaseMetaData metaData = connection.getMetaData();
-                    
-                    String _tablePattern = tablePattern;
-                    if (_tablePattern != null) _tablePattern = caseConvertIdentifierForJdbc(metaData, _tablePattern);
-                    
-                    String _schemaPattern = schemaPattern;
-                    if (_schemaPattern != null) _schemaPattern = caseConvertIdentifierForJdbc(metaData, _schemaPattern);
-
-                    tablesSet = metaData.getTables(catalog, _schemaPattern, _tablePattern, types);
-                    return mapTables(runtime, metaData, catalog, _schemaPattern, _tablePattern, tablesSet);
-                }
-                finally { close(tablesSet); }
+            final String tablePattern, final String[] types,
+            final boolean checkExistsOnly) throws SQLException {
+        
+        final DatabaseMetaData metaData = connection.getMetaData();
+        
+        final String _tablePattern = caseConvertIdentifierForJdbc(metaData, tablePattern);
+        final String _schemaPattern = caseConvertIdentifierForJdbc(metaData, schemaPattern);
+        
+        ResultSet tablesSet = null;
+        try {
+            tablesSet = metaData.getTables(catalog, _schemaPattern, _tablePattern, types);
+            if ( checkExistsOnly ) { // only check if given table exists
+                return tablesSet.next() ? runtime.getTrue() : null;
             }
-        };
+            else {
+                return mapTables(runtime, metaData, catalog, _schemaPattern, _tablePattern, tablesSet);
+            }
+        }
+        finally { close(tablesSet); }
     }
     
     // NOTE java.sql.DatabaseMetaData.getTables :
@@ -1316,6 +1339,24 @@ public class RubyJdbcConnection extends RubyObject {
         return tables;
     }
 
+    /**
+     * NOTE: since 1.3.0 only present for binary compatibility (with extensions).
+     * 
+     * @depreacated no longer used - replaced with 
+     * {@link #matchTables(Ruby, Connection, String, String, String, String[], boolean)}
+     * please update your sub-class esp. if you're overriding this method !
+     */
+    @Deprecated
+    protected SQLBlock tableLookupBlock(final Ruby runtime,
+            final String catalog, final String schemaPattern,
+            final String tablePattern, final String[] types) {
+        return new SQLBlock() {
+            public IRubyObject call(final Connection connection) throws SQLException {
+                return matchTables(runtime, connection, catalog, schemaPattern, tablePattern, types, false);
+            }
+        };
+    }
+    
     protected static final int COLUMN_NAME = 4;
     protected static final int DATA_TYPE = 5;
     protected static final int TYPE_NAME = 6;

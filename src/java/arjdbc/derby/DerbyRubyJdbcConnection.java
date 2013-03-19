@@ -23,11 +23,10 @@
  */
 package arjdbc.derby;
 
-import arjdbc.jdbc.Callable;
-import arjdbc.jdbc.RubyJdbcConnection;
+import java.sql.Connection;
+import java.sql.SQLException;
 
 import org.jruby.Ruby;
-import org.jruby.RubyArray;
 import org.jruby.RubyClass;
 import org.jruby.runtime.ObjectAllocator;
 import org.jruby.runtime.builtin.IRubyObject;
@@ -37,7 +36,7 @@ import org.jruby.runtime.builtin.IRubyObject;
  * 
  * @author kares
  */
-public class DerbyRubyJdbcConnection extends RubyJdbcConnection {
+public class DerbyRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection {
     
     protected DerbyRubyJdbcConnection(Ruby runtime, RubyClass metaClass) {
         super(runtime, metaClass);
@@ -57,13 +56,15 @@ public class DerbyRubyJdbcConnection extends RubyJdbcConnection {
     };
     
     @Override
-    protected Callable<RubyArray> tableLookupBlock(final Ruby runtime,
+    protected IRubyObject matchTables(final Ruby runtime, 
+            final Connection connection,
             final String catalog, String schemaPattern,
-            final String tablePattern, final String[] types) {
+            final String tablePattern, final String[] types,
+            final boolean checkExistsOnly) throws SQLException {
         if (schemaPattern != null && schemaPattern.equals("")) { 
             schemaPattern = null; // Derby doesn't like empty-string schema name
         }
-        return super.tableLookupBlock(runtime, catalog, schemaPattern, tablePattern, types);
+        return super.matchTables(runtime, connection, catalog, schemaPattern, tablePattern, types, checkExistsOnly);
     }
     
 }
