@@ -197,12 +197,9 @@ module ::ArJdbc
     end
     
     def tables(name = nil, table_name = nil) # :nodoc:
-      sql = "SELECT name FROM sqlite_master WHERE type = 'table'"
-      if table_name
-        sql << " AND name = #{quote_table_name(table_name)}"
-      else
-        sql << " AND NOT name = 'sqlite_sequence'"
-      end
+      sql = "SELECT name FROM sqlite_master " +
+      "WHERE type = 'table' AND NOT name = 'sqlite_sequence'"
+      sql << " AND name = #{quote_table_name(table_name)}" if table_name
 
       select_rows(sql, name).map { |row| row[0] }
     end
