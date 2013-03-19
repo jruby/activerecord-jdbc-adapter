@@ -531,9 +531,10 @@ module ArJdbc
         @connection.execute_update(sql)
       end
     end
-
+    
     def extract_table_ref_from_insert_sql(sql) # :nodoc:
-      sql.split(" ", 4)[2].gsub('"', '')
+      table = sql.split(" ", 4)[2].gsub('"', '')
+      ( idx = table.index('(') ) ? table[0...idx] : table # INTO table(col1, col2) ...
     end
     
     # In Oracle, schemas are usually created under your username :
