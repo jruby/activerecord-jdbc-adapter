@@ -9,14 +9,12 @@ class MysqlDbCreateTest < Test::Unit::TestCase
   end
 
   def test_rake_db_create
+    omit_unless find_executable?("mysql")
     Rake::Task["db:create"].invoke
-    if find_executable?("mysql")
-      output = nil
-      IO.popen("mysql -u #{MYSQL_CONFIG[:username]} --password=#{MYSQL_CONFIG[:password]}", "r+") do |mysql|
-        mysql << "show databases where `Database` = '#{@db_name}';"
-        mysql.close_write
-        assert mysql.read =~ /#{@db_name}/m
-      end
+    with_mysql do |mysql|
+      mysql << "show databases where `Database` = '#{@db_name}';"
+      mysql.close_write
+      assert mysql.read =~ /#{@db_name}/m      
     end
   end
 
@@ -24,4 +22,12 @@ class MysqlDbCreateTest < Test::Unit::TestCase
     Rake::Task["db:create"].invoke
     Rake::Task["db:test:purge"].invoke
   end
+  
+  private
+  
+  def with_mysql(args = nil)
+    exec = "mysql -u #{db_config[:username]} --password=#{db_config[:password]} #{args}"
+    IO.popen(exec, "r+") { |mysql| yield(mysql) }
+  end
+  
 end
