@@ -1,3 +1,14 @@
+== 1.2.9 (03/20/13)
+
+- [oracle] native database types ala oracle-enhanced adapter
+- [oracle] fix #insert (broken since execute+to_sql refactoring) keeping binds 
+  respect 30 max identifier length with default sequence names
+- [db2] add as400 primary key support and re-add explain method
+- [mssql] fix table/column name quoting - do not quote if quoted already
+- [mssql] change default constrain sql on 2005+ (closes #320)
+- [mssql] fix substring issue that prevents detecting a query that contains *
+- [mssql] adapter code cleanup + refactored (ArJdbc::) MsSQL -> MSSQL
+
 == 1.2.8 (03/13/13)
 
 - [derby] (native) types review & cleanup, externalize AR patch-ing
