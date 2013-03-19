@@ -66,12 +66,6 @@ module FixtureSetup
     # just a random zone, unlikely to be local, and not utc
     Time.zone = 'Moscow' if Time.respond_to?(:zone)
     #
-    @title = "First post!"
-    @content = "Hello from JRuby on Rails!"
-    @new_title = "First post updated title"
-    @rating = 205.76
-    @user = User.create! :login => "something"
-    @entry = Entry.create! :title => @title, :content => @content, :rating => @rating, :user => @user
     DbType.create!
   end
   
@@ -213,10 +207,14 @@ module SimpleTestMethods
   def test_create_new_entry
     Entry.delete_all
 
+    title = "First post!"
+    content = "Hello from JRuby on Rails!"
+    rating = 205.76
+    
     post = Entry.new
-    post.title = @title
-    post.content = @content
-    post.rating = @rating
+    post.title = title
+    post.content = content
+    post.rating = rating
     post.save
 
     assert_equal 1, Entry.count
@@ -228,22 +226,33 @@ module SimpleTestMethods
   end
 
   def test_find_and_update_entry
+    title = "First post!"
+    content = "Hello from JRuby on Rails!"
+    new_title = "First post updated title"
+    rating = 205.76
+    user = User.create! :login => "something"
+    Entry.create! :title => title, :content => content, :rating => rating, :user => user
+    
     post = Entry.first
-    assert_equal @title, post.title
-    assert_equal @content, post.content
-    assert_equal @rating, post.rating
+    assert_equal title, post.title
+    assert_equal content, post.content
+    assert_equal rating, post.rating
 
-    post.title = @new_title
+    post.title = new_title
     post.save
 
     post = Entry.first
-    assert_equal @new_title, post.title
+    assert_equal new_title, post.title
   end
 
   def test_destroy_entry
+    user = User.create! :login => "something"
+    Entry.create! :title => '1', :content => '', :rating => 1.0, :user => user
+    Entry.create! :title => '2', :content => '', :rating => 2.0, :user => user
+    
     prev_count = Entry.count
-    post = Entry.first
-    post.destroy
+    entry = Entry.first
+    entry.destroy
 
     assert_equal prev_count - 1, Entry.count
   end
@@ -483,14 +492,20 @@ module SimpleTestMethods
   end
 
   def test_invalid
-    e = Entry.new(:title => @title, :content => @content, :rating => ' ')
+    title = "First post!"
+    content = "Hello from JRuby on Rails!"
+    rating = 205.76
+    user = User.create! :login => "something"
+    Entry.create! :title => title, :content => content, :rating => rating, :user => user
+    
+    e = Entry.new(:title => title, :content => content, :rating => ' ')
     assert e.valid?
   end
 
   def test_reconnect
-    assert_equal 1, Entry.count
+    assert_equal 1, DbType.count
     ActiveRecord::Base.connection.reconnect!
-    assert_equal 1, Entry.count
+    assert_equal 1, DbType.count
   end
 
   if defined?(JRUBY_VERSION)
@@ -510,20 +525,19 @@ module SimpleTestMethods
 
     class Animal < ActiveRecord::Base; end
 
-    def test_fetching_columns_for_nonexistent_table_should_raise
-      assert_raise(ActiveRecord::ActiveRecordError,
-                    ActiveRecord::StatementInvalid, ActiveRecord::JDBCError) do
+    def test_fetching_columns_for_nonexistent_table
+      assert_raise(ActiveRecord::ActiveRecordError, ActiveRecord::StatementInvalid, ActiveRecord::JDBCError) do
         Animal.columns
       end
     end
   end
 
   def test_disconnect
-    assert_equal 1, Entry.count
+    assert_equal 1, DbType.count
     ActiveRecord::Base.clear_active_connections!
     ActiveRecord::Base.connection_pool.disconnect! if ActiveRecord::Base.respond_to?(:connection_pool)
     assert !ActiveRecord::Base.connected?
-    assert_equal 1, Entry.count
+    assert_equal 1, DbType.count
     assert ActiveRecord::Base.connected?
   end
 
@@ -954,8 +968,11 @@ module ActiveRecord3TestMethods
     end if Test::Unit::TestCase.ar_version('3.2') # >= 3.2
     
     def test_where
-      entries = Entry.where(:title => @entry.title)
-      assert_equal @entry, entries.first
+      user = User.create! :login => "blogger"
+      entry = Entry.create! :title => 'something', :content => 'JRuby on Rails !', :rating => 42.1, :user => user
+      
+      entries = Entry.where(:title => entry.title)
+      assert_equal entry, entries.first
     end
 
     def test_remove_nonexistent_index

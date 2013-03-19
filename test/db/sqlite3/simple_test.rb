@@ -82,19 +82,26 @@ class SQLite3SimpleTest < Test::Unit::TestCase
   end
 
   def test_rename_column_preserves_content
-    post = Entry.first
-    assert_equal @title, post.title
-    assert_equal @content, post.content
-    assert_equal @rating, post.rating
+    title = "First post!"
+    content = "Hello from JRuby on Rails!"
+    rating = 205.76
+    user = User.create! :login => "something"
+    Entry.create! :title => title, :content => content, :rating => rating, :user => user
+    
+    entry = Entry.first
+    assert_equal title, entry.title
+    assert_equal content, entry.content
+    assert_equal rating, entry.rating
 
     ActiveRecord::Schema.define do
       rename_column "entries", "title", "name"
+      rename_column "entries", "rating", "popularity"
     end
 
-    post = Entry.first
-    assert_equal @title, post.name
-    assert_equal @content, post.content
-    assert_equal @rating, post.rating
+    entry = Entry.first
+    assert_equal title, entry.name
+    assert_equal content, entry.content
+    assert_equal rating, entry.popularity
   end
 
   def test_rename_column_preserves_index

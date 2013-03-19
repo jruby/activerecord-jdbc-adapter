@@ -18,9 +18,13 @@ class DerbySimpleTest < Test::Unit::TestCase
   end
 
   def test_find_with_include_and_order
+    Entry.create! :title => 'First Post!', 
+      :content => "Hello from 'JRuby on Rails'!", 
+      :user => (user = User.create!(:login => "someone"))
+    
     users = User.find(:all, :include=>[:entries], :order=>"entries.rating DESC", :limit => 2)
 
-    assert users.include?(@user)
+    assert users.include?(user)
   end
 
   def test_text_and_string_conversions
@@ -146,7 +150,8 @@ class DerbySimpleTest < Test::Unit::TestCase
       model = DbType.find(:first, :conditions => "id = #{model.id}", :select => 'sample_float AS custom_sample_float')
     end
     assert_instance_of Float, model.custom_sample_float
-    assert_equal 1.42, model.custom_sample_float.round(2) # 1.4199999570846558
+    custom_sample_float = (model.custom_sample_float * 100).round.to_f / 100 # .round(2) 1.8.7 compatible
+    assert_equal 1.42, custom_sample_float # Derby otherwise returns us smt like: 1.4199999570846558
   end
   
 end
