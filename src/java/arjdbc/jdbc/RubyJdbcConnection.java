@@ -48,7 +48,6 @@ import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
-import java.util.Collection;
 import java.util.List;
 
 import org.jruby.Ruby;
@@ -758,9 +757,10 @@ public class RubyJdbcConnection extends RubyObject {
                 try {
                     statement = connection.prepareStatement(sql);
                     if ( isBinary ) { // binary
-                        ByteList blob = lobValue.convertToString().getByteList();
+                        final ByteList blob = lobValue.convertToString().getByteList();
+                        final int realSize = blob.getRealSize();
                         statement.setBinaryStream(1, 
-                            new ByteArrayInputStream(blob.bytes, blob.begin, blob.realSize), blob.realSize
+                            new ByteArrayInputStream(blob.unsafeBytes(), blob.getBegin(), realSize), realSize
                         );
                     } else { // clob
                         String clob = lobValue.convertToString().getUnicodeValue();
@@ -1673,19 +1673,21 @@ public class RubyJdbcConnection extends RubyObject {
     }
 
     protected static boolean startsWithIgnoreCase(final ByteList string, final byte[] start) {
-        int p = skipWhitespace(string, string.begin);
-        if ( string.bytes[p] == '(' ) p = skipWhitespace(string, p + 1);
+        int p = skipWhitespace(string, string.getBegin());
+        final byte[] stringBytes = string.unsafeBytes();
+        if ( stringBytes[p] == '(' ) p = skipWhitespace(string, p + 1);
 
-        for ( int i = 0; i < string.realSize && i < start.length; i++ ) {
-            if ( Character.toLowerCase(string.bytes[p + i]) != start[i] ) return false;
+        for ( int i = 0; i < string.getRealSize() && i < start.length; i++ ) {
+            if ( Character.toLowerCase(stringBytes[p + i]) != start[i] ) return false;
         }
         return true;
     }
 
     private static int skipWhitespace(final ByteList string, final int from) {
-        final int end = string.begin + string.realSize;
+        final int end = string.getBegin() + string.getRealSize();
+        final byte[] stringBytes = string.unsafeBytes();
         for ( int i = from; i < end; i++ ) {
-            if ( ! Character.isWhitespace( string.bytes[i] ) ) return i;
+            if ( ! Character.isWhitespace( stringBytes[i] ) ) return i;
         }
         return end;
     }
@@ -1832,7 +1834,7 @@ public class RubyJdbcConnection extends RubyObject {
         RubyJdbcConnection.debug = debug;
     }
     
-    protected static void debugMessage(final ThreadContext context, final String msg) {
+    public static void debugMessage(final ThreadContext context, final String msg) {
         if ( debug || context.runtime.isDebug() ) {
             context.runtime.getOut().println(msg);
         }
@@ -1844,7 +1846,7 @@ public class RubyJdbcConnection extends RubyObject {
         }
     }
     
-    private static void debugStackTrace(final ThreadContext context, final Throwable e) {
+    public static void debugStackTrace(final ThreadContext context, final Throwable e) {
         if ( debug || context.runtime.isDebug() ) {
             e.printStackTrace(context.runtime.getOut());
         }

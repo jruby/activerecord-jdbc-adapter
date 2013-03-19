@@ -7,7 +7,8 @@ begin
   file jar_file => FileList['src/java/**/*.java', 'pkg/classes'] do
     rm_rf FileList['pkg/classes/**/*']
     ant.javac :srcdir => "src/java", :destdir => "pkg/classes",
-      :source => "1.5", :target => "1.5", :debug => true,
+      :source => "1.5", :target => "1.5", 
+      :debug => true, :deprecation => true,
       :classpath => "${java.class.path}:${sun.boot.class.path}",
       :includeantRuntime => false
 

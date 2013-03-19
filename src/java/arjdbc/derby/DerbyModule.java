@@ -216,12 +216,13 @@ public class DerbyModule {
         final String before, final RubyString string, final String after) {
         
         final ByteList input = string.getByteList();
-        final ByteList output = new ByteList(before.getBytes(), input.encoding);
+        final ByteList output = new ByteList(before.getBytes(), input.getEncoding());
+        final byte[] inputBytes = input.unsafeBytes();
         
-        for(int i = input.begin; i< input.begin + input.realSize; i++) {
-            switch(input.bytes[i]) {
-                case '\'': output.append(input.bytes[i]); // FALLTHROUGH
-                default: output.append(input.bytes[i]);
+        for(int i = input.getBegin(); i< input.getBegin() + input.getRealSize(); i++) {
+            switch ( inputBytes[i] ) {
+                case '\'': output.append(inputBytes[i]); // FALLTHROUGH
+                default: output.append(inputBytes[i]);
             }
 
         }
@@ -237,10 +238,11 @@ public class DerbyModule {
         
         final ByteList input = string.getByteList();
         final ByteList output = new ByteList(before.getBytes());
+        final byte[] inputBytes = input.unsafeBytes();
         
         int written = 0;
-        for(int i = input.begin; i< input.begin + input.realSize; i++) {
-            byte b1 = input.bytes[i];
+        for(int i = input.getBegin(); i< input.getBegin() + input.getRealSize(); i++) {
+            byte b1 = inputBytes[i];
             byte higher = HEX[(((char)b1)>>4)%16];
             byte lower = HEX[((char)b1)%16];
             output.append(higher);
@@ -258,8 +260,9 @@ public class DerbyModule {
 
     private static boolean only_digits(final RubyString string) {
         final ByteList input = string.getByteList();
-        for ( int i = input.begin; i< input.begin + input.realSize; i++ ) {
-            if ( input.bytes[i] < '0' || input.bytes[i] > '9' ) {
+        final byte[] inputBytes = input.unsafeBytes();
+        for ( int i = input.getBegin(); i< input.getBegin() + input.getRealSize(); i++ ) {
+            if ( inputBytes[i] < '0' || inputBytes[i] > '9' ) {
                 return false;
             }
         }
@@ -268,18 +271,16 @@ public class DerbyModule {
 
     @JRubyMethod(name = "quote_string", required = 1)
     public static IRubyObject quote_string(final IRubyObject self, IRubyObject string) {
+        ByteList bytes = ((RubyString) string).getByteList();
         
         boolean replacement = false;
-        ByteList bytes = ((RubyString) string).getByteList();
-
-        for ( int i = bytes.begin; i < bytes.begin + bytes.realSize; i++ ) {
-            switch (bytes.bytes[i]) {
+        for ( int i = 0; i < bytes.length(); i++ ) {
+            switch ( bytes.get(i) ) {
                 case '\'': break;
                 default: continue;
             }
-            // On first replacement allocate so we don't manip original
+            // on first replacement allocate so we don't manip original
             if ( ! replacement ) {
-                i -= bytes.begin;
                 bytes = new ByteList(bytes);
                 replacement = true;
             }

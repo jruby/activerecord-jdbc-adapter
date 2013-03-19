@@ -24,6 +24,7 @@
 
 package arjdbc.mysql;
 
+import static arjdbc.jdbc.RubyJdbcConnection.debugStackTrace;
 import static arjdbc.util.QuotingUtils.BYTES_0;
 import static arjdbc.util.QuotingUtils.BYTES_1;
 
@@ -61,9 +62,9 @@ public class MySQLModule {
         final IRubyObject recv, final IRubyObject string) {
         
         final ByteList stringBytes = ((RubyString) string).getByteList();
-        final byte[] bytes = stringBytes.bytes; // unsafeBytes();
-        final int begin = stringBytes.begin; // getBegin();
-        final int realSize = stringBytes.realSize; // getRealSize();
+        final byte[] bytes = stringBytes.unsafeBytes();
+        final int begin = stringBytes.getBegin();
+        final int realSize = stringBytes.getRealSize();
         
         ByteList quotedBytes = null; int appendFrom = begin;
         for ( int i = begin; i < begin + realSize; i++ ) {
@@ -82,10 +83,10 @@ public class MySQLModule {
                 if ( quotedBytes == null ) {
                     quotedBytes = new ByteList(
                         new byte[realSize + STRING_QUOTES_OPTIMISTIC_QUESS], 
-                        stringBytes.encoding // getEncoding()
+                        stringBytes.getEncoding()
                     );
-                    quotedBytes.begin = 0; // setBegin(0);
-                    quotedBytes.realSize = 0; // setRealSize(0);
+                    quotedBytes.setBegin(0);
+                    quotedBytes.setRealSize(0);
                 } // copy string on-first quote we "optimize" for non-quoted
                 quotedBytes.append(bytes, appendFrom, i - appendFrom);
                 quotedBytes.append('\\').append(byte2);
@@ -126,18 +127,18 @@ public class MySQLModule {
      */
     @JRubyMethod(module = true, frame = false)
     public static IRubyObject kill_cancel_timer(final ThreadContext context, 
-        final IRubyObject recv, final IRubyObject raw_connection) {
+        final IRubyObject self, final IRubyObject raw_connection) {
         
         final Connection conn = (Connection) raw_connection.dataGetStruct();
-        if (conn != null && conn.getClass().getClassLoader() == recv.getRuntime().getJRubyClassLoader()) {
+        if (conn != null && conn.getClass().getClassLoader() == self.getRuntime().getJRubyClassLoader()) {
             try {
                 java.lang.reflect.Field f = conn.getClass().getDeclaredField("cancelTimer");
                 f.setAccessible(true);
                 java.util.Timer timer = (java.util.Timer) f.get(null);
                 timer.cancel();
             }
-            catch (Exception e) { /* ignored */ }
+            catch (Exception e) { debugStackTrace(context, e); }
         }
-        return recv.getRuntime().getNil();
+        return self.getRuntime().getNil();
     }
 }
