@@ -105,7 +105,7 @@ public class RubyJdbcConnection extends RubyObject {
      * @return <code>ActiveRecord::ConnectionAdapters</code>
      */
     protected static RubyModule getConnectionAdapters(final Ruby runtime) {
-        return (RubyModule) runtime.fastGetModule("ActiveRecord").fastGetConstant("ConnectionAdapters");
+        return (RubyModule) runtime.getModule("ActiveRecord").getConstant("ConnectionAdapters");
     }
 
     /**
@@ -113,7 +113,7 @@ public class RubyJdbcConnection extends RubyObject {
      * @return <code>ActiveRecord::Result</code>
      */
     protected static RubyClass getResult(final Ruby runtime) {
-        return runtime.fastGetModule("ActiveRecord").fastGetClass("Result");
+        return runtime.getModule("ActiveRecord").getClass("Result");
     }
     
     /**
@@ -121,7 +121,7 @@ public class RubyJdbcConnection extends RubyObject {
      * @return <code>ActiveRecord::ConnectionAdapters::IndexDefinition</code>
      */
     protected static RubyClass getIndexDefinition(final Ruby runtime) {
-        return getConnectionAdapters(runtime).fastGetClass("IndexDefinition");
+        return getConnectionAdapters(runtime).getClass("IndexDefinition");
     }
     
     /**
@@ -129,7 +129,7 @@ public class RubyJdbcConnection extends RubyObject {
      * @return <code>ActiveRecord::TransactionIsolationError</code>
      */
     protected static RubyClass getJDBCError(final Ruby runtime) {
-        return runtime.fastGetModule("ActiveRecord").fastGetClass("JDBCError");
+        return runtime.getModule("ActiveRecord").getClass("JDBCError");
     }
 
     /**
@@ -138,7 +138,7 @@ public class RubyJdbcConnection extends RubyObject {
      * @return <code>ActiveRecord::TransactionIsolationError</code>
      */
     protected static RubyClass getTransactionIsolationError(final Ruby runtime) {
-        return (RubyClass) runtime.fastGetModule("ActiveRecord").fastGetConstant("TransactionIsolationError");
+        return (RubyClass) runtime.getModule("ActiveRecord").getConstant("TransactionIsolationError");
     }
     
     /**
@@ -146,7 +146,7 @@ public class RubyJdbcConnection extends RubyObject {
      * @return <code>ActiveRecord::ConnectionAdapters::JdbcTypeConverter</code>
      */
     private static RubyClass getJdbcTypeConverter(final Ruby runtime) {
-        return getConnectionAdapters(runtime).fastGetClass("JdbcTypeConverter");
+        return getConnectionAdapters(runtime).getClass("JdbcTypeConverter");
     }
     
     /*

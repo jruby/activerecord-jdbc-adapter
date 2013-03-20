@@ -348,8 +348,8 @@ public class DerbyModule {
     }
     
     private static RubyModule getMultibyteChars(final Ruby runtime) {
-        return (RubyModule) ((RubyModule) runtime.fastGetModule("ActiveSupport").
-                fastGetConstant("Multibyte")).fastGetConstantAt("Chars");
+        return (RubyModule) ((RubyModule) runtime.getModule("ActiveSupport").
+                getConstant("Multibyte")).getConstantAt("Chars");
     }
     
 }
