@@ -196,6 +196,7 @@ module ActiveRecord
 
       def reconnect!
         @connection.reconnect!
+        configure_connection if respond_to?(:configure_connection)
         @connection
       end
 
