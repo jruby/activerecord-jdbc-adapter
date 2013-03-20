@@ -3,15 +3,27 @@ module ActiveRecord
     class JdbcColumn < Column
       attr_writer :limit, :precision
 
-      def initialize(config, name, default, *args)
-        # NOTE: extending classes do not want this if they do they shall call
-        call_discovered_column_callbacks(config) if self.class == JdbcColumn
+      def initialize(config, name, *args)
+        if self.class == JdbcColumn
+          # NOTE: extending classes do not want this if they do they shall call
+          call_discovered_column_callbacks(config) if config
+          default = args.shift
+        else # for extending classes allow ignoring first argument :
+          if ! config.nil? && ! config.is_a?(Hash)
+            # initialize(name, default, *args)
+            default = name; name = config
+          else
+            default = args.shift
+          end
+        end
+        # super : (name, default, sql_type = nil, null = true)
         super(name, default_value(default), *args)
         init_column(name, default, *args)
       end
 
       def init_column(*args); end
 
+      # NOTE: our custom #extract_value_from_default(default)
       def default_value(value); value; end
 
       protected
