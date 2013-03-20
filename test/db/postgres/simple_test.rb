@@ -33,7 +33,11 @@ class PostgresSimpleTest < Test::Unit::TestCase
   end
 
   def test_multi_statement_support
-    results = connection.execute "SELECT title from entries; SELECT login from users"
+    user = User.create! :login => 'jozko'
+    Entry.create! :title => 'eee', :user_id => user.id
+    
+    results = connection.execute "SELECT title FROM entries; SELECT login FROM users"
+    
     assert_equal 2, results.length
     assert_equal ["title"], results[0].first.keys
     assert_equal ["login"], results[1].first.keys

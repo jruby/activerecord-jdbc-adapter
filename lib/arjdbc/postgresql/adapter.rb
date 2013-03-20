@@ -1,21 +1,22 @@
+require 'ipaddr'
+require 'arjdbc/postgresql/column_cast'
 require 'arjdbc/postgresql/explain_support'
 
 module ArJdbc
   module PostgreSQL
-    def self.extended(adapter)
-      (class << adapter; self; end).class_eval do
-        alias_chained_method :columns, :query_cache, :pg_columns
-      end
-      
-      adapter.configure_connection
+    
+    AR4_COMPAT = ::ActiveRecord::VERSION::MAJOR > 3 unless const_defined?(:AR4_COMPAT) # :nodoc:
+    
+    def self.extended(base)
+      base.configure_connection
     end
 
     def self.column_selector
-      [/postgre/i, lambda {|cfg,col| col.extend(::ArJdbc::PostgreSQL::Column)}]
+      [ /postgre/i, lambda { |cfg, column| column.extend(::ArJdbc::PostgreSQL::Column) } ]
     end
 
     def self.jdbc_connection_class
-      ::ActiveRecord::ConnectionAdapters::PostgresJdbcConnection
+      ::ActiveRecord::ConnectionAdapters::PostgreSQLJdbcConnection
     end
     
     # Configures the encoding, verbosity, schema search path, and time zone of the connection.
@@ -51,92 +52,123 @@ module ArJdbc
       end
     end
 
-    # column behavior based on postgresql_adapter in rails project
-    # https://github.com/rails/rails/blob/3-1-stable/activerecord/lib/active_record/connection_adapters/postgresql_adapter.rb#L41
+    # constants taken from postgresql_adapter in rails project
+    ADAPTER_NAME = 'PostgreSQL'
+
+    def adapter_name #:nodoc:
+      ADAPTER_NAME
+    end
+
+    def self.arel2_visitors(config)
+      {
+        'postgresql' => ::Arel::Visitors::PostgreSQL,
+        'jdbcpostgresql' => ::Arel::Visitors::PostgreSQL,
+        'pg' => ::Arel::Visitors::PostgreSQL
+      }
+    end
+
+    def postgresql_version
+      @postgresql_version ||=
+        begin
+          value = select_value('SELECT version()')
+          if value =~ /PostgreSQL (\d+)\.(\d+)\.(\d+)/
+            ($1.to_i * 10000) + ($2.to_i * 100) + $3.to_i
+          else
+            0
+          end
+        end
+    end
+    
+    # column behavior based on postgresql_adapter in rails
     module Column
+      
       def self.included(base)
         class << base
+          include ArJdbc::PostgreSQL::Column::Cast
+          # include ArJdbc::PostgreSQL::Column::ArrayParser
           attr_accessor :money_precision
-          def string_to_time(string)
-            return string unless String === string
+        end
+      end
+      
+      attr_accessor :array
+      
+      # Extracts the value from a PostgreSQL column default definition.
+      # 
+      # @override JdbcColumn#default_value
+      # NOTE: based on `self.extract_value_from_default(default)` code
+      def default_value(default)
+        # This is a performance optimization for Ruby 1.9.2 in development.
+        # If the value is nil, we return nil straight away without checking
+        # the regular expressions. If we check each regular expression,
+        # Regexp#=== will call NilClass#to_str, which will trigger
+        # method_missing (defined by whiny nil in ActiveSupport) which
+        # makes this method very very slow.
+        return default unless default
 
-            case string
-            when 'infinity' then 1.0 / 0.0
-            when '-infinity' then -1.0 / 0.0
-            else
-              super
-            end
-          end
+        case default
+          when /\A'(.*)'::(num|date|tstz|ts|int4|int8)range\z/m
+            $1
+          # Numeric types
+          when /\A\(?(-?\d+(\.\d*)?\)?)\z/
+            $1
+          # Character types
+          when /\A\(?'(.*)'::.*\b(?:character varying|bpchar|text)\z/m
+            $1
+          # Binary data types
+          when /\A'(.*)'::bytea\z/m
+            $1
+          # Date/time types
+          when /\A'(.+)'::(?:time(?:stamp)? with(?:out)? time zone|date)\z/
+            $1
+          when /\A'(.*)'::interval\z/
+            $1
+          # Boolean type
+          when 'true'
+            true
+          when 'false'
+            false
+          # Geometric types
+          when /\A'(.*)'::(?:point|line|lseg|box|"?path"?|polygon|circle)\z/
+            $1
+          # Network address types
+          when /\A'(.*)'::(?:cidr|inet|macaddr)\z/
+            $1
+          # Bit string types
+          when /\AB'(.*)'::"?bit(?: varying)?"?\z/
+            $1
+          # XML type
+          when /\A'(.*)'::xml\z/m
+            $1
+          # Arrays
+          when /\A'(.*)'::"?\D+"?\[\]\z/
+            $1
+          # Hstore
+          when /\A'(.*)'::hstore\z/
+            $1
+          # JSON
+          when /\A'(.*)'::json\z/
+            $1
+          # Object identifier types
+          when /\A-?\d+\z/
+            $1
+          else
+            # Anything else is blank, some user type, or some function
+            # and we can't know the value of that, so return nil.
+            nil
         end
       end
 
       private
-      # Extracts the value from a Postgresql column default definition
-      def default_value(default)
-        case default
-          # This is a performance optimization for Ruby 1.9.2 in development.
-          # If the value is nil, we return nil straight away without checking
-          # the regular expressions. If we check each regular expression,
-          # Regexp#=== will call NilClass#to_str, which will trigger
-          # method_missing (defined by whiny nil in ActiveSupport) which
-          # makes this method very very slow.
-        when NilClass
-          nil
-          # Numeric types
-        when /\A\(?(-?\d+(\.\d*)?\)?)\z/
-          $1
-          # Character types
-        when /\A'(.*)'::(?:character varying|bpchar|text)\z/m
-          $1
-          # Character types (8.1 formatting)
-        when /\AE'(.*)'::(?:character varying|bpchar|text)\z/m
-          $1.gsub(/\\(\d\d\d)/) { $1.oct.chr }
-          # Binary data types
-        when /\A'(.*)'::bytea\z/m
-          $1
-          # Date/time types
-        when /\A'(.+)'::(?:time(?:stamp)? with(?:out)? time zone|date)\z/
-          $1
-        when /\A'(.*)'::interval\z/
-          $1
-          # Boolean type
-        when 'true'
-          true
-        when 'false'
-          false
-          # Geometric types
-        when /\A'(.*)'::(?:point|line|lseg|box|"?path"?|polygon|circle)\z/
-          $1
-          # Network address types
-        when /\A'(.*)'::(?:cidr|inet|macaddr)\z/
-          $1
-          # Bit string types
-        when /\AB'(.*)'::"?bit(?: varying)?"?\z/
-          $1
-          # XML type
-        when /\A'(.*)'::xml\z/m
-          $1
-          # Arrays
-        when /\A'(.*)'::"?\D+"?\[\]\z/
-          $1
-          # Object identifier types
-        when /\A-?\d+\z/
-          $1
-        else
-          # Anything else is blank, some user type, or some function
-          # and we can't know the value of that, so return nil.
-          nil
-        end
-      end
-
+      
       def extract_limit(sql_type)
         case sql_type
-        when /^bigint/i then 8
-        when /^smallint/i then 2
+        when /^bigint/i; 8
+        when /^smallint/i; 2
+        when /^timestamp/i; nil
         else super
         end
       end
-
+      
       # Extracts the scale from PostgreSQL-specific data types.
       def extract_scale(sql_type)
         # Money type has a fixed scale of 2.
@@ -147,11 +179,13 @@ module ArJdbc
       def extract_precision(sql_type)
         if sql_type == 'money'
           self.class.money_precision
+        elsif sql_type =~ /timestamp/i
+          $1.to_i if sql_type =~ /\((\d+)\)/
         else
           super
         end
       end
-
+      
       # Maps PostgreSQL-specific data types to logical Rails types.
       def simplified_type(field_type)
         case field_type
@@ -189,55 +223,161 @@ module ArJdbc
           super
         end
       end
-    end
-
-    # constants taken from postgresql_adapter in rails project
-    ADAPTER_NAME = 'PostgreSQL'
-
-    def adapter_name #:nodoc:
-      ADAPTER_NAME
-    end
-
-    def self.arel2_visitors(config)
-      {
-        'postgresql' => ::Arel::Visitors::PostgreSQL,
-        'jdbcpostgresql' => ::Arel::Visitors::PostgreSQL,
-        'pg' => ::Arel::Visitors::PostgreSQL
-      }
-    end
-
-    def postgresql_version
-      @postgresql_version ||=
-        begin
-          value = select_value('SELECT version()')
-          if value =~ /PostgreSQL (\d+)\.(\d+)\.(\d+)/
-            ($1.to_i * 10000) + ($2.to_i * 100) + $3.to_i
-          else
-            0
-          end
+      
+      def simplified_type(field_type) # :nodoc:
+        case field_type
+        # Numeric and monetary types
+        when /^(?:real|double precision)$/ then :float
+        # Monetary types
+        when 'money' then :decimal
+        when 'hstore' then :hstore
+        when 'ltree' then :ltree
+        # Network address types
+        when 'inet' then :inet
+        when 'cidr' then :cidr
+        when 'macaddr' then :macaddr
+        # Character types
+        when /^(?:character varying|bpchar)(?:\(\d+\))?$/ then :string
+        # Binary data types
+        when 'bytea' then :binary
+        # Date/time types
+        when /^timestamp with(?:out)? time zone$/ then :datetime
+        when /^interval(?:|\(\d+\))$/ then :string
+        # Geometric types
+        when /^(?:point|line|lseg|box|"?path"?|polygon|circle)$/ then :string
+        # Bit strings
+        when /^bit(?: varying)?(?:\(\d+\))?$/ then :string
+        # XML type
+        when 'xml' then :xml
+        # tsvector type
+        when 'tsvector' then :tsvector
+        # Arrays
+        when /^\D+\[\]$/ then :string
+        # Object identifier types
+        when 'oid' then :integer
+        # UUID type
+        when 'uuid' then :uuid
+        # JSON type
+        when 'json' then :json
+        # Small and big integer types
+        when /^(?:small|big)int$/ then :integer
+        when /(num|date|tstz|ts|int4|int8)range$/
+          field_type.to_sym
+        # Pass through all types that are not specific to PostgreSQL.
+        else
+          super
         end
+      end if AR4_COMPAT
+      
+    end # Column
+
+    # Maps logical Rails types to PostgreSQL-specific data types.
+    def type_to_sql(type, limit = nil, precision = nil, scale = nil)
+      case type.to_sym
+      when :'binary'
+        # PostgreSQL doesn't support limits on binary (bytea) columns.
+        # The hard limit is 1Gb, because of a 32-bit size field, and TOAST.
+        case limit
+        when nil, 0..0x3fffffff; super(type, nil, nil, nil)
+        else raise(ActiveRecordError, "No binary type has byte size #{limit}.")
+        end
+      when :'text'
+        # PostgreSQL doesn't support limits on text columns.
+        # The hard limit is 1Gb, according to section 8.3 in the manual.
+        case limit
+        when nil, 0..0x3fffffff; super(type, nil, nil, nil)
+        else raise(ActiveRecordError, "The limit on text can be at most 1GB - 1byte.")
+        end
+      when :'integer'
+        return 'integer' unless limit
+
+        case limit
+          when 1, 2; 'smallint'
+          when 3, 4; 'integer'
+          when 5..8; 'bigint'
+          else raise(ActiveRecordError, "No integer type has byte size #{limit}. Use a numeric with precision 0 instead.")
+        end
+      when :'datetime'
+        return super unless precision
+
+        case precision
+          when 0..6; "timestamp(#{precision})"
+          else raise(ActiveRecordError, "No timestamp type has precision of #{precision}. The allowed range of precision is from 0 to 6")
+        end
+      else
+        super
+      end
     end
 
+    def type_cast(value, column)
+      return super unless column
+
+      case value
+      when String
+        return super unless 'bytea' == column.sql_type
+        value # { :value => value, :format => 1 }
+      when Hash
+        return super unless 'hstore' == column.sql_type
+        column_class = ::ActiveRecord::ConnectionAdapters::PostgreSQLColumn
+        column_class.hstore_to_string(value)
+      when IPAddr
+        return super unless ['inet','cidr'].includes? column.sql_type
+        column_class = ::ActiveRecord::ConnectionAdapters::PostgreSQLColumn
+        column_class.cidr_to_string(value)
+      else
+        super
+      end
+    end if AR4_COMPAT
+    
     NATIVE_DATABASE_TYPES = {
       :primary_key => "serial primary key",
-      :string      => { :name => "character varying", :limit => 255 },
-      :text        => { :name => "text" },
-      :integer     => { :name => "integer" },
-      :float       => { :name => "float" },
-      :decimal     => { :name => "decimal" },
-      :datetime    => { :name => "timestamp" },
-      :timestamp   => { :name => "timestamp" },
-      :time        => { :name => "time" },
-      :date        => { :name => "date" },
-      :binary      => { :name => "bytea" },
-      :boolean     => { :name => "boolean" },
-      :xml         => { :name => "xml" },
-      :tsvector    => { :name => "tsvector" }
+      :string => { :name => "character varying", :limit => 255 },
+      :text => { :name => "text" },
+      :integer => { :name => "integer" },
+      :float => { :name => "float" },
+      :decimal => { :name => "decimal" },
+      :datetime => { :name => "timestamp" },
+      :timestamp => { :name => "timestamp" },
+      :time => { :name => "time" },
+      :date => { :name => "date" },
+      :binary => { :name => "bytea" },
+      :boolean => { :name => "boolean" },
+      :xml => { :name => "xml" },
     }
+    
+    NATIVE_DATABASE_TYPES.update({
+      :tsvector => { :name => "tsvector" },
+      :hstore => { :name => "hstore" },
+      :inet => { :name => "inet" },
+      :cidr => { :name => "cidr" },
+      :macaddr => { :name => "macaddr" },
+      :uuid => { :name => "uuid" },
+      :json => { :name => "json" },
+      :ltree => { :name => "ltree" },
+      # ranges :
+      :daterange => { :name => "daterange" },
+      :numrange => { :name => "numrange" },
+      :tsrange => { :name => "tsrange" },
+      :tstzrange => { :name => "tstzrange" },
+      :int4range => { :name => "int4range" },
+      :int8range => { :name => "int8range" },
+    }) if AR4_COMPAT
     
     def native_database_types
       NATIVE_DATABASE_TYPES
     end
+    
+    # Adds `:array` option to the default set provided by the AbstractAdapter
+    def prepare_column_options(column, types)
+      spec = super
+      spec[:array] = 'true' if column.respond_to?(:array) && column.array
+      spec
+    end if ActiveRecord::VERSION::MAJOR > 3
+
+    # Adds `:array` as a valid migration key
+    def migration_keys
+      super + [:array]
+    end if ActiveRecord::VERSION::MAJOR > 3
     
     # Enable standard-conforming strings if available.
     def set_standard_conforming_strings # native adapter API compatibility
@@ -303,9 +443,18 @@ module ArJdbc
       true
     end
 
+    def supports_transaction_isolation? # :nodoc:
+      true
+    end
+    
     def supports_index_sort_order? # :nodoc:
       true
     end
+    
+    # Range datatypes weren't introduced until PostgreSQL 9.2
+    def supports_ranges? # :nodoc:
+      postgresql_version >= 90200
+    end if AR4_COMPAT
     
     def supports_savepoints? # :nodoc:
       true
@@ -326,11 +475,48 @@ module ArJdbc
     def release_savepoint
       execute("RELEASE SAVEPOINT #{current_savepoint_name}")
     end
+    
+    def supports_extensions? # :nodoc:
+      postgresql_version >= 90200
+    end if AR4_COMPAT
+    
+    def enable_extension(name)
+      exec_query("CREATE EXTENSION IF NOT EXISTS \"#{name}\"") #.tap { reload_type_map }
+    end
 
+    def disable_extension(name)
+      exec_query("DROP EXTENSION IF EXISTS \"#{name}\" CASCADE") #.tap { reload_type_map }
+    end
+
+    def extension_enabled?(name)
+      if supports_extensions?
+        rows = query("SELECT EXISTS(SELECT * FROM pg_available_extensions WHERE name = '#{name}' AND installed_version IS NOT NULL)", 'SCHEMA')
+        rows.first.first
+      end
+    end
+
+    def extensions
+      if supports_extensions?
+        rows = query "SELECT extname from pg_extension", "SCHEMA"
+        rows.map { |row| row.first }
+      else
+        super
+      end
+    end
+    
+    # Set the authorized user for this session
+    def session_auth=(user)
+      exec_query "SET SESSION AUTHORIZATION #{user}"
+    end
+    
     # Returns the configured supported identifier length supported by PostgreSQL,
     # or report the default of 63 on PostgreSQL 7.x.
     def table_alias_length
-      @table_alias_length ||= (postgresql_version >= 80000 ? select_one('SHOW max_identifier_length')['max_identifier_length'].to_i : 63)
+      @table_alias_length ||= (
+        postgresql_version >= 80000 ? 
+          select_one('SHOW max_identifier_length')['max_identifier_length'].to_i : 
+            63
+      )
     end
 
     def default_sequence_name(table_name, pk = nil)
@@ -456,77 +642,71 @@ module ArJdbc
       pk_and_sequence = pk_and_sequence_for(table)
       pk_and_sequence && pk_and_sequence.first
     end
-
-    def pg_columns(table_name, name=nil)
-      column_definitions(table_name).map do |row|
-        ::ActiveRecord::ConnectionAdapters::PostgreSQLColumn.new(
-          row["column_name"], row["column_default"], row["column_type"],
-          row["column_not_null"] == "f")
-      end
+    
+    # Returns an array of schema names.
+    def schema_names
+      select_values(
+        "SELECT nspname FROM pg_namespace" <<
+        " WHERE nspname !~ '^pg_.*' AND nspname NOT IN ('information_schema')" <<
+        " ORDER by nspname;", 
+      'SCHEMA')
     end
-
+        
+    # Returns true if schema exists.
+    def schema_exists?(name)
+      select_value("SELECT COUNT(*) FROM pg_namespace WHERE nspname = '#{name}'", 'SCHEMA').to_i > 0
+    end
+    
+    # Returns the current schema name.
+    def current_schema
+      select_value('SELECT current_schema', 'SCHEMA')
+    end
+    
     # current database name
     def current_database
-      exec_query("select current_database() as database").
-        first["database"]
+      select_value('SELECT current_database()', 'SCHEMA')
     end
 
-    # current database encoding
+    # Returns the current database encoding format.
     def encoding
-      exec_query(<<-end_sql).first["encoding"]
-        SELECT pg_encoding_to_char(pg_database.encoding) as encoding
-        FROM pg_database
-        WHERE pg_database.datname LIKE '#{current_database}'
-      end_sql
+      select_value(
+        "SELECT pg_encoding_to_char(pg_database.encoding)" << 
+        " FROM pg_database" << 
+        " WHERE pg_database.datname LIKE '#{current_database}'", 
+      'SCHEMA')
     end
 
-    # Sets the maximum number columns postgres has, default 32
-    def multi_column_index_limit=(limit)
-      @multi_column_index_limit = limit
+    # Returns the current database collation.
+    def collation
+      select_value(
+        "SELECT pg_database.datcollate" << 
+        " FROM pg_database" << 
+        " WHERE pg_database.datname LIKE '#{current_database}'",
+      'SCHEMA')
+    end
+    
+    # Returns the current database ctype.
+    def ctype
+      select_value(
+        "SELECT pg_database.datctype FROM pg_database WHERE pg_database.datname LIKE '#{current_database}'",
+      'SCHEMA')
     end
 
-    # Gets the maximum number columns postgres has, default 32
-    def multi_column_index_limit
-      defined?(@multi_column_index_limit) && @multi_column_index_limit || 32
+    # Returns the active schema search path.
+    def schema_search_path
+      @schema_search_path ||= exec_query('SHOW search_path', 'SCHEMA')[0]['search_path']
     end
-
-    # Based on postgresql_adapter.rb
-    def indexes(table_name, name = nil)
-      schemas = schema_search_path.split(/,/).map { |p| quote(p) }.join(',')
-      result = select_rows(<<-SQL, name)
-        SELECT i.relname, d.indisunique, a.attname, a.attnum, d.indkey
-          FROM pg_class t, pg_class i, pg_index d, pg_attribute a,
-          generate_series(0,#{multi_column_index_limit - 1}) AS s(i)
-         WHERE i.relkind = 'i'
-           AND d.indexrelid = i.oid
-           AND d.indisprimary = 'f'
-           AND t.oid = d.indrelid
-           AND t.relname = '#{table_name}'
-           AND i.relnamespace IN (SELECT oid FROM pg_namespace WHERE nspname = ANY (current_schemas(false)) )
-           AND a.attrelid = t.oid
-           AND d.indkey[s.i]=a.attnum
-        ORDER BY i.relname
-      SQL
-
-      current_index = nil
-      indexes = []
-
-      insertion_order = []
-      index_order = nil
-
-      result.each do |row|
-        if current_index != row[0]
-
-          (index_order = row[4].split(' ')).each_with_index{ |v, i| index_order[i] = v.to_i }
-          indexes << ::ActiveRecord::ConnectionAdapters::IndexDefinition.new(table_name, row[0], row[1] == "t", [])
-          current_index = row[0]
-        end
-        insertion_order = row[3]
-        ind = index_order.index(insertion_order)
-        indexes.last.columns[ind] = row[2]
+    
+    # Sets the schema search path to a string of comma-separated schema names.
+    # Names beginning with $ have to be quoted (e.g. $user => '$user').
+    # See: http://www.postgresql.org/docs/current/static/ddl-schemas.html
+    #
+    # This should be not be called manually but set in database.yml.
+    def schema_search_path=(schema_csv)
+      if schema_csv
+        execute "SET search_path TO #{schema_csv}"
+        @schema_search_path = schema_csv
       end
-
-      indexes
     end
 
     # take id from result of insert query
@@ -546,41 +726,62 @@ module ArJdbc
       drop_database(name)
       create_database(name, options)
     end
-
+    
+    # Create a new PostgreSQL database. Options include <tt>:owner</tt>, <tt>:template</tt>,
+    # <tt>:encoding</tt>, <tt>:collation</tt>, <tt>:ctype</tt>,
+    # <tt>:tablespace</tt>, and <tt>:connection_limit</tt> (note that MySQL uses
+    # <tt>:charset</tt> while PostgreSQL uses <tt>:encoding</tt>).
+    #
+    # Example:
+    # create_database config[:database], config
+    # create_database 'foo_development', encoding: 'unicode'
     def create_database(name, options = {})
-      options = options.with_indifferent_access
-      create_query = "CREATE DATABASE \"#{name}\" ENCODING='#{options[:encoding] || 'utf8'}'"
-      create_query += options.symbolize_keys.sum('') do |key, value|
+      options = { :encoding => 'utf8' }.merge!(options.symbolize_keys)
+
+      option_string = options.sum do |key, value|
         case key
-          when :owner
-            " OWNER = \"#{value}\""
-          when :template
-            " TEMPLATE = \"#{value}\""
-          when :tablespace
-            " TABLESPACE = \"#{value}\""
-          when :connection_limit
-            " CONNECTION LIMIT = #{value}"
-          else
-            ""
+        when :owner
+          " OWNER = \"#{value}\""
+        when :template
+          " TEMPLATE = \"#{value}\""
+        when :encoding
+          " ENCODING = '#{value}'"
+        when :collation
+          " LC_COLLATE = '#{value}'"
+        when :ctype
+          " LC_CTYPE = '#{value}'"
+        when :tablespace
+          " TABLESPACE = \"#{value}\""
+        when :connection_limit
+          " CONNECTION LIMIT = #{value}"
+        else
+          ""
         end
       end
-      execute create_query
+
+      execute "CREATE DATABASE #{quote_table_name(name)}#{option_string}"
     end
 
     def drop_database(name)
-      execute "DROP DATABASE IF EXISTS \"#{name}\""
+      execute "DROP DATABASE IF EXISTS #{quote_table_name(name)}"
     end
 
-    def create_schema(schema_name, pg_username)
-      execute("CREATE SCHEMA \"#{schema_name}\" AUTHORIZATION \"#{pg_username}\"")
+    # Creates a schema for the given schema name.
+    def create_schema(schema_name, pg_username = nil)
+      if pg_username.nil? # AR 4.0 compatibility - accepts only single argument
+        execute "CREATE SCHEMA #{schema_name}"
+      else
+        execute("CREATE SCHEMA \"#{schema_name}\" AUTHORIZATION \"#{pg_username}\"")
+      end
     end
 
-    def drop_schema(schema_name)
-      execute("DROP SCHEMA \"#{schema_name}\"")
+    # Drops the schema for the given schema name.
+    def drop_schema schema_name
+      execute "DROP SCHEMA #{schema_name} CASCADE"
     end
 
     def all_schemas
-      select('select nspname from pg_namespace').map {|r| r["nspname"] }
+      select('SELECT nspname FROM pg_namespace').map { |row| row["nspname"] }
     end
 
     def structure_dump
@@ -610,28 +811,6 @@ module ArJdbc
       end
     end
 
-    # Returns the active schema search path.
-    def schema_search_path
-      @schema_search_path ||= exec_query('SHOW search_path', 'SCHEMA')[0]['search_path']
-    end
-    
-    # Sets the schema search path to a string of comma-separated schema names.
-    # Names beginning with $ have to be quoted (e.g. $user => '$user').
-    # See: http://www.postgresql.org/docs/current/static/ddl-schemas.html
-    #
-    # This should be not be called manually but set in database.yml.
-    def schema_search_path=(schema_csv)
-      if schema_csv
-        execute "SET search_path TO #{schema_csv}"
-        @schema_search_path = schema_csv
-      end
-    end
-
-    # Returns the current schema name.
-    def current_schema
-      exec_query('SELECT current_schema', 'SCHEMA')[0]["current_schema"]
-    end
-
     # Returns the current client message level.
     def client_min_messages
       exec_query('SHOW client_min_messages', 'SCHEMA')[0]['client_min_messages']
@@ -642,6 +821,16 @@ module ArJdbc
       execute("SET client_min_messages TO '#{level}'", 'SCHEMA')
     end
 
+    # Gets the maximum number columns postgres has, default 32
+    def multi_column_index_limit
+      defined?(@multi_column_index_limit) && @multi_column_index_limit || 32
+    end
+    
+    # Sets the maximum number columns postgres has, default 32
+    def multi_column_index_limit=(limit)
+      @multi_column_index_limit = limit
+    end
+    
     # SELECT DISTINCT clause for a given set of columns and a given ORDER BY clause.
     #
     # PostgreSQL requires the ORDER BY columns in the select list for distinct queries, and
@@ -707,6 +896,18 @@ module ArJdbc
         else
           super
         end
+      when Hash
+        if column.sql_type == 'hstore' && AR4_COMPAT
+          column_class = ::ActiveRecord::ConnectionAdapters::PostgreSQLColumn
+          super(column_class.hstore_to_string(value), column)
+        else super
+        end
+      when IPAddr
+        if (column.sql_type == 'inet' || column.sql_type == 'cidr') && AR4_COMPAT
+          column_class = ::ActiveRecord::ConnectionAdapters::PostgreSQLColumn
+          super(column_class.cidr_to_string(value), column)
+        else super
+        end
       else
         super
       end
@@ -756,7 +957,7 @@ module ArJdbc
         super
       end
     end
-
+    
     def disable_referential_integrity # :nodoc:
       execute(tables.collect { |name| "ALTER TABLE #{quote_table_name(name)} DISABLE TRIGGER ALL" }.join(";"))
       yield
@@ -825,7 +1026,7 @@ module ArJdbc
       execute("ALTER TABLE #{quote_table_name(table_name)} ALTER #{quote_column_name(column_name)} #{null ? 'DROP' : 'SET'} NOT NULL")
     end
 
-    def rename_column(table_name, column_name, new_column_name) #:nodoc:
+    def rename_column(table_name, column_name, new_column_name) # :nodoc:
       execute "ALTER TABLE #{quote_table_name(table_name)} RENAME COLUMN #{quote_column_name(column_name)} TO #{quote_column_name(new_column_name)}"
       rename_column_indexes(table_name, column_name, new_column_name) if respond_to?(:rename_column_indexes) # AR-4.0 SchemaStatements
     end
@@ -838,26 +1039,45 @@ module ArJdbc
       63
     end
 
-    # Maps logical Rails types to PostgreSQL-specific data types.
-    def type_to_sql(type, limit = nil, precision = nil, scale = nil)
-      case type.to_sym
-      when :integer
-        return 'integer' unless limit
-        case limit.to_i
-          when 1, 2; 'smallint'
-          when 3, 4; 'integer'
-          when 5..8; 'bigint'
-          else raise(ActiveRecordError, "No integer type has byte size #{limit}. Use a numeric with precision 0 instead.")
-        end
-      when :binary
-        super(type, nil, nil, nil)
-      else
-        super
+    # Returns the list of all column definitions for a table.
+    def columns(table_name, name = nil)
+      klass = ::ActiveRecord::ConnectionAdapters::PostgreSQLColumn
+      column_definitions(table_name).map do |row|
+        # name, type, default, notnull, oid, fmod
+        name = row[0]; type = row[1]; default = row[2]
+        notnull = row[3]; oid = row[4]; fmod = row[5]
+        # oid = OID::TYPE_MAP.fetch(oid.to_i, fmod.to_i) { OID::Identity.new }
+        notnull = notnull == 't' if notnull.is_a?(String) # JDBC gets true/false
+        # for ID columns we get a bit of non-sense default :
+        # e.g. "nextval('mixed_cases_id_seq'::regclass"
+        default = nil if default =~ /^nextval\(.*?\:\:regclass\)$/
+        klass.new(name, default, oid, type, ! notnull)
       end
     end
     
+    # Returns the list of a table's column names, data types, and default values.
+    #
+    # If the table name is not prefixed with a schema, the database will
+    # take the first match from the schema search path.
+    #
+    # Query implementation notes:
+    #  - format_type includes the column size constraint, e.g. varchar(50)
+    #  - ::regclass is a function that gives the id for a table name
+    def column_definitions(table_name) #:nodoc:
+      select_rows(<<-end_sql, 'SCHEMA')
+        SELECT a.attname, format_type(a.atttypid, a.atttypmod),
+               pg_get_expr(d.adbin, d.adrelid), a.attnotnull, a.atttypid, a.atttypmod
+          FROM pg_attribute a LEFT JOIN pg_attrdef d
+            ON a.attrelid = d.adrelid AND a.attnum = d.adnum
+         WHERE a.attrelid = '#{quote_table_name(table_name)}'::regclass
+           AND a.attnum > 0 AND NOT a.attisdropped
+         ORDER BY a.attnum
+      end_sql
+    end
+    private :column_definitions
+    
     def tables(name = nil)
-      exec_query(<<-SQL, 'SCHEMA').map { |row| row["tablename"] }
+      select_values(<<-SQL, 'SCHEMA')
           SELECT tablename
           FROM pg_tables
           WHERE schemaname = ANY (current_schemas(false))
@@ -866,11 +1086,11 @@ module ArJdbc
 
     def table_exists?(name)
       schema, table = extract_schema_and_table(name.to_s)
-      return false unless table # Abstract classes is having nil table name
+      return false unless table # abstract classes - nil table name
 
-      binds = [[nil, table.gsub(/(^"|"$)/,'')]]
-      binds << [nil, schema] if schema
-
+      binds = [[ nil, table.gsub(/(^"|"$)/,'') ]]
+      binds << [ nil, schema ] if schema
+      
       exec_query(<<-SQL, 'SCHEMA', binds).first["table_count"] > 0
           SELECT COUNT(*) as table_count
           FROM pg_tables
@@ -878,7 +1098,63 @@ module ArJdbc
           AND schemaname = #{schema ? "?" : "ANY (current_schemas(false))"}
       SQL
     end
+    
+    IndexDefinition = ::ActiveRecord::ConnectionAdapters::IndexDefinition # :nodoc:
+    
+    # Returns an array of indexes for the given table.
+    def indexes(table_name, name = nil)
+      # NOTE: maybe it's better to leave things of to the JDBC API ?!
+      result = select_rows(<<-SQL, 'SCHEMA')
+        SELECT distinct i.relname, d.indisunique, d.indkey, pg_get_indexdef(d.indexrelid), t.oid
+        FROM pg_class t
+        INNER JOIN pg_index d ON t.oid = d.indrelid
+        INNER JOIN pg_class i ON d.indexrelid = i.oid
+        WHERE i.relkind = 'i'
+        AND d.indisprimary = 'f'
+        AND t.relname = '#{table_name}'
+        AND i.relnamespace IN (SELECT oid FROM pg_namespace WHERE nspname = ANY (current_schemas(false)) )
+        ORDER BY i.relname
+      SQL
+      
+      result.map do |row|
+        index_name = row[0]
+        unique = row[1].is_a?(String) ? row[1] == 't' : row[1] # JDBC gets us a boolean
+        indkey = row[2].is_a?(Java::OrgPostgresqlUtil::PGobject) ? row[2].value : row[2]
+        indkey = indkey.split(" ")
+        inddef = row[3]
+        oid = row[4]
 
+        columns = select_rows(<<-SQL, "SCHEMA")
+          SELECT a.attnum, a.attname
+          FROM pg_attribute a
+          WHERE a.attrelid = #{oid}
+          AND a.attnum IN (#{indkey.join(",")})
+        SQL
+        
+        columns = Hash[ columns.each { |column| column[0] = column[0].to_s } ]
+        column_names = columns.values_at(*indkey).compact
+
+        # add info on sort order for columns (only desc order is explicitly specified, asc is the default)
+        desc_order_columns = inddef.scan(/(\w+) DESC/).flatten
+        orders = desc_order_columns.any? ? Hash[desc_order_columns.map {|order_column| [order_column, :desc]}] : {}
+        
+        column_names.empty? ? nil : IndexDefinition.new(table_name, index_name, unique, column_names, [], orders)
+      end.compact
+    end
+
+    private
+    
+    def translate_exception(exception, message)
+      case exception.message
+      when /duplicate key value violates unique constraint/
+        ::ActiveRecord::RecordNotUnique.new(message, exception)
+      when /violates foreign key constraint/
+        ::ActiveRecord::InvalidForeignKey.new(message, exception)
+      else
+        super
+      end
+    end
+    
     # Extracts the table and schema name from +name+
     def extract_schema_and_table(name)
       schema, table = name.split('.', 2)
@@ -895,53 +1171,12 @@ module ArJdbc
       [schema, table]
     end
 
-    private
-    def translate_exception(exception, message)
-      case exception.message
-      when /duplicate key value violates unique constraint/
-        ::ActiveRecord::RecordNotUnique.new(message, exception)
-      when /violates foreign key constraint/
-        ::ActiveRecord::InvalidForeignKey.new(message, exception)
-      else
-        super
-      end
-    end
-
-    # Returns the list of a table's column names, data types, and default values.
-    #
-    # The underlying query is roughly:
-    #  SELECT column.name, column.type, default.value
-    #    FROM column LEFT JOIN default
-    #      ON column.table_id = default.table_id
-    #     AND column.num = default.column_num
-    #   WHERE column.table_id = get_table_id('table_name')
-    #     AND column.num > 0
-    #     AND NOT column.is_dropped
-    #   ORDER BY column.num
-    #
-    # If the table name is not prefixed with a schema, the database will
-    # take the first match from the schema search path.
-    #
-    # Query implementation notes:
-    #  - format_type includes the column size constraint, e.g. varchar(50)
-    #  - ::regclass is a function that gives the id for a table name
-    def column_definitions(table_name) #:nodoc:
-      exec_query(<<-end_sql, 'SCHEMA')
-            SELECT a.attname as column_name, format_type(a.atttypid, a.atttypmod) as column_type, d.adsrc as column_default, a.attnotnull as column_not_null
-              FROM pg_attribute a LEFT JOIN pg_attrdef d
-                ON a.attrelid = d.adrelid AND a.attnum = d.adnum
-             WHERE a.attrelid = '#{quote_table_name(table_name)}'::regclass
-               AND a.attnum > 0 AND NOT a.attisdropped
-             ORDER BY a.attnum
-          end_sql
-    end
-
     def extract_pg_identifier_from_name(name)
-      match_data = name[0,1] == '"' ? name.match(/\"([^\"]+)\"/) : name.match(/([^\.]+)/)
+      match_data = name[0, 1] == '"' ? name.match(/\"([^\"]+)\"/) : name.match(/([^\.]+)/)
 
       if match_data
         rest = name[match_data[0].length..-1]
-        rest = rest[1..-1] if rest[0,1] == "."
+        rest = rest[1..-1] if rest[0, 1] == "."
         [match_data[1], (rest.length > 0 ? rest : nil)]
       end
     end
@@ -956,35 +1191,38 @@ module ArJdbc
 end
 
 module ActiveRecord::ConnectionAdapters
-  remove_const(:PostgreSQLAdapter) if const_defined?(:PostgreSQLAdapter)
+  
+  PostgreSQLJdbcConnection.class_eval do
+    
+    # alias :java_native_database_types :set_native_database_types
+    
+    # @override to prevent connection from loading hash from JDBC meta-data, 
+    # which can be expensive. We can do this since {#native_database_types} is 
+    # defined in the adapter to use a hash not relying on driver's meta-data
+    def set_native_database_types; @native_types = {}; end
+    
+  end
+  
+  remove_const(:PostgreSQLColumn) if const_defined?(:PostgreSQLColumn)
 
   class PostgreSQLColumn < JdbcColumn
     include ArJdbc::PostgreSQL::Column
-
-    def initialize(name, *args)
-      if Hash === name
-        super
+    
+    def initialize(name, default, oid_type, sql_type = nil, null = true)
+      @oid_type = oid_type
+      if sql_type =~ /\[\]$/
+        @array = true
+        super(name, default, sql_type[0..sql_type.length - 3], null)
       else
-        super(nil, name, *args)
+        @array = false
+        super(name, default, sql_type, null)
       end
     end
-
-    def call_discovered_column_callbacks(*)
-    end
+        
   end
 
-  class PostgresJdbcConnection < JdbcConnection
-    alias :java_native_database_types :set_native_database_types
-
-    # override to prevent connection from loading hash from jdbc
-    # metadata, which can be expensive. We can do this since
-    # native_database_types is defined in the adapter to use a static hash
-    # not relying on the driver's metadata
-    def set_native_database_types
-      @native_types = {}
-    end
-  end
-
+  remove_const(:PostgreSQLAdapter) if const_defined?(:PostgreSQLAdapter)
+  
   class PostgreSQLAdapter < JdbcAdapter
     include ArJdbc::PostgreSQL
     include ArJdbc::PostgreSQL::ExplainSupport
@@ -1001,16 +1239,107 @@ module ActiveRecord::ConnectionAdapters
       @local_tz = execute('SHOW TIME ZONE', 'SCHEMA').first["TimeZone"]
     end
 
-    class TableDefinition < ActiveRecord::ConnectionAdapters::TableDefinition
+    class ColumnDefinition < ActiveRecord::ConnectionAdapters::ColumnDefinition
+      attr_accessor :array
+    end
+
+    module ColumnMethods
       def xml(*args)
         options = args.extract_options!
-        column(args[0], "xml", options)
+        column(args[0], 'xml', options)
       end
 
       def tsvector(*args)
         options = args.extract_options!
-        column(args[0], "tsvector", options)
+        column(args[0], 'tsvector', options)
       end
+
+      def int4range(name, options = {})
+        column(name, 'int4range', options)
+      end
+
+      def int8range(name, options = {})
+        column(name, 'int8range', options)
+      end
+
+      def tsrange(name, options = {})
+        column(name, 'tsrange', options)
+      end
+
+      def tstzrange(name, options = {})
+        column(name, 'tstzrange', options)
+      end
+
+      def numrange(name, options = {})
+        column(name, 'numrange', options)
+      end
+
+      def daterange(name, options = {})
+        column(name, 'daterange', options)
+      end
+
+      def hstore(name, options = {})
+        column(name, 'hstore', options)
+      end
+
+      def ltree(name, options = {})
+        column(name, 'ltree', options)
+      end
+
+      def inet(name, options = {})
+        column(name, 'inet', options)
+      end
+
+      def cidr(name, options = {})
+        column(name, 'cidr', options)
+      end
+
+      def macaddr(name, options = {})
+        column(name, 'macaddr', options)
+      end
+
+      def uuid(name, options = {})
+        column(name, 'uuid', options)
+      end
+
+      def json(name, options = {})
+        column(name, 'json', options)
+      end
+    end
+
+    class TableDefinition < ActiveRecord::ConnectionAdapters::TableDefinition
+      include ColumnMethods
+
+      def column(name, type = nil, options = {})
+        super
+        column = self[name]
+        column.array = options[:array]
+        self
+      end
+
+      private
+
+      if ActiveRecord::VERSION::MAJOR > 3
+        
+        def create_column_definition(base, name, type)
+          ColumnDefinition.new base, name, type
+        end
+        
+      else # no #create_column_definition on 3.2
+        
+        def new_column_definition(base, name, type)
+          definition = ColumnDefinition.new base, name, type
+          @columns << definition
+          @columns_hash[name] = definition
+          definition
+        end
+        
+      end
+      
+    end
+
+    class Table < ActiveRecord::ConnectionAdapters::Table
+      include ColumnMethods
     end
 
     def table_definition
@@ -1022,10 +1351,8 @@ module ActiveRecord::ConnectionAdapters
     end
 
     def jdbc_column_class
-      ActiveRecord::ConnectionAdapters::PostgreSQLColumn
+      ::ActiveRecord::ConnectionAdapters::PostgreSQLColumn
     end
-
-    alias_chained_method :columns, :query_cache, :pg_columns
     
     # some QUOTING caching :
     
