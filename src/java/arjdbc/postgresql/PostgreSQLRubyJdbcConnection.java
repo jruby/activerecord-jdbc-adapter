@@ -30,8 +30,6 @@ import java.sql.DatabaseMetaData;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Types;
-import java.util.Collection;
-import java.util.HashSet;
 import java.util.UUID;
 
 import org.jruby.Ruby;
@@ -39,6 +37,9 @@ import org.jruby.RubyClass;
 import org.jruby.javasupport.JavaUtil;
 import org.jruby.runtime.ObjectAllocator;
 import org.jruby.runtime.builtin.IRubyObject;
+
+import org.postgresql.util.PGInterval;
+import org.postgresql.util.PGobject;
 
 /**
  *
@@ -106,32 +107,21 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
         return super.jdbcToRuby(runtime, column, type, resultSet);
     }
     
-    // TODO this is just a fast-draft for now :
-    private static final Collection<String> PG_TYPES = new HashSet<String>();
-    static {
-        PG_TYPES.add("org.postgresql.util.PGobject");
-        PG_TYPES.add("org.postgresql.util.PGmoney");
-        PG_TYPES.add("org.postgresql.util.PGInterval");
-        PG_TYPES.add("org.postgresql.geometric.PGbox");
-        PG_TYPES.add("org.postgresql.geometric.PGcircle");
-        PG_TYPES.add("org.postgresql.geometric.PGline");
-        PG_TYPES.add("org.postgresql.geometric.PGlseg");
-        PG_TYPES.add("org.postgresql.geometric.PGpath");
-        PG_TYPES.add("org.postgresql.geometric.PGpoint");
-        PG_TYPES.add("org.postgresql.geometric.PGpolygon");
-    }
-    
     @Override
     protected IRubyObject objectToRuby(
         final Ruby runtime, final ResultSet resultSet, final Object object)
         throws SQLException {
         if ( object == null && resultSet.wasNull() ) return runtime.getNil();
         
-        if ( object.getClass() == UUID.class ) {
+        final Class<?> objectClass = object.getClass();
+        if ( objectClass == UUID.class ) {
             return runtime.newString( object.toString() );
         }
-        // NOTE: this should get refactored using PG's JDBC API :
-        if ( PG_TYPES.contains(object.getClass().getName()) ) {
+        
+        if ( objectClass == PGInterval.class ) {
+            return runtime.newString( formatInterval(object) );
+        }
+        if ( object instanceof PGobject ) {
             return runtime.newString( object.toString() );
         }
         
@@ -146,6 +136,54 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
         // schema search path is given.  Default to the 'public' schema instead:
         if ( schema == null ) schema = "public";
         return super.extractTableName(connection, catalog, schema, tableName);
+    }
+    
+    // NOTE: do not use PG classes in the API so that loading is delayed !
+    private String formatInterval(final Object object) {
+        final PGInterval interval = (PGInterval) object;
+        if ( useRawIntervalType() ) return interval.getValue();
+        
+        final StringBuilder str = new StringBuilder(32);
+        
+        final int years = interval.getYears();
+        if ( years != 0 ) str.append(years).append(" years ");
+        final int months = interval.getMonths();
+        if ( months != 0 ) str.append(months).append(" months ");
+        final int days = interval.getDays();
+        if ( days != 0 ) str.append(days).append(" days ");
+        final int hours = interval.getHours();
+        final int mins = interval.getMinutes();
+        final int secs = (int) interval.getSeconds();
+        if ( hours != 0 || mins != 0 || secs != 0 ) { // xx:yy:zz if not all 00
+            if ( hours < 10 ) str.append('0');
+            str.append(hours).append(':');
+            if ( mins < 10 ) str.append('0');
+            str.append(mins).append(':');
+            if ( secs < 10 ) str.append('0');
+            str.append(secs);
+        }
+        else {
+            if ( str.length() > 1 ) str.deleteCharAt( str.length() - 1 ); // " " at the end
+        }
+        
+        return str.toString();
+    }
+    
+    // whether to use "raw" interval values off by default - due native adapter compatibilty :
+    // RAW values :
+    // - 2 years 0 mons 0 days 0 hours 3 mins 0.00 secs
+    // - -1 years 0 mons -2 days 0 hours 0 mins 0.00 secs
+    // Rails style :
+    // - 2 years 00:03:00
+    // - -1 years -2 days
+    private static boolean rawIntervalType = Boolean.getBoolean("arjdbc.postgresql.iterval.raw");
+
+    public static boolean useRawIntervalType() {
+        return rawIntervalType;
+    }
+
+    public static void setRawIntervalType(boolean rawInterval) {
+        PostgreSQLRubyJdbcConnection.rawIntervalType = rawInterval;
     }
     
 }
