@@ -1128,7 +1128,7 @@ public class RubyJdbcConnection extends RubyObject {
         return RubyString.newUnicodeString(runtime, string.toString());
     }
 
-    private IRubyObject objectToRuby(
+    protected IRubyObject objectToRuby(
         final Ruby runtime, final ResultSet resultSet, final Object object)
         throws SQLException {
         if ( object == null && resultSet.wasNull() ) return runtime.getNil();
@@ -1136,7 +1136,7 @@ public class RubyJdbcConnection extends RubyObject {
         return JavaUtil.convertJavaToRuby(runtime, object);
     }
     
-    private IRubyObject arrayToRuby(
+    protected IRubyObject arrayToRuby(
         final Ruby runtime, final ResultSet resultSet, final Array array)
         throws SQLException {
         if ( array == null && resultSet.wasNull() ) return runtime.getNil();
