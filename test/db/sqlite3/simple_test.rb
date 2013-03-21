@@ -12,7 +12,7 @@ class SQLite3SimpleTest < Test::Unit::TestCase
   include XmlColumnTests
   include ExplainSupportTestMethods if ar_version("3.1")
   include CustomSelectTestMethods
-
+  
   def test_recreate_database
     assert connection.tables.include?(Entry.table_name)
     db = connection.database_name
@@ -22,6 +22,9 @@ class SQLite3SimpleTest < Test::Unit::TestCase
   end
 
   def test_execute_insert
+    user = User.create! :login => 'user1'
+    Entry.create! :title => 'E1', :user_id => user.id
+    
     assert_equal 1, Entry.count
     id = connection.execute "INSERT INTO entries (title, content) VALUES ('Execute Insert', 'This now works with SQLite3')"
     assert_equal Entry.last.id, id
@@ -29,6 +32,9 @@ class SQLite3SimpleTest < Test::Unit::TestCase
   end
 
   def test_execute_update
+    user = User.create! :login => 'user1'
+    Entry.create! :title => 'E1', :user_id => user.id
+    
     affected_rows = connection.execute "UPDATE entries SET title = 'Execute Update' WHERE id = #{Entry.first.id}"
     assert_equal 1, affected_rows
     assert_equal 'Execute Update', Entry.first.title
@@ -86,19 +92,19 @@ class SQLite3SimpleTest < Test::Unit::TestCase
     content = "Hello from JRuby on Rails!"
     rating = 205.76
     user = User.create! :login => "something"
-    Entry.create! :title => title, :content => content, :rating => rating, :user => user
+    entry = Entry.create! :title => title, :content => content, :rating => rating, :user => user
     
-    entry = Entry.first
-    assert_equal title, entry.title
-    assert_equal content, entry.content
-    assert_equal rating, entry.rating
+    entry.reload
+    #assert_equal title, entry.title
+    #assert_equal content, entry.content
+    #assert_equal rating, entry.rating
 
     ActiveRecord::Schema.define do
       rename_column "entries", "title", "name"
       rename_column "entries", "rating", "popularity"
     end
-
-    entry = Entry.first
+    
+    entry = Entry.find(entry.id)
     assert_equal title, entry.name
     assert_equal content, entry.content
     assert_equal rating, entry.popularity
