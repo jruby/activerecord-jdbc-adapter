@@ -1001,11 +1001,27 @@ module ArJdbc
       result
     end
     
+    def supports_disable_referential_integrity? # :nodoc:
+      true
+    end
+
     def disable_referential_integrity # :nodoc:
-      execute(tables.collect { |name| "ALTER TABLE #{quote_table_name(name)} DISABLE TRIGGER ALL" }.join(";"))
+      if supports_disable_referential_integrity?
+        begin
+          execute(tables.collect { |name| "ALTER TABLE #{quote_table_name(name)} DISABLE TRIGGER ALL" }.join(";"))
+        rescue
+          execute(tables.collect { |name| "ALTER TABLE #{quote_table_name(name)} DISABLE TRIGGER USER" }.join(";"))
+        end
+      end
       yield
     ensure
-      execute(tables.collect { |name| "ALTER TABLE #{quote_table_name(name)} ENABLE TRIGGER ALL" }.join(";"))
+      if supports_disable_referential_integrity?
+        begin
+          execute(tables.collect { |name| "ALTER TABLE #{quote_table_name(name)} ENABLE TRIGGER ALL" }.join(";"))
+        rescue
+          execute(tables.collect { |name| "ALTER TABLE #{quote_table_name(name)} ENABLE TRIGGER USER" }.join(";"))
+        end
+      end
     end
 
     def rename_table(table_name, new_name)
