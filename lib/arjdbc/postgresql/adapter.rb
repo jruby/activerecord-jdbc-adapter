@@ -309,19 +309,37 @@ module ArJdbc
       end
     end
 
-    def type_cast(value, column)
+    def type_cast(value, column, array_member = false)
       return super unless column
 
       case value
       when String
-        return super unless 'bytea' == column.sql_type
+        return super(value, column) unless 'bytea' == column.sql_type
         value # { :value => value, :format => 1 }
-      when Hash
-        return super unless 'hstore' == column.sql_type
+      when Array
+        return super(value, column) unless column.array
         column_class = ::ActiveRecord::ConnectionAdapters::PostgreSQLColumn
-        column_class.hstore_to_string(value)
+        column_class.array_to_string(value, column, self)
+      when NilClass
+        if column.array && array_member
+          'NULL'
+        elsif column.array
+          value
+        else
+          super(value, column)
+        end
+      when Hash
+        case column.sql_type
+        when 'hstore'
+          column_class = ::ActiveRecord::ConnectionAdapters::PostgreSQLColumn
+          column_class.hstore_to_string(value)
+        when 'json'
+          column_class = ::ActiveRecord::ConnectionAdapters::PostgreSQLColumn
+          column_class.json_to_string(value)
+        else super(value, column)
+        end
       when IPAddr
-        return super unless ['inet','cidr'].includes? column.sql_type
+        return super unless column.sql_type == 'inet' || column.sql_type == 'cidr'
         column_class = ::ActiveRecord::ConnectionAdapters::PostgreSQLColumn
         column_class.cidr_to_string(value)
       else
@@ -872,12 +890,17 @@ module ArJdbc
 
       case value
       when Float
-        return super unless value.infinite? && column.type == :datetime
-        "'#{value.to_s.downcase}'"
+        if value.infinite? && column.type == :datetime
+          "'#{value.to_s.downcase}'"
+        elsif value.infinite? || value.nan?
+          "'#{value.to_s}'"
+        else
+          super
+        end
       when Numeric
         return super unless column.sql_type == 'money'
         # Not truly string input, so doesn't require (or allow) escape string syntax.
-        "'#{value}'"
+        ( column.type == :string || column.type == :text ) ? "'#{value}'" : super
       when String
         case column.sql_type
         when 'bytea' then "E'#{escape_bytea(value)}'::bytea" # "'#{escape_bytea(value)}'"
@@ -896,11 +919,28 @@ module ArJdbc
         else
           super
         end
+      when Array
+        if column.array && AR4_COMPAT
+          column_class = ::ActiveRecord::ConnectionAdapters::PostgreSQLColumn
+          "'#{column_class.array_to_string(value, column, self)}'"
+        else
+          super
+        end
       when Hash
         if column.sql_type == 'hstore' && AR4_COMPAT
           column_class = ::ActiveRecord::ConnectionAdapters::PostgreSQLColumn
           super(column_class.hstore_to_string(value), column)
+        elsif column.sql_type == 'json' && AR4_COMPAT
+          column_class = ::ActiveRecord::ConnectionAdapters::PostgreSQLColumn
+          super(column_class.json_to_string(value), column)
         else super
+        end
+      when Range
+        if /range$/ =~ column.sql_type && AR4_COMPAT
+          column_class = ::ActiveRecord::ConnectionAdapters::PostgreSQLColumn
+          "'#{column_class.range_to_string(value)}'::#{column.sql_type}"
+        else
+          super
         end
       when IPAddr
         if (column.sql_type == 'inet' || column.sql_type == 'cidr') && AR4_COMPAT
@@ -950,12 +990,15 @@ module ArJdbc
       %("#{name.to_s.gsub("\"", "\"\"")}")
     end
     
+    # Quote date/time values for use in SQL input. 
+    # Includes microseconds if the value is a Time responding to usec.
     def quoted_date(value) #:nodoc:
+      result = super
       if value.acts_like?(:time) && value.respond_to?(:usec)
-        "#{super}.#{sprintf("%06d", value.usec)}"
-      else
-        super
+        "#{result}.#{sprintf("%06d", value.usec)}"
       end
+      result = "#{result.sub(/^-/, '')} BC" if value.year < 0
+      result
     end
     
     def disable_referential_integrity # :nodoc:
