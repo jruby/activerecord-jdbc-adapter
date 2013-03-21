@@ -88,6 +88,13 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
         switch ( type ) {
             case Types.TIMESTAMP:
                 return stringToRuby(runtime, resultSet, resultSet.getString(column));
+            case Types.BIT:
+                // we do get BIT for 't' 'f' as well as BIT strings e.g. "0110" :
+                final String bits = resultSet.getString(column);
+                if ( bits == null || bits.length() > 1 ) {
+                    return stringToRuby(runtime, resultSet, bits);
+                }
+                return booleanToRuby(runtime, resultSet, resultSet.getBoolean(column));
             //case Types.JAVA_OBJECT: case Types.OTHER:
                 //return objectToRuby(runtime, resultSet, resultSet.getObject(column));
             case Types.ARRAY:
