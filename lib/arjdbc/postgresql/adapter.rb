@@ -390,12 +390,25 @@ module ArJdbc
       spec = super
       spec[:array] = 'true' if column.respond_to?(:array) && column.array
       spec
-    end if ActiveRecord::VERSION::MAJOR > 3
+    end if AR4_COMPAT
 
     # Adds `:array` as a valid migration key
     def migration_keys
       super + [:array]
-    end if ActiveRecord::VERSION::MAJOR > 3
+    end if AR4_COMPAT
+    
+    def add_column_options!(sql, options)
+      if options[:array] || options[:column].try(:array)
+        sql << '[]'
+      end
+
+      column = options.fetch(:column) { return super }
+      if column.type == :uuid && options[:default] =~ /\(\)/
+        sql << " DEFAULT #{options[:default]}"
+      else
+        super
+      end
+    end if AR4_COMPAT
     
     # Enable standard-conforming strings if available.
     def set_standard_conforming_strings # native adapter API compatibility
@@ -729,17 +742,18 @@ module ArJdbc
 
     # take id from result of insert query
     def last_inserted_id(result)
-      if result.is_a? Fixnum
+      if result.is_a? Integer
         result
       else
         result.first.first[1]
       end
     end
 
-    def last_insert_id(table, sequence_name)
-      Integer(select_value("SELECT currval('#{sequence_name}')"))
+    def last_insert_id(table, sequence_name = nil)
+      sequence_name = table if sequence_name.nil? # AR-4.0 1 argument
+      Integer(select_value("SELECT currval('#{sequence_name}')", 'SQL'))
     end
-
+    
     def recreate_database(name, options = {})
       drop_database(name)
       create_database(name, options)
@@ -1033,7 +1047,7 @@ module ArJdbc
       end
       rename_table_indexes(table_name, new_name) if respond_to?(:rename_table_indexes) # AR-4.0 SchemaStatements
     end
-
+    
     # Adds a new column to the named table.
     # See TableDefinition#column for details of the options you can use.
     def add_column(table_name, column_name, type, options = {})
@@ -1404,7 +1418,19 @@ module ActiveRecord::ConnectionAdapters
     def table_definition
       TableDefinition.new(self)
     end
+    
+    if ActiveRecord::VERSION::MAJOR > 3
+      
+      #def create_table_definition
+      #  TableDefinition.new(self)
+      #end
 
+      def update_table_definition(table_name, base)
+        Table.new(table_name, base)
+      end
+      
+    end
+    
     def jdbc_connection_class(spec)
       ::ArJdbc::PostgreSQL.jdbc_connection_class
     end
