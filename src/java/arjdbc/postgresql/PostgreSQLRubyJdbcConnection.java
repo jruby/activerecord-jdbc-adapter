@@ -25,16 +25,16 @@
  ***** END LICENSE BLOCK *****/
 package arjdbc.postgresql;
 
-import arjdbc.jdbc.RubyJdbcConnection;
-
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Types;
+import java.util.UUID;
 
 import org.jruby.Ruby;
 import org.jruby.RubyClass;
+import org.jruby.javasupport.JavaUtil;
 import org.jruby.runtime.ObjectAllocator;
 import org.jruby.runtime.builtin.IRubyObject;
 
@@ -42,7 +42,7 @@ import org.jruby.runtime.builtin.IRubyObject;
  *
  * @author enebo
  */
-public class PostgreSQLRubyJdbcConnection extends RubyJdbcConnection {
+public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection {
     
     protected PostgreSQLRubyJdbcConnection(Ruby runtime, RubyClass metaClass) {
         super(runtime, metaClass);
@@ -83,10 +83,30 @@ public class PostgreSQLRubyJdbcConnection extends RubyJdbcConnection {
     protected IRubyObject jdbcToRuby(final Ruby runtime, 
         final int column, final int type, final ResultSet resultSet)
         throws SQLException {
-        if ( type == Types.TIMESTAMP ) {
-            return stringToRuby(runtime, resultSet, resultSet.getString(column));
+        switch ( type ) {
+            case Types.TIMESTAMP:
+                return stringToRuby(runtime, resultSet, resultSet.getString(column));
+            //case Types.JAVA_OBJECT: case Types.OTHER:
+                //return objectToRuby(runtime, resultSet, resultSet.getObject(column));
+            case Types.ARRAY:
+                // NOTE: avoid `finally { array.free(); }` on PostgreSQL due :
+                // java.sql.SQLFeatureNotSupportedException: 
+                // Method org.postgresql.jdbc4.Jdbc4Array.free() is not yet implemented.
+                return arrayToRuby(runtime, resultSet, resultSet.getArray(column));
         }
         return super.jdbcToRuby(runtime, column, type, resultSet);
+    }
+    
+    @Override
+    protected IRubyObject objectToRuby(
+        final Ruby runtime, final ResultSet resultSet, final Object object)
+        throws SQLException {
+        if ( object == null && resultSet.wasNull() ) return runtime.getNil();
+        
+        if ( object.getClass() == UUID.class ) {
+            return runtime.newString( ((UUID) object).toString() );
+        }
+        return JavaUtil.convertJavaToRuby(runtime, object);
     }
     
     @Override
