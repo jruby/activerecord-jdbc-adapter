@@ -30,6 +30,8 @@ import java.sql.DatabaseMetaData;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Types;
+import java.util.Collection;
+import java.util.HashSet;
 import java.util.UUID;
 
 import org.jruby.Ruby;
@@ -97,6 +99,21 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
         return super.jdbcToRuby(runtime, column, type, resultSet);
     }
     
+    // TODO this is just a fast-draft for now :
+    private static final Collection<String> PG_TYPES = new HashSet<String>();
+    static {
+        PG_TYPES.add("org.postgresql.util.PGobject");
+        PG_TYPES.add("org.postgresql.util.PGmoney");
+        PG_TYPES.add("org.postgresql.util.PGInterval");
+        PG_TYPES.add("org.postgresql.geometric.PGbox");
+        PG_TYPES.add("org.postgresql.geometric.PGcircle");
+        PG_TYPES.add("org.postgresql.geometric.PGline");
+        PG_TYPES.add("org.postgresql.geometric.PGlseg");
+        PG_TYPES.add("org.postgresql.geometric.PGpath");
+        PG_TYPES.add("org.postgresql.geometric.PGpoint");
+        PG_TYPES.add("org.postgresql.geometric.PGpolygon");
+    }
+    
     @Override
     protected IRubyObject objectToRuby(
         final Ruby runtime, final ResultSet resultSet, final Object object)
@@ -104,8 +121,13 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
         if ( object == null && resultSet.wasNull() ) return runtime.getNil();
         
         if ( object.getClass() == UUID.class ) {
-            return runtime.newString( ((UUID) object).toString() );
+            return runtime.newString( object.toString() );
         }
+        // NOTE: this should get refactored using PG's JDBC API :
+        if ( PG_TYPES.contains(object.getClass().getName()) ) {
+            return runtime.newString( object.toString() );
+        }
+        
         return JavaUtil.convertJavaToRuby(runtime, object);
     }
     
