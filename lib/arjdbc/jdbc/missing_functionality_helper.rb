@@ -59,7 +59,7 @@ module ArJdbc
 
         to_column_names = columns(to).map(&:name)
         columns = index.columns.map { |column| rename[column] || column }
-        columns.select! { |column| to_column_names.include?(column) }
+        columns = columns.select { |column| to_column_names.include?(column) }
 
         unless columns.empty?
           # index name can't be the same
