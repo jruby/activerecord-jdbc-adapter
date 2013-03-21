@@ -37,6 +37,8 @@ end
 # assert_queries and SQLCounter taken from rails active_record tests
 class Test::Unit::TestCase
 
+  alias skip omit
+  
   def self.ar_version(version)
     match = version.match(/(\d+)\.(\d+)(?:\.(\d+))?/)
     ActiveRecord::VERSION::MAJOR > match[1].to_i ||
