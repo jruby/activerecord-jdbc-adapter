@@ -423,6 +423,17 @@ module ActiveRecord
         result
       end
       
+      # if adapter overrides #table_definition it works on 3.x as well as 4.0
+      if ActiveRecord::VERSION::MAJOR > 3
+        
+        alias table_definition create_table_definition
+        
+        def create_table_definition
+          table_definition
+        end
+        
+      end
+      
       private
       
       # #deprecated no longer used
