@@ -638,9 +638,17 @@ module ArJdbc
       [sql, binds]
     end
     
+    # taken from rails postgresql_adapter.rb
     def primary_key(table)
-      pk_and_sequence = pk_and_sequence_for(table)
-      pk_and_sequence && pk_and_sequence.first
+      result = select(<<-end_sql, 'SCHEMA')[0]
+        SELECT attr.attname
+        FROM pg_attribute attr
+        INNER JOIN pg_constraint cons ON attr.attrelid = cons.conrelid AND attr.attnum = cons.conkey[1]
+        WHERE cons.contype = 'p'
+          AND cons.conrelid = '#{quote_table_name(table)}'::regclass
+      end_sql
+
+      result && result["attname"]
     end
     
     # Returns an array of schema names.
