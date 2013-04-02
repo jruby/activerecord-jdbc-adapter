@@ -25,6 +25,7 @@
  ***** END LICENSE BLOCK *****/
 package arjdbc.postgresql;
 
+import java.sql.Array;
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.ResultSet;
@@ -33,7 +34,9 @@ import java.sql.Types;
 import java.util.UUID;
 
 import org.jruby.Ruby;
+import org.jruby.RubyArray;
 import org.jruby.RubyClass;
+import org.jruby.RubyString;
 import org.jruby.javasupport.JavaUtil;
 import org.jruby.runtime.ObjectAllocator;
 import org.jruby.runtime.builtin.IRubyObject;
@@ -88,29 +91,49 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
         throws SQLException {
         switch ( type ) {
             case Types.TIMESTAMP:
-                return stringToRuby(runtime, resultSet, resultSet.getString(column));
+                return stringToRuby(runtime, resultSet, column);
             case Types.BIT:
                 // we do get BIT for 't' 'f' as well as BIT strings e.g. "0110" :
                 final String bits = resultSet.getString(column);
-                if ( bits == null || bits.length() > 1 ) {
-                    return stringToRuby(runtime, resultSet, bits);
+                if ( bits == null ) return runtime.getNil();
+                if ( bits.length() > 1 ) {
+                    return RubyString.newUnicodeString(runtime, bits);
                 }
-                return booleanToRuby(runtime, resultSet, resultSet.getBoolean(column));
+                return booleanToRuby(runtime, resultSet, column);
             //case Types.JAVA_OBJECT: case Types.OTHER:
                 //return objectToRuby(runtime, resultSet, resultSet.getObject(column));
-            case Types.ARRAY:
-                // NOTE: avoid `finally { array.free(); }` on PostgreSQL due :
-                // java.sql.SQLFeatureNotSupportedException: 
-                // Method org.postgresql.jdbc4.Jdbc4Array.free() is not yet implemented.
-                return arrayToRuby(runtime, resultSet, resultSet.getArray(column));
         }
         return super.jdbcToRuby(runtime, column, type, resultSet);
     }
     
     @Override
-    protected IRubyObject objectToRuby(
-        final Ruby runtime, final ResultSet resultSet, final Object object)
+    protected IRubyObject arrayToRuby(
+        final Ruby runtime, final ResultSet resultSet, final int column)
         throws SQLException {
+        // NOTE: avoid `finally { array.free(); }` on PostgreSQL due :
+        // java.sql.SQLFeatureNotSupportedException: 
+        // Method org.postgresql.jdbc4.Jdbc4Array.free() is not yet implemented.
+        final Array value = resultSet.getArray(column);
+        
+        if ( value == null && resultSet.wasNull() ) return runtime.getNil();
+
+        final RubyArray array = runtime.newArray();
+
+        final ResultSet arrayResult = value.getResultSet(); // 1: index, 2: value
+        final int baseType = value.getBaseType();
+        while ( arrayResult.next() ) {
+            IRubyObject element = jdbcToRuby(runtime, 2, baseType, arrayResult);
+            array.append(element);
+        }
+        return array;
+    }
+    
+    @Override
+    protected IRubyObject objectToRuby(
+        final Ruby runtime, final ResultSet resultSet, final int column)
+        throws SQLException {
+        final Object object = resultSet.getObject(column);
+        
         if ( object == null && resultSet.wasNull() ) return runtime.getNil();
         
         final Class<?> objectClass = object.getClass();

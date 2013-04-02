@@ -930,81 +930,57 @@ public class RubyJdbcConnection extends RubyObject {
             case Types.BINARY:
             case Types.VARBINARY:
             case Types.LONGVARBINARY:
-                InputStream stream = resultSet.getBinaryStream(column);
-                try {
-                    return streamToRuby(runtime, resultSet, stream);
-                }
-                finally { if ( stream != null ) stream.close(); }
+                return streamToRuby(runtime, resultSet, column);
             case Types.CLOB:
             case Types.NCLOB: // JDBC 4.0
-                Reader reader = resultSet.getCharacterStream(column);
-                try {
-                    return readerToRuby(runtime, resultSet, reader);
-                }
-                finally { if ( reader != null ) reader.close(); }
+                return readerToRuby(runtime, resultSet, column);
             case Types.LONGVARCHAR:
             case Types.LONGNVARCHAR: // JDBC 4.0
                 if ( runtime.is1_9() ) {
-                    reader = resultSet.getCharacterStream(column);
-                    try {
-                        return readerToRuby(runtime, resultSet, reader);
-                    }
-                    finally { if ( reader != null ) reader.close(); }
+                    return readerToRuby(runtime, resultSet, column);
                 }
                 else {
-                    stream = resultSet.getBinaryStream(column);
-                    try {
-                        return streamToRuby(runtime, resultSet, stream);
-                    }
-                    finally { if ( stream != null ) stream.close(); }
+                    return streamToRuby(runtime, resultSet, column);
                 }
             case Types.TINYINT:
             case Types.SMALLINT:
             case Types.INTEGER:
-                return integerToRuby(runtime, resultSet, resultSet.getLong(column));
+                return integerToRuby(runtime, resultSet, column);
             case Types.REAL:
             case Types.FLOAT:
             case Types.DOUBLE:
-                return doubleToRuby(runtime, resultSet, resultSet.getDouble(column));
+                return doubleToRuby(runtime, resultSet, column);
             case Types.BIGINT:
-                return bigIntegerToRuby(runtime, resultSet, resultSet.getString(column));
+                return bigIntegerToRuby(runtime, resultSet, column);
             case Types.NUMERIC:
             case Types.DECIMAL:
-                return decimalToRuby(runtime, resultSet, resultSet.getString(column));
+                return decimalToRuby(runtime, resultSet, column);
             case Types.DATE:
-                return dateToRuby(runtime, resultSet, resultSet.getDate(column));
+                return dateToRuby(runtime, resultSet, column);
             case Types.TIME:
-                return timeToRuby(runtime, resultSet, resultSet.getTime(column));
+                return timeToRuby(runtime, resultSet, column);
             case Types.TIMESTAMP:
-                return timestampToRuby(runtime, resultSet, resultSet.getTimestamp(column));
+                return timestampToRuby(runtime, resultSet, column);
             case Types.BIT:
             case Types.BOOLEAN:
-                return booleanToRuby(runtime, resultSet, resultSet.getBoolean(column));
+                return booleanToRuby(runtime, resultSet, column);
             case Types.SQLXML: // JDBC 4.0
-                final SQLXML xml = resultSet.getSQLXML(column);
-                try {
-                    return stringToRuby(runtime, resultSet, xml.getString());
-                }
-                finally { xml.free(); }
+                return xmlToRuby(runtime, resultSet, column);
             case Types.NULL:
                 return runtime.getNil();
             // NOTE: (JDBC) exotic stuff just cause it's so easy with JRuby :)
             case Types.JAVA_OBJECT:
             case Types.OTHER:
-                return objectToRuby(runtime, resultSet, resultSet.getObject(column));
+                return objectToRuby(runtime, resultSet, column);
             case Types.ARRAY: // we handle JDBC Array into (Ruby) []
-                final Array array = resultSet.getArray(column);
-                try {
-                    return arrayToRuby(runtime, resultSet, array);
-                }
-                finally { array.free(); }
+                return arrayToRuby(runtime, resultSet, column);
             // (default) String
             case Types.CHAR:
             case Types.VARCHAR:
             case Types.NCHAR: // JDBC 4.0
             case Types.NVARCHAR: // JDBC 4.0
             default:
-                return stringToRuby(runtime, resultSet, resultSet.getString(column));
+                return stringToRuby(runtime, resultSet, column);
             }
             // NOTE: not mapped types :
             //case Types.DISTINCT:
@@ -1018,6 +994,15 @@ public class RubyJdbcConnection extends RubyObject {
     }
 
     protected IRubyObject integerToRuby(
+        final Ruby runtime, final ResultSet resultSet, final int column)
+        throws SQLException {
+        final long value = resultSet.getLong(column);
+        if ( value == 0 && resultSet.wasNull() ) return runtime.getNil();
+        return integerToRuby(runtime, resultSet, value);
+    }
+    
+    @Deprecated
+    protected IRubyObject integerToRuby(
         final Ruby runtime, final ResultSet resultSet, final long longValue)
         throws SQLException {
         if ( longValue == 0 && resultSet.wasNull() ) return runtime.getNil();
@@ -1025,12 +1010,29 @@ public class RubyJdbcConnection extends RubyObject {
         return runtime.newFixnum(longValue);
     }
 
+    protected IRubyObject doubleToRuby(Ruby runtime, ResultSet resultSet, final int column)
+        throws SQLException {
+        final double value = resultSet.getDouble(column);
+        if ( value == 0 && resultSet.wasNull() ) return runtime.getNil();
+        return doubleToRuby(runtime, resultSet, value);
+    }
+    
+    @Deprecated
     protected IRubyObject doubleToRuby(Ruby runtime, ResultSet resultSet, double doubleValue)
         throws SQLException {
         if ( doubleValue == 0 && resultSet.wasNull() ) return runtime.getNil();
         return runtime.newFloat(doubleValue);
     }
+
+    protected IRubyObject stringToRuby(
+        final Ruby runtime, final ResultSet resultSet, final int column)
+        throws SQLException {
+        final String value = resultSet.getString(column);
+        if ( value == null && resultSet.wasNull() ) return runtime.getNil();
+        return stringToRuby(runtime, resultSet, value);
+    }
     
+    @Deprecated
     protected IRubyObject stringToRuby(
         final Ruby runtime, final ResultSet resultSet, final String string)
         throws SQLException {
@@ -1038,7 +1040,16 @@ public class RubyJdbcConnection extends RubyObject {
 
         return RubyString.newUnicodeString(runtime, string);
     }
+
+    protected IRubyObject bigIntegerToRuby(
+        final Ruby runtime, final ResultSet resultSet, final int column) 
+        throws SQLException {
+        final String value = resultSet.getString(column);
+        if ( value == null && resultSet.wasNull() ) return runtime.getNil();
+        return bigIntegerToRuby(runtime, resultSet, value);
+    }
     
+    @Deprecated
     protected IRubyObject bigIntegerToRuby(
         final Ruby runtime, final ResultSet resultSet, final String intValue) 
         throws SQLException {
@@ -1046,56 +1057,89 @@ public class RubyJdbcConnection extends RubyObject {
 
         return RubyBignum.bignorm(runtime, new BigInteger(intValue));
     }
-    
+
     protected IRubyObject decimalToRuby(
-        final Ruby runtime, final ResultSet resultSet, final String decValue) 
+        final Ruby runtime, final ResultSet resultSet, final int column) 
         throws SQLException {
-        if ( decValue == null && resultSet.wasNull() ) return runtime.getNil();
+        final String value = resultSet.getString(column);
+        if ( value == null && resultSet.wasNull() ) return runtime.getNil();
         // NOTE: JRuby 1.6 -> 1.7 API change : moved org.jruby.RubyBigDecimal
-        return runtime.getKernel().callMethod("BigDecimal", runtime.newString(decValue));
+        return runtime.getKernel().callMethod("BigDecimal", runtime.newString(value));
     }
     
     private static boolean parseDateTime = false; // TODO
     
     protected IRubyObject dateToRuby( // TODO
-        final Ruby runtime, final ResultSet resultSet, final Date date)
+        final Ruby runtime, final ResultSet resultSet, final int column)
         throws SQLException {
-        if ( date == null && resultSet.wasNull() ) return runtime.getNil();
-        return RubyString.newUnicodeString(runtime, date.toString());
+        final Date value = resultSet.getDate(column);
+        if ( value == null && resultSet.wasNull() ) return runtime.getNil();
+        return RubyString.newUnicodeString(runtime, value.toString());
     }
 
     protected IRubyObject timeToRuby( // TODO
-        final Ruby runtime, final ResultSet resultSet, final Time time)
+        final Ruby runtime, final ResultSet resultSet, final int column)
         throws SQLException {
-        if ( time == null && resultSet.wasNull() ) return runtime.getNil();
-        return RubyString.newUnicodeString(runtime, time.toString());
+        final Time value = resultSet.getTime(column);
+        if ( value == null && resultSet.wasNull() ) return runtime.getNil();
+        return RubyString.newUnicodeString(runtime, value.toString());
+    }
+
+    protected IRubyObject timestampToRuby(
+        final Ruby runtime, final ResultSet resultSet, final int column)
+        throws SQLException {
+        final Timestamp value = resultSet.getTimestamp(column);
+        if ( value == null && resultSet.wasNull() ) return runtime.getNil();
+        return timestampToRuby(runtime, resultSet, value);
     }
     
+    @Deprecated
     protected IRubyObject timestampToRuby(
-        final Ruby runtime, final ResultSet resultSet, final Timestamp timestamp)
+        final Ruby runtime, final ResultSet resultSet, final Timestamp value)
         throws SQLException {
-        if ( timestamp == null && resultSet.wasNull() ) return runtime.getNil();
+        if ( value == null && resultSet.wasNull() ) return runtime.getNil();
         
-        String format = timestamp.toString(); // yyyy-mm-dd hh:mm:ss.fffffffff
-        if (format.endsWith(" 00:00:00.0")) {
+        String format = value.toString(); // yyyy-mm-dd hh:mm:ss.fffffffff
+        if ( format.endsWith(" 00:00:00.0") ) {
             format = format.substring(0, format.length() - (" 00:00:00.0".length()));
         }
-        if (format.endsWith(".0")) {
+        if ( format.endsWith(".0") ) {
             format = format.substring(0, format.length() - (".0".length()));
         }
         
         return RubyString.newUnicodeString(runtime, format);
     }
-    
+
+    protected IRubyObject booleanToRuby(
+        final Ruby runtime, final ResultSet resultSet, final int column)
+        throws SQLException {
+        final boolean value = resultSet.getBoolean(column);
+        if ( resultSet.wasNull() ) return runtime.getNil();
+        return booleanToRuby(runtime, resultSet, value);
+    }
+            
+    @Deprecated
     protected IRubyObject booleanToRuby(
         final Ruby runtime, final ResultSet resultSet, final boolean value)
         throws SQLException {
-        if ( resultSet.wasNull() ) return runtime.getNil();
+        if ( value == false && resultSet.wasNull() ) return runtime.getNil();
         return runtime.newBoolean(value);
     }
     
     protected static int streamBufferSize = 2048;
-    
+
+    protected IRubyObject streamToRuby(
+        final Ruby runtime, final ResultSet resultSet, final int column)
+        throws SQLException, IOException {
+        final InputStream stream = resultSet.getBinaryStream(column);
+        try {
+            if ( resultSet.wasNull() ) return runtime.getNil();
+            return streamToRuby(runtime, resultSet, stream);
+        }
+        finally { if ( stream != null ) stream.close(); }
+    }
+                
+    @Deprecated
     protected IRubyObject streamToRuby(
         final Ruby runtime, final ResultSet resultSet, final InputStream stream)
         throws SQLException, IOException {
@@ -1111,7 +1155,19 @@ public class RubyJdbcConnection extends RubyObject {
 
         return runtime.newString(string);
     }
+
+    protected IRubyObject readerToRuby(
+        final Ruby runtime, final ResultSet resultSet, final int column)
+        throws SQLException, IOException {
+        final Reader reader = resultSet.getCharacterStream(column);
+        try {
+            if ( resultSet.wasNull() ) return runtime.getNil();
+            return readerToRuby(runtime, resultSet, reader);
+        }
+        finally { if ( reader != null ) reader.close(); }
+    }
     
+    @Deprecated
     protected IRubyObject readerToRuby(
         final Ruby runtime, final ResultSet resultSet, final Reader reader)
         throws SQLException, IOException {
@@ -1129,27 +1185,43 @@ public class RubyJdbcConnection extends RubyObject {
     }
 
     protected IRubyObject objectToRuby(
-        final Ruby runtime, final ResultSet resultSet, final Object object)
+        final Ruby runtime, final ResultSet resultSet, final int column)
         throws SQLException {
-        if ( object == null && resultSet.wasNull() ) return runtime.getNil();
+        final Object value = resultSet.getObject(column);
         
-        return JavaUtil.convertJavaToRuby(runtime, object);
+        if ( value == null && resultSet.wasNull() ) return runtime.getNil();
+        
+        return JavaUtil.convertJavaToRuby(runtime, value);
     }
     
     protected IRubyObject arrayToRuby(
-        final Ruby runtime, final ResultSet resultSet, final Array array)
+        final Ruby runtime, final ResultSet resultSet, final int column)
         throws SQLException {
-        if ( array == null && resultSet.wasNull() ) return runtime.getNil();
-        
-        final RubyArray rubyArray = runtime.newArray();
-        
-        final ResultSet arrayResult = array.getResultSet(); // 1: index, 2: value
-        final int baseType = array.getBaseType();
-        while ( arrayResult.next() ) {
-            IRubyObject element = jdbcToRuby(runtime, 2, baseType, arrayResult);
-            rubyArray.append(element);
+        final Array value = resultSet.getArray(column);
+        try {
+            if ( value == null && resultSet.wasNull() ) return runtime.getNil();
+            
+            final RubyArray array = runtime.newArray();
+
+            final ResultSet arrayResult = value.getResultSet(); // 1: index, 2: value
+            final int baseType = value.getBaseType();
+            while ( arrayResult.next() ) {
+                IRubyObject element = jdbcToRuby(runtime, 2, baseType, arrayResult);
+                array.append(element);
+            }
+            return array;
         }
-        return rubyArray;
+        finally { value.free(); }
+    }
+    
+    protected IRubyObject xmlToRuby(
+        final Ruby runtime, final ResultSet resultSet, final int column)
+        throws SQLException {
+        final SQLXML xml = resultSet.getSQLXML(column);
+        try {
+            return RubyString.newUnicodeString(runtime, xml.getString());
+        }
+        finally { xml.free(); }
     }
     
     protected final Connection getConnection() {
