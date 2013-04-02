@@ -2,8 +2,7 @@ require 'test_helper'
 require 'rake'
 
 module Rails
-  class Configuration
-  end
+  class Configuration; end unless const_defined?(:Configuration)
   class Application
     def self.config
       @config ||= Object.new
@@ -77,7 +76,7 @@ module AbstractDbCreate
 
   def setup_rails2
     configs = configurations
-    Rails::Configuration.class_eval do
+    Rails::Configuration.module_eval do
       define_method(:database_configuration) { configs }
     end
     ar_version = $LOADED_FEATURES.grep(%r{active_record/version}).first
