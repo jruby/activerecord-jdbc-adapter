@@ -158,6 +158,40 @@ module ArJdbc
         end
       end
 
+      # Casts value (which is a String) to an appropriate instance.
+      def type_cast(value)
+        return if value.nil?
+        return super if encoded?
+        
+        # NOTE: we do not use OID::Type
+        # @oid_type.type_cast value
+        case type
+        when :hstore then self.class.string_to_hstore value
+        when :json then self.class.string_to_json value
+        when :cidr, :inet, :macaddr then self.class.string_to_cidr value
+        when :money
+          # Because money output is formatted according to the locale, there are two
+          # cases to consider (note the decimal separators):
+          # (1) $12,345,678.12
+          # (2) $12.345.678,12
+          case value
+          when /^-?\D+[\d,]+\.\d{2}$/ # (1)
+            value.gsub!(/[^-\d.]/, '')
+          when /^-?\D+[\d.]+,\d{2}$/ # (2)
+            value.gsub!(/[^-\d,]/, '').sub!(/,/, '.')
+          end
+          self.class.value_to_decimal value
+        when /point/ # TODO
+          if String === value
+            self.class.string_to_point value
+          else
+            value
+          end
+        when :tsvector then value
+        else super
+        end
+      end
+      
       private
       
       def extract_limit(sql_type)

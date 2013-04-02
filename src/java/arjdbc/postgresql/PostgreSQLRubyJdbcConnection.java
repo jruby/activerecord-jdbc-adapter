@@ -144,7 +144,9 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
         if ( objectClass == PGInterval.class ) {
             return runtime.newString( formatInterval(object) );
         }
+        
         if ( object instanceof PGobject ) {
+            // PG 9.2 JSON type will be returned here as well
             return runtime.newString( object.toString() );
         }
         
