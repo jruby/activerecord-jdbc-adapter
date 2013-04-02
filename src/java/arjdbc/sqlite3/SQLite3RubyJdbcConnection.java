@@ -29,14 +29,12 @@ package arjdbc.sqlite3;
 import arjdbc.jdbc.Callable;
 import arjdbc.jdbc.RubyJdbcConnection;
 
-import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.sql.Types;
 import java.sql.DatabaseMetaData;
 import java.util.ArrayList;
 import java.util.List;
@@ -49,6 +47,7 @@ import org.jruby.anno.JRubyMethod;
 import org.jruby.runtime.ObjectAllocator;
 import org.jruby.runtime.ThreadContext;
 import org.jruby.runtime.builtin.IRubyObject;
+import org.jruby.util.ByteList;
 
 /**
  *
@@ -96,32 +95,23 @@ public class SQLite3RubyJdbcConnection extends RubyJdbcConnection {
     @Override
     protected IRubyObject jdbcToRuby(final Ruby runtime, final int column, int type, final ResultSet resultSet)
         throws SQLException {
-        try {
-            // This is rather gross, and only needed because the resultset metadata for SQLite tries to be overly
-            // clever, and returns a type for the column of the "current" row, so an integer value stored in a 
-            // decimal column is returned as Types.INTEGER.  Therefore, if the first row of a resultset was an
-            // integer value, all rows of that result set would get truncated.
-            if( resultSet instanceof ResultSetMetaData ) {
-                type = ((ResultSetMetaData) resultSet).getColumnType(column);
-            }
-            switch (type) {
-            case Types.BLOB:
-            case Types.BINARY:
-            case Types.VARBINARY:
-            case Types.LONGVARBINARY:
-                return streamToRuby(runtime, resultSet, new ByteArrayInputStream(resultSet.getBytes(column)));
-            case Types.LONGVARCHAR:
-            case Types.LONGNVARCHAR: // JDBC 4.0
-                return runtime.is1_9() ?
-                    readerToRuby(runtime, resultSet, resultSet.getCharacterStream(column)) :
-                    streamToRuby(runtime, resultSet, new ByteArrayInputStream(resultSet.getBytes(column)));
-            default:
-                return super.jdbcToRuby(runtime, column, type, resultSet);
-            }
+        // This is rather gross, and only needed because the resultset metadata for SQLite tries to be overly
+        // clever, and returns a type for the column of the "current" row, so an integer value stored in a 
+        // decimal column is returned as Types.INTEGER.  Therefore, if the first row of a resultset was an
+        // integer value, all rows of that result set would get truncated.
+        if ( resultSet instanceof ResultSetMetaData ) {
+            type = ((ResultSetMetaData) resultSet).getColumnType(column);
         }
-        catch (IOException e) {
-            throw new SQLException(e.getMessage(), e);
-        }
+        return super.jdbcToRuby(runtime, column, type, resultSet);
+    }
+    
+    @Override
+    protected IRubyObject streamToRuby(
+        final Ruby runtime, final ResultSet resultSet, final int column)
+        throws SQLException, IOException {
+        final byte[] bytes = resultSet.getBytes(column);
+        if ( resultSet.wasNull() ) return runtime.getNil();
+        return runtime.newString( new ByteList(bytes, false) );
     }
     
     @Override
