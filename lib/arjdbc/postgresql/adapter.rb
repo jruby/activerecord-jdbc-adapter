@@ -1203,14 +1203,28 @@ module ArJdbc
       binds << [ nil, schema ] if schema
       
       exec_query(<<-SQL, 'SCHEMA', binds).first["table_count"] > 0
-          SELECT COUNT(*) as table_count
-          FROM pg_tables
-          WHERE tablename = ?
-          AND schemaname = #{schema ? "?" : "ANY (current_schemas(false))"}
+        SELECT COUNT(*) as table_count
+        FROM pg_tables
+        WHERE tablename = ?
+        AND schemaname = #{schema ? "?" : "ANY (current_schemas(false))"}
       SQL
     end
     
     IndexDefinition = ::ActiveRecord::ConnectionAdapters::IndexDefinition # :nodoc:
+    if ActiveRecord::VERSION::MAJOR < 3 || 
+        ( ActiveRecord::VERSION::MAJOR == 3 && ActiveRecord::VERSION::MINOR <= 1 )
+      # NOTE: make sure we accept 6 arguments (>= 3.2) as well as 5 (<= 3.1) :
+      IndexDefinition.class_eval do
+        def initialize(*args)
+          if args.size == 6 # ignore last argument on AR 3.1
+            # Struct.new(:table, :name, :unique, :columns, :lengths)
+            super(args[0], args[1], args[2], args[3], args[4])
+          else
+            super
+          end
+        end
+      end
+    end
     
     # Returns an array of indexes for the given table.
     def indexes(table_name, name = nil)
