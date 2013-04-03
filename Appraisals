@@ -1,6 +1,6 @@
 appraise "rails23" do
-  gem "activerecord", "~> 2.3.16"
-  gem "rails", "~> 2.3.16"
+  gem "activerecord", "~> 2.3.18"
+  gem "rails", "~> 2.3.18"
 end
 
 appraise "rails30" do
@@ -8,17 +8,16 @@ appraise "rails30" do
 end
 
 appraise "rails31" do
-  gem "activerecord", "~> 3.1.10"
+  gem "activerecord", "~> 3.1.12"
 end
 
 appraise "rails32" do
-  gem "activerecord", "~> 3.2.11"
+  gem "activerecord", "~> 3.2.13"
 end
 
-# NOTE: make sure you're using --1.9 with 4.0 (alternatively use jruby-head) !
-appraise "rails40" do
+appraise "rails40" do # NOTE: make sure you're using --1.9 with AR-4.0
   #gem "activerecord", "~> 4.0.0"
-  # until there's a 4.0 release :
+  # until there's an actual 4.0 release :
   gem 'rails', :github => 'rails/rails'
   gem 'journey', :github => 'rails/journey'
   gem 'activerecord-deprecated_finders', :github => 'rails/activerecord-deprecated_finders', :require => nil

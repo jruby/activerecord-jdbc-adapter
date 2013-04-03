@@ -1,19 +1,20 @@
 GEM
   remote: http://rubygems.org/
   specs:
-    actionmailer (2.3.16)
-      actionpack (= 2.3.16)
-    actionpack (2.3.16)
-      activesupport (= 2.3.16)
+    actionmailer (2.3.18)
+      actionpack (= 2.3.18)
+    actionpack (2.3.18)
+      activesupport (= 2.3.18)
       rack (~> 1.1.0)
-    activerecord (2.3.16)
-      activesupport (= 2.3.16)
-    activeresource (2.3.16)
-      activesupport (= 2.3.16)
-    activesupport (2.3.16)
+    activerecord (2.3.18)
+      activesupport (= 2.3.18)
+    activeresource (2.3.18)
+      activesupport (= 2.3.18)
+    activesupport (2.3.18)
     appraisal (0.5.1)
       bundler
       rake
+    bcrypt-ruby (3.0.1)
     bcrypt-ruby (3.0.1-java)
     bouncy-castle-java (1.5.0147)
     jruby-openssl (0.8.4)
@@ -22,13 +23,13 @@ GEM
     mocha (0.12.10)
       metaclass (~> 0.0.1)
     multi_json (1.5.0)
-    rack (1.1.5)
-    rails (2.3.16)
-      actionmailer (= 2.3.16)
-      actionpack (= 2.3.16)
-      activerecord (= 2.3.16)
-      activeresource (= 2.3.16)
-      activesupport (= 2.3.16)
+    rack (1.1.6)
+    rails (2.3.18)
+      actionmailer (= 2.3.18)
+      actionpack (= 2.3.18)
+      activerecord (= 2.3.18)
+      activeresource (= 2.3.18)
+      activesupport (= 2.3.18)
       rake (>= 0.8.3)
     rake (10.0.3)
     simplecov (0.7.1)
@@ -43,12 +44,12 @@ PLATFORMS
   java
 
 DEPENDENCIES
-  activerecord (~> 2.3.16)
+  activerecord (~> 2.3.18)
   appraisal
   bcrypt-ruby (~> 3.0.0)
   jruby-openssl
   mocha (~> 0.12.10)
-  rails (~> 2.3.16)
+  rails (~> 2.3.18)
   rake
   simplecov
   test-unit (= 2.5.4)
