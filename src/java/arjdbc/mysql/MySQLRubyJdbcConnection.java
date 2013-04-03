@@ -57,8 +57,9 @@ public class MySQLRubyJdbcConnection extends RubyJdbcConnection {
     }
 
     @Override
-    protected boolean genericExecute(Statement stmt, String query) throws SQLException {
-        return stmt.execute(query, Statement.RETURN_GENERATED_KEYS);
+    protected boolean doExecute(final Statement statement, 
+        final String query) throws SQLException {
+        return statement.execute(query, Statement.RETURN_GENERATED_KEYS);
     }
 
     @Override

@@ -325,7 +325,7 @@ public class RubyJdbcConnection extends RubyObject {
                 final String query = sql.convertToString().getUnicodeValue();
                 try {
                     statement = connection.createStatement();
-                    if (genericExecute(statement, query)) {
+                    if ( doExecute(statement, query) ) {
                         return unmarshalResults(context, connection.getMetaData(), statement, false);
                     } else {
                         return unmarshalKeysOrUpdateCount(context, connection, statement);
@@ -340,12 +340,28 @@ public class RubyJdbcConnection extends RubyObject {
         });
     }
 
-    protected boolean genericExecute(Statement stmt, String query) throws SQLException {
-        return stmt.execute(query);
+    /**
+     * Execute a query using the given statement.
+     * @param statement
+     * @param query
+     * @return true if the first result is a <code>ResultSet</code>; 
+     *         false if it is an update count or there are no results
+     * @throws SQLException 
+     */
+    protected boolean doExecute(final Statement statement, final String query) throws SQLException {
+        return genericExecute(statement, query);
     }
     
-    protected IRubyObject unmarshalKeysOrUpdateCount(
-            final ThreadContext context, final Connection connection, final Statement statement) throws SQLException {
+    /**
+     * @deprecated renamed to {@link #doExecute(Statement, String)}
+     */
+    @Deprecated
+    protected boolean genericExecute(final Statement statement, final String query) throws SQLException {
+        return statement.execute(query);
+    }
+    
+    protected IRubyObject unmarshalKeysOrUpdateCount(final ThreadContext context, 
+        final Connection connection, final Statement statement) throws SQLException {
         final Ruby runtime = context.getRuntime();
         final IRubyObject key;
         if ( connection.getMetaData().supportsGetGeneratedKeys() ) {
@@ -401,9 +417,9 @@ public class RubyJdbcConnection extends RubyObject {
     }
 
     @JRubyMethod(name = "execute_query", required = 1)
-    public IRubyObject execute_query(final ThreadContext context, IRubyObject sql)
+    public IRubyObject execute_query(final ThreadContext context, IRubyObject sql) 
         throws SQLException {
-        String query = sql.convertToString().getUnicodeValue();
+        final String query = sql.convertToString().getUnicodeValue();
         return executeQuery(context, query, 0);
     }
 
@@ -418,12 +434,13 @@ public class RubyJdbcConnection extends RubyObject {
         return withConnection(context, new Callable<IRubyObject>() {
             public IRubyObject call(final Connection connection) throws SQLException {
                 final Ruby runtime = context.getRuntime();
-                Statement statement = null;
+                Statement statement = null; ResultSet resultSet = null;
                 try {
                     final DatabaseMetaData metaData = connection.getMetaData();
                     statement = connection.createStatement();
-                    statement.setMaxRows(maxRows);
-                    return unmarshalResult(context, runtime, metaData, statement.executeQuery(query), false);
+                    statement.setMaxRows(maxRows); // zero means there is no limit
+                    resultSet = statement.executeQuery(query);
+                    return unmarshalResult(context, runtime, metaData, resultSet, false);
                 }
                 catch (final SQLException e) {
                     debugErrorSQL(context, query);
@@ -494,13 +511,16 @@ public class RubyJdbcConnection extends RubyObject {
     }
     
     @JRubyMethod(name = "set_native_database_types")
-    public IRubyObject set_native_database_types(final ThreadContext context) 
-        throws SQLException { // TODO we should handle exceptions !
+    public IRubyObject set_native_database_types(final ThreadContext context) throws SQLException {
         final Ruby runtime = context.getRuntime();
         final DatabaseMetaData metaData = getConnection(true).getMetaData();
-        IRubyObject types = unmarshalResult(context, runtime, metaData, metaData.getTypeInfo(), true);
+        final IRubyObject types; final ResultSet typeDesc = metaData.getTypeInfo();
+        try {
+            types = unmarshalResult(context, runtime, metaData, typeDesc, true);
+        }
+        finally { close(typeDesc); }
         
-        IRubyObject typeConverter = getJdbcTypeConverter(runtime).callMethod("new", types);
+        final IRubyObject typeConverter = getJdbcTypeConverter(runtime).callMethod("new", types);
         setInstanceVariable("@native_types", typeConverter.callMethod(context, "choose_best_types"));
 
         return runtime.getNil();
@@ -1538,23 +1558,35 @@ public class RubyJdbcConnection extends RubyObject {
             final boolean downCase) throws SQLException {
         
         final Ruby runtime = context.getRuntime();
-        IRubyObject result = unmarshalResult(context, runtime, metaData, statement.getResultSet(), downCase);
+        IRubyObject result;
+        ResultSet resultSet = statement.getResultSet();
+        try {
+            result = unmarshalResult(context, runtime, metaData, resultSet, downCase);
+        }
+        finally { close(resultSet); }
         
         if ( ! statement.getMoreResults() ) return result;
         
         final List<IRubyObject> results = new ArrayList<IRubyObject>();
         results.add(result);
+        
         do {
-            result = unmarshalResult(context, runtime, metaData, statement.getResultSet(), downCase);
+            resultSet = statement.getResultSet();
+            try {
+                result = unmarshalResult(context, runtime, metaData, resultSet, downCase);
+            }
+            finally { close(resultSet); }
+            
             results.add(result);
         }
         while ( statement.getMoreResults() );
 
-        return context.getRuntime().newArray(results);
+        return runtime.newArray(results);
     }
 
      /**
      * @deprecated no longer used but kept for API compatibility
+     * NOTE: this method no longer closes the passed result set !
      */
     @Deprecated
     protected IRubyObject unmarshalResult(final ThreadContext context,
@@ -1568,19 +1600,19 @@ public class RubyJdbcConnection extends RubyObject {
      *
      * @param downCase should column names only be in lower case?
      */
+    @SuppressWarnings("unchecked")
     private IRubyObject unmarshalResult(final ThreadContext context, final Ruby runtime,
             final DatabaseMetaData metaData, final ResultSet resultSet, 
             final boolean downCase) throws SQLException {
         
-        final List<IRubyObject> results = new ArrayList<IRubyObject>();
-        try {
-            ColumnData[] columns = setupColumns(runtime, metaData, resultSet.getMetaData(), downCase);
+        final RubyArray results = runtime.newArray();
+        // [ { 'col1': 1, 'col2': 2 }, { 'col1': 3, 'col2': 4 } ]
+        
+        ColumnData[] columns = setupColumns(runtime, metaData, resultSet.getMetaData(), downCase);
 
-            populateFromResultSet(context, runtime, results, resultSet, columns);
-        }
-        finally { close(resultSet); }
+        populateFromResultSet(context, runtime, (List<IRubyObject>) results, resultSet, columns);
 
-        return runtime.newArray(results);
+        return results;
     }
     
     /**
