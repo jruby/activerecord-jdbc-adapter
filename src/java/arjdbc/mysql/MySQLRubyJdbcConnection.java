@@ -73,7 +73,8 @@ public class MySQLRubyJdbcConnection extends RubyJdbcConnection {
     protected IRubyObject jdbcToRuby(Ruby runtime, int column, int type, ResultSet resultSet)
         throws SQLException {
         if ( Types.BOOLEAN == type || Types.BIT == type ) {
-            return integerToRuby(runtime, resultSet, resultSet.getBoolean(column) ? 1 : 0);
+            final boolean value = resultSet.getBoolean(column);
+            return resultSet.wasNull() ? runtime.getNil() : runtime.newFixnum(value ? 1 : 0);
         }
         return super.jdbcToRuby(runtime, column, type, resultSet);
     }
