@@ -1440,12 +1440,12 @@ module ActiveRecord::ConnectionAdapters
     class TableDefinition < ActiveRecord::ConnectionAdapters::TableDefinition
       include ColumnMethods
       
-      def primary_key(name, type = :primary_key, options = {})
-        return super unless type == :uuid
-        options[:default] ||= 'uuid_generate_v4()'
-        options[:primary_key] = true
-        column name, type, options
-      end if ActiveRecord::VERSION::MAJOR > 3 # 3.2 super expects (name)
+#      def primary_key(name, type = :primary_key, options = {})
+#        return super unless type == :uuid
+#        options[:default] ||= 'uuid_generate_v4()'
+#        options[:primary_key] = true
+#        column name, type, options
+#      end if ActiveRecord::VERSION::MAJOR > 3 # 3.2 super expects (name)
       
       def column(name, type = nil, options = {})
         super
