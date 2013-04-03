@@ -113,6 +113,19 @@ class PostgresSimpleTest < Test::Unit::TestCase
   
   include ExplainSupportTestMethods if ar_version("3.1")
   
+  def test_primary_key
+    assert_equal 'id', connection.primary_key('entries')
+    assert_equal 'custom_id', connection.primary_key('custom_pk_names')
+    # assert_equal 'id', connection.primary_key('auto_ids')
+  end
+
+  def test_primary_key_without_sequence
+    connection.execute "CREATE TABLE uid_table (uid UUID PRIMARY KEY, name TEXT)"
+    assert_equal 'uid', connection.primary_key('uid_table')
+  ensure
+    connection.execute "DROP TABLE uid_table"
+  end
+  
 end
 
 class PostgresTimestampTest < Test::Unit::TestCase
