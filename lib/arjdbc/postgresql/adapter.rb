@@ -79,6 +79,13 @@ module ArJdbc
         end
     end
     
+    def use_insert_returning?
+      if ( @use_insert_returning ||= nil ).nil?
+        @use_insert_returning = supports_insert_with_returning?
+      end
+      @use_insert_returning
+    end
+    
     # column behavior based on postgresql_adapter in rails
     module Column
       
@@ -595,21 +602,16 @@ module ArJdbc
 
     # Resets sequence to the max value of the table's pk if present.
     def reset_pk_sequence!(table, pk = nil, sequence = nil) #:nodoc:
-      unless pk and sequence
+      if ! pk || ! sequence
         default_pk, default_sequence = pk_and_sequence_for(table)
-        pk ||= default_pk
-        sequence ||= default_sequence
+        pk ||= default_pk; sequence ||= default_sequence
       end
-      if pk
-        if sequence
-          quoted_sequence = quote_column_name(sequence)
+      if pk && sequence
+        quoted_sequence = quote_column_name(sequence)
 
-          select_value <<-end_sql, 'Reset sequence'
-              SELECT setval('#{quoted_sequence}', (SELECT COALESCE(MAX(#{quote_column_name pk})+(SELECT increment_by FROM #{quoted_sequence}), (SELECT min_value FROM #{quoted_sequence})) FROM #{quote_table_name(table)}), false)
-            end_sql
-        else
-          @logger.warn "#{table} has primary key #{pk} with no default sequence" if @logger
-        end
+        select_value <<-end_sql, 'Reset Sequence'
+          SELECT setval('#{quoted_sequence}', (SELECT COALESCE(MAX(#{quote_column_name pk})+(SELECT increment_by FROM #{quoted_sequence}), (SELECT min_value FROM #{quoted_sequence})) FROM #{quote_table_name(table)}), false)
+        end_sql
       end
     end
 
@@ -617,7 +619,7 @@ module ArJdbc
     def pk_and_sequence_for(table) #:nodoc:
       # First try looking for a sequence with a dependency on the
       # given table's primary key.
-      result = select(<<-end_sql, 'PK and serial sequence')[0]
+      result = select(<<-end_sql, 'PK and Serial Sequence')[0]
           SELECT attr.attname, seq.relname
           FROM pg_class      seq,
                pg_attribute  attr,
@@ -634,11 +636,11 @@ module ArJdbc
             AND dep.refobjid      = '#{quote_table_name(table)}'::regclass
         end_sql
 
-      if result.nil? or result.empty?
+      if result.nil? || result.empty?
         # If that fails, try parsing the primary key's default value.
         # Support the 7.x and 8.0 nextval('foo'::text) as well as
         # the 8.1+ nextval('foo'::regclass).
-        result = select(<<-end_sql, 'PK and custom sequence')[0]
+        result = select(<<-end_sql, 'PK and Custom Sequence')[0]
             SELECT attr.attname,
               CASE
                 WHEN split_part(def.adsrc, '''', 2) ~ '.' THEN
@@ -656,7 +658,7 @@ module ArJdbc
           end_sql
       end
 
-      [result["attname"], result["relname"]]
+      [ result['attname'], result['relname'] ]
     rescue
       nil
     end
@@ -672,9 +674,9 @@ module ArJdbc
         if pk
           sql = to_sql(sql, binds)
           return select_value("#{sql} RETURNING #{quote_column_name(pk)}")
-        end
+    end
       end
-
+    
       # Otherwise, plain insert
       execute(sql, name, binds)
 
@@ -707,17 +709,18 @@ module ArJdbc
       [sql, binds]
     end
     
-    # taken from rails postgresql_adapter.rb
     def primary_key(table)
-      result = select(<<-end_sql, 'SCHEMA')[0]
+      result = select(<<-end_sql, 'SCHEMA').first
         SELECT attr.attname
         FROM pg_attribute attr
         INNER JOIN pg_constraint cons ON attr.attrelid = cons.conrelid AND attr.attnum = cons.conkey[1]
         WHERE cons.contype = 'p'
           AND cons.conrelid = '#{quote_table_name(table)}'::regclass
       end_sql
-
+      
       result && result["attname"]
+      # pk_and_sequence = pk_and_sequence_for(table)
+      # pk_and_sequence && pk_and_sequence.first
     end
     
     # Returns an array of schema names.
@@ -1368,6 +1371,8 @@ module ActiveRecord::ConnectionAdapters
       configure_connection
 
       @local_tz = execute('SHOW TIME ZONE', 'SCHEMA').first["TimeZone"]
+      @use_insert_returning = config.key?(:insert_returning) ? 
+        self.class.type_cast_config_to_boolean(config[:insert_returning]) : nil
     end
 
     class ColumnDefinition < ActiveRecord::ConnectionAdapters::ColumnDefinition
