@@ -19,7 +19,7 @@ module ActiveRecord
       extend ShadowCoreMethods
       include CompatibilityMethods if CompatibilityMethods.needed?(self)
       include JdbcConnectionPoolCallbacks if JdbcConnectionPoolCallbacks.needed?
-
+      
       attr_reader :config
 
       def initialize(connection, logger, config)
@@ -465,7 +465,19 @@ module ActiveRecord
       def self.update?(sql)
         ! select?(sql) && ! insert?(sql)
       end
+      
+      unless defined? AbstractAdapter.type_cast_config_to_integer
+        
+        def self.type_cast_config_to_integer(config)
+          config =~ /\A\d+\z/ ? config.to_i : config
+        end
 
+        def self.type_cast_config_to_boolean(config)
+          config == "false" ? false : config
+        end
+        
+      end
+      
     end
   end
 end
