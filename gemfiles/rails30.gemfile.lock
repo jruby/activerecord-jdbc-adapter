@@ -1,5 +1,5 @@
 GEM
-  remote: http://rubygems.org/
+  remote: https://rubygems.org/
   specs:
     activemodel (3.0.20)
       activesupport (= 3.0.20)
@@ -22,7 +22,7 @@ GEM
     jruby-openssl (0.8.4)
       bouncy-castle-java (>= 1.5.0147)
     metaclass (0.0.1)
-    mocha (0.12.10)
+    mocha (0.13.3)
       metaclass (~> 0.0.1)
     multi_json (1.5.0)
     rake (10.0.3)
@@ -43,7 +43,7 @@ DEPENDENCIES
   appraisal
   bcrypt-ruby (~> 3.0.0)
   jruby-openssl
-  mocha (~> 0.12.10)
+  mocha (>= 0.13.0)
   rake
   simplecov
   test-unit (= 2.5.4)

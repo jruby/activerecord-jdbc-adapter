@@ -1,5 +1,5 @@
 GEM
-  remote: http://rubygems.org/
+  remote: https://rubygems.org/
   specs:
     actionmailer (2.3.18)
       actionpack (= 2.3.18)
@@ -14,13 +14,12 @@ GEM
     appraisal (0.5.1)
       bundler
       rake
-    bcrypt-ruby (3.0.1)
     bcrypt-ruby (3.0.1-java)
     bouncy-castle-java (1.5.0147)
     jruby-openssl (0.8.4)
       bouncy-castle-java (>= 1.5.0147)
     metaclass (0.0.1)
-    mocha (0.12.10)
+    mocha (0.13.3)
       metaclass (~> 0.0.1)
     multi_json (1.5.0)
     rack (1.1.6)
@@ -48,7 +47,7 @@ DEPENDENCIES
   appraisal
   bcrypt-ruby (~> 3.0.0)
   jruby-openssl
-  mocha (~> 0.12.10)
+  mocha (>= 0.13.0)
   rails (~> 2.3.18)
   rake
   simplecov
