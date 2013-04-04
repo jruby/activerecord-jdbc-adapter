@@ -2,7 +2,7 @@
 require 'test_helper'
 require 'db/postgres'
 
-class PostgresqlJSONTest < Test::Unit::TestCase
+class PostgresqlJSONTypeTest < Test::Unit::TestCase
   
   class JsonDataType < ActiveRecord::Base
     self.table_name = 'json_data_type'

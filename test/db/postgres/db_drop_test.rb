@@ -1,3 +1,4 @@
+require 'db/postgres'
 require 'abstract_db_create'
 
 class PostgresDbDropTest < Test::Unit::TestCase
@@ -12,4 +13,5 @@ class PostgresDbDropTest < Test::Unit::TestCase
       Rake::Task["db:drop"].invoke
     end
   end
+  
 end

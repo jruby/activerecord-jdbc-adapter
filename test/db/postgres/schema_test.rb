@@ -111,4 +111,3 @@ class PostgresSchemaTest < Test::Unit::TestCase
   end
   
 end
-

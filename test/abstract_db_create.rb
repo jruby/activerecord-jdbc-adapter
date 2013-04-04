@@ -22,7 +22,7 @@ module AbstractDbCreate
   end
 
   def setup
-    @prevapp = Rake.application
+    @prev_app = Rake.application
     Rake.application = Rake::Application.new
     verbose(true)
     do_setup
@@ -30,7 +30,7 @@ module AbstractDbCreate
 
   def do_setup(env = 'unittest', db = 'test_rake_db_create')
     @env = env
-    @prevconfigs = ActiveRecord::Base.configurations
+    @prev_configs = ActiveRecord::Base.configurations
     ActiveRecord::Base.connection.disconnect!
     @db_name = db
     setup_rails
@@ -48,9 +48,9 @@ module AbstractDbCreate
 
   def teardown
     Rake::Task["db:drop"].invoke
-    Rake.application = @prevapp
+    Rake.application = @prev_app
     restore_rails
-    ActiveRecord::Base.configurations = @prevconfigs
+    ActiveRecord::Base.configurations = @prev_configs
     ActiveRecord::Base.establish_connection(db_config)
     @rails_env_set = nil
     @full_env_loaded = nil
@@ -135,4 +135,5 @@ module AbstractDbCreate
   ensure
     $VERBOSE = prev
   end
+  
 end

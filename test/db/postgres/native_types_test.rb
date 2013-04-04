@@ -1,4 +1,3 @@
-require 'jdbc_common'
 require 'db/postgres'
 
 class PostgresNativeTypesTest < Test::Unit::TestCase

@@ -11,5 +11,5 @@ class CreateAutoIds < ActiveRecord::Migration
 end
 
 class AutoId < ActiveRecord::Base
-  def self.table_name () "auto_ids" end
+  def self.table_name() "auto_ids" end
 end
