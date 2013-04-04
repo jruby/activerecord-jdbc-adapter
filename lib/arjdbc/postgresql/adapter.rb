@@ -1222,14 +1222,10 @@ module ArJdbc
     if ActiveRecord::VERSION::MAJOR < 3 || 
         ( ActiveRecord::VERSION::MAJOR == 3 && ActiveRecord::VERSION::MINOR <= 1 )
       # NOTE: make sure we accept 6 arguments (>= 3.2) as well as 5 (<= 3.1) :
+      # allow 6 on 3.1 : Struct.new(:table, :name, :unique, :columns, :lengths)
       IndexDefinition.class_eval do
-        def initialize(*args)
-          if args.size == 6 # ignore last argument on AR 3.1
-            # Struct.new(:table, :name, :unique, :columns, :lengths)
-            super(args[0], args[1], args[2], args[3], args[4])
-          else
-            super
-          end
+        def initialize(table, name, unique, columns, lengths, orders = nil)
+          super(table, name, unique, columns, lengths) # @see {#indexes}
         end
       end
     end
@@ -1249,7 +1245,7 @@ module ArJdbc
         ORDER BY i.relname
       SQL
       
-      result.map do |row|
+      result = result.map do |row|
         index_name = row[0]
         unique = row[1].is_a?(String) ? row[1] == 't' : row[1] # JDBC gets us a boolean
         indkey = row[2].is_a?(Java::OrgPostgresqlUtil::PGobject) ? row[2].value : row[2]
@@ -1269,10 +1265,12 @@ module ArJdbc
 
         # add info on sort order for columns (only desc order is explicitly specified, asc is the default)
         desc_order_columns = inddef.scan(/(\w+) DESC/).flatten
-        orders = desc_order_columns.any? ? Hash[desc_order_columns.map {|order_column| [order_column, :desc]}] : {}
+        orders = desc_order_columns.any? ? Hash[ desc_order_columns.map { |column| [column, :desc] } ] : {}
         
         column_names.empty? ? nil : IndexDefinition.new(table_name, index_name, unique, column_names, [], orders)
-      end.compact
+      end
+      result.compact!
+      result
     end
 
     private
