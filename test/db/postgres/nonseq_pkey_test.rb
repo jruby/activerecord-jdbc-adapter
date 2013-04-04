@@ -1,4 +1,4 @@
-require 'jdbc_common'
+require 'test_helper'
 require 'db/postgres'
 
 class PostgresNonSeqPKeyTest < Test::Unit::TestCase
@@ -7,7 +7,7 @@ class PostgresNonSeqPKeyTest < Test::Unit::TestCase
     def self.up
       create_table 'urls', :id => false do |t|
         t.text :uhash, :null => false
-        t.text :url,  :null => false
+        t.text :url, :null => false
       end
       execute "ALTER TABLE urls ADD PRIMARY KEY (uhash)"
     end
@@ -29,11 +29,12 @@ class PostgresNonSeqPKeyTest < Test::Unit::TestCase
     CreateUrls.down
   end
 
-  def test_create
-    url = Url.create! do |u|
-      u.uhash = 'uhash'
-      u.url = 'http://url'
+  def test_create_url
+    url = Url.create! do |url|
+      url.uhash = 'uhash'
+      url.url = 'http://url.to'
     end
-    assert_equal( 'uhash', url.uhash )
+    assert_equal 'uhash', url.uhash
   end
+  
 end
