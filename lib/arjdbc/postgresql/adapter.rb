@@ -662,39 +662,32 @@ module ArJdbc
     rescue
       nil
     end
-
-    # Insert logic for pre-AR-3.1 adapters
-    def insert_sql(sql, name = nil, pk = nil, id_value = nil, sequence_name = nil, binds = [])
-      # Extract the table from the insert sql. Yuck.
-      table = sql.split(" ", 4)[2].gsub('"', '')
-
-      # Try an insert with 'returning id' if available (PG >= 8.2)
-      if supports_insert_with_returning? && id_value.nil?
-        pk, sequence_name = *pk_and_sequence_for(table) unless pk
-        if pk
-          sql = to_sql(sql, binds)
-          return select_value("#{sql} RETURNING #{quote_column_name(pk)}")
-    end
-      end
     
-      # Otherwise, plain insert
-      execute(sql, name, binds)
-
-      # Don't need to look up id_value if we already have it.
-      # (and can't in case of non-sequence PK)
-      unless id_value
-        # If neither pk nor sequence name is given, look them up.
-        unless pk || sequence_name
-          pk, sequence_name = *pk_and_sequence_for(table)
-        end
-
-        # If a pk is given, fallback to default sequence name.
-        # Don't fetch last insert id for a table without a pk.
-        if pk && sequence_name ||= default_sequence_name(table, pk)
-          id_value = last_insert_id(table, sequence_name)
-        end
+    def insert_sql(sql, name = nil, pk = nil, id_value = nil, sequence_name = nil, binds = [])
+      unless pk
+        # Extract the table from the insert sql. Yuck.
+        table_ref = extract_table_ref_from_insert_sql(sql)
+        pk = primary_key(table_ref) if table_ref
       end
-      id_value
+
+      if pk && use_insert_returning? # && id_value.nil?
+        select_value("#{to_sql(sql, binds)} RETURNING #{quote_column_name(pk)}")
+      else
+        execute(sql, name, binds) # super
+        unless id_value
+          table_ref ||= extract_table_ref_from_insert_sql(sql)
+          # If neither PK nor sequence name is given, look them up.
+          if table_ref && ! ( pk ||= primary_key(table_ref) ) && ! sequence_name
+            pk, sequence_name = pk_and_sequence_for(table_ref)
+          end
+          # If a PK is given, fallback to default sequence name.
+          # Don't fetch last insert id for a table without a PK.
+          if pk && sequence_name ||= default_sequence_name(table_ref, pk)
+            id_value = last_insert_id(table_ref, sequence_name)
+          end
+        end
+        id_value
+      end
     end
     
     # taken from rails postgresql_adapter.rb
@@ -706,7 +699,7 @@ module ArJdbc
 
       sql = "#{sql} RETURNING #{quote_column_name(pk)}" if pk
 
-      [sql, binds]
+      [ sql, binds ]
     end
     
     def primary_key(table)
@@ -1319,6 +1312,7 @@ module ArJdbc
     def extract_table_ref_from_insert_sql(sql) # :nodoc:
       sql[/into\s+([^\(]*).*values\s*\(/i]
       $1.strip if $1
+      # sql.split(" ", 4)[2].gsub('"', '')
     end
     
   end
