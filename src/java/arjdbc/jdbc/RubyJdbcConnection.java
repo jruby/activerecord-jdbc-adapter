@@ -660,6 +660,7 @@ public class RubyJdbcConnection extends RubyObject {
                                 RubyString.newUnicodeString(runtime, indexName), // index_name
                                 runtime.newBoolean( ! nonUnique ), // unique
                                 runtime.newArray() // [] for column names, we'll add to that in just a bit
+                                // orders, (since AR 3.2) where, type, using (AR 4.0)
                             };
 
                             indexes.add( indexDefinition.callMethod(context, "new", args) ); // IndexDefinition.new
@@ -679,10 +680,11 @@ public class RubyJdbcConnection extends RubyObject {
         });
     }
     
-    // NOTE: this seems to be not used ... at all, deprecate ?
+    // NOTE: this seems to be not used ... at all ?!
     /*
      * sql, values, types, name = nil, pk = nil, id_value = nil, sequence_name = nil
      */
+    @Deprecated
     @JRubyMethod(name = "insert_bind", required = 3, rest = true)
     public IRubyObject insert_bind(final ThreadContext context, final IRubyObject[] args) throws SQLException {
         final Ruby runtime = context.getRuntime();
@@ -701,7 +703,7 @@ public class RubyJdbcConnection extends RubyObject {
         });
     }
     
-    // NOTE: this seems to be not used ... at all, deprecate ?
+    // NOTE: this seems to be not used ... at all ?!
     /*
      * sql, values, types, name = nil
      */
