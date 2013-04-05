@@ -264,9 +264,21 @@ module ActiveRecord
       end
       
       def do_exec(sql, name, binds, type)
-        execute(sql, name, binds) # NOTE: for over-riders
+        if type == :query
+          log(sql, name ||= 'SQL') do 
+            @connection.execute_query(to_sql(sql, binds))
+          end
+        else
+          execute(sql, name, binds) # NOTE: for over-riders
+        end
       end
       protected :do_exec
+      
+      def exec_raw_query(sql, name = 'SQL', binds = [], &block) # :nodoc:
+        log(sql, name ||= 'SQL') do 
+          @connection.execute_raw_query(to_sql(sql, binds), &block)
+        end
+      end
       
       if ActiveRecord::VERSION::MAJOR < 3 # 2.3.x
         
@@ -278,7 +290,7 @@ module ActiveRecord
         if name == :skip_logging
           _execute(sql, name)
         else
-          log(sql, name) { _execute(sql, name ||= "SQL") }
+          log(sql, name ||= 'SQL') { _execute(sql, name) }
         end
       end
 
