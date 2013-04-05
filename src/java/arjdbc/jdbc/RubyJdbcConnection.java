@@ -424,21 +424,50 @@ public class RubyJdbcConnection extends RubyObject {
         });
     }
 
-    @JRubyMethod(name = "execute_query", required = 1)
-    public IRubyObject execute_query(final ThreadContext context, IRubyObject sql) 
+    /**
+     * NOTE: since 1.3 this behaves like <code>execute_query</code> in AR-JDBC 1.2
+     * @param context
+     * @param sql
+     * @param block
+     * @return raw query result in case no block given
+     * @throws SQLException 
+     */
+    @JRubyMethod(name = "execute_raw_query", required = 1) // optional block
+    public IRubyObject execute_raw_query(final ThreadContext context, 
+        final IRubyObject sql, final Block block) throws SQLException {
+        final String query = sql.convertToString().getUnicodeValue();
+        return executeRawQuery(context, query, 0, block);
+    }
+
+    /**
+     * NOTE: since 1.3 this behaves like <code>execute_query</code> in AR-JDBC 1.2
+     * @param context
+     * @param sql
+     * @param maxRows
+     * @param block
+     * @return raw query result in case no block given
+     * @throws SQLException 
+     */
+    @JRubyMethod(name = "execute_raw_query", required = 2)
+    public IRubyObject execute_raw_query(final ThreadContext context, 
+        final IRubyObject sql, final IRubyObject maxRows, final Block block) 
         throws SQLException {
         final String query = sql.convertToString().getUnicodeValue();
-        return executeQuery(context, query, 0);
+        return executeRawQuery(context, query, RubyNumeric.fix2int(maxRows), block);
     }
 
-    @JRubyMethod(name = "execute_query", required = 2)
-    public IRubyObject execute_query(final ThreadContext context, 
-        final IRubyObject sql, final IRubyObject maxRows) throws SQLException {
-        final String query = sql.convertToString().getUnicodeValue();
-        return executeQuery(context, query, RubyNumeric.fix2int(maxRows));
-    }
-
-    protected IRubyObject executeQuery(final ThreadContext context, final String query, final int maxRows) {
+    /**
+     * @param context
+     * @param query
+     * @param maxRows
+     * @param block
+     * @return raw query result (in case no block was given)
+     * 
+     * @see #execute_raw_query(ThreadContext, IRubyObject, Block)
+     * @see #execute_raw_query(ThreadContext, IRubyObject, IRubyObject, Block)
+     */
+    protected IRubyObject executeRawQuery(final ThreadContext context, final String query, final int maxRows, 
+        final Block block) { // TODO implement block support
         return withConnection(context, new Callable<IRubyObject>() {
             public IRubyObject call(final Connection connection) throws SQLException {
                 final Ruby runtime = context.getRuntime();
@@ -454,7 +483,75 @@ public class RubyJdbcConnection extends RubyObject {
                     debugErrorSQL(context, query);
                     throw e;
                 }
-                finally { close(statement); }
+                finally { close(resultSet); close(statement); }
+            }
+        });
+    }
+
+    /**
+     * Executes a query and returns the (AR) result.
+     * @param context
+     * @param sql
+     * @return
+     * @throws SQLException
+     * 
+     * @see #execute_raw_query(ThreadContext, IRubyObject, Block)
+     */
+    @JRubyMethod(name = "execute_query", required = 1)
+    public IRubyObject execute_query(final ThreadContext context, final IRubyObject sql) 
+        throws SQLException {
+        final String query = sql.convertToString().getUnicodeValue();
+        return executeQuery(context, query, 0);
+    }
+
+    /**
+     * Executes a query and returns the (AR) result.
+     * @param context
+     * @param sql
+     * @param maxRows
+     * @return
+     * @throws SQLException 
+     * 
+     * @see #execute_raw_query(ThreadContext, IRubyObject, IRubyObject, Block)
+     */
+    @JRubyMethod(name = "execute_query", required = 2)
+    public IRubyObject execute_query(final ThreadContext context, 
+        final IRubyObject sql, final IRubyObject maxRows) throws SQLException {
+        final String query = sql.convertToString().getUnicodeValue();
+        return executeQuery(context, query, RubyNumeric.fix2int(maxRows));
+    }
+    
+    /**
+     * NOTE: This methods behavior changed in AR-JDBC 1.3 the old behavior is 
+     * achievable using {@link #executeRawQuery(ThreadContext, String, int, Block)}.
+     * 
+     * @param context
+     * @param query
+     * @param maxRows
+     * @return AR (mapped) query result
+     * 
+     * @see #execute_query(ThreadContext, IRubyObject)
+     * @see #execute_query(ThreadContext, IRubyObject, IRubyObject)
+     * @see #mapResult(ThreadContext, Ruby, DatabaseMetaData, ResultSet, RubyJdbcConnection.ColumnData[]) 
+     */
+    protected IRubyObject executeQuery(final ThreadContext context, final String query, final int maxRows) {
+        return withConnection(context, new Callable<IRubyObject>() {
+            public IRubyObject call(final Connection connection) throws SQLException {
+                final Ruby runtime = context.getRuntime();
+                Statement statement = null; ResultSet resultSet = null;
+                try {
+                    final DatabaseMetaData metaData = connection.getMetaData();
+                    statement = connection.createStatement();
+                    statement.setMaxRows(maxRows); // zero means there is no limit
+                    resultSet = statement.executeQuery(query);
+                    final ColumnData[] columns = setupColumns(runtime, metaData, resultSet.getMetaData(), false);
+                    return mapResult(context, runtime, metaData, resultSet, columns);
+                }
+                catch (final SQLException e) {
+                    debugErrorSQL(context, query);
+                    throw e;
+                }
+                finally { close(resultSet); close(statement); }
             }
         });
     }
@@ -868,7 +965,7 @@ public class RubyJdbcConnection extends RubyObject {
 
     protected JdbcConnectionFactory getConnectionFactory() throws RaiseException {
         IRubyObject connection_factory = getInstanceVariable("@connection_factory");
-        if (connection_factory == null) {
+        if ( connection_factory == null ) {
             throw getRuntime().newRuntimeError("@connection_factory not set");
         }
         JdbcConnectionFactory connectionFactory;
@@ -876,11 +973,8 @@ public class RubyJdbcConnection extends RubyObject {
             connectionFactory = (JdbcConnectionFactory) 
                 connection_factory.toJava(JdbcConnectionFactory.class);
         }
-        catch (Exception e) { // TODO debug this !
-            connectionFactory = null;
-        }
-        if (connectionFactory == null) {
-            throw getRuntime().newRuntimeError("@connection_factory not set properly");
+        catch (Exception e) {
+            throw getRuntime().newRuntimeError("@connection_factory not set properly: " + e);
         }
         return connectionFactory;
     }
@@ -934,22 +1028,43 @@ public class RubyJdbcConnection extends RubyObject {
         else return -1;
     }
 
+    /**
+     * @deprecated this method is no longer used, instead consider overriding 
+     * {@link #mapResult(ThreadContext, Ruby, DatabaseMetaData, ResultSet, RubyJdbcConnection.ColumnData[])}
+     */
+    @Deprecated
     protected void populateFromResultSet(
             final ThreadContext context, final Ruby runtime, 
             final List<IRubyObject> results, final ResultSet resultSet, 
             final ColumnData[] columns) throws SQLException {
-        final int columnCount = columns.length;
+        final ResultHandler resultHandler = ResultHandler.getInstance(context);
+        while ( resultSet.next() ) {
+            results.add( resultHandler.mapRawRow(context, runtime, columns, resultSet, this) );
+        }
+    }
+
+    /**
+     * Maps a query result into a <code>ActiveRecord</code> result.
+     * @param context
+     * @param runtime
+     * @param metaData
+     * @param resultSet
+     * @param columns
+     * @return since 3.1 expected to return a <code>ActiveRecord::Result</code>
+     * @throws SQLException 
+     */
+    protected IRubyObject mapResult(final ThreadContext context, final Ruby runtime,
+            final DatabaseMetaData metaData, final ResultSet resultSet, 
+            final ColumnData[] columns) throws SQLException {
+
+        final ResultHandler resultHandler = ResultHandler.getInstance(context);
+        final RubyArray resultRows = runtime.newArray();
         
         while ( resultSet.next() ) {
-            RubyHash row = RubyHash.newHash(runtime);
-
-            for ( int i = 0; i < columnCount; i++ ) {
-                final ColumnData column = columns[i];
-                row.op_aset(context, column.name, jdbcToRuby(runtime, column.index, column.type, resultSet));
-            }
-
-            results.add(row);
+            resultRows.add( resultHandler.mapRow(context, runtime, columns, resultSet, this) );
         }
+        
+        return resultHandler.newResult(context, runtime, columns, resultRows);
     }
     
     protected IRubyObject jdbcToRuby(final Ruby runtime, final int column, 
@@ -1290,7 +1405,8 @@ public class RubyJdbcConnection extends RubyObject {
                 return ! connection.isClosed(); // if closed than broken
             }
         }
-        catch (Exception e) { // TODO log this
+        catch (Exception e) {
+            debugMessage(context, "connection considered broken due: " + e.toString());
             return true;
         }
         finally { close(statement); }
@@ -1616,11 +1732,26 @@ public class RubyJdbcConnection extends RubyObject {
         final RubyArray results = runtime.newArray();
         // [ { 'col1': 1, 'col2': 2 }, { 'col1': 3, 'col2': 4 } ]
         
-        ColumnData[] columns = setupColumns(runtime, metaData, resultSet.getMetaData(), downCase);
+        ColumnData[] columns = extractColumns(runtime, metaData, resultSet, downCase);
 
         populateFromResultSet(context, runtime, (List<IRubyObject>) results, resultSet, columns);
 
         return results;
+    }
+    
+    /**
+     * Extract columns from result set.
+     * @param runtime
+     * @param metaData
+     * @param resultSet
+     * @param downCase
+     * @return columns data
+     * @throws SQLException 
+     */
+    protected ColumnData[] extractColumns(final Ruby runtime, 
+        final DatabaseMetaData metaData, final ResultSet resultSet, 
+        final boolean downCase) throws SQLException {
+        return setupColumns(runtime, metaData, resultSet.getMetaData(), false);
     }
     
     /**
@@ -1805,6 +1936,113 @@ public class RubyJdbcConnection extends RubyObject {
         }
         return end;
     }
+    
+    /**
+     * JDBC connection helper that handles mapping results to 
+     * <code>ActiveRecord::Result</code> (available since AR-3.1).
+     * 
+     * @see #populateFromResultSet(ThreadContext, Ruby, List, ResultSet, RubyJdbcConnection.ColumnData[]) 
+     * @author kares
+     */
+    protected static class ResultHandler {
+
+        protected static Boolean USE_RESULT;
+
+        // AR-3.2 : initialize(columns, rows)
+        // AR-4.0 : initialize(columns, rows, column_types = {})
+        protected static Boolean INIT_COLUMN_TYPES = Boolean.FALSE;
+
+        protected static Boolean FORCE_HASH_ROWS = Boolean.FALSE;
+
+        private static volatile ResultHandler instance;
+
+        public static ResultHandler getInstance(final ThreadContext context) {
+            if ( instance == null ) {
+                synchronized(ResultHandler.class) {
+                    if ( instance == null ) { // fine to initialize twice
+                        setInstance( new ResultHandler(context) );
+                    }
+                }
+            }
+            return instance;
+        }
+
+        protected static synchronized void setInstance(final ResultHandler instance) {
+            ResultHandler.instance = instance;
+        }
+
+        protected ResultHandler(final ThreadContext context) {
+            final Ruby runtime = context.getRuntime();
+            final RubyClass result = getResult(runtime);
+            USE_RESULT = result != null && result != runtime.getNilClass();
+        }
+
+        public IRubyObject mapRow(final ThreadContext context, final Ruby runtime, 
+            final ColumnData[] columns, final ResultSet resultSet, 
+            final RubyJdbcConnection connection) throws SQLException {
+            
+            if ( USE_RESULT ) { // maps a AR::Result row
+                final RubyArray row = runtime.newArray(columns.length);
+                
+                for ( int i = 0; i < columns.length; i++ ) {
+                    final ColumnData column = columns[i];
+                    row.append( connection.jdbcToRuby(runtime, column.index, column.type, resultSet) );
+                }
+                
+                return row;
+            }
+            else {
+                return mapRawRow(context, runtime, columns, resultSet, connection);
+            }
+        }
+
+        IRubyObject mapRawRow(final ThreadContext context, final Ruby runtime, 
+            final ColumnData[] columns, final ResultSet resultSet, 
+            final RubyJdbcConnection connection) throws SQLException {
+            
+            final RubyHash row = RubyHash.newHash(runtime);
+
+            for ( int i = 0; i < columns.length; i++ ) {
+                final ColumnData column = columns[i];
+                row.op_aset( context, column.name, connection.jdbcToRuby(runtime, column.index, column.type, resultSet) );
+            }
+
+            return row;
+        }
+        
+        public IRubyObject newResult(final ThreadContext context, final Ruby runtime, 
+            final ColumnData[] columns, final IRubyObject rows) { // rows array
+            if ( USE_RESULT ) { // ActiveRecord::Result.new(columns, rows)
+                final RubyClass result = getResult(runtime);
+                return result.callMethod( context, "new", initArgs(runtime, columns, rows), Block.NULL_BLOCK );
+            }
+            return rows; // contains { 'col1' => 1, ... } Hash-es
+        }
+        
+        private IRubyObject[] initArgs(final Ruby runtime, 
+            final ColumnData[] columns, final IRubyObject rows) {
+            
+            final IRubyObject[] args;
+            
+            final RubyArray cols = runtime.newArray(columns.length);
+            
+            if ( INIT_COLUMN_TYPES ) { // NOTE: NOT IMPLEMENTED
+                for ( int i=0; i<columns.length; i++ ) {
+                    cols.add( columns[i].name );
+                }
+                args = new IRubyObject[] { cols, rows };
+            }
+            else {
+                for ( int i=0; i<columns.length; i++ ) {
+                    cols.add( columns[i].name );
+                }
+                args = new IRubyObject[] { cols, rows };
+            }
+            return args;
+        }
+        
+    }
+
     
     protected static final class TableName {
         

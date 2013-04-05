@@ -128,13 +128,12 @@ public class MSSQLRubyJdbcConnection extends RubyJdbcConnection {
     }
 
     @Override
-    protected void populateFromResultSet(
-            final ThreadContext context, final Ruby runtime, 
-            final List<IRubyObject> results, final ResultSet resultSet, 
-            final ColumnData[] columns) throws SQLException {
-        super.populateFromResultSet(context, runtime, results, resultSet, filterRowNumFromColumns(columns));
+    protected ColumnData[] extractColumns(final Ruby runtime, 
+        final DatabaseMetaData metaData, final ResultSet resultSet, 
+        final boolean downCase) throws SQLException {
+        return filterRowNumFromColumns( super.extractColumns(runtime, metaData, resultSet, downCase) );
     }
-
+    
     private static final ByteList _row_num; // "_row_num"
     static {
         _row_num = new ByteList(new byte[] { '_','r','o','w','_','n','u','m' }, false);

@@ -38,6 +38,7 @@ import org.jruby.RubyObjectAdapter;
 import org.jruby.RubyString;
 import org.jruby.anno.JRubyMethod;
 import org.jruby.javasupport.JavaEmbedUtils;
+import org.jruby.runtime.Block;
 import org.jruby.runtime.ThreadContext;
 import org.jruby.runtime.builtin.IRubyObject;
 import org.jruby.util.ByteList;
@@ -340,7 +341,7 @@ public class DerbyModule {
             return connection.execute_insert(context, sql);
         }
         else if (sqlStr.startsWith("select") || sqlStr.startsWith("show") || sqlStr.startsWith("values")) {
-            return connection.execute_query(context, sql);
+            return connection.execute_raw_query(context, sql, Block.NULL_BLOCK);
         }
         else {
             return connection.execute_update(context, sql);
