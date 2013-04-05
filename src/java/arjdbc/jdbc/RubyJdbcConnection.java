@@ -1751,7 +1751,7 @@ public class RubyJdbcConnection extends RubyObject {
     protected ColumnData[] extractColumns(final Ruby runtime, 
         final DatabaseMetaData metaData, final ResultSet resultSet, 
         final boolean downCase) throws SQLException {
-        return setupColumns(runtime, metaData, resultSet.getMetaData(), false);
+        return setupColumns(runtime, metaData, resultSet.getMetaData(), downCase);
     }
     
     /**
