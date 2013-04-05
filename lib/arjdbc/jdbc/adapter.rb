@@ -321,7 +321,9 @@ module ActiveRecord
       
       def select_rows(sql, name = nil)
         rows = []
-        select(sql, name).each {|row| rows << row.values }
+        for row in select(sql, name)
+          rows << row.values
+        end
         rows
       end
 

@@ -554,7 +554,7 @@ module ArJdbc
     
     def supports_extensions? # :nodoc:
       postgresql_version >= 90200
-    end if AR4_COMPAT
+    end # NOTE: only since AR-4.0 but should not hurt on other versions
     
     def enable_extension(name)
       exec_query("CREATE EXTENSION IF NOT EXISTS \"#{name}\"") #.tap { reload_type_map }
@@ -566,14 +566,14 @@ module ArJdbc
 
     def extension_enabled?(name)
       if supports_extensions?
-        rows = query("SELECT EXISTS(SELECT * FROM pg_available_extensions WHERE name = '#{name}' AND installed_version IS NOT NULL)", 'SCHEMA')
+        rows = select_rows("SELECT EXISTS(SELECT * FROM pg_available_extensions WHERE name = '#{name}' AND installed_version IS NOT NULL)", 'SCHEMA')
         rows.first.first
       end
     end
 
     def extensions
       if supports_extensions?
-        rows = query "SELECT extname from pg_extension", "SCHEMA"
+        rows = select_rows "SELECT extname from pg_extension", "SCHEMA"
         rows.map { |row| row.first }
       else
         super

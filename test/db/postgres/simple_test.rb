@@ -14,7 +14,7 @@ class PostgresSimpleTest < Test::Unit::TestCase
   include DirtyAttributeTests
   include XmlColumnTests
   include CustomSelectTestMethods
-
+  
   def test_adapter_class_name_equals_native_adapter_class_name
     classname = connection.class.name[/[^:]*$/]
     assert_equal 'PostgreSQLAdapter', classname
@@ -124,6 +124,16 @@ class PostgresSimpleTest < Test::Unit::TestCase
     assert_equal 'uid', connection.primary_key('uid_table')
   ensure
     connection.execute "DROP TABLE uid_table"
+  end
+  
+  def test_extensions
+    if connection.supports_extensions?
+      assert_include connection.extensions, 'plpgsql'
+      assert connection.extension_enabled?('plpgsql')
+      assert ! connection.extension_enabled?('invalid')
+    else
+      assert ! connection.extensions
+    end
   end
   
 end
