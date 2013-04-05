@@ -1220,7 +1220,7 @@ module ArJdbc
       # NOTE: make sure we accept 6 arguments (>= 3.2) as well as 5 (<= 3.1) :
       # allow 6 on 3.1 : Struct.new(:table, :name, :unique, :columns, :lengths)
       IndexDefinition.class_eval do
-        def initialize(table, name, unique, columns, lengths, orders = nil)
+        def initialize(table, name, unique = nil, columns = nil, lengths = nil, orders = nil)
           super(table, name, unique, columns, lengths) # @see {#indexes}
         end
       end
