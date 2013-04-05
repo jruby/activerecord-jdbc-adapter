@@ -7,11 +7,8 @@ module ::ArJdbc
 
       def explain(arel, binds = [])
         sql = "EXPLAIN QUERY PLAN #{to_sql(arel, binds)}"
-        raw_result  = execute(sql, "EXPLAIN", binds)
-        # TODO we should refactor to exce_query once it returns Result ASAP :
-        keys = raw_result[0] ? raw_result[0].keys : {}
-        rows = raw_result.map { |hash| hash.values }
-        ExplainPrettyPrinter.new.pp ActiveRecord::Result.new(keys, rows)
+        result  = exec_query(sql, "EXPLAIN", binds)
+        ExplainPrettyPrinter.new.pp result
       end
 
       class ExplainPrettyPrinter # :nodoc:
