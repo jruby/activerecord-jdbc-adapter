@@ -222,11 +222,6 @@ module ActiveRecord
         alias_chained_method :select_all, :query_cache, :jdbc_select_all
         alias_chained_method :update, :query_dirty, :jdbc_update
         alias_chained_method :insert, :query_dirty, :jdbc_insert
-
-        # Do we need this? Not in AR 3.
-        def select_one(sql, name = nil)
-          select(sql, name).first
-        end
         
       end
 
@@ -280,6 +275,28 @@ module ActiveRecord
         end
       end
       
+      def select_rows(sql, name = nil)
+        rows = []
+        for row in exec_raw_query(sql, name) # TODO re-factor exec_raw_query { }
+          rows << row.values
+        end
+        rows
+      end
+      
+      if ActiveRecord::VERSION::MAJOR > 3 # expects AR::Result e.g. from select_all
+        
+      def select(sql, name = nil, binds = [])
+        exec_query(sql, name, binds)
+      end
+        
+      else
+        
+      def select(sql, name = nil, binds = []) # NOTE: only (sql, name) on AR < 3.1
+        exec_raw_query(sql, name, binds)
+      end
+      
+      end
+      
       if ActiveRecord::VERSION::MAJOR < 3 # 2.3.x
         
       # NOTE: 2.3 log(sql, name) while does not like `name == nil`
@@ -322,22 +339,6 @@ module ActiveRecord
         @connection.execute(sql)
       end
       private :_execute
-      
-      # Returns an array of record hashes with the column names as keys and
-      # column values as values.
-      # @note on AR-3.2 expects "only" 2 arguments `select(sql, name = nil)`
-      #  we accept 3 arguments as well `select(sql, name = nil, binds = [])`
-      def select(*args)
-        execute(*args)
-      end
-      
-      def select_rows(sql, name = nil)
-        rows = []
-        for row in select(sql, name)
-          rows << row.values
-        end
-        rows
-      end
 
       # NOTE: we have an extra binds argument at the end due 2.3 support (due {#jdbc_insert}).
       def insert_sql(sql, name = nil, pk = nil, id_value = nil, sequence_name = nil, binds = []) # :nodoc:
