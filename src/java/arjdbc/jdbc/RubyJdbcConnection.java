@@ -477,7 +477,7 @@ public class RubyJdbcConnection extends RubyObject {
                     statement = connection.createStatement();
                     statement.setMaxRows(maxRows); // zero means there is no limit
                     resultSet = statement.executeQuery(query);
-                    return unmarshalResult(context, runtime, metaData, resultSet, false);
+                    return mapToRawResult(context, runtime, metaData, resultSet, false);
                 }
                 catch (final SQLException e) {
                     debugErrorSQL(context, query);
@@ -532,7 +532,7 @@ public class RubyJdbcConnection extends RubyObject {
      * 
      * @see #execute_query(ThreadContext, IRubyObject)
      * @see #execute_query(ThreadContext, IRubyObject, IRubyObject)
-     * @see #mapResult(ThreadContext, Ruby, DatabaseMetaData, ResultSet, RubyJdbcConnection.ColumnData[]) 
+     * @see #mapToResult(ThreadContext, Ruby, DatabaseMetaData, ResultSet, RubyJdbcConnection.ColumnData[]) 
      */
     protected IRubyObject executeQuery(final ThreadContext context, final String query, final int maxRows) {
         return withConnection(context, new Callable<IRubyObject>() {
@@ -545,7 +545,7 @@ public class RubyJdbcConnection extends RubyObject {
                     statement.setMaxRows(maxRows); // zero means there is no limit
                     resultSet = statement.executeQuery(query);
                     final ColumnData[] columns = setupColumns(runtime, metaData, resultSet.getMetaData(), false);
-                    return mapResult(context, runtime, metaData, resultSet, columns);
+                    return mapToResult(context, runtime, metaData, resultSet, columns);
                 }
                 catch (final SQLException e) {
                     debugErrorSQL(context, query);
@@ -621,7 +621,7 @@ public class RubyJdbcConnection extends RubyObject {
         final DatabaseMetaData metaData = getConnection(true).getMetaData();
         final IRubyObject types; final ResultSet typeDesc = metaData.getTypeInfo();
         try {
-            types = unmarshalResult(context, runtime, metaData, typeDesc, true);
+            types = mapToRawResult(context, runtime, metaData, typeDesc, true);
         }
         finally { close(typeDesc); }
         
@@ -1030,7 +1030,7 @@ public class RubyJdbcConnection extends RubyObject {
 
     /**
      * @deprecated this method is no longer used, instead consider overriding 
-     * {@link #mapResult(ThreadContext, Ruby, DatabaseMetaData, ResultSet, RubyJdbcConnection.ColumnData[])}
+     * {@link #mapToResult(ThreadContext, Ruby, DatabaseMetaData, ResultSet, RubyJdbcConnection.ColumnData[])}
      */
     @Deprecated
     protected void populateFromResultSet(
@@ -1053,7 +1053,7 @@ public class RubyJdbcConnection extends RubyObject {
      * @return since 3.1 expected to return a <code>ActiveRecord::Result</code>
      * @throws SQLException 
      */
-    protected IRubyObject mapResult(final ThreadContext context, final Ruby runtime,
+    protected IRubyObject mapToResult(final ThreadContext context, final Ruby runtime,
             final DatabaseMetaData metaData, final ResultSet resultSet, 
             final ColumnData[] columns) throws SQLException {
 
@@ -1583,15 +1583,10 @@ public class RubyJdbcConnection extends RubyObject {
     protected static final int COLUMN_DEF = 13;
     protected static final int IS_NULLABLE = 18;
 
-    protected int intFromResultSet(ResultSet resultSet, int column) throws SQLException {
-        int precision = resultSet.getInt(column);
-
-        return precision == 0 && resultSet.wasNull() ? -1 : precision;
-    }
-
     /**
-     * Create a string which represents a sql type usable by Rails from the resultSet column
-     * metadata object.
+     * Create a string which represents a SQL type usable by Rails from the 
+     * resultSet column meta-data
+     * @param resultSet.
      */
     protected String typeFromResultSet(final ResultSet resultSet) throws SQLException {
         final int precision = intFromResultSet(resultSet, COLUMN_SIZE);
@@ -1600,8 +1595,16 @@ public class RubyJdbcConnection extends RubyObject {
         final String type = resultSet.getString(TYPE_NAME);
         return formatTypeWithPrecisionAndScale(type, precision, scale);
     }
+    
+    protected static int intFromResultSet(
+        final ResultSet resultSet, final int column) throws SQLException {
+        final int precision = resultSet.getInt(column);
+        return precision == 0 && resultSet.wasNull() ? -1 : precision;
+    }
 
-    protected static String formatTypeWithPrecisionAndScale(final String type, final int precision, final int scale) {
+    protected static String formatTypeWithPrecisionAndScale(
+        final String type, final int precision, final int scale) {
+        
         if ( precision <= 0 ) return type;
 
         final StringBuilder typeStr = new StringBuilder().append(type);
@@ -1610,15 +1613,15 @@ public class RubyJdbcConnection extends RubyObject {
         return typeStr.append(')').toString(); // type += ")";
     }
 
-    private IRubyObject defaultValueFromResultSet(Ruby runtime, ResultSet resultSet)
-            throws SQLException {
-        String defaultValue = resultSet.getString(COLUMN_DEF);
-
+    private static IRubyObject defaultValueFromResultSet(final Ruby runtime, final ResultSet resultSet)
+        throws SQLException {
+        final String defaultValue = resultSet.getString(COLUMN_DEF);
         return defaultValue == null ? runtime.getNil() : RubyString.newUnicodeString(runtime, defaultValue);
     }
 
-    private IRubyObject unmarshalColumns(final ThreadContext context, final DatabaseMetaData metaData, 
-        final ResultSet results, final ResultSet primaryKeys) throws SQLException {
+    private IRubyObject unmarshalColumns(final ThreadContext context, 
+        final DatabaseMetaData metaData, final ResultSet results, final ResultSet primaryKeys) 
+        throws SQLException {
         
         final Ruby runtime = context.getRuntime();
         // RubyHash types = (RubyHash) native_database_types();
@@ -1662,8 +1665,8 @@ public class RubyJdbcConnection extends RubyObject {
     }
     
     /**
-     * @deprecated confusing as it closes the result set it receives use 
-     * @see #unmarshalIdResult(Ruby, Statement)
+     * @deprecated confusing as it closes the result set it receives, replaced
+     * with {@link #unmarshalIdResult(Ruby, Statement)}
      */
     @Deprecated
     public static IRubyObject unmarshal_id_result(
@@ -1685,7 +1688,7 @@ public class RubyJdbcConnection extends RubyObject {
         IRubyObject result;
         ResultSet resultSet = statement.getResultSet();
         try {
-            result = unmarshalResult(context, runtime, metaData, resultSet, downCase);
+            result = mapToRawResult(context, runtime, metaData, resultSet, downCase);
         }
         finally { close(resultSet); }
         
@@ -1697,7 +1700,7 @@ public class RubyJdbcConnection extends RubyObject {
         do {
             resultSet = statement.getResultSet();
             try {
-                result = unmarshalResult(context, runtime, metaData, resultSet, downCase);
+                result = mapToRawResult(context, runtime, metaData, resultSet, downCase);
             }
             finally { close(resultSet); }
             
@@ -1708,34 +1711,31 @@ public class RubyJdbcConnection extends RubyObject {
         return runtime.newArray(results);
     }
 
-     /**
-     * @deprecated no longer used but kept for API compatibility
-     * NOTE: this method no longer closes the passed result set !
+    /**
+     * @deprecated no longer used but kept for binary compatibility
      */
     @Deprecated
     protected IRubyObject unmarshalResult(final ThreadContext context,
             final DatabaseMetaData metaData, final ResultSet resultSet, 
             final boolean downCase) throws SQLException {
-        return unmarshalResult(context, context.getRuntime(), metaData, resultSet, downCase);
+        return mapToRawResult(context, context.getRuntime(), metaData, resultSet, downCase);
     }
     
     /**
-     * Converts a jdbc resultset into an array (rows) of hashes (row) that AR expects.
+     * Converts a JDBC result set into an array (rows) of hashes (row).
      *
      * @param downCase should column names only be in lower case?
      */
     @SuppressWarnings("unchecked")
-    private IRubyObject unmarshalResult(final ThreadContext context, final Ruby runtime,
+    private IRubyObject mapToRawResult(final ThreadContext context, final Ruby runtime,
             final DatabaseMetaData metaData, final ResultSet resultSet, 
             final boolean downCase) throws SQLException {
         
-        final RubyArray results = runtime.newArray();
-        // [ { 'col1': 1, 'col2': 2 }, { 'col1': 3, 'col2': 4 } ]
-        
         ColumnData[] columns = extractColumns(runtime, metaData, resultSet, downCase);
 
+        final RubyArray results = runtime.newArray();
+        // [ { 'col1': 1, 'col2': 2 }, { 'col1': 3, 'col2': 4 } ]
         populateFromResultSet(context, runtime, (List<IRubyObject>) results, resultSet, columns);
-
         return results;
     }
     
