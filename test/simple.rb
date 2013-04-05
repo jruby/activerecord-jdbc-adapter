@@ -1,5 +1,8 @@
 # -*- coding: utf-8 -*-
 require 'test_helper'
+
+require 'set'
+
 require 'models/data_types'
 require 'models/entry'
 require 'models/auto_id'
@@ -828,6 +831,53 @@ module SimpleTestMethods
       when 'updated_on' then assert_not_nil row[i]
       else raise "unexpected entries row: #{column.inspect}"
       end
+    end
+  end
+  
+  def test_exec_query_result
+    Entry.delete_all
+    user1 = User.create! :login => 'user1'
+    user2 = User.create! :login => 'user2'
+    Entry.create! :title => 'user11', :user_id => user1.id
+    Entry.create! :title => 'user12', :user_id => user1.id
+    Entry.create! :title => 'user21', :user_id => user2.id
+    
+    result = Entry.connection.exec_query 'SELECT * FROM entries'
+    
+    if ar_version('3.1')
+      assert_instance_of ActiveRecord::Result, result
+      assert_not_empty result.columns
+      columns = Entry.columns.map { |column| column.name.to_s }
+      assert_equal Set.new(columns), Set.new(result.columns)
+      
+      assert_equal 3, result.rows.size
+      assert_instance_of Array, result.rows[0]
+      assert_equal 'user11', result.rows[0][1]
+      assert_equal 'user12', result.rows[1][1]
+    else
+      assert_instance_of Array, result
+      assert_equal 3, result.size
+      assert_instance_of Hash, result[0]
+      assert_equal 'user11', result[0]['title']
+      assert_equal user1.id, result[0]['user_id']
+    end
+  end
+
+  def test_exec_query_empty_result
+    Entry.delete_all; User.delete_all
+    
+    result = User.connection.exec_query 'SELECT * FROM users'
+    
+    if ar_version('3.1')
+      assert_instance_of ActiveRecord::Result, result
+      assert_not_empty result.columns
+      columns = User.columns.map { |column| column.name.to_s }
+      assert_equal Set.new(columns), Set.new(result.columns)
+      
+      assert_equal 0, result.rows.size
+    else
+      assert_instance_of Array, result
+      assert_equal 0, result.size
     end
   end
   

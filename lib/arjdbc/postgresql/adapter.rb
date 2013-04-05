@@ -767,7 +767,7 @@ module ArJdbc
 
     # Returns the active schema search path.
     def schema_search_path
-      @schema_search_path ||= exec_query('SHOW search_path', 'SCHEMA')[0]['search_path']
+      @schema_search_path ||= select_value('SHOW search_path', 'SCHEMA')
     end
     
     # Sets the schema search path to a string of comma-separated schema names.
@@ -887,7 +887,7 @@ module ArJdbc
 
     # Returns the current client message level.
     def client_min_messages
-      exec_query('SHOW client_min_messages', 'SCHEMA')[0]['client_min_messages']
+      select_value('SHOW client_min_messages', 'SCHEMA')
     end
 
     # Set the client message level.
@@ -1206,7 +1206,7 @@ module ArJdbc
       binds = [[ nil, table.gsub(/(^"|"$)/,'') ]]
       binds << [ nil, schema ] if schema
       
-      exec_query(<<-SQL, 'SCHEMA', binds).first["table_count"] > 0
+      exec_raw_query(<<-SQL, 'SCHEMA', binds).first["table_count"] > 0
         SELECT COUNT(*) as table_count
         FROM pg_tables
         WHERE tablename = ?
@@ -1241,7 +1241,7 @@ module ArJdbc
         ORDER BY i.relname
       SQL
       
-      result = result.map do |row|
+      result.map! do |row|
         index_name = row[0]
         unique = row[1].is_a?(String) ? row[1] == 't' : row[1] # JDBC gets us a boolean
         indkey = row[2].is_a?(Java::OrgPostgresqlUtil::PGobject) ? row[2].value : row[2]
