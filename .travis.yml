@@ -24,5 +24,7 @@ branches:
     - 1-2-stable
 matrix:
   allow_failures:
-    - gemfile: gemfiles/rails23.gemfile
+    # probably fine to allow in 1.3.x :
+    #- gemfile: gemfiles/rails23.gemfile
+    # NOTE: not sure why it can't connect :
     - env: DB=jdbc
