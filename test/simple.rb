@@ -791,6 +791,46 @@ module SimpleTestMethods
     assert Thing.find_by_name 'jozko'
   end
   
+  def test_select_rows
+    Entry.delete_all
+    user = User.create! :login => 'select_rows'
+    Entry.create! :title => 'title 1', :content => 'content 1', :user_id => user.id
+    Entry.create! :title => 'title 2', :content => 'content 2', :user_id => user.id, :rating => 1.0
+    
+    rows = connection.execute 'SELECT * FROM entries'
+    column_order = rows.first.keys
+    
+    rows = connection.select_rows 'SELECT * FROM entries'
+    assert_instance_of Array, rows
+    assert_equal 2, rows.size
+    
+    row = rows[0]
+    column_order.each_with_index do |column, i|
+      case column.to_s
+      when 'id' then assert_not_nil row[i]
+      when 'title' then assert_equal 'title 1', row[i]
+      when 'content' then assert_equal 'content 1', row[i]
+      when 'user_id' then assert_equal user.id, row[i]
+      when 'rating' then assert_nil row[i]
+      when 'updated_on' then assert_not_nil row[i]
+      else raise "unexpected entries row: #{column.inspect}"
+      end
+    end
+    
+    row = rows[1]
+    column_order.each_with_index do |column, i|
+      case column.to_s
+      when 'id' then assert_not_nil row[i]
+      when 'title' then assert_equal 'title 2', row[i]
+      when 'content' then assert_equal 'content 2', row[i]
+      when 'user_id' then assert_equal user.id, row[i]
+      when 'rating' then assert_not_nil row[i]
+      when 'updated_on' then assert_not_nil row[i]
+      else raise "unexpected entries row: #{column.inspect}"
+      end
+    end
+  end
+  
   def test_connection_alive_sql
     connection = ActiveRecord::Base.connection
     alive_sql = connection.config[:connection_alive_sql]
