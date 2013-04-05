@@ -112,7 +112,7 @@ public class RubyJdbcConnection extends RubyObject {
      * @param runtime
      * @return <code>ActiveRecord::Result</code>
      */
-    protected static RubyClass getResult(final Ruby runtime) {
+    static RubyClass getResult(final Ruby runtime) {
         return runtime.getModule("ActiveRecord").getClass("Result");
     }
     
@@ -126,12 +126,20 @@ public class RubyJdbcConnection extends RubyObject {
     
     /**
      * @param runtime
-     * @return <code>ActiveRecord::TransactionIsolationError</code>
+     * @return <code>ActiveRecord::JDBCError</code>
      */
     protected static RubyClass getJDBCError(final Ruby runtime) {
         return runtime.getModule("ActiveRecord").getClass("JDBCError");
     }
 
+    /**
+     * @param runtime
+     * @return <code>ActiveRecord::ConnectionNotEstablished</code>
+     */
+    protected static RubyClass getConnectionNotEstablished(final Ruby runtime) {
+        return runtime.getModule("ActiveRecord").getClass("ConnectionNotEstablished");
+    }
+    
     /**
      * NOTE: Only available since AR-4.0
      * @param runtime
@@ -1253,8 +1261,8 @@ public class RubyJdbcConnection extends RubyObject {
     protected Connection getConnection(boolean error) {
         final Connection connection = (Connection) dataGetStruct();
         if ( connection == null && error ) {
-            RubyClass err = getRuntime().getModule("ActiveRecord").getClass("ConnectionNotEstablished");
-            throw new RaiseException(getRuntime(), err, "no connection available", false);
+            final RubyClass errorClass = getConnectionNotEstablished( getRuntime() );
+            throw new RaiseException(getRuntime(), errorClass, "no connection available", false);
         }
         return connection;
     }
