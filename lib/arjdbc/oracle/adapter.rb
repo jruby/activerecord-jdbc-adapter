@@ -551,7 +551,7 @@ module ArJdbc
     
     def _execute(sql, name = nil)
       if self.class.select?(sql)
-        @connection.execute_query(sql)
+        @connection.execute_raw_query(sql)
       else
         @connection.execute_update(sql)
       end

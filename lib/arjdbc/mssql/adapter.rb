@@ -585,12 +585,13 @@ module ArJdbc
         end.join(', ')
       sql = "EXEC #{proc_name} #{vars}".strip
       log(sql, 'Execute Procedure') do
-        result = @connection.execute_query(sql)
-        result.map do |row| 
+        result = @connection.execute_raw_query(sql)
+        result.map! do |row| 
           row = row.is_a?(Hash) ? row.with_indifferent_access : row
           yield(row) if block_given?
           row
         end
+        result
       end
     end
     alias_method :execute_procedure, :exec_proc # AR-SQLServer-Adapter naming
