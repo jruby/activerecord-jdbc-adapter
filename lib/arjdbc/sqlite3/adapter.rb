@@ -288,29 +288,26 @@ module ::ArJdbc
 
     def table_structure(table_name)
       sql = "PRAGMA table_info(#{quote_table_name(table_name)})"
-      log(sql, 'SCHEMA') { @connection.execute_query(sql) }
+      log(sql, 'SCHEMA') { @connection.execute_raw_query(sql) }
     rescue ActiveRecord::JDBCError => error
       e = ActiveRecord::StatementInvalid.new("Could not find table '#{table_name}'")
       e.set_backtrace error.backtrace
       raise e
     end
 
-    def jdbc_columns(table_name, name = nil) #:nodoc:
+    def jdbc_columns(table_name, name = nil) # :nodoc:
+      klass = ::ActiveRecord::ConnectionAdapters::SQLite3Column
       table_structure(table_name).map do |field|
-        ::ActiveRecord::ConnectionAdapters::SQLite3Column.new(
-          @config, field['name'], field['dflt_value'], field['type'], field['notnull'] == 0
-        )
+        klass.new(field['name'], field['dflt_value'], field['type'], field['notnull'] == 0)
       end
     end
 
     def primary_key(table_name) #:nodoc:
-      column = table_structure(table_name).find { |field|
-        field['pk'].to_i == 1
-      }
+      column = table_structure(table_name).find { |field| field['pk'].to_i == 1 }
       column && column['name']
     end
 
-    def remove_index!(table_name, index_name) #:nodoc:
+    def remove_index!(table_name, index_name) # :nodoc:
       execute "DROP INDEX #{quote_column_name(index_name)}"
     end
 
