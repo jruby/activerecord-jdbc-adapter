@@ -794,46 +794,6 @@ module SimpleTestMethods
     assert Thing.find_by_name 'jozko'
   end
   
-  def test_select_rows
-    Entry.delete_all
-    user = User.create! :login => 'select_rows'
-    Entry.create! :title => 'title 1', :content => 'content 1', :user_id => user.id
-    Entry.create! :title => 'title 2', :content => 'content 2', :user_id => user.id, :rating => 1.0
-    
-    rows = connection.execute 'SELECT * FROM entries'
-    column_order = rows.first.keys
-    
-    rows = connection.select_rows 'SELECT * FROM entries'
-    assert_instance_of Array, rows
-    assert_equal 2, rows.size
-    
-    row = rows[0]
-    column_order.each_with_index do |column, i|
-      case column.to_s
-      when 'id' then assert_not_nil row[i]
-      when 'title' then assert_equal 'title 1', row[i]
-      when 'content' then assert_equal 'content 1', row[i]
-      when 'user_id' then assert_equal user.id, row[i]
-      when 'rating' then assert_nil row[i]
-      when 'updated_on' then assert_not_nil row[i]
-      else raise "unexpected entries row: #{column.inspect}"
-      end
-    end
-    
-    row = rows[1]
-    column_order.each_with_index do |column, i|
-      case column.to_s
-      when 'id' then assert_not_nil row[i]
-      when 'title' then assert_equal 'title 2', row[i]
-      when 'content' then assert_equal 'content 2', row[i]
-      when 'user_id' then assert_equal user.id, row[i]
-      when 'rating' then assert_not_nil row[i]
-      when 'updated_on' then assert_not_nil row[i]
-      else raise "unexpected entries row: #{column.inspect}"
-      end
-    end
-  end
-  
   def test_exec_query_result
     Entry.delete_all
     user1 = User.create! :login => 'user1'
@@ -878,6 +838,80 @@ module SimpleTestMethods
     else
       assert_instance_of Array, result
       assert_equal 0, result.size
+    end
+  end
+  
+  def test_exec_query_raw
+    User.delete_all
+    User.create! :login => 'user1'
+    User.create! :login => 'user2'
+    
+    result = User.connection.exec_query_raw 'SELECT * FROM users'
+    
+    assert_instance_of Array, result
+    assert_equal 2, result.size
+    assert_instance_of Hash, result[0]
+    assert_equal 'user1', result[0]['login']
+    assert_equal 'user2', result[1]['login']
+  end
+  
+  def test_select
+    Entry.delete_all
+    user = User.create! :login => 'select'
+    Entry.create! :title => 'title 1', :content => 'content 1', :user_id => user.id, :rating => 1.0
+    Entry.create! :title => 'title 2', :content => 'content 2', :user_id => user.id, :rating => 2.0
+    
+    # rows = connection.execute 'SELECT * FROM entries'
+    # column_order = rows.first.keys
+    
+    result = connection.select 'SELECT * FROM entries'
+    
+    if ar_version('4.0')
+      assert_instance_of ActiveRecord::Result, result
+      assert_equal 2, result.rows.size
+    else
+      assert_instance_of Array, result
+      assert_equal 2, result.size
+    end
+  end
+
+  def test_select_rows
+    Entry.delete_all
+    user = User.create! :login => 'select_rows'
+    Entry.create! :title => 'title 1', :content => 'content 1', :user_id => user.id
+    Entry.create! :title => 'title 2', :content => 'content 2', :user_id => user.id, :rating => 1.0
+    
+    rows = connection.execute 'SELECT * FROM entries'
+    column_order = rows.first.keys
+    
+    rows = connection.select_rows 'SELECT * FROM entries'
+    assert_instance_of Array, rows
+    assert_equal 2, rows.size
+    
+    row = rows[0]
+    column_order.each_with_index do |column, i|
+      case column.to_s
+      when 'id' then assert_not_nil row[i]
+      when 'title' then assert_equal 'title 1', row[i]
+      when 'content' then assert_equal 'content 1', row[i]
+      when 'user_id' then assert_equal user.id, row[i]
+      when 'rating' then assert_nil row[i]
+      when 'updated_on' then assert_not_nil row[i]
+      else raise "unexpected entries row: #{column.inspect}"
+      end
+    end
+    
+    row = rows[1]
+    column_order.each_with_index do |column, i|
+      case column.to_s
+      when 'id' then assert_not_nil row[i]
+      when 'title' then assert_equal 'title 2', row[i]
+      when 'content' then assert_equal 'content 2', row[i]
+      when 'user_id' then assert_equal user.id, row[i]
+      when 'rating' then assert_not_nil row[i]
+      when 'updated_on' then assert_not_nil row[i]
+      else raise "unexpected entries row: #{column.inspect}"
+      end
     end
   end
   

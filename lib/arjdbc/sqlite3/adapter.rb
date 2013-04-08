@@ -273,22 +273,35 @@ module ::ArJdbc
     def recreate_database(name, options = {})
       tables.each { |table| drop_table(table) }
     end
-
+    
     def select(sql, name = nil, binds = [])
-      execute(sql, name, binds).map do |row|
-        record = {}
-        row.each_key do |key|
-          if key.is_a?(String)
-            record[key.sub(/^"?\w+"?\./, '')] = row[key]
-          end
+      result = super # AR::Result (4.0) or Array (<= 3.2)
+      if result.respond_to?(:columns) # 4.0
+        result.columns.map! do |key| # [ [ 'id', ... ]
+          key.is_a?(String) ? key.sub(/^"?\w+"?\./, '') : key
         end
-        record
+      else
+        result.map! do |row| # [ { 'id' => ... }, {...} ]
+          record = {}
+          row.each_key do |key|
+            if key.is_a?(String)
+              record[key.sub(/^"?\w+"?\./, '')] = row[key]
+            end
+          end
+          record
+        end
       end
+      result
     end
 
+    # #override as {#execute_insert} not implemented by SQLite JDBC driver
+    def exec_insert(sql, name, binds, pk = nil, sequence_name = nil) # :nodoc:
+      execute(sql, name, binds)
+    end
+    
     def table_structure(table_name)
       sql = "PRAGMA table_info(#{quote_table_name(table_name)})"
-      log(sql, 'SCHEMA') { @connection.execute_raw_query(sql) }
+      log(sql, 'SCHEMA') { @connection.execute_query_raw(sql) }
     rescue ActiveRecord::JDBCError => error
       e = ActiveRecord::StatementInvalid.new("Could not find table '#{table_name}'")
       e.set_backtrace error.backtrace

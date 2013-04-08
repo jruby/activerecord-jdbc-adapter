@@ -1271,6 +1271,11 @@ module ArJdbc
       result
     end
 
+    # #override due RETURNING clause - can't do an {#execute_insert}
+    def exec_insert(sql, name, binds, pk = nil, sequence_name = nil) # :nodoc:
+      execute(sql, name, binds)
+    end
+    
     private
     
     def translate_exception(exception, message)

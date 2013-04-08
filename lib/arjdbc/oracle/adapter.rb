@@ -540,18 +540,17 @@ module ArJdbc
     end
 
     def select(sql, name = nil, binds = [])
-      records = execute(sql, name, binds)
-      for column in records
-        column.delete('raw_rnum_')
-      end
-      records
+      result = super # AR::Result (4.0) or Array (<= 3.2)
+      result.columns.delete('raw_rnum_') if result.respond_to?(:columns)
+      result.each { |row| row.delete('raw_rnum_') } # Hash rows even for AR::Result
+      result
     end
     
     private
     
     def _execute(sql, name = nil)
       if self.class.select?(sql)
-        @connection.execute_raw_query(sql)
+        @connection.execute_query_raw(sql)
       else
         @connection.execute_update(sql)
       end

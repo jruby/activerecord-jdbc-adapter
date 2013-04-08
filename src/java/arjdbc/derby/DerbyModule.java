@@ -341,7 +341,7 @@ public class DerbyModule {
             return connection.execute_insert(context, sql);
         }
         else if (sqlStr.startsWith("select") || sqlStr.startsWith("show") || sqlStr.startsWith("values")) {
-            return connection.execute_raw_query(context, sql, Block.NULL_BLOCK);
+            return connection.execute_query_raw(context, sql, Block.NULL_BLOCK);
         }
         else {
             return connection.execute_update(context, sql);

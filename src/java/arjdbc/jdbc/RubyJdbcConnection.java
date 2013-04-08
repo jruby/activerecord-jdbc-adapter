@@ -432,11 +432,11 @@ public class RubyJdbcConnection extends RubyObject {
      * @return raw query result in case no block given
      * @throws SQLException 
      */
-    @JRubyMethod(name = "execute_raw_query", required = 1) // optional block
-    public IRubyObject execute_raw_query(final ThreadContext context, 
+    @JRubyMethod(name = "execute_query_raw", required = 1) // optional block
+    public IRubyObject execute_query_raw(final ThreadContext context, 
         final IRubyObject sql, final Block block) throws SQLException {
         final String query = sql.convertToString().getUnicodeValue();
-        return executeRawQuery(context, query, 0, block);
+        return executeQueryRaw(context, query, 0, block);
     }
 
     /**
@@ -448,12 +448,12 @@ public class RubyJdbcConnection extends RubyObject {
      * @return raw query result in case no block given
      * @throws SQLException 
      */
-    @JRubyMethod(name = "execute_raw_query", required = 2)
-    public IRubyObject execute_raw_query(final ThreadContext context, 
+    @JRubyMethod(name = "execute_query_raw", required = 2)
+    public IRubyObject execute_query_raw(final ThreadContext context, 
         final IRubyObject sql, final IRubyObject maxRows, final Block block) 
         throws SQLException {
         final String query = sql.convertToString().getUnicodeValue();
-        return executeRawQuery(context, query, RubyNumeric.fix2int(maxRows), block);
+        return executeQueryRaw(context, query, RubyNumeric.fix2int(maxRows), block);
     }
 
     /**
@@ -466,7 +466,7 @@ public class RubyJdbcConnection extends RubyObject {
      * @see #execute_raw_query(ThreadContext, IRubyObject, Block)
      * @see #execute_raw_query(ThreadContext, IRubyObject, IRubyObject, Block)
      */
-    protected IRubyObject executeRawQuery(final ThreadContext context, final String query, final int maxRows, 
+    protected IRubyObject executeQueryRaw(final ThreadContext context, final String query, final int maxRows, 
         final Block block) { // TODO implement block support
         return withConnection(context, new Callable<IRubyObject>() {
             public IRubyObject call(final Connection connection) throws SQLException {
@@ -523,7 +523,7 @@ public class RubyJdbcConnection extends RubyObject {
     
     /**
      * NOTE: This methods behavior changed in AR-JDBC 1.3 the old behavior is 
-     * achievable using {@link #executeRawQuery(ThreadContext, String, int, Block)}.
+     * achievable using {@link #executeQueryRaw(ThreadContext, String, int, Block)}.
      * 
      * @param context
      * @param query

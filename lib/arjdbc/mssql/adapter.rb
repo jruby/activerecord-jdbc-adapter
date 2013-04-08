@@ -585,7 +585,7 @@ module ArJdbc
         end.join(', ')
       sql = "EXEC #{proc_name} #{vars}".strip
       log(sql, 'Execute Procedure') do
-        result = @connection.execute_raw_query(sql)
+        result = @connection.execute_query_raw(sql)
         result.map! do |row| 
           row = row.is_a?(Hash) ? row.with_indifferent_access : row
           yield(row) if block_given?
@@ -602,11 +602,9 @@ module ArJdbc
     # {#exec_query} won't route to {#_execute} and analyze if it's a select 
     # e.g. this allows to use SQLServer's EXEC with a result set ...
     def do_exec(sql, name, binds, type)
-      case type
-      when :query # exec_query
-        log(sql, name) { do_exec_query(sql) }
-      when :update # exec_update
-        log(sql, name) { @connection.execute_update(to_sql(sql, binds)) }
+      if type == :query # exec_query
+        sql = repair_special_columns to_sql(sql, binds)
+        log(sql, name || 'SQL') { @connection.execute_query sql }
       else super
       end
     end
@@ -627,15 +625,10 @@ module ArJdbc
           @connection.execute_insert(sql)
         end
       elsif self.class.select?(sql)
-        do_exec_query(sql)
-      # cac1391f80462d2e8f6c9718cf3db7cbb879b161
+        @connection.execute_query_raw repair_special_columns(sql)
       else # create | exec
         @connection.execute_update(sql)
       end
-    end
-    
-    def do_exec_query(sql)
-      @connection.execute_query repair_special_columns(sql)
     end
     
     def identity_insert_table_name(sql)

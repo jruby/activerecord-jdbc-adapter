@@ -259,28 +259,33 @@ module ActiveRecord
       end
       
       def do_exec(sql, name, binds, type)
-        if type == :query
-          log(sql, name ||= 'SQL') do 
-            @connection.execute_query(to_sql(sql, binds))
+        sql = to_sql(sql, binds)
+        log(sql, name || 'SQL') do
+          if type == :insert
+            @connection.execute_insert(sql)
+          elsif type == :update
+            @connection.execute_update(sql)
+          elsif type == :delete
+            @connection.execute_delete(sql)
+          else # type == :query
+            @connection.execute_query(sql)
           end
-        else
-          execute(sql, name, binds) # NOTE: for over-riders
         end
       end
       protected :do_exec
       
-      def exec_raw_query(sql, name = 'SQL', binds = [], &block) # :nodoc:
-        log(sql, name ||= 'SQL') do 
-          @connection.execute_raw_query(to_sql(sql, binds), &block)
+      # Similar to {#exec_query} except it returns "raw" results in an array
+      # where each rows is a hash with keys as columns (just like Rails used to 
+      # do up until 3.0) instead of wrapping them in a {#ActiveRecord::Result}.
+      def exec_query_raw(sql, name = 'SQL', binds = [], &block) # :nodoc:
+        log(sql, name || 'SQL') do
+          @connection.execute_query_raw(to_sql(sql, binds), &block)
         end
       end
+      alias_method :exec_raw_query, :exec_query_raw
       
       def select_rows(sql, name = nil)
-        rows = []
-        for row in exec_raw_query(sql, name) # TODO re-factor exec_raw_query { }
-          rows << row.values
-        end
-        rows
+        exec_query_raw(sql, name).map!(&:values)
       end
       
       if ActiveRecord::VERSION::MAJOR > 3 # expects AR::Result e.g. from select_all
@@ -292,7 +297,7 @@ module ActiveRecord
       else
         
       def select(sql, name = nil, binds = []) # NOTE: only (sql, name) on AR < 3.1
-        exec_raw_query(sql, name, binds)
+        exec_query_raw(sql, name, binds)
       end
       
       end
@@ -431,7 +436,7 @@ module ActiveRecord
         # swallow an ArJdbc / driver bug into a AR::StatementInvalid ...
         return e if e.is_a?(NativeException) # JRuby 1.6
         return e if e.is_a?(Java::JavaLang::Throwable)
-        super
+        super # NOTE: wraps AR::JDBCError into AR::StatementInvalid, desired ?!
       end
 
       def last_inserted_id(result)
@@ -441,11 +446,11 @@ module ActiveRecord
       # if adapter overrides #table_definition it works on 3.x as well as 4.0
       if ActiveRecord::VERSION::MAJOR > 3
         
-        alias table_definition create_table_definition
-        
-        def create_table_definition
-          table_definition
-        end
+      alias table_definition create_table_definition
+
+      def create_table_definition
+        table_definition
+      end
         
       end
       
