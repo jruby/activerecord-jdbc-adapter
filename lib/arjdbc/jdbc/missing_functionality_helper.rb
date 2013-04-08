@@ -81,7 +81,7 @@ module ArJdbc
       
       raw_column_mappings = Hash[ columns(from).map { |c| [c.name, c] } ]
       
-      execute("SELECT * FROM #{quote_table_name(from)}").each do |row|
+      execute("SELECT * FROM #{quote_table_name(from)}", 'Copy Table').each do |row|
         sql = "INSERT INTO #{quoted_to} (#{quoted_columns}) VALUES ("
         
         column_values = columns.map do |col|
@@ -90,7 +90,7 @@ module ArJdbc
 
         sql << column_values * ', '
         sql << ')'
-        exec_query sql
+        exec_insert sql, 'Copy Table', []
       end
     end
     
