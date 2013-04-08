@@ -96,9 +96,10 @@ module ArJdbc
           end
         end
 
-        def string_to_array(string, oid)
-          parse_pg_array(string).map{ |val| oid.type_cast val }
-        end
+        # NOTE: not used - we get "parsed" array value from connection
+        #def string_to_array(string, oid)
+        #  parse_pg_array(string).map { |val| oid.type_cast val }
+        #end
 
         private
 
