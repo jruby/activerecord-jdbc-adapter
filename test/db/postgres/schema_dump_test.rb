@@ -60,21 +60,21 @@ class PostgresSchemaDumpTest < Test::Unit::TestCase
     dump = dump_with_data_types
     lines = dump.lines.grep(/sample_integer_no_limit/)
     assert ! lines.empty?
-    lines.each {|line| assert line !~ /:limit/ }
+    lines.each { |line| assert line !~ /:limit|limit:/ }
   end
 
   def test_schema_dump_integer_with_limit_2_should_have_limit_2
     dump = dump_with_data_types
     lines = dump.lines.grep(/sample_integer_with_limit_2/)
     assert ! lines.empty?
-    lines.each {|line| assert line =~ /limit => 2/ }
+    lines.each {|line| assert line =~ /(limit => 2)|(limit: 2)/ }
   end
 
   def test_schema_dump_integer_with_limit_8_should_have_limit_8
     dump = dump_with_data_types
     lines = dump.lines.grep(/sample_integer_with_limit_8/)
     assert ! lines.empty?
-    lines.each {|line| assert line =~ /limit => 8/ }
+    lines.each {|line| assert line =~ /(limit => 8)|(limit: 8)/ }
   end
   
   private
