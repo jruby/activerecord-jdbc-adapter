@@ -67,15 +67,26 @@ class PostgresSimpleTest < Test::Unit::TestCase
   def xml_sql_type; 'xml'; end
   
   def test_create_table_with_limits
-    assert_nothing_raised do
+    if ar_version('4.0')
+      # No integer type has byte size 11. Use a numeric with precision 0 instead.
       connection.create_table :testings do |t|
-        t.column :eleven_int, :integer, :limit => 11
+        t.column :an_int, :integer, :limit => 8
       end
+      
+      columns = connection.columns(:testings)
+      an_int = columns.detect { |c| c.name == "an_int" }
+      assert_equal "bigint", an_int.sql_type
+    else
+      assert_nothing_raised do
+        connection.create_table :testings do |t|
+          t.column :an_int, :integer, :limit => 11
+        end
+      end
+      
+      columns = connection.columns(:testings)
+      an_int = columns.detect { |c| c.name == "an_int" }
+      assert_equal "integer", an_int.sql_type
     end
-
-    columns = connection.columns(:testings)
-    eleven = columns.detect { |c| c.name == "eleven_int" }
-    assert_equal "integer", eleven.sql_type
   ensure
     connection.drop_table :testings rescue nil
   end
