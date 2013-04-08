@@ -98,6 +98,7 @@ module ArJdbc
       end
       
       attr_accessor :array
+      def array?; array; end # in case we remove the array reader
       
       # Extracts the value from a PostgreSQL column default definition.
       # 
@@ -172,6 +173,9 @@ module ArJdbc
         
         # NOTE: we do not use OID::Type
         # @oid_type.type_cast value
+        
+        return value if array? # handled on the connection (JDBC) side
+        
         case type
         when :hstore then self.class.string_to_hstore value
         when :json then self.class.string_to_json value
@@ -391,7 +395,7 @@ module ArJdbc
         column_class = ::ActiveRecord::ConnectionAdapters::PostgreSQLColumn
         column_class.cidr_to_string(value)
       else
-        super
+        super(value, column)
       end
     end if AR4_COMPAT
     
