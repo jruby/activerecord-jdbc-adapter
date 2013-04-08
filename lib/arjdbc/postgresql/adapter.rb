@@ -175,7 +175,8 @@ module ArJdbc
         case type
         when :hstore then self.class.string_to_hstore value
         when :json then self.class.string_to_json value
-        when :cidr, :inet, :macaddr then self.class.string_to_cidr value
+        when :cidr, :inet then self.class.string_to_cidr value
+        when :macaddr then value
         when :tsvector then value
         else
           case sql_type
