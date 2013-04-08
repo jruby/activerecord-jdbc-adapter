@@ -413,7 +413,7 @@ public class RubyJdbcConnection extends RubyObject {
                 try {
                     statement = connection.createStatement();
                     statement.executeUpdate(insertSQL, Statement.RETURN_GENERATED_KEYS);
-                    return unmarshal_id_result(context.getRuntime(), statement.getGeneratedKeys());
+                    return unmarshalIdResult(context.getRuntime(), statement);
                 }
                 catch (final SQLException e) {
                     debugErrorSQL(context, insertSQL);
@@ -565,7 +565,8 @@ public class RubyJdbcConnection extends RubyObject {
                 final String updateSQL = sql.convertToString().getUnicodeValue();
                 try {
                     statement = connection.createStatement();
-                    return context.getRuntime().newFixnum(statement.executeUpdate(updateSQL));
+                    final int rowCount = statement.executeUpdate(updateSQL);
+                    return context.getRuntime().newFixnum(rowCount);
                 }
                 catch (final SQLException e) {
                     debugErrorSQL(context, updateSQL);
@@ -1665,8 +1666,9 @@ public class RubyJdbcConnection extends RubyObject {
     }
     
     /**
-     * @deprecated confusing as it closes the result set it receives, replaced
-     * with {@link #unmarshalIdResult(Ruby, Statement)}
+     * @deprecated no longer used - kept for binary compatibility, this method 
+     * is confusing since it closes the result set it receives and thus was 
+     * replaced with {@link #unmarshalIdResult(Ruby, Statement)}
      */
     @Deprecated
     public static IRubyObject unmarshal_id_result(
