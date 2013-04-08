@@ -203,6 +203,33 @@ module ArJdbc
             else
               value
             end
+          when /(.*?)range$/
+            return if value.nil? || value == 'empty'
+            return value if value.is_a?(::Range)
+            
+            extracted = extract_bounds(value)
+            
+            case $1 # subtype
+            when 'date' # :date
+              from = self.class.value_to_date(extracted[:from])
+              from -= 1.day if extracted[:exclude_start]
+              to = self.class.value_to_date(extracted[:to])
+            when 'num' # :decimal
+              from = BigDecimal.new(extracted[:from].to_s)
+              # FIXME: add exclude start for ::Range, same for timestamp ranges
+              to = BigDecimal.new(extracted[:to].to_s)
+            when 'ts', 'tstz' # :time
+              from = self.class.string_to_time(extracted[:from])
+              to = self.class.string_to_time(extracted[:to])
+            when 'int4', 'int8' # :integer
+              from = to_integer(extracted[:from]) rescue value ? 1 : 0
+              from -= 1 if extracted[:exclude_start]
+              to = to_integer(extracted[:to]) rescue value ? 1 : 0
+            else
+              return value
+            end
+
+            ::Range.new(from, to, extracted[:exclude_end])
           else super
           end
         end
@@ -317,6 +344,25 @@ module ArJdbc
         else
           super
         end
+      end if AR4_COMPAT
+      
+      # OID Type::Range helpers :
+      
+      def extract_bounds(value)
+        f, t = value[1..-2].split(',')
+        {
+          :from => (value[1] == ',' || f == '-infinity') ? infinity(:negative => true) : f,
+          :to   => (value[-2] == ',' || t == 'infinity') ? infinity : t,
+          :exclude_start => (value[0] == '('), :exclude_end => (value[-1] == ')')
+        }
+      end if AR4_COMPAT
+      
+      def infinity(options = {})
+        ::Float::INFINITY * (options[:negative] ? -1 : 1)
+      end if AR4_COMPAT
+      
+      def to_integer(value)
+        (value.respond_to?(:infinite?) && value.infinite?) ? value : value.to_i
       end if AR4_COMPAT
       
     end # Column
