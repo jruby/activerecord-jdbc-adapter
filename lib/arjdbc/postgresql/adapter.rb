@@ -1521,8 +1521,8 @@ module ActiveRecord::ConnectionAdapters
 
       if ActiveRecord::VERSION::MAJOR > 3
         
-        def create_column_definition(base, name, type)
-          ColumnDefinition.new base, name, type
+        def create_column_definition(name, type)
+          ColumnDefinition.new name, type
         end
         
       else # no #create_column_definition on 3.2
@@ -1538,25 +1538,17 @@ module ActiveRecord::ConnectionAdapters
       
     end
 
+    def table_definition(*args)
+      new_table_definition(TableDefinition, *args)
+    end
+    
     class Table < ActiveRecord::ConnectionAdapters::Table
       include ColumnMethods
     end
 
-    def table_definition
-      TableDefinition.new(self)
-    end
-    
-    if ActiveRecord::VERSION::MAJOR > 3
-      
-      #def create_table_definition
-      #  TableDefinition.new(self)
-      #end
-
-      def update_table_definition(table_name, base)
-        Table.new(table_name, base)
-      end
-      
-    end
+    def update_table_definition(table_name, base)
+      Table.new(table_name, base)
+    end if ActiveRecord::VERSION::MAJOR > 3
     
     def jdbc_connection_class(spec)
       ::ArJdbc::PostgreSQL.jdbc_connection_class

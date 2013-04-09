@@ -183,8 +183,8 @@ module ArJdbc
       end
     end
 
-    def table_definition
-      TableDefinition.new(self)
+    def table_definition(*args)
+      new_table_definition(TableDefinition, *args)
     end
     
     def prefetch_primary_key?(table_name = nil)
@@ -254,7 +254,8 @@ module ArJdbc
     end
     
     def zos_create_table(name, options = {}) # :nodoc:
-      table_definition = ActiveRecord::ConnectionAdapters::TableDefinition.new(self)
+      # NOTE: this won't work for 4.0 - need to pass different initialize args :
+      table_definition = TableDefinition.new(self)
       unless options[:id] == false
         table_definition.primary_key(options[:primary_key] || primary_key(name))
       end

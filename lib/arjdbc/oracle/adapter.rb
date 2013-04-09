@@ -149,9 +149,9 @@ module ArJdbc
         column(args[0], 'xml', options)
       end
     end
-
-    def table_definition
-      TableDefinition.new(self)
+    
+    def table_definition(*args)
+      new_table_definition(TableDefinition, *args)
     end
 
     def self.arel2_visitors(config)

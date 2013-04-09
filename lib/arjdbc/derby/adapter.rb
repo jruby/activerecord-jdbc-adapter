@@ -149,8 +149,8 @@ module ArJdbc
       
     end
 
-    def table_definition
-      TableDefinition.new(self)
+    def table_definition(*args)
+      new_table_definition(TableDefinition, *args)
     end
     
     # Override default -- fix case where ActiveRecord passes :default => nil, :null => true

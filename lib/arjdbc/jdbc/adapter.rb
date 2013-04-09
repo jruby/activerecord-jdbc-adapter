@@ -258,6 +258,7 @@ module ActiveRecord
         do_exec(sql, name, binds, :update)
       end
       
+      # TODO is it really useful to have do_exec now ?!
       def do_exec(sql, name, binds, type)
         sql = to_sql(sql, binds)
         log(sql, name || 'SQL') do
@@ -443,17 +444,36 @@ module ActiveRecord
         result
       end
       
+      # Helper to handle 3.x/4.0 uniformly override #table_definition as :
+      # 
+      #   def table_definition(*args)
+      #     new_table_definition(TableDefinition, *args)
+      #   end
+      #
+      def new_table_definition(table_definition, *args)
+        table_definition.new(self) # args ignored only used for 4.0
+      end
+      private :new_table_definition
+      
       # if adapter overrides #table_definition it works on 3.x as well as 4.0
       if ActiveRecord::VERSION::MAJOR > 3
         
+      # aliasing #create_table_definition as #table_definition :
       alias table_definition create_table_definition
 
-      def create_table_definition
-        table_definition
-      end
-        
+      # TableDefinition.new native_database_types, name, temporary, options
+      def create_table_definition(name, temporary, options)
+        table_definition(name, temporary, options)
       end
       
+      # arguments expected: (name, temporary, options)
+      def new_table_definition(table_definition, *args)
+        table_definition.new native_database_types, *args
+      end
+      private :new_table_definition
+      
+      end
+    
       private
       
       # #deprecated no longer used
