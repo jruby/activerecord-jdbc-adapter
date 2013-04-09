@@ -48,11 +48,9 @@ module ArJdbc
 
     module Column
       
-      def primary=(val)
+      def primary=(value)
         super
-        if val && @sql_type =~ /^NUMBER$/i
-          @type = :integer
-        end
+        @type = :integer if value && @sql_type =~ /^NUMBER$/i
       end
       
       def type_cast(value)
@@ -60,6 +58,7 @@ module ArJdbc
         case type
         when :datetime  then ArJdbc::Oracle::Column.string_to_time(value)
         when :timestamp then ArJdbc::Oracle::Column.string_to_time(value)
+        when :boolean   then ArJdbc::Oracle::Column.value_to_boolean(value)
         else
           super
         end
@@ -69,11 +68,25 @@ module ArJdbc
         case type
         when :datetime  then "ArJdbc::Oracle::Column.string_to_time(#{var_name})"
         when :timestamp then "ArJdbc::Oracle::Column.string_to_time(#{var_name})"
+        when :boolean   then "ArJdbc::Oracle::Column.value_to_boolean(#{var_name})"
         else
           super
         end
       end
 
+      # convert a value to a boolean 
+      def self.value_to_boolean(value)
+        # NOTE: Oracle JDBC meta-data gets us DECIMAL for NUMBER(1) values
+        # thus we're likely to get a column back as BigDecimal (e.g. 1.0)
+        if value.is_a?(String)
+          value.blank? ? nil : value == '1'
+        elsif value.is_a?(Numeric)
+          value.to_i == 1 # <BigDecimal:7b5bfe,'0.1E1',1(4)>
+        else
+          !! value
+        end
+      end
+      
       def self.string_to_time(string)
         return string unless string.is_a?(String)
         return nil if string.empty?
@@ -490,8 +503,7 @@ module ArJdbc
     end
     
     def quote(value, column = nil) # :nodoc:
-      # Arel 2 passes SqlLiterals through
-      return value if sql_literal?(value)
+      return value if sql_literal?(value) # Arel 2 passes SqlLiterals through
 
       column_type = column && column.type
       if column_type == :text || column_type == :binary
