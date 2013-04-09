@@ -143,7 +143,7 @@ class PostgresSimpleTest < Test::Unit::TestCase
       assert connection.extension_enabled?('plpgsql')
       assert ! connection.extension_enabled?('invalid')
     else
-      assert ! connection.extensions
+      assert_empty connection.extensions
     end
   end
   
