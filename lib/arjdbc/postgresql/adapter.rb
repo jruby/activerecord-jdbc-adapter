@@ -629,7 +629,7 @@ module ArJdbc
         rows = select_rows "SELECT extname from pg_extension", "SCHEMA"
         rows.map { |row| row.first }
       else
-        super
+        []
       end
     end
     
