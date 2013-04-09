@@ -596,17 +596,12 @@ module ArJdbc
     end
     alias_method :execute_procedure, :exec_proc # AR-SQLServer-Adapter naming
     
-    protected
-    
-    # NOTE: we allow to execute the SQL as explicitly requested by this,
-    # {#exec_query} won't route to {#_execute} and analyze if it's a select 
-    # e.g. this allows to use SQLServer's EXEC with a result set ...
-    def do_exec(sql, name, binds, type)
-      if type == :query # exec_query
-        sql = repair_special_columns to_sql(sql, binds)
-        log(sql, name || 'SQL') { @connection.execute_query sql }
-      else super
-      end
+    # @override
+    def exec_query(sql, name = 'SQL', binds = []) # :nodoc:
+      # NOTE: we allow to execute SQL as requested returning a results.
+      # e.g. this allows to use SQLServer's EXEC with a result set ...
+      sql = repair_special_columns to_sql(sql, binds)
+      log(sql, name || 'SQL') { @connection.execute_query(sql) }
     end
     
     private

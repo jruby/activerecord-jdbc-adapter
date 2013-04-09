@@ -234,46 +234,29 @@ module ActiveRecord
       # +binds+ as the bind substitutes.  +name+ is logged along with
       # the executed +sql+ statement.
       def exec_query(sql, name = 'SQL', binds = []) # :nodoc:
-        do_exec(sql, name, binds, :query)
+        log(sql, name || 'SQL') { @connection.execute_query(to_sql(sql, binds)) }
       end
 
       # Executes insert +sql+ statement in the context of this connection using
       # +binds+ as the bind substitutes. +name+ is the logged along with
       # the executed +sql+ statement.
       def exec_insert(sql, name, binds, pk = nil, sequence_name = nil) # :nodoc:
-        do_exec(sql, name, binds, :insert)
+        log(sql, name || 'SQL') { @connection.execute_insert(to_sql(sql, binds)) }
       end
 
       # Executes delete +sql+ statement in the context of this connection using
       # +binds+ as the bind substitutes. +name+ is the logged along with
       # the executed +sql+ statement.
       def exec_delete(sql, name, binds) # :nodoc:
-        do_exec(sql, name, binds, :delete)
+        log(sql, name || 'SQL') { @connection.execute_delete(to_sql(sql, binds)) }
       end
 
       # Executes update +sql+ statement in the context of this connection using
       # +binds+ as the bind substitutes. +name+ is the logged along with
       # the executed +sql+ statement.
       def exec_update(sql, name, binds) # :nodoc:
-        do_exec(sql, name, binds, :update)
+        log(sql, name || 'SQL') { @connection.execute_update(to_sql(sql, binds)) }
       end
-      
-      # TODO is it really useful to have do_exec now ?!
-      def do_exec(sql, name, binds, type)
-        sql = to_sql(sql, binds)
-        log(sql, name || 'SQL') do
-          if type == :insert
-            @connection.execute_insert(sql)
-          elsif type == :update
-            @connection.execute_update(sql)
-          elsif type == :delete
-            @connection.execute_delete(sql)
-          else # type == :query
-            @connection.execute_query(sql)
-          end
-        end
-      end
-      protected :do_exec
       
       # Similar to {#exec_query} except it returns "raw" results in an array
       # where each rows is a hash with keys as columns (just like Rails used to 
@@ -283,7 +266,6 @@ module ActiveRecord
           @connection.execute_query_raw(to_sql(sql, binds), &block)
         end
       end
-      alias_method :exec_raw_query, :exec_query_raw
       
       def select_rows(sql, name = nil)
         exec_query_raw(sql, name).map!(&:values)

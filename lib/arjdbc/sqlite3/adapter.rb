@@ -294,7 +294,7 @@ module ::ArJdbc
       result
     end
 
-    # #override as {#execute_insert} not implemented by SQLite JDBC driver
+    # @override as <code>execute_insert</code> not implemented by SQLite JDBC
     def exec_insert(sql, name, binds, pk = nil, sequence_name = nil) # :nodoc:
       execute(sql, name, binds)
     end
