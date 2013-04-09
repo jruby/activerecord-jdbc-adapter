@@ -546,6 +546,13 @@ module ArJdbc
       result
     end
     
+    # @override as <code>#execute_insert</code> not working for Oracle e.g.
+    # getLong not implemented for class oracle.jdbc.driver.T4CRowidAccessor: 
+    # INSERT INTO binaries (data, id, name, short_data) VALUES (?, ?, ?, ?)
+    def exec_insert(sql, name, binds, pk = nil, sequence_name = nil) # :nodoc:
+      execute(sql, name, binds)
+    end
+    
     private
     
     def _execute(sql, name = nil)
