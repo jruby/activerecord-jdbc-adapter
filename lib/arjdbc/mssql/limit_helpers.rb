@@ -68,21 +68,48 @@ module ArJdbc
               new_sql = "#{select} TOP 1 #{rest_of_query} #{new_order}"
               sql.replace(new_sql)
             else
-              #UGLY
-              #KLUDGY?
-              #removing out stuff before the FROM...
-              rest = rest_of_query[/FROM/i=~ rest_of_query.. -1]
+              # We are in deep trouble here. SQL Server does not have any kind of OFFSET build in.
+              # Only remaining solution is adding a where condition to be sure that the ID is not in SELECT TOP OFFSET FROM SAME_QUERY.
+              # To do so we need to extract each part of the query to insert our additional condition in the right place.
+              query_without_select = rest_of_query[/FROM/i=~ rest_of_query.. -1]
+              additional_condition = "#{table_name}.#{primary_key} NOT IN (#{select} TOP #{offset} #{table_name}.#{primary_key} #{query_without_select} #{new_order})"
 
-              if (rest_of_query.match(/WHERE/).nil?)
-                new_sql = "#{select} TOP #{limit} #{rest_of_query} WHERE #{table_name}.#{primary_key} NOT IN (#{select} TOP #{offset} #{table_name}.#{primary_key} #{rest} #{new_order}) #{order} "
+              # Extract the different parts of the query
+              having, group_by, where, from, selection = split_sql(rest_of_query, /having/i, /group by/i, /where/i, /from/i)
+
+              # Update the where part to add our additional condition
+              if where.blank?
+                where = "WHERE #{additional_condition}"
               else
-                new_sql = "#{select} TOP #{limit} #{rest_of_query} AND #{table_name}.#{primary_key} NOT IN (#{select} TOP #{offset} #{table_name}.#{primary_key} #{rest} #{new_order}) #{order} "
+                where = "#{where} AND #{additional_condition}"
               end
 
-              sql.replace(new_sql)
+              # Replace the query to be our new customized query
+              sql.replace("#{select} TOP #{limit} #{selection} #{from} #{where} #{group_by} #{having} #{new_order}")
             end
           end
           sql
+        end
+
+        # Split the rest_of_query into chunks based on regexs (applied from end of string to the beginning)
+        # The result is an array of regexs.size+1 elements (the last one being the remaining once everything was chopped away)
+        def split_sql rest_of_query, *regexs
+          results = Array.new
+
+          regexs.each do |regex|
+            if position = (regex =~ rest_of_query)
+              # Extract the matched string and chop the rest_of_query
+              matched       = rest_of_query[position..-1]
+              rest_of_query = rest_of_query[0...position]
+            else
+              matched = nil
+            end
+
+            results << matched
+          end
+          results << rest_of_query
+
+          results
         end
         
         def get_primary_key(order, table_name) # table_name might be quoted

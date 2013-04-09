@@ -169,4 +169,12 @@ class MSSQLLimitOffsetTest < Test::Unit::TestCase
     assert_equal("You must specify :limit with :offset.", error.message)
   end
 
+  def test_limit_with_group_by
+    %w(one two three four five six seven eight).each do |name|
+      LongShip.create!(:name => name)
+    end
+
+    ships = LongShip.group(:name).find(:all, :limit => 2)
+    asset_equal(['one', 'two'], ships.map(&:name))
+  end
 end
