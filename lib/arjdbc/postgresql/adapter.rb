@@ -1252,9 +1252,9 @@ module ArJdbc
     
     def tables(name = nil)
       select_values(<<-SQL, 'SCHEMA')
-          SELECT tablename
-          FROM pg_tables
-          WHERE schemaname = ANY (current_schemas(false))
+        SELECT tablename
+        FROM pg_tables
+        WHERE schemaname = ANY (current_schemas(false))
       SQL
     end
 
@@ -1265,7 +1265,7 @@ module ArJdbc
       binds = [[ nil, table.gsub(/(^"|"$)/,'') ]]
       binds << [ nil, schema ] if schema
       
-      exec_raw_query(<<-SQL, 'SCHEMA', binds).first["table_count"] > 0
+      exec_query_raw(<<-SQL, 'SCHEMA', binds).first["table_count"] > 0
         SELECT COUNT(*) as table_count
         FROM pg_tables
         WHERE tablename = ?
