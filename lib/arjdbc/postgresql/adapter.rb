@@ -991,12 +991,18 @@ module ArJdbc
       sql.replace "SELECT * FROM (#{sql}) AS id_list ORDER BY #{order}"
     end
 
-    # from postgres_adapter.rb in rails project
-    # https://github.com/rails/rails/blob/3-1-stable/activerecord/lib/active_record/connection_adapters/postgresql_adapter.rb#L412
-    # Quotes PostgreSQL-specific data types for SQL input.
     def quote(value, column = nil) #:nodoc:
       return super unless column
 
+      # TODO recent 4.0 (master) seems to be passing a ColumnDefinition here :
+      #   NoMethodError: undefined method `sql_type' for #<ActiveRecord::ConnectionAdapters::PostgreSQLAdapter::ColumnDefinition:0x634f6b>
+      # .../activerecord-jdbc-adapter/lib/arjdbc/postgresql/adapter.rb:1014:in `quote'
+      # .../gems/rails-817e8fad5a84/activerecord/lib/active_record/connection_adapters/abstract/schema_statements.rb:698:in `add_column_options!'
+      # .../activerecord-jdbc-adapter/lib/arjdbc/postgresql/adapter.rb:507:in `add_column_options!'
+      # .../gems/rails-817e8fad5a84/activerecord/lib/active_record/connection_adapters/abstract_adapter.rb:168:in `add_column_options!'
+      # .../gems/rails-817e8fad5a84/activerecord/lib/active_record/connection_adapters/abstract_adapter.rb:135:in `visit_ColumnDefinition'
+      sql_type = column.sql_type rescue nil
+      
       case value
       when Float
         if value.infinite? && column.type == :datetime
@@ -1007,11 +1013,11 @@ module ArJdbc
           super
         end
       when Numeric
-        return super unless column.sql_type == 'money'
+        return super unless sql_type == 'money'
         # Not truly string input, so doesn't require (or allow) escape string syntax.
         ( column.type == :string || column.type == :text ) ? "'#{value}'" : super
       when String
-        case column.sql_type
+        case sql_type
         when 'bytea' then "E'#{escape_bytea(value)}'::bytea" # "'#{escape_bytea(value)}'"
         when 'xml'   then "xml '#{quote_string(value)}'"
         when /^bit/
@@ -1036,23 +1042,23 @@ module ArJdbc
           super
         end
       when Hash
-        if column.sql_type == 'hstore' && AR4_COMPAT
+        if sql_type == 'hstore' && AR4_COMPAT
           column_class = ::ActiveRecord::ConnectionAdapters::PostgreSQLColumn
           super(column_class.hstore_to_string(value), column)
-        elsif column.sql_type == 'json' && AR4_COMPAT
+        elsif sql_type == 'json' && AR4_COMPAT
           column_class = ::ActiveRecord::ConnectionAdapters::PostgreSQLColumn
           super(column_class.json_to_string(value), column)
         else super
         end
       when Range
-        if /range$/ =~ column.sql_type && AR4_COMPAT
+        if /range$/ =~ sql_type && AR4_COMPAT
           column_class = ::ActiveRecord::ConnectionAdapters::PostgreSQLColumn
-          "'#{column_class.range_to_string(value)}'::#{column.sql_type}"
+          "'#{column_class.range_to_string(value)}'::#{sql_type}"
         else
           super
         end
       when IPAddr
-        if (column.sql_type == 'inet' || column.sql_type == 'cidr') && AR4_COMPAT
+        if (sql_type == 'inet' || sql_type == 'cidr') && AR4_COMPAT
           column_class = ::ActiveRecord::ConnectionAdapters::PostgreSQLColumn
           super(column_class.cidr_to_string(value), column)
         else super
