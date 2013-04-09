@@ -610,11 +610,11 @@ module ArJdbc
     end # NOTE: only since AR-4.0 but should not hurt on other versions
     
     def enable_extension(name)
-      exec_query("CREATE EXTENSION IF NOT EXISTS \"#{name}\"") #.tap { reload_type_map }
+      execute("CREATE EXTENSION IF NOT EXISTS \"#{name}\"")
     end
 
     def disable_extension(name)
-      exec_query("DROP EXTENSION IF EXISTS \"#{name}\" CASCADE") #.tap { reload_type_map }
+      execute("DROP EXTENSION IF EXISTS \"#{name}\" CASCADE")
     end
 
     def extension_enabled?(name)
@@ -635,7 +635,7 @@ module ArJdbc
     
     # Set the authorized user for this session
     def session_auth=(user)
-      exec_query "SET SESSION AUTHORIZATION #{user}"
+      execute "SET SESSION AUTHORIZATION #{user}"
     end
     
     # Returns the configured supported identifier length supported by PostgreSQL,
