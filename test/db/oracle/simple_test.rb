@@ -15,6 +15,8 @@ class OracleSimpleTest < Test::Unit::TestCase
   end
   
   def test_default_id_type_is_integer
+    user = User.create! :login => 'id_type'
+    Entry.create! :title => 'first', :user_id => user.id
     assert Integer === Entry.first.id
   end
 

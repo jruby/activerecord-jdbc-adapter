@@ -289,7 +289,7 @@ module SimpleTestMethods
 
     def test_save_time_with_zone
       t = Time.now
-      #precision will only be expected to the second.
+      # precision will only be expected to the second :
       original_time = Time.local(t.year, t.month, t.day, t.hour, t.min, t.sec)
       time = original_time.in_time_zone
       e = DbType.first
@@ -302,7 +302,7 @@ module SimpleTestMethods
 
     def test_save_date_time
       t = Time.now
-      #precision will only be expected to the second.
+      # precision will only be expected to the second :
       time = Time.local(t.year, t.month, t.day, t.hour, t.min, t.sec)
       datetime = time.to_datetime
       e = DbType.first
@@ -360,64 +360,65 @@ module SimpleTestMethods
     e.save!
 
     e = DbType.first
-    assert_equal(12.0, e.sample_float)
+    assert_equal 12.0, e.sample_float
   end
-
+  
   def test_boolean
-    # An unset boolean should default to nil
     e = DbType.first
-    assert_equal(nil, e.sample_boolean)
+    assert_nil e.sample_boolean # unset boolean should default to nil
 
+    e.update_attributes :sample_boolean => false
+
+    e = DbType.first
+    assert_equal false, e.sample_boolean
+    
     e.sample_boolean = true
     e.save!
 
     e = DbType.first
-    assert_equal(true, e.sample_boolean)
+    assert_equal true, e.sample_boolean
   end
 
   def test_integer
-    # An unset boolean should default to nil
     e = DbType.first
-    assert_equal(nil, e.sample_integer)
+    assert_nil e.sample_integer
 
     e.sample_integer = 10
     e.save!
 
     e = DbType.first
-    assert_equal(10, e.sample_integer)
+    assert_equal 10, e.sample_integer
   end
 
   def test_text
-    # An unset boolean should default to nil
     e = DbType.first
-
     assert_null_text e.sample_text
 
     e.sample_text = "ooop?"
     e.save!
 
     e = DbType.first
-    assert_equal("ooop?", e.sample_text)
+    assert_equal "ooop?", e.sample_text
   end
 
   def test_string
     e = DbType.first
-
     assert_empty_string e.sample_string
 
     e.sample_string = "ooop?"
     e.save!
 
     e = DbType.first
-    assert_equal("ooop?", e.sample_string)
+    assert_equal "ooop?", e.sample_string
   end
 
   def test_save_binary
-    #string is 60_000 bytes
+    # string is 60_000 bytes
     binary_string = "\000ABCDEFGHIJKLMNOPQRSTUVWXYZ'\001\003" * 1 # 2_000
     e = DbType.first
     e.sample_binary = binary_string
     e.save!
+    
     e = DbType.first
     assert_equal binary_string, e.sample_binary
   end
@@ -456,8 +457,9 @@ module SimpleTestMethods
     indexes = connection.indexes(:entries)
     assert_equal 0, indexes.size
 
-    connection.add_index :entries, :updated_on, :name => "entries_updated_index"
-    connection.add_index :entries, [ :title, :user_id ], :unique => true
+    connection.add_index :entries, :updated_on
+    connection.add_index :entries, [ :title, :user_id ], :unique => true, 
+                         :name => 'x_entries_on_title_and_user_id' # <= 30 chars
 
     indexes = connection.indexes(:entries)
     assert_equal 2, indexes.size
@@ -471,11 +473,11 @@ module SimpleTestMethods
     updated_index = (indexes - [ title_index ]).first
     
     assert_equal "entries", updated_index.table.to_s
-    assert_equal "entries_updated_index", updated_index.name
+    assert_equal "index_entries_on_updated_on", updated_index.name
     assert ! updated_index.unique
     assert_equal [ 'updated_on' ], updated_index.columns
     
-    connection.remove_index :entries, :name => "entries_updated_index"
+    connection.remove_index :entries, :updated_on
     indexes = connection.indexes(:entries)
     assert_equal 1, indexes.size
   end
