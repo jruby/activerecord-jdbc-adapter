@@ -174,7 +174,7 @@ class MSSQLLimitOffsetTest < Test::Unit::TestCase
       LongShip.create!(:name => name)
     end
 
-    ships = LongShip.group(:name).find(:all, :limit => 2)
+    ships = LongShip.group(:name).select(:name).find(:all, :limit => 2)
     asset_equal(['one', 'two'], ships.map(&:name))
   end
 end
