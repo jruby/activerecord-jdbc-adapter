@@ -1,2 +1,2 @@
 require 'arjdbc/jdbc/adapter'
-require 'arjdbc/jdbc/discover'
+module ArJdbc; self.discover_extensions; end
