@@ -92,8 +92,8 @@ module ArJdbc
         return nil if value.nil? || value == 'NULL' || value =~ /^\s*NULL\s*$/i
         case type
         when :string    then value
-        when :integer   then defined?(value.to_i) ? value.to_i : (value ? 1 : 0)
-        when :primary_key then defined?(value.to_i) ? value.to_i : (value ? 1 : 0)
+        when :integer   then value.respond_to?(:to_i) ? value.to_i : (value ? 1 : 0)
+        when :primary_key then value.respond_to?(:to_i) ? value.to_i : (value ? 1 : 0)
         when :float     then value.to_f
         when :datetime  then ArJdbc::DB2::Column.cast_to_date_or_time(value)
         when :date      then ArJdbc::DB2::Column.cast_to_date_or_time(value)
@@ -192,15 +192,14 @@ module ArJdbc
     def prefetch_primary_key?(table_name = nil)
       # TRUE if the table has no identity column
       names = table_name.upcase.split(".")
-      sql = ""
       if as400?
         sql = "SELECT 1 FROM SYSIBM.SQLPRIMARYKEYS WHERE "
-        sql += "TABLE_SCHEM = '#{names.first}' AND " if names.size == 2
-        sql += "TABLE_NAME = '#{names.last}'"
+        sql << "TABLE_SCHEM = '#{names.first}' AND " if names.size == 2
+        sql << "TABLE_NAME = '#{names.last}'"
       else
         sql = "SELECT 1 FROM SYSCAT.COLUMNS WHERE IDENTITY = 'Y' "
-        sql += "AND TABSCHEMA = '#{names.first}' " if names.size == 2
-        sql += "AND TABNAME = '#{names.last}'"
+        sql << "AND TABSCHEMA = '#{names.first}' " if names.size == 2
+        sql << "AND TABNAME = '#{names.last}'"
       end
       select_one(sql).nil?
     end
@@ -216,7 +215,7 @@ module ArJdbc
         @connection.execute_update "call qsys.qcmdexc('ADDRPYLE SEQNBR(9876) MSGID(CPA32B2) RPY(''I'')',0000000045.00000)"
       rescue Exception => e
         raise "Could not call CHGJOB INQMSGRPY(*SYSRPYL) and ADDRPYLE SEQNBR(9876) MSGID(CPA32B2) RPY('I').\n" +
-              "Do you have authority to do this?\n\n" + e.to_s
+              "Do you have authority to do this?\n\n#{e.inspect}"
       end
 
       result = execute sql
@@ -226,7 +225,7 @@ module ArJdbc
         @connection.execute_update "call qsys.qcmdexc('RMVRPYLE SEQNBR(9876)',0000000021.00000)"
       rescue Exception => e
         raise "Could not call CHGJOB INQMSGRPY(*DFT) and RMVRPYLE SEQNBR(9876).\n" +
-              "Do you have authority to do this?\n\n" + e.to_s
+              "Do you have authority to do this?\n\n#{e.inspect}"
       end
       result
     end
@@ -240,6 +239,7 @@ module ArJdbc
         @connection.execute_update(sql)
       end
     end
+    private :_execute
     
     def last_insert_id(sql)
       table_name = sql.split(/\s/)[2]
@@ -436,14 +436,12 @@ module ArJdbc
       sql
     end
     
-    def reorg_table(table_name)
-      unless as400?
-        @connection.execute_update "call sysproc.admin_cmd ('REORG TABLE #{table_name}')"
-      end
+    def reorg_table(table_name, name = nil)
+      exec_update "call sysproc.admin_cmd ('REORG TABLE #{table_name}')", name, [] unless as400?
     end
     private :reorg_table
 
-    def runstats_for_table(tablename, priority=10)
+    def runstats_for_table(tablename, priority = 10)
       @connection.execute_update "call sysproc.admin_cmd('RUNSTATS ON TABLE #{tablename} WITH DISTRIBUTION AND DETAILED INDEXES ALL UTIL_IMPACT_PRIORITY #{priority}')"
     end
 
@@ -476,7 +474,7 @@ module ArJdbc
         raise NotImplementedError, "rename_column is not supported on IBM i"
       else
         execute "ALTER TABLE #{table_name} RENAME COLUMN #{column_name} TO #{new_column_name}"
-        reorg_table(table_name)
+        reorg_table(table_name, 'Rename Column')
       end
     end
 
@@ -487,7 +485,7 @@ module ArJdbc
         sql = "ALTER TABLE #{table_name} ALTER COLUMN #{column_name} SET NOT NULL"
       end
       as400? ? execute_and_auto_confirm(sql) : execute(sql)
-      reorg_table(table_name)
+      reorg_table(table_name, 'Change Column')
     end
 
     def change_column_default(table_name, column_name, default)
@@ -497,14 +495,14 @@ module ArJdbc
         sql = "ALTER TABLE #{table_name} ALTER COLUMN #{column_name} SET WITH DEFAULT #{quote(default)}"
       end
       as400? ? execute_and_auto_confirm(sql) : execute(sql)
-      reorg_table(table_name)
+      reorg_table(table_name, 'Change Column')
     end
 
     def change_column(table_name, column_name, type, options = {})
       data_type = type_to_sql(type, options[:limit], options[:precision], options[:scale])
       sql = "ALTER TABLE #{table_name} ALTER COLUMN #{column_name} SET DATA TYPE #{data_type}"
       as400? ? execute_and_auto_confirm(sql) : execute(sql)
-      reorg_table(table_name)
+      reorg_table(table_name, 'Change Column')
 
       if options.include?(:default) and options.include?(:null)
         # which to run first?
@@ -528,13 +526,13 @@ module ArJdbc
         sql = "ALTER TABLE #{table_name} DROP COLUMN #{column_name}"
         as400? ? execute_and_auto_confirm(sql) : execute(sql)
       end
-      reorg_table(table_name)
+      reorg_table(table_name, 'Remove Column')
     end
 
     # http://publib.boulder.ibm.com/infocenter/db2luw/v9r7/topic/com.ibm.db2.luw.sql.ref.doc/doc/r0000980.html
     def rename_table(name, new_name) #:nodoc:
       execute "RENAME TABLE #{name} TO #{new_name}"
-      reorg_table(new_name)
+      reorg_table(new_name, 'Rename Table')
     end
     
     def tables
