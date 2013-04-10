@@ -361,6 +361,13 @@ module ArJdbc
           "'#{quote_string(value)}'"
         end
       when Symbol then "'#{quote_string(value.to_s)}'"
+      when Time
+        # AS400 doesn't support date in time column
+        if column && column_type == :time
+          "'#{value.strftime("%H:%M:%S")}'"
+        else
+          super
+        end
       else super
       end
     end
