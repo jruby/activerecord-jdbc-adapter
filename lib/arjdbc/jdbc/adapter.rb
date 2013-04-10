@@ -1,9 +1,9 @@
 require 'active_record/version'
 require 'active_record/connection_adapters/abstract_adapter'
+
 require 'arjdbc/version'
 require 'arjdbc/jdbc/base_ext'
 require 'arjdbc/jdbc/connection_methods'
-require 'arjdbc/jdbc/compatibility'
 require 'arjdbc/jdbc/core_ext'
 require 'arjdbc/jdbc/java'
 require 'arjdbc/jdbc/driver'
@@ -17,7 +17,6 @@ module ActiveRecord
   module ConnectionAdapters
     class JdbcAdapter < AbstractAdapter
       extend ShadowCoreMethods
-      include CompatibilityMethods if CompatibilityMethods.needed?(self)
       include JdbcConnectionPoolCallbacks if JdbcConnectionPoolCallbacks.needed?
       
       attr_reader :config
