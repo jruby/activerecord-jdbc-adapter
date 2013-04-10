@@ -57,5 +57,14 @@ class DB2SimpleTest < Test::Unit::TestCase
     assert entries.first.title
     assert entries.first.login
   end
+
+  def test_save_time
+    time = Time.utc(2010, 01, 01, 10, 0, 0, 0)
+    e = DbType.first
+    e.sample_time = time
+    e.save!
+    e = DbType.first
+    assert_equal time, e.sample_time
+  end
   
 end
