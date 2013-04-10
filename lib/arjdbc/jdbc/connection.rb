@@ -20,8 +20,6 @@ module ActiveRecord
         connection # force the connection to load (@see RubyJDbcConnection.connection)
         set_native_database_types
         @stmts = {} # AR compatibility - statement cache not used
-      rescue ::ActiveRecord::ActiveRecordError
-        raise
       rescue Java::JavaSql::SQLException => e
         e = e.cause if defined?(NativeException) && e.is_a?(NativeException) # JRuby-1.6.8
         error = e.getMessage || e.getSQLState
