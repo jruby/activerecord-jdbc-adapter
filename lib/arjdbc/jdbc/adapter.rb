@@ -383,30 +383,41 @@ module ActiveRecord
         @connection.primary_keys(table)
       end
 
-      if ActiveRecord::VERSION::MAJOR >= 3
-        
-      # Converts an arel AST to SQL
-      def to_sql(arel, binds = [])
-        if arel.respond_to?(:ast)
-          visitor.accept(arel.ast) do
-            quote(*binds.shift.reverse)
-          end
-        else # for backwards compatibility :
+      if ActiveRecord::VERSION::MAJOR == 3 && ActiveRecord::VERSION::MINOR == 0
+      
+        #attr_reader :visitor unless method_defined?(:visitor) # not in 3.0
+
+        # Converts an AREL AST to SQL.
+        def to_sql(arel, binds = [])
+          # NOTE: can not handle `visitor.accept(arel.ast)` right thus
+          # convert AREL to a SQL string and simply substitute binds :
           sql = arel.respond_to?(:to_sql) ? arel.send(:to_sql) : arel
           return sql if binds.blank?
           sql.gsub('?') { quote(*binds.shift.reverse) }
         end
-      end
+        
+      elsif ActiveRecord::VERSION::MAJOR >= 3 # AR >= 3.1 or 4.0
+      
+        # Converts an AREL AST to SQL.
+        def to_sql(arel, binds = [])
+          if arel.respond_to?(:ast)
+            visitor.accept(arel.ast) { quote(*binds.shift.reverse) }
+          else # for backwards compatibility :
+            sql = arel.respond_to?(:to_sql) ? arel.send(:to_sql) : arel
+            return sql if binds.blank?
+            sql.gsub('?') { quote(*binds.shift.reverse) }
+          end
+        end
       
       else # AR-2.3 no #to_sql method
         
-      # Substitutes SQL bind (?) parameters
-      def to_sql(sql, binds = [])
-        sql = sql.send(:to_sql) if sql.respond_to?(:to_sql)
-        return sql if binds.blank?
-        copy = binds.dup
-        sql.gsub('?') { quote(*copy.shift.reverse) }
-      end
+        # Substitutes SQL bind parameters.
+        def to_sql(sql, binds = [])
+          sql = sql.send(:to_sql) if sql.respond_to?(:to_sql)
+          return sql if binds.blank?
+          copy = binds.dup
+          sql.gsub('?') { quote(*copy.shift.reverse) }
+        end
         
       end
       

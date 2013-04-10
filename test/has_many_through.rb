@@ -11,16 +11,15 @@ module HasManyThroughMethods
   end
 
   def test_has_many_through
-    admin_role    = Role.create :name => "Administrator", 
-        :description => "System defined super user - access to right and role management."
-    admin_role.save!
+    admin_role = Role.create! :name => "Administrator", 
+      :description => "super user - access to right and role management"
 
     assert_equal(0, admin_role.rights.sum(:hours))
 
-    role_rights   = Right.create :name => "Administrator - Full Access To Roles", 
-        :actions => "*", :controller_name => "Admin::RolesController", :hours => 0
-    right_rights  = Right.create :name => "Administrator - Full Access To Rights", 
-        :actions => "*", :controller_name => "Admin::RightsController", :hours => 1.5
+    role_rights  = Right.create :name => "Administrator - Full Access To Roles", 
+      :actions => "*", :controller_name => "Admin::RolesController", :hours => 0
+    right_rights = Right.create :name => "Administrator - Full Access To Rights", 
+      :actions => "*", :controller_name => "Admin::RightsController", :hours => 1.5
 
     admin_role.rights << role_rights
     admin_role.rights << right_rights
@@ -39,5 +38,21 @@ module HasManyThroughMethods
     assert admin_role.reload.has_right?(role_rights)
     assert ! rights_only_role.has_right?(role_rights)
   end
+  
+  def test_has_many_select_rows_with_relation
+    role = Role.create! :name => "main", :description => "main role"
+    Role.create! :name => "user", :description => "user role"
+    
+    Right.create! :name => "r0", :hours => 0
+    r1 = Right.create! :name => "r1", :hours => 1
+    r2 = Right.create! :name => "r2", :hours => 2
+    Right.create! :name => "r3", :hours => 3
+    
+    role.permission_groups.create! :right => r1.reload
+    role.permission_groups.create! :right => r2.reload
+    
+    groups = role.reload.permission_groups.select('right_id')
+    assert_equal [ [ r1.id ], [ r2.id ] ], role.connection.select_rows(groups)
+  end if Test::Unit::TestCase.ar_version('3.0')
   
 end
