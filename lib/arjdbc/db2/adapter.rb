@@ -78,7 +78,9 @@ module ArJdbc
       #:rowid      => { :name => "rowid" }, # supported datatype on z/OS and i/5
       #:graphic    => { :name => "graphic", :limit => 1 },
       #:vargraphic => { :name => "vargraphic", :limit => 1 },
-      # TODO datetime / timestamp / time mapping
+      :datetime   => { :name => "timestamp" },
+      :timestamp  => { :name => "timestamp" },
+      :time       => { :name => "time" }
     }
 
     def native_database_types
