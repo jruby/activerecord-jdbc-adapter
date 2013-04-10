@@ -10,7 +10,11 @@ module Arel
       end
 
       def add_limit_offset(sql, o)
-        @connection.replace_limit_offset! sql, limit_for(o.limit), o.offset && o.offset.value
+        if o.offset && o.offset.value && o.limit && o.limit.value
+          @connection.replace_limit_offset_for_arel! o, sql
+        else
+          @connection.replace_limit_offset! sql, limit_for(o.limit), o.offset && o.offset.value
+        end
       end
     end
   end

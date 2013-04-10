@@ -418,10 +418,11 @@ module ArJdbc
       end
       super
     end
-    
+   
     def replace_limit_offset!(sql, limit, offset)
       if limit
         limit = limit.to_i
+
         if !offset
           if limit == 1
             sql << " FETCH FIRST ROW ONLY"
@@ -429,14 +430,38 @@ module ArJdbc
             sql << " FETCH FIRST #{limit} ROWS ONLY"
           end
         else
-          offset = offset.to_i
-          sql.sub!(/SELECT/i, 'SELECT B.* FROM (SELECT A.*, row_number() over () AS internal$rownum FROM (SELECT')
-          sql << ") A ) B WHERE B.internal$rownum > #{offset} AND B.internal$rownum <= #{limit + offset}"
+          replace_limit_offset_with_ordering( sql, limit, offset )
         end
+        
       end
       sql
     end
+
+    def replace_limit_offset_for_arel!( query, sql )
+      replace_limit_offset_with_ordering sql, query.limit.value, query.offset && query.offset.value, query.orders
+    end
+
+    def replace_limit_offset_with_ordering( sql, limit, offset, orders=[] )
+      sql.sub!(/SELECT/i, "SELECT B.* FROM (SELECT A.*, row_number() over (#{build_ordering(orders)}) AS internal$rownum FROM (SELECT")
+      sql << ") A ) B WHERE B.internal$rownum > #{offset} AND B.internal$rownum <= #{limit + offset}"
+      sql
+    end
+    private :replace_limit_offset_with_ordering
     
+    def build_ordering( orders )
+      return '' unless orders.size > 0
+      # need to remove the library/table names from the orderings because we are not really ordering by them anymore
+      # we are actually ordering by the results of a query where the result set has the same column names
+      orders = orders.map do |o| 
+        # need to keep in mind that the order clause could be wrapped in a function
+        matches = /(?:\w+\(|\s)*(\S+)(?:\)|\s)*/.match(o)
+        o = o.gsub( matches[1], matches[1].split('.').last ) if matches
+        o
+      end
+      "ORDER BY " + orders.join( ', ')
+    end
+    private :build_ordering
+
     def reorg_table(table_name, name = nil)
       exec_update "call sysproc.admin_cmd ('REORG TABLE #{table_name}')", name, [] unless as400?
     end
