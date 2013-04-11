@@ -21,17 +21,17 @@ class H2OffsetTest < Test::Unit::TestCase
 
   def setup
     CreateUsersTable.up
-    User.create(firstname: "John", lastname: "Smith")
-    User.create(firstname: "Jill", lastname: "Smith")
-    User.create(firstname: "Joan", lastname: "Smith")
-    User.create(firstname: "Jason", lastname: "Smith")
-    User.create(firstname: "Jack", lastname: "Smith")
-    User.create(firstname: "Jenssen", lastname: "Smith")
-    User.create(firstname: "Joe", lastname: "Smith")
-    User.create(firstname: "Johanna", lastname: "Smith")
-    User.create(firstname: "James", lastname: "Smith")
-    User.create(firstname: "Jim", lastname: "Smith")
-    User.create(firstname: "Jody", lastname: "Smith")
+    User.create(:firstname => "John",     :lastname => "Smith")
+    User.create(:firstname => "Jill",     :lastname => "Smith")
+    User.create(:firstname => "Joan",     :lastname => "Smith")
+    User.create(:firstname => "Jason",    :lastname => "Smith")
+    User.create(:firstname => "Jack",     :lastname => "Smith")
+    User.create(:firstname => "Jenssen",  :lastname => "Smith")
+    User.create(:firstname => "Joe",      :lastname => "Smith")
+    User.create(:firstname => "Johanna",  :lastname => "Smith")
+    User.create(:firstname => "James",    :lastname => "Smith")
+    User.create(:firstname => "Jim",      :lastname => "Smith")
+    User.create(:firstname => "Jody",     :lastname => "Smith")
   end
 
   def teardown
