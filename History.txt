@@ -1,3 +1,81 @@
+== 1.3.0.beta1 (04/11/13)
+
+- [db2] map datetime / timestamp / time types + correct time handling on AS400
+- AREL values passed to #to_sql not handled correctly on AR-3.0 (#365)
+- (Ruby) API cleanup - removed ArJdbc::Jdbc::Mutex and CompatibilityMethods
+- new base implementations for all exec_xxx methods (introduced in AR 3.1)
+- returning AR::Result from #exec_query + #exec_query_raw for old behavior
+- [mssql] #table_exists? does not filter views (only #tables does)
+- [postgres] introduced new types on AR 4.0 - same ones native adapter supports
+  (uuid values, arrays, json, hstore, ltree, PG ranges, interval, cidr etc.)
+- Java API - now compiled with Java 1.6 since we're using JDBC 4 API anyways
+- generic #exec_query returning AR::Result + #exec_raw_query for compatibility
+- [postgres] improve #insert_sql (uses primary_key, supports all AR versions)
+- [postgres] support config[:insert_returning]
+- [postgres] always return correct primary key (failing if no sequence)
+- Java API - xxxToRuby refactorings - to allow for more flexible overrides
+- [postgres] support BIT(n) type where n > 1 as "bit strings"
+- [postgres] #disable_referential_integrity on USER level (AR 4.0 compatible)
+- Java API - allow objectToRuby and arrayToRuby overrides
+- allow more-intuitive initialize arguments when sub-classing JdbcColumn
+- do not translate native (Java) exceptions into StatementInvalid (from #log)
+- Java API - replaced #tableLookupBlock with (a new) #matchTables
+- [mssql] better message for jTDS driver bug (support disabling explain)
+- Java API:- accept (and use) catalog as arg[1] in #columns which does leads to 
+  a refactoring of #extractTableName to accept a catalog name
+- [mssql] current_user and (change-able) default_schema support (#311)
+- [sqlite3] correct empty insert statement value (on AR-4.0)
+- Java API - do not wrap runtime exceptions when handling throwables
+- [mysql] correct empty insert statement value (was not working on 4.0)
+- Java API - handle :xml and :array AR column type to JDBC type conversion
+- Java API - SQL Array and Object JDBC type (to Ruby) mappings
+- Java API - reviewed (and updated) JDBC type handling for adapters : 
+  * FLOAT/DOUBLE types should be handled (just like REAL) as Double-s 
+  * NUMERIC/DECIMAL values should be handled as BigDecimal-s 
+  * BIT/BOOLEAN should be converted to (Ruby) true/false by default 
+  * NULL should always be returned as nil 
+  * close binary/character stream & free SQLXML once converted 
+  * JDBC 4.0 N(CHAR) types should be handled
+- JdbcConnectionFactory.newConnection now throws SQLException - this is backwards
+  incompatible but most extension do not need to deal with this interface (#347)
+- (AR 4.0 compatible) transaction isolation support
+- Java API - deprecate SQLBlock class in favor of a parameterized Callable iface
+- Java API - #retry makes no sense during #rollback (should use the same connection)
+- [postgres] session variables support (from configuration)
+- [mysql] session variables support (from configuration)
+- [mysql] :strict config option, for STRICT_ALL_TABLES on AR-4.0
+- AR 4.0 (master) compatible #rename_table_indexes and #renamed_column_indexes
+- [postgres] no need to clear_query_cache after insert on AR-2.3's #insert_sql
+- Java API - connection #execute_delete "alias" for #execute_update
+- [derby] XMLPARSE when inserting into an XML column type ... 
+  but still can not retrieve XML values using SELECT * FROM
+- [sqlite3] IndexDefinition#unique should be a true/false
+- [mssql] execute_procedure support, AR-SQLServer style (#266)
+- [mssql] #charset, #current_database
+- [mssql] config[:database] support + switching using #use_database (#311)
+- [mssql] explain support
+- [mssql] better query type detection - make sure WITHs work as SELECts
+- [mssql] make sure there's a column class (#269) + better special column magic
+- [mssql] better - working date/time quoting (with some ms precision support)
+- Java API - re-arrange JDBC (to-ruby) type conversion methods
+- [mssql] fix Model.first on SQL Server 2000 when called with only order
+- [oracle] XMLTYPE column support - can't test due bug in driver
+- [db2] working XML column type support
+- [oracle] (MATRIALIZED) VIEWS/SYNONYMS should be usable on table_exists?
+- a better (default) table_exists? (aligned with columns_internal) for all
+- Java API - add #mapTables for OOP-ish mapping of results from #getTables
+- [db2] [derby] some (working) connection alive sql (db gurus should help)
+- [oracle] (a working) connection alive sql
+- [db2] seems like DB2 on ZOS used a non-existing get_primary_key method
+- do not call_discovered_column_callbacks for extending column impls
+- [hsqldb] a 'valid' connection alive SQL for HSQLDB
+- ActiveRecord::AbstractAdapter#exec_insert has 5 args in AR 4.0 (master)
+- no need for a ArJdbc::Version module simply use ArJdbc::VERSION
+- support auto-loading of adapter gems e.g. when specified in a Gemfile
+- load out raltie from arjdbc instead of activerecord-jdbc-adapter thus it will
+  work consistently even if only a specific adapter gem is specified in Gemfile
+- make sure we require arjdbc instead of just arjdbc/jdbc from adapters
+
 == 1.2.9 (03/20/13)
 
 - [oracle] native database types ala oracle-enhanced adapter

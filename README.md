@@ -8,11 +8,18 @@ AR-JDBC **1.2.x** officially supports ActiveRecord 3.x as well as 2.3, it's
 latest version is compatible with JRuby 1.6.8+ (but as always we recommend to 
 use the latest and greatest of JRubies) thus requires Java 1.6 at minimum.
 
+**NOTE:** version **1.3.0** of AR-JDBC adapter is currently in the making which
+strives to provide ActiveRecord 2.3, 3.x as well as 4.0 (master) compatibility.
+Our master already contains a lot of fixes but since we diverged significantly 
+from the 1.2 line (we no longer back-port fixes) and still require to perform a 
+few refactorings we advise users to point their *Gemfiles* to our master or use 
+pre-release versions of our gem(s) e.g. **1.3.0.beta1**.
+
 **NOTE:** activerecord-jdbc-adapter gem **1.2.6** contains a SQL injection
 [security vulnerability](http://cl.ly/code/0n381E353414) and has been yanked, 
-please update ASAP (to version >= 1.2.8) if you happen to be still using it !
+please update ASAP (to version >= 1.2.8) if you happen to still be using it !
 Caused by a [regression](http://git.io/MDmiGQ) introduced in the 1.2.6 release, 
-which was still not completely been fixed in 1.2.7 thus has been yanked as well.
+which was still not completely been fixed in 1.2.7 and has been yanked as well.
 
 ## Databases
 
