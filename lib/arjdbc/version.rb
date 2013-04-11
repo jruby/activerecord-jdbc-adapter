@@ -1,5 +1,5 @@
 module ArJdbc
-  VERSION = "1.3.0.beta1"
+  VERSION = "1.3.0.DEV"
   module Version # :nodoc:
     VERSION = ArJdbc::VERSION # :nodoc: 1.2.x compatibility
   end
