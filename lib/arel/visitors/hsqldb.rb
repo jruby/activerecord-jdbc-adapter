@@ -12,6 +12,7 @@ module Arel
 
       def limit_offset sql, o
         offset = o.offset || 0
+        offset = offset.expr unless(offset.nil? or offset == 0)
         bef = sql[7..-1]
         if limit = o.limit
           "SELECT LIMIT #{offset} #{limit_for(limit)} #{bef}"
