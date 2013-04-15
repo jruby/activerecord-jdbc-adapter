@@ -10,15 +10,18 @@ namespace :rails do
     
     rubylib = [ 
       "#{ar_jdbc_dir}/lib",
+      "#{ar_jdbc_dir}/test/rails", # just to load our rails_helper
       "#{ar_jdbc_dir}/jdbc-#{_driver(driver)}/lib",
       "#{ar_jdbc_dir}/activerecord-jdbc#{_adapter(driver)}-adapter/lib"
     ]
     rubylib << File.expand_path('activesupport/lib', rails_dir)
     rubylib << File.expand_path('activemodel/lib', rails_dir)
     rubylib << File.expand_path(File.join(activerecord_dir, 'lib'))
-    #rubylib << File.expand_path('actionpack/lib', rails_dir)
 
-    Dir.chdir(activerecord_dir) { rake "RUBYLIB=#{rubylib.join(':')}", "#{_target(driver)}" }
+    Dir.chdir(activerecord_dir) do 
+      rake_args = [ "RUBYLIB=#{rubylib.join(':')}", "#{_target(driver)}" ]
+      ruby "-S", "rake", *rake_args # -rrails_helper
+    end
   end
   
   %w(MySQL SQLite3 Postgres).each do |adapter|

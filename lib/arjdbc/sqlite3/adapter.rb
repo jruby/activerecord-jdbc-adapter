@@ -490,11 +490,3 @@ end
 # Don't need to load native sqlite3 adapter
 $LOADED_FEATURES << 'active_record/connection_adapters/sqlite_adapter.rb'
 $LOADED_FEATURES << 'active_record/connection_adapters/sqlite3_adapter.rb'
-
-# Fake out sqlite3/version driver for AR tests
-$LOADED_FEATURES << 'sqlite3/version.rb'
-module SQLite3
-  module Version
-    VERSION = '1.2.6' # query_cache_test.rb requires SQLite3::Version::VERSION > '1.2.5'
-  end
-end
