@@ -38,6 +38,7 @@ import org.jruby.RubyObjectAdapter;
 import org.jruby.RubyString;
 import org.jruby.anno.JRubyMethod;
 import org.jruby.javasupport.JavaEmbedUtils;
+import org.jruby.runtime.Block;
 import org.jruby.runtime.ThreadContext;
 import org.jruby.runtime.builtin.IRubyObject;
 import org.jruby.util.ByteList;
@@ -149,8 +150,7 @@ public class DerbyModule {
      * This method turns non stringy things into strings.
      */
     private static IRubyObject make_ruby_string_for_text_column(ThreadContext context, IRubyObject recv, Ruby runtime, IRubyObject value) {
-    	RubyModule multibyteChars = (RubyModule)
-            ((RubyModule) ((RubyModule) runtime.getModule("ActiveSupport")).getConstant("Multibyte")).getConstantAt("Chars");
+    	final RubyModule multibyteChars = getMultibyteChars(runtime);
         if (value instanceof RubyString || rubyApi.isKindOf(value, multibyteChars) || value.isNil()) {
             return value;
         }
@@ -182,8 +182,7 @@ public class DerbyModule {
         String metaClass = value.getMetaClass().getName();
 
         IRubyObject type = (col.isNil()) ? col : rubyApi.callMethod(col, "type");
-        RubyModule multibyteChars = (RubyModule)
-            ((RubyModule) ((RubyModule) runtime.getModule("ActiveSupport")).getConstant("Multibyte")).getConstantAt("Chars");
+        final RubyModule multibyteChars = getMultibyteChars(runtime);
         if (value instanceof RubyString || rubyApi.isKindOf(value, multibyteChars)) {
             RubyString svalue = RubyString.objAsString(context, value);
             if (type == runtime.newSymbol("binary") && col.getType().respondsTo("string_to_binary")) {
@@ -214,52 +213,57 @@ public class DerbyModule {
 
     private final static ByteList TWO_SINGLE = new ByteList(new byte[]{'\'','\''});
 
-    private static IRubyObject quote_string_with_surround(Ruby runtime, String before, RubyString string, String after) {
-        ByteList input = string.getByteList();
-        ByteList output = new ByteList(before.getBytes(), input.encoding);
-        for(int i = input.begin; i< input.begin + input.realSize; i++) {
-            switch(input.bytes[i]) {
-            case '\'':
-                output.append(input.bytes[i]);
-                //FALLTHROUGH
-            default:
-                output.append(input.bytes[i]);
+    private static IRubyObject quote_string_with_surround(final Ruby runtime, 
+        final String before, final RubyString string, final String after) {
+        
+        final ByteList input = string.getByteList();
+        final ByteList output = new ByteList(before.getBytes(), input.getEncoding());
+        final byte[] inputBytes = input.unsafeBytes();
+        
+        for(int i = input.getBegin(); i< input.getBegin() + input.getRealSize(); i++) {
+            switch ( inputBytes[i] ) {
+                case '\'': output.append(inputBytes[i]); // FALLTHROUGH
+                default: output.append(inputBytes[i]);
             }
 
         }
 
         output.append(after.getBytes());
-
         return runtime.newString(output);
     }
 
     private final static byte[] HEX = {'0','1','2','3','4','5','6','7','8','9','A','B','C','D','E','F'};
 
-    private static IRubyObject hexquote_string_with_surround(Ruby runtime, String before, RubyString string, String after) {
-        ByteList input = string.getByteList();
-        ByteList output = new ByteList(before.getBytes());
+    private static IRubyObject hexquote_string_with_surround(final Ruby runtime, 
+        final String before, final RubyString string, final String after) {
+        
+        final ByteList input = string.getByteList();
+        final ByteList output = new ByteList(before.getBytes());
+        final byte[] inputBytes = input.unsafeBytes();
+        
         int written = 0;
-        for(int i = input.begin; i< input.begin + input.realSize; i++) {
-            byte b1 = input.bytes[i];
+        for(int i = input.getBegin(); i< input.getBegin() + input.getRealSize(); i++) {
+            byte b1 = inputBytes[i];
             byte higher = HEX[(((char)b1)>>4)%16];
             byte lower = HEX[((char)b1)%16];
             output.append(higher);
             output.append(lower);
             written += 2;
-            if(written >= 16334) { // max hex length = 16334
+            if (written >= 16334) { // max hex length = 16334
                 output.append("'||X'".getBytes());
                 written = 0;
             }
         }
 
         output.append(after.getBytes());
-        return runtime.newStringShared(output);
+        return RubyString.newStringShared(runtime, output);
     }
 
-    private static boolean only_digits(RubyString inp) {
-        ByteList input = inp.getByteList();
-        for(int i = input.begin; i< input.begin + input.realSize; i++) {
-            if(input.bytes[i] < '0' || input.bytes[i] > '9') {
+    private static boolean only_digits(final RubyString string) {
+        final ByteList input = string.getByteList();
+        final byte[] inputBytes = input.unsafeBytes();
+        for ( int i = input.getBegin(); i< input.getBegin() + input.getRealSize(); i++ ) {
+            if ( inputBytes[i] < '0' || inputBytes[i] > '9' ) {
                 return false;
             }
         }
@@ -267,31 +271,26 @@ public class DerbyModule {
     }
 
     @JRubyMethod(name = "quote_string", required = 1)
-    public static IRubyObject quote_string(IRubyObject recv, IRubyObject string) {
-        boolean replacementFound = false;
-        ByteList bl = ((RubyString) string).getByteList();
-
-        for(int i = bl.begin; i < bl.begin + bl.realSize; i++) {
-            switch (bl.bytes[i]) {
-            case '\'': break;
-            default: continue;
+    public static IRubyObject quote_string(final IRubyObject self, IRubyObject string) {
+        ByteList bytes = ((RubyString) string).getByteList();
+        
+        boolean replacement = false;
+        for ( int i = 0; i < bytes.length(); i++ ) {
+            switch ( bytes.get(i) ) {
+                case '\'': break;
+                default: continue;
+            }
+            // on first replacement allocate so we don't manip original
+            if ( ! replacement ) {
+                bytes = new ByteList(bytes);
+                replacement = true;
             }
 
-            // On first replacement allocate a different bytelist so we don't manip original
-            if(!replacementFound) {
-                i-= bl.begin;
-                bl = new ByteList(bl);
-                replacementFound = true;
-            }
-
-            bl.replace(i, 1, TWO_SINGLE);
-            i+=1;
+            bytes.replace(i, 1, TWO_SINGLE);
+            i += 1;
         }
-        if(replacementFound) {
-            return recv.getRuntime().newStringShared(bl);
-        } else {
-            return string;
-        }
+        
+        return replacement ? RubyString.newStringShared(self.getRuntime(), bytes) : string;
     }
 
     @JRubyMethod(name = "quoted_true", required = 0, frame = false)
@@ -342,11 +341,16 @@ public class DerbyModule {
             return connection.execute_insert(context, sql);
         }
         else if (sqlStr.startsWith("select") || sqlStr.startsWith("show") || sqlStr.startsWith("values")) {
-            return connection.execute_query(context, sql);
+            return connection.execute_query_raw(context, sql, Block.NULL_BLOCK);
         }
         else {
             return connection.execute_update(context, sql);
         }
+    }
+    
+    private static RubyModule getMultibyteChars(final Ruby runtime) {
+        return (RubyModule) ((RubyModule) runtime.getModule("ActiveSupport").
+                getConstant("Multibyte")).getConstantAt("Chars");
     }
     
 }

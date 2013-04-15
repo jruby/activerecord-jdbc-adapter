@@ -337,6 +337,44 @@ module ArJdbc
       true
     end
 
+    # NOTE: Dynamic Name Resolution - SQL Server 2000 vs. 2005
+    # 
+    # A query such as "select * from table1" in SQL Server 2000 goes through 
+    # a set of steps to resolve and validate the object references before 
+    # execution. 
+    # The search first looks at the identity of the connection executing 
+    # the query.
+    # 
+    # However SQL Server 2005 provides a mechanism to allow finer control over
+    # name resolution to the administrators. By manipulating the value of the 
+    # default_schema_name columns in the sys.database_principals.
+    # 
+    # http://blogs.msdn.com/b/mssqlisv/archive/2007/03/23/upgrading-to-sql-server-2005-and-default-schema-setting.aspx
+    
+    # Returns the default schema (to be used for table resolution) used for 
+    # the {#current_user}.
+    def default_schema
+      return current_user if sqlserver_2000?
+      @default_schema ||= 
+        select_value("SELECT default_schema_name FROM sys.database_principals WHERE name = CURRENT_USER")
+    end
+    alias_method :current_schema, :default_schema
+
+    # Allows for changing of the default schema (to be used during unqualified
+    # table name resolution).
+    # @note This is not supported on SQL Server 2000 !
+    def default_schema=(default_schema) # :nodoc:
+      raise "changing DEFAULT_SCHEMA only supported on SQLServer 2005+" if sqlserver_2000?
+      execute("ALTER #{current_user} WITH DEFAULT_SCHEMA=#{default_schema}")
+      @default_schema = nil if defined?(@default_schema)
+    end
+    alias_method :current_schema=, :default_schema=
+    
+    # `SELECT CURRENT_USER`
+    def current_user
+      @current_user ||= select_value("SELECT CURRENT_USER")
+    end
+    
     def charset
       select_value "SELECT SERVERPROPERTY('SqlCharSetName')"
     end
@@ -547,29 +585,23 @@ module ArJdbc
         end.join(', ')
       sql = "EXEC #{proc_name} #{vars}".strip
       log(sql, 'Execute Procedure') do
-        result = @connection.execute_query(sql)
-        result.map do |row| 
+        result = @connection.execute_query_raw(sql)
+        result.map! do |row| 
           row = row.is_a?(Hash) ? row.with_indifferent_access : row
           yield(row) if block_given?
           row
         end
+        result
       end
     end
     alias_method :execute_procedure, :exec_proc # AR-SQLServer-Adapter naming
     
-    protected
-    
-    # NOTE: we allow to execute the SQL as explicitly requested by this,
-    # {#exec_query} won't route to {#_execute} and analyze if it's a select 
-    # e.g. this allows to use SQLServer's EXEC with a result set ...
-    def do_exec(sql, name, binds, type)
-      case type
-      when :query # exec_query
-        log(sql, name) { do_exec_query(sql) }
-      when :update # exec_update
-        log(sql, name) { @connection.execute_update(sql) }
-      else super
-      end
+    # @override
+    def exec_query(sql, name = 'SQL', binds = []) # :nodoc:
+      # NOTE: we allow to execute SQL as requested returning a results.
+      # e.g. this allows to use SQLServer's EXEC with a result set ...
+      sql = repair_special_columns to_sql(sql, binds)
+      log(sql, name || 'SQL') { @connection.execute_query(sql) }
     end
     
     private
@@ -588,15 +620,10 @@ module ArJdbc
           @connection.execute_insert(sql)
         end
       elsif self.class.select?(sql)
-        do_exec_query(sql)
-      # cac1391f80462d2e8f6c9718cf3db7cbb879b161
+        @connection.execute_query_raw repair_special_columns(sql)
       else # create | exec
         @connection.execute_update(sql)
       end
-    end
-    
-    def do_exec_query(sql)
-      @connection.execute_query repair_special_columns(sql)
     end
     
     def identity_insert_table_name(sql)

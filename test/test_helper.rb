@@ -1,4 +1,3 @@
-require 'helper'
 require 'stringio'
 
 begin
@@ -11,6 +10,8 @@ Bundler.require(:default, :test)
 
 require 'test/unit'
 begin; require 'mocha/setup'; rescue LoadError; require 'mocha'; end
+
+require 'shared_helper'
 
 if ENV['COVERAGE']
   require 'simplecov'
@@ -26,7 +27,14 @@ puts "Using ActiveRecord::VERSION = #{ActiveRecord::VERSION::STRING}"
 # but level is set to "warn" unless $DEBUG or ENV['DEBUG'] is set :
 require 'logger'
 ActiveRecord::Base.logger = Logger.new($stdout)
-ActiveRecord::Base.logger.level = $DEBUG || ENV['DEBUG'] ? Logger::DEBUG : Logger::WARN
+ActiveRecord::Base.logger.level = 
+  if level = ENV['LOG_LEVEL']
+    level.to_i.to_s == level ? level.to_i : Logger.const_get(level.upcase)
+  elsif $DEBUG || ENV['DEBUG']
+    Logger::DEBUG
+  else
+    Logger::WARN
+  end
 
 begin
   require 'ruby-debug' if $DEBUG || ENV['DEBUG']
@@ -37,6 +45,8 @@ end
 # assert_queries and SQLCounter taken from rails active_record tests
 class Test::Unit::TestCase
 
+  alias skip omit
+  
   def self.ar_version(version)
     match = version.match(/(\d+)\.(\d+)(?:\.(\d+))?/)
     ActiveRecord::VERSION::MAJOR > match[1].to_i ||

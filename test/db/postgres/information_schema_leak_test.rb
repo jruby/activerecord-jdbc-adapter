@@ -1,19 +1,20 @@
-require 'jdbc_common'
-
-class CreateISLSchema < ActiveRecord::Migration
-  def self.up
-    execute "CREATE TABLE domains (id int, name varchar(16))"
-  end
-
-  def self.down
-    execute "DROP TABLE domains"
-  end
-end
-
-class Domain < ActiveRecord::Base
-end
+require 'db/postgres'
 
 class PostgresInformationSchemaLeakTest < Test::Unit::TestCase
+  
+  class CreateISLSchema < ActiveRecord::Migration
+    def self.up
+      execute "CREATE TABLE domains (id int, name varchar(16))"
+    end
+
+    def self.down
+      execute "DROP TABLE domains"
+    end
+  end
+
+  class Domain < ActiveRecord::Base
+  end
+  
   def setup
     CreateISLSchema.up
   end
@@ -22,7 +23,8 @@ class PostgresInformationSchemaLeakTest < Test::Unit::TestCase
     CreateISLSchema.down
   end
 
-  def test_columns
+  def test_domain_columns
     assert_equal(%w{id name}, Domain.column_names)
   end
-end  
+  
+end

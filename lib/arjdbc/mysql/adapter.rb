@@ -10,9 +10,41 @@ module ArJdbc
     end
 
     def configure_connection
-      execute("SET SQL_AUTO_IS_NULL=0")
-    end
+      variables = config[:variables] || {}
+      # By default, MySQL 'where id is null' selects the last inserted id. Turn this off.
+      variables[:sql_auto_is_null] = 0 # execute "SET SQL_AUTO_IS_NULL=0"
 
+      # Increase timeout so the server doesn't disconnect us.
+      wait_timeout = config[:wait_timeout]
+      wait_timeout = 2147483 unless wait_timeout.is_a?(Fixnum)
+      variables[:wait_timeout] = wait_timeout
+
+      # Make MySQL reject illegal values rather than truncating or blanking them, see
+      # http://dev.mysql.com/doc/refman/5.0/en/server-sql-mode.html#sqlmode_strict_all_tables
+      # If the user has provided another value for sql_mode, don't replace it.
+      if strict_mode? && ! variables.has_key?(:sql_mode)
+        variables[:sql_mode] = 'STRICT_ALL_TABLES' # SET SQL_MODE='STRICT_ALL_TABLES'
+      end
+
+      # NAMES does not have an equals sign, see
+      # http://dev.mysql.com/doc/refman/5.0/en/set-statement.html#id944430
+      # (trailing comma because variable_assignments will always have content)
+      encoding = "NAMES #{config[:encoding]}, " if config[:encoding]
+
+      # Gather up all of the SET variables...
+      variable_assignments = variables.map do |k, v|
+        if v == ':default' || v == :default
+          "@@SESSION.#{k.to_s} = DEFAULT" # Sets the value to the global or compile default
+        elsif ! v.nil?
+          "@@SESSION.#{k.to_s} = #{quote(v)}"
+        end
+        # or else nil; compact to clear nils out
+      end.compact.join(', ')
+
+      # ...and send them all in one query
+      execute("SET #{encoding} #{variable_assignments}", :skip_logging)
+    end
+    
     def self.column_selector
       [ /mysql/i, lambda { |_,column| column.extend(::ArJdbc::MySQL::Column) } ]
     end
@@ -21,6 +53,10 @@ module ArJdbc
       ::ActiveRecord::ConnectionAdapters::MySQLJdbcConnection
     end
 
+    def strict_mode? # strict_mode is default since AR 4.0
+      config.key?(:strict) ? config[:strict] : ::ActiveRecord::VERSION::MAJOR > 3
+    end
+    
     module Column
       
       def extract_default(default)
@@ -206,6 +242,10 @@ module ArJdbc
       true
     end
 
+    def supports_transaction_isolation?(level = nil)
+      version[0] >= 5 # MySQL 5+
+    end
+    
     def create_savepoint
       execute("SAVEPOINT #{current_savepoint_name}")
     end
@@ -342,10 +382,11 @@ module ArJdbc
       super(name, {:options => "ENGINE=InnoDB DEFAULT CHARSET=utf8"}.merge(options))
     end
 
-    def rename_table(name, new_name)
-      execute "RENAME TABLE #{quote_table_name(name)} TO #{quote_table_name(new_name)}"
+    def rename_table(table_name, new_name)
+      execute "RENAME TABLE #{quote_table_name(table_name)} TO #{quote_table_name(new_name)}"
+      rename_table_indexes(table_name, new_name) if respond_to?(:rename_table_indexes) # AR-4.0 SchemaStatements
     end
-
+    
     def remove_index!(table_name, index_name) #:nodoc:
       # missing table_name quoting in AR-2.3
       execute "DROP INDEX #{quote_column_name(index_name)} ON #{quote_table_name(table_name)}"
@@ -393,8 +434,7 @@ module ArJdbc
     def rename_column(table_name, column_name, new_column_name) #:nodoc:
       options = {}
       if column = columns(table_name).find { |c| c.name == column_name.to_s }
-        options[:default] = column.default
-        options[:null] = column.null
+        options[:default] = column.default; options[:null] = column.null
       else
         raise ActiveRecord::ActiveRecordError, "No such column: #{table_name}.#{column_name}"
       end
@@ -402,8 +442,9 @@ module ArJdbc
       rename_column_sql = "ALTER TABLE #{quote_table_name(table_name)} CHANGE #{quote_column_name(column_name)} #{quote_column_name(new_column_name)} #{current_type}"
       add_column_options!(rename_column_sql, options)
       execute(rename_column_sql)
+      rename_column_indexes(table_name, column_name, new_column_name) if respond_to?(:rename_column_indexes) # AR-4.0 SchemaStatements
     end
-
+    
     def add_limit_offset!(sql, options) #:nodoc:
       limit, offset = options[:limit], options[:offset]
       if limit && offset
@@ -492,6 +533,10 @@ module ArJdbc
       end
     end
 
+    def empty_insert_statement_value
+      "VALUES ()"
+    end
+    
     protected
     def quoted_columns_for_index(column_names, options = {})
       length = options[:length] if options.is_a?(Hash)

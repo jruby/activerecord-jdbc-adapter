@@ -14,6 +14,7 @@ class MysqlSimpleTest < Test::Unit::TestCase
   include ColumnNameQuotingTests
   include DirtyAttributeTests
   include XmlColumnTests
+  include CustomSelectTestMethods
 
   column_quote_char "`"
 
@@ -93,12 +94,18 @@ class MysqlSimpleTest < Test::Unit::TestCase
   end
 
   def test_find_in_other_schema_with_include
+    user_1 = User.create :login => 'user1'
+    user_2 = User.create :login => 'user2'
+    Entry.create :title => 'title1', :content => '', :rating => 0, :user_id => user_1.id
+    Entry.create :title => 'title2', :content => '', :rating => 1, :user_id => user_2.id
+    
     old_entries_table_name = Entry.table_name
     old_users_table_name   = User.table_name
+    database = MYSQL_CONFIG[:database]
     begin
-      User.table_name  = "#{MYSQL_CONFIG[:database]}.users"
-      Entry.table_name = "#{MYSQL_CONFIG[:database]}.entries"
-      assert !Entry.all(:include => :user).empty?
+      User.table_name  = "#{database}.users"
+      Entry.table_name = "#{database}.entries"
+      assert_not_empty Entry.all(:include => :user)
     ensure
       Entry.table_name = old_entries_table_name
       User.table_name  = old_users_table_name

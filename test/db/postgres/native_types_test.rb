@@ -1,4 +1,3 @@
-require 'jdbc_common'
 require 'db/postgres'
 
 class PostgresNativeTypesTest < Test::Unit::TestCase
@@ -122,7 +121,7 @@ class PostgresTypeConversionTest < Test::Unit::TestCase
     BooleansMigration.down
   end
 
-  def test_should_handle_bool_conversion_with_boolean_relation
+  def test_conversion_with_boolean_relation
     ActiveRecord::Base.connection.raw_connection.set_native_database_types
   end
   

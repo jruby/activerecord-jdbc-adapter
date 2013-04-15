@@ -8,12 +8,9 @@ module ::ArJdbc
       def explain(arel, binds = [])
         sql = "EXPLAIN #{to_sql(arel, binds)}"
         start = Time.now.to_f
-        raw_result = execute(sql, "EXPLAIN", binds)
+        result = exec_query(sql, "EXPLAIN", binds)
         elapsed = Time.now.to_f - start
-        # TODO we should refactor to exce_query once it returns Result ASAP :
-        keys = raw_result[0] ? raw_result[0].keys : {}
-        rows = raw_result.map { |hash| hash.values }
-        ExplainPrettyPrinter.new.pp ActiveRecord::Result.new(keys, rows), elapsed
+        ExplainPrettyPrinter.new.pp result, elapsed
       end
 
       class ExplainPrettyPrinter # :nodoc:

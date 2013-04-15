@@ -51,9 +51,9 @@ public abstract class QuotingUtils {
             final char value, final char quote) {
         
         final ByteList stringBytes = string.getByteList();
-        final byte[] bytes = stringBytes.bytes; // unsafeBytes();
-        final int begin = stringBytes.begin; // getBegin();
-        final int realSize = stringBytes.realSize; // getRealSize();
+        final byte[] bytes = stringBytes.unsafeBytes();
+        final int begin = stringBytes.getBegin();
+        final int realSize = stringBytes.getRealSize();
         
         ByteList quotedBytes = null; int appendFrom = begin;
         for ( int i = begin; i < begin + realSize; i++ ) {
@@ -61,10 +61,10 @@ public abstract class QuotingUtils {
                 if ( quotedBytes == null ) {
                     quotedBytes = new ByteList(
                         new byte[realSize + 8], 
-                        stringBytes.encoding // getEncoding()
+                        stringBytes.getEncoding()
                     );
-                    quotedBytes.begin = 0; // setBegin(0);
-                    quotedBytes.realSize = 0; // setRealSize(0);
+                    quotedBytes.setBegin(0);
+                    quotedBytes.setRealSize(0);
                 }
                 quotedBytes.append(bytes, appendFrom, i - appendFrom);
                 quotedBytes.append(quote).append(value); // e.g. "'" => "''"

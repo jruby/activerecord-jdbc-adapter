@@ -13,11 +13,11 @@ module ActiveRecord
           properties.each { |key, val| @properties[key] = val.to_s } if properties
         end
       end
-
+      
       def driver_class
         @driver_class ||= begin
           driver_class_const = (@name[0...1].capitalize + @name[1..@name.length]).gsub(/\./, '_')
-          Jdbc::Mutex.synchronized do
+          Jdbc::DriverManager.java_class.synchronized do # avoid 2 threads here
             unless Jdbc.const_defined?(driver_class_const)
               driver_class_name = @name
               Jdbc.module_eval do

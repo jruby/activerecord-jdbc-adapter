@@ -26,17 +26,15 @@
 
 package arjdbc.sqlite3;
 
+import arjdbc.jdbc.Callable;
 import arjdbc.jdbc.RubyJdbcConnection;
-import arjdbc.jdbc.SQLBlock;
 
-import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.sql.Types;
 import java.sql.DatabaseMetaData;
 import java.util.ArrayList;
 import java.util.List;
@@ -49,6 +47,7 @@ import org.jruby.anno.JRubyMethod;
 import org.jruby.runtime.ObjectAllocator;
 import org.jruby.runtime.ThreadContext;
 import org.jruby.runtime.builtin.IRubyObject;
+import org.jruby.util.ByteList;
 
 /**
  *
@@ -77,53 +76,42 @@ public class SQLite3RubyJdbcConnection extends RubyJdbcConnection {
     @JRubyMethod(name = "last_insert_row_id")
     public IRubyObject getLastInsertRowId(final ThreadContext context) 
         throws SQLException {
-        return (IRubyObject) withConnectionAndRetry(context, new SQLBlock() {
-                public Object call(Connection c) throws SQLException {
-                    Statement stmt = null;
-                    try {
-                        stmt = c.createStatement();
-                        return unmarshal_id_result(context.getRuntime(),
-                                                   stmt.getGeneratedKeys());
-                    } catch (SQLException sqe) {
-                        if (context.getRuntime().isDebug()) {
-                            System.out.println("Error SQL:" + sqe.getMessage());
-                        }
-                        throw sqe;
-                    } finally {
-                        close(stmt);
-                    }
+        return withConnection(context, new Callable<IRubyObject>() {
+            public IRubyObject call(final Connection connection) throws SQLException {
+                Statement statement = null;
+                try {
+                    statement = connection.createStatement();
+                    return unmarshalIdResult(context.getRuntime(), statement);
                 }
-            });
+                catch (final SQLException e) {
+                    debugMessage(context, "Failed to get generated keys: " + e.getMessage());
+                    throw e;
+                }
+                finally { close(statement); }
+            }
+        });
     }
 
     @Override
-    protected IRubyObject jdbcToRuby(Ruby runtime, int column, int type, ResultSet resultSet)
+    protected IRubyObject jdbcToRuby(final Ruby runtime, final int column, int type, final ResultSet resultSet)
         throws SQLException {
-        try {
-            // This is rather gross, and only needed because the resultset metadata for SQLite tries to be overly
-            // clever, and returns a type for the column of the "current" row, so an integer value stored in a 
-            // decimal column is returned as Types.INTEGER.  Therefore, if the first row of a resultset was an
-            // integer value, all rows of that result set would get truncated.
-            if( resultSet instanceof ResultSetMetaData ) {
-                type = ((ResultSetMetaData) resultSet).getColumnType(column);
-            }
-            switch (type) {
-            case Types.BINARY:
-            case Types.BLOB:
-            case Types.LONGVARBINARY:
-            case Types.VARBINARY:
-                return streamToRuby(runtime, resultSet, new ByteArrayInputStream(resultSet.getBytes(column)));
-            case Types.LONGVARCHAR:
-                return runtime.is1_9() ?
-                    readerToRuby(runtime, resultSet, resultSet.getCharacterStream(column)) :
-                    streamToRuby(runtime, resultSet, new ByteArrayInputStream(resultSet.getBytes(column)));
-            default:
-                return super.jdbcToRuby(runtime, column, type, resultSet);
-            }
+        // This is rather gross, and only needed because the resultset metadata for SQLite tries to be overly
+        // clever, and returns a type for the column of the "current" row, so an integer value stored in a 
+        // decimal column is returned as Types.INTEGER.  Therefore, if the first row of a resultset was an
+        // integer value, all rows of that result set would get truncated.
+        if ( resultSet instanceof ResultSetMetaData ) {
+            type = ((ResultSetMetaData) resultSet).getColumnType(column);
         }
-        catch (IOException ioe) {
-            throw (SQLException) new SQLException(ioe.getMessage()).initCause(ioe);
-        }
+        return super.jdbcToRuby(runtime, column, type, resultSet);
+    }
+    
+    @Override
+    protected IRubyObject streamToRuby(
+        final Ruby runtime, final ResultSet resultSet, final int column)
+        throws SQLException, IOException {
+        final byte[] bytes = resultSet.getBytes(column);
+        if ( resultSet.wasNull() ) return runtime.getNil();
+        return runtime.newString( new ByteList(bytes, false) );
     }
     
     @Override

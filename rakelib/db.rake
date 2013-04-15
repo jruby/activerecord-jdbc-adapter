@@ -1,4 +1,5 @@
-require File.expand_path '../../test/helper', __FILE__
+require File.expand_path('../../test/shared_helper', __FILE__)
+
 namespace :db do
   desc "Creates the test database for MySQL."
   task :mysql do

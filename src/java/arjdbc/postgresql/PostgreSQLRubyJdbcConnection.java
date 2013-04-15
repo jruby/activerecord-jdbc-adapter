@@ -25,25 +25,30 @@
  ***** END LICENSE BLOCK *****/
 package arjdbc.postgresql;
 
-import arjdbc.jdbc.RubyJdbcConnection;
-
-import java.io.IOException;
+import java.sql.Array;
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Types;
+import java.util.UUID;
 
 import org.jruby.Ruby;
+import org.jruby.RubyArray;
 import org.jruby.RubyClass;
+import org.jruby.RubyString;
+import org.jruby.javasupport.JavaUtil;
 import org.jruby.runtime.ObjectAllocator;
 import org.jruby.runtime.builtin.IRubyObject;
+
+import org.postgresql.util.PGInterval;
+import org.postgresql.util.PGobject;
 
 /**
  *
  * @author enebo
  */
-public class PostgreSQLRubyJdbcConnection extends RubyJdbcConnection {
+public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection {
     
     protected PostgreSQLRubyJdbcConnection(Ruby runtime, RubyClass metaClass) {
         super(runtime, metaClass);
@@ -84,26 +89,126 @@ public class PostgreSQLRubyJdbcConnection extends RubyJdbcConnection {
     protected IRubyObject jdbcToRuby(final Ruby runtime, 
         final int column, final int type, final ResultSet resultSet)
         throws SQLException {
-        if ( type == Types.TIMESTAMP ) {
-            try {
-                return stringToRuby(runtime, resultSet, resultSet.getString(column));
-            }
-            catch (IOException e) {
-                SQLException sqle = new SQLException(e.getMessage());
-                throw (SQLException) sqle.initCause(e);
-            }
+        switch ( type ) {
+            case Types.TIMESTAMP:
+                return stringToRuby(runtime, resultSet, column);
+            case Types.BIT:
+                // we do get BIT for 't' 'f' as well as BIT strings e.g. "0110" :
+                final String bits = resultSet.getString(column);
+                if ( bits == null ) return runtime.getNil();
+                if ( bits.length() > 1 ) {
+                    return RubyString.newUnicodeString(runtime, bits);
+                }
+                return booleanToRuby(runtime, resultSet, column);
+            //case Types.JAVA_OBJECT: case Types.OTHER:
+                //return objectToRuby(runtime, resultSet, resultSet.getObject(column));
         }
         return super.jdbcToRuby(runtime, column, type, resultSet);
     }
     
     @Override
+    protected IRubyObject arrayToRuby(
+        final Ruby runtime, final ResultSet resultSet, final int column)
+        throws SQLException {
+        // NOTE: avoid `finally { array.free(); }` on PostgreSQL due :
+        // java.sql.SQLFeatureNotSupportedException: 
+        // Method org.postgresql.jdbc4.Jdbc4Array.free() is not yet implemented.
+        final Array value = resultSet.getArray(column);
+        
+        if ( value == null && resultSet.wasNull() ) return runtime.getNil();
+
+        final RubyArray array = runtime.newArray();
+
+        final ResultSet arrayResult = value.getResultSet(); // 1: index, 2: value
+        final int baseType = value.getBaseType();
+        while ( arrayResult.next() ) {
+            IRubyObject element = jdbcToRuby(runtime, 2, baseType, arrayResult);
+            array.append(element);
+        }
+        return array;
+    }
+    
+    @Override
+    protected IRubyObject objectToRuby(
+        final Ruby runtime, final ResultSet resultSet, final int column)
+        throws SQLException {
+        final Object object = resultSet.getObject(column);
+        
+        if ( object == null && resultSet.wasNull() ) return runtime.getNil();
+        
+        final Class<?> objectClass = object.getClass();
+        if ( objectClass == UUID.class ) {
+            return runtime.newString( object.toString() );
+        }
+        
+        if ( objectClass == PGInterval.class ) {
+            return runtime.newString( formatInterval(object) );
+        }
+        
+        if ( object instanceof PGobject ) {
+            // PG 9.2 JSON type will be returned here as well
+            return runtime.newString( object.toString() );
+        }
+        
+        return JavaUtil.convertJavaToRuby(runtime, object);
+    }
+    
+    @Override
     protected TableName extractTableName(
-            final Connection connection, 
-            String defaultSchema, final String tableName) throws SQLException {
+        final Connection connection, String catalog, String schema, 
+        final String tableName) throws IllegalArgumentException, SQLException {
         // The postgres JDBC driver will default to searching every schema if no
-        // schema search path is given.  Default to the public schema instead :
-        if ( defaultSchema == null ) defaultSchema = "public";
-        return super.extractTableName(connection, defaultSchema, tableName);
+        // schema search path is given.  Default to the 'public' schema instead:
+        if ( schema == null ) schema = "public";
+        return super.extractTableName(connection, catalog, schema, tableName);
+    }
+    
+    // NOTE: do not use PG classes in the API so that loading is delayed !
+    private String formatInterval(final Object object) {
+        final PGInterval interval = (PGInterval) object;
+        if ( useRawIntervalType() ) return interval.getValue();
+        
+        final StringBuilder str = new StringBuilder(32);
+        
+        final int years = interval.getYears();
+        if ( years != 0 ) str.append(years).append(" years ");
+        final int months = interval.getMonths();
+        if ( months != 0 ) str.append(months).append(" months ");
+        final int days = interval.getDays();
+        if ( days != 0 ) str.append(days).append(" days ");
+        final int hours = interval.getHours();
+        final int mins = interval.getMinutes();
+        final int secs = (int) interval.getSeconds();
+        if ( hours != 0 || mins != 0 || secs != 0 ) { // xx:yy:zz if not all 00
+            if ( hours < 10 ) str.append('0');
+            str.append(hours).append(':');
+            if ( mins < 10 ) str.append('0');
+            str.append(mins).append(':');
+            if ( secs < 10 ) str.append('0');
+            str.append(secs);
+        }
+        else {
+            if ( str.length() > 1 ) str.deleteCharAt( str.length() - 1 ); // " " at the end
+        }
+        
+        return str.toString();
+    }
+    
+    // whether to use "raw" interval values off by default - due native adapter compatibilty :
+    // RAW values :
+    // - 2 years 0 mons 0 days 0 hours 3 mins 0.00 secs
+    // - -1 years 0 mons -2 days 0 hours 0 mins 0.00 secs
+    // Rails style :
+    // - 2 years 00:03:00
+    // - -1 years -2 days
+    private static boolean rawIntervalType = Boolean.getBoolean("arjdbc.postgresql.iterval.raw");
+
+    public static boolean useRawIntervalType() {
+        return rawIntervalType;
+    }
+
+    public static void setRawIntervalType(boolean rawInterval) {
+        PostgreSQLRubyJdbcConnection.rawIntervalType = rawInterval;
     }
     
 }

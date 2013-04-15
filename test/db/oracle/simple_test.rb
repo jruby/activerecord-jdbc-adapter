@@ -15,6 +15,8 @@ class OracleSimpleTest < Test::Unit::TestCase
   end
   
   def test_default_id_type_is_integer
+    user = User.create! :login => 'id_type'
+    Entry.create! :title => 'first', :user_id => user.id
     assert Integer === Entry.first.id
   end
 
@@ -41,6 +43,24 @@ class OracleSimpleTest < Test::Unit::TestCase
     assert entries.first.title
     assert entries.first.login
   end
+  
+  # @override
+  def test_exec_insert_bind_param_with_q_mark
+    sql = "INSERT INTO entries(id, title) VALUES (?, ?)"
+    connection.exec_insert sql, 'INSERT(with_q_mark)', [ [ nil, 1000 ], [ nil, "bar?!?" ] ]
+    
+    entries = Entry.find_by_sql "SELECT * FROM entries WHERE title = 'bar?!?'"
+    assert entries.first
+  end
+
+  # @override
+  def test_raw_insert_bind_param_with_q_mark
+    sql = "INSERT INTO entries(id, title) VALUES (?, ?)"
+    name = "INSERT(raw_with_q_mark)"
+    pk = nil; id_value = 1001; sequence_name = nil
+    connection.insert sql, name, pk, id_value, sequence_name, [ [ nil, id_value ], [ nil, "?!huu!?" ] ]
+    assert Entry.exists?([ 'title LIKE ?', "%?!huu!?%" ])
+  end if Test::Unit::TestCase.ar_version('3.1') # no binds argument for <= 3.0
   
   include ExplainSupportTestMethods if ar_version("3.1")
   

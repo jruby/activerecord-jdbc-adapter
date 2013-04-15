@@ -48,11 +48,9 @@ module ArJdbc
 
     module Column
       
-      def primary=(val)
+      def primary=(value)
         super
-        if val && @sql_type =~ /^NUMBER$/i
-          @type = :integer
-        end
+        @type = :integer if value && @sql_type =~ /^NUMBER$/i
       end
       
       def type_cast(value)
@@ -60,6 +58,7 @@ module ArJdbc
         case type
         when :datetime  then ArJdbc::Oracle::Column.string_to_time(value)
         when :timestamp then ArJdbc::Oracle::Column.string_to_time(value)
+        when :boolean   then ArJdbc::Oracle::Column.value_to_boolean(value)
         else
           super
         end
@@ -69,11 +68,25 @@ module ArJdbc
         case type
         when :datetime  then "ArJdbc::Oracle::Column.string_to_time(#{var_name})"
         when :timestamp then "ArJdbc::Oracle::Column.string_to_time(#{var_name})"
+        when :boolean   then "ArJdbc::Oracle::Column.value_to_boolean(#{var_name})"
         else
           super
         end
       end
 
+      # convert a value to a boolean 
+      def self.value_to_boolean(value)
+        # NOTE: Oracle JDBC meta-data gets us DECIMAL for NUMBER(1) values
+        # thus we're likely to get a column back as BigDecimal (e.g. 1.0)
+        if value.is_a?(String)
+          value.blank? ? nil : value == '1'
+        elsif value.is_a?(Numeric)
+          value.to_i == 1 # <BigDecimal:7b5bfe,'0.1E1',1(4)>
+        else
+          !! value
+        end
+      end
+      
       def self.string_to_time(string)
         return string unless string.is_a?(String)
         return nil if string.empty?
@@ -149,9 +162,9 @@ module ArJdbc
         column(args[0], 'xml', options)
       end
     end
-
-    def table_definition
-      TableDefinition.new(self)
+    
+    def table_definition(*args)
+      new_table_definition(TableDefinition, *args)
     end
 
     def self.arel2_visitors(config)
@@ -355,20 +368,21 @@ module ArJdbc
     end
 
     def change_column(table_name, column_name, type, options = {}) #:nodoc:
-      change_column_sql = "ALTER TABLE #{quote_table_name(table_name)} " + 
+      change_column_sql = "ALTER TABLE #{quote_table_name(table_name)} " <<
         "MODIFY #{quote_column_name(column_name)} #{type_to_sql(type, options[:limit])}"
       add_column_options!(change_column_sql, options)
       execute(change_column_sql)
     end
 
     def rename_column(table_name, column_name, new_column_name) #:nodoc:
-      execute "ALTER TABLE #{quote_table_name(table_name)} " + 
+      execute "ALTER TABLE #{quote_table_name(table_name)} " <<
         "RENAME COLUMN #{quote_column_name(column_name)} to #{quote_column_name(new_column_name)}"
     end
-
-    def remove_column(table_name, column_name) #:nodoc:
-      execute "ALTER TABLE #{quote_table_name(table_name)} " + 
-        "DROP COLUMN #{quote_column_name(column_name)}"
+    
+    def remove_column(table_name, *column_names) #:nodoc:
+      for column_name in column_names.flatten
+        execute "ALTER TABLE #{quote_table_name(table_name)} DROP COLUMN #{quote_column_name(column_name)}"
+      end
     end
 
     def structure_dump #:nodoc:
@@ -463,7 +477,7 @@ module ArJdbc
     
     # NOTE: better to use current_schema instead of the configured one ?!
     def columns(table_name, name = nil) # :nodoc:
-      @connection.columns_internal(table_name.to_s, name, oracle_schema)
+      @connection.columns_internal(table_name.to_s, nil, oracle_schema)
     end
     
     def tablespace(table_name)
@@ -489,8 +503,7 @@ module ArJdbc
     end
     
     def quote(value, column = nil) # :nodoc:
-      # Arel 2 passes SqlLiterals through
-      return value if sql_literal?(value)
+      return value if sql_literal?(value) # Arel 2 passes SqlLiterals through
 
       column_type = column && column.type
       if column_type == :text || column_type == :binary
@@ -534,30 +547,37 @@ module ArJdbc
     def explain(arel, binds = [])
       sql = "EXPLAIN PLAN FOR #{to_sql(arel)}"
       return if sql =~ /FROM all_/
-      exec_query(sql, 'EXPLAIN', binds)
+      execute(sql, 'EXPLAIN', binds)
       select_values("SELECT * FROM TABLE(DBMS_XPLAN.DISPLAY)", 'EXPLAIN').join("\n")
     end
 
     def select(sql, name = nil, binds = [])
-      records = execute(sql, name, binds)
-      for column in records
-        column.delete('raw_rnum_')
-      end
-      records
+      result = super # AR::Result (4.0) or Array (<= 3.2)
+      result.columns.delete('raw_rnum_') if result.respond_to?(:columns)
+      result.each { |row| row.delete('raw_rnum_') } # Hash rows even for AR::Result
+      result
+    end
+    
+    # @override as <code>#execute_insert</code> not working for Oracle e.g.
+    # getLong not implemented for class oracle.jdbc.driver.T4CRowidAccessor: 
+    # INSERT INTO binaries (data, id, name, short_data) VALUES (?, ?, ?, ?)
+    def exec_insert(sql, name, binds, pk = nil, sequence_name = nil) # :nodoc:
+      execute(sql, name, binds)
     end
     
     private
     
     def _execute(sql, name = nil)
       if self.class.select?(sql)
-        @connection.execute_query(sql)
+        @connection.execute_query_raw(sql)
       else
         @connection.execute_update(sql)
       end
     end
-
+    
     def extract_table_ref_from_insert_sql(sql) # :nodoc:
-      sql.split(" ", 4)[2].gsub('"', '')
+      table = sql.split(" ", 4)[2].gsub('"', '')
+      ( idx = table.index('(') ) ? table[0...idx] : table # INTO table(col1, col2) ...
     end
     
     # In Oracle, schemas are usually created under your username :

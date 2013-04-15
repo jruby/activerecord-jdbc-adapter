@@ -31,7 +31,7 @@ class MSSQLDateTimeTypesTest < Test::Unit::TestCase
     datetime = DateTime.parse('2012-12-21T21:11:01')
     model = DateAndTime.create! :datetime => datetime
     assert_datetime_equal datetime, model.reload.datetime
-  end
+  end if ar_version('3.0')
   
   if ActiveRecord::Base.connection.sqlserver_version >= '2008'
     
@@ -67,7 +67,7 @@ class MSSQLDateTimeTypesTest < Test::Unit::TestCase
       model = DateAndTime.create! :datetime2 => datetime
       assert_not_nil model.datetime2
       assert_datetime_equal datetime, model.reload.datetime2
-    end
+    end if ar_version('3.0')
 
     def test_datetime25
 #      id = DateAndTime.connection.insert 'INSERT INTO date_and_times ([datetime25])' + 

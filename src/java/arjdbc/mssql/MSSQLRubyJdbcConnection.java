@@ -32,7 +32,8 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Types;
 import java.util.List;
-import java.util.ArrayList;
+
+import org.jcodings.specific.UTF8Encoding;
 
 import org.jruby.Ruby;
 import org.jruby.RubyArray;
@@ -49,12 +50,9 @@ import org.jruby.util.ByteList;
  * @author nicksieger
  */
 public class MSSQLRubyJdbcConnection extends RubyJdbcConnection {
-
-    private RubyString _row_num;
-
+    
     protected MSSQLRubyJdbcConnection(Ruby runtime, RubyClass metaClass) {
         super(runtime, metaClass);
-        _row_num = runtime.newString("_row_num");
     }
 
     public static RubyClass createMSSQLJdbcConnectionClass(Ruby runtime, RubyClass jdbcConnection) {
@@ -79,25 +77,36 @@ public class MSSQLRubyJdbcConnection extends RubyJdbcConnection {
         return context.getRuntime().newBoolean( startsWithIgnoreCase(sqlBytes, EXEC) );
     }
     
-    /**
-     * Treat LONGVARCHAR as CLOB on MSSQL for purposes of converting a JDBC value to Ruby.
-     * Treat BOOLEAN/BIT as Boolean, rather than the default behaviour of conversion to string
-     */
     @Override
-    protected IRubyObject jdbcToRuby(Ruby runtime, int column, int type, ResultSet resultSet)
-            throws SQLException {
-        if ( Types.BOOLEAN == type || Types.BIT == type ) {
-            return booleanToRuby(runtime, resultSet, resultSet.getBoolean(column));
+    protected RubyArray mapTables(final Ruby runtime, final DatabaseMetaData metaData, 
+            final String catalog, final String schemaPattern, final String tablePattern, 
+            final ResultSet tablesSet) throws SQLException, IllegalStateException {
+        
+        final RubyArray tables = runtime.newArray();
+        
+        while ( tablesSet.next() ) {
+            String schema = tablesSet.getString(TABLES_TABLE_SCHEM);
+            if ( schema != null ) schema = schema.toLowerCase();
+            // Under MS-SQL, don't return system tables/views unless explicitly asked for :
+            if ( schemaPattern == null && 
+                ( "sys".equals(schema) || "information_schema".equals(schema) ) ) {
+                continue;
+            }
+            String name = tablesSet.getString(TABLES_TABLE_NAME);
+            if ( name == null ) {
+                // NOTE: seems there's a jTDS but when doing getColumns while
+                // EXPLAIN is on (e.g. `SET SHOWPLAN_TEXT ON`) not returning
+                // correct result set with table info (null NAME, invalid CAT)
+                throw new IllegalStateException("got null name while matching table(s): [" +
+                    catalog + "." + schemaPattern + "." + tablePattern + "] check " + 
+                    "if this happened during EXPLAIN (SET SHOWPLAN_TEXT ON) if so please try " + 
+                    "turning it off using the system property 'arjdbc.mssql.explain_support.disabled=true' " + 
+                    "or programatically by changing: `ArJdbc::MSSQL::ExplainSupport::DISABLED`");
+            }
+            name = caseConvertIdentifierForRails(metaData, name);
+            tables.add(RubyString.newUnicodeString(runtime, name));
         }
-        if ( type == Types.LONGVARCHAR ) type = Types.CLOB;
-        return super.jdbcToRuby(runtime, column, type, resultSet);
-    }
-
-    protected static IRubyObject booleanToRuby(
-        final Ruby runtime, final ResultSet resultSet, final boolean value)
-        throws SQLException {
-        if ( value == false && resultSet.wasNull() ) return runtime.getNil();
-        return runtime.newBoolean(value);
+        return tables;
     }
     
     /**
@@ -107,54 +116,50 @@ public class MSSQLRubyJdbcConnection extends RubyJdbcConnection {
     protected boolean databaseSupportsSchemas() {
         return true;
     }
-
+    
+    /**
+     * Treat LONGVARCHAR as CLOB on MSSQL for purposes of converting a JDBC value to Ruby.
+     */
     @Override
-    protected void populateFromResultSet(ThreadContext context, Ruby runtime, List results,
-                                         ResultSet resultSet, ColumnData[] columns) throws SQLException {
-        super.populateFromResultSet(context, runtime, results, resultSet, filterRowNumFromColumns(columns));
+    protected IRubyObject jdbcToRuby(Ruby runtime, int column, int type, ResultSet resultSet)
+        throws SQLException {
+        if ( type == Types.LONGVARCHAR || type == Types.LONGNVARCHAR ) type = Types.CLOB;
+        return super.jdbcToRuby(runtime, column, type, resultSet);
     }
 
+    @Override
+    protected ColumnData[] extractColumns(final Ruby runtime, 
+        final DatabaseMetaData metaData, final ResultSet resultSet, 
+        final boolean downCase) throws SQLException {
+        return filterRowNumFromColumns( super.extractColumns(runtime, metaData, resultSet, downCase) );
+    }
+    
+    private static final ByteList _row_num; // "_row_num"
+    static {
+        _row_num = new ByteList(new byte[] { '_','r','o','w','_','n','u','m' }, false);
+        _row_num.setEncoding(UTF8Encoding.INSTANCE);
+    }
+    
     /**
      * Filter out the <tt>_row_num</tt> column from results.
      */
-    private ColumnData[] filterRowNumFromColumns(ColumnData[] columns) {
-        for (int i = 0; i < columns.length; i++) {
-            if (columns[i].name.equals(_row_num)) {
-                ColumnData[] filtered = new ColumnData[columns.length - 1];
-                if (i > 0) {
+    private static ColumnData[] filterRowNumFromColumns(final ColumnData[] columns) {
+        for ( int i = 0; i < columns.length; i++ ) {
+            if ( _row_num.equal( columns[i].name.getByteList() ) ) {
+                final ColumnData[] filtered = new ColumnData[columns.length - 1];
+                
+                if ( i > 0 ) {
                     System.arraycopy(columns, 0, filtered, 0, i);
                 }
 
-                if (i + 1 < columns.length) {
+                if ( i + 1 < columns.length ) {
                     System.arraycopy(columns, i + 1, filtered, i, columns.length - (i + 1));
                 }
 
                 return filtered;
             }
         }
-
         return columns;
-    }
- 
-    @Override
-    protected RubyArray mapTables(final Ruby runtime, final DatabaseMetaData metaData, 
-            final String catalog, final String schemaPattern, final String tablePattern, 
-            final ResultSet tablesSet) throws SQLException {
-        final List<RubyString> tables = new ArrayList<RubyString>(32);
-        while ( tablesSet.next() ) {
-            String name = tablesSet.getString(TABLES_TABLE_NAME);
-            name = caseConvertIdentifierForRails(metaData, name);
-            
-            String schema = tablesSet.getString(TABLES_TABLE_SCHEM);
-            if ( schema != null ) schema = schema.toLowerCase();
-            // Under MS-SQL, don't return system tables/views unless explicitly asked for :
-            if ( schemaPattern == null && 
-                ( "sys".equals(schema) || "information_schema".equals(schema) ) ) {
-                continue;
-            }
-            tables.add(RubyString.newUnicodeString(runtime, name));
-        }
-        return runtime.newArray((List) tables);
     }
     
 }

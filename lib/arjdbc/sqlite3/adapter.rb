@@ -157,6 +157,30 @@ module ::ArJdbc
     def supports_index_sort_order? # :nodoc:
       sqlite_version >= '3.3.0'
     end
+
+    def supports_migrations? # :nodoc:
+      true
+    end
+
+    def supports_primary_key? # :nodoc:
+      true
+    end
+
+    def supports_add_column? # :nodoc:
+      true
+    end
+
+    def supports_count_distinct? # :nodoc:
+      true
+    end
+
+    def supports_autoincrement? # :nodoc:
+      true
+    end
+
+    def supports_index_sort_order? # :nodoc:
+      true
+    end
     
     def sqlite_version
       @sqlite_version ||= select_value('SELECT sqlite_version(*)')
@@ -226,6 +250,13 @@ module ::ArJdbc
         IndexDefinition.new(table_name, name, unique, columns)
       end
     end
+    
+    # Returns 62. SQLite supports index names up to 64
+    # characters. The rest is used by rails internally to perform
+    # temporary rename operations
+    def allowed_index_name_length
+      index_name_length - 2
+    end
 
     def create_savepoint
       execute("SAVEPOINT #{current_savepoint_name}")
@@ -242,49 +273,60 @@ module ::ArJdbc
     def recreate_database(name, options = {})
       tables.each { |table| drop_table(table) }
     end
-
+    
     def select(sql, name = nil, binds = [])
-      execute(sql, name, binds).map do |row|
-        record = {}
-        row.each_key do |key|
-          if key.is_a?(String)
-            record[key.sub(/^"?\w+"?\./, '')] = row[key]
-          end
+      result = super # AR::Result (4.0) or Array (<= 3.2)
+      if result.respond_to?(:columns) # 4.0
+        result.columns.map! do |key| # [ [ 'id', ... ]
+          key.is_a?(String) ? key.sub(/^"?\w+"?\./, '') : key
         end
-        record
+      else
+        result.map! do |row| # [ { 'id' => ... }, {...} ]
+          record = {}
+          row.each_key do |key|
+            if key.is_a?(String)
+              record[key.sub(/^"?\w+"?\./, '')] = row[key]
+            end
+          end
+          record
+        end
       end
+      result
     end
 
+    # @override as <code>execute_insert</code> not implemented by SQLite JDBC
+    def exec_insert(sql, name, binds, pk = nil, sequence_name = nil) # :nodoc:
+      execute(sql, name, binds)
+    end
+    
     def table_structure(table_name)
       sql = "PRAGMA table_info(#{quote_table_name(table_name)})"
-      log(sql, 'SCHEMA') { @connection.execute_query(sql) }
+      log(sql, 'SCHEMA') { @connection.execute_query_raw(sql) }
     rescue ActiveRecord::JDBCError => error
       e = ActiveRecord::StatementInvalid.new("Could not find table '#{table_name}'")
       e.set_backtrace error.backtrace
       raise e
     end
 
-    def jdbc_columns(table_name, name = nil) #:nodoc:
+    def jdbc_columns(table_name, name = nil) # :nodoc:
+      klass = ::ActiveRecord::ConnectionAdapters::SQLite3Column
       table_structure(table_name).map do |field|
-        ::ActiveRecord::ConnectionAdapters::SQLite3Column.new(
-          @config, field['name'], field['dflt_value'], field['type'], field['notnull'] == 0
-        )
+        klass.new(field['name'], field['dflt_value'], field['type'], field['notnull'] == 0)
       end
     end
 
     def primary_key(table_name) #:nodoc:
-      column = table_structure(table_name).find { |field|
-        field['pk'].to_i == 1
-      }
+      column = table_structure(table_name).find { |field| field['pk'].to_i == 1 }
       column && column['name']
     end
 
-    def remove_index!(table_name, index_name) #:nodoc:
+    def remove_index!(table_name, index_name) # :nodoc:
       execute "DROP INDEX #{quote_column_name(index_name)}"
     end
 
-    def rename_table(name, new_name)
-      execute "ALTER TABLE #{quote_table_name(name)} RENAME TO #{quote_table_name(new_name)}"
+    def rename_table(table_name, new_name)
+      execute "ALTER TABLE #{quote_table_name(table_name)} RENAME TO #{quote_table_name(new_name)}"
+      rename_table_indexes(table_name, new_name) if respond_to?(:rename_table_indexes) # AR-4.0 SchemaStatements
     end
 
     # See: http://www.sqlite.org/lang_altertable.html
@@ -352,6 +394,7 @@ module ::ArJdbc
         raise ActiveRecord::ActiveRecordError, "Missing column #{table_name}.#{column_name}"
       end
       alter_table(table_name, :rename => {column_name.to_s => new_column_name.to_s})
+      rename_column_indexes(table_name, column_name, new_column_name) if respond_to?(:rename_column_indexes) # AR-4.0 SchemaStatements
     end
 
      # SELECT ... FOR UPDATE is redundant since the table is locked.
@@ -360,9 +403,13 @@ module ::ArJdbc
     end
 
     def empty_insert_statement_value
-      "VALUES(NULL)"
+      # inherited (default) on 3.2 : "VALUES(DEFAULT)"
+      # inherited (default) on 4.0 : "DEFAULT VALUES"
+      # re-defined in native adapter on 3.2 "VALUES(NULL)"
+      # on 4.0 no longer re-defined (thus inherits default)
+      "DEFAULT VALUES"
     end
-
+    
     protected
     
     include ArJdbc::MissingFunctionalityHelper

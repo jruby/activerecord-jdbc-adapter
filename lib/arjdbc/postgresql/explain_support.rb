@@ -1,4 +1,4 @@
-module ::ArJdbc
+module ArJdbc
   module PostgreSQL
     module ExplainSupport
       def supports_explain?
@@ -7,11 +7,8 @@ module ::ArJdbc
 
       def explain(arel, binds = [])
         sql = "EXPLAIN #{to_sql(arel, binds)}"
-        raw_result = execute(sql, "EXPLAIN", binds)
-        # TODO we should refactor to exce_query once it returns Result ASAP :
-        keys = raw_result[0] ? raw_result[0].keys : {}
-        rows = raw_result.map { |hash| hash.values }
-        ExplainPrettyPrinter.new.pp ActiveRecord::Result.new(keys, rows)
+        result = exec_query(sql, "EXPLAIN", binds)
+        ExplainPrettyPrinter.new.pp result # we can assume AR >= 3.1
       end
 
       class ExplainPrettyPrinter # :nodoc:

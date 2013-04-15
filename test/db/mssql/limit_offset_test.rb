@@ -108,7 +108,7 @@ class MSSQLLimitOffsetTest < Test::Unit::TestCase
     end
     ships = LegacyShip.limit(3)
     assert_equal(3, ships.size)
-  end
+  end if ar_version('3.0')
 
   def test_limit_and_offset
     %w(one two three four five six seven eight).each do |name|
@@ -169,4 +169,13 @@ class MSSQLLimitOffsetTest < Test::Unit::TestCase
     assert_equal("You must specify :limit with :offset.", error.message)
   end
 
+  def test_limit_with_group_by
+    %w(one two three four five six seven eight).each do |name|
+      LongShip.create!(:name => name)
+    end
+
+    ships = LongShip.group(:name).find(:all, :limit => 2)
+    asset_equal(['one', 'two'], ships.map(&:name))
+  end if ar_version('3.0')
+  
 end

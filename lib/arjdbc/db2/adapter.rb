@@ -14,6 +14,10 @@ module ArJdbc
     def self.lob_callback_added! # :nodoc
       @@_lob_callback_added = true
     end
+
+    def explain(query, *binds)
+      # TODO: Explain this! Do not remove !
+    end
     
     def self.extended(base)
       if ADD_LOB_CALLBACK && ! lob_callback_added?
@@ -74,7 +78,9 @@ module ArJdbc
       #:rowid      => { :name => "rowid" }, # supported datatype on z/OS and i/5
       #:graphic    => { :name => "graphic", :limit => 1 },
       #:vargraphic => { :name => "vargraphic", :limit => 1 },
-      # TODO datetime / timestamp / time mapping
+      :datetime   => { :name => "timestamp" },
+      :timestamp  => { :name => "timestamp" },
+      :time       => { :name => "time" }
     }
 
     def native_database_types
@@ -86,8 +92,8 @@ module ArJdbc
         return nil if value.nil? || value == 'NULL' || value =~ /^\s*NULL\s*$/i
         case type
         when :string    then value
-        when :integer   then defined?(value.to_i) ? value.to_i : (value ? 1 : 0)
-        when :primary_key then defined?(value.to_i) ? value.to_i : (value ? 1 : 0)
+        when :integer   then value.respond_to?(:to_i) ? value.to_i : (value ? 1 : 0)
+        when :primary_key then value.respond_to?(:to_i) ? value.to_i : (value ? 1 : 0)
         when :float     then value.to_f
         when :datetime  then ArJdbc::DB2::Column.cast_to_date_or_time(value)
         when :date      then ArJdbc::DB2::Column.cast_to_date_or_time(value)
@@ -179,16 +185,22 @@ module ArJdbc
       end
     end
 
-    def table_definition
-      TableDefinition.new(self)
+    def table_definition(*args)
+      new_table_definition(TableDefinition, *args)
     end
     
     def prefetch_primary_key?(table_name = nil)
       # TRUE if the table has no identity column
       names = table_name.upcase.split(".")
-      sql = "SELECT 1 FROM SYSCAT.COLUMNS WHERE IDENTITY = 'Y' "
-      sql += "AND TABSCHEMA = '#{names.first}' " if names.size == 2
-      sql += "AND TABNAME = '#{names.last}'"
+      if as400?
+        sql = "SELECT 1 FROM SYSIBM.SQLPRIMARYKEYS WHERE "
+        sql << "TABLE_SCHEM = '#{names.first}' AND " if names.size == 2
+        sql << "TABLE_NAME = '#{names.last}'"
+      else
+        sql = "SELECT 1 FROM SYSCAT.COLUMNS WHERE IDENTITY = 'Y' "
+        sql << "AND TABSCHEMA = '#{names.first}' " if names.size == 2
+        sql << "AND TABNAME = '#{names.last}'"
+      end
       select_one(sql).nil?
     end
 
@@ -203,7 +215,7 @@ module ArJdbc
         @connection.execute_update "call qsys.qcmdexc('ADDRPYLE SEQNBR(9876) MSGID(CPA32B2) RPY(''I'')',0000000045.00000)"
       rescue Exception => e
         raise "Could not call CHGJOB INQMSGRPY(*SYSRPYL) and ADDRPYLE SEQNBR(9876) MSGID(CPA32B2) RPY('I').\n" +
-              "Do you have authority to do this?\n\n" + e.to_s
+              "Do you have authority to do this?\n\n#{e.inspect}"
       end
 
       result = execute sql
@@ -213,20 +225,21 @@ module ArJdbc
         @connection.execute_update "call qsys.qcmdexc('RMVRPYLE SEQNBR(9876)',0000000021.00000)"
       rescue Exception => e
         raise "Could not call CHGJOB INQMSGRPY(*DFT) and RMVRPYLE SEQNBR(9876).\n" +
-              "Do you have authority to do this?\n\n" + e.to_s
+              "Do you have authority to do this?\n\n#{e.inspect}"
       end
       result
     end
 
     def _execute(sql, name = nil)
       if self.class.select?(sql)
-        @connection.execute_query(sql)
+        @connection.execute_query_raw(sql)
       elsif self.class.insert?(sql)
-        (@connection.execute_insert(sql) or last_insert_id(sql)).to_i
+        (@connection.execute_insert(sql) || last_insert_id(sql)).to_i
       else
         @connection.execute_update(sql)
       end
     end
+    private :_execute
     
     def last_insert_id(sql)
       table_name = sql.split(/\s/)[2]
@@ -243,7 +256,8 @@ module ArJdbc
     end
     
     def zos_create_table(name, options = {}) # :nodoc:
-      table_definition = ActiveRecord::ConnectionAdapters::TableDefinition.new(self)
+      # NOTE: this won't work for 4.0 - need to pass different initialize args :
+      table_definition = TableDefinition.new(self)
       unless options[:id] == false
         table_definition.primary_key(options[:primary_key] || primary_key(name))
       end
@@ -347,6 +361,13 @@ module ArJdbc
           "'#{quote_string(value)}'"
         end
       when Symbol then "'#{quote_string(value.to_s)}'"
+      when Time
+        # AS400 doesn't support date in time column
+        if column && column_type == :time
+          "'#{value.strftime("%H:%M:%S")}'"
+        else
+          super
+        end
       else super
       end
     end
@@ -440,14 +461,12 @@ module ArJdbc
     end
     private :build_ordering
 
-    def reorg_table(table_name)
-      unless as400?
-        @connection.execute_update "call sysproc.admin_cmd ('REORG TABLE #{table_name}')"
-      end
+    def reorg_table(table_name, name = nil)
+      exec_update "call sysproc.admin_cmd ('REORG TABLE #{table_name}')", name, [] unless as400?
     end
     private :reorg_table
 
-    def runstats_for_table(tablename, priority=10)
+    def runstats_for_table(tablename, priority = 10)
       @connection.execute_update "call sysproc.admin_cmd('RUNSTATS ON TABLE #{tablename} WITH DISTRIBUTION AND DETAILED INDEXES ALL UTIL_IMPACT_PRIORITY #{priority}')"
     end
 
@@ -480,7 +499,7 @@ module ArJdbc
         raise NotImplementedError, "rename_column is not supported on IBM i"
       else
         execute "ALTER TABLE #{table_name} RENAME COLUMN #{column_name} TO #{new_column_name}"
-        reorg_table(table_name)
+        reorg_table(table_name, 'Rename Column')
       end
     end
 
@@ -491,7 +510,7 @@ module ArJdbc
         sql = "ALTER TABLE #{table_name} ALTER COLUMN #{column_name} SET NOT NULL"
       end
       as400? ? execute_and_auto_confirm(sql) : execute(sql)
-      reorg_table(table_name)
+      reorg_table(table_name, 'Change Column')
     end
 
     def change_column_default(table_name, column_name, default)
@@ -501,14 +520,14 @@ module ArJdbc
         sql = "ALTER TABLE #{table_name} ALTER COLUMN #{column_name} SET WITH DEFAULT #{quote(default)}"
       end
       as400? ? execute_and_auto_confirm(sql) : execute(sql)
-      reorg_table(table_name)
+      reorg_table(table_name, 'Change Column')
     end
 
     def change_column(table_name, column_name, type, options = {})
       data_type = type_to_sql(type, options[:limit], options[:precision], options[:scale])
       sql = "ALTER TABLE #{table_name} ALTER COLUMN #{column_name} SET DATA TYPE #{data_type}"
       as400? ? execute_and_auto_confirm(sql) : execute(sql)
-      reorg_table(table_name)
+      reorg_table(table_name, 'Change Column')
 
       if options.include?(:default) and options.include?(:null)
         # which to run first?
@@ -525,19 +544,20 @@ module ArJdbc
         change_column_null(table_name, column_name, options[:null])
       end
     end
-
+    
     # http://publib.boulder.ibm.com/infocenter/db2luw/v9r7/topic/com.ibm.db2.luw.admin.dbobj.doc/doc/t0020132.html
-    def remove_column(table_name, column_name) #:nodoc:
-      sql = "ALTER TABLE #{table_name} DROP COLUMN #{column_name}"
-
-      as400? ? execute_and_auto_confirm(sql) : execute(sql)
-      reorg_table(table_name)
+    def remove_column(table_name, *column_names) #:nodoc:
+      for column_name in column_names.flatten
+        sql = "ALTER TABLE #{table_name} DROP COLUMN #{column_name}"
+        as400? ? execute_and_auto_confirm(sql) : execute(sql)
+      end
+      reorg_table(table_name, 'Remove Column')
     end
 
     # http://publib.boulder.ibm.com/infocenter/db2luw/v9r7/topic/com.ibm.db2.luw.sql.ref.doc/doc/r0000980.html
     def rename_table(name, new_name) #:nodoc:
       execute "RENAME TABLE #{name} TO #{new_name}"
-      reorg_table(new_name)
+      reorg_table(new_name, 'Rename Table')
     end
     
     def tables
@@ -551,7 +571,7 @@ module ArJdbc
     HAVE_SCALE = %w(DECIMAL NUMERIC)
 
     def columns(table_name, name = nil)
-      columns = @connection.columns(table_name.to_s, name, db2_schema)
+      columns = @connection.columns_internal(table_name.to_s, nil, db2_schema)
 
       if zos?
         # Remove the mighty db2_generated_rowid_for_lobs from the list of columns

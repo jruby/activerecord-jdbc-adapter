@@ -13,7 +13,8 @@ class PostgresSimpleTest < Test::Unit::TestCase
   include ColumnNameQuotingTests
   include DirtyAttributeTests
   include XmlColumnTests
-
+  include CustomSelectTestMethods
+  
   def test_adapter_class_name_equals_native_adapter_class_name
     classname = connection.class.name[/[^:]*$/]
     assert_equal 'PostgreSQLAdapter', classname
@@ -32,7 +33,11 @@ class PostgresSimpleTest < Test::Unit::TestCase
   end
 
   def test_multi_statement_support
-    results = connection.execute "SELECT title from entries; SELECT login from users"
+    user = User.create! :login => 'jozko'
+    Entry.create! :title => 'eee', :user_id => user.id
+    
+    results = connection.execute "SELECT title FROM entries; SELECT login FROM users"
+    
     assert_equal 2, results.length
     assert_equal ["title"], results[0].first.keys
     assert_equal ["login"], results[1].first.keys
@@ -62,15 +67,26 @@ class PostgresSimpleTest < Test::Unit::TestCase
   def xml_sql_type; 'xml'; end
   
   def test_create_table_with_limits
-    assert_nothing_raised do
+    if ar_version('4.0')
+      # No integer type has byte size 11. Use a numeric with precision 0 instead.
       connection.create_table :testings do |t|
-        t.column :eleven_int, :integer, :limit => 11
+        t.column :an_int, :integer, :limit => 8
       end
+      
+      columns = connection.columns(:testings)
+      an_int = columns.detect { |c| c.name == "an_int" }
+      assert_equal "bigint", an_int.sql_type
+    else
+      assert_nothing_raised do
+        connection.create_table :testings do |t|
+          t.column :an_int, :integer, :limit => 11
+        end
+      end
+      
+      columns = connection.columns(:testings)
+      an_int = columns.detect { |c| c.name == "an_int" }
+      assert_equal "integer", an_int.sql_type
     end
-
-    columns = connection.columns(:testings)
-    eleven = columns.detect { |c| c.name == "eleven_int" }
-    assert_equal "integer", eleven.sql_type
   ensure
     connection.drop_table :testings rescue nil
   end
@@ -107,6 +123,29 @@ class PostgresSimpleTest < Test::Unit::TestCase
   end
   
   include ExplainSupportTestMethods if ar_version("3.1")
+  
+  def test_primary_key
+    assert_equal 'id', connection.primary_key('entries')
+    assert_equal 'custom_id', connection.primary_key('custom_pk_names')
+    # assert_equal 'id', connection.primary_key('auto_ids')
+  end
+
+  def test_primary_key_without_sequence
+    connection.execute "CREATE TABLE uid_table (uid UUID PRIMARY KEY, name TEXT)"
+    assert_equal 'uid', connection.primary_key('uid_table')
+  ensure
+    connection.execute "DROP TABLE uid_table"
+  end
+  
+  def test_extensions
+    if connection.supports_extensions?
+      assert_include connection.extensions, 'plpgsql'
+      assert connection.extension_enabled?('plpgsql')
+      assert ! connection.extension_enabled?('invalid')
+    else
+      assert_empty connection.extensions
+    end
+  end
   
 end
 

@@ -55,9 +55,10 @@ class MSSQLSimpleTest < Test::Unit::TestCase
   
   # ACTIVERECORD_JDBC-124
   def test_model_does_not_have_row_num_column
-    entry = Entry.first
-    assert_false entry.attributes.keys.include?("_row_num")
-    assert_false entry.respond_to?(:_row_num)
+    User.create! :login => 'row_num'
+    model = User.first
+    assert_false model.attributes.keys.include?("_row_num")
+    assert_false model.respond_to?(:_row_num)
   end
   
   def test_returns_charset
@@ -120,6 +121,16 @@ class MSSQLSimpleTest < Test::Unit::TestCase
     # assert_not_empty ActiveRecord::Base.connection.execute(exec_sql) # [ { '' => 42 }]
   ensure
     ActiveRecord::Base.connection.execute "DROP PROCEDURE usp_allentries" rescue nil
+  end
+  
+  def test_current_user
+    # skip if ActiveRecord::Base.connection.send(:sqlserver_2000?)
+    assert_equal 'dbo', ActiveRecord::Base.connection.current_user
+  end
+
+  def test_default_schema
+    # skip if ActiveRecord::Base.connection.send(:sqlserver_2000?)
+    assert_equal 'dbo', ActiveRecord::Base.connection.default_schema
   end
   
 end

@@ -2,8 +2,8 @@ warn "Jdbc-MySQL is only for use with JRuby" if (JRUBY_VERSION.nil? rescue true)
 
 module Jdbc
   module MySQL
-    DRIVER_VERSION = '5.1.22'
-    VERSION = DRIVER_VERSION + '.1'
+    DRIVER_VERSION = '5.1.24'
+    VERSION = DRIVER_VERSION + ''
 
     def self.driver_jar
       "mysql-connector-java-#{DRIVER_VERSION}.jar"
