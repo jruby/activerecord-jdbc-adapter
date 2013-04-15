@@ -150,7 +150,8 @@ module ArJdbc
         when /smallint|boolean/i then :boolean
         when /^real|double/i     then :float
         when /int|serial/i       then :integer
-        when /numeric|decfloat/i then :decimal
+        # if a numeric column has no scale, lets treat it as an integer.  The as400 rpg guys do this ALOT since they have no integer datatype
+        when /numeric|decfloat/i then extract_scale(field_type) == 0 && as400? ? :integer : :decimal
         when /timestamp/i        then :timestamp
         when /datetime/i         then :datetime
         when /time/i             then :time
@@ -164,6 +165,11 @@ module ArJdbc
         else
           super
         end
+      end
+
+      def as400?
+        # I can't find a better way to detect this with the limited info available in this class.
+        ActiveRecord::Base.connection.as400? rescue false
       end
 
       # Post process default value from JDBC into a Rails-friendly format (columns{-internal})
