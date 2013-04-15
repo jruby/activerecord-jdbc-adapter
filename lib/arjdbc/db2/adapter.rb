@@ -564,10 +564,6 @@ module ArJdbc
       columns
     end
 
-    def jdbc_columns(table_name, name = nil)
-      columns(table_name, name)
-    end
-
     def indexes(table_name, name = nil)
       @connection.indexes(table_name, name, db2_schema)
     end

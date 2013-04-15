@@ -207,26 +207,23 @@ module ActiveRecord
         def jdbc_insert(sql, name = nil, pk = nil, id_value = nil, sequence_name = nil, binds = [])  # :nodoc:
           insert_sql(sql, name, pk, id_value, sequence_name, binds)
         end
+        alias_chained_method :insert, :query_dirty, :jdbc_insert
         
         def jdbc_update(sql, name = nil, binds = []) # :nodoc:
           execute(sql, name, binds)
         end
+        alias_chained_method :update, :query_dirty, :jdbc_update
         
         def jdbc_select_all(sql, name = nil, binds = []) # :nodoc:
           select(sql, name, binds)
         end
-        
-        # Allow query caching to work even when we override alias_method_chain'd methods
         alias_chained_method :select_all, :query_cache, :jdbc_select_all
-        alias_chained_method :update, :query_dirty, :jdbc_update
-        alias_chained_method :insert, :query_dirty, :jdbc_insert
         
       end
-
-      def jdbc_columns(table_name, name = nil)
+      
+      def columns(table_name, name = nil)
         @connection.columns(table_name.to_s)
       end
-      alias_chained_method :columns, :query_cache, :jdbc_columns
       
       # Executes +sql+ statement in the context of this connection using
       # +binds+ as the bind substitutes.  +name+ is logged along with

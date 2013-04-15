@@ -1,7 +1,7 @@
 require 'arjdbc/jdbc/missing_functionality_helper'
 require 'arjdbc/sqlite3/explain_support'
 
-module ::ArJdbc
+module ArJdbc
   module SQLite3
     
     def self.column_selector
@@ -308,7 +308,7 @@ module ::ArJdbc
       raise e
     end
 
-    def jdbc_columns(table_name, name = nil) # :nodoc:
+    def columns(table_name, name = nil) # :nodoc:
       klass = ::ActiveRecord::ConnectionAdapters::SQLite3Column
       table_structure(table_name).map do |field|
         klass.new(field['name'], field['dflt_value'], field['type'], field['notnull'] == 0)
@@ -467,11 +467,11 @@ module ActiveRecord::ConnectionAdapters
       value
     end
   end
-
+  
   class SQLite3Adapter < JdbcAdapter
     include ArJdbc::SQLite3
     include ArJdbc::SQLite3::ExplainSupport
-
+    
     def jdbc_connection_class(spec)
       ::ArJdbc::SQLite3.jdbc_connection_class
     end
@@ -479,14 +479,12 @@ module ActiveRecord::ConnectionAdapters
     def jdbc_column_class
       ActiveRecord::ConnectionAdapters::SQLite3Column
     end
-
-    alias_chained_method :columns, :query_cache, :jdbc_columns
     
   end
 
   SQLiteAdapter = SQLite3Adapter
 end
 
-# Don't need to load native sqlite3 adapter
+# no need to load (native) built-in ActiveRecord SQLite3 adapter :
 $LOADED_FEATURES << 'active_record/connection_adapters/sqlite_adapter.rb'
 $LOADED_FEATURES << 'active_record/connection_adapters/sqlite3_adapter.rb'

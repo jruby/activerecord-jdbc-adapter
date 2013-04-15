@@ -344,7 +344,7 @@ module ArJdbc
       indexes
     end
 
-    def jdbc_columns(table_name, name = nil)#:nodoc:
+    def columns(table_name, name = nil)#:nodoc:
       sql = "SHOW FIELDS FROM #{quote_table_name(table_name)}"
       execute(sql, 'SCHEMA').map do |field|
         ::ActiveRecord::ConnectionAdapters::MysqlColumn.new(field["Field"], field["Default"], field["Type"], field["Null"] == "YES")
@@ -630,7 +630,6 @@ module ActiveRecord
       def jdbc_column_class
         MysqlColumn
       end
-      alias_chained_method :columns, :query_cache, :jdbc_columns
 
       # some QUOTING caching :
 
