@@ -60,10 +60,12 @@ public class ArJdbcModule {
         final Collection<String> constants = arJdbc.getConstantNames();
         final RubyArray modules = runtime.newArray( constants.size() );
         
-        for ( String name : constants ) {
+        for ( final String name : constants ) {
            IRubyObject value = arJdbc.getConstant(name, false);
            // isModule: return false for Ruby Classes
            if ( value != null && value.isModule() ) {
+               if ( "MissingFunctionalityHelper".equals(name) ) continue;
+               if ( "Version".equals(name) ) continue;
                modules.append(value);
            }
         }
