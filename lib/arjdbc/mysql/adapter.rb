@@ -5,6 +5,9 @@ require 'arjdbc/mysql/explain_support'
 module ArJdbc
   module MySQL
 
+    AR31_COMPAT = ( ( ::ActiveRecord::VERSION::MAJOR > 3 ) or
+        ( ( ::ActiveRecord::VERSION::MAJOR == 3 ) and ( ::ActiveRecord::VERSION::MINOR >= 1 ) ) ) unless const_defined?(:AR31_COMPAT) # :nodoc:
+
     def self.extended(adapter)
       adapter.configure_connection
     end
@@ -81,7 +84,7 @@ module ArJdbc
       def simplified_type(field_type)
         unsigned = false
         field_type = field_type.to_s
-        if field_type.include? ' unsigned'
+        if AR31_COMPAT && field_type.include?(' unsigned')
           unsigned = true
           field_type = field_type.sub(/ unsigned/,'')
         end
@@ -143,9 +146,7 @@ module ArJdbc
       :string => { :name => "varchar", :limit => 255 },
       :text => { :name => "text" },
       :integer => { :name => "int", :limit => 4 },
-      :unsigned_integer => { :name => "unsigned int", :limit => 4 },
       :float => { :name => "float" },
-      :unsigned_float => { :name => "unsigned float" },
       :decimal => { :name => "decimal" },
       :datetime => { :name => "datetime" },
       :timestamp => { :name => "datetime" },
@@ -155,10 +156,15 @@ module ArJdbc
       :boolean => { :name => "tinyint", :limit => 1 }
     }
 
+    NATIVE_DATABASE_TYPES.merge!( {
+      :unsigned_integer => { :name => "unsigned int", :limit => 4 },
+      :unsigned_float => { :name => "unsigned float" }
+    } ) if AR31_COMPAT
+
     def native_database_types
       NATIVE_DATABASE_TYPES
     end
-    
+
     def modify_types(types)
       types[:primary_key] = "int(11) DEFAULT NULL auto_increment PRIMARY KEY"
       types[:integer] = { :name => 'int', :limit => 4 }
@@ -507,7 +513,7 @@ module ArJdbc
     def type_to_sql(type, limit = nil, precision = nil, scale = nil)
       unsigned = false
       type = type.to_s
-      if type.include? 'unsigned_'
+      if AR31_COMPAT && type.include?('unsigned_')
         unsigned = true
         type = type.sub(/unsigned_/,'')
       end
@@ -671,23 +677,24 @@ module ActiveRecord
         quoted
       end
 
-      class TableDefinition < ActiveRecord::ConnectionAdapters::TableDefinition
-        def unsigned_integer *args
-          options = args.extract_options!
-          column(args[0], :unsigned_integer, options)
+      if AR31_COMPAT
+        class TableDefinition < ActiveRecord::ConnectionAdapters::TableDefinition
+          def unsigned_integer *args
+            options = args.extract_options!
+            column(args[0], :unsigned_integer, options)
+          end
+
+          def unsigned_float *args
+            options = args.extract_options!
+            column(args[0], :unsigned_float, options)
+          end
+
         end
 
-        def unsigned_float *args
-          options = args.extract_options!
-          column(args[0], :unsigned_float, options)
+        def table_definition(*args)
+          new_table_definition(TableDefinition, *args)
         end
-
       end
-
-      def table_definition(*args)
-        new_table_definition(TableDefinition, *args)
-      end
-
     end
   end
 end
