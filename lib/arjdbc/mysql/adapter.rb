@@ -79,13 +79,21 @@ module ArJdbc
       end
 
       def simplified_type(field_type)
-        case field_type
+        unsigned = false
+        field_type = field_type.to_s
+        if field_type.include? ' unsigned'
+          unsigned = true
+          field_type = field_type.sub(/ unsigned/,'')
+        end
+
+        result = case field_type
         when /tinyint\(1\)|bit/i then :boolean
         when /enum/i             then :string
         when /year/i             then :integer
         else
-          super
+          super field_type
         end
+        unsigned ? :"unsigned_#{result}" : result
       end
 
       def extract_limit(sql_type)
@@ -135,7 +143,9 @@ module ArJdbc
       :string => { :name => "varchar", :limit => 255 },
       :text => { :name => "text" },
       :integer => { :name => "int", :limit => 4 },
+      :unsigned_integer => { :name => "unsigned int", :limit => 4 },
       :float => { :name => "float" },
+      :unsigned_float => { :name => "unsigned float" },
       :decimal => { :name => "decimal" },
       :datetime => { :name => "datetime" },
       :timestamp => { :name => "datetime" },
@@ -495,7 +505,13 @@ module ArJdbc
     end
 
     def type_to_sql(type, limit = nil, precision = nil, scale = nil)
-      case type.to_s
+      unsigned = false
+      type = type.to_s
+      if type.include? 'unsigned_'
+        unsigned = true
+        type = type.sub(/unsigned_/,'')
+      end
+      result = case type
       when 'binary'
         case limit
         when 0..0xfff; "varbinary(#{limit})"
@@ -521,8 +537,9 @@ module ArJdbc
         else raise(ActiveRecordError, "No text type has character length #{limit}")
         end
       else
-        super
+        super type.to_sym, limit, precision, scale
       end
+      unsigned ? result + ' unsigned' : result
     end
 
     def add_column_position!(sql, options)
@@ -653,7 +670,24 @@ module ActiveRecord
         end
         quoted
       end
-      
+
+      class TableDefinition < ActiveRecord::ConnectionAdapters::TableDefinition
+        def unsigned_integer *args
+          options = args.extract_options!
+          column(args[0], :unsigned_integer, options)
+        end
+
+        def unsigned_float *args
+          options = args.extract_options!
+          column(args[0], :unsigned_float, options)
+        end
+
+      end
+
+      def table_definition(*args)
+        new_table_definition(TableDefinition, *args)
+      end
+
     end
   end
 end

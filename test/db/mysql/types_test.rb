@@ -7,6 +7,9 @@ class MySQLTypesTest < Test::Unit::TestCase
     assert_equal 'varbinary(4095)', type_to_sql(:binary, 4095)
     assert_equal 'blob(4096)', type_to_sql(:binary, 4096)
     assert_equal 'blob', type_to_sql(:binary)
+    assert_equal 'int(11) unsigned', type_to_sql(:unsigned_integer)
+    assert_equal 'float unsigned', type_to_sql(:unsigned_float)
+    assert_equal 'decimal unsigned', type_to_sql(:unsigned_decimal)
   end
 
   def type_to_sql(*args)
