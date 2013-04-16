@@ -617,7 +617,7 @@ module ActiveRecord
     class MysqlAdapter < JdbcAdapter
       include ::ArJdbc::MySQL
       include ::ArJdbc::MySQL::ExplainSupport
-
+      
       def initialize(*args)
         super
         configure_connection
@@ -657,15 +657,5 @@ module ActiveRecord
   end
 end
 
-# Don't need to load native mysql adapter
 $LOADED_FEATURES << 'active_record/connection_adapters/mysql_adapter.rb'
 $LOADED_FEATURES << 'active_record/connection_adapters/mysql2_adapter.rb'
-
-module Mysql # :nodoc:
-  remove_const(:Error) if const_defined?(:Error)
-  class Error < ::ActiveRecord::JDBCError; end
-
-  def self.client_version
-    50400 # faked out for AR tests
-  end
-end
