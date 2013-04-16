@@ -32,11 +32,11 @@ module ActiveRecord
         if spec && (config[:adapter_class].nil? || config[:adapter_class] == JdbcAdapter)
           extend spec
         end
-        configure_arel2_visitors(config)
+        @visitor = new_visitor(config)
         connection.adapter = self
         JndiConnectionPoolCallbacks.prepare(self, connection)
       end
-
+      
       def jdbc_connection_class(spec)
         connection_class = spec.jdbc_connection_class if spec && spec.respond_to?(:jdbc_connection_class)
         connection_class = ::ActiveRecord::ConnectionAdapters::JdbcConnection unless connection_class
@@ -99,37 +99,60 @@ module ActiveRecord
         'JDBC'
       end
 
-      def self.visitor_for(pool)
-        config = pool.spec.config
-        adapter = config[:adapter]
-        adapter_spec = config[:adapter_spec] || self
-        if adapter =~ /^(jdbc|jndi)$/
-          adapter_spec.arel2_visitors(config).values.first.new(pool)
-        else
-          adapter_spec.arel2_visitors(config)[adapter].new(pool)
-        end
-      end
-
       def self.arel2_visitors(config)
         { 'jdbc' => ::Arel::Visitors::ToSql }
       end
 
-      def configure_arel2_visitors(config)
-        if defined?(::Arel::Visitors::VISITORS)
+      if defined? ::Arel::Visitors::VISITORS
+        
+        # NOTE: called from {ConnectionPool#checkout} (up till AR-3.2)
+        def self.visitor_for(pool)
+          config = pool.spec.config
+          adapter = config[:adapter] # e.g. "sqlite3" (based on {#adapter_name})
+          unless visitor = ::Arel::Visitors::VISITORS[ adapter ]
+            adapter_spec = config[:adapter_spec] || self # e.g. ArJdbc::SQLite3
+            if adapter =~ /^(jdbc|jndi)$/
+              visitor = adapter_spec.arel2_visitors(config).values.first
+            else
+              visitor = adapter_spec.arel2_visitors(config)[adapter]
+            end
+          end
+          visitor.new(pool)
+        end
+        
+        def self.configure_arel2_visitors(config)
           visitors = ::Arel::Visitors::VISITORS
-          visitor = nil
           adapter_spec = [ config[:adapter_spec], self.class ].
             detect { |mod| mod.respond_to?(:arel2_visitors) }
+          visitor = nil
           adapter_spec.arel2_visitors(config).each do |name, arel|
             visitors[name] = ( visitor = arel )
           end
           if visitor && config[:adapter] =~ /^(jdbc|jndi)$/
             visitors[ config[:adapter] ] = visitor
           end
-          @visitor = visitors[ config[:adapter] ].new(self)
+          visitor
         end
+        
+        def new_visitor(config = self.config)
+          adapter = config[:adapter]
+          unless visitor = ::Arel::Visitors::VISITORS[ adapter ]
+            visitor = self.class.configure_arel2_visitors(config)
+            unless visitor
+              raise "no visitor configured for adapter: #{adapter.inspect}"
+            end
+          end
+          visitor.new(self)
+        end
+        
+      else # NO-OP when no AREL (AR-2.3)
+        
+        # def self.configure_arel2_visitors(config); end
+        def new_visitor(config = self.config); end
+        
       end
-
+      protected :new_visitor
+      
       def is_a?(klass) # :nodoc:
         # This is to fake out current_adapter? conditional logic in AR tests
         if Class === klass && klass.name =~ /#{adapter_name}Adapter$/i
@@ -381,7 +404,7 @@ module ActiveRecord
       if ActiveRecord::VERSION::MAJOR == 3 && ActiveRecord::VERSION::MINOR == 0
       
         #attr_reader :visitor unless method_defined?(:visitor) # not in 3.0
-      
+
         # Converts an AREL AST to SQL.
         def to_sql(arel, binds = [])
           # NOTE: can not handle `visitor.accept(arel.ast)` right thus
