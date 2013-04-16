@@ -94,7 +94,7 @@ class JdbcConnectionTest < Test::Unit::TestCase
       ActiveRecord::Base.connection.jdbc_connection
       fail "jdbc error not thrown"
     rescue  ActiveRecord::JDBCError => e
-      assert_match /driver encountered an unknown error: java.sql.SQLInvalidAuthorizationSpecException/, e.to_s
+      assert_match /java.sql.SQLInvalidAuthorizationSpecException/, e.to_s
       assert_kind_of Java::JavaSql::SQLNonTransientException, e.sql_exception
     ensure
       ActiveRecord::Base.establish_connection JDBC_CONFIG
