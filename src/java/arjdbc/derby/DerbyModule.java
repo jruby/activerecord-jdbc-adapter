@@ -45,14 +45,14 @@ import org.jruby.util.ByteList;
 
 public class DerbyModule {
     
-    private static RubyObjectAdapter rubyApi;
+    static final RubyObjectAdapter rubyApi = JavaEmbedUtils.newObjectAdapter();
     
-    public static void load(final RubyModule arJdbc) {
+    public static RubyModule load(final RubyModule arJdbc) {
         RubyModule derby = arJdbc.defineModuleUnder("Derby");
-        derby.defineAnnotatedMethods(DerbyModule.class);
+        derby.defineAnnotatedMethods( DerbyModule.class );
         RubyModule column = derby.defineModuleUnder("Column");
         column.defineAnnotatedMethods(Column.class);
-        rubyApi = JavaEmbedUtils.newObjectAdapter();
+        return derby;
     }
 
     public static class Column {

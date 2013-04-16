@@ -42,9 +42,10 @@ import org.jruby.util.ByteList;
 
 public class MySQLModule {
     
-    public static void load(RubyModule arJdbc) {
-        RubyModule mySQL = arJdbc.defineModuleUnder("MySQL");
-        mySQL.defineAnnotatedMethods(MySQLModule.class);
+    public static RubyModule load(RubyModule arJdbc) {
+        RubyModule mysql = arJdbc.defineModuleUnder("MySQL");
+        mysql.defineAnnotatedMethods(MySQLModule.class);
+        return mysql;
     }
 
     //private final static byte[] ZERO = new byte[] {'\\','0'};

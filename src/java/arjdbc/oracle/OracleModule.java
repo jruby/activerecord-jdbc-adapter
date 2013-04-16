@@ -40,9 +40,10 @@ import org.jruby.runtime.builtin.IRubyObject;
  */
 public class OracleModule {
     
-    public static void load(final RubyModule arJdbc) {
+    public static RubyModule load(final RubyModule arJdbc) {
         RubyModule oracle = arJdbc.defineModuleUnder("Oracle");
         oracle.defineAnnotatedMethods( OracleModule.class );
+        return oracle;
     }
     
     @JRubyMethod(name = "quote_string", required = 1, frame = false)

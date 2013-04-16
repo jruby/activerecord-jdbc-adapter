@@ -40,9 +40,10 @@ import org.jruby.runtime.builtin.IRubyObject;
  */
 public class MSSQLModule {
     
-    public static void load(final RubyModule arJdbc) {
+    public static RubyModule load(final RubyModule arJdbc) {
         RubyModule mssql = arJdbc.defineModuleUnder("MSSQL");
         mssql.defineAnnotatedMethods( MSSQLModule.class );
+        return mssql;
     }
     
     @JRubyMethod(name = "quote_string", required = 1, frame = false)

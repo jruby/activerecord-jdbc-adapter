@@ -36,9 +36,10 @@ import org.jruby.runtime.builtin.IRubyObject;
 
 public class HSQLDBModule {
     
-    public static void load(final RubyModule arJdbc) {
+    public static RubyModule load(final RubyModule arJdbc) {
         RubyModule hsqldb = arJdbc.defineModuleUnder("HSQLDB");
-        hsqldb.defineAnnotatedMethods(HSQLDBModule.class);
+        hsqldb.defineAnnotatedMethods( HSQLDBModule.class );
+        return hsqldb;
     }
     
     @JRubyMethod(name = "quote_string", required = 1, frame = false)

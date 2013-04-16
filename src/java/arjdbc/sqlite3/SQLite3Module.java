@@ -39,9 +39,10 @@ import org.jruby.util.ByteList;
  */
 public class SQLite3Module {
     
-    public static void load(final RubyModule arJdbc) {
+    public static RubyModule load(final RubyModule arJdbc) {
         RubyModule sqlite3 = arJdbc.defineModuleUnder("SQLite3");
         sqlite3.defineAnnotatedMethods( SQLite3Module.class );
+        return sqlite3;
     }
     
     @JRubyMethod(name = "quote_string", required = 1, frame = false)
