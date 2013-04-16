@@ -36,28 +36,16 @@ module ActiveRecord
       end
 
       public
-
-      def self.column_types
-        # reset the column types if the # of constants changed since last call
-        @column_types ||= begin 
-          types = driver_constants.select { |c| c.respond_to? :column_selector }
-          types.map! { |c| c.column_selector }
-          types.inject({}) { |h, val| h[ val[0] ] = val[1]; h }
-        end
-      end
-
-      def self.driver_constants
-        reset_constants
-        @driver_constants ||= ::ArJdbc.constants.map { |c| ::ArJdbc.const_get c }
-      end
-
-      def self.reset_constants!
-        @driver_constants = nil; @column_types = nil
-      end
       
-      def self.reset_constants
-        return false if ! defined?(@driver_constants) || ! @driver_constants
-        reset_constants! if ::ArJdbc.constants.size != @driver_constants.size
+      def self.column_types
+        types = {}
+        for mod in ::ArJdbc.modules
+          if mod.respond_to?(:column_selector)
+            sel = mod.column_selector # [ matcher, block ]
+            types[ sel[0] ] = sel[1]
+          end
+        end
+        types
       end
       
     end

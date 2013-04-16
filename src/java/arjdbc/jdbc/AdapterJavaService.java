@@ -28,6 +28,7 @@ package arjdbc.jdbc;
 
 import java.io.IOException;
 
+import arjdbc.ArJdbcModule;
 import arjdbc.db2.DB2Module;
 import arjdbc.db2.DB2RubyJdbcConnection;
 import arjdbc.derby.DerbyModule;
@@ -55,7 +56,7 @@ public class AdapterJavaService implements BasicLibraryService {
     public boolean basicLoad(final Ruby runtime) throws IOException {
         // ActiveRecord::ConnectionAdapter-s :
         final RubyClass jdbcConnection = RubyJdbcConnection.createJdbcConnectionClass(runtime);
-        final RubyModule arJdbc = runtime.getOrCreateModule("ArJdbc");
+        final RubyModule arJdbc = ArJdbcModule.load(runtime);
         // MySQL
         MySQLModule.load(arJdbc);
         MySQLRubyJdbcConnection.createMySQLJdbcConnectionClass(runtime, jdbcConnection);

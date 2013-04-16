@@ -19,7 +19,7 @@ module ActiveRecord
       include JdbcConnectionPoolCallbacks if JdbcConnectionPoolCallbacks.needed?
       
       attr_reader :config
-
+      
       def initialize(connection, logger, config)
         @config = config
         spec = config[:adapter_spec] || adapter_spec(config)
@@ -67,9 +67,7 @@ module ActiveRecord
       # Locate specialized adapter specification if one exists based on config data
       def adapter_spec(config)
         dialect = (config[:dialect] || config[:driver]).to_s
-        ::ArJdbc.constants.sort.each do |constant|
-          constant = ::ArJdbc.const_get(constant) # e.g. ArJdbc::MySQL
-
+        ::ArJdbc.modules.each do |constant| # e.g. ArJdbc::MySQL
           if constant.respond_to?(:adapter_matcher)
             spec = constant.adapter_matcher(dialect, config)
             return spec if spec
@@ -97,7 +95,7 @@ module ActiveRecord
         types
       end
 
-      def adapter_name #:nodoc:
+      def adapter_name # :nodoc:
         'JDBC'
       end
 
@@ -120,15 +118,15 @@ module ActiveRecord
         if defined?(::Arel::Visitors::VISITORS)
           visitors = ::Arel::Visitors::VISITORS
           visitor = nil
-          adapter_spec = [config[:adapter_spec], self.class].detect {|a| a && a.respond_to?(:arel2_visitors) }
-          adapter_spec.arel2_visitors(config).each do |k,v|
-            visitor = v
-            visitors[k] = v
+          adapter_spec = [ config[:adapter_spec], self.class ].
+            detect { |mod| mod.respond_to?(:arel2_visitors) }
+          adapter_spec.arel2_visitors(config).each do |name, arel|
+            visitors[name] = ( visitor = arel )
           end
           if visitor && config[:adapter] =~ /^(jdbc|jndi)$/
-            visitors[config[:adapter]] = visitor
+            visitors[ config[:adapter] ] = visitor
           end
-          @visitor = visitors[config[:adapter]].new(self)
+          @visitor = visitors[ config[:adapter] ].new(self)
         end
       end
 
@@ -383,7 +381,7 @@ module ActiveRecord
       if ActiveRecord::VERSION::MAJOR == 3 && ActiveRecord::VERSION::MINOR == 0
       
         #attr_reader :visitor unless method_defined?(:visitor) # not in 3.0
-
+      
         # Converts an AREL AST to SQL.
         def to_sql(arel, binds = [])
           # NOTE: can not handle `visitor.accept(arel.ast)` right thus
