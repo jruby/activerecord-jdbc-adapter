@@ -172,6 +172,16 @@ module ArJdbc
       }
     end
 
+    def new_visitor(config = nil)
+      visitor = ::Arel::Visitors::MySQL
+      ( prepared_statements? ? visitor : bind_substitution(visitor) ).new(self)
+    end if defined? ::Arel::Visitors::MySQL
+    
+    # @see #bind_substitution
+    class BindSubstitution < Arel::Visitors::MySQL # :nodoc:
+      include Arel::Visitors::BindVisitor
+    end if defined? Arel::Visitors::BindVisitor
+    
     def case_sensitive_equality_operator
       "= BINARY"
     end

@@ -702,7 +702,8 @@ module SimpleTestMethods
     
     sql = "UPDATE entries SET title = ? WHERE id = #{entry.id}"
     name = "UPDATE(raw_with_q_mark)"
-    connection.update sql, name, [ [ nil, "bar?" ] ]
+    title_column = Entry.columns.find { |n| n.to_s == 'title' }
+    connection.update sql, name, [ [ title_column, "bar?" ] ]
     assert_equal 'bar?', entry.reload.title
     
     sql = "UPDATE entries SET title = ? WHERE id = ?"
@@ -924,6 +925,16 @@ module SimpleTestMethods
     connection.execute alive_sql
   end
   
+  def test_query_cache_works
+    user_1 = User.create! :login => 'query_cache_1'
+    user_2 = User.create! :login => 'query_cache_2'
+    User.create! :login => 'query_cache_3'
+    User.cache do
+      id1 = user_1.id; id2 = user_2.id
+      assert_queries(2) { User.find(id1); User.find(id1); User.find(id2); User.find(id1); }
+    end
+  end
+  
   protected
   
   def assert_date_type(value)
@@ -1088,9 +1099,9 @@ module ActiveRecord3TestMethods
     def test_visitor_accessor
       adapter = Entry.connection
       adapter_spec = adapter.config[:adapter_spec]
-      expected_visitors = adapter_spec.arel2_visitors(adapter.config).values
+      visitor_type = adapter_spec.arel2_visitors(adapter.config).values.first
       assert_not_nil adapter.visitor
-      assert expected_visitors.include?(adapter.visitor.class)
+      assert_kind_of visitor_type, adapter.visitor
     end if Test::Unit::TestCase.ar_version('3.2') # >= 3.2
     
     def test_where

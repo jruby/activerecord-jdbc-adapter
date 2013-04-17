@@ -53,9 +53,9 @@ module ArJdbc
     end
 
     # constants taken from postgresql_adapter in rails project
-    ADAPTER_NAME = 'PostgreSQL'
+    ADAPTER_NAME = 'PostgreSQL'.freeze
 
-    def adapter_name #:nodoc:
+    def adapter_name # :nodoc:
       ADAPTER_NAME
     end
 
@@ -66,6 +66,16 @@ module ArJdbc
         'pg' => ::Arel::Visitors::PostgreSQL
       }
     end
+    
+    def new_visitor(config = nil)
+      visitor = ::Arel::Visitors::PostgreSQL
+      ( prepared_statements? ? visitor : bind_substitution(visitor) ).new(self)
+    end if defined? ::Arel::Visitors::PostgreSQL
+    
+    # @see #bind_substitution
+    class BindSubstitution < Arel::Visitors::PostgreSQL # :nodoc:
+      include Arel::Visitors::BindVisitor
+    end if defined? Arel::Visitors::BindVisitor
 
     def postgresql_version
       @postgresql_version ||=
@@ -1418,7 +1428,7 @@ module ActiveRecord::ConnectionAdapters
   class PostgreSQLAdapter < JdbcAdapter
     include ArJdbc::PostgreSQL
     include ArJdbc::PostgreSQL::ExplainSupport
-
+    
     def initialize(*args)
       super
       

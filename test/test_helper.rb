@@ -230,15 +230,17 @@ module ActiveRecord
     @@log = []
     def self.log; @@log; end
     def self.log=(log); @@log = log;; end
-
+    
+    def initialize(ignored_sql = self.class.ignored_sql)
+      @ignored_sql = ignored_sql
+    end
+    
     def call(name, start, finish, message_id, values)
       sql = values[:sql]
-
       # FIXME: this seems bad. we should probably have a better way to indicate
       # the query was cached
-      unless 'CACHE' == values[:name]
-        self.class.log << sql unless self.class.ignored_sql.any? { |r| sql =~ r }
-      end
+      return if 'CACHE' == values[:name] || @ignored_sql.any? { |x| x =~ sql }
+      self.class.log << sql
     end
     
     @@enabled = true

@@ -103,55 +103,85 @@ module ActiveRecord
         { 'jdbc' => ::Arel::Visitors::ToSql }
       end
 
-      if defined? ::Arel::Visitors::VISITORS
-        
-        # NOTE: called from {ConnectionPool#checkout} (up till AR-3.2)
-        def self.visitor_for(pool)
-          config = pool.spec.config
-          adapter = config[:adapter] # e.g. "sqlite3" (based on {#adapter_name})
-          unless visitor = ::Arel::Visitors::VISITORS[ adapter ]
-            adapter_spec = config[:adapter_spec] || self # e.g. ArJdbc::SQLite3
-            if adapter =~ /^(jdbc|jndi)$/
-              visitor = adapter_spec.arel2_visitors(config).values.first
-            else
-              visitor = adapter_spec.arel2_visitors(config)[adapter]
-            end
+      # NOTE: called from {ConnectionPool#checkout} (up till AR-3.2)
+      def self.visitor_for(pool)
+        config = pool.spec.config
+        adapter = config[:adapter] # e.g. "sqlite3" (based on {#adapter_name})
+        unless visitor = ::Arel::Visitors::VISITORS[ adapter ]
+          adapter_spec = config[:adapter_spec] || self # e.g. ArJdbc::SQLite3
+          if adapter =~ /^(jdbc|jndi)$/
+            visitor = adapter_spec.arel2_visitors(config).values.first
+          else
+            visitor = adapter_spec.arel2_visitors(config)[adapter]
           end
-          visitor.new(pool)
         end
-        
-        def self.configure_arel2_visitors(config)
-          visitors = ::Arel::Visitors::VISITORS
-          adapter_spec = [ config[:adapter_spec], self.class ].
-            detect { |mod| mod.respond_to?(:arel2_visitors) }
-          visitor = nil
-          adapter_spec.arel2_visitors(config).each do |name, arel|
-            visitors[name] = ( visitor = arel )
-          end
-          if visitor && config[:adapter] =~ /^(jdbc|jndi)$/
-            visitors[ config[:adapter] ] = visitor
-          end
-          visitor
+        visitor.new(pool)
+      end
+
+      def self.configure_arel2_visitors(config)
+        visitors = ::Arel::Visitors::VISITORS
+        adapter_spec = [ config[:adapter_spec], self.class ].
+          detect { |mod| mod.respond_to?(:arel2_visitors) }
+        visitor = nil
+        adapter_spec.arel2_visitors(config).each do |name, arel|
+          visitors[name] = ( visitor = arel )
         end
-        
-        def new_visitor(config = self.config)
-          adapter = config[:adapter]
-          unless visitor = ::Arel::Visitors::VISITORS[ adapter ]
-            visitor = self.class.configure_arel2_visitors(config)
-            unless visitor
-              raise "no visitor configured for adapter: #{adapter.inspect}"
-            end
-          end
-          visitor.new(self)
+        if visitor && config[:adapter] =~ /^(jdbc|jndi)$/
+          visitors[ config[:adapter] ] = visitor
         end
-        
-      else # NO-OP when no AREL (AR-2.3)
-        
-        # def self.configure_arel2_visitors(config); end
-        def new_visitor(config = self.config); end
-        
+        visitor
+      end
+
+      def new_visitor(config = self.config)
+        visitor = ::Arel::Visitors::VISITORS[ adapter = config[:adapter] ]
+        unless visitor
+          visitor = self.class.configure_arel2_visitors(config)
+          unless visitor
+            raise "no visitor configured for adapter: #{adapter.inspect}"
+          end
+        end
+        ( prepared_statements? ? visitor : bind_substitution(visitor) ).new(self)
       end
       protected :new_visitor
+      
+      unless defined? ::Arel::Visitors::VISITORS # NO-OP when no AREL (AR-2.3)
+        def self.configure_arel2_visitors(config); end
+        def new_visitor(config = self.config); end
+      end
+      
+      begin; require 'arel/visitors/bind_visitor'; rescue LoadError; end
+      
+      @@bind_substitutions = nil
+      
+      # @return a {#Arel::Visitors::BindVisitor} class for given visitor type
+      def bind_substitution(visitor)
+        # NOTE: similar convention as in AR (but no base substitution type) :
+        # class BindSubstitution < ::Arel::Visitors::ToSql
+        #   include ::Arel::Visitors::BindVisitor
+        # end
+        if self.class.const_defined?(:BindSubstitution)
+          return self.class.const_get(:BindSubstitution)
+        end
+        
+        @@bind_substitutions ||= Java::JavaUtil::HashMap.new
+        unless bind_visitor = @@bind_substitutions.get(visitor)
+          @@bind_substitutions.synchronized do
+            unless @@bind_substitutions.get(visitor)
+              bind_visitor = Class.new(visitor) do
+                include ::Arel::Visitors::BindVisitor
+              end
+              @@bind_substitutions.put(visitor, bind_visitor)
+            end
+          end
+          bind_visitor = @@bind_substitutions.get(visitor)
+        end
+        bind_visitor
+      end
+      private :bind_substitution
+      
+      unless defined? ::Arel::Visitors::BindVisitor # AR-3.0
+        def bind_substitution(visitor); visitor; end
+      end
       
       def is_a?(klass) # :nodoc:
         # This is to fake out current_adapter? conditional logic in AR tests
@@ -404,7 +434,7 @@ module ActiveRecord
       if ActiveRecord::VERSION::MAJOR == 3 && ActiveRecord::VERSION::MINOR == 0
       
         #attr_reader :visitor unless method_defined?(:visitor) # not in 3.0
-
+        
         # Converts an AREL AST to SQL.
         def to_sql(arel, binds = [])
           # NOTE: can not handle `visitor.accept(arel.ast)` right thus
@@ -485,6 +515,13 @@ module ActiveRecord
     
       private
       
+      def prepared_statements?
+        return false # TODO until we add support for PS using our (JDBC) Java API
+        config.key?(:prepared_statements) ?
+          self.class.type_cast_config_to_boolean(config.fetch(:prepared_statements)) :
+            true
+      end
+    
       # #deprecated no longer used
       def substitute_binds(sql, binds = [])
         sql = extract_sql(sql)

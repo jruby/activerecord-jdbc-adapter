@@ -86,14 +86,21 @@ module ArJdbc
       
     end
 
-    def self.arel2_visitors(config)
-      {
-        'sqlite3' => ::Arel::Visitors::SQLite,
-        'jdbcsqlite3' => ::Arel::Visitors::SQLite
-      }
+    def self.arel2_visitors(config = nil)
+      { 'sqlite3' => ::Arel::Visitors::SQLite, 'jdbcsqlite3' => ::Arel::Visitors::SQLite }
     end
     
-    ADAPTER_NAME = 'SQLite'
+    def new_visitor(config = nil)
+      visitor = ::Arel::Visitors::SQLite
+      ( prepared_statements? ? visitor : bind_substitution(visitor) ).new(self)
+    end if defined? ::Arel::Visitors::SQLite
+    
+    # @see #bind_substitution
+    class BindSubstitution < Arel::Visitors::SQLite # :nodoc:
+      include Arel::Visitors::BindVisitor
+    end if defined? Arel::Visitors::BindVisitor
+    
+    ADAPTER_NAME = 'SQLite'.freeze
     
     def adapter_name # :nodoc:
       ADAPTER_NAME
@@ -471,13 +478,13 @@ module ActiveRecord::ConnectionAdapters
   class SQLite3Adapter < JdbcAdapter
     include ArJdbc::SQLite3
     include ArJdbc::SQLite3::ExplainSupport
-    
+
     def jdbc_connection_class(spec)
       ::ArJdbc::SQLite3.jdbc_connection_class
     end
 
     def jdbc_column_class
-      ActiveRecord::ConnectionAdapters::SQLite3Column
+      ::ActiveRecord::ConnectionAdapters::SQLite3Column
     end
     
   end
