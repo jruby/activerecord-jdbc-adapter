@@ -115,7 +115,7 @@ module ActiveRecord
             visitor = adapter_spec.arel2_visitors(config)[adapter]
           end
         end
-        visitor.new(pool)
+        ( prepared_statements?(config) ? visitor : bind_substitution(visitor) ).new(pool)
       end
 
       def self.configure_arel2_visitors(config)
@@ -149,19 +149,15 @@ module ActiveRecord
         def new_visitor(config = self.config); end
       end
       
-      begin; require 'arel/visitors/bind_visitor'; rescue LoadError; end
-      
       @@bind_substitutions = nil
       
       # @return a {#Arel::Visitors::BindVisitor} class for given visitor type
-      def bind_substitution(visitor)
+      def self.bind_substitution(visitor)
         # NOTE: similar convention as in AR (but no base substitution type) :
         # class BindSubstitution < ::Arel::Visitors::ToSql
         #   include ::Arel::Visitors::BindVisitor
         # end
-        if self.class.const_defined?(:BindSubstitution)
-          return self.class.const_get(:BindSubstitution)
-        end
+        return const_get(:BindSubstitution) if const_defined?(:BindSubstitution)
         
         @@bind_substitutions ||= Java::JavaUtil::HashMap.new
         unless bind_visitor = @@bind_substitutions.get(visitor)
@@ -177,11 +173,15 @@ module ActiveRecord
         end
         bind_visitor
       end
-      private :bind_substitution
       
-      unless defined? ::Arel::Visitors::BindVisitor # AR-3.0
-        def bind_substitution(visitor); visitor; end
+      begin 
+        require 'arel/visitors/bind_visitor'
+      rescue LoadError # AR-3.0
+        def self.bind_substitution(visitor); visitor; end
       end
+      
+      def bind_substitution(visitor); self.class.bind_substitution(visitor); end
+      private :bind_substitution
       
       def is_a?(klass) # :nodoc:
         # This is to fake out current_adapter? conditional logic in AR tests
@@ -196,11 +196,11 @@ module ActiveRecord
         true
       end
 
-      def native_database_types #:nodoc:
+      def native_database_types # :nodoc:
         @connection.native_database_types
       end
 
-      def database_name #:nodoc:
+      def database_name # :nodoc:
         @connection.database_name
       end
 
@@ -280,36 +280,49 @@ module ActiveRecord
       # +binds+ as the bind substitutes.  +name+ is logged along with
       # the executed +sql+ statement.
       def exec_query(sql, name = 'SQL', binds = []) # :nodoc:
-        log(sql, name || 'SQL') { @connection.execute_query(to_sql(sql, binds)) }
+        sql = to_sql(sql, binds)
+        if prepared_statements?
+          log(sql, name, binds) { @connection.execute_query(sql, binds) }
+        else
+          sql = suble_binds(sql, binds)
+          log(sql, name) { @connection.execute_query(sql) }
+        end
       end
 
       # Executes insert +sql+ statement in the context of this connection using
       # +binds+ as the bind substitutes. +name+ is the logged along with
       # the executed +sql+ statement.
       def exec_insert(sql, name, binds, pk = nil, sequence_name = nil) # :nodoc:
-        log(sql, name || 'SQL') { @connection.execute_insert(to_sql(sql, binds)) }
+        sql = suble_binds to_sql(sql, binds), binds
+        log(sql, name || 'SQL') { @connection.execute_insert(sql) }
       end
 
       # Executes delete +sql+ statement in the context of this connection using
       # +binds+ as the bind substitutes. +name+ is the logged along with
       # the executed +sql+ statement.
       def exec_delete(sql, name, binds) # :nodoc:
-        log(sql, name || 'SQL') { @connection.execute_delete(to_sql(sql, binds)) }
+        sql = suble_binds to_sql(sql, binds), binds
+        log(sql, name || 'SQL') { @connection.execute_delete(sql) }
       end
 
       # Executes update +sql+ statement in the context of this connection using
       # +binds+ as the bind substitutes. +name+ is the logged along with
       # the executed +sql+ statement.
       def exec_update(sql, name, binds) # :nodoc:
-        log(sql, name || 'SQL') { @connection.execute_update(to_sql(sql, binds)) }
+        sql = suble_binds to_sql(sql, binds), binds
+        log(sql, name || 'SQL') { @connection.execute_update(sql) }
       end
       
       # Similar to {#exec_query} except it returns "raw" results in an array
       # where each rows is a hash with keys as columns (just like Rails used to 
       # do up until 3.0) instead of wrapping them in a {#ActiveRecord::Result}.
       def exec_query_raw(sql, name = 'SQL', binds = [], &block) # :nodoc:
-        log(sql, name || 'SQL') do
-          @connection.execute_query_raw(to_sql(sql, binds), &block)
+        sql = to_sql(sql, binds)
+        if prepared_statements?
+          log(sql, name, binds) { @connection.execute_query_raw(sql, binds, &block) }
+        else
+          sql = suble_binds(sql, binds)
+          log(sql, name) { @connection.execute_query_raw(sql, &block) }
         end
       end
       
@@ -337,7 +350,7 @@ module ActiveRecord
       
       # Executes the SQL statement in the context of this connection.
       def execute(sql, name = nil, binds = [])
-        sql = to_sql(sql, binds)
+        sql = suble_binds to_sql(sql, binds), binds
         if name == :skip_logging
           _execute(sql, name)
         else
@@ -352,7 +365,7 @@ module ActiveRecord
       
       # Executes the SQL statement in the context of this connection.
       def execute(sql, name = nil, binds = [])
-        sql = to_sql(sql, binds)
+        sql = suble_binds to_sql(sql, binds), binds
         if name == :skip_logging
           _execute(sql, name)
         else
@@ -437,11 +450,8 @@ module ActiveRecord
         
         # Converts an AREL AST to SQL.
         def to_sql(arel, binds = [])
-          # NOTE: can not handle `visitor.accept(arel.ast)` right thus
-          # convert AREL to a SQL string and simply substitute binds :
-          sql = arel.respond_to?(:to_sql) ? arel.send(:to_sql) : arel
-          return sql if binds.blank?
-          sql.gsub('?') { quote(*binds.shift.reverse) }
+          # NOTE: can not handle `visitor.accept(arel.ast)` right
+          arel.respond_to?(:to_sql) ? arel.send(:to_sql) : arel
         end
         
       elsif ActiveRecord::VERSION::MAJOR >= 3 # AR >= 3.1 or 4.0
@@ -450,21 +460,15 @@ module ActiveRecord
         def to_sql(arel, binds = [])
           if arel.respond_to?(:ast)
             visitor.accept(arel.ast) { quote(*binds.shift.reverse) }
-          else # for backwards compatibility :
-            sql = arel.respond_to?(:to_sql) ? arel.send(:to_sql) : arel
-            return sql if binds.blank?
-            sql.gsub('?') { quote(*binds.shift.reverse) }
+          else
+            arel
           end
         end
       
       else # AR-2.3 no #to_sql method
         
-        # Substitutes SQL bind parameters.
         def to_sql(sql, binds = [])
-          sql = sql.send(:to_sql) if sql.respond_to?(:to_sql)
-          return sql if binds.blank?
-          copy = binds.dup
-          sql.gsub('?') { quote(*copy.shift.reverse) }
+          sql
         end
         
       end
@@ -516,24 +520,28 @@ module ActiveRecord
       private
       
       def prepared_statements?
-        return false # TODO until we add support for PS using our (JDBC) Java API
-        config.key?(:prepared_statements) ?
-          self.class.type_cast_config_to_boolean(config.fetch(:prepared_statements)) :
-            true
+        self.class.prepared_statements?(config)
       end
     
-      # #deprecated no longer used
-      def substitute_binds(sql, binds = [])
-        sql = extract_sql(sql)
-        if binds.empty?
-          sql
-        else
-          copy = binds.dup
-          sql.gsub('?') { quote(*copy.shift.reverse) }
-        end
+      def self.prepared_statements?(config)
+        return false # TODO until we add support for PS using our (JDBC) Java API
+        config.key?(:prepared_statements) ?
+          type_cast_config_to_boolean(config.fetch(:prepared_statements)) :
+            true
       end
 
-      # #deprecated no longer used
+      def suble_binds(sql, binds)
+        return sql if binds.nil? || binds.empty?
+        copy = binds.dup
+        sql.gsub('?') { quote(*copy.shift.reverse) }
+      end
+      
+      # @deprecated replaced with {#suble_binds}
+      def substitute_binds(sql, binds)
+        suble_binds(extract_sql(sql), binds)
+      end
+
+      # @deprecated no longer used
       def extract_sql(obj)
         obj.respond_to?(:to_sql) ? obj.send(:to_sql) : obj
       end

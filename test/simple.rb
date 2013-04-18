@@ -925,13 +925,19 @@ module SimpleTestMethods
     connection.execute alive_sql
   end
   
-  def test_query_cache_works
+  def test_query_cache
     user_1 = User.create! :login => 'query_cache_1'
     user_2 = User.create! :login => 'query_cache_2'
-    User.create! :login => 'query_cache_3'
-    User.cache do
+    user_3 = User.create! :login => 'query_cache_3'
+    # NOTE: on 3.1 AR::Base.cache does not cache if AR not configured, 
+    # due : `if ActiveRecord::Base.configurations.blank?; yield ...`
+    User.connection.cache do # instead of simply `User.cache`
       id1 = user_1.id; id2 = user_2.id
-      assert_queries(2) { User.find(id1); User.find(id1); User.find(id2); User.find(id1); }
+      assert_queries(2) { User.find(id1); User.find(id1); User.find(id2); User.find(id1) }
+    end
+    User.connection.uncached do
+      id1 = user_1.id; id3 = user_3.id
+      assert_queries(3) { User.find(id3); User.find(id1); User.find(id3) }
     end
   end
   

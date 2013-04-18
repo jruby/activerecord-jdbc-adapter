@@ -236,10 +236,13 @@ module ActiveRecord
     end
     
     def call(name, start, finish, message_id, values)
+      return if 'CACHE' == values[:name]
+      
       sql = values[:sql]
-      # FIXME: this seems bad. we should probably have a better way to indicate
-      # the query was cached
-      return if 'CACHE' == values[:name] || @ignored_sql.any? { |x| x =~ sql }
+      sql = sql.to_sql unless sql.is_a?(String)
+      
+      return if @ignored_sql.any? { |x| x =~ sql }
+      
       self.class.log << sql
     end
     
