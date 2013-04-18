@@ -22,20 +22,23 @@ GEM
     activesupport (3.2.13)
       i18n (= 0.6.1)
       multi_json (~> 1.0)
-    appraisal (0.5.1)
+    appraisal (0.5.2)
       bundler
       rake
     arel (3.0.2)
+    bcrypt-ruby (3.0.1)
     bcrypt-ruby (3.0.1-java)
-    bouncy-castle-java (1.5.0146.1)
+    bouncy-castle-java (1.5.0147)
     builder (3.0.4)
     columnize (0.3.6)
     erubis (2.7.0)
     hike (1.2.1)
     i18n (0.6.1)
     journey (1.0.4)
-    jruby-openssl (0.8.2)
-      bouncy-castle-java (>= 1.5.0146.1)
+    jruby-openssl (0.8.7)
+      bouncy-castle-java (>= 1.5.0147)
+    linecache (0.46)
+      rbx-require-relative (> 0.0.4)
     metaclass (0.0.1)
     mocha (0.13.3)
       metaclass (~> 0.0.1)
@@ -45,10 +48,13 @@ GEM
       rack (>= 0.4)
     rack-test (0.6.2)
       rack (>= 1.0)
-    rake (10.0.3)
+    rake (10.0.4)
+    rbx-require-relative (0.0.9)
     ruby-debug (0.10.4)
       columnize (>= 0.1)
       ruby-debug-base (~> 0.10.4.0)
+    ruby-debug-base (0.10.4)
+      linecache (>= 0.3)
     ruby-debug-base (0.10.4-java)
     simplecov (0.7.1)
       multi_json (~> 1.0)
@@ -67,6 +73,7 @@ GEM
 
 PLATFORMS
   java
+  ruby
 
 DEPENDENCIES
   actionpack

@@ -11,7 +11,7 @@ GEM
       arel (~> 2.0.10)
       tzinfo (~> 0.3.23)
     activesupport (3.0.20)
-    appraisal (0.5.1)
+    appraisal (0.5.2)
       bundler
       rake
     arel (2.0.10)
@@ -19,13 +19,13 @@ GEM
     bouncy-castle-java (1.5.0147)
     builder (2.1.2)
     i18n (0.5.0)
-    jruby-openssl (0.8.4)
+    jruby-openssl (0.8.7)
       bouncy-castle-java (>= 1.5.0147)
     metaclass (0.0.1)
     mocha (0.13.3)
       metaclass (~> 0.0.1)
-    multi_json (1.5.0)
-    rake (10.0.3)
+    multi_json (1.7.2)
+    rake (10.0.4)
     simplecov (0.7.1)
       multi_json (~> 1.0)
       simplecov-html (~> 0.7.1)
@@ -33,7 +33,7 @@ GEM
     test-unit (2.5.4)
     test-unit-context (0.3.0)
       test-unit (>= 2.4.0)
-    tzinfo (0.3.35)
+    tzinfo (0.3.37)
 
 PLATFORMS
   java
