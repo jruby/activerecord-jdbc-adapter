@@ -33,9 +33,17 @@ class PostgresConnectionTest < Test::Unit::TestCase
       select_rows "SHOW DEBUG_PRINT_PLAN"
     end
   end
-  
+
+  def test_set_client_encoding
+    run_without_connection do |orig_connection|
+      # This should execute a query that does not raise an error
+      ActiveRecord::Base.establish_connection(orig_connection.merge({:encoding => 'unicode'}))
+      select_rows "SHOW DEBUG_PRINT_PLAN"
+    end
+  end
+
   protected
-  
+
   def select_rows(sql)
     result = ActiveRecord::Base.connection.exec_query(sql)
     result.respond_to?(:rows) ? result.rows : [ result.first.map { |_,value| value } ]
