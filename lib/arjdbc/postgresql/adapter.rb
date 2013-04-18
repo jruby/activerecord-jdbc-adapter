@@ -20,7 +20,11 @@ module ArJdbc
     def self.jdbc_connection_class
       ::ActiveRecord::ConnectionAdapters::PostgreSQLJdbcConnection
     end
-    
+
+    def set_client_encoding(encoding)
+      ActiveRecord::Base.logger.warn "Client encoding is selected by JDBC driver, '#{encoding}' is ignored"
+    end
+
     # Configures the encoding, verbosity, schema search path, and time zone of the connection.
     # This is called by #connect and should not be called manually.
     def configure_connection
