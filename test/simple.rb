@@ -857,6 +857,27 @@ module SimpleTestMethods
     assert_equal 'user1', result[0]['login']
     assert_equal 'user2', result[1]['login']
   end
+
+  def test_exec_query_raw_yields
+    User.create! :login => 'user3'
+    User.create! :login => 'user4'
+    
+    arel = User.select('id, login, created_at').where("login = 'user3' or login = 'user4'")
+    yielded = 0
+    ActiveRecord::Base.connection.exec_query_raw(arel) do |*args| # id, login, created_at
+      assert_equal 3, args.size
+      yielded += 1
+      case yielded
+      when 1
+        assert_equal 'user3', args[1]
+      when 2
+        assert_equal 'user4', args[1]
+      else 
+        fail "yielded 3 times"
+      end
+    end
+    assert yielded == 2
+  end if Test::Unit::TestCase.ar_version('3.0')
   
   def test_select
     Entry.delete_all
