@@ -22,16 +22,19 @@ module ArJdbc
     end
 
     def set_client_encoding(encoding)
-      ActiveRecord::Base.logger.warn "Client encoding is selected by JDBC driver, '#{encoding}' is ignored"
+      ActiveRecord::Base.logger.warn "client_encoding is set by the driver and should not be altered, ('#{encoding}' ignored)"
+      ActiveRecord::Base.logger.debug "Set the 'allowEncodingChanges' driver property (e.g. using config[:properties]) if you need to override the client encoding when doing a copy."
     end
 
     # Configures the encoding, verbosity, schema search path, and time zone of the connection.
     # This is called by #connect and should not be called manually.
     def configure_connection
-      if encoding = config[:encoding]
-        # Encoding is ignored because it selected by Postgres JDBC adapter, see http://jdbc.postgresql.org/documentation/91/connect.html
+      #if encoding = config[:encoding]
+        # The client_encoding setting is set by the driver and should not be altered.
+        # If the driver detects a change it will abort the connection.
+        # see http://jdbc.postgresql.org/documentation/91/connect.html
         # self.set_client_encoding(encoding)
-      end
+      #end
       self.client_min_messages = config[:min_messages] || 'warning'
       self.schema_search_path = config[:schema_search_path] || config[:schema_order]
 
