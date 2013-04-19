@@ -195,7 +195,7 @@ module ArJdbc
     end
 
     def execute(sql, name = nil, binds = [])
-      sql = to_sql(sql)
+      sql = to_sql(sql, binds)
       if sql =~ /\A\s*(UPDATE|INSERT)/i
         if ( i = sql =~ /\sWHERE\s/im )
           where_part = sql[i..-1]; sql = sql.dup

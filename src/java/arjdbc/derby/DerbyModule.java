@@ -306,29 +306,10 @@ public class DerbyModule {
             final IRubyObject self) {
         return RubyString.newString(context.getRuntime(), BYTES_0);
     }
-    
-    @JRubyMethod(name = "select_all", rest = true)
-    public static IRubyObject select_all(IRubyObject recv, IRubyObject[] args) {
-        return rubyApi.callMethod(recv, "execute", args);
-    }
-
-    @JRubyMethod(name = "select_one", rest = true)
-    public static IRubyObject select_one(IRubyObject recv, IRubyObject[] args) {
-        IRubyObject limit = rubyApi.getInstanceVariable(recv, "@limit");
-        if (limit == null || limit.isNil()) {
-            rubyApi.setInstanceVariable(recv, "@limit", recv.getRuntime().newFixnum(1));
-        }
-        try {
-            IRubyObject result = rubyApi.callMethod(recv, "execute", args);
-            return rubyApi.callMethod(result, "first");
-        } finally {
-            rubyApi.setInstanceVariable(recv, "@limit", recv.getRuntime().getNil());
-        }
-    }
 
     @JRubyMethod(name = "_execute", required = 1, optional = 1)
     public static IRubyObject _execute(final ThreadContext context, final IRubyObject self, final IRubyObject[] args) 
-        throws SQLException, java.io.IOException {
+        throws SQLException {
         final IRubyObject sql = args[0];
         
         String sqlStr = sql.toString().trim();
