@@ -1,3 +1,4 @@
+ArJdbc.load_java_part :Derby
 require 'arjdbc/jdbc/missing_functionality_helper'
 
 module ArJdbc

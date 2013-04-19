@@ -1,3 +1,5 @@
+ArJdbc.load_java_part :PostgreSQL
+
 require 'ipaddr'
 require 'arjdbc/postgresql/column_cast'
 require 'arjdbc/postgresql/explain_support'

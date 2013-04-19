@@ -1,3 +1,5 @@
+ArJdbc.load_java_part :MySQL
+
 require 'bigdecimal'
 require 'active_record/connection_adapters/abstract/schema_definitions'
 require 'arjdbc/mysql/explain_support'

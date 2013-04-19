@@ -1,3 +1,5 @@
+ArJdbc.load_java_part :MSSQL
+
 require 'strscan'
 require 'arjdbc/mssql/utils'
 require 'arjdbc/mssql/tsql_methods'

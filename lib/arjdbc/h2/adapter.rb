@@ -1,9 +1,10 @@
+ArJdbc.load_java_part :H2
 require 'arjdbc/hsqldb/adapter'
 
 module ArJdbc
   module H2
     include HSQLDB
-
+    
     def self.jdbc_connection_class
       ::ActiveRecord::ConnectionAdapters::H2JdbcConnection
     end

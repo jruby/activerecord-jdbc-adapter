@@ -1,3 +1,5 @@
+ArJdbc.load_java_part :DB2
+
 require 'arjdbc/jdbc/serialized_attributes_helper'
 
 module ArJdbc

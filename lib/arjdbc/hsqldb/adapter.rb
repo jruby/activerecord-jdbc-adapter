@@ -1,3 +1,4 @@
+ArJdbc.load_java_part :HSQLDB
 require 'arjdbc/hsqldb/explain_support'
 
 module ArJdbc

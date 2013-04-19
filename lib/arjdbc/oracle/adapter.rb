@@ -1,3 +1,4 @@
+ArJdbc.load_java_part :Oracle
 require 'arjdbc/jdbc/serialized_attributes_helper'
 
 module ArJdbc

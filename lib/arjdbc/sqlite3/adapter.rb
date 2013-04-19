@@ -1,3 +1,5 @@
+ArJdbc.load_java_part :SQLite3
+
 require 'arjdbc/jdbc/missing_functionality_helper'
 require 'arjdbc/sqlite3/explain_support'
 
