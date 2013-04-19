@@ -1,2 +1,2 @@
 require 'arjdbc'
-require 'arjdbc/sybase/adapter.rb'
+require 'arjdbc/sybase/adapter'

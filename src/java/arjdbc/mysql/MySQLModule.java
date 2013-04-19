@@ -42,7 +42,7 @@ import org.jruby.util.ByteList;
 
 public class MySQLModule {
     
-    public static RubyModule load(RubyModule arJdbc) {
+    public static RubyModule load(final RubyModule arJdbc) {
         RubyModule mysql = arJdbc.defineModuleUnder("MySQL");
         mysql.defineAnnotatedMethods(MySQLModule.class);
         return mysql;

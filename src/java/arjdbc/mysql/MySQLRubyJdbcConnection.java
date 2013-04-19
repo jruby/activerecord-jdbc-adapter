@@ -80,19 +80,24 @@ public class MySQLRubyJdbcConnection extends RubyJdbcConnection {
         return super.jdbcToRuby(runtime, column, type, resultSet);
     }
 
-    public static RubyClass createMySQLJdbcConnectionClass(Ruby runtime, RubyClass jdbcConnection) {
-        RubyClass clazz = RubyJdbcConnection.getConnectionAdapters(runtime).defineClassUnder("MySQLJdbcConnection",
-                jdbcConnection, MYSQL_JDBCCONNECTION_ALLOCATOR);
-        clazz.defineAnnotatedMethods(MySQLRubyJdbcConnection.class);
-
-        return clazz;
-    }
     private static ObjectAllocator MYSQL_JDBCCONNECTION_ALLOCATOR = new ObjectAllocator() {
         public IRubyObject allocate(Ruby runtime, RubyClass klass) {
             return new MySQLRubyJdbcConnection(runtime, klass);
         }
     };
+    
+    public static RubyClass createMySQLJdbcConnectionClass(Ruby runtime, RubyClass jdbcConnection) {
+        RubyClass clazz = getConnectionAdapters(runtime).
+            defineClassUnder("MySQLJdbcConnection", jdbcConnection, MYSQL_JDBCCONNECTION_ALLOCATOR);
+        clazz.defineAnnotatedMethods(MySQLRubyJdbcConnection.class);
+        return clazz;
+    }
 
+    /*
+    public static RubyClass getMySQLJdbcConnectionClass(final Ruby runtime) {
+        return getConnectionAdapters(runtime).getClass("MySQLJdbcConnection");
+    } */
+    
     @Override
     protected IRubyObject indexes(final ThreadContext context, final String tableName, final String name, final String schemaName) {
         return withConnection(context, new Callable<IRubyObject>() {
