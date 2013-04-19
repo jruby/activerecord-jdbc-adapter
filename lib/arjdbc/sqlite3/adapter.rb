@@ -242,22 +242,6 @@ module ArJdbc
       table_name && tables(nil, table_name).any?
     end
     
-    IndexDefinition = ::ActiveRecord::ConnectionAdapters::IndexDefinition # :nodoc:
-    
-    def indexes(table_name, name = nil)
-      result = select_rows("SELECT name, sql FROM sqlite_master" <<
-      " WHERE tbl_name = #{quote_table_name(table_name)} AND type = 'index'", name)
-
-      result.map do |row|
-        name, index_sql = row[0], row[1]
-        unique = !! (index_sql =~ /unique/i)
-        columns = index_sql.match(/\((.*)\)/)[1].gsub(/,/,' ').split.map do |col|
-          match = /^"(.+)"$/.match(col); match ? match[1] : col
-        end
-        IndexDefinition.new(table_name, name, unique, columns)
-      end
-    end
-    
     # Returns 62. SQLite supports index names up to 64
     # characters. The rest is used by rails internally to perform
     # temporary rename operations
