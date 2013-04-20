@@ -30,16 +30,14 @@ module ArJdbc
       mod = const_set(name, Module.new)
     end
     (class << mod; self; end).instance_eval do
-      unless respond_to?(:adapter_matcher)
-        define_method :adapter_matcher do |_name, config|
-          if block.arity == 1
-            block.call(_name) ? mod : false
-          else
-            block.call(_name, config) ? mod : false
-          end
+      define_method :adapter_matcher do |_name, config|
+        if block.arity == 1
+          block.call(_name) ? mod : false
+        else
+          block.call(_name, config) ? mod : false
         end
       end
-    end
+    end unless mod.respond_to?(:adapter_matcher)
   end
   
   private
