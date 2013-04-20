@@ -10,17 +10,20 @@ namespace :rails do
     
     rubylib = [ 
       "#{ar_jdbc_dir}/lib",
-      "#{ar_jdbc_dir}/test/rails", # just to load our rails_helper
+      "#{ar_jdbc_dir}/test/rails",
       "#{ar_jdbc_dir}/jdbc-#{_driver(driver)}/lib",
       "#{ar_jdbc_dir}/activerecord-jdbc#{_adapter(driver)}-adapter/lib"
     ]
     rubylib << File.expand_path('activesupport/lib', rails_dir)
     rubylib << File.expand_path('activemodel/lib', rails_dir)
     rubylib << File.expand_path(File.join(activerecord_dir, 'lib'))
+    requires = _requires(driver) || []
 
-    Dir.chdir(activerecord_dir) do 
-      rake_args = [ "RUBYLIB=#{rubylib.join(':')}", "#{_target(driver)}" ]
-      ruby "-S", "rake", *rake_args # -rrails_helper
+    Dir.chdir(activerecord_dir) do
+      ruby = FileUtils::RUBY
+      i_lib = "-I#{rubylib.join(':')}"
+      r_requires = requires.map { |feat| "-r#{feat}" }.join(' ')
+      sh "#{ruby} #{i_lib} #{r_requires} -S rake #{_target(driver)}"
     end
   end
   
@@ -57,6 +60,15 @@ namespace :rails do
       'test_jdbcpostgresql'
     else
       "test_jdbc#{name.downcase}"
+    end
+  end
+
+  def _requires(name)
+    case name
+    when /mysql/i
+      [ 'mysql' ] # -rmysql - so Rails tests do not complain about missing Mysql
+    else
+      nil
     end
   end
   
