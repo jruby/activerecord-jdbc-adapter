@@ -55,26 +55,26 @@ class SQLite3SimpleTest < Test::Unit::TestCase
     cols = ActiveRecord::Base.connection.columns("entries")
     assert cols.find {|col| col.name == "test_remove_column"}
 
-    assert_nothing_raised do
+    #assert_nothing_raised do
       ActiveRecord::Schema.define do
         remove_column "entries", "test_remove_column"
       end
-    end
+    #end
 
     cols = ActiveRecord::Base.connection.columns("entries")
-    assert !cols.find {|col| col.name == "test_remove_column"}
+    assert_nil cols.find {|col| col.name == "test_remove_column"}
   end
 
   def test_rename_column
-    assert_nothing_raised do
+    #assert_nothing_raised do
       ActiveRecord::Schema.define do
         rename_column "entries", "title", "name"
       end
-    end
+    #end
 
     cols = ActiveRecord::Base.connection.columns("entries")
-    assert cols.find {|col| col.name == "name"}
-    assert !cols.find {|col| col.name == "title"}
+    assert_not_nil cols.find {|col| col.name == "name"}
+    assert_nil cols.find {|col| col.name == "title"}
 
     assert_nothing_raised do
       ActiveRecord::Schema.define do
@@ -83,8 +83,8 @@ class SQLite3SimpleTest < Test::Unit::TestCase
     end
 
     cols = ActiveRecord::Base.connection.columns("entries")
-    assert cols.find {|col| col.name == "title"}
-    assert !cols.find {|col| col.name == "name"}
+    assert_not_nil cols.find {|col| col.name == "title"}
+    assert_nil cols.find {|col| col.name == "name"}
   end
 
   def test_rename_column_preserves_content

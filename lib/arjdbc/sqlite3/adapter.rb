@@ -338,6 +338,16 @@ module ArJdbc
       end
     end
 
+    if ActiveRecord::VERSION::MAJOR >= 4
+      
+    def remove_column(table_name, column_name, type = nil, options = {}) #:nodoc:
+      alter_table(table_name) do |definition|
+        definition.remove_column column_name
+      end
+    end
+      
+    else
+      
     def remove_column(table_name, *column_names) #:nodoc:
       if column_names.empty?
         raise ArgumentError.new(
@@ -352,7 +362,9 @@ module ArJdbc
       end
     end
     alias :remove_columns :remove_column
-
+    
+    end
+    
     def change_column_default(table_name, column_name, default) #:nodoc:
       alter_table(table_name) do |definition|
         definition[column_name].default = default
