@@ -9,7 +9,7 @@ class JndiConnectionPoolCallbacksTest < Test::Unit::TestCase
 
   def setup
     @logger = stub_everything "logger"
-    @config = JNDI_CONFIG
+    @config = JNDI_CONFIG.dup
     @connection = ActiveRecord::ConnectionAdapters::JdbcConnection.new @config
     Entry.connection_pool.disconnect!
     assert !Entry.connection_pool.connected?
@@ -23,13 +23,13 @@ class JndiConnectionPoolCallbacksTest < Test::Unit::TestCase
   def test_should_call_hooks_on_checkout_and_checkin
     @adapter = ActiveRecord::ConnectionAdapters::JdbcAdapter.new @connection, @logger, @config
     Entry.connection_pool.instance_variable_set "@connections", [@adapter]
-    assert !@connection.active?
+    assert_false @connection.active?
 
     Entry.connection_pool.checkout
-    assert @connection.active?
+    assert_true @connection.active?
 
     Entry.connection_pool.checkin @adapter
-    assert !@connection.active?
+    assert_false @connection.active?
   end
 
 end if ActiveRecord::Base.respond_to?(:connection_pool)
