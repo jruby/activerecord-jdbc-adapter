@@ -112,13 +112,13 @@ module DirtyAttributeTests
     user = User.create!(:login => 'cicina')
     old_updated_at = 61.minutes.ago.in_time_zone
     
-    User.update_all({ :updated_at => old_updated_at }, :login => user.login)
+    do_update_all(User, { :updated_at => old_updated_at }, :login => user.login)
 
     with_partial_updates User, false do
       assert_queries(1) { user.save! }
     end
 
-    User.update_all({ :updated_at => old_updated_at }, :login => user.login)
+    do_update_all(User, { :updated_at => old_updated_at }, :login => user.login)
     
     with_partial_updates User, true do
       assert_queries(0) { user.save! }
@@ -133,13 +133,13 @@ module DirtyAttributeTests
     entry = Entry.create!(:title => 'foo')
     old_updated_on = 25.hours.ago.beginning_of_day.in_time_zone
     
-    Entry.update_all({ :updated_on => old_updated_on }, :id => entry.id)
+    do_update_all(Entry, { :updated_on => old_updated_on }, :id => entry.id)
 
     with_partial_updates Entry, false do
       assert_queries(2) { 2.times { entry.save! } }
     end
 
-    Entry.update_all({ :updated_on => old_updated_on }, :id => entry.id)
+    do_update_all(Entry, { :updated_on => old_updated_on }, :id => entry.id)
     
     with_partial_updates Entry, true do
       assert_queries(0) { 2.times { entry.save! } }
@@ -158,6 +158,14 @@ module DirtyAttributeTests
     yield
   ensure
     klass.partial_updates = old
+  end
+  
+  def do_update_all(model, values, conditions)
+    if ar_version('3.2')
+      model.where(conditions).update_all(values)
+    else # User.update_all values, conditions deprecated on 4.0
+      model.update_all(values, conditions)
+    end
   end
   
 end
@@ -939,6 +947,13 @@ module SimpleTestMethods
     end
   end
   
+  def test_update
+    user = User.create! :login => 'update'
+    
+    User.update(user.id, :login => 'UPDATEd')
+    assert_equal 'UPDATEd', user.reload.login
+  end
+  
   def test_connection_alive_sql
     connection = ActiveRecord::Base.connection
     alive_sql = connection.config[:connection_alive_sql]
@@ -1156,7 +1171,7 @@ module ActiveRecord3TestMethods
       assert_nothing_raised do
         Thing.create! :name => "a thing"
       end
-      assert_equal 1, Thing.find(:all).size
+      assert_equal 1, Thing.all.size
     end
     
   end
