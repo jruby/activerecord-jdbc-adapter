@@ -114,3 +114,22 @@ Rake::TestTask.new(:test_sybase_jconnect) do |task|
   task.libs << 'test'
   set_compat_version(task)
 end
+
+Rake::TraceOutput.module_eval do
+
+  # NOTE: avoid TypeError: String can't be coerced into Fixnum
+  # due this method gettings a strings == [ 1 ] argument ...
+  def trace_on(out, *strings)
+    sep = $\ || "\n"
+    if strings.empty?
+      output = sep
+    else
+      output = strings.map { |s|
+        next if s.nil?; s = s.to_s
+        s =~ /#{sep}$/ ? s : s + sep
+      }.join
+    end
+    out.print(output)
+  end
+  
+end
