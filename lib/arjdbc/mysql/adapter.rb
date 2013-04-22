@@ -611,7 +611,6 @@ module ActiveRecord
   module ConnectionAdapters
     # Remove any vestiges of core/Ruby MySQL adapter
     remove_const(:MysqlColumn) if const_defined?(:MysqlColumn)
-    remove_const(:MysqlAdapter) if const_defined?(:MysqlAdapter)
 
     class MysqlColumn < JdbcColumn
       include ::ArJdbc::MySQL::Column
@@ -626,6 +625,8 @@ module ActiveRecord
       
     end
 
+    remove_const(:MysqlAdapter) if const_defined?(:MysqlAdapter)
+    
     class MysqlAdapter < JdbcAdapter
       include ::ArJdbc::MySQL
       include ::ArJdbc::MySQL::ExplainSupport
@@ -668,6 +669,3 @@ module ActiveRecord
     end
   end
 end
-
-$LOADED_FEATURES << 'active_record/connection_adapters/mysql_adapter.rb'
-$LOADED_FEATURES << 'active_record/connection_adapters/mysql2_adapter.rb'

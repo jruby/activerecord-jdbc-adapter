@@ -1,31 +1,29 @@
-# arjdbc/discover.rb: Declare ArJdbc.extension modules in this file
-# that loads a custom module and adapter.
+# this file is discovered by the extension mechanism 
+# @see {ArJdbc#discover_extensions}
 
-module ::ArJdbc
-  # Adapters built-in to AR are required up-front so we can override
-  # the native ones
-  require 'arjdbc/mysql'
+module ArJdbc
+  
+  require 'arjdbc/jdbc/adapter_require'
+  
+  # Adapters built-in to AR :
+  
+  require 'arjdbc/mysql' if Java::JavaLang::Boolean.getBoolean('arjdbc.mysql.eager_load')
+  require 'arjdbc/postgresql' if Java::JavaLang::Boolean.getBoolean('arjdbc.postgresql.eager_load')
+  require 'arjdbc/sqlite3' if Java::JavaLang::Boolean.getBoolean('arjdbc.sqlite3.eager_load')
+  
   extension :MySQL do |name|
-    name =~ /mysql/i
+    require('arjdbc/mysql') || true if name =~ /mysql/i
   end
-
-  require 'arjdbc/postgresql'
+  
   extension :PostgreSQL do |name|
-    name =~ /postgre/i
+    require('arjdbc/postgresql') || true if name =~ /postgre/i
   end
 
-  require 'arjdbc/sqlite3'
   extension :SQLite3 do |name|
-    name =~ /sqlite/i
+    require('arjdbc/sqlite3') || true if name =~ /sqlite/i
   end
-
-  # Other adapters are lazy-loaded
-  extension :DB2 do |name, config|
-    if name =~ /(db2|as400)/i && config[:url] !~ /^jdbc:derby:net:/
-      require 'arjdbc/db2'
-      true
-    end
-  end
+  
+  # Other supported adapters :
 
   extension :Derby do |name, config|
     if name =~ /derby/i
@@ -49,6 +47,37 @@ module ::ArJdbc
     end
   end
 
+  extension :H2 do |name|
+    require('arjdbc/h2') || true if name =~ /\.h2\./i
+  end
+
+  extension :HSQLDB do |name|
+    require('arjdbc/hsqldb') || true if name =~ /hsqldb/i
+  end
+
+  extension :MSSQL do |name|
+    if name =~ /sqlserver|tds|Microsoft SQL/i
+      require 'arjdbc/mssql'
+      true
+    end
+  end
+
+  extension :DB2 do |name, config|
+    if name =~ /(db2|as400)/i && config[:url] !~ /^jdbc:derby:net:/
+      require 'arjdbc/db2'
+      true
+    end
+  end
+  
+  extension :Oracle do |name|
+    if name =~ /oracle/i
+      require 'arjdbc/oracle'
+      true
+    end
+  end
+  
+  # NOTE: following ones are likely getting deprecated :
+  
   extension :FireBird do |name|
     if name =~ /firebird/i
       require 'arjdbc/firebird'
@@ -56,20 +85,13 @@ module ::ArJdbc
     end
   end
 
-  extension :H2 do |name|
-    if name =~ /\.h2\./i
-      require 'arjdbc/h2'
+  extension :Sybase do |name|
+    if name =~ /sybase|tds/i
+      require 'arjdbc/sybase'
       true
     end
   end
-
-  extension :HSQLDB do |name|
-    if name =~ /hsqldb/i
-      require 'arjdbc/hsqldb'
-      true
-    end
-  end
-
+  
   extension :Informix do |name|
     if name =~ /informix/i
       require 'arjdbc/informix'
@@ -83,25 +105,5 @@ module ::ArJdbc
       true
     end
   end
-
-  extension :MSSQL do |name|
-    if name =~ /sqlserver|tds|Microsoft SQL/i
-      require 'arjdbc/mssql'
-      true
-    end
-  end
-
-  extension :Oracle do |name|
-    if name =~ /oracle/i
-      require 'arjdbc/oracle'
-      true
-    end
-  end
-
-  extension :Sybase do |name|
-    if name =~ /sybase|tds/i
-      require 'arjdbc/sybase'
-      true
-    end
-  end
+  
 end

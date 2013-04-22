@@ -435,8 +435,8 @@ module ArJdbc
 end
 
 module ActiveRecord::ConnectionAdapters
+  
   remove_const(:SQLite3Adapter) if const_defined?(:SQLite3Adapter)
-  remove_const(:SQLiteAdapter) if const_defined?(:SQLiteAdapter)
 
   class SQLite3Column < JdbcColumn
     include ArJdbc::SQLite3::Column
@@ -475,9 +475,8 @@ module ActiveRecord::ConnectionAdapters
     
   end
 
+  remove_const(:SQLiteColumn) if const_defined?(:SQLiteColumn)
+  remove_const(:SQLiteAdapter) if const_defined?(:SQLiteAdapter)
+  
   SQLiteAdapter = SQLite3Adapter
 end
-
-# no need to load (native) built-in ActiveRecord SQLite3 adapter :
-$LOADED_FEATURES << 'active_record/connection_adapters/sqlite_adapter.rb'
-$LOADED_FEATURES << 'active_record/connection_adapters/sqlite3_adapter.rb'
