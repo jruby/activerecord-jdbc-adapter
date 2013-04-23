@@ -8,8 +8,8 @@ module ArJdbc
           return string unless String === string
 
           case string
-          when 'infinity'; 1.0 / 0.0
-          when '-infinity'; -1.0 / 0.0
+          when  'infinity' then  1.0 / 0.0
+          when '-infinity' then -1.0 / 0.0
           when / BC$/
             super("-" + string.sub(/ BC$/, ""))
           else
@@ -19,9 +19,7 @@ module ArJdbc
 
         def hstore_to_string(object)
           if Hash === object
-            object.map { |k,v|
-              "#{escape_hstore(k)}=>#{escape_hstore(v)}"
-            }.join ','
+            object.map { |k,v| "#{escape_hstore(k)}=>#{escape_hstore(v)}" }.join(',')
           else
             object
           end

@@ -202,6 +202,7 @@ module ArJdbc
         when :cidr, :inet then self.class.string_to_cidr value
         when :macaddr then value
         when :tsvector then value
+        when :datetime, :timestamp then self.class.string_to_time value
         else
           case sql_type
           when 'money'
@@ -1025,7 +1026,7 @@ module ArJdbc
       
       case value
       when Float
-        if value.infinite? && column.type == :datetime
+        if value.infinite? && ( column.type == :datetime || column.type == :timestamp )
           "'#{value.to_s.downcase}'"
         elsif value.infinite? || value.nan?
           "'#{value.to_s}'"
@@ -1248,7 +1249,11 @@ module ArJdbc
         notnull = notnull == 't' if notnull.is_a?(String) # JDBC gets true/false
         # for ID columns we get a bit of non-sense default :
         # e.g. "nextval('mixed_cases_id_seq'::regclass"
-        default = nil if default =~ /^nextval\(.*?\:\:regclass\)$/
+        if default =~ /^nextval\(.*?\:\:regclass\)$/
+          default = nil
+        elsif default =~ /^\(([-+]?[\d\.]+)\)$/ # e.g. "(-1)" for a negative default
+          default = $1
+        end
         klass.new(name, default, oid, type, ! notnull)
       end
     end

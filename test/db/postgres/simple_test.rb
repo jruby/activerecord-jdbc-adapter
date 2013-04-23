@@ -91,6 +91,15 @@ class PostgresSimpleTest < Test::Unit::TestCase
     connection.drop_table :testings rescue nil
   end
 
+  def test_resolves_correct_columns_default
+    assert column = DbType.columns.find { |col| col.name == 'sample_small_decimal' }
+    assert_equal 3.14, column.default
+    assert column = DbType.columns.find { |col| col.name == 'sample_integer_no_limit' }
+    assert_equal 42, column.default
+    assert column = DbType.columns.find { |col| col.name == 'sample_integer_neg_default' }
+    assert_equal -1, column.default
+  end
+  
   def test_supports_standard_conforming_string
     assert([true, false].include?(connection.supports_standard_conforming_strings?))
   end
@@ -166,33 +175,61 @@ class PostgresTimestampTest < Test::Unit::TestCase
 
     assert_match(/^character varying/, sample_string.sql_type)
   end
+  
+  def test_select_infinity
+    d = DbType.find_by_sql("select 'infinity'::timestamp as sample_timestamp").first
+    assert d.sample_timestamp.infinite?, "timestamp: #{d.sample_timestamp.inspect} should be infinite"
 
-  # infinite timestamp tests based on rails tests for postgresql_adapter.rb
-  def test_load_infinity_and_beyond
-    d = DbType.find_by_sql("select 'infinity'::timestamp as sample_timestamp")
-    assert d.first.sample_timestamp.infinite?, 'timestamp should be infinite'
-
-    d = DbType.find_by_sql "select '-infinity'::timestamp as sample_timestamp"
-    time = d.first.sample_timestamp
-    assert time.infinite?, "timestamp should be infinte"
+    d = DbType.find_by_sql("select '-infinity'::timestamp as sample_timestamp").first
+    
+    time = d.sample_timestamp
+    assert time.infinite?, "timestamp: #{time.inspect} should be infinte"
     assert_operator time, :<, 0
   end
 
-  def test_save_infinity_and_beyond
-    d = DbType.create!(:sample_timestamp => 1.0 / 0.0)
-    if ar_version('3.0')
-      assert_equal(1.0 / 0.0, d.sample_timestamp)
-    else # 2.3
-      assert_equal(nil, d.sample_timestamp)
-    end
-
-    e = DbType.create!(:sample_timestamp => -1.0 / 0.0)
-    if ar_version('3.0')
-      assert_equal(-1.0 / 0.0, e.sample_timestamp)
-    else # 2.3
-      assert_equal(nil, e.sample_timestamp)
+  def test_save_infinity
+    if ar_version('4.0')
+      # NOTE: likely an AR issue - it only works when time_zone_aware_attributes
+      # are disabled otherwise TimeZoneConversion's define_method_attribute=(attr_name)
+      # does the following code ("infinite" time instance ending as nil): 
+      # time_with_zone = time.respond_to?(:in_time_zone) ? time.in_time_zone : nil
+      tz_aware_attributes = ActiveRecord::Base.time_zone_aware_attributes
+      begin
+        ActiveRecord::Base.time_zone_aware_attributes = false
+        do_test_save_infinity
+      ensure
+        ActiveRecord::Base.time_zone_aware_attributes = tz_aware_attributes
+      end
+    else
+      do_test_save_infinity
     end
   end
+  
+  def do_test_save_infinity
+    d = DbType.new
+    d.sample_datetime = 1.0 / 0.0
+    d.save!
+    
+    if ar_version('3.0')
+      assert_equal 1.0 / 0.0, d.reload.sample_datetime # sample_timestamp
+    else # 2.3
+      assert_equal nil, d.reload.sample_datetime # d.sample_timestamp
+    end
+    
+    d = DbType.create!(:sample_timestamp => -1.0 / 0.0)
+    if ar_version('3.0')
+      assert_equal -1.0 / 0.0, d.sample_timestamp
+    else # 2.3
+      assert_equal nil, d.sample_timestamp
+    end
+  end
+  private :do_test_save_infinity
+  
+  def test_bc_timestamp
+    date = Date.new(0) - 1.second
+    db_type = DbType.create!(:sample_datetime => date)
+    assert_equal date, db_type.reload.sample_datetime # updated_at
+  end if ar_version('3.0')
   
 end
 
