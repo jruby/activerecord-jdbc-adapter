@@ -87,7 +87,7 @@ module ArJdbc
     end
 
     NATIVE_DATABASE_TYPES = {
-      :primary_key => "bigint auto_increment PRIMARY KEY",
+      :primary_key => "bigint identity",
       :boolean     => { :name => "boolean" },
       :tinyint     => { :name => "tinyint", :limit => 1 },
       :smallint    => { :name => "smallint", :limit => 2 },
