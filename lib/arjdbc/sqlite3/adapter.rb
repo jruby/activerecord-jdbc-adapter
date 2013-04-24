@@ -447,9 +447,10 @@ module ArJdbc
 end
 
 module ActiveRecord::ConnectionAdapters
-  
-  remove_const(:SQLite3Adapter) if const_defined?(:SQLite3Adapter)
 
+  # NOTE: SQLite3Column exists in native adapter since AR 4.0
+  remove_const(:SQLite3Column) if const_defined?(:SQLite3Column)
+  
   class SQLite3Column < JdbcColumn
     include ArJdbc::SQLite3::Column
 
@@ -473,6 +474,8 @@ module ActiveRecord::ConnectionAdapters
     end
   end
   
+  remove_const(:SQLite3Adapter) if const_defined?(:SQLite3Adapter)
+  
   class SQLite3Adapter < JdbcAdapter
     include ArJdbc::SQLite3
     include ArJdbc::SQLite3::ExplainSupport
@@ -487,8 +490,12 @@ module ActiveRecord::ConnectionAdapters
     
   end
 
-  remove_const(:SQLiteColumn) if const_defined?(:SQLiteColumn)
-  remove_const(:SQLiteAdapter) if const_defined?(:SQLiteAdapter)
-  
-  SQLiteAdapter = SQLite3Adapter
+  if ActiveRecord::VERSION::MAJOR <= 3
+    remove_const(:SQLiteColumn) if const_defined?(:SQLiteColumn)
+    SQLiteColumn = SQLite3Column
+    
+    remove_const(:SQLiteAdapter) if const_defined?(:SQLiteAdapter)
+
+    SQLiteAdapter = SQLite3Adapter
+  end
 end

@@ -358,8 +358,9 @@ module ArJdbc
 
     def columns(table_name, name = nil)#:nodoc:
       sql = "SHOW FIELDS FROM #{quote_table_name(table_name)}"
+      column = ::ActiveRecord::ConnectionAdapters::MysqlAdapter::Column
       execute(sql, 'SCHEMA').map do |field|
-        ::ActiveRecord::ConnectionAdapters::MysqlColumn.new(field["Field"], field["Default"], field["Type"], field["Null"] == "YES")
+        column.new(field["Field"], field["Default"], field["Type"], field["Null"] == "YES")
       end
     end
 
@@ -610,26 +611,28 @@ end
 module ActiveRecord
   module ConnectionAdapters
     # Remove any vestiges of core/Ruby MySQL adapter
-    remove_const(:MysqlColumn) if const_defined?(:MysqlColumn)
-
-    class MysqlColumn < JdbcColumn
-      include ::ArJdbc::MySQL::Column
-
-      def initialize(name, *args)
-        if Hash === name
-          super
-        else
-          super(nil, name, *args)
-        end
-      end
-      
-    end
-
     remove_const(:MysqlAdapter) if const_defined?(:MysqlAdapter)
     
     class MysqlAdapter < JdbcAdapter
       include ::ArJdbc::MySQL
       include ::ArJdbc::MySQL::ExplainSupport
+      
+      class Column < JdbcColumn
+        include ::ArJdbc::MySQL::Column
+
+        def initialize(name, *args)
+          if Hash === name
+            super
+          else
+            super(nil, name, *args)
+          end
+        end
+
+        def adapter
+          MysqlAdapter
+        end
+        
+      end
       
       def initialize(*args)
         super
@@ -641,7 +644,7 @@ module ActiveRecord
       end
 
       def jdbc_column_class
-        MysqlColumn
+        Column
       end
 
       # some QUOTING caching :
@@ -667,5 +670,22 @@ module ActiveRecord
       end
       
     end
+    
+    if ActiveRecord::VERSION::MAJOR < 3 ||
+        ( ActiveRecord::VERSION::MAJOR == 3 && ActiveRecord::VERSION::MINOR <= 1 )
+      remove_const(:MysqlColumn) if const_defined?(:MysqlColumn)
+      MysqlColumn = MysqlAdapter::Column
+    end
+
+    if ActiveRecord::VERSION::MAJOR > 3 ||
+        ( ActiveRecord::VERSION::MAJOR == 3 && ActiveRecord::VERSION::MINOR >= 1 )
+      remove_const(:Mysql2Adapter) if const_defined?(:Mysql2Adapter)
+      Mysql2Adapter = MysqlAdapter
+      if ActiveRecord::VERSION::MAJOR == 3 && ActiveRecord::VERSION::MINOR == 1
+        remove_const(:Mysql2Column) if const_defined?(:Mysql2Column)
+        Mysql2Column = MysqlAdapter::Colum
+      end
+    end
+    
   end
 end
