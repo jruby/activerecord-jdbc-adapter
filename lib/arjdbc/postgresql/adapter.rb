@@ -436,13 +436,13 @@ module ArJdbc
         return super(value, column) unless 'bytea' == column.sql_type
         value # { :value => value, :format => 1 }
       when Array
-        return super(value, column) unless column.array
+        return super(value, column) unless column.array?
         column_class = ::ActiveRecord::ConnectionAdapters::PostgreSQLColumn
         column_class.array_to_string(value, column, self)
       when NilClass
-        if column.array && array_member
+        if column.array? && array_member
           'NULL'
-        elsif column.array
+        elsif column.array?
           value
         else
           super(value, column)
@@ -1056,7 +1056,7 @@ module ArJdbc
           super
         end
       when Array
-        if column.array && AR4_COMPAT
+        if column.array? && AR4_COMPAT
           column_class = ::ActiveRecord::ConnectionAdapters::PostgreSQLColumn
           "'#{column_class.array_to_string(value, column, self)}'"
         else
@@ -1429,13 +1429,15 @@ module ActiveRecord::ConnectionAdapters
   class PostgreSQLColumn < JdbcColumn
     include ArJdbc::PostgreSQL::Column
     
-    def initialize(name, default, oid_type, sql_type = nil, null = true)
+    def initialize(name, default, oid_type = nil, sql_type = nil, null = true)
+      # NOTE: we support AR <= 3.2 : (name, default, sql_type = nil, null = true)
+      null, sql_type, oid_type = !! sql_type, oid_type, nil unless oid_type.is_a?(Integer)
       @oid_type = oid_type
       if sql_type =~ /\[\]$/
-        @array = true
+        @array = true if respond_to?(:array)
         super(name, default, sql_type[0..sql_type.length - 3], null)
       else
-        @array = false
+        @array = false if respond_to?(:array)
         super(name, default, sql_type, null)
       end
     end
@@ -1546,9 +1548,7 @@ module ActiveRecord::ConnectionAdapters
         # NOTE: <= 3.1 no #new_column_definition hard-coded ColumnDef.new :
         # column = self[name] || ColumnDefinition.new(@base, name, type)
         # thus we simply do not support array column definitions on <= 3.1
-        if column.is_a?(ColumnDefinition)
-          column.array = options[:array]
-        end
+        column.array = options[:array] if column.is_a?(ColumnDefinition)
         self
       end
 
