@@ -15,6 +15,7 @@ GEM
       bundler
       rake
     arel (2.0.10)
+    bcrypt-ruby (3.0.1)
     bcrypt-ruby (3.0.1-java)
     bouncy-castle-java (1.5.0147)
     builder (2.1.2)
@@ -31,7 +32,7 @@ GEM
       simplecov-html (~> 0.7.1)
     simplecov-html (0.7.1)
     test-unit (2.5.4)
-    test-unit-context (0.3.0)
+    test-unit-context (0.3.1)
       test-unit (>= 2.4.0)
     tzinfo (0.3.37)
 

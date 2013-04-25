@@ -58,7 +58,9 @@ GEM
       bundler
       rake
     arel (4.0.0)
+    atomic (1.1.8)
     atomic (1.1.8-java)
+    bcrypt-ruby (3.0.1)
     bcrypt-ruby (3.0.1-java)
     bouncy-castle-java (1.5.0147)
     builder (3.1.4)
@@ -96,7 +98,7 @@ GEM
       activesupport (>= 3.0)
       sprockets (~> 2.8)
     test-unit (2.5.4)
-    test-unit-context (0.3.0)
+    test-unit-context (0.3.1)
       test-unit (>= 2.4.0)
     thor (0.18.1)
     thread_safe (0.1.0)
