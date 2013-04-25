@@ -21,8 +21,7 @@ class MysqlSimpleTest < Test::Unit::TestCase
   def test_column_class_instantiation
     text_column = nil
     assert_nothing_raised do
-      text_column = ActiveRecord::ConnectionAdapters::MysqlColumn.
-        new("title", nil, "text")
+      text_column = ActiveRecord::ConnectionAdapters::MysqlAdapter::Column.new("title", nil, "text")
     end
     assert_not_nil text_column
   end
