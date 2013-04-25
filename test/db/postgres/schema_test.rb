@@ -15,8 +15,10 @@ class PostgresSchemaTest < Test::Unit::TestCase
   def test_raise_create_schema_with_existing_schema
     begin
       connection.create_schema "test_schema3"
-      assert_raise(ActiveRecord::StatementInvalid) do
-        connection.create_schema "test_schema3"
+      disable_logger(connection) do
+        assert_raise(ActiveRecord::StatementInvalid) do
+          connection.create_schema "test_schema3"
+        end
       end
     ensure
       connection.drop_schema "test_schema3"

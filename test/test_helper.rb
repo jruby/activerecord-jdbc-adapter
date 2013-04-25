@@ -78,13 +78,35 @@ class Test::Unit::TestCase
     strio.string
   end
   
-#  def teardown
-#    clear_active_connections!
-#  end
-#
-#  def clear_active_connections!
-#    ActiveRecord::Base.clear_active_connections!
-#  end
+  def self.disable_logger(connection, &block)
+    raise "need a block" unless block_given?
+    return disable_connection_logger(connection, &block) if connection
+    logger = ActiveRecord::Base.logger
+    begin
+      ActiveRecord::Base.logger = nil
+      yield
+    ensure
+      ActiveRecord::Base.logger = logger
+    end
+  end
+
+  def self.disable_connection_logger(connection)
+    logger = connection.send(:instance_variable_get, :@logger)
+    begin
+      connection.send(:instance_variable_set, :@logger, nil)
+      yield
+    ensure
+      connection.send(:instance_variable_set, :@logger, logger)
+    end    
+  end
+  
+  def disable_logger(connection, &block)
+    self.class.disable_logger(connection, &block)
+  end
+  
+  def clear_active_connections!
+    ActiveRecord::Base.clear_active_connections!
+  end
   
   protected
   

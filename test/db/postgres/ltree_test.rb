@@ -12,15 +12,16 @@ class PostgresqlLtreeTest < Test::Unit::TestCase
   
   def self.startup
     connection = ActiveRecord::Base.connection
-    connection = ActiveRecord::Base.connection
     connection.transaction do
-      connection.create_table('ltrees') do |t|
-        t.ltree 'path'
+      disable_logger(connection) do
+        connection.create_table('ltrees') do |t|
+          t.ltree 'path'
+        end
       end
     end
     @@ltree_support = true
-  rescue ActiveRecord::StatementInvalid => e
-    puts "skiping ltree tests due: #{e.message}"
+  rescue ActiveRecord::ActiveRecordError => e
+    puts "skiping ltree tests due: #{e.message}" unless e.message.index('type "ltree" does not exist')
     @@ltree_support = false
   end
 

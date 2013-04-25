@@ -152,12 +152,26 @@ module DirtyAttributeTests
   
   private
   
-  def with_partial_updates(klass, on = true)
-    old = klass.partial_updates?
-    klass.partial_updates = on
-    yield
-  ensure
-    klass.partial_updates = old
+  if ActiveRecord::VERSION::MAJOR > 3
+    
+    def with_partial_updates(klass, on = true)
+      old = klass.partial_writes?
+      klass.partial_writes = on
+      yield
+    ensure
+      klass.partial_writes = old
+    end
+    
+  else
+    
+    def with_partial_updates(klass, on = true)
+      old = klass.partial_updates?
+      klass.partial_updates = on
+      yield
+    ensure
+      klass.partial_updates = old
+    end
+    
   end
   
   def do_update_all(model, values, conditions)
@@ -539,8 +553,10 @@ module SimpleTestMethods
     class Animal < ActiveRecord::Base; end
 
     def test_fetching_columns_for_nonexistent_table
-      assert_raise(ActiveRecord::ActiveRecordError, ActiveRecord::StatementInvalid, ActiveRecord::JDBCError) do
-        Animal.columns
+      disable_logger(Animal.connection) do
+        assert_raise(ActiveRecord::StatementInvalid, ActiveRecord::JDBCError) do
+          Animal.columns
+        end
       end
     end
   end
