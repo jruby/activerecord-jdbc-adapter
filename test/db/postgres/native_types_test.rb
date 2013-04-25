@@ -52,11 +52,7 @@ class PostgresNativeTypesTest < Test::Unit::TestCase
   end
   
   def test_interval_should_be_mapped_to_string
-    if ar_version('4.0')
-      assert_equal :interval, column_type("interval_should_be_string")
-    else
-      assert_equal :string, column_type("interval_should_be_string")
-    end
+    assert_equal :string, column_type("interval_should_be_string")
   end
   
   def test_bigint_serial_should_be_mapped_to_integer

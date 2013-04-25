@@ -641,8 +641,8 @@ _SQL
     @first_network_address.mac_address = new_mac_address
     @first_network_address.save!
     @first_network_address.reload
-    assert_equal new_cidr_address, @first_network_address.cidr_address
-    assert_equal new_inet_address, @first_network_address.inet_address
+    assert_equal '10.0.0.0', @first_network_address.cidr_address.to_s
+    assert_equal '10.1.2.3', @first_network_address.inet_address.to_s
     assert_equal new_mac_address, @first_network_address.mac_address
   end if ar_version('4.0')
 
