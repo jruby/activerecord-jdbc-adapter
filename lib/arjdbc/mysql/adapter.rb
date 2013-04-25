@@ -683,7 +683,7 @@ module ActiveRecord
       Mysql2Adapter = MysqlAdapter
       if ActiveRecord::VERSION::MAJOR == 3 && ActiveRecord::VERSION::MINOR == 1
         remove_const(:Mysql2Column) if const_defined?(:Mysql2Column)
-        Mysql2Column = MysqlAdapter::Colum
+        Mysql2Column = MysqlAdapter::Column
       end
     end
     
