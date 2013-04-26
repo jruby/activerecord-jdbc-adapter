@@ -39,19 +39,19 @@ class MysqlSchemaDumpTest < Test::Unit::TestCase
   
   def test_schema_dump_should_not_add_default_value_for_mysql_text_field
     output = standard_dump
-    assert_match %r{t.text\s+"just_text",\s+:null => false$}, output
+    assert_match %r{t.text\s+"just_text",[\s|:]+null[\s\:\=\>]+false$}, output
   end
   
   def test_schema_dump_includes_length_for_mysql_blob_and_text_fields
     output = standard_dump   
-    assert_match %r{t.binary\s+"tiny_blob",\s+:limit => 255$}, output
+    assert_match %r{t.binary\s+"tiny_blob",[\s|:]+limit[\s\:\=\>]+255$}, output
     assert_match %r{t.binary\s+"normal_blob"$}, output
-    assert_match %r{t.binary\s+"medium_blob",\s+:limit => 16777215$}, output
-    assert_match %r{t.binary\s+"long_blob",\s+:limit => 2147483647$}, output
-    assert_match %r{t.text\s+"tiny_text",\s+:limit => 255$}, output
+    assert_match %r{t.binary\s+"medium_blob",[\s|:]+limit[\s\:\=\>]+16777215$}, output
+    assert_match %r{t.binary\s+"long_blob",[\s|:]+limit[\s\:\=\>]+2147483647$}, output
+    assert_match %r{t.text\s+"tiny_text",[\s|:]+limit[\s\:\=\>]+255$}, output
     assert_match %r{t.text\s+"normal_text"$}, output
-    assert_match %r{t.text\s+"medium_text",\s+:limit => 16777215$}, output
-    assert_match %r{t.text\s+"long_text",\s+:limit => 2147483647$}, output
+    assert_match %r{t.text\s+"medium_text",[\s|:]+limit[\s\:\=\>]+16777215$}, output
+    assert_match %r{t.text\s+"long_text",[\s|:]+limit[\s\:\=\>]+2147483647$}, output
   end
   
   def test_schema_dump_includes_length_for_mysql_binary_fields
@@ -132,18 +132,18 @@ class MysqlInfoTest < Test::Unit::TestCase
     strio = StringIO.new
     ActiveRecord::SchemaDumper::dump(connection, strio)
     dump = strio.string
-    assert_match %r{t.text\s+"text",\s+:limit => 2147483647$}, dump
+    assert_match %r{t.text\s+"text",[\s|:]+limit[\s\:\=\>]+2147483647$}, dump
   end
 
   # JRUBY-5040
   def test_schema_dump_should_not_have_limits_on_datetime
     dump = schema_dump
-    dump.lines.grep(/datetime/).each {|line| assert line !~ /limit/ }
+    dump.lines.grep(/datetime/).each { |line| assert line !~ /limit/ }
   end
 
   def test_schema_dump_should_not_have_limits_on_date
     dump = schema_dump
-    dump.lines.grep(/date/).each {|line| assert line !~ /limit/ }
+    dump.lines.grep(/date/).each { |line| assert line !~ /limit/ }
   end
 
   def test_should_include_limit
@@ -153,7 +153,7 @@ class MysqlInfoTest < Test::Unit::TestCase
 
   def test_should_set_sqltype_to_longtext
     text_column = connection.columns('memos').find { |c| c.name == 'text' }
-    assert text_column.sql_type =~ /^longtext/i
+    assert text_column.sql_type =~ /^longtext/i, "longtext sql type expected for: #{text_column.inspect}"
   end
 
   def test_should_set_type_to_text
