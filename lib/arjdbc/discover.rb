@@ -56,19 +56,24 @@ module ArJdbc
   end
 
   extension :MSSQL do |name|
-    if name =~ /sqlserver|tds|Microsoft SQL/i
-      require 'arjdbc/mssql'
-      true
-    end
+    require('arjdbc/mssql') || true if name =~ /sqlserver|tds|Microsoft SQL/i
   end
 
   extension :DB2 do |name, config|
-    if name =~ /(db2|as400)/i && config[:url] !~ /^jdbc:derby:net:/
+    if name =~ /db2/i && config[:url] !~ /^jdbc:derby:net:/
       require 'arjdbc/db2'
       true
     end
   end
   
+  extension :AS400 do |name, config|
+    if name =~ /as400/i
+      require 'arjdbc/db2'
+      require 'arjdbc/db2/as400'
+      true
+    end
+  end
+
   extension :Oracle do |name|
     if name =~ /oracle/i
       require 'arjdbc/oracle'

@@ -14,4 +14,23 @@ ArJdbc::ConnectionMethods.module_eval do
     jdbc_connection(config)
   end
   alias_method :jdbcdb2_connection, :db2_connection
+
+  def as400_connection(config)
+    config[:url] ||= begin
+      # jdbc:as400://[host]
+      url = 'jdbc:as400://'
+      url << config[:host] if config[:host]
+      # jdbc:as400://myiSeries;database name=IASP1
+      url << ";database name=#{config[:database]}" if config[:database]
+      # jdbc:as400://[host];proxy server=HODServerName:proxyServerPort
+      url << ";proxy server=#{config[:proxy]}" if config[:proxy]
+      url
+    end
+    require 'arjdbc/db2/as400'
+    config[:driver] ||= ::ArJdbc::AS400::DRIVER_NAME
+    config[:adapter_spec] = ::ArJdbc::AS400
+    config[:connection_alive_sql] ||= 'SELECT 1 FROM syscat.tables FETCH FIRST 1 ROWS ONLY'
+    jdbc_connection(config)
+  end
+  alias_method :jdbcas400_connection, :as400_connection
 end

@@ -13,7 +13,7 @@ module Jdbc
     end
 
     def self.driver_name
-      'com.ibm.db2.jcc.DB2Driver'
+      'com.ibm.db2.jcc.DB2Driver' # ArJdbc::DB2::DRIVER_NAME
     end
   end
   module AS400
@@ -26,7 +26,7 @@ module Jdbc
     end
 
     def self.driver_name
-      'com.ibm.as400.access.AS400JDBCDriver'
+      'com.ibm.as400.access.AS400JDBCDriver' # ArJdbc::AS400::DRIVER_NAME
     end
   end
 end

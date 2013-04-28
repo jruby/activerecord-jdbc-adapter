@@ -47,7 +47,7 @@ module ArJdbc
     end
     
     def self.column_selector
-      [ /(db2|as400|zos)/i, lambda { |cfg, column| column.extend(::ArJdbc::DB2::Column) } ]
+      [ /(db2|zos)/i, lambda { |cfg, column| column.extend(::ArJdbc::DB2::Column) } ]
     end
 
     def self.jdbc_connection_class
@@ -56,10 +56,10 @@ module ArJdbc
 
     def self.arel2_visitors(config)
       require 'arel/visitors/db2'
-      { 'db2'   => ::Arel::Visitors::DB2, 'as400' => ::Arel::Visitors::DB2 }
+      { 'db2' => ::Arel::Visitors::DB2 }
     end
     
-    ADAPTER_NAME = 'DB2'
+    ADAPTER_NAME = 'DB2'.freeze
     
     def adapter_name
       ADAPTER_NAME
@@ -195,54 +195,15 @@ module ArJdbc
     def prefetch_primary_key?(table_name = nil)
       # TRUE if the table has no identity column
       names = table_name.upcase.split(".")
-      if as400?
-        sql = "SELECT 1 FROM SYSIBM.SQLPRIMARYKEYS WHERE "
-        sql << "TABLE_SCHEM = '#{names.first}' AND " if names.size == 2
-        sql << "TABLE_NAME = '#{names.last}'"
-      else
-        sql = "SELECT 1 FROM SYSCAT.COLUMNS WHERE IDENTITY = 'Y' "
-        sql << "AND TABSCHEMA = '#{names.first}' " if names.size == 2
-        sql << "AND TABNAME = '#{names.last}'"
-      end
+      sql = "SELECT 1 FROM SYSCAT.COLUMNS WHERE IDENTITY = 'Y' "
+      sql << "AND TABSCHEMA = '#{names.first}' " if names.size == 2
+      sql << "AND TABNAME = '#{names.last}'"
       select_one(sql).nil?
     end
 
     def next_sequence_value(sequence_name)
       select_value("SELECT NEXT VALUE FOR #{sequence_name} FROM sysibm.sysdummy1")
     end
-
-    # holy moly batman! all this to tell AS400 "yes i am sure"
-    def execute_and_auto_confirm(sql)
-      begin
-        @connection.execute_update "call qsys.qcmdexc('QSYS/CHGJOB INQMSGRPY(*SYSRPYL)',0000000031.00000)"
-        @connection.execute_update "call qsys.qcmdexc('ADDRPYLE SEQNBR(9876) MSGID(CPA32B2) RPY(''I'')',0000000045.00000)"
-      rescue Exception => e
-        raise "Could not call CHGJOB INQMSGRPY(*SYSRPYL) and ADDRPYLE SEQNBR(9876) MSGID(CPA32B2) RPY('I').\n" +
-              "Do you have authority to do this?\n\n#{e.inspect}"
-      end
-
-      result = execute sql
-
-      begin
-        @connection.execute_update "call qsys.qcmdexc('QSYS/CHGJOB INQMSGRPY(*DFT)',0000000027.00000)"
-        @connection.execute_update "call qsys.qcmdexc('RMVRPYLE SEQNBR(9876)',0000000021.00000)"
-      rescue Exception => e
-        raise "Could not call CHGJOB INQMSGRPY(*DFT) and RMVRPYLE SEQNBR(9876).\n" +
-              "Do you have authority to do this?\n\n#{e.inspect}"
-      end
-      result
-    end
-
-    def _execute(sql, name = nil)
-      if self.class.select?(sql)
-        @connection.execute_query_raw(sql)
-      elsif self.class.insert?(sql)
-        (@connection.execute_insert(sql) || last_insert_id(sql)).to_i
-      else
-        @connection.execute_update(sql)
-      end
-    end
-    private :_execute
     
     def last_insert_id(sql)
       table_name = sql.split(/\s/)[2]
@@ -464,11 +425,7 @@ module ArJdbc
     end
     private :build_ordering
 
-    def reorg_table(table_name, name = nil)
-      exec_update "call sysproc.admin_cmd ('REORG TABLE #{table_name}')", name, [] unless as400?
-    end
-    private :reorg_table
-
+    # @deprecated seems not sued nor tested ?!
     def runstats_for_table(tablename, priority = 10)
       @connection.execute_update "call sysproc.admin_cmd('RUNSTATS ON TABLE #{tablename} WITH DISTRIBUTION AND DETAILED INDEXES ALL UTIL_IMPACT_PRIORITY #{priority}')"
     end
@@ -498,12 +455,8 @@ module ArJdbc
     # http://publib.boulder.ibm.com/infocenter/db2luw/v9r7/topic/com.ibm.db2.luw.admin.dbobj.doc/doc/t0020130.html
     # ...not supported on IBM i, so we raise in this case
     def rename_column(table_name, column_name, new_column_name) #:nodoc:
-      if as400?
-        raise NotImplementedError, "rename_column is not supported on IBM i"
-      else
-        execute "ALTER TABLE #{table_name} RENAME COLUMN #{column_name} TO #{new_column_name}"
-        reorg_table(table_name, 'Rename Column')
-      end
+      sql = "ALTER TABLE #{table_name} RENAME COLUMN #{column_name} TO #{new_column_name}"
+      execute_table_change(sql, table_name, 'Rename Column')
     end
 
     def change_column_null(table_name, column_name, null)
@@ -512,8 +465,7 @@ module ArJdbc
       else
         sql = "ALTER TABLE #{table_name} ALTER COLUMN #{column_name} SET NOT NULL"
       end
-      as400? ? execute_and_auto_confirm(sql) : execute(sql)
-      reorg_table(table_name, 'Change Column')
+      execute_table_change(sql, table_name, 'Change Column')
     end
 
     def change_column_default(table_name, column_name, default)
@@ -522,15 +474,13 @@ module ArJdbc
       else
         sql = "ALTER TABLE #{table_name} ALTER COLUMN #{column_name} SET WITH DEFAULT #{quote(default)}"
       end
-      as400? ? execute_and_auto_confirm(sql) : execute(sql)
-      reorg_table(table_name, 'Change Column')
+      execute_table_change(sql, table_name, 'Change Column')
     end
 
     def change_column(table_name, column_name, type, options = {})
       data_type = type_to_sql(type, options[:limit], options[:precision], options[:scale])
       sql = "ALTER TABLE #{table_name} ALTER COLUMN #{column_name} SET DATA TYPE #{data_type}"
-      as400? ? execute_and_auto_confirm(sql) : execute(sql)
-      reorg_table(table_name, 'Change Column')
+      execute_table_change(sql, table_name, 'Change Column')
 
       if options.include?(:default) and options.include?(:null)
         # which to run first?
@@ -549,18 +499,19 @@ module ArJdbc
     end
     
     # http://publib.boulder.ibm.com/infocenter/db2luw/v9r7/topic/com.ibm.db2.luw.admin.dbobj.doc/doc/t0020132.html
-    def remove_column(table_name, *column_names) #:nodoc:
-      for column_name in column_names.flatten
+    def remove_column(table_name, *column_names) # :nodoc:
+      outcome = nil
+      column_names = column_names.flatten
+      for column_name in column_names
         sql = "ALTER TABLE #{table_name} DROP COLUMN #{column_name}"
-        as400? ? execute_and_auto_confirm(sql) : execute(sql)
+        outcome = execute_table_change(sql, table_name, 'Remove Column')
       end
-      reorg_table(table_name, 'Remove Column')
+      column_names.size == 1 ? outcome : nil
     end
 
     # http://publib.boulder.ibm.com/infocenter/db2luw/v9r7/topic/com.ibm.db2.luw.sql.ref.doc/doc/r0000980.html
-    def rename_table(name, new_name) #:nodoc:
-      execute "RENAME TABLE #{name} TO #{new_name}"
-      reorg_table(new_name, 'Rename Table')
+    def rename_table(name, new_name) # :nodoc:
+      execute_table_change("RENAME TABLE #{name} TO #{new_name}", new_name, 'Rename Table')
     end
     
     def tables
@@ -596,22 +547,7 @@ module ArJdbc
       @connection.indexes(table_name, name, db2_schema)
     end
 
-    def add_quotes(name)
-      return name unless name
-      %Q{"#{name}"}
-    end
-
-    def strip_quotes(str)
-      return str unless str
-      return str unless /^(["']).*\1$/ =~ str
-      str[1..-2]
-    end
-
-    def expand_double_quotes(name)
-      return name unless name && name['"']
-      name.gsub(/"/,'""')
-    end
-
+    # TODO this seems like it's ready for quite some refactoring, anyone pls :) ?!
     def structure_dump #:nodoc:
       schema_name = db2_schema.upcase if db2_schema.present?
       rs = @connection.connection.meta_data.getTables(nil, schema_name, nil, ["TABLE"].to_java(:string))
@@ -679,6 +615,49 @@ module ArJdbc
       definition
     end
     
+    def add_quotes(name)
+      name ? %Q{"#{name}"} : name
+    end
+    private :add_quotes
+    
+    def strip_quotes(str)
+      return str unless str
+      return str unless /^(["']).*\1$/ =~ str
+      str[1..-2]
+    end
+    private :strip_quotes
+
+    def expand_double_quotes(name)
+      return name unless name && name['"']
+      name.gsub(/"/,'""')
+    end
+    private :expand_double_quotes
+    
+    def execute_table_change(sql, table_name, name = nil)
+      outcome = execute(sql, name)
+      reorg_table(table_name, name)
+      outcome
+    end
+    protected :execute_table_change
+    
+    def reorg_table(table_name, name = nil)
+      exec_update "call sysproc.admin_cmd ('REORG TABLE #{table_name}')", name, []
+    end
+    private :reorg_table
+    
+    # alias_method :execute_and_auto_confirm, :execute
+
+    def _execute(sql, name = nil)
+      if self.class.select?(sql)
+        @connection.execute_query_raw(sql)
+      elsif self.class.insert?(sql)
+        (@connection.execute_insert(sql) || last_insert_id(sql)).to_i
+      else
+        @connection.execute_update(sql)
+      end
+    end
+    private :_execute
+    
     DRIVER_NAME = 'com.ibm.db2.jcc.DB2Driver'.freeze
     
     def zos?
@@ -692,15 +671,9 @@ module ArJdbc
         end
     end
     
+    # @deprecated no longer used
     def as400?
-      @as400 = nil unless defined? @as400
-      return @as400 unless @as400.nil?
-      @as400 = 
-        if url = config[:url]
-          !!( url =~ /^jdbc:as400:/ )
-        else
-          nil
-        end
+      false
     end
 
     private
@@ -713,10 +686,6 @@ module ArJdbc
           config[:schema]
         elsif config[:jndi].present?
           nil # let JNDI worry about schema
-        elsif as400?
-          # AS400 implementation takes schema from library name (last part of URL)
-          # jdbc:as400://localhost/schema;naming=system;libraries=lib1,lib2
-          config[:url].split('/').last.split(';').first.strip
         else
           # LUW implementation uses schema name of username by default
           config[:username].presence || ENV['USER']

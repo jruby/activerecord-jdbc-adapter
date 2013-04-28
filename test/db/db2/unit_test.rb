@@ -1,5 +1,6 @@
 require 'test_helper'
 require 'arjdbc/db2'
+require 'arjdbc/db2/as400'
 
 class DB2UnitTest < Test::Unit::TestCase
   
@@ -52,7 +53,8 @@ class DB2UnitTest < Test::Unit::TestCase
   private
   
   def new_adapter_stub(config = {})
-    config = config.merge({ :adapter => 'jdbc', :adapter_spec => ArJdbc::DB2 })
+    config = config.merge({ :adapter => 'jdbc' })
+    config[:adapter_spec] ||= config[:url] =~ /as400/ ? ArJdbc::AS400 : ArJdbc::DB2
     connection = stub('connection'); logger = nil
     connection.stub_everything
     adapter = ActiveRecord::ConnectionAdapters::JdbcAdapter.new connection, logger, config
