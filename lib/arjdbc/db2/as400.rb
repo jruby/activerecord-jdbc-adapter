@@ -45,6 +45,7 @@ module ArJdbc
     end
     
     # holy moly batman! all this to tell AS400 "yes i am sure"
+    # TODO when sql execute fails defaults values are never reset and the next method call fails
     def execute_and_auto_confirm(sql, name = nil)
       begin
         @connection.execute_update "call qsys.qcmdexc('QSYS/CHGJOB INQMSGRPY(*SYSRPYL)',0000000031.00000)"
@@ -83,6 +84,8 @@ module ArJdbc
       @db2_schema = 
         if config[:schema].present?
           config[:schema]
+        elsif config[:jndi].present?
+          nil # let JNDI worry about schema
         else
           # AS400 implementation takes schema from library name (last part of URL)
           # jdbc:as400://localhost/schema;naming=system;libraries=lib1,lib2
