@@ -29,7 +29,7 @@ ArJdbc::ConnectionMethods.module_eval do
     require 'arjdbc/db2/as400'
     config[:driver] ||= ::ArJdbc::AS400::DRIVER_NAME
     config[:adapter_spec] = ::ArJdbc::AS400
-    config[:connection_alive_sql] ||= 'SELECT 1 FROM syscat.tables FETCH FIRST 1 ROWS ONLY'
+    config[:connection_alive_sql] ||= 'SELECT 1 FROM sysibm.tables FETCH FIRST 1 ROWS ONLY'
     jdbc_connection(config)
   end
   alias_method :jdbcas400_connection, :as400_connection
