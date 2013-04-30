@@ -1,2 +1,4 @@
 require 'arjdbc/jdbc/adapter'
-module ArJdbc; self.discover_extensions; end
+if Java::JavaLang::Boolean.getBoolean('arjdbc.extensions.discover')
+  module ArJdbc; self.discover_extensions; end
+end
