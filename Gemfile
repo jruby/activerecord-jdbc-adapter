@@ -7,7 +7,7 @@ group :development do
   gem 'ruby-debug', :require => nil
 end
 
-gem 'appraisal'
+gem 'appraisal', :require => nil
 gem 'rake', :require => nil
 # appraisal ignores group block declarations :
 gem 'test-unit', '2.5.4', :group => :test

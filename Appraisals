@@ -18,7 +18,7 @@ end
 appraise "rails40" do # NOTE: make sure you're using --1.9 with AR-4.0
   #gem "activerecord", "~> 4.0.0"
   # until there's an actual 4.0 release :
-  gem 'rails', :github => 'rails/rails'
-  gem 'journey', :github => 'rails/journey'
-  gem 'activerecord-deprecated_finders', :github => 'rails/activerecord-deprecated_finders', :require => nil
+  gem 'rails', :github => 'rails/rails', :branch => '4-0-stable'
+  #gem 'journey', :github => 'rails/journey'
+  #gem 'activerecord-deprecated_finders', :github => 'rails/activerecord-deprecated_finders', :require => nil
 end

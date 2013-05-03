@@ -3,7 +3,7 @@
 source "https://rubygems.org"
 
 gem "jruby-openssl", :platform=>:jruby
-gem "appraisal"
+gem "appraisal", :require=>nil
 gem "rake", :require=>nil
 gem "test-unit", "2.5.4", :group=>:test
 gem "test-unit-context", :group=>:test
