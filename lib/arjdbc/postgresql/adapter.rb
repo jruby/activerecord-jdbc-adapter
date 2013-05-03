@@ -1112,7 +1112,7 @@ module ArJdbc
 
     def quote_table_name_for_assignment(table, attr)
       quote_column_name(attr)
-    end
+    end if ::ActiveRecord::VERSION::MAJOR > 3
 
     def quote_column_name(name)
       %("#{name.to_s.gsub("\"", "\"\"")}")

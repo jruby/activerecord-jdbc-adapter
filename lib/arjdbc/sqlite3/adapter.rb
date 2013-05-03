@@ -209,6 +209,10 @@ module ArJdbc
       end
     end
 
+    def quote_table_name_for_assignment(table, attr)
+      quote_column_name(attr)
+    end if ::ActiveRecord::VERSION::MAJOR > 3
+    
     def quote_column_name(name) # :nodoc:
       %Q("#{name.to_s.gsub('"', '""')}") # "' kludge for emacs font-lock
     end
