@@ -339,7 +339,7 @@ public class RubyJdbcConnection extends RubyObject {
                 Statement statement = null;
                 final String query = sql.convertToString().getUnicodeValue();
                 try {
-                    statement = connection.createStatement();
+                    statement = createStatement(context, connection);
                     if ( doExecute(statement, query) ) {
                         return unmarshalResults(context, connection.getMetaData(), statement, false);
                     } else {
@@ -353,6 +353,15 @@ public class RubyJdbcConnection extends RubyObject {
                 finally { close(statement); }
             }
         });
+    }
+
+    protected Statement createStatement(ThreadContext context, Connection connection) throws SQLException {
+        Statement statement = connection.createStatement();
+        IRubyObject statementEscapeProcessing = getConfigValue(context, "statement_escape_processing");
+        if (!statementEscapeProcessing.isNil() && !statementEscapeProcessing.isTrue()) {
+            statement.setEscapeProcessing(false);
+        }
+        return statement;
     }
 
     /**
@@ -418,7 +427,7 @@ public class RubyJdbcConnection extends RubyObject {
                 Statement statement = null;
                 final String insertSQL = sql.convertToString().getUnicodeValue();
                 try {
-                    statement = connection.createStatement();
+                    statement = createStatement(context, connection);
                     statement.executeUpdate(insertSQL, Statement.RETURN_GENERATED_KEYS);
                     return unmarshalIdResult(context.getRuntime(), statement);
                 }
@@ -517,7 +526,7 @@ public class RubyJdbcConnection extends RubyObject {
                 Statement statement = null; ResultSet resultSet = null;
                 try {
                     if ( binds == null ) { // plain statement
-                        statement = connection.createStatement();
+                        statement = createStatement(context, connection);
                         statement.setMaxRows(maxRows); // zero means there is no limit
                         resultSet = statement.executeQuery(query);
                     }
@@ -621,7 +630,7 @@ public class RubyJdbcConnection extends RubyObject {
             public IRubyObject call(final Connection connection) throws SQLException {
                 Statement statement = null; ResultSet resultSet = null;
                 try {
-                    statement = connection.createStatement();
+                    statement = createStatement(context, connection);
                     statement.setMaxRows(maxRows); // zero means there is no limit
                     resultSet = statement.executeQuery(query);
                     return mapQueryResult(context, connection, resultSet);
@@ -672,7 +681,7 @@ public class RubyJdbcConnection extends RubyObject {
                 Statement statement = null;
                 final String updateSQL = sql.convertToString().getUnicodeValue();
                 try {
-                    statement = connection.createStatement();
+                    statement = createStatement(context, connection);
                     final int rowCount = statement.executeUpdate(updateSQL);
                     return context.getRuntime().newFixnum(rowCount);
                 }
@@ -2093,7 +2102,7 @@ public class RubyJdbcConnection extends RubyObject {
         try {
             final RubyString aliveSQL = getConfigValue(context, "connection_alive_sql").convertToString();
             if ( isSelect(aliveSQL) ) { // expect a SELECT/CALL SQL statement
-                statement = connection.createStatement();
+                statement = createStatement(context, connection);
                 statement.execute( aliveSQL.toString() );
                 return false; // connection ain't broken
             }
