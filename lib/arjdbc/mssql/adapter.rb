@@ -312,6 +312,10 @@ module ArJdbc
       quote_column_name(name)
     end
     
+    def quote_table_name_for_assignment(table, attr)
+      quote_column_name(attr)
+    end if ::ActiveRecord::VERSION::MAJOR > 3
+    
     def quote_column_name(name)
       name.to_s.split('.').map do |n| # "[#{name}]"
         n =~ /^\[.*\]$/ ? n : "[#{n.gsub(']', ']]')}]"
@@ -353,12 +357,13 @@ module ArJdbc
     # 
     # http://blogs.msdn.com/b/mssqlisv/archive/2007/03/23/upgrading-to-sql-server-2005-and-default-schema-setting.aspx
     
-    # Returns the default schema (to be used for table resolution) used for 
-    # the {#current_user}.
+    # Returns the default schema (to be used for table resolution) used for the {#current_user}.
     def default_schema
       return current_user if sqlserver_2000?
       @default_schema ||= 
-        select_value("SELECT default_schema_name FROM sys.database_principals WHERE name = CURRENT_USER")
+        @connection.execute_query_raw(
+          "SELECT default_schema_name FROM sys.database_principals WHERE name = CURRENT_USER"
+        ).first['default_schema_name']
     end
     alias_method :current_schema, :default_schema
 
@@ -374,7 +379,7 @@ module ArJdbc
     
     # `SELECT CURRENT_USER`
     def current_user
-      @current_user ||= select_value("SELECT CURRENT_USER")
+      @current_user ||= @connection.execute_query_raw("SELECT CURRENT_USER").first['']
     end
     
     def charset
