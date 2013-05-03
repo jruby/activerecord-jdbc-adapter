@@ -97,9 +97,9 @@ class MSSQLLimitOffsetTest < Test::Unit::TestCase
 
   def test_limit_with_no_id_column_available
     NoIdViking.create!(:name => 'Erik')
-    assert_nothing_raised(ActiveRecord::StatementInvalid) do 
+    #assert_nothing_raised(ActiveRecord::StatementInvalid) do 
       NoIdViking.first
-    end
+    #end
   end
 
   def test_limit_with_alternate_named_primary_key
@@ -140,12 +140,15 @@ class MSSQLLimitOffsetTest < Test::Unit::TestCase
     skei.vikings.create!(:name => "Bob")
     skei.vikings.create!(:name => "Ben")
     skei.vikings.create!(:name => "Basil")
-    ships = Viking.find(:all, :include => :long_ship, :offset => 1, :limit => 2)
+    if ar_version('4.0')
+      ships = Viking.includes(:long_ship).offset(1).limit(2) #.all
+    else
+      ships = Viking.find(:all, :include => :long_ship, :offset => 1, :limit => 2)
+    end
     assert_equal(2, ships.size)
   end
 
   def test_limit_and_offset_with_include_and_order
-
     boat1 = LongShip.create!(:name => "1-Skei")
     boat2 = LongShip.create!(:name => "2-Skei")
 
@@ -153,29 +156,35 @@ class MSSQLLimitOffsetTest < Test::Unit::TestCase
     boat2.vikings.create!(:name => "Ben")
     boat1.vikings.create!(:name => "Carl")
     boat2.vikings.create!(:name => "Donald")
-  
-    vikings = Viking.find(:all, :include => :long_ship, :order => "long_ships.name, vikings.name", :offset => 0, :limit => 3)
-    assert_equal(["Adam", "Carl", "Ben"], vikings.map(&:name))
 
+    if ar_version('4.0')
+      vikings = Viking.includes(:long_ship).order('long_ships.name, vikings.name').references(:long_ship).offset(0).limit(3)
+    else
+      vikings = Viking.find(:all, :include => :long_ship, :order => "long_ships.name, vikings.name", :offset => 0, :limit => 3)
+    end
+    assert_equal ["Adam", "Carl", "Ben"], vikings.map(&:name)
   end
  
   def test_offset_without_limit
-    %w(one two three four five six seven eight).each do |name|
+    %w( egy keto harom negy ot hat het nyolc ).each do |name|
       LongShip.create!(:name => name)
     end
     error = assert_raise ActiveRecord::ActiveRecordError do
-      LongShip.find(:all, :offset => 2)
+      if ar_version('3.0')
+        LongShip.select(:name).offset(2).all
+      else
+        LongShip.find(:all, :select => 'name', :offset => 2)
+      end
     end
-    assert_equal("You must specify :limit with :offset.", error.message)
+    assert_equal "You must specify :limit with :offset.", error.message
   end
 
   def test_limit_with_group_by
-    %w(one two three four five six seven eight).each do |name|
+    %w( one two three four five six seven eight ).each do |name|
       LongShip.create!(:name => name)
     end
-
-    ships = LongShip.group(:name).find(:all, :limit => 2)
-    asset_equal(['one', 'two'], ships.map(&:name))
+    ships = LongShip.select(:name).group(:name).limit(2).all
+    assert_equal ['one', 'two'], ships.map(&:name)
   end if ar_version('3.0')
   
 end

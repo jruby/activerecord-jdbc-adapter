@@ -23,11 +23,12 @@ module ArJdbc
               rest_of_query = from_table + '.' + rest_of_query
             end
             new_sql = "#{select} t.* FROM (SELECT ROW_NUMBER() OVER(#{order}) AS _row_num, #{rest_of_query}"
-            new_sql << ") AS t WHERE t._row_num BETWEEN #{start_row.to_s} AND #{end_row.to_s}"
+            new_sql << ") AS t WHERE t._row_num BETWEEN #{start_row} AND #{end_row}"
             sql.replace(new_sql)
           end
           sql
         end
+        
       end
 
       module SqlServerAddLimitOffset

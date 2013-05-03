@@ -2,6 +2,9 @@ module ArJdbc
   module MSSQL
     module LockHelpers
       module SqlServerAddLock
+        
+        SELECT_FROM_WHERE_RE = /\A(\s*SELECT\s.*?)(\sFROM\s)(.*?)(\sWHERE\s.*|)\Z/mi # :nodoc:
+        
         # Microsoft SQL Server uses its own syntax for SELECT .. FOR UPDATE:
         # SELECT .. FROM table1 WITH(ROWLOCK,UPDLOCK), table2 WITH(ROWLOCK,UPDLOCK) WHERE ..
         #
@@ -14,7 +17,7 @@ module ArJdbc
               add_lock!(subselect, options)
               return sql.replace(prefix + subselect + suffix)
             end
-            unless sql =~ /\A(\s*SELECT\s.*?)(\sFROM\s)(.*?)(\sWHERE\s.*|)\Z/mi
+            unless sql =~ SELECT_FROM_WHERE_RE
               # If you get this error, this driver probably needs to be fixed.
               raise NotImplementedError, "Don't know how to add_lock! to SQL statement: #{sql.inspect}"
             end
@@ -66,6 +69,7 @@ module ArJdbc
           end
           sql
         end
+        
       end
     end
   end
