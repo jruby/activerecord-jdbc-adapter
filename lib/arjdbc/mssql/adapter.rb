@@ -25,10 +25,10 @@ module ArJdbc
               value = ::ArJdbc::SerializedAttributesHelper.dump_column_value(self, column)
               next if value.nil? || (value == '')
 
-              connection.write_large_object(
+              self.class.connection.write_large_object(
                 column.type == :binary, column.name, 
                 self.class.table_name, self.class.primary_key, 
-                quote_value(id), value
+                self.class.connection.quote(id), value
               )
             end
           end
@@ -312,9 +312,9 @@ module ArJdbc
       quote_column_name(name)
     end
     
-    def quote_table_name_for_assignment(table, attr)
-      quote_column_name(attr)
-    end if ::ActiveRecord::VERSION::MAJOR > 3
+#    def quote_table_name_for_assignment(table, attr)
+#      quote_column_name(attr)
+#    end if ::ActiveRecord::VERSION::MAJOR > 3
     
     def quote_column_name(name)
       name.to_s.split('.').map do |n| # "[#{name}]"
@@ -322,7 +322,7 @@ module ArJdbc
       end.join('.')
     end
 
-    ADAPTER_NAME = 'MSSQL'
+    ADAPTER_NAME = 'MSSQL'.freeze
     
     def adapter_name # :nodoc:
       ADAPTER_NAME
@@ -608,7 +608,23 @@ module ArJdbc
       # NOTE: we allow to execute SQL as requested returning a results.
       # e.g. this allows to use SQLServer's EXEC with a result set ...
       sql = repair_special_columns to_sql(sql, binds)
-      log(sql, name || 'SQL') { @connection.execute_query(sql) }
+      if prepared_statements?
+        log(sql, name, binds) { @connection.execute_query(sql, binds) }
+      else
+        sql = suble_binds(sql, binds)
+        log(sql, name) { @connection.execute_query(sql) }
+      end
+    end
+    
+    # @override
+    def exec_query_raw(sql, name = 'SQL', binds = [], &block) # :nodoc:
+      sql = repair_special_columns to_sql(sql, binds)
+      if prepared_statements?
+        log(sql, name, binds) { @connection.execute_query_raw(sql, binds, &block) }
+      else
+        sql = suble_binds(sql, binds)
+        log(sql, name) { @connection.execute_query_raw(sql, &block) }
+      end
     end
     
     private

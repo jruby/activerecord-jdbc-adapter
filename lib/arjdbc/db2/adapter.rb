@@ -30,11 +30,11 @@ module ArJdbc
               value = ::ArJdbc::SerializedAttributesHelper.dump_column_value(self, column)
               next if value.nil? # already set NULL
 
-              connection.write_large_object(
+              self.class.connection.write_large_object(
                 column.type == :binary, column.name, 
                 self.class.table_name, 
                 self.class.primary_key, 
-                quote_value(id), value
+                self.class.connection.quote(id), value
               )
             end
           end
