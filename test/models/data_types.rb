@@ -26,6 +26,7 @@ class DbTypeMigration < ActiveRecord::Migration
       t.column :sample_integer_no_limit, :integer, :default => 42
       t.column :sample_integer_neg_default, :integer, :default => -1
       t.column :sample_text, :text
+      t.decimal :decimal_with_scale, :precision => 15, :scale => 3
       t.decimal :big_decimal, :precision => big_decimal_precision, :scale => 0
     end
   end

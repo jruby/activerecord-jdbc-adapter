@@ -104,7 +104,11 @@ class MysqlSimpleTest < Test::Unit::TestCase
     begin
       User.table_name  = "#{database}.users"
       Entry.table_name = "#{database}.entries"
-      assert_not_empty Entry.all(:include => :user)
+      if ar_version('4.0')
+        assert_not_empty Entry.includes(:user).to_a
+      else
+        assert_not_empty Entry.all(:include => :user)
+      end
     ensure
       Entry.table_name = old_entries_table_name
       User.table_name  = old_users_table_name

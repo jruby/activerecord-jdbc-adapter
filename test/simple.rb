@@ -452,6 +452,14 @@ module SimpleTestMethods
     db_type = DbType.find(db_type.id)
     assert_kind_of BigDecimal, db_type.sample_small_decimal
     assert_equal BigDecimal.new(test_value.to_s), db_type.sample_small_decimal
+
+    test_value = BigDecimal('1.23')
+    db_type = DbType.create!(:sample_small_decimal => test_value)
+    if ar_version('3.0')
+      assert_equal 1, DbType.where("sample_small_decimal < ?", 1.5).count
+    else
+      assert_equal 1, DbType.find(:all, :conditions => ["sample_small_decimal < ?", 1.5]).size
+    end
   end
 
   def test_decimal # _with_zero_scale
@@ -462,6 +470,12 @@ module SimpleTestMethods
     assert_equal test_value.to_i, db_type.sample_decimal
   end
 
+  def test_decimal_with_scale
+    test_value = BigDecimal("100023400056.795")
+    db_type = DbType.create!(:decimal_with_scale => test_value)
+    assert_equal test_value, db_type.reload.decimal_with_scale
+  end
+  
   def test_big_decimal
     test_value = 9876543210_9876543210_9876543210.0
     db_type = DbType.create!(:big_decimal => test_value)
@@ -1091,7 +1105,9 @@ module XmlColumnTests
   module TestMethods
     
     def test_create_xml_column
-      create_xml_models!
+      create_xml_models! do |t|
+        skip('TableDefinition#xml not-implemented') unless t.respond_to?(:xml)
+      end
 
       xml_column = connection.columns(:xml_models).detect do |c|
         c.name == "xml_col"
@@ -1116,7 +1132,7 @@ module XmlColumnTests
         end
           
       else
-        puts "test_use_xml_column skipped"
+        skip('TableDefinition#xml not-implemented')
       end
     ensure
       drop_xml_models! if created
@@ -1135,11 +1151,16 @@ module XmlColumnTests
     private
     
     def create_xml_models!
-      connection.create_table(:xml_models) { |t| t.xml :xml_col }
+      connection.create_table(:xml_models) do |t| 
+        yield(t) if block_given?
+        t.xml :xml_col
+      end
     end
 
     def drop_xml_models!
-      connection.drop_table(:xml_models)
+      disable_logger(connection) do
+        connection.drop_table(:xml_models)
+      end
     end
     
   end
@@ -1187,7 +1208,7 @@ module ActiveRecord3TestMethods
       assert_nothing_raised do
         Thing.create! :name => "a thing"
       end
-      assert_equal 1, Thing.all.size
+      assert_equal 1, Thing.count
     end
     
   end
