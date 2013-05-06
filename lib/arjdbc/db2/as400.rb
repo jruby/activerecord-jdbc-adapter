@@ -67,6 +67,11 @@ module ArJdbc
       result
     end
     private :execute_and_auto_confirm
+
+    # disable all schemas browsing when default schema is specified
+    def table_exists?(name)
+      @connection.table_exists?(name, db2_schema)
+    end
     
     DRIVER_NAME = 'com.ibm.as400.access.AS400JDBCDriver'.freeze
     
