@@ -246,10 +246,6 @@ module ArJdbc
       version[0] && version[0] >= 5
     end
     
-    def supports_views? # :nodoc:
-      version[0] && version[0] >= 5
-    end
-    
     def supports_savepoints? # :nodoc:
       true
     end
@@ -302,11 +298,7 @@ module ArJdbc
     # SCHEMA STATEMENTS ========================================
     
     def structure_dump #:nodoc:
-      if supports_views?
-        sql = "SHOW FULL TABLES WHERE Table_type = 'BASE TABLE'"
-      else
-        sql = "SHOW TABLES"
-      end
+      sql = "SHOW TABLES"
 
       select_all(sql).inject("") do |structure, table|
         table.delete('Table_type')
