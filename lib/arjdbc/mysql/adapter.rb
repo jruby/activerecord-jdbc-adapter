@@ -321,33 +321,53 @@ module ArJdbc
       end
     end
 
-    # based on:
-    # https://github.com/rails/rails/blob/3-1-stable/activerecord/lib/active_record/connection_adapters/mysql_adapter.rb#L756
-    # Required for passing rails column caching tests
-    # Returns a table's primary key and belonging sequence.
-    def pk_and_sequence_for(table) #:nodoc:
-      keys = []
-      result = execute("SHOW INDEX FROM #{quote_table_name(table)} WHERE Key_name = 'PRIMARY'", 'SCHEMA')
-      result.each do |h|
-        keys << h["Column_name"]
-      end
-      keys.length == 1 ? [keys.first, nil] : nil
+    # Returns just a table's primary key
+    def primary_key(table)
+      #pk_and_sequence = pk_and_sequence_for(table)
+      #pk_and_sequence && pk_and_sequence.first
+      @connection.primary_keys(table).first
     end
-
-    # based on:
-    # https://github.com/rails/rails/blob/3-1-stable/activerecord/lib/active_record/connection_adapters/mysql_adapter.rb#L647
+    
+    # Returns a table's primary key and belonging sequence.
+    # @note not used only here for potential compatibility with AR's adapter.
+    def pk_and_sequence_for(table)
+      result = execute("SHOW CREATE TABLE #{quote_table_name(table)}", 'SCHEMA').first
+      if result['Create Table'].to_s =~ /PRIMARY KEY\s+(?:USING\s+\w+\s+)?\((.+)\)/
+        keys = $1.split(","); keys.map! { |key| key.gsub(/[`"]/, "") }
+        return keys.length == 1 ? [ keys.first, nil ] : nil
+      else
+        return nil
+      end
+    end
+    
+    IndexDefinition = ::ActiveRecord::ConnectionAdapters::IndexDefinition
+    
+    if ::ActiveRecord::VERSION::MAJOR > 3
+      
+    INDEX_TYPES = [ :fulltext, :spatial ]
+    INDEX_USINGS = [ :btree, :hash ]
+    
+    end
+      
     # Returns an array of indexes for the given table.
-    def indexes(table_name, name = nil)#:nodoc:
+    def indexes(table_name, name = nil) # :nodoc:
       indexes = []
       current_index = nil
-      result = execute("SHOW KEYS FROM #{quote_table_name(table_name)}", name)
+      result = execute("SHOW KEYS FROM #{quote_table_name(table_name)}", name || 'SCHEMA')
       result.each do |row|
-        key_name = row["Key_name"]
+        key_name = row['Key_name']
         if current_index != key_name
-          next if key_name == "PRIMARY" # skip the primary key
+          next if key_name == 'PRIMARY' # skip the primary key
           current_index = key_name
-          indexes << ::ActiveRecord::ConnectionAdapters::IndexDefinition.new(
-            row["Table"], key_name, row["Non_unique"] == 0, [], [])
+          indexes <<  
+            if self.class.const_defined?(:INDEX_TYPES) # AR 4.0
+              mysql_index_type = row['Index_type'].downcase.to_sym
+              index_type = INDEX_TYPES.include?(mysql_index_type) ? mysql_index_type : nil
+              index_using = INDEX_USINGS.include?(mysql_index_type) ? mysql_index_type : nil
+              IndexDefinition.new(row['Table'], key_name, row['Non_unique'].to_i == 0, [], [], nil, nil, index_type, index_using)
+            else
+              IndexDefinition.new(row['Table'], key_name, row['Non_unique'].to_i == 0, [], [])
+            end
         end
 
         indexes.last.columns << row["Column_name"]
@@ -355,19 +375,15 @@ module ArJdbc
       end
       indexes
     end
-
-    def columns(table_name, name = nil)#:nodoc:
+    
+    def columns(table_name, name = nil) # :nodoc:
       sql = "SHOW FIELDS FROM #{quote_table_name(table_name)}"
       column = ::ActiveRecord::ConnectionAdapters::MysqlAdapter::Column
-      execute(sql, 'SCHEMA').map do |field|
+      result = execute(sql, name || 'SCHEMA')
+      result.map! do |field|
         column.new(field["Field"], field["Default"], field["Type"], field["Null"] == "YES")
       end
-    end
-
-    # Returns just a table's primary key
-    def primary_key(table)
-      pk_and_sequence = pk_and_sequence_for(table)
-      pk_and_sequence && pk_and_sequence.first
+      result
     end
 
     def recreate_database(name, options = {}) #:nodoc:

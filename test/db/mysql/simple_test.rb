@@ -147,6 +147,16 @@ class MysqlSimpleTest < Test::Unit::TestCase
     e = Entry.create! :title => '}{"\'}  \''
     assert_equal "}{\"'}  '", e.reload.title
   end
+
+  def test_pk_and_sequence_for
+    assert_equal [ 'id', nil ], connection.pk_and_sequence_for('entries')
+  end
+  
+  def test_mysql_indexes
+    if ar_version('4.0')
+      assert connection.class.const_defined?(:INDEX_TYPES)
+    end
+  end
   
 end
 
