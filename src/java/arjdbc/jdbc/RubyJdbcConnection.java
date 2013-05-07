@@ -355,15 +355,21 @@ public class RubyJdbcConnection extends RubyObject {
         });
     }
 
-    protected Statement createStatement(ThreadContext context, Connection connection) throws SQLException {
-        Statement statement = connection.createStatement();
+    private Statement createStatement(final ThreadContext context, final Connection connection) 
+        throws SQLException {
+        final Statement statement = connection.createStatement();
         IRubyObject statementEscapeProcessing = getConfigValue(context, "statement_escape_processing");
-        if (!statementEscapeProcessing.isNil() && !statementEscapeProcessing.isTrue()) {
+        // NOTE: disable (driver) escape processing by default, it's not really 
+        // needed for AR statements ... if users need it they might configure :
+        if ( statementEscapeProcessing.isNil() ) {
             statement.setEscapeProcessing(false);
+        }
+        else {
+            statement.setEscapeProcessing(statementEscapeProcessing.isTrue());
         }
         return statement;
     }
-
+    
     /**
      * Execute a query using the given statement.
      * @param statement
@@ -395,28 +401,6 @@ public class RubyJdbcConnection extends RubyObject {
             key = runtime.getNil();
         }
         return key.isNil() ? runtime.newFixnum( statement.getUpdateCount() ) : key;
-     }
-
-    @JRubyMethod(name = "execute_id_insert", required = 2)
-    public IRubyObject execute_id_insert(final ThreadContext context, 
-        final IRubyObject sql, final IRubyObject id) throws SQLException {
-        return withConnection(context, new Callable<IRubyObject>() {
-            public IRubyObject call(final Connection connection) throws SQLException {
-                PreparedStatement statement = null;
-                final String insertSQL = sql.convertToString().getUnicodeValue();
-                try {
-                    statement = connection.prepareStatement(insertSQL);
-                    statement.setLong(1, RubyNumeric.fix2long(id));
-                    statement.executeUpdate();
-                }
-                catch (final SQLException e) {
-                    debugErrorSQL(context, insertSQL);
-                    throw e;
-                }
-                finally { close(statement); }
-                return id;
-            }
-        });
     }
 
     @JRubyMethod(name = "execute_insert", required = 1)
@@ -440,6 +424,27 @@ public class RubyJdbcConnection extends RubyObject {
         });
     }
 
+    @JRubyMethod(name = {"execute_update", "execute_delete"}, required = 1)
+    public IRubyObject execute_update(final ThreadContext context, final IRubyObject sql)
+        throws SQLException {
+        return withConnection(context, new Callable<RubyInteger>() {
+            public RubyInteger call(final Connection connection) throws SQLException {
+                Statement statement = null;
+                final String updateSQL = sql.convertToString().getUnicodeValue();
+                try {
+                    statement = createStatement(context, connection);
+                    final int rowCount = statement.executeUpdate(updateSQL);
+                    return context.getRuntime().newFixnum(rowCount);
+                }
+                catch (final SQLException e) {
+                    debugErrorSQL(context, updateSQL);
+                    throw e;
+                }
+                finally { close(statement); }
+            }
+        });
+    }
+    
     /**
      * NOTE: since 1.3 this behaves like <code>execute_query</code> in AR-JDBC 1.2
      * @param context
@@ -672,28 +677,29 @@ public class RubyJdbcConnection extends RubyObject {
         final ColumnData[] columns = setupColumns(runtime, metaData, resultSet.getMetaData(), false);
         return mapToResult(context, runtime, metaData, resultSet, columns);
     }
-    
-    @JRubyMethod(name = {"execute_update", "execute_delete"}, required = 1)
-    public IRubyObject execute_update(final ThreadContext context, final IRubyObject sql)
-        throws SQLException {
-        return withConnection(context, new Callable<RubyInteger>() {
-            public RubyInteger call(final Connection connection) throws SQLException {
-                Statement statement = null;
-                final String updateSQL = sql.convertToString().getUnicodeValue();
+
+    @JRubyMethod(name = "execute_id_insert", required = 2)
+    public IRubyObject execute_id_insert(final ThreadContext context, 
+        final IRubyObject sql, final IRubyObject id) throws SQLException {
+        return withConnection(context, new Callable<IRubyObject>() {
+            public IRubyObject call(final Connection connection) throws SQLException {
+                PreparedStatement statement = null;
+                final String insertSQL = sql.convertToString().getUnicodeValue();
                 try {
-                    statement = createStatement(context, connection);
-                    final int rowCount = statement.executeUpdate(updateSQL);
-                    return context.getRuntime().newFixnum(rowCount);
+                    statement = connection.prepareStatement(insertSQL);
+                    statement.setLong(1, RubyNumeric.fix2long(id));
+                    statement.executeUpdate();
                 }
                 catch (final SQLException e) {
-                    debugErrorSQL(context, updateSQL);
+                    debugErrorSQL(context, insertSQL);
                     throw e;
                 }
                 finally { close(statement); }
+                return id;
             }
         });
     }
-
+    
     @JRubyMethod(name = "native_database_types", frame = false)
     public IRubyObject native_database_types() {
         return getInstanceVariable("@native_database_types");

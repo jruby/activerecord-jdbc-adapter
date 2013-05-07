@@ -134,6 +134,20 @@ class MysqlSimpleTest < Test::Unit::TestCase
     assert_equal 'updated content', e2.reload.content
   end
   
+  # NOTE: expected escape processing to be disabled by default for non-prepared statements
+  def test_quoting_braces
+    e = Entry.create! :title => '{'
+    assert_equal "{", e.reload.title
+    e = Entry.create! :title => '{}'
+    assert_equal "{}", e.reload.title
+    
+    e = Entry.create! :title => "\\'{}{"
+    assert_equal "\\'{}{", e.reload.title
+    
+    e = Entry.create! :title => '}{"\'}  \''
+    assert_equal "}{\"'}  '", e.reload.title
+  end
+  
 end
 
 class MysqlHasManyThroughTest < Test::Unit::TestCase
