@@ -70,7 +70,12 @@ module ArJdbc
 
     # disable all schemas browsing when default schema is specified
     def table_exists?(name)
-      @connection.table_exists?(name, db2_schema)
+      if db2_schema.nil?
+        @connection.table_exists?(name)
+      else
+        @connection.table_exists?(name, db2_schema)
+      end
+
     end
     
     DRIVER_NAME = 'com.ibm.as400.access.AS400JDBCDriver'.freeze
@@ -94,7 +99,12 @@ module ArJdbc
         else
           # AS400 implementation takes schema from library name (last part of URL)
           # jdbc:as400://localhost/schema;naming=system;libraries=lib1,lib2
-          config[:url].split('/').last.split(';').first.strip
+          schema = nil
+          split = config[:url].split('/')
+
+          # Return nil if schema isn't defined
+          schema = split.last.split(';').first.strip if split.size == 4
+          schema
         end
     end
     
