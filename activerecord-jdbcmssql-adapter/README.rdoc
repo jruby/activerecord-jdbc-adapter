@@ -16,6 +16,6 @@ To use this driver with SQL Azure you will need to follow these steps:
     production:
       adapter: jdbcmssql
       driver: com.microsoft.sqlserver.jdbc.SQLServerDriver
-      url: 'jdbc:sqlserver://mydatabase.database.windows.net;databaseName=my_database'
-      username: foo@mydatabase.database.windows.net
+      url: 'jdbc:sqlserver://servername.database.windows.net;databaseName=databasename'
+      username: foo@servername
       password: bar
