@@ -74,7 +74,7 @@ module ArJdbc
       @sqlserver_version ||= begin
         config_version = config[:sqlserver_version]
         config_version ? config_version.to_s :
-          select_value("SELECT @@version")[/Microsoft SQL Server\s+(\d{4})/, 1]
+          select_value("SELECT @@version")[/(Microsoft SQL Server\s+|Microsoft SQL Azure.+\n.+)(\d{4})/, 2]
       end
     end
 
