@@ -61,7 +61,7 @@ module SchemaDumpTestMethods
       next if column_set.empty?
 
       lengths = column_set.map do |column|
-        if match = column.match(/t\.(?:integer|decimal|float|datetime|timestamp|time|date|text|binary|string|boolean)\s+"/)
+        if match = column.match(/t\.(?:integer|decimal|float|datetime|timestamp|time|date|text|binary|string|boolean|unsigned_integer|unsigned_float)\s+"/)
           match[0].length
         end
       end

@@ -7,6 +7,9 @@ require 'arjdbc/mysql/explain_support'
 module ArJdbc
   module MySQL
 
+    AR31_COMPAT = ( ( ::ActiveRecord::VERSION::MAJOR > 3 ) or
+        ( ( ::ActiveRecord::VERSION::MAJOR == 3 ) and ( ::ActiveRecord::VERSION::MINOR >= 1 ) ) ) unless const_defined?(:AR31_COMPAT) # :nodoc:
+
     def self.extended(adapter)
       adapter.configure_connection
     end
@@ -81,13 +84,21 @@ module ArJdbc
       end
 
       def simplified_type(field_type)
-        case field_type
+        unsigned = false
+        field_type = field_type.to_s
+        if AR31_COMPAT && field_type.include?(' unsigned')
+          unsigned = true
+          field_type = field_type.sub(/ unsigned/,'')
+        end
+
+        result = case field_type
         when /tinyint\(1\)|bit/i then :boolean
         when /enum/i             then :string
         when /year/i             then :integer
         else
-          super
+          super field_type
         end
+        unsigned ? :"unsigned_#{result}" : result
       end
 
       def extract_limit(sql_type)
@@ -147,10 +158,15 @@ module ArJdbc
       :boolean => { :name => "tinyint", :limit => 1 }
     }
 
+    NATIVE_DATABASE_TYPES.merge!( {
+      :unsigned_integer => { :name => "unsigned int", :limit => 4 },
+      :unsigned_float => { :name => "unsigned float" }
+    } ) if AR31_COMPAT
+
     def native_database_types
       NATIVE_DATABASE_TYPES
     end
-    
+
     def modify_types(types)
       types[:primary_key] = "int(11) DEFAULT NULL auto_increment PRIMARY KEY"
       types[:integer] = { :name => 'int', :limit => 4 }
@@ -524,7 +540,13 @@ module ArJdbc
     end
 
     def type_to_sql(type, limit = nil, precision = nil, scale = nil)
-      case type.to_s
+      unsigned = false
+      type = type.to_s
+      if AR31_COMPAT && type.include?('unsigned_')
+        unsigned = true
+        type = type.sub(/unsigned_/,'')
+      end
+      result = case type
       when 'binary'
         case limit
         when 0..0xfff; "varbinary(#{limit})"
@@ -550,8 +572,9 @@ module ArJdbc
         else raise(ActiveRecordError, "No text type has character length #{limit}")
         end
       else
-        super
+        super type.to_sym, limit, precision, scale
       end
+      unsigned ? result + ' unsigned' : result
     end
 
     def add_column_position!(sql, options)
@@ -684,7 +707,25 @@ module ActiveRecord
         end
         quoted
       end
-      
+
+      if AR31_COMPAT
+        class TableDefinition < ActiveRecord::ConnectionAdapters::TableDefinition
+          def unsigned_integer *args
+            options = args.extract_options!
+            column(args[0], :unsigned_integer, options)
+          end
+
+          def unsigned_float *args
+            options = args.extract_options!
+            column(args[0], :unsigned_float, options)
+          end
+
+        end
+
+        def table_definition(*args)
+          new_table_definition(TableDefinition, *args)
+        end
+      end
     end
     
     if ActiveRecord::VERSION::MAJOR < 3 ||

@@ -9,6 +9,13 @@ class MySQLTypesTest < Test::Unit::TestCase
     assert_equal 'blob', type_to_sql(:binary)
   end
 
+  def test_unsigned_types
+    omit_unless ar_version('3.1'), 'unsigned type support begins at 3.1' do
+      assert_equal 'int(11) unsigned', type_to_sql(:unsigned_integer)
+      assert_equal 'float unsigned', type_to_sql(:unsigned_float)
+    end
+  end
+
   def type_to_sql(*args)
     ActiveRecord::Base.connection.type_to_sql(*args)
   end

@@ -34,6 +34,11 @@ class MysqlSchemaDumpTest < Test::Unit::TestCase
       t.string :string_col, :null => true, :default => '', :limit => 1024
       t.binary :var_binary, :limit => 255
       t.binary :var_binary_large, :limit => 4095
+      # Support for unsigned integer and float works as far back as 3.1
+      if Test::Unit::TestCase.ar_version('3.1')
+        t.unsigned_integer :unsigned_integer
+        t.unsigned_float :unsigned_float
+      end
     end
   end
   
@@ -59,7 +64,15 @@ class MysqlSchemaDumpTest < Test::Unit::TestCase
     assert_match %r{t.binary\s+"var_binary",[\s|:]+limit[\s\:\=\>]+255$}, output
     assert_match %r{t.binary\s+"var_binary_large",[\s|:]+limit[\s\:\=\>]+4095$}, output
   end
-  
+
+  def test_schema_dump_includes_unsigned_fields
+    omit_unless ar_version('3.1'), 'unsigned fields support begins at 3.1' do
+      output = standard_dump
+      %w{integer float}.each do | type |
+        assert_match %r{t.unsigned_#{type}\s+"unsigned_#{type}"$}, output
+      end
+    end
+  end
 end
 
 class MysqlInfoTest < Test::Unit::TestCase
