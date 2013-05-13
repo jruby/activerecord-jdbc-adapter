@@ -93,6 +93,18 @@ public class SQLite3RubyJdbcConnection extends RubyJdbcConnection {
     }
 
     @Override
+    protected Statement createStatement(final ThreadContext context, final Connection connection) 
+        throws SQLException {
+        final Statement statement = connection.createStatement();
+        IRubyObject statementEscapeProcessing = getConfigValue(context, "statement_escape_processing");
+        if ( ! statementEscapeProcessing.isNil() ) {
+            statement.setEscapeProcessing(statementEscapeProcessing.isTrue());
+        }
+        // else leave as is by default
+        return statement;
+    }
+    
+    @Override
     protected IRubyObject jdbcToRuby(final Ruby runtime, final int column, int type, final ResultSet resultSet)
         throws SQLException {
         // This is rather gross, and only needed because the resultset metadata for SQLite tries to be overly

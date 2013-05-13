@@ -355,7 +355,7 @@ public class RubyJdbcConnection extends RubyObject {
         });
     }
 
-    private Statement createStatement(final ThreadContext context, final Connection connection) 
+    protected Statement createStatement(final ThreadContext context, final Connection connection) 
         throws SQLException {
         final Statement statement = connection.createStatement();
         IRubyObject statementEscapeProcessing = getConfigValue(context, "statement_escape_processing");
