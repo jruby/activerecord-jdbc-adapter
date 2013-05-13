@@ -148,6 +148,23 @@ class MysqlSimpleTest < Test::Unit::TestCase
     assert_equal "}{\"'}  '", e.reload.title
   end
 
+  def test_emulates_booleans_by_default
+    assert connection.emulate_booleans
+  end if ar_version('3.0')
+
+  def test_boolean_emulation_can_be_disabled
+    column = DbType.columns.find { |col| col.name.to_s == 'sample_boolean' }
+    assert_equal :boolean, column.type
+    ActiveRecord::ConnectionAdapters::MysqlAdapter.emulate_booleans = false
+    
+    DbType.reset_column_information
+    column = DbType.columns.find { |col| col.name.to_s == 'sample_boolean' }
+    assert_equal :integer, column.type
+  ensure
+    ActiveRecord::ConnectionAdapters::MysqlAdapter.emulate_booleans = true
+    DbType.reset_column_information
+  end if ar_version('3.0')
+  
   def test_pk_and_sequence_for
     assert_equal [ 'id', nil ], connection.pk_and_sequence_for('entries')
   end

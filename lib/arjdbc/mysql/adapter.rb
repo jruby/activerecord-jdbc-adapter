@@ -9,6 +9,16 @@ module ArJdbc
 
     def self.extended(adapter)
       adapter.configure_connection
+      ##
+      # :singleton-method:
+      # By default, the MysqlAdapter will consider all columns of type <tt>tinyint(1)</tt>
+      # as boolean. If you wish to disable this emulation (which was the default
+      # behavior in versions 0.13.1 and earlier) you can add the following line
+      # to your application.rb file:
+      #
+      # ActiveRecord::ConnectionAdapters::Mysql[2]Adapter.emulate_booleans = false
+      class_attribute :emulate_booleans
+      self.emulate_booleans = true
     end
 
     def configure_connection
@@ -81,15 +91,19 @@ module ArJdbc
       end
 
       def simplified_type(field_type)
+        if adapter.respond_to?(:emulate_booleans) && adapter.emulate_booleans 
+          return :boolean if field_type.downcase.index('tinyint(1)')
+        end
+
         case field_type
-        when /tinyint\(1\)|bit/i then :boolean
-        when /enum/i             then :string
-        when /year/i             then :integer
+        when /enum/i, /set/i then :string
+        when /year/i then :integer
+        when /bit/i then :binary
         else
           super
         end
       end
-
+      
       def extract_limit(sql_type)
         case sql_type
         when /blob|text/i
@@ -127,6 +141,9 @@ module ArJdbc
       def missing_default_forged_as_empty_string?(default)
         type != :string && !null && default == ''
       end
+      
+      def adapter; end
+      private :adapter
       
     end
 
@@ -633,6 +650,15 @@ module ActiveRecord
       include ::ArJdbc::MySQL
       include ::ArJdbc::MySQL::ExplainSupport
       
+      #
+      # By default, the MysqlAdapter will consider all columns of type 
+      # <tt>tinyint(1)</tt> as boolean. If you wish to disable this :
+      #
+      #   ActiveRecord::ConnectionAdapters::Mysql[2]Adapter.emulate_booleans = false
+      #
+      class_attribute :emulate_booleans
+      self.emulate_booleans = true
+      
       class Column < JdbcColumn
         include ::ArJdbc::MySQL::Column
 
@@ -644,6 +670,7 @@ module ActiveRecord
           end
         end
 
+        # @note {#ArJdbc::MySQL::Column} uses this to check for boolean emulation
         def adapter
           MysqlAdapter
         end
