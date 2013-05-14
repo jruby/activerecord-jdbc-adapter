@@ -64,6 +64,27 @@ class OracleSimpleTest < Test::Unit::TestCase
   
   include ExplainSupportTestMethods if ar_version("3.1")
   
+  def test_emulates_booleans_by_default
+    assert_true ArJdbc::Oracle.emulate_booleans
+    # assert_true ActiveRecord::ConnectionAdapters::OracleAdapter.emulate_booleans
+  end if ar_version('3.0')
+
+  def test_boolean_emulation_can_be_disabled
+    db_type = DbType.create! :sample_boolean => true
+    column = DbType.columns.find { |col| col.name.to_s == 'sample_boolean' }
+    assert_equal :boolean, column.type
+    ArJdbc::Oracle.emulate_booleans = false
+    
+    DbType.reset_column_information
+    column = DbType.columns.find { |col| col.name.to_s == 'sample_boolean' }
+    assert_equal :integer, column.type
+    
+    assert_equal 1, db_type.reload.sample_boolean
+  ensure
+    ArJdbc::Oracle.emulate_booleans = true
+    DbType.reset_column_information
+  end if ar_version('3.0')
+  
   protected
 
   def assert_empty_string value

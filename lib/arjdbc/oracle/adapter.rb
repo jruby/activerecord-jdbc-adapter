@@ -34,7 +34,7 @@ module ArJdbc
         ActiveRecord::Base.extend ArJdbc::QuotedPrimaryKeyExtension
       end
     end
-
+    
     def self.column_selector
       [ /oracle/i, lambda { |cfg, column| column.extend(::ArJdbc::Oracle::Column) } ]
     end
@@ -47,6 +47,16 @@ module ArJdbc
       ::ActiveRecord::ConnectionAdapters::OracleColumn
     end
 
+    @@emulate_booleans = true
+    
+    # Boolean emulation can be disabled using :
+    # 
+    #   ArJdbc::Oracle.emulate_booleans = false
+    # 
+    # @see ActiveRecord::ConnectionAdapters::OracleAdapter#emulate_booleans
+    def self.emulate_booleans; @@emulate_booleans; end
+    def self.emulate_booleans=(emulate); @@emulate_booleans = emulate; end
+    
     module Column
       
       def primary=(value)
@@ -57,9 +67,9 @@ module ArJdbc
       def type_cast(value)
         return nil if value.nil?
         case type
-        when :datetime  then ArJdbc::Oracle::Column.string_to_time(value)
-        when :timestamp then ArJdbc::Oracle::Column.string_to_time(value)
-        when :boolean   then ArJdbc::Oracle::Column.value_to_boolean(value)
+        when :datetime  then Column.string_to_time(value)
+        when :timestamp then Column.string_to_time(value)
+        when :boolean   then Column.value_to_boolean(value)
         else
           super
         end
@@ -118,11 +128,11 @@ module ArJdbc
       
       def simplified_type(field_type)
         case field_type
-        when /^number\(1\)$/i   then :boolean
         when /char/i            then :string
         when /float|double/i    then :float
         when /int/i             then :integer
-        when /num|dec|real/i    then extract_scale(field_type) == 0 ? :integer : :decimal
+        when /^number\(1\)$/i   then Oracle.emulate_booleans ? :boolean : :integer
+        when /^num|dec|real/i   then extract_scale(field_type) == 0 ? :integer : :decimal
         # Oracle TIMESTAMP stores the date and time to up to 9 digits of sub-second precision
         when /TIMESTAMP/i       then :timestamp
         # Oracle DATE stores the date and time to the second
@@ -600,9 +610,22 @@ module ArJdbc
 end
 
 module ActiveRecord::ConnectionAdapters
-  OracleAdapter = Class.new(AbstractAdapter) unless const_defined?(:OracleAdapter)
+  remove_const(:OracleAdapter) if const_defined?(:OracleAdapter)
+
+  # @note this class is not really used (instantiated)
+  class OracleAdapter < JdbcAdapter
+    include ::ArJdbc::Oracle
+    
+    # By default, the MysqlAdapter will consider all columns of type 
+    # <tt>tinyint(1)</tt> as boolean. If you wish to disable this :
+    #
+    #   ActiveRecord::ConnectionAdapters::OracleAdapter.emulate_booleans = false
+    #
+    def self.emulate_booleans; ::ArJdbc::Oracle.emulate_booleans; end
+    def self.emulate_booleans=(emulate); ::ArJdbc::Oracle.emulate_booleans = emulate; end
+  end
 
   class OracleColumn < JdbcColumn
-    include ArJdbc::Oracle::Column
+    include ::ArJdbc::Oracle::Column
   end
 end
