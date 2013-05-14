@@ -149,10 +149,13 @@ class MysqlSimpleTest < Test::Unit::TestCase
   end
 
   def test_emulates_booleans_by_default
-    assert connection.emulate_booleans
+    assert connection.class.emulate_booleans
+    assert_true ArJdbc::MySQL.emulate_booleans
+    assert_true ActiveRecord::ConnectionAdapters::MysqlAdapter.emulate_booleans
   end if ar_version('3.0')
 
   def test_boolean_emulation_can_be_disabled
+    db_type = DbType.create! :sample_boolean => true
     column = DbType.columns.find { |col| col.name.to_s == 'sample_boolean' }
     assert_equal :boolean, column.type
     ActiveRecord::ConnectionAdapters::MysqlAdapter.emulate_booleans = false
@@ -160,8 +163,10 @@ class MysqlSimpleTest < Test::Unit::TestCase
     DbType.reset_column_information
     column = DbType.columns.find { |col| col.name.to_s == 'sample_boolean' }
     assert_equal :integer, column.type
+    
+    assert_equal 1, db_type.reload.sample_boolean
   ensure
-    ActiveRecord::ConnectionAdapters::MysqlAdapter.emulate_booleans = true
+    ArJdbc::MySQL.emulate_booleans = true
     DbType.reset_column_information
   end if ar_version('3.0')
   

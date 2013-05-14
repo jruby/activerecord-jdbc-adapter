@@ -9,18 +9,8 @@ module ArJdbc
 
     def self.extended(adapter)
       adapter.configure_connection
-      ##
-      # :singleton-method:
-      # By default, the MysqlAdapter will consider all columns of type <tt>tinyint(1)</tt>
-      # as boolean. If you wish to disable this emulation (which was the default
-      # behavior in versions 0.13.1 and earlier) you can add the following line
-      # to your application.rb file:
-      #
-      # ActiveRecord::ConnectionAdapters::Mysql[2]Adapter.emulate_booleans = false
-      class_attribute :emulate_booleans
-      self.emulate_booleans = true
     end
-
+    
     def configure_connection
       variables = config[:variables] || {}
       # By default, MySQL 'where id is null' selects the last inserted id. Turn this off.
@@ -68,6 +58,16 @@ module ArJdbc
     def strict_mode? # strict_mode is default since AR 4.0
       config.key?(:strict) ? config[:strict] : ::ActiveRecord::VERSION::MAJOR > 3
     end
+    
+    @@emulate_booleans = true
+    
+    # Boolean emulation can be disabled using (or using the adapter method) :
+    # 
+    #   ArJdbc::MySQL.emulate_booleans = false
+    # 
+    # @see ActiveRecord::ConnectionAdapters::MysqlAdapter#emulate_booleans
+    def self.emulate_booleans; @@emulate_booleans; end
+    def self.emulate_booleans=(emulate); @@emulate_booleans = emulate; end
     
     module Column
       
@@ -650,14 +650,13 @@ module ActiveRecord
       include ::ArJdbc::MySQL
       include ::ArJdbc::MySQL::ExplainSupport
       
-      #
       # By default, the MysqlAdapter will consider all columns of type 
       # <tt>tinyint(1)</tt> as boolean. If you wish to disable this :
       #
       #   ActiveRecord::ConnectionAdapters::Mysql[2]Adapter.emulate_booleans = false
       #
-      class_attribute :emulate_booleans
-      self.emulate_booleans = true
+      def self.emulate_booleans; ::ArJdbc::MySQL.emulate_booleans; end
+      def self.emulate_booleans=(emulate); ::ArJdbc::MySQL.emulate_booleans = emulate; end
       
       class Column < JdbcColumn
         include ::ArJdbc::MySQL::Column
