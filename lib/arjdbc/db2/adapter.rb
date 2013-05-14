@@ -16,10 +16,6 @@ module ArJdbc
     def self.lob_callback_added! # :nodoc
       @@_lob_callback_added = true
     end
-
-    def explain(query, *binds)
-      # TODO: Explain this! Do not remove !
-    end
     
     def self.extended(base)
       if ADD_LOB_CALLBACK && ! lob_callback_added?
@@ -38,10 +34,8 @@ module ArJdbc
               )
             end
           end
-          alias after_save_with_db2zos_blob after_save_with_db2_lob # <-compat
         end
-        # TODO this should be changed to :after_save_with_db2_lob :
-        ActiveRecord::Base.after_save :after_save_with_db2zos_blob # <-compat
+        ActiveRecord::Base.after_save :after_save_with_db2_lob # <-compat
         lob_callback_added!
       end
     end
@@ -77,9 +71,10 @@ module ArJdbc
       :decimal    => { :name => "decimal" },
       :char       => { :name => "char" },
       :decfloat   => { :name => "decfloat" },
-      #:rowid      => { :name => "rowid" }, # supported datatype on z/OS and i/5
-      #:graphic    => { :name => "graphic", :limit => 1 },
-      #:vargraphic => { :name => "vargraphic", :limit => 1 },
+      :rowid      => { :name => "rowid" }, # rowid is a supported datatype on z/OS and i/5
+      :serial     => { :name => "serial" }, # supported datatype on Informix Dynamic Server
+      :graphic    => { :name => "graphic", :limit => 1 },
+      :vargraphic => { :name => "vargraphic", :limit => 1 },
       :datetime   => { :name => "timestamp" },
       :timestamp  => { :name => "timestamp" },
       :time       => { :name => "time" }
@@ -89,7 +84,17 @@ module ArJdbc
       super.merge(NATIVE_DATABASE_TYPES)
     end
 
+    @@emulate_booleans = true
+    
+    # Boolean emulation can be disabled using :
+    # 
+    #   ArJdbc::DB2.emulate_booleans = false
+    # 
+    def self.emulate_booleans; @@emulate_booleans; end
+    def self.emulate_booleans=(emulate); @@emulate_booleans = emulate; end
+    
     module Column
+      
       def type_cast(value)
         return nil if value.nil? || value == 'NULL' || value =~ /^\s*NULL\s*$/i
         case type
@@ -97,10 +102,10 @@ module ArJdbc
         when :integer   then value.respond_to?(:to_i) ? value.to_i : (value ? 1 : 0)
         when :primary_key then value.respond_to?(:to_i) ? value.to_i : (value ? 1 : 0)
         when :float     then value.to_f
-        when :datetime  then ArJdbc::DB2::Column.cast_to_date_or_time(value)
-        when :date      then ArJdbc::DB2::Column.cast_to_date_or_time(value)
-        when :timestamp then ArJdbc::DB2::Column.cast_to_time(value)
-        when :time      then ArJdbc::DB2::Column.cast_to_time(value)
+        when :datetime  then Column.cast_to_date_or_time(value)
+        when :date      then Column.cast_to_date_or_time(value)
+        when :timestamp then Column.cast_to_time(value)
+        when :time      then Column.cast_to_time(value)
         # TODO AS400 stores binary strings in EBCDIC (CCSID 65535), need to convert back to ASCII
         else
           super
@@ -148,22 +153,26 @@ module ArJdbc
       # http://publib.boulder.ibm.com/infocenter/db2luw/v9r7/topic/com.ibm.db2.luw.apdv.java.doc/doc/rjvjdata.html
       def simplified_type(field_type)
         case field_type
-        when /^decimal\(1\)$/i   then :boolean
-        when /smallint|boolean/i then :boolean
+        when /^decimal\(1\)$/i   then DB2.emulate_booleans ? :boolean : :integer
+        when /smallint/i         then DB2.emulate_booleans ? :boolean : :integer
+        when /boolean/i          then :boolean
         when /^real|double/i     then :float
         when /int|serial/i       then :integer
-        # if a numeric column has no scale, lets treat it as an integer.  The as400 rpg guys do this ALOT since they have no integer datatype
-        when /numeric|decfloat/i then extract_scale(field_type) == 0 ? :integer : :decimal
+        # if a numeric column has no scale, lets treat it as an integer.
+        # The AS400 rpg guys do this ALOT since they have no integer datatype ...
+        when /decimal|numeric|decfloat/i
+          extract_scale(field_type) == 0 ? :integer : :decimal
         when /timestamp/i        then :timestamp
         when /datetime/i         then :datetime
         when /time/i             then :time
         when /date/i             then :date
-        when /clob/i             then :text
+        when /clob|text/i        then :text
+        when /blob|binary/i      then :binary
         when /for bit data/i     then :binary
         when /xml/i              then :xml
-        #when /vargraphic/i       then :vargraphic
-        #when /graphic/i          then :graphic
-        #when /rowid/i            then :rowid # rowid is a supported datatype on z/OS and i/5
+        when /^vargraphic/i      then :vargraphic
+        when /^graphic/i         then :graphic
+        when /rowid/i            then :rowid # rowid is a supported datatype on z/OS and i/5
         else
           super
         end
@@ -182,14 +191,53 @@ module ArJdbc
     end
 
     class TableDefinition < ::ActiveRecord::ConnectionAdapters::TableDefinition # :nodoc:
+      
       def xml(*args)
         options = args.extract_options!
         column(args[0], 'xml', options)
       end
+      
+      # IBM DB adapter (MRI) compatibility :
+      
+      def double(*args)
+        options = args.extract_options!
+        column(args[0], 'double', options)
+      end
+
+      def decfloat(*args)
+        options = args.extract_options!
+        column(args[0], 'decfloat', options)
+      end
+
+      def graphic(*args)
+        options = args.extract_options!
+        column(args[0], 'graphic', options)
+      end
+
+      def vargraphic(*args)
+        options = args.extract_options!
+        column(args[0], 'vargraphic', options)
+      end
+
+      def bigint(*args)
+        options = args.extract_options!
+        column(args[0], 'bigint', options)
+      end
+      
+      def char(*args)
+        options = args.extract_options!
+        column(args[0], 'char', options)
+      end
+      # alias_method :character, :char
+      
     end
 
     def table_definition(*args)
       new_table_definition(TableDefinition, *args)
+    end
+    
+    def explain(query, *binds)
+      # TODO: Explain this !
     end
     
     def prefetch_primary_key?(table_name = nil)

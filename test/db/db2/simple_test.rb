@@ -42,6 +42,26 @@ class DB2SimpleTest < Test::Unit::TestCase
     assert_equal false, e.sample_boolean?
   end
   
+  def test_emulates_booleans_by_default
+    assert_true ArJdbc::DB2.emulate_booleans
+  end if ar_version('3.0')
+
+  def test_boolean_emulation_can_be_disabled
+    db_type = DbType.create! :sample_boolean => true
+    column = DbType.columns.find { |col| col.name.to_s == 'sample_boolean' }
+    assert_equal :boolean, column.type
+    ArJdbc::DB2.emulate_booleans = false
+    
+    DbType.reset_column_information
+    column = DbType.columns.find { |col| col.name.to_s == 'sample_boolean' }
+    assert_equal :integer, column.type
+    
+    assert_equal 1, db_type.reload.sample_boolean
+  ensure
+    ArJdbc::DB2.emulate_booleans = true
+    DbType.reset_column_information
+  end if ar_version('3.0')
+  
   def test_find_by_sql_WITH_statement
     user = User.create! :login => 'ferko'
     Entry.create! :title => 'aaa', :user_id => user.id
