@@ -8,8 +8,9 @@ ArJdbc::ConnectionMethods.module_eval do
     
     config[:url] ||= "jdbc:hsqldb:#{config[:database]}"
     config[:driver] ||= defined?(::Jdbc::HSQLDB.driver_name) ? ::Jdbc::HSQLDB.driver_name : 'org.hsqldb.jdbcDriver'
-    config[:adapter_spec] = ::ArJdbc::HSQLDB
+    config[:adapter_spec] ||= ::ArJdbc::HSQLDB
     config[:connection_alive_sql] ||= 'CALL PI()' # does not like 'SELECT 1'
+    
     embedded_driver(config)
   end
   alias_method :jdbchsqldb_connection, :hsqldb_connection

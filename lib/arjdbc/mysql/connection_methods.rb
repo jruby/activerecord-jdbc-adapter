@@ -9,8 +9,8 @@ ArJdbc::ConnectionMethods.module_eval do
     config[:port] ||= 3306
     config[:url] ||= "jdbc:mysql://#{config[:host]}:#{config[:port]}/#{config[:database]}"
     config[:driver] ||= defined?(::Jdbc::MySQL.driver_name) ? ::Jdbc::MySQL.driver_name : 'com.mysql.jdbc.Driver'
-    config[:adapter_class] = ActiveRecord::ConnectionAdapters::MysqlAdapter
-    config[:adapter_spec] = ::ArJdbc::MySQL
+    config[:adapter_spec] ||= ::ArJdbc::MySQL
+    config[:adapter_class] = ActiveRecord::ConnectionAdapters::MysqlAdapter unless config.key?(:adapter_class)
     options = (config[:options] ||= {})
     options['zeroDateTimeBehavior'] ||= 'convertToNull'
     options['jdbcCompliantTruncation'] ||= 'false'

@@ -11,8 +11,9 @@ ArJdbc::ConnectionMethods.module_eval do
     database = '' if database == ':memory:'
     config[:url] ||= "jdbc:sqlite:#{database}"
     config[:driver] ||= defined?(::Jdbc::SQLite3.driver_name) ? ::Jdbc::SQLite3.driver_name : 'org.sqlite.JDBC'
-    config[:adapter_class] = ActiveRecord::ConnectionAdapters::SQLite3Adapter
-    config[:adapter_spec] = ::ArJdbc::SQLite3
+    config[:adapter_spec] ||= ::ArJdbc::SQLite3
+    config[:adapter_class] = ActiveRecord::ConnectionAdapters::SQLite3Adapter unless config.key?(:adapter_class)
+    
     jdbc_connection(config)
   end
   alias_method :jdbcsqlite3_connection, :sqlite3_connection

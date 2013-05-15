@@ -8,7 +8,8 @@ ArJdbc::ConnectionMethods.module_eval do
     
     config[:url] ||= "jdbc:h2:#{config[:database]}"
     config[:driver] ||= defined?(::Jdbc::H2.driver_name) ? ::Jdbc::H2.driver_name : 'org.h2.Driver'
-    config[:adapter_spec] = ::ArJdbc::H2
+    config[:adapter_spec] ||= ::ArJdbc::H2
+    
     embedded_driver(config)
   end
   alias_method :jdbch2_connection, :h2_connection

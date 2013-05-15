@@ -9,7 +9,7 @@ ArJdbc::ConnectionMethods.module_eval do
       end
     end
     config[:driver] ||= ::ArJdbc::DB2::DRIVER_NAME
-    config[:adapter_spec] = ::ArJdbc::DB2
+    config[:adapter_spec] ||= ::ArJdbc::DB2
     config[:connection_alive_sql] ||= 'SELECT 1 FROM syscat.tables FETCH FIRST 1 ROWS ONLY'
     jdbc_connection(config)
   end
@@ -28,7 +28,7 @@ ArJdbc::ConnectionMethods.module_eval do
     end
     require 'arjdbc/db2/as400'
     config[:driver] ||= ::ArJdbc::AS400::DRIVER_NAME
-    config[:adapter_spec] = ::ArJdbc::AS400
+    config[:adapter_spec] ||= ::ArJdbc::AS400
     config[:connection_alive_sql] ||= 'SELECT 1 FROM sysibm.tables FETCH FIRST 1 ROWS ONLY'
     jdbc_connection(config)
   end
