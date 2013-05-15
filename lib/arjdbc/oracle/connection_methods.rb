@@ -4,6 +4,7 @@ ArJdbc::ConnectionMethods.module_eval do
     config[:url] ||= "jdbc:oracle:thin:@#{config[:host]}:#{config[:port]}:#{config[:database]}"
     config[:driver] ||= "oracle.jdbc.driver.OracleDriver"
     config[:adapter_spec] ||= ::ArJdbc::Oracle
+    config[:adapter_class] = ActiveRecord::ConnectionAdapters::OracleAdapter unless config.key?(:adapter_class)
     config[:connection_alive_sql] ||= 'SELECT 1 FROM DUAL'
     jdbc_connection(config)
   end

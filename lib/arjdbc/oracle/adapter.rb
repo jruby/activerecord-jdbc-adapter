@@ -4,29 +4,34 @@ require 'arjdbc/jdbc/serialized_attributes_helper'
 module ArJdbc
   module Oracle
     
-    @@_lob_callback_added = nil
-    
     def self.extended(base)
-      unless @@_lob_callback_added
-        ActiveRecord::Base.class_eval do
-          def after_save_with_oracle_lob
-            self.class.columns.select { |c| c.sql_type =~ /LOB\(|LOB$/i }.each do |column|
-              value = ::ArJdbc::SerializedAttributesHelper.dump_column_value(self, column)
-              next if value.nil? || (value == '')
+      prepare!(base)
+    end
 
-              self.class.connection.write_large_object(
-                column.type == :binary, column.name,
-                self.class.table_name, self.class.primary_key, 
-                self.class.connection.quote(id), value
-              )
-            end
+    def self.included(base)
+      prepare!(base)
+    end
+    
+    @@_prepared = nil
+    
+    def self.prepare!(base = nil)
+      return if @@_prepared; @@_prepared = true
+      
+      ActiveRecord::Base.class_eval do
+        def after_save_with_oracle_lob
+          self.class.columns.select { |c| c.sql_type =~ /LOB\(|LOB$/i }.each do |column|
+            value = ::ArJdbc::SerializedAttributesHelper.dump_column_value(self, column)
+            next if value.nil? || (value == '')
+
+            self.class.connection.write_large_object(
+              column.type == :binary, column.name,
+              self.class.table_name, self.class.primary_key, 
+              self.class.connection.quote(id), value
+            )
           end
         end
-
-        ActiveRecord::Base.after_save :after_save_with_oracle_lob
-        
-        @@_lob_callback_added = true
       end
+      ActiveRecord::Base.after_save :after_save_with_oracle_lob
 
       unless ActiveRecord::ConnectionAdapters::AbstractAdapter.
           instance_methods(false).detect { |m| m.to_s == "prefetch_primary_key?" }
@@ -622,7 +627,6 @@ module ActiveRecord::ConnectionAdapters
   
   remove_const(:OracleAdapter) if const_defined?(:OracleAdapter)
 
-  # @note this class is not really used (instantiated)
   class OracleAdapter < JdbcAdapter
     include ::ArJdbc::Oracle
     
