@@ -6,7 +6,6 @@ require 'arjdbc/mssql/tsql_methods'
 require 'arjdbc/mssql/limit_helpers'
 require 'arjdbc/mssql/lock_helpers'
 require 'arjdbc/mssql/explain_support'
-require 'arjdbc/jdbc/serialized_attributes_helper'
 
 module ArJdbc
   module MSSQL
@@ -14,39 +13,43 @@ module ArJdbc
     include TSqlMethods
     
     include ExplainSupport
-
-    @@_lob_callback_added = nil
     
-    def self.extended(base)
-      unless @@_lob_callback_added
-        ActiveRecord::Base.class_eval do
-          def after_save_with_mssql_lob
-            self.class.columns.select { |c| c.sql_type =~ /image/i }.each do |column|
-              value = ::ArJdbc::SerializedAttributesHelper.dump_column_value(self, column)
-              next if value.nil? || (value == '')
-
-              self.class.connection.write_large_object(
-                column.type == :binary, column.name, 
-                self.class.table_name, self.class.primary_key, 
-                self.class.connection.quote(id), value
-              )
-            end
-          end
-        end
-
-        ActiveRecord::Base.after_save :after_save_with_mssql_lob
-        @@_lob_callback_added = true
-      end
+    def self.extended(adapter)
+      initialize!
       
-      if ( version = base.sqlserver_version ) == '2000'
+      adapter.configure_connection
+      
+      if ( version = adapter.sqlserver_version ) == '2000'
         extend LimitHelpers::SqlServer2000AddLimitOffset
       else
         extend LimitHelpers::SqlServerAddLimitOffset
       end
-      base.config[:sqlserver_version] ||= version
-      base.configure_connection
+      adapter.config[:sqlserver_version] ||= version
     end
 
+    @@_initialized = nil
+    
+    def self.initialize!
+      return if @@_initialized; @@_initialized = true
+      
+      require 'arjdbc/jdbc/serialized_attributes_helper'
+      ActiveRecord::Base.class_eval do
+        def after_save_with_mssql_lob
+          self.class.columns.select { |c| c.sql_type =~ /image/i }.each do |column|
+            value = ::ArJdbc::SerializedAttributesHelper.dump_column_value(self, column)
+            next if value.nil? || (value == '')
+
+            self.class.connection.write_large_object(
+              column.type == :binary, column.name, 
+              self.class.table_name, self.class.primary_key, 
+              self.class.connection.quote(id), value
+            )
+          end
+        end
+      end
+      ActiveRecord::Base.after_save :after_save_with_mssql_lob
+    end
+    
     def configure_connection
       use_database # config[:database]
     end
@@ -694,7 +697,49 @@ module ArJdbc
 end
 
 module ActiveRecord::ConnectionAdapters
+  
+  class MSSQLAdapter < JdbcAdapter
+    include ::ArJdbc::MSSQL
+    
+    def initialize(*args)
+      ::ArJdbc::MSSQL.initialize!
+      
+      super # configure_connection happens in super
+      
+      if ( version = self.sqlserver_version ) == '2000'
+        extend LimitHelpers::SqlServer2000AddLimitOffset
+      else
+        extend LimitHelpers::SqlServerAddLimitOffset
+      end
+      config[:sqlserver_version] ||= version
+    end
+    
+    # some QUOTING caching :
+
+    @@quoted_table_names = {}
+
+    def quote_table_name(name)
+      unless quoted = @@quoted_table_names[name]
+        quoted = super
+        @@quoted_table_names[name] = quoted.freeze
+      end
+      quoted
+    end
+
+    @@quoted_column_names = {}
+
+    def quote_column_name(name)
+      unless quoted = @@quoted_column_names[name]
+        quoted = super
+        @@quoted_column_names[name] = quoted.freeze
+      end
+      quoted
+    end
+    
+  end
+  
   class MSSQLColumn < JdbcColumn
     include ArJdbc::MSSQL::Column
   end
+  
 end
