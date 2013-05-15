@@ -122,7 +122,8 @@ class DerbySimpleTest < Test::Unit::TestCase
       ["sample_integer_neg_default",  :integer,   { :default => -1 }],
       ["sample_text",                 :text,      { }],
       ["big_decimal",                 :integer,   { :precision => 31, :scale => 0 }],
-    ].sort{|a,b| a[0] <=> b[0]}
+      ["decimal_with_scale",          :decimal,   { :precision => 15, :scale => 3 }],
+    ].sort{ |a,b| a[0] <=> b[0] }
 
     column_names = (expected_types.map{|et| et[0]} + DbType.column_names).sort.uniq
     result = []
