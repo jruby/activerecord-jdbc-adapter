@@ -9,7 +9,7 @@ module ArJdbc
       adapter.configure_connection
     end
 
-    def self.included(*args)
+    def self.included(base)
       require 'arjdbc/derby/active_record_patch'
     end
 

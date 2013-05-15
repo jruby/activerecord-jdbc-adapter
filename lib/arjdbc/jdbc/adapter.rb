@@ -35,6 +35,9 @@ module ActiveRecord
         @visitor = new_visitor(config)
         connection.adapter = self
         JndiConnectionPoolCallbacks.prepare(self, connection)
+        # NOTE: this makes sense mostly for sub-classes as when we add the adapter
+        # spec module "later" - thus need to call when `self.extended(adapter)`
+        configure_connection if respond_to?(:configure_connection)
       end
       
       def jdbc_connection_class(spec)
@@ -455,7 +458,7 @@ module ActiveRecord
         end
         
       elsif ActiveRecord::VERSION::MAJOR >= 3 # AR >= 3.1 or 4.0
-      
+        
         # Converts an AREL AST to SQL.
         def to_sql(arel, binds = [])
           if arel.respond_to?(:ast)
@@ -467,7 +470,7 @@ module ActiveRecord
       
       else # AR-2.3 no #to_sql method
         
-        def to_sql(sql, binds = [])
+        def to_sql(sql, binds = nil)
           sql
         end
         
@@ -524,10 +527,9 @@ module ActiveRecord
       end
     
       def self.prepared_statements?(config)
-        return false # TODO until we add support for PS using our (JDBC) Java API
         config.key?(:prepared_statements) ?
           type_cast_config_to_boolean(config.fetch(:prepared_statements)) :
-            true
+            false # NOTE: off by default for now
       end
 
       def suble_binds(sql, binds)

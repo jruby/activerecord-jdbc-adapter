@@ -1,43 +1,33 @@
 ArJdbc.load_java_part :DB2
 
-require 'arjdbc/jdbc/serialized_attributes_helper'
-
 module ArJdbc
   module DB2
     
-    # TODO kind of standard AR configuration option for this would be nice :
-    ADD_LOB_CALLBACK = true unless const_defined?(:ADD_LOB_CALLBACK) # :nodoc
-
-    @@_lob_callback_added = nil
-    def self.lob_callback_added? # :nodoc
-      @@_lob_callback_added
-    end
+    def self.extended(adapter); initialize!; end
     
-    def self.lob_callback_added! # :nodoc
-      @@_lob_callback_added = true
-    end
+    @@_initialized = nil
     
-    def self.extended(base)
-      if ADD_LOB_CALLBACK && ! lob_callback_added?
-        ActiveRecord::Base.class_eval do
-          def after_save_with_db2_lob
-            lob_columns = self.class.columns.select { |c| c.sql_type =~ /blob|clob/i }
-            lob_columns.each do |column|
-              value = ::ArJdbc::SerializedAttributesHelper.dump_column_value(self, column)
-              next if value.nil? # already set NULL
+    def self.initialize!
+      return if @@_initialized; @@_initialized = true
+      
+      require 'arjdbc/jdbc/serialized_attributes_helper'
+      ActiveRecord::Base.class_eval do
+        def after_save_with_db2_lob
+          lob_columns = self.class.columns.select { |c| c.sql_type =~ /blob|clob/i }
+          lob_columns.each do |column|
+            value = ::ArJdbc::SerializedAttributesHelper.dump_column_value(self, column)
+            next if value.nil? # already set NULL
 
-              self.class.connection.write_large_object(
-                column.type == :binary, column.name, 
-                self.class.table_name, 
-                self.class.primary_key, 
-                self.class.connection.quote(id), value
-              )
-            end
+            self.class.connection.write_large_object(
+              column.type == :binary, column.name, 
+              self.class.table_name, 
+              self.class.primary_key, 
+              self.class.connection.quote(id), value
+            )
           end
         end
-        ActiveRecord::Base.after_save :after_save_with_db2_lob # <-compat
-        lob_callback_added!
       end
+      ActiveRecord::Base.after_save :after_save_with_db2_lob
     end
     
     def self.column_selector

@@ -1,22 +1,16 @@
 ArJdbc.load_java_part :Oracle
-require 'arjdbc/jdbc/serialized_attributes_helper'
 
 module ArJdbc
   module Oracle
     
-    def self.extended(base)
-      prepare!(base)
-    end
-
-    def self.included(base)
-      prepare!(base)
-    end
+    def self.extended(adapter); initialize!; end
     
-    @@_prepared = nil
+    @@_initialized = nil
     
-    def self.prepare!(base = nil)
-      return if @@_prepared; @@_prepared = true
+    def self.initialize!
+      return if @@_initialized; @@_initialized = true
       
+      require 'arjdbc/jdbc/serialized_attributes_helper'
       ActiveRecord::Base.class_eval do
         def after_save_with_oracle_lob
           self.class.columns.select { |c| c.sql_type =~ /LOB\(|LOB$/i }.each do |column|
@@ -637,6 +631,11 @@ module ActiveRecord::ConnectionAdapters
     #
     def self.emulate_booleans; ::ArJdbc::Oracle.emulate_booleans; end
     def self.emulate_booleans=(emulate); ::ArJdbc::Oracle.emulate_booleans = emulate; end
+    
+    def initialize(*args)
+      ::ArJdbc::Oracle.initialize!
+      super # configure_connection happens in super
+    end
     
     # some QUOTING caching :
 

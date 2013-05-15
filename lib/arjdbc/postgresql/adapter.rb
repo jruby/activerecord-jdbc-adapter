@@ -9,8 +9,8 @@ module ArJdbc
     
     AR4_COMPAT = ::ActiveRecord::VERSION::MAJOR > 3 unless const_defined?(:AR4_COMPAT) # :nodoc:
     
-    def self.extended(base)
-      base.configure_connection
+    def self.extended(adapter)
+      adapter.configure_connection
     end
 
     def self.column_selector
@@ -1445,7 +1445,7 @@ module ActiveRecord::ConnectionAdapters
       @local_tz = nil
       @table_alias_length = nil
       
-      configure_connection
+      # configure_connection happens in super
 
       @local_tz = execute('SHOW TIME ZONE', 'SCHEMA').first["TimeZone"]
       @use_insert_returning = config.key?(:insert_returning) ? 

@@ -678,7 +678,7 @@ module ActiveRecord
       
       def initialize(*args)
         super
-        configure_connection
+        # configure_connection happens in super
       end
 
       def jdbc_connection_class(spec)

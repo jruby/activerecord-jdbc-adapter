@@ -16,6 +16,7 @@ ArJdbc::ConnectionMethods.module_eval do
     options['jdbcCompliantTruncation'] ||= 'false'
     options['useUnicode'] ||= 'true'
     options['characterEncoding'] = config[:encoding] || 'utf8'
+    
     connection = jdbc_connection(config)
     ::ArJdbc::MySQL.kill_cancel_timer(connection.raw_connection)
     connection
