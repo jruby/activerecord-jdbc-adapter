@@ -259,7 +259,7 @@ module ArJdbc
     end
 
     def recreate_database(name, options = {})
-      tables.each{ |table| drop_table(table) }
+      tables.each { |table| drop_table(table) }
     end
 
     def drop_database(name)
@@ -496,26 +496,28 @@ module ArJdbc
     end
     
     # QUOTING ==================================================
-
-    # See ACTIVERECORD_JDBC-33 for details -- better to not quote
-    # table names, esp. if they have schemas.
+    
     def quote_table_name(name) # :nodoc:
-      name.to_s
+      name.to_s.split('.').map{ |n| n.split('@').map{ |m| quote_column_name(m) }.join('@') }.join('.')
     end
-
-    # Camelcase column names need to be quoted.
-    # Nonquoted identifiers can contain only alphanumeric characters from your
-    # database character set and the underscore (_), dollar sign ($), and pound sign (#).
-    # Database links can also contain periods (.) and "at" signs (@).
-    # Oracle strongly discourages you from using $ and # in nonquoted identifiers.
-    # Source: http://download.oracle.com/docs/cd/B28359_01/server.111/b28286/sql_elements008.htm
+    
     def quote_column_name(name) #:nodoc:
-      name.to_s =~ /^[a-z0-9_$#]+$/ ? name.to_s : "\"#{name}\""
+      name = name.to_s
+      # if only valid lowercase column characters in name
+      if name =~ /\A[a-z][a-z_0-9\$#]*\Z/
+        # putting double-quotes around an identifier causes Oracle to treat the 
+        # identifier as case sensitive (otherwise assumes case-insensitivity) !
+        # all upper case is an exception, where double-quotes are meaningless
+        "\"#{name.upcase}\"" # name.upcase
+      else
+        # remove double quotes which cannot be used inside quoted identifier
+        "\"#{name.gsub('"', '')}\""
+      end
     end
     
     def quote(value, column = nil) # :nodoc:
       return value if sql_literal?(value) # Arel 2 passes SqlLiterals through
-
+      
       column_type = column && column.type
       if column_type == :text || column_type == :binary
         if /(.*?)\([0-9]+\)/ =~ column.sql_type
@@ -525,6 +527,8 @@ module ArJdbc
         end
       elsif column_type == :xml
         "XMLTYPE('#{quote_string(value)}')" # XMLTYPE ?
+      elsif column_type == :raw
+        quote_raw(value)
       else
         if column.respond_to?(:primary) && column.primary && column.klass != String
           return value.to_i.to_s
@@ -537,6 +541,11 @@ module ArJdbc
         end
         quoted
       end
+    end
+    
+    def quote_raw(value) # :nodoc:
+      value = value.unpack('C*') if value.is_a?(String)
+      "'#{value.map { |x| "%02X" % x }.join}'"
     end
     
     def supports_migrations? # :nodoc:
@@ -610,6 +619,7 @@ module ArJdbc
 end
 
 module ActiveRecord::ConnectionAdapters
+  
   remove_const(:OracleAdapter) if const_defined?(:OracleAdapter)
 
   # @note this class is not really used (instantiated)
@@ -623,9 +633,33 @@ module ActiveRecord::ConnectionAdapters
     #
     def self.emulate_booleans; ::ArJdbc::Oracle.emulate_booleans; end
     def self.emulate_booleans=(emulate); ::ArJdbc::Oracle.emulate_booleans = emulate; end
+    
+    # some QUOTING caching :
+
+    @@quoted_table_names = {}
+
+    def quote_table_name(name)
+      unless quoted = @@quoted_table_names[name]
+        quoted = super
+        @@quoted_table_names[name] = quoted.freeze
+      end
+      quoted
+    end
+
+    @@quoted_column_names = {}
+
+    def quote_column_name(name)
+      unless quoted = @@quoted_column_names[name]
+        quoted = super
+        @@quoted_column_names[name] = quoted.freeze
+      end
+      quoted
+    end
+    
   end
 
   class OracleColumn < JdbcColumn
     include ::ArJdbc::Oracle::Column
   end
+  
 end

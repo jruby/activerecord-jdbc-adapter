@@ -63,6 +63,16 @@ class OracleSimpleTest < Test::Unit::TestCase
   end if Test::Unit::TestCase.ar_version('3.1') # no binds argument for <= 3.0
   
   include ExplainSupportTestMethods if ar_version("3.1")
+
+  def test_quotes_reserved_word_column
+    connection.create_table 'lusers', :force => true do |t|
+      t.string :file
+      t.text "desc", :limit => 16777216
+      t.date :'date', :null => false
+    end
+  ensure
+    connection.drop_table('lusers') rescue nil
+  end
   
   def test_emulates_booleans_by_default
     assert_true ArJdbc::Oracle.emulate_booleans
