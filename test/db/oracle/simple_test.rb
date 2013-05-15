@@ -95,6 +95,23 @@ class OracleSimpleTest < Test::Unit::TestCase
     DbType.reset_column_information
   end if ar_version('3.0')
   
+  def test_set_table_name_prefixed_with_schema
+    schema = connection.config[:username]
+    activity = Class.new(ActiveRecord::Base) do # class Activity
+      if respond_to?(:table_name=)
+        self.table_name = "#{schema}.activities"
+        self.sequence_name = "#{schema}.activities_seq"
+      else
+        set_table_name "#{schema}.activities"
+        set_sequence_name "#{schema}.activities_seq"
+      end
+    end
+    connection.create_table(:activities) { |t| t.string :name }
+    assert activity.create! :name => 'an-activity' # Activity.create! ...
+  ensure
+    connection.drop_table(:activities) rescue nil
+  end
+  
   protected
 
   def assert_empty_string value
