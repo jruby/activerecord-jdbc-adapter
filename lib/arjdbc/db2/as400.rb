@@ -95,7 +95,15 @@ module ArJdbc
         if config[:schema].present?
           config[:schema]
         elsif config[:jndi].present?
-          nil # let JNDI worry about schema
+          # Only found method to set db2_schema from jndi
+          result = select_one("SELECT CURRENT_SCHEMA FROM SYSIBM.SYSDUMMY1")
+          schema = result['00001']
+
+          # If the connection uses the library list schema name will be nil
+          if schema == '*LIBL'
+            schema = nil
+          end
+          schema
         else
           # AS400 implementation takes schema from library name (last part of URL)
           # jdbc:as400://localhost/schema;naming=system;libraries=lib1,lib2
