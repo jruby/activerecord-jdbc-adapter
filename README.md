@@ -144,6 +144,13 @@ development:
   password: lion
 ```
 
+If your SGBD isn't automatically discovered you can force dialect :
+```yml
+development:
+  [...]
+  dialect: as400 # For example
+```
+
 ### Standalone (with ActiveRecord)
 
 1. Install the gem with JRuby:
