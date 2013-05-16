@@ -117,7 +117,7 @@ module ArJdbc
           if order =~ /(\w*id\w*)/i
             $1
           else
-            unquoted_name = unquote_table_name(table_name)
+            unquoted_name = Utils.unquote_table_name(table_name)
             model = descendants.find { |m| m.table_name == table_name || m.table_name == unquoted_name }
             model ? model.primary_key : 'id'
           end
