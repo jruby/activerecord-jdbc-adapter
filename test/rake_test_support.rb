@@ -47,6 +47,8 @@ module RakeTestSupport
   def do_setup
   end
 
+  RAILS_4x = ActiveRecord::VERSION::MAJOR >= 4
+  
   def load_tasks
     if ActiveRecord::VERSION::MAJOR >= 3
       load "active_record/railties/databases.rake"
@@ -54,13 +56,25 @@ module RakeTestSupport
       load "tasks/databases.rake" # from rails/railties
     end
     load 'arjdbc/tasks.rb' if defined?(JRUBY_VERSION)
-    
-    task :environment do
-      ActiveRecord::Base.configurations = configurations
-      @full_env_loaded = true
+
+    namespace :db do
+      task :load_config do
+        # RAILS_4x :
+        # ActiveRecord::Base.configurations = ActiveRecord::Tasks::DatabaseTasks.database_configuration || {}
+        # ActiveRecord::Migrator.migrations_paths = ActiveRecord::Tasks::DatabaseTasks.migrations_paths
+        # 2.3 :
+        # ActiveRecord::Base.configurations = Rails::Configuration.new.database_configuration
+        ActiveRecord::Base.configurations = configurations
+      end
     end
+
+    task(:environment) { @full_env_loaded = true }
     
-    task(:rails_env) { @rails_env_set = true } if ActiveRecord::VERSION::MAJOR < 4
+    if RAILS_4x
+      ActiveRecord::Tasks::DatabaseTasks.env = @rails_env
+    else
+      task(:rails_env) { @rails_env_set = true }
+    end
   end
   
   def teardown

@@ -17,22 +17,23 @@ class PostgresRakeTest < Test::Unit::TestCase
   test 'rake db:create (and db:drop)' do
     Rake::Task["db:create"].invoke
     if PSQL_EXECUTABLE
-      assert_match /#{db_name}/m, psql("-d template1 -c '\\\l'")
+      output = psql("-d template1 -c '\\\l'")
+      assert_match /#{db_name}/m, output
     end
     
     Rake::Task["db:drop"].invoke
     if PSQL_EXECUTABLE
-      assert_no_match /#{db_name}/m, psql("-d template1 -c '\\\l'")
+      output = psql("-d template1 -c '\\\l'")
+      assert_no_match /#{db_name}/m, output
     end
+  end
+
+  test 'rake db:drop (non-existing database)' do
+    Rake::Task["db:drop"].invoke
   end
   
   test 'rake db:test:purge' do
-    begin
-      Rake::Task["db:create"].invoke
-      Rake::Task["db:test:purge"].invoke
-    ensure
-      Rake::Task["db:drop"].invoke rescue nil
-    end
+    Rake::Task["db:test:purge"].invoke
   end
 
   test 'rake db:create does not load full environment' do
@@ -43,7 +44,7 @@ class PostgresRakeTest < Test::Unit::TestCase
     ensure
       Rake::Task["db:drop"].invoke rescue nil
     end
-  end
+  end if ActiveRecord::VERSION::MAJOR < 4
   
   private
   

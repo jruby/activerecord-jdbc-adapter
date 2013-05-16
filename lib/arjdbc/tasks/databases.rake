@@ -21,22 +21,22 @@ end
 
 namespace :db do
 
-  redefine_task :create do
-    config = ActiveRecord::Base.configurations[rails_env]
-    create_database(config)
-  end
-  task :create => :load_config if Rake.application.lookup(:load_config)
-
-  redefine_task :drop => :environment do
-    config = ActiveRecord::Base.configurations[rails_env]
-    begin
-      db = find_database_name(config)
-      ActiveRecord::Base.connection.drop_database(db)
-    rescue
-      drop_database(config)
-    end
-  end
-  task :drop => :load_config if Rake.application.lookup(:load_config)
+#  redefine_task :create do
+#    config = ActiveRecord::Base.configurations[rails_env]
+#    create_database(config)
+#  end
+#  task :create => :load_config if Rake.application.lookup(:load_config)
+#
+#  redefine_task :drop => :environment do
+#    config = ActiveRecord::Base.configurations[rails_env]
+#    begin
+#      db = find_database_name(config)
+#      ActiveRecord::Base.connection.drop_database(db)
+#    rescue
+#      drop_database(config)
+#    end
+#  end
+#  task :drop => :load_config if Rake.application.lookup(:load_config)
 
   if defined? ActiveRecord::Tasks::DatabaseTasks # 4.0
     load 'arjdbc/tasks/databases4.rake'
@@ -84,6 +84,7 @@ namespace :db do
       db = find_database_name config = ActiveRecord::Base.configurations['test']
       ActiveRecord::Base.connection.recreate_database(db, config)
     end
+    task :purge => :load_config if Rake.application.lookup(:load_config)
   end
 
   def find_database_name(config)
