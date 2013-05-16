@@ -112,6 +112,9 @@ namespace :db do
       ActiveRecord::Base.establish_connection(abcs[rails_env])
       filename = ENV['DB_STRUCTURE'] || "db/#{rails_env}_structure.sql"
       IO.read(filename).split(/;\n*/m).each do |ddl|
+        unless abcs[rails_env][:schema].blank?
+          ddl.sub! /((CREATE|ALTER) TABLE |INSERT INTO )(\w+)/i, "\\1#{abcs[rails_env][:schema].upcase}.\\3"
+        end
         ActiveRecord::Base.connection.execute(ddl)
       end
     end
