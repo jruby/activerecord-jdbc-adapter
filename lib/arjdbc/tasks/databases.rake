@@ -76,7 +76,7 @@ namespace :db do
   namespace :test do
 
     # desc "Empty the test database"
-    redefine_task(:purge) do # |rails_task|
+    redefine_task :purge do
       config = ActiveRecord::Base.configurations['test']
       case config['adapter']
       when /mysql/
@@ -112,6 +112,8 @@ namespace :db do
         ActiveRecord::Base.connection.recreate_database(db_name, config)
       end
     end
+    # only does (:purge => :environment) on AR < 3.2
+    task :purge => :load_config if Rake::Task.task_defined?(:load_config)
     
   end
   

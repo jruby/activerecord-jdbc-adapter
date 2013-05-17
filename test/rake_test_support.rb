@@ -115,12 +115,15 @@ module RakeTestSupport
   end
   
   def configurations
-    db_config = self.db_config.dup
-    db_config.merge!(:database => @db_name) if @db_name ||= nil
-    db_config.stringify_keys!
-    @configurations = { @rails_env => db_config }
-    @configurations['test'] = db_config.dup
-    @configurations
+    @configurations ||= begin
+      db_config = self.db_config.dup
+      db_config.merge!(:database => @db_name) if @db_name ||= nil
+      db_config.stringify_keys!
+      raise "Rails.env not set" unless @rails_env ||= nil
+      configurations = { @rails_env => db_config }
+      configurations['test'] = db_config.dup
+      configurations
+    end
   end
   
   private
