@@ -60,14 +60,15 @@ module ArJdbc
   end
 
   extension :DB2 do |name, config|
-    if name =~ /db2/i && config[:url] !~ /^jdbc:derby:net:/
+    if name =~ /db2/i && name !~ /as\/?400/i && config[:url] !~ /^jdbc:derby:net:/
       require 'arjdbc/db2'
       true
     end
   end
   
   extension :AS400 do |name, config|
-    if name =~ /as400/i
+    # The native JDBC driver always returns "DB2 UDB for AS/400"
+    if name =~ /as\/?400/i
       require 'arjdbc/db2'
       require 'arjdbc/db2/as400'
       true
