@@ -84,6 +84,8 @@ class MysqlInfoTest < Test::Unit::TestCase
       create_table :memos do |t|
         t.text :text, :limit => 16.megabytes
       end
+
+      execute 'create view my_view as select name from cats'
     end
 
     def self.down
@@ -91,6 +93,7 @@ class MysqlInfoTest < Test::Unit::TestCase
       drop_table :cars
       drop_table :cats
       drop_table :memos
+      execute 'drop view my_view'
     end
 
   end
@@ -126,6 +129,11 @@ class MysqlInfoTest < Test::Unit::TestCase
     assert dump.include?('CREATE TABLE `cars`')
     assert dump.include?('CREATE TABLE `cats`')
     assert dump.include?('CREATE TABLE `memos`')
+  end
+
+  def test_should_include_the_views_in_a_structure_dump
+    dump = connection.structure_dump
+    assert_match(/CREATE (.*) VIEW `my_view`/, dump)
   end
 
   def test_should_include_longtext_in_schema_dump
