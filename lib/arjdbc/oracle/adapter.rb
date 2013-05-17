@@ -257,12 +257,8 @@ module ArJdbc
       execute "DROP SEQUENCE #{seq_name}" rescue nil
     end
 
-    def recreate_database(name, options = {})
-      tables.each { |table| drop_table(table) }
-    end
-
     def drop_database(name)
-      recreate_database(name)
+      tables.each { |table| drop_table(table) }
     end
     
     def type_to_sql(type, limit = nil, precision = nil, scale = nil) #:nodoc:
@@ -386,7 +382,7 @@ module ArJdbc
 
     def rename_column(table_name, column_name, new_column_name) #:nodoc:
       execute "ALTER TABLE #{quote_table_name(table_name)} " <<
-        "RENAME COLUMN #{quote_column_name(column_name)} to #{quote_column_name(new_column_name)}"
+        "RENAME COLUMN #{quote_column_name(column_name)} TO #{quote_column_name(new_column_name)}"
     end
     
     def remove_column(table_name, *column_names) #:nodoc:
@@ -396,17 +392,17 @@ module ArJdbc
     end
 
     def structure_dump #:nodoc:
-      s = select_all("select sequence_name from user_sequences").inject("") do |structure, seq|
-        structure << "create sequence #{seq.to_a.first.last};\n\n"
+      s = select_all("SELECT sequence_name FROM user_sequences").inject("") do |structure, seq|
+        structure << "CREATE SEQUENCE #{seq.to_a.first.last};\n\n"
       end
 
-      select_all("select table_name from user_tables").inject(s) do |structure, table|
-        ddl = "create table #{table.to_a.first.last} (\n "
+      select_all("SELECT table_name FROM user_tables").inject(s) do |structure, table|
+        ddl = "CREATE TABLE #{table.to_a.first.last} (\n "
         cols = select_all(%Q{
-          select column_name, data_type, data_length, data_precision, data_scale, data_default, nullable
-          from user_tab_columns
-          where table_name = '#{table.to_a.first.last}'
-          order by column_id
+          SELECT column_name, data_type, data_length, data_precision, data_scale, data_default, nullable
+          FROM user_tab_columns
+          WHERE table_name = '#{table.to_a.first.last}'
+          ORDER by column_id
         }).map do |row|
           row = row.inject({}) { |h, args| h[ args[0].downcase ] = args[1]; h }
           col = "#{row['column_name'].downcase} #{row['data_type'].downcase}"
@@ -427,13 +423,13 @@ module ArJdbc
       end
     end
 
-    def structure_drop #:nodoc:
-      s = select_all("select sequence_name from user_sequences").inject("") do |drop, seq|
-        drop << "drop sequence #{seq.to_a.first.last};\n\n"
+    def structure_drop # :nodoc:
+      drop = ''
+      select_all("SELECT sequence_name FROM user_sequences").inject(drop) do |buff, seq|
+        buff << "DROP SEQUENCE #{seq.to_a.first.last};\n\n"
       end
-
-      select_all("select table_name from user_tables").inject(s) do |drop, table|
-        drop << "drop table #{table.to_a.first.last} cascade constraints;\n\n"
+      select_all("SELECT table_name FROM user_tables").inject(drop) do |buff, table|
+        buff << "DROP TABLE #{table.to_a.first.last} CASCADE CONSTRAINTS;\n\n"
       end
     end
 
