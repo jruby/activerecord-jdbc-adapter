@@ -226,7 +226,9 @@ class PostgresTimestampTest < Test::Unit::TestCase
   private :do_test_save_infinity
   
   def test_bc_timestamp
-    omit "Date.new(0) issue on JRuby 1.7.3" if RUBY_VERSION == '1.9.3' && defined?(JRUBY_VERSION) && JRUBY_VERSION == '1.7.3'
+    if RUBY_VERSION == '1.9.3' && defined?(JRUBY_VERSION) && JRUBY_VERSION =~ /1\.7\.3|4/
+      omit "Date.new(0) issue on JRuby 1.7.3/4" 
+    end
     # JRuby 1.7.3 (--1.9) bug: `Date.new(0) + 1.seconds` "1753-08-29 22:43:42 +0057"
     date = Date.new(0) - 1.second
     db_type = DbType.create!(:sample_timestamp => date)
