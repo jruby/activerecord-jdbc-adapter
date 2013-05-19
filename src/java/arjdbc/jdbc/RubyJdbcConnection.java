@@ -57,6 +57,7 @@ import org.jruby.RubyArray;
 import org.jruby.RubyBignum;
 import org.jruby.RubyBoolean;
 import org.jruby.RubyClass;
+import org.jruby.RubyException;
 import org.jruby.RubyFixnum;
 import org.jruby.RubyHash;
 import org.jruby.RubyIO;
@@ -71,7 +72,6 @@ import org.jruby.anno.JRubyMethod;
 import org.jruby.exceptions.RaiseException;
 import org.jruby.javasupport.JavaEmbedUtils;
 import org.jruby.javasupport.JavaUtil;
-import org.jruby.javasupport.util.RuntimeHelpers;
 import org.jruby.runtime.Arity;
 import org.jruby.runtime.Block;
 import org.jruby.runtime.ObjectAllocator;
@@ -2214,6 +2214,7 @@ public class RubyJdbcConnection extends RubyObject {
             final String catalog, final String schemaPattern,
             final String tablePattern, final String[] types) {
         return new SQLBlock() {
+            @Override
             public IRubyObject call(final Connection connection) throws SQLException {
                 return matchTables(runtime, connection, catalog, schemaPattern, tablePattern, types, false);
             }
@@ -2520,10 +2521,9 @@ public class RubyJdbcConnection extends RubyObject {
                 exception.getMessage() : exception.toString(); // useful to easily see type on Ruby side
             final RaiseException error = wrapException(context, getJDBCError(runtime), exception, message);
             final int errorCode = ((SQLException) exception).getErrorCode();
-            RuntimeHelpers.invoke( context, error.getException(),
-                "errno=", runtime.newFixnum(errorCode) );
-            RuntimeHelpers.invoke( context, error.getException(),
-                "sql_exception=", JavaEmbedUtils.javaToRuby(runtime, exception) );
+            final RubyException self = error.getException();
+            self.getMetaClass().finvoke(context, self, "errno=", runtime.newFixnum(errorCode));
+            self.getMetaClass().finvoke(context, self, "sql_exception=", JavaEmbedUtils.javaToRuby(runtime, exception));
             return error;
         }
         return wrapException(context, getJDBCError(runtime), exception);
