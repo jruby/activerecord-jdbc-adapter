@@ -1,26 +1,25 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
   xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
   <modelVersion>4.0.0</modelVersion>
-  <groupId>org.jruby.activerecord-jdbc</groupId>
+  <groupId>org.jruby.rails</groupId>
   <artifactId>activerecord-jdbc</artifactId>
   <packaging>jar</packaging>
-  <version>1.0.0</version>
+  <version>IDE-SNAPSHOT</version>
   <name>activerecord-jdbc</name>
   <description>
-    This POM for activerecord-jdbc is just for bootstrapping IDEs. You
-    can't use it to build the project at the moment.
+    This POM for ActiveRecord-JDBC is just for bootstrapping IDEs.
   </description>
-  <url>http://activerecord-jdbc.kenai.com/</url>
+  <url>http://github.com/jruby/activerecord-jdbc-adapter/wiki</url>
 
   <issueManagement>
-    <system>JIRA</system>
-    <url>http://kenai.com/jira/browse/ACTIVERECORD_JDBC</url>
+    <system>GitHub</system>
+    <url>http://github.com/jruby/activerecord-jdbc-adapter/issues</url>
   </issueManagement>
 
   <scm>
-    <connection>scm:git:git://github.com/nicksieger/activerecord-jdbc-adapter.git</connection>
-    <developerConnection>scm:git:git@github.com:nicksieger/activerecord-jdbc-adapter.git</developerConnection>
-    <url>http://github.com/nicksieger/activerecord-jdbc-adapter</url>
+    <connection>scm:git:git://github.com/jruby/activerecord-jdbc-adapter.git</connection>
+    <developerConnection>scm:git:git@github.com:jruby/activerecord-jdbc-adapter.git</developerConnection>
+    <url>https://github.com/jruby/activerecord-jdbc-adapter</url>
   </scm>
 
   <licenses>
@@ -55,8 +54,8 @@
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-compiler-plugin</artifactId>
         <configuration>
-          <source>1.5</source>
-          <target>1.5</target>
+          <source>1.6</source>
+          <target>1.6</target>
         </configuration>
       </plugin>
     </plugins>
