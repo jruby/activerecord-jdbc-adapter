@@ -32,6 +32,7 @@ import java.io.InputStreamReader;
 import java.io.Reader;
 import java.io.StringReader;
 import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.sql.Array;
@@ -75,6 +76,7 @@ import org.jruby.runtime.Arity;
 import org.jruby.runtime.Block;
 import org.jruby.runtime.ObjectAllocator;
 import org.jruby.runtime.ThreadContext;
+import org.jruby.runtime.backtrace.RubyStackTraceElement;
 import org.jruby.runtime.builtin.IRubyObject;
 import org.jruby.util.ByteList;
 
@@ -297,8 +299,8 @@ public class RubyJdbcConnection extends RubyObject {
         // https://github.com/jruby/activerecord-jdbc-adapter/issues/197
         // https://github.com/jruby/activerecord-jdbc-adapter/issues/198
         if ( Boolean.getBoolean("arjdbc.disconnect.debug") ) {
+            final List<?> backtrace = createCallerBacktrace(context);
             final Ruby runtime = context.getRuntime();
-            List backtrace = (List) context.createCallerBacktrace(runtime, 0);
             runtime.getOut().println(this + " connection.disconnect! occured: ");
             for ( Object element : backtrace ) { 
                 runtime.getOut().println(element);
@@ -307,7 +309,7 @@ public class RubyJdbcConnection extends RubyObject {
         }
         return setConnection(null);
     }
-
+    
     @JRubyMethod(name = "reconnect!")
     public IRubyObject reconnect(final ThreadContext context) {
         try {
@@ -2864,6 +2866,38 @@ public class RubyJdbcConnection extends RubyObject {
         if ( debug || context.runtime.isDebug() ) {
             e.printStackTrace(context.runtime.getOut());
         }
+    }
+    
+    private static RubyArray createCallerBacktrace(final ThreadContext context) {
+        final Ruby runtime = context.getRuntime();
+        runtime.incrementCallerCount();
+        
+        Method gatherCallerBacktrace; RubyStackTraceElement[] trace;
+        try {
+            gatherCallerBacktrace = context.getClass().getMethod("gatherCallerBacktrace");
+            trace = (RubyStackTraceElement[]) gatherCallerBacktrace.invoke(context); // 1.6.8
+        }
+        catch (NoSuchMethodException ignore) {
+            try {
+                gatherCallerBacktrace = context.getClass().getMethod("gatherCallerBacktrace", Integer.TYPE);
+                trace = (RubyStackTraceElement[]) gatherCallerBacktrace.invoke(context, 0); // 1.7.4
+            }
+            catch (NoSuchMethodException e) { throw new RuntimeException(e); }
+            catch (IllegalAccessException e) { throw new RuntimeException(e); }
+            catch (InvocationTargetException e) { throw new RuntimeException(e.getTargetException()); }
+        }
+        catch (IllegalAccessException e) { throw new RuntimeException(e); }
+        catch (InvocationTargetException e) { throw new RuntimeException(e.getTargetException()); }
+        // RubyStackTraceElement[] trace = context.gatherCallerBacktrace(level);
+        
+        final RubyArray backtrace = runtime.newArray(trace.length);
+        for (int i = 0; i < trace.length; i++) {
+            RubyStackTraceElement element = trace[i];
+            backtrace.append( RubyString.newString(runtime, 
+                element.getFileName() + ":" + element.getLineNumber() + ":in `" + element.getMethodName() + "'"
+            ) );
+        }
+        return backtrace;
     }
     
 }
