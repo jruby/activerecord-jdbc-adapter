@@ -1,113 +1,124 @@
-def redefine_task(*args, &block)
-  task_name = Hash === args.first ? args.first.keys[0] : args.first
-  existing_task = Rake.application.lookup task_name
-  if existing_task
-    class << existing_task
-      public :instance_variable_set
-      attr_reader :actions
-    end
-    existing_task.instance_variable_set "@prerequisites", FileList[]
-    existing_task.actions.shift
-    enhancements = existing_task.actions
-    existing_task.instance_variable_set "@actions", []
-  end
-  redefined_task = task(*args, &block)
-  enhancements.each {|enhancement| redefined_task.actions << enhancement} unless enhancements.nil?
-end
+raise "ArJdbc needs rake 0.9.x or newer" unless Rake.const_defined?(:VERSION)
 
-def rails_env
-  defined?(Rails.env) ? Rails.env : RAILS_ENV
+Rake::DSL.module_eval do
+  
+  def redefine_task(*args, &block)
+    if Hash === args.first
+      task_name = args.first.keys[0]
+      old_prereqs = false # leave as specified
+    else
+      task_name = args.first; old_prereqs = []
+      # args[0] = { task_name => old_prereqs }
+    end
+    
+    full_name = Rake::Task.scope_name(Rake.application.current_scope, task_name)
+    
+    if old_task = Rake.application.lookup(task_name)
+      old_comment = old_task.full_comment
+      old_prereqs = old_task.prerequisites.dup if old_prereqs
+      old_actions = old_task.actions.dup
+      old_actions.shift # remove the main 'action' block - we're redefining it
+      # old_task.clear_prerequisites if old_prereqs
+      # old_task.clear_actions
+      # remove the (old) task instance from the application :
+      Rake.application.send(:instance_variable_get, :@tasks)[full_name.to_s] = nil
+    else
+      # raise "could not find rake task with (full) name '#{full_name}'"
+    end
+    
+    new_task = task(*args, &block)
+    new_task.comment = old_comment # if old_comment
+    new_task.actions.concat(old_actions) if old_actions
+    new_task.prerequisites.concat(old_prereqs) if old_prereqs
+    new_task
+  end
+  
 end
 
 namespace :db do
 
-#  redefine_task :create do
-#    config = ActiveRecord::Base.configurations[rails_env]
-#    create_database(config)
-#  end
-#  task :create => :load_config if Rake.application.lookup(:load_config)
-#
-#  redefine_task :drop => :environment do
-#    config = ActiveRecord::Base.configurations[rails_env]
-#    begin
-#      db = find_database_name(config)
-#      ActiveRecord::Base.connection.drop_database(db)
-#    rescue
-#      drop_database(config)
-#    end
-#  end
-#  task :drop => :load_config if Rake.application.lookup(:load_config)
-
-  if defined? ActiveRecord::Tasks::DatabaseTasks # 4.0
-    load 'arjdbc/tasks/databases4.rake'
-  else # 3.x / 2.3
-    load 'arjdbc/tasks/databases3.rake'
+  def rails_env
+    defined?(Rails.env) ? Rails.env : ( RAILS_ENV || 'development' )
   end
-
-  namespace :structure do
-    redefine_task :dump => :environment do
-      config = ActiveRecord::Base.configurations[rails_env]
-      ActiveRecord::Base.establish_connection(config)
-      filename = ENV['DB_STRUCTURE'] || "db/#{rails_env}_structure.sql"
-      File.open(filename, "w+") { |f| f << ActiveRecord::Base.connection.structure_dump }
-      if ActiveRecord::Base.connection.supports_migrations?
-        File.open(filename, "a") { |f| f << ActiveRecord::Base.connection.dump_schema_information }
+  
+  if defined? ActiveRecord::Tasks::DatabaseTasks # 4.0
+    
+    def current_config(options = {})
+      ActiveRecord::Tasks::DatabaseTasks.current_config(options)
+    end
+    
+  else # 3.x / 2.3
+        
+    def current_config(options = {}) # not on 2.3
+      options = { :env => rails_env }.merge! options
+      if options[:config]
+        @current_config = options[:config]
+      else
+        @current_config ||= 
+          if ENV['DATABASE_URL']
+            database_url_config
+          else
+            ActiveRecord::Base.configurations[options[:env]]
+          end
       end
     end
 
-    redefine_task :load => :environment do
-      config = ActiveRecord::Base.configurations[rails_env]
-      ActiveRecord::Base.establish_connection(config)
-      filename = ENV['DB_STRUCTURE'] || "db/#{rails_env}_structure.sql"
-      IO.read(filename).split(/;\n*/m).each do |ddl|
-        ActiveRecord::Base.connection.execute(ddl)
+    def database_url_config(url = ENV['DATABASE_URL'])
+      unless defined? ActiveRecord::Base::ConnectionSpecification::Resolver
+        raise "ENV['DATABASE_URL'] not support on AR #{ActiveRecord::VERSION::STRING}"
       end
+      @database_url_config ||=
+        ActiveRecord::Base::ConnectionSpecification::Resolver.new(url, {}).spec.config.stringify_keys
     end
+    
   end
 
   namespace :test do
-    redefine_task :clone_structure => [ "db:structure:dump", "db:test:purge" ] do
+
+    # desc "Empty the test database"
+    redefine_task(:purge) do # |rails_task|
       config = ActiveRecord::Base.configurations['test']
-      config['pg_params'] = '?allowEncodingChanges=true' if config['adapter'] =~ /postgresql/i
-      ActiveRecord::Base.establish_connection(config)
-      ActiveRecord::Base.connection.execute('SET foreign_key_checks = 0') if config['adapter'] =~ /mysql/i
-      IO.readlines("db/#{rails_env}_structure.sql").join.split(";\n\n").each do |ddl|
-        begin
-          ActiveRecord::Base.connection.execute(ddl.chomp(';'))
-        rescue Exception => ex
-          puts ex.message
-        end
-      end
-    end
-
-    redefine_task :purge => :environment do
-      db = find_database_name config = ActiveRecord::Base.configurations['test']
-      ActiveRecord::Base.connection.recreate_database(db, config)
-    end
-    task :purge => :load_config if Rake.application.lookup(:load_config)
-  end
-
-  def find_database_name(config)
-    db = config['database']
-    if config['adapter'] =~ /postgresql/i
-      config = config.dup
-      if config['url']
-        url = config['url'].dup
-        db = url[/\/([^\/]*)$/, 1]
-        if db
-          url[/\/([^\/]*)$/, 1] = 'postgres'
-          config['url'] = url
+      case config['adapter']
+      when /mysql/
+        ActiveRecord::Base.establish_connection(:test)
+        options = mysql_creation_options(config) rescue config
+        ActiveRecord::Base.connection.recreate_database(config['database'], options)
+        
+      when /postgresql/
+        ActiveRecord::Base.clear_active_connections!
+        # drop_database(config) :
+        ActiveRecord::Base.establish_connection(config.merge('database' => 'postgres', 'schema_search_path' => 'public'))
+        ActiveRecord::Base.connection.drop_database config['database']
+        # create_database(config) :
+        encoding = config[:encoding] || ENV['CHARSET'] || 'utf8'
+        ActiveRecord::Base.connection.create_database(config['database'], config.merge('encoding' => encoding))
+      when /sqlite/
+        dbfile = config['database']
+        File.delete(dbfile) if File.exist?(dbfile)
+      when /mssql|sqlserver/
+        test = ActiveRecord::Base.configurations.deep_dup['test']
+        test_database = test['database']
+        test['database'] = 'master'
+        ActiveRecord::Base.establish_connection(test)
+        ActiveRecord::Base.connection.recreate_database!(test_database)
+      when /oracle/
+        ActiveRecord::Base.establish_connection(:test)
+        ActiveRecord::Base.connection.structure_drop.split(";\n\n").each do |ddl|
+          ActiveRecord::Base.connection.execute(ddl)
         end
       else
-        db = config['database']
-        config['database'] = 'postgres'
+        ActiveRecord::Base.establish_connection(:test)
+        db_name = ActiveRecord::Base.connection.database_name
+        ActiveRecord::Base.connection.recreate_database(db_name, config)
       end
-      ActiveRecord::Base.establish_connection(config)
-    else
-      ActiveRecord::Base.establish_connection(config)
-      db = ActiveRecord::Base.connection.database_name
     end
-    db
+    
   end
+  
+end
 
+if defined? ActiveRecord::Tasks::DatabaseTasks # 4.0
+  load File.expand_path('databases4.rake', File.dirname(__FILE__))
+else # 3.x / 2.3
+  load File.expand_path('databases3.rake', File.dirname(__FILE__))
 end
