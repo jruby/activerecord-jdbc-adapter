@@ -1,6 +1,8 @@
 require 'rake/testtask'
+
 require 'rake/clean'
-CLEAN.include 'derby*', 'test.db.*','test/reports', 'test.sqlite3','lib/**/*.jar','manifest.mf', '*.log', 'target/*'
+CLEAN.include 'derby*', 'test.db.*', '*test.sqlite3', 'test/reports'
+CLEAN.include 'lib/**/*.jar', 'MANIFEST.MF', '*.log', 'target/*'
 
 require 'bundler/gem_helper'
 Bundler::GemHelper.install_tasks
