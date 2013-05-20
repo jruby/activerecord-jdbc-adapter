@@ -89,6 +89,8 @@ namespace :db do
         ActiveRecord::Base.establish_connection(config)
         File.open(filename, 'w:utf-8') { |f| f << ActiveRecord::Base.connection.structure_dump }
       when /postgresql/
+        ActiveRecord::Base.establish_connection(config)
+        
         ENV['PGHOST'] = config['host'] if config['host']
         ENV['PGPORT'] = config['port'].to_s if config['port']
         ENV['PGPASSWORD'] = config['password'].to_s if config['password']
