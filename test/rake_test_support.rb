@@ -108,6 +108,49 @@ module RakeTestSupport
     Rake::Application.new
   end
   
+  # (Test) Helpers :
+  
+  def create_schema_migrations_table(connection = ActiveRecord::Base.connection)
+    schema_migration = ActiveRecord::Migrator.schema_migrations_table_name
+    connection.create_table(schema_migration, :id => false) do |t|
+      t.column :version, :string, :null => false
+    end
+  end
+  
+  def create_rake_test_database
+    ActiveRecord::Base.establish_connection db_config
+    ActiveRecord::Base.connection.create_database(db_name, db_config)
+    if block_given?
+      ActiveRecord::Base.establish_connection db_config.merge :database => db_name
+      yield ActiveRecord::Base.connection
+    end
+    ActiveRecord::Base.connection.disconnect!
+  end
+  
+  def drop_rake_test_database(silence = false)
+    ActiveRecord::Base.establish_connection db_config
+    begin
+      ActiveRecord::Base.connection.drop_database(db_name)
+    rescue => e
+      raise e unless silence
+    end
+    ActiveRecord::Base.connection.drop_database(db_name) rescue nil
+    ActiveRecord::Base.connection.disconnect!
+  end
+  
+  def structure_sql_filename
+    ar_version('3.2') ? 'structure.sql' : "#{@rails_env}_structure.sql"
+  end
+  
+  def expect_rake_output(matcher)
+    main = TOPLEVEL_BINDING.eval('self')
+    if matcher.is_a?(String)
+      main.expects(:puts).with(matcher)
+    else
+      main.expects(:puts).with { |out| out =~ matcher }
+    end
+  end
+  
   protected
   
   def rails_env
