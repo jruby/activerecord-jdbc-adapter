@@ -419,6 +419,10 @@ module ArJdbc
       "DEFAULT VALUES"
     end
     
+    def encoding
+      select_value 'PRAGMA encoding'
+    end
+    
     protected
     
     include ArJdbc::MissingFunctionalityHelper
