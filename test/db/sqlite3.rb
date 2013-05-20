@@ -1,13 +1,6 @@
 require 'test_helper'
 
-config = {
-  :adapter => 'sqlite3',
-  :database  => 'test.sqlite3.db'
-}
+SQLITE3_CONFIG = { :adapter => 'sqlite3', :database  => 'test.sqlite3' }
+ActiveRecord::Base.establish_connection(SQLITE3_CONFIG)
 
-ActiveRecord::Base.establish_connection(config)
-
-at_exit {
-  # Clean up sqlite3 db when done
-  Dir['test.sqlite3*'].each {|f| File.delete(f)}
-}
+at_exit { Dir['*test.sqlite3'].each { |f| File.delete(f) } }

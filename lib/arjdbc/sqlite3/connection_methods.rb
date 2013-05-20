@@ -19,16 +19,14 @@ ArJdbc::ConnectionMethods.module_eval do
   alias_method :jdbcsqlite3_connection, :sqlite3_connection
 
   private
+  
   def parse_sqlite3_config!(config)
     config[:database] ||= config[:dbfile]
- 
-    # Allow database path relative to RAILS_ROOT, but only if
-    # the database path is not the special path that tells
-    # Sqlite to build a database only in memory.
-    rails_root_defined = defined?(Rails.root) || Object.const_defined?(:RAILS_ROOT)
-    if rails_root_defined && ':memory:' != config[:database]
+    # Allow database path relative to RAILS_ROOT :
+    if config[:database] != ':memory:' && defined?(Rails.root) || Object.const_defined?(:RAILS_ROOT)
       rails_root = defined?(Rails.root) ? Rails.root : RAILS_ROOT
-      config[:database] = File.expand_path(config[:database], rails_root)
+      config[:database] = File.expand_path(config[:database], rails_root.to_s)
     end
   end
+  
 end

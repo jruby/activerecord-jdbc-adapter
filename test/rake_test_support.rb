@@ -59,6 +59,7 @@ module RakeTestSupport
 
     namespace :db do
       task :load_config do
+        @_configurations_set = true
         # RAILS_4x :
         # ActiveRecord::Base.configurations = ActiveRecord::Tasks::DatabaseTasks.database_configuration || {}
         # ActiveRecord::Migrator.migrations_paths = ActiveRecord::Tasks::DatabaseTasks.migrations_paths
@@ -68,7 +69,14 @@ module RakeTestSupport
       end
     end
 
-    task(:environment) { @full_env_loaded = true }
+    task :environment do
+      # some tasks e.g. db:charset on < 3.2 only depend on => :environment
+      unless @_configurations_set ||= nil
+        ActiveRecord::Base.configurations = configurations
+        @_configurations_set = true
+      end
+      @full_env_loaded = true
+    end
     
     if RAILS_4x
       ActiveRecord::Tasks::DatabaseTasks.env = @rails_env
