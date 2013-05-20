@@ -10,6 +10,6 @@ class JdbcGenerator < Rails::Generator::Base
 
   protected
   def banner
-    "Usage: #{$0} jdbc\nGenerate JDBC bootstrapping files for your Rails application."
+    "Usage: #{$0} jdbc\nGenerate JDBC bootstrapping files for your Rails (2.x) application."
   end
 end
