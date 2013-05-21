@@ -37,8 +37,7 @@ class SQLite3RakeTest < Test::Unit::TestCase
   end
   
   test 'rake db:charset' do
-    main = TOPLEVEL_BINDING.eval('self')
-    main.expects(:puts).with('UTF-8')
+    expect_rake_output('UTF-8')
     Rake::Task["db:charset"].invoke
   end
   

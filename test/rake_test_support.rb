@@ -26,6 +26,11 @@ module RakeTestSupport
   def setup
     @_prev_application = Rake.application
     @_prev_configurations = ActiveRecord::Base.configurations
+    if ActiveRecord::Base.respond_to?(:connection_config)
+      @_prev_connection_config = ActiveRecord::Base.connection_config
+    else
+      @_prev_connection_config = ActiveRecord::Base.connection_pool.spec.config
+    end
 
     @db_name = db_name unless @db_name ||= nil
     @rails_env = rails_env unless @rails_env ||= nil
@@ -59,10 +64,12 @@ module RakeTestSupport
 
     namespace :db do
       task :load_config do
-        @_configurations_set = true
-        # RAILS_4x :
+        # 4.0 :
         # ActiveRecord::Base.configurations = ActiveRecord::Tasks::DatabaseTasks.database_configuration || {}
         # ActiveRecord::Migrator.migrations_paths = ActiveRecord::Tasks::DatabaseTasks.migrations_paths
+        # 3.2 :
+        # ActiveRecord::Base.configurations = Rails.application.config.database_configuration
+        # ActiveRecord::Migrator.migrations_paths = Rails.application.paths['db/migrate'].to_a
         # 2.3 :
         # ActiveRecord::Base.configurations = Rails::Configuration.new.database_configuration
         ActiveRecord::Base.configurations = configurations
@@ -70,16 +77,14 @@ module RakeTestSupport
     end
 
     task :environment do
-      # some tasks e.g. db:charset on < 3.2 only depend on => :environment
-      unless @_configurations_set ||= nil
-        ActiveRecord::Base.configurations = configurations
-        @_configurations_set = true
-      end
+      ActiveRecord::Base.configurations = configurations
+      ActiveRecord::Base.establish_connection @rails_env
       @full_env_loaded = true
     end
     
     if RAILS_4x
       ActiveRecord::Tasks::DatabaseTasks.env = @rails_env
+      ActiveRecord::Tasks::DatabaseTasks.db_dir = 'db'
     else
       task(:rails_env) { @rails_env_set = true }
     end
@@ -95,7 +100,7 @@ module RakeTestSupport
     Rake.application = @_prev_application
     restore_rails
     ActiveRecord::Base.configurations = @_prev_configurations
-    ActiveRecord::Base.establish_connection(db_config)
+    ActiveRecord::Base.establish_connection @_prev_connection_config
     @rails_env_set = nil
     @full_env_loaded = nil
     raise error if error
@@ -142,12 +147,13 @@ module RakeTestSupport
     ar_version('3.2') ? 'structure.sql' : "#{@rails_env}_structure.sql"
   end
   
+  MAIN = TOPLEVEL_BINDING.eval('self')
+  
   def expect_rake_output(matcher)
-    main = TOPLEVEL_BINDING.eval('self')
     if matcher.is_a?(String)
-      main.expects(:puts).with(matcher)
+      MAIN.expects(:puts).with(matcher)
     else
-      main.expects(:puts).with { |out| out =~ matcher }
+      MAIN.expects(:puts).with { |out| out =~ matcher }
     end
   end
   

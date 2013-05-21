@@ -41,6 +41,11 @@ namespace :db do
     defined?(Rails.env) ? Rails.env : ( RAILS_ENV || 'development' )
   end
   
+  def adapt_jdbc_config(config)
+    return config unless config['adapter']
+    config.merge 'adapter' => config['adapter'].sub(/^jdbc/, '')
+  end
+  
   if defined? ActiveRecord::Tasks::DatabaseTasks # 4.0
     
     def current_config(options = {})

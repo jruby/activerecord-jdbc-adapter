@@ -44,11 +44,6 @@ namespace :db do
     end
   end
   
-  def adapt_jdbc_config(config)
-    config.merge 'adapter' => config['adapter'].sub(/^jdbc/, '')
-  end
-  private :adapt_jdbc_config
-  
   redefine_task :charset do # available on 2.3
     config = ActiveRecord::Base.configurations[rails_env]
     ActiveRecord::Base.establish_connection(config)
