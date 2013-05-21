@@ -18,6 +18,7 @@ gemfile:
   - gemfiles/rails30.gemfile
   - gemfiles/rails31.gemfile
   - gemfiles/rails32.gemfile
+  - gemfiles/rails40.gemfile
 branches:
   only:
     - master
@@ -26,5 +27,7 @@ matrix:
   allow_failures:
     # probably fine to allow in 1.3.x :
     #- gemfile: gemfiles/rails23.gemfile
+    # NOTE: temporary until it gets stable :
+    - gemfile: gemfiles/rails40.gemfile
     # NOTE: not sure why it can't connect :
     - env: DB=jdbc

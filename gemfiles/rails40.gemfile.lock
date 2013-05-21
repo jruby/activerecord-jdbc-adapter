@@ -1,11 +1,11 @@
 GIT
   remote: git://github.com/rails/rails.git
-  revision: 57584e4f03aa0e9d9b68c210b88bd0c6095e35f4
+  revision: b83a7203b85df83026af2b1d8a9135c4d068d807
   branch: 4-0-stable
   specs:
     actionmailer (4.0.0.rc1)
       actionpack (= 4.0.0.rc1)
-      mail (~> 2.5.3)
+      mail (~> 2.5.4)
     actionpack (4.0.0.rc1)
       activesupport (= 4.0.0.rc1)
       builder (~> 3.1.0)
@@ -48,18 +48,16 @@ GEM
       bundler
       rake
     arel (4.0.0)
-    atomic (1.1.8-java)
-    bcrypt-ruby (3.0.1)
+    atomic (1.1.9-java)
     bcrypt-ruby (3.0.1-java)
     bouncy-castle-java (1.5.0147)
     builder (3.1.4)
     erubis (2.7.0)
     hike (1.2.2)
     i18n (0.6.4)
-    jruby-openssl (0.8.7)
+    jruby-openssl (0.8.8)
       bouncy-castle-java (>= 1.5.0147)
-    mail (2.5.3)
-      i18n (>= 0.4.0)
+    mail (2.5.4)
       mime-types (~> 1.16)
       treetop (~> 1.4.8)
     metaclass (0.0.1)
@@ -67,7 +65,7 @@ GEM
     minitest (4.7.4)
     mocha (0.13.3)
       metaclass (~> 0.0.1)
-    multi_json (1.7.2)
+    multi_json (1.7.3)
     polyglot (0.3.3)
     rack (1.5.2)
     rack-test (0.6.2)
@@ -92,7 +90,7 @@ GEM
     thor (0.18.1)
     thread_safe (0.1.0)
       atomic
-    tilt (1.4.0)
+    tilt (1.4.1)
     treetop (1.4.12)
       polyglot
       polyglot (>= 0.3.1)
