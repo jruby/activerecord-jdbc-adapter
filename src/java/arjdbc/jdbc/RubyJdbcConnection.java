@@ -293,6 +293,13 @@ public class RubyJdbcConnection extends RubyObject {
         return getInstanceVariable("@connection");
     }
 
+    @JRubyMethod(name = "active?")
+    public IRubyObject active_p(final ThreadContext context) {
+        IRubyObject connection = getInstanceVariable("@connection");
+        return ( connection != null && ! connection.isNil() ) ? 
+            context.getRuntime().getTrue() : context.getRuntime().getFalse();
+    }
+    
     @JRubyMethod(name = "disconnect!")
     public IRubyObject disconnect(final ThreadContext context) {
         // TODO: only here to try resolving multi-thread issues :
@@ -321,14 +328,13 @@ public class RubyJdbcConnection extends RubyObject {
     }
     
     @JRubyMethod(name = "database_name")
-    public IRubyObject database_name(ThreadContext context) throws SQLException {
-        Connection connection = getConnection(true);
+    public IRubyObject database_name(final ThreadContext context) throws SQLException {
+        final Connection connection = getConnection(true);
         String name = connection.getCatalog();
 
-        if (null == name) {
+        if (name == null) {
             name = connection.getMetaData().getUserName();
-
-            if (null == name) name = "db1";
+            if (name == null) name = "db1"; // TODO why ?
         }
 
         return context.getRuntime().newString(name);

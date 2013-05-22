@@ -77,9 +77,10 @@ module ActiveRecord
           end
         end
 
-        if config[:jndi] && ! config[:dialect]
+        if (config[:jndi] || config[:data_source]) && ! config[:dialect]
           begin
-            data_source = Java::JavaxNaming::InitialContext.new.lookup(config[:jndi])
+            data_source = config[:data_source] || 
+              Java::JavaxNaming::InitialContext.new.lookup(config[:jndi])
             connection = data_source.getConnection
             config[:dialect] = connection.getMetaData.getDatabaseProductName
           rescue Java::JavaSql::SQLException => e

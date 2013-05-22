@@ -101,22 +101,22 @@ class JdbcConnectionTest < Test::Unit::TestCase
     end
   end
   
-  class ConfigHelperTest < Test::Unit::TestCase
+  context 'configuration' do
 
-    test 'configure connection url' do
-      connection = Object.new
-      connection.extend ActiveRecord::ConnectionAdapters::JdbcConnection::ConfigHelper
+    test 'connection url' do
+      adapter = ActiveRecord::Base.connection
+      connection = adapter.raw_connection # JdbcConnection
       connection.config = { :url => "jdbc://somehost", :options => { :hoge => "true", :fuya => "false" } }
-      assert_equal "jdbc://somehost?hoge=true&fuya=false", connection.send(:configure_url)
+      assert_equal "jdbc://somehost?hoge=true&fuya=false", connection.send(:jdbc_url)
 
       connection.config = { :url => "jdbc://somehost?param=0", :options => { :hoge => "true", :fuya => false } }
-      assert_equal "jdbc://somehost?param=0&hoge=true&fuya=false", connection.send(:configure_url)
+      assert_equal "jdbc://somehost?param=0&hoge=true&fuya=false", connection.send(:jdbc_url)
     end
 
     test 'connection fails without driver and url' do
       with_connection_removed do
         ActiveRecord::Base.establish_connection :adapter => 'jdbc'
-        assert_raises(ActiveRecord::ConnectionNotEstablished) do
+        assert_raise ActiveRecord::ConnectionNotEstablished do
           ActiveRecord::Base.connection
         end
       end
@@ -125,7 +125,7 @@ class JdbcConnectionTest < Test::Unit::TestCase
     test 'connection fails without driver' do
       with_connection_removed do
         ActiveRecord::Base.establish_connection :adapter => 'jdbc', :url => 'jdbc:derby:test.derby;create=true'
-        assert_raises(ActiveRecord::ConnectionNotEstablished) do
+        assert_raise ActiveRecord::ConnectionNotEstablished do
           ActiveRecord::Base.connection
         end
       end
@@ -176,14 +176,9 @@ class JdbcConnectionTest < Test::Unit::TestCase
       end
     end
 
-    @@derby_driver_loaded = nil
-
     def load_derby_driver
-      @@derby_driver_loaded ||= begin
-        require 'jdbc/derby'
-        Jdbc::Derby.load_driver
-        true
-      end
+      require 'jdbc/derby'
+      Jdbc::Derby.load_driver(:require)
     end
 
   end
