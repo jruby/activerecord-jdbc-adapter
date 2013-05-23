@@ -1,5 +1,6 @@
 module ActiveRecord
   module ConnectionAdapters
+    # @note this class is mostly implemented in Java: *RubyJdbcConnection.java*
     class JdbcConnection
 
       # @native_database_types - setup properly by adapter= versus set_native_database_types.
@@ -11,13 +12,12 @@ module ActiveRecord
       # then this is used as a base to be tweaked by each adapter to create @native_database_types
 
       def initialize(config)
-        @connection = nil
-        @jndi_connection = nil
         self.config = config
+        @connection = nil; @jndi = nil
         # @stmts = {} # AR compatibility - statement cache not used
         setup_connection_factory
-        connection # force the connection to load (@see RubyJDbcConnection.connection)
-        set_native_database_types
+        connection # force connection to load (@see RubyJdbcConnection.connection)
+        set_native_database_types # so we can set the native types
       rescue Java::JavaSql::SQLException => e
         e = e.cause if defined?(NativeException) && e.is_a?(NativeException) # JRuby-1.6.8
         error = e.getMessage || e.getSQLState
@@ -30,6 +30,7 @@ module ActiveRecord
 
       attr_reader :connection_factory, :adapter, :config
       
+      # @see ActiveRecord::ConnectionAdapters::JdbcAdapter#initialize
       def adapter=(adapter)
         @adapter = adapter
         @native_database_types = dup_native_types
@@ -54,12 +55,14 @@ module ActiveRecord
       
       def config=(config)
         @config = config.symbolize_keys
-        @config[:connection_alive_sql] ||= 'SELECT 1'
+        # NOTE: JDBC 4.0 drivers support checking if connection isValid
+        # thus no need to @config[:connection_alive_sql] ||= 'SELECT 1'
         @config[:retry_count] ||= 5
         @config
       end
       
-      def jndi_connection?; @jndi_connection; end
+      def jndi?; @jndi; end
+      alias_method :jndi_connection?, :jndi?
 
       # Sets the connection factory from the available configuration.
       # @see #setup_jdbc_factory
@@ -85,7 +88,8 @@ module ActiveRecord
       def setup_jndi_factory
         data_source = config[:data_source] || 
           Java::JavaxNaming::InitialContext.new.lookup(config[:jndi].to_s)
-        @jndi_connection = true
+        
+        @jndi = true
         @connection_factory = JdbcConnectionFactory.impl do
           data_source.connection
         end
@@ -101,7 +105,8 @@ module ActiveRecord
         password = config[:password].to_s
         jdbc_driver = ( config[:driver_instance] ||= 
             JdbcDriver.new(config[:driver].to_s, config[:properties]) )
-        @jndi_connection = false
+        
+        @jndi = false
         @connection_factory = JdbcConnectionFactory.impl do
           jdbc_driver.connection(url, username, password)
         end

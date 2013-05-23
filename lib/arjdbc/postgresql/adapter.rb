@@ -8,10 +8,6 @@ module ArJdbc
   module PostgreSQL
     
     AR4_COMPAT = ::ActiveRecord::VERSION::MAJOR > 3 unless const_defined?(:AR4_COMPAT) # :nodoc:
-    
-    def self.extended(adapter)
-      adapter.configure_connection
-    end
 
     def self.column_selector
       [ /postgre/i, lambda { |cfg, column| column.extend(::ArJdbc::PostgreSQL::Column) } ]

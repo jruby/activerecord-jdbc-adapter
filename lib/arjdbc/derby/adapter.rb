@@ -6,7 +6,6 @@ module ArJdbc
 
     def self.extended(adapter)
       require 'arjdbc/derby/active_record_patch'
-      adapter.configure_connection
     end
 
     def self.included(base)
@@ -355,9 +354,15 @@ module ArJdbc
     def tables
       @connection.tables(nil, derby_schema)
     end
+    
+    def recreate_database(name = nil, options = {}) # :nodoc:
+      drop_database(name) # create_database(name, options)
+    end
+    
+    # def create_database(name = nil, options = {}); end # :nodoc:
 
-    def recreate_database(db_name, options = {})
-      tables.each { |table| drop_table table }
+    def drop_database(name = nil) # :nodoc:
+      tables.each { |table| drop_table(table) }
     end
 
     def quote_column_name(name) # :nodoc:

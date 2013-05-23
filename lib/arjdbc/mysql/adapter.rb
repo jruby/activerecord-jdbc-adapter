@@ -6,10 +6,6 @@ require 'arjdbc/mysql/explain_support'
 
 module ArJdbc
   module MySQL
-
-    def self.extended(adapter)
-      adapter.configure_connection
-    end
     
     def configure_connection
       variables = config[:variables] || {}
@@ -318,7 +314,7 @@ module ArJdbc
     
     # SCHEMA STATEMENTS ========================================
     
-    def structure_dump #:nodoc:
+    def structure_dump # :nodoc:
       if supports_views?
         sql = "SHOW FULL TABLES WHERE Table_type = 'BASE TABLE'"
       else
@@ -403,12 +399,12 @@ module ArJdbc
       result
     end
 
-    def recreate_database(name, options = {}) #:nodoc:
+    def recreate_database(name, options = {}) # :nodoc:
       drop_database(name)
       create_database(name, options)
     end
 
-    def create_database(name, options = {}) #:nodoc:
+    def create_database(name, options = {}) # :nodoc:
       if options[:collation]
         execute "CREATE DATABASE `#{name}` DEFAULT CHARACTER SET `#{options[:charset] || 'utf8'}` COLLATE `#{options[:collation]}`"
       else
@@ -618,7 +614,7 @@ module ArJdbc
       end
       column
     end
-
+    
     def show_create_table(table)
       select_one("SHOW CREATE TABLE #{quote_table_name(table)}")
     end

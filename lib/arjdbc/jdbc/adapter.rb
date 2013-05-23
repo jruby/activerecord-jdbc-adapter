@@ -16,34 +16,42 @@ module ActiveRecord
   module ConnectionAdapters
     class JdbcAdapter < AbstractAdapter
       extend ShadowCoreMethods
+      
       include JdbcConnectionPoolCallbacks if JdbcConnectionPoolCallbacks.needed?
       
       attr_reader :config
       
-      def initialize(connection, logger, config)
+      def initialize(connection, logger, config = nil) # (logger, config)
+        if config.nil? && logger.respond_to?(:key?) # only 2 arguments given
+          config, logger, connection = logger, connection, nil
+        end
+        
         @config = config
-        spec = config[:adapter_spec] || adapter_spec(config)
-        config[:adapter_spec] ||= spec
-        unless connection
-          connection_class = jdbc_connection_class spec
-          connection = connection_class.new config
-        end
+        
+        @config[:adapter_spec] = adapter_spec(@config) unless @config.key?(:adapter_spec)
+        spec = @config[:adapter_spec]
+        
+        connection ||= jdbc_connection_class(spec).new(@config)
+        
         super(connection, logger)
-        if spec && (config[:adapter_class].nil? || config[:adapter_class] == JdbcAdapter)
-          extend spec
-        end
-        @visitor = new_visitor(config)
-        connection.adapter = self
-        JndiConnectionPoolCallbacks.prepare(self, connection)
-        # NOTE: this makes sense mostly for sub-classes as when we add the adapter
-        # spec module "later" - thus need to call when `self.extended(adapter)`
+        
+        # kind of like `extend ArJdbc::MyDB if self.class == JdbcAdapter` :
+        klass = @config[:adapter_class]
+        extend spec if spec && ( ! klass || klass == JdbcAdapter)
+        
+        connection.adapter = self # prepares native database types
+        
+        # NOTE: should not be necessary for JNDI due reconnect! on checkout :
         configure_connection if respond_to?(:configure_connection)
+        
+        JndiConnectionPoolCallbacks.prepare(self, connection)
+        
+        @visitor = new_visitor(@config) # nil if no AREL (AR-2.3)
       end
       
       def jdbc_connection_class(spec)
         connection_class = spec.jdbc_connection_class if spec && spec.respond_to?(:jdbc_connection_class)
-        connection_class = ::ActiveRecord::ConnectionAdapters::JdbcConnection unless connection_class
-        connection_class
+        connection_class ? connection_class : ::ActiveRecord::ConnectionAdapters::JdbcConnection
       end
 
       def jdbc_column_class
@@ -248,8 +256,7 @@ module ActiveRecord
       end
 
       def reconnect!
-        @connection.reconnect!
-        configure_connection if respond_to?(:configure_connection)
+        @connection.reconnect! # handles adapter.configure_connection
         @connection
       end
 

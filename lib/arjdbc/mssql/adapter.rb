@@ -14,10 +14,8 @@ module ArJdbc
     
     include ExplainSupport
     
-    def self.extended(adapter)
+    def self.extended(adapter) # :nodoc:
       initialize!
-      
-      adapter.configure_connection
       
       if ( version = adapter.sqlserver_version ) == '2000'
         extend LimitHelpers::SqlServer2000AddLimitOffset
