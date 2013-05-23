@@ -13,6 +13,7 @@ ArJdbc::ConnectionMethods.module_eval do
     config[:driver] ||= defined?(::Jdbc::SQLite3.driver_name) ? ::Jdbc::SQLite3.driver_name : 'org.sqlite.JDBC'
     config[:adapter_spec] ||= ::ArJdbc::SQLite3
     config[:adapter_class] = ActiveRecord::ConnectionAdapters::SQLite3Adapter unless config.key?(:adapter_class)
+    config[:connection_alive_sql] ||= 'SELECT 1'
     
     jdbc_connection(config)
   end
