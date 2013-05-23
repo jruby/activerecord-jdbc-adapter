@@ -983,12 +983,18 @@ module SimpleTestMethods
     User.update(user.id, :login => 'UPDATEd')
     assert_equal 'UPDATEd', user.reload.login
   end
-  
+
   def test_connection_alive_sql
     connection = ActiveRecord::Base.connection
-    alive_sql = connection.config[:connection_alive_sql]
-    assert_not_nil alive_sql, "no :connection_alive_sql for #{connection}"
-    connection.execute alive_sql
+    if alive_sql = connection.config[:connection_alive_sql]
+      connection.execute alive_sql
+    end
+    # if no alive SQL than JDBC 4.0 driver's "alive" test will be used
+  end
+  
+  def test_connection_valid
+    connection = ActiveRecord::Base.connection
+    assert connection.active? # JDBC connection.isValid (if alive_sql not set)
   end
   
   def test_query_cache

@@ -194,7 +194,7 @@ public class RubyJdbcConnection extends RubyObject {
     }
 
     @JRubyMethod(name = "supports_transaction_isolation?", optional = 1)
-    public IRubyObject supports_transaction_isolation_p(final ThreadContext context, 
+    public IRubyObject supports_transaction_isolation_p(final ThreadContext context,
         final IRubyObject[] args) throws SQLException {
         final IRubyObject isolation = args.length > 0 ? args[0] : null;
         
@@ -296,8 +296,11 @@ public class RubyJdbcConnection extends RubyObject {
     @JRubyMethod(name = "active?")
     public IRubyObject active_p(final ThreadContext context) {
         IRubyObject connection = getInstanceVariable("@connection");
-        return ( connection != null && ! connection.isNil() ) ? 
-            context.getRuntime().getTrue() : context.getRuntime().getFalse();
+        if ( connection != null && ! connection.isNil() ) {
+            return isConnectionValid(context, getConnection(false)) ? 
+                context.getRuntime().getTrue() : context.getRuntime().getFalse();
+        }
+        return context.getRuntime().getFalse();
     }
     
     @JRubyMethod(name = "disconnect!")
@@ -320,7 +323,18 @@ public class RubyJdbcConnection extends RubyObject {
     @JRubyMethod(name = "reconnect!")
     public IRubyObject reconnect(final ThreadContext context) {
         try {
-            return setConnection( getConnectionFactory().newConnection() );
+            final Connection connection = getConnectionFactory().newConnection();
+            final IRubyObject result = setConnection( connection );
+            final IRubyObject adapter = this.callMethod("adapter");
+            if ( ! adapter.isNil() ) {
+                if ( adapter.respondsTo("configure_connection") ) {
+                    adapter.callMethod(context, "configure_connection");
+                }
+            }
+            else {
+                // NOTE: we should probably warn here about adapter not set ?!?
+            }
+            return result;
         }
         catch (SQLException e) {
             return handleException(context, e);
@@ -762,7 +776,7 @@ public class RubyJdbcConnection extends RubyObject {
 
         return runtime.getNil();
     }
-
+    
     @JRubyMethod(name = "tables")
     public IRubyObject tables(ThreadContext context) {
         return tables(context, null, null, null, TABLE_TYPE);
@@ -2101,32 +2115,35 @@ public class RubyJdbcConnection extends RubyObject {
         return connection;
     }
     
-    private synchronized RubyJdbcConnection setConnection(final Connection connection) {
+    private synchronized IRubyObject setConnection(final Connection connection) {
         close( getConnection(false) ); // close previously open connection if there is one
         
         final IRubyObject rubyConnectionObject = 
             connection != null ? convertJavaToRuby(connection) : getRuntime().getNil();
         setInstanceVariable( "@connection", rubyConnectionObject );
         dataWrapStruct(connection);
-        return this;
+        return rubyConnectionObject;
     }
 
-    private boolean isConnectionBroken(final ThreadContext context, final Connection connection) {
+    protected boolean isConnectionValid(final ThreadContext context, final Connection connection) {
+        if ( connection == null ) return false;
+        final IRubyObject alive_sql = getConfigValue(context, "connection_alive_sql");
         Statement statement = null;
         try {
-            final RubyString aliveSQL = getConfigValue(context, "connection_alive_sql").convertToString();
-            if ( isSelect(aliveSQL) ) { // expect a SELECT/CALL SQL statement
+            RubyString aliveSQL = alive_sql.isNil() ? null : alive_sql.convertToString();
+            if ( aliveSQL != null && isSelect(aliveSQL) ) {
+                // expect a SELECT/CALL SQL statement
                 statement = createStatement(context, connection);
                 statement.execute( aliveSQL.toString() );
-                return false; // connection ain't broken
+                return true; // connection alive
             }
             else { // alive_sql nil (or not a statement we can execute)
-                return ! connection.isClosed(); // if closed than broken
+                return connection.isValid(0); // since JDBC 4.0
             }
         }
         catch (Exception e) {
             debugMessage(context, "connection considered broken due: " + e.toString());
-            return true;
+            return false;
         }
         finally { close(statement); }
     }
@@ -2466,7 +2483,7 @@ public class RubyJdbcConnection extends RubyObject {
                         tries = (int) retryCount.convertToInteger().getLongValue();
                         if ( tries <= 0 ) tries = 1;
                     }
-                    if ( isConnectionBroken(context, connection) ) {
+                    if ( ! isConnectionValid(context, connection) ) {
                         reconnect(context); continue; // retry connection (block) again
                     }
                     break; // connection not broken yet failed

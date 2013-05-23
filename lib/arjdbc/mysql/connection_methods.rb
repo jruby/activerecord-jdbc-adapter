@@ -11,6 +11,8 @@ ArJdbc::ConnectionMethods.module_eval do
     config[:driver] ||= defined?(::Jdbc::MySQL.driver_name) ? ::Jdbc::MySQL.driver_name : 'com.mysql.jdbc.Driver'
     config[:adapter_spec] ||= ::ArJdbc::MySQL
     config[:adapter_class] = ActiveRecord::ConnectionAdapters::MysqlAdapter unless config.key?(:adapter_class)
+    # config[:connection_alive_sql] ||= 'SELECT 1'
+    
     options = (config[:options] ||= {})
     options['zeroDateTimeBehavior'] ||= 'convertToNull'
     options['jdbcCompliantTruncation'] ||= 'false'

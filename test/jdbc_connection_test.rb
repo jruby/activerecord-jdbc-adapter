@@ -47,6 +47,16 @@ class JdbcConnectionTest < Test::Unit::TestCase
     end
   end
 
+  test 'calls configure_connection on reconnect!' do
+    connection = ActiveRecord::Base.connection
+    unless connection.respond_to?(:configure_connection)
+      fail "no configure_connection for #{connection} can not test"
+    end
+    ActiveRecord::Base.connection.disconnect!
+    ActiveRecord::Base.connection.expects(:configure_connection).once
+    ActiveRecord::Base.connection.reconnect!
+  end
+  
   class MockDriver < ActiveRecord::ConnectionAdapters::JdbcDriver
     
     class DriverImpl 
