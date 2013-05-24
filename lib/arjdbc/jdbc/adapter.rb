@@ -17,7 +17,7 @@ module ActiveRecord
     class JdbcAdapter < AbstractAdapter
       extend ShadowCoreMethods
       
-      include JdbcConnectionPoolCallbacks if JdbcConnectionPoolCallbacks.needed?
+      include JdbcConnectionPoolCallbacks
       
       attr_reader :config
       

@@ -13,10 +13,6 @@ module ActiveRecord
         end
       end
 
-      def self.needed?
-        ActiveRecord::Base.respond_to?(:connection_pool)
-      end
-
       def on_checkin
         # default implementation does nothing
       end
