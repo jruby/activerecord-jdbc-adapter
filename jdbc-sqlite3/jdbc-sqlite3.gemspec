@@ -1,7 +1,7 @@
 # -*- encoding: utf-8 -*-
 
 $LOAD_PATH << File.expand_path('../lib', __FILE__)
-require 'jdbc/sqlite3'
+require 'jdbc/sqlite3/version'
 version = Jdbc::SQLite3::VERSION
 Gem::Specification.new do |s|
   s.name = %q{jdbc-sqlite3}
