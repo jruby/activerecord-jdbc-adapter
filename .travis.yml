@@ -3,22 +3,21 @@ script: bundle exec rake test_$DB
 rvm:
   - jruby-18mode
   - jruby-19mode
-env:
-  - DB=mysql
-  - DB=postgresql
-  - DB=sqlite3
-  # derby - tested with test_jndi
-  #- DB=derby
-  - DB=h2
-  - DB=hsqldb
-  - DB=jndi
-  - DB=jdbc
 gemfile:
   - gemfiles/rails23.gemfile
   - gemfiles/rails30.gemfile
   - gemfiles/rails31.gemfile
   - gemfiles/rails32.gemfile
   - gemfiles/rails40.gemfile
+env:
+  - DB=mysql
+  - DB=postgresql
+  - DB=sqlite3
+  - DB=derby
+  - DB=h2
+  - DB=hsqldb
+  - DB=jndi
+  - DB=jdbc
 branches:
   only:
     - master
@@ -31,3 +30,30 @@ matrix:
     - gemfile: gemfiles/rails40.gemfile
     # NOTE: not sure why it can't connect :
     - env: DB=jdbc
+  # Rails 4 prefers to run on Ruby 2.0 :
+  exclude:
+    - rvm: jruby-18mode
+      gemfile: gemfiles/rails40.gemfile
+      env: DB=mysql
+    - rvm: jruby-18mode
+      gemfile: gemfiles/rails40.gemfile
+      env: DB=postgresql
+    - rvm: jruby-18mode
+      gemfile: gemfiles/rails40.gemfile
+      env: DB=sqlite3
+    - rvm: jruby-18mode
+      gemfile: gemfiles/rails40.gemfile
+      env: DB=derby
+    - rvm: jruby-18mode
+      gemfile: gemfiles/rails40.gemfile
+      env: DB=h2
+    - rvm: jruby-18mode
+      gemfile: gemfiles/rails40.gemfile
+      env: DB=hsqldb
+    - rvm: jruby-18mode
+      gemfile: gemfiles/rails40.gemfile
+      env: DB=jdbc
+    - rvm: jruby-18mode
+      gemfile: gemfiles/rails40.gemfile
+      env: DB=jndi
+
