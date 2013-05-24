@@ -45,8 +45,8 @@ module ArJdbc
     end
     
     # holy moly batman! all this to tell AS400 "yes i am sure"
-    # TODO when sql execute fails defaults values are never reset and the next method call fails
     def execute_and_auto_confirm(sql, name = nil)
+
       begin
         @connection.execute_update "call qsys.qcmdexc('QSYS/CHGJOB INQMSGRPY(*SYSRPYL)',0000000031.00000)"
         @connection.execute_update "call qsys.qcmdexc('ADDRPYLE SEQNBR(9876) MSGID(CPA32B2) RPY(''I'')',0000000045.00000)"
@@ -55,16 +55,25 @@ module ArJdbc
               "Do you have authority to do this?\n\n#{e.inspect}"
       end
 
-      result = execute(sql, name)
-
       begin
-        @connection.execute_update "call qsys.qcmdexc('QSYS/CHGJOB INQMSGRPY(*DFT)',0000000027.00000)"
-        @connection.execute_update "call qsys.qcmdexc('RMVRPYLE SEQNBR(9876)',0000000021.00000)"
-      rescue Exception => e
-        raise "Could not call CHGJOB INQMSGRPY(*DFT) and RMVRPYLE SEQNBR(9876).\n" +
-              "Do you have authority to do this?\n\n#{e.inspect}"
+        result = execute(sql, name)
+      rescue Exception
+        raise
+      else
+        # Return if all work fine
+        result
+      ensure
+
+        # Ensure default configuration restoration
+        begin
+          @connection.execute_update "call qsys.qcmdexc('QSYS/CHGJOB INQMSGRPY(*DFT)',0000000027.00000)"
+          @connection.execute_update "call qsys.qcmdexc('RMVRPYLE SEQNBR(9876)',0000000021.00000)"
+        rescue Exception => e
+          raise "Could not call CHGJOB INQMSGRPY(*DFT) and RMVRPYLE SEQNBR(9876).\n" +
+                    "Do you have authority to do this?\n\n#{e.inspect}"
+        end
+
       end
-      result
     end
     private :execute_and_auto_confirm
 
