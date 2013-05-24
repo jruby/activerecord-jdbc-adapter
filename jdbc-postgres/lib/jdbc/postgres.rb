@@ -1,9 +1,8 @@
 warn "Jdbc-Postgres is only for use with JRuby" if (JRUBY_VERSION.nil? rescue true)
+require 'jdbc/postgres/version'
 
 module Jdbc
   module Postgres
-    DRIVER_VERSION = '9.2.1002'
-    VERSION = DRIVER_VERSION + '.1'
 
     def self.driver_jar
       version_jdbc_version = DRIVER_VERSION.split( '.' )
@@ -28,7 +27,7 @@ module Jdbc
     end
 
     if defined?(JRUBY_VERSION) && # enable backwards-compat behavior :
-      ( Java::JavaLang::Boolean.get_boolean("jdbc.driver.autoload") || 
+      ( Java::JavaLang::Boolean.get_boolean("jdbc.driver.autoload") ||
         Java::JavaLang::Boolean.get_boolean("jdbc.postgres.autoload") )
       warn "autoloading JDBC driver on require 'jdbc/postgres'" if $VERBOSE
       load_driver :require
