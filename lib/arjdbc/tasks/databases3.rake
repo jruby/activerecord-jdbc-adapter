@@ -5,7 +5,58 @@ end
 module Mysql2
   Error = ActiveRecord::JDBCError unless const_defined?(:Error)
 end
-  
+
+require 'arjdbc/tasks/database_tasks'
+
+module ArJdbc
+  module Tasks
+    class << self
+      
+      # API similar to ActiveRecord::Tasks::DatabaseTasks on AR 4.0
+      
+      def create(config)
+        tasks_instance(config).create
+      end
+
+      def drop(config)
+        tasks_instance(config).drop
+      end
+
+      def charset(config)
+        tasks_instance(config).charset
+      end
+
+      def collation(config)
+        tasks_instance(config).collation
+      end
+
+      def structure_dump(config, filename)
+        tasks_instance(config).structure_dump(filename)
+      end
+
+      def structure_load(config, filename)
+        tasks_instance(config).structure_load(filename)
+      end
+
+      private
+      
+      def tasks_instance(config)
+        case config['adapter']
+        when /derby/
+          DerbyDatabaseTasks.new(config)
+        when /mssql|sqlserver/ 
+          MSSQLDatabaseTasks.new(config)
+        when /oracle/ 
+          OracleDatabaseTasks.new(config)
+        else
+          JdbcDatabaseTasks.new(config)
+        end
+      end
+      
+    end
+  end
+end
+
 namespace :db do
   
   class << self
@@ -18,16 +69,7 @@ namespace :db do
     when /mysql|postgresql|sqlite/
       _rails_create_database adapt_jdbc_config(config)
     else
-      begin
-        ActiveRecord::Base.establish_connection(config)
-        ActiveRecord::Base.connection
-      rescue # database does not exists :
-        url = config['url']
-        url = $1 if url && url =~ /^(.*(?<!\/)\/)(?=\w)/
-        ActiveRecord::Base.establish_connection(config.merge('database' => nil, 'url' => url))
-        ActiveRecord::Base.connection.create_database(config['database'], config)
-        ActiveRecord::Base.establish_connection(config)
-      end
+      ArJdbc::Tasks.create(config)
     end
   end
 
@@ -36,41 +78,16 @@ namespace :db do
     when /mysql|postgresql|sqlite/
       _rails_drop_database adapt_jdbc_config(config)
     else
-      ActiveRecord::Base.establish_connection(config)
-      unless ActiveRecord::Base.connection.respond_to?(:drop_database)
-        raise "Drop database not supported by '#{config['adapter']}'"
-      end
-      ActiveRecord::Base.connection.drop_database config['database']
+      ArJdbc::Tasks.drop(config)
     end
   end
   
   redefine_task :charset do # available on 2.3
-    config = ActiveRecord::Base.configurations[rails_env]
-    ActiveRecord::Base.establish_connection(config)
-    case config['adapter']
-    when /mysql/
-      puts ActiveRecord::Base.connection.charset
-    when /postgresql|sqlite/
-      puts ActiveRecord::Base.connection.encoding
-    else
-      if ActiveRecord::Base.connection.respond_to?(:charset)
-        puts ActiveRecord::Base.connection.charset
-      elsif ActiveRecord::Base.connection.respond_to?(:encoding)
-        puts ActiveRecord::Base.connection.encoding
-      else
-        raise "AR-JDBC adapter '#{config['adapter']}' does not support charset/encoding, feel free to submit a patch"
-      end
-    end
+    ArJdbc::Tasks.charset ActiveRecord::Base.configurations[rails_env]
   end
 
   redefine_task :collation do # available on 2.3
-    config = ActiveRecord::Base.configurations[rails_env]
-    ActiveRecord::Base.establish_connection(config)
-    if ActiveRecord::Base.connection.respond_to?(:collation)
-      puts ActiveRecord::Base.connection.collation
-    else
-      raise "AR-JDBC adapter '#{config['adapter']}' does not support collation, feel free to submit a patch"
-    end
+    ArJdbc::Tasks.collation ActiveRecord::Base.configurations[rails_env]
   end
   
   namespace :structure do
@@ -105,13 +122,7 @@ namespace :db do
         `sqlite3 #{dbfile} .schema > #{filename}`
       else
         ActiveRecord::Base.establish_connection(config)
-        if ActiveRecord::Base.connection.respond_to?(:structure_dump)
-          File.open(filename, "w:utf-8") { |f| f << ActiveRecord::Base.connection.structure_dump }
-        elsif config['adapter'] =~ /mssq|sqlserver/
-          `smoscript -s #{config['host']} -d #{config['database']} -u #{config['username']} -p #{config['password']} -f #{filename} -A -U`
-        else
-          raise "AR-JDBC adapter '#{config['adapter']}' does not support structure_dump, feel free to submit a patch"
-        end
+        ArJdbc::Tasks.structure_dump(config, filename)
       end
 
       if ActiveRecord::Base.connection.supports_migrations?
@@ -123,39 +134,25 @@ namespace :db do
       config = ActiveRecord::Base.configurations[rails_env] # current_config
       filename = structure_sql
       
-      ActiveRecord::Base.establish_connection(config)
-      
-      if ActiveRecord::Base.connection.respond_to?(:structure_load)
-        ActiveRecord::Base.connection.structure_load IO.read(filename)
-      else
-        case config['adapter']
-        when /mysql/
-          ActiveRecord::Base.connection.execute('SET foreign_key_checks = 0')
-          IO.read(filename).split("\n\n").each do |table|
-            ActiveRecord::Base.connection.execute(table)
-          end
-        when /postgresql/
-          ENV['PGHOST'] = config['host'] if config['host']
-          ENV['PGPORT'] = config['port'].to_s if config['port']
-          ENV['PGPASSWORD'] = config['password'].to_s if config['password']
-          ENV['PGUSER'] = config['username'].to_s if config['username']
-          
-          `psql -f "#{filename}" #{config['database']}`
-        when /sqlite/
-          dbfile = config['database']
-          `sqlite3 #{dbfile} < "#{filename}"`
-        when /mssq|sqlserver/
-          `sqlcmd -S #{config['host']} -d #{config['database']} -U #{config['username']} -P #{config['password']} -i #{filename}`
-        when /oracle/
-          IO.read(filename).split(";\n\n").each do |ddl|
-            ActiveRecord::Base.connection.execute(ddl)
-          end
-        else
-          #IO.read(filename).split(/;\n*/m).each do |ddl|
-          #  ActiveRecord::Base.connection.execute(ddl)
-          #end
-          raise "AR-JDBC adapter '#{config['adapter']}' does not support structure_load, feel free to submit a patch"
+      case config['adapter']
+      when /mysql/
+        ActiveRecord::Base.establish_connection(config)
+        ActiveRecord::Base.connection.execute('SET foreign_key_checks = 0')
+        IO.read(filename).split("\n\n").each do |table|
+          ActiveRecord::Base.connection.execute(table)
         end
+      when /postgresql/
+        ENV['PGHOST'] = config['host'] if config['host']
+        ENV['PGPORT'] = config['port'].to_s if config['port']
+        ENV['PGPASSWORD'] = config['password'].to_s if config['password']
+        ENV['PGUSER'] = config['username'].to_s if config['username']
+
+        `psql -f "#{filename}" #{config['database']}`
+      when /sqlite/
+        dbfile = config['database']
+        `sqlite3 #{dbfile} < "#{filename}"`
+      else
+        ArJdbc::Tasks.structure_load(config, filename)
       end
     end
     

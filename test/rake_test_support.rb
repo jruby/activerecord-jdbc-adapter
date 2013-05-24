@@ -147,13 +147,12 @@ module RakeTestSupport
     ar_version('3.2') ? 'structure.sql' : "#{@rails_env}_structure.sql"
   end
   
-  MAIN = TOPLEVEL_BINDING.eval('self')
-  
   def expect_rake_output(matcher)
+    double = ArJdbc::Tasks::JdbcDatabaseTasks.any_instance
     if matcher.is_a?(String)
-      MAIN.expects(:puts).with(matcher)
+      double.expects(:puts).with(matcher)
     else
-      MAIN.expects(:puts).with { |out| out =~ matcher }
+      double.expects(:puts).with { |out| out =~ matcher }
     end
   end
   

@@ -1,7 +1,18 @@
+require 'arjdbc/tasks/database_tasks'
+
 module ActiveRecord::Tasks
 
-  DatabaseTasks.class_eval do
+  DatabaseTasks.module_eval do
     
+    # re-invent built-in (but deprecated) tasks :
+    register_task /(mssql|sqlserver)/i, ArJdbc::Tasks::MSSQLDatabaseTasks
+    register_task /(oci|oracle)/i, ArJdbc::Tasks::OracleDatabaseTasks
+    # tasks for custom (JDBC) adapters :
+    register_task /derby/i, ArJdbc::Tasks::DerbyDatabaseTasks
+    # (default) generic JDBC task :
+    register_task /^jdbc$/i, ArJdbc::Tasks::JdbcDatabaseTasks
+    
+    # patched to adapt jdbc configuration
     def each_current_configuration(environment)
       environments = [environment]
       environments << 'test' if environment == 'development'
@@ -12,6 +23,7 @@ module ActiveRecord::Tasks
       end
     end
 
+    # patched to adapt jdbc configuration
     def each_local_configuration
       ActiveRecord::Base.configurations.each_value do |config|
         next unless config['database']
