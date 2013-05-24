@@ -2,6 +2,9 @@ ArJdbc.load_java_part :DB2
 
 module ArJdbc
   module DB2
+
+    # This adapter doesn't support explain
+    # config.active_record.auto_explain_threshold_in_seconds should be commented before rails 4.0
     
     def self.extended(adapter); initialize!; end
     
@@ -224,10 +227,6 @@ module ArJdbc
 
     def table_definition(*args)
       new_table_definition(TableDefinition, *args)
-    end
-    
-    def explain(query, *binds)
-      # TODO: Explain this !
     end
     
     def prefetch_primary_key?(table_name = nil)
