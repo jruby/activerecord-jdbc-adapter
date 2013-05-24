@@ -1,3 +1,4 @@
+# encoding: utf-8
 require 'db/postgres'
 require 'schema_dump'
 
@@ -76,9 +77,19 @@ class PostgresSchemaDumpTest < Test::Unit::TestCase
     assert ! lines.empty?
     lines.each {|line| assert line =~ /(limit => 8)|(limit: 8)/ }
   end
-  
+
+if ActiveRecord::VERSION::MAJOR > 3
+
+  def test_schema_dumps_partial_indices
+    index_definition = standard_dump.split(/\n/).grep(/add_index.*thing_partial_index/).first.strip
+
+    assert_equal 'add_index "things", ["created_at"], name: "thing_partial_index", where: "(name IS NOT NULL)", using: :btree', index_definition
+  end
+
+end
+
   private
-  
+
   def dump_with_data_types(io = StringIO.new)
     ActiveRecord::SchemaDumper.ignore_tables = [/^[^d]/] # keep data_types
     ActiveRecord::SchemaDumper.dump(ActiveRecord::Base.connection, io)
