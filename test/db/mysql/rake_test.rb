@@ -44,7 +44,7 @@ class MySQLRakeTest < Test::Unit::TestCase
     ActiveRecord::Base.connection.disconnect!
   end
 
-  test 'rake db:structure:dump' do
+  test 'rake db:structure:dump (and db:structure:load)' do
     # Rake::Task["db:create"].invoke
     create_rake_test_database do |connection|
       create_schema_migrations_table(connection)
@@ -58,6 +58,15 @@ class MySQLRakeTest < Test::Unit::TestCase
       
       assert File.exists?(structure_sql)
       assert_match /CREATE TABLE `users`/, File.read(structure_sql)
+      
+      # db:structure:load
+      drop_rake_test_database(:silence)
+      create_rake_test_database
+      Rake::Task["db:structure:load"].invoke
+      
+      ActiveRecord::Base.establish_connection db_config.merge :database => db_name
+      assert ActiveRecord::Base.connection.table_exists?('users')
+      ActiveRecord::Base.connection.disconnect!
     ensure
       File.delete(structure_sql) if File.exists?(structure_sql)
       Dir.rmdir 'db'
