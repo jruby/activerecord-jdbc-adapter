@@ -1,9 +1,5 @@
-# To support the connection pooling in the test, you'll need
-# commons-dbcp, commons-pool, and commons-collections.
-
-require 'jdbc_common'
-
 require 'db/jndi_config'
+require 'simple'
 
 class DerbyJndiTest < Test::Unit::TestCase
   include SimpleTestMethods
@@ -12,23 +8,20 @@ class DerbyJndiTest < Test::Unit::TestCase
   DbTypeMigration.big_decimal_precision = 31
   ALIVE_SQL = 'SELECT 1 FROM SYS.SYSSCHEMAS'
   
-  def self.startup
-    ActiveRecord::Base.establish_connection( {
-        :connection_alive_sql => ALIVE_SQL 
-    }.merge(JNDI_CONFIG) )
+  def setup
+    config = { :connection_alive_sql => ALIVE_SQL }.merge(JNDI_CONFIG)
+    ActiveRecord::Base.establish_connection config
+    super
   end
-
-  # @override
-  #def test_connection_alive_sql; end
   
   test "(raw) connection is a jndi connection" do
     connection = ActiveRecord::Base.connection.raw_connection
+    assert_true connection.jndi?
     assert_true connection.jndi_connection?
   end
 
   test "fills username from data source meta-data if missing" do
     connection = ActiveRecord::Base.connection.raw_connection
-    assert_true connection.jndi_connection?
 
     config = { :jndi => JNDI_CONFIG[:jndi] }
     ArJdbc::Derby.adapter_matcher('Derby', config)
@@ -52,12 +45,10 @@ class DerbyJndiPooledTest < Test::Unit::TestCase
         :connection_alive_sql => DerbyJndiTest::ALIVE_SQL 
     }.merge(JNDI_POOLED_CONFIG) )
   end
-
-  # @override
-  #def test_connection_alive_sql; end
   
   test "(raw) connection is a jndi connection" do
     connection = ActiveRecord::Base.connection.raw_connection
+    assert_true connection.jndi?
     assert_true connection.jndi_connection?
   end
 

@@ -1,7 +1,5 @@
 
-JNDI_POOLED_CONFIG = {
-  :adapter => 'jdbc', :jndi => 'jdbc/PooledDerbyDB'
-}
+JNDI_POOLED_CONFIG = { :adapter => 'jndi', :jndi => 'jdbc/PooledDerbyDB' }
 
 # FS based JNDI impl borrowed from tomcat :
 load 'test/jars/tomcat-juli.jar'

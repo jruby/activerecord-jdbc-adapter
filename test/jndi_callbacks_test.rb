@@ -1,35 +1,33 @@
-require 'jdbc_common'
+require 'test_helper'
 require 'db/jndi_config'
 
 class JndiConnectionPoolCallbacksTest < Test::Unit::TestCase
+  
+  class Dummy < ActiveRecord::Base; end
+  
+  setup do
+    Dummy.establish_connection JNDI_CONFIG.dup
+  end
+  
+  teardown do
+    Dummy.remove_connection
+  end
+  
+  test 'calls hooks on checkout and checkin' do
+    connection = Dummy.connection_pool.checkout
+    assert_true connection.active?
 
-  def self.startup
-    ActiveRecord::Base.establish_connection JNDI_CONFIG
+    # connection = Dummy.connection
+    Dummy.connection_pool.checkin connection
+    assert_false connection.active?
+    
+    pool = Dummy.connection_pool
+    assert_false pool.active_connection? if pool.respond_to?(:active_connection?)
+    assert_true pool.connection.active? # checks out
+    assert_true pool.active_connection? if pool.respond_to?(:active_connection?)
+    assert_true connection.active?
+    Dummy.connection_pool.disconnect!
+    assert_false connection.active?
   end
 
-  def setup
-    @logger = stub_everything "logger"
-    @config = JNDI_CONFIG.dup
-    @connection = ActiveRecord::ConnectionAdapters::JdbcConnection.new @config
-    Entry.connection_pool.disconnect!
-    assert !Entry.connection_pool.connected?
-    class << Entry.connection_pool; public :instance_variable_set; end
-  end
-
-  def teardown
-    Entry.connection_pool.disconnect!
-  end
-
-  def test_should_call_hooks_on_checkout_and_checkin
-    @adapter = ActiveRecord::ConnectionAdapters::JdbcAdapter.new @connection, @logger, @config
-    Entry.connection_pool.instance_variable_set "@connections", [@adapter]
-    assert_false @connection.active?
-
-    Entry.connection_pool.checkout
-    assert_true @connection.active?
-
-    Entry.connection_pool.checkin @adapter
-    assert_false @connection.active?
-  end
-
-end if ActiveRecord::Base.respond_to?(:connection_pool)
+end
