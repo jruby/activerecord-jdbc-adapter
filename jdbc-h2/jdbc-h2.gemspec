@@ -1,7 +1,7 @@
 # -*- encoding: utf-8 -*-
 
 $LOAD_PATH << File.expand_path('../lib', __FILE__)
-require 'jdbc/h2'
+require 'jdbc/h2/version'
 version = Jdbc::H2::VERSION
 Gem::Specification.new do |s|
   s.name = %q{jdbc-h2}
