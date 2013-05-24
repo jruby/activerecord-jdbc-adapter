@@ -132,10 +132,10 @@ module ActiveRecord
 
       def self.configure_arel2_visitors(config)
         visitors = ::Arel::Visitors::VISITORS
-        adapter_spec = [ config[:adapter_spec], self.class ].
-          detect { |mod| mod.respond_to?(:arel2_visitors) }
+        klass = config[:adapter_spec]
+        klass = self unless klass.respond_to?(:arel2_visitors)
         visitor = nil
-        adapter_spec.arel2_visitors(config).each do |name, arel|
+        klass.arel2_visitors(config).each do |name, arel|
           visitors[name] = ( visitor = arel )
         end
         if visitor && config[:adapter] =~ /^(jdbc|jndi)$/
