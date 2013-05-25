@@ -156,8 +156,6 @@ module RakeTestSupport
     end
   end
   
-  protected
-  
   def rails_env
     'unittest'
   end
@@ -191,16 +189,16 @@ module RakeTestSupport
   end
 
   def setup_rails2
-    configs = configurations
+    test = self
     Rails::Configuration.module_eval do
-      define_method(:database_configuration) { configs }
+      define_method(:database_configuration) { test.configurations }
     end
   end
 
   def setup_rails3
-    configs = configurations
+    test = self
     (class << Rails::Application.config; self ; end).instance_eval do
-      define_method(:database_configuration) { configs }
+      define_method(:database_configuration) { test.configurations }
     end
   end
 
