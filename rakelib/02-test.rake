@@ -21,9 +21,8 @@ def set_compat_version(task)
   end
 end
 
-%w(derby h2 hsqldb mysql sqlite3 postgres mssql oracle db2 informix sybase).each do 
-  |adapter| 
-  task "test_#{adapter}_pre" do
+%w(derby h2 hsqldb mysql sqlite3 postgres mssql oracle db2 as400 informix sybase).each do 
+  |adapter| task "test_#{adapter}_pre" do
     unless (ENV['BUNDLE_GEMFILE'] rescue '') =~ /gemfiles\/.*?\.gemfile/
       appraisals = []; Appraisal::File.each { |file| appraisals << file.name }
       puts "Specify AR version with `rake appraisal:{version} test_#{adapter}'" + 
@@ -57,9 +56,7 @@ def declare_test_task_for(adapter, options = {}, &block)
   end
 end
 
-declare_test_task_for :derby do |task|
-  task.test_files << 'test/activerecord/connection_adapters/type_conversion_test.rb'
-end
+declare_test_task_for :derby
 declare_test_task_for :h2
 declare_test_task_for :hsqldb
 declare_test_task_for :mssql, :driver => :jtds
@@ -82,16 +79,26 @@ declare_test_task_for :sqlite3
   end
 end
 
-Rake::TestTask.new(:test_jdbc) do |t|
-  t.test_files = FileList['test/*jdbc_*test.rb']
-  t.libs << 'test' << 'jdbc-mysql/lib' << 'jdbc-derby/lib'
-  set_compat_version(t)
+Rake::TestTask.new(:test_as400) do |task|
+  test_files = FileList["test/db2*_test.rb"]
+  test_files += FileList["test/db/db2/*_test.rb"]
+  task.test_files = test_files
+  task.libs = []
+  task.libs << 'lib' if defined?(JRUBY_VERSION)
+  task.libs << 'test'
+  set_compat_version(task)
 end
 
-Rake::TestTask.new(:test_jndi => 'tomcat-jndi:check') do |t|
-  t.test_files = FileList['test/*jndi_*test.rb']
-  t.libs << 'test' << 'jdbc-derby/lib'
-  set_compat_version(t)
+Rake::TestTask.new(:test_jdbc) do |task|
+  task.test_files = FileList['test/*jdbc_*test.rb']
+  task.libs << 'test' << 'jdbc-mysql/lib' << 'jdbc-derby/lib'
+  set_compat_version(task)
+end
+
+Rake::TestTask.new(:test_jndi => 'tomcat-jndi:check') do |task|
+  task.test_files = FileList['test/*jndi_*test.rb']
+  task.libs << 'test' << 'jdbc-derby/lib'
+  set_compat_version(task)
 end
 
 # tests for JDBC adapters that don't require a database :
