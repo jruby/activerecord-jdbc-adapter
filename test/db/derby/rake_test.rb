@@ -3,8 +3,7 @@ require 'db/derby'
 
 class DerbyRakeTest < Test::Unit::TestCase
   include RakeTestSupport
-
-  def db_config; { :adapter => 'derby', :database => nil } end
+  
   def db_name; 'test-rake.derby'; end
   
   def do_teardown
@@ -26,9 +25,9 @@ class DerbyRakeTest < Test::Unit::TestCase
   test 'rake db:test:purge' do
     ActiveRecord::Base.connection.disconnect!
     # Rake::Task["db:create"].invoke
-    ActiveRecord::Base.establish_connection db_config.merge :database => db_name
-    ActiveRecord::Base.connection.create_table('users') { |t| t.string :name }
-    ActiveRecord::Base.connection.disconnect!
+    create_rake_test_database do |connection|
+      connection.create_table('users') { |t| t.string :name }
+    end
     
     Rake::Task["db:test:purge"].invoke
     

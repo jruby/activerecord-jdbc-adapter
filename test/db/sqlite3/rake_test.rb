@@ -3,8 +3,7 @@ require 'db/sqlite3'
 
 class SQLite3RakeTest < Test::Unit::TestCase
   include RakeTestSupport
-
-  def db_config; SQLITE3_CONFIG; end
+  
   def db_name; 'rake_test.sqlite3'; end
   
   def do_setup

@@ -26,11 +26,8 @@ module RakeTestSupport
   def setup
     @_prev_application = Rake.application
     @_prev_configurations = ActiveRecord::Base.configurations
-    if ActiveRecord::Base.respond_to?(:connection_config)
-      @_prev_connection_config = ActiveRecord::Base.connection_config
-    else
-      @_prev_connection_config = ActiveRecord::Base.connection_pool.spec.config
-    end
+    @_prev_connection_config = current_connection_config
+    db_config # if not re-defined initialize from current connection's config
 
     @db_name = db_name unless @db_name ||= nil
     @rails_env = rails_env unless @rails_env ||= nil
@@ -124,7 +121,8 @@ module RakeTestSupport
   
   def create_rake_test_database
     ActiveRecord::Base.establish_connection db_config
-    ActiveRecord::Base.connection.create_database(db_name, db_config)
+    connection = ActiveRecord::Base.connection
+    connection.create_database(db_name, db_config) if connection.respond_to?(:create_database)
     if block_given?
       ActiveRecord::Base.establish_connection db_config.merge :database => db_name
       yield ActiveRecord::Base.connection
@@ -164,8 +162,18 @@ module RakeTestSupport
     'test_rake_db'
   end
   
+  @@db_config = nil
+  
   def db_config
-    raise "#db_config not implemented !"
+    @@db_config ||= current_connection_config.reject { |key, val| val && key.to_s == 'url' }
+  end
+  
+  def current_connection_config
+    if ActiveRecord::Base.respond_to?(:connection_config)
+      ActiveRecord::Base.connection_config
+    else
+      ActiveRecord::Base.connection_pool.spec.config
+    end
   end
   
   def configurations
