@@ -5,7 +5,6 @@ config = { :adapter => 'hsqldb', :database => 'test.hsqldb' }
 ActiveRecord::Base.establish_connection(config)
 
 at_exit do
-  require "fileutils"
   Dir['*test.hsqldb*'].each do |f|
     FileUtils.rm_rf(f); File.delete(f) if File.exist?(f)
   end

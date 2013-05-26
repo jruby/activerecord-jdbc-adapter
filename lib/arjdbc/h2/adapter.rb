@@ -188,6 +188,35 @@ module ArJdbc
       raw_result  = execute(sql, "EXPLAIN", binds)
       raw_result[0].values.join("\n") # [ "SELECT \n ..." ].to_s
     end
+    
+    def structure_dump
+      execute('SCRIPT SIMPLE').map do |result| 
+        # [ { 'script' => SQL }, { 'script' ... }, ... ]
+        case sql = result.first[1] # ['script']
+        when /CREATE USER IF NOT EXISTS SA/i then nil
+        else sql
+        end
+      end.compact.join("\n\n")
+    end
+
+    def structure_load(dump)
+      dump.each_line("\n\n") { |ddl| execute(ddl) }
+    end
+    
+    def shutdown
+      execute 'SHUTDOWN COMPACT'
+    end
+    
+    def recreate_database(name = nil, options = {}) # :nodoc:
+      drop_database(name)
+      create_database(name, options)
+    end
+    
+    def create_database(name = nil, options = {}); end # :nodoc:
+    
+    def drop_database(name = nil) # :nodoc:
+      execute('DROP ALL OBJECTS')
+    end
 
     private
 

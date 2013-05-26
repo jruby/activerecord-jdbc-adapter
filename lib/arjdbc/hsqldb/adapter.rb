@@ -205,17 +205,18 @@ module ArJdbc
     
     def structure_dump
       execute('SCRIPT').map do |result| 
-        case sql = result['command']
+        # [ { 'command' => SQL }, { 'command' ... }, ... ]
+        case sql = result.first[1] # ['command']
         when /CREATE USER SA PASSWORD DIGEST .*?/i then nil
         when /CREATE SCHEMA PUBLIC AUTHORIZATION DBA/i then nil
         when /GRANT DBA TO SA/i then nil
         else sql
         end
-      end.compact.join("\n")
+      end.compact.join("\n\n")
     end
 
     def structure_load(dump)
-      dump.each_line { |ddl| execute(ddl) }
+      dump.each_line("\n\n") { |ddl| execute(ddl) }
     end
     
     def shutdown

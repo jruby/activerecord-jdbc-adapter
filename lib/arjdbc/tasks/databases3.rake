@@ -44,6 +44,8 @@ module ArJdbc
         case config['adapter']
         when /derby/
           DerbyDatabaseTasks.new(config)
+        when /h2/
+          H2DatabaseTasks.new(config)
         when /hsqldb/
           HSQLDBDatabaseTasks.new(config)
         when /mssql|sqlserver/ 

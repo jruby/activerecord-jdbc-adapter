@@ -6,7 +6,14 @@ ArJdbc::ConnectionMethods.module_eval do
     rescue LoadError # assuming driver.jar is on the class-path
     end
     
-    config[:url] ||= "jdbc:h2:#{config[:database]}"
+    config[:url] ||= begin
+      db = config[:database]
+      if db[0, 4] == 'mem:' || db[0, 5] == 'file:' || db[0, 5] == 'hsql:'
+        "jdbc:h2:#{db}"
+      else
+        "jdbc:h2:file:#{db}"
+      end
+    end
     config[:driver] ||= defined?(::Jdbc::H2.driver_name) ? ::Jdbc::H2.driver_name : 'org.h2.Driver'
     config[:adapter_spec] ||= ::ArJdbc::H2
     

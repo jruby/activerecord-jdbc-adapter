@@ -9,6 +9,7 @@ module ActiveRecord::Tasks
     register_task /(oci|oracle)/i, ArJdbc::Tasks::OracleDatabaseTasks
     # tasks for custom (JDBC) adapters :
     register_task /derby/i, ArJdbc::Tasks::DerbyDatabaseTasks
+    register_task /h2/i, ArJdbc::Tasks::H2DatabaseTasks
     register_task /hsqldb/i, ArJdbc::Tasks::HSQLDBDatabaseTasks
     # (default) generic JDBC task :
     register_task /^jdbc$/i, ArJdbc::Tasks::JdbcDatabaseTasks
