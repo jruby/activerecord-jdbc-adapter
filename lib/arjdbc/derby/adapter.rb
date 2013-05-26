@@ -293,10 +293,11 @@ module ArJdbc
     end
     
     def recreate_database(name = nil, options = {}) # :nodoc:
-      drop_database(name) # create_database(name, options)
+      drop_database(name)
+      create_database(name, options)
     end
     
-    # def create_database(name = nil, options = {}); end # :nodoc:
+    def create_database(name = nil, options = {}); end # :nodoc:
 
     def drop_database(name = nil) # :nodoc:
       tables.each { |table| drop_table(table) }
