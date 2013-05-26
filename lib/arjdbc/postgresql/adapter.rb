@@ -596,7 +596,11 @@ module ArJdbc
     def supports_index_sort_order? # :nodoc:
       true
     end
-    
+
+    def supports_partial_index?
+      true
+    end
+
     # Range datatypes weren't introduced until PostgreSQL 9.2
     def supports_ranges? # :nodoc:
       postgresql_version >= 90200
@@ -609,7 +613,11 @@ module ArJdbc
     def supports_transaction_isolation?(level = nil)
       true
     end
-    
+
+    def index_algorithms
+      { :concurrently => 'CONCURRENTLY' }
+    end
+
     def create_savepoint
       execute("SAVEPOINT #{current_savepoint_name}")
     end
@@ -1214,6 +1222,11 @@ module ArJdbc
       rename_column_indexes(table_name, column_name, new_column_name) if respond_to?(:rename_column_indexes) # AR-4.0 SchemaStatements
     end
 
+    def add_index(table_name, column_name, options = {}) #:nodoc:
+      index_name, index_type, index_columns, index_options, index_algorithm, index_using = add_index_options(table_name, column_name, options)
+      execute "CREATE #{index_type} INDEX #{index_algorithm} #{quote_column_name(index_name)} ON #{quote_table_name(table_name)} #{index_using} (#{index_columns})#{index_options}"
+    end if ActiveRecord::VERSION::MAJOR > 3
+
     def remove_index!(table_name, index_name) #:nodoc:
       execute "DROP INDEX #{quote_table_name(index_name)}"
     end
@@ -1327,15 +1340,24 @@ module ArJdbc
           WHERE a.attrelid = #{oid}
           AND a.attnum IN (#{indkey.join(",")})
         SQL
-        
+
         columns = Hash[ columns.each { |column| column[0] = column[0].to_s } ]
         column_names = columns.values_at(*indkey).compact
 
-        # add info on sort order for columns (only desc order is explicitly specified, asc is the default)
-        desc_order_columns = inddef.scan(/(\w+) DESC/).flatten
-        orders = desc_order_columns.any? ? Hash[ desc_order_columns.map { |column| [column, :desc] } ] : {}
-        
-        column_names.empty? ? nil : IndexDefinition.new(table_name, index_name, unique, column_names, [], orders)
+        unless column_names.empty?
+          # add info on sort order for columns (only desc order is explicitly specified, asc is the default)
+          desc_order_columns = inddef.scan(/(\w+) DESC/).flatten
+          orders = desc_order_columns.any? ? Hash[ desc_order_columns.map { |column| [column, :desc] } ] : {}
+
+          if ActiveRecord::VERSION::MAJOR > 3 # AR4 supports `where` and `using` index options
+            where = inddef.scan(/WHERE (.+)$/).flatten[0]
+            using = inddef.scan(/USING (.+?) /).flatten[0].to_sym
+
+            IndexDefinition.new(table_name, index_name, unique, column_names, [], orders, where, nil, using)
+          else
+            IndexDefinition.new(table_name, index_name, unique, column_names, [], orders)
+          end
+        end
       end
       result.compact!
       result
