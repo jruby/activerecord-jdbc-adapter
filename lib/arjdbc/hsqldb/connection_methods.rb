@@ -6,7 +6,14 @@ ArJdbc::ConnectionMethods.module_eval do
     rescue LoadError # assuming driver.jar is on the class-path
     end
     
-    config[:url] ||= "jdbc:hsqldb:#{config[:database]}"
+    config[:url] ||= begin
+      db = config[:database]
+      if db[0, 4] == 'mem:' || db[0, 5] == 'file:' || db[0, 5] == 'hsql:'
+        "jdbc:hsqldb:#{db}"
+      else
+        "jdbc:hsqldb:file:#{db}"
+      end
+    end
     config[:driver] ||= defined?(::Jdbc::HSQLDB.driver_name) ? ::Jdbc::HSQLDB.driver_name : 'org.hsqldb.jdbcDriver'
     config[:adapter_spec] ||= ::ArJdbc::HSQLDB
     config[:connection_alive_sql] ||= 'CALL PI()' # does not like 'SELECT 1'
