@@ -202,19 +202,35 @@ module ArJdbc
     def remove_index(table_name, options = {})
       execute "DROP INDEX #{quote_column_name(index_name(table_name, options))}"
     end
+    
+    def structure_dump
+      execute('SCRIPT').map do |result| 
+        case sql = result['command']
+        when /CREATE USER SA PASSWORD DIGEST .*?/i then nil
+        when /CREATE SCHEMA PUBLIC AUTHORIZATION DBA/i then nil
+        when /GRANT DBA TO SA/i then nil
+        else sql
+        end
+      end.compact.join("\n")
+    end
 
-    def recreate_database(name, options = {})
-      drop_database(name)
+    def structure_load(dump)
+      dump.each_line { |ddl| execute(ddl) }
     end
     
-    # do nothing since database gets created upon connection. However
-    # this method gets called by rails db rake tasks so now we're
-    # avoiding method_missing error
-    def create_database(name)
+    def shutdown
+      execute 'SHUTDOWN'
     end
-
-    def drop_database(name)
-      execute("DROP ALL OBJECTS")
+    
+    def recreate_database(name = nil, options = {}) # :nodoc:
+      drop_database(name)
+      create_database(name, options)
+    end
+    
+    def create_database(name = nil, options = {}); end # :nodoc:
+    
+    def drop_database(name = nil) # :nodoc:
+      execute('DROP SCHEMA PUBLIC CASCADE')
     end
     
   end
