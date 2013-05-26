@@ -1,3 +1,5 @@
+require 'arjdbc/tasks/jdbc_database_tasks'
+
 module ArJdbc
   module Tasks
     class DerbyDatabaseTasks < JdbcDatabaseTasks
