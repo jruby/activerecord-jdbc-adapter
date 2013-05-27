@@ -1,5 +1,6 @@
 require 'test_helper'
 require 'pathname'
+require 'stringio'
 
 module RakeTestSupport
   
@@ -88,6 +89,7 @@ module RakeTestSupport
   end
   
   def teardown
+    verify_and_restore_stdout
     error = nil
     begin
       do_teardown
@@ -137,7 +139,6 @@ module RakeTestSupport
     rescue => e
       raise e unless silence
     end
-    ActiveRecord::Base.connection.drop_database(db_name) rescue nil
     ActiveRecord::Base.connection.disconnect!
   end
   
@@ -146,13 +147,27 @@ module RakeTestSupport
   end
   
   def expect_rake_output(matcher)
-    double = ArJdbc::Tasks::JdbcDatabaseTasks.any_instance
-    if matcher.is_a?(String)
-      double.expects(:puts).with(matcher)
-    else
-      double.expects(:puts).with { |out| out =~ matcher }
+    @_stdout, @_stdout_matcher = $stdout, matcher
+    $stdout = StringIO.new
+  end
+  
+  def verify_and_restore_stdout
+    if @_stdout ||= nil
+      _stdout = $stdout
+      $stdout = @_stdout
+      
+      output = _stdout.string
+      if @_stdout_matcher.is_a?(String)
+        unless @_stdout_matcher.index("\n")
+          output = output.rstrip
+        end
+        assert_equal @_stdout_matcher, output
+      else
+        assert_match @_stdout_matcher, output
+      end
     end
   end
+  private :verify_and_restore_stdout
   
   def rails_env
     'unittest'
