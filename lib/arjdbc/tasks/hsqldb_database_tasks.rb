@@ -4,6 +4,11 @@ module ArJdbc
   module Tasks
     class HSQLDBDatabaseTasks < JdbcDatabaseTasks
 
+      def create
+        establish_connection(config)
+        ActiveRecord::Base.connection
+      end
+      
       def drop
         error = nil
         begin

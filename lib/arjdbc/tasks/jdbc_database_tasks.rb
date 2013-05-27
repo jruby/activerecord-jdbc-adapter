@@ -21,7 +21,7 @@ module ArJdbc
           ActiveRecord::Base.connection
           if defined? ActiveRecord::Tasks::DatabaseAlreadyExists
             raise ActiveRecord::Tasks::DatabaseAlreadyExists # AR-4.x
-          end # silent on AR < 4.0
+          end # silence on AR < 4.0
         rescue #=> error # database does not exists :
           url = config['url']
           url = $1 if url && url =~ /^(.*(?<!\/)\/)(?=\w)/

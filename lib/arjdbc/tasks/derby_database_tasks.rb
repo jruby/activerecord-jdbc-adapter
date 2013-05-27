@@ -4,14 +4,18 @@ module ArJdbc
   module Tasks
     class DerbyDatabaseTasks < JdbcDatabaseTasks
 
+      def create
+        establish_connection(config)
+        ActiveRecord::Base.connection
+      end
+      
       def drop
         db_dir = expand_path(config['database'])
         if File.exist?(db_dir)
           FileUtils.rm_r(db_dir)
-          FileUtils.rmdir(db_dir)
+          FileUtils.rmdir(db_dir) rescue nil
         end
       end
-      alias :purge :drop
       
       SIZEABLE = %w( VARCHAR CLOB BLOB )
 
