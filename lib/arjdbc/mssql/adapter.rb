@@ -386,6 +386,10 @@ module ArJdbc
     def charset
       select_value "SELECT SERVERPROPERTY('SqlCharSetName')"
     end
+
+    def collation
+      select_value "SELECT SERVERPROPERTY('Collation')"
+    end
     
     def current_database
       select_value 'SELECT DB_NAME()'
@@ -417,6 +421,10 @@ module ArJdbc
 
     def create_database(name, options = {})
       execute "CREATE DATABASE #{quote_table_name(name)}"
+    end
+
+    def database_exists?(name)
+      select_value "SELECT name FROM sys.databases WHERE name = '#{name}'"
     end
     
     def rename_table(table_name, new_table_name)
