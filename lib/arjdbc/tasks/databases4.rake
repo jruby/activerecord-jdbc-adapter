@@ -1,18 +1,6 @@
-require 'arjdbc/tasks/database_tasks'
-
 module ActiveRecord::Tasks
 
   DatabaseTasks.module_eval do
-    
-    # re-invent built-in (but deprecated) tasks :
-    register_task /(mssql|sqlserver)/i, ArJdbc::Tasks::MSSQLDatabaseTasks
-    register_task /(oci|oracle)/i, ArJdbc::Tasks::OracleDatabaseTasks
-    # tasks for custom (JDBC) adapters :
-    register_task /derby/i, ArJdbc::Tasks::DerbyDatabaseTasks
-    register_task /h2/i, ArJdbc::Tasks::H2DatabaseTasks
-    register_task /hsqldb/i, ArJdbc::Tasks::HSQLDBDatabaseTasks
-    # (default) generic JDBC task :
-    register_task /^jdbc$/i, ArJdbc::Tasks::JdbcDatabaseTasks
     
     # patched to adapt jdbc configuration
     def each_current_configuration(environment)

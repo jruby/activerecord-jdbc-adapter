@@ -6,8 +6,6 @@ module Mysql2
   Error = ActiveRecord::JDBCError unless const_defined?(:Error)
 end
 
-require 'arjdbc/tasks/database_tasks'
-
 module ArJdbc
   module Tasks
     class << self
@@ -36,25 +34,6 @@ module ArJdbc
 
       def structure_load(config, filename)
         tasks_instance(config).structure_load(filename)
-      end
-
-      private
-      
-      def tasks_instance(config)
-        case config['adapter']
-        when /derby/
-          DerbyDatabaseTasks.new(config)
-        when /h2/
-          H2DatabaseTasks.new(config)
-        when /hsqldb/
-          HSQLDBDatabaseTasks.new(config)
-        when /mssql|sqlserver/ 
-          MSSQLDatabaseTasks.new(config)
-        when /oracle/ 
-          OracleDatabaseTasks.new(config)
-        else
-          JdbcDatabaseTasks.new(config)
-        end
       end
       
     end

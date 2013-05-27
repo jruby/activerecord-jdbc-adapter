@@ -124,6 +124,8 @@ namespace :db do
   
 end
 
+require 'arjdbc/tasks/database_tasks'
+
 if defined? ActiveRecord::Tasks::DatabaseTasks # 4.0
   load File.expand_path('databases4.rake', File.dirname(__FILE__))
 else # 3.x / 2.3
