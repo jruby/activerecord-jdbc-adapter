@@ -20,6 +20,10 @@ module ArJdbc
         tasks_instance(config).drop
       end
 
+      def purge(config)
+        tasks_instance(config).purge
+      end
+      
       def charset(config)
         tasks_instance(config).charset
       end
@@ -167,6 +171,32 @@ namespace :db do
     # desc "Recreate the test database from a fresh structure.sql file"
     redefine_task :clone_structure => [ "db:structure:dump", "db:test:load_structure" ]
     # same as on 3.2 - but this task gets changed on 2.3 by depending on :load_structure
+
+    # desc "Empty the test database"
+    redefine_task :purge do
+      config = ActiveRecord::Base.configurations['test']
+      case config['adapter']
+      when /mysql/
+        ActiveRecord::Base.establish_connection(:test)
+        options = mysql_creation_options(config) rescue config
+        ActiveRecord::Base.connection.recreate_database(config['database'], options)
+      when /postgresql/
+        ActiveRecord::Base.clear_active_connections!
+        # drop_database(config) :
+        ActiveRecord::Base.establish_connection(config.merge('database' => 'postgres', 'schema_search_path' => 'public'))
+        ActiveRecord::Base.connection.drop_database config['database']
+        # create_database(config) :
+        encoding = config[:encoding] || ENV['CHARSET'] || 'utf8'
+        ActiveRecord::Base.connection.create_database(config['database'], config.merge('encoding' => encoding))
+      when /sqlite/
+        dbfile = config['database']
+        File.delete(dbfile) if File.exist?(dbfile)
+      else
+        ArJdbc::Tasks.purge(config)
+      end
+    end
+    # only does (:purge => :environment) on AR < 3.2
+    task :purge => :load_config if Rake::Task.task_defined?(:load_config)
     
   end
   

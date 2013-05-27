@@ -29,7 +29,7 @@ module ArJdbc
           establish_connection(config.merge('database' => nil, 'url' => url))
           
           unless connection.respond_to?(:create_database)
-            raise "AR-JDBC adapter does not support '#{adapter_with_spec}' create_database"
+            raise "AR-JDBC adapter '#{adapter_with_spec}' does not support create_database"
           end
           connection.create_database(config['database'], config)
           
@@ -40,9 +40,18 @@ module ArJdbc
       def drop
         establish_connection(config)
         unless ActiveRecord::Base.connection.respond_to?(:drop_database)
-          raise "AR-JDBC adapter does not support '#{adapter_with_spec}' drop_database"
+          raise "AR-JDBC adapter '#{adapter_with_spec}' does not support drop_database"
         end
         connection.drop_database config['database']
+      end
+
+      def purge
+        establish_connection(config) # :test
+        unless ActiveRecord::Base.connection.respond_to?(:recreate_database)
+          raise "AR-JDBC adapter '#{adapter_with_spec}' does not support recreate_database (purge)"
+        end
+        db_name = ActiveRecord::Base.connection.database_name
+        ActiveRecord::Base.connection.recreate_database(db_name, config)
       end
 
       def charset
