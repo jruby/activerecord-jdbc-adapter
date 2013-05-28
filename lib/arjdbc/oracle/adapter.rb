@@ -256,10 +256,6 @@ module ArJdbc
       seq_name = options[:sequence_name] || default_sequence_name(name)
       execute "DROP SEQUENCE #{seq_name}" rescue nil
     end
-
-    def drop_database(name)
-      tables.each { |table| drop_table(table) }
-    end
     
     def type_to_sql(type, limit = nil, precision = nil, scale = nil) #:nodoc:
       case type.to_sym
@@ -390,49 +386,7 @@ module ArJdbc
         execute "ALTER TABLE #{quote_table_name(table_name)} DROP COLUMN #{quote_column_name(column_name)}"
       end
     end
-
-    def structure_dump #:nodoc:
-      s = select_all("SELECT sequence_name FROM user_sequences").inject("") do |structure, seq|
-        structure << "CREATE SEQUENCE #{seq.to_a.first.last};\n\n"
-      end
-
-      select_all("SELECT table_name FROM user_tables").inject(s) do |structure, table|
-        ddl = "CREATE TABLE #{table.to_a.first.last} (\n "
-        cols = select_all(%Q{
-          SELECT column_name, data_type, data_length, data_precision, data_scale, data_default, nullable
-          FROM user_tab_columns
-          WHERE table_name = '#{table.to_a.first.last}'
-          ORDER by column_id
-        }).map do |row|
-          row = row.inject({}) { |h, args| h[ args[0].downcase ] = args[1]; h }
-          col = "#{row['column_name'].downcase} #{row['data_type'].downcase}"
-          if row['data_type'] == 'NUMBER' and ! row['data_precision'].nil?
-            col << "(#{row['data_precision'].to_i}"
-            col << ",#{row['data_scale'].to_i}" if ! row['data_scale'].nil?
-            col << ')'
-          elsif row['data_type'].include?('CHAR')
-            col << "(#{row['data_length'].to_i})"
-          end
-          col << " default #{row['data_default']}" if !row['data_default'].nil?
-          col << ' not null' if row['nullable'] == 'N'
-          col
-        end
-        ddl << cols.join(",\n ")
-        ddl << ");\n\n"
-        structure << ddl
-      end
-    end
-
-    def structure_drop # :nodoc:
-      drop = ''
-      select_all("SELECT sequence_name FROM user_sequences").inject(drop) do |buff, seq|
-        buff << "DROP SEQUENCE #{seq.to_a.first.last};\n\n"
-      end
-      select_all("SELECT table_name FROM user_tables").inject(drop) do |buff, table|
-        buff << "DROP TABLE #{table.to_a.first.last} CASCADE CONSTRAINTS;\n\n"
-      end
-    end
-
+    
     # SELECT DISTINCT clause for a given set of columns and a given ORDER BY clause.
     #
     # Oracle requires the ORDER BY columns to be in the SELECT list for DISTINCT
@@ -477,6 +431,10 @@ module ArJdbc
     end
     private :extract_order_columns
     
+    def temporary_table?(table_name) # :nodoc:
+      select_value("SELECT temporary FROM user_tables WHERE table_name = '#{table_name.upcase}'") == 'Y'
+    end
+    
     def tables # :nodoc:
       @connection.tables(nil, oracle_schema)
     end
@@ -490,6 +448,22 @@ module ArJdbc
       select_value "SELECT tablespace_name FROM user_tables WHERE table_name='#{table_name.to_s.upcase}'"
     end
     
+    def charset
+      database_parameters['NLS_CHARACTERSET']
+    end
+
+    def collation
+      database_parameters['NLS_COMP']
+    end
+    
+    def database_parameters
+      return @database_parameters unless ( @database_parameters ||= {} ).empty?
+      @connection.execute_query_raw("SELECT * FROM NLS_DATABASE_PARAMETERS") do 
+        |name, value| @database_parameters[name] = value
+      end
+      @database_parameters
+    end
+    
     # QUOTING ==================================================
     
     def quote_table_name(name) # :nodoc:
@@ -497,9 +471,8 @@ module ArJdbc
     end
     
     def quote_column_name(name) #:nodoc:
-      name = name.to_s
       # if only valid lowercase column characters in name
-      if name =~ /\A[a-z][a-z_0-9\$#]*\Z/
+      if ( name = name.to_s ) =~ /\A[a-z][a-z_0-9\$#]*\Z/
         # putting double-quotes around an identifier causes Oracle to treat the 
         # identifier as case sensitive (otherwise assumes case-insensitivity) !
         # all upper case is an exception, where double-quotes are meaningless
