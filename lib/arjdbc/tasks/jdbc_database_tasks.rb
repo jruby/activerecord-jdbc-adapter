@@ -79,7 +79,7 @@ module ArJdbc
         if connection.respond_to?(:structure_dump)
           File.open(filename, "w:utf-8") { |f| f << connection.structure_dump }
         else
-          raise "AR-JDBC adapter '#{adaper_with_spec}' does not support structure_dump"
+          raise "AR-JDBC adapter '#{adapter_with_spec}' does not support structure_dump"
         end
       end
 
@@ -91,7 +91,7 @@ module ArJdbc
           #IO.read(filename).split(/;\n*/m).each do |ddl|
           #  connection.execute(ddl)
           #end
-          raise "AR-JDBC adapter '#{adaper_with_spec}' does not support structure_load"
+          raise "AR-JDBC adapter '#{adapter_with_spec}' does not support structure_load"
         end
       end
       
@@ -116,7 +116,7 @@ module ArJdbc
       def rails_root
         defined?(Rails.root) ? Rails.root : ( RAILS_ROOT )
       end
-    
+      
     end
   end
 end
