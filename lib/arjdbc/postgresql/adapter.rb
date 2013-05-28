@@ -596,7 +596,11 @@ module ArJdbc
     def supports_index_sort_order? # :nodoc:
       true
     end
-    
+
+    def supports_partial_index?
+      true
+    end if AR4_COMPAT
+
     # Range datatypes weren't introduced until PostgreSQL 9.2
     def supports_ranges? # :nodoc:
       postgresql_version >= 90200
@@ -609,7 +613,11 @@ module ArJdbc
     def supports_transaction_isolation?(level = nil)
       true
     end
-    
+
+    def index_algorithms
+      { :concurrently => 'CONCURRENTLY' }
+    end
+
     def create_savepoint
       execute("SAVEPOINT #{current_savepoint_name}")
     end
@@ -1214,7 +1222,12 @@ module ArJdbc
       rename_column_indexes(table_name, column_name, new_column_name) if respond_to?(:rename_column_indexes) # AR-4.0 SchemaStatements
     end
 
-    def remove_index!(table_name, index_name) #:nodoc:
+    def add_index(table_name, column_name, options = {}) # :nodoc:
+      index_name, index_type, index_columns, index_options, index_algorithm, index_using = add_index_options(table_name, column_name, options)
+      execute "CREATE #{index_type} INDEX #{index_algorithm} #{quote_column_name(index_name)} ON #{quote_table_name(table_name)} #{index_using} (#{index_columns})#{index_options}"
+    end if AR4_COMPAT
+
+    def remove_index!(table_name, index_name) # :nodoc:
       execute "DROP INDEX #{quote_table_name(index_name)}"
     end
 
