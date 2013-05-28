@@ -24,6 +24,7 @@ module ArJdbc
     end
     
     require 'arjdbc/tasks/jdbc_database_tasks'
+    require 'arjdbc/tasks/db2_database_tasks'
     require 'arjdbc/tasks/derby_database_tasks'
     require 'arjdbc/tasks/h2_database_tasks'
     require 'arjdbc/tasks/hsqldb_database_tasks'
@@ -34,6 +35,7 @@ module ArJdbc
     register_tasks(/(mssql|sqlserver)/i, MSSQLDatabaseTasks)
     register_tasks(/(oci|oracle)/i, OracleDatabaseTasks)
     # tasks for custom (JDBC) adapters :
+    register_tasks(/db2/i, DB2DatabaseTasks)
     register_tasks(/derby/i, DerbyDatabaseTasks)
     register_tasks(/h2/i, H2DatabaseTasks)
     register_tasks(/hsqldb/i, HSQLDBDatabaseTasks)

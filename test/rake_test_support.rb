@@ -116,6 +116,7 @@ module RakeTestSupport
   
   def create_schema_migrations_table(connection = ActiveRecord::Base.connection)
     schema_migration = ActiveRecord::Migrator.schema_migrations_table_name
+    return if connection.table_exists?(schema_migration)
     connection.create_table(schema_migration, :id => false) do |t|
       t.column :version, :string, :null => false
     end
@@ -126,7 +127,10 @@ module RakeTestSupport
     connection = ActiveRecord::Base.connection
     connection.create_database(db_name, db_config) if connection.respond_to?(:create_database)
     if block_given?
-      ActiveRecord::Base.establish_connection db_config.merge :database => db_name
+      if db_name
+        config = db_config.merge :database => db_name
+        ActiveRecord::Base.establish_connection config
+      end
       yield ActiveRecord::Base.connection
     end
     ActiveRecord::Base.connection.disconnect!
