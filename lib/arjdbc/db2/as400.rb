@@ -79,12 +79,9 @@ module ArJdbc
 
     # disable all schemas browsing when default schema is specified
     def table_exists?(name)
-      if db2_schema.nil?
-        @connection.table_exists?(name)
-      else
-        @connection.table_exists?(name, db2_schema)
-      end
-
+      schema ?
+        @connection.table_exists?(name, schema) :
+          @connection.table_exists?(name)
     end
     
     DRIVER_NAME = 'com.ibm.as400.access.AS400JDBCDriver'.freeze
@@ -98,8 +95,8 @@ module ArJdbc
     
     # @override
     def db2_schema
-      @db2_schema = nil unless defined? @db2_schema
-      return @db2_schema unless @db2_schema.nil?
+      @db2_schema = false unless defined? @db2_schema
+      return @db2_schema if @db2_schema != false
       @db2_schema = 
         if config[:schema].present?
           config[:schema]
@@ -107,7 +104,6 @@ module ArJdbc
           # Only found method to set db2_schema from jndi
           result = select_one("SELECT CURRENT_SCHEMA FROM SYSIBM.SYSDUMMY1")
           schema = result['00001']
-
           # If the connection uses the library list schema name will be nil
           if schema == '*LIBL'
             schema = nil
@@ -118,7 +114,6 @@ module ArJdbc
           # jdbc:as400://localhost/schema;naming=system;libraries=lib1,lib2
           schema = nil
           split = config[:url].split('/')
-
           # Return nil if schema isn't defined
           schema = split.last.split(';').first.strip if split.size == 4
           schema

@@ -46,6 +46,13 @@ module ArJdbc
       { 'db2' => ::Arel::Visitors::DB2 }
     end
     
+    def self.handle_lobs?; true; end
+    
+    def configure_connection
+      schema = self.schema
+      set_schema(schema) if schema && schema != config[:username]
+    end
+    
     ADAPTER_NAME = 'DB2'.freeze
     
     def adapter_name
@@ -345,13 +352,13 @@ module ArJdbc
         end
       when String, ActiveSupport::Multibyte::Chars
         if column_type == :binary && !(column.sql_type =~ /for bit data/i)
-          if ArJdbc::DB2.lob_callback_added?
+          if ArJdbc::DB2.handle_lobs?
             "NULL" # '@@@IBMBINARY@@@'"
           else
             "BLOB('#{quote_string(value)}')"
           end
         elsif column && column.sql_type =~ /clob/ # :text
-          if ArJdbc::DB2.lob_callback_added?
+          if ArJdbc::DB2.handle_lobs?
             "NULL" # "'@@@IBMTEXT@@@'"
           else
             "'#{quote_string(value)}'"
@@ -467,10 +474,6 @@ module ArJdbc
       @connection.execute_update "call sysproc.admin_cmd('RUNSTATS ON TABLE #{tablename} WITH DISTRIBUTION AND DETAILED INDEXES ALL UTIL_IMPACT_PRIORITY #{priority}')"
     end
 
-    def recreate_database(name, options = {})
-      tables.each { |table| drop_table("#{db2_schema}.#{table}") }
-    end
-
     def add_index(table_name, column_name, options = {})
       if ! zos? || ( table_name.to_s == ActiveRecord::Migrator.schema_migrations_table_name.to_s )
         column_name = column_name.to_s if column_name.is_a?(Symbol)
@@ -552,7 +555,7 @@ module ArJdbc
     end
     
     def tables
-      @connection.tables(nil, db2_schema, nil, ["TABLE"])
+      @connection.tables(nil, schema)
     end
 
     # only record precision and scale for types that can set them via CREATE TABLE:
@@ -562,7 +565,7 @@ module ArJdbc
     HAVE_SCALE = %w(DECIMAL NUMERIC)
 
     def columns(table_name, name = nil)
-      columns = @connection.columns_internal(table_name.to_s, nil, db2_schema)
+      columns = @connection.columns_internal(table_name.to_s, nil, schema) # catalog == nil
 
       if zos?
         # Remove the mighty db2_generated_rowid_for_lobs from the list of columns
@@ -581,70 +584,70 @@ module ArJdbc
     end
 
     def indexes(table_name, name = nil)
-      @connection.indexes(table_name, name, db2_schema)
+      @connection.indexes(table_name, name, schema)
     end
 
+    def recreate_database(name = nil, options = {})
+      drop_database(name)
+    end
+    
+    def drop_database(name = nil)
+      tables.each { |table| drop_table("#{table}") }
+    end
+    
     # TODO this seems like it's ready for quite some refactoring, anyone pls :) ?!
-    def structure_dump #:nodoc:
-      schema_name = db2_schema.upcase if db2_schema.present?
-      rs = @connection.connection.meta_data.getTables(nil, schema_name, nil, ["TABLE"].to_java(:string))
+    def structure_dump # :nodoc:
+      schema_name = schema.upcase if schema
       definition = ''
-      while rs.next
-        tname = rs.getString(3)
-        definition << "CREATE TABLE #{tname} (\n"
-        rs2 = @connection.connection.meta_data.getColumns(nil,schema_name,tname,nil)
-        first_col = true
-        while rs2.next
-          col_name = add_quotes(rs2.getString(4));
-          default = ""
-          d1 = rs2.getString(13)
-          # IBM i (as400 toolbox driver) will return an empty string if there is no default
-          if @config[:url] =~ /^jdbc:as400:/
-            default = !d1.blank? ? " DEFAULT #{d1}" : ""
-          else
-            default = d1 ? " DEFAULT #{d1}" : ""
-          end
+      for table in tables
+        definition << "CREATE TABLE #{table} (\n"
+        
+        cols_rs = jdbc_connection.meta_data.getColumns(nil, schema_name, table, nil)
+        begin
+          first_col = true
+          while cols_rs.next
+            col_name = add_quotes(cols_rs.getString(4))
+            default = cols_rs.getString(13)
+            default = default.empty? ? "" : " DEFAULT #{default}"
 
-          type = rs2.getString(6)
-          col_precision = rs2.getString(7)
-          col_scale = rs2.getString(9)
-          col_size = ""
-          if HAVE_SCALE.include?(type) and col_scale
-            col_size = "(#{col_precision},#{col_scale})"
-          elsif (HAVE_LIMIT + HAVE_PRECISION).include?(type) and col_precision
-            col_size = "(#{col_precision})"
-          end
-          nulling = (rs2.getString(18) == 'NO' ? " NOT NULL" : "")
-          autoincrement = (rs2.getString(23) == 'YES' ? " GENERATED ALWAYS AS IDENTITY" : "")
-          create_col_string = add_quotes(expand_double_quotes(strip_quotes(col_name))) +
-            " " +
-            type +
-            col_size +
-            "" +
-            nulling +
-            default +
-            autoincrement
-          if !first_col
-            create_col_string = ",\n #{create_col_string}"
-          else
-            create_col_string = " #{create_col_string}"
-          end
+            type = cols_rs.getString(6)
+            col_precision = cols_rs.getString(7)
+            col_scale = cols_rs.getString(9)
+            col_size = ""
+            if HAVE_SCALE.include?(type) and col_scale
+              col_size = "(#{col_precision},#{col_scale})"
+            elsif (HAVE_LIMIT + HAVE_PRECISION).include?(type) and col_precision
+              col_size = "(#{col_precision})"
+            end
+            nulling = (cols_rs.getString(18) == 'NO' ? " NOT NULL" : "")
+            autoinc = (cols_rs.getString(23) == 'YES' ? " GENERATED ALWAYS AS IDENTITY" : "")
+            create_column = add_quotes(expand_double_quotes(strip_quotes(col_name))) <<
+              " " << type << col_size << "" << nulling << default << autoinc
+            create_column = first_col ? " #{create_column}" : ",\n #{create_column}"
 
-          definition << create_col_string
+            definition << create_column
 
-          first_col = false
+            first_col = false
+          end
+        ensure
+          cols_rs.close
         end
+        
         definition << ");\n\n"
 
-        pkrs = @connection.connection.meta_data.getPrimaryKeys(nil,schema_name,tname)
+        pk_rs = jdbc_connection.meta_data.getPrimaryKeys(nil, schema_name, table)
         primary_key = {}
-        while pkrs.next
-          name = pkrs.getString(6)
-          primary_key[name] = [] unless primary_key[name]
-          primary_key[name] << pkrs.getString(4)
+        begin
+          while pk_rs.next
+            name = pk_rs.getString(6)
+            primary_key[name] = [] unless primary_key[name]
+            primary_key[name] << pk_rs.getString(4)
+          end
+        ensure
+          pk_rs.close
         end
         primary_key.each do |name, cols|
-          definition << "ALTER TABLE #{tname}\n"
+          definition << "ALTER TABLE #{table}\n"
           definition << "  ADD CONSTRAINT #{name}\n"
           definition << "      PRIMARY KEY (#{cols.join(', ')});\n\n"
         end
@@ -713,11 +716,23 @@ module ArJdbc
       false
     end
 
+    def schema
+      db2_schema
+    end
+    
+    def schema=(schema)
+      set_schema(@db2_schema = schema) if db2_schema != schema
+    end
+    
     private
     
+    def set_schema(schema)
+      execute("SET SCHEMA #{schema}")
+    end
+    
     def db2_schema
-      @db2_schema = nil unless defined? @db2_schema
-      return @db2_schema unless @db2_schema.nil?
+      @db2_schema = false unless defined? @db2_schema
+      return @db2_schema if @db2_schema != false
       @db2_schema = 
         if config[:schema].present?
           config[:schema]
