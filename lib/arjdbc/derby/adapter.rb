@@ -304,7 +304,7 @@ module ArJdbc
     end
 
     def quote_column_name(name) # :nodoc:
-      %Q{"#{name.to_s.upcase.gsub(/\"/, '""')}"}
+      %Q{"#{name.to_s.upcase.gsub('"', '""')}"}
     end
 
     def add_limit_offset!(sql, options) # :nodoc:

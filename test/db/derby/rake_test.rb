@@ -51,7 +51,7 @@ class DerbyRakeTest < Test::Unit::TestCase
       Rake::Task["db:structure:dump"].invoke
       
       assert File.exists?(structure_sql)
-      assert_match /CREATE TABLE USERS/i, File.read(structure_sql)
+      assert_match /CREATE TABLE "?USERS"?/i, File.read(structure_sql)
       
       # db:structure:load
       ActiveRecord::Base.connection.disconnect!
