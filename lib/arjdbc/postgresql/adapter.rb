@@ -1340,15 +1340,24 @@ module ArJdbc
           WHERE a.attrelid = #{oid}
           AND a.attnum IN (#{indkey.join(",")})
         SQL
-        
+
         columns = Hash[ columns.each { |column| column[0] = column[0].to_s } ]
         column_names = columns.values_at(*indkey).compact
 
-        # add info on sort order for columns (only desc order is explicitly specified, asc is the default)
-        desc_order_columns = inddef.scan(/(\w+) DESC/).flatten
-        orders = desc_order_columns.any? ? Hash[ desc_order_columns.map { |column| [column, :desc] } ] : {}
-        
-        column_names.empty? ? nil : IndexDefinition.new(table_name, index_name, unique, column_names, [], orders)
+        unless column_names.empty?
+          # add info on sort order for columns (only desc order is explicitly specified, asc is the default)
+          desc_order_columns = inddef.scan(/(\w+) DESC/).flatten
+          orders = desc_order_columns.any? ? Hash[ desc_order_columns.map { |column| [column, :desc] } ] : {}
+
+          if ActiveRecord::VERSION::MAJOR > 3 # AR4 supports `where` and `using` index options
+            where = inddef.scan(/WHERE (.+)$/).flatten[0]
+            using = inddef.scan(/USING (.+?) /).flatten[0].to_sym
+
+            IndexDefinition.new(table_name, index_name, unique, column_names, [], orders, where, nil, using)
+          else
+            IndexDefinition.new(table_name, index_name, unique, column_names, [], orders)
+          end
+        end
       end
       result.compact!
       result
