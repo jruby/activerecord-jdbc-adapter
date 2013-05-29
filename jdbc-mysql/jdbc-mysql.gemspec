@@ -1,7 +1,7 @@
 # -*- encoding: utf-8 -*-
 
 $LOAD_PATH << File.expand_path('../lib', __FILE__)
-require 'jdbc/mysql'
+require 'jdbc/mysql/version'
 version = Jdbc::MySQL::VERSION
 Gem::Specification.new do |s|
   s.name = %q{jdbc-mysql}

@@ -1,9 +1,8 @@
 warn "Jdbc-HSQLDB is only for use with JRuby" if (JRUBY_VERSION.nil? rescue true)
+require 'jdbc/hsqldb/version'
 
 module Jdbc
   module HSQLDB
-    DRIVER_VERSION = '2.2.9'
-    VERSION = DRIVER_VERSION + '.1'
 
     def self.driver_jar
       "hsqldb-#{DRIVER_VERSION}.jar"
@@ -18,7 +17,7 @@ module Jdbc
     end
 
     if defined?(JRUBY_VERSION) && # enable backwards-compat behavior :
-      ( Java::JavaLang::Boolean.get_boolean("jdbc.driver.autoload") || 
+      ( Java::JavaLang::Boolean.get_boolean("jdbc.driver.autoload") ||
         Java::JavaLang::Boolean.get_boolean("jdbc.hsqldb.autoload") )
       warn "autoloading JDBC driver on require 'jdbc/hsqldb'" if $VERBOSE
       load_driver :require
