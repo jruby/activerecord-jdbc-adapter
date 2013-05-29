@@ -189,6 +189,12 @@ module ArJdbc
       end
     end
 
+    def empty_insert_statement_value
+      # on HSQLDB only work with tables that have a default value for each 
+      # and every column ... you'll need to avoid `Model.create!` on 4.0
+      'DEFAULT VALUES'
+    end
+    
     # filter out system tables (that otherwise end up in db/schema.rb)
     # JdbcConnection#tables
     # now takes an optional block filter so we can screen out

@@ -160,6 +160,10 @@ module ArJdbc
       super
     end
 
+    def empty_insert_statement_value
+      'VALUES ( DEFAULT )' # won't work as Derby does need to know the columns count
+    end
+    
     # Set the sequence to the max value of the table's column.
     def reset_sequence!(table, column, sequence = nil)
       mpk = select_value("SELECT MAX(#{quote_column_name(column)}) FROM #{quote_table_name(table)}")
