@@ -9,7 +9,11 @@ class HSQLDBSchemaDumpTest < Test::Unit::TestCase
   def test_schema_dump_decimal_when_scale_specified
     output = standard_dump(StringIO.new, [/^[^d]/]) # keep db_types
     # t.column :sample_small_decimal, :decimal, :precision => 3, :scale => 2, :default => 3.14
-    assert_match %r{t.decimal\s+"sample_small_decimal",\s+:precision => 3,\s+:scale => 2}, output
+    if ar_version('4.0')
+      assert_match %r{t.decimal\s+"sample_small_decimal",\s+precision: 3,\s+scale: 2}, output
+    else
+      assert_match %r{t.decimal\s+"sample_small_decimal",\s+:precision => 3,\s+:scale => 2}, output
+    end
   end
   
 end
