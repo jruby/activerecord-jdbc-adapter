@@ -195,6 +195,11 @@ module ActiveRecord
       def bind_substitution(visitor); self.class.bind_substitution(visitor); end
       private :bind_substitution
       
+      # @override default implementation (does nothing silently)
+      def structure_dump
+        raise NotImplementedError, "structure_dump not supported"
+      end
+      
       def is_a?(klass) # :nodoc:
         # This is to fake out current_adapter? conditional logic in AR tests
         if Class === klass && klass.name =~ /#{adapter_name}Adapter$/i
