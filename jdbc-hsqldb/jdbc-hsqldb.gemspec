@@ -1,7 +1,7 @@
 # -*- encoding: utf-8 -*-
 
 $LOAD_PATH << File.expand_path('../lib', __FILE__)
-require 'jdbc/hsqldb'
+require 'jdbc/hsqldb/version'
 version = Jdbc::HSQLDB::VERSION
 Gem::Specification.new do |s|
   s.name = %q{jdbc-hsqldb}

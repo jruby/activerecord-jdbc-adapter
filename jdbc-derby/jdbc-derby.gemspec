@@ -1,7 +1,7 @@
 # -*- encoding: utf-8 -*-
 
 $LOAD_PATH << File.expand_path('../lib', __FILE__)
-require 'jdbc/derby'
+require 'jdbc/derby/version'
 version = Jdbc::Derby::VERSION
 Gem::Specification.new do |s|
   s.name = %q{jdbc-derby}
