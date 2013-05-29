@@ -10,7 +10,8 @@ ArJdbc::ConnectionMethods.module_eval do
     end
     config[:driver] ||= ::ArJdbc::DB2::DRIVER_NAME
     config[:adapter_spec] ||= ::ArJdbc::DB2
-    config[:connection_alive_sql] ||= 'SELECT 1 FROM syscat.tables FETCH FIRST 1 ROWS ONLY'
+    # [DEPRECATED] Use JDBC 4.0 Driver
+    #config[:connection_alive_sql] ||= 'SELECT 1 FROM syscat.tables FETCH FIRST 1 ROWS ONLY'
     jdbc_connection(config)
   end
   alias_method :jdbcdb2_connection, :db2_connection
@@ -29,7 +30,9 @@ ArJdbc::ConnectionMethods.module_eval do
     require 'arjdbc/db2/as400'
     config[:driver] ||= ::ArJdbc::AS400::DRIVER_NAME
     config[:adapter_spec] ||= ::ArJdbc::AS400
-    config[:connection_alive_sql] ||= 'SELECT 1 FROM sysibm.tables FETCH FIRST 1 ROWS ONLY'
+    # [DEPRECATED] Use JDBC 4.0 Driver (http://sourceforge.net/projects/jt400/files/JTOpen-full/
+    # and choose jtopen_x_x_jdbc40_jdk6.zip)
+    #config[:connection_alive_sql] ||= 'SELECT 1 FROM sysibm.tables FETCH FIRST 1 ROWS ONLY'
     jdbc_connection(config)
   end
   alias_method :jdbcas400_connection, :as400_connection
