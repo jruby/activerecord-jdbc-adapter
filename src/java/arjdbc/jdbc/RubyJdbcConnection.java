@@ -815,19 +815,33 @@ public class RubyJdbcConnection extends RubyObject {
         return TABLE_TYPES;
     }
 
-    @JRubyMethod(name = "table_exists?", required = 1, optional = 1)
-    public IRubyObject table_exists_p(final ThreadContext context, final IRubyObject[] args) {
-        IRubyObject name = args[0], schema_name = args.length > 1 ? args[1] : null;
-        if ( ! ( name instanceof RubyString ) ) {
-            name = name.callMethod(context, "to_s");
+    @JRubyMethod(name = "table_exists?")
+    public IRubyObject table_exists_p(final ThreadContext context, IRubyObject table) {
+        if ( table.isNil() ) {
+            throw context.getRuntime().newArgumentError("nil table name");
         }
-        final String tableName = ((RubyString) name).getUnicodeValue();
-        final String tableSchema = schema_name == null ? null : schema_name.convertToString().getUnicodeValue();
-        final Ruby runtime = context.getRuntime();
+        final String tableName = table.toString();
         
+        return tableExists(context, null, tableName);
+    }
+    
+    @JRubyMethod(name = "table_exists?")
+    public IRubyObject table_exists_p(final ThreadContext context, IRubyObject table, IRubyObject schema) {
+        if ( table.isNil() ) {
+            throw context.getRuntime().newArgumentError("nil table name");
+        }
+        final String tableName = table.toString();
+        final String defaultSchema = schema.isNil() ? null : schema.toString();
+        
+        return tableExists(context, defaultSchema, tableName);
+    }
+    
+    protected IRubyObject tableExists(final ThreadContext context,
+        final String defaultSchema, final String tableName) {
+        final Ruby runtime = context.getRuntime();
         return withConnection(context, new Callable<RubyBoolean>() {
             public RubyBoolean call(final Connection connection) throws SQLException {
-                final TableName components = extractTableName(connection, tableSchema, tableName);
+                final TableName components = extractTableName(connection, defaultSchema, tableName);
                 return runtime.newBoolean( tableExists(runtime, connection, components) );
             }
         });
@@ -840,7 +854,7 @@ public class RubyJdbcConnection extends RubyObject {
             public IRubyObject call(final Connection connection) throws SQLException {
                 ResultSet columns = null, primaryKeys = null;
                 try {
-                    final String tableName = args[0].convertToString().getUnicodeValue();
+                    final String tableName = args[0].toString();
                     // optionals (NOTE: catalog argumnet was never used before 1.3.0) :
                     final String catalog = args.length > 1 ? toStringOrNull(args[1]) : null;
                     final String defaultSchema = args.length > 2 ? toStringOrNull(args[2]) : null;
@@ -869,12 +883,17 @@ public class RubyJdbcConnection extends RubyObject {
             }
         });
     }
+
+    @JRubyMethod(name = "indexes")
+    public IRubyObject indexes(final ThreadContext context, IRubyObject tableName, IRubyObject name) {
+        return indexes(context, toStringOrNull(tableName), toStringOrNull(name), null);
+    }
     
     @JRubyMethod(name = "indexes")
-    public IRubyObject indexes(ThreadContext context, IRubyObject tableName, IRubyObject name, IRubyObject schemaName) {
+    public IRubyObject indexes(final ThreadContext context, IRubyObject tableName, IRubyObject name, IRubyObject schemaName) {
         return indexes(context, toStringOrNull(tableName), toStringOrNull(name), toStringOrNull(schemaName));
     }
-
+    
     // NOTE: metaData.getIndexInfo row mappings :
     private static final int INDEX_INFO_TABLE_NAME = 3;
     private static final int INDEX_INFO_NON_UNIQUE = 4;
@@ -1015,10 +1034,10 @@ public class RubyJdbcConnection extends RubyObject {
         throws SQLException {
         
         final boolean isBinary = args[0].isTrue(); 
-        final RubyString columnName = args[1].convertToString();
-        final RubyString tableName = args[2].convertToString();
-        final RubyString idKey = args[3].convertToString();
-        final RubyString idVal = args[4].convertToString();
+        final String columnName = args[1].toString();
+        final String tableName = args[2].toString();
+        final String idKey = args[3].toString();
+        final String idVal = args[4].toString();
         final IRubyObject lobValue = args[5];
         
         final Ruby runtime = context.getRuntime();
@@ -1096,16 +1115,16 @@ public class RubyJdbcConnection extends RubyObject {
     protected IRubyObject config_value(ThreadContext context, String key) {
         return getConfigValue(context, key);
     }
-
-    private static String toStringOrNull(IRubyObject arg) {
+    
+    private static String toStringOrNull(final IRubyObject arg) {
         return arg.isNil() ? null : arg.toString();
     }
 
-    protected IRubyObject getAdapter(ThreadContext context) {
+    protected IRubyObject getAdapter(final ThreadContext context) {
         return callMethod(context, "adapter");
     }
 
-    protected IRubyObject getJdbcColumnClass(ThreadContext context) {
+    protected IRubyObject getJdbcColumnClass(final ThreadContext context) {
         return getAdapter(context).callMethod(context, "jdbc_column_class");
     }
 
@@ -2739,6 +2758,12 @@ public class RubyJdbcConnection extends RubyObject {
             this.catalog = catalog;
             this.schema = schema;
             this.name = table;
+        }
+
+        @Override
+        public String toString() {
+            return getClass().getName() + 
+            "{catalog=" + catalog + ",schema=" + schema + ",name=" + name + "}";
         }
         
     }
