@@ -66,10 +66,8 @@ module FixtureSetup
   def setup
     super
     #
-    # just a random zone, unlikely to be local, and not utc
+    # just a random zone, unlikely to be local, and not UTC
     Time.zone = 'Moscow' if Time.respond_to?(:zone)
-    #
-    DbType.create!
   end
   
   def teardown
@@ -314,24 +312,16 @@ module SimpleTestMethods
       # precision will only be expected to the second :
       original_time = Time.local(t.year, t.month, t.day, t.hour, t.min, t.sec)
       time = original_time.in_time_zone
-      e = DbType.first
-      e.sample_datetime = time
-      e.save!
-      e = DbType.first
-
-      assert_equal time, e.sample_datetime
+      e = DbType.create! :sample_datetime => time
+      assert_equal time, e.reload.sample_datetime
     end
 
     def test_save_date_time
       t = Time.now
       # precision will only be expected to the second :
       time = Time.local(t.year, t.month, t.day, t.hour, t.min, t.sec)
-      datetime = time.to_datetime
-      e = DbType.first
-      e.sample_datetime = datetime
-      e.save!
-      e = DbType.first
-      assert_equal time, e.sample_datetime.localtime
+      e = DbType.create! :sample_datetime => time.to_datetime
+      assert_equal time, e.reload.sample_datetime.localtime
     end
     
   end
@@ -339,110 +329,89 @@ module SimpleTestMethods
   def test_save_time
     # Ruby doesn't have a plain Time class without a date.
     time = Time.utc(2012, 12, 18, 21, 10, 15, 0)
-    e = DbType.first
+    e = DbType.new
     e.sample_time = time
     e.save!
-    e = DbType.first
 
-    assert_time_equal time, e.sample_time
+    assert_time_equal time, e.reload.sample_time
   end
   
   def test_save_timestamp
     timestamp = Time.utc(2012, 12, 18, 21, 10, 15, 0)
-    e = DbType.first
+    e = DbType.create! :sample_datetime => Time.now
     e.sample_timestamp = timestamp
     e.save!
-    e = DbType.first
-    assert_timestamp_equal timestamp, e.sample_timestamp
+    assert_timestamp_equal timestamp, e.reload.sample_timestamp
   end
   
-  # TODO we do not support precision beyond seconds !
-  # def test_save_timestamp_with_usec
-  #   timestamp = Time.utc(1942, 11, 30, 01, 53, 59, 123_456)
-  #   e = DbType.first
-  #   e.sample_timestamp = timestamp
-  #   e.save!
-  #   e = DbType.first
-  #   assert_timestamp_equal timestamp, e.sample_timestamp
-  # end
+  def test_save_timestamp_with_usec
+    pend 'todo: support precision beyond seconds !?'
+    timestamp = Time.utc(1942, 11, 30, 01, 53, 59, 123_456)
+    e = DbType.create! :sample_timestamp => timestamp
+    assert_timestamp_equal timestamp, e.reload.sample_timestamp
+  end
 
   def test_save_date
     date = Date.new(2007)
-    e = DbType.first
+    e = DbType.new
     e.sample_date = date
-    e.save!
-    e = DbType.first
+    e.save!; e.reload
     assert_date_type e.sample_date
     assert_date_equal date, e.sample_date
   end
 
   def test_save_float
-    e = DbType.first
-    e.sample_float = 12.0
+    e = DbType.new :sample_float => 12.0
     e.save!
-
-    e = DbType.first
-    assert_equal 12.0, e.sample_float
+    assert_equal 12.0, e.reload.sample_float
   end
   
   def test_boolean
-    e = DbType.first
-    assert_nil e.sample_boolean # unset boolean should default to nil
+    e = DbType.create! :sample_float => 0
+    assert_nil e.reload.sample_boolean # unset boolean should default to nil
 
     e.update_attributes :sample_boolean => false
-
-    e = DbType.first
-    assert_equal false, e.sample_boolean
+    assert_equal false, e.reload.sample_boolean
     
     e.sample_boolean = true
     e.save!
-
-    e = DbType.first
-    assert_equal true, e.sample_boolean
+    assert_equal true, e.reload.sample_boolean
   end
 
   def test_integer
-    e = DbType.first
-    assert_nil e.sample_integer
+    e = DbType.create! :sample_boolean => false
+    assert_nil e.reload.sample_integer
 
     e.sample_integer = 10
     e.save!
-
-    e = DbType.first
-    assert_equal 10, e.sample_integer
+    assert_equal 10, e.reload.sample_integer
   end
 
   def test_text
-    e = DbType.first
-    assert_null_text e.sample_text
+    e = DbType.create! :sample_boolean => false
+    assert_null_text e.reload.sample_text
 
     e.sample_text = "ooop?"
     e.save!
-
-    e = DbType.first
-    assert_equal "ooop?", e.sample_text
+    assert_equal "ooop?", e.reload.sample_text
   end
 
   def test_string
-    e = DbType.first
-    assert_empty_string e.sample_string
+    e = DbType.create! :sample_boolean => false
+    assert_empty_string e.reload.sample_string
 
     e.sample_string = "ooop?"
     e.save!
-
-    e = DbType.first
-    assert_equal "ooop?", e.sample_string
+    assert_equal "ooop?", e.reload.sample_string
   end
 
   def test_save_binary
     # string is 60_000 bytes
     binary_string = "\000ABCDEFGHIJKLMNOPQRSTUVWXYZ'\001\003" * 1 # 2_000
-    e = DbType.first
+    e = DbType.new
     e.sample_binary = binary_string
     e.save!
-    
-    e = DbType.first
-    assert_equal binary_string, e.sample_binary
+    assert_equal binary_string, e.reload.sample_binary
   end
 
   def test_small_decimal
@@ -484,6 +453,13 @@ module SimpleTestMethods
     assert_equal test_value, db_type.big_decimal
   end
   
+  # NOTE: relevant on 4.0 as it started using empty_insert_statement_value
+  def test_empty_insert_statement
+    DbType.create!
+    assert DbType.first
+    assert_not_nil DbType.first.id
+  end
+  
   def test_negative_default_value
     assert_equal(-1, DbType.columns_hash['sample_integer_neg_default'].default)
     assert_equal(-1, DbType.new.sample_integer_neg_default)
@@ -519,17 +495,17 @@ module SimpleTestMethods
   end
 
   def test_nil_values
-    test = AutoId.create('value' => '')
-    assert_nil AutoId.find(test.id).value
+    e = DbType.create! :sample_integer => '', :sample_string => 'sample'
+    assert_nil e.reload.sample_integer
   end
 
   # These should make no difference, but might due to the wacky regexp SQL rewriting we do.
   def test_save_value_containing_sql
-    e = DbType.first
-    e.save
+    e = DbType.new :sample_string => 'sample'
+    e.save!
 
     e.sample_string = e.sample_text = "\n\nselect from nothing where id = 'foo'"
-    e.save
+    e.save!
   end
 
   def test_invalid
@@ -544,6 +520,7 @@ module SimpleTestMethods
   end
 
   def test_reconnect
+    DbType.create! :sample_string => 'sample'
     assert_equal 1, DbType.count
     ActiveRecord::Base.connection.reconnect!
     assert_equal 1, DbType.count
@@ -576,6 +553,7 @@ module SimpleTestMethods
   end
 
   def test_disconnect
+    DbType.create! :sample_string => 'sample'
     assert_equal 1, DbType.count
     ActiveRecord::Base.clear_active_connections!
     ActiveRecord::Base.connection_pool.disconnect! if ActiveRecord::Base.respond_to?(:connection_pool)
