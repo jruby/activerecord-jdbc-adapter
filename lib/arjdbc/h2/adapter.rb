@@ -148,6 +148,10 @@ module ArJdbc
       end
     end
 
+    def empty_insert_statement_value
+      "VALUES ()"
+    end
+    
     def tables
       @connection.tables(nil, h2_schema)
     end
