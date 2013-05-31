@@ -1,3 +1,67 @@
+== 1.3.0.beta2 (05/30/13)
+
+- only load rake tasks if AR is being used - AR::Railtie is loaded (#234)
+- override #structure_dump so it won't silently return while doing nothing
+- [h2] support empty insert statement (actually used by AR 4.0)
+- [postgres] support 4.0 options for #indexes + dumping partial indexes
+- [oracle] "better" rake tasks (kindly borrowed from the enhanced-adapter)
+- [db2] some database tasks - with a tested (and fixed) structure_dump
+- [db2] should set schema on configure_connection
+- [mssql] Fix SQL server version matching on SQL Azure
+- [mssql] collation and database_exists? helpers for SQLServer
+- [h2] rake db: tasks support (db:structure: dump/load as well as db:drop)
+- [hsqldb] structure:dump structure:load and fixed drop database support
+- [hsqldb] handle config[:database] with db specific prefix
+- [as400] error support for execure_and_auto_confirm
+- [db2] remove unused explain method
+- AR-4.0 inspired rake task impl (usable and shared with Rails 3.x/2.3 tasks)
+- jdbc connection updates to better follow AR semantics 
+  * #active? should check whether connection is valid 
+  * #reconnect! should #configure_connection if available 
+  * use JDBC 4 isValid as alive check fallback (no need for connection_alive_sql)
+- [sqlite3] missing adapter.encoding method
+- [as400] auto discover support (+ current_schema) for AS/400 with jndi
+- use (module) spec.initiialize! convention to perform (lazy) AR initialization
+- allow for (potential) adapter_spec overides by user on connection method
+- [oracle] column/table name (+ raw) quoting - inspired by enhanced adapter
+- [db2] support for `ArJdbc::DB2.emulate_booleans = false`
+- [oracle] support for `ArJdbc::Oracle.emulate_booleans = false` (#225)
+- [mysql] AR::ConnectionAdapters::MysqlAdapter.emulate_booleans support
+- [mysql] #indexes compatible with 4.0 as well as #pk_and_sequence_for
+- add config parameter to disable (JDBC) statement escaping and
+  disable statement escape processing by default for all (#243)
+- [as400] add db2_schema to table_exists? + add support for nil schema
+- [mssql] SQLServer visitor compat with next AREL
+- [mssql] quote_table_name_for_assignment for MS-SQL
+- quote_table_name_for_assignment should only be added on AR >= 4.0
+- disable extension auto-discovery for installed gems (unless specified)
+- [as400] fix as400 system schema + re-add jndi schema support
+- [db2] separate AS400 code into a module + stadalone connection method
+- [postgres] quoting that uses column.type (thus works with defs as well) 
+  only use #sql_type when necessary
+- better compatibility with native MySQL/SQLite3 adapter (constants)
+- [postgres] restore PostgreSQLColumn.new < 4.0 compatibility
+- [h2] allow H2 to set auto increment default value
+- [postgres] make sure intifnite date/time values are handled correctly
+- [postgres] use quote_table_name_for_assignment from AR-4.0
+- [sqlite3] fix remove_column on AR-4.0
+- do not load the AR built-in adapters eagerly - but on demand (#353)
+- [postgres] ignore encoding option, print a warning about it (#376)
+- [h2] check if offset is set, otherwise use the Arel::Node::Offset#expr
+- [as400] adding ordering support when using both limit and offset
+- [as400] force decimal field with 0 scale to be integers 
+- [sqlite3] let the JDBC API to figure out indexes (#377)
+- support for loading only the necessary Java parts per adapter (#353)
+- AREL visitors base impl revisited (to fix long broken query cache), 
+  make sure a visitor is instantiated by the JDBC adapter (2.3 compatible)
+- introduced ArJdbc.modules method that should return adapter modules
+- move mysql gem API faking into (rails loadable) test code
+- there should be no more need to fake out *pg.rb* (due native 'pg' gem)
+- do not fake out SQLite3::Version ... gets only loaded while running tests now
+
+Code Contributors (in no particular order): Jason Franklin, Alexey Noskov, 
+Brian Kulyk, Pierrick Rouxel, Mike Poltyn and Steve Lorek
+
 == 1.3.0.beta1 (04/11/13)
 
 - [db2] map datetime / timestamp / time types + correct time handling on AS400

@@ -13,7 +13,7 @@ strives to provide ActiveRecord 2.3, 3.x as well as 4.0 (master) compatibility.
 Our master already contains a lot of fixes but since we diverged significantly 
 from the 1.2 line (we no longer back-port fixes) and still require to perform a 
 few refactorings we advise users to point their *Gemfiles* to our master or use 
-pre-release versions of our gem(s) e.g. **1.3.0.beta1**.
+pre-release versions of our gem(s) e.g. **1.3.0.beta2**.
 
 **NOTE:** activerecord-jdbc-adapter gem **1.2.6** contains a SQL injection
 [security vulnerability](http://cl.ly/code/0n381E353414) and has been yanked, 
