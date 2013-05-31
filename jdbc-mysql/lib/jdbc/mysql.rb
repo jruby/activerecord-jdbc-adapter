@@ -1,4 +1,5 @@
 warn "Jdbc-MySQL is only for use with JRuby" if (JRUBY_VERSION.nil? rescue true)
+require 'jdbc/mysql/version'
 
 module Jdbc
   module MySQL
