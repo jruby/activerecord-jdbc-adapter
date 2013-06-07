@@ -1,11 +1,4 @@
 # -*- coding: utf-8 -*-
-#
-# To run this script, run the following:
-#
-#   CREATE DATABASE weblog_development;
-#
-# TODO: Finish the explanation.
-
 require 'jdbc_common'
 require 'db/informix'
 

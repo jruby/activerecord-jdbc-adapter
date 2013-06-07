@@ -14,118 +14,103 @@ else
   task :test => [ :test_mysql ]
 end
 
-def set_compat_version(task)
+def set_test_task_compat_version(task)
   task.ruby_opts << '-v' if RUBY_VERSION =~ /1\.8/
   if defined?(JRUBY_VERSION)
     task.ruby_opts << "--#{RUBY_VERSION[/^(\d+\.\d+)/, 1]}"
   end
 end
 
-%w(derby h2 hsqldb mysql sqlite3 postgres mssql oracle db2 as400 informix sybase).each do 
+def set_task_description(task, desc)
+  unless task.is_a?(Rake::Task)
+    task = task.name if task.is_a?(Rake::TestTask)
+    task = Rake::Task[task]
+  end
+  # reset the desc set-up by TestTask :
+  task.instance_variable_set(:@full_comment, nil)
+  task.add_description(desc)
+end
+
+%w(derby h2 hsqldb mysql sqlite3 postgres mssql oracle db2 as400 informix sybase).each do
   |adapter| task "test_#{adapter}_pre" do
     unless (ENV['BUNDLE_GEMFILE'] rescue '') =~ /gemfiles\/.*?\.gemfile/
       appraisals = []; Appraisal::File.each { |file| appraisals << file.name }
-      puts "Specify AR version with `rake appraisal:{version} test_#{adapter}'" + 
+      puts "Specify AR version with `rake appraisal:{version} test_#{adapter}'" +
            " where version=(#{appraisals.join('|')})"
     end
-  end  
+  end
 end
 
 Rake::TestTask.class_eval { attr_reader :test_files }
 
-def declare_test_task_for(adapter, options = {}, &block)
+def test_task_for(adapter, options = {})
+  desc = options[:desc] || options[:comment] ||
+    "Run tests against #{options[:database_name] || adapter}"
+  adapter = adapter.to_s.downcase
   driver = options[:driver] || adapter
-  prereqs = options[:prereqs] || []
-  prereqs = [ prereqs ].flatten
+  prereqs = [ options[:prereqs] || [] ].flatten
   prereqs << "test_#{adapter}_pre"
-  Rake::TestTask.new("test_#{adapter}" => prereqs) do |task|
-    files = FileList["test/#{adapter}*_test.rb"]
-    files += FileList["test/db/#{adapter}/*_test.rb"]
-    #task_name = task.name.keys.first.to_s
-    #files.unshift "test/db/#{task_name.sub('test_','')}.rb"
-    task.test_files = files
-    task.libs = []
-    if defined?(JRUBY_VERSION)
-      task.libs << "lib" << "jdbc-#{driver}/lib"
-      task.libs.push *FileList["activerecord-jdbc#{adapter}*/lib"]
+  name = options[:name] || "test_#{adapter}"
+  test_task = Rake::TestTask.new(name => prereqs) do |test_task|
+    files = options[:files] || begin
+      FileList["test/#{adapter}*_test.rb"] +
+        FileList["test/db/#{adapter}/*_test.rb"]
     end
-    task.libs << "test"
-    set_compat_version(task)
-    task.verbose = true if $VERBOSE    
-    yield(task) if block_given?
+    test_task.test_files = files
+    test_task.libs = []
+    if defined?(JRUBY_VERSION)
+      test_task.libs << 'lib'
+      test_task.libs << "jdbc-#{driver}/lib" if File.exists?("jdbc-#{driver}/lib")
+      test_task.libs.push *FileList["activerecord-jdbc#{adapter}*/lib"]
+    end
+    test_task.libs << 'test'
+    set_test_task_compat_version test_task
+    test_task.verbose = true if $VERBOSE
+    yield(test_task) if block_given?
   end
+  set_task_description name, desc
+  test_task
 end
 
-declare_test_task_for :derby
-declare_test_task_for :h2
-declare_test_task_for :hsqldb
-declare_test_task_for :mssql, :driver => :jtds
-declare_test_task_for :mysql, :prereqs => "db:mysql"
-declare_test_task_for :postgres, :prereqs => "db:postgres"
-task :test_postgresql => :test_postgres # alias
-task :test_pgsql => :test_postgres # alias
-declare_test_task_for :sqlite3
+test_task_for :Derby, :desc => 'Run tests against (embedded) DerbyDB'
+test_task_for :H2, :desc => 'Run tests against H2 database engine'
+test_task_for :HSQLDB, :desc => 'Run tests against HyperSQL (Java) database'
+test_task_for :MSSQL, :driver => :jtds, :database_name => 'MS-SQL (SQLServer)'
+test_task_for :MySQL, :prereqs => 'db:mysql'
+test_task_for :PostgreSQL, :prereqs => 'db:postgres'
+task :test_postgres => :test_postgresql # alias
+task :test_pgsql => :test_postgresql # alias
+test_task_for :SQLite3
 
 # ensure driver for these DBs is on your class-path
-[ :oracle, :db2, :informix, :cachedb ].each do |adapter|
-  Rake::TestTask.new("test_#{adapter}") do |task|
-    test_files = FileList["test/#{adapter}*_test.rb"]
-    test_files += FileList["test/db/#{adapter}/*_test.rb"]
-    task.test_files = test_files
-    task.libs = []
-    task.libs << 'lib' if defined?(JRUBY_VERSION)
-    task.libs << 'test'
-    set_compat_version(task)
-  end
+[ :Oracle, :DB2, :Informix, :CacheDB ].each do |adapter|
+  test_task_for adapter, :desc => "Run tests against #{adapter} (ensure driver is on class-path)"
 end
 
-Rake::TestTask.new(:test_as400) do |task|
-  test_files = FileList["test/db2*_test.rb"]
-  test_files += FileList["test/db/db2/*_test.rb"]
-  task.test_files = test_files
-  task.libs = []
-  task.libs << 'lib' if defined?(JRUBY_VERSION)
-  task.libs << 'test'
-  set_compat_version(task)
+test_task_for :AS400, :desc => "Run tests against AS400 (DB2) (ensure driver is on class-path)",
+  :files => FileList["test/db2*_test.rb"] + FileList["test/db/db2/*_test.rb"]
+
+test_task_for 'JDBC', :desc => 'Run tests against plain JDBC adapter (uses MySQL and Derby)',
+  :files => FileList['test/*jdbc_*test.rb'] do |test_task|
+  test_task.libs << 'jdbc-mysql/lib' << 'jdbc-derby/lib'
 end
 
-Rake::TestTask.new(:test_jdbc) do |task|
-  task.test_files = FileList['test/*jdbc_*test.rb']
-  task.libs << 'test' << 'jdbc-mysql/lib' << 'jdbc-derby/lib'
-  set_compat_version(task)
+test_task_for 'JNDI', :desc => 'Run tests against a JNDI connection (uses Derby)',
+  :prereqs => 'tomcat-jndi:check',
+  :files => FileList['test/*jndi_*test.rb'] do |test_task|
+  test_task.libs << 'jdbc-derby/lib'
 end
 
-Rake::TestTask.new(:test_jndi => 'tomcat-jndi:check') do |task|
-  task.test_files = FileList['test/*jndi_*test.rb']
-  task.libs << 'test' << 'jdbc-derby/lib'
-  set_compat_version(task)
-end
-
-# tests for JDBC adapters that don't require a database :
-Rake::TestTask.new(:test_jdbc_adapters) do |task|
-  task.test_files = FileList[ 'test/jdbc_adapter/jdbc_sybase_test.rb' ]
-  task.libs << 'test'
-  set_compat_version(task)
-end
-
-# ensure that the jTDS driver is in your class-path
-Rake::TestTask.new(:test_sybase_jtds) do |task|
-  task.test_files = FileList['test/sybase_jtds_simple_test.rb']
-  task.libs << 'test'
-  set_compat_version(task)
-end
-
-# ensure that the jConnect driver is in your class-path
-Rake::TestTask.new(:test_sybase_jconnect) do |task|
-  task.test_files = FileList['test/sybase_jconnect_simple_test.rb']
-  task.libs << 'test'
-  set_compat_version(task)
-end
+# TODO Sybase testing is currently broken, please fix it if you're on Sybase :
+#test_task_for :Sybase, :desc => "Run tests against Sybase (using jTDS driver)"
+#task :test_sybase_jtds => :test_sybase # alias
+#test_task_for :Sybase, :name => 'sybase_jconnect',
+#  :desc => "Run tests against Sybase (ensure jConnect driver is on class-path)"
 
 Rake::TraceOutput.module_eval do
 
   # NOTE: avoid TypeError: String can't be coerced into Fixnum
-  # due this method gettings a strings == [ 1 ] argument ...
+  # due this method getting some strings == [ 1 ] argument ...
   def trace_on(out, *strings)
     sep = $\ || "\n"
     if strings.empty?
@@ -138,5 +123,5 @@ Rake::TraceOutput.module_eval do
     end
     out.print(output)
   end
-  
+
 end

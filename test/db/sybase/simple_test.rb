@@ -1,5 +1,6 @@
+# NOTE: Sybase support/testing needs quite some house-keeping (currently broken)
 require 'jdbc_common'
-require 'db/sybase_jtds'
+require 'db/sybase'
 
 class SybaseJtdsSimpleTest < Test::Unit::TestCase
   include SimpleTestMethods
@@ -12,17 +13,15 @@ class SybaseAdapterSelectionTest < Test::Unit::TestCase
   end
 
   def test_jtds_selection_using_dialect
-    config = {
-      :driver =>  'net.sourceforge.jtds.Driver',
-      :dialect => 'sybase'
-    }
+    config = { :driver =>  'net.sourceforge.jtds.Driver', :dialect => 'sybase' }
     adapt = JdbcAdapter.new(MockConnection.new, nil, config)
-    assert adapt.kind_of?(ArJdbc::Sybase), "Should be a sybase adapter"
+    assert_kind_of adapt, ArJdbc::Sybase
   end
 
   def test_jtds_selection_not_using_dialect
     config = { :driver => 'net.sourceforge.jtds.Driver' }
     adapt = JdbcAdapter.new(MockConnection.new, nil, config)
-    assert adapt.kind_of?(ArJdbc::MsSQL), "Should be a MsSQL apdater"
+    assert_kind_of adapt, ArJdbc::MSSQL
   end
+
 end
