@@ -11,6 +11,10 @@
   </description>
   <url>http://github.com/jruby/activerecord-jdbc-adapter/wiki</url>
 
+  <properties>
+    <jruby.version>1.6.8</jruby.version>
+  </properties>
+
   <issueManagement>
     <system>GitHub</system>
     <url>http://github.com/jruby/activerecord-jdbc-adapter/issues</url>
@@ -28,14 +32,47 @@
       <url>http://www.opensource.org/licenses/bsd-license.php</url>
       <distribution>repo</distribution>
     </license>
+    <license>
+      <name>MIT License</name>
+      <url>http://www.opensource.org/licenses/mit-license.php</url>
+      <distribution>repo</distribution>
+    </license>
   </licenses>
+  <!--
+  <repositories>
+    <repository>
+      <id>codehaus</id>
+      <name>Codehaus Repository</name>
+      <releases>
+        <enabled>true</enabled>
+      </releases>
+      <snapshots>
+        <enabled>false</enabled>
+      </snapshots>
+      <url>http://repository.codehaus.org</url>
+    </repository>
+  </repositories>-->
+
+  <developers>
+    <developer>
+      <id>nicksieger</id>
+      <name>Nick Sieger</name>
+      <email>nicksieger@gmail.com</email>
+    </developer>
+    <developer>
+      <id>kares</id>
+      <name>Karol Bucek</name>
+      <email>self@kares.org</email>
+    </developer>
+  </developers>
 
   <dependencies>
     <dependency>
       <groupId>org.jruby</groupId>
       <artifactId>jruby-complete</artifactId>
-      <version>1.6.8</version>
+      <version>${jruby.version}</version>
     </dependency>
+
     <!-- e.g.
     mvn install:install-file -DgroupId=org.postgresql -DartifactId=pgjdbc -Dversion=9.2-1002 -Dpackaging=jar -Dfile=./jdbc-postgres/lib/postgresql-9.2-1002.jdbc4.jar
     -->
@@ -47,18 +84,35 @@
   </dependencies>
 
   <build>
-    <outputDirectory>pkg/classes</outputDirectory>
+      
     <sourceDirectory>src/java</sourceDirectory>
+    <resources>
+        <resource>
+            <directory>lib</directory>
+        </resource>
+    </resources>
+    <!--
+    <testSourceDirectory>test/java</testSourceDirectory>-->
+    <testResources>
+        <testResource>
+            <directory>test</directory>
+        </testResource>
+    </testResources>
+
+    <outputDirectory>pkg/classes</outputDirectory>
+
     <plugins>
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-compiler-plugin</artifactId>
+        <version>2.5.1</version>
         <configuration>
           <source>1.6</source>
           <target>1.6</target>
         </configuration>
       </plugin>
     </plugins>
+
   </build>
 
 </project>
