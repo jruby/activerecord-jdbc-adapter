@@ -33,10 +33,11 @@ end
 
 %w(derby h2 hsqldb mysql sqlite3 postgres mssql oracle db2 as400 informix sybase).each do
   |adapter| task "test_#{adapter}_pre" do
+    next if File.exists?('.disable-appraisal-hint')
     unless (ENV['BUNDLE_GEMFILE'] rescue '') =~ /gemfiles\/.*?\.gemfile/
       appraisals = []; Appraisal::File.each { |file| appraisals << file.name }
-      puts "Specify AR version with `rake appraisal:{version} test_#{adapter}'" +
-           " where version=(#{appraisals.join('|')})"
+      puts "HINT: specify AR version with `rake appraisal:{version} test_#{adapter}'" +
+           " where version=(#{appraisals.join('|')}) (`touch .disable-appraisal-hint' to disable)"
     end
   end
 end
