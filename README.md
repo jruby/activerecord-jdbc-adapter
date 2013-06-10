@@ -201,7 +201,7 @@ gem 'jdbc-mysql', :github => 'jruby/activerecord-jdbc-adapter'
 
 ## Getting Involved
 
-Please read our [CONTRIBUTING][CONTRIBUTING.md] & [RUNNING_TESTS][RUNNING_TESTS.md]
+Please read our [CONTRIBUTING](CONTRIBUTING.md) & [RUNNING_TESTS](RUNNING_TESTS.md)
 guides for starters. You can always help us by maintaining AR-JDBC's [wiki][5].
 
 ## Feedback
