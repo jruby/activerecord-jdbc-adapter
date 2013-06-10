@@ -31,14 +31,12 @@ def set_task_description(task, desc)
   task.add_description(desc)
 end
 
-%w(derby h2 hsqldb mysql sqlite3 postgres mssql oracle db2 as400 informix sybase).each do
-  |adapter| task "test_#{adapter}_pre" do
-    next if File.exists?('.disable-appraisal-hint')
-    unless (ENV['BUNDLE_GEMFILE'] rescue '') =~ /gemfiles\/.*?\.gemfile/
-      appraisals = []; Appraisal::File.each { |file| appraisals << file.name }
-      puts "HINT: specify AR version with `rake appraisal:{version} test_#{adapter}'" +
-           " where version=(#{appraisals.join('|')}) (`touch .disable-appraisal-hint' to disable)"
-    end
+task 'test_appraisal_hint' do
+  next if File.exists?('.disable-appraisal-hint')
+  unless (ENV['BUNDLE_GEMFILE'] rescue '') =~ /gemfiles\/.*?\.gemfile/
+    appraisals = []; Appraisal::File.each { |file| appraisals << file.name }
+    puts "HINT: specify AR version with `rake appraisal:{version} test_#{adapter}'" +
+         " where version=(#{appraisals.join('|')}) (`touch .disable-appraisal-hint' to disable)"
   end
 end
 
@@ -49,8 +47,10 @@ def test_task_for(adapter, options = {})
     "Run tests against #{options[:database_name] || adapter}"
   adapter = adapter.to_s.downcase
   driver = options[:driver] || adapter
-  prereqs = [ options[:prereqs] || [] ].flatten
-  prereqs << "test_#{adapter}_pre"
+  prereqs = options[:prereqs] || []
+  unless prereqs.frozen?
+    prereqs = [ prereqs ].flatten; prereqs << 'test_appraisal_hint'
+  end
   name = options[:name] || "test_#{adapter}"
   test_task = Rake::TestTask.new(name => prereqs) do |test_task|
     files = options[:files] || begin
