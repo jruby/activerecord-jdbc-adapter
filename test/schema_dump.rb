@@ -5,7 +5,7 @@ require 'active_record/schema_dumper'
 
 module SchemaDumpTestMethods
   include MigrationSetup
-  
+
   def test_dumping_schema_with_index
     connection = ActiveRecord::Base.connection
     connection.add_index :entries, :title
@@ -16,7 +16,7 @@ module SchemaDumpTestMethods
   ensure
     connection.remove_index :entries, :title
   end
-  
+
   def standard_dump(io = StringIO.new, ignore_tables = [])
     io = StringIO.new
     ActiveRecord::SchemaDumper.ignore_tables = ignore_tables
@@ -35,11 +35,6 @@ module SchemaDumpTestMethods
     assert_match %r{create_table "users"}, output
     assert_match %r{create_table "entries"}, output
     assert_no_match %r{create_table "schema_migrations"}, output
-  end
-
-  def test_schema_dump_excludes_sqlite_sequence
-    output = standard_dump
-    assert_no_match %r{create_table "sqlite_sequence"}, output
   end
 
   def assert_line_up(lines, pattern, required = false)
@@ -150,7 +145,7 @@ module SchemaDumpTestMethods
     output = standard_dump
     assert_match %r{create_table "things", (:id => false)|(id: false)}, output
   end
-  
+
   class CreateDogMigration < ActiveRecord::Migration
     def up
       create_table :dogs do |t|

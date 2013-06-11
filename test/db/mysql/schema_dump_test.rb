@@ -4,20 +4,26 @@ begin; require 'active_support/core_ext/numeric/bytes'; rescue LoadError; end
 
 class MysqlSchemaDumpTest < Test::Unit::TestCase
   include SchemaDumpTestMethods
-  
+
   def self.startup
     super
     MigrationSetup.setup!
+    if ActiveRecord::Base.connection.supports_views?
+      ActiveRecord::Base.connection.execute 'CREATE VIEW db_time_view AS SELECT sample_date FROM db_types'
+    end
   end
-  
+
   def self.shutdown
+    if ActiveRecord::Base.connection.supports_views?
+      ActiveRecord::Base.connection.execute 'DROP VIEW db_time_view'
+    end
     MigrationSetup.teardown!
     super
   end
 
   def setup!; end # MigrationSetup#setup!
   def teardown!; end # MigrationSetup#teardown!
-  
+
   ActiveRecord::Schema.define do
     create_table :big_fields, :force => true do |t|
       t.binary :tiny_blob,   :limit => 255
@@ -29,21 +35,21 @@ class MysqlSchemaDumpTest < Test::Unit::TestCase
       t.text   :medium_text, :limit => 16777215
       t.text   :long_text,   :limit => 2147483647
       t.text   :just_text,    :null => false
-      # MySQL does not allow default values for blobs. 
+      # MySQL does not allow default values for blobs.
       # Fake it out with a big varchar below.
       t.string :string_col, :null => true, :default => '', :limit => 1024
       t.binary :var_binary, :limit => 255
       t.binary :var_binary_large, :limit => 4095
     end
   end
-  
-  def test_schema_dump_should_not_add_default_value_for_mysql_text_field
+
+  test 'should_not_add_default_value_for_mysql_text_field' do
     output = standard_dump
     assert_match %r{t.text\s+"just_text",[\s|:]+null[\s\:\=\>]+false$}, output
   end
-  
-  def test_schema_dump_includes_length_for_mysql_blob_and_text_fields
-    output = standard_dump   
+
+  test 'includes_length_for_mysql_blob_and_text_fields' do
+    output = standard_dump
     assert_match %r{t.binary\s+"tiny_blob",[\s|:]+limit[\s\:\=\>]+255$}, output
     assert_match %r{t.binary\s+"normal_blob"$}, output
     assert_match %r{t.binary\s+"medium_blob",[\s|:]+limit[\s\:\=\>]+16777215$}, output
@@ -53,17 +59,22 @@ class MysqlSchemaDumpTest < Test::Unit::TestCase
     assert_match %r{t.text\s+"medium_text",[\s|:]+limit[\s\:\=\>]+16777215$}, output
     assert_match %r{t.text\s+"long_text",[\s|:]+limit[\s\:\=\>]+2147483647$}, output
   end
-  
-  def test_schema_dump_includes_length_for_mysql_binary_fields
+
+  test 'includes_length_for_mysql_binary_fields' do
     output = standard_dump
     assert_match %r{t.binary\s+"var_binary",[\s|:]+limit[\s\:\=\>]+255$}, output
     assert_match %r{t.binary\s+"var_binary_large",[\s|:]+limit[\s\:\=\>]+4095$}, output
   end
-  
+
+  test 'does not include views' do
+    output = standard_dump
+    assert_not_match /CREATE VIEW/im, output
+  end unless ar_version('4.0')
+
 end
 
 class MysqlInfoTest < Test::Unit::TestCase
-  
+
   class DBSetup < ActiveRecord::Migration
 
     def self.up
@@ -94,7 +105,7 @@ class MysqlInfoTest < Test::Unit::TestCase
     end
 
   end
-  
+
   def self.startup
     super
     DBSetup.up
@@ -120,7 +131,6 @@ class MysqlInfoTest < Test::Unit::TestCase
 
   ## structure_dump
   def test_should_include_the_tables_in_a_structure_dump
-    # TODO: Improve these tests, I added this one because no other tests exists for this method.
     dump = connection.structure_dump
     assert dump.include?('CREATE TABLE `books`')
     assert dump.include?('CREATE TABLE `cars`')
@@ -172,7 +182,7 @@ class MysqlInfoTest < Test::Unit::TestCase
     DbTypeMigration.up
     #
     # AR-3.2 :
-    # 
+    #
     #  create_table "db_types", :force => true do |t|
     #    t.datetime "sample_timestamp"
     #    t.datetime "sample_datetime"
@@ -194,7 +204,7 @@ class MysqlInfoTest < Test::Unit::TestCase
     #  end
     #
     # AR-2.3 :
-    # 
+    #
     #  create_table "db_types", :force => true do |t|
     #    t.datetime "sample_timestamp"
     #    t.datetime "sample_datetime"
@@ -224,5 +234,5 @@ class MysqlInfoTest < Test::Unit::TestCase
   ensure
     DbTypeMigration.down
   end
-  
+
 end
