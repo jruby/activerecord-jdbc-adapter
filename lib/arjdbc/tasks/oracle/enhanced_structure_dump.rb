@@ -73,7 +73,7 @@ module ActiveRecord #:nodoc:
 
       def structure_dump_primary_key(table) #:nodoc:
         opts = {:name => '', :cols => []}
-        pks = select_all(<<-SQL, "Primary Keys") 
+        pks = select_all(<<-SQL, "Primary Keys")
           SELECT a.constraint_name, a.column_name, a.position
             FROM user_cons_columns a
             JOIN user_constraints c
@@ -91,7 +91,7 @@ module ActiveRecord #:nodoc:
 
       def structure_dump_unique_keys(table) #:nodoc:
         keys = {}
-        uks = select_all(<<-SQL, "Primary Keys") 
+        uks = select_all(<<-SQL, "Primary Keys")
           SELECT a.constraint_name, a.column_name, a.position
             FROM user_cons_columns a
             JOIN user_constraints c
@@ -152,21 +152,21 @@ module ActiveRecord #:nodoc:
                       AND name NOT LIKE 'BIN$%'
                       AND owner = SYS_CONTEXT('userenv', 'session_user') ORDER BY type").each do |source|
           ddl = "CREATE OR REPLACE   \n"
-          lines = select_all(%Q{
+          select_all(%Q{
                   SELECT text
                     FROM all_source
                    WHERE name = '#{source['name']}'
                      AND type = '#{source['type']}'
                      AND owner = SYS_CONTEXT('userenv', 'session_user')
                    ORDER BY line
-                }).map do |row|
+                }).each do |row|
             ddl << row['text']
           end
-          ddl << ";" unless ddl.strip[-1,1] == ";"
+          ddl << ";" unless ddl.strip[-1,1] == ';'
           structure << ddl
         end
 
-        # export views 
+        # export views
         select_all("SELECT view_name, text FROM user_views").each do |view|
           structure << "CREATE OR REPLACE VIEW #{view['view_name']} AS\n #{view['text']}"
         end
@@ -243,14 +243,14 @@ module ActiveRecord #:nodoc:
 
       def execute_structure_dump(string)
         string.split(STATEMENT_TOKEN).each do |ddl|
-          ddl.chop! if ddl[-1] == ';'
+          ddl.chop! if ddl[-1,1] == ';'
           execute(ddl) unless ddl.blank?
         end
       end
 
       private
 
-      # virtual columns are an 11g feature.  This returns [] if feature is not 
+      # virtual columns are an 11g feature.  This returns [] if feature is not
       # present or none are found.
       # return [{'column_name' => 'FOOS', 'data_default' => '...'}, ...]
       def virtual_columns_for(table)
