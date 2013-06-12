@@ -1,17 +1,17 @@
 module ArJdbc
-  
-  # Defines an AR-JDBC extension. An extension consists of a declaration using 
-  # this method and an ArJdbc::XYZ module that contains implementation and 
-  # overrides for methods in ActiveRecord::ConnectionAdapters::AbstractAdapter. 
+
+  # Defines an AR-JDBC extension. An extension consists of a declaration using
+  # this method and an ArJdbc::XYZ module that contains implementation and
+  # overrides for methods in ActiveRecord::ConnectionAdapters::AbstractAdapter.
   # When you declare your extension, you provide a block that detects when a
-  # database configured to use the extension is present and loads the necessary 
-  # code for it. AR-JDBC will patch the code into the base JdbcAdapter by 
+  # database configured to use the extension is present and loads the necessary
+  # code for it. AR-JDBC will patch the code into the base JdbcAdapter by
   # extending an instance of it with your extension module.
   #
   # +name+ the name of a module to be defined under the +ArJdbc+ module.
   #
-  # +block+ should be a one- or two-arity block that receives the dialect name 
-  # or driver class name as the first argument, and optionally the whole 
+  # +block+ should be a one- or two-arity block that receives the dialect name
+  # or driver class name as the first argument, and optionally the whole
   # database configuration hash as a second argument
   #
   # Example:
@@ -39,14 +39,14 @@ module ArJdbc
       end
     end unless mod.respond_to?(:adapter_matcher)
   end
-  
+
   private
   def self.discover_extensions
-    if defined?(::Gem) && ::Gem.respond_to?(:find_files)
-      files = ::Gem.find_files('arjdbc/discover')
+    if defined?(Gem) && Gem.respond_to?(:find_files)
+      files = Gem.find_files('arjdbc/discover')
     else
-      files = $LOAD_PATH.map do |p|
-        discover = File.join(p, 'arjdbc', 'discover.rb')
+      files = $LOAD_PATH.map do |path|
+        discover = File.join(path, 'arjdbc', 'discover.rb')
         File.exist?(discover) ? discover : nil
       end.compact
     end
@@ -55,5 +55,5 @@ module ArJdbc
       require file
     end
   end
-  
+
 end
