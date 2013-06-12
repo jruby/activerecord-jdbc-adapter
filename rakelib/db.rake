@@ -1,41 +1,53 @@
 require File.expand_path('../../test/shared_helper', __FILE__)
 
 namespace :db do
-  desc "Creates the test database for MySQL."
+
+  desc "Creates the test database for MySQL"
   task :mysql do
-    load 'test/db/mysql_config.rb' rescue nil
-    t = Tempfile.new("mysql")
-    t.puts <<-SQL
+    load 'test/db/mysql_config.rb' # rescue nil
+    script = sql_script <<-SQL, 'mysql'
 DROP DATABASE IF EXISTS `#{MYSQL_CONFIG[:database]}`;
 CREATE DATABASE `#{MYSQL_CONFIG[:database]}` DEFAULT CHARACTER SET `utf8`;
 GRANT ALL PRIVILEGES ON `#{MYSQL_CONFIG[:database]}`.* TO #{MYSQL_CONFIG[:username]}@localhost;
 GRANT ALL PRIVILEGES ON `test\_%`.* TO #{MYSQL_CONFIG[:username]}@localhost;
 SET PASSWORD FOR #{MYSQL_CONFIG[:username]}@localhost = PASSWORD('#{MYSQL_CONFIG[:password]}');
 SQL
-    t.close
-    at_exit { t.unlink }
-    password = ""
+    params = { '-u' => 'root' }
     if ENV['DATABASE_YML']
       require 'yaml'
       password = YAML.load(File.new(ENV['DATABASE_YML']))["production"]["password"]
-      password_arg = " --password=#{password}"
+      params['--password'] = password
     end
-    sh "cat #{t.path} | mysql -u root#{password_arg}", :verbose => false # so password is not echoed
+    puts "Creating MySQL (test) database: #{MYSQL_CONFIG[:database]}"
+    sh "cat #{script.path} | mysql #{params.to_a.join(' ')}", :verbose => $VERBOSE # so password is not echoed
   end
 
-  desc "Creates the test database for PostgreSQL."
-  task :postgres do
+  desc "Creates the test database for PostgreSQL"
+  task :postgresql do
     fail unless PostgresHelper.have_postgres?
-    load 'test/db/postgres_config.rb' rescue nil
-    t = Tempfile.new("psql")
-    t.puts <<-SQL
+    load 'test/db/postgres_config.rb' # rescue nil
+    script = sql_script <<-SQL, 'psql'
 DROP DATABASE IF EXISTS #{POSTGRES_CONFIG[:database]};
 DROP USER IF EXISTS #{POSTGRES_CONFIG[:username]};
 CREATE USER #{POSTGRES_CONFIG[:username]} CREATEDB SUPERUSER LOGIN PASSWORD '#{POSTGRES_CONFIG[:password]}';
 CREATE DATABASE #{POSTGRES_CONFIG[:database]} OWNER #{POSTGRES_CONFIG[:username]};
 SQL
-    t.close
-    at_exit { t.unlink }
-    sh "cat #{t.path} | psql -U postgres"
+    params = { '-U' => ENV['PSQL_USER'] || 'postgres' }
+    params['-q'] = nil unless $VERBOSE
+    puts "Creating PostgreSQL (test) database: #{POSTGRES_CONFIG[:database]}"
+    sh "cat #{script.path} | psql #{params.to_a.join(' ')}", :verbose => $VERBOSE
   end
+  task :postgres => :postgresql
+
+  private
+
+  def sql_script(sql_content, name = 'sql_script')
+    script = Tempfile.new(name)
+    script.puts sql_content
+    yield(script) if block_given?
+    script.close
+    at_exit { script.unlink }
+    script
+  end
+
 end
