@@ -512,18 +512,12 @@ module ArJdbc
       super + [:array]
     end if AR4_COMPAT
 
-    def add_column_options!(sql, options)
-      if options[:array] || options[:column].try(:array)
-        sql << '[]'
-      end
+    if ActiveRecord::VERSION::MAJOR > 3
 
-      column = options.fetch(:column) { return super }
-      if column.type == :uuid && options[:default] =~ /\(\)/
-        sql << " DEFAULT #{options[:default]}"
-      else
-        super
-      end
-    end if AR4_COMPAT
+    require 'arjdbc/postgresql/schema_creation'
+    def schema_creation; SchemaCreation.new(self); end
+
+    end
 
     # Enable standard-conforming strings if available.
     def set_standard_conforming_strings # native adapter API compatibility

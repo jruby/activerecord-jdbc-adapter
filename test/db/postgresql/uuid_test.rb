@@ -1,0 +1,52 @@
+# encoding: utf-8
+require 'test_helper'
+require 'db/postgres'
+
+class PostgresqlUuidTest < Test::Unit::TestCase
+
+  def setup
+    @connection = ActiveRecord::Base.connection
+
+    omit("PG without extensions support") unless @connection.supports_extensions?
+
+    # sudo apt-get install postgresql-contrib[-9.2]
+    unless @connection.extension_enabled?('uuid-ossp')
+      @connection.enable_extension 'uuid-ossp'
+      @connection.commit_db_transaction
+    end
+
+    @connection.reconnect!
+
+    @connection.transaction do
+      @connection.create_table('pg_uuids', :id => :uuid) do |t|
+        t.string 'name'
+        t.uuid 'other_uuid', :default => 'uuid_generate_v4()'
+      end
+    end
+  end
+
+  def teardown
+    @connection.execute 'DROP TABLE IF EXISTS pg_uuids'
+  end
+
+  class UUID < ActiveRecord::Base
+    self.table_name = 'pg_uuids'
+  end
+
+  def test_id_is_uuid
+    assert_equal :uuid, UUID.columns_hash['id'].type
+    assert UUID.primary_key
+  end
+
+  def test_id_has_a_default
+    u = UUID.create
+    assert_not_nil u.id
+  end
+
+  def test_auto_create_uuid
+    u = UUID.create
+    u.reload
+    assert_not_nil u.other_uuid
+  end
+
+end if Test::Unit::TestCase.ar_version('4.0')
