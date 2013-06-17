@@ -5,7 +5,7 @@
  * Very fast, open source, JDBC API
  * Embedded and server modes; in-memory databases
  * Browser based Console application
- * Small footprint: around 1 MB jar file size 
+ * Small footprint: around 1 MB jar file size
 
 For more information see http://www.h2database.com/
 
@@ -23,8 +23,8 @@ For backwards compatibility with older (<= **1.3.154**) versions of the gem use 
 
 ## Copyright
 
-Copyright (c) 2012 [The JRuby Team](https://github.com/jruby).
+Copyright (c) 2013 [The JRuby Team](https://github.com/jruby).
 
-H2 is dual licensed and available under a modified version of the MPL 1.1 
+H2 is dual licensed and available under a modified version of the MPL 1.1
 (Mozilla Public License) or under the (unmodified) EPL 1.0 (Eclipse Public License).
 see *LICENSE.txt* and http://www.h2database.com/html/license.html for more details.
