@@ -33,4 +33,5 @@ module Jdbc
       load_driver :require
     end
   end
+  PostgreSQL = Postgres
 end
