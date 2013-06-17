@@ -1,34 +1,36 @@
-require 'arjdbc/jdbc/serialized_attributes_helper'
-
 module ArJdbc
   module FireBird
 
-    @@_lob_callback_added = nil
-    
-    def self.extended(mod)
-      unless @@_lob_callback_added
-        ActiveRecord::Base.class_eval do
-          def after_save_with_firebird_blob
-            self.class.columns.select { |c| c.sql_type =~ /blob/i }.each do |column|
-              value = ::ArJdbc::SerializedAttributesHelper.dump_column_value(self, column)
-              next if value.nil?
-              
-              connection.write_large_object(
-                column.type == :binary, column.name, 
-                self.class.table_name, self.class.primary_key, 
-                quote_value(id), value
-              )
-            end
+    def self.extended(adapter); initialize!; end
+
+    @@_initialized = nil
+
+    def self.initialize!
+      return if @@_initialized; @@_initialized = true
+
+      require 'arjdbc/jdbc/serialized_attributes_helper'
+      ActiveRecord::Base.class_eval do
+        def after_save_with_firebird_blob
+          self.class.columns.select { |c| c.sql_type =~ /blob/i }.each do |column|
+            value = ::ArJdbc::SerializedAttributesHelper.dump_column_value(self, column)
+            next if value.nil?
+
+            self.class.connection.write_large_object(
+              column.type == :binary, column.name,
+              self.class.table_name,
+              self.class.primary_key,
+              self.class.connection.quote(id), value
+            )
           end
         end
-
-        ActiveRecord::Base.after_save :after_save_with_firebird_blob
-        @@_lob_callback_added = true
       end
+      ActiveRecord::Base.after_save :after_save_with_firebird_blob
     end
 
+    ADAPTER_NAME = 'FireBird'.freeze
+
     def adapter_name
-      'Firebird'
+      ADAPTER_NAME
     end
 
     def self.arel2_visitors(config)
@@ -144,5 +146,6 @@ module ArJdbc
     def ar_to_fb_case(column_name)
       column_name =~ /[[:upper:]]/ ? column_name : column_name.to_s.upcase
     end
+
   end
 end
