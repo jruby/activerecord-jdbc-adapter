@@ -291,10 +291,31 @@ module ArJdbc
       @connection.primary_keys table_name.to_s.upcase
     end
 
+    def tables(name = nil)
+      @connection.tables(nil, current_schema)
+    end
+
+    # Returns the current schema name.
+    def current_schema
+      @current_schema ||=
+        select_value "SELECT CURRENT SCHEMA FROM SYS.SYSSCHEMAS FETCH FIRST 1 ROWS ONLY", 'SCHEMA'
+    end
+
     def set_schema(schema)
+      @current_schema = nil
       execute "SET SCHEMA #{schema}", 'SCHEMA'
     end
     alias_method :current_schema=, :set_schema
+
+    # Creates DB new schema.
+    def create_schema(schema)
+      execute "CREATE SCHEMA #{schema}", 'Create Schema'
+    end
+
+    # Drops an existing schema, needs to be empty (no DB objects).
+    def drop_schema(schema)
+      execute "DROP SCHEMA #{schema} RESTRICT", 'Drop Schema'
+    end
 
     def recreate_database(name = nil, options = {}) # :nodoc:
       drop_database(name)
