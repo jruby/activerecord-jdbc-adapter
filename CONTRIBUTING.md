@@ -5,14 +5,16 @@ AR-JDBC is (currently) a volunteer effort, it is not backed by any company ...
 You can contribute and make a difference for all the JRuby on Rails deployments
 out there.
 
-We encourage you to try looking into reported issues, esp. if the new issue is about
-(Rails) incompatibility with MRI, as it might be fixed with some copy-paste magic.
+### Reporting Issues
 
-Also please consider testing against master, if you're in doubt whether it might
+We encourage you to try looking into reported issues, esp. if the new issue is about
+(Rails) incompatibility with MRI - as it might be fixed with some copy-paste magic.
+
+Please consider testing against **master**, if you're in doubt whether it might
 have been [fixed](History.md) already, change the following in your *Gemfile* :
 `gem 'activerecord-jdbc-adapter', :github => 'jruby/activerecord-jdbc-adapter'`
 
-Do not forget to include the following with your bug report :
+Do not forget to **include the following with your bug report** :
 
 * AR-JDBC's version used (if you've tested against master mention it)
 
@@ -29,10 +31,11 @@ Do not forget to include the following with your bug report :
 ### Pull Requests
 
 You're code will end up on upstream faster if you provide tests as well, read on
-how to [run AR-JDBC tests][RUNNING_TESTS.md].
+how to [run AR-JDBC tests](RUNNING_TESTS.md).
 
-When fixing issues for a particular AR version please be aware that we support
-multiple versions from a single code-base (and that means supporting Ruby 1.8).
+When fixing issues for a particular Rails version please be aware that we support
+multiple AR versions from a single code-base (and that means supporting Ruby 1.8
+as well - esp. targeting 4.x **we can not use the 1.9 syntax** yet).
 
 
 To speed-up fixes and response times on your issues or simply support AR-JDBC's
