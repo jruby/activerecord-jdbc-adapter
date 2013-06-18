@@ -12,21 +12,16 @@ module ArJdbc
       require 'arjdbc/derby/active_record_patch'
     end
 
-    def self.column_selector
-      [ /derby/i, lambda { |cfg, column| column.extend(::ArJdbc::Derby::Column) } ]
-    end
-
     def self.jdbc_connection_class
       ::ActiveRecord::ConnectionAdapters::DerbyJdbcConnection
     end
-    
-    def configure_connection
-      execute("SET ISOLATION = SERIALIZABLE")
-      # must be done or SELECT...FOR UPDATE won't work how we expect
+
+    def self.column_selector
+      [ /derby/i, lambda { |cfg, column| column.extend(Column) } ]
     end
 
     module Column
-      
+
       private
 
       def extract_limit(sql_type)
@@ -48,7 +43,7 @@ module ArJdbc
         end
         limit
       end
-      
+
       def simplified_type(field_type)
         case field_type
         when /^smallint/i    then :boolean
@@ -70,13 +65,18 @@ module ArJdbc
         return nil if value == "GENERATED_BY_DEFAULT"
         value
       end
-      
+
     end
 
     ADAPTER_NAME = 'Derby'
-    
+
     def adapter_name # :nodoc:
       ADAPTER_NAME
+    end
+
+    def configure_connection
+      execute("SET ISOLATION = SERIALIZABLE")
+      # must be done or SELECT...FOR UPDATE won't work how we expect
     end
 
     def self.arel2_visitors(config)
@@ -113,25 +113,25 @@ module ArJdbc
       :xml => { :name => "xml" },
       :boolean => { :name => "smallint" },
     }
-    
+
     def native_database_types
       super.merge NATIVE_DATABASE_TYPES
     end
-    
+
     def modify_types(types)
       super(types)
       types[:primary_key] = NATIVE_DATABASE_TYPES[:primary_key]
-      [ :string, :float, :decimal, :numeric, :integer, 
+      [ :string, :float, :decimal, :numeric, :integer,
         :smallint, :bigint, :real, :double, :xml ].each do |type|
         types[type] = NATIVE_DATABASE_TYPES[type].dup
       end
       types[:boolean] = NATIVE_DATABASE_TYPES[:boolean].dup
       types
     end
-    
+
     # in Derby, the following cannot specify a limit :
     NO_LIMIT_TYPES = [ :integer, :boolean, :timestamp, :datetime, :date, :time ] # :nodoc:
-    
+
     # Convert the specified column type to a SQL string.
     def type_to_sql(type, limit = nil, precision = nil, scale = nil) # :nodoc:
       return super unless NO_LIMIT_TYPES.include?(t = type.to_s.downcase.to_sym)
@@ -141,18 +141,18 @@ module ArJdbc
     end
 
     class TableDefinition < ActiveRecord::ConnectionAdapters::TableDefinition # :nodoc:
-      
+
       def xml(*args)
         options = args.extract_options!
         column(args[0], 'xml', options)
       end
-      
+
     end
 
     def table_definition(*args)
       new_table_definition(TableDefinition, *args)
     end
-    
+
     # Override default -- fix case where ActiveRecord passes :default => nil, :null => true
     def add_column_options!(sql, options)
       options.delete(:default) if options.has_key?(:default) && options[:default].nil?
@@ -163,7 +163,7 @@ module ArJdbc
     def empty_insert_statement_value
       'VALUES ( DEFAULT )' # won't work as Derby does need to know the columns count
     end
-    
+
     # Set the sequence to the max value of the table's column.
     def reset_sequence!(table, column, sequence = nil)
       mpk = select_value("SELECT MAX(#{quote_column_name(column)}) FROM #{quote_table_name(table)}")
@@ -183,7 +183,7 @@ module ArJdbc
       ActiveRecord::Base.send(:subclasses).select { |klass| klass.table_name == table }
     end
     private :classes_for_table_name
-    
+
     def remove_index(table_name, options) #:nodoc:
       execute "DROP INDEX #{index_name(table_name, options)}"
     end
@@ -234,7 +234,7 @@ module ArJdbc
       sql = "DISTINCT #{columns}, #{order_columns * ', '}"
       sql
     end
-    
+
     def remove_column(table_name, *column_names) # :nodoc:
       for column_name in column_names.flatten
         execute "ALTER TABLE #{quote_table_name(table_name)} DROP COLUMN #{quote_column_name(column_name)} RESTRICT"
@@ -295,12 +295,12 @@ module ArJdbc
     def tables
       @connection.tables(nil, derby_schema)
     end
-    
+
     def recreate_database(name = nil, options = {}) # :nodoc:
       drop_database(name)
       create_database(name, options)
     end
-    
+
     def create_database(name = nil, options = {}); end # :nodoc:
 
     def drop_database(name = nil) # :nodoc:
@@ -318,7 +318,7 @@ module ArJdbc
     end
 
     private
-    
+
     # Derby appears to define schemas using the username
     def derby_schema
       if @config.has_key?(:schema)
@@ -327,6 +327,6 @@ module ArJdbc
         (@config[:username] && @config[:username].to_s) || ''
       end
     end
-    
+
   end
 end
