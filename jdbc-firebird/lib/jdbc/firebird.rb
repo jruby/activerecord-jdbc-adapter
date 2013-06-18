@@ -10,6 +10,7 @@ module Jdbc
 
     def self.load_driver(method = :load)
       load_connector_api(method)
+      load_antlr_runtime(method)
       send method, driver_jar
     end
 
@@ -34,6 +35,10 @@ module Jdbc
     rescue NameError
       send method, 'connector-api-1.5.jar'
       @@connector_api = true
+    end
+
+    def self.load_antlr_runtime(method = :load)
+      send method, 'antlr-runtime-3.4.jar'
     end
 
   end
