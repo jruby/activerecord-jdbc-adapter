@@ -75,8 +75,11 @@ module ArJdbc
     end
 
     def configure_connection
+      # must be done or SELECT...FOR UPDATE won't work how we expect :
       execute("SET ISOLATION = SERIALIZABLE")
-      # must be done or SELECT...FOR UPDATE won't work how we expect
+      # if a user name was specified upon connection, the user's name is the
+      # default schema for the connection, if a schema with that name exists
+      set_schema(config[:schema]) if config.key?(:schema)
     end
 
     def self.arel2_visitors(config)
@@ -288,13 +291,10 @@ module ArJdbc
       @connection.primary_keys table_name.to_s.upcase
     end
 
-    def columns(table_name, name = nil)
-      @connection.columns_internal(table_name.to_s, nil, derby_schema)
+    def set_schema(schema)
+      execute "SET SCHEMA #{schema}", 'SCHEMA'
     end
-
-    def tables
-      @connection.tables(nil, derby_schema)
-    end
+    alias_method :current_schema=, :set_schema
 
     def recreate_database(name = nil, options = {}) # :nodoc:
       drop_database(name)
@@ -315,17 +315,6 @@ module ArJdbc
       sql << " OFFSET #{options[:offset]} ROWS" if options[:offset]
       # ROWS/ROW and FIRST/NEXT mean the same
       sql << " FETCH FIRST #{options[:limit]} ROWS ONLY" if options[:limit]
-    end
-
-    private
-
-    # Derby appears to define schemas using the username
-    def derby_schema
-      if @config.has_key?(:schema)
-        @config[:schema]
-      else
-        (@config[:username] && @config[:username].to_s) || ''
-      end
     end
 
   end
