@@ -148,11 +148,9 @@ module ArJdbc
             end
             self.class.value_to_decimal value
           when /^point/
-            if value.is_a?(String)
-              self.class.string_to_point value
-            else
-              value
-            end
+            value.is_a?(String) ? self.class.string_to_point(value) : value
+          when /^(bit|varbit)/
+            value.is_a?(String) ? self.class.string_to_bit(value) : value
           when /(.*?)range$/
             return if value.nil? || value == 'empty'
             return value if value.is_a?(::Range)
@@ -432,9 +430,15 @@ module ArJdbc
         return super(value, column) unless 'bytea' == column.sql_type
         value # { :value => value, :format => 1 }
       when Array
-        return super(value, column) unless column.array?
-        column_class = ::ActiveRecord::ConnectionAdapters::PostgreSQLColumn
-        column_class.array_to_string(value, column, self)
+        case column.sql_type
+        when 'point'
+          column_class = ::ActiveRecord::ConnectionAdapters::PostgreSQLColumn
+          column_class.point_to_string(value)
+        else
+          return super(value, column) unless column.array?
+          column_class = ::ActiveRecord::ConnectionAdapters::PostgreSQLColumn
+          column_class.array_to_string(value, column, self)
+        end
       when NilClass
         if column.array? && array_member
           'NULL'
@@ -457,6 +461,10 @@ module ArJdbc
         return super unless column.sql_type == 'inet' || column.sql_type == 'cidr'
         column_class = ::ActiveRecord::ConnectionAdapters::PostgreSQLColumn
         column_class.cidr_to_string(value)
+      when Range
+        return super(value, column) unless /range$/ =~ column.sql_type
+        column_class = ::ActiveRecord::ConnectionAdapters::PostgreSQLColumn
+        column_class.range_to_string(value)
       else
         super(value, column)
       end
@@ -1029,16 +1037,7 @@ module ArJdbc
         return "E'#{escape_bytea(value)}'::bytea" if column.type == :binary
         return "xml '#{quote_string(value)}'" if column.type == :xml
         if column.respond_to?(:sql_type) && column.sql_type[0, 3] == 'bit'
-          case value
-          # NOTE: as reported with #60 this is not quite "right" :
-          #  "0103" will be treated as hexadecimal string
-          #  "0102" will be treated as hexadecimal string
-          #  "0101" will be treated as binary string
-          #  "0100" will be treated as binary string
-          # ... but is kept due Rails compatibility
-          when /^[01]*$/      then "B'#{value}'" # Bit-string notation
-          when /^[0-9A-F]*$/i then "X'#{value}'" # Hexadecimal notation
-          end
+          quote_bit(value)
         else super
         end
       when Array
@@ -1082,6 +1081,23 @@ module ArJdbc
       end
       quoted
     end
+
+    def quote_bit(value)
+      case value
+      # NOTE: as reported with #60 this is not quite "right" :
+      #  "0103" will be treated as hexadecimal string
+      #  "0102" will be treated as hexadecimal string
+      #  "0101" will be treated as binary string
+      #  "0100" will be treated as binary string
+      # ... but is kept due Rails compatibility
+      when /^[01]*$/      then "B'#{value}'" # Bit-string notation
+      when /^[0-9A-F]*$/i then "X'#{value}'" # Hexadecimal notation
+      end
+    end
+
+    def quote_bit(value)
+      "B'#{value}'"
+    end if PostgreSQL::AR4_COMPAT
 
     def escape_bytea(string)
       if string

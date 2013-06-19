@@ -2,7 +2,7 @@ require 'test_helper'
 require 'db/postgres'
 
 class PostgresqlDataTypeTest < Test::Unit::TestCase
-  
+
   class PostgresqlArray < ActiveRecord::Base; end
   class PostgresqlUUID < ActiveRecord::Base; end
   class PostgresqlRange < ActiveRecord::Base; end
@@ -14,9 +14,9 @@ class PostgresqlDataTypeTest < Test::Unit::TestCase
   class PostgresqlBitString < ActiveRecord::Base; end
   class PostgresqlOid < ActiveRecord::Base; end
   class PostgresqlTimestampWithZone < ActiveRecord::Base; end
-  
+
   # self.use_transactional_fixtures = false
-  
+
   def self.startup
     execute <<_SQL
 CREATE TABLE postgresql_arrays (
@@ -59,7 +59,7 @@ id SERIAL PRIMARY KEY,
 wealth MONEY
 );
 _SQL
-    
+
   execute <<_SQL
 CREATE TABLE postgresql_numbers (
 id SERIAL PRIMARY KEY,
@@ -99,7 +99,7 @@ id SERIAL PRIMARY KEY,
 obj_id OID
 );
 _SQL
-    
+
   execute <<_SQL
 CREATE TABLE postgresql_timestamp_with_zones (
 id SERIAL PRIMARY KEY,
@@ -107,15 +107,15 @@ time TIMESTAMP WITH TIME ZONE
 );
 _SQL
   end
-  
+
   def self.shutdown
-  %w(postgresql_arrays postgresql_uuids postgresql_ranges postgresql_tsvectors 
-postgresql_moneys postgresql_numbers  postgresql_times postgresql_network_addresses 
+  %w(postgresql_arrays postgresql_uuids postgresql_ranges postgresql_tsvectors
+postgresql_moneys postgresql_numbers  postgresql_times postgresql_network_addresses
 postgresql_bit_strings postgresql_oids postgresql_timestamp_with_zones).each do |table_name|
     execute "DROP TABLE IF EXISTS #{table_name}"
   end
   end
-  
+
   def self.execute sql
     connection.execute sql
   end
@@ -125,16 +125,16 @@ postgresql_bit_strings postgresql_oids postgresql_timestamp_with_zones).each do 
   end
 
   def self.supports_ranges?
-    if connection.respond_to?(:supports_ranges?) 
+    if connection.respond_to?(:supports_ranges?)
       !! connection.supports_ranges?
     else
       nil
     end
   end
-  
+
   def supports_ranges?; self.class.supports_ranges?; end
   private :supports_ranges?
-  
+
   def setup
     @connection = ActiveRecord::Base.connection
     @connection.execute("set lc_monetary = 'C'")
@@ -274,7 +274,7 @@ _SQL
     [PostgresqlArray, PostgresqlTsvector, PostgresqlMoney, PostgresqlNumber, PostgresqlTime, PostgresqlNetworkAddress,
      PostgresqlBitString, PostgresqlOid, PostgresqlTimestampWithZone, PostgresqlUUID].each(&:delete_all)
   end
-  
+
   def test_data_type_of_array_types
     omit_unless @first_array
     assert_equal :integer, @first_array.column_for_attribute(:commission_by_quarter).type
@@ -647,15 +647,21 @@ _SQL
   end if ar_version('4.0')
 
   def test_update_bit_string
-    new_bit_string = '11111111'
-    new_bit_string_varying = '11111110'
-    @first_bit_string.bit_string = new_bit_string
-    @first_bit_string.bit_string_varying = new_bit_string_varying
-    @first_bit_string.save!
-    @first_bit_string.reload
-    assert_equal new_bit_string, @first_bit_string.bit_string
-    assert_equal new_bit_string_varying, @first_bit_string.bit_string_varying
+    @first_bit_string.bit_string = '11111111'
+    assert @first_bit_string.save
+    assert_equal '11111111', @first_bit_string.reload.bit_string
+
+    if ar_version('4.0')
+      @first_bit_string.bit_string_varying = '0xFF'
+      assert @first_bit_string.save
+      assert_equal '11111111', @first_bit_string.reload.bit_string_varying
+    end
   end
+
+  def test_invalid_hex_bit_string
+    @first_bit_string.bit_string = 'FF'
+    assert_raise(ActiveRecord::StatementInvalid) { assert @first_bit_string.save }
+  end if ar_version('4.0')
 
   def test_update_oid
     new_value = 567890
@@ -665,7 +671,7 @@ _SQL
   end
 
 #  def test_timestamp_with_zone_values_with_rails_time_zone_support
-#    old_tz         = ActiveRecord::Base.time_zone_aware_attributes
+#    old_tz = ActiveRecord::Base.time_zone_aware_attributes
 #    old_default_tz = ActiveRecord::Base.default_timezone
 #
 #    ActiveRecord::Base.time_zone_aware_attributes = true
@@ -683,7 +689,7 @@ _SQL
 #  end
 #
 #  def test_timestamp_with_zone_values_without_rails_time_zone_support
-#    old_tz         = ActiveRecord::Base.time_zone_aware_attributes
+#    old_tz = ActiveRecord::Base.time_zone_aware_attributes
 #    old_default_tz = ActiveRecord::Base.default_timezone
 #
 #    ActiveRecord::Base.time_zone_aware_attributes = false
@@ -699,5 +705,5 @@ _SQL
 #    ActiveRecord::Base.time_zone_aware_attributes = old_tz
 #    @connection.reconnect!
 #  end
-  
+
 end # if Test::Unit::TestCase.ar_version('4.0')

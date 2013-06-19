@@ -3,7 +3,18 @@ module ArJdbc
     module Column
       # based on active_record/connection_adapters/postgresql/cast.rb
       module Cast
-        
+
+        def point_to_string(point)
+          "(#{point[0]},#{point[1]})"
+        end
+
+        def string_to_point(string)
+          if string[0] == '(' && string[-1] == ')'
+            string = string[1...-1]
+          end
+          string.split(',').map { |v| Float(v) }
+        end
+
         def string_to_time(string)
           return string unless String === string
 
@@ -16,6 +27,22 @@ module ArJdbc
             super
           end
         end
+
+        def string_to_bit(value)
+          case value
+          when /^[01]*$/      then value             # Bit-string notation
+          when /^[0-9A-F]*$/i then value.hex.to_s(2) # Hexadecimal notation
+          end
+        end
+
+        def string_to_bit(value)
+          case value
+          when /^0x/i
+            value[2..-1].hex.to_s(2) # Hexadecimal notation
+          else
+            value # Bit-string notation
+          end
+        end if PostgreSQL::AR4_COMPAT
 
         def hstore_to_string(object)
           if Hash === object
@@ -127,7 +154,7 @@ module ArJdbc
               "\"#{value.gsub(/"/,"\\\"")}\""
             end
           end
-          
+
       end
     end
   end
