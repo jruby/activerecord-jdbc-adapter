@@ -1,68 +1,21 @@
 ArJdbc.load_java_part :PostgreSQL
 
 require 'ipaddr'
-require 'arjdbc/postgresql/column_cast'
-require 'arjdbc/postgresql/explain_support'
 
 module ArJdbc
   module PostgreSQL
 
     AR4_COMPAT = ::ActiveRecord::VERSION::MAJOR > 3 unless const_defined?(:AR4_COMPAT) # :nodoc:
 
+    require 'arjdbc/postgresql/explain_support'
+    require 'arjdbc/postgresql/column_cast'
+
     def self.column_selector
-      [ /postgre/i, lambda { |cfg, column| column.extend(::ArJdbc::PostgreSQL::Column) } ]
+      [ /postgre/i, lambda { |cfg, column| column.extend(Column) } ]
     end
 
     def self.jdbc_connection_class
       ::ActiveRecord::ConnectionAdapters::PostgreSQLJdbcConnection
-    end
-
-    def set_client_encoding(encoding)
-      ActiveRecord::Base.logger.warn "client_encoding is set by the driver and should not be altered, ('#{encoding}' ignored)"
-      ActiveRecord::Base.logger.debug "Set the 'allowEncodingChanges' driver property (e.g. using config[:properties]) if you need to override the client encoding when doing a copy."
-    end
-
-    # Configures the encoding, verbosity, schema search path, and time zone of the connection.
-    # This is called by #connect and should not be called manually.
-    def configure_connection
-      #if encoding = config[:encoding]
-        # The client_encoding setting is set by the driver and should not be altered.
-        # If the driver detects a change it will abort the connection.
-        # see http://jdbc.postgresql.org/documentation/91/connect.html
-        # self.set_client_encoding(encoding)
-      #end
-      self.client_min_messages = config[:min_messages] || 'warning'
-      self.schema_search_path = config[:schema_search_path] || config[:schema_order]
-
-      # Use standard-conforming strings if available so we don't have to do the E'...' dance.
-      set_standard_conforming_strings
-
-      # If using Active Record's time zone support configure the connection to return
-      # TIMESTAMP WITH ZONE types in UTC.
-      # (SET TIME ZONE does not use an equals sign like other SET variables)
-      if ActiveRecord::Base.default_timezone == :utc
-        execute("SET time zone 'UTC'", 'SCHEMA')
-      elsif defined?(@local_tz) && @local_tz
-        execute("SET time zone '#{@local_tz}'", 'SCHEMA')
-      end # if defined? ActiveRecord::Base.default_timezone
-
-      # SET statements from :variables config hash
-      # http://www.postgresql.org/docs/8.3/static/sql-set.html
-      (config[:variables] || {}).map do |k, v|
-        if v == ':default' || v == :default
-          # Sets the value to the global or compile default
-          execute("SET SESSION #{k.to_s} TO DEFAULT", 'SCHEMA')
-        elsif ! v.nil?
-          execute("SET SESSION #{k.to_s} TO #{quote(v)}", 'SCHEMA')
-        end
-      end
-    end
-
-    # constants taken from postgresql_adapter in rails project
-    ADAPTER_NAME = 'PostgreSQL'.freeze
-
-    def adapter_name # :nodoc:
-      ADAPTER_NAME
     end
 
     def self.arel2_visitors(config)
@@ -83,32 +36,12 @@ module ArJdbc
       include Arel::Visitors::BindVisitor
     end if defined? Arel::Visitors::BindVisitor
 
-    def postgresql_version
-      @postgresql_version ||=
-        begin
-          value = select_value('SELECT version()')
-          if value =~ /PostgreSQL (\d+)\.(\d+)\.(\d+)/
-            ($1.to_i * 10000) + ($2.to_i * 100) + $3.to_i
-          else
-            0
-          end
-        end
-    end
-
-    def use_insert_returning?
-      if ( @use_insert_returning ||= nil ).nil?
-        @use_insert_returning = supports_insert_with_returning?
-      end
-      @use_insert_returning
-    end
-
     # column behavior based on postgresql_adapter in rails
     module Column
 
       def self.included(base)
         class << base
-          include ArJdbc::PostgreSQL::Column::Cast
-          # include ArJdbc::PostgreSQL::Column::ArrayParser
+          include ::ArJdbc::PostgreSQL::Column::Cast
           attr_accessor :money_precision
         end
       end
@@ -383,6 +316,73 @@ module ArJdbc
       end if AR4_COMPAT
 
     end # Column
+
+    # constants taken from postgresql_adapter in rails project
+    ADAPTER_NAME = 'PostgreSQL'.freeze
+
+    def adapter_name # :nodoc:
+      ADAPTER_NAME
+    end
+
+    def postgresql_version
+      @postgresql_version ||=
+        begin
+          value = select_value('SELECT version()')
+          if value =~ /PostgreSQL (\d+)\.(\d+)\.(\d+)/
+            ($1.to_i * 10000) + ($2.to_i * 100) + $3.to_i
+          else
+            0
+          end
+        end
+    end
+
+    def use_insert_returning?
+      if ( @use_insert_returning ||= nil ).nil?
+        @use_insert_returning = supports_insert_with_returning?
+      end
+      @use_insert_returning
+    end
+
+    def set_client_encoding(encoding)
+      ActiveRecord::Base.logger.warn "client_encoding is set by the driver and should not be altered, ('#{encoding}' ignored)"
+      ActiveRecord::Base.logger.debug "Set the 'allowEncodingChanges' driver property (e.g. using config[:properties]) if you need to override the client encoding when doing a copy."
+    end
+
+    # Configures the encoding, verbosity, schema search path, and time zone of the connection.
+    # This is called by #connect and should not be called manually.
+    def configure_connection
+      #if encoding = config[:encoding]
+        # The client_encoding setting is set by the driver and should not be altered.
+        # If the driver detects a change it will abort the connection.
+        # see http://jdbc.postgresql.org/documentation/91/connect.html
+        # self.set_client_encoding(encoding)
+      #end
+      self.client_min_messages = config[:min_messages] || 'warning'
+      self.schema_search_path = config[:schema_search_path] || config[:schema_order]
+
+      # Use standard-conforming strings if available so we don't have to do the E'...' dance.
+      set_standard_conforming_strings
+
+      # If using Active Record's time zone support configure the connection to return
+      # TIMESTAMP WITH ZONE types in UTC.
+      # (SET TIME ZONE does not use an equals sign like other SET variables)
+      if ActiveRecord::Base.default_timezone == :utc
+        execute("SET time zone 'UTC'", 'SCHEMA')
+      elsif defined?(@local_tz) && @local_tz
+        execute("SET time zone '#{@local_tz}'", 'SCHEMA')
+      end # if defined? ActiveRecord::Base.default_timezone
+
+      # SET statements from :variables config hash
+      # http://www.postgresql.org/docs/8.3/static/sql-set.html
+      (config[:variables] || {}).map do |k, v|
+        if v == ':default' || v == :default
+          # Sets the value to the global or compile default
+          execute("SET SESSION #{k.to_s} TO DEFAULT", 'SCHEMA')
+        elsif ! v.nil?
+          execute("SET SESSION #{k.to_s} TO #{quote(v)}", 'SCHEMA')
+        end
+      end
+    end
 
     ActiveRecordError = ::ActiveRecord::ActiveRecordError # :nodoc:
 
@@ -927,7 +927,8 @@ module ArJdbc
       select('SELECT nspname FROM pg_namespace').map { |row| row["nspname"] }
     end
 
-    def structure_dump
+    # @deprecated no longer used - handled with (AR built-in) Rake tasks
+    def structure_dump # :nodoc:
       database = @config[:database]
       if database.nil?
         if @config[:url] =~ /\/([^\/]*)$/
