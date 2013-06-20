@@ -12,16 +12,14 @@ ArJdbc::ConnectionMethods.module_eval do
     config[:adapter_spec] ||= ::ArJdbc::MySQL
     config[:adapter_class] = ActiveRecord::ConnectionAdapters::MysqlAdapter unless config.key?(:adapter_class)
     # config[:connection_alive_sql] ||= 'SELECT 1'
-    
+
     options = (config[:options] ||= {})
     options['zeroDateTimeBehavior'] ||= 'convertToNull'
     options['jdbcCompliantTruncation'] ||= 'false'
     options['useUnicode'] ||= 'true'
     options['characterEncoding'] = config[:encoding] || 'utf8'
-    
-    connection = jdbc_connection(config)
-    ::ArJdbc::MySQL.kill_cancel_timer(connection.raw_connection)
-    connection
+
+    jdbc_connection(config)
   end
   alias_method :jdbcmysql_connection, :mysql_connection
   alias_method :mysql2_connection, :mysql_connection

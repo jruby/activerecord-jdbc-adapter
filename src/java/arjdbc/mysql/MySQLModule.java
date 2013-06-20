@@ -24,11 +24,8 @@
 
 package arjdbc.mysql;
 
-import static arjdbc.jdbc.RubyJdbcConnection.debugStackTrace;
 import static arjdbc.util.QuotingUtils.BYTES_0;
 import static arjdbc.util.QuotingUtils.BYTES_1;
-
-import java.sql.Connection;
 
 import org.jcodings.specific.UTF8Encoding;
 
@@ -41,7 +38,7 @@ import org.jruby.runtime.builtin.IRubyObject;
 import org.jruby.util.ByteList;
 
 public class MySQLModule {
-    
+
     public static RubyModule load(final RubyModule arJdbc) {
         RubyModule mysql = arJdbc.defineModuleUnder("MySQL");
         mysql.defineAnnotatedMethods(MySQLModule.class);
@@ -57,16 +54,16 @@ public class MySQLModule {
     //private final static byte[] ESCAPE = new byte[] {'\\','\\'};
 
     private static final int STRING_QUOTES_OPTIMISTIC_QUESS = 24;
-    
+
     @JRubyMethod(name = "quote_string", required = 1, frame = false)
-    public static IRubyObject quote_string(final ThreadContext context, 
+    public static IRubyObject quote_string(final ThreadContext context,
         final IRubyObject recv, final IRubyObject string) {
-        
+
         final ByteList stringBytes = ((RubyString) string).getByteList();
         final byte[] bytes = stringBytes.unsafeBytes();
         final int begin = stringBytes.getBegin();
         final int realSize = stringBytes.getRealSize();
-        
+
         ByteList quotedBytes = null; int appendFrom = begin;
         for ( int i = begin; i < begin + realSize; i++ ) {
             final byte byte2;
@@ -83,7 +80,7 @@ public class MySQLModule {
             if ( byte2 != 0 ) {
                 if ( quotedBytes == null ) {
                     quotedBytes = new ByteList(
-                        new byte[realSize + STRING_QUOTES_OPTIMISTIC_QUESS], 
+                        new byte[realSize + STRING_QUOTES_OPTIMISTIC_QUESS],
                         stringBytes.getEncoding()
                     );
                     quotedBytes.setBegin(0);
@@ -109,37 +106,16 @@ public class MySQLModule {
 
     @JRubyMethod(name = "quoted_true", required = 0, frame = false)
     public static IRubyObject quoted_true(
-            final ThreadContext context, 
+            final ThreadContext context,
             final IRubyObject self) {
         return RubyString.newString(context.getRuntime(), BYTES_1);
     }
-    
+
     @JRubyMethod(name = "quoted_false", required = 0, frame = false)
     public static IRubyObject quoted_false(
-            final ThreadContext context, 
+            final ThreadContext context,
             final IRubyObject self) {
         return RubyString.newString(context.getRuntime(), BYTES_0);
     }
-    
-    /**
-     * HACK HACK HACK See http://bugs.mysql.com/bug.php?id=36565
-     * MySQL's statement cancel timer can cause memory leaks, so cancel it
-     * if we loaded MySQL classes from the same classloader as JRuby
-     */
-    @JRubyMethod(module = true, frame = false)
-    public static IRubyObject kill_cancel_timer(final ThreadContext context, 
-        final IRubyObject self, final IRubyObject raw_connection) {
-        
-        final Connection conn = (Connection) raw_connection.dataGetStruct();
-        if (conn != null && conn.getClass().getClassLoader() == self.getRuntime().getJRubyClassLoader()) {
-            try {
-                java.lang.reflect.Field f = conn.getClass().getDeclaredField("cancelTimer");
-                f.setAccessible(true);
-                java.util.Timer timer = (java.util.Timer) f.get(null);
-                timer.cancel();
-            }
-            catch (Exception e) { debugStackTrace(context, e); }
-        }
-        return self.getRuntime().getNil();
-    }
+
 }
