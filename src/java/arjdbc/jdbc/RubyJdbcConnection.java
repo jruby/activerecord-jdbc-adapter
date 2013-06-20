@@ -29,6 +29,7 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.PrintStream;
 import java.io.Reader;
 import java.io.StringReader;
 import java.lang.reflect.InvocationTargetException;
@@ -735,11 +736,26 @@ public class RubyJdbcConnection extends RubyObject {
         });
     }
 
-    @JRubyMethod(name = "native_database_types", frame = false)
+    @JRubyMethod(name = "native_database_types")
     public IRubyObject native_database_types() {
         return getInstanceVariable("@native_database_types");
     }
 
+    @JRubyMethod(name = "set_native_database_types")
+    public IRubyObject set_native_database_types(final ThreadContext context) throws SQLException {
+        final Ruby runtime = context.getRuntime();
+        final DatabaseMetaData metaData = getConnection(true).getMetaData();
+        final IRubyObject types; final ResultSet typeDesc = metaData.getTypeInfo();
+        try {
+            types = mapToRawResult(context, runtime, metaData, typeDesc, true);
+        }
+        finally { close(typeDesc); }
+
+        final IRubyObject typeConverter = getJdbcTypeConverter(runtime).callMethod("new", types);
+        setInstanceVariable("@native_types", typeConverter.callMethod(context, "choose_best_types"));
+
+        return runtime.getNil();
+    }
 
     @JRubyMethod(name = "primary_keys", required = 1)
     public IRubyObject primary_keys(ThreadContext context, IRubyObject tableName) throws SQLException {
@@ -772,22 +788,6 @@ public class RubyJdbcConnection extends RubyObject {
                 return keyNames;
             }
         });
-    }
-
-    @JRubyMethod(name = "set_native_database_types")
-    public IRubyObject set_native_database_types(final ThreadContext context) throws SQLException {
-        final Ruby runtime = context.getRuntime();
-        final DatabaseMetaData metaData = getConnection(true).getMetaData();
-        final IRubyObject types; final ResultSet typeDesc = metaData.getTypeInfo();
-        try {
-            types = mapToRawResult(context, runtime, metaData, typeDesc, true);
-        }
-        finally { close(typeDesc); }
-
-        final IRubyObject typeConverter = getJdbcTypeConverter(runtime).callMethod("new", types);
-        setInstanceVariable("@native_types", typeConverter.callMethod(context, "choose_best_types"));
-
-        return runtime.getNil();
     }
 
     @JRubyMethod(name = "tables")
@@ -2331,7 +2331,6 @@ public class RubyJdbcConnection extends RubyObject {
         throws SQLException {
 
         final Ruby runtime = context.getRuntime();
-        // RubyHash types = (RubyHash) native_database_types();
         final IRubyObject jdbcColumn = getJdbcColumnClass(context);
 
         final List<String> primarykeyNames = new ArrayList<String>();
@@ -2917,21 +2916,31 @@ public class RubyJdbcConnection extends RubyObject {
         RubyJdbcConnection.debug = debug;
     }
 
+    public static void debugMessage(final String msg) {
+        debugMessage(null, msg);
+    }
+
     public static void debugMessage(final ThreadContext context, final String msg) {
-        if ( debug || context.runtime.isDebug() ) {
-            context.runtime.getOut().println(msg);
+        if ( debug || ( context != null && context.runtime.isDebug() ) ) {
+            final PrintStream out =
+                context != null ? context.runtime.getOut() : System.out;
+            out.println(msg);
         }
     }
 
     protected static void debugErrorSQL(final ThreadContext context, final String sql) {
-        if ( debug || context.runtime.isDebug() ) {
-            context.runtime.getOut().println("Error SQL: " + sql);
+        if ( debug || ( context != null && context.runtime.isDebug() ) ) {
+            final PrintStream out =
+                context != null ? context.runtime.getOut() : System.out;
+            out.println("Error SQL: " + sql);
         }
     }
 
     public static void debugStackTrace(final ThreadContext context, final Throwable e) {
-        if ( debug || context.runtime.isDebug() ) {
-            e.printStackTrace(context.runtime.getOut());
+        if ( debug || ( context != null && context.runtime.isDebug() ) ) {
+            final PrintStream out =
+                context != null ? context.runtime.getOut() : System.out;
+            e.printStackTrace(out);
         }
     }
 
