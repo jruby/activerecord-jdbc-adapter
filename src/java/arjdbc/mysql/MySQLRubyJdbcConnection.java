@@ -183,7 +183,10 @@ public class MySQLRubyJdbcConnection extends RubyJdbcConnection {
     /**
      * HACK HACK HACK See http://bugs.mysql.com/bug.php?id=36565
      * MySQL's statement cancel timer can cause memory leaks, so cancel it
-     * if we loaded MySQL classes from the same classloader as JRuby
+     * if we loaded MySQL classes from the same class-loader as JRuby
+     *
+     * NOTE: this will likely do nothing on a recent driver esp. since MySQL's
+     * Connector/J supports JDBC 4.0 (Java 6+) which we now require at minimum
      */
     private void killCancelTimer(final Connection connection) {
         if (connection.getClass().getClassLoader() == getRuntime().getJRubyClassLoader()) {
@@ -193,7 +196,11 @@ public class MySQLRubyJdbcConnection extends RubyJdbcConnection {
                 try {
                     // connection likely: com.mysql.jdbc.JDBC4Connection
                     // or (for 3.0) super class: com.mysql.jdbc.ConnectionImpl
-                    timer = (java.util.Timer) field.get(connection);
+                    timer = (java.util.Timer)
+                        field.get( connection.unwrap(Connection.class) );
+                }
+                catch (SQLException e) {
+                    debugMessage( e.toString() );
                 }
                 catch (IllegalAccessException e) {
                     debugMessage( e.toString() );
