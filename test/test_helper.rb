@@ -101,7 +101,7 @@ class Test::Unit::TestCase
     end
   end
 
-  def disable_logger(connection, &block)
+  def disable_logger(connection = self.connection, &block)
     self.class.disable_logger(connection, &block)
   end
 
@@ -115,6 +115,29 @@ class Test::Unit::TestCase
       yield
     ensure
       ActiveRecord::Base.establish_connection connection
+    end
+  end
+
+  def with_connection_removed
+    configurations = ActiveRecord::Base.configurations
+    connection_config = current_connection_config
+    # ActiveRecord::Base.connection.disconnect!
+    ActiveRecord::Base.remove_connection
+    begin
+      yield connection_config.dup
+    ensure
+      # ActiveRecord::Base.connection.disconnect!
+      ActiveRecord::Base.remove_connection
+      ActiveRecord::Base.configurations = configurations
+      ActiveRecord::Base.establish_connection connection_config
+    end
+  end
+
+  def current_connection_config
+    if ActiveRecord::Base.respond_to?(:connection_config)
+      ActiveRecord::Base.connection_config
+    else
+      ActiveRecord::Base.connection_pool.spec.config
     end
   end
 

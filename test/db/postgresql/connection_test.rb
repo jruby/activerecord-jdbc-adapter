@@ -1,63 +1,53 @@
 require 'db/postgres'
 
 class PostgresConnectionTest < Test::Unit::TestCase
- 
+
   def test_set_session_variable_true
-    run_without_connection do |orig_connection|
-      ActiveRecord::Base.establish_connection(orig_connection.merge({:variables => {:debug_print_plan => true}}))
+    with_connection_removed do |config|
+      config = config.merge :variables => { :debug_print_plan => true }
+      ActiveRecord::Base.establish_connection config
       set_true_rows = select_rows "SHOW DEBUG_PRINT_PLAN"
       assert_equal set_true_rows, [["on"]]
     end
   end
 
   def test_set_session_variable_false
-    run_without_connection do |orig_connection|
-      ActiveRecord::Base.establish_connection(orig_connection.merge({:variables => {:debug_print_plan => false}}))
-      set_false_rows = select_rows "SHOW DEBUG_PRINT_PLAN"
-      assert_equal set_false_rows, [["off"]]
+    with_connection_removed do |config|
+      config = config.merge :variables => { :debug_print_plan => false }
+      ActiveRecord::Base.establish_connection config
+      set_true_rows = select_rows "SHOW DEBUG_PRINT_PLAN"
+      assert_equal set_true_rows, [["off"]]
     end
   end
 
   def test_set_session_variable_nil
-    run_without_connection do |orig_connection|
+    with_connection_removed do |config|
       # This should be a no-op that does not raise an error
-      ActiveRecord::Base.establish_connection(orig_connection.merge({:variables => {:debug_print_plan => nil}}))
-      select_rows "SHOW DEBUG_PRINT_PLAN"
+      ActiveRecord::Base.establish_connection(config.merge({:variables => {:debug_print_plan => nil}}))
     end
   end
 
   def test_set_session_variable_default
-    run_without_connection do |orig_connection|
+    with_connection_removed do |config|
       # This should execute a query that does not raise an error
-      ActiveRecord::Base.establish_connection(orig_connection.merge({:variables => {:debug_print_plan => :default}}))
-      select_rows "SHOW DEBUG_PRINT_PLAN"
+      ActiveRecord::Base.establish_connection(config.merge({:variables => {:debug_print_plan => :default}}))
+      # select_rows "SHOW DEBUG_PRINT_PLAN"
     end
   end
 
   def test_set_client_encoding
-    run_without_connection do |orig_connection|
+    with_connection_removed do |orig_connection|
       # This should execute a query that does not raise an error
       ActiveRecord::Base.establish_connection(orig_connection.merge({:encoding => 'unicode'}))
       select_rows "SHOW DEBUG_PRINT_PLAN"
     end
   end
 
-  protected
+  private
 
   def select_rows(sql)
     result = ActiveRecord::Base.connection.exec_query(sql)
     result.respond_to?(:rows) ? result.rows : [ result.first.map { |_,value| value } ]
-  end
-  
-  private
-
-  def run_without_connection
-    original_connection = ActiveRecord::Base.remove_connection
-    begin
-      yield original_connection
-    ensure
-      ActiveRecord::Base.establish_connection POSTGRES_CONFIG
-    end
   end
 
 end

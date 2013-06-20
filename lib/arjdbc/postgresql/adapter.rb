@@ -366,8 +366,8 @@ module ArJdbc
       # (SET TIME ZONE does not use an equals sign like other SET variables)
       if ActiveRecord::Base.default_timezone == :utc
         execute("SET time zone 'UTC'", 'SCHEMA')
-      elsif defined?(@local_tz) && @local_tz
-        execute("SET time zone '#{@local_tz}'", 'SCHEMA')
+      elsif tz = local_tz
+        execute("SET time zone '#{tz}'", 'SCHEMA')
       end # if defined? ActiveRecord::Base.default_timezone
 
       # SET statements from :variables config hash
@@ -1419,7 +1419,10 @@ module ArJdbc
     def extract_table_ref_from_insert_sql(sql) # :nodoc:
       sql[/into\s+([^\(]*).*values\s*\(/i]
       $1.strip if $1
-      # sql.split(" ", 4)[2].gsub('"', '')
+    end
+
+    def local_tz
+      @local_tz ||= execute('SHOW TIME ZONE', 'SCHEMA').first["TimeZone"]
     end
 
   end
@@ -1465,15 +1468,13 @@ module ActiveRecord::ConnectionAdapters
     include ArJdbc::PostgreSQL::ExplainSupport
 
     def initialize(*args)
-      super
-
       # @local_tz is initialized as nil to avoid warnings when connect tries to use it
       @local_tz = nil
+
+      super # configure_connection happens in super
+
       @table_alias_length = nil
 
-      # configure_connection happens in super
-
-      @local_tz = execute('SHOW TIME ZONE', 'SCHEMA').first["TimeZone"]
       @use_insert_returning = config.key?(:insert_returning) ?
         self.class.type_cast_config_to_boolean(config[:insert_returning]) : nil
     end
