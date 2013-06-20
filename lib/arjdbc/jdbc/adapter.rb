@@ -16,39 +16,39 @@ module ActiveRecord
   module ConnectionAdapters
     class JdbcAdapter < AbstractAdapter
       extend ShadowCoreMethods
-      
+
       include JdbcConnectionPoolCallbacks
-      
+
       attr_reader :config
-      
+
       def initialize(connection, logger, config = nil) # (logger, config)
         if config.nil? && logger.respond_to?(:key?) # only 2 arguments given
           config, logger, connection = logger, connection, nil
         end
-        
+
         @config = config
-        
+
         @config[:adapter_spec] = adapter_spec(@config) unless @config.key?(:adapter_spec)
         spec = @config[:adapter_spec]
-        
+
         connection ||= jdbc_connection_class(spec).new(@config)
-        
+
         super(connection, logger)
-        
+
         # kind of like `extend ArJdbc::MyDB if self.class == JdbcAdapter` :
         klass = @config[:adapter_class]
         extend spec if spec && ( ! klass || klass == JdbcAdapter)
-        
+
         connection.adapter = self # prepares native database types
-        
+
         # NOTE: should not be necessary for JNDI due reconnect! on checkout :
         configure_connection if respond_to?(:configure_connection)
-        
+
         JndiConnectionPoolCallbacks.prepare(self, connection)
-        
+
         @visitor = new_visitor(@config) # nil if no AREL (AR-2.3)
       end
-      
+
       def jdbc_connection_class(spec)
         connection_class = spec.jdbc_connection_class if spec && spec.respond_to?(:jdbc_connection_class)
         connection_class ? connection_class : ::ActiveRecord::ConnectionAdapters::JdbcConnection
@@ -59,7 +59,7 @@ module ActiveRecord
       end
 
       # Retrieve the raw java.sql.Connection object.
-      # The unwrap parameter is useful if an attempt to unwrap a pooled (JNDI) 
+      # The unwrap parameter is useful if an attempt to unwrap a pooled (JNDI)
       # connection should be made - to really return the native (SQL) object.
       def jdbc_connection(unwrap = nil)
         java_connection = raw_connection.connection
@@ -87,7 +87,7 @@ module ActiveRecord
 
         if (config[:jndi] || config[:data_source]) && ! config[:dialect]
           begin
-            data_source = config[:data_source] || 
+            data_source = config[:data_source] ||
               Java::JavaxNaming::InitialContext.new.lookup(config[:jndi])
             connection = data_source.getConnection
             config[:dialect] = connection.getMetaData.getDatabaseProductName
@@ -103,12 +103,10 @@ module ActiveRecord
         nil
       end
 
-      def modify_types(types)
-        types
-      end
+      ADAPTER_NAME = 'JDBC'.freeze
 
       def adapter_name # :nodoc:
-        'JDBC'
+        ADAPTER_NAME
       end
 
       def self.arel2_visitors(config)
@@ -155,14 +153,14 @@ module ActiveRecord
         ( prepared_statements? ? visitor : bind_substitution(visitor) ).new(self)
       end
       protected :new_visitor
-      
+
       unless defined? ::Arel::Visitors::VISITORS # NO-OP when no AREL (AR-2.3)
         def self.configure_arel2_visitors(config); end
         def new_visitor(config = self.config); end
       end
-      
+
       @@bind_substitutions = nil
-      
+
       # @return a {#Arel::Visitors::BindVisitor} class for given visitor type
       def self.bind_substitution(visitor)
         # NOTE: similar convention as in AR (but no base substitution type) :
@@ -170,7 +168,7 @@ module ActiveRecord
         #   include ::Arel::Visitors::BindVisitor
         # end
         return const_get(:BindSubstitution) if const_defined?(:BindSubstitution)
-        
+
         @@bind_substitutions ||= Java::JavaUtil::HashMap.new
         unless bind_visitor = @@bind_substitutions.get(visitor)
           @@bind_substitutions.synchronized do
@@ -185,21 +183,33 @@ module ActiveRecord
         end
         bind_visitor
       end
-      
-      begin 
+
+      begin
         require 'arel/visitors/bind_visitor'
       rescue LoadError # AR-3.0
         def self.bind_substitution(visitor); visitor; end
       end
-      
+
       def bind_substitution(visitor); self.class.bind_substitution(visitor); end
       private :bind_substitution
-      
+
+      def native_database_types # :nodoc:
+        @native_database_types ||= begin
+          types = @connection.native_database_types
+          modify_types(types)
+          types
+        end
+      end
+
+      def modify_types(types) # :nodoc:
+        types
+      end
+
       # @override default implementation (does nothing silently)
       def structure_dump
         raise NotImplementedError, "structure_dump not supported"
       end
-      
+
       def is_a?(klass) # :nodoc:
         # This is to fake out current_adapter? conditional logic in AR tests
         if Class === klass && klass.name =~ /#{adapter_name}Adapter$/i
@@ -211,10 +221,6 @@ module ActiveRecord
 
       def supports_migrations?
         true
-      end
-
-      def native_database_types # :nodoc:
-        @connection.native_database_types
       end
 
       def database_name # :nodoc:
@@ -232,7 +238,7 @@ module ActiveRecord
               if name == :primary_key
                 next
               end
-              if val[:name].downcase == tname.downcase && 
+              if val[:name].downcase == tname.downcase &&
                   ( val[:limit].nil? || val[:limit].to_i == limit )
                 return name, limit
               end
@@ -270,28 +276,28 @@ module ActiveRecord
       end
 
       if ActiveRecord::VERSION::MAJOR < 3
-        
+
         def jdbc_insert(sql, name = nil, pk = nil, id_value = nil, sequence_name = nil, binds = [])  # :nodoc:
           insert_sql(sql, name, pk, id_value, sequence_name, binds)
         end
         alias_chained_method :insert, :query_dirty, :jdbc_insert
-        
+
         def jdbc_update(sql, name = nil, binds = []) # :nodoc:
           execute(sql, name, binds)
         end
         alias_chained_method :update, :query_dirty, :jdbc_update
-        
+
         def jdbc_select_all(sql, name = nil, binds = []) # :nodoc:
           select(sql, name, binds)
         end
         alias_chained_method :select_all, :query_cache, :jdbc_select_all
-        
+
       end
-      
+
       def columns(table_name, name = nil)
         @connection.columns(table_name.to_s)
       end
-      
+
       # Executes +sql+ statement in the context of this connection using
       # +binds+ as the bind substitutes.  +name+ is logged along with
       # the executed +sql+ statement.
@@ -328,9 +334,9 @@ module ActiveRecord
         sql = suble_binds to_sql(sql, binds), binds
         log(sql, name || 'SQL') { @connection.execute_update(sql) }
       end
-      
+
       # Similar to {#exec_query} except it returns "raw" results in an array
-      # where each rows is a hash with keys as columns (just like Rails used to 
+      # where each rows is a hash with keys as columns (just like Rails used to
       # do up until 3.0) instead of wrapping them in a {#ActiveRecord::Result}.
       def exec_query_raw(sql, name = 'SQL', binds = [], &block) # :nodoc:
         sql = to_sql(sql, binds)
@@ -341,29 +347,29 @@ module ActiveRecord
           log(sql, name) { @connection.execute_query_raw(sql, &block) }
         end
       end
-      
+
       def select_rows(sql, name = nil)
         exec_query_raw(sql, name).map!(&:values)
       end
-      
+
       if ActiveRecord::VERSION::MAJOR > 3 # expects AR::Result e.g. from select_all
-        
+
       def select(sql, name = nil, binds = [])
         exec_query(sql, name, binds)
       end
-        
+
       else
-        
+
       def select(sql, name = nil, binds = []) # NOTE: only (sql, name) on AR < 3.1
         exec_query_raw(sql, name, binds)
       end
-      
+
       end
-      
+
       if ActiveRecord::VERSION::MAJOR < 3 # 2.3.x
-        
+
       # NOTE: 2.3 log(sql, name) while does not like `name == nil`
-      
+
       # Executes the SQL statement in the context of this connection.
       def execute(sql, name = nil, binds = [])
         sql = suble_binds to_sql(sql, binds), binds
@@ -376,9 +382,9 @@ module ActiveRecord
 
       else
       #elsif ActiveRecord::VERSION::MAJOR == 3 && ActiveRecord::VERSION::MINOR == 0
-      
+
       # NOTE: 3.0 log(sql, name) allow `name == nil` (handles `name ||= "SQL"`)
-      
+
       # Executes the SQL statement in the context of this connection.
       def execute(sql, name = nil, binds = [])
         sql = suble_binds to_sql(sql, binds), binds
@@ -391,7 +397,7 @@ module ActiveRecord
 
       # NOTE: 3.1 log(sql, name = "SQL", binds = []) `name == nil` is fine
       # TODO skip logging the binds (twice) until prepared-statement support
-      
+
       #else
       end
 
@@ -436,13 +442,13 @@ module ActiveRecord
       def begin_isolated_db_transaction(isolation)
         @connection.begin(isolation)
       end
-      
+
       # Does this adapter support setting the isolation level for a transaction?
       # @note We allow to ask for a specified transaction isolation level ...
       def supports_transaction_isolation?(level = nil)
         @connection.supports_transaction_isolation?(level)
-      end 
-      
+      end
+
       def write_large_object(*args)
         @connection.write_large_object(*args)
       end
@@ -461,17 +467,17 @@ module ActiveRecord
       end
 
       if ActiveRecord::VERSION::MAJOR == 3 && ActiveRecord::VERSION::MINOR == 0
-      
+
         #attr_reader :visitor unless method_defined?(:visitor) # not in 3.0
-        
+
         # Converts an AREL AST to SQL.
         def to_sql(arel, binds = [])
           # NOTE: can not handle `visitor.accept(arel.ast)` right
           arel.respond_to?(:to_sql) ? arel.send(:to_sql) : arel
         end
-        
+
       elsif ActiveRecord::VERSION::MAJOR >= 3 # AR >= 3.1 or 4.0
-        
+
         # Converts an AREL AST to SQL.
         def to_sql(arel, binds = [])
           if arel.respond_to?(:ast)
@@ -480,17 +486,17 @@ module ActiveRecord
             arel
           end
         end
-      
+
       else # AR-2.3 no #to_sql method
-        
+
         def to_sql(sql, binds = nil)
           sql
         end
-        
+
       end
-      
+
       protected
- 
+
       def translate_exception(e, message)
         # we shall not translate native "Java" exceptions as they might
         # swallow an ArJdbc / driver bug into a AR::StatementInvalid ...
@@ -502,9 +508,9 @@ module ActiveRecord
       def last_inserted_id(result)
         result
       end
-      
+
       # Helper to handle 3.x/4.0 uniformly override #table_definition as :
-      # 
+      #
       #   def table_definition(*args)
       #     new_table_definition(TableDefinition, *args)
       #   end
@@ -513,10 +519,10 @@ module ActiveRecord
         table_definition.new(self) # args ignored only used for 4.0
       end
       private :new_table_definition
-      
+
       # if adapter overrides #table_definition it works on 3.x as well as 4.0
       if ActiveRecord::VERSION::MAJOR > 3
-        
+
       # aliasing #create_table_definition as #table_definition :
       alias table_definition create_table_definition
 
@@ -524,21 +530,21 @@ module ActiveRecord
       def create_table_definition(name, temporary, options)
         table_definition(name, temporary, options)
       end
-      
+
       # arguments expected: (name, temporary, options)
       def new_table_definition(table_definition, *args)
         table_definition.new native_database_types, *args
       end
       private :new_table_definition
-      
+
       end
-    
+
       private
-      
+
       def prepared_statements?
         self.class.prepared_statements?(config)
       end
-    
+
       def self.prepared_statements?(config)
         config.key?(:prepared_statements) ?
           type_cast_config_to_boolean(config.fetch(:prepared_statements)) :
@@ -550,7 +556,7 @@ module ActiveRecord
         copy = binds.dup
         sql.gsub('?') { quote(*copy.shift.reverse) }
       end
-      
+
       # @deprecated replaced with {#suble_binds}
       def substitute_binds(sql, binds)
         suble_binds(extract_sql(sql), binds)
@@ -560,9 +566,9 @@ module ActiveRecord
       def extract_sql(obj)
         obj.respond_to?(:to_sql) ? obj.send(:to_sql) : obj
       end
-      
+
       protected
-      
+
       def self.select?(sql)
         JdbcConnection::select?(sql)
       end
@@ -574,9 +580,9 @@ module ActiveRecord
       def self.update?(sql)
         ! select?(sql) && ! insert?(sql)
       end
-      
+
       unless defined? AbstractAdapter.type_cast_config_to_integer
-        
+
         def self.type_cast_config_to_integer(config)
           config =~ /\A\d+\z/ ? config.to_i : config
         end
@@ -584,9 +590,9 @@ module ActiveRecord
         def self.type_cast_config_to_boolean(config)
           config == "false" ? false : config
         end
-        
+
       end
-      
+
     end
   end
 end

@@ -11,13 +11,13 @@ module ActiveRecord
       # individual adapter.  My guess is that if we loaded two adapters of different types
       # then this is used as a base to be tweaked by each adapter to create @native_database_types
 
-      def initialize(config)
+      def initialize(config, adapter = nil)
         self.config = config
+        self.adapter = adapter if adapter
         @connection = nil; @jndi = nil
         # @stmts = {} # AR compatibility - statement cache not used
         setup_connection_factory
-        connection # force connection to load (@see RubyJdbcConnection.connection)
-        set_native_database_types # so we can set the native types
+        init_connection # @see RubyJdbcConnection.init_connection
       rescue Java::JavaSql::SQLException => e
         e = e.cause if defined?(NativeException) && e.is_a?(NativeException) # JRuby-1.6.8
         error = e.getMessage || e.getSQLState
@@ -30,29 +30,6 @@ module ActiveRecord
 
       attr_reader :adapter, :config
 
-      # @see ActiveRecord::ConnectionAdapters::JdbcAdapter#initialize
-      def adapter=(adapter)
-        @adapter = adapter
-        @native_database_types = dup_native_types
-        @adapter.modify_types(@native_database_types)
-        @adapter.config.replace(config)
-      end
-
-      # Duplicate all native types into new hash structure so it can be modified
-      # without destroying original structure.
-      def dup_native_types
-        types = {}
-        @native_types.each_pair do |k, v|
-          types[k] = v.inject({}) do |memo, kv|
-            last = kv.last
-            memo[kv.first] = last.is_a?(Numeric) ? last : (last.dup rescue last)
-            memo
-          end
-        end
-        types
-      end
-      private :dup_native_types
-
       def config=(config)
         @config = config.symbolize_keys
         # NOTE: JDBC 4.0 drivers support checking if connection isValid
@@ -60,6 +37,21 @@ module ActiveRecord
         @config[:retry_count] ||= 5
         @config
       end
+
+      # @note should not be called directly (pass adapter into #initialize)
+      # @see ActiveRecord::ConnectionAdapters::JdbcAdapter#initialize
+      def adapter=(adapter)
+        @adapter = adapter
+        @adapter.config.replace(config)
+      end
+      # protected :adapter=
+
+      def native_database_types
+        JdbcTypeConverter.new(supported_data_types).choose_best_types
+      end
+
+      # @deprecated no longer used - only kept for compatibility
+      def set_native_database_types; end
 
       def jndi?; @jndi; end
       alias_method :jndi_connection?, :jndi?

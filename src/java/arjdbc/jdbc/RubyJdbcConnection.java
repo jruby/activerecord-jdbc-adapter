@@ -295,6 +295,11 @@ public class RubyJdbcConnection extends RubyObject {
         return context.getRuntime().getNil();
     }
 
+    @JRubyMethod(name = "init_connection")
+    public IRubyObject init_connection(final ThreadContext context) {
+        return callMethod(context, "connection");
+    }
+
     @JRubyMethod(name = "connection")
     public IRubyObject connection(final ThreadContext context) {
         if ( getConnection(false) == null ) {
@@ -736,13 +741,8 @@ public class RubyJdbcConnection extends RubyObject {
         });
     }
 
-    @JRubyMethod(name = "native_database_types")
-    public IRubyObject native_database_types() {
-        return getInstanceVariable("@native_database_types");
-    }
-
-    @JRubyMethod(name = "set_native_database_types")
-    public IRubyObject set_native_database_types(final ThreadContext context) throws SQLException {
+    @JRubyMethod(name = "supported_data_types")
+    public IRubyObject supported_data_types(final ThreadContext context) throws SQLException {
         final Ruby runtime = context.getRuntime();
         final DatabaseMetaData metaData = getConnection(true).getMetaData();
         final IRubyObject types; final ResultSet typeDesc = metaData.getTypeInfo();
@@ -751,10 +751,7 @@ public class RubyJdbcConnection extends RubyObject {
         }
         finally { close(typeDesc); }
 
-        final IRubyObject typeConverter = getJdbcTypeConverter(runtime).callMethod("new", types);
-        setInstanceVariable("@native_types", typeConverter.callMethod(context, "choose_best_types"));
-
-        return runtime.getNil();
+        return types;
     }
 
     @JRubyMethod(name = "primary_keys", required = 1)
