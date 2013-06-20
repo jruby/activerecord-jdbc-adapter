@@ -164,15 +164,6 @@ module ArJdbc
       NATIVE_DATABASE_TYPES
     end
 
-    def modify_types(types)
-      types[:primary_key] = "int(11) DEFAULT NULL auto_increment PRIMARY KEY"
-      types[:integer] = { :name => 'int', :limit => 4 }
-      types[:decimal] = { :name => "decimal" }
-      types[:timestamp] = { :name => "datetime" }
-      types[:datetime][:limit] = nil
-      types
-    end
-
     ADAPTER_NAME = 'MySQL'.freeze
 
     def adapter_name #:nodoc:
@@ -314,6 +305,7 @@ module ArJdbc
 
     # SCHEMA STATEMENTS ========================================
 
+    # @deprecated no longer used - handled with (AR built-in) Rake tasks
     def structure_dump # :nodoc:
       # NOTE: due AR (2.3-3.2) compatibility views are not included
       if supports_views?

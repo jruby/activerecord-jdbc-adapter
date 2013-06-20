@@ -5,7 +5,7 @@ require 'arjdbc/sqlite3/explain_support'
 
 module ArJdbc
   module SQLite3
-    
+
     def self.column_selector
       [ /sqlite/i, lambda { |cfg,col| col.extend(::ArJdbc::SQLite3::Column) } ]
     end
@@ -13,9 +13,9 @@ module ArJdbc
     def self.jdbc_connection_class
       ::ActiveRecord::ConnectionAdapters::SQLite3JdbcConnection
     end
-    
+
     module Column
-      
+
       # #override {JdbcColumn#init_column}
       def init_column(name, default, *args)
         if default =~ /NULL/
@@ -30,7 +30,7 @@ module ArJdbc
         return nil if value.nil?
         case type
         when :string then value
-        when :primary_key 
+        when :primary_key
           value.respond_to?(:to_i) ? value.to_i : ( value ? 1 : 0 )
         when :float    then value.to_f
         when :decimal  then self.class.value_to_decimal(value)
@@ -38,9 +38,9 @@ module ArJdbc
         else super
         end
       end
-      
+
       private
-      
+
       def simplified_type(field_type)
         case field_type
         when /boolean/i       then :boolean
@@ -85,25 +85,25 @@ module ArJdbc
 
         value
       end
-      
+
     end
 
     def self.arel2_visitors(config = nil)
       { 'sqlite3' => ::Arel::Visitors::SQLite, 'jdbcsqlite3' => ::Arel::Visitors::SQLite }
     end
-    
+
     def new_visitor(config = nil)
       visitor = ::Arel::Visitors::SQLite
       ( prepared_statements? ? visitor : bind_substitution(visitor) ).new(self)
     end if defined? ::Arel::Visitors::SQLite
-    
+
     # @see #bind_substitution
     class BindSubstitution < Arel::Visitors::SQLite # :nodoc:
       include Arel::Visitors::BindVisitor
     end if defined? Arel::Visitors::BindVisitor
-    
+
     ADAPTER_NAME = 'SQLite'.freeze
-    
+
     def adapter_name # :nodoc:
       ADAPTER_NAME
     end
@@ -114,6 +114,7 @@ module ArJdbc
       :text => { :name => "text" },
       :integer => { :name => "integer" },
       :float => { :name => "float" },
+      # :real => { :name=>"real" },
       :decimal => { :name => "decimal" },
       :datetime => { :name => "datetime" },
       :timestamp => { :name => "datetime" },
@@ -124,17 +125,11 @@ module ArJdbc
     }
 
     def native_database_types
-      types = super.merge(NATIVE_DATABASE_TYPES)
+      types = NATIVE_DATABASE_TYPES.dup
       types[:primary_key] = default_primary_key_type
       types
     end
 
-    def modify_types(types)
-      super(types)
-      types.merge! NATIVE_DATABASE_TYPES
-      types
-    end
-    
     def default_primary_key_type
       if supports_autoincrement?
         'integer PRIMARY KEY AUTOINCREMENT NOT NULL'
@@ -142,15 +137,15 @@ module ArJdbc
         'integer PRIMARY KEY NOT NULL'
       end
     end
-    
+
     def supports_ddl_transactions? # :nodoc:
       true # sqlite_version >= '2.0.0'
     end
-    
+
     def supports_savepoints? # :nodoc:
       sqlite_version >= '3.6.8'
     end
-    
+
     def supports_add_column? # :nodoc:
       sqlite_version >= '3.1.6'
     end
@@ -190,12 +185,12 @@ module ArJdbc
     def supports_index_sort_order? # :nodoc:
       true
     end
-    
+
     def sqlite_version
       @sqlite_version ||= select_value('SELECT sqlite_version(*)')
     end
     private :sqlite_version
-    
+
     def quote(value, column = nil)
       if value.kind_of?(String)
         column_type = column && column.type
@@ -212,7 +207,7 @@ module ArJdbc
     def quote_table_name_for_assignment(table, attr)
       quote_column_name(attr)
     end if ::ActiveRecord::VERSION::MAJOR > 3
-    
+
     def quote_column_name(name) # :nodoc:
       %Q("#{name.to_s.gsub('"', '""')}") # "' kludge for emacs font-lock
     end
@@ -226,13 +221,13 @@ module ArJdbc
         super
       end
     end
-    
+
     # NOTE: we have an extra binds argument at the end due 2.3 support.
     def insert_sql(sql, name = nil, pk = nil, id_value = nil, sequence_name = nil, binds = []) # :nodoc:
       execute(sql, name, binds)
       id_value || last_insert_id
     end
-    
+
     def tables(name = nil, table_name = nil) # :nodoc:
       sql = "SELECT name FROM sqlite_master WHERE type = 'table'"
       if table_name
@@ -247,7 +242,7 @@ module ArJdbc
     def table_exists?(table_name)
       table_name && tables(nil, table_name).any?
     end
-    
+
     # Returns 62. SQLite supports index names up to 64
     # characters. The rest is used by rails internally to perform
     # temporary rename operations
@@ -266,19 +261,19 @@ module ArJdbc
     def release_savepoint
       execute("RELEASE SAVEPOINT #{current_savepoint_name}")
     end
-    
+
     def recreate_database(name = nil, options = {}) # :nodoc:
       drop_database(name)
       create_database(name, options)
     end
-    
+
     def create_database(name = nil, options = {}) # :nodoc:
     end
 
     def drop_database(name = nil) # :nodoc:
       tables.each { |table| drop_table(table) }
     end
-    
+
     def select(sql, name = nil, binds = [])
       result = super # AR::Result (4.0) or Array (<= 3.2)
       if result.respond_to?(:columns) # 4.0
@@ -303,7 +298,7 @@ module ArJdbc
     def exec_insert(sql, name, binds, pk = nil, sequence_name = nil) # :nodoc:
       execute(sql, name, binds)
     end
-    
+
     def table_structure(table_name)
       sql = "PRAGMA table_info(#{quote_table_name(table_name)})"
       log(sql, 'SCHEMA') { @connection.execute_query_raw(sql) }
@@ -351,19 +346,19 @@ module ArJdbc
     end
 
     if ActiveRecord::VERSION::MAJOR >= 4
-      
+
     def remove_column(table_name, column_name, type = nil, options = {}) #:nodoc:
       alter_table(table_name) do |definition|
         definition.remove_column column_name
       end
     end
-      
+
     else
-      
+
     def remove_column(table_name, *column_names) #:nodoc:
       if column_names.empty?
         raise ArgumentError.new(
-          "You must specify at least one column name." + 
+          "You must specify at least one column name." +
           "  Example: remove_column(:people, :first_name)"
         )
       end
@@ -374,9 +369,9 @@ module ArJdbc
       end
     end
     alias :remove_columns :remove_column
-    
+
     end
-    
+
     def change_column_default(table_name, column_name, default) #:nodoc:
       alter_table(table_name) do |definition|
         definition[column_name].default = default
@@ -426,13 +421,13 @@ module ArJdbc
       # on 4.0 no longer re-defined (thus inherits default)
       "DEFAULT VALUES"
     end
-    
+
     def encoding
       select_value 'PRAGMA encoding'
     end
-    
+
     protected
-    
+
     include ArJdbc::MissingFunctionalityHelper
 
     def translate_exception(exception, message)
@@ -447,18 +442,18 @@ module ArJdbc
     def last_insert_id
       @connection.last_insert_row_id
     end
-    
+
     def last_inserted_id(result)
       last_insert_id
     end
-    
+
     private
-    
+
     def _execute(sql, name = nil)
       result = super
       self.class.insert?(sql) ? last_insert_id : result
     end
-    
+
   end
 end
 
@@ -466,7 +461,7 @@ module ActiveRecord::ConnectionAdapters
 
   # NOTE: SQLite3Column exists in native adapter since AR 4.0
   remove_const(:SQLite3Column) if const_defined?(:SQLite3Column)
-  
+
   class SQLite3Column < JdbcColumn
     include ArJdbc::SQLite3::Column
 
@@ -489,9 +484,9 @@ module ActiveRecord::ConnectionAdapters
       value
     end
   end
-  
+
   remove_const(:SQLite3Adapter) if const_defined?(:SQLite3Adapter)
-  
+
   class SQLite3Adapter < JdbcAdapter
     include ArJdbc::SQLite3
     include ArJdbc::SQLite3::ExplainSupport
@@ -503,13 +498,13 @@ module ActiveRecord::ConnectionAdapters
     def jdbc_column_class
       ::ActiveRecord::ConnectionAdapters::SQLite3Column
     end
-    
+
   end
 
   if ActiveRecord::VERSION::MAJOR <= 3
     remove_const(:SQLiteColumn) if const_defined?(:SQLiteColumn)
     SQLiteColumn = SQLite3Column
-    
+
     remove_const(:SQLiteAdapter) if const_defined?(:SQLiteAdapter)
 
     SQLiteAdapter = SQLite3Adapter
