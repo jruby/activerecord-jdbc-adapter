@@ -18,94 +18,60 @@ class PostgresqlDataTypeTest < Test::Unit::TestCase
   # self.use_transactional_fixtures = false
 
   def self.startup
-    execute <<_SQL
-CREATE TABLE postgresql_arrays (
-id SERIAL PRIMARY KEY,
-commission_by_quarter INTEGER[],
-nicknames TEXT[]
-);
-_SQL
+    execute "CREATE TABLE postgresql_arrays (" <<
+              " id SERIAL PRIMARY KEY," <<
+              " commission_by_quarter INTEGER[]," <<
+              " nicknames TEXT[]" <<
+            ");"
 
-  execute <<_SQL
-CREATE TABLE postgresql_uuids (
-id SERIAL PRIMARY KEY,
-guid uuid,
-compact_guid uuid
-);
-_SQL
+    execute "CREATE TABLE postgresql_uuids (" <<
+              " id SERIAL PRIMARY KEY," <<
+              " guid uuid," <<
+              " compact_guid uuid" <<
+            ");"
 
-  execute <<_SQL if supports_ranges?
-CREATE TABLE postgresql_ranges (
-id SERIAL PRIMARY KEY,
-date_range daterange,
-num_range numrange,
-ts_range tsrange,
-tstz_range tstzrange,
-int4_range int4range,
-int8_range int8range
-);
-_SQL
+    execute("CREATE TABLE postgresql_ranges (" <<
+              " id SERIAL PRIMARY KEY," <<
+              " date_range daterange," <<
+              " num_range numrange," <<
+              " ts_range tsrange," <<
+              " tstz_range tstzrange," <<
+              " int4_range int4range," <<
+              " int8_range int8range" <<
+            ");") if supports_ranges?
 
-    execute <<_SQL
-CREATE TABLE postgresql_tsvectors (
-id SERIAL PRIMARY KEY,
-text_vector tsvector
-);
-_SQL
+    execute "CREATE TABLE postgresql_tsvectors ( id SERIAL PRIMARY KEY, text_vector tsvector );"
 
-  execute <<_SQL
-CREATE TABLE postgresql_moneys (
-id SERIAL PRIMARY KEY,
-wealth MONEY
-);
-_SQL
+    execute "CREATE TABLE postgresql_moneys ( id SERIAL PRIMARY KEY, wealth MONEY );"
 
-  execute <<_SQL
-CREATE TABLE postgresql_numbers (
-id SERIAL PRIMARY KEY,
-single REAL,
-double DOUBLE PRECISION
-);
-_SQL
+    execute "CREATE TABLE postgresql_numbers (" <<
+              " id SERIAL PRIMARY KEY," <<
+              " single REAL," <<
+              " double DOUBLE PRECISION" <<
+            ");"
 
-  execute <<_SQL
-CREATE TABLE postgresql_times (
-id SERIAL PRIMARY KEY,
-time_interval INTERVAL,
-scaled_time_interval INTERVAL(6)
-);
-_SQL
+    execute "CREATE TABLE postgresql_times (" <<
+              " id SERIAL PRIMARY KEY," <<
+              " time_interval INTERVAL," <<
+              " scaled_time_interval INTERVAL(6)" <<
+            ");"
 
-  execute <<_SQL
-CREATE TABLE postgresql_network_addresses (
-id SERIAL PRIMARY KEY,
-cidr_address CIDR default '192.168.1.0/24',
-inet_address INET default '192.168.1.1',
-mac_address MACADDR default 'ff:ff:ff:ff:ff:ff'
-);
-_SQL
+    execute "CREATE TABLE postgresql_network_addresses (" <<
+              " id SERIAL PRIMARY KEY," <<
+              " cidr_address CIDR default '192.168.1.0/24'," <<
+              " inet_address INET default '192.168.1.1'," <<
+              " mac_address MACADDR default 'ff:ff:ff:ff:ff:ff'" <<
+            ");"
 
-  execute <<_SQL
-CREATE TABLE postgresql_bit_strings (
-id SERIAL PRIMARY KEY,
-bit_string BIT(8),
-bit_string_varying BIT VARYING(8)
-);
-_SQL
+    execute "CREATE TABLE postgresql_bit_strings (" <<
+              " id SERIAL PRIMARY KEY," <<
+              " bit_string BIT(8)," <<
+              " bit_string_varying BIT VARYING(8)" <<
+            ");"
 
-  execute <<_SQL
-CREATE TABLE postgresql_oids (
-id SERIAL PRIMARY KEY,
-obj_id OID
-);
-_SQL
+    execute "CREATE TABLE postgresql_oids ( id SERIAL PRIMARY KEY, obj_id OID );"
 
-  execute <<_SQL
-CREATE TABLE postgresql_timestamp_with_zones (
-id SERIAL PRIMARY KEY,
-time TIMESTAMP WITH TIME ZONE
-);
-_SQL
+    execute "CREATE TABLE postgresql_timestamp_with_zones ( id SERIAL PRIMARY KEY, time TIMESTAMP WITH TIME ZONE );"
   end
 
   def self.shutdown
@@ -663,7 +629,11 @@ _SQL
 
   def test_invalid_hex_bit_string
     @first_bit_string.bit_string = 'FF'
-    assert_raise(ActiveRecord::StatementInvalid) { assert @first_bit_string.save }
+    disable_logger do
+      assert_raise(ActiveRecord::StatementInvalid) do
+        @first_bit_string.save
+      end
+    end
   end if ar_version('4.0')
 
   def test_update_oid
@@ -673,40 +643,40 @@ _SQL
     assert_equal new_value, @first_oid.reload.obj_id
   end
 
-#  def test_timestamp_with_zone_values_with_rails_time_zone_support
-#    old_tz = ActiveRecord::Base.time_zone_aware_attributes
-#    old_default_tz = ActiveRecord::Base.default_timezone
-#
-#    ActiveRecord::Base.time_zone_aware_attributes = true
-#    ActiveRecord::Base.default_timezone = :utc
-#
-#    @connection.reconnect!
-#
-#    @first_timestamp_with_zone = PostgresqlTimestampWithZone.find(1)
-#    assert_equal Time.utc(2010,1,1, 11,0,0), @first_timestamp_with_zone.time
-#    assert_instance_of Time, @first_timestamp_with_zone.time
-#  ensure
-#    ActiveRecord::Base.default_timezone = old_default_tz
-#    ActiveRecord::Base.time_zone_aware_attributes = old_tz
-#    @connection.reconnect!
-#  end
-#
-#  def test_timestamp_with_zone_values_without_rails_time_zone_support
-#    old_tz = ActiveRecord::Base.time_zone_aware_attributes
-#    old_default_tz = ActiveRecord::Base.default_timezone
-#
-#    ActiveRecord::Base.time_zone_aware_attributes = false
-#    ActiveRecord::Base.default_timezone = :local
-#
-#    @connection.reconnect!
-#
-#    @first_timestamp_with_zone = PostgresqlTimestampWithZone.find(1)
-#    assert_equal Time.utc(2010,1,1, 11,0,0), @first_timestamp_with_zone.time
-#    assert_instance_of Time, @first_timestamp_with_zone.time
-#  ensure
-#    ActiveRecord::Base.default_timezone = old_default_tz
-#    ActiveRecord::Base.time_zone_aware_attributes = old_tz
-#    @connection.reconnect!
-#  end
+  def test_timestamp_with_zone_values_with_rails_time_zone_support
+    old_tz = ActiveRecord::Base.time_zone_aware_attributes
+    old_default_tz = ActiveRecord::Base.default_timezone
 
-end # if Test::Unit::TestCase.ar_version('4.0')
+    ActiveRecord::Base.time_zone_aware_attributes = true
+    ActiveRecord::Base.default_timezone = :utc
+
+    @connection.reconnect!
+
+    @first_timestamp_with_zone = PostgresqlTimestampWithZone.find(1)
+    assert_equal Time.utc(2010,1,1, 11,0,0), @first_timestamp_with_zone.time
+    assert_instance_of Time, @first_timestamp_with_zone.time
+  ensure
+    ActiveRecord::Base.default_timezone = old_default_tz
+    ActiveRecord::Base.time_zone_aware_attributes = old_tz
+    @connection.reconnect!
+  end if ar_version('3.0')
+
+  def test_timestamp_with_zone_values_without_rails_time_zone_support
+    old_tz = ActiveRecord::Base.time_zone_aware_attributes
+    old_default_tz = ActiveRecord::Base.default_timezone
+
+    ActiveRecord::Base.time_zone_aware_attributes = false
+    ActiveRecord::Base.default_timezone = :local
+
+    @connection.reconnect!
+
+    @first_timestamp_with_zone = PostgresqlTimestampWithZone.find(1)
+    assert_equal Time.utc(2010,1,1, 11,0,0), @first_timestamp_with_zone.time
+    assert_instance_of Time, @first_timestamp_with_zone.time
+  ensure
+    ActiveRecord::Base.default_timezone = old_default_tz
+    ActiveRecord::Base.time_zone_aware_attributes = old_tz
+    @connection.reconnect!
+  end if ar_version('3.0')
+
+end
