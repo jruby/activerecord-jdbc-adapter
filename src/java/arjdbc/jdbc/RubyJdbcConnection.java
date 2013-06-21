@@ -1113,8 +1113,8 @@ public class RubyJdbcConnection extends RubyObject {
         return value;
     }
 
-    protected IRubyObject getConfigValue(final ThreadContext context, final String key) {
-        final IRubyObject config = getInstanceVariable("@config");
+    protected final IRubyObject getConfigValue(final ThreadContext context, final String key) {
+        final IRubyObject config = callMethod(context, "config");
         return config.callMethod(context, "[]", context.getRuntime().newSymbol(key));
     }
 
@@ -2499,9 +2499,11 @@ public class RubyJdbcConnection extends RubyObject {
     private <T> T withConnection(final ThreadContext context, final boolean handleException, final Callable<T> block)
         throws RaiseException, RuntimeException, SQLException {
 
-        Throwable exception = null; int tries = 1; int i = 0;
+        Throwable exception = null; int retry = 0; int i = 0;
 
-        while ( i++ < tries ) {
+        do {
+            if ( retry > 0 ) reconnect(context); // we're retrying running block
+
             final Connection connection = getConnection(true);
             boolean autoCommit = true; // retry in-case getAutoCommit throws
             try {
@@ -2512,18 +2514,21 @@ public class RubyJdbcConnection extends RubyObject {
                 exception = e;
 
                 if ( autoCommit ) { // do not retry if (inside) transactions
-                    if ( i == 1 ) {
+                    if ( i == 0 ) {
                         IRubyObject retryCount = getConfigValue(context, "retry_count");
-                        tries = (int) retryCount.convertToInteger().getLongValue();
-                        if ( tries <= 0 ) tries = 1;
+                        if ( ! retryCount.isNil() ) {
+                            retry = (int) retryCount.convertToInteger().getLongValue();
+                        }
                     }
-                    if ( ! isConnectionValid(context, connection) ) {
-                        reconnect(context); continue; // retry connection (block) again
+                    if ( isConnectionValid(context, connection) ) {
+                        break; // connection not broken yet failed (do not retry)
                     }
-                    break; // connection not broken yet failed
+                    // we'll reconnect and retry calling block again
                 }
+                else break;
             }
-        }
+        } while ( i++ < retry ); // i == 0, retry == 1 means we should retry once
+
         // (retry) loop ended and we did not return ... exception != null
         if ( handleException ) {
             return handleException(context, getCause(exception)); // throws
