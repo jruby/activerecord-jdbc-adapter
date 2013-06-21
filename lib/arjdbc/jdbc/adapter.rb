@@ -26,7 +26,12 @@ module ActiveRecord
           config, logger, connection = logger, connection, nil
         end
 
-        @config = config
+        @config = config.respond_to?(:symbolize_keys) ? config.symbolize_keys : config
+        # NOTE: JDBC 4.0 drivers support checking if connection isValid
+        # thus no need to @config[:connection_alive_sql] ||= 'SELECT 1'
+        #
+        # NOTE: setup to retry 5-times previously - maybe do not set at all ?
+        @config[:retry_count] ||= 1
 
         @config[:adapter_spec] = adapter_spec(@config) unless @config.key?(:adapter_spec)
         spec = @config[:adapter_spec]
@@ -39,7 +44,7 @@ module ActiveRecord
         klass = @config[:adapter_class]
         extend spec if spec && ( ! klass || klass == JdbcAdapter)
 
-        connection.adapter = self # prepares native database types
+        connection.adapter = self
 
         # NOTE: should not be necessary for JNDI due reconnect! on checkout :
         configure_connection if respond_to?(:configure_connection)

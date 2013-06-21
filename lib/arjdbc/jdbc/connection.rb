@@ -1,19 +1,14 @@
 module ActiveRecord
   module ConnectionAdapters
-    # @note this class is mostly implemented in Java: *RubyJdbcConnection.java*
+    # JDBC (connection) base class, custom adapters we support likely extend
+    # this class. For maximum performance most of this class and the sub-classes
+    # we ship are implemented in Java, check: *RubyJdbcConnection.java*
     class JdbcConnection
 
-      # @native_database_types - setup properly by adapter= versus set_native_database_types.
-      #   This contains type information for the adapter.  Individual adapters can make tweaks
-      #   by defined modify_types
-      #
-      # @native_types - This is the default type settings sans any modifications by the
-      # individual adapter.  My guess is that if we loaded two adapters of different types
-      # then this is used as a base to be tweaked by each adapter to create @native_database_types
-
+      # Initializer implemented in Ruby.
+      # @note second argument now mandatory, only optional for compatibility
       def initialize(config, adapter = nil)
-        self.config = config
-        self.adapter = adapter if adapter
+        @config = config; @adapter = adapter
         @connection = nil; @jndi = nil
         # @stmts = {} # AR compatibility - statement cache not used
         setup_connection_factory
@@ -30,21 +25,9 @@ module ActiveRecord
 
       attr_reader :adapter, :config
 
-      def config=(config)
-        @config = config.symbolize_keys
-        # NOTE: JDBC 4.0 drivers support checking if connection isValid
-        # thus no need to @config[:connection_alive_sql] ||= 'SELECT 1'
-        @config[:retry_count] ||= 5
-        @config
-      end
-
-      # @note should not be called directly (pass adapter into #initialize)
+      # @deprecated no longer used (pass adapter into #initialize)
       # @see ActiveRecord::ConnectionAdapters::JdbcAdapter#initialize
-      def adapter=(adapter)
-        @adapter = adapter
-        @adapter.config.replace(config)
-      end
-      # protected :adapter=
+      def adapter=(adapter); @adapter = adapter; end
 
       def native_database_types
         JdbcTypeConverter.new(supported_data_types).choose_best_types
