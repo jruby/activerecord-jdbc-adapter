@@ -6,7 +6,7 @@ module ActiveRecord
     class JdbcConnection
 
       # Initializer implemented in Ruby.
-      # @note second argument now mandatory, only optional for compatibility
+      # @note second argument is mandatory, only optional for compatibility
       def initialize(config, adapter = nil)
         @config = config; @adapter = adapter
         @connection = nil; @jndi = nil

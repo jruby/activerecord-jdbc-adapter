@@ -36,15 +36,13 @@ module ActiveRecord
         @config[:adapter_spec] = adapter_spec(@config) unless @config.key?(:adapter_spec)
         spec = @config[:adapter_spec]
 
-        connection ||= jdbc_connection_class(spec).new(@config)
+        connection ||= jdbc_connection_class(spec).new(@config, self)
 
         super(connection, logger)
 
         # kind of like `extend ArJdbc::MyDB if self.class == JdbcAdapter` :
         klass = @config[:adapter_class]
         extend spec if spec && ( ! klass || klass == JdbcAdapter)
-
-        connection.adapter = self
 
         # NOTE: should not be necessary for JNDI due reconnect! on checkout :
         configure_connection if respond_to?(:configure_connection)

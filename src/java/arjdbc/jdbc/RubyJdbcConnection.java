@@ -295,9 +295,32 @@ public class RubyJdbcConnection extends RubyObject {
         return context.getRuntime().getNil();
     }
 
+    /**
+     * Called during <code>initialize</code> after the connection factory
+     * has been set to check if we can connect and/or perform any initialization
+     * necessary.
+     * <br/>
+     * NOTE: connection has not been configured at this point,
+     * nor should we retry - we're creating a brand new JDBC connection
+     *
+     * @param context
+     * @return connection
+     */
     @JRubyMethod(name = "init_connection")
-    public IRubyObject init_connection(final ThreadContext context) {
-        return callMethod(context, "connection");
+    public IRubyObject init_connection(final ThreadContext context) throws SQLException {
+        final IRubyObject jdbcConnection = setConnection( newConnection() );
+        final IRubyObject adapter = callMethod("adapter"); // self.adapter
+        if ( ! adapter.isNil() ) {
+            if ( adapter.respondsTo("init_connection") ) {
+                adapter.callMethod(context, "init_connection", this);
+            }
+        }
+        else {
+            callMethod(context, "warn",
+                context.getRuntime().newString("WARN: adapter not set for: " + inspect() +
+                    " make sure you pass it on initialize(config, adapter)"));
+        }
+        return jdbcConnection;
     }
 
     @JRubyMethod(name = "connection")
@@ -344,14 +367,14 @@ public class RubyJdbcConnection extends RubyObject {
         try {
             final Connection connection = newConnection();
             final IRubyObject result = setConnection( connection );
-            final IRubyObject adapter = this.callMethod("adapter");
+            final IRubyObject adapter = callMethod("adapter");
             if ( ! adapter.isNil() ) {
                 if ( adapter.respondsTo("configure_connection") ) {
                     adapter.callMethod(context, "configure_connection");
                 }
             }
             else {
-                // NOTE: we should probably warn here about adapter not set ?!?
+                // NOTE: we warn on init_connection - should be enough
             }
             return result;
         }
