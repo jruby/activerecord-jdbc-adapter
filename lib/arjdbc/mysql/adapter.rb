@@ -296,11 +296,11 @@ module ArJdbc
 
     # NOTE: all handled by super we override only to have save-point logs :
 
-    #def supports_savepoints? # :nodoc:
-    #  true
-    #end
+    def supports_savepoints? # :nodoc:
+      true
+    end
 
-    def create_savepoint(name = current_savepoint_name)
+    def create_savepoint(name = current_savepoint_name(true))
       log("SAVEPOINT #{name}", 'Savepoint') { super }
     end
 

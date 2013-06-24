@@ -332,6 +332,9 @@ public class RubyJdbcConnection extends RubyObject {
 
     @JRubyMethod(name = "rollback_savepoint", required = 1)
     public IRubyObject rollback_savepoint(final ThreadContext context, final IRubyObject name) {
+        if ( name == null || name.isNil() ) {
+            throw context.getRuntime().newArgumentError("nil savepoint name given");
+        }
         final Connection connection = getConnection(true);
         try {
             Savepoint savepoint = getSavepoints(context).get(name);
@@ -348,6 +351,9 @@ public class RubyJdbcConnection extends RubyObject {
 
     @JRubyMethod(name = "release_savepoint", required = 1)
     public IRubyObject release_savepoint(final ThreadContext context, final IRubyObject name) {
+        if ( name == null || name.isNil() ) {
+            throw context.getRuntime().newArgumentError("nil savepoint name given");
+        }
         final Connection connection = getConnection(true);
         try {
             Object savepoint = getSavepoints(context).remove(name);
@@ -367,8 +373,8 @@ public class RubyJdbcConnection extends RubyObject {
     }
 
     // NOTE: this is iternal API - not to be used by user-code !
-    @JRubyMethod(name = "set_savepoint_names")
-    public IRubyObject set_savepoints(final ThreadContext context) {
+    @JRubyMethod(name = "marked_savepoint_names")
+    public IRubyObject marked_savepoint_names(final ThreadContext context) {
         if ( hasInstanceVariable("@savepoints") ) {
             Map<IRubyObject, Savepoint> savepoints = getSavepoints(context);
             final RubyArray names = context.getRuntime().newArray();
@@ -383,7 +389,7 @@ public class RubyJdbcConnection extends RubyObject {
     }
 
     @SuppressWarnings("unchecked")
-    private Map<IRubyObject, Savepoint> getSavepoints(final ThreadContext context) {
+    protected Map<IRubyObject, Savepoint> getSavepoints(final ThreadContext context) {
         if ( hasInstanceVariable("@savepoints") ) {
             IRubyObject savepoints = getInstanceVariable("@savepoints");
             return (Map<IRubyObject, Savepoint>) savepoints.toJava(Map.class);
@@ -395,7 +401,7 @@ public class RubyJdbcConnection extends RubyObject {
         }
     }
 
-    private boolean resetSavepoints(final ThreadContext context) {
+    protected boolean resetSavepoints(final ThreadContext context) {
         if ( hasInstanceVariable("@savepoints") ) {
             removeInstanceVariable("@savepoints");
             return true;

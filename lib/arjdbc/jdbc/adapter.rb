@@ -308,7 +308,7 @@ module ActiveRecord
       # Creates a (transactional) save-point.
       # @note unlike AR API it is allowed to pass an arbitrary name
       # @return save-point name (even if nil passed will be generated)
-      def create_savepoint(name = current_savepoint_name)
+      def create_savepoint(name = current_savepoint_name(true))
         @connection.create_savepoint(name)
       end
 
@@ -323,7 +323,8 @@ module ActiveRecord
       end
 
       def current_savepoint_name(create = nil)
-        @connection.set_savepoint_names.last || "active_record_#{open_transactions}"
+        return "active_record_#{open_transactions}" if create
+        @connection.marked_savepoint_names.last || "active_record_#{open_transactions}"
       end
 
       # Executes +sql+ statement in the context of this connection using
