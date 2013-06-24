@@ -250,16 +250,16 @@ module ArJdbc
       index_name_length - 2
     end
 
-    def create_savepoint
-      execute("SAVEPOINT #{current_savepoint_name}")
+    def create_savepoint(name = current_savepoint_name(true))
+      log("SAVEPOINT #{name}", 'Savepoint') { super }
     end
 
-    def rollback_to_savepoint
-      execute("ROLLBACK TO SAVEPOINT #{current_savepoint_name}")
+    def rollback_to_savepoint(name = current_savepoint_name)
+      log("ROLLBACK TO SAVEPOINT #{name}", 'Savepoint') { super }
     end
 
-    def release_savepoint
-      execute("RELEASE SAVEPOINT #{current_savepoint_name}")
+    def release_savepoint(name = current_savepoint_name)
+      log("RELEASE SAVEPOINT #{name}", 'Savepoint') { super }
     end
 
     def recreate_database(name = nil, options = {}) # :nodoc:
