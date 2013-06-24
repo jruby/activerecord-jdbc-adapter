@@ -366,6 +366,22 @@ public class RubyJdbcConnection extends RubyObject {
         }
     }
 
+    // NOTE: this is iternal API - not to be used by user-code !
+    @JRubyMethod(name = "set_savepoint_names")
+    public IRubyObject set_savepoints(final ThreadContext context) {
+        if ( hasInstanceVariable("@savepoints") ) {
+            Map<IRubyObject, Savepoint> savepoints = getSavepoints(context);
+            final RubyArray names = context.getRuntime().newArray();
+            for ( Map.Entry<IRubyObject, ?> entry : savepoints.entrySet() ) {
+                names.add( entry.getKey() ); // keys are RubyString instances
+            }
+            return names;
+        }
+        else {
+            return context.getRuntime().newEmptyArray();
+        }
+    }
+
     @SuppressWarnings("unchecked")
     private Map<IRubyObject, Savepoint> getSavepoints(final ThreadContext context) {
         if ( hasInstanceVariable("@savepoints") ) {
