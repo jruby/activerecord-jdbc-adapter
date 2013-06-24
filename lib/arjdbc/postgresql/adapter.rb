@@ -623,28 +623,26 @@ module ArJdbc
       postgresql_version >= 90200
     end if AR4_COMPAT
 
-    def supports_savepoints? # :nodoc:
-      true
-    end
-
     def supports_transaction_isolation?(level = nil)
       true
     end
 
-    def index_algorithms
-      { :concurrently => 'CONCURRENTLY' }
+    # NOTE: all handled by super we override only to have save-point logs :
+
+    def supports_savepoints? # :nodoc:
+      true
     end
 
-    def create_savepoint
-      execute("SAVEPOINT #{current_savepoint_name}")
+    def create_savepoint(name = current_savepoint_name(true))
+      log("SAVEPOINT #{name}", 'Savepoint') { super }
     end
 
-    def rollback_to_savepoint
-      execute("ROLLBACK TO SAVEPOINT #{current_savepoint_name}")
+    def rollback_to_savepoint(name = current_savepoint_name)
+      log("ROLLBACK TO SAVEPOINT #{name}", 'Savepoint') { super }
     end
 
-    def release_savepoint
-      execute("RELEASE SAVEPOINT #{current_savepoint_name}")
+    def release_savepoint(name = current_savepoint_name)
+      log("RELEASE SAVEPOINT #{name}", 'Savepoint') { super }
     end
 
     def supports_extensions? # :nodoc:
@@ -673,6 +671,10 @@ module ArJdbc
       else
         []
       end
+    end
+
+    def index_algorithms
+      { :concurrently => 'CONCURRENTLY' }
     end
 
     # Set the authorized user for this session
