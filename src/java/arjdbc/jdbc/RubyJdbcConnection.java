@@ -46,12 +46,15 @@ import java.sql.SQLException;
 import java.sql.SQLXML;
 import java.sql.Statement;
 import java.sql.Date;
+import java.sql.Savepoint;
 import java.sql.Time;
 import java.sql.Timestamp;
 import java.sql.Types;
 import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.jruby.Ruby;
 import org.jruby.RubyArray;
@@ -225,6 +228,7 @@ public class RubyJdbcConnection extends RubyObject {
             return withConnection(context, false, new Callable<IRubyObject>() {
                 public IRubyObject call(final Connection connection) throws SQLException {
                     connection.setAutoCommit(false);
+
                     if ( isolation != null && ! isolation.isNil() ) {
                         final int level = mapTransactionIsolationLevel(isolation);
                         try {
@@ -252,6 +256,7 @@ public class RubyJdbcConnection extends RubyObject {
             if ( ! connection.getAutoCommit() ) {
                 try {
                     connection.commit();
+                    resetSavepoints(context); // if any
                     return context.getRuntime().newBoolean(true);
                 }
                 finally {
@@ -272,6 +277,7 @@ public class RubyJdbcConnection extends RubyObject {
             if ( ! connection.getAutoCommit() ) {
                 try {
                     connection.rollback();
+                    resetSavepoints(context); // if any
                     return context.getRuntime().newBoolean(true);
                 } finally {
                     connection.setAutoCommit(true);
@@ -282,6 +288,103 @@ public class RubyJdbcConnection extends RubyObject {
         catch (SQLException e) {
             return handleException(context, e);
         }
+    }
+
+    @JRubyMethod(name = "supports_savepoints?")
+    public IRubyObject supports_savepoints_p(final ThreadContext context) throws SQLException {
+        return withConnection(context, new Callable<IRubyObject>() {
+            public IRubyObject call(final Connection connection) throws SQLException {
+                final DatabaseMetaData metaData = connection.getMetaData();
+                return context.getRuntime().newBoolean( metaData.supportsSavepoints() );
+            }
+        });
+    }
+
+    @JRubyMethod(name = "create_savepoint", optional = 1)
+    public IRubyObject create_savepoint(final ThreadContext context, final IRubyObject[] args) {
+        IRubyObject name = args.length > 0 ? args[0] : null;
+        final Connection connection = getConnection(true);
+        try {
+            connection.setAutoCommit(false);
+
+            final Savepoint savepoint ;
+            // NOTE: this will auto-start a DB transaction even invoked outside
+            // of a AR (Ruby) transaction (`transaction { ... create_savepoint }`)
+            // it would be nice if AR knew about this TX although that's kind of
+            // "really advanced" functionality - likely not to be implemented ...
+            if ( name != null && ! name.isNil() ) {
+                savepoint = connection.setSavepoint(name.toString());
+            }
+            else {
+                savepoint = connection.setSavepoint();
+                name = RubyString.newString( context.getRuntime(),
+                    Integer.toString( savepoint.getSavepointId() )
+                );
+            }
+            getSavepoints(context).put(name, savepoint);
+
+            return name;
+        }
+        catch (SQLException e) {
+            return handleException(context, e);
+        }
+    }
+
+    @JRubyMethod(name = "rollback_savepoint", required = 1)
+    public IRubyObject rollback_savepoint(final ThreadContext context, final IRubyObject name) {
+        final Connection connection = getConnection(true);
+        try {
+            Savepoint savepoint = getSavepoints(context).get(name);
+            if ( savepoint == null ) {
+                throw context.getRuntime().newRuntimeError("could not rollback savepoint: '" + name + "' (not set)");
+            }
+            connection.rollback(savepoint);
+            return context.getRuntime().getNil();
+        }
+        catch (SQLException e) {
+            return handleException(context, e);
+        }
+    }
+
+    @JRubyMethod(name = "release_savepoint", required = 1)
+    public IRubyObject release_savepoint(final ThreadContext context, final IRubyObject name) {
+        final Connection connection = getConnection(true);
+        try {
+            Object savepoint = getSavepoints(context).remove(name);
+            if ( savepoint == null ) {
+                throw context.getRuntime().newRuntimeError("could not release savepoint: '" + name + "' (not set)");
+            }
+            // NOTE: RubyHash.remove does not convert to Java as get does :
+            if ( ! ( savepoint instanceof Savepoint ) ) {
+                savepoint = ((IRubyObject) savepoint).toJava(Savepoint.class);
+            }
+            connection.releaseSavepoint((Savepoint) savepoint);
+            return context.getRuntime().getNil();
+        }
+        catch (SQLException e) {
+            return handleException(context, e);
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private Map<IRubyObject, Savepoint> getSavepoints(final ThreadContext context) {
+        if ( hasInstanceVariable("@savepoints") ) {
+            IRubyObject savepoints = getInstanceVariable("@savepoints");
+            return (Map<IRubyObject, Savepoint>) savepoints.toJava(Map.class);
+        }
+        else { // not using a RubyHash to preserve order on Ruby 1.8 as well :
+            Map<IRubyObject, Savepoint> savepoints = new LinkedHashMap<IRubyObject, Savepoint>(4);
+            setInstanceVariable("@savepoints", convertJavaToRuby(savepoints));
+            return savepoints;
+        }
+    }
+
+    private boolean resetSavepoints(final ThreadContext context) {
+        if ( hasInstanceVariable("@savepoints") ) {
+            removeInstanceVariable("@savepoints");
+            return true;
+        }
+        return false;
     }
 
     @JRubyMethod(name = "connection_factory")

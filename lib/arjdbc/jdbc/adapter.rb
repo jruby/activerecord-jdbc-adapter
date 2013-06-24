@@ -301,6 +301,38 @@ module ActiveRecord
         @connection.columns(table_name.to_s)
       end
 
+      def supports_savepoints?
+        @connection.supports_savepoints?
+      end
+
+      # Creates a (transactional) save-point.
+      # @note unlike AR API it is alloed to pass an arbitrary name
+      # @return save-point name (even if nil passed will be generated)
+      def create_savepoint(name = current_savepoint_name)
+        append_savepoint_name @connection.create_savepoint(name)
+      end
+
+      # Transaction rollback to a given save-point.
+      def rollback_to_savepoint(name = current_savepoint_name)
+        @connection.rollback_savepoint(name)
+      end
+
+      # Release a previously created save-point.
+      def release_savepoint(name = nil)
+        name ||= current_savepoint_name(:pop)
+        @connection.release_savepoint(name)
+      end
+
+      def current_savepoint_name(pop = nil)
+        names = ( @savepoint_names ||= [] )
+        pop ? names.pop : ( names.last || "active_record_#{names.size}" )
+      end
+
+      def append_savepoint_name(name)
+        ( @savepoint_names ||= [] ) << name
+      end
+      private :append_savepoint_name
+
       # Executes +sql+ statement in the context of this connection using
       # +binds+ as the bind substitutes.  +name+ is logged along with
       # the executed +sql+ statement.
