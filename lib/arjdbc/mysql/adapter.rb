@@ -94,7 +94,37 @@ module ArJdbc
         case field_type
         when /enum/i, /set/i then :string
         when /year/i then :integer
-        when /bit/i then :binary
+        # :tinyint : {:name=>"tinyint", :limit=>3}
+        # :"tinyint unsigned" : {:name=>"tinyint unsigned", :limit=>3}
+        # :bigint : {:name=>"bigint", :limit=>19}
+        # :"bigint unsigned" : {:name=>"bigint unsigned", :limit=>20}
+        # :integer : {:name=>"integer", :limit=>10}
+        # :"integer unsigned" : {:name=>"integer unsigned", :limit=>10}
+        # :int : {:name=>"int", :limit=>10}
+        # :"int unsigned" : {:name=>"int unsigned", :limit=>10}
+        # :mediumint : {:name=>"mediumint", :limit=>7}
+        # :"mediumint unsigned" : {:name=>"mediumint unsigned", :limit=>8}
+        # :smallint : {:name=>"smallint", :limit=>5}
+        # :"smallint unsigned" : {:name=>"smallint unsigned", :limit=>5}
+        when /int/i then :integer
+        when /double/i then :float # double precision (alias)
+        when 'bool' then :boolean
+        when 'char' then :string
+        # :mediumtext => {:name=>"mediumtext", :limit=>16777215}
+        # :longtext => {:name=>"longtext", :limit=>2147483647}
+        # :text => {:name=>"text"}
+        # :tinytext => {:name=>"tinytext", :limit=>255}
+        when /text/i then :text
+        when 'long varchar' then :text
+        # :"long varbinary" => {:name=>"long varbinary", :limit=>16777215}
+        # :varbinary => {:name=>"varbinary", :limit=>255}
+        when /binary/i then :binary
+        # :mediumblob => {:name=>"mediumblob", :limit=>16777215}
+        # :longblob => {:name=>"longblob", :limit=>2147483647}
+        # :blob => {:name=>"blob", :limit=>65535}
+        # :tinyblob => {:name=>"tinyblob", :limit=>255}
+        when /blob/i then :binary
+        when /^bit/i then :binary
         else
           super
         end
@@ -151,13 +181,22 @@ module ArJdbc
       :text => { :name => "text" },
       :integer => { :name => "int", :limit => 4 },
       :float => { :name => "float" },
-      :decimal => { :name => "decimal" },
+      # :double => { :name=>"double", :limit=>17 }
+      # :real => { :name=>"real", :limit=>17 }
+      :numeric => { :name => "numeric" }, # :limit => 65
+      :decimal => { :name => "decimal" }, # :limit => 65
       :datetime => { :name => "datetime" },
+      # TIMESTAMP has varying properties depending on MySQL version (SQL mode)
       :timestamp => { :name => "datetime" },
       :time => { :name => "time" },
       :date => { :name => "date" },
       :binary => { :name => "blob" },
-      :boolean => { :name => "tinyint", :limit => 1 }
+      :boolean => { :name => "tinyint", :limit => 1 },
+      # AR-JDBC added :
+      :bit => { :name => "bit" }, # :limit => 1
+      :enum => { :name => "enum" },
+      :set => { :name => "set" }, # :limit => 64
+      :char => { :name => "char" }, # :limit => 255
     }
 
     def native_database_types
@@ -171,11 +210,8 @@ module ArJdbc
     end
 
     def self.arel2_visitors(config)
-      {
-        'mysql' => ::Arel::Visitors::MySQL,
-        'mysql2' => ::Arel::Visitors::MySQL,
-        'jdbcmysql' => ::Arel::Visitors::MySQL
-      }
+      visitor = ::Arel::Visitors::MySQL
+      { 'mysql' => visitor, 'mysql2' => visitor, 'jdbcmysql' => visitor }
     end
 
     def new_visitor(config = nil)
