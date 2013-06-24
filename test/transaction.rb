@@ -131,6 +131,26 @@ module TransactionTestMethods
     end
   end
 
+  def test_release_savepoint
+    omit 'savepoins not supported' unless @supports_savepoints
+    connection = ActiveRecord::Base.connection
+    connection.transaction do
+      begin
+        connection.create_savepoint 'SP'
+
+        Entry.create! :title => '0'
+
+        connection.release_savepoint 'SP'
+
+        assert_raise do
+          disable_logger { connection.rollback_to_savepoint 'SP' }
+        end
+      ensure
+        disable_logger { connection.release_savepoint 'SP' rescue nil }
+      end
+    end
+  end
+
   def test_named_savepoint
     omit 'savepoins not supported' unless @supports_savepoints
     Entry.create! :title => '1'
@@ -168,7 +188,7 @@ module TransactionTestMethods
         assert_equal 1, Entry.count
       ensure
         savepoints_created.reverse.each do |name|
-          connection.release_savepoint(name)
+          disable_logger { connection.release_savepoint(name) rescue nil }
         end
       end
     end
