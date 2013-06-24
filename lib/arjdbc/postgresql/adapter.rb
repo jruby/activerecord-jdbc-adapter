@@ -243,6 +243,10 @@ module ArJdbc
         when 'uuid' then :string
           # Small and big integer types
         when /^(?:small|big)int$/ then :integer
+        # AR-JDBC added :
+        when 'bool' then :boolean
+        when 'char' then :string
+        when 'serial' then :integer
           # Pass through all types that are not specific to PostgreSQL.
         else
           super
@@ -288,6 +292,10 @@ module ArJdbc
         when /^(?:small|big)int$/ then :integer
         when /(num|date|tstz|ts|int4|int8)range$/
           field_type.to_sym
+        # AR-JDBC added :
+        when 'bool' then :boolean
+        when 'char' then :string
+        when 'serial' then :integer
         # Pass through all types that are not specific to PostgreSQL.
         else
           super
@@ -476,7 +484,8 @@ module ArJdbc
       :text => { :name => "text" },
       :integer => { :name => "integer" },
       :float => { :name => "float" },
-      :decimal => { :name => "decimal" },
+      :numeric => { :name => "numeric" },
+      :decimal => { :name => "decimal" }, # :limit => 1000
       :datetime => { :name => "timestamp" },
       :timestamp => { :name => "timestamp" },
       :time => { :name => "time" },
@@ -484,6 +493,12 @@ module ArJdbc
       :binary => { :name => "bytea" },
       :boolean => { :name => "boolean" },
       :xml => { :name => "xml" },
+      # AR-JDBC added :
+      #:timestamptz => { :name => "timestamptz" },
+      #:timetz => { :name => "timetz" },
+      :money => { :name=>"money" },
+      :char => { :name => "char" },
+      :serial => { :name => "serial" }, # auto-inc integer, bigserial, smallserial
     }
 
     NATIVE_DATABASE_TYPES.update({
@@ -1429,17 +1444,6 @@ module ArJdbc
 end
 
 module ActiveRecord::ConnectionAdapters
-
-  PostgreSQLJdbcConnection.class_eval do
-
-    # alias :java_native_database_types :set_native_database_types
-
-    # @override to prevent connection from loading hash from JDBC meta-data,
-    # which can be expensive. We can do this since {#native_database_types} is
-    # defined in the adapter to use a hash not relying on driver's meta-data
-    def set_native_database_types; @native_types = {}; end
-
-  end
 
   remove_const(:PostgreSQLColumn) if const_defined?(:PostgreSQLColumn)
 
