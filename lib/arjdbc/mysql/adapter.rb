@@ -7,6 +7,23 @@ require 'arjdbc/mysql/explain_support'
 module ArJdbc
   module MySQL
 
+    def self.jdbc_connection_class
+      ::ActiveRecord::ConnectionAdapters::MySQLJdbcConnection
+    end
+
+    def self.column_selector
+      [ /mysql/i, lambda { |_, column| column.extend(Column) } ]
+    end
+
+    def init_connection(jdbc_connection) # :nodoc:
+      meta = jdbc_connection.meta_data
+      if meta.driver_major_version < 5
+        raise "outdated driver version detected: '#{meta.driver_version}' please use >= 5.0"
+      elsif meta.driver_major_version == 5 && meta.driver_minor_version < 1
+        config[:connection_alive_sql] ||= 'SELECT 1' # need 5.1 for JDBC 4.0
+      end
+    end
+
     def configure_connection
       variables = config[:variables] || {}
       # By default, MySQL 'where id is null' selects the last inserted id. Turn this off.
@@ -41,14 +58,6 @@ module ArJdbc
 
       # ...and send them all in one query
       execute("SET #{encoding} #{variable_assignments}", :skip_logging)
-    end
-
-    def self.column_selector
-      [ /mysql/i, lambda { |_,column| column.extend(::ArJdbc::MySQL::Column) } ]
-    end
-
-    def self.jdbc_connection_class
-      ::ActiveRecord::ConnectionAdapters::MySQLJdbcConnection
     end
 
     def strict_mode? # strict_mode is default since AR 4.0
