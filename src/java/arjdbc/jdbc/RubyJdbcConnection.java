@@ -437,7 +437,7 @@ public class RubyJdbcConnection extends RubyObject {
         final IRubyObject adapter = callMethod("adapter"); // self.adapter
         if ( ! adapter.isNil() ) {
             if ( adapter.respondsTo("init_connection") ) {
-                adapter.callMethod(context, "init_connection", this);
+                adapter.callMethod(context, "init_connection", jdbcConnection);
             }
         }
         else {
