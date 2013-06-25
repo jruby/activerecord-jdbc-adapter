@@ -1,7 +1,7 @@
 require 'db/postgres'
 
 class PostgresNativeTypesTest < Test::Unit::TestCase
-  
+
   class CustomersMigration < ActiveRecord::Migration
     def self.up
       execute "DROP SEQUENCE IF EXISTS seq_pk_customers"
@@ -29,13 +29,15 @@ class PostgresNativeTypesTest < Test::Unit::TestCase
   end
 
   class Customer < ActiveRecord::Base; end
-  
+
   def self.startup
+    super
     CustomersMigration.up
   end
 
   def self.shutdown
     CustomersMigration.down
+    super
   end
 
   def column_type(column_name)
@@ -50,11 +52,11 @@ class PostgresNativeTypesTest < Test::Unit::TestCase
       assert_equal :string, column_type("uuid_should_be_string")
     end
   end
-  
+
   def test_interval_should_be_mapped_to_string
     assert_equal :string, column_type("interval_should_be_string")
   end
-  
+
   def test_bigint_serial_should_be_mapped_to_integer
     assert_equal :integer, column_type("bigint_serial_should_be_integer")
   end
@@ -90,11 +92,11 @@ class PostgresNativeTypesTest < Test::Unit::TestCase
   def test_bigint_should_be_mapped_to_integer
     assert_equal :integer, column_type("bigint_should_be_integer")
   end
-  
+
 end
 
 class PostgresTypeConversionTest < Test::Unit::TestCase
-  
+
   class BooleansMigration < ActiveRecord::Migration
     def self.up
       create_table :booleans do |t|
@@ -108,17 +110,19 @@ class PostgresTypeConversionTest < Test::Unit::TestCase
   end
 
   class Boolean < ActiveRecord::Base; end
-  
+
   def self.startup
+    super
     BooleansMigration.up
   end
 
   def self.shutdown
     BooleansMigration.down
+    super
   end
 
   def test_conversion_with_boolean_relation
     ActiveRecord::Base.connection.raw_connection.set_native_database_types
   end
-  
+
 end

@@ -18,6 +18,8 @@ class PostgresqlDataTypeTest < Test::Unit::TestCase
   # self.use_transactional_fixtures = false
 
   def self.startup
+    super
+    
     execute "CREATE TABLE postgresql_arrays (" <<
               " id SERIAL PRIMARY KEY," <<
               " commission_by_quarter INTEGER[]," <<
@@ -75,11 +77,12 @@ class PostgresqlDataTypeTest < Test::Unit::TestCase
   end
 
   def self.shutdown
-  %w(postgresql_arrays postgresql_uuids postgresql_ranges postgresql_tsvectors
-postgresql_moneys postgresql_numbers  postgresql_times postgresql_network_addresses
-postgresql_bit_strings postgresql_oids postgresql_timestamp_with_zones).each do |table_name|
-    execute "DROP TABLE IF EXISTS #{table_name}"
-  end
+    %w(postgresql_arrays postgresql_uuids postgresql_ranges postgresql_tsvectors
+  postgresql_moneys postgresql_numbers  postgresql_times postgresql_network_addresses
+  postgresql_bit_strings postgresql_oids postgresql_timestamp_with_zones).each do |table_name|
+      execute "DROP TABLE IF EXISTS #{table_name}"
+    end
+    super
   end
 
   def self.execute sql

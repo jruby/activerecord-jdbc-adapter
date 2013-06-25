@@ -3,7 +3,7 @@ require 'jdbc_common'
 require 'db/sqlite3'
 
 class SQLite3TypeConversionTest < Test::Unit::TestCase
-  
+
   if defined?(JRUBY_VERSION)
     JInteger = java.lang.Integer
   else
@@ -12,14 +12,14 @@ class SQLite3TypeConversionTest < Test::Unit::TestCase
       MAX_VALUE = 1024 * 1024 # arbitrary value ... we could pick
     end
   end
-  
-  def self.startup; DbTypeMigration.up; end
-  def self.shutdown; DbTypeMigration.down; end
-  
+
+  def self.startup; super; DbTypeMigration.up; end
+  def self.shutdown; DbTypeMigration.down; super; end
+
   TEST_BINARY = "Some random binary data % \0 and then some"
-  
+
   @@time_zone = Time.zone
-  
+
   setup do
     Time.zone = ActiveSupport::TimeZone['UTC']
     DbType.delete_all
@@ -43,7 +43,7 @@ class SQLite3TypeConversionTest < Test::Unit::TestCase
   end
 
   teardown { Time.zone = @@time_zone; DbType.delete_all }
-  
+
   def test_decimal
     types = DbType.first
     assert_equal((JInteger::MAX_VALUE + 1), types.sample_decimal)
@@ -69,15 +69,15 @@ class SQLite3TypeConversionTest < Test::Unit::TestCase
     assert_equal(1.0, types[0].sample_small_decimal)
     assert_equal(3.14, types[1].sample_small_decimal)
   end
-  
+
   def test_binary
     types = DbType.first
     assert_equal(TEST_BINARY, types.sample_binary)
   end
-  
+
   class DualEncoding < ActiveRecord::Base
   end
-  
+
   def test_quote_binary_column_escapes_it
     DualEncoding.connection.execute(<<-eosql)
       CREATE TABLE dual_encodings (
@@ -100,5 +100,5 @@ class SQLite3TypeConversionTest < Test::Unit::TestCase
       assert_equal "01 \x80", binary.data
     end
   end
-  
+
 end

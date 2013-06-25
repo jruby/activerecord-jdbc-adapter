@@ -14,7 +14,7 @@ class PostgresSimpleTest < Test::Unit::TestCase
   include DirtyAttributeTests
   include XmlColumnTests
   include CustomSelectTestMethods
-  
+
   def test_adapter_class_name_equals_native_adapter_class_name
     classname = connection.class.name[/[^:]*$/]
     assert_equal 'PostgreSQLAdapter', classname
@@ -35,9 +35,9 @@ class PostgresSimpleTest < Test::Unit::TestCase
   def test_multi_statement_support
     user = User.create! :login => 'jozko'
     Entry.create! :title => 'eee', :user_id => user.id
-    
+
     results = connection.execute "SELECT title FROM entries; SELECT login FROM users"
-    
+
     assert_equal 2, results.length
     assert_equal ["title"], results[0].first.keys
     assert_equal ["login"], results[1].first.keys
@@ -46,11 +46,11 @@ class PostgresSimpleTest < Test::Unit::TestCase
   def test_find_by_sql_WITH_statement
     user = User.create! :login => 'ferko'
     Entry.create! :title => 'aaa', :user_id => user.id
-    entries = Entry.find_by_sql '' + 
-      '( ' + 
+    entries = Entry.find_by_sql '' +
+      '( ' +
       'WITH EntryAndUser (title, login, updated_on) AS ' +
       ' ( ' +
-      ' SELECT e.title, u.login, e.updated_on ' + 
+      ' SELECT e.title, u.login, e.updated_on ' +
       ' FROM entries e INNER JOIN users u ON e.user_id = u.id ' +
       ' ) ' +
       'SELECT * FROM EntryAndUser ORDER BY title ASC ' +
@@ -59,20 +59,20 @@ class PostgresSimpleTest < Test::Unit::TestCase
     assert entries.first.title
     assert entries.first.login
   end
-  
+
   def test_create_xml_column
     return unless PG_VERSION >= 80300
     super
   end if ar_version('3.1')
   def xml_sql_type; 'xml'; end
-  
+
   def test_create_table_with_limits
     if ar_version('4.0')
       # No integer type has byte size 11. Use a numeric with precision 0 instead.
       connection.create_table :testings do |t|
         t.column :an_int, :integer, :limit => 8
       end
-      
+
       columns = connection.columns(:testings)
       an_int = columns.detect { |c| c.name == "an_int" }
       assert_equal "bigint", an_int.sql_type
@@ -82,7 +82,7 @@ class PostgresSimpleTest < Test::Unit::TestCase
           t.column :an_int, :integer, :limit => 11
         end
       end
-      
+
       columns = connection.columns(:testings)
       an_int = columns.detect { |c| c.name == "an_int" }
       assert_equal "integer", an_int.sql_type
@@ -99,7 +99,7 @@ class PostgresSimpleTest < Test::Unit::TestCase
     assert column = DbType.columns.find { |col| col.name == 'sample_integer_neg_default' }
     assert_equal -1, column.default
   end
-  
+
   def test_supports_standard_conforming_string
     assert([true, false].include?(connection.supports_standard_conforming_strings?))
   end
@@ -130,9 +130,9 @@ class PostgresSimpleTest < Test::Unit::TestCase
     assert_equal "'\\\\m it''s \\\\M'", connection.quote(s)
     connection.standard_conforming_strings = true
   end
-  
+
   include ExplainSupportTestMethods if ar_version("3.1")
-  
+
   def test_primary_key
     assert_equal 'id', connection.primary_key('entries')
     assert_equal 'custom_id', connection.primary_key('custom_pk_names')
@@ -145,7 +145,7 @@ class PostgresSimpleTest < Test::Unit::TestCase
   ensure
     connection.execute "DROP TABLE uid_table"
   end
-  
+
   def test_extensions
     if connection.supports_extensions?
       assert_include connection.extensions, 'plpgsql'
@@ -155,17 +155,19 @@ class PostgresSimpleTest < Test::Unit::TestCase
       assert_empty connection.extensions
     end
   end
-  
+
 end
 
 class PostgresTimestampTest < Test::Unit::TestCase
-  
+
   def self.startup
+    super
     DbTypeMigration.up
   end
 
   def self.shutdown
     DbTypeMigration.down
+    super
   end
 
   def test_string_is_character_varying
@@ -175,13 +177,13 @@ class PostgresTimestampTest < Test::Unit::TestCase
 
     assert_match(/^character varying/, sample_string.sql_type)
   end
-  
+
   def test_select_infinity
     d = DbType.find_by_sql("select 'infinity'::timestamp as sample_timestamp").first
     assert d.sample_timestamp.infinite?, "timestamp: #{d.sample_timestamp.inspect} should be infinite"
 
     d = DbType.find_by_sql("select '-infinity'::timestamp as sample_timestamp").first
-    
+
     time = d.sample_timestamp
     assert time.infinite?, "timestamp: #{time.inspect} should be infinte"
     assert_operator time, :<, 0
@@ -191,7 +193,7 @@ class PostgresTimestampTest < Test::Unit::TestCase
     if ar_version('4.0')
       # NOTE: likely an AR issue - it only works when time_zone_aware_attributes
       # are disabled otherwise TimeZoneConversion's define_method_attribute=(attr_name)
-      # does the following code ("infinite" time instance ending as nil): 
+      # does the following code ("infinite" time instance ending as nil):
       # time_with_zone = time.respond_to?(:in_time_zone) ? time.in_time_zone : nil
       tz_aware_attributes = ActiveRecord::Base.time_zone_aware_attributes
       begin
@@ -204,18 +206,18 @@ class PostgresTimestampTest < Test::Unit::TestCase
       do_test_save_infinity
     end
   end
-  
+
   def do_test_save_infinity
     d = DbType.new
     d.sample_datetime = 1.0 / 0.0
     d.save!
-    
+
     if ar_version('3.0')
       assert_equal 1.0 / 0.0, d.reload.sample_datetime # sample_timestamp
     else # 2.3
       assert_equal nil, d.reload.sample_datetime # d.sample_timestamp
     end
-    
+
     d = DbType.create!(:sample_timestamp => -1.0 / 0.0)
     if ar_version('3.0')
       assert_equal -1.0 / 0.0, d.sample_timestamp
@@ -224,17 +226,17 @@ class PostgresTimestampTest < Test::Unit::TestCase
     end
   end
   private :do_test_save_infinity
-  
+
   def test_bc_timestamp
     if RUBY_VERSION == '1.9.3' && defined?(JRUBY_VERSION) && JRUBY_VERSION =~ /1\.7\.3|4/
-      omit "Date.new(0) issue on JRuby 1.7.3/4" 
+      omit "Date.new(0) issue on JRuby 1.7.3/4"
     end
     # JRuby 1.7.3 (--1.9) bug: `Date.new(0) + 1.seconds` "1753-08-29 22:43:42 +0057"
     date = Date.new(0) - 1.second
     db_type = DbType.create!(:sample_timestamp => date)
     assert_equal date, db_type.reload.sample_timestamp
   end if ar_version('3.0')
-  
+
 end
 
 class PostgresDeserializationTest < Test::Unit::TestCase

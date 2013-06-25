@@ -3,14 +3,15 @@ require 'test_helper'
 require 'db/postgres'
 
 class PostgresqlLtreeTest < Test::Unit::TestCase
-  
+
   class Ltree < ActiveRecord::Base
     self.table_name = 'ltrees'
   end
 
   @@ltree_support = nil
-  
+
   def self.startup
+    super
     connection = ActiveRecord::Base.connection
     connection.transaction do
       disable_logger(connection) do
@@ -27,6 +28,7 @@ class PostgresqlLtreeTest < Test::Unit::TestCase
 
   def self.shutdown
     ActiveRecord::Base.connection.execute 'drop table if exists ltrees'
+    super
   end
 
   def test_column
@@ -47,5 +49,5 @@ class PostgresqlLtreeTest < Test::Unit::TestCase
     ltree = Ltree.first
     assert_equal '1.2.3', ltree.path
   end
-  
+
 end if Test::Unit::TestCase.ar_version('4.0')
