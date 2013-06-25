@@ -10,12 +10,15 @@ module ArJdbc
     require 'arjdbc/postgresql/explain_support'
     require 'arjdbc/postgresql/column_cast'
 
-    def self.column_selector
-      [ /postgre/i, lambda { |cfg, column| column.extend(Column) } ]
-    end
-
     def self.jdbc_connection_class
       ::ActiveRecord::ConnectionAdapters::PostgreSQLJdbcConnection
+    end
+
+    def init_connection(jdbc_connection) # :nodoc:
+      meta = jdbc_connection.meta_data
+      if meta.driver_version.index('JDBC3') # e.g. 'PostgreSQL 9.2 JDBC4 (build 1002)'
+        config[:connection_alive_sql] ||= 'SELECT 1'
+      end
     end
 
     def self.arel2_visitors(config)
@@ -24,6 +27,10 @@ module ArJdbc
         'jdbcpostgresql' => ::Arel::Visitors::PostgreSQL,
         'pg' => ::Arel::Visitors::PostgreSQL
       }
+    end
+
+    def self.column_selector
+      [ /postgre/i, lambda { |cfg, column| column.extend(Column) } ]
     end
 
     def new_visitor(config = nil)

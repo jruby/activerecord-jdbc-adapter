@@ -14,8 +14,7 @@ ArJdbc::ConnectionMethods.module_eval do
     config[:driver] ||= defined?(::Jdbc::Postgres.driver_name) ? ::Jdbc::Postgres.driver_name : 'org.postgresql.Driver'
     config[:adapter_spec] ||= ::ArJdbc::PostgreSQL
     config[:adapter_class] = ActiveRecord::ConnectionAdapters::PostgreSQLAdapter unless config.key?(:adapter_class)
-    # config[:connection_alive_sql] ||= 'SELECT 1'
-    
+
     jdbc_connection(config)
   end
   alias_method :jdbcpostgresql_connection, :postgresql_connection
