@@ -89,7 +89,8 @@ module RakeTestSupport
   end
 
   def teardown
-    verify_and_restore_stdout
+    stdout = restore_stdout
+    
     error = nil
     begin
       do_teardown
@@ -103,6 +104,8 @@ module RakeTestSupport
     @rails_env_set = nil
     @full_env_loaded = nil
     raise error if error
+
+    assert_stdout(stdout)
   end
 
   def do_teardown
@@ -155,23 +158,29 @@ module RakeTestSupport
     $stdout = StringIO.new
   end
 
-  def verify_and_restore_stdout
-    if @_stdout ||= nil
+  def assert_stdout(stdout)
+    return if stdout != false
+
+    if @_stdout_matcher.is_a?(String)
+      unless @_stdout_matcher.index("\n")
+        stdout = stdout.rstrip
+      end
+      assert_equal @_stdout_matcher, stdout
+    else
+      assert_match @_stdout_matcher, stdout
+    end
+  end
+  private :assert_stdout
+
+  def restore_stdout
+    if @_stdout ||= false
       _stdout = $stdout
       $stdout = @_stdout
 
-      output = _stdout.string
-      if @_stdout_matcher.is_a?(String)
-        unless @_stdout_matcher.index("\n")
-          output = output.rstrip
-        end
-        assert_equal @_stdout_matcher, output
-      else
-        assert_match @_stdout_matcher, output
-      end
+      _stdout.string
     end
   end
-  private :verify_and_restore_stdout
+  private :restore_stdout
 
   def rails_env
     'unittest'
