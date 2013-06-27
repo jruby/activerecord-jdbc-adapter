@@ -3,47 +3,53 @@ ArJdbc.load_java_part :PostgreSQL
 require 'ipaddr'
 
 module ArJdbc
+  # Strives to provide Rails built-in PostgreSQL adapter (API) compatibility.
   module PostgreSQL
 
-    AR4_COMPAT = ::ActiveRecord::VERSION::MAJOR > 3 unless const_defined?(:AR4_COMPAT) # :nodoc:
+    # @private
+    AR4_COMPAT = ::ActiveRecord::VERSION::MAJOR > 3 unless const_defined?(:AR4_COMPAT)
 
     require 'arjdbc/postgresql/explain_support'
     require 'arjdbc/postgresql/column_cast'
 
+    # @see ActiveRecord::ConnectionAdapters::JdbcAdapter#jdbc_connection_class
     def self.jdbc_connection_class
       ::ActiveRecord::ConnectionAdapters::PostgreSQLJdbcConnection
     end
 
-    def init_connection(jdbc_connection) # :nodoc:
+    # @private
+    def init_connection(jdbc_connection)
       meta = jdbc_connection.meta_data
       if meta.driver_version.index('JDBC3') # e.g. 'PostgreSQL 9.2 JDBC4 (build 1002)'
         config[:connection_alive_sql] ||= 'SELECT 1'
       end
     end
 
+    # @see ActiveRecord::ConnectionAdapters::JdbcAdapter#arel2_visitors
     def self.arel2_visitors(config)
-      {
-        'postgresql' => ::Arel::Visitors::PostgreSQL,
-        'jdbcpostgresql' => ::Arel::Visitors::PostgreSQL,
-        'pg' => ::Arel::Visitors::PostgreSQL
-      }
+      visitor = ::Arel::Visitors::PostgreSQL
+      { 'postgresql' => visitor, 'jdbcpostgresql' => visitor, 'pg' => visitor }
     end
 
-    def self.column_selector
-      [ /postgre/i, lambda { |cfg, column| column.extend(Column) } ]
-    end
-
+    # @override
     def new_visitor(config = nil)
       visitor = ::Arel::Visitors::PostgreSQL
       ( prepared_statements? ? visitor : bind_substitution(visitor) ).new(self)
     end if defined? ::Arel::Visitors::PostgreSQL
 
-    # @see #bind_substitution
-    class BindSubstitution < Arel::Visitors::PostgreSQL # :nodoc:
+    # @see ActiveRecord::ConnectionAdapters::JdbcAdapter#bind_substitution
+    # @private
+    class BindSubstitution < Arel::Visitors::PostgreSQL
       include Arel::Visitors::BindVisitor
     end if defined? Arel::Visitors::BindVisitor
 
-    # column behavior based on postgresql_adapter in rails
+    # @see ActiveRecord::ConnectionAdapters::JdbcColumn#column_types
+    def self.column_selector
+      [ /postgre/i, lambda { |cfg, column| column.extend(Column) } ]
+    end
+
+    # Column behavior based on PostgreSQL adapter in Rails.
+    # @see ActiveRecord::ConnectionAdapters::JdbcColumn
     module Column
 
       def self.included(base)
@@ -260,7 +266,8 @@ module ArJdbc
         end
       end
 
-      def simplified_type(field_type) # :nodoc:
+      # @private
+      def simplified_type(field_type)
         case field_type
         # Numeric and monetary types
         when /^(?:real|double precision)$/ then :float
@@ -330,10 +337,9 @@ module ArJdbc
 
     end # Column
 
-    # constants taken from postgresql_adapter in rails project
     ADAPTER_NAME = 'PostgreSQL'.freeze
 
-    def adapter_name # :nodoc:
+    def adapter_name
       ADAPTER_NAME
     end
 
@@ -362,7 +368,7 @@ module ArJdbc
     end
 
     # Configures the encoding, verbosity, schema search path, and time zone of the connection.
-    # This is called by #connect and should not be called manually.
+    # This is called on `connection.connect` and should not be called manually.
     def configure_connection
       #if encoding = config[:encoding]
         # The client_encoding setting is set by the driver and should not be altered.
@@ -397,7 +403,8 @@ module ArJdbc
       end
     end
 
-    ActiveRecordError = ::ActiveRecord::ActiveRecordError # :nodoc:
+    # @private
+    ActiveRecordError = ::ActiveRecord::ActiveRecordError
 
     # Maps logical Rails types to PostgreSQL-specific data types.
     def type_to_sql(type, limit = nil, precision = nil, scale = nil)
@@ -530,14 +537,14 @@ module ArJdbc
       NATIVE_DATABASE_TYPES
     end
 
-    # Adds `:array` option to the default set provided by the AbstractAdapter
+    # Adds `:array` option to the default set provided by the `AbstractAdapter`.
     def prepare_column_options(column, types)
       spec = super
       spec[:array] = 'true' if column.respond_to?(:array) && column.array
       spec
     end if AR4_COMPAT
 
-    # Adds `:array` as a valid migration key
+    # Adds `:array` as a valid migration key.
     def migration_keys
       super + [:array]
     end if AR4_COMPAT
@@ -550,7 +557,7 @@ module ArJdbc
     end
 
     # Enable standard-conforming strings if available.
-    def set_standard_conforming_strings # native adapter API compatibility
+    def set_standard_conforming_strings
       self.standard_conforming_strings=(true)
     end
 
@@ -569,7 +576,7 @@ module ArJdbc
       end
     end
 
-    def standard_conforming_strings? # :nodoc:
+    def standard_conforming_strings?
       if @standard_conforming_strings.nil?
         client_min_messages = self.client_min_messages
         begin
@@ -586,38 +593,38 @@ module ArJdbc
     end
 
     # Does PostgreSQL support migrations?
-    def supports_migrations? # :nodoc:
+    def supports_migrations?
       true
     end
 
     # Does PostgreSQL support finding primary key on non-Active Record tables?
-    def supports_primary_key? # :nodoc:
+    def supports_primary_key?
       true
     end
 
     # Does PostgreSQL support standard conforming strings?
-    def supports_standard_conforming_strings? # :nodoc:
+    def supports_standard_conforming_strings?
       standard_conforming_strings?
       @standard_conforming_strings != :unsupported
     end
 
-    def supports_hex_escaped_bytea? # :nodoc:
+    def supports_hex_escaped_bytea?
       postgresql_version >= 90000
     end
 
-    def supports_insert_with_returning? # :nodoc:
+    def supports_insert_with_returning?
       postgresql_version >= 80200
     end
 
-    def supports_ddl_transactions? # :nodoc:
+    def supports_ddl_transactions?
       true
     end
 
-    def supports_transaction_isolation? # :nodoc:
+    def supports_transaction_isolation?
       true
     end
 
-    def supports_index_sort_order? # :nodoc:
+    def supports_index_sort_order?
       true
     end
 
@@ -625,8 +632,8 @@ module ArJdbc
       true
     end if AR4_COMPAT
 
-    # Range datatypes weren't introduced until PostgreSQL 9.2
-    def supports_ranges? # :nodoc:
+    # Range data-types weren't introduced until PostgreSQL 9.2.
+    def supports_ranges?
       postgresql_version >= 90200
     end if AR4_COMPAT
 
@@ -634,25 +641,29 @@ module ArJdbc
       true
     end
 
-    # NOTE: all handled by super we override only to have save-point logs :
+    # NOTE: handled by JdbcAdapter we override only to have save-point in logs :
 
-    def supports_savepoints? # :nodoc:
+    # @override
+    def supports_savepoints?
       true
     end
 
+    # @override
     def create_savepoint(name = current_savepoint_name(true))
       log("SAVEPOINT #{name}", 'Savepoint') { super }
     end
 
+    # @override
     def rollback_to_savepoint(name = current_savepoint_name)
       log("ROLLBACK TO SAVEPOINT #{name}", 'Savepoint') { super }
     end
 
+    # @override
     def release_savepoint(name = current_savepoint_name)
       log("RELEASE SAVEPOINT #{name}", 'Savepoint') { super }
     end
 
-    def supports_extensions? # :nodoc:
+    def supports_extensions?
       postgresql_version >= 90200
     end # NOTE: only since AR-4.0 but should not hurt on other versions
 
@@ -684,7 +695,7 @@ module ArJdbc
       { :concurrently => 'CONCURRENTLY' }
     end
 
-    # Set the authorized user for this session
+    # Set the authorized user for this session.
     def session_auth=(user)
       execute "SET SESSION AUTHORIZATION #{user}"
     end
@@ -704,8 +715,8 @@ module ArJdbc
       default_seq || "#{table_name}_#{pk || default_pk || 'id'}_seq"
     end
 
-    # Resets sequence to the max value of the table's pk if present.
-    def reset_pk_sequence!(table, pk = nil, sequence = nil) #:nodoc:
+    # Resets sequence to the max value of the table's primary key if present.
+    def reset_pk_sequence!(table, pk = nil, sequence = nil)
       if ! pk || ! sequence
         default_pk, default_sequence = pk_and_sequence_for(table)
         pk ||= default_pk; sequence ||= default_sequence
@@ -720,7 +731,7 @@ module ArJdbc
     end
 
     # Find a table's primary key and sequence.
-    def pk_and_sequence_for(table) #:nodoc:
+    def pk_and_sequence_for(table)
       # try looking for a seq with a dependency on the table's primary key :
       result = select(<<-end_sql, 'PK and Serial Sequence')[0]
           SELECT attr.attname, seq.relname
@@ -960,7 +971,7 @@ module ArJdbc
     end
 
     # @deprecated no longer used - handled with (AR built-in) Rake tasks
-    def structure_dump # :nodoc:
+    def structure_dump
       database = @config[:database]
       if database.nil?
         if @config[:url] =~ /\/([^\/]*)$/
@@ -1013,7 +1024,7 @@ module ArJdbc
     # requires that the ORDER BY include the distinct column.
     #
     #   distinct("posts.id", "posts.created_at desc")
-    def distinct(columns, orders) #:nodoc:
+    def distinct(columns, orders)
       return "DISTINCT #{columns}" if orders.empty?
 
       # Construct a clean list of column names from the ORDER BY clause, removing
@@ -1040,7 +1051,7 @@ module ArJdbc
       sql.replace "SELECT * FROM (#{sql}) AS id_list ORDER BY #{order}"
     end
 
-    def quote(value, column = nil) # :nodoc:
+    def quote(value, column = nil)
       return super unless column
 
       case value
@@ -1156,7 +1167,7 @@ module ArJdbc
 
     # Quote date/time values for use in SQL input.
     # Includes microseconds if the value is a Time responding to usec.
-    def quoted_date(value) #:nodoc:
+    def quoted_date(value)
       result = super
       if value.acts_like?(:time) && value.respond_to?(:usec)
         "#{result}.#{sprintf("%06d", value.usec)}"
@@ -1165,11 +1176,11 @@ module ArJdbc
       result
     end
 
-    def supports_disable_referential_integrity? # :nodoc:
+    def supports_disable_referential_integrity?
       true
     end
 
-    def disable_referential_integrity # :nodoc:
+    def disable_referential_integrity
       if supports_disable_referential_integrity?
         begin
           execute(tables.collect { |name| "ALTER TABLE #{quote_table_name(name)} DISABLE TRIGGER ALL" }.join(";"))
@@ -1249,17 +1260,17 @@ module ArJdbc
       execute("ALTER TABLE #{quote_table_name(table_name)} ALTER #{quote_column_name(column_name)} #{null ? 'DROP' : 'SET'} NOT NULL")
     end
 
-    def rename_column(table_name, column_name, new_column_name) # :nodoc:
+    def rename_column(table_name, column_name, new_column_name)
       execute "ALTER TABLE #{quote_table_name(table_name)} RENAME COLUMN #{quote_column_name(column_name)} TO #{quote_column_name(new_column_name)}"
       rename_column_indexes(table_name, column_name, new_column_name) if respond_to?(:rename_column_indexes) # AR-4.0 SchemaStatements
     end
 
-    def add_index(table_name, column_name, options = {}) # :nodoc:
+    def add_index(table_name, column_name, options = {})
       index_name, index_type, index_columns, index_options, index_algorithm, index_using = add_index_options(table_name, column_name, options)
       execute "CREATE #{index_type} INDEX #{index_algorithm} #{quote_column_name(index_name)} ON #{quote_table_name(table_name)} #{index_using} (#{index_columns})#{index_options}"
     end if AR4_COMPAT
 
-    def remove_index!(table_name, index_name) # :nodoc:
+    def remove_index!(table_name, index_name)
       execute "DROP INDEX #{quote_table_name(index_name)}"
     end
 
@@ -1295,7 +1306,7 @@ module ArJdbc
     # Query implementation notes:
     #  - format_type includes the column size constraint, e.g. varchar(50)
     #  - ::regclass is a function that gives the id for a table name
-    def column_definitions(table_name) #:nodoc:
+    def column_definitions(table_name)
       select_rows(<<-end_sql, 'SCHEMA')
         SELECT a.attname, format_type(a.atttypid, a.atttypmod),
                pg_get_expr(d.adbin, d.adrelid), a.attnotnull, a.atttypid, a.atttypmod
@@ -1331,7 +1342,8 @@ module ArJdbc
       SQL
     end
 
-    IndexDefinition = ::ActiveRecord::ConnectionAdapters::IndexDefinition # :nodoc:
+    # @private
+    IndexDefinition = ::ActiveRecord::ConnectionAdapters::IndexDefinition
     if ActiveRecord::VERSION::MAJOR < 3 ||
         ( ActiveRecord::VERSION::MAJOR == 3 && ActiveRecord::VERSION::MINOR <= 1 )
       # NOTE: make sure we accept 6 arguments (>= 3.2) as well as 5 (<= 3.1) :
@@ -1395,8 +1407,8 @@ module ArJdbc
       result
     end
 
-    # #override due RETURNING clause - can't do an {#execute_insert}
-    def exec_insert(sql, name, binds, pk = nil, sequence_name = nil) # :nodoc:
+    # @override due RETURNING clause - can't do an `execute_insert`
+    def exec_insert(sql, name, binds, pk = nil, sequence_name = nil)
       execute(sql, name, binds)
     end
 
@@ -1439,8 +1451,7 @@ module ArJdbc
       end
     end
 
-    # taken from rails postgresql_adapter.rb
-    def extract_table_ref_from_insert_sql(sql) # :nodoc:
+    def extract_table_ref_from_insert_sql(sql)
       sql[/into\s+([^\(]*).*values\s*\(/i]
       $1.strip if $1
     end
@@ -1623,8 +1634,10 @@ module ActiveRecord::ConnectionAdapters
 
     # some QUOTING caching :
 
+    # @private
     @@quoted_table_names = {}
 
+    # @private
     def quote_table_name(name)
       unless quoted = @@quoted_table_names[name]
         quoted = super
@@ -1633,8 +1646,10 @@ module ActiveRecord::ConnectionAdapters
       quoted
     end
 
+    # @private
     @@quoted_column_names = {}
 
+    # @private
     def quote_column_name(name)
       unless quoted = @@quoted_column_names[name]
         quoted = super

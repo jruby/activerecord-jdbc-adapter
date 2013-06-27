@@ -1,5 +1,11 @@
 module ActiveRecord
   module ConnectionAdapters
+    # The base class for all of {JdbcAdapter}'s returned columns.
+    # Instances of {JdbcColumn} will get extended with "column-spec" modules
+    # (similar to how {JdbcAdapter} gets spec modules in) if the adapter spec
+    # module provided a `column_selector` (matcher) method for it's database
+    # specific type.
+    # @see JdbcAdapter#jdbc_column_class
     class JdbcColumn < Column
       attr_writer :limit, :precision
 
@@ -21,13 +27,16 @@ module ActiveRecord
         init_column(name, default, *args)
       end
 
+      # Additional column initialization for sub-classes.
       def init_column(*args); end
 
-      # NOTE: our custom #extract_value_from_default(default)
+      # Similar to `ActiveRecord`'s `extract_value_from_default(default)`.
+      # @return default value for a given column
       def default_value(value); value; end
 
       protected
 
+      # @private
       def call_discovered_column_callbacks(config)
         dialect = (config[:dialect] || config[:driver]).to_s
         for matcher, block in self.class.column_types
@@ -36,7 +45,9 @@ module ActiveRecord
       end
 
       public
-      
+
+      # Returns the available column types
+      # @return [Hash] of (matcher, block) pairs
       def self.column_types
         types = {}
         for mod in ::ArJdbc.modules
@@ -47,7 +58,7 @@ module ActiveRecord
         end
         types
       end
-      
+
     end
   end
 end
