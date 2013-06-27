@@ -4,7 +4,12 @@ gem 'activerecord'
 gem 'jruby-openssl', :platform => :jruby
 
 group :development do
-  gem 'ruby-debug', :require => nil
+  gem 'ruby-debug', :group => :development, :require => nil # if ENV['DEBUG']
+  group :doc do
+    gem 'yard', :require => nil
+    gem 'yard-method-overrides', :github => 'kares/yard-method-overrides', :require => nil
+    gem 'kramdown', :require => nil
+  end
 end
 
 gem 'appraisal', :require => nil

@@ -1,0 +1,4 @@
+--markup=markdown --markup-provider=kramdown
+--plugin method-overrides
+--title "ActiveRecord JDBC Adapter"
+--no-private --protected lib/**/*.rb - README.md RUNNING_TESTS.md LICENSE.txt
