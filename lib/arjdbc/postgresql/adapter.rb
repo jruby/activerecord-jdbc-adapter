@@ -1170,7 +1170,7 @@ module ArJdbc
     def quoted_date(value)
       result = super
       if value.acts_like?(:time) && value.respond_to?(:usec)
-        "#{result}.#{sprintf("%06d", value.usec)}"
+        result = "#{result}.#{sprintf("%06d", value.usec)}"
       end
       result = "#{result.sub(/^-/, '')} BC" if value.year < 0
       result
