@@ -16,6 +16,13 @@ class MysqlSimpleTest < Test::Unit::TestCase
   include XmlColumnTests
   include CustomSelectTestMethods
 
+  # MySQL does not support precision beyond seconds :
+  # DATETIME or TIMESTAMP value can include a trailing fractional seconds part
+  # in up to microseconds (6 digits) precision. Although this fractional part
+  # is recognized, it is discarded from values stored into DATETIME or TIMESTAMP
+  # columns. http://dev.mysql.com/doc/refman/5.1/en/date-and-time-literals.html
+  undef :test_save_timestamp_with_usec
+
   column_quote_char "`"
 
   def test_column_class_instantiation
@@ -97,7 +104,7 @@ class MysqlSimpleTest < Test::Unit::TestCase
     user_2 = User.create :login => 'user2'
     Entry.create :title => 'title1', :content => '', :rating => 0, :user_id => user_1.id
     Entry.create :title => 'title2', :content => '', :rating => 1, :user_id => user_2.id
-    
+
     old_entries_table_name = Entry.table_name
     old_users_table_name   = User.table_name
     database = MYSQL_CONFIG[:database]
@@ -116,34 +123,34 @@ class MysqlSimpleTest < Test::Unit::TestCase
   end
 
   include ExplainSupportTestMethods if ar_version("3.1")
-  
+
   def test_reports_server_version
     assert_instance_of Array, ActiveRecord::Base.connection.send(:version)
     assert_equal 3, ActiveRecord::Base.connection.send(:version).size
   end
-  
+
   def test_update_sql_public_and_returns_rows_affected
     ActiveRecord::Base.connection.update_sql "UPDATE entries SET title = NULL"
-    
+
     e1 = Entry.create! :title => 'a some', :content => 'brrrr', :rating => 10.8
     e2 = Entry.create! :title => 'another', :content => 'meee', :rating => 40.2
-    rows_affected = ActiveRecord::Base.connection.update_sql "UPDATE entries " + 
+    rows_affected = ActiveRecord::Base.connection.update_sql "UPDATE entries " +
       "SET content='updated content' WHERE rating > 10 AND title IS NOT NULL"
     assert_equal 2, rows_affected
     assert_equal 'updated content', e1.reload.content
     assert_equal 'updated content', e2.reload.content
   end
-  
+
   # NOTE: expected escape processing to be disabled by default for non-prepared statements
   def test_quoting_braces
     e = Entry.create! :title => '{'
     assert_equal "{", e.reload.title
     e = Entry.create! :title => '{}'
     assert_equal "{}", e.reload.title
-    
+
     e = Entry.create! :title => "\\'{}{"
     assert_equal "\\'{}{", e.reload.title
-    
+
     e = Entry.create! :title => '}{"\'}  \''
     assert_equal "}{\"'}  '", e.reload.title
   end
@@ -159,27 +166,27 @@ class MysqlSimpleTest < Test::Unit::TestCase
     column = DbType.columns.find { |col| col.name.to_s == 'sample_boolean' }
     assert_equal :boolean, column.type
     ActiveRecord::ConnectionAdapters::MysqlAdapter.emulate_booleans = false
-    
+
     DbType.reset_column_information
     column = DbType.columns.find { |col| col.name.to_s == 'sample_boolean' }
     assert_equal :integer, column.type
-    
+
     assert_equal 1, db_type.reload.sample_boolean
   ensure
     ArJdbc::MySQL.emulate_booleans = true
     DbType.reset_column_information
   end if ar_version('3.0')
-  
+
   def test_pk_and_sequence_for
     assert_equal [ 'id', nil ], connection.pk_and_sequence_for('entries')
   end
-  
+
   def test_mysql_indexes
     if ar_version('4.0')
       assert connection.class.const_defined?(:INDEX_TYPES)
     end
   end
-  
+
 end
 
 class MysqlHasManyThroughTest < Test::Unit::TestCase
