@@ -17,8 +17,8 @@ ActiveRecord::Base.time_zone_aware_attributes = true if ActiveRecord::Base.respo
 ActiveRecord::Base.default_timezone = :utc
 
 module MigrationSetup
-  
-  def setup 
+
+  def setup
     setup!
   end
 
@@ -62,24 +62,24 @@ module FixtureSetup
   include MigrationSetup
 
   @@_time_zone = Time.respond_to?(:zone) ? Time.zone : nil
-  
+
   def setup
     super
     #
     # just a random zone, unlikely to be local, and not UTC
     Time.zone = 'Moscow' if Time.respond_to?(:zone)
   end
-  
+
   def teardown
     super
     #
     Time.zone = @@_time_zone if Time.respond_to?(:zone)
   end
-  
+
 end
 
 module ColumnNameQuotingTests
-  
+
   def self.included(base)
     base.class_eval do
       @@column_quote_char = "\""
@@ -97,11 +97,11 @@ module ColumnNameQuotingTests
   end
 
   protected
-  
+
   def column_quote_char
     @@column_quote_char || "\""
   end
-  
+
 end
 
 module DirtyAttributeTests
@@ -109,7 +109,7 @@ module DirtyAttributeTests
   def test_partial_update_with_updated_at
     user = User.create!(:login => 'cicina')
     old_updated_at = 61.minutes.ago.in_time_zone
-    
+
     do_update_all(User, { :updated_at => old_updated_at }, :login => user.login)
 
     with_partial_updates User, false do
@@ -117,7 +117,7 @@ module DirtyAttributeTests
     end
 
     do_update_all(User, { :updated_at => old_updated_at }, :login => user.login)
-    
+
     with_partial_updates User, true do
       assert_queries(0) { user.save! }
       assert_datetime_equal old_updated_at, user.reload.updated_at
@@ -126,11 +126,11 @@ module DirtyAttributeTests
       assert_datetime_not_equal old_updated_at, user.reload.updated_at
     end
   end
-  
+
   def test_partial_update_with_updated_on
     entry = Entry.create!(:title => 'foo')
     old_updated_on = 25.hours.ago.beginning_of_day.in_time_zone
-    
+
     do_update_all(Entry, { :updated_on => old_updated_on }, :id => entry.id)
 
     with_partial_updates Entry, false do
@@ -138,7 +138,7 @@ module DirtyAttributeTests
     end
 
     do_update_all(Entry, { :updated_on => old_updated_on }, :id => entry.id)
-    
+
     with_partial_updates Entry, true do
       assert_queries(0) { 2.times { entry.save! } }
       assert_date_equal old_updated_on, entry.reload.updated_on
@@ -147,11 +147,11 @@ module DirtyAttributeTests
       assert_date_not_equal old_updated_on, entry.reload.updated_on
     end
   end
-  
+
   private
-  
+
   if ActiveRecord::VERSION::MAJOR > 3
-    
+
     def with_partial_updates(klass, on = true)
       old = klass.partial_writes?
       klass.partial_writes = on
@@ -159,9 +159,9 @@ module DirtyAttributeTests
     ensure
       klass.partial_writes = old
     end
-    
+
   else
-    
+
     def with_partial_updates(klass, on = true)
       old = klass.partial_updates?
       klass.partial_updates = on
@@ -169,9 +169,9 @@ module DirtyAttributeTests
     ensure
       klass.partial_updates = old
     end
-    
+
   end
-  
+
   def do_update_all(model, values, conditions)
     if ar_version('3.2')
       model.where(conditions).update_all(values)
@@ -179,7 +179,7 @@ module DirtyAttributeTests
       model.update_all(values, conditions)
     end
   end
-  
+
 end
 
 module SimpleTestMethods
@@ -233,7 +233,7 @@ module SimpleTestMethods
     title = "First post!"
     content = "Hello from JRuby on Rails!"
     rating = 205.76
-    
+
     post = Entry.new
     post.title = title
     post.content = content
@@ -255,7 +255,7 @@ module SimpleTestMethods
     rating = 205.76
     user = User.create! :login => "something"
     Entry.create! :title => title, :content => content, :rating => rating, :user => user
-    
+
     post = Entry.first
     assert_equal title, post.title
     assert_equal content, post.content
@@ -272,7 +272,7 @@ module SimpleTestMethods
     user = User.create! :login => "something"
     Entry.create! :title => '1', :content => '', :rating => 1.0, :user => user
     Entry.create! :title => '2', :content => '', :rating => 2.0, :user => user
-    
+
     prev_count = Entry.count
     entry = Entry.first
     entry.destroy
@@ -291,7 +291,7 @@ module SimpleTestMethods
   end
 
   if Time.respond_to?(:zone)
-    
+
     def test_save_time_with_utc
       current_zone = Time.zone
       default_zone = ActiveRecord::Base.default_timezone
@@ -323,7 +323,7 @@ module SimpleTestMethods
       e = DbType.create! :sample_datetime => time.to_datetime
       assert_equal time, e.reload.sample_datetime.localtime
     end
-    
+
   end
 
   def test_save_time
@@ -335,7 +335,7 @@ module SimpleTestMethods
 
     assert_time_equal time, e.reload.sample_time
   end
-  
+
   def test_save_timestamp
     timestamp = Time.utc(2012, 12, 18, 21, 10, 15, 0)
     e = DbType.create! :sample_datetime => Time.now
@@ -343,9 +343,8 @@ module SimpleTestMethods
     e.save!
     assert_timestamp_equal timestamp, e.reload.sample_timestamp
   end
-  
+
   def test_save_timestamp_with_usec
-    pend 'todo: support precision beyond seconds !?'
     timestamp = Time.utc(1942, 11, 30, 01, 53, 59, 123_456)
     e = DbType.create! :sample_timestamp => timestamp
     assert_timestamp_equal timestamp, e.reload.sample_timestamp
@@ -365,14 +364,14 @@ module SimpleTestMethods
     e.save!
     assert_equal 12.0, e.reload.sample_float
   end
-  
+
   def test_boolean
     e = DbType.create! :sample_float => 0
     assert_nil e.reload.sample_boolean # unset boolean should default to nil
 
     e.update_attributes :sample_boolean => false
     assert_equal false, e.reload.sample_boolean
-    
+
     e.sample_boolean = true
     e.save!
     assert_equal true, e.reload.sample_boolean
@@ -444,7 +443,7 @@ module SimpleTestMethods
     db_type = DbType.create!(:decimal_with_scale => test_value)
     assert_equal test_value, db_type.reload.decimal_with_scale
   end
-  
+
   def test_big_decimal
     test_value = 9876543210_9876543210_9876543210.0
     db_type = DbType.create!(:big_decimal => test_value)
@@ -452,14 +451,14 @@ module SimpleTestMethods
     assert_kind_of Bignum, db_type.big_decimal
     assert_equal test_value, db_type.big_decimal
   end
-  
+
   # NOTE: relevant on 4.0 as it started using empty_insert_statement_value
   def test_empty_insert_statement
     DbType.create!
     assert DbType.first
     assert_not_nil DbType.first.id
   end
-  
+
   def test_negative_default_value
     assert_equal(-1, DbType.columns_hash['sample_integer_neg_default'].default)
     assert_equal(-1, DbType.new.sample_integer_neg_default)
@@ -470,25 +469,25 @@ module SimpleTestMethods
     assert_equal 0, indexes.size
 
     connection.add_index :entries, :updated_on
-    connection.add_index :entries, [ :title, :user_id ], :unique => true, 
+    connection.add_index :entries, [ :title, :user_id ], :unique => true,
                          :name => 'x_entries_on_title_and_user_id' # <= 30 chars
 
     indexes = connection.indexes(:entries)
     assert_equal 2, indexes.size
-    
+
     assert_not_nil title_index = indexes.find { |index| index.unique }
 
     assert_equal "entries", title_index.table.to_s
     assert_true title_index.unique
     assert_equal [ 'title', 'user_id' ], title_index.columns
-    
+
     updated_index = (indexes - [ title_index ]).first
-    
+
     assert_equal "entries", updated_index.table.to_s
     assert_equal "index_entries_on_updated_on", updated_index.name
     assert ! updated_index.unique
     assert_equal [ 'updated_on' ], updated_index.columns
-    
+
     connection.remove_index :entries, :updated_on
     indexes = connection.indexes(:entries)
     assert_equal 1, indexes.size
@@ -514,7 +513,7 @@ module SimpleTestMethods
     rating = 205.76
     user = User.create! :login => "something"
     Entry.create! :title => title, :content => content, :rating => rating, :user => user
-    
+
     e = Entry.new(:title => title, :content => content, :rating => ' ')
     assert e.valid?
   end
@@ -654,7 +653,7 @@ module SimpleTestMethods
     Entry.connection.send :substitute_binds, sql, binds
     assert_equal binds_dup, binds
   end
-  
+
   def test_find_by_sql_with_binds
     Entry.create!(:title => 'qqq', :content => '', :rating => 4)
     Entry.create!(:title => 'www', :content => '', :rating => 5)
@@ -678,12 +677,12 @@ module SimpleTestMethods
   ensure
     #ActiveRecord::Base.logger.level = Logger::WARN
   end
-  
+
   def test_create_bind_param_with_q_mark
     str = "Don' botharrr talkin' like one, savvy? Right?!?"
     db_type = DbType.create! :sample_string => str.dup
     assert_equal str, db_type.reload.sample_string
-    
+
     entry = Entry.create! :title => 'foo!', :content => 'bar?'
     assert_equal 'foo!', entry.reload.title
     assert_equal 'bar?', entry.content
@@ -691,7 +690,7 @@ module SimpleTestMethods
 
   def test_exec_update_bind_param_with_q_mark
     entry = Entry.create! :title => 'foo!'
-    
+
     sql = "UPDATE entries SET title = ? WHERE id = #{entry.id}"
     connection.exec_update sql, 'UPDATE(with_q_mark)', [ [ nil, "bar?" ] ]
     assert_equal 'bar?', entry.reload.title
@@ -700,7 +699,7 @@ module SimpleTestMethods
   def test_exec_insert_bind_param_with_q_mark
     sql = "INSERT INTO entries(title) VALUES (?)"
     connection.exec_insert sql, 'INSERT(with_q_mark)', [ [ nil, "bar?!?" ] ]
-    
+
     entries = Entry.find_by_sql "SELECT * FROM entries WHERE title = 'bar?!?'"
     assert entries.first
   end
@@ -712,30 +711,30 @@ module SimpleTestMethods
     connection.insert sql, name, pk, id_value, sequence_name, [ [ nil, "?!huu!?" ] ]
     assert Entry.exists?([ 'title LIKE ?', "%?!huu!?%" ])
   end if Test::Unit::TestCase.ar_version('3.1') # no binds argument for <= 3.0
-  
+
   def test_raw_update_bind_param_with_q_mark
     entry = Entry.create! :title => 'foo!'
-    
+
     sql = "UPDATE entries SET title = ? WHERE id = #{entry.id}"
     name = "UPDATE(raw_with_q_mark)"
     title_column = Entry.columns.find { |n| n.to_s == 'title' }
     connection.update sql, name, [ [ title_column, "bar?" ] ]
     assert_equal 'bar?', entry.reload.title
-    
+
     sql = "UPDATE entries SET title = ? WHERE id = ?"
     connection.update sql, name, [ [ nil, "?baz?!?" ], [ nil, entry.id ] ]
     assert_equal '?baz?!?', entry.reload.title
   end if Test::Unit::TestCase.ar_version('3.1') # no binds argument for <= 3.0
-  
+
   def test_raw_delete_bind_param_with_q_mark
     entry = Entry.create! :title => 'foo?!?'
-    
+
     sql = "DELETE FROM entries WHERE title = ?"
     name = "DELETE(raw_with_q_mark)"
     connection.delete sql, name, [ [ nil, "foo?!?" ] ]
     assert ! Entry.exists?(entry.id)
   end if Test::Unit::TestCase.ar_version('3.1') # no binds argument for <= 3.0
-  
+
   class ChangeEntriesTable < ActiveRecord::Migration
     def self.up
       change_table :entries do |t|
@@ -752,13 +751,13 @@ module SimpleTestMethods
   def test_change_table
     attributes = {
       :title => 'welcome to the real world',
-      :content => '... TO BE CONTINUED ...', 
+      :content => '... TO BE CONTINUED ...',
       :author => 'kares'
     }
     assert_raise ActiveRecord::UnknownAttributeError do
       Entry.create! attributes
     end
-    
+
     ChangeEntriesTable.up
     Entry.reset_column_information
     begin
@@ -797,13 +796,13 @@ module SimpleTestMethods
 
     assert_equal content_json, post.reload.content
   end
-  
+
   def test_exec_insert
     name_column = Thing.columns.detect { |column| column.name.to_s == 'name' }
     created_column = Thing.columns.detect { |column| column.name.to_s == 'created_at' }
     updated_column = Thing.columns.detect { |column| column.name.to_s == 'updated_at' }
     now = Time.zone.now
-    
+
     binds = [ [ name_column, 'ferko' ], [ created_column, now ], [ updated_column, now ] ]
     connection.exec_insert "INSERT INTO things VALUES (?,?,?)", 'INSERT_1', binds
     assert Thing.find_by_name 'ferko'
@@ -812,7 +811,7 @@ module SimpleTestMethods
     connection.exec_insert "INSERT INTO things VALUES (?,?,?)", 'INSERT_2', binds, nil, nil
     assert Thing.find_by_name 'jozko'
   end
-  
+
   def test_exec_query_result
     Entry.delete_all
     user1 = User.create! :login => 'user1'
@@ -820,15 +819,15 @@ module SimpleTestMethods
     Entry.create! :title => 'user11', :user_id => user1.id
     Entry.create! :title => 'user12', :user_id => user1.id
     Entry.create! :title => 'user21', :user_id => user2.id
-    
+
     result = Entry.connection.exec_query 'SELECT * FROM entries'
-    
+
     if ar_version('3.1')
       assert_instance_of ActiveRecord::Result, result
       assert_not_empty result.columns
       columns = Entry.columns.map { |column| column.name.to_s }
       assert_equal Set.new(columns), Set.new(result.columns)
-      
+
       assert_equal 3, result.rows.size
       assert_instance_of Array, result.rows[0]
       assert_equal 'user11', result.rows[0][1]
@@ -844,29 +843,29 @@ module SimpleTestMethods
 
   def test_exec_query_empty_result
     Entry.delete_all; User.delete_all
-    
+
     result = User.connection.exec_query 'SELECT * FROM users'
-    
+
     if ar_version('3.1')
       assert_instance_of ActiveRecord::Result, result
       assert_not_empty result.columns
       columns = User.columns.map { |column| column.name.to_s }
       assert_equal Set.new(columns), Set.new(result.columns)
-      
+
       assert_equal 0, result.rows.size
     else
       assert_instance_of Array, result
       assert_equal 0, result.size
     end
   end
-  
+
   def test_exec_query_raw
     User.delete_all
     User.create! :login => 'user1'
     User.create! :login => 'user2'
-    
+
     result = User.connection.exec_query_raw 'SELECT * FROM users'
-    
+
     assert_instance_of Array, result
     assert_equal 2, result.size
     assert_instance_of Hash, result[0]
@@ -877,7 +876,7 @@ module SimpleTestMethods
   def test_exec_query_raw_yields
     User.create! :login => 'user3'
     User.create! :login => 'user4'
-    
+
     arel = User.select('id, login, created_at').where("login = 'user3' or login = 'user4'")
     yielded = 0
     ActiveRecord::Base.connection.exec_query_raw(arel) do |*args| # id, login, created_at
@@ -888,24 +887,24 @@ module SimpleTestMethods
         assert_equal 'user3', args[1]
       when 2
         assert_equal 'user4', args[1]
-      else 
+      else
         fail "yielded 3 times"
       end
     end
     assert yielded == 2
   end if Test::Unit::TestCase.ar_version('3.0')
-  
+
   def test_select
     Entry.delete_all
     user = User.create! :login => 'select'
     Entry.create! :title => 'title 1', :content => 'content 1', :user_id => user.id, :rating => 1.0
     Entry.create! :title => 'title 2', :content => 'content 2', :user_id => user.id, :rating => 2.0
-    
+
     # rows = connection.execute 'SELECT * FROM entries'
     # column_order = rows.first.keys
-    
+
     result = connection.select 'SELECT * FROM entries'
-    
+
     if ar_version('4.0')
       assert_instance_of ActiveRecord::Result, result
       assert_equal 2, result.rows.size
@@ -920,14 +919,14 @@ module SimpleTestMethods
     user = User.create! :login => 'select_rows'
     Entry.create! :title => 'title 1', :content => 'content 1', :user_id => user.id
     Entry.create! :title => 'title 2', :content => 'content 2', :user_id => user.id, :rating => 1.0
-    
+
     rows = connection.execute 'SELECT * FROM entries'
     column_order = rows.first.keys
-    
+
     rows = connection.select_rows 'SELECT * FROM entries'
     assert_instance_of Array, rows
     assert_equal 2, rows.size
-    
+
     row = rows[0]
     column_order.each_with_index do |column, i|
       case column.to_s
@@ -940,7 +939,7 @@ module SimpleTestMethods
       else raise "unexpected entries row: #{column.inspect}"
       end
     end
-    
+
     row = rows[1]
     column_order.each_with_index do |column, i|
       case column.to_s
@@ -954,10 +953,10 @@ module SimpleTestMethods
       end
     end
   end
-  
+
   def test_update
     user = User.create! :login => 'update'
-    
+
     User.update(user.id, :login => 'UPDATEd')
     assert_equal 'UPDATEd', user.reload.login
   end
@@ -969,17 +968,17 @@ module SimpleTestMethods
     end
     # if no alive SQL than JDBC 4.0 driver's "alive" test will be used
   end
-  
+
   def test_connection_valid
     connection = ActiveRecord::Base.connection
     assert connection.active? # JDBC connection.isValid (if alive_sql not set)
   end
-  
+
   def test_query_cache
     user_1 = User.create! :login => 'query_cache_1'
     user_2 = User.create! :login => 'query_cache_2'
     user_3 = User.create! :login => 'query_cache_3'
-    # NOTE: on 3.1 AR::Base.cache does not cache if AR not configured, 
+    # NOTE: on 3.1 AR::Base.cache does not cache if AR not configured,
     # due : `if ActiveRecord::Base.configurations.blank?; yield ...`
     User.connection.cache do # instead of simply `User.cache`
       id1 = user_1.id; id2 = user_2.id
@@ -990,13 +989,13 @@ module SimpleTestMethods
       assert_queries(3) { User.find(id3); User.find(id1); User.find(id3) }
     end
   end
-  
+
   protected
-  
+
   def assert_date_type(value)
     assert_instance_of Date, value
   end
-  
+
 end
 
 module MultibyteTestMethods
@@ -1079,15 +1078,15 @@ module NonUTF8EncodingMethods
 end
 
 module XmlColumnTests
-  
+
   def self.included(base)
     base.send :include, TestMethods if base.ar_version('3.1')
   end
-  
+
   class XmlModel < ActiveRecord::Base; end
-  
+
   module TestMethods
-    
+
     def test_create_xml_column
       create_xml_models! do |t|
         skip('TableDefinition#xml not-implemented') unless t.respond_to?(:xml)
@@ -1096,7 +1095,7 @@ module XmlColumnTests
       xml_column = connection.columns(:xml_models).detect do |c|
         c.name == "xml_col"
       end
-      
+
       assert_xml_type xml_column.sql_type
     ensure
       drop_xml_models! rescue false
@@ -1106,7 +1105,7 @@ module XmlColumnTests
       if created = ( ( create_xml_models! || true ) rescue nil )
 
         XmlModel.create! :xml_col => "<xml><LoVE><![CDATA[Rubyist's <3 XML!]]></LoVE></xml>"
-    
+
         assert xml_model = XmlModel.first
 
         unless xml_sql_type =~ /text/i
@@ -1114,28 +1113,28 @@ module XmlColumnTests
           doc = REXML::Document.new xml_model.xml_col
           assert_equal "Rubyist's <3 XML!", doc.root.elements.first.text
         end
-          
+
       else
         skip('TableDefinition#xml not-implemented')
       end
     ensure
       drop_xml_models! if created
     end
-    
+
     protected
-    
+
     def assert_xml_type sql_type
       assert_equal xml_sql_type, sql_type
     end
-    
+
     def xml_sql_type
       'text'
     end
-    
+
     private
-    
+
     def create_xml_models!
-      connection.create_table(:xml_models) do |t| 
+      connection.create_table(:xml_models) do |t|
         yield(t) if block_given?
         t.xml :xml_col
       end
@@ -1146,19 +1145,19 @@ module XmlColumnTests
         connection.drop_table(:xml_models)
       end
     end
-    
+
   end
-  
+
 end
 
 module ActiveRecord3TestMethods
-  
+
   def self.included(base)
     base.send :include, TestMethods if base.ar_version('3.0')
   end
 
   module TestMethods
-    
+
     def test_visitor_accessor
       adapter = Entry.connection
       adapter_spec = adapter.config[:adapter_spec]
@@ -1166,11 +1165,11 @@ module ActiveRecord3TestMethods
       assert_not_nil adapter.visitor
       assert_kind_of visitor_type, adapter.visitor
     end if Test::Unit::TestCase.ar_version('3.2') # >= 3.2
-    
+
     def test_where
       user = User.create! :login => "blogger"
       entry = Entry.create! :title => 'something', :content => 'JRuby on Rails !', :rating => 42.1, :user => user
-      
+
       entries = Entry.where(:title => entry.title)
       assert_equal entry, entries.first
     end
@@ -1194,9 +1193,9 @@ module ActiveRecord3TestMethods
       end
       assert_equal 1, Thing.count
     end
-    
+
   end
-  
+
 end
 
 module ResetColumnInformationTestMethods
@@ -1249,34 +1248,34 @@ module ResetColumnInformationTestMethods
 end
 
 module ExplainSupportTestMethods
-  
+
   PRINT_EXPLAIN_OUTPUT = java.lang.Boolean.getBoolean('explain.support.output')
-  
+
   def test_supports_explain
     assert ActiveRecord::Base.connection.supports_explain?
   end
-  
+
   def test_explain_without_binds
     create_explain_data
-    
+
     pp = ActiveRecord::Base.connection.explain(
       "SELECT * FROM entries JOIN users on entries.user_id = users.id WHERE entries.rating > 0"
     )
     puts "\n"; puts pp if PRINT_EXPLAIN_OUTPUT
     assert_instance_of String, pp
   end
-  
+
   def test_explain_with_binds
     create_explain_data
-    
-    binds = [ [ Entry.columns.find { |col| col.name.to_s == 'rating' }, 0 ] ] 
+
+    binds = [ [ Entry.columns.find { |col| col.name.to_s == 'rating' }, 0 ] ]
     pp = ActiveRecord::Base.connection.explain(
       "SELECT * FROM entries JOIN users on entries.user_id = users.id WHERE entries.rating > ?", binds
     )
     puts "\n"; puts pp if PRINT_EXPLAIN_OUTPUT
     assert_instance_of String, pp
   end
-  
+
   private
   def create_explain_data
     user_1 = User.create :login => 'user_1'
@@ -1287,11 +1286,11 @@ module ExplainSupportTestMethods
     Entry.create :title => 'title_3', :content => 'content', :rating => 0, :user_id => user_1.id
     Entry.create :title => 'title_4', :content => 'content', :rating => 0, :user_id => user_1.id
   end
-  
+
 end
 
 module CustomSelectTestMethods
-  
+
   def test_custom_select_float
     model = DbType.create! :sample_float => 1.42
     if ActiveRecord::VERSION::MAJOR >= 3
@@ -1313,5 +1312,5 @@ module CustomSelectTestMethods
     assert_equal decimal, model.custom_decimal
     assert_instance_of BigDecimal, model.custom_decimal
   end
-  
+
 end
