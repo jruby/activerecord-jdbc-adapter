@@ -1511,7 +1511,10 @@ public class RubyJdbcConnection extends RubyObject {
         final Ruby runtime, final ResultSet resultSet, final int column)
         throws SQLException {
         final Date value = resultSet.getDate(column);
-        if ( value == null && resultSet.wasNull() ) return runtime.getNil();
+        if ( value == null ) {
+            if ( resultSet.wasNull() ) return runtime.getNil();
+            return runtime.newString(); // ""
+        }
         return RubyString.newUnicodeString(runtime, value.toString());
     }
 
@@ -1519,16 +1522,29 @@ public class RubyJdbcConnection extends RubyObject {
         final Ruby runtime, final ResultSet resultSet, final int column)
         throws SQLException {
         final Time value = resultSet.getTime(column);
-        if ( value == null && resultSet.wasNull() ) return runtime.getNil();
+        if ( value == null ) {
+            if ( resultSet.wasNull() ) return runtime.getNil();
+            return runtime.newString(); // ""
+        }
         return RubyString.newUnicodeString(runtime, value.toString());
     }
 
-    protected IRubyObject timestampToRuby(
+    protected IRubyObject timestampToRuby( // TODO
         final Ruby runtime, final ResultSet resultSet, final int column)
         throws SQLException {
         final Timestamp value = resultSet.getTimestamp(column);
-        if ( value == null && resultSet.wasNull() ) return runtime.getNil();
-        return timestampToRuby(runtime, resultSet, value);
+        if ( value == null ) {
+            if ( resultSet.wasNull() ) return runtime.getNil();
+            return runtime.newString(); // ""
+        }
+        String ts = value.toString(); // yyyy-mm-dd hh:mm:ss.fffffffff
+        if ( ts.endsWith(" 00:00:00.0") ) {
+            ts = ts.substring(0, ts.length() - (" 00:00:00.0".length()));
+        }
+        else if ( ts.endsWith(".0") ) {
+            ts = ts.substring(0, ts.length() - (".0".length()));
+        }
+        return RubyString.newUnicodeString(runtime, ts);
     }
 
     @Deprecated
