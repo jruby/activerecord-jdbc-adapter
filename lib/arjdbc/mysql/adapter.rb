@@ -14,7 +14,7 @@ module ArJdbc
 
     # @see ActiveRecord::ConnectionAdapters::JdbcColumn#column_types
     def self.column_selector
-      [ /mysql/i, lambda { |_, column| column.extend(Column) } ]
+      [ /mysql/i, lambda { |config, column| column.extend(Column) } ]
     end
 
     # @private
@@ -216,12 +216,14 @@ module ArJdbc
       :char => { :name => "char" }, # :limit => 255
     }
 
+    # @override
     def native_database_types
       NATIVE_DATABASE_TYPES
     end
 
     ADAPTER_NAME = 'MySQL'.freeze
 
+    # @override
     def adapter_name
       ADAPTER_NAME
     end
@@ -257,6 +259,7 @@ module ArJdbc
 
     # QUOTING ==================================================
 
+    # @override
     def quote(value, column = nil)
       return value.quoted_id if value.respond_to?(:quoted_id)
       return value.to_s if column && column.type == :primary_key
@@ -270,10 +273,12 @@ module ArJdbc
       end
     end
 
+    # @override
     def quote_column_name(name)
       "`#{name.to_s.gsub('`', '``')}`"
     end
 
+    # @override
     def quote_table_name(name)
       quote_column_name(name).gsub('.', '`.`')
     end
@@ -758,7 +763,7 @@ module ActiveRecord
       end
 
       # some QUOTING caching :
-      
+
       # @private
       @@quoted_table_names = {}
 

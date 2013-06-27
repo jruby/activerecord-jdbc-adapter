@@ -5,10 +5,12 @@ module ArJdbc
   module HSQLDB
     include ExplainSupport
 
+    # @see ActiveRecord::ConnectionAdapters::JdbcColumn#column_types
     def self.column_selector
-      [ /hsqldb/i, lambda { |cfg, column| column.extend(::ArJdbc::HSQLDB::Column) } ]
+      [ /hsqldb/i, lambda { |config, column| column.extend(Column) } ]
     end
 
+    # @see ActiveRecord::ConnectionAdapters::JdbcColumn
     module Column
 
       private
@@ -61,18 +63,17 @@ module ArJdbc
 
     end
 
-    ADAPTER_NAME = 'HSQLDB' # :nodoc:
+    ADAPTER_NAME = 'HSQLDB'.freeze
 
-    def adapter_name # :nodoc:
+    def adapter_name
       ADAPTER_NAME
     end
 
+    # @see ActiveRecord::ConnectionAdapters::JdbcAdapter#arel2_visitors
     def self.arel2_visitors(config)
       require 'arel/visitors/hsqldb'
-      {
-        'hsqldb' => ::Arel::Visitors::HSQLDB,
-        'jdbchsqldb' => ::Arel::Visitors::HSQLDB,
-      }
+      visitor = ::Arel::Visitors::HSQLDB
+      { 'hsqldb' => visitor, 'jdbchsqldb' => visitor }
     end
 
     NATIVE_DATABASE_TYPES = {
@@ -103,11 +104,13 @@ module ArJdbc
       :varchar_ignorecase => { :name => "varchar_ignorecase" },
     }
 
+    # @override
     def native_database_types
       NATIVE_DATABASE_TYPES
     end
 
-    def quote(value, column = nil) # :nodoc:
+    # @override
+    def quote(value, column = nil)
       return value.quoted_id if value.respond_to?(:quoted_id)
 
       case value
@@ -132,7 +135,8 @@ module ArJdbc
       end
     end
 
-    def quote_column_name(name) # :nodoc:
+    # @override
+    def quote_column_name(name)
       name = name.to_s
       if name =~ /[-]/
         %Q{"#{name.upcase}"}
@@ -141,13 +145,15 @@ module ArJdbc
       end
     end
 
+    # @override
     def add_column(table_name, column_name, type, options = {})
       add_column_sql = "ALTER TABLE #{quote_table_name(table_name)} ADD #{quote_column_name(column_name)} #{type_to_sql(type, options[:limit], options[:precision], options[:scale])}"
       add_column_options!(add_column_sql, options)
       execute(add_column_sql)
     end
 
-    def change_column(table_name, column_name, type, options = {}) #:nodoc:
+    # @override
+    def change_column(table_name, column_name, type, options = {})
       execute "ALTER TABLE #{table_name} ALTER COLUMN #{column_name} #{type_to_sql(type, options[:limit])}"
     end
 
@@ -155,17 +161,18 @@ module ArJdbc
       execute "ALTER TABLE #{table_name} ALTER COLUMN #{column_name} SET DEFAULT #{quote(default)}"
     end
 
+    # @override
     def rename_column(table_name, column_name, new_column_name) #:nodoc:
       execute "ALTER TABLE #{table_name} ALTER COLUMN #{column_name} RENAME TO #{new_column_name}"
     end
 
-    # Maps logical Rails types to MySQL-specific data types.
+    # @override
     def type_to_sql(type, limit = nil, precision = nil, scale = nil)
       return super if defined?(::Jdbc::H2) || type.to_s != 'integer' || limit == nil
-
       type
     end
 
+    # @override
     def rename_table(name, new_name)
       execute "ALTER TABLE #{name} RENAME TO #{new_name}"
     end
@@ -175,13 +182,15 @@ module ArJdbc
       Integer(identity.nil? ? 0 : identity)
     end
 
+    # @private
     def _execute(sql, name = nil)
       result = super
       self.class.insert?(sql) ? last_insert_id : result
     end
     private :_execute
 
-    def add_limit_offset!(sql, options) #:nodoc:
+    # @override
+    def add_limit_offset!(sql, options)
       if sql =~ /^select/i
         offset = options[:offset] || 0
         bef = sql[7..-1]
@@ -193,26 +202,25 @@ module ArJdbc
       end
     end
 
+    # @override
     def empty_insert_statement_value
       # on HSQLDB only work with tables that have a default value for each
       # and every column ... you'll need to avoid `Model.create!` on 4.0
       'DEFAULT VALUES'
     end
 
-    # filter out system tables (that otherwise end up in db/schema.rb)
-    # JdbcConnection#tables
-    # now takes an optional block filter so we can screen out
-    # rows corresponding to system tables.  HSQLDB names its
-    # system tables SYSTEM.*, but H2 seems to name them without
-    # any kind of convention
+    # We filter out HSQLDB's system tables (named "SYSTEM.*").
+    # @override
     def tables
       @connection.tables.select { |row| row.to_s !~ /^system_/i }
     end
 
+    # @override
     def remove_index(table_name, options = {})
       execute "DROP INDEX #{quote_column_name(index_name(table_name, options))}"
     end
 
+    # @override
     def structure_dump
       execute('SCRIPT').map do |result|
         # [ { 'command' => SQL }, { 'command' ... }, ... ]
@@ -225,6 +233,7 @@ module ArJdbc
       end.compact.join("\n\n")
     end
 
+    # @see #structure_dump
     def structure_load(dump)
       dump.each_line("\n\n") { |ddl| execute(ddl) }
     end
@@ -233,14 +242,17 @@ module ArJdbc
       execute 'SHUTDOWN'
     end
 
-    def recreate_database(name = nil, options = {}) # :nodoc:
+    # @private
+    def recreate_database(name = nil, options = {})
       drop_database(name)
       create_database(name, options)
     end
 
-    def create_database(name = nil, options = {}); end # :nodoc:
+    # @private
+    def create_database(name = nil, options = {}); end
 
-    def drop_database(name = nil) # :nodoc:
+    # @private
+    def drop_database(name = nil)
       execute('DROP SCHEMA PUBLIC CASCADE')
     end
 

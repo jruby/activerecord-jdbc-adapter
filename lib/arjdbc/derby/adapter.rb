@@ -12,26 +12,17 @@ module ArJdbc
       require 'arjdbc/derby/active_record_patch'
     end
 
+    # @see ActiveRecord::ConnectionAdapters::JdbcAdapter#jdbc_connection_class
     def self.jdbc_connection_class
       ::ActiveRecord::ConnectionAdapters::DerbyJdbcConnection
     end
 
-    def init_connection(jdbc_connection) # :nodoc:
-      md = jdbc_connection.meta_data
-      major_version = md.database_major_version; minor_version = md.database_minor_version
-      if major_version < 10 || (major_version == 10 && minor_version < 5)
-        raise ::ActiveRecord::ConnectionFailed, "Derby adapter requires Derby >= 10.5"
-      end
-      if major_version == 10 && minor_version < 8 # 10.8 ~ supports JDBC 4.1
-        config[:connection_alive_sql] ||=
-          'SELECT 1 FROM SYS.SYSSCHEMAS FETCH FIRST 1 ROWS ONLY' # FROM clause mandatory
-      end
-    end
-
+    # @see ActiveRecord::ConnectionAdapters::JdbcColumn#column_types
     def self.column_selector
-      [ /derby/i, lambda { |cfg, column| column.extend(Column) } ]
+      [ /derby/i, lambda { |config, column| column.extend(Column) } ]
     end
 
+    # @see ActiveRecord::ConnectionAdapters::JdbcColumn
     module Column
 
       private
@@ -85,10 +76,23 @@ module ArJdbc
 
     end
 
-    ADAPTER_NAME = 'Derby'
+    ADAPTER_NAME = 'Derby'.freeze
 
-    def adapter_name # :nodoc:
+    def adapter_name
       ADAPTER_NAME
+    end
+
+    # @private
+    def init_connection(jdbc_connection)
+      md = jdbc_connection.meta_data
+      major_version = md.database_major_version; minor_version = md.database_minor_version
+      if major_version < 10 || (major_version == 10 && minor_version < 5)
+        raise ::ActiveRecord::ConnectionFailed, "Derby adapter requires Derby >= 10.5"
+      end
+      if major_version == 10 && minor_version < 8 # 10.8 ~ supports JDBC 4.1
+        config[:connection_alive_sql] ||=
+          'SELECT 1 FROM SYS.SYSSCHEMAS FETCH FIRST 1 ROWS ONLY' # FROM clause mandatory
+      end
     end
 
     def configure_connection
@@ -99,12 +103,11 @@ module ArJdbc
       set_schema(config[:schema]) if config.key?(:schema)
     end
 
+    # @see ActiveRecord::ConnectionAdapters::JdbcAdapter#arel2_visitors
     def self.arel2_visitors(config)
       require 'arel/visitors/derby'
-      {
-        'derby' => ::Arel::Visitors::Derby,
-        'jdbcderby' => ::Arel::Visitors::Derby,
-      }
+      visitor = ::Arel::Visitors::Derby
+      { 'derby' => visitor, 'jdbcderby' => visitor }
     end
 
     include ArJdbc::MissingFunctionalityHelper
@@ -136,14 +139,16 @@ module ArJdbc
       :object => { :name => "object" },
     }
 
+    # @override
     def native_database_types
       NATIVE_DATABASE_TYPES
     end
 
-    # in Derby, the following cannot specify a limit :
-    NO_LIMIT_TYPES = [ :integer, :boolean, :timestamp, :datetime, :date, :time ] # :nodoc:
+    # @private In Derby, these cannot specify a limit.
+    NO_LIMIT_TYPES = [ :integer, :boolean, :timestamp, :datetime, :date, :time ]
 
     # Convert the specified column type to a SQL string.
+    # @override
     def type_to_sql(type, limit = nil, precision = nil, scale = nil) # :nodoc:
       return super unless NO_LIMIT_TYPES.include?(t = type.to_s.downcase.to_sym)
 
@@ -151,7 +156,8 @@ module ArJdbc
       native_type.is_a?(Hash) ? native_type[:name] : native_type
     end
 
-    class TableDefinition < ActiveRecord::ConnectionAdapters::TableDefinition # :nodoc:
+    # @private
+    class TableDefinition < ActiveRecord::ConnectionAdapters::TableDefinition
 
       def xml(*args)
         options = args.extract_options!
@@ -164,18 +170,20 @@ module ArJdbc
       new_table_definition(TableDefinition, *args)
     end
 
-    # Override default -- fix case where ActiveRecord passes :default => nil, :null => true
+    # @override fix case where AR passes `:default => nil, :null => true`
     def add_column_options!(sql, options)
       options.delete(:default) if options.has_key?(:default) && options[:default].nil?
       sql << " DEFAULT #{quote(options.delete(:default))}" if options.has_key?(:default)
       super
     end
 
+    # @override
     def empty_insert_statement_value
       'VALUES ( DEFAULT )' # won't work as Derby does need to know the columns count
     end
 
     # Set the sequence to the max value of the table's column.
+    # @override
     def reset_sequence!(table, column, sequence = nil)
       mpk = select_value("SELECT MAX(#{quote_column_name(column)}) FROM #{quote_table_name(table)}")
       execute("ALTER TABLE #{quote_table_name(table)} ALTER COLUMN #{quote_column_name(column)} RESTART WITH #{mpk.to_i + 1}")
@@ -195,10 +203,12 @@ module ArJdbc
     end
     private :classes_for_table_name
 
-    def remove_index(table_name, options) #:nodoc:
+    # @override
+    def remove_index(table_name, options)
       execute "DROP INDEX #{index_name(table_name, options)}"
     end
 
+    # @override
     def rename_table(name, new_name)
       execute "RENAME TABLE #{quote_table_name(name)} TO #{quote_table_name(new_name)}"
     end
@@ -209,6 +219,7 @@ module ArJdbc
       execute(add_column_sql)
     end
 
+    # @override
     def execute(sql, name = nil, binds = [])
       sql = to_sql(sql, binds)
       if sql =~ /\A\s*(UPDATE|INSERT)/i
@@ -228,10 +239,11 @@ module ArJdbc
     #
     # Derby requires the ORDER BY columns in the select list for distinct queries, and
     # requires that the ORDER BY include the distinct column.
-    #
+    # ```
     #   distinct("posts.id", "posts.created_at desc")
-    #
-    # Based on distinct method for PostgreSQL Adapter
+    # ```
+    # @note This is based on distinct method for the PostgreSQL Adapter.
+    # @override
     def distinct(columns, order_by)
       return "DISTINCT #{columns}" if order_by.blank?
 
@@ -246,21 +258,26 @@ module ArJdbc
       sql
     end
 
-    def remove_column(table_name, *column_names) # :nodoc:
+    # @override
+    def remove_column(table_name, *column_names)
       for column_name in column_names.flatten
         execute "ALTER TABLE #{quote_table_name(table_name)} DROP COLUMN #{quote_column_name(column_name)} RESTRICT"
       end
     end
 
-    # Notes about changing in Derby:
-    #    http://db.apache.org/derby/docs/10.2/ref/rrefsqlj81859.html#rrefsqlj81859__rrefsqlj37860)
-    #
-    # We support changing columns using the strategy outlined in:
-    #    https://issues.apache.org/jira/browse/DERBY-1515
-    #
-    # This feature has not made it into a formal release and is not in Java 6.
-    # We will need to conditionally support this (supposed to arrive for 10.3.0.0).
+    # @override
     def change_column(table_name, column_name, type, options = {})
+      # TODO this needs a review since now we're likely to be on >= 10.8
+
+      # Notes about changing in Derby:
+      #    http://db.apache.org/derby/docs/10.2/ref/rrefsqlj81859.html#rrefsqlj81859__rrefsqlj37860)
+      #
+      # We support changing columns using the strategy outlined in:
+      #    https://issues.apache.org/jira/browse/DERBY-1515
+      #
+      # This feature has not made it into a formal release and is not in Java 6.
+      # We will need to conditionally support this (supposed to arrive for 10.3.0.0).
+
       # null/not nulling is easy, handle that separately
       if options.include?(:null)
         # This seems to only work with 10.2 of Derby
@@ -274,14 +291,17 @@ module ArJdbc
       # anything left to do?
       unless options.empty?
         begin
-          execute "ALTER TABLE #{quote_table_name(table_name)} ALTER COLUMN #{quote_column_name(column_name)} SET DATA TYPE #{type_to_sql(type, options[:limit])}"
+          execute "ALTER TABLE #{quote_table_name(table_name)} ALTER COLUMN " <<
+                  " #{quote_column_name(column_name)} SET DATA TYPE #{type_to_sql(type, options[:limit])}"
         rescue
           transaction do
             temp_new_column_name = "#{column_name}_newtype"
             # 1) ALTER TABLE t ADD COLUMN c1_newtype NEWTYPE;
             add_column table_name, temp_new_column_name, type, options
             # 2) UPDATE t SET c1_newtype = c1;
-            execute "UPDATE #{quote_table_name(table_name)} SET #{quote_column_name(temp_new_column_name)} = CAST(#{quote_column_name(column_name)} AS #{type_to_sql(type, options[:limit])})"
+            execute "UPDATE #{quote_table_name(table_name)} SET " <<
+                    " #{quote_column_name(temp_new_column_name)} = " <<
+                    " CAST(#{quote_column_name(column_name)} AS #{type_to_sql(type, options[:limit])})"
             # 3) ALTER TABLE t DROP COLUMN c1;
             remove_column table_name, column_name
             # 4) ALTER TABLE t RENAME COLUMN c1_newtype to c1;
@@ -291,31 +311,37 @@ module ArJdbc
       end
     end
 
-    def rename_column(table_name, column_name, new_column_name) #:nodoc:
-      execute "RENAME COLUMN #{quote_table_name(table_name)}.#{quote_column_name(column_name)} TO #{quote_column_name(new_column_name)}"
+    # @override
+    def rename_column(table_name, column_name, new_column_name)
+      execute "RENAME COLUMN #{quote_table_name(table_name)}.#{quote_column_name(column_name)} " <<
+              " TO #{quote_column_name(new_column_name)}"
     end
 
+    # @override
     def primary_keys(table_name)
       @connection.primary_keys table_name.to_s.upcase
     end
 
+    # @override
     def tables(name = nil)
       @connection.tables(nil, current_schema)
     end
 
-    # Returns the current schema name.
+    # @return [String] the current schema name
     def current_schema
       @current_schema ||=
         select_value "SELECT CURRENT SCHEMA FROM SYS.SYSSCHEMAS FETCH FIRST 1 ROWS ONLY", 'SCHEMA'
     end
 
+    # Change the current (implicit) Derby schema to be used for this connection.
     def set_schema(schema)
       @current_schema = nil
       execute "SET SCHEMA #{schema}", 'SCHEMA'
     end
     alias_method :current_schema=, :set_schema
 
-    # Creates DB new schema.
+    # Creates a new Derby schema.
+    # @see #set_schema
     def create_schema(schema)
       execute "CREATE SCHEMA #{schema}", 'Create Schema'
     end
@@ -325,22 +351,27 @@ module ArJdbc
       execute "DROP SCHEMA #{schema} RESTRICT", 'Drop Schema'
     end
 
-    def recreate_database(name = nil, options = {}) # :nodoc:
+    # @private
+    def recreate_database(name = nil, options = {})
       drop_database(name)
       create_database(name, options)
     end
 
-    def create_database(name = nil, options = {}); end # :nodoc:
+    # @private
+    def create_database(name = nil, options = {}); end
 
-    def drop_database(name = nil) # :nodoc:
+    # @private
+    def drop_database(name = nil)
       tables.each { |table| drop_table(table) }
     end
 
-    def quote_column_name(name) # :nodoc:
+    # @override
+    def quote_column_name(name)
       %Q{"#{name.to_s.upcase.gsub('"', '""')}"}
     end
 
-    def add_limit_offset!(sql, options) # :nodoc:
+    # @override
+    def add_limit_offset!(sql, options)
       sql << " OFFSET #{options[:offset]} ROWS" if options[:offset]
       # ROWS/ROW and FIRST/NEXT mean the same
       sql << " FETCH FIRST #{options[:limit]} ROWS ONLY" if options[:limit]

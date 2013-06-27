@@ -5,14 +5,17 @@ module ArJdbc
   module H2
     include HSQLDB
 
+    # @see ActiveRecord::ConnectionAdapters::JdbcAdapter#jdbc_connection_class
     def self.jdbc_connection_class
       ::ActiveRecord::ConnectionAdapters::H2JdbcConnection
     end
 
+    # @see ActiveRecord::ConnectionAdapters::JdbcColumn#column_types
     def self.column_selector
-      [ /\.h2\./i, lambda { |cfg, column| column.extend(::ArJdbc::H2::Column) } ]
+      [ /\.h2\./i, lambda { |config, column| column.extend(Column) } ]
     end
 
+    # @see ActiveRecord::ConnectionAdapters::JdbcColumn
     module Column
 
       private
@@ -69,22 +72,22 @@ module ArJdbc
 
     end
 
-    ADAPTER_NAME = 'H2' # :nodoc:
+    ADAPTER_NAME = 'H2'.freeze
 
-    def adapter_name # :nodoc:
+    # @override
+    def adapter_name
       ADAPTER_NAME
     end
 
+    # @see ActiveRecord::ConnectionAdapters::JdbcAdapter#arel2_visitors
     def self.arel2_visitors(config)
       visitors = HSQLDB.arel2_visitors(config)
-      visitors.merge({
-        'h2' => ::Arel::Visitors::HSQLDB,
-        'jdbch2' => ::Arel::Visitors::HSQLDB,
-      })
+      visitor = visitors['hsqldb']
+      { 'h2' => visitor, 'jdbch2' => visitor }
     end
 
-    # #deprecated
-    def h2_adapter # :nodoc:
+    # @deprecated no longer used. only here for backwards compatibility with 1.2
+    def h2_adapter
       true
     end
 
@@ -122,10 +125,12 @@ module ArJdbc
       # :result_set : { :name=>"result_set" }
     }
 
+    # @override
     def native_database_types
       NATIVE_DATABASE_TYPES
     end
 
+    # @override
     def type_to_sql(type, limit = nil, precision = nil, scale = nil)
       case type.to_sym
       when :integer
@@ -153,19 +158,23 @@ module ArJdbc
       end
     end
 
+    # @override
     def empty_insert_statement_value
       "VALUES ()"
     end
 
+    # @override
     def tables
       @connection.tables(nil, h2_schema)
     end
 
+    # @override
     def columns(table_name, name = nil)
       @connection.columns_internal(table_name.to_s, nil, h2_schema)
     end
 
-    def change_column(table_name, column_name, type, options = {}) #:nodoc:
+    # @override
+    def change_column(table_name, column_name, type, options = {})
       execute "ALTER TABLE #{table_name} ALTER COLUMN #{column_name} #{type_to_sql(type, options[:limit])}"
       change_column_default(table_name, column_name, options[:default]) if options_include_default?(options)
       change_column_null(table_name, column_name, options[:null], options[:default]) if options.key?(:null)
@@ -175,7 +184,8 @@ module ArJdbc
       execute('CALL SCHEMA()')[0].values[0]
     end
 
-    def quote(value, column = nil) # :nodoc:
+    # @override
+    def quote(value, column = nil)
       case value
       when String
         if value.empty?
@@ -190,14 +200,17 @@ module ArJdbc
 
     # EXPLAIN support :
 
+    # @override
     def supports_explain?; true; end
 
+    # @override
     def explain(arel, binds = [])
       sql = "EXPLAIN #{to_sql(arel, binds)}"
       raw_result  = execute(sql, "EXPLAIN", binds)
       raw_result[0].values.join("\n") # [ "SELECT \n ..." ].to_s
     end
 
+    # @override
     def structure_dump
       execute('SCRIPT SIMPLE').map do |result|
         # [ { 'script' => SQL }, { 'script' ... }, ... ]
@@ -208,6 +221,7 @@ module ArJdbc
       end.compact.join("\n\n")
     end
 
+    # @see #structure_dump
     def structure_load(dump)
       dump.each_line("\n\n") { |ddl| execute(ddl) }
     end
@@ -216,14 +230,17 @@ module ArJdbc
       execute 'SHUTDOWN COMPACT'
     end
 
-    def recreate_database(name = nil, options = {}) # :nodoc:
+    # @private
+    def recreate_database(name = nil, options = {})
       drop_database(name)
       create_database(name, options)
     end
 
-    def create_database(name = nil, options = {}); end # :nodoc:
+    # @private
+    def create_database(name = nil, options = {}); end
 
-    def drop_database(name = nil) # :nodoc:
+    # @private
+    def drop_database(name = nil)
       execute('DROP ALL OBJECTS')
     end
 
