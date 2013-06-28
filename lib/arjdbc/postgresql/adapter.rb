@@ -1176,7 +1176,7 @@ module ArJdbc
     end
 
     # Quote date/time values for use in SQL input.
-    # @note Includes microseconds if the value is a Time responding to usec.
+    # Includes microseconds if the value is a Time responding to `usec`.
     # @override
     def quoted_date(value)
       result = super
@@ -1185,7 +1185,7 @@ module ArJdbc
       end
       result = "#{result.sub(/^-/, '')} BC" if value.year < 0
       result
-    end
+    end if ::ActiveRecord::VERSION::MAJOR >= 3
 
     # @override
     def supports_disable_referential_integrity?
