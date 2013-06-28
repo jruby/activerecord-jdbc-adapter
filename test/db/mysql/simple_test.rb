@@ -23,6 +23,23 @@ class MysqlSimpleTest < Test::Unit::TestCase
   # columns. http://dev.mysql.com/doc/refman/5.1/en/date-and-time-literals.html
   undef :test_save_timestamp_with_usec
 
+  # @override
+  def test_time_usec_formatting_when_saved_into_string_column
+    e = DbType.create!(:sample_string => '', :sample_text => '')
+    t = Time.now
+    value = Time.local(t.year, t.month, t.day, t.hour, t.min, t.sec, 0)
+    if ActiveRecord::VERSION::MAJOR >= 3
+      str = value.utc.to_s(:db)
+    else # AR-2.x #quoted_date did not do TZ conversions
+      str = value.to_s(:db)
+    end
+    e.sample_string = value
+    e.sample_text = value
+    e.save!; e.reload
+    assert_equal str, e.sample_string
+    assert_equal str, e.sample_text
+  end
+
   column_quote_char "`"
 
   def test_column_class_instantiation
