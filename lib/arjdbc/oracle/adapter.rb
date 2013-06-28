@@ -514,9 +514,9 @@ module ArJdbc
         end
 
         if value.acts_like?(:date)
-          %Q{DATE'#{quoted_date(value)}'} # DATE 'YYYY-MM-DD'
+          %Q{DATE'#{value.strftime("%Y-%m-%d")}'} # DATE 'YYYY-MM-DD'
         elsif value.acts_like?(:time)
-          %Q{TIMESTAMP'#{quoted_date(value)}'} # TIMESTAMP 'YYYY-MM-DD HH24:MI:SS.FF'
+          %Q{TIMESTAMP'#{quoted_date(value, true)}'} # TIMESTAMP 'YYYY-MM-DD HH24:MI:SS.FF'
         else
           super
         end
@@ -526,16 +526,13 @@ module ArJdbc
     # Quote date/time values for use in SQL input.
     # Includes milliseconds if the value is a Time responding to usec.
     # @override
-    def quoted_date(value)
-      if value.acts_like?(:time)
+    def quoted_date(value, time = nil)
+      if time || ( time.nil? && value.acts_like?(:time) )
+        usec = value.respond_to?(:usec) && (value.usec / 10000.0).round # .428000 -> .43
         get = ActiveRecord::Base.default_timezone == :utc ? :getutc : :getlocal
         value = value.send(get) if value.respond_to?(get)
-        if value.respond_to?(:usec)
-          usec = sprintf("%02d", (value.usec / 10000.0).round) # .428000 -> .43
-          return "#{value.to_s(:db)}.#{usec}" # value.strftime("%Y-%m-%d %H:%M:%S")
-        end
-      #elsif value.acts_like?(:date)
-      #  return "#{value.strftime("%Y-%m-%d")}"
+        return "#{value.to_s(:db)}.#{sprintf("%02d", usec)}" if usec
+        # value.strftime("%Y-%m-%d %H:%M:%S")
       end
       value.to_s(:db)
     end
