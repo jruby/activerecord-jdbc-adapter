@@ -24,6 +24,7 @@ module ArJdbc
       [ /derby/i, lambda { |config, column| column.extend(Column) } ]
     end
 
+    # @note Part of this module is implemented in "native" Java.
     # @see ActiveRecord::ConnectionAdapters::JdbcColumn
     module Column
 
@@ -146,6 +147,16 @@ module ArJdbc
     def native_database_types
       NATIVE_DATABASE_TYPES
     end
+
+    # @override
+    def quoted_date(value)
+      if value.acts_like?(:time) && value.respond_to?(:usec)
+        value = ::ActiveRecord::Base.default_timezone == :utc ? value.getutc : value.getlocal
+        "#{value.strftime("%Y-%m-%d %H:%M:%S")}.#{sprintf("%06d", value.usec)}"
+      else
+        super
+      end
+    end if ::ActiveRecord::VERSION::MAJOR >= 3
 
     # @private In Derby, these cannot specify a limit.
     NO_LIMIT_TYPES = [ :integer, :boolean, :timestamp, :datetime, :date, :time ]
