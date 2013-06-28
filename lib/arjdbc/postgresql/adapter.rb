@@ -22,6 +22,9 @@ module ArJdbc
       meta = jdbc_connection.meta_data
       if meta.driver_version.index('JDBC3') # e.g. 'PostgreSQL 9.2 JDBC4 (build 1002)'
         config[:connection_alive_sql] ||= 'SELECT 1'
+      else
+        # NOTE: since the loaded Java driver class can't change :
+        PostgreSQL.send(:remove_method, :init_connection) rescue nil
       end
     end
 
@@ -1051,6 +1054,8 @@ module ArJdbc
       sql.replace "SELECT * FROM (#{sql}) AS id_list ORDER BY #{order}"
     end
 
+    # @return [String]
+    # @override
     def quote(value, column = nil)
       return super unless column
 
@@ -1107,8 +1112,9 @@ module ArJdbc
       end
     end
 
-    # Quotes a string, escaping any ' (single quote) and \ (backslash)
-    # characters.
+    # Quotes a string, escaping any ' (single quote) and \ (backslash) chars.
+    # @return [String]
+    # @override
     def quote_string(string)
       quoted = string.gsub("'", "''")
       unless standard_conforming_strings?
@@ -1117,6 +1123,7 @@ module ArJdbc
       quoted
     end
 
+    # @return [String]
     def quote_bit(value)
       case value
       # NOTE: as reported with #60 this is not quite "right" :
@@ -1146,6 +1153,7 @@ module ArJdbc
       end
     end
 
+    # @override
     def quote_table_name(name)
       schema, name_part = extract_pg_identifier_from_name(name.to_s)
 
@@ -1157,16 +1165,19 @@ module ArJdbc
       end
     end
 
+    # @override
     def quote_table_name_for_assignment(table, attr)
       quote_column_name(attr)
     end if ::ActiveRecord::VERSION::MAJOR > 3
 
+    # @override
     def quote_column_name(name)
       %("#{name.to_s.gsub("\"", "\"\"")}")
     end
 
     # Quote date/time values for use in SQL input.
-    # Includes microseconds if the value is a Time responding to usec.
+    # @note Includes microseconds if the value is a Time responding to usec.
+    # @override
     def quoted_date(value)
       result = super
       if value.acts_like?(:time) && value.respond_to?(:usec)
@@ -1176,6 +1187,7 @@ module ArJdbc
       result
     end
 
+    # @override
     def supports_disable_referential_integrity?
       true
     end

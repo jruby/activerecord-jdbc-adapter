@@ -94,6 +94,9 @@ module ArJdbc
       if major_version == 10 && minor_version < 8 # 10.8 ~ supports JDBC 4.1
         config[:connection_alive_sql] ||=
           'SELECT 1 FROM SYS.SYSSCHEMAS FETCH FIRST 1 ROWS ONLY' # FROM clause mandatory
+      else
+        # NOTE: since the loaded Java driver class can't change :
+        Derby.send(:remove_method, :init_connection) rescue nil
       end
     end
 
