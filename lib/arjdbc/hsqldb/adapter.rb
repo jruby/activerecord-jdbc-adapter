@@ -125,8 +125,12 @@ module ArJdbc
           "'#{quote_string(value)}'"
         end
       when Time
-        if column && column.type == :time
+        column_type = column && column.type
+        if column_type == :time
           "'#{value.strftime("%H:%M:%S")}'"
+        #elsif column_type == :timestamp # || column_type == :datetime
+          #value = ::ActiveRecord::Base.default_timezone == :utc ? value.getutc : value.getlocal
+          #"'#{value.strftime("%Y-%m-%d %H:%M:%S")}.#{sprintf("%06d", value.usec)}'"
         else
           super
         end
@@ -134,6 +138,18 @@ module ArJdbc
         super
       end
     end
+
+    # Quote date/time values for use in SQL input.
+    # Includes microseconds if the value is a Time responding to usec.
+    # @override
+    def quoted_date(value)
+      if value.acts_like?(:time) && value.respond_to?(:usec)
+        value = ::ActiveRecord::Base.default_timezone == :utc ? value.getutc : value.getlocal
+        "#{value.strftime("%Y-%m-%d %H:%M:%S")}.#{sprintf("%06d", value.usec)}"
+      else
+        super
+      end
+    end if ::ActiveRecord::VERSION::MAJOR >= 3
 
     # @override
     def quote_column_name(name)

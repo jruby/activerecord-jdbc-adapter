@@ -308,8 +308,7 @@ module SimpleTestMethods
     end
 
     def test_save_time_with_zone
-      t = Time.now
-      # precision will only be expected to the second :
+      t = Time.now # precision will only be expected to the second :
       original_time = Time.local(t.year, t.month, t.day, t.hour, t.min, t.sec)
       time = original_time.in_time_zone
       e = DbType.create! :sample_datetime => time
@@ -317,8 +316,7 @@ module SimpleTestMethods
     end
 
     def test_save_date_time
-      t = Time.now
-      # precision will only be expected to the second :
+      t = Time.now # precision will only be expected to the second :
       time = Time.local(t.year, t.month, t.day, t.hour, t.min, t.sec)
       e = DbType.create! :sample_datetime => time.to_datetime
       assert_equal time, e.reload.sample_datetime.localtime
@@ -348,6 +346,24 @@ module SimpleTestMethods
     timestamp = Time.utc(1942, 11, 30, 01, 53, 59, 123_456)
     e = DbType.create! :sample_timestamp => timestamp
     assert_timestamp_equal timestamp, e.reload.sample_timestamp
+  end
+
+  def test_time_usec_formatting_when_saved_into_string_column
+    e = DbType.create!(:sample_string => '', :sample_text => '')
+    t = Time.now
+    value = Time.local(t.year, t.month, t.day, t.hour, t.min, t.sec, 0)
+    if ActiveRecord::VERSION::MAJOR >= 3
+      # AR-3 adapters override quoted_date which is called always when a
+      # Time like value is passed (... as well for string/text columns) :
+      str = value.utc.to_s(:db) << '.' << sprintf("%06d", value.usec)
+    else # AR-2.x #quoted_date did not do TZ conversions
+      str = value.to_s(:db)
+    end
+    e.sample_string = value
+    e.sample_text = value
+    e.save!; e.reload
+    assert_equal str, e.sample_string
+    assert_equal str, e.sample_text
   end
 
   def test_save_date
