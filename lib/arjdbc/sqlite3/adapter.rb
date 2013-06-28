@@ -213,6 +213,7 @@ module ArJdbc
     end
     private :sqlite_version
 
+    # @override
     def quote(value, column = nil)
       if value.kind_of?(String)
         column_type = column && column.type
@@ -228,22 +229,23 @@ module ArJdbc
 
     def quote_table_name_for_assignment(table, attr)
       quote_column_name(attr)
-    end if ::ActiveRecord::VERSION::MAJOR > 3
+    end if ::ActiveRecord::VERSION::MAJOR >= 4
 
-    def quote_column_name(name) # :nodoc:
+    # @override
+    def quote_column_name(name)
       %Q("#{name.to_s.gsub('"', '""')}") # "' kludge for emacs font-lock
     end
 
     # Quote date/time values for use in SQL input.
     # Includes microseconds if the value is a Time responding to usec.
     # @override
-    def quoted_date(value) # :nodoc:
-      if value.respond_to?(:usec)
+    def quoted_date(value)
+      if value.acts_like?(:time) && value.respond_to?(:usec)
         "#{super}.#{sprintf("%06d", value.usec)}"
       else
         super
       end
-    end
+    end if ::ActiveRecord::VERSION::MAJOR >= 3
 
     # @note We have an extra binds argument at the end due AR-2.3 support.
     # @private
