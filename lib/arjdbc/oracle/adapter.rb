@@ -2,14 +2,16 @@ ArJdbc.load_java_part :Oracle
 
 module ArJdbc
   module Oracle
-    
+
     def self.extended(adapter); initialize!; end
-    
+
+    # @private
     @@_initialized = nil
-    
+
+    # @private
     def self.initialize!
       return if @@_initialized; @@_initialized = true
-      
+
       require 'arjdbc/jdbc/serialized_attributes_helper'
       ActiveRecord::Base.class_eval do
         def after_save_with_oracle_lob
@@ -19,7 +21,7 @@ module ArJdbc
 
             self.class.connection.write_large_object(
               column.type == :binary, column.name,
-              self.class.table_name, self.class.primary_key, 
+              self.class.table_name, self.class.primary_key,
               self.class.connection.quote(id), value
             )
           end
@@ -33,7 +35,7 @@ module ArJdbc
         ActiveRecord::Base.extend ArJdbc::QuotedPrimaryKeyExtension
       end
     end
-    
+
     def self.column_selector
       [ /oracle/i, lambda { |cfg, column| column.extend(::ArJdbc::Oracle::Column) } ]
     end
@@ -46,23 +48,24 @@ module ArJdbc
       ::ActiveRecord::ConnectionAdapters::OracleColumn
     end
 
+    # @private
     @@emulate_booleans = true
-    
+
     # Boolean emulation can be disabled using :
-    # 
+    #
     #   ArJdbc::Oracle.emulate_booleans = false
-    # 
+    #
     # @see ActiveRecord::ConnectionAdapters::OracleAdapter#emulate_booleans
     def self.emulate_booleans; @@emulate_booleans; end
     def self.emulate_booleans=(emulate); @@emulate_booleans = emulate; end
-    
+
     module Column
-      
+
       def primary=(value)
         super
         @type = :integer if value && @sql_type =~ /^NUMBER$/i
       end
-      
+
       def type_cast(value)
         return nil if value.nil?
         case type
@@ -84,7 +87,7 @@ module ArJdbc
         end
       end
 
-      # convert a value to a boolean 
+      # convert a value to a boolean
       def self.value_to_boolean(value)
         # NOTE: Oracle JDBC meta-data gets us DECIMAL for NUMBER(1) values
         # thus we're likely to get a column back as BigDecimal (e.g. 1.0)
@@ -96,12 +99,12 @@ module ArJdbc
           !! value
         end
       end
-      
+
       def self.string_to_time(string)
         return string unless string.is_a?(String)
         return nil if string.empty?
         return Time.now if string.index('CURRENT') == 0 # TODO seems very wrong
-        
+
         ::ActiveRecord::ConnectionAdapters::JdbcColumn.string_to_time(string)
       end
 
@@ -111,12 +114,12 @@ module ArJdbc
 
       def self.guess_date_or_time(value)
         return value if value.is_a? Date
-        ( value && value.hour == 0 && value.min == 0 && value.sec == 0 ) ? 
+        ( value && value.hour == 0 && value.min == 0 && value.sec == 0 ) ?
           Date.new(value.year, value.month, value.day) : value
       end
 
       private
-      
+
       def extract_limit(sql_type)
         case sql_type
         when /^(clob|date)/i then nil
@@ -124,7 +127,7 @@ module ArJdbc
         else super
         end
       end
-      
+
       def simplified_type(field_type)
         case field_type
         when /char/i            then :string
@@ -158,21 +161,21 @@ module ArJdbc
 
         value
       end
-      
+
     end
-    
-    class TableDefinition < ::ActiveRecord::ConnectionAdapters::TableDefinition # :nodoc:
+
+    class TableDefinition < ::ActiveRecord::ConnectionAdapters::TableDefinition
       def raw(*args)
         options = args.extract_options!
         column(args[0], 'raw', options)
       end
-      
+
       def xml(*args)
         options = args.extract_options!
         column(args[0], 'xml', options)
       end
     end
-    
+
     def table_definition(*args)
       new_table_definition(TableDefinition, *args)
     end
@@ -182,11 +185,11 @@ module ArJdbc
     end
 
     ADAPTER_NAME = 'Oracle'
-    
+
     def adapter_name
       ADAPTER_NAME
     end
-    
+
     NATIVE_DATABASE_TYPES = {
       :primary_key => "NUMBER(38) NOT NULL PRIMARY KEY",
       :string => { :name => "VARCHAR2", :limit => 255 },
@@ -207,7 +210,7 @@ module ArJdbc
     def native_database_types
       super.merge(NATIVE_DATABASE_TYPES)
     end
-    
+
     def modify_types(types)
       super(types)
       NATIVE_DATABASE_TYPES.each do |key, value|
@@ -215,30 +218,31 @@ module ArJdbc
       end
       types
     end
-    
+
     def prefetch_primary_key?(table_name = nil)
       columns(table_name).detect {|c| c.primary } if table_name
     end
 
     # Prevent ORA-01795 for in clauses with more than 1000
-    def in_clause_length # :nodoc:
+    def in_clause_length
       1000
     end
     alias_method :ids_in_list_limit, :in_clause_length
-    
-    IDENTIFIER_LENGTH = 30 # :nodoc:
-    
-    # maximum length of Oracle identifiers is 30
-    def table_alias_length; IDENTIFIER_LENGTH; end # :nodoc:
-    def table_name_length;  IDENTIFIER_LENGTH; end # :nodoc:
-    def index_name_length;  IDENTIFIER_LENGTH; end # :nodoc:
-    def column_name_length; IDENTIFIER_LENGTH; end # :nodoc:
 
-    def default_sequence_name(table_name, column = nil) # :nodoc:
+    IDENTIFIER_LENGTH = 30
+
+    # maximum length of Oracle identifiers is 30
+    def table_alias_length; IDENTIFIER_LENGTH; end
+    def table_name_length;  IDENTIFIER_LENGTH; end
+    def index_name_length;  IDENTIFIER_LENGTH; end
+    def column_name_length; IDENTIFIER_LENGTH; end
+
+    def default_sequence_name(table_name, column = nil)
       "#{table_name.to_s[0, IDENTIFIER_LENGTH - 4]}_seq"
     end
 
-    def create_table(name, options = {}) #:nodoc:
+    # @override
+    def create_table(name, options = {})
       super(name, options)
       seq_name = options[:sequence_name] || default_sequence_name(name)
       start_value = options[:sequence_start_value] || 10000
@@ -246,32 +250,35 @@ module ArJdbc
       execute "CREATE SEQUENCE #{seq_name} START WITH #{start_value}" unless options[:id] == false
     end
 
-    def rename_table(name, new_name) #:nodoc:
+    # @override
+    def rename_table(name, new_name)
       execute "RENAME #{name} TO #{new_name}"
       execute "RENAME #{name}_seq TO #{new_name}_seq" rescue nil
     end
 
-    def drop_table(name, options = {}) #:nodoc:
+    # @override
+    def drop_table(name, options = {})
       super(name) rescue nil
       seq_name = options[:sequence_name] || default_sequence_name(name)
       execute "DROP SEQUENCE #{seq_name}" rescue nil
     end
-    
-    def type_to_sql(type, limit = nil, precision = nil, scale = nil) #:nodoc:
+
+    # @override
+    def type_to_sql(type, limit = nil, precision = nil, scale = nil)
       case type.to_sym
       when :binary
         # { BLOB | BINARY LARGE OBJECT } [ ( length [{K |M |G }] ) ]
         # although Oracle does not like limit (length) with BLOB (or CLOB) :
-        # 
+        #
         # CREATE TABLE binaries (data BLOB, short_data BLOB(1024));
         # ORA-00907: missing right parenthesis             *
         #
         # TODO do we need to worry about NORMAL vs. non IN-TABLE BLOBs ?!
         # http://dba.stackexchange.com/questions/8770/improve-blob-writing-performance-in-oracle-11g
-        # - if the LOB is smaller than 3900 bytes it can be stored inside the 
-        #   table row; by default this is enabled, 
+        # - if the LOB is smaller than 3900 bytes it can be stored inside the
+        #   table row; by default this is enabled,
         #   unless you specify DISABLE STORAGE IN ROW
-        # - normal LOB - stored in a separate segment, outside of table, 
+        # - normal LOB - stored in a separate segment, outside of table,
         #   you may even put it in another tablespace;
         super(type, nil, nil, nil)
       when :text
@@ -280,7 +287,7 @@ module ArJdbc
         super
       end
     end
-    
+
     def next_sequence_value(sequence_name)
       # avoid #select or #select_one so that the sequence values aren't cached
       execute("SELECT #{quote_table_name(sequence_name)}.nextval id FROM dual").first['id'].to_i
@@ -289,8 +296,9 @@ module ArJdbc
     def sql_literal?(value)
       defined?(::Arel::SqlLiteral) && ::Arel::SqlLiteral === value
     end
+    private :sql_literal?
 
-    def insert(sql, name = nil, pk = nil, id_value = nil, sequence_name = nil, binds = []) # :nodoc:
+    def insert(sql, name = nil, pk = nil, id_value = nil, sequence_name = nil, binds = [])
       if (id_value && ! sql_literal?(id_value)) || pk.nil?
         # Pre-assigned id or table without a primary key
         # Presence of #to_sql means an Arel literal bind variable
@@ -309,12 +317,12 @@ module ArJdbc
         id_value
       end
     end
-    
+
     def indexes(table, name = nil)
       @connection.indexes(table, name, @connection.connection.meta_data.user_name)
     end
 
-    def add_limit_offset!(sql, options) #:nodoc:
+    def add_limit_offset!(sql, options)
       offset = options[:offset] || 0
 
       if limit = options[:limit]
@@ -324,40 +332,40 @@ module ArJdbc
       end
     end
 
-    def current_user # :nodoc:
+    def current_user
       @current_user ||= execute("SELECT sys_context('userenv', 'session_user') su FROM dual").first['su']
     end
-    
-    def current_database # :nodoc:
+
+    def current_database
       @current_database ||= execute("SELECT sys_context('userenv', 'db_name') db FROM dual").first['db']
     end
 
-    def current_schema # :nodoc:
+    def current_schema
       execute("SELECT sys_context('userenv', 'current_schema') schema FROM dual").first['schema']
     end
 
     def current_schema=(schema_owner)
       execute("ALTER SESSION SET current_schema=#{schema_owner}")
     end
-    
-    def create_savepoint # :nodoc:
+
+    def create_savepoint
       execute("SAVEPOINT #{current_savepoint_name}")
     end
 
-    def rollback_to_savepoint # :nodoc:
+    def rollback_to_savepoint
       execute("ROLLBACK TO #{current_savepoint_name}")
     end
 
-    def release_savepoint # :nodoc:
+    def release_savepoint
       # no RELEASE SAVEPOINT statement in Oracle
     end
-    
-    def remove_index(table_name, options = {}) #:nodoc:
+
+    def remove_index(table_name, options = {})
       execute "DROP INDEX #{index_name(table_name, options)}"
     end
 
-    def change_column_default(table_name, column_name, default) #:nodoc:
-      execute "ALTER TABLE #{quote_table_name(table_name)} " + 
+    def change_column_default(table_name, column_name, default)
+      execute "ALTER TABLE #{quote_table_name(table_name)} " +
         "MODIFY #{quote_column_name(column_name)} DEFAULT #{quote(default)}"
     end
 
@@ -369,24 +377,24 @@ module ArJdbc
       super
     end
 
-    def change_column(table_name, column_name, type, options = {}) #:nodoc:
+    def change_column(table_name, column_name, type, options = {})
       change_column_sql = "ALTER TABLE #{quote_table_name(table_name)} " <<
         "MODIFY #{quote_column_name(column_name)} #{type_to_sql(type, options[:limit])}"
       add_column_options!(change_column_sql, options)
       execute(change_column_sql)
     end
 
-    def rename_column(table_name, column_name, new_column_name) #:nodoc:
+    def rename_column(table_name, column_name, new_column_name)
       execute "ALTER TABLE #{quote_table_name(table_name)} " <<
         "RENAME COLUMN #{quote_column_name(column_name)} TO #{quote_column_name(new_column_name)}"
     end
-    
+
     def remove_column(table_name, *column_names) #:nodoc:
       for column_name in column_names.flatten
         execute "ALTER TABLE #{quote_table_name(table_name)} DROP COLUMN #{quote_column_name(column_name)}"
       end
     end
-    
+
     # SELECT DISTINCT clause for a given set of columns and a given ORDER BY clause.
     #
     # Oracle requires the ORDER BY columns to be in the SELECT list for DISTINCT
@@ -422,7 +430,7 @@ module ArJdbc
 
       sql << "ORDER BY #{order.join(', ')}"
     end
-    
+
     def extract_order_columns(order_by)
       columns = order_by.split(',')
       columns.map!(&:strip); columns.reject!(&:blank?)
@@ -430,24 +438,24 @@ module ArJdbc
       columns.zip( (0...columns.size).to_a )
     end
     private :extract_order_columns
-    
-    def temporary_table?(table_name) # :nodoc:
+
+    def temporary_table?(table_name)
       select_value("SELECT temporary FROM user_tables WHERE table_name = '#{table_name.upcase}'") == 'Y'
     end
-    
-    def tables # :nodoc:
+
+    def tables
       @connection.tables(nil, oracle_schema)
     end
-    
+
     # NOTE: better to use current_schema instead of the configured one ?!
-    def columns(table_name, name = nil) # :nodoc:
+    def columns(table_name, name = nil)
       @connection.columns_internal(table_name.to_s, nil, oracle_schema)
     end
-    
+
     def tablespace(table_name)
       select_value "SELECT tablespace_name FROM user_tables WHERE table_name='#{table_name.to_s.upcase}'"
     end
-    
+
     def charset
       database_parameters['NLS_CHARACTERSET']
     end
@@ -455,25 +463,27 @@ module ArJdbc
     def collation
       database_parameters['NLS_COMP']
     end
-    
+
     def database_parameters
       return @database_parameters unless ( @database_parameters ||= {} ).empty?
-      @connection.execute_query_raw("SELECT * FROM NLS_DATABASE_PARAMETERS") do 
+      @connection.execute_query_raw("SELECT * FROM NLS_DATABASE_PARAMETERS") do
         |name, value| @database_parameters[name] = value
       end
       @database_parameters
     end
-    
+
     # QUOTING ==================================================
-    
-    def quote_table_name(name) # :nodoc:
+
+    # @override
+    def quote_table_name(name)
       name.to_s.split('.').map{ |n| n.split('@').map{ |m| quote_column_name(m) }.join('@') }.join('.')
     end
-    
-    def quote_column_name(name) #:nodoc:
+
+    # @override
+    def quote_column_name(name)
       # if only valid lowercase column characters in name
       if ( name = name.to_s ) =~ /\A[a-z][a-z_0-9\$#]*\Z/
-        # putting double-quotes around an identifier causes Oracle to treat the 
+        # putting double-quotes around an identifier causes Oracle to treat the
         # identifier as case sensitive (otherwise assumes case-insensitivity) !
         # all upper case is an exception, where double-quotes are meaningless
         "\"#{name.upcase}\"" # name.upcase
@@ -482,10 +492,11 @@ module ArJdbc
         "\"#{name.gsub('"', '')}\""
       end
     end
-    
-    def quote(value, column = nil) # :nodoc:
+
+    # @override
+    def quote(value, column = nil)
       return value if sql_literal?(value) # Arel 2 passes SqlLiterals through
-      
+
       column_type = column && column.type
       if column_type == :text || column_type == :binary
         if /(.*?)\([0-9]+\)/ =~ column.sql_type
@@ -501,34 +512,56 @@ module ArJdbc
         if column.respond_to?(:primary) && column.primary && column.klass != String
           return value.to_i.to_s
         end
-        quoted = super
+
         if value.acts_like?(:date)
-          quoted = %Q{DATE'#{quoted_date(value)}'}
+          %Q{DATE'#{quoted_date(value)}'} # DATE 'YYYY-MM-DD'
         elsif value.acts_like?(:time)
-          quoted = %Q{TIMESTAMP'#{quoted_date(value)}'}
+          %Q{TIMESTAMP'#{quoted_date(value)}'} # TIMESTAMP 'YYYY-MM-DD HH24:MI:SS.FF'
+        else
+          super
         end
-        quoted
       end
     end
-    
-    def quote_raw(value) # :nodoc:
+
+    # Quote date/time values for use in SQL input.
+    # Includes milliseconds if the value is a Time responding to usec.
+    # @override
+    def quoted_date(value)
+      if value.acts_like?(:time)
+        get = ActiveRecord::Base.default_timezone == :utc ? :getutc : :getlocal
+        value = value.send(get) if value.respond_to?(get)
+        if value.respond_to?(:usec)
+          usec = sprintf("%02d", (value.usec / 10000.0).round) # .428000 -> .43
+          return "#{value.to_s(:db)}.#{usec}" # value.strftime("%Y-%m-%d %H:%M:%S")
+        end
+      #elsif value.acts_like?(:date)
+      #  return "#{value.strftime("%Y-%m-%d")}"
+      end
+      value.to_s(:db)
+    end
+
+    def quote_raw(value)
       value = value.unpack('C*') if value.is_a?(String)
       "'#{value.map { |x| "%02X" % x }.join}'"
     end
-    
-    def supports_migrations? # :nodoc:
+
+    # @override
+    def supports_migrations?
       true
     end
 
-    def supports_primary_key? # :nodoc:
+    # @override
+    def supports_primary_key?
       true
     end
 
-    def supports_savepoints? # :nodoc:
+    # @override
+    def supports_savepoints?
       true
     end
-    
-    def supports_explain? # :nodoc:
+
+    # @override
+    def supports_explain?
       true
     end
 
@@ -545,16 +578,16 @@ module ArJdbc
       result.each { |row| row.delete('raw_rnum_') } # Hash rows even for AR::Result
       result
     end
-    
+
     # @override as <code>#execute_insert</code> not working for Oracle e.g.
-    # getLong not implemented for class oracle.jdbc.driver.T4CRowidAccessor: 
+    # getLong not implemented for class oracle.jdbc.driver.T4CRowidAccessor:
     # INSERT INTO binaries (data, id, name, short_data) VALUES (?, ?, ?, ?)
-    def exec_insert(sql, name, binds, pk = nil, sequence_name = nil) # :nodoc:
+    def exec_insert(sql, name, binds, pk = nil, sequence_name = nil)
       execute(sql, name, binds)
     end
-    
+
     private
-    
+
     def _execute(sql, name = nil)
       if self.class.select?(sql)
         @connection.execute_query_raw(sql)
@@ -562,18 +595,18 @@ module ArJdbc
         @connection.execute_update(sql)
       end
     end
-    
-    def extract_table_ref_from_insert_sql(sql) # :nodoc:
+
+    def extract_table_ref_from_insert_sql(sql)
       table = sql.split(" ", 4)[2].gsub('"', '')
       ( idx = table.index('(') ) ? table[0...idx] : table # INTO table(col1, col2) ...
     end
-    
+
     # In Oracle, schemas are usually created under your username :
     # http://www.oracle.com/technology/obe/2day_dba/schema/schema.htm
-    # 
+    #
     # A schema is the set of objects (tables, views, indexes, etc) that belongs
     # to an user, often used as another way to refer to an Oracle user account.
-    # 
+    #
     # But allow separate configuration as "schema:" anyway (see #53)
     def oracle_schema
       if @config[:schema]
@@ -587,29 +620,31 @@ module ArJdbc
 end
 
 module ActiveRecord::ConnectionAdapters
-  
+
   remove_const(:OracleAdapter) if const_defined?(:OracleAdapter)
 
   class OracleAdapter < JdbcAdapter
     include ::ArJdbc::Oracle
-    
-    # By default, the MysqlAdapter will consider all columns of type 
+
+    # By default, the MysqlAdapter will consider all columns of type
     # <tt>tinyint(1)</tt> as boolean. If you wish to disable this :
     #
     #   ActiveRecord::ConnectionAdapters::OracleAdapter.emulate_booleans = false
     #
     def self.emulate_booleans; ::ArJdbc::Oracle.emulate_booleans; end
     def self.emulate_booleans=(emulate); ::ArJdbc::Oracle.emulate_booleans = emulate; end
-    
+
     def initialize(*args)
       ::ArJdbc::Oracle.initialize!
       super # configure_connection happens in super
     end
-    
+
     # some QUOTING caching :
 
+    # @private
     @@quoted_table_names = {}
 
+    # @private
     def quote_table_name(name)
       unless quoted = @@quoted_table_names[name]
         quoted = super
@@ -618,8 +653,10 @@ module ActiveRecord::ConnectionAdapters
       quoted
     end
 
+    # @private
     @@quoted_column_names = {}
 
+    # @private
     def quote_column_name(name)
       unless quoted = @@quoted_column_names[name]
         quoted = super
@@ -627,11 +664,11 @@ module ActiveRecord::ConnectionAdapters
       end
       quoted
     end
-    
+
   end
 
   class OracleColumn < JdbcColumn
     include ::ArJdbc::Oracle::Column
   end
-  
+
 end
