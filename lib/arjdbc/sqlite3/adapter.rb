@@ -1,10 +1,11 @@
 ArJdbc.load_java_part :SQLite3
 
-require 'arjdbc/jdbc/missing_functionality_helper'
+require 'arjdbc/jdbc/table_copier'
 require 'arjdbc/sqlite3/explain_support'
 
 module ArJdbc
   module SQLite3
+    include ArJdbc::TableCopier
 
     # @see ActiveRecord::ConnectionAdapters::JdbcColumn#column_types
     def self.column_selector
@@ -466,8 +467,6 @@ module ArJdbc
     end
 
     protected
-
-    include ArJdbc::MissingFunctionalityHelper
 
     def translate_exception(exception, message)
       case exception.message

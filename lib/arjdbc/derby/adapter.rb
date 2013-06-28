@@ -1,8 +1,10 @@
 ArJdbc.load_java_part :Derby
-require 'arjdbc/jdbc/missing_functionality_helper'
+
+require 'arjdbc/jdbc/table_copier'
 
 module ArJdbc
   module Derby
+    include ArJdbc::TableCopier
 
     def self.extended(adapter)
       require 'arjdbc/derby/active_record_patch'
@@ -110,8 +112,6 @@ module ArJdbc
       { 'derby' => visitor, 'jdbcderby' => visitor }
     end
 
-    include ArJdbc::MissingFunctionalityHelper
-
     def index_name_length
       128
     end
@@ -149,7 +149,7 @@ module ArJdbc
 
     # Convert the specified column type to a SQL string.
     # @override
-    def type_to_sql(type, limit = nil, precision = nil, scale = nil) # :nodoc:
+    def type_to_sql(type, limit = nil, precision = nil, scale = nil)
       return super unless NO_LIMIT_TYPES.include?(t = type.to_s.downcase.to_sym)
 
       native_type = NATIVE_DATABASE_TYPES[t]

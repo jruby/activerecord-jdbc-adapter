@@ -1,4 +1,4 @@
-module ::ArJdbc
+module ArJdbc
   module SQLite3
     module ExplainSupport
       def supports_explain?
