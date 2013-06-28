@@ -348,16 +348,9 @@ module ArJdbc
       execute("ALTER SESSION SET current_schema=#{schema_owner}")
     end
 
-    def create_savepoint
-      execute("SAVEPOINT #{current_savepoint_name}")
-    end
-
-    def rollback_to_savepoint
-      execute("ROLLBACK TO #{current_savepoint_name}")
-    end
-
-    def release_savepoint
-      # no RELEASE SAVEPOINT statement in Oracle
+    # @override
+    def release_savepoint(name = nil)
+      # no RELEASE SAVEPOINT statement in Oracle (JDBC driver throws "Unsupported feature")
     end
 
     def remove_index(table_name, options = {})
