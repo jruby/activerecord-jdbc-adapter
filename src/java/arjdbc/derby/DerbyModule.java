@@ -24,12 +24,13 @@
 
 package arjdbc.derby;
 
-import java.sql.SQLException;
-
 import static arjdbc.util.QuotingUtils.BYTES_0;
 import static arjdbc.util.QuotingUtils.BYTES_1;
+import static arjdbc.util.QuotingUtils.BYTES_SINGLE_Q_x2;
 
 import arjdbc.jdbc.RubyJdbcConnection;
+
+import java.sql.SQLException;
 
 import org.jruby.Ruby;
 import org.jruby.RubyBoolean;
@@ -166,15 +167,13 @@ public class DerbyModule {
             return value;
         }
 
-        if ( value instanceof RubyBoolean ) {
-            return value.isTrue() ? runtime.newString("1") : runtime.newString("0");
-        }
+        if ( value instanceof RubyBoolean ) return quoteBoolean(runtime, value);
 
-        final String metaClass = value.getMetaClass().getName();
-        if ( metaClass.equals("Float") || metaClass.equals("Fixnum") || metaClass.equals("Bignum") ) {
+        final String className = value.getMetaClass().getName();
+        if ( className.equals("Float") || className.equals("Fixnum") || className.equals("Bignum") ) {
             return RubyString.objAsString(context, value);
         }
-        if ( metaClass.equals("BigDecimal") ) {
+        if ( className.equals("BigDecimal") ) {
             return value.callMethod(context, "to_s", runtime.newString("F"));
         }
 
@@ -195,9 +194,7 @@ public class DerbyModule {
             return runtime.newString(NULL);
         }
         if ( value instanceof RubyBoolean ) {
-            if ( columnType == (Object) "integer" ) {
-                return value.isTrue() ? runtime.newString("1") : runtime.newString("0");
-            }
+            if ( columnType == (Object) "integer" ) return quoteBoolean(runtime, value);
             return self.callMethod(context, value.isTrue() ? "quoted_true" : "quoted_false");
         }
         if ( value instanceof RubyString || isMultibyteChars(runtime, value) ) {
@@ -220,19 +217,17 @@ public class DerbyModule {
             return quoteString(runtime, "'", strValue, "'");
         }
 
-        final String metaClass = value.getMetaClass().getName();
-        if ( metaClass.equals("Float") || metaClass.equals("Fixnum") || metaClass.equals("Bignum") ) {
+        final String className = value.getMetaClass().getName();
+        if ( className.equals("Float") || className.equals("Fixnum") || className.equals("Bignum") ) {
             return RubyString.objAsString(context, value);
         }
-        if ( metaClass.equals("BigDecimal") ) {
+        if ( className.equals("BigDecimal") ) {
             return value.callMethod(context, "to_s", runtime.newString("F"));
         }
 
         IRubyObject strValue = quoted_date_OR_to_yaml(context, runtime, self, value);
         return quoteString(runtime, "'", strValue, "'");
     }
-
-    private final static ByteList TWO_SINGLE = new ByteList(new byte[]{'\'','\''});
 
     private static IRubyObject quoteString(final Ruby runtime,
         final String before, final IRubyObject string, final String after) {
@@ -311,7 +306,7 @@ public class DerbyModule {
                 replacement = true;
             }
 
-            bytes.replace(i, 1, TWO_SINGLE);
+            bytes.replace(i, 1, BYTES_SINGLE_Q_x2);
             i += 1;
         }
 
@@ -330,6 +325,10 @@ public class DerbyModule {
             final ThreadContext context,
             final IRubyObject self) {
         return RubyString.newString(context.getRuntime(), BYTES_0);
+    }
+
+    private static RubyString quoteBoolean(final Ruby runtime, final IRubyObject value) {
+        return value.isTrue() ? runtime.newString(BYTES_1) : runtime.newString(BYTES_0);
     }
 
     @JRubyMethod(name = "_execute", required = 1, optional = 1)

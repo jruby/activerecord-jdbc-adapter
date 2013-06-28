@@ -31,36 +31,36 @@ import org.jruby.util.ByteList;
 
 /**
  * Shared (common) quoting helpers.
- * 
+ *
  * <br>
  * NOTE: This is internal API !
  * <br>
- * 
+ *
  * @author kares
  */
 public abstract class QuotingUtils {
-    
+
     public static final ByteList BYTES_0 = new ByteList(new byte[] { '0' }, false);
-    
+
     public static final ByteList BYTES_1 = new ByteList(new byte[] { '1' }, false);
-    
+
     // e.g. string.gsub("'", "''") -> quoteCharWith(string, '\'', '\'');
     public static RubyString quoteCharWith(
-            final ThreadContext context, 
-            final RubyString string, 
+            final ThreadContext context,
+            final RubyString string,
             final char value, final char quote) {
-        
+
         final ByteList stringBytes = string.getByteList();
         final byte[] bytes = stringBytes.unsafeBytes();
         final int begin = stringBytes.getBegin();
         final int realSize = stringBytes.getRealSize();
-        
+
         ByteList quotedBytes = null; int appendFrom = begin;
         for ( int i = begin; i < begin + realSize; i++ ) {
             if ( bytes[i] == value ) {
                 if ( quotedBytes == null ) {
                     quotedBytes = new ByteList(
-                        new byte[realSize + 8], 
+                        new byte[realSize + 8],
                         stringBytes.getEncoding()
                     );
                     quotedBytes.setBegin(0);
@@ -79,26 +79,26 @@ public abstract class QuotingUtils {
         final Ruby runtime = context.getRuntime();
         return runtime.newString(quotedBytes);
     }
-    
-    static final ByteList SINGLE_Q = new ByteList(new byte[] { '\'' }, false);
-    static final ByteList QUOTED_SINGLE_Q = new ByteList(new byte[] { '\'', '\'' }, false);
-    
+
+    public static final ByteList BYTES_SINGLE_Q = new ByteList(new byte[] { '\'' }, false);
+    public static final ByteList BYTES_SINGLE_Q_x2 = new ByteList(new byte[] { '\'', '\'' }, false);
+
     // string.gsub("'", "''") :
     public static IRubyObject quoteSingleQuotesWithFallback(
-        final ThreadContext context, final IRubyObject string) { 
+        final ThreadContext context, final IRubyObject string) {
         // string.gsub("'", "''") :
         if ( string instanceof RubyString ) {
             final char single = '\'';
             return quoteCharWith(context, (RubyString) string, single, single);
         }
         else { // ActiveSupport::Multibyte::Chars
-            return string.callMethod(context, "gsub", 
+            return string.callMethod(context, "gsub",
                 new IRubyObject[] {
-                    context.getRuntime().newString(SINGLE_Q),
-                    context.getRuntime().newString(QUOTED_SINGLE_Q)
+                    context.getRuntime().newString(BYTES_SINGLE_Q),
+                    context.getRuntime().newString(BYTES_SINGLE_Q_x2)
                 }
             );
         }
     }
-    
+
 }
