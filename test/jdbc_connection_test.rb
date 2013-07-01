@@ -116,11 +116,18 @@ class JdbcConnectionTest < Test::Unit::TestCase
     test 'connection url' do
       adapter = ActiveRecord::Base.connection
       connection = adapter.raw_connection # JdbcConnection
-      connection.config = { :url => "jdbc://somehost", :options => { :hoge => "true", :fuya => "false" } }
-      assert_equal "jdbc://somehost?hoge=true&fuya=false", connection.send(:jdbc_url)
+      original_config = connection.config.dup
+      begin
+        connection.config.replace :url => "jdbc://somehost",
+          :options => { :hoge => "true", :fuya => "false" }
+        assert_equal "jdbc://somehost?hoge=true&fuya=false", connection.send(:jdbc_url)
 
-      connection.config = { :url => "jdbc://somehost?param=0", :options => { :hoge => "true", :fuya => false } }
-      assert_equal "jdbc://somehost?param=0&hoge=true&fuya=false", connection.send(:jdbc_url)
+        connection.config.replace :url => "jdbc://somehost?param=0",
+          :options => { :hoge => "true", :fuya => false }
+        assert_equal "jdbc://somehost?param=0&hoge=true&fuya=false", connection.send(:jdbc_url)
+      ensure
+        connection.config.replace original_config
+      end
     end
 
     test 'connection fails without driver and url' do
