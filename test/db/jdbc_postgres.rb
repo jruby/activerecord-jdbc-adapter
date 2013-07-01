@@ -13,6 +13,7 @@ ActiveRecord::Base.establish_connection({
   :url => "jdbc:postgresql://#{url}/#{POSTGRES_CONFIG[:database]}",
   :username => POSTGRES_CONFIG[:username],
   :password => POSTGRES_CONFIG[:password],
+  :prepared_statements => ENV['PREPARED_STATEMENTS'] || ENV['PS']
 })
 
 begin

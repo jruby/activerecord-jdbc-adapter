@@ -5,7 +5,8 @@ config = {
   :username => ENV["ORACLE_USER"] || 'blog',
   :password => ENV["ORACLE_PASS"] || 'blog',
   :host => ENV["ORACLE_HOST"] || 'localhost',
-  :database => ENV["ORACLE_SID"] || 'XE'
+  :database => ENV["ORACLE_SID"] || 'XE',
+  :prepared_statements => ENV['PREPARED_STATEMENTS'] || ENV['PS']
 }
 
 ActiveRecord::Base.establish_connection(config)

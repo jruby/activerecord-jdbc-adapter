@@ -3,7 +3,8 @@ require 'test_helper'
 config = {
   :adapter => 'jdbc',
   :driver => 'org.h2.Driver',
-  :url => 'jdbc:h2:test.db'
+  :url => 'jdbc:h2:test.db',
+  :prepared_statements => ENV['PREPARED_STATEMENTS'] || ENV['PS']
 }
 
 require 'jdbc/h2' # driver not loaded for plain JDBC

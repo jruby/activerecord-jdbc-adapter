@@ -4,6 +4,7 @@ require 'db/jdbc_derby_config'
 class JdbcPlainTest < Test::Unit::TestCase
 
   def self.startup
+    super
     @connection = ActiveRecord::Base.remove_connection
     ActiveRecord::Base.establish_connection JDBC_DERBY_CONFIG
     define_schema
@@ -12,6 +13,7 @@ class JdbcPlainTest < Test::Unit::TestCase
   def self.shutdown
     drop_schema
     @connection && ActiveRecord::Base.establish_connection(@connection)
+    super
   end
 
   def self.define_schema

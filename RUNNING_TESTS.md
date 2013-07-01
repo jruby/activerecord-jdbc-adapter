@@ -5,13 +5,14 @@ Most DB specific unit tests hide under the **test/db** directory, the files
 included in the *test* directory are mostly shared test modules and helpers.
 
 Rake tasks are loaded from **rakelib/02-test-rake**, most adapters have a
-corresponding test_[adapter] task e.g. `rake test_sqlite3` and connect to the DB.
+corresponding test_[adapter] task e.g. `rake test_sqlite3` that run against DB.
 To check all available (test related) tasks simply `rake -T | grep test`.
 
 If the adapter supports creating a database it will try to do so automatically
-(most embed databases such as SQLite3), but otherwise you'll need to setup a
-database dedicated for tests (using the standard tools that come with your DB
-installation e.g. `mysqladmin create arjdbc_test -u root`).
+(most embed databases such as SQLite3) for some adapters (MySQL, PostgreSQL) we
+do this auto-magically (see the `rake db:create` tasks), but otherwise you'll
+need to setup a database dedicated for tests (using the standard tools that come
+with your DB installation).
 
 Connection parameters: database, host etc. can usually be changed from the shell
 `env` for adapters where there might be no direct control over the DB
@@ -36,6 +37,11 @@ test cases, you pick tests by matching their names as well using **TESTOPTS** :
     rake appraisal:rails40 test_postgres TESTOPTS="--name=/integer/"
 
 This of course also works when running the "plain" test (no appraisal:xxx) task.
+
+Since 1.3.0 we also support prepared statements, these are off by default (AR)
+but one can easily run tests with prepared statements enabled using env vars :
+
+    rake test_derby PS=true # or PREPARED_STATEMENTS=true
 
 
 ### ActiveRecord (Rails) Tests

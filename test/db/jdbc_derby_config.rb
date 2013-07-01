@@ -8,3 +8,7 @@ JDBC_DERBY_CONFIG = {
 
 require 'jdbc/derby' # driver not loaded for plain JDBC
 Jdbc::Derby.load_driver(:require)
+
+unless ( ps = ENV['PREPARED_STATEMENTS'] || ENV['PS'] ).nil?
+  JDBC_DERBY_CONFIG[:prepared_statements] = ps
+end

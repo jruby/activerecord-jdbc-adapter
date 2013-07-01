@@ -8,4 +8,8 @@ MSSQL_CONFIG[:password] = ENV['SQLPASS'] || ''
 MSSQL_CONFIG[:host] = ENV['SQLHOST'] || 'localhost'
 MSSQL_CONFIG[:port] = ENV['SQLPORT'] if ENV['SQLPORT']
 
+unless ( ps = ENV['PREPARED_STATEMENTS'] || ENV['PS'] ).nil?
+  MSSQL_CONFIG[:prepared_statements] = ps
+end
+
 ActiveRecord::Base.establish_connection(MSSQL_CONFIG)

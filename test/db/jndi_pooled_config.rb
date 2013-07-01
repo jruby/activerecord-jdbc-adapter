@@ -1,6 +1,10 @@
 
 JNDI_POOLED_CONFIG = { :adapter => 'jndi', :jndi => 'jdbc/PooledDerbyDB' }
 
+unless ( ps = ENV['PREPARED_STATEMENTS'] || ENV['PS'] ).nil?
+  JNDI_POOLED_CONFIG[:prepared_statements] = ps
+end
+
 # FS based JNDI impl borrowed from tomcat :
 load 'test/jars/tomcat-juli.jar'
 load 'test/jars/tomcat-catalina.jar'

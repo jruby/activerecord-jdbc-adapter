@@ -1,6 +1,10 @@
 require 'test_helper'
 
-config = { :adapter => 'hsqldb', :database => 'test.hsqldb' }
+config = {
+  :adapter => 'hsqldb',
+  :database => 'test.hsqldb',
+  :prepared_statements => ENV['PREPARED_STATEMENTS'] || ENV['PS']
+}
 
 ActiveRecord::Base.establish_connection(config)
 

@@ -1,6 +1,10 @@
 
 JNDI_CONFIG = { :adapter => 'jdbc', :jndi => 'jdbc/DerbyDB' }
 
+unless ( ps = ENV['PREPARED_STATEMENTS'] || ENV['PS'] ).nil?
+  JNDI_CONFIG[:prepared_statements] = ps
+end
+
 # FS based JNDI impl borrowed from tomcat :
 load 'test/jars/tomcat-juli.jar'
 load 'test/jars/tomcat-catalina.jar'

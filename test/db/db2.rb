@@ -24,6 +24,8 @@ unless config[:url]
   end
 end
 
+config[:prepared_statements] = ENV['PREPARED_STATEMENTS'] || ENV['PS']
+
 require 'jdbc/db2'
 # Download IBM DB2 JCC driver from :
 # https://www-304.ibm.com/support/docview.wss?rs=4020&uid=swg21385217

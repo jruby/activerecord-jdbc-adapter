@@ -10,4 +10,5 @@ ActiveRecord::Base.establish_connection({
   :url => "jdbc:mysql://#{MYSQL_CONFIG[:host]}/#{MYSQL_CONFIG[:database]}",
   :username => MYSQL_CONFIG[:username],
   :password => MYSQL_CONFIG[:password],
+  :prepared_statements => ENV['PREPARED_STATEMENTS'] || ENV['PS']
 })
