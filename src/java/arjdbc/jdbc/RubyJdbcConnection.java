@@ -1820,8 +1820,14 @@ public class RubyJdbcConnection extends RubyObject {
     protected int jdbcTypeFor(final ThreadContext context, final Ruby runtime,
         final IRubyObject column, final Object value) throws SQLException {
 
-        final RubySymbol columnType = resolveColumnType(context, runtime, column);
-        final String internedType = columnType.asJavaString();
+        final String internedType;
+        if ( column != null && ! column.isNil() ) {
+            final RubySymbol columnType = resolveColumnType(context, runtime, column);
+            internedType = columnType.asJavaString();
+        }
+        else {
+            internedType = "string";
+        }
 
         if ( internedType == (Object) "string" ) return Types.VARCHAR;
         else if ( internedType == (Object) "text" ) return Types.CLOB;
