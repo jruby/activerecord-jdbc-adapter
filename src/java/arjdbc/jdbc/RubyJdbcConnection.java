@@ -185,7 +185,7 @@ public class RubyJdbcConnection extends RubyObject {
 
     public static int mapTransactionIsolationLevel(IRubyObject isolation) {
         if ( ! ( isolation instanceof RubySymbol ) ) {
-            isolation = isolation.convertToString().callMethod("intern");
+            isolation = isolation.asString().callMethod("intern");
         }
 
         final Object isolationString = isolation.toString(); // RubySymbol.toString
@@ -1863,8 +1863,13 @@ public class RubyJdbcConnection extends RubyObject {
             if ( value instanceof RubyFixnum ) {
                 statement.setLong(index, ((RubyFixnum) value).getLongValue());
             }
-            else {
+            else if ( value instanceof RubyNumeric ) {
+                // NOTE: fix2int will call value.convertToIngeter for non-numeric
+                // types which won't work for Strings since it uses `to_int` ...
                 statement.setInt(index, RubyNumeric.fix2int(value));
+            }
+            else {
+                statement.setLong(index, value.convertToInteger("to_i").getLongValue());
             }
         }
     }
@@ -1901,8 +1906,11 @@ public class RubyJdbcConnection extends RubyObject {
             if ( value instanceof RubyBignum ) {
                 setLongOrDecimalParameter(statement, index, ((RubyBignum) value).getValue());
             }
-            else {
+            else if ( value instanceof RubyInteger ) {
                 statement.setLong(index, ((RubyInteger) value).getLongValue());
+            }
+            else {
+                setLongOrDecimalParameter(statement, index, value.convertToInteger("to_i").getBigIntegerValue());
             }
         }
     }
@@ -1942,7 +1950,12 @@ public class RubyJdbcConnection extends RubyObject {
         final IRubyObject column, final int type) throws SQLException {
         if ( value.isNil() ) statement.setNull(index, Types.DOUBLE);
         else {
-            statement.setDouble(index, ((RubyNumeric) value).getDoubleValue());
+            if ( value instanceof RubyNumeric ) {
+                statement.setDouble(index, ((RubyNumeric) value).getDoubleValue());
+            }
+            else {
+                statement.setDouble(index, value.convertToFloat().getDoubleValue());
+            }
         }
     }
 
@@ -1977,25 +1990,32 @@ public class RubyJdbcConnection extends RubyObject {
         else {
             // NOTE: RubyBigDecimal moved into org.jruby.ext.bigdecimal (1.6 -> 1.7)
             if ( value.getMetaClass().getName().indexOf("BigDecimal") != -1 ) {
-                try { // reflect ((RubyBigDecimal) value).getValue() :
-                    BigDecimal decValue = (BigDecimal) value.getClass().
-                        getMethod("getValue", (Class<?>[]) null).
-                        invoke(value, (Object[]) null);
-                    statement.setBigDecimal(index, decValue);
-                }
-                catch (NoSuchMethodException e) {
-                    throw new RuntimeException(e);
-                }
-                catch (IllegalAccessException e) {
-                    throw new RuntimeException(e);
-                }
-                catch (InvocationTargetException e) {
-                    throw new RuntimeException(e.getCause() != null ? e.getCause() : e);
-                }
+                statement.setBigDecimal(index, getBigDecimalValue(value));
             }
-            else {
+            else if ( value instanceof RubyNumeric ) {
                 statement.setDouble(index, ((RubyNumeric) value).getDoubleValue());
             }
+            else { // e.g. `BigDecimal '42.00000000000000000001'`
+                IRubyObject v = callMethod(context, "BigDecimal", value);
+                statement.setBigDecimal(index, getBigDecimalValue(v));
+            }
+        }
+    }
+
+    private static BigDecimal getBigDecimalValue(final IRubyObject value) {
+        try { // reflect ((RubyBigDecimal) value).getValue() :
+            return (BigDecimal) value.getClass().
+                getMethod("getValue", (Class<?>[]) null).
+                invoke(value, (Object[]) null);
+        }
+        catch (NoSuchMethodException e) {
+            throw new RuntimeException(e);
+        }
+        catch (IllegalAccessException e) {
+            throw new RuntimeException(e);
+        }
+        catch (InvocationTargetException e) {
+            throw new RuntimeException(e.getCause() != null ? e.getCause() : e);
         }
     }
 
@@ -2043,7 +2063,7 @@ public class RubyJdbcConnection extends RubyObject {
                 statement.setTimestamp( index, timestamp, calendar );
             }
             else {
-                final String stringValue = value.convertToString().toString();
+                final String stringValue = value.asString().toString();
                 // yyyy-[m]m-[d]d hh:mm:ss[.f...]
                 final Timestamp timestamp = Timestamp.valueOf( stringValue );
                 statement.setTimestamp( index, timestamp, Calendar.getInstance() );
@@ -2092,7 +2112,7 @@ public class RubyJdbcConnection extends RubyObject {
                 statement.setTime( index, time, calendar );
             }
             else {
-                final String stringValue = value.convertToString().toString();
+                final String stringValue = value.asString().toString();
                 final Time time = Time.valueOf( stringValue );
                 statement.setTime( index, time, Calendar.getInstance() );
             }
@@ -2140,7 +2160,7 @@ public class RubyJdbcConnection extends RubyObject {
                 statement.setDate( index, date, calendar );
             }
             else {
-                final String stringValue = value.convertToString().toString();
+                final String stringValue = value.asString().toString();
                 final Date date = Date.valueOf( stringValue );
                 statement.setDate( index, date, Calendar.getInstance() );
             }
@@ -2193,7 +2213,7 @@ public class RubyJdbcConnection extends RubyObject {
         final IRubyObject column, final int type) throws SQLException {
         if ( value.isNil() ) statement.setNull(index, Types.VARCHAR);
         else {
-            statement.setString(index, value.convertToString().toString());
+            statement.setString(index, value.asString().toString());
         }
     }
 
@@ -2250,7 +2270,7 @@ public class RubyJdbcConnection extends RubyObject {
         if ( value.isNil() ) statement.setNull(index, Types.SQLXML);
         else {
             SQLXML xml = connection.createSQLXML();
-            xml.setString(value.convertToString().toString());
+            xml.setString(value.asString().toString());
             statement.setSQLXML(index, xml);
         }
     }
