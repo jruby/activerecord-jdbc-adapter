@@ -345,7 +345,11 @@ module SimpleTestMethods
   def test_save_timestamp_with_usec
     timestamp = Time.utc(1942, 11, 30, 01, 53, 59, 123_456)
     e = DbType.create! :sample_timestamp => timestamp
-    assert_timestamp_equal timestamp, e.reload.sample_timestamp
+    if ar_version('3.0')
+      assert_timestamp_equal timestamp, e.reload.sample_timestamp
+    else
+      assert_datetime_equal timestamp, e.reload.sample_timestamp # only sec
+    end
   end
 
   def test_time_usec_formatting_when_saved_into_string_column
