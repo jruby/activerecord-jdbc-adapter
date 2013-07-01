@@ -505,11 +505,27 @@ module ArJdbc
         if column.respond_to?(:primary) && column.primary && column.klass != String
           return value.to_i.to_s
         end
-
-        if value.acts_like?(:date)
-          %Q{DATE'#{value.strftime("%Y-%m-%d")}'} # DATE 'YYYY-MM-DD'
-        elsif value.acts_like?(:time)
-          %Q{TIMESTAMP'#{quoted_date(value, true)}'} # TIMESTAMP 'YYYY-MM-DD HH24:MI:SS.FF'
+        
+        if column_type == :datetime || column_type == :time
+          if value.acts_like?(:time)
+            %Q{TO_DATE('#{get_time(value).strftime("%Y-%m-%d %H:%M:%S")}','YYYY-MM-DD HH24:MI:SS')}
+          else
+            value.blank? ? 'NULL' : %Q{DATE'#{value}'} # assume correctly formated DATE (string)
+          end
+        elsif ( like_date = value.acts_like?(:date) ) || column_type == :date
+          if value.acts_like?(:time) # value.respond_to?(:strftime)
+            %Q{DATE'#{get_time(value).strftime("%Y-%m-%d")}'}
+          elsif like_date
+            %Q{DATE'#{quoted_date(value)}'} # DATE 'YYYY-MM-DD'
+          else
+            value.blank? ? 'NULL' : %Q{DATE'#{value}'} # assume correctly formated DATE (string)
+          end
+        elsif ( like_time = value.acts_like?(:time) ) || column_type == :timestamp
+          if like_time
+            %Q{TIMESTAMP'#{quoted_date(value, true)}'} # TIMESTAMP 'YYYY-MM-DD HH24:MI:SS.FF'
+          else
+            value.blank? ? 'NULL' : %Q{TIMESTAMP'#{value}'} # assume correctly formated TIMESTAMP (string)
+          end
         else
           super
         end
@@ -522,9 +538,7 @@ module ArJdbc
     def quoted_date(value, time = nil)
       if time || ( time.nil? && value.acts_like?(:time) )
         usec = value.respond_to?(:usec) && (value.usec / 10000.0).round # .428000 -> .43
-        get = ActiveRecord::Base.default_timezone == :utc ? :getutc : :getlocal
-        value = value.send(get) if value.respond_to?(get)
-        return "#{value.to_s(:db)}.#{sprintf("%02d", usec)}" if usec
+        return "#{get_time(value).to_s(:db)}.#{sprintf("%02d", usec)}" if usec
         # value.strftime("%Y-%m-%d %H:%M:%S")
       end
       value.to_s(:db)
@@ -534,6 +548,12 @@ module ArJdbc
       value = value.unpack('C*') if value.is_a?(String)
       "'#{value.map { |x| "%02X" % x }.join}'"
     end
+
+    def get_time(value)
+      get = ::ActiveRecord::Base.default_timezone == :utc ? :getutc : :getlocal
+      value.respond_to?(get) ? value.send(get) : value
+    end
+    private :get_time
 
     # @override
     def supports_migrations?
