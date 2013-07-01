@@ -1724,61 +1724,61 @@ public class RubyJdbcConnection extends RubyObject {
             case Types.SMALLINT:
             case Types.INTEGER:
                 if ( value instanceof RubyBignum ) {
-                    setBigIntegerParameter(runtime, connection, statement, index, (RubyBignum) value, column, type);
+                    setBigIntegerParameter(context, connection, statement, index, (RubyBignum) value, column, type);
                 }
-                setIntegerParameter(runtime, connection, statement, index, value, column, type);
+                setIntegerParameter(context, connection, statement, index, value, column, type);
                 break;
             case Types.BIGINT:
-                setBigIntegerParameter(runtime, connection, statement, index, value, column, type);
+                setBigIntegerParameter(context, connection, statement, index, value, column, type);
                 break;
             case Types.REAL:
             case Types.FLOAT:
             case Types.DOUBLE:
-                setDoubleParameter(runtime, connection, statement, index, value, column, type);
+                setDoubleParameter(context, connection, statement, index, value, column, type);
                 break;
             case Types.NUMERIC:
             case Types.DECIMAL:
-                setDecimalParameter(runtime, connection, statement, index, value, column, type);
+                setDecimalParameter(context, connection, statement, index, value, column, type);
                 break;
             case Types.DATE:
-                setDateParameter(runtime, connection, statement, index, value, column, type);
+                setDateParameter(context, connection, statement, index, value, column, type);
                 break;
             case Types.TIME:
-                setTimeParameter(runtime, connection, statement, index, value, column, type);
+                setTimeParameter(context, connection, statement, index, value, column, type);
                 break;
             case Types.TIMESTAMP:
-                setTimestampParameter(runtime, connection, statement, index, value, column, type);
+                setTimestampParameter(context, connection, statement, index, value, column, type);
                 break;
             case Types.BIT:
             case Types.BOOLEAN:
-                setBooleanParameter(runtime, connection, statement, index, value, column, type);
+                setBooleanParameter(context, connection, statement, index, value, column, type);
                 break;
             case Types.SQLXML:
-                setXmlParameter(runtime, connection, statement, index, value, column, type);
+                setXmlParameter(context, connection, statement, index, value, column, type);
                 break;
             case Types.ARRAY:
-                setArrayParameter(runtime, connection, statement, index, value, column, type);
+                setArrayParameter(context, connection, statement, index, value, column, type);
                 break;
             case Types.JAVA_OBJECT:
             case Types.OTHER:
-                setObjectParameter(runtime, connection, statement, index, value, column, type);
+                setObjectParameter(context, connection, statement, index, value, column, type);
                 break;
             case Types.BINARY:
             case Types.VARBINARY:
             case Types.LONGVARBINARY:
             case Types.BLOB:
-                setBlobParameter(runtime, connection, statement, index, value, column, type);
+                setBlobParameter(context, connection, statement, index, value, column, type);
                 break;
             case Types.CLOB:
             case Types.NCLOB: // JDBC 4.0
-                setClobParameter(runtime, connection, statement, index, value, column, type);
+                setClobParameter(context, connection, statement, index, value, column, type);
                 break;
             case Types.CHAR:
             case Types.VARCHAR:
             case Types.NCHAR: // JDBC 4.0
             case Types.NVARCHAR: // JDBC 4.0
             default:
-                setStringParameter(runtime, connection, statement, index, value, column, type);
+                setStringParameter(context, connection, statement, index, value, column, type);
         }
     }
 
@@ -1839,11 +1839,12 @@ public class RubyJdbcConnection extends RubyObject {
         else return Types.OTHER; // -1 as well as 0 are used in Types
     }
 
-    protected void setIntegerParameter(final Ruby runtime, final Connection connection,
-        final PreparedStatement statement, final int index, final Object value,
+    protected void setIntegerParameter(final ThreadContext context,
+        final Connection connection, final PreparedStatement statement,
+        final int index, final Object value,
         final IRubyObject column, final int type) throws SQLException {
         if ( value instanceof IRubyObject ) {
-            setIntegerParameter(runtime, connection, statement, index, (IRubyObject) value, column, type);
+            setIntegerParameter(context, connection, statement, index, (IRubyObject) value, column, type);
         }
         else {
             if ( value == null ) statement.setNull(index, Types.INTEGER);
@@ -1853,8 +1854,9 @@ public class RubyJdbcConnection extends RubyObject {
         }
     }
 
-    protected void setIntegerParameter(final Ruby runtime, final Connection connection,
-        final PreparedStatement statement, final int index, final IRubyObject value,
+    protected void setIntegerParameter(final ThreadContext context,
+        final Connection connection, final PreparedStatement statement,
+        final int index, final IRubyObject value,
         final IRubyObject column, final int type) throws SQLException {
         if ( value.isNil() ) statement.setNull(index, Types.INTEGER);
         else {
@@ -1867,11 +1869,12 @@ public class RubyJdbcConnection extends RubyObject {
         }
     }
 
-    protected void setBigIntegerParameter(final Ruby runtime, final Connection connection,
-        final PreparedStatement statement, final int index, final Object value,
+    protected void setBigIntegerParameter(final ThreadContext context,
+        final Connection connection, final PreparedStatement statement,
+        final int index, final Object value,
         final IRubyObject column, final int type) throws SQLException {
         if ( value instanceof IRubyObject ) {
-            setBigIntegerParameter(runtime, connection, statement, index, (IRubyObject) value, column, type);
+            setBigIntegerParameter(context, connection, statement, index, (IRubyObject) value, column, type);
         }
         else {
             if ( value == null ) statement.setNull(index, Types.BIGINT);
@@ -1889,8 +1892,9 @@ public class RubyJdbcConnection extends RubyObject {
         }
     }
 
-    protected void setBigIntegerParameter(final Ruby runtime, final Connection connection,
-        final PreparedStatement statement, final int index, final IRubyObject value,
+    protected void setBigIntegerParameter(final ThreadContext context,
+        final Connection connection, final PreparedStatement statement,
+        final int index, final IRubyObject value,
         final IRubyObject column, final int type) throws SQLException {
         if ( value.isNil() ) statement.setNull(index, Types.INTEGER);
         else {
@@ -1917,11 +1921,12 @@ public class RubyJdbcConnection extends RubyObject {
         }
     }
 
-    protected void setDoubleParameter(final Ruby runtime, final Connection connection,
-        final PreparedStatement statement, final int index, final Object value,
+    protected void setDoubleParameter(final ThreadContext context,
+        final Connection connection, final PreparedStatement statement,
+        final int index, final Object value,
         final IRubyObject column, final int type) throws SQLException {
         if ( value instanceof IRubyObject ) {
-            setDoubleParameter(runtime, connection, statement, index, (IRubyObject) value, column, type);
+            setDoubleParameter(context, connection, statement, index, (IRubyObject) value, column, type);
         }
         else {
             if ( value == null ) statement.setNull(index, Types.DOUBLE);
@@ -1931,8 +1936,9 @@ public class RubyJdbcConnection extends RubyObject {
         }
     }
 
-    protected void setDoubleParameter(final Ruby runtime, final Connection connection,
-        final PreparedStatement statement, final int index, final IRubyObject value,
+    protected void setDoubleParameter(final ThreadContext context,
+        final Connection connection, final PreparedStatement statement,
+        final int index, final IRubyObject value,
         final IRubyObject column, final int type) throws SQLException {
         if ( value.isNil() ) statement.setNull(index, Types.DOUBLE);
         else {
@@ -1940,11 +1946,12 @@ public class RubyJdbcConnection extends RubyObject {
         }
     }
 
-    protected void setDecimalParameter(final Ruby runtime, final Connection connection,
-        final PreparedStatement statement, final int index, final Object value,
+    protected void setDecimalParameter(final ThreadContext context,
+        final Connection connection, final PreparedStatement statement,
+        final int index, final Object value,
         final IRubyObject column, final int type) throws SQLException {
         if ( value instanceof IRubyObject ) {
-            setDecimalParameter(runtime, connection, statement, index, (IRubyObject) value, column, type);
+            setDecimalParameter(context, connection, statement, index, (IRubyObject) value, column, type);
         }
         else {
             if ( value == null ) statement.setNull(index, Types.DECIMAL);
@@ -1962,8 +1969,9 @@ public class RubyJdbcConnection extends RubyObject {
         }
     }
 
-    protected void setDecimalParameter(final Ruby runtime, final Connection connection,
-        final PreparedStatement statement, final int index, final IRubyObject value,
+    protected void setDecimalParameter(final ThreadContext context,
+        final Connection connection, final PreparedStatement statement,
+        final int index, final IRubyObject value,
         final IRubyObject column, final int type) throws SQLException {
         if ( value.isNil() ) statement.setNull(index, Types.DECIMAL);
         else {
@@ -1991,11 +1999,12 @@ public class RubyJdbcConnection extends RubyObject {
         }
     }
 
-    protected void setTimestampParameter(final Ruby runtime, final Connection connection,
-        final PreparedStatement statement, final int index, final Object value,
+    protected void setTimestampParameter(final ThreadContext context,
+        final Connection connection, final PreparedStatement statement,
+        final int index, final Object value,
         final IRubyObject column, final int type) throws SQLException {
         if ( value instanceof IRubyObject ) {
-            setTimestampParameter(runtime, connection, statement, index, (IRubyObject) value, column, type);
+            setTimestampParameter(context, connection, statement, index, (IRubyObject) value, column, type);
         }
         else {
             if ( value == null ) statement.setNull(index, Types.TIMESTAMP);
@@ -2013,8 +2022,9 @@ public class RubyJdbcConnection extends RubyObject {
         }
     }
 
-    protected void setTimestampParameter(final Ruby runtime, final Connection connection,
-        final PreparedStatement statement, final int index, final IRubyObject value,
+    protected void setTimestampParameter(final ThreadContext context,
+        final Connection connection, final PreparedStatement statement,
+        final int index, final IRubyObject value,
         final IRubyObject column, final int type) throws SQLException {
         if ( value.isNil() ) statement.setNull(index, Types.TIMESTAMP);
         else {
@@ -2041,11 +2051,12 @@ public class RubyJdbcConnection extends RubyObject {
         }
     }
 
-    protected void setTimeParameter(final Ruby runtime, final Connection connection,
-        final PreparedStatement statement, final int index, final Object value,
+    protected void setTimeParameter(final ThreadContext context,
+        final Connection connection, final PreparedStatement statement,
+        final int index, final Object value,
         final IRubyObject column, final int type) throws SQLException {
         if ( value instanceof IRubyObject ) {
-            setTimeParameter(runtime, connection, statement, index, (IRubyObject) value, column, type);
+            setTimeParameter(context, connection, statement, index, (IRubyObject) value, column, type);
         }
         else {
             if ( value == null ) statement.setNull(index, Types.TIME);
@@ -2064,8 +2075,9 @@ public class RubyJdbcConnection extends RubyObject {
         }
     }
 
-    protected void setTimeParameter(final Ruby runtime, final Connection connection,
-        final PreparedStatement statement, final int index, final IRubyObject value,
+    protected void setTimeParameter(final ThreadContext context,
+        final Connection connection, final PreparedStatement statement,
+        final int index, final IRubyObject value,
         final IRubyObject column, final int type) throws SQLException {
         if ( value.isNil() ) statement.setNull(index, Types.TIME);
         else {
@@ -2087,11 +2099,12 @@ public class RubyJdbcConnection extends RubyObject {
         }
     }
 
-    protected void setDateParameter(final Ruby runtime, final Connection connection,
-        final PreparedStatement statement, final int index, final Object value,
+    protected void setDateParameter(final ThreadContext context,
+        final Connection connection, final PreparedStatement statement,
+        final int index, final Object value,
         final IRubyObject column, final int type) throws SQLException {
         if ( value instanceof IRubyObject ) {
-            setDateParameter(runtime, connection, statement, index, (IRubyObject) value, column, type);
+            setDateParameter(context, connection, statement, index, (IRubyObject) value, column, type);
         }
         else {
             if ( value == null ) statement.setNull(index, Types.DATE);
@@ -2110,8 +2123,9 @@ public class RubyJdbcConnection extends RubyObject {
         }
     }
 
-    protected void setDateParameter(final Ruby runtime, final Connection connection,
-        final PreparedStatement statement, final int index, final IRubyObject value,
+    protected void setDateParameter(final ThreadContext context,
+        final Connection connection, final PreparedStatement statement,
+        final int index, final IRubyObject value,
         final IRubyObject column, final int type) throws SQLException {
         if ( value.isNil() ) statement.setNull(index, Types.DATE);
         else {
@@ -2133,11 +2147,12 @@ public class RubyJdbcConnection extends RubyObject {
         }
     }
 
-    protected void setBooleanParameter(final Ruby runtime, final Connection connection,
-        final PreparedStatement statement, final int index, final Object value,
+    protected void setBooleanParameter(final ThreadContext context,
+        final Connection connection, final PreparedStatement statement,
+        final int index, final Object value,
         final IRubyObject column, final int type) throws SQLException {
         if ( value instanceof IRubyObject ) {
-            setBooleanParameter(runtime, connection, statement, index, (IRubyObject) value, column, type);
+            setBooleanParameter(context, connection, statement, index, (IRubyObject) value, column, type);
         }
         else {
             if ( value == null ) statement.setNull(index, Types.BOOLEAN);
@@ -2147,8 +2162,9 @@ public class RubyJdbcConnection extends RubyObject {
         }
     }
 
-    protected void setBooleanParameter(final Ruby runtime, final Connection connection,
-        final PreparedStatement statement, final int index, final IRubyObject value,
+    protected void setBooleanParameter(final ThreadContext context,
+        final Connection connection, final PreparedStatement statement,
+        final int index, final IRubyObject value,
         final IRubyObject column, final int type) throws SQLException {
         if ( value.isNil() ) statement.setNull(index, Types.BOOLEAN);
         else {
@@ -2156,11 +2172,12 @@ public class RubyJdbcConnection extends RubyObject {
         }
     }
 
-    protected void setStringParameter(final Ruby runtime, final Connection connection,
-        final PreparedStatement statement, final int index, final Object value,
+    protected void setStringParameter(final ThreadContext context,
+        final Connection connection, final PreparedStatement statement,
+        final int index, final Object value,
         final IRubyObject column, final int type) throws SQLException {
         if ( value instanceof IRubyObject ) {
-            setStringParameter(runtime, connection, statement, index, (IRubyObject) value, column, type);
+            setStringParameter(context, connection, statement, index, (IRubyObject) value, column, type);
         }
         else {
             if ( value == null ) statement.setNull(index, Types.VARCHAR);
@@ -2170,8 +2187,9 @@ public class RubyJdbcConnection extends RubyObject {
         }
     }
 
-    protected void setStringParameter(final Ruby runtime, final Connection connection,
-        final PreparedStatement statement, final int index, final IRubyObject value,
+    protected void setStringParameter(final ThreadContext context,
+        final Connection connection, final PreparedStatement statement,
+        final int index, final IRubyObject value,
         final IRubyObject column, final int type) throws SQLException {
         if ( value.isNil() ) statement.setNull(index, Types.VARCHAR);
         else {
@@ -2179,11 +2197,12 @@ public class RubyJdbcConnection extends RubyObject {
         }
     }
 
-    /* protected */ void setArrayParameter(final Ruby runtime, final Connection connection,
-        final PreparedStatement statement, final int index, final Object value,
+    /* protected */ void setArrayParameter(final ThreadContext context,
+        final Connection connection, final PreparedStatement statement,
+        final int index, final Object value,
         final IRubyObject column, final int type) throws SQLException {
         if ( value instanceof IRubyObject ) {
-            setArrayParameter(runtime, connection, statement, index, (IRubyObject) value, column, type);
+            setArrayParameter(context, connection, statement, index, (IRubyObject) value, column, type);
         }
         else {
             if ( value == null ) statement.setNull(index, Types.ARRAY);
@@ -2195,8 +2214,9 @@ public class RubyJdbcConnection extends RubyObject {
         }
     }
 
-    /* protected */ void setArrayParameter(final Ruby runtime, final Connection connection,
-        final PreparedStatement statement, final int index, final IRubyObject value,
+    /* protected */ void setArrayParameter(final ThreadContext context,
+        final Connection connection, final PreparedStatement statement,
+        final int index, final IRubyObject value,
         final IRubyObject column, final int type) throws SQLException {
         if ( value.isNil() ) statement.setNull(index, Types.ARRAY);
         else {
@@ -2206,11 +2226,12 @@ public class RubyJdbcConnection extends RubyObject {
         }
     }
 
-    protected void setXmlParameter(final Ruby runtime, final Connection connection,
-        final PreparedStatement statement, final int index, final Object value,
+    protected void setXmlParameter(final ThreadContext context,
+        final Connection connection, final PreparedStatement statement,
+        final int index, final Object value,
         final IRubyObject column, final int type) throws SQLException {
         if ( value instanceof IRubyObject ) {
-            setXmlParameter(runtime, connection, statement, index, (IRubyObject) value, column, type);
+            setXmlParameter(context, connection, statement, index, (IRubyObject) value, column, type);
         }
         else {
             if ( value == null ) statement.setNull(index, Types.SQLXML);
@@ -2222,8 +2243,9 @@ public class RubyJdbcConnection extends RubyObject {
         }
     }
 
-    protected void setXmlParameter(final Ruby runtime, final Connection connection,
-        final PreparedStatement statement, final int index, final IRubyObject value,
+    protected void setXmlParameter(final ThreadContext context,
+        final Connection connection, final PreparedStatement statement,
+        final int index, final IRubyObject value,
         final IRubyObject column, final int type) throws SQLException {
         if ( value.isNil() ) statement.setNull(index, Types.SQLXML);
         else {
@@ -2233,11 +2255,12 @@ public class RubyJdbcConnection extends RubyObject {
         }
     }
 
-    protected void setBlobParameter(final Ruby runtime, final Connection connection,
-        final PreparedStatement statement, final int index, final Object value,
+    protected void setBlobParameter(final ThreadContext context,
+        final Connection connection, final PreparedStatement statement,
+        final int index, final Object value,
         final IRubyObject column, final int type) throws SQLException {
         if ( value instanceof IRubyObject ) {
-            setBlobParameter(runtime, connection, statement, index, (IRubyObject) value, column, type);
+            setBlobParameter(context, connection, statement, index, (IRubyObject) value, column, type);
         }
         else {
             if ( value == null ) statement.setNull(index, Types.BLOB);
@@ -2247,8 +2270,9 @@ public class RubyJdbcConnection extends RubyObject {
         }
     }
 
-    protected void setBlobParameter(final Ruby runtime, final Connection connection,
-        final PreparedStatement statement, final int index, final IRubyObject value,
+    protected void setBlobParameter(final ThreadContext context,
+        final Connection connection, final PreparedStatement statement,
+        final int index, final IRubyObject value,
         final IRubyObject column, final int type) throws SQLException {
         if ( value.isNil() ) statement.setNull(index, Types.BLOB);
         else {
@@ -2261,11 +2285,12 @@ public class RubyJdbcConnection extends RubyObject {
         }
     }
 
-    /* protected */ void setClobParameter(final Ruby runtime, final Connection connection,
-        final PreparedStatement statement, final int index, final Object value,
+    protected void setClobParameter(final ThreadContext context,
+        final Connection connection, final PreparedStatement statement,
+        final int index, final Object value,
         final IRubyObject column, final int type) throws SQLException {
         if ( value instanceof IRubyObject ) {
-            setClobParameter(runtime, connection, statement, index, (IRubyObject) value, column, type);
+            setClobParameter(context, connection, statement, index, (IRubyObject) value, column, type);
         }
         else {
             if ( value == null ) statement.setNull(index, Types.CLOB);
@@ -2275,8 +2300,9 @@ public class RubyJdbcConnection extends RubyObject {
         }
     }
 
-    protected void setClobParameter(final Ruby runtime, final Connection connection,
-        final PreparedStatement statement, final int index, final IRubyObject value,
+    protected void setClobParameter(final ThreadContext context,
+        final Connection connection, final PreparedStatement statement,
+        final int index, final IRubyObject value,
         final IRubyObject column, final int type) throws SQLException {
         if ( value.isNil() ) statement.setNull(index, Types.CLOB);
         else {
@@ -2289,8 +2315,9 @@ public class RubyJdbcConnection extends RubyObject {
         }
     }
 
-    protected void setObjectParameter(final Ruby runtime, final Connection connection,
-        final PreparedStatement statement, final int index, Object value,
+    protected void setObjectParameter(final ThreadContext context,
+        final Connection connection, final PreparedStatement statement,
+        final int index, Object value,
         final IRubyObject column, final int type) throws SQLException {
         if (value instanceof IRubyObject) {
             value = ((IRubyObject) value).toJava(Object.class);
