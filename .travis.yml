@@ -1,9 +1,9 @@
 language: ruby
 bundler_args: --without development
 script: bundle exec rake test_$DB
+before_script: export JRUBY_OPTS="--server -Xcext.enabled=false -Xcompile.invokedynamic=false"
 rvm:
-  - jruby-18mode
-  - jruby-19mode
+  - jruby
 gemfile:
   - gemfiles/rails23.gemfile
   - gemfiles/rails30.gemfile
@@ -11,14 +11,22 @@ gemfile:
   - gemfiles/rails32.gemfile
   - gemfiles/rails40.gemfile
 env:
-  - DB=mysql
-  - DB=postgresql
-  - DB=sqlite3
-  - DB=derby
-  - DB=h2
-  - DB=hsqldb
-  - DB=jndi
-  - DB=jdbc
+  - JRUBY_OPTS="--1.8 $JRUBY_OPTS" DB=mysql
+  - JRUBY_OPTS="--1.9 $JRUBY_OPTS" DB=mysql
+  - JRUBY_OPTS="--1.8 $JRUBY_OPTS" DB=postgresql
+  - JRUBY_OPTS="--1.9 $JRUBY_OPTS" DB=postgresql
+  - JRUBY_OPTS="--1.8 $JRUBY_OPTS" DB=sqlite3
+  - JRUBY_OPTS="--1.9 $JRUBY_OPTS" DB=sqlite3
+  - JRUBY_OPTS="--1.8 $JRUBY_OPTS" DB=derby
+  - JRUBY_OPTS="--1.9 $JRUBY_OPTS" DB=derby
+  - JRUBY_OPTS="--1.8 $JRUBY_OPTS" DB=h2
+  - JRUBY_OPTS="--1.9 $JRUBY_OPTS" DB=h2
+  - JRUBY_OPTS="--1.8 $JRUBY_OPTS" DB=hsqldb
+  - JRUBY_OPTS="--1.9 $JRUBY_OPTS" DB=hsqldb
+  - JRUBY_OPTS="--1.8 $JRUBY_OPTS" DB=jndi
+  - JRUBY_OPTS="--1.9 $JRUBY_OPTS" DB=jndi
+  #- JRUBY_OPTS="--1.8 $JRUBY_OPTS" DB=jdbc
+  #- JRUBY_OPTS="--1.9 $JRUBY_OPTS" DB=jdbc
 branches:
   only:
     - master
@@ -30,31 +38,30 @@ matrix:
     # NOTE: temporary until it gets stable :
     - gemfile: gemfiles/rails40.gemfile
     # NOTE: not sure why it can't connect :
-    - env: DB=jdbc
-  # Rails 4 prefers to run on Ruby 2.0 :
+    #- env: DB=jdbc
   exclude:
-    - rvm: jruby-18mode
+    # Rails 4 prefers Ruby 2.0 (or at least >= 1.9.3) :
+    - rvm: jruby
       gemfile: gemfiles/rails40.gemfile
-      env: DB=mysql
-    - rvm: jruby-18mode
+      env: JRUBY_OPTS="--1.8 $JRUBY_OPTS" DB=mysql
+    - rvm: jruby
       gemfile: gemfiles/rails40.gemfile
-      env: DB=postgresql
-    - rvm: jruby-18mode
+      env: JRUBY_OPTS="--1.8 $JRUBY_OPTS" DB=postgresql
+    - rvm: jruby
       gemfile: gemfiles/rails40.gemfile
-      env: DB=sqlite3
-    - rvm: jruby-18mode
+      env: JRUBY_OPTS="--1.8 $JRUBY_OPTS" DB=sqlite3
+    - rvm: jruby
       gemfile: gemfiles/rails40.gemfile
-      env: DB=derby
-    - rvm: jruby-18mode
+      env: JRUBY_OPTS="--1.8 $JRUBY_OPTS" DB=derby
+    - rvm: jruby
       gemfile: gemfiles/rails40.gemfile
-      env: DB=h2
-    - rvm: jruby-18mode
+      env: JRUBY_OPTS="--1.8 $JRUBY_OPTS" DB=h2
+    - rvm: jruby
       gemfile: gemfiles/rails40.gemfile
-      env: DB=hsqldb
-    - rvm: jruby-18mode
+      env: JRUBY_OPTS="--1.8 $JRUBY_OPTS" DB=hsqldb
+    - rvm: jruby
       gemfile: gemfiles/rails40.gemfile
-      env: DB=jdbc
-    - rvm: jruby-18mode
+      env: JRUBY_OPTS="--1.8 $JRUBY_OPTS" DB=jndi
+    - rvm: jruby
       gemfile: gemfiles/rails40.gemfile
-      env: DB=jndi
-
+      env: JRUBY_OPTS="--1.8 $JRUBY_OPTS" DB=jdbc
