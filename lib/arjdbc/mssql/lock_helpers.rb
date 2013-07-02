@@ -2,9 +2,10 @@ module ArJdbc
   module MSSQL
     module LockHelpers
       module SqlServerAddLock
-        
-        SELECT_FROM_WHERE_RE = /\A(\s*SELECT\s.*?)(\sFROM\s)(.*?)(\sWHERE\s.*|)\Z/mi # :nodoc:
-        
+
+        # @private
+        SELECT_FROM_WHERE_RE = /\A(\s*SELECT\s.*?)(\sFROM\s)(.*?)(\sWHERE\s.*|)\Z/mi
+
         # Microsoft SQL Server uses its own syntax for SELECT .. FOR UPDATE:
         # SELECT .. FROM table1 WITH(ROWLOCK,UPDLOCK), table2 WITH(ROWLOCK,UPDLOCK) WHERE ..
         #
@@ -69,7 +70,7 @@ module ArJdbc
           end
           sql
         end
-        
+
       end
     end
   end

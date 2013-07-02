@@ -3,24 +3,15 @@ require 'active_support/core_ext/string'
 module ArJdbc
   module MSSQL
     module ExplainSupport
-      
+
       DISABLED = Java::JavaLang::Boolean.getBoolean('arjdbc.mssql.explain_support.disabled')
-      
-      def supports_explain?
-        ! DISABLED
-      end
+
+      def supports_explain?; ! DISABLED; end
 
       def explain(arel, binds = [])
         return if DISABLED
         sql = to_sql(arel)
-        result = with_showplan_on do 
-          # exec_query(sql, 'EXPLAIN', binds)
-          raw_result = execute(sql, 'EXPLAIN', binds)
-          # TODO we should refactor to exec_query once it returns Result :
-          keys = raw_result[0] ? raw_result[0].keys : {}
-          rows = raw_result.map { |hash| hash.values }
-          ActiveRecord::Result.new(keys, rows)
-        end
+        result = with_showplan_on { exec_query(sql, 'EXPLAIN', binds) }
         PrinterTable.new(result).pp
       end
 
@@ -37,12 +28,13 @@ module ArJdbc
         option = 'SHOWPLAN_TEXT'
         execute "SET #{option} #{enable ? 'ON' : 'OFF'}"
       rescue Exception => e
-        raise ActiveRecord::ActiveRecordError, "#{option} could not be turned" + 
+        raise ActiveRecord::ActiveRecordError, "#{option} could not be turned" +
               " #{enable ? 'ON' : 'OFF'} (check SHOWPLAN permissions) due : #{e.inspect}"
       end
-      
-      class PrinterTable # :nodoc:
-        
+
+      # @private
+      class PrinterTable
+
         cattr_accessor :max_column_width, :cell_padding
         self.max_column_width = 50
         self.cell_padding = 1
@@ -64,7 +56,7 @@ module ArJdbc
             pp << build_cells(row)
           end
           pp << @separator
-          pp.join("\n") + "\n"
+          pp.join("\n") << "\n"
         end
 
         private
@@ -81,7 +73,7 @@ module ArJdbc
         end
 
         def build_separator
-          '+' + @widths.map {|w| '-' * (w + (cell_padding * 2))}.join('+') + '+'
+          '+' << @widths.map {|w| '-' * (w + (cell_padding * 2))}.join('+') << '+'
         end
 
         def build_cells(items)
@@ -99,9 +91,9 @@ module ArJdbc
           else item.to_s.truncate(max_column_width)
           end
         end
-        
+
       end
-      
+
     end
   end
 end

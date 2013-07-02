@@ -1,9 +1,9 @@
-# Common methods for handling TSQL databases.
 module ArJdbc
   module MSSQL
+    # Common methods for handling TSQL databases.
     module TSqlMethods
 
-      def type_to_sql(type, limit = nil, precision = nil, scale = nil) # :nodoc:
+      def type_to_sql(type, limit = nil, precision = nil, scale = nil)
         limit = nil if %w(text binary).include? type.to_s
         return 'uniqueidentifier' if (type.to_s == 'uniqueidentifier')
         return super unless type.to_s == 'integer'
@@ -52,7 +52,7 @@ module ArJdbc
           end unless options[:limit].nil?
         end
       end
-      
+
     end
   end
 end
