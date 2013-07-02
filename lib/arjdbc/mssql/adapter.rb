@@ -11,12 +11,13 @@ module ArJdbc
   module MSSQL
     include Utils
     include TSqlMethods
-    
+
     include ExplainSupport
-    
-    def self.extended(adapter) # :nodoc:
+
+    # @private
+    def self.extended(adapter)
       initialize!
-      
+
       if ( version = adapter.sqlserver_version ) == '2000'
         extend LimitHelpers::SqlServer2000AddLimitOffset
       else
@@ -26,10 +27,11 @@ module ArJdbc
     end
 
     @@_initialized = nil
-    
+
+    # @private
     def self.initialize!
       return if @@_initialized; @@_initialized = true
-      
+
       require 'arjdbc/jdbc/serialized_attributes_helper'
       ActiveRecord::Base.class_eval do
         def after_save_with_mssql_lob
@@ -37,88 +39,45 @@ module ArJdbc
             value = ::ArJdbc::SerializedAttributesHelper.dump_column_value(self, column)
             next if value.nil? || (value == '')
 
-            self.class.connection.write_large_object(
-              column.type == :binary, column.name, 
-              self.class.table_name, self.class.primary_key, 
-              self.class.connection.quote(id), value
-            )
+            self.class.connection.update_lob_value(self, column, value)
           end
         end
       end
       ActiveRecord::Base.after_save :after_save_with_mssql_lob
     end
-    
-    def configure_connection
-      use_database # config[:database]
-    end
-    
-    def self.column_selector
-      [ /sqlserver|tds|Microsoft SQL/i, lambda { |cfg, column| column.extend(::ArJdbc::MSSQL::Column) } ]
-    end
 
+    # @see ActiveRecord::ConnectionAdapters::JdbcAdapter#jdbc_connection_class
     def self.jdbc_connection_class
       ::ActiveRecord::ConnectionAdapters::MSSQLJdbcConnection
     end
 
+    # @see ActiveRecord::ConnectionAdapters::JdbcAdapter#jdbc_column_class
     def jdbc_column_class
       ::ActiveRecord::ConnectionAdapters::MSSQLColumn
     end
-    
+
+    # @see ActiveRecord::ConnectionAdapters::JdbcColumn#column_types
+    def self.column_selector
+      [ /sqlserver|tds|Microsoft SQL/i, lambda { |config, column| column.extend(Column) } ]
+    end
+
+    # @see ActiveRecord::ConnectionAdapters::JdbcAdapter#arel2_visitors
     def self.arel2_visitors(config)
       require 'arel/visitors/sql_server'
-      visitors = config[:sqlserver_version] == '2000' ? 
+      visitor = config[:sqlserver_version] == '2000' ?
         ::Arel::Visitors::SQLServer2000 : ::Arel::Visitors::SQLServer
-      { 'mssql' => visitors, 'jdbcmssql' => visitors, 'sqlserver' => visitors }
+      { 'mssql' => visitor, 'jdbcmssql' => visitor, 'sqlserver' => visitor }
     end
 
-    def sqlserver_version
-      @sqlserver_version ||= begin
-        config_version = config[:sqlserver_version]
-        config_version ? config_version.to_s :
-          select_value("SELECT @@version")[/(Microsoft SQL Server\s+|Microsoft SQL Azure.+\n.+)(\d{4})/, 2]
-      end
-    end
-
-    def modify_types(types) #:nodoc:
-      super(types)
-      types[:string] = { :name => "NVARCHAR", :limit => 255 }
-      if sqlserver_2000?
-        types[:text] = { :name => "NTEXT" }
-      else
-        types[:text] = { :name => "NVARCHAR(MAX)" }
-      end
-      types[:primary_key] = "int NOT NULL IDENTITY(1, 1) PRIMARY KEY"
-      types[:integer][:limit] = nil
-      types[:boolean] = { :name => "bit" }
-      types[:binary] = { :name => "image" }
-      types
-    end
-
-    def type_to_sql(type, limit = nil, precision = nil, scale = nil) #:nodoc:
-      # MSSQL's NVARCHAR(n | max) column supports either a number between 1 and
-      # 4000, or the word "MAX", which corresponds to 2**30-1 UCS-2 characters.
-      #
-      # It does not accept NVARCHAR(1073741823) here, so we have to change it
-      # to NVARCHAR(MAX), even though they are logically equivalent.
-      #
-      # MSSQL Server 2000 is skipped here because I don't know how it will behave.
-      #
-      # See: http://msdn.microsoft.com/en-us/library/ms186939.aspx
-      if type.to_s == 'string' && limit == 1073741823 && ! sqlserver_2000?
-        'NVARCHAR(MAX)'
-      elsif %w( boolean date datetime ).include?(type.to_s)
-        super(type) # cannot specify limit/precision/scale with these types
-      else
-        super # TSqlMethods#type_to_sql
-      end
-    end
-
+    # @see ActiveRecord::ConnectionAdapters::JdbcColumn
     module Column
       include LockHelpers::SqlServerAddLock
 
       attr_accessor :identity, :special
-      alias_method :is_special, :special # #deprecated
+      # @deprecated
+      alias_method :is_special, :special
 
+      # @override
       def simplified_type(field_type)
         case field_type
         when /int|bigint|smallint|tinyint/i           then :integer
@@ -138,11 +97,13 @@ module ArJdbc
         end
       end
 
+      # @override
       def default_value(value)
         return $1 if value =~ /^\(N?'(.*)'\)$/
         value
       end
 
+      # @override
       def type_cast(value)
         return nil if value.nil?
         case type
@@ -224,6 +185,52 @@ module ArJdbc
 
     end
 
+    def configure_connection
+      use_database # config[:database]
+    end
+
+    def sqlserver_version
+      @sqlserver_version ||= begin
+        config_version = config[:sqlserver_version]
+        config_version ? config_version.to_s :
+          select_value("SELECT @@version")[/(Microsoft SQL Server\s+|Microsoft SQL Azure.+\n.+)(\d{4})/, 2]
+      end
+    end
+
+    def modify_types(types)
+      types[:string] = { :name => "NVARCHAR", :limit => 255 }
+      if sqlserver_2000?
+        types[:text] = { :name => "NTEXT" }
+      else
+        types[:text] = { :name => "NVARCHAR(MAX)" }
+      end
+      types[:primary_key] = "int NOT NULL IDENTITY(1, 1) PRIMARY KEY"
+      types[:integer][:limit] = nil
+      types[:boolean] = { :name => "bit" }
+      types[:binary] = { :name => "image" }
+      types
+    end
+
+    def type_to_sql(type, limit = nil, precision = nil, scale = nil)
+      # MSSQL's NVARCHAR(n | max) column supports either a number between 1 and
+      # 4000, or the word "MAX", which corresponds to 2**30-1 UCS-2 characters.
+      #
+      # It does not accept NVARCHAR(1073741823) here, so we have to change it
+      # to NVARCHAR(MAX), even though they are logically equivalent.
+      #
+      # MSSQL Server 2000 is skipped here because I don't know how it will behave.
+      #
+      # See: http://msdn.microsoft.com/en-us/library/ms186939.aspx
+      if type.to_s == 'string' && limit == 1073741823 && ! sqlserver_2000?
+        'NVARCHAR(MAX)'
+      elsif %w( boolean date datetime ).include?(type.to_s)
+        super(type) # cannot specify limit/precision/scale with these types
+      else
+        super # TSqlMethods#type_to_sql
+      end
+    end
+
+    # @override
     def quote(value, column = nil)
       return value.quoted_id if value.respond_to?(:quoted_id)
 
@@ -259,7 +266,8 @@ module ArJdbc
       else super
       end
     end
-    
+
+    # @override
     def quoted_date(value)
       if value.respond_to?(:usec)
         "#{super}.#{sprintf("%03d", value.usec / 1000)}"
@@ -270,7 +278,7 @@ module ArJdbc
 
     def quoted_datetime(value)
       if value.acts_like?(:time)
-        time_zone_qualified_value = quoted_value_acts_like_time_filter(value)
+        time_zone_qualified_value = get_time(value)
         if value.is_a?(Date)
           time_zone_qualified_value.to_time.xmlschema.to(18)
         else
@@ -283,40 +291,34 @@ module ArJdbc
         quoted_date(value)
       end
     end
-    
+
     def quoted_time(value)
       if value.acts_like?(:time)
-        tz_value = quoted_value_acts_like_time_filter(value)
+        tz_value = get_time(value)
         sprintf("%02d:%02d:%02d.%03d", tz_value.hour, tz_value.min, tz_value.sec, value.usec / 1000)
       else
         quoted_date(value)
       end
     end
-    
+
     def quoted_full_iso8601(value)
       if value.acts_like?(:time)
-        value.is_a?(Date) ? 
-          quoted_value_acts_like_time_filter(value).to_time.xmlschema.to(18) : 
-            quoted_value_acts_like_time_filter(value).iso8601(7).to(22)
+        value.is_a?(Date) ?
+          get_time(value).to_time.xmlschema.to(18) :
+            get_time(value).iso8601(7).to(22)
       else
         quoted_date(value)
       end
     end
-        
-    def quoted_value_acts_like_time_filter(value)
-      method = ActiveRecord::Base.default_timezone == :utc ? :getutc : :getlocal
-      value.respond_to?(method) ? value.send(method) : value
-    end
-    protected :quoted_value_acts_like_time_filter
-    
+
     def quote_table_name(name)
       quote_column_name(name)
     end
-    
+
 #    def quote_table_name_for_assignment(table, attr)
 #      quote_column_name(attr)
 #    end if ::ActiveRecord::VERSION::MAJOR > 3
-    
+
     def quote_column_name(name)
       name.to_s.split('.').map do |n| # "[#{name}]"
         n =~ /^\[.*\]$/ ? n : "[#{n.gsub(']', ']]')}]"
@@ -324,7 +326,7 @@ module ArJdbc
     end
 
     ADAPTER_NAME = 'MSSQL'.freeze
-    
+
     def adapter_name # :nodoc:
       ADAPTER_NAME
     end
@@ -344,24 +346,28 @@ module ArJdbc
       true
     end
 
+    def tables(schema = current_schema)
+      @connection.tables(nil, schema)
+    end
+
     # NOTE: Dynamic Name Resolution - SQL Server 2000 vs. 2005
-    # 
-    # A query such as "select * from table1" in SQL Server 2000 goes through 
-    # a set of steps to resolve and validate the object references before 
-    # execution. 
-    # The search first looks at the identity of the connection executing 
+    #
+    # A query such as "select * from table1" in SQL Server 2000 goes through
+    # a set of steps to resolve and validate the object references before
+    # execution.
+    # The search first looks at the identity of the connection executing
     # the query.
-    # 
+    #
     # However SQL Server 2005 provides a mechanism to allow finer control over
-    # name resolution to the administrators. By manipulating the value of the 
+    # name resolution to the administrators. By manipulating the value of the
     # default_schema_name columns in the sys.database_principals.
-    # 
+    #
     # http://blogs.msdn.com/b/mssqlisv/archive/2007/03/23/upgrading-to-sql-server-2005-and-default-schema-setting.aspx
-    
+
     # Returns the default schema (to be used for table resolution) used for the {#current_user}.
     def default_schema
       return current_user if sqlserver_2000?
-      @default_schema ||= 
+      @default_schema ||=
         @connection.execute_query_raw(
           "SELECT default_schema_name FROM sys.database_principals WHERE name = CURRENT_USER"
         ).first['default_schema_name']
@@ -377,12 +383,12 @@ module ArJdbc
       @default_schema = nil if defined?(@default_schema)
     end
     alias_method :current_schema=, :default_schema=
-    
+
     # `SELECT CURRENT_USER`
     def current_user
       @current_user ||= @connection.execute_query_raw("SELECT CURRENT_USER").first['']
     end
-    
+
     def charset
       select_value "SELECT SERVERPROPERTY('SqlCharSetName')"
     end
@@ -390,21 +396,23 @@ module ArJdbc
     def collation
       select_value "SELECT SERVERPROPERTY('Collation')"
     end
-    
+
     def current_database
       select_value 'SELECT DB_NAME()'
     end
-    
+
     def use_database(database = nil)
       database ||= config[:database]
       execute "USE #{quote_table_name(database)}" unless database.blank?
     end
-    
+
+    # @private
     def recreate_database(name, options = {})
       drop_database(name)
       create_database(name, options)
     end
 
+    # @private
     def recreate_database!(database = nil)
       current_db = current_database
       database ||= current_db
@@ -414,7 +422,7 @@ module ArJdbc
     ensure
       use_database(current_db) if this_db
     end
-    
+
     def drop_database(name)
       execute "DROP DATABASE #{quote_table_name(name)}"
     end
@@ -426,14 +434,15 @@ module ArJdbc
     def database_exists?(name)
       select_value "SELECT name FROM sys.databases WHERE name = '#{name}'"
     end
-    
+
+    # @override
     def rename_table(table_name, new_table_name)
       clear_cached_table(table_name)
       execute "EXEC sp_rename '#{table_name}', '#{new_table_name}'"
     end
 
     # Adds a new column to the named table.
-    # See TableDefinition#column for details of the options you can use.
+    # @override
     def add_column(table_name, column_name, type, options = {})
       clear_cached_table(table_name)
       add_column_sql = "ALTER TABLE #{quote_table_name(table_name)} ADD #{quote_column_name(column_name)} #{type_to_sql(type, options[:limit], options[:precision], options[:scale])}"
@@ -443,32 +452,34 @@ module ArJdbc
       execute(add_column_sql)
     end
 
+    # @override
     def rename_column(table_name, column_name, new_column_name)
       clear_cached_table(table_name)
       execute "EXEC sp_rename '#{table_name}.#{column_name}', '#{new_column_name}', 'COLUMN'"
     end
 
-    def change_column(table_name, column_name, type, options = {}) #:nodoc:
+    # @override
+    def change_column(table_name, column_name, type, options = {})
       clear_cached_table(table_name)
       change_column_type(table_name, column_name, type, options)
       change_column_default(table_name, column_name, options[:default]) if options_include_default?(options)
     end
 
-    def change_column_type(table_name, column_name, type, options = {}) #:nodoc:
+    def change_column_type(table_name, column_name, type, options = {})
       clear_cached_table(table_name)
       sql = "ALTER TABLE #{quote_table_name(table_name)} ALTER COLUMN #{quote_column_name(column_name)} #{type_to_sql(type, options[:limit], options[:precision], options[:scale])}"
       sql += (options[:null] ? " NULL" : " NOT NULL") if options.has_key?(:null)
       execute(sql)
     end
 
-    def change_column_default(table_name, column_name, default) #:nodoc:
+    def change_column_default(table_name, column_name, default)
       clear_cached_table(table_name)
       remove_default_constraint(table_name, column_name)
       unless default.nil?
         execute "ALTER TABLE #{quote_table_name(table_name)} ADD CONSTRAINT DF_#{table_name}_#{column_name} DEFAULT #{quote(default)} FOR #{quote_column_name(column_name)}"
       end
     end
-    
+
     def remove_column(table_name, *column_names)
       raise ArgumentError.new("You must specify at least one column name. Example: remove_column(:people, :first_name)") if column_names.empty?
       # remove_columns(:posts, :foo, :bar) old syntax : remove_columns(:posts, [:foo, :bar])
@@ -517,29 +528,34 @@ module ArJdbc
         remove_index(table_name, { :name => index.name })
       end
     end
-    
+
     def remove_index(table_name, options = {})
       execute "DROP INDEX #{quote_table_name(table_name)}.#{index_name(table_name, options)}"
     end
-    
-    SKIP_COLUMNS_TABLE_NAMES_RE = /^information_schema\./i # :nodoc:
-    IDENTITY_COLUMN_TYPE_RE = /identity/i # :nodoc:
-    # NOTE: these do not handle = equality as expected {#repair_special_columns}
+
+    # @private
+    SKIP_COLUMNS_TABLE_NAMES_RE = /^information_schema\./i
+    # @private
+    IDENTITY_COLUMN_TYPE_RE = /identity/i
+    # NOTE: these do not handle = equality as expected
+    # see {#repair_special_columns}
     # (TEXT, NTEXT, and IMAGE data types are deprecated)
-    SPECIAL_COLUMN_TYPE_RE = /text|ntext|image|xml/i # :nodoc:
-    
-    EMPTY_ARRAY = [].freeze # :nodoc:
-    
+    # @private
+    SPECIAL_COLUMN_TYPE_RE = /text|ntext|image|xml/i
+
+    # @private
+    EMPTY_ARRAY = [].freeze
+
     def columns(table_name, name = nil, default = EMPTY_ARRAY)
-      # It's possible for table_name to be an empty string, or nil, if something 
-      # attempts to issue SQL which doesn't involve a table. 
+      # It's possible for table_name to be an empty string, or nil, if something
+      # attempts to issue SQL which doesn't involve a table.
       # IE. "SELECT 1" or "SELECT * FROM someFunction()".
       return default if table_name.blank?
-      
+
       table_name = unquote_table_name(table_name)
 
       return default if table_name =~ SKIP_COLUMNS_TABLE_NAMES_RE
-      
+
       unless columns = ( @table_columns ||= {} )[table_name]
         columns = super(table_name, name)
         for column in columns
@@ -558,7 +574,7 @@ module ArJdbc
     def reset_column_information
       @table_columns = nil if defined? @table_columns
     end
-    
+
     # Turns IDENTITY_INSERT ON for table during execution of the block
     # N.B. This sets the state of IDENTITY_INSERT to OFF after the
     # block has been executed without regard to its previous state
@@ -572,10 +588,10 @@ module ArJdbc
     def set_identity_insert(table_name, enable = true)
       execute "SET IDENTITY_INSERT #{table_name} #{enable ? 'ON' : 'OFF'}"
     rescue Exception => e
-      raise ActiveRecord::ActiveRecordError, "IDENTITY_INSERT could not be turned" + 
+      raise ActiveRecord::ActiveRecordError, "IDENTITY_INSERT could not be turned" +
             " #{enable ? 'ON' : 'OFF'} for table #{table_name} due : #{e.inspect}"
     end
-    
+
     # @see ArJdbc::MSSQL::LimitHelpers
     def determine_order_clause(sql)
       return $1 if sql =~ /ORDER BY (.*)$/i
@@ -591,9 +607,10 @@ module ArJdbc
       # NOTE: if still no PK column simply get something for ORDER BY ...
       "#{table_name}.#{(primary_column || columns.first).name}"
     end
-    
+
+    # Support for executing a stored procedure.
     def exec_proc(proc_name, *variables)
-      vars = 
+      vars =
         if variables.any? && variables.first.is_a?(Hash)
           variables.first.map { |k, v| "@#{k} = #{quote(v)}" }
         else
@@ -602,7 +619,7 @@ module ArJdbc
       sql = "EXEC #{proc_name} #{vars}".strip
       log(sql, 'Execute Procedure') do
         result = @connection.execute_query_raw(sql)
-        result.map! do |row| 
+        result.map! do |row|
           row = row.is_a?(Hash) ? row.with_indifferent_access : row
           yield(row) if block_given?
           row
@@ -611,9 +628,9 @@ module ArJdbc
       end
     end
     alias_method :execute_procedure, :exec_proc # AR-SQLServer-Adapter naming
-    
+
     # @override
-    def exec_query(sql, name = 'SQL', binds = []) # :nodoc:
+    def exec_query(sql, name = 'SQL', binds = [])
       # NOTE: we allow to execute SQL as requested returning a results.
       # e.g. this allows to use SQLServer's EXEC with a result set ...
       sql = repair_special_columns to_sql(sql, binds)
@@ -624,9 +641,9 @@ module ArJdbc
         log(sql, name) { @connection.execute_query(sql) }
       end
     end
-    
+
     # @override
-    def exec_query_raw(sql, name = 'SQL', binds = [], &block) # :nodoc:
+    def exec_query_raw(sql, name = 'SQL', binds = [], &block)
       sql = repair_special_columns to_sql(sql, binds)
       if prepared_statements?
         log(sql, name, binds) { @connection.execute_query_raw(sql, binds, &block) }
@@ -635,12 +652,12 @@ module ArJdbc
         log(sql, name) { @connection.execute_query_raw(sql, &block) }
       end
     end
-    
+
     private
-    
+
     def _execute(sql, name = nil)
       # Match the start of the SQL to determine appropriate behavior.
-      # Be aware of multi-line SQL which might begin with 'create stored_proc' 
+      # Be aware of multi-line SQL which might begin with 'create stored_proc'
       # and contain 'insert into ...' lines.
       # NOTE: ignoring comment blocks prior to the first statement ?!
       if self.class.insert?(sql)
@@ -657,7 +674,7 @@ module ArJdbc
         @connection.execute_update(sql)
       end
     end
-    
+
     def identity_insert_table_name(sql)
       table_name = get_table_name(sql)
       id_column = identity_column_name(table_name)
@@ -666,14 +683,14 @@ module ArJdbc
         return table_name if insert_columns.include?(id_column)
       end
     end
-    
+
     def identity_column_name(table_name)
       for column in columns(table_name)
         return column.name if column.identity
       end
       nil
     end
-    
+
     def repair_special_columns(sql)
       qualified_table_name = get_table_name(sql, true)
       if special_columns = special_column_names(qualified_table_name)
@@ -694,24 +711,24 @@ module ArJdbc
       columns.each { |column| special << column.name if column.special }
       special
     end
-    
+
     def sqlserver_2000?
       sqlserver_version <= '2000'
     end
-    
+
   end
 end
 
 module ActiveRecord::ConnectionAdapters
-  
+
   class MSSQLAdapter < JdbcAdapter
     include ::ArJdbc::MSSQL
-    
+
     def initialize(*args)
       ::ArJdbc::MSSQL.initialize!
-      
+
       super # configure_connection happens in super
-      
+
       if ( version = self.sqlserver_version ) == '2000'
         extend LimitHelpers::SqlServer2000AddLimitOffset
       else
@@ -719,11 +736,13 @@ module ActiveRecord::ConnectionAdapters
       end
       config[:sqlserver_version] ||= version
     end
-    
+
     # some QUOTING caching :
 
+    # @private
     @@quoted_table_names = {}
 
+    # @private
     def quote_table_name(name)
       unless quoted = @@quoted_table_names[name]
         quoted = super
@@ -732,8 +751,10 @@ module ActiveRecord::ConnectionAdapters
       quoted
     end
 
+    # @private
     @@quoted_column_names = {}
 
+    # @private
     def quote_column_name(name)
       unless quoted = @@quoted_column_names[name]
         quoted = super
@@ -741,11 +762,11 @@ module ActiveRecord::ConnectionAdapters
       end
       quoted
     end
-    
+
   end
-  
+
   class MSSQLColumn < JdbcColumn
     include ArJdbc::MSSQL::Column
   end
-  
+
 end

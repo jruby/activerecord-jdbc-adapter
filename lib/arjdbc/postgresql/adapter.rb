@@ -1640,6 +1640,7 @@ module ActiveRecord::ConnectionAdapters
       ::ArJdbc::PostgreSQL.jdbc_connection_class
     end
 
+    # @see ActiveRecord::ConnectionAdapters::JdbcAdapter#jdbc_column_class
     def jdbc_column_class
       ::ActiveRecord::ConnectionAdapters::PostgreSQLColumn
     end
