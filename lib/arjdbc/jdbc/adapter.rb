@@ -359,19 +359,19 @@ module ActiveRecord
       if ActiveRecord::VERSION::MAJOR < 3
 
         # @private
-        def jdbc_insert(sql, name = nil, pk = nil, id_value = nil, sequence_name = nil, binds = [])  # :nodoc:
+        def jdbc_insert(sql, name = nil, pk = nil, id_value = nil, sequence_name = nil, binds = [])
           insert_sql(sql, name, pk, id_value, sequence_name, binds)
         end
         alias_chained_method :insert, :query_dirty, :jdbc_insert
 
         # @private
-        def jdbc_update(sql, name = nil, binds = []) # :nodoc:
+        def jdbc_update(sql, name = nil, binds = [])
           execute(sql, name, binds)
         end
         alias_chained_method :update, :query_dirty, :jdbc_update
 
         # @private
-        def jdbc_select_all(sql, name = nil, binds = []) # :nodoc:
+        def jdbc_select_all(sql, name = nil, binds = [])
           select(sql, name, binds)
         end
         alias_chained_method :select_all, :query_cache, :jdbc_select_all
@@ -555,11 +555,10 @@ module ActiveRecord
 
       end
 
-      if ActiveRecord::VERSION::MAJOR < 3 # 2.3.x
-
       # Executes the SQL statement in the context of this connection.
       # The return value from this method depends on the SQL type (whether
       # it's a SELECT, INSERT etc.).
+      # @note This method does not use prepared statements.
       # @see #exec_query
       # @see #exec_insert
       # @see #exec_update
@@ -568,30 +567,8 @@ module ActiveRecord
         if name == :skip_logging
           _execute(sql, name)
         else
-          # NOTE: AR-2.3 log(sql, name) does not like `name == nil`
-          log(sql, name ||= 'SQL') { _execute(sql, name) }
-        end
-      end
-
-      else
-      #elsif ActiveRecord::VERSION::MAJOR == 3 && ActiveRecord::VERSION::MINOR == 0
-
-      # Executes the SQL statement in the context of this connection.
-      # @private documented above
-      def execute(sql, name = nil, binds = [])
-        sql = suble_binds to_sql(sql, binds), binds
-        if name == :skip_logging
-          _execute(sql, name)
-        else
-          # NOTE: AR-3.0 log(sql, name) handles `name ||= "SQL"`
           log(sql, name) { _execute(sql, name) }
         end
-      end
-
-      # NOTE: 3.1 log(sql, name = "SQL", binds = []) `name == nil` is fine
-      # TODO skip logging the binds (twice) until prepared-statement support
-
-      #else
       end
 
       # We need to do it this way, to allow Rails stupid tests to always work
@@ -682,12 +659,33 @@ module ActiveRecord
 
       protected
 
+      # @override so that we do not have to care having 2 arguments on 3.0
+      def log(sql, name = nil, binds = [])
+        unless binds.blank?
+          # prepared-statements are not supported on AR <= 3.0 but to keep
+          # the API consistent (e.g. for {#select} using #{#exec_query_raw})
+          # it's good to handle such cases gracefully althogu this code is
+          # not likely to execute (`config[:prepared_statements]` is not set)
+          binds = binds.map do |column, value|
+            column ? [column.name, value] : [nil, value]
+          end
+          sql = "#{sql} #{binds.inspect}"
+        end
+        super(sql, name || 'SQL') # `log(sql, name)` on AR <= 3.0
+      end if ActiveRecord::VERSION::MAJOR < 3 ||
+        ( ActiveRecord::VERSION::MAJOR == 3 && ActiveRecord::VERSION::MINOR < 1 )
+
       def translate_exception(e, message)
         # we shall not translate native "Java" exceptions as they might
         # swallow an ArJdbc / driver bug into a AR::StatementInvalid ...
         return e if e.is_a?(NativeException) # JRuby 1.6
         return e if e.is_a?(Java::JavaLang::Throwable)
-        super # NOTE: wraps AR::JDBCError into AR::StatementInvalid, desired ?!
+
+        case e
+        when SystemExit, SignalException, NoMemoryError then e
+        # NOTE: wraps AR::JDBCError into AR::StatementInvalid, desired ?!
+        else super
+        end
       end
 
       def last_inserted_id(result)
@@ -727,12 +725,19 @@ module ActiveRecord
 
       end
 
-      private
-
       # @return whether `:prepared_statements` are to be used
       def prepared_statements?
-        self.class.prepared_statements?(config)
+        return @prepared_statements unless (@prepared_statements ||= nil).nil?
+        @prepared_statements = self.class.prepared_statements?(config)
       end
+
+      # Allows changing the prepared statements setting for this connection.
+      # @see #prepared_statements?
+      #def prepared_statements=(statements)
+      #  @prepared_statements = statements
+      #end
+
+      private
 
       def self.prepared_statements?(config)
         config.key?(:prepared_statements) ?
