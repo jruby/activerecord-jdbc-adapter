@@ -183,7 +183,9 @@ module ArJdbc
     end
 
     def next_sequence_value(sequence_name)
-      select_one("SELECT GEN_ID(#{sequence_name}, 1 ) FROM RDB$DATABASE;")["gen_id"]
+      uncached do
+        select_one("SELECT GEN_ID(#{sequence_name}, 1 ) FROM RDB$DATABASE;")["gen_id"]
+      end
     end
 
     def create_table(name, options = {}) #:nodoc:
