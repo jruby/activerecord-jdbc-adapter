@@ -1185,41 +1185,75 @@ public class RubyJdbcConnection extends RubyObject {
     }
 
     /*
-     * (is binary?, colname, tablename, primary_key, id, lob_value)
+     * (binary?, column_name, table_name, id_key, id_value, value)
      */
+    @Deprecated
     @JRubyMethod(name = "write_large_object", required = 6)
     public IRubyObject write_large_object(final ThreadContext context, final IRubyObject[] args)
         throws SQLException {
 
-        final boolean isBinary = args[0].isTrue();
+        final boolean binary = args[0].isTrue();
         final String columnName = args[1].toString();
         final String tableName = args[2].toString();
         final String idKey = args[3].toString();
-        final String idVal = args[4].toString();
+        final IRubyObject idVal = args[4];
         final IRubyObject lobValue = args[5];
 
-        final Ruby runtime = context.getRuntime();
-        return withConnection(context, new Callable<IRubyObject>() {
-            public IRubyObject call(final Connection connection) throws SQLException {
-                final String sql = "UPDATE "+ tableName +
-                    " SET "+ columnName +" = ? WHERE "+ idKey +" = "+ idVal;
+        int count = updateLobValue(context, tableName, columnName, null, idKey, idVal, null, lobValue, binary);
+        return context.getRuntime().newFixnum(count);
+    }
+
+    @JRubyMethod(name = "update_lob_value", required = 3)
+    public IRubyObject update_lob_value(final ThreadContext context,
+        final IRubyObject record, final IRubyObject column, final IRubyObject value)
+        throws SQLException {
+
+        final boolean binary = // column.type == :binary
+            column.callMethod(context, "type").toString() == (Object) "binary";
+
+        final RubyClass recordClass = record.getMetaClass(); // record.class
+        final IRubyObject connection = record.callMethod(context, "connection");
+
+        IRubyObject columnName = column.callMethod(context, "name");
+        columnName = connection.callMethod(context, "quote_column_name", columnName);
+        IRubyObject tableName = recordClass.callMethod(context, "table_name");
+        tableName = connection.callMethod(context, "quote_table_name", tableName);
+        final IRubyObject idKey = recordClass.callMethod(context, "primary_key"); // 'id'
+        // callMethod(context, "quote", primaryKey);
+        final IRubyObject idColumn = // record.class.columns_hash['id']
+            recordClass.callMethod(context, "columns_hash").callMethod(context, "[]", idKey);
+
+        final IRubyObject id = record.callMethod(context, "id"); // record.id
+
+        int count = updateLobValue(context,
+            tableName.toString(), columnName.toString(), column,
+            idKey.toString(), id, idColumn, value, binary
+        );
+        return context.getRuntime().newFixnum(count);
+    }
+
+    private int updateLobValue(final ThreadContext context,
+        final String tableName, final String columnName, final IRubyObject column,
+        final String idKey, final IRubyObject idValue, final IRubyObject idColumn,
+        final IRubyObject value, final boolean binary) {
+
+        final String sql = "UPDATE "+ tableName +" SET "+ columnName +" = ? WHERE "+ idKey +" = ?" ;
+
+        return withConnection(context, new Callable<Integer>() {
+            public Integer call(final Connection connection) throws SQLException {
                 PreparedStatement statement = null;
                 try {
                     statement = connection.prepareStatement(sql);
-                    if ( isBinary ) { // binary
-                        final ByteList blob = lobValue.convertToString().getByteList();
-                        final int realSize = blob.getRealSize();
-                        statement.setBinaryStream(1,
-                            new ByteArrayInputStream(blob.unsafeBytes(), blob.getBegin(), realSize), realSize
-                        );
-                    } else { // clob
-                        String clob = lobValue.convertToString().getUnicodeValue();
-                        statement.setCharacterStream(1, new StringReader(clob), clob.length());
+                    if ( binary ) { // blob
+                        setBlobParameter(context, connection, statement, 1, value, column, Types.BLOB);
                     }
-                    statement.executeUpdate();
+                    else { // clob
+                        setClobParameter(context, connection, statement, 1, value, column, Types.CLOB);
+                    }
+                    setStatementParameter(context, context.getRuntime(), connection, statement, 2, idValue, idColumn);
+                    return statement.executeUpdate();
                 }
                 finally { close(statement); }
-                return runtime.getNil();
             }
         });
     }
@@ -1826,7 +1860,18 @@ public class RubyJdbcConnection extends RubyObject {
             internedType = columnType.asJavaString();
         }
         else {
-            internedType = "string";
+            if ( value instanceof RubyInteger ) {
+                internedType = "integer";
+            }
+            else if ( value instanceof RubyNumeric ) {
+                internedType = "float";
+            }
+            else if ( value instanceof RubyTime ) {
+                internedType = "timestamp";
+            }
+            else {
+                internedType = "string";
+            }
         }
 
         if ( internedType == (Object) "string" ) return Types.VARCHAR;
@@ -2302,11 +2347,19 @@ public class RubyJdbcConnection extends RubyObject {
         final IRubyObject column, final int type) throws SQLException {
         if ( value.isNil() ) statement.setNull(index, Types.BLOB);
         else {
-            if ( value instanceof RubyString ) {
-                statement.setBlob(index, new ByteArrayInputStream(((RubyString) value).getBytes()));
-            }
-            else { // assume IO/File
+            if ( value instanceof RubyIO ) { // IO/File
                 statement.setBlob(index, ((RubyIO) value).getInStream());
+            }
+            else { // should be a RubyString
+                final ByteList blob = value.asString().getByteList();
+                statement.setBinaryStream(index,
+                    new ByteArrayInputStream(blob.unsafeBytes(), blob.getBegin(), blob.getRealSize()),
+                    blob.getRealSize() // length
+                );
+                // JDBC 4.0 :
+                //statement.setBlob(index,
+                //    new ByteArrayInputStream(bytes.unsafeBytes(), bytes.getBegin(), bytes.getRealSize())
+                //);
             }
         }
     }
@@ -2332,11 +2385,14 @@ public class RubyJdbcConnection extends RubyObject {
         final IRubyObject column, final int type) throws SQLException {
         if ( value.isNil() ) statement.setNull(index, Types.CLOB);
         else {
-            if ( value instanceof RubyString ) {
-                statement.setClob(index, new StringReader(((RubyString) value).decodeString()));
-            }
-            else { // assume IO/File
+            if ( value instanceof RubyIO ) { // IO/File
                 statement.setClob(index, new InputStreamReader(((RubyIO) value).getInStream()));
+            }
+            else { // should be a RubyString
+                final String clob = value.asString().decodeString();
+                statement.setCharacterStream(index, new StringReader(clob), clob.length());
+                // JDBC 4.0 :
+                //statement.setClob(index, new StringReader(clob));
             }
         }
     }

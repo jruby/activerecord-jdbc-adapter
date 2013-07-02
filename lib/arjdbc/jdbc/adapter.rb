@@ -641,8 +641,13 @@ module ActiveRecord
         @connection.primary_keys(table)
       end
 
+      # @deprecated use {#update_lob_value} instead
       def write_large_object(*args)
         @connection.write_large_object(*args)
+      end
+
+      def update_lob_value(record, column, value)
+        @connection.update_lob_value(record, column, value)
       end
 
       if ActiveRecord::VERSION::MAJOR == 3 && ActiveRecord::VERSION::MINOR == 0
