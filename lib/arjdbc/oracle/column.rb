@@ -9,6 +9,11 @@ module ArJdbc
     # @see ActiveRecord::ConnectionAdapters::JdbcColumn
     module Column
 
+      def self.included(base)
+        # NOTE: assumes a standalone OracleColumn class
+        class << base; include Cast; end
+      end
+
       def primary=(value)
         super
         @type = :integer if value && @sql_type =~ /^NUMBER$/i
@@ -17,9 +22,9 @@ module ArJdbc
       def type_cast(value)
         return nil if value.nil?
         case type
-        when :datetime  then Column.string_to_time(value)
-        when :timestamp then Column.string_to_time(value)
-        when :boolean   then Column.value_to_boolean(value)
+        when :datetime  then self.class.string_to_time(value)
+        when :timestamp then self.class.string_to_time(value)
+        when :boolean   then self.class.value_to_boolean(value)
         else
           super
         end
@@ -27,43 +32,12 @@ module ArJdbc
 
       def type_cast_code(var_name)
         case type
-        when :datetime  then "ArJdbc::Oracle::Column.string_to_time(#{var_name})"
-        when :timestamp then "ArJdbc::Oracle::Column.string_to_time(#{var_name})"
-        when :boolean   then "ArJdbc::Oracle::Column.value_to_boolean(#{var_name})"
+        when :datetime  then "#{self.class.name}.string_to_time(#{var_name})"
+        when :timestamp then "#{self.class.name}.string_to_time(#{var_name})"
+        when :boolean   then "#{self.class.name}.value_to_boolean(#{var_name})"
         else
           super
         end
-      end
-
-      # convert a value to a boolean
-      def self.value_to_boolean(value)
-        # NOTE: Oracle JDBC meta-data gets us DECIMAL for NUMBER(1) values
-        # thus we're likely to get a column back as BigDecimal (e.g. 1.0)
-        if value.is_a?(String)
-          value.blank? ? nil : value == '1'
-        elsif value.is_a?(Numeric)
-          value.to_i == 1 # <BigDecimal:7b5bfe,'0.1E1',1(4)>
-        else
-          !! value
-        end
-      end
-
-      def self.string_to_time(string)
-        return string unless string.is_a?(String)
-        return nil if string.empty?
-        return Time.now if string.index('CURRENT') == 0 # TODO seems very wrong
-
-        ::ActiveRecord::ConnectionAdapters::JdbcColumn.string_to_time(string)
-      end
-
-      def self.string_to_dummy_time(string)
-        ::ActiveRecord::ConnectionAdapters::JdbcColumn.string_to_dummy_time(string)
-      end
-
-      def self.guess_date_or_time(value)
-        return value if value.is_a? Date
-        ( value && value.hour == 0 && value.min == 0 && value.sec == 0 ) ?
-          Date.new(value.year, value.month, value.day) : value
       end
 
       private
@@ -108,6 +82,44 @@ module ArJdbc
         return $1 if value =~ /^'(.*)'$/
 
         value
+      end
+
+      module Cast
+
+        # Convert a value to a boolean.
+        def value_to_boolean(value)
+          # NOTE: Oracle JDBC meta-data gets us DECIMAL for NUMBER(1) values
+          # thus we're likely to get a column back as BigDecimal (e.g. 1.0)
+          if value.is_a?(String)
+            value.blank? ? nil : value == '1'
+          elsif value.is_a?(Numeric)
+            value.to_i == 1 # <BigDecimal:7b5bfe,'0.1E1',1(4)>
+          else
+            !! value
+          end
+        end
+
+        # @override
+        def string_to_time(string)
+          return string unless string.is_a?(String)
+          return nil if string.empty?
+          return Time.now if string.index('CURRENT') == 0 # TODO seems very wrong
+
+          super(string)
+        end
+
+        # @override
+        #def string_to_dummy_time(string)
+        #  super(string)
+        #end
+
+        # @override
+        def guess_date_or_time(value)
+          return value if value.is_a? Date
+          ( value && value.hour == 0 && value.min == 0 && value.sec == 0 ) ?
+            Date.new(value.year, value.month, value.day) : value
+        end
+
       end
 
     end
