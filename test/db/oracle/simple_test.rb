@@ -9,9 +9,20 @@ class OracleSimpleTest < Test::Unit::TestCase
 
   def xml_sql_type; 'XMLTYPE'; end
 
-  # #override
+  # @override
   def test_insert_returns_id
     # TODO not supported/implemented
+  end
+
+  # @override
+  def test_time_usec_formatting_when_saved_into_string_column
+    e = DbType.create!(:sample_string => '', :sample_text => '')
+    value = Time.utc 2013, 7, 2, 10, 13, 39, 0 # usec == 0
+    e.sample_string = value
+    e.sample_text = value
+    e.save!; e.reload
+    assert_match /02\-JUL\-13 10.13.39/, e.sample_string
+    # assert_match /02\-JUL\-13 10.13.39/, e.sample_text
   end
 
   def test_default_id_type_is_integer
@@ -124,12 +135,6 @@ class OracleSimpleTest < Test::Unit::TestCase
     # Oracle adapter initializes all CLOB fields with empty_clob()
     # fn, so they all have a initial value of an empty string ''
     assert_equal '', value
-  end
-
-  def assert_date_equal expected, actual
-    # Oracle doesn't distinguish btw date/datetime
-    expected = expected.respond_to?(:to_date) ? expected.to_date : expected
-    assert_equal expected, actual.to_date
   end
 
   def assert_date_type(value)

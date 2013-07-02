@@ -315,7 +315,7 @@ module SimpleTestMethods
       assert_equal time, e.reload.sample_datetime
     end
 
-    def test_save_date_time
+    def test_save_datetime
       t = Time.now # precision will only be expected to the second :
       time = Time.local(t.year, t.month, t.day, t.hour, t.min, t.sec)
       e = DbType.create! :sample_datetime => time.to_datetime
@@ -482,6 +482,18 @@ module SimpleTestMethods
   def test_negative_default_value
     assert_equal(-1, DbType.columns_hash['sample_integer_neg_default'].default)
     assert_equal(-1, DbType.new.sample_integer_neg_default)
+  end
+
+  def test_created_records_have_different_ids
+    e1 = Entry.create!(:title => "Blah")
+    e2 = Entry.create!(:title => "Bloh")
+    e3 = Entry.create!(:title => "Bloh")
+    assert_not_nil e1.id
+    assert_not_equal e1.id, e2.id
+    assert_not_nil e2.id
+    assert_not_equal e2.id, e3.id
+    assert_not_nil e3.id
+    assert_not_equal e3.id, e1.id
   end
 
   def test_indexes
