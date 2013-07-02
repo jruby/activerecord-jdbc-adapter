@@ -1,5 +1,7 @@
 ArJdbc.load_java_part :Oracle
 
+require 'arjdbc/oracle/column'
+
 module ArJdbc
   module Oracle
 
@@ -33,11 +35,6 @@ module ArJdbc
       end
     end
 
-    # @see ActiveRecord::ConnectionAdapters::JdbcColumn#column_types
-    def self.column_selector
-      [ /oracle/i, lambda { |config, column| column.extend(Column) } ]
-    end
-
     # @see ActiveRecord::ConnectionAdapters::JdbcAdapter#jdbc_connection_class
     def self.jdbc_connection_class
       ::ActiveRecord::ConnectionAdapters::OracleJdbcConnection
@@ -58,112 +55,6 @@ module ArJdbc
     # @see ActiveRecord::ConnectionAdapters::OracleAdapter#emulate_booleans
     def self.emulate_booleans; @@emulate_booleans; end
     def self.emulate_booleans=(emulate); @@emulate_booleans = emulate; end
-
-    # @see ActiveRecord::ConnectionAdapters::JdbcColumn
-    module Column
-
-      def primary=(value)
-        super
-        @type = :integer if value && @sql_type =~ /^NUMBER$/i
-      end
-
-      def type_cast(value)
-        return nil if value.nil?
-        case type
-        when :datetime  then Column.string_to_time(value)
-        when :timestamp then Column.string_to_time(value)
-        when :boolean   then Column.value_to_boolean(value)
-        else
-          super
-        end
-      end
-
-      def type_cast_code(var_name)
-        case type
-        when :datetime  then "ArJdbc::Oracle::Column.string_to_time(#{var_name})"
-        when :timestamp then "ArJdbc::Oracle::Column.string_to_time(#{var_name})"
-        when :boolean   then "ArJdbc::Oracle::Column.value_to_boolean(#{var_name})"
-        else
-          super
-        end
-      end
-
-      # convert a value to a boolean
-      def self.value_to_boolean(value)
-        # NOTE: Oracle JDBC meta-data gets us DECIMAL for NUMBER(1) values
-        # thus we're likely to get a column back as BigDecimal (e.g. 1.0)
-        if value.is_a?(String)
-          value.blank? ? nil : value == '1'
-        elsif value.is_a?(Numeric)
-          value.to_i == 1 # <BigDecimal:7b5bfe,'0.1E1',1(4)>
-        else
-          !! value
-        end
-      end
-
-      def self.string_to_time(string)
-        return string unless string.is_a?(String)
-        return nil if string.empty?
-        return Time.now if string.index('CURRENT') == 0 # TODO seems very wrong
-
-        ::ActiveRecord::ConnectionAdapters::JdbcColumn.string_to_time(string)
-      end
-
-      def self.string_to_dummy_time(string)
-        ::ActiveRecord::ConnectionAdapters::JdbcColumn.string_to_dummy_time(string)
-      end
-
-      def self.guess_date_or_time(value)
-        return value if value.is_a? Date
-        ( value && value.hour == 0 && value.min == 0 && value.sec == 0 ) ?
-          Date.new(value.year, value.month, value.day) : value
-      end
-
-      private
-
-      def extract_limit(sql_type)
-        case sql_type
-        when /^(clob|date)/i then nil
-        when /^xml/i then @sql_type = 'XMLTYPE'; nil
-        else super
-        end
-      end
-
-      def simplified_type(field_type)
-        case field_type
-        when /char/i            then :string
-        when /float|double/i    then :float
-        when /int/i             then :integer
-        when /^number\(1\)$/i   then Oracle.emulate_booleans ? :boolean : :integer
-        when /^num|dec|real/i   then extract_scale(field_type) == 0 ? :integer : :decimal
-        # Oracle TIMESTAMP stores the date and time to up to 9 digits of sub-second precision
-        when /TIMESTAMP/i       then :timestamp
-        # Oracle DATE stores the date and time to the second
-        when /DATE|TIME/i       then :datetime
-        when /CLOB/i            then :text
-        when /BLOB/i            then :binary
-        when /XML/i             then :xml
-        else
-          super
-        end
-      end
-
-      # Post process default value from JDBC into a Rails-friendly format (columns{-internal})
-      def default_value(value)
-        return nil unless value
-        value = value.strip # Not sure why we need this for Oracle?
-        upcase = value.upcase
-
-        return nil if upcase == "NULL"
-        # SYSDATE default should be treated like a NULL value
-        return nil if upcase == "SYSDATE"
-        # jdbc returns column default strings with actual single quotes around the value.
-        return $1 if value =~ /^'(.*)'$/
-
-        value
-      end
-
-    end
 
     class TableDefinition < ::ActiveRecord::ConnectionAdapters::TableDefinition
       def raw(*args)
