@@ -91,7 +91,7 @@ module ActiveRecord
       # This is used by (database specific) spec modules to override the class.
       # @see ActiveRecord::ConnectionAdapters::JdbcColumn
       def jdbc_column_class
-        ActiveRecord::ConnectionAdapters::JdbcColumn
+        ::ActiveRecord::ConnectionAdapters::JdbcColumn
       end
 
       # Retrieve the raw `java.sql.Connection` object.
@@ -754,6 +754,12 @@ module ActiveRecord
       # @deprecated No longer used, only kept for 1.2 API compatibility.
       def extract_sql(obj)
         obj.respond_to?(:to_sql) ? obj.send(:to_sql) : obj
+      end
+
+      # Helper to get local/UTC time (based on default TZ).
+      def get_time(value)
+        get = ::ActiveRecord::Base.default_timezone == :utc ? :getutc : :getlocal
+        value.respond_to?(get) ? value.send(get) : value
       end
 
       protected

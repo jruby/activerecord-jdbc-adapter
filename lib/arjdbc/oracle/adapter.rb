@@ -3,6 +3,7 @@ ArJdbc.load_java_part :Oracle
 module ArJdbc
   module Oracle
 
+    # @private
     def self.extended(adapter); initialize!; end
 
     # @private
@@ -19,11 +20,7 @@ module ArJdbc
             value = ::ArJdbc::SerializedAttributesHelper.dump_column_value(self, column)
             next if value.nil? || (value == '')
 
-            self.class.connection.write_large_object(
-              column.type == :binary, column.name,
-              self.class.table_name, self.class.primary_key,
-              self.class.connection.quote(id), value
-            )
+            self.class.connection.update_lob_value(self, column, value)
           end
         end
       end
@@ -36,14 +33,17 @@ module ArJdbc
       end
     end
 
+    # @see ActiveRecord::ConnectionAdapters::JdbcColumn#column_types
     def self.column_selector
-      [ /oracle/i, lambda { |cfg, column| column.extend(::ArJdbc::Oracle::Column) } ]
+      [ /oracle/i, lambda { |config, column| column.extend(Column) } ]
     end
 
+    # @see ActiveRecord::ConnectionAdapters::JdbcAdapter#jdbc_connection_class
     def self.jdbc_connection_class
       ::ActiveRecord::ConnectionAdapters::OracleJdbcConnection
     end
 
+    # @see ActiveRecord::ConnectionAdapters::JdbcAdapter#jdbc_column_class
     def jdbc_column_class
       ::ActiveRecord::ConnectionAdapters::OracleColumn
     end
@@ -59,6 +59,7 @@ module ArJdbc
     def self.emulate_booleans; @@emulate_booleans; end
     def self.emulate_booleans=(emulate); @@emulate_booleans = emulate; end
 
+    # @see ActiveRecord::ConnectionAdapters::JdbcColumn
     module Column
 
       def primary=(value)
@@ -180,11 +181,13 @@ module ArJdbc
       new_table_definition(TableDefinition, *args)
     end
 
+    # @see ActiveRecord::ConnectionAdapters::JdbcAdapter#arel2_visitors
     def self.arel2_visitors(config)
-      { 'oracle' => Arel::Visitors::Oracle }
+      visitor = ::Arel::Visitors::Oracle
+      { 'oracle' => visitor, 'jdbcoracle' => visitor }
     end
 
-    ADAPTER_NAME = 'Oracle'
+    ADAPTER_NAME = 'Oracle'.freeze
 
     def adapter_name
       ADAPTER_NAME
@@ -362,7 +365,8 @@ module ArJdbc
         "MODIFY #{quote_column_name(column_name)} DEFAULT #{quote(default)}"
     end
 
-    def add_column_options!(sql, options) #:nodoc:
+    # @override
+    def add_column_options!(sql, options)
       # handle case  of defaults for CLOB columns, which would otherwise get "quoted" incorrectly
       if options_include_default?(options) && (column = options[:column]) && column.type == :text
         sql << " DEFAULT #{quote(options.delete(:default))}"
@@ -370,6 +374,7 @@ module ArJdbc
       super
     end
 
+    # @override
     def change_column(table_name, column_name, type, options = {})
       change_column_sql = "ALTER TABLE #{quote_table_name(table_name)} " <<
         "MODIFY #{quote_column_name(column_name)} #{type_to_sql(type, options[:limit])}"
@@ -377,12 +382,14 @@ module ArJdbc
       execute(change_column_sql)
     end
 
+    # @override
     def rename_column(table_name, column_name, new_column_name)
       execute "ALTER TABLE #{quote_table_name(table_name)} " <<
         "RENAME COLUMN #{quote_column_name(column_name)} TO #{quote_column_name(new_column_name)}"
     end
 
-    def remove_column(table_name, *column_names) #:nodoc:
+    # @override
+    def remove_column(table_name, *column_names)
       for column_name in column_names.flatten
         execute "ALTER TABLE #{quote_table_name(table_name)} DROP COLUMN #{quote_column_name(column_name)}"
       end
@@ -505,7 +512,7 @@ module ArJdbc
         if column.respond_to?(:primary) && column.primary && column.klass != String
           return value.to_i.to_s
         end
-        
+
         if column_type == :datetime || column_type == :time
           if value.acts_like?(:time)
             %Q{TO_DATE('#{get_time(value).strftime("%Y-%m-%d %H:%M:%S")}','YYYY-MM-DD HH24:MI:SS')}
@@ -548,12 +555,6 @@ module ArJdbc
       value = value.unpack('C*') if value.is_a?(String)
       "'#{value.map { |x| "%02X" % x }.join}'"
     end
-
-    def get_time(value)
-      get = ::ActiveRecord::Base.default_timezone == :utc ? :getutc : :getlocal
-      value.respond_to?(get) ? value.send(get) : value
-    end
-    private :get_time
 
     # @override
     def supports_migrations?
