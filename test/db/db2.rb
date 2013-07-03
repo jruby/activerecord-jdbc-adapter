@@ -32,12 +32,12 @@ require 'jdbc/db2'
 # or http://sourceforge.net/projects/jt400/ for AS400
 jdbc_db2 = (config[:url] || '') =~ /\:as400/ ? Jdbc::AS400 : Jdbc::DB2
 begin
-  Java::JavaClass.for_name(jdbc_db2.driver_name)
+  silence_warnings { Java::JavaClass.for_name(jdbc_db2.driver_name) }
 rescue NameError
   begin
     jdbc_db2.load_driver
   rescue LoadError => e
-    puts "Please setup a JDBC driver to run the DB2 tests !"
+    warn "Please setup a JDBC driver to run the DB2 tests !"
     raise e
   end
 end

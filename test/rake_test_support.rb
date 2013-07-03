@@ -90,7 +90,7 @@ module RakeTestSupport
 
   def teardown
     stdout = restore_stdout
-    
+
     error = nil
     begin
       do_teardown
@@ -288,12 +288,5 @@ module RakeTestSupport
   end
 
   def rails_constant_name(name); "RAILS_#{name.upcase}"; end
-
-  def silence_warnings
-    prev, $VERBOSE = $VERBOSE, nil
-    yield
-  ensure
-    $VERBOSE = prev
-  end
 
 end

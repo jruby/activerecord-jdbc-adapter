@@ -43,6 +43,13 @@ rescue LoadError
   puts "ruby-debug missing thus won't be loaded"
 end
 
+def silence_warnings
+  prev, $VERBOSE = $VERBOSE, nil
+  yield
+ensure
+  $VERBOSE = prev
+end
+
 # assert_queries and SQLCounter taken from rails active_record tests
 class Test::Unit::TestCase
 
@@ -133,13 +140,15 @@ class Test::Unit::TestCase
     end
   end
 
-  def current_connection_config
+  def self.current_connection_config
     if ActiveRecord::Base.respond_to?(:connection_config)
       ActiveRecord::Base.connection_config
     else
       ActiveRecord::Base.connection_pool.spec.config
     end
   end
+
+  def current_connection_config; self.class.current_connection_config; end
 
   protected
 
