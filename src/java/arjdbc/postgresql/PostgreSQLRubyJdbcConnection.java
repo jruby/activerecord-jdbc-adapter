@@ -35,8 +35,10 @@ import java.util.UUID;
 
 import org.jruby.Ruby;
 import org.jruby.RubyArray;
+import org.jruby.RubyBoolean;
 import org.jruby.RubyClass;
 import org.jruby.RubyString;
+import org.jruby.anno.JRubyMethod;
 import org.jruby.javasupport.JavaUtil;
 import org.jruby.runtime.ObjectAllocator;
 import org.jruby.runtime.ThreadContext;
@@ -128,7 +130,7 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
         }
 
         final RubyString strValue = timestampToRubyString(runtime, value.toString());
-        if ( useRawDateTime() ) return strValue;
+        if ( rawDateTime ) return strValue;
 
         final IRubyObject adapter = callMethod(context, "adapter"); // self.adapter
         if ( adapter.isNil() ) return strValue; // NOTE: we warn on init_connection
@@ -194,7 +196,7 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
     // NOTE: do not use PG classes in the API so that loading is delayed !
     private String formatInterval(final Object object) {
         final PGInterval interval = (PGInterval) object;
-        if ( useRawIntervalType() ) return interval.getValue();
+        if ( rawIntervalType ) return interval.getValue();
 
         final StringBuilder str = new StringBuilder(32);
 
@@ -229,14 +231,22 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
     // Rails style :
     // - 2 years 00:03:00
     // - -1 years -2 days
-    private static boolean rawIntervalType = Boolean.getBoolean("arjdbc.postgresql.iterval.raw");
+    protected static boolean rawIntervalType = Boolean.getBoolean("arjdbc.postgresql.iterval.raw");
 
-    public static boolean useRawIntervalType() {
-        return rawIntervalType;
+    @JRubyMethod(name = "raw_interval_type?")
+    public static IRubyObject useRawIntervalType(final ThreadContext context, final IRubyObject self) {
+        return context.getRuntime().newBoolean(rawIntervalType);
     }
 
-    public static void setRawIntervalType(boolean rawInterval) {
-        PostgreSQLRubyJdbcConnection.rawIntervalType = rawInterval;
+    @JRubyMethod(name = "raw_interval_type=")
+    public static IRubyObject setRawIntervalType(final IRubyObject self, final IRubyObject value) {
+        if ( value instanceof RubyBoolean ) {
+            rawIntervalType = ((RubyBoolean) value).isTrue();
+        }
+        else {
+            rawIntervalType = value.isNil();
+        }
+        return value;
     }
 
 }

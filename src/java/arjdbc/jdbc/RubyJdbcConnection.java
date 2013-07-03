@@ -1551,16 +1551,22 @@ public class RubyJdbcConnection extends RubyObject {
         return runtime.getKernel().callMethod("BigDecimal", runtime.newString(value));
     }
 
-    private static boolean rawDateTime = Boolean.getBoolean("arjdbc.datetime.raw");
+    protected static boolean rawDateTime = Boolean.getBoolean("arjdbc.datetime.raw");
 
-    // @JRubyMethod(name = "raw_date_time?")
-    public static boolean useRawDateTime() {
-        return rawDateTime;
+    @JRubyMethod(name = "raw_date_time?")
+    public static IRubyObject useRawDateTime(final ThreadContext context, final IRubyObject self) {
+        return context.getRuntime().newBoolean(rawDateTime);
     }
 
-    // @JRubyMethod(name = "raw_date_time=")
-    public static void setRawDateTime(boolean rawDateTime) {
-        RubyJdbcConnection.rawDateTime = rawDateTime;
+    @JRubyMethod(name = "raw_date_time=")
+    public static IRubyObject setRawDateTime(final IRubyObject self, final IRubyObject value) {
+        if ( value instanceof RubyBoolean ) {
+            rawDateTime = ((RubyBoolean) value).isTrue();
+        }
+        else {
+            rawDateTime = value.isNil();
+        }
+        return value;
     }
 
     protected IRubyObject dateToRuby(final ThreadContext context,
@@ -1574,7 +1580,7 @@ public class RubyJdbcConnection extends RubyObject {
         }
 
         final RubyString strValue = RubyString.newUnicodeString(runtime, value.toString());
-        if ( useRawDateTime() ) return strValue;
+        if ( rawDateTime ) return strValue;
 
         final IRubyObject adapter = callMethod(context, "adapter"); // self.adapter
         if ( adapter.isNil() ) return strValue; // NOTE: we warn on init_connection
@@ -1592,7 +1598,7 @@ public class RubyJdbcConnection extends RubyObject {
         }
 
         final RubyString strValue = RubyString.newUnicodeString(runtime, value.toString());
-        if ( useRawDateTime() ) return strValue;
+        if ( rawDateTime ) return strValue;
 
         final IRubyObject adapter = callMethod(context, "adapter"); // self.adapter
         if ( adapter.isNil() ) return strValue; // NOTE: we warn on init_connection
@@ -1610,7 +1616,7 @@ public class RubyJdbcConnection extends RubyObject {
         }
 
         final RubyString strValue = timestampToRubyString(runtime, value.toString());
-        if ( useRawDateTime() ) return strValue;
+        if ( rawDateTime ) return strValue;
 
         final IRubyObject adapter = callMethod(context, "adapter"); // self.adapter
         if ( adapter.isNil() ) return strValue; // NOTE: we warn on init_connection
