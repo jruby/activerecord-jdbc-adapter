@@ -1551,43 +1551,73 @@ public class RubyJdbcConnection extends RubyObject {
         return runtime.getKernel().callMethod("BigDecimal", runtime.newString(value));
     }
 
-    private static boolean parseDateTime = false; // TODO
+    private static boolean rawDateTime = Boolean.getBoolean("arjdbc.datetime.raw");
 
-    protected IRubyObject dateToRuby(final ThreadContext context, // TODO
+    // @JRubyMethod(name = "raw_date_time?")
+    public static boolean useRawDateTime() {
+        return rawDateTime;
+    }
+
+    // @JRubyMethod(name = "raw_date_time=")
+    public static void setRawDateTime(boolean rawDateTime) {
+        RubyJdbcConnection.rawDateTime = rawDateTime;
+    }
+
+    protected IRubyObject dateToRuby(final ThreadContext context,
         final Ruby runtime, final ResultSet resultSet, final int column)
         throws SQLException {
+
         final Date value = resultSet.getDate(column);
         if ( value == null ) {
             if ( resultSet.wasNull() ) return runtime.getNil();
             return runtime.newString(); // ""
         }
-        return RubyString.newUnicodeString(runtime, value.toString());
+
+        final RubyString strValue = RubyString.newUnicodeString(runtime, value.toString());
+        if ( useRawDateTime() ) return strValue;
+
+        final IRubyObject adapter = callMethod(context, "adapter"); // self.adapter
+        if ( adapter.isNil() ) return strValue; // NOTE: we warn on init_connection
+        return adapter.callMethod(context, "_string_to_date", strValue);
     }
 
-    protected IRubyObject timeToRuby(final ThreadContext context, // TODO
+    protected IRubyObject timeToRuby(final ThreadContext context,
         final Ruby runtime, final ResultSet resultSet, final int column)
         throws SQLException {
+
         final Time value = resultSet.getTime(column);
         if ( value == null ) {
             if ( resultSet.wasNull() ) return runtime.getNil();
             return runtime.newString(); // ""
         }
-        return RubyString.newUnicodeString(runtime, value.toString());
+
+        final RubyString strValue = RubyString.newUnicodeString(runtime, value.toString());
+        if ( useRawDateTime() ) return strValue;
+
+        final IRubyObject adapter = callMethod(context, "adapter"); // self.adapter
+        if ( adapter.isNil() ) return strValue; // NOTE: we warn on init_connection
+        return adapter.callMethod(context, "_string_to_time", strValue);
     }
 
     protected IRubyObject timestampToRuby(final ThreadContext context, // TODO
         final Ruby runtime, final ResultSet resultSet, final int column)
         throws SQLException {
+
         final Timestamp value = resultSet.getTimestamp(column);
         if ( value == null ) {
             if ( resultSet.wasNull() ) return runtime.getNil();
             return runtime.newString(); // ""
         }
-        return timestampToRubyString(runtime, value.toString());
+
+        final RubyString strValue = timestampToRubyString(runtime, value.toString());
+        if ( useRawDateTime() ) return strValue;
+
+        final IRubyObject adapter = callMethod(context, "adapter"); // self.adapter
+        if ( adapter.isNil() ) return strValue; // NOTE: we warn on init_connection
+        return adapter.callMethod(context, "_string_to_timestamp", strValue);
     }
 
-    protected static IRubyObject timestampToRubyString(final Ruby runtime, String value) {
-        if ( value == null ) return runtime.getNil();
+    protected static RubyString timestampToRubyString(final Ruby runtime, String value) {
         // Timestamp's format: yyyy-mm-dd hh:mm:ss.fffffffff
         String suffix; // assumes java.sql.Timestamp internals :
         if ( value.endsWith( suffix = " 00:00:00.0" ) ) {

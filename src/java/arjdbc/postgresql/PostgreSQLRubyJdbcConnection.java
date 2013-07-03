@@ -116,7 +116,7 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
     }
 
     @Override
-    protected IRubyObject timestampToRuby(final ThreadContext context, // TODO
+    protected IRubyObject timestampToRuby(final ThreadContext context,
         final Ruby runtime, final ResultSet resultSet, final int column)
         throws SQLException {
         // NOTE: using Timestamp we loose information such as BC :
@@ -126,7 +126,13 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
             if ( resultSet.wasNull() ) return runtime.getNil();
             return runtime.newString(); // ""
         }
-        return timestampToRubyString(runtime, value);
+
+        final RubyString strValue = timestampToRubyString(runtime, value.toString());
+        if ( useRawDateTime() ) return strValue;
+
+        final IRubyObject adapter = callMethod(context, "adapter"); // self.adapter
+        if ( adapter.isNil() ) return strValue; // NOTE: we warn on init_connection
+        return adapter.callMethod(context, "_string_to_timestamp", strValue);
     }
 
     @Override

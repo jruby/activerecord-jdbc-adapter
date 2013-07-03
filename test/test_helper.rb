@@ -186,6 +186,7 @@ class Test::Unit::TestCase
   end
 
   def assert_time_equal expected, actual
+    assert_not_nil actual, "<#{expected}> but was nil" unless expected.nil?
     actual = actual_in_expected_time_zone(expected, actual)
     [ :hour, :min, :sec ].each do |method|
       assert_equal expected.send(method), actual.send(method), "<#{expected}> but was <#{actual}> (differ at #{method.inspect})"

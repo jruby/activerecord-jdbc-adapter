@@ -12,7 +12,7 @@ class SQLite3SimpleTest < Test::Unit::TestCase
   include XmlColumnTests
   include ExplainSupportTestMethods if ar_version("3.1")
   include CustomSelectTestMethods
-  
+
   def test_recreate_database
     assert connection.tables.include?(Entry.table_name)
     db = connection.database_name
@@ -24,7 +24,7 @@ class SQLite3SimpleTest < Test::Unit::TestCase
   def test_execute_insert
     user = User.create! :login => 'user1'
     Entry.create! :title => 'E1', :user_id => user.id
-    
+
     assert_equal 1, Entry.count
     id = connection.execute "INSERT INTO entries (title, content) VALUES ('Execute Insert', 'This now works with SQLite3')"
     assert_equal Entry.last.id, id
@@ -34,7 +34,7 @@ class SQLite3SimpleTest < Test::Unit::TestCase
   def test_execute_update
     user = User.create! :login => 'user1'
     Entry.create! :title => 'E1', :user_id => user.id
-    
+
     affected_rows = connection.execute "UPDATE entries SET title = 'Execute Update' WHERE id = #{Entry.first.id}"
     assert_equal 1, affected_rows
     assert_equal 'Execute Update', Entry.first.title
@@ -93,7 +93,7 @@ class SQLite3SimpleTest < Test::Unit::TestCase
     rating = 205.76
     user = User.create! :login => "something"
     entry = Entry.create! :title => title, :content => content, :rating => rating, :user => user
-    
+
     entry.reload
     #assert_equal title, entry.title
     #assert_equal content, entry.content
@@ -103,7 +103,7 @@ class SQLite3SimpleTest < Test::Unit::TestCase
       rename_column "entries", "title", "name"
       rename_column "entries", "rating", "popularity"
     end
-    
+
     entry = Entry.find(entry.id)
     assert_equal title, entry.name
     assert_equal content, entry.content
@@ -230,7 +230,7 @@ class SQLite3SimpleTest < Test::Unit::TestCase
     ActiveRecord::Base.connection.send :delete_sql, "DELETE FROM entries"
     assert Entry.all.empty?
   end
-  
+
   # @override
   def test_big_decimal
     test_value = 1234567890.0 # FINE just like native adapter
@@ -242,8 +242,8 @@ class SQLite3SimpleTest < Test::Unit::TestCase
     db_type = DbType.create!(:big_decimal => test_value)
     db_type = DbType.find(db_type.id)
     assert_equal test_value, db_type.big_decimal
-    
-    # NOTE: this is getting f*cked up in the native adapter as well although 
+
+    # NOTE: this is getting f*cked up in the native adapter as well although
     # differently and only when inserted manually - works with PSs (3.1+) :
     test_value = 1234567890_1234567890.0
     db_type = DbType.create!(:big_decimal => test_value)
@@ -252,7 +252,7 @@ class SQLite3SimpleTest < Test::Unit::TestCase
     #assert_equal test_value, db_type.big_decimal
     #super
   end
-  
+
   # @override SQLite3 returns FLOAT (JDBC type) for DECIMAL columns
   def test_custom_select_decimal
     model = DbType.create! :sample_small_decimal => ( decimal = BigDecimal.new('5.45') )
@@ -264,5 +264,29 @@ class SQLite3SimpleTest < Test::Unit::TestCase
     assert_equal decimal, model.custom_decimal
     #assert_instance_of BigDecimal, model.custom_decimal
   end
-  
+
+  # @override SQLite3 returns String for columns created with DATETIME type
+  def test_custom_select_datetime
+    my_time = Time.utc 2013, 03, 15, 19, 53, 51, 0 # usec
+    model = DbType.create! :sample_datetime => my_time
+    if ActiveRecord::VERSION::MAJOR >= 3
+      model = DbType.where("id = #{model.id}").select('sample_datetime AS custom_sample_datetime').first
+    else
+      model = DbType.find(:first, :conditions => "id = #{model.id}", :select => 'sample_datetime AS custom_sample_datetime')
+    end
+    assert_match my_time.to_s(:db), model.custom_sample_datetime # '2013-03-15 18:53:51.000000'
+  end
+
+  # @override SQLite3 JDBC returns VARCHAR type for column
+  def test_custom_select_date
+    my_date = Time.local(2000, 01, 30, 0, 0, 0, 0).to_date
+    model = DbType.create! :sample_date => my_date
+    if ActiveRecord::VERSION::MAJOR >= 3
+      model = DbType.where("id = #{model.id}").select('sample_date AS custom_sample_date').first
+    else
+      model = DbType.find(:first, :conditions => "id = #{model.id}", :select => 'sample_date AS custom_sample_date')
+    end
+    assert_equal my_date.to_s(:db), model.custom_sample_date
+  end
+
 end

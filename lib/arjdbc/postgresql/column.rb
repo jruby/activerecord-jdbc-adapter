@@ -11,6 +11,7 @@ module ArJdbc
     module Column
 
       def self.included(base)
+        # NOTE: assumes a standalone PostgreSQLColumn class
         class << base
           include Cast
           attr_accessor :money_precision

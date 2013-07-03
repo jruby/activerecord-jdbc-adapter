@@ -59,6 +59,17 @@ module ActiveRecord
         types
       end
 
+      class << self
+
+        if ActiveRecord::VERSION::MAJOR > 3
+
+          # @private provides compatibility between AR 3.x/4.0 API
+          def string_to_date(value); value_to_date(value) end
+
+        end
+
+      end
+
     end
   end
 end

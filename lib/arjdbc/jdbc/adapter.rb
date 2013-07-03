@@ -799,6 +799,26 @@ module ActiveRecord
 
       end
 
+      public
+
+      # @note Used by Java API to convert dates from (custom) SELECTs (might get refactored).
+      # @private
+      def _string_to_date(value)
+        jdbc_column_class.string_to_date(value)
+      end
+
+      # @note Used by Java API to convert times from (custom) SELECTs (might get refactored).
+      # @private
+      def _string_to_time(value)
+        jdbc_column_class.string_to_dummy_time(value)
+      end
+
+      # @note Used by Java API to convert times from (custom) SELECTs (might get refactored).
+      # @private
+      def _string_to_timestamp(value)
+        jdbc_column_class.string_to_time(value)
+      end
+
     end
   end
 end
