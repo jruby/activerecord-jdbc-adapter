@@ -1,4 +1,5 @@
 ArJdbc::ConnectionMethods.module_eval do
+  # @note Assumes DB2 driver (*db2jcc.jar*) is on class-path.
   def db2_connection(config)
     config[:url] ||= begin
       if config[:host] # Type 4 URL: jdbc:db2://server:port/database
@@ -15,6 +16,7 @@ ArJdbc::ConnectionMethods.module_eval do
   end
   alias_method :jdbcdb2_connection, :db2_connection
 
+  # @note Assumes AS400 driver (*jt400.jar*) is on class-path.
   def as400_connection(config)
     config[:url] ||= begin
       # jdbc:as400://[host]

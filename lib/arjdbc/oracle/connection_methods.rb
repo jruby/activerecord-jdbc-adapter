@@ -1,4 +1,7 @@
 ArJdbc::ConnectionMethods.module_eval do
+  # Unless a connection URL (`url: jdbc:oracle:...`) is specified we'll use the
+  # *thin* method to connect to the Oracle DB.
+  # @note Oracle's JDBC driver should be on the class-path.
   def oracle_connection(config)
     config[:port] ||= 1521
     config[:url] ||= "jdbc:oracle:thin:@#{config[:host]}:#{config[:port]}:#{config[:database]}"
