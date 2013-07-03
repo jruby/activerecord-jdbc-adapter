@@ -106,7 +106,8 @@ public class SQLite3RubyJdbcConnection extends RubyJdbcConnection {
     }
 
     @Override
-    protected IRubyObject jdbcToRuby(final Ruby runtime, final int column, int type, final ResultSet resultSet)
+    protected IRubyObject jdbcToRuby(final ThreadContext context,
+        final Ruby runtime, final int column, int type, final ResultSet resultSet)
         throws SQLException {
         // This is rather gross, and only needed because the resultset metadata for SQLite tries to be overly
         // clever, and returns a type for the column of the "current" row, so an integer value stored in a
@@ -115,11 +116,11 @@ public class SQLite3RubyJdbcConnection extends RubyJdbcConnection {
         if ( resultSet instanceof ResultSetMetaData ) {
             type = ((ResultSetMetaData) resultSet).getColumnType(column);
         }
-        return super.jdbcToRuby(runtime, column, type, resultSet);
+        return super.jdbcToRuby(context, runtime, column, type, resultSet);
     }
 
     @Override
-    protected IRubyObject streamToRuby(
+    protected IRubyObject streamToRuby(final ThreadContext context,
         final Ruby runtime, final ResultSet resultSet, final int column)
         throws SQLException, IOException {
         final byte[] bytes = resultSet.getBytes(column);

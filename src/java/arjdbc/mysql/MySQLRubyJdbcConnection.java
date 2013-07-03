@@ -74,13 +74,15 @@ public class MySQLRubyJdbcConnection extends RubyJdbcConnection {
     }
 
     @Override
-    protected IRubyObject jdbcToRuby(Ruby runtime, int column, int type, ResultSet resultSet)
+    protected IRubyObject jdbcToRuby(
+        final ThreadContext context, final Ruby runtime,
+        final int column, final int type, final ResultSet resultSet)
         throws SQLException {
         if ( Types.BOOLEAN == type || Types.BIT == type ) {
             final boolean value = resultSet.getBoolean(column);
             return resultSet.wasNull() ? runtime.getNil() : runtime.newFixnum(value ? 1 : 0);
         }
-        return super.jdbcToRuby(runtime, column, type, resultSet);
+        return super.jdbcToRuby(context, runtime, column, type, resultSet);
     }
 
     private static ObjectAllocator MYSQL_JDBCCONNECTION_ALLOCATOR = new ObjectAllocator() {

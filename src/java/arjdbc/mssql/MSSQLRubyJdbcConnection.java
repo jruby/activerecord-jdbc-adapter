@@ -31,7 +31,6 @@ import java.sql.DatabaseMetaData;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Types;
-import java.util.List;
 
 import org.jcodings.specific.UTF8Encoding;
 
@@ -50,7 +49,7 @@ import org.jruby.util.ByteList;
  * @author nicksieger
  */
 public class MSSQLRubyJdbcConnection extends RubyJdbcConnection {
-    
+
     protected MSSQLRubyJdbcConnection(Ruby runtime, RubyClass metaClass) {
         super(runtime, metaClass);
     }
@@ -68,27 +67,27 @@ public class MSSQLRubyJdbcConnection extends RubyJdbcConnection {
             return new MSSQLRubyJdbcConnection(runtime, klass);
         }
     };
-   
+
     private static final byte[] EXEC = new byte[] { 'e', 'x', 'e', 'c' };
-    
+
     @JRubyMethod(name = "exec?", required = 1, meta = true, frame = false)
     public static IRubyObject exec_p(ThreadContext context, IRubyObject self, IRubyObject sql) {
         final ByteList sqlBytes = sql.convertToString().getByteList();
         return context.getRuntime().newBoolean( startsWithIgnoreCase(sqlBytes, EXEC) );
     }
-    
+
     @Override
-    protected RubyArray mapTables(final Ruby runtime, final DatabaseMetaData metaData, 
-            final String catalog, final String schemaPattern, final String tablePattern, 
+    protected RubyArray mapTables(final Ruby runtime, final DatabaseMetaData metaData,
+            final String catalog, final String schemaPattern, final String tablePattern,
             final ResultSet tablesSet) throws SQLException, IllegalStateException {
-        
+
         final RubyArray tables = runtime.newArray();
-        
+
         while ( tablesSet.next() ) {
             String schema = tablesSet.getString(TABLES_TABLE_SCHEM);
             if ( schema != null ) schema = schema.toLowerCase();
             // Under MS-SQL, don't return system tables/views unless explicitly asked for :
-            if ( schemaPattern == null && 
+            if ( schemaPattern == null &&
                 ( "sys".equals(schema) || "information_schema".equals(schema) ) ) {
                 continue;
             }
@@ -98,9 +97,9 @@ public class MSSQLRubyJdbcConnection extends RubyJdbcConnection {
                 // EXPLAIN is on (e.g. `SET SHOWPLAN_TEXT ON`) not returning
                 // correct result set with table info (null NAME, invalid CAT)
                 throw new IllegalStateException("got null name while matching table(s): [" +
-                    catalog + "." + schemaPattern + "." + tablePattern + "] check " + 
-                    "if this happened during EXPLAIN (SET SHOWPLAN_TEXT ON) if so please try " + 
-                    "turning it off using the system property 'arjdbc.mssql.explain_support.disabled=true' " + 
+                    catalog + "." + schemaPattern + "." + tablePattern + "] check " +
+                    "if this happened during EXPLAIN (SET SHOWPLAN_TEXT ON) if so please try " +
+                    "turning it off using the system property 'arjdbc.mssql.explain_support.disabled=true' " +
                     "or programatically by changing: `ArJdbc::MSSQL::ExplainSupport::DISABLED`");
             }
             name = caseConvertIdentifierForRails(metaData, name);
@@ -108,7 +107,7 @@ public class MSSQLRubyJdbcConnection extends RubyJdbcConnection {
         }
         return tables;
     }
-    
+
     /**
      * Microsoft SQL 2000+ support schemas
      */
@@ -116,30 +115,32 @@ public class MSSQLRubyJdbcConnection extends RubyJdbcConnection {
     protected boolean databaseSupportsSchemas() {
         return true;
     }
-    
+
     /**
      * Treat LONGVARCHAR as CLOB on MSSQL for purposes of converting a JDBC value to Ruby.
      */
     @Override
-    protected IRubyObject jdbcToRuby(Ruby runtime, int column, int type, ResultSet resultSet)
+    protected IRubyObject jdbcToRuby(
+        final ThreadContext context, final Ruby runtime,
+        final int column, int type, final ResultSet resultSet)
         throws SQLException {
         if ( type == Types.LONGVARCHAR || type == Types.LONGNVARCHAR ) type = Types.CLOB;
-        return super.jdbcToRuby(runtime, column, type, resultSet);
+        return super.jdbcToRuby(context, runtime, column, type, resultSet);
     }
 
     @Override
-    protected ColumnData[] extractColumns(final Ruby runtime, 
-        final DatabaseMetaData metaData, final ResultSet resultSet, 
+    protected ColumnData[] extractColumns(final Ruby runtime,
+        final DatabaseMetaData metaData, final ResultSet resultSet,
         final boolean downCase) throws SQLException {
         return filterRowNumFromColumns( super.extractColumns(runtime, metaData, resultSet, downCase) );
     }
-    
+
     private static final ByteList _row_num; // "_row_num"
     static {
         _row_num = new ByteList(new byte[] { '_','r','o','w','_','n','u','m' }, false);
         _row_num.setEncoding(UTF8Encoding.INSTANCE);
     }
-    
+
     /**
      * Filter out the <tt>_row_num</tt> column from results.
      */
@@ -147,7 +148,7 @@ public class MSSQLRubyJdbcConnection extends RubyJdbcConnection {
         for ( int i = 0; i < columns.length; i++ ) {
             if ( _row_num.equal( columns[i].name.getByteList() ) ) {
                 final ColumnData[] filtered = new ColumnData[columns.length - 1];
-                
+
                 if ( i > 0 ) {
                     System.arraycopy(columns, 0, filtered, 0, i);
                 }
@@ -161,5 +162,5 @@ public class MSSQLRubyJdbcConnection extends RubyJdbcConnection {
         }
         return columns;
     }
-    
+
 }

@@ -1394,65 +1394,75 @@ public class RubyJdbcConnection extends RubyObject {
         return resultHandler.newResult(context, runtime, columns, resultRows);
     }
 
-    protected IRubyObject jdbcToRuby(final Ruby runtime, final int column,
-        final int type, final ResultSet resultSet) throws SQLException {
+    @Deprecated
+    protected IRubyObject jdbcToRuby(final Ruby runtime,
+        final int column, final int type, final ResultSet resultSet)
+        throws SQLException {
+        return jdbcToRuby(runtime.getCurrentContext(), runtime, column, type, resultSet);
+    }
+
+    protected IRubyObject jdbcToRuby(
+        final ThreadContext context, final Ruby runtime,
+        final int column, final int type, final ResultSet resultSet)
+        throws SQLException {
+
         try {
             switch (type) {
             case Types.BLOB:
             case Types.BINARY:
             case Types.VARBINARY:
             case Types.LONGVARBINARY:
-                return streamToRuby(runtime, resultSet, column);
+                return streamToRuby(context, runtime, resultSet, column);
             case Types.CLOB:
             case Types.NCLOB: // JDBC 4.0
-                return readerToRuby(runtime, resultSet, column);
+                return readerToRuby(context, runtime, resultSet, column);
             case Types.LONGVARCHAR:
             case Types.LONGNVARCHAR: // JDBC 4.0
                 if ( runtime.is1_9() ) {
-                    return readerToRuby(runtime, resultSet, column);
+                    return readerToRuby(context, runtime, resultSet, column);
                 }
                 else {
-                    return streamToRuby(runtime, resultSet, column);
+                    return streamToRuby(context, runtime, resultSet, column);
                 }
             case Types.TINYINT:
             case Types.SMALLINT:
             case Types.INTEGER:
-                return integerToRuby(runtime, resultSet, column);
+                return integerToRuby(context, runtime, resultSet, column);
             case Types.REAL:
             case Types.FLOAT:
             case Types.DOUBLE:
-                return doubleToRuby(runtime, resultSet, column);
+                return doubleToRuby(context, runtime, resultSet, column);
             case Types.BIGINT:
-                return bigIntegerToRuby(runtime, resultSet, column);
+                return bigIntegerToRuby(context, runtime, resultSet, column);
             case Types.NUMERIC:
             case Types.DECIMAL:
-                return decimalToRuby(runtime, resultSet, column);
+                return decimalToRuby(context, runtime, resultSet, column);
             case Types.DATE:
-                return dateToRuby(runtime, resultSet, column);
+                return dateToRuby(context, runtime, resultSet, column);
             case Types.TIME:
-                return timeToRuby(runtime, resultSet, column);
+                return timeToRuby(context, runtime, resultSet, column);
             case Types.TIMESTAMP:
-                return timestampToRuby(runtime, resultSet, column);
+                return timestampToRuby(context, runtime, resultSet, column);
             case Types.BIT:
             case Types.BOOLEAN:
-                return booleanToRuby(runtime, resultSet, column);
+                return booleanToRuby(context, runtime, resultSet, column);
             case Types.SQLXML: // JDBC 4.0
-                return xmlToRuby(runtime, resultSet, column);
+                return xmlToRuby(context, runtime, resultSet, column);
             case Types.ARRAY: // we handle JDBC Array into (Ruby) []
-                return arrayToRuby(runtime, resultSet, column);
+                return arrayToRuby(context, runtime, resultSet, column);
             case Types.NULL:
                 return runtime.getNil();
             // NOTE: (JDBC) exotic stuff just cause it's so easy with JRuby :)
             case Types.JAVA_OBJECT:
             case Types.OTHER:
-                return objectToRuby(runtime, resultSet, column);
+                return objectToRuby(context, runtime, resultSet, column);
             // (default) String
             case Types.CHAR:
             case Types.VARCHAR:
             case Types.NCHAR: // JDBC 4.0
             case Types.NVARCHAR: // JDBC 4.0
             default:
-                return stringToRuby(runtime, resultSet, column);
+                return stringToRuby(context, runtime, resultSet, column);
             }
             // NOTE: not mapped types :
             //case Types.DISTINCT:
@@ -1465,7 +1475,7 @@ public class RubyJdbcConnection extends RubyObject {
         }
     }
 
-    protected IRubyObject integerToRuby(
+    protected IRubyObject integerToRuby(final ThreadContext context,
         final Ruby runtime, final ResultSet resultSet, final int column)
         throws SQLException {
         final long value = resultSet.getLong(column);
@@ -1482,7 +1492,8 @@ public class RubyJdbcConnection extends RubyObject {
         return runtime.newFixnum(longValue);
     }
 
-    protected IRubyObject doubleToRuby(Ruby runtime, ResultSet resultSet, final int column)
+    protected IRubyObject doubleToRuby(final ThreadContext context,
+        final Ruby runtime, final ResultSet resultSet, final int column)
         throws SQLException {
         final double value = resultSet.getDouble(column);
         if ( value == 0 && resultSet.wasNull() ) return runtime.getNil();
@@ -1490,13 +1501,14 @@ public class RubyJdbcConnection extends RubyObject {
     }
 
     @Deprecated
-    protected IRubyObject doubleToRuby(Ruby runtime, ResultSet resultSet, double doubleValue)
+    protected IRubyObject doubleToRuby(
+        final Ruby runtime, final ResultSet resultSet, double doubleValue)
         throws SQLException {
         if ( doubleValue == 0 && resultSet.wasNull() ) return runtime.getNil();
         return runtime.newFloat(doubleValue);
     }
 
-    protected IRubyObject stringToRuby(
+    protected IRubyObject stringToRuby(final ThreadContext context,
         final Ruby runtime, final ResultSet resultSet, final int column)
         throws SQLException {
         final String value = resultSet.getString(column);
@@ -1513,7 +1525,7 @@ public class RubyJdbcConnection extends RubyObject {
         return RubyString.newUnicodeString(runtime, string);
     }
 
-    protected IRubyObject bigIntegerToRuby(
+    protected IRubyObject bigIntegerToRuby(final ThreadContext context,
         final Ruby runtime, final ResultSet resultSet, final int column)
         throws SQLException {
         final String value = resultSet.getString(column);
@@ -1530,7 +1542,7 @@ public class RubyJdbcConnection extends RubyObject {
         return RubyBignum.bignorm(runtime, new BigInteger(intValue));
     }
 
-    protected IRubyObject decimalToRuby(
+    protected IRubyObject decimalToRuby(final ThreadContext context,
         final Ruby runtime, final ResultSet resultSet, final int column)
         throws SQLException {
         final String value = resultSet.getString(column);
@@ -1541,7 +1553,7 @@ public class RubyJdbcConnection extends RubyObject {
 
     private static boolean parseDateTime = false; // TODO
 
-    protected IRubyObject dateToRuby( // TODO
+    protected IRubyObject dateToRuby(final ThreadContext context, // TODO
         final Ruby runtime, final ResultSet resultSet, final int column)
         throws SQLException {
         final Date value = resultSet.getDate(column);
@@ -1552,7 +1564,7 @@ public class RubyJdbcConnection extends RubyObject {
         return RubyString.newUnicodeString(runtime, value.toString());
     }
 
-    protected IRubyObject timeToRuby( // TODO
+    protected IRubyObject timeToRuby(final ThreadContext context, // TODO
         final Ruby runtime, final ResultSet resultSet, final int column)
         throws SQLException {
         final Time value = resultSet.getTime(column);
@@ -1563,7 +1575,7 @@ public class RubyJdbcConnection extends RubyObject {
         return RubyString.newUnicodeString(runtime, value.toString());
     }
 
-    protected IRubyObject timestampToRuby( // TODO
+    protected IRubyObject timestampToRuby(final ThreadContext context, // TODO
         final Ruby runtime, final ResultSet resultSet, final int column)
         throws SQLException {
         final Timestamp value = resultSet.getTimestamp(column);
@@ -1598,7 +1610,7 @@ public class RubyJdbcConnection extends RubyObject {
         return RubyString.newUnicodeString(runtime, format);
     }
 
-    protected IRubyObject booleanToRuby(
+    protected IRubyObject booleanToRuby(final ThreadContext context,
         final Ruby runtime, final ResultSet resultSet, final int column)
         throws SQLException {
         final boolean value = resultSet.getBoolean(column);
@@ -1616,7 +1628,7 @@ public class RubyJdbcConnection extends RubyObject {
 
     protected static int streamBufferSize = 2048;
 
-    protected IRubyObject streamToRuby(
+    protected IRubyObject streamToRuby(final ThreadContext context,
         final Ruby runtime, final ResultSet resultSet, final int column)
         throws SQLException, IOException {
         final InputStream stream = resultSet.getBinaryStream(column);
@@ -1644,7 +1656,7 @@ public class RubyJdbcConnection extends RubyObject {
         return runtime.newString(string);
     }
 
-    protected IRubyObject readerToRuby(
+    protected IRubyObject readerToRuby(final ThreadContext context,
         final Ruby runtime, final ResultSet resultSet, final int column)
         throws SQLException, IOException {
         final Reader reader = resultSet.getCharacterStream(column);
@@ -1672,7 +1684,7 @@ public class RubyJdbcConnection extends RubyObject {
         return RubyString.newUnicodeString(runtime, string.toString());
     }
 
-    protected IRubyObject objectToRuby(
+    protected IRubyObject objectToRuby(final ThreadContext context,
         final Ruby runtime, final ResultSet resultSet, final int column)
         throws SQLException {
         final Object value = resultSet.getObject(column);
@@ -1682,7 +1694,7 @@ public class RubyJdbcConnection extends RubyObject {
         return JavaUtil.convertJavaToRuby(runtime, value);
     }
 
-    protected IRubyObject arrayToRuby(
+    protected IRubyObject arrayToRuby(final ThreadContext context,
         final Ruby runtime, final ResultSet resultSet, final int column)
         throws SQLException {
         final Array value = resultSet.getArray(column);
@@ -1694,15 +1706,14 @@ public class RubyJdbcConnection extends RubyObject {
             final ResultSet arrayResult = value.getResultSet(); // 1: index, 2: value
             final int baseType = value.getBaseType();
             while ( arrayResult.next() ) {
-                IRubyObject element = jdbcToRuby(runtime, 2, baseType, arrayResult);
-                array.append(element);
+                array.append( jdbcToRuby(context, runtime, 2, baseType, arrayResult) );
             }
             return array;
         }
         finally { value.free(); }
     }
 
-    protected IRubyObject xmlToRuby(
+    protected IRubyObject xmlToRuby(final ThreadContext context,
         final Ruby runtime, final ResultSet resultSet, final int column)
         throws SQLException {
         final SQLXML xml = resultSet.getSQLXML(column);
@@ -2724,7 +2735,7 @@ public class RubyJdbcConnection extends RubyObject {
         while ( resultSet.next() ) {
             for ( int i = 0; i < columns.length; i++ ) {
                 final ColumnData column = columns[i];
-                blockArgs[i] = jdbcToRuby(runtime, column.index, column.type, resultSet);
+                blockArgs[i] = jdbcToRuby(context, runtime, column.index, column.type, resultSet);
             }
             block.call( context, blockArgs );
         }
@@ -2983,7 +2994,7 @@ public class RubyJdbcConnection extends RubyObject {
 
                 for ( int i = 0; i < columns.length; i++ ) {
                     final ColumnData column = columns[i];
-                    row.append( connection.jdbcToRuby(runtime, column.index, column.type, resultSet) );
+                    row.append( connection.jdbcToRuby(context, runtime, column.index, column.type, resultSet) );
                 }
 
                 return row;
@@ -3001,7 +3012,9 @@ public class RubyJdbcConnection extends RubyObject {
 
             for ( int i = 0; i < columns.length; i++ ) {
                 final ColumnData column = columns[i];
-                row.op_aset( context, column.name, connection.jdbcToRuby(runtime, column.index, column.type, resultSet) );
+                row.op_aset( context, column.name,
+                    connection.jdbcToRuby(context, runtime, column.index, column.type, resultSet)
+                );
             }
 
             return row;

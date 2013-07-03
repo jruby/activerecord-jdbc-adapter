@@ -96,12 +96,13 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
      * conversion to timestamp
      */
     @Override
-    protected IRubyObject jdbcToRuby(final Ruby runtime,
+    protected IRubyObject jdbcToRuby(
+        final ThreadContext context, final Ruby runtime,
         final int column, final int type, final ResultSet resultSet)
         throws SQLException {
         switch ( type ) {
             case Types.TIMESTAMP:
-                return stringToRuby(runtime, resultSet, column);
+                return stringToRuby(context, runtime, resultSet, column);
             case Types.BIT:
                 // we do get BIT for 't' 'f' as well as BIT strings e.g. "0110" :
                 final String bits = resultSet.getString(column);
@@ -109,15 +110,15 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
                 if ( bits.length() > 1 ) {
                     return RubyString.newUnicodeString(runtime, bits);
                 }
-                return booleanToRuby(runtime, resultSet, column);
+                return booleanToRuby(context, runtime, resultSet, column);
             //case Types.JAVA_OBJECT: case Types.OTHER:
                 //return objectToRuby(runtime, resultSet, resultSet.getObject(column));
         }
-        return super.jdbcToRuby(runtime, column, type, resultSet);
+        return super.jdbcToRuby(context, runtime, column, type, resultSet);
     }
 
     @Override
-    protected IRubyObject arrayToRuby(
+    protected IRubyObject arrayToRuby(final ThreadContext context,
         final Ruby runtime, final ResultSet resultSet, final int column)
         throws SQLException {
         // NOTE: avoid `finally { array.free(); }` on PostgreSQL due :
@@ -132,14 +133,13 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
         final ResultSet arrayResult = value.getResultSet(); // 1: index, 2: value
         final int baseType = value.getBaseType();
         while ( arrayResult.next() ) {
-            IRubyObject element = jdbcToRuby(runtime, 2, baseType, arrayResult);
-            array.append(element);
+            array.append( jdbcToRuby(context, runtime, 2, baseType, arrayResult) );
         }
         return array;
     }
 
     @Override
-    protected IRubyObject objectToRuby(
+    protected IRubyObject objectToRuby(final ThreadContext context,
         final Ruby runtime, final ResultSet resultSet, final int column)
         throws SQLException {
         final Object object = resultSet.getObject(column);
