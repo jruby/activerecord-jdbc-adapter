@@ -101,8 +101,6 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
         final int column, final int type, final ResultSet resultSet)
         throws SQLException {
         switch ( type ) {
-            case Types.TIMESTAMP:
-                return stringToRuby(context, runtime, resultSet, column);
             case Types.BIT:
                 // we do get BIT for 't' 'f' as well as BIT strings e.g. "0110" :
                 final String bits = resultSet.getString(column);
@@ -115,6 +113,20 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
                 //return objectToRuby(runtime, resultSet, resultSet.getObject(column));
         }
         return super.jdbcToRuby(context, runtime, column, type, resultSet);
+    }
+
+    @Override
+    protected IRubyObject timestampToRuby(final ThreadContext context, // TODO
+        final Ruby runtime, final ResultSet resultSet, final int column)
+        throws SQLException {
+        // NOTE: using Timestamp we loose information such as BC :
+        // Timestamp: '0001-12-31 22:59:59.0' String: '0001-12-31 22:59:59 BC'
+        final String value = resultSet.getString(column);
+        if ( value == null ) {
+            if ( resultSet.wasNull() ) return runtime.getNil();
+            return runtime.newString(); // ""
+        }
+        return timestampToRubyString(runtime, value);
     }
 
     @Override

@@ -1583,14 +1583,20 @@ public class RubyJdbcConnection extends RubyObject {
             if ( resultSet.wasNull() ) return runtime.getNil();
             return runtime.newString(); // ""
         }
-        String ts = value.toString(); // yyyy-mm-dd hh:mm:ss.fffffffff
-        if ( ts.endsWith(" 00:00:00.0") ) {
-            ts = ts.substring(0, ts.length() - (" 00:00:00.0".length()));
+        return timestampToRubyString(runtime, value.toString());
+    }
+
+    protected static IRubyObject timestampToRubyString(final Ruby runtime, String value) {
+        if ( value == null ) return runtime.getNil();
+        // Timestamp's format: yyyy-mm-dd hh:mm:ss.fffffffff
+        String suffix; // assumes java.sql.Timestamp internals :
+        if ( value.endsWith( suffix = " 00:00:00.0" ) ) {
+            value = value.substring( 0, value.length() - suffix.length() );
         }
-        else if ( ts.endsWith(".0") ) {
-            ts = ts.substring(0, ts.length() - (".0".length()));
+        else if ( value.endsWith( suffix = ".0" ) ) {
+            value = value.substring( 0, value.length() - suffix.length() );
         }
-        return RubyString.newUnicodeString(runtime, ts);
+        return RubyString.newUnicodeString(runtime, value);
     }
 
     @Deprecated
@@ -1599,15 +1605,7 @@ public class RubyJdbcConnection extends RubyObject {
         throws SQLException {
         if ( value == null && resultSet.wasNull() ) return runtime.getNil();
 
-        String format = value.toString(); // yyyy-mm-dd hh:mm:ss.fffffffff
-        if ( format.endsWith(" 00:00:00.0") ) {
-            format = format.substring(0, format.length() - (" 00:00:00.0".length()));
-        }
-        if ( format.endsWith(".0") ) {
-            format = format.substring(0, format.length() - (".0".length()));
-        }
-
-        return RubyString.newUnicodeString(runtime, format);
+        return timestampToRubyString(runtime, value.toString());
     }
 
     protected IRubyObject booleanToRuby(final ThreadContext context,
