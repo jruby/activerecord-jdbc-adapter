@@ -36,6 +36,36 @@ class FirebirdSimpleTest < Test::Unit::TestCase
     assert_equal 1.42, custom_sample_float
   end
 
+  # @override
+  def test_save_timestamp_with_usec
+    timestamp = Time.utc(1942, 11, 30, 01, 53, 59, 123_000)
+    e = DbType.create! :sample_timestamp => timestamp
+    if ar_version('3.0')
+      assert_timestamp_equal timestamp, e.reload.sample_timestamp
+    else
+      assert_datetime_equal timestamp, e.reload.sample_timestamp # only sec
+    end
+  end
+
+  # @override
+  def test_time_usec_formatting_when_saved_into_string_column
+    e = DbType.create!(:sample_string => '', :sample_text => '')
+    t = Time.now
+    value = Time.local(t.year, t.month, t.day, t.hour, t.min, t.sec, 0)
+    if ActiveRecord::VERSION::MAJOR >= 3
+      # AR-3 adapters override quoted_date which is called always when a
+      # Time like value is passed (... as well for string/text columns) :
+      str = value.utc.to_s(:db) << '.' << sprintf("%06d", value.usec)[0, 4]
+    else # AR-2.x #quoted_date did not do TZ conversions
+      str = value.to_s(:db)
+    end
+    e.sample_string = value
+    e.sample_text = value
+    e.save!; e.reload
+    assert_equal str, e.sample_string
+    assert_equal str, e.sample_text
+  end
+
 end
 
 class FirebirdHasManyThroughTest < Test::Unit::TestCase

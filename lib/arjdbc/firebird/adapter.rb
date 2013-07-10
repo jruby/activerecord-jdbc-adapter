@@ -220,9 +220,10 @@ module ArJdbc
       case value
       when String, ActiveSupport::Multibyte::Chars
         value = value.to_s
-        if type == :integer || type == :float
-          value = type == :integer ? value.to_i : value.to_f
-          value.to_s
+        if type == :integer
+          value.to_i.to_s
+        elsif type == :float
+          value.to_f.to_s
         else
           "'#{quote_string(value)}'"
         end
@@ -243,6 +244,17 @@ module ArJdbc
         super
       end
     end
+
+    # @override
+    def quoted_date(value)
+      if value.acts_like?(:time) && value.respond_to?(:usec)
+        usec = sprintf "%04d", (value.usec / 100.0).round
+        value = ::ActiveRecord::Base.default_timezone == :utc ? value.getutc : value.getlocal
+        "#{value.strftime("%Y-%m-%d %H:%M:%S")}.#{usec}"
+      else
+        super
+      end
+    end if ::ActiveRecord::VERSION::MAJOR >= 3
 
     # @override
     def quote_string(string)
