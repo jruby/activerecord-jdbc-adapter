@@ -727,29 +727,36 @@ module ArJdbc
       @multi_column_index_limit = limit
     end
 
-    # SELECT DISTINCT clause for a given set of columns and a given ORDER BY clause.
+    # Returns a SELECT DISTINCT clause for a given set of columns and a given
+    # ORDER BY clause.
     #
-    # PostgreSQL requires the ORDER BY columns in the select list for distinct queries, and
-    # requires that the ORDER BY include the distinct column.
+    # PostgreSQL requires the ORDER BY columns in the select list for distinct
+    # queries, and requires that the ORDER BY include the distinct column.
     #
-    #   distinct("posts.id", "posts.created_at desc")
+    # distinct("posts.id", ["posts.created_at desc"])
+    # # => "DISTINCT posts.id, posts.created_at AS alias_0"
     def distinct(columns, orders)
-      return "DISTINCT #{columns}" if orders.empty?
+      if orders.is_a?(String)
+        orders = orders.split(','); orders.each(&:strip!)
+      end
 
-      # Construct a clean list of column names from the ORDER BY clause, removing
-      # any ASC/DESC modifiers
-      order_columns = orders.collect { |s| s.gsub(/\s+(ASC|DESC)\s*/i, '') }.
-        reject(&:blank?)
-      order_columns = order_columns.
-        zip((0...order_columns.size).to_a).map { |s,i| "#{s} AS alias_#{i}" }
+      order_columns = orders.map do |column|
+        column = column.to_sql unless column.is_a?(String) # handle AREL node
+        column.gsub(/\s+(ASC|DESC)\s*(NULLS\s+(FIRST|LAST)\s*)?/i, '') # remove ASC/DESC
+      end.reject(&:blank?)
 
-      "DISTINCT #{columns}, #{order_columns * ', '}"
+      return "DISTINCT #{columns}" if order_columns.empty?
+
+      i = -1; order_columns.map! { |c| "#{c} AS alias_#{i += 1}" }
+
+      "DISTINCT #{columns}, #{order_columns.join(', ')}"
     end
 
     # ORDER BY clause for the passed order option.
     #
-    # PostgreSQL does not allow arbitrary ordering when using DISTINCT ON, so we work around this
-    # by wrapping the sql as a sub-select and ordering in that query.
+    # PostgreSQL does not allow arbitrary ordering when using DISTINCT ON,
+    # so we work around this by wrapping the SQL as a sub-select and ordering
+    # in that query.
     def add_order_by_for_association_limiting!(sql, options)
       return sql if options[:order].blank?
 
