@@ -215,9 +215,7 @@ module ArJdbc
 
       type = column && column.type
       # BLOBs are updated separately by an after_save trigger.
-      if type == :binary || type == :text
-        return value.nil? ? "NULL" : "'#{quote_string(value[0..1])}'"
-      end
+      return "NULL" if type == :binary || type == :text
 
       case value
       when String, ActiveSupport::Multibyte::Chars
