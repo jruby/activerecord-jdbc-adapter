@@ -1,10 +1,13 @@
 module ArJdbc
   module FireBird
 
+    # @private
     def self.extended(adapter); initialize!; end
 
+    # @private
     @@_initialized = nil
 
+    # @private
     def self.initialize!
       return if @@_initialized; @@_initialized = true
 
@@ -15,22 +18,19 @@ module ArJdbc
             value = ::ArJdbc::SerializedAttributesHelper.dump_column_value(self, column)
             next if value.nil?
 
-            self.class.connection.write_large_object(
-              column.type == :binary, column.name,
-              self.class.table_name,
-              self.class.primary_key,
-              self.class.connection.quote(id), value
-            )
+            self.class.connection.update_lob_value(self, column, value)
           end
         end
       end
       ActiveRecord::Base.after_save :after_save_with_firebird_blob
     end
 
+    # @see ActiveRecord::ConnectionAdapters::JdbcColumn#column_types
     def self.column_selector
       [ /firebird/i, lambda { |cfg, column| column.extend(Column) } ]
     end
 
+    # @see ActiveRecord::ConnectionAdapters::JdbcColumn
     module Column
 
       def simplified_type(field_type)
@@ -141,22 +141,18 @@ module ArJdbc
       false
     end
 
-    def supports_savepoints?
-      true
-    end
-
-    # Does this adapter restrict the number of ids you can use in a list.
+    # Does this adapter restrict the number of IDs you can use in a list.
     # Oracle has a limit of 1000.
     def ids_in_list_limit
       1499
     end
 
-    def insert(sql, name = nil, pk = nil, id_value = nil, sequence_name = nil, binds = []) # :nodoc:
+    def insert(sql, name = nil, pk = nil, id_value = nil, sequence_name = nil, binds = [])
       execute(sql, name, binds)
       id_value
     end
 
-    def add_limit_offset!(sql, options) # :nodoc:
+    def add_limit_offset!(sql, options)
       if options[:limit]
         limit_string = "FIRST #{options[:limit]}"
         limit_string << " SKIP #{options[:offset]}" if options[:offset]
@@ -186,22 +182,22 @@ module ArJdbc
       select_one("SELECT GEN_ID(#{sequence_name}, 1 ) FROM RDB$DATABASE;")["gen_id"]
     end
 
-    def create_table(name, options = {}) #:nodoc:
+    def create_table(name, options = {})
       super(name, options)
       execute "CREATE GENERATOR #{name}_seq"
     end
 
-    def rename_table(name, new_name) #:nodoc:
+    def rename_table(name, new_name)
       execute "RENAME #{name} TO #{new_name}"
       execute "UPDATE RDB$GENERATORS SET RDB$GENERATOR_NAME='#{new_name}_seq' WHERE RDB$GENERATOR_NAME='#{name}_seq'" rescue nil
     end
 
-    def drop_table(name, options = {}) #:nodoc:
+    def drop_table(name, options = {})
       super(name)
       execute "DROP GENERATOR #{name}_seq" rescue nil
     end
 
-    def change_column(table_name, column_name, type, options = {}) #:nodoc:
+    def change_column(table_name, column_name, type, options = {})
       execute "ALTER TABLE #{table_name} ALTER  #{column_name} TYPE #{type_to_sql(type, options[:limit])}"
     end
 
@@ -209,10 +205,11 @@ module ArJdbc
       execute "ALTER TABLE #{table_name} ALTER  #{column_name} TO #{new_column_name}"
     end
 
-    def remove_index(table_name, options) #:nodoc:
+    def remove_index(table_name, options)
       execute "DROP INDEX #{index_name(table_name, options)}"
     end
 
+    # @override
     def quote(value, column = nil)
       return value.quoted_id if value.respond_to?(:quoted_id)
 
@@ -249,21 +246,25 @@ module ArJdbc
       end
     end
 
-    def quote_string(string) # :nodoc:
+    # @override
+    def quote_string(string)
       string.gsub(/'/, "''")
     end
 
-    def quote_column_name(column_name) # :nodoc:
-      column_name = column_name.to_s
-      %Q("#{column_name =~ /[[:upper:]]/ ? column_name : column_name.upcase}")
-    end
-
-    def quoted_true # :nodoc:
+    # @override
+    def quoted_true
       quote(1)
     end
 
-    def quoted_false # :nodoc:
+    # @override
+    def quoted_false
       quote(0)
+    end
+
+    # @override
+    def quote_column_name(column_name)
+      column_name = column_name.to_s
+      %Q("#{column_name =~ /[[:upper:]]/ ? column_name : column_name.upcase}")
     end
 
   end
