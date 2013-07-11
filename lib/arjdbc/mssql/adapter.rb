@@ -1,11 +1,11 @@
 ArJdbc.load_java_part :MSSQL
 
 require 'strscan'
-require 'arjdbc/mssql/column'
 require 'arjdbc/mssql/utils'
 require 'arjdbc/mssql/tsql_methods'
 require 'arjdbc/mssql/limit_helpers'
 require 'arjdbc/mssql/lock_helpers'
+require 'arjdbc/mssql/column'
 require 'arjdbc/mssql/explain_support'
 
 module ArJdbc
