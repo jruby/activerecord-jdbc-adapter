@@ -9,34 +9,13 @@ module ArJdbc
     # @see ActiveRecord::ConnectionAdapters::JdbcColumn
     module Column
 
-      def type_cast(value)
-        return nil if value.nil? || value == 'NULL' || value =~ /^\s*NULL\s*$/i
-        case type
-        when :string    then value
-        when :integer   then value.respond_to?(:to_i) ? value.to_i : (value ? 1 : 0)
-        when :primary_key then value.respond_to?(:to_i) ? value.to_i : (value ? 1 : 0)
-        when :float     then value.to_f
-        when :datetime  then Column.cast_to_date_or_time(value)
-        when :date      then Column.cast_to_date_or_time(value)
-        when :timestamp then Column.cast_to_time(value)
-        when :time      then Column.cast_to_time(value)
-        # TODO AS400 stores binary strings in EBCDIC (CCSID 65535), need to convert back to ASCII
-        else
-          super
-        end
+      # @private
+      def self.included(base)
+        # NOTE: assumes a standalone DB2Column class
+        class << base; include Cast; end
       end
 
-      def type_cast_code(var_name)
-        case type
-        when :datetime  then "ArJdbc::DB2::Column.cast_to_date_or_time(#{var_name})"
-        when :date      then "ArJdbc::DB2::Column.cast_to_date_or_time(#{var_name})"
-        when :timestamp then "ArJdbc::DB2::Column.cast_to_time(#{var_name})"
-        when :time      then "ArJdbc::DB2::Column.cast_to_time(#{var_name})"
-        else
-          super
-        end
-      end
-
+      # @deprecated use `self.class.string_to_time`
       def self.cast_to_date_or_time(value)
         return value if value.is_a? Date
         return nil if value.blank?
@@ -47,9 +26,10 @@ module ArJdbc
         value
       end
 
+      # @deprecated use `self.class.string_to_time` or `self.class.string_to_dummy_time`
       def self.cast_to_time(value)
         return value if value.is_a? Time
-        # AS400 returns a 2 digit year, LUW returns a 4 digit year, so comp = true to help out AS400
+        # AS400 returns a 2 digit year, LUW returns a 4 digit year
         time = DateTime.parse(value).to_time rescue nil
         return nil unless time
         time_array = [time.year, time.month, time.day, time.hour, time.min, time.sec]
@@ -57,10 +37,42 @@ module ArJdbc
         Time.send(ActiveRecord::Base.default_timezone, *time_array) rescue nil
       end
 
+      # @deprecated
+      # @private
       def self.guess_date_or_time(value)
         return value if value.is_a? Date
         ( value && value.hour == 0 && value.min == 0 && value.sec == 0 ) ?
           Date.new(value.year, value.month, value.day) : value
+      end
+
+      # @override
+      def type_cast(value)
+        return nil if value.nil? || value == 'NULL' || value =~ /^\s*NULL\s*$/i
+        case type
+        when :string    then value
+        when :integer   then value.respond_to?(:to_i) ? value.to_i : (value ? 1 : 0)
+        when :primary_key then value.respond_to?(:to_i) ? value.to_i : (value ? 1 : 0)
+        when :float     then value.to_f
+        when :date      then self.class.string_to_date(value)
+        when :datetime  then self.class.string_to_time(value)
+        when :timestamp then self.class.string_to_time(value)
+        when :time      then self.class.string_to_time(value)
+        # TODO AS400 stores binary strings in EBCDIC (CCSID 65535), need to convert back to ASCII
+        else
+          super
+        end
+      end
+
+      # @override
+      def type_cast_code(var_name)
+        case type
+        when :date      then "#{self.class.name}.string_to_date(#{var_name})"
+        when :datetime  then "#{self.class.name}.string_to_time(#{var_name})"
+        when :timestamp then "#{self.class.name}.string_to_time(#{var_name})"
+        when :time      then "#{self.class.name}.string_to_time(#{var_name})"
+        else
+          super
+        end
       end
 
       private
@@ -113,6 +125,35 @@ module ArJdbc
         return $1 if value =~ /^'(.*)'$/
 
         value
+      end
+
+      module Cast
+
+        # @override
+        def string_to_date(value)
+          return value unless value.is_a?(String)
+          return nil unless time = date_time_parse(value)
+
+          new_date(time.year || 2000, time.month || 1, time.day || 1)
+        end
+
+        # @override
+        def string_to_time(value)
+          return value unless value.is_a?(String)
+          return nil unless time = date_time_parse(value)
+
+          new_time(time.year || 2000, time.month || 1, time.day || 1, time.hour, time.min, time.sec, 0)
+        end
+
+        private
+
+        def date_time_parse(value)
+          return nil if value.empty?
+          return Time.now if value.index('CURRENT') == 0
+          # AS400 returns a 2 digit year, LUW returns a 4 digit year
+          DateTime.parse(value).to_time rescue nil
+        end
+
       end
 
     end
