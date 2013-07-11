@@ -108,12 +108,7 @@ module ArJdbc
           super(string)
         end
 
-        # @override
-        #def string_to_dummy_time(string)
-        #  super(string)
-        #end
-
-        # @override
+        # @private
         def guess_date_or_time(value)
           return value if value.is_a? Date
           ( value && value.hour == 0 && value.min == 0 && value.sec == 0 ) ?
