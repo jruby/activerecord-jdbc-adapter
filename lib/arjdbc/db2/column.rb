@@ -141,8 +141,8 @@ module ArJdbc
         def string_to_time(value)
           return value unless value.is_a?(String)
           return nil unless time = date_time_parse(value)
-
-          new_time(time.year || 2000, time.month || 1, time.day || 1, time.hour, time.min, time.sec, 0)
+          
+          new_time(time.year || 2000, time.month || 1, time.day || 1, time.hour, time.min, time.sec, time.usec)
         end
 
         private

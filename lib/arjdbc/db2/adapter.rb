@@ -244,8 +244,10 @@ module ArJdbc
     end
 
     # Properly quotes the various data types.
-    # +value+ contains the data, +column+ is optional and contains info on the field
-    def quote(value, column = nil) # :nodoc:
+    # @param value contains the data
+    # @param column (optional) contains info on the field
+    # @override
+    def quote(value, column = nil)
       return value.quoted_id if value.respond_to?(:quoted_id)
 
       if column
@@ -289,7 +291,7 @@ module ArJdbc
       when Symbol then "'#{quote_string(value.to_s)}'"
       when Time
         # AS400 doesn't support date in time column
-        if column && column_type == :time
+        if column_type == :time
           "'#{value.strftime("%H:%M:%S")}'"
         else
           super
@@ -297,6 +299,17 @@ module ArJdbc
       else super
       end
     end
+
+    # @override
+    def quoted_date(value)
+      if value.acts_like?(:time) && value.respond_to?(:usec)
+        usec = sprintf("%06d", value.usec)
+        value = ::ActiveRecord::Base.default_timezone == :utc ? value.getutc : value.getlocal
+        "#{value.strftime("%Y-%m-%d %H:%M:%S")}.#{usec}"
+      else
+        super
+      end
+    end if ::ActiveRecord::VERSION::MAJOR >= 3
 
     def quote_column_name(column_name)
       column_name.to_s
