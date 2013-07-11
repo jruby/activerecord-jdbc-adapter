@@ -8,6 +8,12 @@ module ArJdbc
 
     # @see ActiveRecord::ConnectionAdapters::JdbcColumn
     module Column
+
+      def self.included(base)
+        # NOTE: assumes a standalone MSSQLColumn class
+        class << base; include Cast; end
+      end
+
       include LockHelpers::SqlServerAddLock
 
       attr_accessor :identity, :special
@@ -47,11 +53,11 @@ module ArJdbc
         when :integer then value.delete('()').to_i rescue unquote(value).to_i rescue value ? 1 : 0
         when :primary_key then value == true || value == false ? value == true ? 1 : 0 : value.to_i
         when :decimal   then self.class.value_to_decimal(unquote(value))
-        when :datetime  then cast_to_datetime(value)
-        when :timestamp then cast_to_time(value)
-        when :time      then cast_to_time(value)
-        when :date      then cast_to_date(value)
-        when :boolean   then value == true or (value =~ /^t(rue)?$/i) == 0 or unquote(value)=="1"
+        when :date      then self.class.string_to_date(value)
+        when :datetime  then self.class.string_to_time(value)
+        when :timestamp then self.class.string_to_time(value)
+        when :time      then self.class.string_to_dummy_time(value)
+        when :boolean   then value == true || (value =~ /^t(rue)?$/i) == 0 || unquote(value) == '1'
         when :binary    then unquote value
         else value
         end
@@ -85,16 +91,19 @@ module ArJdbc
         value.to_s.sub(/\A\([\(\']?/, "").sub(/[\'\)]?\)\Z/, "")
       end
 
+      # @deprecated no longer used
       def cast_to_time(value)
         return value if value.is_a?(Time)
         DateTime.parse(value).to_time rescue nil
       end
 
+      # @deprecated no longer used
       def cast_to_date(value)
         return value if value.is_a?(Date)
         return Date.parse(value) rescue nil
       end
 
+      # @deprecated no longer used
       def cast_to_datetime(value)
         if value.is_a?(Time)
           if value.year != 0 and value.month != 0 and value.day != 0
@@ -117,11 +126,55 @@ module ArJdbc
         return value.is_a?(Date) ? value : nil
       end
 
-      # @private
-      def self.string_to_binary(value)
-        # These methods will only allow the adapter to insert binary data with a
-        # length of 7K or less because of a SQL Server statement length policy.
-        ''
+      module Cast
+
+        def string_to_date(value)
+          return value unless value.is_a?(String)
+          return nil if value.empty?
+
+          date = fast_string_to_date(value)
+          date ? date : Date.parse(value) rescue nil
+        end
+
+        def string_to_time(value)
+          return value unless value.is_a?(String)
+          return nil if value.empty?
+
+          fast_string_to_time(value) ||
+            begin
+              DateTime.parse(value).to_time
+            rescue nil
+            end
+        end
+
+        ISO_TIME = /\A(\d\d)\:(\d\d)\:(\d\d)(\.\d+)?\z/
+
+        def string_to_dummy_time(value)
+          return value unless value.is_a?(String)
+          return nil if value.empty?
+          
+          if value =~ ISO_TIME # "12:34:56.1234560"
+            microsec = ($4.to_f * 1_000_000).round.to_i
+            new_time 2000, 1, 1, $1.to_i, $2.to_i, $3.to_i, microsec
+          else
+            super(value)
+          end
+        end
+
+        # @private
+        def string_to_binary(value)
+          # this will only allow the adapter to insert binary data with a length
+          # of 7K or less because of a SQL Server statement length policy ...
+          '' # "0x#{value.unpack("H*")[0]}"
+        end
+
+        def binary_to_string(value)
+          if value.respond_to?(:force_encoding) && value.encoding != Encoding::ASCII_8BIT
+            value = value.force_encoding(Encoding::ASCII_8BIT)
+          end
+          value =~ /[^[:xdigit:]]/ ? value : [value].pack('H*')
+        end
+
       end
 
     end

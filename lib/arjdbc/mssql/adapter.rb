@@ -122,7 +122,7 @@ module ArJdbc
         value = value.to_s
         column_type = column && column.type
         if column_type == :binary
-          "'#{quote_string(ArJdbc::MSSQL::Column.string_to_binary(value))}'" # ' (for ruby-mode)
+          "'#{quote_string(column.class.string_to_binary(value))}'" # ' (for ruby-mode)
         elsif column_type == :integer
           value.to_i.to_s
         elsif column_type == :float
@@ -157,6 +157,7 @@ module ArJdbc
       end
     end
 
+    # @private
     def quoted_datetime(value)
       if value.acts_like?(:time)
         time_zone_qualified_value = get_time(value)
@@ -173,6 +174,7 @@ module ArJdbc
       end
     end
 
+    # @private
     def quoted_time(value)
       if value.acts_like?(:time)
         tz_value = get_time(value)
@@ -182,6 +184,7 @@ module ArJdbc
       end
     end
 
+    # @private
     def quoted_full_iso8601(value)
       if value.acts_like?(:time)
         value.is_a?(Date) ?
@@ -647,7 +650,7 @@ module ActiveRecord::ConnectionAdapters
   end
 
   class MSSQLColumn < JdbcColumn
-    include ArJdbc::MSSQL::Column
+    include ::ArJdbc::MSSQL::Column
   end
 
 end
