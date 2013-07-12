@@ -72,18 +72,16 @@ module ArJdbc
 
     end
 
+    # @see ActiveRecord::ConnectionAdapters::Jdbc::ArelSupport
+    def self.arel_visitor_type(config = nil)
+      HSQLDB.arel_visitor_type(config)
+    end
+
     ADAPTER_NAME = 'H2'.freeze
 
     # @override
     def adapter_name
       ADAPTER_NAME
-    end
-
-    # @see ActiveRecord::ConnectionAdapters::JdbcAdapter#arel2_visitors
-    def self.arel2_visitors(config)
-      visitors = HSQLDB.arel2_visitors(config)
-      visitor = visitors['hsqldb']
-      { 'h2' => visitor, 'jdbch2' => visitor }
     end
 
     # @deprecated no longer used. only here for backwards compatibility with 1.2

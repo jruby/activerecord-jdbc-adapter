@@ -63,17 +63,15 @@ module ArJdbc
 
     end
 
+    # @see ActiveRecord::ConnectionAdapters::Jdbc::ArelSupport
+    def self.arel_visitor_type(config = nil)
+      require 'arel/visitors/hsqldb'; ::Arel::Visitors::HSQLDB
+    end
+
     ADAPTER_NAME = 'HSQLDB'.freeze
 
     def adapter_name
       ADAPTER_NAME
-    end
-
-    # @see ActiveRecord::ConnectionAdapters::JdbcAdapter#arel2_visitors
-    def self.arel2_visitors(config)
-      require 'arel/visitors/hsqldb'
-      visitor = ::Arel::Visitors::HSQLDB
-      { 'hsqldb' => visitor, 'jdbchsqldb' => visitor }
     end
 
     NATIVE_DATABASE_TYPES = {

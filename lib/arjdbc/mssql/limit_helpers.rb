@@ -2,6 +2,16 @@ module ArJdbc
   module MSSQL
     module LimitHelpers
 
+      private
+
+      def setup_limit_offset!(version = nil)
+        if version.to_s == '2000' || sqlserver_2000?
+          extend SqlServer2000AddLimitOffset
+        else
+          extend SqlServerAddLimitOffset
+        end
+      end
+
       # @private
       FIND_SELECT = /\b(SELECT(?:\s+DISTINCT)?)\b(.*)/im
 
@@ -23,8 +33,9 @@ module ArJdbc
               from_table = Utils.get_table_name(rest_of_query, true)
               rest_of_query = from_table + '.' + rest_of_query
             end
-            new_sql = "#{select} t.* FROM (SELECT ROW_NUMBER() OVER(#{order}) AS _row_num, #{rest_of_query}"
-            new_sql << ") AS t WHERE t._row_num BETWEEN #{start_row} AND #{end_row}"
+            new_sql = "#{select} t.* FROM "
+            new_sql << "(SELECT ROW_NUMBER() OVER(#{order}) AS _row_num, #{rest_of_query}) AS t"
+            new_sql << " WHERE t._row_num BETWEEN #{start_row} AND #{end_row}"
             sql.replace(new_sql)
           end
           sql

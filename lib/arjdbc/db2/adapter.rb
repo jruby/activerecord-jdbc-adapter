@@ -41,10 +41,15 @@ module ArJdbc
       ::ActiveRecord::ConnectionAdapters::DB2Column
     end
 
+    # @see ActiveRecord::ConnectionAdapters::Jdbc::ArelSupport
+    def self.arel_visitor_type(config = nil)
+      require 'arel/visitors/db2'; ::Arel::Visitors::DB2
+    end
+
+    # @deprecated no longer used
     # @see ActiveRecord::ConnectionAdapters::JdbcAdapter#arel2_visitors
     def self.arel2_visitors(config)
-      require 'arel/visitors/db2'
-      { 'db2' => ::Arel::Visitors::DB2 }
+      { 'db2' => arel_visitor_type }
     end
 
     # @private

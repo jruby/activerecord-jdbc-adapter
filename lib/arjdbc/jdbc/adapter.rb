@@ -8,6 +8,7 @@ require 'arjdbc/jdbc/connection_methods'
 require 'arjdbc/jdbc/driver'
 require 'arjdbc/jdbc/column'
 require 'arjdbc/jdbc/connection'
+require 'arjdbc/jdbc/arel_support'
 require 'arjdbc/jdbc/callbacks'
 require 'arjdbc/jdbc/extension'
 require 'arjdbc/jdbc/type_converter'
@@ -34,7 +35,8 @@ module ActiveRecord
     class JdbcAdapter < AbstractAdapter
       extend ShadowCoreMethods
 
-      include JdbcConnectionPoolCallbacks
+      include Jdbc::ArelSupport
+      include Jdbc::ConnectionPoolCallbacks
 
       attr_reader :config
 
@@ -73,9 +75,9 @@ module ActiveRecord
         # NOTE: should not be necessary for JNDI due reconnect! on checkout :
         configure_connection if respond_to?(:configure_connection)
 
-        JndiConnectionPoolCallbacks.prepare(self, connection)
+        Jdbc::JndiConnectionPoolCallbacks.prepare(self, connection)
 
-        @visitor = new_visitor(@config) # nil if no AREL (AR-2.3)
+        @visitor = new_visitor # nil if no AREL (AR-2.3)
       end
 
       # Returns the (JDBC) connection class to be used for this adapter.
@@ -172,6 +174,7 @@ module ActiveRecord
         end
       end
 
+      # @deprecated re-implemented - no longer used
       # @return [Hash] the AREL visitor to use
       # If there's a `self.arel2_visitors(config)` method on the adapter
       # spec than it is preferred and will be used instead of this one.
@@ -179,22 +182,7 @@ module ActiveRecord
         { 'jdbc' => ::Arel::Visitors::ToSql }
       end
 
-      # @note called from `ActiveRecord::ConnectionAdapters::ConnectionPool.checkout` (up till AR-3.2)
-      # @see #arel2_visitors
-      def self.visitor_for(pool)
-        config = pool.spec.config
-        adapter = config[:adapter] # e.g. "sqlite3" (based on {#adapter_name})
-        unless visitor = ::Arel::Visitors::VISITORS[ adapter ]
-          adapter_spec = config[:adapter_spec] || self # e.g. ArJdbc::SQLite3
-          if adapter =~ /^(jdbc|jndi)$/
-            visitor = adapter_spec.arel2_visitors(config).values.first
-          else
-            visitor = adapter_spec.arel2_visitors(config)[adapter]
-          end
-        end
-        ( prepared_statements?(config) ? visitor : bind_substitution(visitor) ).new(pool)
-      end
-
+      # @deprecated re-implemented - no longer used
       # @see #arel2_visitors
       def self.configure_arel2_visitors(config)
         visitors = ::Arel::Visitors::VISITORS
@@ -209,62 +197,6 @@ module ActiveRecord
         end
         visitor
       end
-
-      # Instantiates a new AREL visitor for this adapter.
-      # @note On `ActiveRecord` **2.3** this method won't be used.
-      def new_visitor(config = self.config)
-        visitor = ::Arel::Visitors::VISITORS[ adapter = config[:adapter] ]
-        unless visitor
-          visitor = self.class.configure_arel2_visitors(config)
-          unless visitor
-            raise "no visitor configured for adapter: #{adapter.inspect}"
-          end
-        end
-        ( prepared_statements? ? visitor : bind_substitution(visitor) ).new(self)
-      end
-      protected :new_visitor
-
-      unless defined? ::Arel::Visitors::VISITORS # NO-OP when no AREL (AR-2.3)
-        def self.configure_arel2_visitors(config); end
-        def new_visitor(config = self.config); end
-      end
-
-      # @private
-      @@bind_substitutions = nil
-
-      # Generates a class for the given visitor type, this new {Class} instance
-      # is a sub-class of `Arel::Visitors::BindVisitor`.
-      # @return [Class] class for given visitor type
-      def self.bind_substitution(visitor)
-        # NOTE: similar convention as in AR (but no base substitution type) :
-        # class BindSubstitution < ::Arel::Visitors::ToSql
-        #   include ::Arel::Visitors::BindVisitor
-        # end
-        return const_get(:BindSubstitution) if const_defined?(:BindSubstitution)
-
-        @@bind_substitutions ||= Java::JavaUtil::HashMap.new
-        unless bind_visitor = @@bind_substitutions.get(visitor)
-          @@bind_substitutions.synchronized do
-            unless @@bind_substitutions.get(visitor)
-              bind_visitor = Class.new(visitor) do
-                include ::Arel::Visitors::BindVisitor
-              end
-              @@bind_substitutions.put(visitor, bind_visitor)
-            end
-          end
-          bind_visitor = @@bind_substitutions.get(visitor)
-        end
-        bind_visitor
-      end
-
-      begin
-        require 'arel/visitors/bind_visitor'
-      rescue LoadError # AR-3.0
-        def self.bind_substitution(visitor); visitor; end
-      end
-
-      def bind_substitution(visitor); self.class.bind_substitution(visitor); end
-      private :bind_substitution
 
       # DB specific types are detected but adapter specs (or extenders) are
       # expected to hand tune these types for concrete databases.

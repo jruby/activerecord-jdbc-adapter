@@ -28,23 +28,21 @@ module ArJdbc
       end
     end
 
-    # @see ActiveRecord::ConnectionAdapters::JdbcAdapter#arel2_visitors
-    def self.arel2_visitors(config)
-      visitor = ::Arel::Visitors::PostgreSQL
-      { 'postgresql' => visitor, 'jdbcpostgresql' => visitor, 'pg' => visitor }
-    end
+    #def self.arel_visitor_type(config = nil)
+    #  ::Arel::Visitors::PostgreSQL
+    #end
 
     # @override
-    def new_visitor(config = nil)
+    def new_visitor
       visitor = ::Arel::Visitors::PostgreSQL
       ( prepared_statements? ? visitor : bind_substitution(visitor) ).new(self)
     end if defined? ::Arel::Visitors::PostgreSQL
 
     # @see ActiveRecord::ConnectionAdapters::JdbcAdapter#bind_substitution
     # @private
-    class BindSubstitution < Arel::Visitors::PostgreSQL
-      include Arel::Visitors::BindVisitor
-    end if defined? Arel::Visitors::BindVisitor
+    class BindSubstitution < ::Arel::Visitors::PostgreSQL
+      include ::Arel::Visitors::BindVisitor
+    end if defined? ::Arel::Visitors::BindVisitor
 
     ADAPTER_NAME = 'PostgreSQL'.freeze
 

@@ -10,6 +10,7 @@ require 'arjdbc/mssql/explain_support'
 
 module ArJdbc
   module MSSQL
+    include LimitHelpers
     include Utils
     include TSqlMethods
 
@@ -19,12 +20,8 @@ module ArJdbc
     def self.extended(adapter)
       initialize!
 
-      if ( version = adapter.sqlserver_version ) == '2000'
-        extend LimitHelpers::SqlServer2000AddLimitOffset
-      else
-        extend LimitHelpers::SqlServerAddLimitOffset
-      end
-      adapter.config[:sqlserver_version] ||= version
+      version = adapter.config[:sqlserver_version] ||= adapter.sqlserver_version
+      adapter.send(:setup_limit_offset!, version)
     end
 
     # @private
@@ -58,11 +55,17 @@ module ArJdbc
       ::ActiveRecord::ConnectionAdapters::MSSQLColumn
     end
 
+    # @see ActiveRecord::ConnectionAdapters::Jdbc::ArelSupport
+    def self.arel_visitor_type(config)
+      require 'arel/visitors/sql_server'
+      ( config && config[:sqlserver_version].to_s == '2000' ) ?
+        ::Arel::Visitors::SQLServer2000 : ::Arel::Visitors::SQLServer
+    end
+
+    # @deprecated no longer used
     # @see ActiveRecord::ConnectionAdapters::JdbcAdapter#arel2_visitors
     def self.arel2_visitors(config)
-      require 'arel/visitors/sql_server'
-      visitor = config[:sqlserver_version] == '2000' ?
-        ::Arel::Visitors::SQLServer2000 : ::Arel::Visitors::SQLServer
+      visitor = arel_visitor_type(config)
       { 'mssql' => visitor, 'jdbcmssql' => visitor, 'sqlserver' => visitor }
     end
 
@@ -613,12 +616,7 @@ module ActiveRecord::ConnectionAdapters
 
       super # configure_connection happens in super
 
-      if ( version = self.sqlserver_version ) == '2000'
-        extend LimitHelpers::SqlServer2000AddLimitOffset
-      else
-        extend LimitHelpers::SqlServerAddLimitOffset
-      end
-      config[:sqlserver_version] ||= version
+      setup_limit_offset!
     end
 
     # some QUOTING caching :

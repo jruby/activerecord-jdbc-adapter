@@ -7,14 +7,14 @@ module ArJdbc
   module SQLite3
     include ArJdbc::TableCopier
 
-    # @see ActiveRecord::ConnectionAdapters::JdbcColumn#column_types
-    def self.column_selector
-      [ /sqlite/i, lambda { |config, column| column.extend(Column) } ]
-    end
-
     # @see ActiveRecord::ConnectionAdapters::JdbcAdapter#jdbc_connection_class
     def self.jdbc_connection_class
       ::ActiveRecord::ConnectionAdapters::SQLite3JdbcConnection
+    end
+
+    # @see ActiveRecord::ConnectionAdapters::JdbcColumn#column_types
+    def self.column_selector
+      [ /sqlite/i, lambda { |config, column| column.extend(Column) } ]
     end
 
     # @see ActiveRecord::ConnectionAdapters::JdbcColumn
@@ -94,22 +94,22 @@ module ArJdbc
 
     end
 
-    # @see ActiveRecord::ConnectionAdapters::JdbcAdapter#arel2_visitors
-    def self.arel2_visitors(config = nil)
-      { 'sqlite3' => ::Arel::Visitors::SQLite, 'jdbcsqlite3' => ::Arel::Visitors::SQLite }
+    # @see ActiveRecord::ConnectionAdapters::Jdbc::ArelSupport
+    def self.arel_visitor_type(config = nil)
+      ::Arel::Visitors::SQLite
     end
 
     # @override
-    def new_visitor(config = nil)
+    def new_visitor
       visitor = ::Arel::Visitors::SQLite
       ( prepared_statements? ? visitor : bind_substitution(visitor) ).new(self)
     end if defined? ::Arel::Visitors::SQLite
 
     # @see ActiveRecord::ConnectionAdapters::JdbcAdapter#bind_substitution
     # @private
-    class BindSubstitution < Arel::Visitors::SQLite
-      include Arel::Visitors::BindVisitor
-    end if defined? Arel::Visitors::BindVisitor
+    class BindSubstitution < ::Arel::Visitors::SQLite
+      include ::Arel::Visitors::BindVisitor
+    end if defined? ::Arel::Visitors::BindVisitor
 
     ADAPTER_NAME = 'SQLite'.freeze
 

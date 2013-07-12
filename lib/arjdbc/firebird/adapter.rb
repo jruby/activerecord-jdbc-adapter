@@ -1,5 +1,5 @@
 module ArJdbc
-  module FireBird
+  module Firebird
 
     # @private
     def self.extended(adapter); initialize!; end
@@ -49,6 +49,16 @@ module ArJdbc
 
     end
 
+    # @see ArJdbc::ArelHelper::ClassMethods#arel_visitor_type
+    def self.arel_visitor_type(config = nil)
+      require 'arel/visitors/firebird'; ::Arel::Visitors::Firebird
+    end
+
+    # @deprecated no longer used
+    def self.arel2_visitors(config = nil)
+      { 'firebird' => arel_visitor_type, 'firebirdsql' => arel_visitor_type }
+    end
+
     # @@emulate_booleans = true
 
     # Boolean emulation can be disabled using :
@@ -58,16 +68,10 @@ module ArJdbc
     # def self.emulate_booleans; @@emulate_booleans; end
     # def self.emulate_booleans=(emulate); @@emulate_booleans = emulate; end
 
-    ADAPTER_NAME = 'FireBird'.freeze
+    ADAPTER_NAME = 'Firebird'.freeze
 
     def adapter_name
       ADAPTER_NAME
-    end
-
-    def self.arel2_visitors(config = nil)
-      require 'arel/visitors/firebird'
-      visitor = ::Arel::Visitors::Firebird
-      { 'firebird' => visitor, 'firebirdsql' => visitor }
     end
 
     NATIVE_DATABASE_TYPES = {
@@ -278,4 +282,5 @@ module ArJdbc
     end
 
   end
+  FireBird = Firebird
 end

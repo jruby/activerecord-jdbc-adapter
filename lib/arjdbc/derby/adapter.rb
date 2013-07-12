@@ -79,6 +79,11 @@ module ArJdbc
 
     end
 
+    # @see ActiveRecord::ConnectionAdapters::Jdbc::ArelSupport
+    def self.arel_visitor_type(config = nil)
+      require 'arel/visitors/derby'; ::Arel::Visitors::Derby
+    end
+
     ADAPTER_NAME = 'Derby'.freeze
 
     def adapter_name
@@ -107,13 +112,6 @@ module ArJdbc
       # if a user name was specified upon connection, the user's name is the
       # default schema for the connection, if a schema with that name exists
       set_schema(config[:schema]) if config.key?(:schema)
-    end
-
-    # @see ActiveRecord::ConnectionAdapters::JdbcAdapter#arel2_visitors
-    def self.arel2_visitors(config)
-      require 'arel/visitors/derby'
-      visitor = ::Arel::Visitors::Derby
-      { 'derby' => visitor, 'jdbcderby' => visitor }
     end
 
     def index_name_length
