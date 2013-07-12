@@ -2,7 +2,7 @@ warn "Jdbc-FireBird is only for use with JRuby" if (JRUBY_VERSION.nil? rescue tr
 require 'jdbc/firebird/version'
 
 module Jdbc
-  module FireBird
+  module Firebird
 
     def self.driver_jar
       "jaybird-#{DRIVER_VERSION}.jar"
@@ -42,5 +42,5 @@ module Jdbc
     end
 
   end
-  JayBird = FireBird # cover-name JayBird !
+  Jaybird = Firebird # cover-name Jaybird !
 end

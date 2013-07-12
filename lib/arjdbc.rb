@@ -11,7 +11,7 @@ if defined?(JRUBY_VERSION)
       require 'active_record'
     end
   rescue LoadError => e
-    warn "activerecord-jdbc-adapter requires ActiveRecord at runtime"
+    warn "activerecord-jdbc-adapter requires the activerecord gem at runtime"
     raise e
   end
   require 'arjdbc/jdbc'

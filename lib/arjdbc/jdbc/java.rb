@@ -3,7 +3,6 @@ require 'arjdbc/jdbc/adapter_java'
 
 module ActiveRecord
   module ConnectionAdapters
-    # @private
     module Jdbc
       # @private
       DriverManager = ::Java::JavaSql::DriverManager
