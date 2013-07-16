@@ -3,14 +3,14 @@ require 'arel/visitors/compat'
 module Arel
   module Visitors
     class Derby < Arel::Visitors::ToSql
+
       def visit_Arel_Nodes_SelectStatement o
-        [
-         o.cores.map { |x| visit(x) }.join,
-         ("ORDER BY #{o.orders.map { |x| visit x }.join(', ')}" unless o.orders.empty?),
-         (visit(o.offset) if o.offset),
-         (visit(o.limit) if o.limit),
-         (visit(o.lock) if o.lock),
-        ].compact.join ' '
+        sql = o.cores.map { |x| visit(x) }.join
+        sql << " ORDER BY #{o.orders.map { |x| visit x }.join(', ')}" unless o.orders.empty?
+        sql << " #{visit(o.offset)}" if o.offset
+        sql << " #{visit(o.limit)}" if o.limit
+        sql << " #{visit(o.lock)}" if o.lock
+        sql
       end
 
       def visit_Arel_Nodes_Limit o
@@ -27,6 +27,7 @@ module Arel
       def visit_Arel_Nodes_Lock o
         visit o.expr
       end
+
     end
   end
 end
