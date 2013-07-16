@@ -4,9 +4,9 @@ module Arel
   module Visitors
     class HSQLDB < Arel::Visitors::ToSql
 
-      def visit_Arel_Nodes_SelectStatement o
-        sql = limit_offset(o.cores.map { |x| visit_Arel_Nodes_SelectCore x }.join, o)
-        sql << " ORDER BY #{o.orders.map { |x| visit x }.join(', ')}" unless o.orders.empty?
+      def visit_Arel_Nodes_SelectStatement o, a = nil
+        sql = limit_offset(o.cores.map { |x| do_visit_select_core x, a }.join, o)
+        sql << " ORDER BY #{o.orders.map { |x| do_visit x, a }.join(', ')}" unless o.orders.empty?
         sql
       end
 
