@@ -204,18 +204,18 @@ module ArJdbc
     end
     private :_execute
 
-    # @override
+    # @note Only used with (non-AREL) ActiveRecord **2.3**.
+    # @see Arel::Visitors::HSQLDB#limit_offset
     def add_limit_offset!(sql, options)
       if sql =~ /^select/i
         offset = options[:offset] || 0
-        bef = sql[7..-1]
         if limit = options[:limit]
-          sql.replace "SELECT LIMIT #{offset} #{limit} #{bef}"
+          sql.replace "SELECT LIMIT #{offset} #{limit} #{sql[7..-1]}"
         elsif offset > 0
-          sql.replace "SELECT LIMIT #{offset} 0 #{bef}"
+          sql.replace "SELECT LIMIT #{offset} 0 #{sql[7..-1]}"
         end
       end
-    end
+    end if ::ActiveRecord::VERSION::MAJOR < 3
 
     # @override
     def empty_insert_statement_value
