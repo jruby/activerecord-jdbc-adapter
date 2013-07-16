@@ -424,8 +424,9 @@ module ArJdbc
       end
     end
 
-    def remove_index(table_name, options = { })
-      execute "DROP INDEX #{quote_column_name(index_name(table_name, options))}"
+    # @override
+    def remove_index!(table_name, index_name)
+      execute "DROP INDEX #{quote_column_name(index_name)}"
     end
 
     # http://publib.boulder.ibm.com/infocenter/db2luw/v9r7/topic/com.ibm.db2.luw.admin.dbobj.doc/doc/t0020130.html
