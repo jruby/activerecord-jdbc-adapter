@@ -3,7 +3,7 @@ module ArJdbc
     module LimitHelpers
 
       # @private
-      FIND_SELECT = /\b(SELECT(?:\s+DISTINCT)?)\b(.*)/im
+      FIND_SELECT = /\b(SELECT(\s+DISTINCT)?)\b(.*)/mi
 
       module SqlServerReplaceLimitOffset
 
@@ -12,20 +12,29 @@ module ArJdbc
         def replace_limit_offset!(sql, limit, offset, order)
           if limit
             offset ||= 0
-            start_row = offset + 1
-            end_row = offset + limit.to_i
-            _, select, rest_of_query = FIND_SELECT.match(sql).to_a
-            rest_of_query.strip!
-            if rest_of_query[0...1] == "1" && rest_of_query !~ /1 AS/i
-              rest_of_query[0] = "*"
+            start_row, end_row = offset + 1, offset + limit.to_i
+
+            if match = FIND_SELECT.match(sql)
+              select, distinct, rest_of_query = match[1], match[2], match[3]
+              rest_of_query.strip!
             end
-            if rest_of_query[0...1] == "*"
+            rest_of_query[0] = '*' if rest_of_query[0...1] == '1' && rest_of_query !~ /1 AS/i
+            if rest_of_query[0...1] == '*'
               from_table = Utils.get_table_name(rest_of_query, true)
-              rest_of_query = from_table + '.' + rest_of_query
+              rest_of_query = "#{from_table}.#{rest_of_query}"
             end
-            new_sql = "#{select} t.* FROM "
-            new_sql << "(SELECT ROW_NUMBER() OVER(#{order}) AS _row_num, #{rest_of_query}) AS t"
-            new_sql << " WHERE t._row_num BETWEEN #{start_row} AND #{end_row}"
+
+            if distinct # select =~ /DISTINCT/i
+              order = order.gsub(/([a-z0-9_])+\./, 't.')
+              new_sql = "SELECT t.* FROM "
+              new_sql << "( SELECT ROW_NUMBER() OVER(#{order}) AS _row_num, t.* FROM (#{select} #{rest_of_query}) AS t ) AS t"
+              new_sql << " WHERE t._row_num BETWEEN #{start_row} AND #{end_row}"
+            else
+              new_sql = "#{select} t.* FROM "
+              new_sql << "( SELECT ROW_NUMBER() OVER(#{order}) AS _row_num, #{rest_of_query} ) AS t"
+              new_sql << " WHERE t._row_num BETWEEN #{start_row} AND #{end_row}"
+            end
+
             sql.replace(new_sql)
           end
           sql
