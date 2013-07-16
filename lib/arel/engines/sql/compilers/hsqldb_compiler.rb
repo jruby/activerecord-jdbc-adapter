@@ -1,6 +1,6 @@
 module Arel
   module SqlCompiler
-    class HsqldbCompiler < GenericCompiler
+    class HSQLDBCompiler < GenericCompiler
       def select_sql
         # HSQLDB needs to add LIMIT in right after SELECT
         query = super
