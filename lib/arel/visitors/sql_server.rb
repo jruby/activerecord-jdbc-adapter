@@ -4,7 +4,7 @@ module Arel
   module Visitors
     # @note AREL set's up `Arel::Visitors::MSSQL` but we should not use that one !
     class SQLServer < const_defined?(:MSSQL) ? MSSQL : ToSql
-      
+
       def visit_Arel_Nodes_SelectStatement(*args) # [o] AR <= 4.0 [o, a] on 4.1
         o, a = args.first, args.last
 
@@ -14,7 +14,7 @@ module Arel
           raise ActiveRecord::ActiveRecordError, "You must specify :limit with :offset."
         end
 
-        order = "ORDER BY #{o.orders.map { |x| visit x }.join(', ')}" unless o.orders.empty?
+        order = "ORDER BY #{o.orders.map { |x| do_visit x, a }.join(', ')}" unless o.orders.empty?
 
         if select_count?(o)
           subquery = true
@@ -48,31 +48,32 @@ module Arel
       # WITH(ROWLOCK,UPDLOCK) specified after each table in the FROM clause.
       #
       # So, we return nothing here and add the appropriate stuff using add_lock! above.
-      def visit_Arel_Nodes_Lock o
-        # visit o.expr
+      def visit_Arel_Nodes_Lock o, a = nil
+        # do_visit o.expr, a
       end
 
       # `top` wouldn't really work here. I.e. User.select("distinct first_name").limit(10) would generate
       # "select top 10 distinct first_name from users", which is invalid query! it should be
       # "select distinct top 10 first_name from users"
-      def visit_Arel_Nodes_Top o
+      def visit_Arel_Nodes_Top o, a = nil
         ""
       end
 
-      def visit_Arel_Nodes_Limit(o)
-        "TOP (#{visit o.expr})"
+      def visit_Arel_Nodes_Limit o, a = nil
+        "TOP (#{do_visit o.expr, a})"
       end
 
-      def visit_Arel_Nodes_Ordering(o)
+      def visit_Arel_Nodes_Ordering o, a = nil
+        expr = do_visit o.expr, a
         if o.respond_to?(:direction)
-          "#{visit o.expr} #{o.ascending? ? 'ASC' : 'DESC'}"
+          "#{expr} #{o.ascending? ? 'ASC' : 'DESC'}"
         else
-          visit o.expr
+          expr
         end
       end
 
-      def visit_Arel_Nodes_Bin(o)
-        "#{visit o.expr} COLLATE Latin1_General_CS_AS_WS"
+      def visit_Arel_Nodes_Bin o, a = nil
+        "#{do_visit o.expr, a} COLLATE Latin1_General_CS_AS_WS"
       end
 
       private
@@ -83,17 +84,7 @@ module Arel
         projections && Arel::Nodes::Count === projections.first
       end
 
-      if instance_method('visit_Arel_Nodes_SelectCore').arity == 1
-        def do_visit_select_core(x, a) # a = nil
-          visit_Arel_Nodes_SelectCore(x)
-        end
-      else # > AREL 4.0
-        def do_visit_select_core(x, a)
-          visit_Arel_Nodes_SelectCore(x, a)
-        end
-      end
-
-      include ArJdbc::MSSQL::LockHelpers::SqlServerAddLock
+      include ArJdbc::MSSQL::LockMethods
 
       include ArJdbc::MSSQL::LimitHelpers::SqlServerReplaceLimitOffset
 

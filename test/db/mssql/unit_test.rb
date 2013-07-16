@@ -2,14 +2,14 @@ require 'test_helper'
 require 'arjdbc/mssql'
 
 class MSSQLUnitTest < Test::Unit::TestCase
-  
+
   # NOTE: lot of tests kindly borrowed from __activerecord-sqlserver-adapter__
-  
+
   test "get table name" do
     insert_sql = "INSERT INTO [funny_jokes] ([name]) VALUES('Knock knock')"
     update_sql = "UPDATE [customers] SET [address_street] = NULL WHERE [id] = 2"
     select_sql = "SELECT * FROM [customers] WHERE ([customers].[id] = 1)"
-    
+
     connection = new_adapter_stub
     assert_equal 'funny_jokes', connection.send(:get_table_name, insert_sql)
     assert_equal 'customers', connection.send(:get_table_name, update_sql)
@@ -18,19 +18,19 @@ class MSSQLUnitTest < Test::Unit::TestCase
     assert_equal '[funny_jokes]', connection.send(:get_table_name, insert_sql, true)
     assert_equal '[customers]', connection.send(:get_table_name, update_sql, true)
     assert_equal '[customers]', connection.send(:get_table_name, select_sql, true)
-    
+
     select_sql = " SELECT * FROM  customers  WHERE ( customers.id = 1 ) "
     assert_equal 'customers', connection.send(:get_table_name, select_sql)
     assert_equal 'customers', connection.send(:get_table_name, select_sql, true)
-    
+
     assert_nil connection.send(:get_table_name, 'SELECT 1')
     # NOTE: this has been failing even before refactoring - not sure if it's needed :
     #assert_nil connection.send(:get_table_name, 'SELECT * FROM someFunction()')
     #assert_nil connection.send(:get_table_name, 'SELECT * FROM someFunction() WHERE 1 > 2')
   end
-  
+
   context "Utils" do
-    
+
     setup do
       @expected_table_name = 'baz'
       @expected_db_name = 'foo'
@@ -61,27 +61,27 @@ class MSSQLUnitTest < Test::Unit::TestCase
           "This qualifed_table_name #{qtn} did not unqualify the db_name correctly."
       end
     end
-    
+
   end
-  
+
   test "quote column name" do
     connection = new_adapter_stub
     assert_equal "[foo]", connection.quote_column_name("foo")
     assert_equal "[bar]", connection.quote_column_name("[bar]")
     assert_equal "[foo]]bar]", connection.quote_column_name("foo]bar")
-    
+
     assert_equal "[dbo].[foo]", connection.quote_column_name("dbo.foo")
     assert_equal "[dbo].[bar]", connection.quote_column_name("[dbo].[bar]")
     assert_equal "[foo].[bar]", connection.quote_column_name("[foo].bar")
     assert_equal "[foo].[bar]", connection.quote_column_name("foo.[bar]")
   end
-  
+
   private
-  
+
   def new_adapter_stub(config = {})
-    config = config.merge({ 
-        :adapter => 'jdbc', 
-        :adapter_spec => ArJdbc::MSSQL, 
+    config = config.merge({
+        :adapter => 'jdbc',
+        :adapter_spec => ArJdbc::MSSQL,
         :sqlserver_version => 2008
     })
     connection = stub('connection'); logger = nil
@@ -90,7 +90,7 @@ class MSSQLUnitTest < Test::Unit::TestCase
     yield(adapter) if block_given?
     adapter
   end
-  
+
 end
 
 # This tests ArJdbc::MSSQL#add_lock! without actually connecting to the database.
@@ -229,7 +229,7 @@ class MSSQLRowLockingUnitTest < Test::Unit::TestCase
   end
 
   class Dummy
-    include ::ArJdbc::MSSQL::LockHelpers::SqlServerAddLock
+    include ::ArJdbc::MSSQL::LockMethods
   end
 
   private
@@ -245,5 +245,5 @@ class MSSQLRowLockingUnitTest < Test::Unit::TestCase
     after = after.gsub(/\s*\n\s*/m, " ").strip
     assert_equal after, add_lock!(before, options).strip, message
   end
-  
+
 end

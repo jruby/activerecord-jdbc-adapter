@@ -4,7 +4,7 @@ require 'strscan'
 require 'arjdbc/mssql/utils'
 require 'arjdbc/mssql/tsql_methods'
 require 'arjdbc/mssql/limit_helpers'
-require 'arjdbc/mssql/lock_helpers'
+require 'arjdbc/mssql/lock_methods'
 require 'arjdbc/mssql/column'
 require 'arjdbc/mssql/explain_support'
 
@@ -479,6 +479,7 @@ module ArJdbc
             " #{enable ? 'ON' : 'OFF'} for table #{table_name} due : #{e.inspect}"
     end
 
+    # @private
     # @see ArJdbc::MSSQL::LimitHelpers
     def determine_order_clause(sql)
       return $1 if sql =~ /ORDER BY (.*)$/i

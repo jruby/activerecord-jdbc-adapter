@@ -14,7 +14,7 @@ module ArJdbc
         class << base; include Cast; end
       end
 
-      include LockHelpers::SqlServerAddLock
+      include LockMethods
 
       attr_accessor :identity, :special
       # @deprecated
@@ -152,7 +152,7 @@ module ArJdbc
         def string_to_dummy_time(value)
           return value unless value.is_a?(String)
           return nil if value.empty?
-          
+
           if value =~ ISO_TIME # "12:34:56.1234560"
             microsec = ($4.to_f * 1_000_000).round.to_i
             new_time 2000, 1, 1, $1.to_i, $2.to_i, $3.to_i, microsec
