@@ -113,7 +113,7 @@ module ArJdbc
     def adapter_name
       ADAPTER_NAME
     end
-    
+
     #def self.arel_visitor_type(config = nil)
     #  ::Arel::Visitors::MySQL
     #end
@@ -451,7 +451,8 @@ module ArJdbc
       rename_column_indexes(table_name, column_name, new_column_name) if respond_to?(:rename_column_indexes) # AR-4.0 SchemaStatements
     end
 
-    # @override
+    # @note Only used with (non-AREL) ActiveRecord **2.3**.
+    # @see Arel::Visitors::MySQL
     def add_limit_offset!(sql, options)
       limit, offset = options[:limit], options[:offset]
       if limit && offset
@@ -462,7 +463,7 @@ module ArJdbc
         sql << " OFFSET #{offset.to_i}"
       end
       sql
-    end
+    end if ::ActiveRecord::VERSION::MAJOR < 3
 
     # In the simple case, MySQL allows us to place JOINs directly into the UPDATE
     # query. However, this does not allow for LIMIT, OFFSET and ORDER. To support

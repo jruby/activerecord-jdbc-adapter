@@ -450,11 +450,10 @@ module ArJdbc
       rename_column_indexes(table_name, column_name, new_column_name) if respond_to?(:rename_column_indexes) # AR-4.0 SchemaStatements
     end
 
-    # SELECT ... FOR UPDATE is redundant since the table is locked.
     # @private
-    def add_lock!(sql, options) #:nodoc:
-      sql
-    end
+    def add_lock!(sql, options)
+      sql # SELECT ... FOR UPDATE is redundant since the table is locked
+    end if ::ActiveRecord::VERSION::MAJOR < 3
 
     def empty_insert_statement_value
       # inherited (default) on 3.2 : "VALUES(DEFAULT)"

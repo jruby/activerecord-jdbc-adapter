@@ -383,12 +383,13 @@ module ArJdbc
       %Q{"#{name.to_s.upcase.gsub('"', '""')}"}
     end
 
-    # @override
+    # @note Only used with (non-AREL) ActiveRecord **2.3**.
+    # @see Arel::Visitors::Derby
     def add_limit_offset!(sql, options)
       sql << " OFFSET #{options[:offset]} ROWS" if options[:offset]
       # ROWS/ROW and FIRST/NEXT mean the same
       sql << " FETCH FIRST #{options[:limit]} ROWS ONLY" if options[:limit]
-    end
+    end if ::ActiveRecord::VERSION::MAJOR < 3
 
   end
 end
