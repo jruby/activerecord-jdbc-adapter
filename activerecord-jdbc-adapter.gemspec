@@ -2,23 +2,38 @@
 $:.push File.expand_path("../lib", __FILE__)
 require 'arjdbc/version'
 
-Gem::Specification.new do |s|
-  s.name        = "activerecord-jdbc-adapter"
-  s.version     = ArJdbc::VERSION
-  s.platform    = Gem::Platform::RUBY
-  s.authors     = ["Nick Sieger, Ola Bini and JRuby contributors"]
-  s.email       = %q{nick@nicksieger.com, ola.bini@gmail.com}
-  s.homepage = %q{https://github.com/jruby/activerecord-jdbc-adapter}
-  s.summary = %q{JDBC adapter for ActiveRecord, for use within JRuby on Rails.}
-  s.description = %q{activerecord-jdbc-adapter is a database adapter for Rails\' ActiveRecord
-component that can be used with JRuby[http://www.jruby.org/]. It allows use of
-virtually any JDBC-compliant database with your JRuby on Rails application.}
-  s.license     = "BSD"
-  s.files         = `git ls-files`.split("\n").reject {|v| v =~ /^(activerecord-jdbc[^-]|jdbc-)/}
-  s.test_files    = `git ls-files -- {test,spec,features}/*`.split("\n")
-  s.executables   = `git ls-files -- bin/*`.split("\n").map{|f| File.basename(f) }
-  s.require_paths = ["lib"]
-  s.rdoc_options = ["--main", "README.md", "-SHN", "-f", "darkfish"]
-  s.rubyforge_project = %q{jruby-extras}
+Gem::Specification.new do |gem|
+  gem.name = 'activerecord-jdbc-adapter'
+  gem.version = ArJdbc::VERSION
+  gem.platform = Gem::Platform::RUBY
+  gem.authors = ['Nick Sieger, Ola Bini and JRuby contributors']
+  gem.email = ['nick@nicksieger.com', 'ola.bini@gmail.com']
+  gem.homepage = 'https://github.com/jruby/activerecord-jdbc-adapter'
+  gem.license = "BSD"
+  gem.summary = 'JDBC adapter for ActiveRecord, for use within JRuby on Rails.'
+  gem.description = "" <<
+    "AR-JDBC is a database adapter for Rails' ActiveRecord component designed " <<
+    "to be used with JRuby built upon Java's JDBC API for database access. " <<
+    "Provides (ActiveRecord) built-in adapters: MySQL, PostgreSQL and SQLite3 " <<
+    "as well as adapters for popular databases such as Oracle, SQLServer, " <<
+    "DB2, FireBird and even Java (embed) databases: Derby, HSQLDB and H2. " <<
+    "It allows to connect to virtually any JDBC-compliant database with your " <<
+    "JRuby on Rails application."
+
+  gem.require_paths = ["lib"]
+  gem.files = `git ls-files`.split("\n").
+    reject { |f| f =~ /^(activerecord-jdbc[^-]|jdbc-)/ }
+  gem.test_files = `git ls-files -- {test}/*`.split("\n")
+  gem.executables = `git ls-files -- bin/*`.split("\n").map{ |f| File.basename(f) }
+
+  # NOTE: 1.3.0 only supports >= 2.3 but users report it works with 2.2 :
+  #gem.add_dependency 'activerecord', '>= 2.2.2'
+
+  #gem.add_development_dependency 'test-unit', '2.5.4'
+  #gem.add_development_dependency 'test-unit-context', '>= 0.3.0'
+  #gem.add_development_dependency 'mocha', '~> 0.13.1'
+
+  gem.rdoc_options = ["--main", "README.md", "-SHN", "-f", "darkfish"]
+  gem.rubyforge_project = %q{jruby-extras}
 end
 

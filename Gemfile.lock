@@ -92,11 +92,11 @@ DEPENDENCIES
   erubis
   jruby-openssl
   kramdown
-  mocha (>= 0.13.0)
+  mocha (~> 0.13.1)
   rake
   ruby-debug
   simplecov
   test-unit (= 2.5.4)
-  test-unit-context
+  test-unit-context (>= 0.3.0)
   yard
   yard-method-overrides!
