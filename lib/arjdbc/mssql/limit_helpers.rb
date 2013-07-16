@@ -2,16 +2,6 @@ module ArJdbc
   module MSSQL
     module LimitHelpers
 
-      private
-
-      def setup_limit_offset!(version = nil)
-        if version.to_s == '2000' || sqlserver_2000?
-          extend SqlServer2000AddLimitOffset
-        else
-          extend SqlServerAddLimitOffset
-        end
-      end
-
       # @private
       FIND_SELECT = /\b(SELECT(?:\s+DISTINCT)?)\b(.*)/im
 
@@ -39,18 +29,6 @@ module ArJdbc
             sql.replace(new_sql)
           end
           sql
-        end
-
-      end
-
-      module SqlServerAddLimitOffset
-
-        def add_limit_offset!(sql, options)
-          if options[:limit]
-            order = "ORDER BY #{options[:order] || determine_order_clause(sql)}"
-            sql.sub!(/ ORDER BY.*$/i, '')
-            SqlServerReplaceLimitOffset.replace_limit_offset!(sql, options[:limit], options[:offset], order)
-          end
         end
 
       end
@@ -145,8 +123,44 @@ module ArJdbc
 
       end
 
+      private
+
+      if ::ActiveRecord::VERSION::MAJOR < 3
+
+        def setup_limit_offset!(version = nil)
+          if version.to_s == '2000' || sqlserver_2000?
+            extend SqlServer2000AddLimitOffset
+          else
+            extend SqlServerAddLimitOffset
+          end
+        end
+
+      else
+
+        def setup_limit_offset!(version = nil); end
+
+      end
+
+      # @private
+      module SqlServerAddLimitOffset
+
+        # @note Only needed with (non-AREL) ActiveRecord **2.3**.
+        # @see Arel::Visitors::SQLServer
+        def add_limit_offset!(sql, options)
+          if options[:limit]
+            order = "ORDER BY #{options[:order] || determine_order_clause(sql)}"
+            sql.sub!(/ ORDER BY.*$/i, '')
+            SqlServerReplaceLimitOffset.replace_limit_offset!(sql, options[:limit], options[:offset], order)
+          end
+        end
+
+      end if ::ActiveRecord::VERSION::MAJOR < 3
+
+      # @private
       module SqlServer2000AddLimitOffset
 
+        # @note Only needed with (non-AREL) ActiveRecord **2.3**.
+        # @see Arel::Visitors::SQLServer
         def add_limit_offset!(sql, options)
           if options[:limit]
             order = "ORDER BY #{options[:order] || determine_order_clause(sql)}"
@@ -155,7 +169,7 @@ module ArJdbc
           end
         end
 
-      end
+      end if ::ActiveRecord::VERSION::MAJOR < 3
 
     end
   end
