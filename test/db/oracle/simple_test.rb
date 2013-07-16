@@ -123,6 +123,12 @@ class OracleSimpleTest < Test::Unit::TestCase
     connection.drop_table(:activities) rescue nil
   end
 
+  test 'returns correct visitor type' do
+    assert_not_nil visitor = connection.instance_variable_get(:@visitor)
+    assert defined? Arel::Visitors::Oracle
+    assert_kind_of Arel::Visitors::Oracle, visitor
+  end if ar_version('3.0')
+
   protected
 
   def assert_empty_string value

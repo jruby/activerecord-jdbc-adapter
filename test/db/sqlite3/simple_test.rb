@@ -289,4 +289,10 @@ class SQLite3SimpleTest < Test::Unit::TestCase
     assert_equal my_date.to_s(:db), model.custom_sample_date
   end
 
+  test 'returns correct visitor type' do
+    assert_not_nil visitor = connection.instance_variable_get(:@visitor)
+    assert defined? Arel::Visitors::SQLite
+    assert_kind_of Arel::Visitors::SQLite, visitor
+  end if ar_version('3.0')
+
 end

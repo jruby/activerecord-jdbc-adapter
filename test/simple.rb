@@ -1192,11 +1192,10 @@ module ActiveRecord3TestMethods
 
     def test_visitor_accessor
       adapter = Entry.connection
-      adapter_spec = adapter.config[:adapter_spec]
-      visitor_type = adapter_spec.arel2_visitors(adapter.config).values.first
+      assert_not_nil visitor_type = adapter.class.resolve_visitor_type(adapter.config)
       assert_not_nil adapter.visitor
       assert_kind_of visitor_type, adapter.visitor
-    end if Test::Unit::TestCase.ar_version('3.2') # >= 3.2
+    end if Test::Unit::TestCase.ar_version('3.1') # >= 3.2
 
     def test_where
       user = User.create! :login => "blogger"

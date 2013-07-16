@@ -204,6 +204,12 @@ class MysqlSimpleTest < Test::Unit::TestCase
     end
   end
 
+  test 'returns correct visitor type' do
+    assert_not_nil visitor = connection.instance_variable_get(:@visitor)
+    assert defined? Arel::Visitors::MySQL
+    assert_kind_of Arel::Visitors::MySQL, visitor
+  end if ar_version('3.0')
+
 end
 
 class MysqlHasManyThroughTest < Test::Unit::TestCase

@@ -131,6 +131,12 @@ class PostgresSimpleTest < Test::Unit::TestCase
     connection.standard_conforming_strings = true
   end
 
+  test 'returns correct visitor type' do
+    assert_not_nil visitor = connection.instance_variable_get(:@visitor)
+    assert defined? Arel::Visitors::PostgreSQL
+    assert_kind_of Arel::Visitors::PostgreSQL, visitor
+  end if ar_version('3.0')
+
   include ExplainSupportTestMethods if ar_version("3.1")
 
   def test_primary_key

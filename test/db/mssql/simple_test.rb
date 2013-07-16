@@ -163,6 +163,12 @@ class MSSQLSimpleTest < Test::Unit::TestCase
     assert_equal 'dbo', ActiveRecord::Base.connection.default_schema
   end
 
+  test 'returns correct visitor type' do
+    assert_not_nil visitor = connection.instance_variable_get(:@visitor)
+    assert defined? Arel::Visitors::SQLServer
+    assert_kind_of Arel::Visitors::SQLServer, visitor
+  end if ar_version('3.0')
+
 end
 
 class MSSQLHasManyThroughTest < Test::Unit::TestCase

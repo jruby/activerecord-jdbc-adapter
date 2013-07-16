@@ -95,4 +95,10 @@ class DB2SimpleTest < Test::Unit::TestCase
     assert entries.first.login
   end
 
+  test 'returns correct visitor type' do
+    assert_not_nil visitor = connection.instance_variable_get(:@visitor)
+    assert defined? Arel::Visitors::DB2
+    assert_kind_of Arel::Visitors::DB2, visitor
+  end if ar_version('3.0')
+
 end

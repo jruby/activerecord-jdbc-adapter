@@ -6,6 +6,13 @@ class H2SimpleTest < Test::Unit::TestCase
   include ExplainSupportTestMethods if ar_version("3.1")
   include ActiveRecord3TestMethods
   include CustomSelectTestMethods
+
+  test 'returns correct visitor type' do
+    assert_not_nil visitor = connection.instance_variable_get(:@visitor)
+    assert defined? Arel::Visitors::HSQLDB
+    assert_kind_of Arel::Visitors::HSQLDB, visitor
+  end if ar_version('3.0')
+
 end
 
 class H2HasManyThroughTest < Test::Unit::TestCase

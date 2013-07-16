@@ -146,6 +146,12 @@ class DerbySimpleTest < Test::Unit::TestCase
     assert_equal 1.42, custom_sample_float # Derby otherwise returns us smt like: 1.4199999570846558
   end
 
+  test 'returns correct visitor type' do
+    assert_not_nil visitor = connection.instance_variable_get(:@visitor)
+    assert defined? Arel::Visitors::Derby
+    assert_kind_of Arel::Visitors::Derby, visitor
+  end if ar_version('3.0')
+
 end
 
 class DerbyMultibyteTest < Test::Unit::TestCase
