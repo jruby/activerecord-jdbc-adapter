@@ -80,10 +80,6 @@ class MSSQLLimitOffsetTest < Test::Unit::TestCase
   class NoIdViking < ActiveRecord::Base
   end
 
-  class Viewking < ActiveRecord::Base
-    belongs_to :long_ship
-  end
-
   def setup
     CreateLegacyShips.up
     CreateLongShips.up
@@ -182,16 +178,51 @@ class MSSQLLimitOffsetTest < Test::Unit::TestCase
     assert_equal ['one', 'two'], ships.map(&:name)
   end if ar_version('3.0')
 
-  def test_limit_and_offset_with_distinct
+  def test_select_distinct_with_limit
     %w(c a b a b a c d c d).each do |name|
       LongShip.create!(:name => name)
     end
     if ar_version('3.0')
       result = LongShip.select("DISTINCT name").order("name").limit(2)
     else
-      result = LongShip.find(:all, :select => "DISTINCT name", :order => "name", :offset => 1, :limit => 2)
+      result = LongShip.find(:all, :select => "DISTINCT name", :order => "name", :limit => 2)
     end
     assert_equal %w(a b), result.map(&:name)
   end
+
+  def test_select_distinct_view_with_joins_and_limit
+    mega_ship = LongShip.create! :name => 'mega-canoe'
+    giga_ship = LongShip.create! :name => 'giga-canoe'
+    Viking.create! :name => '11', :long_ship_id => mega_ship.id
+    Viking.create! :name => '21', :long_ship_id => giga_ship.id
+    Viking.create! :name => '12', :long_ship_id => mega_ship.id
+    Viking.create! :name => '22', :long_ship_id => giga_ship.id
+
+    result = Viking.select('DISTINCT *').limit(10).
+      joins(:long_ship).where(:long_ship_id => mega_ship.id).
+      order('name')
+    assert_equal [ '11', '12' ], result.map { |viking| viking.name }
+  end if ar_version('3.0')
+
+  class Viewking < ActiveRecord::Base
+    belongs_to :long_ship
+    self.primary_key = 'id'
+  end
+
+  def test_order_and_limit_view_with_include
+    mega_ship = LongShip.create! :name => 'mega-canoe'
+    giga_ship = LongShip.create! :name => 'giga-canoe'
+    Viking.create! :name => 'Jozko', :long_ship_id => mega_ship.id
+    Viking.create! :name => 'Ferko', :long_ship_id => giga_ship.id
+
+    # NOTE: since connection.primary_key('viewkings') returns nil
+    # this test will fail if it's not explicitly set self.primary_key = 'id'
+
+    arel = Viewking.includes(:long_ship).order('long_ships.name').limit(2)
+    assert_equal [ 'Ferko', 'Jozko' ], arel.map { |viking| viking.name }
+
+    arel = Viewking.includes(:long_ship).limit(3)
+    assert_equal 2, arel.to_a.size
+  end if ar_version('3.0')
 
 end
