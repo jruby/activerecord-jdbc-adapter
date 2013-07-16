@@ -167,7 +167,7 @@ class MSSQLLimitOffsetTest < Test::Unit::TestCase
         LongShip.find(:all, :select => 'name', :offset => 2)
       end
     end
-    assert_equal "You must specify :limit with :offset.", error.message
+    assert_equal "must specify :limit with :offset", error.message
   end
 
   def test_limit_with_group_by
@@ -176,6 +176,9 @@ class MSSQLLimitOffsetTest < Test::Unit::TestCase
     end
     ships = LongShip.select(:name).group(:name).limit(2).all
     assert_equal ['one', 'two'], ships.map(&:name)
+
+    #ships = LongShip.select(:name).group(:name).limit(2).offset(2)
+    #assert_equal ['three', 'four'], ships.map(&:name)
   end if ar_version('3.0')
 
   def test_select_distinct_with_limit
