@@ -938,8 +938,11 @@ module ArJdbc
       default = options[:default]
       notnull = options[:null] == false
 
+      sql_type = type_to_sql(type, options[:limit], options[:precision], options[:scale])
+      sql_type << "[]" if options[:array]
+
       # Add the column.
-      execute("ALTER TABLE #{quote_table_name(table_name)} ADD COLUMN #{quote_column_name(column_name)} #{type_to_sql(type, options[:limit], options[:precision], options[:scale])}")
+      execute("ALTER TABLE #{quote_table_name(table_name)} ADD COLUMN #{quote_column_name(column_name)} #{sql_type}")
 
       change_column_default(table_name, column_name, default) if options_include_default?(options)
       change_column_null(table_name, column_name, false, default) if notnull
