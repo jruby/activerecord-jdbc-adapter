@@ -2,7 +2,6 @@ ArJdbc.load_java_part :MSSQL
 
 require 'strscan'
 require 'arjdbc/mssql/utils'
-require 'arjdbc/mssql/tsql_methods'
 require 'arjdbc/mssql/limit_helpers'
 require 'arjdbc/mssql/lock_methods'
 require 'arjdbc/mssql/column'
@@ -12,7 +11,6 @@ module ArJdbc
   module MSSQL
     include LimitHelpers
     include Utils
-    include TSqlMethods
 
     include ExplainSupport
 
@@ -95,7 +93,11 @@ module ArJdbc
       types
     end
 
+    # @private these cannot specify a limit
+    NO_LIMIT_TYPES = %w( text binary boolean date datetime )
+
     def type_to_sql(type, limit = nil, precision = nil, scale = nil)
+      type_s = type.to_s
       # MSSQL's NVARCHAR(n | max) column supports either a number between 1 and
       # 4000, or the word "MAX", which corresponds to 2**30-1 UCS-2 characters.
       #
@@ -105,12 +107,24 @@ module ArJdbc
       # MSSQL Server 2000 is skipped here because I don't know how it will behave.
       #
       # See: http://msdn.microsoft.com/en-us/library/ms186939.aspx
-      if type.to_s == 'string' && limit == 1073741823 && ! sqlserver_2000?
+      if type_s == 'string' && limit == 1073741823 && ! sqlserver_2000?
         'NVARCHAR(MAX)'
-      elsif %w( boolean date datetime ).include?(type.to_s)
-        super(type) # cannot specify limit/precision/scale with these types
+      elsif NO_LIMIT_TYPES.include?(type_s)
+        super(type)
+      elsif type_s == 'integer'
+        if limit.nil? || limit == 4
+          'int'
+        elsif limit == 2
+          'smallint'
+        elsif limit == 1
+          'tinyint'
+        else
+          'bigint'
+        end
+      elsif type_s == 'uniqueidentifier'
+        type_s
       else
-        super # TSqlMethods#type_to_sql
+        super
       end
     end
 
