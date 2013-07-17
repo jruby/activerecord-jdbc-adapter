@@ -27,11 +27,15 @@ module Arel
             x.projections = [p]
             select_count = true
           else
-            # x.projections << row_num_literal(core_order_by)
+            # NOTE: this should really be added here and we should built the
+            # wrapping SQL but than #replace_limit_offset! assumes it does that
+            # ... MS-SQL adapter code seems to be 'hacked' by a lot of people
+            #x.projections << row_num_literal(order_by)
           end
           do_visit_select_core x, a
         end.join
 
+        #sql = "SELECT _t.* FROM (#{sql}) as _t WHERE #{get_offset_limit_clause(o)}"
         select_order_by ||= "ORDER BY #{@connection.determine_order_clause(sql)}"
         replace_limit_offset!(sql, limit_for(o.limit), o.offset && o.offset.value.to_i, select_order_by)
 

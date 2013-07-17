@@ -171,14 +171,15 @@ class MSSQLLimitOffsetTest < Test::Unit::TestCase
   end
 
   def test_limit_with_group_by
+    # TODO: simply out-of-order - group.limit not supported !
     %w( one two three four five six seven eight ).each do |name|
       LongShip.create!(:name => name)
     end
     ships = LongShip.select(:name).group(:name).limit(2).all
     assert_equal ['one', 'two'], ships.map(&:name)
 
-    #ships = LongShip.select(:name).group(:name).limit(2).offset(2)
-    #assert_equal ['three', 'four'], ships.map(&:name)
+    ships = LongShip.select(:name).group(:name).limit(2).offset(2)
+    assert_equal ['three', 'four'], ships.map(&:name)
   end if ar_version('3.0')
 
   def test_select_distinct_with_limit

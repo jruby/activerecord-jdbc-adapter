@@ -51,8 +51,10 @@ module ArJdbc
             offset ||= 0
             start_row = offset + 1
             end_row = offset + limit.to_i
-            _, select, rest_of_query = FIND_SELECT.match(sql).to_a
-
+            
+            if match = FIND_SELECT.match(sql)
+              select, distinct, rest_of_query = match[1], match[2], match[3]
+            end
             #need the table name for avoiding amiguity
             table_name  = Utils.get_table_name(sql, true)
             primary_key = get_primary_key(order, table_name)
