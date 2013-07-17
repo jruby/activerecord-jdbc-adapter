@@ -3,7 +3,7 @@ require 'test_helper'
 require 'db/postgres'
 
 class PostgreSQLArrayTypeTest < Test::Unit::TestCase
-  
+
   class PgArray < ActiveRecord::Base
     self.table_name = 'pg_arrays'
   end
@@ -14,6 +14,8 @@ class PostgreSQLArrayTypeTest < Test::Unit::TestCase
       @connection.create_table('pg_arrays') do |t|
         t.string 'tags', :array => true
       end
+
+      @connection.add_column 'pg_arrays', 'added_tags', :string, :array => true
     end
   end
 
@@ -23,6 +25,12 @@ class PostgreSQLArrayTypeTest < Test::Unit::TestCase
 
   def test_column
     column = PgArray.columns.find { |c| c.name == 'tags' }
+    assert_equal :string, column.type
+    assert column.array
+  end
+
+  def test_added_column
+    column = PgArray.columns.find { |c| c.name == 'added_tags' }
     assert_equal :string, column.type
     assert column.array
   end
@@ -97,5 +105,5 @@ class PostgreSQLArrayTypeTest < Test::Unit::TestCase
     x.reload
     assert_equal(array, x.tags)
   end
-  
+
 end if Test::Unit::TestCase.ar_version('4.0')
