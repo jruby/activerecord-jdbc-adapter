@@ -3,7 +3,7 @@ require 'test_helper'
 require 'db/postgres'
 
 class PostgreSQLArrayTypeTest < Test::Unit::TestCase
-  
+
   class PgArray < ActiveRecord::Base
     self.table_name = 'pg_arrays'
   end
@@ -67,6 +67,10 @@ class PostgreSQLArrayTypeTest < Test::Unit::TestCase
     assert_cycle(['this has','some "s that need to be escaped"', "some 's that need to be escaped too"])
   end
 
+  def test_strings_with_quotes_and_backslashes
+    assert_cycle(['this has','some \\"s that need to be escaped"'])
+  end
+
   def test_strings_with_commas
     assert_cycle(['this,has','many,values'])
   end
@@ -97,5 +101,5 @@ class PostgreSQLArrayTypeTest < Test::Unit::TestCase
     x.reload
     assert_equal(array, x.tags)
   end
-  
+
 end if Test::Unit::TestCase.ar_version('4.0')

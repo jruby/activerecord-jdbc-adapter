@@ -445,7 +445,7 @@ module ArJdbc
           when "NULL"
             value
           else
-            "\"#{value.gsub(/"/,"\\\"")}\""
+            "\"#{value.gsub(/(["\\])/, '\\\\\1')}\""
           end
         end
 
