@@ -16,6 +16,9 @@ class PostgreSQLArrayTypeTest < Test::Unit::TestCase
       end
 
       @connection.add_column 'pg_arrays', 'added_tags', :string, :array => true
+
+      @connection.add_column 'pg_arrays', 'changed_tags', :string, :array => true, :null => false
+      @connection.change_column 'pg_arrays', 'changed_tags', :string, :array => true, :null => true
     end
   end
 
@@ -31,6 +34,12 @@ class PostgreSQLArrayTypeTest < Test::Unit::TestCase
 
   def test_added_column
     column = PgArray.columns.find { |c| c.name == 'added_tags' }
+    assert_equal :string, column.type
+    assert column.array
+  end
+
+  def test_changed_column
+    column = PgArray.columns.find { |c| c.name == 'changed_tags' }
     assert_equal :string, column.type
     assert column.array
   end

@@ -952,8 +952,11 @@ module ArJdbc
     def change_column(table_name, column_name, type, options = {})
       quoted_table_name = quote_table_name(table_name)
 
+      sql_type = type_to_sql(type, options[:limit], options[:precision], options[:scale])
+      sql_type << "[]" if options[:array]
+
       begin
-        execute "ALTER TABLE #{quoted_table_name} ALTER COLUMN #{quote_column_name(column_name)} TYPE #{type_to_sql(type, options[:limit], options[:precision], options[:scale])}"
+        execute "ALTER TABLE #{quoted_table_name} ALTER COLUMN #{quote_column_name(column_name)} TYPE #{sql_type}"
       rescue ActiveRecord::StatementInvalid => e
         raise e if postgresql_version > 80000
         # This is PostgreSQL 7.x, so we have to use a more arcane way of doing it.
@@ -961,7 +964,7 @@ module ArJdbc
           begin_db_transaction
           tmp_column_name = "#{column_name}_ar_tmp"
           add_column(table_name, tmp_column_name, type, options)
-          execute "UPDATE #{quoted_table_name} SET #{quote_column_name(tmp_column_name)} = CAST(#{quote_column_name(column_name)} AS #{type_to_sql(type, options[:limit], options[:precision], options[:scale])})"
+          execute "UPDATE #{quoted_table_name} SET #{quote_column_name(tmp_column_name)} = CAST(#{quote_column_name(column_name)} AS #{sql_type})"
           remove_column(table_name, column_name)
           rename_column(table_name, tmp_column_name, column_name)
           commit_db_transaction
