@@ -1,15 +1,8 @@
 require 'test_helper'
 
-MSSQL_CONFIG = { :adapter  => 'mssql' }
-MSSQL_CONFIG[:database] = ENV['SQLDATABASE'] || 'weblog_development'
-MSSQL_CONFIG[:username] = ENV['SQLUSER'] || 'blog'
-MSSQL_CONFIG[:password] = ENV['SQLPASS'] || ''
-
-MSSQL_CONFIG[:host] = ENV['SQLHOST'] || 'localhost'
-MSSQL_CONFIG[:port] = ENV['SQLPORT'] if ENV['SQLPORT']
-
-unless ( ps = ENV['PREPARED_STATEMENTS'] || ENV['PS'] ).nil?
-  MSSQL_CONFIG[:prepared_statements] = ps
+if ENV['DRIVER'].to_s.upcase == 'SQLJDBC'
+  require 'db/sqlserver'
+else # currently jTDS is the default driver
+  require 'db/mssql_config'
+  ActiveRecord::Base.establish_connection(MSSQL_CONFIG)
 end
-
-ActiveRecord::Base.establish_connection(MSSQL_CONFIG)
