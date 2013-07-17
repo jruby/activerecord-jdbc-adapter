@@ -84,6 +84,10 @@ class PostgreSQLArrayTypeTest < Test::Unit::TestCase
     assert_cycle(['this has','some "s that need to be escaped"', "some 's that need to be escaped too"])
   end
 
+  def test_strings_with_quotes_and_backslashes
+    assert_cycle(['this has','some \\"s that need to be escaped"'])
+  end
+
   def test_strings_with_commas
     assert_cycle(['this,has','many,values'])
   end
