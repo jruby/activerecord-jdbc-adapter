@@ -1205,6 +1205,16 @@ module ActiveRecord3TestMethods
       assert_equal entry, entries.first
     end
 
+    def test_update_all
+      user = User.create! :login => "blogger"
+      e1 = Entry.create! :title => 'JRuby #1', :content => 'Getting started with JRuby ...', :user => user
+      e2 = Entry.create! :title => 'JRuby #2', :content => 'Setting up with JRuby on Rails', :user => user
+
+      user.entries.update_all :rating => 12.3
+      assert_equal 12.3, e1.reload.rating
+      assert_equal 12.3, e2.reload.rating
+    end
+
     def test_remove_nonexistent_index
       assert_raise(ArgumentError, ActiveRecord::StatementInvalid, ActiveRecord::JDBCError) do
         connection.remove_index :entries, :nonexistent_index

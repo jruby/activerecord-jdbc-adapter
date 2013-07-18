@@ -64,8 +64,24 @@ class MysqlSimpleTest < Test::Unit::TestCase
     assert_equal "`#{MYSQL_CONFIG[:database]}`.`posts`", ActiveRecord::Base.connection.quote_table_name(s)
   end
 
+  def test_update_all
+    user = User.create! :login => "blogger"
+    e1 = Entry.create! :title => 'JRuby #1', :content => 'Getting started with JRuby ...', :user => user
+    e2 = Entry.create! :title => 'JRuby #2', :content => 'Setting up with JRuby on Rails', :user => user
+
+    user.entries.update_all :rating => 12.3
+    assert_equal 12.3, e1.reload.rating
+    assert_equal 12.3, e2.reload.rating
+  end
+
   def test_update_all_with_limit
-    assert_nothing_raised { Entry.update_all({:title => "test"}, {}, {:limit => 1}) }
+    Entry.create! :title => 'test', :content => 'test 1'
+    Entry.create! :title => 'test', :content => 'test 2'
+    if ar_version('4.0') # update_all(hash, hash, hash) deprecated
+      Entry.where(:title => "test").limit(1).update_all(:content => 'some test')
+    else # assert_nothing_raised
+      Entry.update_all({:title => "test"}, { :content => 'some test' }, {:limit => 1})
+    end
   end
 
   # from rails active record tests, only meant to work in AR 3.2 and higher
@@ -129,7 +145,7 @@ class MysqlSimpleTest < Test::Unit::TestCase
       User.table_name  = "#{database}.users"
       Entry.table_name = "#{database}.entries"
       if ar_version('4.0')
-        assert_not_empty Entry.includes(:user).to_a
+        assert_not_empty Entry.includes(:user).references(:users).to_a
       else
         assert_not_empty Entry.all(:include => :user)
       end

@@ -57,15 +57,20 @@ class SQLite3TypeConversionTest < Test::Unit::TestCase
     assert_equal(3, DbType.columns_hash["sample_small_decimal"].precision)
   end
 
-  def test_small_decimal
-    types = DbType.all :order => "sample_small_decimal DESC"
+  def test_small_decimal_with_ordering
+    if ar_version('4.0')
+      types = DbType.order("sample_small_decimal DESC").load
+    else
+      types = DbType.all :order => "sample_small_decimal DESC"
+    end
     assert_equal(3.14, types[0].sample_small_decimal)
     assert_equal(1.0, types[1].sample_small_decimal)
-  end
 
-  def test_small_decimal_with_ordering
-    types = DbType.all :order => "sample_small_decimal ASC"
-    types[1].sample_small_decimal
+    if ar_version('4.0')
+      types = DbType.order("sample_small_decimal ASC").load
+    else
+      types = DbType.all :order => "sample_small_decimal ASC"
+    end
     assert_equal(1.0, types[0].sample_small_decimal)
     assert_equal(3.14, types[1].sample_small_decimal)
   end
