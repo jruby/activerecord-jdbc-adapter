@@ -226,15 +226,20 @@ module ArJdbc
       @connection.indexes(table, name, @connection.connection.meta_data.user_name)
     end
 
+    # @note Only used with (non-AREL) ActiveRecord **2.3**.
+    # @see Arel::Visitors::Oracle
     def add_limit_offset!(sql, options)
       offset = options[:offset] || 0
-
       if limit = options[:limit]
-        sql.replace "select * from (select raw_sql_.*, rownum raw_rnum_ from (#{sql}) raw_sql_ where rownum <= #{offset+limit}) where raw_rnum_ > #{offset}"
+        sql.replace "SELECT * FROM " <<
+          "(select raw_sql_.*, rownum raw_rnum_ from (#{sql}) raw_sql_ where rownum <= #{offset + limit})" <<
+          " WHERE raw_rnum_ > #{offset}"
       elsif offset > 0
-        sql.replace "select * from (select raw_sql_.*, rownum raw_rnum_ from (#{sql}) raw_sql_) where raw_rnum_ > #{offset}"
+        sql.replace "SELECT * FROM " <<
+          "(select raw_sql_.*, rownum raw_rnum_ from (#{sql}) raw_sql_)" <<
+          " WHERE raw_rnum_ > #{offset}"
       end
-    end
+    end if ::ActiveRecord::VERSION::MAJOR < 3
 
     def current_user
       @current_user ||= execute("SELECT sys_context('userenv', 'session_user') su FROM dual").first['su']
