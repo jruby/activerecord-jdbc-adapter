@@ -334,10 +334,6 @@ module ArJdbc
       super(type, limit, precision, scale)
     end
 
-    def add_limit_offset!(sql, options)
-      replace_limit_offset!(sql, options[:limit], options[:offset])
-    end
-
     def add_column_options!(sql, options)
       # handle case of defaults for CLOB columns,
       # which might get incorrect if we write LOBs in the after_save callback
@@ -362,24 +358,30 @@ module ArJdbc
       super
     end
 
+    # @note Only used with (non-AREL) ActiveRecord **2.3**.
+    # @see Arel::Visitors::DB2
+    def add_limit_offset!(sql, options)
+      replace_limit_offset!(sql, options[:limit], options[:offset])
+    end if ::ActiveRecord::VERSION::MAJOR < 3
+
+    # @private shared with {Arel::Visitors::DB2}
     def replace_limit_offset!(sql, limit, offset)
-      if limit
-        limit = limit.to_i
+      return sql unless limit
 
-        if !offset
-          if limit == 1
-            sql << " FETCH FIRST ROW ONLY"
-          else
-            sql << " FETCH FIRST #{limit} ROWS ONLY"
-          end
+      limit = limit.to_i
+      if offset
+        replace_limit_offset_with_ordering(sql, limit, offset)
+      else
+        if limit == 1
+          sql << " FETCH FIRST ROW ONLY"
         else
-          replace_limit_offset_with_ordering( sql, limit, offset )
+          sql << " FETCH FIRST #{limit} ROWS ONLY"
         end
-
+        sql
       end
-      sql
     end
 
+    # @private only used from {Arel::Visitors::DB2}
     def replace_limit_offset_for_arel!( query, sql )
       replace_limit_offset_with_ordering sql, query.limit.value, query.offset && query.offset.value, query.orders
     end
