@@ -151,7 +151,7 @@ module ArJdbc
           return nil if value.empty?
           return Time.now if value.index('CURRENT') == 0
           # AS400 returns a 2 digit year, LUW returns a 4 digit year
-          DateTime.parse(value).to_time rescue nil
+          DateTime.parse(value).to_time.utc rescue nil
         end
 
       end
