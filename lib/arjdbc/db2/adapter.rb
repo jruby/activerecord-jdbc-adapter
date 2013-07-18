@@ -314,9 +314,10 @@ module ArJdbc
       else
         super
       end
-    end if ::ActiveRecord::VERSION::MAJOR >= 3
+    end
 
     def quote_time(value)
+      value = ::ActiveRecord::Base.default_timezone == :utc ? value.getutc : value.getlocal
       # AS400 doesn't support date in time column
       "'#{value.strftime("%H:%M:%S")}'"
     end
