@@ -564,28 +564,28 @@ module ActiveRecord
         #attr_reader :visitor unless method_defined?(:visitor) # not in 3.0
 
         # @private
-        def to_sql(arel, binds = [])
+        def to_sql(arel, binds = nil)
           # NOTE: can not handle `visitor.accept(arel.ast)` right
           arel.respond_to?(:to_sql) ? arel.send(:to_sql) : arel
         end
 
-      elsif ActiveRecord::VERSION::MAJOR >= 3 # AR >= 3.1 or 4.0
-
-        # @private
-        def to_sql(arel, binds = [])
-          if arel.respond_to?(:ast)
-            visitor.accept(arel.ast) { quote(*binds.shift.reverse) }
-          else
-            arel
-          end
-        end
-
-      else # AR-2.3 no #to_sql method
+      elsif ActiveRecord::VERSION::MAJOR < 3 # AR-2.3 'fake' #to_sql method
 
         # @private
         def to_sql(sql, binds = nil)
           sql
         end
+
+      else # AR >= 3.1 or 4.0
+
+        # ActiveRecord::ConnectionAdapters::DatabaseStatements#to_sql
+        #def to_sql(arel, binds = [])
+        #  if arel.respond_to?(:ast)
+        #    visitor.accept(arel.ast) { quote(*binds.shift.reverse) }
+        #  else
+        #    arel
+        #  end
+        #end
 
       end
 
