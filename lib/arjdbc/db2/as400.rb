@@ -13,12 +13,8 @@ module ArJdbc
     # @see ActiveRecord::ConnectionAdapters::JdbcAdapter#jdbc_connection_class
     def self.jdbc_connection_class; DB2.jdbc_connection_class; end
 
-    # @see ActiveRecord::ConnectionAdapters::JdbcAdapter#arel2_visitors
-    def self.arel2_visitors(config)
-      visitors = DB2.arel2_visitors(config).dup
-      visitors['as400'] = visitors['db2']
-      visitors
-    end
+    # @see ActiveRecord::ConnectionAdapters::Jdbc::ArelSupport
+    def self.arel_visitor_type(config = nil); DB2.arel_visitor_type(config); end
 
     def self.column_selector
       [ /as400/i, lambda { |config, column| column.extend(Column) } ]
@@ -51,7 +47,7 @@ module ArJdbc
     end
 
     # @override
-    def rename_column(table_name, column_name, new_column_name) # :nodoc:
+    def rename_column(table_name, column_name, new_column_name)
       raise NotImplementedError, "rename_column is not supported on IBM iSeries"
     end
 
