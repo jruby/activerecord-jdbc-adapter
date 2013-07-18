@@ -29,22 +29,22 @@ databases.
 
 ### Inside Rails
 
-To use `activerecord-jdbc-adapter` with JRuby on Rails:
+To use AR-JDBC with JRuby on Rails:
 
 1. Choose the adapter you wish to gem install. The following pre-packaged
 adapters are available:
 
-  - Base JDBC (`activerecord-jdbc-adapter`) — Supports all available databases via
-    JDBC, but requires you to download and manually setup the database vendor's
-    JDBC driver .jar file.
+  - Base JDBC (`activerecord-jdbc-adapter`) - supports all available databases
+    via JDBC, but requires you to download and manually setup a JDBC driver for
+    the database you're using
   - MySQL (`activerecord-jdbcmysql-adapter`)
   - PostgreSQL (`activerecord-jdbcpostgresql-adapter`)
   - SQLite3 (`activerecord-jdbcsqlite3-adapter`)
   - Derby (`activerecord-jdbcderby-adapter`)
   - HSQLDB (`activerecord-jdbchsqldb-adapter`)
   - H2 (`activerecord-jdbch2-adapter`)
-  - MSSQL (`activerecord-jdbcmssql-adapter`) — Does not support SQL Azure by default,
-    see the [README][2] for more information.
+  - MSSQL (`activerecord-jdbcmssql-adapter`) - uses the OSS jTDS driver by default
+    which might have issues with the latest SQLServer (does not support SQL Azure)
 
 2a. For Rails 3, if you're generating a new application, use the
 following command to generate your application:
@@ -82,11 +82,12 @@ development:
   database: blog_development
 ```
 
-**Legacy Configuration:** If you use one of the *activerecord-jdbcXXX-adapter* gems,
-you can still put a 'jdbc' prefix in front of the database adapter name, e.g. `adapter: jdbcmysql`.
+**Legacy Configuration:** If you use one of the *activerecord-jdbcxxx-adapter*
+gems, you can still put a 'jdbc' prefix in front of the database adapter name,
+e.g. `adapter: jdbcmysql`.
 
 For plain JDBC database configurations, you'll need to know the database driver
-class and URL (do not forget to put the driver jar on the class-path) e.g.:
+class and URL (do not forget to put the driver .jar(s) on the class-path) e.g.:
 
 ```yml
 development:
@@ -168,25 +169,35 @@ ActiveRecord::Base.establish_connection(
 )
 ```
 
-#### Using *Bundler*
+#### Using Bundler
 
-Proceed as with Rails; in your *Gemfile* include `gem 'activerecord'` along the chosen adapers this time.
-
-Your program should has:
+Proceed as with Rails; specify the ActiveRecord gem in your Bundle along with
+the chosen (JDBC) adapters this time sample *Gemfile* for MySQL:
 
 ```ruby
-require 'bundler/setup'
-require 'active_record'
+gem 'activerecord', '~> 3.2.13'
+gem 'activerecord-jdbcmysql-adapter', :platform => :jruby
 ```
 
-#### Not using *Bundler*
+When you `require 'bundler/setup'` everything will be set up for you as expected.
+
+You do not need to use the 'helper' *activerecord-jdbcxxx-adapter* gem we provide
+but than should make sure an appropriate JDBC driver is available at runtime, in
+that case simply setup your *Gemfile* as:
+
+```ruby
+gem 'activerecord', '~> 4.0.0'
+gem 'activerecord-jdbc-adapter', '~> 1.3.0', platform: :jruby
+```
+
+#### Without Bundler
 
 Install the needed gems with JRuby:
 
     jruby -S gem install activerecord activerecord-jdbc-adapter
 
 If you wish to use the adapter for a specific database, you can install it
-directly and the driver gem (dependency) will be installed as well:
+directly and the (jdbc-) driver gem (dependency) will be installed as well:
 
     jruby -S gem install activerecord-jdbcderby-adapter
 
@@ -194,7 +205,9 @@ Your program should include:
 
 ```ruby
 require 'active_record'
-require 'arjdbc'
+require 'activerecord-jdbc-adapter' if defined? JRUBY_VERSION
+# or in case you're using the pre-packaged adapter gem :
+require 'activerecord-jdbcderby-adapter' if defined? JRUBY_VERSION
 ```
 
 ## Extending AR-JDBC
