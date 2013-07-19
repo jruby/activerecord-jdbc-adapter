@@ -35,7 +35,7 @@ task 'test_appraisal_hint' do
   next if File.exists?('.disable-appraisal-hint')
   unless (ENV['BUNDLE_GEMFILE'] rescue '') =~ /gemfiles\/.*?\.gemfile/
     appraisals = []; Appraisal::File.each { |file| appraisals << file.name }
-    puts "HINT: specify AR version with `rake appraisal:{version} test_#{adapter}'" +
+    puts "HINT: specify AR version with `rake appraisal:{version} test_{adapter}'" +
          " where version=(#{appraisals.join('|')}) (`touch .disable-appraisal-hint' to disable)"
   end
 end

@@ -56,7 +56,7 @@ module ArJdbc
         when :date      then self.class.string_to_date(value)
         when :datetime  then self.class.string_to_time(value)
         when :timestamp then self.class.string_to_time(value)
-        when :time      then self.class.string_to_time(value)
+        when :time      then self.class.string_to_dummy_time(value)
         # TODO AS400 stores binary strings in EBCDIC (CCSID 65535), need to convert back to ASCII
         else
           super
@@ -69,7 +69,7 @@ module ArJdbc
         when :date      then "#{self.class.name}.string_to_date(#{var_name})"
         when :datetime  then "#{self.class.name}.string_to_time(#{var_name})"
         when :timestamp then "#{self.class.name}.string_to_time(#{var_name})"
-        when :time      then "#{self.class.name}.string_to_time(#{var_name})"
+        when :time      then "#{self.class.name}.string_to_dummy_time(#{var_name})"
         else
           super
         end
@@ -131,27 +131,33 @@ module ArJdbc
 
         # @override
         def string_to_date(value)
-          return value unless value.is_a?(String)
-          return nil unless time = date_time_parse(value)
+          return nil unless value = current_date_time_parse(value)
 
-          new_date(time.year || 2000, time.month || 1, time.day || 1)
+          super
         end
 
         # @override
         def string_to_time(value)
-          return value unless value.is_a?(String)
-          return nil unless time = date_time_parse(value)
-          
-          new_time(time.year || 2000, time.month || 1, time.day || 1, time.hour, time.min, time.sec, time.usec)
+          return nil unless value = current_date_time_parse(value)
+
+          super
+        end
+
+        # @override
+        def string_to_dummy_time(value)
+          return nil unless value = current_date_time_parse(value)
+
+          super
         end
 
         private
 
-        def date_time_parse(value)
+        def current_date_time_parse(value)
+          return value unless value.is_a?(String)
           return nil if value.empty?
           return Time.now if value.index('CURRENT') == 0
-          # AS400 returns a 2 digit year, LUW returns a 4 digit year
-          DateTime.parse(value).to_time rescue nil
+          
+          return value
         end
 
       end
