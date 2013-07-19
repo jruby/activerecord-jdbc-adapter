@@ -19,7 +19,7 @@ gem 'appraisal', :require => nil
 
 gem 'test-unit', '2.5.4', :group => :test
 gem 'test-unit-context', '>= 0.3.0', :group => :test
-gem 'mocha', '~> 0.14.0', :require => nil, :group => :test
+gem 'mocha', '~> 0.13.1', :require => nil, :group => :test
 
 gem 'simplecov', :require => nil, :group => :test
 gem 'bcrypt-ruby', '~> 3.0.0', :require => nil, :group => :test
