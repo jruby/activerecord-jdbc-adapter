@@ -314,7 +314,7 @@ module ArJdbc
       else
         super
       end
-    end
+    end if ::ActiveRecord::VERSION::MAJOR >= 3
 
     def quote_time(value)
       value = ::ActiveRecord::Base.default_timezone == :utc ? value.getutc : value.getlocal
