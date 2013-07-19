@@ -1,7 +1,11 @@
+== 1.2.9.1 (07/19/13)
+
+- warn when used with ActiveRecord 4.x
+
 == 1.2.9 (03/20/13)
 
 - [oracle] native database types ala oracle-enhanced adapter
-- [oracle] fix #insert (broken since execute+to_sql refactoring) keeping binds 
+- [oracle] fix #insert (broken since execute+to_sql refactoring) keeping binds
   respect 30 max identifier length with default sequence names
 - [db2] add as400 primary key support and re-add explain method
 - [mssql] fix table/column name quoting - do not quote if quoted already
@@ -30,15 +34,15 @@
   avoid (deprecated) Java.java_to_ruby when wrapping java.sql.Connection
 - follow Column-naming convention in MySQL adapter ArJdbc module
 - make sure update_sql is public in mysql adapter (Rails compatibility)
-- fix 1.2.6 regression - incorrectly setup to_sql method based on Rails version 
+- fix 1.2.6 regression - incorrectly setup to_sql method based on Rails version
   this caused double '?' bind substitution issues (#322)
 
 == 1.2.6 (01/31/13)
 
 - [postgres] only set --schema (to search path) for pg_dump if configured (#315)
 - [oracle] id limits + quoting; current user/db/schema + savepoint support
-- execute "log" (sql) name correctly based on AR version 
-- deprecate substitute_binds and extract_sql 
+- execute "log" (sql) name correctly based on AR version
+- deprecate substitute_binds and extract_sql
 - [derby] make sure we never modify the passed sql param
 - [sqlite3] execute on insert_sql + savepoint support
 - [mssql] [firebird] [informix] (shared) serialized attribute support
@@ -47,17 +51,17 @@
 - renamed Sqlite3RubyJdbcConnection to SQLite3RubyJdbcConnection
 - [mysql] re-define remove_index! for "better" AR-2.3 compatibility
 - [derby] avoid failures with #quote when second arg nil + keep string encoding
-- [db2] binary support & improved quoting + 
+- [db2] binary support & improved quoting +
   use lob callback for all since it was failing on BLOB/CLOB inserts otherwise
 - [db2] better (simplified) type handling for DB2
 - JRuby 1.6.8 compatibility when rescue-ing Java exception
 - [mysql] avoid encoding issues with MySQL's quoting methods (#185)
 - [postgres] ignore binary precision / limit for bytea
 - [oracle] explain (query) support
-- [oracle] since Oracle supports TIMESTAMP for quite a while we should not 
+- [oracle] since Oracle supports TIMESTAMP for quite a while we should not
   create DATE columns for a :timestamp column type
 - [oracle] avoid CREATE DDL failure when BLOB has length specified
-- [jdbc-] review autoloading backwards-incompatible change in jdbc- gems 
+- [jdbc-] review autoloading backwards-incompatible change in jdbc- gems
   auto-load (backwards-compat) can be enabled back using jdbc.driver.autoload
   system property or using the driver specific autoload option as well
 - [jdbc-] Update version handling introduce DRIVER_VERSION constant
@@ -72,7 +76,7 @@
 - [sqlite3] SQLite3 explain support (Rails style)
 - [postgres] (re-usable) explain support for PostgreSQL (based on Rails)
 - [h2] update handling of time fields on H2/HSQLDB (#252)
-- rescue (and wrap) only SQLExceptions from driver.connect this caused 
+- rescue (and wrap) only SQLExceptions from driver.connect this caused
   swallowing of runtime exceptions from JDBC drivers
 - support for setting (custom) jdbc driver properties in config
 - when a new adapter (constant) gets loaded column types should pick it up
@@ -83,7 +87,7 @@
 == 1.2.5 (01/02/13)
 
 - backwards compat with older jdbc- (driver) gems (#279)
-- no need to set the :driver for jndi config (did not work anyways) when jdbc is being 
+- no need to set the :driver for jndi config (did not work anyways) when jdbc is being
   configured + do not raise if there's a :driver_instance setup instead of the :driver
 - support extra options with recreate_database (for postgres)
 - [jdbc-derby] update Derby to 10.8.2.2
@@ -92,13 +96,13 @@
 - [sqlite3] updated sqlite3 binary handling
 - [jdbc-jtds] upgrade to jtds (driver) 1.3.0
 - JDBC driver names should be on one (re-usable) place
-- make sure that (jdbc-xxx gem) .jars are only loaded (required) when first connection 
+- make sure that (jdbc-xxx gem) .jars are only loaded (required) when first connection
   is attempted (this avoids e.g. sqlite-jdbc.jar being always among loaded features)
 - jdbc-* gems should expose the driver_jar instead of (auto) loading it
 - [oracle] adding in_clause_limit override to properly handle Oracle's 1000 entry limit
 - [jdbc-mysql] upgrade to mysql connector 5.1.22
 - [jdbc-postgres] upgade to postgresql-9.2 jar version 9.2-1002
-- [postgres] fix standard_conforming_strings's default not being set and 
+- [postgres] fix standard_conforming_strings's default not being set and
   backslash escaping to account for standard_conforming_strings
 - [jdbc-postgres] upgrade to postgres.jar 9.1.903 driver
 - [jdbc-h2] update h2.jar to 1.3.168
@@ -112,7 +116,7 @@
 - [db2] add support for primary keys to structure_dump
 - [db2] detect identity columns in db2 structure_dump
 - [mysql] added support for Rails 3.2 explain feature (#159)
-- add support for DB_STRUCTURE in db:structure:dump 
+- add support for DB_STRUCTURE in db:structure:dump
   (and db:structure:load task) (#203)
 - [postgres] rename sequence during table rename
 - [db2] iseries returns date with two digit year - leave it as string
@@ -594,7 +598,7 @@
 == 0.3
 
 - Release coincides with JRuby 1.0.0RC1 release
-- Improvements for Derby, Postgres, and Oracle, all of which are running 
+- Improvements for Derby, Postgres, and Oracle, all of which are running
   > 95% of AR tests
 
 == 0.2.4
