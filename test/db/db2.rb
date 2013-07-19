@@ -1,6 +1,6 @@
 require 'test_helper'
 
-config = { :adapter => "db2" }
+config = { }
 
 config[:host] = ENV['DB2HOST'] if ENV['DB2HOST']
 config[:port] = ENV['DB2PORT'] if ENV['DB2PORT']
@@ -30,7 +30,14 @@ require 'jdbc/db2'
 # Download IBM DB2 JCC driver from :
 # https://www-304.ibm.com/support/docview.wss?rs=4020&uid=swg21385217
 # or http://sourceforge.net/projects/jt400/ for AS400
-jdbc_db2 = (config[:url] || '') =~ /\:as400/ ? Jdbc::AS400 : Jdbc::DB2
+if (config[:url] || '') =~ /\:as400/
+  config[:adapter] = 'as400'
+  jdbc_db2 = Jdbc::AS400
+else
+  config[:adapter] = 'db2'
+  jdbc_db2 = Jdbc::DB2
+end
+
 begin
   silence_warnings { Java::JavaClass.for_name(jdbc_db2.driver_name) }
 rescue NameError
