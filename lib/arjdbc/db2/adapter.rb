@@ -297,7 +297,7 @@ module ArJdbc
       when Time
         # AS400 doesn't support date in time column
         if column_type == :time
-          "'#{value.strftime("%H:%M:%S")}'"
+          quote_time(value)
         else
           super
         end
@@ -315,6 +315,12 @@ module ArJdbc
         super
       end
     end if ::ActiveRecord::VERSION::MAJOR >= 3
+
+    def quote_time(value)
+      value = ::ActiveRecord::Base.default_timezone == :utc ? value.getutc : value.getlocal
+      # AS400 doesn't support date in time column
+      "'#{value.strftime("%H:%M:%S")}'"
+    end
 
     def quote_column_name(column_name)
       column_name.to_s
