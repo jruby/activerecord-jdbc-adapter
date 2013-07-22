@@ -648,32 +648,6 @@ module ActiveRecord
         Column
       end
 
-      # some QUOTING caching :
-
-      # @private
-      @@quoted_table_names = {}
-
-      # @private
-      def quote_table_name(name)
-        unless quoted = @@quoted_table_names[name]
-          quoted = super
-          @@quoted_table_names[name] = quoted.freeze
-        end
-        quoted
-      end
-
-      # @private
-      @@quoted_column_names = {}
-
-      # @private
-      def quote_column_name(name)
-        unless quoted = @@quoted_column_names[name]
-          quoted = super
-          @@quoted_column_names[name] = quoted.freeze
-        end
-        quoted
-      end
-
     end
 
     if ActiveRecord::VERSION::MAJOR < 3 ||
