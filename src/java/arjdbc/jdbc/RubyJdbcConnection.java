@@ -2730,11 +2730,12 @@ public class RubyJdbcConnection extends RubyObject {
         }
 
         final List<IRubyObject> columns = new ArrayList<IRubyObject>();
+        final IRubyObject config = getInstanceVariable("@config");
         while ( results.next() ) {
             final String colName = results.getString(COLUMN_NAME);
             IRubyObject column = jdbcColumn.callMethod(context, "new",
                 new IRubyObject[] {
-                    getInstanceVariable("@config"),
+                    config,
                     RubyString.newUnicodeString( runtime, caseConvertIdentifierForRails(metaData, colName) ),
                     defaultValueFromResultSet( runtime, results ),
                     RubyString.newUnicodeString( runtime, typeFromResultSet(results) ),
