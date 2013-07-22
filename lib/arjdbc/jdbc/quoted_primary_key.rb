@@ -12,9 +12,9 @@ module ArJdbc
         pk_hash_value = "Arel::SqlLiteral.new(#{pk_hash_value})"
       end
       if meth
-        base.module_eval <<-PK, __FILE__, __LINE__
+        base.module_eval <<-PK, __FILE__, __LINE__ + 1
           alias :#{meth}_pre_pk :#{meth}
-          def #{meth}(include_primary_key = true, *args) #:nodoc:
+          def #{meth}(include_primary_key = true, *args)
             aq = #{meth}_pre_pk(include_primary_key, *args)
             if connection.is_a?(ArJdbc::Oracle) || connection.is_a?(ArJdbc::Mimer)
               aq[#{pk_hash_key}] = #{pk_hash_value} if include_primary_key && aq[#{pk_hash_key}].nil?
