@@ -621,10 +621,13 @@ module ArJdbc
   end
 end
 
+require 'arjdbc/util/quoted_cache'
+
 module ActiveRecord::ConnectionAdapters
 
   class MSSQLAdapter < JdbcAdapter
     include ::ArJdbc::MSSQL
+    include ::ArJdbc::Util::QuotedCache
 
     def initialize(*args)
       ::ArJdbc::MSSQL.initialize!
@@ -632,32 +635,6 @@ module ActiveRecord::ConnectionAdapters
       super # configure_connection happens in super
 
       setup_limit_offset!
-    end
-
-    # some QUOTING caching :
-
-    # @private
-    @@quoted_table_names = {}
-
-    # @private
-    def quote_table_name(name)
-      unless quoted = @@quoted_table_names[name]
-        quoted = super
-        @@quoted_table_names[name] = quoted.freeze
-      end
-      quoted
-    end
-
-    # @private
-    @@quoted_column_names = {}
-
-    # @private
-    def quote_column_name(name)
-      unless quoted = @@quoted_column_names[name]
-        quoted = super
-        @@quoted_column_names[name] = quoted.freeze
-      end
-      quoted
     end
 
   end

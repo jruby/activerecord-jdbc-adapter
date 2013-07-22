@@ -536,12 +536,15 @@ module ArJdbc
   end
 end
 
+require 'arjdbc/util/quoted_cache'
+
 module ActiveRecord::ConnectionAdapters
 
   remove_const(:OracleAdapter) if const_defined?(:OracleAdapter)
 
   class OracleAdapter < JdbcAdapter
     include ::ArJdbc::Oracle
+    include ::ArJdbc::Util::QuotedCache
 
     # By default, the MysqlAdapter will consider all columns of type
     # <tt>tinyint(1)</tt> as boolean. If you wish to disable this :
@@ -554,32 +557,6 @@ module ActiveRecord::ConnectionAdapters
     def initialize(*args)
       ::ArJdbc::Oracle.initialize!
       super # configure_connection happens in super
-    end
-
-    # some QUOTING caching :
-
-    # @private
-    @@quoted_table_names = {}
-
-    # @private
-    def quote_table_name(name)
-      unless quoted = @@quoted_table_names[name]
-        quoted = super
-        @@quoted_table_names[name] = quoted.freeze
-      end
-      quoted
-    end
-
-    # @private
-    @@quoted_column_names = {}
-
-    # @private
-    def quote_column_name(name)
-      unless quoted = @@quoted_column_names[name]
-        quoted = super
-        @@quoted_column_names[name] = quoted.freeze
-      end
-      quoted
     end
 
   end
