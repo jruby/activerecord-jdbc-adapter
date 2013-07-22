@@ -150,32 +150,35 @@ module ArJdbc
 
     # @override
     def supports_ddl_transactions?
-      true # sqlite_version >= '2.0.0'
+      true
     end
 
     # @override
     def supports_savepoints?
-      sqlite_version >= '3.6.8'
+      # sqlite_version >= 3.6.8
+      return true if sqlite_version >= '3.7.0'
+      version = sqlite_version.split('.')
+      ( version.map!(&:to_i) <=> [ 3, 6, 8 ] ) <= 0
     end
 
     # @override
     def supports_add_column?
-      sqlite_version >= '3.1.6'
+      true
     end
 
     # @override
     def supports_count_distinct?
-      sqlite_version >= '3.2.6'
+      true
     end
 
     # @override
     def supports_autoincrement?
-      sqlite_version >= '3.1.0'
+      true
     end
 
     # @override
     def supports_index_sort_order?
-      sqlite_version >= '3.3.0'
+      true
     end
 
     # @override
