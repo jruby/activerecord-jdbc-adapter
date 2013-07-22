@@ -1,10 +1,10 @@
 ArJdbc.load_java_part :Derby
 
-require 'arjdbc/jdbc/table_copier'
+require 'arjdbc/util/table_copier'
 
 module ArJdbc
   module Derby
-    include ArJdbc::TableCopier
+    include Util::TableCopier
 
     def self.extended(adapter)
       require 'arjdbc/derby/active_record_patch'

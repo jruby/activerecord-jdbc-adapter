@@ -1,11 +1,11 @@
 ArJdbc.load_java_part :SQLite3
 
-require 'arjdbc/jdbc/table_copier'
 require 'arjdbc/sqlite3/explain_support'
+require 'arjdbc/util/table_copier'
 
 module ArJdbc
   module SQLite3
-    include ArJdbc::TableCopier
+    include Util::TableCopier
 
     # @see ActiveRecord::ConnectionAdapters::JdbcAdapter#jdbc_connection_class
     def self.jdbc_connection_class
