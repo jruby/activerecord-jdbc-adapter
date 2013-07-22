@@ -26,9 +26,18 @@ class SQLite3SimpleTest < Test::Unit::TestCase
     Entry.create! :title => 'E1', :user_id => user.id
 
     assert_equal 1, Entry.count
+    # NOTE: AR actually returns an empty [] (not an ID) !?
     id = connection.execute "INSERT INTO entries (title, content) VALUES ('Execute Insert', 'This now works with SQLite3')"
     assert_equal Entry.last.id, id
     assert_equal 2, Entry.count
+  end
+
+  def test_execute_insert_multiple_values
+    version = connection.send(:sqlite_version).split('.')
+    skip('only supported since 3.7.11') if ( version.map!(&:to_i) <=> [ 3, 7, 11 ] ) <= 0
+    count = Entry.count
+    connection.execute "INSERT INTO entries (title, content) VALUES ('E1', 'exec insert1'), ('E2', 'exec insert2')"
+    assert_equal count + 2, Entry.count
   end
 
   def test_execute_update
