@@ -46,6 +46,7 @@ import java.sql.SQLException;
 import java.sql.SQLXML;
 import java.sql.Statement;
 import java.sql.Date;
+import java.sql.SQLFeatureNotSupportedException;
 import java.sql.Savepoint;
 import java.sql.Time;
 import java.sql.Timestamp;
@@ -579,33 +580,89 @@ public class RubyJdbcConnection extends RubyObject {
         return statement.execute(query);
     }
 
-    protected IRubyObject unmarshalKeysOrUpdateCount(final ThreadContext context,
-        final Connection connection, final Statement statement) throws SQLException {
-        final Ruby runtime = context.getRuntime();
-        final IRubyObject key;
-        if ( connection.getMetaData().supportsGetGeneratedKeys() ) {
-            key = unmarshalIdResult(runtime, statement);
-        }
-        else {
-            key = runtime.getNil();
-        }
-        return key.isNil() ? runtime.newFixnum( statement.getUpdateCount() ) : key;
-    }
-
     @JRubyMethod(name = "execute_insert", required = 1)
     public IRubyObject execute_insert(final ThreadContext context, final IRubyObject sql)
         throws SQLException {
+        final String query = sql.convertToString().getUnicodeValue();
+        return executeUpdate(context, query, true);
+    }
+
+    /*
+    @JRubyMethod(name = "execute_insert", required = 2)
+    public IRubyObject execute_insert(final ThreadContext context,
+        final IRubyObject sql, final IRubyObject binds) throws SQLException {
+        final String query = sql.convertToString().getUnicodeValue();
+        if ( binds == null || binds.isNil() ) { // no prepared statements
+            return executeUpdate(context, query, true);
+        }
+        else { // we allow prepared statements with empty binds parameters
+            return executePreparedUpdate(context, query, (List) binds, true);
+        }
+    } */
+
+    /**
+     * Executes an UPDATE (DELETE) SQL statement.
+     * @param context
+     * @param sql
+     * @return affected row count
+     * @throws SQLException
+     */
+    @JRubyMethod(name = {"execute_update", "execute_delete"}, required = 1)
+    public IRubyObject execute_update(final ThreadContext context, final IRubyObject sql)
+        throws SQLException {
+        final String query = sql.convertToString().getUnicodeValue();
+        return executeUpdate(context, query, false);
+    }
+
+    /**
+     * Executes an UPDATE (DELETE) SQL (prepared - if binds provided) statement.
+     * @param context
+     * @param sql
+     * @return affected row count
+     * @throws SQLException
+     *
+     * @see #execute_update(ThreadContext, IRubyObject)
+     */
+    @JRubyMethod(name = {"execute_update", "execute_delete"}, required = 2)
+    public IRubyObject execute_update(final ThreadContext context,
+        final IRubyObject sql, final IRubyObject binds) throws SQLException {
+
+        final String query = sql.convertToString().getUnicodeValue();
+        if ( binds == null || binds.isNil() ) { // no prepared statements
+            return executeUpdate(context, query, false);
+        }
+        else { // we allow prepared statements with empty binds parameters
+            return executePreparedUpdate(context, query, (List) binds);
+        }
+    }
+
+    /**
+     * @param context
+     * @param query
+     * @param returnGeneratedKeys
+     * @return row count or generated keys
+     *
+     * @see #execute_insert(ThreadContext, IRubyObject)
+     * @see #execute_update(ThreadContext, IRubyObject)
+     */
+    protected IRubyObject executeUpdate(final ThreadContext context, final String query,
+        final boolean returnGeneratedKeys) {
         return withConnection(context, new Callable<IRubyObject>() {
             public IRubyObject call(final Connection connection) throws SQLException {
                 Statement statement = null;
-                final String insertSQL = sql.convertToString().getUnicodeValue();
                 try {
                     statement = createStatement(context, connection);
-                    statement.executeUpdate(insertSQL, Statement.RETURN_GENERATED_KEYS);
-                    return unmarshalIdResult(context.getRuntime(), statement);
+                    if ( returnGeneratedKeys ) {
+                        statement.executeUpdate(query, Statement.RETURN_GENERATED_KEYS);
+                        return unmarshalIdResult(context.getRuntime(), statement);
+                    }
+                    else {
+                        final int rowCount = statement.executeUpdate(query);
+                        return context.getRuntime().newFixnum(rowCount);
+                    }
                 }
                 catch (final SQLException e) {
-                    debugErrorSQL(context, insertSQL);
+                    debugErrorSQL(context, query);
                     throw e;
                 }
                 finally { close(statement); }
@@ -613,20 +670,26 @@ public class RubyJdbcConnection extends RubyObject {
         });
     }
 
-    @JRubyMethod(name = {"execute_update", "execute_delete"}, required = 1)
-    public IRubyObject execute_update(final ThreadContext context, final IRubyObject sql)
-        throws SQLException {
-        return withConnection(context, new Callable<RubyInteger>() {
-            public RubyInteger call(final Connection connection) throws SQLException {
-                Statement statement = null;
-                final String updateSQL = sql.convertToString().getUnicodeValue();
+    private IRubyObject executePreparedUpdate(final ThreadContext context, final String query,
+        final List<?> binds) { /* , final boolean returnGeneratedKeys */
+        final boolean returnGeneratedKeys = false;
+
+        return withConnection(context, new Callable<IRubyObject>() {
+            public IRubyObject call(final Connection connection) throws SQLException {
+                PreparedStatement statement = null;
                 try {
-                    statement = createStatement(context, connection);
-                    final int rowCount = statement.executeUpdate(updateSQL);
-                    return context.getRuntime().newFixnum(rowCount);
+                    statement = connection.prepareStatement(query);
+                    setStatementParameters(context, connection, statement, binds);
+                    if ( returnGeneratedKeys ) {
+                        throw new UnsupportedOperationException("prepared statement returning generated keys");
+                    }
+                    else {
+                        final int rowCount = statement.executeUpdate();
+                        return context.getRuntime().newFixnum(rowCount);
+                    }
                 }
                 catch (final SQLException e) {
-                    debugErrorSQL(context, updateSQL);
+                    debugErrorSQL(context, query);
                     throw e;
                 }
                 finally { close(statement); }
@@ -2669,6 +2732,19 @@ public class RubyJdbcConnection extends RubyObject {
             }
         }
         return runtime.newArray(columns);
+    }
+
+    protected IRubyObject unmarshalKeysOrUpdateCount(final ThreadContext context,
+        final Connection connection, final Statement statement) throws SQLException {
+        final Ruby runtime = context.getRuntime();
+        final IRubyObject key;
+        if ( connection.getMetaData().supportsGetGeneratedKeys() ) {
+            key = unmarshalIdResult(runtime, statement);
+        }
+        else {
+            key = runtime.getNil();
+        }
+        return key.isNil() ? runtime.newFixnum( statement.getUpdateCount() ) : key;
     }
 
     protected static IRubyObject unmarshalIdResult(

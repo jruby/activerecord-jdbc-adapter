@@ -421,8 +421,14 @@ module ActiveRecord
       # @param binds the bind parameters
       # @override available since **AR-3.1**
       def exec_insert(sql, name, binds, pk = nil, sequence_name = nil)
-        sql = suble_binds to_sql(sql, binds), binds
+        # NOTE: prepared statement support for INSERTs not implemented !
+        sql = to_sql(sql, binds)
+        #if prepared_statements?
+        #  log(sql, name || 'SQL') { @connection.execute_insert(sql, binds) }
+        #else
+        sql = suble_binds sql, binds
         log(sql, name || 'SQL') { @connection.execute_insert(sql) }
+        #end
       end
 
       # Executes a delete statement in the context of this connection.
@@ -431,8 +437,13 @@ module ActiveRecord
       # @param binds the bind parameters
       # @override available since **AR-3.1**
       def exec_delete(sql, name, binds)
-        sql = suble_binds to_sql(sql, binds), binds
-        log(sql, name || 'SQL') { @connection.execute_delete(sql) }
+        sql = to_sql(sql, binds)
+        if prepared_statements?
+          log(sql, name || 'SQL') { @connection.execute_delete(sql, binds) }
+        else
+          sql = suble_binds sql, binds
+          log(sql, name || 'SQL') { @connection.execute_delete(sql) }
+        end
       end
 
       # # Executes an update statement in the context of this connection.
@@ -441,8 +452,13 @@ module ActiveRecord
       # @param binds the bind parameters
       # @override available since **AR-3.1**
       def exec_update(sql, name, binds)
-        sql = suble_binds to_sql(sql, binds), binds
-        log(sql, name || 'SQL') { @connection.execute_update(sql) }
+        sql = to_sql(sql, binds)
+        if prepared_statements?
+          log(sql, name || 'SQL') { @connection.execute_update(sql, binds) }
+        else
+          sql = suble_binds sql, binds
+          log(sql, name || 'SQL') { @connection.execute_update(sql) }
+        end
       end
 
       # Similar to {#exec_query} except it returns "raw" results in an array
