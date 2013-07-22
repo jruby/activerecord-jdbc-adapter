@@ -754,7 +754,8 @@ module SimpleTestMethods
     assert_equal 'bar?', entry.reload.title
 
     sql = "UPDATE entries SET title = ? WHERE id = ?"
-    connection.update sql, name, [ [ nil, "?baz?!?" ], [ nil, entry.id ] ]
+    title_c, id_c = Entry.columns_hash['title'], Entry.columns_hash['id']
+    connection.update sql, name, [ [ title_c, "?baz?!?" ], [ id_c, entry.id ] ]
     assert_equal '?baz?!?', entry.reload.title
   end if Test::Unit::TestCase.ar_version('3.1') # no binds argument for <= 3.0
 

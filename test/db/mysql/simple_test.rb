@@ -64,16 +64,6 @@ class MysqlSimpleTest < Test::Unit::TestCase
     assert_equal "`#{MYSQL_CONFIG[:database]}`.`posts`", ActiveRecord::Base.connection.quote_table_name(s)
   end
 
-  def test_update_all
-    user = User.create! :login => "blogger"
-    e1 = Entry.create! :title => 'JRuby #1', :content => 'Getting started with JRuby ...', :user => user
-    e2 = Entry.create! :title => 'JRuby #2', :content => 'Setting up with JRuby on Rails', :user => user
-
-    user.entries.update_all :rating => 12.3
-    assert_equal 12.3, e1.reload.rating
-    assert_equal 12.3, e2.reload.rating
-  end
-
   def test_update_all_with_limit
     Entry.create! :title => 'test', :content => 'test 1'
     Entry.create! :title => 'test', :content => 'test 2'
