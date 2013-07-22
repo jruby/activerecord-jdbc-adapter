@@ -1442,7 +1442,7 @@ public class RubyJdbcConnection extends RubyObject {
             final ThreadContext context, final Ruby runtime,
             final List<IRubyObject> results, final ResultSet resultSet,
             final ColumnData[] columns) throws SQLException {
-        final ResultHandler resultHandler = ResultHandler.getInstance(context);
+        final ResultHandler resultHandler = ResultHandler.getInstance(runtime);
         while ( resultSet.next() ) {
             results.add( resultHandler.mapRawRow(context, runtime, columns, resultSet, this) );
         }
@@ -1462,7 +1462,7 @@ public class RubyJdbcConnection extends RubyObject {
             final DatabaseMetaData metaData, final ResultSet resultSet,
             final ColumnData[] columns) throws SQLException {
 
-        final ResultHandler resultHandler = ResultHandler.getInstance(context);
+        final ResultHandler resultHandler = ResultHandler.getInstance(runtime);
         final RubyArray resultRows = runtime.newArray();
 
         while ( resultSet.next() ) {
@@ -3145,11 +3145,11 @@ public class RubyJdbcConnection extends RubyObject {
 
         private static volatile ResultHandler instance;
 
-        public static ResultHandler getInstance(final ThreadContext context) {
+        public static ResultHandler getInstance(final Ruby runtime) {
             if ( instance == null ) {
                 synchronized(ResultHandler.class) {
                     if ( instance == null ) { // fine to initialize twice
-                        setInstance( new ResultHandler(context) );
+                        setInstance( new ResultHandler(runtime) );
                     }
                 }
             }
@@ -3160,8 +3160,7 @@ public class RubyJdbcConnection extends RubyObject {
             ResultHandler.instance = instance;
         }
 
-        protected ResultHandler(final ThreadContext context) {
-            final Ruby runtime = context.getRuntime();
+        protected ResultHandler(final Ruby runtime) {
             final RubyClass result = getResult(runtime);
             USE_RESULT = result != null && result != runtime.getNilClass();
         }
