@@ -600,7 +600,7 @@ module ArJdbc
         special_columns = special_columns.sort { |n1, n2| n2.size <=> n1.size }
         for column in special_columns
           sql.gsub!(/\s?\[?#{column}\]?\s?=\s?/, " [#{column}] LIKE ")
-          sql.gsub!(/ORDER BY \[?#{column}\]?/i, '') # NOTE: a bit stupid
+          sql.gsub!(/ORDER BY \[?#{column}([^\.\w]|$)\]?/i, '') # NOTE: a bit stupid
         end
       end
       sql

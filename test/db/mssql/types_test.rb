@@ -132,6 +132,7 @@ class MSSQLLegacyTypesTest < Test::Unit::TestCase
           [title] VARCHAR(100),
           [author] VARCHAR(60) DEFAULT 'anonymous',
           [text] TEXT,
+          [text_as_varchar] VARCHAR(100),
           [ntext] NTEXT,
           [image] IMAGE
         )
@@ -194,6 +195,10 @@ class MSSQLLegacyTypesTest < Test::Unit::TestCase
     sql = "SELECT * FROM articles WHERE text = '1' ORDER BY text"
     r_sql = Article.connection.send(:repair_special_columns, sql)
     assert_equal "SELECT * FROM articles WHERE [text] LIKE '1' ", r_sql
+
+    sql = "SELECT * FROM articles WHERE text_as_varchar = '1' ORDER BY text_as_varchar"
+    r_sql = Article.connection.send(:repair_special_columns, sql)
+    assert_equal "SELECT * FROM articles WHERE text_as_varchar = '1' ORDER BY text_as_varchar", r_sql
 
     sql = "SELECT * FROM [articles] WHERE [text]='1' AND [ntext]= '2' ORDER BY [ntext]"
     r_sql = Article.connection.send(:repair_special_columns, sql)
