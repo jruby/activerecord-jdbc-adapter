@@ -59,32 +59,6 @@ public class MySQLRubyJdbcConnection extends RubyJdbcConnection {
         super(runtime, metaClass);
     }
 
-    @Override
-    protected boolean doExecute(final Statement statement,
-        final String query) throws SQLException {
-        return statement.execute(query, Statement.RETURN_GENERATED_KEYS);
-    }
-
-    @Override
-    protected IRubyObject unmarshalKeysOrUpdateCount(final ThreadContext context,
-        final Connection connection, final Statement statement) throws SQLException {
-        final Ruby runtime = context.getRuntime();
-        final IRubyObject key = unmarshalIdResult(runtime, statement);
-        return key.isNil() ? runtime.newFixnum(statement.getUpdateCount()) : key;
-    }
-
-    @Override
-    protected IRubyObject jdbcToRuby(
-        final ThreadContext context, final Ruby runtime,
-        final int column, final int type, final ResultSet resultSet)
-        throws SQLException {
-        if ( Types.BOOLEAN == type || Types.BIT == type ) {
-            final boolean value = resultSet.getBoolean(column);
-            return resultSet.wasNull() ? runtime.getNil() : runtime.newFixnum(value ? 1 : 0);
-        }
-        return super.jdbcToRuby(context, runtime, column, type, resultSet);
-    }
-
     private static ObjectAllocator MYSQL_JDBCCONNECTION_ALLOCATOR = new ObjectAllocator() {
         public IRubyObject allocate(Ruby runtime, RubyClass klass) {
             return new MySQLRubyJdbcConnection(runtime, klass);
@@ -98,10 +72,31 @@ public class MySQLRubyJdbcConnection extends RubyJdbcConnection {
         return clazz;
     }
 
-    /*
-    public static RubyClass getMySQLJdbcConnectionClass(final Ruby runtime) {
-        return getConnectionAdapters(runtime).getClass("MySQLJdbcConnection");
-    } */
+    @Override
+    protected boolean doExecute(final Statement statement,
+        final String query) throws SQLException {
+        return statement.execute(query, Statement.RETURN_GENERATED_KEYS);
+    }
+
+    @Override
+    protected IRubyObject mapGeneratedKeysOrUpdateCount(final ThreadContext context,
+        final Connection connection, final Statement statement) throws SQLException {
+        final Ruby runtime = context.getRuntime();
+        final IRubyObject key = mapGeneratedKeys(runtime, connection, statement);
+        return key.isNil() ? runtime.newFixnum( statement.getUpdateCount() ) : key;
+    }
+
+    @Override
+    protected IRubyObject jdbcToRuby(
+        final ThreadContext context, final Ruby runtime,
+        final int column, final int type, final ResultSet resultSet)
+        throws SQLException {
+        if ( Types.BOOLEAN == type || Types.BIT == type ) {
+            final boolean value = resultSet.getBoolean(column);
+            return resultSet.wasNull() ? runtime.getNil() : runtime.newFixnum(value ? 1 : 0);
+        }
+        return super.jdbcToRuby(context, runtime, column, type, resultSet);
+    }
 
     @Override
     protected IRubyObject indexes(final ThreadContext context, final String tableName, final String name, final String schemaName) {

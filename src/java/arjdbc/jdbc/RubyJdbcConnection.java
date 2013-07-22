@@ -57,6 +57,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.joda.time.DateTime;
+import org.joda.time.DateTimeZone;
 import org.jruby.Ruby;
 import org.jruby.RubyArray;
 import org.jruby.RubyBignum;
@@ -130,6 +132,14 @@ public class RubyJdbcConnection extends RubyObject {
      */
     static RubyClass getResult(final Ruby runtime) {
         return runtime.getModule("ActiveRecord").getClass("Result");
+    }
+
+    /**
+     * @param runtime
+     * @return <code>ActiveRecord::Base</code>
+     */
+    protected static RubyClass getBase(final Ruby runtime) {
+        return runtime.getModule("ActiveRecord").getClass("Base");
     }
 
     /**
@@ -531,9 +541,9 @@ public class RubyJdbcConnection extends RubyObject {
                 try {
                     statement = createStatement(context, connection);
                     if ( doExecute(statement, query) ) {
-                        return unmarshalResults(context, connection.getMetaData(), statement, false);
+                        return mapResults(context, connection.getMetaData(), statement, false);
                     } else {
-                        return unmarshalKeysOrUpdateCount(context, connection, statement);
+                        return mapGeneratedKeysOrUpdateCount(context, connection, statement);
                     }
                 }
                 catch (final SQLException e) {
@@ -654,7 +664,8 @@ public class RubyJdbcConnection extends RubyObject {
                     statement = createStatement(context, connection);
                     if ( returnGeneratedKeys ) {
                         statement.executeUpdate(query, Statement.RETURN_GENERATED_KEYS);
-                        return unmarshalIdResult(context.getRuntime(), statement);
+                        IRubyObject keys = mapGeneratedKeys(context.getRuntime(), connection, statement);
+                        return keys == null ? context.getRuntime().getNil() : keys;
                     }
                     else {
                         final int rowCount = statement.executeUpdate(query);
@@ -681,7 +692,11 @@ public class RubyJdbcConnection extends RubyObject {
                     statement = connection.prepareStatement(query);
                     setStatementParameters(context, connection, statement, binds);
                     if ( returnGeneratedKeys ) {
-                        throw new UnsupportedOperationException("prepared statement returning generated keys");
+                        statement = connection.prepareStatement(query, Statement.RETURN_GENERATED_KEYS);
+                        setStatementParameters(context, connection, statement, binds);
+                        statement.executeUpdate();
+                        IRubyObject keys = mapGeneratedKeys(context.getRuntime(), connection, statement);
+                        return keys == null ? context.getRuntime().getNil() : keys;
                     }
                     else {
                         final int rowCount = statement.executeUpdate();
@@ -1207,7 +1222,7 @@ public class RubyJdbcConnection extends RubyObject {
                     statement = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
                     setPreparedStatementValues(context, connection, statement, args[1], args[2]);
                     statement.executeUpdate();
-                    return unmarshalIdResult(runtime, statement);
+                    return mapGeneratedKeys(runtime, connection, statement);
                 }
                 finally { close(statement); }
             }
@@ -2256,12 +2271,12 @@ public class RubyJdbcConnection extends RubyObject {
 
     protected void setTimeParameter(final ThreadContext context,
         final Connection connection, final PreparedStatement statement,
-        final int index, final IRubyObject value,
+        final int index, IRubyObject value,
         final IRubyObject column, final int type) throws SQLException {
         if ( value.isNil() ) statement.setNull(index, Types.TIME);
         else {
-            // setTimestampParameter(runtime, connection, statement, index, value);
-            if ( value instanceof RubyTime ) {
+            boolean isTime = ( value instanceof RubyTime );
+            if ( isTime ) {
                 final RubyTime timeValue = (RubyTime) value;
                 final java.util.Date dateValue = timeValue.getJavaDate();
 
@@ -2304,12 +2319,12 @@ public class RubyJdbcConnection extends RubyObject {
 
     protected void setDateParameter(final ThreadContext context,
         final Connection connection, final PreparedStatement statement,
-        final int index, final IRubyObject value,
+        final int index, IRubyObject value,
         final IRubyObject column, final int type) throws SQLException {
         if ( value.isNil() ) statement.setNull(index, Types.DATE);
         else {
-            // setTimestampParameter(runtime, connection, statement, index, type, value);
-            if ( value instanceof RubyTime ) {
+            boolean isTime = ( value instanceof RubyTime );
+            if ( isTime ) {
                 final RubyTime timeValue = (RubyTime) value;
                 final java.util.Date dateValue = timeValue.getJavaDate();
 
@@ -2734,35 +2749,91 @@ public class RubyJdbcConnection extends RubyObject {
         return runtime.newArray(columns);
     }
 
-    protected IRubyObject unmarshalKeysOrUpdateCount(final ThreadContext context,
-        final Connection connection, final Statement statement) throws SQLException {
-        final Ruby runtime = context.getRuntime();
-        final IRubyObject key;
-        if ( connection.getMetaData().supportsGetGeneratedKeys() ) {
-            key = unmarshalIdResult(runtime, statement);
-        }
-        else {
-            key = runtime.getNil();
-        }
-        return key.isNil() ? runtime.newFixnum( statement.getUpdateCount() ) : key;
+    protected IRubyObject mapGeneratedKeys(
+        final Ruby runtime, final Connection connection,
+        final Statement statement) throws SQLException {
+        return mapGeneratedKeys(runtime, connection, statement, null);
     }
 
-    protected static IRubyObject unmarshalIdResult(
-        final Ruby runtime, final Statement statement) throws SQLException {
-        final ResultSet genKeys = statement.getGeneratedKeys();
-        try {
-            if (genKeys.next() && genKeys.getMetaData().getColumnCount() > 0) {
-                return runtime.newFixnum( genKeys.getLong(1) );
+    protected IRubyObject mapGeneratedKeys(
+        final Ruby runtime, final Connection connection,
+        final Statement statement, final Boolean singleResult)
+        throws SQLException {
+        if ( supportsGeneratedKeys(connection) ) {
+            ResultSet genKeys = null;
+            try {
+                genKeys = statement.getGeneratedKeys();
+                return doMapGeneratedKeys(runtime, genKeys, singleResult);
             }
-            return runtime.getNil();
+            catch (SQLFeatureNotSupportedException e) {
+                return null; // statement.getGeneratedKeys()
+            }
+            finally { close(genKeys); }
         }
-        finally { close(genKeys); }
+        return null; // not supported
+    }
+
+    private IRubyObject doMapGeneratedKeys(final Ruby runtime,
+        final ResultSet genKeys, final Boolean singleResult)
+        throws SQLException {
+
+        IRubyObject firstKey = null; boolean next;
+        // singleResult == null - guess if only single key returned
+        if ( singleResult == null || singleResult.booleanValue() ) {
+            if ( genKeys.next() ) {
+                firstKey = runtime.newFixnum( genKeys.getLong(1) );
+                if ( singleResult != null || ! genKeys.next() ) {
+                    return firstKey;
+                }
+                next = true; // 2nd genKeys.next() returned true
+            }
+            else {
+                /* if ( singleResult != null ) */ return runtime.getNil();
+            }
+        }
+        else {
+            next = genKeys.next();
+        }
+
+        final RubyArray keys = runtime.newArray();
+        if ( firstKey != null ) keys.append(firstKey); // singleResult == null
+        while ( next ) {
+            keys.append( runtime.newFixnum( genKeys.getLong(1) ) );
+            next = genKeys.next();
+        }
+        return keys;
+    }
+
+    protected IRubyObject mapGeneratedKeysOrUpdateCount(final ThreadContext context,
+        final Connection connection, final Statement statement) throws SQLException {
+        final Ruby runtime = context.getRuntime();
+        final IRubyObject key = mapGeneratedKeys(runtime, connection, statement);
+        return key == null ? runtime.newFixnum( statement.getUpdateCount() ) : key;
+    }
+
+    @Deprecated
+    protected IRubyObject unmarshalKeysOrUpdateCount(final ThreadContext context,
+        final Connection connection, final Statement statement) throws SQLException {
+        return mapGeneratedKeysOrUpdateCount(context, connection, statement);
+    }
+
+    private Boolean supportsGeneratedKeys;
+
+    private boolean supportsGeneratedKeys(final Connection connection) throws SQLException {
+        if (supportsGeneratedKeys == null) {
+            synchronized(this) {
+                if (supportsGeneratedKeys == null) {
+                    supportsGeneratedKeys = connection.getMetaData().supportsGetGeneratedKeys();
+                }
+            }
+        }
+        return supportsGeneratedKeys.booleanValue();
     }
 
     /**
      * @deprecated no longer used - kept for binary compatibility, this method
      * is confusing since it closes the result set it receives and thus was
-     * replaced with {@link #unmarshalIdResult(Ruby, Statement)}
+     * replaced with {@link #mapGeneratedKeys(Ruby, Connection, Statement)}
      */
     @Deprecated
     public static IRubyObject unmarshal_id_result(
@@ -2776,7 +2847,7 @@ public class RubyJdbcConnection extends RubyObject {
         finally { close(genKeys); }
      }
 
-    protected IRubyObject unmarshalResults(final ThreadContext context,
+    protected IRubyObject mapResults(final ThreadContext context,
             final DatabaseMetaData metaData, final Statement statement,
             final boolean downCase) throws SQLException {
 

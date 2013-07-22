@@ -75,17 +75,17 @@ public class SQLite3RubyJdbcConnection extends RubyJdbcConnection {
     };
 
     @JRubyMethod(name = "last_insert_row_id")
-    public IRubyObject getLastInsertRowId(final ThreadContext context)
+    public IRubyObject last_insert_row_id(final ThreadContext context)
         throws SQLException {
         return withConnection(context, new Callable<IRubyObject>() {
             public IRubyObject call(final Connection connection) throws SQLException {
                 Statement statement = null;
                 try {
                     statement = connection.createStatement();
-                    return unmarshalIdResult(context.getRuntime(), statement);
+                    return mapGeneratedKeys(context.getRuntime(), connection, statement);
                 }
                 catch (final SQLException e) {
-                    debugMessage(context, "Failed to get generated keys: " + e.getMessage());
+                    debugMessage(context, "failed to get generated keys: " + e.getMessage());
                     throw e;
                 }
                 finally { close(statement); }
