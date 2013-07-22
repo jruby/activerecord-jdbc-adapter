@@ -1192,12 +1192,14 @@ module ArJdbc
   end
 end
 
+require 'arjdbc/util/quoted_cache'
+
 module ActiveRecord::ConnectionAdapters
 
   remove_const(:PostgreSQLColumn) if const_defined?(:PostgreSQLColumn)
 
   class PostgreSQLColumn < JdbcColumn
-    include ArJdbc::PostgreSQL::Column
+    include ::ArJdbc::PostgreSQL::Column
 
     def initialize(name, default, oid_type = nil, sql_type = nil, null = true)
       # NOTE: we support AR <= 3.2 : (name, default, sql_type = nil, null = true)
@@ -1217,8 +1219,9 @@ module ActiveRecord::ConnectionAdapters
   remove_const(:PostgreSQLAdapter) if const_defined?(:PostgreSQLAdapter)
 
   class PostgreSQLAdapter < JdbcAdapter
-    include ArJdbc::PostgreSQL
-    include ArJdbc::PostgreSQL::ExplainSupport
+    include ::ArJdbc::PostgreSQL
+    include ::ArJdbc::PostgreSQL::ExplainSupport
+    include ::ArJdbc::Util::QuotedCache
 
     def initialize(*args)
       # @local_tz is initialized as nil to avoid warnings when connect tries to use it
@@ -1360,32 +1363,6 @@ module ActiveRecord::ConnectionAdapters
     # @see ActiveRecord::ConnectionAdapters::JdbcAdapter#jdbc_column_class
     def jdbc_column_class
       ::ActiveRecord::ConnectionAdapters::PostgreSQLColumn
-    end
-
-    # some QUOTING caching :
-
-    # @private
-    @@quoted_table_names = {}
-
-    # @private
-    def quote_table_name(name)
-      unless quoted = @@quoted_table_names[name]
-        quoted = super
-        @@quoted_table_names[name] = quoted.freeze
-      end
-      quoted
-    end
-
-    # @private
-    @@quoted_column_names = {}
-
-    # @private
-    def quote_column_name(name)
-      unless quoted = @@quoted_column_names[name]
-        quoted = super
-        @@quoted_column_names[name] = quoted.freeze
-      end
-      quoted
     end
 
   end
