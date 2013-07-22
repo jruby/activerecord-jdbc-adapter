@@ -14,7 +14,8 @@ module ArJdbc
       DISABLED = Java::JavaLang::Boolean.getBoolean('arjdbc.quoted_cache.disabled')
 
       def self.included(base)
-        DISABLED || (require 'thread_safe' rescue nil) # AS dependency since 4.0
+        # the thread_safe gem is an ActiveSupport dependency (since 4.0) :
+        begin; require 'thread_safe'; rescue LoadError; end unless DISABLED
         if ! DISABLED && defined? ThreadSafe::Cache
           base.const_set :QUOTED_TABLE_NAMES, ThreadSafe::Cache.new
           base.const_set :QUOTED_COLUMN_NAMES, ThreadSafe::Cache.new
