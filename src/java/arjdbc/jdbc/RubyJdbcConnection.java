@@ -597,7 +597,6 @@ public class RubyJdbcConnection extends RubyObject {
         return executeUpdate(context, query, true);
     }
 
-    /*
     @JRubyMethod(name = "execute_insert", required = 2)
     public IRubyObject execute_insert(final ThreadContext context,
         final IRubyObject sql, final IRubyObject binds) throws SQLException {
@@ -608,7 +607,7 @@ public class RubyJdbcConnection extends RubyObject {
         else { // we allow prepared statements with empty binds parameters
             return executePreparedUpdate(context, query, (List) binds, true);
         }
-    } */
+    }
 
     /**
      * Executes an UPDATE (DELETE) SQL statement.
@@ -642,7 +641,7 @@ public class RubyJdbcConnection extends RubyObject {
             return executeUpdate(context, query, false);
         }
         else { // we allow prepared statements with empty binds parameters
-            return executePreparedUpdate(context, query, (List) binds);
+            return executePreparedUpdate(context, query, (List) binds, false);
         }
     }
 
@@ -682,15 +681,11 @@ public class RubyJdbcConnection extends RubyObject {
     }
 
     private IRubyObject executePreparedUpdate(final ThreadContext context, final String query,
-        final List<?> binds) { /* , final boolean returnGeneratedKeys */
-        final boolean returnGeneratedKeys = false;
-
+        final List<?> binds, final boolean returnGeneratedKeys) {
         return withConnection(context, new Callable<IRubyObject>() {
             public IRubyObject call(final Connection connection) throws SQLException {
                 PreparedStatement statement = null;
                 try {
-                    statement = connection.prepareStatement(query);
-                    setStatementParameters(context, connection, statement, binds);
                     if ( returnGeneratedKeys ) {
                         statement = connection.prepareStatement(query, Statement.RETURN_GENERATED_KEYS);
                         setStatementParameters(context, connection, statement, binds);
@@ -699,6 +694,8 @@ public class RubyJdbcConnection extends RubyObject {
                         return keys == null ? context.getRuntime().getNil() : keys;
                     }
                     else {
+                        statement = connection.prepareStatement(query);
+                        setStatementParameters(context, connection, statement, binds);
                         final int rowCount = statement.executeUpdate();
                         return context.getRuntime().newFixnum(rowCount);
                     }

@@ -423,12 +423,12 @@ module ActiveRecord
       def exec_insert(sql, name, binds, pk = nil, sequence_name = nil)
         # NOTE: prepared statement support for INSERTs not implemented !
         sql = to_sql(sql, binds)
-        #if prepared_statements?
-        #  log(sql, name || 'SQL') { @connection.execute_insert(sql, binds) }
-        #else
-        sql = suble_binds sql, binds
-        log(sql, name || 'SQL') { @connection.execute_insert(sql) }
-        #end
+        if prepared_statements?
+          log(sql, name || 'SQL', binds) { @connection.execute_insert(sql, binds) }
+        else
+          sql = suble_binds sql, binds
+          log(sql, name || 'SQL') { @connection.execute_insert(sql) }
+        end
       end
 
       # Executes a delete statement in the context of this connection.
@@ -439,7 +439,7 @@ module ActiveRecord
       def exec_delete(sql, name, binds)
         sql = to_sql(sql, binds)
         if prepared_statements?
-          log(sql, name || 'SQL') { @connection.execute_delete(sql, binds) }
+          log(sql, name || 'SQL', binds) { @connection.execute_delete(sql, binds) }
         else
           sql = suble_binds sql, binds
           log(sql, name || 'SQL') { @connection.execute_delete(sql) }
@@ -454,7 +454,7 @@ module ActiveRecord
       def exec_update(sql, name, binds)
         sql = to_sql(sql, binds)
         if prepared_statements?
-          log(sql, name || 'SQL') { @connection.execute_update(sql, binds) }
+          log(sql, name || 'SQL', binds) { @connection.execute_update(sql, binds) }
         else
           sql = suble_binds sql, binds
           log(sql, name || 'SQL') { @connection.execute_update(sql) }
