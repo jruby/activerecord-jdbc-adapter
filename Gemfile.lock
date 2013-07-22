@@ -33,6 +33,7 @@ GEM
       bundler
       rake
     arel (3.0.2)
+    atomic (1.1.10-java)
     bcrypt-ruby (3.0.1)
     bcrypt-ruby (3.0.1-java)
     bouncy-castle-java (1.5.0147)
@@ -76,6 +77,8 @@ GEM
     test-unit (2.5.4)
     test-unit-context (0.3.1)
       test-unit (>= 2.4.0)
+    thread_safe (0.1.0)
+      atomic
     tilt (1.3.6)
     tzinfo (0.3.37)
     yard (0.8.6.1)
@@ -98,5 +101,6 @@ DEPENDENCIES
   simplecov
   test-unit (= 2.5.4)
   test-unit-context (>= 0.3.0)
+  thread_safe
   yard
   yard-method-overrides!
