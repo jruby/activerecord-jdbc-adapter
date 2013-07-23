@@ -250,13 +250,6 @@ module ArJdbc
       end
     end if ::ActiveRecord::VERSION::MAJOR >= 3
 
-    # @note We have an extra binds argument at the end due AR-2.3 support.
-    # @private
-    def insert_sql(sql, name = nil, pk = nil, id_value = nil, sequence_name = nil, binds = [])
-      execute(sql, name, binds)
-      id_value || last_insert_id
-    end
-
     # @override
     def tables(name = nil, table_name = nil)
       sql = "SELECT name FROM sqlite_master WHERE type = 'table'"
@@ -331,9 +324,18 @@ module ArJdbc
       result
     end
 
-    # @override as `execute_insert` is not implemented by SQLite JDBC
-    # @private
+    # @note We have an extra binds argument at the end due AR-2.3 support.
+    # @override
+    def insert_sql(sql, name = nil, pk = nil, id_value = nil, sequence_name = nil, binds = [])
+      execute(sql, name, binds)
+      id_value || last_insert_id
+    end
+
+    # @note Does not support prepared statements for INSERT statements.
+    # @override
     def exec_insert(sql, name, binds, pk = nil, sequence_name = nil)
+      # NOTE: since SQLite JDBC does not support executeUpdate but only
+      # statement.execute we can not support prepared statements here :
       execute(sql, name, binds)
     end
 
@@ -486,14 +488,7 @@ module ArJdbc
     end
 
     def last_inserted_id(result)
-      last_insert_id
-    end
-
-    private
-
-    def _execute(sql, name = nil)
-      result = super
-      self.class.insert?(sql) ? last_insert_id : result
+      super || last_insert_id # NOTE: #last_insert_id call should not be needed
     end
 
   end

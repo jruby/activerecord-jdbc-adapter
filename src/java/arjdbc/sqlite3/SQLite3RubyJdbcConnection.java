@@ -97,6 +97,13 @@ public class SQLite3RubyJdbcConnection extends RubyJdbcConnection {
         });
     }
 
+    // NOTE: interestingly it supports getGeneratedKeys but not executeUpdate
+    // + the driver does not report it supports it via the meta-data yet does
+    @Override
+    protected boolean supportsGeneratedKeys(final Connection connection) throws SQLException {
+        return true;
+    }
+
     @Override
     protected Statement createStatement(final ThreadContext context, final Connection connection)
         throws SQLException {
