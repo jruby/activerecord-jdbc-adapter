@@ -327,8 +327,8 @@ module ArJdbc
     # @note We have an extra binds argument at the end due AR-2.3 support.
     # @override
     def insert_sql(sql, name = nil, pk = nil, id_value = nil, sequence_name = nil, binds = [])
-      execute(sql, name, binds)
-      id_value || last_insert_id
+      result = execute(sql, name, binds)
+      id_value || last_inserted_id(result)
     end
 
     # @note Does not support prepared statements for INSERT statements.
