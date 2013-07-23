@@ -629,13 +629,14 @@ module ArJdbc
       end
     end
 
-    # take id from result of insert query
+    # Take an id from the result of an INSERT query.
+    # @return [Integer, NilClass]
     def last_inserted_id(result)
-      if result.is_a? Integer
-        result
-      else
-        result.first.first[1]
-      end
+      return nil if result.nil?
+      return result if result.is_a? Integer
+      # <ActiveRecord::Result @hash_rows=nil, @columns=["id"], @rows=[[3]]>
+      # but it will work with [{ 'id' => 1 }] Hash wrapped results as well
+      result.first.first[1] # .first = { "id"=>1 } .first = [ "id", 1 ]
     end
 
     def last_insert_id(table, sequence_name = nil)
