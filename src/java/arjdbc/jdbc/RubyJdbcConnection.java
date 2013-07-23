@@ -1387,11 +1387,11 @@ public class RubyJdbcConnection extends RubyObject {
         return arg.isNil() ? null : arg.toString();
     }
 
-    protected IRubyObject getAdapter(final ThreadContext context) {
+    protected final IRubyObject getAdapter(final ThreadContext context) {
         return callMethod(context, "adapter");
     }
 
-    protected IRubyObject getJdbcColumnClass(final ThreadContext context) {
+    protected final IRubyObject getJdbcColumnClass(final ThreadContext context) {
         return getAdapter(context).callMethod(context, "jdbc_column_class");
     }
 
@@ -2771,14 +2771,17 @@ public class RubyJdbcConnection extends RubyObject {
         return null; // not supported
     }
 
-    private IRubyObject doMapGeneratedKeys(final Ruby runtime,
+    private static IRubyObject doMapGeneratedKeys(final Ruby runtime,
         final ResultSet genKeys, final Boolean singleResult)
         throws SQLException {
 
-        IRubyObject firstKey = null; boolean next;
+        IRubyObject firstKey = null;
+        // no generated keys - e.g. INSERT statement for a table that does
+        // not have and auto-generated ID column :
+        boolean next = genKeys.next() && genKeys.getMetaData().getColumnCount() > 0;
         // singleResult == null - guess if only single key returned
         if ( singleResult == null || singleResult.booleanValue() ) {
-            if ( genKeys.next() ) {
+            if ( next ) {
                 firstKey = runtime.newFixnum( genKeys.getLong(1) );
                 if ( singleResult != null || ! genKeys.next() ) {
                     return firstKey;
@@ -2788,9 +2791,6 @@ public class RubyJdbcConnection extends RubyObject {
             else {
                 /* if ( singleResult != null ) */ return runtime.getNil();
             }
-        }
-        else {
-            next = genKeys.next();
         }
 
         final RubyArray keys = runtime.newArray();
