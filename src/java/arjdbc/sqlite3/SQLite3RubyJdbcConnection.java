@@ -79,16 +79,20 @@ public class SQLite3RubyJdbcConnection extends RubyJdbcConnection {
         throws SQLException {
         return withConnection(context, new Callable<IRubyObject>() {
             public IRubyObject call(final Connection connection) throws SQLException {
-                Statement statement = null;
+                Statement statement = null; ResultSet genKeys = null;
                 try {
                     statement = connection.createStatement();
-                    return mapGeneratedKeys(context.getRuntime(), connection, statement, true);
+                    // NOTE: strangely this will work and has been used for quite some time :
+                    //return mapGeneratedKeys(context.getRuntime(), connection, statement, true);
+                    // but we should assume SQLite JDBC will prefer sane API usage eventually :
+                    genKeys = statement.executeQuery("SELECT last_insert_rowid()");
+                    return doMapGeneratedKeys(context.getRuntime(), genKeys, true);
                 }
                 catch (final SQLException e) {
                     debugMessage(context, "failed to get generated keys: " + e.getMessage());
                     throw e;
                 }
-                finally { close(statement); }
+                finally { close(genKeys); close(statement); }
             }
         });
     }

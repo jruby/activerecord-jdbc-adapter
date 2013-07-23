@@ -2794,7 +2794,7 @@ public class RubyJdbcConnection extends RubyObject {
         return null; // not supported
     }
 
-    private static IRubyObject doMapGeneratedKeys(final Ruby runtime,
+    protected static IRubyObject doMapGeneratedKeys(final Ruby runtime,
         final ResultSet genKeys, final Boolean singleResult)
         throws SQLException {
 
@@ -2840,7 +2840,7 @@ public class RubyJdbcConnection extends RubyObject {
 
     private Boolean supportsGeneratedKeys;
 
-    private boolean supportsGeneratedKeys(final Connection connection) throws SQLException {
+    protected boolean supportsGeneratedKeys(final Connection connection) throws SQLException {
         if (supportsGeneratedKeys == null) {
             synchronized(this) {
                 if (supportsGeneratedKeys == null) {
