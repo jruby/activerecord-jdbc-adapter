@@ -83,7 +83,7 @@ public class MySQLRubyJdbcConnection extends RubyJdbcConnection {
         final Connection connection, final Statement statement) throws SQLException {
         final Ruby runtime = context.getRuntime();
         final IRubyObject key = mapGeneratedKeys(runtime, connection, statement);
-        return key.isNil() ? runtime.newFixnum( statement.getUpdateCount() ) : key;
+        return ( key == null || key.isNil() ) ? runtime.newFixnum( statement.getUpdateCount() ) : key;
     }
 
     @Override

@@ -2806,7 +2806,7 @@ public class RubyJdbcConnection extends RubyObject {
         final Connection connection, final Statement statement) throws SQLException {
         final Ruby runtime = context.getRuntime();
         final IRubyObject key = mapGeneratedKeys(runtime, connection, statement);
-        return key == null ? runtime.newFixnum( statement.getUpdateCount() ) : key;
+        return ( key == null || key.isNil() ) ? runtime.newFixnum( statement.getUpdateCount() ) : key;
     }
 
     @Deprecated
