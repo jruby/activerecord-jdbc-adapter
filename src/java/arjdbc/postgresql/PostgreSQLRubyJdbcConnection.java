@@ -30,6 +30,8 @@ import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.SQLFeatureNotSupportedException;
+import java.sql.Statement;
 import java.sql.Types;
 import java.util.UUID;
 
@@ -70,6 +72,25 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
             return new PostgreSQLRubyJdbcConnection(runtime, klass);
         }
     };
+
+    // enables testing if the bug is fixed (please run our test-suite)
+    // using `rake test_postgresql JRUBY_OPTS="-J-Darjdbc.postgresql.generated.keys=true"`
+    protected static final boolean generatedKeys = Boolean.getBoolean("arjdbc.postgresql.generated.keys");
+
+    @Override
+    protected IRubyObject mapGeneratedKeys(
+        final Ruby runtime, final Connection connection,
+        final Statement statement, final Boolean singleResult)
+        throws SQLException {
+        if ( generatedKeys ) {
+            super.mapGeneratedKeys(runtime, connection, statement, singleResult);
+        }
+        // NOTE: PostgreSQL driver supports generated keys but does not work
+        // correctly for all cases e.g. for tables whene no keys are generated
+        // during an INSERT getGeneratedKeys return all inserted rows instead
+        // of an empty result set ... thus disabled until issue is resolved !
+        return null; // not supported
+    }
 
     @Override
     protected String caseConvertIdentifierForJdbc(final DatabaseMetaData metaData, final String value)

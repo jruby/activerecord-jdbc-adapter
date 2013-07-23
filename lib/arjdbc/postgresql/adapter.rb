@@ -523,16 +523,44 @@ module ArJdbc
       end
     end
 
-    # taken from rails postgresql_adapter.rb
+    # @override
     def sql_for_insert(sql, pk, id_value, sequence_name, binds)
       unless pk
+        # Extract the table from the insert sql. Yuck.
         table_ref = extract_table_ref_from_insert_sql(sql)
         pk = primary_key(table_ref) if table_ref
       end
 
-      sql = "#{sql} RETURNING #{quote_column_name(pk)}" if pk
+      if pk && use_insert_returning?
+        sql = "#{sql} RETURNING #{quote_column_name(pk)}"
+      end
 
       [ sql, binds ]
+    end
+
+    # @override due RETURNING clause
+    def exec_insert(sql, name, binds, pk = nil, sequence_name = nil)
+      # NOTE: 3.2 does not pass the PK on #insert (passed only into #sql_for_insert) :
+      #   sql, binds = sql_for_insert(to_sql(arel, binds), pk, id_value, sequence_name, binds)
+      # 3.2 :
+      #  value = exec_insert(sql, name, binds)
+      # 4.x :
+      #  value = exec_insert(sql, name, binds, pk, sequence_name)
+      if use_insert_returning? && ( pk || (sql.is_a?(String) && sql =~ /RETURNING "?\S+"?$/) )
+        exec_query(sql, name, binds) # due RETURNING clause returns a result set
+      else
+        result = super
+        if pk
+          unless sequence_name
+            table_ref = extract_table_ref_from_insert_sql(sql)
+            sequence_name = default_sequence_name(table_ref, pk)
+            return result unless sequence_name
+          end
+          last_insert_id_result(sequence_name)
+        else
+          result
+        end
+      end
     end
 
     # Returns an array of schema names.
@@ -1134,11 +1162,6 @@ module ArJdbc
       end
       result.compact!
       result
-    end
-
-    # @override due RETURNING clause - can't do an `execute_insert`
-    def exec_insert(sql, name, binds, pk = nil, sequence_name = nil)
-      execute(sql, name, binds)
     end
 
     private
