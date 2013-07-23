@@ -2215,31 +2215,49 @@ public class RubyJdbcConnection extends RubyObject {
 
     protected void setTimestampParameter(final ThreadContext context,
         final Connection connection, final PreparedStatement statement,
-        final int index, final IRubyObject value,
+        final int index, IRubyObject value,
         final IRubyObject column, final int type) throws SQLException {
         if ( value.isNil() ) statement.setNull(index, Types.TIMESTAMP);
         else {
-            if ( value instanceof RubyTime ) {
-                final RubyTime timeValue = (RubyTime) value;
-                final java.util.Date dateValue = timeValue.getJavaDate();
+            final RubyTime timeValue = getTimeInDefaultTimeZone(context, value);
+            if ( timeValue != null ) {
+                final DateTime dateTime = timeValue.getDateTime();
+                final DateTimeZone dateTimeZone = dateTime.getZone();
 
-                long millis = dateValue.getTime();
-                Timestamp timestamp = new Timestamp(millis);
-                Calendar calendar = Calendar.getInstance();
-                calendar.setTime(dateValue);
+                final Timestamp timestamp = new Timestamp( dateTime.getMillis() );
                 if ( type != Types.DATE ) {
                     int micros = (int) timeValue.microseconds();
                     timestamp.setNanos( micros * 1000 ); // time.nsec ~ time.usec * 1000
                 }
+                final Calendar calendar = Calendar.getInstance(dateTimeZone.toTimeZone());
                 statement.setTimestamp( index, timestamp, calendar );
             }
             else {
                 final String stringValue = value.asString().toString();
                 // yyyy-[m]m-[d]d hh:mm:ss[.f...]
                 final Timestamp timestamp = Timestamp.valueOf( stringValue );
-                statement.setTimestamp( index, timestamp, Calendar.getInstance() );
+                statement.setTimestamp( index, timestamp );
             }
         }
+    }
+
+    private static RubyTime getTimeInDefaultTimeZone(final ThreadContext context, IRubyObject value) {
+        boolean isTime = ( value instanceof RubyTime );
+        if ( ! isTime && value.respondsTo("to_time") ) {
+            value = value.callMethod(context, "to_time");
+            isTime = true; // we expect to_time to returnsa Time instance
+        }
+        final String method = isDefaultTimeZoneUTC(context) ? "getutc" : "getlocal";
+        if ( value.respondsTo(method) ) {
+            return (RubyTime) value.callMethod(context, method);
+        }
+        return isTime ? (RubyTime) value : null;
+    }
+
+    private static boolean isDefaultTimeZoneUTC(final ThreadContext context) {
+        final RubyClass base = getBase(context.getRuntime());
+        final String tz = base.callMethod(context, "default_timezone").toString(); // :utc
+        return "utc".equalsIgnoreCase(tz);
     }
 
     protected void setTimeParameter(final ThreadContext context,
@@ -2272,20 +2290,25 @@ public class RubyJdbcConnection extends RubyObject {
         final IRubyObject column, final int type) throws SQLException {
         if ( value.isNil() ) statement.setNull(index, Types.TIME);
         else {
-            boolean isTime = ( value instanceof RubyTime );
-            if ( isTime ) {
-                final RubyTime timeValue = (RubyTime) value;
-                final java.util.Date dateValue = timeValue.getJavaDate();
+            //boolean isTime = ( value instanceof RubyTime );
+            //if ( ! isTime && value.respondsTo("to_time") ) {
+            //    value = value.callMethod(context, "to_time");
+            //    isTime = true; // expect to_time returns a Time instance
+            //}
+            //if ( isTime ) {
+            final RubyTime timeValue = getTimeInDefaultTimeZone(context, value);
+            if ( timeValue != null ) {
+                final DateTime dateTime = timeValue.getDateTime();
+                final DateTimeZone dateTimeZone = dateTime.getZone();
 
-                Time time = new Time(dateValue.getTime());
-                Calendar calendar = Calendar.getInstance();
-                calendar.setTime(dateValue);
+                final Time time = new Time( dateTime.getMillis() );
+                final Calendar calendar = Calendar.getInstance(dateTimeZone.toTimeZone());
                 statement.setTime( index, time, calendar );
             }
             else {
                 final String stringValue = value.asString().toString();
                 final Time time = Time.valueOf( stringValue );
-                statement.setTime( index, time, Calendar.getInstance() );
+                statement.setTime( index, time );
             }
         }
     }
@@ -2320,20 +2343,20 @@ public class RubyJdbcConnection extends RubyObject {
         final IRubyObject column, final int type) throws SQLException {
         if ( value.isNil() ) statement.setNull(index, Types.DATE);
         else {
-            boolean isTime = ( value instanceof RubyTime );
-            if ( isTime ) {
-                final RubyTime timeValue = (RubyTime) value;
-                final java.util.Date dateValue = timeValue.getJavaDate();
 
-                Date date = new Date(dateValue.getTime());
-                Calendar calendar = Calendar.getInstance();
-                calendar.setTime(dateValue);
+            final RubyTime timeValue = getTimeInDefaultTimeZone(context, value);
+            if ( timeValue != null ) {
+                final DateTime dateTime = timeValue.getDateTime();
+                final DateTimeZone dateTimeZone = dateTime.getZone();
+
+                final Date date = new Date( dateTime.getMillis() );
+                final Calendar calendar = Calendar.getInstance(dateTimeZone.toTimeZone());
                 statement.setDate( index, date, calendar );
             }
             else {
                 final String stringValue = value.asString().toString();
                 final Date date = Date.valueOf( stringValue );
-                statement.setDate( index, date, Calendar.getInstance() );
+                statement.setDate( index, date );
             }
         }
     }
