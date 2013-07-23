@@ -82,7 +82,7 @@ public class SQLite3RubyJdbcConnection extends RubyJdbcConnection {
                 Statement statement = null;
                 try {
                     statement = connection.createStatement();
-                    return mapGeneratedKeys(context.getRuntime(), connection, statement);
+                    return mapGeneratedKeys(context.getRuntime(), connection, statement, true);
                 }
                 catch (final SQLException e) {
                     debugMessage(context, "failed to get generated keys: " + e.getMessage());
