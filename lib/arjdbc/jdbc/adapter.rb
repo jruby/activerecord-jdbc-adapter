@@ -636,9 +636,24 @@ module ActiveRecord
         end
       end
 
+      # Take an id from the result of an INSERT query.
+      # @return [Integer, NilClass]
       def last_inserted_id(result)
-        result
+        if result.is_a?(Hash) || result.is_a?(ActiveRecord::Result)
+          result.first.first[1] # .first = { "id"=>1 } .first = [ "id", 1 ]
+        else
+          result
+        end
       end
+
+      # @private
+      def last_inserted_id(result)
+        if result.is_a?(Hash)
+          result.first.first[1] # .first = { "id"=>1 } .first = [ "id", 1 ]
+        else
+          result
+        end
+      end unless defined? ActiveRecord::Result
 
       # Helper to easily override #table_definition (on AR 3.x/4.0) as :
       # ```
