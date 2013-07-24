@@ -77,6 +77,11 @@ public class DerbyRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection {
     }
 
     @Override
+    protected boolean supportsGeneratedKeys(final Connection connection) throws SQLException {
+        return true; // driver reports false from supportsGetGeneratedKeys()
+    }
+
+    @Override
     protected IRubyObject matchTables(final Ruby runtime,
             final Connection connection,
             final String catalog, String schemaPattern,
