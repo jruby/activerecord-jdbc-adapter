@@ -209,8 +209,9 @@ module SimpleTestMethods
   end
 
   def test_insert_returns_id
-    value = ActiveRecord::Base.connection.insert("INSERT INTO entries (title, content, rating) VALUES('insert_title', 'some content', 1)")
-    assert !value.nil?
+    connection = ActiveRecord::Base.connection
+    value = connection.insert("INSERT INTO entries (title, content, rating) VALUES('insert_title', 'some content', 1)")
+    assert_not_nil value
     entry = Entry.find_by_title('insert_title')
     assert_equal entry.id, value
 
@@ -220,8 +221,7 @@ module SimpleTestMethods
       cpn = CustomPkName.new
       cpn.name = cpn_name
       cpn.save
-      value = cpn.custom_id
-      assert !value.nil?
+      assert_not_nil value = cpn.custom_id
       cpn = CustomPkName.find_by_name(cpn_name)
       assert_equal cpn.custom_id, value
     end
@@ -298,10 +298,8 @@ module SimpleTestMethods
       ActiveRecord::Base.default_timezone = Time.zone = :utc
       now = Time.now
       my_time = Time.local now.year, now.month, now.day, now.hour, now.min, now.sec
-      m = DbType.create! :sample_datetime => my_time
-      m.reload
-
-      assert_equal my_time, m.sample_datetime
+      e = DbType.create! :sample_datetime => my_time
+      assert_equal my_time, e.reload.sample_datetime
     rescue
       Time.zone = current_zone
       ActiveRecord::Base.default_timezone = default_zone
@@ -840,12 +838,15 @@ module SimpleTestMethods
     updated_column = Thing.columns.detect { |column| column.name.to_s == 'updated_at' }
     now = Time.zone.now
 
+    # connection.execute "INSERT INTO things VALUES ( '00', '2013-07-23 01:44:58.045000', '2013-07-23 01:44:58.045000' )"
+    connection.exec_insert "INSERT INTO things VALUES ( '01', '2013-07-23 02:44:58.045000', '2013-07-23 02:44:58.045000' )", nil, []
+
     binds = [ [ name_column, 'ferko' ], [ created_column, now ], [ updated_column, now ] ]
-    connection.exec_insert "INSERT INTO things VALUES (?,?,?)", 'INSERT_1', binds
+    connection.exec_insert "INSERT INTO things VALUES ( ?, ?, ? )", 'INSERT Thing(ferko)', binds
     assert Thing.find_by_name 'ferko'
     # NOTE: #exec_insert accepts 5 arguments on AR-4.0 :
     binds = [ [ name_column, 'jozko' ], [ created_column, now ], [ updated_column, now ] ]
-    connection.exec_insert "INSERT INTO things VALUES (?,?,?)", 'INSERT_2', binds, nil, nil
+    connection.exec_insert "INSERT INTO things (name, created_at, updated_at) VALUES (?,?,?)", 'INSERT Thing(jozko)', binds, nil, nil
     assert Thing.find_by_name 'jozko'
   end
 
@@ -1234,9 +1235,9 @@ module ActiveRecord3TestMethods
     end
 
     def test_model_with_no_id
-      assert_nothing_raised do
-        Thing.create! :name => "a thing"
-      end
+      #assert_nothing_raised do
+      Thing.create! :name => "a thing"
+      #end
       assert_equal 1, Thing.count
     end
 
