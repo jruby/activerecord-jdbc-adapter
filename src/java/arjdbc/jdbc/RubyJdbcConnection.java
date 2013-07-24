@@ -2225,9 +2225,12 @@ public class RubyJdbcConnection extends RubyObject {
                 final DateTimeZone dateTimeZone = dateTime.getZone();
 
                 final Timestamp timestamp = new Timestamp( dateTime.getMillis() );
-                if ( type != Types.DATE ) {
-                    int micros = (int) timeValue.microseconds();
-                    timestamp.setNanos( micros * 1000 ); // time.nsec ~ time.usec * 1000
+                if ( type != Types.DATE ) { // 1942-11-30T01:02:03.123_456
+                    // getMillis already set nanos to: 123_000_000
+                    final int usec = (int) timeValue.getUSec(); // 456 on JRuby
+                    if ( usec >= 0 ) {
+                        timestamp.setNanos( timestamp.getNanos() + usec * 1000 );
+                    }
                 }
                 final Calendar calendar = Calendar.getInstance(dateTimeZone.toTimeZone());
                 statement.setTimestamp( index, timestamp, calendar );
