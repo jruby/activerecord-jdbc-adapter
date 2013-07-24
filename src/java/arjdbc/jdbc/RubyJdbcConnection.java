@@ -56,9 +56,9 @@ import java.util.Calendar;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.TimeZone;
 
 import org.joda.time.DateTime;
-import org.joda.time.DateTimeZone;
 import org.jruby.Ruby;
 import org.jruby.RubyArray;
 import org.jruby.RubyBignum;
@@ -66,6 +66,7 @@ import org.jruby.RubyBoolean;
 import org.jruby.RubyClass;
 import org.jruby.RubyException;
 import org.jruby.RubyFixnum;
+import org.jruby.RubyFloat;
 import org.jruby.RubyHash;
 import org.jruby.RubyIO;
 import org.jruby.RubyInteger;
@@ -2219,10 +2220,10 @@ public class RubyJdbcConnection extends RubyObject {
         final IRubyObject column, final int type) throws SQLException {
         if ( value.isNil() ) statement.setNull(index, Types.TIMESTAMP);
         else {
-            final RubyTime timeValue = getTimeInDefaultTimeZone(context, value);
-            if ( timeValue != null ) {
+            value = getTimeInDefaultTimeZone(context, value);
+            if ( value instanceof RubyTime ) {
+                final RubyTime timeValue = (RubyTime) value;
                 final DateTime dateTime = timeValue.getDateTime();
-                final DateTimeZone dateTimeZone = dateTime.getZone();
 
                 final Timestamp timestamp = new Timestamp( dateTime.getMillis() );
                 if ( type != Types.DATE ) { // 1942-11-30T01:02:03.123_456
@@ -2232,35 +2233,61 @@ public class RubyJdbcConnection extends RubyObject {
                         timestamp.setNanos( timestamp.getNanos() + usec * 1000 );
                     }
                 }
-                final Calendar calendar = Calendar.getInstance(dateTimeZone.toTimeZone());
-                statement.setTimestamp( index, timestamp, calendar );
+                statement.setTimestamp( index, timestamp, getTimeZoneCalendar(dateTime.getZone().getID()) );
             }
-            else {
-                final String stringValue = value.asString().toString();
-                // yyyy-[m]m-[d]d hh:mm:ss[.f...]
-                final Timestamp timestamp = Timestamp.valueOf( stringValue );
-                statement.setTimestamp( index, timestamp );
+            else if ( value instanceof RubyString ) { // yyyy-[m]m-[d]d hh:mm:ss[.f...]
+                final Timestamp timestamp = Timestamp.valueOf( value.toString() );
+                statement.setTimestamp( index, timestamp ); // assume local time-zone
+            }
+            else { // DateTime ( ActiveSupport::TimeWithZone.to_time )
+                final RubyFloat floatValue = value.convertToFloat(); // to_f
+                final Timestamp timestamp = new Timestamp(floatValue.getLongValue() * 1000); // millis
+
+                // for usec we shall not use: ((long) floatValue * 1000000) % 1000
+                // if ( usec >= 0 ) timestamp.setNanos( timestamp.getNanos() + usec * 1000 );
+                // due doubles inaccurate precision it's better to parse to_s :
+                final ByteList strValue = ((RubyString) floatValue.to_s()).getByteList();
+                final int dot1 = strValue.lastIndexOf('.') + 1, dot4 = dot1 + 3;
+                final int len = strValue.getRealSize() - strValue.getBegin();
+                if ( dot1 > 0 && dot4 < len ) { // skip .123 but handle .1234
+                    final int end = Math.min( len - dot4, 3 );
+                    CharSequence usecSeq = strValue.subSequence(dot4, end);
+                    final int usec = Integer.parseInt( usecSeq.toString() );
+                    if ( usec < 10 ) { // 0.1234 ~> 4
+                        timestamp.setNanos( timestamp.getNanos() + usec * 100 );
+                    }
+                    else if ( usec < 100 ) { // 0.12345 ~> 45
+                        timestamp.setNanos( timestamp.getNanos() + usec * 10 );
+                    }
+                    else { // if ( usec < 1000 ) { // 0.123456 ~> 456
+                        timestamp.setNanos( timestamp.getNanos() + usec );
+                    }
+                }
+
+                statement.setTimestamp( index, timestamp, getTimeZoneCalendar("GMT") );
             }
         }
     }
 
-    private static RubyTime getTimeInDefaultTimeZone(final ThreadContext context, IRubyObject value) {
-        boolean isTime = ( value instanceof RubyTime );
-        if ( ! isTime && value.respondsTo("to_time") ) {
+    private static IRubyObject getTimeInDefaultTimeZone(final ThreadContext context, IRubyObject value) {
+        if ( value.respondsTo("to_time") ) {
             value = value.callMethod(context, "to_time");
-            isTime = true; // we expect to_time to returnsa Time instance
         }
         final String method = isDefaultTimeZoneUTC(context) ? "getutc" : "getlocal";
         if ( value.respondsTo(method) ) {
-            return (RubyTime) value.callMethod(context, method);
+            value = value.callMethod(context, method);
         }
-        return isTime ? (RubyTime) value : null;
+        return value;
     }
 
     private static boolean isDefaultTimeZoneUTC(final ThreadContext context) {
         final RubyClass base = getBase(context.getRuntime());
         final String tz = base.callMethod(context, "default_timezone").toString(); // :utc
         return "utc".equalsIgnoreCase(tz);
+    }
+
+    private static Calendar getTimeZoneCalendar(final String ID) {
+        return Calendar.getInstance( TimeZone.getTimeZone(ID) );
     }
 
     protected void setTimeParameter(final ThreadContext context,
@@ -2293,25 +2320,23 @@ public class RubyJdbcConnection extends RubyObject {
         final IRubyObject column, final int type) throws SQLException {
         if ( value.isNil() ) statement.setNull(index, Types.TIME);
         else {
-            //boolean isTime = ( value instanceof RubyTime );
-            //if ( ! isTime && value.respondsTo("to_time") ) {
-            //    value = value.callMethod(context, "to_time");
-            //    isTime = true; // expect to_time returns a Time instance
-            //}
-            //if ( isTime ) {
-            final RubyTime timeValue = getTimeInDefaultTimeZone(context, value);
-            if ( timeValue != null ) {
+            value = getTimeInDefaultTimeZone(context, value);
+            if ( value instanceof RubyTime ) {
+                final RubyTime timeValue = (RubyTime) value;
                 final DateTime dateTime = timeValue.getDateTime();
-                final DateTimeZone dateTimeZone = dateTime.getZone();
 
                 final Time time = new Time( dateTime.getMillis() );
-                final Calendar calendar = Calendar.getInstance(dateTimeZone.toTimeZone());
-                statement.setTime( index, time, calendar );
+                statement.setTime( index, time, getTimeZoneCalendar(dateTime.getZone().getID()) );
             }
-            else {
-                final String stringValue = value.asString().toString();
-                final Time time = Time.valueOf( stringValue );
-                statement.setTime( index, time );
+            else if ( value instanceof RubyString ) {
+                final Time time = Time.valueOf( value.toString() );
+                statement.setTime( index, time ); // assume local time-zone
+            }
+            else { // DateTime ( ActiveSupport::TimeWithZone.to_time )
+                final RubyFloat floatValue = value.convertToFloat(); // to_f
+                final Time time = new Time(floatValue.getLongValue() * 1000); // millis
+                // java.sql.Time is expected to be only up to second precision
+                statement.setTime( index, time, getTimeZoneCalendar("GMT") );
             }
         }
     }
@@ -2346,20 +2371,22 @@ public class RubyJdbcConnection extends RubyObject {
         final IRubyObject column, final int type) throws SQLException {
         if ( value.isNil() ) statement.setNull(index, Types.DATE);
         else {
-
-            final RubyTime timeValue = getTimeInDefaultTimeZone(context, value);
-            if ( timeValue != null ) {
+            value = getTimeInDefaultTimeZone(context, value);
+            if ( value instanceof RubyTime ) {
+                final RubyTime timeValue = (RubyTime) value;
                 final DateTime dateTime = timeValue.getDateTime();
-                final DateTimeZone dateTimeZone = dateTime.getZone();
 
                 final Date date = new Date( dateTime.getMillis() );
-                final Calendar calendar = Calendar.getInstance(dateTimeZone.toTimeZone());
-                statement.setDate( index, date, calendar );
+                statement.setDate( index, date, getTimeZoneCalendar(dateTime.getZone().getID()) );
             }
-            else {
-                final String stringValue = value.asString().toString();
-                final Date date = Date.valueOf( stringValue );
-                statement.setDate( index, date );
+            else if ( value instanceof RubyString ) {
+                final Date date = Date.valueOf( value.toString() );
+                statement.setDate( index, date ); // assume local time-zone
+            }
+            else { // DateTime ( ActiveSupport::TimeWithZone.to_time )
+                final RubyFloat floatValue = value.convertToFloat(); // to_f
+                final Date date = new Date(floatValue.getLongValue() * 1000); // millis
+                statement.setDate( index, date, getTimeZoneCalendar("GMT") );
             }
         }
     }
