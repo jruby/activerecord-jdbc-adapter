@@ -1878,10 +1878,12 @@ public class RubyJdbcConnection extends RubyObject {
             case Types.TINYINT:
             case Types.SMALLINT:
             case Types.INTEGER:
-                if ( value instanceof RubyBignum ) {
+                if ( value instanceof RubyBignum ) { // e.g. HSQLDB / H2 report JDBC type 4
                     setBigIntegerParameter(context, connection, statement, index, (RubyBignum) value, column, type);
                 }
-                setIntegerParameter(context, connection, statement, index, value, column, type);
+                else {
+                    setIntegerParameter(context, connection, statement, index, value, column, type);
+                }
                 break;
             case Types.BIGINT:
                 setBigIntegerParameter(context, connection, statement, index, value, column, type);
@@ -3434,25 +3436,34 @@ public class RubyJdbcConnection extends RubyObject {
 
     public static void debugMessage(final ThreadContext context, final String msg) {
         if ( debug || ( context != null && context.runtime.isDebug() ) ) {
-            final PrintStream out =
-                context != null ? context.runtime.getOut() : System.out;
+            final PrintStream out = context != null ? context.runtime.getOut() : System.out;
             out.println(msg);
         }
     }
 
     protected static void debugErrorSQL(final ThreadContext context, final String sql) {
         if ( debug || ( context != null && context.runtime.isDebug() ) ) {
-            final PrintStream out =
-                context != null ? context.runtime.getOut() : System.out;
-            out.println("Error SQL: " + sql);
+            final PrintStream out = context != null ? context.runtime.getOut() : System.out;
+            out.println("Error SQL: '" + sql + "'");
         }
+    }
+
+    // disables full (Java) traces to be printed while DEBUG is on
+    private static final Boolean debugStackTrace;
+    static {
+        String debugTrace = System.getProperty("arjdbc.debug.trace");
+        debugStackTrace = debugTrace == null ? null : Boolean.parseBoolean(debugTrace);
     }
 
     public static void debugStackTrace(final ThreadContext context, final Throwable e) {
         if ( debug || ( context != null && context.runtime.isDebug() ) ) {
-            final PrintStream out =
-                context != null ? context.runtime.getOut() : System.out;
-            e.printStackTrace(out);
+            final PrintStream out = context != null ? context.runtime.getOut() : System.out;
+            if ( debugStackTrace == null || debugStackTrace.booleanValue() ) {
+                e.printStackTrace(out);
+            }
+            else {
+                out.println(e);
+            }
         }
     }
 
