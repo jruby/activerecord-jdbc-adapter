@@ -2371,23 +2371,18 @@ public class RubyJdbcConnection extends RubyObject {
         final IRubyObject column, final int type) throws SQLException {
         if ( value.isNil() ) statement.setNull(index, Types.DATE);
         else {
-            value = getTimeInDefaultTimeZone(context, value);
-            if ( value instanceof RubyTime ) {
-                final RubyTime timeValue = (RubyTime) value;
-                final DateTime dateTime = timeValue.getDateTime();
-
-                final Date date = new Date( dateTime.getMillis() );
-                statement.setDate( index, date, getTimeZoneCalendar(dateTime.getZone().getID()) );
+            //if ( value instanceof RubyString ) {
+            //    final Date date = Date.valueOf( value.toString() );
+            //    statement.setDate( index, date ); // assume local time-zone
+            //    return;
+            //}
+            if ( ! "Date".equals( value.getMetaClass().getName() ) ) {
+                if ( value.respondsTo("to_date") ) {
+                    value = value.callMethod(context, "to_date");
+                }
             }
-            else if ( value instanceof RubyString ) {
-                final Date date = Date.valueOf( value.toString() );
-                statement.setDate( index, date ); // assume local time-zone
-            }
-            else { // DateTime ( ActiveSupport::TimeWithZone.to_time )
-                final RubyFloat floatValue = value.convertToFloat(); // to_f
-                final Date date = new Date(floatValue.getLongValue() * 1000); // millis
-                statement.setDate( index, date, getTimeZoneCalendar("GMT") );
-            }
+            final Date date = Date.valueOf( value.asString().toString() ); // to_s
+            statement.setDate( index, date /*, getTimeZoneCalendar("GMT") */ );
         }
     }
 
