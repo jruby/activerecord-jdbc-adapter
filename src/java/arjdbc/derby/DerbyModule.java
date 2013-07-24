@@ -331,29 +331,6 @@ public class DerbyModule {
         return value.isTrue() ? runtime.newString(BYTES_1) : runtime.newString(BYTES_0);
     }
 
-    @JRubyMethod(name = "_execute", required = 1, optional = 1)
-    public static IRubyObject _execute(final ThreadContext context, final IRubyObject self, final IRubyObject[] args)
-        throws SQLException {
-        final IRubyObject sql = args[0];
-
-        String sqlStr = sql.toString().trim();
-        if ( sqlStr.charAt(0) == '(' ) sqlStr = sqlStr.substring(1).trim();
-        sqlStr = sqlStr.substring( 0, Math.min(6, sqlStr.length()) ).toLowerCase();
-
-        final RubyJdbcConnection connection = (RubyJdbcConnection)
-            self.getInstanceVariables().getInstanceVariable("@connection");
-
-        if (sqlStr.startsWith("insert")) {
-            return connection.execute_insert(context, sql);
-        }
-        else if (sqlStr.startsWith("select") || sqlStr.startsWith("show") || sqlStr.startsWith("values")) {
-            return connection.execute_query_raw(context, sql, Block.NULL_BLOCK);
-        }
-        else {
-            return connection.execute_update(context, sql);
-        }
-    }
-
     private static RubyModule getMultibyteChars(final Ruby runtime) {
         return (RubyModule) ((RubyModule) runtime.getModule("ActiveSupport").
                 getConstant("Multibyte")).getConstantAt("Chars");

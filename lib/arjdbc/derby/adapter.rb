@@ -232,22 +232,6 @@ module ArJdbc
       execute(add_column_sql)
     end
 
-    # @override
-    def execute(sql, name = nil, binds = [])
-      sql = to_sql(sql, binds)
-      if sql =~ /\A\s*(UPDATE|INSERT)/i
-        if ( i = sql =~ /\sWHERE\s/im )
-          where_part = sql[i..-1]; sql = sql.dup
-          where_part.gsub!(/!=\s*NULL/, 'IS NOT NULL')
-          where_part.gsub!(/=\sNULL/i, 'IS NULL')
-          sql[i..-1] = where_part
-        end
-      else
-        sql = sql.gsub(/=\sNULL/i, 'IS NULL')
-      end
-      super(sql, name, binds)
-    end
-
     # SELECT DISTINCT clause for a given set of columns and a given ORDER BY clause.
     #
     # Derby requires the ORDER BY columns in the select list for distinct queries, and
@@ -390,6 +374,39 @@ module ArJdbc
       # ROWS/ROW and FIRST/NEXT mean the same
       sql << " FETCH FIRST #{options[:limit]} ROWS ONLY" if options[:limit]
     end if ::ActiveRecord::VERSION::MAJOR < 3
+
+    # @override
+    def execute(sql, name = nil, binds = [])
+      sql = to_sql(sql, binds)
+      sql = correct_null_clause(sql)
+      super(sql, name, binds)
+    end
+
+    def correct_null_clause(sql)
+      if sql =~ /\A\s*(UPDATE|INSERT)/i
+        if ( i = sql =~ /\sWHERE\s/im )
+          where_part = sql[i..-1]; sql = sql.dup
+          where_part.gsub!(/!=\s*NULL/i, 'IS NOT NULL')
+          where_part.gsub!(/=\sNULL/i, 'IS NULL')
+          sql[i..-1] = where_part
+        end
+      else
+        sql.gsub(/=\sNULL/i, 'IS NULL')
+      end
+    end
+    private :correct_null_clause
+
+    def _execute(sql, name = nil)
+      if self.class.insert?(sql)
+        @connection.execute_insert(sql)
+        last_insert_id(sql).to_i
+      elsif self.class.select?(sql)
+        @connection.execute_query_raw(sql)
+      else
+        @connection.execute_update(sql)
+      end
+    end
+    private :_execute
 
   end
 end

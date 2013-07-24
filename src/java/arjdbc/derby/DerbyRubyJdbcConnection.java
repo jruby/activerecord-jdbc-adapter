@@ -28,16 +28,20 @@ import java.sql.SQLException;
 
 import org.jruby.Ruby;
 import org.jruby.RubyClass;
+import org.jruby.RubyString;
+import org.jruby.anno.JRubyMethod;
 import org.jruby.runtime.ObjectAllocator;
+import org.jruby.runtime.ThreadContext;
 import org.jruby.runtime.builtin.IRubyObject;
+import org.jruby.util.ByteList;
 
 /**
  * ArJdbc::DerbyJdbcConnection
- * 
+ *
  * @author kares
  */
 public class DerbyRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection {
-    
+
     protected DerbyRubyJdbcConnection(Ruby runtime, RubyClass metaClass) {
         super(runtime, metaClass);
     }
@@ -54,17 +58,34 @@ public class DerbyRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection {
             return new DerbyRubyJdbcConnection(runtime, klass);
         }
     };
-    
+
+    @JRubyMethod(name = "select?", required = 1, meta = true, frame = false)
+    public static IRubyObject select_p(final ThreadContext context,
+        final IRubyObject self, final IRubyObject sql) {
+        if ( isValues(sql.convertToString()) ) {
+            return context.getRuntime().newBoolean( true );
+        }
+        return arjdbc.jdbc.RubyJdbcConnection.select_p(context, self, sql);
+    }
+
+    // Derby supports 'stand-alone' VALUES expressions
+    private static final byte[] VALUES = new byte[]{ 'v','a','l','u', 'e', 's' };
+
+    private static boolean isValues(final RubyString sql) {
+        final ByteList sqlBytes = sql.getByteList();
+        return startsWithIgnoreCase(sqlBytes, VALUES);
+    }
+
     @Override
-    protected IRubyObject matchTables(final Ruby runtime, 
+    protected IRubyObject matchTables(final Ruby runtime,
             final Connection connection,
             final String catalog, String schemaPattern,
             final String tablePattern, final String[] types,
             final boolean checkExistsOnly) throws SQLException {
-        if (schemaPattern != null && schemaPattern.equals("")) { 
+        if (schemaPattern != null && schemaPattern.equals("")) {
             schemaPattern = null; // Derby doesn't like empty-string schema name
         }
         return super.matchTables(runtime, connection, catalog, schemaPattern, tablePattern, types, checkExistsOnly);
     }
-    
+
 }
