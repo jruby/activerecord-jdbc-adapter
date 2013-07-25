@@ -378,35 +378,46 @@ module ArJdbc
     # @override
     def execute(sql, name = nil, binds = [])
       sql = to_sql(sql, binds)
-      sql = correct_null_clause(sql)
+      insert = self.class.insert?(sql)
+      update = ! insert && ! self.class.select?(sql)
+      sql = correct_is_null(sql, insert || update)
       super(sql, name, binds)
     end
 
-    def correct_null_clause(sql)
-      if sql =~ /\A\s*(UPDATE|INSERT)/i
+    private
+
+    def correct_is_null(sql, insert_or_update = false)
+      if insert_or_update
         if ( i = sql =~ /\sWHERE\s/im )
           where_part = sql[i..-1]; sql = sql.dup
           where_part.gsub!(/!=\s*NULL/i, 'IS NOT NULL')
           where_part.gsub!(/=\sNULL/i, 'IS NULL')
           sql[i..-1] = where_part
         end
+        sql
       else
         sql.gsub(/=\sNULL/i, 'IS NULL')
       end
     end
-    private :correct_null_clause
+
+    # NOTE: only setup query analysis on AR <= 3.0 since on 3.1 {#exec_query},
+    # {#exec_insert} will be used for AR generated queries/inserts etc.
+    # Also there's prepared statement support and {#execute} is meant to stay
+    # as a way of running non-prepared SQL statements (returning raw results).
+    if ActiveRecord::VERSION::MAJOR < 3 ||
+      ( ActiveRecord::VERSION::MAJOR == 3 && ActiveRecord::VERSION::MINOR < 1 )
 
     def _execute(sql, name = nil)
       if self.class.insert?(sql)
         @connection.execute_insert(sql)
-        last_insert_id(sql).to_i
       elsif self.class.select?(sql)
         @connection.execute_query_raw(sql)
       else
         @connection.execute_update(sql)
       end
     end
-    private :_execute
+
+    end
 
   end
 end
