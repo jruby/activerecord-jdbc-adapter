@@ -588,7 +588,7 @@ public class RubyJdbcConnection extends RubyObject {
      */
     @Deprecated
     protected boolean genericExecute(final Statement statement, final String query) throws SQLException {
-        return statement.execute(query);
+        return statement.execute(query); // Statement.RETURN_GENERATED_KEYS
     }
 
     @JRubyMethod(name = "execute_insert", required = 1)
@@ -2811,6 +2811,9 @@ public class RubyJdbcConnection extends RubyObject {
             ResultSet genKeys = null;
             try {
                 genKeys = statement.getGeneratedKeys();
+                // drivers might report a non-result statement without keys
+                // e.g. on derby with SQL: 'SET ISOLATION = SERIALIZABLE'
+                if ( genKeys == null ) return runtime.getNil();
                 return doMapGeneratedKeys(runtime, genKeys, singleResult);
             }
             catch (SQLFeatureNotSupportedException e) {
