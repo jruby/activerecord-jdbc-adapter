@@ -484,7 +484,7 @@ module ArJdbc
     end
 
     def last_insert_id
-      @connection.last_insert_row_id
+      @connection.last_insert_rowid
     end
 
     def last_inserted_id(result)

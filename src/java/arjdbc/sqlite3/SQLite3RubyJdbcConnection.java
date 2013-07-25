@@ -74,8 +74,8 @@ public class SQLite3RubyJdbcConnection extends RubyJdbcConnection {
         }
     };
 
-    @JRubyMethod(name = "last_insert_row_id")
-    public IRubyObject last_insert_row_id(final ThreadContext context)
+    @JRubyMethod(name = {"last_insert_rowid", "last_insert_id"}, alias = "last_insert_row_id")
+    public IRubyObject last_insert_rowid(final ThreadContext context)
         throws SQLException {
         return withConnection(context, new Callable<IRubyObject>() {
             public IRubyObject call(final Connection connection) throws SQLException {
