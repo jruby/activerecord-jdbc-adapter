@@ -2506,7 +2506,8 @@ public class RubyJdbcConnection extends RubyObject {
         else {
             if ( value == null ) statement.setNull(index, Types.BLOB);
             else {
-                statement.setBlob(index, (InputStream) value);
+                //statement.setBlob(index, (InputStream) value);
+                statement.setBinaryStream(index, (InputStream) value);
             }
         }
     }
@@ -2518,7 +2519,8 @@ public class RubyJdbcConnection extends RubyObject {
         if ( value.isNil() ) statement.setNull(index, Types.BLOB);
         else {
             if ( value instanceof RubyIO ) { // IO/File
-                statement.setBlob(index, ((RubyIO) value).getInStream());
+                //statement.setBlob(index, ((RubyIO) value).getInStream());
+                statement.setBinaryStream(index, ((RubyIO) value).getInStream());
             }
             else { // should be a RubyString
                 final ByteList blob = value.asString().getByteList();
