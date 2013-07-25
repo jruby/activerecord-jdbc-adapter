@@ -25,12 +25,14 @@
  ***** END LICENSE BLOCK *****/
 package arjdbc.postgresql;
 
+import java.io.ByteArrayInputStream;
+import java.io.InputStream;
 import java.sql.Array;
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.SQLFeatureNotSupportedException;
 import java.sql.Statement;
 import java.sql.Types;
 import java.util.UUID;
@@ -39,12 +41,14 @@ import org.jruby.Ruby;
 import org.jruby.RubyArray;
 import org.jruby.RubyBoolean;
 import org.jruby.RubyClass;
+import org.jruby.RubyIO;
 import org.jruby.RubyString;
 import org.jruby.anno.JRubyMethod;
 import org.jruby.javasupport.JavaUtil;
 import org.jruby.runtime.ObjectAllocator;
 import org.jruby.runtime.ThreadContext;
 import org.jruby.runtime.builtin.IRubyObject;
+import org.jruby.util.ByteList;
 
 import org.postgresql.util.PGInterval;
 import org.postgresql.util.PGobject;
@@ -102,6 +106,46 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
             // for PostgreSQL we do not care about storesLowerCaseIdentifiers()
         }
         return value;
+    }
+
+    @Override // due statement.setNull(index, Types.BLOB) not working :
+    // org.postgresql.util.PSQLException: ERROR: column "sample_binary" is of type bytea but expression is of type oid
+    protected void setBlobParameter(final ThreadContext context,
+        final Connection connection, final PreparedStatement statement,
+        final int index, final Object value,
+        final IRubyObject column, final int type) throws SQLException {
+        if ( value instanceof IRubyObject ) {
+            setBlobParameter(context, connection, statement, index, (IRubyObject) value, column, type);
+        }
+        else {
+            if ( value == null ) statement.setNull(index, Types.BINARY);
+            else {
+                statement.setBinaryStream(index, (InputStream) value);
+            }
+        }
+    }
+
+    @Override // due statement.setNull(index, Types.BLOB) not working :
+    // org.postgresql.util.PSQLException: ERROR: column "sample_binary" is of type bytea but expression is of type oid
+    protected void setBlobParameter(final ThreadContext context,
+        final Connection connection, final PreparedStatement statement,
+        final int index, final IRubyObject value,
+        final IRubyObject column, final int type) throws SQLException {
+        if ( value.isNil() ) {
+            statement.setNull(index, Types.BINARY);
+        }
+        else {
+            if ( value instanceof RubyIO ) { // IO/File
+                statement.setBinaryStream(index, ((RubyIO) value).getInStream());
+            }
+            else { // should be a RubyString
+                final ByteList blob = value.asString().getByteList();
+                statement.setBinaryStream(index,
+                    new ByteArrayInputStream(blob.unsafeBytes(), blob.getBegin(), blob.getRealSize()),
+                    blob.getRealSize() // length
+                );
+            }
+        }
     }
 
     @Override
