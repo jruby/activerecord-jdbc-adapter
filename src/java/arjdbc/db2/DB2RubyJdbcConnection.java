@@ -29,29 +29,21 @@ import arjdbc.jdbc.RubyJdbcConnection;
 
 import org.jruby.Ruby;
 import org.jruby.RubyClass;
+import org.jruby.RubyString;
+import org.jruby.anno.JRubyMethod;
 import org.jruby.runtime.ObjectAllocator;
+import org.jruby.runtime.ThreadContext;
 import org.jruby.runtime.builtin.IRubyObject;
+import org.jruby.util.ByteList;
 
 /**
  *
  * @author mikestone
  */
 public class DB2RubyJdbcConnection extends RubyJdbcConnection {
-    
-    private static final String[] TABLE_TYPES = new String[]{ "TABLE", "VIEW", "SYNONYM", "MATERIALIZED QUERY TABLE", "ALIAS" };
 
     protected DB2RubyJdbcConnection(Ruby runtime, RubyClass metaClass) {
         super(runtime, metaClass);
-    }
-
-    @Override
-    protected String[] getTableTypes() {
-        return TABLE_TYPES;
-    }
-
-    @Override
-    protected boolean databaseSupportsSchemas() {
-        return true;
     }
 
     public static RubyClass createDB2JdbcConnectionClass(Ruby runtime, RubyClass jdbcConnection) {
@@ -67,4 +59,36 @@ public class DB2RubyJdbcConnection extends RubyJdbcConnection {
             return new DB2RubyJdbcConnection(runtime, klass);
         }
     };
+
+    @JRubyMethod(name = "select?", required = 1, meta = true, frame = false)
+    public static IRubyObject select_p(final ThreadContext context,
+        final IRubyObject self, final IRubyObject sql) {
+        if ( isValues(sql.convertToString()) ) {
+            return context.getRuntime().newBoolean( true );
+        }
+        return arjdbc.jdbc.RubyJdbcConnection.select_p(context, self, sql);
+    }
+
+    // DB2 supports 'stand-alone' VALUES expressions
+    private static final byte[] VALUES = new byte[]{ 'v','a','l','u', 'e', 's' };
+
+    private static boolean isValues(final RubyString sql) {
+        final ByteList sqlBytes = sql.getByteList();
+        return startsWithIgnoreCase(sqlBytes, VALUES);
+    }
+
+    private static final String[] TABLE_TYPES = new String[] {
+        "TABLE", "VIEW", "SYNONYM", "MATERIALIZED QUERY TABLE", "ALIAS"
+    };
+
+    @Override
+    protected String[] getTableTypes() {
+        return TABLE_TYPES;
+    }
+
+    @Override
+    protected boolean databaseSupportsSchemas() {
+        return true;
+    }
+
 }
