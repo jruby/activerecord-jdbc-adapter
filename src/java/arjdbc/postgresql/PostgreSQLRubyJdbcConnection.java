@@ -34,6 +34,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.sql.Timestamp;
 import java.sql.Types;
 import java.util.UUID;
 
@@ -41,6 +42,7 @@ import org.jruby.Ruby;
 import org.jruby.RubyArray;
 import org.jruby.RubyBoolean;
 import org.jruby.RubyClass;
+import org.jruby.RubyFloat;
 import org.jruby.RubyIO;
 import org.jruby.RubyString;
 import org.jruby.anno.JRubyMethod;
@@ -50,6 +52,7 @@ import org.jruby.runtime.ThreadContext;
 import org.jruby.runtime.builtin.IRubyObject;
 import org.jruby.util.ByteList;
 
+import org.postgresql.PGStatement;
 import org.postgresql.util.PGInterval;
 import org.postgresql.util.PGobject;
 
@@ -146,6 +149,30 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
                 );
             }
         }
+    }
+
+    @Override // to handle infinity timestamp values
+    protected void setTimestampParameter(final ThreadContext context,
+        final Connection connection, final PreparedStatement statement,
+        final int index, IRubyObject value,
+        final IRubyObject column, final int type) throws SQLException {
+
+        if ( value instanceof RubyFloat ) {
+            final double _value = ( (RubyFloat) value ).getValue();
+            if ( Double.isInfinite(_value) ) {
+                final Timestamp timestamp;
+                if ( _value < 0 ) {
+                    timestamp = new Timestamp(PGStatement.DATE_NEGATIVE_INFINITY);
+                }
+                else {
+                    timestamp = new Timestamp(PGStatement.DATE_POSITIVE_INFINITY);
+                }
+                statement.setTimestamp( index, timestamp );
+                return;
+            }
+        }
+
+        super.setTimestampParameter(context, connection, statement, index, value, column, type);
     }
 
     @Override
