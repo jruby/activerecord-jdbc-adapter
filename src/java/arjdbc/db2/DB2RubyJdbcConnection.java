@@ -25,7 +25,14 @@
  ***** END LICENSE BLOCK *****/
 package arjdbc.db2;
 
+import arjdbc.jdbc.Callable;
 import arjdbc.jdbc.RubyJdbcConnection;
+
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
 
 import org.jruby.Ruby;
 import org.jruby.RubyClass;
@@ -89,6 +96,46 @@ public class DB2RubyJdbcConnection extends RubyJdbcConnection {
     @Override
     protected boolean databaseSupportsSchemas() {
         return true;
+    }
+
+    @JRubyMethod(name = {"identity_val_local", "last_insert_id"})
+    public IRubyObject identity_val_local(final ThreadContext context)
+        throws SQLException {
+        return withConnection(context, new Callable<IRubyObject>() {
+            public IRubyObject call(final Connection connection) throws SQLException {
+                PreparedStatement statement = null; ResultSet genKeys = null;
+                try {
+                    statement = connection.prepareStatement("VALUES IDENTITY_VAL_LOCAL()");
+                    genKeys = statement.executeQuery();
+                    return doMapGeneratedKeys(context.getRuntime(), genKeys, true);
+                }
+                catch (final SQLException e) {
+                    debugMessage(context, "failed to get generated keys: " + e.getMessage());
+                    throw e;
+                }
+                finally { close(genKeys); close(statement); }
+            }
+        });
+    }
+
+    @JRubyMethod(name = {"identity_val_local", "last_insert_id"}, required = 1)
+    public IRubyObject identity_val_local(final ThreadContext context, final IRubyObject table)
+        throws SQLException {
+        return withConnection(context, new Callable<IRubyObject>() {
+            public IRubyObject call(final Connection connection) throws SQLException {
+                Statement statement = null; ResultSet genKeys = null;
+                try {
+                    statement = connection.createStatement();
+                    genKeys = statement.executeQuery("SELECT IDENTITY_VAL_LOCAL() FROM " + table);
+                    return doMapGeneratedKeys(context.getRuntime(), genKeys, true);
+                }
+                catch (final SQLException e) {
+                    debugMessage(context, "failed to get generated keys: " + e.getMessage());
+                    throw e;
+                }
+                finally { close(genKeys); close(statement); }
+            }
+        });
     }
 
 }

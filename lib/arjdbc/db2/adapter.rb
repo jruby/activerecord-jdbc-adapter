@@ -172,13 +172,7 @@ module ArJdbc
       select_value("SELECT NEXT VALUE FOR #{sequence_name} FROM sysibm.sysdummy1")
     end
 
-    def last_insert_id(sql)
-      table_name = sql.split(/\s/)[2]
-      result = select(ActiveRecord::Base.send(:sanitize_sql, %[SELECT IDENTITY_VAL_LOCAL() AS last_insert_id FROM #{table_name}], nil))
-      result.last['last_insert_id']
-    end
-
-    def create_table(name, options = {}) #:nodoc:
+    def create_table(name, options = {})
       if zos?
         zos_create_table(name, options)
       else
@@ -186,7 +180,7 @@ module ArJdbc
       end
     end
 
-    def zos_create_table(name, options = {}) # :nodoc:
+    def zos_create_table(name, options = {})
       # NOTE: this won't work for 4.0 - need to pass different initialize args :
       table_definition = TableDefinition.new(self)
       unless options[:id] == false
@@ -555,11 +549,25 @@ module ArJdbc
 
     # alias_method :execute_and_auto_confirm, :execute
 
+    # Returns the value of an identity column of the last *INSERT* statement
+    # made over this connection.
+    # @note Check the *IDENTITY_VAL_LOCAL* function for documentation.
+    # @param table_name (optional)
+    # @return [Fixnum]
+    def last_insert_id(table_name = nil)
+      if table_name # backwards-compatibility
+        @connection.identity_val_local(table_name)
+      else
+        @connection.identity_val_local
+      end
+    end
+
     def _execute(sql, name = nil)
       if self.class.select?(sql)
         @connection.execute_query_raw(sql)
       elsif self.class.insert?(sql)
-        (@connection.execute_insert(sql) || last_insert_id(sql)).to_i
+        table_name = sql.split(/\s/)[2]
+        @connection.execute_insert(sql) || last_insert_id(table_name)
       else
         @connection.execute_update(sql)
       end
