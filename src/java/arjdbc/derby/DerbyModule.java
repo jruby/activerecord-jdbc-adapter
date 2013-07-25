@@ -28,16 +28,11 @@ import static arjdbc.util.QuotingUtils.BYTES_0;
 import static arjdbc.util.QuotingUtils.BYTES_1;
 import static arjdbc.util.QuotingUtils.BYTES_SINGLE_Q_x2;
 
-import arjdbc.jdbc.RubyJdbcConnection;
-
-import java.sql.SQLException;
-
 import org.jruby.Ruby;
 import org.jruby.RubyBoolean;
 import org.jruby.RubyModule;
 import org.jruby.RubyString;
 import org.jruby.anno.JRubyMethod;
-import org.jruby.runtime.Block;
 import org.jruby.runtime.ThreadContext;
 import org.jruby.runtime.builtin.IRubyObject;
 import org.jruby.util.ByteList;

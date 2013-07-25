@@ -152,6 +152,18 @@ class DerbySimpleTest < Test::Unit::TestCase
     assert_kind_of Arel::Visitors::Derby, visitor
   end if ar_version('3.0')
 
+  test 'identity_val_local' do
+    e = Entry.create! :title => '1'
+    assert_equal e.id, connection.last_insert_id
+
+    e = Entry.create! :title => '2'
+    e = Entry.create! :title => '3'
+    assert_equal e.id, connection.last_insert_id
+
+    e = DbType.create! :sample_float => 0.1
+    assert_equal e.id, connection.last_insert_id
+  end
+
 end
 
 class DerbyMultibyteTest < Test::Unit::TestCase

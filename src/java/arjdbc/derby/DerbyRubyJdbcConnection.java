@@ -23,7 +23,12 @@
  */
 package arjdbc.derby;
 
+import arjdbc.jdbc.Callable;
+import arjdbc.jdbc.RubyJdbcConnection;
+
 import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 
 import org.jruby.Ruby;
@@ -40,7 +45,7 @@ import org.jruby.util.ByteList;
  *
  * @author kares
  */
-public class DerbyRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection {
+public class DerbyRubyJdbcConnection extends RubyJdbcConnection {
 
     protected DerbyRubyJdbcConnection(Ruby runtime, RubyClass metaClass) {
         super(runtime, metaClass);
@@ -74,6 +79,26 @@ public class DerbyRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection {
     private static boolean isValues(final RubyString sql) {
         final ByteList sqlBytes = sql.getByteList();
         return startsWithIgnoreCase(sqlBytes, VALUES);
+    }
+
+    @JRubyMethod(name = {"identity_val_local", "last_insert_id"})
+    public IRubyObject identity_val_local(final ThreadContext context)
+        throws SQLException {
+        return withConnection(context, new Callable<IRubyObject>() {
+            public IRubyObject call(final Connection connection) throws SQLException {
+                PreparedStatement statement = null; ResultSet genKeys = null;
+                try {
+                    statement = connection.prepareStatement("values IDENTITY_VAL_LOCAL()");
+                    genKeys = statement.executeQuery();
+                    return doMapGeneratedKeys(context.getRuntime(), genKeys, true);
+                }
+                catch (final SQLException e) {
+                    debugMessage(context, "failed to get generated keys: " + e.getMessage());
+                    throw e;
+                }
+                finally { close(genKeys); close(statement); }
+            }
+        });
     }
 
     @Override

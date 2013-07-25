@@ -384,6 +384,14 @@ module ArJdbc
       super(sql, name, binds)
     end
 
+    # Returns the value of an identity column of the last *INSERT* statement
+    # made over this connection.
+    # @note Check the *IDENTITY_VAL_LOCAL* function for documentation.
+    # @return [Fixnum]
+    def last_insert_id
+      @connection.identity_val_local
+    end
+
     private
 
     def correct_is_null(sql, insert_or_update = false)
