@@ -118,8 +118,9 @@ public class DB2RubyJdbcConnection extends RubyJdbcConnection {
         });
     }
 
-    @JRubyMethod(name = {"identity_val_local", "last_insert_id"}, required = 1)
-    public IRubyObject identity_val_local(final ThreadContext context, final IRubyObject table)
+    // NOTE: this is non-sense or DB2 - but it has been originally implemented this way !
+    //@JRubyMethod(name = {"identity_val_local", "last_insert_id"}, required = 1)
+    private IRubyObject identity_val_local(final ThreadContext context, final IRubyObject table)
         throws SQLException {
         return withConnection(context, new Callable<IRubyObject>() {
             public IRubyObject call(final Connection connection) throws SQLException {

@@ -552,22 +552,16 @@ module ArJdbc
     # Returns the value of an identity column of the last *INSERT* statement
     # made over this connection.
     # @note Check the *IDENTITY_VAL_LOCAL* function for documentation.
-    # @param table_name (optional)
     # @return [Fixnum]
-    def last_insert_id(table_name = nil)
-      if table_name # backwards-compatibility
-        @connection.identity_val_local(table_name)
-      else
-        @connection.identity_val_local
-      end
+    def last_insert_id
+      @connection.identity_val_local
     end
 
     def _execute(sql, name = nil)
       if self.class.select?(sql)
         @connection.execute_query_raw(sql)
       elsif self.class.insert?(sql)
-        table_name = sql.split(/\s/)[2]
-        @connection.execute_insert(sql) || last_insert_id(table_name)
+        @connection.execute_insert(sql) || last_insert_id
       else
         @connection.execute_update(sql)
       end

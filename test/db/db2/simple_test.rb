@@ -101,4 +101,18 @@ class DB2SimpleTest < Test::Unit::TestCase
     assert_kind_of Arel::Visitors::DB2, visitor
   end if ar_version('3.0')
 
+  test 'identity_val_local()' do
+    e = Entry.create! :title => '1'
+    assert_equal e.id, connection.last_insert_id
+
+    e = Entry.create! :title => '2'
+    e = Entry.create! :title => '3'
+    assert_equal e.id, connection.last_insert_id
+    #assert_equal e.id, connection.last_insert_id('entries')
+
+    db = DbType.create! :sample_float => 0.1
+    assert_equal db.id, connection.last_insert_id
+    #assert_equal e.id, connection.last_insert_id('entries')
+  end
+
 end
