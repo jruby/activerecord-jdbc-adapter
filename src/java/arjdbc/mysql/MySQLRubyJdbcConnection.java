@@ -27,7 +27,6 @@ package arjdbc.mysql;
 
 import arjdbc.jdbc.RubyJdbcConnection;
 import arjdbc.jdbc.Callable;
-import static arjdbc.jdbc.RubyJdbcConnection.debugMessage;
 
 import java.lang.reflect.Field;
 import java.sql.Connection;
@@ -36,12 +35,16 @@ import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.sql.ResultSet;
 import java.sql.Statement;
+import java.sql.Time;
+import java.sql.Timestamp;
 import java.sql.Types;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.TimeZone;
 
 import org.jruby.Ruby;
 import org.jruby.RubyClass;
+import org.jruby.RubyFloat;
 import org.jruby.RubyModule;
 import org.jruby.RubyString;
 import org.jruby.exceptions.RaiseException;
@@ -73,8 +76,8 @@ public class MySQLRubyJdbcConnection extends RubyJdbcConnection {
     }
 
     @Override
-    protected boolean doExecute(final Statement statement,
-        final String query) throws SQLException {
+    protected boolean doExecute(final Statement statement, final String query)
+        throws SQLException {
         return statement.execute(query, Statement.RETURN_GENERATED_KEYS);
     }
 
@@ -96,6 +99,56 @@ public class MySQLRubyJdbcConnection extends RubyJdbcConnection {
             return resultSet.wasNull() ? runtime.getNil() : runtime.newFixnum(value ? 1 : 0);
         }
         return super.jdbcToRuby(context, runtime, column, type, resultSet);
+    }
+
+    @Override // can not use statement.setTimestamp( int, Timestamp, Calendar )
+    protected void setTimestampParameter(final ThreadContext context,
+        final Connection connection, final PreparedStatement statement,
+        final int index, IRubyObject value,
+        final IRubyObject column, final int type) throws SQLException {
+        if ( value.isNil() ) statement.setNull(index, Types.TIMESTAMP);
+        else {
+            value = getTimeInDefaultTimeZone(context, value);
+            if ( value instanceof RubyString ) { // yyyy-[m]m-[d]d hh:mm:ss[.f...]
+                final Timestamp timestamp = Timestamp.valueOf( value.toString() );
+                statement.setTimestamp( index, timestamp ); // assume local time-zone
+            }
+            else { // Time or DateTime ( ActiveSupport::TimeWithZone.to_time )
+                final double time = adjustTimeFromDefaultZone(value);
+                final RubyFloat timeValue = context.getRuntime().newFloat( time );
+                statement.setTimestamp( index, convertToTimestamp(timeValue) );
+            }
+        }
+    }
+
+    @Override // can not use statement.setTime( int, Time, Calendar )
+    protected void setTimeParameter(final ThreadContext context,
+        final Connection connection, final PreparedStatement statement,
+        final int index, IRubyObject value,
+        final IRubyObject column, final int type) throws SQLException {
+        if ( value.isNil() ) statement.setNull(index, Types.TIME);
+        else {
+            value = getTimeInDefaultTimeZone(context, value);
+            if ( value instanceof RubyString ) {
+                final Time time = Time.valueOf( value.toString() );
+                statement.setTime( index, time ); // assume local time-zone
+            }
+            else { // Time or DateTime ( ActiveSupport::TimeWithZone.to_time )
+                final double timeValue = adjustTimeFromDefaultZone(value);
+                final Time time = new Time(( (long) timeValue ) * 1000); // millis
+                // java.sql.Time is expected to be only up to second precision
+                statement.setTime( index, time );
+            }
+        }
+    }
+
+    private static double adjustTimeFromDefaultZone(final IRubyObject value) {
+        // Time's to_f is : ( millis * 1000 + usec ) / 1_000_000.0
+        final double time = value.convertToFloat().getDoubleValue(); // to_f
+        // NOTE: MySQL assumes default TZ thus need to adjust to match :
+        final int offset = TimeZone.getDefault().getOffset((long) time * 1000);
+        // Time's to_f is : ( millis * 1000 + usec ) / 1_000_000.0
+        return time - ( offset / 1000.0 );
     }
 
     @Override

@@ -2242,36 +2242,42 @@ public class RubyJdbcConnection extends RubyObject {
                 statement.setTimestamp( index, timestamp ); // assume local time-zone
             }
             else { // DateTime ( ActiveSupport::TimeWithZone.to_time )
-                final RubyFloat floatValue = value.convertToFloat(); // to_f
-                final Timestamp timestamp = new Timestamp(floatValue.getLongValue() * 1000); // millis
-
-                // for usec we shall not use: ((long) floatValue * 1000000) % 1000
-                // if ( usec >= 0 ) timestamp.setNanos( timestamp.getNanos() + usec * 1000 );
-                // due doubles inaccurate precision it's better to parse to_s :
-                final ByteList strValue = ((RubyString) floatValue.to_s()).getByteList();
-                final int dot1 = strValue.lastIndexOf('.') + 1, dot4 = dot1 + 3;
-                final int len = strValue.getRealSize() - strValue.getBegin();
-                if ( dot1 > 0 && dot4 < len ) { // skip .123 but handle .1234
-                    final int end = Math.min( len - dot4, 3 );
-                    CharSequence usecSeq = strValue.subSequence(dot4, end);
-                    final int usec = Integer.parseInt( usecSeq.toString() );
-                    if ( usec < 10 ) { // 0.1234 ~> 4
-                        timestamp.setNanos( timestamp.getNanos() + usec * 100 );
-                    }
-                    else if ( usec < 100 ) { // 0.12345 ~> 45
-                        timestamp.setNanos( timestamp.getNanos() + usec * 10 );
-                    }
-                    else { // if ( usec < 1000 ) { // 0.123456 ~> 456
-                        timestamp.setNanos( timestamp.getNanos() + usec );
-                    }
-                }
+                final RubyFloat timeValue = value.convertToFloat(); // to_f
+                final Timestamp timestamp = convertToTimestamp(timeValue);
 
                 statement.setTimestamp( index, timestamp, getTimeZoneCalendar("GMT") );
             }
         }
     }
 
-    private static IRubyObject getTimeInDefaultTimeZone(final ThreadContext context, IRubyObject value) {
+    protected static Timestamp convertToTimestamp(final RubyFloat value) {
+        final Timestamp timestamp = new Timestamp(value.getLongValue() * 1000); // millis
+
+        // for usec we shall not use: ((long) floatValue * 1000000) % 1000
+        // if ( usec >= 0 ) timestamp.setNanos( timestamp.getNanos() + usec * 1000 );
+        // due doubles inaccurate precision it's better to parse to_s :
+        final ByteList strValue = ((RubyString) value.to_s()).getByteList();
+        final int dot1 = strValue.lastIndexOf('.') + 1, dot4 = dot1 + 3;
+        final int len = strValue.getRealSize() - strValue.getBegin();
+        if ( dot1 > 0 && dot4 < len ) { // skip .123 but handle .1234
+            final int end = Math.min( len - dot4, 3 );
+            CharSequence usecSeq = strValue.subSequence(dot4, end);
+            final int usec = Integer.parseInt( usecSeq.toString() );
+            if ( usec < 10 ) { // 0.1234 ~> 4
+                timestamp.setNanos( timestamp.getNanos() + usec * 100 );
+            }
+            else if ( usec < 100 ) { // 0.12345 ~> 45
+                timestamp.setNanos( timestamp.getNanos() + usec * 10 );
+            }
+            else { // if ( usec < 1000 ) { // 0.123456 ~> 456
+                timestamp.setNanos( timestamp.getNanos() + usec );
+            }
+        }
+
+        return timestamp;
+    }
+
+    protected static IRubyObject getTimeInDefaultTimeZone(final ThreadContext context, IRubyObject value) {
         if ( value.respondsTo("to_time") ) {
             value = value.callMethod(context, "to_time");
         }
@@ -2282,7 +2288,7 @@ public class RubyJdbcConnection extends RubyObject {
         return value;
     }
 
-    private static boolean isDefaultTimeZoneUTC(final ThreadContext context) {
+    protected static boolean isDefaultTimeZoneUTC(final ThreadContext context) {
         final RubyClass base = getBase(context.getRuntime());
         final String tz = base.callMethod(context, "default_timezone").toString(); // :utc
         return "utc".equalsIgnoreCase(tz);
@@ -2335,8 +2341,8 @@ public class RubyJdbcConnection extends RubyObject {
                 statement.setTime( index, time ); // assume local time-zone
             }
             else { // DateTime ( ActiveSupport::TimeWithZone.to_time )
-                final RubyFloat floatValue = value.convertToFloat(); // to_f
-                final Time time = new Time(floatValue.getLongValue() * 1000); // millis
+                final RubyFloat timeValue = value.convertToFloat(); // to_f
+                final Time time = new Time(timeValue.getLongValue() * 1000); // millis
                 // java.sql.Time is expected to be only up to second precision
                 statement.setTime( index, time, getTimeZoneCalendar("GMT") );
             }
