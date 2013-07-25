@@ -472,7 +472,15 @@ module ArJdbc
       select_value 'PRAGMA encoding'
     end
 
+    def last_insert_id
+      @connection.last_insert_rowid
+    end
+
     protected
+
+    def last_inserted_id(result)
+      super || last_insert_id # NOTE: #last_insert_id call should not be needed
+    end
 
     def translate_exception(exception, message)
       case exception.message
@@ -481,14 +489,6 @@ module ArJdbc
       else
         super
       end
-    end
-
-    def last_insert_id
-      @connection.last_insert_rowid
-    end
-
-    def last_inserted_id(result)
-      super || last_insert_id # NOTE: #last_insert_id call should not be needed
     end
 
   end
