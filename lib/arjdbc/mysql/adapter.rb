@@ -240,23 +240,6 @@ module ArJdbc
       end
     end
 
-    # DATABASE STATEMENTS ======================================
-
-    # @override
-    def exec_insert(sql, name, binds, pk = nil, sequence_name = nil)
-      execute sql, name, binds
-    end
-
-    # @override
-    def exec_update(sql, name, binds)
-      execute sql, name, binds
-    end
-
-    # @override
-    def exec_delete(sql, name, binds)
-      execute sql, name, binds
-    end
-
     # @override make it public just like native MySQL adapter does
     def update_sql(sql, name = nil)
       super
