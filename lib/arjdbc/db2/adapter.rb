@@ -557,6 +557,13 @@ module ArJdbc
       @connection.identity_val_local
     end
 
+    # NOTE: only setup query analysis on AR <= 3.0 since on 3.1 {#exec_query},
+    # {#exec_insert} will be used for AR generated queries/inserts etc.
+    # Also there's prepared statement support and {#execute} is meant to stay
+    # as a way of running non-prepared SQL statements (returning raw results).
+    if ActiveRecord::VERSION::MAJOR < 3 ||
+      ( ActiveRecord::VERSION::MAJOR == 3 && ActiveRecord::VERSION::MINOR < 1 )
+
     def _execute(sql, name = nil)
       if self.class.select?(sql)
         @connection.execute_query_raw(sql)
@@ -567,6 +574,8 @@ module ArJdbc
       end
     end
     private :_execute
+
+    end
 
     DRIVER_NAME = 'com.ibm.db2.jcc.DB2Driver'.freeze
 

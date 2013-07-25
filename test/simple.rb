@@ -932,6 +932,26 @@ module SimpleTestMethods
     assert yielded == 2
   end if Test::Unit::TestCase.ar_version('3.0')
 
+  def test_execute_insert
+    assert_not_nil id = connection.execute("INSERT INTO entries (title) VALUES ('inserted-title')")
+    assert_equal 'inserted-title', Entry.find(id).title
+  end
+
+  def test_execute_update
+    e = Entry.create! :title => '42'
+    Entry.create! :title => '43'; Entry.create! :title => '44'
+    assert_equal 1, connection.execute("UPDATE entries SET title = 'updated-title' WHERE id = #{e.id}")
+    assert_equal 'updated-title', e.reload.title
+  end
+
+  def test_execute_query
+    Entry.create! :title => '43'; Entry.create! :title => '44'
+    assert_not_nil result = connection.execute("SELECT * FROM entries")
+    assert_instance_of Array, result # always return "raw" results
+    assert_equal 2, result.size
+    assert_instance_of Hash, result.first
+  end
+
   def test_select
     Entry.delete_all
     user = User.create! :login => 'select'

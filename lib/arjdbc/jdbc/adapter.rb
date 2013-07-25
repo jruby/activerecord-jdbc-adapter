@@ -505,7 +505,11 @@ module ActiveRecord
 
       # Executes the SQL statement in the context of this connection.
       # The return value from this method depends on the SQL type (whether
-      # it's a SELECT, INSERT etc.).
+      # it's a SELECT, INSERT etc.). For INSERTs a generated id might get
+      # returned while for UPDATE statements the affected row count.
+      # Please note that this method returns "raw" results (in an array) for
+      # statements that return a result set, while {#exec_query} is expected to
+      # return a `ActiveRecord::Result` (since AR 3.1).
       # @note This method does not use prepared statements.
       # @see #exec_query
       # @see #exec_insert
