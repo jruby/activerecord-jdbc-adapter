@@ -35,21 +35,21 @@ import org.jruby.runtime.builtin.IRubyObject;
 
 /**
  * ArJdbc::Oracle
- * 
+ *
  * @author kares
  */
 public class OracleModule {
-    
+
     public static RubyModule load(final RubyModule arJdbc) {
         RubyModule oracle = arJdbc.defineModuleUnder("Oracle");
         oracle.defineAnnotatedMethods( OracleModule.class );
         return oracle;
     }
-    
-    @JRubyMethod(name = "quote_string", required = 1, frame = false)
+
+    @JRubyMethod(name = "quote_string", required = 1)
     public static IRubyObject quote_string(
-            final ThreadContext context, 
-            final IRubyObject self, 
+            final ThreadContext context,
+            final IRubyObject self,
             final IRubyObject string) { // string.gsub("'", "''") :
         final char single = '\'';
         final RubyString quoted = quoteCharWith(
@@ -57,19 +57,19 @@ public class OracleModule {
         );
         return quoted;
     }
-    
-    @JRubyMethod(name = "quoted_true", required = 0, frame = false)
+
+    @JRubyMethod(name = "quoted_true", required = 0)
     public static IRubyObject quoted_true(
-            final ThreadContext context, 
+            final ThreadContext context,
             final IRubyObject self) {
         return RubyString.newString(context.getRuntime(), BYTES_1);
     }
-    
-    @JRubyMethod(name = "quoted_false", required = 0, frame = false)
+
+    @JRubyMethod(name = "quoted_false", required = 0)
     public static IRubyObject quoted_false(
-            final ThreadContext context, 
+            final ThreadContext context,
             final IRubyObject self) {
         return RubyString.newString(context.getRuntime(), BYTES_0);
     }
-    
+
 }

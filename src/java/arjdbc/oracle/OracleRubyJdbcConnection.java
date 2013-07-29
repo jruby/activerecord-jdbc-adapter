@@ -25,11 +25,14 @@
  ***** END LICENSE BLOCK *****/
 package arjdbc.oracle;
 
+import arjdbc.jdbc.Callable;
 import arjdbc.jdbc.RubyJdbcConnection;
 
+import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.DatabaseMetaData;
+import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -37,7 +40,9 @@ import org.jruby.Ruby;
 import org.jruby.RubyArray;
 import org.jruby.RubyClass;
 import org.jruby.RubyString;
+import org.jruby.anno.JRubyMethod;
 import org.jruby.runtime.ObjectAllocator;
+import org.jruby.runtime.ThreadContext;
 import org.jruby.runtime.builtin.IRubyObject;
 
 /**
@@ -45,11 +50,11 @@ import org.jruby.runtime.builtin.IRubyObject;
  * @author nicksieger
  */
 public class OracleRubyJdbcConnection extends RubyJdbcConnection {
-    
+
     protected OracleRubyJdbcConnection(Ruby runtime, RubyClass metaClass) {
         super(runtime, metaClass);
     }
-    
+
     public static RubyClass createOracleJdbcConnectionClass(Ruby runtime, RubyClass jdbcConnection) {
         final RubyClass clazz = RubyJdbcConnection.getConnectionAdapters(runtime).
             defineClassUnder("OracleJdbcConnection", jdbcConnection, ORACLE_JDBCCONNECTION_ALLOCATOR);
@@ -62,6 +67,27 @@ public class OracleRubyJdbcConnection extends RubyJdbcConnection {
             return new OracleRubyJdbcConnection(runtime, klass);
         }
     };
+
+    @JRubyMethod(name = "next_sequence_value", required = 1)
+    public IRubyObject next_sequence_value(final ThreadContext context,
+        final IRubyObject sequence) throws SQLException {
+        return withConnection(context, new Callable<IRubyObject>() {
+            public IRubyObject call(final Connection connection) throws SQLException {
+                Statement statement = null; ResultSet genKeys = null;
+                try {
+                    statement = connection.createStatement();
+                    genKeys = statement.executeQuery("SELECT "+ sequence +".nextval id FROM dual");
+                    if ( ! genKeys.next() ) return context.getRuntime().getNil();
+                    return context.getRuntime().newFixnum( genKeys.getLong(1) );
+                }
+                catch (final SQLException e) {
+                    debugMessage(context, "failed to get " + sequence + ".nextval : " + e.getMessage());
+                    throw e;
+                }
+                finally { close(genKeys); close(statement); }
+            }
+        });
+    }
 
     /**
      * Oracle needs this override to reconstruct NUMBER which is different
@@ -81,10 +107,10 @@ public class OracleRubyJdbcConnection extends RubyJdbcConnection {
         final String type = resultSet.getString(TYPE_NAME);
         return formatTypeWithPrecisionAndScale(type, precision, scale);
     }
-    
+
     @Override
-    protected RubyArray mapTables(final Ruby runtime, final DatabaseMetaData metaData, 
-            final String catalog, final String schemaPattern, final String tablePattern, 
+    protected RubyArray mapTables(final Ruby runtime, final DatabaseMetaData metaData,
+            final String catalog, final String schemaPattern, final String tablePattern,
             final ResultSet tablesSet) throws SQLException {
         final List<IRubyObject> tables = new ArrayList<IRubyObject>(32);
         while ( tablesSet.next() ) {
@@ -96,5 +122,5 @@ public class OracleRubyJdbcConnection extends RubyJdbcConnection {
         }
         return runtime.newArray(tables);
     }
-    
+
 }

@@ -193,8 +193,11 @@ module ArJdbc
     end
 
     def next_sequence_value(sequence_name)
-      # avoid #select or #select_one so that the sequence values aren't cached
-      execute("SELECT #{quote_table_name(sequence_name)}.nextval id FROM dual").first['id'].to_i
+      sequence_name = quote_table_name(sequence_name)
+      sql = "SELECT #{sequence_name}.nextval id FROM dual"
+      log(sql, 'next_sequence_value') do
+        @connection.next_sequence_value(sequence_name)
+      end
     end
 
     def sql_literal?(value)
