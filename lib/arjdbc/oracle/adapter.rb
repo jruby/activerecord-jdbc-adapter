@@ -142,29 +142,38 @@ module ArJdbc
     def column_name_length; IDENTIFIER_LENGTH; end
 
     def default_sequence_name(table_name, column = nil)
+      # TODO: remove schema prefix if present (before truncating)
       "#{table_name.to_s[0, IDENTIFIER_LENGTH - 4]}_seq"
     end
 
     # @override
     def create_table(name, options = {})
       super(name, options)
-      seq_name = options[:sequence_name] || default_sequence_name(name)
-      start_value = options[:sequence_start_value] || 10000
-      raise ActiveRecord::StatementInvalid.new("name #{seq_name} too long") if seq_name.length > table_alias_length
-      execute "CREATE SEQUENCE #{seq_name} START WITH #{start_value}" unless options[:id] == false
+      unless options[:id] == false
+        seq_name = options[:sequence_name] || default_sequence_name(name)
+        start_value = options[:sequence_start_value] || 10000
+        raise ActiveRecord::StatementInvalid.new("name #{seq_name} too long") if seq_name.length > table_alias_length
+        execute "CREATE SEQUENCE #{quote_table_name(seq_name)} START WITH #{start_value}"
+      end
     end
 
     # @override
     def rename_table(name, new_name)
-      execute "RENAME #{name} TO #{new_name}"
-      execute "RENAME #{name}_seq TO #{new_name}_seq" rescue nil
+      if new_name.to_s.length > table_name_length
+        raise ArgumentError, "New table name '#{new_name}' is too long; the limit is #{table_name_length} characters"
+      end
+      if "#{new_name}_seq".to_s.length > sequence_name_length
+        raise ArgumentError, "New sequence name '#{new_name}_seq' is too long; the limit is #{sequence_name_length} characters"
+      end
+      execute "RENAME #{quote_table_name(name)} TO #{quote_table_name(new_name)}"
+      execute "RENAME #{quote_table_name("#{name}_seq")} TO #{quote_table_name("#{new_name}_seq")}" rescue nil
     end
 
     # @override
     def drop_table(name, options = {})
-      super(name) rescue nil
+      super(name)
       seq_name = options[:sequence_name] || default_sequence_name(name)
-      execute "DROP SEQUENCE #{seq_name}" rescue nil
+      execute "DROP SEQUENCE #{quote_table_name(seq_name)}" rescue nil
     end
 
     # @override
@@ -192,38 +201,10 @@ module ArJdbc
       end
     end
 
-    def next_sequence_value(sequence_name)
-      sequence_name = quote_table_name(sequence_name)
-      sql = "SELECT #{sequence_name}.nextval id FROM dual"
-      log(sql, 'next_sequence_value') do
-        @connection.next_sequence_value(sequence_name)
-      end
-    end
-
     def sql_literal?(value)
       defined?(::Arel::SqlLiteral) && ::Arel::SqlLiteral === value
     end
     private :sql_literal?
-
-    def insert(sql, name = nil, pk = nil, id_value = nil, sequence_name = nil, binds = [])
-      if (id_value && ! sql_literal?(id_value)) || pk.nil?
-        # Pre-assigned id or table without a primary key
-        # Presence of #to_sql means an Arel literal bind variable
-        # that should use #execute_id_insert below
-        value = exec_insert(to_sql(sql, binds), name, binds)
-        id_value || last_inserted_id(value) # super
-      else
-        # Assume the sql contains a bind-variable for the id
-        # Extract the table from the insert sql. Yuck.
-        sequence_name ||= begin
-          table = extract_table_ref_from_insert_sql(sql)
-          default_sequence_name(table)
-        end
-        id_value = next_sequence_value(sequence_name)
-        log(sql, name) { @connection.execute_id_insert(sql, id_value) }
-        id_value
-      end
-    end
 
     def indexes(table, name = nil)
       @connection.indexes(table, name, @connection.connection.meta_data.user_name)
@@ -499,11 +480,82 @@ module ArJdbc
       result
     end
 
-    # @override as <code>#execute_insert</code> not working for Oracle e.g.
-    # getLong not implemented for class oracle.jdbc.driver.T4CRowidAccessor:
-    # INSERT INTO binaries (data, id, name, short_data) VALUES (?, ?, ?, ?)
+    # @override
+    def next_sequence_value(sequence_name)
+      sequence_name = quote_table_name(sequence_name)
+      sql = "SELECT #{sequence_name}.NEXTVAL id FROM dual"
+      log(sql, 'Next Value') { @connection.next_sequence_value(sequence_name) }
+    end
+
+    # @override
+    def sql_for_insert(sql, pk, id_value, sequence_name, binds)
+      unless id_value || pk.nil?
+        if pk && use_insert_returning?
+          sql = "#{sql} RETURNING #{quote_column_name(pk)}"
+        end
+      end
+      [ sql, binds ]
+    end
+
+    # @override
+    def insert(sql, name = nil, pk = nil, id_value = nil, sequence_name = nil, binds = [])
+      # NOTE: AR::Relation calls our {#next_sequence_value}
+      # (from its `insert`) and passes the returned id_value here ...
+      if pk.nil? || ( id_value && ! sql_literal?(id_value) )
+        # pre-assigned id or table without a primary key
+        # AREL literals should use #execute_id_insert below
+        value = exec_insert(sql, name, binds, pk, sequence_name)
+        id_value || last_inserted_id(value) # super
+      elsif do_insert_returning?(pk, sql)
+        exec_query(sql, name, binds) # due RETURNING clause
+      else # this branch won't happen on AR >= 3.1 (thus we're assuming non-PS)
+        exec_insert_with_id(to_sql(sql, binds), name, id_value, sequence_name)
+      end
+    end
+
+    # @override
     def exec_insert(sql, name, binds, pk = nil, sequence_name = nil)
-      execute(sql, name, binds)
+      # NOTE: 3.2 does not pass the PK on #insert (passed only into #sql_for_insert) :
+      #   sql, binds = sql_for_insert(to_sql(arel, binds), pk, id_value, sequence_name, binds)
+      # 3.2 :
+      #  value = exec_insert(sql, name, binds)
+      # 4.x :
+      #  value = exec_insert(sql, name, binds, pk, sequence_name)
+      if do_insert_returning?(pk, sql)
+        exec_query(sql, name, binds) # due RETURNING clause
+      else
+        execute(sql, name, binds)
+      end
+    end
+
+    def exec_insert_with_id(sql, name = nil, id_value = nil, sequence_name = nil)
+      id_value ||= next_id_value(sql, sequence_name)
+      log(sql, name || 'SQL') { @connection.execute_id_insert(sql, id_value) }
+      id_value
+    end
+    private :exec_insert_with_id
+
+    def next_id_value(sql, sequence_name = nil)
+      # Assume the SQL contains a bind-variable for the ID
+      sequence_name ||= begin
+        # Extract the table from the insert SQL. Yuck.
+        table = extract_table_ref_from_insert_sql(sql)
+        default_sequence_name(table)
+      end
+      next_sequence_value(sequence_name)
+    end
+    private :next_id_value
+
+    def do_insert_returning?(pk, sql)
+      use_insert_returning? && ( pk || (sql.is_a?(String) && sql =~ /RETURNING "?\S+"?$/) )
+    end
+    private :do_insert_returning?
+
+    def use_insert_returning?
+      if ( @use_insert_returning ||= nil ).nil?
+        @use_insert_returning = false # supports_insert_with_returning?
+      end
+      @use_insert_returning
     end
 
     private
@@ -560,6 +612,9 @@ module ActiveRecord::ConnectionAdapters
     def initialize(*args)
       ::ArJdbc::Oracle.initialize!
       super # configure_connection happens in super
+
+      @use_insert_returning = config.key?(:insert_returning) ?
+        self.class.type_cast_config_to_boolean(config[:insert_returning]) : nil
     end
 
   end
