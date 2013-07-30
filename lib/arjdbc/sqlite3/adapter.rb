@@ -99,12 +99,6 @@ module ArJdbc
       ::Arel::Visitors::SQLite
     end
 
-    # @override
-    def new_visitor
-      visitor = ::Arel::Visitors::SQLite
-      ( prepared_statements? ? visitor : bind_substitution(visitor) ).new(self)
-    end if defined? ::Arel::Visitors::SQLite
-
     # @see ActiveRecord::ConnectionAdapters::JdbcAdapter#bind_substitution
     # @private
     class BindSubstitution < ::Arel::Visitors::SQLite

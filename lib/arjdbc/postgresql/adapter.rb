@@ -28,15 +28,9 @@ module ArJdbc
       end
     end
 
-    #def self.arel_visitor_type(config = nil)
-    #  ::Arel::Visitors::PostgreSQL
-    #end
-
-    # @override
-    def new_visitor
-      visitor = ::Arel::Visitors::PostgreSQL
-      ( prepared_statements? ? visitor : bind_substitution(visitor) ).new(self)
-    end if defined? ::Arel::Visitors::PostgreSQL
+    def self.arel_visitor_type(config = nil)
+      ::Arel::Visitors::PostgreSQL
+    end
 
     # @see ActiveRecord::ConnectionAdapters::JdbcAdapter#bind_substitution
     # @private

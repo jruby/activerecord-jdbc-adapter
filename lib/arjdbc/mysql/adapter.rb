@@ -114,15 +114,9 @@ module ArJdbc
       ADAPTER_NAME
     end
 
-    #def self.arel_visitor_type(config = nil)
-    #  ::Arel::Visitors::MySQL
-    #end
-
-    # @override
-    def new_visitor
-      visitor = ::Arel::Visitors::MySQL
-      ( prepared_statements? ? visitor : bind_substitution(visitor) ).new(self)
-    end if defined? ::Arel::Visitors::MySQL
+    def self.arel_visitor_type(config = nil)
+      ::Arel::Visitors::MySQL
+    end
 
     # @see ActiveRecord::ConnectionAdapters::JdbcAdapter#bind_substitution
     # @private
