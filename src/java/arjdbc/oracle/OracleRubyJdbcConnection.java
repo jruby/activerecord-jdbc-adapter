@@ -32,6 +32,7 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.DatabaseMetaData;
+import java.sql.PreparedStatement;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
@@ -39,6 +40,7 @@ import java.util.List;
 import org.jruby.Ruby;
 import org.jruby.RubyArray;
 import org.jruby.RubyClass;
+import org.jruby.RubyNumeric;
 import org.jruby.RubyString;
 import org.jruby.anno.JRubyMethod;
 import org.jruby.runtime.ObjectAllocator;
@@ -73,18 +75,41 @@ public class OracleRubyJdbcConnection extends RubyJdbcConnection {
         final IRubyObject sequence) throws SQLException {
         return withConnection(context, new Callable<IRubyObject>() {
             public IRubyObject call(final Connection connection) throws SQLException {
-                Statement statement = null; ResultSet genKeys = null;
+                Statement statement = null; ResultSet valSet = null;
                 try {
                     statement = connection.createStatement();
-                    genKeys = statement.executeQuery("SELECT "+ sequence +".nextval id FROM dual");
-                    if ( ! genKeys.next() ) return context.getRuntime().getNil();
-                    return context.getRuntime().newFixnum( genKeys.getLong(1) );
+                    valSet = statement.executeQuery("SELECT "+ sequence +".NEXTVAL id FROM dual");
+                    if ( ! valSet.next() ) return context.getRuntime().getNil();
+                    return context.getRuntime().newFixnum( valSet.getLong(1) );
                 }
                 catch (final SQLException e) {
-                    debugMessage(context, "failed to get " + sequence + ".nextval : " + e.getMessage());
+                    debugMessage(context, "failed to get " + sequence + ".NEXTVAL : " + e.getMessage());
                     throw e;
                 }
-                finally { close(genKeys); close(statement); }
+                finally { close(valSet); close(statement); }
+            }
+        });
+    }
+
+    @JRubyMethod(name = "execute_id_insert", required = 2)
+    public IRubyObject execute_id_insert(final ThreadContext context,
+        final IRubyObject sql, final IRubyObject id) throws SQLException {
+        return withConnection(context, new Callable<IRubyObject>() {
+            public IRubyObject call(final Connection connection) throws SQLException {
+                PreparedStatement statement = null;
+                final String insertSQL = sql.convertToString().getUnicodeValue();
+                try {
+                    // TODO this is really an abuse of prepared-statements
+                    statement = connection.prepareStatement(insertSQL);
+                    statement.setLong(1, RubyNumeric.fix2long(id));
+                    statement.executeUpdate();
+                }
+                catch (final SQLException e) {
+                    debugErrorSQL(context, insertSQL);
+                    throw e;
+                }
+                finally { close(statement); }
+                return id;
             }
         });
     }

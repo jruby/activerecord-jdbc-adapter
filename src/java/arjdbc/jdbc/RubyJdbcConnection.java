@@ -943,9 +943,17 @@ public class RubyJdbcConnection extends RubyObject {
         return mapToResult(context, runtime, metaData, resultSet, columns);
     }
 
+    /**
+     * @deprecated please do not use this method
+     */
+    @Deprecated // only used by Oracle adapter - also it's really a bad idea
     @JRubyMethod(name = "execute_id_insert", required = 2)
     public IRubyObject execute_id_insert(final ThreadContext context,
         final IRubyObject sql, final IRubyObject id) throws SQLException {
+        final Ruby runtime = context.getRuntime();
+        
+        callMethod("warn", RubyString.newUnicodeString(runtime, "DEPRECATED: execute_id_insert(sql, id) will be removed"));
+
         return withConnection(context, new Callable<IRubyObject>() {
             public IRubyObject call(final Connection connection) throws SQLException {
                 PreparedStatement statement = null;
