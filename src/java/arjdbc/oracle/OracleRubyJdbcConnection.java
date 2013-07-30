@@ -27,6 +27,8 @@ package arjdbc.oracle;
 
 import arjdbc.jdbc.Callable;
 import arjdbc.jdbc.RubyJdbcConnection;
+import java.io.IOException;
+import java.io.Reader;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
@@ -119,6 +121,27 @@ public class OracleRubyJdbcConnection extends RubyJdbcConnection {
         final String value = resultSet.getString(column);
         if ( value == null ) return runtime.getNil();
         return RubyString.newUnicodeString(runtime, value);
+    }
+
+    @Override
+    protected IRubyObject readerToRuby(final ThreadContext context,
+        final Ruby runtime, final ResultSet resultSet, final int column)
+        throws SQLException, IOException {
+        final Reader reader = resultSet.getCharacterStream(column);
+        try {
+            if ( resultSet.wasNull() ) return RubyString.newEmptyString(runtime);
+
+            final int bufSize = streamBufferSize;
+            final StringBuilder string = new StringBuilder(bufSize);
+
+            final char[] buf = new char[ bufSize / 2 ];
+            for (int len = reader.read(buf); len != -1; len = reader.read(buf)) {
+                string.append(buf, 0, len);
+            }
+
+            return RubyString.newUnicodeString(runtime, string.toString());
+        }
+        finally { if ( reader != null ) reader.close(); }
     }
 
     @Override // booleans are emulated can not setNull(index, Types.BOOLEAN)
