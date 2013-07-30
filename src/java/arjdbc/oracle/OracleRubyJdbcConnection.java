@@ -32,7 +32,9 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.DatabaseMetaData;
+import java.sql.PreparedStatement;
 import java.sql.Statement;
+import java.sql.Types;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -117,6 +119,33 @@ public class OracleRubyJdbcConnection extends RubyJdbcConnection {
         final String value = resultSet.getString(column);
         if ( value == null ) return runtime.getNil();
         return RubyString.newUnicodeString(runtime, value);
+    }
+
+    @Override // booleans are emulated can not setNull(index, Types.BOOLEAN)
+    protected void setBooleanParameter(final ThreadContext context,
+        final Connection connection, final PreparedStatement statement,
+        final int index, final Object value,
+        final IRubyObject column, final int type) throws SQLException {
+        if ( value instanceof IRubyObject ) {
+            setBooleanParameter(context, connection, statement, index, (IRubyObject) value, column, type);
+        }
+        else {
+            if ( value == null ) statement.setNull(index, Types.TINYINT);
+            else {
+                statement.setBoolean(index, ((Boolean) value).booleanValue());
+            }
+        }
+    }
+
+    @Override // booleans are emulated can not setNull(index, Types.BOOLEAN)
+    protected void setBooleanParameter(final ThreadContext context,
+        final Connection connection, final PreparedStatement statement,
+        final int index, final IRubyObject value,
+        final IRubyObject column, final int type) throws SQLException {
+        if ( value.isNil() ) statement.setNull(index, Types.TINYINT);
+        else {
+            statement.setBoolean(index, value.isTrue());
+        }
     }
 
     /**
