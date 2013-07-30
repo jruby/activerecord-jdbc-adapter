@@ -123,10 +123,6 @@ module ArJdbc
       types
     end
 
-    def prefetch_primary_key?(table_name = nil)
-      columns(table_name).detect {|c| c.primary } if table_name
-    end
-
     # Prevent ORA-01795 for in clauses with more than 1000
     def in_clause_length
       1000
@@ -383,6 +379,11 @@ module ArJdbc
       end
     end
 
+    def unquote_table_name(name)
+      name = name[1...-1] if name[0, 1] == '"'
+      name.upcase == name ? name.downcase : name
+    end
+
     # @override
     def quote(value, column = nil)
       return value if sql_literal?(value) # Arel 2 passes SqlLiterals through
@@ -480,12 +481,37 @@ module ArJdbc
       result
     end
 
+    # Returns true for Oracle adapter (since Oracle requires primary key
+    # values to be pre-fetched before insert).
+    # @see #next_sequence_value
+    # @override
+    def prefetch_primary_key?(table_name = nil)
+      return true if table_name.nil?
+      table_name = table_name.to_s
+      columns(table_name).detect { |column| column.primary }
+    end
+
     # @override
     def next_sequence_value(sequence_name)
       sequence_name = quote_table_name(sequence_name)
       sql = "SELECT #{sequence_name}.NEXTVAL id FROM dual"
-      log(sql, 'Next Value') { @connection.next_sequence_value(sequence_name) }
+      log(sql, 'SQL') { @connection.next_sequence_value(sequence_name) }
     end
+
+    # @override (for AR <= 3.0)
+    def insert_sql(sql, name = nil, pk = nil, id_value = nil, sequence_name = nil)
+      # if PK is already pre-fetched from sequence or if there is no PK :
+      if id_value || pk.nil?
+        execute(sql, name)
+        return id_value
+      end
+
+      if pk && use_insert_returning? # true by default on AR <= 3.0
+        sql = "#{sql} RETURNING #{quote_column_name(pk)}"
+      end
+      exec_insert_with_id(sql, name, id_value, sequence_name)
+    end
+    protected :insert_sql
 
     # @override
     def sql_for_insert(sql, pk, id_value, sequence_name, binds)
@@ -498,33 +524,27 @@ module ArJdbc
     end
 
     # @override
-    def insert(sql, name = nil, pk = nil, id_value = nil, sequence_name = nil, binds = [])
-      # NOTE: AR::Relation calls our {#next_sequence_value}
+    def insert(arel, name = nil, pk = nil, id_value = nil, sequence_name = nil, binds = [])
+      # NOTE: ActiveRecord::Relation calls our {#next_sequence_value}
       # (from its `insert`) and passes the returned id_value here ...
-      if pk.nil? || ( id_value && ! sql_literal?(id_value) )
-        # pre-assigned id or table without a primary key
-        # AREL literals should use #execute_id_insert below
+      sql, binds = sql_for_insert(to_sql(arel, binds), pk, id_value, sequence_name, binds)
+      if id_value
+        exec_update(sql, name, binds)
+        return id_value
+      else
         value = exec_insert(sql, name, binds, pk, sequence_name)
-        id_value || last_inserted_id(value) # super
-      elsif do_insert_returning?(pk, sql)
-        exec_query(sql, name, binds) # due RETURNING clause
-      else # this branch won't happen on AR >= 3.1 (thus we're assuming non-PS)
-        exec_insert_with_id(to_sql(sql, binds), name, id_value, sequence_name)
+        id_value || last_inserted_id(value)
       end
     end
 
     # @override
     def exec_insert(sql, name, binds, pk = nil, sequence_name = nil)
-      # NOTE: 3.2 does not pass the PK on #insert (passed only into #sql_for_insert) :
-      #   sql, binds = sql_for_insert(to_sql(arel, binds), pk, id_value, sequence_name, binds)
-      # 3.2 :
-      #  value = exec_insert(sql, name, binds)
-      # 4.x :
-      #  value = exec_insert(sql, name, binds, pk, sequence_name)
-      if do_insert_returning?(pk, sql)
+      if pk && use_insert_returning?
         exec_query(sql, name, binds) # due RETURNING clause
+      elsif ! pk && ! sequence_name
+        super(sql, name, binds) # assume no generated id for table
       else
-        execute(sql, name, binds)
+        exec_insert_with_id(sql, name, nil, sequence_name)
       end
     end
 
@@ -546,14 +566,9 @@ module ArJdbc
     end
     private :next_id_value
 
-    def do_insert_returning?(pk, sql)
-      use_insert_returning? && ( pk || (sql.is_a?(String) && sql =~ /RETURNING "?\S+"?$/) )
-    end
-    private :do_insert_returning?
-
     def use_insert_returning?
       if ( @use_insert_returning ||= nil ).nil?
-        @use_insert_returning = false # supports_insert_with_returning?
+        @use_insert_returning = false
       end
       @use_insert_returning
     end
@@ -569,8 +584,11 @@ module ArJdbc
     end
 
     def extract_table_ref_from_insert_sql(sql)
-      table = sql.split(" ", 4)[2].gsub('"', '')
-      ( idx = table.index('(') ) ? table[0...idx] : table # INTO table(col1, col2) ...
+      table = sql.split(" ", 4)[2]
+      if idx = table.index('(')
+        table = table[0...idx] # INTO table(col1, col2) ...
+      end
+      unquote_table_name(table)
     end
 
     # In Oracle, schemas are usually created under your username :
