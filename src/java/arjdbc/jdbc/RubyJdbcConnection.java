@@ -951,7 +951,7 @@ public class RubyJdbcConnection extends RubyObject {
     public IRubyObject execute_id_insert(final ThreadContext context,
         final IRubyObject sql, final IRubyObject id) throws SQLException {
         final Ruby runtime = context.getRuntime();
-        
+
         callMethod("warn", RubyString.newUnicodeString(runtime, "DEPRECATED: execute_id_insert(sql, id) will be removed"));
 
         return withConnection(context, new Callable<IRubyObject>() {
@@ -2840,7 +2840,7 @@ public class RubyJdbcConnection extends RubyObject {
         return null; // not supported
     }
 
-    protected static IRubyObject doMapGeneratedKeys(final Ruby runtime,
+    protected final IRubyObject doMapGeneratedKeys(final Ruby runtime,
         final ResultSet genKeys, final Boolean singleResult)
         throws SQLException {
 
@@ -2851,7 +2851,7 @@ public class RubyJdbcConnection extends RubyObject {
         // singleResult == null - guess if only single key returned
         if ( singleResult == null || singleResult.booleanValue() ) {
             if ( next ) {
-                firstKey = runtime.newFixnum( genKeys.getLong(1) );
+                firstKey = mapGeneratedKey(runtime, genKeys);
                 if ( singleResult != null || ! genKeys.next() ) {
                     return firstKey;
                 }
@@ -2865,10 +2865,15 @@ public class RubyJdbcConnection extends RubyObject {
         final RubyArray keys = runtime.newArray();
         if ( firstKey != null ) keys.append(firstKey); // singleResult == null
         while ( next ) {
-            keys.append( runtime.newFixnum( genKeys.getLong(1) ) );
+            keys.append( mapGeneratedKey(runtime, genKeys) );
             next = genKeys.next();
         }
         return keys;
+    }
+
+    protected IRubyObject mapGeneratedKey(final Ruby runtime, final ResultSet genKeys)
+        throws SQLException {
+        return runtime.newFixnum( genKeys.getLong(1) );
     }
 
     protected IRubyObject mapGeneratedKeysOrUpdateCount(final ThreadContext context,

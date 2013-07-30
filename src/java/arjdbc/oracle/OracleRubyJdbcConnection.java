@@ -92,6 +92,7 @@ public class OracleRubyJdbcConnection extends RubyJdbcConnection {
     }
 
     @JRubyMethod(name = "execute_id_insert", required = 2)
+    @Override @SuppressWarnings("deprecation")
     public IRubyObject execute_id_insert(final ThreadContext context,
         final IRubyObject sql, final IRubyObject id) throws SQLException {
         return withConnection(context, new Callable<IRubyObject>() {
@@ -112,6 +113,27 @@ public class OracleRubyJdbcConnection extends RubyJdbcConnection {
                 return id;
             }
         });
+    }
+
+    @Override // NOTE: Invalid column type:
+    // getLong not implemented for class oracle.jdbc.driver.T4CRowidAccessor
+    protected IRubyObject mapGeneratedKey(final Ruby runtime, final ResultSet genKeys)
+        throws SQLException {
+        // NOTE: it's likely a ROWID which we do not care about :
+        final String value = genKeys.getString(1); // "AAAsOjAAFAAABUlAAA"
+        if ( isPositiveInteger(value) ) {
+            return runtime.newFixnum( Long.parseLong(value) );
+        }
+        else {
+            return runtime.getNil();
+        }
+    }
+
+    private static boolean isPositiveInteger(final String value) {
+        for ( int i = 0; i < value.length(); i++ ) {
+            if ( ! Character.isDigit(value.charAt(i)) ) return false;
+        }
+        return true;
     }
 
     /**
