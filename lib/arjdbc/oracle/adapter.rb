@@ -72,15 +72,9 @@ module ArJdbc
       new_table_definition(TableDefinition, *args)
     end
 
-    #def self.arel_visitor_type(config = nil)
-    #  ::Arel::Visitors::Oracle
-    #end
-
-    # @override
-    def new_visitor
-      visitor = ::Arel::Visitors::Oracle
-      ( prepared_statements? ? visitor : bind_substitution(visitor) ).new(self)
-    end if defined? ::Arel::Visitors::Oracle
+    def self.arel_visitor_type(config = nil)
+      ::Arel::Visitors::Oracle
+    end
 
     # @see ActiveRecord::ConnectionAdapters::JdbcAdapter#bind_substitution
     # @private
