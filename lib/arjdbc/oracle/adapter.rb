@@ -503,7 +503,7 @@ module ArJdbc
       if pk && use_insert_returning? # true by default on AR <= 3.0
         sql = "#{sql} RETURNING #{quote_column_name(pk)}"
       end
-      exec_insert_with_id(sql, name, id_value, sequence_name)
+      execute(sql, name)
     end
     protected :insert_sql
 
@@ -535,19 +535,10 @@ module ArJdbc
     def exec_insert(sql, name, binds, pk = nil, sequence_name = nil)
       if pk && use_insert_returning?
         exec_query(sql, name, binds) # due RETURNING clause
-      elsif ! pk && ! sequence_name
-        super(sql, name, binds) # assume no generated id for table
       else
-        exec_insert_with_id(sql, name, nil, sequence_name)
+        super(sql, name, binds) # assume no generated id for table
       end
     end
-
-    def exec_insert_with_id(sql, name = nil, id_value = nil, sequence_name = nil)
-      id_value ||= next_id_value(sql, sequence_name)
-      log(sql, name || 'SQL') { @connection.execute_id_insert(sql, id_value) }
-      id_value
-    end
-    private :exec_insert_with_id
 
     def next_id_value(sql, sequence_name = nil)
       # Assume the SQL contains a bind-variable for the ID
