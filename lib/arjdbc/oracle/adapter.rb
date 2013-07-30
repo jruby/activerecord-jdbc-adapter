@@ -572,6 +572,8 @@ module ArJdbc
     def _execute(sql, name = nil)
       if self.class.select?(sql)
         @connection.execute_query_raw(sql)
+      elsif self.class.insert?(sql)
+        @connection.execute_insert(sql)
       else
         @connection.execute_update(sql)
       end

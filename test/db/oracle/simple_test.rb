@@ -11,7 +11,7 @@ class OracleSimpleTest < Test::Unit::TestCase
 
   # @override
   def test_insert_returns_id
-    # TODO not supported/implemented
+    # not supported (we pre-select id values from sequences) {#test_exec_insert}
   end
 
   # @override
@@ -23,6 +23,36 @@ class OracleSimpleTest < Test::Unit::TestCase
     e.save!; e.reload
     assert_match /02\-JUL\-13 10.13.39/, e.sample_string
     # assert_match /02\-JUL\-13 10.13.39/, e.sample_text
+  end
+
+  # @override
+  def test_exec_insert
+    name_column = Thing.columns.detect { |column| column.name.to_s == 'name' }
+    created_column = Thing.columns.detect { |column| column.name.to_s == 'created_at' }
+    updated_column = Thing.columns.detect { |column| column.name.to_s == 'updated_at' }
+    now = Time.zone.now
+
+    created_date = "to_date('2013/07/24 01:44:56', 'yyyy/mm/dd hh24:mi:ss')"
+    updated_date = "to_date('2013/07/24 01:44:56', 'yyyy/mm/dd hh24:mi:ss')"
+    connection.exec_insert "INSERT INTO things VALUES ( '01', #{created_date}, #{updated_date} )", nil, []
+
+    binds = [ [ name_column, 'ferko' ], [ created_column, now ], [ updated_column, now ] ]
+    connection.exec_insert "INSERT INTO things VALUES ( ?, ?, ? )", 'INSERT Thing(ferko)', binds
+    assert Thing.find_by_name 'ferko'
+    # NOTE: #exec_insert accepts 5 arguments on AR-4.0 :
+    binds = [ [ name_column, 'jozko' ], [ created_column, now ], [ updated_column, now ] ]
+    connection.exec_insert "INSERT INTO things (name, created_at, updated_at) VALUES (?,?,?)", 'INSERT Thing(jozko)', binds, nil, nil
+    assert Thing.find_by_name 'jozko'
+
+    result = connection.exec_insert "INSERT INTO entries(ID, TITLE) VALUES ( '4200', 'inserted-title' )", nil, []
+    assert_nil result # returns no generated id
+  end
+
+  # @override
+  def test_execute_insert
+    assert_nil connection.execute("INSERT INTO entries (ID, TITLE) VALUES (4242, 'inserted-title')")
+    assert entry = Entry.find(4242)
+    assert_equal 'inserted-title', entry.title
   end
 
   def test_default_id_type_is_integer
