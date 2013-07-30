@@ -57,7 +57,7 @@ module ActiveRecord::ConnectionAdapters
         end
 
         # @note called from `ActiveRecord::ConnectionAdapters::ConnectionPool.checkout` (up till AR-3.2)
-        # @private
+        # @override
         def visitor_for(pool)
           visitor = resolve_visitor_type(config = pool.spec.config)
           ( prepared_statements?(config) ? visitor : bind_substitution(visitor) ).new(pool)
@@ -111,6 +111,14 @@ module ActiveRecord::ConnectionAdapters
 
         def bind_substitution(visitor); self.class.bind_substitution(visitor); end
         private :bind_substitution
+
+        # @override ActiveRecord's convention
+        def unprepared_visitor
+          # super does self.class::BindSubstitution.new self
+          # we do not require the BindSubstitution constant - auto-generated :
+          visitor = self.class.resolve_visitor_type(config)
+          bind_substitution(visitor).new(self)
+        end
 
       else # NO-OP when no AREL (AR-2.3)
 
