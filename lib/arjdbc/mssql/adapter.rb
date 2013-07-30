@@ -325,6 +325,8 @@ module ArJdbc
     end
 
     def drop_database(name)
+      current_db = current_database
+      use_database('master') if current_db.to_s == name
       execute "DROP DATABASE #{quote_table_name(name)}"
     end
 
