@@ -231,6 +231,16 @@ class Test::Unit::TestCase
     end
   end
 
+  def with_default_timezone(default = nil)
+    prev_tz = ActiveRecord::Base.default_timezone
+    begin
+      ActiveRecord::Base.default_timezone = default
+      yield
+    ensure
+      ActiveRecord::Base.default_timezone = prev_tz
+    end
+  end
+
   private
 
   def date_equal?(expected, actual)
@@ -252,10 +262,9 @@ class Test::Unit::TestCase
       if expected.respond_to?(:time_zone)
         return actual.in_time_zone expected.time_zone
       end
+      expected = expected.to_time if expected.is_a?(DateTime)
       if expected.is_a?(Time) # due AR 2.3
-        #expected = expected.in_time_zone
-        #return actual.in_time_zone expected.time_zone
-        return actual.in_time_zone ActiveSupport::TimeZone[expected.zone]
+        return actual.in_time_zone ActiveSupport::TimeZone[expected.zone] # e.g. 'CET'
       end
     end
     actual
@@ -344,3 +353,5 @@ if ActiveRecord::VERSION::MAJOR == 2 && ActiveRecord::VERSION::MINOR == 3
     end
   end
 end
+
+#Java::JavaUtil::TimeZone.setDefault Java::JavaUtil::TimeZone.getTimeZone('Pacific/Galapagos')

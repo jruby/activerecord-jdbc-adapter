@@ -152,12 +152,8 @@ module ArJdbc
       when Date, Time
         if column && column.type == :time
           "'#{quoted_time(value)}'"
-        elsif column && column.sql_type.index('datetimeoffset')
-          "'#{quoted_full_iso8601(value)}'"
-        elsif column && column.sql_type.index('datetime')
-          "'#{quoted_datetime(value)}'"
         else
-          super
+          "'#{quoted_date(value)}'"
         end
       when TrueClass  then '1'
       when FalseClass then '0'
@@ -175,32 +171,23 @@ module ArJdbc
     end
 
     # @private
-    def quoted_datetime(value)
-      if value.acts_like?(:time)
-        time_zone_qualified_value = get_time(value)
-        if value.is_a?(Date)
-          time_zone_qualified_value.to_time.xmlschema.to(18)
-        else
-          if value.is_a?(ActiveSupport::TimeWithZone) && RUBY_VERSION < '1.9'
-            time_zone_qualified_value = time_zone_qualified_value.to_time
-          end
-          time_zone_qualified_value.iso8601(3).to(22)
-        end
-      else
-        quoted_date(value)
-      end
-    end
-
-    # @private
     def quoted_time(value)
       if value.acts_like?(:time)
         tz_value = get_time(value)
-        sprintf("%02d:%02d:%02d.%03d", tz_value.hour, tz_value.min, tz_value.sec, value.usec / 1000)
+        usec = value.respond_to?(:usec) ? ( value.usec / 1000 ) : 0
+        sprintf("%02d:%02d:%02d.%03d", tz_value.hour, tz_value.min, tz_value.sec, usec)
       else
         quoted_date(value)
       end
     end
 
+    # @deprecated no longer used
+    # @private
+    def quoted_datetime(value)
+      quoted_date(value)
+    end
+
+    # @deprecated no longer used
     # @private
     def quoted_full_iso8601(value)
       if value.acts_like?(:time)
@@ -216,10 +203,6 @@ module ArJdbc
       quote_column_name(name)
     end
 
-#    def quote_table_name_for_assignment(table, attr)
-#      quote_column_name(attr)
-#    end if ::ActiveRecord::VERSION::MAJOR > 3
-
     def quote_column_name(name)
       name.to_s.split('.').map do |n| # "[#{name}]"
         n =~ /^\[.*\]$/ ? n : "[#{n.gsub(']', ']]')}]"
@@ -228,7 +211,7 @@ module ArJdbc
 
     ADAPTER_NAME = 'MSSQL'.freeze
 
-    def adapter_name # :nodoc:
+    def adapter_name
       ADAPTER_NAME
     end
 

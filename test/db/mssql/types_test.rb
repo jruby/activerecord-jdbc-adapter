@@ -3,12 +3,8 @@ require 'db/mssql'
 
 class MSSQLDateTimeTypesTest < Test::Unit::TestCase
 
-  TABLE_DEFINITION = <<-SQL
-    CREATE TABLE date_and_times (
-      [id] int NOT NULL IDENTITY(1, 1) PRIMARY KEY,
-      [datetime] DATETIME
-    )
-  SQL
+  TABLE_DEFINITION = "CREATE TABLE date_and_times " <<
+    "( [id] int NOT NULL IDENTITY(1, 1) PRIMARY KEY, [datetime] DATETIME )"
 
   @@default_timezone = ActiveRecord::Base.default_timezone
 
@@ -30,7 +26,7 @@ class MSSQLDateTimeTypesTest < Test::Unit::TestCase
 
   def test_datetime
     # January 1, 1753, through December 31, 9999 + 00:00:00 through 23:59:59.997
-    datetime = DateTime.parse('2012-12-21T21:11:01')
+    datetime = DateTime.parse('2012-12-21T21:11:01').to_time
     model = DateAndTime.create! :datetime => datetime
     assert_datetime_equal datetime, model.reload.datetime
   end if ar_version('3.0')
@@ -39,21 +35,19 @@ class MSSQLDateTimeTypesTest < Test::Unit::TestCase
 
     # 2008 Date and Time: http://msdn.microsoft.com/en-us/library/ff848733.aspx
 
-    TABLE_DEFINITION.replace <<-SQL
-      CREATE TABLE date_and_times (
-        [id] int NOT NULL IDENTITY(1, 1),
-        [datetime] DATETIME,
-        [date] DATE,
-        [datetime2] DATETIME2,
-        [datetime25] DATETIME2(5),
-        [smalldatetime] SMALLDATETIME,
-        [time] TIME
-        PRIMARY KEY CLUSTERED ( [id] ASC ) WITH (
-          PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF,
-          ALLOW_ROW_LOCKS  = ON, ALLOW_PAGE_LOCKS  = ON
-        ) ON [PRIMARY]
-      )
-    SQL
+    TABLE_DEFINITION.replace "CREATE TABLE date_and_times (" <<
+      "[id] int NOT NULL IDENTITY(1, 1)," <<
+      "[datetime] DATETIME, " <<
+      "[date] DATE, " <<
+      "[datetime2] DATETIME2, " <<
+      "[datetime25] DATETIME2(5), " <<
+      "[smalldatetime] SMALLDATETIME, " <<
+      "[time] TIME " <<
+      " PRIMARY KEY CLUSTERED ( [id] ASC ) WITH ( " <<
+       " PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, " <<
+       " ALLOW_ROW_LOCKS  = ON, ALLOW_PAGE_LOCKS  = ON " <<
+      ") ON [PRIMARY] " <<
+    ")"
 
     def test_date
       # 0001-01-01 through 9999-12-31
@@ -65,20 +59,14 @@ class MSSQLDateTimeTypesTest < Test::Unit::TestCase
 
     def test_datetime2
       # date range + 00:00:00 through 23:59:59.9999999
-      datetime = DateTime.parse('2012-12-21T21:11:01')
-      model = DateAndTime.create! :datetime2 => datetime
-      assert_not_nil model.datetime2
-      assert_datetime_equal datetime, model.reload.datetime2
+      with_default_timezone(:utc) do
+        datetime = DateTime.parse('2012-12-21T21:12:03')
+        model = DateAndTime.create! :datetime2 => datetime
+        assert_datetime_equal datetime, model.reload.datetime2
+      end
     end if ar_version('3.0')
 
     def test_datetime25
-#      id = DateAndTime.connection.insert 'INSERT INTO date_and_times ([datetime25])' +
-#        " VALUES ('1982-07-13 02:24:56.12345')"
-#      model = DateAndTime.find(id)
-#      assert_not_nil model.datetime25
-#      datetime = Time.local(1982, 7, 13, 02, 24, 56, 123450)
-#      assert_equal datetime, model.datetime25
-
       datetime = Time.local(1982, 7, 13, 02, 24, 56, 123000)
       model = DateAndTime.create! :datetime25 => datetime
       assert_not_nil model.datetime25
@@ -89,15 +77,17 @@ class MSSQLDateTimeTypesTest < Test::Unit::TestCase
     def test_smalldatetime
       # 1900-01-01 through 2079-06-06 + 00:00:00 through 23:59:59
       # with seconds always zero - rounded to the nearest minute
-      datetime = DateTime.parse('1999-12-31T23:59:21')
+      datetime = DateTime.parse('1999-12-31T23:59:21').to_time
       model = DateAndTime.create! :smalldatetime => datetime
-      datetime = DateTime.parse('1999-12-31T23:59:00')
+      datetime = DateTime.parse('1999-12-31T23:59:00').to_time
       assert_datetime_equal datetime, model.reload.smalldatetime
 
-      datetime = DateTime.parse('1999-12-31T22:59:31')
-      model = DateAndTime.create! :smalldatetime => datetime
-      datetime = DateTime.parse('1999-12-31T23:00:00')
-      assert_datetime_equal datetime, model.reload.smalldatetime
+      with_default_timezone(:utc) do
+        datetime = DateTime.parse('1999-12-31T22:59:31')
+        model = DateAndTime.create! :smalldatetime => datetime
+        datetime = DateTime.parse('1999-12-31T23:00:00')
+        assert_datetime_equal datetime, model.reload.smalldatetime
+      end
     end
 
     def test_time
