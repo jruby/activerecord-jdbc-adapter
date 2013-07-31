@@ -95,6 +95,8 @@ class MSSQLDateTimeTypesTest < Test::Unit::TestCase
       time = Time.local(0000, 1, 01, 23, 59, 58, 987000)
       model = DateAndTime.create! :time => time
       assert_not_nil model.time
+      # NOTE: seems to be messed up with PS due a JRuby bug :
+      # reports Time instance: '0000-01-01 23:59:58 +0057'
       assert_time_equal time, model.reload.time
       assert_equal 987000, model.time.usec
 

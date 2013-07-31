@@ -43,6 +43,24 @@ class MSSQLSimpleTest < Test::Unit::TestCase
     assert_equal str, e.sample_text
   end
 
+  # @override
+  def test_exec_insert
+    name_column = Thing.columns.detect { |column| column.name.to_s == 'name' }
+    created_column = Thing.columns.detect { |column| column.name.to_s == 'created_at' }
+    updated_column = Thing.columns.detect { |column| column.name.to_s == 'updated_at' }
+    now = Time.zone.now
+
+    connection.exec_insert "INSERT INTO things VALUES ( '01', '2013-07-23 02:44:58.045', '2013-07-23 02:44:58.045' )", nil, []
+
+    binds = [ [ name_column, 'ferko' ], [ created_column, now ], [ updated_column, now ] ]
+    connection.exec_insert "INSERT INTO things VALUES ( ?, ?, ? )", 'INSERT Thing(ferko)', binds
+    assert Thing.find_by_name 'ferko'
+    # NOTE: #exec_insert accepts 5 arguments on AR-4.0 :
+    binds = [ [ name_column, 'jozko' ], [ created_column, now ], [ updated_column, now ] ]
+    connection.exec_insert "INSERT INTO things (name, created_at, updated_at) VALUES (?,?,?)", 'INSERT Thing(jozko)', binds, nil, nil
+    assert Thing.find_by_name 'jozko'
+  end
+
   def test_does_not_munge_quoted_strings
     example_quoted_values = [%{'quoted'}, %{D\'oh!}]
     example_quoted_values.each do |value|

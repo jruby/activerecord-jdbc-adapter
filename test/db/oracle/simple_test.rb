@@ -46,6 +46,8 @@ class OracleSimpleTest < Test::Unit::TestCase
 
     result = connection.exec_insert "INSERT INTO entries(ID, TITLE) VALUES ( '4200', 'inserted-title' )", nil, []
     assert_nil result # returns no generated id
+
+    connection.exec_insert "INSERT INTO entries(ID, TITLE) VALUES ( '4201', 'inserted-title' )", nil, [], 'ID'
   end
 
   # @override
