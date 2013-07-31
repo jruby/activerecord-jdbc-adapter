@@ -12,3 +12,7 @@ POSTGRES_CONFIG[:port] = ENV['PGPORT'] if ENV['PGPORT']
 unless ( ps = ENV['PREPARED_STATEMENTS'] || ENV['PS'] ).nil?
   POSTGRES_CONFIG[:prepared_statements] = ps
 end
+
+unless ( it = ENV['INSERT_RETURNING'] ).nil?
+  POSTGRES_CONFIG[:insert_returning] = it
+end
