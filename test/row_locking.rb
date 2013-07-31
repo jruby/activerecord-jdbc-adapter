@@ -9,7 +9,11 @@ module RowLockingTestMethods
   def test_select_all_for_update
     @row1_id = Entry.create!(:title => "row1").id
     all_locked = Entry.lock(true)
-    all_locked_ids = all_locked.all.map { |row| row.id }
+    all_locked_ids = if ar_version('4.0')
+        all_locked.load # all is deprecated
+      else
+        all_locked.all
+      end.map(&:id)
     assert all_locked_ids.include?(@row1_id)
   end if Test::Unit::TestCase.ar_version('3.0')
 

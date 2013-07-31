@@ -53,8 +53,13 @@ module HasManyThroughMethods
 
     connection = ActiveRecord::Base.connection
     groups = role.reload.permission_groups.select('right_id')
-    
-    assert_equal [ [ r1.id ], [ r2.id ] ], connection.select_rows(groups)
+
+    if ar_version('3.1')
+      result = connection.exec_query(groups)
+      assert_equal [ [ r1.id ], [ r2.id ] ], result.rows
+    else
+      assert_equal [ [ r1.id ], [ r2.id ] ], connection.select_rows(groups)
+    end
   end if Test::Unit::TestCase.ar_version('3.0')
 
 end
