@@ -421,7 +421,6 @@ module ActiveRecord
       # @param binds the bind parameters
       # @override available since **AR-3.1**
       def exec_insert(sql, name, binds, pk = nil, sequence_name = nil)
-        # NOTE: prepared statement support for INSERTs not implemented !
         sql = to_sql(sql, binds)
         if prepared_statements?
           log(sql, name || 'SQL', binds) { @connection.execute_insert(sql, binds) }
