@@ -55,11 +55,14 @@ module HasManyThroughMethods
     groups = role.reload.permission_groups.select('right_id')
 
     if ar_version('3.1')
-      result = connection.exec_query(groups)
-      assert_equal [ [ r1.id ], [ r2.id ] ], result.rows
-    else
-      assert_equal [ [ r1.id ], [ r2.id ] ], connection.select_rows(groups)
+      assert_equal [ r1.id, r2.id ], connection.select_values(groups)
+    else # 3.0 does not to to_sql in select_values(sql)
+      assert_equal [ r1.id, r2.id ], connection.select_values(groups.to_sql)
     end
+
+    result = connection.select(groups.to_sql)
+    assert_equal [ r1.id, r2.id ], result.map { |row| row.values.first }
+
   end if Test::Unit::TestCase.ar_version('3.0')
 
 end

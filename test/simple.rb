@@ -915,9 +915,9 @@ module SimpleTestMethods
     User.create! :login => 'user3'
     User.create! :login => 'user4'
 
-    arel = User.select('id, login, created_at').where("login = 'user3' or login = 'user4'")
+    sql = "SELECT id, login, created_at FROM users WHERE login = 'user3' or login = 'user4'"
     yielded = 0
-    ActiveRecord::Base.connection.exec_query_raw(arel) do |*args| # id, login, created_at
+    ActiveRecord::Base.connection.exec_query_raw(sql) do |*args| # id, login, created_at
       assert_equal 3, args.size
       yielded += 1
       case yielded

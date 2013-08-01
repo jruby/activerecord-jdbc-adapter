@@ -291,8 +291,8 @@ module ActiveRecord
       if ActiveRecord::VERSION::MAJOR < 3
 
         # @private
-        def jdbc_insert(sql, name = nil, pk = nil, id_value = nil, sequence_name = nil, binds = [])
-          insert_sql(sql, name, pk, id_value, sequence_name, binds)
+        def jdbc_insert(sql, name = nil, pk = nil, id_value = nil, sequence_name = nil)
+          insert_sql(sql, name, pk, id_value, sequence_name)
         end
         alias_chained_method :insert, :query_dirty, :jdbc_insert
 
@@ -308,6 +308,13 @@ module ActiveRecord
         end
         alias_chained_method :select_all, :query_cache, :jdbc_select_all
 
+      end
+
+      # @note Used on AR 2.3 and 3.0
+      # @override
+      def insert_sql(sql, name = nil, pk = nil, id_value = nil, sequence_name = nil)
+        id = execute(sql, name)
+        id_value || id
       end
 
       def columns(table_name, name = nil)
@@ -406,7 +413,6 @@ module ActiveRecord
       # @return [ActiveRecord::Result] or [Array] on **AR-2.3**
       # @override available since **AR-3.1**
       def exec_query(sql, name = 'SQL', binds = [])
-        sql = to_sql(sql, binds)
         if prepared_statements?
           log(sql, name, binds) { @connection.execute_query(sql, binds) }
         else
@@ -421,7 +427,6 @@ module ActiveRecord
       # @param binds the bind parameters
       # @override available since **AR-3.1**
       def exec_insert(sql, name, binds, pk = nil, sequence_name = nil)
-        sql = to_sql(sql, binds)
         if prepared_statements?
           log(sql, name || 'SQL', binds) { @connection.execute_insert(sql, binds) }
         else
@@ -436,7 +441,6 @@ module ActiveRecord
       # @param binds the bind parameters
       # @override available since **AR-3.1**
       def exec_delete(sql, name, binds)
-        sql = to_sql(sql, binds)
         if prepared_statements?
           log(sql, name || 'SQL', binds) { @connection.execute_delete(sql, binds) }
         else
@@ -451,7 +455,6 @@ module ActiveRecord
       # @param binds the bind parameters
       # @override available since **AR-3.1**
       def exec_update(sql, name, binds)
-        sql = to_sql(sql, binds)
         if prepared_statements?
           log(sql, name || 'SQL', binds) { @connection.execute_update(sql, binds) }
         else
@@ -471,7 +474,6 @@ module ActiveRecord
       # instead of returning mapped query results in an array.
       # @return [Array] unless a block is given
       def exec_query_raw(sql, name = 'SQL', binds = [], &block)
-        sql = to_sql(sql, binds)
         if prepared_statements?
           log(sql, name, binds) { @connection.execute_query_raw(sql, binds, &block) }
         else
@@ -490,14 +492,14 @@ module ActiveRecord
 
       # @private
       def select(sql, name = nil, binds = [])
-        exec_query(sql, name, binds)
+        exec_query(to_sql(sql, binds), name, binds)
       end
 
       else
 
       # @private
       def select(sql, name = nil, binds = []) # NOTE: only (sql, name) on AR < 3.1
-        exec_query_raw(sql, name, binds)
+        exec_query_raw(to_sql(sql, binds), name, binds)
       end
 
       end
@@ -513,8 +515,8 @@ module ActiveRecord
       # @see #exec_query
       # @see #exec_insert
       # @see #exec_update
-      def execute(sql, name = nil, binds = [])
-        sql = suble_binds to_sql(sql, binds), binds
+      def execute(sql, name = nil, binds = nil)
+        sql = suble_binds to_sql(sql, binds), binds if binds
         if name == :skip_logging
           _execute(sql, name)
         else
@@ -531,13 +533,6 @@ module ActiveRecord
         @connection.execute(sql)
       end
       private :_execute
-
-      # @note extra binds argument at the end due 2.3 support (due {#jdbc_insert})
-      # @private
-      def insert_sql(sql, name = nil, pk = nil, id_value = nil, sequence_name = nil, binds = [])
-        id = execute(sql, name = nil, binds)
-        id_value || id
-      end
 
       # @override
       def tables(name = nil)
@@ -595,16 +590,7 @@ module ActiveRecord
           sql
         end
 
-      else # AR >= 3.1 or 4.0
-
-        # ActiveRecord::ConnectionAdapters::DatabaseStatements#to_sql
-        #def to_sql(arel, binds = [])
-        #  if arel.respond_to?(:ast)
-        #    visitor.accept(arel.ast) { quote(*binds.shift.reverse) }
-        #  else
-        #    arel
-        #  end
-        #end
+      # else # AR >= 3.1 or 4.0
 
       end
 
@@ -727,7 +713,7 @@ module ActiveRecord
         obj.respond_to?(:to_sql) ? obj.send(:to_sql) : obj
       end
 
-      # Helper to get local/UTC time (based on default TZ).
+      # Helper to get local/UTC time (based on `ActiveRecord::Base.default_timezone`).
       def get_time(value)
         get = ::ActiveRecord::Base.default_timezone == :utc ? :getutc : :getlocal
         value.respond_to?(get) ? value.send(get) : value
