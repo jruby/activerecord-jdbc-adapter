@@ -8,17 +8,21 @@ class MysqlSchemaDumpTest < Test::Unit::TestCase
   def self.startup
     super
     MigrationSetup.setup!
-    if ActiveRecord::Base.connection.supports_views?
+    if supports_views?
       ActiveRecord::Base.connection.execute 'CREATE VIEW db_time_view AS SELECT sample_date FROM db_types'
     end
   end
 
   def self.shutdown
-    if ActiveRecord::Base.connection.supports_views?
+    if supports_views?
       ActiveRecord::Base.connection.execute 'DROP VIEW db_time_view'
     end
     MigrationSetup.teardown!
     super
+  end
+
+  def self.supports_views?
+    ActiveRecord::Base.connection.send(:supports_views?)
   end
 
   def setup!; end # MigrationSetup#setup!
@@ -136,7 +140,7 @@ class MysqlInfoTest < Test::Unit::TestCase
     assert dump.include?('CREATE TABLE `cars`')
     assert dump.include?('CREATE TABLE `cats`')
     assert dump.include?('CREATE TABLE `memos`')
-  end
+  end if defined? JRUBY_VERSION
 
   def test_should_include_longtext_in_schema_dump
     strio = StringIO.new
@@ -176,7 +180,7 @@ class MysqlInfoTest < Test::Unit::TestCase
     assert url =~ /characterEncoding=utf8/
     assert url =~ /useUnicode=true/
     assert url =~ /zeroDateTimeBehavior=convertToNull/
-  end
+  end if defined? JRUBY_VERSION
 
   def test_no_limits_for_some_data_types
     DbTypeMigration.up

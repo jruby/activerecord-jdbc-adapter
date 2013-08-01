@@ -102,12 +102,12 @@ class PostgresSimpleTest < Test::Unit::TestCase
 
   def test_supports_standard_conforming_string
     assert([true, false].include?(connection.supports_standard_conforming_strings?))
-  end
+  end if defined? JRUBY_VERSION
 
   def test_standard_conforming_string_default_set_on_new_connections
     c = ActiveRecord::Base.postgresql_connection(POSTGRES_CONFIG)
     assert_equal true, c.instance_variable_get("@standard_conforming_strings")
-  end
+  end if defined? JRUBY_VERSION
 
   def test_default_standard_conforming_string
     if connection.supports_standard_conforming_strings?
@@ -115,21 +115,21 @@ class PostgresSimpleTest < Test::Unit::TestCase
     else
       assert_equal false, connection.standard_conforming_strings?
     end
-  end
+  end if defined? JRUBY_VERSION
 
   def test_string_quoting_with_standard_conforming_strings
     if connection.supports_standard_conforming_strings?
       s = "\\m it's \\M"
       assert_equal "'\\m it''s \\M'", connection.quote(s)
     end
-  end
+  end if defined? JRUBY_VERSION
 
   def test_string_quoting_without_standard_conforming_strings
     connection.standard_conforming_strings = false
     s = "\\m it's \\M"
     assert_equal "'\\\\m it''s \\\\M'", connection.quote(s)
     connection.standard_conforming_strings = true
-  end
+  end if defined? JRUBY_VERSION
 
   test 'returns correct visitor type' do
     assert_not_nil visitor = connection.instance_variable_get(:@visitor)

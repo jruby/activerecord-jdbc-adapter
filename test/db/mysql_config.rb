@@ -1,7 +1,7 @@
 MYSQL_CONFIG = {
   :username => 'arjdbc',
   :password => 'arjdbc',
-  :adapter  => 'mysql',
+  :adapter  => 'mysql2',
   :database => 'arjdbc_test',
   :host     => 'localhost'
 }

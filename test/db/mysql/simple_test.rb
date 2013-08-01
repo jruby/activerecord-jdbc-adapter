@@ -45,7 +45,7 @@ class MysqlSimpleTest < Test::Unit::TestCase
   def test_column_class_instantiation
     text_column = nil
     assert_nothing_raised do
-      text_column = ActiveRecord::ConnectionAdapters::MysqlAdapter::Column.new("title", nil, "text")
+      text_column = mysql_adapter_class::Column.new("title", nil, "text")
     end
     assert_not_nil text_column
   end
@@ -180,15 +180,15 @@ class MysqlSimpleTest < Test::Unit::TestCase
 
   def test_emulates_booleans_by_default
     assert connection.class.emulate_booleans
-    assert_true ArJdbc::MySQL.emulate_booleans
-    assert_true ActiveRecord::ConnectionAdapters::MysqlAdapter.emulate_booleans
+    assert_true ArJdbc::MySQL.emulate_booleans if defined? ArJdbc::MySQL
+    assert_true mysql_adapter_class.emulate_booleans
   end if ar_version('3.0')
 
   def test_boolean_emulation_can_be_disabled
     db_type = DbType.create! :sample_boolean => true
     column = DbType.columns.find { |col| col.name.to_s == 'sample_boolean' }
     assert_equal :boolean, column.type
-    ActiveRecord::ConnectionAdapters::MysqlAdapter.emulate_booleans = false
+    mysql_adapter_class.emulate_booleans = false
 
     DbType.reset_column_information
     column = DbType.columns.find { |col| col.name.to_s == 'sample_boolean' }
@@ -196,7 +196,7 @@ class MysqlSimpleTest < Test::Unit::TestCase
 
     assert_equal 1, db_type.reload.sample_boolean
   ensure
-    ArJdbc::MySQL.emulate_booleans = true
+    mysql_adapter_class.emulate_booleans = true
     DbType.reset_column_information
   end if ar_version('3.0')
 
@@ -215,6 +215,16 @@ class MysqlSimpleTest < Test::Unit::TestCase
     assert defined? Arel::Visitors::MySQL
     assert_kind_of Arel::Visitors::MySQL, visitor
   end if ar_version('3.0')
+
+  private
+
+  def mysql_adapter_class
+    if defined? ActiveRecord::ConnectionAdapters::Mysql2Adapter
+      ActiveRecord::ConnectionAdapters::Mysql2Adapter
+    else
+      ActiveRecord::ConnectionAdapters::MysqlAdapter
+    end
+  end
 
 end
 

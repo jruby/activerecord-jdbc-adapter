@@ -19,7 +19,7 @@ module TransactionTestMethods
   def setup
     super
     Entry.delete_all
-    config = ActiveRecord::Base.connection.config
+    config = ActiveRecord::Base.connection_config
     Entry2.establish_connection config
     @supports_savepoints = ActiveRecord::Base.connection.supports_savepoints?
   end
@@ -32,7 +32,7 @@ module TransactionTestMethods
     assert ActiveRecord::Base.connection.supports_transaction_isolation?(:read_committed)
     assert ActiveRecord::Base.connection.supports_transaction_isolation?(:repeatable_read)
     assert ActiveRecord::Base.connection.supports_transaction_isolation?(:serializable)
-  end
+  end if defined? JRUBY_VERSION
 
   def test_transaction_isolation_read_uncommitted
     # It is impossible to properly test read uncommitted. The SQL standard only
@@ -149,7 +149,7 @@ module TransactionTestMethods
         disable_logger { connection.release_savepoint 'SP' rescue nil }
       end
     end
-  end
+  end if defined? JRUBY_VERSION
 
   def test_named_savepoint
     omit 'savepoins not supported' unless @supports_savepoints
@@ -192,6 +192,6 @@ module TransactionTestMethods
         end
       end
     end
-  end
+  end if defined? JRUBY_VERSION
 
 end

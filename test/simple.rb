@@ -682,7 +682,7 @@ module SimpleTestMethods
     sql = 'SELECT * FROM entries WHERE title = ?'
     Entry.connection.send :substitute_binds, sql, binds
     assert_equal binds_dup, binds
-  end
+  end if defined? JRUBY_VERSION
 
   def test_find_by_sql_with_binds
     Entry.create!(:title => 'qqq', :content => '', :rating => 4)
@@ -909,7 +909,7 @@ module SimpleTestMethods
     assert_instance_of Hash, result[0]
     assert_equal 'user1', result[0]['login']
     assert_equal 'user2', result[1]['login']
-  end
+  end if defined? JRUBY_VERSION
 
   def test_exec_query_raw_yields
     User.create! :login => 'user3'
@@ -930,26 +930,34 @@ module SimpleTestMethods
       end
     end
     assert yielded == 2
-  end if Test::Unit::TestCase.ar_version('3.0')
+  end if Test::Unit::TestCase.ar_version('3.0') && defined? JRUBY_VERSION
 
   def test_execute_insert
-    assert_not_nil id = connection.execute("INSERT INTO entries (title) VALUES ('inserted-title')")
+    id = connection.execute("INSERT INTO entries (title) VALUES ('inserted-title')")
+    if defined? JRUBY_VERSION
+      assert_not_nil id
+    else
+      id = Entry.first.id
+    end
     assert_equal 'inserted-title', Entry.find(id).title
   end
 
   def test_execute_update
     e = Entry.create! :title => '42'
     Entry.create! :title => '43'; Entry.create! :title => '44'
-    assert_equal 1, connection.execute("UPDATE entries SET title = 'updated-title' WHERE id = #{e.id}")
+    count = connection.execute("UPDATE entries SET title = 'updated-title' WHERE id = #{e.id}")
+    assert_equal 1, count if defined? JRUBY_VERSION # e.g. nil with mysql2
     assert_equal 'updated-title', e.reload.title
   end
 
   def test_execute_query
     Entry.create! :title => '43'; Entry.create! :title => '44'
     assert_not_nil result = connection.execute("SELECT * FROM entries")
-    assert_instance_of Array, result # always return "raw" results
-    assert_equal 2, result.size
-    assert_instance_of Hash, result.first
+    if defined? JRUBY_VERSION # e.g. Mysql2::Result with mysql2
+      assert_instance_of Array, result # always return "raw" results
+      assert_equal 2, result.size
+      assert_instance_of Hash, result.first
+    end
   end
 
   def test_select
@@ -961,7 +969,7 @@ module SimpleTestMethods
     # rows = connection.execute 'SELECT * FROM entries'
     # column_order = rows.first.keys
 
-    result = connection.select 'SELECT * FROM entries'
+    result = connection.send :select, 'SELECT * FROM entries'
 
     if ar_version('4.0')
       assert_instance_of ActiveRecord::Result, result
@@ -1020,9 +1028,9 @@ module SimpleTestMethods
   end
 
   def test_connection_alive_sql
-    connection = ActiveRecord::Base.connection
-    if alive_sql = connection.config[:connection_alive_sql]
-      connection.execute alive_sql
+    config = ActiveRecord::Base.connection_config
+    if alive_sql = config[:connection_alive_sql]
+      ActiveRecord::Base.connection.execute alive_sql
     end
     # if no alive SQL than JDBC 4.0 driver's "alive" test will be used
   end
@@ -1217,18 +1225,18 @@ module ActiveRecord3TestMethods
   module TestMethods
 
     def test_visitor_accessor
-      adapter = Entry.connection
+      adapter = Entry.connection; config = Entry.connection_config
       assert_not_nil adapter.visitor
-      assert_not_nil visitor_type = Arel::Visitors::VISITORS[ adapter.config[:adapter] ]
+      assert_not_nil visitor_type = Arel::Visitors::VISITORS[ config[:adapter] ]
       assert_kind_of visitor_type, adapter.visitor
     end if Test::Unit::TestCase.ar_version('3.1') # >= 3.2
 
     def test_arel_visitors
-      adapter = ActiveRecord::Base.connection
+      adapter = ActiveRecord::Base.connection; config = Entry.connection_config
       visitors = Arel::Visitors::VISITORS.dup
-      assert_not_nil visitor_type = adapter.class.resolve_visitor_type(adapter.config)
-      assert_equal visitor_type, visitors[ adapter.config[:adapter] ]
-    end if Test::Unit::TestCase.ar_version('3.0')
+      assert_not_nil visitor_type = adapter.class.resolve_visitor_type(config)
+      assert_equal visitor_type, visitors[ config[:adapter] ]
+    end if Test::Unit::TestCase.ar_version('3.0') && defined? JRUBY_VERSION
 
     def test_where
       user = User.create! :login => "blogger"
@@ -1249,9 +1257,9 @@ module ActiveRecord3TestMethods
     end
 
     def test_remove_nonexistent_index
-      assert_raise(ArgumentError, ActiveRecord::StatementInvalid, ActiveRecord::JDBCError) do
-        connection.remove_index :entries, :nonexistent_index
-      end
+      errors = [ ArgumentError, ActiveRecord::StatementInvalid ]
+      errors << ActiveRecord::JDBCError if defined? JRUBY_VERSION
+      assert_raise(*errors) { connection.remove_index :entries, :nonexistent_index }
     end
 
     def test_add_index_with_invalid_name_length

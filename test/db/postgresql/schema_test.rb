@@ -47,7 +47,7 @@ class PostgresSchemaTest < Test::Unit::TestCase
   end
 
   def test_current_database
-    db = ActiveRecord::Base.connection.config[:database]
+    db = ActiveRecord::Base.connection_config[:database]
     assert_equal db, connection.current_database
   end
 
