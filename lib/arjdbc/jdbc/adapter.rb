@@ -524,6 +524,20 @@ module ActiveRecord
         end
       end
 
+      # @private documented above
+      def execute(sql, name = nil, skip_logging = false)
+        if skip_logging.is_a?(Array)
+          binds, skip_logging = skip_logging, false
+          sql = suble_binds to_sql(sql, binds), binds
+        end
+        if skip_logging || name == :skip_logging
+          _execute(sql, name)
+        else
+          log(sql, name) { _execute(sql, name) }
+        end
+      end if ActiveRecord::VERSION::MAJOR < 3 ||
+        ( ActiveRecord::VERSION::MAJOR == 3 && ActiveRecord::VERSION::MINOR == 0 )
+
       # We need to do it this way, to allow Rails stupid tests to always work
       # even if we define a new `execute` method. Instead of mixing in a new
       # `execute`, an `_execute` should be mixed in.
