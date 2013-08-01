@@ -21,11 +21,13 @@ Gem::Specification.new do |gem|
     "JRuby on Rails application."
 
   gem.require_paths = ["lib"]
-  gem.files = `git ls-files`.split("\n").
-    reject { |f| f =~ /^(activerecord-jdbc[^-]|jdbc-)/ }
-  gem.test_files = `git ls-files -- {test}/*`.split("\n")
-  gem.executables = `git ls-files -- bin/*`.split("\n").map{ |f| File.basename(f) }
 
+  gem.files = `git ls-files`.split("\n").
+    reject { |f| f =~ /^(activerecord-jdbc[^-]|jdbc-)/ }. # gem directories
+    reject { |f| f =~ /^(bench|test)/ } # not sure if including tests is useful
+  gem.executables = gem.files.grep(%r{^bin/}).map { |f| File.basename(f) }
+  gem.test_files = gem.files.grep(%r{^test/})
+  
   # NOTE: 1.3.0 only supports >= 2.3 but users report it works with 2.2 :
   #gem.add_dependency 'activerecord', '>= 2.2.2'
 
