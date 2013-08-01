@@ -1323,7 +1323,7 @@ end
 
 module ExplainSupportTestMethods
 
-  PRINT_EXPLAIN_OUTPUT = java.lang.Boolean.getBoolean('explain.support.output')
+  PRINT_EXPLAIN_OUTPUT = get_system_property('explain.support.output')
 
   def test_supports_explain
     assert ActiveRecord::Base.connection.supports_explain?

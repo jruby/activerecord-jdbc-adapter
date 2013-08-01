@@ -20,7 +20,11 @@ if ENV['COVERAGE']
   puts 'started simplecov'
 end
 
-require 'arjdbc' if defined?(JRUBY_VERSION)
+if defined?(JRUBY_VERSION)
+  require 'arjdbc'
+else # we support running tests against MRI
+  require 'active_record'
+end
 
 puts "Using ActiveRecord::VERSION = #{ActiveRecord::VERSION::STRING}"
 
@@ -48,6 +52,10 @@ def silence_warnings
   yield
 ensure
   $VERBOSE = prev
+end
+
+def get_system_property(name)
+  defined? ENV_JAVA ? ENV_JAVA[name] : ENV[name]
 end
 
 # assert_queries and SQLCounter taken from rails active_record tests

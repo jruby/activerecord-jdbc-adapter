@@ -65,4 +65,4 @@ class PostgresUnitTest < Test::Unit::TestCase
     connection
   end
 
-end
+end if defined? JRUBY_VERSION

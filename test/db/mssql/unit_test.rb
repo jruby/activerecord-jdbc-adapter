@@ -246,4 +246,4 @@ class MSSQLRowLockingUnitTest < Test::Unit::TestCase
     assert_equal after, add_lock!(before, options).strip, message
   end
 
-end
+end if defined? JRUBY_VERSION
