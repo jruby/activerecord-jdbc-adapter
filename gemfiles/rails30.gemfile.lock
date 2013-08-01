@@ -15,6 +15,7 @@ GEM
       bundler
       rake
     arel (2.0.10)
+    atomic (1.1.10-java)
     bcrypt-ruby (3.0.1-java)
     bouncy-castle-java (1.5.0147)
     builder (2.1.2)
@@ -22,7 +23,7 @@ GEM
     jruby-openssl (0.8.8)
       bouncy-castle-java (>= 1.5.0147)
     metaclass (0.0.1)
-    mocha (0.14.0)
+    mocha (0.13.3)
       metaclass (~> 0.0.1)
     multi_json (1.7.7)
     rake (10.1.0)
@@ -33,6 +34,8 @@ GEM
     test-unit (2.5.4)
     test-unit-context (0.3.1)
       test-unit (>= 2.4.0)
+    thread_safe (0.1.2-java)
+      atomic
     tzinfo (0.3.37)
 
 PLATFORMS
@@ -43,8 +46,9 @@ DEPENDENCIES
   appraisal
   bcrypt-ruby (~> 3.0.0)
   jruby-openssl
-  mocha (>= 0.13.0)
+  mocha (~> 0.13.1)
   rake
   simplecov
   test-unit (= 2.5.4)
-  test-unit-context
+  test-unit-context (>= 0.3.0)
+  thread_safe

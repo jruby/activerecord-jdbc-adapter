@@ -29,7 +29,7 @@ GEM
       bouncy-castle-java (>= 1.5.0147)
     metaclass (0.0.1)
     minitest (4.7.5)
-    mocha (0.14.0)
+    mocha (0.13.3)
       metaclass (~> 0.0.1)
     multi_json (1.7.7)
     rake (10.1.0)
@@ -52,8 +52,9 @@ DEPENDENCIES
   appraisal
   bcrypt-ruby (~> 3.0.0)
   jruby-openssl
-  mocha (>= 0.13.0)
+  mocha (~> 0.13.1)
   rake
   simplecov
   test-unit (= 2.5.4)
-  test-unit-context
+  test-unit-context (>= 0.3.0)
+  thread_safe
