@@ -1,3 +1,4 @@
+# -*- encoding : utf-8 -*-
 require 'test_helper'
 require 'simple' # due MigrationSetup
 
@@ -19,8 +20,7 @@ module TransactionTestMethods
   def setup
     super
     Entry.delete_all
-    config = ActiveRecord::Base.connection_config
-    Entry2.establish_connection config
+    Entry2.establish_connection current_connection_config.dup
     @supports_savepoints = ActiveRecord::Base.connection.supports_savepoints?
   end
 

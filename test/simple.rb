@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+# -*- encoding : utf-8 -*-
 require 'test_helper'
 
 require 'set'
@@ -846,7 +846,11 @@ module SimpleTestMethods
     assert Thing.find_by_name 'ferko'
     # NOTE: #exec_insert accepts 5 arguments on AR-4.0 :
     binds = [ [ name_column, 'jozko' ], [ created_column, now ], [ updated_column, now ] ]
-    connection.exec_insert "INSERT INTO things (name, created_at, updated_at) VALUES (?,?,?)", 'INSERT Thing(jozko)', binds, nil, nil
+    if ar_version('4.0')
+      connection.exec_insert "INSERT INTO things (name, created_at, updated_at) VALUES (?,?,?)", 'INSERT Thing(jozko)', binds, nil, nil
+    else
+      connection.exec_insert "INSERT INTO things (name, created_at, updated_at) VALUES (?,?,?)", 'INSERT Thing(jozko)', binds
+    end
     assert Thing.find_by_name 'jozko'
   end
 
@@ -1028,7 +1032,7 @@ module SimpleTestMethods
   end
 
   def test_connection_alive_sql
-    config = ActiveRecord::Base.connection_config
+    config = current_connection_config
     if alive_sql = config[:connection_alive_sql]
       ActiveRecord::Base.connection.execute alive_sql
     end
@@ -1232,7 +1236,7 @@ module ActiveRecord3TestMethods
     end if Test::Unit::TestCase.ar_version('3.1') # >= 3.2
 
     def test_arel_visitors
-      adapter = ActiveRecord::Base.connection; config = Entry.connection_config
+      adapter = ActiveRecord::Base.connection; config = current_connection_config
       visitors = Arel::Visitors::VISITORS.dup
       assert_not_nil visitor_type = adapter.class.resolve_visitor_type(config)
       assert_equal visitor_type, visitors[ config[:adapter] ]

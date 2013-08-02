@@ -62,7 +62,7 @@ module HasManyThroughMethods
       assert_equal [ r1.id, r2.id ], connection.select_values(groups.to_sql)
     end
 
-    result = connection.select(groups.to_sql)
+    result = connection.send :select, groups.to_sql # protected on MRI
     assert_equal [ r1.id, r2.id ], result.map { |row| row.values.first }
 
   end if Test::Unit::TestCase.ar_version('3.0')
