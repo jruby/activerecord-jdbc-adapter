@@ -149,10 +149,7 @@ module ArJdbc
 
     # @override
     def supports_savepoints?
-      # sqlite_version >= 3.6.8
-      return true if sqlite_version >= '3.7.0'
-      version = sqlite_version.split('.')
-      ( version.map!(&:to_i) <=> [ 3, 6, 8 ] ) <= 0
+      sqlite_version >= '3.6.8'
     end
 
     # @override
@@ -206,7 +203,7 @@ module ArJdbc
     end
 
     def sqlite_version
-      @sqlite_version ||= select_value('SELECT sqlite_version(*)')
+      @sqlite_version ||= Version.new(select_value('SELECT sqlite_version(*)'))
     end
     private :sqlite_version
 
@@ -485,6 +482,24 @@ module ArJdbc
       end
     end
 
+    # @private available in native adapter way back to AR-2.3
+    class Version
+      include Comparable
+
+      def initialize(version_string)
+        @version = version_string.split('.').map! { |v| v.to_i }
+      end
+
+      def <=>(version_string)
+        @version <=> version_string.split('.').map! { |v| v.to_i }
+      end
+
+      def to_s
+        @version
+      end
+
+    end
+
   end
 end
 
@@ -529,6 +544,9 @@ module ActiveRecord::ConnectionAdapters
     def jdbc_column_class
       ::ActiveRecord::ConnectionAdapters::SQLite3Column
     end
+
+    # @private
+    Version = ArJdbc::SQLite3::Version
 
   end
 

@@ -5,12 +5,9 @@ require 'db/sqlite3'
 class SQLite3TypeConversionTest < Test::Unit::TestCase
 
   if defined?(JRUBY_VERSION)
-    JInteger = java.lang.Integer
+    MAX_INTEGER_VALUE =  Java::JavaLang::Integer::MAX_VALUE
   else
-    JInteger = Fixnum
-    class Fixnum
-      MAX_VALUE = 1024 * 1024 # arbitrary value ... we could pick
-    end
+    MAX_INTEGER_VALUE = 2147483647
   end
 
   def self.startup; super; DbTypeMigration.up; end
@@ -29,7 +26,7 @@ class SQLite3TypeConversionTest < Test::Unit::TestCase
       :sample_datetime => some_time.to_datetime,
       :sample_time => some_time.to_time,
       :sample_date => some_time.to_date,
-      :sample_decimal => JInteger::MAX_VALUE + 1,
+      :sample_decimal => MAX_INTEGER_VALUE + 1,
       :sample_small_decimal => 3.14,
       :sample_binary => TEST_BINARY)
     DbType.create!(
@@ -37,7 +34,7 @@ class SQLite3TypeConversionTest < Test::Unit::TestCase
       :sample_datetime => some_time.to_datetime,
       :sample_time => some_time.to_time,
       :sample_date => some_time.to_date,
-      :sample_decimal => JInteger::MAX_VALUE + 1,
+      :sample_decimal => MAX_INTEGER_VALUE + 1,
       :sample_small_decimal => 1.0,
       :sample_binary => TEST_BINARY)
   end
@@ -46,7 +43,7 @@ class SQLite3TypeConversionTest < Test::Unit::TestCase
 
   def test_decimal
     types = DbType.first
-    assert_equal((JInteger::MAX_VALUE + 1), types.sample_decimal)
+    assert_equal MAX_INTEGER_VALUE + 1, types.sample_decimal
   end
 
   def test_decimal_scale
