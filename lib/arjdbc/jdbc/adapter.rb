@@ -604,7 +604,21 @@ module ActiveRecord
           sql
         end
 
-      # else # AR >= 3.1 or 4.0
+      else # AR >= 3.1 or 4.0
+
+        # @private
+        def to_sql(arel, binds = [])
+          # NOTE: same on 3.1/3.2 but on 4.0 binds are dup-ed
+          # for us it is intentional to 'consume' (empty) the binds array
+          # due our {#suble_binds} hack (that will be getting deprecated)
+          if arel.respond_to?(:ast)
+            visitor.accept(arel.ast) do
+              quote(*binds.shift.reverse)
+            end
+          else
+            arel
+          end
+        end
 
       end
 
@@ -613,10 +627,6 @@ module ActiveRecord
       # @override so that we do not have to care having 2 arguments on 3.0
       def log(sql, name = nil, binds = [])
         unless binds.blank?
-          # prepared-statements are not supported on AR <= 3.0 but to keep
-          # the API consistent (e.g. for {#select} using #{#exec_query_raw})
-          # it's good to handle such cases gracefully althogu this code is
-          # not likely to execute (`config[:prepared_statements]` is not set)
           binds = binds.map do |column, value|
             column ? [column.name, value] : [nil, value]
           end
@@ -714,6 +724,7 @@ module ActiveRecord
       def suble_binds(sql, binds)
         return sql if binds.nil? || binds.empty?
         copy = binds.dup
+        # TODO deprecate/warn about this behavior !
         sql.gsub('?') { quote(*copy.shift.reverse) }
       end
 
