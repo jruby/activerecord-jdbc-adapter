@@ -27,9 +27,9 @@ Gem::Specification.new do |gem|
     reject { |f| f =~ /^(bench|test)/ } # not sure if including tests is useful
   gem.executables = gem.files.grep(%r{^bin/}).map { |f| File.basename(f) }
   gem.test_files = gem.files.grep(%r{^test/})
-  
+
   # NOTE: 1.3.0 only supports >= 2.3 but users report it works with 2.2 :
-  #gem.add_dependency 'activerecord', '>= 2.2.2'
+  gem.add_dependency 'activerecord', '>= 2.2'
 
   #gem.add_development_dependency 'test-unit', '2.5.4'
   #gem.add_development_dependency 'test-unit-context', '>= 0.3.0'
