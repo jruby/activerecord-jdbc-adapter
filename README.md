@@ -4,16 +4,15 @@ ActiveRecord-JDBC-Adapter (AR-JDBC) is a database adapter for Rails'
 *ActiveRecord* component that can be used with [JRuby][0]. It allows use of
 virtually any JDBC-compliant database with your JRuby on Rails application.
 
-AR-JDBC **1.2.x** officially supports ActiveRecord **3.x** as well as **2.3**,
-it's latest version is compatible and require JRuby **1.6.8+** (but as always we
+AR-JDBC **1.2.x** officially supports `ActiveRecord` **3.x** as well as **2.3**,
+it's latest version is compatible and requires JRuby **1.6.8+** (but as always we
 recommend to use the latest and greatest of JRubies) thus Java **1.6** is needed.
 
-**NOTE:** version **1.3.0** of AR-JDBC adapter is currently in the making which
-strives to provide ActiveRecord 2.3, 3.x as well as 4.0 (master) compatibility.
-Our master already contains a lot of fixes but since we diverged significantly
-from the 1.2 line (we no longer back-port fixes) and still require to perform a
-few refactorings we advise users to point their *Gemfiles* to our master or use
-pre-release versions of our gem(s) e.g. **1.3.0.beta2**.
+**NOTE:** version **1.3.x** of AR-JDBC adapter strives to provide `ActiveRecord`
+**4.x** compatibility (as well as still supporting **2.3** and **3.x**) from a
+single code base. It's a recommended update for all AR-JDBC 1.2.x users.
+
+[![Gem Version](https://badge.fury.io/rb/activerecord-jdbc-adapter.png)](http://badge.fury.io/rb/activerecord-jdbc-adapter)
 
 ## Databases
 

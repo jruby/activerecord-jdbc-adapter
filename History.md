@@ -1,3 +1,70 @@
+## 1.3.0.rc1 (08/03/13)
+
+- add activerecord gem as a dependency of the main AR-JDBC gem
+- override `to_sql` due AR 4.0 - we want to consume the passed binds array
+- [sqlite3] introduce Version constant (returned from sqlite_version)
+- `execute` expects `skip_logging` param on AR <= 3.0 (+ does not accept binds)
+- we shall not do any `to_sql` in any of the exec_xxx methods
+- [postgres] array column defaults more reliable (ported from Rails)
+- [mssql] review MSSQL date-time handling - no need for that customized quoting
+- [mssql] MSSQL - `rake db:migrate:reset` can drop database
+- [oracle] handle null strings (e.g. returned on XML columns) instead of NPE
+- [oracle] get rid of oracle's `execute_id_insert` not sure how it ever worked
+- [oracle] sequence quoting + `insert` refactoring + support for RETURNING
+  revisit `insert` / `insert_sql` / `exec_insert` to work for all ARs we support
+- [db2] refactor DB2's `last_insert_id` using *IDENTITY_VAL_LOCAL()*
+- [db2] DB2 supports standalone *VALUES* statements (just like Derby does)
+- [derby] last_insert_id for Derby using *IDENTITY_VAL_LOCAL()*
+- [derby] only hookup SQL checks on #execute when no #exec_query etc. available
+- [sqlite] query-ing last_insert_id after each INSERT seems redundant
+- [sqlite] a saner way of getting last_insert_row_id() via the JDBC API
+- better `last_inserted_id` unwrapping on the base (jdbc) adapter level
+- [postgres] support exec_insert with PS + make sure RETURNING works
+- (thread_safe based) quoted column/table name cache implementation
+  currently used with PostgreSQL, Oracle and MS-SQL adapter (#432)
+- [mssql] prevent special column corruption of ORDER BY (#431)
+- [db2] fix error with timezone + use default date and time parsing
+- [db2] fix error on named index removing
+- [postgres] fix array values escaping: backslashes should be escaped too
+- [postgres] fix `add_column` / `change_column` with arrays
+- [mssql]  support for running with official MSSQL driver *adapter: sqlserver*
+- [mssql] visitor update (based on built-in) to better resolve ORDER BY
+- [mssql] handle SELECT DISTINCT correctly with LIMIT (#154)
+- `add_limit_offset!` / `add_lock!` only to be available before AREL (2.3)
+- remove Arel::SqlCompiler extensions - was only available with AR 3.0.0 pre
+- refactored AREL support - esp. visitor resolution - simpler & more reliable
+- [postgres] handle DISTINCT correctly with backwards-compat (#418)
+- [firebird] full featured support - first class firebird_connection method
+- [jdbc-] jdbc-firebird - packaged JayBird JDBC driver (gem) for FireBird 2.2.3
+- [postgres] fix array quoting
+- implemented support for returning Ruby Date/Time objects from JDBC
+  allows such Ruby objects to be returned in custom SELECTs as well (#349)
+- introduce a (better) `update_lob_value` as a `write_large_object` replacement
+- beyond second precision with timestamp values for adapters that support 'em
+- rename `MissingFunctionalityHelper` -> `TableCopier`
+- finishing **prepared statement support** for all (Java API now stable), handles
+  `exec_query`, `exec_update`, `exec_delete` and `exec_insert`
+- use `init connection` to check if *connection_alive_sql* needed (old driver)
+-  JDBC API based savepoint support (that should work for all adapters)
+- remove `connection.config=` and make sure it does not change `config`
+- avoid executing mysql/sqlite3 JDBC type resolving code (for some speed up)
+- simplify native_database_types - now on adapter + overriden avoids jdbc
+- [mysql] support canceling a timer for wrapped (JNDI) connections as well
+- [mysql] refactor cancel timer (field access) to work correctly (#413)
+- Java API: introduce newConnection + refactor @connection_factory to Java
+- [postgres] missing point casting code + string to bit casts (#60)
+- [derby] tables should only return those from current schema
+- [derby] set current schema thus identifiers get resolved (closes #408)
+- [derby] no *connection_alive_sql* needed since Derby 10.8
+- [postgres] make sure uuid is correctly used/resolved as PK (AR 4.0)
+- [postgres] match pk_and_sequence_for with AR 4.0
+
+Code Contributors (in no particular order): Alexey Noskov, Pierrick Rouxel,
+Matías Battocchia, @gapthemind and Sören Mothes
+
+Code Contributors (in no particular order): @alno, @pierrickrouxel,
+@matiasbattocchia, @gapthemind, @soemo
+
 ## 1.3.0.beta2 (05/30/13)
 
 - only load rake tasks if AR is being used - AR::Railtie is loaded (#234)
