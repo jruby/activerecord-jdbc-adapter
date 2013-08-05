@@ -5,7 +5,7 @@ require 'jdbc/firebird/version'
 
 Gem::Specification.new do |s|
   s.name = %q{jdbc-firebird}
-  s.version = Jdbc::FireBird::VERSION
+  s.version = Jdbc::Firebird::VERSION
 
   s.authors = ["Karol Bucek"]
   s.email = %q{self@kares.org}

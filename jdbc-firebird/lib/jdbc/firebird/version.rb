@@ -1,6 +1,6 @@
 module Jdbc
-  module FireBird
+  module Firebird
     DRIVER_VERSION = '2.2.3'
-    VERSION = DRIVER_VERSION + ''
+    VERSION = DRIVER_VERSION + '.1'
   end
 end
