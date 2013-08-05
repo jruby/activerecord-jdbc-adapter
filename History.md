@@ -62,9 +62,6 @@
 Code Contributors (in no particular order): Alexey Noskov, Pierrick Rouxel,
 Matías Battocchia, @gapthemind and Sören Mothes
 
-Code Contributors (in no particular order): @alno, @pierrickrouxel,
-@matiasbattocchia, @gapthemind, @soemo
-
 ## 1.3.0.beta2 (05/30/13)
 
 - only load rake tasks if AR is being used - AR::Railtie is loaded (#234)
