@@ -9,6 +9,11 @@ class FirebirdSimpleTest < Test::Unit::TestCase
   include CustomSelectTestMethods
 
   # @override
+  def test_insert_returns_id
+    # not supported (we pre-select id values from sequences) {#test_exec_insert}
+  end
+
+  # @override
   def test_column_names_are_escaped
     conn = ActiveRecord::Base.connection
     quoted = conn.quote_column_name "foo-bar"
@@ -48,23 +53,51 @@ class FirebirdSimpleTest < Test::Unit::TestCase
   end
 
   # @override
-  def test_time_usec_formatting_when_saved_into_string_column
-    e = DbType.create!(:sample_string => '', :sample_text => '')
-    t = Time.now
-    value = Time.local(t.year, t.month, t.day, t.hour, t.min, t.sec, 0)
-    if ActiveRecord::VERSION::MAJOR >= 3
-      # AR-3 adapters override quoted_date which is called always when a
-      # Time like value is passed (... as well for string/text columns) :
-      str = value.utc.to_s(:db) << '.' << sprintf("%06d", value.usec)[0, 4]
-    else # AR-2.x #quoted_date did not do TZ conversions
-      str = value.to_s(:db)
-    end
-    e.sample_string = value
-    e.sample_text = value
-    e.save!; e.reload
-    assert_equal str, e.sample_string
-    assert_equal str, e.sample_text
+  def test_execute_insert
+    # assert_nil
+    connection.execute("INSERT INTO entries (ID, TITLE) VALUES (4242, 'inserted-title')")
+    assert entry = Entry.find(4242)
+    assert_equal 'inserted-title', entry.title
   end
+
+  # @override
+  def test_exec_insert
+    name_column = Thing.columns.detect { |column| column.name.to_s == 'name' }
+    created_column = Thing.columns.detect { |column| column.name.to_s == 'created_at' }
+    updated_column = Thing.columns.detect { |column| column.name.to_s == 'updated_at' }
+    now = Time.zone.now
+
+    created_date = "'2013-07-23 02:44:58.0451'"
+    updated_date = "'2013-07-23 02:44:58.0452'"
+    connection.exec_insert "INSERT INTO things VALUES ( '01', #{created_date}, #{updated_date} )", nil, []
+
+    binds = [ [ name_column, 'ferko' ], [ created_column, now ], [ updated_column, now ] ]
+    connection.exec_insert "INSERT INTO things VALUES ( ?, ?, ? )", 'INSERT Thing(ferko)', binds
+    assert Thing.find_by_name 'ferko'
+
+    result = connection.exec_insert "INSERT INTO entries(ID, TITLE) VALUES ( '4200', 'inserted-title' )", nil, []
+    # assert_nil result # returns no generated id
+
+    connection.exec_insert "INSERT INTO entries(ID, TITLE) VALUES ( '4201', 'inserted-title' )", nil, [], 'ID'
+  end
+
+  # @override
+  def test_exec_insert_bind_param_with_q_mark
+    sql = "INSERT INTO entries(id, title) VALUES (?, ?)"
+    connection.exec_insert sql, 'INSERT(with_q_mark)', [ [ nil, 1000 ], [ nil, "bar?!?" ] ]
+
+    entries = Entry.find_by_sql "SELECT * FROM entries WHERE title = 'bar?!?'"
+    assert entries.first
+  end
+
+  # @override
+  def test_raw_insert_bind_param_with_q_mark
+    sql = "INSERT INTO entries(id, title) VALUES (?, ?)"
+    name = "INSERT(raw_with_q_mark)"
+    pk = nil; id_value = 1001; sequence_name = nil
+    connection.insert sql, name, pk, id_value, sequence_name, [ [ nil, id_value ], [ nil, "?!huu!?" ] ]
+    assert Entry.exists?([ 'title LIKE ?', "%?!huu!?%" ])
+  end if Test::Unit::TestCase.ar_version('3.1') # no binds argument for <= 3.0
 
   test 'returns correct visitor type' do
     assert_not_nil visitor = connection.instance_variable_get(:@visitor)
