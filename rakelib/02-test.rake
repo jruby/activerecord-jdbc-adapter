@@ -82,7 +82,7 @@ test_task_for :PostgreSQL, :prereqs => 'db:postgresql', :driver => 'postgres'
 task :test_postgres => :test_postgresql # alias
 task :test_pgsql => :test_postgresql # alias
 test_task_for :SQLite3
-test_task_for :FireBird
+test_task_for :Firebird
 
 # ensure driver for these DBs is on your class-path
 [ :Oracle, :DB2, :Informix, :CacheDB ].each do |adapter|

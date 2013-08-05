@@ -12,17 +12,7 @@ module ArJdbc
       return if @@_initialized; @@_initialized = true
 
       require 'arjdbc/util/serialized_attributes'
-      ActiveRecord::Base.class_eval do
-        def after_save_with_firebird_blob
-          self.class.columns.select { |c| c.sql_type =~ /blob/i }.each do |column|
-            value = ::ArJdbc::Util::SerializedAttributes.dump_column_value(self, column)
-            next if value.nil?
-
-            self.class.connection.update_lob_value(self, column, value)
-          end
-        end
-      end
-      ActiveRecord::Base.after_save :after_save_with_firebird_blob
+      Util::SerializedAttributes.setup /blob/i
     end
 
     # @see ActiveRecord::ConnectionAdapters::JdbcColumn#column_types
@@ -33,17 +23,30 @@ module ArJdbc
     # @see ActiveRecord::ConnectionAdapters::JdbcColumn
     module Column
 
-      def simplified_type(field_type)
-        case field_type
-        when /timestamp/i  then :datetime
-        else super
-        end
-      end
-
       def default_value(value)
         return nil unless value
         if value =~ /^\s*DEFAULT\s+(.*)\s*$/i
           return $1 unless $1.upcase == 'NULL'
+        end
+      end
+
+      private
+
+      def simplified_type(field_type)
+        case field_type
+        when /timestamp/i    then :datetime
+        when /^smallint/i    then :integer
+        when /^bigint|int/i  then :integer
+        when /^double/i      then :float # double precision
+        when /^decimal/i     then
+          extract_scale(field_type) == 0 ? :integer : :decimal
+        when /^char\(1\)$/i  then Firebird.emulate_booleans ? :boolean : :string
+        when /^char/i        then :string
+        when /^blob\ssub_type\s(\d)/i
+          return :binary if $1 == '0'
+          return :text   if $1 == '1'
+        else
+          super
         end
       end
 
@@ -59,14 +62,15 @@ module ArJdbc
       { 'firebird' => arel_visitor_type, 'firebirdsql' => arel_visitor_type }
     end
 
-    # @@emulate_booleans = true
+    # @private
+    @@emulate_booleans = true
 
     # Boolean emulation can be disabled using :
     #
-    #   ArJdbc::FireBird.emulate_booleans = false
+    #   ArJdbc::Firebird.emulate_booleans = false
     #
-    # def self.emulate_booleans; @@emulate_booleans; end
-    # def self.emulate_booleans=(emulate); @@emulate_booleans = emulate; end
+    def self.emulate_booleans; @@emulate_booleans; end
+    def self.emulate_booleans=(emulate); @@emulate_booleans = emulate; end
 
     ADAPTER_NAME = 'Firebird'.freeze
 
@@ -80,25 +84,19 @@ module ArJdbc
       :text => { :name => "blob sub_type text" },
       :integer => { :name => "integer" },
       :float => { :name => "float" },
-      :decimal => { :name => "decimal" },
       :datetime => { :name => "timestamp" },
       :timestamp => { :name => "timestamp" },
       :time => { :name => "time" },
       :date => { :name => "date" },
       :binary => { :name => "blob" },
-      :boolean => { :name => 'smallint' }
+      :boolean => { :name => 'char', :limit => 1 },
+      :numeric => { :name => "numeric" },
+      :decimal => { :name => "decimal" },
+      :char => { :name => "char" },
     }
 
     def native_database_types
-      super.merge(NATIVE_DATABASE_TYPES)
-    end
-
-    def modify_types(types)
-      super(types)
-      NATIVE_DATABASE_TYPES.each do |key, value|
-        types[key] = value.dup
-      end
-      types
+      NATIVE_DATABASE_TYPES
     end
 
     def type_to_sql(type, limit = nil, precision = nil, scale = nil)
@@ -240,7 +238,7 @@ module ArJdbc
       when Symbol then "'#{quote_string(value.to_s)}'"
       else
         if type == :time && value.acts_like?(:time)
-          return "'#{value.strftime("%H:%M:%S")}'"
+          return "'#{get_time(value).strftime("%H:%M:%S")}'"
         end
         if type == :date && value.acts_like?(:date)
           return "'#{value.strftime("%Y-%m-%d")}'"
