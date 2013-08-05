@@ -17,18 +17,7 @@ module ArJdbc
       return if @@_initialized; @@_initialized = true
 
       require 'arjdbc/util/serialized_attributes'
-      ActiveRecord::Base.class_eval do
-        def after_save_with_db2_lob
-          lob_columns = self.class.columns.select { |c| c.sql_type =~ /blob|clob/i }
-          lob_columns.each do |column|
-            value = ::ArJdbc::Util::SerializedAttributes.dump_column_value(self, column)
-            next if value.nil? # already set NULL
-
-            self.class.connection.update_lob_value(self, column, value)
-          end
-        end
-      end
-      ActiveRecord::Base.after_save :after_save_with_db2_lob
+      Util::SerializedAttributes.setup /blob|clob/i, 'after_save_with_db2_lob'
     end
 
     # @see ActiveRecord::ConnectionAdapters::JdbcAdapter#jdbc_connection_class
