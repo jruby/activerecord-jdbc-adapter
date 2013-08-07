@@ -140,11 +140,7 @@ module ArJdbc
           return value unless value.is_a?(String)
           return nil if value.empty?
 
-          fast_string_to_time(value) ||
-            begin
-              DateTime.parse(value).to_time
-            rescue nil
-            end
+          fast_string_to_time(value) || DateTime.parse(value).to_time rescue nil
         end
 
         ISO_TIME = /\A(\d\d)\:(\d\d)\:(\d\d)(\.\d+)?\z/
