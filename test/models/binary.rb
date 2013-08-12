@@ -6,8 +6,8 @@ class BinaryMigration < ActiveRecord::Migration
   def self.up
     create_table :binaries, :force => true do |t|
       t.string :name
-      t.binary :data
-      t.binary :short_data, :limit => 2048
+      t.binary :data, :null => false
+      t.binary :short_data, :limit => 2048, :null => true
     end
   end
 

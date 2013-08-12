@@ -31,21 +31,20 @@ module BinaryTestMethods
 
   FIXTURES = %w(flowers.jpg example.log test.txt)
 
-  def test_mixed_encoding
-    str = "\x80"
-    str.force_encoding('ASCII-8BIT') if str.respond_to?(:force_encoding)
+  def test_mixed_encoding_data
+    data = "\x80"
+    data.force_encoding('ASCII-8BIT') if data.respond_to?(:force_encoding)
 
-    binary = Binary.new :name => 'いただきます！', :data => str
-    binary.save!
-    binary.reload
-    assert_equal str, binary.data
+    model = Binary.new :name => 'いただきます！', :data => data, :short_data => ''
+    model.save!
+    assert_equal data, model.reload.data
 
-    name = binary.name
+    name = model.name
 
     assert_equal 'いただきます！', name
   end
 
-  def test_load_save
+  def test_load_save_data
     Binary.delete_all
     assets_root = File.expand_path('assets', File.dirname(__FILE__))
     FIXTURES.each do |filename|
@@ -53,15 +52,22 @@ module BinaryTestMethods
       data.force_encoding('ASCII-8BIT') if data.respond_to?(:force_encoding)
       data.freeze
 
-      bin = Binary.new(:data => data)
-      assert_equal data, bin.data, 'Newly assigned data differs from original'
+      model = Binary.new(:data => data, :short_data => '')
+      assert_equal data, model.data, 'Newly assigned data differs from original'
 
-      bin.save!
-      assert_equal data, bin.data, 'Data differs from original after save'
+      model.save!
+      assert_equal data, model.data, 'Data differs from original after save'
 
-      assert_equal data, bin.reload.data, 'Reloaded data differs from original'
+      assert_equal data, model.reload.data, 'Reloaded data differs from original'
     end
   end
+
+  def test_insert_null_data
+    model = Binary.create!(:data => 'some-data', :short_data => nil)
+    assert_nil model.short_data
+    assert_nil model.reload.short_data
+  end
+
 end
 
 #end

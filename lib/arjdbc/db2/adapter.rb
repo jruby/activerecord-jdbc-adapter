@@ -42,9 +42,6 @@ module ArJdbc
     end
 
     # @private
-    def self.handle_lobs?; true; end
-
-    # @private
     @@emulate_booleans = true
 
     # Boolean emulation can be disabled using :
@@ -56,6 +53,18 @@ module ArJdbc
     def self.emulate_booleans; @@emulate_booleans; end
     # @see #emulate_booleans?
     def self.emulate_booleans=(emulate); @@emulate_booleans = emulate; end
+
+    # @private
+    @@update_lob_values = true
+
+    def update_lob_values?; DB2.update_lob_values?; end
+    def self.update_lob_values?; @@update_lob_values; end
+    def self.update_lob_values=(update); @@update_lob_values = update; end
+
+    # @private
+    BLOB_VALUE_MARKER = "BLOB('')"
+    # @private
+    CLOB_VALUE_MARKER = "''"
 
     def configure_connection
       schema = self.schema
@@ -253,7 +262,7 @@ module ArJdbc
       column_type = column && column.type.to_sym
 
       case value
-      when nil then "NULL"
+      when nil then 'NULL'
       when Numeric # IBM_DB doesn't accept quotes on numeric types
         # if the column type is text or string, return the quote value
         if column_type == :text || column_type == :string
@@ -262,20 +271,20 @@ module ArJdbc
           value.to_s
         end
       when String, ActiveSupport::Multibyte::Chars
-        if column_type == :binary && !(column.sql_type =~ /for bit data/i)
-          if ArJdbc::DB2.handle_lobs?
-            "NULL" # '@@@IBMBINARY@@@'"
+        if column_type == :binary && column.sql_type !~ /for bit data/i
+          if update_lob_values?
+            value.nil? ? 'NULL' : BLOB_VALUE_MARKER # '@@@IBMBINARY@@@'"
           else
             "BLOB('#{quote_string(value)}')"
           end
         elsif column && column.sql_type =~ /clob/ # :text
-          if ArJdbc::DB2.handle_lobs?
-            "NULL" # "'@@@IBMTEXT@@@'"
+          if update_lob_values?
+            value.nil? ? 'NULL' : CLOB_VALUE_MARKER # "'@@@IBMTEXT@@@'"
           else
             "'#{quote_string(value)}'"
           end
         elsif column_type == :xml
-          value.nil? ? "NULL" : "'#{quote_string(value)}'" # "'<ibm>@@@IBMXML@@@</ibm>'"
+          value.nil? ? 'NULL' : "'#{quote_string(value)}'" # "'<ibm>@@@IBMXML@@@</ibm>'"
         else
           "'#{quote_string(value)}'"
         end
