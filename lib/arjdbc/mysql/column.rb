@@ -30,7 +30,7 @@ module ArJdbc
       end
 
       def simplified_type(field_type)
-        if adapter.respond_to?(:emulate_booleans) && adapter.emulate_booleans
+        if adapter && adapter.emulate_booleans?
           return :boolean if field_type.downcase.index('tinyint(1)')
         end
 

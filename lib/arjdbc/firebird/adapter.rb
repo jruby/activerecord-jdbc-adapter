@@ -40,7 +40,7 @@ module ArJdbc
         when /^double/i      then :float # double precision
         when /^decimal/i     then
           extract_scale(field_type) == 0 ? :integer : :decimal
-        when /^char\(1\)$/i  then Firebird.emulate_booleans ? :boolean : :string
+        when /^char\(1\)$/i  then Firebird.emulate_booleans? ? :boolean : :string
         when /^char/i        then :string
         when /^blob\ssub_type\s(\d)/i
           return :binary if $1 == '0'
@@ -69,7 +69,10 @@ module ArJdbc
     #
     #   ArJdbc::Firebird.emulate_booleans = false
     #
+    def self.emulate_booleans?; @@emulate_booleans; end
+    # @deprecated Use {#emulate_booleans?} instead.
     def self.emulate_booleans; @@emulate_booleans; end
+    # @see #emulate_booleans?
     def self.emulate_booleans=(emulate); @@emulate_booleans = emulate; end
 
     ADAPTER_NAME = 'Firebird'.freeze

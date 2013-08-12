@@ -55,7 +55,7 @@ module ArJdbc
         when /char/i            then :string
         when /float|double/i    then :float
         when /int/i             then :integer
-        when /^number\(1\)$/i   then Oracle.emulate_booleans ? :boolean : :integer
+        when /^number\(1\)$/i   then Oracle.emulate_booleans? ? :boolean : :integer
         when /^num|dec|real/i   then extract_scale(field_type) == 0 ? :integer : :decimal
         # Oracle TIMESTAMP stores the date and time to up to 9 digits of sub-second precision
         when /TIMESTAMP/i       then :timestamp

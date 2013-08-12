@@ -118,7 +118,7 @@ class OracleSimpleTest < Test::Unit::TestCase
   end
 
   def test_emulates_booleans_by_default
-    assert_true ArJdbc::Oracle.emulate_booleans
+    assert_true ArJdbc::Oracle.emulate_booleans?
     # assert_true ActiveRecord::ConnectionAdapters::OracleAdapter.emulate_booleans
   end if ar_version('3.0')
 

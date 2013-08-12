@@ -79,8 +79,8 @@ module ArJdbc
 
       def simplified_type(field_type)
         case field_type
-        when /^decimal\(1\)$/i   then DB2.emulate_booleans ? :boolean : :integer
-        when /smallint/i         then DB2.emulate_booleans ? :boolean : :integer
+        when /^decimal\(1\)$/i   then DB2.emulate_booleans? ? :boolean : :integer
+        when /smallint/i         then DB2.emulate_booleans? ? :boolean : :integer
         when /boolean/i          then :boolean
         when /^real|double/i     then :float
         when /int|serial/i       then :integer
@@ -156,7 +156,7 @@ module ArJdbc
           return value unless value.is_a?(String)
           return nil if value.empty?
           return Time.now if value.index('CURRENT') == 0
-          
+
           return value
         end
 

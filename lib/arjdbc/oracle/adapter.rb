@@ -53,7 +53,10 @@ module ArJdbc
     #   ArJdbc::Oracle.emulate_booleans = false
     #
     # @see ActiveRecord::ConnectionAdapters::OracleAdapter#emulate_booleans
+    def self.emulate_booleans?; @@emulate_booleans; end
+    # @deprecated Use {#emulate_booleans?} instead.
     def self.emulate_booleans; @@emulate_booleans; end
+    # @see #emulate_booleans?
     def self.emulate_booleans=(emulate); @@emulate_booleans = emulate; end
 
     class TableDefinition < ::ActiveRecord::ConnectionAdapters::TableDefinition
@@ -611,7 +614,8 @@ module ActiveRecord::ConnectionAdapters
     #
     #   ActiveRecord::ConnectionAdapters::OracleAdapter.emulate_booleans = false
     #
-    def self.emulate_booleans; ::ArJdbc::Oracle.emulate_booleans; end
+    def self.emulate_booleans?; ::ArJdbc::Oracle.emulate_booleans?; end
+    def self.emulate_booleans;  ::ArJdbc::Oracle.emulate_booleans?; end # oracle-enhanced
     def self.emulate_booleans=(emulate); ::ArJdbc::Oracle.emulate_booleans = emulate; end
 
     def initialize(*args)

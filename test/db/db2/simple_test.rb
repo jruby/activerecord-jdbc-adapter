@@ -60,7 +60,7 @@ class DB2SimpleTest < Test::Unit::TestCase
   end
 
   def test_emulates_booleans_by_default
-    assert_true ArJdbc::DB2.emulate_booleans
+    assert_true ArJdbc::DB2.emulate_booleans?
   end if ar_version('3.0')
 
   def test_boolean_emulation_can_be_disabled
