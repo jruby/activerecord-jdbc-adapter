@@ -160,12 +160,11 @@ module ArJdbc
             super(value)
           end
         end
-
-        # @private
+        
         def string_to_binary(value)
           # this will only allow the adapter to insert binary data with a length
           # of 7K or less because of a SQL Server statement length policy ...
-          '' # "0x#{value.unpack("H*")[0]}"
+          "0x#{value.unpack("H*")}" # "0x#{value.unpack("H*")[0]}"
         end
 
         def binary_to_string(value)

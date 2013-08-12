@@ -9,10 +9,14 @@ module ArJdbc
       def update_lob_columns
         klass = self.class
         return unless type = klass.lob_type # e.g. /blob/i
+        connection = klass.connection
+        if connection.respond_to?(:update_lob_values?)
+          return false unless connection.update_lob_values?
+        end
         klass.columns.each do |column|
           next if column.sql_type !~ type
           next if ( value = dump_column_value(column) ).nil?
-          klass.connection.update_lob_value(self, column, value)
+          connection.update_lob_value(self, column, value)
         end
       end
 

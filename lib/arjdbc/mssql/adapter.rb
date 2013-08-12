@@ -30,18 +30,18 @@ module ArJdbc
       return if @@_initialized; @@_initialized = true
 
       require 'arjdbc/util/serialized_attributes'
-      ActiveRecord::Base.class_eval do
-        def after_save_with_mssql_lob
-          self.class.columns.select { |c| c.sql_type =~ /image/i }.each do |column|
-            value = ::ArJdbc::Util::SerializedAttributes.dump_column_value(self, column)
-            next if value.nil? || (value == '')
-
-            self.class.connection.update_lob_value(self, column, value)
-          end
-        end
-      end
-      ActiveRecord::Base.after_save :after_save_with_mssql_lob
+      Util::SerializedAttributes.setup /image/i, 'after_save_with_mssql_lob'
     end
+
+    # @private
+    @@update_lob_values = true
+
+    def update_lob_values?; MSSQL.update_lob_values?; end
+    def self.update_lob_values?; @@update_lob_values; end
+    def self.update_lob_values=(update); @@update_lob_values = update; end
+
+    # @private
+    BLOB_VALUE_MARKER = "''"
 
     # @see ActiveRecord::ConnectionAdapters::JdbcAdapter#jdbc_connection_class
     def self.jdbc_connection_class
@@ -134,12 +134,15 @@ module ArJdbc
 
       case value
       # SQL Server 2000 doesn't let you insert an integer into a NVARCHAR
-      # column, so we include Integer here.
       when String, ActiveSupport::Multibyte::Chars, Integer
         value = value.to_s
         column_type = column && column.type
         if column_type == :binary
-          "'#{quote_string(column.class.string_to_binary(value))}'" # ' (for ruby-mode)
+          if update_lob_values?
+            BLOB_VALUE_MARKER
+          else
+            "'#{quote_string(column.class.string_to_binary(value))}'" # ' (for ruby-mode)
+          end
         elsif column_type == :integer
           value.to_i.to_s
         elsif column_type == :float
