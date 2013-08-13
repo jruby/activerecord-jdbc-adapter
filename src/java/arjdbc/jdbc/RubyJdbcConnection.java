@@ -453,9 +453,8 @@ public class RubyJdbcConnection extends RubyObject {
             }
         }
         else {
-            callMethod(context, "warn",
-                context.getRuntime().newString("WARN: adapter not set for: " + inspect() +
-                    " make sure you pass it on initialize(config, adapter)"));
+            warn(context, "WARN: adapter not set for: " + inspect() +
+                " make sure you pass it on initialize(config, adapter)");
         }
         return jdbcConnection;
     }
@@ -2637,6 +2636,14 @@ public class RubyJdbcConnection extends RubyObject {
             debugMessage(context, "connection considered broken due: " + e.toString());
             return false;
         }
+        catch (AbstractMethodError e) { // non-JDBC 4.0 driver
+            warn( context,
+                "WARN: driver does not support checking if connection isValid()" +
+                " please make sure you're using a JDBC 4.0 compilant driver or" +
+                " set `connection_alive_sql: ...` in your database configuration" );
+            debugStackTrace(context, e);
+            throw e;
+        }
         finally { close(statement); }
     }
 
@@ -3489,6 +3496,10 @@ public class RubyJdbcConnection extends RubyObject {
                 out.println(e);
             }
         }
+    }
+
+    protected void warn(final ThreadContext context, final String message) {
+        callMethod(context, "warn", context.getRuntime().newString(message));
     }
 
     private static RubyArray createCallerBacktrace(final ThreadContext context) {
