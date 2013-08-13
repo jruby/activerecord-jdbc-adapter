@@ -16,6 +16,9 @@ module ArJdbc
         klass.columns.each do |column|
           next if column.sql_type !~ type
           next if ( value = dump_column_value(column) ).nil?
+          if connection.respond_to?(:update_lob_value?)
+            next unless connection.update_lob_value?(value, column)
+          end
           connection.update_lob_value(self, column, value)
         end
       end

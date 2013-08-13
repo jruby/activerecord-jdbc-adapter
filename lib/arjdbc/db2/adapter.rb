@@ -57,12 +57,26 @@ module ArJdbc
     # @private
     @@update_lob_values = true
 
-    def update_lob_values?; DB2.update_lob_values?; end
+    # Updating records with LOB values (binary/text columns) in a separate
+    # statement can be disabled using :
+    #
+    #   ArJdbc::DB2.update_lob_values = false
+    #
+    # @note This only applies when prepared statements are not used.
     def self.update_lob_values?; @@update_lob_values; end
+    # @see #update_lob_values?
     def self.update_lob_values=(update); @@update_lob_values = update; end
 
+    # @see #update_lob_values?
+    # @see ArJdbc::Util::SerializedAttributes#update_lob_columns
+    def update_lob_value?(value, column = nil)
+      DB2.update_lob_values? && ! prepared_statements? # && value
+    end
+
+    # @see #quote
     # @private
     BLOB_VALUE_MARKER = "BLOB('')"
+    # @see #quote
     # @private
     CLOB_VALUE_MARKER = "''"
 
@@ -272,13 +286,13 @@ module ArJdbc
         end
       when String, ActiveSupport::Multibyte::Chars
         if column_type == :binary && column.sql_type !~ /for bit data/i
-          if update_lob_values?
+          if update_lob_value?(value, column)
             value.nil? ? 'NULL' : BLOB_VALUE_MARKER # '@@@IBMBINARY@@@'"
           else
             "BLOB('#{quote_string(value)}')"
           end
         elsif column && column.sql_type =~ /clob/ # :text
-          if update_lob_values?
+          if update_lob_value?(value, column)
             value.nil? ? 'NULL' : CLOB_VALUE_MARKER # "'@@@IBMTEXT@@@'"
           else
             "'#{quote_string(value)}'"

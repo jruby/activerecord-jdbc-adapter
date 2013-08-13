@@ -36,12 +36,25 @@ module ArJdbc
     # @private
     @@update_lob_values = true
 
-    def update_lob_values?; MSSQL.update_lob_values?; end
+    # Updating records with LOB values (binary/text columns) in a separate
+    # statement can be disabled using :
+    #
+    #   ArJdbc::MSSQL.update_lob_values = false
+    #
+    # @note This only applies when prepared statements are not used.
     def self.update_lob_values?; @@update_lob_values; end
+    # @see #update_lob_values?
     def self.update_lob_values=(update); @@update_lob_values = update; end
 
+    # @see #quote
     # @private
     BLOB_VALUE_MARKER = "''"
+
+    # @see #update_lob_values?
+    # @see ArJdbc::Util::SerializedAttributes#update_lob_columns
+    def update_lob_value?(value, column = nil)
+      MSSQL.update_lob_values? && ! prepared_statements? # && value
+    end
 
     # @see ActiveRecord::ConnectionAdapters::JdbcAdapter#jdbc_connection_class
     def self.jdbc_connection_class
@@ -138,7 +151,7 @@ module ArJdbc
         value = value.to_s
         column_type = column && column.type
         if column_type == :binary
-          if update_lob_values?
+          if update_lob_value?(value, column)
             BLOB_VALUE_MARKER
           else
             "'#{quote_string(column.class.string_to_binary(value))}'" # ' (for ruby-mode)
