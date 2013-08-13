@@ -37,7 +37,7 @@ class MSSQLDateTimeTypesTest < Test::Unit::TestCase
 
     TABLE_DEFINITION.replace "CREATE TABLE date_and_times (" <<
       "[id] int NOT NULL IDENTITY(1, 1)," <<
-      "[datetime] DATETIME, " <<
+      "[datetime] DATETIME DEFAULT 0, " <<
       "[date] DATE, " <<
       "[datetime2] DATETIME2, " <<
       "[datetime25] DATETIME2(5), " <<
