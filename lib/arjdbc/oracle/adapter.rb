@@ -16,17 +16,7 @@ module ArJdbc
       return if @@_initialized; @@_initialized = true
 
       require 'arjdbc/util/serialized_attributes'
-      ActiveRecord::Base.class_eval do
-        def after_save_with_oracle_lob
-          self.class.columns.select { |c| c.sql_type =~ /LOB\(|LOB$/i }.each do |column|
-            value = ::ArJdbc::Util::SerializedAttributes.dump_column_value(self, column)
-            next if value.nil? || (value == '')
-
-            self.class.connection.update_lob_value(self, column, value)
-          end
-        end
-      end
-      ActiveRecord::Base.after_save :after_save_with_oracle_lob
+      Util::SerializedAttributes.setup /LOB\(|LOB$/i, 'after_save_with_oracle_lob'
 
       unless ActiveRecord::ConnectionAdapters::AbstractAdapter.
           instance_methods(false).detect { |m| m.to_s == "prefetch_primary_key?" }
@@ -43,6 +33,25 @@ module ArJdbc
     # @see ActiveRecord::ConnectionAdapters::JdbcAdapter#jdbc_column_class
     def jdbc_column_class
       ::ActiveRecord::ConnectionAdapters::OracleColumn
+    end
+
+    # @private
+    @@update_lob_values = true
+
+    # Updating records with LOB values (binary/text columns) in a separate
+    # statement can be disabled using :
+    #
+    #   ArJdbc::Oracle.update_lob_values = false
+    #
+    # @note This only applies when prepared statements are not used.
+    def self.update_lob_values?; @@update_lob_values; end
+    # @see #update_lob_values?
+    def self.update_lob_values=(update); @@update_lob_values = update; end
+
+    # @see #update_lob_values?
+    # @see ArJdbc::Util::SerializedAttributes#update_lob_columns
+    def update_lob_value?(value, column = nil)
+      Oracle.update_lob_values? && ! prepared_statements? && ! ( value.nil? || value == '' )
     end
 
     # @private
@@ -387,10 +396,15 @@ module ArJdbc
 
       column_type = column && column.type
       if column_type == :text || column_type == :binary
-        if /(.*?)\([0-9]+\)/ =~ column.sql_type
-          %Q{empty_#{ $1.downcase }()}
+        return 'NULL' if value.nil? || value == ''
+        if update_lob_value?(value, column)
+          if /(.*?)\([0-9]+\)/ =~ ( sql_type = column.sql_type )
+            %Q{empty_#{ $1.downcase }()}
+          else
+            %Q{empty_#{ sql_type.respond_to?(:downcase) ? sql_type.downcase : 'blob' }()}
+          end
         else
-          %Q{empty_#{ column.sql_type.downcase rescue 'blob' }()}
+          "'#{quote_string(value.to_s)}'"
         end
       elsif column_type == :xml
         "XMLTYPE('#{quote_string(value)}')" # XMLTYPE ?
