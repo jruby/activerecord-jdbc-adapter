@@ -1403,6 +1403,9 @@ module CustomSelectTestMethods
   end
 
   def test_custom_select_datetime
+    raw_date_time = ActiveRecord::ConnectionAdapters::JdbcConnection.raw_date_time?
+    ActiveRecord::ConnectionAdapters::JdbcConnection.raw_date_time = false
+
     my_time = Time.local 2013, 03, 15, 19, 53, 51, 0 # usec
     model = DbType.create! :sample_datetime => my_time
     if ActiveRecord::VERSION::MAJOR >= 3
@@ -1413,9 +1416,15 @@ module CustomSelectTestMethods
     assert_equal my_time, model.custom_sample_datetime
     sample_datetime = model.custom_sample_datetime
     assert sample_datetime.acts_like?(:time), "expected Time-like instance but got: #{sample_datetime.class}"
+
+  ensure
+    ActiveRecord::ConnectionAdapters::JdbcConnection.raw_date_time = raw_date_time
   end
 
   def test_custom_select_date
+    raw_date_time = ActiveRecord::ConnectionAdapters::JdbcConnection.raw_date_time?
+    ActiveRecord::ConnectionAdapters::JdbcConnection.raw_date_time = false
+
     my_date = Time.local(2000, 01, 30, 0, 0, 0, 0).to_date
     model = DbType.create! :sample_date => my_date
     if ActiveRecord::VERSION::MAJOR >= 3
@@ -1426,6 +1435,9 @@ module CustomSelectTestMethods
     assert_equal my_date, model.custom_sample_date
     sample_date = model.custom_sample_date
     assert sample_date.acts_like?(:date), "expected Date-like instance but got: #{sample_date.class}"
+
+  ensure
+    ActiveRecord::ConnectionAdapters::JdbcConnection.raw_date_time = raw_date_time
   end
 
 end

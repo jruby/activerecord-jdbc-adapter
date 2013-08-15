@@ -796,6 +796,10 @@ module ActiveRecord
         jdbc_column_class.string_to_time(value)
       end
 
+      if ActiveRecord::VERSION::MAJOR < 4 # emulating Rails 3.x compatibility
+        JdbcConnection.raw_date_time = true if JdbcConnection.raw_date_time? == nil
+      end
+
     end
   end
 end

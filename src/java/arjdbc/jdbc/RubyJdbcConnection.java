@@ -1634,20 +1634,29 @@ public class RubyJdbcConnection extends RubyObject {
         return runtime.getKernel().callMethod("BigDecimal", runtime.newString(value));
     }
 
-    protected static boolean rawDateTime = Boolean.getBoolean("arjdbc.datetime.raw");
-
-    @JRubyMethod(name = "raw_date_time?")
-    public static IRubyObject useRawDateTime(final ThreadContext context, final IRubyObject self) {
-        return context.getRuntime().newBoolean(rawDateTime);
+    protected static Boolean rawDateTime;
+    static {
+        final String dateTimeRaw = System.getProperty("arjdbc.datetime.raw");
+        if ( dateTimeRaw != null ) {
+            rawDateTime = Boolean.parseBoolean(dateTimeRaw);
+        }
+        // NOTE: we do this since it will have a different value depending on
+        // AR version - since 4.0 false by default otherwise will be true ...
     }
 
-    @JRubyMethod(name = "raw_date_time=")
+    @JRubyMethod(name = "raw_date_time?", meta = true)
+    public static IRubyObject useRawDateTime(final ThreadContext context, final IRubyObject self) {
+        if ( rawDateTime == null ) return context.getRuntime().getNil();
+        return context.getRuntime().newBoolean( rawDateTime.booleanValue() );
+    }
+
+    @JRubyMethod(name = "raw_date_time=", meta = true)
     public static IRubyObject setRawDateTime(final IRubyObject self, final IRubyObject value) {
         if ( value instanceof RubyBoolean ) {
             rawDateTime = ((RubyBoolean) value).isTrue();
         }
         else {
-            rawDateTime = value.isNil();
+            rawDateTime = value.isNil() ? null : Boolean.TRUE;
         }
         return value;
     }
