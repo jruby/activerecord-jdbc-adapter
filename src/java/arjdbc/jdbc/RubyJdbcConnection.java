@@ -1672,7 +1672,7 @@ public class RubyJdbcConnection extends RubyObject {
         }
 
         final RubyString strValue = RubyString.newUnicodeString(runtime, value.toString());
-        if ( rawDateTime ) return strValue;
+        if ( rawDateTime != null && rawDateTime.booleanValue() ) return strValue;
 
         final IRubyObject adapter = callMethod(context, "adapter"); // self.adapter
         if ( adapter.isNil() ) return strValue; // NOTE: we warn on init_connection
@@ -1690,7 +1690,7 @@ public class RubyJdbcConnection extends RubyObject {
         }
 
         final RubyString strValue = RubyString.newUnicodeString(runtime, value.toString());
-        if ( rawDateTime ) return strValue;
+        if ( rawDateTime != null && rawDateTime.booleanValue() ) return strValue;
 
         final IRubyObject adapter = callMethod(context, "adapter"); // self.adapter
         if ( adapter.isNil() ) return strValue; // NOTE: we warn on init_connection
@@ -1708,7 +1708,7 @@ public class RubyJdbcConnection extends RubyObject {
         }
 
         final RubyString strValue = timestampToRubyString(runtime, value.toString());
-        if ( rawDateTime ) return strValue;
+        if ( rawDateTime != null && rawDateTime.booleanValue() ) return strValue;
 
         final IRubyObject adapter = callMethod(context, "adapter"); // self.adapter
         if ( adapter.isNil() ) return strValue; // NOTE: we warn on init_connection
@@ -1736,9 +1736,39 @@ public class RubyJdbcConnection extends RubyObject {
         return timestampToRubyString(runtime, value.toString());
     }
 
+    protected static Boolean rawBoolean;
+    static {
+        final String booleanRaw = System.getProperty("arjdbc.boolean.raw");
+        if ( booleanRaw != null ) {
+            rawBoolean = Boolean.parseBoolean(booleanRaw);
+        }
+    }
+
+    @JRubyMethod(name = "raw_boolean?", meta = true)
+    public static IRubyObject useRawBoolean(final ThreadContext context, final IRubyObject self) {
+        if ( rawBoolean == null ) return context.getRuntime().getNil();
+        return context.getRuntime().newBoolean( rawBoolean.booleanValue() );
+    }
+
+    @JRubyMethod(name = "raw_boolean=", meta = true)
+    public static IRubyObject setRawBoolean(final IRubyObject self, final IRubyObject value) {
+        if ( value instanceof RubyBoolean ) {
+            rawBoolean = ((RubyBoolean) value).isTrue();
+        }
+        else {
+            rawBoolean = value.isNil() ? null : Boolean.TRUE;
+        }
+        return value;
+    }
+
     protected IRubyObject booleanToRuby(final ThreadContext context,
         final Ruby runtime, final ResultSet resultSet, final int column)
         throws SQLException {
+        if ( rawBoolean != null && rawBoolean.booleanValue() ) {
+            final String value = resultSet.getString(column);
+            if ( resultSet.wasNull() ) return runtime.getNil();
+            return RubyString.newUnicodeString(runtime, value);
+        }
         final boolean value = resultSet.getBoolean(column);
         if ( resultSet.wasNull() ) return runtime.getNil();
         return booleanToRuby(runtime, resultSet, value);

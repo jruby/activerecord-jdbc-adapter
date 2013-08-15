@@ -222,7 +222,7 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
         }
 
         final RubyString strValue = timestampToRubyString(runtime, value.toString());
-        if ( rawDateTime ) return strValue;
+        if ( rawDateTime != null && rawDateTime.booleanValue() ) return strValue;
 
         final IRubyObject adapter = callMethod(context, "adapter"); // self.adapter
         if ( adapter.isNil() ) return strValue; // NOTE: we warn on init_connection
