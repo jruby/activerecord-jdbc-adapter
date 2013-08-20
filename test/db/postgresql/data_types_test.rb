@@ -19,7 +19,7 @@ class PostgresqlDataTypeTest < Test::Unit::TestCase
 
   def self.startup
     super
-    
+
     execute "CREATE TABLE postgresql_arrays (" <<
               " id SERIAL PRIMARY KEY," <<
               " commission_by_quarter INTEGER[]," <<
@@ -619,6 +619,12 @@ _SQL
   end if ar_version('4.0')
 
   def test_update_bit_string
+
+    pend 'not supported by driver' if connection.prepared_statements?
+    # org.postgresql.util.PSQLException: ERROR: column "bit_string" is of type bit but expression is of type character varying
+    # NOTE: possible work-aroud would be if AREL generated a query like :
+    # "INSERT INTO bit_strings VALUES (?::bit)"
+
     @first_bit_string.bit_string = '11111111'
     assert @first_bit_string.save
     assert_equal '11111111', @first_bit_string.reload.bit_string
