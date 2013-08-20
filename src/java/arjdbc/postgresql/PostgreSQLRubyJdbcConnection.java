@@ -223,49 +223,58 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
         final String columnType = column.callMethod(context, "type").asJavaString();
 
         if ( columnType != null && columnType.endsWith("range") ) {
-            if ( value instanceof IRubyObject ) {
-                final IRubyObject rubyValue = (IRubyObject) value;
-                if ( rubyValue.isNil() ) {
-                    statement.setNull(index, Types.OTHER); return;
-                }
-                else {
-                    final String rangeValue = column.getMetaClass().
-                        callMethod("range_to_string", rubyValue).toString();
-                    final Object rangeObject;
-                    if ( columnType == (Object) "daterange" ) {
-                        rangeObject = new DateRangeType(rangeValue);
-                    }
-                    else if ( columnType == (Object) "tsrange" ) {
-                        rangeObject = new TsRangeType(rangeValue);
-                    }
-                    else if ( columnType == (Object) "tstzrange" ) {
-                        rangeObject = new TstzRangeType(rangeValue);
-                    }
-                    else if ( columnType == (Object) "int4range" ) {
-                        rangeObject = new Int4RangeType(rangeValue);
-                    }
-                    else if ( columnType == (Object) "int8range" ) {
-                        rangeObject = new Int8RangeType(rangeValue);
-                    }
-                    else { // if ( columnType == (Object) "numrange" )
-                        rangeObject = new NumRangeType(rangeValue);
-                    }
-                    statement.setObject(index, rangeObject);
-                }
-            }
-            else {
-                if ( value == null ) {
-                    statement.setNull(index, Types.JAVA_OBJECT);
-                }
-                else { // NOTE: this won't work with 9.2.1003
-                    statement.setString(index, value.toString());
-                }
-            }
+            setRangeParameter(context, statement, index, value, column, columnType);
             return;
         }
 
         super.setObjectParameter(context, connection, statement, index, value, column, type);
     }
+
+    private void setRangeParameter(final ThreadContext context,
+        final PreparedStatement statement, final int index,
+        final Object value, final IRubyObject column,
+        final String columnType) throws SQLException {
+
+        if ( value instanceof IRubyObject ) {
+            IRubyObject rubyValue = (IRubyObject) value;
+            if ( rubyValue.isNil() ) {
+                statement.setNull(index, Types.OTHER); return;
+            }
+            else {
+                final String rangeValue = column.getMetaClass().
+                    callMethod(context, "range_to_string", rubyValue).toString();
+                final Object rangeObject;
+                if ( columnType == (Object) "daterange" ) {
+                    rangeObject = new DateRangeType(rangeValue);
+                }
+                else if ( columnType == (Object) "tsrange" ) {
+                    rangeObject = new TsRangeType(rangeValue);
+                }
+                else if ( columnType == (Object) "tstzrange" ) {
+                    rangeObject = new TstzRangeType(rangeValue);
+                }
+                else if ( columnType == (Object) "int4range" ) {
+                    rangeObject = new Int4RangeType(rangeValue);
+                }
+                else if ( columnType == (Object) "int8range" ) {
+                    rangeObject = new Int8RangeType(rangeValue);
+                }
+                else { // if ( columnType == (Object) "numrange" )
+                    rangeObject = new NumRangeType(rangeValue);
+                }
+                statement.setObject(index, rangeObject);
+            }
+        }
+        else {
+            if ( value == null ) {
+                statement.setNull(index, Types.JAVA_OBJECT);
+            }
+            else { // NOTE: this won't work with 9.2.1003
+                statement.setString(index, value.toString());
+            }
+        }
+    }
+
 
     @Override
     protected String resolveArrayBaseTypeName(final ThreadContext context,
