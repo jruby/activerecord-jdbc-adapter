@@ -36,6 +36,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Timestamp;
 import java.sql.Types;
+import java.util.List;
 import java.util.UUID;
 
 import org.jruby.Ruby;
@@ -52,6 +53,7 @@ import org.jruby.runtime.ThreadContext;
 import org.jruby.runtime.builtin.IRubyObject;
 import org.jruby.util.ByteList;
 
+import org.postgresql.PGConnection;
 import org.postgresql.PGStatement;
 import org.postgresql.util.PGInterval;
 import org.postgresql.util.PGobject;
@@ -109,6 +111,21 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
             // for PostgreSQL we do not care about storesLowerCaseIdentifiers()
         }
         return value;
+    }
+
+    @Override
+    protected void setStatementParameters(final ThreadContext context,
+        final Connection connection, final PreparedStatement statement,
+        final List<?> binds) throws SQLException {
+
+        ((PGConnection) connection).addDataType("daterange", DateRangeType.class);
+        ((PGConnection) connection).addDataType("tsrange",   TsRangeType.class);
+        ((PGConnection) connection).addDataType("tstzrange", TstzRangeType.class);
+        ((PGConnection) connection).addDataType("int4range", Int4RangeType.class);
+        ((PGConnection) connection).addDataType("int8range", Int8RangeType.class);
+        ((PGConnection) connection).addDataType("numrange",  NumRangeType.class);
+
+        super.setStatementParameters(context, connection, statement, binds);
     }
 
     @Override // due statement.setNull(index, Types.BLOB) not working :
@@ -173,6 +190,59 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
         }
 
         super.setTimestampParameter(context, connection, statement, index, value, column, type);
+    }
+
+    @Override
+    protected void setObjectParameter(final ThreadContext context,
+        final Connection connection, final PreparedStatement statement,
+        final int index, Object value,
+        final IRubyObject column, final int type) throws SQLException {
+
+        final String columnType = column.callMethod(context, "type").asJavaString();
+
+        if ( columnType != null && columnType.endsWith("range") ) {
+            if ( value instanceof IRubyObject ) {
+                final IRubyObject rubyValue = (IRubyObject) value;
+                if ( rubyValue.isNil() ) {
+                    statement.setNull(index, Types.OTHER); return;
+                }
+                else {
+                    final String rangeValue = column.getMetaClass().
+                        callMethod("range_to_string", rubyValue).toString();
+                    final Object rangeObject;
+                    if ( columnType == (Object) "daterange" ) {
+                        rangeObject = new DateRangeType(rangeValue);
+                    }
+                    else if ( columnType == (Object) "tsrange" ) {
+                        rangeObject = new TsRangeType(rangeValue);
+                    }
+                    else if ( columnType == (Object) "tstzrange" ) {
+                        rangeObject = new TstzRangeType(rangeValue);
+                    }
+                    else if ( columnType == (Object) "int4range" ) {
+                        rangeObject = new Int4RangeType(rangeValue);
+                    }
+                    else if ( columnType == (Object) "int8range" ) {
+                        rangeObject = new Int8RangeType(rangeValue);
+                    }
+                    else { // if ( columnType == (Object) "numrange" )
+                        rangeObject = new NumRangeType(rangeValue);
+                    }
+                    statement.setObject(index, rangeObject);
+                }
+            }
+            else {
+                if ( value == null ) {
+                    statement.setNull(index, Types.JAVA_OBJECT);
+                }
+                else { // NOTE: this won't work with 9.2.1003
+                    statement.setString(index, value.toString());
+                }
+            }
+            return;
+        }
+
+        super.setObjectParameter(context, connection, statement, index, value, column, type);
     }
 
     @Override
@@ -349,6 +419,87 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
             rawIntervalType = value.isNil();
         }
         return value;
+    }
+
+    // NOTE: without these custom registered Postgre (driver) types
+    // ... we can not set range parameters in prepared statements !
+
+    public static class DateRangeType extends PGobject {
+
+        public DateRangeType() {
+            setType("daterange");
+        }
+
+        public DateRangeType(final String value) throws SQLException {
+            this();
+            setValue(value);
+        }
+
+    }
+
+    public static class TsRangeType extends PGobject {
+
+        public TsRangeType() {
+            setType("tsrange");
+        }
+
+        public TsRangeType(final String value) throws SQLException {
+            this();
+            setValue(value);
+        }
+
+    }
+
+    public static class TstzRangeType extends PGobject {
+
+        public TstzRangeType() {
+            setType("tstzrange");
+        }
+
+        public TstzRangeType(final String value) throws SQLException {
+            this();
+            setValue(value);
+        }
+
+    }
+
+    public static class Int4RangeType extends PGobject {
+
+        public Int4RangeType() {
+            setType("int4range");
+        }
+
+        public Int4RangeType(final String value) throws SQLException {
+            this();
+            setValue(value);
+        }
+
+    }
+
+    public static class Int8RangeType extends PGobject {
+
+        public Int8RangeType() {
+            setType("int8range");
+        }
+
+        public Int8RangeType(final String value) throws SQLException {
+            this();
+            setValue(value);
+        }
+
+    }
+
+    public static class NumRangeType extends PGobject {
+
+        public NumRangeType() {
+            setType("numrange");
+        }
+
+        public NumRangeType(final String value) throws SQLException {
+            this();
+            setValue(value);
+        }
+
     }
 
 }
