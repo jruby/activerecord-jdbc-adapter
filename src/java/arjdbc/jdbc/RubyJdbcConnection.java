@@ -1901,15 +1901,7 @@ public class RubyJdbcConnection extends RubyObject {
                 column = (IRubyObject) _param[0]; param = _param[1];
             }
 
-            final IRubyObject type;
-            if ( column != null && ! column.isNil() ) {
-                type = column.callMethod(context, "type");
-            }
-            else {
-                type = null;
-            }
-
-            setStatementParameter(context, runtime, connection, statement, i + 1, param, type);
+            setStatementParameter(context, runtime, connection, statement, i + 1, param, column);
         }
     }
 
@@ -2025,8 +2017,16 @@ public class RubyJdbcConnection extends RubyObject {
 
         final String internedType;
         if ( column != null && ! column.isNil() ) {
-            final RubySymbol columnType = resolveColumnType(context, runtime, column);
-            internedType = columnType.asJavaString();
+            // NOTE: there's no ActiveRecord "convention" really for this ...
+            // this is based on Postgre's initial support for arrays :
+            // `column.type` contains the base type while there's `column.array?`
+            if ( column.respondsTo("array?") && column.callMethod(context, "array?").isTrue() ) {
+                internedType = "array";
+            }
+            else {
+                final RubySymbol columnType = resolveColumnType(context, runtime, column);
+                internedType = columnType.asJavaString();
+            }
         }
         else {
             if ( value instanceof RubyInteger ) {
@@ -2490,7 +2490,7 @@ public class RubyJdbcConnection extends RubyObject {
         }
     }
 
-    /* protected */ void setArrayParameter(final ThreadContext context,
+    protected void setArrayParameter(final ThreadContext context,
         final Connection connection, final PreparedStatement statement,
         final int index, final Object value,
         final IRubyObject column, final int type) throws SQLException {
@@ -2500,23 +2500,32 @@ public class RubyJdbcConnection extends RubyObject {
         else {
             if ( value == null ) statement.setNull(index, Types.ARRAY);
             else {
-                // TODO get array element type name ?!
-                Array array = connection.createArrayOf(null, (Object[]) value);
+                String typeName = resolveArrayBaseTypeName(context, value, column, type);
+                Array array = connection.createArrayOf(typeName, (Object[]) value);
                 statement.setArray(index, array);
             }
         }
     }
 
-    /* protected */ void setArrayParameter(final ThreadContext context,
+    protected void setArrayParameter(final ThreadContext context,
         final Connection connection, final PreparedStatement statement,
         final int index, final IRubyObject value,
         final IRubyObject column, final int type) throws SQLException {
         if ( value.isNil() ) statement.setNull(index, Types.ARRAY);
         else {
-            // TODO get array element type name ?!
-            Array array = connection.createArrayOf(null, ((RubyArray) value).toArray());
+            String typeName = resolveArrayBaseTypeName(context, value, column, type);
+            Array array = connection.createArrayOf(typeName, ((RubyArray) value).toArray());
             statement.setArray(index, array);
         }
+    }
+
+    protected String resolveArrayBaseTypeName(final ThreadContext context,
+        final Object value, final IRubyObject column, final int type) {
+        // return column.callMethod(context, "sql_type").toString();
+        String sqlType = column.callMethod(context, "sql_type").toString();
+        final int index = sqlType.indexOf('('); // e.g. "character varying(255)"
+        if ( index > 0 ) sqlType = sqlType.substring(0, index);
+        return sqlType;
     }
 
     protected void setXmlParameter(final ThreadContext context,
