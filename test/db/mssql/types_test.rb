@@ -31,6 +31,21 @@ class MSSQLDateTimeTypesTest < Test::Unit::TestCase
     assert_datetime_equal datetime, model.reload.datetime
   end if ar_version('3.0')
 
+  def test_datetime_with_zone
+    time_zone = false
+    default_timezone = ActiveRecord::Base.default_timezone
+    ActiveRecord::Base.default_timezone = :local
+    time_zone = Time.zone
+    Time.zone = 'CET'
+
+    time = Time.local 2013, 8, 14, 11, 45, 58
+    model = DateAndTime.create! :datetime => time
+    assert_equal time, model.reload.datetime
+  ensure
+    ActiveRecord::Base.default_timezone = default_timezone
+    Time.zone = time_zone unless time_zone == false
+  end if ar_version('3.0')
+
   if ActiveRecord::Base.connection.sqlserver_version >= '2008'
 
     # 2008 Date and Time: http://msdn.microsoft.com/en-us/library/ff848733.aspx
