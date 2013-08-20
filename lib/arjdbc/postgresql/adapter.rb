@@ -635,7 +635,11 @@ module ArJdbc
 
     def last_insert_id(table, sequence_name = nil)
       sequence_name = table if sequence_name.nil? # AR-4.0 1 argument
-      Integer(select_value("SELECT currval('#{sequence_name}')", 'SQL'))
+      last_insert_id_result(sequence_name)
+    end
+
+    def last_insert_id_result(sequence_name)
+      select_value("SELECT currval('#{sequence_name}')", 'SQL')
     end
 
     def recreate_database(name, options = {})
