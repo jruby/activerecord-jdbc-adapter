@@ -196,40 +196,42 @@ class PostgresTimestampTest < Test::Unit::TestCase
   end
 
   def test_save_infinity
-    if ar_version('4.0')
+    #if ar_version('4.0')
       # NOTE: likely an AR issue - it only works when time_zone_aware_attributes
       # are disabled otherwise TimeZoneConversion's define_method_attribute=(attr_name)
       # does the following code ("infinite" time instance ending as nil):
       # time_with_zone = time.respond_to?(:in_time_zone) ? time.in_time_zone : nil
-      tz_aware_attributes = ActiveRecord::Base.time_zone_aware_attributes
-      begin
-        ActiveRecord::Base.time_zone_aware_attributes = false
-        do_test_save_infinity
-      ensure
-        ActiveRecord::Base.time_zone_aware_attributes = tz_aware_attributes
-      end
-    else
-      do_test_save_infinity
-    end
+      #tz_aware_attributes = ActiveRecord::Base.time_zone_aware_attributes
+      #begin
+      #  ActiveRecord::Base.time_zone_aware_attributes = false
+      #  do_test_save_infinity
+      #ensure
+      #  ActiveRecord::Base.time_zone_aware_attributes = tz_aware_attributes
+      #end
+    #else
+    do_test_save_infinity
+    #end
   end
+
+  DbType.time_zone_aware_attributes = false
 
   def do_test_save_infinity
     d = DbType.new
     d.sample_datetime = 1.0 / 0.0
     d.save!
 
-    if ar_version('3.0')
-      assert_equal 1.0 / 0.0, d.reload.sample_datetime # sample_timestamp
-    else # 2.3
-      assert_equal nil, d.reload.sample_datetime # d.sample_timestamp
-    end
+    #if ar_version('3.0')
+    assert_equal 1.0 / 0.0, d.reload.sample_datetime # sample_timestamp
+    #else # 2.3
+    #  assert_equal nil, d.reload.sample_datetime # d.sample_timestamp
+    #end
 
     d = DbType.create!(:sample_timestamp => -1.0 / 0.0)
-    if ar_version('3.0')
-      assert_equal -1.0 / 0.0, d.sample_timestamp
-    else # 2.3
-      assert_equal nil, d.sample_timestamp
-    end
+    #if ar_version('3.0')
+    assert_equal -1.0 / 0.0, d.sample_timestamp
+    #else # 2.3
+    #  assert_equal nil, d.sample_timestamp
+    #end
   end
   private :do_test_save_infinity
 

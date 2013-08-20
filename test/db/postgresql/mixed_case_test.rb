@@ -23,7 +23,7 @@ class MixedCaseTest < Test::Unit::TestCase
 
   def test_find_mixed_table_name
     User.create :firstName => "Nick", :lastName => "Sieger"
-    u = User.find :first
+    u = User.first
     assert_equal "Nick Sieger", "#{u.firstName} #{u.lastName}"
   end
 end
