@@ -192,6 +192,28 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
         super.setTimestampParameter(context, connection, statement, index, value, column, type);
     }
 
+    private static final ByteList INTERVAL =
+        new ByteList( new byte[] { 'i','n','t','e','r','v','a','l' }, false );
+
+    @Override
+    protected void setStringParameter(final ThreadContext context,
+        final Connection connection, final PreparedStatement statement,
+        final int index, final IRubyObject value,
+        final IRubyObject column, final int type) throws SQLException {
+        if ( value.isNil() ) statement.setNull(index, Types.VARCHAR);
+        else {
+            if ( column != null && ! column.isNil() ) {
+                final RubyString sqlType = column.callMethod(context, "sql_type").asString();
+
+                if ( sqlType.getByteList().startsWith( INTERVAL ) ) {
+                    statement.setObject( index, new PGInterval( value.asString().toString() ) );
+                    return;
+                }
+            }
+            statement.setString( index, value.asString().toString() );
+        }
+    }
+
     @Override
     protected void setObjectParameter(final ThreadContext context,
         final Connection connection, final PreparedStatement statement,
