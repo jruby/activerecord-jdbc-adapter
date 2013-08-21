@@ -227,6 +227,12 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
             return;
         }
 
+        if ( columnType == (Object) "cidr" || columnType == (Object) "inet"
+                || columnType == (Object) "macaddr" ) {
+            setAddressParameter(context, statement, index, value, column, columnType);
+            return;
+        }
+
         super.setObjectParameter(context, connection, statement, index, value, column, type);
     }
 
@@ -235,46 +241,65 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
         final Object value, final IRubyObject column,
         final String columnType) throws SQLException {
 
+        final String rangeValue;
+
         if ( value instanceof IRubyObject ) {
-            IRubyObject rubyValue = (IRubyObject) value;
+            final IRubyObject rubyValue = (IRubyObject) value;
             if ( rubyValue.isNil() ) {
                 statement.setNull(index, Types.OTHER); return;
             }
-            else {
-                final String rangeValue = column.getMetaClass().
-                    callMethod(context, "range_to_string", rubyValue).toString();
-                final Object rangeObject;
-                if ( columnType == (Object) "daterange" ) {
-                    rangeObject = new DateRangeType(rangeValue);
-                }
-                else if ( columnType == (Object) "tsrange" ) {
-                    rangeObject = new TsRangeType(rangeValue);
-                }
-                else if ( columnType == (Object) "tstzrange" ) {
-                    rangeObject = new TstzRangeType(rangeValue);
-                }
-                else if ( columnType == (Object) "int4range" ) {
-                    rangeObject = new Int4RangeType(rangeValue);
-                }
-                else if ( columnType == (Object) "int8range" ) {
-                    rangeObject = new Int8RangeType(rangeValue);
-                }
-                else { // if ( columnType == (Object) "numrange" )
-                    rangeObject = new NumRangeType(rangeValue);
-                }
-                statement.setObject(index, rangeObject);
-            }
+            rangeValue = column.getMetaClass().callMethod(context, "range_to_string", rubyValue).toString();
         }
         else {
             if ( value == null ) {
-                statement.setNull(index, Types.JAVA_OBJECT);
+                statement.setNull(index, Types.OTHER); return;
             }
-            else { // NOTE: this won't work with 9.2.1003
-                statement.setString(index, value.toString());
-            }
+            rangeValue = value.toString();
         }
+
+        final Object pgRange;
+        if ( columnType == (Object) "daterange" ) {
+            pgRange = new DateRangeType(rangeValue);
+        }
+        else if ( columnType == (Object) "tsrange" ) {
+            pgRange = new TsRangeType(rangeValue);
+        }
+        else if ( columnType == (Object) "tstzrange" ) {
+            pgRange = new TstzRangeType(rangeValue);
+        }
+        else if ( columnType == (Object) "int4range" ) {
+            pgRange = new Int4RangeType(rangeValue);
+        }
+        else if ( columnType == (Object) "int8range" ) {
+            pgRange = new Int8RangeType(rangeValue);
+        }
+        else { // if ( columnType == (Object) "numrange" )
+            pgRange = new NumRangeType(rangeValue);
+        }
+        statement.setObject(index, pgRange);
     }
 
+    private void setAddressParameter(final ThreadContext context,
+        final PreparedStatement statement, final int index,
+        Object value, final IRubyObject column,
+        final String columnType) throws SQLException {
+
+        if ( value instanceof IRubyObject ) {
+            final IRubyObject rubyValue = (IRubyObject) value;
+            if ( rubyValue.isNil() ) {
+                statement.setNull(index, Types.OTHER); return;
+            }
+            value = column.getMetaClass().callMethod(context, "cidr_to_string", rubyValue);
+        }
+        else if ( value == null ) {
+            statement.setNull(index, Types.OTHER); return;
+        }
+
+        final PGobject pgAddress = new PGobject();
+        pgAddress.setType(columnType);
+        pgAddress.setValue(value.toString());
+        statement.setObject(index, pgAddress);
+    }
 
     @Override
     protected String resolveArrayBaseTypeName(final ThreadContext context,
