@@ -222,13 +222,18 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
 
         final String columnType = column.callMethod(context, "type").asJavaString();
 
+        if ( columnType == (Object) "uuid" ) {
+            setUUIDParameter(statement, index, value);
+            return;
+        }
+
         if ( columnType == (Object) "json" ) {
-            setJsonParameter(context, statement, index, value, column, columnType);
+            setJsonParameter(context, statement, index, value, column);
             return;
         }
 
         if ( columnType == (Object) "tsvector" ) {
-            setTsVectorParameter(statement, index, value, columnType);
+            setTsVectorParameter(statement, index, value);
             return;
         }
 
@@ -246,10 +251,27 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
         super.setObjectParameter(context, connection, statement, index, value, column, type);
     }
 
+    private void setUUIDParameter(
+        final PreparedStatement statement, final int index,
+        Object value) throws SQLException {
+
+        if ( value instanceof IRubyObject ) {
+            final IRubyObject rubyValue = (IRubyObject) value;
+            if ( rubyValue.isNil() ) {
+                statement.setNull(index, Types.OTHER); return;
+            }
+        }
+        else if ( value == null ) {
+            statement.setNull(index, Types.OTHER); return;
+        }
+
+        final Object uuid = UUID.fromString( value.toString() );
+        statement.setObject(index, uuid);
+    }
+
     private void setJsonParameter(final ThreadContext context,
         final PreparedStatement statement, final int index,
-        Object value, final IRubyObject column,
-        final String columnType) throws SQLException {
+        Object value, final IRubyObject column) throws SQLException {
 
         if ( value instanceof IRubyObject ) {
             final IRubyObject rubyValue = (IRubyObject) value;
@@ -263,14 +285,14 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
         }
 
         final PGobject pgJson = new PGobject();
-        pgJson.setType(columnType); // "json"
+        pgJson.setType("json");
         pgJson.setValue(value.toString());
         statement.setObject(index, pgJson);
     }
 
     private void setTsVectorParameter(
         final PreparedStatement statement, final int index,
-        Object value, final String columnType) throws SQLException {
+        Object value) throws SQLException {
 
         if ( value instanceof IRubyObject ) {
             final IRubyObject rubyValue = (IRubyObject) value;
@@ -283,7 +305,7 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
         }
 
         final PGobject pgTsVector = new PGobject();
-        pgTsVector.setType(columnType); // "tsvector"
+        pgTsVector.setType("tsvector");
         pgTsVector.setValue(value.toString());
         statement.setObject(index, pgTsVector);
     }
