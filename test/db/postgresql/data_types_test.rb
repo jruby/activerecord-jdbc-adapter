@@ -620,7 +620,7 @@ _SQL
 
   def test_update_bit_string
 
-    pend 'not supported by driver' if connection.prepared_statements?
+    pend 'not supported by driver' if prepared_statements?
     # org.postgresql.util.PSQLException: ERROR: column "bit_string" is of type bit but expression is of type character varying
     # NOTE: possible work-aroud would be if AREL generated a query like :
     # "INSERT INTO bit_strings VALUES (?::bit)"

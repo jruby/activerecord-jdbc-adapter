@@ -44,7 +44,12 @@ class PostgresqlUuidTest < Test::Unit::TestCase
   end
 
   def test_auto_create_uuid
+    #pend 'not supported by driver' if prepared_statements?
     u = UUID.create
+    # NOTE: not supported by JDBC driver - likely another "feature - bug" :
+    # org.postgresql.util.PSQLException: ERROR: operator does not exist: uuid = character varying
+    #   Hint: No operator matches the given name and argument type(s). You might need to add explicit type casts.
+    #   Position: 61: SELECT  "pg_uuids".* FROM "pg_uuids"  WHERE "pg_uuids"."id" = ? LIMIT 1
     u.reload
     assert_not_nil u.other_uuid
   end

@@ -252,6 +252,12 @@ class Test::Unit::TestCase
 
   private
 
+  def prepared_statements?(connection = ActiveRecord::Base.connection)
+    connection.send :prepared_statements?
+  end
+
+  private
+
   def date_equal?(expected, actual)
     actual = actual_in_expected_time_zone(expected, actual)
     actual = actual.to_date if actual.is_a?(Time)

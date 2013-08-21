@@ -232,7 +232,7 @@ module ArJdbc
         else
           "'#{quote_string(value)}'"
         end
-      when NilClass then "NULL"
+      when NilClass then 'NULL'
       when TrueClass then (type == :integer ? '1' : quoted_true)
       when FalseClass then (type == :integer ? '0' : quoted_false)
       when Float, Fixnum, Bignum then value.to_s
