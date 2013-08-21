@@ -227,6 +227,11 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
             return;
         }
 
+        if ( columnType == (Object) "tsvector" ) {
+            setTsVectorParameter(statement, index, value, columnType);
+            return;
+        }
+
         if ( columnType == (Object) "cidr" || columnType == (Object) "inet"
                 || columnType == (Object) "macaddr" ) {
             setAddressParameter(context, statement, index, value, column, columnType);
@@ -277,6 +282,26 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
             pgRange = new NumRangeType(rangeValue);
         }
         statement.setObject(index, pgRange);
+    }
+
+    private void setTsVectorParameter(
+        final PreparedStatement statement, final int index,
+        Object value, final String columnType) throws SQLException {
+
+        if ( value instanceof IRubyObject ) {
+            final IRubyObject rubyValue = (IRubyObject) value;
+            if ( rubyValue.isNil() ) {
+                statement.setNull(index, Types.OTHER); return;
+            }
+        }
+        else if ( value == null ) {
+            statement.setNull(index, Types.OTHER); return;
+        }
+
+        final PGobject pgTsVector = new PGobject();
+        pgTsVector.setType(columnType); // "tsvector"
+        pgTsVector.setValue(value.toString());
+        statement.setObject(index, pgTsVector);
     }
 
     private void setAddressParameter(final ThreadContext context,
