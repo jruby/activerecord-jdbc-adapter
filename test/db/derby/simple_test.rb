@@ -86,6 +86,14 @@ class DerbySimpleTest < Test::Unit::TestCase
     assert_equal '0.0', db.sample_string
     assert_equal '0.0', db.sample_text
 
+    value = BigDecimal.new("123456.789")
+    db.sample_string = value
+    db.sample_text = value
+    db.save!
+    db.reload
+    assert_equal '123456.789', db.sample_string
+    assert_equal '123456.789', db.sample_text
+
     db.sample_string = nil
     db.sample_text = nil
     db.save!

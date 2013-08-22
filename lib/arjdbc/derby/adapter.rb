@@ -147,6 +147,44 @@ module ArJdbc
     end
 
     # @override
+    def quote(value, column = nil)
+      return value.quoted_id if value.respond_to?(:quoted_id)
+
+      return 'NULL' if value.nil?
+
+      column_type = column && column.type
+      if column_type == :string || column_type == :text
+        # Derby is not permissive
+        # e.g. sending an Integer to a VARCHAR column will fail
+        case value
+        when BigDecimal then value = value.to_s('F')
+        when Numeric then value = value.to_s
+        when true, false then value = value.to_s
+        when Date, Time then value = quoted_date(value)
+        end
+      end
+
+      case value
+      when String, ActiveSupport::Multibyte::Chars
+        if column_type == :text
+          "CAST('#{quote_string(value)}' AS CLOB)"
+        elsif column_type == :binary
+          "CAST(X'#{quote_binary(value)}' AS BLOB)"
+        elsif column_type == :xml
+          "XMLPARSE(DOCUMENT '#{quote_string(value)}' PRESERVE WHITESPACE)"
+        elsif column_type == :integer
+          value.to_i
+        elsif column_type == :float
+          value.to_f
+        else
+          "'#{quote_string(value)}'"
+        end
+      else
+        super
+      end
+    end
+
+    # @override
     def quoted_date(value)
       if value.acts_like?(:time) && value.respond_to?(:usec)
         usec = sprintf("%06d", value.usec)
