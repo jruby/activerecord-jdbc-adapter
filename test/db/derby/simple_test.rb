@@ -39,59 +39,59 @@ class DerbySimpleTest < Test::Unit::TestCase
   end
 
   def test_text_and_string_conversions
-    e = DbType.create!(:sample_string => '', :sample_text => '').reload
+    db = DbType.create!(:sample_string => '', :sample_text => '').reload
 
     # Derby will normally reject any non text value.
     # The adapter has been patched to convert non text values to strings
+
     ['string', 45, 4.3, 18488425889503641645].each do |value|
-      #assert_nothing_raised do
-        e.sample_string = value
-        e.sample_text = value
-        e.save!
-        e.reload
-        assert_equal [value.to_s]*2, [e.sample_string, e.sample_text]
-      #end
+      db.sample_string = value
+      db.sample_text = value
+      db.save!
+      db.reload
+      assert_equal value.to_s, db.sample_string
+      assert_equal value.to_s, db.sample_text
     end
+
     [true, false].each do |value|
-      #assert_nothing_raised do
-        e.sample_string = value
-        e.sample_text = value
-        e.save!
-        e.reload
-        assert_equal [value ? "1" : "0"]*2, [e.sample_string, e.sample_text]
-      #end
+      db.sample_string = value
+      db.sample_text = value
+      db.save!
+      db.reload
+      assert_equal value.to_s, db.sample_string
+      assert_equal value.to_s, db.sample_text
     end
-    #assert_nothing_raised do
-      value = Date.today
-      e.sample_string = value
-      e.sample_text = value
-      e.save!
-      e.reload
-      assert_equal [value.to_s(:db)]*2, [e.sample_string, e.sample_text]
-    #end
+
+    value = Date.today
+    db.sample_string = value
+    db.sample_text = value
+    db.save!
+    db.reload
+    assert_equal value.to_s(:db), db.sample_string
+    assert_equal value.to_s(:db), db.sample_text
+
     value = {'a' => 7}
-    #assert_nothing_raised do
-      e.sample_string = value
-      e.sample_text = value
-      e.save!
-      e.reload
-      assert_equal [value.to_yaml]*2, [e.sample_string, e.sample_text]
-    #end
+    db.sample_string = value
+    db.sample_text = value
+    db.save!
+    db.reload
+    assert_equal value.to_yaml, db.sample_string
+    assert_equal value.to_yaml, db.sample_text
+
     value = BigDecimal.new("0")
-    #assert_nothing_raised do
-      e.sample_string = value
-      e.sample_text = value
-      e.save!
-      e.reload
-      assert_equal ['0.0']*2, [e.sample_string, e.sample_text]
-    #end
-    #assert_nothing_raised do
-      e.sample_string = nil
-      e.sample_text = nil
-      e.save!
-      e.reload
-      assert_equal [nil]*2, [e.sample_string, e.sample_text]
-    #end
+    db.sample_string = value
+    db.sample_text = value
+    db.save!
+    db.reload
+    assert_equal '0.0', db.sample_string
+    assert_equal '0.0', db.sample_text
+
+    db.sample_string = nil
+    db.sample_text = nil
+    db.save!
+    db.reload
+    assert_equal nil, db.sample_string
+    assert_equal nil, db.sample_text
   end
 
   def test_data_types

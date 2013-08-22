@@ -151,8 +151,8 @@ public class DerbyModule {
     }
 
     /*
-     * Derby is not permissive like MySql. Try and send an Integer to a CLOB or
-     * VARCHAR column and Derby will vomit.
+     * Derby is not permissive like MySQL.
+     * Try and send an Integer to a CLOB or VARCHAR column and it will vomit.
      * This method turns non stringy things into strings.
      */
     private static IRubyObject toRubyStringForTextColumn(
@@ -163,7 +163,9 @@ public class DerbyModule {
             return value;
         }
 
-        if ( value instanceof RubyBoolean ) return quoteBoolean(runtime, value);
+        if ( value instanceof RubyBoolean ) {
+            return value.callMethod(context, "to_s");
+        }
 
         final String className = value.getMetaClass().getName();
         if ( className.equals("Float") || className.equals("Fixnum") || className.equals("Bignum") ) {
