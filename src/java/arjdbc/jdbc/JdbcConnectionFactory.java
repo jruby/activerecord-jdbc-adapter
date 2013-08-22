@@ -1,4 +1,5 @@
 /***** BEGIN LICENSE BLOCK *****
+ * Copyright (c) 2012-2013 Karol Bucek <self@kares.org>
  * Copyright (c) 2006-2010 Nick Sieger <nick@nicksieger.com>
  * Copyright (c) 2006-2007 Ola Bini <ola.bini@gmail.com>
  *
@@ -33,12 +34,12 @@ import java.sql.SQLException;
  * @author nicksieger
  */
 public interface JdbcConnectionFactory {
-    
+
     /**
      * Retrieve a (new) connection from the factory.
      * @return a connection
-     * @throws SQLException 
+     * @throws SQLException
      */
     Connection newConnection() throws SQLException;
-    
+
 }

@@ -1,4 +1,5 @@
 /***** BEGIN LICENSE BLOCK *****
+ * Copyright (c) 2012-2013 Karol Bucek <self@kares.org>
  * Copyright (c) 2006-2010 Nick Sieger <nick@nicksieger.com>
  * Copyright (c) 2006-2007 Ola Bini <ola.bini@gmail.com>
  *
@@ -35,33 +36,33 @@ import org.jruby.runtime.ThreadContext;
 import org.jruby.runtime.builtin.IRubyObject;
 
 public class HSQLDBModule {
-    
+
     public static RubyModule load(final RubyModule arJdbc) {
         RubyModule hsqldb = arJdbc.defineModuleUnder("HSQLDB");
         hsqldb.defineAnnotatedMethods( HSQLDBModule.class );
         return hsqldb;
     }
-    
+
     @JRubyMethod(name = "quote_string", required = 1, frame = false)
     public static IRubyObject quote_string(
-            final ThreadContext context, 
-            final IRubyObject self, 
+            final ThreadContext context,
+            final IRubyObject self,
             final IRubyObject string) {
         return quoteSingleQuotesWithFallback(context, string);
     }
-    
+
     @JRubyMethod(name = "quoted_true", required = 0, frame = false)
     public static IRubyObject quoted_true(
-            final ThreadContext context, 
+            final ThreadContext context,
             final IRubyObject self) {
         return RubyString.newString(context.getRuntime(), BYTES_1);
     }
-    
+
     @JRubyMethod(name = "quoted_false", required = 0, frame = false)
     public static IRubyObject quoted_false(
-            final ThreadContext context, 
+            final ThreadContext context,
             final IRubyObject self) {
         return RubyString.newString(context.getRuntime(), BYTES_0);
     }
-    
+
 }

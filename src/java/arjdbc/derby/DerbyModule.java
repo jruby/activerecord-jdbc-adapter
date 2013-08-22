@@ -1,4 +1,5 @@
 /***** BEGIN LICENSE BLOCK *****
+ * Copyright (c) 2012-2013 Karol Bucek <self@kares.org>
  * Copyright (c) 2006-2011 Nick Sieger <nick@nicksieger.com>
  * Copyright (c) 2006-2007 Ola Bini <ola.bini@gmail.com>
  *
