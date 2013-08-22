@@ -29,7 +29,11 @@ class DerbySimpleTest < Test::Unit::TestCase
       :content => "Hello from 'JRuby on Rails'!",
       :user => (user = User.create!(:login => "someone"))
 
-    users = User.find(:all, :include=>[:entries], :order=>"entries.rating DESC", :limit => 2)
+    if ar_version('3.2')
+      users = User.includes(:entries).order("entries.rating DESC").limit(2)
+    else
+      users = User.find :all, :include=> [ :entries ], :order => "entries.rating DESC", :limit => 2
+    end
 
     assert users.include?(user)
   end

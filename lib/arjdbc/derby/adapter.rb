@@ -367,6 +367,11 @@ module ArJdbc
       %Q{"#{name.to_s.upcase.gsub('"', '""')}"}
     end
 
+    # @override
+    def quote_table_name_for_assignment(table, attr)
+      quote_column_name(attr)
+    end if ::ActiveRecord::VERSION::MAJOR > 3
+
     # @note Only used with (non-AREL) ActiveRecord **2.3**.
     # @see Arel::Visitors::Derby
     def add_limit_offset!(sql, options)
