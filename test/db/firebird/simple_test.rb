@@ -5,7 +5,6 @@ class FirebirdSimpleTest < Test::Unit::TestCase
   include ActiveRecord3TestMethods
   include ColumnNameQuotingTests
   include DirtyAttributeTests
-  #include XmlColumnTests
   include CustomSelectTestMethods
 
   # @override

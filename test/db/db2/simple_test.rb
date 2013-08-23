@@ -4,7 +4,7 @@ class DB2SimpleTest < Test::Unit::TestCase
   include SimpleTestMethods
   include ActiveRecord3TestMethods
   include DirtyAttributeTests
-  include XmlColumnTests
+  include XmlColumnTestMethods
 
   def xml_sql_type; 'XML'; end
 

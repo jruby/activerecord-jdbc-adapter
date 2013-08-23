@@ -12,7 +12,7 @@ class PostgresSimpleTest < Test::Unit::TestCase
   include ActiveRecord3TestMethods
   include ColumnNameQuotingTests
   include DirtyAttributeTests
-  include XmlColumnTests
+  include XmlColumnTestMethods
   include CustomSelectTestMethods
 
   def test_adapter_class_name_equals_native_adapter_class_name

@@ -13,7 +13,7 @@ class MysqlSimpleTest < Test::Unit::TestCase
   include ActiveRecord3TestMethods
   include ColumnNameQuotingTests
   include DirtyAttributeTests
-  include XmlColumnTests
+  include XmlColumnTestMethods
   include CustomSelectTestMethods
 
   # MySQL does not support precision beyond seconds :

@@ -5,7 +5,7 @@ class OracleSimpleTest < Test::Unit::TestCase
   include SimpleTestMethods
   include ActiveRecord3TestMethods
   include DirtyAttributeTests
-  include XmlColumnTests
+  include XmlColumnTestMethods
 
   def xml_sql_type; 'XMLTYPE'; end
 
