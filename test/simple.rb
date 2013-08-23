@@ -994,7 +994,13 @@ module SimpleTestMethods
     Entry.create! :title => 'title 2', :content => 'content 2', :user_id => user.id, :rating => 1.0
 
     rows = connection.execute 'SELECT * FROM entries'
-    column_order = rows.first.keys
+    if defined? JRUBY_VERSION
+      column_order = rows.first.keys
+    elsif connection.class.name.index('Mysql')
+      column_order = rows.fields # MRI Mysql2::Result
+    else
+      column_order = rows.first.keys
+    end
 
     rows = connection.select_rows 'SELECT * FROM entries'
     assert_instance_of Array, rows
@@ -1261,6 +1267,9 @@ module ActiveRecord3TestMethods
       user.entries.update_all :rating => 12.3
       assert_equal 12.3, e1.reload.rating
       assert_equal 12.3, e2.reload.rating
+
+      user.entries.update_all :content => '... coming soon ...'
+      user.entries.update_all :rating => 10
     end
 
     def test_remove_nonexistent_index
@@ -1403,8 +1412,12 @@ module CustomSelectTestMethods
   end
 
   def test_custom_select_datetime
-    raw_date_time = ActiveRecord::ConnectionAdapters::JdbcConnection.raw_date_time?
-    ActiveRecord::ConnectionAdapters::JdbcConnection.raw_date_time = false
+    if defined? JRUBY_VERSION
+      raw_date_time = ActiveRecord::ConnectionAdapters::JdbcConnection.raw_date_time?
+      ActiveRecord::ConnectionAdapters::JdbcConnection.raw_date_time = false
+    else
+      skip unless ar_version('4.0')
+    end
 
     my_time = Time.local 2013, 03, 15, 19, 53, 51, 0 # usec
     model = DbType.create! :sample_datetime => my_time
@@ -1418,12 +1431,16 @@ module CustomSelectTestMethods
     assert sample_datetime.acts_like?(:time), "expected Time-like instance but got: #{sample_datetime.class}"
 
   ensure
-    ActiveRecord::ConnectionAdapters::JdbcConnection.raw_date_time = raw_date_time
+    ActiveRecord::ConnectionAdapters::JdbcConnection.raw_date_time = raw_date_time if defined? JRUBY_VERSION
   end
 
   def test_custom_select_date
-    raw_date_time = ActiveRecord::ConnectionAdapters::JdbcConnection.raw_date_time?
-    ActiveRecord::ConnectionAdapters::JdbcConnection.raw_date_time = false
+    if defined? JRUBY_VERSION
+      raw_date_time = ActiveRecord::ConnectionAdapters::JdbcConnection.raw_date_time?
+      ActiveRecord::ConnectionAdapters::JdbcConnection.raw_date_time = false
+    else
+      skip unless ar_version('4.0')
+    end
 
     my_date = Time.local(2000, 01, 30, 0, 0, 0, 0).to_date
     model = DbType.create! :sample_date => my_date
@@ -1437,7 +1454,7 @@ module CustomSelectTestMethods
     assert sample_date.acts_like?(:date), "expected Date-like instance but got: #{sample_date.class}"
 
   ensure
-    ActiveRecord::ConnectionAdapters::JdbcConnection.raw_date_time = raw_date_time
+    ActiveRecord::ConnectionAdapters::JdbcConnection.raw_date_time = raw_date_time if defined? JRUBY_VERSION
   end
 
 end
