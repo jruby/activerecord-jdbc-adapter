@@ -1,7 +1,7 @@
 require 'models/topic'
 require 'ostruct'
 
-# borrosed from AR/test/cases/serialized_attribute_test.rb
+# borrowed from AR/test/cases/serialized_attribute_test.rb
 
 module SerializeTestMethods
 
@@ -22,7 +22,7 @@ module SerializeTestMethods
     end
 
   end
-  
+
   def setup
     super
   end
@@ -31,13 +31,13 @@ module SerializeTestMethods
     super
     Topic.serialize("content")
   end
-  
+
   MyObject = Struct.new :attribute1, :attribute2
 
   def test_list_of_serialized_attributes
     assert_equal %w(content), Topic.serialized_attributes.keys
   end
-  
+
   def test_serialized_attribute
     Topic.serialize("content", MyObject)
 
@@ -88,7 +88,7 @@ module SerializeTestMethods
 #    t.reload
 #    assert_equal({ :foo => :bar }, t.attributes_before_type_cast["content"])
 #  end
-  
+
   def test_serialized_ostruct
     Topic.serialize :content, OpenStruct
 
@@ -97,7 +97,7 @@ module SerializeTestMethods
     t.save!
     assert_equal 'bar', t.reload.content.foo
   end if Test::Unit::TestCase.ar_version('3.1')
-  
+
   def test_serialized_attribute_declared_in_subclass
     hash = { 'important1' => 'value1', 'important2' => 'value2' }
     important_topic = ImportantTopic.create("important" => hash)
@@ -129,7 +129,7 @@ module SerializeTestMethods
     topic = Topic.new
     assert_nil topic.content
   end
-    
+
   def test_nil_not_serialized_without_class_constraint
     #ActiveRecord::Base.logger.level = Logger::DEBUG
     topic = Topic.new(:content => nil); topic.save!
@@ -227,7 +227,7 @@ module SerializeTestMethods
   ensure
     Topic.serialize(:content)
   end if Test::Unit::TestCase.ar_version('3.1')
-  
+
   def test_serialize_with_bcrypt_coder
     require 'bcrypt'
     crypt_coder = Class.new {
@@ -249,7 +249,7 @@ module SerializeTestMethods
     assert_kind_of BCrypt::Password, topic.content
     assert_equal(true, topic.content == password, 'password should equal')
   end if Test::Unit::TestCase.ar_version('3.1')
-  
+
   def test_serialize_attribute_via_select_method_when_time_zone_available
     ActiveRecord::Base.time_zone_aware_attributes = true
     Topic.serialize(:content, MyObject)

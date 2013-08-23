@@ -75,8 +75,12 @@ class DerbySimpleTest < Test::Unit::TestCase
     db.sample_text = value
     db.save!
     db.reload
-    assert_equal value.to_yaml, db.sample_string
-    assert_equal value.to_yaml, db.sample_text
+    # NOTE: to_yaml happens when an attribute is declared to be serializable
+    if ar_version('3.0')
+      # to_yaml on 2.3 due compatibility + serializable attributes handling
+      assert_equal value.to_s, db.sample_string
+      assert_equal value.to_s, db.sample_text
+    end
 
     value = BigDecimal.new("0")
     db.sample_string = value

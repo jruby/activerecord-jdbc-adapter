@@ -161,6 +161,8 @@ module ArJdbc
         when Numeric then value = value.to_s
         when true, false then value = value.to_s
         when Date, Time then value = quoted_date(value)
+        else # on 2.3 attribute serialization needs to_yaml here
+          value = value.to_s if ActiveRecord::VERSION::MAJOR >= 3
         end
       end
 
