@@ -721,34 +721,63 @@ module SimpleTestMethods
     assert_equal 'bar?', entry.content
   end
 
-  def test_exec_update_bind_param_with_q_mark
-    entry = Entry.create! :title => 'foo!'
-
-    sql = "UPDATE entries SET title = ? WHERE id = #{entry.id}"
-    column = Entry.columns_hash['title']
-    connection.exec_update sql, 'UPDATE(with_q_mark)', [ [ column, "bar?" ] ]
-    assert_equal 'bar?', entry.reload.title
-  end
-
-  def test_exec_insert_bind_param_with_q_mark
-    sql = "INSERT INTO entries(title) VALUES (?)"
-    column = Entry.columns_hash['title']
-    connection.exec_insert sql, 'INSERT(with_q_mark)', [ [ column, "bar?!?" ] ]
-
-    entries = Entry.find_by_sql "SELECT * FROM entries WHERE title = 'bar?!?'"
-    assert entries.first
-  end
-
   def test_raw_insert_bind_param_with_q_mark
+    arel = insert_manager Entry, :title => ( value = "?!huu!?" )
+    column = Entry.columns_hash['title']
+
+    name = "INSERT(raw_with_q_mark)"
+    pk = nil; id_value = nil; sequence_name = nil
+    binds = prepared_statements? ? [ [ column, value ] ] : []
+
+    connection.insert arel, name, pk, id_value, sequence_name, binds
+    assert Entry.exists?([ 'title LIKE ?', "%?!huu!?%" ])
+
+  end if Test::Unit::TestCase.ar_version('3.1') # no binds argument for <= 3.0
+
+  def test_raw_insert_bind_param_with_q_mark_deprecated
+    skip "not supported on MRI" unless defined? JRUBY_VERSION
+    skip "not supported on AR >= 4.0" if ar_version('4.0')
+
     sql = "INSERT INTO entries(title) VALUES (?)"
     name = "INSERT(raw_with_q_mark)"
     pk = nil; id_value = nil; sequence_name = nil
     column = nil # column = Entry.columns_hash['title']
+
     connection.insert sql, name, pk, id_value, sequence_name, [ [ column, "?!huu!?" ] ]
     assert Entry.exists?([ 'title LIKE ?', "%?!huu!?%" ])
+
   end if Test::Unit::TestCase.ar_version('3.1') # no binds argument for <= 3.0
 
   def test_raw_update_bind_param_with_q_mark
+    entry = Entry.create! :title => 'foo!'
+
+    arel = update_manager Entry, :title => ( value = "bar?" )
+    arel.where Entry.arel_table[:id].eq( entry.id )
+    column = Entry.columns_hash['title']
+    name = "UPDATE(raw_with_q_mark)"
+    binds = prepared_statements? ? [ [ column, value ] ] : []
+
+    connection.update arel, name, binds
+    assert_equal 'bar?', entry.reload.title
+
+    arel = update_manager Entry, :title => ( value = "?baz?!?" )
+    if prepared_statements?
+      arel.where Entry.arel_table[:id].eq(Arel::Nodes::BindParam.new('?'))
+      binds = [ [ column, value ], [ Entry.columns_hash['id'], entry.id ] ]
+    else
+      arel.where Entry.arel_table[:id].eq( entry.id.to_s )
+      binds = []
+    end
+
+    connection.update arel, name, binds
+    assert_equal '?baz?!?', entry.reload.title
+
+  end if Test::Unit::TestCase.ar_version('3.1') # no binds argument for <= 3.0
+
+  def test_raw_update_bind_param_with_q_mark_deprecated
+    skip "not supported on MRI" unless defined? JRUBY_VERSION
+    skip "not supported on AR >= 4.0" if ar_version('4.0')
+
     entry = Entry.create! :title => 'foo!'
 
     sql = "UPDATE entries SET title = ? WHERE id = #{entry.id}"
@@ -759,11 +788,30 @@ module SimpleTestMethods
 
     sql = "UPDATE entries SET title = ? WHERE id = ?"
     title_c, id_c = Entry.columns_hash['title'], Entry.columns_hash['id']
+
     connection.update sql, name, [ [ title_c, "?baz?!?" ], [ id_c, entry.id ] ]
     assert_equal '?baz?!?', entry.reload.title
+
   end if Test::Unit::TestCase.ar_version('3.1') # no binds argument for <= 3.0
 
   def test_raw_delete_bind_param_with_q_mark
+    entry = Entry.create! :title => 'foo?!?', :content => '..........'
+
+    arel = Arel::DeleteManager.new Entry.arel_engine
+    arel.from arel_table = Entry.arel_table
+    arel.where arel_table[:title].eq(Arel::Nodes::BindParam.new('?'))
+    column = Entry.columns_hash['title']
+    name = "DELETE(raw_with_q_mark)"
+
+    connection.delete arel, name, [ [ column, "foo?!?" ] ]
+    assert ! Entry.exists?(entry.id)
+
+  end if Test::Unit::TestCase.ar_version('3.1') # no binds argument for <= 3.0
+
+  def test_raw_delete_bind_param_with_q_mark_deprecated
+    skip "not supported on MRI" unless defined? JRUBY_VERSION
+    skip "not supported on AR >= 4.0" if ar_version('4.0')
+
     entry = Entry.create! :title => 'foo?!?'
 
     sql = "DELETE FROM entries WHERE title = ?"
@@ -836,25 +884,117 @@ module SimpleTestMethods
   end
 
   def test_exec_insert
+    # connection.execute "INSERT INTO things VALUES ( '00', '2013-07-23 01:44:58.045000', '2013-07-23 01:44:58.045000' )"
+    connection.exec_insert "INSERT INTO things VALUES ( '01', '2013-07-23 02:44:58.045000', '2013-07-23 02:44:58.045000' )", nil, []
+
+    return unless ar_version('3.1')
+
+    arel = insert_manager Thing, values = {
+      :name => 'ferko', :created_at => Time.zone.now, :updated_at => Time.zone.now
+    }
+    binds = prepared_statements? ? values.map { |name, value| [ Thing.columns_hash[name.to_s], value ] } : []
+
+    connection.exec_insert arel, 'SQL(ferko)', binds.dup
+    assert Thing.find_by_name 'ferko'
+
+    arel = insert_manager Thing, values = {
+      :name => 'jozko', :created_at => Time.zone.now, :updated_at => Time.zone.now
+    }
+    binds = prepared_statements? ? values.map { |name, value| [ Thing.columns_hash[name.to_s], value ] } : []
+
+    # NOTE: #exec_insert accepts 5 arguments on AR-4.0 :
+    if ar_version('4.0')
+      connection.exec_insert arel, 'SQL(jozko)', binds, nil, nil
+    else
+      connection.exec_insert arel, 'SQL(jozko)', binds
+    end
+    assert Thing.find_by_name 'jozko'
+  end
+
+  def test_exec_insert_deprecated_extension
+    skip "not supported on MRI" unless defined? JRUBY_VERSION
+    skip "not supported on AR >= 4.0" if ar_version('4.0')
+
     name_column = Thing.columns.detect { |column| column.name.to_s == 'name' }
     created_column = Thing.columns.detect { |column| column.name.to_s == 'created_at' }
     updated_column = Thing.columns.detect { |column| column.name.to_s == 'updated_at' }
     now = Time.zone.now
 
-    # connection.execute "INSERT INTO things VALUES ( '00', '2013-07-23 01:44:58.045000', '2013-07-23 01:44:58.045000' )"
-    connection.exec_insert "INSERT INTO things VALUES ( '01', '2013-07-23 02:44:58.045000', '2013-07-23 02:44:58.045000' )", nil, []
-
     binds = [ [ name_column, 'ferko' ], [ created_column, now ], [ updated_column, now ] ]
     connection.exec_insert "INSERT INTO things VALUES ( ?, ?, ? )", 'INSERT Thing(ferko)', binds
     assert Thing.find_by_name 'ferko'
-    # NOTE: #exec_insert accepts 5 arguments on AR-4.0 :
-    binds = [ [ name_column, 'jozko' ], [ created_column, now ], [ updated_column, now ] ]
-    if ar_version('4.0')
-      connection.exec_insert "INSERT INTO things (name, created_at, updated_at) VALUES (?,?,?)", 'INSERT Thing(jozko)', binds, nil, nil
-    else
-      connection.exec_insert "INSERT INTO things (name, created_at, updated_at) VALUES (?,?,?)", 'INSERT Thing(jozko)', binds
+
+    sql = "INSERT INTO entries(title) VALUES (?)"
+    column = Entry.columns_hash['title']
+    connection.exec_insert sql, 'INSERT(with_q_mark)', [ [ column, "bar?!?" ] ]
+
+    entries = Entry.find_by_sql "SELECT * FROM entries WHERE title = 'bar?!?'"
+    assert entries.first
+  end
+
+  def test_exec_insert_bind_param_with_q_mark
+    arel = insert_manager Entry, :title => ( value = "bar?!?" )
+    column = Entry.columns_hash['title']
+    binds = prepared_statements? ? [ [ column, value ] ] : []
+
+    connection.exec_insert arel, 'INSERT(with_q_mark)', binds
+
+    entries = Entry.find_by_sql "SELECT * FROM entries WHERE title = 'bar?!?'"
+    assert entries.first
+  end if Test::Unit::TestCase.ar_version('3.1')
+
+  def insert_manager(table, columns = {})
+    arel = Arel::InsertManager.new table.arel_engine
+    arel.into table.arel_table
+    if columns
+      values = columns.map do |name, value|
+        value = Arel::Nodes::BindParam.new('?') if prepared_statements?
+        [ table.arel_table[name.to_sym], value ]
+      end
+      arel.insert values
     end
-    assert Thing.find_by_name 'jozko'
+    arel
+  end
+  private :insert_manager
+
+  def test_exec_update # _bind_param_with_q_mark
+    return unless ar_version('3.1')
+
+    entry = Entry.create! :title => 'foo!'
+    arel = update_manager Entry, :title => ( value = "bar?" )
+    arel.where Entry.arel_table[:id].eq(entry.id)
+    column = Entry.columns_hash['title']
+
+    binds = prepared_statements? ? [ [ column, value ] ] : []
+    connection.exec_update arel, 'UPDATE(with_q_mark)', binds
+    assert_equal 'bar?', entry.reload.title
+  end
+
+  def update_manager(table, columns = {})
+    arel = Arel::UpdateManager.new table.arel_engine
+    arel.table table.arel_table
+    if columns
+      values = columns.map do |name, value|
+        value = Arel::Nodes::BindParam.new('?') if prepared_statements?
+        [ table.arel_table[name.to_sym], value ]
+      end
+      arel.set values
+    end
+    arel
+  end
+  private :update_manager
+
+  def test_exec_delete
+    return unless ar_version('3.1')
+
+    entry = Entry.create! :title => '42'
+    arel = Arel::DeleteManager.new Entry.arel_engine
+    arel.from arel_table = Entry.arel_table
+    arel.where arel_table[:title].eq(Arel::Nodes::BindParam.new('?'))
+    column = Entry.columns_hash['title']
+
+    connection.exec_delete arel, 'DELETE(entry)', [ [ column, "42" ] ]
+    assert_nil Entry.where(:id => entry.id).first
   end
 
   def test_exec_query_result

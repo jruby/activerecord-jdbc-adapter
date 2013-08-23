@@ -254,6 +254,10 @@ class Test::Unit::TestCase
 
   def prepared_statements?(connection = ActiveRecord::Base.connection)
     connection.send :prepared_statements?
+  rescue NoMethodError # on MRI
+    raise if defined? JRUBY_VERSION
+    #return true if connection.class.name.index('Mysql')
+    current_connection_config[:prepared_statements]
   end
 
   private

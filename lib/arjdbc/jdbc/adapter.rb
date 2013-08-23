@@ -416,7 +416,7 @@ module ActiveRecord
         if prepared_statements?
           log(sql, name, binds) { @connection.execute_query(sql, binds) }
         else
-          sql = suble_binds(sql, binds)
+          sql = sql.respond_to?(:to_sql) ? to_sql(sql, binds) : suble_binds(sql, binds)
           log(sql, name) { @connection.execute_query(sql) }
         end
       end
@@ -430,7 +430,7 @@ module ActiveRecord
         if prepared_statements?
           log(sql, name || 'SQL', binds) { @connection.execute_insert(sql, binds) }
         else
-          sql = suble_binds sql, binds
+          sql = sql.respond_to?(:to_sql) ? to_sql(sql, binds) : suble_binds(sql, binds)
           log(sql, name || 'SQL') { @connection.execute_insert(sql) }
         end
       end
@@ -444,7 +444,7 @@ module ActiveRecord
         if prepared_statements?
           log(sql, name || 'SQL', binds) { @connection.execute_delete(sql, binds) }
         else
-          sql = suble_binds sql, binds
+          sql = sql.respond_to?(:to_sql) ? to_sql(sql, binds) : suble_binds(sql, binds)
           log(sql, name || 'SQL') { @connection.execute_delete(sql) }
         end
       end
@@ -458,7 +458,7 @@ module ActiveRecord
         if prepared_statements?
           log(sql, name || 'SQL', binds) { @connection.execute_update(sql, binds) }
         else
-          sql = suble_binds sql, binds
+          sql = sql.respond_to?(:to_sql) ? to_sql(sql, binds) : suble_binds(sql, binds)
           log(sql, name || 'SQL') { @connection.execute_update(sql) }
         end
       end
@@ -512,6 +512,7 @@ module ActiveRecord
       # statements that return a result set, while {#exec_query} is expected to
       # return a `ActiveRecord::Result` (since AR 3.1).
       # @note This method does not use prepared statements.
+      # @note The method does not emulate various "native" `execute` results on MRI.
       # @see #exec_query
       # @see #exec_insert
       # @see #exec_update
@@ -578,11 +579,14 @@ module ActiveRecord
         @connection.primary_keys(table)
       end
 
-      # @deprecated use {#update_lob_value} instead
+      # @deprecated Rather use {#update_lob_value} instead.
       def write_large_object(*args)
         @connection.write_large_object(*args)
       end
 
+      # @param record the record e.g. `User.find(1)`
+      # @param column the model's column e.g. `User.columns_hash['photo']`
+      # @param value the lob value - string or (IO or Java) stream
       def update_lob_value(record, column, value)
         @connection.update_lob_value(record, column, value)
       end
@@ -602,22 +606,6 @@ module ActiveRecord
         # @private
         def to_sql(sql, binds = nil)
           sql
-        end
-
-      else # AR >= 3.1 or 4.0
-
-        # @private
-        def to_sql(arel, binds = [])
-          # NOTE: same on 3.1/3.2 but on 4.0 binds are dup-ed
-          # for us it is intentional to 'consume' (empty) the binds array
-          # due our {#suble_binds} hack (that will be getting deprecated)
-          if arel.respond_to?(:ast)
-            visitor.accept(arel.ast) do
-              quote(*binds.shift.reverse)
-            end
-          else
-            arel
-          end
         end
 
       end
@@ -718,24 +706,34 @@ module ActiveRecord
       def self.prepared_statements?(config)
         config.key?(:prepared_statements) ?
           type_cast_config_to_boolean(config.fetch(:prepared_statements)) :
-            false # off by default
+            false # off by default - NOTE: on AR 4.x it's on by default !?
       end
 
+      # @note Since AR 4.0 we (finally) do not "sub" SQL's '?' parameters !
+      # @deprecated This should go away (hopefully) now here due compatibility.
       def suble_binds(sql, binds)
         return sql if binds.nil? || binds.empty?
-        copy = binds.dup
-        # TODO deprecate/warn about this behavior !
-        sql.gsub('?') { quote(*copy.shift.reverse) }
+        binds = binds.dup
+        sql.gsub('?') { quote(*binds.shift.reverse) }
       end
 
-      # @deprecated Replaced with {#suble_binds}.
+      # @private Supporting "string-subling" on AR 4.0 would require {#to_sql}
+      # to consume binds parameters otherwise it happens twice e.g. for a record
+      # insert it is called during {#insert} as well as on {#exec_insert} ...
+      def suble_binds(sql, binds)
+        sql
+      end if ActiveRecord::VERSION::MAJOR > 3
+
+      # @deprecated No longer used, will be removed.
+      # @see #suble_binds
       def substitute_binds(sql, binds)
-        suble_binds(extract_sql(sql), binds)
+        return sql if binds.nil? || binds.empty?; binds = binds.dup
+        extract_sql(sql).gsub('?') { quote(*binds.shift.reverse) }
       end
 
-      # @deprecated No longer used, only kept for 1.2 API compatibility.
-      def extract_sql(obj)
-        obj.respond_to?(:to_sql) ? obj.send(:to_sql) : obj
+      # @deprecated No longer used, kept for 1.2 API compatibility.
+      def extract_sql(arel)
+        arel.respond_to?(:to_sql) ? arel.send(:to_sql) : arel
       end
 
       # Helper to get local/UTC time (based on `ActiveRecord::Base.default_timezone`).
