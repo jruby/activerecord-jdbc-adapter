@@ -7,13 +7,20 @@ class DerbyJndiTest < Test::Unit::TestCase
   # Derby specifics :
   DbTypeMigration.big_decimal_precision = 31
   ALIVE_SQL = 'SELECT 1 FROM SYS.SYSSCHEMAS'
-  
+
   def setup
     config = { :connection_alive_sql => ALIVE_SQL }.merge(JNDI_CONFIG)
     ActiveRecord::Base.establish_connection config
     super
   end
-  
+
+  # @override
+  def test_empty_insert_statement
+    # "INSERT INTO table VALUES ( DEFAULT ) " not supported by Derby DB
+    pend if ar_version('4.0')
+    super
+  end
+
   test "(raw) connection is a jndi connection" do
     connection = ActiveRecord::Base.connection.raw_connection
     assert_true connection.jndi?
@@ -39,13 +46,20 @@ require 'db/jndi_pooled_config'
 
 class DerbyJndiPooledTest < Test::Unit::TestCase
   include SimpleTestMethods
-  
+
   def self.startup
     ActiveRecord::Base.establish_connection( {
-        :connection_alive_sql => DerbyJndiTest::ALIVE_SQL 
+        :connection_alive_sql => DerbyJndiTest::ALIVE_SQL
     }.merge(JNDI_POOLED_CONFIG) )
   end
-  
+
+  # @override
+  def test_empty_insert_statement
+    # "INSERT INTO table VALUES ( DEFAULT ) " not supported by Derby DB
+    pend if ar_version('4.0')
+    super
+  end
+
   test "(raw) connection is a jndi connection" do
     connection = ActiveRecord::Base.connection.raw_connection
     assert_true connection.jndi?
