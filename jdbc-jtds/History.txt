@@ -1,3 +1,7 @@
+=== 1.2.8
+
+* http://sourceforge.net/projects/jtds/files/jtds/1.2.8/release%20notes.txt
+
 === 1.2.7
 
 * http://sourceforge.net/projects/jtds/files/jtds/1.2.7/release%20notes.txt

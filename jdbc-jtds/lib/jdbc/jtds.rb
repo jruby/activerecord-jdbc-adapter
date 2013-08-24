@@ -2,7 +2,7 @@ warn "Jdbc-JTDS is only for use with JRuby" if (JRUBY_VERSION.nil? rescue true)
 
 module Jdbc
   module JTDS
-    DRIVER_VERSION = '1.2.7'
+    DRIVER_VERSION = '1.2.8'
     VERSION = DRIVER_VERSION
 
     def self.driver_jar
@@ -18,7 +18,7 @@ module Jdbc
     end
 
     if defined?(JRUBY_VERSION) && # enable backwards-compat behavior :
-      ( Java::JavaLang::Boolean.get_boolean("jdbc.driver.autoload") || 
+      ( Java::JavaLang::Boolean.get_boolean("jdbc.driver.autoload") ||
         Java::JavaLang::Boolean.get_boolean("jdbc.jtds.autoload") )
       warn "autoloading JDBC driver on require 'jdbc/jtds'" if $VERBOSE
       load_driver :require
