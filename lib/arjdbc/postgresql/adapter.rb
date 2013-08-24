@@ -796,6 +796,7 @@ module ArJdbc
     # @override
     def quote(value, column = nil)
       return super unless column
+      return value if sql_literal?(value)
 
       case value
       when Float

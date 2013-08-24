@@ -263,6 +263,7 @@ module ArJdbc
     # @override
     def quote(value, column = nil)
       return value.quoted_id if value.respond_to?(:quoted_id)
+      return value if sql_literal?(value)
 
       if column
         if column.respond_to?(:primary) && column.primary && column.klass != String

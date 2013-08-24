@@ -6,9 +6,10 @@ class DerbyUnitTest < Test::Unit::TestCase
   class DerbyImpl
     include ArJdbc::Derby
     def initialize; end
+    def sql_literal?(sql); false; end
   end
   derby = DerbyImpl.new
-  
+
   test "quote (string) without column passed" do
     s = "'"; q = "''"
     assert_equal q, derby.quote_string(s)
@@ -21,12 +22,12 @@ class DerbyUnitTest < Test::Unit::TestCase
     s = "kôň ůň löw9876qűáéőú.éáű-mehehehehehehe0 \x01 \x02"
     q = "'kôň ůň löw9876qűáéőú.éáű-mehehehehehehe0 \x01 \x02'"
     assert_equal q, derby.quote(s.dup)
-    
+
     if s.respond_to?(:force_encoding)
       s.force_encoding('UTF-8')
       q.force_encoding('UTF-8')
       assert_equal q, derby.quote(s.dup)
     end
   end
-  
+
 end

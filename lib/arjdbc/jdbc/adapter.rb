@@ -413,10 +413,11 @@ module ActiveRecord
       # @return [ActiveRecord::Result] or [Array] on **AR-2.3**
       # @override available since **AR-3.1**
       def exec_query(sql, name = 'SQL', binds = [])
+        sql = to_sql(sql, binds) if sql.respond_to?(:to_sql)
         if prepared_statements?
           log(sql, name, binds) { @connection.execute_query(sql, binds) }
         else
-          sql = sql.respond_to?(:to_sql) ? to_sql(sql, binds) : suble_binds(sql, binds)
+          sql = suble_binds(sql, binds) # deprecated behavior
           log(sql, name) { @connection.execute_query(sql) }
         end
       end
@@ -427,10 +428,11 @@ module ActiveRecord
       # @param binds the bind parameters
       # @override available since **AR-3.1**
       def exec_insert(sql, name, binds, pk = nil, sequence_name = nil)
+        sql = to_sql(sql, binds) if sql.respond_to?(:to_sql)
         if prepared_statements?
           log(sql, name || 'SQL', binds) { @connection.execute_insert(sql, binds) }
         else
-          sql = sql.respond_to?(:to_sql) ? to_sql(sql, binds) : suble_binds(sql, binds)
+          sql = suble_binds(sql, binds) # deprecated behavior
           log(sql, name || 'SQL') { @connection.execute_insert(sql) }
         end
       end
@@ -441,10 +443,11 @@ module ActiveRecord
       # @param binds the bind parameters
       # @override available since **AR-3.1**
       def exec_delete(sql, name, binds)
+        sql = to_sql(sql, binds) if sql.respond_to?(:to_sql)
         if prepared_statements?
           log(sql, name || 'SQL', binds) { @connection.execute_delete(sql, binds) }
         else
-          sql = sql.respond_to?(:to_sql) ? to_sql(sql, binds) : suble_binds(sql, binds)
+          sql = suble_binds(sql, binds) # deprecated behavior
           log(sql, name || 'SQL') { @connection.execute_delete(sql) }
         end
       end
@@ -455,10 +458,11 @@ module ActiveRecord
       # @param binds the bind parameters
       # @override available since **AR-3.1**
       def exec_update(sql, name, binds)
+        sql = to_sql(sql, binds) if sql.respond_to?(:to_sql)
         if prepared_statements?
           log(sql, name || 'SQL', binds) { @connection.execute_update(sql, binds) }
         else
-          sql = sql.respond_to?(:to_sql) ? to_sql(sql, binds) : suble_binds(sql, binds)
+          sql = suble_binds(sql, binds) # deprecated behavior
           log(sql, name || 'SQL') { @connection.execute_update(sql) }
         end
       end
@@ -474,10 +478,11 @@ module ActiveRecord
       # instead of returning mapped query results in an array.
       # @return [Array] unless a block is given
       def exec_query_raw(sql, name = 'SQL', binds = [], &block)
+        sql = to_sql(sql, binds) if sql.respond_to?(:to_sql)
         if prepared_statements?
           log(sql, name, binds) { @connection.execute_query_raw(sql, binds, &block) }
         else
-          sql = suble_binds(sql, binds)
+          sql = suble_binds(sql, binds) # deprecated behavior
           log(sql, name) { @connection.execute_query_raw(sql, &block) }
         end
       end
@@ -734,6 +739,15 @@ module ActiveRecord
       # @deprecated No longer used, kept for 1.2 API compatibility.
       def extract_sql(arel)
         arel.respond_to?(:to_sql) ? arel.send(:to_sql) : arel
+      end
+
+      if ActiveRecord::VERSION::MAJOR > 2
+        # Helper useful during {#quote} since AREL might pass in it's literals
+        # to be quoted, fixed since AREL 4.0.0.beta1 : http://git.io/7gyTig
+        def sql_literal?(value); ::Arel::Nodes::SqlLiteral === value; end
+      else
+        # @private
+        def sql_literal?(value); false; end
       end
 
       # Helper to get local/UTC time (based on `ActiveRecord::Base.default_timezone`).

@@ -144,6 +144,7 @@ module ArJdbc
     # @override
     def quote(value, column = nil)
       return value.quoted_id if value.respond_to?(:quoted_id)
+      return value if sql_literal?(value)
 
       case value
       # SQL Server 2000 doesn't let you insert an integer into a NVARCHAR

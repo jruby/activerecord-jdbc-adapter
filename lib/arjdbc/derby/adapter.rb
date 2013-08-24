@@ -149,7 +149,7 @@ module ArJdbc
     # @override
     def quote(value, column = nil)
       return value.quoted_id if value.respond_to?(:quoted_id)
-
+      return value if sql_literal?(value)
       return 'NULL' if value.nil?
 
       column_type = column && column.type

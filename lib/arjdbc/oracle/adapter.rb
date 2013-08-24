@@ -203,11 +203,6 @@ module ArJdbc
       end
     end
 
-    def sql_literal?(value)
-      defined?(::Arel::SqlLiteral) && ::Arel::SqlLiteral === value
-    end
-    private :sql_literal?
-
     def indexes(table, name = nil)
       @connection.indexes(table, name, @connection.connection.meta_data.user_name)
     end
@@ -392,7 +387,7 @@ module ArJdbc
 
     # @override
     def quote(value, column = nil)
-      return value if sql_literal?(value) # Arel 2 passes SqlLiterals through
+      return value if sql_literal?(value)
 
       column_type = column && column.type
       if column_type == :text || column_type == :binary

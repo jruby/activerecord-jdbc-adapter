@@ -144,6 +144,7 @@ module ArJdbc
     # @override
     def quote(value, column = nil)
       return value.quoted_id if value.respond_to?(:quoted_id)
+      return value if sql_literal?(value)
       return value.to_s if column && column.type == :primary_key
 
       if value.kind_of?(String) && column && column.type == :binary && column.class.respond_to?(:string_to_binary)
