@@ -379,7 +379,8 @@ module ArJdbc
     def extension_enabled?(name)
       if supports_extensions?
         rows = select_rows("SELECT EXISTS(SELECT * FROM pg_available_extensions WHERE name = '#{name}' AND installed_version IS NOT NULL)", 'SCHEMA')
-        rows.first.first
+        available = rows.first.first # true/false or 't'/'f'
+        available == true || available == 't'
       end
     end
 
