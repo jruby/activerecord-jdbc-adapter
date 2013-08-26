@@ -33,8 +33,6 @@ group :rails do
   gem 'actionpack', :require => nil
 end
 
-group :test do
-  gem 'mysql2', :require => nil, :platform => :mri
-  gem 'pg', :require => nil, :platform => :mri
-  gem 'sqlite3', :require => nil, :platform => :mri
-end
+gem 'mysql2', :require => nil, :platform => :mri, :group => :test
+gem 'pg', :require => nil, :platform => :mri, :group => :test
+gem 'sqlite3', :require => nil, :platform => :mri, :group => :test

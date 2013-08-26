@@ -11,5 +11,8 @@ gem "test-unit-context", ">= 0.3.0", :group=>:test
 gem "mocha", "~> 0.13.1", :require=>nil, :group=>:test
 gem "simplecov", :require=>nil, :group=>:test
 gem "bcrypt-ruby", "~> 3.0.0", :require=>nil, :group=>:test
+gem "mysql2", :require=>nil, :platform=>:mri, :group=>:test
+gem "pg", :require=>nil, :platform=>:mri, :group=>:test
+gem "sqlite3", :require=>nil, :platform=>:mri, :group=>:test
 gem "activerecord", "~> 3.0.20"
 

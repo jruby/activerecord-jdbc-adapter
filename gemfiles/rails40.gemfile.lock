@@ -20,7 +20,9 @@ GEM
       bundler
       rake
     arel (4.0.0)
+    atomic (1.1.10)
     atomic (1.1.10-java)
+    bcrypt-ruby (3.0.1)
     bcrypt-ruby (3.0.1-java)
     bouncy-castle-java (1.5.0147)
     builder (3.1.4)
@@ -46,6 +48,7 @@ GEM
 
 PLATFORMS
   java
+  ruby
 
 DEPENDENCIES
   activerecord (~> 4.0.0)
@@ -53,8 +56,11 @@ DEPENDENCIES
   bcrypt-ruby (~> 3.0.0)
   jruby-openssl
   mocha (~> 0.13.1)
+  mysql2
+  pg
   rake
   simplecov
+  sqlite3
   test-unit (= 2.5.4)
   test-unit-context (>= 0.3.0)
   thread_safe
