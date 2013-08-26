@@ -1,7 +1,8 @@
+require 'test_helper'
 require 'db/postgres'
 
-class PostgresInformationSchemaLeakTest < Test::Unit::TestCase
-  
+class PostgreSQLInformationSchemaLeakTest < Test::Unit::TestCase
+
   class CreateISLSchema < ActiveRecord::Migration
     def self.up
       execute "CREATE TABLE domains (id int, name varchar(16))"
@@ -14,7 +15,7 @@ class PostgresInformationSchemaLeakTest < Test::Unit::TestCase
 
   class Domain < ActiveRecord::Base
   end
-  
+
   def setup
     CreateISLSchema.up
   end
@@ -26,5 +27,5 @@ class PostgresInformationSchemaLeakTest < Test::Unit::TestCase
   def test_domain_columns
     assert_equal(%w{id name}, Domain.column_names)
   end
-  
+
 end

@@ -1,6 +1,6 @@
-require 'jdbc_common'
 require 'db/postgres'
-require 'row_locking'
+require 'simple'
+require 'row_locking_test_methods'
 
 class PostgresRowLockingTest < Test::Unit::TestCase
   include MigrationSetup

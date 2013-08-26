@@ -10,7 +10,7 @@ class PostgresSchemaTest < Test::Unit::TestCase
     ensure
       connection.drop_schema "test_schema3"
     end
-  end
+  end if ar_version('4.0') # create_schema/drop_schema added in AR 4.0
 
   def test_raise_create_schema_with_existing_schema
     begin
@@ -21,9 +21,10 @@ class PostgresSchemaTest < Test::Unit::TestCase
         end
       end
     ensure
+      # "DROP SCHEMA #{schema_name} CASCADE"
       connection.drop_schema "test_schema3"
     end
-  end
+  end if ar_version('4.0') # create_schema/drop_schema added in AR 4.0
 
   def test_drop_schema
     begin
@@ -32,11 +33,11 @@ class PostgresSchemaTest < Test::Unit::TestCase
       connection.drop_schema "test_schema3"
     end
     assert ! connection.schema_names.include?("test_schema3")
-  end
+  end if ar_version('4.0') # create_schema/drop_schema added in AR 4.0
 
   def test_collation
     assert_equal 'en_US.UTF-8', connection.collation
-  end
+  end if ar_version('4.0') # collation added in AR 4.0
 
   def test_encoding
     assert_equal 'UTF8', connection.encoding
@@ -44,7 +45,7 @@ class PostgresSchemaTest < Test::Unit::TestCase
 
   def test_ctype
     assert connection.ctype
-  end
+  end if ar_version('4.0') # ctype added in AR 4.0
 
   def test_current_database
     db = current_connection_config[:database]
@@ -62,7 +63,7 @@ class PostgresSchemaTest < Test::Unit::TestCase
 
   def test_schema_names
     assert_equal [ "public" ], connection.schema_names
-  end
+  end if ar_version('4.0') # schema_names added in AR 4.0
 
   context "search path" do
 

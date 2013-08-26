@@ -1,10 +1,8 @@
-# To run this script, set up the following postgres user and database:
-#
-#   sudo -u postgres createuser -D -A -P blog
-#   sudo -u postgres createdb -O blog weblog_development
-#
-
-require 'jdbc_common'
+require 'test_helper'
+require 'simple'
+require 'custom_select_test_methods'
+require 'has_many_through_test_methods'
+require 'xml_column_test_methods'
 require 'db/postgres'
 
 class PostgresSimpleTest < Test::Unit::TestCase

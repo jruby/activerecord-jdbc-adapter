@@ -257,10 +257,9 @@ class Test::Unit::TestCase
   rescue NoMethodError # on MRI
     raise if defined? JRUBY_VERSION
     #return true if connection.class.name.index('Mysql')
-    current_connection_config[:prepared_statements]
+    config = current_connection_config[:prepared_statements]
+    config == 'false' ? false : (config == 'true' ? true : config)
   end
-
-  private
 
   def date_equal?(expected, actual)
     actual = actual_in_expected_time_zone(expected, actual)

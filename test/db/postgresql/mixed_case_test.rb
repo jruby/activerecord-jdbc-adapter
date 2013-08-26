@@ -1,8 +1,9 @@
-require 'jdbc_common'
+require 'db/postgres'
 require 'models/entry'
 require 'models/mixed_case'
 
-class MixedCaseTest < Test::Unit::TestCase
+class PostgreSQLMixedCaseTest < Test::Unit::TestCase
+  
   def setup
     Migration::MixedCase.up
     @table_name = User.table_name
@@ -26,4 +27,5 @@ class MixedCaseTest < Test::Unit::TestCase
     u = User.first
     assert_equal "Nick Sieger", "#{u.firstName} #{u.lastName}"
   end
+
 end

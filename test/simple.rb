@@ -46,14 +46,14 @@ module MigrationSetup
   end
 
   def self.teardown!
-    DbTypeMigration.down
-    CreateStringIds.down
-    CreateEntries.down
-    CreateUsers.down
-    CreateAutoIds.down
-    CreateValidatesUniquenessOf.down
-    CreateThings.down
     CreateCustomPkName.down
+    CreateThings.down
+    CreateValidatesUniquenessOf.down
+    CreateAutoIds.down
+    CreateUsers.down
+    CreateEntries.down
+    CreateStringIds.down
+    DbTypeMigration.down
   end
 
 end
@@ -727,7 +727,7 @@ module SimpleTestMethods
 
     name = "INSERT(raw_with_q_mark)"
     pk = nil; id_value = nil; sequence_name = nil
-    binds = prepared_statements? ? [ [ column, value ] ] : []
+    binds = ( prepared_statements? ? [ [ column, value ] ] : [] )
 
     connection.insert arel, name, pk, id_value, sequence_name, binds
     assert Entry.exists?([ 'title LIKE ?', "%?!huu!?%" ])
@@ -799,11 +799,16 @@ module SimpleTestMethods
 
     arel = Arel::DeleteManager.new Entry.arel_engine
     arel.from arel_table = Entry.arel_table
-    arel.where arel_table[:title].eq(Arel::Nodes::BindParam.new('?'))
-    column = Entry.columns_hash['title']
+    if prepared_statements?
+      arel.where arel_table[:title].eq(Arel::Nodes::BindParam.new('?'))
+      binds = [ [ Entry.columns_hash['title'], "foo?!?" ] ]
+    else
+      arel.where arel_table[:title].eq( "foo?!?" )
+      binds = []
+    end
     name = "DELETE(raw_with_q_mark)"
 
-    connection.delete arel, name, [ [ column, "foo?!?" ] ]
+    connection.delete arel, name, binds
     assert ! Entry.exists?(entry.id)
 
   end if Test::Unit::TestCase.ar_version('3.1') # no binds argument for <= 3.0
@@ -888,6 +893,7 @@ module SimpleTestMethods
     connection.exec_insert "INSERT INTO things VALUES ( '01', '2013-07-23 02:44:58.045000', '2013-07-23 02:44:58.045000' )", nil, []
 
     return unless ar_version('3.1')
+    skip_exec_for_native_adapter
 
     arel = insert_manager Thing, values = {
       :name => 'ferko', :created_at => Time.zone.now, :updated_at => Time.zone.now
@@ -914,6 +920,7 @@ module SimpleTestMethods
   def test_exec_insert_deprecated_extension
     skip "not supported on MRI" unless defined? JRUBY_VERSION
     skip "not supported on AR >= 4.0" if ar_version('4.0')
+    skip_exec_for_native_adapter
 
     name_column = Thing.columns.detect { |column| column.name.to_s == 'name' }
     created_column = Thing.columns.detect { |column| column.name.to_s == 'created_at' }
@@ -933,6 +940,8 @@ module SimpleTestMethods
   end
 
   def test_exec_insert_bind_param_with_q_mark
+    skip_exec_for_native_adapter
+
     arel = insert_manager Entry, :title => ( value = "bar?!?" )
     column = Entry.columns_hash['title']
     binds = prepared_statements? ? [ [ column, value ] ] : []
@@ -959,6 +968,7 @@ module SimpleTestMethods
 
   def test_exec_update # _bind_param_with_q_mark
     return unless ar_version('3.1')
+    skip_exec_for_native_adapter
 
     entry = Entry.create! :title => 'foo!'
     arel = update_manager Entry, :title => ( value = "bar?" )
@@ -986,6 +996,7 @@ module SimpleTestMethods
 
   def test_exec_delete
     return unless ar_version('3.1')
+    skip_exec_for_native_adapter
 
     entry = Entry.create! :title => '42'
     arel = Arel::DeleteManager.new Entry.arel_engine
@@ -1152,7 +1163,12 @@ module SimpleTestMethods
       when 'id' then assert_not_nil row[i]
       when 'title' then assert_equal 'title 1', row[i]
       when 'content' then assert_equal 'content 1', row[i]
-      when 'user_id' then assert_equal user.id, row[i]
+      when 'user_id'
+        if defined? JRUBY_VERSION
+          assert_equal user.id, row[i]
+        else
+          assert_equal user.id.to_s, row[i].to_s # e.g. PG returns strings
+        end
       when 'rating' then assert_nil row[i]
       when 'updated_on' then assert_not_nil row[i]
       else raise "unexpected entries row: #{column.inspect}"
@@ -1165,7 +1181,12 @@ module SimpleTestMethods
       when 'id' then assert_not_nil row[i]
       when 'title' then assert_equal 'title 2', row[i]
       when 'content' then assert_equal 'content 2', row[i]
-      when 'user_id' then assert_equal user.id, row[i]
+      when 'user_id'
+        if defined? JRUBY_VERSION
+          assert_equal user.id, row[i]
+        else
+          assert_equal user.id.to_s, row[i].to_s # e.g. PG returns strings
+        end
       when 'rating' then assert_not_nil row[i]
       when 'updated_on' then assert_not_nil row[i]
       else raise "unexpected entries row: #{column.inspect}"
@@ -1213,6 +1234,17 @@ module SimpleTestMethods
 
   def assert_date_type(value)
     assert_instance_of Date, value
+  end
+
+  private
+
+  def skip_exec_for_native_adapter
+    unless defined? JRUBY_VERSION
+      adapter = ActiveRecord::Base.connection.class.name
+      if adapter.index('SQLite') || adapter.index('PostgreSQL')
+        skip "can't pass AREL-object into exec_xxx with SQLite adapter"
+      end
+    end
   end
 
 end
