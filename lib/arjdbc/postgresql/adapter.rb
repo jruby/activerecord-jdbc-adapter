@@ -1091,13 +1091,16 @@ module ArJdbc
 
       binds = [[ nil, table.gsub(/(^"|"$)/,'') ]]
       binds << [ nil, schema ] if schema
-
-      exec_query_raw(<<-SQL, 'SCHEMA', binds).first["table_count"] > 0
+      sql = <<-SQL
         SELECT COUNT(*) as table_count
         FROM pg_tables
         WHERE tablename = ?
         AND schemaname = #{schema ? "?" : "ANY (current_schemas(false))"}
       SQL
+
+      log(sql, 'SCHEMA', binds) do
+        @connection.execute_query_raw(sql, binds).first["table_count"] > 0
+      end
     end
 
     # @private
