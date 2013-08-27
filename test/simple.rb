@@ -889,8 +889,9 @@ module SimpleTestMethods
   end
 
   def test_exec_insert
-    # connection.execute "INSERT INTO things VALUES ( '00', '2013-07-23 01:44:58.045000', '2013-07-23 01:44:58.045000' )"
-    connection.exec_insert "INSERT INTO things VALUES ( '01', '2013-07-23 02:44:58.045000', '2013-07-23 02:44:58.045000' )", nil, []
+    created_at = connection.quoted_date Time.utc 2013, 7, 23, 02, 44, 58, 045000
+    updated_at = connection.quoted_date Time.utc 2013, 7, 23, 02, 44, 59, 145000
+    connection.exec_insert "INSERT INTO things VALUES ( '01', '#{created_at}', '#{updated_at}' )", nil, []
 
     return unless ar_version('3.1')
     skip_exec_for_native_adapter
