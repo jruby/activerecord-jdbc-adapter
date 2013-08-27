@@ -6,6 +6,7 @@ ArJdbc::ConnectionMethods.module_eval do
     rescue LoadError # assuming driver.jar is on the class-path
     end
 
+    config[:username] = 'root' unless config.key?(:username)
     config[:port] ||= 3306
     config[:url] ||= "jdbc:mysql://#{config[:host]}:#{config[:port]}/#{config[:database]}"
     config[:driver] ||= defined?(::Jdbc::MySQL.driver_name) ? ::Jdbc::MySQL.driver_name : 'com.mysql.jdbc.Driver'
