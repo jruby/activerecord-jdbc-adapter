@@ -474,9 +474,9 @@ module ArJdbc
     end
 
     def explain(arel, binds = [])
-      sql = "EXPLAIN PLAN FOR #{to_sql(arel)}"
+      sql = "EXPLAIN PLAN FOR #{to_sql(arel, binds)}"
       return if sql =~ /FROM all_/
-      execute(sql, 'EXPLAIN', binds)
+      exec_update(sql, 'EXPLAIN', binds)
       select_values("SELECT * FROM TABLE(DBMS_XPLAN.DISPLAY)", 'EXPLAIN').join("\n")
     end
 
