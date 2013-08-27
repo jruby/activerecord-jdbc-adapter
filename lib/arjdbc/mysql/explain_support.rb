@@ -13,7 +13,8 @@ module ::ArJdbc
         ExplainPrettyPrinter.new.pp result, elapsed
       end
 
-      class ExplainPrettyPrinter # :nodoc:
+      # @private
+      class ExplainPrettyPrinter
         # Pretty prints the result of a EXPLAIN in a way that resembles the output of the
         # MySQL shell:
         #
