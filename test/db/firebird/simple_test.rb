@@ -61,42 +61,63 @@ class FirebirdSimpleTest < Test::Unit::TestCase
 
   # @override
   def test_exec_insert
-    name_column = Thing.columns.detect { |column| column.name.to_s == 'name' }
-    created_column = Thing.columns.detect { |column| column.name.to_s == 'created_at' }
-    updated_column = Thing.columns.detect { |column| column.name.to_s == 'updated_at' }
-    now = Time.zone.now
+    connection.exec_insert "INSERT INTO things VALUES ( '01', '2013-07-23 02:44:58.0451', '2013-07-23 02:44:58.0452' )", nil, []
 
-    created_date = "'2013-07-23 02:44:58.0451'"
-    updated_date = "'2013-07-23 02:44:58.0452'"
-    connection.exec_insert "INSERT INTO things VALUES ( '01', #{created_date}, #{updated_date} )", nil, []
+    return unless ar_version('3.1')
 
-    binds = [ [ name_column, 'ferko' ], [ created_column, now ], [ updated_column, now ] ]
-    connection.exec_insert "INSERT INTO things VALUES ( ?, ?, ? )", 'INSERT Thing(ferko)', binds
+    arel = insert_manager Thing, values = {
+      :name => 'ferko', :created_at => Time.zone.now, :updated_at => Time.zone.now
+    }
+    binds = prepared_statements? ? values.map { |name, value| [ Thing.columns_hash[name.to_s], value ] } : []
+
+    connection.exec_insert arel, 'SQL(ferko)', binds.dup
     assert Thing.find_by_name 'ferko'
 
-    result = connection.exec_insert "INSERT INTO entries(ID, TITLE) VALUES ( '4200', 'inserted-title' )", nil, []
-    # assert_nil result # returns no generated id
+    arel = insert_manager Thing, values = {
+      :name => 'jozko', :created_at => Time.zone.now, :updated_at => Time.zone.now
+    }
+    binds = prepared_statements? ? values.map { |name, value| [ Thing.columns_hash[name.to_s], value ] } : []
 
-    connection.exec_insert "INSERT INTO entries(ID, TITLE) VALUES ( '4201', 'inserted-title' )", nil, [], 'ID'
+    # NOTE: #exec_insert accepts 5 arguments on AR-4.0 :
+    if ar_version('4.0')
+      connection.exec_insert arel, 'SQL(jozko)', binds, nil, nil
+    else
+      connection.exec_insert arel, 'SQL(jozko)', binds
+    end
+    assert Thing.find_by_name 'jozko'
   end
 
   # @override
   def test_exec_insert_bind_param_with_q_mark
-    sql = "INSERT INTO entries(id, title) VALUES (?, ?)"
-    connection.exec_insert sql, 'INSERT(with_q_mark)', [ [ nil, 1000 ], [ nil, "bar?!?" ] ]
+    arel = insert_manager Entry, :id => 1000, :title => ( value = "bar?!?" )
+    column = Entry.columns_hash['title']; id_column = Entry.columns_hash['id']
+    binds = prepared_statements? ? [ [ id_column, 1000 ], [ column, value ] ] : []
+
+    connection.exec_insert arel, 'INSERT(with_q_mark)', binds
 
     entries = Entry.find_by_sql "SELECT * FROM entries WHERE title = 'bar?!?'"
     assert entries.first
-  end
+  end if ar_version('3.1')
+
+  # @override
+  def test_exec_insert_deprecated_extension; end
 
   # @override
   def test_raw_insert_bind_param_with_q_mark
-    sql = "INSERT INTO entries(id, title) VALUES (?, ?)"
+    arel = insert_manager Entry, :id => 1001, :title => ( value = "?!huu!?" )
+    column = Entry.columns_hash['title']; id_column = Entry.columns_hash['id']
+
     name = "INSERT(raw_with_q_mark)"
     pk = nil; id_value = 1001; sequence_name = nil
-    connection.insert sql, name, pk, id_value, sequence_name, [ [ nil, id_value ], [ nil, "?!huu!?" ] ]
+    binds = ( prepared_statements? ? [ [ id_column, id_value ], [ column, value ] ] : [] )
+
+    connection.insert arel, name, pk, id_value, sequence_name, binds
     assert Entry.exists?([ 'title LIKE ?', "%?!huu!?%" ])
-  end if Test::Unit::TestCase.ar_version('3.1') # no binds argument for <= 3.0
+
+  end if ar_version('3.1') # no binds argument for <= 3.0
+
+  # @override
+  def test_raw_insert_bind_param_with_q_mark_deprecated; end
 
   test 'returns correct visitor type' do
     assert_not_nil visitor = connection.instance_variable_get(:@visitor)

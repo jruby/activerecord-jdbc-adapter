@@ -27,21 +27,31 @@ class OracleSimpleTest < Test::Unit::TestCase
 
   # @override
   def test_exec_insert
-    name_column = Thing.columns.detect { |column| column.name.to_s == 'name' }
-    created_column = Thing.columns.detect { |column| column.name.to_s == 'created_at' }
-    updated_column = Thing.columns.detect { |column| column.name.to_s == 'updated_at' }
-    now = Time.zone.now
-
     created_date = "to_date('2013/07/24 01:44:56', 'yyyy/mm/dd hh24:mi:ss')"
     updated_date = "to_date('2013/07/24 01:44:56', 'yyyy/mm/dd hh24:mi:ss')"
     connection.exec_insert "INSERT INTO things VALUES ( '01', #{created_date}, #{updated_date} )", nil, []
 
-    binds = [ [ name_column, 'ferko' ], [ created_column, now ], [ updated_column, now ] ]
-    connection.exec_insert "INSERT INTO things VALUES ( ?, ?, ? )", 'INSERT Thing(ferko)', binds
+    return unless ar_version('3.1')
+
+    arel = insert_manager Thing, values = {
+      :name => 'ferko', :created_at => Time.zone.now, :updated_at => Time.zone.now
+    }
+    binds = prepared_statements? ? values.map { |name, value| [ Thing.columns_hash[name.to_s], value ] } : []
+
+    connection.exec_insert arel, 'SQL(ferko)', binds.dup
     assert Thing.find_by_name 'ferko'
+
+    arel = insert_manager Thing, values = {
+      :name => 'jozko', :created_at => Time.zone.now, :updated_at => Time.zone.now
+    }
+    binds = prepared_statements? ? values.map { |name, value| [ Thing.columns_hash[name.to_s], value ] } : []
+
     # NOTE: #exec_insert accepts 5 arguments on AR-4.0 :
-    binds = [ [ name_column, 'jozko' ], [ created_column, now ], [ updated_column, now ] ]
-    connection.exec_insert "INSERT INTO things (name, created_at, updated_at) VALUES (?,?,?)", 'INSERT Thing(jozko)', binds, nil, nil
+    if ar_version('4.0')
+      connection.exec_insert arel, 'SQL(jozko)', binds, nil, nil
+    else
+      connection.exec_insert arel, 'SQL(jozko)', binds
+    end
     assert Thing.find_by_name 'jozko'
 
     result = connection.exec_insert "INSERT INTO entries(ID, TITLE) VALUES ( '4200', 'inserted-title' )", nil, []
@@ -49,6 +59,38 @@ class OracleSimpleTest < Test::Unit::TestCase
 
     connection.exec_insert "INSERT INTO entries(ID, TITLE) VALUES ( '4201', 'inserted-title' )", nil, [], 'ID'
   end
+
+  # @override
+  def test_exec_insert_bind_param_with_q_mark
+    arel = insert_manager Entry, :id => 1000, :title => ( value = "bar?!?" )
+    column = Entry.columns_hash['title']; id_column = Entry.columns_hash['id']
+    binds = prepared_statements? ? [ [ id_column, 1000 ], [ column, value ] ] : []
+
+    connection.exec_insert arel, 'INSERT(with_q_mark)', binds
+
+    entries = Entry.find_by_sql "SELECT * FROM entries WHERE title = 'bar?!?'"
+    assert entries.first
+  end if ar_version('3.1')
+
+  # @override
+  def test_exec_insert_deprecated_extension; end
+
+  # @override
+  def test_raw_insert_bind_param_with_q_mark
+    arel = insert_manager Entry, :id => 1001, :title => ( value = "?!huu!?" )
+    column = Entry.columns_hash['title']; id_column = Entry.columns_hash['id']
+
+    name = "INSERT(raw_with_q_mark)"
+    pk = nil; id_value = 1001; sequence_name = nil
+    binds = ( prepared_statements? ? [ [ id_column, id_value ], [ column, value ] ] : [] )
+
+    connection.insert arel, name, pk, id_value, sequence_name, binds
+    assert Entry.exists?([ 'title LIKE ?', "%?!huu!?%" ])
+
+  end if ar_version('3.1') # no binds argument for <= 3.0
+
+  # @override
+  def test_raw_insert_bind_param_with_q_mark_deprecated; end
 
   # @override
   def test_execute_insert
@@ -62,6 +104,8 @@ class OracleSimpleTest < Test::Unit::TestCase
     Entry.create! :title => 'first', :user_id => user.id
     assert Integer === Entry.first.id
   end
+
+  include ExplainSupportTestMethods if ar_version("3.1")
 
   def test_sequences_are_not_cached
     ActiveRecord::Base.transaction do
@@ -86,26 +130,6 @@ class OracleSimpleTest < Test::Unit::TestCase
     assert entries.first.title
     assert entries.first.login
   end
-
-  # @override
-  def test_exec_insert_bind_param_with_q_mark
-    sql = "INSERT INTO entries(id, title) VALUES (?, ?)"
-    connection.exec_insert sql, 'INSERT(with_q_mark)', [ [ nil, 1000 ], [ nil, "bar?!?" ] ]
-
-    entries = Entry.find_by_sql "SELECT * FROM entries WHERE title = 'bar?!?'"
-    assert entries.first
-  end
-
-  # @override
-  def test_raw_insert_bind_param_with_q_mark
-    sql = "INSERT INTO entries(id, title) VALUES (?, ?)"
-    name = "INSERT(raw_with_q_mark)"
-    pk = nil; id_value = 1001; sequence_name = nil
-    connection.insert sql, name, pk, id_value, sequence_name, [ [ nil, id_value ], [ nil, "?!huu!?" ] ]
-    assert Entry.exists?([ 'title LIKE ?', "%?!huu!?%" ])
-  end if Test::Unit::TestCase.ar_version('3.1') # no binds argument for <= 3.0
-
-  include ExplainSupportTestMethods if ar_version("3.1")
 
   def test_quotes_reserved_word_column
     connection.create_table 'lusers', :force => true do |t|
