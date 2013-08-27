@@ -204,7 +204,7 @@ module ArJdbc
     # @override
     def explain(arel, binds = [])
       sql = "EXPLAIN #{to_sql(arel, binds)}"
-      raw_result  = execute(sql, "EXPLAIN", binds)
+      raw_result = exec_query_raw(sql, "EXPLAIN", binds)
       raw_result[0].values.join("\n") # [ "SELECT \n ..." ].to_s
     end
 

@@ -14,6 +14,12 @@ class HsqldbSimpleTest < Test::Unit::TestCase
     super
   end
 
+  # @override
+  def test_explain_with_binds
+    skip 'HSQLDB seems to have issues EXPLAIN-ing with binds'
+    super
+  end if ar_version('3.1')
+
   test 'returns correct visitor type' do
     assert_not_nil visitor = connection.instance_variable_get(:@visitor)
     assert defined? Arel::Visitors::HSQLDB

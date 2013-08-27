@@ -56,8 +56,13 @@ class H2SchemaTest < Test::Unit::TestCase
   end
 
   def test_find_in_other_schema
-    all = Entry.all(:include => :user)
-    assert ! all.empty?, "expected `Entry.all(:include => :user)` to not be empty but was"
+    if ar_version('4.0')
+      all = Entry.includes(:user).references(:user)
+      assert ! all.empty?, "expected `Entry.includes(:user)` to not be empty but was"
+    else
+      all = Entry.all(:include => :user)
+      assert ! all.empty?, "expected `Entry.all(:include => :user)` to not be empty but was"
+    end
   end
 
 end
