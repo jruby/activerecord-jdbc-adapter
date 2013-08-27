@@ -324,15 +324,17 @@ module ArJdbc
       indexes
     end
 
+    # Returns an array of `Column` objects for the table specified.
     # @override
     def columns(table_name, name = nil)
-      sql = "SHOW FIELDS FROM #{quote_table_name(table_name)}"
+      sql = "SHOW FULL COLUMNS FROM #{quote_table_name(table_name)}"
       column = ::ActiveRecord::ConnectionAdapters::MysqlAdapter::Column
-      result = execute(sql, name || 'SCHEMA')
-      result.map! do |field|
-        column.new(field["Field"], field["Default"], field["Type"], field["Null"] == "YES")
+      columns = execute(sql, name || 'SCHEMA')
+      columns.map! do |field|
+        column.new(field['Field'], field['Default'], field['Type'],
+          field['Null'] == "YES", field['Collation'], field['Extra'])
       end
-      result
+      columns
     end
 
     # @private
@@ -602,11 +604,14 @@ module ActiveRecord
       class Column < JdbcColumn
         include ::ArJdbc::MySQL::Column
 
-        def initialize(name, *args)
+        attr_reader :collation, :strict, :extra
+
+        def initialize(name, default, sql_type = nil, null = true, collation = nil, strict = false, extra = "")
           if Hash === name
-            super
+            super # first arg: config
           else
-            super(nil, name, *args)
+            @strict = strict; @collation = collation; @extra = extra
+            super(name, default, sql_type, null)
           end
         end
 

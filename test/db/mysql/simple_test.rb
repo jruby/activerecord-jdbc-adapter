@@ -103,11 +103,12 @@ class MysqlSimpleTest < Test::Unit::TestCase
     # clear cache possibly created by other tests
     user.entries.reset_column_information
 
-    assert_queries(1, /SHOW (FULL)? FIELDS/) { user.entries.columns; user.entries.columns }
+    show_columns = /SHOW (FULL )?FIELDS|COLUMNS/
+    assert_queries(1, show_columns) { user.entries.columns; user.entries.columns }
 
     ## and again to verify that reset_column_information clears the cache correctly
     user.entries.reset_column_information
-    assert_queries(1, /SHOW (FULL)? FIELDS/) { user.entries.columns; user.entries.columns }
+    assert_queries(1, show_columns) { user.entries.columns; user.entries.columns }
   end
 
   # from rails active record tests
