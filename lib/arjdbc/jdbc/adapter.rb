@@ -736,7 +736,12 @@ module ActiveRecord
       # @deprecated This should go away (hopefully), now here due 1.2.x.
       def suble_binds(sql, binds)
         return sql if ! @@suble_binds || binds.nil? || binds.empty?
-        binds = binds.dup; sql.gsub('?') { quote(*binds.shift.reverse) }
+        binds = binds.dup; warn = nil
+        result = sql.gsub('?') { warn = true; quote(*binds.shift.reverse) }
+        ActiveSupport::Deprecation.warn(
+          "string binds substitution is deprecated - please refactor your sql", caller[1..-1]
+        ) if warn
+        result
       end
 
       # @private Supporting "string-subling" on AR 4.0 would require {#to_sql}
