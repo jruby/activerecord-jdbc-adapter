@@ -10,7 +10,7 @@ module ArJdbc
 
       def explain(arel, binds = [])
         return if DISABLED
-        sql = to_sql(arel)
+        sql = to_sql(arel, binds)
         result = with_showplan_on { exec_query(sql, 'EXPLAIN', binds) }
         PrinterTable.new(result).pp
       end
