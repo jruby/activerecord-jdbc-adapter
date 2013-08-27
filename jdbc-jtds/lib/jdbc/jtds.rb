@@ -14,7 +14,7 @@ module Jdbc
         send method, driver_jar
       else
         raise LoadError, "Version #{VERSION} of Jdbc-JTDS requires Java 1.7 " +
-                         "or later (try using gem 'jdbc-jtds', '~> 1.2.7'). "
+                         "or later (try using gem 'jdbc-jtds', '~> 1.2.8'). "
       end
     end
 
