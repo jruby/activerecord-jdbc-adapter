@@ -1,7 +1,11 @@
+=== 2.3.0
+
+* see http://sourceforge.net/projects/hsqldb/files/hsqldb/hsqldb_2_3/hsqldb-2.3.0.zip
+
 === 2.2.9
 
-Version 2.2 is fully multithreaded and supports high performance 2PL and MVCC 
-(multiversion concurrency control) transaction control models. 
+Version 2.2 is fully multithreaded and supports high performance 2PL and MVCC
+(multiversion concurrency control) transaction control models.
 
 See the list of new features in 2.2 : http://hsqldb.org/web/features200.html
 
