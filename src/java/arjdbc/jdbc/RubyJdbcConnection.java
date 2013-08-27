@@ -1295,12 +1295,12 @@ public class RubyJdbcConnection extends RubyObject {
             column.callMethod(context, "type").toString() == (Object) "binary";
 
         final RubyClass recordClass = record.getMetaClass(); // record.class
-        final IRubyObject connection = record.callMethod(context, "connection");
+        final IRubyObject adapter = recordClass.callMethod(context, "connection");
 
         IRubyObject columnName = column.callMethod(context, "name");
-        columnName = connection.callMethod(context, "quote_column_name", columnName);
+        columnName = adapter.callMethod(context, "quote_column_name", columnName);
         IRubyObject tableName = recordClass.callMethod(context, "table_name");
-        tableName = connection.callMethod(context, "quote_table_name", tableName);
+        tableName = adapter.callMethod(context, "quote_table_name", tableName);
         final IRubyObject idKey = recordClass.callMethod(context, "primary_key"); // 'id'
         // callMethod(context, "quote", primaryKey);
         final IRubyObject idColumn = // record.class.columns_hash['id']
