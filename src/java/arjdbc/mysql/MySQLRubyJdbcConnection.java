@@ -30,7 +30,6 @@ import arjdbc.jdbc.Callable;
 
 import java.lang.reflect.Field;
 import java.sql.Connection;
-import java.sql.DatabaseMetaData;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.sql.ResultSet;
@@ -157,11 +156,10 @@ public class MySQLRubyJdbcConnection extends RubyJdbcConnection {
             public IRubyObject call(final Connection connection) throws SQLException {
                 final Ruby runtime = context.getRuntime();
                 final RubyModule indexDefinition = getIndexDefinition(runtime);
-                final DatabaseMetaData metaData = connection.getMetaData();
-                final String jdbcTableName = caseConvertIdentifierForJdbc(metaData, tableName);
-                final String jdbcSchemaName = caseConvertIdentifierForJdbc(metaData, schemaName);
+                final String jdbcTableName = caseConvertIdentifierForJdbc(connection, tableName);
+                final String jdbcSchemaName = caseConvertIdentifierForJdbc(connection, schemaName);
                 final IRubyObject rubyTableName = RubyString.newUnicodeString(
-                    runtime, caseConvertIdentifierForJdbc(metaData, tableName)
+                    runtime, caseConvertIdentifierForJdbc(connection, tableName)
                 );
 
                 StringBuilder query = new StringBuilder("SHOW KEYS FROM ");
@@ -182,7 +180,7 @@ public class MySQLRubyJdbcConnection extends RubyJdbcConnection {
                     String currentKeyName = null;
 
                     while ( keySet.next() ) {
-                        final String keyName = caseConvertIdentifierForRails(metaData, keySet.getString("key_name"));
+                        final String keyName = caseConvertIdentifierForRails(connection, keySet.getString("key_name"));
 
                         if ( ! keyName.equals(currentKeyName) ) {
                             currentKeyName = keyName;
@@ -202,7 +200,7 @@ public class MySQLRubyJdbcConnection extends RubyJdbcConnection {
 
                         IRubyObject lastIndexDef = indexes.isEmpty() ? null : indexes.get(indexes.size() - 1);
                         if (lastIndexDef != null) {
-                            final String columnName = caseConvertIdentifierForRails(metaData, keySet.getString("column_name"));
+                            final String columnName = caseConvertIdentifierForRails(connection, keySet.getString("column_name"));
                             final int length = keySet.getInt("sub_part");
                             final boolean nullLength = keySet.wasNull();
 

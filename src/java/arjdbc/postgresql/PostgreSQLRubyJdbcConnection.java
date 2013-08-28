@@ -29,7 +29,6 @@ import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.sql.Array;
 import java.sql.Connection;
-import java.sql.DatabaseMetaData;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -101,15 +100,19 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
         return null; // not supported
     }
 
+    // storesMixedCaseIdentifiers() return false;
+    // storesLowerCaseIdentifiers() return true;
+    // storesUpperCaseIdentifiers() return false;
+
     @Override
-    protected String caseConvertIdentifierForJdbc(final DatabaseMetaData metaData, final String value)
+    protected String caseConvertIdentifierForRails(final Connection connection, final String value)
         throws SQLException {
-        if ( value != null ) {
-            if ( metaData.storesUpperCaseIdentifiers() ) {
-                return value.toUpperCase();
-            }
-            // for PostgreSQL we do not care about storesLowerCaseIdentifiers()
-        }
+        return value;
+    }
+
+    @Override
+    protected String caseConvertIdentifierForJdbc(final Connection connection, final String value)
+        throws SQLException {
         return value;
     }
 

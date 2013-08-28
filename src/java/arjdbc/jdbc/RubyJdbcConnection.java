@@ -541,7 +541,7 @@ public class RubyJdbcConnection extends RubyObject {
                 try {
                     statement = createStatement(context, connection);
                     if ( doExecute(statement, query) ) {
-                        return mapResults(context, connection.getMetaData(), statement, false);
+                        return mapResults(context, connection, statement, false);
                     } else {
                         return mapGeneratedKeysOrUpdateCount(context, connection, statement);
                     }
@@ -790,7 +790,6 @@ public class RubyJdbcConnection extends RubyObject {
         return withConnection(context, new Callable<IRubyObject>() {
             public IRubyObject call(final Connection connection) throws SQLException {
                 final Ruby runtime = context.getRuntime();
-                final DatabaseMetaData metaData = connection.getMetaData();
 
                 Statement statement = null; ResultSet resultSet = null;
                 try {
@@ -810,10 +809,10 @@ public class RubyJdbcConnection extends RubyObject {
                     if ( block != null && block.isGiven() ) {
                         // yield(id1, name1) ... row 1 result data
                         // yield(id2, name2) ... row 2 result data
-                        return yieldResultRows(context, runtime, metaData, resultSet, block);
+                        return yieldResultRows(context, runtime, connection, resultSet, block);
                     }
 
-                    return mapToRawResult(context, runtime, metaData, resultSet, false);
+                    return mapToRawResult(context, runtime, connection, resultSet, false);
                 }
                 catch (final SQLException e) {
                     debugErrorSQL(context, query);
@@ -937,9 +936,8 @@ public class RubyJdbcConnection extends RubyObject {
     private IRubyObject mapQueryResult(final ThreadContext context,
         final Connection connection, final ResultSet resultSet) throws SQLException {
         final Ruby runtime = context.getRuntime();
-        final DatabaseMetaData metaData = connection.getMetaData();
-        final ColumnData[] columns = setupColumns(runtime, metaData, resultSet.getMetaData(), false);
-        return mapToResult(context, runtime, metaData, resultSet, columns);
+        final ColumnData[] columns = setupColumns(runtime, connection, resultSet.getMetaData(), false);
+        return mapToResult(context, runtime, connection, resultSet, columns);
     }
 
     /**
@@ -975,10 +973,11 @@ public class RubyJdbcConnection extends RubyObject {
     @JRubyMethod(name = "supported_data_types")
     public IRubyObject supported_data_types(final ThreadContext context) throws SQLException {
         final Ruby runtime = context.getRuntime();
-        final DatabaseMetaData metaData = getConnection(true).getMetaData();
-        final IRubyObject types; final ResultSet typeDesc = metaData.getTypeInfo();
+        final Connection connection = getConnection(true);
+        final ResultSet typeDesc = connection.getMetaData().getTypeInfo();
+        final IRubyObject types;
         try {
-            types = mapToRawResult(context, runtime, metaData, typeDesc, true);
+            types = mapToRawResult(context, runtime, connection, typeDesc, true);
         }
         finally { close(typeDesc); }
 
@@ -998,8 +997,8 @@ public class RubyJdbcConnection extends RubyObject {
         return withConnection(context, new Callable<List<RubyString>>() {
             public List<RubyString> call(final Connection connection) throws SQLException {
                 final Ruby runtime = context.getRuntime();
+                final String _tableName = caseConvertIdentifierForJdbc(connection, tableName);
                 final DatabaseMetaData metaData = connection.getMetaData();
-                final String _tableName = caseConvertIdentifierForJdbc(metaData, tableName);
                 ResultSet resultSet = null;
                 final List<RubyString> keyNames = new ArrayList<RubyString>();
                 try {
@@ -1008,7 +1007,7 @@ public class RubyJdbcConnection extends RubyObject {
 
                     while (resultSet.next()) {
                         String columnName = resultSet.getString(PRIMARY_KEYS_COLUMN_NAME);
-                        columnName = caseConvertIdentifierForRails(metaData, columnName);
+                        columnName = caseConvertIdentifierForRails(connection, columnName);
                         keyNames.add( RubyString.newUnicodeString(runtime, columnName) );
                     }
                 }
@@ -1155,9 +1154,9 @@ public class RubyJdbcConnection extends RubyObject {
                 final Ruby runtime = context.getRuntime();
                 final RubyClass indexDefinition = getIndexDefinition(runtime);
 
+                String _tableName = caseConvertIdentifierForJdbc(connection, tableName);
+                String _schemaName = caseConvertIdentifierForJdbc(connection, schemaName);
                 final DatabaseMetaData metaData = connection.getMetaData();
-                String _tableName = caseConvertIdentifierForJdbc(metaData, tableName);
-                String _schemaName = caseConvertIdentifierForJdbc(metaData, schemaName);
 
                 final List<RubyString> primaryKeys = primaryKeys(context, _tableName);
                 ResultSet indexInfoSet = null;
@@ -1341,6 +1340,12 @@ public class RubyJdbcConnection extends RubyObject {
         });
     }
 
+    protected String caseConvertIdentifierForRails(final Connection connection, final String value)
+        throws SQLException {
+        if ( value == null ) return null;
+        return caseConvertIdentifierForRails(connection.getMetaData(), value);
+    }
+
     /**
      * Convert an identifier coming back from the database to a case which Rails is expecting.
      *
@@ -1355,16 +1360,21 @@ public class RubyJdbcConnection extends RubyObject {
     protected static String caseConvertIdentifierForRails(final DatabaseMetaData metaData, final String value)
         throws SQLException {
         if ( value == null ) return null;
-
         return metaData.storesUpperCaseIdentifiers() ? value.toLowerCase() : value;
+    }
+
+    protected String caseConvertIdentifierForJdbc(final Connection connection, final String value)
+        throws SQLException {
+        if ( value == null ) return null;
+        return caseConvertIdentifierForJdbc(connection.getMetaData(), value);
     }
 
     /**
      * Convert an identifier destined for a method which cares about the databases internal
      * storage case.  Methods like DatabaseMetaData.getPrimaryKeys() needs the table name to match
-     * the internal storage name.  Arbtrary queries and the like DO NOT need to do this.
+     * the internal storage name.  Arbitrary queries and the like DO NOT need to do this.
      */
-    protected String caseConvertIdentifierForJdbc(final DatabaseMetaData metaData, final String value)
+    protected static String caseConvertIdentifierForJdbc(final DatabaseMetaData metaData, final String value)
         throws SQLException {
         if ( value == null ) return null;
 
@@ -1374,7 +1384,6 @@ public class RubyJdbcConnection extends RubyObject {
         else if ( metaData.storesLowerCaseIdentifiers() ) {
             return value.toLowerCase();
         }
-
         return value;
     }
 
@@ -1464,7 +1473,7 @@ public class RubyJdbcConnection extends RubyObject {
      * @throws SQLException
      */
     protected IRubyObject mapToResult(final ThreadContext context, final Ruby runtime,
-            final DatabaseMetaData metaData, final ResultSet resultSet,
+            final Connection connection, final ResultSet resultSet,
             final ColumnData[] columns) throws SQLException {
 
         final ResultHandler resultHandler = ResultHandler.getInstance(runtime);
@@ -2726,10 +2735,9 @@ public class RubyJdbcConnection extends RubyObject {
             final String tablePattern, final String[] types,
             final boolean checkExistsOnly) throws SQLException {
 
+        final String _tablePattern = caseConvertIdentifierForJdbc(connection, tablePattern);
+        final String _schemaPattern = caseConvertIdentifierForJdbc(connection, schemaPattern);
         final DatabaseMetaData metaData = connection.getMetaData();
-
-        final String _tablePattern = caseConvertIdentifierForJdbc(metaData, tablePattern);
-        final String _schemaPattern = caseConvertIdentifierForJdbc(metaData, schemaPattern);
 
         ResultSet tablesSet = null;
         try {
@@ -2760,13 +2768,16 @@ public class RubyJdbcConnection extends RubyObject {
      * @return List<RubyString>
      * @throws SQLException
      */
+    // NOTE: change to accept a connection instead of meta-data
     protected RubyArray mapTables(final Ruby runtime, final DatabaseMetaData metaData,
             final String catalog, final String schemaPattern, final String tablePattern,
             final ResultSet tablesSet) throws SQLException {
         final RubyArray tables = runtime.newArray();
         while ( tablesSet.next() ) {
             String name = tablesSet.getString(TABLES_TABLE_NAME);
+
             name = caseConvertIdentifierForRails(metaData, name);
+
             tables.add(RubyString.newUnicodeString(runtime, name));
         }
         return tables;
@@ -2975,14 +2986,14 @@ public class RubyJdbcConnection extends RubyObject {
      }
 
     protected IRubyObject mapResults(final ThreadContext context,
-            final DatabaseMetaData metaData, final Statement statement,
+            final Connection connection, final Statement statement,
             final boolean downCase) throws SQLException {
 
         final Ruby runtime = context.getRuntime();
         IRubyObject result;
         ResultSet resultSet = statement.getResultSet();
         try {
-            result = mapToRawResult(context, runtime, metaData, resultSet, downCase);
+            result = mapToRawResult(context, runtime, connection, resultSet, downCase);
         }
         finally { close(resultSet); }
 
@@ -2994,7 +3005,7 @@ public class RubyJdbcConnection extends RubyObject {
         do {
             resultSet = statement.getResultSet();
             try {
-                result = mapToRawResult(context, runtime, metaData, resultSet, downCase);
+                result = mapToRawResult(context, runtime, connection, resultSet, downCase);
             }
             finally { close(resultSet); }
 
@@ -3022,6 +3033,20 @@ public class RubyJdbcConnection extends RubyObject {
      */
     @SuppressWarnings("unchecked")
     private IRubyObject mapToRawResult(final ThreadContext context, final Ruby runtime,
+            final Connection connection, final ResultSet resultSet,
+            final boolean downCase) throws SQLException {
+
+        final ColumnData[] columns = extractColumns(runtime, connection, resultSet, downCase);
+
+        final RubyArray results = runtime.newArray();
+        // [ { 'col1': 1, 'col2': 2 }, { 'col1': 3, 'col2': 4 } ]
+        populateFromResultSet(context, runtime, (List<IRubyObject>) results, resultSet, columns);
+        return results;
+    }
+
+    @Deprecated
+    @SuppressWarnings("unchecked")
+    private IRubyObject mapToRawResult(final ThreadContext context, final Ruby runtime,
             final DatabaseMetaData metaData, final ResultSet resultSet,
             final boolean downCase) throws SQLException {
 
@@ -3034,10 +3059,10 @@ public class RubyJdbcConnection extends RubyObject {
     }
 
     private IRubyObject yieldResultRows(final ThreadContext context, final Ruby runtime,
-            final DatabaseMetaData metaData, final ResultSet resultSet,
+            final Connection connection, final ResultSet resultSet,
             final Block block) throws SQLException {
 
-        final ColumnData[] columns = extractColumns(runtime, metaData, resultSet, false);
+        final ColumnData[] columns = extractColumns(runtime, connection, resultSet, false);
 
         final IRubyObject[] blockArgs = new IRubyObject[columns.length];
         while ( resultSet.next() ) {
@@ -3060,6 +3085,13 @@ public class RubyJdbcConnection extends RubyObject {
      * @return columns data
      * @throws SQLException
      */
+    protected ColumnData[] extractColumns(final Ruby runtime,
+        final Connection connection, final ResultSet resultSet,
+        final boolean downCase) throws SQLException {
+        return setupColumns(runtime, connection, resultSet.getMetaData(), downCase);
+    }
+
+    @Deprecated
     protected ColumnData[] extractColumns(final Ruby runtime,
         final DatabaseMetaData metaData, final ResultSet resultSet,
         final boolean downCase) throws SQLException {
@@ -3413,12 +3445,10 @@ public class RubyJdbcConnection extends RubyObject {
             name = nameParts[2];
         }
 
-        final DatabaseMetaData metaData = connection.getMetaData();
-
         if (schema != null) {
-            schema = caseConvertIdentifierForJdbc(metaData, schema);
+            schema = caseConvertIdentifierForJdbc(connection, schema);
         }
-        name = caseConvertIdentifierForJdbc(metaData, name);
+        name = caseConvertIdentifierForJdbc(connection, name);
 
         if (schema != null && ! databaseSupportsSchemas()) {
             catalog = schema;
@@ -3452,7 +3482,32 @@ public class RubyJdbcConnection extends RubyObject {
 
     }
 
-    private static ColumnData[] setupColumns(
+    private ColumnData[] setupColumns(
+            final Ruby runtime,
+            final Connection connection,
+            final ResultSetMetaData resultMetaData,
+            final boolean downCase) throws SQLException {
+
+        final int columnCount = resultMetaData.getColumnCount();
+        final ColumnData[] columns = new ColumnData[columnCount];
+
+        for ( int i = 1; i <= columnCount; i++ ) { // metadata is one-based
+            String name = resultMetaData.getColumnLabel(i);
+            if ( downCase ) {
+                name = name.toLowerCase();
+            } else {
+                name = caseConvertIdentifierForRails(connection, name);
+            }
+            final RubyString columnName = RubyString.newUnicodeString(runtime, name);
+            final int columnType = resultMetaData.getColumnType(i);
+            columns[i - 1] = new ColumnData(columnName, columnType, i);
+        }
+
+        return columns;
+    }
+
+    @Deprecated
+    private ColumnData[] setupColumns(
             final Ruby runtime,
             final DatabaseMetaData metaData,
             final ResultSetMetaData resultMetaData,
@@ -3462,14 +3517,14 @@ public class RubyJdbcConnection extends RubyObject {
         final ColumnData[] columns = new ColumnData[columnCount];
 
         for ( int i = 1; i <= columnCount; i++ ) { // metadata is one-based
-            final String name;
-            if (downCase) {
-                name = resultMetaData.getColumnLabel(i).toLowerCase();
+            String name = resultMetaData.getColumnLabel(i);
+            if ( downCase ) {
+                name = name.toLowerCase();
             } else {
-                name = caseConvertIdentifierForRails(metaData, resultMetaData.getColumnLabel(i));
+                name = caseConvertIdentifierForRails(metaData, name);
             }
-            final int columnType = resultMetaData.getColumnType(i);
             final RubyString columnName = RubyString.newUnicodeString(runtime, name);
+            final int columnType = resultMetaData.getColumnType(i);
             columns[i - 1] = new ColumnData(columnName, columnType, i);
         }
 

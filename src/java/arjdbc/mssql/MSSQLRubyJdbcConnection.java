@@ -25,8 +25,7 @@
  ***** END LICENSE BLOCK *****/
 package arjdbc.mssql;
 
-import arjdbc.jdbc.RubyJdbcConnection;
-
+import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -48,7 +47,7 @@ import org.jruby.util.ByteList;
  *
  * @author nicksieger
  */
-public class MSSQLRubyJdbcConnection extends RubyJdbcConnection {
+public class MSSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection {
 
     protected MSSQLRubyJdbcConnection(Ruby runtime, RubyClass metaClass) {
         super(runtime, metaClass);
@@ -130,9 +129,9 @@ public class MSSQLRubyJdbcConnection extends RubyJdbcConnection {
 
     @Override
     protected ColumnData[] extractColumns(final Ruby runtime,
-        final DatabaseMetaData metaData, final ResultSet resultSet,
+        final Connection connection, final ResultSet resultSet,
         final boolean downCase) throws SQLException {
-        return filterRowNumFromColumns( super.extractColumns(runtime, metaData, resultSet, downCase) );
+        return filterRowNumFromColumns( super.extractColumns(runtime, connection, resultSet, downCase) );
     }
 
     private static final ByteList _row_num; // "_row_num"

@@ -147,7 +147,7 @@ public class SQLite3RubyJdbcConnection extends RubyJdbcConnection {
         while ( tablesSet.next() ) {
             String name = tablesSet.getString(TABLES_TABLE_NAME);
             name = name.toLowerCase(); // simply lower-case for SQLite3
-            tables.add(RubyString.newUnicodeString(runtime, name));
+            tables.add( RubyString.newUnicodeString(runtime, name) );
         }
         return runtime.newArray(tables);
     }
