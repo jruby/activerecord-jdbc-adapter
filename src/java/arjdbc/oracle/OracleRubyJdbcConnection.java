@@ -27,9 +27,9 @@ package arjdbc.oracle;
 
 import arjdbc.jdbc.Callable;
 import arjdbc.jdbc.RubyJdbcConnection;
+
 import java.io.IOException;
 import java.io.Reader;
-
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -203,6 +203,22 @@ public class OracleRubyJdbcConnection extends RubyJdbcConnection {
             tables.add(RubyString.newUnicodeString(runtime, name));
         }
         return runtime.newArray(tables);
+    }
+
+    // storesMixedCaseIdentifiers() return false;
+    // storesLowerCaseIdentifiers() return false;
+    // storesUpperCaseIdentifiers() return true;
+
+    @Override
+    protected String caseConvertIdentifierForRails(final Connection connection, final String value)
+        throws SQLException {
+        return value == null ? null : value.toLowerCase();
+    }
+
+    @Override
+    protected String caseConvertIdentifierForJdbc(final Connection connection, final String value)
+        throws SQLException {
+        return value == null ? null : value.toUpperCase();
     }
 
 }
