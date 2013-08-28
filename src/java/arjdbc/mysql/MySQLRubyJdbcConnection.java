@@ -222,6 +222,13 @@ public class MySQLRubyJdbcConnection extends RubyJdbcConnection {
     }
 
     @Override
+    protected String caseConvertIdentifierForRails(final Connection connection, final String value)
+        throws SQLException {
+        if ( value == null ) return null;
+        return value; // MySQL does not storesUpperCaseIdentifiers() :
+    }
+
+    @Override
     protected Connection newConnection() throws RaiseException, SQLException {
         final Connection connection = super.newConnection();
         killCancelTimer(connection);
