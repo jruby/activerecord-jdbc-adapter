@@ -805,11 +805,11 @@ module ActiveRecord
           config =~ /\A\d+\z/ ? config.to_i : config
         end
 
-        # @private
-        def self.type_cast_config_to_boolean(config)
-          config == 'false' ? false : (config == 'true' ? true : config)
-        end
+      end
 
+      # @private
+      def self.type_cast_config_to_boolean(config)
+        config == 'false' ? false : (config == 'true' ? true : config)
       end
 
       public
