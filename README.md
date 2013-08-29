@@ -1,24 +1,27 @@
 # ActiveRecord JDBC Adapter
 
+[![Gem Version](https://badge.fury.io/rb/activerecord-jdbc-adapter.png)][7]
+
 ActiveRecord-JDBC-Adapter (AR-JDBC) is a database adapter for Rails'
 *ActiveRecord* component that can be used with [JRuby][0]. It allows use of
 virtually any JDBC-compliant database with your JRuby on Rails application.
 
-AR-JDBC **1.2.x** officially supports `ActiveRecord` **3.x** as well as **2.3**,
-it's latest version is compatible and requires JRuby **1.6.8+** (but as always we
-recommend to use the latest and greatest of JRubies) thus Java **1.6** is needed.
+We supports *ActiveRecord* **2.3**, **3.x** and **4.x** from a single code base.
+You'll need JRuby >= **1.6.8** (we recommend using the latest and greatest of
+JRubies) thus Java >= **1.6** is mandatory.
 
-**NOTE:** version **1.3.x** of AR-JDBC adapter strives to provide `ActiveRecord`
-**4.x** compatibility (as well as still supporting **2.3** and **3.x**) from a
-single code base. It's a recommended update for all AR-JDBC 1.2.x users.
+#### AR-JDBC **1.3.x** is a recommended update for all **1.2.x** users.
 
-[![Gem Version](https://badge.fury.io/rb/activerecord-jdbc-adapter.png)](http://badge.fury.io/rb/activerecord-jdbc-adapter)
+Our latest major version **1.3.x** represents a few months of refactoring and
+updates covering (not just) new *ActiveRecord* features. It tries to stay compatible
+with 1.2.9 as much as possible but please be aware that it's not always possible
+(mostly for the best), please read our [migration guide][8] for details.
 
 ## Databases
 
 ActiveRecord-JDBC-Adapter provides full or nearly full support for:
-**MySQL**, **PostgreSQL**, **SQLite3**, **Oracle**, **Microsoft SQL Server**,
-**DB2**, **FireBird**, **Derby**, **HSQLDB**, **H2**, and **Informix**.
+**MySQL**, **PostgreSQL**, **SQLite3**, **Oracle**, *MS-SQL** (SQL Server),
+**DB2**, **Firebird**, **Derby**, **HSQLDB**, **H2**, and **Informix**.
 
 Other databases will require testing and likely a custom configuration module.
 Please join the JRuby [mailing list][1] to help us discover support for more
@@ -262,3 +265,5 @@ license the database's drivers are licensed. See each driver gem's LICENSE.txt.
 [4]: http://github.com/nicksieger/activerecord-cachedb-adapter
 [5]: https://github.com/jruby/activerecord-jdbc-adapter/wiki
 [6]: https://webchat.freenode.net/?channels=#jruby
+[7]: http://badge.fury.io/rb/activerecord-jdbc-adapter
+[8]: https://github.com/jruby/activerecord-jdbc-adapter/wiki/Migrating-from-1.2.x-to-1.3.0

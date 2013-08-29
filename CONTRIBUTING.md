@@ -37,10 +37,8 @@ When fixing issues for a particular Rails version please be aware that we suppor
 multiple AR versions from a single code-base (and that means supporting Ruby 1.8
 as well - esp. targeting 4.x **we can not use the 1.9 syntax** yet).
 
-
-To speed-up fixes and response times on your issues or simply support AR-JDBC's
-development (esp. the refurbished **1.3.x** line) please consider [donating][0].
+Please keep our [test-suite](https://travis-ci.org/jruby/activerecord-jdbc-adapter)
+green (been funky for a while and it's been hard-work getting in back to shape),
+while making changes, if they're related to an adapter covered by those.
 
 :heart: JRuby-Up!
-
-[0]: https://www.bountysource.com/#fundraisers/311-activerecord-jdbc-adapter-1-3-x
