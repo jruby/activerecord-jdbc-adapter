@@ -44,15 +44,15 @@ module ActiveRecord #:nodoc:
 
       def structure_dump_column(column) #:nodoc:
         col = "\"#{column['column_name']}\" #{column['data_type']}"
-        if column['data_type'] =='NUMBER' and !column['data_precision'].nil?
+        if column['data_type'] =='NUMBER' && ! column['data_precision'].blank?
           col << "(#{column['data_precision'].to_i}"
-          col << ",#{column['data_scale'].to_i}" if !column['data_scale'].nil?
+          col << ",#{column['data_scale'].to_i}" unless column['data_scale'].blank?
           col << ')'
         elsif column['data_type'].include?('CHAR')
           length = column['char_used'] == 'C' ? column['char_length'].to_i : column['data_length'].to_i
           col <<  "(#{length})"
         end
-        col << " DEFAULT #{column['data_default']}" if !column['data_default'].nil?
+        col << " DEFAULT #{column['data_default']}" unless column['data_default'].blank?
         col << ' NOT NULL' if column['nullable'] == 'N'
         col
       end
@@ -60,9 +60,9 @@ module ActiveRecord #:nodoc:
       def structure_dump_virtual_column(column, data_default) #:nodoc:
         data_default = data_default.gsub(/"/, '')
         col = "\"#{column['column_name']}\" #{column['data_type']}"
-        if column['data_type'] =='NUMBER' and !column['data_precision'].nil?
+        if column['data_type'] =='NUMBER' && ! column['data_precision'].blank?
           col << "(#{column['data_precision'].to_i}"
-          col << ",#{column['data_scale'].to_i}" if !column['data_scale'].nil?
+          col << ",#{column['data_scale'].to_i}" unless column['data_scale'].blank?
           col << ')'
         elsif column['data_type'].include?('CHAR')
           length = column['char_used'] == 'C' ? column['char_length'].to_i : column['data_length'].to_i
