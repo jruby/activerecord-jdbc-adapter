@@ -15,7 +15,12 @@ appraise "rails32" do
   gem "activerecord", "~> 3.2.13"
 end
 
-appraise "rails40" do # NOTE: make sure you're using --1.9 with AR-4.0
+appraise "rails40" do
+  # NOTE: make sure you're using --1.9 with AR-4.0
   gem "activerecord", "~> 4.0.0"
-  #gem 'rails', :github => 'rails/rails', :branch => '4-0-stable'
+end
+
+appraise "rails41" do
+  # NOTE: make sure you're using --1.9 with AR-4.1
+  gem 'rails', :github => 'rails/rails', :branch => 'master'
 end

@@ -10,6 +10,7 @@ gemfile:
   - gemfiles/rails31.gemfile
   - gemfiles/rails32.gemfile
   - gemfiles/rails40.gemfile
+  - gemfiles/rails41.gemfile
 env:
   - JRUBY_OPTS="--1.8 $JRUBY_OPTS" DB=mysql
   - JRUBY_OPTS="--1.9 $JRUBY_OPTS" DB=mysql PREPARED_STATEMENTS=false
@@ -28,6 +29,7 @@ env:
   - JRUBY_OPTS="--1.9 $JRUBY_OPTS" DB=hsqldb PREPARED_STATEMENTS=true
   - JRUBY_OPTS="--1.8 $JRUBY_OPTS" DB=jndi
   - JRUBY_OPTS="--1.9 $JRUBY_OPTS" DB=jndi PREPARED_STATEMENTS=true
+  # TODO: not sure why it can't connect :
   #- JRUBY_OPTS="--1.8 $JRUBY_OPTS" DB=jdbc
   #- JRUBY_OPTS="--1.9 $JRUBY_OPTS" DB=jdbc
 branches:
@@ -36,10 +38,7 @@ branches:
     - 1-2-stable
 matrix:
   allow_failures:
-    # probably fine to allow in 1.3.x :
-    #- gemfile: gemfiles/rails23.gemfile
-    # NOTE: not sure why it can't connect :
-    #- env: DB=jdbc
+    - gemfile: gemfiles/rails41.gemfile
   exclude:
     # Rails 4 prefers Ruby 2.0 (or at least >= 1.9.3) :
     - rvm: jruby
@@ -65,4 +64,29 @@ matrix:
       env: JRUBY_OPTS="--1.8 $JRUBY_OPTS" DB=jndi
     - rvm: jruby
       gemfile: gemfiles/rails40.gemfile
+      env: JRUBY_OPTS="--1.8 $JRUBY_OPTS" DB=jdbc
+    # Rails 4.1 does not support Ruby 1.8 :
+    - rvm: jruby
+      gemfile: gemfiles/rails41.gemfile
+      env: JRUBY_OPTS="--1.8 $JRUBY_OPTS" DB=mysql
+    - rvm: jruby
+      gemfile: gemfiles/rails41.gemfile
+      env: JRUBY_OPTS="--1.8 $JRUBY_OPTS" DB=postgresql
+    - rvm: jruby
+      gemfile: gemfiles/rails41.gemfile
+      env: JRUBY_OPTS="--1.8 $JRUBY_OPTS" DB=sqlite3
+    - rvm: jruby
+      gemfile: gemfiles/rails41.gemfile
+      env: JRUBY_OPTS="--1.8 $JRUBY_OPTS" DB=derby
+    - rvm: jruby
+      gemfile: gemfiles/rails41.gemfile
+      env: JRUBY_OPTS="--1.8 $JRUBY_OPTS" DB=h2
+    - rvm: jruby
+      gemfile: gemfiles/rails41.gemfile
+      env: JRUBY_OPTS="--1.8 $JRUBY_OPTS" DB=hsqldb
+    - rvm: jruby
+      gemfile: gemfiles/rails41.gemfile
+      env: JRUBY_OPTS="--1.8 $JRUBY_OPTS" DB=jndi
+    - rvm: jruby
+      gemfile: gemfiles/rails41.gemfile
       env: JRUBY_OPTS="--1.8 $JRUBY_OPTS" DB=jdbc
