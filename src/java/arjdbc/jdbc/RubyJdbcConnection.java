@@ -936,7 +936,7 @@ public class RubyJdbcConnection extends RubyObject {
     private IRubyObject mapQueryResult(final ThreadContext context,
         final Connection connection, final ResultSet resultSet) throws SQLException {
         final Ruby runtime = context.getRuntime();
-        final ColumnData[] columns = setupColumns(runtime, connection, resultSet.getMetaData(), false);
+        final ColumnData[] columns = extractColumns(runtime, connection, resultSet, false);
         return mapToResult(context, runtime, connection, resultSet, columns);
     }
 
@@ -3478,6 +3478,11 @@ public class RubyJdbcConnection extends RubyObject {
             this.name = name;
             this.type = type;
             this.index = idx;
+        }
+
+        @Override
+        public String toString() {
+            return "'" + name + "'i" + index + "t" + type + "";
         }
 
     }
