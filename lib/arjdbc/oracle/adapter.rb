@@ -173,8 +173,11 @@ module ArJdbc
 
     # @override
     def drop_table(name, options = {})
-      super(name)
-      seq_name = options[:sequence_name] || default_sequence_name(name)
+      outcome = super(name)
+      return outcome if name == 'schema_migrations'
+      seq_name = options.key?(:sequence_name) ? # pass nil/false - no sequence
+        options[:sequence_name] : default_sequence_name(name)
+      return outcome unless seq_name
       execute "DROP SEQUENCE #{quote_table_name(seq_name)}" rescue nil
     end
 
