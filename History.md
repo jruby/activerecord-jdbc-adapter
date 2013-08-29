@@ -1,3 +1,33 @@
+## 1.3.0 (08/29/13)
+
+- [oracle] fix structure_dump: `column['data_default']` might come back as ''
+- [oracle] avoid the JDBC call `connection.getMetaData` with exec_query (#453)
+- review MSSQL/HSQLDB/H2 explain - make sure prepared statements are used
+- [oracle] make sure explain works with prepared statements
+- warn users about using our now deprecated suble_binds "extension"
+- [mysql] username defaults to 'root' on MRI
+- [mysql] match `columns` returned with latest AR 4.0 (collation, strict, extra)
+- only `suble_binds` if not an arel passed + allow to turn bind subling off
+- [postgres] fix `extension_enabled?` to work with raw boolean values
+- [derby] setting true/false into text/string columns values should use `to_s`
+  also non-serializable attrs should use `to_s` (instead of `to_yaml`) on 3.x
+- [derby] needs `quote_table_name_for_assignment` (on AR 4.0)
+- [postgres] driver "hooks" to make PG types work with prepared statements, now
+  working: ranges, arrays, interval, (ip) addr types, tsvector, json and uuid
+- missing `last_insert_id_result` method on PostgreSQL (#450)
+- emulate pre AR 4.0 behavior with date-times/booleans (in custom SELECTs) they
+  will be returned as (raw) strings on AR 3.x
+- warn when driver is not JDBC 4.0 compilant when checking if valid (#445)
+- fix inline rescue syntax - invalid syntax at MSSQL's `string_to_time` (#444)
+- no need to (double) update LOB values when using prepared statements
+- replaced `emulate_booleans` with `emulate_booleans?` on adapter specs
+- [firebird] emulate booleans with char(1) + fix time and review native types
+- [db2] using new `update_lob_values` - now handles null inserts safely (#430)
+- [mssql] configurable `update_lob_values?` - `string_to_binary` no longer abused
+- refactored SerializedAttributesHelper and moved to Util::SerializedAttributes
+  there's now a new `update_lob_columns` helper hooked onto AR::Base for adapters
+  that send clob/blob values in a separate statement DB2, Oracle, MSSQL, Firebird
+
 ## 1.3.0.rc1 (08/03/13)
 
 - add activerecord gem as a dependency of the main AR-JDBC gem
