@@ -28,6 +28,8 @@
   there's now a new `update_lob_columns` helper hooked onto AR::Base for adapters
   that send clob/blob values in a separate statement DB2, Oracle, MSSQL, Firebird
 
+Code Contributors (in no particular order): Alexandros Giouzenis
+
 ## 1.3.0.rc1 (08/03/13)
 
 - add activerecord gem as a dependency of the main AR-JDBC gem
