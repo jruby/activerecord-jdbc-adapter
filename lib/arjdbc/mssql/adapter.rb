@@ -537,22 +537,28 @@ module ArJdbc
     def exec_query(sql, name = 'SQL', binds = [])
       # NOTE: we allow to execute SQL as requested returning a results.
       # e.g. this allows to use SQLServer's EXEC with a result set ...
-      sql = repair_special_columns to_sql(sql, binds)
+      if sql.respond_to?(:to_sql)
+        sql = to_sql(sql, binds); to_sql = true
+      end
+      sql = repair_special_columns(sql)
       if prepared_statements?
         log(sql, name, binds) { @connection.execute_query(sql, binds) }
       else
-        sql = suble_binds(sql, binds)
+        sql = suble_binds(sql, binds) unless to_sql # deprecated behavior
         log(sql, name) { @connection.execute_query(sql) }
       end
     end
 
     # @override
     def exec_query_raw(sql, name = 'SQL', binds = [], &block)
-      sql = repair_special_columns to_sql(sql, binds)
+      if sql.respond_to?(:to_sql)
+        sql = to_sql(sql, binds); to_sql = true
+      end
+      sql = repair_special_columns(sql)
       if prepared_statements?
         log(sql, name, binds) { @connection.execute_query_raw(sql, binds, &block) }
       else
-        sql = suble_binds(sql, binds)
+        sql = suble_binds(sql, binds) unless to_sql # deprecated behavior
         log(sql, name) { @connection.execute_query_raw(sql, &block) }
       end
     end
