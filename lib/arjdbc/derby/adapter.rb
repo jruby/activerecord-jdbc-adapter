@@ -1,6 +1,7 @@
 ArJdbc.load_java_part :Derby
 
 require 'arjdbc/util/table_copier'
+require 'arjdbc/derby/schema_creation' # AR 4.x
 
 module ArJdbc
   module Derby
@@ -223,13 +224,6 @@ module ArJdbc
       new_table_definition(TableDefinition, *args)
     end
 
-    # @override fix case where AR passes `:default => nil, :null => true`
-    def add_column_options!(sql, options)
-      options.delete(:default) if options.has_key?(:default) && options[:default].nil?
-      sql << " DEFAULT #{quote(options.delete(:default))}" if options.has_key?(:default)
-      super
-    end
-
     # @override
     def empty_insert_statement_value
       'VALUES ( DEFAULT )' # won't work as Derby does need to know the columns count
@@ -270,37 +264,21 @@ module ArJdbc
       add_column_sql = "ALTER TABLE #{quote_table_name(table_name)} ADD #{quote_column_name(column_name)} #{type_to_sql(type, options[:limit], options[:precision], options[:scale])}"
       add_column_options!(add_column_sql, options)
       execute(add_column_sql)
-    end
+    end unless const_defined? :SchemaCreation
 
-    # SELECT DISTINCT clause for a given set of columns and a given ORDER BY clause.
-    #
-    # Derby requires the ORDER BY columns in the select list for distinct queries, and
-    # requires that the ORDER BY include the distinct column.
-    # ```
-    #   distinct("posts.id", "posts.created_at desc")
-    # ```
-    # @note This is based on distinct method for the PostgreSQL Adapter.
-    # @override
-    def distinct(columns, order_by)
-      return "DISTINCT #{columns}" if order_by.blank?
-
-      # construct a clean list of column names from the ORDER BY clause, removing
-      # any asc/desc modifiers
-      order_columns = [order_by].flatten.map{|o| o.split(',').collect { |s| s.split.first } }.flatten.reject(&:blank?)
-      order_columns = order_columns.zip((0...order_columns.size).to_a).map { |s,i| "#{s} AS alias_#{i}" }
-
-      # return a DISTINCT clause that's distinct on the columns we want but includes
-      # all the required columns for the ORDER BY to work properly
-      sql = "DISTINCT #{columns}, #{order_columns * ', '}"
-      sql
-    end
+    # @override fix case where AR passes `:default => nil, :null => true`
+    def add_column_options!(sql, options)
+      options.delete(:default) if options.has_key?(:default) && options[:default].nil?
+      sql << " DEFAULT #{quote(options.delete(:default))}" if options.has_key?(:default)
+      super
+    end unless const_defined? :SchemaCreation
 
     # @override
     def remove_column(table_name, *column_names)
       for column_name in column_names.flatten
         execute "ALTER TABLE #{quote_table_name(table_name)} DROP COLUMN #{quote_column_name(column_name)} RESTRICT"
       end
-    end
+    end unless const_defined? :SchemaCreation
 
     # @override
     def change_column(table_name, column_name, type, options = {})
@@ -352,6 +330,32 @@ module ArJdbc
     def rename_column(table_name, column_name, new_column_name)
       execute "RENAME COLUMN #{quote_table_name(table_name)}.#{quote_column_name(column_name)} " <<
               " TO #{quote_column_name(new_column_name)}"
+    end
+
+    # SELECT DISTINCT clause for a given set of columns and a given ORDER BY clause.
+    #
+    # Derby requires the ORDER BY columns in the select list for distinct queries, and
+    # requires that the ORDER BY include the distinct column.
+    # ```
+    #   distinct("posts.id", "posts.created_at desc")
+    # ```
+    # @note This is based on distinct method for the PostgreSQL Adapter.
+    # @override
+    def distinct(columns, order_by)
+      return "DISTINCT #{columns}" if order_by.blank?
+
+      # construct a clean list of column names from the ORDER BY clause, removing
+      # any asc/desc modifiers
+      order_columns = [ order_by ].flatten!
+      order_columns.map! do |o|
+        o.split(',').collect! { |s| s.split.first }
+      end # .flatten!
+      order_columns.reject!(&:blank?)
+      order_columns = order_columns.zip((0...order_columns.size).to_a).map { |s, i| "#{s} AS alias_#{i}" }
+
+      # return a DISTINCT clause that's distinct on the columns we want but includes
+      # all the required columns for the ORDER BY to work properly
+      "DISTINCT #{columns}, #{order_columns * ', '}"
     end
 
     # @override
