@@ -702,6 +702,20 @@ module ActiveRecord
       end
       private :new_table_definition
 
+      #
+
+      # Provides backwards-compatibility on ActiveRecord 4.1 for DB adapters
+      # that override this and than call super expecting to work.
+      # @note This method is available in 4.0 but won't be in 4.1
+      # @private
+      def add_column_options!(sql, options)
+        sql << " DEFAULT #{quote(options[:default], options[:column])}" if options_include_default?(options)
+        # must explicitly check for :null to allow change_column to work on migrations
+        sql << " NOT NULL" if options[:null] == false
+        sql << " AUTO_INCREMENT" if options[:auto_increment] == true
+      end
+      public :add_column_options!
+
       end
 
       # @return whether `:prepared_statements` are to be used
