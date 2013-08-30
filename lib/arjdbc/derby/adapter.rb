@@ -342,20 +342,28 @@ module ArJdbc
     # @note This is based on distinct method for the PostgreSQL Adapter.
     # @override
     def distinct(columns, order_by)
-      return "DISTINCT #{columns}" if order_by.blank?
+      "DISTINCT #{columns_for_distinct(columns, order_by)}"
+    end
 
-      # construct a clean list of column names from the ORDER BY clause, removing
-      # any asc/desc modifiers
-      order_columns = [ order_by ].flatten!
-      order_columns.map! do |o|
-        o.split(',').collect! { |s| s.split.first }
-      end # .flatten!
+    # @override Since AR 4.0 (on 4.1 {#distinct} is gone and won't be called).
+    def columns_for_distinct(columns, orders)
+      return columns if orders.blank?
+
+      # construct a clean list of column names from the ORDER BY clause,
+      # removing any ASC/DESC modifiers
+      order_columns = [ orders ]; order_columns.flatten! # AR 3.x vs 4.x
+      order_columns.map! do |column|
+        column = column.to_sql unless column.is_a?(String) # handle AREL node
+        column.split(',').collect! { |s| s.split.first }
+      end.flatten!
       order_columns.reject!(&:blank?)
-      order_columns = order_columns.zip((0...order_columns.size).to_a).map { |s, i| "#{s} AS alias_#{i}" }
+      order_columns = order_columns.zip (0...order_columns.size).to_a
+      order_columns = order_columns.map { |s, i| "#{s} AS alias_#{i}" }
 
-      # return a DISTINCT clause that's distinct on the columns we want but includes
-      # all the required columns for the ORDER BY to work properly
-      "DISTINCT #{columns}, #{order_columns * ', '}"
+      columns = [ columns ]; columns.flatten!
+      columns.push( *order_columns ).join(', ')
+      # return a DISTINCT clause that's distinct on the columns we want but
+      # includes all the required columns for the ORDER BY to work properly
     end
 
     # @override

@@ -747,29 +747,28 @@ module ArJdbc
       @multi_column_index_limit = limit
     end
 
-    # Returns a SELECT DISTINCT clause for a given set of columns and a given
-    # ORDER BY clause.
-    #
+    # @override
+    def distinct(columns, orders)
+      "DISTINCT #{columns_for_distinct(columns, orders)}"
+    end
+
     # PostgreSQL requires the ORDER BY columns in the select list for distinct
     # queries, and requires that the ORDER BY include the distinct column.
-    #
-    # distinct("posts.id", ["posts.created_at desc"])
-    # # => "DISTINCT posts.id, posts.created_at AS alias_0"
-    def distinct(columns, orders)
+    # @override Since AR 4.0 (on 4.1 {#distinct} is gone and won't be called).
+    def columns_for_distinct(columns, orders)
       if orders.is_a?(String)
         orders = orders.split(','); orders.each(&:strip!)
       end
 
-      order_columns = orders.map do |column|
+      order_columns = orders.reject(&:blank?).map! do |column|
         column = column.to_sql unless column.is_a?(String) # handle AREL node
         column.gsub(/\s+(ASC|DESC)\s*(NULLS\s+(FIRST|LAST)\s*)?/i, '') # remove ASC/DESC
-      end.reject(&:blank?)
-
-      return "DISTINCT #{columns}" if order_columns.empty?
-
+      end
+      order_columns.reject!(&:blank?)
       i = -1; order_columns.map! { |c| "#{c} AS alias_#{i += 1}" }
 
-      "DISTINCT #{columns}, #{order_columns.join(', ')}"
+      columns = [ columns ]; columns.flatten!
+      columns.push( *order_columns ).join(', ')
     end
 
     # ORDER BY clause for the passed order option.

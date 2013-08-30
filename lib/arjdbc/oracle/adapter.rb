@@ -295,16 +295,27 @@ module ArJdbc
     # making every row the same.
     #
     #   distinct("posts.id", "posts.created_at desc")
+    #
+    # @override
     def distinct(columns, order_by)
-      return "DISTINCT #{columns}" if order_by.blank?
+      "DISTINCT #{columns_for_distinct(columns, order_by)}"
+    end
 
+    # @override Since AR 4.0 (on 4.1 {#distinct} is gone and won't be called).
+    def columns_for_distinct(columns, orders)
+      return columns if orders.blank?
+      if orders.is_a?(Array) # AR 3.x vs 4.x
+        orders = orders.map { |column| column.is_a?(String) ? column : column.to_sql }
+      else
+        orders = extract_order_columns(orders)
+      end
       # construct a valid DISTINCT clause, ie. one that includes the ORDER BY columns, using
       # FIRST_VALUE such that the inclusion of these columns doesn't invalidate the DISTINCT
-      order_columns = extract_order_columns(order_by).map do |c, i|
+      order_columns = orders.map do |c, i|
         "FIRST_VALUE(#{c.split.first}) OVER (PARTITION BY #{columns} ORDER BY #{c}) AS alias_#{i}__"
       end
-      sql = "DISTINCT #{columns}, "
-      sql << order_columns * ", "
+      columns = [ columns ]; columns.flatten!
+      columns.push( *order_columns ).join(', ')
     end
 
     # ORDER BY clause for the passed order option.
