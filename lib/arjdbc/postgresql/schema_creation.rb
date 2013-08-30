@@ -1,7 +1,7 @@
-# NOTE: kindly borrowed from AR 4.0.0 (rc1) - only to be used on AR >= 4.0 !
 module ArJdbc
   module PostgreSQL
-    class SchemaCreation < ActiveRecord::ConnectionAdapters::AbstractAdapter::SchemaCreation
+    # @private copied from native adapter 4.0/4.1
+    class SchemaCreation < ::ActiveRecord::ConnectionAdapters::AbstractAdapter::SchemaCreation
 
       private
 
@@ -32,7 +32,11 @@ module ArJdbc
           super
         end
       end
-
     end
+
+    def schema_creation
+      SchemaCreation.new self
+    end
+
   end
-end
+end if ::ActiveRecord::ConnectionAdapters::AbstractAdapter.const_defined? :SchemaCreation

@@ -11,6 +11,7 @@ module ArJdbc
 
     require 'arjdbc/postgresql/column'
     require 'arjdbc/postgresql/explain_support'
+    require 'arjdbc/postgresql/schema_creation' # AR 4.x
 
     # @see ActiveRecord::ConnectionAdapters::JdbcAdapter#jdbc_connection_class
     def self.jdbc_connection_class
@@ -249,13 +250,6 @@ module ArJdbc
     def migration_keys
       super + [:array]
     end if AR4_COMPAT
-
-    if ActiveRecord::VERSION::MAJOR > 3
-
-    require 'arjdbc/postgresql/schema_creation'
-    def schema_creation; SchemaCreation.new(self); end
-
-    end
 
     # Enable standard-conforming strings if available.
     def set_standard_conforming_strings
@@ -975,7 +969,7 @@ module ArJdbc
 
       change_column_default(table_name, column_name, default) if options_include_default?(options)
       change_column_null(table_name, column_name, false, default) if notnull
-    end
+    end if ActiveRecord::VERSION::MAJOR < 4
 
     # Changes the column of a table.
     def change_column(table_name, column_name, type, options = {})
@@ -1004,24 +998,24 @@ module ArJdbc
 
       change_column_default(table_name, column_name, options[:default]) if options_include_default?(options)
       change_column_null(table_name, column_name, options[:null], options[:default]) if options.key?(:null)
-    end
+    end # unless const_defined? :SchemaCreation
 
     # Changes the default value of a table column.
     def change_column_default(table_name, column_name, default)
       execute "ALTER TABLE #{quote_table_name(table_name)} ALTER COLUMN #{quote_column_name(column_name)} SET DEFAULT #{quote(default)}"
-    end
+    end # unless const_defined? :SchemaCreation
 
     def change_column_null(table_name, column_name, null, default = nil)
       unless null || default.nil?
         execute("UPDATE #{quote_table_name(table_name)} SET #{quote_column_name(column_name)}=#{quote(default)} WHERE #{quote_column_name(column_name)} IS NULL")
       end
       execute("ALTER TABLE #{quote_table_name(table_name)} ALTER #{quote_column_name(column_name)} #{null ? 'DROP' : 'SET'} NOT NULL")
-    end
+    end # unless const_defined? :SchemaCreation
 
     def rename_column(table_name, column_name, new_column_name)
       execute "ALTER TABLE #{quote_table_name(table_name)} RENAME COLUMN #{quote_column_name(column_name)} TO #{quote_column_name(new_column_name)}"
       rename_column_indexes(table_name, column_name, new_column_name) if respond_to?(:rename_column_indexes) # AR-4.0 SchemaStatements
-    end
+    end # unless const_defined? :SchemaCreation
 
     def add_index(table_name, column_name, options = {})
       index_name, index_type, index_columns, index_options, index_algorithm, index_using = add_index_options(table_name, column_name, options)
