@@ -1,5 +1,6 @@
 ArJdbc.load_java_part :HSQLDB
 require 'arjdbc/hsqldb/explain_support'
+require 'arjdbc/hsqldb/schema_creation' # AR 4.x
 
 module ArJdbc
   module HSQLDB
@@ -166,7 +167,7 @@ module ArJdbc
       add_column_sql = "ALTER TABLE #{quote_table_name(table_name)} ADD #{quote_column_name(column_name)} #{type_to_sql(type, options[:limit], options[:precision], options[:scale])}"
       add_column_options!(add_column_sql, options)
       execute(add_column_sql)
-    end
+    end unless const_defined? :SchemaCreation
 
     # @override
     def change_column(table_name, column_name, type, options = {})
