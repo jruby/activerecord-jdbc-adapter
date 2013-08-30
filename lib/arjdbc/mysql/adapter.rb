@@ -4,6 +4,7 @@ require 'bigdecimal'
 require 'active_record/connection_adapters/abstract/schema_definitions'
 require 'arjdbc/mysql/column'
 require 'arjdbc/mysql/explain_support'
+require 'arjdbc/mysql/schema_creation' # AR 4.x
 
 module ArJdbc
   module MySQL
@@ -384,12 +385,12 @@ module ArJdbc
       add_column_options!(add_column_sql, options)
       add_column_position!(add_column_sql, options)
       execute(add_column_sql)
-    end
+    end unless const_defined? :SchemaCreation
 
     def change_column_default(table_name, column_name, default)
       column = column_for(table_name, column_name)
       change_column table_name, column_name, column.sql_type, :default => default
-    end
+    end # unless const_defined? :SchemaCreation
 
     def change_column_null(table_name, column_name, null, default = nil)
       column = column_for(table_name, column_name)
@@ -399,7 +400,7 @@ module ArJdbc
       end
 
       change_column table_name, column_name, column.sql_type, :null => null
-    end
+    end # unless const_defined? :SchemaCreation
 
     # @override
     def change_column(table_name, column_name, type, options = {})
@@ -417,7 +418,7 @@ module ArJdbc
       add_column_options!(change_column_sql, options)
       add_column_position!(change_column_sql, options)
       execute(change_column_sql)
-    end
+    end unless const_defined? :SchemaCreation
 
     # @override
     def rename_column(table_name, column_name, new_column_name)
@@ -432,7 +433,15 @@ module ArJdbc
       add_column_options!(rename_column_sql, options)
       execute(rename_column_sql)
       rename_column_indexes(table_name, column_name, new_column_name) if respond_to?(:rename_column_indexes) # AR-4.0 SchemaStatements
-    end
+    end # unless const_defined? :SchemaCreation
+
+    def add_column_position!(sql, options)
+      if options[:first]
+        sql << " FIRST"
+      elsif options[:after]
+        sql << " AFTER #{quote_column_name(options[:after])}"
+      end
+    end unless const_defined? :SchemaCreation
 
     # @note Only used with (non-AREL) ActiveRecord **2.3**.
     # @see Arel::Visitors::MySQL
@@ -512,14 +521,6 @@ module ArJdbc
         end
       else
         super
-      end
-    end
-
-    def add_column_position!(sql, options)
-      if options[:first]
-        sql << " FIRST"
-      elsif options[:after]
-        sql << " AFTER #{quote_column_name(options[:after])}"
       end
     end
 
