@@ -618,6 +618,36 @@ module SimpleTestMethods
     end
   end
 
+  def test_change_column_whithout_default_option_should_drop_existing_default
+
+    Entry.reset_column_information
+    status_column = Entry.columns.find { |c| c.name == 'status' }
+    assert_equal :string, status_column.type
+    assert_equal 'unknown', status_column.default
+
+    Entry.connection.change_column :entries, :status, :text
+
+    Entry.reset_column_information
+    status_column = Entry.columns.find { |c| c.name == 'status' }
+    assert_equal :text, status_column.type
+    assert !status_column.default
+  end
+
+  def test_change_column_whith_default_option_should_set_new_default
+
+    Entry.reset_column_information
+    status_column = Entry.columns.find { |c| c.name == 'status' }
+    assert_equal :string, status_column.type
+    assert_equal 'unknown', status_column.default
+
+    Entry.connection.change_column :entries, :status, :text, :default => 'new'
+
+    Entry.reset_column_information
+    status_column = Entry.columns.find { |c| c.name == 'status' }
+    assert_equal :text, status_column.type
+    assert_equal 'new', status_column.default
+  end
+ 
   def test_add_null_column_with_nil_default
     # You must specify a default value with most databases
     if ActiveRecord::Base.connection.adapter_name =~ /mysql/i
@@ -1164,6 +1194,7 @@ module SimpleTestMethods
       when 'id' then assert_not_nil row[i]
       when 'title' then assert_equal 'title 1', row[i]
       when 'content' then assert_equal 'content 1', row[i]
+      when 'status' then assert_equal 'unknown', row[i]
       when 'user_id'
         if defined? JRUBY_VERSION
           assert_equal user.id, row[i]
@@ -1182,6 +1213,7 @@ module SimpleTestMethods
       when 'id' then assert_not_nil row[i]
       when 'title' then assert_equal 'title 2', row[i]
       when 'content' then assert_equal 'content 2', row[i]
+      when 'status' then assert_equal 'unknown', row[i]
       when 'user_id'
         if defined? JRUBY_VERSION
           assert_equal user.id, row[i]

@@ -363,9 +363,24 @@ module ArJdbc
 
     # @override
     def change_column(table_name, column_name, type, options = {})
+
+      indexes = []
+      column_object = columns(table_name).detect { |c| c.name.to_s == column_name.to_s }
+
+      if options_include_default?(options) || (column_object && column_object.type != type.to_sym)
+        remove_default_constraint(table_name, column_name)
+        indexes = indexes(table_name).select{ |index| index.columns.include?(column_name.to_s) }
+        remove_indexes(table_name, column_name)
+      end
+
       clear_cached_table(table_name)
       change_column_type(table_name, column_name, type, options)
       change_column_default(table_name, column_name, options[:default]) if options_include_default?(options)
+
+      #Add any removed indexes back
+      indexes.each do |index|
+        execute "CREATE INDEX #{quote_table_name(index.name)} ON #{quote_table_name(table_name)} (#{index.columns.collect {|c|quote_column_name(c)}.join(', ')})"
+      end
     end
 
     def change_column_type(table_name, column_name, type, options = {})
