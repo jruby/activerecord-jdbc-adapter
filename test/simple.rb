@@ -618,36 +618,6 @@ module SimpleTestMethods
     end
   end
 
-  def test_change_column_whithout_default_option_should_drop_existing_default
-
-    Entry.reset_column_information
-    status_column = Entry.columns.find { |c| c.name == 'status' }
-    assert_equal :string, status_column.type
-    assert_equal 'unknown', status_column.default
-
-    Entry.connection.change_column :entries, :status, :text
-
-    Entry.reset_column_information
-    status_column = Entry.columns.find { |c| c.name == 'status' }
-    assert_equal :text, status_column.type
-    assert !status_column.default
-  end
-
-  def test_change_column_whith_default_option_should_set_new_default
-
-    Entry.reset_column_information
-    status_column = Entry.columns.find { |c| c.name == 'status' }
-    assert_equal :string, status_column.type
-    assert_equal 'unknown', status_column.default
-
-    Entry.connection.change_column :entries, :status, :text, :default => 'new'
-
-    Entry.reset_column_information
-    status_column = Entry.columns.find { |c| c.name == 'status' }
-    assert_equal :text, status_column.type
-    assert_equal 'new', status_column.default
-  end
- 
   def test_add_null_column_with_nil_default
     # You must specify a default value with most databases
     if ActiveRecord::Base.connection.adapter_name =~ /mysql/i

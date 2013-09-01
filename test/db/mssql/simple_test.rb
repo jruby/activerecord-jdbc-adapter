@@ -74,6 +74,36 @@ class MSSQLSimpleTest < Test::Unit::TestCase
     assert(!title_column.null)
   end
 
+  def test_change_column_whithout_default_option_should_drop_existing_default
+
+    Entry.reset_column_information
+    status_column = Entry.columns.find { |c| c.name == 'status' }
+    assert_equal :string, status_column.type
+    assert_equal 'unknown', status_column.default
+
+    Entry.connection.change_column :entries, :status, :text
+
+    Entry.reset_column_information
+    status_column = Entry.columns.find { |c| c.name == 'status' }
+    assert_equal :text, status_column.type
+    assert !status_column.default
+  end
+
+  def test_change_column_whith_default_option_should_set_new_default
+
+    Entry.reset_column_information
+    status_column = Entry.columns.find { |c| c.name == 'status' }
+    assert_equal :string, status_column.type
+    assert_equal 'unknown', status_column.default
+
+    Entry.connection.change_column :entries, :status, :text, :default => 'new'
+
+    Entry.reset_column_information
+    status_column = Entry.columns.find { |c| c.name == 'status' }
+    assert_equal :text, status_column.type
+    assert_equal 'new', status_column.default
+  end
+
   [nil, "NULL", "null", "(null)", "(NULL)"].each_with_index do |v, i|
     define_method "test_null_#{i}" do
       entry = Entry.create!(:title => v, :content => v)
