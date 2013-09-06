@@ -23,12 +23,22 @@ module ArJdbc
 
       # protected
 
+      def unquote_keyword(keyword)
+        if /\A(\[|")(.*)/m.match(keyword)
+          delim, rest = $1, $2
+          if delim == '[' && rest =~ /]\z/ || delim == '"' && rest =~ /"\z/
+            return rest.chop
+          end
+        end
+        keyword
+      end
+
       def unquote_table_name(table_name)
-        unquote_column_name(table_name)
+        unquote_keyword(table_name)
       end
 
       def unquote_column_name(column_name)
-        column_name.to_s.tr('[]', '')
+        unquote_keyword(column_name)
       end
 
       def unquote_string(string)
@@ -36,16 +46,16 @@ module ArJdbc
       end
 
       def unqualify_table_name(table_name)
-        table_name.to_s.split('.').last.tr('[]', '')
+        unquote_keyword(table_name.to_s.split('.').last)
       end
 
       def unqualify_table_schema(table_name)
-        table_name.to_s.split('.')[-2].gsub(/[\[\]]/, '') rescue nil
+        unquote_keyword(table_name.to_s.split('.')[-2]) rescue nil
       end
 
       def unqualify_db_name(table_name)
         table_names = table_name.to_s.split('.')
-        table_names.length == 3 ? table_names.first.tr('[]', '') : nil
+        table_names.length == 3 ? unquote_keyword(table_names.first) : nil
       end
 
     end
