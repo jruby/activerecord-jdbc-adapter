@@ -195,6 +195,7 @@ module SimpleTestMethods
   def test_table_exists?
     assert_true  ActiveRecord::Base.connection.table_exists? 'entries'
     assert_false ActiveRecord::Base.connection.table_exists? 'blahbls'
+    assert ! ActiveRecord::Base.connection.table_exists?(nil)
   end
 
   def test_entries_empty

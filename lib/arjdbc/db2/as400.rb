@@ -91,9 +91,8 @@ module ArJdbc
 
     # disable all schemas browsing when default schema is specified
     def table_exists?(name)
-      schema ?
-        @connection.table_exists?(name, schema) :
-          @connection.table_exists?(name)
+      return false unless name
+      schema ? @connection.table_exists?(name, schema) : @connection.table_exists?(name)
     end
 
     DRIVER_NAME = 'com.ibm.as400.access.AS400JDBCDriver'.freeze
