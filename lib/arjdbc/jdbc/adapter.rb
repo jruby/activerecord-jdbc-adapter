@@ -571,6 +571,7 @@ module ActiveRecord
 
       # @override
       def table_exists?(name)
+        return false unless name
         @connection.table_exists?(name) # schema_name = nil
       end
 
