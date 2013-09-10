@@ -102,7 +102,7 @@ public class RubyJdbcConnection extends RubyObject {
         super(runtime, metaClass);
     }
 
-    private static ObjectAllocator JDBCCONNECTION_ALLOCATOR = new ObjectAllocator() {
+    private static final ObjectAllocator ALLOCATOR = new ObjectAllocator() {
         public IRubyObject allocate(Ruby runtime, RubyClass klass) {
             return new RubyJdbcConnection(runtime, klass);
         }
@@ -110,7 +110,7 @@ public class RubyJdbcConnection extends RubyObject {
 
     public static RubyClass createJdbcConnectionClass(final Ruby runtime) {
         RubyClass jdbcConnection = getConnectionAdapters(runtime).
-            defineClassUnder("JdbcConnection", runtime.getObject(), JDBCCONNECTION_ALLOCATOR);
+            defineClassUnder("JdbcConnection", runtime.getObject(), ALLOCATOR);
         jdbcConnection.defineAnnotatedMethods(RubyJdbcConnection.class);
         return jdbcConnection;
     }
