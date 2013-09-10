@@ -72,19 +72,15 @@
       <artifactId>jruby-complete</artifactId>
       <version>${jruby.version}</version>
     </dependency>
-
-    <!-- e.g.
-    mvn install:install-file -DgroupId=org.postgresql -DartifactId=pgjdbc -Dversion=9.2-1002 -Dpackaging=jar -Dfile=./jdbc-postgres/lib/postgresql-9.2-1002.jdbc4.jar
-    -->
     <dependency>
       <groupId>org.postgresql</groupId>
-      <artifactId>pgjdbc</artifactId>
-      <version>9.2-1002</version>
+      <artifactId>postgresql</artifactId>
+      <version>9.2-1003-jdbc4</version>
     </dependency>
   </dependencies>
 
   <build>
-      
+
     <sourceDirectory>src/java</sourceDirectory>
     <resources>
         <resource>
