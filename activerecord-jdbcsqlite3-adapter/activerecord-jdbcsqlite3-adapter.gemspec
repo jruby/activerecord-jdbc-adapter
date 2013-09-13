@@ -14,7 +14,7 @@ Gem::Specification.new do |s|
     "Rakefile",
     "README.txt",
     "LICENSE.txt",
-    "lib/active_record/connection_adapters/jdbcsqlite3_adapter.rb"
+    *Dir["lib/**/*"].to_a
   ]
   s.homepage = %q{https://github.com/jruby/activerecord-jdbc-adapter}
   s.require_paths = ["lib"]
