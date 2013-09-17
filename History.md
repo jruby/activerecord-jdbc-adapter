@@ -1,3 +1,17 @@
+## 1.3.1 (09/17/13)
+
+- helper gems should contain all files from lib/* (#463)
+- [postgres] hstore values should be returned as Hash instances (#454)
+- we should first allow super AbstractAdapter to initialize then extend spec
+  otherwise using *adapter: jdbc* configuration might no work (#457)
+- return early (from `table_exists?`) if table name is nil (#460)
+- [MS-SQL] handle change_column error when column has default binding or indexes
+- AR's `distinct` compatible with 4.x (and 3.x) for Oracle, Derby and Postgres
+- re-invent `add_column_options!` (due next AR 4.1) to provide compatibility
+- backport SchemaCreation (from AR 4.0/master) + support for all adapters
+
+Code Contributors (in no particular order): Grant Hutchins, Avin Mathew, @emassip
+
 ## 1.3.0 (08/29/13)
 
 - [oracle] fix structure_dump: `column['data_default']` might come back as ''
