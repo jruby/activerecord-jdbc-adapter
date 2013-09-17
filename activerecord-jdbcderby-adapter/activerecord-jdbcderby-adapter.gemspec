@@ -10,15 +10,13 @@ Gem::Specification.new do |s|
   s.authors = ["Nick Sieger, Ola Bini and JRuby contributors"]
   s.description = %q{Install this gem to use Derby with JRuby on Rails.}
   s.email = %q{nick@nicksieger.com, ola.bini@gmail.com}
-  s.files = [
-    "README.txt",
-    "LICENSE.txt",
-    "lib/active_record/connection_adapters/jdbcderby_adapter.rb"
-  ]
+
   s.homepage = %q{https://github.com/jruby/activerecord-jdbc-adapter}
-  s.require_paths = ["lib"]
   s.rubyforge_project = %q{jruby-extras}
   s.summary = %q{Derby JDBC adapter for JRuby on Rails.}
+
+  s.require_paths = ["lib"]
+  s.files = `git ls-files`.split("\n") # assuming . working directory
 
   s.add_dependency 'activerecord-jdbc-adapter', "~>#{version}"
   s.add_dependency 'jdbc-derby', '~> 10.6'
