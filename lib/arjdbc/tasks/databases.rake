@@ -27,7 +27,7 @@ Rake::DSL.module_eval do
     end
 
     new_task = task(*args, &block)
-    new_task.comment = old_comment # if old_comment
+    new_task.comment = old_comment if old_comment
     new_task.actions.concat(old_actions) if old_actions
     new_task.prerequisites.concat(old_prereqs) if old_prereqs
     new_task
