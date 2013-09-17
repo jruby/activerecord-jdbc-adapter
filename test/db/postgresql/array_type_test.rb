@@ -13,6 +13,8 @@ class PostgreSQLArrayTypeTest < Test::Unit::TestCase
     @connection.transaction do
       @connection.create_table('pg_arrays') do |t|
         t.string 'tags', :array => true
+
+        t.json 'objs', :array => true
       end
 
       @connection.add_column 'pg_arrays', 'added_tags', :string, :array => true
@@ -102,6 +104,21 @@ class PostgreSQLArrayTypeTest < Test::Unit::TestCase
 
   def test_contains_nils
     assert_cycle(['1',nil,nil])
+  end
+
+  def test_array_of_json
+    array = [{'a' => 1, 'b' => 'str'},{}]
+
+    x = PgArray.create!(:objs => array)
+    x.reload
+    assert_equal(array, x.objs)
+
+    # test updating
+    x = PgArray.create!(:objs => [])
+    x.objs = array
+    x.save!
+    x.reload
+    assert_equal(array, x.objs)
   end
 
   private

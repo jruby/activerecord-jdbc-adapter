@@ -97,7 +97,9 @@ module ArJdbc
         # NOTE: we do not use OID::Type
         # @oid_type.type_cast value
 
-        return value if array? # handled on the connection (JDBC) side
+        if array? && value.is_a?(Array) # handled on the connection (JDBC) side
+          return value.map {|v| type_cast v }
+        end
 
         case type
         when :hstore then self.class.string_to_hstore value
@@ -371,14 +373,18 @@ module ArJdbc
 
         def array_to_string(value, column, adapter, should_be_quoted = false)
           casted_values = value.map do |val|
-            if String === val
-              if val == "NULL"
-                "\"#{val}\""
-              else
-                quote_and_escape(adapter.type_cast(val, column, true))
-              end
-            else
+            if val == "NULL"
+              "\"#{val}\""
+            elsif Array === val # Special handling of multidimensional arrays
               adapter.type_cast(val, column, true)
+            else
+              casted_val = adapter.type_cast(val, column, true)
+
+              if String === casted_val
+                quote_and_escape(casted_val)
+              else
+                casted_val
+              end
             end
           end
           "{#{casted_values.join(',')}}"
