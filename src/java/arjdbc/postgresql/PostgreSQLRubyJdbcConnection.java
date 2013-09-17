@@ -36,6 +36,7 @@ import java.sql.Statement;
 import java.sql.Timestamp;
 import java.sql.Types;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 import org.jruby.Ruby;
@@ -43,6 +44,7 @@ import org.jruby.RubyArray;
 import org.jruby.RubyBoolean;
 import org.jruby.RubyClass;
 import org.jruby.RubyFloat;
+import org.jruby.RubyHash;
 import org.jruby.RubyIO;
 import org.jruby.RubyString;
 import org.jruby.anno.JRubyMethod;
@@ -388,13 +390,23 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
         return sqlType;
     }
 
+    private static final int HSTORE_TYPE = 100000 + 1111;
+
     @Override
     protected int jdbcTypeFor(final ThreadContext context, final Ruby runtime,
         final IRubyObject column, final Object value) throws SQLException {
         // NOTE: likely wrong but native adapters handles this thus we should
         // too - used from #table_exists? `binds << [ nil, schema ] if schema`
         if ( column == null || column.isNil() ) return Types.VARCHAR; // assume type == :string
-        return super.jdbcTypeFor(context, runtime, column, value);
+        final int type = super.jdbcTypeFor(context, runtime, column, value);
+        /*
+        if ( type == Types.OTHER ) {
+            final IRubyObject columnType = column.callMethod(context, "type");
+            if ( "hstore" == (Object) columnType.asJavaString() ) {
+                return HSTORE_TYPE;
+            }
+        } */
+        return type;
     }
 
     /**
@@ -467,6 +479,7 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
     protected IRubyObject objectToRuby(final ThreadContext context,
         final Ruby runtime, final ResultSet resultSet, final int column)
         throws SQLException {
+
         final Object object = resultSet.getObject(column);
 
         if ( object == null && resultSet.wasNull() ) return runtime.getNil();
@@ -483,6 +496,16 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
         if ( object instanceof PGobject ) {
             // PG 9.2 JSON type will be returned here as well
             return runtime.newString( object.toString() );
+        }
+
+        if ( object instanceof Map ) { // hstore
+            if ( rawHstoreType ) {
+                return runtime.newString( resultSet.getString(column) );
+            }
+            // by default we avoid double parsing by driver and than column :
+            final RubyHash rubyObject = RubyHash.newHash(runtime);
+            rubyObject.putAll((Map) object); // converts keys/values to ruby
+            return rubyObject;
         }
 
         return JavaUtil.convertJavaToRuby(runtime, object);
@@ -529,6 +552,24 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
         return str.toString();
     }
 
+    protected static boolean rawHstoreType = Boolean.getBoolean("arjdbc.postgresql.hstore.raw");
+
+    @JRubyMethod(name = "raw_hstore_type?")
+    public static IRubyObject useRawHstoreType(final ThreadContext context, final IRubyObject self) {
+        return context.getRuntime().newBoolean(rawHstoreType);
+    }
+
+    @JRubyMethod(name = "raw_hstore_type=")
+    public static IRubyObject setRawHstoreType(final IRubyObject self, final IRubyObject value) {
+        if ( value instanceof RubyBoolean ) {
+            rawHstoreType = ((RubyBoolean) value).isTrue();
+        }
+        else {
+            rawHstoreType = ! value.isNil();
+        }
+        return value;
+    }
+
     // whether to use "raw" interval values off by default - due native adapter compatibilty :
     // RAW values :
     // - 2 years 0 mons 0 days 0 hours 3 mins 0.00 secs
@@ -549,7 +590,7 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
             rawIntervalType = ((RubyBoolean) value).isTrue();
         }
         else {
-            rawIntervalType = value.isNil();
+            rawIntervalType = ! value.isNil();
         }
         return value;
     }

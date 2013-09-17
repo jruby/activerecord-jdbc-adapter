@@ -3,7 +3,7 @@ require 'test_helper'
 require 'db/postgres'
 
 class PostgresqlHstoreTest < Test::Unit::TestCase
-  
+
   class Hstore < ActiveRecord::Base
     self.table_name = 'hstores'
   end
@@ -133,17 +133,31 @@ class PostgresqlHstoreTest < Test::Unit::TestCase
     assert x.save!
   end
 
-
   def test_select
     @connection.execute "insert into hstores (tags) VALUES ('1=>2')"
     x = Hstore.first
     assert_equal({'1' => '2'}, x.tags)
+    assert_instance_of Hash, x.tags
   end
 
   def test_select_multikey
     @connection.execute "insert into hstores (tags) VALUES ('1=>2,2=>3')"
     x = Hstore.first
     assert_equal({'1' => '2', '2' => '3'}, x.tags)
+    assert_instance_of Hash, x.tags
+  end
+
+  class Hstore2 < ActiveRecord::Base
+    self.table_name = 'hstores'
+    store :tags, :accessors => [ :name ]
+  end
+
+  def test_store_select
+    @connection.execute "insert into hstores (tags) VALUES ('name=>ferko,type=>suska')"
+    x = Hstore2.first
+    assert_equal 'ferko', x.name
+    assert_equal 'suska', x.tags[:type]
+    assert_instance_of ActiveSupport::HashWithIndifferentAccess, x.tags
   end
 
   def test_create
@@ -196,5 +210,5 @@ class PostgresqlHstoreTest < Test::Unit::TestCase
     x.reload
     assert_equal(hash, x.tags)
   end
-  
+
 end if Test::Unit::TestCase.ar_version('4.0')
