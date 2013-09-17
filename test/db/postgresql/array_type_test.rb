@@ -13,7 +13,7 @@ class PostgreSQLArrayTypeTest < Test::Unit::TestCase
     @connection.transaction do
       @connection.create_table('pg_arrays') do |t|
         t.string 'tags', :array => true
-
+        t.integer 'ints', :array => true
         t.json 'objs', :array => true
       end
 
@@ -119,6 +119,19 @@ class PostgreSQLArrayTypeTest < Test::Unit::TestCase
     x.save!
     x.reload
     assert_equal(array, x.objs)
+  end
+
+  def test_insert_fixture_int_array
+    int_values = [1,2,4,6]
+    @connection.insert_fixture({"ints" => int_values}, "pg_arrays" )
+    assert_equal(PgArray.last.ints, int_values)
+  end
+
+  def test_insert_fixture_int_array_from_strings
+    int_values = [1,2,4,6]
+    int_values_for_insert = ['1','2','4','6']
+    @connection.insert_fixture({"ints" => int_values_for_insert}, "pg_arrays" )
+    assert_equal(PgArray.last.ints, int_values)
   end
 
   private
