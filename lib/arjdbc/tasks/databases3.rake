@@ -9,9 +9,9 @@ end
 module ArJdbc
   module Tasks
     class << self
-      
+
       # API similar to ActiveRecord::Tasks::DatabaseTasks on AR 4.0
-      
+
       def create(config)
         tasks_instance(config).create
       end
@@ -23,7 +23,7 @@ module ArJdbc
       def purge(config)
         tasks_instance(config).purge
       end
-      
+
       def charset(config)
         tasks_instance(config).charset
       end
@@ -39,18 +39,18 @@ module ArJdbc
       def structure_load(config, filename)
         tasks_instance(config).structure_load(filename)
       end
-      
+
     end
   end
 end
 
 namespace :db do
-  
+
   class << self
     alias_method :_rails_create_database, :create_database
     alias_method :_rails_drop_database,   :drop_database
   end
-  
+
   def create_database(config)
     case config['adapter']
     when /mysql|postgresql|sqlite/
@@ -68,7 +68,7 @@ namespace :db do
       ArJdbc::Tasks.drop(config)
     end
   end
-  
+
   redefine_task :charset do # available on 2.3
     ArJdbc::Tasks.charset ActiveRecord::Base.configurations[rails_env]
   end
@@ -76,25 +76,25 @@ namespace :db do
   redefine_task :collation do # available on 2.3
     ArJdbc::Tasks.collation ActiveRecord::Base.configurations[rails_env]
   end
-  
+
   namespace :structure do
-    
+
     redefine_task :dump do
       config = ActiveRecord::Base.configurations[rails_env] # current_config
       filename = structure_sql
-      
+
       case config['adapter']
       when /mysql/
         ActiveRecord::Base.establish_connection(config)
         File.open(filename, 'w:utf-8') { |f| f << ActiveRecord::Base.connection.structure_dump }
       when /postgresql/
         ActiveRecord::Base.establish_connection(config)
-        
+
         ENV['PGHOST'] = config['host'] if config['host']
         ENV['PGPORT'] = config['port'].to_s if config['port']
         ENV['PGPASSWORD'] = config['password'].to_s if config['password']
         ENV['PGUSER'] = config['username'].to_s if config['username']
-        
+
         require 'shellwords'
         search_path = config['schema_search_path']
         unless search_path.blank?
@@ -102,7 +102,7 @@ namespace :db do
         end
         `pg_dump -i -s -x -O -f #{Shellwords.escape(filename)} #{search_path} #{Shellwords.escape(config['database'])}`
         raise 'Error dumping database' if $?.exitstatus == 1
-        
+
         File.open(filename, 'a') { |f| f << "SET search_path TO #{ActiveRecord::Base.connection.schema_search_path};\n\n" }
       when /sqlite/
         dbfile = config['database']
@@ -120,7 +120,7 @@ namespace :db do
     redefine_task :load do
       config = ActiveRecord::Base.configurations[rails_env] # current_config
       filename = structure_sql
-      
+
       case config['adapter']
       when /mysql/
         ActiveRecord::Base.establish_connection(config)
@@ -142,7 +142,7 @@ namespace :db do
         ArJdbc::Tasks.structure_load(config, filename)
       end
     end
-    
+
     def structure_sql
       ENV['DB_STRUCTURE'] ||= begin
         root = defined?(Rails.root) ? Rails.root : ( RAILS_ROOT rescue nil )
@@ -153,21 +153,21 @@ namespace :db do
         end
       end
     end
-    
+
   end
-  
+
   namespace :test do
-    
+
     # desc "Recreate the test database from an existent structure.sql file"
     redefine_task :load_structure => 'db:test:purge' do # not on 2.3
       begin
         current_config(:config => ActiveRecord::Base.configurations['test'])
-        Rake::Task["structure:load"].invoke
+        Rake::Task["db:structure:load"].invoke
       ensure
         current_config(:config => nil)
       end
     end
-    
+
     # desc "Recreate the test database from a fresh structure.sql file"
     redefine_task :clone_structure => [ "db:structure:dump", "db:test:load_structure" ]
     # same as on 3.2 - but this task gets changed on 2.3 by depending on :load_structure
@@ -197,7 +197,7 @@ namespace :db do
     end
     # only does (:purge => :environment) on AR < 3.2
     task :purge => :load_config if Rake::Task.task_defined?(:load_config)
-    
+
   end
-  
+
 end

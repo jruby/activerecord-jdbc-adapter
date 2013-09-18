@@ -153,6 +153,12 @@ module RakeTestSupport
     ar_version('3.2') ? 'structure.sql' : "#{@rails_env}_structure.sql"
   end
 
+  def with_connection(config = db_config)
+    ActiveRecord::Base.establish_connection config
+    yield ActiveRecord::Base.connection
+    ActiveRecord::Base.connection.disconnect!
+  end
+
   def expect_rake_output(matcher)
     @_stdout, @_stdout_matcher = $stdout, matcher
     $stdout = StringIO.new
