@@ -3,7 +3,6 @@
 source "https://rubygems.org"
 
 gem "thread_safe", :require=>nil
-gem "jruby-openssl", :platform=>:jruby
 gem "rake", :require=>nil
 gem "appraisal", :require=>nil
 gem "test-unit", "2.5.4", :group=>:test

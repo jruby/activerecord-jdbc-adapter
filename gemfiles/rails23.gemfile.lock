@@ -18,9 +18,6 @@ GEM
     atomic (1.1.10-java)
     bcrypt-ruby (3.0.1)
     bcrypt-ruby (3.0.1-java)
-    bouncy-castle-java (1.5.0147)
-    jruby-openssl (0.8.8)
-      bouncy-castle-java (>= 1.5.0147)
     metaclass (0.0.1)
     mocha (0.13.3)
       metaclass (~> 0.0.1)
@@ -54,7 +51,6 @@ DEPENDENCIES
   activerecord (~> 2.3.18)
   appraisal
   bcrypt-ruby (~> 3.0.0)
-  jruby-openssl
   mocha (~> 0.13.1)
   mysql2
   pg
