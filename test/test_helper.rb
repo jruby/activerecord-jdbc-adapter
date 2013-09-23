@@ -121,6 +121,13 @@ class Test::Unit::TestCase
     self.class.disable_logger(connection, &block)
   end
 
+  def with_connection(config)
+    ActiveRecord::Base.establish_connection config
+    yield ActiveRecord::Base.connection
+  ensure
+    ActiveRecord::Base.connection.disconnect!
+  end
+
   def clear_active_connections!
     ActiveRecord::Base.clear_active_connections!
   end

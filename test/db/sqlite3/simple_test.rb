@@ -304,4 +304,22 @@ class SQLite3SimpleTest < Test::Unit::TestCase
     assert_kind_of Arel::Visitors::SQLite, visitor
   end if ar_version('3.0')
 
+  test "config :timeout set as busy timeout" do
+    conn = ActiveRecord::Base.connection
+    unless conn.jdbc_connection.respond_to?(:busy_timeout)
+      # "old" API: org.sqlite.Conn (not supported setting via JDBC)
+      version = conn.send(:sqlite_version).to_s
+      omit "setting timeout not supported on #{version}"
+    end
+    begin
+      with_connection :adapter => 'sqlite3', :database => ':memory:',
+        :timeout => 1234 do |connection|
+        sqlite_jdbc = connection.jdbc_connection
+        assert_equal 1234, sqlite_jdbc.busy_timeout
+      end
+    ensure
+      ActiveRecord::Base.establish_connection(SQLITE3_CONFIG)
+    end
+  end if defined? JRUBY_VERSION
+
 end
