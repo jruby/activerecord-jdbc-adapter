@@ -10,6 +10,8 @@ module ArJdbc
     # @see ActiveRecord::ConnectionAdapters::JdbcColumn
     module Column
 
+      attr_reader :collation, :strict, :extra
+
       def extract_default(default)
         if sql_type =~ /blob/i || type == :text
           if default.blank?

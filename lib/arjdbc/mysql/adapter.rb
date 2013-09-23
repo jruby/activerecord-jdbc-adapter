@@ -35,8 +35,8 @@ module ArJdbc
 
       # Increase timeout so the server doesn't disconnect us.
       wait_timeout = config[:wait_timeout]
-      wait_timeout = 2147483 unless wait_timeout.is_a?(Fixnum)
-      variables[:wait_timeout] = wait_timeout
+      wait_timeout = self.class.type_cast_config_to_integer(wait_timeout)
+      variables[:wait_timeout] = wait_timeout.is_a?(Fixnum) ? wait_timeout : 2147483
 
       # Make MySQL reject illegal values rather than truncating or blanking them, see
       # http://dev.mysql.com/doc/refman/5.0/en/server-sql-mode.html#sqlmode_strict_all_tables
@@ -65,7 +65,9 @@ module ArJdbc
     end
 
     def strict_mode? # strict_mode is default since AR 4.0
-      config.key?(:strict) ? config[:strict] : ::ActiveRecord::VERSION::MAJOR > 3
+      config.key?(:strict) ?
+        self.class.type_cast_config_to_boolean(config[:strict]) :
+          ::ActiveRecord::VERSION::MAJOR > 3
     end
 
     # @private
@@ -604,8 +606,6 @@ module ActiveRecord
 
       class Column < JdbcColumn
         include ::ArJdbc::MySQL::Column
-
-        attr_reader :collation, :strict, :extra
 
         def initialize(name, default, sql_type = nil, null = true, collation = nil, strict = false, extra = "")
           if Hash === name
