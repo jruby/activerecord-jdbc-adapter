@@ -210,7 +210,7 @@ module ArJdbc
     # @override
     def quote(value, column = nil)
       return value if sql_literal?(value)
-      
+
       if value.kind_of?(String)
         column_type = column && column.type
         if column_type == :binary && column.class.respond_to?(:string_to_binary)
@@ -497,7 +497,7 @@ module ArJdbc
       end
 
       def to_s
-        @version
+        @version.join('.')
       end
 
     end
