@@ -29,6 +29,7 @@ import arjdbc.jdbc.RubyJdbcConnection;
 import arjdbc.jdbc.Callable;
 
 import java.lang.reflect.Field;
+import java.lang.reflect.Proxy;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
@@ -249,10 +250,13 @@ public class MySQLRubyJdbcConnection extends RubyJdbcConnection {
             if ( field != null ) {
                 java.util.Timer timer = null;
                 try {
+                    Connection unwrap = connection.unwrap(Connection.class);
+                    // when failover is used (LoadBalancedMySQLConnection)
+                    // we'll end up with a proxy returned not the real thing :
+                    if ( Proxy.isProxyClass(unwrap.getClass()) ) return;
                     // connection likely: com.mysql.jdbc.JDBC4Connection
                     // or (for 3.0) super class: com.mysql.jdbc.ConnectionImpl
-                    timer = (java.util.Timer)
-                        field.get( connection.unwrap(Connection.class) );
+                    timer = (java.util.Timer) field.get( unwrap );
                 }
                 catch (SQLException e) {
                     debugMessage( e.toString() );
