@@ -6,11 +6,14 @@ ArJdbc::ConnectionMethods.module_eval do
     rescue LoadError # assuming driver.jar is on the class-path
     end
 
-    config[:host] ||= "localhost"
-    config[:port] ||= 5432
-    config[:username] ||= Java::JavaLang::System.get_property("user.name")
-    config[:url] ||= "jdbc:postgresql://#{config[:host]}:#{config[:port]}/#{config[:database]}"
+    host = config[:host] ||= ( config[:hostaddr] || 'localhost' )
+    port = config[:port] ||= 5432
+    database = config[:database] || config[:dbname]
+
+    config[:url] ||= "jdbc:postgresql://#{host}:#{port}/#{database}"
     config[:url] << config[:pg_params] if config[:pg_params]
+
+    config[:username] ||= config[:user] || Java::JavaLang::System.get_property("user.name")
     config[:driver] ||= defined?(::Jdbc::Postgres.driver_name) ? ::Jdbc::Postgres.driver_name : 'org.postgresql.Driver'
     config[:adapter_spec] ||= ::ArJdbc::PostgreSQL
     config[:adapter_class] = ActiveRecord::ConnectionAdapters::PostgreSQLAdapter unless config.key?(:adapter_class)
