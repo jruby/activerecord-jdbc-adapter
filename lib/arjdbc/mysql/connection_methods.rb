@@ -11,16 +11,17 @@ ArJdbc::ConnectionMethods.module_eval do
     # jdbc:mysql://[host][,failoverhost...][:port]/[database]
     # - if the host name is not specified, it defaults to 127.0.0.1
     # - if the port is not specified, it defaults to 3306
-    config[:url] ||= "jdbc:mysql://#{config[:host]}:#{config[:port]}/#{config[:database]}"
+    host = config[:host]; host = host.join(',') if host.respond_to?(:join)
+    config[:url] ||= "jdbc:mysql://#{host}:#{config[:port]}/#{config[:database]}"
     config[:driver] ||= defined?(::Jdbc::MySQL.driver_name) ? ::Jdbc::MySQL.driver_name : 'com.mysql.jdbc.Driver'
     config[:adapter_spec] ||= ::ArJdbc::MySQL
     config[:adapter_class] = ActiveRecord::ConnectionAdapters::MysqlAdapter unless config.key?(:adapter_class)
 
-    options = ( config[:options] ||= {} )
-    options['zeroDateTimeBehavior'] ||= 'convertToNull'
-    options['jdbcCompliantTruncation'] ||= 'false'
-    options['useUnicode'] ||= 'true'
-    options['characterEncoding'] = config[:encoding] || 'utf8'
+    properties = ( config[:properties] ||= {} )
+    properties['zeroDateTimeBehavior'] ||= 'convertToNull'
+    properties['jdbcCompliantTruncation'] ||= 'false'
+    properties['useUnicode'] ||= 'true'
+    properties['characterEncoding'] = config[:encoding] || 'utf8'
 
     jdbc_connection(config)
   end

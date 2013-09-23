@@ -220,6 +220,32 @@ class MysqlSimpleTest < Test::Unit::TestCase
     assert_kind_of Arel::Visitors::MySQL, visitor
   end if ar_version('3.0')
 
+  test 'sets default connection properties' do
+    connection = ActiveRecord::Base.connection.jdbc_connection(true)
+    assert_equal 'false', connection.properties['jdbcCompliantTruncation']
+    assert_equal 'true' , connection.properties['useUnicode']
+  end if defined? JRUBY_VERSION
+
+  test "config :host" do
+    skip unless MYSQL_CONFIG[:database] # JDBC :url defined instead
+    begin
+      config = { :adapter => 'mysql' }
+      config[:username] = MYSQL_CONFIG[:username]
+      config[:password] = MYSQL_CONFIG[:password]
+      config[:database] = MYSQL_CONFIG[:database]
+      with_connection(config) do |connection|
+        assert_match /^jdbc:mysql:\/\/:\d*\//, connection.config[:url]
+      end
+#      # ActiveRecord::Base.connection.disconnect!
+#      host = [ MYSQL_CONFIG[:host], '127.0.0.1' ] # fail-over hosts
+#      with_connection(config.merge :host => host) do |connection|
+#        assert_match /^jdbc:mysql:\/\/.*?127.0.0.1:\d*\//, connection.config[:url]
+#      end
+    ensure
+      ActiveRecord::Base.establish_connection(MYSQL_CONFIG)
+    end
+  end if defined? JRUBY_VERSION
+
   private
 
   def mysql_adapter_class

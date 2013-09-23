@@ -175,13 +175,6 @@ class MysqlInfoTest < Test::Unit::TestCase
     assert_equal :text, text_column.type
   end
 
-  def test_verify_url_has_options
-    url = connection.config[:url]
-    assert url =~ /characterEncoding=utf8/
-    assert url =~ /useUnicode=true/
-    assert url =~ /zeroDateTimeBehavior=convertToNull/
-  end if defined? JRUBY_VERSION
-
   def test_no_limits_for_some_data_types
     DbTypeMigration.up
     #
