@@ -8,12 +8,15 @@ ArJdbc::ConnectionMethods.module_eval do
 
     config[:username] = 'root' unless config.key?(:username)
     config[:port] ||= 3306
+    # jdbc:mysql://[host][,failoverhost...][:port]/[database]
+    # - if the host name is not specified, it defaults to 127.0.0.1
+    # - if the port is not specified, it defaults to 3306
     config[:url] ||= "jdbc:mysql://#{config[:host]}:#{config[:port]}/#{config[:database]}"
     config[:driver] ||= defined?(::Jdbc::MySQL.driver_name) ? ::Jdbc::MySQL.driver_name : 'com.mysql.jdbc.Driver'
     config[:adapter_spec] ||= ::ArJdbc::MySQL
     config[:adapter_class] = ActiveRecord::ConnectionAdapters::MysqlAdapter unless config.key?(:adapter_class)
 
-    options = (config[:options] ||= {})
+    options = ( config[:options] ||= {} )
     options['zeroDateTimeBehavior'] ||= 'convertToNull'
     options['jdbcCompliantTruncation'] ||= 'false'
     options['useUnicode'] ||= 'true'
