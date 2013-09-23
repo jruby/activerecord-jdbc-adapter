@@ -14,10 +14,11 @@ ArJdbc::ConnectionMethods.module_eval do
     config[:url] << config[:pg_params] if config[:pg_params] # should go away
 
     config[:username] ||= config[:user] || ENV_JAVA['user.name']
-    options = ( config[:options] ||= {} )
+    properties = ( config[:properties] ||= {} )
     # PG :connect_timeout - maximum time to wait for connection to succeed
     if connect_timeout = config[:connect_timeout]
-      options['socketTimeout'] ||= connect_timeout # options['loginTimeout'] as well?
+      properties['socketTimeout'] ||= connect_timeout
+      # NOTE: maybe set options['loginTimeout'] as well?
     end
     sslmode = config.key?(:sslmode) ? config[:sslmode] : config[:requiressl]
     unless sslmode.nil? # PG :sslmode - disable|allow|prefer|require
@@ -25,10 +26,10 @@ ArJdbc::ConnectionMethods.module_eval do
       #  -Djavax.net.ssl.trustStore=mystore -Djavax.net.ssl.trustStorePassword=...
       # or a non-validating connection might be used (for testing) :
       #  :sslfactory = 'org.postgresql.ssl.NonValidatingFactory'
-      options['ssl'] ||= 'true' if sslmode == true || sslmode.to_s == 'require'
+      properties['ssl'] ||= 'true' if sslmode == true || sslmode.to_s == 'require'
     end
-    options['tcpKeepAlive'] ||= config[:keepalives] if config.key?(:keepalives)
-    options['kerberosServerName'] ||= config[:krbsrvname] if config[:krbsrvname]
+    properties['tcpKeepAlive'] ||= config[:keepalives] if config.key?(:keepalives)
+    properties['kerberosServerName'] ||= config[:krbsrvname] if config[:krbsrvname]
 
     config[:driver] ||= defined?(::Jdbc::Postgres.driver_name) ? ::Jdbc::Postgres.driver_name : 'org.postgresql.Driver'
     config[:adapter_spec] ||= ::ArJdbc::PostgreSQL
