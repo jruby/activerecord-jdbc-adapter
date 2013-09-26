@@ -61,15 +61,11 @@ If you're using Rails 3, you'll need to modify your *Gemfile* to use the
 like the following (using MySQL as an example):
 
 ```ruby
-gem 'mysql', platform: :ruby
-
-platforms :jruby do
-  gem 'jruby-openssl'
-  gem 'activerecord-jdbcmysql-adapter'
-end
+gem 'mysql2', platform: :ruby
+gem 'activerecord-jdbcmysql-adapter', platform: :jruby
 ```
 
-If you're using Rails 2.3:
+If you're (stuck) using Rails 2.3:
 
     jruby script/generate jdbc
 
@@ -77,11 +73,10 @@ If you're using Rails 2.3:
 
 ```yml
 development:
-  adapter: mysql
+  adapter: mysql2 # or mysql
+  database: blog_development
   username: blog
   password: 1234
-  host: localhost
-  database: blog_development
 ```
 
 **Legacy Configuration:** If you use one of the *activerecord-jdbcxxx-adapter*
@@ -95,7 +90,7 @@ class and URL (do not forget to put the driver .jar(s) on the class-path) e.g.:
 development:
   adapter: jdbc
   username: blog
-  password:
+  password: 1234
   driver: com.mysql.jdbc.Driver
   url: jdbc:mysql://localhost:3306/blog_development
 ```
@@ -105,12 +100,12 @@ correct adapter type will be automatically detected):
 
 ```yml
 production:
-  adapter: jdbc
-  jndi: jdbc/PostgreDB
+  adapter: jndi # jdbc
+  jndi: jdbc/PostgreDS
 ```
 
 JDBC driver specific properties might be set if you use an URL to specify the DB
-or using the *properties:* syntax (available since AR-JDBC **1.2.6**):
+or using the *properties:* syntax :
 
 ```yml
 production:
@@ -128,7 +123,6 @@ If you're really old school you might want to use AR-JDBC with a DB2 on z/OS:
 ```yml
 development:
   adapter: jdbc
-  encoding: unicode
   url: jdbc:db2j:net://mightyzoshost:446/RAILS_DBT1
   driver: com.ibm.db2.jcc.DB2Driver
   schema: DB2XB12
@@ -136,23 +130,25 @@ development:
   tablespace: TSDE911
   lob_tablespaces:
     first_table: TSDE912
-  username: scott
-  password: lion
+  username: business
+  password: machines
+  encoding: unicode
 ```
 
-If your SGBD isn't automatically discovered you can force a dialect as well:
+If your SGBD isn't automatically discovered you can force a (DB2) dialect:
 
 ```yml
 development:
-  [...]
-  dialect: as400 # For example
+  # ... previous configuration
+  dialect: as400 # for example
 ```
 
 More information on (configuring) AR-JDBC might be found on our [wiki][5].
 
 ### Standalone with ActiveRecord
 
-Once the setup is made (see below) you can establish a JDBC connection like this (e.g. for `activerecord-jdbcderby-adapter`):
+Once the setup is made (see below) you can establish a JDBC connection like this
+(e.g. for `activerecord-jdbcderby-adapter`):
 
 ```ruby
 ActiveRecord::Base.establish_connection(
@@ -161,7 +157,7 @@ ActiveRecord::Base.establish_connection(
 )
 ```
 
-or using (requires that you manually put the driver jar on the classpath):
+or using (requires that you manually put the driver jar on the class-path):
 
 ```ruby
 ActiveRecord::Base.establish_connection(
@@ -173,11 +169,11 @@ ActiveRecord::Base.establish_connection(
 
 #### Using Bundler
 
-Proceed as with Rails; specify the ActiveRecord gem in your Bundle along with
-the chosen (JDBC) adapters this time sample *Gemfile* for MySQL:
+Proceed as with Rails; specify `ActiveRecord` in your Bundle along with the
+chosen JDBC adapter(s), this time sample *Gemfile* for MySQL:
 
 ```ruby
-gem 'activerecord', '~> 3.2.13'
+gem 'activerecord', '~> 3.2.14'
 gem 'activerecord-jdbcmysql-adapter', :platform => :jruby
 ```
 
