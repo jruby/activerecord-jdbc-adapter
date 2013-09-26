@@ -229,7 +229,7 @@ class MysqlSimpleTest < Test::Unit::TestCase
   test "config :host" do
     skip unless MYSQL_CONFIG[:database] # JDBC :url defined instead
     begin
-      config = { :adapter => 'mysql' }
+      config = { :adapter => 'mysql', :port => 3306 }
       config[:username] = MYSQL_CONFIG[:username]
       config[:password] = MYSQL_CONFIG[:password]
       config[:database] = MYSQL_CONFIG[:database]
@@ -237,9 +237,9 @@ class MysqlSimpleTest < Test::Unit::TestCase
         assert_match /^jdbc:mysql:\/\/:\d*\//, connection.config[:url]
       end
 #      # ActiveRecord::Base.connection.disconnect!
-#      host = [ MYSQL_CONFIG[:host], '127.0.0.1' ] # fail-over hosts
-#      with_connection(config.merge :host => host) do |connection|
-#        assert_match /^jdbc:mysql:\/\/.*?127.0.0.1:\d*\//, connection.config[:url]
+#      host = [ MYSQL_CONFIG[:host] || 'localhost', '127.0.0.1' ] # fail-over
+#      with_connection(config.merge :host => host, :port => nil) do |connection|
+#        assert_match /^jdbc:mysql:\/\/.*?127.0.0.1\//, connection.config[:url]
 #      end
     ensure
       ActiveRecord::Base.establish_connection(MYSQL_CONFIG)

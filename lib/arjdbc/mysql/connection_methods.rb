@@ -7,12 +7,17 @@ ArJdbc::ConnectionMethods.module_eval do
     end
 
     config[:username] = 'root' unless config.key?(:username)
-    config[:port] ||= 3306
     # jdbc:mysql://[host][,failoverhost...][:port]/[database]
     # - if the host name is not specified, it defaults to 127.0.0.1
     # - if the port is not specified, it defaults to 3306
-    host = config[:host]; host = host.join(',') if host.respond_to?(:join)
-    config[:url] ||= "jdbc:mysql://#{host}:#{config[:port]}/#{config[:database]}"
+    # - alternate fail-over syntax: [host:port],[host:port]/[database]
+    unless config[:url]
+      host = config[:host]; host = host.join(',') if host.respond_to?(:join)
+      url = "jdbc:mysql://#{host}"
+      url << ":#{config[:port]}" if config[:port]
+      url << "/#{config[:database]}"
+      config[:url] = url
+    end
     config[:driver] ||= defined?(::Jdbc::MySQL.driver_name) ? ::Jdbc::MySQL.driver_name : 'com.mysql.jdbc.Driver'
     config[:adapter_spec] ||= ::ArJdbc::MySQL
     config[:adapter_class] = ActiveRecord::ConnectionAdapters::MysqlAdapter unless config.key?(:adapter_class)
