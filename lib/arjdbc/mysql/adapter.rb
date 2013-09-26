@@ -3,11 +3,13 @@ ArJdbc.load_java_part :MySQL
 require 'bigdecimal'
 require 'active_record/connection_adapters/abstract/schema_definitions'
 require 'arjdbc/mysql/column'
+require 'arjdbc/mysql/bulk_change_table'
 require 'arjdbc/mysql/explain_support'
 require 'arjdbc/mysql/schema_creation' # AR 4.x
 
 module ArJdbc
   module MySQL
+    include BulkChangeTable if const_defined? :BulkChangeTable
 
     # @see ActiveRecord::ConnectionAdapters::JdbcAdapter#jdbc_connection_class
     def self.jdbc_connection_class
@@ -176,11 +178,6 @@ module ArJdbc
 
     # @override
     def supports_primary_key?
-      true
-    end
-
-    # @override
-    def supports_bulk_alter?
       true
     end
 

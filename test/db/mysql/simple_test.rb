@@ -246,6 +246,114 @@ class MysqlSimpleTest < Test::Unit::TestCase
     end
   end if defined? JRUBY_VERSION
 
+  test 'bulk change table' do
+    assert ActiveRecord::Base.connection.supports_bulk_alter?
+
+    begin
+      connection.create_table(:bulks, :force => true) { |t| t.string :it }
+
+      assert_queries(1) do
+        with_bulk_change_table(:bulks) do |t|
+          t.column :name, :string
+          t.string :qualification, :experience
+          t.integer :age, :default => 0
+          t.date :birthdate
+          t.timestamps
+        end
+      end
+      assert_equal 9, connection.columns(:bulks).size
+
+      column = lambda do |name|
+        indexes = connection.columns(:bulks)
+        indexes.detect { |c| c.name == name.to_s }
+      end
+
+      [:qualification, :experience].each { |c| assert column.call(c) }
+
+      assert_queries(1) do
+        with_bulk_change_table('bulks') do |t|
+          t.remove :qualification, :experience
+          t.string :qualification_experience
+        end
+      end
+
+      [:qualification, :experience].each { |c| assert ! column.call(c) }
+      assert column.call(:qualification_experience)
+
+      assert ! column.call(:name).default
+      assert_equal :date, column.call(:birthdate).type
+
+      # One query for columns (delete_me table)
+      # One query for primary key (delete_me table)
+      # One query to do the bulk change
+      #assert_queries(3, :ignore_none => true) do
+        with_bulk_change_table('bulks') do |t|
+          t.change :name, :string, :default => 'NONAME'
+          t.change :birthdate, :datetime
+        end
+      #end
+
+      assert_equal 'NONAME', column.call(:name).default
+      assert_equal :datetime, column.call(:birthdate).type
+
+      # test_adding_indexes
+      with_bulk_change_table(:bulks) do |t|
+        t.string :username # t.string :name t.integer :age
+      end
+
+      index = lambda do |name|
+        indexes = connection.indexes(:bulks)
+        indexes.detect { |i| i.name == name.to_s }
+      end
+
+      # Adding an index fires a query every time to check if an index already exists or not
+      assert_queries(3) do
+        with_bulk_change_table(:bulks) do |t|
+          t.index :username, :unique => true, :name => :awesome_username_index
+          t.index [:name, :age]
+        end
+      end
+
+      assert_equal 2, connection.indexes(:bulks).size
+
+      assert name_age_index = index.call(:index_bulks_on_name_and_age)
+      assert_equal ['name', 'age'].sort, name_age_index.columns.sort
+      assert ! name_age_index.unique
+
+      assert index.call(:awesome_username_index).unique
+
+      # test_removing_index
+      with_bulk_change_table('bulks') do |t|
+        t.string :name2; t.index :name2
+      end
+
+      assert index.call(:index_bulks_on_name2)
+
+      assert_queries(3) do
+        with_bulk_change_table('bulks') do |t|
+          t.remove_index :name2
+          t.index :name2, :name => :new_name2_index, :unique => true
+        end
+      end
+
+      assert ! index.call(:index_bulks_on_name2)
+
+      new_name_index = index.call(:new_name2_index)
+      assert new_name_index.unique
+
+    ensure
+      connection.drop_table(:bulks) rescue nil
+    end
+  end if ar_version('3.2')
+
+  protected
+
+  def with_bulk_change_table(table)
+    connection.change_table(table, :bulk => true) do |t|
+      yield t
+    end
+  end
+
   private
 
   def mysql_adapter_class

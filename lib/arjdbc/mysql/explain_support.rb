@@ -1,4 +1,4 @@
-module ::ArJdbc
+module ArJdbc
   module MySQL
     module ExplainSupport
       def supports_explain?
