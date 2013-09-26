@@ -272,7 +272,11 @@ class MysqlSimpleTest < Test::Unit::TestCase
 
       assert_queries(1) do
         with_bulk_change_table('bulks') do |t|
-          t.remove :qualification, :experience
+          if ar_version('4.0')
+            t.remove :qualification, :experience
+          else
+            t.remove :qualification; t.remove :experience
+          end
           t.string :qualification_experience
         end
       end
