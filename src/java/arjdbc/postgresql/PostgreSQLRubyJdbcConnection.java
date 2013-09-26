@@ -554,12 +554,12 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
 
     protected static boolean rawHstoreType = Boolean.getBoolean("arjdbc.postgresql.hstore.raw");
 
-    @JRubyMethod(name = "raw_hstore_type?")
+    @JRubyMethod(name = "raw_hstore_type?", meta = true)
     public static IRubyObject useRawHstoreType(final ThreadContext context, final IRubyObject self) {
         return context.getRuntime().newBoolean(rawHstoreType);
     }
 
-    @JRubyMethod(name = "raw_hstore_type=")
+    @JRubyMethod(name = "raw_hstore_type=", meta = true)
     public static IRubyObject setRawHstoreType(final IRubyObject self, final IRubyObject value) {
         if ( value instanceof RubyBoolean ) {
             rawHstoreType = ((RubyBoolean) value).isTrue();
@@ -579,12 +579,12 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
     // - -1 years -2 days
     protected static boolean rawIntervalType = Boolean.getBoolean("arjdbc.postgresql.iterval.raw");
 
-    @JRubyMethod(name = "raw_interval_type?")
+    @JRubyMethod(name = "raw_interval_type?", meta = true)
     public static IRubyObject useRawIntervalType(final ThreadContext context, final IRubyObject self) {
         return context.getRuntime().newBoolean(rawIntervalType);
     }
 
-    @JRubyMethod(name = "raw_interval_type=")
+    @JRubyMethod(name = "raw_interval_type=", meta = true)
     public static IRubyObject setRawIntervalType(final IRubyObject self, final IRubyObject value) {
         if ( value instanceof RubyBoolean ) {
             rawIntervalType = ((RubyBoolean) value).isTrue();
