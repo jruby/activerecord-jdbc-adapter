@@ -105,6 +105,15 @@ test_task_for 'JNDI', :desc => 'Run tests against a JNDI connection (uses Derby)
   test_task.libs << 'jdbc-derby/lib'
 end
 
+test_task_for :MySQL, :name => 'test_jdbc_mysql',
+  :prereqs => 'db:mysql', :database_name => 'MySQL (using adapter: jdbc)' do |test_task|
+  test_task.ruby_opts << '-rdb/jdbc_mysql' # replaces require 'db/mysql'
+end
+test_task_for :PostgreSQL, :name => 'test_jdbc_postgresql', :driver => 'postgres',
+  :prereqs => 'db:postgresql', :database_name => 'PostgreSQL (using adapter: jdbc)' do |test_task|
+  test_task.ruby_opts << '-rdb/jdbc_postgres' # replaces require 'db/postgres'
+end
+
 # TODO Sybase testing is currently broken, please fix it if you're on Sybase :
 #test_task_for :Sybase, :desc => "Run tests against Sybase (using jTDS driver)"
 #task :test_sybase_jtds => :test_sybase # alias
