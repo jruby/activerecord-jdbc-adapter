@@ -417,7 +417,7 @@ module ArJdbc
       add_column_options!(change_column_sql, options)
       add_column_position!(change_column_sql, options)
       execute(change_column_sql)
-    end unless const_defined? :SchemaCreation
+    end
 
     # @override
     def rename_column(table_name, column_name, new_column_name)
