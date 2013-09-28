@@ -1,6 +1,13 @@
 require 'db/postgres'
 
-class PostgresNativeTypesTest < Test::Unit::TestCase
+class PostgreSQLNativeTypesTest < Test::Unit::TestCase
+
+  begin
+    result = ActiveRecord::Base.connection.execute("SHOW server_version_num")
+    PG_VERSION = result.first.values[0].to_i
+  rescue
+    PG_VERSION = 0
+  end
 
   class CustomersMigration < ActiveRecord::Migration
     def self.up
