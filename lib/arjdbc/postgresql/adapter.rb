@@ -1257,6 +1257,7 @@ module ActiveRecord::ConnectionAdapters
 
     class ColumnDefinition < ActiveRecord::ConnectionAdapters::ColumnDefinition
       attr_accessor :array
+      def array?; !!@array; end
     end
 
     module ColumnMethods

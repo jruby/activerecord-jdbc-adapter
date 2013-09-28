@@ -89,6 +89,30 @@ class PostgresSimpleTest < Test::Unit::TestCase
     connection.drop_table :testings rescue nil
   end
 
+  def test_create_table_with_array
+    connection.create_table :my_posts do |t|
+      t.string :name; t.text :description
+      t.string :tags, :array => true, :default => []
+      t.timestamps
+    end
+
+    columns = connection.columns(:my_posts)
+    tags = columns.detect { |c| c.name == "tags" }
+
+    if ar_version('4.0')
+      assert_equal :string, tags.type
+      assert_true tags.array?
+
+      name = columns.detect { |c| c.name == "name" }
+      assert_false name.array?
+    else
+      assert_equal :string, tags.type
+      assert_match /char/, tags.sql_type # character varying (255)
+    end
+  ensure
+    connection.drop_table :my_posts rescue nil
+  end
+
   def test_resolves_correct_columns_default
     assert column = DbType.columns.find { |col| col.name == 'sample_small_decimal' }
     assert_equal 3.14, column.default
