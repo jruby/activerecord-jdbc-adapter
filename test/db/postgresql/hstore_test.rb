@@ -2,7 +2,8 @@
 require 'test_helper'
 require 'db/postgres'
 
-class PostgresqlHstoreTest < Test::Unit::TestCase
+# Rails 4.x test
+class PostgreSQLHstoreTest < Test::Unit::TestCase
 
   class Hstore < ActiveRecord::Base
     self.table_name = 'hstores'
@@ -212,3 +213,40 @@ class PostgresqlHstoreTest < Test::Unit::TestCase
   end
 
 end if Test::Unit::TestCase.ar_version('4.0')
+
+# Rails <= 3.2 test
+class PostgreSQKHstoreTest < Test::Unit::TestCase
+
+  class Hstore < ActiveRecord::Base
+    self.table_name = 'hstores'
+  end
+
+  def setup
+    @connection = ActiveRecord::Base.connection
+
+    unless @connection.supports_extensions?
+      return skip "do not test on PG without hstore"
+    end
+
+    unless @connection.extension_enabled?('hstore')
+      @connection.enable_extension 'hstore'
+      @connection.commit_db_transaction
+    end
+
+    @connection.reconnect!
+
+    @connection.execute 'CREATE TABLE "hstores" ("id" serial primary key, "tags" hstore DEFAULT \'\')'
+  end
+
+  def teardown
+    @connection.execute 'DROP TABLE IF EXISTS "hstores"'
+  end
+
+  test 'returns hstore values as strings by default' do
+    @connection.execute "INSERT INTO hstores (tags) VALUES ('1=>2,2=>3')"
+    x = Hstore.first
+    assert_instance_of String, x.tags
+    assert_equal '"1"=>"2", "2"=>"3"', x.tags
+  end
+
+end unless Test::Unit::TestCase.ar_version('4.0')

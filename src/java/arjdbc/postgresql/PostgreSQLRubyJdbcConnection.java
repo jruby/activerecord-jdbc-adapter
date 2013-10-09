@@ -499,7 +499,7 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
         }
 
         if ( object instanceof Map ) { // hstore
-            if ( rawHstoreType ) {
+            if ( rawHstoreType == Boolean.TRUE ) {
                 return runtime.newString( resultSet.getString(column) );
             }
             // by default we avoid double parsing by driver and than column :
@@ -552,20 +552,25 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
         return str.toString();
     }
 
-    protected static boolean rawHstoreType = Boolean.getBoolean("arjdbc.postgresql.hstore.raw");
+    protected static Boolean rawHstoreType;
+    static {
+        final String hstoreRaw = System.getProperty("arjdbc.postgresql.hstore.raw");
+        if ( hstoreRaw != null ) rawHstoreType = Boolean.parseBoolean(hstoreRaw);
+    }
 
     @JRubyMethod(name = "raw_hstore_type?", meta = true)
     public static IRubyObject useRawHstoreType(final ThreadContext context, final IRubyObject self) {
+        if ( rawHstoreType == null ) return context.getRuntime().getNil();
         return context.getRuntime().newBoolean(rawHstoreType);
     }
 
     @JRubyMethod(name = "raw_hstore_type=", meta = true)
     public static IRubyObject setRawHstoreType(final IRubyObject self, final IRubyObject value) {
         if ( value instanceof RubyBoolean ) {
-            rawHstoreType = ((RubyBoolean) value).isTrue();
+            rawHstoreType = ((RubyBoolean) value).isTrue() ? Boolean.TRUE : Boolean.FALSE;
         }
         else {
-            rawHstoreType = ! value.isNil();
+            rawHstoreType = value.isNil() ? null : Boolean.TRUE;
         }
         return value;
     }
