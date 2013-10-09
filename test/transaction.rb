@@ -107,6 +107,52 @@ module TransactionTestMethods
 #    end
 #  end if Test::Unit::TestCase.ar_version('4.0')
 
+  def test_transaction_nesting
+    @first = Entry.create
+
+    Entry.transaction do
+      @first.content = "One"
+      @first.save!
+
+      begin
+        Entry.transaction :requires_new => true do
+          @first.content = "Two"
+          @first.save!
+
+          begin
+            Entry.transaction :requires_new => true do
+              @first.content = "Three"
+              @first.save!
+
+              begin
+                Entry.transaction :requires_new => true do
+                  @first.content = "Four"
+                  @first.save!
+                  raise
+                end
+              rescue
+              end
+
+              @three = @first.reload.content
+              raise
+            end
+          rescue
+          end
+
+          @two = @first.reload.content
+          raise
+        end
+      rescue
+      end
+
+      @one = @first.reload.content
+    end
+
+    assert_equal "One", @one
+    assert_equal "Two", @two
+    assert_equal "Three", @three
+  end
+
   def test_savepoint
     omit 'savepoins not supported' unless @supports_savepoints
     Entry.create! :title => '1'
@@ -175,7 +221,7 @@ module TransactionTestMethods
 
         assert_equal 4, Entry.count
 
-        connection.rollback_to_savepoint
+        connection.rollback_to_savepoint 'SP2'
         assert_equal 3, Entry.count
 
         connection.create_savepoint 'SP3'

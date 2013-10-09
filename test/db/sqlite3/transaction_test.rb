@@ -44,49 +44,4 @@ class SQLite3TransactionTest < Test::Unit::TestCase
     assert_true ActiveRecord::Base.connection.supports_savepoints?
   end
 
-  def test_many_savepoints
-    @first = Entry.create
-    Entry.transaction do
-      @first.content = "One"
-      @first.save!
-
-      begin
-        Entry.transaction :requires_new => true do
-          @first.content = "Two"
-          @first.save!
-
-          begin
-            Entry.transaction :requires_new => true do
-              @first.content = "Three"
-              @first.save!
-
-              begin
-                Entry.transaction :requires_new => true do
-                  @first.content = "Four"
-                  @first.save!
-                  raise
-                end
-              rescue
-              end
-
-              @three = @first.reload.content
-              raise
-            end
-          rescue
-          end
-
-          @two = @first.reload.content
-          raise
-        end
-      rescue
-      end
-
-      @one = @first.reload.content
-    end
-
-    assert_equal "One", @one
-    assert_equal "Two", @two
-    assert_equal "Three", @three
-  end
-
 end

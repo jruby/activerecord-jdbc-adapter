@@ -402,8 +402,15 @@ module ActiveRecord
       # @since 1.3.0
       # @override
       def current_savepoint_name(create = nil)
-        return "active_record_#{open_transactions}" if create
-        @connection.marked_savepoint_names.last || "active_record_#{open_transactions}"
+        open_tx = open_transactions
+        return "active_record_#{open_tx}" if create
+
+        sp_names = @connection.marked_savepoint_names
+        unless sp_names.empty?
+          sp_names[ -(sp_names.size - open_tx + 1) ]
+        else
+          "active_record_#{open_tx}"
+        end
       end
 
       # Executes a SQL query in the context of this connection using the bind
