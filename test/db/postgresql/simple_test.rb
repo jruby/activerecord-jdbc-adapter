@@ -59,7 +59,7 @@ class PostgresSimpleTest < Test::Unit::TestCase
   end
 
   def test_create_xml_column
-    return unless PG_VERSION >= 80300
+    return if connection.postgresql_version < 80300
     super
   end if ar_version('3.1')
   def xml_sql_type; 'xml'; end
