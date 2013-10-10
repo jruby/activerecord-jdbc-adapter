@@ -13,9 +13,9 @@ JRubies) thus Java >= **1.6** is mandatory.
 #### AR-JDBC **1.3.x** is a recommended update for all **1.2.x** users.
 
 Our latest major version **1.3.x** represents a few months of refactoring and
-updates covering (not just) new *ActiveRecord* features. It tries to stay compatible
-with 1.2.9 as much as possible but please be aware that it's not always possible
-(mostly for the best), please read our [migration guide][8] for details.
+updates covering (not just) new/old *ActiveRecord* features. It tries to stay
+compatible with 1.2.9 as much as possible but please be aware that it's not always
+possible(mostly for the best), please read our [migration guide][8] for details.
 
 ## Databases
 
@@ -46,26 +46,26 @@ adapters are available:
   - HSQLDB (`activerecord-jdbchsqldb-adapter`)
   - H2 (`activerecord-jdbch2-adapter`)
   - MSSQL (`activerecord-jdbcmssql-adapter`) - uses the OSS jTDS driver by default
-    which might have issues with the latest SQLServer (does not support SQL Azure)
+    which might have issues with the latest SQLServer (but should work using the
+    Microsoft JDBC Driver for SQL Server - we recommend using 4.0)
 
-2a. For Rails 3, if you're generating a new application, use the
-following command to generate your application:
+2a. If you're generating a new Rails application, use the following command:
 
     jruby -S rails new sweetapp
 
 2b. Otherwise, you might need to perform some extra configuration steps
 to prepare your Rails application for JDBC.
 
-If you're using Rails 3, you'll need to modify your *Gemfile* to use the
-*activerecord-jdbc-adapter* gem under JRuby. Change your *Gemfile* to look
-like the following (using MySQL as an example):
+You'll need to modify your *Gemfile* to use the *activerecord-jdbc-adapter* gem
+(or one of the helper gems) under JRuby. Change your *Gemfile* to look something
+like the following:
 
 ```ruby
 gem 'mysql2', platform: :ruby
 gem 'activerecord-jdbcmysql-adapter', platform: :jruby
 ```
 
-If you're (stuck) using Rails 2.3:
+If you're (stuck) using Rails 2.3, you might need to:
 
     jruby script/generate jdbc
 
@@ -96,7 +96,7 @@ development:
 ```
 
 For JNDI data sources, you may simply specify the JNDI location as follows (the
-correct adapter type will be automatically detected):
+correct database type will be automatically detected):
 
 ```yml
 production:
@@ -105,7 +105,7 @@ production:
 ```
 
 JDBC driver specific properties might be set if you use an URL to specify the DB
-or using the *properties:* syntax :
+or preferably using the *properties:* syntax:
 
 ```yml
 production:
@@ -133,14 +133,8 @@ development:
   username: business
   password: machines
   encoding: unicode
-```
-
-If your SGBD isn't automatically discovered you can force a (DB2) dialect:
-
-```yml
-development:
-  # ... previous configuration
-  dialect: as400 # for example
+  # you can force a (DB2) dialect using:
+  #dialect: as400
 ```
 
 More information on (configuring) AR-JDBC might be found on our [wiki][5].
