@@ -16,6 +16,7 @@ module ChangeColumnTestMethods
 
   def setup
     CreatePeopleTable.up
+    Person.reset_column_information
   end
 
   def teardown
