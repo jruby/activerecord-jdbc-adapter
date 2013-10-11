@@ -1,3 +1,23 @@
+## 1.3.2 (10/11/13)
+
+- when "pop-ing" current savepoint name - consider open transaction count (#477)
+- [postgres] we should return "raw" hstore values on AR < 4.0 by default
+  (regression caused by fixing #454 for AR >= 4.0)
+- [postgres] needs ColumnDefinition.array? method used by SchemaCreation (#474)
+- [mysql] backported bulk change table support from Rails (fixes #469)
+- support MySQL's failover host configurations (multiple hosts specified)
+- set JDBC specific config values as properties instead of URL options
+- SQLite3's version object should return a string on `to_s`
+- [sqlite3] support :timeout option as busy_timeout (similar to Rails)
+- [sqlite3] mkdir for sqlite database (path) - just like AR 4.0 now does
+- [postgres] handle :connect_timeout, :sslmode, :keepalives & :krbsrvname
+- [postgres] support :hostaddr, :user and :dbname options just like Rails does
+- fix rake task name **db:structure:load** - missing db: prefix (#465)
+- Prevent rake from throwing an exception when task w/o comment is redefined
+
+Code Contributors (in no particular order): Prathamesh Sonpatki, Stefan Wrobel,
+Micah Jaffe, Rajan Agaskar
+
 ## 1.3.1 (09/17/13)
 
 - helper gems should contain all files from lib/* (#463)
