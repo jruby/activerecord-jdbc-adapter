@@ -118,7 +118,7 @@ namespace :db do
     end
 
     redefine_task :load do
-      config = ActiveRecord::Base.configurations[rails_env] # current_config
+      config = current_config 
       filename = structure_sql
 
       case config['adapter']
