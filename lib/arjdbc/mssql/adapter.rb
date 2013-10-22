@@ -6,13 +6,14 @@ require 'arjdbc/mssql/limit_helpers'
 require 'arjdbc/mssql/lock_methods'
 require 'arjdbc/mssql/column'
 require 'arjdbc/mssql/explain_support'
+require 'arjdbc/mssql/driver_info'
 
 module ArJdbc
   module MSSQL
     include LimitHelpers
     include Utils
-
     include ExplainSupport
+    include DriverInfo
 
     # @private
     def self.extended(adapter)
@@ -575,6 +576,15 @@ module ArJdbc
       else
         sql = suble_binds(sql, binds) unless to_sql # deprecated behavior
         log(sql, name) { @connection.execute_query_raw(sql, &block) }
+      end
+    end
+
+    # @override
+    def release_savepoint(name = current_savepoint_name)
+      if sqlserver_driver?(config)
+        @connection.rollback_savepoint(name)
+      else
+        @connection.release_savepoint(name)
       end
     end
 
