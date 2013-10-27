@@ -552,6 +552,14 @@ module ArJdbc
       end
     end
 
+    # @note Only for "better" AR 4.0 compatibility.
+    # @private
+    def query(sql, name = nil)
+      log(sql, name) do
+        @connection.execute_query_raw(sql, nil).map!(&:values)
+      end
+    end
+
     # Returns an array of schema names.
     def schema_names
       select_values(

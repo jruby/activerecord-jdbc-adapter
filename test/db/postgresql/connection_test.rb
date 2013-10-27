@@ -1,6 +1,6 @@
 require 'db/postgres'
 
-class PostgresConnectionTest < Test::Unit::TestCase
+class PostgreSQLConnectionTest < Test::Unit::TestCase
 
   def test_set_session_variable_true
     with_connection_removed do |config|
@@ -41,6 +41,29 @@ class PostgresConnectionTest < Test::Unit::TestCase
       ActiveRecord::Base.establish_connection(orig_connection.merge({:encoding => 'unicode'}))
       select_rows "SHOW DEBUG_PRINT_PLAN"
     end
+  end
+
+  context 'with table' do
+
+    def setup
+      super
+      connection.execute('drop table if exists ex')
+      connection.execute('create table ex(id serial primary key, number integer, data character varying(255))')
+    end
+
+    def teardown
+      connection.execute('drop table if exists ex')
+      super
+    end
+
+    def test_query
+      id = connection.insert_sql("insert into ex (number) values(5150)")
+      result = connection.query('select max(id) from ex')
+      assert_instance_of Array, result
+      assert_instance_of Array, result.first
+      assert_equal result.first.first, id
+    end
+
   end
 
   private
