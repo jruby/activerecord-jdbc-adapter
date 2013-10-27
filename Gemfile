@@ -1,6 +1,6 @@
 source "https://rubygems.org"
 
-gem 'activerecord'
+gem 'activerecord', :require => nil
 gem 'thread_safe', :require => nil
 if defined?(JRUBY_VERSION) && JRUBY_VERSION < '1.7.0'
 gem 'jruby-openssl', :platform => :jruby
