@@ -556,7 +556,11 @@ module ArJdbc
     # @private
     def query(sql, name = nil)
       log(sql, name) do
-        @connection.execute_query_raw(sql, nil).map!(&:values)
+        result = []
+        @connection.execute_query_raw(sql, nil) do |*values|
+          result << values
+        end
+        result
       end
     end
 
