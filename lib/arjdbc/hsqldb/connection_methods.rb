@@ -16,6 +16,7 @@ ArJdbc::ConnectionMethods.module_eval do
     end
     config[:driver] ||= defined?(::Jdbc::HSQLDB.driver_name) ? ::Jdbc::HSQLDB.driver_name : 'org.hsqldb.jdbcDriver'
     config[:adapter_spec] ||= ::ArJdbc::HSQLDB
+    config[:adapter_class] = ActiveRecord::ConnectionAdapters::HsqldbAdapter unless config.key?(:adapter_class)
     config[:connection_alive_sql] ||= 'CALL PI()' # does not like 'SELECT 1'
     
     embedded_driver(config)

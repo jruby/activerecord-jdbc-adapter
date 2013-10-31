@@ -275,3 +275,12 @@ module ArJdbc
 
   end
 end
+
+module ActiveRecord::ConnectionAdapters
+
+  class HsqldbAdapter < JdbcAdapter
+    include ArJdbc::HSQLDB
+  end
+  
+end
+
