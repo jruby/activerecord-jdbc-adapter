@@ -264,9 +264,8 @@ end
 
 module ActiveRecord::ConnectionAdapters
 
-  remove_const(:H2Adapter) if const_defined?(:H2Adapter)
-
   class H2Adapter < JdbcAdapter
     include ArJdbc::H2
   end
+  
 end
