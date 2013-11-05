@@ -825,6 +825,9 @@ module ArJdbc
         if AR4_COMPAT && column.array? # will be always falsy in AR < 4.0
           column_class = ::ActiveRecord::ConnectionAdapters::PostgreSQLColumn
           "'#{column_class.array_to_string(value, column, self).gsub(/'/, "''")}'"
+        elsif column.type == :json # only in AR-4.0
+          column_class = ::ActiveRecord::ConnectionAdapters::PostgreSQLColumn
+          super(column_class.json_to_string(value), column)
         else super
         end
       when Hash
