@@ -41,6 +41,8 @@ import java.sql.Types;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.TimeZone;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.jruby.Ruby;
 import org.jruby.RubyClass;
@@ -232,8 +234,38 @@ public class MySQLRubyJdbcConnection extends RubyJdbcConnection {
     @Override
     protected Connection newConnection() throws RaiseException, SQLException {
         final Connection connection = super.newConnection();
-        killCancelTimer(connection);
+        if ( doKillCancelTimer(connection) ) killCancelTimer(connection);
         return connection;
+    }
+
+    private static Boolean killCancelTimer;
+    static {
+        final String killTimer = System.getProperty("arjdbc.mysql.kill_cancel_timer");
+        if ( killTimer != null ) killCancelTimer = Boolean.parseBoolean(killTimer);
+    }
+
+    private static boolean doKillCancelTimer(final Connection connection) throws SQLException {
+        if ( killCancelTimer == null ) {
+            synchronized (MySQLRubyJdbcConnection.class) {
+                final String version = connection.getMetaData().getDriverVersion();
+                if ( killCancelTimer == null ) {
+                    String regex = "mysql\\-connector\\-java-(\\d)\\.(\\d)\\.(\\d+)";
+                    Matcher match = Pattern.compile(regex).matcher(version);
+                    if ( match.find() ) {
+                        final int major = Integer.parseInt( match.group(1) );
+                        final int minor = Integer.parseInt( match.group(2) );
+                        if ( major < 5 || ( major == 5 && minor <= 1 ) ) {
+                            final int patch = Integer.parseInt( match.group(3) );
+                            killCancelTimer = patch < 11;
+                        }
+                    }
+                    else {
+                        killCancelTimer = Boolean.FALSE;
+                    }
+                }
+            }
+        }
+        return killCancelTimer;
     }
 
     /**
@@ -241,8 +273,7 @@ public class MySQLRubyJdbcConnection extends RubyJdbcConnection {
      * MySQL's statement cancel timer can cause memory leaks, so cancel it
      * if we loaded MySQL classes from the same class-loader as JRuby
      *
-     * NOTE: this will likely do nothing on a recent driver esp. since MySQL's
-     * Connector/J supports JDBC 4.0 (Java 6+) which we now require at minimum
+     * NOTE: MySQL Connector/J 5.1.11 (2010-01-21) fixed the issue !
      */
     private void killCancelTimer(final Connection connection) {
         if (connection.getClass().getClassLoader() == getRuntime().getJRubyClassLoader()) {
