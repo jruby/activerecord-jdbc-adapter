@@ -117,6 +117,50 @@ public class SQLite3RubyJdbcConnection extends RubyJdbcConnection {
     }
 
     @Override
+    protected IRubyObject indexes(final ThreadContext context, String tableName, final String name, String schemaName) {
+        int i = -1;
+        if ( tableName != null ) i = tableName.indexOf('.');
+        if ( i > 0 && schemaName == null ) {
+            schemaName = tableName.substring(0, i);
+            tableName = tableName.substring(i + 1);
+        }
+        return super.indexes(context, tableName, name, schemaName);
+    }
+
+    @Override
+    protected TableName extractTableName(
+            final Connection connection, String catalog, String schema,
+            final String tableName) throws IllegalArgumentException, SQLException {
+
+        final String[] nameParts = tableName.split("\\.");
+        if ( nameParts.length > 3 ) {
+            throw new IllegalArgumentException("table name: " + tableName + " should not contain more than 2 '.'");
+        }
+
+        String name = tableName;
+
+        if ( nameParts.length == 2 ) {
+            schema = nameParts[0];
+            name = nameParts[1];
+        }
+        else if ( nameParts.length == 3 ) {
+            catalog = nameParts[0];
+            schema = nameParts[1];
+            name = nameParts[2];
+        }
+
+        name = caseConvertIdentifierForJdbc(connection, name);
+
+        if ( schema != null ) {
+            schema = caseConvertIdentifierForJdbc(connection, schema);
+            // NOTE: hack to work-around SQLite JDBC ignoring schema :
+            return new TableName(catalog, null, schema + '.' + name);
+        }
+
+        return new TableName(catalog, schema, name);
+    }
+
+    @Override
     protected IRubyObject jdbcToRuby(final ThreadContext context,
         final Ruby runtime, final int column, int type, final ResultSet resultSet)
         throws SQLException {

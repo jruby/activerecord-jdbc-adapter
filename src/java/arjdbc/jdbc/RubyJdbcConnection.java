@@ -991,30 +991,35 @@ public class RubyJdbcConnection extends RubyObject {
         return context.getRuntime().newArray(primaryKeys);
     }
 
-    private static final int PRIMARY_KEYS_COLUMN_NAME = 4;
+    protected static final int PRIMARY_KEYS_COLUMN_NAME = 4;
 
+    @Deprecated // NOTE: this should go private
     protected List<RubyString> primaryKeys(final ThreadContext context, final String tableName) {
         return withConnection(context, new Callable<List<RubyString>>() {
             public List<RubyString> call(final Connection connection) throws SQLException {
-                final Ruby runtime = context.getRuntime();
                 final String _tableName = caseConvertIdentifierForJdbc(connection, tableName);
-                final DatabaseMetaData metaData = connection.getMetaData();
-                ResultSet resultSet = null;
-                final List<RubyString> keyNames = new ArrayList<RubyString>();
-                try {
-                    TableName components = extractTableName(connection, null, _tableName);
-                    resultSet = metaData.getPrimaryKeys(components.catalog, components.schema, components.name);
-
-                    while (resultSet.next()) {
-                        String columnName = resultSet.getString(PRIMARY_KEYS_COLUMN_NAME);
-                        columnName = caseConvertIdentifierForRails(connection, columnName);
-                        keyNames.add( RubyString.newUnicodeString(runtime, columnName) );
-                    }
-                }
-                finally { close(resultSet); }
-                return keyNames;
+                final TableName table = extractTableName(connection, null, _tableName);
+                return primaryKeys(context, connection, table);
             }
         });
+    }
+
+    protected List<RubyString> primaryKeys(final ThreadContext context,
+        final Connection connection, final TableName table) throws SQLException {
+        final DatabaseMetaData metaData = connection.getMetaData();
+        ResultSet resultSet = null;
+        final List<RubyString> keyNames = new ArrayList<RubyString>();
+        try {
+            resultSet = metaData.getPrimaryKeys(table.catalog, table.schema, table.name);
+            final Ruby runtime = context.getRuntime();
+            while ( resultSet.next() ) {
+                String columnName = resultSet.getString(PRIMARY_KEYS_COLUMN_NAME);
+                columnName = caseConvertIdentifierForRails(connection, columnName);
+                keyNames.add( RubyString.newUnicodeString(runtime, columnName) );
+            }
+        }
+        finally { close(resultSet); }
+        return keyNames;
     }
 
     @JRubyMethod(name = "tables")
@@ -1156,13 +1161,15 @@ public class RubyJdbcConnection extends RubyObject {
 
                 String _tableName = caseConvertIdentifierForJdbc(connection, tableName);
                 String _schemaName = caseConvertIdentifierForJdbc(connection, schemaName);
-                final DatabaseMetaData metaData = connection.getMetaData();
+                final TableName table = extractTableName(connection, _schemaName, _tableName);
+                
+                final List<RubyString> primaryKeys = primaryKeys(context, connection, table);
 
-                final List<RubyString> primaryKeys = primaryKeys(context, _tableName);
                 ResultSet indexInfoSet = null;
                 final List<IRubyObject> indexes = new ArrayList<IRubyObject>();
                 try {
-                    indexInfoSet = metaData.getIndexInfo(null, _schemaName, _tableName, false, true);
+                    final DatabaseMetaData metaData = connection.getMetaData();
+                    indexInfoSet = metaData.getIndexInfo(table.catalog, table.schema, table.name, false, true);
                     String currentIndex = null;
 
                     while ( indexInfoSet.next() ) {
@@ -3445,15 +3452,15 @@ public class RubyJdbcConnection extends RubyObject {
             name = nameParts[2];
         }
 
-        if (schema != null) {
+        if ( schema != null ) {
             schema = caseConvertIdentifierForJdbc(connection, schema);
         }
         name = caseConvertIdentifierForJdbc(connection, name);
 
-        if (schema != null && ! databaseSupportsSchemas()) {
+        if ( schema != null && ! databaseSupportsSchemas() ) {
             catalog = schema;
         }
-        if (catalog == null) catalog = connection.getCatalog();
+        if ( catalog == null ) catalog = connection.getCatalog();
 
         return new TableName(catalog, schema, name);
     }
