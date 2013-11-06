@@ -83,6 +83,7 @@ module RakeTestSupport
     if RAILS_4x
       ActiveRecord::Tasks::DatabaseTasks.env = @rails_env
       ActiveRecord::Tasks::DatabaseTasks.db_dir = 'db'
+      ActiveRecord::Tasks::DatabaseTasks.root = Rails.root rescue nil # since 4.0.1
     else
       task(:rails_env) { @rails_env_set = true }
     end
