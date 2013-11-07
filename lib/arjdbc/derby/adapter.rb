@@ -147,6 +147,13 @@ module ArJdbc
       NATIVE_DATABASE_TYPES
     end
 
+    # Ensure the savepoint name is unused before creating it.
+    # @override
+    def create_savepoint(name = current_savepoint_name(true))
+      release_savepoint(name) if @connection.marked_savepoint_names.include?(name)
+      super(name)
+    end
+
     # @override
     def quote(value, column = nil)
       return value.quoted_id if value.respond_to?(:quoted_id)

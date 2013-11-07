@@ -29,3 +29,4 @@ jndi_test/jdbc/.bindings
 .bundle/config
 gemfiles/.bundle/config
 Gemfile.lock
+/.idea
