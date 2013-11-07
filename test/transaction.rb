@@ -166,7 +166,12 @@ module TransactionTestMethods
         Entry.create! :title => 'three'
       end
     end
-    assert_equal %w(one three), Entry.all(:order => :title).map(&:title)
+    if ar_version('4.0')
+      all = Entry.order(:title).to_a
+    else
+      all = Entry.all(:order => :title)
+    end
+    assert_equal %w(one three), all.map(&:title)
   end
 
   def test_savepoint
