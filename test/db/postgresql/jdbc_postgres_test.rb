@@ -37,24 +37,24 @@ module Jdbc
       test 'on java 6' do
         ENV_JAVA[ 'java.specification.version' ] = '1.6'
         Jdbc::Postgres.expects(:load).with do |driver_jar|
-          assert_match /.jdbc4.jar$/, driver_jar
+          assert_match(/.jdbc4.jar$/, driver_jar)
           full_path = File.join(@@driver_dir, driver_jar)
           assert File.exist?(full_path), "#{driver_jar.inspect} not found in: #{@@driver_dir.inspect}"
           true
         end
         Jdbc::Postgres.load_driver
-      end
+      end if ar_version('3.0')
 
       test 'on java 7' do
         ENV_JAVA[ 'java.specification.version' ] = '1.7'
         Jdbc::Postgres.expects(:load).with do |driver_jar|
-          assert_match /.jdbc41.jar$/, driver_jar
+          assert_match(/.jdbc41.jar$/, driver_jar)
           full_path = File.join(@@driver_dir, driver_jar)
           assert File.exist?(full_path), "#{driver_jar.inspect} not found in: #{@@driver_dir.inspect}"
           true
         end
         Jdbc::Postgres.load_driver
-      end
+      end if ar_version('3.0')
 
       test 'fails on java 5' do
         ENV_JAVA[ 'java.specification.version' ] = '1.5'
@@ -62,7 +62,7 @@ module Jdbc
         assert_raise LoadError do
           Jdbc::Postgres.load_driver
         end
-      end
+      end if ar_version('3.0')
 
     end
 
