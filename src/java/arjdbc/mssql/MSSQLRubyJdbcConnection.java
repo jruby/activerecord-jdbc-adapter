@@ -25,6 +25,9 @@
  ***** END LICENSE BLOCK *****/
 package arjdbc.mssql;
 
+import arjdbc.jdbc.Callable;
+import arjdbc.jdbc.RubyJdbcConnection;
+
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.ResultSet;
@@ -47,7 +50,7 @@ import org.jruby.util.ByteList;
  *
  * @author nicksieger
  */
-public class MSSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection {
+public class MSSQLRubyJdbcConnection extends RubyJdbcConnection {
 
     protected MSSQLRubyJdbcConnection(Ruby runtime, RubyClass metaClass) {
         super(runtime, metaClass);
@@ -160,6 +163,21 @@ public class MSSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection {
             }
         }
         return columns;
+    }
+
+    // internal helper not meant as a "public" API - used in one place thus every
+    @JRubyMethod(name = "jtds_driver?")
+    public IRubyObject jtds_driver_p(final ThreadContext context) throws SQLException {
+        // "jTDS Type 4 JDBC Driver for MS SQL Server and Sybase"
+        // SQLJDBC: "Microsoft JDBC Driver 4.0 for SQL Server"
+        return withConnection(context, new Callable<IRubyObject>() {
+            // NOTE: only used in one place for now (on release_savepoint) ...
+            // might get optimized to only happen once since driver won't change
+            public IRubyObject call(final Connection connection) throws SQLException {
+                final String driver = connection.getMetaData().getDriverName();
+                return context.getRuntime().newBoolean( driver.indexOf("jTDS") >= 0 );
+            }
+        });
     }
 
 }

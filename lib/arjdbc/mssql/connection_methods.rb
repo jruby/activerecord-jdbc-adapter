@@ -1,14 +1,13 @@
-require 'arjdbc/mssql/driver_info'
-
 ArJdbc::ConnectionMethods.module_eval do
-  include ArJdbc::MSSQL::DriverInfo
 
   # Default connection method for MS-SQL adapter (`adapter: mssql`),
   # uses the (open-source) jTDS driver.
   # If you'd like to use the "official" MS's SQL-JDBC driver, it's preferable
   # to use the {#sqlserver_connection} method (set `adapter: sqlserver`).
   def mssql_connection(config)
-    if sqlserver_driver?(config)
+    # NOTE: this detection ain't perfect and is only meant as a temporary hack
+    # users will get a deprecation eventually to use `adapter: sqlserver` ...
+    if config[:driver] =~ /SQLServerDriver$/ || config[:url] =~ /^jdbc:sqlserver:/
       return sqlserver_connection(config)
     end
 
