@@ -41,6 +41,10 @@ namespace :db do
     defined?(Rails.env) ? Rails.env : ( RAILS_ENV || 'development' )
   end
 
+  if defined? adapt_jdbc_config
+    puts "ArJdbc: double loading #{__FILE__} please delete lib/rasks/jdbc.rake if present!"
+  end
+
   def adapt_jdbc_config(config)
     return config unless config['adapter']
     config.merge 'adapter' => config['adapter'].sub(/^jdbc/, '')
