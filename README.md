@@ -179,14 +179,15 @@ that case simply setup your *Gemfile* as:
 
 ```ruby
 gem 'activerecord', '~> 4.0.0'
-gem 'activerecord-jdbc-adapter', '~> 1.3.0', platform: :jruby
+gem 'activerecord-jdbc-adapter', '~> 1.3.2', platform: :jruby
 ```
 
 #### Without Bundler
 
-Install the needed gems with JRuby:
+Install the needed gems with JRuby, for example:
 
-    jruby -S gem install activerecord activerecord-jdbc-adapter
+    gem install activerecord -v "~> 3.2.10"
+    gem install activerecord-jdbc-adapter --ignore-dependencies
 
 If you wish to use the adapter for a specific database, you can install it
 directly and the (jdbc-) driver gem (dependency) will be installed as well:
