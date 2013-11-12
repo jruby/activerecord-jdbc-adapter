@@ -1,3 +1,22 @@
+## 1.3.3 (11/12/13)
+
+- [mysql] allow encoding to be server-detected (using `encoding: false`)
+  due compatibility we still default to `encoding: utf8` if not set (fixes #481)
+- need to match AR 4.0 built-in patterns to re-define (oracle) tasks correctly
+- [postgres] support some of libpg's ENV variables when connecting
+- [derby] allow multiple parallell nested transactions on DERBY
+- [mssql] when using the Microsoft SQL Server driver, fall back to
+  rollback_savepoint when release_savepoint is called (#484)
+- [mysql] only kill the connections cancel timer for driver < 5.1.11
+- [sqlite3] work-around driver ignoring passed schema for table (fixes #483)
+- now using explicit adapter classes with H2/HSQLDB
+- [postgres] Add support for array as root element in JSON (#491)
+- [postgres] MRI compat - make sure we have a `query` method (fixes #486)
+- db:structure:load does not create schema for test db (#480)
+
+Code Contributors (in no particular order): Glenn Goodrich, Joao Carlos,
+Jason Franklin, Dominique d'Argent, Sean McCarthy, Uwe Kubosch
+
 ## 1.3.2 (10/11/13)
 
 - when "pop-ing" current savepoint name - consider open transaction count (#477)
