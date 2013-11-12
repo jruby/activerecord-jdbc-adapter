@@ -1260,7 +1260,8 @@ module MultibyteTestMethods
     def setup
       super
       config = ActiveRecord::Base.connection.config
-      jdbc_driver = ActiveRecord::ConnectionAdapters::JdbcDriver.new(config[:driver])
+      properties = config[:properties] || {}
+      jdbc_driver = ActiveRecord::ConnectionAdapters::JdbcDriver.new(config[:driver], properties)
       @java_connection = jdbc_driver.connection(config[:url], config[:username], config[:password])
       @java_connection.setAutoCommit(true)
     end

@@ -25,8 +25,9 @@ ArJdbc::ConnectionMethods.module_eval do
     properties = ( config[:properties] ||= {} )
     properties['zeroDateTimeBehavior'] ||= 'convertToNull'
     properties['jdbcCompliantTruncation'] ||= 'false'
-    properties['useUnicode'] ||= 'true'
-    properties['characterEncoding'] = config[:encoding] || 'utf8'
+    properties['useUnicode'] = 'true' unless properties.key?('useUnicode') # otherwise platform default
+    encoding = config.key?(:encoding) ? config[:encoding] : 'utf8'
+    properties['characterEncoding'] = encoding if encoding
 
     jdbc_connection(config)
   end
