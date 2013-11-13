@@ -24,7 +24,8 @@ Gem::Specification.new do |gem|
 
   gem.files = `git ls-files`.split("\n").
     reject { |f| f =~ /^(activerecord-jdbc[^-]|jdbc-)/ }. # gem directories
-    reject { |f| f =~ /^(bench|test)/ } # not sure if including tests is useful
+    reject { |f| f =~ /^(bench|test)/ }. # not sure if including tests is useful
+    reject { |f| f =~ /^(gemfiles)/ } # no tests - no Gemfile_s appraised ...
   gem.executables = gem.files.grep(%r{^bin/}).map { |f| File.basename(f) }
   gem.test_files = gem.files.grep(%r{^test/})
 
