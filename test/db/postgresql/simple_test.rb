@@ -197,6 +197,12 @@ class PostgresSimpleTest < Test::Unit::TestCase
     assert_equal 10 * 1000, timeout
   end if defined? JRUBY_VERSION
 
+
+  test 'type cast (without column)' do
+    assert_equal 1, connection.type_cast(1, false)
+    assert_equal 'some', connection.type_cast(:some, nil)
+  end
+
 end
 
 class PostgresTimestampTest < Test::Unit::TestCase

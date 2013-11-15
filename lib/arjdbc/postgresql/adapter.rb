@@ -147,7 +147,7 @@ module ArJdbc
     end
 
     def type_cast(value, column, array_member = false)
-      return super unless column
+      return super(value, nil) unless column
 
       case value
       when String
