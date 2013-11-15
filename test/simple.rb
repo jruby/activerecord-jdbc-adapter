@@ -635,49 +635,39 @@ module SimpleTestMethods
     name_lower.save!
 
     name_upper = ValidatesUniquenessOfString.new(:cs_string => "NAME", :ci_string => '2')
-    assert_nothing_raised do
-      name_upper.save!
-    end
+    assert_nothing_raised { name_upper.save! }
 
     name_lower_collision = ValidatesUniquenessOfString.new(:cs_string => "name", :ci_string => '3')
-    assert_raise ActiveRecord::RecordInvalid do
-      name_lower_collision.save!
-    end
+    assert_raise(ActiveRecord::RecordInvalid) { name_lower_collision.save! }
 
     name_upper_collision = ValidatesUniquenessOfString.new(:cs_string => "NAME", :ci_string => '4')
-    assert_raise ActiveRecord::RecordInvalid do
-      name_upper_collision.save!
-    end
+    assert_raise(ActiveRecord::RecordInvalid) {name_upper_collision.save! }
+
+    ValidatesUniquenessOfString.create!(:cs_string => 'string', :ci_string => '5')
+    another = ValidatesUniquenessOfString.create!(:cs_string => 'String', :ci_string => '6')
+    another = ValidatesUniquenessOfString.update another.id, :cs_string => 'STRING'
+    assert another.valid?
+    another = ValidatesUniquenessOfString.update another.id, :cs_string => 'string'
+    assert ! another.valid?
   end
 
   def test_validates_uniqueness_of_strings_case_insensitive
-    name_lower = ValidatesUniquenessOfString.new(:cs_string => '1', :ci_string => "name")
-    name_lower.save!
+    ValidatesUniquenessOfString.create!(:cs_string => '1', :ci_string => "name")
 
     name_upper = ValidatesUniquenessOfString.new(:cs_string => '2', :ci_string => "NAME")
-    assert_raise ActiveRecord::RecordInvalid do
-      name_upper.save!
-    end
+    assert_raise(ActiveRecord::RecordInvalid) { name_upper.save! }
 
     name_lower_collision = ValidatesUniquenessOfString.new(:cs_string => '3', :ci_string => "name")
-    assert_raise ActiveRecord::RecordInvalid do
-      name_lower_collision.save!
-    end
+    assert_raise(ActiveRecord::RecordInvalid) { name_lower_collision.save! }
 
     alternate_name_upper = ValidatesUniquenessOfString.new(:cs_string => '4', :ci_string => "ALTERNATE_NAME")
-    assert_nothing_raised do
-      alternate_name_upper.save!
-    end
+    assert_nothing_raised { alternate_name_upper.save! }
 
     alternate_name_upper_collision = ValidatesUniquenessOfString.new(:cs_string => '5', :ci_string => "ALTERNATE_NAME")
-    assert_raise ActiveRecord::RecordInvalid do
-      alternate_name_upper_collision.save!
-    end
+    assert_false alternate_name_upper_collision.save
 
     alternate_name_lower = ValidatesUniquenessOfString.new(:cs_string => '6', :ci_string => "alternate_name")
-    assert_raise ActiveRecord::RecordInvalid do
-      alternate_name_lower.save!
-    end
+    assert_raise(ActiveRecord::RecordInvalid) { alternate_name_lower.save! }
   end
 
   def test_substitute_binds_has_no_side_effect_on_binds_parameter
