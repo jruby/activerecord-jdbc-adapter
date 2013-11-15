@@ -201,7 +201,7 @@ class PostgresSimpleTest < Test::Unit::TestCase
   test 'type cast (without column)' do
     assert_equal 1, connection.type_cast(1, false)
     assert_equal 'some', connection.type_cast(:some, nil)
-  end
+  end if ar_version('3.1')
 
 end
 
