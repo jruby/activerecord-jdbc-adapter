@@ -508,7 +508,7 @@ module ArJdbc
     def prefetch_primary_key?(table_name = nil)
       return true if table_name.nil?
       table_name = table_name.to_s
-      columns(table_name).detect { |column| column.primary }
+      columns(table_name).count { |column| column.primary } == 1
     end
 
     # @override
