@@ -16,9 +16,25 @@ class OracleUnitTest < Test::Unit::TestCase
     assert_equal 'ferko_seq', connection.default_sequence_name('ferko')
     assert_equal 'abcdefghi_abcdefghi_abcdef_seq', connection.default_sequence_name('abcdefghi_abcdefghi_abcdefghi_')
   end
-  
+
+  test 'prefetch primary key if the table has one primary key' do
+    connection = new_adapter_stub
+
+    assert connection.prefetch_primary_key?
+
+    connection.stubs(:columns).returns([stub(:primary => true), stub(:primary => false)])
+    assert connection.prefetch_primary_key?('pages')
+  end
+
+  test 'do not prefetch primary key if the table has a composite primary key' do
+    connection = new_adapter_stub
+
+    connection.stubs(:columns).returns([stub(:primary => true), stub(:primary => true), stub(:primary => false)])
+    assert !connection.prefetch_primary_key?('pages')
+  end
+
   private
-  
+
   def new_adapter_stub(config = {})
     config = config.merge({ :adapter => 'oracle', :adapter_spec => ArJdbc::Oracle })
     connection = stub('connection'); logger = nil
@@ -27,5 +43,5 @@ class OracleUnitTest < Test::Unit::TestCase
     yield(adapter) if block_given?
     adapter
   end
-  
+
 end
