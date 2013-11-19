@@ -166,11 +166,13 @@ module ArJdbc
     end
 
     # Should primary key values be selected from their corresponding
-    # sequence before the insert statement? If true, next_sequence_value
-    # is called before each insert to set the record's primary key.
-    # This is false for all adapters but Firebird.
+    # sequence before the insert statement?
+    # @see #next_sequence_value
+    # @override
     def prefetch_primary_key?(table_name = nil)
-      true
+      return true if table_name.nil?
+      table_name = table_name.to_s
+      columns(table_name).count { |column| column.primary } == 1
     end
 
     def default_sequence_name(table_name, column=nil)
