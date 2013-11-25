@@ -8,7 +8,7 @@ Gem::Specification.new do |s|
   s.version = version
 
   s.required_rubygems_version = Gem::Requirement.new(">= 0") if s.respond_to? :required_rubygems_version=
-  s.authors = ["Nick Sieger, Ola Bini and JRuby contributors"]
+  s.authors = ["Nick Sieger, Ola Bini, Pierrick Rouxel and JRuby contributors"]
 
   s.email = %q{nick@nicksieger.com, ola.bini@gmail.com}
   s.files = [

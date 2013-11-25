@@ -1,36 +1,27 @@
-# jdbc-derby
+# jdbc-as400
 
-Apache Derby, an Apache DB subproject, is an open source relational database 
-implemented entirely in Java.
+IBM i formerly AS/400 is a IBM proprietary operating system. It has a built-in support of DB2 with some particularities.
 
 Some key advantages include:
- * small footprint -- about 2.6 megabytes for the base engine and embedded JDBC driver.
- * Derby is based on the Java, JDBC, and SQL standards.
- * provides an embedded JDBC driver that lets you embed Derby in any Java-based solution.
- * supports client/server mode with the Derby Network Client JDBC driver and Derby Network Server.
- * Derby is easy to install, deploy, and use.
+ * Robust and efficient
+ * Java compatibility
+ * OS/400 database compatibility
 
-For more information see http://db.apache.org/derby/
 
-## Java DB
-
-Java DB is Oracle's supported distribution of the Apache Derby open source database. 
-It supports standard ANSI/ISO SQL through the JDBC and Java EE APIs. 
-Java DB is included in the JDK since Java 6 (1.6).
-
-See http://www.oracle.com/technetwork/java/javadb/overview/index.html
+For more information see http://www-03.ibm.com/systems/power/software/i/db2/index.html
 
 ## Usage
 
 To make the driver accessible to JDBC and ActiveRecord code running in JRuby :
 
-    require 'jdbc/derby'
-    Jdbc::Derby.load_driver
+    require 'jdbc/as400'
+    Jdbc::AS400.load_driver
 
-For backwards compatibility with older (<= **10.6.2.1**) versions of the gem use :
+## Compatibility
 
-    require 'jdbc/derby'
-    Jdbc::Derby.load_driver(:require) if Jdbc::Derby.respond_to?(:load_driver)
+The shipped driver is the JDBC 4.0 with native optimizations version.
+It's only compatible with IBM i V5R1 or later.
+Java 1.6 or later is required.
 
 ## Copyright
 
