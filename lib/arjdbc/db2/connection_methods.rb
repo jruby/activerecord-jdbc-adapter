@@ -20,7 +20,7 @@ ArJdbc::ConnectionMethods.module_eval do
   def as400_connection(config)
     begin
       require 'jdbc/as400'
-      ::ArJdbc::AS400.load_driver(:require) if defined?(::Jdbc::AS400.load_driver)
+      ::Jdbc::AS400.load_driver(:require) if defined?(::Jdbc::AS400.load_driver)
     rescue LoadError # assuming driver.jar is on the class-path
     end
 
