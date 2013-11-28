@@ -428,6 +428,11 @@ module ArJdbc
       @connection.execute_update "call sysproc.admin_cmd('RUNSTATS ON TABLE #{tablename} WITH DISTRIBUTION AND DETAILED INDEXES ALL UTIL_IMPACT_PRIORITY #{priority}')"
     end
 
+    def select(sql, name, binds)
+      # DB2 does not like "= NULL", "!= NULL", or "<> NULL".
+      exec_query(to_sql(sql.gsub(/(!=|<>)\s*null/i, "IS NOT NULL").gsub(/=\s*null/i, "IS NULL"), binds), name, binds)
+    end
+
     def add_index(table_name, column_name, options = {})
       if ! zos? || ( table_name.to_s == ActiveRecord::Migrator.schema_migrations_table_name.to_s )
         column_name = column_name.to_s if column_name.is_a?(Symbol)
