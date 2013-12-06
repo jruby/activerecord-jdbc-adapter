@@ -3,7 +3,8 @@
 MySQL Connector/J is the official JDBC driver for MySQL.
 
 It is a native Java driver that converts JDBC (Java Database Connectivity)
-calls into the network protocol used by the MySQL database.
+calls into the network protocol used by the MySQL database. You will need
+to have version **>= 5.0** installed.
 
 For more information see http://dev.mysql.com/usingmysql/java/
 
