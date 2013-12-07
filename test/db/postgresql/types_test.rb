@@ -1,7 +1,7 @@
 require 'test_helper'
 require 'db/postgres'
 
-class PostgresqlDataTypeTest < Test::Unit::TestCase
+class PostgreSQLTypesTest < Test::Unit::TestCase
 
   class PostgresqlArray < ActiveRecord::Base; end
   class PostgresqlUUID < ActiveRecord::Base; end
@@ -582,6 +582,14 @@ _SQL
     @first_money.save!
     @first_money.reload
     assert_equal new_value, @first_money.wealth
+  end
+
+  def test_money_type_cast
+    column = PostgresqlMoney.columns.find { |c| c.name == 'wealth' }
+    assert_equal(12345678.12, column.type_cast("$12,345,678.12"))
+    assert_equal(12345678.12, column.type_cast("$12.345.678,12"))
+    assert_equal(-1.15, column.type_cast("-$1.15"))
+    assert_equal(-2.25, column.type_cast("($2.25)"))
   end
 
   def test_update_number
