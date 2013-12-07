@@ -243,6 +243,7 @@ module ArJdbc
     def prepare_column_options(column, types)
       spec = super
       spec[:array] = 'true' if column.respond_to?(:array) && column.array
+      spec[:default] = "\"#{column.default_function}\"" if column.default_function
       spec
     end if AR4_COMPAT
 
@@ -1247,6 +1248,14 @@ module ActiveRecord::ConnectionAdapters
         @array = false if respond_to?(:array)
         super(name, default, sql_type, null)
       end
+
+      @default_function = default if has_default_function?(@default, default)
+    end
+
+    private
+
+    def has_default_function?(default_value, default)
+      ! default_value && ( %r{\w+\(.*\)} === default )
     end
 
   end
