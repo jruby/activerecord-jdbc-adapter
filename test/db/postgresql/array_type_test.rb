@@ -19,6 +19,8 @@ class PostgreSQLArrayTypeTest < Test::Unit::TestCase
 
       @connection.add_column 'pg_arrays', 'changed_tags', :string, :array => true, :null => false
       @connection.change_column 'pg_arrays', 'changed_tags', :string, :array => true, :null => true
+
+      @connection.add_column 'pg_arrays', 'tag_count', :integer, :array => true, :default => []
     end
   end
 
@@ -36,6 +38,8 @@ class PostgreSQLArrayTypeTest < Test::Unit::TestCase
     column = PgArray.columns.find { |c| c.name == 'added_tags' }
     assert_equal :string, column.type
     assert column.array
+    assert_match /character varying/, column.sql_type
+    assert_nil column.default
   end
 
   def test_changed_column
@@ -44,22 +48,53 @@ class PostgreSQLArrayTypeTest < Test::Unit::TestCase
     assert column.array
   end
 
-#  def test_type_cast_array
-#    assert column = PgArray.columns.find { |c| c.name == 'tags' }
-#
-#    data = '{1,2,3}'
-#    oid_type  = column.instance_variable_get('@oid_type').subtype
-#    # we are getting the instance variable in this test, but in the
-#    # normal use of string_to_array, it's called from the OID::Array
-#    # class and will have the OID instance that will provide the type
-#    # casting
-#    array = column.class.string_to_array data, oid_type
-#    assert_equal(['1', '2', '3'], array)
-#    assert_equal(['1', '2', '3'], column.type_cast(data))
-#
-#    assert_equal([], column.type_cast('{}'))
-#    assert_equal([nil], column.type_cast('{NULL}'))
+#  ActiveRecord::ConnectionAdapters::PostgreSQLColumn.class_eval do
+#    alias_method :do_initialize, :initialize
+#    def initialize(name, default, oid_type, sql_type = nil, null = true)
+#      do_initialize(name, default, oid_type, sql_type, null)
+#    end
 #  end
+
+  def test_added_column_with_default
+    column = PgArray.columns.find { |c| c.name == 'tag_count' }
+    assert_equal :integer, column.type
+    assert column.array
+    assert_equal 'integer', column.sql_type
+    assert_equal [], column.default
+  end
+
+  def test_change_column_with_array
+    @connection.add_column :pg_arrays, :snippets, :string, array: true, default: []
+    @connection.change_column :pg_arrays, :snippets, :text, array: true, default: "{}"
+
+    PgArray.reset_column_information
+    column = PgArray.columns.find { |c| c.name == 'snippets' }
+
+    assert_equal :text, column.type
+    assert_equal [], column.default
+    assert column.array
+  end
+
+  def test_type_cast_array
+    column = PgArray.columns.find { |c| c.name == 'tags' }
+
+    data = '{1,2,3}'
+    #oid_type  = column.instance_variable_get('@oid_type').subtype
+    # we are getting the instance variable in this test, but in the
+    # normal use of string_to_array, it's called from the OID::Array
+    # class and will have the OID instance that will provide the type
+    # casting
+    #array = column.class.string_to_array data, oid_type
+    #assert_equal(['1', '2', '3'], array)
+    assert_equal(['1', '2', '3'], column.type_cast(data))
+
+    assert_equal([], column.type_cast('{}'))
+    assert_equal([nil], column.type_cast('{NULL}'))
+
+    column = PgArray.columns.find { |c| c.name == 'tag_count' }
+    assert_equal([1, 2, 3], column.type_cast(data))
+    assert_equal([], column.type_cast("{}"))
+  end
 
   def test_rewrite
     @connection.execute "INSERT INTO pg_arrays (tags) VALUES ('{1,2,3}')"

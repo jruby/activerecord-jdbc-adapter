@@ -13,8 +13,23 @@ module ArJdbc
       def self.included(base)
         # NOTE: assumes a standalone PostgreSQLColumn class
         class << base
-          include Cast
+
           attr_accessor :money_precision
+
+          # Loads pg_array_parser if available. String parsing can be
+          # performed quicker by a native extension, which will not create
+          # a large amount of Ruby objects that will need to be garbage
+          # collected. pg_array_parser has a C and Java extension
+          begin
+            require 'pg_array_parser'
+            include PgArrayParser
+          rescue LoadError
+            require 'arjdbc/postgresql/array_parser'
+            include ArrayParser
+          end if AR4_COMPAT
+
+          include Cast
+
         end
       end
 
@@ -97,22 +112,22 @@ module ArJdbc
 
         case sql_type
         when 'money'
-          type_cast_money(value)
+          self.class.string_to_money(value)
         else super
         end
       end
 
       # Casts value (which is a String) to an appropriate instance.
-      def type_cast(value) # AR >= 4.0 version
+      def type_cast(value, type = false) # AR >= 4.0 version
         return if value.nil?
-        return super if encoded?
+        return super(value) if encoded?
 
         # NOTE: we do not use OID::Type
         # @oid_type.type_cast value
 
-        return value if array? # handled on the connection (JDBC) side
+        return self.class.string_to_array(value, self) if array? && type == false
 
-        case type
+        case type ||= self.type
         when :hstore then self.class.string_to_hstore value
         when :json then self.class.string_to_json value
         when :cidr, :inet then self.class.string_to_cidr value
@@ -122,7 +137,7 @@ module ArJdbc
         else
           case sql_type
           when 'money'
-            type_cast_money(value)
+            self.class.string_to_money(value)
           when /^point/
             value.is_a?(String) ? self.class.string_to_point(value) : value
           when /^(bit|varbit)/
@@ -154,32 +169,12 @@ module ArJdbc
             end
 
             ::Range.new(from, to, extracted[:exclude_end])
-          else super
+          else super(value)
           end
         end
       end if AR4_COMPAT
 
       private
-
-      def type_cast_money(value)
-        return value unless value.is_a?(String)
-        # Because money output is formatted according to the locale, there
-        # are two cases to consider (note the decimal separators) :
-        # (1) $12,345,678.12
-        # (2) $12.345.678,12
-        # Negative values are represented as follows:
-        #  (3) -$2.55
-        #  (4) ($2.55)
-        value.sub!(/^\((.+)\)$/, '-\1') # (4)
-        case value
-        when /^-?\D+[\d,]+\.\d{2}$/ # (1)
-          value.gsub!(/[^-\d.]/, '')
-        when /^-?\D+[\d.]+,\d{2}$/ # (2)
-          value.gsub!(/[^-\d,]/, '')
-          value.sub!(/,/, '.')
-        end
-        self.class.value_to_decimal value
-      end
 
       def extract_limit(sql_type)
         case sql_type
@@ -321,6 +316,27 @@ module ArJdbc
       # @note Based on *active_record/connection_adapters/postgresql/cast.rb* (4.0).
       module Cast
 
+        def string_to_money(string)
+          return string unless String === string
+
+          # Because money output is formatted according to the locale, there
+          # are two cases to consider (note the decimal separators) :
+          # (1) $12,345,678.12
+          # (2) $12.345.678,12
+          # Negative values are represented as follows:
+          #  (3) -$2.55
+          #  (4) ($2.55)
+          string = string.sub(/^\((.+)\)$/, '-\1') # (4)
+          case string
+          when /^-?\D+[\d,]+\.\d{2}$/ # (1)
+            string.gsub!(/[^-\d.]/, '')
+          when /^-?\D+[\d.]+,\d{2}$/ # (2)
+            string.gsub!(/[^-\d,]/, '')
+            string.sub!(/,/, '.')
+          end
+          value_to_decimal string
+        end
+
         def point_to_string(point)
           "(#{point[0]},#{point[1]})"
         end
@@ -438,10 +454,11 @@ module ArJdbc
           end
         end
 
-        # NOTE: not used - we get "parsed" array value from connection
-        #def string_to_array(string, oid)
-        #  parse_pg_array(string).map { |val| oid.type_cast val }
-        #end
+        # @note Only used for default values - we get a "parsed" array from JDBC.
+        def string_to_array(string, column)
+          return string unless String === string
+          parse_pg_array(string).map { |val| column.type_cast(val, column.type) }
+        end
 
         private
 

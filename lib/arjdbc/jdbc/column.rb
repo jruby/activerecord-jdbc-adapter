@@ -16,8 +16,7 @@ module ActiveRecord
           default = args.shift
         else # for extending classes allow ignoring first argument :
           if ! config.nil? && ! config.is_a?(Hash)
-            # initialize(name, default, *args)
-            default = name; name = config
+            default = name; name = config # initialize(name, default, *args)
           else
             default = args.shift
           end
