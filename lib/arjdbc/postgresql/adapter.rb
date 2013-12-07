@@ -1412,6 +1412,7 @@ module ActiveRecord::ConnectionAdapters
     end
 
     if ActiveRecord::VERSION::MAJOR < 4 # Rails 3.x compatibility
+      PostgreSQLJdbcConnection.raw_array_type = true if PostgreSQLJdbcConnection.raw_array_type? == nil
       PostgreSQLJdbcConnection.raw_hstore_type = true if PostgreSQLJdbcConnection.raw_hstore_type? == nil
     end
 
