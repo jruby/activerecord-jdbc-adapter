@@ -18,6 +18,12 @@ ArJdbc::ConnectionMethods.module_eval do
 
   # @note Assumes AS400 driver (*jt400.jar*) is on class-path.
   def as400_connection(config)
+    begin
+      require 'jdbc/as400'
+      ::Jdbc::AS400.load_driver(:require) if defined?(::Jdbc::AS400.load_driver)
+    rescue LoadError # assuming driver.jar is on the class-path
+    end
+
     config[:url] ||= begin
       # jdbc:as400://[host]
       url = 'jdbc:as400://'
