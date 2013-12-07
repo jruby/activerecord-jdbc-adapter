@@ -4,12 +4,12 @@ require 'schema_dump'
 
 class PostgresSchemaDumpTest < Test::Unit::TestCase
   include SchemaDumpTestMethods
-  
+
   def self.startup
     super
     MigrationSetup.setup!
   end
-  
+
   def self.shutdown
     MigrationSetup.teardown!
     super
@@ -17,7 +17,7 @@ class PostgresSchemaDumpTest < Test::Unit::TestCase
 
   def setup!; end # MigrationSetup#setup!
   def teardown!; end # MigrationSetup#teardown!
-  
+
   def test_schema_dump_includes_xml_shorthand_definition
     output = standard_dump
     if %r{create_table "postgresql_xml_data_type"} =~ output
@@ -31,7 +31,7 @@ class PostgresSchemaDumpTest < Test::Unit::TestCase
       assert_match %r{t.tsvector "text_vector"}, output
     end
   end
-  
+
   #
 
   # http://kenai.com/jira/browse/ACTIVERECORD_JDBC-135
@@ -78,10 +78,32 @@ class PostgresSchemaDumpTest < Test::Unit::TestCase
     lines.each {|line| assert line =~ /(limit => 8)|(limit: 8)/ }
   end
 
-  def test_schema_dumps_partial_indices
+  def test_dumps_partial_indices
     index_definition = standard_dump.split(/\n/).grep(/add_index.*thing_partial_index/).first.strip
 
     assert_equal 'add_index "things", ["created_at"], name: "thing_partial_index", where: "(name IS NOT NULL)", using: :btree', index_definition
+  end if ar_version('4.0')
+
+  def test_schema_dump_should_use_false_as_default
+    connection.create_table "samples"
+    connection.add_column :samples, :has_fun, :boolean, :null => false, :default => false
+
+    output = standard_dump
+    assert_match %r{create_table "samples"}, output
+    assert_match %r{t\.boolean\s+"has_fun",.+default: false}, output
+  ensure
+    connection.drop_table "samples"
+  end if ar_version('4.0')
+
+  def test_dumps_array_with_default
+    connection.create_table "samples"
+    connection.add_column :samples, :int_empty_col, :integer, :array => true, :default => []
+
+    output = standard_dump
+    assert_match %r{create_table "samples"}, output
+    assert_match %r{t.integer "int_empty_col", default\: \[\], array\: true}, output
+  ensure
+    connection.drop_table "samples"
   end if ar_version('4.0')
 
   private
@@ -91,5 +113,5 @@ class PostgresSchemaDumpTest < Test::Unit::TestCase
     ActiveRecord::SchemaDumper.dump(ActiveRecord::Base.connection, io)
     io.string
   end
-  
+
 end
