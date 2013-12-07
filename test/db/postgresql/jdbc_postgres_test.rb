@@ -1,5 +1,5 @@
 require 'test_helper'
-require 'jdbc/postgres'
+require 'jdbc/postgres' if defined? JRUBY_VERSION
 
 module Jdbc
   class PostgresTest < Test::Unit::TestCase
@@ -66,5 +66,5 @@ module Jdbc
 
     end
 
-  end
+  end if defined? JRUBY_VERSION
 end
