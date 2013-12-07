@@ -33,8 +33,7 @@ module ArJdbc
         end
       end
 
-      attr_accessor :array
-      def array?; array; end # in case we remove the array reader
+      ( attr_accessor :array; def array?; array; end ) if AR4_COMPAT
 
       # Extracts the value from a PostgreSQL column default definition.
       #

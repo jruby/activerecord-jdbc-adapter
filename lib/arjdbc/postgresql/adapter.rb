@@ -1238,10 +1238,11 @@ module ActiveRecord::ConnectionAdapters
     include ::ArJdbc::PostgreSQL::Column
 
     def initialize(name, default, oid_type = nil, sql_type = nil, null = true)
-      # NOTE: we support AR <= 3.2 : (name, default, sql_type = nil, null = true)
-      null, sql_type, oid_type = !! sql_type, oid_type, nil unless oid_type.is_a?(Integer)
-      @oid_type = oid_type
-      if sql_type =~ /\[\]$/
+      if oid_type.is_a?(Integer) then @oid_type = oid_type
+      else # NOTE: AR <= 3.2 : (name, default, sql_type = nil, null = true)
+        null, sql_type, oid_type = !! sql_type, oid_type, nil
+      end
+      if sql_type =~ /\[\]$/ && ArJdbc::PostgreSQL::AR4_COMPAT
         @array = true if respond_to?(:array)
         super(name, default, sql_type[0..sql_type.length - 3], null)
       else
