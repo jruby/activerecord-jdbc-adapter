@@ -90,9 +90,22 @@ module ArJdbc
       end
 
       # Casts value (which is a String) to an appropriate instance.
-      def type_cast(value)
+      # @private
+      def type_cast(value) # AR < 4.0 version
         return if value.nil?
-        return super if encoded? # respond_to?(:encoded?) only since AR-3.2
+        return super if respond_to?(:encoded?) && encoded? # since AR-3.2
+
+        case sql_type
+        when 'money'
+          type_cast_money(value)
+        else super
+        end
+      end
+
+      # Casts value (which is a String) to an appropriate instance.
+      def type_cast(value) # AR >= 4.0 version
+        return if value.nil?
+        return super if encoded?
 
         # NOTE: we do not use OID::Type
         # @oid_type.type_cast value
@@ -109,22 +122,7 @@ module ArJdbc
         else
           case sql_type
           when 'money'
-            # Because money output is formatted according to the locale, there
-            # are two cases to consider (note the decimal separators) :
-            # (1) $12,345,678.12
-            # (2) $12.345.678,12
-            # Negative values are represented as follows:
-            #  (3) -$2.55
-            #  (4) ($2.55)
-            value.sub!(/^\((.+)\)$/, '-\1') # (4)
-            case value
-            when /^-?\D+[\d,]+\.\d{2}$/ # (1)
-              value.gsub!(/[^-\d.]/, '')
-            when /^-?\D+[\d.]+,\d{2}$/ # (2)
-              value.gsub!(/[^-\d,]/, '')
-              value.sub!(/,/, '.')
-            end
-            self.class.value_to_decimal value
+            type_cast_money(value)
           when /^point/
             value.is_a?(String) ? self.class.string_to_point(value) : value
           when /^(bit|varbit)/
@@ -162,6 +160,26 @@ module ArJdbc
       end if AR4_COMPAT
 
       private
+
+      def type_cast_money(value)
+        return value unless value.is_a?(String)
+        # Because money output is formatted according to the locale, there
+        # are two cases to consider (note the decimal separators) :
+        # (1) $12,345,678.12
+        # (2) $12.345.678,12
+        # Negative values are represented as follows:
+        #  (3) -$2.55
+        #  (4) ($2.55)
+        value.sub!(/^\((.+)\)$/, '-\1') # (4)
+        case value
+        when /^-?\D+[\d,]+\.\d{2}$/ # (1)
+          value.gsub!(/[^-\d.]/, '')
+        when /^-?\D+[\d.]+,\d{2}$/ # (2)
+          value.gsub!(/[^-\d,]/, '')
+          value.sub!(/,/, '.')
+        end
+        self.class.value_to_decimal value
+      end
 
       def extract_limit(sql_type)
         case sql_type
