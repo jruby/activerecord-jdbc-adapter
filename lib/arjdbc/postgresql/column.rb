@@ -38,7 +38,7 @@ module ArJdbc
           when /\A'(.*)'::(num|date|tstz|ts|int4|int8)range\z/m
             $1
           # Numeric types
-          when /\A\(?(-?\d+(\.\d*)?\)?)\z/
+          when /\A\(?(-?\d+(\.\d*)?\)?(::bigint)?)\z/
             $1
           # Character types
           when /\A\(?'(.*)'::.*\b(?:character varying|bpchar|text)\z/m
