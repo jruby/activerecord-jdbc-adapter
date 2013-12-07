@@ -482,7 +482,7 @@ public class RubyJdbcConnection extends RubyObject {
     }
 
     @JRubyMethod(name = "disconnect!")
-    public IRubyObject disconnect(final ThreadContext context) {
+    public synchronized IRubyObject disconnect(final ThreadContext context) {
         // TODO: only here to try resolving multi-thread issues :
         // https://github.com/jruby/activerecord-jdbc-adapter/issues/197
         // https://github.com/jruby/activerecord-jdbc-adapter/issues/198
@@ -499,7 +499,7 @@ public class RubyJdbcConnection extends RubyObject {
     }
 
     @JRubyMethod(name = "reconnect!")
-    public IRubyObject reconnect(final ThreadContext context) {
+    public synchronized IRubyObject reconnect(final ThreadContext context) {
         try {
             final Connection connection = newConnection();
             final IRubyObject result = setConnection( connection );
@@ -1162,7 +1162,7 @@ public class RubyJdbcConnection extends RubyObject {
                 String _tableName = caseConvertIdentifierForJdbc(connection, tableName);
                 String _schemaName = caseConvertIdentifierForJdbc(connection, schemaName);
                 final TableName table = extractTableName(connection, _schemaName, _tableName);
-                
+
                 final List<RubyString> primaryKeys = primaryKeys(context, connection, table);
 
                 ResultSet indexInfoSet = null;
@@ -2662,7 +2662,7 @@ public class RubyJdbcConnection extends RubyObject {
     }
 
     protected Connection getConnection(boolean error) {
-        final Connection connection = (Connection) dataGetStruct();
+        final Connection connection = (Connection) dataGetStruct(); // synchronized
         if ( connection == null && error ) {
             final RubyClass errorClass = getConnectionNotEstablished( getRuntime() );
             throw new RaiseException(getRuntime(), errorClass, "no connection available", false);
@@ -2670,7 +2670,7 @@ public class RubyJdbcConnection extends RubyObject {
         return connection;
     }
 
-    private synchronized IRubyObject setConnection(final Connection connection) {
+    private IRubyObject setConnection(final Connection connection) {
         close( getConnection(false) ); // close previously open connection if there is one
 
         final IRubyObject rubyConnectionObject =
