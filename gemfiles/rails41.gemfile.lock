@@ -1,6 +1,6 @@
 GIT
   remote: git://github.com/rails/rails.git
-  revision: 094e31ce6700993759c6f36db52afb0a43bfa71f
+  revision: 76dae289edf33d4b3fc937ecd9d2c77b294d8074
   branch: master
   specs:
     actionmailer (4.1.0.beta)
@@ -8,11 +8,11 @@ GIT
       actionview (= 4.1.0.beta)
       mail (~> 2.5.4)
     actionpack (4.1.0.beta)
+      actionview (= 4.1.0.beta)
       activesupport (= 4.1.0.beta)
       rack (~> 1.5.2)
       rack-test (~> 0.6.2)
     actionview (4.1.0.beta)
-      activemodel (= 4.1.0.beta)
       activesupport (= 4.1.0.beta)
       builder (~> 3.1.0)
       erubis (~> 2.7.0)
@@ -22,13 +22,13 @@ GIT
     activerecord (4.1.0.beta)
       activemodel (= 4.1.0.beta)
       activesupport (= 4.1.0.beta)
-      arel (~> 4.0.0)
+      arel (~> 5.0.0)
     activesupport (4.1.0.beta)
       i18n (~> 0.6, >= 0.6.4)
-      json (~> 1.7)
+      json (~> 1.7, >= 1.7.7)
       minitest (~> 5.0)
       thread_safe (~> 0.1)
-      tzinfo (~> 0.3.37)
+      tzinfo (~> 1.1)
     rails (4.1.0.beta)
       actionmailer (= 4.1.0.beta)
       actionpack (= 4.1.0.beta)
@@ -51,20 +51,21 @@ GEM
     appraisal (0.5.2)
       bundler
       rake
-    arel (4.0.1)
+    arel (5.0.0)
     atomic (1.1.14-java)
     bcrypt-ruby (3.0.1-java)
     builder (3.1.4)
+    docile (1.1.1)
     erubis (2.7.0)
     hike (1.2.3)
-    i18n (0.6.5)
+    i18n (0.6.9)
     json (1.8.1-java)
     mail (2.5.4)
       mime-types (~> 1.16)
       treetop (~> 1.4.8)
     metaclass (0.0.1)
-    mime-types (1.25)
-    minitest (5.0.8)
+    mime-types (1.25.1)
+    minitest (5.1.0)
     mocha (0.13.3)
       metaclass (~> 0.0.1)
     multi_json (1.8.2)
@@ -73,11 +74,12 @@ GEM
     rack-test (0.6.2)
       rack (>= 1.0)
     rake (10.1.0)
-    simplecov (0.7.1)
-      multi_json (~> 1.0)
-      simplecov-html (~> 0.7.1)
-    simplecov-html (0.7.1)
-    sprockets (2.10.0)
+    simplecov (0.8.2)
+      docile (~> 1.1.0)
+      multi_json
+      simplecov-html (~> 0.8.0)
+    simplecov-html (0.8.0)
+    sprockets (2.10.1)
       hike (~> 1.2)
       multi_json (~> 1.0)
       rack (~> 1.0)
@@ -96,7 +98,8 @@ GEM
     treetop (1.4.15)
       polyglot
       polyglot (>= 0.3.1)
-    tzinfo (0.3.38)
+    tzinfo (1.1.0)
+      thread_safe (~> 0.1)
 
 PLATFORMS
   java
