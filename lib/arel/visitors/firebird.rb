@@ -11,7 +11,7 @@ module Arel
         ].compact.join(' ').strip
 
         sql = [
-         o.cores.map { |x| visit_Arel_Nodes_SelectCore x }.join,
+         o.cores.map { |x| do_visit_select_core x, a }.join,
          ("ORDER BY #{o.orders.map { |x| do_visit x, a }.join(', ')}" unless o.orders.empty?),
         ].compact.join ' '
 
