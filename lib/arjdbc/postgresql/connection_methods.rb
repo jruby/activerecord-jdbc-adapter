@@ -19,7 +19,9 @@ ArJdbc::ConnectionMethods.module_eval do
     # PG :connect_timeout - maximum time to wait for connection to succeed
     if connect_timeout = ( config[:connect_timeout] || ENV['PGCONNECT_TIMEOUT'] )
       properties['socketTimeout'] ||= connect_timeout
-      # NOTE: maybe set options['loginTimeout'] as well?
+    end
+    if login_timeout = config[:login_timeout]
+      properties['loginTimeout'] ||= login_timeout
     end
     sslmode = config.key?(:sslmode) ? config[:sslmode] : config[:requiressl]
     # NOTE: makes not much sense since this needs some JVM options :
