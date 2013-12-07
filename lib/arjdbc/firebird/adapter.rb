@@ -10,7 +10,7 @@ module ArJdbc
     # @private
     def self.initialize!
       return if @@_initialized; @@_initialized = true
-
+      
       require 'arjdbc/util/serialized_attributes'
       Util::SerializedAttributes.setup /blob/i
     end
@@ -74,6 +74,24 @@ module ArJdbc
     def self.emulate_booleans; @@emulate_booleans; end
     # @see #emulate_booleans?
     def self.emulate_booleans=(emulate); @@emulate_booleans = emulate; end
+
+    # @private
+    @@update_lob_values = true
+
+    # Updating records with LOB values (binary/text columns) in a separate
+    # statement can be disabled using :
+    #
+    #   ArJdbc::Firebird.update_lob_values = false
+    def self.update_lob_values?; @@update_lob_values; end
+    # @see #update_lob_values?
+    def self.update_lob_values=(update); @@update_lob_values = update; end
+
+    # @see #update_lob_values?
+    def update_lob_values?; Firebird.update_lob_values?; end
+
+    # @see #quote
+    # @private
+    BLOB_VALUE_MARKER = "''"
 
     ADAPTER_NAME = 'Firebird'.freeze
 
@@ -222,8 +240,15 @@ module ArJdbc
       return value if sql_literal?(value)
 
       type = column && column.type
+
       # BLOBs are updated separately by an after_save trigger.
-      return "NULL" if type == :binary || type == :text
+      if type == :binary || type == :text
+        if update_lob_values?
+          return value.nil? ? "NULL" : BLOB_VALUE_MARKER
+        else
+          return "'#{quote_string(value)}'"
+        end
+      end
 
       case value
       when String, ActiveSupport::Multibyte::Chars
@@ -278,6 +303,11 @@ module ArJdbc
     def quoted_false
       quote(0)
     end
+
+    # @override
+    def quote_table_name_for_assignment(table, attr)
+      quote_column_name(attr)
+    end if ::ActiveRecord::VERSION::MAJOR >= 4
 
     # @override
     def quote_column_name(column_name)
