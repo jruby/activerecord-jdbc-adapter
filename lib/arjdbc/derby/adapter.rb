@@ -96,7 +96,7 @@ module ArJdbc
       md = jdbc_connection.meta_data
       major_version = md.database_major_version; minor_version = md.database_minor_version
       if major_version < 10 || (major_version == 10 && minor_version < 5)
-        raise ::ActiveRecord::ConnectionFailed, "Derby adapter requires Derby >= 10.5"
+        raise ::ActiveRecord::ConnectionNotEstablished, "Derby adapter requires Derby >= 10.5"
       end
       if major_version == 10 && minor_version < 8 # 10.8 ~ supports JDBC 4.1
         config[:connection_alive_sql] ||=
