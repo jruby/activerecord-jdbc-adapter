@@ -2,7 +2,7 @@ module ActiveRecord
   module ConnectionAdapters
     class JdbcDriver
       attr_reader :name, :properties
-      
+
       def initialize(name, properties = {})
         @name = name
         @driver = driver_class.new
@@ -10,10 +10,10 @@ module ActiveRecord
           @properties = properties # allow programmatically set properties
         else
           @properties = Java::JavaUtil::Properties.new
-          properties.each { |key, val| @properties[key] = val.to_s } if properties
+          properties.each { |key, val| @properties[key.to_s] = val.to_s } if properties
         end
       end
-      
+
       def driver_class
         @driver_class ||= begin
           driver_class_const = (@name[0...1].capitalize + @name[1..@name.length]).gsub(/\./, '_')
