@@ -114,5 +114,21 @@ class DB2SimpleTest < Test::Unit::TestCase
     assert_equal db.id, connection.last_insert_id
     #assert_equal e.id, connection.last_insert_id('entries')
   end
+  
+  # DB2 does not like "= NULL".
+  def test_equals_null
+    Entry.create!(:title => "Foo")
+    entry = Entry.find(:first, :conditions => ["content = NULL"])
+    assert_equal "Foo", entry.title
+  end
+
+  # DB2 does not like "!= NULL" or "<> NULL".
+  def test_not_equals_null
+    Entry.create!(:title => "Foo", :content => "Bar")
+    entry = Entry.find_by_title("Foo", :conditions => ["content != NULL"])
+    assert_equal "Foo", entry.title
+    entry = Entry.find_by_title("Foo", :conditions => ["content <> NULL"])
+    assert_equal "Foo", entry.title
+  end
 
 end
