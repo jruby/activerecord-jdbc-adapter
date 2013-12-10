@@ -246,8 +246,13 @@ _SQL
 
   def test_data_type_of_array_types
     omit_unless @first_array
-    assert_equal :integer, @first_array.column_for_attribute(:commission_by_quarter).type
-    assert_equal :text, @first_array.column_for_attribute(:nicknames).type
+    if ar_version('4.0')
+      assert_equal :integer, @first_array.column_for_attribute(:commission_by_quarter).type
+      assert_equal :text, @first_array.column_for_attribute(:nicknames).type
+    else
+      assert_equal :string, @first_array.column_for_attribute(:commission_by_quarter).type
+      # assert_equal :string, @first_array.column_for_attribute(:nicknames).type
+    end
   end
 
   def test_data_type_of_range_types
