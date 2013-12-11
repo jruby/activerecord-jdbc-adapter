@@ -123,12 +123,13 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
         final Connection connection, final PreparedStatement statement,
         final List<?> binds) throws SQLException {
 
-        ((PGConnection) connection).addDataType("daterange", DateRangeType.class);
-        ((PGConnection) connection).addDataType("tsrange",   TsRangeType.class);
-        ((PGConnection) connection).addDataType("tstzrange", TstzRangeType.class);
-        ((PGConnection) connection).addDataType("int4range", Int4RangeType.class);
-        ((PGConnection) connection).addDataType("int8range", Int8RangeType.class);
-        ((PGConnection) connection).addDataType("numrange",  NumRangeType.class);
+        final PGConnection pgConnection = connection.unwrap(PGConnection.class);
+        pgConnection.addDataType("daterange", DateRangeType.class);
+        pgConnection.addDataType("tsrange",   TsRangeType.class);
+        pgConnection.addDataType("tstzrange", TstzRangeType.class);
+        pgConnection.addDataType("int4range", Int4RangeType.class);
+        pgConnection.addDataType("int8range", Int8RangeType.class);
+        pgConnection.addDataType("numrange",  NumRangeType.class);
 
         super.setStatementParameters(context, connection, statement, binds);
     }
