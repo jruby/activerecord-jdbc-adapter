@@ -119,19 +119,22 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
     }
 
     @Override
-    protected void setStatementParameters(final ThreadContext context,
-        final Connection connection, final PreparedStatement statement,
-        final List<?> binds) throws SQLException {
-
-        final PGConnection pgConnection = connection.unwrap(PGConnection.class);
+    protected Connection newConnection() throws SQLException {
+        final Connection connection = getConnectionFactory().newConnection();
+        final PGConnection pgConnection;
+        if ( connection instanceof PGConnection ) {
+            pgConnection = (PGConnection) connection;
+        }
+        else {
+            pgConnection = connection.unwrap(PGConnection.class);
+        }
         pgConnection.addDataType("daterange", DateRangeType.class);
         pgConnection.addDataType("tsrange",   TsRangeType.class);
         pgConnection.addDataType("tstzrange", TstzRangeType.class);
         pgConnection.addDataType("int4range", Int4RangeType.class);
         pgConnection.addDataType("int8range", Int8RangeType.class);
         pgConnection.addDataType("numrange",  NumRangeType.class);
-
-        super.setStatementParameters(context, connection, statement, binds);
+        return connection;
     }
 
     @Override // due statement.setNull(index, Types.BLOB) not working :
