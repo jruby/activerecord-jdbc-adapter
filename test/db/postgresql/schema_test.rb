@@ -48,8 +48,10 @@ class PostgresSchemaTest < Test::Unit::TestCase
   end if ar_version('4.0') # ctype added in AR 4.0
 
   def test_current_database
-    db = current_connection_config[:database]
-    assert_equal db, connection.current_database
+    assert_not_nil connection.current_database
+    if db = current_connection_config[:database]
+      assert_equal db, connection.current_database
+    end
   end
 
   def test_current_schema
