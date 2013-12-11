@@ -444,7 +444,7 @@ public class RubyJdbcConnection extends RubyObject {
      * @return connection
      */
     @JRubyMethod(name = "init_connection")
-    public IRubyObject init_connection(final ThreadContext context) throws SQLException {
+    public synchronized IRubyObject init_connection(final ThreadContext context) throws SQLException {
         final IRubyObject jdbcConnection = setConnection( newConnection() );
         final IRubyObject adapter = callMethod("adapter"); // self.adapter
         if ( ! adapter.isNil() ) {
