@@ -194,7 +194,9 @@ class PostgresSimpleTest < Test::Unit::TestCase
     jdbc_connection.protoConnection.class.class_eval { field_reader :pgStream }
 
     timeout = jdbc_connection.protoConnection.pgStream.getSocket.getSoTimeout
-    assert_equal 10 * 1000, timeout
+    if connect_timeout = current_connection_config[:connect_timeout]
+      assert_equal connect_timeout.to_i * 1000, timeout
+    end
   end if defined? JRUBY_VERSION
 
 
