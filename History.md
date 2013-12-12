@@ -1,3 +1,21 @@
+## 1.3.4 (12/12/13)
+
+- [postgres] unwrap connection instead of casting when adding custom types (#515)
+- [postgres] allow returning string values for (JDBC) arrays with (#510)
+- allow for symbol keys with custom JDBC properties in `config[:properties]`
+- replacing use of AR::ConnectionFailed with AR::ConnectionNotEstablished (#513)
+- [firebird] fix for missing args when visit_Arel_Nodes_SelectCore is called
+- [postgres] better column compatibility with 3.x (avoid array/oid_type)
+- [postgres] backport array-parser due `Column#extract_default` (#504)
+- [postgres] backported "Correctly parse bigint defaults in PostgreSQL"
+- [postgres] 4.0 compat - detect default_function just like on MRI
+- [postgres] backport support for negative money values (in parenthesis)
+- [postgres] support :login_timeout as a standalone config option
+- [firebird] align `prefetch_primary_key?` with Oracle (only for simple PKs)
+- [oracle] do not pre-fetch the primary key if multiple primary keys exist (#498)
+
+Code Contributors: @andfx, Gavin Stark, Ray Zane, @chapmajs
+
 ## 1.3.3 (11/12/13)
 
 - [mysql] allow encoding to be server-detected (using `encoding: false`)
