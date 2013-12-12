@@ -48,6 +48,7 @@ adapters are available:
   - MSSQL (`activerecord-jdbcmssql-adapter`) - uses the OSS jTDS driver by default
     which might have issues with the latest SQLServer (but should work using the
     Microsoft JDBC Driver for SQL Server - we recommend using 4.0)
+  - AS/400 (`activerecord-jdbcas400-adapter`) - see [![http://github.com/pierrickrouxel/activerecord-jdbcas400-adapter](http://github.com/pierrickrouxel/activerecord-jdbcas400-adapter)][0]
 
 2a. If you're generating a new Rails application, use the following command:
 
