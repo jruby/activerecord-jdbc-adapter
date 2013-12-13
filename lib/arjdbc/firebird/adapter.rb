@@ -76,6 +76,8 @@ module ArJdbc
     def self.emulate_booleans=(emulate); @@emulate_booleans = emulate; end
 
 
+    @@update_lob_values = true
+
     # Updating records with LOB values (binary/text columns) in a separate
     # statement can be disabled using :
     #
