@@ -698,10 +698,11 @@ module ActiveRecord
       # aliasing #create_table_definition as #table_definition :
       alias table_definition create_table_definition
 
-      # `TableDefinition.new native_database_types, name, temporary, options`
+      # Calls the aliased create_table_definition method with the provided
+      # arguments.
       # @private
-      def create_table_definition(name, temporary, options)
-        table_definition(name, temporary, options)
+      def create_table_definition(*args)
+        table_definition(*args)
       end
 
       # @note AR-4x arguments expected: `(name, temporary, options)`
