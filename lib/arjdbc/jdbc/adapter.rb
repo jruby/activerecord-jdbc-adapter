@@ -698,8 +698,10 @@ module ActiveRecord
       # aliasing #create_table_definition as #table_definition :
       alias table_definition create_table_definition
 
-      # Calls the aliased create_table_definition method with the provided
-      # arguments.
+      # `TableDefinition.new native_database_types, name, temporary, options`
+      # and ActiveRecord 4.1 supports optional `as` argument (which defaults
+      # to nil) to provide the SQL to use to generate the table:
+      # `TableDefinition.new native_database_types, name, temporary, options, as`
       # @private
       def create_table_definition(*args)
         table_definition(*args)
