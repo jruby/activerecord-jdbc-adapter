@@ -699,9 +699,12 @@ module ActiveRecord
       alias table_definition create_table_definition
 
       # `TableDefinition.new native_database_types, name, temporary, options`
+      # and ActiveRecord 4.1 supports optional `as` argument (which defaults
+      # to nil) to provide the SQL to use to generate the table:
+      # `TableDefinition.new native_database_types, name, temporary, options, as`
       # @private
-      def create_table_definition(name, temporary, options)
-        table_definition(name, temporary, options)
+      def create_table_definition(*args)
+        table_definition(*args)
       end
 
       # @note AR-4x arguments expected: `(name, temporary, options)`
