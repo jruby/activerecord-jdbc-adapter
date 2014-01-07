@@ -26,6 +26,7 @@ gem 'mocha', '~> 0.13.1', :require => nil, :group => :test
 
 gem 'simplecov', :require => nil, :group => :test
 gem 'bcrypt-ruby', '~> 3.0.0', :require => nil, :group => :test
+#gem 'trinidad_dbpool', :require => nil, :group => :test
 
 group :rails do
   gem 'erubis', :require => nil

@@ -29,7 +29,7 @@ GEM
       activeresource (= 2.3.18)
       activesupport (= 2.3.18)
       rake (>= 0.8.3)
-    rake (10.1.0)
+    rake (10.1.1)
     simplecov (0.8.2)
       docile (~> 1.1.0)
       multi_json
