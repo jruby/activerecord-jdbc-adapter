@@ -1,22 +1,21 @@
 # -*- encoding: utf-8 -*-
 $LOAD_PATH << File.expand_path('../lib', __FILE__)
-
 require 'jdbc/postgres/version'
 
-Gem::Specification.new do |s|
-  s.name = %q{jdbc-postgres}
-  s.version = Jdbc::Postgres::VERSION
+Gem::Specification.new do |gem|
+  gem.name = %q{jdbc-postgres}
+  gem.version = Jdbc::Postgres::VERSION
 
-  s.authors = ["Nick Sieger, Ola Bini and JRuby contributors"]
-  s.email = %q{nick@nicksieger.com, ola.bini@gmail.com}
+  gem.authors = ['Nick Sieger, Ola Bini, Karol Bucek and JRuby contributors']
+  gem.email = ['nick@nicksieger.com', 'ola.bini@gmail.com', 'self@kares.org']
+  gem.homepage = 'https://github.com/jruby/activerecord-jdbc-adapter'
+  gem.licenses = ['BSD']
 
-  s.files = [ "README.md", "LICENSE.txt", *Dir["lib/**/*"].to_a ]
+  gem.files = [ 'README.md', 'LICENSE.txt', *Dir['lib/**/*'].to_a ]
 
-  s.homepage = %q{https://github.com/jruby/activerecord-jdbc-adapter}
-  s.rdoc_options = ["--main", "README.md"]
-  s.require_paths = ["lib"]
-  s.rubyforge_project = %q{jruby-extras}
+  gem.rdoc_options = ["--main", "README.md"]
+  gem.require_paths = ["lib"]
 
-  s.summary = %q{PostgreSQL JDBC driver for JRuby and PostgreSQL/ActiveRecord-JDBC (activerecord-jdbcpostgresql-adapter).}
-  s.description = %q{Install this gem `require 'jdbc/postgres'` and invoke `Jdbc::Postgres.load_driver` within JRuby to load the driver.}
+  gem.summary = %q{PostgreSQL JDBC driver for JRuby and PostgreSQL/ActiveRecord-JDBC (activerecord-jdbcpostgresql-adapter).}
+  gem.description = %q{Install this gem `require 'jdbc/postgres'` and invoke `Jdbc::Postgres.load_driver` within JRuby to load the driver.}
 end
