@@ -3,21 +3,23 @@ arjdbc_lib = File.expand_path("../../lib", __FILE__)
 $:.push arjdbc_lib unless $:.include?(arjdbc_lib)
 require 'arjdbc/version'
 
-Gem::Specification.new do |s|
-  s.name        = "activerecord-jdbch2-adapter"
-  s.version     = version = ArJdbc::VERSION
-  s.platform    = Gem::Platform::RUBY
-  s.authors = ["Nick Sieger, Ola Bini and JRuby contributors"]
-  s.description = %q{Install this gem to use H2 with JRuby on Rails.}
-  s.email = %q{nick@nicksieger.com, ola.bini@gmail.com}
+Gem::Specification.new do |gem|
+  gem.name        = "activerecord-jdbch2-adapter"
+  gem.version     = version = ArJdbc::VERSION
+  gem.platform    = Gem::Platform::RUBY
 
-  s.homepage = %q{https://github.com/jruby/activerecord-jdbc-adapter}
-  s.rubyforge_project = %q{jruby-extras}
-  s.summary = %q{H2 JDBC adapter for JRuby on Rails.}
+  gem.authors = ['Nick Sieger, Ola Bini, Karol Bucek and JRuby contributors']
+  gem.email = ['nick@nicksieger.com', 'ola.bini@gmail.com', 'self@kares.org']
+  gem.homepage = 'https://github.com/jruby/activerecord-jdbc-adapter'
+  gem.license = "BSD"
 
-  s.require_paths = ["lib"]
-  s.files = `git ls-files`.split("\n") # assuming . working directory
+  gem.homepage = %q{https://github.com/jruby/activerecord-jdbc-adapter}
+  gem.rubyforge_project = %q{jruby-extras}
+  gem.summary = %q{H2 JDBC adapter for JRuby on Rails.}
 
-  s.add_dependency 'activerecord-jdbc-adapter', "~>#{version}"
-  s.add_dependency 'jdbc-h2', '~> 1.3.0'
+  gem.require_paths = ["lib"]
+  gem.files = `git ls-files`.split("\n") # assuming . working directory
+
+  gem.add_dependency 'activerecord-jdbc-adapter', "~>#{version}"
+  gem.add_dependency 'jdbc-h2', '~> 1.3.0'
 end

@@ -6,8 +6,8 @@ Gem::Specification.new do |gem|
   gem.name = 'activerecord-jdbc-adapter'
   gem.version = ArJdbc::VERSION
   gem.platform = Gem::Platform::RUBY
-  gem.authors = ['Nick Sieger, Ola Bini and JRuby contributors']
-  gem.email = ['nick@nicksieger.com', 'ola.bini@gmail.com']
+  gem.authors = ['Nick Sieger, Ola Bini, Karol Bucek and JRuby contributors']
+  gem.email = ['nick@nicksieger.com', 'ola.bini@gmail.com', 'self@kares.org']
   gem.homepage = 'https://github.com/jruby/activerecord-jdbc-adapter'
   gem.license = "BSD"
   gem.summary = 'JDBC adapter for ActiveRecord, for use within JRuby on Rails.'

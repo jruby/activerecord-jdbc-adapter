@@ -238,8 +238,10 @@ ask on the #JRuby IRC channel on http://freenode.net/ (try [web-chat][6]).
 
 ## Authors
 
-This project was written by Nick Sieger <nick@nicksieger.com> and Ola Bini
-<olabini@gmail.com> with lots of help from the JRuby community.
+This project was originally written by [Nick Sieger](http://github.com/nicksieger)
+and [Ola Bini](http://github.com/olabini) with lots of help from the JRuby community.
+Polished 3.x compatibility and 4.x support (for AR-JDBC >= 1.3.0) was managed by
+[Karol Bucek](http://github.com/kares) among others.
 
 ## License
 
