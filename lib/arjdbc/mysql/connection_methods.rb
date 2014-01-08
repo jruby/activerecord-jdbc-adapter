@@ -1,5 +1,10 @@
 ArJdbc::ConnectionMethods.module_eval do
   def mysql_connection(config)
+    config[:adapter_spec] ||= ::ArJdbc::MySQL
+    config[:adapter_class] = ActiveRecord::ConnectionAdapters::MysqlAdapter unless config.key?(:adapter_class)
+
+    return jndi_connection(config) if config[:jndi]
+
     begin
       require 'jdbc/mysql'
       ::Jdbc::MySQL.load_driver(:require) if defined?(::Jdbc::MySQL.load_driver)
@@ -19,8 +24,6 @@ ArJdbc::ConnectionMethods.module_eval do
       config[:url] = url
     end
     config[:driver] ||= defined?(::Jdbc::MySQL.driver_name) ? ::Jdbc::MySQL.driver_name : 'com.mysql.jdbc.Driver'
-    config[:adapter_spec] ||= ::ArJdbc::MySQL
-    config[:adapter_class] = ActiveRecord::ConnectionAdapters::MysqlAdapter unless config.key?(:adapter_class)
 
     properties = ( config[:properties] ||= {} )
     properties['zeroDateTimeBehavior'] ||= 'convertToNull'

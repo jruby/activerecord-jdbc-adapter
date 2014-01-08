@@ -10,6 +10,11 @@ ArJdbc::ConnectionMethods.module_eval do
     if config[:driver] =~ /SQLServerDriver$/ || config[:url] =~ /^jdbc:sqlserver:/
       return sqlserver_connection(config)
     end
+    
+    config[:adapter_spec] ||= ::ArJdbc::MSSQL
+    config[:adapter_class] = ActiveRecord::ConnectionAdapters::MSSQLAdapter unless config.key?(:adapter_class)
+
+    return jndi_connection(config) if config[:jndi]
 
     begin
       require 'jdbc/jtds'
@@ -23,8 +28,6 @@ ArJdbc::ConnectionMethods.module_eval do
     config[:host] ||= 'localhost'
     config[:port] ||= 1433
     config[:driver] ||= defined?(::Jdbc::JTDS.driver_name) ? ::Jdbc::JTDS.driver_name : 'net.sourceforge.jtds.jdbc.Driver'
-    config[:adapter_spec] ||= ::ArJdbc::MSSQL
-    config[:adapter_class] = ActiveRecord::ConnectionAdapters::MSSQLAdapter unless config.key?(:adapter_class)
     config[:connection_alive_sql] ||= 'SELECT 1'
 
     config[:url] ||= begin
@@ -49,10 +52,13 @@ ArJdbc::ConnectionMethods.module_eval do
 
   # @note Assumes SQLServer SQL-JDBC driver on the class-path.
   def sqlserver_connection(config)
-    config[:host] ||= 'localhost'
-    config[:driver] ||= 'com.microsoft.sqlserver.jdbc.SQLServerDriver'
     config[:adapter_spec] ||= ::ArJdbc::MSSQL
     config[:adapter_class] = ActiveRecord::ConnectionAdapters::MSSQLAdapter unless config.key?(:adapter_class)
+
+    return jndi_connection(config) if config[:jndi]
+
+    config[:host] ||= 'localhost'
+    config[:driver] ||= 'com.microsoft.sqlserver.jdbc.SQLServerDriver'
     config[:connection_alive_sql] ||= 'SELECT 1'
 
     config[:url] ||= begin

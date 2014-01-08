@@ -1,5 +1,9 @@
 ArJdbc::ConnectionMethods.module_eval do
   def derby_connection(config)
+    config[:adapter_spec] ||= ::ArJdbc::Derby
+
+    return jndi_connection(config) if config[:jndi]
+
     begin
       require 'jdbc/derby'
       ::Jdbc::Derby.load_driver(:require) if defined?(::Jdbc::Derby.load_driver)
@@ -9,7 +13,6 @@ ArJdbc::ConnectionMethods.module_eval do
     config[:url] ||= "jdbc:derby:#{config[:database]};create=true"
     config[:driver] ||= defined?(::Jdbc::Derby.driver_name) ?
       ::Jdbc::Derby.driver_name : 'org.apache.derby.jdbc.EmbeddedDriver'
-    config[:adapter_spec] ||= ::ArJdbc::Derby
 
     embedded_driver(config)
   end

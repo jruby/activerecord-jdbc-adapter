@@ -1,5 +1,10 @@
 ArJdbc::ConnectionMethods.module_eval do
   def sqlite3_connection(config)
+    config[:adapter_spec] ||= ::ArJdbc::SQLite3
+    config[:adapter_class] = ActiveRecord::ConnectionAdapters::SQLite3Adapter unless config.key?(:adapter_class)
+
+    return jndi_connection(config) if config[:jndi]
+
     begin
       require 'jdbc/sqlite3'
       ::Jdbc::SQLite3.load_driver(:require) if defined?(::Jdbc::SQLite3.load_driver)
@@ -10,8 +15,6 @@ ArJdbc::ConnectionMethods.module_eval do
     database = config[:database] # NOTE: "jdbc:sqlite::memory:" syntax is supported
     config[:url] ||= "jdbc:sqlite:#{database == ':memory:' ? '' : database}"
     config[:driver] ||= defined?(::Jdbc::SQLite3.driver_name) ? ::Jdbc::SQLite3.driver_name : 'org.sqlite.JDBC'
-    config[:adapter_spec] ||= ::ArJdbc::SQLite3
-    config[:adapter_class] = ActiveRecord::ConnectionAdapters::SQLite3Adapter unless config.key?(:adapter_class)
     config[:connection_alive_sql] ||= 'SELECT 1'
 
     options = ( config[:properties] ||= {} )

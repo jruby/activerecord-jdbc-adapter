@@ -1,5 +1,9 @@
 ArJdbc::ConnectionMethods.module_eval do
   def firebird_connection(config)
+    config[:adapter_spec] ||= ::ArJdbc::Firebird
+
+    return jndi_connection(config) if config[:jndi]
+
     begin
       require 'jdbc/firebird'
       ::Jdbc::Firebird.load_driver(:require)
@@ -12,7 +16,6 @@ ArJdbc::ConnectionMethods.module_eval do
       "jdbc:firebirdsql://#{config[:host]}:#{config[:port]}/#{config[:database]}"
     end
     config[:driver] ||= ::Jdbc::Firebird.driver_name
-    config[:adapter_spec] ||= ::ArJdbc::Firebird
 
     jdbc_connection(config)
   end

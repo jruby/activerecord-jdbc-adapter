@@ -1,6 +1,10 @@
 ArJdbc::ConnectionMethods.module_eval do
   # @note Assumes DB2 driver (*db2jcc.jar*) is on class-path.
   def db2_connection(config)
+    config[:adapter_spec] ||= ::ArJdbc::DB2
+
+    return jndi_connection(config) if config[:jndi]
+
     config[:url] ||= begin
       if config[:host] # Type 4 URL: jdbc:db2://server:port/database
         config[:port] ||= 50000
@@ -10,7 +14,6 @@ ArJdbc::ConnectionMethods.module_eval do
       end
     end
     config[:driver] ||= ::ArJdbc::DB2::DRIVER_NAME
-    config[:adapter_spec] ||= ::ArJdbc::DB2
     config[:connection_alive_sql] ||= 'SELECT 1 FROM syscat.tables FETCH FIRST 1 ROWS ONLY'
     jdbc_connection(config)
   end
@@ -18,6 +21,10 @@ ArJdbc::ConnectionMethods.module_eval do
 
   # @note Assumes AS400 driver (*jt400.jar*) is on class-path.
   def as400_connection(config)
+    config[:adapter_spec] ||= ::ArJdbc::AS400
+
+    return jndi_connection(config) if config[:jndi]
+
     config[:url] ||= begin
       # jdbc:as400://[host]
       url = 'jdbc:as400://'
@@ -30,7 +37,6 @@ ArJdbc::ConnectionMethods.module_eval do
     end
     require 'arjdbc/db2/as400'
     config[:driver] ||= ::ArJdbc::AS400::DRIVER_NAME
-    config[:adapter_spec] ||= ::ArJdbc::AS400
     config[:connection_alive_sql] ||= 'SELECT 1 FROM sysibm.tables FETCH FIRST 1 ROWS ONLY'
     jdbc_connection(config)
   end

@@ -1,10 +1,16 @@
 ArJdbc::ConnectionMethods.module_eval do
   def postgresql_connection(config)
+    config[:adapter_spec] ||= ::ArJdbc::PostgreSQL
+    config[:adapter_class] = ActiveRecord::ConnectionAdapters::PostgreSQLAdapter unless config.key?(:adapter_class)
+
+    return jndi_connection(config) if config[:jndi]
+
     begin
       require 'jdbc/postgres'
       ::Jdbc::Postgres.load_driver(:require) if defined?(::Jdbc::Postgres.load_driver)
     rescue LoadError # assuming driver.jar is on the class-path
     end
+    config[:driver] ||= defined?(::Jdbc::Postgres.driver_name) ? ::Jdbc::Postgres.driver_name : 'org.postgresql.Driver'
 
     host = config[:host] ||= ( config[:hostaddr] || ENV['PGHOST'] || 'localhost' )
     port = config[:port] ||= ( ENV['PGPORT'] || 5432 )
@@ -35,10 +41,6 @@ ArJdbc::ConnectionMethods.module_eval do
     end
     properties['tcpKeepAlive'] ||= config[:keepalives] if config.key?(:keepalives)
     properties['kerberosServerName'] ||= config[:krbsrvname] if config[:krbsrvname]
-
-    config[:driver] ||= defined?(::Jdbc::Postgres.driver_name) ? ::Jdbc::Postgres.driver_name : 'org.postgresql.Driver'
-    config[:adapter_spec] ||= ::ArJdbc::PostgreSQL
-    config[:adapter_class] = ActiveRecord::ConnectionAdapters::PostgreSQLAdapter unless config.key?(:adapter_class)
 
     jdbc_connection(config)
   end
