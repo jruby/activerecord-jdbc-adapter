@@ -3,7 +3,7 @@ ArJdbc::ConnectionMethods.module_eval do
     config[:adapter_spec] ||= ::ArJdbc::MySQL
     config[:adapter_class] = ActiveRecord::ConnectionAdapters::MysqlAdapter unless config.key?(:adapter_class)
 
-    return jndi_connection(config) if config[:jndi]
+    return jndi_connection(config) if jndi_config?(config)
 
     begin
       require 'jdbc/mysql'

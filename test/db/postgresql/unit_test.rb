@@ -53,16 +53,29 @@ class PostgresUnitTest < Test::Unit::TestCase
 
   end
 
+  context 'connection' do
+
+    test 'jndi configuration' do
+      connection_handler = connection_handler_stub
+
+      config = { :jndi => 'jdbc/TestDS' }
+      connection_handler.expects(:jndi_connection)
+      connection_handler.postgresql_connection config
+
+      # we do not complete username/database etc :
+      assert_nil config[:username]
+      assert_nil config[:database]
+      assert ! config.key?(:database)
+
+      assert_equal ActiveRecord::ConnectionAdapters::PostgreSQLAdapter, config[:adapter_class]
+    end
+
+  end
+
   private
 
   def connection_stub
-    connection = mock('connection')
-    (class << connection; self; end).class_eval do
-      def self.alias_chained_method(*args); args; end
-    end
-    def connection.configure_connection; nil; end
-    connection.extend ArJdbc::PostgreSQL
-    connection
+    super ArJdbc::PostgreSQL
   end
 
 end if defined? JRUBY_VERSION

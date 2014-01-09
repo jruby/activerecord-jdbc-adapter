@@ -3,7 +3,7 @@ ArJdbc::ConnectionMethods.module_eval do
   def db2_connection(config)
     config[:adapter_spec] ||= ::ArJdbc::DB2
 
-    return jndi_connection(config) if config[:jndi]
+    return jndi_connection(config) if jndi_config?(config)
 
     config[:url] ||= begin
       if config[:host] # Type 4 URL: jdbc:db2://server:port/database

@@ -3,7 +3,7 @@ ArJdbc::ConnectionMethods.module_eval do
     config[:adapter_spec] ||= ::ArJdbc::SQLite3
     config[:adapter_class] = ActiveRecord::ConnectionAdapters::SQLite3Adapter unless config.key?(:adapter_class)
 
-    return jndi_connection(config) if config[:jndi]
+    return jndi_connection(config) if jndi_config?(config)
 
     begin
       require 'jdbc/sqlite3'

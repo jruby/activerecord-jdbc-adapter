@@ -90,4 +90,25 @@ class MySQLUnitTest < Test::Unit::TestCase
     assert_equal s, mySQL.quote_string(s)
   end
 
+  context 'connection' do
+
+    test 'jndi configuration' do
+      connection_handler = connection_handler_stub
+
+      config = { :jndi => 'jdbc/TestDS' }
+      connection_handler.expects(:jndi_connection)
+      connection_handler.mysql_connection config
+
+      # we do not complete username/database etc :
+      assert_nil config[:username]
+      assert_nil config[:database]
+      assert ! config.key?(:database)
+      assert ! config.key?(:url)
+      assert ! config.key?(:port)
+
+      assert config[:adapter_class]
+    end
+
+  end
+
 end if defined? JRUBY_VERSION

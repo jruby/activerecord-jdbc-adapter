@@ -2,7 +2,7 @@ ArJdbc::ConnectionMethods.module_eval do
   def firebird_connection(config)
     config[:adapter_spec] ||= ::ArJdbc::Firebird
 
-    return jndi_connection(config) if config[:jndi]
+    return jndi_connection(config) if jndi_config?(config)
 
     begin
       require 'jdbc/firebird'

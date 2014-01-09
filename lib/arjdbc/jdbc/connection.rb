@@ -36,6 +36,10 @@ module ActiveRecord
       # @deprecated no longer used - only kept for compatibility
       def set_native_database_types; end
 
+      def self.jndi_config?(config)
+        config[:jndi] || config[:data_source]
+      end
+
       def jndi?; @jndi; end
       alias_method :jndi_connection?, :jndi?
 
@@ -46,7 +50,7 @@ module ActiveRecord
       # @note this has nothing to do with the configure_connection implemented
       # on some of the concrete adapters (e.g. {#ArJdbc::Postgres})
       def setup_connection_factory
-        if config[:jndi] || config[:data_source]
+        if self.class.jndi_config?(config)
           begin
             setup_jndi_factory
           rescue => e
