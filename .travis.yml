@@ -3,7 +3,8 @@ bundler_args: --without development
 script: bundle exec rake test_$DB
 before_script: export JRUBY_OPTS="--server -Xcext.enabled=false -Xcompile.invokedynamic=false"
 before_install:
-  - 'ruby -e "puts RUBY_VERSION" | grep ^1\.8 && gem update --system -v 2.1.11 || true'
+  - gem update --system 2.1.11
+  #- 'ruby -e "puts RUBY_VERSION" | grep ^1\.8 && gem update --system -v 2.1.11 || true'
 rvm:
   - jruby
 gemfile:
