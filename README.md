@@ -95,14 +95,18 @@ development:
   url: jdbc:mysql://localhost:3306/blog_development
 ```
 
-For JNDI data sources, you may simply specify the JNDI location as follows (the
-correct database type will be automatically detected):
+For JNDI data sources, you may simply specify the JNDI location as follows, it's
+recommended to use the same adapter: setting as one would configure when using
+"bare" (JDBC) connections e.g. :
 
 ```yml
 production:
-  adapter: jndi # jdbc
+  adapter: postgresql
   jndi: jdbc/PostgreDS
 ```
+
+**NOTE:** any other settings such as *database:*, *username:*, *properties:* make
+no difference since everything is already configured on the JNDI DataSource end.
 
 JDBC driver specific properties might be set if you use an URL to specify the DB
 or preferably using the *properties:* syntax:
