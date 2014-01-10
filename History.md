@@ -1,3 +1,15 @@
+## 1.3.5 (01/10/14)
+
+We're now green against Rails 4.1 (master), test and report issues if any.
+
+- improved support for `config[:jndi]` with all supported custom adapters
+- [mysql] fix incompatible character encodings: ASCII-8BIT and UTF-8
+- rails 4.1 - create_table_definition changed from 3 to 4 parameters (#522)
+- [firebird] Insert quotes for blobs to prevent failed inserts on not-null cols
+
+Code Contributors: Ray Zane, Gary S. Weaver
+Code Contributors: @rzane, @garysweaver
+
 ## 1.3.4 (12/12/13)
 
 - [postgres] unwrap connection instead of casting when adding custom types (#515)
