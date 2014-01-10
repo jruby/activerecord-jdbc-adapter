@@ -8,7 +8,6 @@ We're now green against Rails 4.1 (master), test and report issues if any.
 - [firebird] Insert quotes for blobs to prevent failed inserts on not-null cols
 
 Code Contributors: Ray Zane, Gary S. Weaver
-Code Contributors: @rzane, @garysweaver
 
 ## 1.3.4 (12/12/13)
 
