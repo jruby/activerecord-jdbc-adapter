@@ -123,7 +123,7 @@ module ArJdbc
         'NVARCHAR(MAX)'
       elsif NO_LIMIT_TYPES.include?(type_s)
         super(type)
-      elsif type_s == 'integer'
+      elsif type_s == 'integer' || type_s == 'int'
         if limit.nil? || limit == 4
           'int'
         elsif limit == 2
