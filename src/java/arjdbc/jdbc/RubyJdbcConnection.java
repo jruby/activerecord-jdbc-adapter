@@ -1394,6 +1394,37 @@ public class RubyJdbcConnection extends RubyObject {
         return value;
     }
 
+    @JRubyMethod(name = "jndi_config?", meta = true)
+    public static IRubyObject jndi_config_p(final ThreadContext context,
+        final IRubyObject self, final IRubyObject config) {
+        // config[:jndi] || config[:data_source]
+
+        final Ruby runtime = context.getRuntime();
+
+        IRubyObject configValue;
+
+        if ( config.getClass() == RubyHash.class ) { // "optimized" version
+            final RubyHash configHash = ((RubyHash) config);
+            configValue = configHash.fastARef(runtime.newSymbol("jndi"));
+            if ( configValue == null ) {
+                configValue = configHash.fastARef(runtime.newSymbol("data_source"));
+            }
+        }
+        else {
+            configValue = config.callMethod(context, "[]", runtime.newSymbol("jndi"));
+            if ( configValue.isNil() ) configValue = null;
+            if ( configValue == null ) {
+                configValue = config.callMethod(context, "[]", runtime.newSymbol("data_source"));
+            }
+        }
+
+        final IRubyObject rubyFalse = runtime.newBoolean( false );
+        if ( configValue == null || configValue.isNil() || configValue == rubyFalse ) {
+            return rubyFalse;
+        }
+        return context.getRuntime().newBoolean( true );
+    }
+
     protected final IRubyObject getConfigValue(final ThreadContext context, final String key) {
         final IRubyObject config = callMethod(context, "config");
         return config.callMethod(context, "[]", context.getRuntime().newSymbol(key));

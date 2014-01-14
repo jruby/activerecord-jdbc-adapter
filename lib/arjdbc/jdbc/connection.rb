@@ -38,10 +38,6 @@ module ActiveRecord
         ArJdbc.deprecate "set_native_database_types is no longer used and does nothing override native_database_types instead"
       end
 
-      def self.jndi_config?(config)
-        config[:jndi] || config[:data_source]
-      end
-
       def jndi?; @jndi; end
       alias_method :jndi_connection?, :jndi?
 
