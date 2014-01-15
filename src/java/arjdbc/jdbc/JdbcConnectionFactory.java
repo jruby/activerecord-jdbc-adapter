@@ -27,6 +27,12 @@ package arjdbc.jdbc;
 
 import java.sql.Connection;
 import java.sql.SQLException;
+import javax.sql.DataSource;
+
+import org.jruby.RubyObject;
+import org.jruby.RubyString;
+import org.jruby.runtime.ThreadContext;
+import org.jruby.runtime.builtin.IRubyObject;
 
 /**
  * Interface to be implemented in Ruby for retrieving a new connection.
@@ -41,5 +47,83 @@ public interface JdbcConnectionFactory {
      * @throws SQLException
      */
     Connection newConnection() throws SQLException;
+
+}
+
+class DataSourceConnectionFactoryImpl implements JdbcConnectionFactory {
+
+    private final DataSource dataSource;
+    final String username, password; // optional
+
+    public DataSourceConnectionFactoryImpl(final DataSource dataSource) {
+        this.dataSource = dataSource;
+        this.username = null; this.password = null;
+    }
+
+    public DataSourceConnectionFactoryImpl(final DataSource dataSource,
+        final String username, final String password) {
+        this.dataSource = dataSource;
+        this.username = username; this.password = password;
+    }
+
+    public Connection newConnection() throws SQLException {
+        if ( username != null ) {
+            dataSource.getConnection(username, password);
+        }
+        return dataSource.getConnection();
+    }
+
+    DataSource getDataSource() { return dataSource; } /* for tests */
+
+}
+
+class DriverConnectionFactoryImpl implements JdbcConnectionFactory {
+
+    private final DriverWrapper driverWrapper;
+    final String url;
+    final String username, password; // null allowed
+
+    public DriverConnectionFactoryImpl(final DriverWrapper driver, final String url) {
+        this.driverWrapper = driver; this.url = url;
+        this.username = null; this.password = null;
+    }
+
+    public DriverConnectionFactoryImpl(final DriverWrapper driver, final String url,
+        final String username, final String password) {
+        this.driverWrapper = driver; this.url = url;
+        this.username = username; this.password = password;
+    }
+
+    public Connection newConnection() throws SQLException {
+        return driverWrapper.connect(url, username, password);
+    }
+
+    DriverWrapper getDriverWrapper() { return driverWrapper; } /* for tests */
+
+}
+
+// @legacy ActiveRecord::ConnectionAdapters::JdbcDriver
+class RubyConnectionFactoryImpl implements JdbcConnectionFactory {
+
+    private final IRubyObject driver;
+    final RubyString url;
+    final IRubyObject username, password; // null allowed
+
+    private final RubyObject contextProvider;
+
+    public RubyConnectionFactoryImpl(final IRubyObject driver, final RubyString url,
+        final IRubyObject username, final IRubyObject password) {
+        this.driver = driver; this.url = url;
+        this.username = username; this.password = password;
+        contextProvider = (RubyObject) driver;
+    }
+
+    public Connection newConnection() throws SQLException {
+        final ThreadContext context = contextProvider.getRuntime().getCurrentContext();
+        final IRubyObject connection = driver.callMethod(context, "connection", new IRubyObject[] { url, username, password });
+        return (Connection) connection.toJava(Connection.class);
+    }
+
+    IRubyObject getDriver() { return driver; } /* for tests */
 
 }

@@ -56,7 +56,11 @@ import java.util.Calendar;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 import java.util.TimeZone;
+import javax.naming.InitialContext;
+import javax.naming.NamingException;
+import javax.sql.DataSource;
 
 import org.joda.time.DateTime;
 import org.jruby.Ruby;
@@ -84,6 +88,7 @@ import org.jruby.runtime.Arity;
 import org.jruby.runtime.Block;
 import org.jruby.runtime.ObjectAllocator;
 import org.jruby.runtime.ThreadContext;
+import org.jruby.runtime.Visibility;
 import org.jruby.runtime.backtrace.RubyStackTraceElement;
 import org.jruby.runtime.builtin.IRubyObject;
 import org.jruby.util.ByteList;
@@ -1425,6 +1430,124 @@ public class RubyJdbcConnection extends RubyObject {
         return context.getRuntime().newBoolean( true );
     }
 
+    @JRubyMethod(name = "setup_jdbc_factory", visibility = Visibility.PROTECTED)
+    public IRubyObject set_driver_factory(final ThreadContext context) {
+
+        final IRubyObject url = getConfigValue(context, "url");
+        final IRubyObject driver = getConfigValue(context, "driver");
+        final IRubyObject username = getConfigValue(context, "username");
+        final IRubyObject password = getConfigValue(context, "password");
+
+        final IRubyObject driver_instance = getConfigValue(context, "driver_instance");
+
+        if ( url.isNil() || ( driver.isNil() && driver_instance.isNil() ) ) {
+            final Ruby runtime = context.getRuntime();
+            final RubyClass errorClass = getConnectionNotEstablished( runtime );
+            throw new RaiseException(runtime, errorClass, "jdbc adapter requires :driver class and :url", false);
+        }
+
+        final String jdbcURL = buildURL(context, url);
+
+        if ( driver_instance != null && ! driver_instance.isNil() ) {
+            final Object driverInstance = driver_instance.toJava(Object.class);
+            if ( driverInstance instanceof DriverWrapper ) {
+                return set_connection_factory(context, new DriverConnectionFactoryImpl(
+                    (DriverWrapper) driverInstance, jdbcURL,
+                    ( username.isNil() ? null : username.toString() ),
+                    ( password.isNil() ? null : password.toString() )
+                ));
+            }
+            else {
+                return set_connection_factory(context, new RubyConnectionFactoryImpl(
+                    driver_instance, context.getRuntime().newString(jdbcURL),
+                    ( username.isNil() ? username : username.asString() ),
+                    ( password.isNil() ? password : password.asString() )
+                ));
+            }
+        }
+
+        final String usernameStr = username.isNil() ? null : username.toString();
+        final String passwordStr = password.isNil() ? null : password.toString();
+
+        final Ruby runtime = context.getRuntime();
+        final DriverWrapper driverWrapper;
+        try {
+            driverWrapper = new DriverWrapper(runtime, driver.toString(), resolveDriverProperties(context));
+        }
+        catch (ClassCastException e) {
+            throw wrapException(context, e.getCause() != null ? e.getCause() : e);
+        }
+        catch (InstantiationException e) {
+            throw wrapException(context, e.getCause() != null ? e.getCause() : e);
+        }
+        catch (IllegalAccessException e) {
+            throw wrapException(context, e);
+        }
+
+        return set_connection_factory(context, new DriverConnectionFactoryImpl(driverWrapper, jdbcURL, usernameStr, passwordStr));
+    }
+
+    @Deprecated // no longer used - only kept for API compatibility
+    @JRubyMethod(visibility = Visibility.PRIVATE)
+    public IRubyObject jdbc_url(final ThreadContext context) throws NamingException {
+        final IRubyObject url = getConfigValue(context, "url");
+        return context.getRuntime().newString( buildURL(context, url) );
+    }
+
+    private String buildURL(final ThreadContext context, final IRubyObject url) {
+        IRubyObject options = getConfigValue(context, "options");
+        if ( options != null && options.isNil() ) options = null;
+        return DriverWrapper.buildURL(url, (Map) options);
+    }
+
+    private Properties resolveDriverProperties(final ThreadContext context) {
+        IRubyObject properties = getConfigValue(context, "properties");
+        if ( properties == null || properties.isNil() ) return null;
+        Map<?, ?> propertiesJava = (Map) properties.toJava(Map.class);
+        if ( propertiesJava instanceof Properties ) {
+            return (Properties) propertiesJava;
+        }
+        final Properties props = new Properties();
+        for ( Map.Entry entry : propertiesJava.entrySet() ) {
+            props.setProperty(entry.getKey().toString(), entry.getValue().toString());
+        }
+        return props;
+    }
+
+    @JRubyMethod(name = "setup_jndi_factory", visibility = Visibility.PROTECTED)
+    public IRubyObject set_data_source_factory(final ThreadContext context) throws NamingException {
+        final DataSource dataSource = resolveDataSource(context);
+        return set_connection_factory(context, new DataSourceConnectionFactoryImpl(dataSource));
+    }
+
+    @JRubyMethod(name = "jndi?", alias = "jndi_connection?")
+    public IRubyObject jndi_p(final ThreadContext context) {
+        return context.getRuntime().newBoolean( getConnectionFactory() instanceof DataSourceConnectionFactoryImpl );
+    }
+
+    private IRubyObject set_connection_factory(final ThreadContext context, final JdbcConnectionFactory factory) {
+        final IRubyObject connection_factory = JavaUtil.convertJavaToRuby(context.getRuntime(), factory);
+        setConnectionFactory( factory ); //callMethod(context, "connection_factory=", connection_factory);
+        return connection_factory;
+    }
+
+    private DataSource resolveDataSource(final ThreadContext context) throws NamingException {
+        final DataSource dataSource;
+        IRubyObject value = getConfigValue(context, "data_source");
+        if ( value.isNil() ) {
+            value = getConfigValue(context, "jndi");
+            dataSource = (DataSource) new InitialContext().lookup(value.toString());
+        }
+        else {
+            dataSource = (DataSource) value.toJava(DataSource.class);
+        }
+        return dataSource;
+    }
+
+    protected final IRubyObject getConfig(final ThreadContext context) {
+        return callMethod(context, "config");
+    }
+
     protected final IRubyObject getConfigValue(final ThreadContext context, final String key) {
         final IRubyObject config = callMethod(context, "config");
         return config.callMethod(context, "[]", context.getRuntime().newSymbol(key));
@@ -1452,9 +1575,7 @@ public class RubyJdbcConnection extends RubyObject {
 
     protected JdbcConnectionFactory getConnectionFactory() throws RaiseException {
         if ( connectionFactory == null ) {
-            // throw new IllegalStateException("connection factory not set");
-            // NOTE: only for (backwards) compatibility - no likely that anyone
-            // overriden this - thus can likely be safely deleted (no needed) :
+            // NOTE: only for (backwards) compatibility (to be deleted) :
             IRubyObject connection_factory = getInstanceVariable("@connection_factory");
             if ( connection_factory == null ) {
                 throw getRuntime().newRuntimeError("@connection_factory not set");
@@ -3647,6 +3768,23 @@ public class RubyJdbcConnection extends RubyObject {
     protected void warn(final ThreadContext context, final String message) {
         callMethod(context, "warn", context.getRuntime().newString(message));
     }
+
+    /*
+    protected static IRubyObject raise(final ThreadContext context, final RubyClass error, final String message) {
+        return raise(context, error, message, null);
+    }
+
+    protected static IRubyObject raise(final ThreadContext context, final RubyClass error, final String message, final Throwable cause) {
+        final Ruby runtime = context.getRuntime();
+        final IRubyObject[] args;
+        if ( message != null ) {
+            args = new IRubyObject[] { error, runtime.newString(message) };
+        }
+        else {
+            args = new IRubyObject[] { error };
+        }
+        return RubyKernel.raise(context, runtime.getKernel(), args, Block.NULL_BLOCK); // throws
+    } */
 
     private static RubyArray createCallerBacktrace(final ThreadContext context) {
         final Ruby runtime = context.getRuntime();

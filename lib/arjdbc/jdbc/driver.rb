@@ -1,5 +1,6 @@
 module ActiveRecord
   module ConnectionAdapters
+    # @deprecated Re-implemented in Java - no longer used, left for compatibility.
     class JdbcDriver
       attr_reader :name, :properties
 

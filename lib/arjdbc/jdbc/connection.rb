@@ -9,10 +9,8 @@ module ActiveRecord
       # @note second argument is mandatory, only optional for compatibility
       def initialize(config, adapter = nil)
         @config = config; @adapter = adapter
-        @connection = nil; @jndi = nil
-        # @stmts = {} # AR compatibility - statement cache not used
         setup_connection_factory
-        init_connection # @see RubyJdbcConnection.init_connection
+        @connection = nil; init_connection # @see RubyJdbcConnection.init_connection
       rescue Java::JavaSql::SQLException => e
         e = e.cause if defined?(NativeException) && e.is_a?(NativeException) # JRuby-1.6.8
         error = e.getMessage || e.getSQLState
@@ -38,9 +36,6 @@ module ActiveRecord
         ArJdbc.deprecate "set_native_database_types is no longer used and does nothing override native_database_types instead"
       end
 
-      def jndi?; @jndi; end
-      alias_method :jndi_connection?, :jndi?
-
       # Sets the connection factory from the available configuration.
       # @see #setup_jdbc_factory
       # @see #setup_jndi_factory
@@ -58,47 +53,6 @@ module ActiveRecord
         else
           setup_jdbc_factory
         end
-      end
-
-      protected
-
-      def setup_jndi_factory
-        data_source = config[:data_source] ||
-          Java::JavaxNaming::InitialContext.new.lookup(config[:jndi].to_s)
-
-        @jndi = true
-        self.connection_factory = JdbcConnectionFactory.impl { data_source.connection }
-      end
-
-      def setup_jdbc_factory
-        if ! config[:url] || ( ! config[:driver] && ! config[:driver_instance] )
-          msg = config[:url] ? ":url = #{config[:url]}" : ":driver = #{config[:driver]}"
-          raise ::ActiveRecord::ConnectionNotEstablished, "jdbc adapter requires :driver and :url (got #{msg})"
-        end
-
-        url = jdbc_url
-        username = config[:username]
-        password = config[:password]
-        jdbc_driver = ( config[:driver_instance] ||=
-            JdbcDriver.new(config[:driver].to_s, config[:properties]) )
-
-        @jndi = false
-        self.connection_factory = JdbcConnectionFactory.impl do
-          jdbc_driver.connection(url, username, password)
-        end
-      end
-
-      private
-
-      def jdbc_url
-        url = config[:url].to_s
-        if options = config[:options]
-          ArJdbc.deprecate "use config[:properties] to specify connection URL properties instead of config[:options]"
-          options = options.map { |key, val| "#{key}=#{val}" }.join('&') if Hash === options
-          url = url['?'] ? "#{url}&#{options}" : "#{url}?#{options}" unless options.empty?
-          config[:url] = url; config[:options] = nil
-        end
-        url
       end
 
     end
