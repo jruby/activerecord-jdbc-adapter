@@ -1,16 +1,18 @@
-require 'db/jndi_config'
+require 'db/jndi_derby_config'
 require 'simple'
 
 class DerbyJndiTest < Test::Unit::TestCase
   include SimpleTestMethods
 
+  JNDI_CONFIG = JNDI_DERBY_CONFIG
+
   # Derby specifics :
   DbTypeMigration.big_decimal_precision = 31
   ALIVE_SQL = 'SELECT 1 FROM SYS.SYSSCHEMAS'
+  BASE_CONFIG = { :connection_alive_sql => ALIVE_SQL }
 
   def setup
-    config = { :connection_alive_sql => ALIVE_SQL }.merge(JNDI_CONFIG)
-    ActiveRecord::Base.establish_connection config
+    ActiveRecord::Base.establish_connection BASE_CONFIG.merge(JNDI_DERBY_CONFIG)
     super
   end
 
@@ -42,7 +44,7 @@ class DerbyJndiTest < Test::Unit::TestCase
 
 end
 
-require 'db/jndi_pooled_config'
+require 'db/jndi_derby_pooled_config'
 
 class DerbyJndiPooledTest < Test::Unit::TestCase
   include SimpleTestMethods
@@ -50,7 +52,7 @@ class DerbyJndiPooledTest < Test::Unit::TestCase
   def self.startup
     ActiveRecord::Base.establish_connection( {
         :connection_alive_sql => DerbyJndiTest::ALIVE_SQL
-    }.merge(JNDI_POOLED_CONFIG) )
+    }.merge(JNDI_DERBY_POOLED_CONFIG) )
   end
 
   # @override
@@ -63,7 +65,6 @@ class DerbyJndiPooledTest < Test::Unit::TestCase
   test "(raw) connection is a jndi connection" do
     connection = ActiveRecord::Base.connection.raw_connection
     assert_true connection.jndi?
-    assert_true connection.jndi_connection?
   end
 
 end

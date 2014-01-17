@@ -1,10 +1,4 @@
 
-JNDI_CONFIG = { :adapter => 'jdbc', :jndi => 'jdbc/DerbyDB' }
-
-unless ( ps = ENV['PREPARED_STATEMENTS'] || ENV['PS'] ).nil?
-  JNDI_CONFIG[:prepared_statements] = ps
-end
-
 # FS based JNDI impl borrowed from tomcat :
 load 'test/jars/tomcat-juli.jar'
 load 'test/jars/tomcat-catalina.jar'
@@ -18,19 +12,8 @@ java.lang.System.set_property(
     'org.apache.naming'
 )
 
-require 'jdbc/derby'
-Jdbc::Derby.load_driver
-
-data_source = org.apache.derby.jdbc.EmbeddedDataSource.new
-data_source.database_name = "memory:DerbyDB-JNDI"
-data_source.create_database = "create"
-data_source.user = "sa"
-data_source.password = ""
-
 init_context = javax.naming.InitialContext.new
 begin
   init_context.create_subcontext 'jdbc'
 rescue javax.naming.NameAlreadyBoundException
 end
-
-init_context.bind JNDI_CONFIG[:jndi], data_source

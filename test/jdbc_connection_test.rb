@@ -188,4 +188,13 @@ class JdbcConnectionTest < Test::Unit::TestCase
 
   end
 
+  context "connected" do
+
+    test "(raw) connection is not a jndi connection" do
+      connection = ActiveRecord::Base.connection.raw_connection
+      assert_false connection.jndi?
+    end
+
+  end
+
 end
