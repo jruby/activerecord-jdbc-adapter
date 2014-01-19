@@ -5,7 +5,6 @@ require 'arjdbc/version'
 require 'arjdbc/jdbc/java'
 require 'arjdbc/jdbc/base_ext'
 require 'arjdbc/jdbc/connection_methods'
-require 'arjdbc/jdbc/driver'
 require 'arjdbc/jdbc/column'
 require 'arjdbc/jdbc/connection'
 require 'arjdbc/jdbc/arel_support'
@@ -15,6 +14,9 @@ require 'arjdbc/jdbc/type_converter'
 
 module ActiveRecord
   module ConnectionAdapters
+
+    autoload :JdbcDriver, 'arjdbc/jdbc/driver' # compatibility - no longer used
+
     # Built on top of `ActiveRecord::ConnectionAdapters::AbstractAdapter` which
     # provides the abstract interface for database-specific functionality, this
     # class serves 2 purposes in AR-JDBC :
