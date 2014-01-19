@@ -5,14 +5,14 @@ class JdbcPlainTest < Test::Unit::TestCase
 
   def self.startup
     super
-    @connection = ActiveRecord::Base.remove_connection
+    @_prev_ = ActiveRecord::Base.remove_connection
     ActiveRecord::Base.establish_connection JDBC_DERBY_CONFIG
     define_schema
   end
 
   def self.shutdown
     drop_schema
-    @connection && ActiveRecord::Base.establish_connection(@connection)
+    @_prev_ && ActiveRecord::Base.establish_connection(@_prev_)
     super
   end
 

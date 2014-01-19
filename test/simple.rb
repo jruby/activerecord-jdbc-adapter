@@ -46,6 +46,7 @@ module MigrationSetup
   end
 
   def self.teardown!
+    return unless ( ActiveRecord::Base.connection rescue false )
     CreateCustomPkName.down
     CreateThings.down
     CreateValidatesUniquenessOf.down

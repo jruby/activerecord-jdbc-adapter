@@ -32,9 +32,8 @@ env:
   - JRUBY_OPTS="--1.9 $JRUBY_OPTS" DB=hsqldb PREPARED_STATEMENTS=true
   - JRUBY_OPTS="--1.8 $JRUBY_OPTS" DB=jndi
   - JRUBY_OPTS="--1.9 $JRUBY_OPTS" DB=jndi PREPARED_STATEMENTS=true
-  # TODO: not sure why it can't connect :
-  #- JRUBY_OPTS="--1.8 $JRUBY_OPTS" DB=jdbc
-  #- JRUBY_OPTS="--1.9 $JRUBY_OPTS" DB=jdbc
+  - JRUBY_OPTS="--1.8 $JRUBY_OPTS" DB=jdbc
+  - JRUBY_OPTS="--1.9 $JRUBY_OPTS" DB=jdbc PREPARED_STATEMENTS=true
 jdk:
   - openjdk6
 branches:
