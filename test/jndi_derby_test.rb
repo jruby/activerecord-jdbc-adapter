@@ -12,6 +12,7 @@ class DerbyJndiTest < Test::Unit::TestCase
   BASE_CONFIG = { :connection_alive_sql => ALIVE_SQL }
 
   def setup
+    disconnect_if_connected
     ActiveRecord::Base.establish_connection BASE_CONFIG.merge(JNDI_DERBY_CONFIG)
     super
   end

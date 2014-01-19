@@ -134,6 +134,13 @@ class Test::Unit::TestCase
     ActiveRecord::Base.connection.disconnect!
   end
 
+  def disconnect_if_connected
+    if ActiveRecord::Base.connected?
+      ActiveRecord::Base.connection.disconnect!
+      ActiveRecord::Base.remove_connection
+    end
+  end
+
   def clear_active_connections!
     ActiveRecord::Base.clear_active_connections!
   end
