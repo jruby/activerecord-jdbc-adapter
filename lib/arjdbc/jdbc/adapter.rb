@@ -10,12 +10,12 @@ require 'arjdbc/jdbc/connection'
 require 'arjdbc/jdbc/arel_support'
 require 'arjdbc/jdbc/callbacks'
 require 'arjdbc/jdbc/extension'
-require 'arjdbc/jdbc/type_converter'
 
 module ActiveRecord
   module ConnectionAdapters
 
     autoload :JdbcDriver, 'arjdbc/jdbc/driver' # compatibility - no longer used
+    autoload :JdbcTypeConverter, 'arjdbc/jdbc/type_converter'
 
     # Built on top of `ActiveRecord::ConnectionAdapters::AbstractAdapter` which
     # provides the abstract interface for database-specific functionality, this
