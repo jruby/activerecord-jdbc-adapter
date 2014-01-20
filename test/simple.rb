@@ -37,22 +37,22 @@ module MigrationSetup
   def self.setup!
     DbTypeMigration.up
     CreateStringIds.up
-    CreateEntries.up
-    CreateUsers.up
+    EntryMigration.up
+    UserMigration.up
     CreateAutoIds.up
     CreateValidatesUniquenessOf.up
     CreateThings.up
-    CreateCustomPkName.up
+    CustomPkNameMigration.up
   end
 
   def self.teardown!
     return unless ( ActiveRecord::Base.connection rescue false )
-    CreateCustomPkName.down
+    CustomPkNameMigration.down
     CreateThings.down
     CreateValidatesUniquenessOf.down
     CreateAutoIds.down
-    CreateUsers.down
-    CreateEntries.down
+    UserMigration.down
+    EntryMigration.down
     CreateStringIds.down
     DbTypeMigration.down
   end
@@ -1278,86 +1278,6 @@ module SimpleTestMethods
     end
   end
 
-end
-
-module MultibyteTestMethods
-  include MigrationSetup
-
-  if defined?(JRUBY_VERSION)
-    def setup
-      super
-      config = ActiveRecord::Base.connection.config
-      properties = config[:properties] || {}
-      jdbc_driver = ActiveRecord::ConnectionAdapters::JdbcDriver.new(config[:driver], properties)
-      @java_connection = jdbc_driver.connection(config[:url], config[:username], config[:password])
-      @java_connection.setAutoCommit(true)
-    end
-
-    def teardown
-      @java_connection.close
-      super
-    end
-
-    def test_select_multibyte_string
-      @java_connection.createStatement().
-        execute("insert into entries (id, title, content) values (1, 'テスト', '本文')")
-      entry = Entry.first
-      assert_equal "テスト", entry.title
-      assert_equal "本文", entry.content
-      assert_equal entry, Entry.find_by_title("テスト")
-    end
-
-    def test_update_multibyte_string
-      Entry.create!(:title => "テスト", :content => "本文")
-      rs = @java_connection.createStatement().
-        executeQuery("select title, content from entries")
-      assert rs.next
-      assert_equal "テスト", rs.getString(1)
-      assert_equal "本文", rs.getString(2)
-    end
-  end
-
-  def test_multibyte_aliasing
-    str = "テスト"
-    quoted_alias = Entry.connection.quote_column_name(str)
-    sql = "SELECT title AS #{quoted_alias} from entries"
-    records = Entry.connection.select_all(sql)
-    records.each do |rec|
-      rec.keys.each do |key|
-        assert_equal str, key
-      end
-    end
-  end
-
-  def test_chinese_word
-    chinese_word = '中文'
-    new_entry = Entry.create(:title => chinese_word)
-    new_entry.reload
-    assert_equal chinese_word, new_entry.title
-  end
-end
-
-module NonUTF8EncodingMethods
-  def setup
-    @connection = ActiveRecord::Base.remove_connection
-    latin2_connection = @connection.dup
-    latin2_connection[:encoding] = 'latin2'
-    latin2_connection.delete(:url) # pre-gen url gets stashed; remove to re-gen
-    ActiveRecord::Base.establish_connection latin2_connection
-    CreateEntries.up
-  end
-
-  def teardown
-    CreateEntries.down
-    ActiveRecord::Base.establish_connection @connection
-  end
-
-  def test_nonutf8_encoding_in_entry
-    prague_district = 'hradčany'
-    new_entry = Entry.create :title => prague_district
-    new_entry.reload
-    assert_equal prague_district, new_entry.title
-  end
 end
 
 module ActiveRecord3TestMethods

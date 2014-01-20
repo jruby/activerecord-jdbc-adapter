@@ -1,5 +1,5 @@
-require 'jdbc_common'
 require 'db/mssql'
+require 'simple'
 
 class MSSQLSimpleTest < Test::Unit::TestCase
   include SimpleTestMethods
@@ -201,6 +201,8 @@ class MSSQLSimpleTest < Test::Unit::TestCase
 
 end
 
+require 'has_many_through_test_methods'
+
 class MSSQLHasManyThroughTest < Test::Unit::TestCase
-  include HasManyThroughMethods
+  include HasManyThroughTestMethods
 end

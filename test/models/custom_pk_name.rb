@@ -1,4 +1,4 @@
-class CreateCustomPkName < ActiveRecord::Migration
+class CustomPkNameMigration < ActiveRecord::Migration
   def self.up
     create_table :custom_pk_names, :force => true, :id => false do |t|
       t.primary_key :custom_id

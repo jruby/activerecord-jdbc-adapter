@@ -1,4 +1,6 @@
-class CreateEntries < ActiveRecord::Migration
+require 'models/user'
+
+class EntryMigration < ActiveRecord::Migration
   def self.up
     create_table "entries", :force => true do |t|
       t.column :title, :string, :limit => 100
@@ -14,6 +16,7 @@ class CreateEntries < ActiveRecord::Migration
     drop_table "entries"
   end
 end
+CreateEntries = EntryMigration
 
 class Entry < ActiveRecord::Base
   belongs_to :user
@@ -22,21 +25,3 @@ class Entry < ActiveRecord::Base
     "#{id}-#{title.gsub(/[^a-zA-Z0-9]/, '-')}"
   end
 end
-
-class CreateUsers < ActiveRecord::Migration
-  def self.up
-    create_table "users", :force => true do |t|
-      t.column :login, :string, :limit => 100, :null => false
-      t.timestamps # created_at / updated_at
-    end
-  end
-
-  def self.down
-    drop_table "users"
-  end
-end
-
-class User < ActiveRecord::Base
-  has_many :entries
-end
-

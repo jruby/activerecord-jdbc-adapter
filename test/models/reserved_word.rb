@@ -1,4 +1,4 @@
-class CreateReservedWords < ActiveRecord::Migration
+class ReservedWordMigration < ActiveRecord::Migration
   def self.up
     create_table "reserved_words", :force => true do |t|
       t.column :position, :integer
@@ -10,6 +10,7 @@ class CreateReservedWords < ActiveRecord::Migration
     drop_table "reserved_words"
   end
 end
+CreateReservedWords = ReservedWordMigration
 
 class ReservedWord < ActiveRecord::Base
 end

@@ -3,9 +3,9 @@ require 'models/entry'
 require 'models/mixed_case'
 
 class PostgreSQLMixedCaseTest < Test::Unit::TestCase
-  
+
   def setup
-    Migration::MixedCase.up
+    MixedCaseMigration.up
     @table_name = User.table_name
     User.table_name = 'tblUsers'
     User.reset_column_information
@@ -14,7 +14,7 @@ class PostgreSQLMixedCaseTest < Test::Unit::TestCase
   def teardown
     User.table_name = @table_name
     User.reset_column_information
-    Migration::MixedCase.down
+    MixedCaseMigration.down
   end
 
   def test_create

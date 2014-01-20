@@ -1,7 +1,6 @@
 module ResetColumnInfoTestMethods
 
-  class Fhqwhgad < ActiveRecord::Base
-  end
+  class Fhqwhgad < ActiveRecord::Base; end
 
   def test_reset_column_information
     drop_fhqwhgads_table!

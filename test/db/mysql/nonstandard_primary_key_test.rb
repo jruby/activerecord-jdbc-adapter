@@ -1,7 +1,6 @@
-require 'jdbc_common'
 require 'db/mysql'
 
-class MysqlNonstandardPrimaryKeyTest < Test::Unit::TestCase
+class MySQLNonstandardPrimaryKeyTest < Test::Unit::TestCase
 
   class Project < ActiveRecord::Migration
     def self.up
@@ -18,7 +17,7 @@ class MysqlNonstandardPrimaryKeyTest < Test::Unit::TestCase
     end
 
   end
-  
+
   def setup
     Project.up
   end

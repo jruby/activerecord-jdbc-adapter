@@ -1,7 +1,7 @@
 # encoding: ASCII-8BIT
 require File.expand_path('test_helper', File.dirname(__FILE__))
+
 require 'simple'
-require 'has_many_through'
 
 class DerbySimpleTest < Test::Unit::TestCase
   include SimpleTestMethods
@@ -202,10 +202,8 @@ class DerbySimpleTest < Test::Unit::TestCase
 
 end
 
-class DerbyMultibyteTest < Test::Unit::TestCase
-  include MultibyteTestMethods
-end
+require 'has_many_through_test_methods'
 
 class DerbyHasManyThroughTest < Test::Unit::TestCase
-  include HasManyThroughMethods
+  include HasManyThroughTestMethods
 end

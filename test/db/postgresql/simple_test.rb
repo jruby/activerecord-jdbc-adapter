@@ -1,17 +1,16 @@
-require 'test_helper'
+require 'db/postgres'
 require 'simple'
 require 'custom_select_test_methods'
-require 'has_many_through_test_methods'
 require 'xml_column_test_methods'
-require 'db/postgres'
 
-class PostgresSimpleTest < Test::Unit::TestCase
+class PostgreSQLSimpleTest < Test::Unit::TestCase
   include SimpleTestMethods
   include ActiveRecord3TestMethods
   include ColumnNameQuotingTests
   include DirtyAttributeTests
-  include XmlColumnTestMethods
+
   include CustomSelectTestMethods
+  include XmlColumnTestMethods
 
   def test_adapter_class_name_equals_native_adapter_class_name
     classname = connection.class.name[/[^:]*$/]
@@ -207,7 +206,7 @@ class PostgresSimpleTest < Test::Unit::TestCase
 
 end
 
-class PostgresTimestampTest < Test::Unit::TestCase
+class PostgreSQLTimestampTest < Test::Unit::TestCase
 
   def self.startup
     super
@@ -293,7 +292,7 @@ class PostgresTimestampTest < Test::Unit::TestCase
 
 end
 
-class PostgresDeserializationTest < Test::Unit::TestCase
+class PostgreSQLDeserializationTest < Test::Unit::TestCase
 
   def self.startup
     DbTypeMigration.up
@@ -311,6 +310,8 @@ class PostgresDeserializationTest < Test::Unit::TestCase
   end
 end
 
-class PostgresHasManyThroughTest < Test::Unit::TestCase
-  include HasManyThroughMethods
+require 'has_many_through_test_methods'
+
+class PostgreSQLHasManyThroughTest < Test::Unit::TestCase
+  include HasManyThroughTestMethods
 end

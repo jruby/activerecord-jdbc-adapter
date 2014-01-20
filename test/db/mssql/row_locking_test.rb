@@ -1,7 +1,6 @@
-require 'jdbc_common'
 require 'db/mssql'
+require 'row_locking_test_methods'
 
 class MSSQLRowLockingTest < Test::Unit::TestCase
-  include MigrationSetup
   include RowLockingTestMethods
 end

@@ -1,6 +1,6 @@
 # encoding: utf-8
-require 'jdbc_common'
 require 'db/mssql'
+require 'multibyte_test_methods'
 
 class MSSQLMultibyteTest < Test::Unit::TestCase
   include MultibyteTestMethods
@@ -12,5 +12,5 @@ class MSSQLMultibyteTest < Test::Unit::TestCase
     assert_equal "本文", entry.content
     assert_equal entry, Entry.find_by_title("テスト")
   end
-    
+
 end

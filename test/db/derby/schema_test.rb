@@ -1,5 +1,4 @@
-require 'test_helper'
-require 'db/derby'
+require File.expand_path('test_helper', File.dirname(__FILE__))
 
 class DerbySchemaTest < Test::Unit::TestCase
 

@@ -1,9 +1,9 @@
-require 'jdbc_common'
 require 'db/mssql'
+require 'simple'
 
 class MSSQLIdentityInsertTest < Test::Unit::TestCase
   include MigrationSetup
-  
+
   def test_enable_identity_insert_when_necessary
     Entry.connection.execute("INSERT INTO entries([id], [title]) VALUES (333, 'Title')")
     Entry.connection.execute("INSERT INTO entries([title], [id]) VALUES ('Title', 344)")

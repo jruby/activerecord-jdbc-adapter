@@ -2,7 +2,7 @@
 require 'test_helper'
 require 'db/postgres'
 
-class PostgresLTreeTest < Test::Unit::TestCase
+class PostgreSQLLTreeTest < Test::Unit::TestCase
 
   class Ltree < ActiveRecord::Base
     self.table_name = 'ltrees'

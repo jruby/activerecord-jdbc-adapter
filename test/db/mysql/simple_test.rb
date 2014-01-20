@@ -1,16 +1,18 @@
 require File.expand_path('test_helper', File.dirname(__FILE__))
 
 require 'simple'
-require 'has_many_through'
 require 'row_locking'
+require 'custom_select_test_methods'
+require 'xml_column_test_methods'
 
-class MysqlSimpleTest < Test::Unit::TestCase
+class MySQLSimpleTest < Test::Unit::TestCase
   include SimpleTestMethods
   include ActiveRecord3TestMethods
   include ColumnNameQuotingTests
   include DirtyAttributeTests
-  include XmlColumnTestMethods
+
   include CustomSelectTestMethods
+  include XmlColumnTestMethods
 
   # @override
   def test_execute_update
@@ -366,6 +368,8 @@ class MysqlSimpleTest < Test::Unit::TestCase
 
 end
 
-class MysqlHasManyThroughTest < Test::Unit::TestCase
-  include HasManyThroughMethods
+require 'has_many_through_test_methods'
+
+class MySQLHasManyThroughTest < Test::Unit::TestCase
+  include HasManyThroughTestMethods
 end

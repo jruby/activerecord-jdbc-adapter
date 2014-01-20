@@ -1,5 +1,3 @@
-# Simple method to reduce the boilerplate
-
 require 'test_helper'
 
 require 'models/auto_id'
@@ -12,5 +10,7 @@ require 'models/thing'
 require 'models/custom_pk_name'
 
 require 'simple'
-require 'has_many_through'
-require 'row_locking'
+
+require 'has_many_through_test_methods'
+require 'row_locking_test_methods'
+require 'multibyte_test_methods'

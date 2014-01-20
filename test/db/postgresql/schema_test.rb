@@ -1,7 +1,7 @@
 require 'test_helper'
 require 'db/postgres'
 
-class PostgresSchemaTest < Test::Unit::TestCase
+class PostgreSQLSchemaTest < Test::Unit::TestCase
 
   def test_create_schema
     begin

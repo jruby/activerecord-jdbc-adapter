@@ -1,7 +1,7 @@
 require 'db/postgres'
 require 'transaction'
 
-class PostgresTransactionTest < Test::Unit::TestCase
+class PostgreSQLTransactionTest < Test::Unit::TestCase
   include TransactionTestMethods
 
   def test_supports_savepoints

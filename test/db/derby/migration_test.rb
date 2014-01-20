@@ -1,10 +1,9 @@
 require 'db/derby'
-require 'jdbc_common'
 
 class DerbyMigrationTest < Test::Unit::TestCase
-  
+
   class CreateDummies < ActiveRecord::Migration
-    
+
     def self.up
       create_table :dummies, :force => true do |t|
         t.string :year, :default => "", :null => false
@@ -15,7 +14,7 @@ class DerbyMigrationTest < Test::Unit::TestCase
   end
 
   class ChangeColumn < ActiveRecord::Migration
-    
+
     def self.up
       create_table :people, :id => false, :force => true do |t|
         t.string :id, :limit => 22, :null => false
@@ -56,7 +55,7 @@ class DerbyMigrationTest < Test::Unit::TestCase
     ActiveRecord::Base.connection.execute("DROP TABLE dummies") rescue nil
     ActiveRecord::Base.connection.execute("DROP TABLE people") rescue nil
   end
-  
+
   def test_create_table_column_quoting_vs_keywords
     CreateDummies.up
   end

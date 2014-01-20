@@ -1,15 +1,13 @@
 # -*- encoding : utf-8 -*-
-require 'jdbc_common'
 require 'db/mysql'
+require 'multibyte_test_methods'
 
 class MySQLMultibyteTest < Test::Unit::TestCase
   include MultibyteTestMethods
-end
 
-class MySQLNonUTF8EncodingTest < Test::Unit::TestCase
-  include NonUTF8EncodingMethods
+  protected
 
-  def test_nonutf8_encoding_in_entry
+  def do_test_nonutf8_encoding_in_entry
     prague_district = 'hradčany'
     new_entry = Entry.create :title => prague_district
     new_entry.reload

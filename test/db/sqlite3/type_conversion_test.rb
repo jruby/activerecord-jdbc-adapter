@@ -1,6 +1,6 @@
 # encoding: utf-8
-require 'jdbc_common'
 require 'db/sqlite3'
+require 'models/db_type'
 
 class SQLite3TypeConversionTest < Test::Unit::TestCase
 

@@ -1,19 +1,22 @@
-require 'jdbc_common'
 require 'db/mysql'
+require 'models/entry'
 
-class StatementEscapingTest < Test::Unit::TestCase
-  include FixtureSetup
+class MySQLStatementEscapingTest < Test::Unit::TestCase
 
   def setup
-    super
+    super; EntryMigration.up
+
+    @_config_ = current_connection_config.dup
     ActiveRecord::Base.clear_active_connections!
-    @config = current_connection_config.dup
   end
 
   def teardown
+    return unless @_config_
+
     ActiveRecord::Base.clear_active_connections!
-    ActiveRecord::Base.establish_connection @config
-    super
+    ActiveRecord::Base.establish_connection @_config_
+
+    EntryMigration.down; super
   end
 
   def test_set_to_false
@@ -35,8 +38,10 @@ class StatementEscapingTest < Test::Unit::TestCase
 
   private
 
+  def config; @_config_ ||= nil; end
+
   def set_escape_processing(value)
-    ActiveRecord::Base.establish_connection @config.merge(:statement_escape_processing => value)
+    ActiveRecord::Base.establish_connection config.merge(:statement_escape_processing => value)
   end
 
   def verify_escaped

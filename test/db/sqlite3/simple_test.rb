@@ -2,7 +2,6 @@ require 'db/sqlite3'
 require 'models/data_types'
 require 'models/validates_uniqueness_of_string'
 require 'simple'
-require 'jdbc_common'
 
 class SQLite3SimpleTest < Test::Unit::TestCase
   include SimpleTestMethods

@@ -2,7 +2,7 @@
 require 'test_helper'
 require 'db/postgres'
 
-class PostgresqlUUIDTest < Test::Unit::TestCase
+class PostgreSQLUUIDTest < Test::Unit::TestCase
 
   def setup
     @connection = ActiveRecord::Base.connection

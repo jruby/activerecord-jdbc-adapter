@@ -2,7 +2,7 @@
 require 'db/postgres'
 require 'schema_dump'
 
-class PostgresSchemaDumpTest < Test::Unit::TestCase
+class PostgreSQLSchemaDumpTest < Test::Unit::TestCase
   include SchemaDumpTestMethods
 
   def self.startup

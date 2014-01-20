@@ -1,6 +1,6 @@
 require 'db/postgres'
 require 'binary'
 
-class PostgresBinaryTest < Test::Unit::TestCase
+class PostgreSQLBinaryTest < Test::Unit::TestCase
   include BinaryTestMethods
 end

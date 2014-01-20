@@ -1,9 +1,10 @@
-require 'jdbc_common'
 require 'db/mysql'
 
-class MySQLIndexLengthDBSetup < ActiveRecord::Migration
-  def self.up
-    execute <<-SQL
+class MySQLIndexLengthTest < Test::Unit::TestCase
+
+  def setup
+    @connection = ActiveRecord::Base.connection
+    ActiveRecord::Base.connection.execute <<-SQL
       CREATE TABLE index_length_test (
         int_column INT,
         text_column TEXT,
@@ -14,19 +15,8 @@ class MySQLIndexLengthDBSetup < ActiveRecord::Migration
     SQL
   end
 
-  def self.down
-    drop_table 'index_length_test'
-  end
-end
-
-class MySQLIndexLengthTest < Test::Unit::TestCase
-  def setup
-    MySQLIndexLengthDBSetup.up
-    @connection = ActiveRecord::Base.connection
-  end
-
   def teardown
-    MySQLIndexLengthDBSetup.down
+    ActiveRecord::Base.connection.drop_table 'index_length_test'
   end
 
   def test_index_length
@@ -55,4 +45,5 @@ class MySQLIndexLengthTest < Test::Unit::TestCase
     assert_equal ['int_column'], index.columns
     assert_equal [nil], index.lengths
   end
+
 end

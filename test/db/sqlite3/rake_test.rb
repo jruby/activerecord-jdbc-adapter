@@ -1,5 +1,5 @@
-require 'rake_test_support'
 require 'db/sqlite3'
+require 'rake_test_support'
 
 class SQLite3RakeTest < Test::Unit::TestCase
   include RakeTestSupport

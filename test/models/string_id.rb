@@ -1,4 +1,4 @@
-class CreateStringIds < ActiveRecord::Migration
+class StringIdMigration < ActiveRecord::Migration
   def self.up
     create_table "string_ids", :force => true, :id => false do |t|
       t.string :id, :null => false
@@ -9,6 +9,7 @@ class CreateStringIds < ActiveRecord::Migration
     drop_table "string_ids"
   end
 end
+CreateStringIds = StringIdMigration
 
 class StringId < ActiveRecord::Base
   def self.table_name; "string_ids"; end

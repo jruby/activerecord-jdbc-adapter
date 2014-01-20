@@ -2,8 +2,8 @@
 require 'test_helper'
 require 'db/postgres'
 
-class PostgresqlJSONTest < Test::Unit::TestCase
-  
+class PostgreSQLJSONTest < Test::Unit::TestCase
+
   class JsonDataType < ActiveRecord::Base
     self.table_name = 'json_data_type'
   end
@@ -95,5 +95,5 @@ class PostgresqlJSONTest < Test::Unit::TestCase
     x.payload = ['v1', {'k2' => 'v2'}, 'v3']
     assert x.save!
   end
-  
+
 end if Test::Unit::TestCase.ar_version('4.0')
