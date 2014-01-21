@@ -32,7 +32,9 @@ module ActiveRecord::ConnectionAdapters
         def resolve_visitor_type(config)
           raise "missing :adapter in #{config.inspect}" unless adapter = config[:adapter]
 
-          unless visitor_type = RESOLVED_VISITORS[ adapter ]
+          visitor_type = RESOLVED_VISITORS[ adapter ]
+
+          if visitor_type.nil? || adapter == 'jdbc'
             if adapter_spec = config[:adapter_spec]
               if adapter_spec.respond_to?(:arel_visitor_type)
                 visitor_type = adapter_spec.arel_visitor_type(config)
@@ -44,6 +46,12 @@ module ActiveRecord::ConnectionAdapters
               end
             elsif respond_to?(:arel_visitor_type)
               visitor_type = arel_visitor_type(config) # adapter_class' override
+            end
+
+            if visitor_type && RESOLVED_VISITORS[ adapter ] # adapter == 'jdbc'
+              if visitor_type != RESOLVED_VISITORS[ adapter ]
+                warn "WARNING: overriding visitor for 'adapter: jdbc' (from #{RESOLVED_VISITORS[ adapter ]} to #{visitor_type})"
+              end
             end
 
             visitor_type ||= ::Arel::Visitors::VISITORS[ arel_visitor_name(adapter_spec) ]
