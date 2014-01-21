@@ -49,8 +49,9 @@ module ActiveRecord::ConnectionAdapters
             visitor_type ||= ::Arel::Visitors::VISITORS[ arel_visitor_name(adapter_spec) ]
             visitor_type ||= ::Arel::Visitors::ToSql # default (if nothing resolved)
 
-            ::Arel::Visitors::VISITORS[ adapter ] = visitor_type
-            RESOLVED_VISITORS[ adapter ] = visitor_type
+            RESOLVED_VISITORS.to_java.synchronized do
+              RESOLVED_VISITORS[ adapter ] = ::Arel::Visitors::VISITORS[ adapter ] = visitor_type
+            end
           end
 
           visitor_type
