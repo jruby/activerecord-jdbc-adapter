@@ -65,6 +65,14 @@ module ActiveRecord::ConnectionAdapters
           visitor_type
         end
 
+        # @private
+        def clean_visitor_type(adapter)
+          RESOLVED_VISITORS.to_java.synchronized do
+            RESOLVED_VISITORS.delete(adapter); ::Arel::Visitors::VISITORS.delete(adapter)
+          end
+        end
+        private :clean_visitor_type
+
         # @note called from `ActiveRecord::ConnectionAdapters::ConnectionPool.checkout` (up till AR-3.2)
         # @override
         def visitor_for(pool)

@@ -134,11 +134,17 @@ class Test::Unit::TestCase
     ActiveRecord::Base.connection.disconnect!
   end
 
-  def disconnect_if_connected
+  def self.disconnect_if_connected
     if ActiveRecord::Base.connected?
       ActiveRecord::Base.connection.disconnect!
       ActiveRecord::Base.remove_connection
     end
+  end
+
+  def disconnect_if_connected; self.class.disconnect_if_connected end
+
+  def self.clean_visitor_type!(adapter = 'jdbc')
+    ActiveRecord::ConnectionAdapters::JdbcAdapter.send :clean_visitor_type, adapter
   end
 
   def clear_active_connections!

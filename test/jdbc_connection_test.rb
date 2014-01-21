@@ -3,9 +3,19 @@ require 'db/jdbc'
 
 class JdbcConnectionTest < Test::Unit::TestCase
 
-  def test_connection_available_through_jdbc_adapter
-     ActiveRecord::Base.connection.execute("show databases") # MySQL
-     assert ActiveRecord::Base.connected?
+  def self.startup
+    clean_visitor_type!
+    super
+  end
+
+  def self.shutdown
+    clean_visitor_type!
+    super
+  end
+
+  test 'connection available through jdbc adapter' do
+    ActiveRecord::Base.connection.execute("show databases") # MySQL
+    assert ActiveRecord::Base.connected?
   end
 
   test 'configures driver/connection properties' do

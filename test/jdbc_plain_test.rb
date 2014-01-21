@@ -5,6 +5,8 @@ class JdbcPlainTest < Test::Unit::TestCase
 
   def self.startup
     super
+    disconnect_if_connected
+    clean_visitor_type!
     @_prev_ = ActiveRecord::Base.remove_connection
     ActiveRecord::Base.establish_connection JDBC_DERBY_CONFIG
     define_schema
@@ -13,6 +15,7 @@ class JdbcPlainTest < Test::Unit::TestCase
   def self.shutdown
     drop_schema
     @_prev_ && ActiveRecord::Base.establish_connection(@_prev_)
+    clean_visitor_type!
     super
   end
 
