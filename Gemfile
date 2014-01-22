@@ -20,8 +20,8 @@ gem 'appraisal', :require => nil
 
 # appraisal ignores group block declarations :
 
-gem 'test-unit', '2.5.4', :group => :test
-gem 'test-unit-context', '>= 0.3.0', :group => :test
+gem 'test-unit', '~> 2.5.4', :group => :test
+gem 'test-unit-context', '>= 0.4.0', :group => :test
 gem 'mocha', '~> 0.13.1', :require => nil, :group => :test
 
 gem 'simplecov', :require => nil, :group => :test
