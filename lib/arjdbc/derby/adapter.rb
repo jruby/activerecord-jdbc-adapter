@@ -109,7 +109,7 @@ module ArJdbc
 
     def configure_connection
       # must be done or SELECT...FOR UPDATE won't work how we expect :
-      execute("SET ISOLATION = SERIALIZABLE")
+      @connection.transaction_isolation = :serializable
       # if a user name was specified upon connection, the user's name is the
       # default schema for the connection, if a schema with that name exists
       set_schema(config[:schema]) if config.key?(:schema)

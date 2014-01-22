@@ -118,4 +118,46 @@ public class DerbyRubyJdbcConnection extends RubyJdbcConnection {
         return super.matchTables(runtime, connection, catalog, schemaPattern, tablePattern, types, checkExistsOnly);
     }
 
+    @JRubyMethod(name = "transaction_isolation", alias = "get_transaction_isolation")
+    public IRubyObject get_transaction_isolation(final ThreadContext context) {
+        return withConnection(context, new Callable<IRubyObject>() {
+            public IRubyObject call(final Connection connection) throws SQLException {
+                final int level = connection.getTransactionIsolation();
+                final String isolationSymbol = formatTransactionIsolationLevel(level);
+                if ( isolationSymbol == null ) return context.getRuntime().getNil();
+                return context.getRuntime().newSymbol(isolationSymbol);
+            }
+        });
+    }
+
+    @JRubyMethod(name = "transaction_isolation=", alias = "set_transaction_isolation")
+    public IRubyObject set_transaction_isolation(final ThreadContext context, final IRubyObject isolation) {
+        return withConnection(context, new Callable<IRubyObject>() {
+            public IRubyObject call(final Connection connection) throws SQLException {
+                final int level;
+                if ( isolation.isNil() ) {
+                    level = connection.getMetaData().getDefaultTransactionIsolation();
+                }
+                else {
+                    level = mapTransactionIsolationLevel(isolation);
+                }
+
+                connection.setTransactionIsolation(level);
+
+                final String isolationSymbol = formatTransactionIsolationLevel(level);
+                if ( isolationSymbol == null ) return context.getRuntime().getNil();
+                return context.getRuntime().newSymbol(isolationSymbol);
+            }
+        });
+    }
+
+    public static String formatTransactionIsolationLevel(final int level) {
+        if ( level == Connection.TRANSACTION_READ_UNCOMMITTED ) return "read_uncommitted"; // 1
+        if ( level == Connection.TRANSACTION_READ_COMMITTED ) return "read_committed"; // 2
+        if ( level == Connection.TRANSACTION_REPEATABLE_READ ) return "repeatable_read"; // 4
+        if ( level == Connection.TRANSACTION_SERIALIZABLE ) return "serializable"; // 8
+        if ( level == 0 ) return null;
+        throw new IllegalArgumentException("unexpected transaction isolation level: " + level);
+    }
+
 }
