@@ -189,6 +189,48 @@ public class RubyJdbcConnection extends RubyObject {
         return getConnectionAdapters(runtime).getClass("JdbcTypeConverter");
     }
 
+    @JRubyMethod(name = "transaction_isolation", alias = "get_transaction_isolation")
+    public IRubyObject get_transaction_isolation(final ThreadContext context) {
+        return withConnection(context, new Callable<IRubyObject>() {
+            public IRubyObject call(final Connection connection) throws SQLException {
+                final int level = connection.getTransactionIsolation();
+                final String isolationSymbol = formatTransactionIsolationLevel(level);
+                if ( isolationSymbol == null ) return context.getRuntime().getNil();
+                return context.getRuntime().newSymbol(isolationSymbol);
+            }
+        });
+    }
+
+    @JRubyMethod(name = "transaction_isolation=", alias = "set_transaction_isolation")
+    public IRubyObject set_transaction_isolation(final ThreadContext context, final IRubyObject isolation) {
+        return withConnection(context, new Callable<IRubyObject>() {
+            public IRubyObject call(final Connection connection) throws SQLException {
+                final int level;
+                if ( isolation.isNil() ) {
+                    level = connection.getMetaData().getDefaultTransactionIsolation();
+                }
+                else {
+                    level = mapTransactionIsolationLevel(isolation);
+                }
+
+                connection.setTransactionIsolation(level);
+
+                final String isolationSymbol = formatTransactionIsolationLevel(level);
+                if ( isolationSymbol == null ) return context.getRuntime().getNil();
+                return context.getRuntime().newSymbol(isolationSymbol);
+            }
+        });
+    }
+
+    public static String formatTransactionIsolationLevel(final int level) {
+        if ( level == Connection.TRANSACTION_READ_UNCOMMITTED ) return "read_uncommitted"; // 1
+        if ( level == Connection.TRANSACTION_READ_COMMITTED ) return "read_committed"; // 2
+        if ( level == Connection.TRANSACTION_REPEATABLE_READ ) return "repeatable_read"; // 4
+        if ( level == Connection.TRANSACTION_SERIALIZABLE ) return "serializable"; // 8
+        if ( level == 0 ) return null;
+        throw new IllegalArgumentException("unexpected transaction isolation level: " + level);
+    }
+
     /*
       def transaction_isolation_levels
         {
@@ -200,12 +242,15 @@ public class RubyJdbcConnection extends RubyObject {
       end
     */
 
-    public static int mapTransactionIsolationLevel(IRubyObject isolation) {
-        if ( ! ( isolation instanceof RubySymbol ) ) {
-            isolation = isolation.asString().callMethod("intern");
+    public static int mapTransactionIsolationLevel(final IRubyObject isolation) {
+        final Object isolationString;
+        if ( isolation instanceof RubySymbol ) {
+            isolationString = isolation.toString(); // RubySymbol.toString (interned)
+        }
+        else {
+            isolationString = isolation.asString().toString().toLowerCase().intern();
         }
 
-        final Object isolationString = isolation.toString(); // RubySymbol.toString
         if ( isolationString == "read_uncommitted" ) return Connection.TRANSACTION_READ_UNCOMMITTED; // 1
         if ( isolationString == "read_committed" ) return Connection.TRANSACTION_READ_COMMITTED; // 2
         if ( isolationString == "repeatable_read" ) return Connection.TRANSACTION_REPEATABLE_READ; // 4
