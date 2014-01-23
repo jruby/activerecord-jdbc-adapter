@@ -108,10 +108,22 @@ test_task_for 'JDBC', :desc => 'Run tests against plain JDBC adapter (uses MySQL
   test_task.libs << 'jdbc-mysql/lib' << 'jdbc-derby/lib'
 end
 
-test_task_for 'JNDI', :desc => 'Run tests against a JNDI connection (uses Derby)',
+#test_task_for 'JNDI', :desc => 'Run tests against a JNDI connection (uses Derby)',
+#  :prereqs => [ 'tomcat-jndi:check', 'db:mysql' ],
+#  :files => FileList['test/*jndi_*test.rb'] do |test_task|
+#  test_task.libs << 'jdbc-mysql/lib' << 'jdbc-derby/lib'
+#end
+
+test_task_for 'JNDI_Derby', :desc => 'Run tests against a Derby JNDI connection',
+  :prereqs => [ 'tomcat-jndi:check' ],
+  :files => FileList['test/*jndi_derby*test.rb'] do |test_task|
+  test_task.libs << 'jdbc-derby/lib'
+end
+
+test_task_for 'JNDI_MySQL', :desc => 'Run tests against a MySQL JNDI connection',
   :prereqs => [ 'tomcat-jndi:check', 'db:mysql' ],
-  :files => FileList['test/*jndi_*test.rb'] do |test_task|
-  test_task.libs << 'jdbc-mysql/lib' << 'jdbc-derby/lib'
+  :files => FileList['test/*jndi_mysql*test.rb'] do |test_task|
+  test_task.libs << 'jdbc-mysql/lib'
 end
 
 test_task_for :MySQL, :name => 'test_jdbc_mysql',
