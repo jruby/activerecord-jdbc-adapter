@@ -9,7 +9,8 @@ module ArJdbc
     def jdbc_connection(config)
       adapter_class = config[:adapter_class]
       adapter_class ||= begin
-        if config[:adapter] == 'jdbc' && adapter = supported_adapter(config)
+        adapter = config[:adapter]
+        if ( adapter == 'jdbc' || adapter == 'jndi' ) && adapter = supported_adapter(config)
           warn "DEPRECATED: use 'adapter: #{adapter}' instead of the current 'adapter: jdbc' configuration"
         end
         ::ActiveRecord::ConnectionAdapters::JdbcAdapter
