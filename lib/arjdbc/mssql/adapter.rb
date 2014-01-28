@@ -360,6 +360,32 @@ module ArJdbc
       execute "EXEC sp_rename '#{table_name}.#{column_name}', '#{new_column_name}', 'COLUMN'"
     end
 
+    # SELECT DISTINCT clause for a given set of columns and a given ORDER BY clause.
+    # MSSQL requires the ORDER BY columns in the select list for distinct queries.
+    def distinct(columns, order_by)
+      "DISTINCT #{columns_for_distinct(columns, order_by)}"
+    end
+
+    def columns_for_distinct(columns, orders)
+      return columns if orders.blank?
+
+      # construct a clean list of column names from the ORDER BY clause,
+      # removing any ASC/DESC modifiers
+      order_columns = [ orders ]; order_columns.flatten! # AR 3.x vs 4.x
+      order_columns.map! do |column|
+        column = column.to_sql unless column.is_a?(String) # handle AREL node
+        column.split(',').collect!{ |s| s.split.first }
+      end.flatten!
+      order_columns.reject!(&:blank?)
+      order_columns = order_columns.zip(0...order_columns.size).to_a
+      order_columns = order_columns.map{ |s, i| "#{s}" }
+
+      columns = [ columns ]; columns.flatten!
+      columns.push( *order_columns ).join(', ')
+      # return a DISTINCT clause that's distinct on the columns we want but
+      # includes all the required columns for the ORDER BY to work properly
+    end
+
     # @override
     def change_column(table_name, column_name, type, options = {})
 
