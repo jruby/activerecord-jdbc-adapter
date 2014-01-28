@@ -1,17 +1,20 @@
 require File.expand_path('../../test/shared_helper', __FILE__)
 
+test_tasks = [ 'test_mysql', 'test_sqlite3', 'test_postgresql_with_hint' ]
 if defined?(JRUBY_VERSION)
-  databases = [ :test_mysql, :test_sqlite3, :test_derby, :test_hsqldb, :test_h2 ]
-  databases << :test_postgres if PostgresHelper.have_postgres?(false)
-  databases << :test_jdbc ; databases << :test_jndi
-  task :test do
-    unless PostgresHelper.have_postgres?
-      warn "... won't run test_postgres tests"
-    end
-    databases.each { |task| Rake::Task[task.to_s].invoke }
+  test_tasks.push :test_derby, :test_hsqldb, :test_h2
+  test_tasks.push :test_jndi, :test_jdbc
+end
+
+desc "Run \"most\" available test_xxx tasks"
+task :test => test_tasks
+
+task 'test_postgresql_with_hint' do
+  if PostgresHelper.have_postgres?(false)
+    Rake::Task['test_postgresql'].invoke
+  else
+    puts "NOTE: won't run test_postgresql"
   end
-else
-  task :test => [ :test_mysql ]
 end
 
 def set_test_task_compat_version(task)
@@ -26,14 +29,18 @@ def set_task_description(task, desc)
     task = task.name if task.is_a?(Rake::TestTask)
     task = Rake::Task[task]
   end
-  # reset the desc set-up by TestTask :
-  task.instance_variable_set(:@full_comment, nil)
+  # reset the description set-up by TestTask :
+  if task.instance_variable_defined? :@full_comment
+    task.instance_variable_set(:@full_comment, nil)
+  else
+    task.instance_variable_get(:@comments).clear
+  end
   task.add_description(desc)
 end
 
 task 'test_appraisal_hint' do
   next if File.exists?('.disable-appraisal-hint')
-  unless (ENV['BUNDLE_GEMFILE'] rescue '') =~ /gemfiles\/.*?\.gemfile/
+  unless (ENV['BUNDLE_GEMFILE'] || '') =~ /gemfiles\/.*?\.gemfile/
     appraisals = []; Appraisal::File.each { |file| appraisals << file.name }
     puts "HINT: specify AR version with `rake appraisal:{version} test_{adapter}'" +
          " where version=(#{appraisals.join('|')}) (`touch .disable-appraisal-hint' to disable)"
@@ -80,8 +87,8 @@ test_task_for :MSSQL, :driver => :jtds, :database_name => 'MS-SQL (SQLServer)'
 test_task_for :MySQL, :prereqs => 'db:mysql'
 test_task_for :PostgreSQL, :prereqs => 'db:postgresql', :driver => 'postgres'
 task :test_postgres => :test_postgresql # alias
-task :test_pgsql => :test_postgresql # alias
 test_task_for :SQLite3
+task :test_sqlite => :test_sqlite3 # alias
 test_task_for :Firebird
 
 # ensure driver for these DBs is on your class-path
