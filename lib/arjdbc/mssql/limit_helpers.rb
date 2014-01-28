@@ -24,13 +24,34 @@ module ArJdbc
               rest_of_query = "#{from_table}.#{rest_of_query}"
             end
 
+            # Ensure correct queries if the rest_of_query contains a 'GROUP BY'. Otherwise the following error occurs:
+            #   ActiveRecord::StatementInvalid: ActiveRecord::JDBCError: Column 'users.id' is invalid in the select list because it is not contained in either an aggregate function or the GROUP BY clause.
+            #   SELECT t.* FROM ( SELECT ROW_NUMBER() OVER(ORDER BY users.id) AS _row_num, [users].[lft], COUNT([users].[lft]) FROM [users] GROUP BY [users].[lft] HAVING COUNT([users].[lft]) > 1 ) AS t WHERE t._row_num BETWEEN 1 AND 1
+            if rest_of_query.downcase.include?('group by')
+              if order.count(',') == 0
+                order.gsub!(/ORDER BY (.*)/, 'ORDER BY MIN(\1)')
+              else
+                raise('Only one order condition allowed.')
+              end
+            end
+
             if distinct # select =~ /DISTINCT/i
               order = order.gsub(/([a-z0-9_])+\./, 't.')
               new_sql = "SELECT t.* FROM "
               new_sql << "( SELECT ROW_NUMBER() OVER(#{order}) AS _row_num, t.* FROM (#{select} #{rest_of_query}) AS t ) AS t"
               new_sql << " WHERE t._row_num BETWEEN #{start_row} AND #{end_row}"
             else
-              new_sql = "#{select} t.* FROM "
+              select_columns_before_from = rest_of_query.gsub(/FROM.*/, '').strip
+              only_one_column            = !select_columns_before_from.include?(',')
+              only_one_id_column         = only_one_column && (select_columns_before_from.ends_with?('.id') || select_columns_before_from.ends_with?('.[id]'))
+
+              if only_one_id_column
+                # If there's only one id column a subquery will be created which only contains this column
+                new_sql = "#{select} t.id FROM "
+              else
+                # All selected columns are used
+                new_sql = "#{select} t.* FROM "
+              end
               new_sql << "( SELECT ROW_NUMBER() OVER(#{order}) AS _row_num, #{rest_of_query} ) AS t"
               new_sql << " WHERE t._row_num BETWEEN #{start_row} AND #{end_row}"
             end
