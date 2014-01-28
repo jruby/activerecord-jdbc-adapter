@@ -103,16 +103,14 @@ end
 test_task_for :AS400, :desc => "Run tests against AS400 (DB2) (ensure driver is on class-path)",
   :files => FileList["test/db2*_test.rb"] + FileList["test/db/db2/*_test.rb"]
 
+#task :test_jdbc => [ :test_jdbc_mysql, :test_jdbc_derby ] if defined?(JRUBY_VERSION)
+
 test_task_for 'JDBC', :desc => 'Run tests against plain JDBC adapter (uses MySQL and Derby)',
   :prereqs => [ 'db:mysql' ], :files => FileList['test/*jdbc_*test.rb'] do |test_task|
   test_task.libs << 'jdbc-mysql/lib' << 'jdbc-derby/lib'
 end
 
-#test_task_for 'JNDI', :desc => 'Run tests against a JNDI connection (uses Derby)',
-#  :prereqs => [ 'tomcat-jndi:check', 'db:mysql' ],
-#  :files => FileList['test/*jndi_*test.rb'] do |test_task|
-#  test_task.libs << 'jdbc-mysql/lib' << 'jdbc-derby/lib'
-#end
+task :test_jndi => [ :test_jndi_mysql, :test_jndi_derby ] if defined?(JRUBY_VERSION)
 
 test_task_for 'JNDI_Derby', :desc => 'Run tests against a Derby JNDI connection',
   :prereqs => [ 'tomcat-jndi:check' ],
