@@ -10,6 +10,7 @@ ArJdbc::ConnectionMethods.module_eval do
     rescue LoadError # assuming driver.jar is on the class-path
     end
 
+    # `database: memory:dbName` for an in memory Derby DB
     config[:url] ||= "jdbc:derby:#{config[:database]};create=true"
     config[:driver] ||= defined?(::Jdbc::Derby.driver_name) ?
       ::Jdbc::Derby.driver_name : 'org.apache.derby.jdbc.EmbeddedDriver'
