@@ -507,8 +507,8 @@ module ActiveRecord
 
       # @private
       # @override
-      def select_rows(sql, name = nil)
-        exec_query_raw(sql, name).map!(&:values)
+      def select_rows(sql, name = nil, binds = [])
+        exec_query_raw(sql, name, binds).map!(&:values)
       end
 
       if ActiveRecord::VERSION::MAJOR > 3 # expects AR::Result e.g. from select_all
