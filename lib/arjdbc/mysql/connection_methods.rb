@@ -5,8 +5,7 @@ ArJdbc::ConnectionMethods.module_eval do
 
     return jndi_connection(config) if jndi_config?(config)
 
-    driver = config[:driver] ||=
-      defined?(::Jdbc::MySQL.driver_name) ? ::Jdbc::MySQL.driver_name : 'com.mysql.jdbc.Driver'
+    driver = config[:driver] ||= 'com.mysql.jdbc.NonRegisteringDriver'
 
     begin
       require 'jdbc/mysql'
