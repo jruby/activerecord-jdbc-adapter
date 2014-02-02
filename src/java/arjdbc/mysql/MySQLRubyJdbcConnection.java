@@ -315,8 +315,9 @@ public class MySQLRubyJdbcConnection extends RubyJdbcConnection {
      * NOTE: MySQL Connector/J 5.1.11 (2010-01-21) fixed the issue !
      */
     private void killCancelTimer(final Connection connection) {
-        if (connection.getClass().getClassLoader() == getRuntime().getJRubyClassLoader()) {
-            Field field = cancelTimerField();
+        final Ruby runtime = getRuntime();
+        if (connection.getClass().getClassLoader() == runtime.getJRubyClassLoader()) {
+            final Field field = cancelTimerField(runtime);
             if ( field != null ) {
                 java.util.Timer timer = null;
                 try {
@@ -342,10 +343,11 @@ public class MySQLRubyJdbcConnection extends RubyJdbcConnection {
     private static Field cancelTimer = null;
     private static boolean cancelTimerChecked = false;
 
-    private static Field cancelTimerField() {
+    private Field cancelTimerField(final Ruby runtime) {
         if ( cancelTimerChecked ) return cancelTimer;
+        final String name = "com.mysql.jdbc.ConnectionImpl";
         try {
-            Class klass = Class.forName("com.mysql.jdbc.ConnectionImpl");
+            Class<?> klass = runtime.getJavaSupport().loadJavaClass(name);
             Field field = klass.getDeclaredField("cancelTimer");
             field.setAccessible(true);
             synchronized(MySQLRubyJdbcConnection.class) {
