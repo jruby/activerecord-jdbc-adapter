@@ -29,6 +29,7 @@ import arjdbc.jdbc.RubyJdbcConnection;
 import arjdbc.jdbc.Callable;
 
 import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Proxy;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -234,8 +235,46 @@ public class MySQLRubyJdbcConnection extends RubyJdbcConnection {
     @Override
     protected Connection newConnection() throws RaiseException, SQLException {
         final Connection connection = super.newConnection();
+        if ( doStopCleanupThread() ) shutdownCleanupThread();
         if ( doKillCancelTimer(connection) ) killCancelTimer(connection);
         return connection;
+    }
+
+    private static Boolean stopCleanupThread;
+    static {
+        final String stopThread = System.getProperty("arjdbc.mysql.stop_cleanup_thread");
+        if ( stopThread != null ) stopCleanupThread = Boolean.parseBoolean(stopThread);
+    }
+
+    private static boolean doStopCleanupThread() throws SQLException {
+        // TODO when refactoring default behavior to "stop" consider not doing so for JNDI
+        return stopCleanupThread != null && stopCleanupThread.booleanValue();
+    }
+
+    private static boolean cleanupThreadShutdown;
+
+    private static void shutdownCleanupThread() {
+        if ( cleanupThreadShutdown ) return;
+        try {
+            Class threadClass = Class.forName("com.mysql.jdbc.AbandonedConnectionCleanupThread");
+            threadClass.getMethod("shutdown").invoke(null);
+        }
+        catch (ClassNotFoundException e) {
+            debugMessage("INFO: missing MySQL JDBC cleanup thread: " + e);
+        }
+        catch (NoSuchMethodException e) {
+            debugMessage( e.toString() );
+        }
+        catch (IllegalAccessException e) {
+            debugMessage( e.toString() );
+        }
+        catch (InvocationTargetException e) {
+            debugMessage( e.getTargetException().toString() );
+        }
+        catch (SecurityException e) {
+            debugMessage( e.toString() );
+        }
+        finally { cleanupThreadShutdown = true; }
     }
 
     private static Boolean killCancelTimer;
