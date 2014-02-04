@@ -1,3 +1,16 @@
+## 1.3.6 (02/04/14)
+
+- fix rails 4-0-stable compatibility (see #530)
+- [mysql] support "disabling" abandoned connection cleanup thread
+- [mssql] Handling of 'GROUP BY' and selected columns (#529)
+  + SELECT DISTINCT clause with ORDER BY for MSSQL (partially fixes #437)
+- [derby] only do the patched select_limited_ids if connection is Derby's
+- [derby] support getting and setting transaction isolation on a connection
+  + allow to configure whether isolation will be 'serializable' (work-around for #497)
+- match 'int' as well as 'integer' when converting to SQL types for MSSQL (#527)
+
+Code Contributors: Sean McCarthy, Jesko, Konstantin Shabanov
+
 ## 1.3.5 (01/10/14)
 
 We're now green against Rails 4.1 (master), test and report issues if any.
