@@ -25,6 +25,19 @@ module ArJdbc
       [ /derby/i, lambda { |config, column| column.extend(Column) } ]
     end
 
+ 	# @private
+    @@emulate_booleans = true
+
+    # Boolean emulation can be disabled using :
+    #
+    #   ArJdbc::Derby.emulate_booleans = false
+    #
+    def self.emulate_booleans?; @@emulate_booleans; end
+    # @deprecated Use {#emulate_booleans?} instead.
+    def self.emulate_booleans; @@emulate_booleans; end
+    # @see #emulate_booleans?
+    def self.emulate_booleans=(emulate); @@emulate_booleans = emulate; end
+
     # @note Part of this module is implemented in "native" Java.
     # @see ActiveRecord::ConnectionAdapters::JdbcColumn
     module Column
@@ -53,7 +66,7 @@ module ArJdbc
 
       def simplified_type(field_type)
         case field_type
-        when /^smallint/i    then :boolean
+        when /^smallint/i    then Derby.emulate_booleans? ? :boolean : :integer
         when /^bigint|int/i  then :integer
         when /^real|double/i then :float
         when /^dec/i         then # DEC is a DECIMAL alias
