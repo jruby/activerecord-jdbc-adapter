@@ -350,6 +350,13 @@ module ArJdbc
       super(type, limit, precision, scale)
     end
 
+    def add_column(table_name, column_name, type, options = {})
+      # The keyword COLUMN allows to use reserved names for columns (ex: date)
+      add_column_sql = "ALTER TABLE #{quote_table_name(table_name)} ADD COLUMN #{quote_column_name(column_name)} #{type_to_sql(type, options[:limit], options[:precision], options[:scale])}"
+      add_column_options!(add_column_sql, options)
+      execute(add_column_sql)
+    end
+
     def add_column_options!(sql, options)
       # handle case of defaults for CLOB columns,
       # which might get incorrect if we write LOBs in the after_save callback
@@ -498,15 +505,24 @@ module ArJdbc
       end
     end
 
+    if ActiveRecord::VERSION::MAJOR >= 4
+
+    def remove_column(table_name, column_name, type = nil, options = {})
+      db2_remove_column(table_name, column_name)
+    end
+
+    else
+
     def remove_column(table_name, *column_names)
       # http://publib.boulder.ibm.com/infocenter/db2luw/v9r7/topic/com.ibm.db2.luw.admin.dbobj.doc/doc/t0020132.html
       outcome = nil
       column_names = column_names.flatten
       for column_name in column_names
-        sql = "ALTER TABLE #{table_name} DROP COLUMN #{column_name}"
-        outcome = execute_table_change(sql, table_name, 'Remove Column')
+        outcome = db2_remove_column(table_name, column_name)
       end
       column_names.size == 1 ? outcome : nil
+    end
+
     end
 
     def rename_table(name, new_name)
@@ -644,6 +660,11 @@ module ArJdbc
           # LUW implementation uses schema name of username by default
           config[:username].presence || ENV['USER']
         end
+    end
+
+    def db2_remove_column(table_name, column_name)
+      sql = "ALTER TABLE #{quote_table_name(table_name)} DROP COLUMN #{quote_column_name(column_name)}"
+      execute_table_change(sql, table_name, 'Remove Column')
     end
 
   end
