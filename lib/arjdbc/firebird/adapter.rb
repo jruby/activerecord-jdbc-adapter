@@ -193,8 +193,16 @@ module ArJdbc
       columns(table_name).count { |column| column.primary } == 1
     end
 
-    def default_sequence_name(table_name, column=nil)
-      "#{table_name}_seq"
+    IDENTIFIER_LENGTH = 31 # usual DB meta-identifier: 31 chars maximum
+
+    def table_alias_length; IDENTIFIER_LENGTH; end
+    def table_name_length;  IDENTIFIER_LENGTH; end
+    def index_name_length;  IDENTIFIER_LENGTH; end
+    def column_name_length; IDENTIFIER_LENGTH; end
+
+    def default_sequence_name(table_name, column = nil)
+      # TODO: remove schema prefix if present (before truncating)
+      "#{table_name.to_s[0, IDENTIFIER_LENGTH - 4]}_seq"
     end
 
     # Set the sequence to the max value of the table's column.
