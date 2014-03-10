@@ -78,8 +78,8 @@ module ActiveRecord
         end
 
         url = jdbc_url
-        username = config[:username].to_s
-        password = config[:password].to_s
+        username = config[:username]
+        password = config[:password]
         jdbc_driver = ( config[:driver_instance] ||=
             JdbcDriver.new(config[:driver].to_s, config[:properties]) )
 

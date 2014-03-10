@@ -34,8 +34,8 @@ module ActiveRecord
       def connection(url, user, pass)
         # bypass DriverManager to get around problem with dynamically loaded jdbc drivers
         properties = self.properties.clone
-        properties.setProperty("user", user) if user
-        properties.setProperty("password", pass) if pass
+        properties.setProperty("user", user.to_s) if user
+        properties.setProperty("password", pass.to_s) if pass
         @driver.connect(url, properties)
       end
     end
