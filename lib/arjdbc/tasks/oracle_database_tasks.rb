@@ -8,6 +8,9 @@ module ArJdbc
         print "Please provide the SYSTEM password for your oracle installation\n>"
         system_password = $stdin.gets.strip
         establish_connection(config.merge('username' => 'SYSTEM', 'password' => system_password))
+        unless ( config = self.config ).key?('username')
+          config = config_from_url(config['url']) if config['url']
+        end
         begin
           connection.execute "CREATE USER #{config['username']} IDENTIFIED BY #{config['password']}"
         rescue => e
@@ -22,13 +25,13 @@ module ArJdbc
         connection.execute "GRANT create table TO #{config['username']}"
         connection.execute "GRANT create sequence TO #{config['username']}"
       end
-      
+
       def drop
         self.class.load_enhanced_structure_dump
         establish_connection(config)
         connection.execute_structure_dump(connection.full_drop)
       end
-      
+
       def purge
         self.class.load_enhanced_structure_dump
         establish_connection(:test)
@@ -47,7 +50,7 @@ module ArJdbc
         establish_connection(config)
         connection.execute_structure_dump(File.read(filename))
       end
-      
+
       def self.load_enhanced_structure_dump
         unless defined? ActiveRecord::ConnectionAdapters::OracleEnhancedAdapter
           ActiveRecord::ConnectionAdapters.module_eval do
@@ -56,7 +59,7 @@ module ArJdbc
         end
         require 'arjdbc/tasks/oracle/enhanced_structure_dump'
       end
-      
+
     end
   end
 end
