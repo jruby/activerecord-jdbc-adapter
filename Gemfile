@@ -1,6 +1,10 @@
 source "https://rubygems.org"
 
-gem 'activerecord', :require => nil
+if version = ENV['AR_VERSION']
+  gem 'activerecord', version, :require => nil
+else
+  gem 'activerecord', :require => nil
+end
 gem 'thread_safe', :require => nil # "optional" - we can roll without it
 if defined?(JRUBY_VERSION) && JRUBY_VERSION < '1.7.0'
 gem 'jruby-openssl', :platform => :jruby
