@@ -407,7 +407,8 @@ module ArJdbc
       column = column_for(table_name, column_name)
 
       unless options_include_default?(options)
-        options[:default] = column.default
+        # NOTE: no defaults for BLOB/TEXT columns with MySQL
+        options[:default] = column.default if type != :text && type != :binary
       end
 
       unless options.has_key?(:null)
@@ -423,17 +424,22 @@ module ArJdbc
     # @override
     def rename_column(table_name, column_name, new_column_name)
       options = {}
+
       if column = columns(table_name).find { |c| c.name == column_name.to_s }
-        options[:default] = column.default; options[:null] = column.null
+        type = column.type
+        options[:default] = column.default if type != :text && type != :binary
+        options[:null] = column.null
       else
         raise ActiveRecord::ActiveRecordError, "No such column: #{table_name}.#{column_name}"
       end
+
       current_type = select_one("SHOW COLUMNS FROM #{quote_table_name(table_name)} LIKE '#{column_name}'")["Type"]
+
       rename_column_sql = "ALTER TABLE #{quote_table_name(table_name)} CHANGE #{quote_column_name(column_name)} #{quote_column_name(new_column_name)} #{current_type}"
       add_column_options!(rename_column_sql, options)
       execute(rename_column_sql)
       rename_column_indexes(table_name, column_name, new_column_name) if respond_to?(:rename_column_indexes) # AR-4.0 SchemaStatements
-    end # unless const_defined? :SchemaCreation
+    end
 
     def add_column_position!(sql, options)
       if options[:first]
