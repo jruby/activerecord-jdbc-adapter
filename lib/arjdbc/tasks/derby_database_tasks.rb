@@ -8,28 +8,28 @@ module ArJdbc
         establish_connection(config)
         ActiveRecord::Base.connection
       end
-      
+
       def drop
-        db_dir = expand_path(config['database'])
+        db_dir = expand_path resolve_database(config, true)
         if File.exist?(db_dir)
           FileUtils.rm_r(db_dir)
           FileUtils.rmdir(db_dir) rescue nil
         end
       end
-      
+
       SIZEABLE = %w( VARCHAR CLOB BLOB )
 
       def structure_dump(filename)
         establish_connection(config)
         dump = File.open(filename, "w:utf-8")
-        
+
         meta_data = connection.jdbc_connection.meta_data
         tables_rs = meta_data.getTables(nil, nil, nil, ["TABLE"].to_java(:String))
-        
+
         while tables_rs.next
           table_name = tables_rs.getString('TABLE_NAME') # getString(3)
           dump << "CREATE TABLE #{connection.quote_table_name(table_name)} (\n"
-          
+
           columns_rs = meta_data.getColumns(nil, nil, table_name, nil)
           first_col = true
           while columns_rs.next
@@ -43,7 +43,7 @@ module ArJdbc
             type = columns_rs.getString(6)
             column_size = columns_rs.getString(7)
             nulling = ( columns_rs.getString(18) == 'NO' ? " NOT NULL" : nil )
-            
+
             create_column = connection.quote_column_name(column_name)
             create_column << " #{type}"
             create_column << ( SIZEABLE.include?(type) ? "(#{column_size})" : "" )
@@ -57,15 +57,15 @@ module ArJdbc
           end
           dump << "\n);\n\n"
         end
-        
+
         dump.close
       end
-      
+
       def structure_load(filename)
         establish_connection(config)
         IO.read(filename).split(/;\n*/m).each { |ddl| connection.execute(ddl) }
       end
-      
+
       private
 
       AUTO_INCREMENT_SQL = '' <<
@@ -89,7 +89,7 @@ module ArJdbc
         end
         ''
       end
-      
+
     end
   end
 end

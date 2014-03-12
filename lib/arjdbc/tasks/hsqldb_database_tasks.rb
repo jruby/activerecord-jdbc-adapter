@@ -8,7 +8,7 @@ module ArJdbc
         establish_connection(config)
         ActiveRecord::Base.connection
       end
-      
+
       def drop
         error = nil
         begin
@@ -27,14 +27,14 @@ module ArJdbc
         end
       end
       alias :purge :drop
-      
+
       protected
-      
+
       def do_drop_database(config)
-        connection.drop_database config['database']
+        connection.drop_database resolve_database(config)
         connection.shutdown
       end
-      
+
       def delete_database_files(config)
         return unless db_base = database_base_name(config)
         Dir.glob("#{db_base}.*").each do |file|
@@ -55,16 +55,16 @@ module ArJdbc
           FileUtils.rmdir(db_base)
         end
       end
-      
+
       private
-      
+
       def database_base_name(config)
-        db = config['database']
+        db = resolve_database(config, true)
         db[0, 4] == 'mem:' ? nil : begin
-          expand_path db[0, 4] == 'file:' ? db[4..-1] : db
+          expand_path db[0, 5] == 'file:' ? db[5..-1] : db
         end
       end
-      
+
     end
   end
 end
