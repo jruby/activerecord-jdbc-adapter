@@ -341,6 +341,7 @@ module ArJdbc
     def recreate_database(name, options = {})
       drop_database(name)
       create_database(name, options)
+      reconnect!
     end
 
     # @override
