@@ -278,12 +278,29 @@ module ArJdbc
         "RENAME COLUMN #{quote_column_name(column_name)} TO #{quote_column_name(new_column_name)}"
     end
 
+    if ActiveRecord::VERSION::MAJOR >= 4
+
+    # @override
+    def remove_column(table_name, column_name, type = nil, options = {})
+      do_remove_column(table_name, column_name)
+    end
+
+    else
+
     # @override
     def remove_column(table_name, *column_names)
       for column_name in column_names.flatten
-        execute "ALTER TABLE #{quote_table_name(table_name)} DROP COLUMN #{quote_column_name(column_name)}"
+        do_remove_column(table_name, column_name)
       end
     end
+    alias remove_columns remove_column
+
+    end
+
+    def do_remove_column(table_name, column_name)
+      execute "ALTER TABLE #{quote_table_name(table_name)} DROP COLUMN #{quote_column_name(column_name)}"
+    end
+    private :do_remove_column
 
     # SELECT DISTINCT clause for a given set of columns and a given ORDER BY clause.
     #

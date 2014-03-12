@@ -630,6 +630,30 @@ module SimpleTestMethods
     end
   end
 
+  def test_remove_column
+    DbType.connection.remove_column :db_types, :sample_text
+    columns = DbType.connection.columns('db_types')
+    assert ! columns.detect { |c| c.name.to_s == 'sample_text' }
+
+    if ActiveRecord::VERSION::MAJOR >= 4
+      DbType.connection.remove_column :db_types, :sample_float, nil, {}
+      columns = DbType.connection.columns('db_types')
+      assert ! columns.detect { |c| c.name.to_s == 'sample_float' }
+    end
+  end
+
+  def test_remove_columns
+    DbType.connection.remove_columns :db_types, :sample_text, :sample_binary
+    columns = DbType.connection.columns('db_types')
+    assert ! columns.detect { |c| c.name.to_s == 'sample_text' || c.name.to_s == 'sample_binary' }
+
+    if ActiveRecord::VERSION::MAJOR < 4
+      DbType.connection.remove_column :db_types, :sample_float, :sample_decimal
+      columns = DbType.connection.columns('db_types')
+      assert ! columns.detect { |c| c.name.to_s == 'sample_float' || c.name.to_s == 'sample_decimal' }
+    end
+  end
+
   def test_validates_uniqueness_of_strings_case_sensitive
     name_lower = ValidatesUniquenessOfString.new(:cs_string => "name", :ci_string => '1')
     name_lower.save!

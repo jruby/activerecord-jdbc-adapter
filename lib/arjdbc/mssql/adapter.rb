@@ -423,16 +423,36 @@ module ArJdbc
       end
     end
 
-    def remove_column(table_name, *column_names)
+    def remove_columns(table_name, *column_names)
       raise ArgumentError.new("You must specify at least one column name. Example: remove_column(:people, :first_name)") if column_names.empty?
       # remove_columns(:posts, :foo, :bar) old syntax : remove_columns(:posts, [:foo, :bar])
       clear_cached_table(table_name)
+
+      return do_remove_column(table_name, column_names.first) if column_names.size == 1
       column_names.flatten.each do |column_name|
-        remove_check_constraints(table_name, column_name)
-        remove_default_constraint(table_name, column_name)
-        remove_indexes(table_name, column_name) unless sqlserver_2000?
-        execute "ALTER TABLE #{quote_table_name(table_name)} DROP COLUMN #{quote_column_name(column_name)}"
+        do_remove_column(table_name, column_name)
       end
+    end
+
+    def do_remove_column(table_name, column_name)
+      remove_check_constraints(table_name, column_name)
+      remove_default_constraint(table_name, column_name)
+      remove_indexes(table_name, column_name) unless sqlserver_2000?
+      execute "ALTER TABLE #{quote_table_name(table_name)} DROP COLUMN #{quote_column_name(column_name)}"
+    end
+    private :do_remove_column
+
+    if ActiveRecord::VERSION::MAJOR >= 4
+
+    # @override
+    def remove_column(table_name, column_name, type = nil, options = {})
+      remove_columns(table_name, column_name)
+    end
+
+    else
+
+    def remove_column(table_name, *column_names); remove_columns(table_name, *column_names) end
+
     end
 
     def remove_default_constraint(table_name, column_name)
