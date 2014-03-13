@@ -34,7 +34,9 @@ module ActiveRecord
       end
 
       # @deprecated no longer used - only kept for compatibility
-      def set_native_database_types; end
+      def set_native_database_types
+        ArJdbc.deprecate "set_native_database_types is no longer used and does nothing override native_database_types instead"
+      end
 
       def self.jndi_config?(config)
         config[:jndi] || config[:data_source]
@@ -74,7 +76,8 @@ module ActiveRecord
 
       def setup_jdbc_factory
         if ! config[:url] || ( ! config[:driver] && ! config[:driver_instance] )
-          raise ::ActiveRecord::ConnectionNotEstablished, "jdbc adapter requires :driver class and :url"
+          msg = config[:url] ? ":url = #{config[:url]}" : ":driver = #{config[:driver]}"
+          raise ::ActiveRecord::ConnectionNotEstablished, "jdbc adapter requires :driver and :url (got #{msg})"
         end
 
         url = jdbc_url
@@ -93,8 +96,9 @@ module ActiveRecord
 
       def jdbc_url
         url = config[:url].to_s
-        if Hash === config[:options]
-          options = config[:options].map { |key, val| "#{key}=#{val}" }.join('&')
+        if options = config[:options]
+          ArJdbc.deprecate "use config[:properties] to specify connection URL properties instead of config[:options]"
+          options = options.map { |key, val| "#{key}=#{val}" }.join('&') if Hash === options
           url = url['?'] ? "#{url}&#{options}" : "#{url}?#{options}" unless options.empty?
           config[:url] = url; config[:options] = nil
         end

@@ -1,5 +1,5 @@
 module ArJdbc
-  if defined? ActiveRecord::ConnectionHandling # 4.0
+  if ActiveRecord.const_defined? :ConnectionHandling # 4.0
     ConnectionMethods = ActiveRecord::ConnectionHandling
   else # 3.x
     ConnectionMethods = (class << ActiveRecord::Base; self; end)
