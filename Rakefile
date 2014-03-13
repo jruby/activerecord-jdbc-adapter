@@ -42,28 +42,36 @@ end
 # DRIVERS
 
 desc "Build drivers"
+task "build:drivers" => DRIVERS.map { |name| "#{name}:build" }
 task "drivers:build" => DRIVERS.map { |name| "#{name}:build" }
 
 desc "Install drivers"
+task "install:drivers" => DRIVERS.map { |name| "#{name}:install" }
 task "drivers:install" => DRIVERS.map { |name| "#{name}:install" }
 
 desc "Release drivers"
+task "release:drivers" => DRIVERS.map { |name| "#{name}:release" }
 task "drivers:release" => DRIVERS.map { |name| "#{name}:release" }
 
 # ADAPTERS
 
 desc "Build adapters"
+task "build:adapters" => [ 'build' ] + ADAPTERS.map { |name| "#{name}:build" }
 task "adapters:build" => [ 'build' ] + ADAPTERS.map { |name| "#{name}:build" }
 
 desc "Install adapters"
+task "install:adapters" => [ 'install' ] + ADAPTERS.map { |name| "#{name}:install" }
 task "adapters:install" => [ 'install' ] + ADAPTERS.map { |name| "#{name}:install" }
 
 desc "Release adapters"
+task "release:adapters" => [ 'release' ] + ADAPTERS.map { |name| "#{name}:release" }
 task "adapters:release" => [ 'release' ] + ADAPTERS.map { |name| "#{name}:release" }
 
 # ALL
 
+task "build:all" => [ 'build' ] + TARGETS.map { |name| "#{name}:build" }
 task "all:build" => [ 'build' ] + TARGETS.map { |name| "#{name}:build" }
+task "install:all" => [ 'install' ] + TARGETS.map { |name| "#{name}:install" }
 task "all:install" => [ 'install' ] + TARGETS.map { |name| "#{name}:install" }
 
 task :filelist do
