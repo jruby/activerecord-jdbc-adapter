@@ -36,7 +36,7 @@ class SQLite3RakeTest < Test::Unit::TestCase
   end
 
   test 'rake db:structure:dump (and db:structure:load)' do
-    omit('sqlite3 not available') unless self.class.find_executable?('sqlite3')
+    omit('sqlite3 not available') unless self.class.which('sqlite3')
     create_rake_test_database do |connection|
       create_schema_migrations_table(connection)
       connection.create_table('users') { |t| t.string :name; t.timestamps }

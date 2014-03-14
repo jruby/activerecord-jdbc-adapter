@@ -11,7 +11,7 @@ class MSSQLRakeDbCreateTest < Test::Unit::TestCase
   def do_teardown
     drop_rake_test_database(:silence)
   end
-  
+
   test 'rake db:create (and db:drop)' do
     begin
       Rake::Task["db:create"].invoke
@@ -35,13 +35,13 @@ class MSSQLRakeDbCreateTest < Test::Unit::TestCase
     drop_rake_test_database(:silence)
     Rake::Task["db:drop"].invoke
   end
-  
+
   test 'rake db:test:purge' do
     # Rake::Task["db:create"].invoke
     create_rake_test_database do |connection|
       connection.create_table('users') { |t| t.string :name }
     end
-    
+
     Rake::Task["db:test:purge"].invoke
 
     ActiveRecord::Base.establish_connection db_config.merge :database => db_name
@@ -50,27 +50,27 @@ class MSSQLRakeDbCreateTest < Test::Unit::TestCase
   end
 
   test 'rake db:structure:dump (and db:structure:load)' do
-    omit('smoscript not available') unless self.class.find_executable?('smoscript')
+    omit('smoscript not available') unless self.class.which('smoscript')
     # Rake::Task["db:create"].invoke
     create_rake_test_database do |connection|
       create_schema_migrations_table(connection)
       connection.create_table('users') { |t| t.string :name; t.timestamps }
     end
-    
+
     structure_sql = File.join('db', structure_sql_filename)
     begin
       Dir.mkdir 'db' # db/structure.sql
       Rake::Task["db:structure:dump"].invoke
-      
+
       assert File.exists?(structure_sql)
       # CREATE TABLE [dbo].[users]( ... )
       assert_match /CREATE TABLE .*?\[users\]/i, File.read(structure_sql)
-      
+
       # db:structure:load
       drop_rake_test_database(:silence)
       create_rake_test_database
       Rake::Task["db:structure:load"].invoke
-      
+
       ActiveRecord::Base.establish_connection db_config.merge :database => db_name
       assert ActiveRecord::Base.connection.table_exists?('users')
       ActiveRecord::Base.connection.disconnect!
@@ -79,12 +79,12 @@ class MSSQLRakeDbCreateTest < Test::Unit::TestCase
       Dir.rmdir 'db'
     end
   end
-  
+
   setup { rm_r 'db' if File.exist?('db') }
-  
+
   test 'rake db:charset' do
     create_rake_test_database
-    # using the default character set, the character_set_name should be 
+    # using the default character set, the character_set_name should be
     # iso_1 (ISO 8859-1) for the char and varchar data types
     expect_rake_output /iso_1|UCS/i
     Rake::Task["db:charset"].invoke
@@ -96,7 +96,7 @@ class MSSQLRakeDbCreateTest < Test::Unit::TestCase
     expect_rake_output /SQL_.*/
     Rake::Task["db:collation"].invoke
   end
-  
+
   # @override
   def create_rake_test_database(db_name = self.db_name)
     ActiveRecord::Base.establish_connection db_config
@@ -105,14 +105,14 @@ class MSSQLRakeDbCreateTest < Test::Unit::TestCase
       # connection.use_database('master')
       connection.create_database(db_name, db_config)
     end
-    
+
     if block_given?
       ActiveRecord::Base.establish_connection db_config.merge :database => db_name
       yield ActiveRecord::Base.connection
     end
     ActiveRecord::Base.connection.disconnect!
   end
-  
+
   # @override
   def drop_rake_test_database(silence = false)
     ActiveRecord::Base.establish_connection db_config
@@ -128,9 +128,9 @@ class MSSQLRakeDbCreateTest < Test::Unit::TestCase
     end
     ActiveRecord::Base.connection.disconnect!
   end
-  
+
   private
-  
+
   def databases
     if ActiveRecord::Base.connection.send(:sqlserver_2000?)
       select = "SELECT name FROM master..sysdatabases ORDER BY name"
@@ -139,5 +139,5 @@ class MSSQLRakeDbCreateTest < Test::Unit::TestCase
     end
     ActiveRecord::Base.connection.select_rows(select).flatten
   end
-  
+
 end

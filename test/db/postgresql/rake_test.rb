@@ -12,17 +12,17 @@ class PostgresRakeTest < Test::Unit::TestCase
     drop_rake_test_database(:silence)
   end
 
-  PSQL_EXECUTABLE = find_executable?("psql")
+  PSQL_EXE = which('psql')
 
   test 'rake db:create (and db:drop)' do
     Rake::Task["db:create"].invoke
-    if PSQL_EXECUTABLE
+    if PSQL_EXE
       output = psql("-d template1 -c '\\\l'")
       assert_match /#{db_name}/m, output
     end
 
     Rake::Task["db:drop"].invoke
-    if PSQL_EXECUTABLE
+    if PSQL_EXE
       output = psql("-d template1 -c '\\\l'")
       assert_no_match /#{db_name}/m, output
     end
@@ -73,7 +73,7 @@ class PostgresRakeTest < Test::Unit::TestCase
   end
 
   test 'rake db:structure:dump (and db:structure:load)' do
-    omit('pg_dump not available') unless self.class.find_executable?('pg_dump')
+    omit('pg_dump not available') unless self.class.which('pg_dump')
     # Rake::Task["db:create"].invoke
     create_rake_test_database do |connection|
       create_schema_migrations_table(connection)
@@ -137,7 +137,7 @@ class PostgresRakeTest < Test::Unit::TestCase
     if username = ENV['PSQL_USERNAME']
       args = "--username=#{username} #{args}"
     end
-    `psql #{args}`
+    `#{PSQL_EXE} #{args}`
   end
 
 end

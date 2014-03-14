@@ -4,6 +4,7 @@ namespace :db do
 
   desc "Creates the test database for MySQL"
   task :mysql do
+    fail "could not create test database: mysql executable not found" unless mysql = which('mysql')
     load 'test/db/mysql_config.rb' # rescue nil
     script = sql_script <<-SQL, 'mysql'
 DROP DATABASE IF EXISTS `#{MYSQL_CONFIG[:database]}`;
@@ -19,12 +20,13 @@ SQL
       params['--password'] = password
     end
     puts "Creating MySQL (test) database: #{MYSQL_CONFIG[:database]}"
-    sh "cat #{script.path} | mysql #{params.to_a.join(' ')}", :verbose => $VERBOSE # so password is not echoed
+    sh "cat #{script.path} | #{mysql} #{params.to_a.join(' ')}", :verbose => $VERBOSE # so password is not echoed
   end
 
   desc "Creates the test database for PostgreSQL"
   task :postgresql do
-    fail unless PostgresHelper.have_postgres?
+    fail 'could not create test database: psql executable not found' unless psql = which('psql')
+    fail 'could not create test database: missing "postgres" role' unless PostgresHelper.postgres_role?
     load 'test/db/postgres_config.rb' # rescue nil
     script = sql_script <<-SQL, 'psql'
 DROP DATABASE IF EXISTS #{POSTGRES_CONFIG[:database]};
@@ -35,7 +37,7 @@ SQL
     params = { '-U' => ENV['PSQL_USER'] || 'postgres' }
     params['-q'] = nil unless $VERBOSE
     puts "Creating PostgreSQL (test) database: #{POSTGRES_CONFIG[:database]}"
-    sh "cat #{script.path} | psql #{params.to_a.join(' ')}", :verbose => $VERBOSE
+    sh "cat #{script.path} | #{psql} #{params.to_a.join(' ')}", :verbose => $VERBOSE
   end
   task :postgres => :postgresql
 

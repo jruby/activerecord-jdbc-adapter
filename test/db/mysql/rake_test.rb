@@ -12,15 +12,16 @@ class MySQLRakeTest < Test::Unit::TestCase
     drop_rake_test_database(:silence)
   end
 
+  MYSQL_EXE = which('mysql')
+
   test 'rake db:create (and db:drop)' do
-    # omit_unless find_executable?("mysql")
     Rake::Task["db:create"].invoke
     with_mysql do |mysql|
       mysql << "show databases where `Database` = '#{db_name}';"
       mysql.close_write
       output = mysql.read
       assert output =~ /#{db_name}/m, "db name: #{db_name.inspect} not matched in:\n#{output}"
-    end if find_executable?("mysql")
+    end if MYSQL_EXE
 
     Rake::Task["db:drop"].invoke
     with_mysql do |mysql|
@@ -28,7 +29,7 @@ class MySQLRakeTest < Test::Unit::TestCase
       mysql.close_write
       output = mysql.read
       assert_nil output =~ /#{db_name}/m, "db name: #{db_name.inspect} matched in:\n#{output}"
-    end if find_executable?("mysql")
+    end if MYSQL_EXE
   end
 
   test 'rake db:test:purge' do
@@ -116,7 +117,7 @@ class MySQLRakeTest < Test::Unit::TestCase
   private
 
   def with_mysql(args = nil)
-    exec = "mysql -u #{db_config[:username]} --password=#{db_config[:password]} #{args}"
+    exec = "#{MYSQL_EXE} -u #{db_config[:username]} --password=#{db_config[:password]} #{args}"
     IO.popen(exec, "r+") { |mysql| yield(mysql) }
   end
 
