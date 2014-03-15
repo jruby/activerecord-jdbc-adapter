@@ -17,7 +17,7 @@ end
 
 appraise "rails40" do
   # NOTE: make sure you're using --1.9 with AR-4.0
-  gem "activerecord", "~> 4.0.3", :require => false
+  gem "activerecord", "~> 4.0.4", :require => false
 end
 
 appraise "rails41" do
