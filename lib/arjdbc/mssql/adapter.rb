@@ -569,7 +569,7 @@ module ArJdbc
         raise "no columns for table: #{table_name}" if columns.empty?
       end
       # NOTE: if still no PK column simply get something for ORDER BY ...
-      "#{table_name}.#{(primary_column || columns.first).name}"
+      "#{table_name}.[#{(primary_column || columns.first).name}]"
     end
 
     # Support for executing a stored procedure.
