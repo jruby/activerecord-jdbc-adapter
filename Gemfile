@@ -19,7 +19,11 @@ group :development do
   end
 end
 
-gem 'rake', :require => nil
+if RUBY_VERSION < '1.9'
+  gem 'rake', '< 10.2.0', :require => nil
+else
+  gem 'rake', :require => nil
+end
 gem 'appraisal', :require => nil
 
 # appraisal ignores group block declarations :
