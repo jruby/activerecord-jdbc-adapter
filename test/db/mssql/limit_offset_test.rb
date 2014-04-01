@@ -182,6 +182,24 @@ class MSSQLLimitOffsetTest < Test::Unit::TestCase
     assert_equal ['three', 'four'], ships.map(&:name)
   end if ar_version('3.0')
 
+  def test_limit_with_group_by_and_aggregate_in_order_clause
+    %w( one two three four five six seven eight ).each_with_index do |name, i|
+      LongShip.create!(:name => name, :width => (i+1)*10)
+    end
+
+    ships = LongShip.select(:name).group(:name).limit(2).order('width').all
+    assert_equal ['one', 'two'], ships.map(&:name)
+
+    ships = LongShip.select(:name).group(:name).limit(2).order('width DESC').all
+    assert_equal ['eight', 'seven'], ships.map(&:name)
+
+    ships = LongShip.select(:name).group(:name).limit(2).order('MAX(width)').all
+    assert_equal ['one', 'two'], ships.map(&:name)
+
+    ships = LongShip.select(:name).group(:name).limit(2).order('MAX(width) DESC').all
+    assert_equal ['eight', 'seven'], ships.map(&:name)
+  end if ar_version('3.0')
+
   def test_select_distinct_with_limit
     %w(c a b a b a c d c d).each do |name|
       LongShip.create!(:name => name)
