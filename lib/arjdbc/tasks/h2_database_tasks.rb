@@ -20,8 +20,10 @@ module ArJdbc
       # @override
       def delete_database_files(config)
         return unless db_base = database_base_name(config)
-        db_files = [ "#{db_base}.h2.db", "#{db_base}.lock.db", "#{db_base}.trace.db" ]
-        db_files.each { |file| File.delete(file) if File.exist?(file) }
+        for suffix in [ '.h2,db', '.mv.db', '.lock.db', '.trace.db' ]
+          db_file = "#{db_base}#{suffix}"
+          File.delete(db_file) if File.exist?(db_file)
+        end
       end
 
     end

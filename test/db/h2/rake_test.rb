@@ -13,10 +13,12 @@ class H2RakeTest < Test::Unit::TestCase
   test 'rake db:create (and db:drop)' do
     @db_name = 'rake-create-test'
     Rake::Task["db:create"].invoke
-    assert_true File.exists?("#{@db_name}.h2.db"), "db file: #{@db_name}.h2.db is missing"
+    db_path = ActiveRecord::Base.connection.database_path
+    #assert_true File.exists?(db_path(@db_name)), "db file: #{db_path(@db_name)} is missing"
+    assert_true File.exists?(db_path), "db file: #{db_path} is missing"
 
     Rake::Task["db:drop"].invoke
-    assert_false File.exists?("#{@db_name}.h2.db"), "db file: #{@db_name}.h2.db not deleted"
+    assert_false File.exists?(db_path), "db file: #{db_path} not deleted"
   end
 
   test 'rake db:create (and db:drop) in memory db' do
@@ -90,9 +92,24 @@ class H2RakeTest < Test::Unit::TestCase
     File.delete("#{@db_name}.trace.db") if File.exist? "#{@db_name}.trace.db"
     if silence
       File.delete("#{@db_name}.h2.db") if File.exist? "#{@db_name}.h2.db"
+      File.delete("#{@db_name}.mv.db") if File.exist? "#{@db_name}.mv.db"
     else
-      File.delete("#{@db_name}.h2.db")
+      if File.exist? "#{@db_name}.mv.db"
+        File.delete("#{@db_name}.mv.db")
+      else
+        File.delete("#{@db_name}.h2.db")
+      end
     end
+  end
+
+  private
+
+  def db_path(db_name, suffix = nil)
+    base_path = File.expand_path(db_name)
+    return "#{base_path}#{suffix}" if suffix
+    return "#{base_path}.h2.db" if File.exist?("#{base_path}.h2.db")
+    return "#{base_path}.mv.db" if File.exist?("#{base_path}.mv.db")
+    nil
   end
 
 end

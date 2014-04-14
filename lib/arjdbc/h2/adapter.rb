@@ -242,6 +242,35 @@ module ArJdbc
       execute('DROP ALL OBJECTS')
     end
 
+    # @private
+    def database_path(base_only = false)
+      db_path = jdbc_connection(true).getSession.getDataHandler.getDatabasePath
+      return db_path if base_only
+      if File.exist?(mv_path = "#{db_path}.mv.db")
+        return mv_path
+      else
+        "#{db_path}.h2.db"
+      end
+    end
+
+    # @override
+    def jdbc_connection(unwrap = nil)
+      java_connection = raw_connection.connection
+      return java_connection unless unwrap
+      if java_connection.java_class.name == 'org.h2.jdbc.JdbcConnection'
+        return java_connection
+      end
+      connection_class = java.sql.Connection.java_class
+      if java_connection.wrapper_for?(connection_class)
+        java_connection.unwrap(connection_class) # java.sql.Wrapper.unwrap
+      elsif java_connection.respond_to?(:connection)
+        # e.g. org.apache.tomcat.jdbc.pool.PooledConnection
+        java_connection.connection # getConnection
+      else
+        java_connection
+      end
+    end
+
     private
 
     def change_column_null(table_name, column_name, null, default = nil)
@@ -267,5 +296,5 @@ module ActiveRecord::ConnectionAdapters
   class H2Adapter < JdbcAdapter
     include ArJdbc::H2
   end
-  
+
 end
