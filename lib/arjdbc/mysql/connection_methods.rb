@@ -31,6 +31,12 @@ ArJdbc::ConnectionMethods.module_eval do
     properties['useUnicode'] = 'true' unless properties.key?('useUnicode') # otherwise platform default
     encoding = config.key?(:encoding) ? config[:encoding] : 'utf8'
     properties['characterEncoding'] = encoding if encoding
+    if ! ( reconnect = config[:reconnect] ).nil?
+      properties['autoReconnect'] ||= reconnect.to_s
+      # properties['maxReconnects'] ||= '3'
+      # with reconnect fail-over sets connection read-only (by default)
+      # properties['failOverReadOnly'] ||= 'false'
+    end
 
     jdbc_connection(config)
   end
