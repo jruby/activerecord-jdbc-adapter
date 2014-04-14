@@ -64,8 +64,8 @@ class PostgreSQLArrayTypeTest < Test::Unit::TestCase
   end
 
   def test_change_column_with_array
-    @connection.add_column :pg_arrays, :snippets, :string, array: true, default: []
-    @connection.change_column :pg_arrays, :snippets, :text, array: true, default: "{}"
+    @connection.add_column :pg_arrays, :snippets, :string, :array => true, :default => []
+    @connection.change_column :pg_arrays, :snippets, :text, :array => true, :default => '{}'
 
     PgArray.reset_column_information
     column = PgArray.columns.find { |c| c.name == 'snippets' }
