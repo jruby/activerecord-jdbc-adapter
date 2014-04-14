@@ -24,7 +24,7 @@ if RUBY_VERSION < '1.9'
 else
   gem 'rake', :require => nil
 end
-gem 'appraisal', :require => nil
+gem 'appraisal', '~> 0.5.2', :require => nil
 
 # appraisal ignores group block declarations :
 

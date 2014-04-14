@@ -42,7 +42,7 @@ PLATFORMS
 
 DEPENDENCIES
   activerecord (~> 3.0.20)
-  appraisal
+  appraisal (~> 0.5.2)
   bcrypt-ruby (~> 3.0.0)
   mocha (~> 0.13.1)
   mysql2
