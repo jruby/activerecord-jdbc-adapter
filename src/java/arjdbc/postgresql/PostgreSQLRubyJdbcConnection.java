@@ -35,7 +35,6 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Timestamp;
 import java.sql.Types;
-import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -463,7 +462,7 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
         final Ruby runtime, final ResultSet resultSet, final int column)
         throws SQLException {
         if ( rawArrayType == Boolean.TRUE ) { // pre AR 4.0 compatibility
-            return runtime.newString( resultSet.getString(column) );
+            return stringToRuby(context, runtime, resultSet, column);
         }
         // NOTE: avoid `finally { array.free(); }` on PostgreSQL due :
         // java.sql.SQLFeatureNotSupportedException:

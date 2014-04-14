@@ -15,7 +15,7 @@ class PostgreSQLArrayCompatTest < Test::Unit::TestCase
     @connection.execute 'ALTER TABLE "pg_arrays" ADD COLUMN "bool_1d" boolean[]'
 
     @connection.execute "INSERT INTO \"pg_arrays\"(bool_1d, str_2d, int_1d) " <<
-      " VALUES ('{f, t, t}', '{{\"a\",\"b\"}, {\"c\",\"d\"}}', '{1, 2, 3}')"
+                        " VALUES ('{f, t, t}', '{{\"a\",\"b\"}, {\"c\",\"d\"}}', '{1, 2, 3}')"
   end
 
   def teardown
@@ -37,6 +37,13 @@ class PostgreSQLArrayCompatTest < Test::Unit::TestCase
     assert_equal "{{a,b},{c,d}}", arr.str_2d
     assert_equal "{1,2,3}", arr.int_1d
     assert_equal "{f,t,t}", arr.bool_1d
+  end
+
+  def test_null_column_values
+    arr = PgArray.create; arr.reload
+    assert_nil arr.str_2d
+    assert_equal '{}', arr.int_1d # default {}
+    assert_nil arr.bool_1d
   end
 
 end if ActiveRecord::VERSION::MAJOR < 4
