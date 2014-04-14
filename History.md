@@ -1,3 +1,20 @@
+## 1.3.7 (04/14/14)
+
+- [postgres] handle null values in array columns with AR < 4.0 (fixes #548)
+- [mysql] support for config[:reconnect] (might need some fine tuning to match mysql2)
+- fix ordering on an aggregate in MSSQL (#532)
+- introduce a deprecation (warn) method for AR-JDBC and start using it
+- [mysql] do not set defaults for text/blob columns on rename/change (#543)
+- try resolving config 'database' (if missing) from JDBC url: in rake tasks
+- [mysql] needs to `reconnect!` when recreating database (fixes #539)
+- remove_column compatibility with Rails 4.x for Oracle, Derby and MSSQL (#541)
+- Fix connection without user and password (#542)
+- fix db2 remove_column for ActiveRecord 4 (#537)
+- FireBird's DB meta-identifier is 31 chars maximum, thanks @mariuz (#538)
+- [derby] add emulate booleans option for derby adapter
+
+Code Contributors (in no particular order): mark100net, Pierrick Rouxel, @iaddict
+
 ## 1.3.6 (02/04/14)
 
 - fix rails 4-0-stable compatibility (see #530)
