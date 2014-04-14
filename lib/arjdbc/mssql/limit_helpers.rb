@@ -4,6 +4,7 @@ module ArJdbc
 
       # @private
       FIND_SELECT = /\b(SELECT(\s+DISTINCT)?)\b(.*)/mi
+      FIND_AGGREGATE_FUNCTIONS = /AVG|COUNT|COUNT_BIG|MAX|MIN|SUM|STDDEV|STDEVP|VAR|VARP/
 
       module SqlServerReplaceLimitOffset
 
@@ -28,8 +29,10 @@ module ArJdbc
             #   ActiveRecord::StatementInvalid: ActiveRecord::JDBCError: Column 'users.id' is invalid in the select list because it is not contained in either an aggregate function or the GROUP BY clause.
             #   SELECT t.* FROM ( SELECT ROW_NUMBER() OVER(ORDER BY users.id) AS _row_num, [users].[lft], COUNT([users].[lft]) FROM [users] GROUP BY [users].[lft] HAVING COUNT([users].[lft]) > 1 ) AS t WHERE t._row_num BETWEEN 1 AND 1
             if rest_of_query.downcase.include?('group by')
-              if order.count(',') == 0
-                order.gsub!(/ORDER BY (.*)/, 'ORDER BY MIN(\1)')
+              if order.match(/^ORDER +BY +(#{FIND_AGGREGATE_FUNCTIONS})\(/i)
+                # do nothing
+              elsif order.count(',') == 0
+                order.gsub!(/ORDER +BY +([^\s]+)(\s+ASC|\s+DESC)?/i, 'ORDER BY MIN(\1)\2')
               else
                 raise('Only one order condition allowed.')
               end
