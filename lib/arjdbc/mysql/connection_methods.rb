@@ -37,6 +37,20 @@ ArJdbc::ConnectionMethods.module_eval do
       # with reconnect fail-over sets connection read-only (by default)
       # properties['failOverReadOnly'] ||= 'false'
     end
+    if config[:sslkey] || sslcert = config[:sslcert] # || config[:use_ssl]
+      properties['useSSL'] ||= true
+      properties['requireSSL'] ||= true
+      properties['clientCertificateKeyStoreUrl'] ||= begin
+        java.io.File.new(sslcert).to_url.to_s
+      end if sslcert
+      if sslca = config[:sslca]
+        properties['trustCertificateKeyStoreUrl'] ||= begin
+          java.io.File.new(sslca).to_url.to_s
+        end
+      else
+        properties['verifyServerCertificate'] ||= false
+      end
+    end
 
     jdbc_connection(config)
   end
