@@ -23,6 +23,10 @@ end
 
 if defined?(JRUBY_VERSION)
   require 'arjdbc'
+  module ArJdbc
+    def self.disable_warn(message); @@warns << message end
+    def self.enable_warn(message); @@warns.delete message end
+  end
 else # we support running tests against MRI
   require 'active_record'
 end
@@ -167,6 +171,10 @@ class Test::Unit::TestCase
   end
 
   def current_connection_config; self.class.current_connection_config; end
+
+  def deprecation_silence(&block)
+    ActiveSupport::Deprecation.silence(&block)
+  end
 
   protected
 

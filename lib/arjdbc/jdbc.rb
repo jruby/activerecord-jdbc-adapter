@@ -19,9 +19,9 @@ module ArJdbc
 
     def warn?(message, once)
       return nil unless message
-      return true if ! once
-      @@warns << message.dup unless printed = @@warns.include?(message)
-      ! printed
+      return false if @@warns.include?(message)
+      @@warns << message.dup if once
+      true
     end
 
   end
