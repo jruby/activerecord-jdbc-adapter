@@ -1,8 +1,9 @@
 ## 1.3.7 (04/14/14)
 
+- [postgres] set prepared values with array columns on AR < 4.0 correctly
 - [postgres] handle null values in array columns with AR < 4.0 (fixes #548)
 - [mysql] support for config[:reconnect] (might need some fine tuning to match mysql2)
-- fix ordering on an aggregate in MSSQL (#532)
+- fix ordering on an aggregate in MSSQL (#532) (should fix #437 for good)
 - introduce a deprecation (warn) method for AR-JDBC and start using it
 - [mysql] do not set defaults for text/blob columns on rename/change (#543)
 - try resolving config 'database' (if missing) from JDBC url: in rake tasks
