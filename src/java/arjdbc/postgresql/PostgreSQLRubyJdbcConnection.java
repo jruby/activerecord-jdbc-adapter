@@ -42,6 +42,7 @@ import org.jruby.Ruby;
 import org.jruby.RubyArray;
 import org.jruby.RubyBoolean;
 import org.jruby.RubyClass;
+import org.jruby.RubyFixnum;
 import org.jruby.RubyFloat;
 import org.jruby.RubyHash;
 import org.jruby.RubyIO;
@@ -55,6 +56,8 @@ import org.jruby.util.ByteList;
 
 import org.postgresql.PGConnection;
 import org.postgresql.PGStatement;
+import org.postgresql.core.BaseConnection;
+import org.postgresql.jdbc4.Jdbc4Array;
 import org.postgresql.util.PGInterval;
 import org.postgresql.util.PGobject;
 
@@ -203,23 +206,48 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
     private static final ByteList INTERVAL =
         new ByteList( new byte[] { 'i','n','t','e','r','v','a','l' }, false );
 
+    private static final ByteList ARRAY_END = new ByteList( new byte[] { '[',']' }, false );
+
     @Override
     protected void setStringParameter(final ThreadContext context,
         final Connection connection, final PreparedStatement statement,
         final int index, final IRubyObject value,
         final IRubyObject column, final int type) throws SQLException {
-        if ( value.isNil() ) statement.setNull(index, Types.VARCHAR);
+        final RubyString sqlType;
+        if ( column != null && ! column.isNil() ) {
+            sqlType = (RubyString) column.callMethod(context, "sql_type");
+        }
         else {
-            if ( column != null && ! column.isNil() ) {
-                final RubyString sqlType = column.callMethod(context, "sql_type").asString();
+            sqlType = null;
+        }
 
+        if ( value.isNil() ) {
+            if ( rawArrayType == Boolean.TRUE ) { // array's type is :string
+                if ( sqlType != null && sqlType.getByteList().endsWith( ARRAY_END ) ) {
+                    statement.setNull(index, Types.ARRAY); return;
+                }
+                statement.setNull(index, type); return;
+            }
+            statement.setNull(index, Types.VARCHAR);
+        }
+        else {
+            final String valueStr = value.asString().toString();
+            if ( sqlType != null ) {
+                if ( rawArrayType == Boolean.TRUE && sqlType.getByteList().endsWith( ARRAY_END ) ) {
+                    final Array valueArr = new Jdbc4Array(connection.unwrap(BaseConnection.class), oidType(column), valueStr);
+                    statement.setArray(index, valueArr); return;
+                }
                 if ( sqlType.getByteList().startsWith( INTERVAL ) ) {
-                    statement.setObject( index, new PGInterval( value.asString().toString() ) );
-                    return;
+                    statement.setObject( index, new PGInterval( valueStr ) ); return;
                 }
             }
-            statement.setString( index, value.asString().toString() );
+            statement.setString( index, valueStr );
         }
+    }
+
+    private static int oidType(final IRubyObject column) {
+        final IRubyObject oid_type = column.getInstanceVariables().getInstanceVariable("@oid_type");
+        return RubyFixnum.fix2int(oid_type);
     }
 
     @Override
