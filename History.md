@@ -14,7 +14,7 @@
 - FireBird's DB meta-identifier is 31 chars maximum, thanks @mariuz (#538)
 - [derby] add emulate booleans option for derby adapter
 
-Code Contributors (in no particular order): mark100net, Pierrick Rouxel, @iaddict
+Code Contributors (in no particular order): Mark Fraser, Pierrick Rouxel, @iaddict
 
 ## 1.3.6 (02/04/14)
 
