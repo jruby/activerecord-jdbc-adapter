@@ -171,14 +171,6 @@ public class DerbyModule {
         return RubyString.newString(context.getRuntime(), BYTES_0);
     }
 
-    private static RubyString quoteBoolean(final Ruby runtime, final IRubyObject value) {
-        return value.isTrue() ? runtime.newString(BYTES_1) : runtime.newString(BYTES_0);
-    }
-
-    private static boolean isMultibyteChars(final Ruby runtime, final IRubyObject value) {
-        return getMultibyteChars(runtime).isInstance(value);
-    }
-
     private static RubyModule getMultibyteChars(final Ruby runtime) {
         return (RubyModule) ((RubyModule) runtime.getModule("ActiveSupport").
                 getConstant("Multibyte")).getConstantAt("Chars");
