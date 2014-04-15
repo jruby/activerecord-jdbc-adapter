@@ -77,6 +77,11 @@ module ArJdbc
       HSQLDB.arel_visitor_type(config)
     end
 
+    # @see ActiveRecord::ConnectionAdapters::Jdbc::ArelSupport
+    def self.arel_visitor_type(config = nil)
+      require 'arel/visitors/h2'; ::Arel::Visitors::H2
+    end
+
     ADAPTER_NAME = 'H2'.freeze
 
     # @override
