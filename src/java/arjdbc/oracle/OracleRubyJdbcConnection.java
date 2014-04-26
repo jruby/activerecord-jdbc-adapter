@@ -85,8 +85,8 @@ public class OracleRubyJdbcConnection extends RubyJdbcConnection {
                 try {
                     statement = connection.createStatement();
                     valSet = statement.executeQuery("SELECT "+ sequence +".NEXTVAL id FROM dual");
-                    if ( ! valSet.next() ) return context.getRuntime().getNil();
-                    return context.getRuntime().newFixnum( valSet.getLong(1) );
+                    if ( ! valSet.next() ) return context.runtime.getNil();
+                    return context.runtime.newFixnum( valSet.getLong(1) );
                 }
                 catch (final SQLException e) {
                     debugMessage(context, "failed to get " + sequence + ".NEXTVAL : " + e.getMessage());

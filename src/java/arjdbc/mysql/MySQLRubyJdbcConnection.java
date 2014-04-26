@@ -87,7 +87,7 @@ public class MySQLRubyJdbcConnection extends RubyJdbcConnection {
     @Override
     protected IRubyObject mapGeneratedKeysOrUpdateCount(final ThreadContext context,
         final Connection connection, final Statement statement) throws SQLException {
-        final Ruby runtime = context.getRuntime();
+        final Ruby runtime = context.runtime;
         final IRubyObject key = mapGeneratedKeys(runtime, connection, statement);
         return ( key == null || key.isNil() ) ? runtime.newFixnum( statement.getUpdateCount() ) : key;
     }
@@ -118,7 +118,7 @@ public class MySQLRubyJdbcConnection extends RubyJdbcConnection {
             }
             else { // Time or DateTime ( ActiveSupport::TimeWithZone.to_time )
                 final double time = adjustTimeFromDefaultZone(value);
-                final RubyFloat timeValue = context.getRuntime().newFloat( time );
+                final RubyFloat timeValue = context.runtime.newFloat( time );
                 statement.setTimestamp( index, convertToTimestamp(timeValue) );
             }
         }
@@ -158,7 +158,7 @@ public class MySQLRubyJdbcConnection extends RubyJdbcConnection {
     protected IRubyObject indexes(final ThreadContext context, final String tableName, final String name, final String schemaName) {
         return withConnection(context, new Callable<IRubyObject>() {
             public IRubyObject call(final Connection connection) throws SQLException {
-                final Ruby runtime = context.getRuntime();
+                final Ruby runtime = context.runtime;
                 final RubyModule indexDefinition = getIndexDefinition(runtime);
                 final String jdbcTableName = caseConvertIdentifierForJdbc(connection, tableName);
                 final String jdbcSchemaName = caseConvertIdentifierForJdbc(connection, schemaName);
@@ -256,7 +256,7 @@ public class MySQLRubyJdbcConnection extends RubyJdbcConnection {
     private static void shutdownCleanupThread() {
         if ( cleanupThreadShutdown ) return;
         try {
-            Class threadClass = Class.forName("com.mysql.jdbc.AbandonedConnectionCleanupThread");
+            Class<?> threadClass = Class.forName("com.mysql.jdbc.AbandonedConnectionCleanupThread");
             threadClass.getMethod("shutdown").invoke(null);
         }
         catch (ClassNotFoundException e) {

@@ -69,7 +69,7 @@ public class DerbyRubyJdbcConnection extends RubyJdbcConnection {
     public static IRubyObject select_p(final ThreadContext context,
         final IRubyObject self, final IRubyObject sql) {
         if ( isValues(sql.convertToString()) ) {
-            return context.getRuntime().newBoolean( true );
+            return context.runtime.newBoolean( true );
         }
         return arjdbc.jdbc.RubyJdbcConnection.select_p(context, self, sql);
     }
@@ -91,7 +91,7 @@ public class DerbyRubyJdbcConnection extends RubyJdbcConnection {
                 try {
                     statement = connection.prepareStatement("values IDENTITY_VAL_LOCAL()");
                     genKeys = statement.executeQuery();
-                    return doMapGeneratedKeys(context.getRuntime(), genKeys, true);
+                    return doMapGeneratedKeys(context.runtime, genKeys, true);
                 }
                 catch (final SQLException e) {
                     debugMessage(context, "failed to get generated keys: " + e.getMessage());
@@ -113,7 +113,7 @@ public class DerbyRubyJdbcConnection extends RubyJdbcConnection {
             final String catalog, String schemaPattern,
             final String tablePattern, final String[] types,
             final boolean checkExistsOnly) throws SQLException {
-        if (schemaPattern != null && schemaPattern.equals("")) {
+        if (schemaPattern != null && schemaPattern.length() == 0) {
             schemaPattern = null; // Derby doesn't like empty-string schema name
         }
         return super.matchTables(runtime, connection, catalog, schemaPattern, tablePattern, types, checkExistsOnly);

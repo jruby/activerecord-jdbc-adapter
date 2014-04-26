@@ -55,7 +55,7 @@ public class DerbyModule {
 
             if ( value.isNil() ||
             ( (value instanceof RubyString) && value.toString().trim().equalsIgnoreCase("null") ) ) {
-                return context.getRuntime().getNil();
+                return context.runtime.getNil();
             }
 
             final String type = self.getInstanceVariables().getInstanceVariable("@type").toString();
@@ -76,7 +76,7 @@ public class DerbyModule {
                 if ( value.respondsTo("to_i") ) {
                     return value.callMethod(context, "to_i");
                 }
-                return context.getRuntime().newFixnum( value.isTrue() ? 1 : 0 );
+                return context.runtime.newFixnum( value.isTrue() ? 1 : 0 );
             case 'd': //decimal, datetime, date
                 if ( type.equals("datetime") ) {
                     return self.getMetaClass().callMethod(context, "string_to_time", value);
@@ -100,7 +100,7 @@ public class DerbyModule {
     @JRubyMethod(name = "quote_binary", required = 1)
     public static IRubyObject quote_binary(final ThreadContext context,
         final IRubyObject self, final IRubyObject string) {
-        return quoteStringHex(context.getRuntime(), "", string, "");
+        return quoteStringHex(context.runtime, "", string, "");
     }
 
     private final static byte[] HEX = {'0','1','2','3','4','5','6','7','8','9','A','B','C','D','E','F'};
@@ -162,13 +162,13 @@ public class DerbyModule {
     @JRubyMethod(name = "quoted_true", required = 0, frame = false)
     public static IRubyObject quoted_true(
         final ThreadContext context, final IRubyObject self) {
-        return RubyString.newString(context.getRuntime(), BYTES_1);
+        return RubyString.newString(context.runtime, BYTES_1);
     }
 
     @JRubyMethod(name = "quoted_false", required = 0, frame = false)
     public static IRubyObject quoted_false(
         final ThreadContext context, final IRubyObject self) {
-        return RubyString.newString(context.getRuntime(), BYTES_0);
+        return RubyString.newString(context.runtime, BYTES_0);
     }
 
     private static RubyModule getMultibyteChars(final Ruby runtime) {

@@ -55,14 +55,14 @@ public class HSQLDBModule {
     public static IRubyObject quoted_true(
             final ThreadContext context,
             final IRubyObject self) {
-        return RubyString.newString(context.getRuntime(), BYTES_1);
+        return RubyString.newString(context.runtime, BYTES_1);
     }
 
     @JRubyMethod(name = "quoted_false", required = 0, frame = false)
     public static IRubyObject quoted_false(
             final ThreadContext context,
             final IRubyObject self) {
-        return RubyString.newString(context.getRuntime(), BYTES_0);
+        return RubyString.newString(context.runtime, BYTES_0);
     }
 
 }

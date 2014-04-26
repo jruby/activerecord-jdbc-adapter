@@ -34,21 +34,21 @@ import org.jruby.util.ByteList;
 
 /**
  * ArJdbc::SQLite3
- * 
+ *
  * @author kares
  */
 public class SQLite3Module {
-    
+
     public static RubyModule load(final RubyModule arJdbc) {
         RubyModule sqlite3 = arJdbc.defineModuleUnder("SQLite3");
         sqlite3.defineAnnotatedMethods( SQLite3Module.class );
         return sqlite3;
     }
-    
+
     @JRubyMethod(name = "quote_string", required = 1, frame = false)
     public static IRubyObject quote_string(
-            final ThreadContext context, 
-            final IRubyObject self, 
+            final ThreadContext context,
+            final IRubyObject self,
             final IRubyObject string) { // string.gsub("'", "''") :
         final char single = '\'';
         final RubyString quoted = quoteCharWith(
@@ -58,21 +58,21 @@ public class SQLite3Module {
     }
 
     private static final ByteList Q_TRUE = new ByteList(new byte[] { '\'', 't', '\'' }, false);
-    
+
     @JRubyMethod(name = "quoted_true", required = 0, frame = false)
     public static IRubyObject quoted_true(
-            final ThreadContext context, 
+            final ThreadContext context,
             final IRubyObject self) {
-        return RubyString.newString(context.getRuntime(), Q_TRUE);
+        return RubyString.newString(context.runtime, Q_TRUE);
     }
 
     private static final ByteList Q_FALSE = new ByteList(new byte[] { '\'', 'f', '\'' }, false);
-    
+
     @JRubyMethod(name = "quoted_false", required = 0, frame = false)
     public static IRubyObject quoted_false(
-            final ThreadContext context, 
+            final ThreadContext context,
             final IRubyObject self) {
-        return RubyString.newString(context.getRuntime(), Q_FALSE);
+        return RubyString.newString(context.runtime, Q_FALSE);
     }
-    
+
 }

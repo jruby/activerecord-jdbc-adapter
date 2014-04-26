@@ -76,7 +76,7 @@ public class MSSQLRubyJdbcConnection extends RubyJdbcConnection {
     @JRubyMethod(name = "exec?", required = 1, meta = true, frame = false)
     public static IRubyObject exec_p(ThreadContext context, IRubyObject self, IRubyObject sql) {
         final ByteList sqlBytes = sql.convertToString().getByteList();
-        return context.getRuntime().newBoolean( startsWithIgnoreCase(sqlBytes, EXEC) );
+        return context.runtime.newBoolean( startsWithIgnoreCase(sqlBytes, EXEC) );
     }
 
     @Override
@@ -176,7 +176,7 @@ public class MSSQLRubyJdbcConnection extends RubyJdbcConnection {
             // might get optimized to only happen once since driver won't change
             public IRubyObject call(final Connection connection) throws SQLException {
                 final String driver = connection.getMetaData().getDriverName();
-                return context.getRuntime().newBoolean( driver.indexOf("jTDS") >= 0 );
+                return context.runtime.newBoolean( driver.indexOf("jTDS") >= 0 );
             }
         });
     }

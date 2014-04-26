@@ -84,10 +84,10 @@ public class SQLite3RubyJdbcConnection extends RubyJdbcConnection {
                 try {
                     statement = connection.createStatement();
                     // NOTE: strangely this will work and has been used for quite some time :
-                    //return mapGeneratedKeys(context.getRuntime(), connection, statement, true);
+                    //return mapGeneratedKeys(context.runtime, connection, statement, true);
                     // but we should assume SQLite JDBC will prefer sane API usage eventually :
                     genKeys = statement.executeQuery("SELECT last_insert_rowid()");
-                    return doMapGeneratedKeys(context.getRuntime(), genKeys, true);
+                    return doMapGeneratedKeys(context.runtime, genKeys, true);
                 }
                 catch (final SQLException e) {
                     debugMessage(context, "failed to get generated keys: " + e.getMessage());
@@ -236,12 +236,12 @@ public class SQLite3RubyJdbcConnection extends RubyJdbcConnection {
         final Connection connection = getConnection(true);
         try {
             if ( getSavepoints(context).get(name) == null ) {
-                throw context.getRuntime().newRuntimeError("could not rollback savepoint: '" + name + "' (not set)");
+                throw context.runtime.newRuntimeError("could not rollback savepoint: '" + name + "' (not set)");
             }
             // NOTE: JDBC driver does not implement rollback(Savepoint) :
             connection.createStatement().execute("ROLLBACK TO SAVEPOINT " + name.toString());
 
-            return context.getRuntime().getNil();
+            return context.runtime.getNil();
         }
         catch (SQLException e) {
             return handleException(context, e);
@@ -254,12 +254,12 @@ public class SQLite3RubyJdbcConnection extends RubyJdbcConnection {
         final Connection connection = getConnection(true);
         try {
             if ( getSavepoints(context).get(name) == null ) {
-                throw context.getRuntime().newRuntimeError("could not release savepoint: '" + name + "' (not set)");
+                throw context.runtime.newRuntimeError("could not release savepoint: '" + name + "' (not set)");
             }
             // NOTE: JDBC driver does not implement release(Savepoint) :
             connection.createStatement().execute("RELEASE SAVEPOINT " + name.toString());
 
-            return context.getRuntime().getNil();
+            return context.runtime.getNil();
         }
         catch (SQLException e) {
             return handleException(context, e);

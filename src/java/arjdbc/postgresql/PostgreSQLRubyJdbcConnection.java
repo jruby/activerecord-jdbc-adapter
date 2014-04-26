@@ -607,8 +607,8 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
 
     @JRubyMethod(name = "raw_array_type?", meta = true)
     public static IRubyObject useRawArrayType(final ThreadContext context, final IRubyObject self) {
-        if ( rawArrayType == null ) return context.getRuntime().getNil();
-        return context.getRuntime().newBoolean(rawArrayType);
+        if ( rawArrayType == null ) return context.runtime.getNil();
+        return context.runtime.newBoolean(rawArrayType);
     }
 
     @JRubyMethod(name = "raw_array_type=", meta = true)
@@ -630,8 +630,8 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
 
     @JRubyMethod(name = "raw_hstore_type?", meta = true)
     public static IRubyObject useRawHstoreType(final ThreadContext context, final IRubyObject self) {
-        if ( rawHstoreType == null ) return context.getRuntime().getNil();
-        return context.getRuntime().newBoolean(rawHstoreType);
+        if ( rawHstoreType == null ) return context.runtime.getNil();
+        return context.runtime.newBoolean(rawHstoreType);
     }
 
     @JRubyMethod(name = "raw_hstore_type=", meta = true)
@@ -656,7 +656,7 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
 
     @JRubyMethod(name = "raw_interval_type?", meta = true)
     public static IRubyObject useRawIntervalType(final ThreadContext context, final IRubyObject self) {
-        return context.getRuntime().newBoolean(rawIntervalType);
+        return context.runtime.newBoolean(rawIntervalType);
     }
 
     @JRubyMethod(name = "raw_interval_type=", meta = true)
