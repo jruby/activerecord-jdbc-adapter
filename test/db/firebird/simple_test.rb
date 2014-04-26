@@ -128,5 +128,5 @@ class FirebirdSimpleTest < Test::Unit::TestCase
 end
 
 class FirebirdHasManyThroughTest < Test::Unit::TestCase
-  include HasManyThroughMethods
+  include HasManyThroughTestMethods
 end
