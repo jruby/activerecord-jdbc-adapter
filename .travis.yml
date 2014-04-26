@@ -37,7 +37,9 @@ env:
 branches:
   only:
     - master
-    - 1-2-stable
+    - /.*-stable$/
+    - next
+    - /^test-.*/
 matrix:
   #allow_failures:
     #- gemfile: gemfiles/rails41.gemfile
