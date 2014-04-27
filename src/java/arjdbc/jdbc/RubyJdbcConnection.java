@@ -3783,11 +3783,14 @@ public class RubyJdbcConnection extends RubyObject {
         // RubyStackTraceElement[] trace = context.gatherCallerBacktrace(level);
 
         final RubyArray backtrace = runtime.newArray(trace.length);
+        final StringBuilder line = new StringBuilder(32);
         for (int i = 0; i < trace.length; i++) {
             RubyStackTraceElement element = trace[i];
-            backtrace.append( RubyString.newString(runtime,
-                element.getFileName() + ":" + element.getLineNumber() + ":in `" + element.getMethodName() + "'"
-            ) );
+            line.setLength(0);
+            line.append(element.getFileName()).append(':').
+                 append(element.getLineNumber()).append(":in `").
+                 append(element.getMethodName()).append('\'');
+            backtrace.append( RubyString.newString(runtime, line.toString() ) );
         }
         return backtrace;
     }
