@@ -84,7 +84,6 @@ import org.jruby.anno.JRubyMethod;
 import org.jruby.exceptions.RaiseException;
 import org.jruby.javasupport.JavaEmbedUtils;
 import org.jruby.javasupport.JavaUtil;
-import org.jruby.runtime.Arity;
 import org.jruby.runtime.Block;
 import org.jruby.runtime.ObjectAllocator;
 import org.jruby.runtime.ThreadContext;
@@ -179,14 +178,6 @@ public class RubyJdbcConnection extends RubyObject {
      */
     protected static RubyClass getTransactionIsolationError(final Ruby runtime) {
         return (RubyClass) runtime.getModule("ActiveRecord").getConstant("TransactionIsolationError");
-    }
-
-    /**
-     * @param runtime
-     * @return <code>ActiveRecord::ConnectionAdapters::JdbcTypeConverter</code>
-     */
-    private static RubyClass getJdbcTypeConverter(final Ruby runtime) {
-        return getConnectionAdapters(runtime).getClass("JdbcTypeConverter");
     }
 
     @JRubyMethod(name = "transaction_isolation", alias = "get_transaction_isolation")
@@ -1267,53 +1258,6 @@ public class RubyJdbcConnection extends RubyObject {
         });
     }
 
-    // NOTE: this seems to be not used ... at all ?!
-    /*
-     * sql, values (array), types (column.type array), name = nil, pk = nil, id_value = nil, sequence_name = nil
-     */
-    @Deprecated
-    @JRubyMethod(name = "insert_bind", required = 3, rest = true)
-    public IRubyObject insert_bind(final ThreadContext context, final IRubyObject[] args) throws SQLException {
-        final Ruby runtime = context.runtime;
-        return withConnection(context, new Callable<IRubyObject>() {
-            public IRubyObject call(final Connection connection) throws SQLException {
-                final String sql = args[0].convertToString().toString();
-                PreparedStatement statement = null;
-                try {
-                    statement = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
-                    setPreparedStatementValues(context, connection, statement, args[1], args[2]);
-                    statement.executeUpdate();
-                    return mapGeneratedKeys(runtime, connection, statement);
-                }
-                finally { close(statement); }
-            }
-        });
-    }
-
-    // NOTE: this seems to be not used ... at all ?!
-    /*
-     * sql, values (array), types (column.type array), name = nil
-     */
-    @Deprecated
-    @JRubyMethod(name = "update_bind", required = 3, rest = true)
-    public IRubyObject update_bind(final ThreadContext context, final IRubyObject[] args) throws SQLException {
-        final Ruby runtime = context.runtime;
-        Arity.checkArgumentCount(runtime, args, 3, 4);
-        return withConnection(context, new Callable<IRubyObject>() {
-            public IRubyObject call(final Connection connection) throws SQLException {
-                final String sql = args[0].convertToString().toString();
-                PreparedStatement statement = null;
-                try {
-                    statement = connection.prepareStatement(sql);
-                    setPreparedStatementValues(context, connection, statement, args[1], args[2]);
-                    statement.executeUpdate();
-                }
-                finally { close(statement); }
-                return runtime.getNil();
-            }
-        });
-    }
-
     @JRubyMethod(name = "with_connection_retry_guard", frame = true)
     public IRubyObject with_connection_retry_guard(final ThreadContext context, final Block block) {
         return withConnection(context, new Callable<IRubyObject>() {
@@ -2187,21 +2131,6 @@ public class RubyJdbcConnection extends RubyObject {
             case Types.NVARCHAR: // JDBC 4.0
             default:
                 setStringParameter(context, connection, statement, index, value, column, type);
-        }
-    }
-
-    @Deprecated // NOTE: only used from deprecated methods
-    private void setPreparedStatementValues(final ThreadContext context,
-            final Connection connection, final PreparedStatement statement,
-            final IRubyObject valuesArg, final IRubyObject typesArg) throws SQLException {
-        final Ruby runtime = context.runtime;
-        final RubyArray values = (RubyArray) valuesArg;
-        final RubyArray types = (RubyArray) typesArg; // column types
-        for( int i = 0, j = values.getLength(); i < j; i++ ) {
-            setStatementParameter(
-                    context, runtime, connection, statement, i + 1,
-                    values.eltInternal(i), types.eltInternal(i)
-            );
         }
     }
 
