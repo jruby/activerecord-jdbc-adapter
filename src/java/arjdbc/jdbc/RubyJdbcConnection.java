@@ -101,7 +101,7 @@ public class RubyJdbcConnection extends RubyObject {
     private static final String[] TABLE_TYPE = new String[] { "TABLE" };
     private static final String[] TABLE_TYPES = new String[] { "TABLE", "VIEW", "SYNONYM" };
 
-    private JdbcConnectionFactory connectionFactory;
+    private ConnectionFactory connectionFactory;
 
     protected RubyJdbcConnection(Ruby runtime, RubyClass metaClass) {
         super(runtime, metaClass);
@@ -195,8 +195,8 @@ public class RubyJdbcConnection extends RubyObject {
             public IRubyObject call(final Connection connection) throws SQLException {
                 final int level = connection.getTransactionIsolation();
                 final String isolationSymbol = formatTransactionIsolationLevel(level);
-                if ( isolationSymbol == null ) return context.getRuntime().getNil();
-                return context.getRuntime().newSymbol(isolationSymbol);
+                if ( isolationSymbol == null ) return context.runtime.getNil();
+                return context.runtime.newSymbol(isolationSymbol);
             }
         });
     }
@@ -216,8 +216,8 @@ public class RubyJdbcConnection extends RubyObject {
                 connection.setTransactionIsolation(level);
 
                 final String isolationSymbol = formatTransactionIsolationLevel(level);
-                if ( isolationSymbol == null ) return context.getRuntime().getNil();
-                return context.getRuntime().newSymbol(isolationSymbol);
+                if ( isolationSymbol == null ) return context.runtime.getNil();
+                return context.runtime.newSymbol(isolationSymbol);
             }
         });
     }
@@ -478,7 +478,7 @@ public class RubyJdbcConnection extends RubyObject {
 
     @JRubyMethod(name = "connection_factory=", required = 1)
     public IRubyObject set_connection_factory(final ThreadContext context, final IRubyObject factory) {
-        setConnectionFactory( (JdbcConnectionFactory) factory.toJava(JdbcConnectionFactory.class) );
+        setConnectionFactory( (ConnectionFactory) factory.toJava(ConnectionFactory.class) );
         return context.runtime.getNil();
     }
 
@@ -1570,7 +1570,7 @@ public class RubyJdbcConnection extends RubyObject {
         return context.getRuntime().newBoolean( getConnectionFactory() instanceof DataSourceConnectionFactoryImpl );
     }
 
-    private IRubyObject set_connection_factory(final ThreadContext context, final JdbcConnectionFactory factory) {
+    private IRubyObject set_connection_factory(final ThreadContext context, final ConnectionFactory factory) {
         final IRubyObject connection_factory = JavaUtil.convertJavaToRuby(context.getRuntime(), factory);
         setConnectionFactory( factory ); //callMethod(context, "connection_factory=", connection_factory);
         return connection_factory;
@@ -1618,19 +1618,19 @@ public class RubyJdbcConnection extends RubyObject {
         return getAdapter(context).callMethod(context, "jdbc_column_class");
     }
 
-    protected JdbcConnectionFactory getConnectionFactory() throws RaiseException {
+    protected ConnectionFactory getConnectionFactory() throws RaiseException {
         if ( connectionFactory == null ) {
             // NOTE: only for (backwards) compatibility (to be deleted) :
             IRubyObject connection_factory = getInstanceVariable("@connection_factory");
             if ( connection_factory == null ) {
                 throw getRuntime().newRuntimeError("@connection_factory not set");
             }
-            connectionFactory = (JdbcConnectionFactory) connection_factory.toJava(JdbcConnectionFactory.class);
+            connectionFactory = (ConnectionFactory) connection_factory.toJava(ConnectionFactory.class);
         }
         return connectionFactory;
     }
 
-    public void setConnectionFactory(JdbcConnectionFactory connectionFactory) {
+    public void setConnectionFactory(ConnectionFactory connectionFactory) {
         this.connectionFactory = connectionFactory;
     }
 
