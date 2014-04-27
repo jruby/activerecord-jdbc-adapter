@@ -1720,16 +1720,7 @@ public class RubyJdbcConnection extends RubyObject {
         throws SQLException {
         final long value = resultSet.getLong(column);
         if ( value == 0 && resultSet.wasNull() ) return runtime.getNil();
-        return integerToRuby(runtime, resultSet, value);
-    }
-
-    @Deprecated
-    protected IRubyObject integerToRuby(
-        final Ruby runtime, final ResultSet resultSet, final long longValue)
-        throws SQLException {
-        if ( longValue == 0 && resultSet.wasNull() ) return runtime.getNil();
-
-        return runtime.newFixnum(longValue);
+        return runtime.newFixnum(value);
     }
 
     protected IRubyObject doubleToRuby(final ThreadContext context,
@@ -1737,15 +1728,7 @@ public class RubyJdbcConnection extends RubyObject {
         throws SQLException {
         final double value = resultSet.getDouble(column);
         if ( value == 0 && resultSet.wasNull() ) return runtime.getNil();
-        return doubleToRuby(runtime, resultSet, value);
-    }
-
-    @Deprecated
-    protected IRubyObject doubleToRuby(
-        final Ruby runtime, final ResultSet resultSet, double doubleValue)
-        throws SQLException {
-        if ( doubleValue == 0 && resultSet.wasNull() ) return runtime.getNil();
-        return runtime.newFloat(doubleValue);
+        return runtime.newFloat(value);
     }
 
     protected IRubyObject stringToRuby(final ThreadContext context,
@@ -1753,16 +1736,7 @@ public class RubyJdbcConnection extends RubyObject {
         throws SQLException {
         final String value = resultSet.getString(column);
         if ( value == null && resultSet.wasNull() ) return runtime.getNil();
-        return stringToRuby(runtime, resultSet, value);
-    }
-
-    @Deprecated
-    protected IRubyObject stringToRuby(
-        final Ruby runtime, final ResultSet resultSet, final String string)
-        throws SQLException {
-        if ( string == null && resultSet.wasNull() ) return runtime.getNil();
-
-        return RubyString.newUnicodeString(runtime, string);
+        return RubyString.newUnicodeString(runtime, value);
     }
 
     protected IRubyObject bigIntegerToRuby(final ThreadContext context,
@@ -1770,16 +1744,7 @@ public class RubyJdbcConnection extends RubyObject {
         throws SQLException {
         final String value = resultSet.getString(column);
         if ( value == null && resultSet.wasNull() ) return runtime.getNil();
-        return bigIntegerToRuby(runtime, resultSet, value);
-    }
-
-    @Deprecated
-    protected IRubyObject bigIntegerToRuby(
-        final Ruby runtime, final ResultSet resultSet, final String intValue)
-        throws SQLException {
-        if ( intValue == null && resultSet.wasNull() ) return runtime.getNil();
-
-        return RubyBignum.bignorm(runtime, new BigInteger(intValue));
+        return RubyBignum.bignorm(runtime, new BigInteger(value));
     }
 
     protected IRubyObject decimalToRuby(final ThreadContext context,
@@ -1928,14 +1893,6 @@ public class RubyJdbcConnection extends RubyObject {
         }
         final boolean value = resultSet.getBoolean(column);
         if ( resultSet.wasNull() ) return runtime.getNil();
-        return booleanToRuby(runtime, resultSet, value);
-    }
-
-    @Deprecated
-    protected IRubyObject booleanToRuby(
-        final Ruby runtime, final ResultSet resultSet, final boolean value)
-        throws SQLException {
-        if ( value == false && resultSet.wasNull() ) return runtime.getNil();
         return runtime.newBoolean(value);
     }
 
@@ -3150,16 +3107,6 @@ public class RubyJdbcConnection extends RubyObject {
     }
 
     /**
-     * @deprecated no longer used but kept for binary compatibility
-     */
-    @Deprecated
-    protected IRubyObject unmarshalResult(final ThreadContext context,
-            final DatabaseMetaData metaData, final ResultSet resultSet,
-            final boolean downCase) throws SQLException {
-        return mapToRawResult(context, context.runtime, metaData, resultSet, downCase);
-    }
-
-    /**
      * Converts a JDBC result set into an array (rows) of hashes (row).
      *
      * @param downCase should column names only be in lower case?
@@ -3170,20 +3117,6 @@ public class RubyJdbcConnection extends RubyObject {
             final boolean downCase) throws SQLException {
 
         final ColumnData[] columns = extractColumns(runtime, connection, resultSet, downCase);
-
-        final RubyArray results = runtime.newArray();
-        // [ { 'col1': 1, 'col2': 2 }, { 'col1': 3, 'col2': 4 } ]
-        populateFromResultSet(context, runtime, (List<IRubyObject>) results, resultSet, columns);
-        return results;
-    }
-
-    @Deprecated
-    @SuppressWarnings("unchecked")
-    private IRubyObject mapToRawResult(final ThreadContext context, final Ruby runtime,
-            final DatabaseMetaData metaData, final ResultSet resultSet,
-            final boolean downCase) throws SQLException {
-
-        final ColumnData[] columns = extractColumns(runtime, metaData, resultSet, downCase);
 
         final RubyArray results = runtime.newArray();
         // [ { 'col1': 1, 'col2': 2 }, { 'col1': 3, 'col2': 4 } ]
@@ -3222,13 +3155,6 @@ public class RubyJdbcConnection extends RubyObject {
         final Connection connection, final ResultSet resultSet,
         final boolean downCase) throws SQLException {
         return setupColumns(runtime, connection, resultSet.getMetaData(), downCase);
-    }
-
-    @Deprecated
-    protected ColumnData[] extractColumns(final Ruby runtime,
-        final DatabaseMetaData metaData, final ResultSet resultSet,
-        final boolean downCase) throws SQLException {
-        return setupColumns(runtime, metaData, resultSet.getMetaData(), downCase);
     }
 
     /**
@@ -3635,31 +3561,6 @@ public class RubyJdbcConnection extends RubyObject {
                 name = name.toLowerCase();
             } else {
                 name = caseConvertIdentifierForRails(connection, name);
-            }
-            final RubyString columnName = RubyString.newUnicodeString(runtime, name);
-            final int columnType = resultMetaData.getColumnType(i);
-            columns[i - 1] = new ColumnData(columnName, columnType, i);
-        }
-
-        return columns;
-    }
-
-    @Deprecated
-    private ColumnData[] setupColumns(
-            final Ruby runtime,
-            final DatabaseMetaData metaData,
-            final ResultSetMetaData resultMetaData,
-            final boolean downCase) throws SQLException {
-
-        final int columnCount = resultMetaData.getColumnCount();
-        final ColumnData[] columns = new ColumnData[columnCount];
-
-        for ( int i = 1; i <= columnCount; i++ ) { // metadata is one-based
-            String name = resultMetaData.getColumnLabel(i);
-            if ( downCase ) {
-                name = name.toLowerCase();
-            } else {
-                name = caseConvertIdentifierForRails(metaData, name);
             }
             final RubyString columnName = RubyString.newUnicodeString(runtime, name);
             final int columnType = resultMetaData.getColumnType(i);
