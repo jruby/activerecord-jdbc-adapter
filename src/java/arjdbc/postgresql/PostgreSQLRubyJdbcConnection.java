@@ -484,13 +484,13 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
         throws SQLException {
         // NOTE: using Timestamp we loose information such as BC :
         // Timestamp: '0001-12-31 22:59:59.0' String: '0001-12-31 22:59:59 BC'
-        final String value = resultSet.getString(column);
+        final byte[] value = resultSet.getBytes(column);
         if ( value == null ) {
             if ( resultSet.wasNull() ) return runtime.getNil();
             return runtime.newString(); // ""
         }
 
-        final RubyString strValue = timestampToRubyString(runtime, value.toString());
+        final RubyString strValue = RubyString.newString(runtime, new ByteList(value, false));
         if ( rawDateTime != null && rawDateTime.booleanValue() ) return strValue;
 
         final IRubyObject adapter = callMethod(context, "adapter"); // self.adapter
