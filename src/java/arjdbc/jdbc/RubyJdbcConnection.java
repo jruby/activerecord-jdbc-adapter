@@ -1793,12 +1793,38 @@ public class RubyJdbcConnection extends RubyObject {
             return runtime.newString(); // ""
         }
 
-        final RubyString strValue = RubyString.newUnicodeString(runtime, value.toString());
+        final RubyString strValue = RubyString.newString(runtime, fastDateToString(value));
         if ( rawDateTime != null && rawDateTime.booleanValue() ) return strValue;
 
         final IRubyObject adapter = callMethod(context, "adapter"); // self.adapter
         if ( adapter.isNil() ) return strValue; // NOTE: we warn on init_connection
         return adapter.callMethod(context, "_string_to_date", strValue);
+    }
+
+    @SuppressWarnings("deprecation")
+    protected static ByteList fastDateToString(final Date date) {
+        final ByteList str = new ByteList(10); // "2000-00-00"
+
+        int year = date.getYear() + 1900;
+        int month = date.getMonth() + 1;
+        int day = date.getDate();
+
+        str.append( decByte( ( year / 1000 ) % 10 ) );
+        str.append( decByte( ( year / 100 ) % 10 ) );
+        str.append( decByte( ( year / 10 ) % 10 ) );
+        str.append( decByte( year % 10 ) );
+
+        str.append( '-' );
+
+        str.append( decByte( month / 10 ) );
+        str.append( decByte( month % 10 ) );
+
+        str.append( '-' );
+
+        str.append( decByte( day / 10 ) );
+        str.append( decByte( day % 10 ) );
+
+        return str;
     }
 
     protected IRubyObject timeToRuby(final ThreadContext context,
@@ -1811,12 +1837,36 @@ public class RubyJdbcConnection extends RubyObject {
             return runtime.newString(); // ""
         }
 
-        final RubyString strValue = RubyString.newUnicodeString(runtime, value.toString());
+        final RubyString strValue = RubyString.newString(runtime, fastTimeToString(value));
         if ( rawDateTime != null && rawDateTime.booleanValue() ) return strValue;
 
         final IRubyObject adapter = callMethod(context, "adapter"); // self.adapter
         if ( adapter.isNil() ) return strValue; // NOTE: we warn on init_connection
         return adapter.callMethod(context, "_string_to_time", strValue);
+    }
+
+    @SuppressWarnings("deprecation")
+    protected static ByteList fastTimeToString(final Time time) {
+        final ByteList str = new ByteList(8); // hh:mm:ss
+
+        int hours = time.getHours();
+        int minutes = time.getMinutes();
+        int seconds = time.getSeconds();
+
+        str.append( decByte( hours / 10 ) );
+        str.append( decByte( hours % 10 ) );
+
+        str.append( ':' );
+
+        str.append( decByte( minutes / 10 ) );
+        str.append( decByte( minutes % 10 ) );
+
+        str.append( ':' );
+
+        str.append( decByte( seconds / 10 ) );
+        str.append( decByte( seconds % 10 ) );
+
+        return str;
     }
 
     protected IRubyObject timestampToRuby(final ThreadContext context, // TODO
@@ -1829,7 +1879,7 @@ public class RubyJdbcConnection extends RubyObject {
             return runtime.newString(); // ""
         }
 
-        final RubyString strValue = timestampToRubyString(runtime, value.toString());
+        final RubyString strValue = RubyString.newString(runtime, fastTimestampToString(value));
         if ( rawDateTime != null && rawDateTime.booleanValue() ) return strValue;
 
         final IRubyObject adapter = callMethod(context, "adapter"); // self.adapter
@@ -1837,6 +1887,10 @@ public class RubyJdbcConnection extends RubyObject {
         return adapter.callMethod(context, "_string_to_timestamp", strValue);
     }
 
+    /**
+     * @deprecated no longer needed use {@link #fastTimestampToString(Timestamp)}
+     */
+    @Deprecated
     protected static RubyString timestampToRubyString(final Ruby runtime, String value) {
         // Timestamp's format: yyyy-mm-dd hh:mm:ss.fffffffff
         String suffix; // assumes java.sql.Timestamp internals :
@@ -1849,13 +1903,63 @@ public class RubyJdbcConnection extends RubyObject {
         return RubyString.newUnicodeString(runtime, value);
     }
 
-    @Deprecated
-    protected IRubyObject timestampToRuby(
-        final Ruby runtime, final ResultSet resultSet, final Timestamp value)
-        throws SQLException {
-        if ( value == null && resultSet.wasNull() ) return runtime.getNil();
+    @SuppressWarnings("deprecation")
+    protected static ByteList fastTimestampToString(final Timestamp timestamp) {
+        final ByteList str = new ByteList(29); // yyyy-mm-dd hh:mm:ss.fffffffff
 
-        return timestampToRubyString(runtime, value.toString());
+        int year = timestamp.getYear() + 1900;
+        int month = timestamp.getMonth() + 1;
+        int day = timestamp.getDate();
+        int hours = timestamp.getHours();
+        int minutes = timestamp.getMinutes();
+        int seconds = timestamp.getSeconds();
+        int nanos = timestamp.getNanos();
+
+        str.append( decByte( ( year / 1000 ) % 10 ) );
+        str.append( decByte( ( year / 100 ) % 10 ) );
+        str.append( decByte( ( year / 10 ) % 10 ) );
+        str.append( decByte( year % 10 ) );
+
+        str.append( '-' );
+
+        str.append( decByte( month / 10 ) );
+        str.append( decByte( month % 10 ) );
+
+        str.append( '-' );
+
+        str.append( decByte( day / 10 ) );
+        str.append( decByte( day % 10 ) );
+
+        if ( hours != 0 || minutes != 0 || seconds != 0 || nanos != 0 ) {
+            str.append(' ');
+
+            str.append( decByte( hours / 10 ) );
+            str.append( decByte( hours % 10 ) );
+
+            str.append( ':' );
+
+            str.append( decByte( minutes / 10 ) );
+            str.append( decByte( minutes % 10 ) );
+
+            str.append( ':' );
+
+            str.append( decByte( seconds / 10 ) );
+            str.append( decByte( seconds % 10 ) );
+
+            if ( nanos != 0 ) {
+                str.append( '.' );
+
+                int pow = 100000000; // nanos <= 999999999
+                for ( int i = 0; i < 8; i++ ) {
+                    final int b = nanos / pow;
+                    if ( b == 0 ) break; // done (no trailing zeros)
+                    str.append( decByte( b % 10 ) );
+                    pow = pow / 10;
+                }
+            }
+        }
+
+        return str;
     }
 
     protected static Boolean rawBoolean;
@@ -3359,7 +3463,7 @@ public class RubyJdbcConnection extends RubyObject {
         // AR-4.0 : initialize(columns, rows, column_types = {})
         protected static Boolean INIT_COLUMN_TYPES = Boolean.FALSE;
 
-        protected static Boolean FORCE_HASH_ROWS = Boolean.FALSE;
+        //protected static Boolean FORCE_HASH_ROWS = Boolean.FALSE;
 
         private static volatile ResultHandler instance;
 
@@ -3367,7 +3471,15 @@ public class RubyJdbcConnection extends RubyObject {
             if ( instance == null ) {
                 synchronized(ResultHandler.class) {
                     if ( instance == null ) { // fine to initialize twice
-                        setInstance( new ResultHandler(runtime) );
+                        final RubyClass result = getResult(runtime);
+                        if ( result != null && result != runtime.getNilClass() ) {
+                            USE_RESULT = true;
+                            setInstance( new ResultHandler(runtime) );
+                        }
+                        else {
+                            USE_RESULT = false;
+                            setInstance( new RawResultHandler(runtime) );
+                        }
                     }
                 }
             }
@@ -3379,30 +3491,31 @@ public class RubyJdbcConnection extends RubyObject {
         }
 
         protected ResultHandler(final Ruby runtime) {
-            final RubyClass result = getResult(runtime);
-            USE_RESULT = result != null && result != runtime.getNilClass();
+            // no-op
         }
 
         public IRubyObject mapRow(final ThreadContext context, final Ruby runtime,
             final ColumnData[] columns, final ResultSet resultSet,
             final RubyJdbcConnection connection) throws SQLException {
+            // maps a AR::Result row
+            final RubyArray row = runtime.newArray(columns.length);
 
-            if ( USE_RESULT ) { // maps a AR::Result row
-                final RubyArray row = runtime.newArray(columns.length);
-
-                for ( int i = 0; i < columns.length; i++ ) {
-                    final ColumnData column = columns[i];
-                    row.append( connection.jdbcToRuby(context, runtime, column.index, column.type, resultSet) );
-                }
-
-                return row;
+            for ( int i = 0; i < columns.length; i++ ) {
+                final ColumnData column = columns[i];
+                row.append( connection.jdbcToRuby(context, runtime, column.index, column.type, resultSet) );
             }
-            else {
-                return mapRawRow(context, runtime, columns, resultSet, connection);
-            }
+
+            return row;
         }
 
-        IRubyObject mapRawRow(final ThreadContext context, final Ruby runtime,
+        public IRubyObject newResult(final ThreadContext context, final Ruby runtime,
+            final ColumnData[] columns, final IRubyObject rows) { // rows array
+            // ActiveRecord::Result.new(columns, rows)
+            final RubyClass result = getResult(runtime);
+            return result.callMethod( context, "new", initArgs(runtime, columns, rows), Block.NULL_BLOCK );
+        }
+
+        final IRubyObject mapRawRow(final ThreadContext context, final Ruby runtime,
             final ColumnData[] columns, final ResultSet resultSet,
             final RubyJdbcConnection connection) throws SQLException {
 
@@ -3418,16 +3531,7 @@ public class RubyJdbcConnection extends RubyObject {
             return row;
         }
 
-        public IRubyObject newResult(final ThreadContext context, final Ruby runtime,
-            final ColumnData[] columns, final IRubyObject rows) { // rows array
-            if ( USE_RESULT ) { // ActiveRecord::Result.new(columns, rows)
-                final RubyClass result = getResult(runtime);
-                return result.callMethod( context, "new", initArgs(runtime, columns, rows), Block.NULL_BLOCK );
-            }
-            return rows; // contains { 'col1' => 1, ... } Hash-es
-        }
-
-        private IRubyObject[] initArgs(final Ruby runtime,
+        private static IRubyObject[] initArgs(final Ruby runtime,
             final ColumnData[] columns, final IRubyObject rows) {
 
             final IRubyObject[] args;
@@ -3451,6 +3555,26 @@ public class RubyJdbcConnection extends RubyObject {
 
     }
 
+    private static class RawResultHandler extends ResultHandler {
+
+        protected RawResultHandler(final Ruby runtime) {
+            super(runtime);
+        }
+
+        @Override
+        public IRubyObject mapRow(final ThreadContext context, final Ruby runtime,
+            final ColumnData[] columns, final ResultSet resultSet,
+            final RubyJdbcConnection connection) throws SQLException {
+            return mapRawRow(context, runtime, columns, resultSet, connection);
+        }
+
+        @Override
+        public IRubyObject newResult(final ThreadContext context, final Ruby runtime,
+            final ColumnData[] columns, final IRubyObject rows) { // rows array
+            return rows; // contains { 'col1' => 1, ... } Hash-es
+        }
+
+    }
 
     protected static final class TableName {
 
@@ -3568,6 +3692,22 @@ public class RubyJdbcConnection extends RubyObject {
         }
 
         return columns;
+    }
+
+    private static byte decByte(final int digit) {
+        switch (digit) {
+            case 0 : return '0';
+            case 1 : return '1';
+            case 2 : return '2';
+            case 3 : return '3';
+            case 4 : return '4';
+            case 5 : return '5';
+            case 6 : return '6';
+            case 7 : return '7';
+            case 8 : return '8';
+            case 9 : return '9';
+        }
+        throw new IllegalStateException("unexpected digit: " + digit);
     }
 
     // JDBC API Helpers :
