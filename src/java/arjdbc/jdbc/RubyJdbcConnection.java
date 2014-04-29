@@ -1747,7 +1747,7 @@ public class RubyJdbcConnection extends RubyObject {
         return RubyBignum.bignorm(runtime, new BigInteger(value));
     }
 
-    private static final boolean bigDecimalExt;
+    protected static final boolean bigDecimalExt;
     static {
         boolean useBigDecimalExt = true;
 

@@ -27,6 +27,7 @@ package arjdbc.postgresql;
 
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
+import java.math.BigDecimal;
 import java.sql.Array;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -53,6 +54,7 @@ import org.jruby.runtime.ObjectAllocator;
 import org.jruby.runtime.ThreadContext;
 import org.jruby.runtime.builtin.IRubyObject;
 import org.jruby.util.ByteList;
+import org.jcodings.specific.UTF8Encoding;
 
 import org.postgresql.PGConnection;
 import org.postgresql.PGStatement;
@@ -496,6 +498,43 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
         final IRubyObject adapter = callMethod(context, "adapter"); // self.adapter
         if ( adapter.isNil() ) return strValue; // NOTE: we warn on init_connection
         return adapter.callMethod(context, "_string_to_timestamp", strValue);
+    }
+
+    @Override // optimized String -> byte[]
+    protected IRubyObject stringToRuby(final ThreadContext context,
+        final Ruby runtime, final ResultSet resultSet, final int column)
+        throws SQLException {
+        final byte[] value = resultSet.getBytes(column);
+        if ( value == null && resultSet.wasNull() ) return runtime.getNil();
+        return newUTF8String(runtime, value);
+    }
+
+    private static RubyString newUTF8String(final Ruby runtime, final byte[] bytes) {
+        final ByteList byteList = new ByteList(bytes, false);
+        return RubyString.newString(runtime, byteList, UTF8Encoding.INSTANCE);
+    }
+
+    @Override // optimized CLOBs
+    protected IRubyObject readerToRuby(final ThreadContext context,
+        final Ruby runtime, final ResultSet resultSet, final int column)
+        throws SQLException {
+        return stringToRuby(context, runtime, resultSet, column);
+    }
+
+    @Override // optimized String -> byte[]
+    protected IRubyObject decimalToRuby(final ThreadContext context,
+        final Ruby runtime, final ResultSet resultSet, final int column)
+        throws SQLException {
+        if ( bigDecimalExt ) { // "optimized" path (JRuby 1.7+)
+            final BigDecimal value = resultSet.getBigDecimal(column);
+            if ( value == null && resultSet.wasNull() ) return runtime.getNil();
+            return new org.jruby.ext.bigdecimal.RubyBigDecimal(runtime, value);
+        }
+
+        final byte[] value = resultSet.getBytes(column);
+        if ( value == null && resultSet.wasNull() ) return runtime.getNil();
+        final RubyString valueStr = runtime.newString(new ByteList(value, false));
+        return runtime.getKernel().callMethod("BigDecimal", valueStr);
     }
 
     @Override
