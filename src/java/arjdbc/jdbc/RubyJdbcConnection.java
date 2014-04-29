@@ -92,6 +92,10 @@ import org.jruby.runtime.backtrace.RubyStackTraceElement;
 import org.jruby.runtime.builtin.IRubyObject;
 import org.jruby.util.ByteList;
 
+import static arjdbc.util.StringHelper.decByte;
+import static arjdbc.util.StringHelper.readBytes;
+
+
 /**
  * Part of our ActiveRecord::ConnectionAdapters::Connection impl.
  */
@@ -2023,7 +2027,7 @@ public class RubyJdbcConnection extends RubyObject {
         return runtime.newBoolean(value);
     }
 
-    protected static int streamBufferSize = 2048;
+    protected static final int streamBufferSize = 2048;
 
     protected IRubyObject streamToRuby(final ThreadContext context,
         final Ruby runtime, final ResultSet resultSet, final int column)
@@ -2031,7 +2035,13 @@ public class RubyJdbcConnection extends RubyObject {
         final InputStream stream = resultSet.getBinaryStream(column);
         try {
             if ( resultSet.wasNull() ) return runtime.getNil();
-            return streamToRuby(runtime, resultSet, stream);
+
+            final int buffSize = streamBufferSize;
+            final ByteList bytes = new ByteList(buffSize);
+
+            readBytes(bytes, stream, buffSize);
+
+            return runtime.newString(bytes);
         }
         finally { if ( stream != null ) stream.close(); }
     }
@@ -3715,22 +3725,6 @@ public class RubyJdbcConnection extends RubyObject {
         }
 
         return columns;
-    }
-
-    private static byte decByte(final int digit) {
-        switch (digit) {
-            case 0 : return '0';
-            case 1 : return '1';
-            case 2 : return '2';
-            case 3 : return '3';
-            case 4 : return '4';
-            case 5 : return '5';
-            case 6 : return '6';
-            case 7 : return '7';
-            case 8 : return '8';
-            case 9 : return '9';
-        }
-        throw new IllegalStateException("unexpected digit: " + digit);
     }
 
     // JDBC API Helpers :

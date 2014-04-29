@@ -63,6 +63,8 @@ import org.postgresql.jdbc4.Jdbc4Array;
 import org.postgresql.util.PGInterval;
 import org.postgresql.util.PGobject;
 
+import static arjdbc.util.StringHelper.newUTF8String;
+
 /**
  *
  * @author enebo
@@ -507,11 +509,6 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
         final byte[] value = resultSet.getBytes(column);
         if ( value == null && resultSet.wasNull() ) return runtime.getNil();
         return newUTF8String(runtime, value);
-    }
-
-    private static RubyString newUTF8String(final Ruby runtime, final byte[] bytes) {
-        final ByteList byteList = new ByteList(bytes, false);
-        return RubyString.newString(runtime, byteList, UTF8Encoding.INSTANCE);
     }
 
     @Override // optimized CLOBs
