@@ -12,7 +12,7 @@
   <url>http://github.com/jruby/activerecord-jdbc-adapter/wiki</url>
 
   <properties>
-    <jruby.version>1.6.8</jruby.version>
+    <jruby.version>1.7.12</jruby.version>
   </properties>
 
   <issueManagement>
@@ -69,7 +69,7 @@
   <dependencies>
     <dependency>
       <groupId>org.jruby</groupId>
-      <artifactId>jruby-complete</artifactId>
+      <artifactId>jruby-core</artifactId>
       <version>${jruby.version}</version>
     </dependency>
     <dependency>
