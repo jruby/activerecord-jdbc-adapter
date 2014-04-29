@@ -91,9 +91,11 @@ module MultibyteTestMethods
 
   def do_test_nonutf8_encoding_in_entry
     prague_district = 'hradčany'
-    new_entry = Entry.create :title => prague_district
-    new_entry.reload
-    assert_equal prague_district, new_entry.title
+    prague_district_desc = "Mezi Pražským hradem a Strahovem se ještě ve středověku táhl les, kterým vedla cesta do Břevnova."
+    entry = Entry.create! :title => prague_district, :content => prague_district_desc
+    entry.reload
+    assert_equal prague_district, entry.title
+    assert_equal prague_district_desc, entry.content
   end
 
   private
