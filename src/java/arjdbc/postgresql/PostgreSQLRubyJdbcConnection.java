@@ -1,5 +1,5 @@
 /***** BEGIN LICENSE BLOCK *****
- * Copyright (c) 2012-2013 Karol Bucek <self@kares.org>
+ * Copyright (c) 2012-2014 Karol Bucek <self@kares.org>
  * Copyright (c) 2006-2010 Nick Sieger <nick@nicksieger.com>
  * Copyright (c) 2006-2007 Ola Bini <ola.bini@gmail.com>
  * Copyright (c) 2008-2009 Thomas E Enebo <enebo@acm.org>
@@ -714,6 +714,8 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
 
     public static class DateRangeType extends PGobject {
 
+        private static final long serialVersionUID = -5378414736244196691L;
+
         public DateRangeType() {
             setType("daterange");
         }
@@ -726,6 +728,8 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
     }
 
     public static class TsRangeType extends PGobject {
+
+        private static final long serialVersionUID = -2991390995527988409L;
 
         public TsRangeType() {
             setType("tsrange");
@@ -740,6 +744,8 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
 
     public static class TstzRangeType extends PGobject {
 
+        private static final long serialVersionUID = 6492535255861743334L;
+
         public TstzRangeType() {
             setType("tstzrange");
         }
@@ -752,6 +758,8 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
     }
 
     public static class Int4RangeType extends PGobject {
+
+        private static final long serialVersionUID = 4490562039665289763L;
 
         public Int4RangeType() {
             setType("int4range");
@@ -766,6 +774,8 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
 
     public static class Int8RangeType extends PGobject {
 
+        private static final long serialVersionUID = -1458706215346897102L;
+
         public Int8RangeType() {
             setType("int8range");
         }
@@ -778,6 +788,8 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
     }
 
     public static class NumRangeType extends PGobject {
+
+        private static final long serialVersionUID = 5892509252900362510L;
 
         public NumRangeType() {
             setType("numrange");
