@@ -1747,12 +1747,35 @@ public class RubyJdbcConnection extends RubyObject {
         return RubyBignum.bignorm(runtime, new BigInteger(value));
     }
 
+    private static final boolean bigDecimalExt;
+    static {
+        boolean useBigDecimalExt = true;
+
+        final String decimalFast = System.getProperty("arjdbc.decimal.fast");
+        if ( decimalFast != null ) {
+            useBigDecimalExt = Boolean.parseBoolean(decimalFast);
+        }
+        // NOTE: JRuby 1.6 -> 1.7 API change : moved org.jruby.RubyBigDecimal
+        try {
+            Class.forName("org.jruby.ext.bigdecimal.RubyBigDecimal"); // JRuby 1.7+
+        }
+        catch (ClassNotFoundException e) {
+            useBigDecimalExt = false; // JRuby 1.6
+        }
+        bigDecimalExt = useBigDecimalExt;
+    }
+
     protected IRubyObject decimalToRuby(final ThreadContext context,
         final Ruby runtime, final ResultSet resultSet, final int column)
         throws SQLException {
+        if ( bigDecimalExt ) { // "optimized" path (JRuby 1.7+)
+            final BigDecimal value = resultSet.getBigDecimal(column);
+            if ( value == null && resultSet.wasNull() ) return runtime.getNil();
+            return new org.jruby.ext.bigdecimal.RubyBigDecimal(runtime, value);
+        }
+
         final String value = resultSet.getString(column);
         if ( value == null && resultSet.wasNull() ) return runtime.getNil();
-        // NOTE: JRuby 1.6 -> 1.7 API change : moved org.jruby.RubyBigDecimal
         return runtime.getKernel().callMethod("BigDecimal", runtime.newString(value));
     }
 
