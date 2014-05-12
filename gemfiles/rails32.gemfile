@@ -13,5 +13,5 @@ gem "bcrypt-ruby", "~> 3.0.0", :require=>nil, :group=>:test
 gem "mysql2", :require=>nil, :platform=>:mri, :group=>:test
 gem "pg", :require=>nil, :platform=>:mri, :group=>:test
 gem "sqlite3", :require=>nil, :platform=>:mri, :group=>:test
-gem "activerecord", "~> 3.2.17", :require=>false
+gem "activerecord", "~> 3.2.18", :require=>false
 

@@ -12,15 +12,15 @@ appraise "rails31" do
 end
 
 appraise "rails32" do
-  gem "activerecord", "~> 3.2.17", :require => false
+  gem "activerecord", "~> 3.2.18", :require => false
 end
 
 appraise "rails40" do
   # NOTE: make sure you're using --1.9 with AR-4.0
-  gem "activerecord", "~> 4.0.4", :require => false
+  gem "activerecord", "~> 4.0.5", :require => false
 end
 
 appraise "rails41" do
   # NOTE: make sure you're using --1.9 with AR-4.0
-  gem "activerecord", "~> 4.1.0", :require => false
+  gem "activerecord", "~> 4.1.1", :require => false
 end

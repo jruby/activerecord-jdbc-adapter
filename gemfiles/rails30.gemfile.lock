@@ -22,7 +22,7 @@ GEM
     metaclass (0.0.4)
     mocha (0.13.3)
       metaclass (~> 0.0.1)
-    multi_json (1.9.3)
+    multi_json (1.10.0)
     rake (10.3.1)
     simplecov (0.8.2)
       docile (~> 1.1.0)
