@@ -158,6 +158,9 @@ module ArJdbc
         when 'point'
           column_class = ::ActiveRecord::ConnectionAdapters::PostgreSQLColumn
           column_class.point_to_string(value)
+        when 'json'
+          column_class = ::ActiveRecord::ConnectionAdapters::PostgreSQLColumn
+          column_class.json_to_string(value)
         else
           return super(value, column) unless column.array?
           column_class = ::ActiveRecord::ConnectionAdapters::PostgreSQLColumn
@@ -833,6 +836,9 @@ module ArJdbc
         elsif column.type == :json # only in AR-4.0
           column_class = ::ActiveRecord::ConnectionAdapters::PostgreSQLColumn
           super(column_class.json_to_string(value), column)
+        elsif column.type == :point # only in AR-4.0
+          column_class = ::ActiveRecord::ConnectionAdapters::PostgreSQLColumn
+          super(column_class.point_to_string(value), column)
         else super
         end
       when Hash
@@ -891,14 +897,13 @@ module ArJdbc
     end if PostgreSQL::AR4_COMPAT
 
     def escape_bytea(string)
-      if string
-        if supports_hex_escaped_bytea?
-          "\\\\x#{string.unpack("H*")[0]}"
-        else
-          result = ''
-          string.each_byte { |c| result << sprintf('\\\\%03o', c) }
-          result
-        end
+      return unless string
+      if supports_hex_escaped_bytea?
+        "\\\\x#{string.unpack("H*")[0]}"
+      else
+        result = ''
+        string.each_byte { |c| result << sprintf('\\\\%03o', c) }
+        result
       end
     end
 
@@ -917,11 +922,21 @@ module ArJdbc
     # @override
     def quote_table_name_for_assignment(table, attr)
       quote_column_name(attr)
-    end if ::ActiveRecord::VERSION::MAJOR > 3
+    end if ::ActiveRecord::VERSION::MAJOR >= 4
 
     # @override
     def quote_column_name(name)
       %("#{name.to_s.gsub("\"", "\"\"")}")
+    end
+
+    # @private
+    def quote_default_value(value, column)
+      # Do not quote function default values for UUID columns
+      if column.type == :uuid && value =~ /\(\)/
+        value
+      else
+        quote(value)
+      end
     end
 
     # Quote date/time values for use in SQL input.
@@ -1017,12 +1032,20 @@ module ArJdbc
 
     # Changes the default value of a table column.
     def change_column_default(table_name, column_name, default)
-      execute "ALTER TABLE #{quote_table_name(table_name)} ALTER COLUMN #{quote_column_name(column_name)} SET DEFAULT #{quote(default)}"
+      if column = column_for(table_name, column_name) # (backwards) compatible with AR 3.x - 4.x
+        execute "ALTER TABLE #{quote_table_name(table_name)} ALTER COLUMN #{quote_column_name(column_name)} SET DEFAULT #{quote_default_value(default, column)}"
+      else
+        execute "ALTER TABLE #{quote_table_name(table_name)} ALTER COLUMN #{quote_column_name(column_name)} SET DEFAULT #{quote(default)}"
+      end
     end # unless const_defined? :SchemaCreation
 
     def change_column_null(table_name, column_name, null, default = nil)
       unless null || default.nil?
-        execute("UPDATE #{quote_table_name(table_name)} SET #{quote_column_name(column_name)}=#{quote(default)} WHERE #{quote_column_name(column_name)} IS NULL")
+        if column = column_for(table_name, column_name) # (backwards) compatible with AR 3.x - 4.x
+          execute "UPDATE #{quote_table_name(table_name)} SET #{quote_column_name(column_name)}=#{quote_default_value(default, column)} WHERE #{quote_column_name(column_name)} IS NULL"
+        else
+          execute "UPDATE #{quote_table_name(table_name)} SET #{quote_column_name(column_name)}=#{quote(default)} WHERE #{quote_column_name(column_name)} IS NULL"
+        end
       end
       execute("ALTER TABLE #{quote_table_name(table_name)} ALTER #{quote_column_name(column_name)} #{null ? 'DROP' : 'SET'} NOT NULL")
     end # unless const_defined? :SchemaCreation
@@ -1063,6 +1086,11 @@ module ArJdbc
         end
         klass.new(name, default, oid, type, ! notnull)
       end
+    end
+
+    # @private
+    def column_for(table_name, column_name)
+      columns(table_name).detect { |c| c.name == column_name.to_s }
     end
 
     # Returns the list of a table's column names, data types, and default values.
