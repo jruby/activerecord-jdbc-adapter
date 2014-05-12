@@ -35,6 +35,9 @@ module ArJdbc
 
       ( attr_accessor :array; def array?; array; end ) if AR4_COMPAT
 
+      def number?; !array && super end if AR4_COMPAT
+      def text?; !array && super end if AR4_COMPAT
+
       # Extracts the value from a PostgreSQL column default definition.
       #
       # @override JdbcColumn#default_value
