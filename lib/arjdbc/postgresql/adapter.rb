@@ -1085,7 +1085,7 @@ module ArJdbc
         elsif default =~ /^\(([-+]?[\d\.]+)\)$/ # e.g. "(-1)" for a negative default
           default = $1
         end
-        klass.new(name, default, oid, type, ! notnull)
+        klass.new(name, default, oid, type, ! notnull, fmod, self)
       end
     end
 
@@ -1266,8 +1266,12 @@ module ActiveRecord::ConnectionAdapters
   class PostgreSQLColumn < JdbcColumn
     include ::ArJdbc::PostgreSQL::Column
 
-    def initialize(name, default, oid_type = nil, sql_type = nil, null = true)
-      if oid_type.is_a?(Integer) then @oid_type = oid_type
+    def initialize(name, default, oid_type = nil, sql_type = nil, null = true,
+        fmod = nil, adapter = nil) # added due resolving #oid_type
+      if oid_type.is_a?(Integer) # the "main" if branch (on AR 4.x)
+        @oid = oid_type; @fmod = fmod; @adapter = adapter # see Column#oid_type
+      elsif oid_type.respond_to?(:type_cast) # MRI compatibility
+        @oid_type = oid_type; # @fmod = fmod; @adapter = adapter
       else # NOTE: AR <= 3.2 : (name, default, sql_type = nil, null = true)
         null, sql_type, oid_type = !! sql_type, oid_type, nil
       end

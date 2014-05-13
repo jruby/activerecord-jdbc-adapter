@@ -33,6 +33,14 @@ module ArJdbc
         end
       end
 
+      # @private
+      def oid_type
+        @oid_type ||= begin
+          raise "oid not defined" unless oid = (@oid ||= nil)
+          @adapter.get_oid_type(oid.to_i, @fmod.to_i, name)
+        end
+      end if AR4_COMPAT
+
       ( attr_accessor :array; def array?; array; end ) if AR4_COMPAT
 
       def number?; !array && super end if AR4_COMPAT
