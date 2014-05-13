@@ -1,4 +1,4 @@
-require 'active_record/connection_adapters/postgresql/oid'
+require 'arjdbc/postgresql/base/oid' # 'active_record/connection_adapters/postgresql/oid'
 
 module ArJdbc
   module PostgreSQL

@@ -12,7 +12,6 @@ module ArJdbc
     require 'arjdbc/postgresql/column'
     require 'arjdbc/postgresql/explain_support'
     require 'arjdbc/postgresql/schema_creation' # AR 4.x
-    require 'arjdbc/postgresql/oid_types' if AR4_COMPAT
 
     # @see ActiveRecord::ConnectionAdapters::JdbcAdapter#jdbc_connection_class
     def self.jdbc_connection_class
@@ -1300,8 +1299,11 @@ module ActiveRecord::ConnectionAdapters
 
   class PostgreSQLAdapter < JdbcAdapter
     include ::ArJdbc::PostgreSQL
-    include ::ArJdbc::PostgreSQL::OIDTypes if ::ArJdbc::PostgreSQL.const_defined?(:OIDTypes)
     include ::ArJdbc::PostgreSQL::ExplainSupport
+
+    require 'arjdbc/postgresql/oid_types' if ::ArJdbc::PostgreSQL::AR4_COMPAT
+    include ::ArJdbc::PostgreSQL::OIDTypes if ::ArJdbc::PostgreSQL.const_defined?(:OIDTypes)
+
     include ::ArJdbc::Util::QuotedCache
 
     def initialize(*args)
