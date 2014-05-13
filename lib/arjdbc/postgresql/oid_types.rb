@@ -13,14 +13,52 @@ module ArJdbc
         }
       end
 
+      # @override
+      def enable_extension(name)
+        result = super(name)
+        @extensions = nil
+        reload_type_map
+        result
+      end
+
+      # @override
+      def disable_extension(name)
+        result = super(name)
+        @extensions = nil
+        reload_type_map
+        result
+      end
+
+      # @override
+      def extensions
+        @extensions ||= super
+      end
+
       private
+
+      @@type_map_cache = {}
+      @@type_map_cache_lock = Java::JavaLang::Object.new
+
+      # @private
+      class OID::TypeMap
+        def dup
+          dup = super # make sure @mapping is not shared
+          dup.instance_variable_set(:@mapping, @mapping.dup)
+          dup
+        end
+      end
 
       def type_map
         # NOTE: our type_map is lazy since it's only used for `adapter.accessor`
         @type_map ||= begin
-          type_map = OID::TypeMap.new
-          initialize_type_map(type_map)
-          type_map
+          if type_map = @@type_map_cache[ type_cache_key ]
+            type_map.dup
+          else
+            type_map = OID::TypeMap.new
+            initialize_type_map(type_map)
+            cache_type_map(type_map)
+            type_map
+          end
         end
       end
 
@@ -29,6 +67,16 @@ module ArJdbc
           @type_map.clear
           initialize_type_map(@type_map)
         end
+      end
+
+      def cache_type_map(type_map)
+        @@type_map_cache_lock.synchronized do
+          @@type_map_cache[ type_cache_key ] = type_map
+        end
+      end
+
+      def type_cache_key
+        config.hash + ( 7 * extensions.hash )
       end
 
       def add_oid(row, records_by_oid, type_map)

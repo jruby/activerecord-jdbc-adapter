@@ -4,6 +4,14 @@ require 'db/postgres'
 
 class PostgresqlOOIDTypesTest < Test::Unit::TestCase
 
+  OID = ActiveRecord::ConnectionAdapters::PostgreSQLAdapter::OID
+
+  #OID::TypeMap.class_eval do
+  #  def size
+  #    @mapping.size
+  #  end
+  #end
+
   def setup
     @connection = ActiveRecord::Base.connection
 
@@ -31,8 +39,6 @@ class PostgresqlOOIDTypesTest < Test::Unit::TestCase
   class SomeSample < ActiveRecord::Base
   end
 
-  OID = ActiveRecord::ConnectionAdapters::PostgreSQLAdapter::OID
-
   def test_resolves_oid_type
     column = SomeSample.columns_hash['str']
     assert_instance_of OID::Identity, column.oid_type
@@ -49,6 +55,20 @@ class PostgresqlOOIDTypesTest < Test::Unit::TestCase
 
     column = SomeSample.columns_hash['hst']
     assert_not_nil column.accessor
+  end if ar_version('4.1')
+
+  def test_type_cache_works_corectly
+    skip unless @supports_extensions
+
+    @connection.enable_extension 'ltree'
+    @connection.add_column 'some_samples', 'ltr', 'ltree'
+
+    SomeSample.reset_column_information
+
+    assert_not_nil column = SomeSample.columns_hash['hst']
+    assert_instance_of OID::Hstore, column.oid_type
+    assert_not_nil column = SomeSample.columns_hash['ltr']
+    assert_instance_of OID::Identity, column.oid_type
   end
 
 end if Test::Unit::TestCase.ar_version('4.0')
