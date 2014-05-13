@@ -234,7 +234,8 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
             final String valueStr = value.asString().toString();
             if ( sqlType != null ) {
                 if ( rawArrayType == Boolean.TRUE && sqlType.getByteList().endsWith( ARRAY_END ) ) {
-                    final Array valueArr = new Jdbc4Array(connection.unwrap(BaseConnection.class), oidType(column), valueStr);
+                    final int oid = oid(context, column);
+                    final Array valueArr = new Jdbc4Array(connection.unwrap(BaseConnection.class), oid, valueStr);
                     statement.setArray(index, valueArr); return;
                 }
                 if ( sqlType.getByteList().startsWith( INTERVAL ) ) {
@@ -245,9 +246,13 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
         }
     }
 
-    private static int oidType(final IRubyObject column) {
-        final IRubyObject oid_type = column.getInstanceVariables().getInstanceVariable("@oid_type");
-        return RubyFixnum.fix2int(oid_type);
+    private static int oid(final ThreadContext context, final IRubyObject column) {
+        // our column convention :
+        IRubyObject oid = column.getInstanceVariables().getInstanceVariable("@oid");
+        if ( oid == null || oid.isNil() ) { // only for user instantiated Column
+            throw new IllegalStateException("missing @oid for column: " + column.inspect());
+        }
+        return RubyFixnum.fix2int(oid);
     }
 
     @Override
