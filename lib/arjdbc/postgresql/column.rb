@@ -41,6 +41,8 @@ module ArJdbc
         end
       end if AR4_COMPAT
 
+      def accessor; oid_type.accessor end if AR4_COMPAT
+
       ( attr_accessor :array; def array?; array; end ) if AR4_COMPAT
 
       def number?; !array && super end if AR4_COMPAT
