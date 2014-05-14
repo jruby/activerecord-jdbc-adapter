@@ -19,14 +19,27 @@ module ActiveRecord
           end
         end
 
-        class String < Type
-          def type; :string end
+        if ActiveRecord::VERSION::MINOR >= 2 # >= 4.2
 
-          def type_cast(value)
-            return if value.nil?
+          class String < Type
+            def type; :string end
 
-            value.to_s
+            def type_cast(value)
+              return if value.nil?
+
+              value.to_s
+            end
           end
+
+        else
+
+          # String, Text types do not exist in AR 4.0/4.1
+          # AR reports Identity for them - make it similar
+
+          class String < Identity
+            def type; :string end
+          end
+
         end
 
         class SpecializedString < OID::String
