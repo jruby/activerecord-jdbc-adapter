@@ -24,8 +24,8 @@ module ArJdbc
             require 'pg_array_parser'
             include PgArrayParser
           rescue LoadError
-            require 'arjdbc/postgresql/array_parser'
-            include ArrayParser
+            require 'arjdbc/postgresql/base/array_parser'
+            include ActiveRecord::ConnectionAdapters::PostgreSQL::ArrayParser
           end if AR4_COMPAT
 
           include Cast
