@@ -1,10 +1,11 @@
 require 'arjdbc/postgresql/base/oid' # 'active_record/connection_adapters/postgresql/oid'
+require 'thread'
 
 module ArJdbc
   module PostgreSQL
     module OIDTypes
 
-      OID = ActiveRecord::ConnectionAdapters::PostgreSQLAdapter::OID
+      OID = ActiveRecord::ConnectionAdapters::PostgreSQL::OID
 
       def get_oid_type(oid, fmod, column_name)
         type_map.fetch(oid, fmod) {
@@ -37,7 +38,7 @@ module ArJdbc
       private
 
       @@type_map_cache = {}
-      @@type_map_cache_lock = Java::JavaLang::Object.new
+      @@type_map_cache_lock = Mutex.new
 
       # @private
       class OID::TypeMap
@@ -70,7 +71,7 @@ module ArJdbc
       end
 
       def cache_type_map(type_map)
-        @@type_map_cache_lock.synchronized do
+        @@type_map_cache_lock.synchronize do
           @@type_map_cache[ type_cache_key ] = type_map
         end
       end

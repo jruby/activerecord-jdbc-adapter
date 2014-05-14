@@ -1,8 +1,8 @@
-# copied from activerecord/lib/active_record/connection_adapters/postgresql/oid.rb
-# until it's some day shareable with Rails ... NOTE: this is not public API !
+# copied from active_record/connection_adapters/postgresql/oid.rb
+# until it's some day shareable with Rails ... this is not public API !
 module ActiveRecord
   module ConnectionAdapters
-    class PostgreSQLAdapter
+    module PostgreSQL
       module OID
         class Type
           def type; end
