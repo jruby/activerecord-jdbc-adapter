@@ -61,22 +61,22 @@ import org.jruby.runtime.builtin.IRubyObject;
 public class MySQLRubyJdbcConnection extends RubyJdbcConnection {
     private static final long serialVersionUID = -8842614212147138733L;
 
-    protected MySQLRubyJdbcConnection(Ruby runtime, RubyClass metaClass) {
+    public MySQLRubyJdbcConnection(Ruby runtime, RubyClass metaClass) {
         super(runtime, metaClass);
     }
 
-    private static ObjectAllocator MYSQL_JDBCCONNECTION_ALLOCATOR = new ObjectAllocator() {
+    public static RubyClass createMySQLJdbcConnectionClass(Ruby runtime, RubyClass jdbcConnection) {
+        RubyClass clazz = getConnectionAdapters(runtime).
+            defineClassUnder("MySQLJdbcConnection", jdbcConnection, ALLOCATOR);
+        clazz.defineAnnotatedMethods(MySQLRubyJdbcConnection.class);
+        return clazz;
+    }
+
+    protected static ObjectAllocator ALLOCATOR = new ObjectAllocator() {
         public IRubyObject allocate(Ruby runtime, RubyClass klass) {
             return new MySQLRubyJdbcConnection(runtime, klass);
         }
     };
-
-    public static RubyClass createMySQLJdbcConnectionClass(Ruby runtime, RubyClass jdbcConnection) {
-        RubyClass clazz = getConnectionAdapters(runtime).
-            defineClassUnder("MySQLJdbcConnection", jdbcConnection, MYSQL_JDBCCONNECTION_ALLOCATOR);
-        clazz.defineAnnotatedMethods(MySQLRubyJdbcConnection.class);
-        return clazz;
-    }
 
     @Override
     protected boolean doExecute(final Statement statement, final String query)

@@ -59,18 +59,18 @@ import org.jruby.runtime.builtin.IRubyObject;
 public class OracleRubyJdbcConnection extends RubyJdbcConnection {
     private static final long serialVersionUID = -6469731781108431512L;
 
-    protected OracleRubyJdbcConnection(Ruby runtime, RubyClass metaClass) {
+    public OracleRubyJdbcConnection(Ruby runtime, RubyClass metaClass) {
         super(runtime, metaClass);
     }
 
     public static RubyClass createOracleJdbcConnectionClass(Ruby runtime, RubyClass jdbcConnection) {
-        final RubyClass clazz = RubyJdbcConnection.getConnectionAdapters(runtime).
-            defineClassUnder("OracleJdbcConnection", jdbcConnection, ORACLE_JDBCCONNECTION_ALLOCATOR);
+        final RubyClass clazz = getConnectionAdapters(runtime).
+            defineClassUnder("OracleJdbcConnection", jdbcConnection, ALLOCATOR);
         clazz.defineAnnotatedMethods(OracleRubyJdbcConnection.class);
         return clazz;
     }
 
-    private static ObjectAllocator ORACLE_JDBCCONNECTION_ALLOCATOR = new ObjectAllocator() {
+    protected static ObjectAllocator ALLOCATOR = new ObjectAllocator() {
         public IRubyObject allocate(Ruby runtime, RubyClass klass) {
             return new OracleRubyJdbcConnection(runtime, klass);
         }

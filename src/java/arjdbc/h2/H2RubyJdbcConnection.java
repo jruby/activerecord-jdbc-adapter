@@ -38,20 +38,19 @@ import org.jruby.runtime.builtin.IRubyObject;
  */
 public class H2RubyJdbcConnection extends RubyJdbcConnection {
     private static final long serialVersionUID = -2652911264521657428L;
-    
-    protected H2RubyJdbcConnection(Ruby runtime, RubyClass metaClass) {
+
+    public H2RubyJdbcConnection(Ruby runtime, RubyClass metaClass) {
         super(runtime, metaClass);
     }
 
     public static RubyClass createH2JdbcConnectionClass(Ruby runtime, RubyClass jdbcConnection) {
-        RubyClass clazz = RubyJdbcConnection.getConnectionAdapters(runtime).defineClassUnder("H2JdbcConnection",
-                jdbcConnection, H2_JDBCCONNECTION_ALLOCATOR);
+        RubyClass clazz = getConnectionAdapters(runtime).
+            defineClassUnder("H2JdbcConnection", jdbcConnection, ALLOCATOR);
         clazz.defineAnnotatedMethods(H2RubyJdbcConnection.class);
-
         return clazz;
     }
 
-    private static ObjectAllocator H2_JDBCCONNECTION_ALLOCATOR = new ObjectAllocator() {
+    protected static ObjectAllocator ALLOCATOR = new ObjectAllocator() {
         public IRubyObject allocate(Ruby runtime, RubyClass klass) {
             return new H2RubyJdbcConnection(runtime, klass);
         }

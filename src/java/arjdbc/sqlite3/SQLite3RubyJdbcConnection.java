@@ -57,19 +57,19 @@ import org.jruby.util.ByteList;
 public class SQLite3RubyJdbcConnection extends RubyJdbcConnection {
     private static final long serialVersionUID = -5783855018818472773L;
 
-    protected SQLite3RubyJdbcConnection(Ruby runtime, RubyClass metaClass) {
+    public SQLite3RubyJdbcConnection(Ruby runtime, RubyClass metaClass) {
         super(runtime, metaClass);
     }
 
     public static RubyClass createSQLite3JdbcConnectionClass(Ruby runtime, RubyClass jdbcConnection) {
         final RubyClass clazz = getConnectionAdapters(runtime). // ActiveRecord::ConnectionAdapters
-            defineClassUnder("SQLite3JdbcConnection", jdbcConnection, SQLITE3_JDBCCONNECTION_ALLOCATOR);
+            defineClassUnder("SQLite3JdbcConnection", jdbcConnection, ALLOCATOR);
         clazz.defineAnnotatedMethods( SQLite3RubyJdbcConnection.class );
         getConnectionAdapters(runtime).setConstant("Sqlite3JdbcConnection", clazz); // backwards-compat
         return clazz;
     }
 
-    private static ObjectAllocator SQLITE3_JDBCCONNECTION_ALLOCATOR = new ObjectAllocator() {
+    protected static ObjectAllocator ALLOCATOR = new ObjectAllocator() {
         public IRubyObject allocate(Ruby runtime, RubyClass klass) {
             return new SQLite3RubyJdbcConnection(runtime, klass);
         }

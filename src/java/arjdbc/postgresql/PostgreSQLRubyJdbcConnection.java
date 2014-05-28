@@ -68,19 +68,19 @@ import org.postgresql.util.PGobject;
 public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection {
     private static final long serialVersionUID = 7235537759545717760L;
 
-    protected PostgreSQLRubyJdbcConnection(Ruby runtime, RubyClass metaClass) {
+    public PostgreSQLRubyJdbcConnection(Ruby runtime, RubyClass metaClass) {
         super(runtime, metaClass);
     }
 
     public static RubyClass createPostgreSQLJdbcConnectionClass(Ruby runtime, RubyClass jdbcConnection) {
         final RubyClass clazz = getConnectionAdapters(runtime).
-            defineClassUnder("PostgreSQLJdbcConnection", jdbcConnection, POSTGRESQL_JDBCCONNECTION_ALLOCATOR);
+            defineClassUnder("PostgreSQLJdbcConnection", jdbcConnection, ALLOCATOR);
         clazz.defineAnnotatedMethods(PostgreSQLRubyJdbcConnection.class);
         getConnectionAdapters(runtime).setConstant("PostgresJdbcConnection", clazz); // backwards-compat
         return clazz;
     }
 
-    private static ObjectAllocator POSTGRESQL_JDBCCONNECTION_ALLOCATOR = new ObjectAllocator() {
+    protected static ObjectAllocator ALLOCATOR = new ObjectAllocator() {
         public IRubyObject allocate(Ruby runtime, RubyClass klass) {
             return new PostgreSQLRubyJdbcConnection(runtime, klass);
         }

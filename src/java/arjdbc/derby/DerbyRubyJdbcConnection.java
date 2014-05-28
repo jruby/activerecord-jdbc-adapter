@@ -48,18 +48,18 @@ import org.jruby.util.ByteList;
 public class DerbyRubyJdbcConnection extends RubyJdbcConnection {
     private static final long serialVersionUID = 4809475910953623325L;
 
-    protected DerbyRubyJdbcConnection(Ruby runtime, RubyClass metaClass) {
+    public DerbyRubyJdbcConnection(Ruby runtime, RubyClass metaClass) {
         super(runtime, metaClass);
     }
 
     public static RubyClass createDerbyJdbcConnectionClass(Ruby runtime, RubyClass jdbcConnection) {
         final RubyClass clazz = getConnectionAdapters(runtime). // ActiveRecord::ConnectionAdapters
-            defineClassUnder("DerbyJdbcConnection", jdbcConnection, DERBY_JDBCCONNECTION_ALLOCATOR);
+            defineClassUnder("DerbyJdbcConnection", jdbcConnection, ALLOCATOR);
         clazz.defineAnnotatedMethods(DerbyRubyJdbcConnection.class);
         return clazz;
     }
 
-    private static ObjectAllocator DERBY_JDBCCONNECTION_ALLOCATOR = new ObjectAllocator() {
+    protected static ObjectAllocator ALLOCATOR = new ObjectAllocator() {
         public IRubyObject allocate(Ruby runtime, RubyClass klass) {
             return new DerbyRubyJdbcConnection(runtime, klass);
         }

@@ -53,19 +53,19 @@ import org.jruby.util.ByteList;
 public class MSSQLRubyJdbcConnection extends RubyJdbcConnection {
     private static final long serialVersionUID = -745716565005219263L;
 
-    protected MSSQLRubyJdbcConnection(Ruby runtime, RubyClass metaClass) {
+    public MSSQLRubyJdbcConnection(Ruby runtime, RubyClass metaClass) {
         super(runtime, metaClass);
     }
 
     public static RubyClass createMSSQLJdbcConnectionClass(Ruby runtime, RubyClass jdbcConnection) {
         final RubyClass clazz = getConnectionAdapters(runtime). // ActiveRecord::ConnectionAdapters
-            defineClassUnder("MSSQLJdbcConnection", jdbcConnection, MSSQL_JDBCCONNECTION_ALLOCATOR);
+            defineClassUnder("MSSQLJdbcConnection", jdbcConnection, ALLOCATOR);
         clazz.defineAnnotatedMethods(MSSQLRubyJdbcConnection.class);
         getConnectionAdapters(runtime).setConstant("MssqlJdbcConnection", clazz); // backwards-compat
         return clazz;
     }
 
-    private static ObjectAllocator MSSQL_JDBCCONNECTION_ALLOCATOR = new ObjectAllocator() {
+    protected static ObjectAllocator ALLOCATOR = new ObjectAllocator() {
         public IRubyObject allocate(Ruby runtime, RubyClass klass) {
             return new MSSQLRubyJdbcConnection(runtime, klass);
         }
