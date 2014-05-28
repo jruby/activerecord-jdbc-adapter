@@ -6,6 +6,8 @@ config = {
   :prepared_statements => ENV['PREPARED_STATEMENTS'] || ENV['PS']
 }
 
+# Java::JavaLang::System.setProperty 'derby.storage.rowLocking', 'true'
+
 ActiveRecord::Base.establish_connection(config)
 
 at_exit do
