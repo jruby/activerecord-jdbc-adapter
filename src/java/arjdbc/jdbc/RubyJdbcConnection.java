@@ -2860,12 +2860,12 @@ public class RubyJdbcConnection extends RubyObject {
         final Ruby runtime = context.getRuntime();
         final IRubyObject jdbcColumn = getJdbcColumnClass(context);
 
-        final List<String> primarykeyNames = new ArrayList<String>();
+        final List<String> primaryKeyNames = new ArrayList<String>(4);
         while ( primaryKeys.next() ) {
-            primarykeyNames.add( primaryKeys.getString(COLUMN_NAME) );
+            primaryKeyNames.add( primaryKeys.getString(COLUMN_NAME) );
         }
 
-        final List<IRubyObject> columns = new ArrayList<IRubyObject>();
+        final RubyArray columns = runtime.newArray();
         final IRubyObject config = getInstanceVariable("@config");
         while ( results.next() ) {
             final String colName = results.getString(COLUMN_NAME);
@@ -2877,13 +2877,13 @@ public class RubyJdbcConnection extends RubyObject {
                     RubyString.newUnicodeString( runtime, typeFromResultSet(results) ),
                     runtime.newBoolean( ! results.getString(IS_NULLABLE).trim().equals("NO") )
                 });
-            columns.add(column);
+            columns.append(column);
 
-            if ( primarykeyNames.contains(colName) ) {
+            if ( primaryKeyNames.contains(colName) ) {
                 column.callMethod(context, "primary=", runtime.getTrue());
             }
         }
-        return runtime.newArray(columns);
+        return columns;
     }
 
     protected IRubyObject mapGeneratedKeys(
