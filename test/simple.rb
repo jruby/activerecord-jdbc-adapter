@@ -758,7 +758,9 @@ module SimpleTestMethods
     pk = nil; id_value = nil; sequence_name = nil
     column = nil # column = Entry.columns_hash['title']
 
-    connection.insert sql, name, pk, id_value, sequence_name, [ [ column, "?!huu!?" ] ]
+    silence_deprecations do
+      connection.insert sql, name, pk, id_value, sequence_name, [ [ column, "?!huu!?" ] ]
+    end
     assert Entry.exists?([ 'title LIKE ?', "%?!huu!?%" ])
 
   end if Test::Unit::TestCase.ar_version('3.1') # no binds argument for <= 3.0
@@ -798,13 +800,17 @@ module SimpleTestMethods
     sql = "UPDATE entries SET title = ? WHERE id = #{entry.id}"
     name = "UPDATE(raw_with_q_mark)"
     title_column = Entry.columns.find { |n| n.to_s == 'title' }
-    connection.update sql, name, [ [ title_column, "bar?" ] ]
+    silence_deprecations do
+      connection.update sql, name, [ [ title_column, "bar?" ] ]
+    end
     assert_equal 'bar?', entry.reload.title
 
     sql = "UPDATE entries SET title = ? WHERE id = ?"
     title_c, id_c = Entry.columns_hash['title'], Entry.columns_hash['id']
 
-    connection.update sql, name, [ [ title_c, "?baz?!?" ], [ id_c, entry.id ] ]
+    silence_deprecations do
+      connection.update sql, name, [ [ title_c, "?baz?!?" ], [ id_c, entry.id ] ]
+    end
     assert_equal '?baz?!?', entry.reload.title
 
   end if Test::Unit::TestCase.ar_version('3.1') # no binds argument for <= 3.0
@@ -837,7 +843,9 @@ module SimpleTestMethods
     sql = "DELETE FROM entries WHERE title = ?"
     name = "DELETE(raw_with_q_mark)"
     column = Entry.columns_hash['title']
-    connection.delete sql, name, [ [ column, "foo?!?" ] ]
+    silence_deprecations do
+      connection.delete sql, name, [ [ column, "foo?!?" ] ]
+    end
     assert ! Entry.exists?(entry.id)
   end if Test::Unit::TestCase.ar_version('3.1') # no binds argument for <= 3.0
 
@@ -944,12 +952,16 @@ module SimpleTestMethods
     now = Time.zone.now
 
     binds = [ [ name_column, 'ferko' ], [ created_column, now ], [ updated_column, now ] ]
-    connection.exec_insert "INSERT INTO things VALUES ( ?, ?, ? )", 'INSERT Thing(ferko)', binds
+    silence_deprecations do
+      connection.exec_insert "INSERT INTO things VALUES ( ?, ?, ? )", 'INSERT Thing(ferko)', binds
+    end
     assert Thing.find_by_name 'ferko'
 
     sql = "INSERT INTO entries(title) VALUES (?)"
     column = Entry.columns_hash['title']
-    connection.exec_insert sql, 'INSERT(with_q_mark)', [ [ column, "bar?!?" ] ]
+    silence_deprecations do
+      connection.exec_insert sql, 'INSERT(with_q_mark)', [ [ column, "bar?!?" ] ]
+    end
 
     entries = Entry.find_by_sql "SELECT * FROM entries WHERE title = 'bar?!?'"
     assert entries.first

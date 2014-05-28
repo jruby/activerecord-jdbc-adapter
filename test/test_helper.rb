@@ -175,6 +175,7 @@ class Test::Unit::TestCase
   def deprecation_silence(&block)
     ActiveSupport::Deprecation.silence(&block)
   end
+  alias_method :silence_deprecations, :deprecation_silence
 
   protected
 
