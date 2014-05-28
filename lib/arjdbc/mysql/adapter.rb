@@ -328,11 +328,19 @@ module ArJdbc
     # @override
     def columns(table_name, name = nil)
       sql = "SHOW FULL COLUMNS FROM #{quote_table_name(table_name)}"
-      column = ::ActiveRecord::ConnectionAdapters::MysqlAdapter::Column
       columns = execute(sql, name || 'SCHEMA')
+      strict = strict_mode?
+      column = jdbc_column_class
+      pass_cast_type = respond_to?(:lookup_cast_type)
       columns.map! do |field|
-        column.new(field['Field'], field['Default'], field['Type'],
-          field['Null'] == "YES", field['Collation'], field['Extra'])
+        sql_type = field['Type']
+        null = field['Null'] == "YES"
+        if pass_cast_type
+          cast_type = lookup_cast_type(sql_type)
+          column.new(field['Field'], field['Default'], cast_type, sql_type, null, field['Collation'], strict, field['Extra'])
+        else
+          column.new(field['Field'], field['Default'], sql_type, null, field['Collation'], strict, field['Extra'])
+        end
       end
       columns
     end
@@ -611,14 +619,25 @@ module ActiveRecord
       class Column < JdbcColumn
         include ::ArJdbc::MySQL::Column
 
-        def initialize(name, default, sql_type = nil, null = true, collation = nil, strict = false, extra = "")
+        def initialize(name, default, sql_type = nil, null = true, collation = nil, strict = false, extra = '')
           if Hash === name
             super # first arg: config
           else
             @strict = strict; @collation = collation; @extra = extra
             super(name, default, sql_type, null)
+            # base 4.1: (name, default, sql_type = nil, null = true)
           end
         end
+
+        def initialize(name, default, cast_type, sql_type = nil, null = true, collation = nil, strict = false, extra = '')
+          if Hash === name
+            super # first arg: config
+          else
+            @strict = strict; @collation = collation; @extra = extra
+            super(name, default, cast_type, sql_type, null)
+            # base 4.2: (name, default, cast_type, sql_type = nil, null = true)
+          end
+        end if ActiveRecord::VERSION::STRING >= '4.2'
 
         # @note {#ArJdbc::MySQL::Column} uses this to check for boolean emulation
         def adapter
@@ -628,8 +647,7 @@ module ActiveRecord
       end
 
       def initialize(*args)
-        super
-        # configure_connection happens in super
+        super # configure_connection happens in super
       end
 
       def jdbc_connection_class(spec)

@@ -13,12 +13,9 @@ module ArJdbc
       attr_reader :collation, :strict, :extra
 
       def extract_default(default)
-        if sql_type =~ /blob/i || type == :text
-          if default.blank?
-            return null ? nil : ''
-          else
-            raise ArgumentError, "#{type} columns cannot have a default value: #{default.inspect}"
-          end
+        if blob_or_text_column?
+          return null || strict ? nil : '' if default.blank?
+          raise ArgumentError, "#{type} columns cannot have a default value: #{default.inspect}"
         elsif missing_default_forged_as_empty_string?(default)
           nil
         else
@@ -27,8 +24,16 @@ module ArJdbc
       end
 
       def has_default?
-        return false if sql_type =~ /blob/i || type == :text #mysql forbids defaults on blob and text columns
+        return false if blob_or_text_column? #mysql forbids defaults on blob and text columns
         super
+      end
+
+      def blob_or_text_column?
+        sql_type.index('blob') || type == :text
+      end
+
+      def case_sensitive?
+        collation && !collation.match(/_ci$/)
       end
 
       def simplified_type(field_type)

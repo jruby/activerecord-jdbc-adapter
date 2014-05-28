@@ -21,7 +21,8 @@ module ActiveRecord
             default = args.shift
           end
         end
-        # super : (name, default, sql_type = nil, null = true)
+        # super <= 4.1: (name, default, sql_type = nil, null = true)
+        # super master: (name, default, cast_type, sql_type = nil, null = true)
         super(name, default_value(default), *args)
         init_column(name, default, *args)
       end
