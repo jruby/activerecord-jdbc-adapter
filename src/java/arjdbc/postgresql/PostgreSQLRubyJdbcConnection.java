@@ -66,6 +66,7 @@ import org.postgresql.util.PGobject;
  * @author enebo
  */
 public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection {
+    private static final long serialVersionUID = 7235537759545717760L;
 
     protected PostgreSQLRubyJdbcConnection(Ruby runtime, RubyClass metaClass) {
         super(runtime, metaClass);

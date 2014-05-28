@@ -55,6 +55,7 @@ import org.jruby.util.ByteList;
  * @author enebo
  */
 public class SQLite3RubyJdbcConnection extends RubyJdbcConnection {
+    private static final long serialVersionUID = -5783855018818472773L;
 
     protected SQLite3RubyJdbcConnection(Ruby runtime, RubyClass metaClass) {
         super(runtime, metaClass);

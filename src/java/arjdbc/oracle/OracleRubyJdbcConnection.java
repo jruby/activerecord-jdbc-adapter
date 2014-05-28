@@ -54,6 +54,7 @@ import org.jruby.runtime.builtin.IRubyObject;
  * @author nicksieger
  */
 public class OracleRubyJdbcConnection extends RubyJdbcConnection {
+    private static final long serialVersionUID = -6469731781108431512L;
 
     protected OracleRubyJdbcConnection(Ruby runtime, RubyClass metaClass) {
         super(runtime, metaClass);

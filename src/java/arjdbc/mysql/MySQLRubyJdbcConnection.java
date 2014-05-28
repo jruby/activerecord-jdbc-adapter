@@ -60,6 +60,7 @@ import org.jruby.runtime.builtin.IRubyObject;
  * @author nicksieger
  */
 public class MySQLRubyJdbcConnection extends RubyJdbcConnection {
+    private static final long serialVersionUID = -8842614212147138733L;
 
     protected MySQLRubyJdbcConnection(Ruby runtime, RubyClass metaClass) {
         super(runtime, metaClass);

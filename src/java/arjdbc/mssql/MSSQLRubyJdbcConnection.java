@@ -51,6 +51,7 @@ import org.jruby.util.ByteList;
  * @author nicksieger
  */
 public class MSSQLRubyJdbcConnection extends RubyJdbcConnection {
+    private static final long serialVersionUID = -745716565005219263L;
 
     protected MSSQLRubyJdbcConnection(Ruby runtime, RubyClass metaClass) {
         super(runtime, metaClass);
