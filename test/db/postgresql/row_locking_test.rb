@@ -2,7 +2,7 @@ require 'db/postgres'
 require 'simple'
 require 'row_locking_test_methods'
 
-class PostgresRowLockingTest < Test::Unit::TestCase
+class PostgreSQLRowLockingTest < Test::Unit::TestCase
   include MigrationSetup
   include RowLockingTestMethods
 

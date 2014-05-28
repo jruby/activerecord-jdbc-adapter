@@ -5,6 +5,15 @@ require 'models/entry'
 
 module RowLockingTestMethods
 
+  def self.included(base)
+    unless base.include? MigrationSetup
+      base.class_eval do
+        def self.startup; CreateEntries.up end
+        def self.shutdown; CreateEntries.down end
+      end
+    end
+  end
+
   # Simple SELECT ... FOR UPDATE test
   def test_select_all_for_update
     @row1_id = Entry.create!(:title => "row1").id
