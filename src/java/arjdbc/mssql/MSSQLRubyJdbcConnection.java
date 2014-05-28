@@ -34,8 +34,6 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Types;
 
-import org.jcodings.specific.UTF8Encoding;
-
 import org.jruby.Ruby;
 import org.jruby.RubyArray;
 import org.jruby.RubyClass;
@@ -53,7 +51,7 @@ import org.jruby.util.ByteList;
 public class MSSQLRubyJdbcConnection extends RubyJdbcConnection {
     private static final long serialVersionUID = -745716565005219263L;
 
-    protected MSSQLRubyJdbcConnection(Ruby runtime, RubyClass metaClass) {
+    public MSSQLRubyJdbcConnection(Ruby runtime, RubyClass metaClass) {
         super(runtime, metaClass);
     }
 
@@ -65,7 +63,12 @@ public class MSSQLRubyJdbcConnection extends RubyJdbcConnection {
         return clazz;
     }
 
-    private static final ObjectAllocator ALLOCATOR = new ObjectAllocator() {
+    public static RubyClass load(final Ruby runtime) {
+        RubyClass jdbcConnection = getJdbcConnectionClass(runtime);
+        return createMSSQLJdbcConnectionClass(runtime, jdbcConnection);
+    }
+
+    protected static final ObjectAllocator ALLOCATOR = new ObjectAllocator() {
         public IRubyObject allocate(Ruby runtime, RubyClass klass) {
             return new MSSQLRubyJdbcConnection(runtime, klass);
         }
@@ -143,16 +146,10 @@ public class MSSQLRubyJdbcConnection extends RubyJdbcConnection {
     }
 
     @Override
-    protected ColumnData[] extractColumns(final Ruby runtime,
+    protected ColumnData[] extractColumns(final ThreadContext context,
         final Connection connection, final ResultSet resultSet,
         final boolean downCase) throws SQLException {
-        return filterRowNumFromColumns( super.extractColumns(runtime, connection, resultSet, downCase) );
-    }
-
-    private static final ByteList _row_num; // "_row_num"
-    static {
-        _row_num = new ByteList(new byte[] { '_','r','o','w','_','n','u','m' }, false);
-        _row_num.setEncoding(UTF8Encoding.INSTANCE);
+        return filterRowNumFromColumns( super.extractColumns(context, connection, resultSet, downCase) );
     }
 
     /**
@@ -160,7 +157,7 @@ public class MSSQLRubyJdbcConnection extends RubyJdbcConnection {
      */
     private static ColumnData[] filterRowNumFromColumns(final ColumnData[] columns) {
         for ( int i = 0; i < columns.length; i++ ) {
-            if ( _row_num.equal( columns[i].name.getByteList() ) ) {
+            if ( "_row_num".equals( columns[i].getName() ) ) {
                 final ColumnData[] filtered = new ColumnData[columns.length - 1];
 
                 if ( i > 0 ) {

@@ -1,7 +1,7 @@
 /*
  * The MIT License
  *
- * Copyright 2013 Karol Bucek.
+ * Copyright 2013-2014 Karol Bucek.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -21,11 +21,11 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package arjdbc.db2;
+package arjdbc.oracle;
 
 import static arjdbc.util.QuotingUtils.BYTES_0;
 import static arjdbc.util.QuotingUtils.BYTES_1;
-import static arjdbc.util.QuotingUtils.quoteSingleQuotesWithFallback;
+import static arjdbc.util.QuotingUtils.quoteCharWith;
 
 import org.jruby.Ruby;
 import org.jruby.RubyModule;
@@ -35,38 +35,42 @@ import org.jruby.runtime.ThreadContext;
 import org.jruby.runtime.builtin.IRubyObject;
 
 /**
- * ArJdbc::DB2
+ * ArJdbc::Oracle
  *
  * @author kares
  */
-public class DB2Module {
+public class OracleModule {
 
     public static RubyModule load(final RubyModule arJdbc) {
-        RubyModule db2 = arJdbc.defineModuleUnder("DB2");
-        db2.defineAnnotatedMethods( DB2Module.class );
-        return db2;
+        RubyModule oracle = arJdbc.defineModuleUnder("Oracle");
+        oracle.defineAnnotatedMethods( OracleModule.class );
+        return oracle;
     }
 
     public static RubyModule load(final Ruby runtime) {
         return load( arjdbc.ArJdbcModule.get(runtime) );
     }
 
-    @JRubyMethod(name = "quote_string", required = 1, frame = false)
+    @JRubyMethod(name = "quote_string", required = 1)
     public static IRubyObject quote_string(
             final ThreadContext context,
             final IRubyObject self,
-            final IRubyObject string) {
-        return quoteSingleQuotesWithFallback(context, string);
+            final IRubyObject string) { // string.gsub("'", "''") :
+        final char single = '\'';
+        final RubyString quoted = quoteCharWith(
+            context, (RubyString) string, single, single
+        );
+        return quoted;
     }
 
-    @JRubyMethod(name = "quoted_true", required = 0, frame = false)
+    @JRubyMethod(name = "quoted_true", required = 0)
     public static IRubyObject quoted_true(
             final ThreadContext context,
             final IRubyObject self) {
         return RubyString.newString(context.runtime, BYTES_1);
     }
 
-    @JRubyMethod(name = "quoted_false", required = 0, frame = false)
+    @JRubyMethod(name = "quoted_false", required = 0)
     public static IRubyObject quoted_false(
             final ThreadContext context,
             final IRubyObject self) {

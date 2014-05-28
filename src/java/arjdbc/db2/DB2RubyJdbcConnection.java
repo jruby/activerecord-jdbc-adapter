@@ -49,19 +49,24 @@ import org.jruby.util.ByteList;
  */
 public class DB2RubyJdbcConnection extends RubyJdbcConnection {
 
-    protected DB2RubyJdbcConnection(Ruby runtime, RubyClass metaClass) {
+    public DB2RubyJdbcConnection(Ruby runtime, RubyClass metaClass) {
         super(runtime, metaClass);
     }
 
     public static RubyClass createDB2JdbcConnectionClass(Ruby runtime, RubyClass jdbcConnection) {
-        RubyClass clazz = RubyJdbcConnection.getConnectionAdapters(runtime).defineClassUnder("DB2JdbcConnection",
-                jdbcConnection, DB2_JDBCCONNECTION_ALLOCATOR);
+        RubyClass clazz = getConnectionAdapters(runtime).
+            defineClassUnder("DB2JdbcConnection", jdbcConnection, ALLOCATOR);
         clazz.defineAnnotatedMethods(DB2RubyJdbcConnection.class);
 
         return clazz;
     }
 
-    private static ObjectAllocator DB2_JDBCCONNECTION_ALLOCATOR = new ObjectAllocator() {
+    public static RubyClass load(final Ruby runtime) {
+        RubyClass jdbcConnection = getJdbcConnectionClass(runtime);
+        return createDB2JdbcConnectionClass(runtime, jdbcConnection);
+    }
+
+    protected static ObjectAllocator ALLOCATOR = new ObjectAllocator() {
         public IRubyObject allocate(Ruby runtime, RubyClass klass) {
             return new DB2RubyJdbcConnection(runtime, klass);
         }

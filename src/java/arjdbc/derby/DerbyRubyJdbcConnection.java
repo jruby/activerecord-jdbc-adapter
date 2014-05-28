@@ -24,6 +24,7 @@
 package arjdbc.derby;
 
 import arjdbc.jdbc.Callable;
+import arjdbc.jdbc.DriverWrapper;
 import arjdbc.jdbc.RubyJdbcConnection;
 
 import java.sql.Connection;
@@ -35,6 +36,7 @@ import org.jruby.Ruby;
 import org.jruby.RubyClass;
 import org.jruby.RubyString;
 import org.jruby.anno.JRubyMethod;
+import org.jruby.exceptions.RaiseException;
 import org.jruby.runtime.ObjectAllocator;
 import org.jruby.runtime.ThreadContext;
 import org.jruby.runtime.builtin.IRubyObject;
@@ -48,22 +50,50 @@ import org.jruby.util.ByteList;
 public class DerbyRubyJdbcConnection extends RubyJdbcConnection {
     private static final long serialVersionUID = 4809475910953623325L;
 
-    protected DerbyRubyJdbcConnection(Ruby runtime, RubyClass metaClass) {
+    public DerbyRubyJdbcConnection(Ruby runtime, RubyClass metaClass) {
         super(runtime, metaClass);
     }
 
     public static RubyClass createDerbyJdbcConnectionClass(Ruby runtime, RubyClass jdbcConnection) {
         final RubyClass clazz = getConnectionAdapters(runtime). // ActiveRecord::ConnectionAdapters
-            defineClassUnder("DerbyJdbcConnection", jdbcConnection, DERBY_JDBCCONNECTION_ALLOCATOR);
+            defineClassUnder("DerbyJdbcConnection", jdbcConnection, ALLOCATOR);
         clazz.defineAnnotatedMethods(DerbyRubyJdbcConnection.class);
         return clazz;
     }
 
-    private static ObjectAllocator DERBY_JDBCCONNECTION_ALLOCATOR = new ObjectAllocator() {
+    public static RubyClass load(final Ruby runtime) {
+        RubyClass jdbcConnection = getJdbcConnectionClass(runtime);
+        return createDerbyJdbcConnectionClass(runtime, jdbcConnection);
+    }
+
+    protected static ObjectAllocator ALLOCATOR = new ObjectAllocator() {
         public IRubyObject allocate(Ruby runtime, RubyClass klass) {
             return new DerbyRubyJdbcConnection(runtime, klass);
         }
     };
+
+    @Override
+    protected DriverWrapper newDriverWrapper(final ThreadContext context, final String driver) {
+        DriverWrapper driverWrapper = super.newDriverWrapper(context, driver);
+
+        final java.sql.Driver jdbcDriver = driverWrapper.getDriverInstance();
+        if ( jdbcDriver.getClass().getName().startsWith("org.apache.derby.") ) {
+            final int major = jdbcDriver.getMajorVersion();
+            final int minor = jdbcDriver.getMinorVersion();
+            if ( major < 10 || ( major == 10 && minor < 5 ) ) {
+                final RubyClass errorClass = getConnectionNotEstablished(context.runtime);
+                throw new RaiseException(context.runtime, errorClass,
+                    "adapter requires Derby >= 10.5 got: " + major + "." + minor + "", false);
+            }
+            if ( major == 10 && minor < 8 ) { // 10.8 ~ supports JDBC 4.1
+                // config[:connection_alive_sql] ||= 'SELECT 1 FROM SYS.SYSSCHEMAS FETCH FIRST 1 ROWS ONLY'
+                setConfigValueIfNotSet(context, "connection_alive_sql", // FROM clause mandatory
+                    context.runtime.newString("SELECT 1 FROM SYS.SYSSCHEMAS FETCH FIRST 1 ROWS ONLY"));
+            }
+        }
+
+        return driverWrapper;
+    }
 
     @JRubyMethod(name = "select?", required = 1, meta = true, frame = false)
     public static IRubyObject select_p(final ThreadContext context,
@@ -117,48 +147,6 @@ public class DerbyRubyJdbcConnection extends RubyJdbcConnection {
             schemaPattern = null; // Derby doesn't like empty-string schema name
         }
         return super.matchTables(runtime, connection, catalog, schemaPattern, tablePattern, types, checkExistsOnly);
-    }
-
-    @JRubyMethod(name = "transaction_isolation", alias = "get_transaction_isolation")
-    public IRubyObject get_transaction_isolation(final ThreadContext context) {
-        return withConnection(context, new Callable<IRubyObject>() {
-            public IRubyObject call(final Connection connection) throws SQLException {
-                final int level = connection.getTransactionIsolation();
-                final String isolationSymbol = formatTransactionIsolationLevel(level);
-                if ( isolationSymbol == null ) return context.getRuntime().getNil();
-                return context.getRuntime().newSymbol(isolationSymbol);
-            }
-        });
-    }
-
-    @JRubyMethod(name = "transaction_isolation=", alias = "set_transaction_isolation")
-    public IRubyObject set_transaction_isolation(final ThreadContext context, final IRubyObject isolation) {
-        return withConnection(context, new Callable<IRubyObject>() {
-            public IRubyObject call(final Connection connection) throws SQLException {
-                final int level;
-                if ( isolation.isNil() ) {
-                    level = connection.getMetaData().getDefaultTransactionIsolation();
-                }
-                else {
-                    level = mapTransactionIsolationLevel(isolation);
-                }
-
-                connection.setTransactionIsolation(level);
-
-                final String isolationSymbol = formatTransactionIsolationLevel(level);
-                if ( isolationSymbol == null ) return context.getRuntime().getNil();
-                return context.getRuntime().newSymbol(isolationSymbol);
-            }
-        });
-    }
-
-    public static String formatTransactionIsolationLevel(final int level) {
-        if ( level == Connection.TRANSACTION_READ_UNCOMMITTED ) return "read_uncommitted"; // 1
-        if ( level == Connection.TRANSACTION_READ_COMMITTED ) return "read_committed"; // 2
-        if ( level == Connection.TRANSACTION_REPEATABLE_READ ) return "repeatable_read"; // 4
-        if ( level == Connection.TRANSACTION_SERIALIZABLE ) return "serializable"; // 8
-        if ( level == 0 ) return null;
-        throw new IllegalArgumentException("unexpected transaction isolation level: " + level);
     }
 
 }

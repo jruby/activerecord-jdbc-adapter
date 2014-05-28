@@ -1,7 +1,7 @@
 /*
  * The MIT License
  *
- * Copyright 2013 Karol Bucek.
+ * Copyright 2013-2014 Karol Bucek.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -27,16 +27,21 @@ import arjdbc.jdbc.RubyJdbcConnection;
 
 import java.lang.reflect.InvocationTargetException;
 import java.util.Collection;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.WeakHashMap;
 
 import org.jruby.NativeException;
 import org.jruby.Ruby;
 import org.jruby.RubyArray;
 import org.jruby.RubyClass;
 import org.jruby.RubyModule;
+import org.jruby.RubyString;
 import org.jruby.anno.JRubyMethod;
 import org.jruby.exceptions.RaiseException;
 import org.jruby.runtime.ThreadContext;
 import org.jruby.runtime.builtin.IRubyObject;
+import org.jruby.util.ByteList;
 
 /**
  * ::ArJdbc
@@ -49,6 +54,15 @@ public class ArJdbcModule {
         final RubyModule arJdbc = runtime.getOrCreateModule("ArJdbc");
         arJdbc.defineAnnotatedMethods( ArJdbcModule.class );
         return arJdbc;
+    }
+
+    public static RubyModule get(final Ruby runtime) {
+        return runtime.getModule("ArJdbc");
+    }
+
+    public static void warn(final ThreadContext context, final String message) {
+        final Ruby runtime = context.runtime;
+        get(runtime).callMethod(context, "warn", runtime.newString(message));
     }
 
     /**
@@ -64,6 +78,7 @@ public class ArJdbcModule {
     @JRubyMethod(name = "load_java_part", meta = true, required = 1, optional = 2)
     public static IRubyObject load_java_part(final ThreadContext context,
         final IRubyObject self, final IRubyObject[] args) {
+        final Ruby runtime = context.getRuntime();
 
         String connectionClass = args.length > 1 ? args[1].toString() : null;
         String moduleClass = args.length > 2 ? args[2].toString() : null;
@@ -79,34 +94,33 @@ public class ArJdbcModule {
         //   MySQLRubyJdbcConnection.createMySQLJdbcConnectionClass(Ruby, RubyClass);
         //
 
-        String connectionClass2 = null;
-        if (connectionClass == null) {
-             // 'arjdbc.mysql.' + 'MySQL' + 'RubyJdbcConnection'
-            connectionClass = packagePrefix + moduleName + "RubyJdbcConnection";
-            connectionClass2 = packagePrefix + moduleName + "JdbcConnection";
-        }
         if (moduleClass == null) {
              // 'arjdbc.mysql.' + 'MySQL' + 'Module'
             moduleClass = packagePrefix + moduleName + "Module";
         }
 
-        final Ruby runtime = context.getRuntime();
-        final RubyModule arJdbc = runtime.getModule("ArJdbc");
-
+        final Class<?> module;
         try {
-            final Class<?> module = Class.forName(moduleClass);
-             // MySQLModule.load( arJdbc ) :
-            module.getMethod("load", RubyModule.class).invoke(null, arJdbc);
+            module = Class.forName(moduleClass);
+            // new convention MySQLModule.load( Ruby runtime ) :
+            try {
+                invokeStatic(runtime, module, "load", Ruby.class, runtime);
+            }
+            catch (NoSuchMethodException e) {
+                // old convention MySQLModule.load( RubyModule arJdbc ) :
+                invokeStatic(runtime, module, "load", RubyModule.class, get(runtime));
+            }
         }
         catch (ClassNotFoundException e) { /* ignored */ }
         catch (NoSuchMethodException e) {
             throw newNativeException(runtime, e);
         }
-        catch (IllegalAccessException e) {
-            throw newNativeException(runtime, e);
-        }
-        catch (InvocationTargetException e) {
-            throw newNativeException(runtime, e);
+
+        String connectionClass2 = null;
+        if (connectionClass == null) {
+             // 'arjdbc.mysql.' + 'MySQL' + 'RubyJdbcConnection'
+            connectionClass = packagePrefix + moduleName + "RubyJdbcConnection";
+            connectionClass2 = packagePrefix + moduleName + "JdbcConnection";
         }
 
         try {
@@ -120,10 +134,15 @@ public class ArJdbcModule {
                 }
             }
             if ( connection != null ) {
-                final String method = "create" + moduleName + "JdbcConnectionClass";
-                // MySQLRubyJdbcConnection.createMySQLJdbcConnectionClass(runtime, jdbcConnection)
-                connection.getMethod(method, Ruby.class, RubyClass.class).
-                    invoke(null, runtime, RubyJdbcConnection.getJdbcConnectionClass(runtime));
+                // convention e.g. MySQLRubyJdbcConnection.load( Ruby runtime ) :
+                try {
+                    invokeStatic(runtime, connection, "load", Ruby.class, runtime);
+                }
+                catch (NoSuchMethodException e) {
+                    // "old" e.g. MySQLRubyJdbcConnection.createMySQLJdbcConnectionClass(runtime, jdbcConnection)
+                    connection.getMethod("create" + moduleName + "JdbcConnectionClass", Ruby.class, RubyClass.class).
+                        invoke(null, runtime, RubyJdbcConnection.getJdbcConnectionClass(runtime));
+                }
             }
         }
         catch (ClassNotFoundException e) { /* ignored */ }
@@ -169,10 +188,93 @@ public class ArJdbcModule {
         return modules;
     }
 
+    // JDBC "driver" gem helper(s) :
+
+    @JRubyMethod(name = "load_driver", meta = true)
+    public static IRubyObject load_driver(final ThreadContext context, final IRubyObject self,
+        final IRubyObject const_name) { // e.g. load_driver(:MySQL)
+        IRubyObject loaded = loadDriver(context, self, const_name.toString());
+        return loaded == null ? context.nil : loaded;
+    }
+
+    // NOTE: probably useless - only to be useful for the pooled runtime mode when jar at WEB-INF/lib
+    static final Map<Ruby, Map<String, Boolean>> loadedDrivers = new WeakHashMap<Ruby, Map<String, Boolean>>(8);
+
+    private static IRubyObject loadDriver(final ThreadContext context, final IRubyObject self,
+        final String constName) {
+        final Ruby runtime = context.runtime;
+        // look for "cached" loading result :
+        Map<String, Boolean> loadedMap = loadedDrivers.get(runtime);
+        if ( loadedMap == null ) {
+            synchronized (ArJdbcModule.class) {
+                loadedMap = loadedDrivers.get(runtime);
+                if ( loadedMap == null ) {
+                    loadedMap = new HashMap<String, Boolean>(4);
+                    loadedDrivers.put(runtime, loadedMap);
+                }
+            }
+        }
+
+        final Boolean driverLoaded = loadedMap.get(constName);
+        if ( driverLoaded != null ) {
+            if ( driverLoaded.booleanValue() ) return runtime.getFalse();
+            return runtime.getNil();
+        }
+
+        try { // require 'jdbc/mysql'
+            final byte[] name = new byte[5 + constName.length()]; // 'j','d','b','c','/'
+            name[0] = 'j'; name[1] = 'd'; name[2] = 'b'; name[3] = 'c'; name[4] = '/';
+            for ( int i = 0; i < constName.length(); i++ ) {
+                name[ 5 + i ] = (byte) Character.toLowerCase( constName.charAt(i) );
+            }
+            final RubyString strName = RubyString.newString(runtime, new ByteList(name, false));
+            self.callMethod(context, "require", strName); // require 'jdbc/mysql'
+        }
+        catch (RaiseException e) { // LoadError
+            synchronized (loadedMap) {
+                loadedMap.put(constName, Boolean.FALSE);
+            }
+            return null;
+        }
+
+        final RubyModule jdbc = runtime.getModule("Jdbc");
+        if ( jdbc != null ) { // Jdbc::MySQL
+            final RubyModule constant = (RubyModule) jdbc.getConstantAt(constName);
+            if ( constant != null ) { // ::Jdbc::MySQL.load_driver :
+                if ( constant.respondsTo("load_driver") ) {
+                    IRubyObject result = constant.callMethod("load_driver");
+                    synchronized (loadedMap) {
+                        loadedMap.put(constName, Boolean.TRUE);
+                    }
+                    return result;
+                }
+            }
+        }
+
+        synchronized (loadedMap) {
+            loadedMap.put(constName, Boolean.FALSE);
+        }
+        return null;
+    }
+
+    private static Object invokeStatic(final Ruby runtime,
+        final Class<?> klass, final String name, final Class<?> argType, final Object arg)
+        throws NoSuchMethodException {
+        try {
+            return klass.getMethod(name, argType).invoke(null, arg);
+        }
+        catch (IllegalAccessException e) {
+            throw newNativeException(runtime, e);
+        }
+        catch (InvocationTargetException e) {
+            throw newNativeException(runtime, e);
+        }
+    }
+
     private static RaiseException newNativeException(final Ruby runtime, final Throwable cause) {
         RubyClass nativeClass = runtime.getClass(NativeException.CLASS_NAME);
         NativeException nativeException = new NativeException(runtime, nativeClass, cause);
-        throw new RaiseException(cause, nativeException);
+        return new RaiseException(cause, nativeException);
     }
 
 }

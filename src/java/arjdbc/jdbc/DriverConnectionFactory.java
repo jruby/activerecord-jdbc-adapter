@@ -1,7 +1,7 @@
 /*
  * The MIT License
  *
- * Copyright 2013 Karol Bucek.
+ * Copyright 2014 Karol Bucek.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -21,43 +21,43 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package arjdbc.sqlite3;
+package arjdbc.jdbc;
 
-import static arjdbc.util.QuotingUtils.quoteCharWith;
-
-import org.jruby.Ruby;
-import org.jruby.RubyModule;
-import org.jruby.RubyString;
-import org.jruby.anno.JRubyMethod;
-import org.jruby.runtime.ThreadContext;
-import org.jruby.runtime.builtin.IRubyObject;
+import java.sql.Connection;
+import java.sql.SQLException;
 
 /**
- * ArJdbc::SQLite3
- * 
+ *
  * @author kares
  */
-public class SQLite3Module {
-    
-    public static RubyModule load(final RubyModule arJdbc) {
-        RubyModule sqlite3 = arJdbc.defineModuleUnder("SQLite3");
-        sqlite3.defineAnnotatedMethods( SQLite3Module.class );
-        return sqlite3;
+final class DriverConnectionFactory implements ConnectionFactory {
+
+    private final DriverWrapper driverWrapper;
+    final String url;
+    final String username;
+    final String password; // null allowed
+
+    public DriverConnectionFactory(final DriverWrapper driver, final String url) {
+        this.driverWrapper = driver;
+        this.url = url;
+        this.username = null;
+        this.password = null;
     }
 
-    public static RubyModule load(final Ruby runtime) {
-        return load( arjdbc.ArJdbcModule.get(runtime) );
+    public DriverConnectionFactory(final DriverWrapper driver, final String url, final String username, final String password) {
+        this.driverWrapper = driver;
+        this.url = url;
+        this.username = username;
+        this.password = password;
     }
 
-    @JRubyMethod(name = "quote_string", required = 1, frame = false)
-    public static IRubyObject quote_string(
-            final ThreadContext context, 
-            final IRubyObject self, 
-            final IRubyObject string) { // string.gsub("'", "''") :
-        final char single = '\'';
-        final RubyString quoted = quoteCharWith(
-            context, (RubyString) string, single, single
-        );
-        return quoted;
+    @Override
+    public Connection newConnection() throws SQLException {
+        return driverWrapper.connect(url, username, password);
     }
+
+    DriverWrapper getDriverWrapper() {
+        return driverWrapper;
+    } /* for tests */
+
 }

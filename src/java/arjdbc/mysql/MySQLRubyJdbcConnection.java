@@ -62,22 +62,27 @@ import org.jruby.util.TypeConverter;
 public class MySQLRubyJdbcConnection extends RubyJdbcConnection {
     private static final long serialVersionUID = -8842614212147138733L;
 
-    protected MySQLRubyJdbcConnection(Ruby runtime, RubyClass metaClass) {
+    public MySQLRubyJdbcConnection(Ruby runtime, RubyClass metaClass) {
         super(runtime, metaClass);
     }
 
-    private static ObjectAllocator MYSQL_JDBCCONNECTION_ALLOCATOR = new ObjectAllocator() {
+    public static RubyClass createMySQLJdbcConnectionClass(Ruby runtime, RubyClass jdbcConnection) {
+        RubyClass clazz = getConnectionAdapters(runtime).
+            defineClassUnder("MySQLJdbcConnection", jdbcConnection, ALLOCATOR);
+        clazz.defineAnnotatedMethods(MySQLRubyJdbcConnection.class);
+        return clazz;
+    }
+
+    public static RubyClass load(final Ruby runtime) {
+        RubyClass jdbcConnection = getJdbcConnectionClass(runtime);
+        return createMySQLJdbcConnectionClass(runtime, jdbcConnection);
+    }
+
+    protected static final ObjectAllocator ALLOCATOR = new ObjectAllocator() {
         public IRubyObject allocate(Ruby runtime, RubyClass klass) {
             return new MySQLRubyJdbcConnection(runtime, klass);
         }
     };
-
-    public static RubyClass createMySQLJdbcConnectionClass(Ruby runtime, RubyClass jdbcConnection) {
-        RubyClass clazz = getConnectionAdapters(runtime).
-            defineClassUnder("MySQLJdbcConnection", jdbcConnection, MYSQL_JDBCCONNECTION_ALLOCATOR);
-        clazz.defineAnnotatedMethods(MySQLRubyJdbcConnection.class);
-        return clazz;
-    }
 
     @JRubyMethod
     public IRubyObject query(final ThreadContext context, final IRubyObject sql) throws SQLException {
@@ -95,7 +100,7 @@ public class MySQLRubyJdbcConnection extends RubyJdbcConnection {
         final int column, final int type, final ResultSet resultSet) throws SQLException {
         if ( type == Types.BIT ) {
             final int value = resultSet.getInt(column);
-            return resultSet.wasNull() ? runtime.getNil() : runtime.newFixnum(value);
+            return resultSet.wasNull() ? context.nil : runtime.newFixnum(value);
         }
         return super.jdbcToRuby(context, runtime, column, type, resultSet);
     }
@@ -132,7 +137,7 @@ public class MySQLRubyJdbcConnection extends RubyJdbcConnection {
     protected IRubyObject timeToRuby(ThreadContext context, Ruby runtime, ResultSet resultSet, int column) throws SQLException {
         Time value = resultSet.getTime(column);
 
-        if (value == null) return resultSet.wasNull() ? runtime.getNil() : runtime.newString();
+        if (value == null) return resultSet.wasNull() ? context.nil : runtime.newString();
 
         String strValue = value.toString();
 
@@ -209,6 +214,7 @@ public class MySQLRubyJdbcConnection extends RubyJdbcConnection {
 
     private static boolean cleanupThreadShutdown;
 
+    @SuppressWarnings("unchecked")
     private static void shutdownCleanupThread() {
         if ( cleanupThreadShutdown ) return;
         try {
@@ -216,19 +222,19 @@ public class MySQLRubyJdbcConnection extends RubyJdbcConnection {
             threadClass.getMethod("shutdown").invoke(null);
         }
         catch (ClassNotFoundException e) {
-            debugMessage("INFO: missing MySQL JDBC cleanup thread: " + e);
+            debugMessage("ArJdbc: missing MySQL JDBC cleanup thread: " + e);
         }
         catch (NoSuchMethodException e) {
-            debugMessage( e.toString() );
+            debugMessage("ArJdbc: " + e);
         }
         catch (IllegalAccessException e) {
-            debugMessage( e.toString() );
+            debugMessage("ArJdbc: " + e);
         }
         catch (InvocationTargetException e) {
-            debugMessage( e.getTargetException().toString() );
+            debugMessage("ArJdbc: " + e.getTargetException());
         }
         catch (SecurityException e) {
-            debugMessage( e.toString() );
+            debugMessage("ArJdbc: " + e);
         }
         finally { cleanupThreadShutdown = true; }
     }
@@ -271,8 +277,9 @@ public class MySQLRubyJdbcConnection extends RubyJdbcConnection {
      * NOTE: MySQL Connector/J 5.1.11 (2010-01-21) fixed the issue !
      */
     private void killCancelTimer(final Connection connection) {
-        if (connection.getClass().getClassLoader() == getRuntime().getJRubyClassLoader()) {
-            Field field = cancelTimerField();
+        final Ruby runtime = getRuntime();
+        if (connection.getClass().getClassLoader() == runtime.getJRubyClassLoader()) {
+            final Field field = cancelTimerField(runtime);
             if ( field != null ) {
                 java.util.Timer timer = null;
                 try {
@@ -298,10 +305,11 @@ public class MySQLRubyJdbcConnection extends RubyJdbcConnection {
     private static Field cancelTimer = null;
     private static boolean cancelTimerChecked = false;
 
-    private static Field cancelTimerField() {
+    private Field cancelTimerField(final Ruby runtime) {
         if ( cancelTimerChecked ) return cancelTimer;
+        final String name = "com.mysql.jdbc.ConnectionImpl";
         try {
-            Class klass = Class.forName("com.mysql.jdbc.ConnectionImpl");
+            Class<?> klass = runtime.getJavaSupport().loadJavaClass(name);
             Field field = klass.getDeclaredField("cancelTimer");
             field.setAccessible(true);
             synchronized(MySQLRubyJdbcConnection.class) {
@@ -309,13 +317,13 @@ public class MySQLRubyJdbcConnection extends RubyJdbcConnection {
             }
         }
         catch (ClassNotFoundException e) {
-            debugMessage("INFO: missing MySQL JDBC connection impl: " + e);
+            debugMessage("ArJdbc: missing MySQL JDBC connection impl: " + e);
         }
         catch (NoSuchFieldException e) {
-            debugMessage("INFO: MySQL's cancel timer seems to have changed: " + e);
+            debugMessage("ArJdbc: MySQL's cancel timer seems to have changed: " + e);
         }
         catch (SecurityException e) {
-            debugMessage( e.toString() );
+            debugMessage("ArJdbc: " + e);
         }
         finally { cancelTimerChecked = true; }
         return cancelTimer;

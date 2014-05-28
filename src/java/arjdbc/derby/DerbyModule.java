@@ -47,6 +47,10 @@ public class DerbyModule {
         return derby;
     }
 
+    public static RubyModule load(final Ruby runtime) {
+        return load( arjdbc.ArJdbcModule.get(runtime) );
+    }
+
     public static class Column {
 
         @JRubyMethod(name = "type_cast", required = 1)
@@ -55,7 +59,7 @@ public class DerbyModule {
 
             if ( value.isNil() ||
             ( (value instanceof RubyString) && value.toString().trim().equalsIgnoreCase("null") ) ) {
-                return context.getRuntime().getNil();
+                return context.nil;
             }
 
             final String type = self.getInstanceVariables().getInstanceVariable("@type").toString();
@@ -169,11 +173,6 @@ public class DerbyModule {
     public static IRubyObject quoted_false(
         final ThreadContext context, final IRubyObject self) {
         return RubyString.newString(context.getRuntime(), BYTES_0);
-    }
-
-    private static RubyModule getMultibyteChars(final Ruby runtime) {
-        return (RubyModule) ((RubyModule) runtime.getModule("ActiveSupport").
-                getConstant("Multibyte")).getConstantAt("Chars");
     }
 
 }

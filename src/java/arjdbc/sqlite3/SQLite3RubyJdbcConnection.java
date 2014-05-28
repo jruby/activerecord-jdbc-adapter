@@ -62,7 +62,7 @@ public class SQLite3RubyJdbcConnection extends RubyJdbcConnection {
 
     private final RubyString TIMESTAMP_FORMAT;
 
-    protected SQLite3RubyJdbcConnection(Ruby runtime, RubyClass metaClass) {
+    public SQLite3RubyJdbcConnection(Ruby runtime, RubyClass metaClass) {
         super(runtime, metaClass);
 
         TIMESTAMP_FORMAT = runtime.newString("%F %T.%6N");
@@ -70,13 +70,18 @@ public class SQLite3RubyJdbcConnection extends RubyJdbcConnection {
 
     public static RubyClass createSQLite3JdbcConnectionClass(Ruby runtime, RubyClass jdbcConnection) {
         final RubyClass clazz = getConnectionAdapters(runtime). // ActiveRecord::ConnectionAdapters
-            defineClassUnder("SQLite3JdbcConnection", jdbcConnection, SQLITE3_JDBCCONNECTION_ALLOCATOR);
+            defineClassUnder("SQLite3JdbcConnection", jdbcConnection, ALLOCATOR);
         clazz.defineAnnotatedMethods( SQLite3RubyJdbcConnection.class );
         getConnectionAdapters(runtime).setConstant("Sqlite3JdbcConnection", clazz); // backwards-compat
         return clazz;
     }
 
-    private static ObjectAllocator SQLITE3_JDBCCONNECTION_ALLOCATOR = new ObjectAllocator() {
+    public static RubyClass load(final Ruby runtime) {
+        RubyClass jdbcConnection = getJdbcConnectionClass(runtime);
+        return createSQLite3JdbcConnectionClass(runtime, jdbcConnection);
+    }
+
+    protected static final ObjectAllocator ALLOCATOR = new ObjectAllocator() {
         public IRubyObject allocate(Ruby runtime, RubyClass klass) {
             return new SQLite3RubyJdbcConnection(runtime, klass);
         }
@@ -94,7 +99,7 @@ public class SQLite3RubyJdbcConnection extends RubyJdbcConnection {
                     //return mapGeneratedKeys(context.getRuntime(), connection, statement, true);
                     // but we should assume SQLite JDBC will prefer sane API usage eventually :
                     genKeys = statement.executeQuery("SELECT last_insert_rowid()");
-                    return doMapGeneratedKeys(context.getRuntime(), genKeys, true);
+                    return doMapGeneratedKeys(context.runtime, genKeys, true);
                 }
                 catch (final SQLException e) {
                     debugMessage(context, "failed to get generated keys: " + e.getMessage());
@@ -257,7 +262,7 @@ public class SQLite3RubyJdbcConnection extends RubyJdbcConnection {
         final Ruby runtime, final ResultSet resultSet, final int column)
         throws SQLException, IOException {
         final byte[] bytes = resultSet.getBytes(column);
-        if ( resultSet.wasNull() ) return runtime.getNil();
+        if ( resultSet.wasNull() ) return context.nil;
         return runtime.newString( new ByteList(bytes, false) );
     }
 
@@ -265,13 +270,13 @@ public class SQLite3RubyJdbcConnection extends RubyJdbcConnection {
     protected RubyArray mapTables(final Ruby runtime, final DatabaseMetaData metaData,
             final String catalog, final String schemaPattern, final String tablePattern,
             final ResultSet tablesSet) throws SQLException {
-        final List<IRubyObject> tables = new ArrayList<IRubyObject>(32);
+        final RubyArray tables = runtime.newArray(24);
         while ( tablesSet.next() ) {
             String name = tablesSet.getString(TABLES_TABLE_NAME);
             name = name.toLowerCase(); // simply lower-case for SQLite3
-            tables.add( RubyString.newUnicodeString(runtime, name) );
+            tables.append( RubyString.newUnicodeString(runtime, name) );
         }
-        return runtime.newArray(tables);
+        return tables;
     }
 
     private static class SavepointStub implements Savepoint {
@@ -301,7 +306,7 @@ public class SQLite3RubyJdbcConnection extends RubyJdbcConnection {
         if ( name == null || name.isNil() ) {
             throw new IllegalArgumentException("create_savepoint (without name) not implemented!");
         }
-        final Connection connection = getConnection(context, true);
+        final Connection connection = getConnection(true);
         try {
             connection.setAutoCommit(false);
             // NOTE: JDBC driver does not support setSavepoint(String) :
@@ -319,15 +324,15 @@ public class SQLite3RubyJdbcConnection extends RubyJdbcConnection {
     @Override
     @JRubyMethod(name = "rollback_savepoint", required = 1)
     public IRubyObject rollback_savepoint(final ThreadContext context, final IRubyObject name) {
-        final Connection connection = getConnection(context, true);
+        final Connection connection = getConnection(true);
         try {
             if ( getSavepoints(context).get(name) == null ) {
-                throw context.getRuntime().newRuntimeError("could not rollback savepoint: '" + name + "' (not set)");
+                throw context.runtime.newRuntimeError("could not rollback savepoint: '" + name + "' (not set)");
             }
             // NOTE: JDBC driver does not implement rollback(Savepoint) :
             connection.createStatement().execute("ROLLBACK TO SAVEPOINT " + name.toString());
 
-            return context.getRuntime().getNil();
+            return context.nil;
         }
         catch (SQLException e) {
             return handleException(context, e);
@@ -339,17 +344,15 @@ public class SQLite3RubyJdbcConnection extends RubyJdbcConnection {
     @Override
     @JRubyMethod(name = "release_savepoint", required = 1)
     public IRubyObject release_savepoint(final ThreadContext context, final IRubyObject name) {
-        Ruby runtime = context.runtime;
-
         try {
             if (getSavepoints(context).remove(name) == null) {
                 RubyClass invalidStatement = ActiveRecord(context).getClass("StatementInvalid");
-                throw runtime.newRaiseException(invalidStatement, "could not release savepoint: '" + name + "' (not set)");
+                throw context.runtime.newRaiseException(invalidStatement, "could not release savepoint: '" + name + "' (not set)");
             }
             // NOTE: JDBC driver does not implement release(Savepoint) :
-            getConnection(context, true).createStatement().execute("RELEASE SAVEPOINT " + name.toString());
+            getConnection(true).createStatement().execute("RELEASE SAVEPOINT " + name.toString());
 
-            return runtime.getNil();
+            return context.nil;
         } catch (SQLException e) {
             return handleException(context, e);
         }
@@ -360,7 +363,7 @@ public class SQLite3RubyJdbcConnection extends RubyJdbcConnection {
     // a consistent JDBC layer.
     @JRubyMethod(name = "supports_savepoints?")
     public IRubyObject supports_savepoints_p(final ThreadContext context) throws SQLException {
-        return context.getRuntime().getTrue();
+        return context.runtime.getTrue();
     }
 
     @Override

@@ -39,20 +39,9 @@ module ArJdbc
     def self.jdbc_connection_class
       ::ActiveRecord::ConnectionAdapters::PostgreSQLJdbcConnection
     end
-
+    
     # @see ActiveRecord::ConnectionAdapters::JdbcAdapter#jdbc_column_class
     def jdbc_column_class; ::ActiveRecord::ConnectionAdapters::PostgreSQLColumn end
-
-    # @private
-    def init_connection(jdbc_connection)
-      meta = jdbc_connection.meta_data
-      if meta.driver_version.index('JDBC3') # e.g. 'PostgreSQL 9.2 JDBC4 (build 1002)'
-        config[:connection_alive_sql] ||= 'SELECT 1'
-      else
-        # NOTE: since the loaded Java driver class can't change :
-        PostgreSQL.send(:remove_method, :init_connection) rescue nil
-      end
-    end
 
     ADAPTER_NAME = 'PostgreSQL'.freeze
 
@@ -508,10 +497,7 @@ module ArJdbc
       end
     end
 
-    # @override
-    def quote_column_name(name)
-      %("#{name.to_s.gsub("\"", "\"\"")}")
-    end
+    # @note #quote_column_name implemented as native
     alias_method :quote_schema_name, :quote_column_name
 
     # Quote date/time values for use in SQL input.

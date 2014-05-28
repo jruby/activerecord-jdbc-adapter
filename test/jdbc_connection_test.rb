@@ -13,7 +13,7 @@ class JdbcConnectionTest < Test::Unit::TestCase
     config[:properties] = {
       'autoDeserialize' => true,
       'maxAllowedPacket' => 128,
-      'metadataCacheSize' => '5'
+      :metadataCacheSize => '5',
     }
     ActiveRecord::Base.remove_connection
     begin
@@ -85,7 +85,7 @@ class JdbcConnectionTest < Test::Unit::TestCase
       ActiveRecord::Base.establish_connection config
       ActiveRecord::Base.connection.jdbc_connection
       fail "jdbc error not thrown"
-    rescue  ActiveRecord::JDBCError => e
+    rescue ActiveRecord::JDBCError => e
       assert_match /connect with {"user"=>"arjdbc", "password"=>"arjdbc"} failed/, e.to_s
       assert_equal 1042, e.errno
       assert_kind_of Java::JavaSql::SQLException, e.sql_exception
@@ -103,7 +103,7 @@ class JdbcConnectionTest < Test::Unit::TestCase
       ActiveRecord::Base.establish_connection config
       ActiveRecord::Base.connection.jdbc_connection
       fail "jdbc error not thrown"
-    rescue  ActiveRecord::JDBCError => e
+    rescue ActiveRecord::JDBCError => e
       assert_match /java.sql.SQLInvalidAuthorizationSpecException/, e.to_s
       assert_kind_of Java::JavaSql::SQLNonTransientException, e.sql_exception
     ensure
@@ -130,7 +130,7 @@ class JdbcConnectionTest < Test::Unit::TestCase
       end
     end
 
-    test 'connection fails without driver and url' do
+    test 'connection fails without :driver and :url' do
       with_connection_removed do
         ActiveRecord::Base.establish_connection :adapter => 'jdbc'
         assert_raise ActiveRecord::ConnectionNotEstablished do
@@ -139,7 +139,7 @@ class JdbcConnectionTest < Test::Unit::TestCase
       end
     end
 
-    test 'connection fails without driver' do
+    test 'connection fails without :driver' do
       with_connection_removed do
         ActiveRecord::Base.establish_connection :adapter => 'jdbc', :url => 'jdbc:derby:test.derby;create=true'
         assert_raise ActiveRecord::ConnectionNotEstablished do
@@ -148,7 +148,7 @@ class JdbcConnectionTest < Test::Unit::TestCase
       end
     end
 
-    test 'connection does not fail with driver_instance and url' do
+    test 'connection works with :driver_instance and :url' do
       load_derby_driver
       with_connection_removed do
         driver_instance = ActiveRecord::ConnectionAdapters::JdbcDriver.new('org.apache.derby.jdbc.EmbeddedDriver')
@@ -168,23 +168,22 @@ class JdbcConnectionTest < Test::Unit::TestCase
       end
     end
 
-    test 'configures driver instance' do
+    test 'instantiates the driver' do
       load_derby_driver
       with_connection_removed do
         ActiveRecord::Base.establish_connection :adapter => 'jdbc',
           :url => 'jdbc:derby:memory:TestDB;create=true', :driver => 'org.apache.derby.jdbc.EmbeddedDriver'
-        assert_nothing_raised do
-          ActiveRecord::Base.connection
-        end
-        assert config = ActiveRecord::Base.connection.config
-        assert_instance_of ActiveRecord::ConnectionAdapters::JdbcDriver, config[:driver_instance]
-        assert_equal 'org.apache.derby.jdbc.EmbeddedDriver', config[:driver_instance].name
+        assert_nothing_raised { ActiveRecord::Base.connection }
+        jdbc_connection = ActiveRecord::Base.connection.raw_connection
+        assert connection_factory = jdbc_connection.connection_factory
+        driver = connection_factory.driver_wrapper.driver_instance
+        assert driver.is_a? Java::JavaSql::Driver
+        assert_equal 'org.apache.derby.jdbc.EmbeddedDriver', driver.to_java.getClass.getName
       end
     end
 
     def load_derby_driver
-      require 'jdbc/derby'
-      Jdbc::Derby.load_driver(:require)
+      require 'jdbc/derby'; Jdbc::Derby.load_driver(:require)
     end
 
   end

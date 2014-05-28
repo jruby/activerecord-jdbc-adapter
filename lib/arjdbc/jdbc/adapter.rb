@@ -4,8 +4,8 @@ require 'active_record/connection_adapters/abstract_adapter'
 require 'arjdbc/version'
 require 'arjdbc/jdbc/java'
 require 'arjdbc/jdbc/base_ext'
+require 'arjdbc/jdbc/error'
 require 'arjdbc/jdbc/connection_methods'
-require 'arjdbc/jdbc/driver'
 require 'arjdbc/jdbc/column'
 require 'arjdbc/jdbc/connection'
 require 'arjdbc/jdbc/callbacks'
@@ -118,8 +118,7 @@ module ActiveRecord
 
         if (config[:jndi] || config[:data_source]) && ! config[:dialect]
           begin
-            data_source = config[:data_source] ||
-              Java::JavaxNaming::InitialContext.new.lookup(config[:jndi])
+            data_source = config[:data_source] || JdbcConnection.jndi_lookup(config[:jndi])
             connection = data_source.getConnection
             config[:dialect] = connection.getMetaData.getDatabaseProductName
           rescue Java::JavaSql::SQLException => e
