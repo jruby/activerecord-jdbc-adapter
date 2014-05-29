@@ -39,13 +39,12 @@ import java.sql.Statement;
 import java.sql.Time;
 import java.sql.Timestamp;
 import java.sql.Types;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.TimeZone;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.jruby.Ruby;
+import org.jruby.RubyArray;
 import org.jruby.RubyClass;
 import org.jruby.RubyFloat;
 import org.jruby.RubyModule;
@@ -174,7 +173,7 @@ public class MySQLRubyJdbcConnection extends RubyJdbcConnection {
                 query.append(jdbcTableName);
                 query.append(" WHERE key_name != 'PRIMARY'");
 
-                final List<IRubyObject> indexes = new ArrayList<IRubyObject>();
+                final RubyArray indexes = runtime.newArray(8);
                 PreparedStatement statement = null;
                 ResultSet keySet = null;
 
@@ -200,11 +199,11 @@ public class MySQLRubyJdbcConnection extends RubyJdbcConnection {
                                 runtime.newArray() // lengths
                             };
 
-                            indexes.add( indexDefinition.callMethod(context, "new", args) ); // IndexDefinition.new
+                            indexes.append( indexDefinition.callMethod(context, "new", args) ); // IndexDefinition.new
                         }
 
-                        IRubyObject lastIndexDef = indexes.isEmpty() ? null : indexes.get(indexes.size() - 1);
-                        if (lastIndexDef != null) {
+                        IRubyObject lastIndexDef = indexes.isEmpty() ? null : indexes.entry(-1);
+                        if ( lastIndexDef != null ) {
                             final String columnName = caseConvertIdentifierForRails(connection, keySet.getString("column_name"));
                             final int length = keySet.getInt("sub_part");
                             final boolean nullLength = keySet.wasNull();
