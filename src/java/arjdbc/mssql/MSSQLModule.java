@@ -28,6 +28,7 @@ import static arjdbc.util.QuotingUtils.BYTES_1;
 import static arjdbc.util.QuotingUtils.quoteCharWith;
 import static arjdbc.util.QuotingUtils.quoteSingleQuotesWithFallback;
 
+import org.jruby.Ruby;
 import org.jruby.RubyModule;
 import org.jruby.RubyString;
 import org.jruby.anno.JRubyMethod;
@@ -47,6 +48,10 @@ public class MSSQLModule {
         RubyModule mssql = arJdbc.defineModuleUnder("MSSQL");
         mssql.defineAnnotatedMethods( MSSQLModule.class );
         return mssql;
+    }
+
+    public static RubyModule load(final Ruby runtime) {
+        return load( arjdbc.ArJdbcModule.get(runtime) );
     }
 
     @JRubyMethod(name = "quote_string", required = 1)

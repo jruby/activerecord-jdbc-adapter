@@ -69,6 +69,11 @@ public class SQLite3RubyJdbcConnection extends RubyJdbcConnection {
         return clazz;
     }
 
+    public static RubyClass load(final Ruby runtime) {
+        RubyClass jdbcConnection = getJdbcConnectionClass(runtime);
+        return createSQLite3JdbcConnectionClass(runtime, jdbcConnection);
+    }
+
     protected static ObjectAllocator ALLOCATOR = new ObjectAllocator() {
         public IRubyObject allocate(Ruby runtime, RubyClass klass) {
             return new SQLite3RubyJdbcConnection(runtime, klass);

@@ -47,6 +47,10 @@ public class DerbyModule {
         return derby;
     }
 
+    public static RubyModule load(final Ruby runtime) {
+        return load( arjdbc.ArJdbcModule.get(runtime) );
+    }
+
     public static class Column {
 
         @JRubyMethod(name = "type_cast", required = 1)

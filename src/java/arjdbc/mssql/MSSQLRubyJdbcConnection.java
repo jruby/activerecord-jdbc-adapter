@@ -65,6 +65,11 @@ public class MSSQLRubyJdbcConnection extends RubyJdbcConnection {
         return clazz;
     }
 
+    public static RubyClass load(final Ruby runtime) {
+        RubyClass jdbcConnection = getJdbcConnectionClass(runtime);
+        return createMSSQLJdbcConnectionClass(runtime, jdbcConnection);
+    }
+
     protected static ObjectAllocator ALLOCATOR = new ObjectAllocator() {
         public IRubyObject allocate(Ruby runtime, RubyClass klass) {
             return new MSSQLRubyJdbcConnection(runtime, klass);

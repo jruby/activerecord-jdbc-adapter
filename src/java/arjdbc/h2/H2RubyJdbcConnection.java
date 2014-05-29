@@ -50,6 +50,11 @@ public class H2RubyJdbcConnection extends RubyJdbcConnection {
         return clazz;
     }
 
+    public static RubyClass load(final Ruby runtime) {
+        RubyClass jdbcConnection = getJdbcConnectionClass(runtime);
+        return createH2JdbcConnectionClass(runtime, jdbcConnection);
+    }
+
     protected static ObjectAllocator ALLOCATOR = new ObjectAllocator() {
         public IRubyObject allocate(Ruby runtime, RubyClass klass) {
             return new H2RubyJdbcConnection(runtime, klass);

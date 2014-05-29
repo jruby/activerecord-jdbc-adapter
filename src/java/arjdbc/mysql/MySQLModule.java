@@ -47,6 +47,10 @@ public class MySQLModule {
         return mysql;
     }
 
+    public static RubyModule load(final Ruby runtime) {
+        return load( arjdbc.ArJdbcModule.get(runtime) );
+    }
+
     //private final static byte[] ZERO = new byte[] {'\\','0'};
     //private final static byte[] NEWLINE = new byte[] {'\\','n'};
     //private final static byte[] CARRIAGE = new byte[] {'\\','r'};

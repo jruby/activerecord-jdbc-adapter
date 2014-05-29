@@ -27,6 +27,7 @@ import static arjdbc.util.QuotingUtils.BYTES_0;
 import static arjdbc.util.QuotingUtils.BYTES_1;
 import static arjdbc.util.QuotingUtils.quoteCharWith;
 
+import org.jruby.Ruby;
 import org.jruby.RubyModule;
 import org.jruby.RubyString;
 import org.jruby.anno.JRubyMethod;
@@ -44,6 +45,10 @@ public class OracleModule {
         RubyModule oracle = arJdbc.defineModuleUnder("Oracle");
         oracle.defineAnnotatedMethods( OracleModule.class );
         return oracle;
+    }
+
+    public static RubyModule load(final Ruby runtime) {
+        return load( arjdbc.ArJdbcModule.get(runtime) );
     }
 
     @JRubyMethod(name = "quote_string", required = 1)

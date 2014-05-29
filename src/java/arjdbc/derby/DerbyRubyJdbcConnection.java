@@ -59,6 +59,11 @@ public class DerbyRubyJdbcConnection extends RubyJdbcConnection {
         return clazz;
     }
 
+    public static RubyClass load(final Ruby runtime) {
+        RubyClass jdbcConnection = getJdbcConnectionClass(runtime);
+        return createDerbyJdbcConnectionClass(runtime, jdbcConnection);
+    }
+    
     protected static ObjectAllocator ALLOCATOR = new ObjectAllocator() {
         public IRubyObject allocate(Ruby runtime, RubyClass klass) {
             return new DerbyRubyJdbcConnection(runtime, klass);
