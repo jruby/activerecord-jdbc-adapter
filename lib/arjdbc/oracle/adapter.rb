@@ -579,20 +579,18 @@ module ArJdbc
     # @override
     def exec_insert(sql, name, binds, pk = nil, sequence_name = nil)
       if pk && use_insert_returning?
-        exec_insert_returning(sql, name, binds, pk)
-      else
-        super(sql, name, binds) # assume no generated id for table
+        if sql.is_a?(String) && sql.index('RETURNING')
+          return exec_insert_returning(sql, name, binds, pk)
+        end
       end
+      super(sql, name, binds) # assume no generated id for table
     end
 
     def exec_insert_returning(sql, name, binds, pk = nil)
-      if sql.respond_to?(:to_sql)
-        sql = to_sql(sql, binds); to_sql = true
-      end
+      sql = to_sql(sql, binds) if sql.respond_to?(:to_sql)
       if prepared_statements?
         log(sql, name, binds) { @connection.execute_insert_returning(sql, binds) }
       else
-        sql = suble_binds(sql, binds) unless to_sql # deprecated behavior
         log(sql, name) { @connection.execute_insert_returning(sql, nil) }
       end
     end
