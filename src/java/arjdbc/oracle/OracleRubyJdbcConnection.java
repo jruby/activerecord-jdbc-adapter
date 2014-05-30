@@ -135,6 +135,30 @@ public class OracleRubyJdbcConnection extends RubyJdbcConnection {
         });
     }
 
+    protected static final boolean generatedKeys;
+    static {
+        final String genKeys = System.getProperty("arjdbc.oracle.generated_keys");
+        if ( genKeys == null ) {
+            generatedKeys = true; // by default
+        }
+        else {
+            generatedKeys = Boolean.parseBoolean(genKeys);
+        }
+    }
+
+    @Override
+    protected IRubyObject mapGeneratedKeys(
+        final Ruby runtime, final Connection connection,
+        final Statement statement, final Boolean singleResult)
+        throws SQLException {
+        if ( generatedKeys ) {
+            return super.mapGeneratedKeys(runtime, connection, statement, singleResult);
+        }
+        return null; // disabled using -Darjdbc.oracle.generated_keys=false
+    }
+
+    private static final boolean returnRowID = Boolean.getBoolean("arjdbc.oracle.generated_keys.rowid");
+
     @Override // NOTE: Invalid column type:
     // getLong not implemented for class oracle.jdbc.driver.T4CRowidAccessor
     protected IRubyObject mapGeneratedKey(final Ruby runtime, final ResultSet genKeys)
@@ -145,7 +169,7 @@ public class OracleRubyJdbcConnection extends RubyJdbcConnection {
             return runtime.newFixnum( Long.parseLong(value) );
         }
         else {
-            return runtime.getNil();
+            return returnRowID ? runtime.newString(value) : runtime.getNil();
         }
     }
 
