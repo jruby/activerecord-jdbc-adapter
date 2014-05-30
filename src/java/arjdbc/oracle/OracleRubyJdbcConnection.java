@@ -120,8 +120,6 @@ public class OracleRubyJdbcConnection extends RubyJdbcConnection {
                     statement = connection.prepareCall("{call " + query + " }");
                     setStatementParameters(context, connection, statement, binds);
                     statement.registerOutParameter(outIndex, outType);
-                    // statement.registerOutParameter("returning_id", outType);
-
                     statement.executeUpdate();
                     ResultSet resultSet = new CallResultSet(statement);
                     return jdbcToRuby(context, context.getRuntime(), outIndex, outType, resultSet);
