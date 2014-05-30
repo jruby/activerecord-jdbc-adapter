@@ -1,29 +1,26 @@
 source "https://rubygems.org"
 
 if version = ENV['AR_VERSION']
-  gem 'activerecord', version, :require => nil
+  if version.index('/') && ::File.exist?(version)
+    gem 'activerecord', :path => version
+  elsif version =~ /[0-9abcdef]*/
+    gem 'activerecord', :github => 'rails/rails', :ref => version
+  elsif version.index('.').nil?
+    gem 'activerecord', :github => 'rails/rails', :branch => version
+  else
+    gem 'activerecord', version, :require => nil
+  end
 else
   gem 'activerecord', :require => nil
 end
+
 gem 'thread_safe', :require => nil # "optional" - we can roll without it
+
 if defined?(JRUBY_VERSION) && JRUBY_VERSION < '1.7.0'
 gem 'jruby-openssl', :platform => :jruby
 end
 
-group :development do
-  gem 'ruby-debug', :require => nil # if ENV['DEBUG']
-  group :doc do
-    gem 'yard', :require => nil
-    gem 'yard-method-overrides', :github => 'kares/yard-method-overrides', :require => nil
-    gem 'kramdown', :require => nil
-  end
-end
-
-if RUBY_VERSION < '1.9'
-  gem 'rake', '< 10.2.0', :require => nil
-else
-  gem 'rake', :require => nil
-end
+gem 'rake', '~> 10.3.2', :require => nil
 gem 'appraisal', '~> 0.5.2', :require => nil
 
 # appraisal ignores group block declarations :
@@ -35,6 +32,15 @@ gem 'mocha', '~> 0.13.1', :require => nil, :group => :test
 gem 'simplecov', :require => nil, :group => :test
 gem 'bcrypt-ruby', '~> 3.0.0', :require => nil, :group => :test
 #gem 'trinidad_dbpool', :require => nil, :group => :test
+
+group :development do
+  gem 'ruby-debug', :require => nil # if ENV['DEBUG']
+  group :doc do
+    gem 'yard', :require => nil
+    gem 'yard-method-overrides', :github => 'kares/yard-method-overrides', :require => nil
+    gem 'kramdown', :require => nil
+  end
+end
 
 group :rails do
   gem 'erubis', :require => nil
