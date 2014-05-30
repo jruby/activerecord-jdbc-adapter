@@ -1300,7 +1300,7 @@ public class RubyJdbcConnection extends RubyObject {
         final boolean binary = // column.type == :binary
             column.callMethod(context, "type").toString() == (Object) "binary";
 
-        final RubyClass recordClass = record.getMetaClass(); // record.class
+        final IRubyObject recordClass = record.callMethod(context, "class");
         final IRubyObject adapter = recordClass.callMethod(context, "connection");
 
         IRubyObject columnName = column.callMethod(context, "name");
@@ -1314,7 +1314,7 @@ public class RubyJdbcConnection extends RubyObject {
 
         final IRubyObject id = record.callMethod(context, "id"); // record.id
 
-        int count = updateLobValue(context,
+        final int count = updateLobValue(context,
             tableName.toString(), columnName.toString(), column,
             idKey.toString(), id, idColumn, value, binary
         );
