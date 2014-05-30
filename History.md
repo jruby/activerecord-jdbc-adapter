@@ -1,3 +1,19 @@
+## 1.3.8 (pe/nd/in)
+
+- [oracle] support disabling generated keys `-Darjdbc.oracle.generated_keys=false`
+- [postgres] fix returning generated keys + use *arjdbc.postgresql.generated_keys*
+- [oracle] working `config[:insert_returning] = true` support (using prepared calls)
+- [mysql] improve column instantiation - make sure strict/extra passed correctly
+- [postgres] backport rails fix for not quoting array defaults correctly
+- [postgres] handle the accessor (e.g. for hstore) added in AR 4.1 (#535)
+- [postgres] handle oid_types resolution on AR 4.x (compat with MRI on Rails)
+- [postgres] align Column's (string) cast helpers with AR 4.1
+- [postgres] quote/cast compat with 4.x + do not quote default function values
+- [postgres] align array parser with latest from AR 4.1
+- [postgresl] Column AR 4.x compatibility methods: `number?` and `text?`
+- [h2] should have it's own arel visitor class (`Arel::Visitors::H2`)
+- [h2] support for latest beta of next major release - H2 database **1.4**
+
 ## 1.3.7 (04/14/14)
 
 - [postgres] set prepared values with array columns on AR < 4.0 correctly
