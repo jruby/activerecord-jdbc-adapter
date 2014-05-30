@@ -8,8 +8,7 @@ config = {
   :database => ENV["ORACLE_SID"] || 'XE',
   :prepared_statements => ENV['PREPARED_STATEMENTS'] || ENV['PS']
 }
-
-ActiveRecord::Base.establish_connection(config)
+config[:insert_returning] = ENV['INSERT_RETURNING'] if ENV['INSERT_RETURNING']
 
 require 'jdbc/oracle'
 # Download JDBC driver from :
