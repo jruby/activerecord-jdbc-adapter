@@ -87,22 +87,29 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
     };
 
     // enables testing if the bug is fixed (please run our test-suite)
-    // using `rake test_postgresql JRUBY_OPTS="-J-Darjdbc.postgresql.generated.keys=true"`
-    protected static final boolean generatedKeys = Boolean.getBoolean("arjdbc.postgresql.generated.keys");
+    // using `rake test_postgresql JRUBY_OPTS="-J-Darjdbc.postgresql.generated_keys=true"`
+    protected static final boolean generatedKeys;
+    static {
+        String genKeys = System.getProperty("arjdbc.postgresql.generated_keys");
+        if ( genKeys == null ) { // @deprecated system property name :
+            genKeys = System.getProperty("arjdbc.postgresql.generated.keys");
+        }
+        generatedKeys = Boolean.parseBoolean(genKeys);
+    }
 
     @Override
     protected IRubyObject mapGeneratedKeys(
         final Ruby runtime, final Connection connection,
         final Statement statement, final Boolean singleResult)
         throws SQLException {
-        if ( generatedKeys ) {
-            super.mapGeneratedKeys(runtime, connection, statement, singleResult);
-        }
         // NOTE: PostgreSQL driver supports generated keys but does not work
         // correctly for all cases e.g. for tables whene no keys are generated
         // during an INSERT getGeneratedKeys return all inserted rows instead
         // of an empty result set ... thus disabled until issue is resolved !
-        return null; // not supported
+        if ( ! generatedKeys ) return null; // not supported
+        // NOTE: generated-keys is implemented by the Postgre's JDBC driver by
+        // adding a "RETURNING" suffix after the executeUpdate passed query ...
+        return super.mapGeneratedKeys(runtime, connection, statement, singleResult);
     }
 
     // storesMixedCaseIdentifiers() return false;
