@@ -544,9 +544,11 @@ module ArJdbc
       end
 
       if pk && use_insert_returning? # true by default on AR <= 3.0
-        sql = "#{sql} RETURNING #{quote_column_name(pk)}"
+        sql = "#{sql} RETURNING #{quote_column_name(pk)} INTO ?"
+        exec_insert_returning(sql, name, nil, pk)
+      else
+        execute(sql, name)
       end
-      execute(sql, name)
     end
     protected :insert_sql
 
@@ -554,7 +556,7 @@ module ArJdbc
     def sql_for_insert(sql, pk, id_value, sequence_name, binds)
       unless id_value || pk.nil?
         if pk && use_insert_returning?
-          sql = "#{sql} RETURNING #{quote_column_name(pk)}"
+          sql = "#{sql} RETURNING #{quote_column_name(pk)} INTO ?"
         end
       end
       [ sql, binds ]
@@ -577,11 +579,24 @@ module ArJdbc
     # @override
     def exec_insert(sql, name, binds, pk = nil, sequence_name = nil)
       if pk && use_insert_returning?
-        exec_query(sql, name, binds) # due RETURNING clause
+        exec_insert_returning(sql, name, binds, pk)
       else
         super(sql, name, binds) # assume no generated id for table
       end
     end
+
+    def exec_insert_returning(sql, name, binds, pk = nil)
+      if sql.respond_to?(:to_sql)
+        sql = to_sql(sql, binds); to_sql = true
+      end
+      if prepared_statements?
+        log(sql, name, binds) { @connection.execute_insert_returning(sql, binds) }
+      else
+        sql = suble_binds(sql, binds) unless to_sql # deprecated behavior
+        log(sql, name) { @connection.execute_insert_returning(sql, nil) }
+      end
+    end
+    # private :exec_insert_returning
 
     def next_id_value(sql, sequence_name = nil)
       # Assume the SQL contains a bind-variable for the ID
@@ -670,6 +685,10 @@ module ActiveRecord::ConnectionAdapters
 
   class OracleColumn < JdbcColumn
     include ::ArJdbc::Oracle::Column
+
+    # def returning_id?; @returning_id ||= nil end
+    # def returning_id!; @returning_id = true end
+
   end
 
 end

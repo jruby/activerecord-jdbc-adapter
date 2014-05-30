@@ -1,5 +1,5 @@
 /***** BEGIN LICENSE BLOCK *****
- * Copyright (c) 2012-2013 Karol Bucek <self@kares.org>
+ * Copyright (c) 2012-2014 Karol Bucek <self@kares.org>
  * Copyright (c) 2006-2010 Nick Sieger <nick@nicksieger.com>
  * Copyright (c) 2006-2007 Ola Bini <ola.bini@gmail.com>
  * Copyright (c) 2008-2009 Thomas E Enebo <enebo@acm.org>
@@ -27,9 +27,11 @@ package arjdbc.oracle;
 
 import arjdbc.jdbc.Callable;
 import arjdbc.jdbc.RubyJdbcConnection;
+import arjdbc.util.CallResultSet;
 
 import java.io.IOException;
 import java.io.Reader;
+import java.sql.CallableStatement;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -38,6 +40,7 @@ import java.sql.PreparedStatement;
 import java.sql.Statement;
 import java.sql.Types;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import org.jruby.Ruby;
@@ -90,6 +93,44 @@ public class OracleRubyJdbcConnection extends RubyJdbcConnection {
                     throw e;
                 }
                 finally { close(valSet); close(statement); }
+            }
+        });
+    }
+
+    @JRubyMethod(name = "execute_insert_returning", required = 2)
+    public IRubyObject execute_insert_returning(final ThreadContext context,
+        final IRubyObject sql, final IRubyObject binds) throws SQLException {
+        final String query = sql.convertToString().getUnicodeValue();
+        final int outType = Types.VARCHAR;
+        if ( binds == null || binds.isNil() ) { // no prepared statements
+            return executePreparedCall(context, query, Collections.EMPTY_LIST, outType);
+        }
+        else { // allow prepared statements with empty binds parameters
+            return executePreparedCall(context, query, (List) binds, outType);
+        }
+    }
+
+    private IRubyObject executePreparedCall(final ThreadContext context, final String query,
+        final List<?> binds, final int outType) {
+        return withConnection(context, new Callable<IRubyObject>() {
+            public IRubyObject call(final Connection connection) throws SQLException {
+                CallableStatement statement = null;
+                final int outIndex = binds.size() + 1;
+                try {
+                    statement = connection.prepareCall("{call " + query + " }");
+                    setStatementParameters(context, connection, statement, binds);
+                    statement.registerOutParameter(outIndex, outType);
+                    // statement.registerOutParameter("returning_id", outType);
+
+                    statement.executeUpdate();
+                    ResultSet resultSet = new CallResultSet(statement);
+                    return jdbcToRuby(context, context.getRuntime(), outIndex, outType, resultSet);
+                }
+                catch (final SQLException e) {
+                    debugErrorSQL(context, query);
+                    throw e;
+                }
+                finally { close(statement); }
             }
         });
     }

@@ -1,7 +1,7 @@
 /*
  * The MIT License
  *
- * Copyright 2013 Karol Bucek.
+ * Copyright 2013-2014 Karol Bucek.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
