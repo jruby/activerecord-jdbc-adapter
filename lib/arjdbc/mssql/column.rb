@@ -50,7 +50,18 @@ module ArJdbc
       def type_cast(value)
         return nil if value.nil?
         case type
-        when :integer then value.delete('()').to_i rescue unquote(value).to_i rescue value ? 1 : 0
+        when :integer
+          if value.respond_to?(:delete)
+            value.delete('()').to_i
+          else
+            if value.is_a?(Fixnum)
+              value
+            elsif value.respond_to?(:to_s)
+              unquote(value).to_i
+            else
+              value ? 1 : 0
+            end
+          end
         when :primary_key then value == true || value == false ? value == true ? 1 : 0 : value.to_i
         when :decimal   then self.class.value_to_decimal(unquote(value))
         when :date      then self.class.string_to_date(value)
