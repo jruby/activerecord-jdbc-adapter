@@ -50,14 +50,20 @@ module ArJdbc
       def type_cast(value)
         return nil if value.nil?
         case type
-        when :integer then value.delete('()').to_i rescue unquote(value).to_i rescue value ? 1 : 0
-        when :primary_key then value == true || value == false ? value == true ? 1 : 0 : value.to_i
+        when :integer
+          case value
+          when String
+            unquote value
+          else
+            value || 0
+          end.to_i
+        when :primary_key then value.respond_to?(:to_i) ? value.to_i : ((value && 1) || 0)
         when :decimal   then self.class.value_to_decimal(unquote(value))
         when :date      then self.class.string_to_date(value)
         when :datetime  then self.class.string_to_time(value)
         when :timestamp then self.class.string_to_time(value)
         when :time      then self.class.string_to_dummy_time(value)
-        when :boolean   then value == true || (value =~ /^t(rue)?$/i) == 0 || unquote(value) == '1'
+        when :boolean   then !!(value ? value =~ /^t(?:rue)?$/i || unquote(value) == '1' : value)
         when :binary    then unquote value
         else value
         end
