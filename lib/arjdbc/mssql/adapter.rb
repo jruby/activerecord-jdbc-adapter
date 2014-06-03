@@ -220,9 +220,18 @@ module ArJdbc
     end
 
     def quote_column_name(name)
-      name.to_s.split('.').map do |n| # "[#{name}]"
-        n =~ /^\[.*\]$/ ? n : "[#{n.gsub(']', ']]')}]"
-      end.join('.')
+      name = name.to_s.split('.')
+      name.map! { |n| quote_name_part(n) } # "[#{name}]"
+      name.join('.')
+    end
+
+    def quote_name_part(part)
+      part =~ /^\[.*\]$/ ? part : "[#{part.gsub(']', ']]')}]"
+    end
+    private :quote_name_part
+
+    def quote_database_name(name)
+      quote_name_part(name.to_s)
     end
 
     ADAPTER_NAME = 'MSSQL'.freeze
@@ -303,7 +312,7 @@ module ArJdbc
 
     def use_database(database = nil)
       database ||= config[:database]
-      execute "USE #{quote_table_name(database)}" unless database.blank?
+      execute "USE #{quote_database_name(database)}" unless database.blank?
     end
 
     # @private
@@ -326,11 +335,11 @@ module ArJdbc
     def drop_database(name)
       current_db = current_database
       use_database('master') if current_db.to_s == name
-      execute "DROP DATABASE #{quote_table_name(name)}"
+      execute "DROP DATABASE #{quote_database_name(name)}"
     end
 
     def create_database(name, options = {})
-      execute "CREATE DATABASE #{quote_table_name(name)}"
+      execute "CREATE DATABASE #{quote_database_name(name)}"
     end
 
     def database_exists?(name)
