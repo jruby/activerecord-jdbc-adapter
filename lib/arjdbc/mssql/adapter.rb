@@ -234,6 +234,15 @@ module ArJdbc
       quote_name_part(name.to_s)
     end
 
+    # Does not quote function default values for UUID columns
+    def quote_default_value(value, column)
+      if column.type == :uuid && value =~ /\(\)/
+        value
+      else
+        quote(value)
+      end
+    end
+
     ADAPTER_NAME = 'MSSQL'.freeze
 
     def adapter_name
@@ -397,38 +406,43 @@ module ArJdbc
 
     # @override
     def change_column(table_name, column_name, type, options = {})
+      column = columns(table_name).find { |c| c.name.to_s == column_name.to_s }
 
-      indexes = []
-      column_object = columns(table_name).detect { |c| c.name.to_s == column_name.to_s }
-
-      if options_include_default?(options) || (column_object && column_object.type != type.to_sym)
+      indexes = nil
+      if options_include_default?(options) || (column && column.type != type.to_sym)
         remove_default_constraint(table_name, column_name)
         indexes = indexes(table_name).select{ |index| index.columns.include?(column_name.to_s) }
         remove_indexes(table_name, column_name)
       end
 
-      clear_cached_table(table_name)
+      if ! options[:null].nil? && options[:null] == false && ! options[:default].nil?
+        execute "UPDATE #{quote_table_name(table_name)} SET #{quote_column_name(column_name)}=#{quote_default_value(options[:default], column)} WHERE #{quote_column_name(column_name)} IS NULL"
+        clear_cached_table(table_name)
+      end
       change_column_type(table_name, column_name, type, options)
       change_column_default(table_name, column_name, options[:default]) if options_include_default?(options)
 
-      #Add any removed indexes back
-      indexes.each do |index|
-        execute "CREATE INDEX #{quote_table_name(index.name)} ON #{quote_table_name(table_name)} (#{index.columns.collect {|c|quote_column_name(c)}.join(', ')})"
-      end
+      indexes.each do |index| # add any removed indexes back
+        index_columns = index.columns.map { |c| quote_column_name(c) }.join(', ')
+        execute "CREATE INDEX #{quote_table_name(index.name)} ON #{quote_table_name(table_name)} (#{index_columns})"
+      end if indexes
     end
 
     def change_column_type(table_name, column_name, type, options = {})
-      clear_cached_table(table_name)
       sql = "ALTER TABLE #{quote_table_name(table_name)} ALTER COLUMN #{quote_column_name(column_name)} #{type_to_sql(type, options[:limit], options[:precision], options[:scale])}"
-      sql += (options[:null] ? " NULL" : " NOT NULL") if options.has_key?(:null)
-      execute(sql)
+      sql << (options[:null] ? " NULL" : " NOT NULL") if options.has_key?(:null)
+      result = execute(sql)
+      clear_cached_table(table_name)
+      result
     end
 
     def change_column_default(table_name, column_name, default)
-      clear_cached_table(table_name)
       remove_default_constraint(table_name, column_name)
       unless default.nil?
-        execute "ALTER TABLE #{quote_table_name(table_name)} ADD CONSTRAINT DF_#{table_name}_#{column_name} DEFAULT #{quote(default)} FOR #{quote_column_name(column_name)}"
+        column = columns(table_name).find { |c| c.name.to_s == column_name.to_s }
+        result = execute "ALTER TABLE #{quote_table_name(table_name)} ADD CONSTRAINT DF_#{table_name}_#{column_name} DEFAULT #{quote_default_value(default, column)} FOR #{quote_column_name(column_name)}"
+        clear_cached_table(table_name)
+        result
       end
     end
 
