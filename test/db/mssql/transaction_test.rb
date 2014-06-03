@@ -1,5 +1,5 @@
 require 'db/mssql'
-require 'transaction'
+require 'transaction_test_methods'
 
 class MSSQLTransactionTest < Test::Unit::TestCase
   include TransactionTestMethods
