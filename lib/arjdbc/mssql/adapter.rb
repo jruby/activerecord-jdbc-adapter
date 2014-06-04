@@ -408,7 +408,7 @@ module ArJdbc
     def change_column(table_name, column_name, type, options = {})
       column = columns(table_name).find { |c| c.name.to_s == column_name.to_s }
 
-      indexes = nil
+      indexes = EMPTY_ARRAY
       if options_include_default?(options) || (column && column.type != type.to_sym)
         remove_default_constraint(table_name, column_name)
         indexes = indexes(table_name).select{ |index| index.columns.include?(column_name.to_s) }
@@ -425,7 +425,7 @@ module ArJdbc
       indexes.each do |index| # add any removed indexes back
         index_columns = index.columns.map { |c| quote_column_name(c) }.join(', ')
         execute "CREATE INDEX #{quote_table_name(index.name)} ON #{quote_table_name(table_name)} (#{index_columns})"
-      end if indexes
+      end
     end
 
     def change_column_type(table_name, column_name, type, options = {})
