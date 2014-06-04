@@ -50,21 +50,15 @@ module ArJdbc
       def type_cast(value)
         return nil if value.nil?
         case type
-        when :integer
-          case value
-          when String
-            unquote value
-          else
-            value || 0
-          end.to_i
+        when :integer then ( value.is_a?(String) ? unquote(value) : (value || 0) ).to_i
         when :primary_key then value.respond_to?(:to_i) ? value.to_i : ((value && 1) || 0)
         when :decimal   then self.class.value_to_decimal(unquote(value))
         when :date      then self.class.string_to_date(value)
         when :datetime  then self.class.string_to_time(value)
         when :timestamp then self.class.string_to_time(value)
         when :time      then self.class.string_to_dummy_time(value)
-        when :boolean   then !!(value ? value =~ /^t(?:rue)?$/i || unquote(value) == '1' : value)
-        when :binary    then unquote value
+        when :boolean   then value == true || (value =~ /^t(rue)?$/i) == 0 || unquote(value) == '1'
+        when :binary    then unquote(value)
         else value
         end
       end
@@ -162,7 +156,7 @@ module ArJdbc
             super(value)
           end
         end
-        
+
         def string_to_binary(value)
           # this will only allow the adapter to insert binary data with a length
           # of 7K or less because of a SQL Server statement length policy ...
