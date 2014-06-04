@@ -451,10 +451,9 @@ module ArJdbc
       # remove_columns(:posts, :foo, :bar) old syntax : remove_columns(:posts, [:foo, :bar])
       clear_cached_table(table_name)
 
+      column_names = column_names.flatten
       return do_remove_column(table_name, column_names.first) if column_names.size == 1
-      column_names.flatten.each do |column_name|
-        do_remove_column(table_name, column_name)
-      end
+      column_names.each { |column_name| do_remove_column(table_name, column_name) }
     end
 
     def do_remove_column(table_name, column_name)
