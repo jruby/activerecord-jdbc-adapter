@@ -15,7 +15,7 @@ module Arel
         end
 
         unless o.orders.empty?
-          select_order_by = "ORDER BY #{o.orders.map { |x| do_visit x, a }.join(', ')}"
+          select_order_by = "ORDER BY #{do_visit_columns(o.orders, a).join(', ')}"
         end
 
         select_count = false
@@ -95,12 +95,31 @@ module Arel
 
       def determine_order_by x, a
         unless x.groups.empty?
-          "ORDER BY #{x.groups.map { |g| do_visit g, a }.join(', ')}"
+          "ORDER BY #{do_visit_columns(x.groups, a).join(', ')}"
         else
           table_pk = find_left_table_pk(x.froms, a)
           table_pk == 'NULL' ? nil : "ORDER BY #{table_pk}"
         end
       end
+
+      def do_visit_columns(colls, a)
+        colls.map { |x| do_visit x, a }
+      end
+
+      # @private
+      NON_SIMPLE_ORDER_COLUMN = /\sASC|\sDESC|\sCASE|\sCOLLATE|[\.,\[\(]/i # MIN(width)
+
+      def do_visit_columns(colls, a)
+        colls = colls.map { |x| do_visit x, a }
+        colls.map! do |x|
+          if x !~ NON_SIMPLE_ORDER_COLUMN && x.to_i == 0
+            @connection.quote_column_name(x)
+          else
+            x
+          end
+        end
+        colls
+      end if Arel::VERSION < '4.0.0'
 
       def row_num_literal order_by
         Arel::Nodes::SqlLiteral.new("ROW_NUMBER() OVER (#{order_by}) as _row_num")

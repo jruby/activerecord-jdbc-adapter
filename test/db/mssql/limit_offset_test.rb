@@ -114,7 +114,11 @@ class MSSQLLimitOffsetTest < Test::Unit::TestCase
     %w(one two three four five six seven eight).each do |name|
       LongShip.create!(:name => name)
     end
-    ship_names = LongShip.find(:all, :offset => 2, :limit => 3).map(&:name)
+    if ar_version('4.0')
+      ship_names = LongShip.offset(2).limit(3).to_a.map(&:name)
+    else
+      ship_names = LongShip.find(:all, :offset => 2, :limit => 3).map(&:name)
+    end
     assert_equal(%w(three four five), ship_names)
   end
 
@@ -122,7 +126,11 @@ class MSSQLLimitOffsetTest < Test::Unit::TestCase
     %w(one two three four five six seven eight).each do |name|
       LongShip.create!(:name => name)
     end
-    ship_names = LongShip.find(:all, :order => "name", :offset => 4, :limit => 2).map(&:name)
+    if ar_version('4.0')
+      ship_names = LongShip.order("name").offset(4).limit(2).to_a.map(&:name)
+    else
+      ship_names = LongShip.find(:all, :order => "name", :offset => 4, :limit => 2).map(&:name)
+    end
     assert_equal(%w(seven six), ship_names)
   end
 
