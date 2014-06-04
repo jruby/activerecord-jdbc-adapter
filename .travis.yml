@@ -35,6 +35,8 @@ env:
   # TODO: not sure why it can't connect :
   #- JRUBY_OPTS="--1.8 $JRUBY_OPTS" DB=jdbc
   #- JRUBY_OPTS="--1.9 $JRUBY_OPTS" DB=jdbc
+jdk:
+  - openjdk6
 branches:
   only:
     - master
