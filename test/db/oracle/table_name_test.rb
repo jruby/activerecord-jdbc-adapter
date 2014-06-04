@@ -36,7 +36,7 @@ class OracleTableNameTest < Test::Unit::TestCase
     assert sn.reload
 
     SerialNumber.columns
-  end
+  end if ar_version('3.1')
 
   class SerialMigration < ActiveRecord::Migration
 
