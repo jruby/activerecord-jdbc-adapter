@@ -169,7 +169,9 @@ class MSSQLLimitOffsetTest < Test::Unit::TestCase
       LongShip.create!(:name => name)
     end
     error = assert_raise ActiveRecord::ActiveRecordError do
-      if ar_version('3.0')
+      if ar_version('4.0')
+        LongShip.select(:name).offset(2).to_a
+      elsif ar_version('3.0')
         LongShip.select(:name).offset(2).all
       else
         LongShip.find(:all, :select => 'name', :offset => 2)
