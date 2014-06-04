@@ -225,11 +225,6 @@ module ArJdbc
       name.join('.')
     end
 
-    def quote_name_part(part)
-      part =~ /^\[.*\]$/ ? part : "[#{part.gsub(']', ']]')}]"
-    end
-    private :quote_name_part
-
     def quote_database_name(name)
       quote_name_part(name.to_s)
     end

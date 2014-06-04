@@ -23,7 +23,6 @@
  */
 package arjdbc.util;
 
-import org.jruby.Ruby;
 import org.jruby.RubyString;
 import org.jruby.runtime.ThreadContext;
 import org.jruby.runtime.builtin.IRubyObject;
@@ -49,6 +48,15 @@ public abstract class QuotingUtils {
             final ThreadContext context,
             final RubyString string,
             final char value, final char quote) {
+        return quoteCharWith(context, string, value, quote, 0, 8);
+    }
+
+    @SuppressWarnings("deprecation")
+    public static RubyString quoteCharWith(
+            final ThreadContext context,
+            final RubyString string,
+            final char value, final char quote,
+            final int newOffset, final int newSizeDiff) {
 
         final ByteList stringBytes = string.getByteList();
         final byte[] bytes = stringBytes.unsafeBytes();
@@ -60,11 +68,11 @@ public abstract class QuotingUtils {
             if ( bytes[i] == value ) {
                 if ( quotedBytes == null ) {
                     quotedBytes = new ByteList(
-                        new byte[realSize + 8],
-                        stringBytes.getEncoding()
+                        new byte[realSize + newOffset + newSizeDiff],
+                        stringBytes.getEncoding(), false
                     );
-                    quotedBytes.setBegin(0);
-                    quotedBytes.setRealSize(0);
+                    quotedBytes.begin = newOffset;
+                    quotedBytes.realSize = 0;
                 }
                 quotedBytes.append(bytes, appendFrom, i - appendFrom);
                 quotedBytes.append(quote).append(value); // e.g. "'" => "''"
@@ -76,8 +84,7 @@ public abstract class QuotingUtils {
         }
         else return string; // nothing changed, can return original
 
-        final Ruby runtime = context.getRuntime();
-        return runtime.newString(quotedBytes);
+        return context.getRuntime().newString(quotedBytes);
     }
 
     public static final ByteList BYTES_SINGLE_Q = new ByteList(new byte[] { '\'' }, false);
