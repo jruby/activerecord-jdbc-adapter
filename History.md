@@ -1,5 +1,15 @@
 ## 1.3.8 (pe/nd/in)
 
+- [mssql] performance improvements :
+  * "optimized" quote_name_part in Java + avoid bytes copying in quoteCharWith
+  * throwing exceptions in the hot path results in slow code
+  * minor performance improvements to mssql type_cast
+- [mssql] fix remove_column on AR < 3.2
+- [mssql] dealing with column that need quoting (e.g. ids with spaces) in ORDER
+  special care needs to be performed on AR <= 3.2 - Arel < '4.0' (closing #551)
+- [mssql] correct default value quoting + update on change when non null with default
+- [mssql] backport database ('.' in name) quoting fix from sqlserver adapter
+- get the "correct" (AR::Base) record.class on AR 4.1 (#555)
 - [oracle] support disabling generated keys `-Darjdbc.oracle.generated_keys=false`
 - [postgres] fix returning generated keys + use *arjdbc.postgresql.generated_keys*
 - [oracle] working `config[:insert_returning] = true` support (using prepared calls)
@@ -13,6 +23,8 @@
 - [postgresl] Column AR 4.x compatibility methods: `number?` and `text?`
 - [h2] should have it's own arel visitor class (`Arel::Visitors::H2`)
 - [h2] support for latest beta of next major release - H2 database **1.4**
+
+Code Contributors (in no particular order): Michael J. Cohen
 
 ## 1.3.7 (04/14/14)
 
