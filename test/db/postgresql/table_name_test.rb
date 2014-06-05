@@ -93,6 +93,6 @@ class PostgreSQLTableNameTest < Test::Unit::TestCase
     assert sn.reload
 
     SerialWithTrigger.columns
-  end
+  end if ar_version('3.1')
 
 end
