@@ -2,6 +2,7 @@ require 'thread'
 
 require 'test_helper'
 require 'models/entry'
+require 'models_setup'
 
 module RowLockingTestMethods
 
