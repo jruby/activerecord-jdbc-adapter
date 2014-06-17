@@ -5,11 +5,14 @@ ArJdbc::ConnectionMethods.module_eval do
 
     return jndi_connection(config) if jndi_config?(config)
 
+    driver = config[:driver] ||=
+      defined?(::Jdbc::MySQL.driver_name) ? ::Jdbc::MySQL.driver_name : 'com.mysql.jdbc.Driver'
+
     begin
       require 'jdbc/mysql'
       ::Jdbc::MySQL.load_driver(:require) if defined?(::Jdbc::MySQL.load_driver)
     rescue LoadError # assuming driver.jar is on the class-path
-    end
+    end if mysql_driver = driver[0, 10] == 'com.mysql.'
 
     config[:username] = 'root' unless config.key?(:username)
     # jdbc:mysql://[host][,failoverhost...][:port]/[database]
@@ -23,32 +26,33 @@ ArJdbc::ConnectionMethods.module_eval do
       url << "/#{config[:database]}"
       config[:url] = url
     end
-    config[:driver] ||= defined?(::Jdbc::MySQL.driver_name) ? ::Jdbc::MySQL.driver_name : 'com.mysql.jdbc.Driver'
 
     properties = ( config[:properties] ||= {} )
-    properties['zeroDateTimeBehavior'] ||= 'convertToNull'
-    properties['jdbcCompliantTruncation'] ||= 'false'
-    properties['useUnicode'] = 'true' unless properties.key?('useUnicode') # otherwise platform default
-    encoding = config.key?(:encoding) ? config[:encoding] : 'utf8'
-    properties['characterEncoding'] = encoding if encoding
-    if ! ( reconnect = config[:reconnect] ).nil?
-      properties['autoReconnect'] ||= reconnect.to_s
-      # properties['maxReconnects'] ||= '3'
-      # with reconnect fail-over sets connection read-only (by default)
-      # properties['failOverReadOnly'] ||= 'false'
+    if mysql_driver
+      properties['zeroDateTimeBehavior'] ||= 'convertToNull'
+      properties['jdbcCompliantTruncation'] ||= 'false'
+      properties['useUnicode'] = 'true' unless properties.key?('useUnicode') # otherwise platform default
+      encoding = config.key?(:encoding) ? config[:encoding] : 'utf8'
+      properties['characterEncoding'] = encoding if encoding
+      if ! ( reconnect = config[:reconnect] ).nil?
+        properties['autoReconnect'] ||= reconnect.to_s
+        # properties['maxReconnects'] ||= '3'
+        # with reconnect fail-over sets connection read-only (by default)
+        # properties['failOverReadOnly'] ||= 'false'
+      end
     end
     if config[:sslkey] || sslcert = config[:sslcert] # || config[:use_ssl]
       properties['useSSL'] ||= true
-      properties['requireSSL'] ||= true
+      properties['requireSSL'] ||= true if mysql_driver
       properties['clientCertificateKeyStoreUrl'] ||= begin
         java.io.File.new(sslcert).to_url.to_s
-      end if sslcert
-      if sslca = config[:sslca]
+      end if sslcert && mysql_driver
+      if sslca = config[:sslca] && mysql_driver
         properties['trustCertificateKeyStoreUrl'] ||= begin
           java.io.File.new(sslca).to_url.to_s
         end
       else
-        properties['verifyServerCertificate'] ||= false
+        properties['verifyServerCertificate'] ||= false if mysql_driver
       end
     end
 
