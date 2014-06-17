@@ -3,7 +3,7 @@
 source "https://rubygems.org"
 
 gem "thread_safe", :require=>nil
-gem "rake", :require=>nil
+gem "rake", "~> 10.3.2", :require=>nil
 gem "appraisal", "~> 0.5.2", :require=>nil
 gem "test-unit", "~> 2.5.4", :group=>:test
 gem "test-unit-context", ">= 0.4.0", :group=>:test
@@ -13,5 +13,5 @@ gem "bcrypt-ruby", "~> 3.0.0", :require=>nil, :group=>:test
 gem "mysql2", :require=>nil, :platform=>:mri, :group=>:test
 gem "pg", :require=>nil, :platform=>:mri, :group=>:test
 gem "sqlite3", :require=>nil, :platform=>:mri, :group=>:test
-gem "activerecord", "~> 4.1.1", :require=>false
+gem "activerecord", "4.1.2.rc2", :require=>false
 
