@@ -48,5 +48,5 @@ module Jdbc
       load_driver :require
     end
   end
-  PostgreSQL = Postgres
+  PostgreSQL = Postgres unless const_defined?(:PostgreSQL)
 end
