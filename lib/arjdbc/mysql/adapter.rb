@@ -586,14 +586,20 @@ module ArJdbc
       return @version ||= begin
         version = []
         java_connection = jdbc_connection(true)
-        if java_connection.is_a?(Java::ComMysqlJdbc::ConnectionImpl)
+        if java_connection.java_class.name == 'com.mysql.jdbc.ConnectionImpl'
           version << jdbc_connection.serverMajorVersion
           version << jdbc_connection.serverMinorVersion
           version << jdbc_connection.serverSubMinorVersion
         else
-          warn "INFO: failed to resolve MySQL server version using: #{java_connection}"
+          result = execute 'SELECT VERSION()', 'SCHEMA'
+          result = result.first.values.first # [{"VERSION()"=>"5.5.37-0ubuntu..."}]
+          if match = result.match(/^(\d)\.(\d+)\.(\d+)/)
+            version << match[1].to_i
+            version << match[2].to_i
+            version << match[3].to_i
+          end
         end
-        version
+        version.freeze
       end
     end
 
