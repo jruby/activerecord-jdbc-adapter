@@ -825,10 +825,8 @@ module ArJdbc
       when String
         return "E'#{escape_bytea(value)}'::bytea" if column.type == :binary
         return "xml '#{quote_string(value)}'" if column.type == :xml
-        if column.respond_to?(:sql_type) && column.sql_type[0, 3] == 'bit'
-          quote_bit(value)
-        else super
-        end
+        sql_type = column.respond_to?(:sql_type) && column.sql_type
+        sql_type && sql_type[0, 3] == 'bit' ? quote_bit(value) : super
       when Array
         if AR4_COMPAT && column.array? # will be always falsy in AR < 4.0
           column_class = ::ActiveRecord::ConnectionAdapters::PostgreSQLColumn
