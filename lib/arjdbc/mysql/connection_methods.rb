@@ -27,6 +27,8 @@ ArJdbc::ConnectionMethods.module_eval do
       config[:url] = url
     end
 
+    mariadb_driver = ! mysql_driver && driver[0, 12] == 'org.mariadb.' # org.mariadb.jdbc.Driver
+
     properties = ( config[:properties] ||= {} )
     if mysql_driver
       properties['zeroDateTimeBehavior'] ||= 'convertToNull'
@@ -42,22 +44,48 @@ ArJdbc::ConnectionMethods.module_eval do
       end
     end
     if config[:sslkey] || sslcert = config[:sslcert] # || config[:use_ssl]
-      properties['useSSL'] ||= true
-      properties['requireSSL'] ||= true if mysql_driver
-      properties['clientCertificateKeyStoreUrl'] ||= begin
-        java.io.File.new(sslcert).to_url.to_s
-      end if sslcert && mysql_driver
-      if sslca = config[:sslca] && mysql_driver
-        properties['trustCertificateKeyStoreUrl'] ||= begin
-          java.io.File.new(sslca).to_url.to_s
+      properties['useSSL'] ||= true # supported by MariaDB as well
+      if mysql_driver
+        properties['requireSSL'] ||= true if mysql_driver
+        properties['clientCertificateKeyStoreUrl'] ||= begin
+          java.io.File.new(sslcert).to_url.to_s
+        end if sslcert
+        if sslca = config[:sslca]
+          properties['trustCertificateKeyStoreUrl'] ||= begin
+            java.io.File.new(sslca).to_url.to_s
+          end
+        else
+          properties['verifyServerCertificate'] ||= false if mysql_driver
         end
-      else
-        properties['verifyServerCertificate'] ||= false if mysql_driver
       end
+      if mariadb_driver
+        properties['verifyServerCertificate'] ||= false
+      end
+    end
+    if socket = config[:socket]
+      properties['localSocket'] ||= socket if mariadb_driver
     end
 
     jdbc_connection(config)
   end
   alias_method :jdbcmysql_connection, :mysql_connection
   alias_method :mysql2_connection, :mysql_connection
+
+  def mariadb_connection(config)
+    config[:adapter_spec] ||= ::ArJdbc::MySQL
+    config[:adapter_class] = ActiveRecord::ConnectionAdapters::MysqlAdapter unless config.key?(:adapter_class)
+
+    return jndi_connection(config) if jndi_config?(config)
+
+    begin
+      require 'jdbc/mariadb'
+      ::Jdbc::MariaDB.load_driver(:require) if defined?(::Jdbc::MariaDB.load_driver)
+    rescue LoadError # assuming driver.jar is on the class-path
+    end
+
+    config[:driver] ||= 'org.mariadb.jdbc.Driver'
+
+    mysql_connection(config)
+  end
+  alias_method :jdbcmariadb_connection, :mariadb_connection
 end

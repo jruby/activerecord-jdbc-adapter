@@ -1,12 +1,8 @@
-# To run this script, run the following in a mysql instance:
-#
-#   drop database if exists weblog_development;
-#   create database weblog_development;
-#   grant all on weblog_development.* to blog@localhost;
-#   flush privileges;
+require File.expand_path('test_helper', File.dirname(__FILE__))
 
-require 'jdbc_common'
-require 'db/mysql'
+require 'simple'
+require 'has_many_through'
+require 'row_locking'
 
 class MysqlSimpleTest < Test::Unit::TestCase
   include SimpleTestMethods
@@ -15,6 +11,14 @@ class MysqlSimpleTest < Test::Unit::TestCase
   include DirtyAttributeTests
   include XmlColumnTestMethods
   include CustomSelectTestMethods
+
+  # @override
+  def test_execute_update
+    e = Entry.create! :title => '42'; Entry.create! :title => '43'
+    count = connection.execute("UPDATE entries SET title = 'updated-title' WHERE id = #{e.id}")
+    assert_equal 1, count if ! mariadb_driver? && defined? JRUBY_VERSION # nil with mysql2
+    assert_equal 'updated-title', e.reload.title
+  end
 
   # MySQL does not support precision beyond seconds :
   # DATETIME or TIMESTAMP value can include a trailing fractional seconds part
@@ -163,7 +167,7 @@ class MysqlSimpleTest < Test::Unit::TestCase
     e2 = Entry.create! :title => 'another', :content => 'meee', :rating => 40.2
     rows_affected = ActiveRecord::Base.connection.update_sql "UPDATE entries " +
       "SET content='updated content' WHERE rating > 10 AND title IS NOT NULL"
-    assert_equal 2, rows_affected
+    assert_equal 2, rows_affected if ! mariadb_driver? && defined? JRUBY_VERSION
     assert_equal 'updated content', e1.reload.content
     assert_equal 'updated content', e2.reload.content
   end
@@ -357,16 +361,6 @@ class MysqlSimpleTest < Test::Unit::TestCase
   def with_bulk_change_table(table)
     connection.change_table(table, :bulk => true) do |t|
       yield t
-    end
-  end
-
-  private
-
-  def mysql_adapter_class
-    if defined? ActiveRecord::ConnectionAdapters::Mysql2Adapter
-      ActiveRecord::ConnectionAdapters::Mysql2Adapter
-    else
-      ActiveRecord::ConnectionAdapters::MysqlAdapter
     end
   end
 

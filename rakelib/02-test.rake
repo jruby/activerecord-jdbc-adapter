@@ -85,11 +85,13 @@ test_task_for :H2, :desc => 'Run tests against H2 database engine'
 test_task_for :HSQLDB, :desc => 'Run tests against HyperSQL (Java) database'
 test_task_for :MSSQL, :driver => :jtds, :database_name => 'MS-SQL (SQLServer)'
 test_task_for :MySQL, :prereqs => 'db:mysql'
-test_task_for :PostgreSQL, :prereqs => 'db:postgresql', :driver => 'postgres'
+test_task_for :PostgreSQL, :driver => 'postgres', :prereqs => 'db:postgresql'
 task :test_postgres => :test_postgresql # alias
 test_task_for :SQLite3
 task :test_sqlite => :test_sqlite3 # alias
 test_task_for :Firebird
+
+test_task_for :MariaDB, :prereqs => 'db:mysql', :files => FileList["test/db/mysql/*_test.rb"]
 
 # ensure driver for these DBs is on your class-path
 [ :Oracle, :DB2, :Informix, :CacheDB ].each do |adapter|
