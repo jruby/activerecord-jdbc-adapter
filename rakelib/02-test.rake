@@ -126,22 +126,3 @@ end
 #task :test_sybase_jtds => :test_sybase # alias
 #test_task_for :Sybase, :name => 'sybase_jconnect',
 #  :desc => "Run tests against Sybase (ensure jConnect driver is on class-path)"
-
-Rake::TraceOutput.module_eval do
-
-  # NOTE: avoid TypeError: String can't be coerced into Fixnum
-  # due this method getting some strings == [ 1 ] argument ...
-  def trace_on(out, *strings)
-    sep = $\ || "\n"
-    if strings.empty?
-      output = sep
-    else
-      output = strings.map { |s|
-        next if s.nil?; s = s.to_s
-        s =~ /#{sep}$/ ? s : s + sep
-      }.join
-    end
-    out.print(output)
-  end
-
-end
