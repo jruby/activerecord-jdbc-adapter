@@ -1,6 +1,6 @@
 # jdbc-derby
 
-Apache Derby, an Apache DB subproject, is an open source relational database 
+Apache Derby, an Apache DB subproject, is an open source relational database
 implemented entirely in Java.
 
 Some key advantages include:
@@ -14,8 +14,8 @@ For more information see http://db.apache.org/derby/
 
 ## Java DB
 
-Java DB is Oracle's supported distribution of the Apache Derby open source database. 
-It supports standard ANSI/ISO SQL through the JDBC and Java EE APIs. 
+Java DB is Oracle's supported distribution of the Apache Derby open source database.
+It supports standard ANSI/ISO SQL through the JDBC and Java EE APIs.
 Java DB is included in the JDK since Java 6 (1.6).
 
 See http://www.oracle.com/technetwork/java/javadb/overview/index.html
@@ -34,7 +34,7 @@ For backwards compatibility with older (<= **10.6.2.1**) versions of the gem use
 
 ## Copyright
 
-Copyright (c) 2012 [The JRuby Team](https://github.com/jruby).
+Copyright (c) 2012-2014 [The JRuby Team](https://github.com/jruby).
 
 Apache Derby is available under the Apache License, Version 2.0
 see *LICENSE.txt* and http://db.apache.org/derby/license.html for more details.

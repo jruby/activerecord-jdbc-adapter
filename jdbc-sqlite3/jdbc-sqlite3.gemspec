@@ -16,6 +16,6 @@ Gem::Specification.new do |gem|
   gem.rdoc_options = ["--main", "README.md"]
   gem.require_paths = ["lib"]
 
-  gem.summary = %q{SQLite3 JDBC driver for JRuby and SQLite3/ActiveRecord-JDBC (activerecord-jdbcsqlite3-adapter).}
+  gem.summary = %q{SQLite3 for JRuby, includes SQLite native libraries as well as the JDBC driver.}
   gem.description = %q{Install this gem `require 'jdbc/sqlite3'` and invoke `Jdbc::SQLite3.load_driver` within JRuby to load the driver.}
 end

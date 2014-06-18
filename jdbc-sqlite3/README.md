@@ -23,6 +23,6 @@ For backwards compatibility with older (<= **3.7.2**) versions of the gem use :
 
 ## Copyright
 
-Copyright (c) 2013 [The JRuby Team](https://github.com/jruby).
+Copyright (c) 2013-2014 [The JRuby Team](https://github.com/jruby).
 
 SQLite JDBC is distributed under the Apache License 2.0, see *LICENSE.txt*.

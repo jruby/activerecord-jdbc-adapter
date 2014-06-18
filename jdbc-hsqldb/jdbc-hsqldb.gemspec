@@ -16,6 +16,6 @@ Gem::Specification.new do |gem|
   gem.rdoc_options = ["--main", "README.md"]
   gem.require_paths = ["lib"]
 
-  gem.summary = %q{HSQLDB JDBC driver for JRuby and HSQLDB/ActiveRecord-JDBC (activerecord-jdbchsqldb-adapter).}
+  gem.summary = %q{HSQLDB (JDBC driver) for JRuby (usable with ActiveRecord-JDBC).}
   gem.description = %q{Install this gem `require 'jdbc/hsqldb'` and invoke `Jdbc::HSQLDB.load_driver` within JRuby to load the driver.}
 end

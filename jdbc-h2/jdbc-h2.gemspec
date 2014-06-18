@@ -16,6 +16,6 @@ Gem::Specification.new do |gem|
   gem.rdoc_options = ["--main", "README.md"]
   gem.require_paths = ["lib"]
 
-  gem.summary = %q{H2 JDBC driver for JRuby and H2/ActiveRecord-JDBC (activerecord-jdbch2-adapter).}
+  gem.summary = %q{H2 (JDBC driver) for JRuby (usable with ActiveRecord-JDBC).}
   gem.description = %q{Install this gem `require 'jdbc/h2'` and invoke `Jdbc::H2.load_driver` within JRuby to load the driver.}
 end

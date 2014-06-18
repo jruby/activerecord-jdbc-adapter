@@ -18,6 +18,6 @@ Gem::Specification.new do |gem|
   gem.rdoc_options = ["--main", "README.md"]
   gem.require_paths = ["lib"]
 
-  gem.summary = %q{Derby/JavaDB JDBC driver for JRuby and Derby/ActiveRecord-JDBC (activerecord-jdbcderby-adapter).}
+  gem.summary = %q{Derby/JavaDB for JRuby, includes the JDBC driver as well as the embedded Derby database.}
   gem.description = %q{Install this gem `require 'jdbc/derby'` and invoke `Jdbc::Derby.load_driver` within JRuby to load the driver.}
 end

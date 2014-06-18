@@ -16,6 +16,6 @@ Gem::Specification.new do |gem|
   gem.rdoc_options = ["--main", "README.md"]
   gem.require_paths = ["lib"]
 
-  gem.summary = %q{MySQL JDBC driver for JRuby and MySQL/ActiveRecord-JDBC (activerecord-jdbcmysql-adapter).}
+  gem.summary = %q{JDBC driver for JRuby and MySQL (used by ActiveRecord-JDBC).}
   gem.description = %q{Install this gem `require 'jdbc/mysql'` and invoke `Jdbc::MySQL.load_driver` within JRuby to load the driver.}
 end

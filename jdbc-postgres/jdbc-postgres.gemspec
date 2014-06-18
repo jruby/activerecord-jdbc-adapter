@@ -16,6 +16,6 @@ Gem::Specification.new do |gem|
   gem.rdoc_options = ["--main", "README.md"]
   gem.require_paths = ["lib"]
 
-  gem.summary = %q{PostgreSQL JDBC driver for JRuby and PostgreSQL/ActiveRecord-JDBC (activerecord-jdbcpostgresql-adapter).}
+  gem.summary = %q{JDBC driver for JRuby and PostgreSQL (used by ActiveRecord-JDBC).}
   gem.description = %q{Install this gem `require 'jdbc/postgres'` and invoke `Jdbc::Postgres.load_driver` within JRuby to load the driver.}
 end
