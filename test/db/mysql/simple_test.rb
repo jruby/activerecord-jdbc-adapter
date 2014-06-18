@@ -222,8 +222,10 @@ class MysqlSimpleTest < Test::Unit::TestCase
 
   test 'sets default connection properties' do
     connection = ActiveRecord::Base.connection.jdbc_connection(true)
-    assert_equal 'false', connection.properties['jdbcCompliantTruncation']
-    assert_equal 'true' , connection.properties['useUnicode']
+    if connection.java_class.name =~ /^com.mysql.jdbc/
+      assert_equal 'true' , connection.properties['useUnicode']
+      assert_equal 'false', connection.properties['jdbcCompliantTruncation']
+    end
   end if defined? JRUBY_VERSION
 
   test "config :host" do
