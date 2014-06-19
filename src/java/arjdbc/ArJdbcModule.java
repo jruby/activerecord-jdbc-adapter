@@ -27,6 +27,11 @@ import arjdbc.jdbc.RubyJdbcConnection;
 
 import java.lang.reflect.InvocationTargetException;
 import java.util.Collection;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
+import java.util.WeakHashMap;
 
 import org.jruby.NativeException;
 import org.jruby.Ruby;
@@ -35,6 +40,7 @@ import org.jruby.RubyClass;
 import org.jruby.RubyModule;
 import org.jruby.anno.JRubyMethod;
 import org.jruby.exceptions.RaiseException;
+import org.jruby.runtime.Block;
 import org.jruby.runtime.ThreadContext;
 import org.jruby.runtime.builtin.IRubyObject;
 
@@ -176,6 +182,66 @@ public class ArJdbcModule {
            }
         }
         return modules;
+    }
+
+    // JDBC "driver" gem helper(s) :
+
+    @JRubyMethod(name = "load_driver", meta = true)
+    public static IRubyObject load_driver(final ThreadContext context, final IRubyObject self,
+        final IRubyObject const_name) {
+        IRubyObject loaded = loadDriver(context.runtime, const_name.toString());
+        return loaded == null ? context.nil : loaded;
+    }
+
+    static final Map<Ruby, Map<String, Boolean>> loadedDrivers = new WeakHashMap<Ruby, Map<String, Boolean>>(8);
+
+    public static IRubyObject loadDriver(final Ruby runtime, final String constName) {
+        // look for "cached" loading result :
+        Map<String, Boolean> loadedMap = loadedDrivers.get(runtime);
+        if ( loadedMap == null ) {
+            synchronized (ArJdbcModule.class) {
+                loadedMap = loadedDrivers.get(runtime);
+                if ( loadedMap == null ) {
+                    loadedMap = new HashMap<String, Boolean>(4);
+                    loadedDrivers.put(runtime, loadedMap);
+                }
+            }
+        }
+
+        final Boolean driverLoaded = loadedMap.get(constName);
+        if ( driverLoaded != null ) {
+            if ( driverLoaded.booleanValue() ) return runtime.getFalse();
+            return runtime.getNil();
+        }
+
+        try { // require 'jdbc/mysql'
+            runtime.getLoadService().require("jdbc/" + constName.toLowerCase());
+        }
+        catch (RaiseException e) { // LoadError
+            synchronized (loadedMap) {
+                loadedMap.put(constName, Boolean.FALSE);
+            }
+            return null;
+        }
+
+        RubyModule jdbc = (RubyModule) runtime.getObject().getConstantAt("Jdbc");
+        if ( jdbc != null ) { // Jdbc::MySQL
+            final RubyModule constant = (RubyModule) jdbc.getConstantAt(constName);
+            if ( constant != null ) { // ::Jdbc::MySQL.load_driver :
+                if ( constant.respondsTo("load_driver") ) {
+                    IRubyObject result = constant.callMethod("load_driver");
+                    synchronized (loadedMap) {
+                        loadedMap.put(constName, Boolean.TRUE);
+                    }
+                    return result;
+                }
+            }
+        }
+
+        synchronized (loadedMap) {
+            loadedMap.put(constName, Boolean.FALSE);
+        }
+        return null;
     }
 
     private static Object invokeStatic(final Ruby runtime,
