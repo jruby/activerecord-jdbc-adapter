@@ -59,7 +59,7 @@ public class DerbyModule {
 
             if ( value.isNil() ||
             ( (value instanceof RubyString) && value.toString().trim().equalsIgnoreCase("null") ) ) {
-                return context.runtime.getNil();
+                return context.nil;
             }
 
             final String type = self.getInstanceVariables().getInstanceVariable("@type").toString();
@@ -173,11 +173,6 @@ public class DerbyModule {
     public static IRubyObject quoted_false(
         final ThreadContext context, final IRubyObject self) {
         return RubyString.newString(context.runtime, BYTES_0);
-    }
-
-    private static RubyModule getMultibyteChars(final Ruby runtime) {
-        return (RubyModule) ((RubyModule) runtime.getModule("ActiveSupport").
-                getConstant("Multibyte")).getConstantAt("Chars");
     }
 
 }
