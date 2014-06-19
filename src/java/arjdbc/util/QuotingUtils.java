@@ -87,6 +87,33 @@ public abstract class QuotingUtils {
         return context.runtime.newString(quotedBytes);
     }
 
+    public static RubyString quoteCharAndDecorateWith(
+        final ThreadContext context, final RubyString string,
+        final char value, final char quote,
+        final byte prefix, final byte suffix) {
+
+        final ByteList str = string.getByteList();
+        final RubyString quotedString = // part.gsub('v', 'vv')
+            quoteCharWith(context, string, value, quote, 1, 4 + 1);
+        if ( quotedString == string ) {
+            final int realSize = str.getRealSize();
+            final ByteList quoted = new ByteList(
+                new byte[realSize + 2], string.getEncoding(), false
+            );
+            quoted.begin = 0; quoted.realSize = 0;
+            quoted.append(prefix);
+            quoted.append(str.unsafeBytes(), str.getBegin(), realSize);
+            quoted.append(suffix);
+            return context.runtime.newString(quoted);
+        }
+        // we got a new string with a reserve of 1 byte front and back :
+        final ByteList quoted = quotedString.getByteList();
+        quoted.begin = 0; // setBegin invalidates
+        quoted.bytes[0] = prefix; quoted.realSize++;
+        quoted.append(suffix);
+        return quotedString;
+    }
+
     public static final ByteList BYTES_SINGLE_Q = new ByteList(new byte[] { '\'' }, false);
     public static final ByteList BYTES_SINGLE_Q_x2 = new ByteList(new byte[] { '\'', '\'' }, false);
 

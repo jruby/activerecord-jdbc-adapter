@@ -27,7 +27,7 @@ package arjdbc.mysql;
 
 import static arjdbc.util.QuotingUtils.BYTES_0;
 import static arjdbc.util.QuotingUtils.BYTES_1;
-import static arjdbc.util.QuotingUtils.quoteCharWith;
+import static arjdbc.util.QuotingUtils.quoteCharAndDecorateWith;
 
 import org.jcodings.specific.UTF8Encoding;
 
@@ -129,23 +129,7 @@ public class MySQLModule {
             final ThreadContext context,
             final IRubyObject self,
             final IRubyObject string) { // "`#{name.to_s.gsub('`', '``')}`"
-        RubyString origin = string.asString();
-        RubyString quoted = quoteCharWith(context, origin, '`', '`');
-        final ByteList bytes = quoted.getByteList();
-        if ( origin == quoted ) {
-            final RubyString result =
-                RubyString.newStringLight(context.runtime, bytes.getRealSize() + 2, bytes.getEncoding());
-            final ByteList resultBytes = result.getByteList();
-            resultBytes.append( (byte) '`' );
-            resultBytes.append( bytes );
-            resultBytes.append( (byte) '`' );
-            return result;
-        }
-        else {
-            bytes.append( (byte) '`' );
-            bytes.prepend( (byte) '`' );
-            return quoted;
-        }
+        return quoteCharAndDecorateWith(context, string.asString(), '`', '`', (byte) '`', (byte) '`');
     }
 
 }

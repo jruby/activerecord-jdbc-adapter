@@ -25,7 +25,7 @@ package arjdbc.mssql;
 
 import static arjdbc.util.QuotingUtils.BYTES_0;
 import static arjdbc.util.QuotingUtils.BYTES_1;
-import static arjdbc.util.QuotingUtils.quoteCharWith;
+import static arjdbc.util.QuotingUtils.quoteCharAndDecorateWith;
 import static arjdbc.util.QuotingUtils.quoteSingleQuotesWithFallback;
 
 import org.jruby.Ruby;
@@ -83,25 +83,8 @@ public class MSSQLModule {
         if ( str.charAt(0) == '[' && str.charAt(str.length() - 1) == ']' ) {
             return part; // part =~ /^\[.*\]$/ ? part
         }
-        final RubyString quotedString = // part.gsub(']', ']]')
-            quoteCharWith(context, partString, ']', ']', 1, 4 + 1);
-        if ( quotedString == partString ) {
-            final int realSize = str.getRealSize();
-            final ByteList quoted = new ByteList(
-                new byte[realSize + 2], partString.getEncoding(), false
-            );
-            quoted.begin = 0; quoted.realSize = 0;
-            quoted.append('[');
-            quoted.append(str.unsafeBytes(), str.getBegin(), realSize);
-            quoted.append(']');
-            return context.runtime.newString(quoted);
-        }
-        // we got a new string with a reserve of 1 byte front and back :
-        final ByteList quoted = quotedString.getByteList();
-        quoted.begin = 0; // setBegin invalidates
-        quoted.bytes[0] = '['; quoted.realSize++;
-        quoted.append(']');
-        return quotedString;
+
+        return quoteCharAndDecorateWith(context, partString, ']', ']', (byte) '[', (byte) ']');
     }
 
 }
