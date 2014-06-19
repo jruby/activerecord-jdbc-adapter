@@ -84,7 +84,7 @@ public abstract class QuotingUtils {
         }
         else return string; // nothing changed, can return original
 
-        return context.getRuntime().newString(quotedBytes);
+        return context.runtime.newString(quotedBytes);
     }
 
     public static final ByteList BYTES_SINGLE_Q = new ByteList(new byte[] { '\'' }, false);
@@ -101,8 +101,8 @@ public abstract class QuotingUtils {
         else { // ActiveSupport::Multibyte::Chars
             return string.callMethod(context, "gsub",
                 new IRubyObject[] {
-                    context.getRuntime().newString(BYTES_SINGLE_Q),
-                    context.getRuntime().newString(BYTES_SINGLE_Q_x2)
+                    context.runtime.newString(BYTES_SINGLE_Q),
+                    context.runtime.newString(BYTES_SINGLE_Q_x2)
                 }
             );
         }

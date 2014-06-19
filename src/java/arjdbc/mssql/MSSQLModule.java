@@ -63,13 +63,13 @@ public class MSSQLModule {
     @JRubyMethod(name = "quoted_true", required = 0)
     public static IRubyObject quoted_true(final ThreadContext context,
         final IRubyObject self) {
-        return RubyString.newString(context.getRuntime(), BYTES_1);
+        return RubyString.newString(context.runtime, BYTES_1);
     }
 
     @JRubyMethod(name = "quoted_false", required = 0)
     public static IRubyObject quoted_false(final ThreadContext context,
         final IRubyObject self) {
-        return RubyString.newString(context.getRuntime(), BYTES_0);
+        return RubyString.newString(context.runtime, BYTES_0);
     }
 
     // part =~ /^\[.*\]$/ ? part : "[#{part.gsub(']', ']]')}]"
@@ -78,7 +78,7 @@ public class MSSQLModule {
     public static IRubyObject quote_name_part(final ThreadContext context,
         final IRubyObject self, final IRubyObject part) {
 
-        final RubyString partString = ((RubyString) part);
+        final RubyString partString = (RubyString) part;
         final ByteList str = partString.getByteList();
         if ( str.charAt(0) == '[' && str.charAt(str.length() - 1) == ']' ) {
             return part; // part =~ /^\[.*\]$/ ? part
@@ -94,7 +94,7 @@ public class MSSQLModule {
             quoted.append('[');
             quoted.append(str.unsafeBytes(), str.getBegin(), realSize);
             quoted.append(']');
-            return context.getRuntime().newString(quoted);
+            return context.runtime.newString(quoted);
         }
         // we got a new string with a reserve of 1 byte front and back :
         final ByteList quoted = quotedString.getByteList();

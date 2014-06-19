@@ -102,7 +102,7 @@ public class MySQLModule {
         }
         else return string; // nothing changed, can return original
 
-        final Ruby runtime = context.getRuntime();
+        final Ruby runtime = context.runtime;
         final RubyString quoted = runtime.newString(quotedBytes);
         if ( runtime.is1_9() ) { // only due mysql2 compatibility
             quoted.associateEncoding( UTF8Encoding.INSTANCE );
@@ -114,14 +114,14 @@ public class MySQLModule {
     public static IRubyObject quoted_true(
             final ThreadContext context,
             final IRubyObject self) {
-        return RubyString.newString(context.getRuntime(), BYTES_1);
+        return RubyString.newString(context.runtime, BYTES_1);
     }
 
     @JRubyMethod(name = "quoted_false", required = 0, frame = false)
     public static IRubyObject quoted_false(
             final ThreadContext context,
             final IRubyObject self) {
-        return RubyString.newString(context.getRuntime(), BYTES_0);
+        return RubyString.newString(context.runtime, BYTES_0);
     }
 
     @JRubyMethod(name = "quote_column_name", required = 1, frame = false)
@@ -134,7 +134,7 @@ public class MySQLModule {
         final ByteList bytes = quoted.getByteList();
         if ( origin == quoted ) {
             final RubyString result =
-                RubyString.newStringLight(context.getRuntime(), bytes.getRealSize() + 2, bytes.getEncoding());
+                RubyString.newStringLight(context.runtime, bytes.getRealSize() + 2, bytes.getEncoding());
             final ByteList resultBytes = result.getByteList();
             resultBytes.append( (byte) '`' );
             resultBytes.append( bytes );
