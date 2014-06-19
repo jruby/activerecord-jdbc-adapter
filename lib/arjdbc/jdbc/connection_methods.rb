@@ -43,6 +43,7 @@ module ArJdbc
       when 'net.sourceforge.jtds.jdbc.Driver' then 'mssql'
       when 'com.microsoft.sqlserver.jdbc.SQLServerDriver' then 'sqlserver'
       when /mysql/i then 'mysql' # 'com.mysql.jdbc.Driver'
+      when /mariadb/i then 'mysql' # 'org.mariadb.jdbc.Driver'
       when /oracle/ then 'oracle' # 'oracle.jdbc.driver.OracleDriver'
       when /postgre/i then 'postgresql' # 'org.postgresql.Driver'
       when /sqlite/i then 'sqlite3' # 'org.sqlite.JDBC'
