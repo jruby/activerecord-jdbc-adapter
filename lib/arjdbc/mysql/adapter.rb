@@ -16,22 +16,6 @@ module ArJdbc
       ::ActiveRecord::ConnectionAdapters::MySQLJdbcConnection
     end
 
-    # @private
-    def init_connection(jdbc_connection)
-      meta = jdbc_connection.meta_data
-      if meta.driver_major_version == 1 # TODO check in driver code
-        # assumes MariaDB 1.x currently
-      elsif meta.driver_major_version < 5
-        raise ::ActiveRecord::ConnectionNotEstablished,
-          "MySQL adapter requires driver >= 5.0 got: '#{meta.driver_version}'"
-      elsif meta.driver_major_version == 5 && meta.driver_minor_version < 1
-        config[:connection_alive_sql] ||= 'SELECT 1' # need 5.1 for JDBC 4.0
-      else
-        # NOTE: since the loaded Java driver class can't change :
-        MySQL.send(:remove_method, :init_connection) rescue nil
-      end
-    end
-
     def configure_connection
       variables = config[:variables] || {}
       # By default, MySQL 'where id is null' selects the last inserted id. Turn this off.

@@ -27,6 +27,7 @@ package arjdbc.mysql;
 
 import arjdbc.jdbc.RubyJdbcConnection;
 import arjdbc.jdbc.Callable;
+import arjdbc.jdbc.DriverWrapper;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
@@ -82,6 +83,28 @@ public class MySQLRubyJdbcConnection extends RubyJdbcConnection {
             return new MySQLRubyJdbcConnection(runtime, klass);
         }
     };
+
+    @Override
+    protected DriverWrapper newDriverWrapper(final ThreadContext context, final String driver) {
+        DriverWrapper driverWrapper = super.newDriverWrapper(context, driver);
+
+        final java.sql.Driver jdbcDriver = driverWrapper.getDriverInstance();
+        if ( jdbcDriver.getClass().getName().startsWith("com.mysql.jdbc.") ) {
+            final int major = jdbcDriver.getMajorVersion();
+            final int minor = jdbcDriver.getMinorVersion();
+            if ( major < 5 ) {
+                final RubyClass errorClass = getConnectionNotEstablished(context.runtime);
+                throw new RaiseException(context.runtime, errorClass,
+                    "MySQL adapter requires driver >= 5.0 got: " + major + "." + minor + "", false);
+            }
+            if ( major == 5 && minor < 1 ) {
+                // config[:connection_alive_sql] ||= 'SELECT 1' # need 5.1 for JDBC 4.0
+                setConfigValueIfNotSet(context, "connection_alive_sql", context.runtime.newString("SELECT 1"));
+            }
+        }
+
+        return driverWrapper;
+    }
 
     @Override
     protected boolean doExecute(final Statement statement, final String query)
