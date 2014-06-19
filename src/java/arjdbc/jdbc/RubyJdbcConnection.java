@@ -1547,6 +1547,24 @@ public class RubyJdbcConnection extends RubyObject {
         return config.callMethod(context, "[]", context.runtime.newSymbol(key));
     }
 
+    protected final IRubyObject setConfigValue(final ThreadContext context,
+            final String key, final IRubyObject value) {
+        final IRubyObject config = callMethod(context, "config");
+        final IRubyObject[] args = new IRubyObject[] { context.runtime.newSymbol(key), value };
+        return config.callMethod(context, "[]=", args);
+    }
+
+    protected final IRubyObject setConfigValueIfNotSet(final ThreadContext context,
+            final String key, final IRubyObject value) {
+        final IRubyObject config = callMethod(context, "config");
+        final IRubyObject name = context.runtime.newSymbol(key);
+        final IRubyObject setValue = config.callMethod(context, "[]", name);
+        if ( setValue.isNil() ) {
+            return config.callMethod(context, "[]=", new IRubyObject[] { name, value });
+        }
+        return setValue;
+    }
+
     /**
      * @deprecated renamed to {@link #getConfigValue(ThreadContext, String)}
      */
