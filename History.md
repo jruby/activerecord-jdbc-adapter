@@ -1,5 +1,7 @@
 ## 1.3.8 (pe/nd/in)
 
+- [mysql] updated so that we can run with non-official driver (+ against MariaDB)
+- [postgres] quote fix failure with ColumnDefinition on AR 4.0.6.rc2
 - [mssql] performance improvements :
   * "optimized" quote_name_part in Java + avoid bytes copying in quoteCharWith
   * throwing exceptions in the hot path results in slow code
