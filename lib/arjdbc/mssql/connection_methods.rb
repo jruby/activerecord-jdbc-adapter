@@ -16,18 +16,11 @@ ArJdbc::ConnectionMethods.module_eval do
 
     return jndi_connection(config) if jndi_config?(config)
 
-    begin
-      require 'jdbc/jtds'
-      # NOTE: the adapter has only support for working with the
-      # open-source jTDS driver (won't work with MS's driver) !
-      ::Jdbc::JTDS.load_driver(:require) if defined?(::Jdbc::JTDS.load_driver)
-    rescue LoadError => e # assuming driver.jar is on the class-path
-      raise e unless e.message.to_s.index('no such file to load')
-    end
+    ArJdbc.load_driver(:JTDS) # ::Jdbc::JTDS.load_driver
 
     config[:host] ||= 'localhost'
     config[:port] ||= 1433
-    config[:driver] ||= defined?(::Jdbc::JTDS.driver_name) ? ::Jdbc::JTDS.driver_name : 'net.sourceforge.jtds.jdbc.Driver'
+    config[:driver] ||= 'net.sourceforge.jtds.jdbc.Driver'
     config[:connection_alive_sql] ||= 'SELECT 1'
 
     config[:url] ||= begin

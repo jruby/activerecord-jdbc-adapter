@@ -5,12 +5,8 @@ ArJdbc::ConnectionMethods.module_eval do
 
     return jndi_connection(config) if jndi_config?(config)
 
-    begin
-      require 'jdbc/hsqldb'
-      ::Jdbc::HSQLDB.load_driver(:require) if defined?(::Jdbc::HSQLDB.load_driver)
-    rescue LoadError # assuming driver.jar is on the class-path
-    end
-
+    ArJdbc.load_driver(:HSQLDB) # ::Jdbc::HSQLDB.load_driver
+    config[:driver] ||= 'org.hsqldb.jdbcDriver'
     config[:url] ||= begin
       db = config[:database]
       if db[0, 4] == 'mem:' || db[0, 5] == 'file:' || db[0, 5] == 'hsql:'
@@ -19,7 +15,6 @@ ArJdbc::ConnectionMethods.module_eval do
         "jdbc:hsqldb:file:#{db}"
       end
     end
-    config[:driver] ||= defined?(::Jdbc::HSQLDB.driver_name) ? ::Jdbc::HSQLDB.driver_name : 'org.hsqldb.jdbcDriver'
     config[:connection_alive_sql] ||= 'CALL PI()' # does not like 'SELECT 1'
 
     embedded_driver(config)

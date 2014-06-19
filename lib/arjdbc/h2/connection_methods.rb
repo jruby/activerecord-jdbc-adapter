@@ -5,12 +5,8 @@ ArJdbc::ConnectionMethods.module_eval do
 
     return jndi_connection(config) if jndi_config?(config)
 
-    begin
-      require 'jdbc/h2'
-      ::Jdbc::H2.load_driver(:require) if defined?(::Jdbc::H2.load_driver)
-    rescue LoadError # assuming driver.jar is on the class-path
-    end
-
+    ArJdbc.load_driver(:H2) # ::Jdbc::H2.load_driver
+    config[:driver] ||= 'org.h2.Driver'
     config[:url] ||= begin
       db = config[:database]
       if db[0, 4] == 'mem:' || db[0, 5] == 'file:' || db[0, 5] == 'hsql:'
@@ -19,7 +15,6 @@ ArJdbc::ConnectionMethods.module_eval do
         "jdbc:h2:file:#{File.expand_path(db)}"
       end
     end
-    config[:driver] ||= defined?(::Jdbc::H2.driver_name) ? ::Jdbc::H2.driver_name : 'org.h2.Driver'
 
     embedded_driver(config)
   end

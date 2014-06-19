@@ -6,12 +6,8 @@ ArJdbc::ConnectionMethods.module_eval do
     return jndi_connection(config) if jndi_config?(config)
 
     driver = config[:driver] ||= 'com.mysql.jdbc.NonRegisteringDriver'
-
-    begin
-      require 'jdbc/mysql'
-      ::Jdbc::MySQL.load_driver(:require) if defined?(::Jdbc::MySQL.load_driver)
-    rescue LoadError # assuming driver.jar is on the class-path
-    end if mysql_driver = driver[0, 10] == 'com.mysql.'
+    mysql_driver = driver[0, 10] == 'com.mysql.'
+    ArJdbc.load_driver(:MySQL) if mysql_driver # ::Jdbc::MySQL.load_driver
 
     config[:username] = 'root' unless config.key?(:username)
     # jdbc:mysql://[host][,failoverhost...][:port]/[database]
@@ -76,12 +72,7 @@ ArJdbc::ConnectionMethods.module_eval do
 
     return jndi_connection(config) if jndi_config?(config)
 
-    begin
-      require 'jdbc/mariadb'
-      ::Jdbc::MariaDB.load_driver(:require) if defined?(::Jdbc::MariaDB.load_driver)
-    rescue LoadError # assuming driver.jar is on the class-path
-    end
-
+    ArJdbc.load_driver(:MariaDB) # ::Jdbc::MariaDB.load_driver
     config[:driver] ||= 'org.mariadb.jdbc.Driver'
 
     mysql_connection(config)

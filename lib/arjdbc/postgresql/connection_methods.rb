@@ -5,12 +5,8 @@ ArJdbc::ConnectionMethods.module_eval do
 
     return jndi_connection(config) if jndi_config?(config)
 
-    begin
-      require 'jdbc/postgres'
-      ::Jdbc::Postgres.load_driver(:require) if defined?(::Jdbc::Postgres.load_driver)
-    rescue LoadError # assuming driver.jar is on the class-path
-    end
-    config[:driver] ||= defined?(::Jdbc::Postgres.driver_name) ? ::Jdbc::Postgres.driver_name : 'org.postgresql.Driver'
+    ArJdbc.load_driver(:Postgres) # ::Jdbc::Postgres.load_driver
+    config[:driver] ||= 'org.postgresql.Driver'
 
     host = config[:host] ||= ( config[:hostaddr] || ENV['PGHOST'] || 'localhost' )
     port = config[:port] ||= ( ENV['PGPORT'] || 5432 )

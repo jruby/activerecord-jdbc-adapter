@@ -4,16 +4,10 @@ ArJdbc::ConnectionMethods.module_eval do
 
     return jndi_connection(config) if jndi_config?(config)
 
-    begin
-      require 'jdbc/derby'
-      ::Jdbc::Derby.load_driver(:require) if defined?(::Jdbc::Derby.load_driver)
-    rescue LoadError # assuming driver.jar is on the class-path
-    end
-
+    ArJdbc.load_driver(:Derby) # ::Jdbc::Derby.load_driver
+    config[:driver] ||= 'org.apache.derby.jdbc.EmbeddedDriver'
     # `database: memory:dbName` for an in memory Derby DB
     config[:url] ||= "jdbc:derby:#{config[:database]};create=true"
-    config[:driver] ||= defined?(::Jdbc::Derby.driver_name) ?
-      ::Jdbc::Derby.driver_name : 'org.apache.derby.jdbc.EmbeddedDriver'
 
     embedded_driver(config)
   end
