@@ -25,8 +25,11 @@
  ***** END LICENSE BLOCK *****/
 package arjdbc.postgresql;
 
+import arjdbc.jdbc.DriverWrapper;
+
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
+import java.lang.reflect.InvocationTargetException;
 import java.math.BigDecimal;
 import java.sql.Array;
 import java.sql.Connection;
@@ -54,7 +57,6 @@ import org.jruby.runtime.ObjectAllocator;
 import org.jruby.runtime.ThreadContext;
 import org.jruby.runtime.builtin.IRubyObject;
 import org.jruby.util.ByteList;
-import org.jcodings.specific.UTF8Encoding;
 
 import org.postgresql.PGConnection;
 import org.postgresql.PGStatement;
@@ -94,6 +96,29 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
             return new PostgreSQLRubyJdbcConnection(runtime, klass);
         }
     };
+
+    @Override
+    protected DriverWrapper newDriverWrapper(final ThreadContext context, final String driver) {
+        DriverWrapper driverWrapper = super.newDriverWrapper(context, driver);
+
+        final java.sql.Driver jdbcDriver = driverWrapper.getDriverInstance();
+        if ( jdbcDriver.getClass().getName().startsWith("org.postgresql.") ) {
+            try { // public static String getVersion()
+                final String version = (String) // "PostgreSQL 9.2 JDBC4 (build 1002)"
+                    jdbcDriver.getClass().getMethod("getVersion").invoke(null);
+                if ( version != null && version.indexOf("JDBC3") >= 0 ) {
+                    // config[:connection_alive_sql] ||= 'SELECT 1'
+                    setConfigValueIfNotSet(context, "connection_alive_sql", context.runtime.newString("SELECT 1"));
+                }
+            }
+            catch (NoSuchMethodException e) { }
+            catch (SecurityException e) { }
+            catch (IllegalAccessException e) { }
+            catch (InvocationTargetException e) { }
+        }
+
+        return driverWrapper;
+    }
 
     // enables testing if the bug is fixed (please run our test-suite)
     // using `rake test_postgresql JRUBY_OPTS="-J-Darjdbc.postgresql.generated_keys=true"`

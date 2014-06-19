@@ -18,17 +18,6 @@ module ArJdbc
       ::ActiveRecord::ConnectionAdapters::PostgreSQLJdbcConnection
     end
 
-    # @private
-    def init_connection(jdbc_connection)
-      meta = jdbc_connection.meta_data
-      if meta.driver_version.index('JDBC3') # e.g. 'PostgreSQL 9.2 JDBC4 (build 1002)'
-        config[:connection_alive_sql] ||= 'SELECT 1'
-      else
-        # NOTE: since the loaded Java driver class can't change :
-        PostgreSQL.send(:remove_method, :init_connection) rescue nil
-      end
-    end
-
     def self.arel_visitor_type(config = nil)
       ::Arel::Visitors::PostgreSQL
     end
