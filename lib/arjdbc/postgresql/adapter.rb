@@ -914,11 +914,6 @@ module ArJdbc
       quote_column_name(attr)
     end if ::ActiveRecord::VERSION::MAJOR >= 4
 
-    # @override
-    def quote_column_name(name)
-      %("#{name.to_s.gsub("\"", "\"\"")}")
-    end
-
     # @private
     def quote_default_value(value, column)
       # Do not quote function default values for UUID columns

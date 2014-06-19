@@ -23,8 +23,13 @@
  */
 package arjdbc.postgresql;
 
+import static arjdbc.util.QuotingUtils.quoteCharAndDecorateWith;
+
 import org.jruby.Ruby;
 import org.jruby.RubyModule;
+import org.jruby.anno.JRubyMethod;
+import org.jruby.runtime.ThreadContext;
+import org.jruby.runtime.builtin.IRubyObject;
 
 /**
  * ArJdbc::PostgreSQL
@@ -35,12 +40,20 @@ public class PostgreSQLModule {
 
     public static RubyModule load(final RubyModule arJdbc) {
         RubyModule postgreSQL = arJdbc.defineModuleUnder("PostgreSQL");
-        // postgreSQL.defineAnnotatedMethods( PostgreSQLModule.class );
+        postgreSQL.defineAnnotatedMethods( PostgreSQLModule.class );
         return postgreSQL;
     }
 
     public static RubyModule load(final Ruby runtime) {
         return load( arjdbc.ArJdbcModule.get(runtime) );
+    }
+
+    @JRubyMethod(name = "quote_column_name", required = 1, frame = false)
+    public static IRubyObject quote_column_name(
+            final ThreadContext context,
+            final IRubyObject self,
+            final IRubyObject string) { // %("#{name.to_s.gsub("\"", "\"\"")}")
+        return quoteCharAndDecorateWith(context, string.asString(), '"', '"', (byte) '"', (byte) '"');
     }
 
 }
