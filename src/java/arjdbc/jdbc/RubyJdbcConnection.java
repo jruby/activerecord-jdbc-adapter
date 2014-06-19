@@ -1462,10 +1462,13 @@ public class RubyJdbcConnection extends RubyObject {
         final String usernameStr = username.isNil() ? null : username.toString();
         final String passwordStr = password.isNil() ? null : password.toString();
 
-        final Ruby runtime = context.getRuntime();
-        final DriverWrapper driverWrapper;
+        final DriverWrapper driverWrapper = newDriverWrapper(context, driver.toString());
+        return set_connection_factory(context, new DriverConnectionFactoryImpl(driverWrapper, jdbcURL, usernameStr, passwordStr));
+    }
+
+    protected DriverWrapper newDriverWrapper(final ThreadContext context, final String driver) {
         try {
-            driverWrapper = new DriverWrapper(runtime, driver.toString(), resolveDriverProperties(context));
+            return new DriverWrapper(context.runtime, driver.toString(), resolveDriverProperties(context));
         }
         catch (ClassCastException e) {
             throw wrapException(context, e.getCause() != null ? e.getCause() : e);
@@ -1476,8 +1479,6 @@ public class RubyJdbcConnection extends RubyObject {
         catch (IllegalAccessException e) {
             throw wrapException(context, e);
         }
-
-        return set_connection_factory(context, new DriverConnectionFactoryImpl(driverWrapper, jdbcURL, usernameStr, passwordStr));
     }
 
     @Deprecated // no longer used - only kept for API compatibility

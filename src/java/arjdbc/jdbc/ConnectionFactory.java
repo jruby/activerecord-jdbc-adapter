@@ -68,6 +68,7 @@ class DataSourceConnectionFactoryImpl implements ConnectionFactory {
         this.username = username; this.password = password;
     }
 
+    @Override
     public Connection newConnection() throws SQLException {
         if ( username != null ) {
             dataSource.getConnection(username, password);
@@ -96,6 +97,7 @@ class DriverConnectionFactoryImpl implements ConnectionFactory {
         this.username = username; this.password = password;
     }
 
+    @Override
     public Connection newConnection() throws SQLException {
         return driverWrapper.connect(url, username, password);
     }
@@ -120,6 +122,7 @@ class RubyConnectionFactoryImpl implements ConnectionFactory {
         contextProvider = (RubyObject) driver;
     }
 
+    @Override
     public Connection newConnection() throws SQLException {
         final ThreadContext context = contextProvider.getRuntime().getCurrentContext();
         final IRubyObject connection = driver.callMethod(context, "connection", new IRubyObject[] { url, username, password });
