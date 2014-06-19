@@ -24,6 +24,7 @@
 package arjdbc.derby;
 
 import arjdbc.jdbc.Callable;
+import arjdbc.jdbc.DriverWrapper;
 import arjdbc.jdbc.RubyJdbcConnection;
 
 import java.sql.Connection;
@@ -35,6 +36,7 @@ import org.jruby.Ruby;
 import org.jruby.RubyClass;
 import org.jruby.RubyString;
 import org.jruby.anno.JRubyMethod;
+import org.jruby.exceptions.RaiseException;
 import org.jruby.runtime.ObjectAllocator;
 import org.jruby.runtime.ThreadContext;
 import org.jruby.runtime.builtin.IRubyObject;
@@ -63,12 +65,35 @@ public class DerbyRubyJdbcConnection extends RubyJdbcConnection {
         RubyClass jdbcConnection = getJdbcConnectionClass(runtime);
         return createDerbyJdbcConnectionClass(runtime, jdbcConnection);
     }
-    
+
     protected static ObjectAllocator ALLOCATOR = new ObjectAllocator() {
         public IRubyObject allocate(Ruby runtime, RubyClass klass) {
             return new DerbyRubyJdbcConnection(runtime, klass);
         }
     };
+
+    @Override
+    protected DriverWrapper newDriverWrapper(final ThreadContext context, final String driver) {
+        DriverWrapper driverWrapper = super.newDriverWrapper(context, driver);
+
+        final java.sql.Driver jdbcDriver = driverWrapper.getDriverInstance();
+        if ( jdbcDriver.getClass().getName().startsWith("org.apache.derby.") ) {
+            final int major = jdbcDriver.getMajorVersion();
+            final int minor = jdbcDriver.getMinorVersion();
+            if ( major < 10 || ( major == 10 && minor < 5 ) ) {
+                final RubyClass errorClass = getConnectionNotEstablished(context.runtime);
+                throw new RaiseException(context.runtime, errorClass,
+                    "adapter requires Derby >= 10.5 got: " + major + "." + minor + "", false);
+            }
+            if ( major == 10 && minor < 8 ) { // 10.8 ~ supports JDBC 4.1
+                // config[:connection_alive_sql] ||= 'SELECT 1 FROM SYS.SYSSCHEMAS FETCH FIRST 1 ROWS ONLY'
+                setConfigValueIfNotSet(context, "connection_alive_sql", // FROM clause mandatory
+                    context.runtime.newString("SELECT 1 FROM SYS.SYSSCHEMAS FETCH FIRST 1 ROWS ONLY"));
+            }
+        }
+
+        return driverWrapper;
+    }
 
     @JRubyMethod(name = "select?", required = 1, meta = true, frame = false)
     public static IRubyObject select_p(final ThreadContext context,
