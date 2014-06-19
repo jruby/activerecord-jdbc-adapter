@@ -39,7 +39,7 @@ import org.jruby.Ruby;
  *
  * @author kares
  */
-final class DriverWrapper {
+public class DriverWrapper {
 
     private final Driver driver;
     private final Properties properties;
@@ -58,7 +58,8 @@ final class DriverWrapper {
         return driver;
     }
 
-    private Driver allocateDriver(final Class<? extends Driver> driverClass) throws InstantiationException, IllegalAccessException {
+    private Driver allocateDriver(final Class<? extends Driver> driverClass)
+        throws InstantiationException, IllegalAccessException {
         try {
             return driverClass.newInstance();
         }
@@ -70,7 +71,8 @@ final class DriverWrapper {
         }
     }
 
-    private static Class<? extends Driver> loadDriver(final Ruby runtime, final String name) throws ClassCastException {
+    protected static Class<? extends Driver> loadDriver(final Ruby runtime, final String name)
+        throws ClassCastException {
         @SuppressWarnings("unchecked")
         Class<? extends Driver> klass = runtime.getJavaSupport().loadJavaClassVerbose(name);
         if ( ! Driver.class.isAssignableFrom(klass) ) {
@@ -89,25 +91,29 @@ final class DriverWrapper {
         return getDriverInstance().connect(url, properties);
     }
 
-    public static String buildURL(final Object url, final Map<?, ?> options) {
+    static String buildURL(final Object url, final Map<?, ?> options) {
         if ( options == null || options.isEmpty() ) {
             return url.toString();
         }
 
-        final StringBuilder opts = new StringBuilder(); boolean first = true;
-        for ( Map.Entry entry : options.entrySet() ) {
-            if ( ! first ) opts.append('&');
-            opts.append(entry.getKey()).append('=').append(entry.getValue());
-            first = false;
-        }
+        final StringBuilder urlWithOptions = new StringBuilder();
 
         final String urlStr = url.toString();
         if ( urlStr.indexOf('?') == -1 ) {
-            return urlStr + '?' + opts;
+            urlWithOptions.append(urlStr).append('?');
         }
         else {
-            return urlStr + '&' + opts;
+            urlWithOptions.append(urlStr).append('&');
         }
+
+        boolean first = true;
+        for ( Map.Entry entry : options.entrySet() ) {
+            if ( ! first ) urlWithOptions.append('&');
+            urlWithOptions.append(entry.getKey()).append('=').append(entry.getValue());
+            first = false;
+        }
+
+        return urlWithOptions.toString();
     }
 
 }
