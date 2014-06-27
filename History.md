@@ -1,4 +1,4 @@
-## 1.3.8 (pe/nd/in)
+## 1.3.8 (06/27/14)
 
 - [mysql] updated so that we can run with non-official driver (+ against MariaDB)
 - [postgres] quote fix failure with ColumnDefinition on AR 4.0.6.rc2
