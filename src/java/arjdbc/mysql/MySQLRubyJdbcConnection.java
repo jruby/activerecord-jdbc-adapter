@@ -215,7 +215,7 @@ public class MySQLRubyJdbcConnection extends RubyJdbcConnection {
                         }
                     }
 
-                    return runtime.newArray(indexes);
+                    return indexes;
                 }
                 finally {
                     close(keySet);
