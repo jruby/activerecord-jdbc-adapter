@@ -851,7 +851,8 @@ module ArJdbc
       when Range
         if column.type.to_s[-5..-1] == 'range' # :'xxxrange' only in AR-4.0
           column_class = ::ActiveRecord::ConnectionAdapters::PostgreSQLColumn
-          "'#{column_class.range_to_string(value)}'::#{column.sql_type}"
+          escaped = quote_string(column_class.range_to_string(value))
+          "'#{escaped}'::#{column.sql_type}"
         else super
         end
       when IPAddr
@@ -885,8 +886,8 @@ module ArJdbc
       #  "0101" will be treated as binary string
       #  "0100" will be treated as binary string
       # ... but is kept due Rails compatibility
-      when /^[01]*$/      then "B'#{value}'" # Bit-string notation
-      when /^[0-9A-F]*$/i then "X'#{value}'" # Hexadecimal notation
+      when /\A[01]*\Z/ then "B'#{value}'" # Bit-string notation
+      when /\A[0-9A-F]*\Z/i then "X'#{value}'" # Hexadecimal notation
       end
     end
 
@@ -1272,9 +1273,9 @@ module ActiveRecord::ConnectionAdapters
       else # NOTE: AR <= 3.2 : (name, default, sql_type = nil, null = true)
         null, sql_type, oid_type = !! sql_type, oid_type, nil
       end
-      if sql_type =~ /\[\]$/ && ArJdbc::PostgreSQL::AR4_COMPAT
+      if sql_type.to_s[-2, 2] == '[]' && ArJdbc::PostgreSQL::AR4_COMPAT
         @array = true if respond_to?(:array)
-        super(name, default, sql_type[0..sql_type.length - 3], null)
+        super(name, default, sql_type[0..-3], null)
       else
         @array = false if respond_to?(:array)
         super(name, default, sql_type, null)
