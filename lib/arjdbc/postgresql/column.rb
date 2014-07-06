@@ -156,13 +156,13 @@ module ArJdbc
           elsif sql_type[-5, 5] == 'range'
             return if value.nil? || value == 'empty'
             return value if value.is_a?(::Range)
-            
+
             extracted = extract_bounds(value)
 
             case sql_type[0...-5] # range sub-type
             when 'date' # :date
               from = self.class.value_to_date(extracted[:from])
-              from -= 1.day if extracted[:exclude_start]
+              from += 1.day if extracted[:exclude_start]
               to = self.class.value_to_date(extracted[:to])
             when 'num' # :decimal
               from = ::BigDecimal.new(extracted[:from].to_s)
@@ -173,7 +173,7 @@ module ArJdbc
               to = self.class.string_to_time(extracted[:to])
             when 'int4', 'int8' # :integer
               from = to_integer(extracted[:from]) rescue value ? 1 : 0
-              from -= 1 if extracted[:exclude_start]
+              from += 1 if extracted[:exclude_start]
               to = to_integer(extracted[:to]) rescue value ? 1 : 0
             else
               return value
