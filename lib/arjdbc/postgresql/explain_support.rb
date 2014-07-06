@@ -1,5 +1,6 @@
 module ArJdbc
   module PostgreSQL
+    # @private
     module ExplainSupport
       def supports_explain?
         true
@@ -10,8 +11,8 @@ module ArJdbc
         result = exec_query(sql, "EXPLAIN", binds)
         ExplainPrettyPrinter.new.pp result # we can assume AR >= 3.1
       end
-
-      class ExplainPrettyPrinter # :nodoc:
+      # @private
+      class ExplainPrettyPrinter
         # Pretty prints the result of a EXPLAIN in a way that resembles the output of the
         # PostgreSQL shell:
         #

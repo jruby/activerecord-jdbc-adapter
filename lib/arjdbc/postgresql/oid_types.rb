@@ -3,6 +3,7 @@ require 'thread'
 
 module ArJdbc
   module PostgreSQL
+    # @private
     module OIDTypes
 
       OID = ActiveRecord::ConnectionAdapters::PostgreSQL::OID
