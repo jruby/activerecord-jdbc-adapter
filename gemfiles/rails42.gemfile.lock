@@ -1,6 +1,6 @@
 GIT
   remote: git://github.com/rails/arel.git
-  revision: f50de54a6f0c59ab75526cfdb7896830130ffdf7
+  revision: 66cee768bc163537087037a583f60639eae49fc3
   branch: master
   specs:
     arel (6.0.0.20140505020427)
@@ -69,7 +69,7 @@ GEM
       mime-types (>= 1.16, < 3)
     metaclass (0.0.4)
     mime-types (2.3)
-    minitest (5.3.4)
+    minitest (5.3.5)
     mocha (0.13.3)
       metaclass (~> 0.0.1)
     multi_json (1.10.1)
