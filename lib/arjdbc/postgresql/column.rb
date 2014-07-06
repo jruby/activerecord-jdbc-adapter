@@ -147,28 +147,27 @@ module ArJdbc
         when :tsvector then value
         when :datetime, :timestamp then self.class.string_to_time value
         else
-          case sql_type
-          when 'money'
+          if ( sql_type = self.sql_type.to_s ) == 'money'
             self.class.string_to_money(value)
-          when /^point/
+          elsif sql_type[0, 5] == 'point'
             value.is_a?(String) ? self.class.string_to_point(value) : value
-          when /^(bit|varbit)/
+          elsif sql_type[0, 3] == 'bit' || sql_type[0, 6] == 'varbit'
             value.is_a?(String) ? self.class.string_to_bit(value) : value
-          when /(.*?)range$/
+          elsif sql_type[-5, 5] == 'range'
             return if value.nil? || value == 'empty'
             return value if value.is_a?(::Range)
-
+            
             extracted = extract_bounds(value)
 
-            case $1 # subtype
+            case sql_type[0...-5] # range sub-type
             when 'date' # :date
               from = self.class.value_to_date(extracted[:from])
               from -= 1.day if extracted[:exclude_start]
               to = self.class.value_to_date(extracted[:to])
             when 'num' # :decimal
-              from = BigDecimal.new(extracted[:from].to_s)
+              from = ::BigDecimal.new(extracted[:from].to_s)
               # FIXME: add exclude start for ::Range, same for timestamp ranges
-              to = BigDecimal.new(extracted[:to].to_s)
+              to = ::BigDecimal.new(extracted[:to].to_s)
             when 'ts', 'tstz' # :time
               from = self.class.string_to_time(extracted[:from])
               to = self.class.string_to_time(extracted[:to])
@@ -181,7 +180,8 @@ module ArJdbc
             end
 
             ::Range.new(from, to, extracted[:exclude_end])
-          else super(value)
+          else
+             super(value)
           end
         end
       end if AR4_COMPAT
