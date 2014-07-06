@@ -62,8 +62,10 @@ class PostgreSQLQuotingTest < Test::Unit::TestCase
 
   def test_quote_range
     range = "1,2]'; SELECT * FROM users; --".."a"
-    c = Column.new(nil, nil, OID::Range.new(:integer), 'int8range')
-    assert_equal "[1,2]''; SELECT * FROM users; --,a]::int8range", connection.quote(range, c)
+    c = Column.new(nil, nil, 'int8range')
+    assert_equal "'[1,2]''; SELECT * FROM users; --,a]'::int8range", connection.quote(range, c)
+    #c = PostgreSQLColumn.new(nil, nil, OID::Range.new(:integer), 'int8range')
+    #assert_equal "'[1,2]''; SELECT * FROM users; --,a]'::int8range", @conn.quote(range, c)
   end if OID
 
 end

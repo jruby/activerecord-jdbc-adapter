@@ -850,10 +850,11 @@ module ArJdbc
         else super
         end
       when Range
-        if column.type.to_s[-5..-1] == 'range' # :'xxxrange' only in AR-4.0
+        sql_type = column.respond_to?(:sql_type) && column.sql_type
+        if sql_type && sql_type[-5, 5] == 'range' && AR4_COMPAT
           column_class = ::ActiveRecord::ConnectionAdapters::PostgreSQLColumn
           escaped = quote_string(column_class.range_to_string(value))
-          "'#{escaped}'::#{column.sql_type}"
+          "'#{escaped}'::#{sql_type}"
         else super
         end
       when IPAddr
