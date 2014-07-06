@@ -818,8 +818,9 @@ module ArJdbc
         end
       when Numeric
         if column.respond_to?(:sql_type) && column.sql_type == 'money'
-          # not truly string input, so doesn't require (or allow) escape syntax :
-          ( column.type == :string || column.type == :text ) ? "'#{value}'" : super
+          "'#{value}'"
+        elsif column.type == :string || column.type == :text
+          "'#{value}'"
         else super
         end
       when String
