@@ -9,13 +9,13 @@ class PostgreSQLQuotingTest < Test::Unit::TestCase
     c = Column.new(nil, 1, 'boolean')
     assert_equal 't', connection.type_cast(true, nil)
     assert_equal 't', connection.type_cast(true, c)
-  end if ar_version('3.0')
+  end if ar_version('3.1')
 
   def test_type_cast_false
     c = Column.new(nil, 1, 'boolean')
     assert_equal 'f', connection.type_cast(false, nil)
     assert_equal 'f', connection.type_cast(false, c)
-  end if ar_version('3.0')
+  end if ar_version('3.1')
 
   def test_type_cast_cidr
     ip = IPAddr.new('255.0.0.0/8')
