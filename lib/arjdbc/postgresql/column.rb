@@ -172,9 +172,15 @@ module ArJdbc
               from = self.class.string_to_time(extracted[:from])
               to = self.class.string_to_time(extracted[:to])
             when 'int4', 'int8' # :integer
-              from = to_integer(extracted[:from]) rescue value ? 1 : 0
+              from = extracted[:from]
+              unless (from.respond_to?(:infinite?) && from.infinite?)
+                from = from.respond_to?(:to_i) ? from.to_i : ( value ? 1 : 0 )
+              end
               from += 1 if extracted[:exclude_start]
-              to = to_integer(extracted[:to]) rescue value ? 1 : 0
+              to = extracted[:to]
+              unless (to.respond_to?(:infinite?) && to.infinite?)
+                to = to.respond_to?(:to_i) ? to.to_i : ( value ? 1 : 0 )
+              end
             else
               return value
             end
@@ -319,10 +325,6 @@ module ArJdbc
 
       def infinity(options = {})
         ::Float::INFINITY * (options[:negative] ? -1 : 1)
-      end if AR4_COMPAT
-
-      def to_integer(value)
-        (value.respond_to?(:infinite?) && value.infinite?) ? value : value.to_i
       end if AR4_COMPAT
 
       # @note Based on *active_record/connection_adapters/postgresql/cast.rb* (4.0).
