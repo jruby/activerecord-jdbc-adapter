@@ -21,6 +21,7 @@ DRIVERS  = %w[derby h2 hsqldb jtds mysql postgres sqlite3].map { |a| "jdbc-#{a}"
 TARGETS = ( ADAPTERS + DRIVERS )
 
 rake = lambda { |task| ruby "-S", "rake", task }
+get_version = lambda { Bundler.load_gemspec('activerecord-jdbc-adapter.gemspec').version }
 
 TARGETS.each do |target|
   namespace target do
@@ -66,8 +67,7 @@ task "release:adapters" => [ 'release' ] + ADAPTERS.map { |name| "#{name}:releas
 task "adapters:release" => 'release:adapters'
 
 task 'release:do' => 'build:adapters' do
-  gemspec = Bundler.load_gemspec('activerecord-jdbc-adapter.gemspec')
-  version = gemspec.version; version_tag = "v#{version}"
+  version = get_version.call; version_tag = "v#{version}"
 
   sh("git diff --no-patch --exit-code") { |ok| fail "git working dir is not clean" unless ok }
   sh("git diff-index --quiet --cached HEAD") { |ok| fail "git index is not clean" unless ok }
@@ -76,6 +76,10 @@ task 'release:do' => 'build:adapters' do
   sh "for gem in `ls pkg/*-#{version}.gem`; do gem push $gem; done" do |ok|
     sh "git push origin master --tags" if ok
   end
+end
+
+task 'release:push' do
+  sh "for gem in `ls pkg/*-#{get_version.call}.gem`; do gem push $gem; done"
 end
 
 # ALL
