@@ -65,17 +65,6 @@ public class PostgreSQLModule {
         return quoteCharAndDecorateWith(context, string.asString(), '"', '"', (byte) '"', (byte) '"');
     }
 
-//    # Quotes a string, escaping any ' (single quote) and \ (backslash) chars.
-//    # @return [String]
-//    # @override
-//    def quote_string(string)
-//      quoted = string.gsub("'", "''")
-//      unless standard_conforming_strings?
-//        quoted.gsub!(/\\/, '\&\&')
-//      end
-//      quoted
-//    end
-
     private static final ByteList BYTES_BACKSLASH = new ByteList(new byte[] { '\\' }, false);
     private static final ByteList BYTES_ANDAND = new ByteList(new byte[] { '\\', '&', '\\', '&' }, false);
 
