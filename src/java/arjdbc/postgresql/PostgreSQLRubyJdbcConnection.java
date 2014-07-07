@@ -673,7 +673,7 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
 
     @JRubyMethod(name = "raw_array_type?", meta = true)
     public static IRubyObject useRawArrayType(final ThreadContext context, final IRubyObject self) {
-        if ( rawArrayType == null ) return context.runtime.getNil();
+        if ( rawArrayType == null ) return context.nil;
         return context.runtime.newBoolean(rawArrayType);
     }
 
@@ -696,7 +696,7 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
 
     @JRubyMethod(name = "raw_hstore_type?", meta = true)
     public static IRubyObject useRawHstoreType(final ThreadContext context, final IRubyObject self) {
-        if ( rawHstoreType == null ) return context.runtime.getNil();
+        if ( rawHstoreType == null ) return context.nil;
         return context.runtime.newBoolean(rawHstoreType);
     }
 

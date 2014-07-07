@@ -117,10 +117,10 @@ public class RubyJdbcConnection extends RubyObject {
     };
 
     public static RubyClass createJdbcConnectionClass(final Ruby runtime) {
-        RubyClass jdbcConnection = getConnectionAdapters(runtime).
+        final RubyClass _JdbcConnection = getConnectionAdapters(runtime).
             defineClassUnder("JdbcConnection", runtime.getObject(), ALLOCATOR);
-        jdbcConnection.defineAnnotatedMethods(RubyJdbcConnection.class);
-        return jdbcConnection;
+        _JdbcConnection.defineAnnotatedMethods(RubyJdbcConnection.class);
+        return _JdbcConnection;
     }
 
     public static RubyClass getJdbcConnectionClass(final Ruby runtime) {
@@ -190,7 +190,7 @@ public class RubyJdbcConnection extends RubyObject {
             public IRubyObject call(final Connection connection) throws SQLException {
                 final int level = connection.getTransactionIsolation();
                 final String isolationSymbol = formatTransactionIsolationLevel(level);
-                if ( isolationSymbol == null ) return context.runtime.getNil();
+                if ( isolationSymbol == null ) return context.nil;
                 return context.runtime.newSymbol(isolationSymbol);
             }
         });
@@ -211,7 +211,7 @@ public class RubyJdbcConnection extends RubyObject {
                 connection.setTransactionIsolation(level);
 
                 final String isolationSymbol = formatTransactionIsolationLevel(level);
-                if ( isolationSymbol == null ) return context.runtime.getNil();
+                if ( isolationSymbol == null ) return context.nil;
                 return context.runtime.newSymbol(isolationSymbol);
             }
         });
@@ -297,7 +297,7 @@ public class RubyJdbcConnection extends RubyObject {
                             throw e; // let it roll - will be wrapped into a JDBCError (non 4.0)
                         }
                     }
-                    return context.runtime.getNil();
+                    return context.nil;
                 }
             });
         }
@@ -320,7 +320,7 @@ public class RubyJdbcConnection extends RubyObject {
                     connection.setAutoCommit(true);
                 }
             }
-            return context.runtime.getNil();
+            return context.nil;
         }
         catch (SQLException e) {
             return handleException(context, e);
@@ -340,7 +340,7 @@ public class RubyJdbcConnection extends RubyObject {
                     connection.setAutoCommit(true);
                 }
             }
-            return context.runtime.getNil();
+            return context.nil;
         }
         catch (SQLException e) {
             return handleException(context, e);
@@ -399,7 +399,7 @@ public class RubyJdbcConnection extends RubyObject {
                 throw context.runtime.newRuntimeError("could not rollback savepoint: '" + name + "' (not set)");
             }
             connection.rollback(savepoint);
-            return context.runtime.getNil();
+            return context.nil;
         }
         catch (SQLException e) {
             return handleException(context, e);
@@ -422,7 +422,7 @@ public class RubyJdbcConnection extends RubyObject {
                 savepoint = ((IRubyObject) savepoint).toJava(Savepoint.class);
             }
             connection.releaseSavepoint((Savepoint) savepoint);
-            return context.runtime.getNil();
+            return context.nil;
         }
         catch (SQLException e) {
             return handleException(context, e);
@@ -474,7 +474,7 @@ public class RubyJdbcConnection extends RubyObject {
     @JRubyMethod(name = "connection_factory=", required = 1)
     public IRubyObject set_connection_factory(final ThreadContext context, final IRubyObject factory) {
         setConnectionFactory( (ConnectionFactory) factory.toJava(ConnectionFactory.class) );
-        return context.runtime.getNil();
+        return context.nil;
     }
 
     /**
@@ -727,7 +727,7 @@ public class RubyJdbcConnection extends RubyObject {
                     if ( returnGeneratedKeys ) {
                         statement.executeUpdate(query, Statement.RETURN_GENERATED_KEYS);
                         IRubyObject keys = mapGeneratedKeys(context.runtime, connection, statement);
-                        return keys == null ? context.runtime.getNil() : keys;
+                        return keys == null ? context.nil : keys;
                     }
                     else {
                         final int rowCount = statement.executeUpdate(query);
@@ -754,7 +754,7 @@ public class RubyJdbcConnection extends RubyObject {
                         setStatementParameters(context, connection, statement, binds);
                         statement.executeUpdate();
                         IRubyObject keys = mapGeneratedKeys(context.runtime, connection, statement);
-                        return keys == null ? context.runtime.getNil() : keys;
+                        return keys == null ? context.nil : keys;
                     }
                     else {
                         statement = connection.prepareStatement(query);
@@ -1850,7 +1850,7 @@ public class RubyJdbcConnection extends RubyObject {
 
     @JRubyMethod(name = "raw_date_time?", meta = true)
     public static IRubyObject useRawDateTime(final ThreadContext context, final IRubyObject self) {
-        if ( rawDateTime == null ) return context.runtime.getNil();
+        if ( rawDateTime == null ) return context.nil;
         return context.runtime.newBoolean( rawDateTime.booleanValue() );
     }
 
@@ -2054,7 +2054,7 @@ public class RubyJdbcConnection extends RubyObject {
 
     @JRubyMethod(name = "raw_boolean?", meta = true)
     public static IRubyObject useRawBoolean(final ThreadContext context, final IRubyObject self) {
-        if ( rawBoolean == null ) return context.runtime.getNil();
+        if ( rawBoolean == null ) return context.nil;
         return context.runtime.newBoolean( rawBoolean.booleanValue() );
     }
 
