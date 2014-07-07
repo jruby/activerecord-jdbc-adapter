@@ -1025,36 +1025,6 @@ public class RubyJdbcConnection extends RubyObject {
         return mapToResult(context, runtime, connection, resultSet, columns);
     }
 
-    /**
-     * @deprecated please do not use this method
-     */
-    @Deprecated // only used by Oracle adapter - also it's really a bad idea
-    @JRubyMethod(name = "execute_id_insert", required = 2)
-    public IRubyObject execute_id_insert(final ThreadContext context,
-        final IRubyObject sql, final IRubyObject id) throws SQLException {
-        final Ruby runtime = context.runtime;
-
-        callMethod("warn", RubyString.newUnicodeString(runtime, "DEPRECATED: execute_id_insert(sql, id) will be removed"));
-
-        return withConnection(context, new Callable<IRubyObject>() {
-            public IRubyObject call(final Connection connection) throws SQLException {
-                PreparedStatement statement = null;
-                final String insertSQL = sql.convertToString().getUnicodeValue();
-                try {
-                    statement = connection.prepareStatement(insertSQL);
-                    statement.setLong(1, RubyNumeric.fix2long(id));
-                    statement.executeUpdate();
-                }
-                catch (final SQLException e) {
-                    debugErrorSQL(context, insertSQL);
-                    throw e;
-                }
-                finally { close(statement); }
-                return id;
-            }
-        });
-    }
-
     @JRubyMethod(name = "supported_data_types")
     public IRubyObject supported_data_types(final ThreadContext context) throws SQLException {
         final Ruby runtime = context.runtime;
@@ -3254,23 +3224,6 @@ public class RubyJdbcConnection extends RubyObject {
         return supportsGeneratedKeys.booleanValue();
     }
 
-    /**
-     * @deprecated no longer used - kept for binary compatibility, this method
-     * is confusing since it closes the result set it receives and thus was
-     * replaced with {@link #mapGeneratedKeys(Ruby, Connection, Statement)}
-     */
-    @Deprecated
-    public static IRubyObject unmarshal_id_result(
-        final Ruby runtime, final ResultSet genKeys) throws SQLException {
-        try {
-            if (genKeys.next() && genKeys.getMetaData().getColumnCount() > 0) {
-                return runtime.newFixnum( genKeys.getLong(1) );
-            }
-            return runtime.getNil();
-        }
-        finally { close(genKeys); }
-     }
-
     protected IRubyObject mapResults(final ThreadContext context,
             final Connection connection, final Statement statement,
             final boolean downCase) throws SQLException {
@@ -3351,16 +3304,6 @@ public class RubyJdbcConnection extends RubyObject {
         final Connection connection, final ResultSet resultSet,
         final boolean downCase) throws SQLException {
         return setupColumns(runtime, connection, resultSet.getMetaData(), downCase);
-    }
-
-    /**
-     * @deprecated renamed and parameterized to {@link #withConnection(ThreadContext, SQLBlock)}
-     */
-    @Deprecated
-    @SuppressWarnings("unchecked")
-    protected Object withConnectionAndRetry(final ThreadContext context, final SQLBlock block)
-        throws RaiseException {
-        return withConnection(context, block);
     }
 
     protected <T> T withConnection(final ThreadContext context, final Callable<T> block)
