@@ -149,11 +149,11 @@ module ArJdbc
         else
           if ( sql_type = self.sql_type.to_s ) == 'money'
             self.class.string_to_money(value)
-          elsif sql_type[0, 5] == 'point'
+          elsif sql_type.start_with?('point')
             value.is_a?(String) ? self.class.string_to_point(value) : value
-          elsif sql_type[0, 3] == 'bit' || sql_type[0, 6] == 'varbit'
+          elsif sql_type.start_with?('bit') || sql_type.start_with?('varbit')
             value.is_a?(String) ? self.class.string_to_bit(value) : value
-          elsif sql_type[-5, 5] == 'range'
+          elsif sql_type.end_with?('range')
             return if value.nil? || value == 'empty'
             return value if value.is_a?(::Range)
 

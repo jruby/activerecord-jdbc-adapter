@@ -816,7 +816,7 @@ module ArJdbc
         return "E'#{escape_bytea(value)}'::bytea" if column.type == :binary
         return "xml '#{quote_string(value)}'" if column.type == :xml
         sql_type = column.respond_to?(:sql_type) && column.sql_type
-        sql_type && sql_type[0, 3] == 'bit' ? quote_bit(value) : super
+        sql_type && sql_type.start_with?('bit') ? quote_bit(value) : super
       when Array
         if AR4_COMPAT && column.array? # will be always falsy in AR < 4.0
           column_class = ::ActiveRecord::ConnectionAdapters::PostgreSQLColumn
@@ -840,7 +840,7 @@ module ArJdbc
         end
       when Range
         sql_type = column.respond_to?(:sql_type) && column.sql_type
-        if sql_type && sql_type[-5, 5] == 'range' && AR4_COMPAT
+        if sql_type && sql_type.end_with?('range') && AR4_COMPAT
           column_class = ::ActiveRecord::ConnectionAdapters::PostgreSQLColumn
           escaped = quote_string(column_class.range_to_string(value))
           "'#{escaped}'::#{sql_type}"
