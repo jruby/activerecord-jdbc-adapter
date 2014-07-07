@@ -135,17 +135,25 @@ class PostgreSQLSimpleTest < Test::Unit::TestCase
   end if defined? JRUBY_VERSION
 
   def test_string_quoting_with_standard_conforming_strings
-    if supports_standard_conforming_strings?
+    prev = connection.standard_conforming_strings?
+    begin
+      connection.standard_conforming_strings = true
       s = "\\m it's \\M"
       assert_equal "'\\m it''s \\M'", connection.quote(s)
+    ensure
+      connection.standard_conforming_strings = prev
     end
   end if defined? JRUBY_VERSION
 
   def test_string_quoting_without_standard_conforming_strings
-    connection.standard_conforming_strings = false
-    s = "\\m it's \\M"
-    assert_equal "'\\\\m it''s \\\\M'", connection.quote(s)
-    connection.standard_conforming_strings = true
+    prev = connection.standard_conforming_strings?
+    begin
+      connection.standard_conforming_strings = false
+      s = "\\m it's \\M"
+      assert_equal "'\\\\m it''s \\\\M'", connection.quote(s)
+    ensure
+      connection.standard_conforming_strings = prev
+    end
   end if defined? JRUBY_VERSION
 
   test 'returns correct visitor type' do

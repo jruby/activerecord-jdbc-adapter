@@ -28,14 +28,17 @@ import java.sql.SQLException;
 
 import org.jruby.Ruby;
 import org.jruby.RubyModule;
+import org.jruby.RubyString;
 import org.jruby.anno.JRubyMethod;
 import org.jruby.exceptions.RaiseException;
 import org.jruby.runtime.ThreadContext;
 import org.jruby.runtime.builtin.IRubyObject;
+import org.jruby.util.ByteList;
 
 import static arjdbc.jdbc.RubyJdbcConnection.close;
 import static arjdbc.jdbc.RubyJdbcConnection.retrieveConnectionImpl;
 import static arjdbc.util.QuotingUtils.quoteCharAndDecorateWith;
+import static arjdbc.util.QuotingUtils.quoteCharWith;
 
 /**
  * ArJdbc::PostgreSQL
@@ -62,25 +65,48 @@ public class PostgreSQLModule {
         return quoteCharAndDecorateWith(context, string.asString(), '"', '"', (byte) '"', (byte) '"');
     }
 
+//    # Quotes a string, escaping any ' (single quote) and \ (backslash) chars.
+//    # @return [String]
+//    # @override
+//    def quote_string(string)
+//      quoted = string.gsub("'", "''")
+//      unless standard_conforming_strings?
+//        quoted.gsub!(/\\/, '\&\&')
+//      end
+//      quoted
+//    end
+
+    private static final ByteList BYTES_BACKSLASH = new ByteList(new byte[] { '\\' }, false);
+    private static final ByteList BYTES_ANDAND = new ByteList(new byte[] { '\\', '&', '\\', '&' }, false);
+
+    @JRubyMethod(name = "quote_string", required = 1, frame = false)
+    public static IRubyObject quote_string(
+            final ThreadContext context,
+            final IRubyObject self,
+            final IRubyObject string) {
+        final RubyString str = string.asString();
+        // quoted = string.gsub("'", "''")
+        RubyString quoted = quoteCharWith(context, str, '\'', '\'');
+
+        if ( ! standard_conforming_strings(context, self) ) { // minor branch
+            // quoted.gsub!(/\\/, '\&\&')
+            return quoted.callMethod(context, "gsub", new IRubyObject[] {
+                context.runtime.newString(BYTES_BACKSLASH),
+                context.runtime.newString(BYTES_ANDAND)
+            });
+        }
+        return quoted;
+    }
+
     @JRubyMethod(name = "standard_conforming_strings?")
     public static IRubyObject standard_conforming_strings_p(final ThreadContext context, final IRubyObject self) {
-        //
-        //  if @standard_conforming_strings.nil?
-        //    client_min_messages = self.client_min_messages
-        //    begin
-        //      self.client_min_messages = 'panic'
-        //      value = select_one('SHOW standard_conforming_strings', 'SCHEMA')['standard_conforming_strings']
-        //      @standard_conforming_strings = ( value == "on" )
-        //    rescue
-        //      @standard_conforming_strings = :unsupported
-        //    ensure
-        //      self.client_min_messages = client_min_messages
-        //    end
-        //  end
-        //  @standard_conforming_strings == true # return false if :unsupported
-        //
+        return context.runtime.newBoolean( standard_conforming_strings(context, self) );
+    }
+
+    private static boolean standard_conforming_strings(final ThreadContext context, final IRubyObject self) {
         IRubyObject standard_conforming_strings =
             self.getInstanceVariables().getInstanceVariable("@standard_conforming_strings");
+
         if ( standard_conforming_strings == null ) {
             standard_conforming_strings = context.nil; // unsupported
 
@@ -112,7 +138,7 @@ public class PostgreSQLModule {
             self.getInstanceVariables().setInstanceVariable("@standard_conforming_strings", standard_conforming_strings);
         }
 
-        return standard_conforming_strings.isTrue() ? standard_conforming_strings : context.runtime.getFalse();
+        return standard_conforming_strings.isTrue();
     }
 
     @JRubyMethod(name = "standard_conforming_strings=")

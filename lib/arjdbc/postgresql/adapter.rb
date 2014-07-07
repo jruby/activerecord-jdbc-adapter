@@ -820,17 +820,6 @@ module ArJdbc
       end
     end
 
-    # Quotes a string, escaping any ' (single quote) and \ (backslash) chars.
-    # @return [String]
-    # @override
-    def quote_string(string)
-      quoted = string.gsub("'", "''")
-      unless standard_conforming_strings?
-        quoted.gsub!(/\\/, '\&\&')
-      end
-      quoted
-    end
-
     # @return [String]
     def quote_bit(value)
       case value
