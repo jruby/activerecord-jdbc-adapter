@@ -744,7 +744,7 @@ module ArJdbc
 
     # Gets the maximum number columns postgres has, default 32
     def multi_column_index_limit
-      defined?(@multi_column_index_limit) && @multi_column_index_limit || 32
+      @multi_column_index_limit ||= 32
     end
 
     # Sets the maximum number columns postgres has, default 32
