@@ -73,7 +73,9 @@ task 'release:do' => 'build:adapters' do
   sh("git diff-index --quiet --cached HEAD") { |ok| fail "git index is not clean" unless ok }
 
   sh "git tag -a -m \"AR-JDBC #{version}\" #{version_tag}"
-  sh "for gem in `ls pkg/*-#{version}.gem`; do gem push $gem; done"
+  sh "for gem in `ls pkg/*-#{version}.gem`; do gem push $gem; done" do |ok|
+    sh "git push origin master --tags" if ok
+  end
 end
 
 # ALL
