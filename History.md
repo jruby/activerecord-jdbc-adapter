@@ -1,3 +1,10 @@
+## 1.3.9 (07/07/14)
+
+- [postgres] improve Range's type cast - fixing minor quoting failure on AR 4.x
+- [postgres] range type's :exclude_start is actually += 1 (align with AR 4.1)
+- [postgres] correctly quote numeric values with string/text column types
+- [postgres] backport CVE-2014-3483 and protect against CVE-2014-3482 (from AR)
+
 ## 1.3.8 (06/27/14)
 
 - [mysql] updated so that we can run with non-official driver (+ against MariaDB)
