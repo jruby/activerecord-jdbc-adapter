@@ -184,6 +184,10 @@ public class RubyJdbcConnection extends RubyObject {
         return (RubyClass) runtime.getModule("ActiveRecord").getConstant("TransactionIsolationError");
     }
 
+    public static RubyJdbcConnection retrieveConnectionImpl(final ThreadContext context, final IRubyObject adapter) {
+        return (RubyJdbcConnection) adapter.getInstanceVariables().getInstanceVariable("@connection");
+    }
+
     @JRubyMethod(name = "transaction_isolation", alias = "get_transaction_isolation")
     public IRubyObject get_transaction_isolation(final ThreadContext context) {
         return withConnection(context, new Callable<IRubyObject>() {

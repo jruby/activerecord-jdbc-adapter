@@ -23,13 +23,19 @@
  */
 package arjdbc.postgresql;
 
-import static arjdbc.util.QuotingUtils.quoteCharAndDecorateWith;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 
 import org.jruby.Ruby;
 import org.jruby.RubyModule;
 import org.jruby.anno.JRubyMethod;
+import org.jruby.exceptions.RaiseException;
 import org.jruby.runtime.ThreadContext;
 import org.jruby.runtime.builtin.IRubyObject;
+
+import static arjdbc.jdbc.RubyJdbcConnection.close;
+import static arjdbc.jdbc.RubyJdbcConnection.retrieveConnectionImpl;
+import static arjdbc.util.QuotingUtils.quoteCharAndDecorateWith;
 
 /**
  * ArJdbc::PostgreSQL
@@ -54,6 +60,102 @@ public class PostgreSQLModule {
             final IRubyObject self,
             final IRubyObject string) { // %("#{name.to_s.gsub("\"", "\"\"")}")
         return quoteCharAndDecorateWith(context, string.asString(), '"', '"', (byte) '"', (byte) '"');
+    }
+
+    @JRubyMethod(name = "standard_conforming_strings?")
+    public static IRubyObject standard_conforming_strings_p(final ThreadContext context, final IRubyObject self) {
+        //
+        //  if @standard_conforming_strings.nil?
+        //    client_min_messages = self.client_min_messages
+        //    begin
+        //      self.client_min_messages = 'panic'
+        //      value = select_one('SHOW standard_conforming_strings', 'SCHEMA')['standard_conforming_strings']
+        //      @standard_conforming_strings = ( value == "on" )
+        //    rescue
+        //      @standard_conforming_strings = :unsupported
+        //    ensure
+        //      self.client_min_messages = client_min_messages
+        //    end
+        //  end
+        //  @standard_conforming_strings == true # return false if :unsupported
+        //
+        IRubyObject standard_conforming_strings =
+            self.getInstanceVariables().getInstanceVariable("@standard_conforming_strings");
+        if ( standard_conforming_strings == null ) {
+            standard_conforming_strings = context.nil; // unsupported
+
+            final IRubyObject client_min_messages = self.callMethod(context, "client_min_messages");
+            ResultSet resultSet = null;
+            try {
+                final Ruby runtime = context.runtime;
+                self.callMethod(context, "client_min_messages=", runtime.newString("panic"));
+                // NOTE: we no longer log this query as before ... with :
+                // select_one('SHOW standard_conforming_strings', 'SCHEMA')['standard_conforming_strings']
+                resultSet = retrieveConnectionImpl(context, self).
+                    executeQueryInternal(context, "SHOW standard_conforming_strings", 1);
+                if ( resultSet != null && resultSet.next() ) {
+                    final String result = resultSet.getString(1);
+                    standard_conforming_strings = runtime.newBoolean( "on".equals(result) );
+                }
+            }
+            catch (SQLException e) {
+                // unsupported
+            }
+            catch (RaiseException e) {
+                // unsupported
+            }
+            finally {
+                close(resultSet);
+                self.callMethod(context, "client_min_messages=", client_min_messages);
+            }
+
+            self.getInstanceVariables().setInstanceVariable("@standard_conforming_strings", standard_conforming_strings);
+        }
+
+        return standard_conforming_strings.isTrue() ? standard_conforming_strings : context.runtime.getFalse();
+    }
+
+    @JRubyMethod(name = "standard_conforming_strings=")
+    public static IRubyObject set_standard_conforming_strings(final ThreadContext context, final IRubyObject self,
+        final IRubyObject enable) {
+        //
+        //  client_min_messages = self.client_min_messages
+        //  begin
+        //    self.client_min_messages = 'panic'
+        //    value = enable ? "on" : "off"
+        //    execute("SET standard_conforming_strings = #{value}", 'SCHEMA')
+        //    @standard_conforming_strings = ( value == "on" )
+        //  rescue
+        //    @standard_conforming_strings = :unsupported
+        //  ensure
+        //    self.client_min_messages = client_min_messages
+        //  end
+        //
+        IRubyObject standard_conforming_strings = context.nil; // unsupported
+        final IRubyObject client_min_messages = self.callMethod(context, "client_min_messages");
+
+        try {
+            final Ruby runtime = context.runtime;
+            self.callMethod(context, "client_min_messages=", runtime.newString("panic"));
+
+            final String value;
+            if ( enable.isNil() || enable == runtime.getFalse() ) value = "off";
+            else value = "on";
+            // NOTE: we no longer log this query as before ... with :
+            // execute("SET standard_conforming_strings = #{value}", 'SCHEMA')
+            retrieveConnectionImpl(context, self).
+                executeInternal(context, "SET standard_conforming_strings = " + value);
+
+            standard_conforming_strings = runtime.newBoolean( value == (Object) "on" );
+        }
+        catch (RaiseException e) {
+            // unsupported
+        }
+        finally {
+            self.callMethod(context, "client_min_messages=", client_min_messages);
+        }
+
+        return self.getInstanceVariables().setInstanceVariable("@standard_conforming_strings", standard_conforming_strings);
     }
 
 }

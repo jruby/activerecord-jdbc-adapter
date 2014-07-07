@@ -121,17 +121,13 @@ class PostgreSQLSimpleTest < Test::Unit::TestCase
     assert_equal -1, column.default
   end
 
-  def test_supports_standard_conforming_string
-    assert([true, false].include?(connection.supports_standard_conforming_strings?))
-  end if defined? JRUBY_VERSION
-
   def test_standard_conforming_string_default_set_on_new_connections
-    c = ActiveRecord::Base.postgresql_connection(POSTGRES_CONFIG)
-    assert_equal true, c.instance_variable_get("@standard_conforming_strings")
+    connection = ActiveRecord::Base.postgresql_connection(POSTGRES_CONFIG)
+    assert_equal true, connection.instance_variable_get("@standard_conforming_strings")
   end if defined? JRUBY_VERSION
 
   def test_default_standard_conforming_string
-    if connection.supports_standard_conforming_strings?
+    if supports_standard_conforming_strings?
       assert_equal true, connection.standard_conforming_strings?
     else
       assert_equal false, connection.standard_conforming_strings?
@@ -139,7 +135,7 @@ class PostgreSQLSimpleTest < Test::Unit::TestCase
   end if defined? JRUBY_VERSION
 
   def test_string_quoting_with_standard_conforming_strings
-    if connection.supports_standard_conforming_strings?
+    if supports_standard_conforming_strings?
       s = "\\m it's \\M"
       assert_equal "'\\m it''s \\M'", connection.quote(s)
     end
@@ -203,6 +199,13 @@ class PostgreSQLSimpleTest < Test::Unit::TestCase
     assert_equal 1, connection.type_cast(1, false)
     assert_equal 'some', connection.type_cast(:some, nil)
   end if ar_version('3.1')
+
+  private
+
+  def supports_standard_conforming_strings?(connection = self.connection)
+    connection.standard_conforming_strings?
+    ! connection.instance_variable_get(:@standard_conforming_strings).nil?
+  end
 
 end
 

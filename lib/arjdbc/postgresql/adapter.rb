@@ -249,37 +249,6 @@ module ArJdbc
       self.standard_conforming_strings=(true)
     end
 
-    # Enable standard-conforming strings if available.
-    def standard_conforming_strings=(enable)
-      client_min_messages = self.client_min_messages
-      begin
-        self.client_min_messages = 'panic'
-        value = enable ? "on" : "off"
-        execute("SET standard_conforming_strings = #{value}", 'SCHEMA')
-        @standard_conforming_strings = ( value == "on" )
-      rescue
-        @standard_conforming_strings = :unsupported
-      ensure
-        self.client_min_messages = client_min_messages
-      end
-    end
-
-    def standard_conforming_strings?
-      if @standard_conforming_strings.nil?
-        client_min_messages = self.client_min_messages
-        begin
-          self.client_min_messages = 'panic'
-          value = select_one('SHOW standard_conforming_strings', 'SCHEMA')['standard_conforming_strings']
-          @standard_conforming_strings = ( value == "on" )
-        rescue
-          @standard_conforming_strings = :unsupported
-        ensure
-          self.client_min_messages = client_min_messages
-        end
-      end
-      @standard_conforming_strings == true # return false if :unsupported
-    end
-
     # Does PostgreSQL support migrations?
     def supports_migrations?
       true
@@ -288,12 +257,6 @@ module ArJdbc
     # Does PostgreSQL support finding primary key on non-Active Record tables?
     def supports_primary_key?
       true
-    end
-
-    # Does PostgreSQL support standard conforming strings?
-    def supports_standard_conforming_strings?
-      standard_conforming_strings?
-      @standard_conforming_strings != :unsupported
     end
 
     def supports_hex_escaped_bytea?
