@@ -20,21 +20,19 @@ ADAPTERS = %w[derby h2 hsqldb mssql mysql postgresql sqlite3].map { |a| "activer
 DRIVERS  = %w[derby h2 hsqldb jtds mysql postgres sqlite3].map { |a| "jdbc-#{a}" }
 TARGETS = ( ADAPTERS + DRIVERS )
 
-def rake(*args)
-  ruby "-S", "rake", *args
-end
+rake = lambda { |task| ruby "-S", "rake", task }
 
 TARGETS.each do |target|
   namespace target do
     task :build do
-      Dir.chdir(target) { rake "build" }
+      Dir.chdir(target) { rake.call "build" }
       cp FileList["#{target}/pkg/#{target}-*.gem"], "pkg"
     end
     task :install do
-      Dir.chdir(target) { rake "install" }
+      Dir.chdir(target) { rake.call "install" }
     end
     task :release do
-      Dir.chdir(target) { rake "release" }
+      Dir.chdir(target) { rake.call "release" }
     end
   end
 end
@@ -43,37 +41,44 @@ end
 
 desc "Build drivers"
 task "build:drivers" => DRIVERS.map { |name| "#{name}:build" }
-task "drivers:build" => DRIVERS.map { |name| "#{name}:build" }
+task "drivers:build" => 'build:drivers'
 
 desc "Install drivers"
 task "install:drivers" => DRIVERS.map { |name| "#{name}:install" }
-task "drivers:install" => DRIVERS.map { |name| "#{name}:install" }
+task "drivers:install" => 'install:drivers'
 
-desc "Release drivers"
-task "release:drivers" => DRIVERS.map { |name| "#{name}:release" }
-task "drivers:release" => DRIVERS.map { |name| "#{name}:release" }
+# desc "Release drivers"
+# task "release:drivers" => DRIVERS.map { |name| "#{name}:release" }
+# task "drivers:release" => DRIVERS.map { |name| "#{name}:release" }
 
 # ADAPTERS
 
 desc "Build adapters"
 task "build:adapters" => [ 'build' ] + ADAPTERS.map { |name| "#{name}:build" }
-task "adapters:build" => [ 'build' ] + ADAPTERS.map { |name| "#{name}:build" }
+task "adapters:build" => 'build:adapters'
 
 desc "Install adapters"
 task "install:adapters" => [ 'install' ] + ADAPTERS.map { |name| "#{name}:install" }
-task "adapters:install" => [ 'install' ] + ADAPTERS.map { |name| "#{name}:install" }
+task "adapters:install" => 'install:adapters'
 
 desc "Release adapters"
 task "release:adapters" => [ 'release' ] + ADAPTERS.map { |name| "#{name}:release" }
-task "adapters:release" => [ 'release' ] + ADAPTERS.map { |name| "#{name}:release" }
+task "adapters:release" => 'release:adapters'
+
+task 'release:do' => 'build:adapters' do
+  gemspec = Bundler.load_gemspec('activerecord-jdbc-adapter.gemspec')
+  version = gemspec.version; version_tag = "v#{version}"
+
+  sh("git diff --no-patch --exit-code") { |ok| fail "git working dir is not clean" unless ok }
+  sh("git diff-index --quiet --cached HEAD") { |ok| fail "git index is not clean" unless ok }
+
+  sh "git tag -a -m \"AR-JDBC #{version}\" #{version_tag}"
+  sh "for gem in `ls pkg/*-#{version}.gem`; do gem push $gem; done"
+end
 
 # ALL
 
 task "build:all" => [ 'build' ] + TARGETS.map { |name| "#{name}:build" }
-task "all:build" => [ 'build' ] + TARGETS.map { |name| "#{name}:build" }
+task "all:build" => 'build:all'
 task "install:all" => [ 'install' ] + TARGETS.map { |name| "#{name}:install" }
-task "all:install" => [ 'install' ] + TARGETS.map { |name| "#{name}:install" }
-
-task :filelist do
-  puts FileList['pkg/**/*'].inspect
-end
+task "all:install" => 'install:all'
