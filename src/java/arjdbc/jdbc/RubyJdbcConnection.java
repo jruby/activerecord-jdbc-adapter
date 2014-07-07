@@ -600,6 +600,24 @@ public class RubyJdbcConnection extends RubyObject {
         });
     }
 
+    public Boolean executeInternal(final ThreadContext context, final String sql) {
+        // throws SQLException {
+        return withConnection(context, new Callable<Boolean>() {
+            public Boolean call(final Connection connection) throws SQLException {
+                Statement statement = null;
+                try {
+                    statement = createStatement(context, connection);
+                    return doExecute(statement, sql);
+                }
+                catch (final SQLException e) {
+                    debugErrorSQL(context, sql);
+                    throw e;
+                }
+                finally { close(statement); }
+            }
+        });
+    }
+
     protected Statement createStatement(final ThreadContext context, final Connection connection)
         throws SQLException {
         final Statement statement = connection.createStatement();
@@ -820,12 +838,12 @@ public class RubyJdbcConnection extends RubyObject {
      *
      * @see #execute_query_raw(ThreadContext, IRubyObject[], Block)
      */
-    protected IRubyObject executeQueryRaw(final ThreadContext context,
+    public IRubyObject executeQueryRaw(final ThreadContext context,
         final String query, final int maxRows, final Block block) {
         return doExecuteQueryRaw(context, query, maxRows, block, null); // binds == null
     }
 
-    protected IRubyObject executePreparedQueryRaw(final ThreadContext context,
+    public IRubyObject executePreparedQueryRaw(final ThreadContext context,
         final String query, final List<?> binds, final int maxRows, final Block block) {
         return doExecuteQueryRaw(context, query, maxRows, block, binds);
     }
@@ -925,6 +943,24 @@ public class RubyJdbcConnection extends RubyObject {
         }
     }
 
+    public ResultSet executeQueryInternal(final ThreadContext context, final String query, final int maxRows) {
+        return withConnection(context, new Callable<ResultSet>() {
+            public ResultSet call(final Connection connection) throws SQLException {
+                Statement statement = null;
+                try {
+                    statement = createStatement(context, connection);
+                    statement.setMaxRows(maxRows); // zero means there is no limit
+                    return statement.executeQuery(query);
+                }
+                catch (final SQLException e) {
+                    debugErrorSQL(context, query);
+                    throw e;
+                }
+                finally { close(statement); }
+            }
+        });
+    }
+
     /**
      * NOTE: This methods behavior changed in AR-JDBC 1.3 the old behavior is
      * achievable using {@link #executeQueryRaw(ThreadContext, String, int, Block)}.
@@ -938,7 +974,7 @@ public class RubyJdbcConnection extends RubyObject {
      * @see #execute_query(ThreadContext, IRubyObject, IRubyObject)
      * @see #mapToResult(ThreadContext, Ruby, DatabaseMetaData, ResultSet, RubyJdbcConnection.ColumnData[])
      */
-    protected IRubyObject executeQuery(final ThreadContext context, final String query, final int maxRows) {
+    public IRubyObject executeQuery(final ThreadContext context, final String query, final int maxRows) {
         return withConnection(context, new Callable<IRubyObject>() {
             public IRubyObject call(final Connection connection) throws SQLException {
                 Statement statement = null; ResultSet resultSet = null;
@@ -957,7 +993,7 @@ public class RubyJdbcConnection extends RubyObject {
         });
     }
 
-    protected IRubyObject executePreparedQuery(final ThreadContext context, final String query,
+    public IRubyObject executePreparedQuery(final ThreadContext context, final String query,
         final List<?> binds, final int maxRows) {
         return withConnection(context, new Callable<IRubyObject>() {
             public IRubyObject call(final Connection connection) throws SQLException {
