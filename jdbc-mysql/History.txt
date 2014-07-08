@@ -1,21 +1,42 @@
-=== 5.1.24
+== 5.1.31
 
-* upgraded to 5.1.24 JDBC driver, changes since previous release (5.1.22) :
-  - http://dev.mysql.com/doc/refman/5.1/en/cj-news-5-1-23.html
-  - http://dev.mysql.com/doc/refman/5.1/en/cj-news-5-1-24.html
+ * http://dev.mysql.com/doc/relnotes/connector-j/en/news-5-1-31.html
 
-=== 5.1.22
+== 5.1.30
 
-* upgraded to 5.1.22 JDBC driver, changes since previous release (5.1.13) :
-  - http://dev.mysql.com/doc/refman/5.1/en/cj-news-5-1-15.html
-  - http://dev.mysql.com/doc/refman/5.1/en/cj-news-5-1-16.html
-  - http://dev.mysql.com/doc/refman/5.1/en/cj-news-5-1-17.html
-  - http://dev.mysql.com/doc/refman/5.1/en/cj-news-5-1-18.html
-  - http://dev.mysql.com/doc/refman/5.1/en/cj-news-5-1-19.html
-  - http://dev.mysql.com/doc/refman/5.1/en/cj-news-5-1-20.html
-  - http://dev.mysql.com/doc/refman/5.1/en/cj-news-5-1-21.html
-  - http://dev.mysql.com/doc/refman/5.1/en/cj-news-5-1-22.html
+ * http://dev.mysql.com/doc/relnotes/connector-j/en/news-5-1-29.html
+ * http://dev.mysql.com/doc/relnotes/connector-j/en/news-5-1-30.html
 
-=== 5.1.13
+== 5.1.28
+
+ * http://dev.mysql.com/doc/relnotes/connector-j/en/news-5-1-28.html
+
+== 5.1.27
+
+ * upgraded to 5.1.27 JDBC driver, changes since previous release (5.1.24) :
+   - http://dev.mysql.com/doc/refman/5.1/en/cj-news-5-1-25.html
+   - http://dev.mysql.com/doc/refman/5.1/en/cj-news-5-1-26.html
+   - http://dev.mysql.com/doc/refman/5.1/en/cj-news-5-1-27.html
+
+== 5.1.24
+
+ * upgraded to 5.1.24 JDBC driver, changes since previous release (5.1.22) :
+   - http://dev.mysql.com/doc/refman/5.1/en/cj-news-5-1-23.html
+   - http://dev.mysql.com/doc/refman/5.1/en/cj-news-5-1-24.html
+
+== 5.1.22
+
+ * `require 'jdbc/mysql'` no longer auto-loads use `Jdbc::MySQL.load_driver`
+ * upgraded to 5.1.22 JDBC driver, changes since previous release (5.1.13) :
+   - http://dev.mysql.com/doc/refman/5.1/en/cj-news-5-1-15.html
+   - http://dev.mysql.com/doc/refman/5.1/en/cj-news-5-1-16.html
+   - http://dev.mysql.com/doc/refman/5.1/en/cj-news-5-1-17.html
+   - http://dev.mysql.com/doc/refman/5.1/en/cj-news-5-1-18.html
+   - http://dev.mysql.com/doc/refman/5.1/en/cj-news-5-1-19.html
+   - http://dev.mysql.com/doc/refman/5.1/en/cj-news-5-1-20.html
+   - http://dev.mysql.com/doc/refman/5.1/en/cj-news-5-1-21.html
+   - http://dev.mysql.com/doc/refman/5.1/en/cj-news-5-1-22.html
+
+== 5.1.13
 
 * using MySQL driver 5.1.13
