@@ -8,7 +8,7 @@ Gem::Specification.new do |gem|
 
   gem.authors = ['Nick Sieger, Ola Bini, Karol Bucek and JRuby contributors']
   gem.email = ['nick@nicksieger.com', 'ola.bini@gmail.com', 'self@kares.org']
-  gem.homepage = 'https://github.com/jruby/activerecord-jdbc-adapter'
+  gem.homepage = 'http://github.com/jruby/activerecord-jdbc-adapter/tree/master/jdbc-sqlite3'
   gem.licenses = ['Apache-2']
 
   gem.files = [ 'README.md', 'LICENSE.txt', *Dir['lib/**/*'].to_a ]
