@@ -281,6 +281,7 @@ public class MySQLRubyJdbcConnection extends RubyJdbcConnection {
 
     private static boolean cleanupThreadShutdown;
 
+    @SuppressWarnings("unchecked")
     private static void shutdownCleanupThread() {
         if ( cleanupThreadShutdown ) return;
         try {
@@ -288,19 +289,19 @@ public class MySQLRubyJdbcConnection extends RubyJdbcConnection {
             threadClass.getMethod("shutdown").invoke(null);
         }
         catch (ClassNotFoundException e) {
-            debugMessage("INFO: missing MySQL JDBC cleanup thread: " + e);
+            debugMessage("ArJdbc: missing MySQL JDBC cleanup thread: " + e);
         }
         catch (NoSuchMethodException e) {
-            debugMessage( e.toString() );
+            debugMessage("ArJdbc: " + e);
         }
         catch (IllegalAccessException e) {
-            debugMessage( e.toString() );
+            debugMessage("ArJdbc: " + e);
         }
         catch (InvocationTargetException e) {
-            debugMessage( e.getTargetException().toString() );
+            debugMessage("ArJdbc: " + e.getTargetException());
         }
         catch (SecurityException e) {
-            debugMessage( e.toString() );
+            debugMessage("ArJdbc: " + e);
         }
         finally { cleanupThreadShutdown = true; }
     }
@@ -383,13 +384,13 @@ public class MySQLRubyJdbcConnection extends RubyJdbcConnection {
             }
         }
         catch (ClassNotFoundException e) {
-            debugMessage("INFO: missing MySQL JDBC connection impl: " + e);
+            debugMessage("ArJdbc: missing MySQL JDBC connection impl: " + e);
         }
         catch (NoSuchFieldException e) {
-            debugMessage("INFO: MySQL's cancel timer seems to have changed: " + e);
+            debugMessage("ArJdbc: MySQL's cancel timer seems to have changed: " + e);
         }
         catch (SecurityException e) {
-            debugMessage( e.toString() );
+            debugMessage("ArJdbc: " + e);
         }
         finally { cancelTimerChecked = true; }
         return cancelTimer;
