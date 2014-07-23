@@ -19,6 +19,6 @@ To make the JayBird driver accessible to JDBC and ActiveRecord in JRuby use :
 
 Copyright (c) 2013 [The JRuby Team](https://github.com/jruby).
 
-H2 is dual licensed and available under a modified version of the MPL 1.1
-(Mozilla Public License) or under the (unmodified) EPL 1.0 (Eclipse Public License).
-see *LICENSE.txt* and http://www.h2database.com/html/license.html for more details.
+Firebird is licensed and available under a modified version of the MPL 
+(Initial Developer's Public License ) 
+see  http://www.firebirdsql.org/en/initial-developer-s-public-license-version-1-0/ for more details.
