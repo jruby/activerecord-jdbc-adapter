@@ -1,47 +1,74 @@
-=== 9.2.1004
+== 9.2.1004
 Likely the last release where we bundle JDBC 3.x driver version (Java < 6)
 
 * Upgraded to 9.2-1004 drivers (still compatible with PostgreSQL 7.2+).
 
-=== 9.2.1002
+== 9.3.1102
+
+* Upgraded to driver version 9.3-1102
+
+http://jdbc.postgresql.org/download.html#supported
+Changes https://github.com/pgjdbc/pgjdbc/compare/REL9_3_1101...REL9_3_1102
+
+== 9.3.1101
+
+* Upgraded to driver version 9.3-1101
+
+http://jdbc.postgresql.org/download.html#supported
+Changes https://github.com/pgjdbc/pgjdbc/compare/REL9_3_1100...REL9_3_1101
+
+== 9.3.1100
+
+* Using "new" 9.3 driver version 9.3-1100
+
+== 9.2.1004
+
+Likely the last release where we bundle JDBC 3.x driver version (Java < 6)
+
+* Upgraded to 9.2-1004 drivers (still compatible with PostgreSQL 7.2+).
+
+== 9.2.1002
+
 * Upgraded to 9.2-1002 drivers (still compatible with PostgreSQL 7.2+).
 * 9.2 supports hstore among others
+See PostgreSQL JDBC {Change Log}[http://jdbc.postgresql.org/changes.html#version_9.2-1002].
+First 9.2 release: {9.2-1000}[http://jdbc.postgresql.org/changes.html#version_9.2-1000].
 
-  See PostgreSQL JDBC {Change Log}[http://jdbc.postgresql.org/changes.html#version_9.2-1002].
-  First 9.2 release: {9.2-1000}[http://jdbc.postgresql.org/changes.html#version_9.2-1000].
-
-=== 9.1.903
+== 9.1.903
 * Upgraded to 9.1-903 drivers (still compatible with PostgreSQL 7.2+).
+See PostgreSQL JDBC {Change Log}[http://jdbc.postgresql.org/changes.html#version_9.1-903].
+Though change logging has been a bit spotty of late.
 
-  See PostgreSQL JDBC {Change Log}[http://jdbc.postgresql.org/changes.html#version_9.1-903].
-  Though change logging has been a bit spotty of late.
+== 9.1.901
 
-=== 9.1.901
 * Upgraded to 9.1-901 drivers (still compatible with PostgreSQL 7.2+).
+See PostgreSQL JDBC {Change Log}[http://jdbc.postgresql.org/changes.html#version_9.1-901].
 
-  See PostgreSQL JDBC {Change Log}[http://jdbc.postgresql.org/changes.html#version_9.1-901].
+== 9.0.801
 
-=== 9.0.801
 * Upgraded to 9.0-801 drivers (still compatible with PostgreSQL 7.2+).
+See PostgreSQL JDBC {Change Log}[http://jdbc.postgresql.org/changes.html#version_9.0-801].
 
-  See PostgreSQL JDBC {Change Log}[http://jdbc.postgresql.org/changes.html#version_9.0-801].
 
-=== 8.4.702
+== 8.4.702
 * Upgraded to 8.4-702 drivers, see PostgreSQL JDBC
-  {Change Log}[http://jdbc.postgresql.org/changes.html#version_8.4-702].
+{Change Log}[http://jdbc.postgresql.org/changes.html#version_8.4-702].
 
-=== 8.4.701
+== 8.4.701
+
 * Upgraded to 8.4-701 drivers, see PostgreSQL JDBC
-  {Change Log}[http://jdbc.postgresql.org/changes.html#version_8.4-701].
+{Change Log}[http://jdbc.postgresql.org/changes.html#version_8.4-701].
 
-=== 8.3.605
+== 8.3.605
+
 * Upgraded to 8.3-605 drivers, see PostgreSQL JDBC
-  {Change Log}[http://jdbc.postgresql.org/changes.html#version_8.3-605].
+{Change Log}[http://jdbc.postgresql.org/changes.html#version_8.3-605].
 
-=== 8.3.604
+== 8.3.604
+
 * Upgraded to 8.3-604 drivers
-* Added runtime selection of either JDBC 3 or JDBC 4 (j2se 1.6+)
-  driver.
+* Added runtime selection of either JDBC 3 or JDBC 4 (j2se 1.6+) driver.
 
-=== 8.2
+== 8.2
+
 * Initial version
