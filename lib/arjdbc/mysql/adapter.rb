@@ -332,7 +332,7 @@ module ArJdbc
       sql = "SHOW FULL COLUMNS FROM #{quote_table_name(table_name)}"
       columns = execute(sql, name || 'SCHEMA')
       strict = strict_mode?
-      column = jdbc_column_class
+      column = ::ActiveRecord::ConnectionAdapters::MysqlAdapter::Column
       pass_cast_type = respond_to?(:lookup_cast_type)
       columns.map! do |field|
         sql_type = field['Type']
