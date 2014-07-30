@@ -1440,7 +1440,7 @@ public class RubyJdbcConnection extends RubyObject {
     @JRubyMethod(name = "jndi_lookup", meta = true)
     public static IRubyObject jndi_lookup(final ThreadContext context,
         final IRubyObject self, final IRubyObject name) throws NamingException {
-        final Object bound = lookup( name.toString() );
+        final Object bound = lookup( context, name.toString() );
         return JavaUtil.convertJavaToRuby(context.runtime, bound);
     }
 
@@ -1573,7 +1573,7 @@ public class RubyJdbcConnection extends RubyObject {
         if ( value.isNil() ) {
             value = getConfigValue(context, "jndi");
             final String name = value.toString();
-            dataSource = (DataSource) lookup(name);
+            dataSource = (DataSource) lookup(context, name);
         }
         else {
             dataSource = (DataSource) value.toJava(DataSource.class);
@@ -1590,8 +1590,30 @@ public class RubyJdbcConnection extends RubyObject {
         return initialContext;
     }
 
-    private static Object lookup(final String name) throws NamingException {
-        return getInitialContext().lookup(name);
+    private static Object lookup(final ThreadContext context, final String name) throws NamingException {
+        try {
+            return getInitialContext().lookup(name);
+        }
+        catch (NameNotFoundException e) {
+            final RubyClass errorClass = getConnectionNotEstablished(context.runtime);
+            final String message;
+            if ( name == null || name.isEmpty() ) {
+                message = "unable to lookup data source - no JNDI name given, please set jndi:";
+            }
+            else if ( name.indexOf("env") != -1 ) {
+                final StringBuilder msg = new StringBuilder();
+                msg.append("JNDI name: '").append(name).append("' not found ");
+                msg.append("maybe try using full context name e.g. ");
+                msg.append("java:/comp/env"); // e.g. java:/comp/env/jdbc/MyDS
+                if ( name.charAt(0) != '/' ) msg.append('/');
+                msg.append(name);
+                message = msg.toString();
+            }
+            else {
+                message = "unable to lookup data source - JNDI name: '" + name + "' not bound";
+            }
+            throw wrapException(context, errorClass, e, message);
+        }
     }
 
     protected final IRubyObject getConfig(final ThreadContext context) {
