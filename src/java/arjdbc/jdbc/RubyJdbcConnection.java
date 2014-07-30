@@ -1545,13 +1545,7 @@ public class RubyJdbcConnection extends RubyObject {
     public IRubyObject setup_connection_factory(final ThreadContext context) throws NamingException {
         final IRubyObject config = getConfig(context);
         if ( isJndiConfig(context, config) ) {
-            try {
-                return set_data_source_factory(context);
-            }
-            catch (NamingException e) {
-                if ( e instanceof NameNotFoundException ) throw e;
-                // warn "JNDI data source unavailable: #{e.message}; trying straight JDBC"
-            }
+            return set_data_source_factory(context);
         }
         return set_driver_factory(context);
     }
