@@ -533,18 +533,11 @@ public class RubyJdbcConnection extends RubyObject {
 
     @JRubyMethod(name = "disconnect!")
     public synchronized IRubyObject disconnect(final ThreadContext context) {
-        // TODO: only here to try resolving multi-thread issues :
-        // https://github.com/jruby/activerecord-jdbc-adapter/issues/197
-        // https://github.com/jruby/activerecord-jdbc-adapter/issues/198
-        if ( Boolean.getBoolean("arjdbc.disconnect.debug") ) {
-            final List<?> backtrace = createCallerBacktrace(context);
-            final Ruby runtime = context.runtime;
-            runtime.getOut().println(this + " connection.disconnect! occured: ");
-            for ( Object element : backtrace ) {
-                runtime.getOut().println(element);
-            }
-            runtime.getOut().flush();
-        }
+//        if ( defaultConfig != null && defaultConfig.eql( getConfig(context) ) ) {
+//            synchronized(RubyJdbcConnection.class) {
+//                defaultConfig = null; defaultConnectionFactory = null;
+//            }
+//        }
         return setConnection(null);
     }
 
@@ -1535,6 +1528,9 @@ public class RubyJdbcConnection extends RubyObject {
         return set_connection_factory(context, new DataSourceConnectionFactoryImpl(dataSource));
     }
 
+    private static transient IRubyObject defaultConfig;
+    private static transient IRubyObject defaultConnectionFactory;
+
     /**
      * Sets the connection factory from the available configuration.
      * @param context
@@ -1544,10 +1540,32 @@ public class RubyJdbcConnection extends RubyObject {
     @JRubyMethod(name = "setup_connection_factory", visibility = Visibility.PROTECTED)
     public IRubyObject setup_connection_factory(final ThreadContext context) throws NamingException {
         final IRubyObject config = getConfig(context);
+
+        if ( defaultConfig == null ) {
+            synchronized(RubyJdbcConnection.class) {
+                if ( defaultConfig == null ) {
+                    defaultConfig = config;
+                    if ( isJndiConfig(context, config) ) {
+                        return defaultConnectionFactory = set_data_source_factory(context);
+                    }
+                    else {
+                        return defaultConnectionFactory = set_driver_factory(context);
+                    }
+                }
+            }
+        }
+
+        if ( defaultConfig != null && defaultConfig.eql(config) ) {
+            set_connection_factory(context, defaultConnectionFactory);
+            return defaultConnectionFactory;
+        }
+
         if ( isJndiConfig(context, config) ) {
             return set_data_source_factory(context);
         }
-        return set_driver_factory(context);
+        else {
+            return set_driver_factory(context);
+        }
     }
 
     @JRubyMethod(name = "jndi?", alias = "jndi_connection?")
