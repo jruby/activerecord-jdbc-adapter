@@ -94,6 +94,7 @@ import org.jruby.util.ByteList;
 
 import static arjdbc.util.StringHelper.decByte;
 import static arjdbc.util.StringHelper.readBytes;
+import javax.naming.NameNotFoundException;
 
 
 /**
@@ -1405,9 +1406,13 @@ public class RubyJdbcConnection extends RubyObject {
     @JRubyMethod(name = "jndi_config?", meta = true)
     public static IRubyObject jndi_config_p(final ThreadContext context,
         final IRubyObject self, final IRubyObject config) {
+        return context.runtime.newBoolean( isJndiConfig(context, config) );
+    }
+
+    private static boolean isJndiConfig(final ThreadContext context, final IRubyObject config) {
         // config[:jndi] || config[:data_source]
 
-        final Ruby runtime = context.getRuntime();
+        final Ruby runtime = context.runtime;
 
         IRubyObject configValue;
 
@@ -1426,11 +1431,17 @@ public class RubyJdbcConnection extends RubyObject {
             }
         }
 
-        final IRubyObject rubyFalse = runtime.newBoolean( false );
-        if ( configValue == null || configValue.isNil() || configValue == rubyFalse ) {
-            return rubyFalse;
+        if ( configValue == null || configValue.isNil() || configValue == runtime.newBoolean( false ) ) {
+            return false;
         }
-        return context.getRuntime().newBoolean( true );
+        return true;
+    }
+
+    @JRubyMethod(name = "jndi_lookup", meta = true)
+    public static IRubyObject jndi_lookup(final ThreadContext context,
+        final IRubyObject self, final IRubyObject name) throws NamingException {
+        final Object bound = lookup( name.toString() );
+        return JavaUtil.convertJavaToRuby(context.runtime, bound);
     }
 
     @JRubyMethod(name = "setup_jdbc_factory", visibility = Visibility.PROTECTED)
@@ -1524,13 +1535,34 @@ public class RubyJdbcConnection extends RubyObject {
         return set_connection_factory(context, new DataSourceConnectionFactoryImpl(dataSource));
     }
 
+    /**
+     * Sets the connection factory from the available configuration.
+     * @param context
+     * @see #initialize
+     * @throws NamingException
+     */
+    @JRubyMethod(name = "setup_connection_factory", visibility = Visibility.PROTECTED)
+    public IRubyObject setup_connection_factory(final ThreadContext context) throws NamingException {
+        final IRubyObject config = getConfig(context);
+        if ( isJndiConfig(context, config) ) {
+            try {
+                return set_data_source_factory(context);
+            }
+            catch (NamingException e) {
+                if ( e instanceof NameNotFoundException ) throw e;
+                // warn "JNDI data source unavailable: #{e.message}; trying straight JDBC"
+            }
+        }
+        return set_driver_factory(context);
+    }
+
     @JRubyMethod(name = "jndi?", alias = "jndi_connection?")
     public IRubyObject jndi_p(final ThreadContext context) {
-        return context.getRuntime().newBoolean( getConnectionFactory() instanceof DataSourceConnectionFactoryImpl );
+        return context.runtime.newBoolean( getConnectionFactory() instanceof DataSourceConnectionFactoryImpl );
     }
 
     private IRubyObject set_connection_factory(final ThreadContext context, final ConnectionFactory factory) {
-        final IRubyObject connection_factory = JavaUtil.convertJavaToRuby(context.getRuntime(), factory);
+        final IRubyObject connection_factory = JavaUtil.convertJavaToRuby(context.runtime, factory);
         setConnectionFactory( factory ); //callMethod(context, "connection_factory=", connection_factory);
         return connection_factory;
     }
@@ -1541,7 +1573,7 @@ public class RubyJdbcConnection extends RubyObject {
         if ( value.isNil() ) {
             value = getConfigValue(context, "jndi");
             final String name = value.toString();
-            dataSource = (DataSource) getInitialContext().lookup(name);
+            dataSource = (DataSource) lookup(name);
         }
         else {
             dataSource = (DataSource) value.toJava(DataSource.class);
@@ -1556,6 +1588,10 @@ public class RubyJdbcConnection extends RubyObject {
             return initialContext = new InitialContext();
         }
         return initialContext;
+    }
+
+    private static Object lookup(final String name) throws NamingException {
+        return getInitialContext().lookup(name);
     }
 
     protected final IRubyObject getConfig(final ThreadContext context) {
