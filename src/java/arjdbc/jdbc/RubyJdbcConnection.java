@@ -1540,12 +1540,22 @@ public class RubyJdbcConnection extends RubyObject {
         IRubyObject value = getConfigValue(context, "data_source");
         if ( value.isNil() ) {
             value = getConfigValue(context, "jndi");
-            dataSource = (DataSource) new InitialContext().lookup(value.toString());
+            final String name = value.toString();
+            dataSource = (DataSource) getInitialContext().lookup(name);
         }
         else {
             dataSource = (DataSource) value.toJava(DataSource.class);
         }
         return dataSource;
+    }
+
+    private static InitialContext initialContext;
+
+    private static InitialContext getInitialContext() throws NamingException {
+        if ( initialContext == null ) {
+            return initialContext = new InitialContext();
+        }
+        return initialContext;
     }
 
     protected final IRubyObject getConfig(final ThreadContext context) {
