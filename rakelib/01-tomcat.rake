@@ -1,8 +1,7 @@
-
 namespace :'tomcat-jndi' do # contains a FS JNDI impl (for tests)
-  
+
   TOMCAT_MAVEN_REPO = 'http://repo2.maven.org/maven2/org/apache/tomcat'
-  TOMCAT_VERSION = '7.0.34'
+  TOMCAT_VERSION = '7.0.54'
 
   DOWNLOAD_DIR = File.expand_path('../test/jars', File.dirname(__FILE__))
 
@@ -36,7 +35,7 @@ namespace :'tomcat-jndi' do # contains a FS JNDI impl (for tests)
 
     FileUtils.rm_r temp_dir
   end
-  
+
   task :check do
     jar_path = File.join(DOWNLOAD_DIR, catalina_jar)
     unless File.exist?(jar_path)
