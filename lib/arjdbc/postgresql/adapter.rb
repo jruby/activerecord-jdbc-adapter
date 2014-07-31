@@ -58,10 +58,11 @@ module ArJdbc
     end
 
     def use_insert_returning?
-      if ( @use_insert_returning ||= nil ).nil?
+      if @use_insert_returning.nil?
         @use_insert_returning = supports_insert_with_returning?
       end
-      @use_insert_returning
+
+      !!@use_insert_returning
     end
 
     def set_client_encoding(encoding)
