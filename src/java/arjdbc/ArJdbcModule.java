@@ -28,9 +28,7 @@ import arjdbc.jdbc.RubyJdbcConnection;
 import java.lang.reflect.InvocationTargetException;
 import java.util.Collection;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map;
-import java.util.Set;
 import java.util.WeakHashMap;
 
 import org.jruby.NativeException;
@@ -38,11 +36,12 @@ import org.jruby.Ruby;
 import org.jruby.RubyArray;
 import org.jruby.RubyClass;
 import org.jruby.RubyModule;
+import org.jruby.RubyString;
 import org.jruby.anno.JRubyMethod;
 import org.jruby.exceptions.RaiseException;
-import org.jruby.runtime.Block;
 import org.jruby.runtime.ThreadContext;
 import org.jruby.runtime.builtin.IRubyObject;
+import org.jruby.util.ByteList;
 
 /**
  * ::ArJdbc
@@ -188,14 +187,17 @@ public class ArJdbcModule {
 
     @JRubyMethod(name = "load_driver", meta = true)
     public static IRubyObject load_driver(final ThreadContext context, final IRubyObject self,
-        final IRubyObject const_name) {
-        IRubyObject loaded = loadDriver(context.runtime, const_name.toString());
+        final IRubyObject const_name) { // e.g. load_driver(:MySQL)
+        IRubyObject loaded = loadDriver(context, self, const_name.toString());
         return loaded == null ? context.nil : loaded;
     }
 
+    // NOTE: probably useless - only to be useful for the pooled runtime mode when jar at WEB-INF/lib
     static final Map<Ruby, Map<String, Boolean>> loadedDrivers = new WeakHashMap<Ruby, Map<String, Boolean>>(8);
 
-    public static IRubyObject loadDriver(final Ruby runtime, final String constName) {
+    private static IRubyObject loadDriver(final ThreadContext context, final IRubyObject self,
+        final String constName) {
+        final Ruby runtime = context.runtime;
         // look for "cached" loading result :
         Map<String, Boolean> loadedMap = loadedDrivers.get(runtime);
         if ( loadedMap == null ) {
@@ -215,7 +217,13 @@ public class ArJdbcModule {
         }
 
         try { // require 'jdbc/mysql'
-            runtime.getLoadService().require("jdbc/" + constName.toLowerCase());
+            final byte[] name = new byte[5 + constName.length()]; // 'j','d','b','c','/'
+            name[0] = 'j'; name[1] = 'd'; name[2] = 'b'; name[3] = 'c'; name[4] = '/';
+            for ( int i = 0; i < constName.length(); i++ ) {
+                name[ 5 + i ] = (byte) Character.toLowerCase( constName.charAt(i) );
+            }
+            final RubyString strName = RubyString.newString(runtime, new ByteList(name, false));
+            self.callMethod(context, "require", strName); // require 'jdbc/mysql'
         }
         catch (RaiseException e) { // LoadError
             synchronized (loadedMap) {
