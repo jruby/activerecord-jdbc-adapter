@@ -162,7 +162,7 @@ public abstract class DateTimeUtils {
         final int seconds = time.getSeconds();
         //final int offset = time.getTimezoneOffset();
 
-        DateTime dateTime = new DateTime(0, 1, 1, hours, minutes, seconds);
+        DateTime dateTime = new DateTime(2000, 1, 1, hours, minutes, seconds);
         return RubyTime.newTime(context.runtime, dateTime);
     }
 
