@@ -3492,17 +3492,17 @@ public class RubyJdbcConnection extends RubyObject {
 
             final IRubyObject[] args;
 
-            final RubyArray cols = runtime.newArray(columns.length);
+            final RubyArray cols = RubyArray.newArray(runtime, columns.length);
 
             if ( INIT_COLUMN_TYPES ) { // NOTE: NOT IMPLEMENTED
-                for ( int i=0; i<columns.length; i++ ) {
-                    cols.add( columns[i].name );
+                for ( int i = 0; i < columns.length; i++ ) {
+                    cols.append( columns[i].name );
                 }
                 args = new IRubyObject[] { cols, rows };
             }
             else {
-                for ( int i=0; i<columns.length; i++ ) {
-                    cols.add( columns[i].name );
+                for ( int i = 0; i < columns.length; i++ ) {
+                    cols.append( columns[i].name );
                 }
                 args = new IRubyObject[] { cols, rows };
             }
