@@ -38,6 +38,7 @@ import org.jruby.util.ByteList;
 
 import static arjdbc.jdbc.RubyJdbcConnection.getBase;
 import static arjdbc.util.StringHelper.decByte;
+import org.joda.time.DateTimeZone;
 
 /**
  *
@@ -162,7 +163,7 @@ public abstract class DateTimeUtils {
         final int seconds = time.getSeconds();
         //final int offset = time.getTimezoneOffset();
 
-        DateTime dateTime = new DateTime(2000, 1, 1, hours, minutes, seconds);
+        DateTime dateTime = new DateTime(2000, 1, 1, hours, minutes, seconds, DateTimeZone.UTC);
         return RubyTime.newTime(context.runtime, dateTime);
     }
 
