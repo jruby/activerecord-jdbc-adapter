@@ -94,6 +94,7 @@ import org.jruby.runtime.builtin.IRubyObject;
 import org.jruby.util.ByteList;
 
 import arjdbc.util.DateTimeUtils;
+import arjdbc.util.StringCache;
 import static arjdbc.util.StringHelper.newUTF8String;
 import static arjdbc.util.StringHelper.readBytes;
 
@@ -851,8 +852,6 @@ public class RubyJdbcConnection extends RubyObject {
         final String query, final int maxRows, final Block block, final List<?> binds) {
         return withConnection(context, new Callable<IRubyObject>() {
             public IRubyObject call(final Connection connection) throws SQLException {
-                final Ruby runtime = context.runtime;
-
                 Statement statement = null; ResultSet resultSet = null;
                 try {
                     if ( binds == null ) { // plain statement
@@ -871,10 +870,10 @@ public class RubyJdbcConnection extends RubyObject {
                     if ( block != null && block.isGiven() ) {
                         // yield(id1, name1) ... row 1 result data
                         // yield(id2, name2) ... row 2 result data
-                        return yieldResultRows(context, runtime, connection, resultSet, block);
+                        return yieldResultRows(context, connection, resultSet, block);
                     }
 
-                    return mapToRawResult(context, runtime, connection, resultSet, false);
+                    return mapToRawResult(context, connection, resultSet, false);
                 }
                 catch (final SQLException e) {
                     debugErrorSQL(context, query);
@@ -1015,19 +1014,17 @@ public class RubyJdbcConnection extends RubyObject {
 
     private IRubyObject mapQueryResult(final ThreadContext context,
         final Connection connection, final ResultSet resultSet) throws SQLException {
-        final Ruby runtime = context.runtime;
-        final ColumnData[] columns = extractColumns(runtime, connection, resultSet, false);
-        return mapToResult(context, runtime, connection, resultSet, columns);
+        final ColumnData[] columns = extractColumns(context, connection, resultSet, false);
+        return mapToResult(context, context.runtime, connection, resultSet, columns);
     }
 
     @JRubyMethod(name = "supported_data_types")
     public IRubyObject supported_data_types(final ThreadContext context) throws SQLException {
-        final Ruby runtime = context.runtime;
         final Connection connection = getConnection(true);
         final ResultSet typeDesc = connection.getMetaData().getTypeInfo();
         final IRubyObject types;
         try {
-            types = mapToRawResult(context, runtime, connection, typeDesc, true);
+            types = mapToRawResult(context, connection, typeDesc, true);
         }
         finally { close(typeDesc); }
 
@@ -3147,7 +3144,7 @@ public class RubyJdbcConnection extends RubyObject {
         IRubyObject result;
         ResultSet resultSet = statement.getResultSet();
         try {
-            result = mapToRawResult(context, runtime, connection, resultSet, downCase);
+            result = mapToRawResult(context, connection, resultSet, downCase);
         }
         finally { close(resultSet); }
 
@@ -3159,7 +3156,7 @@ public class RubyJdbcConnection extends RubyObject {
         do {
             resultSet = statement.getResultSet();
             try {
-                result = mapToRawResult(context, runtime, connection, resultSet, downCase);
+                result = mapToRawResult(context, connection, resultSet, downCase);
             }
             finally { close(resultSet); }
 
@@ -3176,24 +3173,25 @@ public class RubyJdbcConnection extends RubyObject {
      * @param downCase should column names only be in lower case?
      */
     @SuppressWarnings("unchecked")
-    private IRubyObject mapToRawResult(final ThreadContext context, final Ruby runtime,
+    private IRubyObject mapToRawResult(final ThreadContext context,
             final Connection connection, final ResultSet resultSet,
             final boolean downCase) throws SQLException {
 
-        final ColumnData[] columns = extractColumns(runtime, connection, resultSet, downCase);
+        final ColumnData[] columns = extractColumns(context, connection, resultSet, downCase);
 
-        final RubyArray results = runtime.newArray();
+        final RubyArray results = context.runtime.newArray();
         // [ { 'col1': 1, 'col2': 2 }, { 'col1': 3, 'col2': 4 } ]
-        populateFromResultSet(context, runtime, (List<IRubyObject>) results, resultSet, columns);
+        populateFromResultSet(context, context.runtime, (List<IRubyObject>) results, resultSet, columns);
         return results;
     }
 
-    private IRubyObject yieldResultRows(final ThreadContext context, final Ruby runtime,
+    private IRubyObject yieldResultRows(final ThreadContext context,
             final Connection connection, final ResultSet resultSet,
             final Block block) throws SQLException {
 
-        final ColumnData[] columns = extractColumns(runtime, connection, resultSet, false);
+        final ColumnData[] columns = extractColumns(context, connection, resultSet, false);
 
+        final Ruby runtime = context.runtime;
         final IRubyObject[] blockArgs = new IRubyObject[columns.length];
         while ( resultSet.next() ) {
             for ( int i = 0; i < columns.length; i++ ) {
@@ -3215,10 +3213,20 @@ public class RubyJdbcConnection extends RubyObject {
      * @return columns data
      * @throws SQLException
      */
+    protected ColumnData[] extractColumns(final ThreadContext context,
+        final Connection connection, final ResultSet resultSet,
+        final boolean downCase) throws SQLException {
+        return setupColumns(context, connection, resultSet.getMetaData(), downCase);
+    }
+
+    /**
+     * @deprecated use {@link #extractColumns(ThreadContext, Connection, ResultSet, boolean)}
+     */
+    @Deprecated
     protected ColumnData[] extractColumns(final Ruby runtime,
         final Connection connection, final ResultSet resultSet,
         final boolean downCase) throws SQLException {
-        return setupColumns(runtime, connection, resultSet.getMetaData(), downCase);
+        return extractColumns(runtime.getCurrentContext(), connection, resultSet, downCase);
     }
 
     protected <T> T withConnection(final ThreadContext context, final Callable<T> block)
@@ -3462,7 +3470,7 @@ public class RubyJdbcConnection extends RubyObject {
             final ColumnData[] columns, final IRubyObject rows) { // rows array
             // ActiveRecord::Result.new(columns, rows)
             final RubyClass result = getResult(runtime);
-            return result.callMethod( context, "new", initArgs(runtime, columns, rows), Block.NULL_BLOCK );
+            return result.callMethod( context, "new", initArgs(context, runtime, columns, rows), Block.NULL_BLOCK );
         }
 
         final IRubyObject mapRawRow(final ThreadContext context, final Ruby runtime,
@@ -3473,7 +3481,7 @@ public class RubyJdbcConnection extends RubyObject {
 
             for ( int i = 0; i < columns.length; i++ ) {
                 final ColumnData column = columns[i];
-                row.op_aset( context, column.name,
+                row.op_aset( context, column.getName(context),
                     connection.jdbcToRuby(context, runtime, column.index, column.type, resultSet)
                 );
             }
@@ -3481,8 +3489,8 @@ public class RubyJdbcConnection extends RubyObject {
             return row;
         }
 
-        private static IRubyObject[] initArgs(final Ruby runtime,
-            final ColumnData[] columns, final IRubyObject rows) {
+        private static IRubyObject[] initArgs(final ThreadContext context,
+            final Ruby runtime, final ColumnData[] columns, final IRubyObject rows) {
 
             final IRubyObject[] args;
 
@@ -3490,13 +3498,13 @@ public class RubyJdbcConnection extends RubyObject {
 
             if ( INIT_COLUMN_TYPES ) { // NOTE: NOT IMPLEMENTED
                 for ( int i = 0; i < columns.length; i++ ) {
-                    cols.append( columns[i].name );
+                    cols.append( columns[i].getName(context) );
                 }
                 args = new IRubyObject[] { cols, rows };
             }
             else {
                 for ( int i = 0; i < columns.length; i++ ) {
-                    cols.append( columns[i].name );
+                    cols.append( columns[i].getName(context) );
                 }
                 args = new IRubyObject[] { cols, rows };
             }
@@ -3601,27 +3609,56 @@ public class RubyJdbcConnection extends RubyObject {
         return extractTableName(connection, null, schema, tableName);
     }
 
+    private static final StringCache STRING_CACHE = new StringCache();
+
     protected static final class ColumnData {
 
-        public final RubyString name;
+        @Deprecated
+        public RubyString name;
         public final int index;
         public final int type;
 
+        private final String label;
+
+        @Deprecated
         public ColumnData(RubyString name, int type, int idx) {
             this.name = name;
             this.type = type;
             this.index = idx;
+
+            this.label = name.toString();
+        }
+
+        public ColumnData(String label, int type, int idx) {
+            this.label = label;
+            this.type = type;
+            this.index = idx;
+        }
+
+        // NOTE: meant temporary for others to update from accesing name
+        ColumnData(ThreadContext context, String label, int type, int idx) {
+            this(label, type, idx);
+            name = STRING_CACHE.get(context, label);
+        }
+
+        public String getName() {
+            return label;
+        }
+
+        RubyString getName(final ThreadContext context) {
+            if ( name != null ) return name;
+            return name = STRING_CACHE.get(context, label);
         }
 
         @Override
         public String toString() {
-            return "'" + name + "'i" + index + "t" + type + "";
+            return "'" + label + "'i" + index + "t" + type + "";
         }
 
     }
 
     private ColumnData[] setupColumns(
-            final Ruby runtime,
+            final ThreadContext context,
             final Connection connection,
             final ResultSetMetaData resultMetaData,
             final boolean downCase) throws SQLException {
@@ -3636,9 +3673,8 @@ public class RubyJdbcConnection extends RubyObject {
             } else {
                 name = caseConvertIdentifierForRails(connection, name);
             }
-            final RubyString columnName = RubyString.newUnicodeString(runtime, name);
             final int columnType = resultMetaData.getColumnType(i);
-            columns[i - 1] = new ColumnData(columnName, columnType, i);
+            columns[i - 1] = new ColumnData(context, name, columnType, i);
         }
 
         return columns;
