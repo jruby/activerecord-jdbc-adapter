@@ -28,6 +28,7 @@ import java.sql.Time;
 import java.sql.Timestamp;
 
 import org.joda.time.DateTime;
+import org.joda.time.DateTimeZone;
 import org.jruby.RubyClass;
 import org.jruby.RubyFloat;
 import org.jruby.RubyString;
@@ -38,10 +39,9 @@ import org.jruby.util.ByteList;
 
 import static arjdbc.jdbc.RubyJdbcConnection.getBase;
 import static arjdbc.util.StringHelper.decByte;
-import org.joda.time.DateTimeZone;
 
 /**
- *
+ * Utilities for handling/converting dates and times.
  * @author kares
  */
 public abstract class DateTimeUtils {
@@ -171,15 +171,27 @@ public abstract class DateTimeUtils {
     public static IRubyObject newTime(final ThreadContext context, final Timestamp timestamp) {
         //if ( time == null ) return context.nil;
 
-        int year = timestamp.getYear() + 1900;
-        int month = timestamp.getMonth() + 1;
-        int day = timestamp.getDate();
-        int hours = timestamp.getHours();
-        int minutes = timestamp.getMinutes();
-        int seconds = timestamp.getSeconds();
-        int nanos = timestamp.getNanos();
+        final int year = timestamp.getYear() + 1900;
+        final int month = timestamp.getMonth() + 1;
+        final int day = timestamp.getDate();
+        final int hours = timestamp.getHours();
+        final int minutes = timestamp.getMinutes();
+        final int seconds = timestamp.getSeconds();
+        final int nanos = timestamp.getNanos(); // max 999-999-999
 
-        DateTime dateTime = new DateTime(year, month, day, hours, minutes, seconds, nanos / 1000);
+        DateTime dateTime = new DateTime(year, month, day, hours, minutes, seconds, 0);
+        return RubyTime.newTime(context.runtime, dateTime, nanos);
+    }
+
+    @SuppressWarnings("deprecation")
+    public static IRubyObject newTime(final ThreadContext context, final Date date) {
+        //if ( time == null ) return context.nil;
+
+        final int year = date.getYear() + 1900;
+        final int month = date.getMonth() + 1;
+        final int day = date.getDate();
+
+        DateTime dateTime = new DateTime(year, month, day, 0, 0, 0, 0);
         return RubyTime.newTime(context.runtime, dateTime);
     }
 
@@ -228,6 +240,202 @@ public abstract class DateTimeUtils {
     public static String getDefaultTimeZone(final ThreadContext context) {
         final RubyClass base = getBase(context.runtime);
         return base.callMethod(context, "default_timezone").toString(); // :utc
+    }
+
+    public static RubyTime parseDateTime(final ThreadContext context, final String str) {
+
+        boolean hasDate = false;
+        int year = 2000; int month = 1; int day = 1;
+        boolean hasTime = false;
+        int minute = 0; int hour = 0; int second = 0;
+        int nanos = 0;
+
+        DateTimeZone zone = null; boolean bcEra = false;
+
+        // We try to parse these fields in order; all are optional
+        // (but some combinations don't make sense, e.g. if you have
+        //  both date and time then they must be whitespace-separated).
+        // At least one of date and time must be present.
+
+        //   leading whitespace
+        //   yyyy-mm-dd
+        //   whitespace
+        //   hh:mm:ss
+        //   whitespace
+        //   timezone in one of the formats:  +hh, -hh, +hh:mm, -hh:mm
+        //   whitespace
+        //   if date is present, an era specifier: AD or BC
+        //   trailing whitespace
+
+        final int len = str.length();
+
+        int start = skipWhitespace(str, 0, len); // Skip leading whitespace
+        int end = firstNonDigit(str, start, len);
+        int num; char sep;
+
+        // Possibly read date.
+        if ( end < len && str.charAt(end) == '-' ) {
+            hasDate = true;
+
+            // year
+            year = number(str, start, end);
+            start = end + 1; // Skip '-'
+
+            // month
+            end = firstNonDigit(str, start, len);
+            month = number(str, start, end);
+
+            sep = str.charAt(end);
+            if ( sep != '-' ) {
+                throw new NumberFormatException("expected date to be dash-separated, got '" + sep + "'");
+            }
+
+            start = end + 1; // Skip '-'
+
+            // day of month
+            end = firstNonDigit(str, start, len);
+            day = number(str, start, end);
+
+            start = skipWhitespace(str, end, len); // Skip trailing whitespace
+        }
+
+        // Possibly read time.
+        if ( start < len && Character.isDigit( str.charAt(start) ) ) {
+            hasTime = true;
+
+            // hours
+            end = firstNonDigit(str, start, len);
+            hour = number(str, start, end);
+
+            sep = str.charAt(end);
+            if ( sep != ':' ) {
+                throw new NumberFormatException("expected time to be colon-separated, got '" + sep + "'");
+            }
+
+            start = end + 1; // Skip ':'
+
+            // minutes
+            end = firstNonDigit(str, start, len);
+            minute = number(str, start, end);
+
+            sep = str.charAt(end);
+            if ( sep != ':' ) {
+                throw new NumberFormatException("expected time to be colon-separated, got '" + sep + "'");
+            }
+
+            start = end + 1; // Skip ':'
+
+            // seconds
+            end = firstNonDigit(str, start, len);
+            second = number(str, start, end);
+            start = end;
+
+            // Fractional seconds.
+            if ( start < len && str.charAt(start) == '.' ) {
+                end = firstNonDigit(str, start + 1, len); // Skip '.'
+                num = number(str, start + 1, end);
+
+                for (int numlength = (end - (start+1)); numlength < 9; ++numlength)
+                    num *= 10;
+
+                nanos = num;
+                start = end;
+            }
+
+            start = skipWhitespace(str, start, len); // Skip trailing whitespace
+        }
+
+        // Possibly read timezone.
+        sep = start < len ? str.charAt(start) : '\0';
+        if ( sep == '+' || sep == '-' ) {
+            int zoneSign = (sep == '-') ? -1 : 1;
+            int hoursOffset, minutesOffset, secondsOffset;
+
+            end = firstNonDigit(str, start + 1, len);    // Skip +/-
+            hoursOffset = number(str, start + 1, end);
+            start = end;
+
+            if ( start < len && str.charAt(start) == ':' ) {
+                end = firstNonDigit(str, start + 1, len);  // Skip ':'
+                minutesOffset = number(str, start + 1, end);
+                start = end;
+            } else {
+                minutesOffset = 0;
+            }
+
+            secondsOffset = 0;
+            //if (min82) {
+                if ( start < len && str.charAt(start) == ':' ) {
+                    end = firstNonDigit(str, start + 1, len);  // Skip ':'
+                    secondsOffset = number(str, start + 1, end);
+                    start = end;
+                }
+            //}
+
+            // Setting offset does not seem to work correctly in all
+            // cases.. So get a fresh calendar for a synthetic timezone
+            // instead
+
+            int offset = zoneSign * hoursOffset * 60;
+            if (offset < 0) {
+                offset = offset - Math.abs(minutesOffset);
+            } else {
+                offset = offset + minutesOffset;
+            }
+            offset = (offset * 60 + secondsOffset) * 1000;
+            zone = DateTimeZone.forOffsetMillis(offset);
+
+            start = skipWhitespace(str, start, len); // Skip trailing whitespace
+        }
+
+        if ( hasDate && start < len ) {
+            final char e1 = str.charAt(start);
+            if ( e1 == 'A' && str.charAt(start + 1) == 'D' ) {
+                bcEra = false; start += 2;
+            }
+            else if ( e1 == 'B' && str.charAt(start + 1) == 'C' ) {
+                bcEra = true; start += 2;
+            }
+        }
+
+        if ( start < len ) {
+            throw new NumberFormatException("trailing junk on timestamp: '" + str.substring(start, len - start) + "'");
+        }
+        if ( ! hasTime && ! hasDate ) {
+            throw new NumberFormatException("'"+ str +"' has neither date nor time");
+        }
+
+        if ( bcEra ) year = -1 * year;
+
+        if ( zone == null ) {
+            zone = isDefaultTimeZoneUTC(context) ? DateTimeZone.UTC : DateTimeZone.getDefault();
+        }
+
+        DateTime dateTime = new DateTime(year, month, day, hour, minute, second, 0, zone);
+        return RubyTime.newTime(context.runtime, dateTime, nanos);
+    }
+
+    @SuppressWarnings("deprecation")
+    private static int skipWhitespace(String str, int beg, int len) {
+        for ( int i = beg; i < len; i++ ) {
+            if ( ! Character.isSpace( str.charAt(i) ) ) return i;
+        }
+        return len;
+    }
+
+    private static int firstNonDigit(String str, int beg, int len) {
+        for ( int i = beg; i < len; i++ ) {
+            if ( ! Character.isDigit( str.charAt(i) ) ) return i;
+        }
+        return len;
+    }
+
+    private static int number(String str, int beg, int end) {
+        int n = 0;
+        for ( int i = beg; i < end; i++ ) {
+            n = 10 * n + ( str.charAt(i) - '0' );
+        }
+        return n;
     }
 
 }
