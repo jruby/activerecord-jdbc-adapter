@@ -29,7 +29,9 @@ import java.sql.Timestamp;
 
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
+import org.jruby.Ruby;
 import org.jruby.RubyClass;
+import org.jruby.RubyFixnum;
 import org.jruby.RubyFloat;
 import org.jruby.RubyString;
 import org.jruby.RubyTime;
@@ -242,7 +244,49 @@ public abstract class DateTimeUtils {
         return base.callMethod(context, "default_timezone").toString(); // :utc
     }
 
-    public static RubyTime parseDateTime(final ThreadContext context, final String str) {
+    public static IRubyObject parseDate(final ThreadContext context, final String str)
+        throws IllegalArgumentException {
+        final int len = str.length();
+
+        int year; int month; int day;
+
+        int start = nonSpaceIndex(str, 0, len); // Skip leading whitespace
+        int end = nonDigitIndex(str, start, len);
+
+        if ( end >= len ) {
+            throw new IllegalArgumentException("unexpected date value: '" + str + "'");
+        }
+
+        // year
+        year = extractIntValue(str, start, end);
+        start = end + 1; // Skip '-'
+
+        // month
+        end = nonDigitIndex(str, start, len);
+        month = extractIntValue(str, start, end);
+
+        //sep = str.charAt(end);
+        //if ( sep != '-' ) {
+        //    throw new NumberFormatException("expected date to be dash-separated, got '" + sep + "'");
+        //}
+
+        start = end + 1; // Skip '-'
+
+        // day of month
+        end = nonDigitIndex(str, start, len);
+        day = extractIntValue(str, start, end);
+
+        final Ruby runtime = context.runtime;
+        return runtime.getClass("Date").
+            callMethod(context, "new", new IRubyObject[] {
+                RubyFixnum.newFixnum(runtime, year),
+                RubyFixnum.newFixnum(runtime, month),
+                RubyFixnum.newFixnum(runtime, day)
+        });
+    }
+
+    public static RubyTime parseDateTime(final ThreadContext context, final String str)
+        throws IllegalArgumentException {
 
         boolean hasDate = false;
         int year = 2000; int month = 1; int day = 1;
@@ -269,34 +313,34 @@ public abstract class DateTimeUtils {
 
         final int len = str.length();
 
-        int start = skipWhitespace(str, 0, len); // Skip leading whitespace
-        int end = firstNonDigit(str, start, len);
-        int num; char sep;
+        int start = nonSpaceIndex(str, 0, len); // Skip leading whitespace
+        int end = nonDigitIndex(str, start, len);
+        int num;
 
         // Possibly read date.
         if ( end < len && str.charAt(end) == '-' ) {
             hasDate = true;
 
             // year
-            year = number(str, start, end);
+            year = extractIntValue(str, start, end);
             start = end + 1; // Skip '-'
 
             // month
-            end = firstNonDigit(str, start, len);
-            month = number(str, start, end);
+            end = nonDigitIndex(str, start, len);
+            month = extractIntValue(str, start, end);
 
-            sep = str.charAt(end);
+            char sep = str.charAt(end);
             if ( sep != '-' ) {
-                throw new NumberFormatException("expected date to be dash-separated, got '" + sep + "'");
+                throw new IllegalArgumentException("expected date to be dash-separated, got '" + sep + "'");
             }
 
             start = end + 1; // Skip '-'
 
             // day of month
-            end = firstNonDigit(str, start, len);
-            day = number(str, start, end);
+            end = nonDigitIndex(str, start, len);
+            day = extractIntValue(str, start, end);
 
-            start = skipWhitespace(str, end, len); // Skip trailing whitespace
+            start = nonSpaceIndex(str, end, len); // Skip trailing whitespace
         }
 
         // Possibly read time.
@@ -304,36 +348,36 @@ public abstract class DateTimeUtils {
             hasTime = true;
 
             // hours
-            end = firstNonDigit(str, start, len);
-            hour = number(str, start, end);
+            end = nonDigitIndex(str, start, len);
+            hour = extractIntValue(str, start, end);
 
-            sep = str.charAt(end);
-            if ( sep != ':' ) {
-                throw new NumberFormatException("expected time to be colon-separated, got '" + sep + "'");
-            }
+            //sep = str.charAt(end);
+            //if ( sep != ':' ) {
+            //    throw new IllegalArgumentException("expected time to be colon-separated, got '" + sep + "'");
+            //}
 
             start = end + 1; // Skip ':'
 
             // minutes
-            end = firstNonDigit(str, start, len);
-            minute = number(str, start, end);
+            end = nonDigitIndex(str, start, len);
+            minute = extractIntValue(str, start, end);
 
-            sep = str.charAt(end);
-            if ( sep != ':' ) {
-                throw new NumberFormatException("expected time to be colon-separated, got '" + sep + "'");
-            }
+            //sep = str.charAt(end);
+            //if ( sep != ':' ) {
+            //    throw new IllegalArgumentException("expected time to be colon-separated, got '" + sep + "'");
+            //}
 
             start = end + 1; // Skip ':'
 
             // seconds
-            end = firstNonDigit(str, start, len);
-            second = number(str, start, end);
+            end = nonDigitIndex(str, start, len);
+            second = extractIntValue(str, start, end);
             start = end;
 
             // Fractional seconds.
             if ( start < len && str.charAt(start) == '.' ) {
-                end = firstNonDigit(str, start + 1, len); // Skip '.'
-                num = number(str, start + 1, end);
+                end = nonDigitIndex(str, start + 1, len); // Skip '.'
+                num = extractIntValue(str, start + 1, end);
 
                 for (int numlength = (end - (start+1)); numlength < 9; ++numlength)
                     num *= 10;
@@ -342,35 +386,33 @@ public abstract class DateTimeUtils {
                 start = end;
             }
 
-            start = skipWhitespace(str, start, len); // Skip trailing whitespace
+            start = nonSpaceIndex(str, start, len); // Skip trailing whitespace
         }
 
         // Possibly read timezone.
-        sep = start < len ? str.charAt(start) : '\0';
+        char sep = start < len ? str.charAt(start) : '\0';
         if ( sep == '+' || sep == '-' ) {
             int zoneSign = (sep == '-') ? -1 : 1;
             int hoursOffset, minutesOffset, secondsOffset;
 
-            end = firstNonDigit(str, start + 1, len);    // Skip +/-
-            hoursOffset = number(str, start + 1, end);
+            end = nonDigitIndex(str, start + 1, len);    // Skip +/-
+            hoursOffset = extractIntValue(str, start + 1, end);
             start = end;
 
             if ( start < len && str.charAt(start) == ':' ) {
-                end = firstNonDigit(str, start + 1, len);  // Skip ':'
-                minutesOffset = number(str, start + 1, end);
+                end = nonDigitIndex(str, start + 1, len);  // Skip ':'
+                minutesOffset = extractIntValue(str, start + 1, end);
                 start = end;
             } else {
                 minutesOffset = 0;
             }
 
             secondsOffset = 0;
-            //if (min82) {
-                if ( start < len && str.charAt(start) == ':' ) {
-                    end = firstNonDigit(str, start + 1, len);  // Skip ':'
-                    secondsOffset = number(str, start + 1, end);
-                    start = end;
-                }
-            //}
+            if ( start < len && str.charAt(start) == ':' ) {
+                end = nonDigitIndex(str, start + 1, len);  // Skip ':'
+                secondsOffset = extractIntValue(str, start + 1, end);
+                start = end;
+            }
 
             // Setting offset does not seem to work correctly in all
             // cases.. So get a fresh calendar for a synthetic timezone
@@ -385,7 +427,7 @@ public abstract class DateTimeUtils {
             offset = (offset * 60 + secondsOffset) * 1000;
             zone = DateTimeZone.forOffsetMillis(offset);
 
-            start = skipWhitespace(str, start, len); // Skip trailing whitespace
+            start = nonSpaceIndex(str, start, len); // Skip trailing whitespace
         }
 
         if ( hasDate && start < len ) {
@@ -399,10 +441,10 @@ public abstract class DateTimeUtils {
         }
 
         if ( start < len ) {
-            throw new NumberFormatException("trailing junk on timestamp: '" + str.substring(start, len - start) + "'");
+            throw new IllegalArgumentException("trailing junk: '" + str.substring(start, len - start) + "' on '" + str + "'");
         }
         if ( ! hasTime && ! hasDate ) {
-            throw new NumberFormatException("'"+ str +"' has neither date nor time");
+            throw new IllegalArgumentException("'"+ str +"' has neither date nor time");
         }
 
         if ( bcEra ) year = -1 * year;
@@ -416,21 +458,21 @@ public abstract class DateTimeUtils {
     }
 
     @SuppressWarnings("deprecation")
-    private static int skipWhitespace(String str, int beg, int len) {
+    private static int nonSpaceIndex(final String str, int beg, int len) {
         for ( int i = beg; i < len; i++ ) {
             if ( ! Character.isSpace( str.charAt(i) ) ) return i;
         }
         return len;
     }
 
-    private static int firstNonDigit(String str, int beg, int len) {
+    private static int nonDigitIndex(final String str, int beg, int len) {
         for ( int i = beg; i < len; i++ ) {
             if ( ! Character.isDigit( str.charAt(i) ) ) return i;
         }
         return len;
     }
 
-    private static int number(String str, int beg, int end) {
+    private static int extractIntValue(final String str, int beg, int end) {
         int n = 0;
         for ( int i = beg; i < end; i++ ) {
             n = 10 * n + ( str.charAt(i) - '0' );
