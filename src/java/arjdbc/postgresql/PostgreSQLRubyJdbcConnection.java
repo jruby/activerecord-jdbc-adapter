@@ -512,6 +512,26 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
     }
 
     @Override
+    protected IRubyObject dateToRuby(final ThreadContext context,
+        final Ruby runtime, final ResultSet resultSet, final int column)
+        throws SQLException {
+
+        if ( rawDateTime != null && rawDateTime.booleanValue() ) {
+            final byte[] value = resultSet.getBytes(column);
+            if ( value == null ) {
+                if ( resultSet.wasNull() ) return runtime.getNil();
+                return runtime.newString(); // ""
+            }
+            return RubyString.newString(runtime, new ByteList(value, false));
+        }
+
+        final String value = resultSet.getString(column);
+        if ( value == null ) return runtime.getNil();
+
+        return DateTimeUtils.parseDate(context, value);
+    }
+
+    @Override
     protected IRubyObject timeToRuby(final ThreadContext context,
         final Ruby runtime, final ResultSet resultSet, final int column)
         throws SQLException {
