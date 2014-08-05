@@ -1935,17 +1935,13 @@ public class RubyJdbcConnection extends RubyObject {
         throws SQLException {
 
         final Date value = resultSet.getDate(column);
-        if ( value == null ) {
-            if ( resultSet.wasNull() ) return runtime.getNil();
-            return runtime.newString(); // ""
+        if ( value == null ) return runtime.getNil();
+
+        if ( rawDateTime != null && rawDateTime.booleanValue() ) {
+            return RubyString.newString(runtime, DateTimeUtils.dateToString(value));
         }
 
-        final RubyString strValue = RubyString.newString(runtime, DateTimeUtils.dateToString(value));
-        if ( rawDateTime != null && rawDateTime.booleanValue() ) return strValue;
-
-        final IRubyObject adapter = callMethod(context, "adapter"); // self.adapter
-        if ( adapter.isNil() ) return strValue; // NOTE: we warn on init_connection
-        return adapter.callMethod(context, "_string_to_date", strValue);
+        return DateTimeUtils.newTime(context, value).callMethod(context, "to_date");
     }
 
     protected IRubyObject timeToRuby(final ThreadContext context,
@@ -2080,7 +2076,7 @@ public class RubyJdbcConnection extends RubyObject {
         throws SQLException {
         final Object value = resultSet.getObject(column);
 
-        if ( value == null && resultSet.wasNull() ) return runtime.getNil();
+        if ( value == null || resultSet.wasNull() ) return runtime.getNil();
 
         return JavaUtil.convertJavaToRuby(runtime, value);
     }
@@ -2090,7 +2086,7 @@ public class RubyJdbcConnection extends RubyObject {
         throws SQLException {
         final Array value = resultSet.getArray(column);
         try {
-            if ( value == null && resultSet.wasNull() ) return runtime.getNil();
+            if ( value == null || resultSet.wasNull() ) return runtime.getNil();
 
             final RubyArray array = runtime.newArray();
 
