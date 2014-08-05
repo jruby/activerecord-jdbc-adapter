@@ -25,8 +25,6 @@
  ***** END LICENSE BLOCK *****/
 package arjdbc.postgresql;
 
-import arjdbc.jdbc.DriverWrapper;
-
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.lang.reflect.InvocationTargetException;
@@ -65,7 +63,8 @@ import org.postgresql.jdbc4.Jdbc4Array;
 import org.postgresql.util.PGInterval;
 import org.postgresql.util.PGobject;
 
-import static arjdbc.util.StringHelper.newUTF8String;
+import arjdbc.jdbc.DriverWrapper;
+import arjdbc.util.DateTimeUtils;
 
 /**
  *
@@ -513,39 +512,45 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
     }
 
     @Override
+    protected IRubyObject timeToRuby(final ThreadContext context,
+        final Ruby runtime, final ResultSet resultSet, final int column)
+        throws SQLException {
+        return timestampToRuby(context, runtime, resultSet, column);
+    }
+
+    @Override
     protected IRubyObject timestampToRuby(final ThreadContext context,
         final Ruby runtime, final ResultSet resultSet, final int column)
         throws SQLException {
-        // NOTE: using Timestamp we loose information such as BC :
-        // Timestamp: '0001-12-31 22:59:59.0' String: '0001-12-31 22:59:59 BC'
-        final byte[] value = resultSet.getBytes(column);
-        if ( value == null ) {
-            if ( resultSet.wasNull() ) return runtime.getNil();
-            return runtime.newString(); // ""
+
+        if ( rawDateTime != null && rawDateTime.booleanValue() ) {
+            final byte[] value = resultSet.getBytes(column);
+            if ( value == null ) {
+                if ( resultSet.wasNull() ) return runtime.getNil();
+                return runtime.newString(); // ""
+            }
+            return RubyString.newString(runtime, new ByteList(value, false));
         }
 
-        final RubyString strValue = RubyString.newString(runtime, new ByteList(value, false));
-        if ( rawDateTime != null && rawDateTime.booleanValue() ) return strValue;
+        // NOTE: using Timestamp we would loose information such as BC :
+        // Timestamp: '0001-12-31 22:59:59.0' String: '0001-12-31 22:59:59 BC'
 
-        final IRubyObject adapter = callMethod(context, "adapter"); // self.adapter
-        if ( adapter.isNil() ) return strValue; // NOTE: we warn on init_connection
-        return adapter.callMethod(context, "_string_to_timestamp", strValue);
+        final String value = resultSet.getString(column);
+        if ( value == null ) return runtime.getNil();
+
+        return parseDateTime(context, value);
     }
 
-    @Override // optimized String -> byte[]
-    protected IRubyObject stringToRuby(final ThreadContext context,
-        final Ruby runtime, final ResultSet resultSet, final int column)
-        throws SQLException {
-        final byte[] value = resultSet.getBytes(column);
-        if ( value == null && resultSet.wasNull() ) return runtime.getNil();
-        return newUTF8String(runtime, value);
-    }
-
-    @Override // optimized CLOBs
-    protected IRubyObject readerToRuby(final ThreadContext context,
-        final Ruby runtime, final ResultSet resultSet, final int column)
-        throws SQLException {
-        return stringToRuby(context, runtime, resultSet, column);
+    // string_to_time
+    private static IRubyObject parseDateTime(final ThreadContext context, String value) {
+        final int len = value.length();
+        if ( (len == 8 || len == 9) && value.charAt(len - 1) == 'y' ) {
+            if ( value.charAt(0) == '-' ) { // 'infinity' / '-infinity'
+                return RubyFloat.newFloat(context.runtime, -RubyFloat.INFINITY);
+            }
+            return RubyFloat.newFloat(context.runtime, RubyFloat.INFINITY);
+        }
+        return DateTimeUtils.parseDateTime(context, value);
     }
 
     @Override // optimized String -> byte[]
@@ -554,7 +559,7 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
         throws SQLException {
         if ( bigDecimalExt ) { // "optimized" path (JRuby 1.7+)
             final BigDecimal value = resultSet.getBigDecimal(column);
-            if ( value == null && resultSet.wasNull() ) return runtime.getNil();
+            if ( value == null || resultSet.wasNull() ) return runtime.getNil();
             return new org.jruby.ext.bigdecimal.RubyBigDecimal(runtime, value);
         }
 
@@ -576,7 +581,7 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
         // Method org.postgresql.jdbc4.Jdbc4Array.free() is not yet implemented.
         final Array value = resultSet.getArray(column);
 
-        if ( value == null && resultSet.wasNull() ) return runtime.getNil();
+        if ( value == null || resultSet.wasNull() ) return runtime.getNil();
 
         final RubyArray array = runtime.newArray();
 
@@ -595,7 +600,7 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
 
         final Object object = resultSet.getObject(column);
 
-        if ( object == null && resultSet.wasNull() ) return runtime.getNil();
+        if ( object == null || resultSet.wasNull() ) return runtime.getNil();
 
         final Class<?> objectClass = object.getClass();
         if ( objectClass == UUID.class ) {
