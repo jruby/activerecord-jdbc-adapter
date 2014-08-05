@@ -2472,7 +2472,7 @@ public class RubyJdbcConnection extends RubyObject {
                     statement.setTimestamp(index, new Timestamp(((java.util.Date) value).getTime()));
                 }
                 else {
-                    statement.setTimestamp(index, Timestamp.valueOf(value.toString()));
+                    statement.setString(index, value.toString());
                 }
             }
         }
@@ -2543,8 +2543,7 @@ public class RubyJdbcConnection extends RubyObject {
                     statement.setTime(index, new Time(((java.util.Date) value).getTime()));
                 }
                 else { // hh:mm:ss
-                    statement.setTime(index, Time.valueOf(value.toString()));
-                    // statement.setString(index, value.toString());
+                    statement.setString(index, value.toString());
                 }
             }
         }
@@ -2594,8 +2593,7 @@ public class RubyJdbcConnection extends RubyObject {
                     statement.setDate(index, new Date(((java.util.Date) value).getTime()));
                 }
                 else { // yyyy-[m]m-[d]d
-                    statement.setDate(index, Date.valueOf(value.toString()));
-                    // statement.setString(index, value.toString());
+                    statement.setString(index, value.toString());
                 }
             }
         }
