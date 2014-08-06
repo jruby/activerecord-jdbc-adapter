@@ -124,11 +124,12 @@ public class SQLite3RubyJdbcConnection extends RubyJdbcConnection {
 
     @Override
     protected IRubyObject indexes(final ThreadContext context, String tableName, final String name, String schemaName) {
-        int i = -1;
-        if ( tableName != null ) i = tableName.indexOf('.');
-        if ( i > 0 && schemaName == null ) {
-            schemaName = tableName.substring(0, i);
-            tableName = tableName.substring(i + 1);
+        if ( tableName != null ) {
+            final int i = tableName.indexOf('.');
+            if ( i > 0 && schemaName == null ) {
+                schemaName = tableName.substring(0, i);
+                tableName = tableName.substring(i + 1);
+            }
         }
         return super.indexes(context, tableName, name, schemaName);
     }
@@ -219,7 +220,10 @@ public class SQLite3RubyJdbcConnection extends RubyJdbcConnection {
     @Override
     @JRubyMethod(name = "create_savepoint", optional = 1)
     public IRubyObject create_savepoint(final ThreadContext context, final IRubyObject[] args) {
-        IRubyObject name = args.length > 0 ? args[0] : null;
+        final IRubyObject name = args.length > 0 ? args[0] : null;
+        if ( name == null || name.isNil() ) {
+            throw new IllegalArgumentException("create_savepoint (without name) not implemented!");
+        }
         final Connection connection = getConnection(true);
         try {
             connection.setAutoCommit(false);
