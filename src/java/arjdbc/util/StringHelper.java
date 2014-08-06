@@ -53,6 +53,11 @@ public abstract class StringHelper {
         throw new IllegalStateException("unexpected digit: " + digit);
     }
 
+    public static RubyString newString(final Ruby runtime, final byte[] bytes) {
+        final ByteList byteList = new ByteList(bytes, false);
+        return RubyString.newString(runtime, byteList);
+    }
+
     public static RubyString newUTF8String(final Ruby runtime, final byte[] bytes) {
         final ByteList byteList = new ByteList(bytes, false);
         return RubyString.newString(runtime, byteList, UTF8Encoding.INSTANCE);
