@@ -2,8 +2,9 @@
 ## Contributing to ActiveRecord JDBC Adapter
 
 AR-JDBC is (currently) a volunteer effort, it is not backed by any company ...
-You can contribute and make a difference for all the JRuby on Rails deployments
-out there.
+You can contribute and make a difference for JRuby on Rails deployments out there.
+
+**NOTE:** master targets 1.4 please use the **1-3-stable** branch to target 1.3.x !
 
 ### Reporting Issues
 
@@ -26,7 +27,7 @@ Do not forget to **include the following with your bug report** :
 
 * include any (related) back-traces (or Java stack-traces) you've seen in the logs
 
-* ... a way to reproduce :)
+* ... a (deterministic) way to reproduce :)
 
 ### Pull Requests
 

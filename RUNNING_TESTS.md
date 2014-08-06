@@ -29,7 +29,7 @@ Tests are by default run against the "current" ActiveRecord version locked down
 by Bundler, however since we usually do support more versions from a single code
 base run those with the (appraisal) provided task e.g. for MySQL :
 
-    rake appraisal:rails31 test_mysql TEST=test/db/mysql/rake_test.rb
+    rake appraisal:rails32 test_mysql TEST=test/db/mysql/rake_test.rb
 
 Observe the **TEST** variable used to specify a single file to be used to resolve
 test cases, you pick tests by matching their names as well using **TESTOPTS** :
@@ -64,7 +64,7 @@ There's even tasks for Rails built-in adapters e.g. `rake rails:test_mysql`
 
 You will likely only be able to run the Rails suite against the latest (stable)
 ActiveRecord ~> version we support (check the *Gemfile.lock*) e.g. for
-**activerecord (3.2.13)** you want to **git checkout 3-2-stable** branch.
+**activerecord (3.2.x)** you want to **git checkout 3-2-stable** branch.
 
 We strive to not stub and include native (MRI) test required artefacts into
 (non-test) code e.g. the `Mysql` module, instead put that into **test/rails**.

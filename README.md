@@ -10,22 +10,24 @@ We supports *ActiveRecord* **2.3**, **3.x** and **4.x** from a single code base.
 You'll need JRuby >= **1.6.8** (we recommend using the latest and greatest of
 JRubies) thus Java >= **1.6** is mandatory.
 
-#### AR-JDBC **1.3.x** is a recommended update for all **1.2.x** users.
+** This README and master targets (an unreleased) AR-JDBC 1.4 please use the
+[1-3-stable](https://github.com/jruby/activerecord-jdbc-adapter/tree/1-3-stable)
+branch for the current stable 1.3.x releases **
 
-Our latest major version **1.3.x** represents a few months of refactoring and
-updates covering (not just) new/old *ActiveRecord* features. It tries to stay
-compatible with 1.2.9 as much as possible but please be aware that it's not always
-possible(mostly for the best), please read our [migration guide][8] for details.
+The next release 1.4 aims to concentrate on internal refactoring and optimization.
+We're hoping to cover ActiveRecord **4.2** as well. We'll slowly be dropping
+support for all of Rails < 3.2, unless there's demand for it. In which case we
+kindly accept PRs e.g. on AR 2.3 time with zone parsing does not assume an UTC
+time-zone which is some "crazy" stuff to handle esp. when optimizing for speed.
 
 ## Databases
 
-ActiveRecord-JDBC-Adapter provides full or nearly full support for:
-**MySQL**, **PostgreSQL**, **SQLite3**, **Oracle**, *MS-SQL** (SQL Server),
-**DB2**, **Firebird**, **Derby**, **HSQLDB**, **H2**, and **Informix**.
+ActiveRecord-JDBC-Adapter provides (built-in) full or nearly full support for:
+**MySQL** (and **MariaDB**), **PostgreSQL**, **SQLite3**, **Oracle**, **DB2**,
+*MS-SQL** (SQL Server), **Firebird**, **Derby**, **HSQLDB**, **H2**, and **Informix**.
 
-Other databases will require testing and likely a custom configuration module.
-Please join the JRuby [mailing list][1] to help us discover support for more
-databases.
+Even if you're database product is not listed, there are 3rd party gems built on
+top of AR-JDBC to handle different data-sources, [search][8] at the usual places.
 
 ## Using ActiveRecord JDBC
 
@@ -33,23 +35,26 @@ databases.
 
 To use AR-JDBC with JRuby on Rails:
 
-1. Choose the adapter you wish to gem install. The following pre-packaged
-adapters are available:
+1. Choose the adapter (base is usually fine), the following are pre-packaged :
 
   - Base JDBC (`activerecord-jdbc-adapter`) - supports all available databases
-    via JDBC, but requires you to download and manually setup a JDBC driver for
-    the database you're using
+    via JDBC (Java's unified DB interface), but requires you to setup a JDBC
+    driver (which with most open-source drivers means adding another gem to your
+    *Gemfile* e.g. `gem 'jdbc-mysql'` just like on MRI), for drivers not packed
+    as gems just add the required jars to the class-path
   - MySQL (`activerecord-jdbcmysql-adapter`)
   - PostgreSQL (`activerecord-jdbcpostgresql-adapter`)
   - SQLite3 (`activerecord-jdbcsqlite3-adapter`)
   - Derby (`activerecord-jdbcderby-adapter`)
   - HSQLDB (`activerecord-jdbchsqldb-adapter`)
   - H2 (`activerecord-jdbch2-adapter`)
-  - MSSQL (`activerecord-jdbcmssql-adapter`) - uses the OSS jTDS driver by default
-    which might have issues with the latest SQLServer (but should work using the
-    Microsoft JDBC Driver for SQL Server - we recommend using 4.0)
+  - MSSQL (`activerecord-jdbcmssql-adapter`) - uses the OSS jTDS driver which
+    might have issues with the latest SQLServer (but should work using the
+    Microsoft JDBC Driver for SQL Server - we recommend using version 4.0)
+    **NOTE:** [jTDS](http://jtds.sourceforge.net/) seems no longer maintained,
+    if you're run into issues consider using the official (proprietary) driver.
 
-2a. If you're generating a new Rails application, use the following command:
+2a. If you're generating a new Rails application, run the usual :
 
     jruby -S rails new sweetapp
 
@@ -58,18 +63,15 @@ to prepare your Rails application for JDBC.
 
 You'll need to modify your *Gemfile* to use the *activerecord-jdbc-adapter* gem
 (or one of the helper gems) under JRuby. Change your *Gemfile* to look something
-like the following:
+like the following :
 
 ```ruby
 gem 'mysql2', platform: :ruby
-gem 'activerecord-jdbcmysql-adapter', platform: :jruby
+gem 'jdbc-mysql', platform: :jruby
+gem 'activerecord-jdbc-adapter', platform: :jruby
 ```
 
-If you're (stuck) using Rails 2.3, you might need to:
-
-    jruby script/generate jdbc
-
-3. Configure your *database.yml* in the normal Rails style:
+3. Configure your *database.yml* in the normal Rails style :
 
 ```yml
 development:
@@ -81,19 +83,21 @@ development:
 
 **Legacy Configuration:** If you use one of the *activerecord-jdbcxxx-adapter*
 gems, you can still put a 'jdbc' prefix in front of the database adapter name,
-e.g. `adapter: jdbcmysql`.
+e.g. `adapter: jdbcmysql` but it's no longer recommended on Rails >= 3.0
 
 For plain JDBC database configurations, you'll need to know the database driver
-class and URL (do not forget to put the driver .jar(s) on the class-path) e.g.:
+class and URL (do not forget to put the driver .jar(s) on the class-path) e.g. :
 
 ```yml
 development:
   adapter: jdbc
-  username: blog
-  password: 1234
-  driver: com.mysql.jdbc.Driver
-  url: jdbc:mysql://localhost:3306/blog_development
+  driver: org.apache.hadoop.hive.jdbc.HiveDriver
+  url: jdbc:hive://localhost:10004/default
 ```
+
+**NOTE:** please do not confuse the `:url` setting with the one introduced in
+ActiveRecord 4.1, we've been using it for a long time with AR-JDBC and for now
+should work just fine the "jdbc:xxx" way (passed to the driver directly) ...
 
 For JNDI data sources, you may simply specify the JNDI location as follows, it's
 recommended to use the same adapter: setting as one would configure when using
@@ -103,13 +107,19 @@ recommended to use the same adapter: setting as one would configure when using
 production:
   adapter: postgresql
   jndi: jdbc/PostgreDS
+  # be aware that by default AR defaults to pool: 5
 ```
 
 **NOTE:** any other settings such as *database:*, *username:*, *properties:* make
-no difference since everything is already configured on the JNDI DataSource end.
+no difference since everything is already configured on the data source end.
+
+Most data-sources will provide you with connection pooling, but ActiveRecord uses
+an internal pool (with a default size of 5) as well, thus you need to be careful
+to configure both pools wisely to handle your requirements. If you'd like to
+"disable" AR's built-in pool try : https://github.com/kares/activerecord-bogacs
 
 JDBC driver specific properties might be set if you use an URL to specify the DB
-or preferably using the *properties:* syntax:
+or preferably using the *properties:* syntax :
 
 ```yml
 production:
@@ -122,7 +132,7 @@ production:
     connectTimeout: 60000
 ```
 
-If you're really old school you might want to use AR-JDBC with a DB2 on z/OS:
+If you're really old school you might want to use AR-JDBC with a DB2 on z/OS :
 
 ```yml
 development:
@@ -149,29 +159,16 @@ Once the setup is made (see below) you can establish a JDBC connection like this
 (e.g. for `activerecord-jdbcderby-adapter`):
 
 ```ruby
-ActiveRecord::Base.establish_connection(
-  adapter: 'derby',
-  database: 'db/my-database'
-)
-```
-
-or using (requires that you manually put the driver jar on the class-path):
-
-```ruby
-ActiveRecord::Base.establish_connection(
-  :adapter => 'jdbc',
-  :driver => 'org.apache.derby.jdbc.EmbeddedDriver',
-  :url => 'jdbc:derby:sample_db;create=true'
-)
+ActiveRecord::Base.establish_connection adapter: 'derby', database: 'db/my-db'
 ```
 
 #### Using Bundler
 
-Proceed as with Rails; specify `ActiveRecord` in your Bundle along with the
-chosen JDBC adapter(s), this time sample *Gemfile* for MySQL:
+Proceed as with Rails; specify `gem 'activerecord'` in your Bundle along with the
+chosen JDBC adapter(s), sample *Gemfile* for MySQL :
 
 ```ruby
-gem 'activerecord', '~> 3.2.14'
+gem 'activerecord', '~> 3.2.18'
 gem 'activerecord-jdbcmysql-adapter', :platform => :jruby
 ```
 
@@ -182,15 +179,18 @@ but than should make sure an appropriate JDBC driver is available at runtime, in
 that case simply setup your *Gemfile* as:
 
 ```ruby
-gem 'activerecord', '~> 4.0.0'
-gem 'activerecord-jdbc-adapter', '~> 1.3.2', platform: :jruby
+gem 'activerecord', '~> 4.1'
+gem 'activerecord-jdbc-adapter', '~> 1.3', platform: :jruby
+# e.g. for PostgreSQL you'll probably add :
+# gem 'pg', platform: :mri
+# gem 'jdbc-postgres', platform: :jruby
 ```
 
 #### Without Bundler
 
 Install the needed gems with JRuby, for example:
 
-    gem install activerecord -v "~> 3.2.10"
+    gem install activerecord -v "~> 3.2"
     gem install activerecord-jdbc-adapter --ignore-dependencies
 
 If you wish to use the adapter for a specific database, you can install it
@@ -236,16 +236,16 @@ guides for starters. You can always help us by maintaining AR-JDBC's [wiki][5].
 
 ## Feedback
 
-Please report bugs at our [issue tracker][3]. If you're not sure if
-something's a bug, feel free to pre-report it on the [mailing lists][1] or
-ask on the #JRuby IRC channel on http://freenode.net/ (try [web-chat][6]).
+Please report bugs at our [issue tracker][3]. If you're not sure if something's
+a bug, feel free to pre-report it on the [mailing lists][1] or ask on the #JRuby
+IRC channel on http://freenode.net/ (try [web-chat][6]).
 
 ## Authors
 
 This project was originally written by [Nick Sieger](http://github.com/nicksieger)
-and [Ola Bini](http://github.com/olabini) with lots of help from the JRuby community.
-Polished 3.x compatibility and 4.x support (for AR-JDBC >= 1.3.0) was managed by
-[Karol Bucek](http://github.com/kares) among others.
+and [Ola Bini](http://github.com/olabini) with lots of help from the community.
+Polished 3.x compatibility and 4.x support (since AR-JDBC >= 1.3.0) was managed by
+[Karol Bucek](http://github.com/kares) among other fellow JRuby-ists.
 
 ## License
 
@@ -263,4 +263,5 @@ license the database's drivers are licensed. See each driver gem's LICENSE.txt.
 [5]: https://github.com/jruby/activerecord-jdbc-adapter/wiki
 [6]: https://webchat.freenode.net/?channels=#jruby
 [7]: http://badge.fury.io/rb/activerecord-jdbc-adapter
-[8]: https://github.com/jruby/activerecord-jdbc-adapter/wiki/Migrating-from-1.2.x-to-1.3.0
+[8]: http://rubygems.org/search?query=activerecord-jdbc
+[9]: https://github.com/jruby/activerecord-jdbc-adapter/wiki/Migrating-from-1.3.x-to-1.4.0
