@@ -79,4 +79,36 @@ public abstract class StringHelper {
         return read;
     }
 
+    public static int nonWhitespaceIndex(final ByteList string, final int off) {
+        final int end = string.getBegin() + string.getRealSize();
+        final byte[] stringBytes = string.unsafeBytes();
+        for ( int i = off; i < end; i++ ) {
+            if ( ! Character.isWhitespace( stringBytes[i] ) ) return i;
+        }
+        return end;
+    }
+
+    @SuppressWarnings("deprecation")
+    private static int nonSpaceIndex(final byte[] str, int beg, int len) {
+        for ( int i = beg; i < len; i++ ) {
+            if ( ! Character.isSpace( (char) str[i] ) ) return i;
+        }
+        return len;
+    }
+
+    private static int nonDigitIndex(final byte[] str, int beg, int len) {
+        for ( int i = beg; i < len; i++ ) {
+            if ( ! Character.isDigit( (char) str[i] ) ) return i;
+        }
+        return len;
+    }
+
+    private static int extractIntValue(final byte[] str, int beg, int end) {
+        int n = 0;
+        for ( int i = beg; i < end; i++ ) {
+            n = 10 * n + ( str[i] - '0' );
+        }
+        return n;
+    }
+
 }

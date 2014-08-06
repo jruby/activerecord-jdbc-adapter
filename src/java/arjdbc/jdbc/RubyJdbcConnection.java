@@ -96,6 +96,7 @@ import org.jruby.util.ByteList;
 import arjdbc.util.DateTimeUtils;
 import arjdbc.util.StringCache;
 import static arjdbc.util.StringHelper.newUTF8String;
+import static arjdbc.util.StringHelper.nonWhitespaceIndex;
 import static arjdbc.util.StringHelper.readBytes;
 
 
@@ -3383,27 +3384,20 @@ public class RubyJdbcConnection extends RubyObject {
     public static IRubyObject insert_p(final ThreadContext context,
         final IRubyObject self, final IRubyObject sql) {
         final ByteList sqlBytes = sql.convertToString().getByteList();
-        return context.runtime.newBoolean(startsWithIgnoreCase(sqlBytes, INSERT));
+        return context.runtime.newBoolean( startsWithIgnoreCase(sqlBytes, INSERT) );
     }
 
-    protected static boolean startsWithIgnoreCase(final ByteList string, final byte[] start) {
-        int p = skipWhitespace(string, string.getBegin());
-        final byte[] stringBytes = string.unsafeBytes();
-        if ( stringBytes[p] == '(' ) p = skipWhitespace(string, p + 1);
+    protected static boolean startsWithIgnoreCase(final ByteList bytes, final byte[] start) {
+        int p = nonWhitespaceIndex(bytes, bytes.getBegin());
+        final byte[] stringBytes = bytes.unsafeBytes();
+        if ( stringBytes[p] == '(' ) {
+            p = nonWhitespaceIndex(bytes, p + 1);
+        }
 
-        for ( int i = 0; i < string.getRealSize() && i < start.length; i++ ) {
+        for ( int i = 0; i < bytes.getRealSize() && i < start.length; i++ ) {
             if ( Character.toLowerCase(stringBytes[p + i]) != start[i] ) return false;
         }
         return true;
-    }
-
-    private static int skipWhitespace(final ByteList string, final int from) {
-        final int end = string.getBegin() + string.getRealSize();
-        final byte[] stringBytes = string.unsafeBytes();
-        for ( int i = from; i < end; i++ ) {
-            if ( ! Character.isWhitespace( stringBytes[i] ) ) return i;
-        }
-        return end;
     }
 
     /**
