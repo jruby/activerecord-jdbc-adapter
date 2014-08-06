@@ -26,9 +26,6 @@
 
 package arjdbc.sqlite3;
 
-import arjdbc.jdbc.Callable;
-import arjdbc.jdbc.RubyJdbcConnection;
-
 import java.io.IOException;
 import java.sql.Connection;
 import java.sql.ResultSet;
@@ -51,7 +48,12 @@ import org.jruby.anno.JRubyMethod;
 import org.jruby.runtime.ObjectAllocator;
 import org.jruby.runtime.ThreadContext;
 import org.jruby.runtime.builtin.IRubyObject;
-import org.jruby.util.ByteList;
+
+import arjdbc.jdbc.Callable;
+import arjdbc.jdbc.RubyJdbcConnection;
+
+import static arjdbc.util.StringHelper.newDefaultInternalString;
+import static arjdbc.util.StringHelper.newString;
 
 /**
  *
@@ -258,12 +260,20 @@ public class SQLite3RubyJdbcConnection extends RubyJdbcConnection {
     }
 
     @Override
+    protected IRubyObject stringToRuby(final ThreadContext context,
+        final Ruby runtime, final ResultSet resultSet, final int column) throws SQLException {
+        final byte[] value = resultSet.getBytes(column);
+        if ( value == null ) return context.nil; // resultSet.wasNull()
+        return newDefaultInternalString(runtime, value);
+    }
+
+    @Override
     protected IRubyObject streamToRuby(final ThreadContext context,
         final Ruby runtime, final ResultSet resultSet, final int column)
         throws SQLException, IOException {
         final byte[] bytes = resultSet.getBytes(column);
-        if ( resultSet.wasNull() ) return context.nil;
-        return runtime.newString( new ByteList(bytes, false) );
+        if ( bytes == null ) return context.nil; // resultSet.wasNull()
+        return newString(runtime, bytes);
     }
 
     @Override
