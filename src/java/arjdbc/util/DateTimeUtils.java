@@ -166,7 +166,13 @@ public abstract class DateTimeUtils {
         final int seconds = time.getSeconds();
         //final int offset = time.getTimezoneOffset();
 
-        DateTime dateTime = new DateTime(2000, 1, 1, hours, minutes, seconds, 0, DateTimeZone.UTC);
+        final DateTime dateTime;
+        if ( isDefaultTimeZoneUTC(context) ) {
+            dateTime = new DateTime(2000, 1, 1, hours, minutes, seconds, 0, DateTimeZone.UTC);
+        }
+        else {
+            dateTime = new DateTime(2000, 1, 1, hours, minutes, seconds, 0);
+        }
         return RubyTime.newTime(context.runtime, dateTime);
     }
 
@@ -182,7 +188,13 @@ public abstract class DateTimeUtils {
         final int seconds = timestamp.getSeconds();
         final int nanos = timestamp.getNanos(); // max 999-999-999
 
-        DateTime dateTime = new DateTime(year, month, day, hours, minutes, seconds, 0);
+        final DateTime dateTime;
+        if ( isDefaultTimeZoneUTC(context) ) {
+            dateTime = new DateTime(year, month, day, hours, minutes, seconds, 0, DateTimeZone.UTC);
+        }
+        else {
+            dateTime = new DateTime(year, month, day, hours, minutes, seconds, 0);
+        }
         return RubyTime.newTime(context.runtime, dateTime, nanos);
     }
 
@@ -249,7 +261,7 @@ public abstract class DateTimeUtils {
         if ( default_timezone == null ) {
             final RubyClass base = getBase(context.runtime);
             default_timezone = base.callMethod(context, "default_timezone").toString(); // :utc
-            synchronized (DateTimeUtils.class) { defaultTimeZone = default_timezone; }
+            //synchronized (DateTimeUtils.class) { defaultTimeZone = default_timezone; }
         }
         return default_timezone;
     }
