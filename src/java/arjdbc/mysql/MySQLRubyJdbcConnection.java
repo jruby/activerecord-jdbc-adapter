@@ -26,6 +26,7 @@
 package arjdbc.mysql;
 
 import arjdbc.jdbc.RubyJdbcConnection;
+import arjdbc.util.DateTimeUtils;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
@@ -118,6 +119,48 @@ public class MySQLRubyJdbcConnection extends RubyJdbcConnection {
         int index, IRubyObject value, IRubyObject column, int type) throws SQLException {
         setTimestampParameter(context, connection, statement, index, value, column, type);
     }
+
+//    @Override
+//    protected void setTimestampParameter(final ThreadContext context,
+//        final Connection connection, final PreparedStatement statement,
+//        final int index, IRubyObject value,
+//        final IRubyObject column, final int type) throws SQLException {
+//        if ( value.isNil() ) statement.setNull(index, Types.TIMESTAMP);
+//        else {
+//            value = DateTimeUtils.getTimeInDefaultTimeZone(context, value);
+//            if ( value instanceof RubyString ) { // yyyy-[m]m-[d]d hh:mm:ss[.f...]
+//                final Timestamp timestamp = Timestamp.valueOf( value.toString() );
+//                statement.setTimestamp( index, timestamp ); // assume local time-zone
+//            }
+//            else { // Time or DateTime ( ActiveSupport::TimeWithZone.to_time )
+//                final double time = DateTimeUtils.adjustTimeFromDefaultZone(value);
+//                final RubyFloat timeValue = context.runtime.newFloat( time );
+//                statement.setTimestamp( index, DateTimeUtils.convertToTimestamp(timeValue) );
+//            }
+//        }
+//    }
+//
+//    @Override // can not use statement.setTime( int, Time, Calendar )
+//    protected void setTimeParameter(final ThreadContext context,
+//        final Connection connection, final PreparedStatement statement,
+//        final int index, IRubyObject value,
+//        final IRubyObject column, final int type) throws SQLException {
+//        if ( value.isNil() ) statement.setNull(index, Types.TIME);
+//        else {
+//            value = DateTimeUtils.getTimeInDefaultTimeZone(context, value);
+//            if ( value instanceof RubyString ) {
+//                final Time time = Time.valueOf( value.toString() );
+//                statement.setTime( index, time ); // assume local time-zone
+//            }
+//            else { // Time or DateTime ( ActiveSupport::TimeWithZone.to_time )
+//                final double timeValue = DateTimeUtils.adjustTimeFromDefaultZone(value);
+//                final Time time = new Time(( (long) timeValue ) * 1000); // millis
+//                // java.sql.Time is expected to be only up to second precision
+//                statement.setTime( index, time );
+//            }
+//        }
+//    }
+
 
     // FIXME: we should detect adapter and not do this timezone offset calculation is it is jdbc version 6+.
     private void setTimestamp(PreparedStatement statement, int index, RubyTime value, int type) throws SQLException {
