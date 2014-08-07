@@ -36,6 +36,7 @@ import org.jruby.runtime.builtin.IRubyObject;
 import org.jruby.util.ByteList;
 
 import static arjdbc.jdbc.RubyJdbcConnection.close;
+import static arjdbc.jdbc.RubyJdbcConnection.debugMessage;
 import static arjdbc.jdbc.RubyJdbcConnection.retrieveConnectionImpl;
 import static arjdbc.util.QuotingUtils.quoteCharAndDecorateWith;
 import static arjdbc.util.QuotingUtils.quoteCharWith;
@@ -97,34 +98,35 @@ public class PostgreSQLModule {
             self.getInstanceVariables().getInstanceVariable("@standard_conforming_strings");
 
         if ( standard_conforming_strings == null ) {
-            standard_conforming_strings = context.nil; // unsupported
+            synchronized (self) {
+                standard_conforming_strings = context.nil; // unsupported
 
-            final IRubyObject client_min_messages = self.callMethod(context, "client_min_messages");
-            ResultSet resultSet = null;
-            try {
-                final Ruby runtime = context.runtime;
-                self.callMethod(context, "client_min_messages=", runtime.newString("panic"));
-                // NOTE: we no longer log this query as before ... with :
-                // select_one('SHOW standard_conforming_strings', 'SCHEMA')['standard_conforming_strings']
-                resultSet = retrieveConnectionImpl(context, self).
-                    executeQueryInternal(context, "SHOW standard_conforming_strings", 1);
-                if ( resultSet != null && resultSet.next() ) {
-                    final String result = resultSet.getString(1);
-                    standard_conforming_strings = runtime.newBoolean( "on".equals(result) );
+                final IRubyObject client_min_messages = self.callMethod(context, "client_min_messages");
+                ResultSet resultSet = null; final Ruby runtime = context.runtime;
+                try {
+                    self.callMethod(context, "client_min_messages=", runtime.newString("panic"));
+                    // NOTE: we no longer log this query as before ... with :
+                    // select_one('SHOW standard_conforming_strings', 'SCHEMA')['standard_conforming_strings']
+                    resultSet = retrieveConnectionImpl(context, self).
+                        executeQueryInternal(context, "SHOW standard_conforming_strings", 1);
+                    if ( resultSet != null && resultSet.next() ) {
+                        final String result = resultSet.getString(1);
+                        standard_conforming_strings = runtime.newBoolean( "on".equals(result) );
+                    }
                 }
-            }
-            catch (SQLException e) {
-                // unsupported
-            }
-            catch (RaiseException e) {
-                // unsupported
-            }
-            finally {
-                close(resultSet);
-                self.callMethod(context, "client_min_messages=", client_min_messages);
-            }
+                catch (SQLException e) { // unsupported
+                    debugMessage(context, "standard conforming strings not supported : " + e.getMessage());
+                }
+                catch (RaiseException e) { // unsupported
+                    debugMessage(context, "standard conforming strings raised : " + e);
+                }
+                finally {
+                    close(resultSet);
+                    self.callMethod(context, "client_min_messages=", client_min_messages);
+                }
 
-            self.getInstanceVariables().setInstanceVariable("@standard_conforming_strings", standard_conforming_strings);
+                self.getInstanceVariables().setInstanceVariable("@standard_conforming_strings", standard_conforming_strings);
+            }
         }
 
         return standard_conforming_strings.isTrue();
