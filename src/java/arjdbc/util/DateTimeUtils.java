@@ -26,6 +26,7 @@ package arjdbc.util;
 import java.sql.Date;
 import java.sql.Time;
 import java.sql.Timestamp;
+import java.util.TimeZone;
 
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
@@ -165,7 +166,7 @@ public abstract class DateTimeUtils {
         final int seconds = time.getSeconds();
         //final int offset = time.getTimezoneOffset();
 
-        DateTime dateTime = new DateTime(2000, 1, 1, hours, minutes, seconds, DateTimeZone.UTC);
+        DateTime dateTime = new DateTime(2000, 1, 1, hours, minutes, seconds, 0, DateTimeZone.UTC);
         return RubyTime.newTime(context.runtime, dateTime);
     }
 
@@ -236,12 +237,30 @@ public abstract class DateTimeUtils {
     }
 
     public static boolean isDefaultTimeZoneUTC(final ThreadContext context) {
-        return "utc".equalsIgnoreCase( getDefaultTimeZone(context) );
+        final String defaultTimeZone = getDefaultTimeZone(context);
+        if ( defaultTimeZone.length() != 3 ) return false;
+        return "utc".equalsIgnoreCase( defaultTimeZone );
     }
 
+    private static String defaultTimeZone;
+
     public static String getDefaultTimeZone(final ThreadContext context) {
-        final RubyClass base = getBase(context.runtime);
-        return base.callMethod(context, "default_timezone").toString(); // :utc
+        String default_timezone = defaultTimeZone;
+        if ( default_timezone == null ) {
+            final RubyClass base = getBase(context.runtime);
+            default_timezone = base.callMethod(context, "default_timezone").toString(); // :utc
+            synchronized (DateTimeUtils.class) { defaultTimeZone = default_timezone; }
+        }
+        return default_timezone;
+    }
+
+    public static double adjustTimeFromDefaultZone(final IRubyObject value) {
+        // Time's to_f is : ( millis * 1000 + usec ) / 1_000_000.0
+        final double time = value.convertToFloat().getDoubleValue(); // to_f
+        // NOTE: MySQL assumes default TZ thus need to adjust to match :
+        final int offset = TimeZone.getDefault().getOffset((long) time * 1000);
+        // Time's to_f is : ( millis * 1000 + usec ) / 1_000_000.0
+        return time - ( offset / 1000.0 );
     }
 
     public static IRubyObject parseDate(final ThreadContext context, final String str)
