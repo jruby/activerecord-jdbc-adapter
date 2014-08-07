@@ -3379,13 +3379,20 @@ public class RubyJdbcConnection extends RubyObject {
         if ( exception instanceof SQLException ) {
             final String message = SQLException.class == exception.getClass() ?
                 exception.getMessage() : exception.toString(); // useful to easily see type on Ruby side
-            final RaiseException error = wrapException(context, getJDBCError(runtime), exception, message);
+            final RaiseException raise = wrapException(context, getJDBCError(runtime), exception, message);
             final int errorCode = ((SQLException) exception).getErrorCode();
-            final RubyException self = error.getException();
-            self.getMetaClass().finvoke(context, self, "errno=", runtime.newFixnum(errorCode));
-            self.getMetaClass().finvoke(context, self, "sql_exception=", JavaEmbedUtils.javaToRuby(runtime, exception));
-            return error;
+            final RubyException error = raise.getException();
+            error.getMetaClass().finvoke(context, error, "errno=", runtime.newFixnum(errorCode));
+            error.getMetaClass().finvoke(context, error, "sql_exception=", JavaEmbedUtils.javaToRuby(runtime, exception));
+            return raise;
         }
+        if ( exception instanceof RaiseException ) {
+            return (RaiseException) exception;
+        }
+        if ( exception instanceof RuntimeException ) {
+            return RaiseException.createNativeRaiseException(runtime, exception);
+        }
+        // NOTE: compat - maybe makes sense or maybe not (e.g. IOException) :
         return wrapException(context, getJDBCError(runtime), exception);
     }
 
