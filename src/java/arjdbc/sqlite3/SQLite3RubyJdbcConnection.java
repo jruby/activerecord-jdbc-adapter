@@ -197,13 +197,13 @@ public class SQLite3RubyJdbcConnection extends RubyJdbcConnection {
     protected RubyArray mapTables(final Ruby runtime, final DatabaseMetaData metaData,
             final String catalog, final String schemaPattern, final String tablePattern,
             final ResultSet tablesSet) throws SQLException {
-        final List<IRubyObject> tables = new ArrayList<IRubyObject>(32);
+        final RubyArray tables = runtime.newArray(24);
         while ( tablesSet.next() ) {
             String name = tablesSet.getString(TABLES_TABLE_NAME);
             name = name.toLowerCase(); // simply lower-case for SQLite3
-            tables.add( RubyString.newUnicodeString(runtime, name) );
+            tables.append( RubyString.newUnicodeString(runtime, name) );
         }
-        return runtime.newArray(tables);
+        return tables;
     }
 
     private static class SavepointStub implements Savepoint {
