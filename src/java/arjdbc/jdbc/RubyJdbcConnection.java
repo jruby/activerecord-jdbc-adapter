@@ -187,7 +187,7 @@ public class RubyJdbcConnection extends RubyObject {
         return (RubyClass) runtime.getModule("ActiveRecord").getConstant("TransactionIsolationError");
     }
 
-    public static RubyJdbcConnection retrieveConnectionImpl(final ThreadContext context, final IRubyObject adapter) {
+    public static RubyJdbcConnection retrieveConnection(final ThreadContext context, final IRubyObject adapter) {
         return (RubyJdbcConnection) adapter.getInstanceVariables().getInstanceVariable("@connection");
     }
 
@@ -600,14 +600,29 @@ public class RubyJdbcConnection extends RubyObject {
         });
     }
 
-    public Boolean executeInternal(final ThreadContext context, final String sql) {
-        // throws SQLException {
-        return withConnection(context, new Callable<Boolean>() {
-            public Boolean call(final Connection connection) throws SQLException {
+    public static void executeImpl(final ThreadContext context,
+        final IRubyObject adapter, final String query) throws RaiseException {
+        retrieveConnection(context, adapter).executeImpl(context, query);
+    }
+
+    public void executeImpl(final ThreadContext context, final String sql)
+        throws RaiseException {
+        try {
+            executeImpl(context, sql, true);
+        }
+        catch (SQLException e) { // dead code - won't happen
+            handleException(context, getCause(e));
+        }
+    }
+
+    public void executeImpl(final ThreadContext context, final String sql, final boolean handleException)
+        throws RaiseException, SQLException {
+        withConnection(context, handleException, new Callable<Void>() {
+            public Void call(final Connection connection) throws SQLException {
                 Statement statement = null;
                 try {
                     statement = createStatement(context, connection);
-                    return doExecute(statement, sql);
+                    doExecute(statement, sql); return null;
                 }
                 catch (final SQLException e) {
                     debugErrorSQL(context, sql);
@@ -941,20 +956,42 @@ public class RubyJdbcConnection extends RubyObject {
         }
     }
 
-    public ResultSet executeQueryInternal(final ThreadContext context, final String query, final int maxRows) {
-        return withConnection(context, new Callable<ResultSet>() {
-            public ResultSet call(final Connection connection) throws SQLException {
-                Statement statement = null;
+    public static <T> T executeQueryImpl(final ThreadContext context,
+        final IRubyObject adapter, final String query,
+        final int maxRows, final WithResultSet<T> withResultSet) throws RaiseException {
+        return retrieveConnection(context, adapter).executeQueryImpl(context, query, maxRows, withResultSet);
+    }
+
+    public static <T> T executeQueryImpl(final ThreadContext context,
+        final IRubyObject adapter, final String query,
+        final int maxRows, final boolean handleException,
+        final WithResultSet<T> withResultSet) throws RaiseException, SQLException {
+        return retrieveConnection(context, adapter).executeQueryImpl(context, query, maxRows, handleException, withResultSet);
+    }
+
+    public <T> T executeQueryImpl(final ThreadContext context, final String query, final int maxRows,
+        final WithResultSet<T> withResultSet) throws RaiseException {
+        try {
+            return executeQueryImpl(context, query, 0, true, withResultSet);
+        }
+        catch (SQLException e) { // dead code - won't happen
+            handleException(context, getCause(e)); return null;
+        }
+    }
+
+    public <T> T executeQueryImpl(final ThreadContext context, final String query, final int maxRows,
+        final boolean handleException, final WithResultSet<T> withResultSet)
+        throws RaiseException, SQLException {
+        return withConnection(context, handleException, new Callable<T>() {
+            public T call(final Connection connection) throws SQLException {
+                Statement statement = null; ResultSet resultSet = null;
                 try {
                     statement = createStatement(context, connection);
                     statement.setMaxRows(maxRows); // zero means there is no limit
-                    return statement.executeQuery(query);
+                    resultSet = statement.executeQuery(query);
+                    return withResultSet.call(resultSet);
                 }
-                catch (final SQLException e) {
-                    debugErrorSQL(context, query);
-                    throw e;
-                }
-                finally { close(statement); }
+                finally { close(resultSet); close(statement); }
             }
         });
     }
@@ -3258,7 +3295,7 @@ public class RubyJdbcConnection extends RubyObject {
     }
 
     private <T> T withConnection(final ThreadContext context, final boolean handleException, final Callable<T> block)
-        throws RaiseException, RuntimeException, SQLException {
+        throws RaiseException, SQLException {
 
         Throwable exception = null; int retry = 0; int i = 0;
 

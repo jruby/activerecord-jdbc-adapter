@@ -35,9 +35,10 @@ import org.jruby.runtime.ThreadContext;
 import org.jruby.runtime.builtin.IRubyObject;
 import org.jruby.util.ByteList;
 
-import static arjdbc.jdbc.RubyJdbcConnection.close;
+import arjdbc.jdbc.WithResultSet;
 import static arjdbc.jdbc.RubyJdbcConnection.debugMessage;
-import static arjdbc.jdbc.RubyJdbcConnection.retrieveConnectionImpl;
+import static arjdbc.jdbc.RubyJdbcConnection.executeImpl;
+import static arjdbc.jdbc.RubyJdbcConnection.executeQueryImpl;
 import static arjdbc.util.QuotingUtils.quoteCharAndDecorateWith;
 import static arjdbc.util.QuotingUtils.quoteCharWith;
 
@@ -102,17 +103,21 @@ public class PostgreSQLModule {
                 standard_conforming_strings = context.nil; // unsupported
 
                 final IRubyObject client_min_messages = self.callMethod(context, "client_min_messages");
-                ResultSet resultSet = null; final Ruby runtime = context.runtime;
+                final Ruby runtime = context.runtime;
                 try {
                     self.callMethod(context, "client_min_messages=", runtime.newString("panic"));
                     // NOTE: we no longer log this query as before ... with :
                     // select_one('SHOW standard_conforming_strings', 'SCHEMA')['standard_conforming_strings']
-                    resultSet = retrieveConnectionImpl(context, self).
-                        executeQueryInternal(context, "SHOW standard_conforming_strings", 1);
-                    if ( resultSet != null && resultSet.next() ) {
-                        final String result = resultSet.getString(1);
-                        standard_conforming_strings = runtime.newBoolean( "on".equals(result) );
-                    }
+                    standard_conforming_strings = executeQueryImpl(context, self,
+                        "SHOW standard_conforming_strings", 1, false, new WithResultSet<IRubyObject>() {
+                        public IRubyObject call(final ResultSet resultSet) throws SQLException {
+                            if ( resultSet != null && resultSet.next() ) {
+                                final String result = resultSet.getString(1);
+                                return runtime.newBoolean( "on".equals(result) );
+                            }
+                            return context.nil;
+                        }
+                    });
                 }
                 catch (SQLException e) { // unsupported
                     debugMessage(context, "standard conforming strings not supported : " + e.getMessage());
@@ -121,7 +126,6 @@ public class PostgreSQLModule {
                     debugMessage(context, "standard conforming strings raised : " + e);
                 }
                 finally {
-                    close(resultSet);
                     self.callMethod(context, "client_min_messages=", client_min_messages);
                 }
 
@@ -160,8 +164,7 @@ public class PostgreSQLModule {
             else value = "on";
             // NOTE: we no longer log this query as before ... with :
             // execute("SET standard_conforming_strings = #{value}", 'SCHEMA')
-            retrieveConnectionImpl(context, self).
-                executeInternal(context, "SET standard_conforming_strings = " + value);
+            executeImpl(context, self, "SET standard_conforming_strings = " + value);
 
             standard_conforming_strings = runtime.newBoolean( value == (Object) "on" );
         }
