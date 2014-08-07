@@ -25,12 +25,7 @@
 
 package arjdbc.mysql;
 
-import static arjdbc.util.QuotingUtils.BYTES_0;
-import static arjdbc.util.QuotingUtils.BYTES_1;
-import static arjdbc.util.QuotingUtils.quoteCharAndDecorateWith;
-
 import org.jcodings.specific.UTF8Encoding;
-
 import org.jruby.Ruby;
 import org.jruby.RubyModule;
 import org.jruby.RubyString;
@@ -38,6 +33,10 @@ import org.jruby.anno.JRubyMethod;
 import org.jruby.runtime.ThreadContext;
 import org.jruby.runtime.builtin.IRubyObject;
 import org.jruby.util.ByteList;
+
+import static arjdbc.util.QuotingUtils.BYTES_0;
+import static arjdbc.util.QuotingUtils.BYTES_1;
+import static arjdbc.util.QuotingUtils.quoteCharAndDecorateWith;
 
 public class MySQLModule {
 

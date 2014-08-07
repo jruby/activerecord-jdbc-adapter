@@ -28,6 +28,7 @@ package arjdbc.mysql;
 import arjdbc.jdbc.RubyJdbcConnection;
 import arjdbc.jdbc.Callable;
 import arjdbc.jdbc.DriverWrapper;
+import arjdbc.util.DateTimeUtils;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
@@ -40,13 +41,13 @@ import java.sql.Statement;
 import java.sql.Time;
 import java.sql.Timestamp;
 import java.sql.Types;
-import java.util.TimeZone;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.jruby.Ruby;
 import org.jruby.RubyArray;
 import org.jruby.RubyClass;
+import org.jruby.RubyFixnum;
 import org.jruby.RubyFloat;
 import org.jruby.RubyModule;
 import org.jruby.RubyString;
@@ -117,7 +118,8 @@ public class MySQLRubyJdbcConnection extends RubyJdbcConnection {
         final Connection connection, final Statement statement) throws SQLException {
         final Ruby runtime = context.runtime;
         final IRubyObject key = mapGeneratedKeys(runtime, connection, statement);
-        return ( key == null || key.isNil() ) ? runtime.newFixnum( statement.getUpdateCount() ) : key;
+        return ( key == null || key.isNil() ) ?
+            RubyFixnum.newFixnum( runtime, statement.getUpdateCount() ) : key;
     }
 
     @Override
@@ -127,10 +129,23 @@ public class MySQLRubyJdbcConnection extends RubyJdbcConnection {
         throws SQLException {
         if ( Types.BOOLEAN == type || Types.BIT == type ) {
             final boolean value = resultSet.getBoolean(column);
-            return resultSet.wasNull() ? runtime.getNil() : runtime.newFixnum(value ? 1 : 0);
+            return resultSet.wasNull() ? runtime.getNil() : RubyFixnum.newFixnum(runtime, value ? 1 : 0);
         }
         return super.jdbcToRuby(context, runtime, column, type, resultSet);
     }
+
+    @Override
+    protected boolean useByteStrings() {
+        return super.useByteStrings(); // return false;
+    }
+
+    /*
+    @Override // optimized CLOBs
+    protected IRubyObject readerToRuby(final ThreadContext context,
+        final Ruby runtime, final ResultSet resultSet, final int column)
+        throws SQLException {
+        return bytesToUTF8String(context, runtime, resultSet, column);
+    } */
 
     @Override // can not use statement.setTimestamp( int, Timestamp, Calendar )
     protected void setTimestampParameter(final ThreadContext context,
@@ -139,15 +154,15 @@ public class MySQLRubyJdbcConnection extends RubyJdbcConnection {
         final IRubyObject column, final int type) throws SQLException {
         if ( value.isNil() ) statement.setNull(index, Types.TIMESTAMP);
         else {
-            value = getTimeInDefaultTimeZone(context, value);
+            value = DateTimeUtils.getTimeInDefaultTimeZone(context, value);
             if ( value instanceof RubyString ) { // yyyy-[m]m-[d]d hh:mm:ss[.f...]
                 final Timestamp timestamp = Timestamp.valueOf( value.toString() );
                 statement.setTimestamp( index, timestamp ); // assume local time-zone
             }
             else { // Time or DateTime ( ActiveSupport::TimeWithZone.to_time )
-                final double time = adjustTimeFromDefaultZone(value);
+                final double time = DateTimeUtils.adjustTimeFromDefaultZone(value);
                 final RubyFloat timeValue = context.runtime.newFloat( time );
-                statement.setTimestamp( index, convertToTimestamp(timeValue) );
+                statement.setTimestamp( index, DateTimeUtils.convertToTimestamp(timeValue) );
             }
         }
     }
@@ -159,13 +174,13 @@ public class MySQLRubyJdbcConnection extends RubyJdbcConnection {
         final IRubyObject column, final int type) throws SQLException {
         if ( value.isNil() ) statement.setNull(index, Types.TIME);
         else {
-            value = getTimeInDefaultTimeZone(context, value);
+            value = DateTimeUtils.getTimeInDefaultTimeZone(context, value);
             if ( value instanceof RubyString ) {
                 final Time time = Time.valueOf( value.toString() );
                 statement.setTime( index, time ); // assume local time-zone
             }
             else { // Time or DateTime ( ActiveSupport::TimeWithZone.to_time )
-                final double timeValue = adjustTimeFromDefaultZone(value);
+                final double timeValue = DateTimeUtils.adjustTimeFromDefaultZone(value);
                 final Time time = new Time(( (long) timeValue ) * 1000); // millis
                 // java.sql.Time is expected to be only up to second precision
                 statement.setTime( index, time );
@@ -173,17 +188,9 @@ public class MySQLRubyJdbcConnection extends RubyJdbcConnection {
         }
     }
 
-    private static double adjustTimeFromDefaultZone(final IRubyObject value) {
-        // Time's to_f is : ( millis * 1000 + usec ) / 1_000_000.0
-        final double time = value.convertToFloat().getDoubleValue(); // to_f
-        // NOTE: MySQL assumes default TZ thus need to adjust to match :
-        final int offset = TimeZone.getDefault().getOffset((long) time * 1000);
-        // Time's to_f is : ( millis * 1000 + usec ) / 1_000_000.0
-        return time - ( offset / 1000.0 );
-    }
-
     @Override
-    protected IRubyObject indexes(final ThreadContext context, final String tableName, final String name, final String schemaName) {
+    protected IRubyObject indexes(final ThreadContext context,
+        final String tableName, final String name, final String schemaName) {
         return withConnection(context, new Callable<IRubyObject>() {
             public IRubyObject call(final Connection connection) throws SQLException {
                 final Ruby runtime = context.runtime;
