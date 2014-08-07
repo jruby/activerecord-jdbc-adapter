@@ -227,10 +227,10 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
         final IRubyObject column, final int type) throws SQLException {
 
         if ( value instanceof RubyFloat ) {
-            final double _value = ( (RubyFloat) value ).getValue();
-            if ( Double.isInfinite(_value) ) {
+            final double doubleValue = ( (RubyFloat) value ).getValue();
+            if ( Double.isInfinite(doubleValue) ) {
                 final Timestamp timestamp;
-                if ( _value < 0 ) {
+                if ( doubleValue < 0 ) {
                     timestamp = new Timestamp(PGStatement.DATE_NEGATIVE_INFINITY);
                 }
                 else {
