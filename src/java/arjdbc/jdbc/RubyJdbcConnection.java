@@ -95,9 +95,8 @@ import org.jruby.util.ByteList;
 
 import arjdbc.util.DateTimeUtils;
 import arjdbc.util.StringCache;
-import static arjdbc.util.StringHelper.newUTF8String;
+import arjdbc.util.StringHelper;
 import static arjdbc.util.StringHelper.nonWhitespaceIndex;
-import static arjdbc.util.StringHelper.readBytes;
 
 
 /**
@@ -1838,13 +1837,23 @@ public class RubyJdbcConnection extends RubyObject {
         return runtime.newFloat(value);
     }
 
-    protected static boolean useBytesForString = true;
+    protected static Boolean byteStrings;
+    static {
+        final String stringBytes = System.getProperty("arjdbc.string.bytes");
+        if ( stringBytes != null ) byteStrings = Boolean.parseBoolean(stringBytes);
+        //else byteStrings = Boolean.FALSE;
+    }
+
+    protected boolean useByteStrings() {
+        // NOTE: default is false as some drivers seem to not like it !
+        return byteStrings == null ? false : byteStrings.booleanValue();
+    }
 
     protected IRubyObject stringToRuby(final ThreadContext context,
         final Ruby runtime, final ResultSet resultSet, final int column)
         throws SQLException {
-        if ( useBytesForString ) { // optimized String -> byte[]
-            return bytesToRubyString(context, runtime, resultSet, column);
+        if ( useByteStrings() ) { // optimized String -> byte[]
+            return bytesToUTF8String(context, runtime, resultSet, column);
         }
         else {
             final String value = resultSet.getString(column);
@@ -1853,19 +1862,27 @@ public class RubyJdbcConnection extends RubyObject {
         }
     }
 
-    protected static IRubyObject bytesToRubyString(final ThreadContext context,
+    protected static IRubyObject bytesToString(final ThreadContext context,
         final Ruby runtime, final ResultSet resultSet, final int column)
         throws SQLException { // optimized String -> byte[]
         final byte[] value = resultSet.getBytes(column);
-        if ( value == null && resultSet.wasNull() ) return runtime.getNil();
-        return newUTF8String(runtime, value);
+        if ( value == null || resultSet.wasNull() ) return runtime.getNil();
+        return StringHelper.newString(runtime, value);
+    }
+
+    protected static IRubyObject bytesToUTF8String(final ThreadContext context,
+        final Ruby runtime, final ResultSet resultSet, final int column)
+        throws SQLException { // optimized String -> byte[]
+        final byte[] value = resultSet.getBytes(column);
+        if ( value == null || resultSet.wasNull() ) return runtime.getNil();
+        return StringHelper.newUTF8String(runtime, value);
     }
 
     protected IRubyObject bigIntegerToRuby(final ThreadContext context,
         final Ruby runtime, final ResultSet resultSet, final int column)
         throws SQLException {
         final String value = resultSet.getString(column);
-        if ( value == null && resultSet.wasNull() ) return runtime.getNil();
+        if ( value == null || resultSet.wasNull() ) return runtime.getNil();
         return RubyBignum.bignorm(runtime, new BigInteger(value));
     }
 
@@ -1892,12 +1909,12 @@ public class RubyJdbcConnection extends RubyObject {
         throws SQLException {
         if ( bigDecimalExt ) { // "optimized" path (JRuby 1.7+)
             final BigDecimal value = resultSet.getBigDecimal(column);
-            if ( value == null && resultSet.wasNull() ) return runtime.getNil();
+            if ( value == null || resultSet.wasNull() ) return runtime.getNil();
             return new org.jruby.ext.bigdecimal.RubyBigDecimal(runtime, value);
         }
 
         final String value = resultSet.getString(column);
-        if ( value == null && resultSet.wasNull() ) return runtime.getNil();
+        if ( value == null || resultSet.wasNull() ) return runtime.getNil();
         return runtime.getKernel().callMethod("BigDecimal", runtime.newString(value));
     }
 
@@ -2015,12 +2032,12 @@ public class RubyJdbcConnection extends RubyObject {
         throws SQLException, IOException {
         final InputStream stream = resultSet.getBinaryStream(column);
         try {
-            if ( resultSet.wasNull() ) return runtime.getNil();
+            if ( stream == null || resultSet.wasNull() ) return runtime.getNil();
 
             final int buffSize = streamBufferSize;
             final ByteList bytes = new ByteList(buffSize);
 
-            readBytes(bytes, stream, buffSize);
+            StringHelper.readBytes(bytes, stream, buffSize);
 
             return runtime.newString(bytes);
         }
@@ -2031,7 +2048,7 @@ public class RubyJdbcConnection extends RubyObject {
     protected IRubyObject streamToRuby(
         final Ruby runtime, final ResultSet resultSet, final InputStream stream)
         throws SQLException, IOException {
-        if ( stream == null && resultSet.wasNull() ) return runtime.getNil();
+        if ( stream == null || resultSet.wasNull() ) return runtime.getNil();
 
         final int bufSize = streamBufferSize;
         final ByteList string = new ByteList(bufSize);
@@ -2047,13 +2064,13 @@ public class RubyJdbcConnection extends RubyObject {
     protected IRubyObject readerToRuby(final ThreadContext context,
         final Ruby runtime, final ResultSet resultSet, final int column)
         throws SQLException, IOException {
-        if ( useBytesForString ) { // optimized CLOBs
-            return bytesToRubyString(context, runtime, resultSet, column);
+        if ( useByteStrings() ) { // optimized CLOBs
+            return bytesToUTF8String(context, runtime, resultSet, column);
         }
         else {
             final Reader reader = resultSet.getCharacterStream(column);
             try {
-                if ( reader == null && resultSet.wasNull() ) return runtime.getNil();
+                if ( reader == null || resultSet.wasNull() ) return runtime.getNil();
 
                 final int bufSize = streamBufferSize;
                 final StringBuilder string = new StringBuilder(bufSize);
@@ -2482,7 +2499,7 @@ public class RubyJdbcConnection extends RubyObject {
         final IRubyObject column, final int type) throws SQLException {
         if ( value.isNil() ) statement.setNull(index, Types.TIMESTAMP);
         else {
-            value = getTimeInDefaultTimeZone(context, value);
+            value = DateTimeUtils.getTimeInDefaultTimeZone(context, value);
             if ( value instanceof RubyTime ) {
                 final RubyTime timeValue = (RubyTime) value;
                 final DateTime dateTime = timeValue.getDateTime();
