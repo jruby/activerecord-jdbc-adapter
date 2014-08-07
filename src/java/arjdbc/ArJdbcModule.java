@@ -232,7 +232,7 @@ public class ArJdbcModule {
             return null;
         }
 
-        RubyModule jdbc = (RubyModule) runtime.getObject().getConstantAt("Jdbc");
+        final RubyModule jdbc = runtime.getModule("Jdbc");
         if ( jdbc != null ) { // Jdbc::MySQL
             final RubyModule constant = (RubyModule) jdbc.getConstantAt(constName);
             if ( constant != null ) { // ::Jdbc::MySQL.load_driver :
