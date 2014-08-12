@@ -70,7 +70,7 @@ class JdbcPlainTest < Test::Unit::TestCase
       assert_equal "Black and Blue", Album.where(:title => 'Black and Blue').first.title
       assert Track.where(:title => 'Hot Stuff').first.album_id
     else
-      assert_equal "Sticky Fingers", Album.find_by_title('Black and Blue').title
+      assert_equal "Black and Blue", Album.find_by_title('Black and Blue').title
       assert Track.find_by_title('Hot Stuff').album_id
     end
   end

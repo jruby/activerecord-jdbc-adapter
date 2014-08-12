@@ -144,6 +144,7 @@ class Test::Unit::TestCase
   def disconnect_if_connected; self.class.disconnect_if_connected end
 
   def self.clean_visitor_type!(adapter = 'jdbc')
+    return unless ar_version('3.0')
     ActiveRecord::ConnectionAdapters::JdbcAdapter.send :clean_visitor_type, adapter
   end
 
