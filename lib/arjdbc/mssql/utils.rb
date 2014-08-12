@@ -25,13 +25,7 @@ module ArJdbc
 
       # See "Delimited Identifiers": http://msdn.microsoft.com/en-us/library/ms176027.aspx
       def remove_identifier_delimiters(keyword)
-        if /\A(\[|")(.*)/m.match(keyword)
-          delim, rest = $1, $2
-          if delim == '[' && rest =~ /]\z/ || delim == '"' && rest =~ /"\z/
-            return rest.tr('\]\[\"', '')
-          end
-        end
-        keyword
+        keyword.tr('\]\[\"', '')
       end
 
       def unquote_table_name(table_name)
