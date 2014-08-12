@@ -28,7 +28,7 @@ module ArJdbc
         if /\A(\[|")(.*)/m.match(keyword)
           delim, rest = $1, $2
           if delim == '[' && rest =~ /]\z/ || delim == '"' && rest =~ /"\z/
-            return rest.tr('\]\[', '')
+            return rest.tr('\]\[\"', '')
           end
         end
         keyword
