@@ -62,6 +62,33 @@ class MSSQLUnitTest < Test::Unit::TestCase
       end
     end
 
+    context 'remove_identifier_delimiters' do
+      test 'double quotes and square brackets are removed from tablename' do
+        tn = '["foo"]'
+        assert_equal 'foo', ArJdbc::MSSQL::Utils.send(:remove_identifier_delimiters, tn),
+                     "The delimters in the value #{tn} were not removed correctly"
+      end
+
+      test 'double quotes and square brackets are removed from tablename with owner/schema' do
+        tn = '["foo"].["bar"]'
+        assert_equal 'foo.bar', ArJdbc::MSSQL::Utils.send(:remove_identifier_delimiters, tn),
+                     "The delimters in the value #{tn} were not removed correctly"
+      end
+
+      test 'return correct tablename if no delimiters are present' do
+        tn = 'foo'
+        assert_equal 'foo', ArJdbc::MSSQL::Utils.send(:remove_identifier_delimiters, tn),
+                     "The delimters in the value #{tn} were not removed correctly"
+      end
+
+      test 'return correct tablename with owner/schema if no delimiters are present' do
+        tn = 'foo.bar'
+        assert_equal 'foo.bar', ArJdbc::MSSQL::Utils.send(:remove_identifier_delimiters, tn),
+                     "The delimters in the value #{tn} were not removed correctly"
+      end
+    end
+
+
   end
 
   test "quote column name" do
