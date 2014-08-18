@@ -199,6 +199,15 @@ class PostgresSimpleTest < Test::Unit::TestCase
     end
   end if defined? JRUBY_VERSION
 
+  test "config :insert_returning" do
+    if current_connection_config.key?(:insert_returning)
+      insert_returning = current_connection_config[:insert_returning]
+      insert_returning = insert_returning.to_s == 'true'
+      assert_equal insert_returning, connection.use_insert_returning?
+    else
+      assert_equal true, connection.use_insert_returning? # assuming PG >= 9.0
+    end
+  end
 
   test 'type cast (without column)' do
     assert_equal 1, connection.type_cast(1, false)

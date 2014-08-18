@@ -611,8 +611,7 @@ module ArJdbc
       if @use_insert_returning.nil?
         @use_insert_returning = false
       end
-
-      !!@use_insert_returning
+      @use_insert_returning
     end
 
     private
