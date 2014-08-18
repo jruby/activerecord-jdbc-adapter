@@ -1,3 +1,4 @@
+require 'rubygems' unless defined? Gem
 gem 'activerecord', ENV['AR_VERSION'] if ENV['AR_VERSION']
 require 'active_record'
 if defined? JRUBY_VERSION
@@ -7,6 +8,12 @@ if defined? JRUBY_VERSION
     $LOAD_PATH << File.expand_path('../lib', File.dirname(__FILE__))
   end
   require 'arjdbc'
+end
+
+def do_yield(info)
+  start = Time.now; outcome = yield
+  puts " - #{info} took #{Time.now - start}"
+  outcome
 end
 
 TIMES = ( ARGV[0] || ENV['TIMES'] || 100 ).to_i

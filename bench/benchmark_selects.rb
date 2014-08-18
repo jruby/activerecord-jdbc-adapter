@@ -4,23 +4,25 @@ do_yield "BenchRecord.create!(...) [#{DATA_SIZE}x]" do
   DATA_SIZE.times do |i|
     BenchRecord.create!({
       :id => i,
-      :a_binary => Random.new.bytes(1024),
+      :a_binary => '01' * 500,
       :a_boolean => true,
       :a_date => Date.today,
-      :a_datetime => Time.now,
-      :a_decimal => BigDecimal.new('18202824.2345'),
-      :a_float => 829.8203749235,
-      :a_integer => 4242,
-      :a_string => 'Hello, Goodbye',
-      :a_text => 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Cras commodo, mauris eu pulvinar porta, nunc est fringilla lorem, sit amet mattis massa libero id tellus. Praesent pretium, turpis et vestibulum accumsan, eros turpis rutrum diam, a elementum magna mi ut nisi. Sed sed porttitor urna, sed fringilla lectus. Nunc aliquam, arcu et vulputate vulputate, turpis massa auctor sem, in venenatis ligula tellus ut mi. Aenean pulvinar ligula tellus, vel commodo augue cursus a. In dictum diam ut ligula placerat, eget faucibus augue fermentum. Vestibulum ante ipsum primis in faucibus orci luctus et ultrices posuere cubilia Curae; Suspendisse eget ligula in turpis vulputate eleifend eu et felis. Nam nec mattis lorem.',
-      :a_time => Time.now,
-      :a_timestamp => Time.now
+      :a_datetime => now = Time.now,
+      :a_decimal => BigDecimal.new('10000000000.1'),
+      :a_float => 100.001,
+      :a_integer => 1000,
+      :a_string => 'Glorious Nation of Kazakhstan',
+      :a_text => 'This CJ was like no Kazakh woman I have ever seen. ' <<
+                 'She had golden hairs, teeth as white as pearls, and the ' <<
+                 'asshole of a seven-year-old. ' <<
+                 'For the first time in my lifes, I was in love.',
+      :a_time => now,
+      :a_timestamp => now
     })
   end
 end
 
 selects = [
-  #'*',
   'a_binary',
   'a_boolean',
   'a_date',
@@ -32,6 +34,7 @@ selects = [
   'a_text',
   'a_time',
   'a_timestamp',
+  '*'
 ]
 
 Benchmark.bmbm do |x|
@@ -46,13 +49,13 @@ Benchmark.bmbm do |x|
     end
   end
 
-#  selects.each do |select|
-#    x.report("30x SELECT #{select}, 5000 records") do
-#      30.times do |i|
-#        Product.select(select).to_a
-#      end
-#    end
-#  end
+  limit = ENV['LIMIT'] || DATA_SIZE
+
+  x.report("BenchRecord.limit(#{limit}).load [#{TIMES}x]") do
+    TIMES.times do
+      BenchRecord.limit(limit).load
+    end
+  end
 
 end
 
