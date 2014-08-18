@@ -41,7 +41,7 @@ class PostgresSimpleTest < Test::Unit::TestCase
     assert_equal ["login"], results[1].first.keys
   end
 
-  def test_find_by_sql_WITH_statement
+  test 'find_by_sql WITH statement' do
     user = User.create! :login => 'ferko'
     Entry.create! :title => 'aaa', :user_id => user.id
     entries = Entry.find_by_sql '' +
@@ -59,7 +59,7 @@ class PostgresSimpleTest < Test::Unit::TestCase
   end
 
   def test_create_xml_column
-    return if connection.postgresql_version < 80300
+    return if connection.send(:postgresql_version) < 80300
     super
   end if ar_version('3.1')
   def xml_sql_type; 'xml'; end
@@ -101,10 +101,10 @@ class PostgresSimpleTest < Test::Unit::TestCase
 
     if ar_version('4.0')
       assert_equal :string, tags.type
-      assert_true tags.array?
+      assert_true tags.array? if defined? JRUBY_VERSION
 
       name = columns.detect { |c| c.name == "name" }
-      assert_false name.array?
+      assert_false name.array? if defined? JRUBY_VERSION
     else
       assert_equal :string, tags.type
       assert_match /char/, tags.sql_type # character varying (255)

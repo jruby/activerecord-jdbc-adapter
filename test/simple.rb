@@ -214,7 +214,11 @@ module SimpleTestMethods
     value = connection.insert("INSERT INTO entries (title, content, rating) VALUES('insert_title', 'some content', 1)")
     assert_not_nil value
     entry = Entry.find_by_title('insert_title')
-    assert_equal entry.id, value
+    if defined? JRUBY_VERSION
+      assert_equal entry.id, value
+    else
+      assert_equal entry.id.to_s, value
+    end
 
     # Ensure we get the id even if the PK column is not named 'id'
     1.upto(4) do |i|
