@@ -74,7 +74,7 @@ class MSSQLDateTimeTypesTest < Test::Unit::TestCase
 
     def test_datetime2
       # date range + 00:00:00 through 23:59:59.9999999
-      with_default_timezone(:utc) do
+      with_default_and_local_utc_zone do
         datetime = DateTime.parse('2012-12-21T21:12:03')
         model = DateAndTime.create! :datetime2 => datetime
         assert_datetime_equal datetime, model.reload.datetime2
@@ -97,7 +97,7 @@ class MSSQLDateTimeTypesTest < Test::Unit::TestCase
       datetime = DateTime.parse('1999-12-31T23:59:00').to_time
       assert_datetime_equal datetime, model.reload.smalldatetime
 
-      with_default_timezone(:utc) do
+      with_default_and_local_utc_zone do
         datetime = DateTime.parse('1999-12-31T22:59:31')
         model = DateAndTime.create! :smalldatetime => datetime
         datetime = DateTime.parse('1999-12-31T23:00:00')

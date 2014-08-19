@@ -258,6 +258,16 @@ class Test::Unit::TestCase
     end
   end
 
+  def with_time_zone(default = nil)
+    prev_tz = Time.zone
+    begin
+      Time.zone = default
+      yield
+    ensure
+      Time.zone = prev_tz
+    end
+  end
+
   def with_default_timezone(default = nil)
     prev_tz = ActiveRecord::Base.default_timezone
     begin
@@ -266,6 +276,10 @@ class Test::Unit::TestCase
     ensure
       ActiveRecord::Base.default_timezone = prev_tz
     end
+  end
+
+  def with_default_and_local_utc_zone(&block)
+    with_default_timezone(:utc) { with_time_zone('UTC', &block) }
   end
 
   private
@@ -298,7 +312,7 @@ class Test::Unit::TestCase
       if expected.respond_to?(:time_zone)
         return actual.in_time_zone expected.time_zone
       end
-      expected = expected.to_time if expected.is_a?(DateTime)
+      expected = expected.in_time_zone if expected.is_a?(DateTime)
       if expected.is_a?(Time) # due AR 2.3
         return actual.in_time_zone ActiveSupport::TimeZone[expected.zone] # e.g. 'CET'
       end
