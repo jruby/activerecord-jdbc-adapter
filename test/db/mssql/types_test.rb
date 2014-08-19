@@ -46,7 +46,7 @@ class MSSQLDateTimeTypesTest < Test::Unit::TestCase
     Time.zone = time_zone unless time_zone == false
   end if ar_version('3.0')
 
-  if ActiveRecord::Base.connection.sqlserver_version >= '2008'
+  if defined? JRUBY_VERSION && ActiveRecord::Base.connection.sqlserver_version >= '2008'
 
     # 2008 Date and Time: http://msdn.microsoft.com/en-us/library/ff848733.aspx
 

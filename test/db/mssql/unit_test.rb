@@ -1,7 +1,8 @@
 require 'test_helper'
-require 'arjdbc/mssql'
 
 class MSSQLUnitTest < Test::Unit::TestCase
+
+  def self.startup; require 'arjdbc/mssql' end
 
   # NOTE: lot of tests kindly borrowed from __activerecord-sqlserver-adapter__
 
@@ -42,14 +43,14 @@ class MSSQLUnitTest < Test::Unit::TestCase
     test 'return clean table_name from Utils.unqualify_table_name' do
       @qualifed_table_names.each do |qtn|
         assert_equal @expected_table_name,
-          ArJdbc::MSSQL::Utils.send(:unqualify_table_name, qtn),
+          ArJdbc::MSSQL::Utils.unqualify_table_name(qtn),
           "This qualifed_table_name #{qtn} did not unqualify correctly."
       end
     end
 
     test 'return nil from Utils.unqualify_db_name when table_name is less than 2 qualified' do
       @first_second_table_names.each do |qtn|
-        assert_equal nil, ArJdbc::MSSQL::Utils.send(:unqualify_db_name, qtn),
+        assert_equal nil, ArJdbc::MSSQL::Utils.unqualify_db_name(qtn),
           "This qualifed_table_name #{qtn} did not return nil."
       end
     end
@@ -57,7 +58,7 @@ class MSSQLUnitTest < Test::Unit::TestCase
     test 'return clean db_name from Utils.unqualify_db_name when table is thrid level qualified' do
       @third_table_names.each do |qtn|
         assert_equal @expected_db_name,
-          ArJdbc::MSSQL::Utils.send(:unqualify_db_name, qtn),
+          ArJdbc::MSSQL::Utils.unqualify_db_name(qtn),
           "This qualifed_table_name #{qtn} did not unqualify the db_name correctly."
       end
     end
@@ -132,10 +133,12 @@ class MSSQLUnitTest < Test::Unit::TestCase
     adapter
   end
 
-end
+end if defined? JRUBY_VERSION
 
 # This tests ArJdbc::MSSQL#add_lock! without actually connecting to the database.
 class MSSQLRowLockingUnitTest < Test::Unit::TestCase
+
+  def self.startup; require 'arjdbc/mssql' end
 
   def test_find_all
     add_lock_test "Appointment.find(:all)",
@@ -269,14 +272,14 @@ class MSSQLRowLockingUnitTest < Test::Unit::TestCase
       }
   end
 
-  class Dummy
-    include ::ArJdbc::MSSQL::LockMethods
-  end
+  class Dummy; end
 
   private
 
   def add_lock!(sql, options={})
     result = sql.dup
+    mod = ::ArJdbc::MSSQL::LockMethods
+    Dummy.send(:include, mod) unless Dummy.include?(mod)
     Dummy.new.add_lock!(result, {:lock=>true}.merge(options))
     result
   end
