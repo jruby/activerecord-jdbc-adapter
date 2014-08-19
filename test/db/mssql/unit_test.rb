@@ -32,9 +32,10 @@ class MSSQLUnitTest < Test::Unit::TestCase
 
   context "Utils" do
 
+    def utils; ArJdbc::MSSQL::Utils end
+
     setup do
-      @expected_table_name = 'baz'
-      @expected_db_name = 'foo'
+      @expected_table_name = 'baz'; @expected_db_name = 'foo'
       @first_second_table_names = ['[baz]','baz','[bar].[baz]','bar.baz']
       @third_table_names = ['[foo].[bar].[baz]','foo.bar.baz']
       @qualifed_table_names = @first_second_table_names + @third_table_names
@@ -42,53 +43,77 @@ class MSSQLUnitTest < Test::Unit::TestCase
 
     test 'return clean table_name from Utils.unqualify_table_name' do
       @qualifed_table_names.each do |qtn|
-        assert_equal @expected_table_name,
-          ArJdbc::MSSQL::Utils.unqualify_table_name(qtn),
+        assert_equal @expected_table_name, utils.unqualify_table_name(qtn),
           "This qualifed_table_name #{qtn} did not unqualify correctly."
       end
     end
 
     test 'return nil from Utils.unqualify_db_name when table_name is less than 2 qualified' do
       @first_second_table_names.each do |qtn|
-        assert_equal nil, ArJdbc::MSSQL::Utils.unqualify_db_name(qtn),
+        assert_equal nil, utils.unqualify_db_name(qtn),
           "This qualifed_table_name #{qtn} did not return nil."
       end
     end
 
     test 'return clean db_name from Utils.unqualify_db_name when table is thrid level qualified' do
       @third_table_names.each do |qtn|
-        assert_equal @expected_db_name,
-          ArJdbc::MSSQL::Utils.unqualify_db_name(qtn),
+        assert_equal @expected_db_name, utils.unqualify_db_name(qtn),
           "This qualifed_table_name #{qtn} did not unqualify the db_name correctly."
       end
     end
 
-    context 'remove_identifier_delimiters' do
-      test 'double quotes and square brackets are removed from tablename' do
-        tn = '["foo"]'
-        assert_equal 'foo', ArJdbc::MSSQL::Utils.send(:remove_identifier_delimiters, tn),
-                     "The delimters in the value #{tn} were not removed correctly"
-      end
-
-      test 'double quotes and square brackets are removed from tablename with owner/schema' do
-        tn = '["foo"].["bar"]'
-        assert_equal 'foo.bar', ArJdbc::MSSQL::Utils.send(:remove_identifier_delimiters, tn),
-                     "The delimters in the value #{tn} were not removed correctly"
-      end
-
-      test 'return correct tablename if no delimiters are present' do
-        tn = 'foo'
-        assert_equal 'foo', ArJdbc::MSSQL::Utils.send(:remove_identifier_delimiters, tn),
-                     "The delimters in the value #{tn} were not removed correctly"
-      end
-
-      test 'return correct tablename with owner/schema if no delimiters are present' do
-        tn = 'foo.bar'
-        assert_equal 'foo.bar', ArJdbc::MSSQL::Utils.send(:remove_identifier_delimiters, tn),
-                     "The delimters in the value #{tn} were not removed correctly"
-      end
+    test 'returns same table-name if no quoting present' do
+      assert_equal 'foo', utils.unqualify_table_name('foo')
     end
 
+    test 'returns schema-name with no quoting present' do
+      assert_equal 'foo', utils.unqualify_table_schema('foo.bar')
+    end
+
+    test 'returns nil when no schema present' do
+      assert_equal nil, utils.unqualify_table_schema('bar')
+      assert_equal nil, utils.unqualify_table_schema('[foo]')
+    end
+
+    test 'returns correct table-name if no quoting present' do
+      assert_equal 'bar', utils.unqualify_table_name('foo.bar')
+    end
+
+    test 'double quotes and square brackets are removed from table-name' do
+      tn = '["foo"]'
+      assert_equal 'foo', utils.unqualify_table_name(tn)
+    end
+
+    test 'double quotes and square brackets are removed from table-name with owner/schema' do
+      tn = '["foo"].["bar"]'
+      assert_equal 'bar', utils.unqualify_table_name(tn)
+    end
+
+    test 'double quotes and square brackets are removed from schema-name with owner/schema' do
+      tn = '["foo"].["bar"]'
+      assert_equal 'foo', utils.unqualify_table_schema(tn)
+    end
+
+    test 'returns correct db-name if no quoting present' do
+      assert_equal 'foo', utils.unqualify_db_name('foo.bar.baz')
+    end
+
+    test 'returns correct db-name with quoting present' do
+      assert_equal 'foo', utils.unqualify_db_name('[foo].[bar].baz')
+      assert_equal 'foo', utils.unqualify_db_name('[foo].[bar].[baz]')
+    end
+
+    test 'double quotes and square brackets are removed from db-name' do
+      tn = '["foo"].["bar"].["baz"]'
+      assert_equal 'foo', utils.unqualify_db_name(tn)
+    end
+
+    test 'returns nil when no db-name present' do
+      assert_equal nil, utils.unqualify_db_name('bar')
+      assert_equal nil, utils.unqualify_db_name('[foo]')
+      assert_equal nil, utils.unqualify_db_name('bar.baz')
+      assert_equal nil, utils.unqualify_db_name('[foo].[bar]')
+    end
 
   end
 

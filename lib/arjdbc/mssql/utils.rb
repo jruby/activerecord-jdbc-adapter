@@ -21,13 +21,6 @@ module ArJdbc
         end
       end
 
-      # protected
-
-      # See "Delimited Identifiers": http://msdn.microsoft.com/en-us/library/ms176027.aspx
-      def remove_identifier_delimiters(keyword)
-        keyword.to_s.tr("\]\[\"", '')
-      end
-
       def unquote_table_name(table_name)
         remove_identifier_delimiters(table_name)
       end
@@ -45,12 +38,20 @@ module ArJdbc
       end
 
       def unqualify_table_schema(table_name)
-        remove_identifier_delimiters(table_name.to_s.split('.')[-2]) rescue nil
+        schema_name = table_name.to_s.split('.')[-2]
+        schema_name.nil? ? nil : remove_identifier_delimiters(schema_name)
       end
 
       def unqualify_db_name(table_name)
         table_names = table_name.to_s.split('.')
         table_names.length == 3 ? remove_identifier_delimiters(table_names.first) : nil
+      end
+
+      # private
+
+      # See "Delimited Identifiers": http://msdn.microsoft.com/en-us/library/ms176027.aspx
+      def remove_identifier_delimiters(keyword)
+        keyword.to_s.tr("\]\[\"", '')
       end
 
     end
