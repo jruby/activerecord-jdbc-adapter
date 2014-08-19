@@ -8,11 +8,7 @@ module Arel
       def visit_Arel_Nodes_SelectStatement(*args) # [o] AR <= 4.0 [o, a] on 4.1
         o, a = args.first, args.last
 
-        if ! o.limit && ! o.offset
-          return super
-        elsif ! o.limit && o.offset
-          raise ActiveRecord::ActiveRecordError, "must specify :limit with :offset"
-        end
+        return super if ! o.limit && ! o.offset # NOTE: really?
 
         unless o.orders.empty?
           select_order_by = "ORDER BY #{do_visit_columns(o.orders, a).join(', ')}"
@@ -46,10 +42,13 @@ module Arel
         sql
       end
 
+      # @private
+      MAX_LIMIT_VALUE = 9_223_372_036_854_775_807
+
       def visit_Arel_Nodes_UpdateStatement(*args) # [o] AR <= 4.0 [o, a] on 4.1
         o = args.first
         if o.orders.any? && o.limit.nil?
-          o.limit = Nodes::Limit.new(9223372036854775807)
+          o.limit = Nodes::Limit.new(MAX_LIMIT_VALUE)
         end
         super
       end
@@ -67,7 +66,7 @@ module Arel
         #   User.select("distinct first_name").limit(10)
         # would generate "select top 10 distinct first_name from users",
         # which is invalid should be "select distinct top 10 first_name ..."
-        ""
+        ''
       end
 
       def visit_Arel_Nodes_Limit o, a = nil

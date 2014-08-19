@@ -12,58 +12,63 @@ module ArJdbc
         module_function
 
         def replace_limit_offset!(sql, limit, offset, order)
-          if limit
-            offset ||= 0
-            start_row, end_row = offset + 1, offset + limit.to_i
+          offset ||= 0
 
-            if match = FIND_SELECT.match(sql)
-              select, distinct, rest_of_query = match[1], match[2], match[3]
-              rest_of_query.strip!
-            end
-            rest_of_query[0] = '*' if rest_of_query[0...1] == '1' && rest_of_query !~ /1 AS/i
-            if rest_of_query[0...1] == '*'
-              from_table = Utils.get_table_name(rest_of_query, true)
-              rest_of_query = "#{from_table}.#{rest_of_query}"
-            end
-
-            # Ensure correct queries if the rest_of_query contains a 'GROUP BY'. Otherwise the following error occurs:
-            #   ActiveRecord::StatementInvalid: ActiveRecord::JDBCError: Column 'users.id' is invalid in the select list because it is not contained in either an aggregate function or the GROUP BY clause.
-            #   SELECT t.* FROM ( SELECT ROW_NUMBER() OVER(ORDER BY users.id) AS _row_num, [users].[lft], COUNT([users].[lft]) FROM [users] GROUP BY [users].[lft] HAVING COUNT([users].[lft]) > 1 ) AS t WHERE t._row_num BETWEEN 1 AND 1
-            if rest_of_query.downcase.include?('group by')
-              order_start = order.strip[0, 8]; order_start.upcase!
-              if order_start == 'ORDER BY' && order.match(FIND_AGGREGATE_FUNCTION)
-                # do nothing
-              elsif order.count(',') == 0
-                order.gsub!(/ORDER +BY +([^\s]+)(\s+ASC|\s+DESC)?/i, 'ORDER BY MIN(\1)\2')
-              else
-                raise('Only one order condition allowed.')
-              end
-            end
-
-            if distinct # select =~ /DISTINCT/i
-              order = order.gsub(/([a-z0-9_])+\./, 't.')
-              new_sql = "SELECT t.* FROM "
-              new_sql << "( SELECT ROW_NUMBER() OVER(#{order}) AS _row_num, t.* FROM (#{select} #{rest_of_query}) AS t ) AS t"
-              new_sql << " WHERE t._row_num BETWEEN #{start_row} AND #{end_row}"
-            else
-              select_columns_before_from = rest_of_query.gsub(/FROM.*/, '').strip
-              only_one_column            = !select_columns_before_from.include?(',')
-              only_one_id_column         = only_one_column && (select_columns_before_from.ends_with?('.id') || select_columns_before_from.ends_with?('.[id]'))
-
-              if only_one_id_column
-                # If there's only one id column a subquery will be created which only contains this column
-                new_sql = "#{select} t.id FROM "
-              else
-                # All selected columns are used
-                new_sql = "#{select} t.* FROM "
-              end
-              new_sql << "( SELECT ROW_NUMBER() OVER(#{order}) AS _row_num, #{rest_of_query} ) AS t"
-              new_sql << " WHERE t._row_num BETWEEN #{start_row} AND #{end_row}"
-            end
-
-            sql.replace(new_sql)
+          if match = FIND_SELECT.match(sql)
+            select, distinct, rest_of_query = match[1], match[2], match[3]
+            rest_of_query.strip!
           end
-          sql
+          rest_of_query[0] = '*' if rest_of_query[0...1] == '1' && rest_of_query !~ /1 AS/i
+          if rest_of_query[0...1] == '*'
+            from_table = Utils.get_table_name(rest_of_query, true)
+            rest_of_query = "#{from_table}.#{rest_of_query}"
+          end
+
+          # Ensure correct queries if the rest_of_query contains a 'GROUP BY'. Otherwise the following error occurs:
+          #   ActiveRecord::StatementInvalid: ActiveRecord::JDBCError: Column 'users.id' is invalid in the select list because it is not contained in either an aggregate function or the GROUP BY clause.
+          #   SELECT t.* FROM ( SELECT ROW_NUMBER() OVER(ORDER BY users.id) AS _row_num, [users].[lft], COUNT([users].[lft]) FROM [users] GROUP BY [users].[lft] HAVING COUNT([users].[lft]) > 1 ) AS t WHERE t._row_num BETWEEN 1 AND 1
+          if rest_of_query.downcase.include?('group by')
+            order_start = order.strip[0, 8]; order_start.upcase!
+            if order_start == 'ORDER BY' && order.match(FIND_AGGREGATE_FUNCTION)
+              # do nothing
+            elsif order.count(',') == 0
+              order.gsub!(/ORDER +BY +([^\s]+)(\s+ASC|\s+DESC)?/i, 'ORDER BY MIN(\1)\2')
+            else
+              raise('Only one order condition allowed.')
+            end
+          end
+
+          if distinct # select =~ /DISTINCT/i
+            order = order.gsub(/([a-z0-9_])+\./, 't.')
+            new_sql = "SELECT t.* FROM "
+            new_sql << "( SELECT ROW_NUMBER() OVER(#{order}) AS _row_num, t.* FROM (#{select} #{rest_of_query}) AS t ) AS t"
+            append_limit_row_num_clause(new_sql, limit, offset)
+          else
+            select_columns_before_from = rest_of_query.gsub(/FROM.*/, '').strip
+            only_one_column            = !select_columns_before_from.include?(',')
+            only_one_id_column         = only_one_column && (select_columns_before_from.ends_with?('.id') || select_columns_before_from.ends_with?('.[id]'))
+
+            if only_one_id_column
+              # If there's only one id column a subquery will be created which only contains this column
+              new_sql = "#{select} t.id FROM "
+            else
+              # All selected columns are used
+              new_sql = "#{select} t.* FROM "
+            end
+            new_sql << "( SELECT ROW_NUMBER() OVER(#{order}) AS _row_num, #{rest_of_query} ) AS t"
+            append_limit_row_num_clause(new_sql, limit, offset)
+          end
+
+          sql.replace new_sql
+        end
+
+        def append_limit_row_num_clause(sql, limit, offset)
+          if limit
+            start_row = offset + 1; end_row = offset + limit.to_i
+            sql << " WHERE t._row_num BETWEEN #{start_row} AND #{end_row}"
+          else
+            sql << " WHERE t._row_num > #{offset}"
+          end
         end
 
       end
