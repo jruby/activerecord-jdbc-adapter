@@ -43,6 +43,18 @@ but one can easily run tests with prepared statements enabled using env vars :
 
     rake test_derby PS=true # or PREPARED_STATEMENTS=true
 
+To run tests against specific Rails version, make sure that the all
+required gems are installed. This can be checked by directly running
+the rake task. For eg., for Rails 4.2 :
+
+    rake appraisal:rails42
+
+If the required gems are not present, bundler will give error and will
+ask to do bundle install. This bundle install must be done with the
+Gemfile against which we are running tests. So in this case, bundle
+install can be done using :
+
+    BUNDLE_GEMFILE=gemfiles/rails42.gemfile bundle install
 
 ### ActiveRecord (Rails) Tests
 
