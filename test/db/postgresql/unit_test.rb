@@ -145,6 +145,11 @@ class PostgresActiveSchemaUnitTest < Test::Unit::TestCase
     ActiveRecord::ConnectionAdapters::PostgreSQLAdapter.send(:remove_method, :index_name_exists?) if redefined
   end if ar_version('4.0')
 
+  def test_rename_index
+    expected = "ALTER INDEX \"last_name_index\" RENAME TO \"name_index\""
+    assert_equal expected, rename_index(:people, :last_name_index, :name_index)
+  end # if ar_version('4.0')
+
   private
 
   def method_missing(method_symbol, *arguments)
