@@ -807,7 +807,7 @@ module ArJdbc
     # @return [String]
     # @override
     def quote(value, column = nil)
-      return super unless column
+      return super unless column && column.type
       return value if sql_literal?(value)
 
       case value
