@@ -1,3 +1,17 @@
+## 1.3.10 (08/29/14)
+
+- [postgres] preliminary (temp) fix for Marshal.dump broken since 1.3.8 (#573)
+- [postgres] adapter was missing the custom rename_index method (fixes #577)
+- [postgres] user defined types should not raise an error
+- [postgres] align with Rails distict white-space fix (regression in 4.0.10)
+- [mssql] allow for `offset(x)` without `limit(y)` to work ... (fixes #564)
+- [mssql] correctly parse set_table_name string with owner (#574)
+- allow database.yml or config option to set `:insert_returning` (#570)
+- [sqlite3] savepoint without passed explicit name not supported
+- synchronize setting resolved visitor type
+- [mssql] (hopefully) fix ORDER BY mis-detection - closes #532 (improved #549)
+- [mysql] columns were sometimes instantiated with the wrong column class (#566)
+
 ## 1.3.9 (07/07/14)
 
 - [postgres] improve Range's type cast - fixing minor quoting failure on AR 4.x
