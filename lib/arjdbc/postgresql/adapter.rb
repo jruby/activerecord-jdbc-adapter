@@ -777,11 +777,13 @@ module ArJdbc
       end
 
       order_columns = orders.reject(&:blank?).map! do |column|
-        column = column.to_sql unless column.is_a?(String) # handle AREL node
-        column.gsub(/\s+(ASC|DESC)\s*(NULLS\s+(FIRST|LAST)\s*)?/i, '') # remove ASC/DESC
+        column = column.is_a?(String) ? column.dup : column.to_sql # AREL node
+        column.gsub!(/\s+(?:ASC|DESC)\s*/i, '') # remove any ASC/DESC modifiers
+        column.gsub!(/\s*NULLS\s+(?:FIRST|LAST)?\s*/i, '')
+        column
       end
-      order_columns.reject!(&:blank?)
-      i = -1; order_columns.map! { |c| "#{c} AS alias_#{i += 1}" }
+      order_columns.reject!(&:empty?)
+      i = -1; order_columns.map! { |column| "#{column} AS alias_#{i += 1}" }
 
       columns = [ columns ]; columns.flatten!
       columns.push( *order_columns ).join(', ')
