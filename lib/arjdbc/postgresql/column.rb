@@ -327,6 +327,24 @@ module ArJdbc
         ::Float::INFINITY * (options[:negative] ? -1 : 1)
       end if AR4_COMPAT
 
+      private
+
+      # TODO marshaling worked in 1.3.7 ,,, got broken in 1.3.8 (due @adapter)
+      # but the fix introduced in 1.3.10 causes backwards (1.3) incompatibility
+      # ... for now should be fine - there's likely more refactoring to happen!
+
+      def marshal_dump
+        # NOTE: disabled oid_type ... due range warnings (maybe they're fine) :
+        # unknown OID 3904: failed to recognize type of 'int4_range'. It will be treated as String.
+        #oid_type if respond_to?(:oid_type)
+        @adapter = nil
+        instance_variables.map { |var| [ var, instance_variable_get(var) ] }
+      end
+
+      def marshal_load(data)
+        data.each { |pair| instance_variable_set( pair[0], pair[1] ) }
+      end
+
       # @note Based on *active_record/connection_adapters/postgresql/cast.rb* (4.0).
       module Cast
 
