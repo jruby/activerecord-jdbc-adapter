@@ -67,6 +67,10 @@ class PostgresSchemaTest < Test::Unit::TestCase
     assert_equal [ "public" ], connection.schema_names
   end if ar_version('4.0') # schema_names added in AR 4.0
 
+  def test_schema_search_path
+    assert_equal "\"$user\",public", connection.schema_search_path
+  end
+
   context "search path" do
 
     def test_schema_names
