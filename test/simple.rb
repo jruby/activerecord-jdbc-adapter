@@ -1264,6 +1264,13 @@ module SimpleTestMethods
     end
   end
 
+  def test_marshaling
+    Marshal.dump DbType.new
+    db_type = DbType.create!
+    Marshal.dump db_type
+    Marshal.dump db_type.reload
+  end
+
   protected
 
   def assert_date_type(value)
