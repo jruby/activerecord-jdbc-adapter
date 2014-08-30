@@ -121,7 +121,9 @@ module SchemaDumpTestMethods
   def test_schema_dump_keeps_large_precision_integer_columns_as_decimal
     output = standard_dump
     precision = DbTypeMigration.big_decimal_precision
-    if ar_version('4.0')
+    if ar_version('4.2')
+      assert_match %r{t.decimal\s+"big_decimal",\s+precision: #{precision}}, output
+    elsif ar_version('4.0')
       assert_match %r{t.decimal\s+"big_decimal",\s+precision: #{precision},\s+scale: 0}, output
     else
       assert_match %r{t.decimal\s+"big_decimal",\s+:precision => #{precision},\s+:scale => 0}, output
