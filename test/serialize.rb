@@ -211,6 +211,7 @@ module SerializeTestMethods
   end if Test::Unit::TestCase.ar_version('3.0')
 
   def test_serialize_with_coder
+    skip "not supported on AR >= 4.2" if ar_version('4.2')
     coder = Class.new {
       # Identity
       def load(thing)
@@ -234,6 +235,7 @@ module SerializeTestMethods
   end if Test::Unit::TestCase.ar_version('3.1')
 
   def test_serialize_with_bcrypt_coder
+    skip "not supported on AR >= 4.2" if ar_version('4.2')
     require 'bcrypt'
     crypt_coder = Class.new {
       def load(thing)
