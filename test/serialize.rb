@@ -257,6 +257,25 @@ module SerializeTestMethods
     assert_equal(true, topic.content == password, 'password should equal')
   end if Test::Unit::TestCase.ar_version('3.1')
 
+  def test_serialize_with_coder
+    some_class = Struct.new(:foo) do
+      def self.dump(value)
+        value.foo
+      end
+
+      def self.load(value)
+        new(value)
+      end
+    end
+
+    Topic.serialize(:content, some_class)
+    topic = Topic.new(:content => some_class.new('my value'))
+    topic.save!
+    topic.reload
+    assert_kind_of some_class, topic.content
+    assert_equal topic.content, some_class.new('my value')
+  end if Test::Unit::TestCase.ar_version('4.2')
+
   def test_serialize_attribute_via_select_method_when_time_zone_available
     ActiveRecord::Base.time_zone_aware_attributes = true
     Topic.serialize(:content, MyObject)
