@@ -53,7 +53,7 @@ module SerializeTestMethods
     topic = Topic.allocate
     topic.init_with('attributes' => { 'content' => '--- foo' })
     assert_equal 'foo', topic.content
-  end if ActiveRecord::VERSION::STRING < '4.2'
+  end if Test::Unit::TestCase.ar_version('3.0') && ActiveRecord::VERSION::STRING < '4.2'
 
   def test_serialized_attribute_in_base_class
     Topic.serialize("content", Hash)
@@ -154,12 +154,12 @@ module SerializeTestMethods
     Topic.serialize(:content, Hash)
     topic = Topic.new(:content => "string")
     assert_raise(ActiveRecord::SerializationTypeMismatch) { topic.save }
-  end if ActiveRecord::VERSION::STRING < '4.2'
+  end if Test::Unit::TestCase.ar_version('3.2') && ActiveRecord::VERSION::STRING < '4.2'
 
   def test_serialized_attribute_should_raise_exception_on_new_with_wrong_type
     Topic.serialize(:content, Hash)
     assert_raise(ActiveRecord::SerializationTypeMismatch) { Topic.new(:content => "string") }
-  end if ActiveRecord::VERSION::STRING >= '4.2'
+  end if Test::Unit::TestCase.ar_version('4.2')
 
   def test_should_raise_exception_on_serialized_attribute_with_type_mismatch
     myobj = MyObject.new('value1', 'value2')
