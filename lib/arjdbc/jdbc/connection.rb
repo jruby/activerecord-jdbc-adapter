@@ -71,7 +71,19 @@ module ActiveRecord
           Java::JavaxNaming::InitialContext.new.lookup(config[:jndi].to_s)
 
         @jndi = true
-        self.connection_factory = JdbcConnectionFactory.impl { data_source.connection }
+        self.connection_factory = RubyJdbcConnectionFactory.new(data_source)
+      end
+
+      class RubyJdbcConnectionFactory
+        include JdbcConnectionFactory
+
+        def initialize(data_source)
+          @data_source = data_source
+        end
+
+        def new_connection
+          @data_source.connection
+        end
       end
 
       def setup_jdbc_factory
