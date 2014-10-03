@@ -14,6 +14,6 @@ require 'test_helper'
 config = { :adapter => 'firebird' }
 config[:username] = ENV['FB_USER'] || 'sysdba'
 config[:password] = ENV['FB_PASS'] || 'masterkey'
-config[:database] = ENV['FB_DATABASE'] || './test.fbd'
+config[:database] = ENV['FB_DATABASE'] || './test.fdb'
 
 ActiveRecord::Base.establish_connection(config)
