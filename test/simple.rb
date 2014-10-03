@@ -482,7 +482,12 @@ module SimpleTestMethods
   end
 
   def test_negative_default_value
-    assert_equal(-1, DbType.columns_hash['sample_integer_neg_default'].default)
+    if ActiveRecord::VERSION::MAJOR > 3
+      assert_equal(-1, DbType.column_defaults['sample_integer_neg_default'])
+    else
+      assert_equal(-1, DbType.columns_hash['sample_integer_neg_default'].default)
+    end
+
     assert_equal(-1, DbType.new.sample_integer_neg_default)
   end
 
