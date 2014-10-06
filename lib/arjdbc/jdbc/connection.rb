@@ -67,10 +67,11 @@ module ActiveRecord
           Java::JavaxNaming::InitialContext.new.lookup(config[:jndi].to_s)
 
         @jndi = true
-        self.connection_factory = RubyJdbcConnectionFactory.new(data_source)
+        self.connection_factory = JndiConnectionFactoryImpl.new(data_source)
       end
 
-      class RubyJdbcConnectionFactory
+      # @private
+      class JndiConnectionFactoryImpl
         include JdbcConnectionFactory
 
         def initialize(data_source)
@@ -91,12 +92,26 @@ module ActiveRecord
         url = jdbc_url
         username = config[:username]
         password = config[:password]
-        jdbc_driver = ( config[:driver_instance] ||=
+        driver = ( config[:driver_instance] ||=
             JdbcDriver.new(config[:driver].to_s, config[:properties]) )
 
         @jndi = false
-        self.connection_factory = JdbcConnectionFactory.impl do
-          jdbc_driver.connection(url, username, password)
+        self.connection_factory = JdbcConnectionFactoryImpl.new(url, username, password, driver)
+      end
+
+      # @private
+      class JdbcConnectionFactoryImpl
+        include JdbcConnectionFactory
+
+        def initialize(url, username, password, driver)
+          @url = url
+          @username = username
+          @password = password
+          @driver = driver
+        end
+
+        def new_connection
+          @driver.connection(@url, @username, @password)
         end
       end
 
