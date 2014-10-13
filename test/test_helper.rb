@@ -181,11 +181,12 @@ class Test::Unit::TestCase
 
   def assert_queries(count, matching = nil)
     if ActiveRecord::SQLCounter.enabled?
-      log = ActiveRecord::SQLCounter.log = []
+      ActiveRecord::SQLCounter.clear_log
       begin
         yield
       ensure
-        queries = queries = ( matching ? log.select { |s| s =~ matching } : log )
+        log = ActiveRecord::SQLCounter.log
+        queries = ( matching ? log.select { |s| s =~ matching } : log )
         assert_equal count, queries.size,
           "#{ queries.size } instead of #{ count } queries were executed." +
           "#{ queries.size == 0 ? '' : "\nQueries:\n#{queries.join("\n")}" }"
@@ -311,8 +312,15 @@ end
 module ActiveRecord
   class SQLCounter
 
+    class << self
+      attr_accessor :ignored_sql, :log, :log_all
+      def clear_log; self.log = []; self.log_all = []; end
+    end
+
+    self.clear_log
+
     @@ignored_sql = [
-      /^PRAGMA (?!(table_info))/,
+      /^PRAGMA/,
       /^SELECT currval/,
       /^SELECT CAST/,
       /^SELECT @@IDENTITY/,
