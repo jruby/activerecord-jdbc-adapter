@@ -1,12 +1,12 @@
-jar_file = File.join(*%w(lib arjdbc jdbc adapter_java.jar))
+CLEAN << jar_file = 'lib/arjdbc/jdbc/adapter_java.jar'
 begin
   require 'ant'
-  directory classes = "pkg/classes"
-  CLEAN << classes
+  CLEAN << classes = 'pkg/classes'
+  directory classes
 
   driver_jars = []
-  # PostgreSQL driver :
   driver_jars << Dir.glob("jdbc-postgres/lib/*.jar").sort.last
+  driver_jars << Dir.glob("jdbc-mysql/lib/*.jar").last
 
   file jar_file => FileList['src/java/**/*.java', 'pkg/classes'] do
     rm_rf FileList["#{classes}/**/*"]
@@ -21,7 +21,7 @@ begin
 
     require 'arjdbc/version'
     gem_version = Gem::Version.create(ArJdbc::VERSION)
-    if gem_version.segments.last == 'DEV'
+    if gem_version.segments.last.to_s.upcase == 'DEV'
       version = gem_version.segments[0...-1] # 1.3.0.DEV -> 1.3.0
     else
       version = gem_version.segments.dup
@@ -41,7 +41,7 @@ begin
       mf.attribute :name => 'Implementation-Vendor', :value => 'The JRuby Team'
     end
 
-    ant.jar :basedir => "pkg/classes",
+    ant.jar :basedir => classes,
             :includes => "**/*.class",
             :destfile => jar_file,
             :manifest => 'MANIFEST.MF',

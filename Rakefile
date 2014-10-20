@@ -1,8 +1,9 @@
 require 'rake/testtask'
 
 require 'rake/clean'
+
 CLEAN.include 'derby*', 'test.db.*', '*test.sqlite3', 'test/reports'
-CLEAN.include 'lib/**/*.jar', 'MANIFEST.MF', '*.log', 'target/*'
+CLEAN.include 'MANIFEST.MF', '*.log'
 
 require 'bundler/gem_helper'
 Bundler::GemHelper.install_tasks
@@ -10,9 +11,9 @@ Bundler::GemHelper.install_tasks
 require 'bundler/setup'
 require 'appraisal'
 
-task :default => [:jar, :test]
+task :default => :jar
 
-#ugh, bundler doesn't use tasks, so gotta hook up to both tasks.
+# ugh, bundler doesn't use tasks, so gotta hook up to both tasks.
 task :build => :jar
 task :install => :jar
 

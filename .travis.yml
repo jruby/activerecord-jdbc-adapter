@@ -1,7 +1,9 @@
 language: ruby
 bundler_args: --without development
 script: bundle exec rake test_$DB
-before_script: export JRUBY_OPTS="--server -Xcext.enabled=false -Xcompile.invokedynamic=false"
+before_script:
+  - export JRUBY_OPTS="--server -Xcext.enabled=false -Xcompile.invokedynamic=false"
+  - mvn prepare-package # compiles ext generates: lib/arjdbc/jdbc/adapter_java.jar
 before_install:
   - jruby --1.9 -S gem update --system 2.1.11
 rvm:
