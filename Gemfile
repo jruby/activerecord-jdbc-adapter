@@ -1,5 +1,7 @@
 source "https://rubygems.org"
 
+# NOTE: appraisal can not handle a `gemspec' declaration !
+
 if version = ENV['AR_VERSION']
   if version.index('/') && ::File.exist?(version)
     gem 'activerecord', :path => version
