@@ -6,7 +6,7 @@
   <artifactId>activerecord-jdbc-adapter</artifactId>
   <version>1.4.0-SNAPSHOT</version>
   <packaging>gem</packaging>
-  <name>AR-JDBC</name>
+  <name>activerecord-jdbc-adapter</name>
   <description>
     JDBC adapter for ActiveRecord, for use within JRuby on Rails.
   </description>
@@ -51,10 +51,12 @@
   </developers>
 
   <properties>
-    <jruby.version>1.7.10</jruby.version>
+    <jruby.version>1.7.16</jruby.version>
     <jruby.plugins.version>1.0.6</jruby.plugins.version>
     <invoker.skip>${maven.test.skip}</invoker.skip>
-    <project.build.sourceEncoding>utf-8</project.build.sourceEncoding>
+    <compiler.source>1.6</compiler.source>
+    <compiler.target>1.6</compiler.target>
+    <gen.sources>${basedir}/target/generated-sources</gen.sources>
   </properties>
 
   <repositories>
@@ -122,7 +124,6 @@
   </dependencies>
 
   <build>
-
     <extensions>
       <extension>
         <groupId>de.saumya.mojo</groupId>
@@ -131,21 +132,26 @@
       </extension>
     </extensions>
 
+    <defaultGoal>prepare-package</defaultGoal>
+
     <sourceDirectory>src/java</sourceDirectory>
     <resources>
       <resource>
-        <directory>lib</directory>
+        <directory>src/resources</directory>
       </resource>
     </resources>
     <testSourceDirectory>test/java</testSourceDirectory>
+    <!--
     <testResources>
       <testResource>
         <directory>test</directory>
       </testResource>
-    </testResources>
+    </testResources>-->
 
-    <directory>${basedir}/pkg</directory>
-    <outputDirectory>pkg/classes</outputDirectory>
+    <!--<directory>${basedir}/pkg</directory>-->
+    <!--
+    <directory>${basedir}/target</directory>
+    <outputDirectory>target/classes</outputDirectory>-->
 
     <plugins>
 
@@ -176,12 +182,13 @@
                 <include>adapter_java.jar</include>
               </includes>
             </fileset>
+            <!--
             <fileset>
               <directory>target</directory>
               <includes>
                 <include>*</include>
               </includes>
-            </fileset>
+            </fileset>-->
           </filesets>
         </configuration>
       </plugin>
@@ -225,11 +232,11 @@
               <executable>java</executable>
               <classpathScope>compile</classpathScope>
               <arguments>
-                <argument>-Djruby.bytecode.version=1.6</argument>
-                <argument>-classpath</argument>
-                <classpath />
+                <argument>-Djruby.bytecode.version=${compiler.target}</argument>
+                <argument>-classpath</argument> <classpath />
                 <argument>org.jruby.anno.InvokerGenerator</argument>
-                <argument>${basedir}/target/generated-sources/annotated_classes.txt</argument>
+                <!-- NOTE: needs to be "${basedir}/target/generated-sources/..." -->
+                <argument>${gen.sources}/annotated_classes.txt</argument>
                 <argument>${project.build.outputDirectory}</argument>
               </arguments>
             </configuration>
@@ -243,13 +250,14 @@
         <version>1.9</version>
         <executions>
           <execution>
+            <!--<id>add-populators</id>-->
             <phase>process-classes</phase>
             <goals>
               <goal>add-source</goal>
             </goals>
             <configuration>
               <sources>
-                <source>${basedir}/target/generated-sources</source>
+                <source>${gen.sources}</source>
               </sources>
             </configuration>
           </execution>
@@ -259,7 +267,40 @@
       <plugin>
         <artifactId>maven-compiler-plugin</artifactId>
         <version>3.1</version>
+        <configuration>
+          <source>${compiler.source}</source>
+          <target>${compiler.target}</target>
+          <encoding>UTF-8</encoding>
+          <debug>true</debug>
+          <showWarnings>true</showWarnings>
+          <showDeprecation>true</showDeprecation>
+          <useIncrementalCompilation>false</useIncrementalCompilation>
+
+          <generatedSourcesDirectory>${gen.sources}</generatedSourcesDirectory>
+          <annotationProcessors>
+            <annotationProcessor>org.jruby.anno.AnnotationBinder</annotationProcessor>
+          </annotationProcessors>
+          <compilerArgs>
+            <compilerArg>-XDignore.symbol.file=true</compilerArg>
+          </compilerArgs>
+        </configuration>
         <executions>
+          <!--
+          <execution>
+            <id>default-compile</id>
+            <phase>compile</phase>
+            <goals>
+              <goal>compile</goal>
+            </goals>
+            <configuration>
+              <annotationProcessors>
+                <annotationProcessor>org.jruby.anno.AnnotationBinder</annotationProcessor>
+              </annotationProcessors>
+              <compilerArgs>
+                <compilerArg>-XDignore.symbol.file=true</compilerArg>
+              </compilerArgs>
+            </configuration>
+          </execution>-->
           <execution>
             <id>compile-populators</id>
             <phase>process-classes</phase>
@@ -270,28 +311,14 @@
               <includes>
                 <include>org/jruby/gen/**/*.java</include>
               </includes>
-              <optimize>true</optimize>
               <compilerArgs>
                 <compilerArg>-XDignore.symbol.file=true</compilerArg>
               </compilerArgs>
+              <optimize>true</optimize>
+              <!--<proc>none</proc>-->
             </configuration>
           </execution>
         </executions>
-        <configuration>
-          <source>1.6</source>
-          <target>1.6</target>
-          <encoding>UTF-8</encoding>
-          <debug>true</debug>
-          <showWarnings>true</showWarnings>
-          <showDeprecation>true</showDeprecation>
-          <generatedSourcesDirectory>${basedir}/target/generated-sources</generatedSourcesDirectory>
-          <annotationProcessors>
-            <annotationProcessor>org.jruby.anno.AnnotationBinder</annotationProcessor>
-          </annotationProcessors>
-          <compilerArgs>
-            <compilerArg>-XDignore.symbol.file=true</compilerArg>
-          </compilerArgs>
-        </configuration>
       </plugin>
 
     </plugins>
