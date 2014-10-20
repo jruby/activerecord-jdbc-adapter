@@ -55,9 +55,6 @@
     <jruby.plugins.version>1.0.6</jruby.plugins.version>
     <invoker.skip>${maven.test.skip}</invoker.skip>
     <project.build.sourceEncoding>utf-8</project.build.sourceEncoding>
-    <!--
-    <tesla.dump.pom>pom.xml</tesla.dump.pom>
-    <tesla.dump.readonly>true</tesla.dump.readonly>-->
   </properties>
 
   <repositories>
@@ -90,6 +87,13 @@
       <groupId>org.postgresql</groupId>
       <artifactId>postgresql</artifactId>
       <version>9.2-1003-jdbc4</version>
+      <scope>provided</scope>
+    </dependency>
+
+    <dependency>
+      <groupId>mysql</groupId>
+      <artifactId>mysql-connector-java</artifactId>
+      <version>5.1.32</version>
       <scope>provided</scope>
     </dependency>
 
@@ -140,9 +144,8 @@
       </testResource>
     </testResources>
 
-    <outputDirectory>pkg/classes</outputDirectory>
-
     <directory>${basedir}/pkg</directory>
+    <outputDirectory>pkg/classes</outputDirectory>
 
     <plugins>
 
