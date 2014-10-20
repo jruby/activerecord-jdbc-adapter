@@ -1,4 +1,14 @@
+== 5.1.33
+
+ Suitable for use with MySQL server versions **5.5**, and **5.6**.
+
+ * http://dev.mysql.com/doc/relnotes/connector-j/en/news-5-1-32.html
+ * http://dev.mysql.com/doc/relnotes/connector-j/en/news-5-1-33.html
+
 == 5.1.31
+
+ Probably the last release suitable for use with "old" MySQL server versions,
+ including **4.1**, **5.0**, **5.1**, **5.4**, **5.5**, and **5.6**.
 
  * http://dev.mysql.com/doc/relnotes/connector-j/en/news-5-1-31.html
 
