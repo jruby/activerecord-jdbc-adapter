@@ -51,6 +51,14 @@ class PostgreSQLUnitTest < Test::Unit::TestCase
         @connection.distinct("posts.id", [order])
     end
 
+  def test_columns_for_distinct_with_case
+    assert_equal(
+      'posts.id, CASE WHEN author.is_active THEN UPPER(author.name) ELSE UPPER(author.email) END AS alias_0',
+      @connection.columns_for_distinct( 'posts.id',
+      ["CASE WHEN author.is_active THEN UPPER(author.name) ELSE UPPER(author.email) END"])
+    )
+  end
+
   end
 
   context 'connection' do
@@ -136,6 +144,11 @@ class PostgresActiveSchemaUnitTest < Test::Unit::TestCase
   ensure
     ActiveRecord::ConnectionAdapters::PostgreSQLAdapter.send(:remove_method, :index_name_exists?) if redefined
   end if ar_version('4.0')
+
+  def test_rename_index
+    expected = "ALTER INDEX \"last_name_index\" RENAME TO \"name_index\""
+    assert_equal expected, rename_index(:people, :last_name_index, :name_index)
+  end # if ar_version('4.0')
 
   private
 

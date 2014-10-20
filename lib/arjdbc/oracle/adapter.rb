@@ -608,7 +608,7 @@ module ArJdbc
     private :next_id_value
 
     def use_insert_returning?
-      if ( @use_insert_returning ||= nil ).nil?
+      if @use_insert_returning.nil?
         @use_insert_returning = false
       end
       @use_insert_returning

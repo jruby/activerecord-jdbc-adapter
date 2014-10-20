@@ -47,7 +47,7 @@ module ArJdbc
     end
 
     def use_insert_returning?
-      if ( @use_insert_returning ||= nil ).nil?
+      if @use_insert_returning.nil?
         @use_insert_returning = supports_insert_with_returning?
       end
       @use_insert_returning
@@ -729,11 +729,13 @@ module ArJdbc
       end
 
       order_columns = orders.reject(&:blank?).map! do |column|
-        column = column.to_sql unless column.is_a?(String) # handle AREL node
-        column.gsub(/\s+(ASC|DESC)\s*(NULLS\s+(FIRST|LAST)\s*)?/i, '') # remove ASC/DESC
+        column = column.is_a?(String) ? column.dup : column.to_sql # AREL node
+        column.gsub!(/\s+(?:ASC|DESC)\s*/i, '') # remove any ASC/DESC modifiers
+        column.gsub!(/\s*NULLS\s+(?:FIRST|LAST)?\s*/i, '')
+        column
       end
-      order_columns.reject!(&:blank?)
-      i = -1; order_columns.map! { |c| "#{c} AS alias_#{i += 1}" }
+      order_columns.reject!(&:empty?)
+      i = -1; order_columns.map! { |column| "#{column} AS alias_#{i += 1}" }
 
       columns = [ columns ]; columns.flatten!
       columns.push( *order_columns ).join(', ')
@@ -757,7 +759,7 @@ module ArJdbc
     # @return [String]
     # @override
     def quote(value, column = nil)
-      return super unless column
+      return super unless column && column.type
       return value if sql_literal?(value)
 
       case value
@@ -999,6 +1001,10 @@ module ArJdbc
 
     def remove_index!(table_name, index_name)
       execute "DROP INDEX #{quote_table_name(index_name)}"
+    end
+
+    def rename_index(table_name, old_name, new_name)
+      execute "ALTER INDEX #{quote_column_name(old_name)} RENAME TO #{quote_table_name(new_name)}"
     end
 
     def index_name_length

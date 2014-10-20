@@ -168,16 +168,14 @@ class MSSQLLimitOffsetTest < Test::Unit::TestCase
     %w( egy keto harom negy ot hat het nyolc ).each do |name|
       LongShip.create!(:name => name)
     end
-    error = assert_raise ActiveRecord::ActiveRecordError do
-      if ar_version('4.0')
-        LongShip.select(:name).offset(2).to_a
-      elsif ar_version('3.0')
-        LongShip.select(:name).offset(2).all
-      else
-        LongShip.find(:all, :select => 'name', :offset => 2)
-      end
+    if ar_version('4.0')
+      ships = LongShip.select(:name).offset(3).to_a
+    elsif ar_version('3.0')
+      ships = LongShip.select(:name).offset(3).all
+    else
+      ships = LongShip.find(:all, :select => 'name', :offset => 3)
     end
-    assert_equal "must specify :limit with :offset", error.message
+    assert_equal ['negy', 'ot', 'hat', 'het', 'nyolc'], ships.map(&:name)
   end
 
   def test_limit_with_group_by

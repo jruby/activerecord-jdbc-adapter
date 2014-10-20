@@ -39,7 +39,6 @@ module ActiveRecord
         super('arjdbc/sqlite3')
       else super
       end
-      super
     end
 
   end

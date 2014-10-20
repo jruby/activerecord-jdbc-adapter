@@ -9,3 +9,5 @@ MSSQL_CONFIG[:port] = ENV['SQLPORT'] if ENV['SQLPORT']
 unless ( ps = ENV['PREPARED_STATEMENTS'] || ENV['PS'] ).nil?
   MSSQL_CONFIG[:prepared_statements] = ps
 end
+
+MSSQL_CONFIG[:adapter] = 'sqlserver' unless defined? JRUBY_VERSION

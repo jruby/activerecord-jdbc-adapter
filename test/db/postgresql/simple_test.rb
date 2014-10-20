@@ -17,14 +17,6 @@ class PostgreSQLSimpleTest < Test::Unit::TestCase
     assert_equal 'PostgreSQLAdapter', classname
   end
 
-  def test_schema_search_path
-    assert_equal connection.schema_search_path, "\"$user\",public"
-  end
-
-  def test_current_schema
-    assert_equal connection.current_schema, "public"
-  end
-
   def test_encoding
     assert_not_nil connection.encoding
   end
@@ -40,7 +32,7 @@ class PostgreSQLSimpleTest < Test::Unit::TestCase
     assert_equal ["login"], results[1].first.keys
   end
 
-  def test_find_by_sql_WITH_statement
+  test 'find_by_sql WITH statement' do
     user = User.create! :login => 'ferko'
     Entry.create! :title => 'aaa', :user_id => user.id
     entries = Entry.find_by_sql '' +
@@ -58,7 +50,7 @@ class PostgreSQLSimpleTest < Test::Unit::TestCase
   end
 
   def test_create_xml_column
-    return if connection.postgresql_version < 80300
+    return if connection.send(:postgresql_version) < 80300
     super
   end if ar_version('3.1')
   def xml_sql_type; 'xml'; end
@@ -100,10 +92,10 @@ class PostgreSQLSimpleTest < Test::Unit::TestCase
 
     if ar_version('4.0')
       assert_equal :string, tags.type
-      assert_true tags.array?
+      assert_true tags.array? if defined? JRUBY_VERSION
 
       name = columns.detect { |c| c.name == "name" }
-      assert_false name.array?
+      assert_false name.array? if defined? JRUBY_VERSION
     else
       assert_equal :string, tags.type
       assert_match /char/, tags.sql_type # character varying (255)
@@ -202,6 +194,15 @@ class PostgreSQLSimpleTest < Test::Unit::TestCase
     end
   end if defined? JRUBY_VERSION
 
+  test "config :insert_returning" do
+    if current_connection_config.key?(:insert_returning)
+      insert_returning = current_connection_config[:insert_returning]
+      insert_returning = insert_returning.to_s == 'true'
+      assert_equal insert_returning, connection.use_insert_returning?
+    else
+      assert_equal true, connection.use_insert_returning? # assuming PG >= 9.0
+    end
+  end
 
   test 'type cast (without column)' do
     assert_equal 1, connection.type_cast(1, false)

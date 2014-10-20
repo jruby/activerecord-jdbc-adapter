@@ -701,4 +701,14 @@ _SQL
     @connection.reconnect!
   end if ar_version('3.0')
 
+  def test_marshal_types
+    Marshal.dump @first_array
+    Marshal.dump @first_bit_string
+    Marshal.dump @first_tsvector
+    Marshal.dump @first_oid
+    Marshal.dump @first_uuid
+    Marshal.dump @first_range ||= nil
+    Marshal.dump PostgresqlTimestampWithZone.new
+  end
+
 end

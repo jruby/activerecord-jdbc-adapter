@@ -64,10 +64,18 @@ class PostgreSQLConnectionTest < Test::Unit::TestCase
       assert_equal result.first.first, id
 
       result = connection.query('SELECT id, data, number FROM ex')
-      assert_equal [ id, 'some data', 5150 ], result.first
+      if defined? JRUBY_VERSION
+        assert_equal [ id, 'some data', 5150 ], result.first
+      else
+        assert_equal [ id.to_s, 'some data', 5150.to_s ], result.first
+      end
 
       result = connection.query('SELECT number, data FROM ex')
-      assert_equal [ [ 5150, 'some data' ] ], result
+      if defined? JRUBY_VERSION
+        assert_equal [ [ 5150, 'some data' ] ], result
+      else
+        assert_equal [ [ 5150.to_s, 'some data' ] ], result
+      end
     end
 
   end

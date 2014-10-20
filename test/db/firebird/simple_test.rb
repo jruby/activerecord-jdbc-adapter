@@ -125,6 +125,18 @@ class FirebirdSimpleTest < Test::Unit::TestCase
     assert_kind_of Arel::Visitors::Firebird, visitor
   end if ar_version('3.0')
 
+  def test_arel_visitor_limit
+    assert_equal Entry.limit(3).to_sql, "SELECT FIRST 3  \"ENTRIES\".* FROM \"ENTRIES\" "
+  end
+
+  def test_arel_visitor_offset
+    assert_equal Entry.offset(3).to_sql, "SELECT SKIP 3 \"ENTRIES\".* FROM \"ENTRIES\" "
+  end
+
+  def test_arel_visitor_limit_and_offset
+    sql = "SELECT FIRST 3  SKIP 3  \"ENTRIES\".* FROM \"ENTRIES\" "
+    assert_equal Entry.limit(3).offset(3).to_sql, sql
+  end
 end
 
 class FirebirdHasManyThroughTest < Test::Unit::TestCase

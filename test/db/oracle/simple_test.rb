@@ -131,6 +131,16 @@ class OracleSimpleTest < Test::Unit::TestCase
     assert entries.first.login
   end
 
+  test "config :insert_returning" do
+    if current_connection_config.key?(:insert_returning)
+      insert_returning = current_connection_config[:insert_returning]
+      insert_returning = insert_returning.to_s == 'true'
+      assert_equal insert_returning, connection.use_insert_returning?
+    else
+      assert_equal false, connection.use_insert_returning?
+    end
+  end
+
   def test_quotes_reserved_word_column
     connection.create_table 'lusers', :force => true do |t|
       t.string :file

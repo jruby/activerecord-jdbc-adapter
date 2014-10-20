@@ -53,3 +53,7 @@ end
 gem 'mysql2', :require => nil, :platform => :mri, :group => :test
 gem 'pg', :require => nil, :platform => :mri, :group => :test
 gem 'sqlite3', :require => nil, :platform => :mri, :group => :test
+group :mssql do
+  gem 'tiny_tds', :require => nil, :platform => :mri, :group => :test
+  gem 'activerecord-sqlserver-adapter', :require => nil, :platform => :mri, :group => :test
+end
