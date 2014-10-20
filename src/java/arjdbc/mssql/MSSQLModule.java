@@ -42,6 +42,7 @@ import org.jruby.util.ByteList;
  *
  * @author kares
  */
+@org.jruby.anno.JRubyModule(name = "ArJdbc::MSSQL")
 public class MSSQLModule {
 
     public static RubyModule load(final RubyModule arJdbc) {

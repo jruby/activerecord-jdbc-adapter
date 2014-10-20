@@ -48,6 +48,7 @@ import org.jruby.util.ByteList;
  *
  * @author nicksieger
  */
+//@org.jruby.anno.JRubyClass(name = "ActiveRecord::ConnectionAdapters::MSSQLJdbcConnection")
 public class MSSQLRubyJdbcConnection extends RubyJdbcConnection {
     private static final long serialVersionUID = -745716565005219263L;
 
@@ -59,7 +60,6 @@ public class MSSQLRubyJdbcConnection extends RubyJdbcConnection {
         final RubyClass clazz = getConnectionAdapters(runtime). // ActiveRecord::ConnectionAdapters
             defineClassUnder("MSSQLJdbcConnection", jdbcConnection, ALLOCATOR);
         clazz.defineAnnotatedMethods(MSSQLRubyJdbcConnection.class);
-        getConnectionAdapters(runtime).setConstant("MssqlJdbcConnection", clazz); // backwards-compat
         return clazz;
     }
 

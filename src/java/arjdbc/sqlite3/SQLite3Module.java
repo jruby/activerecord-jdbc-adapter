@@ -38,6 +38,7 @@ import org.jruby.util.ByteList;
  *
  * @author kares
  */
+@org.jruby.anno.JRubyModule(name = "ArJdbc::SQLite3")
 public class SQLite3Module {
 
     public static RubyModule load(final RubyModule arJdbc) {

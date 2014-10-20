@@ -36,6 +36,7 @@ import org.jruby.anno.JRubyMethod;
 import org.jruby.runtime.ThreadContext;
 import org.jruby.runtime.builtin.IRubyObject;
 
+@org.jruby.anno.JRubyModule(name = "ArJdbc::HSQLDB")
 public class HSQLDBModule {
 
     public static RubyModule load(final RubyModule arJdbc) {

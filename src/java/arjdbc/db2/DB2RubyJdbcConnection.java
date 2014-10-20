@@ -47,7 +47,9 @@ import org.jruby.util.ByteList;
  *
  * @author mikestone
  */
+@org.jruby.anno.JRubyClass(name = "ActiveRecord::ConnectionAdapters::DB2JdbcConnection")
 public class DB2RubyJdbcConnection extends RubyJdbcConnection {
+    private static final long serialVersionUID = 4175414189763614093L;
 
     public DB2RubyJdbcConnection(Ruby runtime, RubyClass metaClass) {
         super(runtime, metaClass);

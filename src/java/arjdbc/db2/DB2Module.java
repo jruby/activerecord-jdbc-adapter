@@ -39,6 +39,7 @@ import org.jruby.runtime.builtin.IRubyObject;
  *
  * @author kares
  */
+@org.jruby.anno.JRubyModule(name = "ArJdbc::DB2")
 public class DB2Module {
 
     public static RubyModule load(final RubyModule arJdbc) {

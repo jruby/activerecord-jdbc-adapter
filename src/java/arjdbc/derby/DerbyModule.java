@@ -37,6 +37,7 @@ import org.jruby.runtime.ThreadContext;
 import org.jruby.runtime.builtin.IRubyObject;
 import org.jruby.util.ByteList;
 
+@org.jruby.anno.JRubyModule(name = "ArJdbc::Derby")
 public class DerbyModule {
 
     public static RubyModule load(final RubyModule arJdbc) {
@@ -51,6 +52,7 @@ public class DerbyModule {
         return load( arjdbc.ArJdbcModule.get(runtime) );
     }
 
+    @org.jruby.anno.JRubyModule(name = "ArJdbc::Derby::Column")
     public static class Column {
 
         @JRubyMethod(name = "type_cast", required = 1)

@@ -42,6 +42,7 @@ import org.jruby.runtime.builtin.IRubyObject;
  *
  * @author nicksieger
  */
+//@org.jruby.anno.JRubyClass(name = "ActiveRecord::ConnectionAdapters::InformixJdbcConnection")
 public class InformixRubyJdbcConnection extends RubyJdbcConnection {
     protected InformixRubyJdbcConnection(Ruby runtime, RubyClass metaClass) {
         super(runtime, metaClass);

@@ -70,6 +70,7 @@ import arjdbc.util.DateTimeUtils;
  *
  * @author enebo
  */
+@org.jruby.anno.JRubyClass(name = "ActiveRecord::ConnectionAdapters::PostgreSQLJdbcConnection")
 public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection {
     private static final long serialVersionUID = 7235537759545717760L;
 
@@ -81,7 +82,6 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
         final RubyClass clazz = getConnectionAdapters(runtime).
             defineClassUnder("PostgreSQLJdbcConnection", jdbcConnection, ALLOCATOR);
         clazz.defineAnnotatedMethods(PostgreSQLRubyJdbcConnection.class);
-        getConnectionAdapters(runtime).setConstant("PostgresJdbcConnection", clazz); // backwards-compat
         return clazz;
     }
 

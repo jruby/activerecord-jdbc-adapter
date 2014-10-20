@@ -39,6 +39,7 @@ import org.jruby.runtime.builtin.IRubyObject;
  *
  * @author kares
  */
+@org.jruby.anno.JRubyModule(name = "ArJdbc::Oracle")
 public class OracleModule {
 
     public static RubyModule load(final RubyModule arJdbc) {

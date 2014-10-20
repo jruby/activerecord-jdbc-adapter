@@ -102,6 +102,7 @@ import static arjdbc.util.StringHelper.nonWhitespaceIndex;
 /**
  * Part of our ActiveRecord::ConnectionAdapters::Connection impl.
  */
+@org.jruby.anno.JRubyClass(name = "ActiveRecord::ConnectionAdapters::JdbcConnection")
 public class RubyJdbcConnection extends RubyObject {
 
     private static final String[] TABLE_TYPE = new String[] { "TABLE" };

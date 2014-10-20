@@ -47,6 +47,7 @@ import static arjdbc.util.QuotingUtils.quoteCharWith;
  *
  * @author kares
  */
+@org.jruby.anno.JRubyModule(name = "ArJdbc::PostgreSQL")
 public class PostgreSQLModule {
 
     public static RubyModule load(final RubyModule arJdbc) {

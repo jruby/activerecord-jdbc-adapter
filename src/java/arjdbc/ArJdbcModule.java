@@ -38,6 +38,7 @@ import org.jruby.RubyClass;
 import org.jruby.RubyModule;
 import org.jruby.RubyString;
 import org.jruby.anno.JRubyMethod;
+import org.jruby.anno.JRubyModule;
 import org.jruby.exceptions.RaiseException;
 import org.jruby.runtime.ThreadContext;
 import org.jruby.runtime.builtin.IRubyObject;
@@ -48,6 +49,7 @@ import org.jruby.util.ByteList;
  *
  * @author kares
  */
+@JRubyModule(name = "ArJdbc")
 public class ArJdbcModule {
 
     public static RubyModule load(final Ruby runtime) {

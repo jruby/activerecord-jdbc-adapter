@@ -36,6 +36,7 @@ import org.jruby.runtime.builtin.IRubyObject;
  *
  * @author nicksieger
  */
+//@org.jruby.anno.JRubyClass(name = "ActiveRecord::ConnectionAdapters::JdbcConnection")
 public class H2RubyJdbcConnection extends RubyJdbcConnection {
     private static final long serialVersionUID = -2652911264521657428L;
 

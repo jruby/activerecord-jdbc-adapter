@@ -38,6 +38,12 @@ import static arjdbc.util.QuotingUtils.BYTES_0;
 import static arjdbc.util.QuotingUtils.BYTES_1;
 import static arjdbc.util.QuotingUtils.quoteCharAndDecorateWith;
 
+/**
+ * ArJdbc::MySQL
+ *
+ * @author kares
+ */
+@org.jruby.anno.JRubyModule(name = "ArJdbc::MySQL")
 public class MySQLModule {
 
     public static RubyModule load(final RubyModule arJdbc) {

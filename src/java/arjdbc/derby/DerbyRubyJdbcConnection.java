@@ -47,6 +47,7 @@ import org.jruby.util.ByteList;
  *
  * @author kares
  */
+@org.jruby.anno.JRubyClass(name = "ActiveRecord::ConnectionAdapters::DerbyJdbcConnection")
 public class DerbyRubyJdbcConnection extends RubyJdbcConnection {
     private static final long serialVersionUID = 4809475910953623325L;
 

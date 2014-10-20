@@ -34,8 +34,6 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.DatabaseMetaData;
 import java.sql.Savepoint;
-import java.util.ArrayList;
-import java.util.List;
 
 import org.jruby.Ruby;
 import org.jruby.RubyArray;
@@ -54,6 +52,7 @@ import arjdbc.util.StringHelper;
  *
  * @author enebo
  */
+@org.jruby.anno.JRubyClass(name = "ActiveRecord::ConnectionAdapters::SQLite3JdbcConnection")
 public class SQLite3RubyJdbcConnection extends RubyJdbcConnection {
     private static final long serialVersionUID = -5783855018818472773L;
 
@@ -65,7 +64,6 @@ public class SQLite3RubyJdbcConnection extends RubyJdbcConnection {
         final RubyClass clazz = getConnectionAdapters(runtime). // ActiveRecord::ConnectionAdapters
             defineClassUnder("SQLite3JdbcConnection", jdbcConnection, ALLOCATOR);
         clazz.defineAnnotatedMethods( SQLite3RubyJdbcConnection.class );
-        getConnectionAdapters(runtime).setConstant("Sqlite3JdbcConnection", clazz); // backwards-compat
         return clazz;
     }
 
