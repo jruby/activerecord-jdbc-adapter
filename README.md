@@ -10,9 +10,9 @@ We supports *ActiveRecord* **2.3**, **3.x** and **4.x** from a single code base.
 You'll need JRuby >= **1.6.8** (we recommend using the latest and greatest of
 JRubies) thus Java >= **1.6** is mandatory.
 
-** This README and master targets (an unreleased) AR-JDBC 1.4 please use the
+**This README and master targets (an unreleased) AR-JDBC 1.4 please use the
 [1-3-stable](https://github.com/jruby/activerecord-jdbc-adapter/tree/1-3-stable)
-branch for the current stable 1.3.x releases **
+branch for the current stable 1.3.x releases.**
 
 The next release 1.4 aims to concentrate on internal refactoring and optimization.
 We're hoping to cover ActiveRecord **4.2** as well. We'll slowly be dropping
@@ -219,6 +219,8 @@ See the [cachedb-adapter project][4] for more information.
 The source for activerecord-jdbc-adapter is available using git:
 
     git clone git://github.com/jruby/activerecord-jdbc-adapter.git
+
+**You will need to have JDK 7+ to compile the native JRuby extension part.**
 
 Please note that the project manages multiple gems from a single repository,
 if you're using *Bundler* >= 1.2 it should be able to locate all gemspecs from

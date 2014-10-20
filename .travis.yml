@@ -37,7 +37,7 @@ env:
   - JRUBY_OPTS="--1.8 $JRUBY_OPTS" DB=jdbc
   - JRUBY_OPTS="--1.9 $JRUBY_OPTS" DB=jdbc PREPARED_STATEMENTS=true
 jdk:
-  - openjdk6
+  - openjdk7 # we target Java 6+ yet do have Java 7 java.sql APIs (thus need JDK 7 for compilation)
 branches:
   only:
     - master
