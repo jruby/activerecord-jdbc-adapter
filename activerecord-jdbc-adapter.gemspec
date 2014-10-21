@@ -26,8 +26,13 @@ Gem::Specification.new do |gem|
     reject { |f| f =~ /^(activerecord-jdbc[^-]|jdbc-)/ }. # gem directories
     reject { |f| f =~ /^(bench|test)/ }. # not sure if including tests is useful
     reject { |f| f =~ /^(gemfiles)/ } # no tests - no Gemfile_s appraised ...
-  gem.executables = gem.files.grep(%r{^bin/}).map { |f| File.basename(f) }
-  gem.test_files = gem.files.grep(%r{^test/})
+  gem.test_files = gem.files.grep /^test\//
+
+  if ENV['RELEASE'] == 'true'
+    gem.files << 'lib/arjdbc/jdbc/adapter_java.jar' # no longer in git since 1.4
+  else
+    gem.extensions << 'Rakefile' # to support auto-building .jar with :git paths
+  end
 
   #gem.add_dependency 'activerecord', '>= 2.2'
 

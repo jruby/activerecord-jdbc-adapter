@@ -5,7 +5,10 @@ require 'rake/clean'
 CLEAN.include 'derby*', 'test.db.*', '*test.sqlite3', 'test/reports'
 CLEAN.include 'MANIFEST.MF', '*.log'
 
-task :default => :jar
+task :default => :jar # RubyGems extention will do a bare `rake' e.g. :
+# jruby" -rubygems /opt/local/rvm/gems/jruby-1.7.16@jdbc/gems/rake-10.3.2/bin/rake
+#   RUBYARCHDIR=/opt/local/rvm/gems/jruby-1.7.16@jdbc/gems/activerecord-jdbc-adapter-1.4.0.dev/lib
+#   RUBYLIBDIR=/opt/local/rvm/gems/jruby-1.7.16@jdbc/gems/activerecord-jdbc-adapter-1.4.0.dev/lib
 
 # ugh, bundler doesn't use tasks, so gotta hook up to both tasks.
 task :build => :jar
@@ -122,34 +125,37 @@ if defined? JRUBY_VERSION
     source = target = '1.6'; debug = true
     args = [ '-Xlint:unchecked' ]
 
-    classes_dir = classes # NOTE tmp_dir when using Bundler with :git ?
+    Dir.mktmpdir do |classes_dir|
+      driver_jars = []
+      driver_jars << Dir.glob("jdbc-postgres/lib/*.jar").sort.last
+      driver_jars << Dir.glob("jdbc-mysql/lib/*.jar").last
+      if driver_jars.empty? # likely on a `gem install ...'
+        # TODO
+      end
 
-    driver_jars = []
-    driver_jars << Dir.glob("jdbc-postgres/lib/*.jar").sort.last
-    driver_jars << Dir.glob("jdbc-mysql/lib/*.jar").last
+      classpath = []
+      classpath += ENV_JAVA['java.class.path'].split(File::PATH_SEPARATOR)
+      classpath += ENV_JAVA['sun.boot.class.path'].split(File::PATH_SEPARATOR)
+      classpath.push *driver_jars
+      classpath = classpath.compact.join(File::PATH_SEPARATOR)
 
-    classpath = []
-    classpath += ENV_JAVA['java.class.path'].split(File::PATH_SEPARATOR)
-    classpath += ENV_JAVA['sun.boot.class.path'].split(File::PATH_SEPARATOR)
-    classpath << Dir.glob("jdbc-postgres/lib/*.jar").sort.last
-    classpath << Dir.glob("jdbc-mysql/lib/*.jar").last
-    classpath = classpath.compact.join(File::PATH_SEPARATOR)
+      source_files = FileList[ 'src/java/**/*.java' ]
 
-    source_files = FileList[ 'src/java/**/*.java' ]
+      javac = "javac -target #{target} -source #{source} #{args.join(' ')}"
+      javac << " #{debug ? '-g' : ''}"
+      javac << " -cp \"#{classpath}\" -d #{classes_dir} #{source_files.join(' ')}"
+      sh javac
 
-    # rm_rf FileList["#{classes}/**/*"]
+      # class_files = FileList["#{classes_dir}/**/*.class"].gsub("#{classes_dir}/", '')
+      # avoid environment variable expansion using backslash
+      # class_files.gsub!('$', '\$') unless windows?
+      # args = class_files.map { |path| [ "-C #{classes_dir}", path ] }.flatten
+      args = [ '-C', "#{classes_dir}/ ." ] # args = class_files
 
-    sh "javac -target #{target} -source #{source} #{args.join(' ')} #{debug ? '-g' : ''} -cp \"#{classpath}\" -d #{classes_dir} #{source_files.join(' ')}"
+      jar_path = jar_file.sub('lib', ENV['RUBYLIBDIR'] || 'lib')
 
-    # class_files = FileList["#{classes_dir}/**/*.class"].gsub("#{classes_dir}/", '')
-    # avoid environment variable expansion using backslash
-    # class_files.gsub!('$', '\$') unless windows?
-    # args = class_files.map { |path| [ "-C #{classes_dir}", path ] }.flatten
-    args = [ '-C', "#{classes_dir}/ ." ] # args = class_files
-
-    jar_path = File.expand_path(jar_file, File.dirname(__FILE__))
-
-    sh "jar cf #{jar_path} #{args.join(' ')}"
+      sh "jar cf #{jar_path} #{args.join(' ')}"
+    end
   end
 else
   task :jar do

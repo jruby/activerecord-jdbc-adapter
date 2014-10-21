@@ -1,9 +1,8 @@
-require File.expand_path('../../test/shared_helper', __FILE__)
-
 namespace :db do
 
   desc "Creates the test database for MySQL"
   task :mysql do
+    require File.expand_path('../../test/shared_helper', __FILE__)
     fail "could not create test database: mysql executable not found" unless mysql = which('mysql')
     load 'test/db/mysql_config.rb' # rescue nil
     script = sql_script <<-SQL, 'mysql'
@@ -25,6 +24,7 @@ SQL
 
   desc "Creates the test database for PostgreSQL"
   task :postgresql do
+    require File.expand_path('../../test/shared_helper', __FILE__)
     fail 'could not create test database: psql executable not found' unless psql = which('psql')
     fail 'could not create test database: missing "postgres" role' unless PostgresHelper.postgres_role?
     load 'test/db/postgres_config.rb' # rescue nil

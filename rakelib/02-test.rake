@@ -1,4 +1,3 @@
-require File.expand_path('../../test/shared_helper', __FILE__)
 
 test_tasks = [ 'test_mysql', 'test_sqlite3', 'test_postgresql_with_hint' ]
 if defined?(JRUBY_VERSION)
@@ -10,6 +9,7 @@ desc "Run \"most\" available test_xxx tasks"
 task :test => test_tasks
 
 task 'test_postgresql_with_hint' do
+  require File.expand_path('../../test/shared_helper', __FILE__)
   if PostgresHelper.have_postgres?(false)
     Rake::Task['test_postgresql'].invoke
   else
