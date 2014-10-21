@@ -101,3 +101,58 @@ rescue LoadError
   rescue LoadError
   end
 end
+
+# JRuby extension compilation :
+
+if defined? JRUBY_VERSION
+  jar_file = 'lib/arjdbc/jdbc/adapter_java.jar'; CLEAN << jar_file
+  desc "Compile the native (Java) extension."
+  task :jar => jar_file
+
+  namespace :jar do
+    task :force do
+      rm jar_file if File.exist?(jar_file)
+      Rake::Task['jar'].invoke
+    end
+  end
+
+  directory classes = 'pkg/classes'; CLEAN << classes
+
+  file jar_file => FileList[ classes, 'src/java/**/*.java' ] do
+    source = target = '1.6'; debug = true
+    args = [ '-Xlint:unchecked' ]
+
+    classes_dir = classes # NOTE tmp_dir when using Bundler with :git ?
+
+    driver_jars = []
+    driver_jars << Dir.glob("jdbc-postgres/lib/*.jar").sort.last
+    driver_jars << Dir.glob("jdbc-mysql/lib/*.jar").last
+
+    classpath = []
+    classpath += ENV_JAVA['java.class.path'].split(File::PATH_SEPARATOR)
+    classpath += ENV_JAVA['sun.boot.class.path'].split(File::PATH_SEPARATOR)
+    classpath << Dir.glob("jdbc-postgres/lib/*.jar").sort.last
+    classpath << Dir.glob("jdbc-mysql/lib/*.jar").last
+    classpath = classpath.compact.join(File::PATH_SEPARATOR)
+
+    source_files = FileList[ 'src/java/**/*.java' ]
+
+    # rm_rf FileList["#{classes}/**/*"]
+
+    sh "javac -target #{target} -source #{source} #{args.join(' ')} #{debug ? '-g' : ''} -cp \"#{classpath}\" -d #{classes_dir} #{source_files.join(' ')}"
+
+    # class_files = FileList["#{classes_dir}/**/*.class"].gsub("#{classes_dir}/", '')
+    # avoid environment variable expansion using backslash
+    # class_files.gsub!('$', '\$') unless windows?
+    # args = class_files.map { |path| [ "-C #{classes_dir}", path ] }.flatten
+    args = [ '-C', "#{classes_dir}/ ." ] # args = class_files
+
+    jar_path = File.expand_path(jar_file, File.dirname(__FILE__))
+
+    sh "jar cf #{jar_path} #{args.join(' ')}"
+  end
+else
+  task :jar do
+    puts "Run 'jar' with JRuby to re-compile the agent extension class"
+  end
+end
