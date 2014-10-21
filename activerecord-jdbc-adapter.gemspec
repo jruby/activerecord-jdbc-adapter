@@ -32,6 +32,9 @@ Gem::Specification.new do |gem|
     gem.files << 'lib/arjdbc/jdbc/adapter_java.jar' # no longer in git since 1.4
   else
     gem.extensions << 'Rakefile' # to support auto-building .jar with :git paths
+    # compilation .jar dependencies for extension (at least until `mvn') :
+    gem.add_development_dependency 'jdbc-mysql'
+    gem.add_development_dependency 'jdbc-postgres'
   end
 
   #gem.add_dependency 'activerecord', '>= 2.2'

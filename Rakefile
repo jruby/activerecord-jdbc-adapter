@@ -125,21 +125,47 @@ if defined? JRUBY_VERSION
     source = target = '1.6'; debug = true
     args = [ '-Xlint:unchecked' ]
 
-    Dir.mktmpdir do |classes_dir|
-      driver_jars = []
-      driver_jars << Dir.glob("jdbc-postgres/lib/*.jar").sort.last
-      driver_jars << Dir.glob("jdbc-mysql/lib/*.jar").last
-      if driver_jars.empty? # likely on a `gem install ...'
-        # TODO
+    classpath = []
+    classpath += ENV_JAVA['java.class.path'].split(File::PATH_SEPARATOR)
+    classpath += ENV_JAVA['sun.boot.class.path'].split(File::PATH_SEPARATOR)
+
+    compile_driver_deps = [ :Postgres, :MySQL ]
+
+    driver_jars = []
+    #compile_driver_deps.each do |name|
+    #  driver_jars << Dir.glob("jdbc-#{name.to_s.downcase}/lib/*.jar").sort.last
+    #end
+    if driver_jars.empty? # likely on a `gem install ...'
+      # NOTE: we're currently assuming jdbc-xxx (compile) dependencies are
+      # installed, they are declared as gemspec.development_dependencies !
+      # ... the other option is to simply `mvn prepare-package'
+      compile_driver_deps.each do |name|
+        #require "jdbc/#{name.to_s.downcase}"
+        #driver_jars << Jdbc.const_get(name).driver_jar
+        # thanks Bundler for mocking RubyGems completely :
+        #spec = Gem::Specification.find_by_name("jdbc-#{name.to_s.downcase}")
+        #driver_jars << Dir.glob(File.join(spec.gem_dir, 'lib/*.jar')).sort.last
+        gem_name = "jdbc-#{name.to_s.downcase}"; matched_gem_paths = []
+        Gem.paths.path.each do |path|
+          base_path = File.join(path, "gems/")
+          Dir.glob(File.join(base_path, "*")).each do |gem_path|
+            if gem_path.sub(base_path, '').start_with?(gem_name)
+              matched_gem_paths << gem_path
+            end
+          end
+        end
+        if gem_path = matched_gem_paths.sort.last
+          driver_jars << Dir.glob(File.join(gem_path, 'lib/*.jar')).sort.last
+        end
       end
+    end
 
-      classpath = []
-      classpath += ENV_JAVA['java.class.path'].split(File::PATH_SEPARATOR)
-      classpath += ENV_JAVA['sun.boot.class.path'].split(File::PATH_SEPARATOR)
-      classpath.push *driver_jars
-      classpath = classpath.compact.join(File::PATH_SEPARATOR)
+    classpath.push *driver_jars
+    classpath = classpath.compact.join(File::PATH_SEPARATOR)
 
-      source_files = FileList[ 'src/java/**/*.java' ]
+    source_files = FileList[ 'src/java/**/*.java' ]
+
+    Dir.mktmpdir do |classes_dir|
 
       javac = "javac -target #{target} -source #{source} #{args.join(' ')}"
       javac << " #{debug ? '-g' : ''}"
