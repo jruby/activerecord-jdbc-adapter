@@ -1,15 +1,9 @@
-require 'rake/testtask'
+require 'rubygems' unless defined? Gem
 
 require 'rake/clean'
 
 CLEAN.include 'derby*', 'test.db.*', '*test.sqlite3', 'test/reports'
 CLEAN.include 'MANIFEST.MF', '*.log'
-
-require 'bundler/gem_helper'
-Bundler::GemHelper.install_tasks
-
-require 'bundler/setup'
-require 'appraisal'
 
 task :default => :jar
 
@@ -89,3 +83,21 @@ task "build:all" => [ 'build' ] + TARGETS.map { |name| "#{name}:build" }
 task "all:build" => 'build:all'
 task "install:all" => [ 'install' ] + TARGETS.map { |name| "#{name}:install" }
 task "all:install" => 'install:all'
+
+begin # allow to roll without Bundler
+  require 'bundler/gem_helper'
+  Bundler::GemHelper.install_tasks
+rescue LoadError
+end
+
+require 'rake/testtask'
+
+begin
+  require 'appraisal'
+rescue LoadError
+  begin
+    require 'bundler/setup'
+    require 'appraisal'
+  rescue LoadError
+  end
+end
