@@ -343,6 +343,21 @@ This is not reliable and will be removed in the future.
           end
         end
 
+        class Jsonb < Json
+          def type
+            :jsonb
+          end
+
+          def changed_in_place?(raw_old_value, new_value)
+            # Postgres does not preserve insignificant whitespaces when
+            # roundtripping jsonb columns. This causes some false positives for
+            # the comparison here. Therefore, we need to parse and re-dump the
+            # raw value here to ensure the insignificant whitespaces are
+            # consistent with our encoder's output.
+            raw_old_value = type_cast_for_database(type_cast_from_database(raw_old_value))
+            super(raw_old_value, new_value)
+          end
+        end if ActiveRecord::VERSION.to_s >= '4.2'
         class Uuid < Type
           def type; :uuid end
           def type_cast(value)
