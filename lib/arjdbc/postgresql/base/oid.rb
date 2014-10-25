@@ -358,6 +358,28 @@ This is not reliable and will be removed in the future.
             super(raw_old_value, new_value)
           end
         end if ActiveRecord::VERSION.to_s >= '4.2'
+
+        class Xml < ActiveRecord::Type::String
+          def type
+            :xml
+          end
+
+          def type_cast_for_database(value)
+            return unless value
+            Data.new(super)
+          end
+
+          class Data # :nodoc:
+            def initialize(value)
+              @value = value
+            end
+
+            def to_s
+              @value
+            end
+          end
+        end if ActiveRecord::VERSION.to_s >= '4.2'
+
         class Uuid < Type
           def type; :uuid end
           def type_cast(value)
