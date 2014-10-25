@@ -1081,6 +1081,7 @@ module ArJdbc
     # Returns the list of all column definitions for a table.
     def columns(table_name, name = nil)
       klass = ::ActiveRecord::ConnectionAdapters::PostgreSQLColumn
+      pass_cast_type = respond_to?(:lookup_cast_type)
       column_definitions(table_name).map do |row|
         # name, type, default, notnull, oid, fmod
         name = row[0]; type = row[1]; default = row[2]
@@ -1094,7 +1095,12 @@ module ArJdbc
         elsif default =~ /^\(([-+]?[\d\.]+)\)$/ # e.g. "(-1)" for a negative default
           default = $1
         end
-        klass.new(name, default, oid, type, ! notnull, fmod, self)
+        if pass_cast_type
+          cast_type = lookup_cast_type(type)
+          klass.new(name, default, cast_type, type, ! notnull, fmod, self)
+        else
+          klass.new(name, default, oid, type, ! notnull, fmod, self)
+        end
       end
     end
 
