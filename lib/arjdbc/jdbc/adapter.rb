@@ -108,9 +108,14 @@ module ActiveRecord
         java_connection = raw_connection.connection
         return java_connection unless unwrap
         connection_class = java.sql.Connection.java_class
-        if java_connection.wrapper_for?(connection_class)
-          java_connection.unwrap(connection_class) # java.sql.Wrapper.unwrap
-        elsif java_connection.respond_to?(:connection)
+        begin
+          if java_connection.wrapper_for?(connection_class)
+            return java_connection.unwrap(connection_class) # java.sql.Wrapper.unwrap
+          end
+        rescue Java::JavaLang::AbstractMethodError => e
+          ArJdbc.warn("driver/pool connection impl does not support unwrapping (#{e})")
+        end
+        if java_connection.respond_to?(:connection)
           # e.g. org.apache.tomcat.jdbc.pool.PooledConnection
           java_connection.connection # getConnection
         else
