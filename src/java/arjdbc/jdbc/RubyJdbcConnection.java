@@ -265,12 +265,12 @@ public class RubyJdbcConnection extends RubyObject {
     }
 
     @JRubyMethod(name = "supports_transaction_isolation?", optional = 1)
-    public IRubyObject supports_transaction_isolation_p(final ThreadContext context,
+    public RubyBoolean supports_transaction_isolation_p(final ThreadContext context,
         final IRubyObject[] args) throws SQLException {
         final IRubyObject isolation = args.length > 0 ? args[0] : null;
 
-        return withConnection(context, new Callable<IRubyObject>() {
-            public IRubyObject call(final Connection connection) throws SQLException {
+        return withConnection(context, new Callable<RubyBoolean>() {
+            public RubyBoolean call(final Connection connection) throws SQLException {
                 final DatabaseMetaData metaData = connection.getMetaData();
                 final boolean supported;
                 if ( isolation != null && ! isolation.isNil() ) {
@@ -356,9 +356,9 @@ public class RubyJdbcConnection extends RubyObject {
     }
 
     @JRubyMethod(name = "supports_savepoints?")
-    public IRubyObject supports_savepoints_p(final ThreadContext context) throws SQLException {
-        return withConnection(context, new Callable<IRubyObject>() {
-            public IRubyObject call(final Connection connection) throws SQLException {
+    public RubyBoolean supports_savepoints_p(final ThreadContext context) throws SQLException {
+        return withConnection(context, new Callable<RubyBoolean>() {
+            public RubyBoolean call(final Connection connection) throws SQLException {
                 final DatabaseMetaData metaData = connection.getMetaData();
                 return context.runtime.newBoolean( metaData.supportsSavepoints() );
             }
@@ -532,7 +532,7 @@ public class RubyJdbcConnection extends RubyObject {
     }
 
     @JRubyMethod(name = "active?")
-    public IRubyObject active_p(final ThreadContext context) {
+    public RubyBoolean active_p(final ThreadContext context) {
         IRubyObject connection = getInstanceVariable("@connection");
         if ( connection != null && ! connection.isNil() ) {
             return isConnectionValid(context, getConnection(false)) ?
@@ -1151,7 +1151,7 @@ public class RubyJdbcConnection extends RubyObject {
     }
 
     @JRubyMethod(name = "table_exists?")
-    public IRubyObject table_exists_p(final ThreadContext context, IRubyObject table) {
+    public RubyBoolean table_exists_p(final ThreadContext context, IRubyObject table) {
         if ( table.isNil() ) {
             throw context.runtime.newArgumentError("nil table name");
         }
@@ -1161,7 +1161,7 @@ public class RubyJdbcConnection extends RubyObject {
     }
 
     @JRubyMethod(name = "table_exists?")
-    public IRubyObject table_exists_p(final ThreadContext context, IRubyObject table, IRubyObject schema) {
+    public RubyBoolean table_exists_p(final ThreadContext context, IRubyObject table, IRubyObject schema) {
         if ( table.isNil() ) {
             throw context.runtime.newArgumentError("nil table name");
         }
@@ -1171,7 +1171,7 @@ public class RubyJdbcConnection extends RubyObject {
         return tableExists(context, defaultSchema, tableName);
     }
 
-    protected IRubyObject tableExists(final ThreadContext context,
+    protected RubyBoolean tableExists(final ThreadContext context,
         final String defaultSchema, final String tableName) {
         final Ruby runtime = context.runtime;
         return withConnection(context, new Callable<RubyBoolean>() {
@@ -1245,7 +1245,7 @@ public class RubyJdbcConnection extends RubyObject {
      */
     protected IRubyObject indexes(final ThreadContext context, final String tableName, final String name, final String schemaName) {
         return withConnection(context, new Callable<IRubyObject>() {
-            public IRubyObject call(final Connection connection) throws SQLException {
+            public RubyArray call(final Connection connection) throws SQLException {
                 final Ruby runtime = context.runtime;
                 final RubyClass indexDefinition = getIndexDefinition(runtime);
 
@@ -1438,7 +1438,7 @@ public class RubyJdbcConnection extends RubyObject {
     }
 
     @JRubyMethod(name = "jndi_config?", meta = true)
-    public static IRubyObject jndi_config_p(final ThreadContext context,
+    public static RubyBoolean jndi_config_p(final ThreadContext context,
         final IRubyObject self, final IRubyObject config) {
         return context.runtime.newBoolean( isJndiConfig(context, config) );
     }
@@ -1611,7 +1611,7 @@ public class RubyJdbcConnection extends RubyObject {
     }
 
     @JRubyMethod(name = "jndi?", alias = "jndi_connection?")
-    public IRubyObject jndi_p(final ThreadContext context) {
+    public RubyBoolean jndi_p(final ThreadContext context) {
         return context.runtime.newBoolean( getConnectionFactory() instanceof DataSourceConnectionFactoryImpl );
     }
 
