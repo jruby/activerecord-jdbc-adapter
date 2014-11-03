@@ -89,7 +89,7 @@ import org.jruby.runtime.builtin.IRubyObject;
 import org.jruby.util.ByteList;
 
 /**
- * Part of our ActiveRecord::ConnectionAdapters::Connection impl.
+ * Most of our ActiveRecord::ConnectionAdapters::JdbcConnection implementation.
  */
 public class RubyJdbcConnection extends RubyObject {
 
@@ -444,7 +444,16 @@ public class RubyJdbcConnection extends RubyObject {
      * @return connection
      */
     @JRubyMethod(name = "init_connection")
-    public synchronized IRubyObject init_connection(final ThreadContext context) throws SQLException {
+    public synchronized IRubyObject init_connection(final ThreadContext context) {
+        try {
+            return initConnection(context);
+        }
+        catch (SQLException e) {
+            return handleException(context, e); // throws
+        }
+    }
+
+    private IRubyObject initConnection(final ThreadContext context) throws SQLException {
         final IRubyObject jdbcConnection = setConnection( newConnection() );
         final IRubyObject adapter = callMethod("adapter"); // self.adapter
         if ( ! adapter.isNil() ) {
