@@ -25,7 +25,10 @@ module ActiveRecord
 
       # @deprecated no longer used (pass adapter into #initialize)
       # @see ActiveRecord::ConnectionAdapters::JdbcAdapter#initialize
-      def adapter=(adapter); @adapter = adapter; end
+      def adapter=(adapter)
+        ArJdbc.deprecate "adapter= should be avoided, please pass adapter on initialize instead"
+        @adapter = adapter
+      end
 
       def native_database_types
         JdbcTypeConverter.new(supported_data_types).choose_best_types
