@@ -1,4 +1,3 @@
-require 'set'
 require 'active_support/deprecation'
 
 module ArJdbc
@@ -9,18 +8,20 @@ module ArJdbc
       super(message) || true if warn?(message, once)
     end
 
-    def deprecate(message, once = nil)
-      ActiveSupport::Deprecation.warn(message, caller) || true if warn?(message, once)
+    def deprecate(message, once = nil) # adds a "DEPRECATION WARNING: " prefix
+      ::ActiveSupport::Deprecation.warn(message, caller) || true if warn?(message, once)
     end
 
     private
 
-    @@warns = Set.new
+    @@warns = nil
+    @@warns = false if ENV_JAVA['arjdbc.warn'].eql? 'false'
 
     def warn?(message, once)
-      return nil unless message
-      return false if @@warns.include?(message)
-      @@warns << message.dup if once
+      return nil if @@warns.equal?(false) || ! message
+      warns = @@warns ||= ( require 'set'; Set.new )
+      return false if warns.include?(message)
+      warns << message.dup if once
       true
     end
 
@@ -28,7 +29,7 @@ module ArJdbc
 
   require 'arjdbc/jdbc/adapter'
 
-  if Java::JavaLang::Boolean.getBoolean('arjdbc.extensions.discover')
+  if ENV_JAVA['arjdbc.extensions.discover'].eql? 'true'
     self.discover_extensions
   else
     require 'arjdbc/discover'
