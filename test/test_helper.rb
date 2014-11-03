@@ -24,8 +24,8 @@ end
 if defined?(JRUBY_VERSION)
   require 'arjdbc'
   module ArJdbc
-    def self.disable_warn(message); @@warns << message end
-    def self.enable_warn(message); @@warns.delete message end
+    def self.disable_warn(message); warn?(message, :once) end
+    def self.enable_warn(message); @@warns.delete(message) if @@warns.respond_to?(:delete) end
   end
 else # we support running tests against MRI
   require 'active_record'
