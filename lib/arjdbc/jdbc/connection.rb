@@ -8,7 +8,7 @@ module ActiveRecord
       # Initializer implemented in Ruby.
       # @note second argument is mandatory, only optional for compatibility
       def initialize(config, adapter = nil)
-        @config = config; @adapter = adapter
+        @config = config; set_adapter adapter
         setup_connection_factory
         @connection = nil; init_connection # @see RubyJdbcConnection.init_connection
       rescue Java::JavaSql::SQLException => e
@@ -21,13 +21,13 @@ module ActiveRecord
         raise error
       end
 
-      attr_reader :adapter, :config
+      attr_reader :config
 
       # @deprecated no longer used (pass adapter into #initialize)
       # @see ActiveRecord::ConnectionAdapters::JdbcAdapter#initialize
       def adapter=(adapter)
-        ArJdbc.deprecate "adapter= should be avoided, please pass adapter on initialize instead"
-        @adapter = adapter
+        ArJdbc.deprecate "adapter= will be removed, please pass adapter on JdbcConnection#initialize(config, adapter)"
+        set_adapter adapter
       end
 
       def native_database_types

@@ -96,7 +96,6 @@ import org.jruby.util.ByteList;
 import arjdbc.util.DateTimeUtils;
 import arjdbc.util.StringCache;
 import arjdbc.util.StringHelper;
-import static arjdbc.util.StringHelper.nonWhitespaceIndex;
 
 
 /**
@@ -105,12 +104,11 @@ import static arjdbc.util.StringHelper.nonWhitespaceIndex;
 @org.jruby.anno.JRubyClass(name = "ActiveRecord::ConnectionAdapters::JdbcConnection")
 public class RubyJdbcConnection extends RubyObject {
 
-    private static final long serialVersionUID = 3803945791317576818L;
-
     private static final String[] TABLE_TYPE = new String[] { "TABLE" };
     private static final String[] TABLE_TYPES = new String[] { "TABLE", "VIEW", "SYNONYM" };
 
     private ConnectionFactory connectionFactory;
+    private IRubyObject adapter; // the AbstractAdapter instance we belong to
 
     protected RubyJdbcConnection(Ruby runtime, RubyClass metaClass) {
         super(runtime, metaClass);
@@ -476,6 +474,16 @@ public class RubyJdbcConnection extends RubyObject {
         return false;
     }
 
+    @JRubyMethod(name = "adapter")
+    public IRubyObject adapter(final ThreadContext context) {
+        return adapter == null ? context.nil : adapter;
+    }
+
+    @JRubyMethod(required = 1) // NOTE: internal API
+    public IRubyObject set_adapter(final ThreadContext context, final IRubyObject adapter) {
+        return this.adapter = adapter;
+    }
+
     @JRubyMethod(name = "connection_factory")
     public IRubyObject connection_factory(final ThreadContext context) {
         return convertJavaToRuby( getConnectionFactory() );
@@ -501,15 +509,12 @@ public class RubyJdbcConnection extends RubyObject {
     @JRubyMethod(name = "init_connection")
     public synchronized IRubyObject init_connection(final ThreadContext context) throws SQLException {
         final IRubyObject jdbcConnection = setConnection( newConnection() );
-        final IRubyObject adapter = callMethod("adapter"); // self.adapter
-        if ( ! adapter.isNil() ) {
-            if ( adapter.respondsTo("init_connection") ) {
-                adapter.callMethod(context, "init_connection", jdbcConnection);
-            }
+        final IRubyObject adapter = getAdapter(context); // self.adapter
+        if ( adapter == null || adapter.isNil() ) {
+            warn(context, "adapter not set, please pass adapter on JdbcConnection#initialize(config, adapter)");
         }
-        else {
-            warn(context, "WARN: adapter not set for: " + inspect() +
-                " make sure you pass it on initialize(config, adapter)");
+        if ( adapter.respondsTo("init_connection") ) {
+            adapter.callMethod(context, "init_connection", jdbcConnection);
         }
         return jdbcConnection;
     }
@@ -551,14 +556,12 @@ public class RubyJdbcConnection extends RubyObject {
         try {
             final Connection connection = newConnection();
             final IRubyObject result = setConnection( connection );
-            final IRubyObject adapter = callMethod("adapter");
-            if ( ! adapter.isNil() ) {
-                if ( adapter.respondsTo("configure_connection") ) {
-                    adapter.callMethod(context, "configure_connection");
-                }
-            }
-            else {
+            final IRubyObject adapter = getAdapter(context);
+            //if ( adapter.isNil() ) {
                 // NOTE: we warn on init_connection - should be enough
+            //}
+            if ( adapter.respondsTo("configure_connection") ) {
+                adapter.callMethod(context, "configure_connection");
             }
             return result;
         }
@@ -1668,7 +1671,7 @@ public class RubyJdbcConnection extends RubyObject {
     }
 
     protected final IRubyObject getConfig(final ThreadContext context) {
-        return callMethod(context, "config");
+        return this.callMethod(context, "config");
     }
 
     protected final IRubyObject getConfigValue(final ThreadContext context, final String key) {
@@ -1702,7 +1705,7 @@ public class RubyJdbcConnection extends RubyObject {
     }
 
     protected final IRubyObject getAdapter(final ThreadContext context) {
-        return this.callMethod(context, "adapter");
+        return adapter(context); // this.callMethod(context, "adapter");
     }
 
     protected IRubyObject getJdbcColumnClass(final ThreadContext context) {
