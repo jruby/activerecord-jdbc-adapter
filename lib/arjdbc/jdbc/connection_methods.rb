@@ -11,7 +11,7 @@ module ArJdbc
       adapter_class ||= begin
         adapter = config[:adapter]
         if ( adapter == 'jdbc' || adapter == 'jndi' ) && adapter = supported_adapter(config)
-          warn "DEPRECATED: use 'adapter: #{adapter}' instead of the current 'adapter: jdbc' configuration"
+          ArJdbc.deprecate("use 'adapter: #{adapter}' instead of 'adapter: jdbc' configuration", true)
         end
         ::ActiveRecord::ConnectionAdapters::JdbcAdapter
       end
@@ -21,8 +21,8 @@ module ArJdbc
     def jndi_connection(config); jdbc_connection(config) end
 
     def embedded_driver(config)
-      config[:username] ||= "sa"
-      config[:password] ||= ""
+      config[:username] ||= 'sa'
+      config[:password] ||= ''
       jdbc_connection(config)
     end
 
