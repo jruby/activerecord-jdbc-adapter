@@ -146,7 +146,7 @@ module ActiveRecord
             connection = data_source.getConnection
             config[:dialect] = connection.getMetaData.getDatabaseProductName
           rescue Java::JavaSql::SQLException => e
-            warn "failed to set database :dialect from connection meda-data (#{e})"
+            ArJdbc.warn("failed to set database :dialect from connection meda-data (#{e})")
           else
             return adapter_spec(config) # re-try matching a spec with set config[:dialect]
           ensure

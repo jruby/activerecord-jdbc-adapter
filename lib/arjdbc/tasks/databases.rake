@@ -42,7 +42,7 @@ namespace :db do
   end
 
   if defined? adapt_jdbc_config
-    ArJdbc.warn "double loading #{__FILE__} please delete lib/tasks/jdbc.rake if present!"
+    warn "double loading #{__FILE__} please delete lib/tasks/jdbc.rake if present!"
   end
 
   def adapt_jdbc_config(config)

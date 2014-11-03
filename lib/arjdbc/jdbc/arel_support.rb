@@ -50,7 +50,7 @@ module ActiveRecord::ConnectionAdapters
 
             if visitor_type && RESOLVED_VISITORS[ adapter ] # adapter == 'jdbc'
               if visitor_type != RESOLVED_VISITORS[ adapter ]
-                warn "WARNING: overriding visitor for 'adapter: jdbc' (from #{RESOLVED_VISITORS[ adapter ]} to #{visitor_type})"
+                ArJdbc.warn("overriding visitor for 'adapter: jdbc' (from #{RESOLVED_VISITORS[ adapter ]} to #{visitor_type})")
               end
             end
 

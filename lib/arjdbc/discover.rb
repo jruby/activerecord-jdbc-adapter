@@ -1,20 +1,20 @@
-# this file is discovered by the extension mechanism 
+# this file is discovered by the extension mechanism
 # @see {ArJdbc#discover_extensions}
 
 module ArJdbc
-  
+
   require 'arjdbc/jdbc/adapter_require'
-  
+
   # Adapters built-in to AR :
-  
+
   require 'arjdbc/mysql' if Java::JavaLang::Boolean.getBoolean('arjdbc.mysql.eager_load')
   require 'arjdbc/postgresql' if Java::JavaLang::Boolean.getBoolean('arjdbc.postgresql.eager_load')
   require 'arjdbc/sqlite3' if Java::JavaLang::Boolean.getBoolean('arjdbc.sqlite3.eager_load')
-  
+
   extension :MySQL do |name|
     require('arjdbc/mysql') || true if name =~ /mysql/i
   end
-  
+
   extension :PostgreSQL do |name|
     require('arjdbc/postgresql') || true if name =~ /postgre/i
   end
@@ -22,7 +22,7 @@ module ArJdbc
   extension :SQLite3 do |name|
     require('arjdbc/sqlite3') || true if name =~ /sqlite/i
   end
-  
+
   # Other supported adapters :
 
   extension :Derby do |name, config|
@@ -37,7 +37,7 @@ module ArJdbc
           connection = data_source.getConnection
           config[:username] = connection.getMetaData.getUserName
         rescue Java::JavaSql::SQLException => e
-          warn "failed to set (derby) database :username from connection meda-data (#{e})"
+          ArJdbc.warn("failed to set (Derby) database :username from connection meda-data (#{e})")
         ensure
           ( connection.close rescue nil ) if connection # return to the pool
         end
@@ -65,7 +65,7 @@ module ArJdbc
       true
     end
   end
-  
+
   extension :AS400 do |name, config|
     # The native JDBC driver always returns "DB2 UDB for AS/400"
     if name =~ /as\/?400/i
@@ -81,9 +81,9 @@ module ArJdbc
       true
     end
   end
-  
+
   # NOTE: following ones are likely getting deprecated :
-  
+
   extension :FireBird do |name|
     if name =~ /firebird/i
       require 'arjdbc/firebird'
@@ -97,7 +97,7 @@ module ArJdbc
       true
     end
   end
-  
+
   extension :Informix do |name|
     if name =~ /informix/i
       require 'arjdbc/informix'
@@ -111,5 +111,5 @@ module ArJdbc
       true
     end
   end
-  
+
 end

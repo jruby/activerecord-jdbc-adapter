@@ -10,7 +10,7 @@ module ArJdbc
 
       def get_oid_type(oid, fmod, column_name)
         type_map.fetch(oid, fmod) {
-          warn "unknown OID #{oid}: failed to recognize type of '#{column_name}'. It will be treated as String."
+          ArJdbc.warn("unknown OID #{oid}: failed to recognize type of '#{column_name}', will be treated as String.", true)
           type_map[oid] = OID::Identity.new
         }
       end
