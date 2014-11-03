@@ -27,6 +27,7 @@ package arjdbc.db2;
 
 import arjdbc.jdbc.Callable;
 import arjdbc.jdbc.RubyJdbcConnection;
+import arjdbc.util.StringHelper;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -86,7 +87,7 @@ public class DB2RubyJdbcConnection extends RubyJdbcConnection {
 
     private static boolean isValues(final RubyString sql) {
         final ByteList sqlBytes = sql.getByteList();
-        return startsWithIgnoreCase(sqlBytes, VALUES);
+        return StringHelper.startsWithIgnoreCase(sqlBytes, VALUES);
     }
 
     private static final String[] TABLE_TYPES = new String[] {
