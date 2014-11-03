@@ -97,9 +97,8 @@ import arjdbc.util.DateTimeUtils;
 import arjdbc.util.StringCache;
 import arjdbc.util.StringHelper;
 
-
 /**
- * Part of our ActiveRecord::ConnectionAdapters::Connection impl.
+ * Most of our ActiveRecord::ConnectionAdapters::JdbcConnection implementation.
  */
 @org.jruby.anno.JRubyClass(name = "ActiveRecord::ConnectionAdapters::JdbcConnection")
 public class RubyJdbcConnection extends RubyObject {
@@ -507,7 +506,16 @@ public class RubyJdbcConnection extends RubyObject {
      * @return connection
      */
     @JRubyMethod(name = "init_connection")
-    public synchronized IRubyObject init_connection(final ThreadContext context) throws SQLException {
+    public synchronized IRubyObject init_connection(final ThreadContext context) {
+        try {
+            return initConnection(context);
+        }
+        catch (SQLException e) {
+            return handleException(context, e); // throws
+        }
+    }
+
+    private IRubyObject initConnection(final ThreadContext context) throws SQLException {
         final IRubyObject jdbcConnection = setConnection( newConnection() );
         final IRubyObject adapter = getAdapter(context); // self.adapter
         if ( adapter == null || adapter.isNil() ) {
@@ -1564,8 +1572,14 @@ public class RubyJdbcConnection extends RubyObject {
     }
 
     @JRubyMethod(name = "setup_jndi_factory", visibility = Visibility.PROTECTED)
-    public IRubyObject set_data_source_factory(final ThreadContext context) throws NamingException {
-        final DataSource dataSource = resolveDataSource(context);
+    public IRubyObject set_data_source_factory(final ThreadContext context) {
+        final DataSource dataSource;
+        try {
+            dataSource = resolveDataSource(context);
+        }
+        catch (NamingException e) {
+            throw wrapException(context, context.runtime.getRuntimeError(), e);
+        }
         return set_connection_factory(context, new DataSourceConnectionFactoryImpl(dataSource));
     }
 
@@ -1579,7 +1593,7 @@ public class RubyJdbcConnection extends RubyObject {
      * @throws NamingException
      */
     @JRubyMethod(name = "setup_connection_factory", visibility = Visibility.PROTECTED)
-    public IRubyObject setup_connection_factory(final ThreadContext context) throws NamingException {
+    public IRubyObject setup_connection_factory(final ThreadContext context) {
         final IRubyObject config = getConfig(context);
 
         if ( defaultConfig == null ) {
