@@ -23,7 +23,7 @@
  */
 package arjdbc.util;
 
-import java.util.HashMap;
+import java.util.WeakHashMap;
 
 import org.jruby.Ruby;
 import org.jruby.RubyString;
@@ -37,12 +37,13 @@ import org.jruby.util.ByteList;
  */
 public final class StringCache {
 
-    final HashMap<String, ByteList> cache = new HashMap<String, ByteList>(64);
+    final WeakHashMap<String, ByteList> cache = new WeakHashMap<String, ByteList>(64);
 
     public RubyString get(final ThreadContext context, final String key) {
         final ByteList bytes = cache.get(key);
         if ( bytes == null ) return store(context, key);
-        return (RubyString) context.runtime.newString(bytes).freeze(context);
+        final Ruby runtime = context.runtime;
+        return (RubyString) RubyString.newString(runtime, bytes).freeze(context);
     }
 
     private RubyString store(final ThreadContext context, final String key) {
