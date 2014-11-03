@@ -84,6 +84,19 @@ public abstract class StringHelper {
         return read;
     }
 
+    public static boolean startsWithIgnoreCase(final ByteList bytes, final byte[] start) {
+        int p = nonWhitespaceIndex(bytes, bytes.getBegin());
+        final byte[] stringBytes = bytes.unsafeBytes();
+        if ( stringBytes[p] == '(' ) {
+            p = nonWhitespaceIndex(bytes, p + 1);
+        }
+
+        for ( int i = 0; i < bytes.getRealSize() && i < start.length; i++ ) {
+            if ( Character.toLowerCase(stringBytes[p + i]) != start[i] ) return false;
+        }
+        return true;
+    }
+
     public static int nonWhitespaceIndex(final ByteList string, final int off) {
         final int end = string.getBegin() + string.getRealSize();
         final byte[] stringBytes = string.unsafeBytes();

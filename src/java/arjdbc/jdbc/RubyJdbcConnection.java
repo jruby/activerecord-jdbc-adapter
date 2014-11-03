@@ -105,6 +105,8 @@ import static arjdbc.util.StringHelper.nonWhitespaceIndex;
 @org.jruby.anno.JRubyClass(name = "ActiveRecord::ConnectionAdapters::JdbcConnection")
 public class RubyJdbcConnection extends RubyObject {
 
+    private static final long serialVersionUID = 3803945791317576818L;
+
     private static final String[] TABLE_TYPE = new String[] { "TABLE" };
     private static final String[] TABLE_TYPES = new String[] { "TABLE", "VIEW", "SYNONYM" };
 
@@ -1591,7 +1593,8 @@ public class RubyJdbcConnection extends RubyObject {
             }
         }
 
-        if ( defaultConfig != null && defaultConfig.eql(config) ) {
+        if ( defaultConfig != null &&
+            ( defaultConfig == config || defaultConfig.eql(config) ) ) {
             set_connection_factory(context, defaultConnectionFactory);
             return defaultConnectionFactory;
         }
@@ -1699,14 +1702,14 @@ public class RubyJdbcConnection extends RubyObject {
     }
 
     protected final IRubyObject getAdapter(final ThreadContext context) {
-        return callMethod(context, "adapter");
+        return this.callMethod(context, "adapter");
     }
 
-    protected final IRubyObject getJdbcColumnClass(final ThreadContext context) {
+    protected IRubyObject getJdbcColumnClass(final ThreadContext context) {
         return getAdapter(context).callMethod(context, "jdbc_column_class");
     }
 
-    protected ConnectionFactory getConnectionFactory() throws RaiseException {
+    protected final ConnectionFactory getConnectionFactory() throws RaiseException {
         if ( connectionFactory == null ) {
             // NOTE: only for (backwards) compatibility (to be deleted) :
             IRubyObject connection_factory = getInstanceVariable("@connection_factory");
@@ -2919,7 +2922,7 @@ public class RubyJdbcConnection extends RubyObject {
         }
         catch (AbstractMethodError e) { // non-JDBC 4.0 driver
             warn( context,
-                "WARN: driver does not support checking if connection isValid()" +
+                "driver does not support checking if connection isValid()" +
                 " please make sure you're using a JDBC 4.0 compilant driver or" +
                 " set `connection_alive_sql: ...` in your database configuration" );
             debugStackTrace(context, e);
@@ -3450,16 +3453,7 @@ public class RubyJdbcConnection extends RubyObject {
     }
 
     protected static boolean startsWithIgnoreCase(final ByteList bytes, final byte[] start) {
-        int p = nonWhitespaceIndex(bytes, bytes.getBegin());
-        final byte[] stringBytes = bytes.unsafeBytes();
-        if ( stringBytes[p] == '(' ) {
-            p = nonWhitespaceIndex(bytes, p + 1);
-        }
-
-        for ( int i = 0; i < bytes.getRealSize() && i < start.length; i++ ) {
-            if ( Character.toLowerCase(stringBytes[p + i]) != start[i] ) return false;
-        }
-        return true;
+        return StringHelper.startsWithIgnoreCase(bytes, start);
     }
 
     /**
