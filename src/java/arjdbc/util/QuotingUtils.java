@@ -87,6 +87,7 @@ public abstract class QuotingUtils {
         return context.runtime.newString(quotedBytes);
     }
 
+    @SuppressWarnings("deprecation")
     public static RubyString quoteCharAndDecorateWith(
         final ThreadContext context, final RubyString string,
         final char value, final char quote,
