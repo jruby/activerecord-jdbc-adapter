@@ -1460,7 +1460,7 @@ public class RubyJdbcConnection extends RubyObject {
             }
         }
 
-        if ( configValue == null || configValue.isNil() || configValue == runtime.newBoolean( false ) ) {
+        if ( configValue == null || configValue.isNil() || configValue == runtime.getFalse() ) {
             return false;
         }
         return true;
@@ -1486,7 +1486,7 @@ public class RubyJdbcConnection extends RubyObject {
         if ( url.isNil() || ( driver.isNil() && driver_instance.isNil() ) ) {
             final Ruby runtime = context.getRuntime();
             final RubyClass errorClass = getConnectionNotEstablished( runtime );
-            throw new RaiseException(runtime, errorClass, "jdbc adapter requires :driver class and :url", false);
+            throw new RaiseException(runtime, errorClass, "adapter requires :driver class and jdbc :url", false);
         }
 
         final String jdbcURL = buildURL(context, url);
@@ -1509,11 +1509,11 @@ public class RubyJdbcConnection extends RubyObject {
             }
         }
 
-        final String usernameStr = username.isNil() ? null : username.toString();
-        final String passwordStr = password.isNil() ? null : password.toString();
+        final String user = username.isNil() ? null : username.toString();
+        final String pass = password.isNil() ? null : password.toString();
 
         final DriverWrapper driverWrapper = newDriverWrapper(context, driver.toString());
-        return set_connection_factory(context, new DriverConnectionFactoryImpl(driverWrapper, jdbcURL, usernameStr, passwordStr));
+        return set_connection_factory(context, new DriverConnectionFactoryImpl(driverWrapper, jdbcURL, user, pass));
     }
 
     protected DriverWrapper newDriverWrapper(final ThreadContext context, final String driver) {
@@ -3807,7 +3807,8 @@ public class RubyJdbcConnection extends RubyObject {
     }
 
     protected void warn(final ThreadContext context, final String message) {
-        callMethod(context, "warn", context.runtime.newString(message));
+        final Ruby runtime = context.runtime;
+        runtime.getModule("ArJdbc").callMethod(context, "warn", runtime.newString(message));
     }
 
     /*
