@@ -6,13 +6,14 @@ ActiveRecord-JDBC-Adapter (AR-JDBC) is a database adapter for Rails'
 *ActiveRecord* component that can be used with [JRuby][0]. It allows use of
 virtually any JDBC-compliant database with your JRuby on Rails application.
 
-We supports *ActiveRecord* **2.3**, **3.x** and **4.x** from a single code base.
-You'll need JRuby >= **1.6.8** (we recommend using the latest and greatest of
-JRubies) thus Java >= **1.6** is mandatory.
+We do support *ActiveRecord* **3.x** and **4.x** (also **2.3** is still expected
+to work) from a single code base. AR-JDBC needs JRuby >= **1.6.8** (we recommend
+using the latest and greatest of JRubies) thus Java >= **1.6** is mandatory.
 
-**This README and master targets (an unreleased) AR-JDBC 1.4 please use the
+
+**This README and master targets AR-JDBC 1.4 (unreleased) please use the
 [1-3-stable](https://github.com/jruby/activerecord-jdbc-adapter/tree/1-3-stable)
-branch for the current stable 1.3.x releases.**
+branch for current stable 1.3.x releases.**
 
 The next release 1.4 aims to concentrate on internal refactoring and optimization.
 We're hoping to cover ActiveRecord **4.2** as well. We'll slowly be dropping
@@ -108,6 +109,8 @@ production:
   adapter: postgresql
   jndi: jdbc/PostgreDS
   # be aware that by default AR defaults to pool: 5
+  # there are (unofficial) ways of avoiding AR's pooling
+  # one such would be: ActiveRecord::Bogacs::FalsePool
 ```
 
 **NOTE:** any other settings such as *database:*, *username:*, *properties:* make
@@ -165,11 +168,14 @@ ActiveRecord::Base.establish_connection adapter: 'derby', database: 'db/my-db'
 #### Using Bundler
 
 Proceed as with Rails; specify `gem 'activerecord'` in your Bundle along with the
-chosen JDBC adapter(s), sample *Gemfile* for MySQL :
+chosen JDBC adapter (or driver), sample *Gemfile* for MySQL :
 
 ```ruby
 gem 'activerecord', '~> 3.2.18'
-gem 'activerecord-jdbcmysql-adapter', :platform => :jruby
+gem 'activerecord-jdbcmysql-adapter' # or :
+# gem 'mysql2', :platform => :mri # C-driver
+# gem 'activerecord-jdbc-adapter', :platform => :jruby
+# gem 'jdbc-mysql', :platform => :jruby # J-driver
 ```
 
 When you `require 'bundler/setup'` everything will be set up for you as expected.
@@ -179,7 +185,7 @@ but than should make sure an appropriate JDBC driver is available at runtime, in
 that case simply setup your *Gemfile* as:
 
 ```ruby
-gem 'activerecord', '~> 4.1'
+gem 'activerecord', '~> 4.1.6'
 gem 'activerecord-jdbc-adapter', '~> 1.3', platform: :jruby
 # e.g. for PostgreSQL you'll probably add :
 # gem 'pg', platform: :mri
@@ -222,13 +228,16 @@ The source for activerecord-jdbc-adapter is available using git:
 
 **You will need to have JDK 7+ to compile the native JRuby extension part.**
 
+**NOTE:** Currently, one also needs to make sure to install all of the gem's
+[development dependencies][10] to make sure the compilation `javac` task does
+found it's dependent (Java) classes.
+
 Please note that the project manages multiple gems from a single repository,
 if you're using *Bundler* >= 1.2 it should be able to locate all gemspecs from
 the git repository. Sample *Gemfile* for running with (MySQL) master:
 
 ```ruby
 gem 'activerecord-jdbc-adapter', :github => 'jruby/activerecord-jdbc-adapter'
-gem 'activerecord-jdbcmysql-adapter', :github => 'jruby/activerecord-jdbc-adapter'
 ```
 
 ## Getting Involved
@@ -267,3 +276,4 @@ license the database's drivers are licensed. See each driver gem's LICENSE.txt.
 [7]: http://badge.fury.io/rb/activerecord-jdbc-adapter
 [8]: http://rubygems.org/search?query=activerecord-jdbc
 [9]: https://github.com/jruby/activerecord-jdbc-adapter/wiki/Migrating-from-1.3.x-to-1.4.0
+[10]: https://github.com/jruby/activerecord-jdbc-adapter/blob/master/activerecord-jdbc-adapter.gemspec
