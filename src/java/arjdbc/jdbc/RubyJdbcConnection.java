@@ -3161,7 +3161,7 @@ public class RubyJdbcConnection extends RubyObject {
         }
 
         final RubyArray columns = runtime.newArray();
-        final IRubyObject config = getInstanceVariable("@config");
+        final IRubyObject config = getConfig(context);
         while ( results.next() ) {
             final String colName = results.getString(COLUMN_NAME);
             IRubyObject column = jdbcColumn.callMethod(context, "new",
