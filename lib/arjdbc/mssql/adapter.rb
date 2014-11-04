@@ -72,13 +72,6 @@ module ArJdbc
         ::Arel::Visitors::SQLServer2000 : ::Arel::Visitors::SQLServer
     end
 
-    # @deprecated no longer used
-    # @see ActiveRecord::ConnectionAdapters::JdbcAdapter#arel2_visitors
-    def self.arel2_visitors(config)
-      visitor = arel_visitor_type(config)
-      { 'mssql' => visitor, 'jdbcmssql' => visitor, 'sqlserver' => visitor }
-    end
-
     def configure_connection
       use_database # config[:database]
     end
