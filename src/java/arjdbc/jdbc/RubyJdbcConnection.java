@@ -135,7 +135,7 @@ public class RubyJdbcConnection extends RubyObject {
      * @return <code>ActiveRecord::ConnectionAdapters</code>
      */
     protected static RubyModule getConnectionAdapters(final Ruby runtime) {
-        return (RubyModule) runtime.getModule("ActiveRecord").getConstant("ConnectionAdapters");
+        return (RubyModule) runtime.getModule("ActiveRecord").getConstantAt("ConnectionAdapters");
     }
 
     /**
@@ -143,7 +143,7 @@ public class RubyJdbcConnection extends RubyObject {
      * @return <code>ActiveRecord::Result</code>
      */
     static RubyClass getResult(final Ruby runtime) {
-        return runtime.getModule("ActiveRecord").getClass("Result");
+        return (RubyClass) runtime.getModule("ActiveRecord").getConstantAt("Result");
     }
 
     /**
@@ -151,7 +151,7 @@ public class RubyJdbcConnection extends RubyObject {
      * @return <code>ActiveRecord::Base</code>
      */
     public static RubyClass getBase(final Ruby runtime) {
-        return runtime.getModule("ActiveRecord").getClass("Base");
+        return (RubyClass) runtime.getModule("ActiveRecord").getConstantAt("Base");
     }
 
     /**
@@ -159,7 +159,7 @@ public class RubyJdbcConnection extends RubyObject {
      * @return <code>ActiveRecord::ConnectionAdapters::IndexDefinition</code>
      */
     protected static RubyClass getIndexDefinition(final Ruby runtime) {
-        return getConnectionAdapters(runtime).getClass("IndexDefinition");
+        return (RubyClass) getConnectionAdapters(runtime).getConstantAt("IndexDefinition");
     }
 
     /**
@@ -175,7 +175,7 @@ public class RubyJdbcConnection extends RubyObject {
      * @return <code>ActiveRecord::ConnectionNotEstablished</code>
      */
     protected static RubyClass getConnectionNotEstablished(final Ruby runtime) {
-        return runtime.getModule("ActiveRecord").getClass("ConnectionNotEstablished");
+        return (RubyClass) runtime.getModule("ActiveRecord").getConstantAt("ConnectionNotEstablished");
     }
 
     /**
@@ -184,7 +184,7 @@ public class RubyJdbcConnection extends RubyObject {
      * @return <code>ActiveRecord::TransactionIsolationError</code>
      */
     protected static RubyClass getTransactionIsolationError(final Ruby runtime) {
-        return (RubyClass) runtime.getModule("ActiveRecord").getConstant("TransactionIsolationError");
+        return (RubyClass) runtime.getModule("ActiveRecord").getConstantAt("TransactionIsolationError");
     }
 
     public static RubyJdbcConnection retrieveConnection(final ThreadContext context, final IRubyObject adapter) {
