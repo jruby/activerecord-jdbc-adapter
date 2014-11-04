@@ -7,9 +7,9 @@ module ArJdbc
 
   # Adapters built-in to AR :
 
-  require 'arjdbc/mysql' if Java::JavaLang::Boolean.getBoolean('arjdbc.mysql.eager_load')
-  require 'arjdbc/postgresql' if Java::JavaLang::Boolean.getBoolean('arjdbc.postgresql.eager_load')
-  require 'arjdbc/sqlite3' if Java::JavaLang::Boolean.getBoolean('arjdbc.sqlite3.eager_load')
+  require 'arjdbc/mysql' if ENV_JAVA['arjdbc.mysql.eager_load'].eql? 'true'
+  require 'arjdbc/postgresql' if ENV_JAVA['arjdbc.postgresql.eager_load'].eql? 'true'
+  require 'arjdbc/sqlite3' if ENV_JAVA['arjdbc.sqlite3.eager_load'].eql? 'true'
 
   extension :MySQL do |name|
     require('arjdbc/mysql') || true if name =~ /mysql/i
