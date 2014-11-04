@@ -102,6 +102,7 @@ import arjdbc.util.StringHelper;
  */
 @org.jruby.anno.JRubyClass(name = "ActiveRecord::ConnectionAdapters::JdbcConnection")
 public class RubyJdbcConnection extends RubyObject {
+    private static final long serialVersionUID = 1300431646352514961L;
 
     private static final String[] TABLE_TYPE = new String[] { "TABLE" };
     private static final String[] TABLE_TYPES = new String[] { "TABLE", "VIEW", "SYNONYM" };
@@ -1524,8 +1525,14 @@ public class RubyJdbcConnection extends RubyObject {
         return JavaUtil.convertJavaToRuby(context.runtime, bound);
     }
 
+    @Deprecated
     @JRubyMethod(name = "setup_jdbc_factory", visibility = Visibility.PROTECTED)
     public IRubyObject set_driver_factory(final ThreadContext context) {
+        setDriverFactory(context);
+        return get_connection_factory(context.runtime);
+    }
+
+    private ConnectionFactory setDriverFactory(final ThreadContext context) {
 
         final IRubyObject url = getConfigValue(context, "url");
         final IRubyObject driver = getConfigValue(context, "driver");
@@ -1541,22 +1548,25 @@ public class RubyJdbcConnection extends RubyObject {
         }
 
         final String jdbcURL = buildURL(context, url);
+        final ConnectionFactory factory;
 
         if ( driver_instance != null && ! driver_instance.isNil() ) {
             final Object driverInstance = driver_instance.toJava(Object.class);
             if ( driverInstance instanceof DriverWrapper ) {
-                return set_connection_factory(context, new DriverConnectionFactoryImpl(
+                setConnectionFactory(factory = new DriverConnectionFactoryImpl(
                     (DriverWrapper) driverInstance, jdbcURL,
                     ( username.isNil() ? null : username.toString() ),
                     ( password.isNil() ? null : password.toString() )
                 ));
+                return factory;
             }
             else {
-                return set_connection_factory(context, new RubyConnectionFactoryImpl(
+                setConnectionFactory(factory = new RubyConnectionFactoryImpl(
                     driver_instance, context.getRuntime().newString(jdbcURL),
                     ( username.isNil() ? username : username.asString() ),
                     ( password.isNil() ? password : password.asString() )
                 ));
+                return factory;
             }
         }
 
@@ -1564,7 +1574,8 @@ public class RubyJdbcConnection extends RubyObject {
         final String pass = password.isNil() ? null : password.toString();
 
         final DriverWrapper driverWrapper = newDriverWrapper(context, driver.toString());
-        return set_connection_factory(context, new DriverConnectionFactoryImpl(driverWrapper, jdbcURL, user, pass));
+        setConnectionFactory(factory = new DriverConnectionFactoryImpl(driverWrapper, jdbcURL, user, pass));
+        return factory;
     }
 
     protected DriverWrapper newDriverWrapper(final ThreadContext context, final String driver) {
@@ -1609,8 +1620,14 @@ public class RubyJdbcConnection extends RubyObject {
         return props;
     }
 
+    @Deprecated
     @JRubyMethod(name = "setup_jndi_factory", visibility = Visibility.PROTECTED)
     public IRubyObject set_data_source_factory(final ThreadContext context) {
+        setDataSourceFactory(context);
+        return get_connection_factory(context.runtime);
+    }
+
+    private ConnectionFactory setDataSourceFactory(final ThreadContext context) {
         final DataSource dataSource;
         try {
             dataSource = resolveDataSource(context);
@@ -1618,11 +1635,13 @@ public class RubyJdbcConnection extends RubyObject {
         catch (NamingException e) {
             throw wrapException(context, context.runtime.getRuntimeError(), e);
         }
-        return set_connection_factory(context, new DataSourceConnectionFactoryImpl(dataSource));
+        ConnectionFactory factory = new DataSourceConnectionFactoryImpl(dataSource);
+        setConnectionFactory(factory);
+        return factory;
     }
 
     private static volatile IRubyObject defaultConfig;
-    private static volatile IRubyObject defaultConnectionFactory;
+    private static volatile ConnectionFactory defaultConnectionFactory;
 
     /**
      * Sets the connection factory from the available configuration.
@@ -1632,47 +1651,49 @@ public class RubyJdbcConnection extends RubyObject {
      */
     @JRubyMethod(name = "setup_connection_factory", visibility = Visibility.PROTECTED)
     public IRubyObject setup_connection_factory(final ThreadContext context) {
+        setupConnectionFactory(context);
+        return get_connection_factory(context.runtime);
+    }
+
+    private IRubyObject get_connection_factory(final Ruby runtime) {
+        return JavaUtil.convertJavaToRuby(runtime, connectionFactory);
+    }
+
+    private void setupConnectionFactory(final ThreadContext context) {
         final IRubyObject config = getConfig();
 
         if ( defaultConfig == null ) {
             synchronized(RubyJdbcConnection.class) {
                 if ( defaultConfig == null ) {
                     if ( isJndiConfig(context, config) ) {
-                        defaultConnectionFactory = set_data_source_factory(context);
+                        defaultConnectionFactory = setDataSourceFactory(context);
                     }
                     else {
-                        defaultConnectionFactory = set_driver_factory(context);
+                        defaultConnectionFactory = setDriverFactory(context);
                     }
                     defaultConfig = config;
-                    return defaultConnectionFactory;
+                    return;
                 }
             }
         }
 
         if ( defaultConfig != null &&
             ( defaultConfig == config || defaultConfig.eql(config) ) ) {
-            final IRubyObject factory = defaultConnectionFactory;
-            setConnectionFactory( (ConnectionFactory) factory.toJava(ConnectionFactory.class) );
-            return factory;
+            setConnectionFactory( defaultConnectionFactory );
+            return;
         }
 
         if ( isJndiConfig(context, config) ) {
-            return set_data_source_factory(context);
+            setDataSourceFactory(context);
         }
         else {
-            return set_driver_factory(context);
+            setDriverFactory(context);
         }
     }
 
     @JRubyMethod(name = "jndi?", alias = "jndi_connection?")
     public RubyBoolean jndi_p(final ThreadContext context) {
         return context.runtime.newBoolean( getConnectionFactory() instanceof DataSourceConnectionFactoryImpl );
-    }
-
-    private IRubyObject set_connection_factory(final ThreadContext context, final ConnectionFactory factory) {
-        final IRubyObject connection_factory = JavaUtil.convertJavaToRuby(context.runtime, factory);
-        setConnectionFactory( factory ); // callMethod(context, "connection_factory=", connection_factory);
-        return connection_factory;
     }
 
     private DataSource resolveDataSource(final ThreadContext context) throws NamingException {
