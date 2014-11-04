@@ -614,10 +614,6 @@ module ActiveRecord
 
       end
 
-      def initialize(*args)
-        super # configure_connection happens in super
-      end
-
       def jdbc_connection_class(spec)
         ::ArJdbc::MySQL.jdbc_connection_class
       end

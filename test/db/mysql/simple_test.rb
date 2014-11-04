@@ -254,6 +254,25 @@ class MySQLSimpleTest < Test::Unit::TestCase
     end
   end if defined? JRUBY_VERSION
 
+
+  test 'instantiate adapter ActiveRecord style' do
+    connection = ActiveRecord::ConnectionAdapters::MySQLJdbcConnection.new current_connection_config
+    logger = ActiveRecord::Base.logger
+    pool = ActiveRecord::Base.connection_pool
+    adapter = ActiveRecord::ConnectionAdapters::MysqlAdapter.new(connection, logger, pool)
+    assert adapter.config
+    assert_equal connection, adapter.raw_connection
+    assert adapter.pool if ar_version('4.0')
+  end if ar_version('3.2') && defined? JRUBY_VERSION
+
+  test 'instantiate adapter ActiveRecord style (< 3.2)' do
+    connection = ActiveRecord::ConnectionAdapters::MySQLJdbcConnection.new current_connection_config
+    logger = ActiveRecord::Base.logger
+    adapter = ActiveRecord::ConnectionAdapters::MysqlAdapter.new(connection, logger)
+    assert adapter.config
+    assert_equal connection, adapter.raw_connection
+  end if defined? JRUBY_VERSION
+
   test 'bulk change table' do
     assert ActiveRecord::Base.connection.supports_bulk_alter?
 

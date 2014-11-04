@@ -51,9 +51,14 @@ module ActiveRecord
       # @param logger the `ActiveRecord::Base.logger` to use (or nil)
       # @param config the database configuration
       # @note `initialize(logger, config)` with 2 arguments is supported as well
-      def initialize(connection, logger, config = nil)
+      def initialize(connection, logger, config = nil); pool = nil
         if config.nil? && logger.respond_to?(:key?) # (logger, config)
           config, logger, connection = logger, connection, nil
+        elsif config.is_a?(ConnectionAdapters::ConnectionPool)
+          pool = config; config = pool.spec.config # AR >= 3.2 compatibility
+        else
+          config = connection.respond_to?(:config) ?
+            connection.config : ActiveRecord::Base.connection_config
         end
 
         @config = config.respond_to?(:symbolize_keys) ? config.symbolize_keys : config
@@ -69,7 +74,7 @@ module ActiveRecord
         # NOTE: adapter spec's init_connection only called if instantiated here :
         connection ||= jdbc_connection_class(spec).new(@config, self)
 
-        super(connection, logger)
+        pool.nil? ? super(connection, logger) : super(connection, logger, pool)
 
         # kind of like `extend ArJdbc::MyDB if self.class == JdbcAdapter` :
         klass = @config[:adapter_class]
