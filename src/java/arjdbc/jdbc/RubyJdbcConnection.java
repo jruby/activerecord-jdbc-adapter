@@ -505,7 +505,7 @@ public class RubyJdbcConnection extends RubyObject {
 
     @JRubyMethod(name = "adapter")
     public final IRubyObject adapter() {
-        return adapter == null ? getRuntime().getNil() : adapter;
+        return getAdapter() == null ? getRuntime().getNil() : getAdapter();
     }
 
     /**
@@ -1632,7 +1632,7 @@ public class RubyJdbcConnection extends RubyObject {
      */
     @JRubyMethod(name = "setup_connection_factory", visibility = Visibility.PROTECTED)
     public IRubyObject setup_connection_factory(final ThreadContext context) {
-        final IRubyObject config = getConfig(context);
+        final IRubyObject config = getConfig();
 
         if ( defaultConfig == null ) {
             synchronized(RubyJdbcConnection.class) {
@@ -1725,17 +1725,12 @@ public class RubyJdbcConnection extends RubyObject {
     }
 
     @JRubyMethod(name = "config")
-    public final IRubyObject config() { return this.config; }
+    public final IRubyObject config() { return getConfig(); }
 
     public final IRubyObject getConfig() { return this.config; }
 
-    // @Deprecated
-    protected final IRubyObject getConfig(final ThreadContext context) {
-        return getConfig(); // this.callMethod(context, "config");
-    }
-
     protected final IRubyObject getConfigValue(final ThreadContext context, final String key) {
-        final IRubyObject config = getConfig(context);
+        final IRubyObject config = getConfig();
         final RubySymbol keySym = context.runtime.newSymbol(key);
         if ( config instanceof RubyHash ) {
             return ((RubyHash) config).op_aref(context, keySym);
@@ -1745,7 +1740,7 @@ public class RubyJdbcConnection extends RubyObject {
 
     protected final IRubyObject setConfigValue(final ThreadContext context,
             final String key, final IRubyObject value) {
-        final IRubyObject config = getConfig(context);
+        final IRubyObject config = getConfig();
         final RubySymbol keySym = context.runtime.newSymbol(key);
         if ( config instanceof RubyHash ) {
             return ((RubyHash) config).op_aset(context, keySym, value);
@@ -1755,7 +1750,7 @@ public class RubyJdbcConnection extends RubyObject {
 
     protected final IRubyObject setConfigValueIfNotSet(final ThreadContext context,
             final String key, final IRubyObject value) {
-        final IRubyObject config = getConfig(context);
+        final IRubyObject config = getConfig();
         final RubySymbol keySym = context.runtime.newSymbol(key);
         if ( config instanceof RubyHash ) {
             final IRubyObject setValue = ((RubyHash) config).op_aref(context, keySym);
@@ -1773,12 +1768,7 @@ public class RubyJdbcConnection extends RubyObject {
     }
 
     // NOTE: make public
-    private IRubyObject getAdapter() { return this.adapter; }
-
-    // @Deprecated
-    protected final IRubyObject getAdapter(final ThreadContext context) {
-        return getAdapter();
-    }
+    protected final IRubyObject getAdapter() { return this.adapter; }
 
     protected IRubyObject getJdbcColumnClass(final ThreadContext context) {
         return getAdapter().callMethod(context, "jdbc_column_class");
@@ -3161,7 +3151,7 @@ public class RubyJdbcConnection extends RubyObject {
         }
 
         final RubyArray columns = runtime.newArray();
-        final IRubyObject config = getConfig(context);
+        final IRubyObject config = getConfig();
         while ( results.next() ) {
             final String colName = results.getString(COLUMN_NAME);
             IRubyObject column = jdbcColumn.callMethod(context, "new",
