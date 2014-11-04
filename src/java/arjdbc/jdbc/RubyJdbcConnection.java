@@ -1690,28 +1690,36 @@ public class RubyJdbcConnection extends RubyObject {
 
     protected final IRubyObject getConfigValue(final ThreadContext context, final String key) {
         final IRubyObject config = getConfig(context);
+        final RubySymbol keySym = context.runtime.newSymbol(key);
         if ( config instanceof RubyHash ) {
-            return ((RubyHash) config).op_aref(context, context.runtime.newSymbol(key));
+            return ((RubyHash) config).op_aref(context, keySym);
         }
-        return config.callMethod(context, "[]", context.runtime.newSymbol(key));
+        return config.callMethod(context, "[]", keySym);
     }
 
     protected final IRubyObject setConfigValue(final ThreadContext context,
             final String key, final IRubyObject value) {
         final IRubyObject config = getConfig(context);
-        final IRubyObject[] args = new IRubyObject[] { context.runtime.newSymbol(key), value };
-        return config.callMethod(context, "[]=", args);
+        final RubySymbol keySym = context.runtime.newSymbol(key);
+        if ( config instanceof RubyHash ) {
+            return ((RubyHash) config).op_aset(context, keySym, value);
+        }
+        return config.callMethod(context, "[]=", new IRubyObject[] { keySym, value });
     }
 
     protected final IRubyObject setConfigValueIfNotSet(final ThreadContext context,
             final String key, final IRubyObject value) {
         final IRubyObject config = getConfig(context);
-        final IRubyObject name = context.runtime.newSymbol(key);
-        final IRubyObject setValue = config.callMethod(context, "[]", name);
-        if ( setValue.isNil() ) {
-            return config.callMethod(context, "[]=", new IRubyObject[] { name, value });
+        final RubySymbol keySym = context.runtime.newSymbol(key);
+        if ( config instanceof RubyHash ) {
+            final IRubyObject setValue = ((RubyHash) config).op_aref(context, keySym);
+            if ( ! setValue.isNil() ) return setValue;
+            return ((RubyHash) config).op_aset(context, keySym, value);
         }
-        return setValue;
+
+        final IRubyObject setValue = config.callMethod(context, "[]", keySym);
+        if ( ! setValue.isNil() ) return setValue;
+        return config.callMethod(context, "[]=", new IRubyObject[] { keySym, value });
     }
 
     private static String toStringOrNull(final IRubyObject arg) {
