@@ -105,6 +105,4 @@ module ArJdbc
 
     end
   end
-  # @private @deprecated backwards compatibility
-  MissingFunctionalityHelper = Util::TableCopier
 end
