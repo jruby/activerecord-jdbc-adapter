@@ -107,6 +107,7 @@ public class RubyJdbcConnection extends RubyObject {
     private static final String[] TABLE_TYPES = new String[] { "TABLE", "VIEW", "SYNONYM" };
 
     private ConnectionFactory connectionFactory;
+    private IRubyObject config;
     private IRubyObject adapter; // the AbstractAdapter instance we belong to
 
     protected RubyJdbcConnection(Ruby runtime, RubyClass metaClass) {
@@ -473,12 +474,45 @@ public class RubyJdbcConnection extends RubyObject {
         return false;
     }
 
-    @JRubyMethod(name = "adapter")
-    public IRubyObject adapter(final ThreadContext context) {
-        return adapter == null ? context.nil : adapter;
+    @Deprecated // second argument is now mandatory - only kept for compatibility
+    @JRubyMethod(required = 1)
+    public final IRubyObject initialize(final ThreadContext context, final IRubyObject config) {
+        doInitialize(context, config, context.nil);
+        return this;
     }
 
-    @JRubyMethod(required = 1) // NOTE: internal API
+    @JRubyMethod(required = 2)
+    public final IRubyObject initialize(final ThreadContext context, final IRubyObject config,
+        final IRubyObject adapter) {
+        doInitialize(context, config, adapter);
+        return this;
+    }
+
+    protected void doInitialize(final ThreadContext context, final IRubyObject config,
+        final IRubyObject adapter) {
+        this.config = config; this.adapter = adapter;
+
+        setup_connection_factory(context);
+        try {
+            initConnection(context);
+        }
+        catch (SQLException e) {
+            String message = e.getMessage();
+            if ( message == null ) message = e.getSQLState();
+            throw wrapException(context, e, message);
+        }
+    }
+
+    @JRubyMethod(name = "adapter")
+    public final IRubyObject adapter() {
+        return adapter == null ? getRuntime().getNil() : adapter;
+    }
+
+    /**
+     * @note Internal API!
+     */
+    @Deprecated
+    @JRubyMethod(required = 1)
     public IRubyObject set_adapter(final ThreadContext context, final IRubyObject adapter) {
         return this.adapter = adapter;
     }
@@ -488,10 +522,14 @@ public class RubyJdbcConnection extends RubyObject {
         return convertJavaToRuby( getConnectionFactory() );
     }
 
+    /**
+     * @note Internal API!
+     */
+    @Deprecated
     @JRubyMethod(name = "connection_factory=", required = 1)
     public IRubyObject set_connection_factory(final ThreadContext context, final IRubyObject factory) {
         setConnectionFactory( (ConnectionFactory) factory.toJava(ConnectionFactory.class) );
-        return context.nil;
+        return factory;
     }
 
     /**
@@ -517,7 +555,7 @@ public class RubyJdbcConnection extends RubyObject {
 
     private IRubyObject initConnection(final ThreadContext context) throws SQLException {
         final IRubyObject jdbcConnection = setConnection( newConnection() );
-        final IRubyObject adapter = getAdapter(context); // self.adapter
+        final IRubyObject adapter = getAdapter(); // self.adapter
         if ( adapter == null || adapter.isNil() ) {
             warn(context, "adapter not set, please pass adapter on JdbcConnection#initialize(config, adapter)");
         }
@@ -564,7 +602,7 @@ public class RubyJdbcConnection extends RubyObject {
         try {
             final Connection connection = newConnection();
             final IRubyObject result = setConnection( connection );
-            final IRubyObject adapter = getAdapter(context);
+            final IRubyObject adapter = getAdapter(); // self.adapter
             //if ( adapter.isNil() ) {
                 // NOTE: we warn on init_connection - should be enough
             //}
@@ -1497,7 +1535,7 @@ public class RubyJdbcConnection extends RubyObject {
         final IRubyObject driver_instance = getConfigValue(context, "driver_instance");
 
         if ( url.isNil() || ( driver.isNil() && driver_instance.isNil() ) ) {
-            final Ruby runtime = context.getRuntime();
+            final Ruby runtime = context.runtime;
             final RubyClass errorClass = getConnectionNotEstablished( runtime );
             throw new RaiseException(runtime, errorClass, "adapter requires :driver class and jdbc :url", false);
         }
@@ -1583,8 +1621,8 @@ public class RubyJdbcConnection extends RubyObject {
         return set_connection_factory(context, new DataSourceConnectionFactoryImpl(dataSource));
     }
 
-    private static transient IRubyObject defaultConfig;
-    private static transient IRubyObject defaultConnectionFactory;
+    private static volatile IRubyObject defaultConfig;
+    private static volatile IRubyObject defaultConnectionFactory;
 
     /**
      * Sets the connection factory from the available configuration.
@@ -1599,21 +1637,23 @@ public class RubyJdbcConnection extends RubyObject {
         if ( defaultConfig == null ) {
             synchronized(RubyJdbcConnection.class) {
                 if ( defaultConfig == null ) {
-                    defaultConfig = config;
                     if ( isJndiConfig(context, config) ) {
-                        return defaultConnectionFactory = set_data_source_factory(context);
+                        defaultConnectionFactory = set_data_source_factory(context);
                     }
                     else {
-                        return defaultConnectionFactory = set_driver_factory(context);
+                        defaultConnectionFactory = set_driver_factory(context);
                     }
+                    defaultConfig = config;
+                    return defaultConnectionFactory;
                 }
             }
         }
 
         if ( defaultConfig != null &&
             ( defaultConfig == config || defaultConfig.eql(config) ) ) {
-            set_connection_factory(context, defaultConnectionFactory);
-            return defaultConnectionFactory;
+            final IRubyObject factory = defaultConnectionFactory;
+            setConnectionFactory( (ConnectionFactory) factory.toJava(ConnectionFactory.class) );
+            return factory;
         }
 
         if ( isJndiConfig(context, config) ) {
@@ -1631,7 +1671,7 @@ public class RubyJdbcConnection extends RubyObject {
 
     private IRubyObject set_connection_factory(final ThreadContext context, final ConnectionFactory factory) {
         final IRubyObject connection_factory = JavaUtil.convertJavaToRuby(context.runtime, factory);
-        setConnectionFactory( factory ); //callMethod(context, "connection_factory=", connection_factory);
+        setConnectionFactory( factory ); // callMethod(context, "connection_factory=", connection_factory);
         return connection_factory;
     }
 
@@ -1684,8 +1724,14 @@ public class RubyJdbcConnection extends RubyObject {
         }
     }
 
+    @JRubyMethod(name = "config")
+    public final IRubyObject config() { return this.config; }
+
+    public final IRubyObject getConfig() { return this.config; }
+
+    // @Deprecated
     protected final IRubyObject getConfig(final ThreadContext context) {
-        return this.callMethod(context, "config");
+        return getConfig(); // this.callMethod(context, "config");
     }
 
     protected final IRubyObject getConfigValue(final ThreadContext context, final String key) {
@@ -1726,12 +1772,16 @@ public class RubyJdbcConnection extends RubyObject {
         return arg.isNil() ? null : arg.toString();
     }
 
+    // NOTE: make public
+    private IRubyObject getAdapter() { return this.adapter; }
+
+    // @Deprecated
     protected final IRubyObject getAdapter(final ThreadContext context) {
-        return adapter(context); // this.callMethod(context, "adapter");
+        return getAdapter();
     }
 
     protected IRubyObject getJdbcColumnClass(final ThreadContext context) {
-        return getAdapter(context).callMethod(context, "jdbc_column_class");
+        return getAdapter().callMethod(context, "jdbc_column_class");
     }
 
     protected final ConnectionFactory getConnectionFactory() throws RaiseException {
@@ -3406,14 +3456,7 @@ public class RubyJdbcConnection extends RubyObject {
     protected RaiseException wrapException(final ThreadContext context, final Throwable exception) {
         final Ruby runtime = context.runtime;
         if ( exception instanceof SQLException ) {
-            final String message = SQLException.class == exception.getClass() ?
-                exception.getMessage() : exception.toString(); // useful to easily see type on Ruby side
-            final RaiseException raise = wrapException(context, getJDBCError(runtime), exception, message);
-            final int errorCode = ((SQLException) exception).getErrorCode();
-            final RubyException error = raise.getException();
-            error.getMetaClass().finvoke(context, error, "errno=", runtime.newFixnum(errorCode));
-            error.getMetaClass().finvoke(context, error, "sql_exception=", JavaEmbedUtils.javaToRuby(runtime, exception));
-            return raise;
+            return wrapException(context, (SQLException) exception, null);
         }
         if ( exception instanceof RaiseException ) {
             return (RaiseException) exception;
@@ -3435,6 +3478,20 @@ public class RubyJdbcConnection extends RubyObject {
         final RaiseException error = new RaiseException(context.runtime, errorClass, message, true);
         error.initCause(exception);
         return error;
+    }
+
+    protected RaiseException wrapException(final ThreadContext context, final SQLException exception,
+        String message) {
+        final Ruby runtime = context.runtime;
+        if ( message == null ) {
+            message = SQLException.class == exception.getClass() ?
+                exception.getMessage() : exception.toString(); // useful to easily see type on Ruby side
+        }
+        final RaiseException raise = wrapException(context, getJDBCError(runtime), exception, message);
+        final RubyException error = raise.getException();
+        error.getMetaClass().finvoke(context, error, "errno=", runtime.newFixnum( exception.getErrorCode() ));
+        error.getMetaClass().finvoke(context, error, "sql_exception=", JavaEmbedUtils.javaToRuby(runtime, exception));
+        return raise;
     }
 
     private IRubyObject convertJavaToRuby(final Object object) {
