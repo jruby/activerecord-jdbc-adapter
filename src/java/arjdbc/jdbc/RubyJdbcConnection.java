@@ -1435,8 +1435,12 @@ public class RubyJdbcConnection extends RubyObject {
     }
 
     protected final IRubyObject getConfigValue(final ThreadContext context, final String key) {
-        final IRubyObject config = callMethod(context, "config");
-        return config.callMethod(context, "[]", context.getRuntime().newSymbol(key));
+        final IRubyObject config = getConfig(context);
+        final RubySymbol keySym = context.runtime.newSymbol(key);
+        if ( config instanceof RubyHash ) {
+            return ((RubyHash) config).op_aref(context, keySym);
+        }
+        return config.callMethod(context, "[]", keySym);
     }
 
     /**
