@@ -667,34 +667,6 @@ module ArJdbc
       select('SELECT nspname FROM pg_namespace').map { |row| row["nspname"] }
     end
 
-    # @deprecated no longer used - handled with (AR built-in) Rake tasks
-    def structure_dump
-      database = @config[:database]
-      if database.nil?
-        if @config[:url] =~ /\/([^\/]*)$/
-          database = $1
-        else
-          raise "Could not figure out what database this url is for #{@config["url"]}"
-        end
-      end
-
-      ENV['PGHOST']     = @config[:host] if @config[:host]
-      ENV['PGPORT']     = @config[:port].to_s if @config[:port]
-      ENV['PGPASSWORD'] = @config[:password].to_s if @config[:password]
-      search_path = "--schema=#{@config[:schema_search_path]}" if @config[:schema_search_path]
-
-      @connection.connection.close
-      begin
-        definition = `pg_dump -i -U "#{@config[:username]}" -s -x -O #{search_path} #{database}`
-        raise "Error dumping database" if $?.exitstatus == 1
-
-        # need to patch away any references to SQL_ASCII as it breaks the JDBC driver
-        definition.gsub(/SQL_ASCII/, 'UNICODE')
-      ensure
-        reconnect!
-      end
-    end
-
     # Returns the current client message level.
     def client_min_messages
       select_value('SHOW client_min_messages', 'SCHEMA')
