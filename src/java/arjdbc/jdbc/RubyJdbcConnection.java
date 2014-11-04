@@ -1434,6 +1434,10 @@ public class RubyJdbcConnection extends RubyObject {
         return context.getRuntime().newBoolean( true );
     }
 
+    private IRubyObject getConfig(final ThreadContext context) {
+        return getInstanceVariable("@config"); // this.callMethod(context, "config");
+    }
+
     protected final IRubyObject getConfigValue(final ThreadContext context, final String key) {
         final IRubyObject config = getConfig(context);
         final RubySymbol keySym = context.runtime.newSymbol(key);
@@ -2910,7 +2914,7 @@ public class RubyJdbcConnection extends RubyObject {
         }
 
         final RubyArray columns = runtime.newArray();
-        final IRubyObject config = getInstanceVariable("@config");
+        final IRubyObject config = getConfig(context);
         while ( results.next() ) {
             final String colName = results.getString(COLUMN_NAME);
             IRubyObject column = jdbcColumn.callMethod(context, "new",
