@@ -62,6 +62,11 @@ public class ArJdbcModule {
         return runtime.getModule("ArJdbc");
     }
 
+    public static void warn(final ThreadContext context, final String message) {
+        final Ruby runtime = context.runtime;
+        get(runtime).callMethod(context, "warn", runtime.newString(message));
+    }
+
     /**
      * Load the Java parts for the given adapter spec module, e.g. to load
      * ArJdbc::MySQL's Java part: <code>ArJdbc.load_java_part :MySQL</code>

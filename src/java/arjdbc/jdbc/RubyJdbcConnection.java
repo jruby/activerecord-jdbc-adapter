@@ -121,10 +121,10 @@ public class RubyJdbcConnection extends RubyObject {
     };
 
     public static RubyClass createJdbcConnectionClass(final Ruby runtime) {
-        final RubyClass _JdbcConnection = getConnectionAdapters(runtime).
+        final RubyClass JdbcConnection = getConnectionAdapters(runtime).
             defineClassUnder("JdbcConnection", runtime.getObject(), ALLOCATOR);
-        _JdbcConnection.defineAnnotatedMethods(RubyJdbcConnection.class);
-        return _JdbcConnection;
+        JdbcConnection.defineAnnotatedMethods(RubyJdbcConnection.class);
+        return JdbcConnection;
     }
 
     public static RubyClass getJdbcConnectionClass(final Ruby runtime) {
@@ -3873,8 +3873,7 @@ public class RubyJdbcConnection extends RubyObject {
     }
 
     protected void warn(final ThreadContext context, final String message) {
-        final Ruby runtime = context.runtime;
-        runtime.getModule("ArJdbc").callMethod(context, "warn", runtime.newString(message));
+        arjdbc.ArJdbcModule.warn(context, message);
     }
 
     /*
