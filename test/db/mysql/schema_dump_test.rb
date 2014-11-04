@@ -133,15 +133,6 @@ class MysqlInfoTest < Test::Unit::TestCase
     assert_nil connection.primary_key('cats')
   end
 
-  ## structure_dump
-  def test_should_include_the_tables_in_a_structure_dump
-    dump = connection.structure_dump
-    assert dump.include?('CREATE TABLE `books`')
-    assert dump.include?('CREATE TABLE `cars`')
-    assert dump.include?('CREATE TABLE `cats`')
-    assert dump.include?('CREATE TABLE `memos`')
-  end if defined? JRUBY_VERSION
-
   def test_should_include_longtext_in_schema_dump
     strio = StringIO.new
     ActiveRecord::SchemaDumper::dump(connection, strio)

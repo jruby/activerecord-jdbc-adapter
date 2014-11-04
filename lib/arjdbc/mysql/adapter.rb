@@ -225,31 +225,7 @@ module ArJdbc
     end
 
     # @override make it public just like native MySQL adapter does
-    def update_sql(sql, name = nil)
-      super
-    end
-
-    # SCHEMA STATEMENTS ========================================
-
-    # @deprecated no longer used - handled with (AR built-in) Rake tasks
-    def structure_dump
-      # NOTE: due AR (2.3-3.2) compatibility views are not included
-      if supports_views?
-        sql = "SHOW FULL TABLES WHERE Table_type = 'BASE TABLE'"
-      else
-        sql = "SHOW TABLES"
-      end
-
-      @connection.execute_query_raw(sql).map do |table|
-        # e.g. { "Tables_in_arjdbc_test"=>"big_fields", "Table_type"=>"BASE TABLE" }
-        table.delete('Table_type')
-        table_name = table.to_a.first.last
-
-        create_table = select_one("SHOW CREATE TABLE #{quote_table_name(table_name)}")
-
-        "#{create_table['Create Table']};\n\n"
-      end.join
-    end
+    def update_sql(sql, name = nil); super end
 
     # Returns just a table's primary key.
     # @override
