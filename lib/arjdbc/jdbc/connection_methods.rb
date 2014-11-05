@@ -7,8 +7,7 @@ module ArJdbc
   ConnectionMethods.module_eval do
 
     def jdbc_connection(config)
-      adapter_class = config[:adapter_class]
-      adapter_class ||= begin
+      adapter_class = config[:adapter_class] || begin
         adapter = config[:adapter]
         if ( adapter == 'jdbc' || adapter == 'jndi' ) && adapter = supported_adapter(config)
           ArJdbc.deprecate("use 'adapter: #{adapter}' instead of 'adapter: jdbc' configuration", true)
