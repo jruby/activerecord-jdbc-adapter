@@ -110,22 +110,7 @@ module ActiveRecord
       # @param unwrap [true, false] whether to unwrap the connection object
       # @return [Java::JavaSql::Connection] the JDBC connection
       def jdbc_connection(unwrap = nil)
-        java_connection = raw_connection.connection
-        return java_connection unless unwrap
-        connection_class = java.sql.Connection.java_class
-        begin
-          if java_connection.wrapper_for?(connection_class)
-            return java_connection.unwrap(connection_class) # java.sql.Wrapper.unwrap
-          end
-        rescue Java::JavaLang::AbstractMethodError => e
-          ArJdbc.warn("driver/pool connection impl does not support unwrapping (#{e})")
-        end
-        if java_connection.respond_to?(:connection)
-          # e.g. org.apache.tomcat.jdbc.pool.PooledConnection
-          java_connection.connection # getConnection
-        else
-          java_connection
-        end
+        raw_connection.jdbc_connection(unwrap)
       end
 
       # Locate the specialized (database specific) adapter specification module
@@ -286,6 +271,7 @@ module ActiveRecord
 
       # @override
       def active?
+        return false unless @connection
         @connection.active?
       end
 
@@ -297,7 +283,7 @@ module ActiveRecord
 
       # @override
       def disconnect!
-        @connection.disconnect!
+        @connection.disconnect! if @connection
       end
 
       if ActiveRecord::VERSION::MAJOR < 3

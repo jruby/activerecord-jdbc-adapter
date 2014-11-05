@@ -561,7 +561,7 @@ public class RubyJdbcConnection extends RubyObject {
         if ( adapter == null || adapter.isNil() ) {
             warn(context, "adapter not set, please pass adapter on JdbcConnection#initialize(config, adapter)");
         }
-        if ( adapter.respondsTo("init_connection") ) {
+        else if ( adapter.respondsTo("init_connection") ) {
             return adapter.callMethod(context, "init_connection", convertJavaToRuby(connection));
         }
         return context.nil;
@@ -569,6 +569,32 @@ public class RubyJdbcConnection extends RubyObject {
 
     @JRubyMethod(name = "jdbc_connection", alias = "connection")
     public IRubyObject connection(final ThreadContext context) {
+        return convertJavaToRuby( connectionImpl(context) );
+    }
+
+    @JRubyMethod(name = "jdbc_connection", alias = "connection", required = 1)
+    public IRubyObject connection(final ThreadContext context, final IRubyObject unwrap) {
+        if ( unwrap.isNil() || unwrap == context.runtime.getFalse() ) {
+            return connection(context);
+        }
+        Connection connection = connectionImpl(context);
+        try {
+            if ( connection.isWrapperFor(Connection.class) ) {
+                return convertJavaToRuby( connection.unwrap(Connection.class) );
+            }
+        }
+        catch (AbstractMethodError e) {
+            debugStackTrace(context, e);
+            warn(context, "driver/pool connection does not support unwrapping: " + e);
+        }
+        catch (SQLException e) {
+            debugStackTrace(context, e);
+            warn(context, "driver/pool connection does not support unwrapping: " + e);
+        }
+        return convertJavaToRuby( connection );
+    }
+
+    private Connection connectionImpl(final ThreadContext context) {
         Connection connection = getConnection(false);
         if ( connection == null ) {
             synchronized (this) {
@@ -579,7 +605,7 @@ public class RubyJdbcConnection extends RubyObject {
                 }
             }
         }
-        return convertJavaToRuby(connection);
+        return connection;
     }
 
     @JRubyMethod(name = "active?")
