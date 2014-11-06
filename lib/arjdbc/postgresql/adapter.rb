@@ -1262,6 +1262,16 @@ module ArJdbc
       result
     end
 
+    # @private
+    def column_name_for_operation(operation, node)
+      case operation
+      when 'maximum' then 'max'
+      when 'minimum' then 'min'
+      when 'average' then 'avg'
+      else operation.downcase
+      end
+    end if AR42_COMPAT
+
     private
 
     def translate_exception(exception, message)
