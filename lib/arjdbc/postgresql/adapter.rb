@@ -8,6 +8,9 @@ module ArJdbc
 
     # @private
     AR4_COMPAT = ::ActiveRecord::VERSION::MAJOR > 3 unless const_defined?(:AR4_COMPAT)
+    # @private
+    AR42_COMPAT = ::ActiveRecord::VERSION::MAJOR > 4 ||
+      ( ::ActiveRecord::VERSION::MAJOR == 4 && ::ActiveRecord::VERSION::MINOR >= 2 )
 
     require 'arjdbc/postgresql/column'
     require 'arjdbc/postgresql/explain_support'
@@ -227,6 +230,11 @@ module ArJdbc
       :int8range => { :name => "int8range" },
     }) if AR4_COMPAT
 
+    NATIVE_DATABASE_TYPES.update(
+      :bit => { :name => "bit" },
+      :bit_varying => { :name => "bit varying" }
+    ) if AR42_COMPAT
+
     def native_database_types
       NATIVE_DATABASE_TYPES
     end
@@ -267,21 +275,13 @@ module ArJdbc
       postgresql_version >= 80200
     end
 
-    def supports_ddl_transactions?
-      true
-    end
+    def supports_ddl_transactions?; true end
 
-    def supports_transaction_isolation?
-      true
-    end
+    def supports_transaction_isolation?; true end
 
-    def supports_index_sort_order?
-      true
-    end
+    def supports_index_sort_order?; true end
 
-    def supports_partial_index?
-      true
-    end if AR4_COMPAT
+    def supports_partial_index?; true end if AR4_COMPAT
 
     # Range data-types weren't introduced until PostgreSQL 9.2.
     def supports_ranges?
@@ -292,12 +292,13 @@ module ArJdbc
       true
     end
 
+    # @override
+    def supports_views?; true end
+
     # NOTE: handled by JdbcAdapter we override only to have save-point in logs :
 
     # @override
-    def supports_savepoints?
-      true
-    end
+    def supports_savepoints?; true end
 
     # @override
     def create_savepoint(name = current_savepoint_name(true))
@@ -792,7 +793,22 @@ module ArJdbc
       else
         super
       end
-    end
+    end unless AR42_COMPAT
+
+    def quote(value, column = nil)
+      return super unless column
+
+      case value
+      when Float
+        if value.infinite? || value.nan?
+          "'#{value.to_s}'"
+        else
+          super
+        end
+      else
+        super
+      end
+    end if AR42_COMPAT
 
     # @return [String]
     def quote_bit(value)
@@ -910,7 +926,7 @@ module ArJdbc
 
       change_column_default(table_name, column_name, default) if options_include_default?(options)
       change_column_null(table_name, column_name, false, default) if notnull
-    end if ActiveRecord::VERSION::MAJOR < 4
+    end if ::ActiveRecord::VERSION::MAJOR < 4
 
     # Changes the column of a table.
     def change_column(table_name, column_name, type, options = {})
@@ -986,6 +1002,7 @@ module ArJdbc
     # Returns the list of all column definitions for a table.
     def columns(table_name, name = nil)
       klass = ::ActiveRecord::ConnectionAdapters::PostgreSQLColumn
+      pass_cast_type = respond_to?(:lookup_cast_type)
       column_definitions(table_name).map do |row|
         # name, type, default, notnull, oid, fmod
         name = row[0]; type = row[1]; default = row[2]
@@ -999,7 +1016,12 @@ module ArJdbc
         elsif default =~ /^\(([-+]?[\d\.]+)\)$/ # e.g. "(-1)" for a negative default
           default = $1
         end
-        klass.new(name, default, oid, type, ! notnull, fmod, self)
+        if pass_cast_type
+          cast_type = lookup_cast_type(type)
+          klass.new(name, default, cast_type, type, ! notnull, fmod, self)
+        else
+          klass.new(name, default, oid, type, ! notnull, fmod, self)
+        end
       end
     end
 
@@ -1029,29 +1051,37 @@ module ArJdbc
     end
     private :column_definitions
 
+    # @private
+    TABLES_SQL = 'SELECT tablename FROM pg_tables WHERE schemaname = ANY (current_schemas(false))'
+
     def tables(name = nil)
-      select_values(<<-SQL, 'SCHEMA')
-        SELECT tablename
-        FROM pg_tables
-        WHERE schemaname = ANY (current_schemas(false))
-      SQL
+      select_values(TABLES_SQL, 'SCHEMA')
     end
 
+    # @private
+    TABLE_EXISTS_SQL_PREFIX =  'SELECT COUNT(*) as table_count FROM pg_class c'
+    TABLE_EXISTS_SQL_PREFIX << ' LEFT JOIN pg_namespace n ON n.oid = c.relnamespace'
+    if AR42_COMPAT # -- (r)elation/table, (v)iew, (m)aterialized view
+    TABLE_EXISTS_SQL_PREFIX << " WHERE c.relkind IN ('r','v','m')"
+    else
+    TABLE_EXISTS_SQL_PREFIX << " WHERE c.relkind IN ('r','v')"
+    end
+    TABLE_EXISTS_SQL_PREFIX << " AND c.relname = ?"
+
+    # Returns true if table exists.
+    # If the schema is not specified as part of +name+ then it will only find tables within
+    # the current schema search path (regardless of permissions to access tables in other schemas)
     def table_exists?(name)
       schema, table = extract_schema_and_table(name.to_s)
-      return false unless table # abstract classes - nil table name
+      return false unless table
 
-      binds = [[ nil, table.gsub(/(^"|"$)/,'') ]]
-      binds << [ nil, schema ] if schema
-      sql = <<-SQL
-        SELECT COUNT(*) as table_count
-        FROM pg_tables
-        WHERE tablename = ?
-        AND schemaname = #{schema ? "?" : "ANY (current_schemas(false))"}
-      SQL
+      binds = [[nil, table]]
+      binds << [nil, schema] if schema
+
+      sql = "#{TABLE_EXISTS_SQL_PREFIX} AND n.nspname = #{schema ? "?" : 'ANY (current_schemas(false))'}"
 
       log(sql, 'SCHEMA', binds) do
-        @connection.execute_query_raw(sql, binds).first["table_count"] > 0
+        @connection.execute_query_raw(sql, binds).first['table_count'] > 0
       end
     end
 
@@ -1068,6 +1098,19 @@ module ArJdbc
       end
     end
 
+    def index_name_exists?(table_name, index_name, default)
+      exec_query(<<-SQL, 'SCHEMA').rows.first[0].to_i > 0
+        SELECT COUNT(*)
+        FROM pg_class t
+        INNER JOIN pg_index d ON t.oid = d.indrelid
+        INNER JOIN pg_class i ON d.indexrelid = i.oid
+        WHERE i.relkind = 'i'
+          AND i.relname = '#{index_name}'
+          AND t.relname = '#{table_name}'
+          AND i.relnamespace IN (SELECT oid FROM pg_namespace WHERE nspname = ANY (current_schemas(false)) )
+      SQL
+    end if AR42_COMPAT
+
     # Returns an array of indexes for the given table.
     def indexes(table_name, name = nil)
       # NOTE: maybe it's better to leave things of to the JDBC API ?!
@@ -1077,9 +1120,9 @@ module ArJdbc
         INNER JOIN pg_index d ON t.oid = d.indrelid
         INNER JOIN pg_class i ON d.indexrelid = i.oid
         WHERE i.relkind = 'i'
-        AND d.indisprimary = 'f'
-        AND t.relname = '#{table_name}'
-        AND i.relnamespace IN (SELECT oid FROM pg_namespace WHERE nspname = ANY (current_schemas(false)) )
+          AND d.indisprimary = 'f'
+          AND t.relname = '#{table_name}'
+          AND i.relnamespace IN (SELECT oid FROM pg_namespace WHERE nspname = ANY (current_schemas(false)) )
         ORDER BY i.relname
       SQL
 
@@ -1106,7 +1149,7 @@ module ArJdbc
           desc_order_columns = inddef.scan(/(\w+) DESC/).flatten
           orders = desc_order_columns.any? ? Hash[ desc_order_columns.map { |column| [column, :desc] } ] : {}
 
-          if ActiveRecord::VERSION::MAJOR > 3 # AR4 supports `where` and `using` index options
+          if ::ActiveRecord::VERSION::MAJOR > 3 # AR4 supports `where` and `using` index options
             where = inddef.scan(/WHERE (.+)$/).flatten[0]
             using = inddef.scan(/USING (.+?) /).flatten[0].to_sym
 
@@ -1119,6 +1162,16 @@ module ArJdbc
       result.compact!
       result
     end
+
+    # @private
+    def column_name_for_operation(operation, node)
+      case operation
+      when 'maximum' then 'max'
+      when 'minimum' then 'min'
+      when 'average' then 'avg'
+      else operation.downcase
+      end
+    end if AR42_COMPAT
 
     private
 
@@ -1133,20 +1186,12 @@ module ArJdbc
       end
     end
 
-    # Extracts the table and schema name from +name+
+    # @private `Utils.extract_schema_and_table` from AR
     def extract_schema_and_table(name)
-      schema, table = name.split('.', 2)
-
-      unless table # A table was provided without a schema
-        table  = schema
-        schema = nil
-      end
-
-      if name =~ /^"/ # Handle quoted table names
-        table  = name
-        schema = nil
-      end
-      [schema, table]
+      result = name.scan(/[^".\s]+|"[^"]*"/)[0, 2]
+      result.each { |m| m.gsub!(/(^"|"$)/, '') }
+      result.unshift(nil) if result.size == 1 # schema == nil
+      result # [schema, table]
     end
 
     def extract_pg_identifier_from_name(name)
@@ -1229,8 +1274,8 @@ module ActiveRecord::ConnectionAdapters
 
       @table_alias_length = nil
 
-      @use_insert_returning = config.key?(:insert_returning) ?
-        self.class.type_cast_config_to_boolean(config[:insert_returning]) : nil
+      @use_insert_returning = @config.key?(:insert_returning) ?
+        self.class.type_cast_config_to_boolean(@config[:insert_returning]) : nil
     end
 
     class ColumnDefinition < ActiveRecord::ConnectionAdapters::ColumnDefinition
@@ -1300,6 +1345,18 @@ module ActiveRecord::ConnectionAdapters
       def json(name, options = {})
         column(name, 'json', options)
       end
+
+      def jsonb(name, options = {})
+        column(name, :jsonb, options)
+      end
+
+      def bit(name, options)
+        column(name, 'bit', options)
+      end
+
+      def bit_varying(name, options)
+        column(name, 'bit varying', options)
+      end
     end
 
     class TableDefinition < ActiveRecord::ConnectionAdapters::TableDefinition
@@ -1310,7 +1367,7 @@ module ActiveRecord::ConnectionAdapters
         options[:default] = options.fetch(:default, 'uuid_generate_v4()')
         options[:primary_key] = true
         column name, type, options
-      end if ActiveRecord::VERSION::MAJOR > 3 # 3.2 super expects (name)
+      end if ::ActiveRecord::VERSION::MAJOR > 3 # 3.2 super expects (name)
 
       def column(name, type = nil, options = {})
         super
@@ -1324,7 +1381,7 @@ module ActiveRecord::ConnectionAdapters
 
       private
 
-      if ActiveRecord::VERSION::MAJOR > 3
+      if ::ActiveRecord::VERSION::MAJOR > 3
 
         def create_column_definition(name, type)
           ColumnDefinition.new name, type
@@ -1353,7 +1410,7 @@ module ActiveRecord::ConnectionAdapters
 
     def update_table_definition(table_name, base)
       Table.new(table_name, base)
-    end if ActiveRecord::VERSION::MAJOR > 3
+    end if ::ActiveRecord::VERSION::MAJOR > 3
 
     def jdbc_connection_class(spec)
       ::ArJdbc::PostgreSQL.jdbc_connection_class
@@ -1364,7 +1421,7 @@ module ActiveRecord::ConnectionAdapters
       ::ActiveRecord::ConnectionAdapters::PostgreSQLColumn
     end
 
-    if ActiveRecord::VERSION::MAJOR < 4 # Rails 3.x compatibility
+    if ::ActiveRecord::VERSION::MAJOR < 4 # Rails 3.x compatibility
       PostgreSQLJdbcConnection.raw_array_type = true if PostgreSQLJdbcConnection.raw_array_type? == nil
       PostgreSQLJdbcConnection.raw_hstore_type = true if PostgreSQLJdbcConnection.raw_hstore_type? == nil
     end

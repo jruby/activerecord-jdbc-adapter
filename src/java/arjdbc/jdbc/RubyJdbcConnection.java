@@ -1377,6 +1377,27 @@ public class RubyJdbcConnection extends RubyObject {
         });
     }
 
+    @JRubyMethod(name = "supports_views?")
+    public RubyBoolean supports_views_p(final ThreadContext context) throws SQLException {
+        return withConnection(context, new Callable<RubyBoolean>() {
+            public RubyBoolean call(final Connection connection) throws SQLException {
+                final DatabaseMetaData metaData = connection.getMetaData();
+                final ResultSet tableTypes = metaData.getTableTypes();
+                try {
+                    while ( tableTypes.next() ) {
+                        if ( "VIEW".equalsIgnoreCase( tableTypes.getString(1) ) ) {
+                            return context.runtime.getTrue();
+                        }
+                    }
+                }
+                finally {
+                    close(tableTypes);
+                }
+                return context.runtime.getFalse();
+            }
+        });
+    }
+
     @JRubyMethod(name = "with_connection_retry_guard", frame = true)
     public IRubyObject with_connection_retry_guard(final ThreadContext context, final Block block) {
         return withConnection(context, new Callable<IRubyObject>() {

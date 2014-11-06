@@ -485,24 +485,19 @@ module ArJdbc
     end
 
     # @override
-    def supports_migrations?
-      true
-    end
+    def supports_migrations?; true end
 
     # @override
-    def supports_primary_key?
-      true
-    end
+    def supports_primary_key?; true end
 
     # @override
-    def supports_savepoints?
-      true
-    end
+    def supports_savepoints?; true end
 
     # @override
-    def supports_explain?
-      true
-    end
+    def supports_explain?; true end
+
+    # @override
+    def supports_views?; true end
 
     def explain(arel, binds = [])
       sql = "EXPLAIN PLAN FOR #{to_sql(arel, binds)}"

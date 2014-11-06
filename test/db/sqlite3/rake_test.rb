@@ -39,7 +39,7 @@ class SQLite3RakeTest < Test::Unit::TestCase
     omit('sqlite3 not available') unless self.class.which('sqlite3')
     create_rake_test_database do |connection|
       create_schema_migrations_table(connection)
-      connection.create_table('users') { |t| t.string :name; t.timestamps }
+      connection.create_table('users') { |t| t.string :name; t.timestamps :null => false }
     end
 
     structure_sql = File.join('db', structure_sql_filename)

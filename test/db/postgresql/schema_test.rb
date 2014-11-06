@@ -87,7 +87,7 @@ class PostgreSQLSchemaTest < Test::Unit::TestCase
 
       def self.down
         execute "DROP SCHEMA test CASCADE"
-        execute "DROP TABLE people"
+        execute "DROP TABLE IF EXISTS people"
       end
     end
 
@@ -113,8 +113,50 @@ class PostgreSQLSchemaTest < Test::Unit::TestCase
     end if ActiveRecord::VERSION::MAJOR < 4
 
     def test_column_information
-      assert_include Person.columns.map{ |col| col.name }, "name"
-      assert ! Person.columns.map{ |col| col.name }.include?("wrongname")
+      assert_include Person.columns.map(&:name), "name"
+      assert ! Person.columns.map(&:name).include?("wrongname")
+    end
+
+    def test_table_exists_when_on_schema_search_path
+      connection.execute "DROP TABLE public.people"
+
+      with_schema_search_path('test') do
+        assert_true connection.table_exists?('people'), "table should exist and be found"
+      end
+    end
+
+    def test_table_exists_when_not_on_schema_search_path
+      connection.execute "DROP TABLE public.people"
+
+      with_schema_search_path('PUBLIC') do
+        assert_false connection.table_exists?('people'), "table exists but should not be found"
+      end
+    end
+
+    def test_table_exists_wrong_schema
+      assert_false connection.table_exists?("foo.people"), "table should not exist"
+    end
+
+    def test_table_exists_quoted_names
+      connection.execute "DROP TABLE public.people"
+
+      schema = 'test'; table = 'people'
+      [ %("#{schema}"."#{table}"), %(#{schema}."#{table}"), %(#{schema}."#{table}")].each do |given|
+        assert_true connection.table_exists?(given), "table should exist when specified as #{given}"
+      end
+      with_schema_search_path(schema) do
+        given = %("#{table}")
+        assert_true connection.table_exists?(given), "table should exist when specified as #{given}"
+      end
+    end
+
+    private
+
+    def with_schema_search_path(schema_search_path)
+      connection.schema_search_path = schema_search_path
+      yield if block_given?
+    ensure
+      connection.schema_search_path = "'$user', public"
     end
 
   end

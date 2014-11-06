@@ -290,8 +290,15 @@ _SQL
   end if ar_version('4.0')
 
   def test_data_type_of_bit_string_types
-    assert_equal :string, @first_bit_string.column_for_attribute(:bit_string).type
-    assert_equal :string, @first_bit_string.column_for_attribute(:bit_string_varying).type
+    bit_column = @first_bit_string.column_for_attribute(:bit_string)
+    bit_varying_column = @first_bit_string.column_for_attribute(:bit_string_varying)
+    if ar_version('4.2')
+      assert_equal :bit, bit_column.type
+      assert_equal :bit_varying, bit_varying_column.type
+    else
+      assert_equal :string, bit_column.type
+      assert_equal :string, bit_varying_column.type
+    end
   end
 
   def test_data_type_of_oid_types

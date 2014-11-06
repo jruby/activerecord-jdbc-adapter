@@ -202,6 +202,11 @@ module ArJdbc
       true
     end
 
+    # @override
+    def supports_views?
+      true
+    end
+
     def sqlite_version
       @sqlite_version ||= Version.new(select_value('SELECT sqlite_version(*)'))
     end
@@ -344,8 +349,15 @@ module ArJdbc
     # @override
     def columns(table_name, name = nil)
       klass = ::ActiveRecord::ConnectionAdapters::SQLite3Column
+      pass_cast_type = respond_to?(:lookup_cast_type)
       table_structure(table_name).map do |field|
-        klass.new(field['name'], field['dflt_value'], field['type'], field['notnull'] == 0)
+        sql_type = field['type']
+        if pass_cast_type
+          cast_type = lookup_cast_type(sql_type)
+          klass.new(field['name'], field['dflt_value'], cast_type, sql_type, field['notnull'] == 0)
+        else
+          klass.new(field['name'], field['dflt_value'], sql_type, field['notnull'] == 0)
+        end
       end
     end
 

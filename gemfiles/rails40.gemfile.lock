@@ -45,7 +45,7 @@ PLATFORMS
   java
 
 DEPENDENCIES
-  activerecord (~> 4.0.8)
+  activerecord (~> 4.0.10)
   appraisal (~> 0.5.2)
   bcrypt-ruby (~> 3.0.0)
   mocha (~> 0.13.1)

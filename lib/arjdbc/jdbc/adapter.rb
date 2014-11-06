@@ -410,6 +410,11 @@ module ActiveRecord
         end
       end
 
+      # @override
+      def supports_views?
+        @connection.supports_views?
+      end
+
       # Executes a SQL query in the context of this connection using the bind
       # substitutes.
       # @param sql the query string (or AREL object)

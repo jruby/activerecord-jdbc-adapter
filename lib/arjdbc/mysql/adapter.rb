@@ -126,6 +126,11 @@ module ArJdbc
       Arel::Nodes::Bin.new(node)
     end
 
+    def case_sensitive_modifier(node, table_attribute)
+      node = Arel::Nodes.build_quoted node, table_attribute
+      Arel::Nodes::Bin.new(node)
+    end if ActiveRecord::VERSION::STRING > '4.2'
+
     def limited_update_conditions(where_sql, quoted_table_name, quoted_primary_key)
       where_sql
     end
