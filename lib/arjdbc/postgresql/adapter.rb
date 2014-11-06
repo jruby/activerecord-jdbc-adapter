@@ -242,9 +242,9 @@ module ArJdbc
     }) if AR4_COMPAT
 
     NATIVE_DATABASE_TYPES.update(
-      :bit => { name: "bit" },
-      :bit_varying => { name: "bit varying" }
-    ) if ActiveRecord::VERSION.to_s >= '4.2'
+      :bit => { :name => "bit" },
+      :bit_varying => { :name => "bit varying" }
+    ) if AR42_COMPAT
 
     def native_database_types
       NATIVE_DATABASE_TYPES
@@ -876,7 +876,7 @@ module ArJdbc
       else
         super
       end
-    end if ActiveRecord::VERSION.to_s < '4.2'
+    end unless AR42_COMPAT
 
     def quote(value, column = nil)
       return super unless column
@@ -891,7 +891,7 @@ module ArJdbc
       else
         super
       end
-    end if ActiveRecord::VERSION.to_s >= '4.2'
+    end if AR42_COMPAT
 
     # Quotes a string, escaping any ' (single quote) and \ (backslash) chars.
     # @return [String]
@@ -1025,7 +1025,7 @@ module ArJdbc
 
       change_column_default(table_name, column_name, default) if options_include_default?(options)
       change_column_null(table_name, column_name, false, default) if notnull
-    end if ActiveRecord::VERSION::MAJOR < 4
+    end if ::ActiveRecord::VERSION::MAJOR < 4
 
     # Changes the column of a table.
     def change_column(table_name, column_name, type, options = {})
@@ -1452,7 +1452,7 @@ module ActiveRecord::ConnectionAdapters
         options[:default] = options.fetch(:default, 'uuid_generate_v4()')
         options[:primary_key] = true
         column name, type, options
-      end if ActiveRecord::VERSION::MAJOR > 3 # 3.2 super expects (name)
+      end if ::ActiveRecord::VERSION::MAJOR > 3 # 3.2 super expects (name)
 
       def column(name, type = nil, options = {})
         super
@@ -1466,7 +1466,7 @@ module ActiveRecord::ConnectionAdapters
 
       private
 
-      if ActiveRecord::VERSION::MAJOR > 3
+      if ::ActiveRecord::VERSION::MAJOR > 3
 
         def create_column_definition(name, type)
           ColumnDefinition.new name, type
@@ -1495,7 +1495,7 @@ module ActiveRecord::ConnectionAdapters
 
     def update_table_definition(table_name, base)
       Table.new(table_name, base)
-    end if ActiveRecord::VERSION::MAJOR > 3
+    end if ::ActiveRecord::VERSION::MAJOR > 3
 
     def jdbc_connection_class(spec)
       ::ArJdbc::PostgreSQL.jdbc_connection_class
@@ -1506,7 +1506,7 @@ module ActiveRecord::ConnectionAdapters
       ::ActiveRecord::ConnectionAdapters::PostgreSQLColumn
     end
 
-    if ActiveRecord::VERSION::MAJOR < 4 # Rails 3.x compatibility
+    if ::ActiveRecord::VERSION::MAJOR < 4 # Rails 3.x compatibility
       PostgreSQLJdbcConnection.raw_array_type = true if PostgreSQLJdbcConnection.raw_array_type? == nil
       PostgreSQLJdbcConnection.raw_hstore_type = true if PostgreSQLJdbcConnection.raw_hstore_type? == nil
     end

@@ -7,7 +7,7 @@ module ArJdbc
     module OIDTypes
 
       OID = ActiveRecord::ConnectionAdapters::PostgreSQL::OID
-      Type = ActiveRecord::Type if ActiveRecord::VERSION.to_s >= '4.2'
+      Type = ActiveRecord::Type if AR42_COMPAT
 
       def get_oid_type(oid, fmod, column_name)
         type_map.fetch(oid, fmod) {
