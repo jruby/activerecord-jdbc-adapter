@@ -1,16 +1,16 @@
 GEM
   remote: https://rubygems.org/
   specs:
-    activemodel (4.0.8)
-      activesupport (= 4.0.8)
+    activemodel (4.0.10)
+      activesupport (= 4.0.10)
       builder (~> 3.1.0)
-    activerecord (4.0.8)
-      activemodel (= 4.0.8)
+    activerecord (4.0.10)
+      activemodel (= 4.0.10)
       activerecord-deprecated_finders (~> 1.0.2)
-      activesupport (= 4.0.8)
+      activesupport (= 4.0.10)
       arel (~> 4.0.0)
     activerecord-deprecated_finders (1.0.3)
-    activesupport (4.0.8)
+    activesupport (4.0.10)
       i18n (~> 0.6, >= 0.6.9)
       minitest (~> 4.2)
       multi_json (~> 1.3)
@@ -30,22 +30,22 @@ GEM
       metaclass (~> 0.0.1)
     multi_json (1.10.1)
     rake (10.3.2)
-    simplecov (0.9.0)
+    simplecov (0.9.1)
       docile (~> 1.1.0)
-      multi_json
+      multi_json (~> 1.0)
       simplecov-html (~> 0.8.0)
     simplecov-html (0.8.0)
     test-unit (2.5.5)
     test-unit-context (0.4.0)
       test-unit (>= 2.4.0)
     thread_safe (0.3.4-java)
-    tzinfo (0.3.40)
+    tzinfo (0.3.41)
 
 PLATFORMS
   java
 
 DEPENDENCIES
-  activerecord (~> 4.0.8)
+  activerecord (~> 4.0.10)
   appraisal (~> 0.5.2)
   bcrypt-ruby (~> 3.0.0)
   mocha (~> 0.13.1)
