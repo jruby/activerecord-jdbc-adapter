@@ -19,27 +19,10 @@ module ActiveRecord
           end
         end
 
-        if ActiveRecord::VERSION::MINOR >= 2 # >= 4.2
-
-          class String < Type
-            def type; :string end
-
-            def type_cast(value)
-              return if value.nil?
-
-              value.to_s
-            end
-          end
-
-        else
-
-          # String, Text types do not exist in AR 4.0/4.1
-          # AR reports Identity for them - make it similar
-
-          class String < Identity
-            def type; :string end
-          end
-
+        # String, Text types do not exist in AR 4.0/4.1
+        # AR reports Identity for them - make it similar
+        class String < Identity
+          def type; :string end
         end
 
         class SpecializedString < OID::String
@@ -65,57 +48,6 @@ module ActiveRecord
             end
           end
         end
-
-        class Bit < ActiveRecord::Type::Value
-          def type
-            :bit
-          end
-
-          def type_cast(value)
-            if ::String === value
-              case value
-              when /^0x/i
-                value[2..-1].hex.to_s(2) # Hexadecimal notation
-              else
-                value                    # Bit-string notation
-              end
-            else
-              value
-            end
-          end
-
-          def type_cast_for_database(value)
-            Data.new(super) if value
-          end
-
-          class Data
-            def initialize(value)
-              @value = value
-            end
-
-            def to_s
-              value
-            end
-
-            def binary?
-              /\A[01]*\Z/ === value
-            end
-
-            def hex?
-              /\A[0-9A-F]*\Z/i === value
-            end
-
-            protected
-
-            attr_reader :value
-          end
-        end if ActiveRecord::VERSION.to_s >= '4.2'
-
-        class BitVarying < Bit
-          def type
-            :bit_varying
-          end
-        end if ActiveRecord::VERSION.to_s >= '4.2'
 
         class Bytea < Type
           def type; :binary end
@@ -394,43 +326,6 @@ This is not reliable and will be removed in the future.
           end
         end
 
-        class Jsonb < Json
-          def type
-            :jsonb
-          end
-
-          def changed_in_place?(raw_old_value, new_value)
-            # Postgres does not preserve insignificant whitespaces when
-            # roundtripping jsonb columns. This causes some false positives for
-            # the comparison here. Therefore, we need to parse and re-dump the
-            # raw value here to ensure the insignificant whitespaces are
-            # consistent with our encoder's output.
-            raw_old_value = type_cast_for_database(type_cast_from_database(raw_old_value))
-            super(raw_old_value, new_value)
-          end
-        end if ActiveRecord::VERSION.to_s >= '4.2'
-
-        class Xml < ActiveRecord::Type::String
-          def type
-            :xml
-          end
-
-          def type_cast_for_database(value)
-            return unless value
-            Data.new(super)
-          end
-
-          class Data # :nodoc:
-            def initialize(value)
-              @value = value
-            end
-
-            def to_s
-              @value
-            end
-          end
-        end if ActiveRecord::VERSION.to_s >= '4.2'
-
         class Uuid < Type
           def type; :uuid end
           def type_cast(value)
@@ -546,3 +441,113 @@ This is not reliable and will be removed in the future.
     end
   end
 end
+
+module ActiveRecord
+  module ConnectionAdapters
+    module PostgreSQL
+      module OID
+
+        remove_const(:String) if const_defined?(:String)
+        class String < Type
+          def type; :string end
+
+          def type_cast(value)
+            return if value.nil?
+
+            value.to_s
+          end
+        end
+
+        remove_const(:Bit) if const_defined?(:Bit)
+        class Bit < ActiveRecord::Type::Value
+          def type
+            :bit
+          end
+
+          def type_cast(value)
+            if ::String === value
+              case value
+              when /^0x/i
+                value[2..-1].hex.to_s(2) # Hexadecimal notation
+              else
+                value                    # Bit-string notation
+              end
+            else
+              value
+            end
+          end
+
+          def type_cast_for_database(value)
+            Data.new(super) if value
+          end
+
+          class Data
+            def initialize(value)
+              @value = value
+            end
+
+            def to_s
+              value
+            end
+
+            def binary?
+              /\A[01]*\Z/ === value
+            end
+
+            def hex?
+              /\A[0-9A-F]*\Z/i === value
+            end
+
+            protected
+
+            attr_reader :value
+          end
+        end
+
+        class BitVarying < Bit
+          def type
+            :bit_varying
+          end
+        end
+
+        class Jsonb < Json
+          def type
+            :jsonb
+          end
+
+          def changed_in_place?(raw_old_value, new_value)
+            # Postgres does not preserve insignificant whitespaces when
+            # roundtripping jsonb columns. This causes some false positives for
+            # the comparison here. Therefore, we need to parse and re-dump the
+            # raw value here to ensure the insignificant whitespaces are
+            # consistent with our encoder's output.
+            raw_old_value = type_cast_for_database(type_cast_from_database(raw_old_value))
+            super(raw_old_value, new_value)
+          end
+        end
+
+        class Xml < ActiveRecord::Type::String
+          def type
+            :xml
+          end
+
+          def type_cast_for_database(value)
+            return unless value
+            Data.new(super)
+          end
+
+          class Data # :nodoc:
+            def initialize(value)
+              @value = value
+            end
+
+            def to_s
+              @value
+            end
+          end
+        end
+
+      end
+    end
+  end
+end if ActiveRecord::VERSION::MAJOR > 4 || ActiveRecord::VERSION::MINOR >= 2 # >= 4.2
