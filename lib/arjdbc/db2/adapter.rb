@@ -572,6 +572,9 @@ module ArJdbc
       tables.each { |table| drop_table("#{table}") }
     end
 
+    # @override
+    def supports_views?; true end
+
     def execute_table_change(sql, table_name, name = nil)
       outcome = execute(sql, name)
       reorg_table(table_name, name)

@@ -238,6 +238,9 @@ module ArJdbc
     end
 
     # @override
+    def supports_views?; true end
+
+    # @override
     def structure_dump
       execute('SCRIPT').map do |result|
         # [ { 'command' => SQL }, { 'command' ... }, ... ]
@@ -281,6 +284,6 @@ module ActiveRecord::ConnectionAdapters
   class HsqldbAdapter < JdbcAdapter
     include ArJdbc::HSQLDB
   end
-  
+
 end
 

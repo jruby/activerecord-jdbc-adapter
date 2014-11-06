@@ -255,9 +255,11 @@ module ArJdbc
       end.join(",")
     end
 
-    def supports_ddl_transactions?
-      true
-    end
+    # @override
+    def supports_ddl_transactions?; true end
+
+    # @override
+    def supports_views?; true end
 
     def tables(schema = current_schema)
       @connection.tables(nil, schema)

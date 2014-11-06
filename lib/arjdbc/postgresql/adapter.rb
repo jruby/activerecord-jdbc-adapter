@@ -323,21 +323,13 @@ module ArJdbc
       postgresql_version >= 80200
     end
 
-    def supports_ddl_transactions?
-      true
-    end
+    def supports_ddl_transactions?; true end
 
-    def supports_transaction_isolation?
-      true
-    end
+    def supports_transaction_isolation?; true end
 
-    def supports_index_sort_order?
-      true
-    end
+    def supports_index_sort_order?; true end
 
-    def supports_partial_index?
-      true
-    end if AR4_COMPAT
+    def supports_partial_index?; true end if AR4_COMPAT
 
     # Range data-types weren't introduced until PostgreSQL 9.2.
     def supports_ranges?
@@ -348,12 +340,13 @@ module ArJdbc
       true
     end
 
+    # @override
+    def supports_views?; true end
+
     # NOTE: handled by JdbcAdapter we override only to have save-point in logs :
 
     # @override
-    def supports_savepoints?
-      true
-    end
+    def supports_savepoints?; true end
 
     # @override
     def create_savepoint(name = current_savepoint_name(true))

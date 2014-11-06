@@ -202,6 +202,11 @@ module ArJdbc
       true
     end
 
+    # @override
+    def supports_views?
+      true
+    end
+
     def sqlite_version
       @sqlite_version ||= Version.new(select_value('SELECT sqlite_version(*)'))
     end

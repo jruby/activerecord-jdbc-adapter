@@ -196,10 +196,13 @@ module ArJdbc
       end
     end
 
+    # @override
+    def supports_views?; true end
+
     # EXPLAIN support :
 
     # @override
-    def supports_explain?; true; end
+    def supports_explain?; true end
 
     # @override
     def explain(arel, binds = [])
