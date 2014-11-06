@@ -1226,6 +1226,27 @@ public class RubyJdbcConnection extends RubyObject {
         });
     }
 
+    @JRubyMethod(name = "supports_views?")
+    public IRubyObject supports_views_p(final ThreadContext context) throws SQLException {
+        return withConnection(context, new Callable<IRubyObject>() {
+            public IRubyObject call(final Connection connection) throws SQLException {
+                final DatabaseMetaData metaData = connection.getMetaData();
+                final ResultSet tableTypes = metaData.getTableTypes();
+                try {
+                    while ( tableTypes.next() ) {
+                        if ( "VIEW".equalsIgnoreCase( tableTypes.getString(1) ) ) {
+                            return context.getRuntime().newBoolean( true );
+                        }
+                    }
+                }
+                finally {
+                    close(tableTypes);
+                }
+                return context.getRuntime().newBoolean( false );
+            }
+        });
+    }
+
     // NOTE: this seems to be not used ... at all ?!
     /*
      * sql, values (array), types (column.type array), name = nil, pk = nil, id_value = nil, sequence_name = nil
