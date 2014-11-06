@@ -8,6 +8,9 @@ module ArJdbc
 
     # @private
     AR4_COMPAT = ::ActiveRecord::VERSION::MAJOR > 3 unless const_defined?(:AR4_COMPAT)
+    # @private
+    AR42_COMPAT = ::ActiveRecord::VERSION::MAJOR > 4 ||
+      ( ::ActiveRecord::VERSION::MAJOR == 4 && ::ActiveRecord::VERSION::MINOR >= 2 )
 
     require 'arjdbc/postgresql/column'
     require 'arjdbc/postgresql/explain_support'
@@ -1128,6 +1131,16 @@ module ArJdbc
       select_values(TABLES_SQL, 'SCHEMA')
     end
 
+    # @private
+    TABLE_EXISTS_SQL_PREFIX =  'SELECT COUNT(*) as table_count FROM pg_class c'
+    TABLE_EXISTS_SQL_PREFIX << ' LEFT JOIN pg_namespace n ON n.oid = c.relnamespace'
+    if AR42_COMPAT # -- (r)elation/table, (v)iew, (m)aterialized view
+    TABLE_EXISTS_SQL_PREFIX << " WHERE c.relkind IN ('r','v','m')"
+    else
+    TABLE_EXISTS_SQL_PREFIX << " WHERE c.relkind IN ('r','v')"
+    end
+    TABLE_EXISTS_SQL_PREFIX << " AND c.relname = ?"
+
     # Returns true if table exists.
     # If the schema is not specified as part of +name+ then it will only find tables within
     # the current schema search path (regardless of permissions to access tables in other schemas)
@@ -1138,11 +1151,7 @@ module ArJdbc
       binds = [[nil, table]]
       binds << [nil, schema] if schema
 
-      sql = 'SELECT COUNT(*) as table_count FROM pg_class c'
-      sql << ' LEFT JOIN pg_namespace n ON n.oid = c.relnamespace'
-      sql << " WHERE c.relkind IN ('v','r')"
-      sql << " AND c.relname = ?"
-      sql << " AND n.nspname = #{schema ? "?" : 'ANY (current_schemas(false))'}"
+      sql = "#{TABLE_EXISTS_SQL_PREFIX} AND n.nspname = #{schema ? "?" : 'ANY (current_schemas(false))'}"
 
       log(sql, 'SCHEMA', binds) do
         @connection.execute_query_raw(sql, binds).first['table_count'] > 0
@@ -1162,6 +1171,19 @@ module ArJdbc
       end
     end
 
+    def index_name_exists?(table_name, index_name, default)
+      exec_query(<<-SQL, 'SCHEMA').rows.first[0].to_i > 0
+        SELECT COUNT(*)
+        FROM pg_class t
+        INNER JOIN pg_index d ON t.oid = d.indrelid
+        INNER JOIN pg_class i ON d.indexrelid = i.oid
+        WHERE i.relkind = 'i'
+          AND i.relname = '#{index_name}'
+          AND t.relname = '#{table_name}'
+          AND i.relnamespace IN (SELECT oid FROM pg_namespace WHERE nspname = ANY (current_schemas(false)) )
+      SQL
+    end if AR42_COMPAT
+
     # Returns an array of indexes for the given table.
     def indexes(table_name, name = nil)
       # NOTE: maybe it's better to leave things of to the JDBC API ?!
@@ -1171,9 +1193,9 @@ module ArJdbc
         INNER JOIN pg_index d ON t.oid = d.indrelid
         INNER JOIN pg_class i ON d.indexrelid = i.oid
         WHERE i.relkind = 'i'
-        AND d.indisprimary = 'f'
-        AND t.relname = '#{table_name}'
-        AND i.relnamespace IN (SELECT oid FROM pg_namespace WHERE nspname = ANY (current_schemas(false)) )
+          AND d.indisprimary = 'f'
+          AND t.relname = '#{table_name}'
+          AND i.relnamespace IN (SELECT oid FROM pg_namespace WHERE nspname = ANY (current_schemas(false)) )
         ORDER BY i.relname
       SQL
 
@@ -1200,7 +1222,7 @@ module ArJdbc
           desc_order_columns = inddef.scan(/(\w+) DESC/).flatten
           orders = desc_order_columns.any? ? Hash[ desc_order_columns.map { |column| [column, :desc] } ] : {}
 
-          if ActiveRecord::VERSION::MAJOR > 3 # AR4 supports `where` and `using` index options
+          if ::ActiveRecord::VERSION::MAJOR > 3 # AR4 supports `where` and `using` index options
             where = inddef.scan(/WHERE (.+)$/).flatten[0]
             using = inddef.scan(/USING (.+?) /).flatten[0].to_sym
 
