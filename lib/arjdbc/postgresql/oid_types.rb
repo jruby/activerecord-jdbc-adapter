@@ -1,13 +1,18 @@
-require 'arjdbc/postgresql/base/oid' # 'active_record/connection_adapters/postgresql/oid'
 require 'thread'
 
 module ArJdbc
   module PostgreSQL
+
+    if AR42_COMPAT
+      require 'active_record/connection_adapters/postgresql/oid'
+    else
+      require 'arjdbc/postgresql/base/oid'
+    end
+
     # @private
     module OIDTypes
 
       OID = ActiveRecord::ConnectionAdapters::PostgreSQL::OID
-      Type = ActiveRecord::Type if AR42_COMPAT
 
       def get_oid_type(oid, fmod, column_name)
         type_map.fetch(oid, fmod) {
