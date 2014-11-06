@@ -1121,29 +1121,31 @@ module ArJdbc
     end
     private :column_definitions
 
+    # @private
+    TABLES_SQL = 'SELECT tablename FROM pg_tables WHERE schemaname = ANY (current_schemas(false))'
+
     def tables(name = nil)
-      select_values(<<-SQL, 'SCHEMA')
-        SELECT tablename
-        FROM pg_tables
-        WHERE schemaname = ANY (current_schemas(false))
-      SQL
+      select_values(TABLES_SQL, 'SCHEMA')
     end
 
+    # Returns true if table exists.
+    # If the schema is not specified as part of +name+ then it will only find tables within
+    # the current schema search path (regardless of permissions to access tables in other schemas)
     def table_exists?(name)
       schema, table = extract_schema_and_table(name.to_s)
-      return false unless table # abstract classes - nil table name
+      return false unless table
 
-      binds = [[ nil, table.gsub(/(^"|"$)/,'') ]]
-      binds << [ nil, schema ] if schema
-      sql = <<-SQL
-        SELECT COUNT(*) as table_count
-        FROM pg_tables
-        WHERE tablename = ?
-        AND schemaname = #{schema ? "?" : "ANY (current_schemas(false))"}
-      SQL
+      binds = [[nil, table]]
+      binds << [nil, schema] if schema
+
+      sql = 'SELECT COUNT(*) as table_count FROM pg_class c'
+      sql << ' LEFT JOIN pg_namespace n ON n.oid = c.relnamespace'
+      sql << " WHERE c.relkind IN ('v','r')"
+      sql << " AND c.relname = ?"
+      sql << " AND n.nspname = #{schema ? "?" : 'ANY (current_schemas(false))'}"
 
       log(sql, 'SCHEMA', binds) do
-        @connection.execute_query_raw(sql, binds).first["table_count"] > 0
+        @connection.execute_query_raw(sql, binds).first['table_count'] > 0
       end
     end
 
@@ -1225,20 +1227,12 @@ module ArJdbc
       end
     end
 
-    # Extracts the table and schema name from +name+
+    # @private `Utils.extract_schema_and_table` from AR
     def extract_schema_and_table(name)
-      schema, table = name.split('.', 2)
-
-      unless table # A table was provided without a schema
-        table  = schema
-        schema = nil
-      end
-
-      if name =~ /^"/ # Handle quoted table names
-        table  = name
-        schema = nil
-      end
-      [schema, table]
+      result = name.scan(/[^".\s]+|"[^"]*"/)[0, 2]
+      result.each { |m| m.gsub!(/(^"|"$)/, '') }
+      result.unshift(nil) if result.size == 1 # schema == nil
+      result # [schema, table]
     end
 
     def extract_pg_identifier_from_name(name)
@@ -1321,8 +1315,8 @@ module ActiveRecord::ConnectionAdapters
 
       @table_alias_length = nil
 
-      @use_insert_returning = config.key?(:insert_returning) ?
-        self.class.type_cast_config_to_boolean(config[:insert_returning]) : nil
+      @use_insert_returning = @config.key?(:insert_returning) ?
+        self.class.type_cast_config_to_boolean(@config[:insert_returning]) : nil
     end
 
     class ColumnDefinition < ActiveRecord::ConnectionAdapters::ColumnDefinition
