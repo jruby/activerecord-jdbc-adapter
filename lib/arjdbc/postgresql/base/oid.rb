@@ -65,6 +65,58 @@ module ActiveRecord
             end
           end
         end
+        end if ActiveRecord::VERSION.to_s < '4.2'
+
+        class Bit < ActiveRecord::Type::Value
+          def type
+            :bit
+          end
+
+          def type_cast(value)
+            if ::String === value
+              case value
+              when /^0x/i
+                value[2..-1].hex.to_s(2) # Hexadecimal notation
+              else
+                value                    # Bit-string notation
+              end
+            else
+              value
+            end
+          end
+
+          def type_cast_for_database(value)
+            Data.new(super) if value
+          end
+
+          class Data
+            def initialize(value)
+              @value = value
+            end
+
+            def to_s
+              value
+            end
+
+            def binary?
+              /\A[01]*\Z/ === value
+            end
+
+            def hex?
+              /\A[0-9A-F]*\Z/i === value
+            end
+
+            protected
+
+            attr_reader :value
+          end
+        end if ActiveRecord::VERSION.to_s >= '4.2'
+
+        class BitVarying < Bit
+          def type
+            :bit_varying
+          end
+        end if ActiveRecord::VERSION.to_s >= '4.2'
 
         class Bytea < Type
           def type; :binary end
@@ -343,6 +395,43 @@ This is not reliable and will be removed in the future.
           end
         end
 
+        class Jsonb < Json
+          def type
+            :jsonb
+          end
+
+          def changed_in_place?(raw_old_value, new_value)
+            # Postgres does not preserve insignificant whitespaces when
+            # roundtripping jsonb columns. This causes some false positives for
+            # the comparison here. Therefore, we need to parse and re-dump the
+            # raw value here to ensure the insignificant whitespaces are
+            # consistent with our encoder's output.
+            raw_old_value = type_cast_for_database(type_cast_from_database(raw_old_value))
+            super(raw_old_value, new_value)
+          end
+        end if ActiveRecord::VERSION.to_s >= '4.2'
+
+        class Xml < ActiveRecord::Type::String
+          def type
+            :xml
+          end
+
+          def type_cast_for_database(value)
+            return unless value
+            Data.new(super)
+          end
+
+          class Data # :nodoc:
+            def initialize(value)
+              @value = value
+            end
+
+            def to_s
+              @value
+            end
+          end
+        end if ActiveRecord::VERSION.to_s >= '4.2'
+
         class Uuid < Type
           def type; :uuid end
           def type_cast(value)
@@ -454,6 +543,86 @@ This is not reliable and will be removed in the future.
         alias_type 'circle', 'varchar'
         alias_type 'lseg', 'varchar'
         alias_type 'box', 'varchar'
+
+
+        # This class uses the data from PostgreSQL pg_type table to build
+        # the OID -> Type mapping.
+        #   - OID is an integer representing the type.
+        #   - Type is an OID::Type object.
+        # This class has side effects on the +store+ passed during initialization.
+        class TypeMapInitializer
+          def initialize(store)
+            @store = store
+          end
+
+          def run(records)
+            nodes = records.reject { |row| @store.key? row['oid'].to_i }
+            mapped, nodes = nodes.partition { |row| @store.key? row['typname'] }
+            ranges, nodes = nodes.partition { |row| row['typtype'] == 'r' }
+            enums, nodes = nodes.partition { |row| row['typtype'] == 'e' }
+            domains, nodes = nodes.partition { |row| row['typtype'] == 'd' }
+            arrays, nodes = nodes.partition { |row| row['typinput'] == 'array_in' }
+            composites, nodes = nodes.partition { |row| row['typelem'] != '0' }
+
+            mapped.each     { |row| register_mapped_type(row)    }
+            enums.each      { |row| register_enum_type(row)      }
+            domains.each    { |row| register_domain_type(row)    }
+            arrays.each     { |row| register_array_type(row)     }
+            ranges.each     { |row| register_range_type(row)     }
+            composites.each { |row| register_composite_type(row) }
+          end
+
+          private
+
+          def register_mapped_type(row)
+            alias_type row['oid'], row['typname']
+          end
+
+          def register_enum_type(row)
+            register row['oid'], OID::Enum.new
+          end
+
+          def register_array_type(row)
+            if subtype = @store.lookup(row['typelem'].to_i)
+              register row['oid'], OID::Array.new(subtype, row['typdelim'])
+            end
+          end
+
+          def register_range_type(row)
+            if subtype = @store.lookup(row['rngsubtype'].to_i)
+              register row['oid'], OID::Range.new(subtype, row['typname'].to_sym)
+            end
+          end
+
+          def register_domain_type(row)
+            if base_type = @store.lookup(row["typbasetype"].to_i)
+              register row['oid'], base_type
+            else
+              warn "unknown base type (OID: #{row["typbasetype"]}) for domain #{row["typname"]}."
+            end
+          end
+
+          def register_composite_type(row)
+            if subtype = @store.lookup(row['typelem'].to_i)
+              register row['oid'], OID::Vector.new(row['typdelim'], subtype)
+            end
+          end
+
+          def register(oid, oid_type)
+            oid = assert_valid_registration(oid, oid_type)
+            @store.register_type(oid, oid_type)
+          end
+
+          def alias_type(oid, target)
+            oid = assert_valid_registration(oid, target)
+            @store.alias_type(oid, target)
+          end
+
+          def assert_valid_registration(oid, oid_type)
+            raise ArgumentError, "can't register nil type for OID #{oid}" if oid_type.nil?
+            oid.to_i
+          end
+        end if ActiveRecord::VERSION.to_s >= '4.2'
       end
     end
   end

@@ -241,6 +241,11 @@ module ArJdbc
       :int8range => { :name => "int8range" },
     }) if AR4_COMPAT
 
+    NATIVE_DATABASE_TYPES.update(
+      :bit => { name: "bit" },
+      :bit_varying => { name: "bit varying" }
+    ) if ActiveRecord::VERSION.to_s >= '4.2'
+
     def native_database_types
       NATIVE_DATABASE_TYPES
     end
@@ -871,7 +876,22 @@ module ArJdbc
       else
         super
       end
-    end
+    end if ActiveRecord::VERSION.to_s < '4.2'
+
+    def quote(value, column = nil)
+      return super unless column
+
+      case value
+      when Float
+        if value.infinite? || value.nan?
+          "'#{value.to_s}'"
+        else
+          super
+        end
+      else
+        super
+      end
+    end if ActiveRecord::VERSION.to_s >= '4.2'
 
     # Quotes a string, escaping any ' (single quote) and \ (backslash) chars.
     # @return [String]
@@ -1081,6 +1101,7 @@ module ArJdbc
     # Returns the list of all column definitions for a table.
     def columns(table_name, name = nil)
       klass = ::ActiveRecord::ConnectionAdapters::PostgreSQLColumn
+      pass_cast_type = respond_to?(:lookup_cast_type)
       column_definitions(table_name).map do |row|
         # name, type, default, notnull, oid, fmod
         name = row[0]; type = row[1]; default = row[2]
@@ -1094,7 +1115,12 @@ module ArJdbc
         elsif default =~ /^\(([-+]?[\d\.]+)\)$/ # e.g. "(-1)" for a negative default
           default = $1
         end
-        klass.new(name, default, oid, type, ! notnull, fmod, self)
+        if pass_cast_type
+          cast_type = lookup_cast_type(type)
+          klass.new(name, default, cast_type, type, ! notnull, fmod, self)
+        else
+          klass.new(name, default, oid, type, ! notnull, fmod, self)
+        end
       end
     end
 
@@ -1407,6 +1433,14 @@ module ActiveRecord::ConnectionAdapters
 
       def json(name, options = {})
         column(name, 'json', options)
+      end
+
+      def bit(name, options)
+        column(name, 'bit', options)
+      end
+
+      def bit_varying(name, options)
+        column(name, 'bit varying', options)
       end
     end
 

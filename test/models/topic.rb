@@ -21,7 +21,7 @@ class TopicMigration < ActiveRecord::Migration
         t.text :important
       #end
       t.string :type
-      t.timestamps
+      t.timestamps :null => false
     end
   end
 
