@@ -1435,6 +1435,10 @@ module ActiveRecord::ConnectionAdapters
         column(name, 'json', options)
       end
 
+      def jsonb(name, options = {})
+        column(name, :jsonb, options)
+      end
+
       def bit(name, options)
         column(name, 'bit', options)
       end
