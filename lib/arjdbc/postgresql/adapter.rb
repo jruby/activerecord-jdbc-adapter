@@ -241,6 +241,11 @@ module ArJdbc
       :int8range => { :name => "int8range" },
     }) if AR4_COMPAT
 
+    NATIVE_DATABASE_TYPES.update(
+      :bit => { name: "bit" },
+      :bit_varying => { name: "bit varying" }
+    ) if ActiveRecord::VERSION.to_s >= '4.2'
+
     def native_database_types
       NATIVE_DATABASE_TYPES
     end
@@ -871,7 +876,22 @@ module ArJdbc
       else
         super
       end
-    end
+    end if ActiveRecord::VERSION.to_s < '4.2'
+
+    def quote(value, column = nil)
+      return super unless column
+
+      case value
+      when Float
+        if value.infinite? || value.nan?
+          "'#{value.to_s}'"
+        else
+          super
+        end
+      else
+        super
+      end
+    end if ActiveRecord::VERSION.to_s >= '4.2'
 
     # Quotes a string, escaping any ' (single quote) and \ (backslash) chars.
     # @return [String]
@@ -1413,6 +1433,14 @@ module ActiveRecord::ConnectionAdapters
 
       def json(name, options = {})
         column(name, 'json', options)
+      end
+
+      def bit(name, options)
+        column(name, 'bit', options)
+      end
+
+      def bit_varying(name, options)
+        column(name, 'bit varying', options)
       end
     end
 
