@@ -60,7 +60,7 @@ class JdbcConnectionTest < Test::Unit::TestCase
   test 'calls configure_connection on reconnect!' do
     connection = ActiveRecord::Base.connection
     unless connection.respond_to?(:configure_connection)
-      fail "no configure_connection for #{connection} can not test"
+      return skip "no configure_connection for #{connection} can not test"
     end
     ActiveRecord::Base.connection.disconnect!
     ActiveRecord::Base.connection.expects(:configure_connection).once
@@ -206,5 +206,23 @@ class JdbcConnectionTest < Test::Unit::TestCase
     end
 
   end
+
+  test 'instantiate adapter ActiveRecord style' do
+    connection = current_connection_config[:adapter_class] || ActiveRecord::ConnectionAdapters::JdbcAdapter
+    logger = ActiveRecord::Base.logger
+    pool = ActiveRecord::Base.connection_pool
+    adapter = ActiveRecord::ConnectionAdapters::MysqlAdapter.new(connection, logger, pool)
+    assert adapter.config
+    assert_equal connection, adapter.raw_connection
+    assert adapter.pool if ar_version('4.0')
+  end if ar_version('3.2') && defined? JRUBY_VERSION
+
+  test 'instantiate adapter ActiveRecord style (< 3.2)' do
+    connection = ActiveRecord::ConnectionAdapters::MySQLJdbcConnection.new current_connection_config
+    logger = ActiveRecord::Base.logger
+    adapter = ActiveRecord::ConnectionAdapters::MysqlAdapter.new(connection, logger)
+    assert adapter.config
+    assert_equal connection, adapter.raw_connection
+  end if defined? JRUBY_VERSION
 
 end

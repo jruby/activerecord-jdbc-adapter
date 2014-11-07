@@ -52,33 +52,32 @@ module ActiveRecord
       # @param config the database configuration
       # @note `initialize(logger, config)` with 2 arguments is supported as well
       def initialize(connection, logger, config = nil); pool = nil
-        if config.nil? && logger.respond_to?(:key?) # (logger, config)
-          config, logger, connection = logger, connection, nil
+        if config.nil?
+          if logger.respond_to?(:key?) # (logger, config)
+            config, logger, connection = logger, connection, nil
+          else
+            config = connection.respond_to?(:config) ?
+              connection.config : ActiveRecord::Base.connection_pool.spec.config
+          end
         elsif config.is_a?(ConnectionAdapters::ConnectionPool)
           pool = config; config = pool.spec.config # AR >= 3.2 compatibility
-        else
-          config = connection.respond_to?(:config) ?
-            connection.config : ActiveRecord::Base.connection_config
         end
 
         @config = config.respond_to?(:symbolize_keys) ? config.symbolize_keys : config
-        # NOTE: JDBC 4.0 drivers support checking if connection isValid
-        # thus no need to @config[:connection_alive_sql] ||= 'SELECT 1'
-        #
-        # NOTE: setup to retry 5-times previously - maybe do not set at all ?
+
         @config[:retry_count] ||= 1
 
         @config[:adapter_spec] = adapter_spec(@config) unless @config.key?(:adapter_spec)
         spec = @config[:adapter_spec]
 
+        # kind of like `extend ArJdbc::MyDB if self.class == JdbcAdapter` :
+        klass = @config[:adapter_class]
+        extend spec if spec && ( ! klass || klass == JdbcAdapter)
+
         # NOTE: adapter spec's init_connection only called if instantiated here :
         connection ||= jdbc_connection_class(spec).new(@config, self)
 
         pool.nil? ? super(connection, logger) : super(connection, logger, pool)
-
-        # kind of like `extend ArJdbc::MyDB if self.class == JdbcAdapter` :
-        klass = @config[:adapter_class]
-        extend spec if spec && ( ! klass || klass == JdbcAdapter)
 
         # NOTE: should not be necessary for JNDI due reconnect! on checkout :
         configure_connection if respond_to?(:configure_connection)
