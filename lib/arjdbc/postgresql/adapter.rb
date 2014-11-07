@@ -159,15 +159,12 @@ module ArJdbc
       when Array
         case column.sql_type
         when 'point'
-          column_class = ::ActiveRecord::ConnectionAdapters::PostgreSQLColumn
-          column_class.point_to_string(value)
+          Column.point_to_string(value)
         when 'json'
-          column_class = ::ActiveRecord::ConnectionAdapters::PostgreSQLColumn
-          column_class.json_to_string(value)
+          Column.json_to_string(value)
         else
           return super(value, column) unless column.array?
-          column_class = ::ActiveRecord::ConnectionAdapters::PostgreSQLColumn
-          column_class.array_to_string(value, column, self)
+          Column.array_to_string(value, column, self)
         end
       when NilClass
         if column.array? && array_member
@@ -180,21 +177,17 @@ module ArJdbc
       when Hash
         case column.sql_type
         when 'hstore'
-          column_class = ::ActiveRecord::ConnectionAdapters::PostgreSQLColumn
-          column_class.hstore_to_string(value)
+          Column.hstore_to_string(value)
         when 'json'
-          column_class = ::ActiveRecord::ConnectionAdapters::PostgreSQLColumn
-          column_class.json_to_string(value)
+          Column.json_to_string(value)
         else super(value, column)
         end
       when IPAddr
         return super unless column.sql_type == 'inet' || column.sql_type == 'cidr'
-        column_class = ::ActiveRecord::ConnectionAdapters::PostgreSQLColumn
-        column_class.cidr_to_string(value)
+        Column.cidr_to_string(value)
       when Range
         return super(value, column) unless /range$/ =~ column.sql_type
-        column_class = ::ActiveRecord::ConnectionAdapters::PostgreSQLColumn
-        column_class.range_to_string(value)
+        Column.range_to_string(value)
       else
         super(value, column)
       end
@@ -833,37 +826,30 @@ module ArJdbc
         sql_type && sql_type[0, 3] == 'bit' ? quote_bit(value) : super
       when Array
         if AR4_COMPAT && column.array? # will be always falsy in AR < 4.0
-          column_class = ::ActiveRecord::ConnectionAdapters::PostgreSQLColumn
-          "'#{column_class.array_to_string(value, column, self).gsub(/'/, "''")}'"
+          "'#{Column.array_to_string(value, column, self).gsub(/'/, "''")}'"
         elsif column.type == :json # only in AR-4.0
-          column_class = ::ActiveRecord::ConnectionAdapters::PostgreSQLColumn
-          super(column_class.json_to_string(value), column)
+          super(Column.json_to_string(value), column)
         elsif column.type == :point # only in AR-4.0
-          column_class = ::ActiveRecord::ConnectionAdapters::PostgreSQLColumn
-          super(column_class.point_to_string(value), column)
+          super(Column.point_to_string(value), column)
         else super
         end
       when Hash
         if column.type == :hstore # only in AR-4.0
-          column_class = ::ActiveRecord::ConnectionAdapters::PostgreSQLColumn
-          super(column_class.hstore_to_string(value), column)
+          super(Column.hstore_to_string(value), column)
         elsif column.type == :json # only in AR-4.0
-          column_class = ::ActiveRecord::ConnectionAdapters::PostgreSQLColumn
-          super(column_class.json_to_string(value), column)
+          super(Column.json_to_string(value), column)
         else super
         end
       when Range
         sql_type = column.respond_to?(:sql_type) && column.sql_type
         if sql_type && sql_type[-5, 5] == 'range' && AR4_COMPAT
-          column_class = ::ActiveRecord::ConnectionAdapters::PostgreSQLColumn
-          escaped = quote_string(column_class.range_to_string(value))
+          escaped = quote_string(Column.range_to_string(value))
           "'#{escaped}'::#{sql_type}"
         else super
         end
       when IPAddr
         if column.type == :inet || column.type == :cidr # only in AR-4.0
-          column_class = ::ActiveRecord::ConnectionAdapters::PostgreSQLColumn
-          super(column_class.cidr_to_string(value), column)
+          super(Column.cidr_to_string(value), column)
         else super
         end
       else
@@ -913,7 +899,7 @@ module ArJdbc
 
     def quote_bit(value)
       "B'#{value}'"
-    end if PostgreSQL::AR4_COMPAT
+    end if AR4_COMPAT
 
     def escape_bytea(string)
       return unless string
@@ -1093,7 +1079,6 @@ module ArJdbc
 
     # Returns the list of all column definitions for a table.
     def columns(table_name, name = nil)
-      klass = ::ActiveRecord::ConnectionAdapters::PostgreSQLColumn
       pass_cast_type = respond_to?(:lookup_cast_type)
       column_definitions(table_name).map do |row|
         # name, type, default, notnull, oid, fmod
@@ -1110,9 +1095,9 @@ module ArJdbc
         end
         if pass_cast_type
           cast_type = lookup_cast_type(type)
-          klass.new(name, default, cast_type, type, ! notnull, fmod, self)
+          Column.new(name, default, cast_type, type, ! notnull, fmod, self)
         else
-          klass.new(name, default, oid, type, ! notnull, fmod, self)
+          Column.new(name, default, oid, type, ! notnull, fmod, self)
         end
       end
     end
@@ -1518,5 +1503,11 @@ module ActiveRecord::ConnectionAdapters
       PostgreSQLJdbcConnection.raw_hstore_type = true if PostgreSQLJdbcConnection.raw_hstore_type? == nil
     end
 
+  end
+end
+
+module ArJdbc
+  module PostgreSQL
+    Column = ::ActiveRecord::ConnectionAdapters::PostgreSQLColumn
   end
 end
