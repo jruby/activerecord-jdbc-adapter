@@ -1,9 +1,9 @@
 ArJdbc.load_java_part :Oracle
 
-require 'arjdbc/oracle/column'
-
 module ArJdbc
   module Oracle
+
+    require 'arjdbc/oracle/column'
 
     # @private
     def self.extended(adapter); initialize!; end
@@ -31,9 +31,7 @@ module ArJdbc
     end
 
     # @see ActiveRecord::ConnectionAdapters::JdbcAdapter#jdbc_column_class
-    def jdbc_column_class
-      ::ActiveRecord::ConnectionAdapters::OracleColumn
-    end
+    def jdbc_column_class; Column end
 
     # @private
     @@update_lob_values = true
@@ -684,4 +682,10 @@ module ActiveRecord::ConnectionAdapters
 
   end
 
+end
+
+module ArJdbc
+  module Oracle
+    Column = ::ActiveRecord::ConnectionAdapters::OracleColumn
+  end
 end
