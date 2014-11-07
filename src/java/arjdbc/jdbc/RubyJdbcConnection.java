@@ -645,15 +645,16 @@ public class RubyJdbcConnection extends RubyObject {
 
     @JRubyMethod(name = "database_name")
     public IRubyObject database_name(final ThreadContext context) throws SQLException {
-        final Connection connection = getConnection(true);
-        String name = connection.getCatalog();
-
-        if (name == null) {
-            name = connection.getMetaData().getUserName();
-            if (name == null) name = "db1"; // TODO why ?
-        }
-
-        return context.runtime.newString(name);
+        return withConnection(context, new Callable<IRubyObject>() {
+            public IRubyObject call(final Connection connection) throws SQLException {
+                String name = connection.getCatalog();
+                if ( name == null ) {
+                    name = connection.getMetaData().getUserName();
+                    if ( name == null ) return context.nil;
+                }
+                return context.runtime.newString(name);
+            }
+        });
     }
 
     @JRubyMethod(name = "execute", required = 1)
