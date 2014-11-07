@@ -10,6 +10,26 @@ module ArJdbc
     # @see ActiveRecord::ConnectionAdapters::JdbcColumn
     module Column
 
+      def initialize(name, default, sql_type = nil, null = true, collation = nil, strict = false, extra = '')
+        if name.is_a?(Hash)
+          super # first arg: config
+        else
+          @strict = strict; @collation = collation; @extra = extra
+          super(name, default, sql_type, null)
+          # base 4.1: (name, default, sql_type = nil, null = true)
+        end
+      end unless AR42
+
+      def initialize(name, default, cast_type, sql_type = nil, null = true, collation = nil, strict = false, extra = '')
+        if name.is_a?(Hash)
+          super # first arg: config
+        else
+          @strict = strict; @collation = collation; @extra = extra
+          super(name, default, cast_type, sql_type, null)
+          # base 4.2: (name, default, cast_type, sql_type = nil, null = true)
+        end
+      end if AR42
+
       attr_reader :collation, :strict, :extra
 
       def extract_default(default)

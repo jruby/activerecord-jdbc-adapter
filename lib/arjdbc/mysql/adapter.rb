@@ -2,13 +2,18 @@ ArJdbc.load_java_part :MySQL
 
 require 'bigdecimal'
 require 'active_record/connection_adapters/abstract/schema_definitions'
-require 'arjdbc/mysql/column'
-require 'arjdbc/mysql/bulk_change_table'
-require 'arjdbc/mysql/explain_support'
-require 'arjdbc/mysql/schema_creation' # AR 4.x
 
 module ArJdbc
   module MySQL
+
+    # @private
+    AR42 = ActiveRecord::VERSION::STRING >= '4.2'
+
+    require 'arjdbc/mysql/column'
+    require 'arjdbc/mysql/bulk_change_table'
+    require 'arjdbc/mysql/explain_support'
+    require 'arjdbc/mysql/schema_creation' # AR 4.x
+
     include BulkChangeTable if const_defined? :BulkChangeTable
 
     # @see ActiveRecord::ConnectionAdapters::JdbcAdapter#jdbc_connection_class
@@ -129,7 +134,7 @@ module ArJdbc
     def case_sensitive_modifier(node, table_attribute)
       node = Arel::Nodes.build_quoted node, table_attribute
       Arel::Nodes::Bin.new(node)
-    end if ActiveRecord::VERSION::STRING > '4.2'
+    end if AR42
 
     def limited_update_conditions(where_sql, quoted_table_name, quoted_primary_key)
       where_sql
@@ -146,9 +151,14 @@ module ArJdbc
     # HELPER METHODS ===========================================
 
     # @private Only for Rails core compatibility.
-    def new_column(field, default, type, null, collation, extra = '')
+    def new_column(field, default, type, null, collation, extra = "")
       Column.new(field, default, type, null, collation, strict_mode?, extra)
-    end
+    end unless AR42
+
+    # @private Only for Rails core compatibility.
+    def new_column(field, default, cast_type, sql_type = nil, null = true, collation = "", extra = "")
+      Column.new(field, default, cast_type, sql_type, null, collation, strict_mode?, extra)
+    end if AR42
 
     # @private Only for Rails core compatibility.
     def error_number(exception)
