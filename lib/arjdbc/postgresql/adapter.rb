@@ -231,6 +231,7 @@ module ArJdbc
     }) if AR4_COMPAT
 
     NATIVE_DATABASE_TYPES.update(
+      :bigint => { :name => "bigint" },
       :bit => { :name => "bit" },
       :bit_varying => { :name => "bit varying" }
     ) if AR42_COMPAT
