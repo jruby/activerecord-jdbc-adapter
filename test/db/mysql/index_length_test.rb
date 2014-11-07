@@ -26,7 +26,8 @@ class MySQLIndexLengthTest < Test::Unit::TestCase
     assert_equal "ix_length_text", index.name
     assert !index.unique
     assert_equal ["text_column"], index.columns
-    assert_equal [255], index.lengths
+    assert index.lengths[0] <= 255
+    assert index.lengths[0] >= 191
   end
 
   def test_add_index
