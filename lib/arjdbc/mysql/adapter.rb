@@ -238,9 +238,14 @@ module ArJdbc
       version[0] && version[0] >= 5
     end
 
+    def supports_rename_index?
+      return false if mariadb? || ! version[0]
+      (version[0] == 5 && version[1] >= 7) || version[0] >= 6
+    end
+
     # @override
     def supports_transaction_isolation?(level = nil)
-      version[0] >= 5 # MySQL 5+
+      version[0] && version[0] >= 5 # MySQL 5+
     end
 
     # NOTE: handled by JdbcAdapter we override only to have save-point in logs :
@@ -411,6 +416,10 @@ module ArJdbc
       super(name, {:options => "ENGINE=InnoDB DEFAULT CHARSET=utf8"}.merge(options))
     end
 
+    def drop_table(table_name, options = {})
+      execute "DROP#{' TEMPORARY' if options[:temporary]} TABLE #{quote_table_name(table_name)}"
+    end
+
     # @override
     def rename_table(table_name, new_name)
       execute "RENAME TABLE #{quote_table_name(table_name)} TO #{quote_table_name(new_name)}"
@@ -421,6 +430,15 @@ module ArJdbc
     def remove_index!(table_name, index_name)
       # missing table_name quoting in AR-2.3
       execute "DROP INDEX #{quote_column_name(index_name)} ON #{quote_table_name(table_name)}"
+    end
+
+    # @override
+    def rename_index(table_name, old_name, new_name)
+      if supports_rename_index?
+        execute "ALTER TABLE #{quote_table_name(table_name)} RENAME INDEX #{quote_table_name(old_name)} TO #{quote_table_name(new_name)}"
+      else
+        super
+      end
     end
 
     # @override
@@ -616,6 +634,8 @@ module ArJdbc
       column
     end
 
+    def mariadb?; !! ( full_version =~ /mariadb/i ) end
+
     def version
       return @version ||= begin
         version = []
@@ -625,15 +645,20 @@ module ArJdbc
           version << jdbc_connection.serverMinorVersion
           version << jdbc_connection.serverSubMinorVersion
         else
-          result = execute 'SELECT VERSION()', 'SCHEMA'
-          result = result.first.values.first # [{"VERSION()"=>"5.5.37-0ubuntu..."}]
-          if match = result.match(/^(\d)\.(\d+)\.(\d+)/)
+          if match = full_version.match(/^(\d)\.(\d+)\.(\d+)/)
             version << match[1].to_i
             version << match[2].to_i
             version << match[3].to_i
           end
         end
         version.freeze
+      end
+    end
+
+    def full_version
+      @full_version ||= begin
+        result = execute 'SELECT VERSION()', 'SCHEMA'
+        result.first.values.first # [{"VERSION()"=>"5.5.37-0ubuntu..."}]
       end
     end
 
