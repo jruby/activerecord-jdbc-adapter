@@ -61,9 +61,7 @@ module ArJdbc
     end
 
     # @see ActiveRecord::ConnectionAdapters::JdbcAdapter#jdbc_column_class
-    def jdbc_column_class
-      ::ActiveRecord::ConnectionAdapters::MSSQLColumn
-    end
+    def jdbc_column_class; Column end
 
     # @see ActiveRecord::ConnectionAdapters::Jdbc::ArelSupport
     def self.arel_visitor_type(config)
@@ -739,4 +737,10 @@ module ActiveRecord::ConnectionAdapters
     include ::ArJdbc::MSSQL::Column
   end
 
+end
+
+module ArJdbc
+  module MSSQL
+    Column = ::ActiveRecord::ConnectionAdapters::MSSQLColumn
+  end
 end
