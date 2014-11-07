@@ -151,6 +151,26 @@ module ArJdbc
       where_sql
     end
 
+    def initialize_schema_migrations_table
+      if @config[:encoding] == 'utf8mb4'
+        ActiveRecord::SchemaMigration.create_table(191)
+      else
+        ActiveRecord::SchemaMigration.create_table
+      end
+    end if ::ActiveRecord::VERSION::MAJOR > 3
+
+    # HELPER METHODS ===========================================
+
+    # @private Only for Rails core compatibility.
+    def new_column(field, default, type, null, collation, extra = '')
+      Column.new(field, default, type, null, collation, strict_mode?, extra)
+    end
+
+    # @private Only for Rails core compatibility.
+    def error_number(exception)
+      exception.error_code if exception.respond_to?(:error_code)
+    end
+
     # QUOTING ==================================================
 
     # @override
