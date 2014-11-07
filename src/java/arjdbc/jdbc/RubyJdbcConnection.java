@@ -91,9 +91,12 @@ import org.jruby.runtime.ThreadContext;
 import org.jruby.runtime.Visibility;
 import org.jruby.runtime.backtrace.RubyStackTraceElement;
 import org.jruby.runtime.builtin.IRubyObject;
+import org.jruby.runtime.builtin.Variable;
+import org.jruby.runtime.component.VariableEntry;
 import org.jruby.util.ByteList;
 
 import arjdbc.util.DateTimeUtils;
+import arjdbc.util.ObjectSupport;
 import arjdbc.util.StringCache;
 import arjdbc.util.StringHelper;
 
@@ -3067,6 +3070,17 @@ public class RubyJdbcConnection extends RubyObject {
         // NOTE: allow implementers to ignore checkExistsOnly paramater - empty array means does not exists
         return matchedTables != null && ! matchedTables.isNil() &&
             ( ! (matchedTables instanceof RubyArray) || ! ((RubyArray) matchedTables).isEmpty() );
+    }
+
+    @Override
+    @JRubyMethod
+    @SuppressWarnings("unchecked")
+    public IRubyObject inspect() {
+        final ArrayList<Variable<String>> varList = new ArrayList<Variable<String>>(2);
+        varList.add(new VariableEntry<String>( "connection", getConnection() == null ? "null" : getConnection().toString() ));
+        //varList.add(new VariableEntry<String>( "connectionFactory", connectionFactory == null ? "null" : connectionFactory.toString() ));
+
+        return ObjectSupport.inspect(this, (List) varList);
     }
 
     /**
