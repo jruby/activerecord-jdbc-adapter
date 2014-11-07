@@ -317,16 +317,15 @@ module ArJdbc
       sql = "SHOW FULL COLUMNS FROM #{quote_table_name(table_name)}"
       columns = execute(sql, name || 'SCHEMA')
       strict = strict_mode?
-      column = ::ActiveRecord::ConnectionAdapters::MysqlAdapter::Column
       pass_cast_type = respond_to?(:lookup_cast_type)
       columns.map! do |field|
         sql_type = field['Type']
         null = field['Null'] == "YES"
         if pass_cast_type
           cast_type = lookup_cast_type(sql_type)
-          column.new(field['Field'], field['Default'], cast_type, sql_type, null, field['Collation'], strict, field['Extra'])
+          Column.new(field['Field'], field['Default'], cast_type, sql_type, null, field['Collation'], strict, field['Extra'])
         else
-          column.new(field['Field'], field['Default'], sql_type, null, field['Collation'], strict, field['Extra'])
+          Column.new(field['Field'], field['Default'], sql_type, null, field['Collation'], strict, field['Extra'])
         end
       end
       columns
@@ -613,7 +612,7 @@ module ActiveRecord
         include ::ArJdbc::MySQL::Column
 
         def initialize(name, default, sql_type = nil, null = true, collation = nil, strict = false, extra = '')
-          if Hash === name
+          if name.is_a?(Hash)
             super # first arg: config
           else
             @strict = strict; @collation = collation; @extra = extra
@@ -623,7 +622,7 @@ module ActiveRecord
         end
 
         def initialize(name, default, cast_type, sql_type = nil, null = true, collation = nil, strict = false, extra = '')
-          if Hash === name
+          if name.is_a?(Hash)
             super # first arg: config
           else
             @strict = strict; @collation = collation; @extra = extra
@@ -665,5 +664,11 @@ module ActiveRecord
       end
     end
 
+  end
+end
+
+module ArJdbc
+  module MySQL
+    Column = ::ActiveRecord::ConnectionAdapters::MysqlAdapter::Column
   end
 end
