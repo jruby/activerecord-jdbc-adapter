@@ -106,18 +106,19 @@ public class DerbyModule {
     @JRubyMethod(name = "quote_binary", required = 1)
     public static IRubyObject quote_binary(final ThreadContext context,
         final IRubyObject self, final IRubyObject string) {
-        return quoteStringHex(context.runtime, "", string, "");
+        final byte[] empty = ByteList.NULL_ARRAY; // ""
+        return quoteStringHex(context.runtime, empty, string, empty);
     }
 
     private final static byte[] HEX = {'0','1','2','3','4','5','6','7','8','9','A','B','C','D','E','F'};
 
-    private static IRubyObject quoteStringHex(final Ruby runtime,
-        final String before, final IRubyObject string, final String after) {
+    private static RubyString quoteStringHex(final Ruby runtime,
+        final byte[] before, final IRubyObject string, final byte[] after) {
 
         final ByteList input = ((RubyString) string).getByteList();
         final int size = input.getRealSize();
-        final ByteList output = new ByteList( before.length() + size * 2 + after.length() );
-        output.append( before.getBytes() );
+        final ByteList output = new ByteList( before.length + size * 2 + after.length );
+        output.append( before );
 
         final byte[] inputBytes = input.unsafeBytes();
 
@@ -134,8 +135,8 @@ public class DerbyModule {
             }
         }
 
-        output.append( after.getBytes() );
-        return RubyString.newStringShared(runtime, output);
+        output.append( after );
+        return RubyString.newString(runtime, output);
     }
 
     @JRubyMethod(name = "quote_string", required = 1)
@@ -146,35 +147,34 @@ public class DerbyModule {
 
         ByteList bytes = ((RubyString) string).getByteList();
 
-        boolean replacement = false;
+        boolean newBytes = false;
         for ( int i = 0; i < bytes.length(); i++ ) {
             switch ( bytes.get(i) ) {
                 case '\'': break;
                 default: continue;
             }
             // on first replacement allocate so we don't manip original
-            if ( ! replacement ) {
+            if ( ! newBytes ) {
                 bytes = new ByteList(bytes);
-                replacement = true;
+                newBytes = true;
             }
-
             bytes.replace(i, 1, BYTES_SINGLE_Q_x2);
             i += 1;
         }
 
-        return replacement ? RubyString.newStringShared(self.getRuntime(), bytes) : string;
+        return newBytes ? RubyString.newString(self.getRuntime(), bytes) : string;
     }
 
     @JRubyMethod(name = "quoted_true", required = 0, frame = false)
-    public static IRubyObject quoted_true(
+    public static RubyString quoted_true(
         final ThreadContext context, final IRubyObject self) {
-        return RubyString.newString(context.runtime, BYTES_1);
+        return RubyString.newStringShared(context.runtime, BYTES_1);
     }
 
     @JRubyMethod(name = "quoted_false", required = 0, frame = false)
-    public static IRubyObject quoted_false(
+    public static RubyString quoted_false(
         final ThreadContext context, final IRubyObject self) {
-        return RubyString.newString(context.runtime, BYTES_0);
+        return RubyString.newStringShared(context.runtime, BYTES_0);
     }
 
 }
