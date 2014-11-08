@@ -1,13 +1,16 @@
 require 'test_helper'
-require 'jdbc/postgres' if defined? JRUBY_VERSION
 
 module Jdbc
   class PostgresTest < Test::Unit::TestCase
 
     SYSTEM_ENV = ENV_JAVA.dup
 
+    setup do
+      require 'jdbc/postgres'
+    end
+
     teardown do
-      ENV_JAVA.replace SYSTEM_ENV
+      ENV_JAVA.clear; ENV_JAVA.update SYSTEM_ENV
     end
 
     test 'returns jdbc version 3 on java 5 (only for compatibility)' do
