@@ -550,7 +550,7 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
             final byte[] value = resultSet.getBytes(column);
             if ( value == null ) {
                 if ( resultSet.wasNull() ) return runtime.getNil();
-                return runtime.newString(); // ""
+                return RubyString.newEmptyString(runtime); // ""
             }
             return RubyString.newString(runtime, new ByteList(value, false));
         }
