@@ -3,6 +3,8 @@ require 'test_helper'
 
 class MySQLUnitTest < Test::Unit::TestCase
 
+  require 'arjdbc/mysql'
+
   class MySQLImpl
     include ArJdbc::MySQL
     def initialize; end
@@ -109,6 +111,10 @@ class MySQLUnitTest < Test::Unit::TestCase
       assert config[:adapter_class]
     end
 
+  end
+
+  test 'Column works' do
+    assert ArJdbc::MySQL::Column.is_a?(Class)
   end
 
 end if defined? JRUBY_VERSION

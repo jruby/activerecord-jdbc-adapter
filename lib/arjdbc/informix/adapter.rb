@@ -2,9 +2,9 @@ require 'arjdbc/jdbc/serialized_attributes_helper'
 
 module ArJdbc
   module Informix
-    
+
     @@_lob_callback_added = nil
-    
+
     def self.extended(base)
       unless @@_lob_callback_added
         ActiveRecord::Base.class_eval do
@@ -13,10 +13,10 @@ module ArJdbc
             lob_columns.each do |column|
               value = ::ArJdbc::SerializedAttributesHelper.dump_column_value(self, column)
               next if value.nil? || (value == '')
-              
+
               connection.write_large_object(
-                column.type == :binary, column.name, 
-                self.class.table_name, self.class.primary_key, 
+                column.type == :binary, column.name,
+                self.class.table_name, self.class.primary_key,
                 quote_value(id), value
               )
             end
@@ -32,12 +32,12 @@ module ArJdbc
       [ /informix/i, lambda { |cfg, column| column.extend(::ArJdbc::Informix::Column) } ]
     end
 
-    def self.jdbc_connection_class
-      ::ActiveRecord::ConnectionAdapters::InformixJdbcConnection
-    end
+    JdbcConnection = ::ActiveRecord::ConnectionAdapters::InformixJdbcConnection
+
+    def self.jdbc_connection_class; JdbcConnection end
 
     module Column
-      
+
       private
       # TODO: Test all Informix column types.
       def simplified_type(field_type)
@@ -47,7 +47,7 @@ module ArJdbc
           super
         end
       end
-      
+
     end
 
     def modify_types(types)
@@ -126,18 +126,18 @@ module ArJdbc
     def remove_index(table_name, options = {})
       @connection.execute_update("DROP INDEX #{index_name(table_name, options)}")
     end
-    
+
     def select(sql, *rest)
       # Informix does not like "= NULL", "!= NULL", or "<> NULL".
       execute(sql.gsub(/(!=|<>)\s*null/i, "IS NOT NULL").gsub(/=\s*null/i, "IS NULL"), *rest)
     end
-    
+
     private
-    
+
     def db_major_version
-      @@db_major_version ||= 
+      @@db_major_version ||=
         select_one("SELECT dbinfo('version', 'major') version FROM systables WHERE tabid = 1")['version'].to_i
     end
-    
+
   end # module Informix
 end # module ::ArJdbc

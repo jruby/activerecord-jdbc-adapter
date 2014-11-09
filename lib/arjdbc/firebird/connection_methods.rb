@@ -1,6 +1,7 @@
 ArJdbc::ConnectionMethods.module_eval do
   def firebird_connection(config)
     config[:adapter_spec] ||= ::ArJdbc::Firebird
+    config[:adapter_class] = ActiveRecord::ConnectionAdapters::FirebirdAdapter unless config.key?(:adapter_class)
 
     return jndi_connection(config) if jndi_config?(config)
 

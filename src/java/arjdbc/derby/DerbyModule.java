@@ -43,8 +43,8 @@ public class DerbyModule {
     public static RubyModule load(final RubyModule arJdbc) {
         RubyModule derby = arJdbc.defineModuleUnder("Derby");
         derby.defineAnnotatedMethods( DerbyModule.class );
-        RubyModule column = derby.defineModuleUnder("Column");
-        column.defineAnnotatedMethods(Column.class);
+        RubyModule columnMethods = derby.defineModuleUnder("ColumnMethods");
+        columnMethods.defineAnnotatedMethods(Column.class);
         return derby;
     }
 
@@ -52,7 +52,7 @@ public class DerbyModule {
         return load( arjdbc.ArJdbcModule.get(runtime) );
     }
 
-    @org.jruby.anno.JRubyModule(name = "ArJdbc::Derby::Column")
+    @org.jruby.anno.JRubyModule(name = "ArJdbc::Derby::ColumnMethods")
     public static class Column {
 
         @JRubyMethod(name = "type_cast", required = 1)

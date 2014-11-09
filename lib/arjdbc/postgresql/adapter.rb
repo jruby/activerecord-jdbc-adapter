@@ -16,10 +16,11 @@ module ArJdbc
     require 'arjdbc/postgresql/explain_support'
     require 'arjdbc/postgresql/schema_creation' # AR 4.x
 
+    JdbcConnection = ::ActiveRecord::ConnectionAdapters::PostgreSQLJdbcConnection
+
+    # @deprecated
     # @see ActiveRecord::ConnectionAdapters::JdbcAdapter#jdbc_connection_class
-    def self.jdbc_connection_class
-      ::ActiveRecord::ConnectionAdapters::PostgreSQLJdbcConnection
-    end
+    def self.jdbc_connection_class; JdbcConnection end
 
     def self.arel_visitor_type(config = nil)
       ::Arel::Visitors::PostgreSQL
@@ -1207,9 +1208,8 @@ require 'arjdbc/util/quoted_cache'
 module ActiveRecord::ConnectionAdapters
 
   remove_const(:PostgreSQLColumn) if const_defined?(:PostgreSQLColumn)
-
   class PostgreSQLColumn < JdbcColumn
-    include ::ArJdbc::PostgreSQL::Column
+    include ::ArJdbc::PostgreSQL::ColumnMethods
 
     def initialize(name, default, oid_type = nil, sql_type = nil, null = true,
         fmod = nil, adapter = nil) # added due resolving #oid_type
@@ -1242,7 +1242,6 @@ module ActiveRecord::ConnectionAdapters
   # NOTE: seems needed on 4.x due loading of '.../postgresql/oid' which
   # assumes: class PostgreSQLAdapter < AbstractAdapter
   remove_const(:PostgreSQLAdapter) if const_defined?(:PostgreSQLAdapter)
-
   class PostgreSQLAdapter < JdbcAdapter
     include ::ArJdbc::PostgreSQL
     include ::ArJdbc::PostgreSQL::ExplainSupport
@@ -1269,7 +1268,8 @@ module ActiveRecord::ConnectionAdapters
       def array?; !!@array; end
     end
 
-    module ColumnMethods
+    # @private
+    module ColumnHelpers
       def xml(*args)
         options = args.extract_options!
         column(args[0], 'xml', options)
@@ -1346,7 +1346,7 @@ module ActiveRecord::ConnectionAdapters
     end
 
     class TableDefinition < ActiveRecord::ConnectionAdapters::TableDefinition
-      include ColumnMethods
+      include ColumnHelpers
 
       def primary_key(name, type = :primary_key, options = {})
         return super unless type == :uuid
@@ -1391,7 +1391,7 @@ module ActiveRecord::ConnectionAdapters
     end
 
     class Table < ActiveRecord::ConnectionAdapters::Table
-      include ColumnMethods
+      include ColumnHelpers
     end
 
     def update_table_definition(table_name, base)
@@ -1411,6 +1411,8 @@ module ActiveRecord::ConnectionAdapters
       PostgreSQLJdbcConnection.raw_array_type = true if PostgreSQLJdbcConnection.raw_array_type? == nil
       PostgreSQLJdbcConnection.raw_hstore_type = true if PostgreSQLJdbcConnection.raw_hstore_type? == nil
     end
+
+    # Column = ::ActiveRecord::ConnectionAdapters::PostgreSQLColumn
 
   end
 end

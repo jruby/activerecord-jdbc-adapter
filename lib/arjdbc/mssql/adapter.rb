@@ -32,6 +32,15 @@ module ArJdbc
       Util::SerializedAttributes.setup /image/i, 'after_save_with_mssql_lob'
     end
 
+    JdbcConnection = ::ActiveRecord::ConnectionAdapters::MSSQLJdbcConnection
+
+    # @deprecated
+    # @see ActiveRecord::ConnectionAdapters::JdbcAdapter#jdbc_connection_class
+    def self.jdbc_connection_class; JdbcConnection end
+
+    # @see ActiveRecord::ConnectionAdapters::JdbcAdapter#jdbc_column_class
+    def jdbc_column_class; ::ActiveRecord::ConnectionAdapters::MSSQLColumn end
+
     # @private
     @@update_lob_values = true
 
@@ -54,14 +63,6 @@ module ArJdbc
     def update_lob_value?(value, column = nil)
       MSSQL.update_lob_values? && ! prepared_statements? # && value
     end
-
-    # @see ActiveRecord::ConnectionAdapters::JdbcAdapter#jdbc_connection_class
-    def self.jdbc_connection_class
-      ::ActiveRecord::ConnectionAdapters::MSSQLJdbcConnection
-    end
-
-    # @see ActiveRecord::ConnectionAdapters::JdbcAdapter#jdbc_column_class
-    def jdbc_column_class; Column end
 
     # @see ActiveRecord::ConnectionAdapters::Jdbc::ArelSupport
     def self.arel_visitor_type(config)
@@ -711,7 +712,9 @@ end
 require 'arjdbc/util/quoted_cache'
 
 module ActiveRecord::ConnectionAdapters
-
+  class MSSQLColumn < JdbcColumn
+    include ::ArJdbc::MSSQL::Column
+  end
   class MSSQLAdapter < JdbcAdapter
     include ::ArJdbc::MSSQL
     include ::ArJdbc::Util::QuotedCache
@@ -723,17 +726,12 @@ module ActiveRecord::ConnectionAdapters
 
       setup_limit_offset!
     end
-
-  end
-
-  class MSSQLColumn < JdbcColumn
-    include ::ArJdbc::MSSQL::Column
-  end
-
-end
-
-module ArJdbc
-  module MSSQL
-    Column = ::ActiveRecord::ConnectionAdapters::MSSQLColumn
+    Column = MSSQLColumn
   end
 end
+
+#module ArJdbc
+#  module MSSQL
+#    Column = ::ActiveRecord::ConnectionAdapters::MSSQLColumn
+#  end
+#end

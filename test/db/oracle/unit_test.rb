@@ -1,7 +1,8 @@
 require 'test_helper'
-require 'arjdbc/oracle'
 
 class OracleUnitTest < Test::Unit::TestCase
+
+  def self.startup; require 'arjdbc/oracle' end
 
   test 'oracle identifier lengths' do
     connection = new_adapter_stub
@@ -31,6 +32,10 @@ class OracleUnitTest < Test::Unit::TestCase
 
     connection.stubs(:columns).returns([stub(:primary => true), stub(:primary => true), stub(:primary => false)])
     assert !connection.prefetch_primary_key?('pages')
+  end
+
+  test 'Column works' do
+    deprecation_silence { ArJdbc::Oracle::Column }
   end
 
   private

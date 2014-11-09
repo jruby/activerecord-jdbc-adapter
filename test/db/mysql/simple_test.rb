@@ -254,6 +254,7 @@ class MySQLSimpleTest < Test::Unit::TestCase
     end
   end if defined? JRUBY_VERSION
 
+  include AdapterTestMethods
 
   test 'instantiate adapter ActiveRecord style' do
     connection = ActiveRecord::ConnectionAdapters::MySQLJdbcConnection.new current_connection_config

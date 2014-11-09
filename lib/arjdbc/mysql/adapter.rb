@@ -16,10 +16,11 @@ module ArJdbc
 
     include BulkChangeTable if const_defined? :BulkChangeTable
 
+    JdbcConnection = ::ActiveRecord::ConnectionAdapters::MySQLJdbcConnection
+
+    # @deprecated
     # @see ActiveRecord::ConnectionAdapters::JdbcAdapter#jdbc_connection_class
-    def self.jdbc_connection_class
-      ::ActiveRecord::ConnectionAdapters::MySQLJdbcConnection
-    end
+    def self.jdbc_connection_class; JdbcConnection end
 
     def configure_connection
       variables = config[:variables] || {}
@@ -58,7 +59,9 @@ module ArJdbc
     end
 
     def strict_mode? # strict_mode is default since AR 4.0
-      config.key?(:strict) ?
+      return @strict_mode unless ( @strict_mode ||= nil ).nil?
+
+      @strict_mode = config.key?(:strict) ?
         self.class.type_cast_config_to_boolean(config[:strict]) :
           ::ActiveRecord::VERSION::MAJOR > 3
     end
@@ -644,43 +647,12 @@ module ActiveRecord
       def self.emulate_booleans=(emulate); ::ArJdbc::MySQL.emulate_booleans = emulate; end
 
       class Column < JdbcColumn
-        include ::ArJdbc::MySQL::Column
+        include ::ArJdbc::MySQL::ColumnMethods
 
-        def initialize(name, default, sql_type = nil, null = true, collation = nil, strict = false, extra = '')
-          if name.is_a?(Hash)
-            super # first arg: config
-          else
-            @strict = strict; @collation = collation; @extra = extra
-            super(name, default, sql_type, null)
-            # base 4.1: (name, default, sql_type = nil, null = true)
-          end
-        end
-
-        def initialize(name, default, cast_type, sql_type = nil, null = true, collation = nil, strict = false, extra = '')
-          if name.is_a?(Hash)
-            super # first arg: config
-          else
-            @strict = strict; @collation = collation; @extra = extra
-            super(name, default, cast_type, sql_type, null)
-            # base 4.2: (name, default, cast_type, sql_type = nil, null = true)
-          end
-        end if ActiveRecord::VERSION::STRING >= '4.2'
-
-        # @note {#ArJdbc::MySQL::Column} uses this to check for boolean emulation
-        def adapter
-          MysqlAdapter
-        end
+        # @note {#ArJdbc::MySQL::ColumnMethods} uses this to check for boolean emulation
+        def adapter; MysqlAdapter end
 
       end
-
-      def jdbc_connection_class(spec)
-        ::ArJdbc::MySQL.jdbc_connection_class
-      end
-
-      def jdbc_column_class
-        Column
-      end
-
     end
 
     if ActiveRecord::VERSION::MAJOR < 3 ||

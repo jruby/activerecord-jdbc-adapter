@@ -3,12 +3,12 @@ module ArJdbc
 
     # @see ActiveRecord::ConnectionAdapters::JdbcColumn#column_types
     def self.column_selector
-      [ /postgre/i, lambda { |cfg, column| column.extend(Column) } ]
+      [ /postgre/i, lambda { |cfg, column| column.extend(ColumnMethods) } ]
     end
 
     # Column behavior based on PostgreSQL adapter in Rails.
     # @see ActiveRecord::ConnectionAdapters::JdbcColumn
-    module Column
+    module ColumnMethods
 
       def self.included(base)
         # NOTE: assumes a standalone PostgreSQLColumn class
@@ -536,7 +536,7 @@ module ArJdbc
           if ::Array === value
             value.map { |item| type_cast_array(oid, item) }
           else
-            if oid.is_a?(Column)
+            if oid.is_a?(ColumnMethods)
               oid.type_cast value, oid.type # column.type
             else
               oid.type_cast value

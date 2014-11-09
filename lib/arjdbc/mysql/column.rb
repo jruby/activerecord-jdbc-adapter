@@ -3,12 +3,12 @@ module ArJdbc
 
     # @see ActiveRecord::ConnectionAdapters::JdbcColumn#column_types
     def self.column_selector
-      [ /mysql/i, lambda { |config, column| column.extend(Column) } ]
+      [ /mysql/i, lambda { |config, column| column.extend(ColumnMethods) } ]
     end
 
     # Column behavior based on (abstract) MySQL adapter in Rails.
     # @see ActiveRecord::ConnectionAdapters::JdbcColumn
-    module Column
+    module ColumnMethods
 
       def initialize(name, default, sql_type = nil, null = true, collation = nil, strict = false, extra = '')
         if name.is_a?(Hash)
@@ -143,8 +143,13 @@ module ArJdbc
 
     end
 
-    # @private backwards-compatibility
-    ColumnExtensions = Column
+#    def self.const_missing(name)
+#      if name.to_sym == :Column
+#        ArJdbc.deprecate("#{self.name}::Column will change to refer to the actual column class, please use ColumnMethods instead", :once)
+#        return ColumnMethods
+#      end
+#      super
+#    end
 
   end
 end

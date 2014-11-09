@@ -17,11 +17,14 @@ module ArJdbc
 
     # @see ActiveRecord::ConnectionAdapters::JdbcColumn#column_types
     def self.column_selector
-      [ /firebird/i, lambda { |cfg, column| column.extend(Column) } ]
+      [ /firebird/i, lambda { |cfg, column| column.extend(ColumnMethods) } ]
     end
 
+    def jdbc_column_class; ::ActiveRecord::ConnectionAdapters::FirebirdAdapter::Column end
+
+    # @private
     # @see ActiveRecord::ConnectionAdapters::JdbcColumn
-    module Column
+    module ColumnMethods
 
       def default_value(value)
         return nil unless value
@@ -323,6 +326,31 @@ module ArJdbc
       %Q("#{column_name =~ /[[:upper:]]/ ? column_name : column_name.upcase}")
     end
 
+    def self.const_missing(name)
+      if name.to_sym == :Column
+        ArJdbc.deprecate("#{self.name}::Column will change to refer to the actual column class, please use ColumnMethods instead", :once)
+        return ColumnMethods
+      end
+      super
+    end
+
   end
   FireBird = Firebird
 end
+
+module ActiveRecord::ConnectionAdapters
+  remove_const(:FirebirdAdapter) if const_defined?(:FirebirdAdapter)
+  class FirebirdAdapter < JdbcAdapter
+    include ::ArJdbc::Firebird
+    
+    class Column < JdbcColumn
+      include ::ArJdbc::Firebird::ColumnMethods
+    end
+  end
+end
+
+#module ArJdbc
+#  module Firebird
+#    Column = ::ActiveRecord::ConnectionAdapters::FirebirdColumn
+#  end
+#end

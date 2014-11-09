@@ -15,17 +15,20 @@ module ArJdbc
       require 'arjdbc/derby/active_record_patch'
     end
 
+    JdbcConnection = ::ActiveRecord::ConnectionAdapters::DerbyJdbcConnection
+
+    # @deprecated
     # @see ActiveRecord::ConnectionAdapters::JdbcAdapter#jdbc_connection_class
-    def self.jdbc_connection_class
-      ::ActiveRecord::ConnectionAdapters::DerbyJdbcConnection
-    end
+    def self.jdbc_connection_class; JdbcConnection end
 
     # @see ActiveRecord::ConnectionAdapters::JdbcColumn#column_types
     def self.column_selector
-      [ /derby/i, lambda { |config, column| column.extend(Column) } ]
+      [ /derby/i, lambda { |config, column| column.extend(ColumnMethods) } ]
     end
 
- 	# @private
+    def jdbc_column_class; ::ActiveRecord::ConnectionAdapters::DerbyAdapter::Column end
+
+ 	  # @private
     @@emulate_booleans = true
 
     # Boolean emulation can be disabled using :
@@ -38,9 +41,10 @@ module ArJdbc
     # @see #emulate_booleans?
     def self.emulate_booleans=(emulate); @@emulate_booleans = emulate; end
 
+    # @private
     # @note Part of this module is implemented in "native" Java.
     # @see ActiveRecord::ConnectionAdapters::JdbcColumn
-    module Column
+    module ColumnMethods
 
       private
 
@@ -506,5 +510,29 @@ module ArJdbc
 
     end
 
+    def self.const_missing(name)
+      if name.to_sym == :Column
+        ArJdbc.deprecate("#{self.name}::Column will change to refer to the actual column class, please use ColumnMethods instead", :once)
+        return ColumnMethods
+      end
+      super
+    end
+
   end
 end
+
+module ActiveRecord::ConnectionAdapters
+  class DerbyAdapter < JdbcAdapter
+    include ::ArJdbc::Derby
+
+    class Column < JdbcColumn
+      include ::ArJdbc::Derby::ColumnMethods
+    end
+  end
+end
+
+#module ArJdbc
+#  module Derby
+#    Column = ::ActiveRecord::ConnectionAdapters::DerbyAdapter::Column
+#  end
+#end

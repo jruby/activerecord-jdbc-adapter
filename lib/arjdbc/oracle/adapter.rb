@@ -25,13 +25,13 @@ module ArJdbc
       end
     end
 
+    JdbcConnection = ::ActiveRecord::ConnectionAdapters::OracleJdbcConnection
+
     # @see ActiveRecord::ConnectionAdapters::JdbcAdapter#jdbc_connection_class
-    def self.jdbc_connection_class
-      ::ActiveRecord::ConnectionAdapters::OracleJdbcConnection
-    end
+    def self.jdbc_connection_class; JdbcConnection end
 
     # @see ActiveRecord::ConnectionAdapters::JdbcAdapter#jdbc_column_class
-    def jdbc_column_class; Column end
+    def jdbc_column_class; ::ActiveRecord::ConnectionAdapters::OracleColumn end
 
     # @private
     @@update_lob_values = true
@@ -648,9 +648,13 @@ end
 require 'arjdbc/util/quoted_cache'
 
 module ActiveRecord::ConnectionAdapters
+  class OracleColumn < JdbcColumn
+    include ::ArJdbc::Oracle::ColumnMethods
+    # def returning_id?; @returning_id ||= nil end
+    # def returning_id!; @returning_id = true end
+  end
 
   remove_const(:OracleAdapter) if const_defined?(:OracleAdapter)
-
   class OracleAdapter < JdbcAdapter
     include ::ArJdbc::Oracle
     include ::ArJdbc::Util::QuotedCache
@@ -672,20 +676,13 @@ module ActiveRecord::ConnectionAdapters
         self.class.type_cast_config_to_boolean(config[:insert_returning]) : nil
     end
 
-  end
-
-  class OracleColumn < JdbcColumn
-    include ::ArJdbc::Oracle::Column
-
-    # def returning_id?; @returning_id ||= nil end
-    # def returning_id!; @returning_id = true end
-
-  end
-
-end
-
-module ArJdbc
-  module Oracle
-    Column = ::ActiveRecord::ConnectionAdapters::OracleColumn
+    # @private Temporary until ArJdbc::Oracle::Column is changed.
+    Column = OracleColumn
   end
 end
+
+#module ArJdbc
+#  module Oracle
+#    Column = ::ActiveRecord::ConnectionAdapters::OracleColumn
+#  end
+#end

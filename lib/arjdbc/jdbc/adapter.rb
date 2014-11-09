@@ -87,20 +87,30 @@ module ActiveRecord
         @visitor = new_visitor # nil if no AREL (AR-2.3)
       end
 
+      # @private
+      JdbcConnection = ::ActiveRecord::ConnectionAdapters::JdbcConnection
+
       # Returns the (JDBC) connection class to be used for this adapter.
       # This is used by (database specific) spec modules to override the class
       # used assuming some of the available methods have been re-defined.
       # @see ActiveRecord::ConnectionAdapters::JdbcConnection
-      def jdbc_connection_class(spec)
+      def self.jdbc_connection_class(spec)
         connection_class = spec.jdbc_connection_class if spec && spec.respond_to?(:jdbc_connection_class)
-        connection_class ? connection_class : ::ActiveRecord::ConnectionAdapters::JdbcConnection
+        connection_class ? connection_class : JdbcConnection
+      end
+
+      # @note The spec argument passed is ignored and shall no longer be used.
+      # @see ActiveRecord::ConnectionAdapters::JdbcConnection#jdbc_connection_class
+      def jdbc_connection_class(spec = nil)
+        spec ? self.class.jdbc_connection_class(spec) : self.class::JdbcConnection
       end
 
       # Returns the (JDBC) `ActiveRecord` column class for this adapter.
       # This is used by (database specific) spec modules to override the class.
       # @see ActiveRecord::ConnectionAdapters::JdbcColumn
       def jdbc_column_class
-        ::ActiveRecord::ConnectionAdapters::JdbcColumn
+        return self.class::Column if self.class.const_defined?(:Column)
+        ::ActiveRecord::ConnectionAdapters::JdbcColumn # TODO auto-load
       end
 
       # Retrieve the raw `java.sql.Connection` object.

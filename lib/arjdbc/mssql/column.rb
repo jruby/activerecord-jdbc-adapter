@@ -3,11 +3,12 @@ module ArJdbc
 
     # @see ActiveRecord::ConnectionAdapters::JdbcColumn#column_types
     def self.column_selector
-      [ /sqlserver|tds|Microsoft SQL/i, lambda { |config, column| column.extend(Column) } ]
+      [ /sqlserver|tds|Microsoft SQL/i, lambda { |config, column| column.extend(ColumnMethods) } ]
     end
 
+    # @private
     # @see ActiveRecord::ConnectionAdapters::JdbcColumn
-    module Column
+    module ColumnMethods
 
       def self.included(base)
         # NOTE: assumes a standalone MSSQLColumn class
@@ -138,5 +139,14 @@ module ArJdbc
       end
 
     end
+
+    def self.const_missing(name)
+      if name.to_sym == :Column
+        ArJdbc.deprecate("#{self.name}::Column will change to refer to the actual column class, please use ColumnMethods instead", :once)
+        return ColumnMethods
+      end
+      super
+    end
+
   end
 end

@@ -1,6 +1,7 @@
 ArJdbc::ConnectionMethods.module_eval do
   def derby_connection(config)
     config[:adapter_spec] ||= ::ArJdbc::Derby
+    config[:adapter_class] = ActiveRecord::ConnectionAdapters::DerbyAdapter unless config.key?(:adapter_class)
 
     return jndi_connection(config) if jndi_config?(config)
 
