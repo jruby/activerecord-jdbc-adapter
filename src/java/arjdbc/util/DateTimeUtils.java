@@ -323,7 +323,7 @@ public abstract class DateTimeUtils {
         int year = 2000; int month = 1; int day = 1;
         boolean hasTime = false;
         int minute = 0; int hour = 0; int second = 0;
-        int nanos = 0;
+        int millis = 0; long nanos = 0;
 
         DateTimeZone zone = null; boolean bcEra = false;
 
@@ -346,7 +346,6 @@ public abstract class DateTimeUtils {
 
         int start = nonSpaceIndex(str, 0, len); // Skip leading whitespace
         int end = nonDigitIndex(str, start, len);
-        int num;
 
         // Possibly read date.
         if ( end < len && str.charAt(end) == '-' ) {
@@ -408,12 +407,16 @@ public abstract class DateTimeUtils {
             // Fractional seconds.
             if ( start < len && str.charAt(start) == '.' ) {
                 end = nonDigitIndex(str, start + 1, len); // Skip '.'
-                num = extractIntValue(str, start + 1, end);
+                int numlen = end - (start + 1);
+                if (numlen <= 3) {
+                    millis = extractIntValue(str, start + 1, end);
+                    for ( ; numlen < 3; ++numlen ) millis *= 10;
+                }
+                else {
+                    nanos = extractIntValue(str, start + 1, end);
+                    for ( ; numlen < 9; ++numlen ) nanos *= 10;
+                }
 
-                for (int numlength = (end - (start+1)); numlength < 9; ++numlength)
-                    num *= 10;
-
-                nanos = num;
                 start = end;
             }
 
@@ -484,7 +487,7 @@ public abstract class DateTimeUtils {
             zone = isDefaultTimeZoneUTC(context) ? DateTimeZone.UTC : DateTimeZone.getDefault();
         }
 
-        DateTime dateTime = new DateTime(year, month, day, hour, minute, second, 0, zone);
+        DateTime dateTime = new DateTime(year, month, day, hour, minute, second, millis, zone);
         return RubyTime.newTime(context.runtime, dateTime, nanos);
     }
 
