@@ -686,6 +686,8 @@ module ActiveRecord
       class Column < JdbcColumn
         include ::ArJdbc::MySQL::Column
 
+        require 'arjdbc/mysql/date_time_support' if AR42
+
         def initialize(name, default, sql_type = nil, null = true, collation = nil, strict = false, extra = '')
           if name.is_a?(Hash)
             super # first arg: config

@@ -9,6 +9,9 @@ module ActiveRecord
     class JdbcColumn < Column
       attr_writer :limit, :precision
 
+      # @private
+      AR42 = ActiveRecord::VERSION::STRING >= '4.2'
+
       def initialize(config, name, *args)
         if self.class == JdbcColumn
           # NOTE: extending classes do not want this if they do they shall call
