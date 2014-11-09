@@ -25,7 +25,8 @@
 
 package arjdbc.h2;
 
-import arjdbc.jdbc.RubyJdbcConnection;
+import java.sql.Connection;
+import java.sql.SQLException;
 
 import org.jruby.Ruby;
 import org.jruby.RubyClass;
@@ -37,7 +38,7 @@ import org.jruby.runtime.builtin.IRubyObject;
  * @author nicksieger
  */
 //@org.jruby.anno.JRubyClass(name = "ActiveRecord::ConnectionAdapters::JdbcConnection")
-public class H2RubyJdbcConnection extends RubyJdbcConnection {
+public class H2RubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection {
     private static final long serialVersionUID = -2652911264521657428L;
 
     public H2RubyJdbcConnection(Ruby runtime, RubyClass metaClass) {
@@ -69,4 +70,12 @@ public class H2RubyJdbcConnection extends RubyJdbcConnection {
     protected boolean databaseSupportsSchemas() {
         return true;
     }
+
+    @Override
+    protected String caseConvertIdentifierForJdbc(final Connection connection, final String value)
+        throws SQLException {
+        if ( value == null ) return null;
+        return value.toUpperCase();
+    }
+
 }
