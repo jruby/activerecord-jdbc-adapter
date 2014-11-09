@@ -496,7 +496,7 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
         final String value = resultSet.getString(column);
         if ( value == null ) {
             if ( resultSet.wasNull() ) return context.nil;
-            return runtime.newString(); // ""
+            return RubyString.newEmptyString(runtime); // ""
         }
 
         final RubyString strValue = timestampToRubyString(runtime, value);
