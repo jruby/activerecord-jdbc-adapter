@@ -4,11 +4,15 @@ require 'db/jdbc'
 class JdbcConnectionTest < Test::Unit::TestCase
 
   def self.startup
+    ArJdbc.disable_warn "use 'adapter: mysql' instead of 'adapter: jdbc' configuration"
+
     clean_visitor_type!
     super
   end
 
   def self.shutdown
+    ArJdbc.enable_warn "use 'adapter: mysql' instead of 'adapter: jdbc' configuration"
+
     clean_visitor_type!
     super
   end
@@ -208,20 +212,18 @@ class JdbcConnectionTest < Test::Unit::TestCase
   end
 
   test 'instantiate adapter ActiveRecord style' do
-    connection = current_connection_config[:adapter_class] || ActiveRecord::ConnectionAdapters::JdbcAdapter
+    connection = ActiveRecord::Base.connection.raw_connection
     logger = ActiveRecord::Base.logger
     pool = ActiveRecord::Base.connection_pool
-    adapter = ActiveRecord::ConnectionAdapters::MysqlAdapter.new(connection, logger, pool)
-    assert adapter.config
+    adapter = ActiveRecord::ConnectionAdapters::JdbcAdapter.new(connection, logger, pool)
     assert_equal connection, adapter.raw_connection
     assert adapter.pool if ar_version('4.0')
   end if ar_version('3.2') && defined? JRUBY_VERSION
 
   test 'instantiate adapter ActiveRecord style (< 3.2)' do
-    connection = ActiveRecord::ConnectionAdapters::MySQLJdbcConnection.new current_connection_config
+    connection = ActiveRecord::Base.connection.raw_connection
     logger = ActiveRecord::Base.logger
-    adapter = ActiveRecord::ConnectionAdapters::MysqlAdapter.new(connection, logger)
-    assert adapter.config
+    adapter = ActiveRecord::ConnectionAdapters::JdbcAdapter.new(connection, logger)
     assert_equal connection, adapter.raw_connection
   end if defined? JRUBY_VERSION
 
