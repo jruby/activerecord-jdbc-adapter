@@ -85,8 +85,14 @@ namespace :db do
 
       case config['adapter']
       when /mysql/
-        ActiveRecord::Base.establish_connection(config)
-        File.open(filename, 'w:utf-8') { |f| f << ActiveRecord::Base.connection.structure_dump }
+        args = _prepare_mysql_options('mysqldump', config)
+        args.concat(["--result-file", "#{filename}"])
+        args.concat(["--no-data"])
+        args.concat(["#{config['database']}"])
+        unless Kernel.system(*args)
+          puts "Could not dump the database structure. "\
+          "Make sure `mysqldump` is in your PATH and check the command output for warnings."
+        end
       when /postgresql/
         ActiveRecord::Base.establish_connection(config)
 
@@ -118,16 +124,15 @@ namespace :db do
     end
 
     redefine_task :load do
-      config = current_config 
+      config = current_config
       filename = structure_sql
 
       case config['adapter']
       when /mysql/
-        ActiveRecord::Base.establish_connection(config)
-        ActiveRecord::Base.connection.execute('SET foreign_key_checks = 0')
-        IO.read(filename).split("\n\n").each do |table|
-          ActiveRecord::Base.connection.execute(table)
-        end
+        args = _prepare_mysql_options('mysql', config)
+        args.concat(['--execute', %{SET FOREIGN_KEY_CHECKS = 0; SOURCE #{filename}; SET FOREIGN_KEY_CHECKS = 1}])
+        args.concat(["--database", "#{config['database']}"])
+        Kernel.system(*args)
       when /postgresql/
         ENV['PGHOST'] = config['host'] if config['host']
         ENV['PGPORT'] = config['port'].to_s if config['port']
@@ -152,6 +157,17 @@ namespace :db do
           root ? File.join(root, "db/#{rails_env}_structure.sql") : "db/#{rails_env}_structure.sql"
         end
       end
+    end
+
+    def _prepare_mysql_options(command, config)
+      args = [ command ]
+      args.concat(['--user', config['username']]) if config['username']
+      args << "--password=#{config['password']}" if config['password']
+      args.concat(['--default-character-set', config['encoding']]) if config['encoding']
+      config.slice('host', 'port', 'socket').each do |k, v|
+        args.concat([ "--#{k}", v.to_s ]) if v
+      end
+      args
     end
 
   end
