@@ -23,39 +23,50 @@ module ArJdbc
     def self.jdbc_connection_class; JdbcConnection end
 
     def configure_connection
-      variables = config[:variables] || {}
-      # By default, MySQL 'where id is null' selects the last inserted id. Turn this off.
-      variables[:sql_auto_is_null] = 0 # execute "SET SQL_AUTO_IS_NULL=0"
+      unless ( variables = config[:variables] ) == false # AR-JDBC allows disabling
+        # as this can be configured with a JDBC pool, defaults executed are :
+        #   SET NAMES utf8,
+        #       @@SESSION.sql_auto_is_null = 0,
+        #       @@SESSION.wait_timeout = 2147483,
+        #       @@SESSION.sql_mode = 'STRICT_ALL_TABLES'
 
-      # Increase timeout so the server doesn't disconnect us.
-      wait_timeout = config[:wait_timeout]
-      wait_timeout = self.class.type_cast_config_to_integer(wait_timeout)
-      variables[:wait_timeout] = wait_timeout.is_a?(Fixnum) ? wait_timeout : 2147483
+        variables ||= {}
+        # By default, MySQL 'where id is null' selects the last inserted id. Turn this off.
+        variables[:sql_auto_is_null] = 0 # execute "SET SQL_AUTO_IS_NULL=0"
 
-      # Make MySQL reject illegal values rather than truncating or blanking them, see
-      # http://dev.mysql.com/doc/refman/5.0/en/server-sql-mode.html#sqlmode_strict_all_tables
-      # If the user has provided another value for sql_mode, don't replace it.
-      if strict_mode? && ! variables.has_key?(:sql_mode)
-        variables[:sql_mode] = 'STRICT_ALL_TABLES' # SET SQL_MODE='STRICT_ALL_TABLES'
+        # Increase timeout so the server doesn't disconnect us.
+        wait_timeout = config[:wait_timeout]
+        wait_timeout = self.class.type_cast_config_to_integer(wait_timeout)
+        variables[:wait_timeout] = wait_timeout.is_a?(Fixnum) ? wait_timeout : 2147483
+
+        # Make MySQL reject illegal values rather than truncating or blanking them, see
+        # http://dev.mysql.com/doc/refman/5.0/en/server-sql-mode.html#sqlmode_strict_all_tables
+        # If the user has provided another value for sql_mode, don't replace it.
+        if strict_mode? && ! variables.has_key?(:sql_mode)
+          variables[:sql_mode] = 'STRICT_ALL_TABLES' # SET SQL_MODE='STRICT_ALL_TABLES'
+        end
+
+        # Gather up all of the SET variables...
+        variable_assignments = variables.map do |k, v|
+          if v == ':default' || v == :default
+            "@@SESSION.#{k} = DEFAULT" # Sets the value to the global or compile default
+          elsif ! v.nil?
+            "@@SESSION.#{k} = #{quote(v)}"
+          end
+          # or else nil; compact to clear nils out
+        end
+        variable_assignments.compact!
       end
 
       # NAMES does not have an equals sign, see
       # http://dev.mysql.com/doc/refman/5.0/en/set-statement.html#id944430
       # (trailing comma because variable_assignments will always have content)
-      encoding = "NAMES #{config[:encoding]}, " if config[:encoding]
-
-      # Gather up all of the SET variables...
-      variable_assignments = variables.map do |k, v|
-        if v == ':default' || v == :default
-          "@@SESSION.#{k.to_s} = DEFAULT" # Sets the value to the global or compile default
-        elsif ! v.nil?
-          "@@SESSION.#{k.to_s} = #{quote(v)}"
-        end
-        # or else nil; compact to clear nils out
-      end.compact.join(', ')
+      if encoding = config[:encoding]
+        ( variable_assignments ||= [] ).unshift("NAMES #{encoding}")
+      end
 
       # ...and send them all in one query
-      execute("SET #{encoding} #{variable_assignments}", :skip_logging)
+      execute("SET #{variable_assignments.join(', ')}", :skip_logging.to_s) if variable_assignments
     end
 
     def strict_mode? # strict_mode is default since AR 4.0

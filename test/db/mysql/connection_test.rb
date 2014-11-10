@@ -8,8 +8,8 @@ class MySQLConnectionTest < Test::Unit::TestCase
 
   def test_mysql_strict_mode_disabled
     run_without_connection do |orig_connection|
-      ActiveRecord::Base.establish_connection(orig_connection.merge({:strict => false}))
-      assert_equal [['']], select_rows("SELECT @@SESSION.sql_mode") if ! mariadb_driver?
+      ActiveRecord::Base.establish_connection(orig_connection.merge(:strict => false))
+      assert_equal [['']], select_rows("SELECT @@SESSION.sql_mode") unless mariadb_driver?
     end
   end
 
@@ -29,6 +29,15 @@ class MySQLConnectionTest < Test::Unit::TestCase
       assert_equal global_mode_rows, session_mode_rows
     end
   end
+
+  def test_mysql_allows_to_not_configure_variables_and_encoding
+    run_without_connection do |orig_connection|
+      ActiveRecord::Base.establish_connection(orig_connection.merge(:variables => false, :encoding => false))
+      # confiure_connection does nothing (no execute) :
+      ActiveRecord::ConnectionAdapters::MysqlAdapter.any_instance.expects(:execute).never
+      select_rows("SELECT @@SESSION.sql_mode")
+    end
+  end if defined? JRUBY_VERSION # AR-JDBC specific behavior
 
   protected
 
