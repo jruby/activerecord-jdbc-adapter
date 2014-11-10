@@ -28,12 +28,11 @@ ArJdbc::ConnectionMethods.module_eval do
     if mysql_driver
       properties['zeroDateTimeBehavior'] ||= 'convertToNull'
       properties['jdbcCompliantTruncation'] ||= 'false'
-      properties['useUnicode'] = 'true' unless properties.key?('useUnicode') # otherwise platform default
       # NOTE: this is "better" than passing what users are used to set on MRI
       # e.g. 'utf8mb4' will fail cause the driver will check for a Java charset
       # ... it's smart enough to detect utf8mb4 from server variables :
       # "character_set_client" && "character_set_connection" (thus UTF-8)
-      if encoding = config.key?(:encoding) ? config[:encoding] : 'utf8'
+      if encoding = config[:encoding]
         properties['characterEncoding'] = convert_mysql_encoding(encoding) || encoding
       end
       if ! ( reconnect = config[:reconnect] ).nil?
