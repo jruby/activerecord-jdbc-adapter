@@ -209,6 +209,15 @@ class PostgreSQLSimpleTest < Test::Unit::TestCase
     assert_equal 'some', connection.type_cast(:some, nil)
   end if ar_version('3.1')
 
+  include AdapterTestMethods
+
+  test 'returns correct column class' do
+    assert_not_nil klass = connection.jdbc_column_class
+    assert klass == ArJdbc::PostgreSQL::Column
+    assert klass.is_a?(Class)
+    assert ActiveRecord::ConnectionAdapters::PostgreSQLColumn == ArJdbc::PostgreSQL::Column
+  end if defined? JRUBY_VERSION
+
   private
 
   def supports_standard_conforming_strings?(connection = self.connection)

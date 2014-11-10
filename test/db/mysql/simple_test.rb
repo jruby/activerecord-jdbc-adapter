@@ -274,6 +274,13 @@ class MySQLSimpleTest < Test::Unit::TestCase
     assert_equal connection, adapter.raw_connection
   end if defined? JRUBY_VERSION
 
+  test 'returns correct column class' do
+    assert_not_nil klass = connection.jdbc_column_class
+    assert klass == ArJdbc::MySQL::Column
+    assert klass.is_a?(Class)
+    assert ActiveRecord::ConnectionAdapters::MysqlAdapter::Column == ArJdbc::MySQL::Column
+  end if defined? JRUBY_VERSION
+
   test 'bulk change table' do
     assert ActiveRecord::Base.connection.supports_bulk_alter?
 
