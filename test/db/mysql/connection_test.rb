@@ -33,9 +33,20 @@ class MySQLConnectionTest < Test::Unit::TestCase
   def test_mysql_allows_to_not_configure_variables_and_encoding
     run_without_connection do |orig_connection|
       ActiveRecord::Base.establish_connection(orig_connection.merge(:variables => false, :encoding => false))
-      # confiure_connection does nothing (no execute) :
+      # configure_connection does nothing (no execute) :
       ActiveRecord::ConnectionAdapters::MysqlAdapter.any_instance.expects(:execute).never
       select_rows("SELECT @@SESSION.sql_mode")
+    end
+  end if defined? JRUBY_VERSION # AR-JDBC specific behavior
+
+  def test_mysql_encoding_is_set_as_a_driver_property
+    skip if mariadb_driver?
+    run_without_connection do |orig_connection|
+      ActiveRecord::Base.establish_connection(orig_connection.merge(:encoding => 'utf8'))
+      ActiveRecord::ConnectionAdapters::MysqlAdapter.any_instance.expects(:execute).with do |sql, name|
+        name && sql == "SET @@SESSION.sql_auto_is_null = 0, @@SESSION.wait_timeout = 2147483, @@SESSION.sql_mode = 'STRICT_ALL_TABLES'"
+      end
+      select_rows("SELECT @@SESSION.sql_auto_is_null")
     end
   end if defined? JRUBY_VERSION # AR-JDBC specific behavior
 

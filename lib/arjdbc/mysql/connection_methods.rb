@@ -34,7 +34,10 @@ ArJdbc::ConnectionMethods.module_eval do
       # "character_set_client" && "character_set_connection" (thus UTF-8)
       if encoding = config[:encoding]
         properties['characterEncoding'] = convert_mysql_encoding(encoding) || encoding
+        # driver also executes: "SET NAMES " + (useutf8mb4 ? "utf8mb4" : "utf8")
+        config[:encoding] = nil # thus no need to do it on configure_connection
       end
+      # properties['useUnicode'] is true by default
       if ! ( reconnect = config[:reconnect] ).nil?
         properties['autoReconnect'] ||= reconnect.to_s
         # properties['maxReconnects'] ||= '3'
