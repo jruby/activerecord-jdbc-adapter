@@ -1204,6 +1204,7 @@ module SimpleTestMethods
       :sample_float => 10.5,
       :sample_boolean => true,
       :sample_decimal => 0.12345678,
+      :sample_date => Date.today,
       :sample_time => Time.now,
       :sample_binary => '01' * 512
     )
@@ -1211,6 +1212,10 @@ module SimpleTestMethods
 
     marshalled = Marshal.dump(expected)
     actual = Marshal.load(marshalled)
+
+    expected.attributes.each do |name, value|
+      assert_equal value, actual.attributes[name]
+    end
 
     assert_equal expected.attributes, actual.attributes
   end
