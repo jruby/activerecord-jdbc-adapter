@@ -66,7 +66,7 @@ module ArJdbc
       end
 
       # ...and send them all in one query
-      execute("SET #{variable_assignments.join(', ')}", :skip_logging.to_s) if variable_assignments
+      execute("SET #{variable_assignments.join(', ')}", :skip_logging) if variable_assignments
     end
 
     def strict_mode? # strict_mode is default since AR 4.0
