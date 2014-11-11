@@ -25,21 +25,17 @@ module MultibyteTestMethods
 
   if defined?(JRUBY_VERSION)
 
-    def do_setup
-      config = ActiveRecord::Base.connection.config
-      properties = config[:properties] || {}
-      jdbc_driver = ActiveRecord::ConnectionAdapters::JdbcDriver.new(config[:driver], properties)
-      @java_connection = jdbc_driver.connection(config[:url], config[:username], config[:password])
-      @java_connection.setAutoCommit(true)
-    end
+    def do_setup; end
 
     def do_teardown
-      @java_connection.close
+      ActiveRecord::Base.connection.reconnect!
     end
 
     def test_select_multibyte_string
-      @java_connection.createStatement().
-        execute("insert into entries (id, title, content) values (1, 'テスト', '本文')")
+      with_jdbc_statement do |stmnt|
+        stmnt.execute("insert into entries (id, title, content) values (1, 'テスト', '本文')")
+      end
+
       entry = Entry.first
       assert_equal "テスト", entry.title
       assert_equal "本文", entry.content
@@ -48,11 +44,14 @@ module MultibyteTestMethods
 
     def test_update_multibyte_string
       Entry.create!(:title => "テスト", :content => "本文")
-      rs = @java_connection.createStatement().
-        executeQuery("select title, content from entries")
-      assert rs.next
-      assert_equal "テスト", rs.getString(1)
-      assert_equal "本文", rs.getString(2)
+
+      with_jdbc_statement do |stmnt|
+        rs = stmnt.executeQuery("select title, content from entries")
+
+        assert rs.next
+        assert_equal "テスト", rs.getString(1)
+        assert_equal "本文", rs.getString(2)
+      end
     end
 
   end
@@ -99,6 +98,13 @@ module MultibyteTestMethods
   end
 
   private
+
+  def with_jdbc_statement(jdbc_connection = ActiveRecord::Base.connection.jdbc_connection)
+    statement = jdbc_connection.createStatement
+    yield(statement)
+  ensure
+    statement.close if statement
+  end
 
   def setup_latin_connection
     EntryMigration.down
