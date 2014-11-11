@@ -165,6 +165,8 @@ if defined? JRUBY_VERSION
 
     source_files = FileList[ 'src/java/**/*.java' ]
 
+    require 'tmpdir'
+    
     Dir.mktmpdir do |classes_dir|
 
       javac = "javac -target #{target} -source #{source} #{args.join(' ')}"
