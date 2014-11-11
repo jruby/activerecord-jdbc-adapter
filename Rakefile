@@ -105,6 +105,9 @@ rescue LoadError
   end
 end
 
+# Allow Dir.mktmpdir
+require 'tmpdir'
+
 # JRuby extension compilation :
 
 if defined? JRUBY_VERSION
