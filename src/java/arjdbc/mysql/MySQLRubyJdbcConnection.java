@@ -190,20 +190,20 @@ public class MySQLRubyJdbcConnection extends RubyJdbcConnection {
     }
 
     @Override
-    protected IRubyObject indexes(final ThreadContext context,
+    protected RubyArray indexes(final ThreadContext context,
         final String tableName, final String name, final String schemaName) {
-        return withConnection(context, new Callable<IRubyObject>() {
-            public IRubyObject call(final Connection connection) throws SQLException {
+        return withConnection(context, new Callable<RubyArray>() {
+            public RubyArray call(final Connection connection) throws SQLException {
                 final Ruby runtime = context.runtime;
                 final RubyModule indexDefinition = getIndexDefinition(runtime);
                 final String jdbcTableName = caseConvertIdentifierForJdbc(connection, tableName);
                 final String jdbcSchemaName = caseConvertIdentifierForJdbc(connection, schemaName);
-                final IRubyObject rubyTableName = RubyString.newUnicodeString(
-                    runtime, caseConvertIdentifierForJdbc(connection, tableName)
+                final RubyString rubyTableName = cachedString(
+                    context, caseConvertIdentifierForJdbc(connection, tableName)
                 );
 
                 StringBuilder query = new StringBuilder("SHOW KEYS FROM ");
-                if (jdbcSchemaName != null) {
+                if ( jdbcSchemaName != null ) {
                     query.append(jdbcSchemaName).append(".");
                 }
                 query.append(jdbcTableName);
@@ -245,9 +245,9 @@ public class MySQLRubyJdbcConnection extends RubyJdbcConnection {
                             final boolean nullLength = keySet.wasNull();
 
                             lastIndexDef.callMethod(context, "columns").callMethod(context,
-                                    "<<", RubyString.newUnicodeString(runtime, columnName));
+                                    "<<", cachedString(context, columnName));
                             lastIndexDef.callMethod(context, "lengths").callMethod(context,
-                                    "<<", nullLength ? runtime.getNil() : runtime.newFixnum(length));
+                                    "<<", nullLength ? context.nil : runtime.newFixnum(length));
                         }
                     }
 
@@ -261,11 +261,24 @@ public class MySQLRubyJdbcConnection extends RubyJdbcConnection {
         });
     }
 
+    // MySQL does never storesUpperCaseIdentifiers() :
+    // storesLowerCaseIdentifiers() depends on "lower_case_table_names" server variable
+
     @Override
-    protected String caseConvertIdentifierForRails(final Connection connection, final String value)
-        throws SQLException {
+    protected final String caseConvertIdentifierForRails(
+        final Connection connection, final String value) throws SQLException {
         if ( value == null ) return null;
-        return value; // MySQL does not storesUpperCaseIdentifiers() :
+        return value;
+    }
+
+    @Override
+    protected final String caseConvertIdentifierForJdbc(
+        final Connection connection, final String value) throws SQLException {
+        if ( value == null ) return null;
+        if ( connection.getMetaData().storesLowerCaseIdentifiers() ) {
+            return value.toLowerCase();
+        }
+        return value;
     }
 
     @Override
@@ -387,7 +400,7 @@ public class MySQLRubyJdbcConnection extends RubyJdbcConnection {
             Class<?> klass = runtime.getJavaSupport().loadJavaClass(name);
             Field field = klass.getDeclaredField("cancelTimer");
             field.setAccessible(true);
-            synchronized(MySQLRubyJdbcConnection.class) {
+            synchronized (MySQLRubyJdbcConnection.class) {
                 if ( cancelTimer == null ) cancelTimer = field;
             }
         }
