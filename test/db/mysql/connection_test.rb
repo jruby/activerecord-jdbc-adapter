@@ -49,12 +49,14 @@ class MySQLConnectionTest < Test::Unit::TestCase
     skip if mariadb_driver?
     run_without_connection do |orig_connection|
       ActiveRecord::Base.establish_connection(orig_connection.merge(:encoding => 'utf8'))
+      expected_configure_sql = 'SET @@SESSION.sql_auto_is_null = 0, @@SESSION.wait_timeout = 2147483'
+      expected_configure_sql << ", @@SESSION.sql_mode = 'STRICT_ALL_TABLES'" if ar_version('4.0')
       ActiveRecord::ConnectionAdapters::MysqlAdapter.any_instance.expects(:execute).with do |sql, name|
-        name && sql == "SET @@SESSION.sql_auto_is_null = 0, @@SESSION.wait_timeout = 2147483, @@SESSION.sql_mode = 'STRICT_ALL_TABLES'"
-      end
+        name.to_s.index('skip_logging') && sql == expected_configure_sql
+      end.once
       select_rows("SELECT @@SESSION.sql_auto_is_null")
     end
-  end if defined? JRUBY_VERSION # AR-JDBC specific behavior
+  end if defined? JRUBY_VERSION && ar_version('3.2') # AR-JDBC specific behavior
 
   protected
 
