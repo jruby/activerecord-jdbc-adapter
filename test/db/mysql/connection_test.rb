@@ -9,7 +9,13 @@ class MySQLConnectionTest < Test::Unit::TestCase
   def test_mysql_strict_mode_disabled
     run_without_connection do |orig_connection|
       ActiveRecord::Base.establish_connection(orig_connection.merge(:strict => false))
-      assert_equal [['']], select_rows("SELECT @@SESSION.sql_mode") unless mariadb_driver?
+      sql_mode = select_rows("SELECT @@SESSION.sql_mode")
+      version = ActiveRecord::Base.connection.send(:version)
+      if version[0] > 6 || ( version[0] == 5 && version[1] >= 6 )
+        assert ! sql_mode.flatten.include?("STRICT_ALL_TABLES")
+      else
+        assert_equal [['']], sql_mode unless mariadb_driver?
+      end
     end
   end
 
