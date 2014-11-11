@@ -3812,6 +3812,10 @@ public class RubyJdbcConnection extends RubyObject {
 
     private static final StringCache STRING_CACHE = new StringCache();
 
+    protected static RubyString cachedString(final ThreadContext context, final String str) {
+        return STRING_CACHE.get(context, str);
+    }
+
     protected static final class ColumnData {
 
         @Deprecated
@@ -3839,7 +3843,7 @@ public class RubyJdbcConnection extends RubyObject {
         // NOTE: meant temporary for others to update from accesing name
         ColumnData(ThreadContext context, String label, int type, int idx) {
             this(label, type, idx);
-            name = STRING_CACHE.get(context, label);
+            name = cachedString(context, label);
         }
 
         public String getName() {
@@ -3848,7 +3852,7 @@ public class RubyJdbcConnection extends RubyObject {
 
         RubyString getName(final ThreadContext context) {
             if ( name != null ) return name;
-            return name = STRING_CACHE.get(context, label);
+            return name = cachedString(context, label);
         }
 
         @Override
