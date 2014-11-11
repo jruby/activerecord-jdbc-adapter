@@ -1320,7 +1320,8 @@ module AdapterTestMethods
     adapter_class = config[:adapter_class] || ActiveRecord::ConnectionAdapters::JdbcAdapter
     logger = ActiveRecord::Base.logger
     pool = ActiveRecord::Base.connection_pool
-    connection = adapter_class.jdbc_connection_class(config[:adapter_spec]).new(config)
+    connection_class = adapter_class.jdbc_connection_class(config[:adapter_spec])
+    connection =  deprecation_silence { connection_class.new(config) }
     # ... e.g. ActiveRecord::ConnectionAdapters::MySQLJdbcConnection.new(config)
 
     if ar_version('3.2')
