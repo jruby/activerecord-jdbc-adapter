@@ -6,7 +6,7 @@ ArJdbc::ConnectionMethods.module_eval do
     return jndi_connection(config) if jndi_config?(config)
 
     driver = config[:driver] ||= 'com.mysql.jdbc.NonRegisteringDriver'
-    mysql_driver = driver[0, 10] == 'com.mysql.'
+    mysql_driver = driver.start_with?('com.mysql.')
     ArJdbc.load_driver(:MySQL) if mysql_driver # ::Jdbc::MySQL.load_driver
 
     config[:username] = 'root' unless config.key?(:username)
@@ -22,7 +22,7 @@ ArJdbc::ConnectionMethods.module_eval do
       config[:url] = url
     end
 
-    mariadb_driver = ! mysql_driver && driver[0, 12] == 'org.mariadb.' # org.mariadb.jdbc.Driver
+    mariadb_driver = ! mysql_driver && driver.start_with?('org.mariadb.')
 
     properties = ( config[:properties] ||= {} )
     if mysql_driver
