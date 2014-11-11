@@ -231,9 +231,25 @@ public class MySQLRubyJdbcConnection extends RubyJdbcConnection {
         finally { close(statement); }
     }
 
+    // MySQL does never storesUpperCaseIdentifiers() :
+    // storesLowerCaseIdentifiers() depends on "lower_case_table_names" server variable
+
     @Override
-    protected String caseConvertIdentifierForRails(Connection connection, String value) throws SQLException {
+    protected final String caseConvertIdentifierForRails(final Connection connection, final String value) {
         return value; // MySQL does not storesUpperCaseIdentifiers() :
+    }
+
+    private transient Boolean lowerCaseIdentifiers;
+
+    @Override
+    protected final String caseConvertIdentifierForJdbc(
+        final Connection connection, final String value) throws SQLException {
+        if ( value == null ) return null;
+        Boolean lowerCase = lowerCaseIdentifiers;
+        if (lowerCase == null) {
+            lowerCase = lowerCaseIdentifiers = connection.getMetaData().storesLowerCaseIdentifiers();
+        }
+        return lowerCase.booleanValue() ? value.toLowerCase() : value;
     }
 
     @Override
