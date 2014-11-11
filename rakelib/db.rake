@@ -5,9 +5,10 @@ namespace :db do
     require File.expand_path('../../test/shared_helper', __FILE__)
     fail "could not create test database: mysql executable not found" unless mysql = which('mysql')
     load 'test/db/mysql_config.rb' # rescue nil
+    enc = MYSQL_CONFIG[:encoding] || 'utf8' # 'utf8mb4'
     script = sql_script <<-SQL, 'mysql'
 DROP DATABASE IF EXISTS `#{MYSQL_CONFIG[:database]}`;
-CREATE DATABASE `#{MYSQL_CONFIG[:database]}` DEFAULT CHARACTER SET `utf8` COLLATE `utf8_general_ci`;
+CREATE DATABASE `#{MYSQL_CONFIG[:database]}` DEFAULT CHARACTER SET `#{enc}` COLLATE `#{enc}_general_ci`;
 GRANT ALL PRIVILEGES ON `#{MYSQL_CONFIG[:database]}`.* TO #{MYSQL_CONFIG[:username]}@localhost;
 GRANT ALL PRIVILEGES ON `test\_%`.* TO #{MYSQL_CONFIG[:username]}@localhost;
 SET PASSWORD FOR #{MYSQL_CONFIG[:username]}@localhost = PASSWORD('#{MYSQL_CONFIG[:password]}');
