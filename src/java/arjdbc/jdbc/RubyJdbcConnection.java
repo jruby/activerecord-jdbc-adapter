@@ -3802,11 +3802,7 @@ public class RubyJdbcConnection extends RubyObject {
         return new TableName(catalog, schema, name);
     }
 
-    /**
-     * @deprecated use {@link #extractTableName(Connection, String, String, String)}
-     */
-    @Deprecated
-    protected TableName extractTableName(
+    protected final TableName extractTableName(
             final Connection connection, final String schema,
             final String tableName) throws IllegalArgumentException, SQLException {
         return extractTableName(connection, null, schema, tableName);
