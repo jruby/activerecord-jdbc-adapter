@@ -191,6 +191,8 @@ class Test::Unit::TestCase
   end
   alias_method :silence_deprecations, :deprecation_silence
 
+  def main; TOPLEVEL_BINDING.eval('self') end
+
   protected
 
   def assert_queries(count, matching = nil)

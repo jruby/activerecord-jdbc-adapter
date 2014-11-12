@@ -15,17 +15,9 @@ module RakeTestSupport
     def startup
       super
       load 'rails_stub.rb'
-      if defined? ArJdbc
-        __file__ = File.expand_path('../../lib/arjdbc/tasks/databases.rake', __FILE__)
-        ArJdbc.disable_warn "double loading #{__file__} please delete lib/tasks/jdbc.rake if present!"
-      end
     end
 
     def shutdown
-      if defined? ArJdbc
-        __file__ = File.expand_path('../../lib/arjdbc/tasks/databases.rake', __FILE__)
-        ArJdbc.enable_warn "double loading #{__file__} please delete lib/tasks/jdbc.rake if present!"
-      end
       Object.send(:remove_const, :Rails)
       super
     end
@@ -33,6 +25,9 @@ module RakeTestSupport
   end
 
   def setup
+    __file__ = File.expand_path('../../lib/arjdbc/tasks/databases.rake', __FILE__)
+    main.stubs(:warn).with("double loading #{__file__} please delete lib/tasks/jdbc.rake if present!")
+
     @_prev_application = Rake.application
     @_prev_configurations = ActiveRecord::Base.configurations
     @_prev_connection_config = current_connection_config
