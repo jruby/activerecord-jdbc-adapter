@@ -17,9 +17,16 @@ class JdbcConnectionTest < Test::Unit::TestCase
     super
   end
 
-  test 'connection available through jdbc adapter' do
-    ActiveRecord::Base.connection.execute("show databases") # MySQL
-    assert ActiveRecord::Base.connected?
+  test 'reports connected?' do
+    #assert_false ActiveRecord::Base.connected?
+    ActiveRecord::Base.connection.execute("SELECT 42") # MySQL
+    assert_true ActiveRecord::Base.connected?
+  end
+
+  test 'reports connected? (nothing executed)' do
+    #assert_false ActiveRecord::Base.connected?
+    ActiveRecord::Base.connection
+    assert_true ActiveRecord::Base.connected?
   end
 
   test 'configures driver/connection properties' do
@@ -150,6 +157,7 @@ class JdbcConnectionTest < Test::Unit::TestCase
         assert_raise ActiveRecord::ConnectionNotEstablished do
           ActiveRecord::Base.connection
         end
+        assert ! ActiveRecord::Base.connected?
       end
     end
 
@@ -168,10 +176,9 @@ class JdbcConnectionTest < Test::Unit::TestCase
         driver_instance = ActiveRecord::ConnectionAdapters::JdbcDriver.new('org.apache.derby.jdbc.EmbeddedDriver')
         ActiveRecord::Base.establish_connection :adapter => 'jdbc',
           :url => 'jdbc:derby:memory:TestDB;create=true', :driver_instance => driver_instance
-        assert_nothing_raised do
-          ActiveRecord::Base.connection
-        end
-
+        #assert_nothing_raised do
+        ActiveRecord::Base.connection
+        #end
         assert ActiveRecord::Base.connected?
         assert_nothing_raised do
           connection = ActiveRecord::Base.connection
@@ -226,5 +233,32 @@ class JdbcConnectionTest < Test::Unit::TestCase
     adapter = ActiveRecord::ConnectionAdapters::JdbcAdapter.new(connection, logger)
     assert_equal connection, adapter.raw_connection
   end if defined? JRUBY_VERSION
+
+  context "jdbc-connection" do
+
+    setup { ActiveRecord::Base.establish_connection JDBC_CONFIG }
+
+    test "connection impl is eager" do
+      assert jdbc_connection.to_java.getConnectionImpl
+      jdbc_connection.reconnect!
+      assert jdbc_connection.to_java.getConnectionImpl
+
+      assert_true jdbc_connection.active?
+
+      jdbc_connection.disconnect!
+      assert_nil jdbc_connection.to_java.getConnectionImpl
+
+      assert_false jdbc_connection.active?
+    end
+
+    test "connection impl is eager (active)" do
+      assert jdbc_connection.active?
+    end
+
+    private
+
+    def jdbc_connection; ActiveRecord::Base.connection.raw_connection end
+
+  end
 
 end

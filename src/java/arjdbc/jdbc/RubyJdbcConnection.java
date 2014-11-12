@@ -113,6 +113,7 @@ public class RubyJdbcConnection extends RubyObject {
     private ConnectionFactory connectionFactory;
     private IRubyObject config;
     private IRubyObject adapter; // the AbstractAdapter instance we belong to
+    private volatile boolean connected = true;
 
     protected RubyJdbcConnection(Ruby runtime, RubyClass metaClass) {
         super(runtime, metaClass);
@@ -372,7 +373,7 @@ public class RubyJdbcConnection extends RubyObject {
     @JRubyMethod(name = "create_savepoint", optional = 1)
     public IRubyObject create_savepoint(final ThreadContext context, final IRubyObject[] args) {
         IRubyObject name = args.length > 0 ? args[0] : null;
-        final Connection connection = getConnection(true);
+        final Connection connection = getConnection();
         try {
             connection.setAutoCommit(false);
 
@@ -558,22 +559,44 @@ public class RubyJdbcConnection extends RubyObject {
         }
     }
 
+    private boolean lazyConnection = false;
+
     private IRubyObject initConnection(final ThreadContext context) throws SQLException {
-        final Connection connection;
-        setConnection( connection = newConnection() );
         final IRubyObject adapter = getAdapter(); // self.adapter
         if ( adapter == null || adapter.isNil() ) {
             warn(context, "adapter not set, please pass adapter on JdbcConnection#initialize(config, adapter)");
         }
-        else if ( adapter.respondsTo("init_connection") ) {
+
+        if ( adapter != null && adapter.respondsTo("init_connection") ) { // deprecated
+            final Connection connection;
+            setConnection( connection = newConnection() );
             return adapter.callMethod(context, "init_connection", convertJavaToRuby(connection));
         }
+        else {
+            if ( ! lazyConnection ) setConnection( newConnection() );
+        }
+
         return context.nil;
+    }
+
+    private final boolean configureConnection = true;
+
+    private void configureConnection() {
+        if ( ! configureConnection ) return;
+
+        final IRubyObject adapter = getAdapter(); // self.adapter
+        //if ( adapter == null || adapter.isNil() ) {
+        //    warn(context, "adapter not set, please pass adapter on JdbcConnection#initialize(config, adapter)");
+        //}
+        if ( adapter != null && adapter.respondsTo("configure_connection") ) {
+            final ThreadContext context = getRuntime().getCurrentContext();
+            adapter.callMethod(context, "configure_connection");
+        }
     }
 
     @JRubyMethod(name = "jdbc_connection", alias = "connection")
     public IRubyObject connection(final ThreadContext context) {
-        return convertJavaToRuby( connectionImpl(context) );
+        return convertJavaToRuby( getConnection() );
     }
 
     @JRubyMethod(name = "jdbc_connection", alias = "connection", required = 1)
@@ -581,7 +604,7 @@ public class RubyJdbcConnection extends RubyObject {
         if ( unwrap.isNil() || unwrap == context.runtime.getFalse() ) {
             return connection(context);
         }
-        Connection connection = connectionImpl(context);
+        final Connection connection = getConnection();
         try {
             if ( connection.isWrapperFor(Connection.class) ) {
                 return convertJavaToRuby( connection.unwrap(Connection.class) );
@@ -598,23 +621,9 @@ public class RubyJdbcConnection extends RubyObject {
         return convertJavaToRuby( connection );
     }
 
-    private Connection connectionImpl(final ThreadContext context) {
-        Connection connection = getConnection(false);
-        if ( connection == null ) {
-            synchronized (this) {
-                connection = getConnection(false);
-                if ( connection == null ) {
-                    reconnect(context);
-                    connection = getConnection(false);
-                }
-            }
-        }
-        return connection;
-    }
-
     @JRubyMethod(name = "active?")
     public RubyBoolean active_p(final ThreadContext context) {
-        final Connection connection = getConnection(false);
+        final Connection connection = getConnectionImpl();
         if ( connection != null ) {
             return context.runtime.newBoolean( isConnectionValid(context, connection) );
         }
@@ -623,26 +632,37 @@ public class RubyJdbcConnection extends RubyObject {
 
     @JRubyMethod(name = "disconnect!")
     public synchronized IRubyObject disconnect(final ThreadContext context) {
-        setConnection(null); return context.nil;
+        setConnection(null); connected = false;
+        return context.nil;
     }
 
     @JRubyMethod(name = "reconnect!")
     public synchronized IRubyObject reconnect(final ThreadContext context) {
         try {
-            setConnection( newConnection() );
-            final IRubyObject adapter = getAdapter(); // self.adapter
-            //if ( adapter.isNil() ) {
-                // NOTE: we warn on init_connection - should be enough
-            //}
-            if ( adapter.respondsTo("configure_connection") ) {
-                adapter.callMethod(context, "configure_connection");
-            }
-            return context.nil;
+            connectImpl( ! lazyConnection ); connected = true;
         }
         catch (SQLException e) {
-            return handleException(context, e);
+            debugStackTrace(context, e);
+            handleException(context, e);
         }
+        return context.nil;
     }
+
+    private void connectImpl(final boolean forceConnection)
+        throws SQLException {
+        setConnection( forceConnection ? newConnection() : null );
+        if ( forceConnection ) configureConnection();
+    }
+
+//    private void doConnect(final ThreadContext context, final boolean forceConnection) {
+//        try {
+//            setConnection( forceConnection ? newConnection() : null );
+//            configureConnection(context);
+//        }
+//        catch (SQLException e) {
+//            handleException(context, e);
+//        }
+//    }
 
     @JRubyMethod(name = "database_name")
     public IRubyObject database_name(final ThreadContext context) throws SQLException {
@@ -2974,21 +2994,56 @@ public class RubyJdbcConnection extends RubyObject {
         statement.setObject(index, value);
     }
 
+    /**
+     * Always returns a connection (might cause a reconnect if there's none).
+     * @return connection
+     * @throws ActiveRecord::ConnectionNotEstablished, ActiveRecord::JDBCError
+     */
     protected final Connection getConnection() {
         return getConnection(false);
     }
 
-    protected Connection getConnection(boolean error) {
-        final Connection connection = (Connection) dataGetStruct(); // synchronized
-        if ( connection == null && error ) {
-            final RubyClass errorClass = getConnectionNotEstablished( getRuntime() );
-            throw new RaiseException(getRuntime(), errorClass, "no connection available", false);
+    /**
+     * @see #getConnection()
+     * @param required set to true if a connection is required to exists (e.g. on commit)
+     * @return connection
+     * @throws ActiveRecord::ConnectionNotEstablished if disconnected
+     * @throws ActiveRecord::JDBCError if not connected and connecting fails with a SQL exception
+     */
+    protected final Connection getConnection(final boolean required) throws RaiseException {
+        Connection connection = getConnectionImpl();
+        if ( connection == null ) {
+            if ( required || ! connected ) {
+                final Ruby runtime = getRuntime();
+                final RubyClass errorClass = getConnectionNotEstablished( runtime );
+                throw new RaiseException(runtime, errorClass, "no connection available", false);
+            }
+            synchronized (this) {
+                connection = getConnectionImpl();
+                if ( connection == null ) {
+                    try {
+                        connectImpl( true );
+                    }
+                    catch (SQLException e) {
+                        throw wrapException(getRuntime().getCurrentContext(), e);
+                    }
+                    connection = getConnectionImpl();
+                }
+            }
         }
         return connection;
     }
 
+    /**
+     * @note might return null if connection is lazy
+     * @return current JDBC connection
+     */
+    protected final Connection getConnectionImpl() {
+        return (Connection) dataGetStruct(); // synchronized
+    }
+
     private void setConnection(final Connection connection) {
-        close( getConnection(false) ); // close previously open connection if there is one
+        close( getConnectionImpl() ); // close previously open connection if there is one
         //final IRubyObject rubyConnectionObject =
         //    connection != null ? convertJavaToRuby(connection) : getRuntime().getNil();
         //setInstanceVariable( "@connection", rubyConnectionObject );
@@ -3041,7 +3096,8 @@ public class RubyJdbcConnection extends RubyObject {
     @SuppressWarnings("unchecked")
     public IRubyObject inspect() {
         final ArrayList<Variable<String>> varList = new ArrayList<Variable<String>>(2);
-        varList.add(new VariableEntry<String>( "connection", getConnection() == null ? "null" : getConnection().toString() ));
+        final Connection connection = getConnectionImpl();
+        varList.add(new VariableEntry<String>( "connection", connection == null ? "null" : connection.toString() ));
         //varList.add(new VariableEntry<String>( "connectionFactory", connectionFactory == null ? "null" : connectionFactory.toString() ));
 
         return ObjectSupport.inspect(this, (List) varList);
@@ -3408,15 +3464,18 @@ public class RubyJdbcConnection extends RubyObject {
         }
     }
 
-    private <T> T withConnection(final ThreadContext context, final boolean handleException, final Callable<T> block)
-        throws RaiseException, SQLException {
+    private <T> T withConnection(final ThreadContext context, final boolean handleException,
+        final Callable<T> block) throws RaiseException, SQLException {
 
         Throwable exception = null; int retry = 0; int i = 0;
 
         do {
-            if ( retry > 0 ) reconnect(context); // we're retrying running block
+            if ( retry > 0 ) { // we're retrying running the block
+                debugMessage(context, "trying to re-connect using a new connection ...");
+                connectImpl(true); // force a new connection to be created
+            }
 
-            final Connection connection = getConnection(true);
+            final Connection connection = getConnection(); // fails if not connected
             boolean autoCommit = true; // retry in-case getAutoCommit throws
             try {
                 autoCommit = connection.getAutoCommit();

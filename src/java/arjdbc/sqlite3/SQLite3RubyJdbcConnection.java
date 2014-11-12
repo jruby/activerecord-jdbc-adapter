@@ -225,7 +225,7 @@ public class SQLite3RubyJdbcConnection extends RubyJdbcConnection {
         if ( name == null || name.isNil() ) {
             throw new IllegalArgumentException("create_savepoint (without name) not implemented!");
         }
-        final Connection connection = getConnection(true);
+        final Connection connection = getConnection();
         try {
             connection.setAutoCommit(false);
             // NOTE: JDBC driver does not support setSavepoint(String) :
