@@ -1161,7 +1161,7 @@ public class RubyJdbcConnection extends RubyObject {
     protected static final int PRIMARY_KEYS_COLUMN_NAME = 4;
 
     @Deprecated // NOTE: this should go private
-    protected List<RubyString> primaryKeys(final ThreadContext context, final String tableName) {
+    protected final List<RubyString> primaryKeys(final ThreadContext context, final String tableName) {
         return withConnection(context, new Callable<List<RubyString>>() {
             public List<RubyString> call(final Connection connection) throws SQLException {
                 final String _tableName = caseConvertIdentifierForJdbc(connection, tableName);
@@ -1880,21 +1880,6 @@ public class RubyJdbcConnection extends RubyObject {
     }
 
     /**
-     * @deprecated this method is no longer used, instead consider overriding
-     * {@link #mapToResult(ThreadContext, Ruby, DatabaseMetaData, ResultSet, RubyJdbcConnection.ColumnData[])}
-     */
-    @Deprecated
-    protected void populateFromResultSet(
-            final ThreadContext context, final Ruby runtime,
-            final List<IRubyObject> results, final ResultSet resultSet,
-            final ColumnData[] columns) throws SQLException {
-        final ResultHandler resultHandler = ResultHandler.getInstance(runtime);
-        while ( resultSet.next() ) {
-            results.add( resultHandler.mapRawRow(context, runtime, columns, resultSet, this) );
-        }
-    }
-
-    /**
      * Maps a query result into a <code>ActiveRecord</code> result.
      * @param context
      * @param runtime
@@ -1916,13 +1901,6 @@ public class RubyJdbcConnection extends RubyObject {
         }
 
         return resultHandler.newResult(context, runtime, columns, resultRows);
-    }
-
-    @Deprecated
-    protected IRubyObject jdbcToRuby(final Ruby runtime,
-        final int column, final int type, final ResultSet resultSet)
-        throws SQLException {
-        return jdbcToRuby(runtime.getCurrentContext(), runtime, column, type, resultSet);
     }
 
     protected IRubyObject jdbcToRuby(
@@ -2220,23 +2198,6 @@ public class RubyJdbcConnection extends RubyObject {
             return runtime.newString(bytes);
         }
         finally { if ( stream != null ) stream.close(); }
-    }
-
-    @Deprecated
-    protected IRubyObject streamToRuby(
-        final Ruby runtime, final ResultSet resultSet, final InputStream stream)
-        throws SQLException, IOException {
-        if ( stream == null || resultSet.wasNull() ) return runtime.getNil();
-
-        final int bufSize = streamBufferSize;
-        final ByteList string = new ByteList(bufSize);
-
-        final byte[] buf = new byte[bufSize];
-        for (int len = stream.read(buf); len != -1; len = stream.read(buf)) {
-            string.append(buf, 0, len);
-        }
-
-        return runtime.newString(string);
     }
 
     protected IRubyObject readerToRuby(final ThreadContext context,
@@ -3157,25 +3118,6 @@ public class RubyJdbcConnection extends RubyObject {
         return tables;
     }
 
-    /**
-     * NOTE: since 1.3.0 only present for binary compatibility (with extensions).
-     *
-     * @depreacated no longer used - replaced with
-     * {@link #matchTables(Ruby, Connection, String, String, String, String[], boolean)}
-     * please update your sub-class esp. if you're overriding this method !
-     */
-    @Deprecated
-    protected SQLBlock tableLookupBlock(final Ruby runtime,
-            final String catalog, final String schemaPattern,
-            final String tablePattern, final String[] types) {
-        return new SQLBlock() {
-            @Override
-            public IRubyObject call(final Connection connection) throws SQLException {
-                return matchTables(runtime, connection, catalog, schemaPattern, tablePattern, types, false);
-            }
-        };
-    }
-
     protected static final int COLUMN_NAME = 4;
     protected static final int DATA_TYPE = 5;
     protected static final int TYPE_NAME = 6;
@@ -3385,9 +3327,14 @@ public class RubyJdbcConnection extends RubyObject {
 
         final ColumnData[] columns = extractColumns(context, connection, resultSet, downCase);
 
-        final RubyArray results = context.runtime.newArray();
+        final Ruby runtime = context.runtime;
+        final RubyArray results = RubyArray.newArray(runtime);
         // [ { 'col1': 1, 'col2': 2 }, { 'col1': 3, 'col2': 4 } ]
-        populateFromResultSet(context, context.runtime, (List<IRubyObject>) results, resultSet, columns);
+        final ResultHandler resultHandler = ResultHandler.getInstance(runtime);
+        while ( resultSet.next() ) {
+            results.append( resultHandler.mapRawRow(context, runtime, columns, resultSet, this) );
+        }
+
         return results;
     }
 
@@ -3514,15 +3461,6 @@ public class RubyJdbcConnection extends RubyObject {
         }
         debugStackTrace(context, exception);
         throw wrapException(context, exception);
-    }
-
-    /**
-     * @deprecated use {@link #wrapException(ThreadContext, Throwable)} instead
-     * for overriding how exceptions are handled use {@link #handleException(ThreadContext, Throwable)}
-     */
-    @Deprecated
-    protected RuntimeException wrap(final ThreadContext context, final Throwable exception) {
-        return wrapException(context, exception);
     }
 
     protected RaiseException wrapException(final ThreadContext context, final Throwable exception) {
