@@ -4,8 +4,11 @@ module ActiveRecord
 
     def initialize(message = nil, cause = $!)
       super( ( message.nil? && cause ) ? cause.message : message )
-      @cause = cause
-      @jdbc_exception = cause if cause.is_a? Java::JavaSql::SQLException
+      if cause.is_a? Java::JavaSql::SQLException
+        @jdbc_exception, @cause = cause, nil
+      else
+        @cause, @jdbc_exception = cause, nil
+      end
     end
 
     # The DB (or JDBC driver implementation specific) vendor error code.
@@ -13,7 +16,7 @@ module ActiveRecord
     # @return [Integer, NilClass]
     def error_code
       if ( @error_code ||= nil ).nil?
-        jdbc_exception ? jdbc_exception.getErrorCode : nil
+        @error_code = jdbc_exception ? jdbc_exception.getErrorCode : nil
       else
         @error_code
       end
@@ -42,7 +45,7 @@ module ActiveRecord
     alias_method :sql_exception=, :set_jdbc_exception
 
     # Likely (but not necessarily) the same as {#jdbc_exception}.
-    def cause; @cause || jdbc_exception end
+    def cause; ( @cause ||= nil ) || jdbc_exception end
 
     # @deprecated Use {#cause} instead.
     def original_exception; cause end

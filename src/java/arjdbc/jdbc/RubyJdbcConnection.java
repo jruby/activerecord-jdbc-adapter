@@ -3557,9 +3557,8 @@ public class RubyJdbcConnection extends RubyObject {
                 exception.getMessage() : exception.toString(); // useful to easily see type on Ruby side
         }
         final RaiseException raise = wrapException(context, getJDBCError(runtime), exception, message);
-        final RubyException error = raise.getException();
-        error.getMetaClass().finvoke(context, error, "errno=", runtime.newFixnum( exception.getErrorCode() ));
-        error.getMetaClass().finvoke(context, error, "sql_exception=", JavaEmbedUtils.javaToRuby(runtime, exception));
+        final RubyException error = raise.getException(); // assuming JDBCError internals :
+        error.setInstanceVariable("@jdbc_exception", JavaEmbedUtils.javaToRuby(runtime, exception));
         return raise;
     }
 

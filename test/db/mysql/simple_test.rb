@@ -387,10 +387,10 @@ class MySQLSimpleTest < Test::Unit::TestCase
 
   def test_jdbc_error
     begin
-      connection.exec_query('SELECT * FROM bogus')
+      disable_logger { connection.exec_query('SELECT * FROM bogus') }
     rescue ActiveRecord::ActiveRecordError => e
       error = extract_jdbc_error(e)
-      # #<ActiveRecord::JDBCError: com.mysql.jdbc.exceptions.jdbc4.MySQLSyntaxErrorException: Table 'arjdbc_test.bogus' doesn't exist>
+
       assert error.cause
       assert_equal error.cause, error.jdbc_exception
       assert error.jdbc_exception.is_a?(Java::JavaSql::SQLException)
@@ -398,6 +398,14 @@ class MySQLSimpleTest < Test::Unit::TestCase
       assert error.error_code
       assert error.error_code.is_a?(Fixnum)
       assert error.sql_state
+
+      # #<ActiveRecord::JDBCError: com.mysql.jdbc.exceptions.jdbc4.MySQLSyntaxErrorException: Table 'arjdbc_test.bogus' doesn't exist>
+      unless mariadb_driver?
+        assert_match /com.mysql.jdbc.exceptions.jdbc4.MySQLSyntaxErrorException: Table '.*?bogus' doesn't exist/, error.message
+      else
+        assert_match /java.sql.SQLSyntaxErrorException: Table '.*?bogus' doesn't exist/, error.message
+      end
+      assert_match /ActiveRecord::JDBCError: .*?Exception: /, error.inspect
 
       # sample error.cause.backtrace :
       #
