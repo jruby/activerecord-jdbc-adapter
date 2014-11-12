@@ -3298,8 +3298,8 @@ public class RubyJdbcConnection extends RubyObject {
 
         if ( ! statement.getMoreResults() ) return result;
 
-        final List<IRubyObject> results = new ArrayList<IRubyObject>();
-        results.add(result);
+        final RubyArray results = RubyArray.newArray(runtime);
+        results.append(result);
 
         do {
             resultSet = statement.getResultSet();
@@ -3308,11 +3308,11 @@ public class RubyJdbcConnection extends RubyObject {
             }
             finally { close(resultSet); }
 
-            results.add(result);
+            results.append(result);
         }
         while ( statement.getMoreResults() );
 
-        return runtime.newArray(results);
+        return results;
     }
 
     /**
