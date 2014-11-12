@@ -218,6 +218,22 @@ class PostgreSQLSimpleTest < Test::Unit::TestCase
     assert ActiveRecord::ConnectionAdapters::PostgreSQLColumn == ArJdbc::PostgreSQL::Column
   end if defined? JRUBY_VERSION
 
+  def test_jdbc_error
+    begin
+      connection.exec_query('SELECT * FROM bogus')
+    rescue ActiveRecord::ActiveRecordError => e
+      error = extract_jdbc_error(e)
+      # #<ActiveRecord::JDBCError: org.postgresql.util.PSQLException: ERROR: relation "bogus" does not exist \n Position: 15>
+      assert error.cause
+      assert_equal error.cause, error.jdbc_exception
+      assert error.jdbc_exception.is_a?(Java::JavaSql::SQLException)
+
+      assert error.error_code
+      assert error.error_code.is_a?(Fixnum)
+      assert error.sql_state
+    end
+  end if defined? JRUBY_VERSION
+
   private
 
   def supports_standard_conforming_strings?(connection = self.connection)
