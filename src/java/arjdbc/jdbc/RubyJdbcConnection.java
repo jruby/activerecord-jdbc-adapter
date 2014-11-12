@@ -1250,20 +1250,19 @@ public class RubyJdbcConnection extends RubyObject {
 
     protected RubyBoolean tableExists(final ThreadContext context,
         final String defaultSchema, final String tableName) {
-        final Ruby runtime = context.runtime;
         return withConnection(context, new Callable<RubyBoolean>() {
             public RubyBoolean call(final Connection connection) throws SQLException {
                 final TableName components = extractTableName(connection, defaultSchema, tableName);
-                return runtime.newBoolean( tableExists(runtime, connection, components) );
+                return context.runtime.newBoolean( tableExists(context, connection, components) );
             }
         });
     }
 
     @JRubyMethod(name = {"columns", "columns_internal"}, required = 1, optional = 2)
-    public IRubyObject columns_internal(final ThreadContext context, final IRubyObject[] args)
+    public RubyArray columns_internal(final ThreadContext context, final IRubyObject[] args)
         throws SQLException {
-        return withConnection(context, new Callable<IRubyObject>() {
-            public IRubyObject call(final Connection connection) throws SQLException {
+        return withConnection(context, new Callable<RubyArray>() {
+            public RubyArray call(final Connection connection) throws SQLException {
                 ResultSet columns = null, primaryKeys = null;
                 try {
                     final String tableName = args[0].toString();
@@ -1279,7 +1278,7 @@ public class RubyJdbcConnection extends RubyObject {
                         components = extractTableName(connection, catalog, defaultSchema, tableName);
                     }
 
-                    if ( ! tableExists(context.runtime, connection, components) ) {
+                    if ( ! tableExists(context, connection, components) ) {
                         throw new SQLException("table: " + tableName + " does not exist");
                     }
 
@@ -3028,10 +3027,10 @@ public class RubyJdbcConnection extends RubyObject {
         finally { close(statement); }
     }
 
-    private boolean tableExists(final Ruby runtime,
+    private boolean tableExists(final ThreadContext context,
         final Connection connection, final TableName tableName) throws SQLException {
         final IRubyObject matchedTables =
-            matchTables(runtime, connection, tableName.catalog, tableName.schema, tableName.name, getTableTypes(), true);
+            matchTables(context.runtime, connection, tableName.catalog, tableName.schema, tableName.name, getTableTypes(), true);
         // NOTE: allow implementers to ignore checkExistsOnly paramater - empty array means does not exists
         return matchedTables != null && ! matchedTables.isNil() &&
             ( ! (matchedTables instanceof RubyArray) || ! ((RubyArray) matchedTables).isEmpty() );
@@ -3103,17 +3102,34 @@ public class RubyJdbcConnection extends RubyObject {
      * @return List<RubyString>
      * @throws SQLException
      */
-    // NOTE: change to accept a connection instead of meta-data
+    @Deprecated
     protected RubyArray mapTables(final Ruby runtime, final DatabaseMetaData metaData,
             final String catalog, final String schemaPattern, final String tablePattern,
             final ResultSet tablesSet) throws SQLException {
-        final RubyArray tables = runtime.newArray();
+        final ThreadContext context = runtime.getCurrentContext();
+        return mapTables(context, metaData, catalog, schemaPattern, tablePattern, tablesSet);
+    }
+
+    private RubyArray mapTables(final ThreadContext context, final DatabaseMetaData metaData,
+            final String catalog, final String schemaPattern, final String tablePattern,
+            final ResultSet tablesSet) throws SQLException {
+        final RubyArray tables = RubyArray.newArray(context.runtime);
         while ( tablesSet.next() ) {
             String name = tablesSet.getString(TABLES_TABLE_NAME);
-
             name = caseConvertIdentifierForRails(metaData, name);
+            tables.add( cachedString(context, name) );
+        }
+        return tables;
+    }
 
-            tables.add(RubyString.newUnicodeString(runtime, name));
+    protected RubyArray mapTables(final ThreadContext context, final Connection connection,
+            final String catalog, final String schemaPattern, final String tablePattern,
+            final ResultSet tablesSet) throws SQLException {
+        final RubyArray tables = RubyArray.newArray(context.runtime);
+        while ( tablesSet.next() ) {
+            String name = tablesSet.getString(TABLES_TABLE_NAME);
+            name = caseConvertIdentifierForRails(connection, name);
+            tables.add( cachedString(context, name) );
         }
         return tables;
     }
@@ -3174,14 +3190,14 @@ public class RubyJdbcConnection extends RubyObject {
             primaryKeyNames.add( primaryKeys.getString(COLUMN_NAME) );
         }
 
-        final RubyArray columns = runtime.newArray();
+        final RubyArray columns = RubyArray.newArray(runtime);
         final IRubyObject config = getConfig();
         while ( results.next() ) {
             final String colName = results.getString(COLUMN_NAME);
             IRubyObject column = jdbcColumn.callMethod(context, "new",
                 new IRubyObject[] {
                     config,
-                    RubyString.newUnicodeString( runtime, caseConvertIdentifierForRails(metaData, colName) ),
+                    cachedString( context, caseConvertIdentifierForRails(metaData, colName) ),
                     defaultValueFromResultSet( runtime, results ),
                     RubyString.newUnicodeString( runtime, typeFromResultSet(results) ),
                     runtime.newBoolean( ! results.getString(IS_NULLABLE).trim().equals("NO") )
