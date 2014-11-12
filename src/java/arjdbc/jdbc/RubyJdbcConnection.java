@@ -3579,13 +3579,10 @@ public class RubyJdbcConnection extends RubyObject {
         String name = tableName;
 
         if ( nameParts.length == 2 ) {
-            schema = nameParts[0];
-            name = nameParts[1];
+            schema = nameParts[0]; name = nameParts[1];
         }
         else if ( nameParts.length == 3 ) {
-            catalog = nameParts[0];
-            schema = nameParts[1];
-            name = nameParts[2];
+            catalog = nameParts[0]; schema = nameParts[1]; name = nameParts[2];
         }
 
         if ( schema != null ) {
@@ -3599,6 +3596,12 @@ public class RubyJdbcConnection extends RubyObject {
         if ( catalog == null ) catalog = connection.getCatalog();
 
         return new TableName(catalog, schema, name);
+    }
+
+    protected final TableName extractTableName(
+            final Connection connection, final String schema,
+            final String tableName) throws IllegalArgumentException, SQLException {
+        return extractTableName(connection, null, schema, tableName);
     }
 
     protected IRubyObject valueForDatabase(final ThreadContext context, final IRubyObject attribute) {
