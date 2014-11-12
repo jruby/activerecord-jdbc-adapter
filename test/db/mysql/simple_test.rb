@@ -389,7 +389,7 @@ class MySQLSimpleTest < Test::Unit::TestCase
     begin
       disable_logger { connection.exec_query('SELECT * FROM bogus') }
     rescue ActiveRecord::ActiveRecordError => e
-      error = extract_jdbc_error(e)
+      error = unwrap_jdbc_error(e)
 
       assert error.cause
       assert_equal error.cause, error.jdbc_exception
@@ -431,7 +431,7 @@ class MySQLSimpleTest < Test::Unit::TestCase
       #  arjdbc.jdbc.RubyJdbcConnection.execute_query(RubyJdbcConnection.java:1015)
       #  arjdbc.jdbc.RubyJdbcConnection$INVOKER$i$execute_query.call(RubyJdbcConnection$INVOKER$i$execute_query.gen)
     end
-  end if defined? JRUBY_VERSION
+  end if ar_version('3.0') && defined? JRUBY_VERSION
 
   protected
 

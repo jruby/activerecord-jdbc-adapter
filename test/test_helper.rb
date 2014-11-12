@@ -337,7 +337,7 @@ class Test::Unit::TestCase
     actual
   end
 
-  def extract_jdbc_error(e)
+  def unwrap_jdbc_error(e)
     e.is_a?(ActiveRecord::JDBCError) ? e : e.original_exception # StatementInvalid
   end
 

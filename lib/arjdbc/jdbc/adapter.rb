@@ -657,8 +657,29 @@ module ActiveRecord
           sql = "#{sql} #{binds.inspect}"
         end
         super(sql, name || 'SQL') # `log(sql, name)` on AR <= 3.0
-      end if ActiveRecord::VERSION::MAJOR < 3 ||
-        ( ActiveRecord::VERSION::MAJOR == 3 && ActiveRecord::VERSION::MINOR < 1 )
+      end if ::ActiveRecord::VERSION::MAJOR < 3 ||
+        ( ::ActiveRecord::VERSION::MAJOR == 3 && ::ActiveRecord::VERSION::MINOR < 1 )
+
+      if ::ActiveRecord::VERSION::MAJOR > 3
+        # @private
+        WrappingStatementInvalid = ::ActiveRecord::StatementInvalid
+      elsif ::ActiveRecord::VERSION::MAJOR > 2
+        # @private AR 3.x : WrappedDatabaseException < StatementInvalid
+        WrappingStatementInvalid = ::ActiveRecord::WrappedDatabaseException
+      else # 2.3
+        # does not have a translate_exceptiob but does this in log :
+        #   raise ActiveRecord::StatementInvalid, message
+        #
+        #::ActiveRecord::StatementInvalid.class_eval do
+        #  attr_reader :original_exception
+        #  def initialize(message, original_exception = nil)
+        #    super(message)
+        #    @original_exception = original_exception
+        #  end
+        #end
+        # @private
+        #WrappingStatementInvalid = ::ActiveRecord::StatementInvalid
+      end
 
       def translate_exception(e, message)
         # we shall not translate native "Java" exceptions as they might
@@ -669,7 +690,7 @@ module ActiveRecord
         case e
         when SystemExit, SignalException, NoMemoryError then e
         # NOTE: wraps AR::JDBCError into AR::StatementInvalid, desired ?!
-        else super
+        else WrappingStatementInvalid.new(message, e)
         end
       end
 

@@ -222,7 +222,7 @@ class PostgreSQLSimpleTest < Test::Unit::TestCase
     begin
       disable_logger { connection.exec_query('SELECT * FROM bogus') }
     rescue ActiveRecord::ActiveRecordError => e
-      error = extract_jdbc_error(e)
+      error = unwrap_jdbc_error(e)
 
       assert error.cause
       assert_equal error.cause, error.jdbc_exception
@@ -237,9 +237,9 @@ class PostgreSQLSimpleTest < Test::Unit::TestCase
         assert_match /org.postgresql.util.PSQLException: ERROR: relation "bogus" does not exist/, error.message
       end
       assert_match /ActiveRecord::JDBCError: .*?Exception: /, error.inspect
-      
+
     end
-  end if defined? JRUBY_VERSION
+  end if ar_version('3.0') && defined? JRUBY_VERSION
 
   private
 
