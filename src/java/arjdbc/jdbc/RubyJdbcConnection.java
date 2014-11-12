@@ -547,6 +547,7 @@ public class RubyJdbcConnection extends RubyObject {
      * @param context
      * @return connection
      */
+    @Deprecated
     @JRubyMethod(name = "init_connection")
     public synchronized IRubyObject init_connection(final ThreadContext context) {
         try {
@@ -1136,16 +1137,18 @@ public class RubyJdbcConnection extends RubyObject {
     }
 
     @JRubyMethod(name = "supported_data_types")
-    public IRubyObject supported_data_types(final ThreadContext context) throws SQLException {
-        final Connection connection = getConnection(true);
-        final ResultSet typeDesc = connection.getMetaData().getTypeInfo();
-        final IRubyObject types;
-        try {
-            types = mapToRawResult(context, connection, typeDesc, true);
-        }
-        finally { close(typeDesc); }
-
-        return types;
+    public RubyArray supported_data_types(final ThreadContext context) throws SQLException {
+        return withConnection(context, new Callable<RubyArray>() {
+            public RubyArray call(final Connection connection) throws SQLException {
+                final ResultSet typeDesc = connection.getMetaData().getTypeInfo();
+                final RubyArray types;
+                try {
+                    types = mapToRawResult(context, connection, typeDesc, true);
+                }
+                finally { close(typeDesc); }
+                return types;
+            }
+        });
     }
 
     @JRubyMethod(name = "primary_keys", required = 1)
@@ -1264,7 +1267,7 @@ public class RubyJdbcConnection extends RubyObject {
                 ResultSet columns = null, primaryKeys = null;
                 try {
                     final String tableName = args[0].toString();
-                    // optionals (NOTE: catalog argumnet was never used before 1.3.0) :
+                    // optionals (NOTE: catalog argument was never used before 1.3.0) :
                     final String catalog = args.length > 1 ? toStringOrNull(args[1]) : null;
                     final String defaultSchema = args.length > 2 ? toStringOrNull(args[2]) : null;
 
@@ -3217,7 +3220,7 @@ public class RubyJdbcConnection extends RubyObject {
         return defaultValue == null ? runtime.getNil() : RubyString.newUnicodeString(runtime, defaultValue);
     }
 
-    private IRubyObject unmarshalColumns(final ThreadContext context,
+    private RubyArray unmarshalColumns(final ThreadContext context,
         final DatabaseMetaData metaData, final ResultSet results, final ResultSet primaryKeys)
         throws SQLException {
 
@@ -3376,7 +3379,7 @@ public class RubyJdbcConnection extends RubyObject {
      * @param downCase should column names only be in lower case?
      */
     @SuppressWarnings("unchecked")
-    private IRubyObject mapToRawResult(final ThreadContext context,
+    private RubyArray mapToRawResult(final ThreadContext context,
             final Connection connection, final ResultSet resultSet,
             final boolean downCase) throws SQLException {
 
