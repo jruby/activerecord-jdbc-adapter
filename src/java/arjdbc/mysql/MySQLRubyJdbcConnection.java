@@ -60,7 +60,7 @@ import org.jruby.runtime.builtin.IRubyObject;
  *
  * @author nicksieger
  */
-//@org.jruby.anno.JRubyClass(name = "ActiveRecord::ConnectionAdapters::MySQLJdbcConnection")
+@org.jruby.anno.JRubyClass(name = "ActiveRecord::ConnectionAdapters::MySQLJdbcConnection")
 public class MySQLRubyJdbcConnection extends RubyJdbcConnection {
     private static final long serialVersionUID = -8842614212147138733L;
 
@@ -202,10 +202,8 @@ public class MySQLRubyJdbcConnection extends RubyJdbcConnection {
                     context, caseConvertIdentifierForJdbc(connection, tableName)
                 );
 
-                StringBuilder query = new StringBuilder("SHOW KEYS FROM ");
-                if ( jdbcSchemaName != null ) {
-                    query.append(jdbcSchemaName).append(".");
-                }
+                StringBuilder query = new StringBuilder(60).append("SHOW KEYS FROM ");
+                if ( jdbcSchemaName != null ) query.append(jdbcSchemaName).append('.');
                 query.append(jdbcTableName);
                 query.append(" WHERE key_name != 'PRIMARY'");
 
@@ -231,8 +229,8 @@ public class MySQLRubyJdbcConnection extends RubyJdbcConnection {
                                 rubyTableName, // table_name
                                 RubyString.newUnicodeString(runtime, keyName), // index_name
                                 runtime.newBoolean( ! nonUnique ), // unique
-                                runtime.newArray(), // [] for column names, we'll add to that in just a bit
-                                runtime.newArray() // lengths
+                                RubyArray.newArray(runtime, 8), // [] for column names, we'll add to that in just a bit
+                                RubyArray.newArray(runtime, 8) // lengths
                             };
 
                             indexes.append( indexDefinition.callMethod(context, "new", args) ); // IndexDefinition.new
