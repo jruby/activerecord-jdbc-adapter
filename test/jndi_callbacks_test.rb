@@ -1,5 +1,5 @@
 require 'test_helper'
-require 'db/jndi_config'
+require 'db/jndi_derby_config'
 
 class JndiConnectionPoolCallbacksTest < Test::Unit::TestCase
 

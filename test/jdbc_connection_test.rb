@@ -188,4 +188,59 @@ class JdbcConnectionTest < Test::Unit::TestCase
 
   end
 
+  context "connected" do
+
+    test "(raw) connection is not a jndi connection" do
+      connection = ActiveRecord::Base.connection.raw_connection
+      assert_false connection.jndi?
+    end
+
+  end
+
+  test 'instantiate adapter ActiveRecord style' do
+    connection = ActiveRecord::Base.connection.raw_connection
+    logger = ActiveRecord::Base.logger
+    pool = ActiveRecord::Base.connection_pool
+    adapter = ActiveRecord::ConnectionAdapters::JdbcAdapter.new(connection, logger, pool)
+    assert_equal connection, adapter.raw_connection
+    assert adapter.pool if ar_version('4.0')
+  end if ar_version('3.2') && defined? JRUBY_VERSION
+
+  test 'instantiate adapter ActiveRecord style (< 3.2)' do
+    connection = ActiveRecord::Base.connection.raw_connection
+    logger = ActiveRecord::Base.logger
+    adapter = ActiveRecord::ConnectionAdapters::JdbcAdapter.new(connection, logger)
+    assert_equal connection, adapter.raw_connection
+  end if defined? JRUBY_VERSION
+
+  context "jdbc-connection" do
+
+    def setup
+      ActiveRecord::ConnectionAdapters::MysqlAdapter.any_instance.stubs(:configure_connection)
+      ActiveRecord::Base.establish_connection JDBC_CONFIG
+    end
+
+    test "connection impl is eager" do
+      assert jdbc_connection.to_java.getConnectionImpl
+      jdbc_connection.reconnect!
+      assert jdbc_connection.to_java.getConnectionImpl
+
+      assert_true jdbc_connection.active?
+
+      jdbc_connection.disconnect!
+      assert_nil jdbc_connection.to_java.getConnectionImpl
+
+      assert_false jdbc_connection.active?
+    end
+
+    test "connection impl is eager (active)" do
+      assert jdbc_connection.active?
+    end
+
+    private
+
+    def jdbc_connection; ActiveRecord::Base.connection.raw_connection end
+
+  end
+
 end

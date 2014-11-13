@@ -21,6 +21,15 @@ module ArJdbc
         @connection.disconnect!
       end
 
+      # @override
+      # def verify!(*ignored)
+      #  if @connection && @connection.jndi?
+      #    # checkout call-back does #reconnect!
+      #  else
+      #    reconnect! unless active? # super
+      #  end
+      # end
+
     end
   end
 end

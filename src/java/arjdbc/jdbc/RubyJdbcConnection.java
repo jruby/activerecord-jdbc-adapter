@@ -645,14 +645,14 @@ public class RubyJdbcConnection extends RubyObject {
     @JRubyMethod(name = "active?", alias = "valid?")
     public RubyBoolean active_p(final ThreadContext context) {
         if ( ! connected ) return context.runtime.getFalse();
-        if ( jndi ) {
+        if ( isJndi() ) {
             // for JNDI the data-source / pool is supposed to
             // manage connections for us thus no valid check!
             boolean active = getConnectionFactory() != null;
             return context.runtime.newBoolean( active );
         }
         final Connection connection = getConnection();
-        // if ( connection == null ) return context.runtime.getFalse(); // unlikely
+        if ( connection == null ) return context.runtime.getFalse(); // unlikely
         return context.runtime.newBoolean( isConnectionValid(context, connection) );
     }
 

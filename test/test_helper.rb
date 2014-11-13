@@ -131,6 +131,19 @@ class Test::Unit::TestCase
     ActiveRecord::Base.connection.disconnect!
   end
 
+  def self.disconnect_if_connected
+    if ActiveRecord::Base.connected?
+      ActiveRecord::Base.connection.disconnect!
+      ActiveRecord::Base.remove_connection
+    end
+  end
+
+  def disconnect_if_connected; self.class.disconnect_if_connected end
+
+  def self.clean_visitor_type!(adapter = 'jdbc')
+    ActiveRecord::ConnectionAdapters::JdbcAdapter.send :clean_visitor_type, adapter
+  end
+
   def clear_active_connections!
     ActiveRecord::Base.clear_active_connections!
   end
@@ -173,6 +186,23 @@ class Test::Unit::TestCase
     ActiveSupport::Deprecation.silence(&block)
   end
   alias_method :silence_deprecations, :deprecation_silence
+
+  private # RubyJdbcConnection (internal) helpers :
+
+  def self.clear_cached_jdbc_connection_factory
+    unless Java::arjdbc.jdbc.RubyJdbcConnection.respond_to?(:defaultConfig=)
+      Java::arjdbc.jdbc.RubyJdbcConnection.field_writer :defaultConfig
+    end
+    Java::arjdbc.jdbc.RubyJdbcConnection.defaultConfig = nil # won't use defaultFactory
+  end
+
+  def get_jdbc_connection_factory
+    ActiveRecord::Base.connection.raw_connection.connection_factory
+  end
+
+  def set_jdbc_connection_factory(connection_factory)
+    ActiveRecord::Base.connection.raw_connection.connection_factory = connection_factory
+  end
 
   protected
 
