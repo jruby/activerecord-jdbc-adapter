@@ -115,6 +115,9 @@ public class RubyJdbcConnection extends RubyObject {
     private IRubyObject adapter; // the AbstractAdapter instance we belong to
     private volatile boolean connected = true;
 
+    private boolean lazy = false; // final once set on initialize
+    private boolean jndi; // final once set on initialize
+
     protected RubyJdbcConnection(Ruby runtime, RubyClass metaClass) {
         super(runtime, metaClass);
     }
@@ -497,7 +500,8 @@ public class RubyJdbcConnection extends RubyObject {
         final IRubyObject adapter) {
         this.config = config; this.adapter = adapter;
 
-        setup_connection_factory(context);
+        this.jndi = setupConnectionFactory(context);
+        //this.lazy = jndi; // JNDIs are lazy by default otherwise eager
         try {
             initConnection(context);
         }
@@ -559,8 +563,6 @@ public class RubyJdbcConnection extends RubyObject {
         }
     }
 
-    private boolean lazyConnection = false;
-
     private IRubyObject initConnection(final ThreadContext context) throws SQLException {
         final IRubyObject adapter = getAdapter(); // self.adapter
         if ( adapter == null || adapter.isNil() ) {
@@ -573,7 +575,7 @@ public class RubyJdbcConnection extends RubyObject {
             return adapter.callMethod(context, "init_connection", convertJavaToRuby(connection));
         }
         else {
-            if ( ! lazyConnection ) setConnection( newConnection() );
+            if ( ! lazy ) setConnection( newConnection() );
         }
 
         return context.nil;
@@ -639,7 +641,7 @@ public class RubyJdbcConnection extends RubyObject {
     @JRubyMethod(name = "reconnect!")
     public synchronized IRubyObject reconnect(final ThreadContext context) {
         try {
-            connectImpl( ! lazyConnection ); connected = true;
+            connectImpl( ! lazy ); connected = true;
         }
         catch (SQLException e) {
             debugStackTrace(context, e);
@@ -1711,6 +1713,7 @@ public class RubyJdbcConnection extends RubyObject {
     }
 
     private static volatile IRubyObject defaultConfig;
+    private static volatile boolean defaultConfigJndi;
     private static volatile ConnectionFactory defaultConnectionFactory;
 
     /**
@@ -1730,20 +1733,24 @@ public class RubyJdbcConnection extends RubyObject {
         return JavaUtil.convertJavaToRuby(runtime, connectionFactory);
     }
 
-    private void setupConnectionFactory(final ThreadContext context) {
+    /**
+     * @return whether the connection factory is JNDI based
+     */
+    private boolean setupConnectionFactory(final ThreadContext context) {
         final IRubyObject config = getConfig();
 
         if ( defaultConfig == null ) {
             synchronized(RubyJdbcConnection.class) {
                 if ( defaultConfig == null ) {
-                    if ( isJndiConfig(context, config) ) {
+                    final boolean jndi = isJndiConfig(context, config);
+                    if ( jndi ) {
                         defaultConnectionFactory = setDataSourceFactory(context);
                     }
                     else {
                         defaultConnectionFactory = setDriverFactory(context);
                     }
-                    defaultConfig = config;
-                    return;
+                    defaultConfigJndi = jndi; defaultConfig = config;
+                    return jndi;
                 }
             }
         }
@@ -1751,21 +1758,23 @@ public class RubyJdbcConnection extends RubyObject {
         if ( defaultConfig != null &&
             ( defaultConfig == config || defaultConfig.eql(config) ) ) {
             setConnectionFactory( defaultConnectionFactory );
-            return;
+            return defaultConfigJndi;
         }
 
         if ( isJndiConfig(context, config) ) {
-            setDataSourceFactory(context);
+            setDataSourceFactory(context); return true;
         }
         else {
-            setDriverFactory(context);
+            setDriverFactory(context); return false;
         }
     }
 
     @JRubyMethod(name = "jndi?", alias = "jndi_connection?")
     public RubyBoolean jndi_p(final ThreadContext context) {
-        return context.runtime.newBoolean( getConnectionFactory() instanceof DataSourceConnectionFactoryImpl );
+        return context.runtime.newBoolean( isJndi() );
     }
+
+    protected final boolean isJndi() { return this.jndi; }
 
     private DataSource resolveDataSource(final ThreadContext context) throws NamingException {
         final DataSource dataSource;
