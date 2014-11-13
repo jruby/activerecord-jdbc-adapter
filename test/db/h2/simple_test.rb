@@ -6,26 +6,6 @@ class H2SimpleTest < Test::Unit::TestCase
   include ExplainSupportTestMethods if ar_version("3.1")
   include ActiveRecord3TestMethods
   include CustomSelectTestMethods
-
-  test 'returns correct visitor type' do
-    assert_not_nil visitor = connection.instance_variable_get(:@visitor)
-    assert defined? Arel::Visitors::HSQLDB
-    assert_kind_of Arel::Visitors::HSQLDB, visitor
-  end if ar_version('3.0')
-
-  include AdapterTestMethods
-
-  test 'returns correct column class' do
-    assert_not_nil klass = connection.jdbc_column_class
-    assert klass == ArJdbc::H2::Column
-    assert klass.is_a?(Class)
-    assert ActiveRecord::ConnectionAdapters::H2Adapter::Column == ArJdbc::H2::Column
-  end
-
-  test 'returns jdbc connection class' do
-    assert ArJdbc::H2.jdbc_connection_class == ArJdbc::H2::JdbcConnection
-  end
-
 end
 
 class H2HasManyThroughTest < Test::Unit::TestCase

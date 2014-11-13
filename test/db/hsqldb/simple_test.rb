@@ -20,19 +20,4 @@ class HSQLDBSimpleTest < Test::Unit::TestCase
     super
   end if ar_version('3.1')
 
-  test 'returns correct visitor type' do
-    assert_not_nil visitor = connection.instance_variable_get(:@visitor)
-    assert defined? Arel::Visitors::HSQLDB
-    assert_kind_of Arel::Visitors::HSQLDB, visitor
-  end if ar_version('3.0')
-
-  include AdapterTestMethods
-
-  test 'returns correct column class' do
-    assert_not_nil klass = connection.jdbc_column_class
-    assert klass == ArJdbc::HSQLDB::Column
-    assert klass.is_a?(Class)
-    assert ActiveRecord::ConnectionAdapters::HsqldbAdapter::Column == ArJdbc::HSQLDB::Column
-  end
-
 end
