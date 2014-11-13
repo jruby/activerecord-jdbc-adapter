@@ -1,8 +1,12 @@
 require 'db/jndi_derby_config'
+
 require 'simple'
+require 'adapter_test_methods'
 
 class DerbyJndiTest < Test::Unit::TestCase
   include SimpleTestMethods
+
+  include AdapterTestMethods
 
   JNDI_CONFIG = JNDI_DERBY_CONFIG
 
@@ -13,9 +17,15 @@ class DerbyJndiTest < Test::Unit::TestCase
   BASE_CONFIG = { :connection_alive_sql => ALIVE_SQL }
 
   def setup
+    ArJdbc.disable_warn "use 'adapter: derby' instead of 'adapter: jdbc' configuration"
     disconnect_if_connected
     ActiveRecord::Base.establish_connection BASE_CONFIG.merge(JNDI_DERBY_CONFIG)
     super
+  end
+
+  def teardown
+    super
+    ArJdbc.enable_warn "use 'adapter: derby' instead of 'adapter: jdbc' configuration"
   end
 
   # @override
@@ -42,6 +52,38 @@ class DerbyJndiTest < Test::Unit::TestCase
     config = { :jndi => JNDI_CONFIG[:jndi] }
     ArJdbc::Derby.adapter_matcher('DB42', config)
     assert_nil config[:username]
+  end
+
+  context 'jdbc-connection' do
+
+    def setup
+      # does not do any configure_connection when no :schema is specified :
+      ActiveRecord::Base.establish_connection JNDI_CONFIG.merge(:schema => nil)
+      assert_false ActiveRecord::Base.connection_pool.active_connection?
+    end
+
+    def teardown; ActiveRecord::Base.connection_pool.disconnect! end
+
+    test "connection impl is lazy" do
+      assert_nil jdbc_connection.to_java.getConnectionImpl
+      jdbc_connection.reconnect!
+      assert_nil jdbc_connection.to_java.getConnectionImpl
+
+      assert ActiveRecord::Base.connection_pool.active_connection?
+      assert_true jdbc_connection.active?
+    end
+
+    test "connection impl is lazy (but reports active)" do
+      # for JNDI we do not run the connection.isValid check
+      assert_true jdbc_connection.active?
+      assert_nil jdbc_connection.to_java.getConnectionImpl
+      assert_true jdbc_connection.active?
+    end
+
+    private
+
+    def jdbc_connection; ActiveRecord::Base.connection.raw_connection end
+
   end
 
   context 'jndi-callbacks' do

@@ -296,6 +296,15 @@ module ActiveRecord
         @connection.disconnect! if @connection
       end
 
+      # @override
+      #def verify!(*ignored)
+      #  if @connection && @connection.jndi?
+      #    # checkout call-back does #reconnect!
+      #  else
+      #    reconnect! unless active? # super
+      #  end
+      #end
+
       if ActiveRecord::VERSION::MAJOR < 3
 
         # @private

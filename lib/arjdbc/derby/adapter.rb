@@ -110,11 +110,12 @@ module ArJdbc
 
     def configure_connection
       # must be done or SELECT...FOR UPDATE won't work how we expect :
-      tx_isolation = config[:transaction_isolation]
-      @connection.transaction_isolation = tx_isolation if tx_isolation
+      if tx_isolation = config[:transaction_isolation]
+        @connection.transaction_isolation = tx_isolation
+      end
       # if a user name was specified upon connection, the user's name is the
       # default schema for the connection, if a schema with that name exists
-      set_schema(config[:schema]) if config.key?(:schema)
+      set_schema(config[:schema]) if config[:schema]
     end
 
     def index_name_length

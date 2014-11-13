@@ -236,7 +236,10 @@ class JdbcConnectionTest < Test::Unit::TestCase
 
   context "jdbc-connection" do
 
-    setup { ActiveRecord::Base.establish_connection JDBC_CONFIG }
+    def setup
+      ActiveRecord::ConnectionAdapters::MysqlAdapter.any_instance.stubs(:configure_connection)
+      ActiveRecord::Base.establish_connection JDBC_CONFIG
+    end
 
     test "connection impl is eager" do
       assert jdbc_connection.to_java.getConnectionImpl

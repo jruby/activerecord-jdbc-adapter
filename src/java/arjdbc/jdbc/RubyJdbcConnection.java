@@ -501,7 +501,7 @@ public class RubyJdbcConnection extends RubyObject {
         this.config = config; this.adapter = adapter;
 
         this.jndi = setupConnectionFactory(context);
-        //this.lazy = jndi; // JNDIs are lazy by default otherwise eager
+        this.lazy = jndi; // JNDIs are lazy by default otherwise eager
         try {
             initConnection(context);
         }
@@ -625,11 +625,16 @@ public class RubyJdbcConnection extends RubyObject {
 
     @JRubyMethod(name = "active?")
     public RubyBoolean active_p(final ThreadContext context) {
-        final Connection connection = getConnectionImpl();
-        if ( connection != null ) {
-            return context.runtime.newBoolean( isConnectionValid(context, connection) );
+        if ( ! connected ) return context.runtime.getFalse();
+        if ( jndi ) {
+            // for JNDI the data-source / pool is supposed to
+            // manage connections for us thus no valid check!
+            boolean active = getConnectionFactory() != null;
+            return context.runtime.newBoolean( active );
         }
-        return context.runtime.getFalse();
+        final Connection connection = getConnection();
+        if ( connection == null ) return context.runtime.getFalse(); // unlikely
+        return context.runtime.newBoolean( isConnectionValid(context, connection) );
     }
 
     @JRubyMethod(name = "disconnect!")
@@ -655,16 +660,6 @@ public class RubyJdbcConnection extends RubyObject {
         setConnection( forceConnection ? newConnection() : null );
         if ( forceConnection ) configureConnection();
     }
-
-//    private void doConnect(final ThreadContext context, final boolean forceConnection) {
-//        try {
-//            setConnection( forceConnection ? newConnection() : null );
-//            configureConnection(context);
-//        }
-//        catch (SQLException e) {
-//            handleException(context, e);
-//        }
-//    }
 
     @JRubyMethod(name = "database_name")
     public IRubyObject database_name(final ThreadContext context) {
