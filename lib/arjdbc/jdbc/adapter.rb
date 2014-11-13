@@ -66,8 +66,6 @@ module ActiveRecord
 
         @config = config.respond_to?(:symbolize_keys) ? config.symbolize_keys : config
 
-        @config[:retry_count] ||= 1
-
         @config[:adapter_spec] = adapter_spec(@config) unless @config.key?(:adapter_spec)
         spec = @config[:adapter_spec]
 
