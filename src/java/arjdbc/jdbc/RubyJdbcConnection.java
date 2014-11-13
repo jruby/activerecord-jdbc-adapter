@@ -327,7 +327,7 @@ public class RubyJdbcConnection extends RubyObject {
                 try {
                     connection.commit();
                     resetSavepoints(context); // if any
-                    return context.runtime.newBoolean(true);
+                    return context.runtime.getTrue();
                 }
                 finally {
                     connection.setAutoCommit(true);
@@ -348,7 +348,7 @@ public class RubyJdbcConnection extends RubyObject {
                 try {
                     connection.rollback();
                     resetSavepoints(context); // if any
-                    return context.runtime.newBoolean(true);
+                    return context.runtime.getTrue();
                 } finally {
                     connection.setAutoCommit(true);
                 }
@@ -665,9 +665,9 @@ public class RubyJdbcConnection extends RubyObject {
 //    }
 
     @JRubyMethod(name = "database_name")
-    public IRubyObject database_name(final ThreadContext context) throws SQLException {
+    public IRubyObject database_name(final ThreadContext context) {
         return withConnection(context, new Callable<IRubyObject>() {
-            public IRubyObject call(final Connection connection) throws SQLException {
+            public IRubyObject call(final Connection connection)  throws SQLException {
                 String name = connection.getCatalog();
                 if ( name == null ) {
                     name = connection.getMetaData().getUserName();
@@ -1719,6 +1719,7 @@ public class RubyJdbcConnection extends RubyObject {
      * @see #initialize
      * @throws NamingException
      */
+    @Deprecated
     @JRubyMethod(name = "setup_connection_factory", visibility = Visibility.PROTECTED)
     public IRubyObject setup_connection_factory(final ThreadContext context) {
         setupConnectionFactory(context);
