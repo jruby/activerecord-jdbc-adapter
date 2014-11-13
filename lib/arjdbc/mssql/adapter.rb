@@ -503,8 +503,9 @@ module ArJdbc
       end
     end
 
-    def remove_index(table_name, options = {})
-      execute "DROP INDEX #{quote_table_name(table_name)}.#{index_name(table_name, options)}"
+    # @override
+    def remove_index!(table_name, index_name)
+      execute "DROP INDEX #{quote_table_name(table_name)}.#{index_name}"
     end
 
     # @private

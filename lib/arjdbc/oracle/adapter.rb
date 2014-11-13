@@ -243,9 +243,10 @@ module ArJdbc
     def release_savepoint(name = nil)
       # no RELEASE SAVEPOINT statement in Oracle (JDBC driver throws "Unsupported feature")
     end
-
-    def remove_index(table_name, options = {})
-      execute "DROP INDEX #{index_name(table_name, options)}"
+    
+    # @override
+    def remove_index!(table_name, index_name)
+      execute "DROP INDEX #{index_name}"
     end
 
     def change_column_default(table_name, column_name, default)
