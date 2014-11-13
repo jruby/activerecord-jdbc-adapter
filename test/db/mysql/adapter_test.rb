@@ -9,17 +9,17 @@ class MySQLAdapterTest < Test::Unit::TestCase
   include AdapterTestMethods
 
   test 'instantiate adapter ActiveRecord style' do
-    connection = ActiveRecord::ConnectionAdapters::MySQLJdbcConnection.new current_connection_config
+    connection = new_jdbc_connection
     logger = ActiveRecord::Base.logger
     pool = ActiveRecord::Base.connection_pool
-    adapter = ActiveRecord::ConnectionAdapters::MysqlAdapter.new(connection, logger, pool)
+    adapter = mysql_adapter_class.new(connection, logger, pool)
     assert adapter.config
     assert_equal connection, adapter.raw_connection
     assert adapter.pool if ar_version('4.0')
   end if ar_version('3.2') && defined? JRUBY_VERSION
 
   test 'instantiate adapter ActiveRecord style (< 3.2)' do
-    connection = ActiveRecord::ConnectionAdapters::MySQLJdbcConnection.new current_connection_config
+    connection = new_jdbc_connection
     logger = ActiveRecord::Base.logger
     adapter = ActiveRecord::ConnectionAdapters::MysqlAdapter.new(connection, logger)
     assert adapter.config
@@ -94,5 +94,13 @@ class MySQLAdapterTest < Test::Unit::TestCase
       #  arjdbc.jdbc.RubyJdbcConnection$INVOKER$i$execute_query.call(RubyJdbcConnection$INVOKER$i$execute_query.gen)
     end
   end if ar_version('3.0') && defined? JRUBY_VERSION
+
+  private
+
+  def new_jdbc_connection(config = current_connection_config)
+    silence_jdbc_connection_initialize do
+      ActiveRecord::ConnectionAdapters::MySQLJdbcConnection.new config
+    end
+  end
 
 end

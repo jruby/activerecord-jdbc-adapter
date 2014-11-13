@@ -191,6 +191,13 @@ class Test::Unit::TestCase
   end
   alias_method :silence_deprecations, :deprecation_silence
 
+  def silence_warning(message)
+    ArJdbc.disable_warn(message)
+    yield
+  ensure
+    ArJdbc.enable_warn(message)
+  end
+
   def main; TOPLEVEL_BINDING.eval('self') end
 
   protected
