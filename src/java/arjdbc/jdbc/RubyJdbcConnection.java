@@ -1953,9 +1953,14 @@ public class RubyJdbcConnection extends RubyObject {
     }
 
     @JRubyMethod(name = "jndi?", alias = "jndi_connection?")
-    public IRubyObject jndi_p(final ThreadContext context) {
-        return context.runtime.newBoolean( getConnectionFactory() instanceof DataSourceConnectionFactoryImpl );
+    public RubyBoolean jndi_p(final ThreadContext context) {
+        return context.runtime.newBoolean( isJndi() );
     }
+
+    protected final boolean isJndi() { return this.jndi; }
+
+    @JRubyMethod(name = "config")
+    public final IRubyObject config() { return getConfig(); }
 
     public final IRubyObject getConfig() { return this.config; }
 
