@@ -60,6 +60,7 @@ import org.jruby.util.TypeConverter;
  *
  * @author nicksieger
  */
+@org.jruby.anno.JRubyClass(name = "ActiveRecord::ConnectionAdapters::MySQLJdbcConnection")
 public class MySQLRubyJdbcConnection extends RubyJdbcConnection {
     private static final long serialVersionUID = -8842614212147138733L;
 
