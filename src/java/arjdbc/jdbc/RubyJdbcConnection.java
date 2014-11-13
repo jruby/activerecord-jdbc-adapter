@@ -3054,14 +3054,12 @@ public class RubyJdbcConnection extends RubyObject {
 
     protected boolean isConnectionValid(final ThreadContext context, final Connection connection) {
         if ( connection == null ) return false;
-        final IRubyObject alive_sql = getConfigValue(context, "connection_alive_sql");
         Statement statement = null;
         try {
-            RubyString aliveSQL = alive_sql.isNil() ? null : alive_sql.convertToString();
-            if ( aliveSQL != null && isSelect(aliveSQL) ) {
-                // expect a SELECT/CALL SQL statement
+            final String aliveSQL = getAliveSQL(context);
+            if ( aliveSQL != null ) { // expect a SELECT/CALL SQL statement
                 statement = createStatement(context, connection);
-                statement.execute( aliveSQL.toString() );
+                statement.execute( aliveSQL );
                 return true; // connection alive
             }
             else { // alive_sql nil (or not a statement we can execute)
@@ -3081,6 +3079,18 @@ public class RubyJdbcConnection extends RubyObject {
             throw e;
         }
         finally { close(statement); }
+    }
+
+    private static final String NIL_ALIVE_SQL = new String(); // no set value marker
+
+    private transient String aliveSQL = null;
+
+    private String getAliveSQL(final ThreadContext context) {
+        if ( aliveSQL == null ) {
+            final IRubyObject alive_sql = getConfigValue(context, "connection_alive_sql");
+            aliveSQL = alive_sql.isNil() ? NIL_ALIVE_SQL : alive_sql.asString().toString();
+        }
+        return aliveSQL == (Object) NIL_ALIVE_SQL ? null : aliveSQL;
     }
 
     private boolean tableExists(final ThreadContext context,
