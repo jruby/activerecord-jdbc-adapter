@@ -51,7 +51,9 @@ module ChangeColumnTestMethods
   def test_should_set_non_null_restriction
     ActiveRecord::Migration.change_column :people, :phone, :string, :null => false
     Person.reset_column_information
-    assert_raise(ActiveRecord::StatementInvalid) { Person.create! }
+    assert_raise_kind_of(ActiveRecord::StatementInvalid) do
+      disable_logger { Person.create! }
+    end
   end
 
   def test_should_set_null_restriction_with_default

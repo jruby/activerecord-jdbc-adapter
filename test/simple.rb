@@ -514,7 +514,7 @@ module SimpleTestMethods
 
     def test_fetching_columns_for_nonexistent_table
       disable_logger(Animal.connection) do
-        assert_raise(ActiveRecord::StatementInvalid, ActiveRecord::JDBCError) do
+        assert_raise_kind_of(ActiveRecord::StatementInvalid) do
           Animal.columns
         end
       end
@@ -1290,9 +1290,9 @@ module ActiveRecord3TestMethods
     end
 
     def test_remove_nonexistent_index
-      errors = [ ArgumentError, ActiveRecord::StatementInvalid ]
-      errors << ActiveRecord::JDBCError if defined? JRUBY_VERSION
-      assert_raise(*errors) { connection.remove_index :entries, :nonexistent_index }
+      assert_raise_kind_of(ActiveRecord::StatementInvalid) do
+        connection.remove_index :entries, :nonexistent_index
+      end
     end
 
     def test_add_index_with_invalid_name_length
