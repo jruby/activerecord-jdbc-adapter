@@ -3,7 +3,6 @@ require 'simple'
 
 class MSSQLSimpleTest < Test::Unit::TestCase
   include SimpleTestMethods
-  include ActiveRecord3TestMethods
   include DirtyAttributeTests
 
   include ExplainSupportTestMethods if ar_version("3.1")

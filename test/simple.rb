@@ -463,6 +463,19 @@ module SimpleTestMethods
     assert_equal 1, indexes.size
   end
 
+  def test_remove_nonexistent_index
+    assert_raise_kind_of(ArgumentError) do # ActiveRecord::StatementInvalid
+      connection.remove_index :entries, :nonexistent_index
+    end
+  end if Test::Unit::TestCase.ar_version('3.0')
+
+  def test_add_index_with_invalid_name_length
+    index_name = 'x' * (connection.index_name_length + 1)
+    assert_raise(ArgumentError) do
+      connection.add_index "entries", "title", :name => index_name
+    end
+  end if Test::Unit::TestCase.ar_version('3.0')
+
   def test_nil_values
     e = DbType.create! :sample_integer => '', :sample_string => 'sample'
     assert_nil e.reload.sample_integer
@@ -1196,6 +1209,35 @@ module SimpleTestMethods
     end
   end
 
+  def test_where
+    user = User.create! :login => "blogger"
+    entry = Entry.create! :title => 'something', :content => 'JRuby on Rails !',
+                          :rating => 42.1, :user => user
+
+    entries = Entry.where(:title => entry.title)
+    assert_equal entry, entries.first
+  end if Test::Unit::TestCase.ar_version('3.0')
+
+  def test_update_all
+    user = User.create! :login => "blogger"
+    e1 = Entry.create! :title => 'JRuby #1', :content => 'Getting started with JRuby ...', :user => user
+    e2 = Entry.create! :title => 'JRuby #2', :content => 'Setting up with JRuby on Rails', :user => user
+
+    user.entries.update_all :rating => 12.3
+    assert_equal 12.3, e1.reload.rating
+    assert_equal 12.3, e2.reload.rating
+
+    user.entries.update_all :content => '... coming soon ...'
+    user.entries.update_all :rating => 10
+  end if Test::Unit::TestCase.ar_version('3.0')
+
+  def test_model_with_no_id
+    #assert_nothing_raised do
+    Thing.create! :name => "a thing"
+    #end
+    assert_equal 1, Thing.count
+  end if Test::Unit::TestCase.ar_version('3.0')
+
   def test_marshal
     expected = DbType.create!(
       :sample_string => 'a string',
@@ -1246,6 +1288,7 @@ module SimpleTestMethods
 
 end
 
+# @deprecated
 module ActiveRecord3TestMethods
 
   def self.included(base)
@@ -1253,62 +1296,6 @@ module ActiveRecord3TestMethods
   end
 
   module TestMethods
-
-    def test_visitor_accessor
-      adapter = Entry.connection; config = Entry.connection_config
-      assert_not_nil adapter.visitor
-      assert_not_nil visitor_type = Arel::Visitors::VISITORS[ config[:adapter] ]
-      assert_kind_of visitor_type, adapter.visitor
-    end if Test::Unit::TestCase.ar_version('3.1') # >= 3.2
-
-    def test_arel_visitors
-      adapter = ActiveRecord::Base.connection; config = current_connection_config
-      visitors = Arel::Visitors::VISITORS.dup
-      assert_not_nil visitor_type = adapter.class.resolve_visitor_type(config)
-      assert_equal visitor_type, visitors[ config[:adapter] ]
-    end if Test::Unit::TestCase.ar_version('3.0') && defined? JRUBY_VERSION
-
-    def test_where
-      user = User.create! :login => "blogger"
-      entry = Entry.create! :title => 'something', :content => 'JRuby on Rails !', :rating => 42.1, :user => user
-
-      entries = Entry.where(:title => entry.title)
-      assert_equal entry, entries.first
-    end
-
-    def test_update_all
-      user = User.create! :login => "blogger"
-      e1 = Entry.create! :title => 'JRuby #1', :content => 'Getting started with JRuby ...', :user => user
-      e2 = Entry.create! :title => 'JRuby #2', :content => 'Setting up with JRuby on Rails', :user => user
-
-      user.entries.update_all :rating => 12.3
-      assert_equal 12.3, e1.reload.rating
-      assert_equal 12.3, e2.reload.rating
-
-      user.entries.update_all :content => '... coming soon ...'
-      user.entries.update_all :rating => 10
-    end
-
-    def test_remove_nonexistent_index
-      assert_raise_kind_of(ActiveRecord::StatementInvalid) do
-        connection.remove_index :entries, :nonexistent_index
-      end
-    end
-
-    def test_add_index_with_invalid_name_length
-      index_name = 'x' * (connection.index_name_length + 1)
-      assert_raise(ArgumentError) do
-        connection.add_index "entries", "title", :name => index_name
-      end
-    end
-
-    def test_model_with_no_id
-      #assert_nothing_raised do
-      Thing.create! :name => "a thing"
-      #end
-      assert_equal 1, Thing.count
-    end
-
   end
 
 end

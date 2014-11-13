@@ -3,7 +3,6 @@ require 'simple'
 
 class OracleSimpleTest < Test::Unit::TestCase
   include SimpleTestMethods
-  include ActiveRecord3TestMethods
   include DirtyAttributeTests
   include XmlColumnTestMethods
 

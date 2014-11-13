@@ -5,7 +5,6 @@ require 'simple'
 
 class DerbySimpleTest < Test::Unit::TestCase
   include SimpleTestMethods
-  include ActiveRecord3TestMethods
   include CustomSelectTestMethods
 
   # @override
@@ -34,7 +33,7 @@ class DerbySimpleTest < Test::Unit::TestCase
   	ArJdbc::Derby.emulate_booleans = true
   	DbType.reset_column_information
   end if ar_version('3.0')
-  
+
   # Check that a table-less VALUES(xxx) query (like SELECT  works.
   def test_values
     value = nil

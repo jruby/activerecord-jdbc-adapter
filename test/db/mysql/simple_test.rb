@@ -7,7 +7,6 @@ require 'xml_column_test_methods'
 
 class MySQLSimpleTest < Test::Unit::TestCase
   include SimpleTestMethods
-  include ActiveRecord3TestMethods
   include ColumnNameQuotingTests
   include DirtyAttributeTests
 

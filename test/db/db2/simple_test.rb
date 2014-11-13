@@ -2,7 +2,6 @@ require File.expand_path('test_helper', File.dirname(__FILE__))
 
 class DB2SimpleTest < Test::Unit::TestCase
   include SimpleTestMethods
-  include ActiveRecord3TestMethods
   include DirtyAttributeTests
   include XmlColumnTestMethods
 
@@ -114,7 +113,7 @@ class DB2SimpleTest < Test::Unit::TestCase
     assert_equal db.id, connection.last_insert_id
     #assert_equal e.id, connection.last_insert_id('entries')
   end
-  
+
   # DB2 does not like "= NULL".
   def test_equals_null
     Entry.create!(:title => "Foo")

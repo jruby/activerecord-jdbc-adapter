@@ -5,7 +5,6 @@ require 'xml_column_test_methods'
 
 class PostgreSQLSimpleTest < Test::Unit::TestCase
   include SimpleTestMethods
-  include ActiveRecord3TestMethods
   include ColumnNameQuotingTests
   include DirtyAttributeTests
 
