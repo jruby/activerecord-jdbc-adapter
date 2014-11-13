@@ -2947,10 +2947,9 @@ public class RubyJdbcConnection extends RubyObject {
         if ( connection == null ) return false;
         Statement statement = null;
         try {
-            final RubyString aliveSQL = getAliveSQL(context);
+            final String aliveSQL = getAliveSQL(context);
             final RubyInteger aliveTimeout = getAliveTimeout(context);
-            if ( aliveSQL != null && isSelect(aliveSQL) ) {
-                // expect a SELECT/CALL SQL statement
+            if ( aliveSQL != null ) { // expect a SELECT/CALL SQL statement
                 statement = createStatement(context, connection);
                 if (aliveTimeout != null) {
                     statement.setQueryTimeout((int) aliveTimeout.getLongValue()); // 0 - no timeout
@@ -2978,12 +2977,16 @@ public class RubyJdbcConnection extends RubyObject {
         finally { close(statement); }
     }
 
-    /**
-     * internal API do not depend on it
-     */
-    protected final RubyString getAliveSQL(final ThreadContext context) {
-        final IRubyObject alive_sql = getConfigValue(context, "connection_alive_sql");
-        return alive_sql.isNil() ? null : alive_sql.convertToString();
+    private static final String NIL_ALIVE_SQL = new String(); // no set value marker
+
+    private transient String aliveSQL = null;
+
+    private String getAliveSQL(final ThreadContext context) {
+        if ( aliveSQL == null ) {
+            final IRubyObject alive_sql = getConfigValue(context, "connection_alive_sql");
+            aliveSQL = alive_sql.isNil() ? NIL_ALIVE_SQL : alive_sql.asString().toString();
+        }
+        return aliveSQL == NIL_ALIVE_SQL ? null : aliveSQL;
     }
 
     /**

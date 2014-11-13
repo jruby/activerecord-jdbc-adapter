@@ -195,42 +195,6 @@ public class MySQLRubyJdbcConnection extends RubyJdbcConnection {
         return RubyString.newUnicodeString(runtime,strValue);
     }
 
-    @Override
-    protected final boolean isConnectionValid(final ThreadContext context, final Connection connection) {
-        if ( connection == null ) return false;
-        Statement statement = null;
-        try {
-            final RubyString aliveSQL = getAliveSQL(context);
-            final RubyInteger aliveTimeout = getAliveTimeout(context);
-            if ( aliveSQL != null ) {
-                // expect a SELECT/CALL SQL statement
-                statement = createStatement(context, connection);
-                if (aliveTimeout != null) {
-                    statement.setQueryTimeout((int) aliveTimeout.getLongValue()); // 0 - no timeout
-                }
-                statement.execute( aliveSQL.toString() );
-                return true; // connection alive
-            }
-            else { // alive_sql nil (or not a statement we can execute)
-                return connection.isValid(aliveTimeout == null ? 0 : (int) aliveTimeout.getLongValue()); // since JDBC 4.0
-                // ... isValid(0) (default) means no timeout applied
-            }
-        }
-        catch (Exception e) {
-            debugMessage(context, "connection considered broken due: " + e.toString());
-            return false;
-        }
-        catch (AbstractMethodError e) { // non-JDBC 4.0 driver
-            warn( context,
-                "WARN: driver does not support checking if connection isValid()" +
-                " please make sure you're using a JDBC 4.0 compilant driver or" +
-                " set `connection_alive_sql: ...` in your database configuration" );
-            debugStackTrace(context, e);
-            throw e;
-        }
-        finally { close(statement); }
-    }
-
     // MySQL does never storesUpperCaseIdentifiers() :
     // storesLowerCaseIdentifiers() depends on "lower_case_table_names" server variable
 
