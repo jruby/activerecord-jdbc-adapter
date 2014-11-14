@@ -5,12 +5,14 @@ module ActiveRecord::ConnectionAdapters
     module ConnectionPoolCallbacks
 
       def self.included(base)
-        if base.respond_to?(:set_callback) # Rails 3 callbacks
-          base.set_callback :checkin, :after, :on_checkin
-          base.set_callback :checkout, :before, :on_checkout
-        else
-          base.checkin :on_checkin
-          base.checkout :on_checkout
+        base.set_callback :checkin, :after, :on_checkin
+        base.set_callback :checkout, :before, :on_checkout
+        base.class_eval do
+          def self.new(*args)
+            adapter = super # extend with JndiConnectionPoolCallbacks if a JNDI connection :
+            Jdbc::JndiConnectionPoolCallbacks.prepare(adapter, adapter.instance_variable_get(:@connection))
+            adapter
+          end
         end
       end
 

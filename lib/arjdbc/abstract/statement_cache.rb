@@ -17,7 +17,7 @@ module ArJdbc
 
       end
 
-      def initialize(connection, logger, config)
+      def initialize(*args) # (connection, logger, config)
         super
 
         # Only say we support the statement cache if we are using prepared statements

@@ -23,8 +23,6 @@
  */
 package arjdbc;
 
-import arjdbc.jdbc.RubyJdbcConnection;
-
 import java.lang.reflect.InvocationTargetException;
 import java.util.Collection;
 import java.util.HashMap;
@@ -42,6 +40,8 @@ import org.jruby.exceptions.RaiseException;
 import org.jruby.runtime.ThreadContext;
 import org.jruby.runtime.builtin.IRubyObject;
 import org.jruby.util.ByteList;
+
+import static arjdbc.jdbc.RubyJdbcConnection.getJdbcConnection;
 
 /**
  * ::ArJdbc
@@ -141,7 +141,7 @@ public class ArJdbcModule {
                 catch (NoSuchMethodException e) {
                     // "old" e.g. MySQLRubyJdbcConnection.createMySQLJdbcConnectionClass(runtime, jdbcConnection)
                     connection.getMethod("create" + moduleName + "JdbcConnectionClass", Ruby.class, RubyClass.class).
-                        invoke(null, runtime, RubyJdbcConnection.getJdbcConnectionClass(runtime));
+                        invoke(null, runtime, getJdbcConnection(runtime));
                 }
             }
         }
@@ -174,15 +174,13 @@ public class ArJdbcModule {
         final RubyArray modules = runtime.newArray( constants.size() );
 
         for ( final String name : constants ) {
-           IRubyObject value = arJdbc.getConstant(name, false);
+           final IRubyObject constant = arJdbc.getConstant(name, false);
            // isModule: return false for Ruby Classes
-           if ( value != null && value.isModule() ) {
-               if ( "MissingFunctionalityHelper".equals(name) ) continue;
-               if ( "SerializedAttributesHelper".equals(name) ) continue;
-               if ( "QuotedPrimaryKeyExtension".equals(name) ) continue;
+           if ( constant != null && constant.isModule() ) {
                if ( "Util".equals(name) ) continue;
-               if ( "Version".equals(name) ) continue;
-               modules.append(value);
+               if ( "SerializedAttributesHelper".equals(name) ) continue; // deprecated
+               if ( "Version".equals(name) ) continue; // deprecated
+               modules.append( constant );
            }
         }
         return modules;

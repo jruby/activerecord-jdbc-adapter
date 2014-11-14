@@ -10,12 +10,17 @@ module ArJdbc
       def initialize(connection, logger = nil, config = {})
         @config = config
 
+        if self.class.equal? ActiveRecord::ConnectionAdapters::JdbcAdapter
+          spec = @config.key?(:adapter_spec) ? @config[:adapter_spec] :
+                     ( @config[:adapter_spec] = adapter_spec(@config) ) # due resolving visitor
+          extend spec if spec
+        end
+
         connection ||= jdbc_connection_class(config[:adapter_spec]).new(config, self)
 
-        super(connection, logger, config)
+        super(connection, logger, config) # AbstractAdapter
 
-        # NOTE: should not be necessary for JNDI due reconnect! on checkout :
-        configure_connection if respond_to?(:configure_connection)
+        connection.configure_connection # will call us (maybe)
       end
       
       # Retrieve the raw `java.sql.Connection` object.

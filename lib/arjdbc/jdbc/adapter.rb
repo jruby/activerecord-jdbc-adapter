@@ -45,44 +45,6 @@ module ActiveRecord
 
       attr_reader :prepared_statements
 
-      def self.new(connection, logger = nil, pool = nil)
-        adapter = super
-        Jdbc::JndiConnectionPoolCallbacks.prepare(adapter, adapter.instance_variable_get(:@connection))
-        adapter
-      end
-
-      # Initializes the (JDBC connection) adapter instance.
-      # The passed configuration Hash's keys are symbolized, thus changes to
-      # the original `config` keys won't be reflected in the adapter.
-      # If the adapter's sub-class or the spec module that this instance will
-      # extend in responds to `configure_connection` than it will be called.
-      # @param connection an (optional) connection instance
-      # @param logger the `ActiveRecord::Base.logger` to use (or nil)
-      # @param config the database configuration
-      # @note `initialize(logger, config)` with 2 arguments is supported as well
-      def initialize(connection, logger = nil, config = nil)
-        @config = config.respond_to?(:symbolize_keys) ? config.symbolize_keys : config
-        # FIXME: Rails 5 defaults to prepared statements on and we do not seem
-        # to work yet.  So default to off unless it is requested until that is
-        # fixed.
-        @config[:prepared_statements] = false if !@config[:prepared_statements]
-
-        # NOTE: JDBC 4.0 drivers support checking if connection isValid
-        # thus no need to @config[:connection_alive_sql] ||= 'SELECT 1'
-        #
-        # NOTE: setup to retry 5-times previously - maybe do not set at all ?
-        @config[:retry_count] ||= 1
-
-        @config[:adapter_spec] = adapter_spec(@config) unless @config.key?(:adapter_spec)
-        spec = @config[:adapter_spec]
-
-        super(connection, logger, @config)
-
-        # kind of like `extend ArJdbc::MyDB if self.class == JdbcAdapter` :
-        klass = @config[:adapter_class]
-        extend spec if spec && ( ! klass || klass == JdbcAdapter)
-      end
-
       # Returns the (JDBC) connection class to be used for this adapter.
       # This is used by (database specific) spec modules to override the class
       # used assuming some of the available methods have been re-defined.

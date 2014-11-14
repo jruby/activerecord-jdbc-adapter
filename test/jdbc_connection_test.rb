@@ -24,7 +24,7 @@ class JdbcConnectionTest < Test::Unit::TestCase
       assert_equal '128', connection.getProperties['maxAllowedPacket']
       assert_equal '5', connection.getProperties['metadataCacheSize']
     ensure
-      ActiveRecord::Base.establish_connection JDBC_CONFIG
+      ActiveRecord::Base.establish_connection JDBC_CONFIG.dup
     end
   end
 
@@ -43,18 +43,44 @@ class JdbcConnectionTest < Test::Unit::TestCase
       # com.mysql.jdbc.NonRegisteringDriver.parseURL(NonRegisteringDriver.java:849)
       # com.mysql.jdbc.NonRegisteringDriver.connect(NonRegisteringDriver.java:325)
     ensure
-      ActiveRecord::Base.establish_connection JDBC_CONFIG
+      ActiveRecord::Base.establish_connection JDBC_CONFIG.dup
     end
   end
 
   test 'calls configure_connection on reconnect!' do
     connection = ActiveRecord::Base.connection
-    unless connection.respond_to?(:configure_connection)
-      fail "no configure_connection for #{connection} can not test"
-    end
+    #unless connection.respond_to?(:configure_connection)
+    #  return skip "no configure_connection for #{connection} can not test"
+    #end
     ActiveRecord::Base.connection.disconnect!
     ActiveRecord::Base.connection.expects(:configure_connection).once
     ActiveRecord::Base.connection.reconnect!
+  end
+
+  context 'configure_connection: false' do
+
+    def setup
+      @adapter_class = ActiveRecord::Base.connection.class
+      ActiveRecord::Base.remove_connection
+      ActiveRecord::Base.establish_connection JDBC_CONFIG.merge :configure_connection => false
+    end
+
+    def teardown
+      ActiveRecord::Base.establish_connection JDBC_CONFIG.dup
+    end
+
+    test 'does not configure_connection' do
+      @adapter_class.any_instance.expects(:configure_connection).never
+      assert ActiveRecord::Base.connection.active?
+    end
+
+    test 'does not configure_connection on reconnect!' do
+      connection = ActiveRecord::Base.connection
+      ActiveRecord::Base.connection.disconnect!
+      ActiveRecord::Base.connection.expects(:configure_connection).never
+      ActiveRecord::Base.connection.reconnect!
+    end
+
   end
 
   class MockDriver < ActiveRecord::ConnectionAdapters::JdbcDriver
