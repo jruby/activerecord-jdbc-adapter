@@ -674,18 +674,19 @@ module ActiveRecord
         # @private AR 3.x : WrappedDatabaseException < StatementInvalid
         WrappingStatementInvalid = ::ActiveRecord::WrappedDatabaseException
       else # 2.3
-        # does not have a translate_exceptiob but does this in log :
+        # does not have a translate_exception but does this in log :
         #   raise ActiveRecord::StatementInvalid, message
         #
-        #::ActiveRecord::StatementInvalid.class_eval do
-        #  attr_reader :original_exception
-        #  def initialize(message, original_exception = nil)
-        #    super(message)
-        #    @original_exception = original_exception
-        #  end
-        #end
+        # NOTE: still suitable to patch due JDBCError assuming super(msg, cause)
+        ::ActiveRecord::StatementInvalid.class_eval do
+          # attr_reader :original_exception
+          def initialize(message, original_exception = nil)
+            super(message)
+            @original_exception = original_exception
+          end
+        end
         # @private
-        #WrappingStatementInvalid = ::ActiveRecord::StatementInvalid
+        WrappingStatementInvalid = ::ActiveRecord::StatementInvalid
       end
 
       def translate_exception(e, message)
