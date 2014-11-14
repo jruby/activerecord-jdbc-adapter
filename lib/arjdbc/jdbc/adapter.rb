@@ -95,7 +95,7 @@ module ActiveRecord
       # @see ActiveRecord::ConnectionAdapters::JdbcConnection
       def self.jdbc_connection_class(spec)
         connection_class = spec.jdbc_connection_class if spec && spec.respond_to?(:jdbc_connection_class)
-        connection_class ? connection_class : JdbcConnection
+        connection_class ? connection_class : self::JdbcConnection
       end
 
       # @note The spec argument passed is ignored and shall no longer be used.
