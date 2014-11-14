@@ -117,6 +117,7 @@ public class RubyJdbcConnection extends RubyObject {
 
     private boolean lazy = false; // final once set on initialize
     private boolean jndi; // final once set on initialize
+    private boolean configureConnection = true; // final once initialized
 
     protected RubyJdbcConnection(Ruby runtime, RubyClass metaClass) {
         super(runtime, metaClass);
@@ -510,6 +511,12 @@ public class RubyJdbcConnection extends RubyObject {
             if ( message == null ) message = e.getSQLState();
             throw wrapException(context, e, message);
         }
+
+        IRubyObject value = getConfigValue(context, "configure_connection");
+        if ( value.isNil() ) this.configureConnection = true;
+        else {
+            this.configureConnection = value != context.runtime.getFalse();
+        }
     }
 
     @JRubyMethod(name = "adapter")
@@ -581,19 +588,22 @@ public class RubyJdbcConnection extends RubyObject {
         return context.nil;
     }
 
-    private final boolean configureConnection = true;
-
     private void configureConnection() {
-        if ( ! configureConnection ) return;
+        if ( ! configureConnection ) return; // return false;
 
         final IRubyObject adapter = getAdapter(); // self.adapter
-        //if ( adapter == null || adapter.isNil() ) {
-        //    warn(context, "adapter not set, please pass adapter on JdbcConnection#initialize(config, adapter)");
-        //}
-        if ( adapter != null && adapter.respondsTo("configure_connection") ) {
-            final ThreadContext context = getRuntime().getCurrentContext();
-            adapter.callMethod(context, "configure_connection");
+        if ( adapter != null && ! adapter.isNil() ) {
+            if ( adapter.respondsTo("configure_connection") ) {
+                final ThreadContext context = getRuntime().getCurrentContext();
+                adapter.callMethod(context, "configure_connection");
+            }
         }
+    }
+
+    @JRubyMethod(name = "configure_connection")
+    public IRubyObject configure_connection() {
+        if ( ! lazy || getConnectionImpl() != null ) configureConnection();
+        return getRuntime().getNil();
     }
 
     @JRubyMethod(name = "jdbc_connection", alias = "connection")

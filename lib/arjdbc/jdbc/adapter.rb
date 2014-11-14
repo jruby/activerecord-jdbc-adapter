@@ -78,10 +78,9 @@ module ActiveRecord
 
         pool.nil? ? super(connection, logger) : super(connection, logger, pool)
 
-        # NOTE: should not be necessary for JNDI due reconnect! on checkout :
-        configure_connection if respond_to?(:configure_connection)
-
         Jdbc::JndiConnectionPoolCallbacks.prepare(self, connection)
+
+        connection.configure_connection # will call us (maybe)
 
         @visitor = new_visitor # nil if no AREL (AR-2.3)
       end

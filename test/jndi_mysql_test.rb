@@ -17,14 +17,75 @@ class MySQLJndiTest < Test::Unit::TestCase
     assert_true ActiveRecord::Base.connection.raw_connection.jndi?
   end
 
+  context 'configure_connection' do
+
+    def setup
+      ActiveRecord::Base.establish_connection JNDI_MYSQL_CONFIG.dup
+    end
+
+    def teardown; ActiveRecord::Base.connection_pool.disconnect! end
+
+    test "configures once" do
+      pool = ActiveRecord::Base.connection_pool
+      assert_false pool.active_connection? if pool.respond_to?(:active_connection?)
+
+      adapter_class.any_instance.expects(:configure_connection).once
+      ActiveRecord::Base.connection.exec_query "SELECT VERSION()"
+    end
+
+    test "configures on demand (since it's lazy)" do
+      adapter_class.any_instance.expects(:configure_connection).never
+      assert ActiveRecord::Base.connection
+    end
+
+    test "configures on re-checkout" do
+      conn = ActiveRecord::Base.connection
+      pool = ActiveRecord::Base.connection_pool
+      assert pool.active_connection? if pool.respond_to?(:active_connection?)
+
+      pool.release_connection
+      assert_false pool.active_connection? if pool.respond_to?(:active_connection?)
+
+      conn.expects(:configure_connection).once
+      assert_equal conn, ActiveRecord::Base.connection
+      ActiveRecord::Base.connection_pool.connection
+      ActiveRecord::Base.connection.execute "SELECT 42"
+    end
+
+    context 'set to false' do
+
+      def setup
+        ActiveRecord::Base.establish_connection JNDI_MYSQL_CONFIG.merge :configure_connection => false
+      end
+
+      test "does not configure on creation" do
+        pool = ActiveRecord::Base.connection_pool
+        assert_false pool.active_connection? if pool.respond_to?(:active_connection?)
+
+        adapter_class.any_instance.expects(:configure_connection).never
+        ActiveRecord::Base.connection.exec_query "SELECT VERSION()"
+      end
+
+      test "does not configure on re-checkout" do
+        conn = ActiveRecord::Base.connection
+        pool = ActiveRecord::Base.connection_pool
+        assert pool.active_connection? if pool.respond_to?(:active_connection?)
+
+        pool.release_connection
+        assert_false pool.active_connection? if pool.respond_to?(:active_connection?)
+
+        conn.expects(:configure_connection).never
+        ActiveRecord::Base.connection.execute "SELECT 42"
+      end
+
+    end
+
+  end
+
   context 'jdbc-connection' do
 
     def setup
-      if JNDI_MYSQL_CONFIG[:adapter] == 'jdbc' || JNDI_MYSQL_CONFIG[:adapter] == 'jndi'
-        ActiveRecord::ConnectionAdapters::JdbcAdapter.any_instance.stubs(:configure_connection)
-      else; require 'arjdbc/mysql'
-        ActiveRecord::ConnectionAdapters::MysqlAdapter.any_instance.stubs(:configure_connection)
-      end
+      adapter_class.any_instance.stubs(:configure_connection)
 
       ActiveRecord::Base.establish_connection JNDI_MYSQL_CONFIG.dup
       pool = ActiveRecord::Base.connection_pool # active_connection? since 3.1
@@ -93,6 +154,17 @@ class MySQLJndiTest < Test::Unit::TestCase
 
   Java::arjdbc.jdbc.RubyJdbcConnection.class_eval do
     field_reader :connected
+  end
+
+  private
+
+  def adapter_class
+    adapter = JNDI_MYSQL_CONFIG[:adapter]
+    if adapter == 'jdbc' || adapter == 'jndi'
+      ActiveRecord::ConnectionAdapters::JdbcAdapter
+    else; require 'arjdbc/mysql'
+      ActiveRecord::ConnectionAdapters::MysqlAdapter
+    end
   end
 
 end
