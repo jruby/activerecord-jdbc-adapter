@@ -689,6 +689,7 @@ module ActiveRecord
       end
 
       def translate_exception(e, message)
+        return e if e.is_a?(JDBCError)
         # we shall not translate native "Java" exceptions as they might
         # swallow an ArJdbc / driver bug into a AR::StatementInvalid ...
         return e if e.is_a?(NativeException) # JRuby 1.6
@@ -696,8 +697,7 @@ module ActiveRecord
 
         case e
         when SystemExit, SignalException, NoMemoryError then e
-        # NOTE: wraps AR::JDBCError into AR::StatementInvalid, desired ?!
-        else WrappingStatementInvalid.new(message, e)
+        else WrappingStatementInvalid.new(message, e) # super
         end
       end
 

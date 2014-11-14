@@ -1,9 +1,10 @@
 module ActiveRecord
   # Represents exceptions that have propagated up through the JDBC API.
-  class JDBCError < ActiveRecordError
+  class JDBCError < const_defined?(:WrappedDatabaseException) ?
+      WrappedDatabaseException : StatementInvalid
 
     def initialize(message = nil, cause = $!)
-      super( ( message.nil? && cause ) ? cause.message : message )
+      super( ( message.nil? && cause ) ? cause.message : message, nil )
       if cause.is_a? Java::JavaSql::SQLException
         @jdbc_exception, @cause = cause, nil
       else
@@ -44,11 +45,16 @@ module ActiveRecord
     # @private
     alias_method :sql_exception=, :set_jdbc_exception
 
+    # true if the current error might be recovered e.g. by re-trying the transaction
+    def recoverable?; jdbc_exception.is_a?(Java::JavaSql::SQLRecoverableException) end
+    # true when a failed operation might be able to succeed when retried (e.g. timeouts)
+    def transient?; jdbc_exception.is_a?(Java::JavaSql::SQLTransientException) end
+
     # Likely (but not necessarily) the same as {#jdbc_exception}.
     def cause; ( @cause ||= nil ) || jdbc_exception end
-
-    # @deprecated Use {#cause} instead.
-    def original_exception; cause end
+    # @override
+    # @private for correct super-class (StatementInvalid) compatibility
+    alias_method :original_exception, :cause
 
     # @override
     def set_backtrace(backtrace)
