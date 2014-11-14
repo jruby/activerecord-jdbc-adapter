@@ -16,7 +16,7 @@ class PostgreSQLSchemaTest < Test::Unit::TestCase
     begin
       connection.create_schema "test_schema3"
       disable_logger(connection) do
-        assert_raise(ActiveRecord::StatementInvalid) do
+        assert_raise_kind_of(ActiveRecord::StatementInvalid) do
           connection.create_schema "test_schema3"
         end
       end

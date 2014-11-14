@@ -659,7 +659,7 @@ _SQL
   def test_invalid_hex_bit_string
     @first_bit_string.bit_string = 'FF'
     disable_logger do
-      assert_raise(ActiveRecord::StatementInvalid) do
+      assert_raise_kind_of(ActiveRecord::StatementInvalid) do
         @first_bit_string.save
       end
     end
