@@ -27,7 +27,8 @@ class MySQLJndiTest < Test::Unit::TestCase
       end
 
       ActiveRecord::Base.establish_connection JNDI_MYSQL_CONFIG.dup
-      assert_false ActiveRecord::Base.connection_pool.active_connection?
+      pool = ActiveRecord::Base.connection_pool # active_connection? since 3.1
+      assert_false pool.active_connection? if pool.respond_to?(:active_connection?)
     end
 
     def teardown; ActiveRecord::Base.connection_pool.disconnect! end
@@ -37,7 +38,8 @@ class MySQLJndiTest < Test::Unit::TestCase
       jdbc_connection.reconnect!
       assert_nil jdbc_connection.to_java.getConnectionImpl
 
-      assert ActiveRecord::Base.connection_pool.active_connection?
+      pool = ActiveRecord::Base.connection_pool # active_connection? since 3.1
+      assert pool.active_connection? if pool.respond_to?(:active_connection?)
       assert_true jdbc_connection.active?
     end
 

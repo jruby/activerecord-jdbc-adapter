@@ -108,12 +108,12 @@ class JdbcConnectionTest < Test::Unit::TestCase
       fail "jdbc error not thrown"
     rescue ActiveRecord::JDBCError => e
       assert_match /connect with {"user"=>"arjdbc", "password"=>"arjdbc"} failed/, e.to_s
-      assert_equal 1042, e.errno
+      assert_equal 1042, e.error_code
       assert_kind_of Java::JavaSql::SQLException, e.sql_exception
     ensure
       ActiveRecord::Base.establish_connection JDBC_CONFIG
     end
-  end
+  end #if ar_version('3.0')
 
   test 'driver sql exceptions without message and sql state' do
     config = JDBC_CONFIG.dup
@@ -125,12 +125,12 @@ class JdbcConnectionTest < Test::Unit::TestCase
       ActiveRecord::Base.connection.jdbc_connection
       fail "jdbc error not thrown"
     rescue ActiveRecord::JDBCError => e
-      assert_match /java.sql.SQLInvalidAuthorizationSpecException/, e.to_s
-      assert_kind_of Java::JavaSql::SQLNonTransientException, e.sql_exception
+      assert_kind_of Java::JavaSql::SQLNonTransientException, e.jdbc_exception
+      assert_false e.transient?
     ensure
       ActiveRecord::Base.establish_connection JDBC_CONFIG
     end
-  end
+  end #if ar_version('3.0')
 
   context 'configuration' do
 

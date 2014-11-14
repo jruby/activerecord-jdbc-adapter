@@ -59,7 +59,9 @@ class DerbyJndiTest < Test::Unit::TestCase
     def setup
       # does not do any configure_connection when no :schema is specified :
       ActiveRecord::Base.establish_connection JNDI_CONFIG.merge(:schema => nil)
-      assert_false ActiveRecord::Base.connection_pool.active_connection?
+
+      pool = ActiveRecord::Base.connection_pool # active_connection? since 3.1
+      assert_false pool.active_connection? if pool.respond_to?(:active_connection?)
     end
 
     def teardown; ActiveRecord::Base.connection_pool.disconnect! end
@@ -69,7 +71,8 @@ class DerbyJndiTest < Test::Unit::TestCase
       jdbc_connection.reconnect!
       assert_nil jdbc_connection.to_java.getConnectionImpl
 
-      assert ActiveRecord::Base.connection_pool.active_connection?
+      pool = ActiveRecord::Base.connection_pool # active_connection? since 3.1
+      assert pool.active_connection? if pool.respond_to?(:active_connection?)
       assert_true jdbc_connection.active?
     end
 
