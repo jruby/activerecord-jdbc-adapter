@@ -1931,7 +1931,7 @@ public class RubyJdbcConnection extends RubyObject {
         final RubyArray resultRows = runtime.newArray();
 
         while ( resultSet.next() ) {
-            resultRows.add( resultHandler.mapRow(context, runtime, columns, resultSet, this) );
+            resultRows.append( resultHandler.mapRow(context, runtime, columns, resultSet, this) );
         }
 
         return resultHandler.newResult(context, runtime, columns, resultRows);
