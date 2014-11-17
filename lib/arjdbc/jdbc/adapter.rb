@@ -690,17 +690,6 @@ module ActiveRecord
         end
       end unless defined? ActiveRecord::Result
 
-      # Helper to easily override #table_definition (on AR 3.x/4.0) as :
-      # ```
-      #   def table_definition(*args)
-      #     new_table_definition(TableDefinition, *args)
-      #   end
-      # ```
-      def new_table_definition(table_definition, *args)
-        table_definition.new(self) # args ignored only used for 4.0
-      end
-      private :new_table_definition
-
       # NOTE: make sure if adapter overrides #table_definition that it will
       # work on AR 3.x as well as 4.0
       if ActiveRecord::VERSION::MAJOR > 3
@@ -718,11 +707,18 @@ module ActiveRecord
       end
 
       # @note AR-4x arguments expected: `(name, temporary, options)`
-      # @private documented above
+      # @private documented bellow
       def new_table_definition(table_definition, *args)
         table_definition.new native_database_types, *args
       end
       private :new_table_definition
+
+      # @private
+      def new_index_definition(table, name, unique, columns, lengths,
+          orders = nil, where = nil, type = nil, using = nil)
+        IndexDefinition.new(table, name, unique, columns, lengths, orders, where, type, using)
+      end
+      private :new_index_definition
 
       #
 
@@ -737,6 +733,31 @@ module ActiveRecord
         sql << " AUTO_INCREMENT" if options[:auto_increment] == true
       end
       public :add_column_options!
+
+      else # AR < 4.0
+
+      # Helper to easily override #table_definition (on AR 3.x/4.0) as :
+      # ```
+      #   def table_definition(*args)
+      #     new_table_definition(TableDefinition, *args)
+      #   end
+      # ```
+      def new_table_definition(table_definition, *args)
+        table_definition.new(self) # args ignored only used for 4.0
+      end
+      private :new_table_definition
+
+      # @private (:table, :name, :unique, :columns, :lengths, :orders)
+      def new_index_definition(table, name, unique, columns, lengths,
+          orders = nil, where = nil, type = nil, using = nil)
+        IndexDefinition.new(table, name, unique, columns, lengths, orders)
+      end
+      # @private (:table, :name, :unique, :columns, :lengths)
+      def new_index_definition(table, name, unique, columns, lengths,
+          orders = nil, where = nil, type = nil, using = nil)
+        IndexDefinition.new(table, name, unique, columns, lengths)
+      end if ActiveRecord::VERSION::STRING < '3.2'
+      private :new_index_definition
 
       end
 
