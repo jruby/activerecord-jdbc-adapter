@@ -37,6 +37,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.DatabaseMetaData;
 import java.sql.Savepoint;
+import java.sql.Types;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -217,14 +218,10 @@ public class SQLite3RubyJdbcConnection extends RubyJdbcConnection {
             name = nameParts[2];
         }
 
-        name = caseConvertIdentifierForJdbc(connection, name);
-
         if ( schema != null ) {
-            schema = caseConvertIdentifierForJdbc(connection, schema);
             // NOTE: hack to work-around SQLite JDBC ignoring schema :
             return new TableName(catalog, null, schema + '.' + name);
         }
-
         return new TableName(catalog, schema, name);
     }
 
@@ -238,6 +235,13 @@ public class SQLite3RubyJdbcConnection extends RubyJdbcConnection {
         // integer value, all rows of that result set would get truncated.
         if ( resultSet instanceof ResultSetMetaData ) {
             type = ((ResultSetMetaData) resultSet).getColumnType(column);
+        }
+        // since JDBC 3.8 there seems to be more cleverness built-in that
+        // seems (<= 3.8.7) to get things wrong ... reports DATE SQL type
+        // for "datetime" columns :
+        if ( type == Types.DATE ) {
+            // return timestampToRuby(context, runtime, resultSet, column);
+            return stringToRuby(context, runtime, resultSet, column);
         }
         return super.jdbcToRuby(context, runtime, column, type, resultSet);
     }
