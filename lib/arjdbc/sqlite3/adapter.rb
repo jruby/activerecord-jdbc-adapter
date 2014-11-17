@@ -218,8 +218,8 @@ module ArJdbc
 
       if value.kind_of?(String)
         column_type = column && column.type
-        if column_type == :binary && column.class.respond_to?(:string_to_binary)
-          "x'#{column.class.string_to_binary(value).unpack("H*")[0]}'"
+        if column_type == :binary
+          "x'#{value.unpack("H*")[0]}'"
         else
           super
         end
