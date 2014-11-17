@@ -268,7 +268,7 @@ module ArJdbc
         sql << " AND NOT name = 'sqlite_sequence'"
       end
 
-      select_rows(sql, name).map { |row| row[0] }
+      select_rows(sql, name).map! { |row| row[0] }
     end
 
     # @override
@@ -511,11 +511,11 @@ module ArJdbc
       include Comparable
 
       def initialize(version_string)
-        @version = version_string.split('.').map! { |v| v.to_i }
+        @version = version_string.split('.').map!(&:to_i)
       end
 
       def <=>(version_string)
-        @version <=> version_string.split('.').map! { |v| v.to_i }
+        @version <=> version_string.split('.').map!(&:to_i)
       end
 
       def to_s
