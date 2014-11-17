@@ -234,9 +234,18 @@ module ArJdbc
       quote_column_name(attr)
     end if ::ActiveRecord::VERSION::MAJOR >= 4
 
-    # @override
-    def quote_column_name(name)
-      %Q("#{name.to_s.gsub('"', '""')}") # "' kludge for emacs font-lock
+    def type_cast(value, column)
+      return value.to_f if BigDecimal === value
+      return super unless String === value
+      return super unless column && value
+
+      value = super
+      if column.type == :string &&
+        value.respond_to?(:encoding) && value.encoding == Encoding::ASCII_8BIT
+        logger.error "Binary data inserted for `string` type on column `#{column.name}`" if logger
+        value = value.encode Encoding::UTF_8
+      end
+      value
     end
 
     # Quote date/time values for use in SQL input.
