@@ -50,6 +50,10 @@ group :rails do
   gem 'actionpack', :require => nil
 end
 
+if sqlite_version = ENV['JDBC_SQLITE_VERSION'] # for testing against different version(s)
+  gem 'jdbc-sqlite3', sqlite_version, :require => nil, :platform => :jruby, :group => :test
+end
+
 gem 'mysql2', :require => nil, :platform => :mri, :group => :test
 gem 'pg', :require => nil, :platform => :mri, :group => :test
 gem 'sqlite3', :require => nil, :platform => :mri, :group => :test
