@@ -53,7 +53,7 @@ def test_task_for(adapter, options = {})
   desc = options[:desc] || options[:comment] ||
     "Run tests against #{options[:database_name] || adapter}"
   adapter = adapter.to_s.downcase
-  driver = options.key?(:driver) ? options[:driver] : adapter
+  driver = adapter if ( driver = options[:driver] ).nil?
   prereqs = options[:prereqs] || []
   unless prereqs.frozen?
     prereqs = [ prereqs ].flatten; prereqs << 'test_appraisal_hint'
@@ -87,7 +87,7 @@ test_task_for :MSSQL, :driver => :jtds, :database_name => 'MS-SQL (SQLServer)'
 test_task_for :MySQL, :prereqs => 'db:mysql'
 test_task_for :PostgreSQL, :driver => 'postgres', :prereqs => 'db:postgresql'
 task :test_postgres => :test_postgresql # alias
-test_task_for :SQLite3
+test_task_for :SQLite3, :driver => ENV['JDBC_SQLITE_VERSION']
 task :test_sqlite => :test_sqlite3 # alias
 test_task_for :Firebird
 
