@@ -144,6 +144,11 @@ class SQLite3SimpleTest < Test::Unit::TestCase
     assert_equal ["name"], indexes.first.columns
   end
 
+  def test_execute_pragma_works
+    index_name = "entries_index"
+    connection.execute("PRAGMA index_info('#{index_name}')")
+  end
+
   def test_column_default
     assert_nothing_raised do
       ActiveRecord::Schema.define do
