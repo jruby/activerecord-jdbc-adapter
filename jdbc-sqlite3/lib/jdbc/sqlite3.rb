@@ -23,4 +23,5 @@ module Jdbc
       load_driver :require
     end
   end
+  SQLite = SQLite3 unless const_defined?(:SQLite)
 end
