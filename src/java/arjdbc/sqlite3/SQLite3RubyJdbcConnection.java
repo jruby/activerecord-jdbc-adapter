@@ -118,15 +118,81 @@ public class SQLite3RubyJdbcConnection extends RubyJdbcConnection {
     }
 
     @Override
-    protected IRubyObject indexes(final ThreadContext context, String tableName, final String name, String schemaName) {
-        if ( tableName != null ) {
-            final int i = tableName.indexOf('.');
-            if ( i > 0 && schemaName == null ) {
-                schemaName = tableName.substring(0, i);
-                tableName = tableName.substring(i + 1);
+    protected IRubyObject indexes(final ThreadContext context, String table, final String name, String schema) {
+        if ( table != null ) {
+            final int i = table.indexOf('.');
+            if ( i > 0 && schema == null ) {
+                schema = table.substring(0, i);
+                table = table.substring(i + 1);
             }
         }
-        return super.indexes(context, tableName, name, schemaName);
+        final String tableName = table;
+        final String schemaName = schema;
+        // return super.indexes(context, tableName, name, schemaName);
+        return withConnection(context, new Callable<IRubyObject>() {
+            public RubyArray call(final Connection connection) throws SQLException {
+                final Ruby runtime = context.runtime;
+                final RubyClass indexDefinition = getIndexDefinition(runtime);
+
+                final TableName table = extractTableName(connection, schemaName, tableName);
+
+                final List<RubyString> primaryKeys = primaryKeys(context, connection, table);
+
+                final DatabaseMetaData metaData = connection.getMetaData();
+                ResultSet indexInfoSet = null;
+                try {
+                    indexInfoSet = metaData.getIndexInfo(table.catalog, table.schema, table.name, false, true);
+                }
+                catch (SQLException e) {
+                    final String msg = e.getMessage();
+                    if ( msg != null && msg.startsWith("[SQLITE_ERROR] SQL error or missing database") ) {
+                        return RubyArray.newEmptyArray(runtime); // on 3.8.7 getIndexInfo fails if table has no indexes
+                    }
+                    throw e;
+                }
+                final RubyArray indexes = RubyArray.newArray(runtime, 8);
+                try {
+                    String currentIndex = null;
+
+                    while ( indexInfoSet.next() ) {
+                        String indexName = indexInfoSet.getString(INDEX_INFO_NAME);
+                        if ( indexName == null ) continue;
+
+                        final String columnName = indexInfoSet.getString(INDEX_INFO_COLUMN_NAME);
+                        final RubyString rubyColumnName = RubyString.newUnicodeString(runtime, columnName);
+                        if ( primaryKeys.contains(rubyColumnName) ) continue;
+
+                        // We are working on a new index
+                        if ( ! indexName.equals(currentIndex) ) {
+                            currentIndex = indexName;
+
+                            String indexTableName = indexInfoSet.getString(INDEX_INFO_TABLE_NAME);
+
+                            final boolean nonUnique = indexInfoSet.getBoolean(INDEX_INFO_NON_UNIQUE);
+
+                            IRubyObject[] args = new IRubyObject[] {
+                                RubyString.newUnicodeString(runtime, indexTableName), // table_name
+                                RubyString.newUnicodeString(runtime, indexName), // index_name
+                                runtime.newBoolean( ! nonUnique ), // unique
+                                runtime.newArray() // [] for column names, we'll add to that in just a bit
+                                // orders, (since AR 3.2) where, type, using (AR 4.0)
+                            };
+
+                            indexes.append( indexDefinition.callMethod(context, "new", args) ); // IndexDefinition.new
+                        }
+
+                        // One or more columns can be associated with an index
+                        IRubyObject lastIndexDef = indexes.isEmpty() ? null : indexes.entry(-1);
+                        if ( lastIndexDef != null ) {
+                            ( (RubyArray) lastIndexDef.callMethod(context, "columns") ).append(rubyColumnName);
+                        }
+                    }
+
+                    return indexes;
+
+                } finally { close(indexInfoSet); }
+            }
+        });
     }
 
     @Override

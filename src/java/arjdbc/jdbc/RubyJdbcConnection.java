@@ -1149,10 +1149,10 @@ public class RubyJdbcConnection extends RubyObject {
     }
 
     // NOTE: metaData.getIndexInfo row mappings :
-    private static final int INDEX_INFO_TABLE_NAME = 3;
-    private static final int INDEX_INFO_NON_UNIQUE = 4;
-    private static final int INDEX_INFO_NAME = 6;
-    private static final int INDEX_INFO_COLUMN_NAME = 9;
+    protected static final int INDEX_INFO_TABLE_NAME = 3;
+    protected static final int INDEX_INFO_NON_UNIQUE = 4;
+    protected static final int INDEX_INFO_NAME = 6;
+    protected static final int INDEX_INFO_COLUMN_NAME = 9;
 
     /**
      * Default JDBC introspection for index metadata on the JdbcConnection.
