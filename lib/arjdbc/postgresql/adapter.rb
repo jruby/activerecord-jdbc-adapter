@@ -1162,19 +1162,6 @@ module ArJdbc
       end
     end
 
-    # @private
-    IndexDefinition = ::ActiveRecord::ConnectionAdapters::IndexDefinition
-    if ActiveRecord::VERSION::MAJOR < 3 ||
-        ( ActiveRecord::VERSION::MAJOR == 3 && ActiveRecord::VERSION::MINOR <= 1 )
-      # NOTE: make sure we accept 6 arguments (>= 3.2) as well as 5 (<= 3.1) :
-      # allow 6 on 3.1 : Struct.new(:table, :name, :unique, :columns, :lengths)
-      IndexDefinition.class_eval do
-        def initialize(table, name, unique = nil, columns = nil, lengths = nil, orders = nil)
-          super(table, name, unique, columns, lengths) # @see {#indexes}
-        end
-      end
-    end
-
     def index_name_exists?(table_name, index_name, default)
       exec_query(<<-SQL, 'SCHEMA').rows.first[0].to_i > 0
         SELECT COUNT(*)
@@ -1187,6 +1174,9 @@ module ArJdbc
           AND i.relnamespace IN (SELECT oid FROM pg_namespace WHERE nspname = ANY (current_schemas(false)) )
       SQL
     end if AR42_COMPAT
+
+    # @private
+    IndexDefinition = ::ActiveRecord::ConnectionAdapters::IndexDefinition
 
     # Returns an array of indexes for the given table.
     def indexes(table_name, name = nil)
@@ -1232,7 +1222,7 @@ module ArJdbc
 
             IndexDefinition.new(table_name, index_name, unique, column_names, [], orders, where, nil, using)
           else
-            IndexDefinition.new(table_name, index_name, unique, column_names, [], orders)
+            new_index_definition(table_name, index_name, unique, column_names, [], orders)
           end
         end
       end
