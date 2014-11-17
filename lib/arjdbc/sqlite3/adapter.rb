@@ -367,6 +367,38 @@ module ArJdbc
       column && column['name']
     end
 
+    # NOTE: do not override indexes without testing support for 3.7.2 & 3.8.7 !
+    # @override
+    def indexes(table_name, name = nil)
+      # on JDBC 3.7 we'll simply do super since it can not handle "PRAGMA index_info"
+      return @connection.indexes(table_name, name) if sqlite_version < '3.8' # super
+
+      name ||= 'SCHEMA'
+      exec_query_raw("PRAGMA index_list(#{quote_table_name(table_name)})", name).map do |row|
+        index_name = row['name']
+        sql = "SELECT sql FROM sqlite_master"
+        sql << " WHERE name=#{quote(index_name)} AND type='index'"
+        sql << " UNION ALL "
+        sql << "SELECT sql FROM sqlite_temp_master"
+        sql << " WHERE name=#{quote(index_name)} AND type='index'"
+        where = nil
+        exec_query_raw(sql, name) do |index_sql|
+          match = /\sWHERE\s+(.+)$/i.match(index_sql)
+          where = match[1] if match
+        end
+        begin
+          columns = exec_query_raw("PRAGMA index_info('#{index_name}')", name).map { |col| col['name'] }
+        rescue => e
+          # NOTE: JDBC <= 3.8.7 bug work-around :
+          if e.message && e.message.index('[SQLITE_ERROR] SQL error or missing database')
+            columns = []
+          end
+          raise e
+        end
+        new_index_definition(table_name, index_name, row['unique'] != 0, columns, nil, nil, where)
+      end
+    end
+
     # @override
     def remove_index!(table_name, index_name)
       execute "DROP INDEX #{quote_column_name(index_name)}"
@@ -488,12 +520,17 @@ module ArJdbc
     end
 
     def translate_exception(exception, message)
-      case exception.message
-      when /column(s)? .* (is|are) not unique/
-        ActiveRecord::RecordNotUnique.new(message, exception)
-      else
-        super
+      if msg = exception.message
+        # SQLite 3.8.2 returns a newly formatted error message:
+        #   UNIQUE constraint failed: *table_name*.*column_name*
+        # Older versions of SQLite return:
+        #   column *column_name* is not unique
+        if msg.index('UNIQUE constraint failed: ') ||
+           msg =~ /column(s)? .* (is|are) not unique/
+          return RecordNotUnique.new(message, exception)
+        end
       end
+      super
     end
 
     # @private available in native adapter way back to AR-2.3
