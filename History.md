@@ -1,3 +1,14 @@
+## 1.3.12 (11/18/14)
+
+- [sqlite] support for latest JDBC 3.8
+- [mysql] correctly map config[:encoding] into Connector-J characterEncoding
+- [mysql] backport rename_index from Rails (corectly handling MariaDB as well)
+- [mysql] core adapter compat - missing initialize_schema_migrations_table
+- `supports_views?` is now a method available in 4.2 (most DBs support VIEWs)
+- [postgres] table_exists? fully compatible with Rails 4.1
+- handle pre JDBC 4 driver abstract method errors somehow gracefully
+- tune ArJdbc scoped warnings/deprecations (can be off -J-Darjdbc.warn=false)
+
 ## 1.3.11 (10/20/14)
 
 - arjdbc: performance improvement - avoiding JRuby's impl iface generation
