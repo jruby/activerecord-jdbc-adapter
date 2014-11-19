@@ -58,7 +58,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.TimeZone;
-import javax.naming.InitialContext;
 import javax.naming.NameNotFoundException;
 import javax.naming.NamingException;
 import javax.sql.DataSource;
@@ -96,6 +95,7 @@ import org.jruby.runtime.component.VariableEntry;
 import org.jruby.util.ByteList;
 
 import arjdbc.util.DateTimeUtils;
+import arjdbc.util.NamingHelper;
 import arjdbc.util.ObjectSupport;
 import arjdbc.util.StringCache;
 import arjdbc.util.StringHelper;
@@ -1787,7 +1787,7 @@ public class RubyJdbcConnection extends RubyObject {
         if ( value.isNil() ) {
             value = getConfigValue(context, "jndi");
             final String name = value.toString();
-            dataSource = (DataSource) lookup(context, name);
+            dataSource = lookup(context, name);
         }
         else {
             dataSource = (DataSource) value.toJava(DataSource.class);
@@ -1795,36 +1795,27 @@ public class RubyJdbcConnection extends RubyObject {
         return dataSource;
     }
 
-    private static InitialContext initialContext;
-
-    private static InitialContext getInitialContext() throws NamingException {
-        if ( initialContext == null ) {
-            return initialContext = new InitialContext();
-        }
-        return initialContext;
-    }
-
-    private static Object lookup(final ThreadContext context, final String name) throws NamingException {
+    private static DataSource lookup(final ThreadContext context, final String name) throws NamingException {
         try {
-            return getInitialContext().lookup(name);
+            return NamingHelper.lookup(name);
         }
         catch (NameNotFoundException e) {
             final RubyClass errorClass = getConnectionNotEstablished(context.runtime);
             final String message;
             if ( name == null || name.isEmpty() ) {
-                message = "unable to lookup data source - no JNDI name given, please set jndi:";
+                message = "unable to lookup data source - no name given, please set jndi:";
             }
             else if ( name.indexOf("env") != -1 ) {
                 final StringBuilder msg = new StringBuilder();
-                msg.append("JNDI name: '").append(name).append("' not found ");
-                msg.append("maybe try using full context name e.g. ");
+                msg.append("name: '").append(name).append("' not found, ");
+                msg.append("try using full name (including env) e.g. ");
                 msg.append("java:/comp/env"); // e.g. java:/comp/env/jdbc/MyDS
                 if ( name.charAt(0) != '/' ) msg.append('/');
                 msg.append(name);
                 message = msg.toString();
             }
             else {
-                message = "unable to lookup data source - JNDI name: '" + name + "' not bound";
+                message = "unable to lookup data source - name: '" + name + "' not found";
             }
             throw wrapException(context, errorClass, e, message);
         }
