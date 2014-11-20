@@ -34,20 +34,33 @@ import javax.naming.NamingException;
  */
 public abstract class NamingHelper {
 
-    private static final boolean initialContextCached = Boolean.getBoolean("arjdbc.jndi.context.cached");
+    private static final boolean contextCached = Boolean.getBoolean("arjdbc.jndi.context.cached");
 
     private static InitialContext initialContext;
 
     public static InitialContext getInitialContext() throws NamingException {
-        if ( initialContextCached ) {
-            if ( initialContext == null ) {
-                return initialContext = new InitialContext();
-            }
-            return initialContext;
-        }
+        if ( initialContext != null ) return initialContext;
+        if ( contextCached ) return initialContext = new InitialContext();
         return new InitialContext();
     }
 
+    /**
+     * Currently, the only way to bypass <code>new InitialContext()</code>
+     * without the environment being passed in.
+     * @param context
+     * @see #getInitialContext()
+     */
+    public static void setInitialContext(final InitialContext context) {
+        NamingHelper.initialContext = context;
+    }
+
+    /**
+     * Lookup a JNDI name, relative to the initial context.
+     * @param name full name
+     * @return bound resource
+     * @throws NameNotFoundException
+     * @throws NamingException
+     */
     @SuppressWarnings("unchecked")
     public static <T> T lookup(final String name)
         throws NameNotFoundException, NamingException {
