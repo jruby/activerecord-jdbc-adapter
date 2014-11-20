@@ -23,17 +23,10 @@
  */
 package arjdbc.jdbc;
 
-import java.sql.Connection;
-import java.sql.SQLException;
-
 /**
  * @deprecated implement {@link ConnectionFactory} instead.
  *
  * @author kares
  */
 @Deprecated
-public interface JdbcConnectionFactory {
-
-    Connection newConnection() throws SQLException;
-
-}
+public interface JdbcConnectionFactory extends ConnectionFactory { /* noop */ }

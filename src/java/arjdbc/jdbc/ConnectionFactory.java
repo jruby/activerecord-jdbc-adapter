@@ -34,14 +34,12 @@ import org.jruby.RubyString;
 import org.jruby.runtime.ThreadContext;
 import org.jruby.runtime.builtin.IRubyObject;
 
-
 /**
  * Interface to be implemented in Ruby for retrieving a new connection.
  *
  * @author nicksieger
  */
-@SuppressWarnings("deprecation")
-public interface ConnectionFactory extends JdbcConnectionFactory {
+public interface ConnectionFactory {
 
     /**
      * Retrieve a (new) connection from the factory.
