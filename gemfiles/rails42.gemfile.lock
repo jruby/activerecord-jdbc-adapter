@@ -1,13 +1,13 @@
 GIT
   remote: git://github.com/rails/arel.git
-  revision: 9eb4a1c633894a367ad99e93e4e0000f7acf1e50
+  revision: a04851702b0e8e694a92139c3ee9f3b1622f3f5d
   branch: master
   specs:
     arel (6.0.0.beta2)
 
 GIT
   remote: git://github.com/rails/rails.git
-  revision: 9c195344a83c406f29738dc5ff78b322f48132c7
+  revision: dcb3ac2c3cae08875e0df60fef671a40ea96107f
   branch: master
   specs:
     actionmailer (4.2.0.beta4)
@@ -83,11 +83,11 @@ GEM
       mime-types (>= 1.16, < 3)
     metaclass (0.0.4)
     mime-types (2.4.3)
-    minitest (5.4.2)
+    minitest (5.4.3)
     mocha (0.13.3)
       metaclass (~> 0.0.1)
     multi_json (1.10.1)
-    nokogiri (1.6.4-java)
+    nokogiri (1.6.4.1-java)
     rack (1.6.0.beta)
     rack-test (0.6.2)
       rack (>= 1.0)
