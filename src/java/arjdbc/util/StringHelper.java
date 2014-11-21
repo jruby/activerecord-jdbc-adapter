@@ -63,6 +63,11 @@ public abstract class StringHelper {
         return RubyString.newString(runtime, byteList, UTF8Encoding.INSTANCE);
     }
 
+    public static RubyString newEmptyUTF8String(final Ruby runtime) {
+        final ByteList byteList = new ByteList(ByteList.NULL_ARRAY, false);
+        return RubyString.newString(runtime, byteList, UTF8Encoding.INSTANCE);
+    }
+
     public static int readBytes(final ByteList output, final InputStream input)
         throws IOException {
         @SuppressWarnings("deprecation") // capacity :

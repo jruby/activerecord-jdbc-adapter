@@ -258,8 +258,21 @@ public class SQLite3RubyJdbcConnection extends RubyJdbcConnection {
         final Ruby runtime, final ResultSet resultSet, final int column)
         throws SQLException, IOException {
         final byte[] bytes = resultSet.getBytes(column);
-        if ( bytes == null ) return runtime.getNil();
+        // CAST(X'' AS BLOB) since SQLite 3.8 are returned as null
+        // while they were returned as byte[0] previously in 3.7.x
+        if ( resultSet.wasNull() ) return context.nil;
+        if ( bytes == null ) return RubyString.newEmptyString(runtime);
         return StringHelper.newString( runtime, bytes );
+    }
+
+    @Override
+    protected IRubyObject stringToRuby(final ThreadContext context,
+        final Ruby runtime, final ResultSet resultSet, final int column)
+        throws SQLException {
+        final byte[] value = resultSet.getBytes(column);
+        if ( resultSet.wasNull() ) return context.nil;
+        if ( value == null ) return StringHelper.newEmptyUTF8String(runtime);
+        return StringHelper.newUTF8String(runtime, value);
     }
 
     @Override
@@ -273,6 +286,16 @@ public class SQLite3RubyJdbcConnection extends RubyJdbcConnection {
             tables.append( RubyString.newUnicodeString(runtime, name) );
         }
         return tables;
+    }
+
+    @Override
+    protected String caseConvertIdentifierForRails(final Connection connection, final String value) {
+        return value;
+    }
+
+    @Override
+    protected String caseConvertIdentifierForJdbc(final Connection connection, final String value) {
+        return value;
     }
 
     private static class SavepointStub implements Savepoint {
