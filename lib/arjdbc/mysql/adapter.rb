@@ -21,6 +21,10 @@ module ArJdbc
       ::ActiveRecord::ConnectionAdapters::MySQLJdbcConnection
     end
 
+    def jdbc_column_class
+      ::ActiveRecord::ConnectionAdapters::MysqlAdapter::Column
+    end
+
     # @private
     def init_connection(jdbc_connection)
       meta = jdbc_connection.meta_data
@@ -168,12 +172,12 @@ module ArJdbc
 
     # @private Only for Rails core compatibility.
     def new_column(field, default, type, null, collation, extra = "")
-      Column.new(field, default, type, null, collation, strict_mode?, extra)
+      jdbc_column_class.new(field, default, type, null, collation, strict_mode?, extra)
     end unless AR42
 
     # @private Only for Rails core compatibility.
     def new_column(field, default, cast_type, sql_type = nil, null = true, collation = "", extra = "")
-      Column.new(field, default, cast_type, sql_type, null, collation, strict_mode?, extra)
+      jdbc_column_class.new(field, default, cast_type, sql_type, null, collation, strict_mode?, extra)
     end if AR42
 
     # @private Only for Rails core compatibility.
@@ -378,9 +382,9 @@ module ArJdbc
         null = field['Null'] == "YES"
         if pass_cast_type
           cast_type = lookup_cast_type(sql_type)
-          Column.new(field['Field'], field['Default'], cast_type, sql_type, null, field['Collation'], strict, field['Extra'])
+          jdbc_column_class.new(field['Field'], field['Default'], cast_type, sql_type, null, field['Collation'], strict, field['Extra'])
         else
-          Column.new(field['Field'], field['Default'], sql_type, null, field['Collation'], strict, field['Extra'])
+          jdbc_column_class.new(field['Field'], field['Default'], sql_type, null, field['Collation'], strict, field['Extra'])
         end
       end
       columns
@@ -743,11 +747,5 @@ module ActiveRecord
       end
     end
 
-  end
-end
-
-module ArJdbc
-  module MySQL
-    Column = ::ActiveRecord::ConnectionAdapters::MysqlAdapter::Column
   end
 end

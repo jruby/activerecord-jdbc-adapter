@@ -31,7 +31,7 @@ module ArJdbc
     end
 
     # @see ActiveRecord::ConnectionAdapters::JdbcAdapter#jdbc_column_class
-    def jdbc_column_class; Column end
+    def jdbc_column_class; ::ActiveRecord::ConnectionAdapters::OracleColumn end
 
     # @private
     @@update_lob_values = true
@@ -682,10 +682,4 @@ module ActiveRecord::ConnectionAdapters
 
   end
 
-end
-
-module ArJdbc
-  module Oracle
-    Column = ::ActiveRecord::ConnectionAdapters::OracleColumn
-  end
 end
