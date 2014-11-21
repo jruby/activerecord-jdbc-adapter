@@ -873,21 +873,56 @@ module ActiveRecord
 
       # @note Used by Java API to convert dates from (custom) SELECTs (might get refactored).
       # @private
-      def _string_to_date(value)
-        jdbc_column_class.string_to_date(value)
-      end
+      def _string_to_date(value); jdbc_column_class.string_to_date(value) end
 
       # @note Used by Java API to convert times from (custom) SELECTs (might get refactored).
       # @private
-      def _string_to_time(value)
-        jdbc_column_class.string_to_dummy_time(value)
-      end
+      def _string_to_time(value); jdbc_column_class.string_to_dummy_time(value) end
 
       # @note Used by Java API to convert times from (custom) SELECTs (might get refactored).
       # @private
-      def _string_to_timestamp(value)
-        jdbc_column_class.string_to_time(value)
+      def _string_to_timestamp(value); jdbc_column_class.string_to_time(value) end
+
+      if ActiveRecord::VERSION::STRING > '4.2'
+
+        # @private
+        @@_date = nil
+
+        # @private
+        def _string_to_date(value)
+          if jdbc_column_class.respond_to?(:string_to_date)
+            jdbc_column_class.string_to_date(value)
+          else
+            (@@_date ||= ActiveRecord::Type::Date.new).send(:cast_value, value)
+          end
+        end
+
+        # @private
+        @@_time = nil
+
+        # @private
+        def _string_to_time(value)
+          if jdbc_column_class.respond_to?(:string_to_dummy_time)
+            jdbc_column_class.string_to_dummy_time(value)
+          else
+            (@@_time ||= ActiveRecord::Type::Time.new).send(:cast_value, value)
+          end
+        end
+
+        # @private
+        @@_date_time = nil
+
+        # @private
+        def _string_to_timestamp(value)
+          if jdbc_column_class.respond_to?(:string_to_time)
+            jdbc_column_class.string_to_time(value)
+          else
+            (@@_date_time ||= ActiveRecord::Type::DateTime.new).send(:cast_value, value)
+          end
+        end
+
       end
+
 
       if ActiveRecord::VERSION::MAJOR < 4 # emulating Rails 3.x compatibility
         JdbcConnection.raw_date_time = true if JdbcConnection.raw_date_time? == nil
