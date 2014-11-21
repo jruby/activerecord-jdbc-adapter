@@ -12,6 +12,8 @@ module ArJdbc
       ::ActiveRecord::ConnectionAdapters::SQLite3JdbcConnection
     end
 
+    def jdbc_column_class; ::ActiveRecord::ConnectionAdapters::SQLite3Column end
+
     # @see ActiveRecord::ConnectionAdapters::JdbcColumn#column_types
     def self.column_selector
       [ /sqlite/i, lambda { |config, column| column.extend(Column) } ]
@@ -348,15 +350,15 @@ module ArJdbc
 
     # @override
     def columns(table_name, name = nil)
-      klass = ::ActiveRecord::ConnectionAdapters::SQLite3Column
+      column = jdbc_column_class
       pass_cast_type = respond_to?(:lookup_cast_type)
       table_structure(table_name).map do |field|
         sql_type = field['type']
         if pass_cast_type
           cast_type = lookup_cast_type(sql_type)
-          klass.new(field['name'], field['dflt_value'], cast_type, sql_type, field['notnull'] == 0)
+          column.new(field['name'], field['dflt_value'], cast_type, sql_type, field['notnull'] == 0)
         else
-          klass.new(field['name'], field['dflt_value'], sql_type, field['notnull'] == 0)
+          column.new(field['name'], field['dflt_value'], sql_type, field['notnull'] == 0)
         end
       end
     end
@@ -590,10 +592,6 @@ module ActiveRecord::ConnectionAdapters
 
     def jdbc_connection_class(spec)
       ::ArJdbc::SQLite3.jdbc_connection_class
-    end
-
-    def jdbc_column_class
-      ::ActiveRecord::ConnectionAdapters::SQLite3Column
     end
 
     # @private
