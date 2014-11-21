@@ -930,5 +930,8 @@ module ActiveRecord
       end
 
     end
+    module Jdbc
+      autoload :TypeCast, 'arjdbc/jdbc/type_cast'
+    end
   end
 end
