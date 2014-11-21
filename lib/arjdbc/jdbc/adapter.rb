@@ -38,6 +38,9 @@ module ActiveRecord
       include Jdbc::ArelSupport
       include Jdbc::ConnectionPoolCallbacks
 
+      # @private
+      AR_42 = ActiveRecord::VERSION::STRING >= '4.2'
+
       attr_reader :config
 
       # Initializes the (JDBC connection) adapter instance.
@@ -886,7 +889,11 @@ module ActiveRecord
       # @note Used by Java API to convert times from (custom) SELECTs (might get refactored).
       # @private
       def _string_to_timestamp(value)
-        jdbc_column_class.string_to_time(value)
+        if AR_42
+          ActiveRecord::Type::DateTime.new.type_cast_for_database(value)
+        else
+          jdbc_column_class.string_to_time(value)
+        end
       end
 
       if ActiveRecord::VERSION::MAJOR < 4 # emulating Rails 3.x compatibility
