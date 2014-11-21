@@ -28,6 +28,7 @@ module ArJdbc
             include ActiveRecord::ConnectionAdapters::PostgreSQL::ArrayParser
           end if AR4_COMPAT
 
+          include ActiveRecord::ConnectionAdapters::Jdbc::TypeCast if AR42_COMPAT
           include Cast
 
         end

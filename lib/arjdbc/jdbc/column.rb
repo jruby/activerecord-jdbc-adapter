@@ -61,7 +61,7 @@ module ActiveRecord
 
       class << self
 
-        if ActiveRecord::VERSION::MAJOR > 3
+        if ActiveRecord::VERSION::MAJOR > 3 && ActiveRecord::VERSION::STRING < '4.2'
 
           # @private provides compatibility between AR 3.x/4.0 API
           def string_to_date(value); value_to_date(value) end

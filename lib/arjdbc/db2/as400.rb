@@ -20,9 +20,6 @@ module ArJdbc
       [ /as400/i, lambda { |config, column| column.extend(Column) } ]
     end
 
-    # @private
-    Column = DB2::Column
-
     # Boolean emulation can be disabled using :
     #
     #   ArJdbc::AS400.emulate_booleans = false
