@@ -1,3 +1,9 @@
+## 1.3.13 (11/21/14)
+
+- handle ("hacked") date/time/timestamp conversion from the JDBC side on 4.2
+- align SQLite's column class resolution with others in 1.3
+- avoid the Column regressions in 1.3.12 caused by backporting too much (#603)
+
 ## 1.3.12 (11/18/14)
 
 - [sqlite] support for latest JDBC 3.8
