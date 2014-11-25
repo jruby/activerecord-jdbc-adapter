@@ -60,7 +60,7 @@ module ActiveRecord
             config = connection.respond_to?(:config) ?
               connection.config : ActiveRecord::Base.connection_pool.spec.config
           end
-        elsif config.is_a?(ConnectionAdapters::ConnectionPool)
+        elsif config.respond_to?(:spec) && config.respond_to?(:connection)
           pool = config; config = pool.spec.config # AR >= 3.2 compatibility
         end
 
