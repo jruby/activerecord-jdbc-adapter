@@ -67,7 +67,8 @@ module ActiveRecord
         @config = config.respond_to?(:symbolize_keys) ? config.symbolize_keys : config
 
         if self.class.equal? JdbcAdapter
-          spec = @config.key?(:adapter_spec) ? @config[:adapter_spec] : adapter_spec(@config)
+          spec = @config.key?(:adapter_spec) ? @config[:adapter_spec] :
+            ( @config[:adapter_spec] = adapter_spec(@config) ) # due resolving visitor
           extend spec if spec
         end
 
