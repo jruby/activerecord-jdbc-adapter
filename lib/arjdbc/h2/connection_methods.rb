@@ -5,7 +5,7 @@ ArJdbc::ConnectionMethods.module_eval do
 
     return jndi_connection(config) if jndi_config?(config)
 
-    ArJdbc.load_driver(:H2) # ::Jdbc::H2.load_driver
+    ArJdbc.load_driver(:H2) unless config[:load_driver] == false
     config[:driver] ||= 'org.h2.Driver'
     config[:url] ||= begin
       db = config[:database]

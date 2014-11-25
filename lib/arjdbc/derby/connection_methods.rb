@@ -5,7 +5,7 @@ ArJdbc::ConnectionMethods.module_eval do
 
     return jndi_connection(config) if jndi_config?(config)
 
-    ArJdbc.load_driver(:Derby) # ::Jdbc::Derby.load_driver
+    ArJdbc.load_driver(:Derby) unless config[:load_driver] == false
     config[:driver] ||= 'org.apache.derby.jdbc.EmbeddedDriver'
     # `database: memory:dbName` for an in memory Derby DB
     config[:url] ||= "jdbc:derby:#{config[:database]};create=true"

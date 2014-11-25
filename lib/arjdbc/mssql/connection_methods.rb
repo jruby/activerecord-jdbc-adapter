@@ -16,7 +16,7 @@ ArJdbc::ConnectionMethods.module_eval do
 
     return jndi_connection(config) if jndi_config?(config)
 
-    ArJdbc.load_driver(:JTDS) # ::Jdbc::JTDS.load_driver
+    ArJdbc.load_driver(:JTDS) unless config[:load_driver] == false
 
     config[:host] ||= 'localhost'
     config[:port] ||= 1433

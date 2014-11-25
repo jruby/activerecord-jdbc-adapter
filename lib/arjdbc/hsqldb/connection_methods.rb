@@ -5,7 +5,7 @@ ArJdbc::ConnectionMethods.module_eval do
 
     return jndi_connection(config) if jndi_config?(config)
 
-    ArJdbc.load_driver(:HSQLDB) # ::Jdbc::HSQLDB.load_driver
+    ArJdbc.load_driver(:HSQLDB) unless config[:load_driver] == false
     config[:driver] ||= 'org.hsqldb.jdbcDriver'
     config[:url] ||= begin
       db = config[:database]

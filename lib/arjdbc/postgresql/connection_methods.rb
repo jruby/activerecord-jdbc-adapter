@@ -5,8 +5,8 @@ ArJdbc::ConnectionMethods.module_eval do
 
     return jndi_connection(config) if jndi_config?(config)
 
-    ArJdbc.load_driver(:Postgres) # ::Jdbc::Postgres.load_driver
-    config[:driver] ||= 'org.postgresql.Driver'
+    driver = config[:driver] ||= 'org.postgresql.Driver'
+    ArJdbc.load_driver(:Postgres) if driver.start_with?('org.postgresql.') && config[:load_driver] != false
 
     host = config[:host] ||= ( config[:hostaddr] || ENV['PGHOST'] || 'localhost' )
     port = config[:port] ||= ( ENV['PGPORT'] || 5432 )

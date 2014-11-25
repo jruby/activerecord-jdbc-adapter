@@ -6,7 +6,7 @@ ArJdbc::ConnectionMethods.module_eval do
 
     return jndi_connection(config) if jndi_config?(config)
 
-    ArJdbc.load_driver(:SQLite3) # ::Jdbc::SQLite3.load_driver
+    ArJdbc.load_driver(:SQLite3) unless config[:load_driver] == false
     config[:driver] ||= 'org.sqlite.JDBC'
     parse_sqlite3_config!(config)
     database = config[:database] # NOTE: "jdbc:sqlite::memory:" syntax is supported
