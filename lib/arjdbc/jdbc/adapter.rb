@@ -66,12 +66,10 @@ module ActiveRecord
 
         @config = config.respond_to?(:symbolize_keys) ? config.symbolize_keys : config
 
-        @config[:adapter_spec] = adapter_spec(@config) unless @config.key?(:adapter_spec)
-        spec = @config[:adapter_spec]
-
-        # kind of like `extend ArJdbc::MyDB if self.class == JdbcAdapter` :
-        klass = @config[:adapter_class]
-        extend spec if spec && ( ! klass || klass == JdbcAdapter)
+        if self.class.equal? JdbcAdapter
+          spec = @config.key?(:adapter_spec) ? @config[:adapter_spec] : adapter_spec(@config)
+          extend spec if spec
+        end
 
         # NOTE: adapter spec's init_connection only called if instantiated here :
         connection ||= jdbc_connection_class(spec).new(@config, self)
