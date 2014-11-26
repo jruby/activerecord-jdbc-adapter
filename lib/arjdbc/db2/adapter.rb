@@ -654,14 +654,14 @@ module ArJdbc
     def db2_schema
       @db2_schema = false unless defined? @db2_schema
       return @db2_schema if @db2_schema != false
+      schema = config[:schema]
       @db2_schema =
-        if config[:schema].present?
-          config[:schema]
-        elsif config[:jndi].present?
+        if schema then schema
+        elsif config[:jndi] || config[:data_source]
           nil # let JNDI worry about schema
         else
           # LUW implementation uses schema name of username by default
-          config[:username].presence || ENV['USER']
+          config[:username] || ENV['USER']
         end
     end
 
