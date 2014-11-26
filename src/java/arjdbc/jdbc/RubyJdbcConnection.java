@@ -789,14 +789,14 @@ public class RubyJdbcConnection extends RubyObject {
     protected Statement createStatement(final ThreadContext context, final Connection connection)
         throws SQLException {
         final Statement statement = connection.createStatement();
-        IRubyObject statementEscapeProcessing = getConfigValue(context, "statement_escape_processing");
+        IRubyObject escapeProcessing = getConfigValue(context, "statement_escape_processing");
         // NOTE: disable (driver) escape processing by default, it's not really
         // needed for AR statements ... if users need it they might configure :
-        if ( statementEscapeProcessing.isNil() ) {
+        if ( escapeProcessing == context.nil ) {
             statement.setEscapeProcessing(false);
         }
         else {
-            statement.setEscapeProcessing(statementEscapeProcessing.isTrue());
+            statement.setEscapeProcessing(escapeProcessing.isTrue());
         }
         return statement;
     }
@@ -1749,13 +1749,13 @@ public class RubyJdbcConnection extends RubyObject {
         }
         else {
             configValue = config.callMethod(context, "[]", runtime.newSymbol("jndi"));
-            if ( configValue.isNil() ) configValue = null;
+            if ( configValue == context.nil ) configValue = null;
             if ( configValue == null ) {
                 configValue = config.callMethod(context, "[]", runtime.newSymbol("data_source"));
             }
         }
 
-        if ( configValue == null || configValue.isNil() || configValue == runtime.getFalse() ) {
+        if ( configValue == null || configValue == context.nil || configValue == runtime.getFalse() ) {
             return false;
         }
         return true;
@@ -1861,13 +1861,13 @@ public class RubyJdbcConnection extends RubyObject {
 
     private String buildURL(final ThreadContext context, final IRubyObject url) {
         IRubyObject options = getConfigValue(context, "options");
-        if ( options != null && options.isNil() ) options = null;
+        if ( options != null && options == context.nil ) options = null;
         return DriverWrapper.buildURL(url, (Map) options);
     }
 
     private Properties resolveDriverProperties(final ThreadContext context) {
         IRubyObject properties = getConfigValue(context, "properties");
-        if ( properties == null || properties.isNil() ) return null;
+        if ( properties == null || properties == context.nil ) return null;
         Map<?, ?> propertiesJava = (Map) properties.toJava(Map.class);
         if ( propertiesJava instanceof Properties ) {
             return (Properties) propertiesJava;
@@ -1973,7 +1973,8 @@ public class RubyJdbcConnection extends RubyObject {
         final IRubyObject config = getConfig();
         final RubySymbol keySym = context.runtime.newSymbol(key);
         if ( config instanceof RubyHash ) {
-            return ((RubyHash) config).op_aref(context, keySym);
+            final IRubyObject value = ((RubyHash) config).fastARef(keySym);
+            return value == null ? context.nil : value;
         }
         return config.callMethod(context, "[]", keySym);
     }
@@ -2994,7 +2995,7 @@ public class RubyJdbcConnection extends RubyObject {
     private String getAliveSQL(final ThreadContext context) {
         if ( aliveSQL == null ) {
             final IRubyObject alive_sql = getConfigValue(context, "connection_alive_sql");
-            aliveSQL = alive_sql.isNil() ? NIL_ALIVE_SQL : alive_sql.asString().toString();
+            aliveSQL = ( alive_sql == context.nil ) ? NIL_ALIVE_SQL : alive_sql.asString().toString();
         }
         return aliveSQL == NIL_ALIVE_SQL ? null : aliveSQL;
     }
