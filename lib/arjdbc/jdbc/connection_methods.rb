@@ -8,16 +8,21 @@ module ArJdbc
 
     def jdbc_connection(config)
       adapter_class = config[:adapter_class] || begin
-        adapter = config[:adapter]
-        if ( adapter == 'jdbc' || adapter == 'jndi' ) && adapter = supported_adapter(config)
-          ArJdbc.deprecate("use 'adapter: #{adapter}' instead of 'adapter: jdbc' configuration", true)
+        if config[:adapter] == 'jdbc' && adapter = supported_adapter(config)
+          ArJdbc.deprecate("please update your **adapter: jdbc** configuration to adapter: #{adapter}", true)
         end
         ::ActiveRecord::ConnectionAdapters::JdbcAdapter
       end
       adapter_class.new(nil, logger, config)
     end
 
-    def jndi_connection(config); jdbc_connection(config) end
+    def jndi_connection(config)
+      if config[:adapter] == 'jndi'
+        ArJdbc.deprecate("please change your **adapter: jndi** configuration to " <<
+            "the concrete adapter you're wish to use with jndi: '#{config[:jndi]}'", true)
+      end
+      jdbc_connection(config)
+    end
 
     def embedded_driver(config)
       config[:username] ||= 'sa'
