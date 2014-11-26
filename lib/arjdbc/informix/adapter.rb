@@ -11,7 +11,7 @@ module ArJdbc
           def after_save_with_informix_lob
             lob_columns = self.class.columns.select { |c| [:text, :binary].include?(c.type) }
             lob_columns.each do |column|
-              value = ::ArJdbc::SerializedAttributesHelper.dump_column_value(self, column)
+              value = Util::SerializedAttributes.dump_column_value(self, column)
               next if value.nil? || (value == '')
 
               connection.write_large_object(
