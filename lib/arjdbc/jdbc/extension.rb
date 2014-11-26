@@ -43,14 +43,23 @@ module ArJdbc
   private
   def self.discover_extensions
     if defined?(Gem) && Gem.respond_to?(:find_files)
-      files = Gem.find_files('arjdbc/discover')
+      arjdbc_path = Gem.loaded_specs['activerecord-jdbc-adapter'].full_gem_path
+      files = Gem.find_files('arjdbc/discover').map do |path|
+        # in case multiple adapter gems installed only "self" discovery :
+        if path =~ /activerecord\-jdbc\-adapter\-.*\/lib\/arjdbc\/discover\.rb/
+          path.start_with?(arjdbc_path) ? path : nil
+        else
+          path
+        end
+      end
     else
       files = $LOAD_PATH.map do |path|
         discover = File.join(path, 'arjdbc', 'discover.rb')
         File.exist?(discover) ? discover : nil
-      end.compact
+      end
     end
     files.each do |file|
+      next unless file
       puts "Loading AR-JDBC extension #{file}" if $DEBUG
       require file
     end
