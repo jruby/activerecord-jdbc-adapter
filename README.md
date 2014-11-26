@@ -139,9 +139,8 @@ If you're really old school you might want to use AR-JDBC with a DB2 on z/OS :
 
 ```yml
 development:
-  adapter: jdbc
+  adapter: db2
   url: jdbc:db2j:net://mightyzoshost:446/RAILS_DBT1
-  driver: com.ibm.db2.jcc.DB2Driver
   schema: DB2XB12
   database: RAILS_DB1
   tablespace: TSDE911
@@ -149,9 +148,10 @@ development:
     first_table: TSDE912
   username: business
   password: machines
-  encoding: unicode
-  # you can force a (DB2) dialect using:
-  #dialect: as400
+  # default driver used is :
+  #driver: com.ibm.db2.jcc.DB2Driver
+  # NOTE: AS400 support is deprecated since 1.4 in favor
+  # of the standalone activerecord-jdbcas400-adapter gem
 ```
 
 More information on (configuring) AR-JDBC might be found on our [wiki][5].
