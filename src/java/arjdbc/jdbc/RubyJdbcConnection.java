@@ -1566,13 +1566,47 @@ public class RubyJdbcConnection extends RubyObject {
         return value;
     }
 
+    // internal helper exported on ArJdbc @JRubyMethod(meta = true)
+    public static IRubyObject with_meta_data_from_data_source_if_any(final ThreadContext context,
+        final IRubyObject self, final IRubyObject config, final Block block) {
+        final IRubyObject ds_or_name = rawDataSourceOrName(context, config);
+
+        if ( ds_or_name == null ) return context.runtime.getFalse();
+
+        final DataSource dataSource;
+        final Object dsOrName = ds_or_name.toJava(Object.class);
+        if ( dsOrName instanceof DataSource ) {
+            dataSource = (DataSource) dsOrName;
+        }
+        else {
+            try {
+                dataSource = (DataSource) NamingHelper.lookup( dsOrName.toString() );
+            }
+            catch (NamingException e) {
+                //throw wrapException(context, context.runtime.getRuntimeError(), e);
+                throw RaiseException.createNativeRaiseException(context.runtime, e);
+            }
+        }
+
+        Connection connection = null;
+        try {
+            connection = dataSource.getConnection();
+            final DatabaseMetaData metaData = connection.getMetaData();
+            return block.call(context, JavaUtil.convertJavaToRuby(context.runtime, metaData));
+        }
+        catch (SQLException e) {
+            throw RaiseException.createNativeRaiseException(context.runtime, e);
+        }
+        finally { close(connection); }
+    }
+
     @JRubyMethod(name = "jndi_config?", meta = true)
     public static RubyBoolean jndi_config_p(final ThreadContext context,
         final IRubyObject self, final IRubyObject config) {
         return context.runtime.newBoolean( isJndiConfig(context, config) );
     }
 
-    private static boolean isJndiConfig(final ThreadContext context, final IRubyObject config) {
+    private static IRubyObject rawDataSourceOrName(final ThreadContext context, final IRubyObject config) {
         // config[:jndi] || config[:data_source]
 
         final Ruby runtime = context.runtime;
@@ -1595,9 +1629,13 @@ public class RubyJdbcConnection extends RubyObject {
         }
 
         if ( configValue == null || configValue.isNil() || configValue == runtime.getFalse() ) {
-            return false;
+            return null;
         }
-        return true;
+        return configValue;
+    }
+
+    private static boolean isJndiConfig(final ThreadContext context, final IRubyObject config) {
+        return rawDataSourceOrName(context, config) != null;
     }
 
     @JRubyMethod(name = "jndi_lookup", meta = true)
