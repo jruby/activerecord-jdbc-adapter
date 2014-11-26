@@ -83,7 +83,6 @@ import org.jruby.ext.bigdecimal.RubyBigDecimal;
 import org.jruby.javasupport.JavaEmbedUtils;
 import org.jruby.javasupport.JavaUtil;
 import org.jruby.runtime.Block;
-import org.jruby.runtime.Helpers;
 import org.jruby.runtime.ObjectAllocator;
 import org.jruby.runtime.ThreadContext;
 import org.jruby.runtime.Visibility;
@@ -98,10 +97,8 @@ import arjdbc.util.DateTimeUtils;
 import arjdbc.util.ObjectSupport;
 import arjdbc.util.StringCache;
 
-import static arjdbc.util.StringHelper.newDefaultInternalString;
-import static arjdbc.util.StringHelper.newUTF8String;
-import static arjdbc.util.StringHelper.nonWhitespaceIndex;
-import static arjdbc.util.StringHelper.readBytes;
+import static arjdbc.jdbc.DataSourceConnectionFactory.*;
+import static arjdbc.util.StringHelper.*;
 
 
 /**
@@ -1727,13 +1724,46 @@ public class RubyJdbcConnection extends RubyObject {
         return value;
     }
 
+    // internal helper exported on ArJdbc @JRubyMethod(meta = true)
+    public static IRubyObject with_meta_data_from_data_source_if_any(final ThreadContext context,
+        final IRubyObject self, final IRubyObject config, final Block block) {
+        final IRubyObject ds_or_name = rawDataSourceOrName(context, config);
+
+        if ( ds_or_name == null ) return context.runtime.getFalse();
+
+        final javax.sql.DataSource dataSource;
+        final Object dsOrName = ds_or_name.toJava(Object.class);
+        if ( dsOrName instanceof javax.sql.DataSource ) {
+            dataSource = (javax.sql.DataSource) dsOrName;
+        }
+        else {
+            try {
+                dataSource = (javax.sql.DataSource) getInitialContext().lookup( dsOrName.toString() );
+            }
+            catch (Exception e) { // javax.naming.NamingException
+                throw wrapException(context, context.runtime.getRuntimeError(), e);
+            }
+        }
+
+        Connection connection = null;
+        try {
+            connection = dataSource.getConnection();
+            final DatabaseMetaData metaData = connection.getMetaData();
+            return block.call(context, JavaUtil.convertJavaToRuby(context.runtime, metaData));
+        }
+        catch (SQLException e) {
+            throw wrapSQLException(context, e, null);
+        }
+        finally { close(connection); }
+    }
+
     @JRubyMethod(name = "jndi_config?", meta = true)
     public static IRubyObject jndi_config_p(final ThreadContext context,
         final IRubyObject self, final IRubyObject config) {
         return context.runtime.newBoolean( isJndiConfig(context, config) );
     }
 
-    private static boolean isJndiConfig(final ThreadContext context, final IRubyObject config) {
+    private static IRubyObject rawDataSourceOrName(final ThreadContext context, final IRubyObject config) {
         // config[:jndi] || config[:data_source]
 
         final Ruby runtime = context.runtime;
@@ -1756,16 +1786,20 @@ public class RubyJdbcConnection extends RubyObject {
         }
 
         if ( configValue == null || configValue == context.nil || configValue == runtime.getFalse() ) {
-            return false;
+            return null;
         }
-        return true;
+        return configValue;
+    }
+
+    private static boolean isJndiConfig(final ThreadContext context, final IRubyObject config) {
+        return rawDataSourceOrName(context, config) != null;
     }
 
     @JRubyMethod(name = "jndi_lookup", meta = true)
     public static IRubyObject jndi_lookup(final ThreadContext context,
                                           final IRubyObject self, final IRubyObject name) {
         try {
-            final Object bound = DataSourceConnectionFactory.getInitialContext().lookup( name.toString() );
+            final Object bound = getInitialContext().lookup( name.toString() );
             return JavaUtil.convertJavaToRuby(context.runtime, bound);
         }
         catch (Exception e) { // javax.naming.NamingException

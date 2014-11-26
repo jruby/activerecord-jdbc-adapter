@@ -37,10 +37,12 @@ import org.jruby.RubyModule;
 import org.jruby.RubyString;
 import org.jruby.anno.JRubyMethod;
 import org.jruby.exceptions.RaiseException;
+import org.jruby.runtime.Block;
 import org.jruby.runtime.ThreadContext;
 import org.jruby.runtime.builtin.IRubyObject;
 import org.jruby.util.ByteList;
 
+import arjdbc.jdbc.RubyJdbcConnection;
 import static arjdbc.jdbc.RubyJdbcConnection.getJdbcConnection;
 
 /**
@@ -273,6 +275,12 @@ public class ArJdbcModule {
         RubyClass nativeClass = runtime.getClass(NativeException.CLASS_NAME);
         NativeException nativeException = new NativeException(runtime, nativeClass, cause);
         return new RaiseException(cause, nativeException);
+    }
+
+    @JRubyMethod(meta = true)
+    public static IRubyObject with_meta_data_from_data_source_if_any(final ThreadContext context,
+        final IRubyObject self, final IRubyObject config, final Block block) {
+        return RubyJdbcConnection.with_meta_data_from_data_source_if_any(context, self, config, block);
     }
 
 }

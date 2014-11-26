@@ -78,17 +78,16 @@ module ActiveRecord
           end
         end
 
-        if (config[:jndi] || config[:data_source]) && ! config[:dialect]
-          begin
-            data_source = config[:data_source] || JdbcConnection.jndi_lookup(config[:jndi])
-            connection = data_source.getConnection
-            config[:dialect] = connection.getMetaData.getDatabaseProductName
-          rescue Java::JavaSql::SQLException => e
-            warn "failed to set database :dialect from connection meda-data (#{e})"
+        unless config.key?(:dialect)
+          begin # does nothing unless config[:jndi] || config[:data_source]
+            dialect = ::ArJdbc.with_meta_data_from_data_source_if_any(config) do
+              |meta_data| config[:dialect] = meta_data.getDatabaseProductName
+            end
+            return adapter_spec(config) if dialect # re-try matching with :dialect
+          rescue => e
+            ::ArJdbc.warn("failed to set :dialect from database meda-data: #{e.inspect}")
           else
             return adapter_spec(config) # re-try matching a spec with set config[:dialect]
-          ensure
-            connection.close if connection  # return to the pool
           end
         end
 
