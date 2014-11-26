@@ -84,7 +84,9 @@ module ActiveRecord
         @visitor = new_visitor # nil if no AREL (AR-2.3)
       end
 
-      # @private
+      # By convention sub-adapters are expected to export a JDBC connection
+      # type they wish the adapter instantiates on {#initialize} by default.
+      # @since 1.4.0
       JdbcConnection = ::ActiveRecord::ConnectionAdapters::JdbcConnection
 
       # Returns the (JDBC) connection class to be used for this adapter.
@@ -128,7 +130,7 @@ module ActiveRecord
       # @param config the configuration to check for `:adapter_spec`
       # @return [Module] the database specific module
       def adapter_spec(config)
-        dialect = (config[:dialect] || config[:driver]).to_s
+        dialect = ( config[:dialect] || config[:driver] ).to_s
         ::ArJdbc.modules.each do |constant| # e.g. ArJdbc::MySQL
           if constant.respond_to?(:adapter_matcher)
             spec = constant.adapter_matcher(dialect, config)
@@ -157,7 +159,6 @@ module ActiveRecord
         ADAPTER_NAME
       end
 
-      # @override
       # Will return true even when native adapter classes passed in
       # e.g. `jdbc_adapter.is_a? ConnectionAdapter::PostgresqlAdapter`
       #
@@ -165,6 +166,8 @@ module ActiveRecord
       # `config[:adapter_class]` is forced to `nil` and the `:adapter_spec`
       # module is used to extend the `JdbcAdapter`, otherwise we replace the
       # class constants for built-in adapters (MySQL, PostgreSQL and SQLite3).
+      # @override
+      # @private
       def is_a?(klass)
         # This is to fake out current_adapter? conditional logic in AR tests
         if klass.is_a?(Class) && klass.name =~ /#{adapter_name}Adapter$/i
@@ -174,16 +177,17 @@ module ActiveRecord
         end
       end
 
-      # @deprecated re-implemented - no longer used
-      # @return [Hash] the AREL visitor to use
       # If there's a `self.arel2_visitors(config)` method on the adapter
       # spec than it is preferred and will be used instead of this one.
+      # @return [Hash] the AREL visitor to use
+      # @deprecated No longer used.
+      # @see ActiveRecord::ConnectionAdapters::Jdbc::ArelSupport
       def self.arel2_visitors(config)
         { 'jdbc' => ::Arel::Visitors::ToSql }
       end
 
-      # @deprecated re-implemented - no longer used
-      # @see #arel2_visitors
+      # @see ActiveRecord::ConnectionAdapters::JdbcAdapter#arel2_visitors
+      # @deprecated No longer used.
       def self.configure_arel2_visitors(config)
         visitors = ::Arel::Visitors::VISITORS
         klass = config[:adapter_spec]
@@ -829,8 +833,7 @@ module ActiveRecord
 
       protected
 
-      # @return whether the given SQL string is a 'SELECT' like
-      # query (returning a result set)
+      # @return whether the given SQL string is a 'SELECT' like query (returning a results)
       def self.select?(sql)
         JdbcConnection::select?(sql)
       end
@@ -840,7 +843,7 @@ module ActiveRecord
         JdbcConnection::insert?(sql)
       end
 
-      # @return whether the given SQL string is an 'UPDATE' (or 'DELETE') query
+      # @return whether the given SQL string is an 'UPDATE' (or 'DELETE') like query
       def self.update?(sql)
         ! select?(sql) && ! insert?(sql)
       end
