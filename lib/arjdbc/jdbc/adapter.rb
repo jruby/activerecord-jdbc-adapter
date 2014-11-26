@@ -236,42 +236,6 @@ module ActiveRecord
         @connection.database_name
       end
 
-      # @private
-      def native_sql_to_type(type)
-        if /^(.*?)\(([0-9]+)\)/ =~ type
-          tname, limit = $1, $2.to_i
-          ntypes = native_database_types
-          if ntypes[:primary_key] == type
-            return :primary_key, nil
-          else
-            ntypes.each do |name, val|
-              if name == :primary_key
-                next
-              end
-              if val[:name].downcase == tname.downcase &&
-                  ( val[:limit].nil? || val[:limit].to_i == limit )
-                return name, limit
-              end
-            end
-          end
-        elsif /^(.*?)/ =~ type
-          tname = $1
-          ntypes = native_database_types
-          if ntypes[:primary_key] == type
-            return :primary_key, nil
-          else
-            ntypes.each do |name, val|
-              if val[:name].downcase == tname.downcase && val[:limit].nil?
-                return name, nil
-              end
-            end
-          end
-        else
-          return :string, 255
-        end
-        return nil, nil
-      end
-
       # @override
       def active?
         return false unless @connection
