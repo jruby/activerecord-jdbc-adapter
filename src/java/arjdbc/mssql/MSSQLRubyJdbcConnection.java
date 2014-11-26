@@ -64,7 +64,7 @@ public class MSSQLRubyJdbcConnection extends RubyJdbcConnection {
     }
 
     public static RubyClass load(final Ruby runtime) {
-        RubyClass jdbcConnection = getJdbcConnectionClass(runtime);
+        RubyClass jdbcConnection = getJdbcConnection(runtime);
         return createMSSQLJdbcConnectionClass(runtime, jdbcConnection);
     }
 

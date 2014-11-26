@@ -65,7 +65,7 @@ public class DB2RubyJdbcConnection extends RubyJdbcConnection {
     }
 
     public static RubyClass load(final Ruby runtime) {
-        RubyClass jdbcConnection = getJdbcConnectionClass(runtime);
+        RubyClass jdbcConnection = getJdbcConnection(runtime);
         return createDB2JdbcConnectionClass(runtime, jdbcConnection);
     }
 

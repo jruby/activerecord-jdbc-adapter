@@ -86,7 +86,7 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
     }
 
     public static RubyClass load(final Ruby runtime) {
-        RubyClass jdbcConnection = getJdbcConnectionClass(runtime);
+        RubyClass jdbcConnection = getJdbcConnection(runtime);
         return createPostgreSQLJdbcConnectionClass(runtime, jdbcConnection);
     }
 

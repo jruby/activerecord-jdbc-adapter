@@ -136,7 +136,12 @@ public class RubyJdbcConnection extends RubyObject {
         return JdbcConnection;
     }
 
+    @Deprecated
     public static RubyClass getJdbcConnectionClass(final Ruby runtime) {
+        return getConnectionAdapters(runtime).getClass("JdbcConnection");
+    }
+
+    public static RubyClass getJdbcConnection(final Ruby runtime) {
         return getConnectionAdapters(runtime).getClass("JdbcConnection");
     }
 
