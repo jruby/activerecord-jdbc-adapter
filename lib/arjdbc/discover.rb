@@ -105,11 +105,4 @@ module ArJdbc
     end
   end
 
-  extension :Mimer do |name|
-    if name =~ /mimer/i
-      require 'arjdbc/mimer'
-      true
-    end
-  end
-
 end
