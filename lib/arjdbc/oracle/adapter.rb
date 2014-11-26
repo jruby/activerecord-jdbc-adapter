@@ -17,12 +17,6 @@ module ArJdbc
 
       require 'arjdbc/util/serialized_attributes'
       Util::SerializedAttributes.setup /LOB\(|LOB$/i, 'after_save_with_oracle_lob'
-
-      unless ActiveRecord::ConnectionAdapters::AbstractAdapter.
-          instance_methods(false).detect { |m| m.to_s == "prefetch_primary_key?" }
-        require 'arjdbc/jdbc/quoted_primary_key'
-        ActiveRecord::Base.extend ArJdbc::QuotedPrimaryKeyExtension
-      end
     end
 
     JdbcConnection = ::ActiveRecord::ConnectionAdapters::OracleJdbcConnection
@@ -243,7 +237,7 @@ module ArJdbc
     def release_savepoint(name = nil)
       # no RELEASE SAVEPOINT statement in Oracle (JDBC driver throws "Unsupported feature")
     end
-    
+
     # @override
     def remove_index!(table_name, index_name)
       execute "DROP INDEX #{index_name}"
