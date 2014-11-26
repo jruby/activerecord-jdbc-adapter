@@ -140,8 +140,13 @@ public class RubyJdbcConnection extends RubyObject {
         return JdbcConnection;
     }
 
+    @Deprecated
     public static RubyClass getJdbcConnectionClass(final Ruby runtime) {
         return getConnectionAdapters(runtime).getClass("JdbcConnection");
+    }
+
+    public static RubyClass getJdbcConnection(final Ruby runtime) {
+        return (RubyClass) getConnectionAdapters(runtime).getConstantAt("JdbcConnection");
     }
 
     protected static RubyModule ActiveRecord(ThreadContext context) {
@@ -165,7 +170,7 @@ public class RubyJdbcConnection extends RubyObject {
      * @return <code>ActiveRecord::ConnectionAdapters</code>
      */
     protected static RubyModule getConnectionAdapters(final Ruby runtime) {
-        return (RubyModule) runtime.getModule("ActiveRecord").getConstant("ConnectionAdapters");
+        return (RubyModule) runtime.getModule("ActiveRecord").getConstantAt("ConnectionAdapters");
     }
 
     /**

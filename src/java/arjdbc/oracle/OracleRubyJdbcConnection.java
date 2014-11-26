@@ -71,7 +71,7 @@ public class OracleRubyJdbcConnection extends RubyJdbcConnection {
     }
 
     public static RubyClass load(final Ruby runtime) {
-        RubyClass jdbcConnection = getJdbcConnectionClass(runtime);
+        RubyClass jdbcConnection = getJdbcConnection(runtime);
         return createOracleJdbcConnectionClass(runtime, jdbcConnection);
     }
 

@@ -79,7 +79,7 @@ public class SQLite3RubyJdbcConnection extends RubyJdbcConnection {
     }
 
     public static RubyClass load(final Ruby runtime) {
-        RubyClass jdbcConnection = getJdbcConnectionClass(runtime);
+        RubyClass jdbcConnection = getJdbcConnection(runtime);
         return createSQLite3JdbcConnectionClass(runtime, jdbcConnection);
     }
 
@@ -123,9 +123,9 @@ public class SQLite3RubyJdbcConnection extends RubyJdbcConnection {
     protected Statement createStatement(final ThreadContext context, final Connection connection)
         throws SQLException {
         final Statement statement = connection.createStatement();
-        IRubyObject statementEscapeProcessing = getConfigValue(context, "statement_escape_processing");
-        if ( ! statementEscapeProcessing.isNil() ) {
-            statement.setEscapeProcessing(statementEscapeProcessing.isTrue());
+        IRubyObject escapeProcessing = getConfigValue(context, "statement_escape_processing");
+        if ( escapeProcessing != null && ! escapeProcessing.isNil() ) {
+            statement.setEscapeProcessing( escapeProcessing.isTrue() );
         }
         // else leave as is by default
         return statement;
