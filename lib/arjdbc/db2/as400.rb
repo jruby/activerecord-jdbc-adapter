@@ -8,7 +8,11 @@ module ArJdbc
     def self.extended(adapter); DB2.extended(adapter); end
 
     # @private
-    def self.initialize!; DB2.initialize!; end
+    def self.initialize!
+      ArJdbc.deprecate "AS400 support is hard to maintain on our end and will be removed," <<
+        " we recommend that you use the standalone activerecord-jdbcas400-adapter gem instead."
+      return DB2.initialize!
+    end
 
     # @see ActiveRecord::ConnectionAdapters::JdbcAdapter#jdbc_connection_class
     def self.jdbc_connection_class; DB2.jdbc_connection_class; end
