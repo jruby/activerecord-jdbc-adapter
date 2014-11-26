@@ -630,12 +630,6 @@ module ArJdbc
         end
     end
 
-    # @private
-    # @deprecated no longer used
-    def as400?
-      false
-    end
-
     def schema
       db2_schema
     end
