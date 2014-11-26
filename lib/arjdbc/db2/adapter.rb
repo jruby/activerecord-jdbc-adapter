@@ -187,28 +187,30 @@ module ArJdbc
       select_value("SELECT NEXT VALUE FOR #{sequence_name} FROM sysibm.sysdummy1")
     end
 
-    def create_table(name, options = {})
+    def create_table(name, options = {}, &block)
       if zos?
-        zos_create_table(name, options)
+        zos_create_table(name, options, &block)
       else
-        super(name, options)
+        super
       end
     end
 
     def zos_create_table(name, options = {})
-      # NOTE: this won't work for 4.0 - need to pass different initialize args :
-      table_definition = TableDefinition.new(self)
+      table_definition = new_table_definition TableDefinition, name, options[:temporary], options[:options], options[:as]
+
       unless options[:id] == false
         table_definition.primary_key(options[:primary_key] || primary_key(name))
       end
 
-      yield table_definition
+      yield table_definition if block_given?
 
       # Clobs in DB2 Host have to be created after the Table with an auxiliary Table.
-      # First: Save them for later in Array "clobs"
-      clobs = table_definition.columns.select { |x| x.type.to_s == "text" }
-      # Second: and delete them from the original Colums-Array
-      table_definition.columns.delete_if { |x| x.type.to_s == "text" }
+      clob_columns = []
+      table_definition.columns.delete_if do |column|
+        if column.type && column.type.to_sym == :text
+          clob_columns << column; true
+        end
+      end
 
       drop_table(name, options) if options[:force] && table_exists?(name)
 
@@ -217,11 +219,8 @@ module ArJdbc
       create_sql << table_definition.to_sql
       create_sql << ") #{options[:options]}"
       if @config[:database] && @config[:tablespace]
-        in_db_table_space = " IN #{@config[:database]}.#{@config[:tablespace]}"
-      else
-        in_db_table_space = ''
+        create_sql << " IN #{@config[:database]}.#{@config[:tablespace]}"
       end
-      create_sql << in_db_table_space
 
       execute create_sql
 
@@ -232,14 +231,12 @@ module ArJdbc
       #primary_column = options[:id] == true ? 'id' : options[:primary_key]
       #add_index(name, (primary_column || 'id').to_s, :unique => true)
 
-      clobs.each do |clob_column|
+      clob_columns.each do |clob_column|
         column_name = clob_column.name.to_s
-        execute "ALTER TABLE #{name + ' ADD COLUMN ' + column_name + ' clob'}"
-        clob_table_name = name + '_' + column_name + '_CD_'
+        execute "ALTER TABLE #{name} ADD COLUMN #{column_name} clob"
+        clob_table_name = "#{name}_#{column_name}_CD_"
         if @config[:database] && @config[:lob_tablespaces]
           in_lob_table_space = " IN #{@config[:database]}.#{@config[:lob_tablespaces][name.split(".")[1]]}"
-        else
-          in_lob_table_space = ''
         end
         execute "CREATE AUXILIARY TABLE #{clob_table_name} #{in_lob_table_space} STORES #{name} COLUMN #{column_name}"
         execute "CREATE UNIQUE INDEX #{clob_table_name} ON #{clob_table_name};"
