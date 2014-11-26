@@ -518,7 +518,7 @@ public class RubyJdbcConnection extends RubyObject {
         }
 
         IRubyObject value = getConfigValue(context, "configure_connection");
-        if ( value.isNil() ) this.configureConnection = true;
+        if ( value == null || value.isNil() ) this.configureConnection = true;
         else {
             this.configureConnection = value != context.runtime.getFalse();
         }
@@ -749,14 +749,14 @@ public class RubyJdbcConnection extends RubyObject {
     protected Statement createStatement(final ThreadContext context, final Connection connection)
         throws SQLException {
         final Statement statement = connection.createStatement();
-        IRubyObject statementEscapeProcessing = getConfigValue(context, "statement_escape_processing");
+        IRubyObject escapeProcessing = getConfigValue(context, "statement_escape_processing");
         // NOTE: disable (driver) escape processing by default, it's not really
         // needed for AR statements ... if users need it they might configure :
-        if ( statementEscapeProcessing.isNil() ) {
+        if ( escapeProcessing == null || escapeProcessing.isNil() ) {
             statement.setEscapeProcessing(false);
         }
         else {
-            statement.setEscapeProcessing(statementEscapeProcessing.isTrue());
+            statement.setEscapeProcessing(escapeProcessing.isTrue());
         }
         return statement;
     }
@@ -1873,7 +1873,8 @@ public class RubyJdbcConnection extends RubyObject {
         final IRubyObject config = getConfig();
         final RubySymbol keySym = context.runtime.newSymbol(key);
         if ( config instanceof RubyHash ) {
-            return ((RubyHash) config).op_aref(context, keySym);
+            final IRubyObject value = ((RubyHash) config).fastARef(keySym);
+            return value == null ? context.nil : value;
         }
         return config.callMethod(context, "[]", keySym);
     }
@@ -1893,8 +1894,8 @@ public class RubyJdbcConnection extends RubyObject {
         final IRubyObject config = getConfig();
         final RubySymbol keySym = context.runtime.newSymbol(key);
         if ( config instanceof RubyHash ) {
-            final IRubyObject setValue = ((RubyHash) config).op_aref(context, keySym);
-            if ( ! setValue.isNil() ) return setValue;
+            final IRubyObject setValue = ((RubyHash) config).fastARef(keySym);
+            if ( setValue != null ) return setValue;
             return ((RubyHash) config).op_aset(context, keySym, value);
         }
 
@@ -3136,7 +3137,8 @@ public class RubyJdbcConnection extends RubyObject {
     private String getAliveSQL(final ThreadContext context) {
         if ( aliveSQL == null ) {
             final IRubyObject alive_sql = getConfigValue(context, "connection_alive_sql");
-            aliveSQL = alive_sql.isNil() ? NIL_ALIVE_SQL : alive_sql.asString().toString();
+            aliveSQL = ( alive_sql == null || alive_sql.isNil() ) ?
+                    NIL_ALIVE_SQL : alive_sql.asString().toString();
         }
         return aliveSQL == (Object) NIL_ALIVE_SQL ? null : aliveSQL;
     }
