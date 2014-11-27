@@ -1640,9 +1640,14 @@ public class RubyJdbcConnection extends RubyObject {
 
     @JRubyMethod(name = "jndi_lookup", meta = true)
     public static IRubyObject jndi_lookup(final ThreadContext context,
-        final IRubyObject self, final IRubyObject name) throws NamingException {
-        final Object bound = lookup( context, name.toString() );
-        return JavaUtil.convertJavaToRuby(context.runtime, bound);
+        final IRubyObject self, final IRubyObject name) {
+        try {
+            final Object bound = NamingHelper.lookup( name.toString() );
+            return JavaUtil.convertJavaToRuby(context.runtime, bound);
+        }
+        catch (NamingException e) {
+            throw wrapException(context, context.runtime.getRuntimeError(), e);
+        }
     }
 
     @Deprecated
