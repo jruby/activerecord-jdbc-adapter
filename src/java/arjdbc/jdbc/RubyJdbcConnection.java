@@ -1436,8 +1436,8 @@ public class RubyJdbcConnection extends RubyObject {
         });
     }
 
-    @JRubyMethod(name = "with_connection_retry_guard", frame = true)
-    public IRubyObject with_connection_retry_guard(final ThreadContext context, final Block block) {
+    @JRubyMethod(name = "with_jdbc_connection", alias = "with_connection_retry_guard", frame = true)
+    public IRubyObject with_jdbc_connection(final ThreadContext context, final Block block) {
         return withConnection(context, new Callable<IRubyObject>() {
             public IRubyObject call(final Connection connection) throws SQLException {
                 return block.call(context, new IRubyObject[] { convertJavaToRuby(connection) });
