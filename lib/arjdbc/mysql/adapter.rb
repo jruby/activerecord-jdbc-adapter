@@ -417,7 +417,7 @@ module ArJdbc
 
     # @override
     def create_table(name, options = {})
-      super(name, {:options => "ENGINE=InnoDB DEFAULT CHARSET=utf8"}.merge(options))
+      super(name, { :options => "ENGINE=InnoDB" }.merge(options))
     end
 
     def drop_table(table_name, options = {})
