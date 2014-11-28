@@ -33,7 +33,6 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Statement;
 
 import org.jruby.Ruby;
 import org.jruby.RubyClass;
@@ -113,27 +112,6 @@ public class DB2RubyJdbcConnection extends RubyJdbcConnection {
                 try {
                     statement = connection.prepareStatement("VALUES IDENTITY_VAL_LOCAL()");
                     genKeys = statement.executeQuery();
-                    return doMapGeneratedKeys(context.getRuntime(), genKeys, true);
-                }
-                catch (final SQLException e) {
-                    debugMessage(context.runtime, "failed to get generated keys: ", e.getMessage());
-                    throw e;
-                }
-                finally { close(genKeys); close(statement); }
-            }
-        });
-    }
-
-    // NOTE: this is non-sense or DB2 - but it has been originally implemented this way !
-    //@JRubyMethod(name = {"identity_val_local", "last_insert_id"}, required = 1)
-    private IRubyObject identity_val_local(final ThreadContext context, final IRubyObject table)
-        throws SQLException {
-        return withConnection(context, new Callable<IRubyObject>() {
-            public IRubyObject call(final Connection connection) throws SQLException {
-                Statement statement = null; ResultSet genKeys = null;
-                try {
-                    statement = connection.createStatement();
-                    genKeys = statement.executeQuery("SELECT IDENTITY_VAL_LOCAL() FROM " + table);
                     return doMapGeneratedKeys(context.getRuntime(), genKeys, true);
                 }
                 catch (final SQLException e) {
