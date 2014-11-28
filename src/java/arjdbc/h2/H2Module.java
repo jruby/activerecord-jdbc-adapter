@@ -33,6 +33,7 @@ import org.jruby.RubyModule;
  *
  * @author kares
  */
+//@org.jruby.anno.JRubyModule(name = "ArJdbc::H2")
 public class H2Module {
 
     public static RubyModule load(final RubyModule arJdbc) {
