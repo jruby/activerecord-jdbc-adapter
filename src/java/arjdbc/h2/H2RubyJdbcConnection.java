@@ -37,7 +37,7 @@ import org.jruby.runtime.builtin.IRubyObject;
  *
  * @author nicksieger
  */
-//@org.jruby.anno.JRubyClass(name = "ActiveRecord::ConnectionAdapters::JdbcConnection")
+@org.jruby.anno.JRubyClass(name = "ActiveRecord::ConnectionAdapters::H2JdbcConnection")
 public class H2RubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection {
     private static final long serialVersionUID = -2652911264521657428L;
 
@@ -77,5 +77,10 @@ public class H2RubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection {
         if ( value == null ) return null;
         return value.toUpperCase();
     }
+
+    // NOTE: not supported
+    // org.h2.jdbc.JdbcSQLException: Hexadecimal string contains non-hex character: "PUBLIC" [90004-178]
+    //@Override
+    //protected boolean useByteStrings() { return false; }
 
 }
