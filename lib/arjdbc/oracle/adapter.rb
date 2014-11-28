@@ -134,6 +134,7 @@ module ArJdbc
     def table_name_length;  IDENTIFIER_LENGTH; end
     def index_name_length;  IDENTIFIER_LENGTH; end
     def column_name_length; IDENTIFIER_LENGTH; end
+    def sequence_name_length; IDENTIFIER_LENGTH end
 
     def default_sequence_name(table_name, column = nil)
       # TODO: remove schema prefix if present (before truncating)
