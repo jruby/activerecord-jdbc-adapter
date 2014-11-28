@@ -118,7 +118,7 @@ public class DB2RubyJdbcConnection extends RubyJdbcConnection {
                     return doMapGeneratedKeys(context.getRuntime(), genKeys, true);
                 }
                 catch (final SQLException e) {
-                    debugMessage(context, "failed to get generated keys: " + e.getMessage());
+                    debugMessage(context.runtime, "failed to get generated keys: ", e.getMessage());
                     throw e;
                 }
                 finally { close(genKeys); close(statement); }
@@ -139,7 +139,7 @@ public class DB2RubyJdbcConnection extends RubyJdbcConnection {
                     return doMapGeneratedKeys(context.getRuntime(), genKeys, true);
                 }
                 catch (final SQLException e) {
-                    debugMessage(context, "failed to get generated keys: " + e.getMessage());
+                    debugMessage(context.runtime, "failed to get generated keys: ", e.getMessage());
                     throw e;
                 }
                 finally { close(genKeys); close(statement); }

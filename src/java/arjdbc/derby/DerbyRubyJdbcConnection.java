@@ -125,7 +125,7 @@ public class DerbyRubyJdbcConnection extends RubyJdbcConnection {
                     return doMapGeneratedKeys(context.runtime, genKeys, true);
                 }
                 catch (final SQLException e) {
-                    debugMessage(context, "failed to get generated keys: " + e.getMessage());
+                    debugMessage(context.runtime, "failed to get generated keys: ", e.getMessage());
                     throw e;
                 }
                 finally { close(genKeys); close(statement); }

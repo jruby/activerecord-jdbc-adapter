@@ -121,10 +121,10 @@ public class PostgreSQLModule {
                     });
                 }
                 catch (SQLException e) { // unsupported
-                    debugMessage(context, "standard conforming strings not supported : " + e.getMessage());
+                    debugMessage(context.runtime, "standard conforming strings not supported: ", e);
                 }
                 catch (RaiseException e) { // unsupported
-                    debugMessage(context, "standard conforming strings raised : " + e);
+                    debugMessage(context.runtime, "standard conforming strings raised: ", e);
                 }
                 finally {
                     self.callMethod(context, "client_min_messages=", client_min_messages);

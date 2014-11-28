@@ -3122,7 +3122,7 @@ public class RubyJdbcConnection extends RubyObject {
             }
         }
         catch (Exception e) {
-            debugMessage(context, "connection considered not valid due: " + e);
+            debugMessage(context.runtime, "connection considered not valid due: ", e);
             return false;
         }
         catch (AbstractMethodError e) { // non-JDBC 4.0 driver
@@ -4036,18 +4036,36 @@ public class RubyJdbcConnection extends RubyObject {
 
     public static boolean isDebug() { return debug; }
 
+    public static boolean isDebug(final Ruby runtime) {
+        return debug || ( runtime != null && runtime.isDebug() );
+    }
+
     public static void setDebug(boolean debug) {
         RubyJdbcConnection.debug = debug;
     }
 
     public static void debugMessage(final String msg) {
-        debugMessage(null, msg);
+        if ( isDebug() ) System.out.println(msg);
     }
 
     public static void debugMessage(final ThreadContext context, final String msg) {
         if ( debug || ( context != null && context.runtime.isDebug() ) ) {
             final PrintStream out = context != null ? context.runtime.getOut() : System.out;
             out.println(msg);
+        }
+    }
+
+    public static void debugMessage(final Ruby runtime, final Object msg) {
+        if ( isDebug(runtime) ) {
+            final PrintStream out = runtime != null ? runtime.getOut() : System.out;
+            out.println("ArJdbc: " + msg);
+        }
+    }
+
+    public static void debugMessage(final Ruby runtime, final String msg, final Object e) {
+        if ( isDebug(runtime) ) {
+            final PrintStream out = runtime != null ? runtime.getOut() : System.out;
+            out.println("ArJdbc: " + msg + e);
         }
     }
 
