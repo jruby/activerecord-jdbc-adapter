@@ -120,13 +120,13 @@ module ArJdbc
 
     end
 
-#    def self.const_missing(name)
-#      if name.to_sym == :Column
-#        ArJdbc.deprecate("#{self.name}::Column will change to refer to the actual column class, please use ColumnMethods instead", :once)
-#        return ColumnMethods
-#      end
-#      super
-#    end
+    def self.const_missing(name)
+      if name.to_sym == :Column
+        ArJdbc.deprecate("#{self.name}::Column will change to refer to the actual column class, please use ColumnMethods instead", :once)
+        return ColumnMethods
+      end
+      super
+    end
 
   end
 end
