@@ -290,4 +290,119 @@ class JdbcConnectionTest < Test::Unit::TestCase
 
   end
 
+  context 'connection-retry' do
+
+    class ConnectionFactory
+      include Java::arjdbc.jdbc.ConnectionFactory
+
+      def initialize(real_factory); @real_factory = real_factory end
+      def newConnection; @real_factory.newConnection end
+
+    end
+
+    Java::arjdbc.jdbc.RubyJdbcConnection.class_eval do
+      field_writer :connected
+    end
+
+    def startup; clear_cached_jdbc_connection_factory end
+
+    def setup
+      config = JDBC_CONFIG.merge :retry_count => 1, :configure_connection => false
+      ActiveRecord::Base.establish_connection config
+
+      @real_connection_factory = get_jdbc_connection_factory
+      @connection_factory = ConnectionFactory.new @real_connection_factory
+      set_jdbc_connection_factory(@connection_factory)
+      # HACK to force the underlying JDBC connection to lazy initialize :
+      ActiveRecord::Base.connection.raw_connection.disconnect!
+      ActiveRecord::Base.connection.raw_connection.to_java.connected = true
+    end
+
+    def teardown
+      ActiveRecord::Base.connection_pool.disconnect!
+      self.class.clear_cached_jdbc_connection_factory
+    end
+
+    test 'getConnection() works' do
+      ActiveRecord::Base.connection.execute 'SELECT 42' # MySQL
+    end
+
+    test 'getConnection() fails' do
+      @connection_factory.stubs(:newConnection).
+        raises( java.sql.SQLException.new('failing twice 1') ).then.
+        raises( java.sql.SQLException.new('failing twice 2') ).then.
+        returns( @real_connection_factory.newConnection )
+
+      begin
+        ActiveRecord::Base.connection.execute 'SELECT 1'
+        fail('connection unexpectedly retrieved')
+      rescue ActiveRecord::JDBCError => e
+        assert e.cause
+        assert_match /failing twice/, e.sql_exception.message
+      end
+    end
+
+    test 'getConnection() works due retry count' do
+      @connection_factory.stubs(:newConnection).
+        raises( java.sql.SQLException.new('failing once') ).then.
+        returns( @real_connection_factory.newConnection )
+
+      ActiveRecord::Base.connection.execute 'SELECT 1'
+    end
+
+    class ConnectionDelegate
+      include java.sql.Connection
+
+      def initialize(connection) @connection = connection end
+
+      def method_missing(name, *args); @connection.send(name, *args) end
+
+    end
+
+    test 'execute retried for transient failure' do
+      real_connection = @real_connection_factory.newConnection
+      connection = ConnectionDelegate.new(real_connection)
+      connection.stubs(:createStatement).
+        raises( java.sql.SQLTransientException.new('transient') ).then.
+        returns( real_connection.createStatement )
+
+      @connection_factory.expects(:newConnection).returns(connection)
+
+      ActiveRecord::Base.connection.execute 'SELECT 1'
+    end
+
+    test 'execute fails for too many transient retries (using same connection)' do
+      real_connection = @real_connection_factory.newConnection
+      connection = ConnectionDelegate.new(real_connection)
+      connection.stubs(:createStatement).
+        raises( java.sql.SQLTransientException.new('transient 1') ).then.
+        raises( java.sql.SQLTransientException.new('transient 2') ).then.
+        raises( java.sql.SQLTransientException.new('transient 3') )
+
+      @connection_factory.expects(:newConnection).once.returns(connection)
+
+      begin
+        ActiveRecord::Base.connection.execute 'SELECT 1'
+        fail('connection.execute did not fail as expected')
+      rescue ActiveRecord::JDBCError => e
+        assert_match /transient.2/, e.sql_exception.message
+      end
+    end
+
+    test 'execute retried for recoverable failure (using new connection)' do
+      failing_connection = ConnectionDelegate.new(@real_connection_factory.newConnection)
+      failing_connection.expects(:createStatement).
+        raises( java.sql.SQLRecoverableException.new('recoverable') )
+      failing_connection.expects(:isValid).returns(false)
+
+      valid_connection = ConnectionDelegate.new(@real_connection_factory.newConnection)
+
+      @connection_factory.stubs(:newConnection).
+        returns(failing_connection).then.returns(valid_connection)
+
+      ActiveRecord::Base.connection.execute 'SELECT 1'
+    end
+
+  end
+
 end

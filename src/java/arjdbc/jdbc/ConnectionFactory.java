@@ -27,6 +27,7 @@ package arjdbc.jdbc;
 
 import java.sql.Connection;
 import java.sql.SQLException;
+import javax.naming.NamingException;
 import javax.sql.DataSource;
 
 import org.jruby.RubyObject;
@@ -54,26 +55,48 @@ public interface ConnectionFactory {
 
 class DataSourceConnectionFactoryImpl implements ConnectionFactory {
 
-    private final DataSource dataSource;
-    final String username, password; // optional
+    private DataSource dataSource;
+    private final String lookupName;
+    String username, password; // optional
 
     public DataSourceConnectionFactoryImpl(final DataSource dataSource) {
         this.dataSource = dataSource;
-        this.username = null; this.password = null;
+        this.lookupName = null;
     }
 
-    public DataSourceConnectionFactoryImpl(final DataSource dataSource,
-        final String username, final String password) {
+    DataSourceConnectionFactoryImpl(final DataSource dataSource,
+        final String lookupName) {
         this.dataSource = dataSource;
-        this.username = username; this.password = password;
+        this.lookupName = lookupName;
     }
+
+    public void setUsername(final String username) { this.username = username; }
+
+    public void setPassword(final String password) { this.password = password; }
 
     @Override
     public Connection newConnection() throws SQLException {
-        if ( username != null ) {
-            dataSource.getConnection(username, password);
+        // in case DS failed previously look it up again from JNDI :
+        if ( dataSource == null ) lookupDataSource();
+
+        try {
+            if ( username != null ) {
+                return dataSource.getConnection(username, password);
+            }
+            return dataSource.getConnection();
         }
-        return dataSource.getConnection();
+        catch (SQLException e) {
+            // DS failed - maybe it's no longer a valid one
+            if ( lookupName != null ) dataSource = null;
+            throw e;
+        }
+    }
+
+    private void lookupDataSource() throws SQLException {
+        try {
+            dataSource = NamingHelper.lookup( lookupName );
+        }
+        catch (NamingException e) { throw new SQLException(e); }
     }
 
     DataSource getDataSource() { return dataSource; } /* for tests */

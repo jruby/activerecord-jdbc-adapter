@@ -156,6 +156,145 @@ class MySQLJndiTest < Test::Unit::TestCase
     field_reader :connected
   end
 
+  context 'connection-retry' do
+
+    class DataSourceMock
+      include javax.sql.DataSource
+
+      def initialize(data_source)
+        @data_source = data_source
+        @mockery = []
+      end
+
+      def return_connection(times = 1)
+        times.times { @mockery << false }; self
+      end
+
+      def then(times = 1, &block)
+        times.times { @mockery << block }; self
+      end
+
+      def raise_sql_exception(times = 1, &block)
+        self.then(times) do
+          if msg = block ? block.call : nil
+            e = java.sql.SQLException.new(msg)
+          else
+            e = java.sql.SQLException.new
+          end
+          raise e
+        end
+      end
+
+      def raise_wrapped_sql_exception(times = 1, &block)
+        self.then(times) do
+          if msg = block ? block.call : nil
+            e = java.sql.SQLException.new(msg)
+          else
+            e = java.sql.SQLException.new
+          end
+          raise wrap_sql_exception(e)
+        end
+      end
+
+      def getConnection(*args)
+        if block = @mockery.shift
+          block.call(@data_source)
+        else
+          @data_source.getConnection(*args)
+        end
+      end
+
+      def wrap_sql_exception(cause)
+        error = org.jruby.exceptions.RaiseException.new(
+          JRuby.runtime, ActiveRecord::JDBCError, cause.message, true
+        )
+        error.initCause(cause)
+        error
+      end
+
+    end
+
+    def self.startup
+      @@name = JNDI_MYSQL_CONFIG[:jndi]
+      @@data_source = ActiveRecord::ConnectionAdapters::JdbcConnection.jndi_lookup @@name
+      clear_cached_jdbc_connection_factory
+    end
+
+    def self.shutdown; rebind! @@data_source if @@data_source end
+
+    def setup
+      @config = JNDI_MYSQL_CONFIG.merge :retry_count => 5
+                #, :configure_connection => false
+      assert @@data_source.is_a? javax.sql.DataSource
+      self.class.rebind! @data_source = DataSourceMock.new(@@data_source)
+      # NOTE: we're assuming here that JNDI connections are lazy ...
+      ActiveRecord::Base.establish_connection @config
+    end
+
+    def teardown
+      self.class.rebind!
+      disconnect_if_connected
+      self.class.clear_cached_jdbc_connection_factory
+    end
+
+    def self.rebind!(data_source = @@data_source)
+      javax.naming.InitialContext.new.rebind @@name, data_source
+    end
+
+    test 'getConnection() works' do
+      ActiveRecord::Base.connection.execute 'SELECT 42'
+    end
+
+    test 'getConnection() fails' do
+      @data_source.return_connection(1).then(5 + 1) do
+        raise java.sql.SQLException.new("yet a failure")
+      end
+
+      Thread.new { ActiveRecord::Base.connection.execute 'SELECT 1' }.join
+      begin
+        ActiveRecord::Base.connection.execute 'SELECT 2'
+        fail 'connection unexpectedly retrieved'
+      rescue ActiveRecord::JDBCError => e
+        assert e.cause
+        assert_match /yet.a.failure/, e.message
+      end
+    end
+
+    test 'getConnection() works due retry count' do
+      @data_source.return_connection.
+        then { raise java.sql.SQLException.new("failure 1") }.
+        then { raise java.sql.SQLException.new("failure 2") }.
+        then { raise java.sql.SQLException.new("failure 3") }.
+        return_connection(1)
+
+      Thread.new { ActiveRecord::Base.connection.execute 'SELECT 1' }.join
+      ActiveRecord::Base.connection.execute 'SELECT 2'
+    end
+
+    test 'getConnection() does re-lookup on failure' do
+      another_data_source = DataSourceMock.new(@@data_source)
+
+      @data_source.return_connection(2).
+        raise_sql_exception(2) { 'expected-failure' }.
+        raise_sql_exception do
+          self.class.rebind! another_data_source
+          'failure after re-bound'
+        end.
+        raise_sql_exception(5) { 'unexpected' } # not expected to be called
+
+      Thread.new { ActiveRecord::Base.connection.execute 'SELECT 1' }.join
+      assert_equal @data_source, get_jdbc_connection_factory.data_source
+
+      Thread.new { ActiveRecord::Base.connection.execute 'SELECT 2' }.join
+      assert_equal @data_source, get_jdbc_connection_factory.data_source
+
+      ActiveRecord::Base.connection.execute 'SELECT 3'
+      assert_not_equal @data_source, get_jdbc_connection_factory.data_source
+      assert_equal another_data_source, get_jdbc_connection_factory.data_source
+    end
+
+  end
+
   private
 
   def adapter_class

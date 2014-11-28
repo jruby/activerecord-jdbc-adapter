@@ -39,15 +39,17 @@ import java.math.BigInteger;
 import java.sql.Array;
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
+import java.sql.Date;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
+import java.sql.Savepoint;
 import java.sql.SQLException;
 import java.sql.SQLXML;
-import java.sql.Statement;
-import java.sql.Date;
 import java.sql.SQLFeatureNotSupportedException;
-import java.sql.Savepoint;
+import java.sql.SQLRecoverableException;
+import java.sql.SQLTransientException;
+import java.sql.Statement;
 import java.sql.Time;
 import java.sql.Timestamp;
 import java.sql.Types;
@@ -1753,14 +1755,23 @@ public class RubyJdbcConnection extends RubyObject {
     }
 
     private ConnectionFactory setDataSourceFactory(final ThreadContext context) {
-        final DataSource dataSource;
+        final DataSource dataSource; final String lookupName;
         try {
-            dataSource = resolveDataSource(context);
+            IRubyObject value = getConfigValue(context, "data_source");
+            if ( value == null || value.isNil() ) {
+                value = getConfigValue(context, "jndi");
+                lookupName = value.toString();
+                dataSource = lookupDataSource(context, lookupName);
+            }
+            else {
+                dataSource = (DataSource) value.toJava(DataSource.class);
+                lookupName = null;
+            }
         }
         catch (NamingException e) {
             throw wrapException(context, context.runtime.getRuntimeError(), e);
         }
-        ConnectionFactory factory = new DataSourceConnectionFactoryImpl(dataSource);
+        ConnectionFactory factory = new DataSourceConnectionFactoryImpl(dataSource, lookupName);
         setConnectionFactory(factory);
         return factory;
     }
@@ -1829,21 +1840,7 @@ public class RubyJdbcConnection extends RubyObject {
 
     protected final boolean isJndi() { return this.jndi; }
 
-    private DataSource resolveDataSource(final ThreadContext context) throws NamingException {
-        final DataSource dataSource;
-        IRubyObject value = getConfigValue(context, "data_source");
-        if ( value.isNil() ) {
-            value = getConfigValue(context, "jndi");
-            final String name = value.toString();
-            dataSource = lookup(context, name);
-        }
-        else {
-            dataSource = (DataSource) value.toJava(DataSource.class);
-        }
-        return dataSource;
-    }
-
-    private static DataSource lookup(final ThreadContext context, final String name) throws NamingException {
+    private static DataSource lookupDataSource(final ThreadContext context, final String name) throws NamingException {
         try {
             return NamingHelper.lookup(name);
         }
@@ -1936,7 +1933,7 @@ public class RubyJdbcConnection extends RubyObject {
         this.connectionFactory = connectionFactory;
     }
 
-    protected Connection newConnection() throws RaiseException, SQLException {
+    protected Connection newConnection() throws SQLException {
         return getConnectionFactory().newConnection();
     }
 
@@ -3054,7 +3051,7 @@ public class RubyJdbcConnection extends RubyObject {
      * @return connection
      * @throws ActiveRecord::ConnectionNotEstablished, ActiveRecord::JDBCError
      */
-    protected final Connection getConnection() {
+    protected final Connection getConnection() throws RaiseException {
         return getConnection(false);
     }
 
@@ -3066,6 +3063,15 @@ public class RubyJdbcConnection extends RubyObject {
      * @throws ActiveRecord::JDBCError if not connected and connecting fails with a SQL exception
      */
     protected final Connection getConnection(final boolean required) throws RaiseException {
+        try {
+            return getConnectionInternal(required);
+        }
+        catch (SQLException e) {
+            throw wrapException(getRuntime().getCurrentContext(), e);
+        }
+    }
+
+    private Connection getConnectionInternal(final boolean required) throws SQLException {
         Connection connection = getConnectionImpl();
         if ( connection == null ) {
             if ( required || ! connected ) {
@@ -3076,12 +3082,7 @@ public class RubyJdbcConnection extends RubyObject {
             synchronized (this) {
                 connection = getConnectionImpl();
                 if ( connection == null ) {
-                    try {
-                        connectImpl( true );
-                    }
-                    catch (SQLException e) {
-                        throw wrapException(getRuntime().getCurrentContext(), e);
-                    }
+                    connectImpl( true ); // throws SQLException
                     connection = getConnectionImpl();
                 }
             }
@@ -3121,7 +3122,7 @@ public class RubyJdbcConnection extends RubyObject {
             }
         }
         catch (Exception e) {
-            debugMessage(context, "connection considered broken due: " + e.toString());
+            debugMessage(context, "connection considered not valid due: " + e);
             return false;
         }
         catch (AbstractMethodError e) { // non-JDBC 4.0 driver
@@ -3520,6 +3521,17 @@ public class RubyJdbcConnection extends RubyObject {
         return extractColumns(runtime.getCurrentContext(), connection, resultSet, downCase);
     }
 
+    private int retryCount = -1;
+
+    private int getRetryCount(final ThreadContext context) {
+        if ( retryCount == -1 ) {
+            IRubyObject retry_count = getConfigValue(context, "retry_count");
+            if ( retry_count == null || retry_count.isNil() ) return retryCount = 0;
+            else retryCount = (int) retry_count.convertToInteger().getLongValue();
+        }
+        return retryCount;
+    }
+
     protected <T> T withConnection(final ThreadContext context, final Callable<T> block)
         throws RaiseException {
         try {
@@ -3533,41 +3545,64 @@ public class RubyJdbcConnection extends RubyObject {
     private <T> T withConnection(final ThreadContext context, final boolean handleException,
         final Callable<T> block) throws RaiseException, SQLException {
 
-        Throwable exception = null; int retry = 0; int i = 0;
+        Exception exception = null; int retry = 0; int i = 0;
 
+        boolean reconnectOnRetry = true; boolean gotConnection = false;
         do {
-            if ( retry > 0 ) { // we're retrying running the block
-                debugMessage(context, "trying to re-connect using a new connection ...");
-                connectImpl(true); // force a new connection to be created
-            }
-
-            final Connection connection = getConnection(); // fails if not connected
             boolean autoCommit = true; // retry in-case getAutoCommit throws
             try {
+                if ( retry > 0 ) { // we're retrying running the block
+                    if ( reconnectOnRetry ) {
+                        gotConnection = false;
+                        debugMessage(context, "trying to re-connect using a new connection ...");
+                        connectImpl(true); // force a new connection to be created
+                    }
+                    else {
+                        debugMessage(context, "re-trying transient failure on same connection ...");
+                    }
+                }
+
+                final Connection connection = getConnectionInternal(false); // getConnection()
+                gotConnection = true;
                 autoCommit = connection.getAutoCommit();
                 return block.call(connection);
             }
             catch (final Exception e) { // SQLException or RuntimeException
                 exception = e;
 
-                if ( autoCommit ) { // do not retry if (inside) transactions
-                    if ( i == 0 ) {
-                        IRubyObject retryCount = getConfigValue(context, "retry_count");
-                        if ( ! retryCount.isNil() ) {
-                            retry = (int) retryCount.convertToInteger().getLongValue();
-                        }
-                    }
-                    if ( isConnectionValid(context, connection) ) {
+                if ( i == 0 ) retry = getRetryCount(context);
+
+                if ( ! gotConnection ) { // SQLException from driver/data-source
+                    reconnectOnRetry = true;
+                }
+                else if ( isTransient(exception) ) {
+                    reconnectOnRetry = false; // continue;
+                }
+                else {
+                    if ( ! autoCommit ) break; // do not retry if (inside) transactions
+
+                    if ( isConnectionValid(context, getConnectionImpl()) ) {
                         break; // connection not broken yet failed (do not retry)
                     }
-                    // we'll reconnect and retry calling block again
+
+                    if ( ! isRecoverable(exception) ) break;
+
+                    reconnectOnRetry = true; // retry calling block again
                 }
-                else break;
             }
         } while ( i++ < retry ); // i == 0, retry == 1 means we should retry once
 
         // (retry) loop ended and we did not return ... exception != null
         if ( handleException ) {
+            if ( exception instanceof RaiseException ) {
+                throw (RaiseException) exception;
+            }
+            if ( exception instanceof SQLException ) {
+                if ( ! gotConnection && exception.getCause() != null ) {
+                    return handleException(context, exception.getCause()); // throws
+                }
+                return handleException(context, exception); // throws
+            }
             return handleException(context, getCause(exception)); // throws
         }
         else {
@@ -3580,6 +3615,16 @@ public class RubyJdbcConnection extends RubyObject {
             // won't happen - our try block only throws SQL or Runtime exceptions
             throw new RuntimeException(exception);
         }
+    }
+
+    protected boolean isTransient(final Exception exception) {
+        if ( exception instanceof SQLTransientException ) return true;
+        return false;
+    }
+
+    protected boolean isRecoverable(final Exception exception) {
+        if ( exception instanceof SQLRecoverableException ) return true;
+        return false; //exception instanceof SQLException; // pre JDBC 4.0 drivers?
     }
 
     private static Throwable getCause(Throwable exception) {

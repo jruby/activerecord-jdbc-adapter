@@ -200,6 +200,23 @@ class Test::Unit::TestCase
 
   def main; TOPLEVEL_BINDING.eval('self') end
 
+  private # RubyJdbcConnection (internal) helpers :
+
+  def self.clear_cached_jdbc_connection_factory
+    unless Java::arjdbc.jdbc.RubyJdbcConnection.respond_to?(:defaultConfig=)
+      Java::arjdbc.jdbc.RubyJdbcConnection.field_writer :defaultConfig
+    end
+    Java::arjdbc.jdbc.RubyJdbcConnection.defaultConfig = nil # won't use defaultFactory
+  end
+
+  def get_jdbc_connection_factory
+    ActiveRecord::Base.connection.raw_connection.connection_factory
+  end
+
+  def set_jdbc_connection_factory(connection_factory)
+    ActiveRecord::Base.connection.raw_connection.connection_factory = connection_factory
+  end
+
   protected
 
   def assert_queries(count, matching = nil)
