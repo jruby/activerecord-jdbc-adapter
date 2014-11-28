@@ -203,6 +203,18 @@ class OracleSimpleTest < Test::Unit::TestCase
     end
   end
 
+  def test_rename_table_without_seq
+    ActiveRecord::Base.connection.execute 'DROP SEQUENCE "USERS_SEQ"'
+    begin
+      ActiveRecord::Base.connection.rename_table 'users', 'loosers'
+    ensure
+      disable_logger do
+        CreateUsers.up rescue nil
+        ActiveRecord::Base.connection.drop_table("loosers") rescue nil
+      end
+    end
+  end
+
   test 'returns correct visitor type' do
     assert_not_nil visitor = connection.instance_variable_get(:@visitor)
     assert defined? Arel::Visitors::Oracle

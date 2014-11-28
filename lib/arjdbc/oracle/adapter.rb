@@ -127,6 +127,7 @@ module ArJdbc
     end
     alias_method :ids_in_list_limit, :in_clause_length
 
+    # @private
     IDENTIFIER_LENGTH = 30
 
     # maximum length of Oracle identifiers is 30
@@ -136,9 +137,12 @@ module ArJdbc
     def column_name_length; IDENTIFIER_LENGTH; end
     def sequence_name_length; IDENTIFIER_LENGTH end
 
-    def default_sequence_name(table_name, column = nil)
-      # TODO: remove schema prefix if present (before truncating)
-      "#{table_name.to_s[0, IDENTIFIER_LENGTH - 4]}_seq"
+    # @private
+    SEQUENCE_NAME_RE = /(^|\.)([\w$-]{1,#{IDENTIFIER_LENGTH - 4}})([\w$-]*)$/
+
+    # @override
+    def default_sequence_name(table_name, primary_key = nil)
+      table_name.to_s.sub SEQUENCE_NAME_RE, '\1\2_seq'
     end
 
     # @override
@@ -161,7 +165,7 @@ module ArJdbc
         raise ArgumentError, "New sequence name '#{new_name}_seq' is too long; the limit is #{sequence_name_length} characters"
       end
       execute "RENAME #{quote_table_name(name)} TO #{quote_table_name(new_name)}"
-      execute "RENAME #{quote_table_name("#{name}_seq")} TO #{quote_table_name("#{new_name}_seq")}" rescue nil
+      execute_immediate("RENAME #{quote_table_name("#{name}_seq")} TO #{quote_table_name("#{new_name}_seq")}", '-4043') # IF EXISTS
     end
 
     # @override
@@ -171,8 +175,16 @@ module ArJdbc
       seq_name = options.key?(:sequence_name) ? # pass nil/false - no sequence
         options[:sequence_name] : default_sequence_name(name)
       return outcome unless seq_name
-      execute "DROP SEQUENCE #{quote_table_name(seq_name)}" rescue nil
+      execute_immediate("DROP SEQUENCE #{quote_table_name(seq_name)}", '-2289') # IF EXISTS
     end
+
+    # @private
+    def execute_immediate(execute, sqlcode)
+      execute "BEGIN EXECUTE IMMEDIATE '#{execute}';" <<
+        " EXCEPTION WHEN OTHERS THEN IF SQLCODE != #{sqlcode} THEN RAISE; END IF;" <<
+        " END;"
+    end
+    private :execute_immediate
 
     # @override
     def type_to_sql(type, limit = nil, precision = nil, scale = nil)
