@@ -189,6 +189,21 @@ class OracleSimpleTest < Test::Unit::TestCase
     connection.drop_table(:activities) rescue nil
   end
 
+  def test_rename_table
+    user = User.create! :login => 'looser'
+    begin
+      ActiveRecord::Base.connection.rename_table 'users', 'loosers'
+      loosers = Class.new(ActiveRecord::Base)
+      loosers.table_name = 'loosers'
+      assert_kind_of ActiveRecord::Base, loosers.find(user.id)
+    ensure
+      disable_logger do
+        CreateUsers.up rescue nil
+        ActiveRecord::Base.connection.drop_table("loosers") rescue nil
+      end
+    end
+  end
+
   test 'returns correct visitor type' do
     assert_not_nil visitor = connection.instance_variable_get(:@visitor)
     assert defined? Arel::Visitors::Oracle
