@@ -261,18 +261,20 @@ public class OracleRubyJdbcConnection extends RubyJdbcConnection {
     }
 
     @Override
-    protected RubyArray mapTables(final Ruby runtime, final DatabaseMetaData metaData,
+    protected RubyArray mapTables(final ThreadContext context, final Connection connection,
             final String catalog, final String schemaPattern, final String tablePattern,
             final ResultSet tablesSet) throws SQLException {
-        final List<IRubyObject> tables = new ArrayList<IRubyObject>(32);
+        final RubyArray tables = RubyArray.newArray(context.runtime, 24);
         while ( tablesSet.next() ) {
             String name = tablesSet.getString(TABLES_TABLE_NAME);
-            name = caseConvertIdentifierForRails(metaData, name);
-            // Handle stupid Oracle 10g RecycleBin feature
-            if ( name.startsWith("bin$") ) continue;
-            tables.add(RubyString.newUnicodeString(runtime, name));
+            // name = caseConvertIdentifierForRails(connection, name);
+            //if (name != null) {
+            name = name.toLowerCase();
+            if ( name.startsWith("bin$") ) continue; // Oracle 10g RecycleBin
+            //}
+            tables.append( cachedString(context, name) );
         }
-        return runtime.newArray(tables);
+        return tables;
     }
 
     // storesMixedCaseIdentifiers() return false;
@@ -280,15 +282,16 @@ public class OracleRubyJdbcConnection extends RubyJdbcConnection {
     // storesUpperCaseIdentifiers() return true;
 
     @Override
-    protected String caseConvertIdentifierForRails(final Connection connection, final String value)
-        throws SQLException {
+    protected String caseConvertIdentifierForRails(final Connection connection, final String value) {
         return value == null ? null : value.toLowerCase();
     }
 
     @Override
-    protected String caseConvertIdentifierForJdbc(final Connection connection, final String value)
-        throws SQLException {
+    protected String caseConvertIdentifierForJdbc(final Connection connection, final String value) {
         return value == null ? null : value.toUpperCase();
     }
+
+    //@Override
+    //protected boolean useByteStrings() { return true; }
 
 }

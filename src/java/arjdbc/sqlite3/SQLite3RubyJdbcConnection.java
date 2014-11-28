@@ -276,14 +276,14 @@ public class SQLite3RubyJdbcConnection extends RubyJdbcConnection {
     }
 
     @Override
-    protected RubyArray mapTables(final Ruby runtime, final DatabaseMetaData metaData,
+    protected RubyArray mapTables(final ThreadContext context, final Connection connection,
             final String catalog, final String schemaPattern, final String tablePattern,
             final ResultSet tablesSet) throws SQLException {
-        final RubyArray tables = runtime.newArray(24);
+        final RubyArray tables = RubyArray.newArray(context.runtime, 24);
         while ( tablesSet.next() ) {
             String name = tablesSet.getString(TABLES_TABLE_NAME);
             name = name.toLowerCase(); // simply lower-case for SQLite3
-            tables.append( RubyString.newUnicodeString(runtime, name) );
+            tables.append( cachedString(context, name) );
         }
         return tables;
     }

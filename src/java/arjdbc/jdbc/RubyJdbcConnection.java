@@ -3172,7 +3172,7 @@ public class RubyJdbcConnection extends RubyObject {
 
     /**
      * Match table names for given table name (pattern).
-     * @param runtime
+     * @param context
      * @param connection
      * @param catalog
      * @param schemaPattern
@@ -3186,6 +3186,32 @@ public class RubyJdbcConnection extends RubyObject {
      * @see #mapTables(Ruby, DatabaseMetaData, String, String, String, ResultSet)
      * @throws SQLException
      */
+    protected IRubyObject matchTables(final ThreadContext context,
+            final Connection connection,
+            final String catalog, final String schemaPattern,
+            final String tablePattern, final String[] types,
+            final boolean checkExistsOnly) throws SQLException {
+        return matchTables(context.runtime, connection, catalog, schemaPattern, tablePattern, types, checkExistsOnly);
+        /*
+        final String _tablePattern = caseConvertIdentifierForJdbc(connection, tablePattern);
+        final String _schemaPattern = caseConvertIdentifierForJdbc(connection, schemaPattern);
+        final DatabaseMetaData metaData = connection.getMetaData();
+
+        ResultSet tablesSet = null;
+        try {
+            tablesSet = metaData.getTables(catalog, _schemaPattern, _tablePattern, types);
+            if ( checkExistsOnly ) { // only check if given table exists
+                return tablesSet.next() ? context.runtime.getTrue() : null;
+            }
+            else {
+                return mapTables(context, connection, catalog, _schemaPattern, _tablePattern, tablesSet);
+            }
+        }
+        finally { close(tablesSet); }
+        */
+    }
+
+    @Deprecated
     protected IRubyObject matchTables(final Ruby runtime,
             final Connection connection,
             final String catalog, final String schemaPattern,
@@ -3222,7 +3248,7 @@ public class RubyJdbcConnection extends RubyObject {
      * @param schemaPattern
      * @param tablePattern
      * @param tablesSet
-     * @return List<RubyString>
+     * @return table names
      * @throws SQLException
      */
     @Deprecated
@@ -3230,19 +3256,7 @@ public class RubyJdbcConnection extends RubyObject {
             final String catalog, final String schemaPattern, final String tablePattern,
             final ResultSet tablesSet) throws SQLException {
         final ThreadContext context = runtime.getCurrentContext();
-        return mapTables(context, metaData, catalog, schemaPattern, tablePattern, tablesSet);
-    }
-
-    private RubyArray mapTables(final ThreadContext context, final DatabaseMetaData metaData,
-            final String catalog, final String schemaPattern, final String tablePattern,
-            final ResultSet tablesSet) throws SQLException {
-        final RubyArray tables = RubyArray.newArray(context.runtime);
-        while ( tablesSet.next() ) {
-            String name = tablesSet.getString(TABLES_TABLE_NAME);
-            name = caseConvertIdentifierForRails(metaData, name);
-            tables.add( cachedString(context, name) );
-        }
-        return tables;
+        return mapTables(context, metaData.getConnection(), catalog, schemaPattern, tablePattern, tablesSet);
     }
 
     protected RubyArray mapTables(final ThreadContext context, final Connection connection,
@@ -3252,7 +3266,7 @@ public class RubyJdbcConnection extends RubyObject {
         while ( tablesSet.next() ) {
             String name = tablesSet.getString(TABLES_TABLE_NAME);
             name = caseConvertIdentifierForRails(connection, name);
-            tables.add( cachedString(context, name) );
+            tables.append( cachedString(context, name) );
         }
         return tables;
     }
