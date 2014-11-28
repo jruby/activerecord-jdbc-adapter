@@ -246,19 +246,19 @@ public class MySQLRubyJdbcConnection extends RubyJdbcConnection {
             threadClass.getMethod("shutdown").invoke(null);
         }
         catch (ClassNotFoundException e) {
-            debugMessage("ArJdbc: missing MySQL JDBC cleanup thread: " + e);
+            debugMessage("missing MySQL JDBC cleanup thread: " + e);
         }
         catch (NoSuchMethodException e) {
-            debugMessage("ArJdbc: " + e);
+            debugMessage( e.toString() );
         }
         catch (IllegalAccessException e) {
-            debugMessage("ArJdbc: " + e);
+            debugMessage( e.toString() );
         }
         catch (InvocationTargetException e) {
-            debugMessage("ArJdbc: " + e.getTargetException());
+            debugMessage( e.getTargetException().toString() );
         }
         catch (SecurityException e) {
-            debugMessage("ArJdbc: " + e);
+            debugMessage( e.toString() );
         }
         finally { cleanupThreadShutdown = true; }
     }
@@ -341,13 +341,13 @@ public class MySQLRubyJdbcConnection extends RubyJdbcConnection {
             }
         }
         catch (ClassNotFoundException e) {
-            debugMessage("ArJdbc: missing MySQL JDBC connection impl: " + e);
+            debugMessage("missing MySQL JDBC connection impl: " + e);
         }
         catch (NoSuchFieldException e) {
-            debugMessage("ArJdbc: MySQL's cancel timer seems to have changed: " + e);
+            debugMessage("MySQL's cancel timer seems to have changed: " + e);
         }
         catch (SecurityException e) {
-            debugMessage("ArJdbc: " + e);
+            debugMessage( e.toString() );
         }
         finally { cancelTimerChecked = true; }
         return cancelTimer;

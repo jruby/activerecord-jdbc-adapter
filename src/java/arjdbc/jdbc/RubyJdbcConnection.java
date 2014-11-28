@@ -3008,7 +3008,7 @@ public class RubyJdbcConnection extends RubyObject {
             }
         }
         catch (Exception e) {
-            debugMessage(context, "connection considered broken due: " + e.toString());
+            debugMessage(context.runtime, "connection considered not valid due: ", e);
             return false;
         }
         catch (AbstractMethodError e) { // non-JDBC 4.0 driver

@@ -94,7 +94,7 @@ public class OracleRubyJdbcConnection extends RubyJdbcConnection {
                     return context.getRuntime().newFixnum( valSet.getLong(1) );
                 }
                 catch (final SQLException e) {
-                    debugMessage(context, "failed to get " + sequence + ".NEXTVAL : " + e.getMessage());
+                    debugMessage(context.runtime, "failed to get " + sequence + ".NEXTVAL : " + e.getMessage());
                     throw e;
                 }
                 finally { close(valSet); close(statement); }
