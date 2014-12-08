@@ -39,7 +39,8 @@ module ArJdbc
           end
 
           if distinct # select =~ /DISTINCT/i
-            order = order.gsub(/([a-z0-9_])+\./, 't.')
+            # order = order.gsub(/([a-z0-9_])+\./, 't.')
+            order = order.gsub(/(\[[a-z0-9_]+\]|[a-z0-9_]+)\./, 't.')
             new_sql = "SELECT t.* FROM "
             new_sql << "( SELECT ROW_NUMBER() OVER(#{order}) AS _row_num, t.* FROM (#{select} #{rest_of_query}) AS t ) AS t"
             append_limit_row_num_clause(new_sql, limit, offset)
