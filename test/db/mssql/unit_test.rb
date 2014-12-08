@@ -147,6 +147,17 @@ class MSSQLUnitTest < Test::Unit::TestCase
     assert sql.start_with?(expected), sql
   end
 
+  test 'replace limit offset! with distinct' do
+    mod = ArJdbc::MSSQL::LimitHelpers::SqlServerReplaceLimitOffset
+    sql = 'SELECT DISTINCT w.* ' <<
+      'FROM [vikings] w inner join long_ships s on s.id = w.long_ship_id ' <<
+      'WHERE (w.long_ship_id = 1) '
+    order = 'ORDER BY [vikings].id DESC'
+    sql2 = mod.replace_limit_offset!(sql.dup, 1, 2, order)
+    expected = 'SELECT t.* FROM ( SELECT ROW_NUMBER() OVER(ORDER BY t.id DESC) AS _row_num, t.* FROM (SELECT DISTINCT w.* FROM [vikings] w'
+    assert sql2.start_with?(expected), sql2
+  end
+
   private
 
   def new_adapter_stub(config = {})
