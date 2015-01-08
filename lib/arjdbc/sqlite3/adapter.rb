@@ -564,13 +564,13 @@ module ActiveRecord::ConnectionAdapters
   class SQLite3Column < JdbcColumn
     include ArJdbc::SQLite3::Column
 
-    def initialize(name, *args)
-      if Hash === name
-        super
-      else
-        super(nil, name, *args)
+      def initialize(name, *args)
+        if name.eql?(Hash)
+          super
+        else
+          super(nil, name, args)
+        end
       end
-    end
 
     def self.string_to_binary(value)
       value
