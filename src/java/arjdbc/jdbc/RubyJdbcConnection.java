@@ -55,6 +55,7 @@ import java.sql.Timestamp;
 import java.sql.Types;
 import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -1297,7 +1298,7 @@ public class RubyJdbcConnection extends RubyObject {
         throws SQLException {
         return withConnection(context, new Callable<RubyArray>() {
             public RubyArray call(final Connection connection) throws SQLException {
-                ResultSet columns = null, primaryKeys = null;
+                ResultSet columns = null;
                 try {
                     final String tableName = args[0].toString();
                     // optionals (NOTE: catalog argument was never used before 1.3.0) :
@@ -1318,12 +1319,10 @@ public class RubyJdbcConnection extends RubyObject {
 
                     final DatabaseMetaData metaData = connection.getMetaData();
                     columns = metaData.getColumns(components.catalog, components.schema, components.name, null);
-                    primaryKeys = metaData.getPrimaryKeys(components.catalog, components.schema, components.name);
-                    return unmarshalColumns(context, metaData, columns, primaryKeys);
+                    return unmarshalColumns(context, metaData, components, columns);
                 }
                 finally {
                     close(columns);
-                    close(primaryKeys);
                 }
             }
         });
@@ -3316,16 +3315,13 @@ public class RubyJdbcConnection extends RubyObject {
     }
 
     private RubyArray unmarshalColumns(final ThreadContext context,
-        final DatabaseMetaData metaData, final ResultSet results, final ResultSet primaryKeys)
+        final DatabaseMetaData metaData, final TableName components, final ResultSet results)
         throws SQLException {
 
         final Ruby runtime = context.runtime;
         final IRubyObject jdbcColumn = getJdbcColumnClass(context);
 
-        final List<String> primaryKeyNames = new ArrayList<String>(4);
-        while ( primaryKeys.next() ) {
-            primaryKeyNames.add( primaryKeys.getString(COLUMN_NAME) );
-        }
+        final Collection<String> primaryKeyNames = getPrimaryKeyNames(metaData, components);
 
         final RubyArray columns = RubyArray.newArray(runtime);
         final IRubyObject config = getConfig();
@@ -3346,6 +3342,23 @@ public class RubyJdbcConnection extends RubyObject {
             }
         }
         return columns;
+
+    }
+
+    private static Collection<String> getPrimaryKeyNames(final DatabaseMetaData metaData,
+        final TableName components) throws SQLException {
+        ResultSet primaryKeys = null;
+        try {
+            primaryKeys = metaData.getPrimaryKeys(components.catalog, components.schema, components.name);
+            final List<String> primaryKeyNames = new ArrayList<String>(4);
+            while ( primaryKeys.next() ) {
+                primaryKeyNames.add( primaryKeys.getString(COLUMN_NAME) );
+            }
+            return primaryKeyNames;
+        }
+        finally {
+            close(primaryKeys);
+        }
     }
 
     protected IRubyObject mapGeneratedKeys(
