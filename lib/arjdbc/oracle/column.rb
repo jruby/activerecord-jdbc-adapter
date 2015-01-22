@@ -17,7 +17,7 @@ module ArJdbc
       def primary=(value)
         super
         @type = :integer if value && @sql_type =~ /^NUMBER$/i
-      end
+      end if ::ActiveRecord::VERSION::STRING < '4.2'
 
       def type_cast(value)
         return nil if value.nil?
