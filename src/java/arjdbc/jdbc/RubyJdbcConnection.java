@@ -1912,8 +1912,8 @@ public class RubyJdbcConnection extends RubyObject {
     // NOTE: make public
     protected final IRubyObject getAdapter() { return this.adapter; }
 
-    protected IRubyObject getJdbcColumnClass(final ThreadContext context) {
-        return getAdapter().callMethod(context, "jdbc_column_class");
+    protected RubyClass getJdbcColumnClass(final ThreadContext context) {
+        return (RubyClass) getAdapter().callMethod(context, "jdbc_column_class");
     }
 
     protected final ConnectionFactory getConnectionFactory() throws RaiseException {
@@ -3319,15 +3319,19 @@ public class RubyJdbcConnection extends RubyObject {
         throws SQLException {
 
         final Ruby runtime = context.runtime;
-        final IRubyObject jdbcColumn = getJdbcColumnClass(context);
+        final RubyClass JdbcColumn = getJdbcColumnClass(context);
 
-        final Collection<String> primaryKeyNames = getPrimaryKeyNames(metaData, components);
+        // NOTE: primary/primary= methods were removed from Column in AR 4.2
+        final boolean setPrimary = JdbcColumn.isMethodBound("primary=", false);
+
+        final Collection<String> primaryKeyNames =
+            setPrimary ? getPrimaryKeyNames(metaData, components) : null;
 
         final RubyArray columns = RubyArray.newArray(runtime);
         final IRubyObject config = getConfig();
         while ( results.next() ) {
             final String colName = results.getString(COLUMN_NAME);
-            IRubyObject column = jdbcColumn.callMethod(context, "new",
+            IRubyObject column = JdbcColumn.callMethod(context, "new",
                 new IRubyObject[] {
                     config,
                     cachedString( context, caseConvertIdentifierForRails(metaData, colName) ),
@@ -3337,7 +3341,7 @@ public class RubyJdbcConnection extends RubyObject {
                 });
             columns.append(column);
 
-            if ( primaryKeyNames.contains(colName) ) {
+            if ( primaryKeyNames != null && primaryKeyNames.contains(colName) ) {
                 column.callMethod(context, "primary=", runtime.getTrue());
             }
         }
