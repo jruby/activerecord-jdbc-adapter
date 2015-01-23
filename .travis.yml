@@ -3,7 +3,7 @@ sudo: false
 bundler_args: --without development
 script: bundle exec rake test_$DB
 before_script:
-  - export JRUBY_OPTS="--server -Xcext.enabled=false -Xcompile.invokedynamic=false"
+  - export JRUBY_OPTS="--server" # -Xcompile.invokedynamic=false
   - mvn prepare-package # compiles ext generates: lib/arjdbc/jdbc/adapter_java.jar
 before_install:
   - ((jruby -v | grep 1.8.7) && jruby --1.9 -S gem update --system 2.1.11) || true
@@ -11,7 +11,7 @@ rvm:
   - jruby-1.7.18
   - jruby-head # 9000 ignores --1.8 and --1.9 switches
 jdk:
-  - openjdk7 # we target Java 6+ yet do have Java 7 java.sql APIs (thus need JDK 7 for compilation)
+  - openjdk7 # we target Java 6+ yet do have Java 7 java.sql APIs (thus needed to compile)
 gemfile:
   - gemfiles/rails23.gemfile
   - gemfiles/rails30.gemfile
