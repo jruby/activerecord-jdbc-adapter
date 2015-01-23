@@ -17,27 +17,6 @@ task 'test_postgresql_with_hint' do
   end
 end
 
-def set_test_task_compat_version(task)
-  task.ruby_opts << '-v' if RUBY_VERSION =~ /1\.8/
-  if defined?(JRUBY_VERSION)
-    task.ruby_opts << "--#{RUBY_VERSION[/^(\d+\.\d+)/, 1]}"
-  end
-end
-
-def set_task_description(task, desc)
-  unless task.is_a?(Rake::Task)
-    task = task.name if task.is_a?(Rake::TestTask)
-    task = Rake::Task[task]
-  end
-  # reset the description set-up by TestTask :
-  if task.instance_variable_defined? :@full_comment
-    task.instance_variable_set(:@full_comment, nil)
-  else
-    task.instance_variable_get(:@comments).clear
-  end
-  task.add_description(desc)
-end
-
 task 'test_appraisal_hint' do
   next if File.exists?('.disable-appraisal-hint')
   unless (ENV['BUNDLE_GEMFILE'] || '') =~ /gemfiles\/.*?\.gemfile/
@@ -72,11 +51,22 @@ def test_task_for(adapter, options = {})
       test_task.libs.push *FileList["activerecord-jdbc#{adapter}*/lib"]
     end
     test_task.libs << 'test'
-    set_test_task_compat_version test_task
+    test_task.ruby_opts << '-v' if RUBY_VERSION.index('1.8') == 0
+    # set current Ruby compatibility version on JRuby <= 1.7 :
+    if defined?(JRUBY_VERSION) && JRUBY_VERSION.index('1.7') == 0
+      test_task.ruby_opts << "--#{RUBY_VERSION[/^(\d+\.\d+)/, 1]}"
+    end
     test_task.verbose = true if $VERBOSE
     yield(test_task) if block_given?
   end
-  set_task_description name, desc
+  task = Rake::Task[name]
+  # reset the description set-up by Rake::TestTask :
+  if task.instance_variable_defined? :@full_comment
+    task.instance_variable_set(:@full_comment, nil)
+  else
+    task.instance_variable_get(:@comments).clear
+  end
+  task.add_description(desc)
   test_task
 end
 
