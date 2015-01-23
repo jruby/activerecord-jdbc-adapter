@@ -22,7 +22,7 @@ if defined?(JRUBY_VERSION) && JRUBY_VERSION < '1.7.0'
 gem 'jruby-openssl', :platform => :jruby
 end
 
-gem 'rake', '~> 10.3.2', :require => nil
+gem 'rake', '~> 10.4.2', :require => nil
 gem 'appraisal', '~> 0.5.2', :require => nil
 
 # appraisal ignores group block declarations :
