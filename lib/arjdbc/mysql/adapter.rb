@@ -642,7 +642,7 @@ module ArJdbc
         when 0..0xfff; "varbinary(#{limit})"
         when nil; "blob"
         when 0x1000..0xffffffff; "blob(#{limit})"
-        else raise(ActiveRecordError, "No binary type has character length #{limit}")
+        else raise ActiveRecord::ActiveRecordError, "No binary type has character length #{limit}"
         end
       when 'integer'
         case limit
@@ -651,7 +651,7 @@ module ArJdbc
         when 3; 'mediumint'
         when nil, 4, 11; 'int(11)' # compatibility with MySQL default
         when 5..8; 'bigint'
-        else raise(ActiveRecordError, "No integer type has byte size #{limit}")
+        else raise ActiveRecord::ActiveRecordError, "No integer type has byte size #{limit}"
         end
       when 'text'
         case limit
@@ -659,7 +659,7 @@ module ArJdbc
         when nil, 0x100..0xffff; 'text'
         when 0x10000..0xffffff; 'mediumtext'
         when 0x1000000..0xffffffff; 'longtext'
-        else raise(ActiveRecordError, "No text type has character length #{limit}")
+        else raise ActiveRecord::ActiveRecordError, "No text type has character length #{limit}"
         end
       else
         super
