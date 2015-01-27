@@ -432,10 +432,34 @@ module ArJdbc
       @connection.execute_update "call sysproc.admin_cmd('RUNSTATS ON TABLE #{tablename} WITH DISTRIBUTION AND DETAILED INDEXES ALL UTIL_IMPACT_PRIORITY #{priority}')"
     end
 
-    def select(sql, name, binds)
-      # DB2 does not like "= NULL", "!= NULL", or "<> NULL".
-      exec_query(to_sql(sql.gsub(/(!=|<>)\s*null/i, "IS NOT NULL").gsub(/=\s*null/i, "IS NULL"), binds), name, binds)
+    if ActiveRecord::VERSION::MAJOR >= 4
+
+    def select(sql, name = nil, binds = [])
+      exec_query(to_sql(suble_null_test(sql), binds), name, binds)
     end
+
+    else
+
+    def select(sql, name = nil, binds = [])
+      exec_query_raw(to_sql(suble_null_test(sql), binds), name, binds)
+    end
+
+    end
+
+    # @private
+    IS_NOT_NULL = /(!=|<>)\s*NULL/i
+    # @private
+    IS_NULL = /=\s*NULL/i
+
+    def suble_null_test(sql)
+      return sql unless sql.is_a?(String)
+      # DB2 does not like "= NULL", "!= NULL", or "<> NULL" :
+      sql = sql.dup
+      sql.gsub! IS_NOT_NULL, 'IS NOT NULL'
+      sql.gsub! IS_NULL, 'IS NULL'
+      sql
+    end
+    private :suble_null_test
 
     def add_index(table_name, column_name, options = {})
       if ! zos? || ( table_name.to_s == ActiveRecord::Migrator.schema_migrations_table_name.to_s )

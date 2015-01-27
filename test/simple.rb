@@ -1452,9 +1452,19 @@ module ActiveRecord3TestMethods
 
     def test_model_with_no_id
       #assert_nothing_raised do
-      Thing.create! :name => "a thing"
+      Thing.create! :name => "the thing"
       #end
       assert_equal 1, Thing.count
+    end
+
+    def test_arel
+      Thing.create! :name => "a3"
+      Thing.create! :name => "a1"
+      Thing.create! :name => "a2"
+
+      things = Thing.order(:name).limit(3)
+      assert_equal 'a2', things[1].name
+      #assert_not_nil Thing.first.name
     end
 
   end
