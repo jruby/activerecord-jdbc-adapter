@@ -398,7 +398,7 @@ module ArJdbc
 
       limit = limit.to_i
       if offset
-        replace_limit_offset_with_ordering(sql, limit, offset)
+        replace_limit_offset_with_ordering!(sql, limit, offset)
       else
         if limit == 1
           sql << " FETCH FIRST ROW ONLY"
@@ -409,31 +409,25 @@ module ArJdbc
       end
     end
 
-    # @private only used from {Arel::Visitors::DB2}
-    def replace_limit_offset_for_arel!( query, sql )
-      replace_limit_offset_with_ordering sql, query.limit.value, query.offset && query.offset.value, query.orders
-    end
-
-    def replace_limit_offset_with_ordering( sql, limit, offset, orders=[] )
-      sql.sub!(/SELECT/i, "SELECT B.* FROM (SELECT A.*, row_number() over (#{build_ordering(orders)}) AS internal$rownum FROM (SELECT")
+    # @private used from {Arel::Visitors::DB2}
+    def replace_limit_offset_with_ordering!(sql, limit, offset, orders = nil)
+      if ! orders.nil? && ! orders.empty?
+        # need to remove the library/table names from the orderings because we are not really ordering by them anymore
+        # we are actually ordering by the results of a query where the result set has the same column names
+        orders = orders.map do |order|
+          # need to keep in mind that the order clause could be wrapped in a function
+          if match = /(?:\w+\(|\s)*(\S+)(?:\)|\s)*/.match(order)
+            order.gsub( match[1], match[1].split('.').last )
+          else
+            order
+          end
+        end
+        over_order_by = "ORDER BY #{orders.join( ', ')}"
+      end
+      sql.sub!(/SELECT/i, "SELECT B.* FROM (SELECT A.*, row_number() OVER (#{over_order_by}) AS internal$rownum FROM (SELECT")
       sql << ") A ) B WHERE B.internal$rownum > #{offset} AND B.internal$rownum <= #{limit + offset}"
       sql
     end
-    private :replace_limit_offset_with_ordering
-
-    def build_ordering( orders )
-      return '' unless orders.size > 0
-      # need to remove the library/table names from the orderings because we are not really ordering by them anymore
-      # we are actually ordering by the results of a query where the result set has the same column names
-      orders = orders.map do |o|
-        # need to keep in mind that the order clause could be wrapped in a function
-        matches = /(?:\w+\(|\s)*(\S+)(?:\)|\s)*/.match(o)
-        o = o.gsub( matches[1], matches[1].split('.').last ) if matches
-        o
-      end
-      "ORDER BY " + orders.join( ', ')
-    end
-    private :build_ordering
 
     # @deprecated seems not sued nor tested ?!
     def runstats_for_table(tablename, priority = 10)
