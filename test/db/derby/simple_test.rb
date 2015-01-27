@@ -10,9 +10,9 @@ class DerbySimpleTest < Test::Unit::TestCase
 
   # @override
   def test_empty_insert_statement
-    # "INSERT INTO table VALUES ( DEFAULT ) " not supported by Derby DB
-    pend if ar_version('4.0')
     super
+    Entry.create!
+    assert Entry.first
   end
 
   def test_emulates_booleans_by_default
@@ -34,7 +34,7 @@ class DerbySimpleTest < Test::Unit::TestCase
   	ArJdbc::Derby.emulate_booleans = true
   	DbType.reset_column_information
   end if ar_version('3.0')
-  
+
   # Check that a table-less VALUES(xxx) query (like SELECT  works.
   def test_values
     value = nil

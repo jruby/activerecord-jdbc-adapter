@@ -28,6 +28,30 @@ module Arel
         do_visit o.expr, a
       end
 
+      # @private
+      VALUES_DEFAULT = 'VALUES ( DEFAULT )' # NOTE: marker set by ArJdbc::Derby
+
+      def visit_Arel_Nodes_InsertStatement o, a = nil
+        sql = "INSERT INTO "
+        sql << visit(o.relation, a)
+
+        values = o.values
+
+        if o.columns.any?
+          cols = o.columns.map { |x| quote_column_name x.name }
+          sql << ' (' << cols.join(', ') << ') '
+        elsif o.values.eql? VALUES_DEFAULT
+          cols = o.relation.engine.columns.map { |c| c.name }
+          sql << ' (' << cols.join(', ') << ')'
+          sql << ' VALUES '
+          sql << ' (' << cols.map { 'DEFAULT' }.join(', ') << ')'
+          values = false
+        end
+
+        sql << visit(values, a) if values
+        sql
+      end if Arel::VERSION >= '4.0' # AR 4.0 ... AREL 5.0 since AR >= 4.1
+
     end
   end
 end
