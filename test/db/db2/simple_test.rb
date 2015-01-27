@@ -144,3 +144,54 @@ class DB2SimpleTest < Test::Unit::TestCase
   end
 
 end
+
+class DB2LimitOffsetTest < Test::Unit::TestCase
+
+  class CreateTablesForAddLimitOffsetTestMigration < ActiveRecord::Migration
+    def up
+      create_table "names" do |t|
+        t.string   :name
+        t.integer  :person_id
+      end
+
+      create_table "persons" do |t|
+        t.string   :tax_code
+      end
+    end
+
+    def down
+      %w{names persons}.each do |t|
+        drop_table t
+      end
+    end
+  end
+
+  setup { CreateTablesForAddLimitOffsetTestMigration.migrate :up }
+  teardown { CreateTablesForAddLimitOffsetTestMigration.migrate :down }
+
+  class Name < ActiveRecord::Base; end
+  class Person < ActiveRecord::Base; self.table_name = 'persons' end
+
+  test "should handle pagination with ordering" do
+    assert_empty arel_with_pagination(3).all
+
+    person = Person.create! :tax_code => '1234567890'
+    Name.create! :name => 'benissimo', :person_id => person.id
+
+    assert_empty arel_with_pagination(2).all
+
+    assert_not_empty arel_with_pagination(0).all
+  end
+
+  test "should handle pagination with ordering even when order column is not returned" do
+    # passes on 1.2.9, failed on <= 1.3.13
+    assert_empty arel_with_pagination(3).order("p.tax_code").all
+  end
+
+  private
+
+  def arel_with_pagination(offset = 0)
+    Name.joins("JOIN persons p on p.id = names.person_id").limit(2).offset(offset)
+  end
+
+end

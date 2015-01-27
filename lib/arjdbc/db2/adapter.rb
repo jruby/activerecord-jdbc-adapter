@@ -411,19 +411,7 @@ module ArJdbc
 
     # @private used from {Arel::Visitors::DB2}
     def replace_limit_offset_with_ordering!(sql, limit, offset, orders = nil)
-      if ! orders.nil? && ! orders.empty?
-        # need to remove the library/table names from the orderings because we are not really ordering by them anymore
-        # we are actually ordering by the results of a query where the result set has the same column names
-        orders = orders.map do |order|
-          # need to keep in mind that the order clause could be wrapped in a function
-          if match = /(?:\w+\(|\s)*(\S+)(?:\)|\s)*/.match(order)
-            order.gsub( match[1], match[1].split('.').last )
-          else
-            order
-          end
-        end
-        over_order_by = "ORDER BY #{orders.join( ', ')}"
-      end
+      over_order_by = nil # NOTE: orders matching got reverted as it was not complete and there were no case covering it ...
       sql.sub!(/SELECT/i, "SELECT B.* FROM (SELECT A.*, row_number() OVER (#{over_order_by}) AS internal$rownum FROM (SELECT")
       sql << ") A ) B WHERE B.internal$rownum > #{offset} AND B.internal$rownum <= #{limit + offset}"
       sql
