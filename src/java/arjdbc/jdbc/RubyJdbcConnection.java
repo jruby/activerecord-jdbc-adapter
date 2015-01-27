@@ -1950,7 +1950,7 @@ public class RubyJdbcConnection extends RubyObject {
             }
             return array;
         }
-        finally { value.free(); }
+        finally { if ( value != null ) value.free(); }
     }
 
     protected IRubyObject xmlToRuby(final ThreadContext context,
