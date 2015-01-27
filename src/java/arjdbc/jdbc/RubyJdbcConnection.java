@@ -1958,9 +1958,11 @@ public class RubyJdbcConnection extends RubyObject {
         throws SQLException {
         final SQLXML xml = resultSet.getSQLXML(column);
         try {
+            if ( xml == null || resultSet.wasNull() ) return runtime.getNil();
+
             return RubyString.newUnicodeString(runtime, xml.getString());
         }
-        finally { xml.free(); }
+        finally { if ( xml != null ) xml.free(); }
     }
 
     protected void setStatementParameters(final ThreadContext context,
