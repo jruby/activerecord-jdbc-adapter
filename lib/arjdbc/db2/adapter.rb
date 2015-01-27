@@ -347,6 +347,14 @@ module ArJdbc
       super(type, limit, precision, scale)
     end
 
+    # @private
+    VALUES_DEFAULT = 'VALUES ( DEFAULT )' # NOTE: Arel::Visitors::DB2 uses this
+
+    # @override
+    def empty_insert_statement_value
+      VALUES_DEFAULT # won't work as DB2 needs to know the column count
+    end
+
     def add_column(table_name, column_name, type, options = {})
       # The keyword COLUMN allows to use reserved names for columns (ex: date)
       add_column_sql = "ALTER TABLE #{quote_table_name(table_name)} ADD COLUMN #{quote_column_name(column_name)} #{type_to_sql(type, options[:limit], options[:precision], options[:scale])}"
@@ -432,7 +440,7 @@ module ArJdbc
       @connection.execute_update "call sysproc.admin_cmd('RUNSTATS ON TABLE #{tablename} WITH DISTRIBUTION AND DETAILED INDEXES ALL UTIL_IMPACT_PRIORITY #{priority}')"
     end
 
-    if ActiveRecord::VERSION::MAJOR >= 4
+    if ::ActiveRecord::VERSION::MAJOR >= 4
 
     def select(sql, name = nil, binds = [])
       exec_query(to_sql(suble_null_test(sql), binds), name, binds)
