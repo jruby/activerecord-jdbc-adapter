@@ -9,9 +9,7 @@ module ArJdbc
       ChangeColumnDefinition = ActiveRecord::ConnectionAdapters::ChangeColumnDefinition if AR41
 
       # @override
-      def supports_bulk_alter?
-        true
-      end
+      def supports_bulk_alter?; true end
 
       def bulk_change_table(table_name, operations)
         sqls = operations.map do |command, args|
@@ -94,7 +92,7 @@ module ArJdbc
       end unless AR41
 
       def rename_column_sql(table_name, column_name, new_column_name)
-        options = { name: new_column_name }
+        options = { :name => new_column_name }
 
         if column = columns(table_name).find { |c| c.name == column_name.to_s }
           options[:default] = column.default

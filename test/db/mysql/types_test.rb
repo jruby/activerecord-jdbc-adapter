@@ -10,9 +10,9 @@ class MySQLTypesTest < Test::Unit::TestCase
   end
 
   def test_error_handling
-    assert_raise ActiveRecord::ActiveRecordError { type_to_sql(:binary, 5_000_000_000) }
-    assert_raise ActiveRecord::ActiveRecordError { type_to_sql(:integer, 10) }
-    assert_raise ActiveRecord::ActiveRecordError { type_to_sql(:text, 5_000_000_000) }
+    assert_raise(ActiveRecord::ActiveRecordError) { type_to_sql(:binary, 5_000_000_000) }
+    assert_raise(ActiveRecord::ActiveRecordError) { type_to_sql(:integer, 10) }
+    assert_raise(ActiveRecord::ActiveRecordError) { type_to_sql(:text, 5_000_000_000) }
   end
 
   def type_to_sql(*args)
