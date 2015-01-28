@@ -29,7 +29,8 @@ module PostgresHelper
           true
         else
           if warn.nil?
-            warn = "No \"postgres\" role? You might need to execute `createuser postgres -drs' first."
+            warn =  "No \"postgres\" role ? Make sure service postgresql is running, "
+            warn << "than you might need to execute `createuser postgres -drs' first."
           end
           send(:warn, warn) if warn # warn == false disables warnings
           false

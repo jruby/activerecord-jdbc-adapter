@@ -236,7 +236,7 @@ module ArJdbc
 
     # @override
     def empty_insert_statement_value
-      'VALUES ( DEFAULT )' # won't work as Derby does need to know the columns count
+      ::Arel::Visitors::Derby::VALUES_DEFAULT # Derby needs to know the columns
     end
 
     # Set the sequence to the max value of the table's column.

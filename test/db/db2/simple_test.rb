@@ -117,17 +117,80 @@ class DB2SimpleTest < Test::Unit::TestCase
   # DB2 does not like "= NULL".
   def test_equals_null
     Entry.create!(:title => "Foo")
-    entry = Entry.find(:first, :conditions => ["content = NULL"])
+    if ar_version('4.0')
+      entry = Entry.where("content = NULL").first
+    else
+      entry = Entry.find(:first, :conditions => ["content = NULL"])
+    end
     assert_equal "Foo", entry.title
   end
 
   # DB2 does not like "!= NULL" or "<> NULL".
   def test_not_equals_null
     Entry.create!(:title => "Foo", :content => "Bar")
-    entry = Entry.find_by_title("Foo", :conditions => ["content != NULL"])
+    if ar_version('4.0')
+      entry = Entry.where(:title => 'Foo').where('content != NULL').first
+    else
+      entry = Entry.find_by_title("Foo", :conditions => ["content != NULL"])
+    end
     assert_equal "Foo", entry.title
-    entry = Entry.find_by_title("Foo", :conditions => ["content <> NULL"])
+    if ar_version('4.0')
+      entry = Entry.where("title = 'Foo' AND content <> null").first
+    else
+      entry = Entry.find_by_title("Foo", :conditions => ["content <> NULL"])
+    end
     assert_equal "Foo", entry.title
+  end
+
+end
+
+class DB2LimitOffsetTest < Test::Unit::TestCase
+
+  class CreateTablesForAddLimitOffsetTestMigration < ActiveRecord::Migration
+    def up
+      create_table "names" do |t|
+        t.string   :name
+        t.integer  :person_id
+      end
+
+      create_table "persons" do |t|
+        t.string   :tax_code
+      end
+    end
+
+    def down
+      %w{names persons}.each do |t|
+        drop_table t
+      end
+    end
+  end
+
+  setup { CreateTablesForAddLimitOffsetTestMigration.migrate :up }
+  teardown { CreateTablesForAddLimitOffsetTestMigration.migrate :down }
+
+  class Name < ActiveRecord::Base; end
+  class Person < ActiveRecord::Base; self.table_name = 'persons' end
+
+  test "should handle pagination with ordering" do
+    assert_empty arel_with_pagination(3).all
+
+    person = Person.create! :tax_code => '1234567890'
+    Name.create! :name => 'benissimo', :person_id => person.id
+
+    assert_empty arel_with_pagination(2).all
+
+    assert_not_empty arel_with_pagination(0).all
+  end
+
+  test "should handle pagination with ordering even when order column is not returned" do
+    # passes on 1.2.9, failed on <= 1.3.13
+    assert_empty arel_with_pagination(3).order("p.tax_code").all
+  end
+
+  private
+
+  def arel_with_pagination(offset = 0)
+    Name.joins("JOIN persons p on p.id = names.person_id").limit(2).offset(offset)
   end
 
 end

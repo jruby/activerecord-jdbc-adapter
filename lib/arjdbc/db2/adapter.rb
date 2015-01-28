@@ -186,28 +186,30 @@ module ArJdbc
       select_value("SELECT NEXT VALUE FOR #{sequence_name} FROM sysibm.sysdummy1")
     end
 
-    def create_table(name, options = {})
+    def create_table(name, options = {}, &block)
       if zos?
-        zos_create_table(name, options)
+        zos_create_table(name, options, &block)
       else
-        super(name, options)
+        super
       end
     end
 
     def zos_create_table(name, options = {})
-      # NOTE: this won't work for 4.0 - need to pass different initialize args :
-      table_definition = TableDefinition.new(self)
+      table_definition = new_table_definition TableDefinition, name, options[:temporary], options[:options], options[:as]
+
       unless options[:id] == false
         table_definition.primary_key(options[:primary_key] || primary_key(name))
       end
 
-      yield table_definition
+      yield table_definition if block_given?
 
       # Clobs in DB2 Host have to be created after the Table with an auxiliary Table.
-      # First: Save them for later in Array "clobs"
-      clobs = table_definition.columns.select { |x| x.type.to_s == "text" }
-      # Second: and delete them from the original Colums-Array
-      table_definition.columns.delete_if { |x| x.type.to_s == "text" }
+      clob_columns = []
+      table_definition.columns.delete_if do |column|
+        if column.type && column.type.to_sym == :text
+          clob_columns << column; true
+        end
+      end
 
       drop_table(name, options) if options[:force] && table_exists?(name)
 
@@ -216,11 +218,8 @@ module ArJdbc
       create_sql << table_definition.to_sql
       create_sql << ") #{options[:options]}"
       if @config[:database] && @config[:tablespace]
-        in_db_table_space = " IN #{@config[:database]}.#{@config[:tablespace]}"
-      else
-        in_db_table_space = ''
+        create_sql << " IN #{@config[:database]}.#{@config[:tablespace]}"
       end
-      create_sql << in_db_table_space
 
       execute create_sql
 
@@ -231,14 +230,12 @@ module ArJdbc
       #primary_column = options[:id] == true ? 'id' : options[:primary_key]
       #add_index(name, (primary_column || 'id').to_s, :unique => true)
 
-      clobs.each do |clob_column|
+      clob_columns.each do |clob_column|
         column_name = clob_column.name.to_s
-        execute "ALTER TABLE #{name + ' ADD COLUMN ' + column_name + ' clob'}"
-        clob_table_name = name + '_' + column_name + '_CD_'
+        execute "ALTER TABLE #{name} ADD COLUMN #{column_name} clob"
+        clob_table_name = "#{name}_#{column_name}_CD_"
         if @config[:database] && @config[:lob_tablespaces]
           in_lob_table_space = " IN #{@config[:database]}.#{@config[:lob_tablespaces][name.split(".")[1]]}"
-        else
-          in_lob_table_space = ''
         end
         execute "CREATE AUXILIARY TABLE #{clob_table_name} #{in_lob_table_space} STORES #{name} COLUMN #{column_name}"
         execute "CREATE UNIQUE INDEX #{clob_table_name} ON #{clob_table_name};"
@@ -349,6 +346,14 @@ module ArJdbc
       super(type, limit, precision, scale)
     end
 
+    # @private
+    VALUES_DEFAULT = 'VALUES ( DEFAULT )' # NOTE: Arel::Visitors::DB2 uses this
+
+    # @override
+    def empty_insert_statement_value
+      VALUES_DEFAULT # won't work as DB2 needs to know the column count
+    end
+
     def add_column(table_name, column_name, type, options = {})
       # The keyword COLUMN allows to use reserved names for columns (ex: date)
       add_column_sql = "ALTER TABLE #{quote_table_name(table_name)} ADD COLUMN #{quote_column_name(column_name)} #{type_to_sql(type, options[:limit], options[:precision], options[:scale])}"
@@ -392,7 +397,7 @@ module ArJdbc
 
       limit = limit.to_i
       if offset
-        replace_limit_offset_with_ordering(sql, limit, offset)
+        replace_limit_offset_with_ordering!(sql, limit, offset)
       else
         if limit == 1
           sql << " FETCH FIRST ROW ONLY"
@@ -403,41 +408,47 @@ module ArJdbc
       end
     end
 
-    # @private only used from {Arel::Visitors::DB2}
-    def replace_limit_offset_for_arel!( query, sql )
-      replace_limit_offset_with_ordering sql, query.limit.value, query.offset && query.offset.value, query.orders
-    end
-
-    def replace_limit_offset_with_ordering( sql, limit, offset, orders=[] )
-      sql.sub!(/SELECT/i, "SELECT B.* FROM (SELECT A.*, row_number() over (#{build_ordering(orders)}) AS internal$rownum FROM (SELECT")
+    # @private used from {Arel::Visitors::DB2}
+    def replace_limit_offset_with_ordering!(sql, limit, offset, orders = nil)
+      over_order_by = nil # NOTE: orders matching got reverted as it was not complete and there were no case covering it ...
+      sql.sub!(/SELECT/i, "SELECT B.* FROM (SELECT A.*, row_number() OVER (#{over_order_by}) AS internal$rownum FROM (SELECT")
       sql << ") A ) B WHERE B.internal$rownum > #{offset} AND B.internal$rownum <= #{limit + offset}"
       sql
     end
-    private :replace_limit_offset_with_ordering
-
-    def build_ordering( orders )
-      return '' unless orders.size > 0
-      # need to remove the library/table names from the orderings because we are not really ordering by them anymore
-      # we are actually ordering by the results of a query where the result set has the same column names
-      orders = orders.map do |o|
-        # need to keep in mind that the order clause could be wrapped in a function
-        matches = /(?:\w+\(|\s)*(\S+)(?:\)|\s)*/.match(o)
-        o = o.gsub( matches[1], matches[1].split('.').last ) if matches
-        o
-      end
-      "ORDER BY " + orders.join( ', ')
-    end
-    private :build_ordering
 
     # @deprecated seems not sued nor tested ?!
     def runstats_for_table(tablename, priority = 10)
       @connection.execute_update "call sysproc.admin_cmd('RUNSTATS ON TABLE #{tablename} WITH DISTRIBUTION AND DETAILED INDEXES ALL UTIL_IMPACT_PRIORITY #{priority}')"
     end
 
-    def select(sql, name, binds)
-      # DB2 does not like "= NULL", "!= NULL", or "<> NULL".
-      exec_query(to_sql(sql.gsub(/(!=|<>)\s*null/i, "IS NOT NULL").gsub(/=\s*null/i, "IS NULL"), binds), name, binds)
+    if ::ActiveRecord::VERSION::MAJOR >= 4
+
+    def select(sql, name = nil, binds = [])
+      exec_query(to_sql(suble_null_test(sql), binds), name, binds)
     end
+
+    else
+
+    def select(sql, name = nil, binds = [])
+      exec_query_raw(to_sql(suble_null_test(sql), binds), name, binds)
+    end
+
+    end
+
+    # @private
+    IS_NOT_NULL = /(!=|<>)\s*NULL/i
+    # @private
+    IS_NULL = /=\s*NULL/i
+
+    def suble_null_test(sql)
+      return sql unless sql.is_a?(String)
+      # DB2 does not like "= NULL", "!= NULL", or "<> NULL" :
+      sql = sql.dup
+      sql.gsub! IS_NOT_NULL, 'IS NOT NULL'
+      sql.gsub! IS_NULL, 'IS NULL'
+      sql
+    end
+    private :suble_null_test
 
     def add_index(table_name, column_name, options = {})
       if ! zos? || ( table_name.to_s == ActiveRecord::Migrator.schema_migrations_table_name.to_s )
@@ -647,14 +658,14 @@ module ArJdbc
     def db2_schema
       @db2_schema = false unless defined? @db2_schema
       return @db2_schema if @db2_schema != false
+      schema = config[:schema]
       @db2_schema =
-        if config[:schema].present?
-          config[:schema]
-        elsif config[:jndi].present?
+        if schema then schema
+        elsif config[:jndi] || config[:data_source]
           nil # let JNDI worry about schema
         else
           # LUW implementation uses schema name of username by default
-          config[:username].presence || ENV['USER']
+          config[:username] || ENV['USER']
         end
     end
 

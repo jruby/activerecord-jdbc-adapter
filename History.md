@@ -1,3 +1,20 @@
+## 1.3.14 (01/28/15)
+
+- [mysql] Fixed an undefined exception error in type_to_sql for MySQL (#616)
+- [derby] support for empty insert statements (e.g. `DbModel.create!`) on AR 4.x
+- [db2] revert limit/offset OVER( ORDER BY ) matching as it was not complete (#606)
+- [db2] handle empty INSERT statement (default) VALUES in a way that works on AR 4.x
+- [db2] `select` return value should be the same as core AR (Array on 3.2) (#607)
+- [mysql] backport bulk change & schema-creation to be compatible with AR 4.x
+- handle possible null values while extracting from XML columns (#615)
+- DateTime columns are returned always as nil values (on Rails 4.2 #613)
+- [oracle] do not override primary= within column methods on AR 4.2
+- handle removed AR `Column#primary=` method on 4.2 (#609)
+- [oracle] fix missing sequence_name_length method when doing a rename_table
+- [mysql] do not force *DEFAULT CHARSET=utf8* when creating new tables
+- [postgres] rename the primary key index when renaming a table in pg
+- [db2] improve create_table on Z/OS (now supporting AR 4.x TableDefinition) (#581)
+
 ## 1.3.13 (11/21/14)
 
 - handle ("hacked") date/time/timestamp conversion from the JDBC side on 4.2

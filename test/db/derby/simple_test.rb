@@ -9,9 +9,9 @@ class DerbySimpleTest < Test::Unit::TestCase
 
   # @override
   def test_empty_insert_statement
-    # "INSERT INTO table VALUES ( DEFAULT ) " not supported by Derby DB
-    pend if ar_version('4.0')
     super
+    Entry.create!
+    assert Entry.first
   end
 
   def test_emulates_booleans_by_default

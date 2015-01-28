@@ -35,6 +35,11 @@ module XmlColumnTestMethods
           assert_equal "Rubyist's <3 XML!", doc.root.elements.first.text
         end
 
+        xml_model.xml_col = nil
+        xml_model.save!
+
+        assert_nil xml_model.reload.xml_col
+
       else
         skip('TableDefinition#xml not-implemented')
       end

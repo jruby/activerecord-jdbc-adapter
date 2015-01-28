@@ -360,6 +360,76 @@ module ArJdbc
       columns
     end
 
+    if defined? ::ActiveRecord::ConnectionAdapters::AbstractAdapter::SchemaCreation
+
+    class SchemaCreation < ::ActiveRecord::ConnectionAdapters::AbstractAdapter::SchemaCreation
+
+      # @private
+      def visit_AddColumn(o)
+        add_column_position!(super, column_options(o))
+      end
+
+      # @private re-defined since AR 4.1
+      def visit_ChangeColumnDefinition(o)
+        column = o.column
+        options = o.options
+        sql_type = type_to_sql(o.type, options[:limit], options[:precision], options[:scale])
+        change_column_sql = "CHANGE #{quote_column_name(column.name)} #{quote_column_name(options[:name])} #{sql_type}"
+        add_column_options!(change_column_sql, options.merge(:column => column))
+        add_column_position!(change_column_sql, options)
+      end
+
+      # @private since AR 4.2
+      def visit_DropForeignKey(name)
+        "DROP FOREIGN KEY #{name}"
+      end
+
+      # @private since AR 4.2
+      def visit_TableDefinition(o)
+        name = o.name
+        create_sql = "CREATE#{' TEMPORARY' if o.temporary} TABLE #{quote_table_name(name)} "
+
+        statements = o.columns.map { |c| accept c }
+        statements.concat(o.indexes.map { |column_name, options| index_in_create(name, column_name, options) })
+
+        create_sql << "(#{statements.join(', ')}) " if statements.present?
+        create_sql << "#{o.options}"
+        create_sql << " AS #{@conn.to_sql(o.as)}" if o.as
+        create_sql
+      end if AR42
+
+      private
+
+      def add_column_position!(sql, options)
+        if options[:first]
+          sql << " FIRST"
+        elsif options[:after]
+          sql << " AFTER #{quote_column_name(options[:after])}"
+        end
+        sql
+      end
+
+      def column_options(o)
+        column_options = {}
+        column_options[:null] = o.null unless o.null.nil?
+        column_options[:default] = o.default unless o.default.nil?
+        column_options[:column] = o
+        column_options[:first] = o.first
+        column_options[:after] = o.after
+        column_options
+      end
+
+      def index_in_create(table_name, column_name, options)
+        index_name, index_type, index_columns, index_options, index_algorithm, index_using = @conn.add_index_options(table_name, column_name, options)
+        "#{index_type} INDEX #{quote_column_name(index_name)} #{index_using} (#{index_columns})#{index_options} #{index_algorithm}"
+      end
+
+    end
+
+    def schema_creation; SchemaCreation.new self end
+
+    end
+
     # @private
     def recreate_database(name, options = {})
       drop_database(name)
@@ -387,7 +457,7 @@ module ArJdbc
 
     # @override
     def create_table(name, options = {})
-      super(name, {:options => "ENGINE=InnoDB DEFAULT CHARSET=utf8"}.merge(options))
+      super(name, { :options => "ENGINE=InnoDB" }.merge(options))
     end
 
     def drop_table(table_name, options = {})
@@ -542,7 +612,7 @@ module ArJdbc
         when 0..0xfff; "varbinary(#{limit})"
         when nil; "blob"
         when 0x1000..0xffffffff; "blob(#{limit})"
-        else raise(ActiveRecordError, "No binary type has character length #{limit}")
+        else raise ActiveRecord::ActiveRecordError, "No binary type has character length #{limit}"
         end
       when 'integer'
         case limit
@@ -551,7 +621,7 @@ module ArJdbc
         when 3; 'mediumint'
         when nil, 4, 11; 'int(11)' # compatibility with MySQL default
         when 5..8; 'bigint'
-        else raise(ActiveRecordError, "No integer type has byte size #{limit}")
+        else raise ActiveRecord::ActiveRecordError, "No integer type has byte size #{limit}"
         end
       when 'text'
         case limit
@@ -559,7 +629,7 @@ module ArJdbc
         when nil, 0x100..0xffff; 'text'
         when 0x10000..0xffffff; 'mediumtext'
         when 0x1000000..0xffffffff; 'longtext'
-        else raise(ActiveRecordError, "No text type has character length #{limit}")
+        else raise ActiveRecord::ActiveRecordError, "No text type has character length #{limit}"
         end
       else
         super
@@ -572,6 +642,7 @@ module ArJdbc
     end
 
     protected
+
     def quoted_columns_for_index(column_names, options = {})
       length = options[:length] if options.is_a?(Hash)
 
