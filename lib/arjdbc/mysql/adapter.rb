@@ -482,7 +482,11 @@ module ArJdbc
     end
 
     def current_database
-      select_one("SELECT DATABASE() as db")["db"]
+      select_one("SELECT DATABASE() as db")['db']
+    end
+
+    def truncate(table_name, name = nil)
+      execute "TRUNCATE TABLE #{quote_table_name(table_name)}", name
     end
 
     # @override
