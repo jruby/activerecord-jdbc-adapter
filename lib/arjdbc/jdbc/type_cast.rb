@@ -1,15 +1,17 @@
+require 'active_record/connection_adapters/column'
+
 module ActiveRecord::ConnectionAdapters
   module Jdbc
     # Type casting methods taken from AR 4.1's Column class.
     # @private Simply to quickly "hack-in" 4.2 compatibility.
     module TypeCast
 
-      TRUE_VALUES = [true, 1, '1', 't', 'T', 'true', 'TRUE', 'on', 'ON'].to_set
-      FALSE_VALUES = [false, 0, '0', 'f', 'F', 'false', 'FALSE', 'off', 'OFF'].to_set
+      TRUE_VALUES = Column::TRUE_VALUES
+      FALSE_VALUES = Column::FALSE_VALUES
 
       #module Format
-      ISO_DATE = /\A(\d{4})-(\d\d)-(\d\d)\z/
-      ISO_DATETIME = /\A(\d{4})-(\d\d)-(\d\d) (\d\d):(\d\d):(\d\d)(\.\d+)?\z/
+      ISO_DATE = Column::Format::ISO_DATE
+      ISO_DATETIME = Column::Format::ISO_DATETIME
       #end
 
       # Used to convert from BLOBs to Strings
