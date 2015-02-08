@@ -10,6 +10,8 @@ module ArJdbc
     # @see ActiveRecord::ConnectionAdapters::JdbcColumn
     module Column
 
+      attr_reader :collation, :strict, :extra
+
       def initialize(name, default, sql_type = nil, null = true, collation = nil, strict = false, extra = '')
         if name.is_a?(Hash)
           super # first arg: config
@@ -27,14 +29,14 @@ module ArJdbc
           @strict = strict; @collation = collation; @extra = extra
           super(name, default, cast_type, sql_type, null)
           # base 4.2: (name, default, cast_type, sql_type = nil, null = true)
+          #assert_valid_default(default) done with #extract_default
+          #@default = null || ( strict ? nil : '' ) if blob_or_text_column?
         end
       end if AR42
 
-      attr_reader :collation, :strict, :extra
-
       def extract_default(default)
         if blob_or_text_column?
-          return null || strict ? nil : '' if default.blank?
+          return null || ( strict ? nil : '' ) if default.blank?
           raise ArgumentError, "#{type} columns cannot have a default value: #{default.inspect}"
         elsif missing_default_forged_as_empty_string?(default)
           nil
@@ -55,6 +57,13 @@ module ArJdbc
       def case_sensitive?
         collation && !collation.match(/_ci$/)
       end
+
+      def ==(other)
+        collation == other.collation &&
+        strict == other.strict &&
+        extra == other.extra &&
+        super
+      end if AR42
 
       def simplified_type(field_type)
         if adapter && adapter.emulate_booleans?
@@ -125,7 +134,9 @@ module ArJdbc
         else
           super
         end
-      end
+      end unless AR42 # on AR 4.2 limit is delegated to cast_type.limit
+
+      private
 
       # MySQL misreports NOT NULL column default when none is given.
       # We can't detect this for columns which may have a legitimate ''
@@ -135,11 +146,12 @@ module ArJdbc
       # Test whether the column has default '', is not null, and is not
       # a type allowing default ''.
       def missing_default_forged_as_empty_string?(default)
-        type != :string && !null && default == ''
+        type != :string && ! null && default == ''
       end
 
+      def attributes_for_hash; super + [collation, strict, extra] end
+
       def adapter; end
-      private :adapter
 
     end
 

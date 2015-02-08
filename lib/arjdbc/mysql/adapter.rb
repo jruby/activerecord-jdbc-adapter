@@ -765,26 +765,6 @@ module ActiveRecord
       class Column < JdbcColumn
         include ::ArJdbc::MySQL::Column
 
-        def initialize(name, default, sql_type = nil, null = true, collation = nil, strict = false, extra = '')
-          if name.is_a?(Hash)
-            super # first arg: config
-          else
-            @strict = strict; @collation = collation; @extra = extra
-            super(name, default, sql_type, null)
-            # base 4.1: (name, default, sql_type = nil, null = true)
-          end
-        end
-
-        def initialize(name, default, cast_type, sql_type = nil, null = true, collation = nil, strict = false, extra = '')
-          if name.is_a?(Hash)
-            super # first arg: config
-          else
-            @strict = strict; @collation = collation; @extra = extra
-            super(name, default, cast_type, sql_type, null)
-            # base 4.2: (name, default, cast_type, sql_type = nil, null = true)
-          end
-        end if ::ActiveRecord::VERSION::STRING >= '4.2'
-
         # @note {#ArJdbc::MySQL::Column} uses this to check for boolean emulation
         def adapter
           MysqlAdapter
