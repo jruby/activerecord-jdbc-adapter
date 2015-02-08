@@ -13,7 +13,13 @@ class MySQLChangeColumnTest < Test::Unit::TestCase
       ActiveRecord::Migration.add_column :people, :about, :string, :default => 'x'
       # NOTE: even in non strict mode MySQL does not allow us add or change
       # text/binary with a default ...
-      ActiveRecord::Migration.change_column :people, :about, :text
+      if ar_version('4.2')
+        assert_raises ActiveRecord::StatementInvalid do
+          ActiveRecord::Migration.change_column :people, :about, :text
+        end
+      else
+        ActiveRecord::Migration.change_column :people, :about, :text
+      end
       ActiveRecord::Migration.add_column :people, :photo, :binary
     end
 
