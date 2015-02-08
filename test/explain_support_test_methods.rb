@@ -24,7 +24,7 @@ module ExplainSupportTestMethods
     arel.project Arel.star
     arel.from arel_table = Entry.arel_table
     arel.join(User.arel_table).on(arel_table[:user_id].eq User.arel_table[:id])
-    arel.where arel_table[:rating].gt Arel::Nodes::BindParam.new('?')
+    arel.where arel_table[:rating].gt arel_bind_param
 
     binds = [ [ Entry.columns.find { |col| col.name.to_s == 'rating' }, 0 ] ]
     pp = ActiveRecord::Base.connection.explain(arel, binds)

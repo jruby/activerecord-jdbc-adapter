@@ -1038,7 +1038,7 @@ module SimpleTestMethods
     entry = Entry.create! :title => '42'
     arel = Arel::DeleteManager.new Entry.arel_engine
     arel.from arel_table = Entry.arel_table
-    arel.where arel_table[:title].eq(Arel::Nodes::BindParam.new('?'))
+    arel.where arel_table[:title].eq(arel_bind_param)
     column = Entry.columns_hash['title']
 
     connection.exec_delete arel, 'DELETE(entry)', [ [ column, "42" ] ]
