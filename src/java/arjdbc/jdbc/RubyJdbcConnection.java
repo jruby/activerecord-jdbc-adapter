@@ -1938,11 +1938,10 @@ public class RubyJdbcConnection extends RubyObject {
 
     private static String[] getTypes(final IRubyObject typeArg) {
         if ( typeArg instanceof RubyArray ) {
-            IRubyObject[] rubyTypes = ((RubyArray) typeArg).toJavaArray();
-
-            final String[] types = new String[rubyTypes.length];
+            final RubyArray typesArr = (RubyArray) typeArg;
+            final String[] types = new String[typesArr.size()];
             for ( int i = 0; i < types.length; i++ ) {
-                types[i] = rubyTypes[i].toString();
+                types[i] = typesArr.eltInternal(i).toString();
             }
             return types;
         }
