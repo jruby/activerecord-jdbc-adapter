@@ -779,7 +779,7 @@ module ActiveRecord
             super(name, default, cast_type, sql_type, null)
             # base 4.2: (name, default, cast_type, sql_type = nil, null = true)
           end
-        end if ActiveRecord::VERSION::STRING >= '4.2'
+        end if ::ActiveRecord::VERSION::STRING >= '4.2'
 
         # @note {#ArJdbc::MySQL::Column} uses this to check for boolean emulation
         def adapter
