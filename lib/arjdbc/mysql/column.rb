@@ -36,7 +36,7 @@ module ArJdbc
 
       def extract_default(default)
         if blob_or_text_column?
-          return null || ( strict ? nil : '' ) if default.blank?
+          return null || strict ? nil : '' if default.blank?
           raise ArgumentError, "#{type} columns cannot have a default value: #{default.inspect}"
         elsif missing_default_forged_as_empty_string?(default)
           nil
