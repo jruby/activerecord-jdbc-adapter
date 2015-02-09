@@ -13,6 +13,8 @@ class SQLite3SimpleTest < Test::Unit::TestCase
   include ExplainSupportTestMethods if ar_version("3.1")
   include CustomSelectTestMethods
 
+  undef :test_truncate # not supported natively by SQLite
+
   def test_recreate_database
     assert connection.tables.include?(Entry.table_name)
     db = connection.database_name

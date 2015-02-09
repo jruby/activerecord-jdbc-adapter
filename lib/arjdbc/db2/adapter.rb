@@ -583,6 +583,10 @@ module ArJdbc
       tables.each { |table| drop_table("#{table}") }
     end
 
+    def truncate(table_name, name = nil)
+      execute "TRUNCATE TABLE #{quote_table_name(table_name)} IMMEDIATE", name
+    end
+
     # @override
     def supports_views?; true end
 

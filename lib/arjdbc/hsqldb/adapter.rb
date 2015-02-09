@@ -194,6 +194,11 @@ module ArJdbc
       execute "ALTER TABLE #{name} RENAME TO #{new_name}"
     end
 
+    # @note AR API since 4.2
+    def truncate(table_name, name = nil)
+      execute "TRUNCATE TABLE #{quote_table_name(table_name)}", name
+    end
+
     def last_insert_id
       identity = select_value("CALL IDENTITY()")
       Integer(identity.nil? ? 0 : identity)
