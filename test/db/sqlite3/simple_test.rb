@@ -13,8 +13,6 @@ class SQLite3SimpleTest < Test::Unit::TestCase
   include ExplainSupportTestMethods if ar_version("3.1")
   include CustomSelectTestMethods
 
-  undef :test_truncate # not supported natively by SQLite
-
   def test_recreate_database
     assert connection.tables.include?(Entry.table_name)
     db = connection.database_name
@@ -323,5 +321,22 @@ class SQLite3SimpleTest < Test::Unit::TestCase
       ActiveRecord::Base.establish_connection(SQLITE3_CONFIG)
     end
   end if defined? JRUBY_VERSION
+
+  undef :test_truncate # not supported natively by SQLite
+
+  if defined? JRUBY_VERSION
+
+    def test_truncate_fake
+      Thing.create! :name => "t1"
+      Thing.create! :name => "t2"
+      Thing.create! :name => "t3"
+
+      assert Thing.count > 0
+
+      Thing.connection.truncate_fake 'things'
+      assert_equal 0, Thing.count
+    end
+
+  end
 
 end
