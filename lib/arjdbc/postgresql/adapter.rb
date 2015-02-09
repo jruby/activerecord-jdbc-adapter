@@ -1172,7 +1172,7 @@ module ArJdbc
     end
 
     def truncate(table_name, name = nil)
-      exec_query "TRUNCATE TABLE #{quote_table_name(table_name)}", name, []
+      execute "TRUNCATE TABLE #{quote_table_name(table_name)}", name
     end
 
     def index_name_exists?(table_name, index_name, default)
