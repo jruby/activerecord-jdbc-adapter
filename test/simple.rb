@@ -1296,14 +1296,14 @@ module SimpleTestMethods
   end
 
   def test_truncate
-    Thing.create! :name => "t1"
-    Thing.create! :name => "t2"
-    Thing.create! :name => "t3"
+    User.create! :login => "t1"
+    User.create! :login => "t2"
+    User.create! :login => "t3"
 
-    assert Thing.count > 0
+    assert User.count > 0
 
-    Thing.connection.truncate 'things'
-    assert_equal 0, Thing.count
+    User.connection.truncate 'users'
+    assert_equal 0, User.count
   end #if Test::Unit::TestCase.ar_version('3.2')
 
   protected
