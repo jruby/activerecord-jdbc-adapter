@@ -35,11 +35,9 @@ import java.sql.CallableStatement;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.DatabaseMetaData;
 import java.sql.PreparedStatement;
 import java.sql.Statement;
 import java.sql.Types;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
@@ -91,7 +89,7 @@ public class OracleRubyJdbcConnection extends RubyJdbcConnection {
                 try {
                     statement = connection.createStatement();
                     valSet = statement.executeQuery("SELECT "+ sequence +".NEXTVAL id FROM dual");
-                    if ( ! valSet.next() ) return context.runtime.getNil();
+                    if ( ! valSet.next() ) return context.nil;
                     return context.runtime.newFixnum( valSet.getLong(1) );
                 }
                 catch (final SQLException e) {
@@ -189,7 +187,7 @@ public class OracleRubyJdbcConnection extends RubyJdbcConnection {
         final Ruby runtime, final ResultSet resultSet, final int column)
         throws SQLException {
         final String value = resultSet.getString(column);
-        if ( value == null ) return runtime.getNil();
+        if ( value == null ) return context.nil;
         return RubyString.newUnicodeString(runtime, value);
     }
 
@@ -199,7 +197,9 @@ public class OracleRubyJdbcConnection extends RubyJdbcConnection {
         throws SQLException, IOException {
         final Reader reader = resultSet.getCharacterStream(column);
         try {
-            if ( resultSet.wasNull() ) return RubyString.newEmptyString(runtime);
+            if ( reader == null || resultSet.wasNull() ) {
+                return RubyString.newEmptyString(runtime);
+            }
 
             final int bufSize = streamBufferSize;
             final StringBuilder string = new StringBuilder(bufSize);

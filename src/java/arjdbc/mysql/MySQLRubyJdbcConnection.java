@@ -130,7 +130,8 @@ public class MySQLRubyJdbcConnection extends RubyJdbcConnection {
         throws SQLException {
         if ( Types.BOOLEAN == type || Types.BIT == type ) {
             final boolean value = resultSet.getBoolean(column);
-            return resultSet.wasNull() ? runtime.getNil() : RubyFixnum.newFixnum(runtime, value ? 1 : 0);
+            if ( value == false && resultSet.wasNull() ) return context.nil;
+            return RubyFixnum.newFixnum(runtime, value ? 1 : 0);
         }
         return super.jdbcToRuby(context, runtime, column, type, resultSet);
     }

@@ -500,7 +500,7 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
             case Types.BIT:
                 // we do get BIT for 't' 'f' as well as BIT strings e.g. "0110" :
                 final String bits = resultSet.getString(column);
-                if ( bits == null ) return runtime.getNil();
+                if ( bits == null ) return context.nil;
                 if ( bits.length() > 1 ) {
                     return RubyString.newUnicodeString(runtime, bits);
                 }
@@ -522,14 +522,14 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
         if ( rawDateTime != null && rawDateTime.booleanValue() ) {
             final byte[] value = resultSet.getBytes(column);
             if ( value == null ) {
-                if ( resultSet.wasNull() ) return runtime.getNil();
+                if ( resultSet.wasNull() ) return context.nil;
                 return runtime.newString(); // ""
             }
             return RubyString.newString(runtime, new ByteList(value, false));
         }
 
         final String value = resultSet.getString(column);
-        if ( value == null ) return runtime.getNil();
+        if ( value == null ) return context.nil;
 
         return DateTimeUtils.parseDate(context, value);
     }
@@ -549,7 +549,7 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
         if ( rawDateTime != null && rawDateTime.booleanValue() ) {
             final byte[] value = resultSet.getBytes(column);
             if ( value == null ) {
-                if ( resultSet.wasNull() ) return runtime.getNil();
+                if ( resultSet.wasNull() ) return context.nil;
                 return RubyString.newEmptyString(runtime); // ""
             }
             return RubyString.newString(runtime, new ByteList(value, false));
@@ -559,7 +559,7 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
         // Timestamp: '0001-12-31 22:59:59.0' String: '0001-12-31 22:59:59 BC'
 
         final String value = resultSet.getString(column);
-        if ( value == null ) return runtime.getNil();
+        if ( value == null ) return context.nil;
 
         return parseDateTime(context, value);
     }
@@ -582,12 +582,12 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
         throws SQLException {
         if ( bigDecimalExt ) { // "optimized" path (JRuby 1.7+)
             final BigDecimal value = resultSet.getBigDecimal(column);
-            if ( value == null || resultSet.wasNull() ) return runtime.getNil();
+            if ( value == null /* || resultSet.wasNull() */ ) return context.nil;
             return new org.jruby.ext.bigdecimal.RubyBigDecimal(runtime, value);
         }
 
         final byte[] value = resultSet.getBytes(column);
-        if ( value == null && resultSet.wasNull() ) return runtime.getNil();
+        if ( value == null /* && resultSet.wasNull() */ ) return context.nil;
         final RubyString valueStr = runtime.newString(new ByteList(value, false));
         return runtime.getKernel().callMethod("BigDecimal", valueStr);
     }
@@ -604,7 +604,7 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
         // Method org.postgresql.jdbc4.Jdbc4Array.free() is not yet implemented.
         final Array value = resultSet.getArray(column);
 
-        if ( value == null || resultSet.wasNull() ) return runtime.getNil();
+        if ( value == null /* || resultSet.wasNull() */ ) return context.nil;
 
         final RubyArray array = runtime.newArray();
 
@@ -623,7 +623,7 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
 
         final Object object = resultSet.getObject(column);
 
-        if ( object == null || resultSet.wasNull() ) return runtime.getNil();
+        if ( object == null ) return context.nil;
 
         final Class<?> objectClass = object.getClass();
         if ( objectClass == UUID.class ) {

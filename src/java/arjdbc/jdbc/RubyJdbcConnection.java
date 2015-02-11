@@ -2022,7 +2022,7 @@ public class RubyJdbcConnection extends RubyObject {
             case Types.ARRAY: // we handle JDBC Array into (Ruby) []
                 return arrayToRuby(context, runtime, resultSet, column);
             case Types.NULL:
-                return runtime.getNil();
+                return context.nil;
             // NOTE: (JDBC) exotic stuff just cause it's so easy with JRuby :)
             case Types.JAVA_OBJECT:
             case Types.OTHER:
@@ -2050,7 +2050,7 @@ public class RubyJdbcConnection extends RubyObject {
         final Ruby runtime, final ResultSet resultSet, final int column)
         throws SQLException {
         final long value = resultSet.getLong(column);
-        if ( value == 0 && resultSet.wasNull() ) return runtime.getNil();
+        if ( value == 0 && resultSet.wasNull() ) return context.nil;
         return runtime.newFixnum(value);
     }
 
@@ -2058,7 +2058,7 @@ public class RubyJdbcConnection extends RubyObject {
         final Ruby runtime, final ResultSet resultSet, final int column)
         throws SQLException {
         final double value = resultSet.getDouble(column);
-        if ( value == 0 && resultSet.wasNull() ) return runtime.getNil();
+        if ( value == 0 && resultSet.wasNull() ) return context.nil;
         return runtime.newFloat(value);
     }
 
@@ -2082,7 +2082,7 @@ public class RubyJdbcConnection extends RubyObject {
         }
         else {
             final String value = resultSet.getString(column);
-            if ( value == null && resultSet.wasNull() ) return runtime.getNil();
+            if ( value == null /* && resultSet.wasNull() */ ) return context.nil;
             return RubyString.newUnicodeString(runtime, value);
         }
     }
@@ -2091,7 +2091,7 @@ public class RubyJdbcConnection extends RubyObject {
         final Ruby runtime, final ResultSet resultSet, final int column)
         throws SQLException { // optimized String -> byte[]
         final byte[] value = resultSet.getBytes(column);
-        if ( value == null || resultSet.wasNull() ) return runtime.getNil();
+        if ( value == null /* || resultSet.wasNull() */ ) return context.nil;
         return StringHelper.newString(runtime, value);
     }
 
@@ -2099,7 +2099,7 @@ public class RubyJdbcConnection extends RubyObject {
         final Ruby runtime, final ResultSet resultSet, final int column)
         throws SQLException { // optimized String -> byte[]
         final byte[] value = resultSet.getBytes(column);
-        if ( value == null || resultSet.wasNull() ) return runtime.getNil();
+        if ( value == null /* || resultSet.wasNull() */ ) return context.nil;
         return StringHelper.newUTF8String(runtime, value);
     }
 
@@ -2107,7 +2107,7 @@ public class RubyJdbcConnection extends RubyObject {
         final Ruby runtime, final ResultSet resultSet, final int column)
         throws SQLException {
         final String value = resultSet.getString(column);
-        if ( value == null || resultSet.wasNull() ) return runtime.getNil();
+        if ( value == null /* || resultSet.wasNull() */ ) return context.nil;
         return RubyBignum.bignorm(runtime, new BigInteger(value));
     }
 
@@ -2134,12 +2134,12 @@ public class RubyJdbcConnection extends RubyObject {
         throws SQLException {
         if ( bigDecimalExt ) { // "optimized" path (JRuby 1.7+)
             final BigDecimal value = resultSet.getBigDecimal(column);
-            if ( value == null || resultSet.wasNull() ) return runtime.getNil();
+            if ( value == null /* || resultSet.wasNull() */ ) return context.nil;
             return new org.jruby.ext.bigdecimal.RubyBigDecimal(runtime, value);
         }
 
         final String value = resultSet.getString(column);
-        if ( value == null || resultSet.wasNull() ) return runtime.getNil();
+        if ( value == null /* || resultSet.wasNull() */ ) return context.nil;
         return runtime.getKernel().callMethod("BigDecimal", runtime.newString(value));
     }
 
@@ -2175,7 +2175,7 @@ public class RubyJdbcConnection extends RubyObject {
         throws SQLException {
 
         final Date value = resultSet.getDate(column);
-        if ( value == null ) return runtime.getNil();
+        if ( value == null ) return context.nil;
 
         if ( rawDateTime != null && rawDateTime.booleanValue() ) {
             return RubyString.newString(runtime, DateTimeUtils.dateToString(value));
@@ -2189,7 +2189,7 @@ public class RubyJdbcConnection extends RubyObject {
         throws SQLException {
 
         final Time value = resultSet.getTime(column);
-        if ( value == null ) return runtime.getNil();
+        if ( value == null ) return context.nil;
 
         if ( rawDateTime != null && rawDateTime.booleanValue() ) {
             return RubyString.newString(runtime, DateTimeUtils.timeToString(value));
@@ -2203,7 +2203,7 @@ public class RubyJdbcConnection extends RubyObject {
         throws SQLException {
 
         final Timestamp value = resultSet.getTimestamp(column);
-        if ( value == null ) return runtime.getNil();
+        if ( value == null ) return context.nil;
 
         if ( rawDateTime != null && rawDateTime.booleanValue() ) {
             return RubyString.newString(runtime, DateTimeUtils.timestampToString(value));
@@ -2242,11 +2242,11 @@ public class RubyJdbcConnection extends RubyObject {
         throws SQLException {
         if ( rawBoolean != null && rawBoolean.booleanValue() ) {
             final String value = resultSet.getString(column);
-            if ( resultSet.wasNull() ) return runtime.getNil();
+            if ( value == null /* && resultSet.wasNull() */ ) return context.nil;
             return RubyString.newUnicodeString(runtime, value);
         }
         final boolean value = resultSet.getBoolean(column);
-        if ( resultSet.wasNull() ) return runtime.getNil();
+        if ( value == false && resultSet.wasNull() ) return context.nil;
         return runtime.newBoolean(value);
     }
 
@@ -2257,7 +2257,7 @@ public class RubyJdbcConnection extends RubyObject {
         throws SQLException, IOException {
         final InputStream stream = resultSet.getBinaryStream(column);
         try {
-            if ( stream == null || resultSet.wasNull() ) return runtime.getNil();
+            if ( stream == null /* || resultSet.wasNull() */ ) return context.nil;
 
             final int buffSize = streamBufferSize;
             final ByteList bytes = new ByteList(buffSize);
@@ -2278,7 +2278,7 @@ public class RubyJdbcConnection extends RubyObject {
         else {
             final Reader reader = resultSet.getCharacterStream(column);
             try {
-                if ( reader == null || resultSet.wasNull() ) return runtime.getNil();
+                if ( reader == null /* || resultSet.wasNull() */ ) return context.nil;
 
                 final int bufSize = streamBufferSize;
                 final StringBuilder string = new StringBuilder(bufSize);
@@ -2299,7 +2299,7 @@ public class RubyJdbcConnection extends RubyObject {
         throws SQLException {
         final Object value = resultSet.getObject(column);
 
-        if ( value == null || resultSet.wasNull() ) return runtime.getNil();
+        if ( value == null /* || resultSet.wasNull() */ ) return context.nil;
 
         return JavaUtil.convertJavaToRuby(runtime, value);
     }
@@ -2309,7 +2309,7 @@ public class RubyJdbcConnection extends RubyObject {
         throws SQLException {
         final Array value = resultSet.getArray(column);
         try {
-            if ( value == null || resultSet.wasNull() ) return runtime.getNil();
+            if ( value == null /* || resultSet.wasNull() */ ) return context.nil;
 
             final RubyArray array = runtime.newArray();
 
@@ -2328,7 +2328,7 @@ public class RubyJdbcConnection extends RubyObject {
         throws SQLException {
         final SQLXML xml = resultSet.getSQLXML(column);
         try {
-            if ( xml == null || resultSet.wasNull() ) return runtime.getNil();
+            if ( xml == null /* || resultSet.wasNull() */ ) return context.nil;
 
             return RubyString.newUnicodeString(runtime, xml.getString());
         }
@@ -3295,7 +3295,7 @@ public class RubyJdbcConnection extends RubyObject {
     protected static int intFromResultSet(
         final ResultSet resultSet, final int column) throws SQLException {
         final int precision = resultSet.getInt(column);
-        return precision == 0 && resultSet.wasNull() ? -1 : precision;
+        return ( precision == 0 && resultSet.wasNull() ) ? -1 : precision;
     }
 
     protected static String formatTypeWithPrecisionAndScale(
@@ -3525,7 +3525,7 @@ public class RubyJdbcConnection extends RubyObject {
             block.call( context, blockArgs );
         }
 
-        return runtime.getNil(); // yielded result rows
+        return context.nil; // yielded result rows
     }
 
     /**

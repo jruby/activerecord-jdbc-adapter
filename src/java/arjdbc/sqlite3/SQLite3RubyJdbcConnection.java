@@ -345,7 +345,7 @@ public class SQLite3RubyJdbcConnection extends RubyJdbcConnection {
             // NOTE: JDBC driver does not implement rollback(Savepoint) :
             connection.createStatement().execute("ROLLBACK TO SAVEPOINT " + name.toString());
 
-            return context.runtime.getNil();
+            return context.nil;
         }
         catch (SQLException e) {
             return handleException(context, e);
@@ -363,7 +363,7 @@ public class SQLite3RubyJdbcConnection extends RubyJdbcConnection {
             // NOTE: JDBC driver does not implement release(Savepoint) :
             connection.createStatement().execute("RELEASE SAVEPOINT " + name.toString());
 
-            return context.runtime.getNil();
+            return context.nil;
         }
         catch (SQLException e) {
             return handleException(context, e);
