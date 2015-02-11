@@ -45,7 +45,8 @@ public class DriverWrapper {
     private final Properties properties;
 
     DriverWrapper(final Ruby runtime, final String name, final Properties properties)
-        throws ClassCastException, InstantiationException, IllegalAccessException {
+        throws ClassCastException, ClassNotFoundException, LinkageError, ExceptionInInitializerError,
+        InstantiationException, IllegalAccessException {
         this.driver = allocateDriver( loadDriver(runtime, name) );
         this.properties = properties == null ? new Properties() : properties;
     }
@@ -72,13 +73,21 @@ public class DriverWrapper {
     }
 
     protected static Class<? extends Driver> loadDriver(final Ruby runtime, final String name)
-        throws ClassCastException {
+        throws ClassCastException, ClassNotFoundException, LinkageError, ExceptionInInitializerError {
         @SuppressWarnings("unchecked")
-        Class<? extends Driver> klass = runtime.getJavaSupport().loadJavaClassVerbose(name);
+        Class<? extends Driver> klass = (Class<? extends Driver>) loadJavaClass(runtime, name);
         if ( ! Driver.class.isAssignableFrom(klass) ) {
             throw new ClassCastException(klass + " is not assignable from " + Driver.class);
         }
         return klass;
+    }
+
+    private static Class<?> loadJavaClass(final Ruby runtime, final String name)
+        throws ClassNotFoundException, LinkageError, ExceptionInInitializerError {
+        if ( ! Ruby.isSecurityRestricted() ) {
+            return Class.forName(name, true, runtime.getJRubyClassLoader());
+        }
+        return Class.forName(name);
     }
 
     public Connection connect(final String url, final String user, final String pass)

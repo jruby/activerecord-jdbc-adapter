@@ -1647,7 +1647,7 @@ public class RubyJdbcConnection extends RubyObject {
             return JavaUtil.convertJavaToRuby(context.runtime, bound);
         }
         catch (NamingException e) {
-            throw wrapException(context, context.runtime.getRuntimeError(), e);
+            throw wrapException(context, context.runtime.getNameError(), e);
         }
     }
 
@@ -1704,18 +1704,29 @@ public class RubyJdbcConnection extends RubyObject {
         return factory;
     }
 
-    protected DriverWrapper newDriverWrapper(final ThreadContext context, final String driver) {
+    protected DriverWrapper newDriverWrapper(final ThreadContext context, final String driver)
+        throws RaiseException {
         try {
-            return new DriverWrapper(context.runtime, driver.toString(), resolveDriverProperties(context));
+            return new DriverWrapper(context.runtime, driver, resolveDriverProperties(context));
+        }
+        catch (ClassNotFoundException e) {
+            throw wrapException(context, context.runtime.getNameError(), e, "cannot load driver class " + driver);
+        }
+        catch (ExceptionInInitializerError e) {
+            throw wrapException(context, context.runtime.getNameError(), e, "cannot initialize driver class " + driver);
+        }
+        catch (LinkageError e) {
+            throw wrapException(context, context.runtime.getNameError(), e, "cannot link driver class " + driver);
         }
         catch (ClassCastException e) {
-            throw wrapException(context, e.getCause() != null ? e.getCause() : e);
+            throw wrapException(context, context.runtime.getNameError(), e);
         }
+        catch (IllegalAccessException e) { throw wrapException(context, e); }
         catch (InstantiationException e) {
             throw wrapException(context, e.getCause() != null ? e.getCause() : e);
         }
-        catch (IllegalAccessException e) {
-            throw wrapException(context, e);
+        catch (SecurityException e) {
+            throw wrapException(context, context.runtime.getSecurityError(), e);
         }
     }
 
