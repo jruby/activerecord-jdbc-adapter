@@ -47,6 +47,7 @@ branches:
     - /^test-.*/
 matrix:
   allow_failures:
+    - rvm: jruby-head # can not load on 9K due https://github.com/jruby/jruby/issues/2585
     - gemfile: gemfiles/rails42.gemfile
     - env: JRUBY_OPTS="--1.8 $JRUBY_OPTS" DB=jdbc
     - env: JRUBY_OPTS="--1.9 $JRUBY_OPTS" DB=jdbc PREPARED_STATEMENTS=true
