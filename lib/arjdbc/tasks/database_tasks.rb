@@ -7,6 +7,8 @@ module ArJdbc
         ActiveRecord::Tasks::DatabaseTasks.register_task(pattern, task)
       end
 
+      register_tasks(/mariadb/, ActiveRecord::Tasks::MySQLDatabaseTasks)
+
     else
 
       @@tasks = {}
