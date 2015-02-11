@@ -138,7 +138,8 @@ public class MySQLRubyJdbcConnection extends RubyJdbcConnection {
 
     @Override
     protected boolean useByteStrings() {
-        return super.useByteStrings(); // return false;
+        final Boolean useByteStrings = byteStrings; // true by default :
+        return useByteStrings == null ? true : useByteStrings.booleanValue();
     }
 
     /*

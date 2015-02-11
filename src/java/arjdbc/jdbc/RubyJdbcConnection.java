@@ -2081,8 +2081,9 @@ public class RubyJdbcConnection extends RubyObject {
     }
 
     protected boolean useByteStrings() {
+        final Boolean useByteStrings = byteStrings;
         // NOTE: default is false as some drivers seem to not like it !
-        return byteStrings == null ? false : byteStrings.booleanValue();
+        return useByteStrings == null ? false : useByteStrings.booleanValue();
     }
 
     protected IRubyObject stringToRuby(final ThreadContext context,
