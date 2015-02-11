@@ -512,7 +512,7 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
         final Ruby runtime, final ResultSet resultSet, final int column)
         throws SQLException {
         final byte[] value = resultSet.getBytes(column);
-        if ( value == null && resultSet.wasNull() ) return context.nil;
+        if ( value == null /* && resultSet.wasNull() */ ) return context.nil;
         return newDefaultInternalString(runtime, value);
     }
 
@@ -535,7 +535,7 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
         // Method org.postgresql.jdbc4.Jdbc4Array.free() is not yet implemented.
         final Array value = resultSet.getArray(column);
 
-        if ( value == null && resultSet.wasNull() ) return context.nil;
+        if ( value == null /* && resultSet.wasNull() */ ) return context.nil;
 
         final RubyArray array = runtime.newArray();
 
@@ -554,7 +554,7 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
 
         final Object object = resultSet.getObject(column);
 
-        if ( object == null && resultSet.wasNull() ) return context.nil;
+        if ( object == null ) return context.nil;
 
         final Class<?> objectClass = object.getClass();
         if ( objectClass == UUID.class ) {
