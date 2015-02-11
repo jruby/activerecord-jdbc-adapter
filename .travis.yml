@@ -9,7 +9,7 @@ before_install:
   - ((jruby -v | grep 1.8.7) && jruby --1.9 -S gem update --system 2.1.11) || true
 rvm:
   - jruby-1.7.18
-  - jruby-head # 9000 ignores --1.8 and --1.9 switches
+  - jruby-head # 9000 ignores --X.Y switches
 jdk:
   - openjdk7 # we target Java 6+ yet do have Java 7 java.sql APIs (thus needed to compile)
 gemfile:
@@ -24,9 +24,10 @@ env:
   - JRUBY_OPTS="--1.8 $JRUBY_OPTS" DB=mysql
   - JRUBY_OPTS="--1.9 $JRUBY_OPTS" DB=mysql PREPARED_STATEMENTS=false
   - JRUBY_OPTS="--1.9 $JRUBY_OPTS" DB=mysql PREPARED_STATEMENTS=true
+  - JRUBY_OPTS="--2.0 $JRUBY_OPTS" DB=mariadb PREPARED_STATEMENTS=false
   - JRUBY_OPTS="--1.8 $JRUBY_OPTS" DB=postgresql
   - JRUBY_OPTS="--1.9 $JRUBY_OPTS" DB=postgresql PREPARED_STATEMENTS=false INSERT_RETURNING=true
-  - JRUBY_OPTS="--1.9 $JRUBY_OPTS" DB=postgresql PREPARED_STATEMENTS=true
+  - JRUBY_OPTS="--2.0 $JRUBY_OPTS" DB=postgresql PREPARED_STATEMENTS=true
   - JRUBY_OPTS="--1.9 $JRUBY_OPTS" DB=postgresql PREPARED_STATEMENTS=true INSERT_RETURNING=true
   - JRUBY_OPTS="--1.8 $JRUBY_OPTS" DB=sqlite3
   - JRUBY_OPTS="--1.9 $JRUBY_OPTS" DB=sqlite3
@@ -35,7 +36,7 @@ env:
   - JRUBY_OPTS="--1.8 $JRUBY_OPTS" DB=h2
   - JRUBY_OPTS="--1.9 $JRUBY_OPTS" DB=h2 PREPARED_STATEMENTS=true
   - JRUBY_OPTS="--1.8 $JRUBY_OPTS" DB=hsqldb
-  - JRUBY_OPTS="--1.9 $JRUBY_OPTS" DB=hsqldb PREPARED_STATEMENTS=true
+  - JRUBY_OPTS="--2.0 $JRUBY_OPTS" DB=hsqldb PREPARED_STATEMENTS=true
   - JRUBY_OPTS="--1.8 $JRUBY_OPTS" DB=jndi
   - JRUBY_OPTS="--1.9 $JRUBY_OPTS" DB=jndi PREPARED_STATEMENTS=true
   - JRUBY_OPTS="--1.8 $JRUBY_OPTS" DB=jdbc
