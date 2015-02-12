@@ -55,6 +55,10 @@ namespace :db do
     case config['adapter']
     when /mysql|postgresql|sqlite/
       _rails_create_database adapt_jdbc_config(config)
+    when /mariadb/ # fake mariadb as mysql for Rails
+      config = config.update('adapter' => 'mysql')
+      config['driver'] ||= 'org.mariadb.jdbc.Driver'
+      _rails_create_database adapt_jdbc_config(config)
     else
       ArJdbc::Tasks.create(config)
     end
@@ -63,6 +67,10 @@ namespace :db do
   def drop_database(config)
     case config['adapter']
     when /mysql|postgresql|sqlite/
+      _rails_drop_database adapt_jdbc_config(config)
+    when /mariadb/ # fake mariadb as mysql for Rails
+      config = config.update('adapter' => 'mysql')
+      config['driver'] ||= 'org.mariadb.jdbc.Driver'
       _rails_drop_database adapt_jdbc_config(config)
     else
       ArJdbc::Tasks.drop(config)
@@ -84,7 +92,7 @@ namespace :db do
       filename = structure_sql
 
       case config['adapter']
-      when /mysql/
+      when /mysql|mariadb/
         args = _prepare_mysql_options('mysqldump', config)
         args.concat(["--result-file", "#{filename}"])
         args.concat(["--no-data"])
@@ -128,7 +136,7 @@ namespace :db do
       filename = structure_sql
 
       case config['adapter']
-      when /mysql/
+      when /mysql|mariadb/
         args = _prepare_mysql_options('mysql', config)
         args.concat(['--execute', %{SET FOREIGN_KEY_CHECKS = 0; SOURCE #{filename}; SET FOREIGN_KEY_CHECKS = 1}])
         args.concat(["--database", "#{config['database']}"])
@@ -192,7 +200,7 @@ namespace :db do
     redefine_task :purge do
       config = ActiveRecord::Base.configurations['test']
       case config['adapter']
-      when /mysql/
+      when /mysql|mariadb/
         ActiveRecord::Base.establish_connection(:test)
         options = mysql_creation_options(config) rescue config
         ActiveRecord::Base.connection.recreate_database(config['database'], options)
