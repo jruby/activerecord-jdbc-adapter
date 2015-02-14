@@ -14,7 +14,8 @@ Gem::Specification.new do |gem|
   gem.homepage = 'http://github.com/jruby/activerecord-jdbc-adapter/tree/master/jdbc-firebird'
   gem.licenses = ['LGPL']
 
-  gem.files = [ 'README.md', 'LICENSE.txt', *Dir['lib/**/*'].to_a ]
+  Dir.chdir(File.dirname(__FILE__)) { gem.files = `git ls-files`.split("\n") }
+  
   gem.rdoc_options = ["--main", "README.md"]
   gem.require_paths = ["lib"]
 
