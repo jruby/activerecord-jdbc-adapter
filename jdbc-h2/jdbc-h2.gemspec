@@ -9,7 +9,7 @@ Gem::Specification.new do |gem|
   gem.authors = ['Nick Sieger, Ola Bini, Karol Bucek and JRuby contributors']
   gem.email = ['nick@nicksieger.com', 'ola.bini@gmail.com', 'self@kares.org']
   gem.homepage = 'http://github.com/jruby/activerecord-jdbc-adapter/tree/master/jdbc-hsqldb'
-  #gem.licenses = ['H2']
+  gem.licenses = ['H2']
 
   Dir.chdir(File.dirname(__FILE__)) { gem.files = `git ls-files`.split("\n") }
 
