@@ -10,8 +10,11 @@ Gem::Specification.new do |gem|
   gem.email = ['nick@nicksieger.com', 'ola.bini@gmail.com', 'self@kares.org']
   gem.homepage = 'http://github.com/jruby/activerecord-jdbc-adapter/tree/master/jdbc-postgres'
   gem.licenses = ['BSD']
-
-  gem.files = [ 'README.md', 'LICENSE.txt', *Dir['lib/**/*'].to_a ]
+  
+  unless Dir.pwd == File.dirname(__FILE__)
+    raise "git ls-files in current working dir: #{Dir.pwd} won't work cd '#{File.dirname(__FILE__)}' first"
+  end
+  gem.files = `git ls-files`.split("\n")
 
   gem.rdoc_options = ["--main", "README.md"]
   gem.require_paths = ["lib"]
