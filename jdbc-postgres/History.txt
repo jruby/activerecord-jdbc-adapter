@@ -1,3 +1,8 @@
+== 9.4.1200
+
+* Upgraded to driver version 9.4-1200
+https://jdbc.postgresql.org/documentation/changelog.html#version_9.4-1200
+
 == 9.3.1103
 
 * Upgraded to driver version 9.3-1103
