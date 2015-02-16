@@ -1,3 +1,8 @@
+=== 1.1.8
+
+* release following MariaDB Java Client 1.1.8
+  https://mariadb.com/kb/en/mariadb/mariadb-java-client-118-release-notes/
+
 === 1.1.7
 
 * initial release using MariaDB Java Client 1.1.7
