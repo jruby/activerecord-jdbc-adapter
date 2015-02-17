@@ -1,0 +1,11 @@
+== 2.2.7
+
+* Based on Jaybird 2.2.7 (see changes since 2.2.4)
+  http://www.firebirdsql.org/file/documentation/drivers_documentation/java/2.2.7/release_notes.html#__RefHeading__6537_1196219519
+
+* jdk16 and jdk17 versions of jaybird jar are packed and used based on Java version
+
+== 2.2.4
+
+* Based on Jaybird 2.2.4
+  http://www.firebirdsql.org/file/documentation/drivers_documentation/java/2.2.7/release_notes.html#__RefHeading__4798_1756560361

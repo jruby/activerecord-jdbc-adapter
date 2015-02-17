@@ -5,7 +5,7 @@ module Jdbc
   module Firebird
 
     def self.driver_jar
-      "jaybird-#{DRIVER_VERSION}.jar"
+      "#{jdk_qualifier}/jaybird-#{DRIVER_VERSION}.jar"
     end
 
     def self.load_driver(method = :load)
@@ -26,6 +26,16 @@ module Jdbc
     end
 
     private
+
+    def self.jdk_qualifier
+      version = ENV_JAVA[ 'java.specification.version' ]
+      version = version.split('.').last.to_i # '1.7' => 7
+      if version >= 7
+        'jdk17' # loading JDBC 4.1 version on JDK-8
+      else # JDBC >= 4.1
+        'jdk16'
+      end
+    end
 
     @@connector_api = nil
 
