@@ -197,7 +197,7 @@ public class MySQLRubyJdbcConnection extends RubyJdbcConnection {
         return withConnection(context, new Callable<RubyArray>() {
             public RubyArray call(final Connection connection) throws SQLException {
                 final Ruby runtime = context.runtime;
-                final RubyModule indexDefinition = getIndexDefinition(runtime);
+                final RubyModule IndexDefinition = getIndexDefinition(runtime);
                 final String jdbcTableName = caseConvertIdentifierForJdbc(connection, tableName);
                 final String jdbcSchemaName = caseConvertIdentifierForJdbc(connection, schemaName);
                 final RubyString rubyTableName = cachedString(
@@ -209,7 +209,7 @@ public class MySQLRubyJdbcConnection extends RubyJdbcConnection {
                 query.append(jdbcTableName);
                 query.append(" WHERE key_name != 'PRIMARY'");
 
-                final RubyArray indexes = runtime.newArray(8);
+                final RubyArray indexes = RubyArray.newArray(runtime, 8);
                 PreparedStatement statement = null;
                 ResultSet keySet = null;
 
@@ -218,6 +218,8 @@ public class MySQLRubyJdbcConnection extends RubyJdbcConnection {
                     keySet = statement.executeQuery();
 
                     String currentKeyName = null;
+                    RubyArray currentColumns = null;
+                    RubyArray currentLengths = null;
 
                     while ( keySet.next() ) {
                         final String keyName = caseConvertIdentifierForRails(connection, keySet.getString("key_name"));
@@ -230,24 +232,21 @@ public class MySQLRubyJdbcConnection extends RubyJdbcConnection {
                             IRubyObject[] args = new IRubyObject[] {
                                 rubyTableName, // table_name
                                 RubyString.newUnicodeString(runtime, keyName), // index_name
-                                runtime.newBoolean( ! nonUnique ), // unique
-                                RubyArray.newArray(runtime, 8), // [] for column names, we'll add to that in just a bit
-                                RubyArray.newArray(runtime, 8) // lengths
+                                nonUnique ? runtime.getFalse() : runtime.getTrue(), // unique
+                                currentColumns = RubyArray.newArray(runtime, 4), // columns
+                                currentLengths = RubyArray.newArray(runtime, 4) // lengths
                             };
 
-                            indexes.append( indexDefinition.callMethod(context, "new", args) ); // IndexDefinition.new
+                            indexes.append( IndexDefinition.callMethod(context, "new", args) ); // IndexDefinition.new
                         }
 
-                        IRubyObject lastIndexDef = indexes.isEmpty() ? null : indexes.entry(-1);
-                        if ( lastIndexDef != null ) {
+                        if ( currentColumns != null ) {
                             final String columnName = caseConvertIdentifierForRails(connection, keySet.getString("column_name"));
                             final int length = keySet.getInt("sub_part");
-                            final boolean nullLength = keySet.wasNull();
+                            final boolean nullLength = length == 0 && keySet.wasNull();
 
-                            lastIndexDef.callMethod(context, "columns").callMethod(context,
-                                    "<<", cachedString(context, columnName));
-                            lastIndexDef.callMethod(context, "lengths").callMethod(context,
-                                    "<<", nullLength ? context.nil : runtime.newFixnum(length));
+                            currentColumns.callMethod(context, "<<", cachedString(context, columnName));
+                            currentLengths.callMethod(context, "<<", nullLength ? context.nil : RubyFixnum.newFixnum(runtime, length));
                         }
                     }
 
