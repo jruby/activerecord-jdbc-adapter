@@ -13,12 +13,11 @@ For more information see http://www.firebirdsql.org/
 To make the JayBird driver accessible to JDBC and ActiveRecord in JRuby use :
 
     require 'jdbc/firebird'
-    Jdbc::FireBird.load_driver
+    Jdbc::Firebird.load_driver
 
 ## Copyright
 
 Copyright (c) 2013 [The JRuby Team](https://github.com/jruby).
 
-H2 is dual licensed and available under a modified version of the MPL 1.1
-(Mozilla Public License) or under the (unmodified) EPL 1.0 (Eclipse Public License).
-see *LICENSE.txt* and http://www.h2database.com/html/license.html for more details.
+Jaybird JDBC driver is distributed under the GNU Lesser General Public License (LGPL)
+see *LICENSE.txt* and  http://www.gnu.org/copyleft/lesser.html for more details.
