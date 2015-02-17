@@ -529,7 +529,8 @@ public class RubyJdbcConnection extends RubyObject {
 
     @JRubyMethod(name = "adapter")
     public final IRubyObject adapter() {
-        return getAdapter() == null ? getRuntime().getNil() : getAdapter();
+        final IRubyObject adapter = getAdapter();
+        return adapter == null ? getRuntime().getNil() : adapter;
     }
 
     /**
@@ -609,9 +610,9 @@ public class RubyJdbcConnection extends RubyObject {
     }
 
     @JRubyMethod(name = "configure_connection")
-    public IRubyObject configure_connection() {
+    public IRubyObject configure_connection(final ThreadContext context) {
         if ( ! lazy || getConnectionImpl() != null ) configureConnection();
-        return getRuntime().getNil();
+        return context.nil;
     }
 
     @JRubyMethod(name = "jdbc_connection", alias = "connection")
@@ -1688,7 +1689,7 @@ public class RubyJdbcConnection extends RubyObject {
             }
             else {
                 setConnectionFactory(factory = new RubyConnectionFactoryImpl(
-                    driver_instance, context.getRuntime().newString(jdbcURL),
+                    driver_instance, context.runtime.newString(jdbcURL),
                     ( username.isNil() ? username : username.asString() ),
                     ( password.isNil() ? password : password.asString() )
                 ));
@@ -1734,7 +1735,7 @@ public class RubyJdbcConnection extends RubyObject {
     @JRubyMethod(visibility = Visibility.PRIVATE)
     public IRubyObject jdbc_url(final ThreadContext context) throws NamingException {
         final IRubyObject url = getConfigValue(context, "url");
-        return context.getRuntime().newString( buildURL(context, url) );
+        return context.runtime.newString( buildURL(context, url) );
     }
 
     private String buildURL(final ThreadContext context, final IRubyObject url) {
@@ -4149,7 +4150,7 @@ public class RubyJdbcConnection extends RubyObject {
     }
 
     protected static IRubyObject raise(final ThreadContext context, final RubyClass error, final String message, final Throwable cause) {
-        final Ruby runtime = context.getRuntime();
+        final Ruby runtime = context.runtime;
         final IRubyObject[] args;
         if ( message != null ) {
             args = new IRubyObject[] { error, runtime.newString(message) };

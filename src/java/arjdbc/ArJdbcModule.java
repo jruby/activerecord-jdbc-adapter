@@ -82,7 +82,7 @@ public class ArJdbcModule {
     @JRubyMethod(name = "load_java_part", meta = true, required = 1, optional = 2)
     public static IRubyObject load_java_part(final ThreadContext context,
         final IRubyObject self, final IRubyObject[] args) {
-        final Ruby runtime = context.getRuntime();
+        final Ruby runtime = context.runtime;
 
         String connectionClass = args.length > 1 ? args[1].toString() : null;
         String moduleClass = args.length > 2 ? args[2].toString() : null;
@@ -171,7 +171,7 @@ public class ArJdbcModule {
      */
     @JRubyMethod(name = "modules", meta = true)
     public static IRubyObject modules(final ThreadContext context, final IRubyObject self) {
-        final Ruby runtime = context.getRuntime();
+        final Ruby runtime = context.runtime;
         final RubyModule arJdbc = (RubyModule) self;
 
         final Collection<String> constants = arJdbc.getConstantNames();
