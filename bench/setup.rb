@@ -2,12 +2,15 @@ require 'rubygems' unless defined? Gem
 gem 'activerecord', ENV['AR_VERSION'] if ENV['AR_VERSION']
 require 'active_record'
 if defined? JRUBY_VERSION
-  if ENV['ARJDBC_VERSION']
+  AR_JDBC_VERSION = if ENV['ARJDBC_VERSION']
     gem 'activerecord-jdbc-adapter', ENV['ARJDBC_VERSION']
+    require 'arjdbc'
+    ArJdbc::VERSION
   else
     $LOAD_PATH << File.expand_path('../lib', File.dirname(__FILE__))
+    require 'arjdbc'
+    "#{ArJdbc::VERSION} #{`git rev-parse HEAD`[0, 8]}"
   end
-  require 'arjdbc'
 end
 
 TIMES = ( ARGV[0] || ENV['TIMES'] || 100 ).to_i
@@ -19,11 +22,11 @@ config = {
 }
 config[:username] = ENV['AR_USERNAME'] if ENV['AR_USERNAME']
 config[:password] = ENV['AR_PASSWORD'] if ENV['AR_PASSWORD']
-config[:database] = ENV['AR_DATABASE'] if ENV['AR_DATABASE']
+config[:database] = ENV['AR_DATABASE'] || 'arjdbc_test'
 
 if defined? JRUBY_VERSION
   puts "--- RUBY_VERSION: #{RUBY_VERSION} (JRUBY_VERSION: #{JRUBY_VERSION})"
-  puts "--- ActiveRecord: #{ActiveRecord.version.to_s} (AR-JDBC: #{ArJdbc::VERSION})"
+  puts "--- ActiveRecord: #{ActiveRecord.version.to_s} (AR-JDBC: #{AR_JDBC_VERSION})"
 else
   puts "--- RUBY_VERSION: #{RUBY_VERSION}"
   puts "--- ActiveRecord: #{ActiveRecord.version.to_s}"
@@ -56,9 +59,9 @@ module BenchTestHelper
 
   def generate_records!(size = DATA_SIZE)
     do_yield "BenchRecord.create!(...) [#{size}x]" do
-      size.times do |i|
+      size.times do |_|
         BenchRecord.create!({
-          :id => i,
+          # :id => _,
           :a_binary => '01' * 500,
           :a_boolean => true,
           :a_date => Date.today,
