@@ -25,7 +25,11 @@ config[:password] = ENV['AR_PASSWORD'] if ENV['AR_PASSWORD']
 config[:database] = ENV['AR_DATABASE'] || 'arjdbc_test'
 
 if defined? JRUBY_VERSION
-  puts "--- RUBY_VERSION: #{RUBY_VERSION} (JRUBY_VERSION: #{JRUBY_VERSION})"
+  puts "--- RUBY_VERSION: #{RUBY_VERSION} (JRUBY_VERSION: #{JRUBY_VERSION} #{ENV_JAVA['java.runtime.version']})"
+  jj_opts = []
+  jj_opts << "JRUBY_OPTS = '#{ENV['JRUBY_OPTS']}'" if ENV['JRUBY_OPTS']
+  jj_opts << "JAVA_OPTS = '#{ENV['JAVA_OPTS']}'" if ENV['JAVA_OPTS']
+  puts "    #{jj_opts.join(' ')}" unless jj_opts.empty?
   puts "--- ActiveRecord: #{ActiveRecord.version.to_s} (AR-JDBC: #{AR_JDBC_VERSION})"
 else
   puts "--- RUBY_VERSION: #{RUBY_VERSION}"
