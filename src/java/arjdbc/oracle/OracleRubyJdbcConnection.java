@@ -104,7 +104,7 @@ public class OracleRubyJdbcConnection extends RubyJdbcConnection {
     @JRubyMethod(name = "execute_insert_returning", required = 2)
     public IRubyObject execute_insert_returning(final ThreadContext context,
         final IRubyObject sql, final IRubyObject binds) throws SQLException {
-        final String query = sql.convertToString().getUnicodeValue();
+        final String query = sqlString(sql);
         final int outType = Types.VARCHAR;
         if ( binds == null || binds.isNil() ) { // no prepared statements
             return executePreparedCall(context, query, Collections.EMPTY_LIST, outType);

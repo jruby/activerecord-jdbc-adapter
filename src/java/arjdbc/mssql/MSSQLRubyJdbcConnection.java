@@ -36,6 +36,7 @@ import java.sql.Types;
 
 import org.jruby.Ruby;
 import org.jruby.RubyArray;
+import org.jruby.RubyBoolean;
 import org.jruby.RubyClass;
 import org.jruby.RubyString;
 import org.jruby.anno.JRubyMethod;
@@ -77,8 +78,8 @@ public class MSSQLRubyJdbcConnection extends RubyJdbcConnection {
     private static final byte[] EXEC = new byte[] { 'e', 'x', 'e', 'c' };
 
     @JRubyMethod(name = "exec?", required = 1, meta = true, frame = false)
-    public static IRubyObject exec_p(ThreadContext context, IRubyObject self, IRubyObject sql) {
-        final ByteList sqlBytes = sql.convertToString().getByteList();
+    public static RubyBoolean exec_p(ThreadContext context, IRubyObject self, IRubyObject sql) {
+        final ByteList sqlBytes = sql.asString().getByteList();
         return context.runtime.newBoolean( startsWithIgnoreCase(sqlBytes, EXEC) );
     }
 
@@ -165,13 +166,13 @@ public class MSSQLRubyJdbcConnection extends RubyJdbcConnection {
 
     // internal helper not meant as a "public" API - used in one place thus every
     @JRubyMethod(name = "jtds_driver?")
-    public IRubyObject jtds_driver_p(final ThreadContext context) throws SQLException {
+    public RubyBoolean jtds_driver_p(final ThreadContext context) throws SQLException {
         // "jTDS Type 4 JDBC Driver for MS SQL Server and Sybase"
         // SQLJDBC: "Microsoft JDBC Driver 4.0 for SQL Server"
-        return withConnection(context, new Callable<IRubyObject>() {
+        return withConnection(context, new Callable<RubyBoolean>() {
             // NOTE: only used in one place for now (on release_savepoint) ...
             // might get optimized to only happen once since driver won't change
-            public IRubyObject call(final Connection connection) throws SQLException {
+            public RubyBoolean call(final Connection connection) throws SQLException {
                 final String driver = connection.getMetaData().getDriverName();
                 return context.runtime.newBoolean( driver.indexOf("jTDS") >= 0 );
             }
