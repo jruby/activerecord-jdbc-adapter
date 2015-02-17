@@ -689,7 +689,7 @@ public class RubyJdbcConnection extends RubyObject {
                     name = connection.getMetaData().getUserName();
                     if ( name == null ) return context.nil;
                 }
-                return context.runtime.newString(name);
+                return RubyString.newString(context.runtime, name);
             }
         });
     }
@@ -858,7 +858,7 @@ public class RubyJdbcConnection extends RubyObject {
                     }
                     else {
                         final int rowCount = statement.executeUpdate(query);
-                        return context.runtime.newFixnum(rowCount);
+                        return RubyFixnum.newFixnum(context.runtime, rowCount);
                     }
                 }
                 catch (final SQLException e) {
@@ -887,7 +887,7 @@ public class RubyJdbcConnection extends RubyObject {
                         statement = connection.prepareStatement(query);
                         setStatementParameters(context, connection, statement, binds);
                         final int rowCount = statement.executeUpdate();
-                        return context.runtime.newFixnum(rowCount);
+                        return RubyFixnum.newFixnum(context.runtime, rowCount);
                     }
                 }
                 catch (final SQLException e) {
@@ -1191,7 +1191,7 @@ public class RubyJdbcConnection extends RubyObject {
     public IRubyObject primary_keys(ThreadContext context, IRubyObject tableName) throws SQLException {
         @SuppressWarnings("unchecked")
         List<IRubyObject> primaryKeys = (List) primaryKeys(context, tableName.toString());
-        return context.runtime.newArray(primaryKeys);
+        return RubyArray.newArray(context.runtime, primaryKeys);
     }
 
     protected static final int PRIMARY_KEYS_COLUMN_NAME = 4;
@@ -1357,7 +1357,7 @@ public class RubyJdbcConnection extends RubyObject {
         return withConnection(context, new Callable<IRubyObject>() {
             public RubyArray call(final Connection connection) throws SQLException {
                 final Ruby runtime = context.runtime;
-                final RubyClass indexDefinition = getIndexDefinition(runtime);
+                final RubyClass IndexDefinition = getIndexDefinition(runtime);
 
                 String _tableName = caseConvertIdentifierForJdbc(connection, tableName);
                 String _schemaName = caseConvertIdentifierForJdbc(connection, schemaName);
@@ -1366,7 +1366,7 @@ public class RubyJdbcConnection extends RubyObject {
                 final List<RubyString> primaryKeys = primaryKeys(context, connection, table);
 
                 ResultSet indexInfoSet = null;
-                final List<IRubyObject> indexes = new ArrayList<IRubyObject>();
+                final RubyArray indexes = RubyArray.newArray(runtime, 8);
                 try {
                     final DatabaseMetaData metaData = connection.getMetaData();
                     indexInfoSet = metaData.getIndexInfo(table.catalog, table.schema, table.name, false, true);
@@ -1395,22 +1395,23 @@ public class RubyJdbcConnection extends RubyObject {
                             IRubyObject[] args = new IRubyObject[] {
                                 RubyString.newUnicodeString(runtime, indexTableName), // table_name
                                 RubyString.newUnicodeString(runtime, indexName), // index_name
-                                runtime.newBoolean( ! nonUnique ), // unique
-                                runtime.newArray() // [] for column names, we'll add to that in just a bit
+                                nonUnique ? runtime.getFalse() : runtime.getTrue(), // unique
+                                RubyArray.newArray(runtime, 4) // [] for column names, we'll add to that in just a bit
                                 // orders, (since AR 3.2) where, type, using (AR 4.0)
                             };
 
-                            indexes.add( indexDefinition.callMethod(context, "new", args) ); // IndexDefinition.new
+                            indexes.append( IndexDefinition.callMethod(context, "new", args) ); // IndexDefinition.new
                         }
 
                         // One or more columns can be associated with an index
-                        IRubyObject lastIndexDef = indexes.isEmpty() ? null : indexes.get(indexes.size() - 1);
+                        final int len = indexes.size();
+                        IRubyObject lastIndexDef = len == 0 ? null : indexes.eltInternal(len - 1);
                         if (lastIndexDef != null) {
                             lastIndexDef.callMethod(context, "columns").callMethod(context, "<<", rubyColumnName);
                         }
                     }
 
-                    return runtime.newArray(indexes);
+                    return indexes;
 
                 } finally { close(indexInfoSet); }
             }
@@ -1975,7 +1976,7 @@ public class RubyJdbcConnection extends RubyObject {
             final ColumnData[] columns) throws SQLException {
 
         final ResultHandler resultHandler = ResultHandler.getInstance(runtime);
-        final RubyArray resultRows = runtime.newArray();
+        final RubyArray resultRows = RubyArray.newArray(runtime);
 
         while ( resultSet.next() ) {
             resultRows.append( resultHandler.mapRow(context, runtime, columns, resultSet, this) );
@@ -2063,7 +2064,7 @@ public class RubyJdbcConnection extends RubyObject {
         throws SQLException {
         final long value = resultSet.getLong(column);
         if ( value == 0 && resultSet.wasNull() ) return context.nil;
-        return runtime.newFixnum(value);
+        return RubyFixnum.newFixnum(runtime, value);
     }
 
     protected IRubyObject doubleToRuby(final ThreadContext context,
@@ -2071,7 +2072,7 @@ public class RubyJdbcConnection extends RubyObject {
         throws SQLException {
         final double value = resultSet.getDouble(column);
         if ( value == 0 && resultSet.wasNull() ) return context.nil;
-        return runtime.newFloat(value);
+        return RubyFloat.newFloat(runtime, value);
     }
 
     protected static Boolean byteStrings;
@@ -2324,7 +2325,7 @@ public class RubyJdbcConnection extends RubyObject {
         try {
             if ( value == null /* || resultSet.wasNull() */ ) return context.nil;
 
-            final RubyArray array = runtime.newArray();
+            final RubyArray array = RubyArray.newArray(runtime);
 
             final ResultSet arrayResult = value.getResultSet(); // 1: index, 2: value
             final int baseType = value.getBaseType();
@@ -3428,7 +3429,7 @@ public class RubyJdbcConnection extends RubyObject {
             }
         }
 
-        final RubyArray keys = runtime.newArray();
+        final RubyArray keys = RubyArray.newArray(runtime);
         if ( firstKey != null ) keys.append(firstKey); // singleResult == null
         while ( next ) {
             keys.append( mapGeneratedKey(runtime, genKeys) );
@@ -3439,7 +3440,7 @@ public class RubyJdbcConnection extends RubyObject {
 
     protected IRubyObject mapGeneratedKey(final Ruby runtime, final ResultSet genKeys)
         throws SQLException {
-        return runtime.newFixnum( genKeys.getLong(1) );
+        return RubyFixnum.newFixnum( runtime, genKeys.getLong(1) );
     }
 
     protected IRubyObject mapGeneratedKeysOrUpdateCount(final ThreadContext context,
@@ -3787,7 +3788,7 @@ public class RubyJdbcConnection extends RubyObject {
      */
     protected static class ResultHandler {
 
-        protected static Boolean USE_RESULT;
+        //protected static volatile Boolean USE_RESULT;
 
         // AR-3.2 : initialize(columns, rows)
         // AR-4.0 : initialize(columns, rows, column_types = {})
@@ -3798,17 +3799,18 @@ public class RubyJdbcConnection extends RubyObject {
         private static volatile ResultHandler instance;
 
         public static ResultHandler getInstance(final Ruby runtime) {
+            ResultHandler instance = ResultHandler.instance;
             if ( instance == null ) {
                 synchronized(ResultHandler.class) {
-                    if ( instance == null ) { // fine to initialize twice
+                    if ( ( instance = ResultHandler.instance ) == null ) { // fine to initialize twice
                         final RubyClass result = getResult(runtime);
-                        if ( result != null && result != runtime.getNilClass() ) {
-                            USE_RESULT = true;
-                            setInstance( new ResultHandler(runtime) );
+                        if ( result != null ) {
+                            //USE_RESULT = true;
+                            setInstance( instance = new ResultHandler(runtime) );
                         }
                         else {
-                            USE_RESULT = false;
-                            setInstance( new RawResultHandler(runtime) );
+                            //USE_RESULT = false;
+                            setInstance( instance = new RawResultHandler(runtime) );
                         }
                     }
                 }
@@ -3828,7 +3830,7 @@ public class RubyJdbcConnection extends RubyObject {
             final ColumnData[] columns, final ResultSet resultSet,
             final RubyJdbcConnection connection) throws SQLException {
             // maps a AR::Result row
-            final RubyArray row = runtime.newArray(columns.length);
+            final RubyArray row = RubyArray.newArray(runtime, columns.length);
 
             for ( int i = 0; i < columns.length; i++ ) {
                 final ColumnData column = columns[i];

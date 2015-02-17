@@ -44,6 +44,7 @@ import java.util.List;
 import org.jruby.Ruby;
 import org.jruby.RubyArray;
 import org.jruby.RubyClass;
+import org.jruby.RubyFixnum;
 import org.jruby.RubyString;
 import org.jruby.anno.JRubyMethod;
 import org.jruby.runtime.ObjectAllocator;
@@ -90,7 +91,7 @@ public class OracleRubyJdbcConnection extends RubyJdbcConnection {
                     statement = connection.createStatement();
                     valSet = statement.executeQuery("SELECT "+ sequence +".NEXTVAL id FROM dual");
                     if ( ! valSet.next() ) return context.nil;
-                    return context.runtime.newFixnum( valSet.getLong(1) );
+                    return RubyFixnum.newFixnum(context.runtime, valSet.getLong(1));
                 }
                 catch (final SQLException e) {
                     debugMessage(context.runtime, "failed to get " + sequence + ".NEXTVAL : " + e.getMessage());
@@ -168,10 +169,10 @@ public class OracleRubyJdbcConnection extends RubyJdbcConnection {
         // NOTE: it's likely a ROWID which we do not care about :
         final String value = genKeys.getString(1); // "AAAsOjAAFAAABUlAAA"
         if ( isPositiveInteger(value) ) {
-            return runtime.newFixnum( Long.parseLong(value) );
+            return RubyFixnum.newFixnum( runtime, Long.parseLong(value) );
         }
         else {
-            return returnRowID ? runtime.newString(value) : runtime.getNil();
+            return returnRowID ? RubyString.newString(runtime, value) : runtime.getNil();
         }
     }
 

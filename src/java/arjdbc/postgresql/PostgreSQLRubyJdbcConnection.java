@@ -606,7 +606,7 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
 
         if ( value == null /* || resultSet.wasNull() */ ) return context.nil;
 
-        final RubyArray array = runtime.newArray();
+        final RubyArray array = RubyArray.newArray(runtime);
 
         final ResultSet arrayResult = value.getResultSet(); // 1: index, 2: value
         final int baseType = value.getBaseType();
@@ -627,21 +627,21 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
 
         final Class<?> objectClass = object.getClass();
         if ( objectClass == UUID.class ) {
-            return runtime.newString( object.toString() );
+            return RubyString.newString( runtime, object.toString() );
         }
 
         if ( objectClass == PGInterval.class ) {
-            return runtime.newString( formatInterval(object) );
+            return RubyString.newString( runtime, formatInterval(object) );
         }
 
         if ( object instanceof PGobject ) {
             // PG 9.2 JSON type will be returned here as well
-            return runtime.newString( object.toString() );
+            return RubyString.newString( runtime, object.toString() );
         }
 
         if ( object instanceof Map ) { // hstore
             if ( rawHstoreType == Boolean.TRUE ) {
-                return runtime.newString( resultSet.getString(column) );
+                return RubyString.newString( runtime, resultSet.getString(column) );
             }
             // by default we avoid double parsing by driver and than column :
             final RubyHash rubyObject = RubyHash.newHash(runtime);
