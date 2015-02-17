@@ -359,22 +359,6 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
         return DateTimeUtils.parseDateTime(context, value);
     }
 
-    @Override // optimized String -> byte[]
-    protected IRubyObject decimalToRuby(final ThreadContext context,
-        final Ruby runtime, final ResultSet resultSet, final int column)
-        throws SQLException {
-        if ( bigDecimalExt ) { // "optimized" path (JRuby 1.7+)
-            final BigDecimal value = resultSet.getBigDecimal(column);
-            if ( value == null /* || resultSet.wasNull() */ ) return context.nil;
-            return new org.jruby.ext.bigdecimal.RubyBigDecimal(runtime, value);
-        }
-
-        final byte[] value = resultSet.getBytes(column);
-        if ( value == null /* && resultSet.wasNull() */ ) return context.nil;
-        final RubyString valueStr = runtime.newString(new ByteList(value, false));
-        return runtime.getKernel().callMethod("BigDecimal", valueStr);
-    }
-
     @Override
     protected IRubyObject arrayToRuby(final ThreadContext context,
         final Ruby runtime, final ResultSet resultSet, final int column)
