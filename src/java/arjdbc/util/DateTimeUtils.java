@@ -244,7 +244,7 @@ public abstract class DateTimeUtils {
         return base.callMethod(context, "default_timezone").toString(); // :utc
     }
 
-    public static IRubyObject parseDate(final ThreadContext context, final String str)
+    public static IRubyObject parseDate(final ThreadContext context, final CharSequence str)
         throws IllegalArgumentException {
         final int len = str.length();
 
@@ -285,7 +285,7 @@ public abstract class DateTimeUtils {
         });
     }
 
-    public static RubyTime parseDateTime(final ThreadContext context, final String str)
+    public static RubyTime parseDateTime(final ThreadContext context, final CharSequence str)
         throws IllegalArgumentException {
 
         boolean hasDate = false;
@@ -444,7 +444,7 @@ public abstract class DateTimeUtils {
         }
 
         if ( start < len ) {
-            throw new IllegalArgumentException("trailing junk: '" + str.substring(start, len - start) + "' on '" + str + "'");
+            throw new IllegalArgumentException("trailing junk: '" + str.subSequence(start, len - start) + "' on '" + str + "'");
         }
         if ( ! hasTime && ! hasDate ) {
             throw new IllegalArgumentException("'"+ str +"' has neither date nor time");
@@ -461,21 +461,21 @@ public abstract class DateTimeUtils {
     }
 
     @SuppressWarnings("deprecation")
-    private static int nonSpaceIndex(final String str, int beg, int len) {
+    private static int nonSpaceIndex(final CharSequence str, int beg, int len) {
         for ( int i = beg; i < len; i++ ) {
             if ( ! Character.isSpace( str.charAt(i) ) ) return i;
         }
         return len;
     }
 
-    private static int nonDigitIndex(final String str, int beg, int len) {
+    private static int nonDigitIndex(final CharSequence str, int beg, int len) {
         for ( int i = beg; i < len; i++ ) {
             if ( ! Character.isDigit( str.charAt(i) ) ) return i;
         }
         return len;
     }
 
-    private static int extractIntValue(final String str, int beg, int end) {
+    private static int extractIntValue(final CharSequence str, int beg, int end) {
         int n = 0;
         for ( int i = beg; i < end; i++ ) {
             n = 10 * n + ( str.charAt(i) - '0' );
