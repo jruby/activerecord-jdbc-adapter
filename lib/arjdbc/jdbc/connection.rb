@@ -78,7 +78,7 @@ module ActiveRecord
           @data_source = data_source
         end
 
-        def new_connection
+        def newConnection
           @data_source.connection
         end
       end
@@ -110,7 +110,7 @@ module ActiveRecord
           @driver = driver
         end
 
-        def new_connection
+        def newConnection
           @driver.connection(@url, @username, @password)
         end
       end
