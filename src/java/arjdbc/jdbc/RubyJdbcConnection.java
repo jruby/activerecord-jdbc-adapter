@@ -61,9 +61,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.TimeZone;
-import javax.naming.NameNotFoundException;
-import javax.naming.NamingException;
-import javax.sql.DataSource;
+// NOTE: make sure javax.naming and other packaged not available on stripped
+// VMs such as Dalvik are not exposed - won't be loaded when the class is ...
+//import javax.naming.NamingException;
+//import javax.sql.DataSource;
 
 import org.joda.time.DateTime;
 import org.jruby.Ruby;
@@ -1573,16 +1574,16 @@ public class RubyJdbcConnection extends RubyObject {
 
         if ( ds_or_name == null ) return context.runtime.getFalse();
 
-        final DataSource dataSource;
+        final javax.sql.DataSource dataSource;
         final Object dsOrName = ds_or_name.toJava(Object.class);
-        if ( dsOrName instanceof DataSource ) {
-            dataSource = (DataSource) dsOrName;
+        if ( dsOrName instanceof javax.sql.DataSource ) {
+            dataSource = (javax.sql.DataSource) dsOrName;
         }
         else {
             try {
-                dataSource = (DataSource) NamingHelper.lookup( dsOrName.toString() );
+                dataSource = (javax.sql.DataSource) NamingHelper.lookup( dsOrName.toString() );
             }
-            catch (NamingException e) {
+            catch (javax.naming.NamingException e) {
                 //throw wrapException(context, context.runtime.getRuntimeError(), e);
                 throw RaiseException.createNativeRaiseException(context.runtime, e);
             }
@@ -1645,7 +1646,7 @@ public class RubyJdbcConnection extends RubyObject {
             final Object bound = NamingHelper.lookup( name.toString() );
             return JavaUtil.convertJavaToRuby(context.runtime, bound);
         }
-        catch (NamingException e) {
+        catch (javax.naming.NamingException e) {
             throw wrapException(context, context.runtime.getNameError(), e);
         }
     }
@@ -1678,7 +1679,7 @@ public class RubyJdbcConnection extends RubyObject {
         if ( driver_instance != null && ! driver_instance.isNil() ) {
             final Object driverInstance = driver_instance.toJava(Object.class);
             if ( driverInstance instanceof DriverWrapper ) {
-                setConnectionFactory(factory = new DriverConnectionFactoryImpl(
+                setConnectionFactory(factory = new DriverConnectionFactory(
                     (DriverWrapper) driverInstance, jdbcURL,
                     ( username.isNil() ? null : username.toString() ),
                     ( password.isNil() ? null : password.toString() )
@@ -1699,7 +1700,7 @@ public class RubyJdbcConnection extends RubyObject {
         final String pass = password.isNil() ? null : password.toString();
 
         final DriverWrapper driverWrapper = newDriverWrapper(context, driver.toString());
-        setConnectionFactory(factory = new DriverConnectionFactoryImpl(driverWrapper, jdbcURL, user, pass));
+        setConnectionFactory(factory = new DriverConnectionFactory(driverWrapper, jdbcURL, user, pass));
         return factory;
     }
 
@@ -1731,7 +1732,7 @@ public class RubyJdbcConnection extends RubyObject {
 
     @Deprecated // no longer used - only kept for API compatibility
     @JRubyMethod(visibility = Visibility.PRIVATE)
-    public IRubyObject jdbc_url(final ThreadContext context) throws NamingException {
+    public IRubyObject jdbc_url(final ThreadContext context) {
         final IRubyObject url = getConfigValue(context, "url");
         return context.runtime.newString( buildURL(context, url) );
     }
@@ -1764,23 +1765,18 @@ public class RubyJdbcConnection extends RubyObject {
     }
 
     private ConnectionFactory setDataSourceFactory(final ThreadContext context) {
-        final DataSource dataSource; final String lookupName;
-        try {
-            IRubyObject value = getConfigValue(context, "data_source");
-            if ( value == null || value.isNil() ) {
-                value = getConfigValue(context, "jndi");
-                lookupName = value.toString();
-                dataSource = lookupDataSource(context, lookupName);
-            }
-            else {
-                dataSource = (DataSource) value.toJava(DataSource.class);
-                lookupName = null;
-            }
+        final javax.sql.DataSource dataSource; final String lookupName;
+        IRubyObject value = getConfigValue(context, "data_source");
+        if ( value == null || value.isNil() ) {
+            value = getConfigValue(context, "jndi");
+            lookupName = value.toString();
+            dataSource = DataSourceConnectionFactory.lookupDataSource(context, lookupName);
         }
-        catch (NamingException e) {
-            throw wrapException(context, context.runtime.getRuntimeError(), e);
+        else {
+            dataSource = (javax.sql.DataSource) value.toJava(javax.sql.DataSource.class);
+            lookupName = null;
         }
-        ConnectionFactory factory = new DataSourceConnectionFactoryImpl(dataSource, lookupName);
+        ConnectionFactory factory = new DataSourceConnectionFactory(dataSource, lookupName);
         setConnectionFactory(factory);
         return factory;
     }
@@ -1848,32 +1844,6 @@ public class RubyJdbcConnection extends RubyObject {
     }
 
     protected final boolean isJndi() { return this.jndi; }
-
-    private static DataSource lookupDataSource(final ThreadContext context, final String name) throws NamingException {
-        try {
-            return NamingHelper.lookup(name);
-        }
-        catch (NameNotFoundException e) {
-            final RubyClass errorClass = getConnectionNotEstablished(context.runtime);
-            final String message;
-            if ( name == null || name.isEmpty() ) {
-                message = "unable to lookup data source - no name given, please set jndi:";
-            }
-            else if ( name.indexOf("env") != -1 ) {
-                final StringBuilder msg = new StringBuilder();
-                msg.append("name: '").append(name).append("' not found, ");
-                msg.append("try using full name (including env) e.g. ");
-                msg.append("java:/comp/env"); // e.g. java:/comp/env/jdbc/MyDS
-                if ( name.charAt(0) != '/' ) msg.append('/');
-                msg.append(name);
-                message = msg.toString();
-            }
-            else {
-                message = "unable to lookup data source - name: '" + name + "' not found";
-            }
-            throw wrapException(context, errorClass, e, message);
-        }
-    }
 
     @JRubyMethod(name = "config")
     public final IRubyObject config() { return getConfig(); }
@@ -3729,12 +3699,12 @@ public class RubyJdbcConnection extends RubyObject {
         return wrapException(context, getJDBCError(runtime), exception);
     }
 
-    protected static RaiseException wrapException(final ThreadContext context,
+    public static RaiseException wrapException(final ThreadContext context,
         final RubyClass errorClass, final Throwable exception) {
         return wrapException(context, errorClass, exception, exception.toString());
     }
 
-    protected static RaiseException wrapException(final ThreadContext context,
+    public static RaiseException wrapException(final ThreadContext context,
         final RubyClass errorClass, final Throwable exception, final String message) {
         final RaiseException error = new RaiseException(context.runtime, errorClass, message, true);
         error.initCause(exception);

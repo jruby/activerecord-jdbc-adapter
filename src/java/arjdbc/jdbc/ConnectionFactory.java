@@ -27,15 +27,11 @@ package arjdbc.jdbc;
 
 import java.sql.Connection;
 import java.sql.SQLException;
-import javax.naming.NamingException;
-import javax.sql.DataSource;
 
 import org.jruby.RubyObject;
 import org.jruby.RubyString;
 import org.jruby.runtime.ThreadContext;
 import org.jruby.runtime.builtin.IRubyObject;
-
-import arjdbc.util.NamingHelper;
 
 /**
  * Interface to be implemented in Ruby for retrieving a new connection.
@@ -50,82 +46,6 @@ public interface ConnectionFactory {
      * @throws SQLException
      */
     Connection newConnection() throws SQLException;
-
-}
-
-class DataSourceConnectionFactoryImpl implements ConnectionFactory {
-
-    private DataSource dataSource;
-    private final String lookupName;
-    String username, password; // optional
-
-    public DataSourceConnectionFactoryImpl(final DataSource dataSource) {
-        this.dataSource = dataSource;
-        this.lookupName = null;
-    }
-
-    DataSourceConnectionFactoryImpl(final DataSource dataSource,
-        final String lookupName) {
-        this.dataSource = dataSource;
-        this.lookupName = lookupName;
-    }
-
-    public void setUsername(final String username) { this.username = username; }
-
-    public void setPassword(final String password) { this.password = password; }
-
-    @Override
-    public Connection newConnection() throws SQLException {
-        // in case DS failed previously look it up again from JNDI :
-        if ( dataSource == null ) lookupDataSource();
-
-        try {
-            if ( username != null ) {
-                return dataSource.getConnection(username, password);
-            }
-            return dataSource.getConnection();
-        }
-        catch (SQLException e) {
-            // DS failed - maybe it's no longer a valid one
-            if ( lookupName != null ) dataSource = null;
-            throw e;
-        }
-    }
-
-    private void lookupDataSource() throws SQLException {
-        try {
-            dataSource = NamingHelper.lookup( lookupName );
-        }
-        catch (NamingException e) { throw new SQLException(e); }
-    }
-
-    DataSource getDataSource() { return dataSource; } /* for tests */
-
-}
-
-class DriverConnectionFactoryImpl implements ConnectionFactory {
-
-    private final DriverWrapper driverWrapper;
-    final String url;
-    final String username, password; // null allowed
-
-    public DriverConnectionFactoryImpl(final DriverWrapper driver, final String url) {
-        this.driverWrapper = driver; this.url = url;
-        this.username = null; this.password = null;
-    }
-
-    public DriverConnectionFactoryImpl(final DriverWrapper driver, final String url,
-        final String username, final String password) {
-        this.driverWrapper = driver; this.url = url;
-        this.username = username; this.password = password;
-    }
-
-    @Override
-    public Connection newConnection() throws SQLException {
-        return driverWrapper.connect(url, username, password);
-    }
-
-    DriverWrapper getDriverWrapper() { return driverWrapper; } /* for tests */
 
 }
 
