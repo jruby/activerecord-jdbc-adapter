@@ -99,10 +99,11 @@ import org.jruby.runtime.component.VariableEntry;
 import org.jruby.util.ByteList;
 
 import arjdbc.util.DateTimeUtils;
-import arjdbc.util.NamingHelper;
 import arjdbc.util.ObjectSupport;
 import arjdbc.util.StringCache;
 import arjdbc.util.StringHelper;
+
+import static arjdbc.jdbc.DataSourceConnectionFactory.*;
 
 /**
  * Most of our ActiveRecord::ConnectionAdapters::JdbcConnection implementation.
@@ -1581,7 +1582,7 @@ public class RubyJdbcConnection extends RubyObject {
         }
         else {
             try {
-                dataSource = (javax.sql.DataSource) NamingHelper.lookup( dsOrName.toString() );
+                dataSource = (javax.sql.DataSource) getInitialContext().lookup( dsOrName.toString() );
             }
             catch (javax.naming.NamingException e) {
                 //throw wrapException(context, context.runtime.getRuntimeError(), e);
@@ -1643,7 +1644,7 @@ public class RubyJdbcConnection extends RubyObject {
     public static IRubyObject jndi_lookup(final ThreadContext context,
         final IRubyObject self, final IRubyObject name) {
         try {
-            final Object bound = NamingHelper.lookup( name.toString() );
+            final Object bound = getInitialContext().lookup( name.toString() );
             return JavaUtil.convertJavaToRuby(context.runtime, bound);
         }
         catch (javax.naming.NamingException e) {
@@ -1770,7 +1771,7 @@ public class RubyJdbcConnection extends RubyObject {
         if ( value == null || value.isNil() ) {
             value = getConfigValue(context, "jndi");
             lookupName = value.toString();
-            dataSource = DataSourceConnectionFactory.lookupDataSource(context, lookupName);
+            dataSource = lookupDataSource(context, lookupName);
         }
         else {
             dataSource = (javax.sql.DataSource) value.toJava(javax.sql.DataSource.class);

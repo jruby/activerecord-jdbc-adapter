@@ -24,15 +24,15 @@
 package arjdbc.jdbc;
 
 import java.sql.Connection;
-import javax.sql.DataSource;
 import java.sql.SQLException;
 
+import javax.sql.DataSource;
+import javax.naming.InitialContext;
 import javax.naming.NameNotFoundException;
 import javax.naming.NamingException;
 
 import org.jruby.runtime.ThreadContext;
 
-import arjdbc.util.NamingHelper;
 import static arjdbc.jdbc.RubyJdbcConnection.getConnectionNotEstablished;
 import static arjdbc.jdbc.RubyJdbcConnection.wrapException;
 
@@ -87,20 +87,17 @@ final class DataSourceConnectionFactory implements ConnectionFactory {
 
     private void lookupDataSource() throws SQLException {
         try {
-            dataSource = NamingHelper.lookup(lookupName);
-        } catch (NamingException e) {
-            throw new SQLException(e);
+            dataSource = (DataSource) getInitialContext().lookup(lookupName);
         }
+        catch (NamingException e) { throw new SQLException(e); }
     }
 
-    DataSource getDataSource() {
-        return dataSource;
-    } /* for tests */
+    DataSource getDataSource() { return dataSource; } /* for tests */
 
     // NOTE: keep it here so that RubyJdbcConnection does not force loading of javax.naming classes
     static DataSource lookupDataSource(final ThreadContext context, final String name) {
         try {
-            return NamingHelper.lookup(name);
+            return (DataSource) getInitialContext().lookup(name);
         }
         catch (NameNotFoundException e) {
             final String message;
@@ -124,6 +121,28 @@ final class DataSourceConnectionFactory implements ConnectionFactory {
         catch (NamingException e) {
             throw wrapException(context, context.runtime.getRuntimeError(), e);
         }
+    }
+
+    // NamigHelper :
+
+    static final boolean contextCached = Boolean.getBoolean("arjdbc.jndi.context.cached");
+
+    private static InitialContext initialContext;
+
+    static InitialContext getInitialContext() throws NamingException {
+        if ( initialContext != null ) return initialContext;
+        if ( contextCached ) return initialContext = new InitialContext();
+        return new InitialContext();
+    }
+
+    /**
+     * Currently, the only way to bypass <code>new InitialContext()</code>
+     * without the environment being passed in.
+     * @param context
+     * @see #getInitialContext()
+     */
+    static void setInitialContext(final InitialContext context) {
+        DataSourceConnectionFactory.initialContext = context;
     }
 
 }
