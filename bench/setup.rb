@@ -92,3 +92,26 @@ module BenchTestHelper
   end
 
 end
+
+def do_profile_data(&block)
+  if defined? JRUBY_VERSION
+    require 'jruby/profiler'
+    JRuby::Profiler.profile(&block)
+  else
+    yield
+  end
+end
+
+def do_profile_and_print_data(printer = :flat, &block)
+  print_profile_data do_profile_data(&block), printer
+end
+
+def print_profile_data(data, printer = :flat)
+  unless data
+    return warn "no profile data to print"
+  end
+  if defined? JRUBY_VERSION
+    printer = JRuby::Profiler.const_get(printer.to_s.capitalize) rescue JRuby::Profiler::FlatProfilePrinter
+    printer.new(data).print_profile(STDOUT)
+  end
+end
