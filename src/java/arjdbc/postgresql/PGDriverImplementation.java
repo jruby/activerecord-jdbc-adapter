@@ -31,8 +31,8 @@ import java.sql.Timestamp;
 import java.sql.Types;
 import java.util.Map;
 import java.util.UUID;
-import org.jruby.RubyFloat;
 
+import org.jruby.RubyFloat;
 import org.jruby.RubyHash;
 import org.jruby.RubyString;
 import org.jruby.javasupport.JavaUtil;
@@ -46,6 +46,8 @@ import org.postgresql.core.BaseConnection;
 import org.postgresql.jdbc4.Jdbc4Array;
 import org.postgresql.util.PGInterval;
 import org.postgresql.util.PGobject;
+
+import arjdbc.util.NumberUtils;
 
 /**
  * Official JDBC driver internals.
@@ -84,6 +86,10 @@ final class PGDriverImplementation implements DriverImplementation {
         }
 
         if ( objectClass == PGInterval.class ) {
+            if ( PostgreSQLRubyJdbcConnection.rawIntervalType ) {
+                final String value = ((PGInterval) object).getValue();
+                return RubyString.newString( context.runtime, value );
+            }
             return RubyString.newString( context.runtime, formatInterval(object) );
         }
 
@@ -105,35 +111,45 @@ final class PGDriverImplementation implements DriverImplementation {
         return JavaUtil.convertJavaToRuby(context.runtime, object);
     }
 
-    // NOTE: do not use PG classes in the API so that loading is delayed ! still?
-    static String formatInterval(final Object object) {
-        final PGInterval interval = (PGInterval) object;
-        if ( PostgreSQLRubyJdbcConnection.rawIntervalType ) return interval.getValue();
+    private static final byte[] _years_ =  { ' ','y','e','a','r','s',' ' };
+    private static final byte[] _months_ =  { ' ','m','o','n','t','h','s',' ' };
+    private static final byte[] _days_ =  { ' ','d','a','y','s',' ' };
 
-        final StringBuilder str = new StringBuilder(32);
+    // NOTE: do not use PG classes in the API so that loading is delayed ! still?
+    private static ByteList formatInterval(final Object object) {
+        final PGInterval interval = (PGInterval) object;
+
+        final ByteList str = new ByteList(32);
 
         final int years = interval.getYears();
-        if ( years != 0 ) str.append(years).append(" years ");
+        if ( years != 0 ) {
+            NumberUtils.appendInteger(years, str).append(_years_);
+        }
         final int months = interval.getMonths();
-        if ( months != 0 ) str.append(months).append(" months ");
+        if ( months != 0 ) {
+            NumberUtils.appendInteger(months, str).append(_months_);
+        }
         final int days = interval.getDays();
-        if ( days != 0 ) str.append(days).append(" days ");
+        if ( days != 0 ) {
+            NumberUtils.appendInteger(days, str).append(_days_);
+        }
         final int hours = interval.getHours();
         final int mins = interval.getMinutes();
         final int secs = (int) interval.getSeconds();
         if ( hours != 0 || mins != 0 || secs != 0 ) { // xx:yy:zz if not all 00
             if ( hours < 10 ) str.append('0');
-            str.append(hours).append(':');
+            NumberUtils.appendInteger(hours, str).append(':');
             if ( mins < 10 ) str.append('0');
-            str.append(mins).append(':');
+            NumberUtils.appendInteger(mins, str).append(':');
             if ( secs < 10 ) str.append('0');
-            str.append(secs);
+            NumberUtils.appendInteger(secs, str);
         }
         else {
-            if ( str.length() > 1 ) str.deleteCharAt( str.length() - 1 ); // " " at the end
+            final int size = str.getRealSize();
+            if ( size > 1 ) str.setRealSize(size - 1); // " " at the end
         }
 
-        return str.toString();
+        return str;
     }
 
     public boolean setStringParameter(final ThreadContext context,
@@ -178,10 +194,11 @@ final class PGDriverImplementation implements DriverImplementation {
     private static final ByteList INTERVAL =
         new ByteList( new byte[] { 'i','n','t','e','r','v','a','l' }, false );
 
-    private static final ByteList ARRAY_END = new ByteList( new byte[] { '[',']' }, false );
-
     private static boolean arrayLike(final RubyString sqlType) {
-        return sqlType.getByteList().endsWith( ARRAY_END );
+        final int size = sqlType.size(); // does bytes.getRealSize()
+        if ( size <= 2 ) return false;
+        final ByteList bytes = sqlType.getByteList();
+        return bytes.charAt(size - 2) == '[' && bytes.charAt(size - 1) == ']';
     }
 
     // to handle infinity timestamp values

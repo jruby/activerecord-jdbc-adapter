@@ -142,13 +142,13 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
     // storesUpperCaseIdentifiers() return false;
 
     @Override
-    protected String caseConvertIdentifierForRails(final Connection connection, final String value)
+    protected final String caseConvertIdentifierForRails(final Connection connection, final String value)
         throws SQLException {
         return value;
     }
 
     @Override
-    protected String caseConvertIdentifierForJdbc(final Connection connection, final String value)
+    protected final String caseConvertIdentifierForJdbc(final Connection connection, final String value)
         throws SQLException {
         return value;
     }
@@ -344,11 +344,7 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
         final String value = resultSet.getString(column);
         if ( value == null ) return context.nil;
 
-        return parseDateTime(context, value);
-    }
-
-    // string_to_time
-    private static IRubyObject parseDateTime(final ThreadContext context, String value) {
+        // string_to_time
         final int len = value.length();
         if ( (len == 8 || len == 9) && value.charAt(len - 1) == 'y' ) {
             if ( value.charAt(0) == '-' ) { // 'infinity' / '-infinity'
