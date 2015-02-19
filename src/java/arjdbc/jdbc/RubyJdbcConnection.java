@@ -2349,26 +2349,48 @@ public class RubyJdbcConnection extends RubyObject {
     protected void setStatementParameters(final ThreadContext context,
         final Connection connection, final PreparedStatement statement,
         final List<?> binds) throws SQLException {
-
         final Ruby runtime = context.runtime;
+        // very WET - just to avoid toJava conversions for each column object :
+        if ( binds instanceof RubyArray ) {
+            final RubyArray bindsArr = (RubyArray) binds;
+            for ( int i = 0; i < binds.size(); i++ ) {
+                // [ [ column1, param1 ], [ column2, param2 ], ... ]
+                Object param = bindsArr.eltInternal(i); IRubyObject column = null;
+                if ( param instanceof RubyArray ) {
+                    final RubyArray _param = (RubyArray) param;
+                    column = _param.eltInternal(0); param = _param.eltInternal(1);
+                }
+                else if ( param instanceof List ) {
+                    final List<?> _param = (List<?>) param;
+                    column = (IRubyObject) _param.get(0); param = _param.get(1);
+                }
+                else if ( param instanceof Object[] ) {
+                    final Object[] _param = (Object[]) param;
+                    column = (IRubyObject) _param[0]; param = _param[1];
+                }
 
-        for ( int i = 0; i < binds.size(); i++ ) {
-            // [ [ column1, param1 ], [ column2, param2 ], ... ]
-            Object param = binds.get(i); IRubyObject column = null;
-            if ( param.getClass() == RubyArray.class ) {
-                final RubyArray _param = (RubyArray) param;
-                column = _param.eltInternal(0); param = _param.eltInternal(1);
+                setStatementParameter(context, runtime, connection, statement, i + 1, param, column);
             }
-            else if ( param instanceof List ) {
-                final List<?> _param = (List<?>) param;
-                column = (IRubyObject) _param.get(0); param = _param.get(1);
-            }
-            else if ( param instanceof Object[] ) {
-                final Object[] _param = (Object[]) param;
-                column = (IRubyObject) _param[0]; param = _param[1];
-            }
+        }
+        else {
+            for ( int i = 0; i < binds.size(); i++ ) {
+                // [ [ column1, param1 ], [ column2, param2 ], ... ]
+                Object param = binds.get(i); IRubyObject column = null;
+                if ( param instanceof RubyArray ) {
+                    final RubyArray _param = (RubyArray) param;
+                    column = _param.eltInternal(0); param = _param.eltInternal(1);
+                }
+                else if ( param instanceof List ) {
+                    final List<?> _param = (List<?>) param;
+                    column = (IRubyObject) _param.get(0); param = _param.get(1);
+                }
+                else if ( param instanceof Object[] ) {
+                    final Object[] _param = (Object[]) param;
+                    column = (IRubyObject) _param[0]; param = _param[1];
+                }
 
-            setStatementParameter(context, runtime, connection, statement, i + 1, param, column);
+                setStatementParameter(context, runtime, connection, statement, i + 1, param, column);
+            }
         }
     }
 
