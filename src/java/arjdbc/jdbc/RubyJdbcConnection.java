@@ -1584,9 +1584,15 @@ public class RubyJdbcConnection extends RubyObject {
             try {
                 dataSource = (javax.sql.DataSource) getInitialContext().lookup( dsOrName.toString() );
             }
-            catch (javax.naming.NamingException e) {
-                //throw wrapException(context, context.runtime.getRuntimeError(), e);
-                throw RaiseException.createNativeRaiseException(context.runtime, e);
+            catch (Exception e) {
+                if (e.getClass().getName().equals("javax.naming.NamingException")) {
+                    // throw wrapException(context, context.runtime.getRuntimeError(), e);
+                    throw RaiseException.createNativeRaiseException(context.runtime, e);
+                } else if (e instanceof RuntimeException) {
+                    throw (RuntimeException) e;
+                } else {
+                    throw new RuntimeException("Unexpected exception " + e.getClass().getName(), e);
+                }
             }
         }
 
@@ -1647,8 +1653,15 @@ public class RubyJdbcConnection extends RubyObject {
             final Object bound = getInitialContext().lookup( name.toString() );
             return JavaUtil.convertJavaToRuby(context.runtime, bound);
         }
-        catch (javax.naming.NamingException e) {
-            throw wrapException(context, context.runtime.getNameError(), e);
+        catch (Exception e) {
+            if (e.getClass().getName().equals("javax.naming.NamingException")) {
+                // throw wrapException(context, context.runtime.getNameError(), e);
+                throw RaiseException.createNativeRaiseException(context.runtime, e);
+            } else if (e instanceof RuntimeException) {
+                throw (RuntimeException) e;
+            } else {
+                throw new RuntimeException("Unexpected exception " + e.getClass().getName(), e);
+            }
         }
     }
 
