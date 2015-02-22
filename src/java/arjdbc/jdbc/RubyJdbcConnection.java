@@ -97,6 +97,7 @@ import org.jruby.runtime.builtin.IRubyObject;
 import org.jruby.runtime.builtin.Variable;
 import org.jruby.runtime.component.VariableEntry;
 import org.jruby.util.ByteList;
+import org.jruby.util.SafePropertyAccessor;
 
 import arjdbc.util.DateTimeUtils;
 import arjdbc.util.ObjectSupport;
@@ -2045,7 +2046,7 @@ public class RubyJdbcConnection extends RubyObject {
 
     protected static Boolean byteStrings;
     static {
-        final String stringBytes = System.getProperty("arjdbc.string.bytes");
+        final String stringBytes = SafePropertyAccessor.getProperty("arjdbc.string.bytes");
         if ( stringBytes != null ) byteStrings = Boolean.parseBoolean(stringBytes);
         //else byteStrings = Boolean.FALSE;
     }
@@ -2097,7 +2098,7 @@ public class RubyJdbcConnection extends RubyObject {
     static {
         boolean useBigDecimalExt = true;
 
-        final String decimalFast = System.getProperty("arjdbc.decimal.fast");
+        final String decimalFast = SafePropertyAccessor.getProperty("arjdbc.decimal.fast");
         if ( decimalFast != null ) {
             useBigDecimalExt = Boolean.parseBoolean(decimalFast);
         }
@@ -2127,7 +2128,7 @@ public class RubyJdbcConnection extends RubyObject {
 
     protected static Boolean rawDateTime;
     static {
-        final String dateTimeRaw = System.getProperty("arjdbc.datetime.raw");
+        final String dateTimeRaw = SafePropertyAccessor.getProperty("arjdbc.datetime.raw");
         if ( dateTimeRaw != null ) {
             rawDateTime = Boolean.parseBoolean(dateTimeRaw);
         }
@@ -2196,7 +2197,7 @@ public class RubyJdbcConnection extends RubyObject {
 
     protected static Boolean rawBoolean;
     static {
-        final String booleanRaw = System.getProperty("arjdbc.boolean.raw");
+        final String booleanRaw = SafePropertyAccessor.getProperty("arjdbc.boolean.raw");
         if ( booleanRaw != null ) {
             rawBoolean = Boolean.parseBoolean(booleanRaw);
         }
@@ -4116,7 +4117,7 @@ public class RubyJdbcConnection extends RubyObject {
     // disables full (Java) traces to be printed while DEBUG is on
     private static final Boolean debugStackTrace;
     static {
-        String debugTrace = System.getProperty("arjdbc.debug.trace");
+        String debugTrace = SafePropertyAccessor.getProperty("arjdbc.debug.trace");
         debugStackTrace = debugTrace == null ? null : Boolean.parseBoolean(debugTrace);
     }
 

@@ -28,7 +28,6 @@ package arjdbc.postgresql;
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.lang.reflect.InvocationTargetException;
-import java.math.BigDecimal;
 import java.sql.Array;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -50,6 +49,7 @@ import org.jruby.runtime.ObjectAllocator;
 import org.jruby.runtime.ThreadContext;
 import org.jruby.runtime.builtin.IRubyObject;
 import org.jruby.util.ByteList;
+import org.jruby.util.SafePropertyAccessor;
 
 import arjdbc.jdbc.DriverWrapper;
 import arjdbc.util.DateTimeUtils;
@@ -115,9 +115,9 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
     // using `rake test_postgresql JRUBY_OPTS="-J-Darjdbc.postgresql.generated_keys=true"`
     protected static final boolean generatedKeys;
     static {
-        String genKeys = System.getProperty("arjdbc.postgresql.generated_keys");
+        String genKeys = SafePropertyAccessor.getProperty("arjdbc.postgresql.generated_keys");
         if ( genKeys == null ) { // @deprecated system property name :
-            genKeys = System.getProperty("arjdbc.postgresql.generated.keys");
+            genKeys = SafePropertyAccessor.getProperty("arjdbc.postgresql.generated.keys");
         }
         generatedKeys = Boolean.parseBoolean(genKeys);
     }
@@ -398,7 +398,7 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
 
     static Boolean rawArrayType;
     static {
-        final String arrayRaw = System.getProperty("arjdbc.postgresql.array.raw");
+        final String arrayRaw = SafePropertyAccessor.getProperty("arjdbc.postgresql.array.raw");
         if ( arrayRaw != null ) rawArrayType = Boolean.parseBoolean(arrayRaw);
     }
 
@@ -421,7 +421,7 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
 
     static Boolean rawHstoreType;
     static {
-        final String hstoreRaw = System.getProperty("arjdbc.postgresql.hstore.raw");
+        final String hstoreRaw = SafePropertyAccessor.getProperty("arjdbc.postgresql.hstore.raw");
         if ( hstoreRaw != null ) rawHstoreType = Boolean.parseBoolean(hstoreRaw);
     }
 

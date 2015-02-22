@@ -55,6 +55,7 @@ import org.jruby.exceptions.RaiseException;
 import org.jruby.runtime.ObjectAllocator;
 import org.jruby.runtime.ThreadContext;
 import org.jruby.runtime.builtin.IRubyObject;
+import org.jruby.util.SafePropertyAccessor;
 
 /**
  *
@@ -290,7 +291,7 @@ public class MySQLRubyJdbcConnection extends RubyJdbcConnection {
 
     private static Boolean stopCleanupThread;
     static {
-        final String stopThread = System.getProperty("arjdbc.mysql.stop_cleanup_thread");
+        final String stopThread = SafePropertyAccessor.getProperty("arjdbc.mysql.stop_cleanup_thread");
         if ( stopThread != null ) stopCleanupThread = Boolean.parseBoolean(stopThread);
     }
 
@@ -328,7 +329,7 @@ public class MySQLRubyJdbcConnection extends RubyJdbcConnection {
 
     private static Boolean killCancelTimer;
     static {
-        final String killTimer = System.getProperty("arjdbc.mysql.kill_cancel_timer");
+        final String killTimer = SafePropertyAccessor.getProperty("arjdbc.mysql.kill_cancel_timer");
         if ( killTimer != null ) killCancelTimer = Boolean.parseBoolean(killTimer);
     }
 
