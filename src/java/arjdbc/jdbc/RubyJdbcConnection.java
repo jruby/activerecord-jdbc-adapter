@@ -1585,9 +1585,8 @@ public class RubyJdbcConnection extends RubyObject {
             try {
                 dataSource = (javax.sql.DataSource) getInitialContext().lookup( dsOrName.toString() );
             }
-            catch (javax.naming.NamingException e) {
-                //throw wrapException(context, context.runtime.getRuntimeError(), e);
-                throw RaiseException.createNativeRaiseException(context.runtime, e);
+            catch (Exception e) { // javax.naming.NamingException
+                throw wrapException(context, context.runtime.getRuntimeError(), e);
             }
         }
 
@@ -1598,7 +1597,7 @@ public class RubyJdbcConnection extends RubyObject {
             return block.call(context, JavaUtil.convertJavaToRuby(context.runtime, metaData));
         }
         catch (SQLException e) {
-            throw RaiseException.createNativeRaiseException(context.runtime, e);
+            throw wrapSQLException(context, e, null);
         }
         finally { close(connection); }
     }
@@ -1648,7 +1647,8 @@ public class RubyJdbcConnection extends RubyObject {
             final Object bound = getInitialContext().lookup( name.toString() );
             return JavaUtil.convertJavaToRuby(context.runtime, bound);
         }
-        catch (javax.naming.NamingException e) {
+        catch (Exception e) { // javax.naming.NamingException
+            if ( e instanceof RaiseException ) throw (RaiseException) e;
             throw wrapException(context, context.runtime.getNameError(), e);
         }
     }
@@ -3713,8 +3713,12 @@ public class RubyJdbcConnection extends RubyObject {
         return error;
     }
 
-    protected RaiseException wrapException(final ThreadContext context, final SQLException exception,
-        String message) {
+    protected RaiseException wrapException(final ThreadContext context, final SQLException exception, String message) {
+        return wrapSQLException(context, exception, message);
+    }
+
+    private static RaiseException wrapSQLException(final ThreadContext context,
+        final SQLException exception, String message) {
         final Ruby runtime = context.runtime;
         if ( message == null ) {
             message = SQLException.class == exception.getClass() ?
