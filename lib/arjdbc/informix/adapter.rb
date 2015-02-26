@@ -1,10 +1,10 @@
-require 'arjdbc/jdbc/serialized_attributes_helper'
+require 'arjdbc/util/serialized_attributes'
 
 module ArJdbc
   module Informix
-    
+
     @@_lob_callback_added = nil
-    
+
     def self.extended(base)
       unless @@_lob_callback_added
         ActiveRecord::Base.class_eval do
@@ -13,10 +13,10 @@ module ArJdbc
             lob_columns.each do |column|
               value = ::ArJdbc::SerializedAttributesHelper.dump_column_value(self, column)
               next if value.nil? || (value == '')
-              
+
               connection.write_large_object(
-                column.type == :binary, column.name, 
-                self.class.table_name, self.class.primary_key, 
+                column.type == :binary, column.name,
+                self.class.table_name, self.class.primary_key,
                 quote_value(id), value
               )
             end
@@ -28,16 +28,25 @@ module ArJdbc
       end
     end
 
+    # @see ActiveRecord::ConnectionAdapters::JdbcColumn#column_types
     def self.column_selector
-      [ /informix/i, lambda { |cfg, column| column.extend(::ArJdbc::Informix::Column) } ]
+      [ /informix/i, lambda { |cfg, column| column.extend(ColumnMethods) } ]
     end
 
+    JdbcConnection = ::ActiveRecord::ConnectionAdapters::InformixJdbcConnection
+
+    # @see ActiveRecord::ConnectionAdapters::JdbcAdapter#jdbc_connection_class
     def self.jdbc_connection_class
       ::ActiveRecord::ConnectionAdapters::InformixJdbcConnection
     end
 
-    module Column
-      
+    # @see ActiveRecord::ConnectionAdapters::JdbcAdapter#jdbc_column_class
+    def jdbc_column_class
+      ::ActiveRecord::ConnectionAdapters::InformixColumn
+    end
+
+    module ColumnMethods
+
       private
       # TODO: Test all Informix column types.
       def simplified_type(field_type)
@@ -47,7 +56,7 @@ module ArJdbc
           super
         end
       end
-      
+
     end
 
     def modify_types(types)
@@ -126,18 +135,28 @@ module ArJdbc
     def remove_index(table_name, options = {})
       @connection.execute_update("DROP INDEX #{index_name(table_name, options)}")
     end
-    
+
     def select(sql, *rest)
       # Informix does not like "= NULL", "!= NULL", or "<> NULL".
-      execute(sql.gsub(/(!=|<>)\s*null/i, "IS NOT NULL").gsub(/=\s*null/i, "IS NULL"), *rest)
+      super(sql.gsub(/(!=|<>)\s*null/i, "IS NOT NULL").gsub(/=\s*null/i, "IS NULL"), *rest)
     end
-    
+
     private
-    
+
     def db_major_version
-      @@db_major_version ||= 
+      @@db_major_version ||=
         select_one("SELECT dbinfo('version', 'major') version FROM systables WHERE tabid = 1")['version'].to_i
     end
-    
+
   end # module Informix
 end # module ::ArJdbc
+
+module ActiveRecord::ConnectionAdapters
+  class InformixColumn < JdbcColumn
+    include ::ArJdbc::Informix::ColumnMethods
+  end
+
+  class InformixAdapter < JdbcAdapter
+    include ::ArJdbc::Informix
+  end
+end
