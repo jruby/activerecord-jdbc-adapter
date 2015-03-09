@@ -403,6 +403,10 @@ module ArJdbc
       @connection.tables(nil, current_schema)
     end
 
+    def truncate(table_name, name = nil)
+      execute "TRUNCATE TABLE #{quote_table_name(table_name)}", name
+    end
+
     # @return [String] the current schema name
     def current_schema
       @current_schema ||=

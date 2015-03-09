@@ -304,8 +304,15 @@ class MySQLSimpleTest < Test::Unit::TestCase
         indexes.detect { |i| i.name == name.to_s }
       end
 
+      # AR 4.2 :
+      #  SHOW TABLES LIKE 'bulks'
+      #  SHOW KEYS FROM `bulks`
+      #  SHOW TABLES LIKE 'bulks'
+      #  SHOW KEYS FROM `bulks`
+      #  ALTER TABLE `bulks` ADD UNIQUE INDEX awesome_username_index (`username`), ADD  INDEX index_bulks_on_name_and_age (`name`, `age`)
+
       # Adding an index fires a query every time to check if an index already exists or not
-      assert_queries(3) do
+      assert_queries( ar_version('4.2') ? 5 : 3 ) do
         with_bulk_change_table(:bulks) do |t|
           t.index :username, :unique => true, :name => :awesome_username_index
           t.index [:name, :age]
@@ -327,7 +334,12 @@ class MySQLSimpleTest < Test::Unit::TestCase
 
       assert index.call(:index_bulks_on_name2)
 
-      assert_queries(3) do
+      # AR 4.2 :
+      #  SHOW KEYS FROM `bulks`
+      #  SHOW TABLES LIKE 'bulks'
+      #  SHOW KEYS FROM `bulks`
+      #  ALTER TABLE `bulks` DROP INDEX index_bulks_on_name2, ADD UNIQUE INDEX new_name2_index (`name2`)
+      assert_queries( ar_version('4.2') ? 4 : 3 ) do
         with_bulk_change_table('bulks') do |t|
           t.remove_index :name2
           t.index :name2, :name => :new_name2_index, :unique => true

@@ -276,6 +276,11 @@ module ArJdbc
       table_name && tables(nil, table_name).any?
     end
 
+    def truncate_fake(table_name, name = nil)
+      execute "DELETE FROM #{quote_table_name(table_name)}; VACUUM", name
+    end
+    # NOTE: not part of official AR (4.2) alias truncate truncate_fake
+
     # Returns 62. SQLite supports index names up to 64 characters.
     # The rest is used by Rails internally to perform temporary rename operations.
     # @return [Fixnum]

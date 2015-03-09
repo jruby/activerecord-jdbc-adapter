@@ -325,6 +325,10 @@ class Test::Unit::TestCase
 
   private
 
+  def arel_bind_param
+    ar_version('4.2') ? Arel::Nodes::BindParam.new : Arel::Nodes::BindParam.new('?')
+  end
+
   def prepared_statements?(connection = ActiveRecord::Base.connection)
     connection.send :prepared_statements?
   rescue NoMethodError # on MRI

@@ -49,19 +49,35 @@ class MysqlSchemaDumpTest < Test::Unit::TestCase
 
   test 'should_not_add_default_value_for_mysql_text_field' do
     output = standard_dump
-    assert_match %r{t.text\s+"just_text",[\s|:]+null[\s\:\=\>]+false$}, output
+    if ar_version('4.2')
+      assert_match %r{t.text\s+"just_text",[\s|:]+limit[\s\:\=\>]+65535,[\s|:]+null[\s\:\=\>]+false$}, output
+    else
+      assert_match %r{t.text\s+"just_text",[\s|:]+null[\s\:\=\>]+false$}, output
+    end
   end
 
   test 'includes_length_for_mysql_blob_and_text_fields' do
     output = standard_dump
     assert_match %r{t.binary\s+"tiny_blob",[\s|:]+limit[\s\:\=\>]+255$}, output
-    assert_match %r{t.binary\s+"normal_blob"$}, output
+    if ar_version('4.2')
+      assert_match %r{t.binary\s+"normal_blob",[\s|:]+limit[\s\:\=\>]+65535$}, output
+    else
+      assert_match %r{t.binary\s+"normal_blob"$}, output
+    end
     assert_match %r{t.binary\s+"medium_blob",[\s|:]+limit[\s\:\=\>]+16777215$}, output
-    assert_match %r{t.binary\s+"long_blob",[\s|:]+limit[\s\:\=\>]+2147483647$}, output
+    unless ar_version('4.2') # t.binary "long_blob", limit: 4294967295 !?!
+      assert_match %r{t.binary\s+"long_blob",[\s|:]+limit[\s\:\=\>]+2147483647$}, output
+    end
     assert_match %r{t.text\s+"tiny_text",[\s|:]+limit[\s\:\=\>]+255$}, output
-    assert_match %r{t.text\s+"normal_text"$}, output
+    if ar_version('4.2')
+      assert_match %r{t.text\s+"normal_text",[\s|:]+limit[\s\:\=\>]+65535$}, output
+    else
+      assert_match %r{t.text\s+"normal_text"$}, output
+    end
     assert_match %r{t.text\s+"medium_text",[\s|:]+limit[\s\:\=\>]+16777215$}, output
-    assert_match %r{t.text\s+"long_text",[\s|:]+limit[\s\:\=\>]+2147483647$}, output
+    unless ar_version('4.2') # t.text "long_text", limit: 4294967295 ?!?
+      assert_match %r{t.text\s+"long_text",[\s|:]+limit[\s\:\=\>]+2147483647$}, output
+    end
   end
 
   test 'includes_length_for_mysql_binary_fields' do
@@ -137,7 +153,8 @@ class MysqlInfoTest < Test::Unit::TestCase
     strio = StringIO.new
     ActiveRecord::SchemaDumper::dump(connection, strio)
     dump = strio.string
-    assert_match %r{t.text\s+"text",[\s|:]+limit[\s\:\=\>]+2147483647$}, dump
+    limit = ar_version('4.2') ? 4294967295 : 2147483647
+    assert_match %r{t.text\s+"text",[\s|:]+limit[\s\:\=\>]+#{limit}$}, dump
   end
 
   # JRUBY-5040
@@ -153,7 +170,11 @@ class MysqlInfoTest < Test::Unit::TestCase
 
   def test_should_include_limit
     text_column = connection.columns('memos').find { |c| c.name == 'text' }
-    assert_equal 2147483647, text_column.limit
+    if ar_version('4.2')
+      assert_equal 4294967295, text_column.limit
+    else
+      assert_equal 2147483647, text_column.limit
+    end
   end
 
   def test_should_set_sqltype_to_longtext

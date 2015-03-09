@@ -584,6 +584,10 @@ module ArJdbc
       "#{quote_table_name(table_name)}.#{quote_column_name((primary_column || columns.first).name)}"
     end
 
+    def truncate(table_name, name = nil)
+      execute "TRUNCATE TABLE #{quote_table_name(table_name)}", name
+    end
+
     # Support for executing a stored procedure.
     def exec_proc(proc_name, *variables)
       vars =

@@ -505,6 +505,10 @@ module ArJdbc
     # @override
     def supports_views?; true end
 
+    def truncate(table_name, name = nil)
+      execute "TRUNCATE TABLE #{quote_table_name(table_name)}", name
+    end
+
     def explain(arel, binds = [])
       sql = "EXPLAIN PLAN FOR #{to_sql(arel, binds)}"
       return if sql =~ /FROM all_/

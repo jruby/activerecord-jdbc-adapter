@@ -225,6 +225,7 @@ module ArJdbc
     }) if AR4_COMPAT
 
     NATIVE_DATABASE_TYPES.update(
+      :bigserial => "bigserial",
       :bigint => { :name => "bigint" },
       :bit => { :name => "bit" },
       :bit_varying => { :name => "bit varying" }
@@ -1073,6 +1074,10 @@ module ArJdbc
       log(sql, 'SCHEMA', binds) do
         @connection.execute_query_raw(sql, binds).first['table_count'] > 0
       end
+    end
+
+    def truncate(table_name, name = nil)
+      execute "TRUNCATE TABLE #{quote_table_name(table_name)}", name
     end
 
     def index_name_exists?(table_name, index_name, default)

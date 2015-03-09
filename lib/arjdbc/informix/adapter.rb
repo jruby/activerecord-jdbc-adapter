@@ -1,4 +1,4 @@
-require 'arjdbc/jdbc/serialized_attributes_helper'
+require 'arjdbc/util/serialized_attributes'
 
 module ArJdbc
   module Informix
@@ -28,15 +28,22 @@ module ArJdbc
       end
     end
 
+    # @see ActiveRecord::ConnectionAdapters::JdbcColumn#column_types
     def self.column_selector
-      [ /informix/i, lambda { |cfg, column| column.extend(::ArJdbc::Informix::Column) } ]
+      [ /informix/i, lambda { |cfg, column| column.extend(ColumnMethods) } ]
     end
 
     JdbcConnection = ::ActiveRecord::ConnectionAdapters::InformixJdbcConnection
 
+    # @see ActiveRecord::ConnectionAdapters::JdbcAdapter#jdbc_connection_class
     def self.jdbc_connection_class; JdbcConnection end
 
-    module Column
+    # @see ActiveRecord::ConnectionAdapters::JdbcAdapter#jdbc_column_class
+    def jdbc_column_class
+      ::ActiveRecord::ConnectionAdapters::InformixColumn
+    end
+
+    module ColumnMethods
 
       private
       # TODO: Test all Informix column types.
@@ -129,7 +136,7 @@ module ArJdbc
 
     def select(sql, *rest)
       # Informix does not like "= NULL", "!= NULL", or "<> NULL".
-      execute(sql.gsub(/(!=|<>)\s*null/i, "IS NOT NULL").gsub(/=\s*null/i, "IS NULL"), *rest)
+      super(sql.gsub(/(!=|<>)\s*null/i, "IS NOT NULL").gsub(/=\s*null/i, "IS NULL"), *rest)
     end
 
     private
@@ -141,3 +148,13 @@ module ArJdbc
 
   end # module Informix
 end # module ::ArJdbc
+
+module ActiveRecord::ConnectionAdapters
+  class InformixColumn < JdbcColumn
+    include ::ArJdbc::Informix::ColumnMethods
+  end
+
+  class InformixAdapter < JdbcAdapter
+    include ::ArJdbc::Informix
+  end
+end

@@ -1,3 +1,15 @@
+## 1.3.15 (03/09/15)
+
+- [informix] adapter undefined method 'column_types' with Rails 4.x (#622)
+- improve connection factory Ruby interface impls to match Java method-name (#621)
+- [sqlite] truncate_fake - as due compatibility with do not want a truncate method
+- truncate support 4 all (introduced in AR 4.2 but we let it work in all versions)
+- [postgres] do not double load array_parser (on 4.2)
+- [postgres] connection.truncate impl (AR 4.2 compat)
+- [mysql] back-port missing truncate connection method (since AR 4.2)
+- auto setup type-casting compat (pre 4.2 emulation) 4 all
+- [postgres] backport bigserial key and bigint native type support
+
 ## 1.3.14 (01/28/15)
 
 - [mysql] Fixed an undefined exception error in type_to_sql for MySQL (#616)

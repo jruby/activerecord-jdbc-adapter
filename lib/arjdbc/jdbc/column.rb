@@ -1,5 +1,8 @@
 module ActiveRecord
   module ConnectionAdapters
+    module Jdbc
+      autoload :TypeCast, 'arjdbc/jdbc/type_cast'
+    end
     # The base class for all of {JdbcAdapter}'s returned columns.
     # Instances of {JdbcColumn} will get extended with "column-spec" modules
     # (similar to how {JdbcAdapter} gets spec modules in) if the adapter spec
@@ -22,7 +25,7 @@ module ActiveRecord
           end
         end
         # super <= 4.1: (name, default, sql_type = nil, null = true)
-        # super master: (name, default, cast_type, sql_type = nil, null = true)
+        # super >= 4.2: (name, default, cast_type, sql_type = nil, null = true)
         super(name, default_value(default), *args)
         init_column(name, default, *args)
       end
@@ -60,6 +63,8 @@ module ActiveRecord
       end
 
       class << self
+
+        include Jdbc::TypeCast if ::ActiveRecord::VERSION::STRING >= '4.2'
 
         if ActiveRecord::VERSION::MAJOR > 3 && ActiveRecord::VERSION::STRING < '4.2'
 

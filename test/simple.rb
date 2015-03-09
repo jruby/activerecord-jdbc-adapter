@@ -978,7 +978,7 @@ module SimpleTestMethods
     entry = Entry.create! :title => '42'
     arel = Arel::DeleteManager.new Entry.arel_engine
     arel.from arel_table = Entry.arel_table
-    arel.where arel_table[:title].eq(Arel::Nodes::BindParam.new('?'))
+    arel.where arel_table[:title].eq(arel_bind_param)
     column = Entry.columns_hash['title']
 
     connection.exec_delete arel, 'DELETE(entry)', [ [ column, "42" ] ]
@@ -1268,6 +1268,17 @@ module SimpleTestMethods
 
     assert actual.new_record?, "should be a new record"
   end
+
+  def test_truncate
+    User.create! :login => "t1"
+    User.create! :login => "t2"
+    User.create! :login => "t3"
+
+    assert User.count > 0
+
+    User.connection.truncate 'users'
+    assert_equal 0, User.count
+  end #if Test::Unit::TestCase.ar_version('3.2')
 
   protected
 

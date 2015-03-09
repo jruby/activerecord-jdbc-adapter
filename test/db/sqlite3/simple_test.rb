@@ -325,4 +325,21 @@ class SQLite3SimpleTest < Test::Unit::TestCase
     end
   end if defined? JRUBY_VERSION
 
+  undef :test_truncate # not supported natively by SQLite
+
+  if defined? JRUBY_VERSION
+
+    def test_truncate_fake
+      Thing.create! :name => "t1"
+      Thing.create! :name => "t2"
+      Thing.create! :name => "t3"
+
+      assert Thing.count > 0
+
+      Thing.connection.truncate_fake 'things'
+      assert_equal 0, Thing.count
+    end
+
+  end
+
 end
