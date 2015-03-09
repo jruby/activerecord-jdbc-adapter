@@ -1,5 +1,6 @@
-## 1.3.15 (pen/nd/in)
+## 1.3.15 (03/09/15)
 
+- [informix] adapter undefined method 'column_types' with Rails 4.x (#622)
 - improve connection factory Ruby interface impls to match Java method-name (#621)
 - [sqlite] truncate_fake - as due compatibility with do not want a truncate method
 - truncate support 4 all (introduced in AR 4.2 but we let it work in all versions)
