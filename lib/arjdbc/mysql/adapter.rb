@@ -9,6 +9,7 @@ module ArJdbc
     # @private
     AR42 = ActiveRecord::VERSION::STRING >= '4.2'
 
+    require 'arjdbc/mysql/abstract_adapter' if AR42 # AR 4.x
     require 'arjdbc/mysql/column'
     require 'arjdbc/mysql/bulk_change_table'
     require 'arjdbc/mysql/explain_support'
