@@ -145,7 +145,7 @@ class MysqlSimpleTest < Test::Unit::TestCase
 
     connection.drop_table :as rescue nil
     connection.drop_table :bs rescue nil
-  end
+  end if ar_version("4.2")
 
   def test_find_in_other_schema_with_include
     user_1 = User.create :login => 'user1'
