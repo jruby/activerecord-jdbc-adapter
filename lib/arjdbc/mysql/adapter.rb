@@ -230,6 +230,11 @@ module ArJdbc
     end
 
     # @override
+    def supports_indexes_in_create?
+      true
+    end
+
+    # @override
     def supports_transaction_isolation?
       # MySQL 4 technically support transaction isolation, but it is affected by
       # a bug where the transaction level gets persisted for the whole session:
