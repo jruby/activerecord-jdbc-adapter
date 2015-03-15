@@ -123,6 +123,24 @@ class MySQLSimpleTest < Test::Unit::TestCase
     connection.drop_table :values rescue nil
   end
 
+  # see https://github.com/jruby/activerecord-jdbc-adapter/issues/629
+  def test_tables_with_refrences
+    connection = Entry.connection
+    connection.create_table :as do |t|
+      t.integer :value
+    end
+    connection.create_table :bs do |t|
+      t.references :b, index: true
+    end
+
+    assert_nothing_raised do
+      connection.add_foreign_key :bs, :as
+    end
+
+    connection.drop_table :as rescue nil
+    connection.drop_table :bs rescue nil
+  end
+
   def test_find_in_other_schema_with_include
     user_1 = User.create :login => 'user1'
     user_2 = User.create :login => 'user2'
