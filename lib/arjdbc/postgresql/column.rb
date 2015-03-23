@@ -110,6 +110,9 @@ module ArJdbc
           # JSON
           when /\A'(.*)'::json\z/
             $1
+          # JSONB
+          when /\A'(.*)'::jsonb\z/
+            $1
           # Object identifier types
           when /\A-?\d+\z/
             $1
@@ -146,6 +149,7 @@ module ArJdbc
         case type ||= self.type
         when :hstore then self.class.string_to_hstore value
         when :json then self.class.string_to_json value
+        when :jsonb then self.class.string_to_json value
         when :cidr, :inet then self.class.string_to_cidr value
         when :macaddr then value
         when :tsvector then value
@@ -302,6 +306,7 @@ module ArJdbc
         when 'uuid' then :uuid
         # JSON type
         when 'json' then :json
+        when 'jsonb' then :jsonb
         # Small and big integer types
         when /^(?:small|big)int$/ then :integer
         when /(num|date|tstz|ts|int4|int8)range$/

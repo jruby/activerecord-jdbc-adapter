@@ -152,6 +152,8 @@ module ArJdbc
           Column.point_to_string(value)
         when 'json'
           Column.json_to_string(value)
+        when 'jsonb'
+          Column.json_to_string(value)
         else
           return super(value, column) unless column.array?
           Column.array_to_string(value, column, self)
@@ -169,6 +171,8 @@ module ArJdbc
         when 'hstore'
           Column.hstore_to_string(value)
         when 'json'
+          Column.json_to_string(value)
+        when 'jsonb'
           Column.json_to_string(value)
         else super(value, column)
         end
@@ -214,6 +218,7 @@ module ArJdbc
       :macaddr => { :name => "macaddr" },
       :uuid => { :name => "uuid" },
       :json => { :name => "json" },
+      :jsonb => { :name => "jsonb" },
       :ltree => { :name => "ltree" },
       # ranges :
       :daterange => { :name => "daterange" },
@@ -755,6 +760,8 @@ module ArJdbc
         if AR4_COMPAT && column.array? # will be always falsy in AR < 4.0
           "'#{Column.array_to_string(value, column, self).gsub(/'/, "''")}'"
         elsif column.type == :json # only in AR-4.0
+          super(Column.json_to_string(value), column)
+        elsif column.type == :jsonb # only in AR-4.0
           super(Column.json_to_string(value), column)
         elsif column.type == :point # only in AR-4.0
           super(Column.point_to_string(value), column)
