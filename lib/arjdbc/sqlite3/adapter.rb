@@ -542,7 +542,7 @@ module ArJdbc
         #   column *column_name* is not unique
         if msg.index('UNIQUE constraint failed: ') ||
            msg =~ /column(s)? .* (is|are) not unique/
-          return RecordNotUnique.new(message, exception)
+          return ::ActiveRecord::RecordNotUnique.new(message, exception)
         end
       end
       super
