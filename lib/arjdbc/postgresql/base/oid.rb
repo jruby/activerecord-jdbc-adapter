@@ -275,6 +275,25 @@ module ActiveRecord
           end
         end
 
+        class Jsonb < Type
+          def type_cast_for_write(value)
+            # roundtrip to ensure uniform uniform types
+            # TODO: This is not an efficient solution.
+            stringified = ConnectionAdapters::PostgreSQLColumn.json_to_string(value)
+            type_cast(stringified)
+          end
+
+          def type_cast(value)
+            return if value.nil?
+
+            ConnectionAdapters::PostgreSQLColumn.string_to_json value
+          end
+
+          def accessor
+            ActiveRecord::Store::StringKeyedHashAccessor
+          end
+        end
+
         class TypeMap
           def initialize
             @mapping = {}
@@ -382,6 +401,7 @@ module ActiveRecord
         register_type 'circle', OID::Identity.new
         register_type 'hstore', OID::Hstore.new
         register_type 'json', OID::Json.new
+        register_type 'jsonb', OID::Jsonb.new
         register_type 'ltree', OID::Identity.new
 
         register_type 'cidr', OID::Cidr.new
