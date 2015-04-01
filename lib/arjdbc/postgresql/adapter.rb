@@ -54,14 +54,29 @@ module ArJdbc
     def postgresql_version
       @postgresql_version ||=
         begin
-          value = select_value('SELECT version()')
-          if value =~ /PostgreSQL (\d+)\.(\d+)\.(\d+)/
+          version = select_version
+          if version =~ /PostgreSQL (\d+)\.(\d+)\.(\d+)/
             ($1.to_i * 10000) + ($2.to_i * 100) + $3.to_i
           else
             0
           end
         end
     end
+
+    def select_version
+      @_version ||= select_value('SELECT version()')
+    end
+    private :select_version
+
+    def redshift?
+      # SELECT version() :
+      #  PostgreSQL 8.0.2 on i686-pc-linux-gnu, compiled by GCC gcc (GCC) 3.4.2 20041017 (Red Hat 3.4.2-6.fc3), Redshift 1.0.647
+      if ( redshift = config[:redshift] ).nil?
+        redshift = !! (select_version || '').index('Redshift')
+      end
+      redshift
+    end
+    private :redshift?
 
     def use_insert_returning?
       if @use_insert_returning.nil?
@@ -97,7 +112,7 @@ module ArJdbc
         execute("SET time zone 'UTC'", 'SCHEMA')
       elsif tz = local_tz
         execute("SET time zone '#{tz}'", 'SCHEMA')
-      end # if defined? ActiveRecord::Base.default_timezone
+      end unless redshift?
 
       # SET statements from :variables config hash
       # http://www.postgresql.org/docs/8.3/static/sql-set.html
@@ -745,11 +760,15 @@ module ArJdbc
 
     # Returns the current client message level.
     def client_min_messages
+      return nil if redshift? # not supported on Redshift
       select_value('SHOW client_min_messages', 'SCHEMA')
     end
 
     # Set the client message level.
     def client_min_messages=(level)
+      # NOTE: for now simply ignore the writer (no warn on Redshift) so that
+      # the AR copy-pasted PpstgreSQL parts stay the same as much as possible
+      return nil if redshift? # not supported on Redshift
       execute("SET client_min_messages TO '#{level}'", 'SCHEMA')
     end
 
