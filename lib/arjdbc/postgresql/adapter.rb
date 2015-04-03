@@ -119,9 +119,9 @@ module ArJdbc
       (config[:variables] || {}).map do |k, v|
         if v == ':default' || v == :default
           # Sets the value to the global or compile default
-          execute("SET SESSION #{k.to_s} TO DEFAULT", 'SCHEMA')
+          execute("SET SESSION #{k} TO DEFAULT", 'SCHEMA')
         elsif ! v.nil?
-          execute("SET SESSION #{k.to_s} TO #{quote(v)}", 'SCHEMA')
+          execute("SET SESSION #{k} TO #{quote(v)}", 'SCHEMA')
         end
       end
     end
@@ -954,7 +954,7 @@ module ArJdbc
     # @override
     def quote_table_name_for_assignment(table, attr)
       quote_column_name(attr)
-    end if ::ActiveRecord::VERSION::MAJOR >= 4
+    end if AR4_COMPAT
 
     # @override
     def quote_column_name(name)
