@@ -865,6 +865,8 @@ module ArJdbc
           super(jdbc_column_class.hstore_to_string(value), column)
         elsif column.type == :json # only in AR-4.0
           super(jdbc_column_class.json_to_string(value), column)
+        elsif column.type == :jsonb # only in AR-4.0
+          super(jdbc_column_class.json_to_string(value), column)
         else super
         end
       when Range
