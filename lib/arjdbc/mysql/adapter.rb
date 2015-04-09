@@ -7,7 +7,9 @@ module ArJdbc
   module MySQL
 
     # @private
-    AR42 = ActiveRecord::VERSION::STRING >= '4.2'
+    AR40 = ::ActiveRecord::VERSION::MAJOR > 3
+    # @private
+    AR42 = ::ActiveRecord::VERSION::STRING >= '4.2'
 
     require 'arjdbc/mysql/column'
     require 'arjdbc/mysql/bulk_change_table'
@@ -77,10 +79,10 @@ module ArJdbc
       execute("SET #{encoding} #{variable_assignments}", :skip_logging)
     end
 
-    def strict_mode? # strict_mode is default since AR 4.0
+    def strict_mode?
       config.key?(:strict) ?
         self.class.type_cast_config_to_boolean(config[:strict]) :
-          ::ActiveRecord::VERSION::MAJOR > 3
+          AR40 # strict_mode is default since AR 4.0
     end
 
     # @private
@@ -166,7 +168,7 @@ module ArJdbc
       else
         ActiveRecord::SchemaMigration.create_table
       end
-    end if ::ActiveRecord::VERSION::MAJOR > 3
+    end if AR40
 
     # HELPER METHODS ===========================================
 
@@ -340,12 +342,8 @@ module ArJdbc
     # @private
     IndexDefinition = ::ActiveRecord::ConnectionAdapters::IndexDefinition
 
-    if ::ActiveRecord::VERSION::MAJOR > 3
-
-    INDEX_TYPES = [ :fulltext, :spatial ]
-    INDEX_USINGS = [ :btree, :hash ]
-
-    end
+    INDEX_TYPES = [ :fulltext, :spatial ] if AR40
+    INDEX_USINGS = [ :btree, :hash ] if AR40
 
     # Returns an array of indexes for the given table.
     # @override
