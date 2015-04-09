@@ -678,7 +678,78 @@ module ArJdbc
       "VALUES ()"
     end
 
+    # @note since AR 4.2
+    def valid_type?(type)
+      ! native_database_types[type].nil?
+    end
+
+    # @private
+    Type = ActiveRecord::Type if AR42
+
     protected
+
+    # @private
+    def initialize_type_map(m)
+      super
+
+      register_class_with_limit m, %r(char)i, MysqlString
+
+      m.register_type %r(tinytext)i,   Type::Text.new(limit: 2**8 - 1)
+      m.register_type %r(tinyblob)i,   Type::Binary.new(limit: 2**8 - 1)
+      m.register_type %r(text)i,       Type::Text.new(limit: 2**16 - 1)
+      m.register_type %r(blob)i,       Type::Binary.new(limit: 2**16 - 1)
+      m.register_type %r(mediumtext)i, Type::Text.new(limit: 2**24 - 1)
+      m.register_type %r(mediumblob)i, Type::Binary.new(limit: 2**24 - 1)
+      m.register_type %r(longtext)i,   Type::Text.new(limit: 2**32 - 1)
+      m.register_type %r(longblob)i,   Type::Binary.new(limit: 2**32 - 1)
+      m.register_type %r(^float)i,     Type::Float.new(limit: 24)
+      m.register_type %r(^double)i,    Type::Float.new(limit: 53)
+
+      register_integer_type m, %r(^bigint)i,    limit: 8
+      register_integer_type m, %r(^int)i,       limit: 4
+      register_integer_type m, %r(^mediumint)i, limit: 3
+      register_integer_type m, %r(^smallint)i,  limit: 2
+      register_integer_type m, %r(^tinyint)i,   limit: 1
+
+      m.alias_type %r(tinyint\(1\))i,  'boolean' if emulate_booleans
+      m.alias_type %r(set)i,           'varchar'
+      m.alias_type %r(year)i,          'integer'
+      m.alias_type %r(bit)i,           'binary'
+
+      m.register_type(%r(datetime)i) do |sql_type|
+        precision = extract_precision(sql_type)
+        MysqlDateTime.new(precision: precision)
+      end
+
+      m.register_type(%r(enum)i) do |sql_type|
+        limit = sql_type[/^enum\((.+)\)/i, 1]
+          .split(',').map{|enum| enum.strip.length - 2}.max
+        MysqlString.new(limit: limit)
+      end
+    end if AR42
+
+    # @private
+    def register_integer_type(mapping, key, options)
+      mapping.register_type(key) do |sql_type|
+        if /unsigned/i =~ sql_type
+          Type::UnsignedInteger.new(options)
+        else
+          Type::Integer.new(options)
+        end
+      end
+    end if AR42
+
+    # MySQL is too stupid to create a temporary table for use subquery, so we have
+    # to give it some prompting in the form of a subsubquery. Ugh!
+    # @note since AR 4.2
+    def subquery_for(key, select)
+      subsubselect = select.clone
+      subsubselect.projections = [key]
+
+      subselect = Arel::SelectManager.new(select.engine)
+      subselect.project Arel.sql(key.name)
+      subselect.from subsubselect.as('__active_record_temp')
+    end if AR42
 
     def quoted_columns_for_index(column_names, options = {})
       length = options[:length] if options.is_a?(Hash)
@@ -743,6 +814,39 @@ module ArJdbc
         result.first.values.first # [{"VERSION()"=>"5.5.37-0ubuntu..."}]
       end
     end
+
+    # @private
+    def emulate_booleans; ::ArJdbc::MySQL.emulate_booleans?; end # due AR 4.2
+
+    # @private
+    class MysqlDateTime < Type::DateTime
+      private
+
+      def has_precision?
+        precision || 0
+      end
+    end if AR42
+
+    # @private
+    class MysqlString < Type::String
+      def type_cast_for_database(value)
+        case value
+        when true then "1"
+        when false then "0"
+        else super
+        end
+      end
+
+      private
+
+      def cast_value(value)
+        case value
+        when true then "1"
+        when false then "0"
+        else super
+        end
+      end
+    end if AR42
 
   end
 end
