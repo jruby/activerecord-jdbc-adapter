@@ -50,9 +50,9 @@ class MysqlSimpleTest < Test::Unit::TestCase
   column_quote_char "`"
 
   def test_column_class_instantiation
-    text_column = nil
     assert_nothing_raised do
-      assert text_column = mysql_adapter_class::Column.new("title", nil, "text")
+      text_column = mysql_adapter_class::Column.new("title", nil, "text")
+      assert text_column.is_a?(ActiveRecord::ConnectionAdapters::Column)
     end unless ar_version('4.2')
   end
 

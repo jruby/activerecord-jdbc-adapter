@@ -202,7 +202,16 @@ module ArJdbc
       else
         super
       end
-    end
+    end unless AR42
+
+    # @private since AR 4.2
+    def _quote(value)
+      if value.is_a?(Type::Binary::Data)
+        "x'#{value.hex}'"
+      else
+        super
+      end
+    end if AR42
 
     # @override
     def quote_column_name(name)
@@ -253,6 +262,10 @@ module ArJdbc
       return false if mariadb? || ! version[0]
       (version[0] == 5 && version[1] >= 7) || version[0] >= 6
     end
+
+    def index_algorithms
+      { :default => 'ALGORITHM = DEFAULT', :copy => 'ALGORITHM = COPY', :inplace => 'ALGORITHM = INPLACE' }
+    end if AR42
 
     # @override
     def supports_transaction_isolation?(level = nil)
@@ -376,7 +389,7 @@ module ArJdbc
     # Returns an array of `Column` objects for the table specified.
     # @override
     def columns(table_name, name = nil)
-      sql = "SHOW FULL COLUMNS FROM #{quote_table_name(table_name)}"
+      sql = "SHOW FULL #{AR40 ? 'FIELDS' : 'COLUMNS'} FROM #{quote_table_name(table_name)}"
       columns = execute(sql, name || 'SCHEMA')
       strict = strict_mode?
       pass_cast_type = respond_to?(:lookup_cast_type)
@@ -683,6 +696,18 @@ module ArJdbc
       ! native_database_types[type].nil?
     end
 
+    def clear_cache!
+      super
+      reload_type_map
+    end if AR42
+
+    # @private since AR 4.2
+    def prepare_column_options(column, types)
+      spec = super
+      spec.delete(:limit) if column.type == :boolean
+      spec
+    end if AR42
+
     # @private
     Type = ActiveRecord::Type if AR42
 
@@ -817,6 +842,7 @@ module ArJdbc
 
     # @private
     def emulate_booleans; ::ArJdbc::MySQL.emulate_booleans?; end # due AR 4.2
+    public :emulate_booleans
 
     # @private
     class MysqlDateTime < Type::DateTime
@@ -879,9 +905,9 @@ module ActiveRecord
 
       end
 
-      def initialize(*args)
-        super # configure_connection happens in super
-      end
+      #def initialize(*args)
+      #  super # configure_connection happens in super
+      #end
 
       def jdbc_connection_class(spec)
         ::ArJdbc::MySQL.jdbc_connection_class
