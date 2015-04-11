@@ -341,7 +341,13 @@ class MysqlSimpleTest < Test::Unit::TestCase
       #  ALTER TABLE `bulks` ADD UNIQUE INDEX awesome_username_index (`username`), ADD  INDEX index_bulks_on_name_and_age (`name`, `age`)
 
       # Adding an index fires a query every time to check if an index already exists or not
-      assert_queries( ar_version('4.2') ? 5 : 3 ) do
+      expected_query_count = 3
+      if ar_version('4.2')
+        expected_query_count = 5 # MRI
+        # no SHOW TABLES LIKE 'bulks' in JRuby since we do table_exists? with JDBC APIs
+        expected_query_count -= 2 if defined? JRUBY_VERSION
+      end
+      assert_queries( expected_query_count ) do
         with_bulk_change_table(:bulks) do |t|
           t.index :username, :unique => true, :name => :awesome_username_index
           t.index [:name, :age]
@@ -368,7 +374,13 @@ class MysqlSimpleTest < Test::Unit::TestCase
       #  SHOW TABLES LIKE 'bulks'
       #  SHOW KEYS FROM `bulks`
       #  ALTER TABLE `bulks` DROP INDEX index_bulks_on_name2, ADD UNIQUE INDEX new_name2_index (`name2`)
-      assert_queries( ar_version('4.2') ? 4 : 3 ) do
+      expected_query_count = 3
+      if ar_version('4.2')
+        expected_query_count = 4 # MRI
+        # no SHOW TABLES LIKE 'bulks' in JRuby since we do table_exists? with JDBC APIs
+        expected_query_count -= 1 if defined? JRUBY_VERSION
+      end
+      assert_queries( expected_query_count ) do
         with_bulk_change_table('bulks') do |t|
           t.remove_index :name2
           t.index :name2, :name => :new_name2_index, :unique => true
