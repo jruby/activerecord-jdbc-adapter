@@ -580,6 +580,11 @@ module ArJdbc
       execute(change_column_sql)
     end
 
+    # @private
+    def change_column(table_name, column_name, type, options = {})
+      execute("ALTER TABLE #{quote_table_name(table_name)} #{change_column_sql(table_name, column_name, type, options)}")
+    end if AR42
+
     # @override
     def rename_column(table_name, column_name, new_column_name)
       options = {}
