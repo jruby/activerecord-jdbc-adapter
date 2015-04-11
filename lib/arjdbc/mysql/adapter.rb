@@ -18,6 +18,9 @@ module ArJdbc
 
     include BulkChangeTable if const_defined? :BulkChangeTable
 
+    # @private
+    ActiveRecordError = ::ActiveRecord::ActiveRecordError
+
     # @see ActiveRecord::ConnectionAdapters::JdbcAdapter#jdbc_connection_class
     def self.jdbc_connection_class
       ::ActiveRecord::ConnectionAdapters::MySQLJdbcConnection
@@ -586,7 +589,7 @@ module ArJdbc
         options[:default] = column.default if type != :text && type != :binary
         options[:null] = column.null
       else
-        raise ActiveRecord::ActiveRecordError, "No such column: #{table_name}.#{column_name}"
+        raise ActiveRecordError, "No such column: #{table_name}.#{column_name}"
       end
 
       current_type = select_one("SHOW COLUMNS FROM #{quote_table_name(table_name)} LIKE '#{column_name}'")["Type"]
@@ -662,7 +665,7 @@ module ArJdbc
         when 0..0xfff; "varbinary(#{limit})"
         when nil; "blob"
         when 0x1000..0xffffffff; "blob(#{limit})"
-        else raise ActiveRecord::ActiveRecordError, "No binary type has character length #{limit}"
+        else raise ActiveRecordError, "No binary type has character length #{limit}"
         end
       when 'integer'
         case limit
@@ -671,7 +674,7 @@ module ArJdbc
         when 3; 'mediumint'
         when nil, 4, 11; 'int(11)' # compatibility with MySQL default
         when 5..8; 'bigint'
-        else raise ActiveRecord::ActiveRecordError, "No integer type has byte size #{limit}"
+        else raise ActiveRecordError, "No integer type has byte size #{limit}"
         end
       when 'text'
         case limit
@@ -679,7 +682,7 @@ module ArJdbc
         when nil, 0x100..0xffff; 'text'
         when 0x10000..0xffffff; 'mediumtext'
         when 0x1000000..0xffffffff; 'longtext'
-        else raise ActiveRecord::ActiveRecordError, "No text type has character length #{limit}"
+        else raise ActiveRecordError, "No text type has character length #{limit}"
         end
       else
         super
