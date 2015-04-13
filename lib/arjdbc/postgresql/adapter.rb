@@ -265,6 +265,7 @@ module ArJdbc
     end
 
     # Adds `:array` option to the default set provided by the `AbstractAdapter`.
+    # @override
     def prepare_column_options(column, types)
       spec = super
       spec[:array] = 'true' if column.respond_to?(:array) && column.array
@@ -273,6 +274,7 @@ module ArJdbc
     end if AR4_COMPAT
 
     # Adds `:array` as a valid migration key.
+    # @override
     def migration_keys
       super + [:array]
     end if AR4_COMPAT
@@ -1377,6 +1379,8 @@ module ActiveRecord::ConnectionAdapters
       super # configure_connection happens in super
 
       @table_alias_length = nil
+
+      initialize_type_map(@type_map = Type::HashLookupTypeMap.new) if AR42_COMPAT
 
       @use_insert_returning = @config.key?(:insert_returning) ?
         self.class.type_cast_config_to_boolean(@config[:insert_returning]) : nil

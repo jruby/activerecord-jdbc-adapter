@@ -44,7 +44,7 @@ module ArJdbc
         }
       end unless AR42_COMPAT
 
-      def get_oid_type(oid, fmod, column_name, sql_type = '') # :nodoc:
+      def get_oid_type(oid, fmod, column_name, sql_type = '')
         if !type_map.key?(oid)
           load_additional_types(type_map, [oid])
         end
@@ -79,7 +79,8 @@ module ArJdbc
       end
 
       def type_map
-        # NOTE: our type_map is lazy since it's only used for `adapter.accessor`
+        # NOTE: our type_map is lazy (on AR < 4.2)
+        # ... since it's only used for `adapter.accessor`
         @type_map ||= begin
           if type_map = @@type_map_cache[ type_cache_key ]
             type_map.dup
@@ -150,10 +151,10 @@ module ArJdbc
         end
       end unless AR42_COMPAT
 
-      def initialize_type_map(m) # :nodoc:
+      def initialize_type_map(m)
         register_class_with_limit m, 'int2', OID::Integer
-        m.alias_type 'int4', 'int2'
-        m.alias_type 'int8', 'int2'
+        register_class_with_limit m, 'int4', OID::Integer
+        register_class_with_limit m, 'int8', OID::Integer
         m.alias_type 'oid', 'int2'
         m.register_type 'float4', OID::Float.new
         m.alias_type 'float8', 'float4'
@@ -221,7 +222,7 @@ module ArJdbc
         load_additional_types(m)
       end if AR42_COMPAT
 
-      def load_additional_types(type_map, oids = nil) # :nodoc:
+      def load_additional_types(type_map, oids = nil)
         if supports_ranges?
           query = <<-SQL
             SELECT t.oid, t.typname, t.typelem, t.typdelim, t.typinput, r.rngsubtype, t.typtype, t.typbasetype
@@ -235,11 +236,16 @@ module ArJdbc
           SQL
         end
 
+        initializer = OID::TypeMapInitializer.new(type_map)
+
         if oids
-          query += "WHERE t.oid::integer IN (%s)" % oids.join(", ")
+          query << "WHERE t.oid::integer IN (%s)" % oids.join(", ")
+        else
+          if initializer.respond_to?(:query_conditions_for_initial_load)
+            query << initializer.query_conditions_for_initial_load(type_map)
+          end
         end
 
-        initializer = OID::TypeMapInitializer.new(type_map)
         records = execute(query, 'SCHEMA')
         initializer.run(records)
       end if AR42_COMPAT
