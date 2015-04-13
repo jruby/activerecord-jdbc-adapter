@@ -46,16 +46,16 @@ class PostgreSQLJSONTest < Test::Unit::TestCase
   end
 
   def test_type_cast_json
-    assert @column = JsonDataType.columns.find { |c| c.name == 'payload' }
+    assert column = JsonDataType.columns.find { |c| c.name == 'payload' }
 
     data = "{\"a_key\":\"a_value\"}"
-    hash = @column.class.string_to_json data
+    hash = string_to_json column, data
     assert_equal({'a_key' => 'a_value'}, hash)
-    assert_equal({'a_key' => 'a_value'}, @column.type_cast(data))
+    assert_equal({'a_key' => 'a_value'}, type_cast(column, data))
 
-    assert_equal({}, @column.type_cast("{}"))
-    assert_equal({'key'=>nil}, @column.type_cast('{"key": null}'))
-    assert_equal({'c'=>'}','"a"'=>'b "a b'}, @column.type_cast(%q({"c":"}", "\"a\"":"b \"a b"})))
+    assert_equal({}, type_cast(column, "{}"))
+    assert_equal({'key'=>nil}, type_cast(column, '{"key": null}'))
+    assert_equal({'c'=>'}','"a"'=>'b "a b'}, type_cast(column, %q({"c":"}", "\"a\"":"b \"a b"})))
   end
 
   def test_rewrite
@@ -94,6 +94,24 @@ class PostgreSQLJSONTest < Test::Unit::TestCase
     x = JsonDataType.first
     x.payload = ['v1', {'k2' => 'v2'}, 'v3']
     assert x.save!
+  end
+
+  private
+
+  def type_cast(column, data)
+    if ar_version('4.2')
+      column.type_cast_from_database data
+    else
+      column.class.type_cast data
+    end
+  end
+
+  def string_to_json(column, data)
+    if ar_version('4.2')
+      column.type_cast_from_database data
+    else
+      column.class.string_to_json data
+    end
   end
 
 end if Test::Unit::TestCase.ar_version('4.0')

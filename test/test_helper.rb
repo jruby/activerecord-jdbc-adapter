@@ -79,6 +79,9 @@ class Test::Unit::TestCase
 
   def ar_version(version); self.class.ar_version(version); end
 
+  def self.jruby?; !! defined?(JRUBY_VERSION) end
+  def jruby?; self.class.jruby? end
+
   def with_java_connection(config = nil)
     config ||= ActiveRecord::Base.connection.config
     jdbc_driver = ActiveRecord::ConnectionAdapters::JdbcDriver.new(config[:driver])
@@ -325,9 +328,10 @@ class Test::Unit::TestCase
 
   private
 
-  def arel_bind_param
+  def new_bind_param
     ar_version('4.2') ? Arel::Nodes::BindParam.new : Arel::Nodes::BindParam.new('?')
   end
+  alias_method :arel_bind_param, :new_bind_param
 
   def prepared_statements?(connection = ActiveRecord::Base.connection)
     connection.send :prepared_statements?

@@ -270,7 +270,11 @@ _SQL
   end if ar_version('4.0')
 
   def test_data_type_of_money_types
-    assert_equal :decimal, @first_money.column_for_attribute(:wealth).type
+    if ar_version('4.2')
+      assert_equal :money, @first_money.column_for_attribute(:wealth).type
+    else
+      assert_equal :decimal, @first_money.column_for_attribute(:wealth).type
+    end
   end
 
   def test_data_type_of_number_types
@@ -598,10 +602,17 @@ _SQL
 
   def test_money_type_cast
     column = PostgresqlMoney.columns.find { |c| c.name == 'wealth' }
-    assert_equal(12345678.12, column.type_cast("$12,345,678.12"))
-    assert_equal(12345678.12, column.type_cast("$12.345.678,12"))
-    assert_equal(-1.15, column.type_cast("-$1.15"))
-    assert_equal(-2.25, column.type_cast("($2.25)"))
+    if ar_version('4.2')
+      assert_equal(12345678.12, column.type_cast_from_database("$12,345,678.12"))
+      assert_equal(12345678.12, column.type_cast_from_database("$12.345.678,12"))
+      assert_equal(-1.15, column.type_cast_from_database("-$1.15"))
+      assert_equal(-2.25, column.type_cast_from_database("($2.25)"))
+    else
+      assert_equal(12345678.12, column.type_cast("$12,345,678.12"))
+      assert_equal(12345678.12, column.type_cast("$12.345.678,12"))
+      assert_equal(-1.15, column.type_cast("-$1.15"))
+      assert_equal(-2.25, column.type_cast("($2.25)"))
+    end
   end
 
   def test_update_number

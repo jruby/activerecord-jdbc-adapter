@@ -75,7 +75,7 @@ class MySQLRakeTest < Test::Unit::TestCase
     # Rake::Task["db:create"].invoke
     create_rake_test_database do |connection|
       create_schema_migrations_table(connection)
-      connection.create_table('users') { |t| t.string :name; t.timestamps }
+      connection.create_table('users') { |t| t.string :name, :null => true; t.timestamps }
     end
 
     structure_sql = File.join('db', structure_sql_filename)

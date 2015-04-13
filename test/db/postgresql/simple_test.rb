@@ -21,9 +21,11 @@ class PostgreSQLSimpleTest < Test::Unit::TestCase
 
     results = connection.execute "SELECT title FROM entries; SELECT login FROM users"
 
-    assert_equal 2, results.length
-    assert_equal ["title"], results[0].first.keys
-    assert_equal ["login"], results[1].first.keys
+    if defined? JRUBY_VERSION
+      assert_equal 2, results.length
+      assert_equal ["title"], results[0].first.keys
+      assert_equal ["login"], results[1].first.keys
+    end
   end
 
   test 'find_by_sql WITH statement' do
@@ -100,11 +102,23 @@ class PostgreSQLSimpleTest < Test::Unit::TestCase
 
   def test_resolves_correct_columns_default
     assert column = DbType.columns.find { |col| col.name == 'sample_small_decimal' }
-    assert_equal 3.14, column.default
+    unless ar_version('4.2')
+      assert_equal 3.14, column.default
+    else
+      assert_equal '3.14', column.default
+    end
     assert column = DbType.columns.find { |col| col.name == 'sample_integer_no_limit' }
-    assert_equal 42, column.default
+    unless ar_version('4.2')
+      assert_equal 42, column.default
+    else
+      assert_equal '42', column.default
+    end
     assert column = DbType.columns.find { |col| col.name == 'sample_integer_neg_default' }
-    assert_equal -1, column.default
+    unless ar_version('4.2')
+      assert_equal -1, column.default
+    else
+      assert_equal '-1', column.default
+    end
   end
 
   def test_standard_conforming_string_default_set_on_new_connections

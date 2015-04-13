@@ -15,6 +15,12 @@ module ArJdbc
     require 'arjdbc/postgresql/column'
     require 'arjdbc/postgresql/explain_support'
     require 'arjdbc/postgresql/schema_creation' # AR 4.x
+    #
+    # @private
+    IndexDefinition = ::ActiveRecord::ConnectionAdapters::IndexDefinition
+
+    # @private
+    Type = ::ActiveRecord::Type if AR42_COMPAT
 
     JdbcConnection = ::ActiveRecord::ConnectionAdapters::PostgreSQLJdbcConnection
 
@@ -41,14 +47,29 @@ module ArJdbc
     def postgresql_version
       @postgresql_version ||=
         begin
-          value = select_value('SELECT version()')
-          if value =~ /PostgreSQL (\d+)\.(\d+)\.(\d+)/
+          version = select_version
+          if version =~ /PostgreSQL (\d+)\.(\d+)\.(\d+)/
             ($1.to_i * 10000) + ($2.to_i * 100) + $3.to_i
           else
             0
           end
         end
     end
+
+    def select_version
+      @_version ||= select_value('SELECT version()')
+    end
+    private :select_version
+
+    def redshift?
+      # SELECT version() :
+      #  PostgreSQL 8.0.2 on i686-pc-linux-gnu, compiled by GCC gcc (GCC) 3.4.2 20041017 (Red Hat 3.4.2-6.fc3), Redshift 1.0.647
+      if ( redshift = config[:redshift] ).nil?
+        redshift = !! (select_version || '').index('Redshift')
+      end
+      redshift
+    end
+    private :redshift?
 
     def use_insert_returning?
       if @use_insert_returning.nil?
@@ -84,16 +105,16 @@ module ArJdbc
         execute("SET time zone 'UTC'", 'SCHEMA')
       elsif tz = local_tz
         execute("SET time zone '#{tz}'", 'SCHEMA')
-      end # if defined? ActiveRecord::Base.default_timezone
+      end unless redshift?
 
       # SET statements from :variables config hash
       # http://www.postgresql.org/docs/8.3/static/sql-set.html
       (config[:variables] || {}).map do |k, v|
         if v == ':default' || v == :default
           # Sets the value to the global or compile default
-          execute("SET SESSION #{k.to_s} TO DEFAULT", 'SCHEMA')
+          execute("SET SESSION #{k} TO DEFAULT", 'SCHEMA')
         elsif ! v.nil?
-          execute("SET SESSION #{k.to_s} TO #{quote(v)}", 'SCHEMA')
+          execute("SET SESSION #{k} TO #{quote(v)}", 'SCHEMA')
         end
       end
     end
@@ -150,7 +171,7 @@ module ArJdbc
         case column.sql_type
         when 'point'
           Column.point_to_string(value)
-        when 'json'
+        when 'json', 'jsonb'
           Column.json_to_string(value)
         else
           return super(value, column) unless column.array?
@@ -168,7 +189,7 @@ module ArJdbc
         case column.sql_type
         when 'hstore'
           Column.hstore_to_string(value)
-        when 'json'
+        when 'json', 'jsonb'
           Column.json_to_string(value)
         else super(value, column)
         end
@@ -181,7 +202,23 @@ module ArJdbc
       else
         super(value, column)
       end
-    end if AR4_COMPAT
+    end if AR4_COMPAT && ! AR42_COMPAT
+
+    # @private
+    def _type_cast(value)
+      case value
+      when Type::Binary::Data
+        # Return a bind param hash with format as binary.
+        # See http://deveiate.org/code/pg/PGconn.html#method-i-exec_prepared-doc
+        # for more information
+        { value: value.to_s, format: 1 }
+      when OID::Xml::Data, OID::Bit::Data
+        value.to_s
+      else
+        super
+      end
+    end if AR42_COMPAT
+    private :_type_cast if AR42_COMPAT
 
     NATIVE_DATABASE_TYPES = {
       :primary_key => "serial primary key",
@@ -214,6 +251,7 @@ module ArJdbc
       :macaddr => { :name => "macaddr" },
       :uuid => { :name => "uuid" },
       :json => { :name => "json" },
+      :jsonb => { :name => "jsonb" },
       :ltree => { :name => "ltree" },
       # ranges :
       :daterange => { :name => "daterange" },
@@ -236,6 +274,7 @@ module ArJdbc
     end
 
     # Adds `:array` option to the default set provided by the `AbstractAdapter`.
+    # @override
     def prepare_column_options(column, types)
       spec = super
       spec[:array] = 'true' if column.respond_to?(:array) && column.array
@@ -244,6 +283,7 @@ module ArJdbc
     end if AR4_COMPAT
 
     # Adds `:array` as a valid migration key.
+    # @override
     def migration_keys
       super + [:array]
     end if AR4_COMPAT
@@ -666,11 +706,15 @@ module ArJdbc
 
     # Returns the current client message level.
     def client_min_messages
+      return nil if redshift? # not supported on Redshift
       select_value('SHOW client_min_messages', 'SCHEMA')
     end
 
     # Set the client message level.
     def client_min_messages=(level)
+      # NOTE: for now simply ignore the writer (no warn on Redshift) so that
+      # the AR copy-pasted PpstgreSQL parts stay the same as much as possible
+      return nil if redshift? # not supported on Redshift
       execute("SET client_min_messages TO '#{level}'", 'SCHEMA')
     end
 
@@ -756,6 +800,8 @@ module ArJdbc
           "'#{Column.array_to_string(value, column, self).gsub(/'/, "''")}'"
         elsif column.type == :json # only in AR-4.0
           super(Column.json_to_string(value), column)
+        elsif column.type == :jsonb # only in AR-4.0
+          super(Column.json_to_string(value), column)
         elsif column.type == :point # only in AR-4.0
           super(Column.point_to_string(value), column)
         else super
@@ -764,6 +810,8 @@ module ArJdbc
         if column.type == :hstore # only in AR-4.0
           super(Column.hstore_to_string(value), column)
         elsif column.type == :json # only in AR-4.0
+          super(Column.json_to_string(value), column)
+        elsif column.type == :jsonb # only in AR-4.0
           super(Column.json_to_string(value), column)
         else super
         end
@@ -784,13 +832,22 @@ module ArJdbc
       end
     end unless AR42_COMPAT
 
-    def quote(value, column = nil)
-      return super unless column
-
+    # @private
+    def _quote(value)
       case value
+      when Type::Binary::Data
+        "'#{escape_bytea(value.to_s)}'"
+      when OID::Xml::Data
+        "xml '#{quote_string(value.to_s)}'"
+      when OID::Bit::Data
+        if value.binary?
+          "B'#{value}'"
+        elsif value.hex?
+          "X'#{value}'"
+        end
       when Float
         if value.infinite? || value.nan?
-          "'#{value.to_s}'"
+          "'#{value}'"
         else
           super
         end
@@ -798,6 +855,7 @@ module ArJdbc
         super
       end
     end if AR42_COMPAT
+    private :_quote if AR42_COMPAT
 
     # @return [String]
     def quote_bit(value)
@@ -843,7 +901,7 @@ module ArJdbc
     # @override
     def quote_table_name_for_assignment(table, attr)
       quote_column_name(attr)
-    end if ::ActiveRecord::VERSION::MAJOR >= 4
+    end if AR4_COMPAT
 
     # @private
     def quote_default_value(value, column)
@@ -993,9 +1051,8 @@ module ArJdbc
 
     # Returns the list of all column definitions for a table.
     def columns(table_name, name = nil)
-      pass_cast_type = respond_to?(:lookup_cast_type)
-      column_definitions(table_name).map do |row|
-        # name, type, default, notnull, oid, fmod
+      column_definitions(table_name).map! do |row|
+        # |name, type, default, notnull, oid, fmod|
         name = row[0]; type = row[1]; default = row[2]
         notnull = row[3]; oid = row[4]; fmod = row[5]
         # oid = OID::TYPE_MAP.fetch(oid.to_i, fmod.to_i) { OID::Identity.new }
@@ -1007,18 +1064,41 @@ module ArJdbc
         elsif default =~ /^\(([-+]?[\d\.]+)\)$/ # e.g. "(-1)" for a negative default
           default = $1
         end
-        if pass_cast_type
-          cast_type = lookup_cast_type(type)
-          Column.new(name, default, cast_type, type, ! notnull, fmod, self)
-        else
-          Column.new(name, default, oid, type, ! notnull, fmod, self)
-        end
+
+        Column.new(name, default, oid, type, ! notnull, fmod, self)
       end
     end
 
+    # @private documented above
+    def columns(table_name)
+      column = jdbc_column_class
+      # Limit, precision, and scale are all handled by the superclass.
+      column_definitions(table_name).map! do |row|
+        # |name, type, default, notnull, oid, fmod|
+        name = row[0]; type = row[1]; default = row[2]
+        notnull = row[3]; oid = row[4]; fmod = row[5]
+        notnull = notnull == 't' if notnull.is_a?(String) # JDBC gets true/false
+
+        oid_type = get_oid_type(oid.to_i, fmod.to_i, name, type)
+        default_value = extract_value_from_default(oid, default)
+        default_function = extract_default_function(default_value, default)
+
+        column.new(name, default_value, oid_type, type, ! notnull, default_function, oid, self)
+      end
+    end if AR42_COMPAT
+
+    # @private only for API compatibility
+    def new_column(name, default, cast_type, sql_type = nil, null = true, default_function = nil)
+      jdbc_column_class.new(name, default, cast_type, sql_type, null, default_function)
+    end if AR42_COMPAT
+
     # @private
     def column_for(table_name, column_name)
-      columns(table_name).detect { |c| c.name == column_name.to_s }
+      column_name = column_name.to_s
+      for column in columns(table_name)
+        return column if column.name == column_name
+      end
+      nil
     end
 
     # Returns the list of a table's column names, data types, and default values.
@@ -1092,9 +1172,6 @@ module ArJdbc
           AND i.relnamespace IN (SELECT oid FROM pg_namespace WHERE nspname = ANY (current_schemas(false)) )
       SQL
     end if AR42_COMPAT
-
-    # @private
-    IndexDefinition = ::ActiveRecord::ConnectionAdapters::IndexDefinition
 
     # Returns an array of indexes for the given table.
     def indexes(table_name, name = nil)
@@ -1208,33 +1285,6 @@ module ActiveRecord::ConnectionAdapters
   remove_const(:PostgreSQLColumn) if const_defined?(:PostgreSQLColumn)
   class PostgreSQLColumn < JdbcColumn
     include ::ArJdbc::PostgreSQL::ColumnMethods
-
-    def initialize(name, default, oid_type = nil, sql_type = nil, null = true,
-        fmod = nil, adapter = nil) # added due resolving #oid_type
-      if oid_type.is_a?(Integer) # the "main" if branch (on AR 4.x)
-        @oid = oid_type; @fmod = fmod; @adapter = adapter # see Column#oid_type
-      elsif oid_type.respond_to?(:type_cast) # MRI compatibility
-        @oid_type = oid_type; # @fmod = fmod; @adapter = adapter
-      else # NOTE: AR <= 3.2 : (name, default, sql_type = nil, null = true)
-        null, sql_type, oid_type = !! sql_type, oid_type, nil
-      end
-      if sql_type.to_s[-2, 2] == '[]' && ArJdbc::PostgreSQL::AR4_COMPAT
-        @array = true if respond_to?(:array)
-        super(name, default, sql_type[0..-3], null)
-      else
-        @array = false if respond_to?(:array)
-        super(name, default, sql_type, null)
-      end
-
-      @default_function = default if has_default_function?(@default, default)
-    end
-
-    private
-
-    def has_default_function?(default_value, default)
-      ! default_value && ( %r{\w+\(.*\)} === default )
-    end
-
   end
 
   # NOTE: seems needed on 4.x due loading of '.../postgresql/oid' which
@@ -1244,8 +1294,9 @@ module ActiveRecord::ConnectionAdapters
     include ::ArJdbc::PostgreSQL
     include ::ArJdbc::PostgreSQL::ExplainSupport
 
-    require 'arjdbc/postgresql/oid_types' if ::ArJdbc::PostgreSQL::AR4_COMPAT
+    require 'arjdbc/postgresql/oid_types' if AR4_COMPAT
     include ::ArJdbc::PostgreSQL::OIDTypes if ::ArJdbc::PostgreSQL.const_defined?(:OIDTypes)
+    include ::ArJdbc::PostgreSQL::ColumnHelpers if AR42_COMPAT
 
     include ::ArJdbc::Util::QuotedCache
 
@@ -1256,6 +1307,8 @@ module ActiveRecord::ConnectionAdapters
       super # configure_connection happens in super
 
       @table_alias_length = nil
+
+      initialize_type_map(@type_map = Type::HashLookupTypeMap.new) if AR42_COMPAT
 
       @use_insert_returning = @config.key?(:insert_returning) ?
         self.class.type_cast_config_to_boolean(@config[:insert_returning]) : nil

@@ -7,7 +7,9 @@ module ArJdbc
   module MySQL
 
     # @private
-    AR42 = ActiveRecord::VERSION::STRING >= '4.2'
+    AR40 = ::ActiveRecord::VERSION::MAJOR > 3
+    # @private
+    AR42 = ::ActiveRecord::VERSION::STRING >= '4.2'
 
     require 'arjdbc/mysql/column'
     require 'arjdbc/mysql/bulk_change_table'
@@ -15,6 +17,9 @@ module ArJdbc
     require 'arjdbc/mysql/schema_creation' # AR 4.x
 
     include BulkChangeTable if const_defined? :BulkChangeTable
+
+    # @private
+    ActiveRecordError = ::ActiveRecord::ActiveRecordError
 
     JdbcConnection = ::ActiveRecord::ConnectionAdapters::MySQLJdbcConnection
 
@@ -74,7 +79,7 @@ module ArJdbc
 
       @strict_mode = config.key?(:strict) ?
         self.class.type_cast_config_to_boolean(config[:strict]) :
-          ::ActiveRecord::VERSION::MAJOR > 3
+          AR40 # strict_mode is default since AR 4.0
     end
 
     # @private
@@ -160,7 +165,7 @@ module ArJdbc
       else
         ActiveRecord::SchemaMigration.create_table
       end
-    end if ::ActiveRecord::VERSION::MAJOR > 3
+    end if AR40
 
     # HELPER METHODS ===========================================
 
@@ -194,7 +199,16 @@ module ArJdbc
       else
         super
       end
-    end
+    end unless AR42
+
+    # @private since AR 4.2
+    def _quote(value)
+      if value.is_a?(Type::Binary::Data)
+        "x'#{value.hex}'"
+      else
+        super
+      end
+    end if AR42
 
     # @override
     def quote_column_name(name)
@@ -224,6 +238,11 @@ module ArJdbc
     end
 
     # @override
+    def supports_indexes_in_create?
+      true
+    end
+
+    # @override
     def supports_transaction_isolation?
       # MySQL 4 technically support transaction isolation, but it is affected by
       # a bug where the transaction level gets persisted for the whole session:
@@ -240,6 +259,10 @@ module ArJdbc
       return false if mariadb? || ! version[0]
       (version[0] == 5 && version[1] >= 7) || version[0] >= 6
     end
+
+    def index_algorithms
+      { :default => 'ALGORITHM = DEFAULT', :copy => 'ALGORITHM = COPY', :inplace => 'ALGORITHM = INPLACE' }
+    end if AR42
 
     # @override
     def supports_transaction_isolation?(level = nil)
@@ -305,12 +328,8 @@ module ArJdbc
     # @private
     IndexDefinition = ::ActiveRecord::ConnectionAdapters::IndexDefinition
 
-    if ::ActiveRecord::VERSION::MAJOR > 3
-
-    INDEX_TYPES = [ :fulltext, :spatial ]
-    INDEX_USINGS = [ :btree, :hash ]
-
-    end
+    INDEX_TYPES = [ :fulltext, :spatial ] if AR40
+    INDEX_USINGS = [ :btree, :hash ] if AR40
 
     # Returns an array of indexes for the given table.
     # @override
@@ -343,7 +362,7 @@ module ArJdbc
     # Returns an array of `Column` objects for the table specified.
     # @override
     def columns(table_name, name = nil)
-      sql = "SHOW FULL COLUMNS FROM #{quote_table_name(table_name)}"
+      sql = "SHOW FULL #{AR40 ? 'FIELDS' : 'COLUMNS'} FROM #{quote_table_name(table_name)}"
       columns = execute(sql, name || 'SCHEMA')
       strict = strict_mode?
       pass_cast_type = respond_to?(:lookup_cast_type)
@@ -531,6 +550,11 @@ module ArJdbc
       execute(change_column_sql)
     end
 
+    # @private
+    def change_column(table_name, column_name, type, options = {})
+      execute("ALTER TABLE #{quote_table_name(table_name)} #{change_column_sql(table_name, column_name, type, options)}")
+    end if AR42
+
     # @override
     def rename_column(table_name, column_name, new_column_name)
       options = {}
@@ -540,7 +564,7 @@ module ArJdbc
         options[:default] = column.default if type != :text && type != :binary
         options[:null] = column.null
       else
-        raise ActiveRecord::ActiveRecordError, "No such column: #{table_name}.#{column_name}"
+        raise ActiveRecordError, "No such column: #{table_name}.#{column_name}"
       end
 
       current_type = select_one("SHOW COLUMNS FROM #{quote_table_name(table_name)} LIKE '#{column_name}'")["Type"]
@@ -616,7 +640,7 @@ module ArJdbc
         when 0..0xfff; "varbinary(#{limit})"
         when nil; "blob"
         when 0x1000..0xffffffff; "blob(#{limit})"
-        else raise ActiveRecord::ActiveRecordError, "No binary type has character length #{limit}"
+        else raise ActiveRecordError, "No binary type has character length #{limit}"
         end
       when 'integer'
         case limit
@@ -625,7 +649,7 @@ module ArJdbc
         when 3; 'mediumint'
         when nil, 4, 11; 'int(11)' # compatibility with MySQL default
         when 5..8; 'bigint'
-        else raise ActiveRecord::ActiveRecordError, "No integer type has byte size #{limit}"
+        else raise ActiveRecordError, "No integer type has byte size #{limit}"
         end
       when 'text'
         case limit
@@ -633,7 +657,7 @@ module ArJdbc
         when nil, 0x100..0xffff; 'text'
         when 0x10000..0xffffff; 'mediumtext'
         when 0x1000000..0xffffffff; 'longtext'
-        else raise ActiveRecord::ActiveRecordError, "No text type has character length #{limit}"
+        else raise ActiveRecordError, "No text type has character length #{limit}"
         end
       else
         super
@@ -645,7 +669,90 @@ module ArJdbc
       "VALUES ()"
     end
 
+    # @note since AR 4.2
+    def valid_type?(type)
+      ! native_database_types[type].nil?
+    end
+
+    def clear_cache!
+      super
+      reload_type_map
+    end if AR42
+
+    # @private since AR 4.2
+    def prepare_column_options(column, types)
+      spec = super
+      spec.delete(:limit) if column.type == :boolean
+      spec
+    end if AR42
+
+    # @private
+    Type = ActiveRecord::Type if AR42
+
     protected
+
+    # @private
+    def initialize_type_map(m)
+      super
+
+      register_class_with_limit m, %r(char)i, MysqlString
+
+      m.register_type %r(tinytext)i,   Type::Text.new(limit: 2**8 - 1)
+      m.register_type %r(tinyblob)i,   Type::Binary.new(limit: 2**8 - 1)
+      m.register_type %r(text)i,       Type::Text.new(limit: 2**16 - 1)
+      m.register_type %r(blob)i,       Type::Binary.new(limit: 2**16 - 1)
+      m.register_type %r(mediumtext)i, Type::Text.new(limit: 2**24 - 1)
+      m.register_type %r(mediumblob)i, Type::Binary.new(limit: 2**24 - 1)
+      m.register_type %r(longtext)i,   Type::Text.new(limit: 2**32 - 1)
+      m.register_type %r(longblob)i,   Type::Binary.new(limit: 2**32 - 1)
+      m.register_type %r(^float)i,     Type::Float.new(limit: 24)
+      m.register_type %r(^double)i,    Type::Float.new(limit: 53)
+
+      register_integer_type m, %r(^bigint)i,    limit: 8
+      register_integer_type m, %r(^int)i,       limit: 4
+      register_integer_type m, %r(^mediumint)i, limit: 3
+      register_integer_type m, %r(^smallint)i,  limit: 2
+      register_integer_type m, %r(^tinyint)i,   limit: 1
+
+      m.alias_type %r(tinyint\(1\))i,  'boolean' if emulate_booleans
+      m.alias_type %r(set)i,           'varchar'
+      m.alias_type %r(year)i,          'integer'
+      m.alias_type %r(bit)i,           'binary'
+
+      m.register_type(%r(datetime)i) do |sql_type|
+        precision = extract_precision(sql_type)
+        MysqlDateTime.new(precision: precision)
+      end
+
+      m.register_type(%r(enum)i) do |sql_type|
+        limit = sql_type[/^enum\((.+)\)/i, 1]
+          .split(',').map{|enum| enum.strip.length - 2}.max
+        MysqlString.new(limit: limit)
+      end
+    end if AR42
+
+    # @private
+    def register_integer_type(mapping, key, options)
+      mapping.register_type(key) do |sql_type|
+        if /unsigned/i =~ sql_type
+          Type::UnsignedInteger.new(options)
+        else
+          Type::Integer.new(options)
+        end
+      end
+    end if AR42
+
+    # MySQL is too stupid to create a temporary table for use subquery, so we have
+    # to give it some prompting in the form of a subsubquery. Ugh!
+    # @note since AR 4.2
+    def subquery_for(key, select)
+      subsubselect = select.clone
+      subsubselect.projections = [key]
+
+      subselect = Arel::SelectManager.new(select.engine)
+      subselect.project Arel.sql(key.name)
+      subselect.from subsubselect.as('__active_record_temp')
+    end if AR42
 
     def quoted_columns_for_index(column_names, options = {})
       length = options[:length] if options.is_a?(Hash)
@@ -710,6 +817,40 @@ module ArJdbc
         result.first.values.first # [{"VERSION()"=>"5.5.37-0ubuntu..."}]
       end
     end
+
+    # @private
+    def emulate_booleans; ::ArJdbc::MySQL.emulate_booleans?; end # due AR 4.2
+    public :emulate_booleans
+
+    # @private
+    class MysqlDateTime < Type::DateTime
+      private
+
+      def has_precision?
+        precision || 0
+      end
+    end if AR42
+
+    # @private
+    class MysqlString < Type::String
+      def type_cast_for_database(value)
+        case value
+        when true then "1"
+        when false then "0"
+        else super
+        end
+      end
+
+      private
+
+      def cast_value(value)
+        case value
+        when true then "1"
+        when false then "0"
+        else super
+        end
+      end
+    end if AR42
 
   end
 end

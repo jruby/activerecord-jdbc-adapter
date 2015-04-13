@@ -3,10 +3,13 @@ module ArJdbc
     module BulkChangeTable
 
       # @private
-      AR41 = ActiveRecord::VERSION::STRING >= '4.1'
+      AR41 = ::ActiveRecord::VERSION::STRING >= '4.1'
 
       # @private
-      ChangeColumnDefinition = ActiveRecord::ConnectionAdapters::ChangeColumnDefinition if AR41
+      #ActiveRecordError = ActiveRecord::ActiveRecordError
+
+      # @private
+      ChangeColumnDefinition = ::ActiveRecord::ConnectionAdapters::ChangeColumnDefinition if AR41
 
       # @override
       def supports_bulk_alter?; true end
@@ -106,12 +109,12 @@ module ArJdbc
         schema_creation.accept ChangeColumnDefinition.new column, current_type, options
       end if AR41
 
-      def remove_column_sql(table_name, column_name, type = nil, options = {})
+      def remove_column_sql(table_name, column_name, type = nil, options = nil)
         "DROP #{quote_column_name(column_name)}"
       end
 
       def remove_columns_sql(table_name, *column_names)
-        column_names.map {|column_name| remove_column_sql(table_name, column_name) }
+        column_names.map { |column_name| remove_column_sql(table_name, column_name) }
       end
 
       def add_index_sql(table_name, column_name, options = {})

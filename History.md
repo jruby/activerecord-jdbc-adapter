@@ -1,3 +1,17 @@
+## 1.3.16 (04/13/15)
+
+- [h2] allow jdbch2 adapter to use jdbc-h2 1.4 (#639)
+- [postgres] quote and type_cast should not be overriden on 4.2
+- [postgres] fix table column resolution (slightly align it to our needs) on 4.2
+- [postgres] re-arrange Column internals as some helpers end-up on Adapter in 4.2
+- [mysql] change_column table is redefined on AR 4.2 so that it uses _sql version
+- [mysql] more tuning/compatibility backports for AR 4.2 (working booleans #626)
+- [mysql] type-map support copy-pasta from AR 4.2 (closer to full compat) (#617)
+- [postgres] improved support for Amazon Redshift (based on user feedback #403)
+- fixed problem with create table statements with references in MySQL (#629)
+- fix RecordNotUnique reference in ArJdbc::SQlite3 (#634)
+- [postgres] add support for jsonb column type (#633 #635 #637)
+
 ## 1.3.15 (03/09/15)
 
 - [informix] adapter undefined method 'column_types' with Rails 4.x (#622)

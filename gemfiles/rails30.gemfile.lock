@@ -23,7 +23,7 @@ GEM
     mocha (0.13.3)
       metaclass (~> 0.0.1)
     multi_json (1.10.1)
-    rake (10.3.2)
+    rake (10.4.2)
     simplecov (0.9.1)
       docile (~> 1.1.0)
       multi_json (~> 1.0)
@@ -45,7 +45,7 @@ DEPENDENCIES
   mocha (~> 0.13.1)
   mysql2
   pg
-  rake (~> 10.3.2)
+  rake (~> 10.4.2)
   simplecov
   sqlite3
   test-unit (~> 2.5.4)

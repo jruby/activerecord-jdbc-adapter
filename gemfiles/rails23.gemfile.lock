@@ -28,7 +28,7 @@ GEM
       activeresource (= 2.3.18)
       activesupport (= 2.3.18)
       rake (>= 0.8.3)
-    rake (10.3.2)
+    rake (10.4.2)
     simplecov (0.9.1)
       docile (~> 1.1.0)
       multi_json (~> 1.0)
@@ -50,7 +50,7 @@ DEPENDENCIES
   mysql2
   pg
   rails (~> 2.3.18)
-  rake (~> 10.3.2)
+  rake (~> 10.4.2)
   simplecov
   sqlite3
   test-unit (~> 2.5.4)
