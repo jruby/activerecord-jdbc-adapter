@@ -788,7 +788,7 @@ module SimpleTestMethods
 
     arel = update_manager Entry, :title => ( value = "?baz?!?" )
     if prepared_statements?
-      arel.where Entry.arel_table[:id].eq(Arel::Nodes::BindParam.new('?'))
+      arel.where Entry.arel_table[:id].eq(new_bind_param)
       binds = [ [ column, value ], [ Entry.columns_hash['id'], entry.id ] ]
     else
       arel.where Entry.arel_table[:id].eq( entry.id.to_s )
@@ -830,7 +830,7 @@ module SimpleTestMethods
     arel = Arel::DeleteManager.new Entry.arel_engine
     arel.from arel_table = Entry.arel_table
     if prepared_statements?
-      arel.where arel_table[:title].eq(Arel::Nodes::BindParam.new('?'))
+      arel.where arel_table[:title].eq(new_bind_param)
       binds = [ [ Entry.columns_hash['title'], "foo?!?" ] ]
     else
       arel.where arel_table[:title].eq( "foo?!?" )
@@ -994,7 +994,7 @@ module SimpleTestMethods
     arel.into table.arel_table
     if columns
       values = columns.map do |name, value|
-        value = Arel::Nodes::BindParam.new('?') if prepared_statements?
+        value = new_bind_param if prepared_statements?
         [ table.arel_table[name.to_sym], value ]
       end
       arel.insert values
@@ -1022,7 +1022,7 @@ module SimpleTestMethods
     arel.table table.arel_table
     if columns
       values = columns.map do |name, value|
-        value = Arel::Nodes::BindParam.new('?') if prepared_statements?
+        value = new_bind_param if prepared_statements?
         [ table.arel_table[name.to_sym], value ]
       end
       arel.set values
@@ -1038,7 +1038,7 @@ module SimpleTestMethods
     entry = Entry.create! :title => '42'
     arel = Arel::DeleteManager.new Entry.arel_engine
     arel.from arel_table = Entry.arel_table
-    arel.where arel_table[:title].eq(arel_bind_param)
+    arel.where arel_table[:title].eq(new_bind_param)
     column = Entry.columns_hash['title']
 
     connection.exec_delete arel, 'DELETE(entry)', [ [ column, "42" ] ]
