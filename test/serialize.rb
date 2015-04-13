@@ -199,7 +199,7 @@ module SerializeTestMethods
     topic = Topic.new(:content => true)
     assert topic.save
     topic = topic.reload
-    assert_equal topic.content, true
+    assert_equal true, topic.content
   end if Test::Unit::TestCase.ar_version('3.0')
 
   def test_serialized_boolean_value_false
@@ -207,7 +207,7 @@ module SerializeTestMethods
     topic = Topic.new(:content => false)
     assert topic.save
     topic = topic.reload
-    assert_equal topic.content, false
+    assert_equal false, topic.content
   end if Test::Unit::TestCase.ar_version('3.0')
 
   def test_serialize_with_coder

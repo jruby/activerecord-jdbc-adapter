@@ -86,14 +86,25 @@ class PostgreSQLArrayTypeTest < Test::Unit::TestCase
     # casting
     #array = column.class.string_to_array data, oid_type
     #assert_equal(['1', '2', '3'], array)
-    assert_equal(['1', '2', '3'], column.type_cast(data))
+    if ar_version('4.2')
+      assert_equal(['1', '2', '3'], column.type_cast_from_database(data))
 
-    assert_equal([], column.type_cast('{}'))
-    assert_equal([nil], column.type_cast('{NULL}'))
+      assert_equal([], column.type_cast_from_database('{}'))
+      assert_equal([nil], column.type_cast_from_database('{NULL}'))
 
-    column = PgArray.columns.find { |c| c.name == 'tag_count' }
-    assert_equal([1, 2, 3], column.type_cast(data))
-    assert_equal([], column.type_cast("{}"))
+      column = PgArray.columns.find { |c| c.name == 'tag_count' }
+      assert_equal([1, 2, 3], column.type_cast_from_database(data))
+      assert_equal([], column.type_cast_from_database("{}"))
+    else
+      assert_equal(['1', '2', '3'], column.type_cast(data))
+
+      assert_equal([], column.type_cast('{}'))
+      assert_equal([nil], column.type_cast('{NULL}'))
+
+      column = PgArray.columns.find { |c| c.name == 'tag_count' }
+      assert_equal([1, 2, 3], column.type_cast(data))
+      assert_equal([], column.type_cast("{}"))
+    end
   end
 
   def test_rewrite

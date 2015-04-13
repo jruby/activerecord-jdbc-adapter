@@ -42,7 +42,7 @@ class PostgresqlOOIDTypesTest < Test::Unit::TestCase
   def test_resolves_oid_type
     column = SomeSample.columns_hash['str']
     if ar_version('4.2')
-      assert_instance_of OID::String, column.oid_type
+      assert_instance_of ActiveRecord::Type::String, column.cast_type
     else # 4.1/4.0
       assert_kind_of OID::Identity, column.oid_type
     end
@@ -56,7 +56,7 @@ class PostgresqlOOIDTypesTest < Test::Unit::TestCase
       column = adapter.columns('some_samples').find { |c| c.name.to_sym == :int }
     end
     assert_not_nil column
-    assert_instance_of OID::Integer, column.oid_type
+    assert_instance_of OID::Integer, oid_type(column)
   end if ar_version('4.1')
 
   def test_returns_column_accessor_for_hstore
@@ -75,11 +75,11 @@ class PostgresqlOOIDTypesTest < Test::Unit::TestCase
     SomeSample.reset_column_information
 
     assert_not_nil column = SomeSample.columns_hash['hst']
-    assert_instance_of OID::Hstore, column.oid_type
+    assert_instance_of OID::Hstore, oid_type(column)
     assert_not_nil column = SomeSample.columns_hash['ltr']
     if ar_version('4.2')
-      assert_instance_of OID::SpecializedString, column.oid_type
-    else # 4.1/4.0
+      assert_kind_of ActiveRecord::Type::String, column.cast_type
+    else
       assert_kind_of OID::Identity, column.oid_type
     end
   end
@@ -87,5 +87,9 @@ class PostgresqlOOIDTypesTest < Test::Unit::TestCase
   ActiveRecord::ConnectionAdapters::PostgreSQLColumn.class_eval do
     def oid_type; @oid_type end
   end unless defined? JRUBY_VERSION
+
+  def oid_type(column)
+    ar_version('4.2') ? column.cast_type : column.oid_type
+  end
 
 end if Test::Unit::TestCase.ar_version('4.0')

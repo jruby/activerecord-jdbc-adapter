@@ -74,57 +74,39 @@ class PostgreSQLHstoreTest < Test::Unit::TestCase
     assert @column
 
     data = "\"1\"=>\"2\""
-    hash = @column.class.string_to_hstore data
+    hash = string_to_hstore @column, data
     assert_equal({'1' => '2'}, hash)
-    assert_equal({'1' => '2'}, @column.type_cast(data))
+    assert_equal({'1' => '2'}, type_cast(@column, data))
 
-    assert_equal({}, @column.type_cast(""))
-    assert_equal({'key'=>nil}, @column.type_cast('key => NULL'))
-    assert_equal({'c'=>'}','"a"'=>'b "a b'}, @column.type_cast(%q(c=>"}", "\"a\""=>"b \"a b")))
+    assert_equal({}, type_cast(@column, ""))
+    assert_equal({'key'=>nil}, type_cast(@column, 'key => NULL'))
+    assert_equal({'c'=>'}','"a"'=>'b "a b'}, type_cast(@column, %q(c=>"}", "\"a\""=>"b \"a b")))
   end
 
   def test_gen1
-    assert_equal(%q(" "=>""), @column.class.hstore_to_string({' '=>''}))
+    assert_equal(%q(" "=>""), hstore_to_string(@column, {' '=>''}))
   end
 
   def test_gen2
-    assert_equal(%q(","=>""), @column.class.hstore_to_string({','=>''}))
+    assert_equal(%q(","=>""), hstore_to_string(@column, {','=>''}))
   end
 
   def test_gen3
-    assert_equal(%q("="=>""), @column.class.hstore_to_string({'='=>''}))
+    assert_equal(%q("="=>""), hstore_to_string(@column, {'='=>''}))
   end
 
   def test_gen4
-    assert_equal(%q(">"=>""), @column.class.hstore_to_string({'>'=>''}))
+    assert_equal(%q(">"=>""), hstore_to_string(@column, {'>'=>''}))
   end
 
-  def test_parse1
-    assert_equal({'a'=>nil,'b'=>nil,'c'=>'NuLl','null'=>'c'}, @column.type_cast('a=>null,b=>NuLl,c=>"NuLl",null=>c'))
-  end
-
-  def test_parse2
-    assert_equal({" " => " "},  @column.type_cast("\\ =>\\ "))
-  end
-
-  def test_parse3
-    assert_equal({"=" => ">"},  @column.type_cast("==>>"))
-  end
-
-  def test_parse4
-    assert_equal({"=a"=>"q=w"},   @column.type_cast('\=a=>q=w'))
-  end
-
-  def test_parse5
-    assert_equal({"=a"=>"q=w"},   @column.type_cast('"=a"=>q\=w'))
-  end
-
-  def test_parse6
-    assert_equal({"\"a"=>"q>w"},  @column.type_cast('"\"a"=>q>w'))
-  end
-
-  def test_parse7
-    assert_equal({"\"a"=>"q\"w"}, @column.type_cast('\"a=>q"w'))
+  def test_parse
+    assert_equal({'a'=>nil,'b'=>nil,'c'=>'NuLl','null'=>'c'}, type_cast(@column, 'a=>null,b=>NuLl,c=>"NuLl",null=>c'))
+    assert_equal({" " => " "},  type_cast(@column, "\\ =>\\ "))
+    assert_equal({"=" => ">"}, type_cast(@column, "==>>"))
+    assert_equal({"=a"=>"q=w"}, type_cast(@column, '\=a=>q=w'))
+    assert_equal({"=a"=>"q=w"}, type_cast(@column, '"=a"=>q\=w'))
+    assert_equal({"\"a"=>"q>w"}, type_cast(@column, '"\"a"=>q>w'))
+    assert_equal({"\"a"=>"q\"w"}, type_cast(@column, '\"a=>q"w'))
   end
 
   def test_rewrite
@@ -198,6 +180,31 @@ class PostgreSQLHstoreTest < Test::Unit::TestCase
   end
 
   private
+
+  def type_cast(column, value)
+    if ar_version('4.2')
+      column.type_cast_from_database value
+    else
+      column.type_cast value
+    end
+  end
+
+  def string_to_hstore(column, value)
+    if ar_version('4.2')
+      column.type_cast_from_database value
+    else
+      column.class.string_to_hstore value
+    end
+  end
+
+  def hstore_to_string(column, value)
+    if ar_version('4.2')
+      column.type_cast_for_database value
+    else
+      column.class.hstore_to_string value
+    end
+  end
+
   def assert_cycle hash
     # test creation
     x = Hstore.create!(:tags => hash)

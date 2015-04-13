@@ -79,6 +79,9 @@ class Test::Unit::TestCase
 
   def ar_version(version); self.class.ar_version(version); end
 
+  def self.jruby?; !! defined?(JRUBY_VERSION) end
+  def jruby?; self.class.jruby? end
+
   def with_java_connection(config = nil)
     config ||= ActiveRecord::Base.connection.config
     jdbc_driver = ActiveRecord::ConnectionAdapters::JdbcDriver.new(config[:driver])
