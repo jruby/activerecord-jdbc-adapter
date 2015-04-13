@@ -21,13 +21,25 @@ DRIVERS  = %w[derby h2 hsqldb jtds mysql postgres sqlite3].map { |a| "jdbc-#{a}"
 TARGETS = ( ADAPTERS + DRIVERS )
 
 rake = lambda { |task| ruby "-S", "rake", task }
+current_version = lambda { Bundler.load_gemspec('activerecord-jdbc-adapter.gemspec').version }
 
-TARGETS.each do |target|
+ADAPTERS.each do |target|
+  task :build do
+    version = current_version.call
+    Dir.chdir(target) { rake.call "build" }
+    cp FileList["#{target}/pkg/#{target}-#{version}.gem"], "pkg"
+  end
+end
+DRIVERS.each do |target|
   namespace target do
     task :build do
       Dir.chdir(target) { rake.call "build" }
       cp FileList["#{target}/pkg/#{target}-*.gem"], "pkg"
     end
+  end
+end
+TARGETS.each do |target|
+  namespace target do
     task :install do
       Dir.chdir(target) { rake.call "install" }
     end
@@ -66,15 +78,16 @@ task "release:adapters" => [ 'release' ] + ADAPTERS.map { |name| "#{name}:releas
 task "adapters:release" => 'release:adapters'
 
 task 'release:do' => 'build:adapters' do
-  gemspec = Bundler.load_gemspec('activerecord-jdbc-adapter.gemspec')
-  version = gemspec.version; version_tag = "v#{version}"
+  version = current_version.call; version_tag = "v#{version}"
 
   sh("git diff --no-patch --exit-code") { |ok| fail "git working dir is not clean" unless ok }
   sh("git diff-index --quiet --cached HEAD") { |ok| fail "git index is not clean" unless ok }
 
   sh "git tag -a -m \"AR-JDBC #{version}\" #{version_tag}"
+  branch = `git rev-parse --abbrev-ref HEAD`.strip
+  puts "releasing from (current) branch #{branch.inspect}"
   sh "for gem in `ls pkg/*-#{version}.gem`; do gem push $gem; done" do |ok|
-    sh "git push origin master --tags" if ok
+    sh "git push origin #{branch} --tags" if ok
   end
 end
 
