@@ -1330,33 +1330,6 @@ module ActiveRecord::ConnectionAdapters
 
   class PostgreSQLColumn < JdbcColumn
     include ::ArJdbc::PostgreSQL::Column
-
-    def initialize(name, default, oid_type = nil, sql_type = nil, null = true,
-        fmod = nil, adapter = nil) # added due resolving #oid_type
-      if oid_type.is_a?(Integer) # the "main" if branch (on AR 4.x)
-        @oid = oid_type; @fmod = fmod; @adapter = adapter # see Column#oid_type
-      elsif oid_type.respond_to?(:type_cast) # MRI compatibility
-        @oid_type = oid_type; # @fmod = fmod; @adapter = adapter
-      else # NOTE: AR <= 3.2 : (name, default, sql_type = nil, null = true)
-        null, sql_type, oid_type = !! sql_type, oid_type, nil
-      end
-      if sql_type.to_s[-2, 2] == '[]' && ArJdbc::PostgreSQL::AR4_COMPAT
-        @array = true if respond_to?(:array)
-        super(name, default, sql_type[0..-3], null)
-      else
-        @array = false if respond_to?(:array)
-        super(name, default, sql_type, null)
-      end
-
-      @default_function = default if has_default_function?(@default, default)
-    end
-
-    private
-
-    def has_default_function?(default_value, default)
-      ! default_value && ( %r{\w+\(.*\)} === default )
-    end
-
   end
 
   # NOTE: seems needed on 4.x due loading of '.../postgresql/oid' which
@@ -1367,8 +1340,9 @@ module ActiveRecord::ConnectionAdapters
     include ::ArJdbc::PostgreSQL
     include ::ArJdbc::PostgreSQL::ExplainSupport
 
-    require 'arjdbc/postgresql/oid_types' if ::ArJdbc::PostgreSQL::AR4_COMPAT
+    require 'arjdbc/postgresql/oid_types' if AR4_COMPAT
     include ::ArJdbc::PostgreSQL::OIDTypes if ::ArJdbc::PostgreSQL.const_defined?(:OIDTypes)
+    include ::ArJdbc::PostgreSQL::ColumnHelpers if AR42_COMPAT
 
     include ::ArJdbc::Util::QuotedCache
 

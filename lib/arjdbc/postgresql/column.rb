@@ -6,35 +6,114 @@ module ArJdbc
       [ /postgre/i, lambda { |cfg, column| column.extend(Column) } ]
     end
 
+    # @private these are defined on the Adapter class since 4.2
+    module ColumnHelpers
+
+      def extract_limit(sql_type) # :nodoc:
+        case sql_type
+        when /^bigint/i, /^int8/i then 8
+        when /^smallint/i then 2
+        when /^timestamp/i then nil
+        else
+          super
+        end
+      end
+
+      # Extracts the value from a PostgreSQL column default definition.
+      def extract_value_from_default(oid, default) # :nodoc:
+        case default
+          # Quoted types
+          when /\A[\(B]?'(.*)'::/m
+            $1.gsub(/''/, "'")
+          # Boolean types
+          when 'true', 'false'
+            default
+          # Numeric types
+          when /\A\(?(-?\d+(\.\d*)?)\)?(::bigint)?\z/
+            $1
+          # Object identifier types
+          when /\A-?\d+\z/
+            $1
+          else
+            # Anything else is blank, some user type, or some function
+            # and we can't know the value of that, so return nil.
+            nil
+        end
+      end
+
+      def extract_default_function(default_value, default) # :nodoc:
+        default if ! default_value && ( %r{\w+\(.*\)} === default )
+      end
+
+    end
+
     # Column behavior based on PostgreSQL adapter in Rails.
     # @see ActiveRecord::ConnectionAdapters::JdbcColumn
     module Column
 
+      attr_accessor :array
+
+      def initialize(name, default, cast_type, sql_type = nil, null = true, default_function = nil)
+        if sql_type.to_s[-2, 2] == '[]'
+          @array = true
+          super(name, default, cast_type, sql_type[0..-3], null)
+        else
+          @array = false
+          super(name, default, cast_type, sql_type, null)
+        end
+
+        @default_function = default_function
+      end
+
+    end if AR42_COMPAT
+
+    # @private (AR < 4.2 version) documented above
+    module Column
+
+      def initialize(name, default, oid_type = nil, sql_type = nil, null = true,
+          fmod = nil, adapter = nil) # added due resolving #oid_type
+        if oid_type.is_a?(Integer) # the "main" if branch (on AR 4.x)
+          @oid = oid_type; @fmod = fmod; @adapter = adapter # see Column#oid_type
+        elsif oid_type.respond_to?(:type_cast) # MRI compatibility
+          @oid_type = oid_type; # @fmod = fmod; @adapter = adapter
+        else # NOTE: AR <= 3.2 : (name, default, sql_type = nil, null = true)
+          null, sql_type, oid_type = !! sql_type, oid_type, nil
+        end
+        if sql_type.to_s[-2, 2] == '[]' && ArJdbc::PostgreSQL::AR4_COMPAT
+          @array = true if respond_to?(:array)
+          super(name, default, sql_type[0..-3], null)
+        else
+          @array = false if respond_to?(:array)
+          super(name, default, sql_type, null)
+        end
+
+        @default_function = extract_default_function(@default, default)
+      end
+
       def self.included(base)
         # NOTE: assumes a standalone PostgreSQLColumn class
-        class << base
+        base_meta = class << base; self end
+        base_meta.send :attr_accessor, :money_precision
 
-          attr_accessor :money_precision
+        # Loads pg_array_parser if available. String parsing can be
+        # performed quicker by a native extension, which will not create
+        # a large amount of Ruby objects that will need to be garbage
+        # collected. pg_array_parser has a C and Java extension
+        begin
+          require 'pg_array_parser'
+          base_meta.send :include, PgArrayParser
+        rescue LoadError
+          if AR42_COMPAT
+            require 'active_record/connection_adapters/postgresql/array_parser'
+          else
+            require 'arjdbc/postgresql/base/array_parser'
+          end
+          base_meta.send :include, ActiveRecord::ConnectionAdapters::PostgreSQL::ArrayParser
+        end if AR4_COMPAT
 
-          # Loads pg_array_parser if available. String parsing can be
-          # performed quicker by a native extension, which will not create
-          # a large amount of Ruby objects that will need to be garbage
-          # collected. pg_array_parser has a C and Java extension
-          begin
-            require 'pg_array_parser'
-            include PgArrayParser
-          rescue LoadError
-            if AR42_COMPAT
-              require 'active_record/connection_adapters/postgresql/array_parser'
-            else
-              require 'arjdbc/postgresql/base/array_parser'
-            end
-            include ActiveRecord::ConnectionAdapters::PostgreSQL::ArrayParser
-          end if AR4_COMPAT
+        base_meta.send :include, Cast
 
-          include Cast
-
-        end
+        base.send :include, ColumnHelpers
       end
 
       # @private
@@ -201,15 +280,6 @@ module ArJdbc
       end if AR4_COMPAT
 
       private
-
-      def extract_limit(sql_type)
-        case sql_type
-        when /^bigint/i; 8
-        when /^smallint/i; 2
-        when /^timestamp/i; nil
-        else super
-        end
-      end
 
       # Extracts the scale from PostgreSQL-specific data types.
       def extract_scale(sql_type)
@@ -555,6 +625,6 @@ module ArJdbc
 
       end
 
-    end
+    end unless AR42_COMPAT
   end
 end
