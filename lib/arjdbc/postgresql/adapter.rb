@@ -16,6 +16,12 @@ module ArJdbc
     require 'arjdbc/postgresql/explain_support'
     require 'arjdbc/postgresql/schema_creation' # AR 4.x
 
+    # @private
+    IndexDefinition = ::ActiveRecord::ConnectionAdapters::IndexDefinition
+
+    # @private
+    Type = ::ActiveRecord::Type if AR42_COMPAT
+
     # @see ActiveRecord::ConnectionAdapters::JdbcAdapter#jdbc_connection_class
     def self.jdbc_connection_class
       ::ActiveRecord::ConnectionAdapters::PostgreSQLJdbcConnection
@@ -209,7 +215,23 @@ module ArJdbc
       else
         super(value, column)
       end
-    end if AR4_COMPAT
+    end if AR4_COMPAT && ! AR42_COMPAT
+
+    # @private
+    def _type_cast(value)
+      case value
+      when Type::Binary::Data
+        # Return a bind param hash with format as binary.
+        # See http://deveiate.org/code/pg/PGconn.html#method-i-exec_prepared-doc
+        # for more information
+        { value: value.to_s, format: 1 }
+      when OID::Xml::Data, OID::Bit::Data
+        value.to_s
+      else
+        super
+      end
+    end if AR42_COMPAT
+    private :_type_cast if AR42_COMPAT
 
     NATIVE_DATABASE_TYPES = {
       :primary_key => "serial primary key",
@@ -888,13 +910,22 @@ module ArJdbc
       end
     end unless AR42_COMPAT
 
-    def quote(value, column = nil)
-      return super unless column
-
+    # @private
+    def _quote(value)
       case value
+      when Type::Binary::Data
+        "'#{escape_bytea(value.to_s)}'"
+      when OID::Xml::Data
+        "xml '#{quote_string(value.to_s)}'"
+      when OID::Bit::Data
+        if value.binary?
+          "B'#{value}'"
+        elsif value.hex?
+          "X'#{value}'"
+        end
       when Float
         if value.infinite? || value.nan?
-          "'#{value.to_s}'"
+          "'#{value}'"
         else
           super
         end
@@ -902,6 +933,7 @@ module ArJdbc
         super
       end
     end if AR42_COMPAT
+    private :_quote if AR42_COMPAT
 
     # Quotes a string, escaping any ' (single quote) and \ (backslash) chars.
     # @return [String]
@@ -1235,9 +1267,6 @@ module ArJdbc
           AND i.relnamespace IN (SELECT oid FROM pg_namespace WHERE nspname = ANY (current_schemas(false)) )
       SQL
     end if AR42_COMPAT
-
-    # @private
-    IndexDefinition = ::ActiveRecord::ConnectionAdapters::IndexDefinition
 
     # Returns an array of indexes for the given table.
     def indexes(table_name, name = nil)

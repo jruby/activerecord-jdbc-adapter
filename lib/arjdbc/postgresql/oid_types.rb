@@ -10,11 +10,10 @@ module ArJdbc
     end
 
     # @private
+    OID = ::ActiveRecord::ConnectionAdapters::PostgreSQL::OID
+
+    # @private
     module OIDTypes
-
-      OID = ActiveRecord::ConnectionAdapters::PostgreSQL::OID
-
-      Type = ActiveRecord::Type if AR42_COMPAT
 
       # @override
       def enable_extension(name)
