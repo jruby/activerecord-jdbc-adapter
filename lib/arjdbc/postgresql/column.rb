@@ -53,7 +53,8 @@ module ArJdbc
 
       attr_accessor :array
 
-      def initialize(name, default, cast_type, sql_type = nil, null = true, default_function = nil)
+      def initialize(name, default, cast_type, sql_type = nil, null = true, default_function = nil,
+        oid = nil, adapter = nil) # added arguments
         if sql_type.to_s[-2, 2] == '[]'
           @array = true
           super(name, default, cast_type, sql_type[0..-3], null)
@@ -61,6 +62,9 @@ module ArJdbc
           @array = false
           super(name, default, cast_type, sql_type, null)
         end
+
+        @oid = oid # used on Java side - expects @oid on Column instances
+        #@adapter = adapter
 
         @default_function = default_function
       end
@@ -116,15 +120,20 @@ module ArJdbc
         base.send :include, ColumnHelpers
       end
 
+      if AR4_COMPAT && ! AR42_COMPAT
+
       # @private
       def oid_type
         @oid_type ||= begin
           raise "oid not defined" unless oid = (@oid ||= nil)
           @adapter.get_oid_type(oid.to_i, @fmod.to_i, name)
         end
-      end if AR4_COMPAT
+      end
 
-      def accessor; oid_type.accessor end if AR4_COMPAT
+      # @private
+      def accessor; oid_type.accessor end
+
+      end
 
       ( attr_accessor :array; def array?; array; end ) if AR4_COMPAT
 

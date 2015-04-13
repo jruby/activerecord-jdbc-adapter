@@ -1114,9 +1114,8 @@ module ArJdbc
     # Returns the list of all column definitions for a table.
     def columns(table_name, name = nil)
       column = jdbc_column_class
-      pass_cast_type = respond_to?(:lookup_cast_type)
-      column_definitions(table_name).map do |row|
-        # name, type, default, notnull, oid, fmod
+      column_definitions(table_name).map! do |row|
+        # |name, type, default, notnull, oid, fmod|
         name = row[0]; type = row[1]; default = row[2]
         notnull = row[3]; oid = row[4]; fmod = row[5]
         # oid = OID::TYPE_MAP.fetch(oid.to_i, fmod.to_i) { OID::Identity.new }
@@ -1128,18 +1127,41 @@ module ArJdbc
         elsif default =~ /^\(([-+]?[\d\.]+)\)$/ # e.g. "(-1)" for a negative default
           default = $1
         end
-        if pass_cast_type
-          cast_type = lookup_cast_type(type)
-          column.new(name, default, cast_type, type, ! notnull, fmod, self)
-        else
-          column.new(name, default, oid, type, ! notnull, fmod, self)
-        end
+
+        column.new(name, default, oid, type, ! notnull, fmod, self)
       end
     end
 
+    # @private documented above
+    def columns(table_name)
+      column = jdbc_column_class
+      # Limit, precision, and scale are all handled by the superclass.
+      column_definitions(table_name).map! do |row|
+        # |name, type, default, notnull, oid, fmod|
+        name = row[0]; type = row[1]; default = row[2]
+        notnull = row[3]; oid = row[4]; fmod = row[5]
+        notnull = notnull == 't' if notnull.is_a?(String) # JDBC gets true/false
+
+        oid_type = get_oid_type(oid.to_i, fmod.to_i, name, type)
+        default_value = extract_value_from_default(oid, default)
+        default_function = extract_default_function(default_value, default)
+
+        column.new(name, default_value, oid_type, type, ! notnull, default_function, oid, self)
+      end
+    end if AR42_COMPAT
+
+    # @private only for API compatibility
+    def new_column(name, default, cast_type, sql_type = nil, null = true, default_function = nil)
+      jdbc_column_class.new(name, default, cast_type, sql_type, null, default_function)
+    end if AR42_COMPAT
+
     # @private
     def column_for(table_name, column_name)
-      columns(table_name).detect { |c| c.name == column_name.to_s }
+      column_name = column_name.to_s
+      for column in columns(table_name)
+        return column if column.name == column_name
+      end
+      nil
     end
 
     # Returns the list of a table's column names, data types, and default values.
