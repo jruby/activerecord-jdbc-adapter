@@ -10,16 +10,67 @@ task :default => :jar # RubyGems extention will do a bare `rake' e.g. :
 #   RUBYARCHDIR=/opt/local/rvm/gems/jruby-1.7.16@jdbc/gems/activerecord-jdbc-adapter-1.4.0.dev/lib
 #   RUBYLIBDIR=/opt/local/rvm/gems/jruby-1.7.16@jdbc/gems/activerecord-jdbc-adapter-1.4.0.dev/lib
 
-# ugh, bundler doesn't use tasks, so gotta hook up to both tasks.
-task :build => :jar
-task :install => :jar
+base_dir = Dir.pwd
+gem_name = 'activerecord-jdbc-adapter'
+gemspec_path = File.expand_path('activerecord-jdbc-adapter.gemspec', File.dirname(__FILE__))
+gemspec = lambda do
+  @_gemspec_ ||= Dir.chdir(File.dirname(__FILE__)) do
+    contents = File.read(path = gemspec_path)
+    eval(contents, TOPLEVEL_BINDING, path.to_s)
+  end
+end
+built_gem_path = lambda do
+  Dir[File.join(base_dir, "#{gem_name}-*.gem")].sort_by{ |f| File.mtime(f) }.last
+end
+current_version = lambda { gemspec.call.version }
+rake = lambda { |task| ruby "-S", "rake", task }
+
+# NOTE: avoid Bundler loading due native extension building!
+
+desc "Build #{gem_name} gem into the pkg directory."
+task :build => :jar do
+  sh("gem build -V '#{gemspec_path}'") do
+    gem_path = built_gem_path.call
+    file_name = File.basename(gem_path)
+    FileUtils.mkdir_p(File.join(base_dir, 'pkg'))
+    FileUtils.mv(gem_path, 'pkg')
+    puts "\n#{gem_name} #{current_version.call} built to 'pkg/#{file_name}'"
+  end
+end
+
+desc "Build and install #{gem_name} gem into system gems."
+task :install => :build do
+  gem_path = built_gem_path.call
+  sh("gem install '#{gem_path}' --local") do |ok|
+    raise "Couldn't install gem, run `gem install #{gem_path}' for more detailed output" unless ok
+    puts "\n#{gem_name} (#{current_version.call}) installed"
+  end
+end
+
+task 'release:do' => 'build:adapters' do
+  ENV['RELEASE'] == 'true' # so that .gemspec is built with adapter_java.jar
+  Rake::Task['build'].invoke
+
+  version = current_version.call; version_tag = "v#{version}"
+
+  sh("git diff --no-patch --exit-code") { |ok| fail "git working dir is not clean" unless ok }
+  sh("git diff-index --quiet --cached HEAD") { |ok| fail "git index is not clean" unless ok }
+
+  sh "git tag -a -m \"AR-JDBC #{version}\" #{version_tag}"
+  branch = `git rev-parse --abbrev-ref HEAD`.strip
+  puts "releasing from (current) branch #{branch.inspect}"
+  sh "for gem in `ls pkg/*-#{version}.gem`; do gem push $gem; done" do |ok|
+    sh "git push origin #{branch} --tags" if ok
+  end
+end
+
+task 'release:push' do
+  sh "for gem in `ls pkg/*-#{current_version.call}.gem`; do gem push $gem; done"
+end
 
 ADAPTERS = %w[derby h2 hsqldb mssql mysql postgresql sqlite3].map { |a| "activerecord-jdbc#{a}-adapter" }
 DRIVERS  = %w[derby h2 hsqldb jtds mysql postgres sqlite3].map { |a| "jdbc-#{a}" }
 TARGETS = ( ADAPTERS + DRIVERS )
-
-rake = lambda { |task| ruby "-S", "rake", task }
-current_version = lambda { Bundler.load_gemspec('activerecord-jdbc-adapter.gemspec').version }
 
 ADAPTERS.each do |target|
   namespace target do
@@ -59,10 +110,6 @@ desc "Install drivers"
 task "install:drivers" => DRIVERS.map { |name| "#{name}:install" }
 task "drivers:install" => 'install:drivers'
 
-# desc "Release drivers"
-# task "release:drivers" => DRIVERS.map { |name| "#{name}:release" }
-# task "drivers:release" => DRIVERS.map { |name| "#{name}:release" }
-
 # ADAPTERS
 
 desc "Build adapters"
@@ -73,28 +120,6 @@ desc "Install adapters"
 task "install:adapters" => [ 'install' ] + ADAPTERS.map { |name| "#{name}:install" }
 task "adapters:install" => 'install:adapters'
 
-desc "Release adapters"
-task "release:adapters" => [ 'release' ] + ADAPTERS.map { |name| "#{name}:release" }
-task "adapters:release" => 'release:adapters'
-
-task 'release:do' => 'build:adapters' do
-  version = current_version.call; version_tag = "v#{version}"
-
-  sh("git diff --no-patch --exit-code") { |ok| fail "git working dir is not clean" unless ok }
-  sh("git diff-index --quiet --cached HEAD") { |ok| fail "git index is not clean" unless ok }
-
-  sh "git tag -a -m \"AR-JDBC #{version}\" #{version_tag}"
-  branch = `git rev-parse --abbrev-ref HEAD`.strip
-  puts "releasing from (current) branch #{branch.inspect}"
-  sh "for gem in `ls pkg/*-#{version}.gem`; do gem push $gem; done" do |ok|
-    sh "git push origin #{branch} --tags" if ok
-  end
-end
-
-task 'release:push' do
-  sh "for gem in `ls pkg/*-#{current_version.call}.gem`; do gem push $gem; done"
-end
-
 # ALL
 
 task "build:all" => [ 'build' ] + TARGETS.map { |name| "#{name}:build" }
@@ -102,25 +127,13 @@ task "all:build" => 'build:all'
 task "install:all" => [ 'install' ] + TARGETS.map { |name| "#{name}:install" }
 task "all:install" => 'install:all'
 
-begin # allow to roll without Bundler
-  require 'bundler/gem_helper'
-  Bundler::GemHelper.install_tasks
-rescue LoadError
-end
-
 require 'rake/testtask'
 
 begin
   require 'appraisal'
-rescue LoadError
-  begin
-    require 'bundler/setup'
-    require 'appraisal'
-  rescue LoadError
-  end
-end
+rescue LoadError; end
 
-# JRuby extension compilation :
+# native JRuby extension (adapter_java.jar) compilation :
 
 if defined? JRUBY_VERSION
   jar_file = 'lib/arjdbc/jdbc/adapter_java.jar'; CLEAN << jar_file
