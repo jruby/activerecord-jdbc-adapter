@@ -22,10 +22,12 @@ rake = lambda { |task| ruby "-S", "rake", task }
 current_version = lambda { Bundler.load_gemspec('activerecord-jdbc-adapter.gemspec').version }
 
 ADAPTERS.each do |target|
-  task :build do
-    version = current_version.call
-    Dir.chdir(target) { rake.call "build" }
-    cp FileList["#{target}/pkg/#{target}-#{version}.gem"], "pkg"
+  namespace target do
+    task :build do
+      version = current_version.call
+      Dir.chdir(target) { rake.call "build" }
+      cp FileList["#{target}/pkg/#{target}-#{version}.gem"], "pkg"
+    end
   end
 end
 DRIVERS.each do |target|
