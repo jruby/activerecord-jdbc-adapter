@@ -195,7 +195,6 @@ if defined? JRUBY_VERSION
           if match = requirement.match(/^jar\s+([\w\-\.]+):([\w\-]+),\s+?([\w\.\-]+)?/)
             matched_jar = Jars.send :to_jar, match[1], match[2], match[3], nil
             matched_jar = File.join( Jars.home, matched_jar )
-
             matched_jars << matched_jar if File.exists?( matched_jar )
           end
         end
@@ -205,11 +204,14 @@ if defined? JRUBY_VERSION
       driver_jars = match_driver_jars.call
       if driver_jars.size < requirements.size
         if (ENV['JARS_SKIP'] || ENV_JAVA['jars.skip']) == 'true'
-          warn "resolving jars is skipped, extension might not compile"
+          warn "jar resolving skipped, extension might not compile"
         else
           require 'jars/installer'
+          ENV['JARS_QUIET'] = 'true'
+          puts "resolving jar dependencies to build extension (should only happen once) ..."
           installer = Jars::Installer.new( gemspec_path )
           installer.install_jars( false )
+
           driver_jars = match_driver_jars.call
         end
       end
