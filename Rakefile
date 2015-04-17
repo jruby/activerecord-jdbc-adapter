@@ -152,42 +152,82 @@ if defined? JRUBY_VERSION
     source = target = '1.6'; debug = true
     args = [ '-Xlint:unchecked' ]
 
-    classpath = []
-    classpath += ENV_JAVA['java.class.path'].split(File::PATH_SEPARATOR)
-    classpath += ENV_JAVA['sun.boot.class.path'].split(File::PATH_SEPARATOR)
-
-    compile_driver_deps = [ :Postgres, :MySQL ]
-
-    driver_jars = []
-    #compile_driver_deps.each do |name|
-    #  driver_jars << Dir.glob("jdbc-#{name.to_s.downcase}/lib/*.jar").sort.last
-    #end
-    if driver_jars.empty? # likely on a `gem install ...'
-      # NOTE: we're currently assuming jdbc-xxx (compile) dependencies are
-      # installed, they are declared as gemspec.development_dependencies !
-      # ... the other option is to simply `mvn prepare-package'
-      compile_driver_deps.each do |name|
-        #require "jdbc/#{name.to_s.downcase}"
-        #driver_jars << Jdbc.const_get(name).driver_jar
-        # thanks Bundler for mocking RubyGems completely :
-        #spec = Gem::Specification.find_by_name("jdbc-#{name.to_s.downcase}")
-        #driver_jars << Dir.glob(File.join(spec.gem_dir, 'lib/*.jar')).sort.last
-        gem_name = "jdbc-#{name.to_s.downcase}"; matched_gem_paths = []
-        Gem.paths.path.each do |path|
-          base_path = File.join(path, "gems/")
-          Dir.glob(File.join(base_path, "*")).each do |gem_path|
-            if gem_path.sub(base_path, '').start_with?(gem_name)
-              matched_gem_paths << gem_path
+    get_driver_jars_local = lambda do |*args|
+      driver_deps = args.empty? ? [ :Postgres, :MySQL ] : args
+      driver_jars = []
+      driver_deps.each do |name|
+        driver_jars << Dir.glob("jdbc-#{name.to_s.downcase}/lib/*.jar").sort.last
+      end
+      if driver_jars.empty? # likely on a `gem install ...'
+        # NOTE: we're currently assuming jdbc-xxx (compile) dependencies are
+        # installed, they are declared as gemspec.development_dependencies !
+        # ... the other option is to simply `mvn prepare-package'
+        driver_deps.each do |name|
+          #require "jdbc/#{name.to_s.downcase}"
+          #driver_jars << Jdbc.const_get(name).driver_jar
+          # thanks Bundler for mocking RubyGems completely :
+          #spec = Gem::Specification.find_by_name("jdbc-#{name.to_s.downcase}")
+          #driver_jars << Dir.glob(File.join(spec.gem_dir, 'lib/*.jar')).sort.last
+          gem_name = "jdbc-#{name.to_s.downcase}"; matched_gem_paths = []
+          Gem.paths.path.each do |path|
+            base_path = File.join(path, "gems/")
+            Dir.glob(File.join(base_path, "*")).each do |gem_path|
+              if gem_path.sub(base_path, '').start_with?(gem_name)
+                matched_gem_paths << gem_path
+              end
             end
           end
-        end
-        if gem_path = matched_gem_paths.sort.last
-          driver_jars << Dir.glob(File.join(gem_path, 'lib/*.jar')).sort.last
+          if gem_path = matched_gem_paths.sort.last
+            driver_jars << Dir.glob(File.join(gem_path, 'lib/*.jar')).sort.last
+          end
         end
       end
+      driver_jars
     end
 
-    classpath.push *driver_jars
+    get_driver_jars_maven = lambda do
+      require 'jar_dependencies'
+
+      requirements = gemspec.call.requirements
+      match_driver_jars = lambda do
+        matched_jars = []
+        gemspec.call.requirements.each do |requirement|
+          if match = requirement.match(/^jar\s+([\w\-\.]+):([\w\-]+),\s+?([\w\.\-]+)?/)
+            matched_jar = Jars.send :to_jar, match[1], match[2], match[3], nil
+            matched_jar = File.join( Jars.home, matched_jar )
+
+            matched_jars << matched_jar if File.exists?( matched_jar )
+          end
+        end
+        matched_jars
+      end
+
+      driver_jars = match_driver_jars.call
+      if driver_jars.size < requirements.size
+        if (ENV['JARS_SKIP'] || ENV_JAVA['jars.skip']) == 'true'
+          warn "resolving jars is skipped, extension might not compile"
+        else
+          require 'jars/installer'
+          installer = Jars::Installer.new( gemspec_path )
+          installer.install_jars( false )
+          driver_jars = match_driver_jars.call
+        end
+      end
+
+      driver_jars
+    end
+
+    driver_jars = get_driver_jars_maven.call
+    driver_jars = get_driver_jars_local.call
+
+    classpath = []
+    [ 'java.class.path', 'sun.boot.class.path' ].each do |key|
+      classpath += ENV_JAVA[key].split(File::PATH_SEPARATOR).find_all { |jar| jar =~ /jruby/i }
+    end
+    #classpath += ENV_JAVA['java.class.path'].split(File::PATH_SEPARATOR)
+    #classpath += ENV_JAVA['sun.boot.class.path'].split(File::PATH_SEPARATOR)
+
+    classpath += driver_jars
     classpath = classpath.compact.join(File::PATH_SEPARATOR)
 
     source_files = FileList[ 'src/java/**/*.java' ]
@@ -195,11 +235,27 @@ if defined? JRUBY_VERSION
     require 'tmpdir'
 
     Dir.mktmpdir do |classes_dir|
-
-      javac = "javac -target #{target} -source #{source} #{args.join(' ')}"
+      # Cross-platform way of finding an executable in the $PATH.
+      # Thanks to @mislav
+      which = lambda do |cmd|
+        exts = ENV['PATHEXT'] ? ENV['PATHEXT'].split(';') : ['']
+        ENV['PATH'].split(File::PATH_SEPARATOR).each do |path|
+          exts.each do |ext|
+            exe = File.join(path, "#{cmd}#{ext}")
+            return exe if File.executable? exe
+          end
+        end
+        nil
+      end
+      unless javac = which.call('javac')
+        warn "could not find javac, please make sure it's on the PATH"
+      end
+      javac = "#{javac} -target #{target} -source #{source} #{args.join(' ')}"
       javac << " #{debug ? '-g' : ''}"
       javac << " -cp \"#{classpath}\" -d #{classes_dir} #{source_files.join(' ')}"
-      sh javac
+      sh(javac) do |ok|
+        raise 'could not build .jar extension - compilation failure' unless ok
+      end
 
       # class_files = FileList["#{classes_dir}/**/*.class"].gsub("#{classes_dir}/", '')
       # avoid environment variable expansion using backslash
@@ -209,7 +265,12 @@ if defined? JRUBY_VERSION
 
       jar_path = jar_file.sub('lib', ENV['RUBYLIBDIR'] || 'lib')
 
-      sh "jar cf #{jar_path} #{args.join(' ')}"
+      unless jar = which.call('jar')
+        warn "could not find jar tool, please make sure it's on the PATH"
+      end
+      sh("#{jar} cf #{jar_path} #{args.join(' ')}") do |ok|
+        raise 'could not build .jar extension - packaging failure' unless ok
+      end
     end
   end
 else
