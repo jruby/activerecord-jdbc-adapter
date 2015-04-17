@@ -15,8 +15,7 @@ gem_name = 'activerecord-jdbc-adapter'
 gemspec_path = File.expand_path('activerecord-jdbc-adapter.gemspec', File.dirname(__FILE__))
 gemspec = lambda do
   @_gemspec_ ||= Dir.chdir(File.dirname(__FILE__)) do
-    contents = File.read(path = gemspec_path)
-    eval(contents, TOPLEVEL_BINDING, path.to_s)
+    Gem::Specification.load(gemspec_path)
   end
 end
 built_gem_path = lambda do
