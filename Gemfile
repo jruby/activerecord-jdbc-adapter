@@ -22,6 +22,11 @@ if defined?(JRUBY_VERSION) && JRUBY_VERSION < '1.7.0'
 gem 'jruby-openssl', :platform => :jruby
 end
 
+group :default do
+  gem 'jar-dependencies', '>= 0.1.9', :require => nil, :platform => :jruby
+  gem 'ruby-maven', '~> 3.1.1.0.11', :require => nil, :platform => :jruby, :group => :development
+end if ENV['BUILD_EXT_MAVEN'] == 'true'
+
 gem 'rake', '~> 10.4.2', :require => nil
 gem 'appraisal', '~> 0.5.2', :require => nil
 

@@ -217,8 +217,11 @@ if defined? JRUBY_VERSION
       driver_jars
     end
 
-    driver_jars = get_driver_jars_maven.call
-    driver_jars = get_driver_jars_local.call
+    if ENV['RUBYARCHDIR'] || ENV['BUILD_EXT_MAVEN'] == 'true'
+      driver_jars = get_driver_jars_maven.call
+    else
+      driver_jars = get_driver_jars_local.call
+    end
 
     classpath = []
     [ 'java.class.path', 'sun.boot.class.path' ].each do |key|
