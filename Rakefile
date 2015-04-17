@@ -9,6 +9,18 @@ task :default => :jar # RubyGems extention will do a bare `rake' e.g. :
 # jruby" -rubygems /opt/local/rvm/gems/jruby-1.7.16@jdbc/gems/rake-10.3.2/bin/rake
 #   RUBYARCHDIR=/opt/local/rvm/gems/jruby-1.7.16@jdbc/gems/activerecord-jdbc-adapter-1.4.0.dev/lib
 #   RUBYLIBDIR=/opt/local/rvm/gems/jruby-1.7.16@jdbc/gems/activerecord-jdbc-adapter-1.4.0.dev/lib
+#
+# under Bundler it points those DIRs to an empty one where only built extensions are stored :
+# jruby -rubygems /opt/local/rvm/gems/jruby-1.7.19@temp/gems/rake-10.4.2/bin/rake
+#   RUBYARCHDIR=/opt/local/rvm/gems/jruby-1.7.19@temp/bundler/gems/extensions/universal-java-1.7/1.9/activerecord-jdbc-adapter-472b5fddba43
+#   RUBYLIBDIR=/opt/local/rvm/gems/jruby-1.7.19@temp/bundler/gems/extensions/universal-java-1.7/1.9/activerecord-jdbc-adapter-472b5fddba43
+#
+# javac -target 1.6 -source 1.6 -Xlint:unchecked -g -cp
+#   "/opt/local/rvm/rubies/jruby-1.7.19/lib/jruby.jar:
+#    /opt/local/maven-repo/mysql/mysql-connector-java/5.1.33/mysql-connector-java-5.1.33.jar:
+#    /opt/local/maven-repo/org/postgresql/postgresql/9.4-1200-jdbc4/postgresql-9.4-1200-jdbc4.jar"
+#   -d /tmp/d20150417-32100-7mb1bk src/java/arjdbc/ArJdbcModule.java ...
+
 
 base_dir = Dir.pwd
 gem_name = 'activerecord-jdbc-adapter'
@@ -146,9 +158,9 @@ if defined? JRUBY_VERSION
     end
   end
 
-  directory classes = 'pkg/classes'; CLEAN << classes
+  #directory classes = 'pkg/classes'; CLEAN << classes
 
-  file jar_file => FileList[ classes, 'src/java/**/*.java' ] do
+  file jar_file => FileList[ 'src/java/**/*.java' ] do
     source = target = '1.6'; debug = true
     args = [ '-Xlint:unchecked' ]
 
@@ -252,6 +264,7 @@ if defined? JRUBY_VERSION
         end
         nil
       end
+
       unless javac = which.call('javac')
         warn "could not find javac, please make sure it's on the PATH"
       end
@@ -268,7 +281,10 @@ if defined? JRUBY_VERSION
       # args = class_files.map { |path| [ "-C #{classes_dir}", path ] }.flatten
       args = [ '-C', "#{classes_dir}/ ." ] # args = class_files
 
-      jar_path = jar_file.sub('lib', ENV['RUBYLIBDIR'] || 'lib')
+      jar_path = jar_file
+      if ext_lib_dir = ENV['RUBYLIBDIR']
+        jar_path = File.join(ext_lib_dir, File.basename(jar_file))
+      end
 
       unless jar = which.call('jar')
         warn "could not find jar tool, please make sure it's on the PATH"
@@ -276,10 +292,11 @@ if defined? JRUBY_VERSION
       sh("#{jar} cf #{jar_path} #{args.join(' ')}") do |ok|
         raise 'could not build .jar extension - packaging failure' unless ok
       end
+      cp jar_path, jar_file if ext_lib_dir # NOTE: hopefully RG won't mind?!
     end
   end
 else
   task :jar do
-    puts "Run 'jar' with JRuby to re-compile the agent extension class"
+    puts "please run `rake jar' under JRuby to re-compile the native (Java) extension"
   end
 end
