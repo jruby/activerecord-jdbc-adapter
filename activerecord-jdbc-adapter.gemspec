@@ -37,9 +37,11 @@ Gem::Specification.new do |gem|
     gem.add_development_dependency 'jdbc-postgres'
   end
 
+  # NOTE: we're leaving it out as it seems to be confusing to users as
+  # gem install activerecord-jdbc-adapter installs latest activerecord!
   #gem.add_dependency 'activerecord', '>= 2.2'
 
-  gem.add_development_dependency 'rake', '~> 10.3.2'
+  gem.add_development_dependency 'rake', '~> 10.4.2'
 
   #gem.add_development_dependency 'test-unit', '~> 2.5.4'
   #gem.add_development_dependency 'test-unit-context', '>= 0.4.0'
