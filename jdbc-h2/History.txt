@@ -1,3 +1,7 @@
+=== 1.4.187
+
+* http://www.h2database.com/html/changelog.html for 1.4.187 Beta (2015-04-10)
+
 === 1.4.185
 
 * http://www.h2database.com/html/changelog.html for 1.4.185 Beta (2015-01-16)
