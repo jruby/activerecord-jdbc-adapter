@@ -45,7 +45,7 @@ SQL
   private
 
   def sql_script(sql_content, name = 'sql_script')
-    script = Tempfile.new(name)
+    require 'tempfile'; script = Tempfile.new(name)
     script.puts sql_content
     yield(script) if block_given?
     script.close
