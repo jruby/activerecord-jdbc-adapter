@@ -40,6 +40,8 @@ module XmlColumnTestMethods
 
         assert_nil xml_model.reload.xml_col
 
+        yield if block_given?
+
       else
         skip('TableDefinition#xml not-implemented')
       end

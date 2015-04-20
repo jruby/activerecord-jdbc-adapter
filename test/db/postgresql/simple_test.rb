@@ -56,6 +56,21 @@ class PostgresSimpleTest < Test::Unit::TestCase
     return if connection.send(:postgresql_version) < 80300
     super
   end if ar_version('3.1')
+
+  def test_use_xml_column
+    return if connection.send(:postgresql_version) < 80300
+
+    super() do
+      data = XmlModel.new(:xml_col => "<foo>bar</foo>")
+      assert_equal "<foo>bar</foo>", data.xml_col
+      data.save!
+      assert_equal "<foo>bar</foo>", data.reload.xml_col
+
+      XmlModel.update_all(:xml_col => "<bar>baz</bar>")
+      assert_equal "<bar>baz</bar>", data.reload.xml_col
+    end
+  end if ar_version('3.1')
+
   def xml_sql_type; 'xml'; end
 
   def test_create_table_with_limits
