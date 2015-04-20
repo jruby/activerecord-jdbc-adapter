@@ -1228,28 +1228,38 @@ public class RubyJdbcConnection extends RubyObject {
         return keyNames;
     }
 
-    @JRubyMethod(name = "tables")
-    public IRubyObject tables(ThreadContext context) {
-        return tables(context, null, null, null, TABLE_TYPE);
-    }
+    //@JRubyMethod(name = "tables")
+    //public IRubyObject tables(ThreadContext context) {
+    //    return tables(context, null, null, null, TABLE_TYPE);
+    //}
+
+    //@JRubyMethod(name = "tables")
+    //public IRubyObject tables(ThreadContext context, IRubyObject catalog) {
+    //    return tables(context, toStringOrNull(catalog), null, null, TABLE_TYPE);
+    //}
+
+    //@JRubyMethod(name = "tables")
+    //public IRubyObject tables(ThreadContext context, IRubyObject catalog, IRubyObject schemaPattern) {
+    //    return tables(context, toStringOrNull(catalog), toStringOrNull(schemaPattern), null, TABLE_TYPE);
+    //}
+
+    //@JRubyMethod(name = "tables")
+    //public IRubyObject tables(ThreadContext context, IRubyObject catalog, IRubyObject schemaPattern, IRubyObject tablePattern) {
+    //    return tables(context, toStringOrNull(catalog), toStringOrNull(schemaPattern), toStringOrNull(tablePattern), TABLE_TYPE);
+    //}
 
     @JRubyMethod(name = "tables")
-    public IRubyObject tables(ThreadContext context, IRubyObject catalog) {
-        return tables(context, toStringOrNull(catalog), null, null, TABLE_TYPE);
-    }
-
-    @JRubyMethod(name = "tables")
-    public IRubyObject tables(ThreadContext context, IRubyObject catalog, IRubyObject schemaPattern) {
-        return tables(context, toStringOrNull(catalog), toStringOrNull(schemaPattern), null, TABLE_TYPE);
-    }
-
-    @JRubyMethod(name = "tables")
-    public IRubyObject tables(ThreadContext context, IRubyObject catalog, IRubyObject schemaPattern, IRubyObject tablePattern) {
-        return tables(context, toStringOrNull(catalog), toStringOrNull(schemaPattern), toStringOrNull(tablePattern), TABLE_TYPE);
-    }
-
-    @JRubyMethod(name = "tables", required = 4, rest = true)
-    public IRubyObject tables(ThreadContext context, IRubyObject[] args) {
+    public IRubyObject tables(final ThreadContext context, final IRubyObject[] args) {
+        switch ( args.length ) {
+            case 0: // ()
+                return tables(context, null, null, null, TABLE_TYPE);
+            case 1: // (catalog)
+                return tables(context, toStringOrNull(args[0]), null, null, TABLE_TYPE);
+            case 2: // (catalog, schemaPattern)
+                return tables(context, toStringOrNull(args[0]), toStringOrNull(args[1]), null, TABLE_TYPE);
+            case 3: // (catalog, schemaPattern, tablePattern)
+                return tables(context, toStringOrNull(args[0]), toStringOrNull(args[1]), toStringOrNull(args[2]), TABLE_TYPE);
+        }
         return tables(context, toStringOrNull(args[0]), toStringOrNull(args[1]), toStringOrNull(args[2]), getTypes(args[3]));
     }
 
