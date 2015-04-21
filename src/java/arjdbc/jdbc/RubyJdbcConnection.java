@@ -1032,25 +1032,25 @@ public class RubyJdbcConnection extends RubyObject {
         return keyNames;
     }
 
-    //@JRubyMethod(name = "tables")
-    //public IRubyObject tables(ThreadContext context) {
-    //    return tables(context, null, null, null, TABLE_TYPE);
-    //}
+    @Deprecated //@JRubyMethod(name = "tables")
+    public IRubyObject tables(ThreadContext context) {
+        return tables(context, null, null, null, TABLE_TYPE);
+    }
 
-    //@JRubyMethod(name = "tables")
-    //public IRubyObject tables(ThreadContext context, IRubyObject catalog) {
-    //    return tables(context, toStringOrNull(catalog), null, null, TABLE_TYPE);
-    //}
+    @Deprecated //@JRubyMethod(name = "tables")
+    public IRubyObject tables(ThreadContext context, IRubyObject catalog) {
+        return tables(context, toStringOrNull(catalog), null, null, TABLE_TYPE);
+    }
 
-    //@JRubyMethod(name = "tables")
-    //public IRubyObject tables(ThreadContext context, IRubyObject catalog, IRubyObject schemaPattern) {
-    //    return tables(context, toStringOrNull(catalog), toStringOrNull(schemaPattern), null, TABLE_TYPE);
-    //}
+    @Deprecated //@JRubyMethod(name = "tables")
+    public IRubyObject tables(ThreadContext context, IRubyObject catalog, IRubyObject schemaPattern) {
+        return tables(context, toStringOrNull(catalog), toStringOrNull(schemaPattern), null, TABLE_TYPE);
+    }
 
-    //@JRubyMethod(name = "tables")
-    //public IRubyObject tables(ThreadContext context, IRubyObject catalog, IRubyObject schemaPattern, IRubyObject tablePattern) {
-    //    return tables(context, toStringOrNull(catalog), toStringOrNull(schemaPattern), toStringOrNull(tablePattern), TABLE_TYPE);
-    //}
+    @Deprecated //@JRubyMethod(name = "tables")
+    public IRubyObject tables(ThreadContext context, IRubyObject catalog, IRubyObject schemaPattern, IRubyObject tablePattern) {
+        return tables(context, toStringOrNull(catalog), toStringOrNull(schemaPattern), toStringOrNull(tablePattern), TABLE_TYPE);
+    }
 
     @JRubyMethod(name = "tables")
     public IRubyObject tables(final ThreadContext context, final IRubyObject[] args) {
