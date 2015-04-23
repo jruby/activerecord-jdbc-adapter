@@ -32,7 +32,7 @@ Gem::Specification.new do |gem|
     gem.files << 'lib/arjdbc/jdbc/adapter_java.jar' # no longer in git since 1.4
   else
     gem.extensions << 'Rakefile' # to support auto-building .jar with :git paths
-    gem.add_dependency 'jar-dependencies', '0.1.13.1' # development is not enough!
+    gem.add_dependency 'jar-dependencies', '~> 0.1.13' # development not enough!
     gem.add_development_dependency 'ruby-maven', '~> 3.1.1.0.11'
 
     gem.requirements << "jar mysql:mysql-connector-java, 5.1.33, :scope => :compile"
