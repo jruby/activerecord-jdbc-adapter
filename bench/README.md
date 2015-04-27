@@ -1,545 +1,124 @@
-Playing around with activerecord-jdbc-adapter performance.. Here's what this test does:
+## Sample DB Setup
 
-* Run against a PostgreSQL 9.3 server
-* Creates a table with 1 column for each basic column type (integer, string, datetime, etc)
-* Creates 5000 records in the table
-* Perform 5000 individual selects to fetch each individual record.
-  * First just fetch the record.
-  * Next, fetch the record, but also call `#attributes` on the record (to trigger certain type-casting that only happens when explicitly reading attributes).
-  * Repeat this process, for `SELECT *` and then selecting only single columns.
-* Perform 30 selects to fetch all 5000 records simultaneously, following the same steps as above.
-
-# Setup
-
-```
-export PGHOST=localhost
-export PGDATABASE=bench
-export PGUSER=benchmark
-export PGPASSWORD=bench
-```
+    export PGDATABASE=bench
+    export PGUSER=benchmark
+    export PGPASSWORD=bench
 
 `psql -d postgres -U postgres -W` :
+
+    \set database `echo "$PGDATABASE"`
+    DROP DATABASE IF EXISTS :database ;
+
+    \set user `echo "$PGUSER"`
+    \set password `echo "$PGPASSWORD"`
+    DROP USER IF EXISTS :user ;
+    CREATE USER :user CREATEDB SUPERUSER LOGIN PASSWORD ':password' ;
+
+    CREATE DATABASE :database OWNER :user ;
+
+## Running (with PostgreSQL)
+
+    export AR_VERSION="~>4.1"
+    export AR_ADAPTER=postgresql
+
+### Supported ENV Variables
+
 ```
-\set database `echo "$PGDATABASE"`
-DROP DATABASE IF EXISTS :database ;
-
-\set user `echo "$PGUSER"`
-\set password `echo "$PGPASSWORD"`
-DROP USER IF EXISTS :user ;
-CREATE USER :user CREATEDB SUPERUSER LOGIN PASSWORD ':password' ;
-
-CREATE DATABASE :database OWNER :user ;
-```
-
-## JRuby 1.7.11 + ActiveRecord 4.0.4
-
-```sh
-$ RBENV_VERSION=jruby-1.7.11 ruby bench_activerecord.rb
-RUBY_PLATFORM: java
-RUBY_VERSION: 1.9.3
-ActiveRecord.version: 4.0.4
-arjdbc.datetime.raw: nil
-
-Rehearsal ----------------------------------------------------------------------------------------------
-100_000x Column.string_to_time                               9.870000   0.120000   9.990000 (  6.463000)
-5000x SELECT *, 1 record                                    15.990000   0.310000  16.300000 ( 13.028000)
-5000x SELECT *, 1 record - get attributes                   10.580000   0.250000  10.830000 ( 10.308000)
-5000x SELECT sample_binary, 1 record                         9.490000   0.250000   9.740000 (  5.061000)
-5000x SELECT sample_binary, 1 record - get attributes        2.610000   0.160000   2.770000 (  3.668000)
-5000x SELECT sample_boolean, 1 record                        1.610000   0.110000   1.720000 (  2.981000)
-5000x SELECT sample_boolean, 1 record - get attributes       1.760000   0.120000   1.880000 (  3.181000)
-5000x SELECT sample_date, 1 record                           2.010000   0.120000   2.130000 (  3.242000)
-5000x SELECT sample_date, 1 record - get attributes          2.070000   0.130000   2.200000 (  3.292000)
-5000x SELECT sample_datetime, 1 record                       2.220000   0.120000   2.340000 (  3.801000)
-5000x SELECT sample_datetime, 1 record - get attributes      2.380000   0.120000   2.500000 (  3.967000)
-5000x SELECT sample_decimal, 1 record                        1.640000   0.120000   1.760000 (  3.046000)
-5000x SELECT sample_decimal, 1 record - get attributes       1.660000   0.120000   1.780000 (  3.065000)
-5000x SELECT sample_float, 1 record                          1.550000   0.110000   1.660000 (  2.925000)
-5000x SELECT sample_float, 1 record - get attributes         1.610000   0.110000   1.720000 (  3.046000)
-5000x SELECT sample_integer, 1 record                        1.570000   0.120000   1.690000 (  3.002000)
-5000x SELECT sample_integer, 1 record - get attributes       1.620000   0.120000   1.740000 (  3.022000)
-5000x SELECT sample_string, 1 record                         1.510000   0.110000   1.620000 (  2.843000)
-5000x SELECT sample_string, 1 record - get attributes        1.640000   0.110000   1.750000 (  3.083000)
-5000x SELECT sample_text, 1 record                           1.520000   0.120000   1.640000 (  2.891000)
-5000x SELECT sample_text, 1 record - get attributes          1.640000   0.110000   1.750000 (  3.079000)
-5000x SELECT sample_time, 1 record                           1.710000   0.120000   1.830000 (  3.103000)
-5000x SELECT sample_time, 1 record - get attributes          1.850000   0.120000   1.970000 (  3.320000)
-5000x SELECT sample_timestamp, 1 record                      2.300000   0.130000   2.430000 (  3.908000)
-5000x SELECT sample_timestamp, 1 record - get attributes     2.410000   0.120000   2.530000 (  4.033000)
-30x SELECT *, 5000 records                                  42.840000   1.210000  44.050000 ( 44.972000)
-30x SELECT *, 5000 records - get attributes                 47.900000   0.780000  48.680000 ( 50.667000)
-30x SELECT sample_binary, 5000 records                       4.700000   0.480000   5.180000 (  9.342000)
-30x SELECT sample_binary, 5000 records - get attributes      5.690000   0.450000   6.140000 ( 10.180000)
-30x SELECT sample_boolean, 5000 records                      2.860000   0.010000   2.870000 (  2.907000)
-30x SELECT sample_boolean, 5000 records - get attributes     4.000000   0.010000   4.010000 (  3.976000)
-30x SELECT sample_date, 5000 records                         3.860000   0.020000   3.880000 (  3.944000)
-30x SELECT sample_date, 5000 records - get attributes        4.700000   0.010000   4.710000 (  4.704000)
-30x SELECT sample_datetime, 5000 records                    15.620000   0.040000  15.660000 ( 15.613000)
-30x SELECT sample_datetime, 5000 records - get attributes   16.280000   0.040000  16.320000 ( 16.235000)
-30x SELECT sample_decimal, 5000 records                      3.200000   0.010000   3.210000 (  3.251000)
-30x SELECT sample_decimal, 5000 records - get attributes     4.110000   0.020000   4.130000 (  4.176000)
-30x SELECT sample_float, 5000 records                        2.880000   0.010000   2.890000 (  3.144000)
-30x SELECT sample_float, 5000 records - get attributes       3.850000   0.020000   3.870000 (  4.037000)
-30x SELECT sample_integer, 5000 records                      2.870000   0.010000   2.880000 (  2.912000)
-30x SELECT sample_integer, 5000 records - get attributes     3.800000   0.010000   3.810000 (  3.816000)
-30x SELECT sample_string, 5000 records                       2.880000   0.020000   2.900000 (  2.957000)
-30x SELECT sample_string, 5000 records - get attributes      4.090000   0.020000   4.110000 (  4.119000)
-30x SELECT sample_text, 5000 records                         3.420000   0.210000   3.630000 (  5.568000)
-30x SELECT sample_text, 5000 records - get attributes        4.260000   0.190000   4.450000 (  5.898000)
-30x SELECT sample_time, 5000 records                         3.840000   0.020000   3.860000 (  3.910000)
-30x SELECT sample_time, 5000 records - get attributes        5.270000   0.020000   5.290000 (  5.327000)
-30x SELECT sample_timestamp, 5000 records                   15.590000   0.040000  15.630000 ( 15.648000)
-30x SELECT sample_timestamp, 5000 records - get attributes  16.240000   0.040000  16.280000 ( 16.240000)
------------------------------------------------------------------------------------ total: 316.710000sec
-
-                                                                 user     system      total        real
-100_000x Column.string_to_time                               5.110000   0.010000   5.120000 (  4.971000)
-5000x SELECT *, 1 record                                     3.560000   0.170000   3.730000 (  5.897000)
-5000x SELECT *, 1 record - get attributes                    4.310000   0.180000   4.490000 (  6.353000)
-5000x SELECT sample_binary, 1 record                         2.010000   0.140000   2.150000 (  3.233000)
-5000x SELECT sample_binary, 1 record - get attributes        1.620000   0.140000   1.760000 (  3.248000)
-5000x SELECT sample_boolean, 1 record                        1.490000   0.120000   1.610000 (  2.919000)
-5000x SELECT sample_boolean, 1 record - get attributes       1.730000   0.120000   1.850000 (  3.301000)
-5000x SELECT sample_date, 1 record                           1.520000   0.110000   1.630000 (  2.956000)
-5000x SELECT sample_date, 1 record - get attributes          1.670000   0.120000   1.790000 (  3.162000)
-5000x SELECT sample_datetime, 1 record                       2.700000   0.150000   2.850000 (  4.609000)
-5000x SELECT sample_datetime, 1 record - get attributes      2.750000   0.160000   2.910000 (  4.580000)
-5000x SELECT sample_decimal, 1 record                        1.700000   0.130000   1.830000 (  3.270000)
-5000x SELECT sample_decimal, 1 record - get attributes       1.570000   0.110000   1.680000 (  3.043000)
-5000x SELECT sample_float, 1 record                          1.480000   0.120000   1.600000 (  2.926000)
-5000x SELECT sample_float, 1 record - get attributes         1.810000   0.130000   1.940000 (  3.489000)
-5000x SELECT sample_integer, 1 record                        1.360000   0.100000   1.460000 (  2.712000)
-5000x SELECT sample_integer, 1 record - get attributes       1.740000   0.130000   1.870000 (  3.363000)
-5000x SELECT sample_string, 1 record                         1.600000   0.120000   1.720000 (  3.100000)
-5000x SELECT sample_string, 1 record - get attributes        1.620000   0.120000   1.740000 (  3.155000)
-5000x SELECT sample_text, 1 record                           1.440000   0.120000   1.560000 (  2.839000)
-5000x SELECT sample_text, 1 record - get attributes          1.510000   0.110000   1.620000 (  2.967000)
-5000x SELECT sample_time, 1 record                           1.640000   0.120000   1.760000 (  3.146000)
-5000x SELECT sample_time, 1 record - get attributes          1.590000   0.120000   1.710000 (  3.055000)
-5000x SELECT sample_timestamp, 1 record                      2.190000   0.120000   2.310000 (  3.820000)
-5000x SELECT sample_timestamp, 1 record - get attributes     2.220000   0.120000   2.340000 (  3.850000)
-30x SELECT *, 5000 records                                  39.570000   0.890000  40.460000 ( 45.701000)
-30x SELECT *, 5000 records - get attributes                 48.040000   0.860000  48.900000 ( 51.903000)
-30x SELECT sample_binary, 5000 records                       4.720000   0.460000   5.180000 (  9.426000)
-30x SELECT sample_binary, 5000 records - get attributes      5.900000   0.530000   6.430000 ( 10.637000)
-30x SELECT sample_boolean, 5000 records                      2.920000   0.010000   2.930000 (  2.953000)
-30x SELECT sample_boolean, 5000 records - get attributes     4.110000   0.020000   4.130000 (  4.020000)
-30x SELECT sample_date, 5000 records                         3.760000   0.010000   3.770000 (  3.834000)
-30x SELECT sample_date, 5000 records - get attributes        4.670000   0.020000   4.690000 (  4.765000)
-30x SELECT sample_datetime, 5000 records                    15.800000   0.030000  15.830000 ( 15.818000)
-30x SELECT sample_datetime, 5000 records - get attributes   16.420000   0.050000  16.470000 ( 16.326000)
-30x SELECT sample_decimal, 5000 records                      3.170000   0.010000   3.180000 (  3.249000)
-30x SELECT sample_decimal, 5000 records - get attributes     4.150000   0.020000   4.170000 (  4.171000)
-30x SELECT sample_float, 5000 records                        2.980000   0.010000   2.990000 (  3.210000)
-30x SELECT sample_float, 5000 records - get attributes       3.920000   0.020000   3.940000 (  4.111000)
-30x SELECT sample_integer, 5000 records                      2.880000   0.010000   2.890000 (  2.942000)
-30x SELECT sample_integer, 5000 records - get attributes     3.830000   0.010000   3.840000 (  3.878000)
-30x SELECT sample_string, 5000 records                       3.100000   0.020000   3.120000 (  3.208000)
-30x SELECT sample_string, 5000 records - get attributes      4.020000   0.020000   4.040000 (  4.056000)
-30x SELECT sample_text, 5000 records                         3.230000   0.180000   3.410000 (  4.874000)
-30x SELECT sample_text, 5000 records - get attributes        4.200000   0.190000   4.390000 (  5.773000)
-30x SELECT sample_time, 5000 records                         3.810000   0.020000   3.830000 (  3.939000)
-30x SELECT sample_time, 5000 records - get attributes        4.780000   0.010000   4.790000 (  4.826000)
-30x SELECT sample_timestamp, 5000 records                   15.840000   0.050000  15.890000 ( 15.904000)
-30x SELECT sample_timestamp, 5000 records - get attributes  16.340000   0.050000  16.390000 ( 16.339000)
+export AR_VERSION="~>4.1"
+# by default latest installed is picked
+export ARJDBC_VERSION="1.3.16"
+# leave empty to use AR-JDBC from repo
+export AR_ADAPTER=mysql2
+export AR_USERNAME=bench
+export AR_PASSWORD=passw
+export AR_DATABASE=bench
+export AR_LOGGER=debug
+# look for active_record.log
+export DATA_SIZE=10000
+# default is 1000 records created
+export TIMES=500
+# default is 100 iterations
 ```
 
-## JRuby 1.7.11 + ActiveRecord 4.0.4 + arjdbc.datetime.raw=true
+run some benchmark `ruby -Ijdbc-postgres/lib bench/benchmark_selects.rb 5000` :
+```
+--- RUBY_VERSION: 1.9.3 (JRUBY_VERSION: 1.7.19 1.7.0_72-b14)
+--- ActiveRecord: 4.1.10 (AR-JDBC: 1.4.0.dev 265c2e9a)
 
-```sh
-$ RBENV_VERSION=jruby-1.7.11 JRUBY_OPTS="-J-Darjdbc.datetime.raw=true" ruby bench_activerecord.rb
-RUBY_PLATFORM: java
-RUBY_VERSION: 1.9.3
-ActiveRecord.version: 4.0.4
-arjdbc.datetime.raw: true
+ - BenchRecord.connection.drop_table(:bench_records) took 0.011
+ - BenchRecord.connection.create_table(:bench_records) { ... } took 0.032
 
-Rehearsal ----------------------------------------------------------------------------------------------
-100_000x Column.string_to_time                              10.160000   0.120000  10.280000 (  6.522000)
-5000x SELECT *, 1 record                                    10.580000   0.240000  10.820000 (  9.571000)
-5000x SELECT *, 1 record - get attributes                   12.310000   0.280000  12.590000 ( 10.675000)
-5000x SELECT sample_binary, 1 record                         9.260000   0.250000   9.510000 (  5.133000)
-5000x SELECT sample_binary, 1 record - get attributes        2.610000   0.150000   2.760000 (  3.688000)
-5000x SELECT sample_boolean, 1 record                        1.640000   0.120000   1.760000 (  3.097000)
-5000x SELECT sample_boolean, 1 record - get attributes       1.860000   0.120000   1.980000 (  3.294000)
-5000x SELECT sample_date, 1 record                           1.580000   0.120000   1.700000 (  3.023000)
-5000x SELECT sample_date, 1 record - get attributes          1.910000   0.120000   2.030000 (  3.415000)
-5000x SELECT sample_datetime, 1 record                       1.570000   0.110000   1.680000 (  2.988000)
-5000x SELECT sample_datetime, 1 record - get attributes      2.790000   0.140000   2.930000 (  4.331000)
-5000x SELECT sample_decimal, 1 record                        1.660000   0.120000   1.780000 (  3.123000)
-5000x SELECT sample_decimal, 1 record - get attributes       1.610000   0.110000   1.720000 (  3.016000)
-5000x SELECT sample_float, 1 record                          1.490000   0.110000   1.600000 (  2.889000)
-5000x SELECT sample_float, 1 record - get attributes         1.690000   0.120000   1.810000 (  3.179000)
-5000x SELECT sample_integer, 1 record                        1.490000   0.110000   1.600000 (  2.868000)
-5000x SELECT sample_integer, 1 record - get attributes       1.660000   0.120000   1.780000 (  3.119000)
-5000x SELECT sample_string, 1 record                         1.490000   0.110000   1.600000 (  2.860000)
-5000x SELECT sample_string, 1 record - get attributes        1.570000   0.120000   1.690000 (  2.962000)
-5000x SELECT sample_text, 1 record                           1.620000   0.120000   1.740000 (  3.094000)
-5000x SELECT sample_text, 1 record - get attributes          1.640000   0.110000   1.750000 (  3.089000)
-5000x SELECT sample_time, 1 record                           1.570000   0.120000   1.690000 (  2.986000)
-5000x SELECT sample_time, 1 record - get attributes          1.860000   0.120000   1.980000 (  3.365000)
-5000x SELECT sample_timestamp, 1 record                      1.550000   0.120000   1.670000 (  2.984000)
-5000x SELECT sample_timestamp, 1 record - get attributes     2.430000   0.120000   2.550000 (  4.070000)
-30x SELECT *, 5000 records                                   8.800000   1.000000   9.800000 ( 14.327000)
-30x SELECT *, 5000 records - get attributes                 48.420000   0.800000  49.220000 ( 51.897000)
-30x SELECT sample_binary, 5000 records                       4.720000   0.480000   5.200000 (  9.311000)
-30x SELECT sample_binary, 5000 records - get attributes      5.620000   0.460000   6.080000 ( 10.384000)
-30x SELECT sample_boolean, 5000 records                      2.860000   0.010000   2.870000 (  2.910000)
-30x SELECT sample_boolean, 5000 records - get attributes     3.980000   0.010000   3.990000 (  3.924000)
-30x SELECT sample_date, 5000 records                         2.950000   0.010000   2.960000 (  3.045000)
-30x SELECT sample_date, 5000 records - get attributes        5.050000   0.020000   5.070000 (  5.073000)
-30x SELECT sample_datetime, 5000 records                     2.880000   0.010000   2.890000 (  3.084000)
-30x SELECT sample_datetime, 5000 records - get attributes   16.700000   0.050000  16.750000 ( 16.427000)
-30x SELECT sample_decimal, 5000 records                      3.170000   0.010000   3.180000 (  3.239000)
-30x SELECT sample_decimal, 5000 records - get attributes     4.100000   0.020000   4.120000 (  4.156000)
-30x SELECT sample_float, 5000 records                        2.900000   0.010000   2.910000 (  3.159000)
-30x SELECT sample_float, 5000 records - get attributes       3.930000   0.020000   3.950000 (  4.118000)
-30x SELECT sample_integer, 5000 records                      2.860000   0.010000   2.870000 (  2.919000)
-30x SELECT sample_integer, 5000 records - get attributes     3.810000   0.010000   3.820000 (  3.809000)
-30x SELECT sample_string, 5000 records                       2.920000   0.020000   2.940000 (  2.987000)
-30x SELECT sample_string, 5000 records - get attributes      3.860000   0.010000   3.870000 (  3.913000)
-30x SELECT sample_text, 5000 records                         3.210000   0.170000   3.380000 (  4.805000)
-30x SELECT sample_text, 5000 records - get attributes        4.140000   0.180000   4.320000 (  5.749000)
-30x SELECT sample_time, 5000 records                         2.960000   0.010000   2.970000 (  3.097000)
-30x SELECT sample_time, 5000 records - get attributes        4.970000   0.020000   4.990000 (  4.990000)
-30x SELECT sample_timestamp, 5000 records                    2.940000   0.020000   2.960000 (  3.148000)
-30x SELECT sample_timestamp, 5000 records - get attributes  16.960000   0.030000  16.990000 ( 16.644000)
------------------------------------------------------------------------------------ total: 251.100000sec
+ - BenchRecord.create!(...) [1000x] took 12.726
+Rehearsal ---------------------------------------------------------------------------------------------------
+BenchRecord.select('a_binary').where(:id => i).first [5000x]     12.630000   0.330000  12.960000 ( 11.092000)
+BenchRecord.select('a_boolean').where(:id => i).first [5000x]     9.470000   0.280000   9.750000 (  8.455000)
+BenchRecord.select('a_date').where(:id => i).first [5000x]       12.200000   0.290000  12.490000 (  7.704000)
+BenchRecord.select('a_datetime').where(:id => i).first [5000x]    4.090000   0.220000   4.310000 (  5.454000)
+BenchRecord.select('a_decimal').where(:id => i).first [5000x]     3.560000   0.220000   3.780000 (  5.341000)
+BenchRecord.select('a_float').where(:id => i).first [5000x]       3.940000   0.230000   4.170000 (  5.845000)
+BenchRecord.select('a_integer').where(:id => i).first [5000x]     3.610000   0.230000   3.840000 (  5.500000)
+BenchRecord.select('a_string').where(:id => i).first [5000x]      3.740000   0.230000   3.970000 (  5.645000)
+BenchRecord.select('a_text').where(:id => i).first [5000x]        3.680000   0.220000   3.900000 (  5.495000)
+BenchRecord.select('a_time').where(:id => i).first [5000x]        3.580000   0.210000   3.790000 (  5.345000)
+BenchRecord.select('a_timestamp').where(:id => i).first [5000x]   3.690000   0.220000   3.910000 (  5.357000)
+BenchRecord.select('*').where(:id => i).first [5000x]             4.820000   0.250000   5.070000 (  7.066000)
+----------------------------------------------------------------------------------------- total: 71.940000sec
 
-                                                                 user     system      total        real
-100_000x Column.string_to_time                               5.030000   0.010000   5.040000 (  4.903000)
-5000x SELECT *, 1 record                                     2.110000   0.160000   2.270000 (  4.023000)
-5000x SELECT *, 1 record - get attributes                    4.370000   0.180000   4.550000 (  6.296000)
-5000x SELECT sample_binary, 1 record                         2.100000   0.190000   2.290000 (  3.641000)
-5000x SELECT sample_binary, 1 record - get attributes        2.010000   0.150000   2.160000 (  3.431000)
-5000x SELECT sample_boolean, 1 record                        1.380000   0.100000   1.480000 (  2.718000)
-5000x SELECT sample_boolean, 1 record - get attributes       1.540000   0.120000   1.660000 (  2.973000)
-5000x SELECT sample_date, 1 record                           1.440000   0.110000   1.550000 (  2.814000)
-5000x SELECT sample_date, 1 record - get attributes          1.670000   0.110000   1.780000 (  3.176000)
-5000x SELECT sample_datetime, 1 record                       1.460000   0.120000   1.580000 (  2.861000)
-5000x SELECT sample_datetime, 1 record - get attributes      2.230000   0.120000   2.350000 (  3.855000)
-5000x SELECT sample_decimal, 1 record                        1.480000   0.110000   1.590000 (  2.875000)
-5000x SELECT sample_decimal, 1 record - get attributes       1.610000   0.120000   1.730000 (  3.077000)
-5000x SELECT sample_float, 1 record                          1.520000   0.110000   1.630000 (  2.984000)
-5000x SELECT sample_float, 1 record - get attributes         1.700000   0.130000   1.830000 (  3.252000)
-5000x SELECT sample_integer, 1 record                        1.400000   0.110000   1.510000 (  2.764000)
-5000x SELECT sample_integer, 1 record - get attributes       1.500000   0.110000   1.610000 (  2.913000)
-5000x SELECT sample_string, 1 record                         1.410000   0.110000   1.520000 (  2.766000)
-5000x SELECT sample_string, 1 record - get attributes        1.530000   0.110000   1.640000 (  2.948000)
-5000x SELECT sample_text, 1 record                           1.460000   0.120000   1.580000 (  2.880000)
-5000x SELECT sample_text, 1 record - get attributes          1.510000   0.110000   1.620000 (  2.927000)
-5000x SELECT sample_time, 1 record                           1.480000   0.110000   1.590000 (  2.896000)
-5000x SELECT sample_time, 1 record - get attributes          1.610000   0.120000   1.730000 (  3.098000)
-5000x SELECT sample_timestamp, 1 record                      1.440000   0.110000   1.550000 (  2.873000)
-5000x SELECT sample_timestamp, 1 record - get attributes     2.240000   0.130000   2.370000 (  3.866000)
-30x SELECT *, 5000 records                                   7.410000   0.730000   8.140000 ( 14.106000)
-30x SELECT *, 5000 records - get attributes                 46.850000   0.760000  47.610000 ( 49.915000)
-30x SELECT sample_binary, 5000 records                       4.620000   0.460000   5.080000 (  9.229000)
-30x SELECT sample_binary, 5000 records - get attributes      5.700000   0.510000   6.210000 ( 10.890000)
-30x SELECT sample_boolean, 5000 records                      2.980000   0.010000   2.990000 (  3.044000)
-30x SELECT sample_boolean, 5000 records - get attributes     4.300000   0.020000   4.320000 (  4.257000)
-30x SELECT sample_date, 5000 records                         3.000000   0.010000   3.010000 (  3.062000)
-30x SELECT sample_date, 5000 records - get attributes        4.790000   0.020000   4.810000 (  4.821000)
-30x SELECT sample_datetime, 5000 records                     2.940000   0.010000   2.950000 (  3.098000)
-30x SELECT sample_datetime, 5000 records - get attributes   16.900000   0.050000  16.950000 ( 16.605000)
-30x SELECT sample_decimal, 5000 records                      3.190000   0.010000   3.200000 (  3.264000)
-30x SELECT sample_decimal, 5000 records - get attributes     4.180000   0.010000   4.190000 (  4.155000)
-30x SELECT sample_float, 5000 records                        2.880000   0.020000   2.900000 (  3.127000)
-30x SELECT sample_float, 5000 records - get attributes       3.830000   0.020000   3.850000 (  4.036000)
-30x SELECT sample_integer, 5000 records                      2.840000   0.010000   2.850000 (  2.899000)
-30x SELECT sample_integer, 5000 records - get attributes     3.740000   0.010000   3.750000 (  3.794000)
-30x SELECT sample_string, 5000 records                       2.850000   0.010000   2.860000 (  2.936000)
-30x SELECT sample_string, 5000 records - get attributes      3.880000   0.020000   3.900000 (  3.857000)
-30x SELECT sample_text, 5000 records                         3.200000   0.170000   3.370000 (  4.962000)
-30x SELECT sample_text, 5000 records - get attributes        4.120000   0.180000   4.300000 (  5.660000)
-30x SELECT sample_time, 5000 records                         2.960000   0.010000   2.970000 (  3.096000)
-30x SELECT sample_time, 5000 records - get attributes        4.940000   0.020000   4.960000 (  4.968000)
-30x SELECT sample_timestamp, 5000 records                    2.860000   0.010000   2.870000 (  3.053000)
-30x SELECT sample_timestamp, 5000 records - get attributes  17.120000   0.050000  17.170000 ( 16.774000)
+                                                                      user     system      total        real
+BenchRecord.select('a_binary').where(:id => i).first [5000x]      3.980000   0.220000   4.200000 (  5.420000)
+BenchRecord.select('a_boolean').where(:id => i).first [5000x]     3.530000   0.210000   3.740000 (  5.296000)
+BenchRecord.select('a_date').where(:id => i).first [5000x]        4.600000   0.260000   4.860000 (  6.295000)
+BenchRecord.select('a_datetime').where(:id => i).first [5000x]    3.640000   0.220000   3.860000 (  5.471000)
+BenchRecord.select('a_decimal').where(:id => i).first [5000x]     3.630000   0.220000   3.850000 (  5.423000)
+BenchRecord.select('a_float').where(:id => i).first [5000x]       3.600000   0.220000   3.820000 (  5.381000)
+BenchRecord.select('a_integer').where(:id => i).first [5000x]     3.590000   0.220000   3.810000 (  5.429000)
+BenchRecord.select('a_string').where(:id => i).first [5000x]      3.770000   0.230000   4.000000 (  5.681000)
+BenchRecord.select('a_text').where(:id => i).first [5000x]        3.590000   0.220000   3.810000 (  5.386000)
+BenchRecord.select('a_time').where(:id => i).first [5000x]        3.520000   0.210000   3.730000 (  5.216000)
+BenchRecord.select('a_timestamp').where(:id => i).first [5000x]   3.900000   0.250000   4.150000 (  5.905000)
+BenchRecord.select('*').where(:id => i).first [5000x]             4.270000   0.240000   4.510000 (  6.513000)
+
 ```
 
-## MRI Ruby 2.1.1 + ActiveRecord 4.0.4
+sample MySQL run `AR_VERSION="~>3.2" AR_ADAPTER=mysql2 ruby -Ijdbc-mysql/lib bench/benchmark_update.rb 5000` :
+```
+--- RUBY_VERSION: 1.9.3 (JRUBY_VERSION: 1.7.19 1.7.0_72-b14)
+--- ActiveRecord: 3.2.21 (AR-JDBC: 1.4.0.dev 265c2e9a)
 
-```sh
-$ RBENV_VERSION=2.1.1 ruby bench_activerecord.rb
-RUBY_PLATFORM: x86_64-darwin12.0
-RUBY_VERSION: 2.1.1
-ActiveRecord.version: 4.0.4
+ - BenchRecord.connection.drop_table(:bench_records) took 0.032
+ - BenchRecord.connection.create_table(:bench_records) { ... } took 0.059
 
-Rehearsal ----------------------------------------------------------------------------------------------
-100_000x Column.string_to_time                               4.330000   0.010000   4.340000 (  4.344062)
-5000x SELECT *, 1 record                                     1.640000   0.180000   1.820000 (  3.336318)
-5000x SELECT *, 1 record - get attributes                    2.360000   0.190000   2.550000 (  4.254662)
-5000x SELECT sample_binary, 1 record                         1.330000   0.160000   1.490000 (  2.800823)
-5000x SELECT sample_binary, 1 record - get attributes        1.340000   0.160000   1.500000 (  2.758348)
-5000x SELECT sample_boolean, 1 record                        1.220000   0.120000   1.340000 (  2.415265)
-5000x SELECT sample_boolean, 1 record - get attributes       1.310000   0.130000   1.440000 (  2.540729)
-5000x SELECT sample_date, 1 record                           1.250000   0.130000   1.380000 (  2.475375)
-5000x SELECT sample_date, 1 record - get attributes          1.360000   0.130000   1.490000 (  2.611343)
-5000x SELECT sample_datetime, 1 record                       1.240000   0.130000   1.370000 (  2.464927)
-5000x SELECT sample_datetime, 1 record - get attributes      1.480000   0.130000   1.610000 (  2.795763)
-5000x SELECT sample_decimal, 1 record                        1.220000   0.130000   1.350000 (  2.412033)
-5000x SELECT sample_decimal, 1 record - get attributes       1.400000   0.130000   1.530000 (  2.691297)
-5000x SELECT sample_float, 1 record                          1.270000   0.130000   1.400000 (  2.514580)
-5000x SELECT sample_float, 1 record - get attributes         1.280000   0.130000   1.410000 (  2.499829)
-5000x SELECT sample_integer, 1 record                        1.340000   0.130000   1.470000 (  2.621530)
-5000x SELECT sample_integer, 1 record - get attributes       1.270000   0.130000   1.400000 (  2.456941)
-5000x SELECT sample_string, 1 record                         1.220000   0.120000   1.340000 (  2.402982)
-5000x SELECT sample_string, 1 record - get attributes        1.280000   0.130000   1.410000 (  2.484247)
-5000x SELECT sample_text, 1 record                           1.230000   0.120000   1.350000 (  2.437091)
-5000x SELECT sample_text, 1 record - get attributes          1.290000   0.130000   1.420000 (  2.499856)
-5000x SELECT sample_time, 1 record                           1.230000   0.120000   1.350000 (  2.432741)
-5000x SELECT sample_time, 1 record - get attributes          1.410000   0.130000   1.540000 (  2.691902)
-5000x SELECT sample_timestamp, 1 record                      1.250000   0.130000   1.380000 (  2.459739)
-5000x SELECT sample_timestamp, 1 record - get attributes     1.530000   0.140000   1.670000 (  2.904216)
-30x SELECT *, 5000 records                                   5.940000   1.050000   6.990000 ( 13.807726)
-30x SELECT *, 5000 records - get attributes                 20.560000   1.170000  21.730000 ( 28.448022)
-30x SELECT sample_binary, 5000 records                       3.830000   0.640000   4.470000 (  8.610299)
-30x SELECT sample_binary, 5000 records - get attributes      5.290000   0.720000   6.010000 ( 10.289710)
-30x SELECT sample_boolean, 5000 records                      3.200000   0.060000   3.260000 (  3.364166)
-30x SELECT sample_boolean, 5000 records - get attributes     4.030000   0.060000   4.090000 (  4.184786)
-30x SELECT sample_date, 5000 records                         3.210000   0.030000   3.240000 (  3.408652)
-30x SELECT sample_date, 5000 records - get attributes        4.750000   0.070000   4.820000 (  4.968599)
-30x SELECT sample_datetime, 5000 records                     3.260000   0.030000   3.290000 (  3.529653)
-30x SELECT sample_datetime, 5000 records - get attributes    6.520000   0.060000   6.580000 (  6.804971)
-30x SELECT sample_decimal, 5000 records                      3.310000   0.040000   3.350000 (  3.480614)
-30x SELECT sample_decimal, 5000 records - get attributes     4.290000   0.050000   4.340000 (  4.483592)
-30x SELECT sample_float, 5000 records                        3.330000   0.040000   3.370000 (  3.623960)
-30x SELECT sample_float, 5000 records - get attributes       4.160000   0.050000   4.210000 (  4.458465)
-30x SELECT sample_integer, 5000 records                      3.330000   0.020000   3.350000 (  3.469536)
-30x SELECT sample_integer, 5000 records - get attributes     4.180000   0.050000   4.230000 (  4.336865)
-30x SELECT sample_string, 5000 records                       3.310000   0.030000   3.340000 (  3.473862)
-30x SELECT sample_string, 5000 records - get attributes      4.100000   0.050000   4.150000 (  4.292772)
-30x SELECT sample_text, 5000 records                         3.560000   0.250000   3.810000 (  5.302102)
-30x SELECT sample_text, 5000 records - get attributes        4.240000   0.260000   4.500000 (  5.953102)
-30x SELECT sample_time, 5000 records                         3.570000   0.030000   3.600000 (  3.809363)
-30x SELECT sample_time, 5000 records - get attributes        6.630000   0.060000   6.690000 (  6.884445)
-30x SELECT sample_timestamp, 5000 records                    3.370000   0.040000   3.410000 (  3.653458)
-30x SELECT sample_timestamp, 5000 records - get attributes   6.690000   0.060000   6.750000 (  7.000303)
------------------------------------------------------------------------------------ total: 163.930000sec
+Rehearsal ---------------------------------------------------------------------------------------------------------------------------------------
+BenchRecord#update() [5000x]                                                                          4.100000   0.410000   4.510000 (  3.115000)
+BenchRecord#update('a_binary' => "\x06\xB5Q\x81YG+\xDEQv\x88\xFE\xEA\x9B\xA7\xE9...(1536)") [5000x]  13.760000   1.200000  14.960000 ( 46.058000)
+BenchRecord#update('a_boolean' => true) [5000x]                                                      11.130000   1.040000  12.170000 ( 42.058000)
+BenchRecord#update('a_date' => Mon, 27 Apr 2015) [5000x]                                             10.940000   1.190000  12.130000 ( 43.960000)
+BenchRecord#update('a_datetime' => Mon, 27 Apr 2015 10:19:20 +0200) [5000x]                           8.250000   1.240000   9.490000 ( 44.488000)
+BenchRecord#update('a_decimal' => #<BigDecimal:284fab15,'1234567890.55555',15(16)>) [5000x]           8.760000   1.310000  10.070000 ( 44.437000)
+BenchRecord#update('a_float' => 999.99) [5000x]                                                       8.430000   1.400000   9.830000 ( 44.928000)
+BenchRecord#update('a_integer' => 4242) [5000x]                                                       8.680000   1.680000  10.360000 ( 46.721000)
+BenchRecord#update('a_string' => "BORAT Ipsum!") [5000x]                                              7.800000   1.450000   9.250000 ( 44.952000)
+BenchRecord#update('a_text' => "Kazakhstan is th...(464)") [5000x]                                    8.590000   1.610000  10.200000 ( 47.619000)
+BenchRecord#update('a_time' => 2015-04-27 10:19:20 +0200) [5000x]                                     8.530000   1.390000   9.920000 ( 45.802000)
+BenchRecord#update('a_timestamp' => 2015-04-27 10:19:20 +0200) [5000x]                                9.280000   1.600000  10.880000 ( 47.332000)
+BenchRecord#update(...) [5000x]                                                                       5.050000   0.580000   5.630000 (  4.978000)
+---------------------------------------------------------------------------------------------------------------------------- total: 129.400000sec
 
-                                                                 user     system      total        real
-100_000x Column.string_to_time                               4.160000   0.050000   4.210000 (  4.209888)
-5000x SELECT *, 1 record                                     1.470000   0.170000   1.640000 (  3.053897)
-5000x SELECT *, 1 record - get attributes                    2.060000   0.170000   2.230000 (  3.806551)
-5000x SELECT sample_binary, 1 record                         1.250000   0.160000   1.410000 (  2.653040)
-5000x SELECT sample_binary, 1 record - get attributes        1.330000   0.160000   1.490000 (  2.756563)
-5000x SELECT sample_boolean, 1 record                        1.240000   0.130000   1.370000 (  2.464998)
-5000x SELECT sample_boolean, 1 record - get attributes       1.290000   0.130000   1.420000 (  2.536167)
-5000x SELECT sample_date, 1 record                           1.190000   0.120000   1.310000 (  2.378788)
-5000x SELECT sample_date, 1 record - get attributes          1.310000   0.130000   1.440000 (  2.542875)
-5000x SELECT sample_datetime, 1 record                       1.350000   0.140000   1.490000 (  2.671636)
-5000x SELECT sample_datetime, 1 record - get attributes      1.400000   0.130000   1.530000 (  2.671239)
-5000x SELECT sample_decimal, 1 record                        1.220000   0.130000   1.350000 (  2.425365)
-5000x SELECT sample_decimal, 1 record - get attributes       1.320000   0.130000   1.450000 (  2.567473)
-5000x SELECT sample_float, 1 record                          1.200000   0.130000   1.330000 (  2.392058)
-5000x SELECT sample_float, 1 record - get attributes         1.230000   0.120000   1.350000 (  2.437260)
-5000x SELECT sample_integer, 1 record                        1.200000   0.130000   1.330000 (  2.390561)
-5000x SELECT sample_integer, 1 record - get attributes       1.260000   0.120000   1.380000 (  2.450501)
-5000x SELECT sample_string, 1 record                         1.220000   0.130000   1.350000 (  2.420020)
-5000x SELECT sample_string, 1 record - get attributes        1.260000   0.130000   1.390000 (  2.469121)
-5000x SELECT sample_text, 1 record                           1.280000   0.130000   1.410000 (  2.528442)
-5000x SELECT sample_text, 1 record - get attributes          1.390000   0.140000   1.530000 (  2.715474)
-5000x SELECT sample_time, 1 record                           1.440000   0.140000   1.580000 (  2.837128)
-5000x SELECT sample_time, 1 record - get attributes          1.680000   0.160000   1.840000 (  3.143593)
-5000x SELECT sample_timestamp, 1 record                      1.260000   0.130000   1.390000 (  2.509884)
-5000x SELECT sample_timestamp, 1 record - get attributes     1.420000   0.130000   1.550000 (  2.705749)
-30x SELECT *, 5000 records                                   5.810000   0.980000   6.790000 ( 14.260170)
-30x SELECT *, 5000 records - get attributes                 20.400000   1.080000  21.480000 ( 28.286836)
-30x SELECT sample_binary, 5000 records                       3.680000   0.670000   4.350000 (  8.621811)
-30x SELECT sample_binary, 5000 records - get attributes      5.350000   0.760000   6.110000 ( 10.431250)
-30x SELECT sample_boolean, 5000 records                      3.200000   0.030000   3.230000 (  3.324170)
-30x SELECT sample_boolean, 5000 records - get attributes     4.050000   0.040000   4.090000 (  4.207547)
-30x SELECT sample_date, 5000 records                         3.170000   0.030000   3.200000 (  3.369881)
-30x SELECT sample_date, 5000 records - get attributes        4.600000   0.050000   4.650000 (  4.820838)
-30x SELECT sample_datetime, 5000 records                     3.220000   0.050000   3.270000 (  3.507376)
-30x SELECT sample_datetime, 5000 records - get attributes    6.430000   0.060000   6.490000 (  6.737743)
-30x SELECT sample_decimal, 5000 records                      3.250000   0.040000   3.290000 (  3.430372)
-30x SELECT sample_decimal, 5000 records - get attributes     4.270000   0.050000   4.320000 (  4.457521)
-30x SELECT sample_float, 5000 records                        3.230000   0.030000   3.260000 (  3.524155)
-30x SELECT sample_float, 5000 records - get attributes       4.010000   0.060000   4.070000 (  4.317751)
-30x SELECT sample_integer, 5000 records                      3.140000   0.040000   3.180000 (  3.287839)
-30x SELECT sample_integer, 5000 records - get attributes     4.150000   0.040000   4.190000 (  4.317500)
-30x SELECT sample_string, 5000 records                       3.190000   0.030000   3.220000 (  3.364913)
-30x SELECT sample_string, 5000 records - get attributes      4.000000   0.060000   4.060000 (  4.176955)
-30x SELECT sample_text, 5000 records                         3.410000   0.260000   3.670000 (  5.151710)
-30x SELECT sample_text, 5000 records - get attributes        4.090000   0.250000   4.340000 (  5.981534)
-30x SELECT sample_time, 5000 records                         3.200000   0.040000   3.240000 (  3.427325)
-30x SELECT sample_time, 5000 records - get attributes        6.280000   0.050000   6.330000 (  6.526368)
-30x SELECT sample_timestamp, 5000 records                    3.220000   0.030000   3.250000 (  3.504438)
-30x SELECT sample_timestamp, 5000 records - get attributes   6.430000   0.060000   6.490000 (  6.729245)
+                                                                                                          user     system      total        real
+BenchRecord#update() [5000x]                                                                          1.500000   0.400000   1.900000 (  2.021000)
+BenchRecord#update('a_binary' => "\x06\xB5Q\x81YG+\xDEQv\x88\xFE\xEA\x9B\xA7\xE9...(1536)") [5000x]   1.620000   0.410000   2.030000 (  2.373000)
+BenchRecord#update('a_boolean' => true) [5000x]                                                       1.590000   0.390000   1.980000 (  2.289000)
+BenchRecord#update('a_date' => Mon, 27 Apr 2015) [5000x]                                              1.710000   0.430000   2.140000 (  2.357000)
+BenchRecord#update('a_datetime' => Mon, 27 Apr 2015 10:19:20 +0200) [5000x]                           2.220000   0.430000   2.650000 (  2.625000)
+BenchRecord#update('a_decimal' => #<BigDecimal:284fab15,'1234567890.55555',15(16)>) [5000x]           1.670000   0.480000   2.150000 (  2.517000)
+BenchRecord#update('a_float' => 999.99) [5000x]                                                       1.600000   0.410000   2.010000 (  2.326000)
+BenchRecord#update('a_integer' => 4242) [5000x]                                                       1.770000   0.430000   2.200000 (  2.637000)
+BenchRecord#update('a_string' => "BORAT Ipsum!") [5000x]                                              1.660000   0.400000   2.060000 (  2.438000)
+BenchRecord#update('a_text' => "Kazakhstan is th...(464)") [5000x]                                    1.680000   0.440000   2.120000 (  2.506000)
+BenchRecord#update('a_time' => 2015-04-27 10:19:20 +0200) [5000x]                                     1.660000   0.420000   2.080000 (  2.390000)
+BenchRecord#update('a_timestamp' => 2015-04-27 10:19:20 +0200) [5000x]                                1.610000   0.370000   1.980000 (  2.308000)
+BenchRecord#update(...) [5000x]                                                                       3.000000   0.400000   3.400000 (  3.655000)
+
 ```
 
-## MRI Ruby 1.9.3 + ActiveRecord 4.0.4
-
-```sh
-$ RBENV_VERSION=1.9.3-p545 ruby bench_activerecord.rb
-RUBY_PLATFORM: x86_64-darwin12.5.0
-RUBY_VERSION: 1.9.3
-ActiveRecord.version: 4.0.4
-
-Rehearsal ----------------------------------------------------------------------------------------------
-100_000x Column.string_to_time                               4.100000   0.020000   4.120000 (  4.114137)
-5000x SELECT *, 1 record                                     1.730000   0.170000   1.900000 (  3.393758)
-5000x SELECT *, 1 record - get attributes                    3.240000   0.190000   3.430000 (  5.196376)
-5000x SELECT sample_binary, 1 record                         1.430000   0.160000   1.590000 (  2.857167)
-5000x SELECT sample_binary, 1 record - get attributes        1.560000   0.150000   1.710000 (  2.989059)
-5000x SELECT sample_boolean, 1 record                        1.400000   0.130000   1.530000 (  2.614037)
-5000x SELECT sample_boolean, 1 record - get attributes       1.480000   0.130000   1.610000 (  2.708677)
-5000x SELECT sample_date, 1 record                           1.410000   0.130000   1.540000 (  2.632385)
-5000x SELECT sample_date, 1 record - get attributes          1.500000   0.120000   1.620000 (  2.730279)
-5000x SELECT sample_datetime, 1 record                       1.450000   0.140000   1.590000 (  2.718146)
-5000x SELECT sample_datetime, 1 record - get attributes      1.750000   0.140000   1.890000 (  3.108926)
-5000x SELECT sample_decimal, 1 record                        1.400000   0.120000   1.520000 (  2.599698)
-5000x SELECT sample_decimal, 1 record - get attributes       1.490000   0.130000   1.620000 (  2.711305)
-5000x SELECT sample_float, 1 record                          1.520000   0.140000   1.660000 (  2.824884)
-5000x SELECT sample_float, 1 record - get attributes         1.470000   0.120000   1.590000 (  2.729042)
-5000x SELECT sample_integer, 1 record                        1.430000   0.130000   1.560000 (  2.640849)
-5000x SELECT sample_integer, 1 record - get attributes       1.480000   0.130000   1.610000 (  2.734745)
-5000x SELECT sample_string, 1 record                         1.410000   0.130000   1.540000 (  2.621104)
-5000x SELECT sample_string, 1 record - get attributes        1.450000   0.120000   1.570000 (  2.660389)
-5000x SELECT sample_text, 1 record                           1.400000   0.130000   1.530000 (  2.612373)
-5000x SELECT sample_text, 1 record - get attributes          1.470000   0.130000   1.600000 (  2.710282)
-5000x SELECT sample_time, 1 record                           1.580000   0.140000   1.720000 (  2.941951)
-5000x SELECT sample_time, 1 record - get attributes          1.620000   0.130000   1.750000 (  2.882582)
-5000x SELECT sample_timestamp, 1 record                      1.440000   0.130000   1.570000 (  2.695703)
-5000x SELECT sample_timestamp, 1 record - get attributes     1.650000   0.140000   1.790000 (  2.946354)
-30x SELECT *, 5000 records                                   6.040000   1.030000   7.070000 ( 13.985115)
-30x SELECT *, 5000 records - get attributes                 39.680000   1.220000  40.900000 ( 48.103746)
-30x SELECT sample_binary, 5000 records                       4.250000   0.670000   4.920000 (  9.108486)
-30x SELECT sample_binary, 5000 records - get attributes      6.010000   0.750000   6.760000 ( 11.019857)
-30x SELECT sample_boolean, 5000 records                      3.550000   0.050000   3.600000 (  3.701829)
-30x SELECT sample_boolean, 5000 records - get attributes     4.570000   0.050000   4.620000 (  4.716634)
-30x SELECT sample_date, 5000 records                         3.920000   0.040000   3.960000 (  4.148675)
-30x SELECT sample_date, 5000 records - get attributes        5.280000   0.060000   5.340000 (  5.494910)
-30x SELECT sample_datetime, 5000 records                     3.580000   0.060000   3.640000 (  3.867257)
-30x SELECT sample_datetime, 5000 records - get attributes    7.850000   0.070000   7.920000 (  8.154746)
-30x SELECT sample_decimal, 5000 records                      3.580000   0.050000   3.630000 (  3.760962)
-30x SELECT sample_decimal, 5000 records - get attributes     4.810000   0.060000   4.870000 (  5.006299)
-30x SELECT sample_float, 5000 records                        3.620000   0.040000   3.660000 (  3.909829)
-30x SELECT sample_float, 5000 records - get attributes       4.610000   0.060000   4.670000 (  4.919933)
-30x SELECT sample_integer, 5000 records                      3.560000   0.050000   3.610000 (  3.722908)
-30x SELECT sample_integer, 5000 records - get attributes     4.640000   0.060000   4.700000 (  4.805766)
-30x SELECT sample_string, 5000 records                       3.650000   0.040000   3.690000 (  3.817948)
-30x SELECT sample_string, 5000 records - get attributes      4.570000   0.060000   4.630000 (  4.762566)
-30x SELECT sample_text, 5000 records                         3.770000   0.270000   4.040000 (  5.508307)
-30x SELECT sample_text, 5000 records - get attributes        4.730000   0.260000   4.990000 (  6.456294)
-30x SELECT sample_time, 5000 records                         3.610000   0.050000   3.660000 (  3.842453)
-30x SELECT sample_time, 5000 records - get attributes        7.670000   0.060000   7.730000 (  7.913695)
-30x SELECT sample_timestamp, 5000 records                    3.580000   0.050000   3.630000 (  3.873479)
-30x SELECT sample_timestamp, 5000 records - get attributes   7.790000   0.070000   7.860000 (  8.101233)
------------------------------------------------------------------------------------ total: 199.260000sec
-
-                                                                 user     system      total        real
-100_000x Column.string_to_time                               3.510000   0.050000   3.560000 (  3.562254)
-5000x SELECT *, 1 record                                     1.370000   0.160000   1.530000 (  2.903603)
-5000x SELECT *, 1 record - get attributes                    2.700000   0.180000   2.880000 (  4.536772)
-5000x SELECT sample_binary, 1 record                         1.220000   0.160000   1.380000 (  2.596406)
-5000x SELECT sample_binary, 1 record - get attributes        1.330000   0.160000   1.490000 (  2.755631)
-5000x SELECT sample_boolean, 1 record                        1.270000   0.130000   1.400000 (  2.506059)
-5000x SELECT sample_boolean, 1 record - get attributes       1.230000   0.120000   1.350000 (  2.408743)
-5000x SELECT sample_date, 1 record                           1.210000   0.120000   1.330000 (  2.408811)
-5000x SELECT sample_date, 1 record - get attributes          1.310000   0.130000   1.440000 (  2.528883)
-5000x SELECT sample_datetime, 1 record                       1.210000   0.130000   1.340000 (  2.413639)
-5000x SELECT sample_datetime, 1 record - get attributes      1.410000   0.130000   1.540000 (  2.656491)
-5000x SELECT sample_decimal, 1 record                        1.290000   0.140000   1.430000 (  2.554423)
-5000x SELECT sample_decimal, 1 record - get attributes       1.320000   0.130000   1.450000 (  2.569616)
-5000x SELECT sample_float, 1 record                          1.210000   0.120000   1.330000 (  2.400026)
-5000x SELECT sample_float, 1 record - get attributes         1.240000   0.130000   1.370000 (  2.426909)
-5000x SELECT sample_integer, 1 record                        1.200000   0.120000   1.320000 (  2.378489)
-5000x SELECT sample_integer, 1 record - get attributes       1.300000   0.130000   1.430000 (  2.539370)
-5000x SELECT sample_string, 1 record                         1.270000   0.130000   1.400000 (  2.512630)
-5000x SELECT sample_string, 1 record - get attributes        1.230000   0.120000   1.350000 (  2.406206)
-5000x SELECT sample_text, 1 record                           1.290000   0.140000   1.430000 (  2.566701)
-5000x SELECT sample_text, 1 record - get attributes          1.240000   0.130000   1.370000 (  2.426751)
-5000x SELECT sample_time, 1 record                           1.220000   0.120000   1.340000 (  2.421052)
-5000x SELECT sample_time, 1 record - get attributes          1.400000   0.130000   1.530000 (  2.625196)
-5000x SELECT sample_timestamp, 1 record                      1.210000   0.130000   1.340000 (  2.418126)
-5000x SELECT sample_timestamp, 1 record - get attributes     1.410000   0.130000   1.540000 (  2.657670)
-30x SELECT *, 5000 records                                   5.900000   1.010000   6.910000 ( 13.731921)
-30x SELECT *, 5000 records - get attributes                 40.030000   1.170000  41.200000 ( 47.947703)
-30x SELECT sample_binary, 5000 records                       4.180000   0.690000   4.870000 (  9.286634)
-30x SELECT sample_binary, 5000 records - get attributes      5.910000   0.730000   6.640000 ( 11.058400)
-30x SELECT sample_boolean, 5000 records                      3.550000   0.040000   3.590000 (  3.697836)
-30x SELECT sample_boolean, 5000 records - get attributes     4.590000   0.060000   4.650000 (  4.736932)
-30x SELECT sample_date, 5000 records                         3.570000   0.050000   3.620000 (  3.772481)
-30x SELECT sample_date, 5000 records - get attributes        5.280000   0.060000   5.340000 (  5.491344)
-30x SELECT sample_datetime, 5000 records                     3.590000   0.040000   3.630000 (  3.878030)
-30x SELECT sample_datetime, 5000 records - get attributes    7.730000   0.070000   7.800000 (  8.037425)
-30x SELECT sample_decimal, 5000 records                      3.560000   0.050000   3.610000 (  3.744310)
-30x SELECT sample_decimal, 5000 records - get attributes     4.770000   0.070000   4.840000 (  4.971628)
-30x SELECT sample_float, 5000 records                        3.580000   0.050000   3.630000 (  3.888197)
-30x SELECT sample_float, 5000 records - get attributes       4.620000   0.060000   4.680000 (  4.936691)
-30x SELECT sample_integer, 5000 records                      3.600000   0.040000   3.640000 (  3.750270)
-30x SELECT sample_integer, 5000 records - get attributes     4.630000   0.050000   4.680000 (  4.795921)
-30x SELECT sample_string, 5000 records                       3.600000   0.050000   3.650000 (  3.784288)
-30x SELECT sample_string, 5000 records - get attributes      4.570000   0.060000   4.630000 (  4.762953)
-30x SELECT sample_text, 5000 records                         3.720000   0.260000   3.980000 (  5.439584)
-30x SELECT sample_text, 5000 records - get attributes        4.710000   0.270000   4.980000 (  6.438428)
-30x SELECT sample_time, 5000 records                         3.620000   0.040000   3.660000 (  3.851125)
-30x SELECT sample_time, 5000 records - get attributes        7.580000   0.060000   7.640000 (  7.823402)
-30x SELECT sample_timestamp, 5000 records                    3.580000   0.040000   3.620000 (  3.865610)
-30x SELECT sample_timestamp, 5000 records - get attributes   7.760000   0.070000   7.830000 (  8.069726)
-```
-
-## Raw JDBC
-
-A simplistic test using the raw JDBC adapter, fetching each record into a ruby hash.
-
-```sh
-$ RBENV_VERSION=jruby-1.7.11 ruby bench_jdbc.rb
-RUBY_PLATFORM: java
-RUBY_VERSION: 1.9.3
-
-Rehearsal -----------------------------------------------------------------------------
-5000x SELECT *, 1 record                    5.180000   0.220000   5.400000 (  4.532000)
-5000x SELECT sample_binary, 1 record        0.740000   0.130000   0.870000 (  9.287000)
-5000x SELECT sample_boolean, 1 record       0.630000   0.100000   0.730000 (  4.356000)
-5000x SELECT sample_date, 1 record          0.160000   0.080000   0.240000 (  2.952000)
-5000x SELECT sample_datetime, 1 record      0.740000   0.110000   0.850000 (  4.177000)
-5000x SELECT sample_decimal, 1 record       0.130000   0.090000   0.220000 (  1.219000)
-5000x SELECT sample_float, 1 record         0.180000   0.080000   0.260000 (  3.442000)
-5000x SELECT sample_integer, 1 record       0.340000   0.100000   0.440000 (  1.202000)
-5000x SELECT sample_string, 1 record        0.130000   0.080000   0.210000 (  2.066000)
-5000x SELECT sample_text, 1 record          0.290000   0.090000   0.380000 (  2.151000)
-5000x SELECT sample_time, 1 record          0.150000   0.080000   0.230000 (  2.897000)
-5000x SELECT sample_timestamp, 1 record     0.210000   0.080000   0.290000 (  2.070000)
-30x SELECT *, 5000 records                 11.010000   0.920000  11.930000 ( 16.416000)
-30x SELECT sample_binary, 5000 records      1.890000   0.510000   2.400000 (  7.062000)
-30x SELECT sample_boolean, 5000 records     0.170000   0.000000   0.170000 (  0.261000)
-30x SELECT sample_date, 5000 records        0.550000   0.040000   0.590000 (  0.609000)
-30x SELECT sample_datetime, 5000 records    0.630000   0.030000   0.660000 (  0.712000)
-30x SELECT sample_decimal, 5000 records     0.370000   0.010000   0.380000 (  0.402000)
-30x SELECT sample_float, 5000 records       0.360000   0.020000   0.380000 (  0.572000)
-30x SELECT sample_integer, 5000 records     0.160000   0.000000   0.160000 (  0.260000)
-30x SELECT sample_string, 5000 records      0.200000   0.010000   0.210000 (  0.320000)
-30x SELECT sample_text, 5000 records        0.540000   0.190000   0.730000 (  2.271000)
-30x SELECT sample_time, 5000 records        0.540000   0.020000   0.560000 (  0.631000)
-30x SELECT sample_timestamp, 5000 records   0.520000   0.010000   0.530000 (  0.669000)
-------------------------------------------------------------------- total: 28.820000sec
-
-                                                user     system      total        real
-5000x SELECT *, 1 record                    0.630000   0.130000   0.760000 (  3.502000)
-5000x SELECT sample_binary, 1 record        0.270000   0.100000   0.370000 (  1.556000)
-5000x SELECT sample_boolean, 1 record       0.130000   0.090000   0.220000 (  1.582000)
-5000x SELECT sample_date, 1 record          0.140000   0.080000   0.220000 (  2.315000)
-5000x SELECT sample_datetime, 1 record      0.150000   0.090000   0.240000 (  3.321000)
-5000x SELECT sample_decimal, 1 record       0.130000   0.080000   0.210000 (  1.603000)
-5000x SELECT sample_float, 1 record         0.310000   0.100000   0.410000 (  4.117000)
-5000x SELECT sample_integer, 1 record       0.140000   0.090000   0.230000 (  2.516000)
-5000x SELECT sample_string, 1 record        0.130000   0.080000   0.210000 (  2.323000)
-5000x SELECT sample_text, 1 record          0.140000   0.080000   0.220000 (  2.012000)
-5000x SELECT sample_time, 1 record          0.150000   0.090000   0.240000 (  2.100000)
-5000x SELECT sample_timestamp, 1 record     0.300000   0.100000   0.400000 (  3.120000)
-30x SELECT *, 5000 records                 12.740000   0.860000  13.600000 ( 18.527000)
-30x SELECT sample_binary, 5000 records      1.870000   0.480000   2.350000 (  6.967000)
-30x SELECT sample_boolean, 5000 records     0.190000   0.000000   0.190000 (  0.270000)
-30x SELECT sample_date, 5000 records        0.480000   0.020000   0.500000 (  0.543000)
-30x SELECT sample_datetime, 5000 records    0.600000   0.020000   0.620000 (  0.702000)
-30x SELECT sample_decimal, 5000 records     0.390000   0.020000   0.410000 (  0.430000)
-30x SELECT sample_float, 5000 records       0.380000   0.010000   0.390000 (  0.576000)
-30x SELECT sample_integer, 5000 records     0.170000   0.000000   0.170000 (  0.271000)
-30x SELECT sample_string, 5000 records      0.200000   0.010000   0.210000 (  0.317000)
-30x SELECT sample_text, 5000 records        0.500000   0.160000   0.660000 (  2.121000)
-30x SELECT sample_time, 5000 records        0.450000   0.010000   0.460000 (  0.571000)
-30x SELECT sample_timestamp, 5000 records   0.550000   0.020000   0.570000 (  0.699000)
-```
+**NOTE:** benchmarks are runnable under MRI (just remove `-I` and install the driver gem e.g. mysql2)

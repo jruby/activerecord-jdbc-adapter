@@ -1,6 +1,7 @@
 require 'rubygems' unless defined? Gem
 gem 'activerecord', ENV['AR_VERSION'] if ENV['AR_VERSION']
 require 'active_record'
+require 'active_record/version'
 if defined? JRUBY_VERSION
   AR_JDBC_VERSION = if ENV['ARJDBC_VERSION']
     gem 'activerecord-jdbc-adapter', ENV['ARJDBC_VERSION']
@@ -27,16 +28,14 @@ config[:database] = ENV['AR_DATABASE'] || 'arjdbc_test'
 if defined? JRUBY_VERSION
   puts "--- RUBY_VERSION: #{RUBY_VERSION} (JRUBY_VERSION: #{JRUBY_VERSION} #{ENV_JAVA['java.runtime.version']})"
   jj_opts = []
-  jj_opts << "JRUBY_OPTS = '#{ENV['JRUBY_OPTS']}'" if ENV['JRUBY_OPTS']
-  jj_opts << "JAVA_OPTS = '#{ENV['JAVA_OPTS']}'" if ENV['JAVA_OPTS']
+  jj_opts << "JRUBY_OPTS = \"#{ENV['JRUBY_OPTS']}\"" if ENV['JRUBY_OPTS']
+  jj_opts << "JAVA_OPTS = \"#{ENV['JAVA_OPTS']}\"" if ENV['JAVA_OPTS']
   puts "    #{jj_opts.join(' ')}" unless jj_opts.empty?
-  puts "--- ActiveRecord: #{ActiveRecord.version.to_s} (AR-JDBC: #{AR_JDBC_VERSION})"
+  puts "--- ActiveRecord: #{ActiveRecord::VERSION::STRING} (AR-JDBC: #{AR_JDBC_VERSION})"
 else
   puts "--- RUBY_VERSION: #{RUBY_VERSION}"
-  puts "--- ActiveRecord: #{ActiveRecord.version.to_s}"
+  puts "--- ActiveRecord: #{ActiveRecord::VERSION::STRING}"
 end
-
-puts "--- arjdbc.datetime.raw: #{ActiveRecord::ConnectionAdapters::JdbcConnection.raw_date_time?.inspect}" if defined? JRUBY_VERSION
 puts "\n"
 
 ActiveRecord::Base.establish_connection(config)
