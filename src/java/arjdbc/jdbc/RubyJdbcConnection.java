@@ -3120,6 +3120,7 @@ public class RubyJdbcConnection extends RubyObject {
         //setInstanceVariable( "@connection", rubyConnectionObject );
         dataWrapStruct(connection);
         //return rubyConnectionObject;
+        if ( connection != null ) logDriverUsed(connection);
     }
 
     protected boolean isConnectionValid(final ThreadContext context, final Connection connection) {
@@ -4149,6 +4150,22 @@ public class RubyJdbcConnection extends RubyObject {
 
     protected void warn(final ThreadContext context, final String message) {
         arjdbc.ArJdbcModule.warn(context, message);
+    }
+
+    private static boolean driverUsedLogged;
+
+    private void logDriverUsed(final Connection connection) {
+        if ( isDebug() ) {
+            if ( driverUsedLogged ) return;
+            driverUsedLogged = true;
+            try {
+                final DatabaseMetaData meta = connection.getMetaData();
+                debugMessage(getRuntime(), "using driver " + meta.getDriverVersion());
+            }
+            catch (SQLException e) {
+                debugMessage(getRuntime(), "failed to log driver ", e);
+            }
+        }
     }
 
     /*
