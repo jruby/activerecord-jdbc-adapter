@@ -256,13 +256,9 @@ if defined? JRUBY_VERSION
       # Thanks to @mislav
       which = lambda do |cmd|
         exts = ENV['PATHEXT'] ? ENV['PATHEXT'].split(';') : ['']
-        ENV['PATH'].split(File::PATH_SEPARATOR).each do |path|
-          exts.each do |ext|
-            exe = File.join(path, "#{cmd}#{ext}")
-            return exe if File.executable? exe
-          end
-        end
-        nil
+        ENV['PATH'].split(File::PATH_SEPARATOR).map do |path|
+          exts.map { |ext| File.join(path, "#{cmd}#{ext}") }
+        end.flatten.select{|f| File.executable? f}.first
       end
 
       unless javac = which.call('javac')
