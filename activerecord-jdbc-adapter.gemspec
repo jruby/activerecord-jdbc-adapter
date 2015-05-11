@@ -5,7 +5,7 @@ require 'arjdbc/version'
 Gem::Specification.new do |gem|
   gem.name = 'activerecord-jdbc-adapter'
   gem.version = ArJdbc::VERSION
-  gem.platform = Gem::Platform::RUBY
+  gem.platform = 'java'
   gem.authors = ['Nick Sieger', 'Ola Bini', 'Karol Bucek', 'JRuby contributors']
   gem.email = ['nick@nicksieger.com', 'ola.bini@gmail.com', 'self@kares.org']
   gem.homepage = 'https://github.com/jruby/activerecord-jdbc-adapter'
@@ -37,6 +37,8 @@ Gem::Specification.new do |gem|
 
     gem.requirements << "jar mysql:mysql-connector-java, 5.1.33, :scope => :compile"
     gem.requirements << "jar org.postgresql:postgresql, 9.4-1200-jdbc4, :scope => :compile"
+    # TODO Bundler won't copy, since the extension is supposed to live elsewhere ?!
+    #gem.files << 'lib/arjdbc/jdbc/adapter_java.jar'
 
     #gem.requirements << "jar 'org.postgresql:postgresql, 9.4-1200-jdbc4, :scope => :compile"
     # compilation .jar dependencies for extension (at least until `mvn') :
