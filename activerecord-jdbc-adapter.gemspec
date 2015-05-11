@@ -1,11 +1,12 @@
 # -*- encoding: utf-8 -*-
-$:.push File.expand_path("../lib", __FILE__)
-require 'arjdbc/version'
 
 Gem::Specification.new do |gem|
   gem.name = 'activerecord-jdbc-adapter'
-  gem.version = ArJdbc::VERSION
   gem.platform = 'java'
+
+  path = File.expand_path('lib/arjdbc/version.rb', File.dirname(__FILE__))
+  gem.version = File.read(path).match( /.*VERSION\s*=\s*['"](.*)['"]/m )[1]
+
   gem.authors = ['Nick Sieger', 'Ola Bini', 'Karol Bucek', 'JRuby contributors']
   gem.email = ['nick@nicksieger.com', 'ola.bini@gmail.com', 'self@kares.org']
   gem.homepage = 'https://github.com/jruby/activerecord-jdbc-adapter'
