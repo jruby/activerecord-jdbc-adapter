@@ -1,7 +1,7 @@
 
 # FS based JNDI impl borrowed from tomcat :
-load 'test/jars/tomcat-juli.jar'
-load 'test/jars/tomcat-catalina.jar'
+#load 'test/jars/tomcat-juli.jar'
+#load 'test/jars/tomcat-catalina.jar'
 
 java.lang.System.set_property(
     javax.naming.Context::INITIAL_CONTEXT_FACTORY,

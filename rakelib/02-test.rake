@@ -102,16 +102,38 @@ end
 
 task :test_jndi => [ :test_jndi_mysql, :test_jndi_derby ] if defined?(JRUBY_VERSION)
 
+jndi_classpath = []
+jndi_classpath << 'test/jars/tomcat-juli.jar'
+jndi_classpath << 'test/jars/tomcat-catalina.jar'
+
+jndi_classpath.each do |jar_path|
+  file(jar_path) { Rake::Task['tomcat-jndi:download'].invoke }
+end
+
+jndi_classpath_opt = lambda do
+  cp = jndi_classpath.map do |jar_path|
+    File.expand_path("../#{jar_path}", File.dirname(__FILE__))
+  end
+  "-J-cp \"#{cp.join(windows? ? ';' : ':')}\""
+end
+
+def windows?; require 'rbconfig'
+  RbConfig::CONFIG['host_os'] =~ /mswin|msys|mingw|cygwin|bccwin|wince|emc/
+end
+
 test_task_for 'JNDI_Derby', :desc => 'Run tests against a Derby JNDI connection',
-  :prereqs => [ 'tomcat-jndi:check' ],
+  :prereqs => jndi_classpath,
   :files => FileList['test/*jndi_derby*test.rb'] do |test_task|
   test_task.libs << 'jdbc-derby/lib'
+  test_task.ruby_opts << jndi_classpath_opt.call
+  #test_task.verbose = true
 end
 
 test_task_for 'JNDI_MySQL', :desc => 'Run tests against a MySQL JNDI connection',
-  :prereqs => [ 'tomcat-jndi:check', 'db:mysql' ],
+  :prereqs => [ 'db:mysql' ] + jndi_classpath,
   :files => FileList['test/*jndi_mysql*test.rb'] do |test_task|
   test_task.libs << 'jdbc-mysql/lib'
+  test_task.ruby_opts << jndi_classpath_opt.call
 end
 
 test_task_for :MySQL, :name => 'test_jdbc_mysql',
