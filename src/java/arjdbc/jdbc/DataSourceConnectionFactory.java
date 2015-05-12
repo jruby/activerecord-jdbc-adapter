@@ -110,7 +110,7 @@ final class DataSourceConnectionFactory implements ConnectionFactory {
             if ( name == null || name.isEmpty() ) {
                 message = "unable to lookup data source - no name given, please set jndi:";
             }
-            else if ( name.indexOf("env") != -1 ) {
+            else if ( name.indexOf("env", 0) == -1 ) {
                 final StringBuilder msg = new StringBuilder();
                 msg.append("name: '").append(name).append("' not found, ");
                 msg.append("try using full name (including env) e.g. ");
