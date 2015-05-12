@@ -97,7 +97,13 @@ final class DataSourceConnectionFactory implements ConnectionFactory {
     // NOTE: keep it here so that RubyJdbcConnection does not force loading of javax.naming classes
     static DataSource lookupDataSource(final ThreadContext context, final String name) {
         try {
-            return (DataSource) getInitialContext().lookup(name);
+            final Object bound = getInitialContext().lookup(name);
+            if ( ! ( bound instanceof DataSource ) ) {
+                if ( bound == null ) throw new NameNotFoundException(); // unlikely to happen
+                final String msg = "bound object at '" + name + "' is not a " + DataSource.class.getName() + " but a " + bound.getClass().getName() + "\n" + bound;
+                throw wrapException(context, getConnectionNotEstablished(context.runtime), new ClassCastException(msg), msg);
+            }
+            return (DataSource) bound;
         }
         catch (NameNotFoundException e) {
             final String message;
