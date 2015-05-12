@@ -1,7 +1,7 @@
 namespace :'tomcat-jndi' do # contains a FS JNDI impl (for tests)
 
   TOMCAT_MAVEN_REPO = 'http://repo2.maven.org/maven2/org/apache/tomcat'
-  TOMCAT_VERSION = '7.0.54'
+  TOMCAT_VERSION = '7.0.61'
 
   DOWNLOAD_DIR = File.expand_path('../test/jars', File.dirname(__FILE__))
 
