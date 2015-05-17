@@ -3089,7 +3089,7 @@ public class RubyJdbcConnection extends RubyObject {
     private Connection getConnectionInternal(final boolean required) throws SQLException {
         Connection connection = getConnectionImpl();
         if ( connection == null ) {
-            if ( required || ! connected ) {
+            if ( required && ! connected ) {
                 final Ruby runtime = getRuntime();
                 final RubyClass errorClass = getConnectionNotEstablished( runtime );
                 throw new RaiseException(runtime, errorClass, "no connection available", false);
