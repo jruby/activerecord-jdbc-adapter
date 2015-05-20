@@ -1052,7 +1052,7 @@ public class RubyJdbcConnection extends RubyObject {
         return tables(context, toStringOrNull(catalog), toStringOrNull(schemaPattern), toStringOrNull(tablePattern), TABLE_TYPE);
     }
 
-    @JRubyMethod(name = "tables")
+    @JRubyMethod(name = "tables", required = 0, optional = 4)
     public IRubyObject tables(final ThreadContext context, final IRubyObject[] args) {
         switch ( args.length ) {
             case 0: // ()
