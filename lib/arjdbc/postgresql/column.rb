@@ -52,6 +52,9 @@ module ArJdbc
     module Column
 
       attr_accessor :array
+      def array?
+        array
+      end
 
       def initialize(name, default, cast_type, sql_type = nil, null = true, default_function = nil,
         oid = nil, adapter = nil) # added arguments

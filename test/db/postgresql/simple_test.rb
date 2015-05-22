@@ -101,7 +101,7 @@ class PostgresSimpleTest < Test::Unit::TestCase
   def test_create_table_with_array
     connection.create_table :my_posts do |t|
       t.string :name; t.text :description
-      t.string :tags, :array => true, :default => []
+      t.string :tags, :array => true, :default => '{}'
       t.timestamps
     end
 
