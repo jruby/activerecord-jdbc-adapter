@@ -4,8 +4,8 @@ module ArJdbc
   module PostgreSQL
 
     if AR42_COMPAT
-      require 'arjdbc/postgresql/base/pgconn'
       require 'active_record/connection_adapters/postgresql/oid'
+      require 'arjdbc/postgresql/base/pgconn'
     else
       require 'arjdbc/postgresql/base/oid'
     end
