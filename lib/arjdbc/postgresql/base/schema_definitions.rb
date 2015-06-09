@@ -1,6 +1,11 @@
 module ActiveRecord
   module ConnectionAdapters
     module PostgreSQL
+      class ColumnDefinition < ActiveRecord::ConnectionAdapters::ColumnDefinition
+        attr_accessor :array
+        def array?; !!@array; end
+      end
+
       module ColumnMethods
         def xml(*args)
           options = args.extract_options!

@@ -1411,12 +1411,9 @@ module ActiveRecord::ConnectionAdapters
         self.class.type_cast_config_to_boolean(@config[:insert_returning]) : nil
     end
 
-    class ColumnDefinition < ActiveRecord::ConnectionAdapters::ColumnDefinition
-      attr_accessor :array
-      def array?; !!@array; end
-    end
-
     require 'arjdbc/postgresql/base/schema_definitions'
+
+    ColumnDefinition = ActiveRecord::ConnectionAdapters::PostgreSQL::ColumnDefinition
 
     ColumnMethods = ActiveRecord::ConnectionAdapters::PostgreSQL::ColumnMethods
     TableDefinition = ActiveRecord::ConnectionAdapters::PostgreSQL::TableDefinition
