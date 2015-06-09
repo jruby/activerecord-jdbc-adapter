@@ -210,6 +210,10 @@ class Test::Unit::TestCase
     assert_nil value
   end
 
+  def assert_not cond
+    assert ! cond
+  end
+
   def assert_date_equal expected, actual
     actual = actual_in_expected_time_zone(expected, actual)
     actual = actual.to_date if actual.is_a?(Time)

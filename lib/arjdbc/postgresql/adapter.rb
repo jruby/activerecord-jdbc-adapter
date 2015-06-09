@@ -1411,7 +1411,11 @@ module ActiveRecord::ConnectionAdapters
         self.class.type_cast_config_to_boolean(@config[:insert_returning]) : nil
     end
 
-    require 'arjdbc/postgresql/base/schema_definitions'
+    if AR42_COMPAT
+      require 'active_record/connection_adapters/postgresql/schema_definitions'
+    else
+      require 'arjdbc/postgresql/base/schema_definitions'
+    end
 
     ColumnDefinition = ActiveRecord::ConnectionAdapters::PostgreSQL::ColumnDefinition
 
