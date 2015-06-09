@@ -201,7 +201,7 @@ module ArJdbc
       when Hash
         case column.sql_type
         when 'hstore'
-          jdbc_column_class.hstore_to_string(value)
+          jdbc_column_class.hstore_to_string(value, array_member)
         when 'json', 'jsonb'
           jdbc_column_class.json_to_string(value)
         else super(value, column)
