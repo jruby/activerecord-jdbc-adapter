@@ -15,7 +15,6 @@ module ArJdbc
     require 'arjdbc/postgresql/column'
     require 'arjdbc/postgresql/explain_support'
     require 'arjdbc/postgresql/schema_creation' # AR 4.x
-
     # @private
     IndexDefinition = ::ActiveRecord::ConnectionAdapters::IndexDefinition
 
@@ -1083,23 +1082,29 @@ module ArJdbc
         execute "ALTER TABLE #{quoted_table_name} ALTER COLUMN #{quote_column_name(column_name)} TYPE #{sql_type}"
       rescue ActiveRecord::StatementInvalid => e
         raise e if postgresql_version > 80000
-        # This is PostgreSQL 7.x, so we have to use a more arcane way of doing it.
-        begin
-          begin_db_transaction
-          tmp_column_name = "#{column_name}_ar_tmp"
-          add_column(table_name, tmp_column_name, type, options)
-          execute "UPDATE #{quoted_table_name} SET #{quote_column_name(tmp_column_name)} = CAST(#{quote_column_name(column_name)} AS #{sql_type})"
-          remove_column(table_name, column_name)
-          rename_column(table_name, tmp_column_name, column_name)
-          commit_db_transaction
-        rescue
-          rollback_db_transaction
-        end
+        change_column_pg7(table_name, column_name, type, options)
       end
 
       change_column_default(table_name, column_name, options[:default]) if options_include_default?(options)
       change_column_null(table_name, column_name, options[:null], options[:default]) if options.key?(:null)
     end # unless const_defined? :SchemaCreation
+
+    def change_column_pg7(table_name, column_name, type, options)
+      quoted_table_name = quote_table_name(table_name)
+      # This is PostgreSQL 7.x, so we have to use a more arcane way of doing it.
+      begin
+        begin_db_transaction
+        tmp_column_name = "#{column_name}_ar_tmp"
+        add_column(table_name, tmp_column_name, type, options)
+        execute "UPDATE #{quoted_table_name} SET #{quote_column_name(tmp_column_name)} = CAST(#{quote_column_name(column_name)} AS #{sql_type})"
+        remove_column(table_name, column_name)
+        rename_column(table_name, tmp_column_name, column_name)
+        commit_db_transaction
+      rescue
+        rollback_db_transaction
+      end
+    end
+    private :change_column_pg7
 
     # Changes the default value of a table column.
     def change_column_default(table_name, column_name, default)
