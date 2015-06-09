@@ -1,8 +1,8 @@
-require 'active_record/connection_adapters/postgresql/oid'
 module ActiveRecord::ConnectionAdapters::PostgreSQL::OID
-  class PGconn
+  class PGconn # emulate PGconn#unescape_bytea due #652
+    # NOTE: on pg gem ... PGconn = (class) PG::Connection
     def self.unescape_bytea(escaped)
-      String.from_java_bytes Java::OrgPostgresqlUtil::PGbytea.toBytes escaped.to_java_bytes
+      ArJdbc::PostgreSQL.unescape_bytea(escaped)
     end
   end
 end
