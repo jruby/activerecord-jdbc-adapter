@@ -1074,12 +1074,18 @@ module ArJdbc
     # Changes the column of a table.
     def change_column(table_name, column_name, type, options = {})
       quoted_table_name = quote_table_name(table_name)
+      quoted_column_name = quote_table_name(column_name)
 
       sql_type = type_to_sql(type, options[:limit], options[:precision], options[:scale])
       sql_type << "[]" if options[:array]
 
+      sql = "ALTER TABLE #{quoted_table_name} ALTER COLUMN #{quoted_column_name} TYPE #{sql_type}"
+      sql << " USING #{options[:using]}" if options[:using]
+      if options[:cast_as]
+        sql << " USING CAST(#{quoted_column_name} AS #{type_to_sql(options[:cast_as], options[:limit], options[:precision], options[:scale])})"
+      end
       begin
-        execute "ALTER TABLE #{quoted_table_name} ALTER COLUMN #{quote_column_name(column_name)} TYPE #{sql_type}"
+        execute sql
       rescue ActiveRecord::StatementInvalid => e
         raise e if postgresql_version > 80000
         change_column_pg7(table_name, column_name, type, options)
@@ -1113,7 +1119,21 @@ module ArJdbc
       else
         execute "ALTER TABLE #{quote_table_name(table_name)} ALTER COLUMN #{quote_column_name(column_name)} SET DEFAULT #{quote(default)}"
       end
-    end # unless const_defined? :SchemaCreation
+    end unless AR42_COMPAT # unless const_defined? :SchemaCreation
+
+    # Changes the default value of a table column.
+    def change_column_default(table_name, column_name, default)
+      return unless column = column_for(table_name, column_name)
+
+      alter_column_query = "ALTER TABLE #{quote_table_name(table_name)} ALTER COLUMN #{quote_column_name(column_name)} %s"
+      if default.nil?
+        # <tt>DEFAULT NULL</tt> results in the same behavior as <tt>DROP DEFAULT</tt>. However, PostgreSQL will
+        # cast the default to the columns type, which leaves us with a default like "default NULL::character varying".
+        execute alter_column_query % "DROP DEFAULT"
+      else
+        execute alter_column_query % "SET DEFAULT #{quote_default_value(default, column)}"
+      end
+    end if AR42_COMPAT
 
     def change_column_null(table_name, column_name, null, default = nil)
       unless null || default.nil?
@@ -1124,7 +1144,15 @@ module ArJdbc
         end
       end
       execute("ALTER TABLE #{quote_table_name(table_name)} ALTER #{quote_column_name(column_name)} #{null ? 'DROP' : 'SET'} NOT NULL")
-    end # unless const_defined? :SchemaCreation
+    end unless AR42_COMPAT # unless const_defined? :SchemaCreation
+
+    def change_column_null(table_name, column_name, null, default = nil)
+      unless null || default.nil?
+        column = column_for(table_name, column_name)
+        execute("UPDATE #{quote_table_name(table_name)} SET #{quote_column_name(column_name)}=#{quote_default_value(default, column)} WHERE #{quote_column_name(column_name)} IS NULL") if column
+      end
+      execute("ALTER TABLE #{quote_table_name(table_name)} ALTER #{quote_column_name(column_name)} #{null ? 'DROP' : 'SET'} NOT NULL")
+    end if AR42_COMPAT
 
     def rename_column(table_name, column_name, new_column_name)
       execute "ALTER TABLE #{quote_table_name(table_name)} RENAME COLUMN #{quote_column_name(column_name)} TO #{quote_column_name(new_column_name)}"
