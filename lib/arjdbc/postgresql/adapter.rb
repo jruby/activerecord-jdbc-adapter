@@ -285,6 +285,10 @@ module ArJdbc
       NATIVE_DATABASE_TYPES
     end
 
+    def valid_type?(type)
+      ! native_database_types[type].nil?
+    end if AR42_COMPAT
+
     # Adds `:array` option to the default set provided by the `AbstractAdapter`.
     # @override
     def prepare_column_options(column, types)
@@ -1071,6 +1075,9 @@ module ArJdbc
       change_column_null(table_name, column_name, false, default) if notnull
     end if ::ActiveRecord::VERSION::MAJOR < 4
 
+    # @private documented above
+    def add_column(table_name, column_name, type, options = {}); super end if AR42_COMPAT
+
     # Changes the column of a table.
     def change_column(table_name, column_name, type, options = {})
       quoted_table_name = quote_table_name(table_name)
@@ -1121,7 +1128,7 @@ module ArJdbc
       end
     end unless AR42_COMPAT # unless const_defined? :SchemaCreation
 
-    # Changes the default value of a table column.
+    # @private documented above
     def change_column_default(table_name, column_name, default)
       return unless column = column_for(table_name, column_name)
 
@@ -1135,6 +1142,7 @@ module ArJdbc
       end
     end if AR42_COMPAT
 
+    # @private
     def change_column_null(table_name, column_name, null, default = nil)
       unless null || default.nil?
         if column = column_for(table_name, column_name) # (backwards) compatible with AR 3.x - 4.x
@@ -1146,6 +1154,7 @@ module ArJdbc
       execute("ALTER TABLE #{quote_table_name(table_name)} ALTER #{quote_column_name(column_name)} #{null ? 'DROP' : 'SET'} NOT NULL")
     end unless AR42_COMPAT # unless const_defined? :SchemaCreation
 
+    # @private
     def change_column_null(table_name, column_name, null, default = nil)
       unless null || default.nil?
         column = column_for(table_name, column_name)
