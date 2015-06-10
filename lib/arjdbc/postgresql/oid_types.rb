@@ -10,7 +10,7 @@ module ArJdbc
     end
 
     require 'arjdbc/postgresql/base/pgconn'
-    
+
     def self.unescape_bytea(escaped)
       String.from_java_bytes Java::OrgPostgresqlUtil::PGbytea.toBytes escaped.to_java_bytes
     end
@@ -42,6 +42,12 @@ module ArJdbc
         @extensions ||= super
       end
 
+      # @override
+      def lookup_cast_type(sql_type)
+        oid = execute("SELECT #{quote(sql_type)}::regtype::oid", "SCHEMA")
+        super oid.first['oid'].to_i
+      end if AR42_COMPAT
+
       def get_oid_type(oid, fmod, column_name)
         type_map.fetch(oid, fmod) {
           warn "unknown OID #{oid}: failed to recognize type of '#{column_name}'. It will be treated as String."
@@ -61,8 +67,6 @@ module ArJdbc
           end
         }
       end if AR42_COMPAT
-
-      private
 
       @@type_map_cache = {}
       @@type_map_cache_lock = Mutex.new
@@ -104,6 +108,8 @@ module ArJdbc
           initialize_type_map(@type_map)
         end
       end
+
+      private
 
       def cache_type_map(type_map)
         @@type_map_cache_lock.synchronize do
@@ -244,8 +250,9 @@ module ArJdbc
         initializer = OID::TypeMapInitializer.new(type_map)
 
         if oids
-          query << "WHERE t.oid::integer IN (%s)" % oids.join(", ")
+          query << ( "WHERE t.oid::integer IN (%s)" % oids.join(", ") )
         else
+          # query_conditions_for_initial_load only available since AR > 4.2.1
           if initializer.respond_to?(:query_conditions_for_initial_load)
             query << initializer.query_conditions_for_initial_load(type_map)
           end
