@@ -136,22 +136,22 @@ module ArJdbc
 
     # Maps logical Rails types to PostgreSQL-specific data types.
     def type_to_sql(type, limit = nil, precision = nil, scale = nil)
-      case type.to_sym
-      when :'binary'
+      case type.to_s
+      when 'binary'
         # PostgreSQL doesn't support limits on binary (bytea) columns.
         # The hard limit is 1Gb, because of a 32-bit size field, and TOAST.
         case limit
-        when nil, 0..0x3fffffff; super(type, nil, nil, nil)
+        when nil, 0..0x3fffffff; super(type)
         else raise(ActiveRecordError, "No binary type has byte size #{limit}.")
         end
-      when :'text'
+      when 'text'
         # PostgreSQL doesn't support limits on text columns.
         # The hard limit is 1Gb, according to section 8.3 in the manual.
         case limit
-        when nil, 0..0x3fffffff; super(type, nil, nil, nil)
+        when nil, 0..0x3fffffff; super(type)
         else raise(ActiveRecordError, "The limit on text can be at most 1GB - 1byte.")
         end
-      when :'integer'
+      when 'integer'
         return 'integer' unless limit
 
         case limit
@@ -160,7 +160,7 @@ module ArJdbc
           when 5..8; 'bigint'
           else raise(ActiveRecordError, "No integer type has byte size #{limit}. Use a numeric with precision 0 instead.")
         end
-      when :'datetime'
+      when 'datetime'
         return super unless precision
 
         case precision
