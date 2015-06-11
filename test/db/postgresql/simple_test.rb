@@ -344,3 +344,38 @@ end
 class PostgresHasManyThroughTest < Test::Unit::TestCase
   include HasManyThroughMethods
 end
+
+class PostgresForeignKeyTest < Test::Unit::TestCase
+
+  def self.startup
+    DbTypeMigration.up
+  end
+
+  def self.shutdown
+    DbTypeMigration.down
+  end
+
+  def teardown
+    connection.drop_table('db_posts') rescue nil
+  end
+
+  def test_foreign_keys
+    migration = ActiveRecord::Migration.new
+    migration.create_table :db_posts do |t|
+      t.string :title
+      t.references :db_type, index: true, foreign_key: true
+    end
+    puts connection.foreign_keys('db_posts').inspect
+  end if ar_version('4.2')
+
+  class CreateDbPosts < ActiveRecord::Migration
+    def change
+      puts 'changeeeeeeeeeeeeeeeeee'
+      create_table :db_posts do |t|
+        t.string :title
+        t.references :db_type, index: true, foreign_key: true
+      end
+    end
+  end
+
+end
