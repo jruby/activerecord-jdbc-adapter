@@ -1333,6 +1333,10 @@ module ArJdbc
       end
     end
 
+    def drop_table(table_name, options = {})
+      execute "DROP TABLE #{quote_table_name(table_name)}#{' CASCADE' if options[:force] == :cascade}"
+    end
+
     def truncate(table_name, name = nil)
       execute "TRUNCATE TABLE #{quote_table_name(table_name)}", name
     end
