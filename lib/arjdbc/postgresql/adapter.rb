@@ -521,9 +521,8 @@ module ArJdbc
       result = select(<<-end_sql, 'SCHEMA').first
         SELECT attr.attname
         FROM pg_attribute attr
-        INNER JOIN pg_constraint cons ON attr.attrelid = cons.conrelid AND attr.attnum = cons.conkey[1]
-        WHERE cons.contype = 'p'
-          AND cons.conrelid = '#{quote_table_name(table)}'::regclass
+        INNER JOIN pg_constraint cons ON attr.attrelid = cons.conrelid AND attr.attnum = any(cons.conkey)
+        WHERE cons.contype = 'p' AND cons.conrelid = '#{quote_table_name(table)}'::regclass
       end_sql
 
       result && result['attname']
