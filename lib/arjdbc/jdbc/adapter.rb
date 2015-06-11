@@ -40,6 +40,12 @@ module ActiveRecord
 
       attr_reader :config
 
+      def self.new(connection, logger = nil, pool = nil)
+        adapter = super
+        Jdbc::JndiConnectionPoolCallbacks.prepare(adapter, adapter.instance_variable_get(:@connection))
+        adapter
+      end
+
       # Initializes the (JDBC connection) adapter instance.
       # The passed configuration Hash's keys are symbolized, thus changes to
       # the original `config` keys won't be reflected in the adapter.
@@ -50,6 +56,8 @@ module ActiveRecord
       # @param config the database configuration
       # @note `initialize(logger, config)` with 2 arguments is supported as well
       def initialize(connection, logger, config = nil)
+        # AR : initialize(connection, logger = nil, pool = nil)
+        # AR < 3.2 : initialize(connection, logger = nil)
         if config.nil? && logger.respond_to?(:key?) # (logger, config)
           config, logger, connection = logger, connection, nil
         end
@@ -75,8 +83,6 @@ module ActiveRecord
 
         # NOTE: should not be necessary for JNDI due reconnect! on checkout :
         configure_connection if respond_to?(:configure_connection)
-
-        Jdbc::JndiConnectionPoolCallbacks.prepare(self, connection)
 
         @visitor = new_visitor # nil if no AREL (AR-2.3)
       end
