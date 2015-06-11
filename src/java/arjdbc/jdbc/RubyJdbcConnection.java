@@ -481,7 +481,7 @@ public class RubyJdbcConnection extends RubyObject {
         return getInstanceVariable("@connection");
     }
 
-    @JRubyMethod(name = "active?")
+    @JRubyMethod(name = "active?", alias = "valid?")
     public IRubyObject active_p(final ThreadContext context) {
         IRubyObject connection = getInstanceVariable("@connection");
         if ( connection != null && ! connection.isNil() ) {
