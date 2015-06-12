@@ -538,6 +538,45 @@ module ArJdbc
       end
     end
 
+    # @private
+    ForeignKeyDefinition = ::ActiveRecord::ConnectionAdapters::ForeignKeyDefinition if ::ActiveRecord::ConnectionAdapters.const_defined? :ForeignKeyDefinition
+
+    def supports_foreign_keys?; true end
+
+    def foreign_keys(table_name)
+      fk_info = select_all "" <<
+        "SELECT fk.referenced_table_name as 'to_table' " <<
+              ",fk.referenced_column_name as 'primary_key' " <<
+              ",fk.column_name as 'column' " <<
+              ",fk.constraint_name as 'name' " <<
+        "FROM information_schema.key_column_usage fk " <<
+        "WHERE fk.referenced_column_name is not null " <<
+          "AND fk.table_schema = '#{current_database}' " <<
+          "AND fk.table_name = '#{table_name}'"
+
+      create_table_info = select_one("SHOW CREATE TABLE #{quote_table_name(table_name)}")["Create Table"]
+
+      fk_info.map! do |row|
+        options = {
+          :column => row['column'], :name => row['name'], :primary_key => row['primary_key']
+        }
+        options[:on_update] = extract_foreign_key_action(create_table_info, row['name'], "UPDATE")
+        options[:on_delete] = extract_foreign_key_action(create_table_info, row['name'], "DELETE")
+
+        ForeignKeyDefinition.new(table_name, row['to_table'], options)
+      end
+    end if defined? ForeignKeyDefinition
+
+    def extract_foreign_key_action(structure, name, action)
+      if structure =~ /CONSTRAINT #{quote_column_name(name)} FOREIGN KEY .* REFERENCES .* ON #{action} (CASCADE|SET NULL|RESTRICT)/
+        case $1
+        when 'CASCADE'; :cascade
+        when 'SET NULL'; :nullify
+        end
+      end
+    end
+    private :extract_foreign_key_action
+
     # @override
     def add_column(table_name, column_name, type, options = {})
       add_column_sql = "ALTER TABLE #{quote_table_name(table_name)} ADD #{quote_column_name(column_name)} #{type_to_sql(type, options[:limit], options[:precision], options[:scale])}"

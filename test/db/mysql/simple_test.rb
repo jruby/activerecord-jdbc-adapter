@@ -4,7 +4,7 @@ require 'simple'
 require 'has_many_through'
 require 'row_locking'
 
-class MysqlSimpleTest < Test::Unit::TestCase
+class MySQLSimpleTest < Test::Unit::TestCase
   include SimpleTestMethods
   include ActiveRecord3TestMethods
   include ColumnNameQuotingTests
@@ -407,6 +407,33 @@ class MysqlSimpleTest < Test::Unit::TestCase
 
 end
 
-class MysqlHasManyThroughTest < Test::Unit::TestCase
+class MySQLHasManyThroughTest < Test::Unit::TestCase
   include HasManyThroughMethods
+end
+
+class MySQLForeignKeyTest < Test::Unit::TestCase
+
+  def self.startup
+    DbTypeMigration.up
+  end
+
+  def self.shutdown
+    DbTypeMigration.down
+  end
+
+  def teardown
+    connection.drop_table('db_posts') rescue nil
+  end
+
+  def test_foreign_keys
+    migration = ActiveRecord::Migration.new
+    migration.create_table :db_posts do |t|
+      t.string :title
+      t.references :db_type, index: true, foreign_key: true
+    end
+    assert_equal 1, connection.foreign_keys('db_posts').size
+    assert_equal 'db_posts', connection.foreign_keys('db_posts')[0].from_table
+    assert_equal 'db_types', connection.foreign_keys('db_posts')[0].to_table
+  end if ar_version('4.2')
+
 end
