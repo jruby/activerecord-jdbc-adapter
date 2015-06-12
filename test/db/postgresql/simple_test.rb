@@ -365,17 +365,9 @@ class PostgresForeignKeyTest < Test::Unit::TestCase
       t.string :title
       t.references :db_type, index: true, foreign_key: true
     end
-    puts connection.foreign_keys('db_posts').inspect
+    assert_equal 1, connection.foreign_keys('db_posts').size
+    assert_equal 'db_posts', connection.foreign_keys('db_posts')[0].from_table
+    assert_equal 'db_types', connection.foreign_keys('db_posts')[0].to_table
   end if ar_version('4.2')
-
-  class CreateDbPosts < ActiveRecord::Migration
-    def change
-      puts 'changeeeeeeeeeeeeeeeeee'
-      create_table :db_posts do |t|
-        t.string :title
-        t.references :db_type, index: true, foreign_key: true
-      end
-    end
-  end
 
 end
