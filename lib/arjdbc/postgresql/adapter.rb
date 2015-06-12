@@ -288,10 +288,6 @@ module ArJdbc
       NATIVE_DATABASE_TYPES
     end
 
-    def valid_type?(type)
-      ! native_database_types[type].nil?
-    end if AR42_COMPAT
-
     # Adds `:array` option to the default set provided by the `AbstractAdapter`.
     # @override
     def prepare_column_options(column, types)

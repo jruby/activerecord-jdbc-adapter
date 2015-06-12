@@ -222,6 +222,11 @@ module ActiveRecord
         end
       end
 
+      # @override introduced in AR 4.2
+      def valid_type?(type)
+        ! native_database_types[type].nil?
+      end
+
       # Allows for modification of the detected native types.
       # @param types the resolved native database types
       # @see #native_database_types
