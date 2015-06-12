@@ -154,11 +154,27 @@ module ArJdbc
 
     def case_sensitive_modifier(node)
       Arel::Nodes::Bin.new(node)
-    end
+    end unless AR42
 
     def case_sensitive_modifier(node, table_attribute)
       node = Arel::Nodes.build_quoted node, table_attribute
       Arel::Nodes::Bin.new(node)
+    end if AR42
+
+    def case_sensitive_comparison(table, attribute, column, value)
+      if column.case_sensitive?
+        table[attribute].eq(value)
+      else
+        super
+      end
+    end if AR42
+
+    def case_insensitive_comparison(table, attribute, column, value)
+      if column.case_sensitive?
+        super
+      else
+        table[attribute].eq(value)
+      end
     end if AR42
 
     def limited_update_conditions(where_sql, quoted_table_name, quoted_primary_key)
