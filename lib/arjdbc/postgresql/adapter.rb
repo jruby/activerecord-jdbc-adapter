@@ -1206,7 +1206,7 @@ module ArJdbc
 
         ForeignKeyDefinition.new(table_name, row['to_table'], options)
       end
-    end if AR42_COMPAT
+    end if defined? ForeignKeyDefinition
 
     # @private
     def extract_foreign_key_action(specifier)
@@ -1215,7 +1215,8 @@ module ArJdbc
       when 'n'; :nullify
       when 'r'; :restrict
       end
-    end if AR42_COMPAT
+    end
+    private :extract_foreign_key_action
 
     def index_name_length
       63
