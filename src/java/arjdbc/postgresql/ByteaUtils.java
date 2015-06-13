@@ -23,134 +23,107 @@
  */
 package arjdbc.postgresql;
 
-import java.sql.SQLException;
-
 /**
+ * Based on JDBC PostgreSQL driver's <code>org.postgresql.util.PGbytea</code>.
  *
  * @author kares
  */
-abstract class PostgresBytea {
-
-    private static final int MAX_3_BUFF_SIZE = 2 * 1024 * 1024;
+abstract class ByteaUtils {
 
     /*
      * Converts a PG bytea raw value (i.e. the raw binary representation
      * of the bytea data type) into a java byte[]
      */
-    public static byte[] toBytes(byte[] s) throws SQLException
-    {
-        if (s == null)
-            return null;
-
+    static byte[] toBytes(final byte[] s) {
         // Starting with PG 9.0, a new hex format is supported
         // that starts with "\x".  Figure out which format we're
         // dealing with here.
         //
-        if (s.length < 2 || s[0] != '\\' || s[1] != 'x') {
+        if ( s.length < 2 || s[0] != '\\' || s[1] != 'x' ) {
             return toBytesOctalEscaped(s);
         }
         return toBytesHexEscaped(s);
     }
 
-    private static byte[] toBytesHexEscaped(byte[] s)
-    {
-        byte[] output = new byte[(s.length - 2) / 2];
-        for (int i=0; i<output.length; i++) {
-            byte b1 = gethex(s[2 + i*2]);
-            byte b2 = gethex(s[2 + i*2 + 1]);
-            output[i] = (byte)((b1 << 4) | b2);
+    private static byte[] toBytesHexEscaped(byte[] s) {
+        final byte[] out = new byte[(s.length - 2) / 2];
+        for (int i = 0; i < out.length; i++) {
+            byte b1 = hexByte( s[2 + i * 2] );
+            byte b2 = hexByte( s[2 + i * 2 + 1] );
+            out[i] = (byte) ((b1 << 4) | b2);
         }
-        return output;
+        return out;
     }
 
-    private static byte gethex(byte b) {
+    private static byte hexByte(final byte b) {
         // 0-9 == 48-57
-        if (b <= 57)
-            return (byte)(b - 48);
+        if (b <= 57) return (byte) (b - 48);
 
         // a-f == 97-102
-        if (b >= 97)
-            return (byte)(b - 97 + 10);
+        if (b >= 97) return (byte) (b - 97 + 10);
 
         // A-F == 65-70
-        return (byte)(b - 65 + 10);
+        return (byte) (b - 65 + 10);
     }
 
-    private static byte[] toBytesOctalEscaped(byte[] s)
-    {
+    private static final int MAX_3_BUFF_SIZE = 2 * 1024 * 1024;
+
+    private static byte[] toBytesOctalEscaped(final byte[] s) {
         final int slength = s.length;
-        byte[] buf = null;
+        final byte[] out; int bufpos = 0;
         int correctSize = slength;
-        if (slength > MAX_3_BUFF_SIZE)
-        {
+        if ( slength > MAX_3_BUFF_SIZE ) {
             // count backslash escapes, they will be either
             // backslashes or an octal escape \\ or \003
             //
-            for (int i = 0; i < slength; ++i)
-            {
-                byte current = s[i];
-                if (current == '\\')
-                {
+            for (int i = 0; i < slength; ++i) {
+                if ( s[i] == '\\' ) {
                     byte next = s[ ++i ];
-                    if (next == '\\')
-                    {
+                    if (next == '\\') {
                         --correctSize;
                     }
-                    else
-                    {
+                    else {
                         correctSize -= 3;
                     }
                 }
             }
-            buf = new byte[correctSize];
+            out = new byte[correctSize];
         }
-        else
-        {
-            buf = new byte[slength];
+        else {
+            out = new byte[slength];
         }
-        int bufpos = 0;
-        int thebyte;
-        byte nextbyte;
-        byte secondbyte;
-        for (int i = 0; i < slength; i++)
-        {
-            nextbyte = s[i];
-            if (nextbyte == (byte)'\\')
-            {
-                secondbyte = s[++i];
-                if (secondbyte == (byte)'\\')
-                {
-                    //escaped \
-                    buf[bufpos++] = (byte)'\\';
+
+        for (int i = 0; i < slength; i++) {
+            final byte b = s[i];
+            if ( b == (byte) '\\' ) {
+                final byte b1 = s[++i];
+                if ( b1 == (byte) '\\' ) { // escaped \
+                    out[ bufpos++ ] = (byte) '\\';
                 }
-                else
-                {
-                    thebyte = (secondbyte - 48) * 64 + (s[++i] - 48) * 8 + (s[++i] - 48);
-                    if (thebyte > 127)
-                        thebyte -= 256;
-                    buf[bufpos++] = (byte)thebyte;
+                else {
+                    int thebyte = (b1 - 48) * 64 + (s[++i] - 48) * 8 + (s[++i] - 48);
+                    if ( thebyte > 127 ) thebyte -= 256;
+                    out[ bufpos++ ] = (byte) thebyte;
                 }
             }
-            else
-            {
-                buf[bufpos++] = nextbyte;
+            else {
+                out[ bufpos++ ] = b;
             }
         }
-        if (bufpos == correctSize)
-        {
-            return buf;
-        }
-        byte[] l_return = new byte[bufpos];
-        System.arraycopy(buf, 0, l_return, 0, bufpos);
-        return l_return;
+
+        if ( bufpos == correctSize ) return out;
+
+        final byte[] out2 = new byte[bufpos];
+        System.arraycopy(out, 0, out2, 0, bufpos);
+        return out2;
     }
 
     /*
      * Converts a java byte[] into a PG bytea string (i.e. the text
      * representation of the bytea data type)
      */
-    public static String toPGString(byte[] p_buf) throws SQLException
-    {
+    /*
+    public static String toPGString(byte[] p_buf)  {
         if (p_buf == null)
             return null;
         StringBuffer l_strbuf = new StringBuffer(2 * p_buf.length);
@@ -187,6 +160,6 @@ abstract class PostgresBytea {
             }
         }
         return l_strbuf.toString();
-    }
+    } */
 
 }
