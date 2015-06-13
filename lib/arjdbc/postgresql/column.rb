@@ -84,7 +84,7 @@ module ArJdbc
         else # NOTE: AR <= 3.2 : (name, default, sql_type = nil, null = true)
           null, sql_type, oid_type = !! sql_type, oid_type, nil
         end
-        if sql_type.to_s[-2, 2] == '[]' && ArJdbc::PostgreSQL::AR40
+        if sql_type.to_s[-2, 2] == '[]' && AR40
           @array = true if respond_to?(:array)
           super(name, default, sql_type[0..-3], null)
         else
