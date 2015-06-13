@@ -27,9 +27,11 @@ import static arjdbc.util.QuotingUtils.quoteCharAndDecorateWith;
 
 import org.jruby.Ruby;
 import org.jruby.RubyModule;
+import org.jruby.RubyString;
 import org.jruby.anno.JRubyMethod;
 import org.jruby.runtime.ThreadContext;
 import org.jruby.runtime.builtin.IRubyObject;
+import org.jruby.util.ByteList;
 
 /**
  * ArJdbc::PostgreSQL
@@ -54,6 +56,13 @@ public class PostgreSQLModule {
             final IRubyObject self,
             final IRubyObject string) { // %("#{name.to_s.gsub("\"", "\"\"")}")
         return quoteCharAndDecorateWith(context, string.asString(), '"', '"', (byte) '"', (byte) '"');
+    }
+
+    @JRubyMethod(name = "unescape_bytea", meta = true)
+    public static RubyString unescape_bytea(final ThreadContext context, final IRubyObject self, final IRubyObject escaped) {
+        final ByteList bytes = ((RubyString) escaped).getByteList();
+        final byte[] rawBytes = ByteaUtils.toBytes(bytes.unsafeBytes(), bytes.getBegin(), bytes.getRealSize());
+        return RubyString.newString(context.runtime, new ByteList(rawBytes, false));
     }
 
 }
