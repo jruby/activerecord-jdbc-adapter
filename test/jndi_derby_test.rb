@@ -112,7 +112,7 @@ class DerbyJndiTest < Test::Unit::TestCase
       pool = Dummy.connection_pool
       assert_false pool.active_connection? if pool.respond_to?(:active_connection?)
       assert_true pool.connection.active? # checks out
-      assert_true pool.active_connection? if pool.respond_to?(:active_connection?)
+      assert pool.active_connection? if pool.respond_to?(:active_connection?)
       assert_true connection.active?
       Dummy.connection_pool.disconnect!
       assert_false connection.active?
