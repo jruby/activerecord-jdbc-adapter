@@ -1276,8 +1276,10 @@ module ArJdbc
       result.map! do |row|
         index_name = row[0]
         unique = row[1].is_a?(String) ? row[1] == 't' : row[1] # JDBC gets us a boolean
-        indkey = row[2].is_a?(Java::OrgPostgresqlUtil::PGobject) ? row[2].value : row[2]
-        indkey = indkey.split(" ")
+        # NOTE: this hack should no longer be needed ...
+        # indkey = row[2].is_a?(Java::OrgPostgresqlUtil::PGobject) ? row[2].value : row[2]
+        # indkey = indkey.split(" ")
+        indkey = row[2].split(' ')
         inddef = row[3]
         oid = row[4]
 
