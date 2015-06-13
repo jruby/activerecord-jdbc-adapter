@@ -2,7 +2,7 @@ class UserMigration < ActiveRecord::Migration
   def self.up
     create_table "users", :force => true do |t|
       t.column :login, :string, :limit => 100, :null => false
-      t.timestamps # created_at / updated_at
+      t.timestamps :null => false
     end
   end
 
