@@ -1475,9 +1475,9 @@ module ActiveRecord::ConnectionAdapters
     include ::ArJdbc::PostgreSQL
     include ::ArJdbc::PostgreSQL::ExplainSupport
 
-    require 'arjdbc/postgresql/oid_types' if AR40
+    require 'arjdbc/postgresql/oid_types' if ::ArJdbc::AR40
     include ::ArJdbc::PostgreSQL::OIDTypes if ::ArJdbc::PostgreSQL.const_defined?(:OIDTypes)
-    include ::ArJdbc::PostgreSQL::ColumnHelpers if AR42
+    include ::ArJdbc::PostgreSQL::ColumnHelpers if ::ArJdbc::AR42
 
     include ::ArJdbc::Util::QuotedCache
 
@@ -1489,13 +1489,13 @@ module ActiveRecord::ConnectionAdapters
 
       @table_alias_length = nil
 
-      initialize_type_map(@type_map = Type::HashLookupTypeMap.new) if AR42
+      initialize_type_map(@type_map = Type::HashLookupTypeMap.new) if ::ArJdbc::AR42
 
       @use_insert_returning = @config.key?(:insert_returning) ?
         self.class.type_cast_config_to_boolean(@config[:insert_returning]) : nil
     end
 
-    if AR42
+    if ::ArJdbc::AR42
       require 'active_record/connection_adapters/postgresql/schema_definitions'
     else
       require 'arjdbc/postgresql/base/schema_definitions'
