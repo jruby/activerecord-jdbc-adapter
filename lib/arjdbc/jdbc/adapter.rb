@@ -43,6 +43,12 @@ module ActiveRecord
 
       attr_reader :config
 
+      def self.new(connection, logger = nil, pool = nil)
+        adapter = super
+        Jdbc::JndiConnectionPoolCallbacks.prepare(adapter, adapter.instance_variable_get(:@connection))
+        adapter
+      end
+
       # Initializes the (JDBC connection) adapter instance.
       # The passed configuration Hash's keys are symbolized, thus changes to
       # the original `config` keys won't be reflected in the adapter.
@@ -76,8 +82,6 @@ module ActiveRecord
         connection ||= jdbc_connection_class(spec).new(@config, self)
 
         pool.nil? ? super(connection, logger) : super(connection, logger, pool)
-
-        Jdbc::JndiConnectionPoolCallbacks.prepare(self, connection)
 
         connection.configure_connection # will call us (maybe)
 
@@ -212,6 +216,11 @@ module ActiveRecord
           modify_types(types)
           types
         end
+      end
+
+      # @override introduced in AR 4.2
+      def valid_type?(type)
+        ! native_database_types[type].nil?
       end
 
       # Allows for modification of the detected native types.

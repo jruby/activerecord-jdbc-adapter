@@ -49,6 +49,21 @@ class PostgreSQLSimpleTest < Test::Unit::TestCase
     return if connection.send(:postgresql_version) < 80300
     super
   end if ar_version('3.1')
+
+  def test_use_xml_column
+    return if connection.send(:postgresql_version) < 80300
+
+    super() do
+      data = XmlModel.new(:xml_col => "<foo>bar</foo>")
+      assert_equal "<foo>bar</foo>", data.xml_col
+      data.save!
+      assert_equal "<foo>bar</foo>", data.reload.xml_col
+
+      XmlModel.update_all(:xml_col => "<bar>baz</bar>")
+      assert_equal "<bar>baz</bar>", data.reload.xml_col
+    end
+  end if ar_version('3.1')
+
   def xml_sql_type; 'xml'; end
 
   def test_create_table_with_limits
@@ -79,7 +94,7 @@ class PostgreSQLSimpleTest < Test::Unit::TestCase
   def test_create_table_with_array
     connection.create_table :my_posts do |t|
       t.string :name; t.text :description
-      t.string :tags, :array => true, :default => []
+      t.string :tags, :array => true, :default => '{}'
       t.timestamps
     end
 
@@ -334,4 +349,31 @@ require 'has_many_through_test_methods'
 
 class PostgreSQLHasManyThroughTest < Test::Unit::TestCase
   include HasManyThroughTestMethods
+end
+
+class PostgresForeignKeyTest < Test::Unit::TestCase
+
+  def self.startup
+    DbTypeMigration.up
+  end
+
+  def self.shutdown
+    DbTypeMigration.down
+  end
+
+  def teardown
+    connection.drop_table('db_posts') rescue nil
+  end
+
+  def test_foreign_keys
+    migration = ActiveRecord::Migration.new
+    migration.create_table :db_posts do |t|
+      t.string :title
+      t.references :db_type, index: true, foreign_key: true
+    end
+    assert_equal 1, connection.foreign_keys('db_posts').size
+    assert_equal 'db_posts', connection.foreign_keys('db_posts')[0].from_table
+    assert_equal 'db_types', connection.foreign_keys('db_posts')[0].to_table
+  end if ar_version('4.2')
+
 end

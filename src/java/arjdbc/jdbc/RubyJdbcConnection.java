@@ -645,7 +645,7 @@ public class RubyJdbcConnection extends RubyObject {
         return convertJavaToRuby( connection );
     }
 
-    @JRubyMethod(name = "active?")
+    @JRubyMethod(name = "active?", alias = "valid?")
     public RubyBoolean active_p(final ThreadContext context) {
         if ( ! connected ) return context.runtime.getFalse();
         if ( jndi ) {
@@ -681,6 +681,36 @@ public class RubyJdbcConnection extends RubyObject {
         throws SQLException {
         setConnection( forceConnection ? newConnection() : null );
         if ( forceConnection ) configureConnection();
+    }
+
+    @JRubyMethod(name = { "open?" /* "conn?" */ })
+    public IRubyObject open_p(final ThreadContext context) {
+        final Connection connection = getConnection(false);
+        if ( connection == null ) return context.getRuntime().getFalse();
+        try {
+            // NOTE: isClosed method generally cannot be called to determine
+            // whether a connection to a database is valid or invalid ...
+            return context.getRuntime().newBoolean( ! connection.isClosed() );
+        }
+        catch (SQLException e) {
+            return handleException(context, e);
+        }
+    }
+
+    @JRubyMethod(name = "close")
+    public IRubyObject close(final ThreadContext context) {
+        final Connection connection = getConnection(false);
+        if ( connection == null ) return context.getRuntime().getFalse();
+        try {
+            final boolean closed = connection.isClosed();
+            if ( closed ) return context.getRuntime().getFalse();
+            setConnection(null); // does connection.close();
+            return context.getRuntime().getTrue();
+        }
+        catch (Exception e) {
+            debugStackTrace(context, e);
+            return context.getRuntime().getNil();
+        }
     }
 
     @JRubyMethod(name = "database_name")
@@ -1248,7 +1278,7 @@ public class RubyJdbcConnection extends RubyObject {
     //    return tables(context, toStringOrNull(catalog), toStringOrNull(schemaPattern), toStringOrNull(tablePattern), TABLE_TYPE);
     //}
 
-    @JRubyMethod(name = "tables", rest = true)
+    @JRubyMethod(name = "tables", required = 0, optional = 4)
     public IRubyObject tables(final ThreadContext context, final IRubyObject[] args) {
         switch ( args.length ) {
             case 0: // ()

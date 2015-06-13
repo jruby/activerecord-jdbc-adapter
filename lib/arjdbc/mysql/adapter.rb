@@ -6,11 +6,6 @@ require 'active_record/connection_adapters/abstract/schema_definitions'
 module ArJdbc
   module MySQL
 
-    # @private
-    AR40 = ::ActiveRecord::VERSION::MAJOR > 3
-    # @private
-    AR42 = ::ActiveRecord::VERSION::STRING >= '4.2'
-
     require 'arjdbc/mysql/column'
     require 'arjdbc/mysql/bulk_change_table'
     require 'arjdbc/mysql/explain_support'
@@ -148,11 +143,27 @@ module ArJdbc
 
     def case_sensitive_modifier(node)
       Arel::Nodes::Bin.new(node)
-    end
+    end unless AR42
 
     def case_sensitive_modifier(node, table_attribute)
       node = Arel::Nodes.build_quoted node, table_attribute
       Arel::Nodes::Bin.new(node)
+    end if AR42
+
+    def case_sensitive_comparison(table, attribute, column, value)
+      if column.case_sensitive?
+        table[attribute].eq(value)
+      else
+        super
+      end
+    end if AR42
+
+    def case_insensitive_comparison(table, attribute, column, value)
+      if column.case_sensitive?
+        super
+      else
+        table[attribute].eq(value)
+      end
     end if AR42
 
     def limited_update_conditions(where_sql, quoted_table_name, quoted_primary_key)
@@ -502,11 +513,51 @@ module ArJdbc
     # @override
     def rename_index(table_name, old_name, new_name)
       if supports_rename_index?
+        validate_index_length!(table_name, new_name) if respond_to?(:validate_index_length!)
         execute "ALTER TABLE #{quote_table_name(table_name)} RENAME INDEX #{quote_table_name(old_name)} TO #{quote_table_name(new_name)}"
       else
         super
       end
     end
+
+    # @private
+    ForeignKeyDefinition = ::ActiveRecord::ConnectionAdapters::ForeignKeyDefinition if ::ActiveRecord::ConnectionAdapters.const_defined? :ForeignKeyDefinition
+
+    def supports_foreign_keys?; true end
+
+    def foreign_keys(table_name)
+      fk_info = select_all "" <<
+        "SELECT fk.referenced_table_name as 'to_table' " <<
+              ",fk.referenced_column_name as 'primary_key' " <<
+              ",fk.column_name as 'column' " <<
+              ",fk.constraint_name as 'name' " <<
+        "FROM information_schema.key_column_usage fk " <<
+        "WHERE fk.referenced_column_name is not null " <<
+          "AND fk.table_schema = '#{current_database}' " <<
+          "AND fk.table_name = '#{table_name}'"
+
+      create_table_info = select_one("SHOW CREATE TABLE #{quote_table_name(table_name)}")["Create Table"]
+
+      fk_info.map! do |row|
+        options = {
+          :column => row['column'], :name => row['name'], :primary_key => row['primary_key']
+        }
+        options[:on_update] = extract_foreign_key_action(create_table_info, row['name'], "UPDATE")
+        options[:on_delete] = extract_foreign_key_action(create_table_info, row['name'], "DELETE")
+
+        ForeignKeyDefinition.new(table_name, row['to_table'], options)
+      end
+    end if defined? ForeignKeyDefinition
+
+    def extract_foreign_key_action(structure, name, action)
+      if structure =~ /CONSTRAINT #{quote_column_name(name)} FOREIGN KEY .* REFERENCES .* ON #{action} (CASCADE|SET NULL|RESTRICT)/
+        case $1
+        when 'CASCADE'; :cascade
+        when 'SET NULL'; :nullify
+        end
+      end
+    end
+    private :extract_foreign_key_action
 
     # @override
     def add_column(table_name, column_name, type, options = {})
@@ -633,31 +684,39 @@ module ArJdbc
       show_variable("collation_database")
     end
 
+    # Maps logical Rails types to MySQL-specific data types.
     def type_to_sql(type, limit = nil, precision = nil, scale = nil)
       case type.to_s
       when 'binary'
         case limit
-        when 0..0xfff; "varbinary(#{limit})"
-        when nil; "blob"
+        when 0..0xfff;           "varbinary(#{limit})"
+        when nil;                "blob"
         when 0x1000..0xffffffff; "blob(#{limit})"
-        else raise ActiveRecordError, "No binary type has character length #{limit}"
+        else raise(ActiveRecordError, "No binary type has character length #{limit}")
         end
       when 'integer'
         case limit
         when 1; 'tinyint'
         when 2; 'smallint'
         when 3; 'mediumint'
-        when nil, 4, 11; 'int(11)' # compatibility with MySQL default
+        when nil, 4, 11; 'int(11)'  # compatibility with MySQL default
         when 5..8; 'bigint'
-        else raise ActiveRecordError, "No integer type has byte size #{limit}"
+        else raise(ActiveRecordError, "No integer type has byte size #{limit}")
         end
       when 'text'
         case limit
-        when 0..0xff; 'tinytext'
-        when nil, 0x100..0xffff; 'text'
-        when 0x10000..0xffffff; 'mediumtext'
+        when 0..0xff;               'tinytext'
+        when nil, 0x100..0xffff;    'text'
+        when 0x10000..0xffffff;     'mediumtext'
         when 0x1000000..0xffffffff; 'longtext'
-        else raise ActiveRecordError, "No text type has character length #{limit}"
+        else raise(ActiveRecordError, "No text type has character length #{limit}")
+        end
+      when 'datetime'
+        return super unless precision
+
+        case precision
+          when 0..6; "datetime(#{precision})"
+          else raise(ActiveRecordError, "No datetime type has precision of #{precision}. The allowed range of precision is from 0 to 6.")
         end
       else
         super

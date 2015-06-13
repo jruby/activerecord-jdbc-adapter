@@ -26,6 +26,7 @@ class PostgreSQLHstoreTest < Test::Unit::TestCase
     @connection.transaction do
       @connection.create_table('hstores') do |t|
         t.hstore 'tags', :default => ''
+        t.hstore :array, :array => true
       end
     end
     @column = Hstore.columns.find { |c| c.name == 'tags' }
@@ -179,6 +180,11 @@ class PostgreSQLHstoreTest < Test::Unit::TestCase
     assert_cycle("a\nb" => "c\nd")
   end
 
+  def test_hstore_array_column
+    hstore = Hstore.create! :array => [ { '1' => 'a' },{ :'2' => :'b' } ]
+    assert_equal [ { '1' => 'a'},{ '2' => 'b' } ], hstore.reload.array
+  end
+
   private
 
   def type_cast(column, value)
@@ -222,7 +228,7 @@ class PostgreSQLHstoreTest < Test::Unit::TestCase
 end if Test::Unit::TestCase.ar_version('4.0')
 
 # Rails <= 3.2 test
-class PostgreSQKHstoreTest < Test::Unit::TestCase
+class PostgreSQLHstoreTest < Test::Unit::TestCase
 
   class Hstore < ActiveRecord::Base
     self.table_name = 'hstores'

@@ -1,3 +1,13 @@
+## 1.3.17 (pe/nd/in)
+
+- [postgres] pass down array_member to hstore_to_string (fixes #647 on AR 4.1)
+- [postgres] on AR 4.2 use core's schema_definitions.rb for improved compat (#644)
+- back-port PGconn hack on AR 4.x (from #655 and following commits)
+  to fix #651 as an unfortunate work-around for (non-shareable) AR internals (#652)
+- seems that extension methods won't work in 9K the same as in 1.7.x thus work-around
+  (originally reported as https://github.com/jruby/jruby/issues/2533)
+- restore 1.8 compatibility in postgres' adapter (regression in 1.3.16 see #641)
+
 ## 1.3.16 (04/13/15)
 
 - [h2] allow jdbch2 adapter to use jdbc-h2 1.4 (#639)

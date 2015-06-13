@@ -52,6 +52,7 @@ module ArJdbc
     module ColumnMethods
 
       attr_accessor :array
+      alias array? array
 
       def initialize(name, default, cast_type, sql_type = nil, null = true, default_function = nil,
         oid = nil, adapter = nil) # added arguments
@@ -69,7 +70,7 @@ module ArJdbc
         @default_function = default_function
       end
 
-    end if AR42_COMPAT
+    end if AR42
 
     # @private (AR < 4.2 version) documented above
     module ColumnMethods
@@ -83,7 +84,7 @@ module ArJdbc
         else # NOTE: AR <= 3.2 : (name, default, sql_type = nil, null = true)
           null, sql_type, oid_type = !! sql_type, oid_type, nil
         end
-        if sql_type.to_s[-2, 2] == '[]' && ArJdbc::PostgreSQL::AR4_COMPAT
+        if sql_type.to_s[-2, 2] == '[]' && AR40
           @array = true if respond_to?(:array)
           super(name, default, sql_type[0..-3], null)
         else
@@ -107,20 +108,20 @@ module ArJdbc
           require 'pg_array_parser'
           base_meta.send :include, PgArrayParser
         rescue LoadError
-          if AR42_COMPAT
+          if AR42
             require 'active_record/connection_adapters/postgresql/array_parser'
           else
             require 'arjdbc/postgresql/base/array_parser'
           end
           base_meta.send :include, ActiveRecord::ConnectionAdapters::PostgreSQL::ArrayParser
-        end if AR4_COMPAT
+        end if AR40
 
         base_meta.send :include, Cast
 
         base.send :include, ColumnHelpers
       end
 
-      if AR4_COMPAT && ! AR42_COMPAT
+      if AR40 && ! AR42
 
       # @private
       def oid_type
@@ -135,10 +136,10 @@ module ArJdbc
 
       end
 
-      ( attr_accessor :array; def array?; array; end ) if AR4_COMPAT
+      ( attr_accessor :array; def array?; array; end ) if AR40
 
-      def number?; !array && super end if AR4_COMPAT
-      def text?; !array && super end if AR4_COMPAT
+      def number?; !array && super end if AR40
+      def text?; !array && super end if AR40
 
       # Extracts the value from a PostgreSQL column default definition.
       #
@@ -286,7 +287,7 @@ module ArJdbc
              super(value)
           end
         end
-      end if AR4_COMPAT
+      end if AR40
 
       private
 
@@ -398,7 +399,7 @@ module ArJdbc
         else
           super
         end
-      end if AR4_COMPAT
+      end if AR40
 
       # OID Type::Range helpers :
 
@@ -409,11 +410,11 @@ module ArJdbc
           :to   => (value[-2] == ',' || t == 'infinity') ? infinity : t,
           :exclude_start => (value[0] == '('), :exclude_end => (value[-1] == ')')
         }
-      end if AR4_COMPAT
+      end if AR40
 
       def infinity(options = {})
         ::Float::INFINITY * (options[:negative] ? -1 : 1)
-      end if AR4_COMPAT
+      end if AR40
 
       private
 
@@ -495,7 +496,7 @@ module ArJdbc
           else
             value # Bit-string notation
           end
-        end if AR4_COMPAT
+        end if AR40
 
         def hstore_to_string(object, array_member = false)
           if Hash === object
@@ -634,6 +635,6 @@ module ArJdbc
 
       end
 
-    end unless AR42_COMPAT
+    end unless AR42
   end
 end

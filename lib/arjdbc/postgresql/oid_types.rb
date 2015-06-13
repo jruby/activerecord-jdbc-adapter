@@ -3,11 +3,17 @@ require 'thread'
 module ArJdbc
   module PostgreSQL
 
-    if AR42_COMPAT
+    if AR42
       require 'active_record/connection_adapters/postgresql/oid'
       require 'arjdbc/postgresql/base/pgconn'
     else
       require 'arjdbc/postgresql/base/oid'
+    end
+
+    require 'arjdbc/postgresql/base/pgconn'
+
+    def self.unescape_bytea(escaped)
+      String.from_java_bytes Java::OrgPostgresqlUtil::PGbytea.toBytes escaped.to_java_bytes
     end
 
     # @private
@@ -37,12 +43,18 @@ module ArJdbc
         @extensions ||= super
       end
 
+      # @override
+      def lookup_cast_type(sql_type)
+        oid = execute("SELECT #{quote(sql_type)}::regtype::oid", "SCHEMA")
+        super oid.first['oid'].to_i
+      end if AR42
+
       def get_oid_type(oid, fmod, column_name)
         type_map.fetch(oid, fmod) {
           warn "unknown OID #{oid}: failed to recognize type of '#{column_name}'. It will be treated as String."
           type_map[oid] = OID::Identity.new
         }
-      end unless AR42_COMPAT
+      end unless AR42
 
       def get_oid_type(oid, fmod, column_name, sql_type = '')
         if !type_map.key?(oid)
@@ -55,14 +67,12 @@ module ArJdbc
             type_map.register_type(oid, cast_type)
           end
         }
-      end if AR42_COMPAT
-
-      private
+      end if AR42
 
       @@type_map_cache = {}
       @@type_map_cache_lock = Mutex.new
 
-      if AR42_COMPAT
+      if AR42
         TypeMap = ActiveRecord::Type::HashLookupTypeMap
       else
         TypeMap = OID::TypeMap
@@ -99,6 +109,8 @@ module ArJdbc
           initialize_type_map(@type_map)
         end
       end
+
+      private
 
       def cache_type_map(type_map)
         @@type_map_cache_lock.synchronize do
@@ -149,7 +161,7 @@ module ArJdbc
           array = OID::Array.new  type_map[ row['typelem'].to_i ]
           type_map[ row['oid'].to_i ] = array
         end
-      end unless AR42_COMPAT
+      end unless AR42
 
       def initialize_type_map(m)
         register_class_with_limit m, 'int2', OID::Integer
@@ -220,7 +232,7 @@ module ArJdbc
         end
 
         load_additional_types(m)
-      end if AR42_COMPAT
+      end if AR42
 
       def load_additional_types(type_map, oids = nil)
         if supports_ranges?
@@ -239,8 +251,9 @@ module ArJdbc
         initializer = OID::TypeMapInitializer.new(type_map)
 
         if oids
-          query << "WHERE t.oid::integer IN (%s)" % oids.join(", ")
+          query << ( "WHERE t.oid::integer IN (%s)" % oids.join(", ") )
         else
+          # query_conditions_for_initial_load only available since AR > 4.2.1
           if initializer.respond_to?(:query_conditions_for_initial_load)
             query << initializer.query_conditions_for_initial_load(type_map)
           end
@@ -248,7 +261,7 @@ module ArJdbc
 
         records = execute(query, 'SCHEMA')
         initializer.run(records)
-      end if AR42_COMPAT
+      end if AR42
 
     end
   end
