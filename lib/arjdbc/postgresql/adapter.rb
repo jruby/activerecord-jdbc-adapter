@@ -6,11 +6,12 @@ module ArJdbc
   # Strives to provide Rails built-in PostgreSQL adapter (API) compatibility.
   module PostgreSQL
 
+    # @deprecated no longer used
     # @private
-    AR4_COMPAT = ::ActiveRecord::VERSION::MAJOR > 3 unless const_defined?(:AR4_COMPAT)
+    AR4_COMPAT = AR40
+    # @deprecated no longer used
     # @private
-    AR42_COMPAT = ::ActiveRecord::VERSION::MAJOR > 4 ||
-      ( ::ActiveRecord::VERSION::MAJOR == 4 && ::ActiveRecord::VERSION::MINOR >= 2 )
+    AR42_COMPAT = AR42
 
     require 'arjdbc/postgresql/column'
     require 'arjdbc/postgresql/explain_support'
@@ -22,7 +23,7 @@ module ArJdbc
     ForeignKeyDefinition = ::ActiveRecord::ConnectionAdapters::ForeignKeyDefinition if ::ActiveRecord::ConnectionAdapters.const_defined? :ForeignKeyDefinition
 
     # @private
-    Type = ::ActiveRecord::Type if AR42_COMPAT
+    Type = ::ActiveRecord::Type if AR42
 
     # @see ActiveRecord::ConnectionAdapters::JdbcAdapter#jdbc_connection_class
     def self.jdbc_connection_class
@@ -217,7 +218,7 @@ module ArJdbc
       else
         super(value, column)
       end
-    end if AR4_COMPAT && ! AR42_COMPAT
+    end if AR40 && ! AR42
 
     # @private
     def _type_cast(value)
@@ -232,8 +233,8 @@ module ArJdbc
       else
         super
       end
-    end if AR42_COMPAT
-    private :_type_cast if AR42_COMPAT
+    end if AR42
+    private :_type_cast if AR42
 
     NATIVE_DATABASE_TYPES = {
       :primary_key => "serial primary key",
@@ -275,14 +276,14 @@ module ArJdbc
       :tstzrange => { :name => "tstzrange" },
       :int4range => { :name => "int4range" },
       :int8range => { :name => "int8range" },
-    }) if AR4_COMPAT
+    }) if AR40
 
     NATIVE_DATABASE_TYPES.update(
       :bigserial => "bigserial",
       :bigint => { :name => "bigint" },
       :bit => { :name => "bit" },
       :bit_varying => { :name => "bit varying" }
-    ) if AR42_COMPAT
+    ) if AR42
 
     def native_database_types
       NATIVE_DATABASE_TYPES
@@ -295,13 +296,13 @@ module ArJdbc
       spec[:array] = 'true' if column.respond_to?(:array) && column.array
       spec[:default] = "\"#{column.default_function}\"" if column.default_function
       spec
-    end if AR4_COMPAT
+    end if AR40
 
     # Adds `:array` as a valid migration key.
     # @override
     def migration_keys
       super + [:array]
-    end if AR4_COMPAT
+    end if AR40
 
     # Enable standard-conforming strings if available.
     def set_standard_conforming_strings
@@ -369,12 +370,12 @@ module ArJdbc
 
     def supports_index_sort_order?; true end
 
-    def supports_partial_index?; true end if AR4_COMPAT
+    def supports_partial_index?; true end if AR40
 
     # Range data-types weren't introduced until PostgreSQL 9.2.
     def supports_ranges?
       postgresql_version >= 90200
-    end if AR4_COMPAT
+    end if AR40
 
     def supports_transaction_isolation?(level = nil)
       true
@@ -875,7 +876,7 @@ module ArJdbc
         sql_type = column.respond_to?(:sql_type) && column.sql_type
         sql_type && sql_type[0, 3] == 'bit' ? quote_bit(value) : super
       when Array
-        if AR4_COMPAT && column.array? # will be always falsy in AR < 4.0
+        if AR40 && column.array? # will be always falsy in AR < 4.0
           "'#{jdbc_column_class.array_to_string(value, column, self).gsub(/'/, "''")}'"
         elsif column.type == :json # only in AR-4.0
           super(jdbc_column_class.json_to_string(value), column)
@@ -896,7 +897,7 @@ module ArJdbc
         end
       when Range
         sql_type = column.respond_to?(:sql_type) && column.sql_type
-        if sql_type && sql_type[-5, 5] == 'range' && AR4_COMPAT
+        if sql_type && sql_type[-5, 5] == 'range' && AR40
           escaped = quote_string(jdbc_column_class.range_to_string(value))
           "'#{escaped}'::#{sql_type}"
         else super
@@ -909,7 +910,7 @@ module ArJdbc
       else
         super
       end
-    end unless AR42_COMPAT
+    end unless AR42
 
     # @private
     def _quote(value)
@@ -933,8 +934,8 @@ module ArJdbc
       else
         super
       end
-    end if AR42_COMPAT
-    private :_quote if AR42_COMPAT
+    end if AR42
+    private :_quote if AR42
 
     # Quotes a string, escaping any ' (single quote) and \ (backslash) chars.
     # @return [String]
@@ -963,7 +964,7 @@ module ArJdbc
 
     def quote_bit(value)
       "B'#{value}'"
-    end if AR4_COMPAT
+    end if AR40
 
     def escape_bytea(string)
       return unless string
@@ -991,7 +992,7 @@ module ArJdbc
     # @override
     def quote_table_name_for_assignment(table, attr)
       quote_column_name(attr)
-    end if AR4_COMPAT
+    end if AR40
 
     # @override
     def quote_column_name(name)
@@ -1074,7 +1075,7 @@ module ArJdbc
     end if ::ActiveRecord::VERSION::MAJOR < 4
 
     # @private documented above
-    def add_column(table_name, column_name, type, options = {}); super end if AR42_COMPAT
+    def add_column(table_name, column_name, type, options = {}); super end if AR42
 
     # Changes the column of a table.
     def change_column(table_name, column_name, type, options = {})
@@ -1124,7 +1125,7 @@ module ArJdbc
       else
         execute "ALTER TABLE #{quote_table_name(table_name)} ALTER COLUMN #{quote_column_name(column_name)} SET DEFAULT #{quote(default)}"
       end
-    end unless AR42_COMPAT # unless const_defined? :SchemaCreation
+    end unless AR42 # unless const_defined? :SchemaCreation
 
     # @private documented above
     def change_column_default(table_name, column_name, default)
@@ -1138,7 +1139,7 @@ module ArJdbc
       else
         execute alter_column_query % "SET DEFAULT #{quote_default_value(default, column)}"
       end
-    end if AR42_COMPAT
+    end if AR42
 
     # @private
     def change_column_null(table_name, column_name, null, default = nil)
@@ -1150,7 +1151,7 @@ module ArJdbc
         end
       end
       execute("ALTER TABLE #{quote_table_name(table_name)} ALTER #{quote_column_name(column_name)} #{null ? 'DROP' : 'SET'} NOT NULL")
-    end unless AR42_COMPAT # unless const_defined? :SchemaCreation
+    end unless AR42 # unless const_defined? :SchemaCreation
 
     # @private
     def change_column_null(table_name, column_name, null, default = nil)
@@ -1159,7 +1160,7 @@ module ArJdbc
         execute("UPDATE #{quote_table_name(table_name)} SET #{quote_column_name(column_name)}=#{quote_default_value(default, column)} WHERE #{quote_column_name(column_name)} IS NULL") if column
       end
       execute("ALTER TABLE #{quote_table_name(table_name)} ALTER #{quote_column_name(column_name)} #{null ? 'DROP' : 'SET'} NOT NULL")
-    end if AR42_COMPAT
+    end if AR42
 
     def rename_column(table_name, column_name, new_column_name)
       execute "ALTER TABLE #{quote_table_name(table_name)} RENAME COLUMN #{quote_column_name(column_name)} TO #{quote_column_name(new_column_name)}"
@@ -1169,7 +1170,7 @@ module ArJdbc
     def add_index(table_name, column_name, options = {})
       index_name, index_type, index_columns, index_options, index_algorithm, index_using = add_index_options(table_name, column_name, options)
       execute "CREATE #{index_type} INDEX #{index_algorithm} #{quote_column_name(index_name)} ON #{quote_table_name(table_name)} #{index_using} (#{index_columns})#{index_options}"
-    end if AR4_COMPAT
+    end if AR40
 
     def remove_index!(table_name, index_name)
       execute "DROP INDEX #{quote_table_name(index_name)}"
@@ -1259,12 +1260,12 @@ module ArJdbc
 
         column.new(name, default_value, oid_type, type, ! notnull, default_function, oid, self)
       end
-    end if AR42_COMPAT
+    end if AR42
 
     # @private only for API compatibility
     def new_column(name, default, cast_type, sql_type = nil, null = true, default_function = nil)
       jdbc_column_class.new(name, default, cast_type, sql_type, null, default_function)
-    end if AR42_COMPAT
+    end if AR42
 
     # @private
     def column_for(table_name, column_name)
@@ -1306,7 +1307,7 @@ module ArJdbc
     # @private
     TABLE_EXISTS_SQL_PREFIX =  'SELECT COUNT(*) as table_count FROM pg_class c'
     TABLE_EXISTS_SQL_PREFIX << ' LEFT JOIN pg_namespace n ON n.oid = c.relnamespace'
-    if AR42_COMPAT # -- (r)elation/table, (v)iew, (m)aterialized view
+    if AR42 # -- (r)elation/table, (v)iew, (m)aterialized view
     TABLE_EXISTS_SQL_PREFIX << " WHERE c.relkind IN ('r','v','m')"
     else
     TABLE_EXISTS_SQL_PREFIX << " WHERE c.relkind IN ('r','v')"
@@ -1349,7 +1350,7 @@ module ArJdbc
           AND t.relname = '#{table_name}'
           AND i.relnamespace IN (SELECT oid FROM pg_namespace WHERE nspname = ANY (current_schemas(false)) )
       SQL
-    end if AR42_COMPAT
+    end if AR42
 
     # Returns an array of indexes for the given table.
     def indexes(table_name, name = nil)
@@ -1411,7 +1412,7 @@ module ArJdbc
       when 'average' then 'avg'
       else operation.downcase
       end
-    end if AR42_COMPAT
+    end if AR42
 
     private
 
@@ -1474,9 +1475,9 @@ module ActiveRecord::ConnectionAdapters
     include ::ArJdbc::PostgreSQL
     include ::ArJdbc::PostgreSQL::ExplainSupport
 
-    require 'arjdbc/postgresql/oid_types' if AR4_COMPAT
+    require 'arjdbc/postgresql/oid_types' if AR40
     include ::ArJdbc::PostgreSQL::OIDTypes if ::ArJdbc::PostgreSQL.const_defined?(:OIDTypes)
-    include ::ArJdbc::PostgreSQL::ColumnHelpers if AR42_COMPAT
+    include ::ArJdbc::PostgreSQL::ColumnHelpers if AR42
 
     include ::ArJdbc::Util::QuotedCache
 
@@ -1488,13 +1489,13 @@ module ActiveRecord::ConnectionAdapters
 
       @table_alias_length = nil
 
-      initialize_type_map(@type_map = Type::HashLookupTypeMap.new) if AR42_COMPAT
+      initialize_type_map(@type_map = Type::HashLookupTypeMap.new) if AR42
 
       @use_insert_returning = @config.key?(:insert_returning) ?
         self.class.type_cast_config_to_boolean(@config[:insert_returning]) : nil
     end
 
-    if AR42_COMPAT
+    if AR42
       require 'active_record/connection_adapters/postgresql/schema_definitions'
     else
       require 'arjdbc/postgresql/base/schema_definitions'

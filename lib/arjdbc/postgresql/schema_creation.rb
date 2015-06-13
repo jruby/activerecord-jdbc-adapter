@@ -9,7 +9,7 @@ module ArJdbc
         sql_type = type_to_sql(o.type.to_sym, o.limit, o.precision, o.scale)
         sql = "ADD COLUMN #{quote_column_name(o.name)} #{sql_type}"
         add_column_options!(sql, column_options(o))
-      end unless AR42_COMPAT
+      end unless AR42
 
       def visit_ColumnDefinition(o)
         sql = super
@@ -18,7 +18,7 @@ module ArJdbc
           add_column_options!(sql, column_options(o))
         end
         sql
-      end unless AR42_COMPAT
+      end unless AR42
 
       def visit_ColumnDefinition(o)
         sql = super
@@ -27,7 +27,7 @@ module ArJdbc
           add_column_options!(sql, column_options(o))
         end
         sql
-      end if AR42_COMPAT
+      end if AR42
 
       def add_column_options!(sql, options)
         if options[:array] || options[:column].try(:array)
@@ -48,7 +48,7 @@ module ArJdbc
         else
           super
         end
-      end if AR42_COMPAT
+      end if AR42
 
     end
 
