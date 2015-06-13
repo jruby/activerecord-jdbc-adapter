@@ -6,11 +6,6 @@ require 'active_record/connection_adapters/abstract/schema_definitions'
 module ArJdbc
   module MySQL
 
-    # @private
-    AR40 = ::ActiveRecord::VERSION::MAJOR > 3
-    # @private
-    AR42 = ::ActiveRecord::VERSION::STRING >= '4.2'
-
     require 'arjdbc/mysql/column'
     require 'arjdbc/mysql/bulk_change_table'
     require 'arjdbc/mysql/explain_support'
