@@ -686,11 +686,11 @@ public class RubyJdbcConnection extends RubyObject {
     @JRubyMethod(name = { "open?" /* "conn?" */ })
     public IRubyObject open_p(final ThreadContext context) {
         final Connection connection = getConnection(false);
-        if ( connection == null ) return context.getRuntime().getFalse();
+        if ( connection == null ) return context.runtime.getFalse();
         try {
             // NOTE: isClosed method generally cannot be called to determine
             // whether a connection to a database is valid or invalid ...
-            return context.getRuntime().newBoolean( ! connection.isClosed() );
+            return context.runtime.newBoolean( ! connection.isClosed() );
         }
         catch (SQLException e) {
             return handleException(context, e);
@@ -700,16 +700,16 @@ public class RubyJdbcConnection extends RubyObject {
     @JRubyMethod(name = "close")
     public IRubyObject close(final ThreadContext context) {
         final Connection connection = getConnection(false);
-        if ( connection == null ) return context.getRuntime().getFalse();
+        if ( connection == null ) return context.runtime.getFalse();
         try {
             final boolean closed = connection.isClosed();
-            if ( closed ) return context.getRuntime().getFalse();
+            if ( closed ) return context.runtime.getFalse();
             setConnection(null); // does connection.close();
-            return context.getRuntime().getTrue();
+            return context.runtime.getTrue();
         }
         catch (Exception e) {
             debugStackTrace(context, e);
-            return context.getRuntime().getNil();
+            return context.nil;
         }
     }
 
