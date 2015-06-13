@@ -179,4 +179,11 @@ public class PostgreSQLModule {
         return self.getInstanceVariables().setInstanceVariable("@standard_conforming_strings", standard_conforming_strings);
     }
 
+    @JRubyMethod(name = "unescape_bytea", meta = true)
+    public static RubyString unescape_bytea(final ThreadContext context, final IRubyObject self, final IRubyObject escaped) {
+        final ByteList bytes = ((RubyString) escaped).getByteList();
+        final byte[] rawBytes = ByteaUtils.toBytes(bytes.unsafeBytes(), bytes.getBegin(), bytes.getRealSize());
+        return RubyString.newString(context.runtime, new ByteList(rawBytes, false));
+    }
+
 }
