@@ -30,26 +30,31 @@ package arjdbc.postgresql;
  */
 abstract class ByteaUtils {
 
+    //static byte[] toBytes(final byte[] s) {
+    //    return toBytes(s, 0, s.length);
+    //}
+
     /*
      * Converts a PG bytea raw value (i.e. the raw binary representation
      * of the bytea data type) into a java byte[]
      */
-    static byte[] toBytes(final byte[] s) {
+    static byte[] toBytes(final byte[] s, final int off, final int len) {
         // Starting with PG 9.0, a new hex format is supported
         // that starts with "\x".  Figure out which format we're
         // dealing with here.
         //
         if ( s.length < 2 || s[0] != '\\' || s[1] != 'x' ) {
-            return toBytesOctalEscaped(s);
+            return toBytesOctalEscaped(s, off, len);
         }
-        return toBytesHexEscaped(s);
+        return toBytesHexEscaped(s, off, len);
     }
 
-    private static byte[] toBytesHexEscaped(byte[] s) {
-        final byte[] out = new byte[(s.length - 2) / 2];
+    private static byte[] toBytesHexEscaped(final byte[] s, final int off, final int len) {
+        final byte[] out = new byte[(len - 2) / 2];
         for (int i = 0; i < out.length; i++) {
-            byte b1 = hexByte( s[2 + i * 2] );
-            byte b2 = hexByte( s[2 + i * 2 + 1] );
+            final int j = off + (2 + i * 2);
+            byte b1 = hexByte( s[j] );
+            byte b2 = hexByte( s[j + 1] );
             out[i] = (byte) ((b1 << 4) | b2);
         }
         return out;
@@ -68,15 +73,15 @@ abstract class ByteaUtils {
 
     private static final int MAX_3_BUFF_SIZE = 2 * 1024 * 1024;
 
-    private static byte[] toBytesOctalEscaped(final byte[] s) {
-        final int slength = s.length;
-        final byte[] out; int bufpos = 0;
-        int correctSize = slength;
-        if ( slength > MAX_3_BUFF_SIZE ) {
+    private static byte[] toBytesOctalEscaped(final byte[] s, final int off, final int len) {
+        final byte[] out;
+        final int end = off + len;
+        int correctSize = len;
+        if ( len > MAX_3_BUFF_SIZE ) {
             // count backslash escapes, they will be either
             // backslashes or an octal escape \\ or \003
             //
-            for (int i = 0; i < slength; ++i) {
+            for ( int i = off; i < end; ++i ) {
                 if ( s[i] == '\\' ) {
                     byte next = s[ ++i ];
                     if (next == '\\') {
@@ -90,31 +95,32 @@ abstract class ByteaUtils {
             out = new byte[correctSize];
         }
         else {
-            out = new byte[slength];
+            out = new byte[len];
         }
 
-        for (int i = 0; i < slength; i++) {
+        int pos = 0;
+        for ( int i = off; i < end; i++ ) {
             final byte b = s[i];
             if ( b == (byte) '\\' ) {
                 final byte b1 = s[++i];
                 if ( b1 == (byte) '\\' ) { // escaped \
-                    out[ bufpos++ ] = (byte) '\\';
+                    out[ pos++ ] = (byte) '\\';
                 }
                 else {
                     int thebyte = (b1 - 48) * 64 + (s[++i] - 48) * 8 + (s[++i] - 48);
                     if ( thebyte > 127 ) thebyte -= 256;
-                    out[ bufpos++ ] = (byte) thebyte;
+                    out[ pos++ ] = (byte) thebyte;
                 }
             }
             else {
-                out[ bufpos++ ] = b;
+                out[ pos++ ] = b;
             }
         }
 
-        if ( bufpos == correctSize ) return out;
+        if ( pos == correctSize ) return out;
 
-        final byte[] out2 = new byte[bufpos];
-        System.arraycopy(out, 0, out2, 0, bufpos);
+        final byte[] out2 = new byte[pos];
+        System.arraycopy(out, 0, out2, 0, pos);
         return out2;
     }
 
