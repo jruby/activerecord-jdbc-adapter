@@ -17,7 +17,7 @@ To make the JayBird driver accessible to JDBC and ActiveRecord in JRuby use :
 
 ## Copyright
 
-Copyright (c) 2013 [The JRuby Team](https://github.com/jruby).
+Copyright (c) 2014-2015 [The JRuby Team](https://github.com/jruby).
 
 Jaybird JDBC driver is distributed under the GNU Lesser General Public License (LGPL)
 see *LICENSE.txt* and  http://www.gnu.org/copyleft/lesser.html for more details.

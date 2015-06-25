@@ -14,7 +14,7 @@ To make the driver accessible to JDBC and JRuby by running :
 
 ## Copyright
 
-Copyright (c) 2014 [The JRuby Team](https://github.com/jruby).
+Copyright (c) 2014-2015 [The JRuby Team](https://github.com/jruby).
 
 The MariaDB client library is LGPL licensed.
 see *LICENSE.txt* and https://www.gnu.org/licenses/lgpl.html

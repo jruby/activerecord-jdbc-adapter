@@ -23,7 +23,7 @@ For backwards compatibility with older (<= **1.3.154**) versions of the gem use 
 
 ## Copyright
 
-Copyright (c) 2013 [The JRuby Team](https://github.com/jruby).
+Copyright (c) 2013-2015 [The JRuby Team](https://github.com/jruby).
 
 H2 is dual licensed and available under a modified version of the MPL 1.1
 (Mozilla Public License) or under the (unmodified) EPL 1.0 (Eclipse Public License).

@@ -21,7 +21,7 @@ For backwards compatibility with older (<= **1.8.1.3**) versions of the gem use 
 
 ## Copyright
 
-Copyright (c) 2013 [The JRuby Team](https://github.com/jruby).
+Copyright (c) 2013-2015 [The JRuby Team](https://github.com/jruby).
 
 HSQLDB is completely free to use and distribute under a license based on the
 standard BSD license and fully compatible with all major open source licenses.

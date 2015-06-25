@@ -19,7 +19,7 @@ For backwards compatibility with older (<= **9.1.903**) versions of the gem use 
 
 ## Copyright
 
-Copyright (c) 2012-2014 [The JRuby Team](https://github.com/jruby).
+Copyright (c) 2012-2015 [The JRuby Team](https://github.com/jruby).
 
 The PostgreSQL JDBC driver is distributed under the BSD license,
 see *LICENSE.txt* and http://jdbc.postgresql.org/license.html for details.
