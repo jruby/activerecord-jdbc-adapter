@@ -3,7 +3,7 @@
 MariaDB Client Library (for Java Applications) is used to connect applications
 developed in Java to MariaDB and MySQL databases using the standard JDBC API.
 
-See https://mariadb.com/kb/en/about-the-mariadb-java-client/
+See https://mariadb.com/kb/en/mariadb/about-mariadb-connector-j/
 
 ## Usage
 

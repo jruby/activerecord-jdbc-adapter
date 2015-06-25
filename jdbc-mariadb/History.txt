@@ -1,3 +1,7 @@
+=== 1.1.9
+
+* https://mariadb.com/kb/en/mariadb/mariadb-connector-j-119-release-notes/
+
 === 1.1.8
 
 * release following MariaDB Java Client 1.1.8
