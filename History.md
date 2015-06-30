@@ -1,4 +1,4 @@
-## 1.3.17 (06/29/15)
+## 1.3.17 (06/30/15)
 
 - [mysql] bulk compatibility with AR 4.2 - all _sql helper accept an options (hash)
 - [mysql] back-port case sensitive/insensitive comparison

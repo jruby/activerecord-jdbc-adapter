@@ -1,5 +1,5 @@
 module ArJdbc
-  VERSION = "1.3.16"
+  VERSION = "1.3.17"
   # @deprecated
   module Version
     # @private 1.2.x compatibility
