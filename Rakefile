@@ -12,7 +12,6 @@ require 'appraisal'
 
 task :default => [:jar, :test]
 
-#ugh, bundler doesn't use tasks, so gotta hook up to both tasks.
 task :build => :jar
 task :install => :jar
 
@@ -24,10 +23,12 @@ rake = lambda { |task| ruby "-S", "rake", task }
 current_version = lambda { Bundler.load_gemspec('activerecord-jdbc-adapter.gemspec').version }
 
 ADAPTERS.each do |target|
-  task :build do
-    version = current_version.call
-    Dir.chdir(target) { rake.call "build" }
-    cp FileList["#{target}/pkg/#{target}-#{version}.gem"], "pkg"
+  namespace target do
+    task :build do
+      version = current_version.call
+      Dir.chdir(target) { rake.call "build" }
+      cp FileList["#{target}/pkg/#{target}-#{version}.gem"], "pkg"
+    end
   end
 end
 DRIVERS.each do |target|
