@@ -1,15 +1,15 @@
 GEM
   remote: https://rubygems.org/
   specs:
-    activemodel (3.2.21)
-      activesupport (= 3.2.21)
+    activemodel (3.2.22)
+      activesupport (= 3.2.22)
       builder (~> 3.0.0)
-    activerecord (3.2.21)
-      activemodel (= 3.2.21)
-      activesupport (= 3.2.21)
+    activerecord (3.2.22)
+      activemodel (= 3.2.22)
+      activesupport (= 3.2.22)
       arel (~> 3.0.2)
       tzinfo (~> 0.3.29)
-    activesupport (3.2.21)
+    activesupport (3.2.22)
       i18n (~> 0.6, >= 0.6.4)
       multi_json (~> 1.0)
     appraisal (0.5.2)
@@ -23,7 +23,7 @@ GEM
     metaclass (0.0.4)
     mocha (0.13.3)
       metaclass (~> 0.0.1)
-    multi_json (1.10.1)
+    multi_json (1.11.1)
     rake (10.4.2)
     simplecov (0.9.1)
       docile (~> 1.1.0)
@@ -34,7 +34,7 @@ GEM
     test-unit-context (0.4.0)
       test-unit (>= 2.4.0)
     thread_safe (0.3.4-java)
-    tzinfo (0.3.42)
+    tzinfo (0.3.44)
 
 PLATFORMS
   java

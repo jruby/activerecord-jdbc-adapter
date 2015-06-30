@@ -1,5 +1,15 @@
-## 1.3.17 (pe/nd/in)
+## 1.3.17 (06/30/15)
 
+- [mysql] bulk compatibility with AR 4.2 - all _sql helper accept an options (hash)
+- [mysql] back-port case sensitive/insensitive comparison
+- [mysql] handle precision for datetimes when doing type_to_sql (AR 4.2 compat)
+- [mysql] foreign key support based on AR 4.2 (#656)
+- [postgres] foreign_key support back-ported from AR 4.2 (#656)
+- moved jndi callbacks to happen outside adapter's `initialize` (#649, #620)
+- [postgres] AR 4.2 compatibility with SchemaCreation
+- [postgres] re-define `lookup_cast_type` (AR 4.2) + `conn.type_map` is public
+- [postgres] override `valid_type?(type)` (AR 4.2 compatibility)
+- [postgres] back-port change_column updates from AR 4.2 for compatibility
 - [postgres] pass down array_member to hstore_to_string (fixes #647 on AR 4.1)
 - [postgres] on AR 4.2 use core's schema_definitions.rb for improved compat (#644)
 - back-port PGconn hack on AR 4.x (from #655 and following commits)
