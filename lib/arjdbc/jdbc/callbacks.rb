@@ -30,15 +30,18 @@ module ActiveRecord::ConnectionAdapters
       def self.prepare(adapter, connection)
         if adapter.is_a?(ConnectionPoolCallbacks) && connection.jndi?
           adapter.extend self # extend JndiConnectionPoolCallbacks
-          connection.disconnect! #if connection.open? # close initial (JNDI) connection
+          #connection.disconnect! #if connection.open? # close initial (JNDI) connection
+          connection.disconnect! if connection.open? # close initial (JNDI) connection
         end
       end
 
       def on_checkin
+        puts "on_checkin\n  #{caller.join("\n  ")}"
         disconnect!
       end
 
       def on_checkout
+        puts "on_checkout\n  #{caller.join("\n  ")}"
         reconnect!
       end
     end

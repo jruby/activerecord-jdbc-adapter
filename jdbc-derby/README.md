@@ -34,7 +34,7 @@ For backwards compatibility with older (<= **10.6.2.1**) versions of the gem use
 
 ## Copyright
 
-Copyright (c) 2012-2014 [The JRuby Team](https://github.com/jruby).
+Copyright (c) 2012-2015 [The JRuby Team](https://github.com/jruby).
 
 Apache Derby is available under the Apache License, Version 2.0
 see *LICENSE.txt* and http://db.apache.org/derby/license.html for more details.
