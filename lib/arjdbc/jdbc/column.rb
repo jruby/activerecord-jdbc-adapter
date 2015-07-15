@@ -24,6 +24,10 @@ module ActiveRecord
             default = args.shift
           end
         end
+        # Insert a marker for the cast_type.  It will be set by adapter#columns.
+        if ArJdbc::AR42 && args.first.is_a?(String)
+          args.unshift(:cast_type)
+        end
         # super <= 4.1: (name, default, sql_type = nil, null = true)
         # super >= 4.2: (name, default, cast_type, sql_type = nil, null = true)
         super(name, default_value(default), *args)

@@ -335,7 +335,21 @@ module ActiveRecord
       end
 
       def columns(table_name, name = nil)
-        @connection.columns(table_name.to_s)
+        columns = @connection.columns(table_name.to_s)
+        # FIXME(uwe): RubyJdbcConnection instantiates the Column objects, but
+        # does not have access to adapter#lookup_cast_type so we have to add it
+        # here.
+        if ArJdbc::AR42
+          columns.map! do |col|
+            if col.cast_type == :cast_type
+              col.with_type(lookup_cast_type(col.sql_type))
+            else
+              col
+            end
+          end
+        end
+        # EMXIF
+        columns
       end
 
       # Starts a database transaction.
