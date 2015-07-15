@@ -23,7 +23,11 @@ module Arel
       private
 
       def limit_for(limit_or_node)
-        limit_or_node.respond_to?(:expr) ? limit_or_node.expr.to_i : limit_or_node
+        if ArJdbc::AR42
+          limit_or_node.respond_to?(:expr) ? limit_or_node.expr.value.to_i : limit_or_node
+        else
+          limit_or_node.respond_to?(:expr) ? limit_or_node.expr.to_i : limit_or_node
+        end
       end
 
     end
