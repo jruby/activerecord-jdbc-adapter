@@ -157,6 +157,18 @@ module ArJdbc
       :object => { :name => "object" },
     }
 
+    # @private
+    def initialize_type_map(m)
+      super
+      m.register_type(%r(smallint)i) do |sql_type|
+        if Derby.emulate_booleans?
+          ActiveRecord::Type::Boolean.new
+        else
+          ActiveRecord::Type::Integer.new(limit: 1)
+        end
+      end
+    end if AR42
+
     # @override
     def native_database_types
       NATIVE_DATABASE_TYPES
