@@ -3392,6 +3392,7 @@ public class RubyJdbcConnection extends RubyObject {
 
         // NOTE: primary/primary= methods were removed from Column in AR 4.2
         final boolean setPrimary = JdbcColumn.isMethodBound("primary=", false);
+        final boolean isAr42 = !setPrimary;
 
         final Collection<String> primaryKeyNames =
             setPrimary ? getPrimaryKeyNames(metaData, components) : null;
@@ -3400,14 +3401,19 @@ public class RubyJdbcConnection extends RubyObject {
         final IRubyObject config = getConfig();
         while ( results.next() ) {
             final String colName = results.getString(COLUMN_NAME);
-            IRubyObject column = JdbcColumn.callMethod(context, "new",
-                new IRubyObject[] {
-                    config,
-                    cachedString( context, caseConvertIdentifierForRails(metaData, colName) ),
-                    defaultValueFromResultSet( runtime, results ),
-                    RubyString.newUnicodeString( runtime, typeFromResultSet(results) ),
-                    runtime.newBoolean( ! results.getString(IS_NULLABLE).trim().equals("NO") )
-                });
+            final RubyString railsColumnName = cachedString( context, caseConvertIdentifierForRails(metaData, colName) );
+            final IRubyObject defaultValue = defaultValueFromResultSet( runtime, results );
+            final RubyString sqlType = RubyString.newUnicodeString( runtime, typeFromResultSet(results) );
+            final RubyBoolean nullable = runtime.newBoolean( ! results.getString(IS_NULLABLE).trim().equals("NO") );
+            final IRubyObject[] args;
+            if (isAr42) {
+                final IRubyObject castType = adapter.callMethod(context, "lookup_cast_type", sqlType);
+                args = new IRubyObject[] {config, railsColumnName, defaultValue, castType, sqlType, nullable};
+            } else {
+                args = new IRubyObject[] {config, railsColumnName, defaultValue, sqlType, nullable};
+            }
+
+            IRubyObject column = JdbcColumn.callMethod(context, "new", args);
             columns.append(column);
 
             if ( primaryKeyNames != null && primaryKeyNames.contains(colName) ) {
