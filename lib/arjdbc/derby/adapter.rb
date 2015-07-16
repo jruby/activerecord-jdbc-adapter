@@ -171,6 +171,7 @@ module ArJdbc
 
     # @override
     def quote(value, column = nil)
+      return super if column && ArJdbc::AR42 && column.cast_type.is_a?(ActiveRecord::Type::Serialized)
       return value.quoted_id if value.respond_to?(:quoted_id)
       return value if sql_literal?(value)
       return 'NULL' if value.nil?
