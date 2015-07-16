@@ -4,8 +4,8 @@ module Arel
   module Visitors
     class Derby < Arel::Visitors::ToSql
 
-      def visit_Arel_Nodes_SelectStatement(o, a = nil)
-        if ArJdbc::AR42
+      if ArJdbc::AR42
+        def visit_Arel_Nodes_SelectStatement(o, a = nil)
           o.cores.each { |x| do_visit(x, a) }
           unless o.orders.empty?
             a << ' ORDER BY '
@@ -22,7 +22,9 @@ module Arel
             do_visit(o.lock, a)
           end
           a
-        else
+        end
+      else
+        def visit_Arel_Nodes_SelectStatement(o, a = nil)
           sql = o.cores.map { |x| do_visit(x, a) }.join
           sql << " ORDER BY #{o.orders.map { |x| do_visit x, a }.join(', ')}" unless o.orders.empty?
           sql << " #{do_visit o.offset, a}" if o.offset
@@ -50,39 +52,48 @@ module Arel
       # @private
       VALUES_DEFAULT = 'VALUES ( DEFAULT )' # NOTE: marker set by ArJdbc::Derby
 
-      def visit_Arel_Nodes_InsertStatement o, a = nil
-        if ArJdbc::AR42
-          sql = a
-          sql << "INSERT INTO "
+      if ArJdbc::AR42
+        def visit_Arel_Nodes_InsertStatement o, a = nil
+          a << "INSERT INTO "
           visit(o.relation, a)
-        else
-          sql = "INSERT INTO "
-          sql << visit(o.relation, a)
-        end
 
-        values = o.values
+          values = o.values
 
-        if o.columns.any?
-          cols = o.columns.map { |x| quote_column_name x.name }
-          sql << ' (' << cols.join(', ') << ') '
-        elsif o.values.eql? VALUES_DEFAULT
-          cols = o.relation.engine.columns.map { |c| c.name }
-          sql << ' (' << cols.join(', ') << ')'
-          sql << ' VALUES '
-          sql << ' (' << cols.map { 'DEFAULT' }.join(', ') << ')'
-          values = false
-        end
-
-        if values
-          if ArJdbc::AR42
-            visit(values, a)
-          else
-            sql << visit(values, a)
+          if o.columns.any?
+            cols = o.columns.map { |x| quote_column_name x.name }
+            a << ' (' << cols.join(', ') << ') '
+          elsif o.values.eql? VALUES_DEFAULT
+            cols = o.relation.engine.columns.map { |c| c.name }
+            a << ' (' << cols.join(', ') << ')'
+            a << ' VALUES '
+            a << ' (' << cols.map { 'DEFAULT' }.join(', ') << ')'
+            values = false
           end
+          visit(values, a) if values
+          a
         end
-        sql
-      end if Arel::VERSION >= '4.0' # AR 4.0 ... AREL 5.0 since AR >= 4.1
+      elsif Arel::VERSION >= '4.0' # AR 4.0 ... AREL 5.0 since AR >= 4.1
+        def visit_Arel_Nodes_InsertStatement o, a = nil
+          sql = 'INSERT INTO '
+          sql << visit(o.relation, a)
 
+          values = o.values
+
+          if o.columns.any?
+            cols = o.columns.map { |x| quote_column_name x.name }
+            sql << ' (' << cols.join(', ') << ') '
+          elsif o.values.eql? VALUES_DEFAULT
+            cols = o.relation.engine.columns.map { |c| c.name }
+            sql << ' (' << cols.join(', ') << ')'
+            sql << ' VALUES '
+            sql << ' (' << cols.map { 'DEFAULT' }.join(', ') << ')'
+            values = false
+          end
+
+          sql << visit(values, a) if values
+          sql
+        end
+      end
     end
   end
 end
