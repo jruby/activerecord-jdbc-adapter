@@ -2981,13 +2981,13 @@ public class RubyJdbcConnection extends RubyObject {
         final IRubyObject config = getConfig(context);
         while ( results.next() ) {
             final String colName = results.getString(COLUMN_NAME);
-            final RubyString railsColumnName = cachedString( context, caseConvertIdentifierForRails(metaData, colName) );
+            final RubyString railsColumnName = RubyString.newUnicodeString(runtime, caseConvertIdentifierForRails(metaData, colName));
             final IRubyObject defaultValue = defaultValueFromResultSet( runtime, results );
             final RubyString sqlType = RubyString.newUnicodeString( runtime, typeFromResultSet(results) );
             final RubyBoolean nullable = runtime.newBoolean( ! results.getString(IS_NULLABLE).trim().equals("NO") );
             final IRubyObject[] args;
             if (isAr42) {
-                final IRubyObject castType = adapter.callMethod(context, "lookup_cast_type", sqlType);
+                final IRubyObject castType = getAdapter(context).callMethod(context, "lookup_cast_type", sqlType);
                 args = new IRubyObject[] {config, railsColumnName, defaultValue, castType, sqlType, nullable};
             } else {
                 args = new IRubyObject[] {config, railsColumnName, defaultValue, sqlType, nullable};
