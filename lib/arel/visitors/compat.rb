@@ -22,10 +22,12 @@ module Arel
 
       private
 
-      def limit_for(limit_or_node)
-        if ArJdbc::AR42
+      if ArJdbc::AR42
+        def limit_for(limit_or_node)
           limit_or_node.respond_to?(:expr) ? limit_or_node.expr.value.to_i : limit_or_node
-        else
+        end
+      else
+        def limit_for(limit_or_node)
           limit_or_node.respond_to?(:expr) ? limit_or_node.expr.to_i : limit_or_node
         end
       end
