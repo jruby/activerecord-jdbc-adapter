@@ -20,15 +20,16 @@ class DerbySimpleTest < Test::Unit::TestCase
   end if ar_version('3.0')
 
   def test_boolean_emulation_can_be_disabled
-  	db_type = DbType.create! :sample_boolean => true
+    db_type = DbType.create! :sample_boolean => true
+  	assert_equal true, db_type.sample_boolean
+
   	column = DbType.columns.find { |col| col.name.to_s == 'sample_boolean' }
   	assert_equal :boolean, column.type
+
   	ArJdbc::Derby.emulate_booleans = false
-
   	DbType.reset_column_information
-  	column = DbType.columns.find { |col| col.name.to_s == 'sample_boolean' }
+    column = DbType.columns.find { |col| col.name.to_s == 'sample_boolean' }
   	assert_equal :integer, column.type
-
   	assert_equal 1, db_type.reload.sample_boolean
   ensure
   	ArJdbc::Derby.emulate_booleans = true
@@ -134,10 +135,14 @@ class DerbySimpleTest < Test::Unit::TestCase
       ["sample_datetime",             :datetime,  { }],
       ["sample_date",                 :date,      { }],
       ["sample_time",                 :time,      { }],
-      # NOTE: it's an :integer because the :scale is 0 (...right?) :
-      ["sample_decimal",              :integer,   { :precision => 9, :scale => 0 }],
+        ArJdbc::AR42 ?
+            ["sample_decimal", :decimal, {:precision => 9, :scale => nil}] :
+            # NOTE: it's an :integer because the :scale is 0 (...right?) :
+            ["sample_decimal", :integer, {:precision => 9, :scale => 0}],
       ["sample_small_decimal",        :decimal,   { :precision => 3, :scale => 2, :default => 3.14 }],
-      ["sample_default_decimal",      :integer,   { }], # decimal by default assumes :scale => 0
+        ArJdbc::AR42 ?
+            ["sample_default_decimal", :decimal, {}] : # decimal by default assumes :scale => 0
+            ["sample_default_decimal", :integer, {}], # decimal by default assumes :scale => 0
       ["sample_float",                :float,     { }],
       ["sample_binary",               :binary,    { }],
       ["sample_boolean",              :boolean,   { }],
@@ -148,7 +153,9 @@ class DerbySimpleTest < Test::Unit::TestCase
       ["sample_integer_no_limit",     :integer,   { }],
       ["sample_integer_neg_default",  :integer,   { :default => -1 }],
       ["sample_text",                 :text,      { }],
-      ["big_decimal",                 :integer,   { :precision => 31, :scale => 0 }],
+        ArJdbc::AR42 ?
+            ["big_decimal", :decimal, {:precision => 31, :scale => nil}] :
+            ["big_decimal", :integer, {:precision => 31, :scale => 0}],
       ["decimal_with_scale",          :decimal,   { :precision => 15, :scale => 3 }],
     ].sort{ |a,b| a[0] <=> b[0] }
 
