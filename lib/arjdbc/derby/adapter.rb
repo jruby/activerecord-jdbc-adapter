@@ -167,7 +167,11 @@ module ArJdbc
           ActiveRecord::Type::Integer.new(limit: 1)
         end
       end
-      m.alias_type %r(real)i,    'float'
+      m.alias_type %r(real)i, 'float'
+    end if AR42
+
+    def reset_column_information
+      initialize_type_map(type_map)
     end if AR42
 
     # @override
