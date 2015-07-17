@@ -1469,13 +1469,13 @@ module ActiveRecord3TestMethods
     end
 
     def test_arel
-      Thing.create! :name => "a3"
-      Thing.create! :name => "a1"
-      Thing.create! :name => "a2"
+      Thing.create! :name => 'a3'
+      Thing.create! :name => 'a1'
+      Thing.create! :name => 'a4'
+      Thing.create! :name => 'a2'
 
-      things = Thing.order(:name).limit(3)
-      assert_equal 'a2', things[1].name
-      #assert_not_nil Thing.first.name
+      things = Thing.order(:name).limit(2).offset(1)
+      assert_equal %w(a2 a3), things.map(&:name)
     end
 
   end
