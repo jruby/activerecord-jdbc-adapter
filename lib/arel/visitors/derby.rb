@@ -15,8 +15,8 @@ module Arel
               do_visit(x, a)
             end
           end
-          a << " #{do_visit o.offset, a}" if o.offset
-          a << " #{do_visit o.limit, a}" if o.limit
+          do_visit(o.offset, a) if o.offset
+          do_visit(o.limit, a) if o.limit
           if o.lock
             a << ' '
             do_visit(o.lock, a)
