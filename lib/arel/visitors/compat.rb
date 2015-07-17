@@ -26,7 +26,7 @@ module Arel
         def limit_for(limit_or_node)
           if limit_or_node.respond_to?(:expr)
             # FIXME(uwe): Different behavior for Arel 6.0.0 and 6.0.2
-            if limit_or_node.respond_to?(:value)
+            if limit_or_node.expr.respond_to?(:value)
               limit_or_node.expr.value.to_i
             else
               limit_or_node.expr.to_i

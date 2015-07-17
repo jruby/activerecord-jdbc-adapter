@@ -15,8 +15,15 @@ module Arel
               do_visit(x, a)
             end
           end
-          do_visit(o.offset, a) if o.offset
-          do_visit(o.limit, a) if o.limit
+          # FIXME(uwe): Optimize: too many strings
+          if o.offset
+            a << ' '
+            do_visit(o.offset, a)
+          end
+          if o.limit
+            a << ' '
+            do_visit(o.limit, a)
+          end
           if o.lock
             a << ' '
             do_visit(o.lock, a)
@@ -34,12 +41,20 @@ module Arel
         end
       end
 
-      def visit_Arel_Nodes_Limit o, a = nil
-        "FETCH FIRST #{limit_for(o)} ROWS ONLY"
+      def visit_Arel_Nodes_Limit(o, a = nil)
+        limit = "FETCH FIRST #{limit_for(o)} ROWS ONLY"
+        a << limit if a
+        limit
       end
 
-      def visit_Arel_Nodes_Offset o, a = nil
-        "OFFSET #{do_visit o.value, a} ROWS"
+      def visit_Arel_Nodes_Offset(o, a = nil)
+        if a
+          a << 'OFFSET '
+          do_visit(o.value, a)
+          a << ' ROWS'
+        else
+          "OFFSET #{do_visit o.value, a} ROWS"
+        end
       end
 
       # This generates SELECT...FOR UPDATE, but it will only work if the
