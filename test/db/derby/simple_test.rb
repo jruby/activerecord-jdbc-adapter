@@ -79,8 +79,9 @@ class DerbySimpleTest < Test::Unit::TestCase
       db.sample_text = value
       db.save!
       db.reload
-      assert_equal value.to_s, db.sample_string
-      assert_equal value.to_s, db.sample_text
+      expected_value = ArJdbc::AR42 ? value.to_s[0] : value.to_s
+      assert_equal expected_value, db.sample_string
+      assert_equal expected_value, db.sample_text
     end
 
     value = Date.today
