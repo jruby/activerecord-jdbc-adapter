@@ -167,6 +167,7 @@ module ArJdbc
           ActiveRecord::Type::Integer.new(limit: 1)
         end
       end
+      m.alias_type %r(real)i,    'float'
     end if AR42
 
     # @override
