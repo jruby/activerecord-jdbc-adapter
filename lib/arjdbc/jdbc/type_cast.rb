@@ -33,6 +33,7 @@ module ActiveRecord::ConnectionAdapters
       def string_to_time(string)
         return string unless string.is_a?(String)
         return nil if string.empty?
+        return string if string =~ /^-?infinity$/.freeze
 
         fast_string_to_time(string) || fallback_string_to_time(string)
       end
@@ -134,6 +135,7 @@ module ActiveRecord::ConnectionAdapters
         def fallback_string_to_time(string)
           time_hash = Date._parse(string)
           time_hash[:sec_fraction] = microseconds(time_hash)
+          time_hash[:year] *= -1 if time_hash[:zone] == 'BC'
 
           new_time(*time_hash.values_at(:year, :mon, :mday, :hour, :min, :sec, :sec_fraction, :offset))
         end

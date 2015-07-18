@@ -674,7 +674,15 @@ _SQL
         @first_bit_string.save
       end
     end
-  end if ar_version('4.0')
+  end if ar_version('4.0') && !ar_version('4.2')
+
+  def test_hex_to_bit_string
+    @first_bit_string.bit_string = 'FF'
+    disable_logger do
+      @first_bit_string.save
+      assert_equal '11111111', @first_bit_string.reload.bit_string
+    end
+  end if ar_version('4.2')
 
   def test_update_oid
     new_value = 567890
