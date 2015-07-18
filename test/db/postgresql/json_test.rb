@@ -102,7 +102,7 @@ class PostgresqlJSONTest < Test::Unit::TestCase
     if ar_version('4.2')
       column.type_cast_from_database data
     else
-      column.class.type_cast data
+      column.type_cast data
     end
   end
 

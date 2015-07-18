@@ -60,7 +60,7 @@ class PostgreSQLArrayTypeTest < Test::Unit::TestCase
     assert_equal :integer, column.type
     assert column.array
     assert_equal 'integer', column.sql_type
-    assert_equal ar_version('4.2') ? '{}' : [], column.default
+    assert_equal [], column.default
   end
 
   def test_change_column_with_array
@@ -71,7 +71,7 @@ class PostgreSQLArrayTypeTest < Test::Unit::TestCase
     column = PgArray.columns.find { |c| c.name == 'snippets' }
 
     assert_equal :text, column.type
-    assert_equal ar_version('4.2') ? '{}' : [], column.default
+    assert_equal [], column.default
     assert column.array
   end
 
