@@ -2032,9 +2032,22 @@ public class RubyJdbcConnection extends RubyObject {
     }
 
     protected void setStatementParameter(final ThreadContext context,
-        final Ruby runtime, final Connection connection,
-        final PreparedStatement statement, final int index,
-        final Object value, final IRubyObject column) throws SQLException {
+            final Ruby runtime, final Connection connection,
+            final PreparedStatement statement, final int index,
+            final Object rawValue, final IRubyObject column) throws SQLException {
+        final Object value;
+
+        // FIXME(uwe): Find better way to determine AR42
+        // NOTE: primary/primary= methods were removed from Column in AR 4.2
+        final boolean isAr42 = column.respondsTo("cast_type");
+        // EMXIF
+
+        if (isAr42) {
+            final IRubyObject castType = column.callMethod(context, "cast_type");
+            value = castType.callMethod(context, "type_cast_for_database", (IRubyObject) rawValue);
+        } else {
+            value = rawValue;
+        }
 
         final int type = jdbcTypeFor(context, runtime, column, value);
 
