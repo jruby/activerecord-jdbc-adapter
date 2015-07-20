@@ -44,7 +44,9 @@ module ArJdbc
       end
     end
 
+    # @see ActiveRecord::ConnectionAdapters::Jdbc::ArelSupport
     def self.arel_visitor_type(config = nil)
+      require 'arel/visitors/postgresql_jdbc'
       ::Arel::Visitors::PostgreSQL
     end
 

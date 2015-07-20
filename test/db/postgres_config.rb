@@ -5,6 +5,8 @@ POSTGRES_CONFIG = {
   :username => 'arjdbc',
   :password => 'arjdbc',
   :connect_timeout => 10, # seconds
+  :encoding => 'utf8',
+  :collate => 'en_US.UTF-8',
 }
 
 POSTGRES_CONFIG[:host] = ENV['PGHOST'] if ENV['PGHOST']
