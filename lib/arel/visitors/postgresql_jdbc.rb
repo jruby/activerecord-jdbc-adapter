@@ -1,11 +1,6 @@
 require 'arel/visitors/compat'
 
-module Arel
-  module Visitors
-    class PostgreSQL < Arel::Visitors::ToSql
-      def visit_Arel_Nodes_BindParam(o, collector)
-        collector.add_bind(o) { |_| '?' }
-      end if ArJdbc::AR42
-    end
-  end
+class Arel::Visitors::PostgreSQL
+  # AREL converts bind argument markers "?" to "$n" for PG, but JDBC wants "?".
+  remove_method :visit_Arel_Nodes_BindParam
 end
