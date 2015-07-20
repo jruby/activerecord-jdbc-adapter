@@ -2630,15 +2630,15 @@ public class RubyJdbcConnection extends RubyObject {
     }
 
     protected void setArrayParameter(final ThreadContext context,
-        final Connection connection, final PreparedStatement statement,
-        final int index, final Object value,
-        final IRubyObject column, final int type) throws SQLException {
+            final Connection connection, final PreparedStatement statement,
+            final int index, final Object value,
+            final IRubyObject column, final int type) throws SQLException {
         if ( value instanceof IRubyObject ) {
             setArrayParameter(context, connection, statement, index, (IRubyObject) value, column, type);
-        }
-        else {
-            if ( value == null ) statement.setNull(index, Types.ARRAY);
-            else {
+        } else {
+            if ( value == null ) {
+                statement.setNull(index, Types.ARRAY);
+            } else {
                 String typeName = resolveArrayBaseTypeName(context, value, column, type);
                 Array array = connection.createArrayOf(typeName, (Object[]) value);
                 statement.setArray(index, array);
@@ -2650,8 +2650,9 @@ public class RubyJdbcConnection extends RubyObject {
         final Connection connection, final PreparedStatement statement,
         final int index, final IRubyObject value,
         final IRubyObject column, final int type) throws SQLException {
-        if ( value.isNil() ) statement.setNull(index, Types.ARRAY);
-        else {
+        if ( value.isNil() ) {
+            statement.setNull(index, Types.ARRAY);
+        } else {
             String typeName = resolveArrayBaseTypeName(context, value, column, type);
             Array array = connection.createArrayOf(typeName, ((RubyArray) value).toArray());
             statement.setArray(index, array);
