@@ -2091,7 +2091,7 @@ public class RubyJdbcConnection extends RubyObject {
                 setXmlParameter(context, connection, statement, index, value, column, type);
                 break;
             case Types.ARRAY:
-                setArrayParameter(context, connection, statement, index, value, column, type);
+                setArrayParameter(context, connection, statement, index, rawValue, column, type);
                 break;
             case Types.JAVA_OBJECT:
             case Types.OTHER:
