@@ -677,6 +677,7 @@ _SQL
   end if ar_version('4.0') && !ar_version('4.2')
 
   def test_hex_to_bit_string
+    pend 'not supported by driver' if prepared_statements?
     @first_bit_string.bit_string = 'FF'
     disable_logger do
       @first_bit_string.save
