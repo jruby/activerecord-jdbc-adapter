@@ -2038,7 +2038,6 @@ public class RubyJdbcConnection extends RubyObject {
         final Object value;
 
         // FIXME(uwe): Find better way to determine AR42
-        // NOTE: primary/primary= methods were removed from Column in AR 4.2
         final boolean isAr42 = column.respondsTo("cast_type");
         // EMXIF
 
@@ -2350,6 +2349,9 @@ public class RubyJdbcConnection extends RubyObject {
             // NOTE: RubyBigDecimal moved into org.jruby.ext.bigdecimal (1.6 -> 1.7)
             if ( value.getMetaClass().getName().indexOf("BigDecimal") != -1 ) {
                 statement.setBigDecimal(index, getBigDecimalValue(value));
+            }
+            else if ( value instanceof RubyInteger ) {
+                statement.setBigDecimal(index, new BigDecimal(((RubyInteger) value).getBigIntegerValue()));
             }
             else if ( value instanceof RubyNumeric ) {
                 statement.setDouble(index, ((RubyNumeric) value).getDoubleValue());

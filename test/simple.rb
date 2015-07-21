@@ -471,7 +471,7 @@ module SimpleTestMethods
   end
 
   def test_big_decimal
-    test_value = 9876543210_9876543210_9876543210.0
+    test_value = BigDecimal('9876543210_9876543210_9876543210.0')
     db_type = DbType.create!(:big_decimal => test_value)
     db_type = DbType.find(db_type.id)
     assert_kind_of Bignum, db_type.big_decimal
