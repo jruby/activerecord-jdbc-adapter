@@ -95,13 +95,13 @@ public class MySQLRubyJdbcConnection extends RubyJdbcConnection {
     @Override
     protected IRubyObject jdbcToRuby(
         final ThreadContext context, final Ruby runtime,
-        final int column, final int type, final ResultSet resultSet)
+        final int column, final int type, final ResultSet resultSet, boolean preparedStatement)
         throws SQLException {
         if ( Types.BOOLEAN == type || Types.BIT == type ) {
             final boolean value = resultSet.getBoolean(column);
             return resultSet.wasNull() ? runtime.getNil() : runtime.newFixnum(value ? 1 : 0);
         }
-        return super.jdbcToRuby(context, runtime, column, type, resultSet);
+        return super.jdbcToRuby(context, runtime, column, type, resultSet, preparedStatement);
     }
 
     @Override // can not use statement.setTimestamp( int, Timestamp, Calendar )

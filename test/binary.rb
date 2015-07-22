@@ -29,7 +29,8 @@ module BinaryTestMethods
 
   end
 
-  FIXTURES = %w(flowers.jpg example.log test.txt)
+  FIXTURES_PATH = File.expand_path('assets', File.dirname(__FILE__))
+  FIXTURES = Dir.chdir(FIXTURES_PATH) { Dir['*'] }
 
   def test_mixed_encoding_data
     data = "\x80"
@@ -46,9 +47,8 @@ module BinaryTestMethods
 
   def test_load_save_data
     Binary.delete_all
-    assets_root = File.expand_path('assets', File.dirname(__FILE__))
     FIXTURES.each do |filename|
-      data = File.read("#{assets_root}/#{filename}")
+      data = File.read("#{FIXTURES_PATH}/#{filename}")
       data.force_encoding('ASCII-8BIT') if data.respond_to?(:force_encoding)
       data.freeze
 
@@ -58,7 +58,7 @@ module BinaryTestMethods
       model.save!
       assert_equal data, model.data, 'Data differs from original after save'
 
-      assert_equal data, model.reload.data, 'Reloaded data differs from original'
+      assert_equal data, model.reload.data, %{Reloaded data from file "#{filename}" differs from original}
     end
   end
 

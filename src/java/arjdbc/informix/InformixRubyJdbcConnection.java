@@ -67,9 +67,9 @@ public class InformixRubyJdbcConnection extends RubyJdbcConnection {
     @Override
     protected IRubyObject jdbcToRuby(
         final ThreadContext context, final Ruby runtime,
-        final int column, int type, final ResultSet resultSet)
+        final int column, int type, final ResultSet resultSet, boolean preparedStatement)
         throws SQLException {
         if ( type == Types.LONGVARCHAR ) type = Types.CLOB;
-        return super.jdbcToRuby(context, runtime, column, type, resultSet);
+        return super.jdbcToRuby(context, runtime, column, type, resultSet, preparedStatement);
     }
 }
