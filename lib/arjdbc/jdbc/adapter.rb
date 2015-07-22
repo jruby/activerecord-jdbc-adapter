@@ -404,6 +404,22 @@ module ActiveRecord
         @connection.supports_views?
       end
 
+      # AR-JDBC extension that allows you to have read-only connections.
+      # Read-only connection do not allow any inserts/updates, such operations fail.
+      # @return [Boolean] whether the underlying conn is read-only (false by default)
+      # @since 1.4.0
+      def read_only?
+        @connection.read_only?
+      end
+
+      # AR-JDBC extension that allows you to have read-only connections.
+      # @param flag the read-only flag to set
+      # @see #read_only?
+      # @since 1.4.0
+      def read_only=(flag)
+        @connection.read_only = flag
+      end
+
       # Executes a SQL query in the context of this connection using the bind
       # substitutes.
       # @param sql the query string (or AREL object)

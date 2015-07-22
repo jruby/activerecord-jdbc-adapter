@@ -265,6 +265,32 @@ class MySQLSimpleTest < Test::Unit::TestCase
     end
   end if defined? JRUBY_VERSION
 
+  test "read-only connection" do
+    record = Entry.create! :title => 'read-only test'
+    read_only = ActiveRecord::Base.connection.read_only?
+    assert_equal false, read_only
+    begin
+      ActiveRecord::Base.connection.read_only = true
+      assert_equal true, ActiveRecord::Base.connection.read_only?
+
+      ActiveRecord::Base.connection.execute('select VERSION()')
+
+      record.reload
+      record.content = '1234567890'
+      begin
+        record.save!
+        fail 'record saved on read-only connection'
+      rescue ActiveRecord::ActiveRecordError => e
+        assert e
+      end
+
+      ActiveRecord::Base.connection.read_only = false
+      record.save!
+    ensure
+      ActiveRecord::Base.establish_connection(MYSQL_CONFIG)
+    end
+  end if defined? JRUBY_VERSION
+
   test 'bulk change table' do
     assert ActiveRecord::Base.connection.supports_bulk_alter?
 
