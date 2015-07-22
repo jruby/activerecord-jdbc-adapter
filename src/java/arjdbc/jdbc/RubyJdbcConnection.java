@@ -581,7 +581,7 @@ public class RubyJdbcConnection extends RubyObject {
                 try {
                     statement = createStatement(context, connection);
                     if ( doExecute(statement, query) ) {
-                        return mapResults(context, connection, statement, false);
+                        return mapResults(context, connection, statement, false, false);
                     } else {
                         return mapGeneratedKeysOrUpdateCount(context, connection, statement);
                     }
@@ -833,7 +833,8 @@ public class RubyJdbcConnection extends RubyObject {
 
                 Statement statement = null; ResultSet resultSet = null;
                 try {
-                    if ( binds == null ) { // plain statement
+                    final boolean preparedStatement = (binds != null);
+                    if ( ! preparedStatement ) { // plain statement
                         statement = createStatement(context, connection);
                         statement.setMaxRows(maxRows); // zero means there is no limit
                         resultSet = statement.executeQuery(query);
@@ -849,10 +850,10 @@ public class RubyJdbcConnection extends RubyObject {
                     if ( block != null && block.isGiven() ) {
                         // yield(id1, name1) ... row 1 result data
                         // yield(id2, name2) ... row 2 result data
-                        return yieldResultRows(context, runtime, connection, resultSet, block);
+                        return yieldResultRows(context, runtime, connection, resultSet, block, preparedStatement);
                     }
 
-                    return mapToRawResult(context, runtime, connection, resultSet, false);
+                    return mapToRawResult(context, runtime, connection, resultSet, false, preparedStatement);
                 }
                 catch (final SQLException e) {
                     debugErrorSQL(context, query);
@@ -941,7 +942,7 @@ public class RubyJdbcConnection extends RubyObject {
                     statement = createStatement(context, connection);
                     statement.setMaxRows(maxRows); // zero means there is no limit
                     resultSet = statement.executeQuery(query);
-                    return mapQueryResult(context, connection, resultSet);
+                    return mapQueryResult(context, connection, resultSet, false);
                 }
                 catch (final SQLException e) {
                     debugErrorSQL(context, query);
@@ -962,7 +963,7 @@ public class RubyJdbcConnection extends RubyObject {
                     statement.setMaxRows(maxRows); // zero means there is no limit
                     setStatementParameters(context, connection, statement, binds);
                     resultSet = statement.executeQuery();
-                    return mapQueryResult(context, connection, resultSet);
+                    return mapQueryResult(context, connection, resultSet, true);
                 }
                 catch (final SQLException e) {
                     debugErrorSQL(context, query);
@@ -974,10 +975,10 @@ public class RubyJdbcConnection extends RubyObject {
     }
 
     private IRubyObject mapQueryResult(final ThreadContext context,
-        final Connection connection, final ResultSet resultSet) throws SQLException {
+        final Connection connection, final ResultSet resultSet, boolean preparedStatement) throws SQLException {
         final Ruby runtime = context.getRuntime();
         final ColumnData[] columns = extractColumns(runtime, connection, resultSet, false);
-        return mapToResult(context, runtime, connection, resultSet, columns);
+        return mapToResult(context, runtime, connection, resultSet, columns, preparedStatement);
     }
 
     /**
@@ -1017,7 +1018,7 @@ public class RubyJdbcConnection extends RubyObject {
         final ResultSet typeDesc = connection.getMetaData().getTypeInfo();
         final IRubyObject types;
         try {
-            types = mapToRawResult(context, runtime, connection, typeDesc, true);
+            types = mapToRawResult(context, runtime, connection, typeDesc, true, false);
         }
         finally { close(typeDesc); }
 
@@ -1570,10 +1571,10 @@ public class RubyJdbcConnection extends RubyObject {
     protected void populateFromResultSet(
             final ThreadContext context, final Ruby runtime,
             final List<IRubyObject> results, final ResultSet resultSet,
-            final ColumnData[] columns) throws SQLException {
+            final ColumnData[] columns, boolean preparedStatement) throws SQLException {
         final ResultHandler resultHandler = ResultHandler.getInstance(runtime);
         while ( resultSet.next() ) {
-            results.add( resultHandler.mapRawRow(context, runtime, columns, resultSet, this) );
+            results.add( resultHandler.mapRawRow(context, runtime, columns, resultSet, this, preparedStatement) );
         }
     }
 
@@ -1589,13 +1590,13 @@ public class RubyJdbcConnection extends RubyObject {
      */
     protected IRubyObject mapToResult(final ThreadContext context, final Ruby runtime,
             final Connection connection, final ResultSet resultSet,
-            final ColumnData[] columns) throws SQLException {
+            final ColumnData[] columns, boolean preparedStatement) throws SQLException {
 
         final ResultHandler resultHandler = ResultHandler.getInstance(runtime);
         final RubyArray resultRows = runtime.newArray();
 
         while ( resultSet.next() ) {
-            resultRows.append( resultHandler.mapRow(context, runtime, columns, resultSet, this) );
+            resultRows.append( resultHandler.mapRow(context, runtime, columns, resultSet, this, preparedStatement) );
         }
 
         return resultHandler.newResult(context, runtime, columns, resultRows);
@@ -1603,14 +1604,14 @@ public class RubyJdbcConnection extends RubyObject {
 
     @Deprecated
     protected IRubyObject jdbcToRuby(final Ruby runtime,
-        final int column, final int type, final ResultSet resultSet)
+        final int column, final int type, final ResultSet resultSet, boolean preparedStatement)
         throws SQLException {
-        return jdbcToRuby(runtime.getCurrentContext(), runtime, column, type, resultSet);
+        return jdbcToRuby(runtime.getCurrentContext(), runtime, column, type, resultSet, preparedStatement);
     }
 
     protected IRubyObject jdbcToRuby(
         final ThreadContext context, final Ruby runtime,
-        final int column, final int type, final ResultSet resultSet)
+        final int column, final int type, final ResultSet resultSet, boolean preparedStatement)
         throws SQLException {
 
         try {
@@ -1619,7 +1620,7 @@ public class RubyJdbcConnection extends RubyObject {
             case Types.BINARY:
             case Types.VARBINARY:
             case Types.LONGVARBINARY:
-                return streamToRuby(context, runtime, resultSet, column);
+                return streamToRuby(context, runtime, resultSet, column, preparedStatement);
             case Types.CLOB:
             case Types.NCLOB: // JDBC 4.0
                 return readerToRuby(context, runtime, resultSet, column);
@@ -1629,7 +1630,7 @@ public class RubyJdbcConnection extends RubyObject {
                     return readerToRuby(context, runtime, resultSet, column);
                 }
                 else {
-                    return streamToRuby(context, runtime, resultSet, column);
+                    return streamToRuby(context, runtime, resultSet, column, preparedStatement);
                 }
             case Types.TINYINT:
             case Types.SMALLINT:
@@ -1656,7 +1657,7 @@ public class RubyJdbcConnection extends RubyObject {
             case Types.SQLXML: // JDBC 4.0
                 return xmlToRuby(context, runtime, resultSet, column);
             case Types.ARRAY: // we handle JDBC Array into (Ruby) []
-                return arrayToRuby(context, runtime, resultSet, column);
+                return arrayToRuby(context, runtime, resultSet, column, preparedStatement);
             case Types.NULL:
                 return runtime.getNil();
             // NOTE: (JDBC) exotic stuff just cause it's so easy with JRuby :)
@@ -1909,19 +1910,19 @@ public class RubyJdbcConnection extends RubyObject {
     protected static int streamBufferSize = 2048;
 
     protected IRubyObject streamToRuby(final ThreadContext context,
-        final Ruby runtime, final ResultSet resultSet, final int column)
+        final Ruby runtime, final ResultSet resultSet, final int column, boolean preparedStatement)
         throws SQLException, IOException {
         final InputStream stream = resultSet.getBinaryStream(column);
         try {
             if ( resultSet.wasNull() ) return runtime.getNil();
-            return streamToRuby(runtime, resultSet, stream);
+            return streamToRuby(runtime, resultSet, stream, preparedStatement);
         }
         finally { if ( stream != null ) stream.close(); }
     }
 
     @Deprecated
     protected IRubyObject streamToRuby(
-        final Ruby runtime, final ResultSet resultSet, final InputStream stream)
+        final Ruby runtime, final ResultSet resultSet, final InputStream stream, boolean preparedStatement)
         throws SQLException, IOException {
         if ( stream == null && resultSet.wasNull() ) return runtime.getNil();
 
@@ -1933,7 +1934,14 @@ public class RubyJdbcConnection extends RubyObject {
             string.append(buf, 0, len);
         }
 
-        return runtime.newString(string);
+        final IRubyObject stringFromStream = runtime.newString(string);
+        if (preparedStatement) {
+            final IRubyObject dataClass = runtime.evalScriptlet("ActiveRecord::Type::Binary::Data");
+            final IRubyObject data = dataClass.callMethod(runtime.getCurrentContext(), "new", stringFromStream);
+            return data;
+        } else {
+            return stringFromStream;
+        }
     }
 
     protected IRubyObject readerToRuby(final ThreadContext context,
@@ -1975,7 +1983,7 @@ public class RubyJdbcConnection extends RubyObject {
     }
 
     protected IRubyObject arrayToRuby(final ThreadContext context,
-        final Ruby runtime, final ResultSet resultSet, final int column)
+        final Ruby runtime, final ResultSet resultSet, final int column, boolean preparedStatement)
         throws SQLException {
         final Array value = resultSet.getArray(column);
         try {
@@ -1986,7 +1994,7 @@ public class RubyJdbcConnection extends RubyObject {
             final ResultSet arrayResult = value.getResultSet(); // 1: index, 2: value
             final int baseType = value.getBaseType();
             while ( arrayResult.next() ) {
-                array.append( jdbcToRuby(context, runtime, 2, baseType, arrayResult) );
+                array.append( jdbcToRuby(context, runtime, 2, baseType, arrayResult, preparedStatement) );
             }
             return array;
         }
@@ -3144,13 +3152,13 @@ public class RubyJdbcConnection extends RubyObject {
 
     protected IRubyObject mapResults(final ThreadContext context,
             final Connection connection, final Statement statement,
-            final boolean downCase) throws SQLException {
+            final boolean downCase, boolean preparedStatement) throws SQLException {
 
         final Ruby runtime = context.getRuntime();
         IRubyObject result;
         ResultSet resultSet = statement.getResultSet();
         try {
-            result = mapToRawResult(context, runtime, connection, resultSet, downCase);
+            result = mapToRawResult(context, runtime, connection, resultSet, downCase, preparedStatement);
         }
         finally { close(resultSet); }
 
@@ -3162,7 +3170,7 @@ public class RubyJdbcConnection extends RubyObject {
         do {
             resultSet = statement.getResultSet();
             try {
-                result = mapToRawResult(context, runtime, connection, resultSet, downCase);
+                result = mapToRawResult(context, runtime, connection, resultSet, downCase, preparedStatement);
             }
             finally { close(resultSet); }
 
@@ -3180,7 +3188,7 @@ public class RubyJdbcConnection extends RubyObject {
     protected IRubyObject unmarshalResult(final ThreadContext context,
             final DatabaseMetaData metaData, final ResultSet resultSet,
             final boolean downCase) throws SQLException {
-        return mapToRawResult(context, context.getRuntime(), metaData, resultSet, downCase);
+        return mapToRawResult(context, context.getRuntime(), metaData, resultSet, downCase, false);
     }
 
     /**
@@ -3191,13 +3199,13 @@ public class RubyJdbcConnection extends RubyObject {
     @SuppressWarnings("unchecked")
     private IRubyObject mapToRawResult(final ThreadContext context, final Ruby runtime,
             final Connection connection, final ResultSet resultSet,
-            final boolean downCase) throws SQLException {
+            final boolean downCase, boolean preparedStatement) throws SQLException {
 
         final ColumnData[] columns = extractColumns(runtime, connection, resultSet, downCase);
 
         final RubyArray results = runtime.newArray();
         // [ { 'col1': 1, 'col2': 2 }, { 'col1': 3, 'col2': 4 } ]
-        populateFromResultSet(context, runtime, (List<IRubyObject>) results, resultSet, columns);
+        populateFromResultSet(context, runtime, (List<IRubyObject>) results, resultSet, columns, preparedStatement);
         return results;
     }
 
@@ -3205,19 +3213,19 @@ public class RubyJdbcConnection extends RubyObject {
     @SuppressWarnings("unchecked")
     private IRubyObject mapToRawResult(final ThreadContext context, final Ruby runtime,
             final DatabaseMetaData metaData, final ResultSet resultSet,
-            final boolean downCase) throws SQLException {
+            final boolean downCase, boolean preparedStatement) throws SQLException {
 
         final ColumnData[] columns = extractColumns(runtime, metaData, resultSet, downCase);
 
         final RubyArray results = runtime.newArray();
         // [ { 'col1': 1, 'col2': 2 }, { 'col1': 3, 'col2': 4 } ]
-        populateFromResultSet(context, runtime, (List<IRubyObject>) results, resultSet, columns);
+        populateFromResultSet(context, runtime, (List<IRubyObject>) results, resultSet, columns, preparedStatement);
         return results;
     }
 
     private IRubyObject yieldResultRows(final ThreadContext context, final Ruby runtime,
             final Connection connection, final ResultSet resultSet,
-            final Block block) throws SQLException {
+            final Block block, boolean preparedStatement) throws SQLException {
 
         final ColumnData[] columns = extractColumns(runtime, connection, resultSet, false);
 
@@ -3225,7 +3233,7 @@ public class RubyJdbcConnection extends RubyObject {
         while ( resultSet.next() ) {
             for ( int i = 0; i < columns.length; i++ ) {
                 final ColumnData column = columns[i];
-                blockArgs[i] = jdbcToRuby(context, runtime, column.index, column.type, resultSet);
+                blockArgs[i] = jdbcToRuby(context, runtime, column.index, column.type, resultSet, preparedStatement);
             }
             block.call( context, blockArgs );
         }
@@ -3483,33 +3491,33 @@ public class RubyJdbcConnection extends RubyObject {
 
         public IRubyObject mapRow(final ThreadContext context, final Ruby runtime,
             final ColumnData[] columns, final ResultSet resultSet,
-            final RubyJdbcConnection connection) throws SQLException {
+            final RubyJdbcConnection connection, boolean preparedStatement) throws SQLException {
 
             if ( USE_RESULT ) { // maps a AR::Result row
                 final RubyArray row = runtime.newArray(columns.length);
 
                 for ( int i = 0; i < columns.length; i++ ) {
                     final ColumnData column = columns[i];
-                    row.append( connection.jdbcToRuby(context, runtime, column.index, column.type, resultSet) );
+                    row.append( connection.jdbcToRuby(context, runtime, column.index, column.type, resultSet, preparedStatement) );
                 }
 
                 return row;
             }
             else {
-                return mapRawRow(context, runtime, columns, resultSet, connection);
+                return mapRawRow(context, runtime, columns, resultSet, connection, preparedStatement);
             }
         }
 
         IRubyObject mapRawRow(final ThreadContext context, final Ruby runtime,
             final ColumnData[] columns, final ResultSet resultSet,
-            final RubyJdbcConnection connection) throws SQLException {
+            final RubyJdbcConnection connection, boolean preparedStatement) throws SQLException {
 
             final RubyHash row = RubyHash.newHash(runtime);
 
             for ( int i = 0; i < columns.length; i++ ) {
                 final ColumnData column = columns[i];
                 row.op_aset( context, column.name,
-                    connection.jdbcToRuby(context, runtime, column.index, column.type, resultSet)
+                    connection.jdbcToRuby(context, runtime, column.index, column.type, resultSet, preparedStatement)
                 );
             }
 

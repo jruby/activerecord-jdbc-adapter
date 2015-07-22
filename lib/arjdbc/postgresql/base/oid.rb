@@ -29,7 +29,7 @@ module ActiveRecord
             return if value.nil?
             PGconn.unescape_bytea value
           end
-        end
+        end unless ArJdbc::AR42
 
         class Money < Type
           def type_cast(value)

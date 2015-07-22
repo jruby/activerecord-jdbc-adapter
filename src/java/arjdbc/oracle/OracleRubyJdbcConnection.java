@@ -122,7 +122,7 @@ public class OracleRubyJdbcConnection extends RubyJdbcConnection {
                     statement.registerOutParameter(outIndex, outType);
                     statement.executeUpdate();
                     ResultSet resultSet = new CallResultSet(statement);
-                    return jdbcToRuby(context, context.getRuntime(), outIndex, outType, resultSet);
+                    return jdbcToRuby(context, context.getRuntime(), outIndex, outType, resultSet, true);
                 }
                 catch (final SQLException e) {
                     debugErrorSQL(context, query);
