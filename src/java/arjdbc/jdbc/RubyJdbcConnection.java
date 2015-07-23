@@ -2037,11 +2037,7 @@ public class RubyJdbcConnection extends RubyObject {
             final Object rawValue, final IRubyObject column) throws SQLException {
         final Object value;
 
-        // FIXME(uwe): Find better way to determine AR42
-        final boolean isAr42 = column.respondsTo("cast_type");
-        // EMXIF
-
-        if (isAr42) {
+        if (isAr42(column)) {
             final IRubyObject castType = column.callMethod(context, "cast_type");
             value = castType.callMethod(context, "type_cast_for_database", (IRubyObject) rawValue);
         } else {
@@ -2978,6 +2974,19 @@ public class RubyJdbcConnection extends RubyObject {
         final String defaultValue = resultSet.getString(COLUMN_DEF);
         return defaultValue == null ? runtime.getNil() : RubyString.newUnicodeString(runtime, defaultValue);
     }
+
+    // FIXME(uwe): Find better way to determine AR42
+    // NOTE: primary/primary= methods were removed from Column in AR 4.2
+    protected boolean isAr42(ThreadContext context) {
+        final RubyClass JdbcColumn = getJdbcColumnClass(context);
+        final boolean setPrimary = JdbcColumn.isMethodBound("primary=", false);
+        return !setPrimary;
+    }
+
+    protected boolean isAr42(IRubyObject column) {
+        return column.respondsTo("cast_type");
+    }
+    // EMXIF
 
     private RubyArray unmarshalColumns(final ThreadContext context,
         final DatabaseMetaData metaData, final TableName components, final ResultSet results)
