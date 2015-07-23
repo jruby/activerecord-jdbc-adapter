@@ -327,7 +327,9 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
             if ( rubyValue.isNil() ) {
                 statement.setNull(index, Types.OTHER); return;
             }
-            value = column.getMetaClass().callMethod(context, "json_to_string", rubyValue);
+            if (!isAr42(context)) { // Value has already been cast for AR42
+                value = column.getMetaClass().callMethod(context, "json_to_string", rubyValue);
+            }
         }
         else if ( value == null ) {
             statement.setNull(index, Types.OTHER); return;
@@ -369,7 +371,9 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
             if ( rubyValue.isNil() ) {
                 statement.setNull(index, Types.OTHER); return;
             }
-            value = column.getMetaClass().callMethod(context, "cidr_to_string", rubyValue);
+            if (!isAr42(context)) { // Value has already been cast for AR42
+                value = column.getMetaClass().callMethod(context, "cidr_to_string", rubyValue);
+            }
         }
         else if ( value == null ) {
             statement.setNull(index, Types.OTHER); return;
