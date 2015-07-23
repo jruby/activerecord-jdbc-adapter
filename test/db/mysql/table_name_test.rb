@@ -11,7 +11,7 @@ class MySQLTableNameTest < Test::Unit::TestCase
       SerialMigration.up
     rescue ActiveRecord::StatementInvalid => e
       e = e.original_exception if e.respond_to?(:original_exception)
-      puts "WARNING: #{self.class.name}.#{__method__} failed: #{e.inspect}"
+      puts "WARNING: #{self.name}.#{__method__} failed: #{e.inspect}"
     else
       @@serial_migration_up = true
     end
