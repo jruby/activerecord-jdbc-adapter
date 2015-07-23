@@ -52,22 +52,22 @@ matrix:
     - env: JRUBY_OPTS="--1.9 $JRUBY_OPTS" DB=jdbc PREPARED_STATEMENTS=true
   include: # testing against MariaDB
     - addons:
-        mariadb: '10.0'
+        mariadb: '5.5'
       rvm: jruby-1.7.18
       gemfile: gemfiles/rails32.gemfile
-      env: JRUBY_OPTS="$JRUBY_OPTS" DB=mariadb
+      env: JRUBY_OPTS="$JRUBY_OPTS" DB=mysql
       jdk: openjdk7
     - addons:
         mariadb: '10.0'
       rvm: jruby-1.7.18
       gemfile: gemfiles/rails40.gemfile
-      env: JRUBY_OPTS="$JRUBY_OPTS" DB=mariadb PREPARED_STATEMENTS=true
+      env: JRUBY_OPTS="$JRUBY_OPTS" DB=mariadb
       jdk: openjdk7
     - addons:
-        mariadb: '5.5'
+        mariadb: '10.0'
       rvm: jruby-1.7.18
       gemfile: gemfiles/rails41.gemfile
-      env: JRUBY_OPTS="$JRUBY_OPTS" DB=mysql
+      env: JRUBY_OPTS="$JRUBY_OPTS" DB=mariadb PREPARED_STATEMENTS=true
       jdk: openjdk7
   exclude:
     # Rails 4 prefers Ruby 2.0 (or at least >= 1.9.3) :
