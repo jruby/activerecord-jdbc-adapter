@@ -3,9 +3,18 @@ require 'db/mysql'
 
 class MySQLTableNameTest < Test::Unit::TestCase
 
+  @@serial_migration_up = nil
+
   def self.startup
     SerialNumberMigration.up
-    SerialMigration.up
+    begin
+      SerialMigration.up
+    rescue ActiveRecord::StatementInvalid => e
+      e = e.original_exception if e.respond_to?(:original_exception)
+      puts "WARNING: #{self.class.name}.#{__method__} failed: #{e.inspect}"
+    else
+      @@serial_migration_up = true
+    end
   end
 
   def self.shutdown
@@ -68,6 +77,7 @@ class MySQLTableNameTest < Test::Unit::TestCase
   end
 
   test 'serial with trigger' do
+    skip("failed to create `serials` table with trigger check the 'WARNING: ...' above") unless @@serial_migration_up
     sn = SerialWithTrigger.create! :value => 1234567890
     # assert_nil sn.sid
     sn = SerialWithTrigger.where(:value => 1234567890).first
