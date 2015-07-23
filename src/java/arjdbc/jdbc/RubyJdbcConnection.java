@@ -2977,13 +2977,7 @@ public class RubyJdbcConnection extends RubyObject {
 
     // FIXME(uwe): Find better way to determine AR42
     // NOTE: primary/primary= methods were removed from Column in AR 4.2
-    protected boolean isAr42(ThreadContext context) {
-        final RubyClass JdbcColumn = getJdbcColumnClass(context);
-        final boolean setPrimary = JdbcColumn.isMethodBound("primary=", false);
-        return !setPrimary;
-    }
-
-    protected boolean isAr42(IRubyObject column) {
+    protected static boolean isAr42(IRubyObject column) {
         return column.respondsTo("cast_type");
     }
     // EMXIF
