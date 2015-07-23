@@ -251,6 +251,7 @@ class MySQLSimpleTest < Test::Unit::TestCase
 
   test "config :host" do
     skip unless MYSQL_CONFIG[:database] # JDBC :url defined instead
+    skip if mariadb_driver?
     begin
       config = { :adapter => 'mysql', :port => 3306 }
       config[:username] = MYSQL_CONFIG[:username]
