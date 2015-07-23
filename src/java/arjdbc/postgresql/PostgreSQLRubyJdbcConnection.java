@@ -327,7 +327,7 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
             if ( rubyValue.isNil() ) {
                 statement.setNull(index, Types.OTHER); return;
             }
-            if (!isAr42(context)) { // Value has already been cast for AR42
+            if (!isAr42(column)) { // Value has already been cast for AR42
                 value = column.getMetaClass().callMethod(context, "json_to_string", rubyValue);
             }
         }
@@ -371,7 +371,7 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
             if ( rubyValue.isNil() ) {
                 statement.setNull(index, Types.OTHER); return;
             }
-            if (!isAr42(context)) { // Value has already been cast for AR42
+            if (!isAr42(column)) { // Value has already been cast for AR42
                 value = column.getMetaClass().callMethod(context, "cidr_to_string", rubyValue);
             }
         }
