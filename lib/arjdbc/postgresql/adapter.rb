@@ -918,7 +918,7 @@ module ArJdbc
     def _quote(value)
       case value
       when Type::Binary::Data
-        "'#{escape_bytea(value.to_s)}'"
+        "E'#{escape_bytea(value.to_s)}'"
       when OID::Xml::Data
         "xml '#{quote_string(value.to_s)}'"
       when OID::Bit::Data
