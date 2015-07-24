@@ -860,7 +860,7 @@ module ArJdbc
           version << jdbc_connection.serverMinorVersion
           version << jdbc_connection.serverSubMinorVersion
         else
-          if match = full_version.match(/^(\d)\.(\d+)\.(\d+)/)
+          if match = full_version.match(/^(\d+)\.(\d+)\.(\d+)/)
             version << match[1].to_i
             version << match[2].to_i
             version << match[3].to_i

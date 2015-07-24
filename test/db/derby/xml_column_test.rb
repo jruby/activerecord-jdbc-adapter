@@ -5,7 +5,7 @@ class DerbyXmlColumnTest < Test::Unit::TestCase
   include FixtureSetup
   include XmlColumnTestMethods
 
-  def xml_sql_type; 'xml'; end
+  def xml_sql_type;ArJdbc::AR42 ? 'XML(2147483647)':'xml';end
 
   # @override
   def test_use_xml_column

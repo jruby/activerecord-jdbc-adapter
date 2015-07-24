@@ -6,6 +6,7 @@ module ArJdbc
     if AR42
       require 'active_record/connection_adapters/postgresql/oid'
       require 'arjdbc/postgresql/base/pgconn'
+      require 'arjdbc/postgresql/oid/bytea.rb'
     else
       require 'arjdbc/postgresql/base/oid'
     end

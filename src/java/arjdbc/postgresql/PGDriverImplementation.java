@@ -48,6 +48,7 @@ import org.postgresql.util.PGInterval;
 import org.postgresql.util.PGobject;
 
 import arjdbc.util.NumberUtils;
+import static arjdbc.jdbc.RubyJdbcConnection.isAr42;
 
 /**
  * Official JDBC driver internals.
@@ -289,7 +290,9 @@ final class PGDriverImplementation implements DriverImplementation {
             if ( rubyValue.isNil() ) {
                 statement.setNull(index, Types.OTHER); return;
             }
-            value = column.getMetaClass().callMethod(context, "cidr_to_string", rubyValue);
+            if (!isAr42(column)) { // Value has already been cast for AR42
+                value = column.getMetaClass().callMethod(context, "cidr_to_string", rubyValue);
+            }
         }
         else if ( value == null ) {
             statement.setNull(index, Types.OTHER); return;
@@ -310,7 +313,9 @@ final class PGDriverImplementation implements DriverImplementation {
             if ( rubyValue.isNil() ) {
                 statement.setNull(index, Types.OTHER); return;
             }
-            value = column.getMetaClass().callMethod(context, "json_to_string", rubyValue);
+            if (!isAr42(column)) { // Value has already been cast for AR42
+                value = column.getMetaClass().callMethod(context, "json_to_string", rubyValue);
+            }
         }
         else if ( value == null ) {
             statement.setNull(index, Types.OTHER); return;

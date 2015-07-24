@@ -54,7 +54,9 @@ module HasManyThroughTestMethods
     connection = ActiveRecord::Base.connection
     groups = role.reload.permission_groups.select('right_id')
 
-    pend "seems to fail with MRI the same way as with JRuby!" if ar_version('4.0')
+    if ar_version('4.0') && !ArJdbc::AR42
+      pend 'seems to fail with MRI the same way as with JRuby!'
+    end
 
     if ar_version('3.1')
       assert_equal [ r1.id, r2.id ], connection.select_values(groups)

@@ -33,7 +33,9 @@ SQL
 DROP DATABASE IF EXISTS #{POSTGRES_CONFIG[:database]};
 DROP USER IF EXISTS #{POSTGRES_CONFIG[:username]};
 CREATE USER #{POSTGRES_CONFIG[:username]} CREATEDB SUPERUSER LOGIN PASSWORD '#{POSTGRES_CONFIG[:password]}';
-CREATE DATABASE #{POSTGRES_CONFIG[:database]} OWNER #{POSTGRES_CONFIG[:username]};
+CREATE DATABASE #{POSTGRES_CONFIG[:database]} OWNER #{POSTGRES_CONFIG[:username]}
+       TEMPLATE template0
+       ENCODING '#{POSTGRES_CONFIG[:encoding]}' LC_COLLATE '#{POSTGRES_CONFIG[:collate]}' LC_CTYPE '#{POSTGRES_CONFIG[:collate]}';
 SQL
     params = { '-U' => ENV['PSQL_USER'] || 'postgres' }
     params['-q'] = nil unless $VERBOSE

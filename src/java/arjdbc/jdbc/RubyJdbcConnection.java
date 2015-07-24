@@ -2429,9 +2429,17 @@ public class RubyJdbcConnection extends RubyObject {
     }
 
     protected void setStatementParameter(final ThreadContext context,
-        final Ruby runtime, final Connection connection,
-        final PreparedStatement statement, final int index,
-        final Object value, final IRubyObject column) throws SQLException {
+            final Ruby runtime, final Connection connection,
+            final PreparedStatement statement, final int index,
+            final Object rawValue, final IRubyObject column) throws SQLException {
+        final Object value;
+
+        if (isAr42(column)) {
+            final IRubyObject castType = column.callMethod(context, "cast_type");
+            value = castType.callMethod(context, "type_cast_for_database", (IRubyObject) rawValue);
+        } else {
+            value = rawValue;
+        }
 
         final int type = jdbcTypeFor(context, runtime, column, value);
 
@@ -2475,7 +2483,7 @@ public class RubyJdbcConnection extends RubyObject {
                 setXmlParameter(context, connection, statement, index, value, column, type);
                 break;
             case Types.ARRAY:
-                setArrayParameter(context, connection, statement, index, value, column, type);
+                setArrayParameter(context, connection, statement, index, rawValue, column, type);
                 break;
             case Types.JAVA_OBJECT:
             case Types.OTHER:
@@ -2720,6 +2728,9 @@ public class RubyJdbcConnection extends RubyObject {
             if ( value.getMetaClass().getName().indexOf("BigDecimal") != -1 ) {
                 statement.setBigDecimal(index, getBigDecimalValue(value));
             }
+            else if ( value instanceof RubyInteger ) {
+                statement.setBigDecimal(index, new BigDecimal(((RubyInteger) value).getBigIntegerValue()));
+            }
             else if ( value instanceof RubyNumeric ) {
                 statement.setDouble(index, ((RubyNumeric) value).getDoubleValue());
             }
@@ -2963,15 +2974,15 @@ public class RubyJdbcConnection extends RubyObject {
     }
 
     protected void setArrayParameter(final ThreadContext context,
-        final Connection connection, final PreparedStatement statement,
-        final int index, final Object value,
-        final IRubyObject column, final int type) throws SQLException {
+            final Connection connection, final PreparedStatement statement,
+            final int index, final Object value,
+            final IRubyObject column, final int type) throws SQLException {
         if ( value instanceof IRubyObject ) {
             setArrayParameter(context, connection, statement, index, (IRubyObject) value, column, type);
-        }
-        else {
-            if ( value == null ) statement.setNull(index, Types.ARRAY);
-            else {
+        } else {
+            if ( value == null ) {
+                statement.setNull(index, Types.ARRAY);
+            } else {
                 String typeName = resolveArrayBaseTypeName(context, value, column, type);
                 Array array = connection.createArrayOf(typeName, (Object[]) value);
                 statement.setArray(index, array);
@@ -2983,8 +2994,9 @@ public class RubyJdbcConnection extends RubyObject {
         final Connection connection, final PreparedStatement statement,
         final int index, final IRubyObject value,
         final IRubyObject column, final int type) throws SQLException {
-        if ( value.isNil() ) statement.setNull(index, Types.ARRAY);
-        else {
+        if ( value.isNil() ) {
+            statement.setNull(index, Types.ARRAY);
+        } else {
             String typeName = resolveArrayBaseTypeName(context, value, column, type);
             Array array = connection.createArrayOf(typeName, ((RubyArray) value).toArray());
             statement.setArray(index, array);
@@ -3383,6 +3395,14 @@ public class RubyJdbcConnection extends RubyObject {
         return defaultValue == null ? runtime.getNil() : RubyString.newUnicodeString(runtime, defaultValue);
     }
 
+    /**
+     * @note This method is not part of AR-JDBC's Java ext API
+     * and might be subject to change in the future.
+     */
+    public static boolean isAr42(IRubyObject column) {
+        return column.respondsTo("cast_type");
+    }
+
     private RubyArray unmarshalColumns(final ThreadContext context,
         final DatabaseMetaData metaData, final TableName components, final ResultSet results)
         throws SQLException {
@@ -3392,6 +3412,7 @@ public class RubyJdbcConnection extends RubyObject {
 
         // NOTE: primary/primary= methods were removed from Column in AR 4.2
         final boolean setPrimary = JdbcColumn.isMethodBound("primary=", false);
+        final boolean isAr42 = !setPrimary;
 
         final Collection<String> primaryKeyNames =
             setPrimary ? getPrimaryKeyNames(metaData, components) : null;
@@ -3400,14 +3421,19 @@ public class RubyJdbcConnection extends RubyObject {
         final IRubyObject config = getConfig();
         while ( results.next() ) {
             final String colName = results.getString(COLUMN_NAME);
-            IRubyObject column = JdbcColumn.callMethod(context, "new",
-                new IRubyObject[] {
-                    config,
-                    cachedString( context, caseConvertIdentifierForRails(metaData, colName) ),
-                    defaultValueFromResultSet( runtime, results ),
-                    RubyString.newUnicodeString( runtime, typeFromResultSet(results) ),
-                    runtime.newBoolean( ! results.getString(IS_NULLABLE).trim().equals("NO") )
-                });
+            final RubyString railsColumnName = cachedString( context, caseConvertIdentifierForRails(metaData, colName) );
+            final IRubyObject defaultValue = defaultValueFromResultSet( runtime, results );
+            final RubyString sqlType = RubyString.newUnicodeString( runtime, typeFromResultSet(results) );
+            final RubyBoolean nullable = runtime.newBoolean( ! results.getString(IS_NULLABLE).trim().equals("NO") );
+            final IRubyObject[] args;
+            if (isAr42) {
+                final IRubyObject castType = getAdapter().callMethod(context, "lookup_cast_type", sqlType);
+                args = new IRubyObject[] {config, railsColumnName, defaultValue, castType, sqlType, nullable};
+            } else {
+                args = new IRubyObject[] {config, railsColumnName, defaultValue, sqlType, nullable};
+            }
+
+            IRubyObject column = JdbcColumn.callMethod(context, "new", args);
             columns.append(column);
 
             if ( primaryKeyNames != null && primaryKeyNames.contains(colName) ) {

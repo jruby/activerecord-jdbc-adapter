@@ -32,7 +32,9 @@ module ArJdbc
     # @see ActiveRecord::ConnectionAdapters::JdbcAdapter#jdbc_connection_class
     def self.jdbc_connection_class; JdbcConnection end
 
+    # @see ActiveRecord::ConnectionAdapters::Jdbc::ArelSupport
     def self.arel_visitor_type(config = nil)
+      require 'arel/visitors/postgresql_jdbc'
       ::Arel::Visitors::PostgreSQL
     end
 
@@ -839,7 +841,7 @@ module ArJdbc
     def _quote(value)
       case value
       when Type::Binary::Data
-        "'#{escape_bytea(value.to_s)}'"
+        "E'#{escape_bytea(value.to_s)}'"
       when OID::Xml::Data
         "xml '#{quote_string(value.to_s)}'"
       when OID::Bit::Data

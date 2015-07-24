@@ -117,23 +117,11 @@ class PostgreSQLSimpleTest < Test::Unit::TestCase
 
   def test_resolves_correct_columns_default
     assert column = DbType.columns.find { |col| col.name == 'sample_small_decimal' }
-    unless ar_version('4.2')
-      assert_equal 3.14, column.default
-    else
-      assert_equal '3.14', column.default
-    end
+    assert_equal 3.14, column.default
     assert column = DbType.columns.find { |col| col.name == 'sample_integer_no_limit' }
-    unless ar_version('4.2')
-      assert_equal 42, column.default
-    else
-      assert_equal '42', column.default
-    end
+    assert_equal 42, column.default
     assert column = DbType.columns.find { |col| col.name == 'sample_integer_neg_default' }
-    unless ar_version('4.2')
-      assert_equal -1, column.default
-    else
-      assert_equal '-1', column.default
-    end
+    assert_equal -1, column.default
   end
 
   def test_standard_conforming_string_default_set_on_new_connections

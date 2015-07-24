@@ -22,8 +22,24 @@ module Arel
 
       private
 
-      def limit_for(limit_or_node)
-        limit_or_node.respond_to?(:expr) ? limit_or_node.expr.to_i : limit_or_node
+      if ArJdbc::AR42
+        def limit_for(limit_or_node)
+          if limit_or_node.respond_to?(:expr)
+            # FIXME(uwe): Different behavior for Arel 6.0.0 and 6.0.2
+            if limit_or_node.expr.respond_to?(:value)
+              limit_or_node.expr.value.to_i
+            else
+              limit_or_node.expr.to_i
+            end
+            # EMXIF
+          else
+            limit_or_node
+          end
+        end
+      else
+        def limit_for(limit_or_node)
+          limit_or_node.respond_to?(:expr) ? limit_or_node.expr.to_i : limit_or_node
+        end
       end
 
     end

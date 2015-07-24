@@ -145,6 +145,23 @@ module ArJdbc
       :object => { :name => "object" },
     }
 
+    # @private
+    def initialize_type_map(m)
+      super
+      m.register_type(%r(smallint)i) do |sql_type|
+        if Derby.emulate_booleans?
+          ActiveRecord::Type::Boolean.new
+        else
+          ActiveRecord::Type::Integer.new(limit: 1)
+        end
+      end
+      m.alias_type %r(real)i, 'float'
+    end if AR42
+
+    def reset_column_information
+      initialize_type_map(type_map)
+    end if AR42
+
     # @override
     def native_database_types
       NATIVE_DATABASE_TYPES
@@ -159,6 +176,7 @@ module ArJdbc
 
     # @override
     def quote(value, column = nil)
+      return super if column && ArJdbc::AR42 && column.cast_type.is_a?(ActiveRecord::Type::Serialized)
       return value.quoted_id if value.respond_to?(:quoted_id)
       return value if sql_literal?(value)
       return 'NULL' if value.nil?

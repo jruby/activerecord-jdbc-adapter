@@ -19,10 +19,18 @@ module TransactionTestMethods
 
   def setup
     super
-    Entry.delete_all
+    begin
+      Entry.delete_all
+    rescue ActiveRecord::StatementInvalid => e
+      e = e.original_exception if e.respond_to?(:original_exception)
+      puts "ERROR: #{self.class.name}.#{__method__} failed: #{e.inspect}"
+      return @setup_failed = true
+    end
     Entry2.establish_connection current_connection_config.dup
     @supports_savepoints = ActiveRecord::Base.connection.supports_savepoints?
   end
+
+  def setup_failed?; @setup_failed ||= false end
 
   def test_supports_transaction_isolation
     unless ActiveRecord::Base.connection.supports_transaction_isolation?

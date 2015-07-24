@@ -24,9 +24,17 @@ module ActiveRecord
             default = args.shift
           end
         end
+        default = default_value(default)
+
+        # FIXME(uwe): I would like to move #default_value() handling into ARJDBC
+        #  subclasses of the corresponding ActiveRecord::Type subclasses
+        #  "type_cast_from_database" should be called from RubyJdbcConnection
+        default = args[0].type_cast_from_database(default) if ArJdbc::AR42
+        # EMXIF
+
         # super <= 4.1: (name, default, sql_type = nil, null = true)
         # super >= 4.2: (name, default, cast_type, sql_type = nil, null = true)
-        super(name, default_value(default), *args)
+        super(name, default, *args)
         init_column(name, default, *args)
       end
 
