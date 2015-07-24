@@ -1,5 +1,5 @@
-require 'test_helper'
-require 'db/h2'
+require_relative '../../test_helper'
+require 'db/hsqldb'
 
 class H2OffsetTest < Test::Unit::TestCase
 
@@ -50,7 +50,7 @@ class H2OffsetTest < Test::Unit::TestCase
     assert_nothing_raised do
       sql = query.to_sql
       if ArJdbc::AR42
-        assert_equal 'SELECT FROM persons LIMIT -1 OFFSET 3', sql, 'SQL statement was not generated, properly'
+        assert_equal 'SELECT FROM persons LIMIT 0 OFFSET 3', sql, 'SQL statement was not generated, properly'
       else
         assert_equal "SELECT LIMIT 3", sql[0..13], "SQL statement was not generated, properly"
       end
