@@ -42,7 +42,11 @@ class H2OffsetTest < Test::Unit::TestCase
     query = Arel::Table.new(:persons).skip(3)
     assert_nothing_raised do
       sql = query.to_sql
-      assert_equal "SELECT LIMIT 3", sql[0..13], "SQL statement was not generated, properly"
+      if ArJdbc::AR42
+        assert_equal 'SELECT FROM persons OFFSET 3', sql, 'SQL statement was not generated, properly'
+      else
+        assert_equal "SELECT LIMIT 3", sql[0..13], "SQL statement was not generated, properly"
+      end
     end
   end if ar_version('3.0')
   

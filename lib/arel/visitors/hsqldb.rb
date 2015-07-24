@@ -8,7 +8,7 @@ module Arel
         sql = limit_offset(o.cores.map { |x| do_visit_select_core x, a }.join, o)
         sql << " ORDER BY #{o.orders.map { |x| do_visit x, a }.join(', ')}" unless o.orders.empty?
         sql
-      end
+      end unless ArJdbc::AR42
 
       private
 
@@ -22,8 +22,7 @@ module Arel
         else
           sql
         end
-      end
-
+      end unless ArJdbc::AR42
     end
   end
 end
