@@ -36,12 +36,10 @@ module ActiveRecord::ConnectionAdapters
       end
 
       def on_checkin
-        puts "on_checkin\n  #{caller.join("\n  ")}"
         disconnect!
       end
 
       def on_checkout
-        puts "on_checkout\n  #{caller.join("\n  ")}"
         reconnect!
       end
     end
