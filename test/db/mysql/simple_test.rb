@@ -247,7 +247,6 @@ class MySQLSimpleTest < Test::Unit::TestCase
   test "config :host" do
     skip unless MYSQL_CONFIG[:database] # JDBC :url defined instead
     adapter = MYSQL_CONFIG[:adapter] # mysql or mariadb
-    # skip if mariadb_driver?
     begin
       config = { :adapter => adapter, :port => 3306 }
       config[:username] = MYSQL_CONFIG[:username]
@@ -270,6 +269,7 @@ class MySQLSimpleTest < Test::Unit::TestCase
     record = Entry.create! :title => 'read-only test'
     read_only = ActiveRecord::Base.connection.read_only?
     assert_equal false, read_only
+    skip if mariadb_driver?
     begin
       ActiveRecord::Base.connection.read_only = true
       assert_equal true, ActiveRecord::Base.connection.read_only?
