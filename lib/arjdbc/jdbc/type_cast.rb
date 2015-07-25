@@ -6,6 +6,7 @@ module ActiveRecord::ConnectionAdapters
     # @private Simply to quickly "hack-in" 4.2 compatibility.
     module TypeCast
 
+      TRUE_VALUES = Column::TRUE_VALUES if Column.const_defined?(:TRUE_VALUES)
       FALSE_VALUES = Column::FALSE_VALUES
 
       #module Format
@@ -55,9 +56,18 @@ module ActiveRecord::ConnectionAdapters
         if value.is_a?(String) && value.empty?
           nil
         else
-          !FALSE_VALUES.include?(value)
+          TRUE_VALUES.include?(value)
         end
-      end
+      end if const_defined?(:TRUE_VALUES) # removed on AR 5.0
+
+      # convert something to a boolean
+      def value_to_boolean(value)
+        if value.is_a?(String) && value.empty?
+          nil
+        else
+          ! FALSE_VALUES.include?(value)
+        end
+      end unless const_defined?(:TRUE_VALUES)
 
       # Used to convert values to integer.
       # handle the case when an integer column is used to store boolean values
