@@ -2975,12 +2975,14 @@ public class RubyJdbcConnection extends RubyObject {
         return defaultValue == null ? runtime.getNil() : RubyString.newUnicodeString(runtime, defaultValue);
     }
 
-    // FIXME(uwe): Find better way to determine AR42
-    // NOTE: primary/primary= methods were removed from Column in AR 4.2
+    /**
+     * This method is considered internal and is not part of AR-JDBC's Java ext
+     * API and thus might be subject to change in the future.
+     * Please copy it to your own class if you rely on it to avoid issues.
+     */
     protected static boolean isAr42(IRubyObject column) {
         return column.respondsTo("cast_type");
     }
-    // EMXIF
 
     private RubyArray unmarshalColumns(final ThreadContext context,
         final DatabaseMetaData metaData, final TableName components, final ResultSet results)
