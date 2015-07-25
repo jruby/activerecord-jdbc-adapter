@@ -6,7 +6,6 @@ module ActiveRecord::ConnectionAdapters
     # @private Simply to quickly "hack-in" 4.2 compatibility.
     module TypeCast
 
-      TRUE_VALUES = Column::TRUE_VALUES
       FALSE_VALUES = Column::FALSE_VALUES
 
       #module Format
@@ -56,7 +55,7 @@ module ActiveRecord::ConnectionAdapters
         if value.is_a?(String) && value.empty?
           nil
         else
-          TRUE_VALUES.include?(value)
+          !FALSE_VALUES.include?(value)
         end
       end
 
