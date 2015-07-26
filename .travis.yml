@@ -3,7 +3,7 @@ sudo: false
 bundler_args: --without development
 script: bundle exec rake test_$DB
 before_script:
-  - export JRUBY_OPTS="--server" # -Xcompile.invokedynamic=false
+  - export JRUBY_OPTS="--server $JRUBY_OPTS" # -Xcompile.invokedynamic=false
   - mysql --version # to see if we're using MySQL or MariaDB
 before_install:
   - ((jruby -v | grep 1.8.7) && jruby --1.9 -S gem update --system 2.1.11) || true
