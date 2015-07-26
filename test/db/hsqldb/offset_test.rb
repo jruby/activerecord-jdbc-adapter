@@ -1,4 +1,4 @@
-require File.expand_path('../../test_helper', File.dirname(__FILE__))
+require 'test_helper'
 require 'db/hsqldb'
 
 class H2OffsetTest < Test::Unit::TestCase
