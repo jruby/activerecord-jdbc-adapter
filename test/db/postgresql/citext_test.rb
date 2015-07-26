@@ -53,7 +53,7 @@ class PostgreSQLCitextTest < Test::Unit::TestCase
   end
 
   def test_write
-    x = Citext.new(cival: 'Some CI Text')
+    x = Citext.new(:cival => 'Some CI Text')
     x.save!
     citext = Citext.first
     assert_equal "Some CI Text", citext.cival
@@ -66,7 +66,7 @@ class PostgreSQLCitextTest < Test::Unit::TestCase
 
   def test_select_case_insensitive
     @connection.execute "insert into citexts (cival) values('Cased Text')"
-    x = Citext.where(cival: 'cased text').first
+    x = Citext.where(:cival => 'cased text').first
     assert_equal 'Cased Text', x.cival
   end
 
