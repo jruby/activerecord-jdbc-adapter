@@ -756,22 +756,22 @@ module ArJdbc
 
       register_class_with_limit m, %r(char)i, MysqlString
 
-      m.register_type %r(tinytext)i,   Type::Text.new(limit: 2**8 - 1)
-      m.register_type %r(tinyblob)i,   Type::Binary.new(limit: 2**8 - 1)
-      m.register_type %r(text)i,       Type::Text.new(limit: 2**16 - 1)
-      m.register_type %r(blob)i,       Type::Binary.new(limit: 2**16 - 1)
-      m.register_type %r(mediumtext)i, Type::Text.new(limit: 2**24 - 1)
-      m.register_type %r(mediumblob)i, Type::Binary.new(limit: 2**24 - 1)
-      m.register_type %r(longtext)i,   Type::Text.new(limit: 2**32 - 1)
-      m.register_type %r(longblob)i,   Type::Binary.new(limit: 2**32 - 1)
-      m.register_type %r(^float)i,     Type::Float.new(limit: 24)
-      m.register_type %r(^double)i,    Type::Float.new(limit: 53)
+      m.register_type %r(tinytext)i,   Type::Text.new(:limit => 2**8 - 1)
+      m.register_type %r(tinyblob)i,   Type::Binary.new(:limit => 2**8 - 1)
+      m.register_type %r(text)i,       Type::Text.new(:limit => 2**16 - 1)
+      m.register_type %r(blob)i,       Type::Binary.new(:limit => 2**16 - 1)
+      m.register_type %r(mediumtext)i, Type::Text.new(:limit => 2**24 - 1)
+      m.register_type %r(mediumblob)i, Type::Binary.new(:limit => 2**24 - 1)
+      m.register_type %r(longtext)i,   Type::Text.new(:limit => 2**32 - 1)
+      m.register_type %r(longblob)i,   Type::Binary.new(:limit => 2**32 - 1)
+      m.register_type %r(^float)i,     Type::Float.new(:limit => 24)
+      m.register_type %r(^double)i,    Type::Float.new(:limit => 53)
 
-      register_integer_type m, %r(^bigint)i,    limit: 8
-      register_integer_type m, %r(^int)i,       limit: 4
-      register_integer_type m, %r(^mediumint)i, limit: 3
-      register_integer_type m, %r(^smallint)i,  limit: 2
-      register_integer_type m, %r(^tinyint)i,   limit: 1
+      register_integer_type m, %r(^bigint)i,    :limit => 8
+      register_integer_type m, %r(^int)i,       :limit => 4
+      register_integer_type m, %r(^mediumint)i, :limit => 3
+      register_integer_type m, %r(^smallint)i,  :limit => 2
+      register_integer_type m, %r(^tinyint)i,   :limit => 1
 
       m.alias_type %r(tinyint\(1\))i,  'boolean' if emulate_booleans
       m.alias_type %r(set)i,           'varchar'
@@ -780,13 +780,13 @@ module ArJdbc
 
       m.register_type(%r(datetime)i) do |sql_type|
         precision = extract_precision(sql_type)
-        MysqlDateTime.new(precision: precision)
+        MysqlDateTime.new(:precision => precision)
       end
 
       m.register_type(%r(enum)i) do |sql_type|
-        limit = sql_type[/^enum\((.+)\)/i, 1]
-          .split(',').map{|enum| enum.strip.length - 2}.max
-        MysqlString.new(limit: limit)
+        limit = sql_type[/^enum\((.+)\)/i, 1].split(',').
+            map{|enum| enum.strip.length - 2}.max
+        MysqlString.new(:limit => limit)
       end
     end if AR42
 

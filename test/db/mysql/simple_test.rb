@@ -17,7 +17,7 @@ class MySQLSimpleTest < Test::Unit::TestCase
   def test_execute_update
     e = Entry.create! :title => '42'; Entry.create! :title => '43'
     count = connection.execute("UPDATE entries SET title = 'updated-title' WHERE id = #{e.id}")
-    assert_equal 1, count if ! mariadb_driver? && defined? JRUBY_VERSION # nil with mysql2
+    assert_equal 1, count if ! mariadb_driver? && defined?(JRUBY_VERSION) # nil with mysql2
     assert_equal 'updated-title', e.reload.title
   end
 
@@ -185,7 +185,7 @@ class MySQLSimpleTest < Test::Unit::TestCase
     e2 = Entry.create! :title => 'another', :content => 'meee', :rating => 40.2
     rows_affected = ActiveRecord::Base.connection.update_sql "UPDATE entries " +
       "SET content='updated content' WHERE rating > 10 AND title IS NOT NULL"
-    assert_equal 2, rows_affected if ! mariadb_driver? && defined? JRUBY_VERSION
+    assert_equal 2, rows_affected if ! mariadb_driver? && defined?(JRUBY_VERSION)
     assert_equal 'updated content', e1.reload.content
     assert_equal 'updated content', e2.reload.content
   end
@@ -454,7 +454,7 @@ class MySQLForeignKeyTest < Test::Unit::TestCase
     migration = ActiveRecord::Migration.new
     migration.create_table :db_posts do |t|
       t.string :title
-      t.references :db_type, index: true, foreign_key: true
+      t.references :db_type, :index => true, :foreign_key => true
     end
     assert_equal 1, connection.foreign_keys('db_posts').size
     assert_equal 'db_posts', connection.foreign_keys('db_posts')[0].from_table

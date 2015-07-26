@@ -3,7 +3,7 @@ sudo: false
 bundler_args: --without development
 script: bundle exec rake test_$DB
 before_script:
-  - export JRUBY_OPTS="--server" # -Xcompile.invokedynamic=false
+  - export JRUBY_OPTS="--server $JRUBY_OPTS" # -Xcompile.invokedynamic=false
   - mvn prepare-package # compiles ext generates: lib/arjdbc/jdbc/adapter_java.jar
   - mysql --version # to see if we're using MySQL or MariaDB
 before_install:

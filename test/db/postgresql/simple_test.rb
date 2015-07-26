@@ -357,7 +357,7 @@ class PostgresForeignKeyTest < Test::Unit::TestCase
     migration = ActiveRecord::Migration.new
     migration.create_table :db_posts do |t|
       t.string :title
-      t.references :db_type, index: true, foreign_key: true
+      t.references :db_type, :index => true, :foreign_key => true
     end
     assert_equal 1, connection.foreign_keys('db_posts').size
     assert_equal 'db_posts', connection.foreign_keys('db_posts')[0].from_table
