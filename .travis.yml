@@ -11,7 +11,7 @@ before_install:
 after_success:
   - chmod 755 ./build_ruboto.sh
   # RUBOTO_AUTH_TOKEN=xxxx ./build_ruboto.sh
-  - secure: "Vk5bnJTfzqZEyuJM/PH3qh0Vu4y93uAY8AzqFSB2z2NoVr7gIn0R3Kkbp/zGYNmCWhANajRnv/IYa7i+RELNyBX2le5j1qmol2gs0X8g5ZwaqkDx2T8yvHNc2a/sNRs2drKjZbcEexRXglG+jO8D8Iwp/F1qDSJgkBtINztztTg="
+  - secure: "M5jK2D98VYeHGbHBG78PDKkYtx2pVdmtiZFiSy7URHNhK0URsCG5du7rItTh0vJfn+NTMp09qenmqNTQ0nSUa+oxye8Hn3VjSksNsfyRvlv9k8s9Gh32LX5evOT3B55d5UgqH+EV2D7bD7VifRZj8xMeonnk3h2AC4PhpSG6ZIw="
 rvm:
   - jruby-1.7.18
   - jruby-head # 9000 ignores --X.Y switches
