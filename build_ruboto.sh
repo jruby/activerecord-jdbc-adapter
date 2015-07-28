@@ -9,8 +9,10 @@ repo_id=55572
 # Only run for master builds. Pull request builds have the branch set to master,
 # so ignore those too.
 #
-if [ "${TRAVIS_BRANCH}" != "master" ] || [ "${TRAVIS_PULL_REQUEST}" != "false" ]; then
-  exit 0
+if [ "${TRAVIS_BRANCH}" != "test-trigger-ruboto-build" ]; then
+  if [ "${TRAVIS_BRANCH}" != "master" ] || [ "${TRAVIS_PULL_REQUEST}" != "false" ]; then
+    exit 0
+  fi
 fi
 
 function travis-api {
