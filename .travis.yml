@@ -8,6 +8,9 @@ before_script:
   - mysql --version # to see if we're using MySQL or MariaDB
 before_install:
   - ((jruby -v | grep 1.8.7) && jruby --1.9 -S gem update --system 2.1.11) || true
+after_success:
+    - chmod 755 ./build_ruboto.sh
+    - ./build_ruboto.sh
 rvm:
   - jruby-1.7.18
   - jruby-head # 9000 ignores --X.Y switches
@@ -22,6 +25,9 @@ gemfile:
   - gemfiles/rails41.gemfile
   - gemfiles/rails42.gemfile
 env:
+  global:
+    # RUBOTO_AUTH_TOKEN
+    - secure: "MejXtzaqid7hR4ETW39d7x+qaCV9g6KgwwpNVboEpz4xMrG1GuCuXfivVmzZV9ARtJhHnnX65pilvWLUd+gFfqSBkiSFg9jvwaYrNJtslkG21PmrJw1TCzQQF4Y0K6kacLmv+CLDpO/CgegYz0uRv+6HHgAD17FMI2Ofhy69u4Q="
   - JRUBY_OPTS="--1.8 $JRUBY_OPTS" DB=mysql
   - JRUBY_OPTS="--1.9 $JRUBY_OPTS" DB=mysql PREPARED_STATEMENTS=false
   - JRUBY_OPTS="--1.9 $JRUBY_OPTS" DB=mysql PREPARED_STATEMENTS=true
