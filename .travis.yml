@@ -10,8 +10,7 @@ before_install:
   - ((jruby -v | grep 1.8.7) && jruby --1.9 -S gem update --system 2.1.11) || true
 after_success:
   - chmod 755 ./build_ruboto.sh
-  # RUBOTO_AUTH_TOKEN=xxxx ./build_ruboto.sh
-  - secure: "M5jK2D98VYeHGbHBG78PDKkYtx2pVdmtiZFiSy7URHNhK0URsCG5du7rItTh0vJfn+NTMp09qenmqNTQ0nSUa+oxye8Hn3VjSksNsfyRvlv9k8s9Gh32LX5evOT3B55d5UgqH+EV2D7bD7VifRZj8xMeonnk3h2AC4PhpSG6ZIw="
+  - ./build_ruboto.sh
 rvm:
   - jruby-1.7.18
   - jruby-head # 9000 ignores --X.Y switches
@@ -26,26 +25,30 @@ gemfile:
   - gemfiles/rails41.gemfile
   - gemfiles/rails42.gemfile
 env:
-  - JRUBY_OPTS="--1.8 $JRUBY_OPTS" DB=mysql
-  - JRUBY_OPTS="--1.9 $JRUBY_OPTS" DB=mysql PREPARED_STATEMENTS=false
-  - JRUBY_OPTS="--1.9 $JRUBY_OPTS" DB=mysql PREPARED_STATEMENTS=true
-  - JRUBY_OPTS="--2.0 $JRUBY_OPTS" DB=mariadb PREPARED_STATEMENTS=false
-  - JRUBY_OPTS="--1.8 $JRUBY_OPTS" DB=postgresql
-  - JRUBY_OPTS="--1.9 $JRUBY_OPTS" DB=postgresql PREPARED_STATEMENTS=false INSERT_RETURNING=true
-  - JRUBY_OPTS="--2.0 $JRUBY_OPTS" DB=postgresql PREPARED_STATEMENTS=true
-  - JRUBY_OPTS="--1.9 $JRUBY_OPTS" DB=postgresql PREPARED_STATEMENTS=true INSERT_RETURNING=true
-  - JRUBY_OPTS="--1.8 $JRUBY_OPTS" DB=sqlite3
-  - JRUBY_OPTS="--1.9 $JRUBY_OPTS" DB=sqlite3
-  - JRUBY_OPTS="--1.8 $JRUBY_OPTS" DB=derby
-  - JRUBY_OPTS="--1.9 $JRUBY_OPTS" DB=derby PREPARED_STATEMENTS=true
-  - JRUBY_OPTS="--1.8 $JRUBY_OPTS" DB=h2
-  - JRUBY_OPTS="--1.9 $JRUBY_OPTS" DB=h2 PREPARED_STATEMENTS=true
-  - JRUBY_OPTS="--1.8 $JRUBY_OPTS" DB=hsqldb
-  - JRUBY_OPTS="--2.0 $JRUBY_OPTS" DB=hsqldb PREPARED_STATEMENTS=true
-  - JRUBY_OPTS="--1.8 $JRUBY_OPTS" DB=jndi
-  - JRUBY_OPTS="--1.9 $JRUBY_OPTS" DB=jndi PREPARED_STATEMENTS=true
-  - JRUBY_OPTS="--1.8 $JRUBY_OPTS" DB=jdbc
-  - JRUBY_OPTS="--1.9 $JRUBY_OPTS" DB=jdbc PREPARED_STATEMENTS=true
+  global:
+    # RUBOTO_AUTH_TOKEN=xxxx
+    - secure: "F77L2D+ubaSqkRZK5pQe7sKzbV9qJ696jey76WhUnKMG92Ks5BPdCXcR3YthWyyosG5jOMFMfdHen7lkMjCDl/03L6dRVZAk40NBQbob9bNEQvPi4jwqrIg7kDq2VmIlHNvLd5Xouu2APgk0fhTX/DND+B5irhriMsBGxb8am6A="
+  matrix:
+    - JRUBY_OPTS="--1.8 $JRUBY_OPTS" DB=mysql
+    - JRUBY_OPTS="--1.9 $JRUBY_OPTS" DB=mysql PREPARED_STATEMENTS=false
+    - JRUBY_OPTS="--1.9 $JRUBY_OPTS" DB=mysql PREPARED_STATEMENTS=true
+    - JRUBY_OPTS="--2.0 $JRUBY_OPTS" DB=mariadb PREPARED_STATEMENTS=false
+    - JRUBY_OPTS="--1.8 $JRUBY_OPTS" DB=postgresql
+    - JRUBY_OPTS="--1.9 $JRUBY_OPTS" DB=postgresql PREPARED_STATEMENTS=false INSERT_RETURNING=true
+    - JRUBY_OPTS="--2.0 $JRUBY_OPTS" DB=postgresql PREPARED_STATEMENTS=true
+    - JRUBY_OPTS="--1.9 $JRUBY_OPTS" DB=postgresql PREPARED_STATEMENTS=true INSERT_RETURNING=true
+    - JRUBY_OPTS="--1.8 $JRUBY_OPTS" DB=sqlite3
+    - JRUBY_OPTS="--1.9 $JRUBY_OPTS" DB=sqlite3
+    - JRUBY_OPTS="--1.8 $JRUBY_OPTS" DB=derby
+    - JRUBY_OPTS="--1.9 $JRUBY_OPTS" DB=derby PREPARED_STATEMENTS=true
+    - JRUBY_OPTS="--1.8 $JRUBY_OPTS" DB=h2
+    - JRUBY_OPTS="--1.9 $JRUBY_OPTS" DB=h2 PREPARED_STATEMENTS=true
+    - JRUBY_OPTS="--1.8 $JRUBY_OPTS" DB=hsqldb
+    - JRUBY_OPTS="--2.0 $JRUBY_OPTS" DB=hsqldb PREPARED_STATEMENTS=true
+    - JRUBY_OPTS="--1.8 $JRUBY_OPTS" DB=jndi
+    - JRUBY_OPTS="--1.9 $JRUBY_OPTS" DB=jndi PREPARED_STATEMENTS=true
+    - JRUBY_OPTS="--1.8 $JRUBY_OPTS" DB=jdbc
+    - JRUBY_OPTS="--1.9 $JRUBY_OPTS" DB=jdbc PREPARED_STATEMENTS=true
 branches:
   only:
     - master
