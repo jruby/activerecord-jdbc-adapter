@@ -2,7 +2,7 @@
 
 # http://eng.rightscale.com/2015/04/27/dependent-builds-in-travis.html
 
-auth_token=RUBOTO_AUTH_TOKEN
+auth_token=$RUBOTO_AUTH_TOKEN
 endpoint=https://api.travis-ci.org
 repo_id=55572
 
@@ -37,7 +37,15 @@ env_var_ids=(`env-var DEPENDENT_BUILD true`
 
 travis-api /builds/$last_master_build_id/restart -X POST
 
-until travis-api /builds/$last_master_build_id | grep '"state":"started"'; do
+for i in 1 2 3; do
+  travis-api /builds/$last_master_build_id | grep '"state":"started"'
+  if [[ $? == 0 ]]; then
+    break
+  fi
+  if [[ $i == 3 ]]; then
+    echo "Unable to start the Ruboto build."
+    exit 1
+  fi
   sleep 5
 done
 

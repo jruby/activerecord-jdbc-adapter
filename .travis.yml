@@ -8,6 +8,7 @@ before_script:
   - mysql --version # to see if we're using MySQL or MariaDB
 before_install:
   - ((jruby -v | grep 1.8.7) && jruby --1.9 -S gem update --system 2.1.11) || true
+# https://github.com/dmakhno/travis_after_all
 after_success:
   - chmod 755 ./build_ruboto.sh
   - ./build_ruboto.sh
