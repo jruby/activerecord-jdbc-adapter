@@ -46,9 +46,9 @@ branches:
     - /.*-stable$/
     - /^test-.*/
 matrix:
-  allow_failures:
-    - env: JRUBY_OPTS="--1.8 $JRUBY_OPTS" DB=jdbc
-    - env: JRUBY_OPTS="--1.9 $JRUBY_OPTS" DB=jdbc PREPARED_STATEMENTS=true
+  #allow_failures:
+  #  - env: JRUBY_OPTS="--1.8 $JRUBY_OPTS" DB=jdbc
+  #  - env: JRUBY_OPTS="--1.9 $JRUBY_OPTS" DB=jdbc PREPARED_STATEMENTS=true
   include: # testing against MariaDB
     - addons:
         mariadb: '5.5'
