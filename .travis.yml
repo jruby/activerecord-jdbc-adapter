@@ -47,7 +47,6 @@ branches:
     - /^test-.*/
 matrix:
   allow_failures:
-    - gemfile: gemfiles/rails42.gemfile
     - env: JRUBY_OPTS="--1.8 $JRUBY_OPTS" DB=jdbc
     - env: JRUBY_OPTS="--1.9 $JRUBY_OPTS" DB=jdbc PREPARED_STATEMENTS=true
   include: # testing against MariaDB
