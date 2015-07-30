@@ -94,7 +94,7 @@ test_task_for :AS400, :desc => "Run tests against AS400 (DB2) (ensure driver is 
   :files => FileList["test/db2*_test.rb"] + FileList["test/db/db2/*_test.rb"]
 
 test_task_for 'JDBC', :desc => 'Run tests against plain JDBC adapter (uses MySQL and Derby)',
-  :files => FileList['test/*jdbc_*test.rb'] do |test_task|
+  :prereqs => 'db:mysql', :files => FileList['test/*jdbc_*test.rb'] do |test_task|
   test_task.libs << 'jdbc-mysql/lib' << 'jdbc-derby/lib'
 end
 
