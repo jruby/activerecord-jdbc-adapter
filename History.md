@@ -1,3 +1,18 @@
+## 1.3.18 (pe/nd/in)
+
+- restore Ruby 1.8 (syntax) compatibility - was broken for MySQL/Derby
+- use standard AREL with H2/HSQLDB as H2/HSQLDB support standard LIMIT and OFFSET
+- [h2] working AR 4.2 support
+- [hsqldb] working AR 4.2 support
+- [rake] support adapter: mariadb as if it were mysql (on AR 4.x)
+- [postgres] changes to avoid double cast for AR42 (with prepared statements)
+- [postgres] use standard JDBC bind arguments marker "?" instead of "$n"
+- [postgres] allow reading "infinity" and "BC timestamps on 4.2
+- type cast bind arguments in RubyJdbcConnection (prepared statements)
+- [derby] ActiveRecord 4.2 reports xml columns as XML(2147483647)
+- [derby] working AR 4.2 support
+- support cast_type on the JdbcConnection side for improved AR 4.2 compatibility
+
 ## 1.3.17 (06/30/15)
 
 - [mysql] bulk compatibility with AR 4.2 - all _sql helper accept an options (hash)
