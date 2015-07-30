@@ -1,12 +1,12 @@
 require 'test_helper'
 require 'db/mysql_config'
 
-require 'jdbc/mysql' # driver not loaded for plain JDBC
+require 'jdbc/mysql' # driver not auto-loaded for plain JDBC
 Jdbc::MySQL.load_driver
 
 JDBC_CONFIG = {
   :adapter => 'jdbc',
-  :driver => 'com.mysql.jdbc.Driver',
+  :driver => MYSQL_CONFIG[:driver] || 'com.mysql.jdbc.Driver',
   :username => MYSQL_CONFIG[:username],
   :password => MYSQL_CONFIG[:password],
   :prepared_statements => ENV['PREPARED_STATEMENTS'] || ENV['PS']
