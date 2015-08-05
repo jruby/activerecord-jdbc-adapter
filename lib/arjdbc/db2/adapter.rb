@@ -112,6 +112,25 @@ module ArJdbc
     }
 
     # @override
+    def initialize_type_map(m)
+      super
+      m.register_type(%r(smallint)i) do
+        if DB2.emulate_booleans?
+          ActiveRecord::Type::Boolean.new
+        else
+          ActiveRecord::Type::Integer.new(:limit => 1)
+        end
+      end
+      m.alias_type %r(real)i, 'float'
+    end if AR42
+
+    # @override
+    def reset_column_information
+      super
+      initialize_type_map(type_map)
+    end if AR42
+
+    # @override
     def native_database_types
       # NOTE: currently merging with what JDBC gives us since there's a lot
       # of DB2-like stuff we could be connecting e.g. "classic", Z/OS etc.
