@@ -17,16 +17,13 @@ module Arel
           end
           # FIXME(uwe): Optimize: too many strings
           if o.offset
-            a << ' '
-            do_visit(o.offset, a)
+            a << ' '; do_visit(o.offset, a)
           end
           if o.limit
-            a << ' '
-            do_visit(o.limit, a)
+            a << ' '; do_visit(o.limit, a)
           end
           if o.lock
-            a << ' '
-            do_visit(o.lock, a)
+            a << ' '; do_visit(o.lock, a)
           end
           a
         end
