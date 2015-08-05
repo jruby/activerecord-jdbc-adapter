@@ -1785,6 +1785,12 @@ public class RubyJdbcConnection extends RubyObject {
         return value;
     }
 
+    private static IRubyObject typeCastFromDatabase(final ThreadContext context,
+        final IRubyObject adapter, final RubySymbol typeName, final RubyString value) {
+        final IRubyObject type = adapter.callMethod(context, "lookup_cast_type", typeName);
+        return type.callMethod(context, "type_cast_from_database", value);
+    }
+
     protected IRubyObject dateToRuby(final ThreadContext context,
         final Ruby runtime, final ResultSet resultSet, final int column)
         throws SQLException {
@@ -1798,10 +1804,12 @@ public class RubyJdbcConnection extends RubyObject {
         final RubyString strValue = RubyString.newUnicodeString(runtime, value.toString());
         if ( rawDateTime != null && rawDateTime.booleanValue() ) return strValue;
 
-        if ( isAr42(runtime) ) return strValue;
-
         final IRubyObject adapter = callMethod(context, "adapter"); // self.adapter
         if ( adapter.isNil() ) return strValue; // NOTE: we warn on init_connection
+
+        if ( isAr42(runtime) ) {
+            return typeCastFromDatabase(context, adapter, runtime.newSymbol("date"), strValue);
+        }
         return adapter.callMethod(context, "_string_to_date", strValue);
     }
 
@@ -1818,10 +1826,12 @@ public class RubyJdbcConnection extends RubyObject {
         final RubyString strValue = RubyString.newUnicodeString(runtime, value.toString());
         if ( rawDateTime != null && rawDateTime.booleanValue() ) return strValue;
 
-        if ( isAr42(runtime) ) return strValue;
-
         final IRubyObject adapter = callMethod(context, "adapter"); // self.adapter
         if ( adapter.isNil() ) return strValue; // NOTE: we warn on init_connection
+
+        if ( isAr42(runtime) ) {
+            return typeCastFromDatabase(context, adapter, runtime.newSymbol("time"), strValue);
+        }
         return adapter.callMethod(context, "_string_to_time", strValue);
     }
 
@@ -1838,10 +1848,12 @@ public class RubyJdbcConnection extends RubyObject {
         final RubyString strValue = timestampToRubyString(runtime, value.toString());
         if ( rawDateTime != null && rawDateTime.booleanValue() ) return strValue;
 
-        if ( isAr42(runtime) ) return strValue;
-
         final IRubyObject adapter = callMethod(context, "adapter"); // self.adapter
         if ( adapter.isNil() ) return strValue; // NOTE: we warn on init_connection
+
+        if ( isAr42(runtime) ) {
+            return typeCastFromDatabase(context, adapter, runtime.newSymbol("timestamp"), strValue);
+        }
         return adapter.callMethod(context, "_string_to_timestamp", strValue);
     }
 
