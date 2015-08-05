@@ -126,7 +126,6 @@ module ArJdbc
 
     # @override
     def reset_column_information
-      super
       initialize_type_map(type_map)
     end if AR42
 
