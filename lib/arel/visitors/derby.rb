@@ -4,26 +4,27 @@ module Arel
   module Visitors
     class Derby < Arel::Visitors::ToSql
 
+      # @private
+      STR_1 = ' '
+
       if ArJdbc::AR42
         def visit_Arel_Nodes_SelectStatement(o, a = nil)
           o.cores.each { |x| do_visit(x, a) }
           unless o.orders.empty?
             a << ' ORDER BY '
-            do_visit(o.orders.first, a)
+            visit(o.orders.first, a)
             o.orders[1..-1].each do |x|
-              a << ', '
-              do_visit(x, a)
+              a << ', '; visit(x, a)
             end
           end
-          # FIXME(uwe): Optimize: too many strings
           if o.offset
-            a << ' '; do_visit(o.offset, a)
+            a << STR_1; visit(o.offset, a)
           end
           if o.limit
-            a << ' '; do_visit(o.limit, a)
+            a << STR_1; visit(o.limit, a)
           end
           if o.lock
-            a << ' '; do_visit(o.lock, a)
+            a << STR_1; visit(o.lock, a)
           end
           a
         end
