@@ -1798,6 +1798,8 @@ public class RubyJdbcConnection extends RubyObject {
         final RubyString strValue = RubyString.newUnicodeString(runtime, value.toString());
         if ( rawDateTime != null && rawDateTime.booleanValue() ) return strValue;
 
+        if ( isAr42(runtime) ) return strValue;
+
         final IRubyObject adapter = callMethod(context, "adapter"); // self.adapter
         if ( adapter.isNil() ) return strValue; // NOTE: we warn on init_connection
         return adapter.callMethod(context, "_string_to_date", strValue);
@@ -1816,6 +1818,8 @@ public class RubyJdbcConnection extends RubyObject {
         final RubyString strValue = RubyString.newUnicodeString(runtime, value.toString());
         if ( rawDateTime != null && rawDateTime.booleanValue() ) return strValue;
 
+        if ( isAr42(runtime) ) return strValue;
+
         final IRubyObject adapter = callMethod(context, "adapter"); // self.adapter
         if ( adapter.isNil() ) return strValue; // NOTE: we warn on init_connection
         return adapter.callMethod(context, "_string_to_time", strValue);
@@ -1833,6 +1837,8 @@ public class RubyJdbcConnection extends RubyObject {
 
         final RubyString strValue = timestampToRubyString(runtime, value.toString());
         if ( rawDateTime != null && rawDateTime.booleanValue() ) return strValue;
+
+        if ( isAr42(runtime) ) return strValue;
 
         final IRubyObject adapter = callMethod(context, "adapter"); // self.adapter
         if ( adapter.isNil() ) return strValue; // NOTE: we warn on init_connection
@@ -2973,6 +2979,14 @@ public class RubyJdbcConnection extends RubyObject {
         throws SQLException {
         final String defaultValue = resultSet.getString(COLUMN_DEF);
         return defaultValue == null ? runtime.getNil() : RubyString.newUnicodeString(runtime, defaultValue);
+    }
+
+    private static boolean isAr42(final Ruby runtime) {
+        final IRubyObject AR_VERSION = runtime.getModule("ActiveRecord").getConstantAt("VERSION");
+        final RubyString STRING = (RubyString) ((RubyModule) AR_VERSION).getConstant("STRING", false);
+        final byte[] VERSION = STRING.getByteList().unsafeBytes();
+        return VERSION.length > 2 &&
+            ( (VERSION[0] & 0xFF) > 4 || ((VERSION[0] & 0xFF) == 4 && (VERSION[2] & 0xFF) > 1) );
     }
 
     /**
