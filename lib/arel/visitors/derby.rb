@@ -4,10 +4,10 @@ module Arel
   module Visitors
     class Derby < Arel::Visitors::ToSql
 
-      # @private
-      STR_1 = ' '
-
-      if ArJdbc::AR42
+      if VERSION > '6.0' # AR 4.2
+        # @private
+        STR_1 = ' '
+        # @override
         def visit_Arel_Nodes_SelectStatement(o, a = nil)
           o.cores.each { |x| do_visit(x, a) }
           unless o.orders.empty?
@@ -29,6 +29,7 @@ module Arel
           a
         end
       else
+        # @override
         def visit_Arel_Nodes_SelectStatement(o, a = nil)
           sql = o.cores.map { |x| do_visit(x, a) }.join
           sql << " ORDER BY #{o.orders.map { |x| do_visit x, a }.join(', ')}" unless o.orders.empty?
@@ -65,7 +66,7 @@ module Arel
       # @private
       VALUES_DEFAULT = 'VALUES ( DEFAULT )' # NOTE: marker set by ArJdbc::Derby
 
-      if ArJdbc::AR42
+      if VERSION > '6.0' # AR 4.2
         def visit_Arel_Nodes_InsertStatement o, a = nil
           a << "INSERT INTO "
           visit(o.relation, a)
@@ -85,7 +86,7 @@ module Arel
           visit(values, a) if values
           a
         end
-      elsif Arel::VERSION >= '4.0' # AR 4.0 ... AREL 5.0 since AR >= 4.1
+      elsif VERSION > '5.0' # AR 4.1
         def visit_Arel_Nodes_InsertStatement o, a = nil
           sql = 'INSERT INTO '
           sql << visit(o.relation, a)
