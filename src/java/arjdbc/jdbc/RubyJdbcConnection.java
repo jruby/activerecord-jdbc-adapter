@@ -1807,7 +1807,7 @@ public class RubyJdbcConnection extends RubyObject {
         final IRubyObject adapter = callMethod(context, "adapter"); // self.adapter
         if ( adapter.isNil() ) return strValue; // NOTE: we warn on init_connection
 
-        if ( isAr42(runtime) ) {
+        if ( usesType(runtime) ) {
             return typeCastFromDatabase(context, adapter, runtime.newSymbol("date"), strValue);
         }
         return adapter.callMethod(context, "_string_to_date", strValue);
@@ -1829,7 +1829,7 @@ public class RubyJdbcConnection extends RubyObject {
         final IRubyObject adapter = callMethod(context, "adapter"); // self.adapter
         if ( adapter.isNil() ) return strValue; // NOTE: we warn on init_connection
 
-        if ( isAr42(runtime) ) {
+        if ( usesType(runtime) ) {
             return typeCastFromDatabase(context, adapter, runtime.newSymbol("time"), strValue);
         }
         return adapter.callMethod(context, "_string_to_time", strValue);
@@ -1851,7 +1851,7 @@ public class RubyJdbcConnection extends RubyObject {
         final IRubyObject adapter = callMethod(context, "adapter"); // self.adapter
         if ( adapter.isNil() ) return strValue; // NOTE: we warn on init_connection
 
-        if ( isAr42(runtime) ) {
+        if ( usesType(runtime) ) {
             return typeCastFromDatabase(context, adapter, runtime.newSymbol("timestamp"), strValue);
         }
         return adapter.callMethod(context, "_string_to_timestamp", strValue);
@@ -2993,12 +2993,8 @@ public class RubyJdbcConnection extends RubyObject {
         return defaultValue == null ? runtime.getNil() : RubyString.newUnicodeString(runtime, defaultValue);
     }
 
-    private static boolean isAr42(final Ruby runtime) {
-        final IRubyObject AR_VERSION = runtime.getModule("ActiveRecord").getConstantAt("VERSION");
-        final RubyString STRING = (RubyString) ((RubyModule) AR_VERSION).getConstant("STRING", false);
-        final byte[] VERSION = STRING.getByteList().unsafeBytes();
-        return VERSION.length > 2 &&
-            ( (VERSION[0] & 0xFF) > 4 || ((VERSION[0] & 0xFF) == 4 && (VERSION[2] & 0xFF) > 1) );
+    private static boolean usesType(final Ruby runtime) { // AR 4.2
+        return runtime.getModule("ActiveRecord").getConstantAt("Type") != null;
     }
 
     /**
