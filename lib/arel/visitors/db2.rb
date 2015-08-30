@@ -6,23 +6,22 @@ module Arel
 
       if ArJdbc::AR42
         def visit_Arel_Nodes_SelectStatement(o, a = nil)
-          o.cores.each { |x| do_visit(x, a) }
+          o.cores.each { |x| visit(x, a) }
           unless o.orders.empty?
             a << ' ORDER BY '
-            do_visit(o.orders.first, a)
+            visit(o.orders.first, a)
             o.orders[1..-1].each do |x|
-              a << ', '
-              do_visit(x, a)
+              a << ', '; visit(x, a)
             end
           end
           if o.offset
-            a << ' '; do_visit(o.offset, a)
+            a << ' '; visit(o.offset, a)
           end
           if o.limit
-            a << ' '; do_visit(o.limit, a)
+            a << ' '; visit(o.limit, a)
           end
           if o.lock
-            a << ' '; do_visit(o.lock, a)
+            a << ' '; visit(o.lock, a)
           end
           a
         end
