@@ -9,7 +9,7 @@ module Arel
 
       if ArJdbc::AR42
         def visit_Arel_Nodes_SelectStatement(o, a = nil)
-          o.cores.each { |x| do_visit(x, a) }
+          o.cores.each { |x| visit(x, a) }
           unless o.orders.empty?
             a << ' ORDER BY '
             visit(o.orders.first, a)
