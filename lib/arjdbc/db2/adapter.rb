@@ -122,6 +122,24 @@ module ArJdbc
         end
       end
       m.alias_type %r(real)i, 'float'
+      m.register_type %r(xml)i, XmlType.new
+    end if AR42
+
+    # @private
+    class XmlType < ActiveRecord::Type::String
+      def type; :xml end
+
+      def type_cast_for_database(value)
+        return unless value
+        Data.new(super)
+      end
+
+      class Data
+        def initialize(value)
+          @value = value
+        end
+        def to_s; @value end
+      end
     end if AR42
 
     # @override
