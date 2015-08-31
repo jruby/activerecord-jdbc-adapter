@@ -116,6 +116,13 @@ module ActiveRecord
         ::ActiveRecord::ConnectionAdapters::JdbcColumn # TODO auto-load
       end
 
+      # @private Simple fix for keeping 1.8 compatibility.
+      def jdbc_column_class
+        column = self.class::Column rescue nil
+        return column if column
+        ::ActiveRecord::ConnectionAdapters::JdbcColumn # TODO auto-load
+      end if RUBY_VERSION < '1.9'
+
       # Retrieve the raw `java.sql.Connection` object.
       # The unwrap parameter is useful if an attempt to unwrap a pooled (JNDI)
       # connection should be made - to really return the 'native' JDBC object.
