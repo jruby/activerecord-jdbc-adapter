@@ -425,31 +425,35 @@ module ArJdbc
     # @note Only used with (non-AREL) ActiveRecord **2.3**.
     # @see Arel::Visitors::DB2
     def add_limit_offset!(sql, options)
-      replace_limit_offset!(sql, options[:limit], options[:offset])
+      limit = options[:limit]
+      replace_limit_offset!(sql, limit, options[:offset]) if limit
     end if ::ActiveRecord::VERSION::MAJOR < 3
 
     # @private shared with {Arel::Visitors::DB2}
-    def replace_limit_offset!(sql, limit, offset)
-      return sql unless limit
-
+    def replace_limit_offset!(sql, limit, offset, orders = nil)
       limit = limit.to_i
-      if offset
-        replace_limit_offset_with_ordering!(sql, limit, offset)
-      else
-        if limit == 1
-          sql << " FETCH FIRST ROW ONLY"
-        else
-          sql << " FETCH FIRST #{limit} ROWS ONLY"
-        end
-        sql
-      end
-    end
 
-    # @private used from {Arel::Visitors::DB2}
-    def replace_limit_offset_with_ordering!(sql, limit, offset, orders = nil)
-      over_order_by = nil # NOTE: orders matching got reverted as it was not complete and there were no case covering it ...
-      sql.sub!(/SELECT/i, "SELECT B.* FROM (SELECT A.*, row_number() OVER (#{over_order_by}) AS internal$rownum FROM (SELECT")
-      sql << ") A ) B WHERE B.internal$rownum > #{offset} AND B.internal$rownum <= #{limit + offset}"
+      if offset # && limit
+        over_order_by = nil # NOTE: orders matching got reverted as it was not complete and there were no case covering it ...
+
+        start_sql = "SELECT B.* FROM (SELECT A.*, row_number() OVER (#{over_order_by}) AS internal$rownum FROM (SELECT"
+        end_sql = ") A ) B WHERE B.internal$rownum > #{offset} AND B.internal$rownum <= #{limit + offset.to_i}"
+
+        if sql.is_a?(String)
+          sql.sub!(/SELECT/i, start_sql)
+          sql << end_sql
+        else # AR 4.2 sql.class ... Arel::Collectors::Bind
+          sql.parts[0] = start_sql
+          sql.parts[ sql.parts.length ] = end_sql
+        end
+      else
+        limit_sql = limit == 1 ? " FETCH FIRST ROW ONLY" : " FETCH FIRST #{limit} ROWS ONLY"
+        if sql.is_a?(String)
+          sql << limit_sql
+        else # AR 4.2 sql.class ... Arel::Collectors::Bind
+          sql.parts[ sql.parts.length ] = limit_sql
+        end
+      end
       sql
     end
 
