@@ -1,4 +1,4 @@
-# NOTE: this file contains code adapted from **ruby-ibmdb**'s IBM_DB adapter.
+# NOTE: file contains code adapted from **ruby-ibmdb**'s adapter, license follows
 =begin
 Copyright (c) 2006 - 2015 IBM Corporation
 
