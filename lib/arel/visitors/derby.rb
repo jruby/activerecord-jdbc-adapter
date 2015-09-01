@@ -9,12 +9,12 @@ module Arel
 
       if ArJdbc::AR42
         def visit_Arel_Nodes_SelectStatement(o, a = nil)
-          o.cores.each { |x| visit(x, a) }
+          a = o.cores.inject(a) { |c, x| visit_Arel_Nodes_SelectCore(x, c) }
           unless o.orders.empty?
             a << ' ORDER BY '
-            visit(o.orders.first, a)
-            o.orders[1..-1].each do |x|
-              a << ', '; visit(x, a)
+            last = o.orders.length - 1
+            o.orders.each_with_index do |x, i|
+              visit(x, a);  a << ', ' unless last == i
             end
           end
           if o.offset
