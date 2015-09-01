@@ -113,7 +113,42 @@ module ArJdbc
 
     # @override
     def initialize_type_map(m)
-      super
+      register_class_with_limit m, %r(boolean)i,   ActiveRecord::Type::Boolean
+      register_class_with_limit m, %r(char)i,      ActiveRecord::Type::String
+      register_class_with_limit m, %r(binary)i,    ActiveRecord::Type::Binary
+      register_class_with_limit m, %r(text)i,      ActiveRecord::Type::Text
+      register_class_with_limit m, %r(date)i,      ActiveRecord::Type::Date
+      register_class_with_limit m, %r(time)i,      ActiveRecord::Type::Time
+      register_class_with_limit m, %r(datetime)i,  ActiveRecord::Type::DateTime
+      register_class_with_limit m, %r(float)i,     ActiveRecord::Type::Float
+      register_class_with_limit m, %r(int)i,       ActiveRecord::Type::Integer
+
+      m.alias_type %r(blob)i,      'binary'
+      m.alias_type %r(clob)i,      'text'
+      m.alias_type %r(timestamp)i, 'datetime'
+      m.alias_type %r(numeric)i,   'decimal'
+      m.alias_type %r(number)i,    'decimal'
+      m.alias_type %r(double)i,    'float'
+      m.alias_type %r(real)i,      'float'
+
+      m.register_type(%r(decimal)i) do |sql_type|
+        scale = extract_scale(sql_type)
+        precision = extract_precision(sql_type)
+        if precision == 0
+          ActiveRecord::Type::Integer.new
+        else
+          ActiveRecord::Type::Decimal.new(:precision => precision, :scale => scale)
+        end
+      end
+
+      m.alias_type %r(for bit data)i,  'binary'
+      m.alias_type %r(smallint)i,      'boolean'
+      m.alias_type %r(serial)i,        'int'
+      m.alias_type %r(decfloat)i,      'decimal'
+      #m.alias_type %r(real)i,          'decimal'
+      m.alias_type %r(graphic)i,       'binary'
+      m.alias_type %r(rowid)i,         'int'
+
       m.register_type(%r(smallint)i) do
         if DB2.emulate_booleans?
           ActiveRecord::Type::Boolean.new
@@ -121,7 +156,7 @@ module ArJdbc
           ActiveRecord::Type::Integer.new(:limit => 1)
         end
       end
-      m.alias_type %r(real)i, 'float'
+
       m.register_type %r(xml)i, XmlType.new
     end if AR42
 
@@ -443,7 +478,7 @@ module ArJdbc
           sql.sub!(/SELECT/i, start_sql)
           sql << end_sql
         else # AR 4.2 sql.class ... Arel::Collectors::Bind
-          sql.parts[0] = start_sql
+          sql.parts[0] = start_sql # sql.sub! /SELECT/i
           sql.parts[ sql.parts.length ] = end_sql
         end
       else
