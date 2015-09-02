@@ -12,6 +12,9 @@ ArJdbc::ConnectionMethods.module_eval do
     config[:url] ||= "jdbc:oracle:thin:@#{config[:host]}:#{config[:port]}:#{config[:database]}"
     config[:driver] ||= "oracle.jdbc.driver.OracleDriver"
     config[:connection_alive_sql] ||= 'SELECT 1 FROM DUAL'
+    unless config.key?(:statement_escape_processing)
+      config[:statement_escape_processing] = true if ::ArJdbc::AR40
+    end
     jdbc_connection(config)
   end
   alias_method :jdbcoracle_connection, :oracle_connection
