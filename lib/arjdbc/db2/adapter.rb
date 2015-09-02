@@ -145,8 +145,9 @@ module ArJdbc
       m.register_type(%r(decimal)i) do |sql_type|
         scale = extract_scale(sql_type)
         precision = extract_precision(sql_type)
-        if precision == 0
-          ActiveRecord::Type::Integer.new
+        limit = extract_limit(sql_type)
+        if scale == 0
+          ActiveRecord::Type::BigInteger.new(:precision => precision, :limit => limit)
         else
           ActiveRecord::Type::Decimal.new(:precision => precision, :scale => scale)
         end
