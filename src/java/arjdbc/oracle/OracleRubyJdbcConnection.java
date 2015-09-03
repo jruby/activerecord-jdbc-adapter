@@ -78,8 +78,7 @@ public class OracleRubyJdbcConnection extends RubyJdbcConnection {
     };
 
     @JRubyMethod(name = "next_sequence_value", required = 1)
-    public IRubyObject next_sequence_value(final ThreadContext context,
-        final IRubyObject sequence) throws SQLException {
+    public IRubyObject next_sequence_value(final ThreadContext context, final IRubyObject sequence) {
         return withConnection(context, new Callable<IRubyObject>() {
             public IRubyObject call(final Connection connection) throws SQLException {
                 Statement statement = null; ResultSet valSet = null;
@@ -100,7 +99,7 @@ public class OracleRubyJdbcConnection extends RubyJdbcConnection {
 
     @JRubyMethod(name = "execute_insert_returning", required = 2)
     public IRubyObject execute_insert_returning(final ThreadContext context,
-        final IRubyObject sql, final IRubyObject binds) throws SQLException {
+        final IRubyObject sql, final IRubyObject binds) {
         final String query = sql.convertToString().getUnicodeValue();
         final int outType = Types.VARCHAR;
         if ( binds == null || binds.isNil() ) { // no prepared statements
