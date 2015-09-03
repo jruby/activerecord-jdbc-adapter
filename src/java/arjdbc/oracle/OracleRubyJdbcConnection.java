@@ -23,6 +23,12 @@
  * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  ***** END LICENSE BLOCK *****/
+// NOTE: file contains code adapted from **oracle-enhanced** adapter, license follows
+/*
+Copyright (c) 2008-2011 Graham Jenkins, Michael Schoen, Raimonds Simanovskis
+
+... LICENSING TERMS ARE THE VERY SAME AS ACTIVERECORD-JDBC-ADAPTER'S ABOVE ...
+*/
 package arjdbc.oracle;
 
 import arjdbc.jdbc.Callable;
@@ -81,18 +87,18 @@ public class OracleRubyJdbcConnection extends RubyJdbcConnection {
     public IRubyObject next_sequence_value(final ThreadContext context, final IRubyObject sequence) {
         return withConnection(context, new Callable<IRubyObject>() {
             public IRubyObject call(final Connection connection) throws SQLException {
-                Statement statement = null; ResultSet valSet = null;
+                Statement statement = null; ResultSet value = null;
                 try {
                     statement = connection.createStatement();
-                    valSet = statement.executeQuery("SELECT "+ sequence +".NEXTVAL id FROM dual");
-                    if ( ! valSet.next() ) return context.getRuntime().getNil();
-                    return context.getRuntime().newFixnum( valSet.getLong(1) );
+                    value = statement.executeQuery("SELECT "+ sequence +".NEXTVAL id FROM dual");
+                    if ( ! value.next() ) return context.getRuntime().getNil();
+                    return context.getRuntime().newFixnum( value.getLong(1) );
                 }
                 catch (final SQLException e) {
                     debugMessage(context, "failed to get " + sequence + ".NEXTVAL : " + e.getMessage());
                     throw e;
                 }
-                finally { close(valSet); close(statement); }
+                finally { close(value); close(statement); }
             }
         });
     }
@@ -258,15 +264,15 @@ public class OracleRubyJdbcConnection extends RubyJdbcConnection {
     protected RubyArray mapTables(final Ruby runtime, final DatabaseMetaData metaData,
             final String catalog, final String schemaPattern, final String tablePattern,
             final ResultSet tablesSet) throws SQLException {
-        final List<IRubyObject> tables = new ArrayList<IRubyObject>(32);
+        final RubyArray tables = RubyArray.newArray(runtime, 32);
         while ( tablesSet.next() ) {
             String name = tablesSet.getString(TABLES_TABLE_NAME);
             name = caseConvertIdentifierForRails(metaData, name);
             // Handle stupid Oracle 10g RecycleBin feature
             if ( name.startsWith("bin$") ) continue;
-            tables.add(RubyString.newUnicodeString(runtime, name));
+            tables.append(RubyString.newUnicodeString(runtime, name));
         }
-        return runtime.newArray(tables);
+        return tables;
     }
 
     // storesMixedCaseIdentifiers() return false;
