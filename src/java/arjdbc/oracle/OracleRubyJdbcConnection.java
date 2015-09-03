@@ -33,6 +33,7 @@ import java.io.IOException;
 import java.io.Reader;
 import java.sql.CallableStatement;
 import java.sql.Connection;
+import java.sql.DatabaseMetaData;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.PreparedStatement;
@@ -40,6 +41,7 @@ import java.sql.Statement;
 import java.sql.Types;
 import java.util.Collections;
 import java.util.List;
+import java.util.regex.Pattern;
 
 import org.jruby.Ruby;
 import org.jruby.RubyArray;
@@ -80,8 +82,7 @@ public class OracleRubyJdbcConnection extends RubyJdbcConnection {
     };
 
     @JRubyMethod(name = "next_sequence_value", required = 1)
-    public IRubyObject next_sequence_value(final ThreadContext context,
-        final IRubyObject sequence) throws SQLException {
+    public IRubyObject next_sequence_value(final ThreadContext context, final IRubyObject sequence) {
         return withConnection(context, new Callable<IRubyObject>() {
             public IRubyObject call(final Connection connection) throws SQLException {
                 Statement statement = null; ResultSet valSet = null;
@@ -102,7 +103,7 @@ public class OracleRubyJdbcConnection extends RubyJdbcConnection {
 
     @JRubyMethod(name = "execute_insert_returning", required = 2)
     public IRubyObject execute_insert_returning(final ThreadContext context,
-        final IRubyObject sql, final IRubyObject binds) throws SQLException {
+        final IRubyObject sql, final IRubyObject binds) {
         final String query = sql.convertToString().getUnicodeValue();
         final int outType = Types.VARCHAR;
         if ( binds == null || binds.isNil() ) { // no prepared statements
@@ -245,17 +246,17 @@ public class OracleRubyJdbcConnection extends RubyJdbcConnection {
 
     @Override
     protected RubyArray mapTables(final Ruby runtime, final DatabaseMetaData metaData,
-            final String catalog, final String schemaPattern, final String tablePattern,
-            final ResultSet tablesSet) throws SQLException {
-        final List<IRubyObject> tables = new ArrayList<IRubyObject>(32);
+      final String catalog, final String schemaPattern, final String tablePattern,
+      final ResultSet tablesSet) throws SQLException {
+        final RubyArray tables = runtime.newArray(32);
         while ( tablesSet.next() ) {
             String name = tablesSet.getString(TABLES_TABLE_NAME);
             name = caseConvertIdentifierForRails(metaData, name);
             // Handle stupid Oracle 10g RecycleBin feature
             if ( name.startsWith("bin$") ) continue;
-            tables.add(RubyString.newUnicodeString(runtime, name));
+            tables.append(RubyString.newUnicodeString(runtime, name));
         }
-        return runtime.newArray(tables);
+        return tables;
     }
 
     // storesMixedCaseIdentifiers() return false;
@@ -272,6 +273,123 @@ public class OracleRubyJdbcConnection extends RubyJdbcConnection {
     protected String caseConvertIdentifierForJdbc(final Connection connection, final String value)
         throws SQLException {
         return value == null ? null : value.toUpperCase();
+    }
+
+    // based on OracleEnhanced's Ruby connection.describe
+    @JRubyMethod(name = "describe", required = 1, optional = 1)
+    public IRubyObject describe(final ThreadContext context, final IRubyObject[] args) {
+        final IRubyObject owner = args.length > 1 ? args[1] : context.nil;
+        final RubyArray desc = describe(context, args[0].toString(), owner.isNil() ? null : owner.toString());
+        return desc == null ? context.nil : desc; // TODO raise instead of nil
+    }
+
+    private RubyArray describe(final ThreadContext context, final String name, final String owner) {
+        final String dbLink; String defaultOwner, tableName = name; int delim;
+        if ( ( delim = tableName.indexOf('@') ) > 0 ) {
+            dbLink = tableName.substring(delim).toUpperCase(); // '@DBLINK'
+            tableName = tableName.substring(0, delim);
+            defaultOwner = null; // will SELECT username FROM all_dbLinks ...
+        }
+        else {
+            dbLink = ""; defaultOwner = owner; // config[:username] || meta_data.user_name
+        }
+
+        final String realName = isValidTableName(tableName) ? tableName.toUpperCase() : tableName;
+
+        final String tableOwner;
+        if ( ( delim = realName.indexOf('.') ) > 0 ) {
+            tableOwner = realName.substring(delim + 1);
+            tableName = tableName.substring(0, delim);
+        }
+        else {
+            tableName = realName;
+            tableOwner = (defaultOwner == null && dbLink.length() > 0) ? selectOwner(context, dbLink) : defaultOwner;
+        }
+
+        final String sql = "SELECT owner, table_name, 'TABLE' name_type" +
+                " FROM all_tables" + dbLink +
+                " WHERE owner = '" + tableOwner + "' AND table_name = '" + tableName + "'" +
+                " UNION ALL " +
+                "SELECT owner, view_name table_name, 'VIEW' name_type" +
+                " FROM all_views" + dbLink +
+                " WHERE owner = '" + tableOwner + "' AND view_name = '" + tableName + "'" +
+                " UNION ALL " +
+                "SELECT table_owner, DECODE(db_link, NULL, table_name, table_name||'@'||db_link), 'SYNONYM' name_type" +
+                " FROM all_synonyms" + dbLink +
+                " WHERE owner = '" + tableOwner + "' AND synonym_name = '" + tableName + "'" +
+                " UNION ALL " +
+                "SELECT table_owner, DECODE(db_link, NULL, table_name, table_name||'@'||db_link), 'SYNONYM' name_type" +
+                " FROM all_synonyms" + dbLink +
+                " WHERE owner = 'PUBLIC' AND synonym_name = '" + tableName + "'" ;
+
+        return withConnection(context, new Callable<RubyArray>() {
+            public RubyArray call(final Connection connection) throws SQLException {
+                Statement statement = null; ResultSet result = null;
+                try {
+                    statement = connection.createStatement();
+                    result = statement.executeQuery(sql);
+
+                    if ( ! result.next() ) return null; // NOTE: should raise
+
+                    final String owner = result.getString("owner");
+                    final String table_name = result.getString("table_name");
+                    final String name_type = result.getString("name_type");
+
+                    if ( "SYNONYM".equals(name_type) ) {
+                        final StringBuilder name = new StringBuilder();
+                        if ( owner != null && owner.length() > 0 ) {
+                            name.append(owner).append('.');
+                        }
+                        name.append(table_name);
+                        if ( dbLink != null ) name.append(dbLink);
+                        return describe(context, name.toString(), owner);
+                    }
+
+                    final RubyArray arr = RubyArray.newArray(context.runtime, 3);
+                    arr.append( context.runtime.newString(owner) );
+                    arr.append( context.runtime.newString(table_name) );
+                    if ( dbLink != null ) arr.append( context.runtime.newString(dbLink) );
+                    return arr;
+                }
+                catch (final SQLException e) {
+                    debugMessage(context, "failed to describe '" + name + "' : " + e.getMessage());
+                    throw e;
+                }
+                finally { close(result); close(statement); }
+            }
+        });
+    }
+
+    private String selectOwner(final ThreadContext context, final String dbLink) {
+        return withConnection(context, new Callable<String>() {
+            public String call(final Connection connection) throws SQLException {
+                Statement statement = null; ResultSet result = null;
+                final String sql = "SELECT username FROM all_db_links WHERE db_link = '" + dbLink + "'";
+                try {
+                    statement = connection.createStatement();
+                    result = statement.executeQuery(sql);
+                    // if ( ! result.next() ) return null;
+                    return result.getString(1);
+                }
+                catch (final SQLException e) {
+                    debugMessage(context, "\"" + sql + "\" failed : " + e.getMessage());
+                    throw e;
+                }
+                finally { close(result); close(statement); }
+            }
+        });
+    }
+
+    private static final Pattern VALID_TABLE_NAME;
+    static {
+        final String NONQUOTED_OBJECT_NAME = "[A-Za-z][A-z0-9$#]{0,29}";
+        final String NONQUOTED_DATABASE_LINK = "[A-Za-z][A-z0-9$#\\.@]{0,127}";
+        VALID_TABLE_NAME = Pattern.compile(
+        "\\A(?:" + NONQUOTED_OBJECT_NAME + "\\.)?" + NONQUOTED_OBJECT_NAME + "(?:@" + NONQUOTED_DATABASE_LINK + ")?\\Z");
+    }
+
+    private boolean isValidTableName(final String name) {
+        return VALID_TABLE_NAME.matcher(name).matches();
     }
 
 }
