@@ -313,12 +313,12 @@ public class OracleRubyJdbcConnection extends RubyJdbcConnection {
             dbLink = ""; defaultOwner = owner; // config[:username] || meta_data.user_name
         }
 
-        theName = isValidTableName(theName) ? theName.toUpperCase() : theName;
+        theName = isValidTableName(theName) ? theName.toUpperCase() : unquoteTableName(theName);
 
         final String tableName; final String tableOwner;
         if ( ( delim = theName.indexOf('.') ) > 0 ) {
-            tableOwner = theName.substring(delim + 1);
-            tableName = theName.substring(0, delim);
+            tableOwner = theName.substring(0, delim);
+            tableName = theName.substring(delim + 1);
         }
         else {
             tableName = theName;
@@ -409,8 +409,17 @@ public class OracleRubyJdbcConnection extends RubyJdbcConnection {
         "\\A(?:" + NONQUOTED_OBJECT_NAME + "\\.)?" + NONQUOTED_OBJECT_NAME + "(?:@" + NONQUOTED_DATABASE_LINK + ")?\\Z");
     }
 
-    private boolean isValidTableName(final String name) {
+    private static boolean isValidTableName(final String name) {
         return VALID_TABLE_NAME.matcher(name).matches();
+    }
+
+    private static String unquoteTableName(String name) {
+        name = name.trim();
+        final int len = name.length();
+        if (len > 0 && name.charAt(0) == '"' && name.charAt(len - 1) == '"') {
+            return name.substring(1, len - 1);
+        }
+        return name;
     }
 
 }
