@@ -46,14 +46,22 @@ module MigrationSetup
   end
 
   def self.teardown!
-    CreateCustomPkName.down
-    CreateThings.down
-    CreateValidatesUniquenessOf.down
-    CreateAutoIds.down
-    CreateUsers.down
-    CreateEntries.down
-    CreateStringIds.down
-    DbTypeMigration.down
+    silent_down CreateCustomPkName
+    silent_down CreateThings
+    silent_down CreateValidatesUniquenessOf
+    silent_down CreateAutoIds
+    silent_down CreateUsers
+    silent_down CreateEntries
+    silent_down CreateStringIds
+    silent_down DbTypeMigration
+  end
+
+  def self.silent_down(migration)
+    begin
+      migration.down
+    rescue ActiveRecord::ActiveRecordError => e
+      warn "#{migration}.down failed: #{e.inspect}"
+    end
   end
 
 end
