@@ -45,7 +45,6 @@ import java.sql.DatabaseMetaData;
 import java.sql.PreparedStatement;
 import java.sql.Statement;
 import java.sql.Types;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.regex.Pattern;
@@ -111,9 +110,8 @@ public class OracleRubyJdbcConnection extends RubyJdbcConnection {
         if ( binds == null || binds.isNil() ) { // no prepared statements
             return executePreparedCall(context, query, Collections.EMPTY_LIST, outType);
         }
-        else { // allow prepared statements with empty binds parameters
-            return executePreparedCall(context, query, (List) binds, outType);
-        }
+        // allow prepared statements with empty binds parameters
+        return executePreparedCall(context, query, (List) binds, outType);
     }
 
     private IRubyObject executePreparedCall(final ThreadContext context, final String query,
