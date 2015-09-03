@@ -213,7 +213,7 @@ module ArJdbc
     end
 
     def indexes(table, name = nil)
-      @connection.indexes(table, name, @connection.connection.meta_data.user_name)
+      @connection.indexes(table, name, schema_owner)
     end
 
     # @note Only used with (non-AREL) ActiveRecord **2.3**.
@@ -587,7 +587,7 @@ module ArJdbc
       do_not_prefetch_hash = @@do_not_prefetch_primary_key
       do_not_prefetch = do_not_prefetch_hash[ table_name = table_name.to_s ]
       if do_not_prefetch.nil?
-        owner, desc_table_name, db_link = @connection.describe(table_name, default_owner)
+        owner, desc_table_name, db_link = describe(table_name)
         do_not_prefetch_hash[table_name] = do_not_prefetch =
           ! has_primary_key?(table_name, owner, desc_table_name, db_link) ||
           has_primary_key_trigger?(table_name, owner, desc_table_name, db_link)
@@ -606,7 +606,7 @@ module ArJdbc
 
     # @private check if table has primary key trigger with _pkt suffix
     def has_primary_key_trigger?(table_name, owner = nil, desc_table_name = nil, db_link = nil)
-      (owner, desc_table_name, db_link) = @connection.describe(table_name, default_owner) unless desc_table_name
+      (owner, desc_table_name, db_link) = describe(table_name) unless desc_table_name
 
       trigger_name = default_trigger_name(table_name).upcase
       pkt_sql = <<-SQL
@@ -636,7 +636,7 @@ module ArJdbc
     end
 
     def pk_and_sequence_for(table_name, owner = nil, desc_table_name = nil, db_link = nil)
-      (owner, desc_table_name, db_link) = @connection.describe(table_name, default_owner) unless desc_table_name
+      (owner, desc_table_name, db_link) = describe(table_name) unless desc_table_name
 
       seqs = select_values(<<-SQL.strip.gsub(/\s+/, ' '), 'Sequence')
         SELECT us.sequence_name
@@ -783,12 +783,18 @@ module ArJdbc
     end
 
     # default schema owner
-    def default_owner
-      unless defined? @default_owner
-        username = config[:username] ? config[:username].to_s : jdbc_connection.meta_data.user_name
-        @default_owner = username.nil? ? nil : username.upcase
+    def schema_owner(force = true)
+      unless defined? @schema_owner
+        username = config[:username] ? config[:username].to_s : nil
+        username = jdbc_connection.meta_data.user_name if force && username.nil?
+        @schema_owner = username.nil? ? nil : username.upcase
       end
-      @default_owner
+      @schema_owner
+    end
+
+    # do not force reading schema_owner as we're read on our own ...
+    def describe(table_name, owner = schema_owner(false))
+      @connection.describe(table_name, owner)
     end
 
     def oracle_downcase(column_name)
