@@ -362,10 +362,6 @@ public class OracleRubyJdbcConnection extends RubyJdbcConnection {
                     return arr;
                 }
                 catch (final SQLException e) {
-
-                    System.out.println("SQL: " + sql);
-                    e.printStackTrace();
-
                     debugMessage(context, "failed to describe '" + name + "' : " + e.getMessage());
                     throw e;
                 }
