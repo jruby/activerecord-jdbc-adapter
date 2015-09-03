@@ -184,7 +184,7 @@ module ArJdbc
       seq_name = options.key?(:sequence_name) ? # pass nil/false - no sequence
         options[:sequence_name] : default_sequence_name(name)
       return outcome unless seq_name
-      execute "DROP SEQUENCE #{quote_table_name(seq_name)}" rescue nil
+      execute_silent "DROP SEQUENCE #{quote_table_name(seq_name)}"
     end
 
     # @override
@@ -756,6 +756,17 @@ module ArJdbc
         @connection.execute_insert(sql)
       else
         @connection.execute_update(sql)
+      end
+    end
+
+    # kind of `execute(sql) rescue nil` but logging failures at debug level
+    def execute_silent(sql, name = 'SQL')
+      log(sql, name) do
+        begin
+          _execute(sql)
+        rescue => e
+          logger.debug("#{e.class}: #{e.message}: #{sql}")
+        end
       end
     end
 
