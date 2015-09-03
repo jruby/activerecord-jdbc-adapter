@@ -252,13 +252,66 @@ module ArJdbc
       # no RELEASE SAVEPOINT statement in Oracle (JDBC driver throws "Unsupported feature")
     end
 
+    # @override
+    def add_index(table_name, column_name, options = {})
+      index_name, index_type, quoted_column_names, tablespace, index_options = add_index_options(table_name, column_name, options)
+      execute "CREATE #{index_type} INDEX #{quote_column_name(index_name)} ON #{quote_table_name(table_name)} (#{quoted_column_names})#{tablespace} #{index_options}"
+      if index_type == 'UNIQUE'
+        unless quoted_column_names =~ /\(.*\)/
+          execute "ALTER TABLE #{quote_table_name(table_name)} ADD CONSTRAINT #{quote_column_name(index_name)} #{index_type} (#{quoted_column_names})"
+        end
+      end
+    end if AR42
+
+    # @private
+    def add_index_options(table_name, column_name, options = {})
+      column_names = Array(column_name)
+      index_name   = index_name(table_name, column: column_names)
+
+      options.assert_valid_keys(:unique, :order, :name, :where, :length, :internal, :tablespace, :options, :using)
+
+      index_type = options[:unique] ? "UNIQUE" : ""
+      index_name = options[:name].to_s if options.key?(:name)
+      tablespace = '' # tablespace_for(:index, options[:tablespace])
+      max_index_length = options.fetch(:internal, false) ? index_name_length : allowed_index_name_length
+      index_options =  '' # index_options = options[:options]
+
+      if index_name.to_s.length > max_index_length
+        raise ArgumentError, "Index name '#{index_name}' on table '#{table_name}' is too long; the limit is #{max_index_length} characters"
+      end
+      if index_name_exists?(table_name, index_name, false)
+        raise ArgumentError, "Index name '#{index_name}' on table '#{table_name}' already exists"
+      end
+
+      quoted_column_names = column_names.map { |e| quote_column_name_or_expression(e) }.join(", ")
+      [ index_name, index_type, quoted_column_names, tablespace, index_options ]
+    end if AR42
+
+    # @override
+    def remove_index(table_name, options = {})
+      index_name = index_name(table_name, options)
+      unless index_name_exists?(table_name, index_name, true)
+        # sometimes options can be String or Array with column names
+        options = {} unless options.is_a?(Hash)
+        if options.has_key? :name
+          options_without_column = options.dup
+          options_without_column.delete :column
+          index_name_without_column = index_name(table_name, options_without_column)
+          return index_name_without_column if index_name_exists?(table_name, index_name_without_column, false)
+        end
+        raise ArgumentError, "Index name '#{index_name}' on table '#{table_name}' does not exist"
+      end
+      execute "ALTER TABLE #{quote_table_name(table_name)} DROP CONSTRAINT #{quote_column_name(index_name)}" rescue nil
+      execute "DROP INDEX #{quote_column_name(index_name)}"
+    end if AR42
+
+    # @private
     def remove_index(table_name, options = {})
       execute "DROP INDEX #{index_name(table_name, options)}"
-    end
+    end unless AR42
 
     def change_column_default(table_name, column_name, default)
-      execute "ALTER TABLE #{quote_table_name(table_name)} " +
-        "MODIFY #{quote_column_name(column_name)} DEFAULT #{quote(default)}"
+      execute "ALTER TABLE #{quote_table_name(table_name)} MODIFY #{quote_column_name(column_name)} DEFAULT #{quote(default)}"
     end
 
     # @override
@@ -523,21 +576,96 @@ module ArJdbc
       result
     end
 
+    @@do_not_prefetch_primary_key = {}
+
     # Returns true for Oracle adapter (since Oracle requires primary key
     # values to be pre-fetched before insert).
     # @see #next_sequence_value
     # @override
     def prefetch_primary_key?(table_name = nil)
       return true if table_name.nil?
-      table_name = table_name.to_s
-      columns(table_name).count { |column| column.primary } == 1
+      do_not_prefetch_hash = @@do_not_prefetch_primary_key
+      do_not_prefetch = do_not_prefetch_hash[ table_name = table_name.to_s ]
+      if do_not_prefetch.nil?
+        owner, desc_table_name, db_link = @connection.describe(table_name, default_owner)
+        do_not_prefetch_hash[table_name] = do_not_prefetch =
+          ! has_primary_key?(table_name, owner, desc_table_name, db_link) ||
+          has_primary_key_trigger?(table_name, owner, desc_table_name, db_link)
+      end
+      ! do_not_prefetch
     end
 
-    # @override
+    # used to clear prefetch primary key flag for all tables
+    # @private
+    def clear_prefetch_primary_key; @@do_not_prefetch_primary_key = {} end
+
+    # @private
+    def has_primary_key?(table_name, owner = nil, desc_table_name = nil, db_link = nil)
+      ! pk_and_sequence_for(table_name, owner, desc_table_name, db_link).nil?
+    end
+
+    # @private check if table has primary key trigger with _pkt suffix
+    def has_primary_key_trigger?(table_name, owner = nil, desc_table_name = nil, db_link = nil)
+      (owner, desc_table_name, db_link) = @connection.describe(table_name, default_owner) unless desc_table_name
+
+      trigger_name = default_trigger_name(table_name).upcase
+      pkt_sql = <<-SQL
+        SELECT trigger_name
+        FROM all_triggers#{db_link}
+        WHERE owner = '#{owner}'
+          AND trigger_name = '#{trigger_name}'
+          AND table_owner = '#{owner}'
+          AND table_name = '#{desc_table_name}'
+          AND status = 'ENABLED'
+      SQL
+      select_value(pkt_sql, 'Primary Key Trigger') ? true : false
+    end
+
+    # use in set_sequence_name to avoid fetching primary key value from sequence
+    AUTOGENERATED_SEQUENCE_NAME = 'autogenerated'.freeze
+
+    # Returns the next sequence value from a sequence generator. Not generally
+    # called directly; used by ActiveRecord to get the next primary key value
+    # when inserting a new database record (see #prefetch_primary_key?).
     def next_sequence_value(sequence_name)
+      # if sequence_name is set to :autogenerated then it means that primary key will be populated by trigger
+      return nil if sequence_name == AUTOGENERATED_SEQUENCE_NAME
       sequence_name = quote_table_name(sequence_name)
       sql = "SELECT #{sequence_name}.NEXTVAL id FROM dual"
       log(sql, 'SQL') { @connection.next_sequence_value(sequence_name) }
+    end
+
+    def pk_and_sequence_for(table_name, owner = nil, desc_table_name = nil, db_link = nil)
+      (owner, desc_table_name, db_link) = @connection.describe(table_name, default_owner) unless desc_table_name
+
+      seqs = select_values(<<-SQL.strip.gsub(/\s+/, ' '), 'Sequence')
+        SELECT us.sequence_name
+        FROM all_sequences#{db_link} us
+        WHERE us.sequence_owner = '#{owner}'
+        AND us.sequence_name = '#{desc_table_name}_SEQ'
+      SQL
+
+      # changed back from user_constraints to all_constraints for consistency
+      pks = select_values(<<-SQL.strip.gsub(/\s+/, ' '), 'Primary Key')
+        SELECT cc.column_name
+          FROM all_constraints#{db_link} c, all_cons_columns#{db_link} cc
+         WHERE c.owner = '#{owner}'
+           AND c.table_name = '#{desc_table_name}'
+           AND c.constraint_type = 'P'
+           AND cc.owner = c.owner
+           AND cc.constraint_name = c.constraint_name
+      SQL
+
+      # only support single column keys
+      pks.size == 1 ? [oracle_downcase(pks.first),
+                       oracle_downcase(seqs.first)] : nil
+    end
+    private :pk_and_sequence_for
+
+    # Returns just a table's primary key
+    def primary_key(table_name)
+      pk_and_sequence = pk_and_sequence_for(table_name)
+      pk_and_sequence && pk_and_sequence.first
     end
 
     # @override (for AR <= 3.0)
@@ -652,6 +780,20 @@ module ArJdbc
       elsif @config[:username]
         @config[:username].to_s
       end
+    end
+
+    # default schema owner
+    def default_owner
+      unless defined? @default_owner
+        username = config[:username] ? config[:username].to_s : jdbc_connection.meta_data.user_name
+        @default_owner = username.nil? ? nil : username.upcase
+      end
+      @default_owner
+    end
+
+    def oracle_downcase(column_name)
+      return nil if column_name.nil?
+      column_name =~ /[a-z]/ ? column_name : column_name.downcase
     end
 
   end
