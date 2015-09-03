@@ -286,54 +286,61 @@ public class OracleRubyJdbcConnection extends RubyJdbcConnection {
     }
 
     // based on OracleEnhanced's Ruby connection.describe
-    @JRubyMethod(name = "describe", required = 1, optional = 1)
-    public IRubyObject describe(final ThreadContext context, final IRubyObject[] args) {
-        final IRubyObject owner = args.length > 1 ? args[1] : context.nil;
-        final RubyArray desc = describe(context, args[0].toString(), owner.isNil() ? null : owner.toString());
+    @JRubyMethod(name = "describe", required = 1)
+    public IRubyObject describe(final ThreadContext context, final IRubyObject name) {
+        final RubyArray desc = describe(context, name.toString(), null);
+        return desc == null ? context.nil : desc; // TODO raise instead of nil
+    }
+
+    @JRubyMethod(name = "describe", required = 2)
+    public IRubyObject describe(final ThreadContext context, final IRubyObject name, final IRubyObject owner) {
+        final RubyArray desc = describe(context, name.toString(), owner.isNil() ? null : owner.toString());
         return desc == null ? context.nil : desc; // TODO raise instead of nil
     }
 
     private RubyArray describe(final ThreadContext context, final String name, final String owner) {
-        final String dbLink; String defaultOwner, tableName = name; int delim;
-        if ( ( delim = tableName.indexOf('@') ) > 0 ) {
-            dbLink = tableName.substring(delim).toUpperCase(); // '@DBLINK'
-            tableName = tableName.substring(0, delim);
+        final String dbLink; String defaultOwner, theName = name; int delim;
+        if ( ( delim = theName.indexOf('@') ) > 0 ) {
+            dbLink = theName.substring(delim).toUpperCase(); // '@DBLINK'
+            theName = theName.substring(0, delim);
             defaultOwner = null; // will SELECT username FROM all_dbLinks ...
         }
         else {
             dbLink = ""; defaultOwner = owner; // config[:username] || meta_data.user_name
         }
 
-        final String realName = isValidTableName(tableName) ? tableName.toUpperCase() : tableName;
+        theName = isValidTableName(theName) ? theName.toUpperCase() : theName;
 
-        final String tableOwner;
-        if ( ( delim = realName.indexOf('.') ) > 0 ) {
-            tableOwner = realName.substring(delim + 1);
-            tableName = tableName.substring(0, delim);
+        final String tableName; final String tableOwner;
+        if ( ( delim = theName.indexOf('.') ) > 0 ) {
+            tableOwner = theName.substring(delim + 1);
+            tableName = theName.substring(0, delim);
         }
         else {
-            tableName = realName;
+            tableName = theName;
             tableOwner = (defaultOwner == null && dbLink.length() > 0) ? selectOwner(context, dbLink) : defaultOwner;
         }
 
-        final String sql = "SELECT owner, table_name, 'TABLE' name_type" +
+        return withConnection(context, new Callable<RubyArray>() {
+            public RubyArray call(final Connection connection) throws SQLException {
+                String owner = tableOwner == null ? connection.getMetaData().getUserName() : tableOwner;
+                final String sql =
+                "SELECT owner, table_name, 'TABLE' name_type" +
                 " FROM all_tables" + dbLink +
-                " WHERE owner = '" + tableOwner + "' AND table_name = '" + tableName + "'" +
+                " WHERE owner = '" + owner + "' AND table_name = '" + tableName + "'" +
                 " UNION ALL " +
                 "SELECT owner, view_name table_name, 'VIEW' name_type" +
                 " FROM all_views" + dbLink +
-                " WHERE owner = '" + tableOwner + "' AND view_name = '" + tableName + "'" +
+                " WHERE owner = '" + owner + "' AND view_name = '" + tableName + "'" +
                 " UNION ALL " +
                 "SELECT table_owner, DECODE(db_link, NULL, table_name, table_name||'@'||db_link), 'SYNONYM' name_type" +
                 " FROM all_synonyms" + dbLink +
-                " WHERE owner = '" + tableOwner + "' AND synonym_name = '" + tableName + "'" +
+                " WHERE owner = '" + owner + "' AND synonym_name = '" + tableName + "'" +
                 " UNION ALL " +
                 "SELECT table_owner, DECODE(db_link, NULL, table_name, table_name||'@'||db_link), 'SYNONYM' name_type" +
                 " FROM all_synonyms" + dbLink +
                 " WHERE owner = 'PUBLIC' AND synonym_name = '" + tableName + "'" ;
 
-        return withConnection(context, new Callable<RubyArray>() {
-            public RubyArray call(final Connection connection) throws SQLException {
                 Statement statement = null; ResultSet result = null;
                 try {
                     statement = connection.createStatement();
@@ -341,7 +348,7 @@ public class OracleRubyJdbcConnection extends RubyJdbcConnection {
 
                     if ( ! result.next() ) return null; // NOTE: should raise
 
-                    final String owner = result.getString("owner");
+                    owner = result.getString("owner");
                     final String table_name = result.getString("table_name");
                     final String name_type = result.getString("name_type");
 
