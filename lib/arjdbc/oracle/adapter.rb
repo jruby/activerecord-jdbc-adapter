@@ -142,9 +142,16 @@ module ArJdbc
     def column_name_length; IDENTIFIER_LENGTH; end
     def sequence_name_length; IDENTIFIER_LENGTH end
 
-    def default_sequence_name(table_name, column = nil)
-      # TODO: remove schema prefix if present (before truncating)
-      "#{table_name.to_s[0, IDENTIFIER_LENGTH - 4]}_seq"
+    # @private
+    # Will take all or first 26 characters of table name and append _seq suffix
+    def default_sequence_name(table_name, primary_key = nil)
+      len = IDENTIFIER_LENGTH - 4
+      table_name.to_s.gsub (/(^|\.)([\w$-]{1,#{len}})([\w$-]*)$/), '\1\2_seq'
+    end
+
+    # @private
+    def default_trigger_name(table_name)
+      "#{table_name.to_s[0, IDENTIFIER_LENGTH - 4]}_pkt"
     end
 
     # @override
