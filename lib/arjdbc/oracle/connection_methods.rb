@@ -13,7 +13,7 @@ ArJdbc::ConnectionMethods.module_eval do
     config[:driver] ||= "oracle.jdbc.driver.OracleDriver"
     config[:connection_alive_sql] ||= 'SELECT 1 FROM DUAL'
     unless config.key?(:statement_escape_processing)
-      config[:statement_escape_processing] = true if ::ArJdbc::AR40
+      config[:statement_escape_processing] = true
     end
     jdbc_connection(config)
   end
