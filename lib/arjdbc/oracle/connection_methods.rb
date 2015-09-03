@@ -9,7 +9,7 @@ ArJdbc::ConnectionMethods.module_eval do
     return jndi_connection(config) if jndi_config?(config)
 
     config[:port] ||= 1521
-    config[:url] ||= "jdbc:oracle:thin:@#{config[:host]}:#{config[:port]}:#{config[:database]}"
+    config[:url] ||= "jdbc:oracle:thin:@#{config[:host]}:#{config[:port]}:#{config[:database] || 'XE'}"
     config[:driver] ||= "oracle.jdbc.driver.OracleDriver"
     config[:connection_alive_sql] ||= 'SELECT 1 FROM DUAL'
     unless config.key?(:statement_escape_processing)
