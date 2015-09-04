@@ -40,12 +40,16 @@ module ArJdbc
         end
       end
 
+      def sql_type
+        (@sql_type || '').start_with?('XMLTYPE') ? 'XMLTYPE' : @sql_type
+      end
+
       private
 
       def extract_limit(sql_type)
         case sql_type
         when /^(clob|date)/i then nil
-        when /^xml/i then @sql_type = 'XMLTYPE'; nil
+        when /^xml/i then nil
         else super
         end
       end
