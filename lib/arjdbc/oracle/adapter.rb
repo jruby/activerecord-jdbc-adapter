@@ -94,17 +94,34 @@ module ArJdbc
       def raw(*args)
         options = args.extract_options!
         column(args[0], 'raw', options)
-      end
+      end unless AR42
+
+      def raw(name, options={})
+        column(name, :raw, options)
+      end if AR42
 
       def xml(*args)
         options = args.extract_options!
         column(args[0], 'xml', options)
-      end
+      end unless AR42
+
+      def raw(name, options={})
+        column(name, :xml, options)
+      end if AR42
+
+      def aliased_types(name, fallback)
+        # NOTE: disable aliasing :timestamp as :datetime :
+        fallback # 'timestamp' == name ? :datetime : fallback
+      end if AR42
     end
 
     def table_definition(*args)
       new_table_definition(TableDefinition, *args)
     end
+
+    def create_table_definition(name, temporary, options, as)
+      TableDefinition.new native_database_types, name, temporary, options, as
+    end if AR42
 
     def self.arel_visitor_type(config = nil)
       ::Arel::Visitors::Oracle
