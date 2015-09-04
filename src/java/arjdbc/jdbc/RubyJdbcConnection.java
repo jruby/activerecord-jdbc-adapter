@@ -1205,7 +1205,7 @@ public class RubyJdbcConnection extends RubyObject {
         return withConnection(context, new Callable<IRubyObject>() {
             public IRubyObject call(final Connection connection) throws SQLException {
                 final Ruby runtime = context.getRuntime();
-                final RubyClass indexDefinition = getIndexDefinition(runtime);
+                final RubyClass IndexDefinition = getIndexDefinition(context);
 
                 String _tableName = caseConvertIdentifierForJdbc(connection, tableName);
                 String _schemaName = caseConvertIdentifierForJdbc(connection, schemaName);
@@ -1248,7 +1248,7 @@ public class RubyJdbcConnection extends RubyObject {
                                 // orders, (since AR 3.2) where, type, using (AR 4.0)
                             };
 
-                            indexes.add( indexDefinition.callMethod(context, "new", args) ); // IndexDefinition.new
+                            indexes.add( IndexDefinition.callMethod(context, "new", args) ); // IndexDefinition.new
                         }
 
                         // One or more columns can be associated with an index
@@ -1263,6 +1263,12 @@ public class RubyJdbcConnection extends RubyObject {
                 } finally { close(indexInfoSet); }
             }
         });
+    }
+
+    protected RubyClass getIndexDefinition(final ThreadContext context) {
+        final RubyClass adapterClass = getAdapter(context).getMetaClass();
+        IRubyObject IDef = adapterClass.getConstantAt("IndexDefinition");
+        return IDef != null ? (RubyClass) IDef : getIndexDefinition(context.runtime);
     }
 
     @JRubyMethod(name = "supports_views?")
