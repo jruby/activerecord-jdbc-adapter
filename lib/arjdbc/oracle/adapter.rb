@@ -140,6 +140,7 @@ module ArJdbc
       register_class_with_limit m, %r(raw)i,       RawType
       register_class_with_limit m, %r(timestamp)i, TimestampType
 
+      m.register_type %r(xmltype)i, XmlType.new
     end if AR42
 
     # @private
@@ -150,6 +151,23 @@ module ArJdbc
     # @private
     class TimestampType < ActiveRecord::Type::DateTime
       def type; :timestamp end
+    end if AR42
+
+    # @private
+    class XmlType < ActiveRecord::Type::String
+      def type; :xml end
+
+      def type_cast_for_database(value)
+        return unless value
+        Data.new(super)
+      end
+
+      class Data
+        def initialize(value)
+          @value = value
+        end
+        def to_s; @value end
+      end
     end if AR42
 
     NATIVE_DATABASE_TYPES = {
