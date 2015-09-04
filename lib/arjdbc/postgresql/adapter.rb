@@ -1184,6 +1184,7 @@ module ArJdbc
       execute "ALTER INDEX #{quote_column_name(old_name)} RENAME TO #{quote_table_name(new_name)}"
     end
 
+    # @override
     def supports_foreign_keys?; true end
 
     def foreign_keys(table_name)

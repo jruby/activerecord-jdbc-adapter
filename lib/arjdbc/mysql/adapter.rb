@@ -553,6 +553,7 @@ module ArJdbc
     # @private
     ForeignKeyDefinition = ::ActiveRecord::ConnectionAdapters::ForeignKeyDefinition if ::ActiveRecord::ConnectionAdapters.const_defined? :ForeignKeyDefinition
 
+    # @override
     def supports_foreign_keys?; true end
 
     def foreign_keys(table_name)
