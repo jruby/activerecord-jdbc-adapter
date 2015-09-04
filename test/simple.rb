@@ -546,7 +546,7 @@ module SimpleTestMethods
 
   def test_foreign_keys
     unless connection.supports_foreign_keys?
-      return puts "#{connection.class} does not support foreign keys"
+      skip "#{connection.class} does not support foreign keys"
     end
     fks = connection.foreign_keys(:entries)
     assert_equal 0, fks.size
@@ -557,7 +557,9 @@ module SimpleTestMethods
     assert_equal 1, fks.size
 
     assert fks[0].is_a?(ActiveRecord::ConnectionAdapters::ForeignKeyDefinition)
-    assert_equal 'entries', fks[0].from_table
+
+    # NOTE: MySQL/PostgreSQL will return a symbol here (since :entries is passed)
+    assert_equal 'entries', fks[0].from_table.to_s
     assert_equal 'users', fks[0].to_table
     assert_equal 'users', fks[0].to_table
     assert_equal 'user_id', fks[0].options[:column]
