@@ -122,6 +122,36 @@ module ArJdbc
       ADAPTER_NAME
     end
 
+    def initialize_type_map(m)
+      super
+
+      m.register_type(%r(NUMBER)i) do |sql_type|
+        scale = extract_scale(sql_type)
+        precision = extract_precision(sql_type)
+        limit = extract_limit(sql_type)
+        if scale == 0
+          ActiveRecord::Type::Integer.new(:precision => precision, :limit => limit)
+        else
+          ActiveRecord::Type::Decimal.new(:precision => precision, :scale => scale)
+        end
+      end
+
+      register_class_with_limit m, %r(date)i,      ActiveRecord::Type::DateTime
+      register_class_with_limit m, %r(raw)i,       RawType
+      register_class_with_limit m, %r(timestamp)i, TimestampType
+
+    end if AR42
+
+    # @private
+    class RawType < ActiveRecord::Type::String
+      def type; :raw end
+    end if AR42
+
+    # @private
+    class TimestampType < ActiveRecord::Type::DateTime
+      def type; :timestamp end
+    end if AR42
+
     NATIVE_DATABASE_TYPES = {
       :primary_key => "NUMBER(38) NOT NULL PRIMARY KEY",
       :string => { :name => "VARCHAR2", :limit => 255 },
