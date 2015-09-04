@@ -11,13 +11,13 @@ module ArJdbc
 
       def self.included(base)
         # NOTE: assumes a standalone OracleColumn class
-        class << base; include Cast; end
+        class << base; include Cast; end # unless AR42
       end
 
       def primary=(value)
         super
         @type = :integer if value && @sql_type =~ /^NUMBER$/i
-      end if ::ActiveRecord::VERSION::STRING < '4.2'
+      end unless AR42
 
       def type_cast(value)
         return nil if value.nil?
@@ -52,7 +52,7 @@ module ArJdbc
         when /^xml/i then nil
         else super
         end
-      end
+      end unless AR42
 
       def simplified_type(field_type)
         case field_type
@@ -71,7 +71,7 @@ module ArJdbc
         else
           super
         end
-      end
+      end unless AR42
 
       # Post process default value from JDBC into a Rails-friendly format (columns{-internal})
       def default_value(value)
