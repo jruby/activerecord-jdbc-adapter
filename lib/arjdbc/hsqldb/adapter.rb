@@ -246,6 +246,9 @@ module ArJdbc
     def supports_views?; true end
 
     # @override
+    def supports_foreign_keys?; true end
+
+    # @override
     def structure_dump
       execute('SCRIPT').map do |result|
         # [ { 'command' => SQL }, { 'command' ... }, ... ]
