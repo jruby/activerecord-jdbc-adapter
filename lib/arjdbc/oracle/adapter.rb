@@ -640,15 +640,11 @@ module ArJdbc
       (owner, desc_table_name, db_link) = describe(table_name) unless desc_table_name
 
       trigger_name = default_trigger_name(table_name).upcase
-      pkt_sql = <<-SQL
-        SELECT trigger_name
-        FROM all_triggers#{db_link}
-        WHERE owner = '#{owner}'
-          AND trigger_name = '#{trigger_name}'
-          AND table_owner = '#{owner}'
-          AND table_name = '#{desc_table_name}'
-          AND status = 'ENABLED'
-      SQL
+      pkt_sql = "SELECT trigger_name FROM all_triggers#{db_link} WHERE owner = '#{owner}'" <<
+          " AND trigger_name = '#{trigger_name}'" <<
+          " AND table_owner = '#{owner}'" <<
+          " AND table_name = '#{desc_table_name}'" <<
+          " AND status = 'ENABLED'"
       select_value(pkt_sql, 'Primary Key Trigger') ? true : false
     end
 
@@ -669,27 +665,24 @@ module ArJdbc
     def pk_and_sequence_for(table_name, owner = nil, desc_table_name = nil, db_link = nil)
       (owner, desc_table_name, db_link) = describe(table_name) unless desc_table_name
 
-      seqs = select_values(<<-SQL.strip.gsub(/\s+/, ' '), 'Sequence')
-        SELECT us.sequence_name
-        FROM all_sequences#{db_link} us
-        WHERE us.sequence_owner = '#{owner}'
-        AND us.sequence_name = '#{desc_table_name}_SEQ'
-      SQL
+      seqs = "SELECT us.sequence_name" <<
+        " FROM all_sequences#{db_link} us" <<
+        " WHERE us.sequence_owner = '#{owner}'" <<
+          " AND us.sequence_name = '#{desc_table_name}_SEQ'"
+      seqs = select_values(seqs, 'Sequence')
 
       # changed back from user_constraints to all_constraints for consistency
-      pks = select_values(<<-SQL.strip.gsub(/\s+/, ' '), 'Primary Key')
-        SELECT cc.column_name
-          FROM all_constraints#{db_link} c, all_cons_columns#{db_link} cc
-         WHERE c.owner = '#{owner}'
-           AND c.table_name = '#{desc_table_name}'
-           AND c.constraint_type = 'P'
-           AND cc.owner = c.owner
-           AND cc.constraint_name = c.constraint_name
-      SQL
+      pks = "SELECT cc.column_name" <<
+        " FROM all_constraints#{db_link} c, all_cons_columns#{db_link} cc" <<
+        " WHERE c.owner = '#{owner}'" <<
+          " AND c.table_name = '#{desc_table_name}'" <<
+          " AND c.constraint_type = 'P'" <<
+          " AND cc.owner = c.owner" <<
+          " AND cc.constraint_name = c.constraint_name"
+      pks = select_values(pks, 'Primary Key')
 
       # only support single column keys
-      pks.size == 1 ? [oracle_downcase(pks.first),
-                       oracle_downcase(seqs.first)] : nil
+      pks.size == 1 ? [oracle_downcase(pks.first), oracle_downcase(seqs.first)] : nil
     end
     private :pk_and_sequence_for
 
