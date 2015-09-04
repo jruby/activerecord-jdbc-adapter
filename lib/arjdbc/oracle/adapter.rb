@@ -307,7 +307,7 @@ module ArJdbc
         raise ArgumentError, "Index name '#{index_name}' on table '#{table_name}' already exists"
       end
 
-      quoted_column_names = column_names.map { |e| quote_column_name_or_expression(e) }.join(", ")
+      quoted_column_names = column_names.map { |e| quote_column_name(e, true) }.join(", ")
       [ index_name, index_type, quoted_column_names, tablespace, index_options ]
     end if AR42
 
@@ -480,17 +480,24 @@ module ArJdbc
       name.to_s.split('.').map{ |n| n.split('@').map{ |m| quote_column_name(m) }.join('@') }.join('.')
     end
 
+    # @private
+    LOWER_CASE_ONLY = /\A[a-z][a-z_0-9\$#]*\Z/
+
     # @override
-    def quote_column_name(name)
+    def quote_column_name(name, handle_expression = false)
       # if only valid lowercase column characters in name
-      if ( name = name.to_s ) =~ /\A[a-z][a-z_0-9\$#]*\Z/
+      if ( name = name.to_s ) =~ LOWER_CASE_ONLY
         # putting double-quotes around an identifier causes Oracle to treat the
         # identifier as case sensitive (otherwise assumes case-insensitivity) !
         # all upper case is an exception, where double-quotes are meaningless
         "\"#{name.upcase}\"" # name.upcase
       else
-        # remove double quotes which cannot be used inside quoted identifier
-        "\"#{name.gsub('"', '')}\""
+        if handle_expression
+          name =~ /^[a-z][a-z_0-9\$#\-]*$/i ? "\"#{name}\"" : name
+        else
+          # remove double quotes which cannot be used inside quoted identifier
+          "\"#{name.gsub('"', '')}\""
+        end
       end
     end
 
