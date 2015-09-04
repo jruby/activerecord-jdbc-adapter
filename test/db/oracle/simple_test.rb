@@ -10,6 +10,17 @@ class OracleSimpleTest < Test::Unit::TestCase
   def xml_sql_type; 'XMLTYPE'; end
 
   # @override
+  def test_use_xml_column
+    pend("not able to get SQLXML working in Oracle's driver")
+    #    Java::JavaLang::NullPointerException:
+    #  oracle.jdbc.driver.NamedTypeAccessor.getOracleObject(NamedTypeAccessor.java:320)
+    #  oracle.jdbc.driver.NamedTypeAccessor.getSQLXML(NamedTypeAccessor.java:431)
+    #  oracle.jdbc.driver.OracleResultSetImpl.getSQLXML(OracleResultSetImpl.java:1251)
+    #  arjdbc.jdbc.RubyJdbcConnection.xmlToRuby(RubyJdbcConnection.java:2017)
+    #  arjdbc.jdbc.RubyJdbcConnection.jdbcToRuby(RubyJdbcConnection.java:1657)
+  end
+
+  # @override
   def test_insert_returns_id
     # not supported (we pre-select id values from sequences) {#test_exec_insert}
   end
