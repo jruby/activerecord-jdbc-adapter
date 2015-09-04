@@ -725,6 +725,22 @@ module ArJdbc
     # @override
     def supports_foreign_keys?; true end
 
+    # @private
+    def disable_referential_integrity
+      sql_constraints = "SELECT constraint_name, owner, table_name FROM user_constraints WHERE constraint_type = 'R' AND status = 'ENABLED'"
+      old_constraints = select_all(sql_constraints)
+      begin
+        old_constraints.each do |constraint|
+          execute "ALTER TABLE #{constraint["table_name"]} DISABLE CONSTRAINT #{constraint["constraint_name"]}"
+        end
+        yield
+      ensure
+        old_constraints.reverse_each do |constraint|
+          execute "ALTER TABLE #{constraint["table_name"]} ENABLE CONSTRAINT #{constraint["constraint_name"]}"
+        end
+      end
+    end
+
     # @override (for AR <= 3.0)
     def insert_sql(sql, name = nil, pk = nil, id_value = nil, sequence_name = nil)
       # if PK is already pre-fetched from sequence or if there is no PK :
