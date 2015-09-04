@@ -722,6 +722,9 @@ module ArJdbc
       pk_and_sequence && pk_and_sequence.first
     end
 
+    # @override
+    def supports_foreign_keys?; true end
+
     # @override (for AR <= 3.0)
     def insert_sql(sql, name = nil, pk = nil, id_value = nil, sequence_name = nil)
       # if PK is already pre-fetched from sequence or if there is no PK :
