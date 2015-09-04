@@ -624,6 +624,18 @@ module ActiveRecord
         @connection.primary_keys(table)
       end
 
+      # @override
+      def foreign_keys(table_name)
+        @connection.foreign_keys(table_name)
+      end if ArJdbc::AR42
+
+      # Does our database (+ its JDBC driver) support foreign-keys?
+      # @since 1.3.18
+      # @override
+      def supports_foreign_keys?
+        @connection.supports_foreign_keys?
+      end if ArJdbc::AR42
+
       # @deprecated Rather use {#update_lob_value} instead.
       def write_large_object(*args)
         @connection.write_large_object(*args)

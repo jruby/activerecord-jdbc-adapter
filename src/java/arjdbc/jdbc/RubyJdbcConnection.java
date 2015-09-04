@@ -154,6 +154,15 @@ public class RubyJdbcConnection extends RubyObject {
 
     /**
      * @param runtime
+     * @return <code>ActiveRecord::ConnectionAdapters::ForeignKeyDefinition</code>
+     * @note only since AR 4.2
+     */
+    protected static RubyClass getForeignKeyDefinition(final Ruby runtime) {
+        return getConnectionAdapters(runtime).getClass("ForeignKeyDefinition");
+    }
+
+    /**
+     * @param runtime
      * @return <code>ActiveRecord::JDBCError</code>
      */
     protected static RubyClass getJDBCError(final Ruby runtime) {
@@ -1269,6 +1278,97 @@ public class RubyJdbcConnection extends RubyObject {
         final RubyClass adapterClass = getAdapter(context).getMetaClass();
         IRubyObject IDef = adapterClass.getConstantAt("IndexDefinition");
         return IDef != null ? (RubyClass) IDef : getIndexDefinition(context.runtime);
+    }
+
+    @JRubyMethod
+    public IRubyObject foreign_keys(final ThreadContext context, IRubyObject table_name) {
+        return foreignKeys(context, table_name.toString(), null, null);
+    }
+
+    protected IRubyObject foreignKeys(final ThreadContext context, final String tableName, final String schemaName, final String catalog) {
+        return withConnection(context, new Callable<IRubyObject>() {
+            public IRubyObject call(final Connection connection) throws SQLException {
+                final Ruby runtime = context.getRuntime();
+                final RubyClass FKDefinition = getForeignKeyDefinition(context);
+
+                String _tableName = caseConvertIdentifierForJdbc(connection, tableName);
+                String _schemaName = caseConvertIdentifierForJdbc(connection, schemaName);
+                final TableName table = extractTableName(connection, catalog, _schemaName, _tableName);
+
+                ResultSet fkInfoSet = null;
+                final List<IRubyObject> fKeys = new ArrayList<IRubyObject>(8);
+                try {
+                    final DatabaseMetaData metaData = connection.getMetaData();
+                    fkInfoSet = metaData.getImportedKeys(table.catalog, table.schema, table.name);
+
+                    while ( fkInfoSet.next() ) {
+                        final RubyHash options = RubyHash.newHash(runtime);
+
+                        String fkName = fkInfoSet.getString("FK_NAME");
+                        if (fkName != null) {
+                            fkName = caseConvertIdentifierForRails(metaData, fkName);
+                            options.put(runtime.newSymbol("name"), fkName);
+                        }
+
+                        String columnName = fkInfoSet.getString("FKCOLUMN_NAME");
+                        options.put(runtime.newSymbol("column"), caseConvertIdentifierForRails(metaData, columnName));
+
+                        columnName = fkInfoSet.getString("PKCOLUMN_NAME");
+                        options.put(runtime.newSymbol("primary_key"), caseConvertIdentifierForRails(metaData, columnName));
+
+                        String fkTableName = fkInfoSet.getString("FKTABLE_NAME");
+                        fkTableName = caseConvertIdentifierForRails(metaData, fkTableName);
+
+                        String pkTableName = fkInfoSet.getString("PKTABLE_NAME");
+                        pkTableName = caseConvertIdentifierForRails(metaData, pkTableName);
+
+                        final String onDelete = extractForeignKeyRule( fkInfoSet.getInt("DELETE_RULE") );
+                        if ( onDelete != null ) options.op_aset(context, runtime.newSymbol("on_delete"), runtime.newSymbol(onDelete));
+
+                        final String onUpdate = extractForeignKeyRule( fkInfoSet.getInt("UPDATE_RULE") );
+                        if ( onUpdate != null ) options.op_aset(context, runtime.newSymbol("on_update"), runtime.newSymbol(onUpdate));
+
+                        IRubyObject[] args = new IRubyObject[] {
+                            RubyString.newUnicodeString(runtime, fkTableName), // from_table
+                            RubyString.newUnicodeString(runtime, pkTableName), // to_table
+                            options
+                        };
+
+                        fKeys.add( FKDefinition.callMethod(context, "new", args) ); // ForeignKeyDefinition.new
+                    }
+
+                    return runtime.newArray(fKeys);
+
+                } finally { close(fkInfoSet); }
+            }
+        });
+    }
+
+    protected String extractForeignKeyRule(final int rule) {
+        switch (rule) {
+            case DatabaseMetaData.importedKeyNoAction :  return null ;
+            case DatabaseMetaData.importedKeyCascade :   return "cascade" ;
+            case DatabaseMetaData.importedKeySetNull :   return "nullify" ;
+            case DatabaseMetaData.importedKeySetDefault: return "default" ;
+        }
+        return null;
+    }
+
+    protected RubyClass getForeignKeyDefinition(final ThreadContext context) {
+        final RubyClass adapterClass = getAdapter(context).getMetaClass();
+        IRubyObject FKDef = adapterClass.getConstantAt("ForeignKeyDefinition");
+        return FKDef != null ? (RubyClass) FKDef : getForeignKeyDefinition(context.runtime);
+    }
+
+
+    @JRubyMethod(name = "supports_foreign_keys?")
+    public IRubyObject supports_foreign_keys_p(final ThreadContext context) throws SQLException {
+        return withConnection(context, new Callable<IRubyObject>() {
+            public IRubyObject call(final Connection connection) throws SQLException {
+                final DatabaseMetaData metaData = connection.getMetaData();
+                return context.getRuntime().newBoolean( metaData.supportsIntegrityEnhancementFacility() );
+            }
+        });
     }
 
     @JRubyMethod(name = "supports_views?")
