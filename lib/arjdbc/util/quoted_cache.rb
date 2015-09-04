@@ -28,7 +28,7 @@ module ArJdbc
       # Caches quoted table names, the cache is stored in the class'
       # `QUOTED_TABLE_NAMES` constant.
       # @return [String]
-      def quote_table_name(name)
+      def quote_table_name(name, *args)
         if cache = self.class::QUOTED_TABLE_NAMES
           unless quoted = cache[name]
             quoted = super
@@ -43,7 +43,7 @@ module ArJdbc
       # Caches quoted table names, the cache is stored in the class'
       # `QUOTED_COLUMN_NAMES` constant.
       # @return [String]
-      def quote_column_name(name)
+      def quote_column_name(name, *args)
         if cache = self.class::QUOTED_COLUMN_NAMES
           unless quoted = cache[name]
             quoted = super
