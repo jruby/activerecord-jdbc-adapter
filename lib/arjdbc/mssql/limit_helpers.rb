@@ -28,13 +28,21 @@ module ArJdbc
           #   ActiveRecord::StatementInvalid: ActiveRecord::JDBCError: Column 'users.id' is invalid in the select list because it is not contained in either an aggregate function or the GROUP BY clause.
           #   SELECT t.* FROM ( SELECT ROW_NUMBER() OVER(ORDER BY users.id) AS _row_num, [users].[lft], COUNT([users].[lft]) FROM [users] GROUP BY [users].[lft] HAVING COUNT([users].[lft]) > 1 ) AS t WHERE t._row_num BETWEEN 1 AND 1
           if rest_of_query.downcase.include?('group by')
-            order_start = order.strip[0, 8]; order_start.upcase!
-            if order_start == 'ORDER BY' && order.match(FIND_AGGREGATE_FUNCTION)
-              # do nothing
-            elsif order.count(',') == 0
-              order.gsub!(/ORDER +BY +([^\s]+)(\s+ASC|\s+DESC)?/i, 'ORDER BY MIN(\1)\2')
-            else
-              raise('Only one order condition allowed.')
+            # Do not catch 'GROUP BY' statements from sub-selects, indicated
+            # by more closing than opening brackets after the last group by.
+            rest_after_last_group_by = rest_of_query.downcase.split('group by').last
+            opening_brackets_count = rest_after_last_group_by.count('(')
+            closing_brackets_count = rest_after_last_group_by.count(')')
+
+            if opening_brackets_count == closing_brackets_count
+              order_start = order.strip[0, 8]; order_start.upcase!
+              if order_start == 'ORDER BY' && order.match(FIND_AGGREGATE_FUNCTION)
+                # do nothing
+              elsif order.count(',') == 0
+                order.gsub!(/ORDER +BY +([^\s]+)(\s+ASC|\s+DESC)?/i, 'ORDER BY MIN(\1)\2')
+              else
+                raise('Only one order condition allowed.')
+              end
             end
           end
 
