@@ -163,6 +163,12 @@ class FirebirdSimpleTest < Test::Unit::TestCase
     DbType.reset_column_information
   end if ar_version('3.0')
 
+  protected
+
+  def assert_empty_string value
+    assert_equal nil, value # empty string treated as a null value in Firebird
+  end
+
 end
 
 class FirebirdHasManyThroughTest < Test::Unit::TestCase

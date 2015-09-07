@@ -61,6 +61,15 @@ public class FirebirdRubyJdbcConnection extends RubyJdbcConnection {
         }
     };
 
+    @Override // resultSet.wasNull() might be falsy for '' treated as null
+    protected IRubyObject stringToRuby(final ThreadContext context,
+        final Ruby runtime, final ResultSet resultSet, final int column)
+        throws SQLException {
+        final String value = resultSet.getString(column);
+        if ( value == null ) return runtime.getNil();
+        return RubyString.newUnicodeString(runtime, value);
+    }
+
     @Override // booleans are emulated can not setNull(index, Types.BOOLEAN)
     protected void setBooleanParameter(final ThreadContext context,
         final Connection connection, final PreparedStatement statement,
