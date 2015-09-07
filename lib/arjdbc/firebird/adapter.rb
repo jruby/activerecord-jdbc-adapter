@@ -1,3 +1,5 @@
+ArJdbc.load_java_part :Firebird
+
 module ArJdbc
   module Firebird
 
@@ -13,6 +15,11 @@ module ArJdbc
 
       require 'arjdbc/util/serialized_attributes'
       Util::SerializedAttributes.setup /blob/i
+    end
+
+    # @see ActiveRecord::ConnectionAdapters::JdbcAdapter#jdbc_connection_class
+    def self.jdbc_connection_class
+      ::ActiveRecord::ConnectionAdapters::FirebirdJdbcConnection
     end
 
     # @see ActiveRecord::ConnectionAdapters::JdbcColumn#column_types
