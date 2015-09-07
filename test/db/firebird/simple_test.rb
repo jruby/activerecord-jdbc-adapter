@@ -119,6 +119,10 @@ class FirebirdSimpleTest < Test::Unit::TestCase
   # @override
   def test_raw_insert_bind_param_with_q_mark_deprecated; end
 
+  def test_truncate
+    # super FB does not support TRUNCATE TABLE !
+  end #if Test::Unit::TestCase.ar_version('3.2')
+
   test 'returns correct visitor type' do
     assert_not_nil visitor = connection.instance_variable_get(:@visitor)
     assert defined? Arel::Visitors::Firebird
