@@ -137,4 +137,18 @@ public class FirebirdRubyJdbcConnection extends RubyJdbcConnection {
         return columns;
     }
 
+    // storesMixedCaseIdentifiers() return false;
+    // storesLowerCaseIdentifiers() return false;
+    // storesUpperCaseIdentifiers() return true;
+
+    @Override
+    protected String caseConvertIdentifierForRails(final Connection connection, final String value) {
+        return value == null ? null : value.toLowerCase();
+    }
+
+    @Override
+    protected String caseConvertIdentifierForJdbc(final Connection connection, final String value) {
+        return value == null ? null : value.toUpperCase();
+    }
+
 }
