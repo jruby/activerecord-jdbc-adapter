@@ -12,6 +12,7 @@ require 'test_helper'
 #
 
 config = { :adapter => 'firebird' }
+config[:host] = ENV['FB_HOST'] if ENV['FB_HOST']
 config[:username] = ENV['FB_USER'] || 'sysdba'
 config[:password] = ENV['FB_PASS'] || 'masterkey'
 config[:database] = ENV['FB_DATABASE'] || './test.fdb'
