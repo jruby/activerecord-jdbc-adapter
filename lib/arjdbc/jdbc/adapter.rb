@@ -593,6 +593,17 @@ module ActiveRecord
       end
       private :_execute
 
+      # Kind of `execute(sql) rescue nil` but logging failures at debug level only.
+      def execute_quietly(sql, name = 'SQL')
+        log(sql, name) do
+          begin
+            _execute(sql)
+          rescue => e
+            logger.debug("#{e.class}: #{e.message}: #{sql}")
+          end
+        end
+      end
+
       # @override
       def tables(name = nil)
         @connection.tables
