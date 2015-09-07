@@ -164,6 +164,11 @@ module ArJdbc
       m.register_type %r(xmltype)i, XmlType.new
     end if AR42
 
+    def clear_cache!
+      super
+      reload_type_map
+    end if AR42
+
     # @private
     class RawType < ActiveRecord::Type::String
       def type; :raw end
