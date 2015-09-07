@@ -195,10 +195,13 @@ class OracleSimpleTest < Test::Unit::TestCase
       end
     end
     connection.create_table(:activities) { |t| t.string :name }
-    assert activity.create! :name => 'an-activity' # Activity.create! ...
+    #Activity.create! :name => 'an-Activity-instance'
+    assert activity.create! :name => 'an-activity-alias'
   ensure
     connection.drop_table(:activities) rescue nil
   end
+
+  #class Activity < ActiveRecord::Base; end
 
   def test_rename_table
     user = User.create! :login => 'looser'
