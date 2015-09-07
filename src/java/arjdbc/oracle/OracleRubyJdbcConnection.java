@@ -43,6 +43,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.DatabaseMetaData;
 import java.sql.PreparedStatement;
+import java.sql.ResultSetMetaData;
 import java.sql.Statement;
 import java.sql.Types;
 import java.util.Collections;
@@ -271,6 +272,45 @@ public class OracleRubyJdbcConnection extends RubyJdbcConnection {
             tables.append(RubyString.newUnicodeString(runtime, name));
         }
         return tables;
+    }
+
+    @Override
+    protected ColumnData[] extractColumns(final Ruby runtime,
+        final Connection connection, final ResultSet resultSet,
+        final boolean downCase) throws SQLException {
+
+        final ResultSetMetaData resultMetaData = resultSet.getMetaData();
+
+        final int columnCount = resultMetaData.getColumnCount();
+        final ColumnData[] columns = new ColumnData[columnCount];
+
+        for ( int i = 1; i <= columnCount; i++ ) { // metadata is one-based
+            String name = resultMetaData.getColumnLabel(i);
+            if ( downCase ) {
+                name = name.toLowerCase();
+            } else {
+                name = caseConvertIdentifierForRails(connection, name);
+            }
+            final RubyString columnName = RubyString.newUnicodeString(runtime, name);
+
+            int columnType = resultMetaData.getColumnType(i);
+            if (columnType == Types.NUMERIC) {
+                // avoid extracting all NUMBER columns as BigDecimal :
+                if (resultMetaData.getScale(i) == 0) {
+                    final int prec = resultMetaData.getPrecision(i);
+                    if ( prec < 10 ) { // fits into int
+                        columnType = Types.INTEGER;
+                    }
+                    else if ( prec < 19 ) { // fits into long
+                        columnType = Types.BIGINT;
+                    }
+                }
+            }
+
+            columns[i - 1] = new ColumnData(columnName, columnType, i);
+        }
+
+        return columns;
     }
 
     // storesMixedCaseIdentifiers() return false;
