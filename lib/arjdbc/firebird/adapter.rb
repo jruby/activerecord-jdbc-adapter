@@ -201,8 +201,8 @@ module ArJdbc
     def column_name_length; IDENTIFIER_LENGTH; end
 
     def default_sequence_name(table_name, column = nil)
-      # TODO: remove schema prefix if present (before truncating)
-      "#{table_name.to_s[0, IDENTIFIER_LENGTH - 4]}_seq"
+      len = IDENTIFIER_LENGTH - 4
+      table_name.to_s.gsub (/(^|\.)([\w$-]{1,#{len}})([\w$-]*)$/), '\1\2_seq'
     end
 
     # Set the sequence to the max value of the table's column.
