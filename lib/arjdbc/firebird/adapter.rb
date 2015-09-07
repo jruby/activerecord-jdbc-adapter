@@ -217,12 +217,14 @@ module ArJdbc
 
     def create_table(name, options = {})
       super(name, options)
-      execute "CREATE GENERATOR #{name}_seq"
+      execute "CREATE GENERATOR #{default_sequence_name(name)}"
     end
 
     def rename_table(name, new_name)
       execute "RENAME #{name} TO #{new_name}"
-      execute "UPDATE RDB$GENERATORS SET RDB$GENERATOR_NAME='#{new_name}_seq' WHERE RDB$GENERATOR_NAME='#{name}_seq'" rescue nil
+      name_seq = default_sequence_name(name)
+      new_name_seq = default_sequence_name(new_name)
+      execute "UPDATE RDB$GENERATORS SET RDB$GENERATOR_NAME='#{new_name_seq}' WHERE RDB$GENERATOR_NAME='#{name_seq}'" rescue nil
     end
 
     def drop_table(name, options = {})
