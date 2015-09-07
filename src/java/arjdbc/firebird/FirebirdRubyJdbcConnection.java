@@ -107,7 +107,7 @@ public class FirebirdRubyJdbcConnection extends RubyJdbcConnection {
         throws SQLException {
         String value = resultSet.getString(column);
         if ( value == null ) return runtime.getNil();
-        if ( value.length() > 1 ) {
+        if ( value.length() > 1 && value.charAt(1) == ' ' ) {
             value = value.substring(0, 1);
         }
         return RubyString.newUnicodeString(runtime, value);
@@ -118,7 +118,7 @@ public class FirebirdRubyJdbcConnection extends RubyJdbcConnection {
         throws SQLException {
         String value = resultSet.getString(column);
         if ( value == null ) return runtime.getNil();
-        if ( value.length() > 2 ) {
+        if ( value.length() > 2 && value.charAt(2) == ' ' ) {
             value = value.substring(0, 2);
         }
         return RubyString.newUnicodeString(runtime, value);
