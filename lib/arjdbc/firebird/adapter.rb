@@ -52,6 +52,9 @@ module ArJdbc
 
     end
 
+    # @see ActiveRecord::ConnectionAdapters::JdbcAdapter#jdbc_column_class
+    def jdbc_column_class; ::ActiveRecord::ConnectionAdapters::FirebirdColumn end
+
     # @see ArJdbc::ArelHelper::ClassMethods#arel_visitor_type
     def self.arel_visitor_type(config = nil)
       require 'arel/visitors/firebird'; ::Arel::Visitors::Firebird
@@ -224,7 +227,7 @@ module ArJdbc
       execute "RENAME #{name} TO #{new_name}"
       name_seq = default_sequence_name(name)
       new_name_seq = default_sequence_name(new_name)
-      execute "UPDATE RDB$GENERATORS SET RDB$GENERATOR_NAME='#{new_name_seq}' WHERE RDB$GENERATOR_NAME='#{name_seq}'" rescue nil
+      execute_quietly "UPDATE RDB$GENERATORS SET RDB$GENERATOR_NAME='#{new_name_seq}' WHERE RDB$GENERATOR_NAME='#{name_seq}'"
     end
 
     def drop_table(name, options = {})
@@ -327,4 +330,36 @@ module ArJdbc
 
   end
   FireBird = Firebird
+end
+
+require 'arjdbc/util/quoted_cache'
+
+module ActiveRecord::ConnectionAdapters
+
+  remove_const(:FirebirdAdapter) if const_defined?(:FirebirdAdapter)
+
+  class FirebirdAdapter < JdbcAdapter
+    include ::ArJdbc::Firebird
+    include ::ArJdbc::Util::QuotedCache
+
+    # By default, the FirebirdAdapter will consider all columns of type
+    # <tt>char(1)</tt> as boolean. If you wish to disable this :
+    #
+    #   ActiveRecord::ConnectionAdapters::FirebirdAdapter.emulate_booleans = false
+    #
+    def self.emulate_booleans?; ::ArJdbc::Firebird.emulate_booleans?; end
+    def self.emulate_booleans;  ::ArJdbc::Firebird.emulate_booleans?; end # oracle-enhanced
+    def self.emulate_booleans=(emulate); ::ArJdbc::Firebird.emulate_booleans = emulate; end
+
+    def initialize(*args)
+      ::ArJdbc::Firebird.initialize!
+      super
+    end
+
+  end
+
+  class FirebirdColumn < JdbcColumn
+    include ::ArJdbc::Firebird::Column
+  end
+
 end
