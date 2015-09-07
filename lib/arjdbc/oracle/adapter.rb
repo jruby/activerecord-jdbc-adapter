@@ -147,7 +147,11 @@ module ArJdbc
         precision = extract_precision(sql_type)
         limit = extract_limit(sql_type)
         if scale == 0
-          ActiveRecord::Type::Integer.new(:precision => precision, :limit => limit)
+          if Oracle.emulate_booleans? && limit == 1
+            ActiveRecord::Type::Boolean.new
+          else
+            ActiveRecord::Type::Integer.new(:precision => precision, :limit => limit)
+          end
         else
           ActiveRecord::Type::Decimal.new(:precision => precision, :scale => scale)
         end
