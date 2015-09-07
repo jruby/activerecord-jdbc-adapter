@@ -141,6 +141,28 @@ class FirebirdSimpleTest < Test::Unit::TestCase
     sql = "SELECT FIRST 3  SKIP 3  \"ENTRIES\".* FROM \"ENTRIES\" "
     assert_equal Entry.limit(3).offset(3).to_sql, sql
   end
+
+  def test_emulates_booleans_by_default
+    assert_true ArJdbc::Firebird.emulate_booleans?
+    # assert_true ActiveRecord::ConnectionAdapters::FirebirdAdapter.emulate_booleans
+  end if ar_version('3.0')
+
+  def test_boolean_emulation_can_be_disabled
+    db_type = DbType.create! :sample_boolean => true
+    column = DbType.columns.find { |col| col.name.to_s == 'sample_boolean' }
+    assert_equal :boolean, column.type
+    ArJdbc::Firebird.emulate_booleans = false
+
+    DbType.reset_column_information
+    column = DbType.columns.find { |col| col.name.to_s == 'sample_boolean' }
+    assert_equal :string, column.type # # CHAR(1)
+
+    assert_equal '1', db_type.reload.sample_boolean
+  ensure
+    ArJdbc::Firebird.emulate_booleans = true
+    DbType.reset_column_information
+  end if ar_version('3.0')
+
 end
 
 class FirebirdHasManyThroughTest < Test::Unit::TestCase
