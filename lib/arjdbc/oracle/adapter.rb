@@ -932,8 +932,8 @@ module ActiveRecord::ConnectionAdapters
     include ::ArJdbc::Oracle
     include ::ArJdbc::Util::QuotedCache
 
-    # By default, the MysqlAdapter will consider all columns of type
-    # <tt>tinyint(1)</tt> as boolean. If you wish to disable this :
+    # By default, the OracleAdapter will consider all columns of type
+    # <tt>NUMBER(1)</tt> as boolean. If you wish to disable this :
     #
     #   ActiveRecord::ConnectionAdapters::OracleAdapter.emulate_booleans = false
     #
