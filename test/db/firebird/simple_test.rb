@@ -129,19 +129,6 @@ class FirebirdSimpleTest < Test::Unit::TestCase
     assert_kind_of Arel::Visitors::Firebird, visitor
   end if ar_version('3.0')
 
-  def test_arel_visitor_limit
-    assert_equal Entry.limit(3).to_sql, "SELECT FIRST 3  \"ENTRIES\".* FROM \"ENTRIES\" "
-  end
-
-  def test_arel_visitor_offset
-    assert_equal Entry.offset(3).to_sql, "SELECT SKIP 3 \"ENTRIES\".* FROM \"ENTRIES\" "
-  end
-
-  def test_arel_visitor_limit_and_offset
-    sql = "SELECT FIRST 3  SKIP 3  \"ENTRIES\".* FROM \"ENTRIES\" "
-    assert_equal Entry.limit(3).offset(3).to_sql, sql
-  end
-
   def test_emulates_booleans_by_default
     assert_true ArJdbc::Firebird.emulate_booleans?
     # assert_true ActiveRecord::ConnectionAdapters::FirebirdAdapter.emulate_booleans
@@ -165,12 +152,43 @@ class FirebirdSimpleTest < Test::Unit::TestCase
 
   protected
 
-  def assert_empty_string value
-    assert_equal nil, value # empty string treated as a null value in Firebird
-  end
+  #def assert_empty_string value
+  #  assert_equal nil, value # empty string treated as a null value in Firebird
+  #end
 
 end
 
 class FirebirdHasManyThroughTest < Test::Unit::TestCase
   include HasManyThroughMethods
+end
+
+class FirebirdUnitTest < Test::Unit::TestCase
+
+  def test_arel_visitor_limit
+    expected = "SELECT FIRST 3  \"ENTRIES\".* FROM \"ENTRIES\""
+    if ar_version('4.2')
+      assert_equal expected, Entry.limit(3).to_sql
+    else
+      assert_equal "#{expected} ", Entry.limit(3).to_sql
+    end
+  end
+
+  def test_arel_visitor_offset
+    expected = "SELECT SKIP 3 \"ENTRIES\".* FROM \"ENTRIES\""
+    if ar_version('4.2')
+      assert_equal expected, Entry.offset(3).to_sql
+    else
+      assert_equal "#{expected} ", Entry.offset(3).to_sql
+    end
+  end
+
+  def test_arel_visitor_limit_and_offset
+    expected = "SELECT FIRST 3 SKIP 3  \"ENTRIES\".* FROM \"ENTRIES\""
+    if ar_version('4.2')
+      assert_equal expected, Entry.limit(3).offset(3).to_sql
+    else
+      assert_equal "#{expected} ", Entry.limit(3).offset(3).to_sql
+    end
+  end
+
 end

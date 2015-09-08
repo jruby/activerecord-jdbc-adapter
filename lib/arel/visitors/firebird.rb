@@ -8,12 +8,16 @@ module Arel
         def visit_Arel_Nodes_SelectStatement(o, a)
           a = o.cores.inject(a) { |c, x| visit_Arel_Nodes_SelectCore(x, c) }
 
-          if ( limit = o.limit ) || ( offset = o.offset)
+          limit, offset = o.limit, o.offset
+          if limit || offset
             select = a.parts[0]
 
             sql = Arel::Collectors::SQLString.new
             visit(limit, sql) if limit
-            visit(offset, sql) if offset
+            if offset
+              sql << ' ' if limit
+              visit(offset, sql)
+            end
 
             a.parts[0] = "#{select} #{sql.value}"
           end
