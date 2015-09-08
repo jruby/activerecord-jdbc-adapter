@@ -515,13 +515,6 @@ module ArJdbc
 
     # @private
     SKIP_COLUMNS_TABLE_NAMES_RE = /^information_schema\./i
-    # @private
-    IDENTITY_COLUMN_TYPE_RE = /identity/i
-    # NOTE: these do not handle = equality as expected
-    # see {#repair_special_columns}
-    # (TEXT, NTEXT, and IMAGE data types are deprecated)
-    # @private
-    SPECIAL_COLUMN_TYPE_RE = /text|ntext|image|xml/i
 
     # @private
     EMPTY_ARRAY = [].freeze
@@ -537,12 +530,7 @@ module ArJdbc
       return default if table_name =~ SKIP_COLUMNS_TABLE_NAMES_RE
 
       unless columns = ( @table_columns ||= {} )[table_name]
-        columns = super(table_name, name)
-        for column in columns
-          column.identity = true if column.sql_type =~ IDENTITY_COLUMN_TYPE_RE
-          column.special = true if column.sql_type =~ SPECIAL_COLUMN_TYPE_RE
-        end
-        @table_columns[table_name] = columns
+        @table_columns[table_name] = columns = super(table_name, name)
       end
       columns
     end
@@ -708,7 +696,7 @@ module ArJdbc
       columns = self.columns(qualified_table_name, nil, nil)
       return columns if ! columns || columns.empty?
       special = []
-      columns.each { |column| special << column.name if column.special }
+      columns.each { |column| special << column.name if column.special? }
       special
     end
 
