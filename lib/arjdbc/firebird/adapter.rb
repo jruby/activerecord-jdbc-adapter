@@ -130,6 +130,68 @@ module ArJdbc
       NATIVE_DATABASE_TYPES
     end
 
+    def initialize_type_map(m)
+      register_class_with_limit m, %r(binary)i, ActiveRecord::Type::Binary
+      register_class_with_limit m, %r(text)i,   ActiveRecord::Type::Text
+
+      register_class_with_limit m, %r(date(:?\(.*?\))?$)i, DateType
+      register_class_with_limit m, %r(time(:?\(.*?\))?$)i, ActiveRecord::Type::Time
+
+      register_class_with_limit m, %r(float)i, ActiveRecord::Type::Float
+      register_class_with_limit m, %r(int)i,   ActiveRecord::Type::Integer
+
+      m.alias_type %r(blob)i,   'binary'
+      m.alias_type %r(clob)i,   'text'
+      m.alias_type %r(double)i, 'float'
+
+      m.register_type(%r(decimal)i) do |sql_type|
+        scale = extract_scale(sql_type)
+        precision = extract_precision(sql_type)
+        if scale == 0
+          ActiveRecord::Type::Integer.new(precision: precision)
+        else
+          ActiveRecord::Type::Decimal.new(precision: precision, scale: scale)
+        end
+      end
+      m.alias_type %r(numeric)i, 'decimal'
+
+      register_class_with_limit m, %r(varchar)i, ActiveRecord::Type::String
+
+      m.register_type(%r(^char)i) do |sql_type|
+        precision = extract_precision(sql_type)
+        if Firebird.emulate_booleans? && precision == 1
+          ActiveRecord::Type::Boolean.new
+        else
+          ActiveRecord::Type::String.new(:precision => precision)
+        end
+      end
+
+      register_class_with_limit m, %r(datetime)i, ActiveRecord::Type::DateTime
+      register_class_with_limit m, %r(timestamp)i, TimestampType
+    end if AR42
+
+    def clear_cache!
+      super
+      reload_type_map
+    end if AR42
+
+    # @private
+    class DateType < ActiveRecord::Type::Date
+      # NOTE: quote still gets called ...
+      #def type_cast_for_database(value)
+      #  if value.acts_like?(:date)
+      #    "'#{value.strftime("%Y-%m-%d")}'"
+      #  else
+      #    super
+      #  end
+      #end
+    end if AR42
+
+    # @private
+    class TimestampType < ActiveRecord::Type::DateTime
+      def type; :timestamp end
+    end if AR42
+
     def type_to_sql(type, limit = nil, precision = nil, scale = nil)
       case type
       when :integer
