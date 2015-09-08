@@ -39,17 +39,20 @@ module Arel
 
       else
 
-        # @private
-        SELECT_RE = /\A(\s*SELECT\s)/i
-
         def visit_Arel_Nodes_SelectStatement o, a = nil
-          lim_off = ''
-          lim_off << "FIRST #{do_visit o.limit.expr, a} " if o.limit
-          lim_off << " SKIP #{do_visit o.offset.expr, a}" if o.offset
-          lim_off.strip!
+          if o.limit
+            limit = do_visit o.limit.expr, a
+          else
+            limit = nil
+          end
+          if o.offset
+            offset = do_visit o.offset.expr, a
+          else
+            offset = nil
+          end
 
           sql = o.cores.map { |x| do_visit_select_core x, a }.join
-          sql.sub!(SELECT_RE, "\\&#{lim_off} ") unless lim_off.empty?
+          @connection.insert_limit_offset!(sql, limit, offset) if limit || offset
 
           unless o.orders.empty?
             sql << ' ORDER BY '

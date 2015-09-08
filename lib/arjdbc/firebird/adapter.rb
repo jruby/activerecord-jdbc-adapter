@@ -248,11 +248,21 @@ module ArJdbc
     end
 
     def add_limit_offset!(sql, options)
-      if options[:limit]
-        limit_string = "FIRST #{options[:limit]}"
-        limit_string << " SKIP #{options[:offset]}" if options[:offset]
-        sql.sub!(/\A(\s*SELECT\s)/i, '\&' + limit_string + ' ')
+      if limit = options[:limit]
+        insert_limit_offset!(sql, limit, options[:offset])
       end
+    end
+
+    # @private
+    SELECT_RE = /\A(\s*SELECT\s)/i
+
+    def insert_limit_offset!(sql, limit, offset)
+      lim_off = ''
+      lim_off << "FIRST #{limit}"  if limit
+      lim_off << " SKIP #{offset}" if offset
+      lim_off.strip!
+
+      sql.sub!(SELECT_RE, "\\&#{lim_off} ") unless lim_off.empty?
     end
 
     # Should primary key values be selected from their corresponding
