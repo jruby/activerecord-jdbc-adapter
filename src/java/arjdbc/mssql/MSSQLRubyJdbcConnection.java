@@ -59,13 +59,13 @@ public class MSSQLRubyJdbcConnection extends RubyJdbcConnection {
 
     public static RubyClass createMSSQLJdbcConnectionClass(Ruby runtime, RubyClass jdbcConnection) {
         final RubyClass clazz = getConnectionAdapters(runtime). // ActiveRecord::ConnectionAdapters
-            defineClassUnder("MSSQLJdbcConnection", jdbcConnection, MSSQL_JDBCCONNECTION_ALLOCATOR);
+            defineClassUnder("MSSQLJdbcConnection", jdbcConnection, ALLOCATOR);
         clazz.defineAnnotatedMethods(MSSQLRubyJdbcConnection.class);
         getConnectionAdapters(runtime).setConstant("MssqlJdbcConnection", clazz); // backwards-compat
         return clazz;
     }
 
-    private static ObjectAllocator MSSQL_JDBCCONNECTION_ALLOCATOR = new ObjectAllocator() {
+    private static final ObjectAllocator ALLOCATOR = new ObjectAllocator() {
         public IRubyObject allocate(Ruby runtime, RubyClass klass) {
             return new MSSQLRubyJdbcConnection(runtime, klass);
         }
