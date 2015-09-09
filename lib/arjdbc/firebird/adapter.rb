@@ -134,8 +134,8 @@ module ArJdbc
       register_class_with_limit m, %r(binary)i, ActiveRecord::Type::Binary
       register_class_with_limit m, %r(text)i,   ActiveRecord::Type::Text
 
-      register_class_with_limit m, %r(date(:?\(.*?\))?$)i, DateType
-      register_class_with_limit m, %r(time(:?\(.*?\))?$)i, ActiveRecord::Type::Time
+      register_class_with_limit m, %r(date(?:\(.*?\))?$)i, DateType
+      register_class_with_limit m, %r(time(?:\(.*?\))?$)i, ActiveRecord::Type::Time
 
       register_class_with_limit m, %r(float)i, ActiveRecord::Type::Float
       register_class_with_limit m, %r(int)i,   ActiveRecord::Type::Integer
