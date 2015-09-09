@@ -172,16 +172,17 @@ module Arel
         #find_left_table_pk o.left, a if o.kind_of? Arel::Nodes::Join
       end
 
-      def table_from_select_core o
-        core = o # core = o.cores.first
-        # TODO: [ARel 2.2] Use #from/#source vs. #froms
-        # if Arel::Table === core.from
-        #   core.from
-        # elsif Arel::Nodes::SqlLiteral === core.from
-        #   Arel::Table.new(core.from, @engine)
-        # elsif Arel::Nodes::JoinSource === core.source
-        #   Arel::Nodes::SqlLiteral === core.source.left ? Arel::Table.new(core.source.left, @engine) : core.source.left
-        # end
+      def table_from_select_core core
+        if Arel::Table === core.from
+          core.from
+        elsif Arel::Nodes::SqlLiteral === core.from
+          Arel::Table.new(core.from, @engine)
+        elsif Arel::Nodes::JoinSource === core.source
+          Arel::Nodes::SqlLiteral === core.source.left ? Arel::Table.new(core.source.left, @engine) : core.source.left
+        end
+      end
+
+      def table_from_select_core core
         table_finder = lambda do |x|
           case x
           when Arel::Table
@@ -193,16 +194,17 @@ module Arel
           end
         end
         table_finder.call(core.froms)
-      end
+      end if ActiveRecord::VERSION::STRING < '3.2'
 
       def primary_key_from_table t
         return unless t
         return t.primary_key if t.primary_key
-        if engine_pk = t.engine.primary_key
-          pk = t.engine.arel_table[engine_pk]
+        engine = t.engine
+        if engine_pk = engine.primary_key
+          pk = engine.arel_table[engine_pk]
           return pk if pk
         end
-        pk = t.engine.connection.schema_cache.primary_keys(t.engine.table_name)
+        pk = engine.connection.primary_keys(engine.table_name)
         return pk if pk
         column_name = t.engine.columns.first.try(:name)
         column_name ? t[column_name] : nil
