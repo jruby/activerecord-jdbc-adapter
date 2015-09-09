@@ -81,7 +81,8 @@ module ActiveRecord
                           lambda {|r| r['type_name'] =~ /sub_type 0$/i}, # For FireBird
                           lambda {|r| r['type_name'] =~ /^varbinary$/i}, # We want this sucker for Mimer
                           lambda {|r| r['type_name'] =~ /^binary$/i}, ],
-        :boolean     => [ lambda {|r| Jdbc::Types::TINYINT == r['data_type'].to_i},
+        :boolean     => [ lambda {|r| Jdbc::Types::BIT == r['data_type'].to_i && r['precision'].to_i == 1},
+                          lambda {|r| Jdbc::Types::TINYINT == r['data_type'].to_i},
                           lambda {|r| r['type_name'] =~ /^bool/i},
                           lambda {|r| r['data_type'].to_i == Jdbc::Types::BIT},
                           lambda {|r| r['type_name'] =~ /^tinyint$/i},
