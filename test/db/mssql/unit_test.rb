@@ -6,7 +6,7 @@ class MSSQLUnitTest < Test::Unit::TestCase
 
   # NOTE: lot of tests kindly borrowed from __activerecord-sqlserver-adapter__
 
-  test "get table name" do
+  test "get_table_name" do
     insert_sql = "INSERT INTO [funny_jokes] ([name]) VALUES('Knock knock')"
     update_sql = "UPDATE [customers] SET [address_street] = NULL WHERE [id] = 2"
     select_sql = "SELECT * FROM [customers] WHERE ([customers].[id] = 1)"
@@ -28,6 +28,9 @@ class MSSQLUnitTest < Test::Unit::TestCase
     # NOTE: this has been failing even before refactoring - not sure if it's needed :
     #assert_nil connection.send(:get_table_name, 'SELECT * FROM someFunction()')
     #assert_nil connection.send(:get_table_name, 'SELECT * FROM someFunction() WHERE 1 > 2')
+
+    select_sql = "SELECT COUNT(*) FROM our_table WHERE text = \"INSERT INTO their_table VALUES ('a', 'b', 'c')\""
+    assert_equal 'our_table', connection.send(:get_table_name, select_sql)
   end
 
   context "Utils" do
