@@ -3117,11 +3117,11 @@ public class RubyJdbcConnection extends RubyObject {
         throws SQLException {
 
         final Ruby runtime = context.getRuntime();
-        final RubyClass JdbcColumn = getJdbcColumnClass(context);
+        final RubyClass Column = getJdbcColumnClass(context);
 
         // NOTE: primary/primary= methods were removed from Column in AR 4.2
-        final boolean setPrimary = JdbcColumn.isMethodBound("primary=", false);
-        final boolean isAr42 = !setPrimary;
+        final boolean setPrimary = Column.isMethodBound("primary=", false);
+        final boolean lookupCastType = !setPrimary;
 
         final Collection<String> primaryKeyNames =
             setPrimary ? getPrimaryKeyNames(metaData, components) : null;
@@ -3135,22 +3135,22 @@ public class RubyJdbcConnection extends RubyObject {
             final RubyString sqlType = RubyString.newUnicodeString( runtime, typeFromResultSet(results) );
             final RubyBoolean nullable = runtime.newBoolean( ! results.getString(IS_NULLABLE).trim().equals("NO") );
             final IRubyObject[] args;
-            if (isAr42) {
+            if ( lookupCastType ) {
                 final IRubyObject castType = getAdapter(context).callMethod(context, "lookup_cast_type", sqlType);
                 args = new IRubyObject[] {config, railsColumnName, defaultValue, castType, sqlType, nullable};
             } else {
                 args = new IRubyObject[] {config, railsColumnName, defaultValue, sqlType, nullable};
             }
 
-            IRubyObject column = JdbcColumn.callMethod(context, "new", args);
+            IRubyObject column = Column.callMethod(context, "new", args);
             columns.append(column);
 
-            if ( primaryKeyNames != null && primaryKeyNames.contains(colName) ) {
-                column.callMethod(context, "primary=", runtime.getTrue());
+            if ( primaryKeyNames != null ) {
+                final RubyBoolean primary = runtime.newBoolean( primaryKeyNames.contains(colName) );
+                column.getInstanceVariables().setInstanceVariable("@primary", primary);
             }
         }
         return columns;
-
     }
 
     private static Collection<String> getPrimaryKeyNames(final DatabaseMetaData metaData,
