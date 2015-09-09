@@ -1177,7 +1177,7 @@ public class RubyJdbcConnection extends RubyObject {
 
                     final DatabaseMetaData metaData = connection.getMetaData();
                     columns = metaData.getColumns(components.catalog, components.schema, components.name, null);
-                    return unmarshalColumns(context, metaData, components, columns);
+                    return mapColumnsResult(context, metaData, components, columns);
                 }
                 finally {
                     close(columns);
@@ -3112,16 +3112,24 @@ public class RubyJdbcConnection extends RubyObject {
         return column.respondsTo("cast_type");
     }
 
-    private RubyArray unmarshalColumns(final ThreadContext context,
+    protected RubyArray mapColumnsResult(final ThreadContext context,
         final DatabaseMetaData metaData, final TableName components, final ResultSet results)
         throws SQLException {
 
-        final Ruby runtime = context.getRuntime();
         final RubyClass Column = getJdbcColumnClass(context);
-
+        final boolean lookupCastType = Column.isMethodBound("cast_type", false);
         // NOTE: primary/primary= methods were removed from Column in AR 4.2
-        final boolean setPrimary = Column.isMethodBound("primary=", false);
-        final boolean lookupCastType = !setPrimary;
+        // setPrimary = ! lookupCastType by default ... it's better than checking
+        // whether primary= is bound since it might be a left over in AR-JDBC ext
+        return mapColumnsResult(context, metaData, components, results, Column, lookupCastType, ! lookupCastType);
+    }
+
+    protected final RubyArray mapColumnsResult(final ThreadContext context,
+        final DatabaseMetaData metaData, final TableName components, final ResultSet results,
+        final RubyClass Column, final boolean lookupCastType, final boolean setPrimary)
+        throws SQLException {
+
+        final Ruby runtime = context.getRuntime();
 
         final Collection<String> primaryKeyNames =
             setPrimary ? getPrimaryKeyNames(metaData, components) : null;
