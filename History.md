@@ -1,5 +1,33 @@
 ## 1.3.18 (pe/nd/in)
 
+- [mssql] get_table_name bug with unusual queries has been fixed (#583)
+- [mssql] make sure we set @primary on column instances even on AR 4.2
+- [mssql] issue when using joins with distinct (#590) ... fixed with #608
+- [firebird] tune arel visitor (limit/offset handling) to work on AR 4.2
+- [firebird] avoid prefetch_primary_key? depending on column.primary due AR 4.2
+- [firebird] introduce type map on AR 4.2 (not sure about :timestamp handling
+- [firebird] boolean parameter with prepared-statements should be set as CHAR
+- [firebird] standalone column and adapter classes +
+  standalone custom (native) JdbcConnection class for firebird due CHAR handling
+- [firebird] handle schema-prefixed table names in default_sequence_name
+- [oracle] support for handling NUMBER(1) type as boolean just like on AR < 4.2
+- [oracle] generic optimized NUMBER type extraction (with scale == 0 as integer)
+- [oracle] support XMLTYPE as a custom type on AR 4.2
+- [oracle] add disable_referential_integrity helper (for the duration of a block)
+- base (adapter: jdbc) foreign_keys support for all (for AR 4.2 compatibility)
+- [oracle] AR 4.2 type map support (ported over from oracle-enhanced adapter)
+- [oracle] avoid error logging optional DROP SEQUENCE on drop_table
+- [oracle] default config[:database] (when not provided) to **XE**
+- [oracle] improved index + primary_key (detection) support not just for AR 4.2
+- [oracle] update default_sequence_name to strip prefix + add trigger name
+- [oracle] set statement_escape_processing: true by default on AR 4.x (#479)
+- handle serialized attributes the AR 4.2 way (serialized_attributes deprecated)
+- [db2] custom type map for AR 4.2 based on IBM_DB gem
+- [db2] support XML as type on AR 4.2
+- type-casting on our native side should now handle AR 4.2 right!
+- jdbc connection should not attempt to type-cast date/time on AR 4.2
+- [db2] arel visitor + handle basic type mapping the AR 4.2 way
+- no longer warn on 4.2 + but still warn with (unsupported) adapters
 - restore Ruby 1.8 (syntax) compatibility - was broken for MySQL/Derby
 - use standard AREL with H2/HSQLDB as H2/HSQLDB support standard LIMIT and OFFSET
 - [h2] working AR 4.2 support
