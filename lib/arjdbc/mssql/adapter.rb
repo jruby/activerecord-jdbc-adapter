@@ -584,6 +584,13 @@ module ArJdbc
             " #{enable ? 'ON' : 'OFF'} for table #{table_name} due : #{e.inspect}"
     end
 
+    def disable_referential_integrity
+      execute "EXEC sp_MSforeachtable 'ALTER TABLE ? NOCHECK CONSTRAINT ALL'"
+      yield
+    ensure
+      execute "EXEC sp_MSforeachtable 'ALTER TABLE ? CHECK CONSTRAINT ALL'"
+    end
+
     # @private
     # @see ArJdbc::MSSQL::LimitHelpers
     def determine_order_clause(sql)
