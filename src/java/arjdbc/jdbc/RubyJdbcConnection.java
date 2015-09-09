@@ -54,6 +54,7 @@ import java.sql.Types;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -2161,7 +2162,7 @@ public class RubyJdbcConnection extends RubyObject {
             final Object rawValue, final IRubyObject column) throws SQLException {
         final Object value;
 
-        if (isAr42(column)) {
+        if ( isAr42(column) ) {
             final IRubyObject castType = column.callMethod(context, "cast_type");
             value = castType.callMethod(context, "type_cast_for_database", (IRubyObject) rawValue);
         } else {
@@ -2270,6 +2271,23 @@ public class RubyJdbcConnection extends RubyObject {
         return (RubySymbol) column.callMethod(context, "type");
     }
 
+    protected static final Map<String, Integer> JDBC_TYPE_FOR = new HashMap<String, Integer>(16, 1);
+    static {
+        JDBC_TYPE_FOR.put("string", Types.VARCHAR);
+        JDBC_TYPE_FOR.put("text", Types.CLOB);
+        JDBC_TYPE_FOR.put("integer", Types.INTEGER);
+        JDBC_TYPE_FOR.put("float", Types.FLOAT);
+        JDBC_TYPE_FOR.put("decimal", Types.DECIMAL);
+        JDBC_TYPE_FOR.put("date", Types.DATE);
+        JDBC_TYPE_FOR.put("time", Types.TIME);
+        JDBC_TYPE_FOR.put("datetime", Types.TIMESTAMP);
+        JDBC_TYPE_FOR.put("timestamp", Types.TIMESTAMP);
+        JDBC_TYPE_FOR.put("binary", Types.BLOB);
+        JDBC_TYPE_FOR.put("boolean", Types.BOOLEAN);
+        JDBC_TYPE_FOR.put("array", Types.ARRAY);
+        JDBC_TYPE_FOR.put("xml", Types.SQLXML);
+    }
+
     protected int jdbcTypeFor(final ThreadContext context, final Ruby runtime,
         final IRubyObject column, final Object value) throws SQLException {
 
@@ -2301,20 +2319,10 @@ public class RubyJdbcConnection extends RubyObject {
             }
         }
 
-        if ( internedType == (Object) "string" ) return Types.VARCHAR;
-        else if ( internedType == (Object) "text" ) return Types.CLOB;
-        else if ( internedType == (Object) "integer" ) return Types.INTEGER;
-        else if ( internedType == (Object) "decimal" ) return Types.DECIMAL;
-        else if ( internedType == (Object) "float" ) return Types.FLOAT;
-        else if ( internedType == (Object) "date" ) return Types.DATE;
-        else if ( internedType == (Object) "time" ) return Types.TIME;
-        else if ( internedType == (Object) "datetime" ) return Types.TIMESTAMP;
-        else if ( internedType == (Object) "timestamp" ) return Types.TIMESTAMP;
-        else if ( internedType == (Object) "binary" ) return Types.BLOB;
-        else if ( internedType == (Object) "boolean" ) return Types.BOOLEAN;
-        else if ( internedType == (Object) "xml" ) return Types.SQLXML;
-        else if ( internedType == (Object) "array" ) return Types.ARRAY;
-        else return Types.OTHER; // -1 as well as 0 are used in Types
+        final Integer sqlType = JDBC_TYPE_FOR.get(internedType);
+        if ( sqlType != null ) return sqlType.intValue();
+
+        return Types.OTHER; // -1 as well as 0 are used in Types
     }
 
     protected void setIntegerParameter(final ThreadContext context,
