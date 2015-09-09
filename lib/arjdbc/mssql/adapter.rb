@@ -113,17 +113,48 @@ module ArJdbc
       end
     end
 
+    NATIVE_DATABASE_TYPES = {
+      :primary_key => 'int NOT NULL IDENTITY(1,1) PRIMARY KEY',
+      :integer   =>  { :name => 'int', }, # :limit => 4
+      :boolean   =>  { :name => 'bit' },
+      :decimal   =>  { :name => 'decimal' },
+      :float     =>  { :name => 'float' },
+      :bigint    =>  { :name => 'bigint' },
+      :real      =>  { :name => 'real' },
+      :date      =>  { :name => 'date' },
+      :time      =>  { :name => 'time' },
+      :datetime  =>  { :name => 'datetime' },
+      :timestamp =>  { :name => 'datetime' },
+
+      :string    =>  { :name => 'nvarchar', :limit => 255 }, # limit: 4000
+      #:varchar    =>  { :name => 'varchar' }, # limit: 8000
+      :text      =>  { :name => 'nvarchar(max)' },
+      #:text_basic =>  { :name => 'text' },
+      #:ntext      =>  { :name => 'ntext' },
+      :char      =>  { :name => 'char' },
+      #:nchar     =>  { :name => 'nchar' },
+      :binary    =>  { :name => 'image' }, # NOTE: :name => 'varbinary(max)'
+      #:binary_basic => { :name => 'binary' },
+      :uuid      =>  { :name => 'uniqueidentifier' },
+      :money     =>  { :name => 'money' },
+      #:smallmoney => { :name => 'smallmoney' },
+    }
+
+    def native_database_types
+      # NOTE: due compatibility we're using the generic type resolution
+      # ... NATIVE_DATABASE_TYPES won't be used at all on SQLServer 2K
+      sqlserver_2000? ? super : super.merge(NATIVE_DATABASE_TYPES)
+    end
+
     def modify_types(types)
-      types[:string] = { :name => "NVARCHAR", :limit => 255 }
       if sqlserver_2000?
-        types[:text] = { :name => "NTEXT" }
-      else
-        types[:text] = { :name => "NVARCHAR(MAX)" }
+        types[:primary_key] = NATIVE_DATABASE_TYPES[:primary_key]
+        types[:string] = NATIVE_DATABASE_TYPES[:string]
+        types[:boolean] = NATIVE_DATABASE_TYPES[:boolean]
+        types[:text] = { :name => "ntext" }
+        types[:integer][:limit] = nil
+        types[:binary] = { :name => "image" }
       end
-      types[:primary_key] = "int NOT NULL IDENTITY(1, 1) PRIMARY KEY"
-      types[:integer][:limit] = nil
-      types[:boolean] = { :name => "bit" }
-      types[:binary] = { :name => "image" }
       types
     end
 
