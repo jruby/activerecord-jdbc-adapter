@@ -567,7 +567,7 @@ module ArJdbc
       table_name = get_table_name(sql)
       # determine primary key for table :
       columns = self.columns(table_name)
-      primary_column = columns.find { |column| column.primary || column.identity }
+      primary_column = columns.find { |column| column.primary? || column.identity? }
       unless primary_column # look for an id column and return it,
         # without changing case, to cover DBs with a case-sensitive collation :
         primary_column = columns.find { |column| column.name =~ /^id$/i }

@@ -77,6 +77,11 @@ module ArJdbc
         end
       end
 
+      # #primary replacement that works on 4.2 as well
+      # #columns will set @primary even when on AR 4.2
+      def primary?; @primary end
+      alias_method :is_primary, :primary?
+
       def identity?
         !! sql_type.downcase.index('identity')
       end
