@@ -796,6 +796,9 @@ module ActiveRecord::ConnectionAdapters
       setup_limit_offset!
     end
 
+    def self.cs_equality_operator; ::ArJdbc::MSSQL.cs_equality_operator end
+    def self.cs_equality_operator=(operator); ::ArJdbc::MSSQL.cs_equality_operator = operator end
+
   end
 
   class MSSQLColumn < JdbcColumn
