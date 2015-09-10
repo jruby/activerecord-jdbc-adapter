@@ -71,6 +71,17 @@ module ArJdbc
     # @see #update_lob_values?
     def self.update_lob_values=(update); @@update_lob_values = update; end
 
+    # @private
+    @@cs_equality_operator = 'COLLATE Latin1_General_CS_AS_WS'
+
+    # Operator for sorting strings in SQLServer, setup as :
+    #
+    #  ArJdbc::MSSQL.cs_equality_operator = 'COLLATE Latin1_General_CS_AS_WS'
+    #
+    def self.cs_equality_operator; @@cs_equality_operator; end
+    # @see #cs_equality_operator
+    def self.cs_equality_operator=(operator); @@cs_equality_operator = operator; end
+
     # @see #quote
     # @private
     BLOB_VALUE_MARKER = "''"

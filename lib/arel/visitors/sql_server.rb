@@ -102,11 +102,11 @@ module Arel
 
       if ArJdbc::AR42
         def visit_Arel_Nodes_Bin o, a
-          visit o.expr, a;a << ' COLLATE Latin1_General_CS_AS_WS'
+          visit o.expr, a; a << ' ' << ArJdbc::MSSQL.cs_equality_operator
         end
       else
         def visit_Arel_Nodes_Bin o, a = nil
-          "#{do_visit o.expr, a} COLLATE Latin1_General_CS_AS_WS"
+          "#{do_visit o.expr, a} #{ArJdbc::MSSQL.cs_equality_operator}"
         end
       end
 
