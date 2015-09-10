@@ -15,29 +15,28 @@ module Arel
       def visit_Arel_Nodes_SelectStatement(*args) # [o] AR <= 4.0 [o, a] on 4.1
         o, a = args.first, args.last
 
-        return super if ! o.limit && ! o.offset # NOTE: really?
+        return super if ! o.limit && ! o.offset
 
         unless o.orders.empty?
           select_order_by = do_visit_columns o.orders, a, 'ORDER BY '
         end
 
-        select_count = false; sql = ArJdbc::AR42 ? a : ''
+        select_count = false; sql = ''
         o.cores.each do |x|
           x = x.dup
-          order_by = select_order_by || determine_order_by(x, a)
+          core_order_by = select_order_by || determine_order_by(x, a)
           if select_count? x
             x.projections = [
-              order_by ? row_num_literal(order_by) : Arel::Nodes::SqlLiteral.new("*")
+              core_order_by ? _row_num_literal(core_order_by) : Arel::Nodes::SqlLiteral.new("*")
             ]
             select_count = true
           else
             # NOTE: this should really be added here and we should built the
             # wrapping SQL but than #replace_limit_offset! assumes it does that
             # ... MS-SQL adapter code seems to be 'hacked' by a lot of people
-            #x.projections << row_num_literal(order_by)
+            #x.projections << _row_num_literal(order_by)
           end
-          res = do_visit_select_core(x, a)
-          sql << res if sql.is_a?(String)
+          sql << do_visit_select_core(x, a)
         end
 
         #sql = "SELECT _t.* FROM (#{sql}) as _t WHERE #{get_offset_limit_clause(o)}"
@@ -78,68 +77,51 @@ module Arel
         ''
       end
 
-      if ArJdbc::AR42
-        def visit_Arel_Nodes_Limit o, a
-          a << 'TOP '; visit(o.expr, a)
-        end
-      else
-        def visit_Arel_Nodes_Limit o, a = nil
-          "TOP (#{do_visit o.expr, a})"
+      def visit_Arel_Nodes_Limit o, a = nil
+        "TOP (#{do_visit o.expr, a})"
+      end
+
+      def visit_Arel_Nodes_Ordering o, a = nil
+        expr = do_visit o.expr, a
+        if o.respond_to?(:direction)
+          "#{expr} #{o.ascending? ? 'ASC' : 'DESC'}"
+        else
+          expr
         end
       end
 
-      if ArJdbc::AR42
-        def visit_Arel_Nodes_Ordering o, a
-          visit o.expr, a
-          if o.respond_to?(:direction)
-            a << o.ascending? ? 'ASC' : 'DESC'
-          end
-          a
-        end
-      else
-        def visit_Arel_Nodes_Ordering o, a = nil
-          expr = do_visit o.expr, a
-          if o.respond_to?(:direction)
-            "#{expr} #{o.ascending? ? 'ASC' : 'DESC'}"
-          else
-            expr
-          end
-        end
-      end
-
-      if ArJdbc::AR42
-        def visit_Arel_Nodes_Bin o, a
-          expr = o.expr; visit expr, a
-          if expr.val.is_a? Numeric
-            a
-          else
-            a << " #{::ArJdbc::MSSQL.cs_equality_operator} "
-          end
-        end
-      else
-        def visit_Arel_Nodes_Bin o, a = nil
-          expr = o.expr; sql = do_visit expr, a
-          if expr.respond_to?(:val) && expr.val.is_a?(Numeric)
-            sql
-          else
-            sql << " #{::ArJdbc::MSSQL.cs_equality_operator} "
-            sql
-          end
+      def visit_Arel_Nodes_Bin o, a = nil
+        expr = o.expr; sql = do_visit expr, a
+        if expr.respond_to?(:val) && expr.val.is_a?(Numeric)
+          sql
+        else
+          sql << " #{::ArJdbc::MSSQL.cs_equality_operator} "
+          sql
         end
       end
 
       private
 
-      def select_count? x
-        x.projections.length == 1 && Arel::Nodes::Count === x.projections.first
+      def self.possibly_private_method_defined?(name)
+        private_method_defined?(name) || method_defined?(name)
       end
 
-      def determine_order_by x, a
-        unless x.groups.empty?
-          do_visit_columns x.groups, a, 'ORDER BY '
-        else
-          table_pk = find_left_table_pk(x, a)
-          table_pk == 'NULL' ? nil : "ORDER BY #{table_pk}"
+      def select_count? x
+        x.projections.length == 1 && Arel::Nodes::Count === x.projections.first
+      end unless possibly_private_method_defined? :select_count?
+
+      unless possibly_private_method_defined? :determine_order_by
+        def determine_order_by x, a
+          unless x.groups.empty?
+            do_visit_columns x.groups, a, 'ORDER BY '
+          else
+            table_pk = find_left_table_pk(x, a)
+            table_pk == 'NULL' ? nil : "ORDER BY #{table_pk}"
+          end
+        end
+
+        def find_left_table_pk o, a
+          primary_key_from_table table_from_select_core(o)
         end
       end
 
@@ -149,19 +131,7 @@ module Arel
           sql << do_visit(x, a); sql << ', ' unless i == last
         end
         sql
-      end unless ArJdbc::AR42
-
-      def do_visit_columns(colls, a, sql)
-        prefix = sql
-        sql = Arel::Collectors::PlainString.new
-        sql << prefix if prefix
-
-        last = colls.size - 1
-        colls.each_with_index do |x, i|
-          visit(x, sql); sql << ', ' unless i == last
-        end
-        sql.value
-      end if ArJdbc::AR42
+      end
 
       def do_visit_columns(colls, a, sql)
         non_simple_order = /\sASC|\sDESC|\sCASE|\sCOLLATE|[\.,\[\(]/i # MIN(width)
@@ -181,14 +151,8 @@ module Arel
         sql
       end if Arel::VERSION < '4.0.0'
 
-      def row_num_literal order_by
+      def _row_num_literal order_by
         Arel::Nodes::SqlLiteral.new("ROW_NUMBER() OVER (#{order_by}) as _row_num")
-      end
-
-      def find_left_table_pk o, a
-        primary_key_from_table table_from_select_core(o)
-        #return do_visit o.primary_key, a if o.instance_of? Arel::Table
-        #find_left_table_pk o.left, a if o.kind_of? Arel::Nodes::Join
       end
 
       def table_from_select_core core
@@ -218,15 +182,22 @@ module Arel
       def primary_key_from_table t
         return unless t
         return t.primary_key if t.primary_key
+
         engine = t.engine
         if engine_pk = engine.primary_key
           pk = engine.arel_table[engine_pk]
           return pk if pk
         end
-        pk = engine.connection.primary_keys(engine.table_name)
+
+        pk = @primary_keys[table_name = engine.table_name] ||= begin
+          pk_name = @connection.primary_key(table_name)
+          # some tables might be without primary key
+          pk_name && t[pk_name]
+        end
         return pk if pk
-        column_name = t.engine.columns.first.try(:name)
-        column_name ? t[column_name] : nil
+
+        column_name = engine.columns.first
+        column_name && t[column_name]
       end
 
       include ArJdbc::MSSQL::LockMethods
