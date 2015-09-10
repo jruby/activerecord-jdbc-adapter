@@ -19,8 +19,9 @@ module Arel
           x = x.dup
           order_by = select_order_by || determine_order_by(x, a)
           if select_count? x
-            p = order_by ? row_num_literal(order_by) : Arel::Nodes::SqlLiteral.new("*")
-            x.projections = [p]
+            x.projections = [
+              order_by ? row_num_literal(order_by) : Arel::Nodes::SqlLiteral.new("*")
+            ]
             select_count = true
           else
             # NOTE: this should really be added here and we should built the
