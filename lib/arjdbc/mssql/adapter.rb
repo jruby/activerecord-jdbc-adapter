@@ -131,12 +131,12 @@ module ArJdbc
       :string    =>  { :name => 'nvarchar', :limit => 255 }, # limit: 4000
       #:varchar    =>  { :name => 'varchar' }, # limit: 8000
       :text      =>  { :name => 'nvarchar(max)' },
-      #:text_basic =>  { :name => 'text' },
+      :text_basic =>  { :name => 'text' },
       #:ntext      =>  { :name => 'ntext' },
       :char      =>  { :name => 'char' },
       #:nchar     =>  { :name => 'nchar' },
       :binary    =>  { :name => 'image' }, # NOTE: :name => 'varbinary(max)'
-      #:binary_basic => { :name => 'binary' },
+      :binary_basic => { :name => 'binary' },
       :uuid      =>  { :name => 'uniqueidentifier' },
       :money     =>  { :name => 'money' },
       #:smallmoney => { :name => 'smallmoney' },
