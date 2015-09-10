@@ -102,11 +102,22 @@ module Arel
 
       if ArJdbc::AR42
         def visit_Arel_Nodes_Bin o, a
-          visit o.expr, a; a << ' ' << ArJdbc::MSSQL.cs_equality_operator
+          expr = o.expr; visit expr, a
+          if expr.val.is_a? Numeric
+            a
+          else
+            a << " #{::ArJdbc::MSSQL.cs_equality_operator} "
+          end
         end
       else
         def visit_Arel_Nodes_Bin o, a = nil
-          "#{do_visit o.expr, a} #{ArJdbc::MSSQL.cs_equality_operator}"
+          expr = o.expr; sql = do_visit expr, a
+          if expr.respond_to?(:val) && expr.val.is_a?(Numeric)
+            sql
+          else
+            sql << " #{::ArJdbc::MSSQL.cs_equality_operator} "
+            sql
+          end
         end
       end
 
