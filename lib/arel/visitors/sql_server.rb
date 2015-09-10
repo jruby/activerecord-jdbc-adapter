@@ -1,8 +1,15 @@
 require 'arel/visitors/compat'
 
+loaded = nil
+if ArJdbc::AR42
+  require 'arel/visitors/sql_server/ng42.rb'
+  loaded = true
+end
+
 module Arel
   module Visitors
-    # @note AREL set's up `Arel::Visitors::MSSQL` but we should not use that one !
+    # @note AREL set's up `Arel::Visitors::MSSQL` but its not usable as is ...
+    # @private
     class SQLServer < const_defined?(:MSSQL) ? MSSQL : ToSql
 
       def visit_Arel_Nodes_SelectStatement(*args) # [o] AR <= 4.0 [o, a] on 4.1
@@ -232,4 +239,4 @@ module Arel
       include ArJdbc::MSSQL::LimitHelpers::SqlServer2000ReplaceLimitOffset
     end
   end
-end
+end unless loaded
