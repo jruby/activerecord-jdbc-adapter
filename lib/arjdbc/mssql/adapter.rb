@@ -25,14 +25,16 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ArJdbc.load_java_part :MSSQL
 
 require 'strscan'
-require 'arjdbc/mssql/utils'
-require 'arjdbc/mssql/limit_helpers'
-require 'arjdbc/mssql/lock_methods'
-require 'arjdbc/mssql/column'
-require 'arjdbc/mssql/explain_support'
 
 module ArJdbc
   module MSSQL
+
+    require 'arjdbc/mssql/utils'
+    require 'arjdbc/mssql/limit_helpers'
+    require 'arjdbc/mssql/lock_methods'
+    require 'arjdbc/mssql/column'
+    require 'arjdbc/mssql/explain_support'
+
     include LimitHelpers
     include Utils
     include ExplainSupport
@@ -626,9 +628,7 @@ module ArJdbc
     # @see ArJdbc::MSSQL::LimitHelpers
     def determine_order_clause(sql)
       return $1 if sql =~ /ORDER BY (.*)$/i
-      table_name = get_table_name(sql)
-      # determine primary key for table :
-      columns = self.columns(table_name)
+      columns = self.columns(table_name = get_table_name(sql))
       primary_column = columns.find { |column| column.primary? || column.identity? }
       unless primary_column # look for an id column and return it,
         # without changing case, to cover DBs with a case-sensitive collation :
