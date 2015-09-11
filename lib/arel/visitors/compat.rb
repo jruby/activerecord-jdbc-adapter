@@ -45,6 +45,15 @@ module Arel
       end
       module_function :limit_for
 
+      def node_value(node)
+        return nil unless node
+        case expr = node.expr
+          when NilClass then nil
+          when Numeric then expr
+          when Arel::Nodes::Unary then expr.expr
+        end
+      end
+
     end
     ToSql.send(:include, ArJdbcCompat)
   end
