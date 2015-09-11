@@ -2271,7 +2271,7 @@ public class RubyJdbcConnection extends RubyObject {
         return (RubySymbol) column.callMethod(context, "type");
     }
 
-    protected static final Map<String, Integer> JDBC_TYPE_FOR = new HashMap<String, Integer>(16, 1);
+    protected static final Map<String, Integer> JDBC_TYPE_FOR = new HashMap<String, Integer>(32, 1);
     static {
         JDBC_TYPE_FOR.put("string", Types.VARCHAR);
         JDBC_TYPE_FOR.put("text", Types.CLOB);
@@ -2287,6 +2287,25 @@ public class RubyJdbcConnection extends RubyObject {
         JDBC_TYPE_FOR.put("boolean", Types.BOOLEAN);
         JDBC_TYPE_FOR.put("array", Types.ARRAY);
         JDBC_TYPE_FOR.put("xml", Types.SQLXML);
+
+        // also mapping standard SQL names :
+        JDBC_TYPE_FOR.put("bit", Types.BIT);
+        JDBC_TYPE_FOR.put("tinyint", Types.TINYINT);
+        JDBC_TYPE_FOR.put("smallint", Types.SMALLINT);
+        JDBC_TYPE_FOR.put("bigint", Types.BIGINT);
+        JDBC_TYPE_FOR.put("int", Types.INTEGER);
+        JDBC_TYPE_FOR.put("double", Types.DOUBLE);
+        JDBC_TYPE_FOR.put("numeric", Types.NUMERIC);
+        JDBC_TYPE_FOR.put("char", Types.CHAR);
+        JDBC_TYPE_FOR.put("varchar", Types.VARCHAR);
+        JDBC_TYPE_FOR.put("binary", Types.BINARY);
+        JDBC_TYPE_FOR.put("varbinary", Types.VARBINARY);
+        //JDBC_TYPE_FOR.put("struct", Types.STRUCT);
+        JDBC_TYPE_FOR.put("blob", Types.BLOB);
+        JDBC_TYPE_FOR.put("clob", Types.CLOB);
+        JDBC_TYPE_FOR.put("nchar", Types.NCHAR);
+        JDBC_TYPE_FOR.put("nvarchar", Types.NVARCHAR);
+        JDBC_TYPE_FOR.put("nclob", Types.NCLOB);
     }
 
     protected int jdbcTypeFor(final ThreadContext context, final Ruby runtime,
@@ -2306,18 +2325,10 @@ public class RubyJdbcConnection extends RubyObject {
             }
         }
         else {
-            if ( value instanceof RubyInteger ) {
-                internedType = "integer";
-            }
-            else if ( value instanceof RubyNumeric ) {
-                internedType = "float";
-            }
-            else if ( value instanceof RubyTime ) {
-                internedType = "timestamp";
-            }
-            else {
-                internedType = "string";
-            }
+            if ( value instanceof RubyInteger ) internedType = "integer";
+            else if ( value instanceof RubyNumeric ) internedType = "float";
+            else if ( value instanceof RubyTime ) internedType = "timestamp";
+            else internedType = "string";
         }
 
         final Integer sqlType = JDBC_TYPE_FOR.get(internedType);
