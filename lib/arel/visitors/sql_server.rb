@@ -1,21 +1,20 @@
 require 'arel/visitors/compat'
 
-loaded = nil
-if ArJdbc::AR42
-  require 'arel/visitors/sql_server/ng42.rb'
-  loaded = true
-end
-
 module Arel
   module Visitors
+    ToSql.class_eval do
+      alias_method :_visit_Arel_Nodes_SelectStatement, :visit_Arel_Nodes_SelectStatement
+    end
     # @note AREL set's up `Arel::Visitors::MSSQL` but its not usable as is ...
     # @private
     class SQLServer < const_defined?(:MSSQL) ? MSSQL : ToSql
 
+      private
+
       def visit_Arel_Nodes_SelectStatement(*args) # [o] AR <= 4.0 [o, a] on 4.1
         o, a = args.first, args.last
 
-        return super if ! o.limit && ! o.offset
+        return _visit_Arel_Nodes_SelectStatement(*args) if ! o.limit && ! o.offset
 
         unless o.orders.empty?
           select_order_by = do_visit_columns o.orders, a, 'ORDER BY '
@@ -27,14 +26,14 @@ module Arel
           core_order_by = select_order_by || determine_order_by(x, a)
           if select_count? x
             x.projections = [
-              core_order_by ? _row_num_literal(core_order_by) : Arel::Nodes::SqlLiteral.new("*")
+              Arel::Nodes::SqlLiteral.new(core_order_by ? over_row_num(core_order_by) : '*')
             ]
             select_count = true
           else
             # NOTE: this should really be added here and we should built the
             # wrapping SQL but than #replace_limit_offset! assumes it does that
             # ... MS-SQL adapter code seems to be 'hacked' by a lot of people
-            #x.projections << _row_num_literal(order_by)
+            #x.projections << Arel::Nodes::SqlLiteral.new over_row_num(order_by)
           end
           sql << do_visit_select_core(x, a)
         end
@@ -48,7 +47,7 @@ module Arel
         add_lock!(sql, :lock => o.lock && true)
 
         sql
-      end
+      end unless ArJdbc::AR42
 
       # @private
       MAX_LIMIT_VALUE = 9_223_372_036_854_775_807
@@ -67,19 +66,19 @@ module Arel
         #
         # we return nothing here and add the appropriate stuff with #add_lock!
         #do_visit o.expr, a
-      end
+      end unless ArJdbc::AR42
 
       def visit_Arel_Nodes_Top o, a = nil
         # `top` wouldn't really work here:
         #   User.select("distinct first_name").limit(10)
         # would generate "select top 10 distinct first_name from users",
         # which is invalid should be "select distinct top 10 first_name ..."
-        ''
+        a || ''
       end
 
       def visit_Arel_Nodes_Limit o, a = nil
         "TOP (#{do_visit o.expr, a})"
-      end
+      end unless ArJdbc::AR42
 
       def visit_Arel_Nodes_Ordering o, a = nil
         expr = do_visit o.expr, a
@@ -88,7 +87,7 @@ module Arel
         else
           expr
         end
-      end
+      end unless ArJdbc::AR42
 
       def visit_Arel_Nodes_Bin o, a = nil
         expr = o.expr; sql = do_visit expr, a
@@ -98,7 +97,7 @@ module Arel
           sql << " #{::ArJdbc::MSSQL.cs_equality_operator} "
           sql
         end
-      end
+      end unless ArJdbc::AR42
 
       private
 
@@ -110,19 +109,17 @@ module Arel
         x.projections.length == 1 && Arel::Nodes::Count === x.projections.first
       end unless possibly_private_method_defined? :select_count?
 
-      unless possibly_private_method_defined? :determine_order_by
-        def determine_order_by x, a
-          unless x.groups.empty?
-            do_visit_columns x.groups, a, 'ORDER BY '
-          else
-            table_pk = find_left_table_pk(x, a)
-            table_pk == 'NULL' ? nil : "ORDER BY #{table_pk}"
-          end
+      def determine_order_by x, a
+        unless x.groups.empty?
+          do_visit_columns x.groups, a, 'ORDER BY '
+        else
+          table_pk = find_left_table_pk(x)
+          table_pk && "ORDER BY #{table_pk}"
         end
+      end
 
-        def find_left_table_pk o, a
-          primary_key_from_table table_from_select_core(o)
-        end
+      def find_left_table_pk o
+        primary_key_from_table table_from_select_core(o)
       end
 
       def do_visit_columns(colls, a, sql)
@@ -132,6 +129,18 @@ module Arel
         end
         sql
       end
+
+      def do_visit_columns(colls, a, sql)
+        prefix = sql
+        sql = Arel::Collectors::PlainString.new
+        sql << prefix if prefix
+
+        last = colls.size - 1
+        colls.each_with_index do |x, i|
+          visit(x, sql); sql << ', ' unless i == last
+        end
+        sql.value
+      end if ArJdbc::AR42
 
       def do_visit_columns(colls, a, sql)
         non_simple_order = /\sASC|\sDESC|\sCASE|\sCOLLATE|[\.,\[\(]/i # MIN(width)
@@ -151,9 +160,9 @@ module Arel
         sql
       end if Arel::VERSION < '4.0.0'
 
-      def _row_num_literal order_by
-        Arel::Nodes::SqlLiteral.new("ROW_NUMBER() OVER (#{order_by}) as _row_num")
-      end
+      def over_row_num order_by
+        "ROW_NUMBER() OVER (#{order_by}) as _row_num"
+      end # unless possibly_private_method_defined? :row_num_literal
 
       def table_from_select_core core
         if Arel::Table === core.from
@@ -189,14 +198,14 @@ module Arel
           return pk if pk
         end
 
-        pk = @primary_keys[table_name = engine.table_name] ||= begin
+        pk = (@primary_keys ||= {}).fetch(table_name = engine.table_name) do
           pk_name = @connection.primary_key(table_name)
           # some tables might be without primary key
-          pk_name && t[pk_name]
+          @primary_keys[table_name] = pk_name && t[pk_name]
         end
         return pk if pk
 
-        column_name = engine.columns.first
+        column_name = engine.columns.first.try(:name)
         column_name && t[column_name]
       end
 
@@ -209,5 +218,8 @@ module Arel
     class SQLServer2000 < SQLServer
       include ArJdbc::MSSQL::LimitHelpers::SqlServer2000ReplaceLimitOffset
     end
+
+    load 'arel/visitors/sql_server/ng42.rb' if ArJdbc::AR42
+
   end
-end unless loaded
+end

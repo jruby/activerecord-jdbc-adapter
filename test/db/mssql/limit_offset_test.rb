@@ -123,7 +123,7 @@ class MSSQLLimitOffsetTest < Test::Unit::TestCase
   end
 
   def test_limit_and_offset_with_order
-    %w(one two three four five six seven eight).each do |name|
+    names = %w(one two three four five six seven eight).each do |name|
       LongShip.create!(:name => name)
     end
     if ar_version('4.0')
@@ -131,7 +131,14 @@ class MSSQLLimitOffsetTest < Test::Unit::TestCase
     else
       ship_names = LongShip.find(:all, :order => "name", :offset => 4, :limit => 2).map(&:name)
     end
-    assert_equal(%w(seven six), ship_names)
+    assert_equal(names.sort[4, 2], ship_names)
+
+    if ar_version('4.0')
+      ship_names = LongShip.order("id").offset(4).limit(2).to_a.map(&:name)
+    else
+      ship_names = LongShip.find(:all, :order => "id", :offset => 4, :limit => 2).map(&:name)
+    end
+    assert_equal(%w(five six), ship_names)
   end
 
   def test_limit_and_offset_with_include
@@ -189,6 +196,24 @@ class MSSQLLimitOffsetTest < Test::Unit::TestCase
     ships = LongShip.select(:name).group(:name).limit(2).offset(2)
     assert_equal ['three', 'four'], ships.map(&:name)
   end if ar_version('3.0')
+
+  # NOTE: can not work due how MS-SQL "rulezzz"
+  # Column 'long_ships.id' is invalid in the select list because it is not
+  # contained in either an aggregate function or the GROUP BY clause.:
+  #  SELECT t.* FROM ( SELECT ROW_NUMBER() OVER(ORDER BY MIN([long_ships].[id]))
+  #   AS _row_num, [long_ships].* FROM [long_ships]
+  #   GROUP BY [long_ships].[name] ) AS t WHERE t._row_num BETWEEN 1 AND 2
+  #
+#  def test_limit_with_group_by_all
+#    %w( one two three four five six seven eight ).each do |name|
+#      LongShip.create!(:name => name)
+#    end
+#    ships = LongShip.select('*').group(:name).limit(2).all
+#    assert_equal ['one', 'two'], ships.map(&:name)
+#
+#    ships = LongShip.select(:name).group(:name).limit(2).offset(2)
+#    assert_equal ['three', 'four'], ships.map(&:name)
+#  end if ar_version('3.0')
 
   def test_limit_with_group_by_and_aggregate_in_order_clause
     %w( one two three four five six seven eight ).each_with_index do |name, i|

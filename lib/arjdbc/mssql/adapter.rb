@@ -108,6 +108,10 @@ module ArJdbc
         ::Arel::Visitors::SQLServer2000 : ::Arel::Visitors::SQLServer
     end
 
+    def self.arel_visitor_type(config)
+      require 'arel/visitors/sql_server'; ::Arel::Visitors::SQLServerNG
+    end if AR42
+
     # @deprecated no longer used
     # @see ActiveRecord::ConnectionAdapters::JdbcAdapter#arel2_visitors
     def self.arel2_visitors(config)

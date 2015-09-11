@@ -1,6 +1,6 @@
 module Arel
   module Visitors
-    class SQLServer < Arel::Visitors::ToSql
+    class SQLServerNG < SQLServer # Arel::Visitors::ToSql
 
       OFFSET = " OFFSET "
       ROWS = " ROWS"
@@ -56,18 +56,55 @@ module Arel
       end
 
       def visit_Arel_Nodes_SelectStatement o, collector
-        @select_statement = o
         distinct_One_As_One_Is_So_Not_Fetch o
+
+        @select_statement = o
+
         if o.with
           collector = visit o.with, collector
           collector << SPACE
         end
-        collector = o.cores.inject(collector) { |c,x|
+
+        return _visit_Arel_Nodes_SelectStatement(o, collector) if ! o.limit && ! o.offset
+
+        # collector = o.cores.inject(collector) { |c,x|
+        #   visit_Arel_Nodes_SelectCore(x, c)
+        # }
+
+        unless o.orders.empty?
+          select_order_by = do_visit_columns o.orders, collector, 'ORDER BY '
+        end
+
+        select_count = false
+        collector = o.cores.inject(collector) do |c, x|
+          unless core_order_by = select_order_by
+            core_order_by = generate_order_by determine_order_by(o, x)
+          end
+
+          if select_count? x
+            x.projections = [ Arel::Nodes::SqlLiteral.new(over_row_num(core_order_by)) ]
+            select_count = true
+          else
+            # NOTE: this should really be added here and we should built the
+            # wrapping SQL but than #replace_limit_offset! assumes it does that
+            # ... MS-SQL adapter code seems to be 'hacked' by a lot of people
+            #x.projections << Arel::Nodes::SqlLiteral.new(over_row_num(select_order_by))
+          end if core_order_by
           visit_Arel_Nodes_SelectCore(x, c)
-        }
-        collector = visit_Orders_And_Let_Fetch_Happen o, collector
-        collector = visit_Make_Fetch_Happen o, collector
-        collector
+        end
+        # END collector = o.cores.inject(collector) { |c,x|
+
+        # collector = visit_Orders_And_Let_Fetch_Happen o, collector
+        # collector = visit_Make_Fetch_Happen o, collector
+        # collector # __method__ END
+
+        self.class.collector_proxy(collector) do |sql|
+          select_order_by ||= "ORDER BY #{@connection.determine_order_clause(sql)}"
+          replace_limit_offset!(sql, limit_for(o.limit), o.offset && o.offset.value.to_i, select_order_by)
+          sql = "SELECT COUNT(*) AS count_id FROM (#{sql}) AS subquery" if select_count
+          sql
+        end
+
       ensure
         @select_statement = nil
       end
@@ -125,22 +162,13 @@ module Arel
 
       # SQLServer Helpers
 
-      def node_value(node)
-        return nil unless node
-        case node.expr
-        when NilClass then nil
-        when Numeric then node.expr
-        when Arel::Nodes::Unary then node.expr.expr
-        end
-      end
-
       def select_statement_lock?
-        @select_statement && @select_statement.lock
+        @select_statement && @select_statement.lock # AVOID INSTANCE var
       end
 
       def make_Fetch_Possible_And_Deterministic o
         return if o.limit.nil? && o.offset.nil?
-        if o.orders.empty?
+        if o.orders.empty? # ORDER BY mandatory with OFFSET FETCH clause
           t = table_From_Statement o
           pk = primary_Key_From_Table t
           return unless pk
@@ -184,8 +212,77 @@ module Arel
         column_name ? t[column_name] : nil
       end
 
+      def determine_order_by o, x
+        if o.orders.any?
+          o.orders
+        elsif x.groups.any?
+          x.groups
+        else
+          pk = find_left_table_pk(x)
+          pk ? [ pk ] : nil # []
+        end
+      end
+
+      def generate_order_by orders
+        do_visit_columns orders, nil, 'ORDER BY '
+      end
+
+      SQLString = ActiveRecord::ConnectionAdapters::AbstractAdapter::SQLString
+      # BindCollector = ActiveRecord::ConnectionAdapters::AbstractAdapter::BindCollector
+
+      def self.collector_proxy(collector, &block)
+        if collector.is_a?(SQLString)
+          return SQLStringProxy.new(collector, block)
+        end
+        BindCollectorProxy.new(collector, block)
+      end
+
+      class BindCollectorProxy < ActiveRecord::ConnectionAdapters::AbstractAdapter::BindCollector
+
+        def initialize(collector, block); @delegate = collector; @block = block end
+
+        def << str; @delegate << str; self end
+
+        def add_bind bind; @delegate.add_bind bind; self end
+
+        def value; @delegate.value; end
+
+        #def substitute_binds bvs; @delegate.substitute_binds(bvs); self end
+
+        def compile(bvs, conn)
+          _yield_str @delegate.compile(bvs, conn)
+        end
+
+        private
+
+        def method_missing(name, *args, &block); @delegate.send(name, args, &block) end
+
+        def _yield_str(str); @block ? @block.call(str) : str end
+
+      end
+
+      class SQLStringProxy < ActiveRecord::ConnectionAdapters::AbstractAdapter::SQLString
+
+        def initialize(collector, block); @delegate = collector; @block = block end
+
+        def << str; @delegate << str; self end
+
+        def add_bind bind; @delegate.add_bind bind; self end
+
+        def compile(bvs, conn)
+          _yield_str @delegate.compile(bvs, conn)
+        end
+
+        private
+
+        def method_missing(name, *args, &block); @delegate.send(name, args, &block) end
+
+        def _yield_str(str); @block ? @block.call(str) : str end
+
+      end
+
     end
   end
 end
 
-Arel::Visitors::VISITORS['mssql'] = Arel::Visitors::VISITORS['sqlserver'] = Arel::Visitors::SQLServer
+Arel::Visitors::VISITORS['mssql'] = Arel::Visitors::VISITORS['sqlserver'] = Arel::Visitors::SQLServerNG
