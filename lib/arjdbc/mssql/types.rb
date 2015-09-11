@@ -4,14 +4,14 @@ module ArJdbc
     def initialize_type_map(m)
       #m.register_type              %r{.*},             UnicodeStringType.new
       # Exact Numerics
-      register_class_with_limit m, /^bigint\(/,         BigIntegerType
+      register_class_with_limit m, /^bigint./,          BigIntegerType
       m.alias_type                 'bigint',            'bigint(8)'
-      register_class_with_limit m, /^int\(/,            ActiveRecord::Type::Integer
-      m.alias_type                 'integer',           'int(4)'
+      register_class_with_limit m, /^int\(|\s/,         ActiveRecord::Type::Integer
+      m.alias_type                 /^integer/,          'int(4)'
       m.alias_type                 'int',               'int(4)'
-      register_class_with_limit m, /^smallint\(/,       SmallIntegerType
+      register_class_with_limit m, /^smallint./,        SmallIntegerType
       m.alias_type                 'smallint',          'smallint(2)'
-      register_class_with_limit m, /^tinyint\(/,        TinyIntegerType
+      register_class_with_limit m, /^tinyint./,         TinyIntegerType
       m.alias_type                 'tinyint',           'tinyint(1)'
       m.register_type              /^bit/,              ActiveRecord::Type::Boolean.new
       m.register_type              %r{\Adecimal} do |sql_type|
