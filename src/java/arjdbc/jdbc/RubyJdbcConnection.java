@@ -2277,6 +2277,7 @@ public class RubyJdbcConnection extends RubyObject {
         JDBC_TYPE_FOR.put("text", Types.CLOB);
         JDBC_TYPE_FOR.put("integer", Types.INTEGER);
         JDBC_TYPE_FOR.put("float", Types.FLOAT);
+        JDBC_TYPE_FOR.put("real", Types.REAL);
         JDBC_TYPE_FOR.put("decimal", Types.DECIMAL);
         JDBC_TYPE_FOR.put("date", Types.DATE);
         JDBC_TYPE_FOR.put("time", Types.TIME);
