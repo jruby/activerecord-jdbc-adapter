@@ -34,6 +34,7 @@ module ArJdbc
     require 'arjdbc/mssql/lock_methods'
     require 'arjdbc/mssql/column'
     require 'arjdbc/mssql/explain_support'
+    require 'arjdbc/mssql/types' if AR42
 
     include LimitHelpers
     include Utils
@@ -167,6 +168,11 @@ module ArJdbc
         types[:text] = { :name => "ntext" }
         types[:integer][:limit] = nil
         types[:binary] = { :name => "image" }
+      else
+        # ~ private types for better "native" adapter compatibility
+        types[:varchar_max]   =  { :name => 'varchar(max)' }
+        types[:nvarchar_max]  =  { :name => 'nvarchar(max)' }
+        types[:varbinary_max] =  { :name => 'varbinary(max)' }
       end
       types
     end
