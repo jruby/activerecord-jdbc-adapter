@@ -29,7 +29,9 @@ class MSSQLSimpleTest < Test::Unit::TestCase
     e = DbType.create!(:sample_string => '', :sample_text => '')
     t = Time.now
     value = Time.local(t.year, t.month, t.day, t.hour, t.min, t.sec, 0)
-    if ActiveRecord::VERSION::MAJOR >= 3
+    if ar_version('4.2')
+      str = value.to_s
+    elsif ActiveRecord::VERSION::MAJOR >= 3
       # AR-3 adapters override quoted_date which is called always when a
       # Time like value is passed (... as well for string/text columns) :
       str = value.utc.to_s(:db) << '.' << sprintf("%03d", value.usec)
