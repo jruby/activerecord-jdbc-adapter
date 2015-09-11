@@ -39,25 +39,46 @@ module ArJdbc
       end
       # Character Strings
       register_class_with_limit m, %r{\Achar}i,         CharType
-      register_class_with_limit m, %r{\Avarchar}i,      VarcharType
-      m.register_type              'varchar(max)',      VarcharMaxType.new
+      #register_class_with_limit m, %r{\Avarchar}i,      VarcharType
+      m.register_type              %r{\Anvarchar}i do |sql_type|
+        limit = extract_limit(sql_type)
+        if limit == 2_147_483_647 # varchar(max)
+          VarcharMaxType.new
+        else
+          VarcharType.new :limit => limit
+        end
+      end
+      #m.register_type              'varchar(max)',      VarcharMaxType.new
       m.register_type              /^text/,             TextType.new
       # Unicode Character Strings
       register_class_with_limit m, %r{\Anchar}i,        UnicodeCharType
-      register_class_with_limit m, %r{\Anvarchar}i,     UnicodeVarcharType
+      #register_class_with_limit m, %r{\Anvarchar}i,     UnicodeVarcharType
+      m.register_type              %r{\Anvarchar}i do |sql_type|
+        limit = extract_limit(sql_type)
+        if limit == 1_073_741_823 # nvarchar(max)
+          UnicodeVarcharMaxType.new
+        else
+          UnicodeVarcharType.new :limit => limit
+        end
+      end
+      #m.register_type              'nvarchar(max)',     UnicodeVarcharMaxType.new
       m.alias_type                 'string',            'nvarchar(4000)'
-      m.register_type              'nvarchar(max)',     UnicodeVarcharMaxType.new
       m.register_type              /^ntext/,            UnicodeTextType.new
       # Binary Strings
       register_class_with_limit m, %r{\Aimage}i,        ImageType
       register_class_with_limit m, %r{\Abinary}i,       BinaryType
       register_class_with_limit m, %r{\Avarbinary}i,    VarbinaryType
-      m.register_type              'varbinary(max)',    VarbinaryMaxType.new
+      #m.register_type              'varbinary(max)',    VarbinaryMaxType.new
       # Other Data Types
       m.register_type              'uniqueidentifier',  UUIDType.new
       # TODO
       #m.register_type              'timestamp',         SQLServer::Type::Timestamp.new
       m.register_type              'xml',               XmlType.new
+    end
+
+    def clear_cache!
+      super
+      reload_type_map
     end
 
     # @private
@@ -224,10 +245,10 @@ module ArJdbc
 
     # @private
     class VarcharType < StringType
+      def type; :varchar end
       def initialize(options = {})
         super; @limit = 8000 if @limit.to_i == 0
       end
-      def type; :varchar end
     end
 
     # @private
@@ -248,10 +269,10 @@ module ArJdbc
 
     # @private
     class UnicodeVarcharType < StringType
+      def type; :string end
       def initialize(options = {})
         super; @limit = 4000 if @limit.to_i == 0
       end
-      def type; :nvarchar end
     end
 
     # @private
