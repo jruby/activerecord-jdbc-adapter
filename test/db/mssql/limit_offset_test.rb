@@ -255,4 +255,28 @@ class MSSQLLimitOffsetTest < Test::Unit::TestCase
     assert_equal 2, arel.to_a.size
   end if ar_version('3.0')
 
+  test 'ordering_on_aggregate GH-532' do
+    5.times { |i| LongShip.create! :name => "ship_#{i}", :length => 1000 + i }
+    m1_ship = LongShip.create! :name => 'matching-1', :length => 500
+    m2_ship = LongShip.create! :name => 'matching-2', :length => 600
+
+    Viking.create! :name => 'V1', :long_ship_id => m1_ship.id
+    Viking.create! :name => 'V2', :long_ship_id => m2_ship.id
+    Viking.create! :name => 'X3', :long_ship_id => LongShip.first.id
+    Viking.create! :name => 'X4', :long_ship_id => LongShip.first.id
+    Viking.create! :name => 'X5', :long_ship_id => LongShip.limit(3).last.id
+    Viking.create! :name => 'V6', :long_ship_id => m2_ship.id
+    Viking.create! :name => 'V7', :long_ship_id => m2_ship.id
+    Viking.create! :name => 'V8', :long_ship_id => m1_ship.id
+
+    result = Viking
+        .select('w.*, count(o.length) num_objects')
+        .joins("w inner join long_ships o on o.id = w.long_ship_id" )
+        .where('w.long_ship_id > 0 and w.long_ship_id IN (?)', [ m2_ship.id, m1_ship.id ])
+        .group('w.long_ship_id, w.name, w.strength, w.id, w.updated_at, w.created_at')
+        .order('count(o.length) DESC')
+        .limit(4)
+    assert_equal ['V1','V2','V6','V7'], result.map(&:name)
+  end
+
 end
