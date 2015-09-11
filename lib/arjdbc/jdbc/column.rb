@@ -10,7 +10,8 @@ module ActiveRecord
     # specific type.
     # @see JdbcAdapter#jdbc_column_class
     class JdbcColumn < Column
-      attr_writer :limit, :precision
+      # @deprecated attribute writers will be removed in 1.4
+      attr_writer :limit, :precision # unless ArJdbc::AR42
 
       def initialize(config, name, *args)
         if self.class == JdbcColumn
