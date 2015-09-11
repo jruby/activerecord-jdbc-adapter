@@ -76,8 +76,7 @@ class MSSQLSimpleTest < Test::Unit::TestCase
     assert(!title_column.null)
   end
 
-  def test_change_column_whithout_default_option_should_drop_existing_default
-
+  def test_change_column_without_default_option_should_drop_existing_default
     Entry.reset_column_information
     status_column = Entry.columns.find { |c| c.name == 'status' }
     assert_equal :string, status_column.type
@@ -91,8 +90,7 @@ class MSSQLSimpleTest < Test::Unit::TestCase
     assert !status_column.default
   end
 
-  def test_change_column_whith_default_option_should_set_new_default
-
+  def test_change_column_with_default_option_should_set_new_default
     Entry.reset_column_information
     status_column = Entry.columns.find { |c| c.name == 'status' }
     assert_equal :string, status_column.type
