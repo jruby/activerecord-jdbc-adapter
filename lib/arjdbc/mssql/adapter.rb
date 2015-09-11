@@ -140,7 +140,7 @@ module ArJdbc
       :datetime  =>  { :name => 'datetime' },
       :timestamp =>  { :name => 'datetime' },
 
-      :string    =>  { :name => 'nvarchar', :limit => 255 }, # limit: 4000
+      :string    =>  { :name => 'nvarchar', :limit => 4000 },
       #:varchar    =>  { :name => 'varchar' }, # limit: 8000
       :text      =>  { :name => 'nvarchar(max)' },
       :text_basic =>  { :name => 'text' },
@@ -174,6 +174,7 @@ module ArJdbc
         types[:nvarchar_max]  =  { :name => 'nvarchar(max)' }
         types[:varbinary_max] =  { :name => 'varbinary(max)' }
       end
+      types[:string][:limit] = 255 unless AR40 # backwards compatibility
       types
     end
 
