@@ -2268,7 +2268,12 @@ public class RubyJdbcConnection extends RubyObject {
         if ( column == null || column.isNil() ) {
             throw runtime.newArgumentError("nil column passed");
         }
-        return (RubySymbol) column.callMethod(context, "type");
+
+        final IRubyObject type = column.callMethod(context, "type");
+        if ( type.isNil() || ! (type instanceof RubySymbol) ) {
+            throw new IllegalStateException("unexpected type = " + type.inspect() + " for " + column.inspect());
+        }
+        return (RubySymbol) type;
     }
 
     protected static final Map<String, Integer> JDBC_TYPE_FOR = new HashMap<String, Integer>(32, 1);
