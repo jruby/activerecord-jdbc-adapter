@@ -1892,7 +1892,11 @@ public class RubyJdbcConnection extends RubyObject {
         return value;
     }
 
-    private static IRubyObject typeCastFromDatabase(final ThreadContext context,
+    /**
+     * @return AR::Type-casted value
+     * @since 1.3.18
+     */
+    protected static IRubyObject typeCastFromDatabase(final ThreadContext context,
         final IRubyObject adapter, final RubySymbol typeName, final RubyString value) {
         final IRubyObject type = adapter.callMethod(context, "lookup_cast_type", typeName);
         return type.callMethod(context, "type_cast_from_database", value);
@@ -1915,6 +1919,7 @@ public class RubyJdbcConnection extends RubyObject {
         if ( adapter.isNil() ) return strValue; // NOTE: we warn on init_connection
 
         if ( usesType(runtime) ) {
+            // NOTE: this CAN NOT be 100% correct - as :date is just a type guess!
             return typeCastFromDatabase(context, adapter, runtime.newSymbol("date"), strValue);
         }
         return adapter.callMethod(context, "_string_to_date", strValue);
@@ -1937,6 +1942,7 @@ public class RubyJdbcConnection extends RubyObject {
         if ( adapter.isNil() ) return strValue; // NOTE: we warn on init_connection
 
         if ( usesType(runtime) ) {
+            // NOTE: this CAN NOT be 100% correct - as :time is just a type guess!
             return typeCastFromDatabase(context, adapter, runtime.newSymbol("time"), strValue);
         }
         return adapter.callMethod(context, "_string_to_time", strValue);
@@ -1959,6 +1965,7 @@ public class RubyJdbcConnection extends RubyObject {
         if ( adapter.isNil() ) return strValue; // NOTE: we warn on init_connection
 
         if ( usesType(runtime) ) {
+            // NOTE: this CAN NOT be 100% correct - as :timestamp is just a type guess!
             return typeCastFromDatabase(context, adapter, runtime.newSymbol("timestamp"), strValue);
         }
         return adapter.callMethod(context, "_string_to_timestamp", strValue);
@@ -2325,8 +2332,7 @@ public class RubyJdbcConnection extends RubyObject {
                 internedType = "array";
             }
             else {
-                final RubySymbol columnType = resolveColumnType(context, runtime, column);
-                internedType = columnType.asJavaString();
+                internedType = resolveColumnType(context, runtime, column).asJavaString();
             }
         }
         else {
@@ -3124,7 +3130,11 @@ public class RubyJdbcConnection extends RubyObject {
         return defaultValue == null ? runtime.getNil() : RubyString.newUnicodeString(runtime, defaultValue);
     }
 
-    private static boolean usesType(final Ruby runtime) { // AR 4.2
+    /**
+     * Internal API that might be subject to change!
+     * @since 1.3.18
+     */
+    protected static boolean usesType(final Ruby runtime) { // AR 4.2
         return runtime.getModule("ActiveRecord").getConstantAt("Type") != null;
     }
 

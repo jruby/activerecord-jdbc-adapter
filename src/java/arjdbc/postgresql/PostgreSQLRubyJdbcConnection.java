@@ -498,6 +498,10 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
         if ( rawDateTime != null && rawDateTime.booleanValue() ) return strValue;
 
         final IRubyObject adapter = callMethod(context, "adapter"); // self.adapter
+        if ( usesType(runtime) ) {
+            return typeCastFromDatabase(context, adapter, runtime.newSymbol("datetime"), strValue);
+        }
+
         if ( adapter.isNil() ) return strValue; // NOTE: we warn on init_connection
         return adapter.callMethod(context, "_string_to_timestamp", strValue);
     }
