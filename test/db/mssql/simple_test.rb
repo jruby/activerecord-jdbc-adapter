@@ -155,6 +155,53 @@ class MSSQLSimpleTest < Test::Unit::TestCase
     assert ! columns.find { |col| col.name == 'another_column' }
   end
 
+  # from include DirtyAttributeTests :
+
+#  ActiveRecord::AttributeMethods.class_eval do
+#
+#    # Filters the primary keys and readonly attributes from the attribute names.
+#    def attributes_for_update(attribute_names)
+#      result = attribute_names.reject do |name|
+#        readonly_attribute?(name)
+#      end
+#      puts "attributes_for_update(attribute_names) #{attribute_names.inspect}\n result = #{result.inspect}"
+#      result
+#    end
+#
+#  end
+
+  def test_partial_update_with_updated_at
+    # NOTE: partial updates won't work on MS-SQL :
+    #   with_partial_updates User, false do
+    #     assert_queries(1) { user.save! }
+    #   end
+    # ActiveRecord::JDBCError: Cannot update identity column 'id'.: UPDATE [entries] SET [title] = N'foo', [id] = 1, [updated_on] = '2015-09-11 11:11:55.182', [content] = NULL, [status] = N'unknown', [rating] = NULL, [user_id] = NULL WHERE [entries].[id] = 1
+    # since ActiveRecord::AttributeMethods#attributes_for_update only checks for
+    # readonly_attribute? and not pk_attribute?(name) as well ...
+    # other adapters such as MySQL simply accept/ignore similar UPDATE as valid
+    #
+    return super unless ar_version('4.0')
+    begin
+      ro_attrs = User.readonly_attributes.dup
+      User.readonly_attributes << 'id'
+      super
+    ensure
+      User.readonly_attributes.replace(ro_attrs)
+    end
+  end
+
+  def test_partial_update_with_updated_on
+    return super unless ar_version('4.0')
+    begin
+      ro_attrs = User.readonly_attributes.dup
+      User.readonly_attributes << 'id'
+      super
+    ensure
+      User.readonly_attributes.replace(ro_attrs)
+    end
+  end
+
+
   def test_find_by_sql_WITH_statement
     user = User.create! :login => 'ferko'
     Entry.create! :title => 'aaa', :user_id => user.id
