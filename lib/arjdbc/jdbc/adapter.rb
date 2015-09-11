@@ -957,10 +957,12 @@ module ActiveRecord
 
       end
 
-
       if ActiveRecord::VERSION::MAJOR < 4 # emulating Rails 3.x compatibility
-        JdbcConnection.raw_date_time = true if JdbcConnection.raw_date_time? == nil
-        JdbcConnection.raw_boolean = true if JdbcConnection.raw_boolean? == nil
+        JdbcConnection.raw_date_time = true if JdbcConnection.raw_date_time?.nil?
+        JdbcConnection.raw_boolean = true if JdbcConnection.raw_boolean?.nil?
+      elsif ArJdbc::AR42 # AR::Type should do the conversion - for better accuracy
+        JdbcConnection.raw_date_time = true if JdbcConnection.raw_date_time?.nil?
+        JdbcConnection.raw_boolean = true if JdbcConnection.raw_boolean?.nil?
       end
 
     end
