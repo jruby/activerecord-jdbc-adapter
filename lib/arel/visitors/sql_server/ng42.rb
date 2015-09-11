@@ -140,12 +140,12 @@ module Arel
 
       def make_Fetch_Possible_And_Deterministic o
         return if o.limit.nil? && o.offset.nil?
-        t = table_From_Statement o
-        pk = primary_Key_From_Table t
-        return unless pk
         if o.orders.empty?
+          t = table_From_Statement o
+          pk = primary_Key_From_Table t
+          return unless pk
           # Prefer deterministic vs a simple `(SELECT NULL)` expr.
-          o.orders = [pk.asc]
+          o.orders = [ pk.asc ]
         end
       end
 
