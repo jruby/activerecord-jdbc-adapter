@@ -14,7 +14,7 @@ module ArJdbc
         class << base; include Cast; end
       end
 
-      include LockMethods
+      include LockMethods unless AR42
 
       # @override
       def simplified_type(field_type)
@@ -38,7 +38,7 @@ module ArJdbc
 
       # @override
       def default_value(value)
-        return $1 if value =~ /^\(N?'(.*)'\)$/
+        return $1 if value =~ /^\(N?'(.*)'\)$/ || value =~ /^\(\(?(.*?)\)?\)$/
         value
       end
 
