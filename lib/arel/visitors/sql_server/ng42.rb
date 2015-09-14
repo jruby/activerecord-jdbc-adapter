@@ -58,7 +58,7 @@ module Arel
       def visit_Arel_Nodes_SelectStatement o, collector
         distinct_One_As_One_Is_So_Not_Fetch o
 
-        @select_statement = o
+        set_select_statement_lock o.lock
 
         if o.with
           collector = visit o.with, collector
@@ -106,7 +106,7 @@ module Arel
         end
 
       ensure
-        @select_statement = nil
+        set_select_statement_lock nil
       end
 
       def visit_Arel_Nodes_JoinSource o, collector
@@ -132,8 +132,8 @@ module Arel
       # SQLServer ToSql/Visitor (Additions)
 
       def visit_Arel_Nodes_SelectStatement_SQLServer_Lock collector, options = {}
-        if select_statement_lock?
-          collector = visit @select_statement.lock, collector
+        if lock = select_statement_lock
+          collector = visit lock, collector
           collector << SPACE if options[:space]
         end
         collector
@@ -162,8 +162,13 @@ module Arel
 
       # SQLServer Helpers
 
-      def select_statement_lock?
-        @select_statement && @select_statement.lock # AVOID INSTANCE var
+      # attr_reader :select_statement_lock
+      def select_statement_lock
+        Thread.current[:'Arel::Visitors::SQLServerNG.select_statement_lock']
+      end
+
+      def set_select_statement_lock(lock) # @select_statement_lock = lock
+        Thread.current[:'Arel::Visitors::SQLServerNG.select_statement_lock'] = lock
       end
 
       def make_Fetch_Possible_And_Deterministic o
