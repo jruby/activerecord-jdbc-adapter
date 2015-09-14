@@ -1,5 +1,16 @@
 ## 1.3.18 (pe/nd/in)
 
+- since arel visitor instances might get re-used we need to avoid the @instance
+- [postgres] work-around BC time parsing issue (on JRuby 1.7.x) by a patch
+- [mssql] fix broken ordering on an aggregate queries (from #646 closing #532)
+- [mssql] default to using a string limit: 4000 with newer AR
+- [mssql] setup type map for SQLServer ... backwards compat as much as possible
+- for better AR alignment on 4.2 shall do the AR type-casting of booleans/dates
+- [mssql] ... port over visitor from sqlserver-adapter (to be used on AR 4.2)
+- [mssql] allow to tune collation equality operator with *cs_equality_operator*
+- [mssql] setup BINARY/TEXT types as binary_basic/text_basic (needed on 4.2)
+- [mssql] setup a NATIVE_DATABASE_TYPES constant (for SQLServer > 2K) (#508)
+- [jdbc] prefer BIT(1) as a better match for :boolean type than TINYINT
 - [mssql] get_table_name bug with unusual queries has been fixed (#583)
 - [mssql] make sure we set @primary on column instances even on AR 4.2
 - [mssql] issue when using joins with distinct (#590) ... fixed with #608
