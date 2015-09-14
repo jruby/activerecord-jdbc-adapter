@@ -1,4 +1,4 @@
-## 1.3.18 (pe/nd/in)
+## 1.3.18 (09/14/15)
 
 - since arel visitor instances might get re-used we need to avoid the @instance
 - [postgres] work-around BC time parsing issue (on JRuby 1.7.x) by a patch
