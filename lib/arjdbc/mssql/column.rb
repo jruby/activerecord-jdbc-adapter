@@ -15,11 +15,7 @@ module ArJdbc
         class << base; include Cast; end
       end
 
-      include LockMethods
-
-      attr_accessor :identity, :special
-      # @deprecated
-      alias_method :is_special, :special
+      include LockMethods unless AR42
 
       # @override
       def simplified_type(field_type)
@@ -43,7 +39,7 @@ module ArJdbc
 
       # @override
       def default_value(value)
-        return $1 if value =~ /^\(N?'(.*)'\)$/
+        return $1 if value =~ /^\(N?'(.*)'\)$/ || value =~ /^\(\(?(.*?)\)?\)$/
         value
       end
 
@@ -82,11 +78,38 @@ module ArJdbc
         end
       end
 
-      private
+      # #primary replacement that works on 4.2 as well
+      # #columns will set @primary even when on AR 4.2
+      def primary?; @primary end
+      alias_method :is_primary, :primary?
+
+      def identity?
+        !! sql_type.downcase.index('identity')
+      end
+      # @deprecated
+      alias_method :identity, :identity?
+      alias_method :is_identity, :identity?
+
+      # NOTE: these do not handle = equality as expected
+      # see {#repair_special_columns}
+      # (TEXT, NTEXT, and IMAGE data types are deprecated)
+      # @private
+      def special?
+        unless defined? @special # /text|ntext|image|xml/i
+          sql_type = @sql_type.downcase
+          @special = !! ( sql_type.index('text') || sql_type.index('image') || sql_type.index('xml') )
+        end
+        @special
+      end
+      # @deprecated
+      alias_method :special, :special?
+      alias_method :is_special, :special?
 
       def is_utf8?
         !!( sql_type =~ /nvarchar|ntext|nchar/i )
       end
+
+      private
 
       def unquote(value)
         value.to_s.sub(/\A\([\(\']?/, "").sub(/[\'\)]?\)\Z/, "")

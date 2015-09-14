@@ -421,6 +421,9 @@ module ArJdbc
       @connection.tables(nil, current_schema)
     end
 
+    # @override
+    def supports_foreign_keys?; true end
+
     def truncate(table_name, name = nil)
       execute "TRUNCATE TABLE #{quote_table_name(table_name)}", name
     end

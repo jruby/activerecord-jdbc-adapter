@@ -56,6 +56,7 @@ import java.sql.Types;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -181,6 +182,15 @@ public class RubyJdbcConnection extends RubyObject {
      */
     protected static RubyClass getIndexDefinition(final Ruby runtime) {
         return (RubyClass) getConnectionAdapters(runtime).getConstantAt("IndexDefinition");
+    }
+
+    /**
+     * @param runtime
+     * @return <code>ActiveRecord::ConnectionAdapters::ForeignKeyDefinition</code>
+     * @note only since AR 4.2
+     */
+    protected static RubyClass getForeignKeyDefinition(final Ruby runtime) {
+        return getConnectionAdapters(runtime).getClass("ForeignKeyDefinition");
     }
 
     /**
@@ -1385,7 +1395,7 @@ public class RubyJdbcConnection extends RubyObject {
 
                     final DatabaseMetaData metaData = connection.getMetaData();
                     columns = metaData.getColumns(components.catalog, components.schema, components.name, null);
-                    return unmarshalColumns(context, metaData, components, columns);
+                    return mapColumnsResult(context, metaData, components, columns);
                 }
                 finally {
                     close(columns);
@@ -1422,7 +1432,7 @@ public class RubyJdbcConnection extends RubyObject {
         return withConnection(context, new Callable<IRubyObject>() {
             public RubyArray call(final Connection connection) throws SQLException {
                 final Ruby runtime = context.runtime;
-                final RubyClass IndexDefinition = getIndexDefinition(runtime);
+                final RubyClass IndexDefinition = getIndexDefinition(context);
 
                 String _tableName = caseConvertIdentifierForJdbc(connection, tableName);
                 String _schemaName = caseConvertIdentifierForJdbc(connection, schemaName);
@@ -1476,6 +1486,103 @@ public class RubyJdbcConnection extends RubyObject {
                     return indexes;
 
                 } finally { close(indexInfoSet); }
+            }
+        });
+    }
+
+    protected RubyClass getIndexDefinition(final ThreadContext context) {
+        final RubyClass adapterClass = getAdapter().getMetaClass();
+        IRubyObject IDef = adapterClass.getConstantAt("IndexDefinition");
+        return IDef != null ? (RubyClass) IDef : getIndexDefinition(context.runtime);
+    }
+
+    @JRubyMethod
+    public IRubyObject foreign_keys(final ThreadContext context, IRubyObject table_name) {
+        return foreignKeys(context, table_name.toString(), null, null);
+    }
+
+    protected IRubyObject foreignKeys(final ThreadContext context, final String tableName, final String schemaName, final String catalog) {
+        return withConnection(context, new Callable<IRubyObject>() {
+            public IRubyObject call(final Connection connection) throws SQLException {
+                final Ruby runtime = context.getRuntime();
+                final RubyClass FKDefinition = getForeignKeyDefinition(context);
+
+                String _tableName = caseConvertIdentifierForJdbc(connection, tableName);
+                String _schemaName = caseConvertIdentifierForJdbc(connection, schemaName);
+                final TableName table = extractTableName(connection, catalog, _schemaName, _tableName);
+
+                ResultSet fkInfoSet = null;
+                final List<IRubyObject> fKeys = new ArrayList<IRubyObject>(8);
+                try {
+                    final DatabaseMetaData metaData = connection.getMetaData();
+                    fkInfoSet = metaData.getImportedKeys(table.catalog, table.schema, table.name);
+
+                    while ( fkInfoSet.next() ) {
+                        final RubyHash options = RubyHash.newHash(runtime);
+
+                        String fkName = fkInfoSet.getString("FK_NAME");
+                        if (fkName != null) {
+                            fkName = caseConvertIdentifierForRails(metaData, fkName);
+                            options.put(runtime.newSymbol("name"), fkName);
+                        }
+
+                        String columnName = fkInfoSet.getString("FKCOLUMN_NAME");
+                        options.put(runtime.newSymbol("column"), caseConvertIdentifierForRails(metaData, columnName));
+
+                        columnName = fkInfoSet.getString("PKCOLUMN_NAME");
+                        options.put(runtime.newSymbol("primary_key"), caseConvertIdentifierForRails(metaData, columnName));
+
+                        String fkTableName = fkInfoSet.getString("FKTABLE_NAME");
+                        fkTableName = caseConvertIdentifierForRails(metaData, fkTableName);
+
+                        String pkTableName = fkInfoSet.getString("PKTABLE_NAME");
+                        pkTableName = caseConvertIdentifierForRails(metaData, pkTableName);
+
+                        final String onDelete = extractForeignKeyRule( fkInfoSet.getInt("DELETE_RULE") );
+                        if ( onDelete != null ) options.op_aset(context, runtime.newSymbol("on_delete"), runtime.newSymbol(onDelete));
+
+                        final String onUpdate = extractForeignKeyRule( fkInfoSet.getInt("UPDATE_RULE") );
+                        if ( onUpdate != null ) options.op_aset(context, runtime.newSymbol("on_update"), runtime.newSymbol(onUpdate));
+
+                        IRubyObject[] args = new IRubyObject[] {
+                            RubyString.newUnicodeString(runtime, fkTableName), // from_table
+                            RubyString.newUnicodeString(runtime, pkTableName), // to_table
+                            options
+                        };
+
+                        fKeys.add( FKDefinition.callMethod(context, "new", args) ); // ForeignKeyDefinition.new
+                    }
+
+                    return runtime.newArray(fKeys);
+
+                } finally { close(fkInfoSet); }
+            }
+        });
+    }
+
+    protected String extractForeignKeyRule(final int rule) {
+        switch (rule) {
+            case DatabaseMetaData.importedKeyNoAction :  return null ;
+            case DatabaseMetaData.importedKeyCascade :   return "cascade" ;
+            case DatabaseMetaData.importedKeySetNull :   return "nullify" ;
+            case DatabaseMetaData.importedKeySetDefault: return "default" ;
+        }
+        return null;
+    }
+
+    protected RubyClass getForeignKeyDefinition(final ThreadContext context) {
+        final RubyClass adapterClass = getAdapter().getMetaClass();
+        IRubyObject FKDef = adapterClass.getConstantAt("ForeignKeyDefinition");
+        return FKDef != null ? (RubyClass) FKDef : getForeignKeyDefinition(context.runtime);
+    }
+
+
+    @JRubyMethod(name = "supports_foreign_keys?")
+    public IRubyObject supports_foreign_keys_p(final ThreadContext context) throws SQLException {
+        return withConnection(context, new Callable<IRubyObject>() {
+            public IRubyObject call(final Connection connection) throws SQLException {
+                final DatabaseMetaData metaData = connection.getMetaData();
+                return context.getRuntime().newBoolean( metaData.supportsIntegrityEnhancementFacility() );
             }
         });
     }
@@ -2215,6 +2322,16 @@ public class RubyJdbcConnection extends RubyObject {
         return value;
     }
 
+    /**
+     * @return AR::Type-casted value
+     * @since 1.3.18
+     */
+    protected static IRubyObject typeCastFromDatabase(final ThreadContext context,
+        final IRubyObject adapter, final RubySymbol typeName, final RubyString value) {
+        final IRubyObject type = adapter.callMethod(context, "lookup_cast_type", typeName);
+        return type.callMethod(context, "type_cast_from_database", value);
+    }
+
     protected IRubyObject dateToRuby(final ThreadContext context,
         final Ruby runtime, final ResultSet resultSet, final int column)
         throws SQLException {
@@ -2227,6 +2344,14 @@ public class RubyJdbcConnection extends RubyObject {
         }
 
         return DateTimeUtils.newTime(context, value).callMethod(context, "to_date");
+        /*
+        final IRubyObject adapter = ...; // self.adapter
+        if ( adapter.isNil() ) return strValue; // NOTE: we warn on init_connection
+
+        if ( usesType(runtime) ) {
+            // NOTE: this CAN NOT be 100% correct - as :date is just a type guess!
+            return typeCastFromDatabase(context, adapter, runtime.newSymbol("date"), strValue);
+        } */
     }
 
     protected IRubyObject timeToRuby(final ThreadContext context,
@@ -2241,6 +2366,14 @@ public class RubyJdbcConnection extends RubyObject {
         }
 
         return DateTimeUtils.newTime(context, value);
+        /*
+        final IRubyObject adapter = ...; // self.adapter
+        if ( adapter.isNil() ) return strValue; // NOTE: we warn on init_connection
+
+        if ( usesType(runtime) ) {
+            // NOTE: this CAN NOT be 100% correct - as :time is just a type guess!
+            return typeCastFromDatabase(context, adapter, runtime.newSymbol("time"), strValue);
+        } */
     }
 
     protected IRubyObject timestampToRuby(final ThreadContext context, // TODO
@@ -2255,6 +2388,15 @@ public class RubyJdbcConnection extends RubyObject {
         }
 
         return DateTimeUtils.newTime(context, value);
+
+        /*
+        final IRubyObject adapter = callMethod(context, "adapter"); // self.adapter
+        if ( adapter.isNil() ) return strValue; // NOTE: we warn on init_connection
+
+        if ( usesType(runtime) ) {
+            // NOTE: this CAN NOT be 100% correct - as :timestamp is just a type guess!
+            return typeCastFromDatabase(context, adapter, runtime.newSymbol("timestamp"), strValue);
+        } */
     }
 
     protected static Boolean rawBoolean;
@@ -2434,7 +2576,7 @@ public class RubyJdbcConnection extends RubyObject {
             final Object rawValue, final IRubyObject column) throws SQLException {
         final Object value;
 
-        if (isAr42(column)) {
+        if ( isAr42(column) ) {
             final IRubyObject castType = column.callMethod(context, "cast_type");
             value = castType.callMethod(context, "type_cast_for_database", (IRubyObject) rawValue);
         } else {
@@ -2525,7 +2667,49 @@ public class RubyJdbcConnection extends RubyObject {
         if ( column == null || column.isNil() ) {
             throw runtime.newArgumentError("nil column passed");
         }
-        return (RubySymbol) column.callMethod(context, "type");
+
+        final IRubyObject type = column.callMethod(context, "type");
+        if ( type.isNil() || ! (type instanceof RubySymbol) ) {
+            throw new IllegalStateException("unexpected type = " + type.inspect() + " for " + column.inspect());
+        }
+        return (RubySymbol) type;
+    }
+
+    protected static final Map<String, Integer> JDBC_TYPE_FOR = new HashMap<String, Integer>(32, 1);
+    static {
+        JDBC_TYPE_FOR.put("string", Types.VARCHAR);
+        JDBC_TYPE_FOR.put("text", Types.CLOB);
+        JDBC_TYPE_FOR.put("integer", Types.INTEGER);
+        JDBC_TYPE_FOR.put("float", Types.FLOAT);
+        JDBC_TYPE_FOR.put("real", Types.REAL);
+        JDBC_TYPE_FOR.put("decimal", Types.DECIMAL);
+        JDBC_TYPE_FOR.put("date", Types.DATE);
+        JDBC_TYPE_FOR.put("time", Types.TIME);
+        JDBC_TYPE_FOR.put("datetime", Types.TIMESTAMP);
+        JDBC_TYPE_FOR.put("timestamp", Types.TIMESTAMP);
+        JDBC_TYPE_FOR.put("binary", Types.BLOB);
+        JDBC_TYPE_FOR.put("boolean", Types.BOOLEAN);
+        JDBC_TYPE_FOR.put("array", Types.ARRAY);
+        JDBC_TYPE_FOR.put("xml", Types.SQLXML);
+
+        // also mapping standard SQL names :
+        JDBC_TYPE_FOR.put("bit", Types.BIT);
+        JDBC_TYPE_FOR.put("tinyint", Types.TINYINT);
+        JDBC_TYPE_FOR.put("smallint", Types.SMALLINT);
+        JDBC_TYPE_FOR.put("bigint", Types.BIGINT);
+        JDBC_TYPE_FOR.put("int", Types.INTEGER);
+        JDBC_TYPE_FOR.put("double", Types.DOUBLE);
+        JDBC_TYPE_FOR.put("numeric", Types.NUMERIC);
+        JDBC_TYPE_FOR.put("char", Types.CHAR);
+        JDBC_TYPE_FOR.put("varchar", Types.VARCHAR);
+        JDBC_TYPE_FOR.put("binary", Types.BINARY);
+        JDBC_TYPE_FOR.put("varbinary", Types.VARBINARY);
+        //JDBC_TYPE_FOR.put("struct", Types.STRUCT);
+        JDBC_TYPE_FOR.put("blob", Types.BLOB);
+        JDBC_TYPE_FOR.put("clob", Types.CLOB);
+        JDBC_TYPE_FOR.put("nchar", Types.NCHAR);
+        JDBC_TYPE_FOR.put("nvarchar", Types.NVARCHAR);
+        JDBC_TYPE_FOR.put("nclob", Types.NCLOB);
     }
 
     protected int jdbcTypeFor(final ThreadContext context, final Ruby runtime,
@@ -2540,39 +2724,20 @@ public class RubyJdbcConnection extends RubyObject {
                 internedType = "array";
             }
             else {
-                final RubySymbol columnType = resolveColumnType(context, runtime, column);
-                internedType = columnType.asJavaString();
+                internedType = resolveColumnType(context, runtime, column).asJavaString();
             }
         }
         else {
-            if ( value instanceof RubyInteger ) {
-                internedType = "integer";
-            }
-            else if ( value instanceof RubyNumeric ) {
-                internedType = "float";
-            }
-            else if ( value instanceof RubyTime ) {
-                internedType = "timestamp";
-            }
-            else {
-                internedType = "string";
-            }
+            if ( value instanceof RubyInteger ) internedType = "integer";
+            else if ( value instanceof RubyNumeric ) internedType = "float";
+            else if ( value instanceof RubyTime ) internedType = "timestamp";
+            else internedType = "string";
         }
 
-        if ( internedType == (Object) "string" ) return Types.VARCHAR;
-        else if ( internedType == (Object) "text" ) return Types.CLOB;
-        else if ( internedType == (Object) "integer" ) return Types.INTEGER;
-        else if ( internedType == (Object) "decimal" ) return Types.DECIMAL;
-        else if ( internedType == (Object) "float" ) return Types.FLOAT;
-        else if ( internedType == (Object) "date" ) return Types.DATE;
-        else if ( internedType == (Object) "time" ) return Types.TIME;
-        else if ( internedType == (Object) "datetime" ) return Types.TIMESTAMP;
-        else if ( internedType == (Object) "timestamp" ) return Types.TIMESTAMP;
-        else if ( internedType == (Object) "binary" ) return Types.BLOB;
-        else if ( internedType == (Object) "boolean" ) return Types.BOOLEAN;
-        else if ( internedType == (Object) "xml" ) return Types.SQLXML;
-        else if ( internedType == (Object) "array" ) return Types.ARRAY;
-        else return Types.OTHER; // -1 as well as 0 are used in Types
+        final Integer sqlType = JDBC_TYPE_FOR.get(internedType);
+        if ( sqlType != null ) return sqlType.intValue();
+
+        return Types.OTHER; // -1 as well as 0 are used in Types
     }
 
     protected void setIntegerParameter(final ThreadContext context,
@@ -3396,23 +3561,40 @@ public class RubyJdbcConnection extends RubyObject {
     }
 
     /**
-     * @note This method is not part of AR-JDBC's Java ext API
-     * and might be subject to change in the future.
+     * Internal API that might be subject to change!
+     * @since 1.3.18
+     */
+    protected static boolean usesType(final Ruby runtime) { // AR 4.2
+        return runtime.getModule("ActiveRecord").getConstantAt("Type") != null;
+    }
+
+    /**
+     * This method is considered internal and is not part of AR-JDBC's Java ext
+     * API and thus might be subject to change in the future.
+     * Please copy it to your own class if you rely on it to avoid issues.
      */
     public static boolean isAr42(IRubyObject column) {
         return column.respondsTo("cast_type");
     }
 
-    private RubyArray unmarshalColumns(final ThreadContext context,
+    protected RubyArray mapColumnsResult(final ThreadContext context,
         final DatabaseMetaData metaData, final TableName components, final ResultSet results)
         throws SQLException {
 
-        final Ruby runtime = context.runtime;
-        final RubyClass JdbcColumn = getJdbcColumnClass(context);
-
+        final RubyClass Column = getJdbcColumnClass(context);
+        final boolean lookupCastType = Column.isMethodBound("cast_type", false);
         // NOTE: primary/primary= methods were removed from Column in AR 4.2
-        final boolean setPrimary = JdbcColumn.isMethodBound("primary=", false);
-        final boolean isAr42 = !setPrimary;
+        // setPrimary = ! lookupCastType by default ... it's better than checking
+        // whether primary= is bound since it might be a left over in AR-JDBC ext
+        return mapColumnsResult(context, metaData, components, results, Column, lookupCastType, ! lookupCastType);
+    }
+
+    protected final RubyArray mapColumnsResult(final ThreadContext context,
+        final DatabaseMetaData metaData, final TableName components, final ResultSet results,
+        final RubyClass Column, final boolean lookupCastType, final boolean setPrimary)
+        throws SQLException {
+
+        final Ruby runtime = context.getRuntime();
 
         final Collection<String> primaryKeyNames =
             setPrimary ? getPrimaryKeyNames(metaData, components) : null;
@@ -3426,22 +3608,22 @@ public class RubyJdbcConnection extends RubyObject {
             final RubyString sqlType = RubyString.newUnicodeString( runtime, typeFromResultSet(results) );
             final RubyBoolean nullable = runtime.newBoolean( ! results.getString(IS_NULLABLE).trim().equals("NO") );
             final IRubyObject[] args;
-            if (isAr42) {
+            if ( lookupCastType ) {
                 final IRubyObject castType = getAdapter().callMethod(context, "lookup_cast_type", sqlType);
                 args = new IRubyObject[] {config, railsColumnName, defaultValue, castType, sqlType, nullable};
             } else {
                 args = new IRubyObject[] {config, railsColumnName, defaultValue, sqlType, nullable};
             }
 
-            IRubyObject column = JdbcColumn.callMethod(context, "new", args);
+            IRubyObject column = Column.callMethod(context, "new", args);
             columns.append(column);
 
-            if ( primaryKeyNames != null && primaryKeyNames.contains(colName) ) {
-                column.callMethod(context, "primary=", runtime.getTrue());
+            if ( primaryKeyNames != null ) {
+                final RubyBoolean primary = runtime.newBoolean( primaryKeyNames.contains(colName) );
+                column.getInstanceVariables().setInstanceVariable("@primary", primary);
             }
         }
         return columns;
-
     }
 
     private static Collection<String> getPrimaryKeyNames(final DatabaseMetaData metaData,

@@ -28,7 +28,9 @@ class MSSQLSimpleTest < Test::Unit::TestCase
     e = DbType.create!(:sample_string => '', :sample_text => '')
     t = Time.now
     value = Time.local(t.year, t.month, t.day, t.hour, t.min, t.sec, 0)
-    if ActiveRecord::VERSION::MAJOR >= 3
+    if ar_version('4.2')
+      str = value.to_s
+    elsif ActiveRecord::VERSION::MAJOR >= 3
       # AR-3 adapters override quoted_date which is called always when a
       # Time like value is passed (... as well for string/text columns) :
       str = value.utc.to_s(:db) << '.' << sprintf("%03d", value.usec)
@@ -73,8 +75,7 @@ class MSSQLSimpleTest < Test::Unit::TestCase
     assert(!title_column.null)
   end
 
-  def test_change_column_whithout_default_option_should_drop_existing_default
-
+  def test_change_column_without_default_option_should_drop_existing_default
     Entry.reset_column_information
     status_column = Entry.columns.find { |c| c.name == 'status' }
     assert_equal :string, status_column.type
@@ -88,8 +89,7 @@ class MSSQLSimpleTest < Test::Unit::TestCase
     assert !status_column.default
   end
 
-  def test_change_column_whith_default_option_should_set_new_default
-
+  def test_change_column_with_default_option_should_set_new_default
     Entry.reset_column_information
     status_column = Entry.columns.find { |c| c.name == 'status' }
     assert_equal :string, status_column.type
@@ -153,6 +153,53 @@ class MSSQLSimpleTest < Test::Unit::TestCase
     columns = ActiveRecord::Base.connection.columns("entries")
     assert ! columns.find { |col| col.name == 'another_column' }
   end
+
+  # from include DirtyAttributeTests :
+
+#  ActiveRecord::AttributeMethods.class_eval do
+#
+#    # Filters the primary keys and readonly attributes from the attribute names.
+#    def attributes_for_update(attribute_names)
+#      result = attribute_names.reject do |name|
+#        readonly_attribute?(name)
+#      end
+#      puts "attributes_for_update(attribute_names) #{attribute_names.inspect}\n result = #{result.inspect}"
+#      result
+#    end
+#
+#  end
+
+  def test_partial_update_with_updated_at
+    # NOTE: partial updates won't work on MS-SQL :
+    #   with_partial_updates User, false do
+    #     assert_queries(1) { user.save! }
+    #   end
+    # ActiveRecord::JDBCError: Cannot update identity column 'id'.: UPDATE [entries] SET [title] = N'foo', [id] = 1, [updated_on] = '2015-09-11 11:11:55.182', [content] = NULL, [status] = N'unknown', [rating] = NULL, [user_id] = NULL WHERE [entries].[id] = 1
+    # since ActiveRecord::AttributeMethods#attributes_for_update only checks for
+    # readonly_attribute? and not pk_attribute?(name) as well ...
+    # other adapters such as MySQL simply accept/ignore similar UPDATE as valid
+    #
+    return super unless ar_version('4.0')
+    begin
+      ro_attrs = User.readonly_attributes.dup
+      User.readonly_attributes << 'id'
+      super
+    ensure
+      User.readonly_attributes.replace(ro_attrs)
+    end
+  end
+
+  def test_partial_update_with_updated_on
+    return super unless ar_version('4.0')
+    begin
+      ro_attrs = User.readonly_attributes.dup
+      User.readonly_attributes << 'id'
+      super
+    ensure
+      User.readonly_attributes.replace(ro_attrs)
+    end
+  end
+
 
   def test_find_by_sql_WITH_statement
     user = User.create! :login => 'ferko'

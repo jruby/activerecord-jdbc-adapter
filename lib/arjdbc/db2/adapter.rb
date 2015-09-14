@@ -1,3 +1,27 @@
+# NOTE: file contains code adapted from **ruby-ibmdb** adapter, license follows
+=begin
+Copyright (c) 2006 - 2015 IBM Corporation
+
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of this software and associated documentation files (the
+"Software"), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+=end
+
 ArJdbc.load_java_part :DB2
 
 require 'arjdbc/db2/column'
@@ -109,6 +133,78 @@ module ArJdbc
       #:serial     => { :name => "serial" }, # supported datatype on Informix Dynamic Server
       #:graphic    => { :name => "graphic", :limit => 1 }, # :limit => 127
     }
+
+    # @override
+    def initialize_type_map(m)
+      register_class_with_limit m, %r(boolean)i,   ActiveRecord::Type::Boolean
+      register_class_with_limit m, %r(char)i,      ActiveRecord::Type::String
+      register_class_with_limit m, %r(binary)i,    ActiveRecord::Type::Binary
+      register_class_with_limit m, %r(text)i,      ActiveRecord::Type::Text
+      register_class_with_limit m, %r(date)i,      ActiveRecord::Type::Date
+      register_class_with_limit m, %r(time)i,      ActiveRecord::Type::Time
+      register_class_with_limit m, %r(datetime)i,  ActiveRecord::Type::DateTime
+      register_class_with_limit m, %r(float)i,     ActiveRecord::Type::Float
+      register_class_with_limit m, %r(int)i,       ActiveRecord::Type::Integer
+
+      m.alias_type %r(blob)i,      'binary'
+      m.alias_type %r(clob)i,      'text'
+      m.alias_type %r(timestamp)i, 'datetime'
+      m.alias_type %r(numeric)i,   'decimal'
+      m.alias_type %r(number)i,    'decimal'
+      m.alias_type %r(double)i,    'float'
+      m.alias_type %r(real)i,      'float'
+
+      m.register_type(%r(decimal)i) do |sql_type|
+        scale = extract_scale(sql_type)
+        precision = extract_precision(sql_type)
+        limit = extract_limit(sql_type)
+        if scale == 0
+          ActiveRecord::Type::BigInteger.new(:precision => precision, :limit => limit)
+        else
+          ActiveRecord::Type::Decimal.new(:precision => precision, :scale => scale)
+        end
+      end
+
+      m.alias_type %r(for bit data)i,  'binary'
+      m.alias_type %r(smallint)i,      'boolean'
+      m.alias_type %r(serial)i,        'int'
+      m.alias_type %r(decfloat)i,      'decimal'
+      #m.alias_type %r(real)i,          'decimal'
+      m.alias_type %r(graphic)i,       'binary'
+      m.alias_type %r(rowid)i,         'int'
+
+      m.register_type(%r(smallint)i) do
+        if DB2.emulate_booleans?
+          ActiveRecord::Type::Boolean.new
+        else
+          ActiveRecord::Type::Integer.new(:limit => 1)
+        end
+      end
+
+      m.register_type %r(xml)i, XmlType.new
+    end if AR42
+
+    # @private
+    class XmlType < ActiveRecord::Type::String
+      def type; :xml end
+
+      def type_cast_for_database(value)
+        return unless value
+        Data.new(super)
+      end
+
+      class Data
+        def initialize(value)
+          @value = value
+        end
+        def to_s; @value end
+      end
+    end if AR42
+
+    # @override
+    def reset_column_information
+      initialize_type_map(type_map)
+    end if AR42
 
     # @override
     def native_database_types
@@ -388,31 +484,35 @@ module ArJdbc
     # @note Only used with (non-AREL) ActiveRecord **2.3**.
     # @see Arel::Visitors::DB2
     def add_limit_offset!(sql, options)
-      replace_limit_offset!(sql, options[:limit], options[:offset])
+      limit = options[:limit]
+      replace_limit_offset!(sql, limit, options[:offset]) if limit
     end if ::ActiveRecord::VERSION::MAJOR < 3
 
     # @private shared with {Arel::Visitors::DB2}
-    def replace_limit_offset!(sql, limit, offset)
-      return sql unless limit
-
+    def replace_limit_offset!(sql, limit, offset, orders = nil)
       limit = limit.to_i
-      if offset
-        replace_limit_offset_with_ordering!(sql, limit, offset)
-      else
-        if limit == 1
-          sql << " FETCH FIRST ROW ONLY"
-        else
-          sql << " FETCH FIRST #{limit} ROWS ONLY"
-        end
-        sql
-      end
-    end
 
-    # @private used from {Arel::Visitors::DB2}
-    def replace_limit_offset_with_ordering!(sql, limit, offset, orders = nil)
-      over_order_by = nil # NOTE: orders matching got reverted as it was not complete and there were no case covering it ...
-      sql.sub!(/SELECT/i, "SELECT B.* FROM (SELECT A.*, row_number() OVER (#{over_order_by}) AS internal$rownum FROM (SELECT")
-      sql << ") A ) B WHERE B.internal$rownum > #{offset} AND B.internal$rownum <= #{limit + offset}"
+      if offset # && limit
+        over_order_by = nil # NOTE: orders matching got reverted as it was not complete and there were no case covering it ...
+
+        start_sql = "SELECT B.* FROM (SELECT A.*, row_number() OVER (#{over_order_by}) AS internal$rownum FROM (SELECT"
+        end_sql = ") A ) B WHERE B.internal$rownum > #{offset} AND B.internal$rownum <= #{limit + offset.to_i}"
+
+        if sql.is_a?(String)
+          sql.sub!(/SELECT/i, start_sql)
+          sql << end_sql
+        else # AR 4.2 sql.class ... Arel::Collectors::Bind
+          sql.parts[0] = start_sql # sql.sub! /SELECT/i
+          sql.parts[ sql.parts.length ] = end_sql
+        end
+      else
+        limit_sql = limit == 1 ? " FETCH FIRST ROW ONLY" : " FETCH FIRST #{limit} ROWS ONLY"
+        if sql.is_a?(String)
+          sql << limit_sql
+        else # AR 4.2 sql.class ... Arel::Collectors::Bind
+          sql.parts[ sql.parts.length ] = limit_sql
+        end
+      end
       sql
     end
 

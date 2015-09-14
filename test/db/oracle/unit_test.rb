@@ -18,21 +18,27 @@ class OracleUnitTest < Test::Unit::TestCase
     assert_equal 'abcdefghi_abcdefghi_abcdef_seq', connection.default_sequence_name('abcdefghi_abcdefghi_abcdefghi_')
   end
 
-  test 'prefetch primary key if the table has one primary key' do
+  test 'default sequence name with schema respects identifier length' do
     connection = new_adapter_stub
-
-    assert connection.prefetch_primary_key?
-
-    connection.stubs(:columns).returns([stub(:primary => true), stub(:primary => false)])
-    assert connection.prefetch_primary_key?('pages')
+    assert_equal 'suska.ferko_seq', connection.default_sequence_name('suska.ferko')
+    assert_equal 'prefix.abcdefghi_abcdefghi_abcdef_seq', connection.default_sequence_name('prefix.abcdefghi_abcdefghi_abcdefghi_')
   end
 
-  test 'do not prefetch primary key if the table has a composite primary key' do
-    connection = new_adapter_stub
-
-    connection.stubs(:columns).returns([stub(:primary => true), stub(:primary => true), stub(:primary => false)])
-    assert !connection.prefetch_primary_key?('pages')
-  end
+#  test 'prefetch primary key if the table has one primary key' do
+#    connection = new_adapter_stub
+#
+#    assert connection.prefetch_primary_key?
+#
+#    connection.stubs(:columns).returns([stub(:primary => true), stub(:primary => false)])
+#    assert connection.prefetch_primary_key?('pages')
+#  end
+#
+#  test 'do not prefetch primary key if the table has a composite primary key' do
+#    connection = new_adapter_stub
+#
+#    connection.stubs(:columns).returns([stub(:primary => true), stub(:primary => true), stub(:primary => false)])
+#    assert !connection.prefetch_primary_key?('pages')
+#  end
 
   test 'Column works' do
     deprecation_silence { ArJdbc::Oracle::Column }

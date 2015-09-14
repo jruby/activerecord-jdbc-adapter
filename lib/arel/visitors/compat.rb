@@ -23,22 +23,34 @@ module Arel
       private
 
       if ArJdbc::AR42
-        def limit_for(limit_or_node)
-          if limit_or_node.respond_to?(:expr)
-            # FIXME(uwe): Different behavior for Arel 6.0.0 and 6.0.2
-            if limit_or_node.expr.respond_to?(:value)
-              limit_or_node.expr.value.to_i
+        if Arel::VERSION < '6.0.2'
+          def limit_for(limit_or_node)
+            if limit_or_node.respond_to?(:expr)
+              expr = limit_or_node.expr
+              # NOTE(uwe): Different behavior for Arel 6.0.0 and 6.0.2
+              expr.respond_to?(:value) ? expr.value.to_i : expr.to_i
             else
-              limit_or_node.expr.to_i
+              limit_or_node
             end
-            # EMXIF
-          else
-            limit_or_node
+          end
+        else
+          def limit_for(limit_or_node)
+            limit_or_node.respond_to?(:expr) ? limit_or_node.expr.to_i : limit_or_node
           end
         end
       else
         def limit_for(limit_or_node)
           limit_or_node.respond_to?(:expr) ? limit_or_node.expr.to_i : limit_or_node
+        end
+      end
+      module_function :limit_for
+
+      def node_value(node)
+        return nil unless node
+        case expr = node.expr
+          when NilClass then nil
+          when Numeric then expr
+          when Arel::Nodes::Unary then expr.expr
         end
       end
 

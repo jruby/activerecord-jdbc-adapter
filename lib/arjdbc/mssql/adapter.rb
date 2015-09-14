@@ -1,14 +1,41 @@
+# NOTE: file contains code adapted from **sqlserver** adapter, license follows
+=begin
+Copyright (c) 2008-2015
+
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of this software and associated documentation files (the
+"Software"), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+=end
+
 ArJdbc.load_java_part :MSSQL
 
 require 'strscan'
-require 'arjdbc/mssql/utils'
-require 'arjdbc/mssql/limit_helpers'
-require 'arjdbc/mssql/lock_methods'
-require 'arjdbc/mssql/column'
-require 'arjdbc/mssql/explain_support'
 
 module ArJdbc
   module MSSQL
+
+    require 'arjdbc/mssql/utils'
+    require 'arjdbc/mssql/limit_helpers'
+    require 'arjdbc/mssql/lock_methods'
+    require 'arjdbc/mssql/column'
+    require 'arjdbc/mssql/explain_support'
+    require 'arjdbc/mssql/types' if AR42
+
     include LimitHelpers
     include Utils
     include ExplainSupport
@@ -54,6 +81,17 @@ module ArJdbc
     # @see #update_lob_values?
     def self.update_lob_values=(update); @@update_lob_values = update; end
 
+    # @private
+    @@cs_equality_operator = 'COLLATE Latin1_General_CS_AS_WS'
+
+    # Operator for sorting strings in SQLServer, setup as :
+    #
+    #  ArJdbc::MSSQL.cs_equality_operator = 'COLLATE Latin1_General_CS_AS_WS'
+    #
+    def self.cs_equality_operator; @@cs_equality_operator; end
+    # @see #cs_equality_operator
+    def self.cs_equality_operator=(operator); @@cs_equality_operator = operator; end
+
     # @see #quote
     # @private
     BLOB_VALUE_MARKER = "''"
@@ -71,6 +109,10 @@ module ArJdbc
         ::Arel::Visitors::SQLServer2000 : ::Arel::Visitors::SQLServer
     end
 
+    def self.arel_visitor_type(config)
+      require 'arel/visitors/sql_server'; ::Arel::Visitors::SQLServerNG
+    end if AR42
+
     def configure_connection
       use_database # config[:database]
     end
@@ -83,17 +125,54 @@ module ArJdbc
       end
     end
 
+    NATIVE_DATABASE_TYPES = {
+      :primary_key => 'int NOT NULL IDENTITY(1,1) PRIMARY KEY',
+      :integer   =>  { :name => 'int', }, # :limit => 4
+      :boolean   =>  { :name => 'bit' },
+      :decimal   =>  { :name => 'decimal' },
+      :float     =>  { :name => 'float' },
+      :bigint    =>  { :name => 'bigint' },
+      :real      =>  { :name => 'real' },
+      :date      =>  { :name => 'date' },
+      :time      =>  { :name => 'time' },
+      :datetime  =>  { :name => 'datetime' },
+      :timestamp =>  { :name => 'datetime' },
+
+      :string    =>  { :name => 'nvarchar', :limit => 4000 },
+      #:varchar    =>  { :name => 'varchar' }, # limit: 8000
+      :text      =>  { :name => 'nvarchar(max)' },
+      :text_basic =>  { :name => 'text' },
+      #:ntext      =>  { :name => 'ntext' },
+      :char      =>  { :name => 'char' },
+      #:nchar     =>  { :name => 'nchar' },
+      :binary    =>  { :name => 'image' }, # NOTE: :name => 'varbinary(max)'
+      :binary_basic => { :name => 'binary' },
+      :uuid      =>  { :name => 'uniqueidentifier' },
+      :money     =>  { :name => 'money' },
+      #:smallmoney => { :name => 'smallmoney' },
+    }
+
+    def native_database_types
+      # NOTE: due compatibility we're using the generic type resolution
+      # ... NATIVE_DATABASE_TYPES won't be used at all on SQLServer 2K
+      sqlserver_2000? ? super : super.merge(NATIVE_DATABASE_TYPES)
+    end
+
     def modify_types(types)
-      types[:string] = { :name => "NVARCHAR", :limit => 255 }
       if sqlserver_2000?
-        types[:text] = { :name => "NTEXT" }
+        types[:primary_key] = NATIVE_DATABASE_TYPES[:primary_key]
+        types[:string] = NATIVE_DATABASE_TYPES[:string]
+        types[:boolean] = NATIVE_DATABASE_TYPES[:boolean]
+        types[:text] = { :name => "ntext" }
+        types[:integer][:limit] = nil
+        types[:binary] = { :name => "image" }
       else
-        types[:text] = { :name => "NVARCHAR(MAX)" }
+        # ~ private types for better "native" adapter compatibility
+        types[:varchar_max]   =  { :name => 'varchar(max)' }
+        types[:nvarchar_max]  =  { :name => 'nvarchar(max)' }
+        types[:varbinary_max] =  { :name => 'varbinary(max)' }
       end
-      types[:primary_key] = "int NOT NULL IDENTITY(1, 1) PRIMARY KEY"
-      types[:integer][:limit] = nil
-      types[:boolean] = { :name => "bit" }
-      types[:binary] = { :name => "image" }
+      types[:string][:limit] = 255 unless AR40 # backwards compatibility
       types
     end
 
@@ -510,13 +589,6 @@ module ArJdbc
 
     # @private
     SKIP_COLUMNS_TABLE_NAMES_RE = /^information_schema\./i
-    # @private
-    IDENTITY_COLUMN_TYPE_RE = /identity/i
-    # NOTE: these do not handle = equality as expected
-    # see {#repair_special_columns}
-    # (TEXT, NTEXT, and IMAGE data types are deprecated)
-    # @private
-    SPECIAL_COLUMN_TYPE_RE = /text|ntext|image|xml/i
 
     # @private
     EMPTY_ARRAY = [].freeze
@@ -532,12 +604,7 @@ module ArJdbc
       return default if table_name =~ SKIP_COLUMNS_TABLE_NAMES_RE
 
       unless columns = ( @table_columns ||= {} )[table_name]
-        columns = super(table_name, name)
-        for column in columns
-          column.identity = true if column.sql_type =~ IDENTITY_COLUMN_TYPE_RE
-          column.special = true if column.sql_type =~ SPECIAL_COLUMN_TYPE_RE
-        end
-        @table_columns[table_name] = columns
+        @table_columns[table_name] = columns = super(table_name, name)
       end
       columns
     end
@@ -567,14 +634,19 @@ module ArJdbc
             " #{enable ? 'ON' : 'OFF'} for table #{table_name} due : #{e.inspect}"
     end
 
+    def disable_referential_integrity
+      execute "EXEC sp_MSforeachtable 'ALTER TABLE ? NOCHECK CONSTRAINT ALL'"
+      yield
+    ensure
+      execute "EXEC sp_MSforeachtable 'ALTER TABLE ? CHECK CONSTRAINT ALL'"
+    end
+
     # @private
     # @see ArJdbc::MSSQL::LimitHelpers
     def determine_order_clause(sql)
       return $1 if sql =~ /ORDER BY (.*)$/i
-      table_name = get_table_name(sql)
-      # determine primary key for table :
-      columns = self.columns(table_name)
-      primary_column = columns.find { |column| column.primary || column.identity }
+      columns = self.columns(table_name = get_table_name(sql))
+      primary_column = columns.find { |column| column.primary? || column.identity? }
       unless primary_column # look for an id column and return it,
         # without changing case, to cover DBs with a case-sensitive collation :
         primary_column = columns.find { |column| column.name =~ /^id$/i }
@@ -703,7 +775,7 @@ module ArJdbc
       columns = self.columns(qualified_table_name, nil, nil)
       return columns if ! columns || columns.empty?
       special = []
-      columns.each { |column| special << column.name if column.special }
+      columns.each { |column| special << column.name if column.special? }
       special
     end
 
@@ -732,6 +804,10 @@ module ActiveRecord::ConnectionAdapters
       setup_limit_offset!
     end
     Column = MSSQLColumn
+
+    def self.cs_equality_operator; ::ArJdbc::MSSQL.cs_equality_operator end
+    def self.cs_equality_operator=(operator); ::ArJdbc::MSSQL.cs_equality_operator = operator end
+
   end
 end
 

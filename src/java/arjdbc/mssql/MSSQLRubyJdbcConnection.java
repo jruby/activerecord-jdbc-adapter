@@ -69,7 +69,7 @@ public class MSSQLRubyJdbcConnection extends RubyJdbcConnection {
         return createMSSQLJdbcConnectionClass(runtime, jdbcConnection);
     }
 
-    protected static ObjectAllocator ALLOCATOR = new ObjectAllocator() {
+    private static final ObjectAllocator ALLOCATOR = new ObjectAllocator() {
         public IRubyObject allocate(Ruby runtime, RubyClass klass) {
             return new MSSQLRubyJdbcConnection(runtime, klass);
         }
@@ -113,6 +113,17 @@ public class MSSQLRubyJdbcConnection extends RubyJdbcConnection {
             tables.add(RubyString.newUnicodeString(runtime, name));
         }
         return tables;
+    }
+
+    @Override
+    protected RubyArray mapColumnsResult(final ThreadContext context,
+        final DatabaseMetaData metaData, final TableName components, final ResultSet results)
+        throws SQLException {
+
+        final RubyClass Column = getJdbcColumnClass(context);
+        final boolean lookupCastType = Column.isMethodBound("cast_type", false);
+        // NOTE: MSSQL depends on Column#primary? no matter the AR version - thus always set @primary
+        return mapColumnsResult(context, metaData, components, results, Column, lookupCastType, true);
     }
 
     /**

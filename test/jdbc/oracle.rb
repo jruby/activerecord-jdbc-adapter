@@ -5,7 +5,6 @@ module Jdbc
         "ojdbc-#{VERSION}.jar"
       else
         java7? ? [ 'ojdbc7.jar', 'ojdbc6.jar' ] : 'ojdbc6.jar'
-        'ojdbc6.jar'
       end
     end
 

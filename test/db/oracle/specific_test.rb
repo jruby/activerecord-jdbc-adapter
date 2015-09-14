@@ -39,12 +39,16 @@ class OracleSpecificTest < Test::Unit::TestCase
 
   def self.shutdown
     java_connection = @@java_connection
-    java_connection.createStatement.execute "DROP TABLE DEFAULT_NUMBERS"
-    java_connection.createStatement.execute "DROP SYNONYM POSTS"
-    java_connection.createStatement.execute "DROP VIEW GOOD_ENTRIES"
-    java_connection.createStatement.execute "DROP MATERIALIZED VIEW USER_ENTRIES"
+    drops = [ "DROP TABLE DEFAULT_NUMBERS", "DROP SYNONYM POSTS", "DROP VIEW GOOD_ENTRIES", "DROP MATERIALIZED VIEW USER_ENTRIES" ]
+    drops.each do |drop_sql|
+      begin
+        java_connection.createStatement.execute drop_sql
+      rescue => e
+        warn "'#{drop_sql}' failed: #{e.inspect}"
+      end
+    end
 
-    MigrationSetup.teardown!
+    MigrationSetup.teardown! rescue nil
 
     @@java_connection.close
     super

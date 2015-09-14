@@ -119,24 +119,78 @@ class FirebirdSimpleTest < Test::Unit::TestCase
   # @override
   def test_raw_insert_bind_param_with_q_mark_deprecated; end
 
+  def test_truncate
+    # super FB does not support TRUNCATE TABLE !
+  end #if Test::Unit::TestCase.ar_version('3.2')
+
   test 'returns correct visitor type' do
     assert_not_nil visitor = connection.instance_variable_get(:@visitor)
     assert defined? Arel::Visitors::Firebird
     assert_kind_of Arel::Visitors::Firebird, visitor
   end if ar_version('3.0')
 
+  def test_emulates_booleans_by_default
+    assert_true ArJdbc::Firebird.emulate_booleans?
+    # assert_true ActiveRecord::ConnectionAdapters::FirebirdAdapter.emulate_booleans
+  end if ar_version('3.0')
+
+  def test_boolean_emulation_can_be_disabled
+    db_type = DbType.create! :sample_boolean => true
+    column = DbType.columns.find { |col| col.name.to_s == 'sample_boolean' }
+    assert_equal :boolean, column.type
+    ArJdbc::Firebird.emulate_booleans = false
+
+    DbType.reset_column_information
+    column = DbType.columns.find { |col| col.name.to_s == 'sample_boolean' }
+    assert_equal :string, column.type # # CHAR(1)
+
+    assert_equal '1', db_type.reload.sample_boolean
+  ensure
+    ArJdbc::Firebird.emulate_booleans = true
+    DbType.reset_column_information
+  end if ar_version('3.0')
+
+  protected
+
+  #def assert_empty_string value
+  #  assert_equal nil, value # empty string treated as a null value in Firebird
+  #end
+
+end
+
+class FirebirdHasManyThroughTest < Test::Unit::TestCase
+  include HasManyThroughMethods
+end
+
+class FirebirdUnitTest < Test::Unit::TestCase
+
   def test_arel_visitor_limit
-    assert_equal Entry.limit(3).to_sql, "SELECT FIRST 3  \"ENTRIES\".* FROM \"ENTRIES\" "
+    expected = "SELECT FIRST 3  \"ENTRIES\".* FROM \"ENTRIES\""
+    if ar_version('4.2')
+      assert_equal expected, Entry.limit(3).to_sql
+    else
+      assert_equal "#{expected} ", Entry.limit(3).to_sql
+    end
   end
 
   def test_arel_visitor_offset
-    assert_equal Entry.offset(3).to_sql, "SELECT SKIP 3 \"ENTRIES\".* FROM \"ENTRIES\" "
+    expected = "SELECT SKIP 3 \"ENTRIES\".* FROM \"ENTRIES\""
+    if ar_version('4.2')
+      assert_equal expected, Entry.offset(3).to_sql
+    else
+      assert_equal "#{expected} ", Entry.offset(3).to_sql
+    end
   end
 
   def test_arel_visitor_limit_and_offset
-    sql = "SELECT FIRST 3  SKIP 3  \"ENTRIES\".* FROM \"ENTRIES\" "
-    assert_equal Entry.limit(3).offset(3).to_sql, sql
+    expected = "SELECT FIRST 3 SKIP 3  \"ENTRIES\".* FROM \"ENTRIES\""
+    if ar_version('4.2')
+      assert_equal expected, Entry.limit(3).offset(3).to_sql
+    else
+      assert_equal "#{expected} ", Entry.limit(3).offset(3).to_sql
+    end
   end
+  
 end
 
 class FirebirdHasManyThroughTest < Test::Unit::TestCase

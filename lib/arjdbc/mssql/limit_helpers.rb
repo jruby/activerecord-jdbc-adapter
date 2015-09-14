@@ -7,7 +7,11 @@ module ArJdbc
       # @private
       FIND_AGGREGATE_FUNCTION = /(AVG|COUNT|COUNT_BIG|MAX|MIN|SUM|STDDEV|STDEVP|VAR|VARP)\(/i
 
+      # @private
       module SqlServerReplaceLimitOffset
+
+        GROUP_BY = 'GROUP BY'
+        ORDER_BY = 'ORDER BY'
 
         module_function
 
@@ -27,19 +31,27 @@ module ArJdbc
           # Ensure correct queries if the rest_of_query contains a 'GROUP BY'. Otherwise the following error occurs:
           #   ActiveRecord::StatementInvalid: ActiveRecord::JDBCError: Column 'users.id' is invalid in the select list because it is not contained in either an aggregate function or the GROUP BY clause.
           #   SELECT t.* FROM ( SELECT ROW_NUMBER() OVER(ORDER BY users.id) AS _row_num, [users].[lft], COUNT([users].[lft]) FROM [users] GROUP BY [users].[lft] HAVING COUNT([users].[lft]) > 1 ) AS t WHERE t._row_num BETWEEN 1 AND 1
-          if rest_of_query.downcase.include?('group by')
-            order_start = order.strip[0, 8]; order_start.upcase!
-            if order_start == 'ORDER BY' && order.match(FIND_AGGREGATE_FUNCTION)
-              # do nothing
-            elsif order.count(',') == 0
-              order.gsub!(/ORDER +BY +([^\s]+)(\s+ASC|\s+DESC)?/i, 'ORDER BY MIN(\1)\2')
-            else
-              raise('Only one order condition allowed.')
+          if i = ( rest_of_query.rindex(GROUP_BY) || rest_of_query.rindex('group by') )
+            # Do not catch 'GROUP BY' statements from sub-selects, indicated
+            # by more closing than opening brackets after the last group by.
+            rest_after_last_group_by = rest_of_query[i..-1]
+            opening_brackets_count = rest_after_last_group_by.count('(')
+            closing_brackets_count = rest_after_last_group_by.count(')')
+
+            if opening_brackets_count == closing_brackets_count
+              order_start = order.strip[0, 8]; order_start.upcase!
+              if order_start == ORDER_BY && order.match(FIND_AGGREGATE_FUNCTION)
+                # do nothing
+              elsif order.count(',') == 0
+                order.gsub!(/ORDER +BY +([^\s]+)(\s+ASC|\s+DESC)?/i, 'ORDER BY MIN(\1)\2')
+              else
+                raise("can not handle multiple order conditions (#{order.inspect}) in #{sql.inspect}")
+              end
             end
           end
 
           if distinct # select =~ /DISTINCT/i
-            order = order.gsub(/([a-z0-9_])+\./, 't.')
+            order = order.gsub(/(\[[a-z0-9_]+\]|[a-z0-9_]+)\./, 't.')
             new_sql = "SELECT t.* FROM "
             new_sql << "( SELECT ROW_NUMBER() OVER(#{order}) AS _row_num, t.* FROM (#{select} #{rest_of_query}) AS t ) AS t"
             append_limit_row_num_clause(new_sql, limit, offset)
@@ -73,6 +85,7 @@ module ArJdbc
 
       end
 
+      # @private
       module SqlServer2000ReplaceLimitOffset
 
         module_function

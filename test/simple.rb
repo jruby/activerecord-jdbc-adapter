@@ -476,6 +476,32 @@ module SimpleTestMethods
     end
   end if Test::Unit::TestCase.ar_version('3.0')
 
+  def test_foreign_keys
+    unless connection.supports_foreign_keys?
+      skip "#{connection.class} does not support foreign keys"
+    end
+    fks = connection.foreign_keys(:entries)
+    assert_equal 0, fks.size
+
+    connection.add_foreign_key :entries, :users, :name => 'entries_user_id_fk'
+
+    fks = connection.foreign_keys(:entries)
+    assert_equal 1, fks.size
+
+    assert fks[0].is_a?(ActiveRecord::ConnectionAdapters::ForeignKeyDefinition)
+
+    # NOTE: MySQL/PostgreSQL will return a symbol here (since :entries is passed)
+    assert_equal 'entries', fks[0].from_table.to_s
+    assert_equal 'users', fks[0].to_table
+    assert_equal 'users', fks[0].to_table
+    assert_equal 'user_id', fks[0].options[:column]
+    assert_equal 'id', fks[0].options[:primary_key]
+
+    connection.remove_foreign_key :entries, :name => :entries_user_id_fk
+    fks = connection.foreign_keys(:entries)
+    assert_equal 0, fks.size
+  end if Test::Unit::TestCase.ar_version('4.2')
+
   def test_nil_values
     e = DbType.create! :sample_integer => '', :sample_string => 'sample'
     assert_nil e.reload.sample_integer

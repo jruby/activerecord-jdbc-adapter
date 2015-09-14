@@ -29,6 +29,15 @@ module ArJdbc
         SerializedAttributes.dump_column_value(self, column)
       end
 
+      if defined? ActiveRecord::Type::Serialized # ArJdbc::AR42
+
+      def self.dump_column_value(record, column)
+        value = record[ column.name.to_s ]
+        column.cast_type.type_cast_for_database(value)
+      end
+
+      else
+
       def self.dump_column_value(record, column)
         value = record[ name = column.name.to_s ]
         if record.class.respond_to?(:serialized_attributes)
@@ -43,6 +52,8 @@ module ArJdbc
           end
         end
         value
+      end
+
       end
 
       def self.setup(lob_type = nil, after_save_alias = nil)

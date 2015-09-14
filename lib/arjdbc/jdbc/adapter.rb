@@ -586,6 +586,17 @@ module ActiveRecord
       end
       private :_execute
 
+      # Kind of `execute(sql) rescue nil` but logging failures at debug level only.
+      def execute_quietly(sql, name = 'SQL')
+        log(sql, name) do
+          begin
+            _execute(sql)
+          rescue => e
+            logger.debug("#{e.class}: #{e.message}: #{sql}")
+          end
+        end
+      end
+
       # @override
       def tables(name = nil)
         @connection.tables
@@ -616,6 +627,18 @@ module ActiveRecord
       def primary_keys(table)
         @connection.primary_keys(table)
       end
+
+      # @override
+      def foreign_keys(table_name)
+        @connection.foreign_keys(table_name)
+      end if ArJdbc::AR42
+
+      # Does our database (+ its JDBC driver) support foreign-keys?
+      # @since 1.3.18
+      # @override
+      def supports_foreign_keys?
+        @connection.supports_foreign_keys?
+      end if ArJdbc::AR42
 
       # @deprecated Rather use {#update_lob_value} instead.
       def write_large_object(*args)
@@ -948,10 +971,12 @@ module ActiveRecord
 
       end
 
-
       if ActiveRecord::VERSION::MAJOR < 4 # emulating Rails 3.x compatibility
-        JdbcConnection.raw_date_time = true if JdbcConnection.raw_date_time? == nil
-        JdbcConnection.raw_boolean = true if JdbcConnection.raw_boolean? == nil
+        JdbcConnection.raw_date_time = true if JdbcConnection.raw_date_time?.nil?
+        JdbcConnection.raw_boolean = true if JdbcConnection.raw_boolean?.nil?
+      elsif ArJdbc::AR42 # AR::Type should do the conversion - for better accuracy
+        JdbcConnection.raw_date_time = true if JdbcConnection.raw_date_time?.nil?
+        JdbcConnection.raw_boolean = true if JdbcConnection.raw_boolean?.nil?
       end
 
     end

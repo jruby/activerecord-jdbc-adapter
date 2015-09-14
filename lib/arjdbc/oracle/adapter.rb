@@ -1,3 +1,27 @@
+# NOTE: file contains code adapted from **oracle-enhanced** adapter, license follows
+=begin
+Copyright (c) 2008-2011 Graham Jenkins, Michael Schoen, Raimonds Simanovskis
+
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of this software and associated documentation files (the
+"Software"), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+=end
+
 ArJdbc.load_java_part :Oracle
 
 module ArJdbc
@@ -64,17 +88,34 @@ module ArJdbc
       def raw(*args)
         options = args.extract_options!
         column(args[0], 'raw', options)
-      end
+      end unless AR42
+
+      def raw(name, options={})
+        column(name, :raw, options)
+      end if AR42
 
       def xml(*args)
         options = args.extract_options!
         column(args[0], 'xml', options)
-      end
+      end unless AR42
+
+      def raw(name, options={})
+        column(name, :xml, options)
+      end if AR42
+
+      def aliased_types(name, fallback)
+        # NOTE: disable aliasing :timestamp as :datetime :
+        fallback # 'timestamp' == name ? :datetime : fallback
+      end if AR42
     end
 
     def table_definition(*args)
       new_table_definition(TableDefinition, *args)
     end
+
+    def create_table_definition(name, temporary, options, as = nil)
+      TableDefinition.new native_database_types, name, temporary, options, as
+    end if AR42
 
     def self.arel_visitor_type(config = nil)
       ::Arel::Visitors::Oracle
@@ -91,6 +132,63 @@ module ArJdbc
     def adapter_name
       ADAPTER_NAME
     end
+
+    def initialize_type_map(m)
+      super
+
+      m.register_type(%r(NUMBER)i) do |sql_type|
+        scale = extract_scale(sql_type)
+        precision = extract_precision(sql_type)
+        limit = extract_limit(sql_type)
+        if scale == 0
+          if Oracle.emulate_booleans? && limit == 1
+            ActiveRecord::Type::Boolean.new
+          else
+            ActiveRecord::Type::Integer.new(:precision => precision, :limit => limit)
+          end
+        else
+          ActiveRecord::Type::Decimal.new(:precision => precision, :scale => scale)
+        end
+      end
+
+      register_class_with_limit m, %r(date)i,      ActiveRecord::Type::DateTime
+      register_class_with_limit m, %r(raw)i,       RawType
+      register_class_with_limit m, %r(timestamp)i, TimestampType
+
+      m.register_type %r(xmltype)i, XmlType.new
+    end if AR42
+
+    def clear_cache!
+      super
+      reload_type_map
+    end if AR42
+
+    # @private
+    class RawType < ActiveRecord::Type::String
+      def type; :raw end
+    end if AR42
+
+    # @private
+    class TimestampType < ActiveRecord::Type::DateTime
+      def type; :timestamp end
+    end if AR42
+
+    # @private
+    class XmlType < ActiveRecord::Type::String
+      def type; :xml end
+
+      def type_cast_for_database(value)
+        return unless value
+        Data.new(super)
+      end
+
+      class Data
+        def initialize(value)
+          @value = value
+        end
+        def to_s; @value end
+      end
+    end if AR42
 
     NATIVE_DATABASE_TYPES = {
       :primary_key => "NUMBER(38) NOT NULL PRIMARY KEY",
@@ -138,11 +236,15 @@ module ArJdbc
     def sequence_name_length; IDENTIFIER_LENGTH end
 
     # @private
-    SEQUENCE_NAME_RE = /(^|\.)([\w$-]{1,#{IDENTIFIER_LENGTH - 4}})([\w$-]*)$/
-
-    # @override
+    # Will take all or first 26 characters of table name and append _seq suffix
     def default_sequence_name(table_name, primary_key = nil)
-      table_name.to_s.sub SEQUENCE_NAME_RE, '\1\2_seq'
+      len = IDENTIFIER_LENGTH - 4
+      table_name.to_s.gsub (/(^|\.)([\w$-]{1,#{len}})([\w$-]*)$/), '\1\2_seq'
+    end
+
+    # @private
+    def default_trigger_name(table_name)
+      "#{table_name.to_s[0, IDENTIFIER_LENGTH - 4]}_pkt"
     end
 
     # @override
@@ -212,7 +314,7 @@ module ArJdbc
     end
 
     def indexes(table, name = nil)
-      @connection.indexes(table, name, @connection.connection.meta_data.user_name)
+      @connection.indexes(table, name, schema_owner)
     end
 
     # @note Only used with (non-AREL) ActiveRecord **2.3**.
@@ -252,13 +354,65 @@ module ArJdbc
     end
 
     # @override
-    def remove_index!(table_name, index_name)
-      execute "DROP INDEX #{index_name}"
-    end
+    def add_index(table_name, column_name, options = {})
+      index_name, index_type, quoted_column_names, tablespace, index_options = add_index_options(table_name, column_name, options)
+      execute "CREATE #{index_type} INDEX #{quote_column_name(index_name)} ON #{quote_table_name(table_name)} (#{quoted_column_names})#{tablespace} #{index_options}"
+      if index_type == 'UNIQUE'
+        unless quoted_column_names =~ /\(.*\)/
+          execute "ALTER TABLE #{quote_table_name(table_name)} ADD CONSTRAINT #{quote_column_name(index_name)} #{index_type} (#{quoted_column_names})"
+        end
+      end
+    end if AR42
+
+    # @private
+    def add_index_options(table_name, column_name, options = {})
+      column_names = Array(column_name)
+      index_name   = index_name(table_name, column: column_names)
+
+      options.assert_valid_keys(:unique, :order, :name, :where, :length, :internal, :tablespace, :options, :using)
+
+      index_type = options[:unique] ? "UNIQUE" : ""
+      index_name = options[:name].to_s if options.key?(:name)
+      tablespace = '' # tablespace_for(:index, options[:tablespace])
+      max_index_length = options.fetch(:internal, false) ? index_name_length : allowed_index_name_length
+      index_options =  '' # index_options = options[:options]
+
+      if index_name.to_s.length > max_index_length
+        raise ArgumentError, "Index name '#{index_name}' on table '#{table_name}' is too long; the limit is #{max_index_length} characters"
+      end
+      if index_name_exists?(table_name, index_name, false)
+        raise ArgumentError, "Index name '#{index_name}' on table '#{table_name}' already exists"
+      end
+
+      quoted_column_names = column_names.map { |e| quote_column_name(e, true) }.join(", ")
+      [ index_name, index_type, quoted_column_names, tablespace, index_options ]
+    end if AR42
+
+    # @override
+    def remove_index(table_name, options = {})
+      index_name = index_name(table_name, options)
+      unless index_name_exists?(table_name, index_name, true)
+        # sometimes options can be String or Array with column names
+        options = {} unless options.is_a?(Hash)
+        if options.has_key? :name
+          options_without_column = options.dup
+          options_without_column.delete :column
+          index_name_without_column = index_name(table_name, options_without_column)
+          return index_name_without_column if index_name_exists?(table_name, index_name_without_column, false)
+        end
+        raise ArgumentError, "Index name '#{index_name}' on table '#{table_name}' does not exist"
+      end
+      execute "ALTER TABLE #{quote_table_name(table_name)} DROP CONSTRAINT #{quote_column_name(index_name)}" rescue nil
+      execute "DROP INDEX #{quote_column_name(index_name)}"
+    end if AR42
+
+    # @private
+    def remove_index(table_name, options = {})
+      execute "DROP INDEX #{index_name(table_name, options)}"
+    end unless AR42
 
     def change_column_default(table_name, column_name, default)
-      execute "ALTER TABLE #{quote_table_name(table_name)} " +
-        "MODIFY #{quote_column_name(column_name)} DEFAULT #{quote(default)}"
+      execute "ALTER TABLE #{quote_table_name(table_name)} MODIFY #{quote_column_name(column_name)} DEFAULT #{quote(default)}"
     end
 
     # @override
@@ -403,17 +557,24 @@ module ArJdbc
       name.to_s.split('.').map{ |n| n.split('@').map{ |m| quote_column_name(m) }.join('@') }.join('.')
     end
 
+    # @private
+    LOWER_CASE_ONLY = /\A[a-z][a-z_0-9\$#]*\Z/
+
     # @override
-    def quote_column_name(name)
+    def quote_column_name(name, handle_expression = false)
       # if only valid lowercase column characters in name
-      if ( name = name.to_s ) =~ /\A[a-z][a-z_0-9\$#]*\Z/
+      if ( name = name.to_s ) =~ LOWER_CASE_ONLY
         # putting double-quotes around an identifier causes Oracle to treat the
         # identifier as case sensitive (otherwise assumes case-insensitivity) !
         # all upper case is an exception, where double-quotes are meaningless
         "\"#{name.upcase}\"" # name.upcase
       else
-        # remove double quotes which cannot be used inside quoted identifier
-        "\"#{name.gsub('"', '')}\""
+        if handle_expression
+          name =~ /^[a-z][a-z_0-9\$#\-]*$/i ? "\"#{name}\"" : name
+        else
+          # remove double quotes which cannot be used inside quoted identifier
+          "\"#{name.gsub('"', '')}\""
+        end
       end
     end
 
@@ -523,21 +684,108 @@ module ArJdbc
       result
     end
 
+    @@do_not_prefetch_primary_key = {}
+
     # Returns true for Oracle adapter (since Oracle requires primary key
     # values to be pre-fetched before insert).
     # @see #next_sequence_value
     # @override
     def prefetch_primary_key?(table_name = nil)
       return true if table_name.nil?
-      table_name = table_name.to_s
-      columns(table_name).count { |column| column.primary } == 1
+      do_not_prefetch_hash = @@do_not_prefetch_primary_key
+      do_not_prefetch = do_not_prefetch_hash[ table_name = table_name.to_s ]
+      if do_not_prefetch.nil?
+        owner, desc_table_name, db_link = describe(table_name)
+        do_not_prefetch_hash[table_name] = do_not_prefetch =
+          ! has_primary_key?(table_name, owner, desc_table_name, db_link) ||
+          has_primary_key_trigger?(table_name, owner, desc_table_name, db_link)
+      end
+      ! do_not_prefetch
     end
 
-    # @override
+    # used to clear prefetch primary key flag for all tables
+    # @private
+    def clear_prefetch_primary_key; @@do_not_prefetch_primary_key = {} end
+
+    # @private
+    def has_primary_key?(table_name, owner = nil, desc_table_name = nil, db_link = nil)
+      ! pk_and_sequence_for(table_name, owner, desc_table_name, db_link).nil?
+    end
+
+    # @private check if table has primary key trigger with _pkt suffix
+    def has_primary_key_trigger?(table_name, owner = nil, desc_table_name = nil, db_link = nil)
+      (owner, desc_table_name, db_link) = describe(table_name) unless desc_table_name
+
+      trigger_name = default_trigger_name(table_name).upcase
+      pkt_sql = "SELECT trigger_name FROM all_triggers#{db_link} WHERE owner = '#{owner}'" <<
+          " AND trigger_name = '#{trigger_name}'" <<
+          " AND table_owner = '#{owner}'" <<
+          " AND table_name = '#{desc_table_name}'" <<
+          " AND status = 'ENABLED'"
+      select_value(pkt_sql, 'Primary Key Trigger') ? true : false
+    end
+
+    # use in set_sequence_name to avoid fetching primary key value from sequence
+    AUTOGENERATED_SEQUENCE_NAME = 'autogenerated'.freeze
+
+    # Returns the next sequence value from a sequence generator. Not generally
+    # called directly; used by ActiveRecord to get the next primary key value
+    # when inserting a new database record (see #prefetch_primary_key?).
     def next_sequence_value(sequence_name)
+      # if sequence_name is set to :autogenerated then it means that primary key will be populated by trigger
+      return nil if sequence_name == AUTOGENERATED_SEQUENCE_NAME
       sequence_name = quote_table_name(sequence_name)
       sql = "SELECT #{sequence_name}.NEXTVAL id FROM dual"
       log(sql, 'SQL') { @connection.next_sequence_value(sequence_name) }
+    end
+
+    def pk_and_sequence_for(table_name, owner = nil, desc_table_name = nil, db_link = nil)
+      (owner, desc_table_name, db_link) = describe(table_name) unless desc_table_name
+
+      seqs = "SELECT us.sequence_name" <<
+        " FROM all_sequences#{db_link} us" <<
+        " WHERE us.sequence_owner = '#{owner}'" <<
+          " AND us.sequence_name = '#{desc_table_name}_SEQ'"
+      seqs = select_values(seqs, 'Sequence')
+
+      # changed back from user_constraints to all_constraints for consistency
+      pks = "SELECT cc.column_name" <<
+        " FROM all_constraints#{db_link} c, all_cons_columns#{db_link} cc" <<
+        " WHERE c.owner = '#{owner}'" <<
+          " AND c.table_name = '#{desc_table_name}'" <<
+          " AND c.constraint_type = 'P'" <<
+          " AND cc.owner = c.owner" <<
+          " AND cc.constraint_name = c.constraint_name"
+      pks = select_values(pks, 'Primary Key')
+
+      # only support single column keys
+      pks.size == 1 ? [oracle_downcase(pks.first), oracle_downcase(seqs.first)] : nil
+    end
+    private :pk_and_sequence_for
+
+    # Returns just a table's primary key
+    def primary_key(table_name)
+      pk_and_sequence = pk_and_sequence_for(table_name)
+      pk_and_sequence && pk_and_sequence.first
+    end
+
+    # @override
+    def supports_foreign_keys?; true end
+
+    # @private
+    def disable_referential_integrity
+      sql_constraints = "SELECT constraint_name, owner, table_name FROM user_constraints WHERE constraint_type = 'R' AND status = 'ENABLED'"
+      old_constraints = select_all(sql_constraints)
+      begin
+        old_constraints.each do |constraint|
+          execute "ALTER TABLE #{constraint["table_name"]} DISABLE CONSTRAINT #{constraint["constraint_name"]}"
+        end
+        yield
+      ensure
+        old_constraints.reverse_each do |constraint|
+          execute "ALTER TABLE #{constraint["table_name"]} ENABLE CONSTRAINT #{constraint["constraint_name"]}"
+        end
+      end
     end
 
     # @override (for AR <= 3.0)
@@ -654,6 +902,26 @@ module ArJdbc
       end
     end
 
+    # default schema owner
+    def schema_owner(force = true)
+      unless defined? @schema_owner
+        username = config[:username] ? config[:username].to_s : nil
+        username = jdbc_connection.meta_data.user_name if force && username.nil?
+        @schema_owner = username.nil? ? nil : username.upcase
+      end
+      @schema_owner
+    end
+
+    # do not force reading schema_owner as we're read on our own ...
+    def describe(table_name, owner = schema_owner(false))
+      @connection.describe(table_name, owner)
+    end
+
+    def oracle_downcase(column_name)
+      return nil if column_name.nil?
+      column_name =~ /[a-z]/ ? column_name : column_name.downcase
+    end
+
   end
 end
 
@@ -671,8 +939,8 @@ module ActiveRecord::ConnectionAdapters
     include ::ArJdbc::Oracle
     include ::ArJdbc::Util::QuotedCache
 
-    # By default, the MysqlAdapter will consider all columns of type
-    # <tt>tinyint(1)</tt> as boolean. If you wish to disable this :
+    # By default, the OracleAdapter will consider all columns of type
+    # <tt>NUMBER(1)</tt> as boolean. If you wish to disable this :
     #
     #   ActiveRecord::ConnectionAdapters::OracleAdapter.emulate_booleans = false
     #

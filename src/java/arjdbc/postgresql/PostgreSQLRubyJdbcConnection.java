@@ -353,6 +353,15 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
             return RubyFloat.newFloat(context.runtime, RubyFloat.INFINITY);
         }
         return DateTimeUtils.parseDateTime(context, value);
+        /*
+        final IRubyObject adapter = callMethod(context, "adapter"); // self.adapter
+        if ( usesType(runtime) ) {
+            return typeCastFromDatabase(context, adapter, runtime.newSymbol("timestamp"), strValue);
+        }
+
+        if ( adapter.isNil() ) return strValue; // NOTE: we warn on init_connection
+        return adapter.callMethod(context, "_string_to_timestamp", strValue);
+        */
     }
 
     @Override

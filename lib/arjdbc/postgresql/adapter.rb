@@ -1091,6 +1091,7 @@ module ArJdbc
       execute "ALTER INDEX #{quote_column_name(old_name)} RENAME TO #{quote_table_name(new_name)}"
     end
 
+    # @override
     def supports_foreign_keys?; true end
 
     def foreign_keys(table_name)
@@ -1385,6 +1386,9 @@ module ActiveRecord::ConnectionAdapters
 
     require 'arjdbc/postgresql/oid_types' if ::ArJdbc::AR40
     include ::ArJdbc::PostgreSQL::OIDTypes if ::ArJdbc::PostgreSQL.const_defined?(:OIDTypes)
+
+    load 'arjdbc/postgresql/_bc_time_cast_patch.rb' if ::ArJdbc::AR42
+
     include ::ArJdbc::PostgreSQL::ColumnHelpers if ::ArJdbc::AR42
 
     include ::ArJdbc::Util::QuotedCache

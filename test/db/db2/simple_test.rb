@@ -12,15 +12,20 @@ class DB2SimpleTest < Test::Unit::TestCase
     e = DbType.create!(:sample_string => '')
     t = Time.now
     value = Time.local(t.year, t.month, t.day, t.hour, t.min, t.sec, 0)
-    if ActiveRecord::VERSION::MAJOR >= 3
+
+    e.sample_string = value
+    e.save!; e.reload
+
+    if ActiveRecord::VERSION::STRING > '4.2'
+      assert_equal value.to_s(:db), e.sample_string[0...19]
+      return
+    elsif ActiveRecord::VERSION::MAJOR >= 3
       # AR-3 adapters override quoted_date which is called always when a
       # Time like value is passed (... as well for string/text columns) :
       str = value.utc.to_s(:db) << '.' << sprintf("%06d", value.usec)
     else # AR-2.x #quoted_date did not do TZ conversions
       str = value.to_s(:db)
     end
-    e.sample_string = value
-    e.save!; e.reload
     assert_equal str, e.sample_string
   end
 

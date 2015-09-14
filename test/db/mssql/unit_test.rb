@@ -6,7 +6,7 @@ class MSSQLUnitTest < Test::Unit::TestCase
 
   # NOTE: lot of tests kindly borrowed from __activerecord-sqlserver-adapter__
 
-  test "get table name" do
+  test "get_table_name" do
     insert_sql = "INSERT INTO [funny_jokes] ([name]) VALUES('Knock knock')"
     update_sql = "UPDATE [customers] SET [address_street] = NULL WHERE [id] = 2"
     select_sql = "SELECT * FROM [customers] WHERE ([customers].[id] = 1)"
@@ -28,6 +28,9 @@ class MSSQLUnitTest < Test::Unit::TestCase
     # NOTE: this has been failing even before refactoring - not sure if it's needed :
     #assert_nil connection.send(:get_table_name, 'SELECT * FROM someFunction()')
     #assert_nil connection.send(:get_table_name, 'SELECT * FROM someFunction() WHERE 1 > 2')
+
+    select_sql = "SELECT COUNT(*) FROM our_table WHERE text = \"INSERT INTO their_table VALUES ('a', 'b', 'c')\""
+    assert_equal 'our_table', connection.send(:get_table_name, select_sql)
   end
 
   context "Utils" do
@@ -145,6 +148,17 @@ class MSSQLUnitTest < Test::Unit::TestCase
     mod.replace_limit_offset!(sql, 1, 2, order)
     expected = 'SELECT t.* FROM ( SELECT ROW_NUMBER() OVER( ORDER BY count(o.object_id) DESC) AS _row_num, w.*, count(o.object_id) num_objects FROM [vikings] w'
     assert sql.start_with?(expected), sql
+  end
+
+  test 'replace limit offset! with distinct' do
+    mod = ArJdbc::MSSQL::LimitHelpers::SqlServerReplaceLimitOffset
+    sql = 'SELECT DISTINCT w.* ' <<
+      'FROM [vikings] w inner join long_ships s on s.id = w.long_ship_id ' <<
+      'WHERE (w.long_ship_id = 1) '
+    order = 'ORDER BY [vikings].id DESC'
+    sql2 = mod.replace_limit_offset!(sql.dup, 1, 2, order)
+    expected = 'SELECT t.* FROM ( SELECT ROW_NUMBER() OVER(ORDER BY t.id DESC) AS _row_num, t.* FROM (SELECT DISTINCT w.* FROM [vikings] w'
+    assert sql2.start_with?(expected), sql2
   end
 
   private

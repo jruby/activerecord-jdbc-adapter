@@ -1,3 +1,5 @@
+ArJdbc.load_java_part :Firebird
+
 module ArJdbc
   module Firebird
 
@@ -13,6 +15,11 @@ module ArJdbc
 
       require 'arjdbc/util/serialized_attributes'
       Util::SerializedAttributes.setup /blob/i
+    end
+
+    # @see ActiveRecord::ConnectionAdapters::JdbcAdapter#jdbc_connection_class
+    def self.jdbc_connection_class
+      ::ActiveRecord::ConnectionAdapters::FirebirdJdbcConnection
     end
 
     # @see ActiveRecord::ConnectionAdapters::JdbcColumn#column_types
@@ -123,6 +130,68 @@ module ArJdbc
       NATIVE_DATABASE_TYPES
     end
 
+    def initialize_type_map(m)
+      register_class_with_limit m, %r(binary)i, ActiveRecord::Type::Binary
+      register_class_with_limit m, %r(text)i,   ActiveRecord::Type::Text
+
+      register_class_with_limit m, %r(date(?:\(.*?\))?$)i, DateType
+      register_class_with_limit m, %r(time(?:\(.*?\))?$)i, ActiveRecord::Type::Time
+
+      register_class_with_limit m, %r(float)i, ActiveRecord::Type::Float
+      register_class_with_limit m, %r(int)i,   ActiveRecord::Type::Integer
+
+      m.alias_type %r(blob)i,   'binary'
+      m.alias_type %r(clob)i,   'text'
+      m.alias_type %r(double)i, 'float'
+
+      m.register_type(%r(decimal)i) do |sql_type|
+        scale = extract_scale(sql_type)
+        precision = extract_precision(sql_type)
+        if scale == 0
+          ActiveRecord::Type::Integer.new(precision: precision)
+        else
+          ActiveRecord::Type::Decimal.new(precision: precision, scale: scale)
+        end
+      end
+      m.alias_type %r(numeric)i, 'decimal'
+
+      register_class_with_limit m, %r(varchar)i, ActiveRecord::Type::String
+
+      m.register_type(%r(^char)i) do |sql_type|
+        precision = extract_precision(sql_type)
+        if Firebird.emulate_booleans? && precision == 1
+          ActiveRecord::Type::Boolean.new
+        else
+          ActiveRecord::Type::String.new(:precision => precision)
+        end
+      end
+
+      register_class_with_limit m, %r(datetime)i, ActiveRecord::Type::DateTime
+      register_class_with_limit m, %r(timestamp)i, TimestampType
+    end if AR42
+
+    def clear_cache!
+      super
+      reload_type_map
+    end if AR42
+
+    # @private
+    class DateType < ActiveRecord::Type::Date
+      # NOTE: quote still gets called ...
+      #def type_cast_for_database(value)
+      #  if value.acts_like?(:date)
+      #    "'#{value.strftime("%Y-%m-%d")}'"
+      #  else
+      #    super
+      #  end
+      #end
+    end if AR42
+
+    # @private
+    class TimestampType < ActiveRecord::Type::DateTime
+      def type; :timestamp end
+    end if AR42
+
     def type_to_sql(type, limit = nil, precision = nil, scale = nil)
       case type
       when :integer
@@ -179,11 +248,21 @@ module ArJdbc
     end
 
     def add_limit_offset!(sql, options)
-      if options[:limit]
-        limit_string = "FIRST #{options[:limit]}"
-        limit_string << " SKIP #{options[:offset]}" if options[:offset]
-        sql.sub!(/\A(\s*SELECT\s)/i, '\&' + limit_string + ' ')
+      if limit = options[:limit]
+        insert_limit_offset!(sql, limit, options[:offset])
       end
+    end
+
+    # @private
+    SELECT_RE = /\A(\s*SELECT\s)/i
+
+    def insert_limit_offset!(sql, limit, offset)
+      lim_off = ''
+      lim_off << "FIRST #{limit}"  if limit
+      lim_off << " SKIP #{offset}" if offset
+      lim_off.strip!
+
+      sql.sub!(SELECT_RE, "\\&#{lim_off} ") unless lim_off.empty?
     end
 
     # Should primary key values be selected from their corresponding
@@ -192,8 +271,8 @@ module ArJdbc
     # @override
     def prefetch_primary_key?(table_name = nil)
       return true if table_name.nil?
-      table_name = table_name.to_s
-      columns(table_name).count { |column| column.primary } == 1
+      primary_keys(table_name.to_s).size == 1
+      # columns(table_name).count { |column| column.primary } == 1
     end
 
     IDENTIFIER_LENGTH = 31 # usual DB meta-identifier: 31 chars maximum
@@ -204,8 +283,8 @@ module ArJdbc
     def column_name_length; IDENTIFIER_LENGTH; end
 
     def default_sequence_name(table_name, column = nil)
-      # TODO: remove schema prefix if present (before truncating)
-      "#{table_name.to_s[0, IDENTIFIER_LENGTH - 4]}_seq"
+      len = IDENTIFIER_LENGTH - 4
+      table_name.to_s.gsub (/(^|\.)([\w$-]{1,#{len}})([\w$-]*)$/), '\1\2_seq'
     end
 
     # Set the sequence to the max value of the table's column.
@@ -220,17 +299,18 @@ module ArJdbc
 
     def create_table(name, options = {})
       super(name, options)
-      execute "CREATE GENERATOR #{name}_seq"
+      execute "CREATE GENERATOR #{default_sequence_name(name)}"
     end
 
     def rename_table(name, new_name)
       execute "RENAME #{name} TO #{new_name}"
-      execute "UPDATE RDB$GENERATORS SET RDB$GENERATOR_NAME='#{new_name}_seq' WHERE RDB$GENERATOR_NAME='#{name}_seq'" rescue nil
+      name_seq, new_name_seq = default_sequence_name(name), default_sequence_name(new_name)
+      execute_quietly "UPDATE RDB$GENERATORS SET RDB$GENERATOR_NAME='#{new_name_seq}' WHERE RDB$GENERATOR_NAME='#{name_seq}'"
     end
 
     def drop_table(name, options = {})
       super(name)
-      execute "DROP GENERATOR #{name}_seq" rescue nil
+      execute_quietly "DROP GENERATOR #{default_sequence_name(name)}"
     end
 
     def change_column(table_name, column_name, type, options = {})
@@ -342,11 +422,43 @@ module ActiveRecord::ConnectionAdapters
   remove_const(:FirebirdAdapter) if const_defined?(:FirebirdAdapter)
   class FirebirdAdapter < JdbcAdapter
     include ::ArJdbc::Firebird
-    
+
     class Column < JdbcColumn
       include ::ArJdbc::Firebird::ColumnMethods
     end
   end
+end
+
+require 'arjdbc/util/quoted_cache'
+
+module ActiveRecord::ConnectionAdapters
+
+  remove_const(:FirebirdAdapter) if const_defined?(:FirebirdAdapter)
+
+  class FirebirdAdapter < JdbcAdapter
+    include ::ArJdbc::Firebird
+    include ::ArJdbc::Util::QuotedCache
+
+    # By default, the FirebirdAdapter will consider all columns of type
+    # <tt>char(1)</tt> as boolean. If you wish to disable this :
+    #
+    #   ActiveRecord::ConnectionAdapters::FirebirdAdapter.emulate_booleans = false
+    #
+    def self.emulate_booleans?; ::ArJdbc::Firebird.emulate_booleans?; end
+    def self.emulate_booleans;  ::ArJdbc::Firebird.emulate_booleans?; end # oracle-enhanced
+    def self.emulate_booleans=(emulate); ::ArJdbc::Firebird.emulate_booleans = emulate; end
+
+    def initialize(*args)
+      ::ArJdbc::Firebird.initialize!
+      super
+    end
+
+  end
+
+  class Column < JdbcColumn
+    include ::ArJdbc::Firebird::ColumnMethods
+  end
+
 end
 
 #module ArJdbc

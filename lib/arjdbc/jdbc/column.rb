@@ -10,7 +10,8 @@ module ActiveRecord
     # specific type.
     # @see JdbcAdapter#jdbc_column_class
     class JdbcColumn < Column
-      attr_writer :limit, :precision
+      # @deprecated attribute writers will be removed in 1.4
+      attr_writer :limit, :precision # unless ArJdbc::AR42
 
       def initialize(config, name, *args)
         if self.class == JdbcColumn
@@ -25,12 +26,7 @@ module ActiveRecord
           end
         end
         default = default_value(default)
-
-        # FIXME(uwe): I would like to move #default_value() handling into ARJDBC
-        #  subclasses of the corresponding ActiveRecord::Type subclasses
-        #  "type_cast_from_database" should be called from RubyJdbcConnection
         default = args[0].type_cast_from_database(default) if ArJdbc::AR42
-        # EMXIF
 
         # super <= 4.1: (name, default, sql_type = nil, null = true)
         # super >= 4.2: (name, default, cast_type, sql_type = nil, null = true)
@@ -42,7 +38,7 @@ module ActiveRecord
       def init_column(*args); end
 
       # Similar to `ActiveRecord`'s `extract_value_from_default(default)`.
-      # @return default value for a given column
+      # @return default value for a column (possibly extracted from driver value)
       def default_value(value); value; end
 
       protected
