@@ -343,12 +343,10 @@ public class RubyJdbcConnection extends RubyObject {
 
     protected IRubyObject beginTransaction(final ThreadContext context, final Connection connection,
         final IRubyObject isolation) throws SQLException {
-
-        connection.setAutoCommit(false);
-
         if ( isolation != null ) {
             setTransactionIsolation(context, connection, isolation);
         }
+        if ( connection.getAutoCommit() ) connection.setAutoCommit(false);
         return context.nil;
     }
 
@@ -395,7 +393,8 @@ public class RubyJdbcConnection extends RubyObject {
                     connection.rollback();
                     resetSavepoints(context); // if any
                     return context.runtime.getTrue();
-                } finally {
+                }
+                finally {
                     connection.setAutoCommit(true);
                 }
             }
