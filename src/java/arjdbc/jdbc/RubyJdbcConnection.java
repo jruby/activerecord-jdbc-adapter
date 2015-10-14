@@ -316,31 +316,52 @@ public class RubyJdbcConnection extends RubyObject {
         });
     }
 
-    @JRubyMethod(name = "begin", optional = 1) // optional isolation argument for AR-4.0
-    public IRubyObject begin(final ThreadContext context, final IRubyObject[] args) {
-        final IRubyObject isolation = args.length > 0 ? args[0] : null;
+    @JRubyMethod(name = "begin")
+    public IRubyObject begin(final ThreadContext context) {
         try { // handleException == false so we can handle setTXIsolation
             return withConnection(context, false, new Callable<IRubyObject>() {
                 public IRubyObject call(final Connection connection) throws SQLException {
-                    connection.setAutoCommit(false);
-
-                    if ( isolation != null && ! isolation.isNil() ) {
-                        final int level = mapTransactionIsolationLevel(isolation);
-                        try {
-                            connection.setTransactionIsolation(level);
-                        }
-                        catch (SQLException e) {
-                            RubyClass txError = getTransactionIsolationError(context.runtime);
-                            if ( txError != null ) throw wrapException(context, txError, e);
-                            throw e; // let it roll - will be wrapped into a JDBCError (non 4.0)
-                        }
-                    }
-                    return context.nil;
+                    return beginTransaction(context, connection, null);
                 }
             });
         }
+        catch (SQLException e) { return handleException(context, e); }
+
+    }
+
+    @JRubyMethod(name = "begin", required = 1) // isolation argument for AR-4.0
+    public IRubyObject begin(final ThreadContext context, final IRubyObject isolation) {
+        try { // handleException == false so we can handle setTXIsolation
+            return withConnection(context, false, new Callable<IRubyObject>() {
+                public IRubyObject call(final Connection connection) throws SQLException {
+                    return beginTransaction(context, connection, isolation.isNil() ? null : isolation);
+                }
+            });
+        }
+        catch (SQLException e) { return handleException(context, e); }
+    }
+
+    protected IRubyObject beginTransaction(final ThreadContext context, final Connection connection,
+        final IRubyObject isolation) throws SQLException {
+
+        connection.setAutoCommit(false);
+
+        if ( isolation != null ) {
+            setTransactionIsolation(context, connection, isolation);
+        }
+        return context.nil;
+    }
+
+    protected final void setTransactionIsolation(final ThreadContext context, final Connection connection,
+        final IRubyObject isolation) throws SQLException {
+        final int level = mapTransactionIsolationLevel(isolation);
+        try {
+            connection.setTransactionIsolation(level);
+        }
         catch (SQLException e) {
-            return handleException(context, e);
+            RubyClass txError = getTransactionIsolationError(context.runtime);
+            if ( txError != null ) throw wrapException(context, txError, e);
+            throw e; // let it roll - will be wrapped into a JDBCError (non 4.0)
         }
     }
 
