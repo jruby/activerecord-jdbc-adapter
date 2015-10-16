@@ -155,6 +155,41 @@ public class MySQLRubyJdbcConnection extends RubyJdbcConnection {
     }
 
     @Override
+    protected final boolean isConnectionValid(final ThreadContext context, final Connection connection) {
+        if ( connection == null ) return false;
+        Statement statement = null;
+        try {
+            final RubyString aliveSQL = getAliveSQL(context);
+            final int aliveTimeout = getAliveTimeout(context);
+            // no SELECT validation due "/* ping */ SELECT 1"
+            if ( aliveSQL != null /* && isSelect(aliveSQL) */ ) {
+                // expect a SELECT/CALL SQL statement
+                statement = createStatement(context, connection);
+                statement.setQueryTimeout(aliveTimeout); // 0 - no timeout
+                statement.execute( aliveSQL.toString() );
+                return true; // connection alive
+            }
+            else { // alive_sql nil (or not a statement we can execute)
+                return connection.isValid(aliveTimeout); // since JDBC 4.0
+                // ... isValid(0) (default) means no timeout applied
+            }
+        }
+        catch (Exception e) {
+            debugMessage(context, "connection considered broken due: " + e.toString());
+            return false;
+        }
+        catch (AbstractMethodError e) { // non-JDBC 4.0 driver
+            warn( context,
+                "WARN: driver does not support checking if connection isValid()" +
+                " please make sure you're using a JDBC 4.0 compilant driver or" +
+                " set `connection_alive_sql: ...` in your database configuration" );
+            debugStackTrace(context, e);
+            throw e;
+        }
+        finally { close(statement); }
+    }
+
+    @Override
     protected IRubyObject indexes(final ThreadContext context, final String tableName, final String name, final String schemaName) {
         return withConnection(context, new Callable<IRubyObject>() {
             public IRubyObject call(final Connection connection) throws SQLException {
