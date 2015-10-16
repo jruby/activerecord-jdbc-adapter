@@ -2959,18 +2959,20 @@ public class RubyJdbcConnection extends RubyObject {
 
     protected boolean isConnectionValid(final ThreadContext context, final Connection connection) {
         if ( connection == null ) return false;
-        final IRubyObject alive_sql = getConfigValue(context, "connection_alive_sql");
         Statement statement = null;
         try {
-            RubyString aliveSQL = alive_sql.isNil() ? null : alive_sql.convertToString();
+            final RubyString aliveSQL = getAliveSQL(context);
+            final int aliveTimeout = getAliveTimeout(context);
             if ( aliveSQL != null && isSelect(aliveSQL) ) {
                 // expect a SELECT/CALL SQL statement
                 statement = createStatement(context, connection);
+                statement.setQueryTimeout(aliveTimeout); // 0 - no timeout
                 statement.execute( aliveSQL.toString() );
                 return true; // connection alive
             }
             else { // alive_sql nil (or not a statement we can execute)
-                return connection.isValid(0); // since JDBC 4.0
+                return connection.isValid(aliveTimeout); // since JDBC 4.0
+                // ... isValid(0) (default) means no timeout applied
             }
         }
         catch (Exception e) {
@@ -2986,6 +2988,23 @@ public class RubyJdbcConnection extends RubyObject {
             throw e;
         }
         finally { close(statement); }
+    }
+
+    /**
+     * internal API do not depend on it
+     */
+    protected final RubyString getAliveSQL(final ThreadContext context) {
+        final IRubyObject alive_sql = getConfigValue(context, "connection_alive_sql");
+        return alive_sql.isNil() ? null : alive_sql.convertToString();
+    }
+
+    /**
+     * internal API do not depend on it
+     */
+    protected final int getAliveTimeout(final ThreadContext context) {
+        final IRubyObject timeout = getConfigValue(context, "connection_alive_timeout");
+        RubyInteger t = timeout.isNil() ? null : timeout.convertToInteger("to_i");
+        return t == null ? 0 : (int) t.getLongValue();
     }
 
     private boolean tableExists(final Ruby runtime,
