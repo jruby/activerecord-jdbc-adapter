@@ -47,6 +47,7 @@ import org.jruby.Ruby;
 import org.jruby.RubyArray;
 import org.jruby.RubyClass;
 import org.jruby.RubyFloat;
+import org.jruby.RubyInteger;
 import org.jruby.RubyModule;
 import org.jruby.RubyString;
 import org.jruby.exceptions.RaiseException;
@@ -160,17 +161,18 @@ public class MySQLRubyJdbcConnection extends RubyJdbcConnection {
         Statement statement = null;
         try {
             final RubyString aliveSQL = getAliveSQL(context);
-            final int aliveTimeout = getAliveTimeout(context);
-            // no SELECT validation due "/* ping */ SELECT 1"
-            if ( aliveSQL != null /* && isSelect(aliveSQL) */ ) {
+            final RubyInteger aliveTimeout = getAliveTimeout(context);
+            if ( aliveSQL != null ) {
                 // expect a SELECT/CALL SQL statement
                 statement = createStatement(context, connection);
-                statement.setQueryTimeout(aliveTimeout); // 0 - no timeout
+                if (aliveTimeout != null) {
+                    statement.setQueryTimeout((int) aliveTimeout.getLongValue()); // 0 - no timeout
+                }
                 statement.execute( aliveSQL.toString() );
                 return true; // connection alive
             }
             else { // alive_sql nil (or not a statement we can execute)
-                return connection.isValid(aliveTimeout); // since JDBC 4.0
+                return connection.isValid(aliveTimeout == null ? 0 : (int) aliveTimeout.getLongValue()); // since JDBC 4.0
                 // ... isValid(0) (default) means no timeout applied
             }
         }

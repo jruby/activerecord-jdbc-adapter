@@ -2962,16 +2962,18 @@ public class RubyJdbcConnection extends RubyObject {
         Statement statement = null;
         try {
             final RubyString aliveSQL = getAliveSQL(context);
-            final int aliveTimeout = getAliveTimeout(context);
+            final RubyInteger aliveTimeout = getAliveTimeout(context);
             if ( aliveSQL != null && isSelect(aliveSQL) ) {
                 // expect a SELECT/CALL SQL statement
                 statement = createStatement(context, connection);
-                statement.setQueryTimeout(aliveTimeout); // 0 - no timeout
+                if (aliveTimeout != null) {
+                    statement.setQueryTimeout((int) aliveTimeout.getLongValue()); // 0 - no timeout
+                }
                 statement.execute( aliveSQL.toString() );
                 return true; // connection alive
             }
             else { // alive_sql nil (or not a statement we can execute)
-                return connection.isValid(aliveTimeout); // since JDBC 4.0
+                return connection.isValid(aliveTimeout == null ? 0 : (int) aliveTimeout.getLongValue()); // since JDBC 4.0
                 // ... isValid(0) (default) means no timeout applied
             }
         }
@@ -3001,10 +3003,9 @@ public class RubyJdbcConnection extends RubyObject {
     /**
      * internal API do not depend on it
      */
-    protected final int getAliveTimeout(final ThreadContext context) {
+    protected final RubyInteger getAliveTimeout(final ThreadContext context) {
         final IRubyObject timeout = getConfigValue(context, "connection_alive_timeout");
-        RubyInteger t = timeout.isNil() ? null : timeout.convertToInteger("to_i");
-        return t == null ? 0 : (int) t.getLongValue();
+        return timeout.isNil() ? null : timeout.convertToInteger("to_i");
     }
 
     private boolean tableExists(final Ruby runtime,
