@@ -98,7 +98,11 @@ public class MySQLRubyJdbcConnection extends RubyJdbcConnection {
         final ThreadContext context, final Ruby runtime,
         final int column, final int type, final ResultSet resultSet)
         throws SQLException {
-        if ( Types.BOOLEAN == type || Types.BIT == type ) {
+        if ( type == Types.BIT ) {
+            final int value = resultSet.getInt(column);
+            return resultSet.wasNull() ? runtime.getNil() : runtime.newFixnum(value);
+        }
+        if ( type == Types.BOOLEAN ) {
             final boolean value = resultSet.getBoolean(column);
             return resultSet.wasNull() ? runtime.getNil() : runtime.newFixnum(value ? 1 : 0);
         }

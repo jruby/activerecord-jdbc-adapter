@@ -220,6 +220,12 @@ class MySQLSimpleTest < Test::Unit::TestCase
     assert_equal :integer, column.type
 
     assert_equal 1, db_type.reload.sample_boolean
+
+    db_type = DbType.create! :sample_boolean => 0
+    assert_equal 0, db_type.reload.sample_boolean
+
+    db_type = DbType.create! :sample_boolean => 2
+    assert_equal 2, db_type.reload.sample_boolean
   ensure
     mysql_adapter_class.emulate_booleans = true
     DbType.reset_column_information
