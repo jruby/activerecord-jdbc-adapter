@@ -44,7 +44,7 @@ module ArJdbc
           pp << separator
           pp << build_footer(result.rows.length, elapsed)
 
-          pp.join("\n") + "\n"
+          pp.join(sep = "\n") << sep
         end
 
         private
@@ -59,8 +59,7 @@ module ArJdbc
         end
 
         def build_separator(widths)
-          padding = 1
-          '+' + widths.map {|w| '-' * (w + (padding*2))}.join('+') + '+'
+          padding = 1; "+#{widths.map { |w| '-' * (w + (padding * 2 )) }.join('+')}+"
         end
 
         def build_cells(items, widths)
@@ -70,7 +69,7 @@ module ArJdbc
             justifier = item.is_a?(Numeric) ? 'rjust' : 'ljust'
             cells << item.to_s.send(justifier, widths[i])
           end
-          '| ' + cells.join(' | ') + ' |'
+          "|#{cells.join(' | ')}|"
         end
 
         def build_footer(nrows, elapsed)
