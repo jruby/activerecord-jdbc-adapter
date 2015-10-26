@@ -12,6 +12,7 @@ appraise "rails31" do
 end
 
 appraise "rails32" do
+  gem 'i18n', '< 0.7'
   gem "activerecord", "~> 3.2.19", :require => false
 end
 
