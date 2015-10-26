@@ -400,6 +400,12 @@ module ActiveRecord
         @connection.rollback_savepoint(name)
       end
 
+      # @override #rollback_to_savepoint changed on AR 4.2
+      # @see ActiveRecord::ConnectionAdapters::Savepoints
+      #def exec_rollback_to_savepoint(name = current_savepoint_name)
+      #  rollback_to_savepoint(name)
+      #end if AR42
+
       # Release a previously created save-point.
       # @note Save-points are auto-released with the transaction they're created
       # in (on transaction commit or roll-back).
@@ -427,7 +433,13 @@ module ActiveRecord
         else
           "active_record_#{open_tx}"
         end
-      end
+      end unless ArJdbc::AR42
+
+      # @note Same as AR 4.2 but we're allowing an unused parameter.
+      # @private
+      def current_savepoint_name(create = nil)
+        current_transaction.savepoint_name # unlike AR 3.2-4.1 might be nil
+      end if ArJdbc::AR42
 
       # @override
       def supports_views?
