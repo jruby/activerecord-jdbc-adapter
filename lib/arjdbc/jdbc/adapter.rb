@@ -396,15 +396,9 @@ module ActiveRecord
       # @param name the save-point name
       # @since 1.3.0
       # @extension added optional name parameter
-      def rollback_to_savepoint(name = current_savepoint_name)
+      def rollback_to_savepoint(name = current_savepoint_name(false))
         @connection.rollback_savepoint(name)
       end
-
-      # @override #rollback_to_savepoint changed on AR 4.2
-      # @see ActiveRecord::ConnectionAdapters::Savepoints
-      #def exec_rollback_to_savepoint(name = current_savepoint_name)
-      #  rollback_to_savepoint(name)
-      #end if AR42
 
       # Release a previously created save-point.
       # @note Save-points are auto-released with the transaction they're created
@@ -412,7 +406,7 @@ module ActiveRecord
       # @param name the save-point name
       # @since 1.3.0
       # @extension added optional name parameter
-      def release_savepoint(name = current_savepoint_name)
+      def release_savepoint(name = current_savepoint_name(false))
         @connection.release_savepoint(name)
       end
 
@@ -423,16 +417,13 @@ module ActiveRecord
       # @return [String] the current save-point name
       # @since 1.3.0
       # @override
-      def current_savepoint_name(create = nil)
+      def current_savepoint_name(create = true)
         open_tx = open_transactions
-        return "active_record_#{open_tx}" if create
+        return "active_record_#{open_tx}" if create # by default behave like AR
 
         sp_names = @connection.marked_savepoint_names
-        unless sp_names.empty?
-          sp_names[ -(sp_names.size - open_tx + 1) ]
-        else
-          "active_record_#{open_tx}"
-        end
+        sp_names.last || "active_record_#{open_tx}"
+        # should (open_tx- 1) here but we play by AR's rules as it might fail
       end unless ArJdbc::AR42
 
       # @note Same as AR 4.2 but we're allowing an unused parameter.

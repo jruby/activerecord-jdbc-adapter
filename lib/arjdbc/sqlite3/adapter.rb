@@ -285,12 +285,12 @@ module ArJdbc
     end
 
     # @override
-    def rollback_to_savepoint(name = current_savepoint_name)
+    def rollback_to_savepoint(name = current_savepoint_name(false))
       log("ROLLBACK TO SAVEPOINT #{name}", 'Savepoint') { super }
     end
 
     # @override
-    def release_savepoint(name = current_savepoint_name)
+    def release_savepoint(name = current_savepoint_name(false))
       log("RELEASE SAVEPOINT #{name}", 'Savepoint') { super }
     end
 
