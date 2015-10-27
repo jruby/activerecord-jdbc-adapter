@@ -155,6 +155,11 @@ module ArJdbc
     end
 
     # @override
+    def supports_partial_index?
+      sqlite_version >= '3.8.0'
+    end
+
+    # @override
     def supports_add_column?
       true
     end
@@ -166,11 +171,6 @@ module ArJdbc
 
     # @override
     def supports_autoincrement?
-      true
-    end
-
-    # @override
-    def supports_index_sort_order?
       true
     end
 
