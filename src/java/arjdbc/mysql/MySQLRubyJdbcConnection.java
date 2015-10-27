@@ -102,10 +102,6 @@ public class MySQLRubyJdbcConnection extends RubyJdbcConnection {
             final int value = resultSet.getInt(column);
             return resultSet.wasNull() ? runtime.getNil() : runtime.newFixnum(value);
         }
-        if ( type == Types.BOOLEAN ) {
-            final boolean value = resultSet.getBoolean(column);
-            return resultSet.wasNull() ? runtime.getNil() : runtime.newFixnum(value ? 1 : 0);
-        }
         return super.jdbcToRuby(context, runtime, column, type, resultSet);
     }
 
