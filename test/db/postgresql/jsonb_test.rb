@@ -96,4 +96,4 @@ class PostgreSQLJSONBTest < Test::Unit::TestCase
     assert x.save!
   end
 
-end if Test::Unit::TestCase.ar_version('4.0')
+end if Test::Unit::TestCase.ar_version('4.2')

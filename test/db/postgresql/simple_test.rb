@@ -18,6 +18,54 @@ class PostgresSimpleTest < Test::Unit::TestCase
     assert_equal 'PostgreSQLAdapter', classname
   end
 
+  # @override
+  def test_truncate
+    unless defined? JRUBY_VERSION
+      return skip 'only since AR 4.2' unless ar_version('4.2')
+    end
+    super
+  end
+
+  # @override
+  def test_custom_select_float
+    model = DbType.create! :sample_float => 1.42
+    if ActiveRecord::VERSION::MAJOR >= 3
+      model = DbType.where("id = #{model.id}").select('sample_float AS custom_sample_float').first
+    else
+      model = DbType.find(:first, :conditions => "id = #{model.id}", :select => 'sample_float AS custom_sample_float')
+    end
+    if defined? JRUBY_VERSION
+      assert_equal 1.42, model.custom_sample_float
+      assert_instance_of Float, model.custom_sample_float
+    else
+      if ar_version('4.0')
+        assert_equal 1.42, model.custom_sample_float
+      else
+        assert_equal '1.42', model.custom_sample_float
+      end
+    end
+  end
+
+  # @override
+  def test_custom_select_decimal
+    model = DbType.create! :sample_small_decimal => ( decimal = BigDecimal.new('5.45') )
+    if ActiveRecord::VERSION::MAJOR >= 3
+      model = DbType.where("id = #{model.id}").select('sample_small_decimal AS custom_decimal').first
+    else
+      model = DbType.find(:first, :conditions => "id = #{model.id}", :select => 'sample_small_decimal AS custom_decimal')
+    end
+    if defined? JRUBY_VERSION
+      assert_equal decimal, model.custom_decimal
+      assert_instance_of BigDecimal, model.custom_decimal
+    else
+      if ar_version('4.0')
+        assert_equal decimal, model.custom_decimal
+      else
+        assert_equal '5.45', model.custom_decimal
+      end
+    end
+  end
+
   def test_encoding
     assert_not_nil connection.encoding
   end
@@ -184,6 +232,9 @@ class PostgresSimpleTest < Test::Unit::TestCase
   end
 
   def test_extensions
+    unless defined? JRUBY_VERSION
+      skip 'supports_extensions? not available' unless connection.respond_to? :supports_extensions?
+    end
     if connection.supports_extensions?
       assert_include connection.extensions, 'plpgsql'
       assert connection.extension_enabled?('plpgsql')
