@@ -72,4 +72,27 @@ class HSQLDBTransactionTest < Test::Unit::TestCase
     end
   end unless Test::Unit::TestCase.ar_version('4.1')
 
+  # @override
+  def test_using_named_savepoints
+    #omit 'savepoins not supported' unless @supports_savepoints
+
+    first = Entry.create! :title => '1'; first.reload
+
+    Entry.transaction do
+      first.content = 't'
+      first.save!
+      Entry.connection.create_savepoint("first")
+
+      first.content = 'f'
+      first.save!
+      Entry.connection.rollback_to_savepoint("first")
+      assert_equal 't', first.reload.content
+
+      first.content = 'f'
+      first.save!
+      #Entry.connection.release_savepoint("first")
+      #assert_equal 'f', first.reload.content
+    end
+  end if Test::Unit::TestCase.ar_version('4.1')
+
 end
