@@ -9,6 +9,20 @@ class MySQLTransactionTest < Test::Unit::TestCase
   end
 
   # @override
+  def test_releasing_named_savepoints
+    omit 'savepoins not supported' unless @supports_savepoints
+    Entry.transaction do
+      Entry.connection.create_savepoint("another")
+      Entry.connection.release_savepoint("another")
+
+      # The savepoint is now gone and we can't remove it again.
+      assert_raises(ActiveRecord::StatementInvalid) do
+        Entry.connection.release_savepoint("another")
+      end
+    end
+  end if Test::Unit::TestCase.ar_version('4.1')
+
+  # @override
   def test_transaction_isolation_read_uncommitted
     skip("TODO: failing on travis-ci") if mariadb? && setup_failed?
     # Cannot execute statement: impossible to write to binary log since
