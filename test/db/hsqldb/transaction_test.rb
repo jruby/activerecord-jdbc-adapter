@@ -47,7 +47,7 @@ class HSQLDBTransactionTest < Test::Unit::TestCase
 
   # @override
   def test_savepoint
-    omit 'savepoins not supported' unless @supports_savepoints
+    #omit 'savepoins not supported' unless @supports_savepoints
     Entry.create! :title => '1'
     assert_equal 1, Entry.count
 
@@ -70,6 +70,6 @@ class HSQLDBTransactionTest < Test::Unit::TestCase
         #connection.release_savepoint if savepoint_created
       end
     end
-  end
+  end unless Test::Unit::TestCase.ar_version('4.1')
 
 end
