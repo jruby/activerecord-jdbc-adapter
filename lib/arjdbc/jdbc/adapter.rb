@@ -396,7 +396,7 @@ module ActiveRecord
       # @param name the save-point name
       # @since 1.3.0
       # @extension added optional name parameter
-      def rollback_to_savepoint(name = current_savepoint_name(false))
+      def rollback_to_savepoint(name = current_savepoint_name(true))
         @connection.rollback_savepoint(name)
       end
 
@@ -417,9 +417,9 @@ module ActiveRecord
       # @return [String] the current save-point name
       # @since 1.3.0
       # @override
-      def current_savepoint_name(create = true)
+      def current_savepoint_name(compat = true)
         open_tx = open_transactions
-        return "active_record_#{open_tx}" if create # by default behave like AR
+        return "active_record_#{open_tx}" if compat # by default behave like AR
 
         sp_names = @connection.marked_savepoint_names
         sp_names.last || "active_record_#{open_tx}"
@@ -428,7 +428,7 @@ module ActiveRecord
 
       # @note Same as AR 4.2 but we're allowing an unused parameter.
       # @private
-      def current_savepoint_name(create = nil)
+      def current_savepoint_name(compat = nil)
         current_transaction.savepoint_name # unlike AR 3.2-4.1 might be nil
       end if ArJdbc::AR42
 
