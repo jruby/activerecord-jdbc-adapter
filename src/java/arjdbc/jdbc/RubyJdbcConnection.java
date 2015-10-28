@@ -3626,18 +3626,21 @@ public class RubyJdbcConnection extends RubyObject {
             final Connection connection, String catalog, String schema,
             final String tableName) throws IllegalArgumentException, SQLException {
 
-        final String[] nameParts = tableName.split("\\.");
-        if ( nameParts.length > 3 ) {
+        final List<String> nameParts = split(tableName, '.');
+        final int len = nameParts.size();
+        if ( len > 3 ) {
             throw new IllegalArgumentException("table name: " + tableName + " should not contain more than 2 '.'");
         }
 
         String name = tableName;
 
-        if ( nameParts.length == 2 ) {
-            schema = nameParts[0]; name = nameParts[1];
+        if ( len == 2 ) {
+            schema = nameParts.get(0); name = nameParts.get(1);
         }
-        else if ( nameParts.length == 3 ) {
-            catalog = nameParts[0]; schema = nameParts[1]; name = nameParts[2];
+        else if ( len == 3 ) {
+            catalog = nameParts.get(0);
+            schema = nameParts.get(1);
+            name = nameParts.get(2);
         }
 
         if ( schema != null ) {
@@ -3651,6 +3654,18 @@ public class RubyJdbcConnection extends RubyObject {
         if ( catalog == null ) catalog = connection.getCatalog();
 
         return new TableName(catalog, schema, name);
+    }
+
+    protected static List<String> split(final String str, final char sep) {
+        ArrayList<String> split = new ArrayList<>(4);
+        int s = 0;
+        for ( int i = 0; i < str.length(); i++ ) {
+            if ( str.charAt(i) == sep ) {
+                split.add( str.substring(s, i) ); s = i + 1;
+            }
+        }
+        if ( s < str.length() ) split.add( str.substring(s) );
+        return split;
     }
 
     protected final TableName extractTableName(
