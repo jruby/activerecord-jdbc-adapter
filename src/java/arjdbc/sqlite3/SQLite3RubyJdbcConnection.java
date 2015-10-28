@@ -319,11 +319,11 @@ public class SQLite3RubyJdbcConnection extends RubyJdbcConnection {
         if ( name == null || name.isNil() ) {
             throw new IllegalArgumentException("create_savepoint (without name) not implemented!");
         }
-        final Connection connection = getConnection();
+        final Connection connection = getConnection(); Statement statement = null;
         try {
             connection.setAutoCommit(false);
             // NOTE: JDBC driver does not support setSavepoint(String) :
-            connection.createStatement().execute("SAVEPOINT " + name.toString());
+            ( statement = connection.createStatement() ).execute("SAVEPOINT " + name.toString());
 
             getSavepoints(context).put(name, new SavepointStub());
 
@@ -332,42 +332,45 @@ public class SQLite3RubyJdbcConnection extends RubyJdbcConnection {
         catch (SQLException e) {
             return handleException(context, e);
         }
+        finally { close(statement); }
     }
 
     @Override
     @JRubyMethod(name = "rollback_savepoint", required = 1)
     public IRubyObject rollback_savepoint(final ThreadContext context, final IRubyObject name) {
-        final Connection connection = getConnection(true);
+        final Connection connection = getConnection(true); Statement statement = null;
         try {
             if ( getSavepoints(context).get(name) == null ) {
                 throw context.runtime.newRuntimeError("could not rollback savepoint: '" + name + "' (not set)");
             }
             // NOTE: JDBC driver does not implement rollback(Savepoint) :
-            connection.createStatement().execute("ROLLBACK TO SAVEPOINT " + name.toString());
+            ( statement = connection.createStatement() ).execute("ROLLBACK TO SAVEPOINT " + name.toString());
 
             return context.nil;
         }
         catch (SQLException e) {
             return handleException(context, e);
         }
+        finally { close(statement); }
     }
 
     @Override
     @JRubyMethod(name = "release_savepoint", required = 1)
     public IRubyObject release_savepoint(final ThreadContext context, final IRubyObject name) {
-        final Connection connection = getConnection(true);
+        final Connection connection = getConnection(true); Statement statement = null;
         try {
             if ( getSavepoints(context).remove(name) == null ) {
-                throw context.getRuntime().newRuntimeError("could not release savepoint: '" + name + "' (not set)");
+                throw context.runtime.newRuntimeError("could not release savepoint: '" + name + "' (not set)");
             }
             // NOTE: JDBC driver does not implement release(Savepoint) :
-            connection.createStatement().execute("RELEASE SAVEPOINT " + name.toString());
+            ( statement = connection.createStatement() ).execute("RELEASE SAVEPOINT " + name.toString());
 
             return context.nil;
         }
         catch (SQLException e) {
             return handleException(context, e);
         }
+        finally { close(statement); }
     }
 
 }
