@@ -312,22 +312,25 @@ public class SQLite3RubyJdbcConnection extends RubyJdbcConnection {
 
     @Override
     public IRubyObject begin(ThreadContext context, IRubyObject level) {
-        throw context.runtime.newRaiseException(ActiveRecord(context).getClass("TransactionIsolationError"),
-                "SQLite3 does not support isolation levels");
+        throw context.runtime.newRaiseException(getTransactionIsolationError(context.runtime),
+                "SQLite3 does not support isolation levels"
+        );
     }
 
     @Override
     @JRubyMethod(name = "create_savepoint", optional = 1)
     public IRubyObject create_savepoint(final ThreadContext context, final IRubyObject[] args) {
-        final IRubyObject name = args.length > 0 ? args[0] : null;
-        if ( name == null || name.isNil() ) {
-            throw new IllegalArgumentException("create_savepoint (without name) not implemented!");
+        final IRubyObject name = args.length > 0 ? args[0] : context.nil;
+        if ( name == context.nil ) {
+            throw context.runtime.newRaiseException(context.runtime.getNotImplementedError(),
+                    "create_savepoint (without name) not implemented!"
+            );
         }
-        final Connection connection = getConnection(true);
+        final Connection connection = getConnection(true); Statement statement = null;
         try {
             connection.setAutoCommit(false);
             // NOTE: JDBC driver does not support setSavepoint(String) :
-            connection.createStatement().execute("SAVEPOINT " + name.toString());
+            ( statement = connection.createStatement() ).execute("SAVEPOINT " + name.toString());
 
             getSavepoints(context).put(name, new SavepointStub());
 
@@ -336,24 +339,26 @@ public class SQLite3RubyJdbcConnection extends RubyJdbcConnection {
         catch (SQLException e) {
             return handleException(context, e);
         }
+        finally { close(statement); }
     }
 
     @Override
     @JRubyMethod(name = "rollback_savepoint", required = 1)
     public IRubyObject rollback_savepoint(final ThreadContext context, final IRubyObject name) {
-        final Connection connection = getConnection(true);
+        final Connection connection = getConnection(true); Statement statement = null;
         try {
             if ( getSavepoints(context).get(name) == null ) {
-                throw context.runtime.newRuntimeError("could not rollback savepoint: '" + name + "' (not set)");
+                throw newSavepointNotSetError(context, name, "rollback");
             }
             // NOTE: JDBC driver does not implement rollback(Savepoint) :
-            connection.createStatement().execute("ROLLBACK TO SAVEPOINT " + name.toString());
+            ( statement = connection.createStatement() ).execute("ROLLBACK TO SAVEPOINT " + name.toString());
 
             return context.nil;
         }
         catch (SQLException e) {
             return handleException(context, e);
         }
+        finally { close(statement); }
     }
 
     // FIXME: Update our JDBC adapter to later version which basically performs this SQL in
@@ -361,18 +366,23 @@ public class SQLite3RubyJdbcConnection extends RubyJdbcConnection {
     @Override
     @JRubyMethod(name = "release_savepoint", required = 1)
     public IRubyObject release_savepoint(final ThreadContext context, final IRubyObject name) {
+        final Connection connection = getConnection(true); Statement statement = null;
         try {
-            if (getSavepoints(context).remove(name) == null) {
-                RubyClass invalidStatement = ActiveRecord(context).getClass("StatementInvalid");
-                throw context.runtime.newRaiseException(invalidStatement, "could not release savepoint: '" + name + "' (not set)");
+            if ( getSavepoints(context).remove(name) == null ) {
+                throw newSavepointNotSetError(context, name, "release");
             }
             // NOTE: JDBC driver does not implement release(Savepoint) :
-            getConnection(true).createStatement().execute("RELEASE SAVEPOINT " + name.toString());
-
+            ( statement = connection.createStatement() ).execute("RELEASE SAVEPOINT " + name.toString());
             return context.nil;
         } catch (SQLException e) {
             return handleException(context, e);
         }
+        finally { close(statement); }
+    }
+
+    private static RuntimeException newSavepointNotSetError(final ThreadContext context, final IRubyObject name, final String op) {
+        RubyClass StatementInvalid = ActiveRecord(context).getClass("StatementInvalid");
+        return context.runtime.newRaiseException(StatementInvalid, "could not " + op + " savepoint: '" + name + "' (not set)");
     }
 
     // Note: transaction_support.rb overrides sqlite3 adapters version which just returns true.
