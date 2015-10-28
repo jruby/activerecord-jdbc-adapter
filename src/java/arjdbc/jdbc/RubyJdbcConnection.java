@@ -3376,14 +3376,20 @@ public class RubyJdbcConnection extends RubyObject {
         if ( connection == null ) return false;
         Statement statement = null;
         try {
-            final String aliveSQL = getAliveSQL(context);
+            final RubyString aliveSQL = getAliveSQL(context);
+            final RubyInteger aliveTimeout = getAliveTimeout(context);
             if ( aliveSQL != null ) { // expect a SELECT/CALL SQL statement
                 statement = createStatement(context, connection);
-                statement.execute( aliveSQL );
+                statement.execute( aliveSQL.toString() );
+                if (aliveTimeout != null) {
+                    statement.setQueryTimeout((int) aliveTimeout.getLongValue()); // 0 - no timeout
+                }
+                statement.execute( aliveSQL.toString() );
                 return true; // connection alive
             }
             else { // alive_sql nil (or not a statement we can execute)
-                return connection.isValid(0); // since JDBC 4.0
+                return connection.isValid(aliveTimeout == null ? 0 : (int) aliveTimeout.getLongValue()); // since JDBC 4.0
+                // ... isValid(0) (default) means no timeout applied
             }
         }
         catch (Exception e) {
@@ -3401,17 +3407,25 @@ public class RubyJdbcConnection extends RubyObject {
         finally { close(statement); }
     }
 
-    private static final String NIL_ALIVE_SQL = new String(); // no set value marker
+    private transient IRubyObject aliveSQL = null;
 
-    private transient String aliveSQL = null;
-
-    private String getAliveSQL(final ThreadContext context) {
+    /**
+     * internal API do not depend on it
+     */
+    protected final RubyString getAliveSQL(final ThreadContext context) {
         if ( aliveSQL == null ) {
             final IRubyObject alive_sql = getConfigValue(context, "connection_alive_sql");
-            aliveSQL = ( alive_sql == null || alive_sql.isNil() ) ?
-                    NIL_ALIVE_SQL : alive_sql.asString().toString();
+            aliveSQL = alive_sql == null ? context.nil : alive_sql.convertToString();
         }
-        return aliveSQL == (Object) NIL_ALIVE_SQL ? null : aliveSQL;
+        return aliveSQL.isNil() ? null : (RubyString) aliveSQL;
+    }
+
+    /**
+     * internal API do not depend on it
+     */
+    protected final RubyInteger getAliveTimeout(final ThreadContext context) {
+        final IRubyObject timeout = getConfigValue(context, "connection_alive_timeout");
+        return timeout.isNil() ? null : timeout.convertToInteger("to_i");
     }
 
     private boolean tableExists(final ThreadContext context,

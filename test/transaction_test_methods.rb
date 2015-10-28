@@ -15,18 +15,20 @@ module TransactionTestMethods
     CreateEntries.down
   end
 
-  class Entry2 < ActiveRecord::Base; self.table_name = 'entries' ; end
+  class Entry2 < ActiveRecord::Base; self.table_name = 'entries' end
+  class MyUser < ActiveRecord::Base; self.table_name = 'users' end
 
   def setup
     super
     begin
-      Entry.delete_all
+      Entry.delete_all; User.delete_all
     rescue ActiveRecord::StatementInvalid => e
       e = e.original_exception if e.respond_to?(:original_exception)
       puts "ERROR: #{self.class.name}.#{__method__} failed: #{e.inspect}"
       return @setup_failed = true
     end
     Entry2.establish_connection current_connection_config.dup
+    MyUser.establish_connection current_connection_config.dup
     @supports_savepoints = ActiveRecord::Base.connection.supports_savepoints?
   end
 
@@ -78,18 +80,26 @@ module TransactionTestMethods
     end
 
     # We are testing that a non-repeatable read does not happen
-    # test "repeatable read" do
-    entry = Entry.create(:title => '1234')
+    #entry = Entry.create(:title => '1234')
+    # NOTE: this fails using JDBC (both mysql and mariadb driver) with :
+    # ActiveRecord::JDBCError: Cannot execute statement: impossible to write to
+    #   binary log since BINLOG_FORMAT = STATEMENT and at least one table uses a
+    #   storage engine limited to row-based logging.
+    #   InnoDB is limited to row-logging when transaction isolation level is
+    #   READ COMMITTED or READ UNCOMMITTED.: INSERT INTO `entries`
+    #
+    # changing my.cnf to **binlog_format = 'MIXED'** helps
+    entry = User.create!(:login => 'user111')
 
-    Entry.transaction(:isolation => :repeatable_read) do
+    User.transaction(:isolation => :repeatable_read) do
       entry.reload
-      Entry2.find(entry.id).update_attributes(:title => '567')
+      MyUser.find(entry.id).update_attributes(:login => 'my-user')
 
       entry.reload
-      assert_equal '1234', entry.title
+      assert_equal 'user111', entry.login
     end
     entry.reload
-    assert_equal '567', entry.title
+    assert_equal 'my-user', entry.login
   end if Test::Unit::TestCase.ar_version('4.0')
 
 #  def test_transaction_isolation_serializable
@@ -184,6 +194,8 @@ module TransactionTestMethods
 
   def test_savepoint
     omit 'savepoins not supported' unless @supports_savepoints
+    # NOTE: create_savepoint always takes an argument since AR 4.1
+
     Entry.create! :title => '1'
     assert_equal 1, Entry.count
 
@@ -204,7 +216,94 @@ module TransactionTestMethods
         connection.release_savepoint if savepoint_created
       end
     end
-  end
+  end unless Test::Unit::TestCase.ar_version('4.1')
+
+  def test_using_named_savepoints
+    omit 'savepoins not supported' unless @supports_savepoints
+
+    first = Entry.create! :title => '1'; first.reload
+
+    Entry.transaction do
+      first.content = 't'
+      first.save!
+      Entry.connection.create_savepoint("first")
+
+      first.content = 'f'
+      first.save!
+      Entry.connection.rollback_to_savepoint("first")
+      assert_equal 't', first.reload.content
+
+      first.content = 'f'
+      first.save!
+      Entry.connection.release_savepoint("first")
+      assert_equal 'f', first.reload.content
+    end
+  end if Test::Unit::TestCase.ar_version('4.1')
+
+  def test_current_savepoints_name
+    MyUser.transaction do
+      if ar_version('4.2')
+        assert_nil MyUser.connection.current_savepoint_name
+        assert_nil MyUser.connection.current_transaction.savepoint_name
+      else # 3.2
+        assert_equal "active_record_1", MyUser.connection.current_savepoint_name
+      end
+
+      MyUser.transaction(:requires_new => true) do
+        if ar_version('4.2')
+          assert_equal "active_record_1", MyUser.connection.current_savepoint_name
+          assert_equal "active_record_1", MyUser.connection.current_transaction.savepoint_name
+        else # 3.2
+          # on AR < 3.2 we do get 'active_record_1' with AR-JDBC which is not compatible
+          # with MRI but is actually more accurate - maybe 3.2 should be updated as well
+          assert_equal "active_record_2", MyUser.connection.current_savepoint_name
+
+          assert_equal "active_record_2", MyUser.connection.current_savepoint_name(true) if defined? JRUBY_VERSION
+          assert_equal "active_record_1", MyUser.connection.current_savepoint_name(false) if defined? JRUBY_VERSION
+        end
+
+        MyUser.transaction(:requires_new => true) do
+          if ar_version('4.2')
+            assert_equal "active_record_2", MyUser.connection.current_savepoint_name
+            assert_equal "active_record_2", MyUser.connection.current_transaction.savepoint_name
+
+            assert_equal "active_record_2", MyUser.connection.current_savepoint_name(true) if defined? JRUBY_VERSION
+            assert_equal "active_record_2", MyUser.connection.current_savepoint_name(false) if defined? JRUBY_VERSION
+          else # 3.2
+            assert_equal "active_record_3", MyUser.connection.current_savepoint_name
+
+            assert_equal "active_record_3", MyUser.connection.current_savepoint_name(true) if defined? JRUBY_VERSION
+            assert_equal "active_record_2", MyUser.connection.current_savepoint_name(false) if defined? JRUBY_VERSION
+          end
+        end
+
+        if ar_version('4.2')
+          assert_equal "active_record_1", MyUser.connection.current_savepoint_name
+          assert_equal "active_record_1", MyUser.connection.current_transaction.savepoint_name
+        else # 3.2
+          assert_equal "active_record_2", MyUser.connection.current_savepoint_name
+
+          assert_equal "active_record_2", MyUser.connection.current_savepoint_name(true) if defined? JRUBY_VERSION
+          assert_equal "active_record_1", MyUser.connection.current_savepoint_name(false) if defined? JRUBY_VERSION
+        end
+      end
+    end
+  end if Test::Unit::TestCase.ar_version('3.2')
+
+  def test_releasing_named_savepoints
+    omit 'savepoins not supported' unless @supports_savepoints
+    Entry.transaction do
+      Entry.connection.create_savepoint("another")
+      Entry.connection.release_savepoint("another")
+
+      # The savepoint is now gone and we can't remove it again.
+      # NOTE: relaxed error type requirement due using JDBC API
+      # native DBs such as Derby/HSQLDB/H2 would simply fail ...
+      assert_raises do # ActiveRecord::StatementInvalid
+        Entry.connection.release_savepoint("another")
+      end
+    end
+  end if Test::Unit::TestCase.ar_version('4.1')
 
   def test_release_savepoint
     omit 'savepoins not supported' unless @supports_savepoints

@@ -1318,7 +1318,8 @@ module SimpleTestMethods
     unless defined? JRUBY_VERSION
       adapter = ActiveRecord::Base.connection.class.name
       if adapter.index('SQLite') || adapter.index('PostgreSQL')
-        skip "can't pass AREL-object into exec_xxx with SQLite adapter"
+        name = adapter.index('SQLite') ? 'SQLite' : 'PostgreSQL'
+        skip "can't pass AREL-object into exec_xxx with #{name} adapter"
       end
     end
   end

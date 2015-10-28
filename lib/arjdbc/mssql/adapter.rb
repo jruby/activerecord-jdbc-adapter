@@ -712,7 +712,7 @@ module ArJdbc
     end
 
     # @override
-    def release_savepoint(name = current_savepoint_name)
+    def release_savepoint(name = current_savepoint_name(false))
       if @connection.jtds_driver?
         @connection.release_savepoint(name)
       else # MS invented it's "own" way

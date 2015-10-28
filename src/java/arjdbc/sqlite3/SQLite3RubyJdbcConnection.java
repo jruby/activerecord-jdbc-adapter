@@ -357,8 +357,8 @@ public class SQLite3RubyJdbcConnection extends RubyJdbcConnection {
     public IRubyObject release_savepoint(final ThreadContext context, final IRubyObject name) {
         final Connection connection = getConnection(true);
         try {
-            if ( getSavepoints(context).get(name) == null ) {
-                throw context.runtime.newRuntimeError("could not release savepoint: '" + name + "' (not set)");
+            if ( getSavepoints(context).remove(name) == null ) {
+                throw context.getRuntime().newRuntimeError("could not release savepoint: '" + name + "' (not set)");
             }
             // NOTE: JDBC driver does not implement release(Savepoint) :
             connection.createStatement().execute("RELEASE SAVEPOINT " + name.toString());

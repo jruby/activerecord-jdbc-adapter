@@ -44,4 +44,55 @@ class SQLite3TransactionTest < Test::Unit::TestCase
     assert_true ActiveRecord::Base.connection.supports_savepoints?
   end
 
+  # @override
+  def test_current_savepoints_name
+    MyUser.transaction do
+      if ar_version('4.2')
+        assert_nil MyUser.connection.current_savepoint_name
+        assert_nil MyUser.connection.current_transaction.savepoint_name
+      else # 3.2
+        assert_equal "active_record_1", MyUser.connection.current_savepoint_name
+      end
+
+      MyUser.transaction(:requires_new => true) do
+        if ar_version('4.2')
+          assert_equal "active_record_1", MyUser.connection.current_savepoint_name
+          assert_equal "active_record_1", MyUser.connection.current_transaction.savepoint_name
+        else # 3.2
+          # on AR < 3.2 we do get 'active_record_1' with AR-JDBC which is not compatible
+          # with MRI but is actually more accurate - maybe 3.2 should be updated as well
+          assert_equal "active_record_2", MyUser.connection.current_savepoint_name
+
+          assert_equal "active_record_2", MyUser.connection.current_savepoint_name(true) if defined? JRUBY_VERSION
+          #assert_equal "active_record_1", MyUser.connection.current_savepoint_name(false) if defined? JRUBY_VERSION
+        end
+
+        MyUser.transaction(:requires_new => true) do
+          if ar_version('4.2')
+            assert_equal "active_record_2", MyUser.connection.current_savepoint_name
+            assert_equal "active_record_2", MyUser.connection.current_transaction.savepoint_name
+
+            assert_equal "active_record_2", MyUser.connection.current_savepoint_name(true) if defined? JRUBY_VERSION
+            #assert_equal "active_record_2", MyUser.connection.current_savepoint_name(false) if defined? JRUBY_VERSION
+          else # 3.2
+            assert_equal "active_record_3", MyUser.connection.current_savepoint_name
+
+            assert_equal "active_record_3", MyUser.connection.current_savepoint_name(true) if defined? JRUBY_VERSION
+            #assert_equal "active_record_2", MyUser.connection.current_savepoint_name(false) if defined? JRUBY_VERSION
+          end
+        end
+
+        if ar_version('4.2')
+          assert_equal "active_record_1", MyUser.connection.current_savepoint_name
+          assert_equal "active_record_1", MyUser.connection.current_transaction.savepoint_name
+        else # 3.2
+          assert_equal "active_record_2", MyUser.connection.current_savepoint_name
+
+          assert_equal "active_record_2", MyUser.connection.current_savepoint_name(true) if defined? JRUBY_VERSION
+          #assert_equal "active_record_1", MyUser.connection.current_savepoint_name(false) if defined? JRUBY_VERSION
+        end
+      end
+    end
+  end if Test::Unit::TestCase.ar_version('3.2')
+
 end

@@ -49,6 +49,7 @@ import org.jruby.RubyArray;
 import org.jruby.RubyClass;
 import org.jruby.RubyFixnum;
 import org.jruby.RubyFloat;
+import org.jruby.RubyInteger;
 import org.jruby.RubyModule;
 import org.jruby.RubyString;
 import org.jruby.exceptions.RaiseException;
@@ -129,10 +130,9 @@ public class MySQLRubyJdbcConnection extends RubyJdbcConnection {
         final ThreadContext context, final Ruby runtime,
         final int column, final int type, final ResultSet resultSet)
         throws SQLException {
-        if ( Types.BOOLEAN == type || Types.BIT == type ) {
-            final boolean value = resultSet.getBoolean(column);
-            if ( value == false && resultSet.wasNull() ) return context.nil;
-            return RubyFixnum.newFixnum(runtime, value ? 1 : 0);
+        if ( type == Types.BIT ) {
+            final int value = resultSet.getInt(column);
+            return resultSet.wasNull() ? runtime.getNil() : runtime.newFixnum(value);
         }
         return super.jdbcToRuby(context, runtime, column, type, resultSet);
     }
@@ -190,6 +190,42 @@ public class MySQLRubyJdbcConnection extends RubyJdbcConnection {
                 statement.setTime( index, time );
             }
         }
+    }
+
+    @Override
+    protected final boolean isConnectionValid(final ThreadContext context, final Connection connection) {
+        if ( connection == null ) return false;
+        Statement statement = null;
+        try {
+            final RubyString aliveSQL = getAliveSQL(context);
+            final RubyInteger aliveTimeout = getAliveTimeout(context);
+            if ( aliveSQL != null ) {
+                // expect a SELECT/CALL SQL statement
+                statement = createStatement(context, connection);
+                if (aliveTimeout != null) {
+                    statement.setQueryTimeout((int) aliveTimeout.getLongValue()); // 0 - no timeout
+                }
+                statement.execute( aliveSQL.toString() );
+                return true; // connection alive
+            }
+            else { // alive_sql nil (or not a statement we can execute)
+                return connection.isValid(aliveTimeout == null ? 0 : (int) aliveTimeout.getLongValue()); // since JDBC 4.0
+                // ... isValid(0) (default) means no timeout applied
+            }
+        }
+        catch (Exception e) {
+            debugMessage(context, "connection considered broken due: " + e.toString());
+            return false;
+        }
+        catch (AbstractMethodError e) { // non-JDBC 4.0 driver
+            warn( context,
+                "WARN: driver does not support checking if connection isValid()" +
+                " please make sure you're using a JDBC 4.0 compilant driver or" +
+                " set `connection_alive_sql: ...` in your database configuration" );
+            debugStackTrace(context, e);
+            throw e;
+        }
+        finally { close(statement); }
     }
 
     @Override

@@ -280,7 +280,7 @@ module ArJdbc
       version[0] && version[0] >= 5 # MySQL 5+
     end
 
-    # NOTE: handled by JdbcAdapter we override only to have save-point in logs :
+    # NOTE: handled by JdbcAdapter only to have statements in logs :
 
     # @override
     def supports_savepoints?
@@ -293,12 +293,12 @@ module ArJdbc
     end
 
     # @override
-    def rollback_to_savepoint(name = current_savepoint_name)
+    def rollback_to_savepoint(name = current_savepoint_name(true))
       log("ROLLBACK TO SAVEPOINT #{name}", 'Savepoint') { super }
     end
 
     # @override
-    def release_savepoint(name = current_savepoint_name)
+    def release_savepoint(name = current_savepoint_name(false))
       log("RELEASE SAVEPOINT #{name}", 'Savepoint') { super }
     end
 
