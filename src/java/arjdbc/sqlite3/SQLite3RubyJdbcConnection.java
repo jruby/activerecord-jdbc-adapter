@@ -49,6 +49,7 @@ import org.jruby.runtime.builtin.IRubyObject;
 import arjdbc.jdbc.Callable;
 import arjdbc.jdbc.RubyJdbcConnection;
 import arjdbc.util.StringHelper;
+import org.jruby.util.SafePropertyAccessor;
 
 /**
  *
@@ -242,7 +243,7 @@ public class SQLite3RubyJdbcConnection extends RubyJdbcConnection {
             type = ((ResultSetMetaData) resultSet).getColumnType(column);
         }
         // since JDBC 3.8 there seems to be more cleverness built-in that
-        // seems (<= 3.8.7) to get things wrong ... reports DATE SQL type
+        // causes (<= 3.8.7) to get things wrong ... reports DATE SQL type
         // for "datetime" columns :
         if ( type == Types.DATE ) {
             // return timestampToRuby(context, runtime, resultSet, column);
@@ -315,9 +316,31 @@ public class SQLite3RubyJdbcConnection extends RubyJdbcConnection {
 
     }
 
+    private static Boolean useSavepointAPI;
+    static {
+        final String savepoints = SafePropertyAccessor.getProperty("arjdbc.sqlite.savepoints");
+        if ( savepoints != null ) useSavepointAPI = Boolean.parseBoolean(savepoints);
+    }
+
+    private static boolean useSavepointAPI(final ThreadContext context) {
+        final Boolean working = useSavepointAPI;
+        if ( working == null ) {
+            try { // available since JDBC-SQLite 3.8.9
+                context.runtime.getJavaSupport().loadJavaClass("org.sqlite.jdbc3.JDBC3Savepoint");
+                return useSavepointAPI = Boolean.TRUE;
+            }
+            catch (ClassNotFoundException ex) { /* < 3.8.9 */ }
+            // catch (RuntimeException ex) { }
+            return useSavepointAPI = Boolean.FALSE;
+        }
+        return working;
+    }
+
     @Override
     @JRubyMethod(name = "create_savepoint", required = 1)
     public IRubyObject create_savepoint(final ThreadContext context, final IRubyObject name) {
+        if ( useSavepointAPI(context) ) return super.create_savepoint(context, name);
+
         if ( name == null || name.isNil() ) {
             throw new IllegalArgumentException("create_savepoint (without name) not implemented!");
         }
@@ -340,6 +363,8 @@ public class SQLite3RubyJdbcConnection extends RubyJdbcConnection {
     @Override
     @JRubyMethod(name = "rollback_savepoint", required = 1)
     public IRubyObject rollback_savepoint(final ThreadContext context, final IRubyObject name) {
+        if ( useSavepointAPI(context) ) return super.rollback_savepoint(context, name);
+
         final Connection connection = getConnection(true); Statement statement = null;
         try {
             if ( getSavepoints(context).get(name) == null ) {
@@ -359,6 +384,8 @@ public class SQLite3RubyJdbcConnection extends RubyJdbcConnection {
     @Override
     @JRubyMethod(name = "release_savepoint", required = 1)
     public IRubyObject release_savepoint(final ThreadContext context, final IRubyObject name) {
+        if ( useSavepointAPI(context) ) return super.release_savepoint(context, name);
+
         final Connection connection = getConnection(true); Statement statement = null;
         try {
             if ( getSavepoints(context).remove(name) == null ) {
