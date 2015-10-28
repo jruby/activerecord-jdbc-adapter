@@ -36,7 +36,6 @@ import java.sql.DatabaseMetaData;
 import java.sql.PreparedStatement;
 import java.sql.Savepoint;
 import java.sql.Types;
-import java.util.ArrayList;
 import java.util.List;
 
 import org.jruby.Ruby;
@@ -48,6 +47,7 @@ import org.jruby.anno.JRubyMethod;
 import org.jruby.runtime.ObjectAllocator;
 import org.jruby.runtime.ThreadContext;
 import org.jruby.runtime.builtin.IRubyObject;
+import org.jruby.util.SafePropertyAccessor;
 
 import arjdbc.jdbc.Callable;
 import arjdbc.jdbc.RubyJdbcConnection;
@@ -247,7 +247,7 @@ public class SQLite3RubyJdbcConnection extends RubyJdbcConnection {
             type = ((ResultSetMetaData) resultSet).getColumnType(column);
         }
         // since JDBC 3.8 there seems to be more cleverness built-in that
-        // seems (<= 3.8.7) to get things wrong ... reports DATE SQL type
+        // causes (<= 3.8.7) to get things wrong ... reports DATE SQL type
         // for "datetime" columns :
         if ( type == Types.DATE ) {
             // return timestampToRuby(context, runtime, resultSet, column);
@@ -310,6 +310,26 @@ public class SQLite3RubyJdbcConnection extends RubyJdbcConnection {
 
     }
 
+    private static Boolean useSavepointAPI;
+    static {
+        final String savepoints = SafePropertyAccessor.getProperty("arjdbc.sqlite.savepoints");
+        if ( savepoints != null ) useSavepointAPI = Boolean.parseBoolean(savepoints);
+    }
+
+    private static boolean useSavepointAPI(final ThreadContext context) {
+        final Boolean working = useSavepointAPI;
+        if ( working == null ) {
+            try { // available since JDBC-SQLite 3.8.9
+                context.runtime.getJavaSupport().loadJavaClass("org.sqlite.jdbc3.JDBC3Savepoint");
+                return useSavepointAPI = Boolean.TRUE;
+            }
+            catch (ClassNotFoundException ex) { /* < 3.8.9 */ }
+            // catch (RuntimeException ex) { }
+            return useSavepointAPI = Boolean.FALSE;
+        }
+        return working;
+    }
+
     @Override
     public IRubyObject begin(ThreadContext context, IRubyObject level) {
         throw context.runtime.newRaiseException(getTransactionIsolationError(context.runtime),
@@ -320,6 +340,8 @@ public class SQLite3RubyJdbcConnection extends RubyJdbcConnection {
     @Override
     @JRubyMethod(name = "create_savepoint", optional = 1)
     public IRubyObject create_savepoint(final ThreadContext context, final IRubyObject[] args) {
+        if ( useSavepointAPI(context) ) return super.create_savepoint(context, args);
+
         final IRubyObject name = args.length > 0 ? args[0] : context.nil;
         if ( name == context.nil ) {
             throw context.runtime.newRaiseException(context.runtime.getNotImplementedError(),
@@ -345,6 +367,8 @@ public class SQLite3RubyJdbcConnection extends RubyJdbcConnection {
     @Override
     @JRubyMethod(name = "rollback_savepoint", required = 1)
     public IRubyObject rollback_savepoint(final ThreadContext context, final IRubyObject name) {
+        if ( useSavepointAPI(context) ) return super.rollback_savepoint(context, name);
+
         final Connection connection = getConnection(true); Statement statement = null;
         try {
             if ( getSavepoints(context).get(name) == null ) {
@@ -366,6 +390,8 @@ public class SQLite3RubyJdbcConnection extends RubyJdbcConnection {
     @Override
     @JRubyMethod(name = "release_savepoint", required = 1)
     public IRubyObject release_savepoint(final ThreadContext context, final IRubyObject name) {
+        if ( useSavepointAPI(context) ) return super.release_savepoint(context, name);
+
         final Connection connection = getConnection(true); Statement statement = null;
         try {
             if ( getSavepoints(context).remove(name) == null ) {
