@@ -21,7 +21,7 @@ module TransactionTestMethods
   def setup
     super
     begin
-      Entry.delete_all
+      Entry.delete_all; User.delete_all
     rescue ActiveRecord::StatementInvalid => e
       e = e.original_exception if e.respond_to?(:original_exception)
       puts "ERROR: #{self.class.name}.#{__method__} failed: #{e.inspect}"
