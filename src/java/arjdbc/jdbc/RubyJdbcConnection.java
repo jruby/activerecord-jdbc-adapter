@@ -407,11 +407,14 @@ public class RubyJdbcConnection extends RubyObject {
         });
     }
 
-    @JRubyMethod(name = "create_savepoint", optional = 1)
-    public IRubyObject create_savepoint(final ThreadContext context, final IRubyObject[] args) {
-        IRubyObject name = args.length > 0 ? args[0] : context.nil;
-        final Connection connection = getConnection(true);
+    @JRubyMethod(name = "create_savepoint")  // not used
+    public IRubyObject create_savepoint(final ThreadContext context) {
+        return create_savepoint(context, context.nil);
+    }
 
+    @JRubyMethod(name = "create_savepoint", required = 1)
+    public IRubyObject create_savepoint(final ThreadContext context, IRubyObject name) {
+        final Connection connection = getConnection(true);
         try {
             connection.setAutoCommit(false);
 
