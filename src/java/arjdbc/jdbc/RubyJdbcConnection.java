@@ -415,26 +415,25 @@ public class RubyJdbcConnection extends RubyObject {
         });
     }
 
-    @JRubyMethod(name = "create_savepoint", optional = 1)
-    public IRubyObject create_savepoint(final ThreadContext context, final IRubyObject[] args) {
-        IRubyObject name = args.length > 0 ? args[0] : null;
+    @JRubyMethod(name = "create_savepoint")  // not used - kept for 1.3 Ruby API compatibility
+    public IRubyObject create_savepoint(final ThreadContext context) {
+        return create_savepoint(context, context.nil);
+    }
+
+    @JRubyMethod(name = "create_savepoint", required = 1)
+    public IRubyObject create_savepoint(final ThreadContext context, IRubyObject name) {
         final Connection connection = getConnection();
         try {
             connection.setAutoCommit(false);
 
             final Savepoint savepoint ;
-            // NOTE: this will auto-start a DB transaction even invoked outside
-            // of a AR (Ruby) transaction (`transaction { ... create_savepoint }`)
-            // it would be nice if AR knew about this TX although that's kind of
-            // "really advanced" functionality - likely not to be implemented ...
-            if ( name != null && ! name.isNil() ) {
-                savepoint = connection.setSavepoint(name.toString());
+            if ( ! name.isNil() ) {
+                savepoint = connection.setSavepoint(name.convertToString().toString());
             }
             else {
                 savepoint = connection.setSavepoint();
-                name = RubyString.newString( context.runtime,
-                    Integer.toString( savepoint.getSavepointId() )
-                );
+                final String id = Integer.toString( savepoint.getSavepointId());
+                name = RubyString.newString( context.runtime, id );
             }
             getSavepoints(context).put(name, savepoint);
 

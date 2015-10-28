@@ -301,6 +301,8 @@ public class SQLite3RubyJdbcConnection extends RubyJdbcConnection {
 
     private static class SavepointStub implements Savepoint {
 
+        static final SavepointStub INSTANCE = new SavepointStub();
+
         @Override
         public int getSavepointId() throws SQLException {
             throw new UnsupportedOperationException();
@@ -314,9 +316,8 @@ public class SQLite3RubyJdbcConnection extends RubyJdbcConnection {
     }
 
     @Override
-    @JRubyMethod(name = "create_savepoint", optional = 1)
-    public IRubyObject create_savepoint(final ThreadContext context, final IRubyObject[] args) {
-        final IRubyObject name = args.length > 0 ? args[0] : null;
+    @JRubyMethod(name = "create_savepoint", required = 1)
+    public IRubyObject create_savepoint(final ThreadContext context, final IRubyObject name) {
         if ( name == null || name.isNil() ) {
             throw new IllegalArgumentException("create_savepoint (without name) not implemented!");
         }
@@ -326,7 +327,7 @@ public class SQLite3RubyJdbcConnection extends RubyJdbcConnection {
             // NOTE: JDBC driver does not support setSavepoint(String) :
             ( statement = connection.createStatement() ).execute("SAVEPOINT " + name.toString());
 
-            getSavepoints(context).put(name, new SavepointStub());
+            getSavepoints(context).put(name, SavepointStub.INSTANCE);
 
             return name;
         }
