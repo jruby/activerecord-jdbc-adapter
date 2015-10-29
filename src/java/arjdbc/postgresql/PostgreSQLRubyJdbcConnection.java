@@ -1,5 +1,5 @@
 /***** BEGIN LICENSE BLOCK *****
- * Copyright (c) 2012-2014 Karol Bucek <self@kares.org>
+ * Copyright (c) 2012-2015 Karol Bucek <self@kares.org>
  * Copyright (c) 2006-2010 Nick Sieger <nick@nicksieger.com>
  * Copyright (c) 2006-2007 Ola Bini <ola.bini@gmail.com>
  * Copyright (c) 2008-2009 Thomas E Enebo <enebo@acm.org>
@@ -168,6 +168,15 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
         }
 
         return driverWrapper;
+    }
+
+    @Override
+    protected final IRubyObject beginTransaction(final ThreadContext context, final Connection connection,
+        final IRubyObject isolation) throws SQLException {
+        // NOTE: only reversed order - just to ~ match how Rails does it :
+        /* if ( connection.getAutoCommit() ) */ connection.setAutoCommit(false);
+        if ( isolation != null ) setTransactionIsolation(context, connection, isolation);
+        return context.nil;
     }
 
     // enables testing if the bug is fixed (please run our test-suite)
