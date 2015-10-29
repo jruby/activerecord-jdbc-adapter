@@ -286,8 +286,6 @@ module ArJdbc
     BEGIN_LOG = '/* BEGIN */ SET autocommit=0'
     private_constant :BEGIN_LOG if respond_to?(:private_constant)
 
-    puts respond_to?(:private_constant)
-
     # @override
     def begin_db_transaction
       log(BEGIN_LOG) { @connection.begin }
