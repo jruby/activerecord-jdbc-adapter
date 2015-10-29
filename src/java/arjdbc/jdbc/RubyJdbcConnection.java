@@ -489,11 +489,12 @@ public class RubyJdbcConnection extends RubyObject {
     // NOTE: this is iternal API - not to be used by user-code !
     @JRubyMethod(name = "marked_savepoint_names")
     public IRubyObject marked_savepoint_names(final ThreadContext context) {
-        if ( hasInstanceVariable("@savepoints") ) {
-            Map<IRubyObject, Savepoint> savepoints = getSavepoints(context);
-            final RubyArray names = context.runtime.newArray();
+        @SuppressWarnings("unchecked")
+        final Map<IRubyObject, Savepoint> savepoints = getSavepoints(false);
+        if ( savepoints != null ) {
+            final RubyArray names = context.runtime.newArray(savepoints.size());
             for ( Map.Entry<IRubyObject, ?> entry : savepoints.entrySet() ) {
-                names.add( entry.getKey() ); // keys are RubyString instances
+                names.append( entry.getKey() ); // keys are RubyString instances
             }
             return names;
         }
@@ -502,22 +503,26 @@ public class RubyJdbcConnection extends RubyObject {
         }
     }
 
-    @SuppressWarnings("unchecked")
-    protected Map<IRubyObject, Savepoint> getSavepoints(final ThreadContext context) {
-        if ( hasInstanceVariable("@savepoints") ) {
-            IRubyObject savepoints = getInstanceVariable("@savepoints");
-            return (Map<IRubyObject, Savepoint>) savepoints.toJava(Map.class);
-        }
-        else { // not using a RubyHash to preserve order on Ruby 1.8 as well :
-            Map<IRubyObject, Savepoint> savepoints = new LinkedHashMap<IRubyObject, Savepoint>(4);
-            setInstanceVariable("@savepoints", convertJavaToRuby(savepoints));
-            return savepoints;
-        }
+    protected final Map<IRubyObject, Savepoint> getSavepoints(final ThreadContext context) {
+        return getSavepoints(true);
     }
 
-    protected boolean resetSavepoints(final ThreadContext context) {
-        if ( hasInstanceVariable("@savepoints") ) {
-            removeInstanceVariable("@savepoints");
+    @SuppressWarnings("unchecked")
+    private final Map<IRubyObject, Savepoint> getSavepoints(final boolean init) {
+        if ( hasInternalVariable("savepoints") ) {
+            return (Map<IRubyObject, Savepoint>) getInternalVariable("savepoints");
+        }
+        if ( init ) {
+            Map<IRubyObject, Savepoint> savepoints = new LinkedHashMap<IRubyObject, Savepoint>(4);
+            setInternalVariable("savepoints", savepoints);
+            return savepoints;
+        }
+        return null;
+    }
+
+    protected final boolean resetSavepoints(final ThreadContext context) {
+        if ( hasInternalVariable("savepoints") ) {
+            removeInternalVariable("savepoints");
             return true;
         }
         return false;
