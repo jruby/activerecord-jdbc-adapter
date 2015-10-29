@@ -410,11 +410,6 @@ public class SQLite3RubyJdbcConnection extends RubyJdbcConnection {
         finally { close(statement); }
     }
 
-    private static RuntimeException newSavepointNotSetError(final ThreadContext context, final IRubyObject name, final String op) {
-        RubyClass StatementInvalid = ActiveRecord(context).getClass("StatementInvalid");
-        return context.runtime.newRaiseException(StatementInvalid, "could not " + op + " savepoint: '" + name + "' (not set)");
-    }
-
     // Note: transaction_support.rb overrides sqlite3 adapters version which just returns true.
     // Rather than re-define it in SQLite3Adapter I will just define it here so we appear to have
     // a consistent JDBC layer.

@@ -407,7 +407,7 @@ public class RubyJdbcConnection extends RubyObject {
 
     @JRubyMethod(name = "create_savepoint", optional = 1)
     public IRubyObject create_savepoint(final ThreadContext context, final IRubyObject[] args) {
-        IRubyObject name = args.length > 0 ? args[0] : null;
+        IRubyObject name = args.length > 0 ? args[0] : context.nil;
         final Connection connection = getConnection(true);
 
         try {
@@ -418,14 +418,12 @@ public class RubyJdbcConnection extends RubyObject {
             // of a AR (Ruby) transaction (`transaction { ... create_savepoint }`)
             // it would be nice if AR knew about this TX although that's kind of
             // "really advanced" functionality - likely not to be implemented ...
-            if ( name != null && ! name.isNil() ) {
+            if ( name != context.nil ) {
                 savepoint = connection.setSavepoint(name.toString());
             }
             else {
                 savepoint = connection.setSavepoint();
-                name = RubyString.newString( context.runtime,
-                    Integer.toString( savepoint.getSavepointId() )
-                );
+                name = RubyString.newString( context.runtime, Integer.toString( savepoint.getSavepointId() ));
             }
             getSavepoints(context).put(name, savepoint);
 
@@ -438,9 +436,8 @@ public class RubyJdbcConnection extends RubyObject {
 
     @JRubyMethod(name = "rollback_savepoint", required = 1)
     public IRubyObject rollback_savepoint(final ThreadContext context, final IRubyObject name) {
-        if ( name == null || name.isNil() ) {
-            throw context.runtime.newArgumentError("nil savepoint name given");
-        }
+        if (name == context.nil) throw context.runtime.newArgumentError("nil savepoint name given");
+
         final Connection connection = getConnection(true);
         try {
             Savepoint savepoint = getSavepoints(context).get(name);
@@ -457,46 +454,66 @@ public class RubyJdbcConnection extends RubyObject {
 
     @JRubyMethod(name = "release_savepoint", required = 1)
     public IRubyObject release_savepoint(final ThreadContext context, final IRubyObject name) {
-        Ruby runtime = context.runtime;
-
-        if ( name == null || name.isNil() ) throw runtime.newArgumentError("nil savepoint name given");
+        if (name == context.nil) throw context.runtime.newArgumentError("nil savepoint name given");
 
         try {
             Object savepoint = getSavepoints(context).remove(name);
 
-            if (savepoint == null) {
-                RubyClass invalidStatement = ActiveRecord(context).getClass("StatementInvalid");
-                throw runtime.newRaiseException(invalidStatement, "could not release savepoint: '" + name + "' (not set)");
-            }
+            if (savepoint == null) throw newSavepointNotSetError(context, name, "release");
 
             // NOTE: RubyHash.remove does not convert to Java as get does :
-            if (!( savepoint instanceof Savepoint )) {
+            if (!(savepoint instanceof Savepoint)) {
                 savepoint = ((IRubyObject) savepoint).toJava(Savepoint.class);
             }
 
             getConnection(true).releaseSavepoint((Savepoint) savepoint);
-            return runtime.getNil();
-        } catch (SQLException e) {
+            return context.nil;
+        }
+        catch (SQLException e) {
             return handleException(context, e);
         }
     }
 
-    @SuppressWarnings("unchecked")
-    protected Map<IRubyObject, Savepoint> getSavepoints(final ThreadContext context) {
-        if ( hasInstanceVariable("@savepoints") ) {
-            IRubyObject savepoints = getInstanceVariable("@savepoints");
-            return (Map<IRubyObject, Savepoint>) savepoints.toJava(Map.class);
-        }
-        else { // not using a RubyHash to preserve order on Ruby 1.8 as well :
-            Map<IRubyObject, Savepoint> savepoints = new LinkedHashMap<IRubyObject, Savepoint>(4);
-            setInstanceVariable("@savepoints", convertJavaToRuby(savepoints));
-            return savepoints;
-        }
+    protected static RuntimeException newSavepointNotSetError(final ThreadContext context, final IRubyObject name, final String op) {
+        RubyClass StatementInvalid = ActiveRecord(context).getClass("StatementInvalid");
+        return context.runtime.newRaiseException(StatementInvalid, "could not " + op + " savepoint: '" + name + "' (not set)");
     }
 
-    protected boolean resetSavepoints(final ThreadContext context) {
-        if ( hasInstanceVariable("@savepoints") ) {
-            removeInstanceVariable("@savepoints");
+    // NOTE: this is iternal API - not to be used by user-code !
+    @JRubyMethod(name = "marked_savepoint_names")
+    public IRubyObject marked_savepoint_names(final ThreadContext context) {
+        @SuppressWarnings("unchecked")
+        final Map<IRubyObject, Savepoint> savepoints = getSavepoints(false);
+        if ( savepoints != null ) {
+            final RubyArray names = context.runtime.newArray(savepoints.size());
+            for ( Map.Entry<IRubyObject, ?> entry : savepoints.entrySet() ) {
+                names.append( entry.getKey() ); // keys are RubyString instances
+            }
+            return names;
+        }
+        return context.runtime.newEmptyArray();
+    }
+
+    protected final Map<IRubyObject, Savepoint> getSavepoints(final ThreadContext context) {
+        return getSavepoints(true);
+    }
+
+    @SuppressWarnings("unchecked")
+    private final Map<IRubyObject, Savepoint> getSavepoints(final boolean init) {
+        if ( hasInternalVariable("savepoints") ) {
+            return (Map<IRubyObject, Savepoint>) getInternalVariable("savepoints");
+        }
+        if ( init ) {
+            Map<IRubyObject, Savepoint> savepoints = new LinkedHashMap<>(4);
+            setInternalVariable("savepoints", savepoints);
+            return savepoints;
+        }
+        return null;
+    }
+
+    protected final boolean resetSavepoints(final ThreadContext context) {
+        if ( hasInternalVariable("savepoints") ) {
+            removeInternalVariable("savepoints");
             return true;
         }
         return false;
