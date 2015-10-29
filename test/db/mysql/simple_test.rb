@@ -50,12 +50,12 @@ class MySQLSimpleTest < Test::Unit::TestCase
 
   # @override
   def test_partial_update_with_updated_at
-    add_ignored_sql('* BEGIN */ SET autocommit=0') { super }
+    add_ignored_sql('/* BEGIN */ SET autocommit=0') { super }
   end
 
   # @override
   def test_partial_update_with_updated_on
-    add_ignored_sql('* BEGIN */ SET autocommit=0') { super }
+    add_ignored_sql('/* BEGIN */ SET autocommit=0') { super }
   end
 
   column_quote_char "`"
