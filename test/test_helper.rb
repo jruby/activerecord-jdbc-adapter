@@ -240,6 +240,25 @@ class Test::Unit::TestCase
     end
   end
 
+  def self.add_ignored_sql(*sqls)
+    ignored_sql = ActiveRecord::SQLCounter.ignored_sql.dup
+
+    sqls.each do |sql|
+      sql = Regexp.new(Regexp.escape(sql)) if sql.is_a?(String)
+      ActiveRecord::SQLCounter.ignored_sql << sql
+    end
+
+    if block_given?
+      begin
+        yield
+      ensure
+        ActiveRecord::SQLCounter.ignored_sql.replace ignored_sql
+      end
+    end
+  end
+
+  def add_ignored_sql(*sqls, &block); self.class.add_ignored_sql(*sqls, &block) end
+
   # re-defined by Oracle
   def assert_empty_string value
     assert_equal '', value

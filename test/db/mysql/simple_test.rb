@@ -48,6 +48,16 @@ class MySQLSimpleTest < Test::Unit::TestCase
     assert_match str[0, 19], e.sample_text
   end
 
+  # @override
+  def test_partial_update_with_updated_at
+    add_ignored_sql('* BEGIN */ SET autocommit=0') { super }
+  end
+
+  # @override
+  def test_partial_update_with_updated_on
+    add_ignored_sql('* BEGIN */ SET autocommit=0') { super }
+  end
+
   column_quote_char "`"
 
   def test_column_class_instantiation
