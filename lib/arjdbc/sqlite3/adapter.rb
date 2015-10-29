@@ -316,17 +316,17 @@ module ArJdbc
 
     # @override
     def create_savepoint(name = current_savepoint_name(true))
-      log("SAVEPOINT #{name}") { super }
+      log("SAVEPOINT #{name}") { @connection.create_savepoint(name) }
     end
 
     # @override
     def rollback_to_savepoint(name = current_savepoint_name(true))
-      log("ROLLBACK TO SAVEPOINT #{name}") { super }
+      log("ROLLBACK TO SAVEPOINT #{name}") { @connection.rollback_savepoint(name) }
     end
 
     # @override
     def release_savepoint(name = current_savepoint_name(false))
-      log("RELEASE SAVEPOINT #{name}") { super }
+      log("RELEASE SAVEPOINT #{name}") { @connection.release_savepoint(name) }
     end
 
     # @private
