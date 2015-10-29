@@ -11,6 +11,8 @@ class PostgreSQLSimpleTest < Test::Unit::TestCase
   include CustomSelectTestMethods
   include XmlColumnTestMethods
 
+  add_ignored_sql '/* BEGIN */' # for DirtyAttributeTests
+
   # @override
   def test_truncate
     unless defined? JRUBY_VERSION

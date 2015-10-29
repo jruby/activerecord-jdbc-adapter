@@ -337,7 +337,35 @@ module ArJdbc
     # @override
     def supports_views?; true end
 
-    # NOTE: handled by JdbcAdapter we override only to have save-point in logs :
+    # NOTE: handled by JdbcAdapter only to have statements in logs :
+
+    # @override
+    def begin_db_transaction
+      # PG driver doesn't really do anything on setAutoCommit(false)
+      # except for commit-ing a previous pending transaction if any
+      log('/* BEGIN */') { @connection.begin }
+    end
+
+    # @override
+    def commit_db_transaction
+      log('COMMIT') { @connection.commit }
+    end
+
+    # @override
+    def rollback_db_transaction
+      log('ROLLBACK') { @connection.rollback }
+    end
+
+    # Starts a database transaction.
+    # @param isolation the transaction isolation to use
+    # @since 1.3.0
+    # @override on **AR-4.0**
+    def begin_isolated_db_transaction(isolation)
+      name = isolation.to_s.upcase; name.sub!('_', ' ')
+      log("/* BEGIN */; SET TRANSACTION ISOLATION LEVEL #{name}") do
+        @connection.begin(isolation)
+      end
+    end
 
     # @override
     def supports_savepoints?; true end
