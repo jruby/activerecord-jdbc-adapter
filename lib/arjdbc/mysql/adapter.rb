@@ -295,12 +295,12 @@ module ArJdbc
 
     # @override
     def commit_db_transaction
-      log('COMMIT') { @connection.commit }
+      log('COMMIT; SET autocommit=1') { @connection.commit }
     end
 
     # @override
     def rollback_db_transaction
-      log('ROLLBACK') { @connection.rollback }
+      log('ROLLBACK; SET autocommit=1') { @connection.rollback }
     end
 
     # Starts a database transaction.
