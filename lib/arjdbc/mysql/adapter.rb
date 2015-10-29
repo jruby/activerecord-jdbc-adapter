@@ -282,6 +282,38 @@ module ArJdbc
 
     # NOTE: handled by JdbcAdapter only to have statements in logs :
 
+    # @private
+    BEGIN_LOG = '/* BEGIN */ SET autocommit=0'
+    private_constant :BEGIN_LOG if respond_to?(:private_constant)
+
+    puts respond_to?(:private_constant)
+
+    # @override
+    def begin_db_transaction
+      log(BEGIN_LOG) { @connection.begin }
+    end
+
+    # @override
+    def commit_db_transaction
+      log('COMMIT') { @connection.commit }
+    end
+
+    # @override
+    def rollback_db_transaction
+      log('ROLLBACK') { @connection.rollback }
+    end
+
+    # Starts a database transaction.
+    # @param isolation the transaction isolation to use
+    # @since 1.3.0
+    # @override on **AR-4.0**
+    def begin_isolated_db_transaction(isolation)
+      name = isolation.to_s.upcase; name.sub!('_', ' ')
+      log("SET TRANSACTION ISOLATION LEVEL #{name}; #{BEGIN_LOG}") do
+        @connection.begin(isolation)
+      end
+    end
+
     # @override
     def supports_savepoints?
       true
@@ -289,17 +321,17 @@ module ArJdbc
 
     # @override
     def create_savepoint(name = current_savepoint_name(true))
-      log("SAVEPOINT #{name}", 'Savepoint') { super }
+      log("SAVEPOINT #{name}") { @connection.create_savepoint(name) }
     end
 
     # @override
     def rollback_to_savepoint(name = current_savepoint_name(true))
-      log("ROLLBACK TO SAVEPOINT #{name}", 'Savepoint') { super }
+      log("ROLLBACK TO SAVEPOINT #{name}") { @connection.rollback_savepoint(name) }
     end
 
     # @override
     def release_savepoint(name = current_savepoint_name(false))
-      log("RELEASE SAVEPOINT #{name}", 'Savepoint') { super }
+      log("RELEASE SAVEPOINT #{name}") { @connection.release_savepoint(name) }
     end
 
     def disable_referential_integrity
