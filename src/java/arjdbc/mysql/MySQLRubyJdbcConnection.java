@@ -101,9 +101,9 @@ public class MySQLRubyJdbcConnection extends RubyJdbcConnection {
                 throw new RaiseException(context.runtime, errorClass,
                     "MySQL adapter requires driver >= 5.0 got: " + major + "." + minor + "", false);
             }
-            if ( major == 5 && minor < 1 ) {
-                // config[:connection_alive_sql] ||= 'SELECT 1' # need 5.1 for JDBC 4.0
-                setConfigValueIfNotSet(context, "connection_alive_sql", context.runtime.newString("SELECT 1"));
+            if ( major == 5 && minor < 1 ) { // need 5.1 for JDBC 4.0
+                // lightweight validation query: "/* ping */ SELECT 1"
+                setConfigValueIfNotSet(context, "connection_alive_sql", context.runtime.newString("/* ping */ SELECT 1"));
             }
         }
 
