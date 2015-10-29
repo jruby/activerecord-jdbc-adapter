@@ -18,18 +18,32 @@ class SQLite3TransactionTest < Test::Unit::TestCase
   def test_transaction_isolation_read_committed
     assert ! ActiveRecord::Base.connection.supports_transaction_isolation?(:read_committed)
 
-    assert_raise ActiveRecord::TransactionIsolationError do
+    begin
       super
+    rescue ActiveRecord::StatementInvalid => e
+      assert_equal ActiveRecord::TransactionIsolationError, e.original_exception.class
+    else
+      fail 'expected raise'
     end
+    #assert_raise ActiveRecord::TransactionIsolationError do
+    #  super
+    #end
   end if Test::Unit::TestCase.ar_version('4.0')
 
   # @override
   def test_transaction_isolation_repeatable_read
     assert ! ActiveRecord::Base.connection.supports_transaction_isolation?(:repeatable_read)
 
-    assert_raise ActiveRecord::TransactionIsolationError do
+    begin
       super
+    rescue ActiveRecord::StatementInvalid => e
+      assert_equal ActiveRecord::TransactionIsolationError, e.original_exception.class
+    else
+      fail 'expected raise'
     end
+    #assert_raise ActiveRecord::TransactionIsolationError do
+    #  super
+    #end
   end if Test::Unit::TestCase.ar_version('4.0')
 
   def test_transaction_isolation_read_uncommitted
