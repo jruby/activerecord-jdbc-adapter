@@ -288,19 +288,45 @@ module ArJdbc
       index_name_length - 2
     end
 
+    # NOTE: handled by JdbcAdapter only to have statements in logs :
+
+    # @override
+    def begin_db_transaction
+      # NOTE: based on TX mode SQLite-JDBC does "begin;"
+      # "begin immediate;" or "begin exclusive;" on setAutoCommit(false)
+      log('BEGIN') { @connection.begin }
+    end
+
+    # @override
+    def commit_db_transaction
+      log('COMMIT') { @connection.commit }
+    end
+
+    # @override
+    def rollback_db_transaction
+      log('ROLLBACK') { @connection.rollback }
+    end
+
+    # @override on **AR-4.0**
+    def begin_isolated_db_transaction(isolation)
+      log("/* TRANSACTION_#{isolation.to_s.upcase} */; BEGIN") do
+        @connection.begin(isolation)
+      end
+    end
+
     # @override
     def create_savepoint(name = current_savepoint_name(true))
-      log("SAVEPOINT #{name}", 'Savepoint') { super }
+      log("SAVEPOINT #{name}") { super }
     end
 
     # @override
     def rollback_to_savepoint(name = current_savepoint_name(true))
-      log("ROLLBACK TO SAVEPOINT #{name}", 'Savepoint') { super }
+      log("ROLLBACK TO SAVEPOINT #{name}") { super }
     end
 
     # @override
     def release_savepoint(name = current_savepoint_name(false))
-      log("RELEASE SAVEPOINT #{name}", 'Savepoint') { super }
+      log("RELEASE SAVEPOINT #{name}") { super }
     end
 
     # @private
