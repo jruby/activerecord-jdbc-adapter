@@ -296,7 +296,11 @@ module ArJdbc
 
     # Enable standard-conforming strings if available.
     def set_standard_conforming_strings
-      self.standard_conforming_strings=(true)
+      if postgresql_version >= 80200 # N/A (or read-only in PG 8.1)
+        self.standard_conforming_strings=(true)
+      end
+      # AR 4.2 no longer does the hustle since its claiming PG >= 8.2
+      # ... execute('SET standard_conforming_strings = on', 'SCHEMA')
     end
 
     # Does PostgreSQL support migrations?
