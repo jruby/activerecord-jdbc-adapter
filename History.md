@@ -1,3 +1,14 @@
+## 1.3.19 (11/02/15)
+
+- [sqlite] add supports_partial_index? and remove duplicate support_index_sort_order?
+- [sqlite] fix missing save-point removal in release_savepoint
+- test and fix current savepoint_name compatibility with AR versions (mostly 4.2)
+  * adjust returned current savepoint name to better match with AR (< 4.2)
+  * make sure savepoint rollback behave AR compatibly
+- [mysql] revert to extracting BIT into an int as tinyint(1) (#687)
+- [mysql] do not validate connection_alive_sql as there's a special /* ping */ query
+- support timeouts on connection validation with `config[:connection_alive_timeout]`
+
 ## 1.3.18 (09/14/15)
 
 - since arel visitor instances might get re-used we need to avoid the @instance
