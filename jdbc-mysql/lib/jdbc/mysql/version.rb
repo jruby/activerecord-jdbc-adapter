@@ -1,6 +1,6 @@
 module Jdbc
   module MySQL
-    DRIVER_VERSION = '5.1.36'
+    DRIVER_VERSION = '5.1.37'
     VERSION = DRIVER_VERSION
   end
 end
