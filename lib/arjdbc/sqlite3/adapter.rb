@@ -128,6 +128,9 @@ module ArJdbc
       :binary => { :name => "blob" },
       :boolean => { :name => "boolean" }
     }
+    NATIVE_DATABASE_TYPES.update(
+      :string => { :name => "varchar" }
+    ) if AR42
 
     # @override
     def native_database_types
