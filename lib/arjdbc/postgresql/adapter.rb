@@ -281,6 +281,7 @@ module ArJdbc
     }) if AR40
 
     NATIVE_DATABASE_TYPES.update(
+      :string => { :name => "character varying" },
       :bigserial => "bigserial",
       :bigint => { :name => "bigint" },
       :bit => { :name => "bit" },
