@@ -129,7 +129,7 @@ module ArJdbc
       :boolean => { :name => "boolean" }
     }
     NATIVE_DATABASE_TYPES.update(
-      :string => { :name => "varchar" },
+      :string => { :name => "varchar" }
     ) if AR42
 
     # @override
