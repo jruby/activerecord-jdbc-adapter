@@ -290,7 +290,7 @@ final class PGDriverImplementation implements DriverImplementation {
             if ( rubyValue.isNil() ) {
                 statement.setNull(index, Types.OTHER); return;
             }
-            if (!isAr42(column)) { // Value has already been cast for AR42
+            if ( ! isAr42(column) ) { // Value has already been cast for AR42
                 value = column.getMetaClass().callMethod(context, "cidr_to_string", rubyValue);
             }
         }
@@ -313,7 +313,7 @@ final class PGDriverImplementation implements DriverImplementation {
             if ( rubyValue.isNil() ) {
                 statement.setNull(index, Types.OTHER); return;
             }
-            if (!isAr42(column)) { // Value has already been cast for AR42
+            if ( ! isAr42(column) ) { // Value has already been cast for AR42
                 value = column.getMetaClass().callMethod(context, "json_to_string", rubyValue);
             }
         }
@@ -359,7 +359,12 @@ final class PGDriverImplementation implements DriverImplementation {
             if ( rubyValue.isNil() ) {
                 statement.setNull(index, Types.OTHER); return;
             }
-            rangeValue = column.getMetaClass().callMethod(context, "range_to_string", rubyValue).toString();
+            if ( isAr42(column) ) {
+                rangeValue = rubyValue.toString(); // expect a type_casted RubyString
+            }
+            else {
+                rangeValue = column.getMetaClass().callMethod(context, "range_to_string", rubyValue).toString();
+            }
         }
         else {
             if ( value == null ) {
