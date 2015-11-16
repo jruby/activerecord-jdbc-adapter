@@ -252,6 +252,11 @@ final class PGDriverImplementation implements DriverImplementation {
             return true;
         }
 
+        if ( columnType == (Object) "hstore" ) {
+            setHstoreParameter(context, statement, index, value, column);
+            return true;
+        }
+
         if ( columnType == (Object) "cidr" || columnType == (Object) "inet"
                 || columnType == (Object) "macaddr" ) {
             setAddressParameter(context, statement, index, value, column, columnType);
@@ -330,6 +335,29 @@ final class PGDriverImplementation implements DriverImplementation {
         pgJson.setType(jsonb ? "jsonb" : "json");
         pgJson.setValue(value.toString());
         statement.setObject(index, pgJson);
+    }
+
+    static void setHstoreParameter(final ThreadContext context,
+        final PreparedStatement statement, final int index,
+        Object value, final IRubyObject column) throws SQLException {
+
+        if ( value instanceof IRubyObject ) {
+            final IRubyObject rubyValue = (IRubyObject) value;
+            if ( rubyValue.isNil() ) {
+                statement.setNull(index, Types.OTHER); return;
+            }
+            if ( ! isAr42(column) ) {
+                value = column.getMetaClass().callMethod(context, "hstore_to_string", rubyValue);
+            }
+        }
+        else if ( value == null ) {
+            statement.setNull(index, Types.OTHER); return;
+        }
+
+        final PGobject hstore = new PGobject();
+        hstore.setType("hstore");
+        hstore.setValue(value.toString());
+        statement.setObject(index, hstore);
     }
 
     static void setTsVectorParameter(
