@@ -239,7 +239,11 @@ final class PGDriverImplementation implements DriverImplementation {
         }
 
         if ( columnType == (Object) "json" ) {
-            setJsonParameter(context, statement, index, value, column);
+            setJsonParameter(context, statement, index, value, column, false);
+            return true;
+        }
+        if ( columnType == (Object) "jsonb" ) {
+            setJsonParameter(context, statement, index, value, column, true);
             return true;
         }
 
@@ -306,15 +310,16 @@ final class PGDriverImplementation implements DriverImplementation {
 
     static void setJsonParameter(final ThreadContext context,
         final PreparedStatement statement, final int index,
-        Object value, final IRubyObject column) throws SQLException {
+        Object value, final IRubyObject column, final boolean jsonb) throws SQLException {
 
         if ( value instanceof IRubyObject ) {
             final IRubyObject rubyValue = (IRubyObject) value;
             if ( rubyValue.isNil() ) {
                 statement.setNull(index, Types.OTHER); return;
             }
-            if ( ! isAr42(column) ) { // Value has already been cast for AR42
-                value = column.getMetaClass().callMethod(context, "json_to_string", rubyValue);
+            if ( ! isAr42(column) ) {
+                final String method = jsonb ? "jsonb_to_string" : "json_to_string";
+                value = column.getMetaClass().callMethod(context, method, rubyValue);
             }
         }
         else if ( value == null ) {
@@ -322,7 +327,7 @@ final class PGDriverImplementation implements DriverImplementation {
         }
 
         final PGobject pgJson = new PGobject();
-        pgJson.setType("json");
+        pgJson.setType(jsonb ? "jsonb" : "json");
         pgJson.setValue(value.toString());
         statement.setObject(index, pgJson);
     }
