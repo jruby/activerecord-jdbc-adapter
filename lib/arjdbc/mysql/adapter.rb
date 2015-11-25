@@ -92,7 +92,7 @@ module ArJdbc
     def self.emulate_booleans=(emulate); @@emulate_booleans = emulate; end
 
     NATIVE_DATABASE_TYPES = {
-      :primary_key => "int(11) DEFAULT NULL auto_increment PRIMARY KEY",
+      :primary_key => "int(11) auto_increment PRIMARY KEY",
       :string => { :name => "varchar", :limit => 255 },
       :text => { :name => "text" },
       :integer => { :name => "int", :limit => 4 },
