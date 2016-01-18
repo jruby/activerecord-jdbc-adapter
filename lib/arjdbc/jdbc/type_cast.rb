@@ -5,13 +5,25 @@ module ActiveRecord::ConnectionAdapters
     # Type casting methods taken from AR 4.1's Column class.
     # @private Simply to quickly "hack-in" 4.2 compatibility.
     module TypeCast
-
       TRUE_VALUES = Column::TRUE_VALUES if Column.const_defined?(:TRUE_VALUES)
-      FALSE_VALUES = Column::FALSE_VALUES
+      FALSE_VALUES = if defined?(ActiveModel::Type::Boolean::FALSE_VALUES)
+        ActiveModel::Type::Boolean::FALSE_VALUES
+      else
+        Column::FALSE_VALUES
+      end
 
       #module Format
-      ISO_DATE = Column::Format::ISO_DATE
-      ISO_DATETIME = Column::Format::ISO_DATETIME
+      ISO_DATE = if defined?(ActiveModel::Type::Date::ISO_DATE)
+        ActiveModel::Type::Date::ISO_DATE
+      else
+        Column::Format::ISO_DATE
+      end
+
+      ISO_DATETIME = if defined?(ActiveModel::Type::Helpers::TimeValue::ISO_DATETIME)
+        ActiveModel::Type::Helpers::TimeValue::ISO_DATETIME
+      else
+        Column::Format::ISO_DATETIME
+      end
       #end
 
       # Used to convert from BLOBs to Strings

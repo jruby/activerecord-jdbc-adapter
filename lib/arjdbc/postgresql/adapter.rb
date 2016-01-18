@@ -42,6 +42,10 @@ module ArJdbc
     # @private
     class BindSubstitution < ::Arel::Visitors::PostgreSQL
       include ::Arel::Visitors::BindVisitor
+
+      def preparable
+        false
+      end
     end if defined? ::Arel::Visitors::BindVisitor
 
     ADAPTER_NAME = 'PostgreSQL'.freeze
@@ -341,6 +345,17 @@ module ArJdbc
 
     # @override
     def supports_views?; true end
+
+    # @override
+    def views
+      select_values(<<-SQL, 'SCHEMA')
+        SELECT c.relname
+        FROM pg_class c
+        LEFT JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE c.relkind IN ('v','m') -- (v)iew, (m)aterialized view
+        AND n.nspname = ANY (current_schemas(false))
+      SQL
+    end
 
     # NOTE: handled by JdbcAdapter only to have statements in logs :
 
@@ -956,7 +971,7 @@ module ArJdbc
     # @override
     def quoted_date(value)
       result = super
-      if value.acts_like?(:time) && value.respond_to?(:usec)
+      if value.acts_like?(:time) && value.respond_to?(:usec) && !AR50
         result = "#{result}.#{sprintf("%06d", value.usec)}"
       end
       result = "#{result.sub(/^-/, '')} BC" if value.year < 0

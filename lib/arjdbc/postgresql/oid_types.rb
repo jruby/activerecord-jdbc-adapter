@@ -161,11 +161,11 @@ module ArJdbc
       end unless AR42
 
       def initialize_type_map(m)
-        register_class_with_limit m, 'int2', OID::Integer
-        register_class_with_limit m, 'int4', OID::Integer
-        register_class_with_limit m, 'int8', OID::Integer
+        register_class_with_limit m, 'int2', Type::Integer
+        register_class_with_limit m, 'int4', Type::Integer
+        register_class_with_limit m, 'int8', Type::Integer
         m.alias_type 'oid', 'int2'
-        m.register_type 'float4', OID::Float.new
+        m.register_type 'float4', Type::Float.new
         m.alias_type 'float8', 'float4'
         m.register_type 'text', Type::Text.new
         register_class_with_limit m, 'varchar', Type::String
@@ -176,8 +176,8 @@ module ArJdbc
         register_class_with_limit m, 'bit', OID::Bit
         register_class_with_limit m, 'varbit', OID::BitVarying
         m.alias_type 'timestamptz', 'timestamp'
-        m.register_type 'date', OID::Date.new
-        m.register_type 'time', OID::Time.new
+        m.register_type 'date', Type::Date.new
+        m.register_type 'time', Type::Time.new
 
         m.register_type 'money', OID::Money.new
         m.register_type 'bytea', OID::Bytea.new
