@@ -55,6 +55,10 @@ module ArJdbc
     # @private
     class BindSubstitution < ::Arel::Visitors::PostgreSQL
       include ::Arel::Visitors::BindVisitor
+
+      def preparable
+        false
+      end
     end if defined? ::Arel::Visitors::BindVisitor
 
     ADAPTER_NAME = 'PostgreSQL'.freeze
@@ -1018,7 +1022,7 @@ module ArJdbc
     # @override
     def quoted_date(value)
       result = super
-      if value.acts_like?(:time) && value.respond_to?(:usec)
+      if value.acts_like?(:time) && value.respond_to?(:usec) && !AR50
         result = "#{result}.#{sprintf("%06d", value.usec)}"
       end
       result = "#{result.sub(/^-/, '')} BC" if value.year < 0

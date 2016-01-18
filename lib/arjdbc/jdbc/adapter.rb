@@ -75,7 +75,15 @@ module ActiveRecord
         # NOTE: adapter spec's init_connection only called if instantiated here :
         connection ||= jdbc_connection_class(spec).new(@config, self)
 
-        super(connection, logger)
+        if ActiveRecord::VERSION::MAJOR > 4
+          super(connection, logger, @config)
+        else
+          super(connection, logger)
+        end
+
+        unless pool.nil?
+          self.pool = pool
+        end
 
         # kind of like `extend ArJdbc::MyDB if self.class == JdbcAdapter` :
         klass = @config[:adapter_class]
@@ -756,7 +764,11 @@ module ActiveRecord
       # @note AR-4x arguments expected: `(name, temporary, options)`
       # @private documented bellow
       def new_table_definition(table_definition, *args)
-        table_definition.new native_database_types, *args
+        if ActiveRecord::VERSION::MAJOR > 4
+          table_definition.new *args
+        else
+          table_definition.new native_database_types, *args
+        end
       end
       private :new_table_definition
 
