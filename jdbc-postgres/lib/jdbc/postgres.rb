@@ -6,11 +6,11 @@ module Jdbc
 
     def self.driver_jar
       version_jdbc_version = DRIVER_VERSION.split( '.' )
-      if ( jdbc_version = self.jdbc_version ).is_a? Float
-        jdbc_version = (jdbc_version * 10).to_i
+      if ( jdbc_v = jdbc_version ).is_a? Float
+        jdbc_v = (jdbc_v * 10).to_i
       end
-      version_jdbc_version << jdbc_version
-      'postgresql-%s.%s-%s.jdbc%d.jar' % version_jdbc_version
+      version_jdbc_version << jdbc_v
+      'postgresql-%s.%s-%s-jdbc%d.jar' % version_jdbc_version
     end
 
     def self.load_driver(method = :load)
@@ -27,8 +27,6 @@ module Jdbc
       'org.postgresql.Driver'
     end
 
-    private
-
     def self.jdbc_version
       version = ENV_JAVA[ 'java.specification.version' ]
       version = version.split('.').last.to_i # '1.7' => 7
@@ -40,6 +38,8 @@ module Jdbc
         4.1
       end
     end
+
+    class << self; private :jdbc_version end
 
     if defined?(JRUBY_VERSION) && # enable backwards-compat behavior :
       ( Java::JavaLang::Boolean.get_boolean("jdbc.driver.autoload") ||
