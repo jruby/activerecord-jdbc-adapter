@@ -2499,7 +2499,7 @@ public class RubyJdbcConnection extends RubyObject {
                     string.append(buf, 0, len);
                 }
 
-                return RubyString.newUnicodeString(runtime, string.toString());
+                return StringHelper.newUnicodeString(runtime, string);
             }
             finally { if ( reader != null ) reader.close(); }
         }

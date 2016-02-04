@@ -34,6 +34,7 @@ package arjdbc.oracle;
 import arjdbc.jdbc.Callable;
 import arjdbc.jdbc.RubyJdbcConnection;
 import arjdbc.util.CallResultSet;
+import arjdbc.util.StringHelper;
 
 import java.io.IOException;
 import java.io.Reader;
@@ -216,7 +217,7 @@ public class OracleRubyJdbcConnection extends RubyJdbcConnection {
                 string.append(buf, 0, len);
             }
 
-            return RubyString.newUnicodeString(runtime, string.toString());
+            return StringHelper.newUnicodeString(runtime, string);
         }
         finally { if ( reader != null ) reader.close(); }
     }

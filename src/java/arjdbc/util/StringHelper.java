@@ -25,6 +25,9 @@ package arjdbc.util;
 
 import java.io.IOException;
 import java.io.InputStream;
+
+import org.jcodings.Encoding;
+import org.jcodings.specific.UTF16BEEncoding;
 import org.jcodings.specific.UTF8Encoding;
 import org.jruby.Ruby;
 import org.jruby.RubyString;
@@ -53,19 +56,34 @@ public abstract class StringHelper {
         throw new IllegalStateException("unexpected digit: " + digit);
     }
 
+    public static RubyString newString(final Ruby runtime, final CharSequence str) {
+        return new RubyString(runtime, runtime.getString(), str, UTF8Encoding.INSTANCE);
+    }
+
     public static RubyString newString(final Ruby runtime, final byte[] bytes) {
         final ByteList byteList = new ByteList(bytes, false);
-        return RubyString.newString(runtime, byteList);
+        return new RubyString(runtime, runtime.getString(), byteList);
     }
 
     public static RubyString newUTF8String(final Ruby runtime, final byte[] bytes) {
         final ByteList byteList = new ByteList(bytes, false);
-        return RubyString.newString(runtime, byteList, UTF8Encoding.INSTANCE);
+        return new RubyString(runtime, runtime.getString(), byteList, UTF8Encoding.INSTANCE);
+    }
+
+    public static RubyString newUTF8String(final Ruby runtime, final CharSequence str) {
+        return new RubyString(runtime, runtime.getString(), str, UTF8Encoding.INSTANCE);
     }
 
     public static RubyString newEmptyUTF8String(final Ruby runtime) {
-        final ByteList byteList = new ByteList(ByteList.NULL_ARRAY, false);
-        return RubyString.newString(runtime, byteList, UTF8Encoding.INSTANCE);
+        return newUTF8String(runtime, ByteList.NULL_ARRAY);
+    }
+
+    public static RubyString newUnicodeString(final Ruby runtime, final CharSequence str) {
+        Encoding defaultInternal = runtime.getDefaultInternalEncoding();
+        if (defaultInternal == UTF16BEEncoding.INSTANCE) {
+            return RubyString.newUTF16String(runtime, str);
+        }
+        return newUTF8String(runtime, str);
     }
 
     public static int readBytes(final ByteList output, final InputStream input)
