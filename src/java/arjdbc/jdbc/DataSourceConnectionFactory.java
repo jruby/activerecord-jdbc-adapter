@@ -67,6 +67,7 @@ final class DataSourceConnectionFactory implements ConnectionFactory {
 
     @Override
     public Connection newConnection() throws SQLException {
+        DataSource dataSource = this.dataSource;
         // in case DS failed previously look it up again from JNDI :
         if (dataSource == null) {
             lookupDataSource();
@@ -76,18 +77,19 @@ final class DataSourceConnectionFactory implements ConnectionFactory {
                 return dataSource.getConnection(username, password);
             }
             return dataSource.getConnection();
-        } catch (SQLException e) {
+        }
+        catch (SQLException e) {
             // DS failed - maybe it's no longer a valid one
             if (lookupName != null) {
-                dataSource = null;
+                this.dataSource = null;
             }
             throw e;
         }
     }
 
-    private void lookupDataSource() throws SQLException {
+    private DataSource lookupDataSource() throws SQLException {
         try {
-            dataSource = (DataSource) getInitialContext().lookup(lookupName);
+            return dataSource = (DataSource) getInitialContext().lookup(lookupName);
         }
         catch (NamingException e) { throw new SQLException(e); }
     }
