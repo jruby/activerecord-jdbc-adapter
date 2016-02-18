@@ -39,6 +39,7 @@ import org.jruby.javasupport.JavaUtil;
 import org.jruby.runtime.ThreadContext;
 import org.jruby.runtime.builtin.IRubyObject;
 import org.jruby.util.ByteList;
+import org.jruby.util.SafePropertyAccessor;
 
 import org.postgresql.PGConnection;
 import org.postgresql.PGStatement;
@@ -55,9 +56,15 @@ import static arjdbc.jdbc.RubyJdbcConnection.isAr42;
  *
  * @author kares
  */
-final class PGDriverImplementation implements DriverImplementation {
+public final class PGDriverImplementation implements DriverImplementation {
 
-    public Connection newConnection(final Connection connection) throws SQLException {
+    private static final boolean initConnection;
+    static {
+        String initConn = SafePropertyAccessor.getProperty("arjdbc.postgresql.connection.init", "true");
+        initConnection = Boolean.parseBoolean(initConn);
+    }
+
+    public static void initConnection(final Connection connection) throws SQLException {
         final PGConnection pgConnection;
         if ( connection instanceof PGConnection ) {
             pgConnection = (PGConnection) connection;
@@ -71,6 +78,10 @@ final class PGDriverImplementation implements DriverImplementation {
         pgConnection.addDataType("int4range", Int4RangeType.class);
         pgConnection.addDataType("int8range", Int8RangeType.class);
         pgConnection.addDataType("numrange",  NumRangeType.class);
+    }
+
+    public Connection newConnection(final Connection connection) throws SQLException {
+        if ( initConnection ) initConnection(connection);
         return connection;
     }
 
@@ -441,7 +452,7 @@ final class PGDriverImplementation implements DriverImplementation {
 
         public DateRangeType(final String value) throws SQLException {
             this();
-            setValue(value);
+            this.value = value;
         }
 
     }
@@ -456,7 +467,7 @@ final class PGDriverImplementation implements DriverImplementation {
 
         public TsRangeType(final String value) throws SQLException {
             this();
-            setValue(value);
+            this.value = value;
         }
 
     }
@@ -471,7 +482,7 @@ final class PGDriverImplementation implements DriverImplementation {
 
         public TstzRangeType(final String value) throws SQLException {
             this();
-            setValue(value);
+            this.value = value;
         }
 
     }
@@ -486,7 +497,7 @@ final class PGDriverImplementation implements DriverImplementation {
 
         public Int4RangeType(final String value) throws SQLException {
             this();
-            setValue(value);
+            this.value = value;
         }
 
     }
@@ -501,7 +512,7 @@ final class PGDriverImplementation implements DriverImplementation {
 
         public Int8RangeType(final String value) throws SQLException {
             this();
-            setValue(value);
+            this.value = value;
         }
 
     }
@@ -516,7 +527,7 @@ final class PGDriverImplementation implements DriverImplementation {
 
         public NumRangeType(final String value) throws SQLException {
             this();
-            setValue(value);
+            this.value = value;
         }
 
     }
