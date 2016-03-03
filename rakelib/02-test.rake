@@ -41,7 +41,7 @@ def test_task_for(adapter, options = {})
   test_task = Rake::TestTask.new(name => prereqs) do |test_task|
     files = options[:files] || begin
       FileList["test/#{adapter}*_test.rb"] +
-        FileList["test/db/#{adapter}/*_test.rb"]
+        FileList["test/db/#{adapter}/**/*_test.rb"]
     end
     test_task.test_files = files
     test_task.libs = []
