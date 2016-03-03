@@ -56,6 +56,7 @@ def test_task_for(adapter, options = {})
     if defined?(JRUBY_VERSION) && JRUBY_VERSION.index('1.7') == 0
       test_task.ruby_opts << "--#{RUBY_VERSION[/^(\d+\.\d+)/, 1]}"
     end
+    test_task.options = '--use-color=t'
     test_task.verbose = true if $VERBOSE
     yield(test_task) if block_given?
   end
