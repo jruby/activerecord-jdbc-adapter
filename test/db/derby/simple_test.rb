@@ -129,6 +129,7 @@ class DerbySimpleTest < Test::Unit::TestCase
   end
 
   def test_data_types
+    def_val = lambda { |val| ArJdbc::AR42 ? val.to_s : val }
     # from test/models/data_types.rb, with the modifications as noted in the comments.
     expected_types = [
       ["id",                          :integer,   { }],
@@ -140,7 +141,7 @@ class DerbySimpleTest < Test::Unit::TestCase
             ["sample_decimal", :decimal, {:precision => 9, :scale => nil}] :
             # NOTE: it's an :integer because the :scale is 0 (...right?) :
             ["sample_decimal", :integer, {:precision => 9, :scale => 0}],
-      ["sample_small_decimal",        :decimal,   { :precision => 3, :scale => 2, :default => 3.14 }],
+      ["sample_small_decimal",        :decimal,   { :precision => 3, :scale => 2, :default => def_val.call(3.14) }],
         ArJdbc::AR42 ?
             ["sample_default_decimal", :decimal, {}] : # decimal by default assumes :scale => 0
             ["sample_default_decimal", :integer, {}], # decimal by default assumes :scale => 0
@@ -152,7 +153,7 @@ class DerbySimpleTest < Test::Unit::TestCase
       ["sample_integer_with_limit_2", :integer,   { }], # don't care about the limit
       ["sample_integer_with_limit_8", :integer,   { }], # don't care about the limit
       ["sample_integer_no_limit",     :integer,   { }],
-      ["sample_integer_neg_default",  :integer,   { :default => -1 }],
+      ["sample_integer_neg_default",  :integer,   { :default => def_val.call(-1) }],
       ["sample_text",                 :text,      { }],
         ArJdbc::AR42 ?
             ["big_decimal", :decimal, {:precision => 31, :scale => nil}] :
