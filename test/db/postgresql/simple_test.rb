@@ -170,15 +170,6 @@ class PostgresSimpleTest < Test::Unit::TestCase
     connection.drop_table :my_posts rescue nil
   end
 
-  def test_resolves_correct_columns_default
-    assert column = DbType.columns.find { |col| col.name == 'sample_small_decimal' }
-    assert_equal 3.14, column.default
-    assert column = DbType.columns.find { |col| col.name == 'sample_integer_no_limit' }
-    assert_equal 42, column.default
-    assert column = DbType.columns.find { |col| col.name == 'sample_integer_neg_default' }
-    assert_equal -1, column.default
-  end
-
   def test_supports_standard_conforming_string
     assert([true, false].include?(connection.supports_standard_conforming_strings?))
   end if defined? JRUBY_VERSION
