@@ -66,6 +66,27 @@ class PostgresSimpleTest < Test::Unit::TestCase
     end
   end
 
+  class Payment < ActiveRecord::Base; end
+
+  # @override
+  def test_insert_returns_id
+    super
+    
+#    begin
+#      connection.create_table 'payments', :force => true do |t|
+#        t.integer  "amount"
+#        t.text     "notes"
+#        t.datetime "created_at", :null => false
+#        t.datetime "updated_at", :null => false
+#      end
+#
+#      p = Payment.create!
+#      assert p.id
+#    ensure
+#      connection.drop_table 'payments' rescue nil
+#    end
+  end
+
   def test_encoding
     assert_not_nil connection.encoding
   end
