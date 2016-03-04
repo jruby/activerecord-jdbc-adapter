@@ -13,7 +13,7 @@ ArJdbc::ConnectionMethods.module_eval do
     database = config[:database] || config[:dbname] || ENV['PGDATABASE']
 
     config[:url] ||= "jdbc:postgresql://#{host}:#{port}/#{database}"
-    config[:url] << config[:pg_params] if config[:pg_params] # should go away
+    config[:url] << config[:pg_params] if config[:pg_params]
 
     config[:username] ||= ( config[:user] || ENV['PGUSER'] || ENV_JAVA['user.name'] )
     config[:password] ||= ENV['PGPASSWORD'] unless config.key?(:password)
