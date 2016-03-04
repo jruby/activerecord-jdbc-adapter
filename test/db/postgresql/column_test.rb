@@ -12,9 +12,9 @@ class PostgreSQLColumnDefaultTest < Test::Unit::TestCase
   def setup
     @connection = ActiveRecord::Base.connection
     @connection.transaction do
-      @connection.create_table 'projects', force: :cascade do |t|
-        t.string "name", limit: 255, default: ' '
-        t.text   "some_ids", array: true, default: []
+      @connection.create_table 'projects', :force => :cascade do |t|
+        t.string "name", :limit => 255, :default => ' '
+        t.text   "some_ids", :array => true, :default => []
       end
     end
   end
