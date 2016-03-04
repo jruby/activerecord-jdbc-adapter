@@ -1,11 +1,3 @@
-# NOTE: fake these for create_database(config)
-module Mysql
-  Error = ActiveRecord::JDBCError unless const_defined?(:Error)
-end
-module Mysql2
-  Error = ActiveRecord::JDBCError unless const_defined?(:Error)
-end
-
 module ArJdbc
   module Tasks
     class << self
@@ -53,7 +45,27 @@ namespace :db do
 
   def create_database(config)
     case config['adapter']
-    when /mysql|postgresql|sqlite/
+    when /mysql2/
+      unless defined? Mysql2::Error
+        # NOTE: fake it for create_database(config)
+        Object.const_set :Mysql2, Module.new
+        Mysql2.const_set :Error, ActiveRecord::JDBCError
+        ActiveRecord::JDBCError.class_eval do
+          def error; self end # Mysql2::Error#error
+        end
+      end
+      _rails_create_database adapt_jdbc_config(config)
+    when /mysql/
+      unless defined? Mysql::Error
+        # NOTE: fake it for create_database(config)
+        Object.const_set :Mysql, Module.new
+        Mysql.const_set :Error, ActiveRecord::JDBCError
+        ActiveRecord::JDBCError.class_eval do
+          def error; self end # Mysql::Error#error
+        end
+      end
+      _rails_create_database adapt_jdbc_config(config)
+    when /postgresql|sqlite/
       _rails_create_database adapt_jdbc_config(config)
     else
       ArJdbc::Tasks.create(config)
