@@ -100,13 +100,12 @@ namespace :db do
         unless search_path.blank?
           search_path = search_path.split(",").map{ |part| "--schema=#{Shellwords.escape(part.strip)}" }.join(" ")
         end
-        `pg_dump -i -s -x -O -f #{Shellwords.escape(filename)} #{search_path} #{Shellwords.escape(config['database'])}`
-        raise 'Error dumping database' if $?.exitstatus == 1
+        sh "pg_dump -i -s -x -O -f #{Shellwords.escape(filename)} #{search_path} #{Shellwords.escape(config['database'])}"
 
         File.open(filename, 'a') { |f| f << "SET search_path TO #{ActiveRecord::Base.connection.schema_search_path};\n\n" }
       when /sqlite/
         dbfile = config['database']
-        `sqlite3 #{dbfile} .schema > #{filename}`
+        sh "sqlite3 #{dbfile} .schema > #{filename}"
       else
         ActiveRecord::Base.establish_connection(config)
         ArJdbc::Tasks.structure_dump(config, filename)
@@ -115,10 +114,11 @@ namespace :db do
       if ActiveRecord::Base.connection.supports_migrations?
         File.open(filename, 'a') { |f| f << ActiveRecord::Base.connection.dump_schema_information }
       end
+
     end
 
     redefine_task :load do
-      config = current_config 
+      config = current_config
       filename = structure_sql
 
       case config['adapter']
