@@ -8,10 +8,9 @@ before_script:
 before_install:
   - ((jruby -v | grep 1.8.7) && jruby --1.9 -S gem update --system 2.1.11) || true
 rvm:
-  - jruby-1.7.18
-  #- jruby-head # 9000 ignores --1.8 and --1.9 switches
+  - jruby-1.7.24
 jdk:
-  - openjdk6
+  - openjdk7
 gemfile:
   - gemfiles/rails23.gemfile
   - gemfiles/rails30.gemfile
@@ -52,96 +51,158 @@ matrix:
   include: # testing against MariaDB
     - addons:
         mariadb: '5.5'
-      rvm: jruby-1.7.18
+      rvm: jruby-1.7.24
       gemfile: gemfiles/rails32.gemfile
       env: JRUBY_OPTS="$JRUBY_OPTS" DB=mysql
-      jdk: openjdk7
+      jdk: openjdk6
     - addons:
         mariadb: '10.0'
-      rvm: jruby-1.7.18
+      rvm: jruby-1.7.24
       gemfile: gemfiles/rails40.gemfile
       env: JRUBY_OPTS="$JRUBY_OPTS" DB=mariadb
       jdk: openjdk7
     - addons:
         mariadb: '10.0'
-      rvm: jruby-1.7.18
+      rvm: jruby-1.7.24
       gemfile: gemfiles/rails41.gemfile
       env: JRUBY_OPTS="$JRUBY_OPTS" DB=mariadb PREPARED_STATEMENTS=true
-      jdk: openjdk7
+      jdk: openjdk8
+      # include some tests on JDK 6 :
+    - rvm: jruby-1.7.24
+      gemfile: gemfiles/rails42.gemfile
+      env: JRUBY_OPTS="$JRUBY_OPTS" DB=mysql
+      jdk: openjdk6
+    - rvm: jruby-1.7.24
+      gemfile: gemfiles/rails42.gemfile
+      env: JRUBY_OPTS="$JRUBY_OPTS" DB=postgresql
+      jdk: openjdk6
+    - rvm: jruby-1.7.24
+      gemfile: gemfiles/rails42.gemfile
+      env: JRUBY_OPTS="$JRUBY_OPTS" DB=sqlite3
+      jdk: openjdk6
+    - rvm: jruby-1.7.24
+      gemfile: gemfiles/rails42.gemfile
+      env: JRUBY_OPTS="$JRUBY_OPTS" DB=derby
+      jdk: openjdk6
+    - rvm: jruby-1.7.24
+      gemfile: gemfiles/rails42.gemfile
+      env: JRUBY_OPTS="$JRUBY_OPTS" DB=h2
+      jdk: openjdk6
+    - rvm: jruby-1.7.24
+      gemfile: gemfiles/rails42.gemfile
+      env: JRUBY_OPTS="$JRUBY_OPTS" DB=hsqldb
+      jdk: openjdk6
+      # include testing with JRuby 9K :
+    - rvm: jruby-9.0.5.0
+      gemfile: gemfiles/rails42.gemfile
+      env: JRUBY_OPTS="$JRUBY_OPTS" DB=mysql PREPARED_STATEMENTS=true
+      jdk: oraclejdk7
+    - rvm: jruby-9.0.5.0
+      gemfile: gemfiles/rails42.gemfile
+      env: JRUBY_OPTS="$JRUBY_OPTS" DB=postgresql PREPARED_STATEMENTS=true
+      jdk: oraclejdk7
+    - rvm: jruby-9.0.5.0
+      gemfile: gemfiles/rails42.gemfile
+      env: JRUBY_OPTS="$JRUBY_OPTS" DB=sqlite3
+      jdk: oraclejdk7
+    - rvm: jruby-9.0.5.0
+      gemfile: gemfiles/rails42.gemfile
+      env: JRUBY_OPTS="$JRUBY_OPTS" DB=mysql
+      jdk: oraclejdk8
+    - rvm: jruby-9.0.5.0
+      gemfile: gemfiles/rails42.gemfile
+      env: JRUBY_OPTS="$JRUBY_OPTS" DB=postgresql
+      jdk: oraclejdk8
+    - rvm: jruby-9.0.5.0
+      gemfile: gemfiles/rails42.gemfile
+      env: JRUBY_OPTS="$JRUBY_OPTS" DB=sqlite3
+      jdk: oraclejdk8
+    - rvm: jruby-9.0.5.0
+      gemfile: gemfiles/rails42.gemfile
+      env: JRUBY_OPTS="$JRUBY_OPTS" DB=derby
+      jdk: oraclejdk8
+    - rvm: jruby-9.0.5.0
+      gemfile: gemfiles/rails42.gemfile
+      env: JRUBY_OPTS="$JRUBY_OPTS" DB=h2
+      jdk: oraclejdk8
+    - rvm: jruby-9.0.5.0
+      gemfile: gemfiles/rails42.gemfile
+      env: JRUBY_OPTS="$JRUBY_OPTS" DB=hsqldb
+      jdk: oraclejdk8
   exclude:
     # Rails 4 prefers Ruby 2.0 (or at least >= 1.9.3) :
-    - rvm: jruby-1.7.18
+    - rvm: jruby-1.7.24
       gemfile: gemfiles/rails40.gemfile
       env: JRUBY_OPTS="--1.8 $JRUBY_OPTS" DB=mysql
-    - rvm: jruby-1.7.18
+    - rvm: jruby-1.7.24
       gemfile: gemfiles/rails40.gemfile
       env: JRUBY_OPTS="--1.8 $JRUBY_OPTS" DB=postgresql
-    - rvm: jruby-1.7.18
+    - rvm: jruby-1.7.24
       gemfile: gemfiles/rails40.gemfile
       env: JRUBY_OPTS="--1.8 $JRUBY_OPTS" DB=sqlite3
-    - rvm: jruby-1.7.18
+    - rvm: jruby-1.7.24
       gemfile: gemfiles/rails40.gemfile
       env: JRUBY_OPTS="--1.8 $JRUBY_OPTS" DB=derby
-    - rvm: jruby-1.7.18
+    - rvm: jruby-1.7.24
       gemfile: gemfiles/rails40.gemfile
       env: JRUBY_OPTS="--1.8 $JRUBY_OPTS" DB=h2
-    - rvm: jruby-1.7.18
+    - rvm: jruby-1.7.24
       gemfile: gemfiles/rails40.gemfile
       env: JRUBY_OPTS="--1.8 $JRUBY_OPTS" DB=hsqldb
-    - rvm: jruby-1.7.18
+    - rvm: jruby-1.7.24
       gemfile: gemfiles/rails40.gemfile
       env: JRUBY_OPTS="--1.8 $JRUBY_OPTS" DB=jndi
-    - rvm: jruby-1.7.18
+    - rvm: jruby-1.7.24
       gemfile: gemfiles/rails40.gemfile
       env: JRUBY_OPTS="--1.8 $JRUBY_OPTS" DB=jdbc
     # Rails 4.1 does not support Ruby 1.8 :
-    - rvm: jruby-1.7.18
+    - rvm: jruby-1.7.24
       gemfile: gemfiles/rails41.gemfile
       env: JRUBY_OPTS="--1.8 $JRUBY_OPTS" DB=mysql
-    - rvm: jruby-1.7.18
+    - rvm: jruby-1.7.24
       gemfile: gemfiles/rails41.gemfile
       env: JRUBY_OPTS="--1.8 $JRUBY_OPTS" DB=postgresql
-    - rvm: jruby-1.7.18
+    - rvm: jruby-1.7.24
       gemfile: gemfiles/rails41.gemfile
       env: JRUBY_OPTS="--1.8 $JRUBY_OPTS" DB=sqlite3
-    - rvm: jruby-1.7.18
+    - rvm: jruby-1.7.24
       gemfile: gemfiles/rails41.gemfile
       env: JRUBY_OPTS="--1.8 $JRUBY_OPTS" DB=derby
-    - rvm: jruby-1.7.18
+    - rvm: jruby-1.7.24
       gemfile: gemfiles/rails41.gemfile
       env: JRUBY_OPTS="--1.8 $JRUBY_OPTS" DB=h2
-    - rvm: jruby-1.7.18
+    - rvm: jruby-1.7.24
       gemfile: gemfiles/rails41.gemfile
       env: JRUBY_OPTS="--1.8 $JRUBY_OPTS" DB=hsqldb
-    - rvm: jruby-1.7.18
+    - rvm: jruby-1.7.24
       gemfile: gemfiles/rails41.gemfile
       env: JRUBY_OPTS="--1.8 $JRUBY_OPTS" DB=jndi
-    - rvm: jruby-1.7.18
+    - rvm: jruby-1.7.24
       gemfile: gemfiles/rails41.gemfile
       env: JRUBY_OPTS="--1.8 $JRUBY_OPTS" DB=jdbc
     # Rails 4.2 will not support Ruby 1.8 :
-    - rvm: jruby-1.7.18
+    - rvm: jruby-1.7.24
       gemfile: gemfiles/rails42.gemfile
       env: JRUBY_OPTS="--1.8 $JRUBY_OPTS" DB=mysql
-    - rvm: jruby-1.7.18
+    - rvm: jruby-1.7.24
       gemfile: gemfiles/rails42.gemfile
       env: JRUBY_OPTS="--1.8 $JRUBY_OPTS" DB=postgresql
-    - rvm: jruby-1.7.18
+    - rvm: jruby-1.7.24
       gemfile: gemfiles/rails42.gemfile
       env: JRUBY_OPTS="--1.8 $JRUBY_OPTS" DB=sqlite3
-    - rvm: jruby-1.7.18
+    - rvm: jruby-1.7.24
       gemfile: gemfiles/rails42.gemfile
       env: JRUBY_OPTS="--1.8 $JRUBY_OPTS" DB=derby
-    - rvm: jruby-1.7.18
+    - rvm: jruby-1.7.24
       gemfile: gemfiles/rails42.gemfile
       env: JRUBY_OPTS="--1.8 $JRUBY_OPTS" DB=h2
-    - rvm: jruby-1.7.18
+    - rvm: jruby-1.7.24
       gemfile: gemfiles/rails42.gemfile
       env: JRUBY_OPTS="--1.8 $JRUBY_OPTS" DB=hsqldb
-    - rvm: jruby-1.7.18
+    - rvm: jruby-1.7.24
       gemfile: gemfiles/rails42.gemfile
       env: JRUBY_OPTS="--1.8 $JRUBY_OPTS" DB=jndi
-    - rvm: jruby-1.7.18
+    - rvm: jruby-1.7.24
       gemfile: gemfiles/rails42.gemfile
       env: JRUBY_OPTS="--1.8 $JRUBY_OPTS" DB=jdbc
     ## JRuby 9K :
@@ -280,19 +341,19 @@ matrix:
     - rvm: jruby-head
       gemfile: gemfiles/rails41.gemfile
       env: JRUBY_OPTS="--1.8 $JRUBY_OPTS" DB=sqlite3
-    - rvm: jruby-1.7.18
+    - rvm: jruby-1.7.24
       gemfile: gemfiles/rails41.gemfile
       env: JRUBY_OPTS="--1.8 $JRUBY_OPTS" DB=derby
-    - rvm: jruby-1.7.18
+    - rvm: jruby-1.7.24
       gemfile: gemfiles/rails41.gemfile
       env: JRUBY_OPTS="--1.8 $JRUBY_OPTS" DB=h2
-    - rvm: jruby-1.7.18
+    - rvm: jruby-1.7.24
       gemfile: gemfiles/rails41.gemfile
       env: JRUBY_OPTS="--1.8 $JRUBY_OPTS" DB=hsqldb
-    - rvm: jruby-1.7.18
+    - rvm: jruby-1.7.24
       gemfile: gemfiles/rails41.gemfile
       env: JRUBY_OPTS="--1.8 $JRUBY_OPTS" DB=jndi
-    - rvm: jruby-1.7.18
+    - rvm: jruby-1.7.24
       gemfile: gemfiles/rails41.gemfile
       env: JRUBY_OPTS="--1.8 $JRUBY_OPTS" DB=jdbc
     # Rails 4.2 (JRuby 9K) :
