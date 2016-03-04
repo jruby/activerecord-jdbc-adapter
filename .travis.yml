@@ -66,7 +66,7 @@ matrix:
       rvm: jruby-1.7.24
       gemfile: gemfiles/rails41.gemfile
       env: JRUBY_OPTS="$JRUBY_OPTS" DB=mariadb PREPARED_STATEMENTS=true
-      jdk: openjdk8
+      jdk: oraclejdk8
       # include some tests on JDK 6 :
     - rvm: jruby-1.7.24
       gemfile: gemfiles/rails42.gemfile
@@ -92,7 +92,7 @@ matrix:
       gemfile: gemfiles/rails42.gemfile
       env: JRUBY_OPTS="$JRUBY_OPTS" DB=hsqldb
       jdk: openjdk6
-      # include testing with JRuby 9K :
+      # include testing with JRuby 9K (4.2) :
     - rvm: jruby-9.0.5.0
       gemfile: gemfiles/rails42.gemfile
       env: JRUBY_OPTS="$JRUBY_OPTS" DB=mysql PREPARED_STATEMENTS=true
@@ -127,6 +127,43 @@ matrix:
       jdk: oraclejdk8
     - rvm: jruby-9.0.5.0
       gemfile: gemfiles/rails42.gemfile
+      env: JRUBY_OPTS="$JRUBY_OPTS" DB=hsqldb
+      jdk: oraclejdk8
+      # include testing with JRuby 9K (4.1) :
+    - rvm: jruby-9.0.5.0
+      gemfile: gemfiles/rails41.gemfile
+      env: JRUBY_OPTS="$JRUBY_OPTS" DB=mysql PREPARED_STATEMENTS=true
+      jdk: oraclejdk8
+    - rvm: jruby-9.0.5.0
+      gemfile: gemfiles/rails41.gemfile
+      env: JRUBY_OPTS="$JRUBY_OPTS" DB=postgresql PREPARED_STATEMENTS=true
+      jdk: oraclejdk8
+    - rvm: jruby-9.0.5.0
+      gemfile: gemfiles/rails41.gemfile
+      env: JRUBY_OPTS="$JRUBY_OPTS" DB=sqlite3
+      jdk: oraclejdk8
+    - rvm: jruby-9.0.5.0
+      gemfile: gemfiles/rails41.gemfile
+      env: JRUBY_OPTS="$JRUBY_OPTS" DB=mysql
+      jdk: oraclejdk7
+    - rvm: jruby-9.0.5.0
+      gemfile: gemfiles/rails41.gemfile
+      env: JRUBY_OPTS="$JRUBY_OPTS" DB=postgresql
+      jdk: oraclejdk7
+    - rvm: jruby-9.0.5.0
+      gemfile: gemfiles/rails41.gemfile
+      env: JRUBY_OPTS="$JRUBY_OPTS" DB=sqlite3
+      jdk: oraclejdk8
+    - rvm: jruby-9.0.5.0
+      gemfile: gemfiles/rails41.gemfile
+      env: JRUBY_OPTS="$JRUBY_OPTS" DB=derby
+      jdk: oraclejdk7
+    - rvm: jruby-9.0.5.0
+      gemfile: gemfiles/rails41.gemfile
+      env: JRUBY_OPTS="$JRUBY_OPTS" DB=h2
+      jdk: oraclejdk7
+    - rvm: jruby-9.0.5.0
+      gemfile: gemfiles/rails41.gemfile
       env: JRUBY_OPTS="$JRUBY_OPTS" DB=hsqldb
       jdk: oraclejdk8
   exclude:
