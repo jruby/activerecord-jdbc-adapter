@@ -117,6 +117,7 @@ module ArJdbc
     NATIVE_DATABASE_TYPES = {
       :string     => { :name => "varchar", :limit => 255 },
       :integer    => { :name => "integer" },
+      :bigint     => { :name => 'bigint' },
       :float      => { :name => "real" }, # :limit => 24
       :double     => { :name => "double" }, # :limit => 53
       :text       => { :name => "clob" },

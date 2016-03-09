@@ -41,7 +41,7 @@ def test_task_for(adapter, options = {})
   test_task = Rake::TestTask.new(name => prereqs) do |test_task|
     files = options[:files] || begin
       FileList["test/#{adapter}*_test.rb"] +
-        FileList["test/db/#{adapter}/*_test.rb"]
+        FileList["test/db/#{adapter}/**/*_test.rb"]
     end
     test_task.test_files = files
     test_task.libs = []
@@ -56,6 +56,7 @@ def test_task_for(adapter, options = {})
     if defined?(JRUBY_VERSION) && JRUBY_VERSION.index('1.7') == 0
       test_task.ruby_opts << "--#{RUBY_VERSION[/^(\d+\.\d+)/, 1]}"
     end
+    test_task.options = '--use-color=t'
     test_task.verbose = true if $VERBOSE
     yield(test_task) if block_given?
   end

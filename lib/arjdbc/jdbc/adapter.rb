@@ -612,6 +612,16 @@ module ActiveRecord
       end
 
       # @override
+      def data_sources
+        tables
+      end if ArJdbc::AR42
+
+      # @override
+      def data_source_exists?(name)
+        table_exists?(name)
+      end if ArJdbc::AR42
+
+      # @override
       def indexes(table_name, name = nil, schema_name = nil)
         @connection.indexes(table_name, name, schema_name)
       end

@@ -7,7 +7,7 @@ module ActiveRecord::ConnectionAdapters
     module TypeCast
 
       TRUE_VALUES = Column::TRUE_VALUES if Column.const_defined?(:TRUE_VALUES)
-      FALSE_VALUES = Column::FALSE_VALUES
+      FALSE_VALUES = Column.const_defined?(:FALSE_VALUES) ? Column::FALSE_VALUES : ActiveModel::Type::Boolean::FALSE_VALUES
 
       #module Format
       ISO_DATE = Column::Format::ISO_DATE

@@ -412,14 +412,24 @@ module SimpleTestMethods
     assert_not_nil DbType.first.id
   end
 
-  def test_negative_default_value
-    if ActiveRecord::VERSION::MAJOR > 3
-      assert_equal(-1, DbType.column_defaults['sample_integer_neg_default'])
+  def test_column_default
+    if ar_version('4.2')
+      assert_equal '3.14', DbType.columns_hash['sample_small_decimal'].default
+      assert_equal '-1', DbType.columns_hash['sample_integer_neg_default'].default
+      assert_equal '42', DbType.columns_hash['sample_integer_no_limit'].default
+      assert_equal '', DbType.columns_hash['sample_string'].default
     else
-      assert_equal(-1, DbType.columns_hash['sample_integer_neg_default'].default)
+      assert_equal 3.14, DbType.columns_hash['sample_small_decimal'].default
+      assert_equal -1, DbType.columns_hash['sample_integer_neg_default'].default
+      assert_equal 42, DbType.columns_hash['sample_integer_no_limit'].default
+      assert_equal '', DbType.columns_hash['sample_string'].default
     end
 
-    assert_equal(-1, DbType.new.sample_integer_neg_default)
+    if ActiveRecord::VERSION::MAJOR > 3
+      assert_equal -1, DbType.column_defaults['sample_integer_neg_default']
+    end
+
+    assert_equal -1, DbType.new.sample_integer_neg_default
   end
 
   def test_created_records_have_different_ids

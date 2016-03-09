@@ -422,6 +422,9 @@ module ArJdbc
     end
 
     # @override
+    def supports_ddl_transactions?; true end
+ 
+    # @override
     def supports_foreign_keys?; true end
 
     def truncate(table_name, name = nil)

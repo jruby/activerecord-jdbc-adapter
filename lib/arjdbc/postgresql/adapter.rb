@@ -1,3 +1,4 @@
+# frozen_string_literal: false
 ArJdbc.load_java_part :PostgreSQL
 
 require 'ipaddr'
@@ -1241,7 +1242,9 @@ module ArJdbc
 
     # @private
     TABLES_SQL = 'SELECT tablename FROM pg_tables WHERE schemaname = ANY (current_schemas(false))'
+    private_constant :TABLES_SQL rescue nil
 
+    # @override
     def tables(name = nil)
       select_values(TABLES_SQL, 'SCHEMA')
     end
@@ -1255,6 +1258,7 @@ module ArJdbc
     TABLE_EXISTS_SQL_PREFIX << " WHERE c.relkind IN ('r','v')"
     end
     TABLE_EXISTS_SQL_PREFIX << " AND c.relname = ?"
+    private_constant :TABLE_EXISTS_SQL_PREFIX rescue nil
 
     # Returns true if table exists.
     # If the schema is not specified as part of +name+ then it will only find tables within
@@ -1271,6 +1275,19 @@ module ArJdbc
       log(sql, 'SCHEMA', binds) do
         @connection.execute_query_raw(sql, binds).first['table_count'] > 0
       end
+    end
+    alias data_source_exists? table_exists?
+
+    # @private
+    DATA_SOURCES_SQL =  'SELECT c.relname FROM pg_class c'
+    DATA_SOURCES_SQL << ' LEFT JOIN pg_namespace n ON n.oid = c.relnamespace'
+    DATA_SOURCES_SQL << " WHERE c.relkind IN ('r', 'v','m')" # -- (r)elation/table, (v)iew, (m)aterialized view
+    DATA_SOURCES_SQL << ' AND n.nspname = ANY (current_schemas(false))'
+    private_constant :DATA_SOURCES_SQL rescue nil
+
+    # @override
+    def data_sources
+      select_values(DATA_SOURCES_SQL, 'SCHEMA')
     end
 
     def drop_table(table_name, options = {})

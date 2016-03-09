@@ -1,3 +1,18 @@
+## 1.3.20 (03/09/16)
+
+- Retrieve AM::Type::Boolean::FALSE_VALUES for Rails 5 (#705)
+- [mysql] only mock mysql / mysql2 error under adapter /mysql/
+  and make sure db:create works (#702)
+- use system instead of `` to run dumps (on < 4.0) as it has issues under 1.7.x
+- avoid column.default type_cast-ing on AR 4.2 (#715)
+- [postgres] data_sources support - backport on AR 4.2
+- add support for data sources (backport on AR 4.2) in base (jdbc) adapter
+- [derby] Enable DDL transaction on Derby (#714)
+- [db2] support for DB2 big integer (BIGINT) data type
+- [mysql] Fixed MySQL primary key for MySQL >= 5.7.3 (#695)
+- [sqlite] on AR 4.2 is not supposed to have an implicit string limit: 255
+- [postgres] on AR 4.2 is not supposed to have an implicit string limit: 255
+
 ## 1.3.19 (11/02/15)
 
 - [sqlite] add supports_partial_index? and remove duplicate support_index_sort_order?

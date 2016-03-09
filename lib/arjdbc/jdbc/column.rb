@@ -26,7 +26,6 @@ module ActiveRecord
           end
         end
         default = default_value(default)
-        default = args[0].type_cast_from_database(default) if ArJdbc::AR42
 
         # super <= 4.1: (name, default, sql_type = nil, null = true)
         # super >= 4.2: (name, default, cast_type, sql_type = nil, null = true)

@@ -32,8 +32,6 @@ class PostgreSQLSchemaDumpTest < Test::Unit::TestCase
     end
   end
 
-  #
-
   # http://kenai.com/jira/browse/ACTIVERECORD_JDBC-135
   def test_schema_dump_should_not_have_limits_on_boolean
     dump = dump_with_data_types

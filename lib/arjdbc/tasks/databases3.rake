@@ -1,11 +1,3 @@
-# NOTE: fake these for create_database(config)
-module Mysql
-  Error = ActiveRecord::JDBCError unless const_defined?(:Error)
-end
-module Mysql2
-  Error = ActiveRecord::JDBCError unless const_defined?(:Error)
-end
-
 module ArJdbc
   module Tasks
     class << self
@@ -53,7 +45,27 @@ namespace :db do
 
   def create_database(config)
     case config['adapter']
-    when /mysql|postgresql|sqlite/
+    when /mysql2/
+      unless defined? Mysql2::Error
+        # NOTE: fake it for create_database(config)
+        Object.const_set :Mysql2, Module.new
+        Mysql2.const_set :Error, ActiveRecord::JDBCError
+        ActiveRecord::JDBCError.class_eval do
+          def error; self end # Mysql2::Error#error
+        end
+      end
+      _rails_create_database adapt_jdbc_config(config)
+    when /mysql/
+      unless defined? Mysql::Error
+        # NOTE: fake it for create_database(config)
+        Object.const_set :Mysql, Module.new
+        Mysql.const_set :Error, ActiveRecord::JDBCError
+        ActiveRecord::JDBCError.class_eval do
+          def error; self end # Mysql::Error#error
+        end
+      end
+      _rails_create_database adapt_jdbc_config(config)
+    when /postgresql|sqlite/
       _rails_create_database adapt_jdbc_config(config)
     when /mariadb/ # fake mariadb as mysql for Rails
       config = config.update('adapter' => 'mysql')
@@ -114,13 +126,12 @@ namespace :db do
         unless search_path.blank?
           search_path = search_path.split(",").map{ |part| "--schema=#{Shellwords.escape(part.strip)}" }.join(" ")
         end
-        `pg_dump -i -s -x -O -f #{Shellwords.escape(filename)} #{search_path} #{Shellwords.escape(config['database'])}`
-        raise 'Error dumping database' if $?.exitstatus == 1
+        sh "pg_dump -i -s -x -O -f #{Shellwords.escape(filename)} #{search_path} #{Shellwords.escape(config['database'])}"
 
         File.open(filename, 'a') { |f| f << "SET search_path TO #{ActiveRecord::Base.connection.schema_search_path};\n\n" }
       when /sqlite/
         dbfile = config['database']
-        `sqlite3 #{dbfile} .schema > #{filename}`
+        sh "sqlite3 #{dbfile} .schema > #{filename}"
       else
         ActiveRecord::Base.establish_connection(config)
         ArJdbc::Tasks.structure_dump(config, filename)
@@ -129,6 +140,7 @@ namespace :db do
       if ActiveRecord::Base.connection.supports_migrations?
         File.open(filename, 'a') { |f| f << ActiveRecord::Base.connection.dump_schema_information }
       end
+
     end
 
     redefine_task :load do
