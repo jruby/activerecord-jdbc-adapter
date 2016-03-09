@@ -2,7 +2,8 @@
 
 Gem::Specification.new do |gem|
   gem.name = 'activerecord-jdbc-adapter'
-  gem.platform = 'java'
+  # NOTE: only cause platform gems are still not first class citizens
+  gem.platform = 'java' unless ENV['RELEASE'] == 'true'
 
   path = File.expand_path('lib/arjdbc/version.rb', File.dirname(__FILE__))
   gem.version = File.read(path).match( /.*VERSION\s*=\s*['"](.*)['"]/m )[1]
