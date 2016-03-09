@@ -62,16 +62,21 @@ task 'release:do' => 'build:adapters' do
   ENV['RELEASE'] == 'true' # so that .gemspec is built with adapter_java.jar
   Rake::Task['build'].invoke
 
+  noop = ENV.key?('NOOP') && (ENV['NOOP'] != 'false' && ENV['NOOP'] != '')
+
   version = current_version.call; version_tag = "v#{version}"
 
-  sh("git diff --no-patch --exit-code") { |ok| fail "git working dir is not clean" unless ok }
-  sh("git diff-index --quiet --cached HEAD") { |ok| fail "git index is not clean" unless ok }
+  sh("git diff --no-patch --exit-code", :noop => noop) { |ok| fail "git working dir is not clean" unless ok }
+  sh("git diff-index --quiet --cached HEAD", :noop => noop) { |ok| fail "git index is not clean" unless ok }
 
-  sh "git tag -a -m \"AR-JDBC #{version}\" #{version_tag}"
+  sh "git add -f lib/arjdbc/jdbc/adapter_java.jar", :noop => noop
+  sh "git commit -m 'extension .jar build for #{version_tag}'", :noop => noop
+
+  sh "git tag -a -m \"AR-JDBC #{version}\" #{version_tag}", :noop => noop
   branch = `git rev-parse --abbrev-ref HEAD`.strip
   puts "releasing from (current) branch #{branch.inspect}"
-  sh "for gem in `ls pkg/*-#{version}.gem`; do gem push $gem; done" do |ok|
-    sh "git push origin #{branch} --tags" if ok
+  sh "for gem in `ls pkg/*-#{version}.gem`; do gem push $gem; done", :noop => noop do |ok|
+    sh "git push origin #{branch} --tags", :noop => noop if ok
   end
 end
 
