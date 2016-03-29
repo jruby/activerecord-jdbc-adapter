@@ -55,7 +55,7 @@ module ArJdbc
       @postgresql_version ||=
         begin
           version = select_version
-          if version =~ /PostgreSQL (\d+)\.(\d+)\.(\d+)/
+          if version =~ /PostgreSQL (\d+)\.(\d+)(?:\.(\d+))?/
             ($1.to_i * 10000) + ($2.to_i * 100) + $3.to_i
           else
             0
