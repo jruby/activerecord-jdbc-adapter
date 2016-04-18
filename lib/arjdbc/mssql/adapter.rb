@@ -650,7 +650,7 @@ module ArJdbc
       unless primary_column # look for an id column and return it,
         # without changing case, to cover DBs with a case-sensitive collation :
         primary_column = columns.find { |column| column.name =~ /^id$/i }
-        raise "no columns for table: #{table_name}" if columns.empty?
+        raise "no columns for table: #{table_name} (SQL query: ' #{sql} ')" if columns.empty?
       end
       # NOTE: if still no PK column simply get something for ORDER BY ...
       "#{quote_table_name(table_name)}.#{quote_column_name((primary_column || columns.first).name)}"
