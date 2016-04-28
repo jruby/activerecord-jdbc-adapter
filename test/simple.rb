@@ -871,7 +871,7 @@ module SimpleTestMethods
   def test_raw_delete_bind_param_with_q_mark
     entry = Entry.create! :title => 'foo?!?', :content => '..........'
 
-    arel = Arel::DeleteManager.new Entry.arel_engine
+    arel = ArJdbc::AR50 ? Arel::DeleteManager.new : Arel::DeleteManager.new(Entry.arel_engine)
     arel.from arel_table = Entry.arel_table
     if prepared_statements?
       arel.where arel_table[:title].eq(new_bind_param)
@@ -1034,7 +1034,7 @@ module SimpleTestMethods
   end if Test::Unit::TestCase.ar_version('3.1')
 
   def insert_manager(table, columns = {})
-    arel = Arel::InsertManager.new table.arel_engine
+    arel = ArJdbc::AR50 ? Arel::InsertManager.new : Arel::InsertManager.new(Entry.arel_engine)
     arel.into table.arel_table
     if columns
       values = columns.map do |name, value|
@@ -1062,7 +1062,7 @@ module SimpleTestMethods
   end
 
   def update_manager(table, columns = {})
-    arel = Arel::UpdateManager.new table.arel_engine
+    arel = ArJdbc::AR50 ? Arel::UpdateManager.new : Arel::UpdateManager.new(Entry.arel_engine)
     arel.table table.arel_table
     if columns
       values = columns.map do |name, value|
@@ -1080,7 +1080,7 @@ module SimpleTestMethods
     skip_exec_for_native_adapter
 
     entry = Entry.create! :title => '42'
-    arel = Arel::DeleteManager.new Entry.arel_engine
+    arel = ArJdbc::AR50 ? Arel::DeleteManager.new : Arel::DeleteManager.new(Entry.arel_engine)
     arel.from arel_table = Entry.arel_table
     arel.where arel_table[:title].eq(new_bind_param)
     column = Entry.columns_hash['title']
