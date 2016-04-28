@@ -1,6 +1,10 @@
 
 ## Running AR-JDBC's Tests
 
+After you have built arjdbc (run rake), then you can try testing it (if you
+do not build then adapter_java.jar is not put into the lib dir).  If you
+change any of the .java files you will need to rebuild.
+
 Most DB specific unit tests hide under the **test/db** directory, the files
 included in the *test* directory are mostly shared test modules and helpers.
 

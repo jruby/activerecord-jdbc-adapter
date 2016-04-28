@@ -28,6 +28,11 @@ appraise "rails42" do
   gem "activerecord", "~> 4.2.0", :require => false
 end
 
+appraise "rails50" do
+  gem "activerecord", "~> 5.0.0.beta4", :require => false
+end
+
+
 appraise "railsNG" do
   branch = ( ENV['rails_branch'] || 'master' )
   gem "activerecord", :github => 'rails/rails', :branch => branch, :require => false
