@@ -265,6 +265,12 @@ module ArJdbc
       select_rows(sql, name).map { |row| row[0] }
     end
 
+    if ArJdbc::AR50
+      def views
+        select_values("SELECT name FROM sqlite_master WHERE type = 'view' AND name <> 'sqlite_sequence'", 'SCHEMA')
+      end
+    end
+
     # @override
     def table_exists?(table_name)
       table_name && tables(nil, table_name).any?
