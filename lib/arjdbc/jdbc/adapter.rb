@@ -63,6 +63,11 @@ module ActiveRecord
         end
 
         @config = config.respond_to?(:symbolize_keys) ? config.symbolize_keys : config
+        # FIXME: Rails 5 defaults to prepared statements on and we do not seem
+        # to work yet.  So default to off unless it is requested until that is
+        # fixed.
+        @config[:prepared_statements] = false if ArJdbc::AR50 && !@config[:prepared_statements]
+
         # NOTE: JDBC 4.0 drivers support checking if connection isValid
         # thus no need to @config[:connection_alive_sql] ||= 'SELECT 1'
         #
