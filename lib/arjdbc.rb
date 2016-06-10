@@ -18,5 +18,5 @@ end
 
 require 'arjdbc/version'
 
-warn "NOTE: AR-JDBC 1.4 takes time to iron out, if you do like where its" <<
-" heading please consider supporting the project http://bit.ly/arjdbc14"
+warn "NOTE: AR-JDBC 1.4 takes time to iron out, if you do like where its" +
+" heading please consider supporting the project http://bit.ly/arjdbc14 "
