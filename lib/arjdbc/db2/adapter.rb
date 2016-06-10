@@ -691,6 +691,12 @@ module ArJdbc
     # @override
     def supports_views?; true end
 
+    # @override
+    def supports_foreign_keys?; true end
+
+	  # @override
+    def supports_ddl_transactions?; true end
+
     def execute_table_change(sql, table_name, name = nil)
       outcome = execute(sql, name)
       reorg_table(table_name, name)
