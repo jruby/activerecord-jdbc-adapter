@@ -737,11 +737,14 @@ module ArJdbc
 
     # @private
     def zos?
-      @zos = nil unless defined? @zos
+      @zos = config[:zos] unless defined? @zos
       return @zos unless @zos.nil?
+      # jdbc:db2: - connection to a DB2 for z/OS, DB2 for Linux, UNIX, and Windows
+      # jdbc:db2j:net: - connection is to a remote IBM Cloudscape server
+      # jdbc:ids: - informix (not supported)
       @zos =
         if url = config[:url]
-          !!( url =~ /^jdbc:db2j:net:/ && config[:driver] == DRIVER_NAME )
+          !!( config[:driver] == DRIVER_NAME && url =~ /^jdbc:db2j:net:/ )
         else
           nil
         end
