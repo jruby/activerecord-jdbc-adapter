@@ -579,6 +579,7 @@ module ArJdbc
     end
 
     def change_column_null(table_name, column_name, null)
+      raise NotImplementedError, "DB2 for zOS does not support changing the column's nullability" if zos?
       if null
         sql = "ALTER TABLE #{table_name} ALTER COLUMN #{column_name} DROP NOT NULL"
       else
@@ -589,6 +590,7 @@ module ArJdbc
 
     def change_column_default(table_name, column_name, default)
       if default.nil?
+        raise NotImplementedError, "DB2 for zOS does not support changing the column default to NULL" if zos?
         sql = "ALTER TABLE #{table_name} ALTER COLUMN #{column_name} DROP DEFAULT"
       else
         sql = "ALTER TABLE #{table_name} ALTER COLUMN #{column_name} SET WITH DEFAULT #{quote(default)}"
