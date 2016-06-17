@@ -391,6 +391,12 @@ module ArJdbc
 
     # @override
     def supports_views?; true end
+      
+    if ArJdbc::AR50
+      def views
+        select_values("SELECT table_name FROM INFORMATION_SCHEMA.views WHERE table_schema = ANY (current_schemas(false))")
+      end
+    end
 
     # NOTE: handled by JdbcAdapter we override only to have save-point in logs :
 
