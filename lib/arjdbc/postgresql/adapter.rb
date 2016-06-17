@@ -274,7 +274,8 @@ module ArJdbc
       :bigserial => "bigserial",
       :bigint => { :name => "bigint" },
       :bit => { :name => "bit" },
-      :bit_varying => { :name => "bit varying" }
+      :bit_varying => { :name => "bit varying" },
+      :citext => { :name => "citext" }
     ) if AR42
 
     def native_database_types
