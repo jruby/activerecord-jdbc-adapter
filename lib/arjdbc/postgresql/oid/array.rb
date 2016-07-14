@@ -1,2 +1,2 @@
-class ActiveRecord::ConnectionAdapters::PostgreSQL::OID::Bytea
+class ActiveRecord::ConnectionAdapters::PostgreSQL::OID::Array
 end
