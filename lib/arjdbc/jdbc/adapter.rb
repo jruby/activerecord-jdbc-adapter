@@ -826,13 +826,13 @@ module ActiveRecord
             false # off by default - NOTE: on AR 4.x it's on by default !?
       end
 
-      if @@suble_binds = Java::JavaLang::System.getProperty('arjdbc.adapter.suble_binds')
+      if @@suble_binds = ENV_JAVA['arjdbc.adapter.suble_binds']
         @@suble_binds = Java::JavaLang::Boolean.parseBoolean(@@suble_binds)
       else
         @@suble_binds = ActiveRecord::VERSION::MAJOR < 4 # due compatibility
       end
       def self.suble_binds?; @@suble_binds; end
-      def self.suble_binds=(flag); @@suble_binds = flag; end
+      def self.suble_binds=(flag); @@suble_binds = flag; end # remove on 1.4
 
       private
 
