@@ -90,11 +90,14 @@ import org.jruby.exceptions.RaiseException;
 import org.jruby.javasupport.JavaEmbedUtils;
 import org.jruby.javasupport.JavaUtil;
 import org.jruby.runtime.Block;
+import org.jruby.runtime.CallSite;
 import org.jruby.runtime.ObjectAllocator;
 import org.jruby.runtime.ThreadContext;
 import org.jruby.runtime.Visibility;
 import org.jruby.runtime.builtin.IRubyObject;
 import org.jruby.runtime.builtin.Variable;
+import org.jruby.runtime.callsite.FunctionalCachingCallSite;
+import org.jruby.runtime.callsite.RespondToCallSite;
 import org.jruby.runtime.component.VariableEntry;
 import org.jruby.util.ByteList;
 import org.jruby.util.SafePropertyAccessor;
@@ -621,7 +624,7 @@ public class RubyJdbcConnection extends RubyObject {
             warn(context, "adapter not set, please pass adapter on JdbcConnection#initialize(config, adapter)");
         }
 
-        if ( adapter != null && adapter.respondsTo("init_connection") ) { // deprecated
+        if ( adapter != null && _respond_to_init_connection.call(context, adapter, adapter, context.runtime.newSymbol("init_connection")).isTrue() ) { // deprecated
             final Connection connection;
             setConnection( connection = newConnection() );
             return adapter.callMethod(context, "init_connection", convertJavaToRuby(connection));
@@ -633,17 +636,25 @@ public class RubyJdbcConnection extends RubyObject {
         return context.nil;
     }
 
+    // adapter.respond_to?(:init_connection)
+    private static final RespondToCallSite _respond_to_init_connection = new RespondToCallSite();
+
     private void configureConnection() {
         if ( ! configureConnection ) return; // return false;
 
         final IRubyObject adapter = getAdapter(); // self.adapter
         if ( adapter != null && ! adapter.isNil() ) {
-            if ( adapter.respondsTo("configure_connection") ) {
-                final ThreadContext context = getRuntime().getCurrentContext();
-                adapter.callMethod(context, "configure_connection");
+            final Ruby runtime = getRuntime(); final ThreadContext context = runtime.getCurrentContext();
+            if ( _respond_to_configure_connection.call(context, adapter, adapter, runtime.newSymbol("configure_connection")).isTrue() ) {
+                _configure_connection.call(context, adapter, adapter);
             }
         }
     }
+
+    // adapter.configure_connection
+    private static final CallSite _configure_connection = new FunctionalCachingCallSite("configure_connection");
+    // adapter.respond_to?(:configure_connection)
+    private static final RespondToCallSite _respond_to_configure_connection = new RespondToCallSite();
 
     @JRubyMethod(name = "configure_connection")
     public IRubyObject configure_connection(final ThreadContext context) {
@@ -1499,7 +1510,7 @@ public class RubyJdbcConnection extends RubyObject {
                                 // orders, (since AR 3.2) where, type, using (AR 4.0)
                             };
 
-                            indexes.append( IndexDefinition.callMethod(context, "new", args) ); // IndexDefinition.new
+                            indexes.append( _newIndexDefinition.call(context, IndexDefinition, IndexDefinition, args) );
                         }
 
                         // one or more columns can be associated with an index
@@ -1512,6 +1523,8 @@ public class RubyJdbcConnection extends RubyObject {
             }
         });
     }
+
+    private static final CallSite _newIndexDefinition = new FunctionalCachingCallSite("new");
 
     protected RubyClass getIndexDefinition(final ThreadContext context) {
         final RubyClass adapterClass = getAdapter().getMetaClass();
@@ -1535,7 +1548,7 @@ public class RubyJdbcConnection extends RubyObject {
                 final TableName table = extractTableName(connection, catalog, _schemaName, _tableName);
 
                 ResultSet fkInfoSet = null;
-                final List<IRubyObject> fKeys = new ArrayList<IRubyObject>(8);
+                final RubyArray fKeys = RubyArray.newArray(runtime, 8);
                 try {
                     final DatabaseMetaData metaData = connection.getMetaData();
                     fkInfoSet = metaData.getImportedKeys(table.catalog, table.schema, table.name);
@@ -1573,15 +1586,17 @@ public class RubyJdbcConnection extends RubyObject {
                             options
                         };
 
-                        fKeys.add( FKDefinition.callMethod(context, "new", args) ); // ForeignKeyDefinition.new
+                        fKeys.append( _newForeignKeyDefinition.call(context, FKDefinition, FKDefinition, args) );
                     }
 
-                    return runtime.newArray(fKeys);
+                    return fKeys;
 
                 } finally { close(fkInfoSet); }
             }
         });
     }
+
+    private static final CallSite _newForeignKeyDefinition = new FunctionalCachingCallSite("new");
 
     protected String extractForeignKeyRule(final int rule) {
         switch (rule) {
@@ -1665,9 +1680,9 @@ public class RubyJdbcConnection extends RubyObject {
         throws SQLException {
 
         final boolean binary = // column.type == :binary
-            column.callMethod(context, "type").toString() == (Object) "binary";
+            _type.call(context, column, column).toString() == (Object) "binary";
 
-        final IRubyObject recordClass = record.callMethod(context, "class");
+        final RubyClass recordClass = record.getMetaClass();
         final IRubyObject adapter = recordClass.callMethod(context, "connection");
 
         IRubyObject columnName = column.callMethod(context, "name");
@@ -2087,8 +2102,11 @@ public class RubyJdbcConnection extends RubyObject {
     protected final IRubyObject getAdapter() { return this.adapter; }
 
     protected RubyClass getJdbcColumnClass(final ThreadContext context) {
-        return (RubyClass) getAdapter().callMethod(context, "jdbc_column_class");
+        final IRubyObject adapter = getAdapter();
+        return (RubyClass) _jdbc_column_class.call(context, adapter, adapter);
     }
+
+    private static final CallSite _jdbc_column_class = new FunctionalCachingCallSite("jdbc_column_class");
 
     protected final ConnectionFactory getConnectionFactory() throws RaiseException {
         if ( connectionFactory == null ) {
@@ -2351,9 +2369,15 @@ public class RubyJdbcConnection extends RubyObject {
      */
     protected static IRubyObject typeCastFromDatabase(final ThreadContext context,
         final IRubyObject adapter, final RubySymbol typeName, final RubyString value) {
-        final IRubyObject type = adapter.callMethod(context, "lookup_cast_type", typeName);
-        return type.callMethod(context, "type_cast_from_database", value);
+        // final IRubyObject type = adapter.callMethod(context, "lookup_cast_type", typeName);
+        // return type.callMethod(context, "type_cast_from_database", value);
+        final IRubyObject type = _lookup_cast_type.call(context, adapter, adapter, typeName);
+        //return _type_cast_from_database.call(context, type, type, value);
+        return type.callMethod(context, "type_cast_from_database", value); // TODO polymorph?
     }
+
+    private static final CallSite _lookup_cast_type = new FunctionalCachingCallSite("lookup_cast_type");
+    //private static final CallSite _type_cast_from_database = new FunctionalCachingCallSite("type_cast_from_database");
 
     protected IRubyObject dateToRuby(final ThreadContext context,
         final Ruby runtime, final ResultSet resultSet, final int column)
@@ -2366,7 +2390,8 @@ public class RubyJdbcConnection extends RubyObject {
             return RubyString.newString(runtime, DateTimeUtils.dateToString(value));
         }
 
-        return DateTimeUtils.newTime(context, value).callMethod(context, "to_date");
+        IRubyObject time = DateTimeUtils.newTime(context, value);
+        return _to_date.call(context, time, time); // time.to_date
         /*
         final IRubyObject adapter = ...; // self.adapter
         if ( adapter.isNil() ) return strValue; // NOTE: we warn on init_connection
@@ -2376,6 +2401,8 @@ public class RubyJdbcConnection extends RubyObject {
             return typeCastFromDatabase(context, adapter, runtime.newSymbol("date"), strValue);
         } */
     }
+
+    private static final CallSite _to_date = new FunctionalCachingCallSite("to_date");
 
     protected IRubyObject timeToRuby(final ThreadContext context,
         final Ruby runtime, final ResultSet resultSet, final int column)
@@ -2600,8 +2627,7 @@ public class RubyJdbcConnection extends RubyObject {
         final Object value;
 
         if ( isAr42(column) ) {
-            final IRubyObject castType = column.callMethod(context, "cast_type");
-            value = castType.callMethod(context, "type_cast_for_database", (IRubyObject) rawValue);
+            value = typeCastForDatabase(context, column, (IRubyObject) rawValue);
         } else {
             value = rawValue;
         }
@@ -2673,6 +2699,16 @@ public class RubyJdbcConnection extends RubyObject {
         }
     }
 
+    protected static IRubyObject typeCastForDatabase(final ThreadContext context,
+        final IRubyObject column, final IRubyObject value) {
+        // final IRubyObject castType = column.callMethod(context, "cast_type");
+        // return castType.callMethod(context, "type_cast_for_database", (IRubyObject) value);
+        return _type_cast_for_database.call(context, column, column, value); // delegate to: :cast_type
+    }
+
+    // column.type_cast_for_database
+    private static final CallSite _type_cast_for_database = new FunctionalCachingCallSite("type_cast_for_database");
+
     private RubySymbol resolveColumnType(final ThreadContext context, final Ruby runtime,
         final IRubyObject column) {
         if ( column instanceof RubySymbol ) { // deprecated behavior
@@ -2691,12 +2727,15 @@ public class RubyJdbcConnection extends RubyObject {
             throw runtime.newArgumentError("nil column passed");
         }
 
-        final IRubyObject type = column.callMethod(context, "type");
+        final IRubyObject type = _type.call(context, column, column);
         if ( type.isNil() || ! (type instanceof RubySymbol) ) {
             throw new IllegalStateException("unexpected type = " + type.inspect() + " for " + column.inspect());
         }
         return (RubySymbol) type;
     }
+
+    // column.type
+    private static final CallSite _type = new FunctionalCachingCallSite("type");
 
     protected static final Map<String, Integer> JDBC_TYPE_FOR = new HashMap<String, Integer>(32, 1);
     static {
@@ -2743,7 +2782,8 @@ public class RubyJdbcConnection extends RubyObject {
             // NOTE: there's no ActiveRecord "convention" really for this ...
             // this is based on Postgre's initial support for arrays :
             // `column.type` contains the base type while there's `column.array?`
-            if ( column.respondsTo("array?") && column.callMethod(context, "array?").isTrue() ) {
+            if ( _respond_to_array_p.call(context, column, column, context.runtime.newSymbol("array?")).isTrue()
+                && _array_p.call(context, column, column).isTrue() ) {
                 internedType = "array";
             }
             else {
@@ -2762,6 +2802,10 @@ public class RubyJdbcConnection extends RubyObject {
 
         return Types.OTHER; // -1 as well as 0 are used in Types
     }
+
+    // column.array?
+    private static final CallSite _array_p = new FunctionalCachingCallSite("array?");
+    private static final RespondToCallSite _respond_to_array_p = new RespondToCallSite();
 
     protected void setIntegerParameter(final ThreadContext context,
         final Connection connection, final PreparedStatement statement,
@@ -3193,12 +3237,14 @@ public class RubyJdbcConnection extends RubyObject {
 
     protected String resolveArrayBaseTypeName(final ThreadContext context,
         final Object value, final IRubyObject column, final int type) {
-        // return column.callMethod(context, "sql_type").toString();
-        String sqlType = column.callMethod(context, "sql_type").toString();
+        // String sqlType = column.callMethod(context, "sql_type").toString();
+        String sqlType = _sql_type.call(context, column, column).toString();
         final int index = sqlType.indexOf('('); // e.g. "character varying(255)"
         if ( index > 0 ) sqlType = sqlType.substring(0, index);
         return sqlType;
     }
+
+    private static final CallSite _sql_type = new FunctionalCachingCallSite("sql_type");
 
     protected void setXmlParameter(final ThreadContext context,
         final Connection connection, final PreparedStatement statement,
@@ -3638,7 +3684,7 @@ public class RubyJdbcConnection extends RubyObject {
         final RubyClass Column, final boolean lookupCastType, final boolean setPrimary)
         throws SQLException {
 
-        final Ruby runtime = context.getRuntime();
+        final Ruby runtime = context.runtime;
 
         final Collection<String> primaryKeyNames =
             setPrimary ? getPrimaryKeyNames(metaData, components) : null;
@@ -3653,13 +3699,13 @@ public class RubyJdbcConnection extends RubyObject {
             final RubyBoolean nullable = runtime.newBoolean( ! results.getString(IS_NULLABLE).trim().equals("NO") );
             final IRubyObject[] args;
             if ( lookupCastType ) {
-                final IRubyObject castType = getAdapter().callMethod(context, "lookup_cast_type", sqlType);
+                final IRubyObject castType = _lookup_cast_type.call(context, adapter, adapter, sqlType);
                 args = new IRubyObject[] {config, railsColumnName, defaultValue, castType, sqlType, nullable};
             } else {
                 args = new IRubyObject[] {config, railsColumnName, defaultValue, sqlType, nullable};
             }
 
-            IRubyObject column = Column.callMethod(context, "new", args);
+            IRubyObject column = _newColumn.call(context, Column, Column, args);
             columns.append(column);
 
             if ( primaryKeyNames != null ) {
@@ -3669,6 +3715,8 @@ public class RubyJdbcConnection extends RubyObject {
         }
         return columns;
     }
+
+    private static final CallSite _newColumn = new FunctionalCachingCallSite("new");
 
     private static Collection<String> getPrimaryKeyNames(final DatabaseMetaData metaData,
         final TableName components) throws SQLException {
@@ -4153,9 +4201,11 @@ public class RubyJdbcConnection extends RubyObject {
         public IRubyObject newResult(final ThreadContext context, final Ruby runtime,
             final ColumnData[] columns, final IRubyObject rows) { // rows array
             // ActiveRecord::Result.new(columns, rows)
-            final RubyClass result = getResult(runtime);
-            return result.callMethod( context, "new", initArgs(context, runtime, columns, rows), Block.NULL_BLOCK );
+            final RubyClass Result = getResult(runtime);
+            return _newResult.call(context, Result, Result, initArgs(context, runtime, columns, rows));
         }
+
+        private static final CallSite _newResult = new FunctionalCachingCallSite("new");
 
         final IRubyObject mapRawRow(final ThreadContext context, final Ruby runtime,
             final ColumnData[] columns, final ResultSet resultSet,
