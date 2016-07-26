@@ -59,6 +59,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Properties;
 import java.util.TimeZone;
@@ -281,7 +282,7 @@ public class RubyJdbcConnection extends RubyObject {
             isolationString = isolation.toString(); // RubySymbol.toString (interned)
         }
         else {
-            isolationString = isolation.asString().toString().toLowerCase().intern();
+            isolationString = isolation.asString().toString().toLowerCase(Locale.ENGLISH).intern();
         }
 
         if ( isolationString == "read_uncommitted" ) return Connection.TRANSACTION_READ_UNCOMMITTED; // 1
