@@ -63,9 +63,9 @@ ArJdbc::ConnectionMethods.module_eval do
           properties['verifyServerCertificate'] ||= false if mysql_driver
         end
       end
-      if mariadb_driver
-        properties['verifyServerCertificate'] ||= false
-      end
+      properties['verifyServerCertificate'] ||= false if mariadb_driver
+    else
+      properties['useSSL'] = 'false' unless properties.key?('useSSL')
     end
     if socket = config[:socket]
       properties['localSocket'] ||= socket if mariadb_driver
