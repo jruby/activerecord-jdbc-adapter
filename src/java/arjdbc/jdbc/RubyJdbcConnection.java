@@ -54,6 +54,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Properties;
 import java.util.TimeZone;
@@ -270,7 +271,7 @@ public class RubyJdbcConnection extends RubyObject {
             isolationString = isolation.toString(); // RubySymbol.toString (interned)
         }
         else {
-            isolationString = isolation.asString().toString().toLowerCase().intern();
+            isolationString = isolation.asString().toString().toLowerCase(Locale.ENGLISH).intern();
         }
 
         if ( isolationString == "read_uncommitted" ) return Connection.TRANSACTION_READ_UNCOMMITTED; // 1
@@ -1591,7 +1592,7 @@ public class RubyJdbcConnection extends RubyObject {
     public IRubyObject with_jdbc_connection(final ThreadContext context, final Block block) {
         return withConnection(context, new Callable<IRubyObject>() {
             public IRubyObject call(final Connection connection) throws SQLException {
-                return block.call(context, new IRubyObject[] { convertJavaToRuby(connection) });
+                return block.call(context, convertJavaToRuby(connection));
             }
         });
     }
