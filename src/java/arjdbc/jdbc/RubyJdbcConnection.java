@@ -33,7 +33,6 @@ import java.io.PrintStream;
 import java.io.Reader;
 import java.io.StringReader;
 import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.sql.Array;
@@ -94,7 +93,6 @@ import org.jruby.runtime.Block;
 import org.jruby.runtime.ObjectAllocator;
 import org.jruby.runtime.ThreadContext;
 import org.jruby.runtime.Visibility;
-import org.jruby.runtime.backtrace.RubyStackTraceElement;
 import org.jruby.runtime.builtin.IRubyObject;
 import org.jruby.runtime.builtin.Variable;
 import org.jruby.runtime.component.VariableEntry;
@@ -4404,7 +4402,7 @@ public class RubyJdbcConnection extends RubyObject {
 
     // DEBUG-ing helpers :
 
-    private static boolean debug = Boolean.getBoolean("arjdbc.debug");
+    private static boolean debug = Boolean.parseBoolean( SafePropertyAccessor.getProperty("arjdbc.debug") );
 
     public static boolean isDebug() { return debug; }
 
@@ -4430,14 +4428,14 @@ public class RubyJdbcConnection extends RubyObject {
     public static void debugMessage(final Ruby runtime, final Object msg) {
         if ( isDebug(runtime) ) {
             final PrintStream out = runtime != null ? runtime.getOut() : System.out;
-            out.println("ArJdbc: " + msg);
+            out.print("ArJdbc: "); out.println(msg);
         }
     }
 
     public static void debugMessage(final Ruby runtime, final String msg, final Object e) {
         if ( isDebug(runtime) ) {
             final PrintStream out = runtime != null ? runtime.getOut() : System.out;
-            out.println("ArJdbc: " + msg + e);
+            out.print("ArJdbc: "); out.print(msg); out.println(e);
         }
     }
 
@@ -4481,62 +4479,10 @@ public class RubyJdbcConnection extends RubyObject {
                 final DatabaseMetaData meta = connection.getMetaData();
                 debugMessage(getRuntime(), "using driver " + meta.getDriverVersion());
             }
-            catch (SQLException e) {
+            catch (Exception e) {
                 debugMessage(getRuntime(), "failed to log driver ", e);
             }
         }
-    }
-
-    /*
-    protected static IRubyObject raise(final ThreadContext context, final RubyClass error, final String message) {
-        return raise(context, error, message, null);
-    }
-
-    protected static IRubyObject raise(final ThreadContext context, final RubyClass error, final String message, final Throwable cause) {
-        final Ruby runtime = context.runtime;
-        final IRubyObject[] args;
-        if ( message != null ) {
-            args = new IRubyObject[] { error, runtime.newString(message) };
-        }
-        else {
-            args = new IRubyObject[] { error };
-        }
-        return RubyKernel.raise(context, runtime.getKernel(), args, Block.NULL_BLOCK); // throws
-    } */
-
-    private static RubyArray createCallerBacktrace(final ThreadContext context) {
-        final Ruby runtime = context.runtime;
-        runtime.incrementCallerCount();
-
-        Method gatherCallerBacktrace; RubyStackTraceElement[] trace;
-        try {
-            gatherCallerBacktrace = context.getClass().getMethod("gatherCallerBacktrace");
-            trace = (RubyStackTraceElement[]) gatherCallerBacktrace.invoke(context); // 1.6.8
-        }
-        catch (NoSuchMethodException ignore) {
-            try {
-                gatherCallerBacktrace = context.getClass().getMethod("gatherCallerBacktrace", Integer.TYPE);
-                trace = (RubyStackTraceElement[]) gatherCallerBacktrace.invoke(context, 0); // 1.7.4
-            }
-            catch (NoSuchMethodException e) { throw new RuntimeException(e); }
-            catch (IllegalAccessException e) { throw new RuntimeException(e); }
-            catch (InvocationTargetException e) { throw new RuntimeException(e.getTargetException()); }
-        }
-        catch (IllegalAccessException e) { throw new RuntimeException(e); }
-        catch (InvocationTargetException e) { throw new RuntimeException(e.getTargetException()); }
-        // RubyStackTraceElement[] trace = context.gatherCallerBacktrace(level);
-
-        final RubyArray backtrace = runtime.newArray(trace.length);
-        final StringBuilder line = new StringBuilder(32);
-        for (int i = 0; i < trace.length; i++) {
-            RubyStackTraceElement element = trace[i];
-            line.setLength(0);
-            line.append(element.getFileName()).append(':').
-                 append(element.getLineNumber()).append(":in `").
-                 append(element.getMethodName()).append('\'');
-            backtrace.append( RubyString.newString(runtime, line.toString() ) );
-        }
-        return backtrace;
     }
 
 }
