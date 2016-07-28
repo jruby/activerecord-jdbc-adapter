@@ -23,12 +23,12 @@
  */
 package arjdbc.util;
 
-import java.util.WeakHashMap;
-
 import org.jruby.Ruby;
 import org.jruby.RubyString;
 import org.jruby.runtime.ThreadContext;
+
 import org.jruby.util.ByteList;
+import org.jruby.util.collections.WeakValuedMap;
 
 /**
  * Cache of _unicode_ strings.
@@ -37,7 +37,12 @@ import org.jruby.util.ByteList;
  */
 public final class StringCache {
 
-    final WeakHashMap<String, ByteList> cache = new WeakHashMap<String, ByteList>(64);
+    //private Map realMap;
+
+    final WeakValuedMap<String, ByteList> cache = new WeakValuedMap<String, ByteList>();
+    //protected Map<String, WeakValuedMap.KeyedReference<String, ByteList>> newMap() {
+    //    return realMap = super.newMap();
+    //}
 
     public RubyString get(final ThreadContext context, final String key) {
         final ByteList bytes = cache.get(key);
@@ -49,12 +54,12 @@ public final class StringCache {
     private RubyString store(final ThreadContext context, final String key) {
         final Ruby runtime = context.runtime;
         final RubyString str = RubyString.newUnicodeString(runtime, key);
-        synchronized (cache) { cache.put(key, str.getByteList()); }
+        cache.put(key, str.getByteList()); // backed by ConcurrentHashMap
         return (RubyString) str.freeze(context);
     }
 
-    public void clear() {
-        cache.clear();
-    }
+    //public void clear() {
+    //    cache.clear();
+    //}
 
 }

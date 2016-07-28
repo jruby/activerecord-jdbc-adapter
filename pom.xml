@@ -45,7 +45,7 @@
   </developers>
 
   <properties>
-    <jruby.version>1.7.16</jruby.version>
+    <jruby.version>1.7.18</jruby.version>
     <jruby.plugins.version>1.0.6</jruby.plugins.version>
     <invoker.skip>${maven.test.skip}</invoker.skip>
     <compiler.source>1.6</compiler.source>
