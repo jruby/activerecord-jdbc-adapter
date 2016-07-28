@@ -253,7 +253,7 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
     @Override
     protected String resolveArrayBaseTypeName(final ThreadContext context,
         final Object value, final IRubyObject column, final int type) {
-        String sqlType = column.callMethod(context, "sql_type").toString();
+        String sqlType = CallSites.column_sql_type.call(context, column, column).toString();
         if ( sqlType.startsWith("character varying") ) return "text";
         final int index = sqlType.indexOf('('); // e.g. "character varying(255)"
         if ( index > 0 ) sqlType = sqlType.substring(0, index);
