@@ -277,7 +277,7 @@ public class MySQLRubyJdbcConnection extends RubyJdbcConnection {
                                 currentLengths = RubyArray.newArray(runtime, 4) // lengths
                             };
 
-                            indexes.append( IndexDefinition.callMethod(context, "new", args) ); // IndexDefinition.new
+                            indexes.append( CallSites.IndexDefinition_new.call(context, IndexDefinition, IndexDefinition, args) ); // IndexDefinition.new
                         }
 
                         if ( currentColumns != null ) {

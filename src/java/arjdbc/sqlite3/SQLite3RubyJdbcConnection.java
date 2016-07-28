@@ -138,7 +138,6 @@ public class SQLite3RubyJdbcConnection extends RubyJdbcConnection {
         return withConnection(context, new Callable<IRubyObject>() {
             public RubyArray call(final Connection connection) throws SQLException {
                 final Ruby runtime = context.runtime;
-                final RubyClass indexDefinition = getIndexDefinition(runtime);
 
                 final TableName table = extractTableName(connection, schemaName, tableName);
 
@@ -156,6 +155,7 @@ public class SQLite3RubyJdbcConnection extends RubyJdbcConnection {
                     }
                     throw e;
                 }
+                final RubyClass IndexDefinition = getIndexDefinition(runtime);
                 final RubyArray indexes = RubyArray.newArray(runtime, 8);
                 try {
                     String currentIndex = null;
@@ -184,13 +184,14 @@ public class SQLite3RubyJdbcConnection extends RubyJdbcConnection {
                                 // orders, (since AR 3.2) where, type, using (AR 4.0)
                             };
 
-                            indexes.append( indexDefinition.callMethod(context, "new", args) ); // IndexDefinition.new
+                            indexes.append( CallSites.IndexDefinition_new.call(context, IndexDefinition, IndexDefinition, args) );
                         }
 
                         // One or more columns can be associated with an index
                         IRubyObject lastIndexDef = indexes.isEmpty() ? null : indexes.entry(-1);
                         if ( lastIndexDef != null ) {
-                            ( (RubyArray) lastIndexDef.callMethod(context, "columns") ).append(rubyColumnName);
+                            IRubyObject columns = CallSites.indexDefinition_columns.call(context, lastIndexDef, lastIndexDef);
+                            ( (RubyArray) columns ).append(rubyColumnName);
                         }
                     }
 

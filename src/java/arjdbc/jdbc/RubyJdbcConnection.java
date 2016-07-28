@@ -4533,6 +4533,8 @@ public class RubyJdbcConnection extends RubyObject {
 
         public static final CachingCallSite IndexDefinition_new = monoCallSite("new", "IndexDefinition.");
 
+        public static final CachingCallSite indexDefinition_columns = monoCallSite("columns", "index_definition.");
+
         public static final CachingCallSite ForeignKeyDefinition_new = monoCallSite("new", "FKDefinition.");
 
         // AR::Column (of some type) new
