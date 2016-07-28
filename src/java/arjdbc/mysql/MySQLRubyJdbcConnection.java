@@ -217,7 +217,7 @@ public class MySQLRubyJdbcConnection extends RubyJdbcConnection {
             }
         }
         catch (Exception e) {
-            debugMessage(context, "connection considered broken due: " + e.toString());
+            debugMessage(context.runtime, "connection considered broken due: ", e);
             return false;
         }
         catch (AbstractMethodError e) { // non-JDBC 4.0 driver

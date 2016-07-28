@@ -3906,11 +3906,11 @@ public class RubyJdbcConnection extends RubyObject {
                 if ( retry > 0 ) { // we're retrying running the block
                     if ( reconnectOnRetry ) {
                         gotConnection = false;
-                        debugMessage(context, "trying to re-connect using a new connection ...");
+                        debugMessage(context.runtime, "trying to re-connect using a new connection ...");
                         connectImpl(true); // force a new connection to be created
                     }
                     else {
-                        debugMessage(context, "re-trying transient failure on same connection ...");
+                        debugMessage(context.runtime, "re-trying transient failure on same connection ...");
                     }
                 }
 
@@ -4442,7 +4442,7 @@ public class RubyJdbcConnection extends RubyObject {
     protected static void debugErrorSQL(final ThreadContext context, final String sql) {
         if ( debug || ( context != null && context.runtime.isDebug() ) ) {
             final PrintStream out = context != null ? context.runtime.getOut() : System.out;
-            out.println("Error SQL: '" + sql + "'");
+            out.print("ArJdbc: (error) SQL = "); out.println(sql);
         }
     }
 
