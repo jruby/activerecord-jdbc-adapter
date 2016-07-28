@@ -403,7 +403,7 @@ public class OracleRubyJdbcConnection extends RubyJdbcConnection {
                     return arr;
                 }
                 catch (final SQLException e) {
-                    debugMessage(context, "failed to describe '" + name + "' : " + e.getMessage());
+                    debugMessage(context.runtime, "failed to describe '" + name + "' : ", e);
                     throw e;
                 }
                 finally { close(result); close(statement); }
@@ -423,7 +423,7 @@ public class OracleRubyJdbcConnection extends RubyJdbcConnection {
                     return result.getString(1);
                 }
                 catch (final SQLException e) {
-                    debugMessage(context, "\"" + sql + "\" failed : " + e.getMessage());
+                    debugMessage(context.runtime, "select owner (" + sql + ") failed: ", e);
                     throw e;
                 }
                 finally { close(result); close(statement); }
