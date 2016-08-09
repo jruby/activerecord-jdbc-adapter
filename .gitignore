@@ -31,3 +31,4 @@ gemfiles/.bundle/config
 Gemfile.lock
 .idea
 .settings
+.ruby-version
