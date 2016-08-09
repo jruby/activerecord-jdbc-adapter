@@ -19,6 +19,7 @@ gemfile:
   - gemfiles/rails40.gemfile
   - gemfiles/rails41.gemfile
   - gemfiles/rails42.gemfile
+  - gemfiles/rails50.gemfile
 env:
   - JRUBY_OPTS="--1.8 $JRUBY_OPTS" DB=mysql
   - JRUBY_OPTS="--1.9 $JRUBY_OPTS" DB=mysql PREPARED_STATEMENTS=false
@@ -435,4 +436,29 @@ matrix:
       env: JRUBY_OPTS="--1.8 $JRUBY_OPTS" DB=jndi
     - rvm: jruby-head
       gemfile: gemfiles/rails42.gemfile
+      env: JRUBY_OPTS="--1.8 $JRUBY_OPTS" DB=jdbc
+    # Rails 5.0 (JRuby 9K) :
+    - rvm: jruby-head
+      gemfile: gemfiles/rails50.gemfile
+      env: JRUBY_OPTS="--1.8 $JRUBY_OPTS" DB=mysql
+    - rvm: jruby-head
+      gemfile: gemfiles/rails50.gemfile
+      env: JRUBY_OPTS="--1.8 $JRUBY_OPTS" DB=postgresql
+    - rvm: jruby-head
+      gemfile: gemfiles/rails50.gemfile
+      env: JRUBY_OPTS="--1.8 $JRUBY_OPTS" DB=sqlite3
+    - rvm: jruby-head
+      gemfile: gemfiles/rails50.gemfile
+      env: JRUBY_OPTS="--1.8 $JRUBY_OPTS" DB=derby
+    - rvm: jruby-head
+      gemfile: gemfiles/rails50.gemfile
+      env: JRUBY_OPTS="--1.8 $JRUBY_OPTS" DB=h2
+    - rvm: jruby-head
+      gemfile: gemfiles/rails50.gemfile
+      env: JRUBY_OPTS="--1.8 $JRUBY_OPTS" DB=hsqldb
+    - rvm: jruby-head
+      gemfile: gemfiles/rails50.gemfile
+      env: JRUBY_OPTS="--1.8 $JRUBY_OPTS" DB=jndi
+    - rvm: jruby-head
+      gemfile: gemfiles/rails50.gemfile
       env: JRUBY_OPTS="--1.8 $JRUBY_OPTS" DB=jdbc
