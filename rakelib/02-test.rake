@@ -75,8 +75,8 @@ test_task_for :Derby, :desc => 'Run tests against (embedded) DerbyDB'
 test_task_for :H2, :desc => 'Run tests against H2 database engine'
 test_task_for :HSQLDB, :desc => 'Run tests against HyperSQL (Java) database'
 test_task_for :MSSQL, :driver => :jtds, :database_name => 'MS-SQL (SQLServer)'
-test_task_for :MySQL, :prereqs => 'db:mysql'
-test_task_for :PostgreSQL, :driver => 'postgres', :prereqs => 'db:postgresql'
+test_task_for :MySQL #, :prereqs => 'db:mysql'
+test_task_for :PostgreSQL, :driver => 'postgres' #, :prereqs => 'db:postgresql'
 task :test_postgres => :test_postgresql # alias
 test_task_for :SQLite3, :driver => ENV['JDBC_SQLITE_VERSION']
 task :test_sqlite => :test_sqlite3 # alias
