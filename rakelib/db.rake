@@ -15,11 +15,11 @@ GRANT ALL PRIVILEGES ON `test\_%`.* TO #{MYSQL_CONFIG[:username]}@localhost;
 SET PASSWORD FOR #{MYSQL_CONFIG[:username]}@localhost = PASSWORD('#{MYSQL_CONFIG[:password]}');
 SQL
     params = { '-u' => 'root' }
-    if ENV['DATABASE_YML']
-      require 'yaml'
-      password = YAML.load(File.new(ENV['DATABASE_YML']))["production"]["password"]
-      params['--password'] = password
+    if ENV['DATABASE_YML']; require 'yaml'
+      params['-p'] = YAML.load(File.new(ENV['DATABASE_YML']))["production"]["password"]
     end
+    params['-u'] = ENV['MY_USER'] if ENV['MY_USER']
+    params['-p'] = ENV['MY_PASSWORD'] if ENV['MY_PASSWORD']
     puts "Creating MySQL (test) database: #{MYSQL_CONFIG[:database]}"
     sh "cat #{script.path} | #{mysql} -f #{params.to_a.join(' ')}", :verbose => $VERBOSE # so password is not echoed
   end
