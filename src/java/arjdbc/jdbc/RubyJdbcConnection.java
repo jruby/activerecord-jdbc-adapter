@@ -2146,7 +2146,7 @@ public class RubyJdbcConnection extends RubyObject {
         for ( int i = 0; i < binds.size(); i++ ) {
             // [ [ column1, param1 ], [ column2, param2 ], ... ]
             Object param = binds.get(i); IRubyObject column = null;
-            if ( param.getClass() == RubyArray.class ) {
+            if ( param instanceof RubyArray ) {
                 final RubyArray _param = (RubyArray) param;
                 column = _param.eltInternal(0); param = _param.eltInternal(1);
             }
