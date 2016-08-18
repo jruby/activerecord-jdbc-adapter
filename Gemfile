@@ -41,7 +41,7 @@ gem 'bcrypt-ruby', '~> 3.0.0', :require => nil, :group => :test
 #gem 'trinidad_dbpool', :require => nil, :group => :test
 
 group :development do
-  gem 'ruby-debug', :require => nil if ENV['DEBUG']
+  #gem 'ruby-debug', :require => nil if ENV['DEBUG']
   group :doc do
     gem 'yard', :require => nil
     #gem 'yard-method-overrides', :github => 'kares/yard-method-overrides', :require => nil
