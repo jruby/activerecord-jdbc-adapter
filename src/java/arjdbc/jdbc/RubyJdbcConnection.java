@@ -1637,7 +1637,7 @@ public class RubyJdbcConnection extends RubyObject {
     public IRubyObject with_jdbc_connection(final ThreadContext context, final Block block) {
         return withConnection(context, new Callable<IRubyObject>() {
             public IRubyObject call(final Connection connection) throws SQLException {
-                return block.call(context, new IRubyObject[] { convertJavaToRuby(connection) });
+                return block.call(context, convertJavaToRuby(connection));
             }
         });
     }
