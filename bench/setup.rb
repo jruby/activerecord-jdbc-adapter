@@ -14,12 +14,12 @@ if defined? JRUBY_VERSION
   end
 end
 
-TIMES = ( ARGV[0] || ENV['TIMES'] || 100 ).to_i
+TIMES = ( ARGV[0] || ENV['TIMES'] || 1000 ).to_i
 # ROW_COUNT = (ARGV[1] || 10).to_i
 DATA_SIZE = ( ENV['DATA_SIZE'] || 1000 ).to_i
 
 config = {
-  :adapter => ENV['AR_ADAPTER'] || 'postgresql'
+  :adapter => ENV['AR_ADAPTER'] || 'postgresql', :host => ENV['AR_HOST'] || 'localhost'
 }
 config[:username] = ENV['AR_USERNAME'] if ENV['AR_USERNAME']
 config[:password] = ENV['AR_PASSWORD'] if ENV['AR_PASSWORD']
