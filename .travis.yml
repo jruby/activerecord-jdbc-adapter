@@ -52,6 +52,8 @@ branches:
     - master
     - /.*-stable$/
     - /^test-.*/
+    - /maintenance|support/
+    - /.*dev$/
 matrix:
   allow_failures:
     #- rvm: jruby-head
