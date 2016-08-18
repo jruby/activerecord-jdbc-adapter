@@ -846,13 +846,13 @@ module ActiveRecord
       else
         @@suble_binds = ActiveRecord::VERSION::MAJOR < 4 # due compatibility
       end
+      # @deprecated
       def self.suble_binds?; @@suble_binds; end
-      def self.suble_binds=(flag); @@suble_binds = flag; end # remove on 1.4
 
       private
 
       # @note Since AR 4.0 we (finally) do not "sub" SQL's '?' parameters !
-      # @deprecated This should go away (hopefully), now here due 1.2.x.
+      # @deprecated expected to go away in a future version that drops AR 3.2
       def suble_binds(sql, binds)
         return sql if ! @@suble_binds || binds.nil? || binds.empty?
         binds = binds.dup; warn = nil
