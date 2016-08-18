@@ -92,6 +92,20 @@ module SerializeTestMethods
   def test_serialized_ostruct
     Topic.serialize :content, OpenStruct
 
+    #pend 'need ostruct.rb stdlib update for 2.3.1' if defined?(JRUBY_VERSION) && JRUBY_VERSION == '9.1.2.0'
+    if defined?(JRUBY_VERSION) && JRUBY_VERSION == '9.1.2.0'
+      require 'ostruct.rb'
+      OpenStruct.class_eval do
+        class << self
+          alias allocate new
+        end
+      end
+    end
+    # due:
+    # NoMethodError: undefined method `key?' for nil:NilClass
+    # /opt/local/rvm/rubies/jruby-9.1.2.0/lib/ruby/stdlib/ostruct.rb:176:in `respond_to_missing?'
+    # ... missing in 9.1.2.0 (fixed in 2.3.1 https://github.com/ruby/ruby/commit/4c1ac0bc0)
+
     t = Topic.new
     t.content.foo = 'bar'
     t.save!
