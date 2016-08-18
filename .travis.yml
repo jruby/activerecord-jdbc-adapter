@@ -59,6 +59,8 @@ matrix:
     # these fail on 9K (JNDI bind/lookup issue) ... since ~ pre2 :
     - env: JRUBY_OPTS="--1.8 $JRUBY_OPTS" DB=jndi
     - env: JRUBY_OPTS="--1.9 $JRUBY_OPTS" DB=jndi PREPARED_STATEMENTS=true
+    - env: DB=mariadb
+    - env: DB=mariadb PREPARED_STATEMENTS=true
   include: # testing against MariaDB
     - addons:
         mariadb: '5.5'
@@ -69,14 +71,14 @@ matrix:
     - addons:
         mariadb: '10.0'
       rvm: jruby-1.7.24
-      gemfile: gemfiles/rails40.gemfile
-      env: JRUBY_OPTS="$JRUBY_OPTS" DB=mariadb
+      gemfile: gemfiles/rails42.gemfile
+      env: DB=mariadb
       jdk: openjdk7
     - addons:
         mariadb: '10.0'
       rvm: jruby-1.7.24
       gemfile: gemfiles/rails41.gemfile
-      env: JRUBY_OPTS="$JRUBY_OPTS" DB=mariadb PREPARED_STATEMENTS=true
+      env: DB=mariadb PREPARED_STATEMENTS=true
       jdk: oraclejdk8
       # include some tests on JDK 6 :
 #    - rvm: jruby-1.7.24
@@ -104,39 +106,39 @@ matrix:
 #      env: JRUBY_OPTS="$JRUBY_OPTS" DB=hsqldb
 #      jdk: openjdk6
       # include testing with JRuby 9K (4.2) :
-    - rvm: jruby-9.0.5.0
+    - rvm: jruby-9.1.2.0
       gemfile: gemfiles/rails42.gemfile
       env: JRUBY_OPTS="$JRUBY_OPTS" DB=mysql PREPARED_STATEMENTS=true
       jdk: oraclejdk7
-    - rvm: jruby-9.0.5.0
+    - rvm: jruby-9.1.2.0
       gemfile: gemfiles/rails42.gemfile
       env: JRUBY_OPTS="$JRUBY_OPTS" DB=postgresql PREPARED_STATEMENTS=true
       jdk: oraclejdk7
-    - rvm: jruby-9.0.5.0
+    - rvm: jruby-9.1.2.0
       gemfile: gemfiles/rails42.gemfile
       env: JRUBY_OPTS="$JRUBY_OPTS" DB=sqlite3
       jdk: oraclejdk7
-    - rvm: jruby-9.0.5.0
+    - rvm: jruby-9.1.2.0
       gemfile: gemfiles/rails42.gemfile
       env: JRUBY_OPTS="$JRUBY_OPTS" DB=mysql
       jdk: oraclejdk8
-    - rvm: jruby-9.0.5.0
+    - rvm: jruby-9.1.2.0
       gemfile: gemfiles/rails42.gemfile
       env: JRUBY_OPTS="$JRUBY_OPTS" DB=postgresql
       jdk: oraclejdk8
-    - rvm: jruby-9.0.5.0
+    - rvm: jruby-9.1.2.0
       gemfile: gemfiles/rails42.gemfile
       env: JRUBY_OPTS="$JRUBY_OPTS" DB=sqlite3
       jdk: oraclejdk8
-    - rvm: jruby-9.0.5.0
+    - rvm: jruby-9.1.2.0
       gemfile: gemfiles/rails42.gemfile
       env: JRUBY_OPTS="$JRUBY_OPTS" DB=derby
       jdk: oraclejdk8
-    - rvm: jruby-9.0.5.0
+    - rvm: jruby-9.1.2.0
       gemfile: gemfiles/rails42.gemfile
       env: JRUBY_OPTS="$JRUBY_OPTS" DB=h2
       jdk: oraclejdk8
-    - rvm: jruby-9.0.5.0
+    - rvm: jruby-9.1.2.0
       gemfile: gemfiles/rails42.gemfile
       env: JRUBY_OPTS="$JRUBY_OPTS" DB=hsqldb
       jdk: oraclejdk8

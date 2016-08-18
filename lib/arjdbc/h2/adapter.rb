@@ -10,6 +10,11 @@ module ArJdbc
     # @see ActiveRecord::ConnectionAdapters::JdbcAdapter#jdbc_connection_class
     def self.jdbc_connection_class; JdbcConnection end
 
+    # @see ActiveRecord::ConnectionAdapters::JdbcAdapter#jdbc_column_class
+    def jdbc_column_class
+      ::ActiveRecord::ConnectionAdapters::H2Column
+    end
+
     # @see ActiveRecord::ConnectionAdapters::JdbcColumn#column_types
     def self.column_selector
       [ /\.h2\./i, lambda { |config, column| column.extend(ColumnMethods) } ]
@@ -331,5 +336,8 @@ end
 module ActiveRecord::ConnectionAdapters
   class H2Adapter < JdbcAdapter
     include ::ArJdbc::H2
+  end
+  class H2Column < JdbcColumn
+    include ::ArJdbc::H2::Column
   end
 end

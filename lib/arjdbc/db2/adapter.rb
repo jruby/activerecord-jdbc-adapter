@@ -578,6 +578,7 @@ module ArJdbc
     end
 
     def change_column_null(table_name, column_name, null)
+      raise NotImplementedError, "DB2 for zOS does not support changing the column's nullability" if zos?
       if null
         sql = "ALTER TABLE #{table_name} ALTER COLUMN #{column_name} DROP NOT NULL"
       else
@@ -588,6 +589,7 @@ module ArJdbc
 
     def change_column_default(table_name, column_name, default)
       if default.nil?
+        raise NotImplementedError, "DB2 for zOS does not support changing the column default to NULL" if zos?
         sql = "ALTER TABLE #{table_name} ALTER COLUMN #{column_name} DROP DEFAULT"
       else
         sql = "ALTER TABLE #{table_name} ALTER COLUMN #{column_name} SET WITH DEFAULT #{quote(default)}"
@@ -690,6 +692,12 @@ module ArJdbc
     # @override
     def supports_views?; true end
 
+    # @override
+    def supports_foreign_keys?; true end
+
+	  # @override
+    def supports_ddl_transactions?; true end
+
     def execute_table_change(sql, table_name, name = nil)
       outcome = execute(sql, name)
       reorg_table(table_name, name)
@@ -736,11 +744,14 @@ module ArJdbc
 
     # @private
     def zos?
-      @zos = nil unless defined? @zos
+      @zos = config[:zos] unless defined? @zos
       return @zos unless @zos.nil?
+      # jdbc:db2: - connection to a DB2 for z/OS, DB2 for Linux, UNIX, and Windows
+      # jdbc:db2j:net: - connection is to a remote IBM Cloudscape server
+      # jdbc:ids: - informix (not supported)
       @zos =
         if url = config[:url]
-          !!( url =~ /^jdbc:db2j:net:/ && config[:driver] == DRIVER_NAME )
+          !!( config[:driver] == DRIVER_NAME && url =~ /^jdbc:db2j:net:/ )
         else
           nil
         end
