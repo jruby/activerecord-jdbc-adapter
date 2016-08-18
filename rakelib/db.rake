@@ -6,6 +6,7 @@ namespace :db do
   task :mysql do
     fail "could not create test database: mysql executable not found" unless mysql = which('mysql')
     load 'test/db/mysql_config.rb' # rescue nil
+    puts MYSQL_CONFIG.inspect if $VERBOSE
     script = sql_script <<-SQL, 'mysql'
 DROP DATABASE IF EXISTS `#{MYSQL_CONFIG[:database]}`;
 CREATE USER #{MYSQL_CONFIG[:username]}@localhost;
@@ -21,7 +22,7 @@ SQL
     params['-u'] = ENV['MY_USER'] if ENV['MY_USER']
     params['-p'] = ENV['MY_PASSWORD'] if ENV['MY_PASSWORD']
     puts "Creating MySQL (test) database: #{MYSQL_CONFIG[:database]}"
-    sh "cat #{script.path} | #{mysql} -f #{params.to_a.join(' ')}", :verbose => $VERBOSE # so password is not echoed
+    sh "cat #{script.path} | #{mysql} -f #{params.map {|k, v| "#{k}#{v}"}.join(' ')}", :verbose => $VERBOSE # so password is not echoed
   end
 
   desc "Creates the test database for PostgreSQL"
@@ -29,6 +30,7 @@ SQL
     fail 'could not create test database: psql executable not found' unless psql = which('psql')
     fail 'could not create test database: missing "postgres" role' unless PostgresHelper.postgres_role?
     load 'test/db/postgres_config.rb' # rescue nil
+    puts POSTGRES_CONFIG.inspect if $VERBOSE
     script = sql_script <<-SQL, 'psql'
 DROP DATABASE IF EXISTS #{POSTGRES_CONFIG[:database]};
 DROP USER IF EXISTS #{POSTGRES_CONFIG[:username]};
