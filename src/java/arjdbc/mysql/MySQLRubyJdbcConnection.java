@@ -47,7 +47,6 @@ import java.util.regex.Pattern;
 import org.joda.time.DateTime;
 import org.jruby.Ruby;
 import org.jruby.RubyClass;
-import org.jruby.RubyInteger;
 import org.jruby.RubyString;
 import org.jruby.RubyTime;
 import org.jruby.anno.JRubyMethod;
@@ -56,6 +55,7 @@ import org.jruby.runtime.ObjectAllocator;
 import org.jruby.runtime.ThreadContext;
 import org.jruby.runtime.builtin.IRubyObject;
 import org.jruby.util.TypeConverter;
+import org.jruby.util.ByteList;
 
 /**
  *
@@ -126,6 +126,12 @@ public class MySQLRubyJdbcConnection extends RubyJdbcConnection {
         if ( type == Types.BIT ) {
             final int value = resultSet.getInt(column);
             return resultSet.wasNull() ? context.nil : runtime.newFixnum(value);
+        }
+        else if ( type == Types.BINARY || type == Types.VARBINARY) {
+            final byte[] bytes = resultSet.getBytes(column);
+            if ( bytes == null || resultSet.wasNull() ) return context.nil;
+            final ByteList byteList = new ByteList(bytes, false);
+            return new RubyString(runtime, runtime.getString(), byteList);
         }
         return super.jdbcToRuby(context, runtime, column, type, resultSet);
     }
