@@ -178,9 +178,7 @@ public class OracleRubyJdbcConnection extends RubyJdbcConnection {
         if ( isPositiveInteger(value) ) {
             return RubyFixnum.newFixnum( runtime, Long.parseLong(value) );
         }
-        else {
-            return returnRowID ? RubyString.newString(runtime, value) : runtime.getNil();
-        }
+        return returnRowID ? RubyString.newString(runtime, value) : runtime.getNil();
     }
 
     private static boolean isPositiveInteger(final String value) {
@@ -286,7 +284,7 @@ public class OracleRubyJdbcConnection extends RubyJdbcConnection {
     }
 
     @Override
-    protected ColumnData[] extractColumns(final Ruby runtime,
+    protected ColumnData[] extractColumns(final ThreadContext context,
         final Connection connection, final ResultSet resultSet,
         final boolean downCase) throws SQLException {
 
@@ -302,7 +300,6 @@ public class OracleRubyJdbcConnection extends RubyJdbcConnection {
             } else {
                 name = caseConvertIdentifierForRails(connection, name);
             }
-            final RubyString columnName = RubyString.newUnicodeString(runtime, name);
 
             int columnType = resultMetaData.getColumnType(i);
             if (columnType == Types.NUMERIC) {
@@ -318,7 +315,7 @@ public class OracleRubyJdbcConnection extends RubyJdbcConnection {
                 }
             }
 
-            columns[i - 1] = new ColumnData(columnName, columnType, i);
+            columns[i - 1] = new ColumnData(name, columnType, i);
         }
 
         return columns;
