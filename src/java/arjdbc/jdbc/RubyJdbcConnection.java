@@ -2388,7 +2388,7 @@ public class RubyJdbcConnection extends RubyObject {
         if ( value == false && resultSet.wasNull() ) return context.nil;
         return runtime.newBoolean(value);
     }
-
+    
     @Deprecated
     protected IRubyObject booleanToRuby(
         final Ruby runtime, final ResultSet resultSet, final boolean value)
@@ -2397,7 +2397,7 @@ public class RubyJdbcConnection extends RubyObject {
         return runtime.newBoolean(value);
     }
 
-    protected static final int streamBufferSize = 2048;
+    protected static int streamBufferSize = 1024;
 
     protected IRubyObject streamToRuby(final ThreadContext context,
         final Ruby runtime, final ResultSet resultSet, final int column)
