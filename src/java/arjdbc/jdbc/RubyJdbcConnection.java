@@ -2462,7 +2462,7 @@ public class RubyJdbcConnection extends RubyObject {
         return runtime.newBoolean(value);
     }
 
-    protected static final int streamBufferSize = 2048;
+    protected static int streamBufferSize = 1024;
 
     protected IRubyObject streamToRuby(final ThreadContext context,
         final Ruby runtime, final ResultSet resultSet, final int column)
