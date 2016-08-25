@@ -14,6 +14,7 @@ module ActiveRecord
             require 'pg_array_parser'
             include PgArrayParser
           rescue LoadError
+            require 'arjdbc/postgresql/base/array_parser.rb'
             include PostgreSQL::ArrayParser
           end
 
