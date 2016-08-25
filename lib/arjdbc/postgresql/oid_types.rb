@@ -199,7 +199,7 @@ module ArJdbc
         m.register_type 'citext', OID::SpecializedString.new(:citext)
         m.register_type 'ltree', OID::SpecializedString.new(:ltree)
         
-        m.register_type 'array', OID:Array.new
+        m.register_type 'array', Type:Array.new
 
         # FIXME: why are we keeping these types as strings?
         m.alias_type 'interval', 'varchar'
