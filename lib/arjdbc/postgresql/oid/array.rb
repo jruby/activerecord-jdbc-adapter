@@ -1,3 +1,4 @@
+##copied from rails/active_record history as they changed the implementation to use the PG gem fo speed (C) reasons
 module ActiveRecord
   module ConnectionAdapters
     module PostgreSQL
