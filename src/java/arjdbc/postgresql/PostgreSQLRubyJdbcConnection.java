@@ -375,30 +375,6 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
     }
 
     @Override
-    protected IRubyObject arrayToRuby(final ThreadContext context,
-        final Ruby runtime, final ResultSet resultSet, final int column)
-        throws SQLException {
-        if ( rawArrayType == Boolean.TRUE ) { // pre AR 4.0 compatibility
-            return stringToRuby(context, runtime, resultSet, column);
-        }
-        // NOTE: avoid `finally { array.free(); }` on PostgreSQL due :
-        // java.sql.SQLFeatureNotSupportedException:
-        // Method org.postgresql.jdbc4.Jdbc4Array.free() is not yet implemented.
-        final Array value = resultSet.getArray(column);
-
-        if ( value == null /* || resultSet.wasNull() */ ) return context.nil;
-
-        final RubyArray array = RubyArray.newArray(runtime);
-
-        final ResultSet arrayResult = value.getResultSet(); // 1: index, 2: value
-        final int baseType = value.getBaseType();
-        while ( arrayResult.next() ) {
-            array.append( jdbcToRuby(context, runtime, 2, baseType, arrayResult) );
-        }
-        return array;
-    }
-
-    @Override
     protected final IRubyObject objectToRuby(final ThreadContext context,
         final Ruby runtime, final ResultSet resultSet, final int column)
         throws SQLException {
