@@ -23,6 +23,7 @@
  */
 package arjdbc.postgresql;
 
+import java.sql.Array;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -44,7 +45,7 @@ import org.jruby.util.SafePropertyAccessor;
 import org.postgresql.PGConnection;
 import org.postgresql.PGStatement;
 import org.postgresql.core.BaseConnection;
-import org.postgresql.jdbc4.Jdbc4Array;
+import org.postgresql.jdbc.PgArray;
 import org.postgresql.util.PGInterval;
 import org.postgresql.util.PGobject;
 
@@ -190,7 +191,7 @@ public final class PGDriverImplementation implements DriverImplementation {
             if ( sqlType != null ) {
                 if ( PostgreSQLRubyJdbcConnection.rawArrayType == Boolean.TRUE && arrayLike(sqlType) ) {
                     final int oid = PostgreSQLRubyJdbcConnection.oid(context, column);
-                    Jdbc4Array valueArr = new Jdbc4Array(connection.unwrap(BaseConnection.class), oid, valueStr);
+                    Array valueArr = new PgArray(connection.unwrap(BaseConnection.class), oid, valueStr);
                     statement.setArray(index, valueArr); return true;
                 }
                 if ( sqlType.getByteList().startsWith( INTERVAL ) ) {
