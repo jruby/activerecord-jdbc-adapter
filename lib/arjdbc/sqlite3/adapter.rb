@@ -104,7 +104,7 @@ module ArJdbc
 
     NATIVE_DATABASE_TYPES = {
       :primary_key => nil,
-      :string => { :name => "varchar", :limit => 255 },
+      :string => { :name => "varchar" },
       :text => { :name => "text" },
       :integer => { :name => "integer" },
       :float => { :name => "float" },
@@ -117,9 +117,6 @@ module ArJdbc
       :binary => { :name => "blob" },
       :boolean => { :name => "boolean" }
     }
-    NATIVE_DATABASE_TYPES.update(
-      :string => { :name => "varchar" }
-    ) if AR42
 
     # @override
     def native_database_types
@@ -224,7 +221,7 @@ module ArJdbc
 
     def quote_table_name_for_assignment(table, attr)
       quote_column_name(attr)
-    end if ::ActiveRecord::VERSION::MAJOR >= 4
+    end
 
     # @override
     def quote_column_name(name)
@@ -240,7 +237,7 @@ module ArJdbc
       else
         super
       end
-    end if ::ActiveRecord::VERSION::MAJOR >= 3
+    end
 
     # @override
     def tables(name = nil, table_name = nil)
@@ -254,10 +251,8 @@ module ArJdbc
       select_rows(sql, name).map { |row| row[0] }
     end
 
-    if ArJdbc::AR50
-      def views
-        select_values("SELECT name FROM sqlite_master WHERE type = 'view' AND name <> 'sqlite_sequence'", 'SCHEMA')
-      end
+    def views
+      select_values("SELECT name FROM sqlite_master WHERE type = 'view' AND name <> 'sqlite_sequence'", 'SCHEMA')
     end
 
     # @override
@@ -431,33 +426,11 @@ module ArJdbc
       end
     end
 
-    if ActiveRecord::VERSION::MAJOR >= 4
-
     # @private
     def remove_column(table_name, column_name, type = nil, options = {})
       alter_table(table_name) do |definition|
         definition.remove_column column_name
       end
-    end
-
-    else
-
-    # @private
-    def remove_column(table_name, *column_names)
-      if column_names.empty?
-        raise ArgumentError.new(
-          "You must specify at least one column name." +
-          "  Example: remove_column(:people, :first_name)"
-        )
-      end
-      column_names.flatten.each do |column_name|
-        alter_table(table_name) do |definition|
-          definition.columns.delete(definition[column_name])
-        end
-      end
-    end
-    alias :remove_columns :remove_column
-
     end
 
     def change_column_default(table_name, column_name, default) #:nodoc:
@@ -496,11 +469,6 @@ module ArJdbc
       alter_table(table_name, :rename => {column_name.to_s => new_column_name.to_s})
       rename_column_indexes(table_name, column_name, new_column_name) if respond_to?(:rename_column_indexes) # AR-4.0 SchemaStatements
     end
-
-    # @private
-    def add_lock!(sql, options)
-      sql # SELECT ... FOR UPDATE is redundant since the table is locked
-    end if ::ActiveRecord::VERSION::MAJOR < 3
 
     def empty_insert_statement_value
       # inherited (default) on 3.2 : "VALUES(DEFAULT)"
@@ -560,10 +528,6 @@ module ArJdbc
 end
 
 module ActiveRecord::ConnectionAdapters
-
-  # NOTE: SQLite3Column exists in native adapter since AR 4.0
-  remove_const(:SQLite3Column) if const_defined?(:SQLite3Column)
-
   class SQLite3Column < JdbcColumn
     include ArJdbc::SQLite3::Column
 
@@ -603,15 +567,5 @@ module ActiveRecord::ConnectionAdapters
 
     # @private
     Version = ArJdbc::SQLite3::Version
-
-  end
-
-  if ActiveRecord::VERSION::MAJOR <= 3
-    remove_const(:SQLiteColumn) if const_defined?(:SQLiteColumn)
-    SQLiteColumn = SQLite3Column
-
-    remove_const(:SQLiteAdapter) if const_defined?(:SQLiteAdapter)
-
-    SQLiteAdapter = SQLite3Adapter
   end
 end
