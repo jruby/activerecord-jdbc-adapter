@@ -32,8 +32,6 @@ module ActiveRecord
     # compatibility with native (MRI) adapters it's perfectly fine to sub-class
     # the adapter and override some of its API methods.
     class JdbcAdapter < AbstractAdapter
-      extend ShadowCoreMethods
-
       include Jdbc::ConnectionPoolCallbacks
 
       attr_reader :config
@@ -312,28 +310,6 @@ module ActiveRecord
       # @override
       def disconnect!
         @connection.disconnect!
-      end
-
-      if ActiveRecord::VERSION::MAJOR < 3
-
-        # @private
-        def jdbc_insert(sql, name = nil, pk = nil, id_value = nil, sequence_name = nil)
-          insert_sql(sql, name, pk, id_value, sequence_name)
-        end
-        alias_chained_method :insert, :query_dirty, :jdbc_insert
-
-        # @private
-        def jdbc_update(sql, name = nil, binds = [])
-          execute(sql, name, binds)
-        end
-        alias_chained_method :update, :query_dirty, :jdbc_update
-
-        # @private
-        def jdbc_select_all(sql, name = nil, binds = [])
-          select(sql, name, binds)
-        end
-        alias_chained_method :select_all, :query_cache, :jdbc_select_all
-
       end
 
       # @note Used on AR 2.3 and 3.0

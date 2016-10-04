@@ -41,21 +41,4 @@ module ActiveRecord
     end
 
   end
-  
-  module ConnectionAdapters
-    # Allows properly re-defining methods that may already be alias-chain-ed.
-    # Query caching works even with overriden alias_method_chain'd methods.
-    # @private
-    module ShadowCoreMethods
-      def alias_chained_method(name, feature, target)
-        # NOTE: aliasing for things such as columns (with feature query_cache)
-        # seems to only be used for 2.3 since 3.0 methods are not aliased ...
-        if method_defined?(method = "#{name}_without_#{feature}")
-          alias_method method, target
-        else
-          alias_method name, target if name.to_s != target.to_s
-        end
-      end
-    end
-  end
 end
