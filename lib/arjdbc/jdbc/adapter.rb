@@ -51,18 +51,12 @@ module ActiveRecord
       # @param logger the `ActiveRecord::Base.logger` to use (or nil)
       # @param config the database configuration
       # @note `initialize(logger, config)` with 2 arguments is supported as well
-      def initialize(connection, logger, config = nil)
-        # AR : initialize(connection, logger = nil, pool = nil)
-        # AR < 3.2 : initialize(connection, logger = nil)
-        if config.nil? && logger.respond_to?(:key?) # (logger, config)
-          config, logger, connection = logger, connection, nil
-        end
-
+      def initialize(connection, logger = nil, config = nil)
         @config = config.respond_to?(:symbolize_keys) ? config.symbolize_keys : config
         # FIXME: Rails 5 defaults to prepared statements on and we do not seem
         # to work yet.  So default to off unless it is requested until that is
         # fixed.
-        @config[:prepared_statements] = false if ArJdbc::AR50 && !@config[:prepared_statements]
+        @config[:prepared_statements] = false if !@config[:prepared_statements]
 
         # NOTE: JDBC 4.0 drivers support checking if connection isValid
         # thus no need to @config[:connection_alive_sql] ||= 'SELECT 1'
@@ -76,15 +70,7 @@ module ActiveRecord
         # NOTE: adapter spec's init_connection only called if instantiated here :
         connection ||= jdbc_connection_class(spec).new(@config, self)
 
-        if ActiveRecord::VERSION::MAJOR > 4
-          super(connection, logger, @config)
-        else
-          super(connection, logger)
-        end
-
-        unless pool.nil?
-          self.pool = pool
-        end
+        super(connection, logger, @config)
 
         # kind of like `extend ArJdbc::MyDB if self.class == JdbcAdapter` :
         klass = @config[:adapter_class]
