@@ -13,9 +13,6 @@ module ArJdbc
     # @see ActiveRecord::ConnectionAdapters::JdbcAdapter#jdbc_connection_class
     def self.jdbc_connection_class; DB2.jdbc_connection_class; end
 
-    # @see ActiveRecord::ConnectionAdapters::Jdbc::ArelSupport
-    def self.arel_visitor_type(config = nil); DB2.arel_visitor_type(config); end
-
     def self.column_selector
       [ /as400/i, lambda { |config, column| column.extend(Column) } ]
     end

@@ -123,16 +123,6 @@ module ArJdbc
       TableDefinition.new native_database_types, name, temporary, options, as
     end if AR42
 
-    def self.arel_visitor_type(config = nil)
-      ::Arel::Visitors::Oracle
-    end
-
-    # @see ActiveRecord::ConnectionAdapters::JdbcAdapter#bind_substitution
-    # @private
-    class BindSubstitution < ::Arel::Visitors::Oracle
-      include ::Arel::Visitors::BindVisitor
-    end if defined? ::Arel::Visitors::BindVisitor
-
     ADAPTER_NAME = 'Oracle'.freeze
 
     def adapter_name

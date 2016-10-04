@@ -35,6 +35,7 @@ module ArJdbc
     require 'arjdbc/mssql/column'
     require 'arjdbc/mssql/explain_support'
     require 'arjdbc/mssql/types' if AR42
+    require 'arel/visitors/sql_server'
 
     include LimitHelpers
     include Utils
@@ -100,24 +101,6 @@ module ArJdbc
 
     # @see ActiveRecord::ConnectionAdapters::JdbcAdapter#jdbc_column_class
     def jdbc_column_class; ::ActiveRecord::ConnectionAdapters::MSSQLColumn end
-
-    # @see ActiveRecord::ConnectionAdapters::Jdbc::ArelSupport
-    def self.arel_visitor_type(config)
-      require 'arel/visitors/sql_server'
-      ( config && config[:sqlserver_version].to_s == '2000' ) ?
-        ::Arel::Visitors::SQLServer2000 : ::Arel::Visitors::SQLServer
-    end
-
-    def self.arel_visitor_type(config)
-      require 'arel/visitors/sql_server'; ::Arel::Visitors::SQLServerNG
-    end if AR42
-
-    # @deprecated no longer used
-    # @see ActiveRecord::ConnectionAdapters::JdbcAdapter#arel2_visitors
-    def self.arel2_visitors(config)
-      visitor = arel_visitor_type(config)
-      { 'mssql' => visitor, 'jdbcmssql' => visitor, 'sqlserver' => visitor }
-    end
 
     def configure_connection
       use_database # config[:database]
@@ -805,6 +788,12 @@ module ActiveRecord::ConnectionAdapters
       super # configure_connection happens in super
 
       setup_limit_offset!
+    end
+
+    def arel_visitor # :nodoc:
+      ( config && config[:sqlserver_version].to_s == '2000' ) ?
+          ::Arel::Visitors::SQLServer2000.new(self) :
+          ::Arel::Visitors::SQLServer.new(self)
     end
 
     def self.cs_equality_operator; ::ArJdbc::MSSQL.cs_equality_operator end

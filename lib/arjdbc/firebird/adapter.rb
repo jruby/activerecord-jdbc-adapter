@@ -1,5 +1,7 @@
 ArJdbc.load_java_part :Firebird
 
+require 'arel/visitors/firebird'
+
 module ArJdbc
   module Firebird
 
@@ -61,16 +63,6 @@ module ArJdbc
 
     # @see ActiveRecord::ConnectionAdapters::JdbcAdapter#jdbc_column_class
     def jdbc_column_class; ::ActiveRecord::ConnectionAdapters::FirebirdColumn end
-
-    # @see ArJdbc::ArelHelper::ClassMethods#arel_visitor_type
-    def self.arel_visitor_type(config = nil)
-      require 'arel/visitors/firebird'; ::Arel::Visitors::Firebird
-    end
-
-    # @deprecated no longer used
-    def self.arel2_visitors(config = nil)
-      { 'firebird' => arel_visitor_type, 'firebirdsql' => arel_visitor_type }
-    end
 
     # @private
     @@emulate_booleans = true
@@ -432,6 +424,10 @@ module ActiveRecord::ConnectionAdapters
     def initialize(*args)
       ::ArJdbc::Firebird.initialize!
       super
+    end
+
+    def arel_visitor
+      Arel::Visitors::Firebird.new(self)
     end
 
   end

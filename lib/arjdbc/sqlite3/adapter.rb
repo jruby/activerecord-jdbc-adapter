@@ -96,17 +96,6 @@ module ArJdbc
 
     end
 
-    # @see ActiveRecord::ConnectionAdapters::Jdbc::ArelSupport
-    def self.arel_visitor_type(config = nil)
-      ::Arel::Visitors::SQLite
-    end
-
-    # @see ActiveRecord::ConnectionAdapters::JdbcAdapter#bind_substitution
-    # @private
-    class BindSubstitution < ::Arel::Visitors::SQLite
-      include ::Arel::Visitors::BindVisitor
-    end if defined? ::Arel::Visitors::BindVisitor
-
     ADAPTER_NAME = 'SQLite'.freeze
 
     def adapter_name
@@ -603,6 +592,10 @@ module ActiveRecord::ConnectionAdapters
   class SQLite3Adapter < JdbcAdapter
     include ArJdbc::SQLite3
     include ArJdbc::SQLite3::ExplainSupport
+
+    def arel_visitor # :nodoc:
+      Arel::Visitors::SQLite.new(self)
+    end
 
     def jdbc_connection_class(spec)
       ::ArJdbc::SQLite3.jdbc_connection_class

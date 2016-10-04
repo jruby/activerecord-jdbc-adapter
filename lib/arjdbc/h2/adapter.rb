@@ -1,5 +1,6 @@
 ArJdbc.load_java_part :H2
 require 'arjdbc/hsqldb/adapter'
+require 'arel/visitors/h2'
 
 module ArJdbc
   module H2
@@ -70,11 +71,6 @@ module ArJdbc
         value
       end
 
-    end
-
-    # @see ActiveRecord::ConnectionAdapters::Jdbc::ArelSupport
-    def self.arel_visitor_type(config = nil)
-      require 'arel/visitors/h2'; ::Arel::Visitors::H2
     end
 
     ADAPTER_NAME = 'H2'.freeze
@@ -298,6 +294,10 @@ module ActiveRecord::ConnectionAdapters
 
   class H2Adapter < JdbcAdapter
     include ArJdbc::H2
+
+    def arel_visitor
+      Arel::Visitors::H2.new(self)
+    end
   end
 
 end

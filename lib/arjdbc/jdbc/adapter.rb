@@ -8,7 +8,6 @@ require 'arjdbc/jdbc/connection_methods'
 require 'arjdbc/jdbc/driver'
 require 'arjdbc/jdbc/column'
 require 'arjdbc/jdbc/connection'
-require 'arjdbc/jdbc/arel_support'
 require 'arjdbc/jdbc/callbacks'
 require 'arjdbc/jdbc/extension'
 require 'arjdbc/jdbc/type_converter'
@@ -35,7 +34,6 @@ module ActiveRecord
     class JdbcAdapter < AbstractAdapter
       extend ShadowCoreMethods
 
-      include Jdbc::ArelSupport
       include Jdbc::ConnectionPoolCallbacks
 
       attr_reader :config

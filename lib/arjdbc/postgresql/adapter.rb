@@ -17,6 +17,7 @@ module ArJdbc
     require 'arjdbc/postgresql/column'
     require 'arjdbc/postgresql/explain_support'
     require 'arjdbc/postgresql/schema_creation' # AR 4.x
+    require 'arel/visitors/postgresql_jdbc'
     # @private
     IndexDefinition = ::ActiveRecord::ConnectionAdapters::IndexDefinition
 
@@ -44,22 +45,6 @@ module ArJdbc
         PostgreSQL.send(:remove_method, :init_connection) rescue nil
       end
     end
-
-    # @see ActiveRecord::ConnectionAdapters::Jdbc::ArelSupport
-    def self.arel_visitor_type(config = nil)
-      require 'arel/visitors/postgresql_jdbc'
-      ::Arel::Visitors::PostgreSQL
-    end
-
-    # @see ActiveRecord::ConnectionAdapters::JdbcAdapter#bind_substitution
-    # @private
-    class BindSubstitution < ::Arel::Visitors::PostgreSQL
-      include ::Arel::Visitors::BindVisitor
-
-      def preparable
-        false
-      end
-    end if defined? ::Arel::Visitors::BindVisitor
 
     ADAPTER_NAME = 'PostgreSQL'.freeze
 
@@ -1527,6 +1512,10 @@ module ActiveRecord::ConnectionAdapters
 
       @use_insert_returning = @config.key?(:insert_returning) ?
         self.class.type_cast_config_to_boolean(@config[:insert_returning]) : nil
+    end
+
+    def arel_visitor # :nodoc:
+      Arel::Visitors::PostgreSQL.new(self)
     end
 
     if ::ArJdbc::AR42

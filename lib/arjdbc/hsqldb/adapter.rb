@@ -1,6 +1,7 @@
 ArJdbc.load_java_part :HSQLDB
 require 'arjdbc/hsqldb/explain_support'
 require 'arjdbc/hsqldb/schema_creation' # AR 4.x
+require 'arel/visitors/hsqldb'
 
 module ArJdbc
   module HSQLDB
@@ -62,11 +63,6 @@ module ArJdbc
         value
       end
 
-    end
-
-    # @see ActiveRecord::ConnectionAdapters::Jdbc::ArelSupport
-    def self.arel_visitor_type(config = nil)
-      require 'arel/visitors/hsqldb'; ::Arel::Visitors::HSQLDB
     end
 
     ADAPTER_NAME = 'HSQLDB'.freeze
@@ -291,6 +287,10 @@ module ActiveRecord::ConnectionAdapters
 
   class HsqldbAdapter < JdbcAdapter
     include ArJdbc::HSQLDB
+
+    def arel_visitor # :nodoc:
+      Arel::Visitors::HSQLDB
+    end
   end
 
 end

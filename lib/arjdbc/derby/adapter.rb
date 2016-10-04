@@ -2,6 +2,7 @@ ArJdbc.load_java_part :Derby
 
 require 'arjdbc/util/table_copier'
 require 'arjdbc/derby/schema_creation' # AR 4.x
+require 'arel/visitors/derby'
 
 module ArJdbc
   module Derby
@@ -91,11 +92,6 @@ module ArJdbc
         value
       end
 
-    end
-
-    # @see ActiveRecord::ConnectionAdapters::Jdbc::ArelSupport
-    def self.arel_visitor_type(config = nil)
-      require 'arel/visitors/derby'; ::Arel::Visitors::Derby
     end
 
     ADAPTER_NAME = 'Derby'.freeze
