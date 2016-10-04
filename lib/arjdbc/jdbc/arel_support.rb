@@ -100,34 +100,6 @@ module ActiveRecord::ConnectionAdapters
 
       end
 
-      if defined? ::Arel::Visitors::VISITORS
-
-        # Instantiates a new AREL visitor for this adapter.
-        # @note On `ActiveRecord` **2.3** this method won't be used.
-        def new_visitor
-          visitor = self.class.resolve_visitor_type(config)
-          ( prepared_statements? ? visitor : bind_substitution(visitor) ).new(self)
-        end
-        protected :new_visitor
-
-        def bind_substitution(visitor); self.class.bind_substitution(visitor); end
-        private :bind_substitution
-
-        # @override ActiveRecord's convention
-        def unprepared_visitor
-          # super does self.class::BindSubstitution.new self
-          # we do not require the BindSubstitution constant - auto-generated :
-          visitor = self.class.resolve_visitor_type(config)
-          bind_substitution(visitor).new(self)
-        end
-
-      else # NO-OP when no AREL (AR-2.3)
-
-        # @private documented above
-        def new_visitor; end
-
-      end
-
     end
   end
 end

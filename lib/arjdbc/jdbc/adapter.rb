@@ -96,8 +96,6 @@ module ActiveRecord
 
         # NOTE: should not be necessary for JNDI due reconnect! on checkout :
         configure_connection if respond_to?(:configure_connection)
-
-        @visitor = new_visitor # nil if no AREL (AR-2.3)
       end
 
       # Returns the (JDBC) connection class to be used for this adapter.
