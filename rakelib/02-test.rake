@@ -82,7 +82,7 @@ test_task_for :SQLite3, :driver => ENV['JDBC_SQLITE_VERSION']
 task :test_sqlite => :test_sqlite3 # alias
 test_task_for :Firebird
 
-test_task_for :MariaDB, :prereqs => 'db:mysql', :files => FileList["test/db/mysql/*_test.rb"]
+test_task_for :MariaDB, :files => FileList["test/db/mysql/*_test.rb"] #, :prereqs => 'db:mysql'
 
 # ensure driver for these DBs is on your class-path
 [ :Oracle, :DB2, :Informix, :CacheDB ].each do |adapter|
