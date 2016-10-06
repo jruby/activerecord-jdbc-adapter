@@ -155,6 +155,23 @@ class MSSQLSimpleTest < Test::Unit::TestCase
     assert ! columns.find { |col| col.name == 'another_column' }
   end
 
+  def test_remove_column_with_constraint
+    ActiveRecord::Schema.define do
+      add_column :entries, 'another_column', :string
+      ActiveRecord::Base.connection.execute "ALTER TABLE entries ADD CONSTRAINT another_column_constraint CHECK (another_column != '!');"
+    end
+
+    columns = ActiveRecord::Base.connection.columns("entries")
+    assert columns.find { |col| col.name == 'another_column' }
+
+    ActiveRecord::Schema.define do
+      remove_column "entries", 'another_column'
+    end
+
+    columns = ActiveRecord::Base.connection.columns("entries")
+    assert ! columns.find { |col| col.name == 'another_column' }
+  end
+
   # from include DirtyAttributeTests :
 
 #  ActiveRecord::AttributeMethods.class_eval do
