@@ -568,7 +568,7 @@ module ArJdbc
     def remove_check_constraints(table_name, column_name)
       clear_cached_table(table_name)
       constraints = select_values "SELECT constraint_name" <<
-        " FROM information_schema.constraint_column_usage" <<
+        " FROM INFORMATION_SCHEMA.CONSTRAINT_COLUMN_USAGE" <<
         " WHERE table_name = '#{table_name}' AND column_name = '#{column_name}'"
       constraints.each do |constraint_name|
         execute "ALTER TABLE #{table_name} DROP CONSTRAINT #{constraint_name}"
