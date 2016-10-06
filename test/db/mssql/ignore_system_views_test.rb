@@ -8,10 +8,10 @@ class MSSQLIgnoreSystemViewsTest < Test::Unit::TestCase
     assert_not_include tables, 'views'
     if ActiveRecord::Base.connection.sqlserver_version == "2000"
       assert_false table_exists?("sys.views"), %{table_exists?("sys.views")}
-      assert_false table_exists?("INFORMATION_SCHEMA.VIEWS"), %{table_exists?("INFORMATION_SCHEMA.views")}
+      assert_false table_exists?("INFORMATION_SCHEMA.VIEWS"), %{table_exists?("INFORMATION_SCHEMA.VIEWS")}
     else
       assert_true table_exists?("sys.views"), %{table_exists?("sys.views")}
-      assert_true table_exists?("INFORMATION_SCHEMA.VIEWS"), %{table_exists?("INFORMATION_SCHEMA.views")}
+      assert_true table_exists?("INFORMATION_SCHEMA.VIEWS"), %{table_exists?("INFORMATION_SCHEMA.VIEWS")}
 
       assert_true table_exists?(:views), %{table_exists?(:views)}
     end
