@@ -1,8 +1,10 @@
 ArJdbc.load_java_part :SQLite3
 
-require 'arjdbc/sqlite3/explain_support'
 require 'arjdbc/util/table_copier'
+require "active_record/connection_adapters/statement_pool"
+require "active_record/connection_adapters/sqlite3/explain_pretty_printer"
 require "active_record/connection_adapters/sqlite3/quoting"
+require "active_record/connection_adapters/sqlite3/schema_creation"
 
 module ArJdbc
   module SQLite3
@@ -97,70 +99,155 @@ module ArJdbc
 
     end
 
-    # Mildly different because we are not really in Rails connection adapters
-    include ActiveRecord::ConnectionAdapters::SQLite3::Quoting
-
-    ADAPTER_NAME = 'SQLite'.freeze
-
     def adapter_name
       ADAPTER_NAME
     end
 
+    ADAPTER_NAME = 'SQLite'.freeze
+
+    # DIFFERENCE: Mildly different because we are not really in Rails connection adapters
+    include ActiveRecord::ConnectionAdapters::SQLite3::Quoting
+
     NATIVE_DATABASE_TYPES = {
-      :primary_key => 'integer PRIMARY KEY AUTOINCREMENT NOT NULL',
-      :string => { :name => "varchar" },
-      :text => { :name => "text" },
-      :integer => { :name => "integer" },
-      :float => { :name => "float" },
-      # :real => { :name=>"real" },
-      :decimal => { :name => "decimal" },
-      :datetime => { :name => "datetime" },
-      :timestamp => { :name => "datetime" },
-      :time => { :name => "time" },
-      :date => { :name => "date" },
-      :binary => { :name => "blob" },
-      :boolean => { :name => "boolean" }
+        primary_key:  "INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL",
+        string:       { name: "varchar" },
+        text:         { name: "text" },
+        integer:      { name: "integer" },
+        float:        { name: "float" },
+        decimal:      { name: "decimal" },
+        datetime:     { name: "datetime" },
+        time:         { name: "time" },
+        date:         { name: "date" },
+        binary:       { name: "blob" },
+        boolean:      { name: "boolean" }
     }
 
-    # @override
-    def native_database_types
-      NATIVE_DATABASE_TYPES.dup # FIXME: does not dup in Rails 5
+    # --- sqlite3_adapter code from Rails 5 (below)
+
+    # DIFFERENCE: fully qualify to ActiveRecord so we do not qualify to Arjdbc
+    class StatementPool < ::ActiveRecord::ConnectionAdapters::StatementPool
+      private
+
+      def dealloc(stmt)
+        stmt[:stmt].close unless stmt[:stmt].closed?
+      end
     end
 
-    # @override
+    def schema_creation # :nodoc:
+      # DIFFERENCE: fully qualify to ActiveRecord so we do not qualify to Arjdbc
+      ::ActiveRecord::ConnectionAdapters::SQLite3::SchemaCreation.new self
+    end
+
+    def arel_visitor # :nodoc:
+      Arel::Visitors::SQLite.new(self)
+    end
+
+    # DIFFERENCE: connection_options (3rd) param missing
+    def initialize(connection, logger, config)
+      super(connection, logger, config)
+
+      @active     = nil
+      @statements = StatementPool.new(self.class.type_cast_config_to_integer(config[:statement_limit]))
+    end
+
     def supports_ddl_transactions?
       true
     end
 
-    # @override
     def supports_savepoints?
-      sqlite_version >= '3.6.8'
+      true
     end
 
-    # @override
     def supports_partial_index?
-      sqlite_version >= '3.8.0'
+      sqlite_version >= "3.8.0"
     end
 
-    # @override
-    def supports_migrations?
+    # Returns true, since this connection adapter supports prepared statement
+    # caching.
+    def supports_statement_cache?
       true
     end
 
-    # @override
-    def supports_primary_key?
+    # Returns true, since this connection adapter supports migrations.
+    def supports_migrations? #:nodoc:
       true
     end
 
-    # @override
+    def supports_primary_key? #:nodoc:
+      true
+    end
+
+    def requires_reloading?
+      true
+    end
+
+    def supports_views?
+      true
+    end
+
+    def supports_datetime_with_precision?
+      true
+    end
+
+    def supports_multi_insert?
+      sqlite_version >= "3.7.11"
+    end
+
+    def active?
+      @active != false
+    end
+
+    # Disconnects from the database if already connected. Otherwise, this
+    # method does nothing.
+    def disconnect!
+      super
+      @active = false
+      @connection.close rescue nil
+    end
+
+    # Clears the prepared statements cache.
+    def clear_cache!
+      @statements.clear
+    end
+
     def supports_index_sort_order?
       true
     end
 
-    # @override
-    def supports_views?
+    def valid_type?(type)
       true
     end
+
+    # Returns 62. SQLite supports index names up to 64
+    # characters. The rest is used by Rails internally to perform
+    # temporary rename operations
+    def allowed_index_name_length
+      index_name_length - 2
+    end
+
+    def native_database_types #:nodoc:
+      NATIVE_DATABASE_TYPES
+    end
+
+    # Returns the current database encoding format as a string, eg: 'UTF-8'
+    def encoding
+      @connection.encoding.to_s
+    end
+
+    def supports_explain?
+      true
+    end
+
+    #--
+    # DATABASE STATEMENTS ======================================
+    #++
+
+    def explain(arel, binds = [])
+      sql = "EXPLAIN QUERY PLAN #{to_sql(arel, binds)}"
+      ::ActiveRecord::ConnectionAdapters::SQLite3::ExplainPrettyPrinter.new.pp(exec_query(sql, "EXPLAIN", []))
+    end
+
+    # --- sqlite3_adapter code from Rails 5 (above)
 
     def sqlite_version
       @sqlite_version ||= Version.new(select_value('SELECT sqlite_version(*)'))
@@ -483,11 +570,6 @@ module ActiveRecord::ConnectionAdapters
 
   class SQLite3Adapter < JdbcAdapter
     include ArJdbc::SQLite3
-    include ArJdbc::SQLite3::ExplainSupport
-
-    def arel_visitor # :nodoc:
-      Arel::Visitors::SQLite.new(self)
-    end
 
     def jdbc_connection_class(spec)
       ::ArJdbc::SQLite3.jdbc_connection_class
