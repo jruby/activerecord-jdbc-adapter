@@ -148,12 +148,6 @@ module ArJdbc
       sqlite_version >= '3.8.0'
     end
 
-
-    # @override
-    def supports_count_distinct?
-      true
-    end
-
     # @override
     def supports_autoincrement?
       true
