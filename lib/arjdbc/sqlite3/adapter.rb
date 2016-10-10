@@ -170,16 +170,6 @@ module ArJdbc
     end
 
     # @override
-    def supports_count_distinct?
-      true
-    end
-
-    # @override
-    def supports_autoincrement?
-      true
-    end
-
-    # @override
     def supports_index_sort_order?
       true
     end
