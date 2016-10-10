@@ -148,10 +148,6 @@ module ArJdbc
       sqlite_version >= '3.8.0'
     end
 
-    # @override
-    def supports_add_column?
-      true
-    end
 
     # @override
     def supports_count_distinct?
@@ -170,11 +166,6 @@ module ArJdbc
 
     # @override
     def supports_primary_key?
-      true
-    end
-
-    # @override
-    def supports_add_column?
       true
     end
 
@@ -417,7 +408,7 @@ module ArJdbc
     end
 
     def add_column(table_name, column_name, type, options = {})
-      if supports_add_column? && valid_alter_table_options( type, options )
+      if valid_alter_table_options( type, options )
         super(table_name, column_name, type, options)
       else
         alter_table(table_name) do |definition|
