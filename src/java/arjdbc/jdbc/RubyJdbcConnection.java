@@ -244,7 +244,7 @@ public class RubyJdbcConnection extends RubyObject {
         });
     }
 
-    @JRubyMethod(name = "begin", optional = 1) // optional isolation argument for AR-4.0
+    @JRubyMethod(name = {"begin", "transaction"}, optional = 1) // optional isolation argument for AR-4.0
     public IRubyObject begin(final ThreadContext context, final IRubyObject[] args) {
         final IRubyObject isolation = args.length > 0 ? args[0] : null;
         try { // handleException == false so we can handle setTXIsolation
