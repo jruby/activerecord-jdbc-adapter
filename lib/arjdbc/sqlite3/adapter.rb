@@ -2,6 +2,7 @@ ArJdbc.load_java_part :SQLite3
 
 require 'arjdbc/sqlite3/explain_support'
 require 'arjdbc/util/table_copier'
+require "active_record/connection_adapters/sqlite3/quoting"
 
 module ArJdbc
   module SQLite3
@@ -96,6 +97,9 @@ module ArJdbc
 
     end
 
+    # Mildly different because we are not really in Rails connection adapters
+    include ActiveRecord::ConnectionAdapters::SQLite3::Quoting
+
     ADAPTER_NAME = 'SQLite'.freeze
 
     def adapter_name
@@ -162,42 +166,6 @@ module ArJdbc
       @sqlite_version ||= Version.new(select_value('SELECT sqlite_version(*)'))
     end
     private :sqlite_version
-
-    # @override
-    def quote(value, column = nil)
-      return value if sql_literal?(value)
-
-      if value.kind_of?(String)
-        column_type = column && column.type
-        if column_type == :binary
-          "x'#{value.unpack("H*")[0]}'"
-        else
-          super
-        end
-      else
-        super
-      end
-    end
-
-    def quote_table_name_for_assignment(table, attr)
-      quote_column_name(attr)
-    end
-
-    # @override
-    def quote_column_name(name)
-      %Q("#{name.to_s.gsub('"', '""')}") # "' kludge for emacs font-lock
-    end
-
-    # Quote date/time values for use in SQL input.
-    # Includes microseconds if the value is a Time responding to usec.
-    # @override
-    def quoted_date(value)
-      if value.acts_like?(:time) && value.respond_to?(:usec)
-        "#{super}.#{sprintf("%06d", value.usec)}"
-      else
-        super
-      end
-    end
 
     # @override
     def tables(name = nil, table_name = nil)
