@@ -2,6 +2,7 @@ ArJdbc.load_java_part :SQLite3
 
 require 'arjdbc/util/table_copier'
 require "active_record/connection_adapters/statement_pool"
+require "active_record/connection_adapters/abstract/database_statements"
 require "active_record/connection_adapters/sqlite3/explain_pretty_printer"
 require "active_record/connection_adapters/sqlite3/quoting"
 require "active_record/connection_adapters/sqlite3/schema_creation"
@@ -103,10 +104,16 @@ module ArJdbc
       ADAPTER_NAME
     end
 
+    # --- sqlite3_adapter code from Rails 5 (below)
     ADAPTER_NAME = 'SQLite'.freeze
 
+    # DIFFERENCE: a) not in sqlite3 adapter at all b) don't know why abstract quoting private method is visible here?
+    def type_casted_binds(binds)
+      binds.map { |attr| type_cast(attr.value_for_database) }
+    end
+
     # DIFFERENCE: Mildly different because we are not really in Rails connection adapters
-    include ActiveRecord::ConnectionAdapters::SQLite3::Quoting
+    include ::ActiveRecord::ConnectionAdapters::SQLite3::Quoting
 
     NATIVE_DATABASE_TYPES = {
         primary_key:  "INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL",
@@ -121,8 +128,6 @@ module ArJdbc
         binary:       { name: "blob" },
         boolean:      { name: "boolean" }
     }
-
-    # --- sqlite3_adapter code from Rails 5 (below)
 
     # DIFFERENCE: fully qualify to ActiveRecord so we do not qualify to Arjdbc
     class StatementPool < ::ActiveRecord::ConnectionAdapters::StatementPool
@@ -247,38 +252,104 @@ module ArJdbc
       ::ActiveRecord::ConnectionAdapters::SQLite3::ExplainPrettyPrinter.new.pp(exec_query(sql, "EXPLAIN", []))
     end
 
-    # --- sqlite3_adapter code from Rails 5 (above)
+    # DIFFERENCE: Missing exec_query
 
-    def sqlite_version
-      @sqlite_version ||= Version.new(select_value('SELECT sqlite_version(*)'))
+    # DIFFERENCE: Missing exec_delete
+    #alias :exec_update :exec_delete
+
+    def last_inserted_id(result)
+      @connection.last_insert_row_id
     end
-    private :sqlite_version
 
-    # @override
-    def tables(name = nil, table_name = nil)
-      sql = "SELECT name FROM sqlite_master WHERE type = 'table'"
-      if table_name
-        sql << " AND name = #{quote_table_name(table_name)}"
-      else
-        sql << " AND NOT name = 'sqlite_sequence'"
+    # DIFFERENCE: Missing execute
+
+    def begin_db_transaction #:nodoc:
+      log("begin transaction",nil) { @connection.transaction }
+    end
+
+    def commit_db_transaction #:nodoc:
+      log("commit transaction",nil) { @connection.commit }
+    end
+
+    def exec_rollback_db_transaction #:nodoc:
+      log("rollback transaction",nil) { @connection.rollback }
+    end
+
+    # SCHEMA STATEMENTS ========================================
+
+    def tables(name = nil) # :nodoc:
+      ActiveSupport::Deprecation.warn(<<-MSG.squish)
+          #tables currently returns both tables and views.
+          This behavior is deprecated and will be changed with Rails 5.1 to only return tables.
+          Use #data_sources instead.
+      MSG
+
+      if name
+        ActiveSupport::Deprecation.warn(<<-MSG.squish)
+            Passing arguments to #tables is deprecated without replacement.
+        MSG
       end
 
-      select_rows(sql, name).map { |row| row[0] }
+      data_sources
     end
 
-    def views
-      select_values("SELECT name FROM sqlite_master WHERE type = 'view' AND name <> 'sqlite_sequence'", 'SCHEMA')
+    def data_sources
+      select_values("SELECT name FROM sqlite_master WHERE type IN ('table','view') AND name <> 'sqlite_sequence'", "SCHEMA")
     end
 
-    # @override
     def table_exists?(table_name)
-      table_name && tables(nil, table_name).any?
+      ActiveSupport::Deprecation.warn(<<-MSG.squish)
+          #table_exists? currently checks both tables and views.
+          This behavior is deprecated and will be changed with Rails 5.1 to only check tables.
+          Use #data_source_exists? instead.
+      MSG
+
+      data_source_exists?(table_name)
     end
 
-    def truncate_fake(table_name, name = nil)
-      execute "DELETE FROM #{quote_table_name(table_name)}; VACUUM", name
+    def data_source_exists?(table_name)
+      return false unless table_name.present?
+
+      sql = "SELECT name FROM sqlite_master WHERE type IN ('table','view') AND name <> 'sqlite_sequence'"
+      sql << " AND name = #{quote(table_name)}"
+
+      select_values(sql, "SCHEMA").any?
     end
-    # NOTE: not part of official AR (4.2) alias truncate truncate_fake
+
+    def views # :nodoc:
+      select_values("SELECT name FROM sqlite_master WHERE type = 'view' AND name <> 'sqlite_sequence'", "SCHEMA")
+    end
+
+    def view_exists?(view_name) # :nodoc:
+      return false unless view_name.present?
+
+      sql = "SELECT name FROM sqlite_master WHERE type = 'view' AND name <> 'sqlite_sequence'"
+      sql << " AND name = #{quote(view_name)}"
+
+      select_values(sql, "SCHEMA").any?
+    end
+
+    # --- sqlite3_adapter code from Rails 5 (above)
+
+    # Returns an array of +Column+ objects for the table specified by +table_name+.
+    def columns(table_name) # :nodoc:
+      table_name = table_name.to_s
+      table_structure(table_name).map do |field|
+        case field["dflt_value"]
+          when /^null$/i
+            field["dflt_value"] = nil
+          when /^'(.*)'$/m
+            field["dflt_value"] = $1.gsub("''", "'")
+          when /^"(.*)"$/m
+            field["dflt_value"] = $1.gsub('""', '"')
+        end
+
+        collation = field["collation"]
+        sql_type = field["type"]
+        type_metadata = fetch_type_metadata(sql_type)
+        new_column(field["name"], field["dflt_value"], type_metadata, field["notnull"].to_i == 0, table_name, nil, collation)
+      end
+    end
 
     # Returns 62. SQLite supports index names up to 64 characters.
     # The rest is used by Rails internally to perform temporary rename operations.
@@ -359,21 +430,6 @@ module ArJdbc
       e = ActiveRecord::StatementInvalid.new("Could not find table '#{table_name}'")
       e.set_backtrace error.backtrace
       raise e
-    end
-
-    # @override
-    def columns(table_name, name = nil)
-      column = jdbc_column_class
-      pass_cast_type = respond_to?(:lookup_cast_type)
-      table_structure(table_name).map do |field|
-        sql_type = field['type']
-        if pass_cast_type
-          cast_type = lookup_cast_type(sql_type)
-          column.new(field['name'], field['dflt_value'], cast_type, sql_type, field['notnull'] == 0)
-        else
-          column.new(field['name'], field['dflt_value'], sql_type, field['notnull'] == 0)
-        end
-      end
     end
 
     # @override
@@ -500,6 +556,16 @@ module ArJdbc
     def last_insert_id
       @connection.last_insert_rowid
     end
+
+    def sqlite_version
+      @sqlite_version ||= Version.new(select_value('SELECT sqlite_version(*)'))
+    end
+    private :sqlite_version
+
+    def truncate_fake(table_name, name = nil)
+      execute "DELETE FROM #{quote_table_name(table_name)}; VACUUM", name
+    end
+    # NOTE: not part of official AR (4.2) alias truncate truncate_fake
 
     protected
 
