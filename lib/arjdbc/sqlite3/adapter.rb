@@ -103,7 +103,7 @@ module ArJdbc
     end
 
     NATIVE_DATABASE_TYPES = {
-      :primary_key => nil,
+      :primary_key => 'integer PRIMARY KEY AUTOINCREMENT NOT NULL',
       :string => { :name => "varchar" },
       :text => { :name => "text" },
       :integer => { :name => "integer" },
@@ -120,17 +120,7 @@ module ArJdbc
 
     # @override
     def native_database_types
-      types = NATIVE_DATABASE_TYPES.dup
-      types[:primary_key] = default_primary_key_type
-      types
-    end
-
-    def default_primary_key_type
-      if supports_autoincrement?
-        'integer PRIMARY KEY AUTOINCREMENT NOT NULL'
-      else
-        'integer PRIMARY KEY NOT NULL'
-      end
+      NATIVE_DATABASE_TYPES.dup # FIXME: does not dup in Rails 5
     end
 
     # @override
@@ -146,11 +136,6 @@ module ArJdbc
     # @override
     def supports_partial_index?
       sqlite_version >= '3.8.0'
-    end
-
-    # @override
-    def supports_autoincrement?
-      true
     end
 
     # @override
