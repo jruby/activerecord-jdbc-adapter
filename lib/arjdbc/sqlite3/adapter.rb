@@ -329,8 +329,6 @@ module ArJdbc
       select_values(sql, "SCHEMA").any?
     end
 
-    # --- sqlite3_adapter code from Rails 5 (above)
-
     # Returns an array of +Column+ objects for the table specified by +table_name+.
     def columns(table_name) # :nodoc:
       table_name = table_name.to_s
@@ -350,6 +348,42 @@ module ArJdbc
         new_column(field["name"], field["dflt_value"], type_metadata, field["notnull"].to_i == 0, table_name, nil, collation)
       end
     end
+
+    # Returns an array of indexes for the given table.
+    def indexes(table_name, name = nil) #:nodoc:
+      exec_query("PRAGMA index_list(#{quote_table_name(table_name)})", "SCHEMA").map do |row|
+        sql = <<-SQL
+            SELECT sql
+            FROM sqlite_master
+            WHERE name=#{quote(row['name'])} AND type='index'
+            UNION ALL
+            SELECT sql
+            FROM sqlite_temp_master
+            WHERE name=#{quote(row['name'])} AND type='index'
+        SQL
+        index_sql = exec_query(sql).first["sql"]
+        match = /\sWHERE\s+(.+)$/i.match(index_sql)
+        where = match[1] if match
+        IndexDefinition.new(
+            table_name,
+            row["name"],
+            row["unique"] != 0,
+            exec_query("PRAGMA index_info('#{row['name']}')", "SCHEMA").map { |col|
+              col["name"]
+            }, nil, nil, where)
+      end
+    end
+
+    def primary_keys(table_name) # :nodoc:
+      pks = table_structure(table_name).select { |f| f["pk"] > 0 }
+      pks.sort_by { |f| f["pk"] }.map { |f| f["name"] }
+    end
+
+    def remove_index(table_name, options = {}) #:nodoc:
+      index_name = index_name_for_remove(table_name, options)
+      exec_query "DROP INDEX #{quote_column_name(index_name)}"
+    end
+    # --- sqlite3_adapter code from Rails 5 (above)
 
     # Returns 62. SQLite supports index names up to 64 characters.
     # The rest is used by Rails internally to perform temporary rename operations.
@@ -430,49 +464,6 @@ module ArJdbc
       e = ActiveRecord::StatementInvalid.new("Could not find table '#{table_name}'")
       e.set_backtrace error.backtrace
       raise e
-    end
-
-    # @override
-    def primary_key(table_name)
-      column = table_structure(table_name).find { |field| field['pk'].to_i == 1 }
-      column && column['name']
-    end
-
-    # NOTE: do not override indexes without testing support for 3.7.2 & 3.8.7 !
-    # @override
-    def indexes(table_name, name = nil)
-      # on JDBC 3.7 we'll simply do super since it can not handle "PRAGMA index_info"
-      return @connection.indexes(table_name, name) if sqlite_version < '3.8' # super
-
-      name ||= 'SCHEMA'
-      exec_query_raw("PRAGMA index_list(#{quote_table_name(table_name)})", name).map do |row|
-        index_name = row['name']
-        sql = "SELECT sql FROM sqlite_master"
-        sql << " WHERE name=#{quote(index_name)} AND type='index'"
-        sql << " UNION ALL "
-        sql << "SELECT sql FROM sqlite_temp_master"
-        sql << " WHERE name=#{quote(index_name)} AND type='index'"
-        where = nil
-        exec_query_raw(sql, name) do |index_sql|
-          match = /\sWHERE\s+(.+)$/i.match(index_sql)
-          where = match[1] if match
-        end
-        begin
-          columns = exec_query_raw("PRAGMA index_info('#{index_name}')", name).map { |col| col['name'] }
-        rescue => e
-          # NOTE: JDBC <= 3.8.7 bug work-around :
-          if e.message && e.message.index('[SQLITE_ERROR] SQL error or missing database')
-            columns = []
-          end
-          raise e
-        end
-        new_index_definition(table_name, index_name, row['unique'] != 0, columns, nil, nil, where)
-      end
-    end
-
-    # @override
-    def remove_index!(table_name, index_name)
-      execute "DROP INDEX #{quote_column_name(index_name)}"
     end
 
     # @override
@@ -636,6 +627,12 @@ module ActiveRecord::ConnectionAdapters
 
   class SQLite3Adapter < JdbcAdapter
     include ArJdbc::SQLite3
+
+    def indexes(table_name, name = nil) #:nodoc:
+      # on JDBC 3.7 we'll simply do super since it can not handle "PRAGMA index_info"
+      return @connection.indexes(table_name, name) if sqlite_version < '3.8' # super
+      super
+    end
 
     def jdbc_connection_class(spec)
       ::ArJdbc::SQLite3.jdbc_connection_class
