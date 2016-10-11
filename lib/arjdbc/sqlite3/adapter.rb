@@ -529,6 +529,11 @@ module ArJdbc
 
     # DIFFERENCE: missing copy_table_contents
 
+    def sqlite_version
+      # DIFFERENCE: Added 'ActiveRecord::ConnectionAdapters::AbstractAdapter::'
+      @sqlite_version ||= ActiveRecord::ConnectionAdapters::AbstractAdapter::Version.new(select_value("select sqlite_version(*)"))
+    end
+
     # --- sqlite3_adapter code from Rails 5 (above)
 
     # Returns 62. SQLite supports index names up to 64 characters.
@@ -619,11 +624,6 @@ module ArJdbc
       @connection.last_insert_rowid
     end
 
-    def sqlite_version
-      @sqlite_version ||= Version.new(select_value('SELECT sqlite_version(*)'))
-    end
-    private :sqlite_version
-
     def truncate_fake(table_name, name = nil)
       execute "DELETE FROM #{quote_table_name(table_name)}; VACUUM", name
     end
@@ -647,24 +647,6 @@ module ArJdbc
         end
       end
       super
-    end
-
-    # @private available in native adapter way back to AR-2.3
-    class Version
-      include Comparable
-
-      def initialize(version_string)
-        @version = version_string.split('.').map! { |v| v.to_i }
-      end
-
-      def <=>(version_string)
-        @version <=> version_string.split('.').map! { |v| v.to_i }
-      end
-
-      def to_s
-        @version.join('.')
-      end
-
     end
 
     private
@@ -755,8 +737,5 @@ module ActiveRecord::ConnectionAdapters
     def jdbc_connection_class(spec)
       ::ArJdbc::SQLite3.jdbc_connection_class
     end
-
-    # @private
-    Version = ArJdbc::SQLite3::Version
   end
 end
