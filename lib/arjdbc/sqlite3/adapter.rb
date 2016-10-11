@@ -9,6 +9,7 @@ require "active_record/connection_adapters/sqlite3/schema_creation"
 
 module ArJdbc
   module SQLite3
+    # FIXME: Remove once we figure out the 'does not return resultset issue with sql_exec'
     include Util::TableCopier
 
     # @see ActiveRecord::ConnectionAdapters::JdbcAdapter#jdbc_connection_class
@@ -447,6 +448,87 @@ module ArJdbc
       end
     end
 
+    def rename_column(table_name, column_name, new_column_name) #:nodoc:
+      column = column_for(table_name, column_name)
+      alter_table(table_name, rename: { column.name => new_column_name.to_s })
+      rename_column_indexes(table_name, column.name, new_column_name)
+    end
+
+    # DIFFERENCE: missing protected here
+
+    def table_structure(table_name)
+      structure = exec_query("PRAGMA table_info(#{quote_table_name(table_name)})", "SCHEMA")
+      raise(ActiveRecord::StatementInvalid, "Could not find table '#{table_name}'") if structure.empty?
+      table_structure_with_collation(table_name, structure)
+    end
+
+    def alter_table(table_name, options = {}) #:nodoc:
+      altered_table_name = "a#{table_name}"
+      caller = lambda { |definition| yield definition if block_given? }
+
+      transaction do
+        move_table(table_name, altered_table_name,
+                   options.merge(temporary: true))
+        move_table(altered_table_name, table_name, &caller)
+      end
+    end
+
+    def move_table(from, to, options = {}, &block) #:nodoc:
+      copy_table(from, to, options, &block)
+      drop_table(from)
+    end
+
+    def copy_table(from, to, options = {}) #:nodoc:
+      from_primary_key = primary_key(from)
+      options[:id] = false
+      create_table(to, options) do |definition|
+        @definition = definition
+        @definition.primary_key(from_primary_key) if from_primary_key.present?
+        columns(from).each do |column|
+          column_name = options[:rename] ?
+              (options[:rename][column.name] ||
+                  options[:rename][column.name.to_sym] ||
+                  column.name) : column.name
+          next if column_name == from_primary_key
+
+          @definition.column(column_name, column.type,
+                             limit: column.limit, default: column.default,
+                             precision: column.precision, scale: column.scale,
+                             null: column.null, collation: column.collation)
+        end
+        yield @definition if block_given?
+      end
+      copy_table_indexes(from, to, options[:rename] || {})
+      copy_table_contents(from, to,
+                          @definition.columns.map(&:name),
+                          options[:rename] || {})
+    end
+
+    def copy_table_indexes(from, to, rename = {}) #:nodoc:
+      indexes(from).each do |index|
+        name = index.name
+        if to == "a#{from}"
+          name = "t#{name}"
+        elsif from == "a#{to}"
+          name = name[1..-1]
+        end
+
+        to_column_names = columns(to).map(&:name)
+        columns = index.columns.map { |c| rename[c] || c }.select do |column|
+          to_column_names.include?(column)
+        end
+
+        unless columns.empty?
+          # index name can't be the same
+          opts = { name: name.gsub(/(^|_)(#{from})_/, "\\1#{to}_"), internal: true }
+          opts[:unique] = true if index.unique
+          add_index(to, columns, opts)
+        end
+      end
+    end
+
+    # DIFFERENCE: missing copy_table_contents
+
     # --- sqlite3_adapter code from Rails 5 (above)
 
     # Returns 62. SQLite supports index names up to 64 characters.
@@ -521,23 +603,6 @@ module ArJdbc
       execute(sql, name, binds)
     end
 
-    def table_structure(table_name)
-      sql = "PRAGMA table_info(#{quote_table_name(table_name)})"
-      log(sql, 'SCHEMA') { @connection.execute_query_raw(sql) }
-    rescue ActiveRecord::JDBCError => error
-      e = ActiveRecord::StatementInvalid.new("Could not find table '#{table_name}'")
-      e.set_backtrace error.backtrace
-      raise e
-    end
-
-    def rename_column(table_name, column_name, new_column_name)
-      unless columns(table_name).detect{|c| c.name == column_name.to_s }
-        raise ActiveRecord::ActiveRecordError, "Missing column #{table_name}.#{column_name}"
-      end
-      alter_table(table_name, :rename => {column_name.to_s => new_column_name.to_s})
-      rename_column_indexes(table_name, column_name, new_column_name) if respond_to?(:rename_column_indexes) # AR-4.0 SchemaStatements
-    end
-
     def empty_insert_statement_value
       # inherited (default) on 3.2 : "VALUES(DEFAULT)"
       # inherited (default) on 4.0 : "DEFAULT VALUES"
@@ -602,6 +667,45 @@ module ArJdbc
 
     end
 
+    private
+    COLLATE_REGEX = /.*\"(\w+)\".*collate\s+\"(\w+)\".*/i.freeze
+
+    def table_structure_with_collation(table_name, basic_structure)
+      collation_hash = {}
+      sql            = "SELECT sql FROM
+                              (SELECT * FROM sqlite_master UNION ALL
+                               SELECT * FROM sqlite_temp_master)
+                            WHERE type='table' and name='#{ table_name }' \;"
+
+      # Result will have following sample string
+      # CREATE TABLE "users" ("id" INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+      #                       "password_digest" varchar COLLATE "NOCASE");
+      result = exec_query(sql, "SCHEMA").first
+
+      if result
+        # Splitting with left parentheses and picking up last will return all
+        # columns separated with comma(,).
+        columns_string = result["sql"].split("(").last
+
+        columns_string.split(",").each do |column_string|
+          # This regex will match the column name and collation type and will save
+          # the value in $1 and $2 respectively.
+          collation_hash[$1] = $2 if COLLATE_REGEX =~ column_string
+        end
+
+        basic_structure.map! do |column|
+          column_name = column["name"]
+
+          if collation_hash.has_key? column_name
+            column["collation"] = collation_hash[column_name]
+          end
+
+          column
+        end
+      else
+        basic_structure.to_hash
+      end
+    end
   end
 end
 
@@ -638,6 +742,14 @@ module ActiveRecord::ConnectionAdapters
       # on JDBC 3.7 we'll simply do super since it can not handle "PRAGMA index_info"
       return @connection.indexes(table_name, name) if sqlite_version < '3.8' # super
       super
+    end
+
+    def table_structure(table_name)
+      super
+    rescue ActiveRecord::JDBCError => error
+      e = ActiveRecord::StatementInvalid.new("Could not find table '#{table_name}'")
+      e.set_backtrace error.backtrace
+      raise e
     end
 
     def jdbc_connection_class(spec)
