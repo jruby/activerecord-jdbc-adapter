@@ -383,6 +383,70 @@ module ArJdbc
       index_name = index_name_for_remove(table_name, options)
       exec_query "DROP INDEX #{quote_column_name(index_name)}"
     end
+
+    # Renames a table.
+    #
+    # Example:
+    #   rename_table('octopuses', 'octopi')
+    def rename_table(table_name, new_name)
+      exec_query "ALTER TABLE #{quote_table_name(table_name)} RENAME TO #{quote_table_name(new_name)}"
+      rename_table_indexes(table_name, new_name)
+    end
+
+    # See: http://www.sqlite.org/lang_altertable.html
+    # SQLite has an additional restriction on the ALTER TABLE statement
+    def valid_alter_table_type?(type)
+      type.to_sym != :primary_key
+    end
+
+    def add_column(table_name, column_name, type, options = {}) #:nodoc:
+      if valid_alter_table_type?(type)
+        super(table_name, column_name, type, options)
+      else
+        alter_table(table_name) do |definition|
+          definition.column(column_name, type, options)
+        end
+      end
+    end
+
+    def remove_column(table_name, column_name, type = nil, options = {}) #:nodoc:
+      alter_table(table_name) do |definition|
+        definition.remove_column column_name
+      end
+    end
+
+    def change_column_default(table_name, column_name, default_or_changes) #:nodoc:
+      default = extract_new_default_value(default_or_changes)
+
+      alter_table(table_name) do |definition|
+        definition[column_name].default = default
+      end
+    end
+
+    def change_column_null(table_name, column_name, null, default = nil) #:nodoc:
+      unless null || default.nil?
+        exec_query("UPDATE #{quote_table_name(table_name)} SET #{quote_column_name(column_name)}=#{quote(default)} WHERE #{quote_column_name(column_name)} IS NULL")
+      end
+      alter_table(table_name) do |definition|
+        definition[column_name].null = null
+      end
+    end
+
+    def change_column(table_name, column_name, type, options = {}) #:nodoc:
+      alter_table(table_name) do |definition|
+        include_default = options_include_default?(options)
+        definition[column_name].instance_eval do
+          self.type    = type
+          self.limit   = options[:limit] if options.include?(:limit)
+          self.default = options[:default] if include_default
+          self.null    = options[:null] if options.include?(:null)
+          self.precision = options[:precision] if options.include?(:precision)
+          self.scale   = options[:scale] if options.include?(:scale)
+          self.collation = options[:collation] if options.include?(:collation)
+        end
+      end
+    end
+
     # --- sqlite3_adapter code from Rails 5 (above)
 
     # Returns 62. SQLite supports index names up to 64 characters.
@@ -464,64 +528,6 @@ module ArJdbc
       e = ActiveRecord::StatementInvalid.new("Could not find table '#{table_name}'")
       e.set_backtrace error.backtrace
       raise e
-    end
-
-    # @override
-    def rename_table(table_name, new_name)
-      execute "ALTER TABLE #{quote_table_name(table_name)} RENAME TO #{quote_table_name(new_name)}"
-      rename_table_indexes(table_name, new_name) if respond_to?(:rename_table_indexes) # AR-4.0 SchemaStatements
-    end
-
-    # SQLite has an additional restriction on the ALTER TABLE statement.
-    # @see http://www.sqlite.org/lang_altertable.html
-    def valid_alter_table_options( type, options)
-      type.to_sym != :primary_key
-    end
-
-    def add_column(table_name, column_name, type, options = {})
-      if valid_alter_table_options( type, options )
-        super(table_name, column_name, type, options)
-      else
-        alter_table(table_name) do |definition|
-          definition.column(column_name, type, options)
-        end
-      end
-    end
-
-    # @private
-    def remove_column(table_name, column_name, type = nil, options = {})
-      alter_table(table_name) do |definition|
-        definition.remove_column column_name
-      end
-    end
-
-    def change_column_default(table_name, column_name, default) #:nodoc:
-      alter_table(table_name) do |definition|
-        definition[column_name].default = default
-      end
-    end
-
-    def change_column_null(table_name, column_name, null, default = nil)
-      unless null || default.nil?
-        execute("UPDATE #{quote_table_name(table_name)} SET #{quote_column_name(column_name)}=#{quote(default)} WHERE #{quote_column_name(column_name)} IS NULL")
-      end
-      alter_table(table_name) do |definition|
-        definition[column_name].null = null
-      end
-    end
-
-    def change_column(table_name, column_name, type, options = {})
-      alter_table(table_name) do |definition|
-        include_default = options_include_default?(options)
-        definition[column_name].instance_eval do
-          self.type    = type
-          self.limit   = options[:limit] if options.include?(:limit)
-          self.default = options[:default] if include_default
-          self.null    = options[:null] if options.include?(:null)
-          self.precision = options[:precision] if options.include?(:precision)
-          self.scale   = options[:scale] if options.include?(:scale)
-        end
-      end
     end
 
     def rename_column(table_name, column_name, new_column_name)
