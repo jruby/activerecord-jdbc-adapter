@@ -588,19 +588,23 @@ public class RubyJdbcConnection extends RubyObject {
             public IRubyObject call(final Connection connection) throws SQLException {
                 Statement statement = null;
                 final String query = sql.convertToString().getUnicodeValue();
+
                 try {
                     statement = createStatement(context, connection);
                     if ( doExecute(statement, query) ) {
-                        return mapResults(context, connection, statement, false);
+                        ResultSet resultSet = statement.getResultSet();
+                        ColumnData[] columns = extractColumns(context.runtime, connection, resultSet, false);
+
+                        return mapToResult(context, context.runtime, connection, resultSet, columns);
                     } else {
                         return mapGeneratedKeysOrUpdateCount(context, connection, statement);
                     }
-                }
-                catch (final SQLException e) {
+                } catch (final SQLException e) {
                     debugErrorSQL(context, query);
                     throw e;
+                } finally {
+                    close(statement);
                 }
-                finally { close(statement); }
             }
         });
     }
@@ -879,7 +883,6 @@ public class RubyJdbcConnection extends RubyObject {
      * @param sql
      * @return raw query result as a name => value Hash (unless block given)
      * @throws SQLException
-     * @see #execute_query(ThreadContext, IRubyObject[], Block)
      */
     @JRubyMethod(name = "execute_query", required = 1)
     public IRubyObject execute_query(final ThreadContext context,
@@ -895,7 +898,6 @@ public class RubyJdbcConnection extends RubyObject {
      * @return and <code>ActiveRecord::Result</code>
      * @throws SQLException
      *
-     * @see #execute_query(ThreadContext, IRubyObject, IRubyObject, Block)
      */
     @JRubyMethod(name = "execute_query", required = 2, optional = 1)
     // @JRubyMethod(name = "execute_query", required = 1, optional = 2)
@@ -939,9 +941,6 @@ public class RubyJdbcConnection extends RubyObject {
      * @param maxRows
      * @return AR (mapped) query result
      *
-     * @see #execute_query(ThreadContext, IRubyObject)
-     * @see #execute_query(ThreadContext, IRubyObject, IRubyObject)
-     * @see #mapToResult(ThreadContext, Ruby, DatabaseMetaData, ResultSet, RubyJdbcConnection.ColumnData[])
      */
     protected IRubyObject executeQuery(final ThreadContext context, final String query, final int maxRows) {
         return withConnection(context, new Callable<IRubyObject>() {
@@ -958,6 +957,38 @@ public class RubyJdbcConnection extends RubyObject {
                     throw e;
                 }
                 finally { close(resultSet); close(statement); }
+            }
+        });
+    }
+
+    @JRubyMethod
+    public IRubyObject execute_prepared(final ThreadContext context, final IRubyObject sql, final IRubyObject binds) {
+        return withConnection(context, new Callable<IRubyObject>() {
+            public IRubyObject call(final Connection connection) throws SQLException {
+                PreparedStatement statement = null;
+                final String query = sql.convertToString().getUnicodeValue();
+
+                // FIXME: array type check for binds
+
+                try {
+                    statement = connection.prepareStatement(query, Statement.RETURN_GENERATED_KEYS);
+                    setStatementParameters(context, connection, statement, (List) binds);
+                    boolean hasResultSet = statement.execute();
+
+                    if (hasResultSet) {
+                        ResultSet resultSet = statement.getResultSet();
+                        ColumnData[] columns = extractColumns(context.runtime, connection, resultSet, false);
+
+                        return mapToResult(context, context.runtime, connection, resultSet, columns);
+                    } else {
+                        return mapGeneratedKeysOrUpdateCount(context, connection, statement);
+                    }
+                } catch (final SQLException e) {
+                    debugErrorSQL(context, query);
+                    throw e;
+                } finally {
+                    close(statement);
+                }
             }
         });
     }
@@ -1671,7 +1702,7 @@ public class RubyJdbcConnection extends RubyObject {
 
     /**
      * @deprecated this method is no longer used, instead consider overriding
-     * {@link #mapToResult(ThreadContext, Ruby, DatabaseMetaData, ResultSet, RubyJdbcConnection.ColumnData[])}
+     * {@link #mapToResult(ThreadContext, Ruby, Connection, ResultSet, RubyJdbcConnection.ColumnData[])}
      */
     @Deprecated
     protected void populateFromResultSet(
@@ -1688,7 +1719,7 @@ public class RubyJdbcConnection extends RubyObject {
      * Maps a query result into a <code>ActiveRecord</code> result.
      * @param context
      * @param runtime
-     * @param metaData
+     * @param connection
      * @param resultSet
      * @param columns
      * @return since 3.1 expected to return a <code>ActiveRecord::Result</code>
@@ -3117,7 +3148,7 @@ public class RubyJdbcConnection extends RubyObject {
     /**
      * Create a string which represents a SQL type usable by Rails from the
      * resultSet column meta-data
-     * @param resultSet.
+     * @param resultSet
      */
     protected String typeFromResultSet(final ResultSet resultSet) throws SQLException {
         final int precision = intFromResultSet(resultSet, COLUMN_SIZE);
@@ -3432,7 +3463,7 @@ public class RubyJdbcConnection extends RubyObject {
     /**
      * Extract columns from result set.
      * @param runtime
-     * @param metaData
+     * @param connection
      * @param resultSet
      * @param downCase
      * @return columns data
@@ -3452,7 +3483,7 @@ public class RubyJdbcConnection extends RubyObject {
     }
 
     /**
-     * @deprecated renamed and parameterized to {@link #withConnection(ThreadContext, SQLBlock)}
+     * @deprecated renamed and parameterized to {@link #withConnection(ThreadContext, boolean, Callable)}
      */
     @Deprecated
     @SuppressWarnings("unchecked")

@@ -10,7 +10,7 @@ require "active_record/connection_adapters/sqlite3/schema_creation"
 module ArJdbc
   module SQLite3
     # FIXME: Remove once we figure out the 'does not return resultset issue with sql_exec'
-    include Util::TableCopier
+#    include Util::TableCopier
 
     # @see ActiveRecord::ConnectionAdapters::JdbcAdapter#jdbc_connection_class
     def self.jdbc_connection_class
@@ -253,16 +253,51 @@ module ArJdbc
       ::ActiveRecord::ConnectionAdapters::SQLite3::ExplainPrettyPrinter.new.pp(exec_query(sql, "EXPLAIN", []))
     end
 
-    # DIFFERENCE: Missing exec_query
+    def exec_query(sql, name = nil, binds = [], prepare: false)
+      type_casted_binds = binds.map { |attr| type_cast(attr.value_for_database) }
 
-    # DIFFERENCE: Missing exec_delete
-    #alias :exec_update :exec_delete
+      log(sql, name, binds) do
+        # Don't cache statements if they are not prepared
+        unless prepare
+          stmt    = @connection.prepare(sql)
+          begin
+            cols    = stmt.columns
+            unless without_prepared_statement?(binds)
+              stmt.bind_params(type_casted_binds)
+            end
+            records = stmt.to_a
+          ensure
+            stmt.close
+          end
+          stmt = records
+        else
+          cache = @statements[sql] ||= {
+              :stmt => @connection.prepare(sql)
+          }
+          stmt = cache[:stmt]
+          cols = cache[:cols] ||= stmt.columns
+          stmt.reset!
+          stmt.bind_params(type_casted_binds)
+        end
+
+        ActiveRecord::Result.new(cols, stmt.to_a)
+      end
+    end
+
+    def exec_delete(sql, name = 'SQL', binds = [])
+      exec_query(sql, name, binds)
+      @connection.changes
+    end
+    alias :exec_update :exec_delete
 
     def last_inserted_id(result)
       @connection.last_insert_row_id
     end
 
-    # DIFFERENCE: Missing execute
+    # DIFFERENCE: commented out so abstract.rb version can be seen.
+#    def execute(sql, name = nil) #:nodoc:
+#      log(sql, name) { @connection.execute(sql) }
+#    end
 
     def begin_db_transaction #:nodoc:
       log("begin transaction",nil) { @connection.transaction }
@@ -527,7 +562,18 @@ module ArJdbc
       end
     end
 
-    # DIFFERENCE: missing copy_table_contents
+    def copy_table_contents(from, to, columns, rename = {}) #:nodoc:
+      column_mappings = Hash[columns.map { |name| [name, name] }]
+      rename.each { |a| column_mappings[a.last] = a.first }
+      from_columns = columns(from).collect(&:name)
+      columns = columns.find_all { |col| from_columns.include?(column_mappings[col]) }
+      from_columns_to_copy = columns.map { |col| column_mappings[col] }
+      quoted_columns = columns.map { |col| quote_column_name(col) } * ","
+      quoted_from_columns = from_columns_to_copy.map { |col| quote_column_name(col) } * ","
+
+      exec_query("INSERT INTO #{quote_table_name(to)} (#{quoted_columns})
+                     SELECT #{quoted_from_columns} FROM #{quote_table_name(from)}")
+    end
 
     def sqlite_version
       # DIFFERENCE: Added 'ActiveRecord::ConnectionAdapters::AbstractAdapter::'
@@ -535,13 +581,6 @@ module ArJdbc
     end
 
     # --- sqlite3_adapter code from Rails 5 (above)
-
-    # Returns 62. SQLite supports index names up to 64 characters.
-    # The rest is used by Rails internally to perform temporary rename operations.
-    # @return [Fixnum]
-    def allowed_index_name_length
-      index_name_length - 2
-    end
 
     # @override
     def create_savepoint(name = current_savepoint_name(true))
@@ -559,38 +598,8 @@ module ArJdbc
     end
 
     # @private
-    def recreate_database(name = nil, options = {})
-      drop_database(name)
-      create_database(name, options)
-    end
-
-    # @private
-    def create_database(name = nil, options = {})
-    end
-
-    # @private
     def drop_database(name = nil)
       tables.each { |table| drop_table(table) }
-    end
-
-    def select(sql, name = nil, binds = [])
-      result = super # AR::Result (4.0) or Array (<= 3.2)
-      if result.respond_to?(:columns) # 4.0
-        result.columns.map! do |key| # [ [ 'id', ... ]
-          key.is_a?(String) ? key.sub(/^"?\w+"?\./, '') : key
-        end
-      else
-        result.map! do |row| # [ { 'id' => ... }, {...} ]
-          record = {}
-          row.each_key do |key|
-            if key.is_a?(String)
-              record[key.sub(/^"?\w+"?\./, '')] = row[key]
-            end
-          end
-          record
-        end
-      end
-      result
     end
 
     # @note We have an extra binds argument at the end due AR-2.3 support.
@@ -614,10 +623,6 @@ module ArJdbc
       # re-defined in native adapter on 3.2 "VALUES(NULL)"
       # on 4.0 no longer re-defined (thus inherits default)
       "DEFAULT VALUES"
-    end
-
-    def encoding
-      select_value 'PRAGMA encoding'
     end
 
     def last_insert_id
@@ -719,6 +724,30 @@ module ActiveRecord::ConnectionAdapters
 
   class SQLite3Adapter < JdbcAdapter
     include ArJdbc::SQLite3
+
+    # FIXME: Add @connection.encoding then remove this method
+    def encoding
+      select_value 'PRAGMA encoding'
+    end
+
+    def exec_query(sql, name = nil, binds = [], prepare: false)
+      use_prepared = prepare || !without_prepared_statement?(binds)
+
+      if use_prepared
+        log(sql, name, binds) { @connection.execute_prepared(sql, type_casted_binds(binds)) }
+      else
+        log(sql, name) { @connection.execute(sql) }
+      end
+    end
+
+    def exec_delete(sql, name = 'SQL', binds = [])
+      if prepared_statements?
+        log(sql, name, binds) { @connection.execute_delete(sql, binds) }
+      else
+        log(sql, name) { @connection.execute_delete(sql) }
+      end
+    end
+    alias :exec_update :exec_delete
 
     def indexes(table_name, name = nil) #:nodoc:
       # on JDBC 3.7 we'll simply do super since it can not handle "PRAGMA index_info"
