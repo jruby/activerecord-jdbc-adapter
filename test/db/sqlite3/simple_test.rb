@@ -13,14 +13,6 @@ class SQLite3SimpleTest < Test::Unit::TestCase
   include ExplainSupportTestMethods if ar_version("3.1")
   include CustomSelectTestMethods
 
-  def test_recreate_database
-    assert connection.tables.include?(Entry.table_name)
-    db = connection.database_name
-    connection.recreate_database(db)
-    assert ! connection.tables.include?(Entry.table_name)
-    self.setup # avoid teardown complaining
-  end
-
   def test_execute_insert
     user = User.create! :login => 'user1'
     Entry.create! :title => 'E1', :user_id => user.id
