@@ -193,17 +193,17 @@ end
 module SimpleTestMethods
   include FixtureSetup
 
-  def test_tables
-    assert_not_empty ActiveRecord::Base.connection.tables
-    tables = ActiveRecord::Base.connection.tables
-    assert tables.find { |t| t =~ /^entries$/i }, "entries not created: #{tables.inspect}"
-    assert tables.map(&:downcase).include?('users'), "users table not found: #{tables.inspect}"
+  def test_data_sources
+    assert_not_empty ActiveRecord::Base.connection.data_sources
+    data_sources = ActiveRecord::Base.connection.data_sources
+    assert data_sources.find { |t| t =~ /^entries$/i }, "entries not created: #{data_sources.inspect}"
+    assert data_sources.map(&:downcase).include?('users'), "users table not found: #{data_sources.inspect}"
   end
 
-  def test_table_exists?
-    assert_true  ActiveRecord::Base.connection.table_exists? 'entries'
-    assert_false ActiveRecord::Base.connection.table_exists? 'blahbls'
-    assert ! ActiveRecord::Base.connection.table_exists?(nil)
+  def test_data_source_exists?
+    assert_true  ActiveRecord::Base.connection.data_source_exists? 'entries'
+    assert_false ActiveRecord::Base.connection.data_source_exists? 'blahbls'
+    assert ! ActiveRecord::Base.connection.data_source_exists?(nil)
   end
 
   def test_entries_empty
@@ -802,22 +802,6 @@ module SimpleTestMethods
 
   end if Test::Unit::TestCase.ar_version('3.1') # no binds argument for <= 3.0
 
-  def test_raw_insert_bind_param_with_q_mark_deprecated
-    skip "not supported on MRI" unless defined? JRUBY_VERSION
-    skip "not supported on AR >= 4.0" if ar_version('4.0')
-
-    sql = "INSERT INTO entries(title) VALUES (?)"
-    name = "INSERT(raw_with_q_mark)"
-    pk = nil; id_value = nil; sequence_name = nil
-    column = nil # column = Entry.columns_hash['title']
-
-    silence_deprecations do
-      connection.insert sql, name, pk, id_value, sequence_name, [ [ column, "?!huu!?" ] ]
-    end
-    assert Entry.exists?([ 'title LIKE ?', "%?!huu!?%" ])
-
-  end if Test::Unit::TestCase.ar_version('3.1') # no binds argument for <= 3.0
-
   def test_raw_update_bind_param_with_q_mark
     entry = Entry.create! :title => 'foo!'
 
@@ -844,30 +828,6 @@ module SimpleTestMethods
 
   end if Test::Unit::TestCase.ar_version('3.1') # no binds argument for <= 3.0
 
-  def test_raw_update_bind_param_with_q_mark_deprecated
-    skip "not supported on MRI" unless defined? JRUBY_VERSION
-    skip "not supported on AR >= 4.0" if ar_version('4.0')
-
-    entry = Entry.create! :title => 'foo!'
-
-    sql = "UPDATE entries SET title = ? WHERE id = #{entry.id}"
-    name = "UPDATE(raw_with_q_mark)"
-    title_column = Entry.columns.find { |n| n.to_s == 'title' }
-    silence_deprecations do
-      connection.update sql, name, [ [ title_column, "bar?" ] ]
-    end
-    assert_equal 'bar?', entry.reload.title
-
-    sql = "UPDATE entries SET title = ? WHERE id = ?"
-    title_c, id_c = Entry.columns_hash['title'], Entry.columns_hash['id']
-
-    silence_deprecations do
-      connection.update sql, name, [ [ title_c, "?baz?!?" ], [ id_c, entry.id ] ]
-    end
-    assert_equal '?baz?!?', entry.reload.title
-
-  end if Test::Unit::TestCase.ar_version('3.1') # no binds argument for <= 3.0
-
   def test_raw_delete_bind_param_with_q_mark
     entry = Entry.create! :title => 'foo?!?', :content => '..........'
 
@@ -885,21 +845,6 @@ module SimpleTestMethods
     connection.delete arel, name, binds
     assert ! Entry.exists?(entry.id)
 
-  end if Test::Unit::TestCase.ar_version('3.1') # no binds argument for <= 3.0
-
-  def test_raw_delete_bind_param_with_q_mark_deprecated
-    skip "not supported on MRI" unless defined? JRUBY_VERSION
-    skip "not supported on AR >= 4.0" if ar_version('4.0')
-
-    entry = Entry.create! :title => 'foo?!?'
-
-    sql = "DELETE FROM entries WHERE title = ?"
-    name = "DELETE(raw_with_q_mark)"
-    column = Entry.columns_hash['title']
-    silence_deprecations do
-      connection.delete sql, name, [ [ column, "foo?!?" ] ]
-    end
-    assert ! Entry.exists?(entry.id)
   end if Test::Unit::TestCase.ar_version('3.1') # no binds argument for <= 3.0
 
   class ChangeEntriesTable < ActiveRecord::Migration
@@ -992,32 +937,6 @@ module SimpleTestMethods
       connection.exec_insert arel, 'SQL(jozko)', binds
     end
     assert Thing.find_by_name 'jozko'
-  end
-
-  def test_exec_insert_deprecated_extension
-    skip "not supported on MRI" unless defined? JRUBY_VERSION
-    skip "not supported on AR >= 4.0" if ar_version('4.0')
-    skip_exec_for_native_adapter
-
-    name_column = Thing.columns.detect { |column| column.name.to_s == 'name' }
-    created_column = Thing.columns.detect { |column| column.name.to_s == 'created_at' }
-    updated_column = Thing.columns.detect { |column| column.name.to_s == 'updated_at' }
-    now = Time.zone.now
-
-    binds = [ [ name_column, 'ferko' ], [ created_column, now ], [ updated_column, now ] ]
-    silence_deprecations do
-      connection.exec_insert "INSERT INTO things VALUES ( ?, ?, ? )", 'INSERT Thing(ferko)', binds
-    end
-    assert Thing.find_by_name 'ferko'
-
-    sql = "INSERT INTO entries(title) VALUES (?)"
-    column = Entry.columns_hash['title']
-    silence_deprecations do
-      connection.exec_insert sql, 'INSERT(with_q_mark)', [ [ column, "bar?!?" ] ]
-    end
-
-    entries = Entry.find_by_sql "SELECT * FROM entries WHERE title = 'bar?!?'"
-    assert entries.first
   end
 
   def test_exec_insert_bind_param_with_q_mark
@@ -1169,7 +1088,7 @@ module SimpleTestMethods
       end
     end
     assert yielded == 2
-  end if Test::Unit::TestCase.ar_version('3.0') && defined? JRUBY_VERSION
+  end if Test::Unit::TestCase.ar_version('3.0') && defined?(JRUBY_VERSION)
 
   def test_execute_insert
     id = connection.execute("INSERT INTO entries (title) VALUES ('inserted-title')")
@@ -1457,20 +1376,6 @@ module ActiveRecord3TestMethods
   end
 
   module TestMethods
-
-    def test_visitor_accessor
-      adapter = Entry.connection; config = Entry.connection_config
-      assert_not_nil adapter.visitor
-      assert_not_nil visitor_type = Arel::Visitors::VISITORS[ config[:adapter] ]
-      assert_kind_of visitor_type, adapter.visitor
-    end if Test::Unit::TestCase.ar_version('3.1') # >= 3.2
-
-    def test_arel_visitors
-      adapter = ActiveRecord::Base.connection; config = current_connection_config
-      visitors = Arel::Visitors::VISITORS.dup
-      assert_not_nil visitor_type = adapter.class.resolve_visitor_type(config)
-      assert_equal visitor_type, visitors[ config[:adapter] ]
-    end if Test::Unit::TestCase.ar_version('3.0') && defined? JRUBY_VERSION
 
     def test_where
       user = User.create! :login => "blogger"
