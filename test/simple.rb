@@ -747,14 +747,6 @@ module SimpleTestMethods
     assert_raise(ActiveRecord::RecordInvalid) { alternate_name_lower.save! }
   end
 
-  def test_substitute_binds_has_no_side_effect_on_binds_parameter
-    binds = [ [ Entry.columns_hash['title'], 'test1' ] ]
-    binds_dup = binds.dup
-    sql = 'SELECT * FROM entries WHERE title = ?'
-    Entry.connection.send :substitute_binds, sql, binds
-    assert_equal binds_dup, binds
-  end if defined? JRUBY_VERSION
-
   def test_find_by_sql_with_binds
     Entry.create!(:title => 'qqq', :content => '', :rating => 4)
     Entry.create!(:title => 'www', :content => '', :rating => 5)

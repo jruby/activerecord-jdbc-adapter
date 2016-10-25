@@ -832,13 +832,6 @@ module ActiveRecord
         sql
       end if ActiveRecord::VERSION::MAJOR > 3
 
-      # @deprecated No longer used, will be removed.
-      # @see #suble_binds
-      def substitute_binds(sql, binds)
-        return sql if binds.nil? || binds.empty?; binds = binds.dup
-        extract_sql(sql).gsub('?') { quote(*binds.shift.reverse) }
-      end
-
       # @deprecated No longer used, kept for 1.2 API compatibility.
       def extract_sql(arel)
         arel.respond_to?(:to_sql) ? arel.send(:to_sql) : arel
