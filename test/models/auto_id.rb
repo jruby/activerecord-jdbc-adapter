@@ -1,4 +1,4 @@
-class CreateAutoIds < ActiveRecord::Migration
+class CreateAutoIds < ActiveRecord::Migration[4.2]
   def self.up
     create_table "auto_ids", :force => true do |t|
       t.column :value, :integer

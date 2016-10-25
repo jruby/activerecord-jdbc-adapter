@@ -148,7 +148,7 @@ module SchemaDumpTestMethods
     assert_match %r{create_table "things", (:id => false)|(id: false)}, output
   end
 
-  class CreateDogMigration < ActiveRecord::Migration
+  class CreateDogMigration < ActiveRecord::Migration[4.2]
     def up
       create_table :dogs do |t|
         t.column :name, :string
