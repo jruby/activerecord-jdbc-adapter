@@ -226,11 +226,6 @@ class SQLite3SimpleTest < Test::Unit::TestCase
     assert_equal 7, rating_column.scale
   end
 
-  def test_delete_sql
-    ActiveRecord::Base.connection.send :delete_sql, "DELETE FROM entries"
-    assert Entry.all.empty?
-  end
-
   # @override
   def test_big_decimal
     test_value = 1234567890.0 # FINE just like native adapter
