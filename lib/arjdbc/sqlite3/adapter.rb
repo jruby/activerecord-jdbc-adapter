@@ -400,7 +400,7 @@ module ArJdbc
         index_sql = exec_query(sql).first["sql"]
         match = /\sWHERE\s+(.+)$/i.match(index_sql)
         where = match[1] if match
-        IndexDefinition.new(
+        ::ActiveRecord::ConnectionAdapters::IndexDefinition.new(
             table_name,
             row["name"],
             row["unique"] != 0,
@@ -609,14 +609,6 @@ module ArJdbc
       id_value || last_inserted_id(result)
     end
 
-    # @note Does not support prepared statements for INSERT statements.
-    # @override
-    def exec_insert(sql, name, binds, pk = nil, sequence_name = nil)
-      # NOTE: since SQLite JDBC does not support executeUpdate but only
-      # statement.execute we can not support prepared statements here :
-      execute(sql, name, binds)
-    end
-
     def empty_insert_statement_value
       # inherited (default) on 3.2 : "VALUES(DEFAULT)"
       # inherited (default) on 4.0 : "DEFAULT VALUES"
@@ -722,8 +714,38 @@ module ActiveRecord::ConnectionAdapters
 
   remove_const(:SQLite3Adapter) if const_defined?(:SQLite3Adapter)
 
-  class SQLite3Adapter < JdbcAdapter
+  module CommonJDBCMethods
+    def initialize(connection, logger = nil, config = {})
+      config[:adapter_spec] = adapter_spec(config) unless config.key?(:adapter_spec)
+
+      connection ||= jdbc_connection_class(config[:adapter_spec]).new(config, self)
+
+      super(connection, logger, config)
+    end
+
+    def execute(sql, name = nil)
+      # FIXME: Can we kill :skip_logging?
+      if name == :skip_logging
+        @connection.execute(sql)
+      else
+        log(sql, name) { @connection.execute(sql) }
+      end
+    end
+
+    # Take an id from the result of an INSERT query.
+    # @return [Integer, NilClass]
+    def last_inserted_id(result)
+      if result.is_a?(Hash) || result.is_a?(ActiveRecord::Result)
+        result.first.first[1] # .first = { "id"=>1 } .first = [ "id", 1 ]
+      else
+        result
+      end
+    end
+  end
+
+  class SQLite3Adapter < AbstractAdapter
     include ArJdbc::SQLite3
+    include CommonJDBCMethods
 
     # FIXME: Add @connection.encoding then remove this method
     def encoding
@@ -740,14 +762,16 @@ module ActiveRecord::ConnectionAdapters
       end
     end
 
-    def exec_delete(sql, name = 'SQL', binds = [])
-      if prepared_statements?
-        log(sql, name, binds) { @connection.execute_delete(sql, binds) }
-      else
-        log(sql, name) { @connection.execute_delete(sql) }
-      end
-    end
+    alias :exec_delete :exec_query
     alias :exec_update :exec_delete
+
+    # FIXME: Remove once JdbcAdapter has been removed from hierarchy
+    # Executes insert +sql+ statement in the context of this connection using
+    # +binds+ as the bind substitutes. +name+ is logged along with
+    # the executed +sql+ statement.
+    def exec_insert(sql, name, binds, pk = nil, sequence_name = nil)
+      exec_query(sql, name, binds)
+    end
 
     def indexes(table_name, name = nil) #:nodoc:
       # on JDBC 3.7 we'll simply do super since it can not handle "PRAGMA index_info"
