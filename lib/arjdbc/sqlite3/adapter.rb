@@ -1,6 +1,5 @@
 ArJdbc.load_java_part :SQLite3
 
-require 'arjdbc/util/table_copier'
 require "active_record/connection_adapters/statement_pool"
 require "active_record/connection_adapters/abstract/database_statements"
 require "active_record/connection_adapters/sqlite3/explain_pretty_printer"
@@ -9,9 +8,6 @@ require "active_record/connection_adapters/sqlite3/schema_creation"
 
 module ArJdbc
   module SQLite3
-    # FIXME: Remove once we figure out the 'does not return resultset issue with sql_exec'
-#    include Util::TableCopier
-
     # @see ActiveRecord::ConnectionAdapters::JdbcAdapter#jdbc_connection_class
     def self.jdbc_connection_class
       ::ActiveRecord::ConnectionAdapters::SQLite3JdbcConnection
@@ -99,10 +95,6 @@ module ArJdbc
         end
       end
 
-    end
-
-    def adapter_name
-      ADAPTER_NAME
     end
 
     # --- sqlite3_adapter code from Rails 5 (below)
@@ -294,10 +286,9 @@ module ArJdbc
       @connection.last_insert_row_id
     end
 
-    # DIFFERENCE: commented out so abstract.rb version can be seen.
-#    def execute(sql, name = nil) #:nodoc:
-#      log(sql, name) { @connection.execute(sql) }
-#    end
+    def execute(sql, name = nil) #:nodoc:
+      log(sql, name) { @connection.execute(sql) }
+    end
 
     def begin_db_transaction #:nodoc:
       log("begin transaction",nil) { @connection.transaction }
@@ -580,70 +571,18 @@ module ArJdbc
       @sqlite_version ||= ActiveRecord::ConnectionAdapters::AbstractAdapter::Version.new(select_value("select sqlite_version(*)"))
     end
 
-    # --- sqlite3_adapter code from Rails 5 (above)
-
-    # @override
-    def create_savepoint(name = current_savepoint_name(true))
-      log("SAVEPOINT #{name}", 'Savepoint') { super }
-    end
-
-    # @override
-    def rollback_to_savepoint(name = current_savepoint_name(true))
-      log("ROLLBACK TO SAVEPOINT #{name}", 'Savepoint') { super }
-    end
-
-    # @override
-    def release_savepoint(name = current_savepoint_name(false))
-      log("RELEASE SAVEPOINT #{name}", 'Savepoint') { super }
-    end
-
-    # @private
-    def drop_database(name = nil)
-      tables.each { |table| drop_table(table) }
-    end
-
-    # @note We have an extra binds argument at the end due AR-2.3 support.
-    # @override
-    def insert_sql(sql, name = nil, pk = nil, id_value = nil, sequence_name = nil, binds = [])
-      result = execute(sql, name, binds)
-      id_value || last_inserted_id(result)
-    end
-
-    def empty_insert_statement_value
-      # inherited (default) on 3.2 : "VALUES(DEFAULT)"
-      # inherited (default) on 4.0 : "DEFAULT VALUES"
-      # re-defined in native adapter on 3.2 "VALUES(NULL)"
-      # on 4.0 no longer re-defined (thus inherits default)
-      "DEFAULT VALUES"
-    end
-
-    def last_insert_id
-      @connection.last_insert_rowid
-    end
-
-    def truncate_fake(table_name, name = nil)
-      execute "DELETE FROM #{quote_table_name(table_name)}; VACUUM", name
-    end
-    # NOTE: not part of official AR (4.2) alias truncate truncate_fake
-
-    protected
-
-    def last_inserted_id(result)
-      super || last_insert_id # NOTE: #last_insert_id call should not be needed
-    end
-
     def translate_exception(exception, message)
-      if msg = exception.message
+      case exception.message
         # SQLite 3.8.2 returns a newly formatted error message:
         #   UNIQUE constraint failed: *table_name*.*column_name*
         # Older versions of SQLite return:
         #   column *column_name* is not unique
-        if msg.index('UNIQUE constraint failed: ') ||
-           msg =~ /column(s)? .* (is|are) not unique/
-          return ::ActiveRecord::RecordNotUnique.new(message, exception)
-        end
+        when /column(s)? .* (is|are) not unique/, /UNIQUE constraint failed: .*/
+          # DIFFERENCE: Fully qualified constant
+          ::ActiveRecord::RecordNotUnique.new(message)
+        else
+          super
       end
-      super
     end
 
     private
@@ -659,24 +598,24 @@ module ArJdbc
       # Result will have following sample string
       # CREATE TABLE "users" ("id" INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
       #                       "password_digest" varchar COLLATE "NOCASE");
-      result = exec_query(sql, "SCHEMA").first
+      result = exec_query(sql, 'SCHEMA').first
 
       if result
         # Splitting with left parentheses and picking up last will return all
         # columns separated with comma(,).
-        columns_string = result["sql"].split("(").last
+        columns_string = result["sql"].split('(').last
 
-        columns_string.split(",").each do |column_string|
+        columns_string.split(',').each do |column_string|
           # This regex will match the column name and collation type and will save
           # the value in $1 and $2 respectively.
-          collation_hash[$1] = $2 if COLLATE_REGEX =~ column_string
+          collation_hash[$1] = $2 if (COLLATE_REGEX =~ column_string)
         end
 
         basic_structure.map! do |column|
-          column_name = column["name"]
+          column_name = column['name']
 
           if collation_hash.has_key? column_name
-            column["collation"] = collation_hash[column_name]
+            column['collation'] = collation_hash[column_name]
           end
 
           column
