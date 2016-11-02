@@ -986,19 +986,6 @@ module SimpleTestMethods
   end
   private :update_manager
 
-  def test_exec_delete
-    return unless ar_version('3.1')
-    skip_exec_for_native_adapter
-
-    entry = Entry.create! :title => '42'
-    arel = ArJdbc::AR50 ? Arel::DeleteManager.new : Arel::DeleteManager.new(Entry.arel_engine)
-    arel.from arel_table = Entry.arel_table
-    arel.where arel_table[:title].eq(new_bind_param)
-    column = Entry.columns_hash['title']
-
-    connection.exec_delete arel, 'DELETE(entry)', [ [ column, "42" ] ]
-    assert_nil Entry.where(:id => entry.id).first
-  end
 
   def test_exec_query_result
     Entry.delete_all
