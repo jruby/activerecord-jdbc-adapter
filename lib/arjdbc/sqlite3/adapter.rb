@@ -763,12 +763,9 @@ module ActiveRecord::ConnectionAdapters
     end
 
     alias :exec_delete :exec_query
-    alias :exec_update :exec_delete
+    alias :exec_update :exec_query
 
-    # FIXME: Remove once JdbcAdapter has been removed from hierarchy
-    # Executes insert +sql+ statement in the context of this connection using
-    # +binds+ as the bind substitutes. +name+ is logged along with
-    # the executed +sql+ statement.
+    # last two values passed but not used so I cannot alias to exec_query
     def exec_insert(sql, name, binds, pk = nil, sequence_name = nil)
       exec_query(sql, name, binds)
     end
