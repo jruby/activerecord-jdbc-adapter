@@ -543,20 +543,6 @@ module ActiveRecord
         end
       end
 
-      # @private documented above
-      def execute(sql, name = nil, skip_logging = false)
-        if skip_logging.is_a?(Array)
-          binds, skip_logging = skip_logging, false
-          sql = suble_binds to_sql(sql, binds), binds
-        end
-        if skip_logging || name == :skip_logging
-          _execute(sql, name)
-        else
-          log(sql, name) { _execute(sql, name) }
-        end
-      end if ActiveRecord::VERSION::MAJOR < 3 ||
-        ( ActiveRecord::VERSION::MAJOR == 3 && ActiveRecord::VERSION::MINOR == 0 )
-
       # We need to do it this way, to allow Rails stupid tests to always work
       # even if we define a new `execute` method. Instead of mixing in a new
       # `execute`, an `_execute` should be mixed in.
@@ -811,18 +797,6 @@ module ActiveRecord
 
       private
 
-      # @note Since AR 4.0 we (finally) do not "sub" SQL's '?' parameters !
-      # @deprecated This should go away (hopefully), now here due 1.2.x.
-      def suble_binds(sql, binds)
-        return sql if ! @@suble_binds || binds.nil? || binds.empty?
-        binds = binds.dup; warn = nil
-        result = sql.gsub('?') { warn = true; quote(*binds.shift.reverse) }
-        ActiveSupport::Deprecation.warn(
-          "string binds substitution is deprecated - please refactor your sql", caller[1..-1]
-        ) if warn
-        result
-      end
-
       # @private Supporting "string-subling" on AR 4.0 would require {#to_sql}
       # to consume binds parameters otherwise it happens twice e.g. for a record
       # insert it is called during {#insert} as well as on {#exec_insert} ...
@@ -830,7 +804,7 @@ module ActiveRecord
       # array and run a query again since it's the very same instance on 4.0 !
       def suble_binds(sql, binds)
         sql
-      end if ActiveRecord::VERSION::MAJOR > 3
+      end
 
       # @deprecated No longer used, kept for 1.2 API compatibility.
       def extract_sql(arel)
