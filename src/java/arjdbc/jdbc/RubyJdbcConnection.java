@@ -2200,7 +2200,9 @@ public class RubyJdbcConnection extends RubyObject {
             final Object rawValue, final IRubyObject column) throws SQLException {
         final Object value;
 
-        if ( isAr42(column) ) {
+        // FIXME: When all adapters are finished this will never have column passed to it so
+        // we can delete this branch
+        if (column != null) {
             final IRubyObject castType = column.callMethod(context, "cast_type");
             value = castType.callMethod(context, "type_cast_for_database", (IRubyObject) rawValue);
         } else {
