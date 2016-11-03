@@ -714,7 +714,7 @@ module ActiveRecord
       # @private documented bellow
       def new_table_definition(table_definition, *args)
         if ActiveRecord::VERSION::MAJOR > 4
-          table_definition.new *args
+          table_definition.new(*args)
         else
           table_definition.new native_database_types, *args
         end
