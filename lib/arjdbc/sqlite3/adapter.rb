@@ -1,5 +1,6 @@
 ArJdbc.load_java_part :SQLite3
 
+require "arjdbc/common_jdbc_methods"
 require "active_record/connection_adapters/statement_pool"
 require "active_record/connection_adapters/abstract/database_statements"
 require "active_record/connection_adapters/sqlite3/explain_pretty_printer"
@@ -633,45 +634,12 @@ module ActiveRecord::ConnectionAdapters
 
   remove_const(:SQLite3Adapter) if const_defined?(:SQLite3Adapter)
 
-  # This is minimum amount of code neede from base JDBC Adapter class to make SQLite3
-  # work.  This is also a temporary module which will need a new home once more connectors
-  # are converted to Rails 5.  This will replace using jdbc/adapter as a base class for all
-  # adapters and therefore will end up living somewhere else.
-  module CommonJDBCMethods
-    def initialize(connection, logger = nil, config = {})
-      config[:adapter_spec] = adapter_spec(config) unless config.key?(:adapter_spec)
-
-      connection ||= jdbc_connection_class(config[:adapter_spec]).new(config, self)
-
-      super(connection, logger, config)
-    end
-
-    def execute(sql, name = nil)
-      # FIXME: Can we kill :skip_logging?
-      if name == :skip_logging
-        @connection.execute(sql)
-      else
-        log(sql, name) { @connection.execute(sql) }
-      end
-    end
-
-    # Take an id from the result of an INSERT query.
-    # @return [Integer, NilClass]
-    def last_inserted_id(result)
-      if result.is_a?(Hash) || result.is_a?(ActiveRecord::Result)
-        result.first.first[1] # .first = { "id"=>1 } .first = [ "id", 1 ]
-      else
-        result
-      end
-    end
-  end
-
   # Currently our adapter is named the same as what AR5 names its adapter.  We will need to get
   # this changed at some point so this can be a unique name and we can extend activerecord
   # ActiveRecord::ConnectionAdapters::SQLite3Adapter.  Once we can do that we can remove the
   # module SQLite3 above and remove a majority of this file.
   class SQLite3Adapter < AbstractAdapter
-    include CommonJDBCMethods
+    include ArJdbc::CommonJdbcMethods
     include ArJdbc::SQLite3
 
     # FIXME: Add @connection.encoding then remove this method
