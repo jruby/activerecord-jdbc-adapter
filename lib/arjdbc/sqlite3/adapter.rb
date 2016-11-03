@@ -8,17 +8,11 @@ require "active_record/connection_adapters/sqlite3/schema_creation"
 
 module ArJdbc
   module SQLite3
-    # @see ActiveRecord::ConnectionAdapters::JdbcAdapter#jdbc_connection_class
-    def self.jdbc_connection_class
-      ::ActiveRecord::ConnectionAdapters::SQLite3JdbcConnection
-    end
-
-    def jdbc_column_class; ::ActiveRecord::ConnectionAdapters::SQLite3Column end
-
-    # @see ActiveRecord::ConnectionAdapters::JdbcColumn#column_types
-    def self.column_selector
-      [ /sqlite/i, lambda { |config, column| column.extend(Column) } ]
-    end
+    ConnectionAdapters = ::ActiveRecord::ConnectionAdapters
+    IndexDefinition = ::ActiveRecord::ConnectionAdapters::IndexDefinition
+    Quoting = ::ActiveRecord::ConnectionAdapters::SQLite3::Quoting
+    RecordNodeUnique = ::ActiveRecord::RecordNotUnique
+    SchemaCreation = ConnectionAdapters::SQLite3::SchemaCreation
 
     # @see ActiveRecord::ConnectionAdapters::JdbcColumn
     module Column
@@ -100,13 +94,7 @@ module ArJdbc
     # --- sqlite3_adapter code from Rails 5 (below)
     ADAPTER_NAME = 'SQLite'.freeze
 
-    # DIFFERENCE: a) not in sqlite3 adapter at all b) don't know why abstract quoting private method is visible here?
-    def type_casted_binds(binds)
-      binds.map { |attr| type_cast(attr.value_for_database) }
-    end
-
-    # DIFFERENCE: Mildly different because we are not really in Rails connection adapters
-    include ::ActiveRecord::ConnectionAdapters::SQLite3::Quoting
+    include Quoting
 
     NATIVE_DATABASE_TYPES = {
         primary_key:  "INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL",
@@ -122,8 +110,7 @@ module ArJdbc
         boolean:      { name: "boolean" }
     }
 
-    # DIFFERENCE: fully qualify to ActiveRecord so we do not qualify to Arjdbc
-    class StatementPool < ::ActiveRecord::ConnectionAdapters::StatementPool
+    class StatementPool < ConnectionAdapters::StatementPool
       private
 
       def dealloc(stmt)
@@ -132,8 +119,7 @@ module ArJdbc
     end
 
     def schema_creation # :nodoc:
-      # DIFFERENCE: fully qualify to ActiveRecord so we do not qualify to Arjdbc
-      ::ActiveRecord::ConnectionAdapters::SQLite3::SchemaCreation.new self
+      SQLite3::SchemaCreation.new self
     end
 
     def arel_visitor # :nodoc:
@@ -391,7 +377,7 @@ module ArJdbc
         index_sql = exec_query(sql).first["sql"]
         match = /\sWHERE\s+(.+)$/i.match(index_sql)
         where = match[1] if match
-        ::ActiveRecord::ConnectionAdapters::IndexDefinition.new(
+        IndexDefinition.new(
             table_name,
             row["name"],
             row["unique"] != 0,
@@ -480,7 +466,7 @@ module ArJdbc
       rename_column_indexes(table_name, column.name, new_column_name)
     end
 
-    # DIFFERENCE: missing protected here
+    protected
 
     def table_structure(table_name)
       structure = exec_query("PRAGMA table_info(#{quote_table_name(table_name)})", "SCHEMA")
@@ -578,8 +564,7 @@ module ArJdbc
         # Older versions of SQLite return:
         #   column *column_name* is not unique
         when /column(s)? .* (is|are) not unique/, /UNIQUE constraint failed: .*/
-          # DIFFERENCE: Fully qualified constant
-          ::ActiveRecord::RecordNotUnique.new(message)
+          RecordNotUnique.new(message)
         else
           super
       end
@@ -695,7 +680,8 @@ module ActiveRecord::ConnectionAdapters
       use_prepared = prepare || !without_prepared_statement?(binds)
 
       if use_prepared
-        log(sql, name, binds) { @connection.execute_prepared(sql, type_casted_binds(binds)) }
+        type_casted_binds = binds.map { |attr| type_cast(attr.value_for_database) }
+        log(sql, name, binds) { @connection.execute_prepared(sql, type_casted_binds) }
       else
         log(sql, name) { @connection.execute(sql) }
       end
@@ -723,8 +709,22 @@ module ActiveRecord::ConnectionAdapters
       raise e
     end
 
+    def jdbc_column_class
+      ::ActiveRecord::ConnectionAdapters::SQLite3Column
+    end
+
     def jdbc_connection_class(spec)
-      ::ArJdbc::SQLite3.jdbc_connection_class
+      self.class.jdbc_connection_class
+    end
+
+    # @see ActiveRecord::ConnectionAdapters::JdbcAdapter#jdbc_connection_class
+    def self.jdbc_connection_class
+      ::ActiveRecord::ConnectionAdapters::SQLite3JdbcConnection
+    end
+
+    # @see ActiveRecord::ConnectionAdapters::JdbcColumn#column_types
+    def self.column_selector
+      [ /sqlite/i, lambda { |config, column| column.extend(ArJdbc::SQLite3::Column) } ]
     end
   end
 end
