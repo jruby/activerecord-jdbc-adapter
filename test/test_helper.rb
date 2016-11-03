@@ -298,7 +298,7 @@ class Test::Unit::TestCase
   alias_method :arel_bind_param, :new_bind_param
 
   def prepared_statements?(connection = ActiveRecord::Base.connection)
-    connection.send :prepared_statements?
+    connection.send :prepared_statements
   rescue NoMethodError # on MRI
     raise if defined? JRUBY_VERSION
     #return true if connection.class.name.index('Mysql')

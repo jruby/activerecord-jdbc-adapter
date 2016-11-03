@@ -130,7 +130,7 @@ module RakeTestSupport
 
   def create_schema_migrations_table(connection = ActiveRecord::Base.connection)
     schema_migration = ActiveRecord::Migrator.schema_migrations_table_name
-    return if connection.table_exists?(schema_migration)
+    return if connection.data_source_exists?(schema_migration)
     connection.create_table(schema_migration, :id => false) do |t|
       t.column :version, :string, :null => false
     end

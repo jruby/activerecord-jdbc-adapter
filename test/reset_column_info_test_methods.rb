@@ -22,7 +22,7 @@ module ResetColumnInfoTestMethods
   def drop_fhqwhgads_table!
     ActiveRecord::Schema.define do
       suppress_messages do
-        drop_table :fhqwhgads if table_exists? :fhqwhgads
+        drop_table :fhqwhgads if data_source_exists? :fhqwhgads
       end
     end
   end

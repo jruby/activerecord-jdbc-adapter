@@ -34,7 +34,7 @@ module ActiveRecord
     class JdbcAdapter < AbstractAdapter
       include Jdbc::ConnectionPoolCallbacks
 
-      attr_reader :config
+      attr_reader :config, :prepared_statements
 
       def self.new(connection, logger = nil, pool = nil)
         adapter = super

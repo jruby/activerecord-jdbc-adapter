@@ -781,64 +781,6 @@ module SimpleTestMethods
     assert_equal 'bar?', entry.content
   end
 
-  def test_raw_insert_bind_param_with_q_mark
-    arel = insert_manager Entry, :title => ( value = "?!huu!?" )
-    column = Entry.columns_hash['title']
-
-    name = "INSERT(raw_with_q_mark)"
-    pk = nil; id_value = nil; sequence_name = nil
-    binds = ( prepared_statements? ? [ [ column, value ] ] : [] )
-
-    connection.insert arel, name, pk, id_value, sequence_name, binds
-    assert Entry.exists?([ 'title LIKE ?', "%?!huu!?%" ])
-
-  end if Test::Unit::TestCase.ar_version('3.1') # no binds argument for <= 3.0
-
-  def test_raw_update_bind_param_with_q_mark
-    entry = Entry.create! :title => 'foo!'
-
-    arel = update_manager Entry, :title => ( value = "bar?" )
-    arel.where Entry.arel_table[:id].eq( entry.id )
-    column = Entry.columns_hash['title']
-    name = "UPDATE(raw_with_q_mark)"
-    binds = prepared_statements? ? [ [ column, value ] ] : []
-
-    connection.update arel, name, binds
-    assert_equal 'bar?', entry.reload.title
-
-    arel = update_manager Entry, :title => ( value = "?baz?!?" )
-    if prepared_statements?
-      arel.where Entry.arel_table[:id].eq(new_bind_param)
-      binds = [ [ column, value ], [ Entry.columns_hash['id'], entry.id ] ]
-    else
-      arel.where Entry.arel_table[:id].eq( entry.id.to_s )
-      binds = []
-    end
-
-    connection.update arel, name, binds
-    assert_equal '?baz?!?', entry.reload.title
-
-  end if Test::Unit::TestCase.ar_version('3.1') # no binds argument for <= 3.0
-
-  def test_raw_delete_bind_param_with_q_mark
-    entry = Entry.create! :title => 'foo?!?', :content => '..........'
-
-    arel = ArJdbc::AR50 ? Arel::DeleteManager.new : Arel::DeleteManager.new(Entry.arel_engine)
-    arel.from arel_table = Entry.arel_table
-    if prepared_statements?
-      arel.where arel_table[:title].eq(new_bind_param)
-      binds = [ [ Entry.columns_hash['title'], "foo?!?" ] ]
-    else
-      arel.where arel_table[:title].eq( "foo?!?" )
-      binds = []
-    end
-    name = "DELETE(raw_with_q_mark)"
-
-    connection.delete arel, name, binds
-    assert ! Entry.exists?(entry.id)
-
-  end if Test::Unit::TestCase.ar_version('3.1') # no binds argument for <= 3.0
-
   class ChangeEntriesTable < ActiveRecord::Migration
     def self.up
       change_table :entries do |t|
