@@ -8,7 +8,8 @@ require "active_record/connection_adapters/sqlite3/schema_creation"
 
 module ArJdbc
   # All the code in this module is a copy of ConnectionAdapters::SQLite3Adapter from active_record 5.
-  # Places where things had to be changed is marked with DIFFERENCE comments.
+  # The constants at the front of this file are to allow the rest of the file to remain with no modifications
+  # from its original source.
   module SQLite3
     # DIFFERENCE: Some common constant names to reduce differences in rest of this module from AR5 version
     ConnectionAdapters = ::ActiveRecord::ConnectionAdapters
@@ -16,6 +17,7 @@ module ArJdbc
     Quoting = ::ActiveRecord::ConnectionAdapters::SQLite3::Quoting
     RecordNodeUnique = ::ActiveRecord::RecordNotUnique
     SchemaCreation = ConnectionAdapters::SQLite3::SchemaCreation
+    SQLite3Adapter = ConnectionAdapters::AbstractAdapter
 
     ADAPTER_NAME = 'SQLite'.freeze
 
@@ -477,8 +479,7 @@ module ArJdbc
     end
 
     def sqlite_version
-      # DIFFERENCE: Added 'ActiveRecord::ConnectionAdapters::AbstractAdapter::'
-      @sqlite_version ||= ActiveRecord::ConnectionAdapters::AbstractAdapter::Version.new(select_value("select sqlite_version(*)"))
+      @sqlite_version ||= SQLite3Adapter::Version.new(select_value("select sqlite_version(*)"))
     end
 
     def translate_exception(exception, message)
