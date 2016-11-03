@@ -7,6 +7,8 @@ require "active_record/connection_adapters/sqlite3/quoting"
 require "active_record/connection_adapters/sqlite3/schema_creation"
 
 module ArJdbc
+  # All the code in this module is a copy of ConnectionAdapters::SQLite3Adapter from active_record 5.
+  # Places where things had to be changed is marked with DIFFERENCE comments.
   module SQLite3
     # DIFFERENCE: Some common constant names to reduce differences in rest of this module from AR5 version
     ConnectionAdapters = ::ActiveRecord::ConnectionAdapters
@@ -631,6 +633,10 @@ module ActiveRecord::ConnectionAdapters
 
   remove_const(:SQLite3Adapter) if const_defined?(:SQLite3Adapter)
 
+  # This is minimum amount of code neede from base JDBC Adapter class to make SQLite3
+  # work.  This is also a temporary module which will need a new home once more connectors
+  # are converted to Rails 5.  This will replace using jdbc/adapter as a base class for all
+  # adapters and therefore will end up living somewhere else.
   module CommonJDBCMethods
     def initialize(connection, logger = nil, config = {})
       config[:adapter_spec] = adapter_spec(config) unless config.key?(:adapter_spec)
@@ -660,6 +666,10 @@ module ActiveRecord::ConnectionAdapters
     end
   end
 
+  # Currently our adapter is named the same as what AR5 names its adapter.  We will need to get
+  # this changed at some point so this can be a unique name and we can extend activerecord
+  # ActiveRecord::ConnectionAdapters::SQLite3Adapter.  Once we can do that we can remove the
+  # module SQLite3 above and remove a majority of this file.
   class SQLite3Adapter < AbstractAdapter
     include ArJdbc::SQLite3
     include CommonJDBCMethods
