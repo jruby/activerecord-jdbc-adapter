@@ -8,90 +8,13 @@ require "active_record/connection_adapters/sqlite3/schema_creation"
 
 module ArJdbc
   module SQLite3
+    # DIFFERENCE: Some common constant names to reduce differences in rest of this module from AR5 version
     ConnectionAdapters = ::ActiveRecord::ConnectionAdapters
     IndexDefinition = ::ActiveRecord::ConnectionAdapters::IndexDefinition
     Quoting = ::ActiveRecord::ConnectionAdapters::SQLite3::Quoting
     RecordNodeUnique = ::ActiveRecord::RecordNotUnique
     SchemaCreation = ConnectionAdapters::SQLite3::SchemaCreation
 
-    # @see ActiveRecord::ConnectionAdapters::JdbcColumn
-    module Column
-
-      # @override {ActiveRecord::ConnectionAdapters::JdbcColumn#init_column}
-      def init_column(name, default, *args)
-        if default =~ /NULL/
-          @default = nil
-        else
-          super
-        end
-      end
-
-      # @override {ActiveRecord::ConnectionAdapters::JdbcColumn#default_value}
-      def default_value(value)
-        # JDBC returns column default strings with actual single quotes :
-        return $1 if value =~ /^'(.*)'$/
-
-        value
-      end
-
-      # @override {ActiveRecord::ConnectionAdapters::Column#type_cast}
-      def type_cast(value)
-        return nil if value.nil?
-        case type
-        when :string then value
-        when :primary_key
-          value.respond_to?(:to_i) ? value.to_i : ( value ? 1 : 0 )
-        when :float    then value.to_f
-        when :decimal  then self.class.value_to_decimal(value)
-        when :boolean  then self.class.value_to_boolean(value)
-        else super
-        end
-      end
-
-      private
-
-      # @override {ActiveRecord::ConnectionAdapters::Column#simplified_type}
-      def simplified_type(field_type)
-        case field_type
-        when /boolean/i       then :boolean
-        when /text/i          then :text
-        when /varchar/i       then :string
-        when /int/i           then :integer
-        when /float/i         then :float
-        when /real|decimal/i  then
-          extract_scale(field_type) == 0 ? :integer : :decimal
-        when /datetime/i      then :datetime
-        when /date/i          then :date
-        when /time/i          then :time
-        when /blob/i          then :binary
-        else super
-        end
-      end
-
-      # @override {ActiveRecord::ConnectionAdapters::Column#extract_limit}
-      def extract_limit(sql_type)
-        return nil if sql_type =~ /^(real)\(\d+/i
-        super
-      end
-
-      def extract_precision(sql_type)
-        case sql_type
-          when /^(real)\((\d+)(,\d+)?\)/i then $2.to_i
-          else super
-        end
-      end
-
-      def extract_scale(sql_type)
-        case sql_type
-          when /^(real)\((\d+)\)/i then 0
-          when /^(real)\((\d+)(,(\d+))\)/i then $4.to_i
-          else super
-        end
-      end
-
-    end
-
-    # --- sqlite3_adapter code from Rails 5 (below)
     ADAPTER_NAME = 'SQLite'.freeze
 
     include Quoting
@@ -614,8 +537,6 @@ end
 
 module ActiveRecord::ConnectionAdapters
   class SQLite3Column < JdbcColumn
-    include ArJdbc::SQLite3::Column
-
     def initialize(name, *args)
       if Hash === name
         super
@@ -633,6 +554,78 @@ module ActiveRecord::ConnectionAdapters
         value = value.force_encoding(Encoding::ASCII_8BIT)
       end
       value
+    end
+
+    # @override {ActiveRecord::ConnectionAdapters::JdbcColumn#init_column}
+    def init_column(name, default, *args)
+      if default =~ /NULL/
+        @default = nil
+      else
+        super
+      end
+    end
+
+    # @override {ActiveRecord::ConnectionAdapters::JdbcColumn#default_value}
+    def default_value(value)
+      # JDBC returns column default strings with actual single quotes :
+      return $1 if value =~ /^'(.*)'$/
+
+      value
+    end
+
+    # @override {ActiveRecord::ConnectionAdapters::Column#type_cast}
+    def type_cast(value)
+      return nil if value.nil?
+      case type
+        when :string then value
+        when :primary_key
+          value.respond_to?(:to_i) ? value.to_i : ( value ? 1 : 0 )
+        when :float    then value.to_f
+        when :decimal  then self.class.value_to_decimal(value)
+        when :boolean  then self.class.value_to_boolean(value)
+        else super
+      end
+    end
+
+    private
+
+    # @override {ActiveRecord::ConnectionAdapters::Column#simplified_type}
+    def simplified_type(field_type)
+      case field_type
+        when /boolean/i       then :boolean
+        when /text/i          then :text
+        when /varchar/i       then :string
+        when /int/i           then :integer
+        when /float/i         then :float
+        when /real|decimal/i  then
+          extract_scale(field_type) == 0 ? :integer : :decimal
+        when /datetime/i      then :datetime
+        when /date/i          then :date
+        when /time/i          then :time
+        when /blob/i          then :binary
+        else super
+      end
+    end
+
+    # @override {ActiveRecord::ConnectionAdapters::Column#extract_limit}
+    def extract_limit(sql_type)
+      return nil if sql_type =~ /^(real)\(\d+/i
+      super
+    end
+
+    def extract_precision(sql_type)
+      case sql_type
+        when /^(real)\((\d+)(,\d+)?\)/i then $2.to_i
+        else super
+      end
+    end
+
+    def extract_scale(sql_type)
+      case sql_type
+        when /^(real)\((\d+)\)/i then 0
+        when /^(real)\((\d+)(,(\d+))\)/i then $4.to_i
+        else super
+      end
     end
   end
 
@@ -720,11 +713,6 @@ module ActiveRecord::ConnectionAdapters
     # @see ActiveRecord::ConnectionAdapters::JdbcAdapter#jdbc_connection_class
     def self.jdbc_connection_class
       ::ActiveRecord::ConnectionAdapters::SQLite3JdbcConnection
-    end
-
-    # @see ActiveRecord::ConnectionAdapters::JdbcColumn#column_types
-    def self.column_selector
-      [ /sqlite/i, lambda { |config, column| column.extend(ArJdbc::SQLite3::Column) } ]
     end
   end
 end
