@@ -51,8 +51,7 @@ module ArJdbc
       Arel::Visitors::SQLite.new(self)
     end
 
-    # DIFFERENCE: connection_options (3rd) param missing
-    def initialize(connection, logger, config)
+    def initialize(connection, logger, connection_options, config)
       super(connection, logger, config)
 
       @active     = nil
@@ -671,8 +670,8 @@ module ActiveRecord::ConnectionAdapters
   # ActiveRecord::ConnectionAdapters::SQLite3Adapter.  Once we can do that we can remove the
   # module SQLite3 above and remove a majority of this file.
   class SQLite3Adapter < AbstractAdapter
-    include ArJdbc::SQLite3
     include CommonJDBCMethods
+    include ArJdbc::SQLite3
 
     # FIXME: Add @connection.encoding then remove this method
     def encoding
