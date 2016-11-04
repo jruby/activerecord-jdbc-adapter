@@ -11,10 +11,29 @@ module ArJdbc
     end
 
     # Starts a database transaction.
+    # @override
+    def begin_db_transaction
+      @connection.begin
+    end
+
+    # Starts a database transaction.
     # @param isolation the transaction isolation to use
     def begin_isolated_db_transaction(isolation)
       @connection.begin(isolation)
     end
+
+    # Commits the current database transaction.
+    # @override
+    def commit_db_transaction
+      @connection.commit
+    end
+
+    # Rolls back the current database transaction.
+    # @override
+    def exec_rollback_db_transaction
+      @connection.rollback
+    end
+
 
     def execute(sql, name = nil)
       # FIXME: Can we kill :skip_logging?
