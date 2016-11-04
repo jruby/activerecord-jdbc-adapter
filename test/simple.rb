@@ -843,35 +843,6 @@ module SimpleTestMethods
     assert_equal content_json, post.reload.content
   end
 
-  def test_exec_update # _bind_param_with_q_mark
-    return unless ar_version('3.1')
-    skip_exec_for_native_adapter
-
-    entry = Entry.create! :title => 'foo!'
-    arel = update_manager Entry, :title => ( value = "bar?" )
-    arel.where Entry.arel_table[:id].eq(entry.id)
-    column = Entry.columns_hash['title']
-
-    binds = prepared_statements? ? [ [ column, value ] ] : []
-    connection.exec_update arel, 'UPDATE(with_q_mark)', binds
-    assert_equal 'bar?', entry.reload.title
-  end
-
-  def update_manager(table, columns = {})
-    arel = ArJdbc::AR50 ? Arel::UpdateManager.new : Arel::UpdateManager.new(Entry.arel_engine)
-    arel.table table.arel_table
-    if columns
-      values = columns.map do |name, value|
-        value = new_bind_param if prepared_statements?
-        [ table.arel_table[name.to_sym], value ]
-      end
-      arel.set values
-    end
-    arel
-  end
-  private :update_manager
-
-
   def test_exec_query_result
     Entry.delete_all
     user1 = User.create! :login => 'user1'
