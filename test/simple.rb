@@ -843,63 +843,6 @@ module SimpleTestMethods
     assert_equal content_json, post.reload.content
   end
 
-  def test_exec_insert
-    created_at = connection.quoted_date Time.utc 2013, 7, 23, 02, 44, 58, 045000
-    updated_at = connection.quoted_date Time.utc 2013, 7, 23, 02, 44, 59, 145000
-    connection.exec_insert "INSERT INTO things VALUES ( '01', '#{created_at}', '#{updated_at}' )", nil, []
-
-    return unless ar_version('3.1')
-    skip_exec_for_native_adapter
-
-    arel = insert_manager Thing, values = {
-      :name => 'ferko', :created_at => Time.zone.now, :updated_at => Time.zone.now
-    }
-    binds = prepared_statements? ? values.map { |name, value| [ Thing.columns_hash[name.to_s], value ] } : []
-
-    connection.exec_insert arel, 'SQL(ferko)', binds.dup
-    assert Thing.find_by_name 'ferko'
-
-    arel = insert_manager Thing, values = {
-      :name => 'jozko', :created_at => Time.zone.now, :updated_at => Time.zone.now
-    }
-    binds = prepared_statements? ? values.map { |name, value| [ Thing.columns_hash[name.to_s], value ] } : []
-
-    # NOTE: #exec_insert accepts 5 arguments on AR-4.0 :
-    if ar_version('4.0')
-      connection.exec_insert arel, 'SQL(jozko)', binds, nil, nil
-    else
-      connection.exec_insert arel, 'SQL(jozko)', binds
-    end
-    assert Thing.find_by_name 'jozko'
-  end
-
-  def test_exec_insert_bind_param_with_q_mark
-    skip_exec_for_native_adapter
-
-    arel = insert_manager Entry, :title => ( value = "bar?!?" )
-    column = Entry.columns_hash['title']
-    binds = prepared_statements? ? [ [ column, value ] ] : []
-
-    connection.exec_insert arel, 'INSERT(with_q_mark)', binds
-
-    entries = Entry.find_by_sql "SELECT * FROM entries WHERE title = 'bar?!?'"
-    assert entries.first
-  end if Test::Unit::TestCase.ar_version('3.1')
-
-  def insert_manager(table, columns = {})
-    arel = ArJdbc::AR50 ? Arel::InsertManager.new : Arel::InsertManager.new(Entry.arel_engine)
-    arel.into table.arel_table
-    if columns
-      values = columns.map do |name, value|
-        value = new_bind_param if prepared_statements?
-        [ table.arel_table[name.to_sym], value ]
-      end
-      arel.insert values
-    end
-    arel
-  end
-  private :insert_manager
-
   def test_exec_update # _bind_param_with_q_mark
     return unless ar_version('3.1')
     skip_exec_for_native_adapter
