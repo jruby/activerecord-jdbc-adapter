@@ -890,41 +890,6 @@ module SimpleTestMethods
     end
   end
 
-  def test_exec_query_raw
-    User.delete_all
-    User.create! :login => 'user1'
-    User.create! :login => 'user2'
-
-    result = User.connection.exec_query_raw 'SELECT * FROM users'
-
-    assert_instance_of Array, result
-    assert_equal 2, result.size
-    assert_instance_of Hash, result[0]
-    assert_equal 'user1', result[0]['login']
-    assert_equal 'user2', result[1]['login']
-  end if defined? JRUBY_VERSION
-
-  def test_exec_query_raw_yields
-    User.create! :login => 'user3'
-    User.create! :login => 'user4'
-
-    sql = "SELECT id, login, created_at FROM users WHERE login = 'user3' or login = 'user4'"
-    yielded = 0
-    ActiveRecord::Base.connection.exec_query_raw(sql) do |*args| # id, login, created_at
-      assert_equal 3, args.size
-      yielded += 1
-      case yielded
-      when 1
-        assert_equal 'user3', args[1]
-      when 2
-        assert_equal 'user4', args[1]
-      else
-        fail "yielded 3 times"
-      end
-    end
-    assert yielded == 2
-  end if Test::Unit::TestCase.ar_version('3.0') && defined?(JRUBY_VERSION)
-
   def test_execute_insert
     id = connection.execute("INSERT INTO entries (title) VALUES ('inserted-title')")
     if defined? JRUBY_VERSION
