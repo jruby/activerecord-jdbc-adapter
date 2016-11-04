@@ -24,13 +24,6 @@ class SQLite3SimpleTest < Test::Unit::TestCase
     assert_equal 2, Entry.count
   end
 
-  def test_execute_insert_multiple_values
-    skip('only supported since 3.7.11') if connection.send(:sqlite_version) < '3.7.11'
-    count = Entry.count
-    connection.execute "INSERT INTO entries (title, content) VALUES ('E1', 'exec insert1'), ('E2', 'exec insert2')"
-    assert_equal count + 2, Entry.count
-  end
-
   def test_execute_update
     user = User.create! :login => 'user1'
     Entry.create! :title => 'E1', :user_id => user.id

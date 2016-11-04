@@ -34,10 +34,6 @@ module SerializeTestMethods
 
   MyObject = Struct.new :attribute1, :attribute2
 
-  def test_list_of_serialized_attributes
-    assert_equal %w(content), Topic.serialized_attributes.keys
-  end if ActiveRecord::VERSION::STRING <= '4.2'
-
   def test_serialized_attribute
     Topic.serialize("content", MyObject)
 
@@ -48,12 +44,6 @@ module SerializeTestMethods
     topic.reload
     assert_equal(myobj, topic.content)
   end
-
-  def test_serialized_attribute_init_with
-    topic = Topic.allocate
-    topic.init_with('attributes' => { 'content' => '--- foo' })
-    assert_equal 'foo', topic.content
-  end if Test::Unit::TestCase.ar_version('3.0') && ActiveRecord::VERSION::STRING < '4.2'
 
   def test_serialized_attribute_in_base_class
     Topic.serialize("content", Hash)
@@ -96,7 +86,7 @@ module SerializeTestMethods
     t.content.foo = 'bar'
     t.save!
     assert_equal 'bar', t.reload.content.foo
-  end if Test::Unit::TestCase.ar_version('3.1')
+  end
 
   def test_serialized_attribute_declared_in_subclass
     hash = { 'important1' => 'value1', 'important2' => 'value2' }
@@ -150,16 +140,10 @@ module SerializeTestMethods
     #ActiveRecord::Base.logger.level = Logger::WARN
   end
 
-  def test_serialized_attribute_should_raise_exception_on_save_with_wrong_type
-    Topic.serialize(:content, Hash)
-    topic = Topic.new(:content => "string")
-    assert_raise(ActiveRecord::SerializationTypeMismatch) { topic.save }
-  end if Test::Unit::TestCase.ar_version('3.2') && ActiveRecord::VERSION::STRING < '4.2'
-
   def test_serialized_attribute_should_raise_exception_on_new_with_wrong_type
     Topic.serialize(:content, Hash)
     assert_raise(ActiveRecord::SerializationTypeMismatch) { Topic.new(:content => "string") }
-  end if Test::Unit::TestCase.ar_version('4.2')
+  end
 
   def test_should_raise_exception_on_serialized_attribute_with_type_mismatch
     myobj = MyObject.new('value1', 'value2')
@@ -167,7 +151,7 @@ module SerializeTestMethods
     assert topic.save
     Topic.serialize(:content, Hash)
     assert_raise(ActiveRecord::SerializationTypeMismatch) { Topic.find(topic.id).content }
-  end if Test::Unit::TestCase.ar_version('3.2')
+  end
 
   def test_serialized_attribute_with_class_constraint
     settings = { "color" => "blue" }
@@ -187,7 +171,7 @@ module SerializeTestMethods
     topic.reload
     assert_equal Hash, topic.content.class
     assert_equal "MadridRb", topic.content["beer"]
-  end if Test::Unit::TestCase.ar_version('3.1')
+  end
 
   def test_serialized_no_default_class_for_object
     topic = Topic.new
@@ -200,7 +184,7 @@ module SerializeTestMethods
     assert topic.save
     topic = topic.reload
     assert_equal true, topic.content
-  end if Test::Unit::TestCase.ar_version('3.0')
+  end
 
   def test_serialized_boolean_value_false
     Topic.serialize(:content)
@@ -208,54 +192,7 @@ module SerializeTestMethods
     assert topic.save
     topic = topic.reload
     assert_equal false, topic.content
-  end if Test::Unit::TestCase.ar_version('3.0')
-
-  def test_serialize_with_coder
-    skip "not supported on AR >= 4.2" if ar_version('4.2')
-    coder = Class.new {
-      # Identity
-      def load(thing)
-        thing
-      end
-
-      # base 64
-      def dump(thing)
-        [thing].pack('m')
-      end
-    }.new
-
-    Topic.serialize(:content, coder)
-    s = 'hello world'
-    topic = Topic.new(:content => s)
-    assert topic.save
-    topic = topic.reload
-    assert_equal [s].pack('m'), topic.content
-  ensure
-    Topic.serialize(:content)
-  end if Test::Unit::TestCase.ar_version('3.1')
-
-  def test_serialize_with_bcrypt_coder
-    skip "not supported on AR >= 4.2" if ar_version('4.2')
-    require 'bcrypt'
-    crypt_coder = Class.new {
-      def load(thing)
-        return unless thing
-        BCrypt::Password.new thing
-      end
-
-      def dump(thing)
-        BCrypt::Password.create(thing).to_s
-      end
-    }.new
-
-    Topic.serialize(:content, crypt_coder)
-    password = 'password'
-    topic = Topic.new(:content => password)
-    assert topic.save
-    topic = topic.reload
-    assert_kind_of BCrypt::Password, topic.content
-    assert_equal(true, topic.content == password, 'password should equal')
-  end if Test::Unit::TestCase.ar_version('3.1')
+  end
 
   def test_serialize_with_coder
     some_class = Struct.new(:foo) do
@@ -274,7 +211,7 @@ module SerializeTestMethods
     topic.reload
     assert_kind_of some_class, topic.content
     assert_equal topic.content, some_class.new('my value')
-  end if Test::Unit::TestCase.ar_version('4.2')
+  end
 
   def test_serialize_attribute_via_select_method_when_time_zone_available
     ActiveRecord::Base.time_zone_aware_attributes = true
@@ -287,14 +224,5 @@ module SerializeTestMethods
     assert_raise(ActiveModel::MissingAttributeError) { Topic.select(:id).find(topic.id).content }
   ensure
     ActiveRecord::Base.time_zone_aware_attributes = false
-  end if Test::Unit::TestCase.ar_version('3.2')
-
-#  def test_serialize_attribute_can_be_serialized_in_an_integer_column
-#    insures = ['life']
-#    person = SerializedPerson.new(:first_name => 'David', :insures => insures)
-#    assert person.save
-#    person = person.reload
-#    assert_equal(insures, person.insures)
-#  end
-
+  end
 end
