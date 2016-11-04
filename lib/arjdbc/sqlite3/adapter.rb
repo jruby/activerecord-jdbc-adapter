@@ -672,12 +672,16 @@ module ActiveRecord::ConnectionAdapters
       super
     end
 
+    # We override this because our exec_query returns fixnum instead of results on this pragma
+    # Very weirdly, the fixnum it returns is not always 0.  Seems like something is broken?
     def table_structure(table_name)
-      super
-    rescue ActiveRecord::JDBCError => error
-      e = ActiveRecord::StatementInvalid.new("Could not find table '#{table_name}'")
-      e.set_backtrace error.backtrace
-      raise e
+      structure = exec_query("PRAGMA table_info(#{quote_table_name(table_name)})", "SCHEMA")
+
+      if structure.kind_of?(Integer) || structure.empty?
+        raise(ActiveRecord::StatementInvalid, "Could not find table '#{table_name}'")
+      end
+
+      table_structure_with_collation(table_name, structure)
     end
 
     def jdbc_column_class
