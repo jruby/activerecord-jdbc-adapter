@@ -1,6 +1,10 @@
 require 'db/sqlite3'
 require 'transaction'
 
+#######################################################################################
+### NOTE: providing an argument to supports_transaction_isolation? is an ARJDBC feature
+### which AR does not support.
+#######################################################################################
 class SQLite3TransactionTest < Test::Unit::TestCase
   include TransactionTestMethods
 

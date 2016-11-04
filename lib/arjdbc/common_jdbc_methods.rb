@@ -28,5 +28,15 @@ module ArJdbc
         result
       end
     end
+
+    # Does this adapter support setting the isolation level for a transaction?
+    # Unlike 'plain' `ActiveRecord` we allow checking for concrete transaction
+    # isolation level support by the database.
+    # @param level optional to check if we support a specific isolation level
+    # @since 1.3.0
+    # @extension added optional level parameter
+    def supports_transaction_isolation?(level = nil)
+      @connection.supports_transaction_isolation?(level)
+    end
   end
 end
