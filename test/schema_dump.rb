@@ -110,24 +110,14 @@ module SchemaDumpTestMethods
 
   def test_schema_dump_includes_decimal_options
     output = standard_dump(StringIO.new, [/^[^d]/]) # keep db_types
-    # t.column :sample_small_decimal, :decimal, :precision => 3, :scale => 2, :default => 3.14
-    if ar_version('4.0')
-      assert_match %r{precision: 3,[[:space:]]+scale: 2,[[:space:]]+default: 3.14}, output
-    else
-      assert_match %r{:precision => 3,[[:space:]]+:scale => 2,[[:space:]]+:default => 3.14}, output
-    end
+    # t.column :sample_small_decimal, :decimal, :precision => 3, :scale => 2, :default => "3.14"
+    assert_match %r{precision: 3,[[:space:]]+scale: 2,[[:space:]]+default: \"3.14\"}, output
   end
 
   def test_schema_dump_keeps_large_precision_integer_columns_as_decimal
     output = standard_dump
     precision = DbTypeMigration.big_decimal_precision
-    if ar_version('4.2')
-      assert_match %r{t.decimal\s+"big_decimal",\s+precision: #{precision}}, output
-    elsif ar_version('4.0')
-      assert_match %r{t.decimal\s+"big_decimal",\s+precision: #{precision},\s+scale: 0}, output
-    else
-      assert_match %r{t.decimal\s+"big_decimal",\s+:precision => #{precision},\s+:scale => 0}, output
-    end
+    assert_match %r{t.decimal\s+"big_decimal",\s+precision: #{precision}}, output
   end if Test::Unit::TestCase.ar_version('3.0') # does not work in 2.3 :
   # t.integer  "big_decimal", :limit => 38, :precision => 38, :scale => 0
 
@@ -136,11 +126,7 @@ module SchemaDumpTestMethods
     match = output.match(%r{create_table "string_ids"(.*)do.*\n(.*)\n})
     assert_not_nil(match, "string_ids table not found")
     assert_match %r((:id => false)|(id: false)), match[1], "no table id not preserved"
-    if ar_version('4.0')
-      assert_match %r{t.string[[:space:]]+"id",[[:space:]]+null: false$}, match[2], "non-primary key id column not preserved"
-    else
-      assert_match %r{t.string[[:space:]]+"id",[[:space:]]+:null => false$}, match[2], "non-primary key id column not preserved"
-    end
+    assert_match %r{t.string[[:space:]]+"id",[[:space:]]+null: false$}, match[2], "non-primary key id column not preserved"
   end
 
   def test_schema_dump_keeps_id_false_when_id_is_false_and_unique_not_null_column_added
