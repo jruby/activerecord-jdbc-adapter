@@ -54,6 +54,38 @@ module ArJdbc
       end
     end
 
+    # Creates a (transactional) save-point one can rollback to.
+    # Unlike 'plain' `ActiveRecord` it is allowed to pass a save-point name.
+    # @param name the save-point name
+    # @return save-point name (even if nil passed will be generated)
+    # @since 1.3.0
+    # @extension added optional name parameter
+    def create_savepoint(name = current_savepoint_name(true))
+      @connection.create_savepoint(name)
+    end
+
+    # Transaction rollback to a given (previously created) save-point.
+    # If no save-point name given rollback to the last created one.
+    # @param name the save-point name
+    # @extension added optional name parameter
+    def rollback_to_savepoint(name = current_savepoint_name(true))
+      @connection.rollback_savepoint(name)
+    end
+
+    # Release a previously created save-point.
+    # @note Save-points are auto-released with the transaction they're created
+    # in (on transaction commit or roll-back).
+    # @param name the save-point name
+    # @extension added optional name parameter
+    def release_savepoint(name = current_savepoint_name(false))
+      @connection.release_savepoint(name)
+    end
+
+    # @private
+    def current_savepoint_name(compat = nil)
+      current_transaction.savepoint_name # unlike AR 3.2-4.1 might be nil
+    end
+
     # Does this adapter support setting the isolation level for a transaction?
     # Unlike 'plain' `ActiveRecord` we allow checking for concrete transaction
     # isolation level support by the database.
