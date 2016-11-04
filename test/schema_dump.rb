@@ -11,7 +11,7 @@ module SchemaDumpTestMethods
     connection.add_index :entries, :title
     StringIO.open do |io|
       ActiveRecord::SchemaDumper.dump(connection, io)
-      assert_match(/add_index "entries",/, io.string)
+      assert_match(/"index_entries_on_title"/, io.string)
     end
   ensure
     connection.remove_index :entries, :title

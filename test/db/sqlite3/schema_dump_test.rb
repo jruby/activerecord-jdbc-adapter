@@ -9,7 +9,7 @@ class SQLite3SchemaDumpTest < Test::Unit::TestCase
     assert_no_match %r{create_table "sqlite_sequence"}, output
   end
 
-  test "dumping with dot in table name" do
+  def test_dumping_with_dot_in_table_name
     connection.create_table('test.some_records') { |t| t.string :name }
     connection.add_index('test.some_records', :name, :unique => true)
     assert_equal 2, connection.columns('test.some_records').size
@@ -17,7 +17,7 @@ class SQLite3SchemaDumpTest < Test::Unit::TestCase
     begin
       output = standard_dump
       assert_match %r{create_table "test.some_records"}, output
-      assert_match %r{add_index "test.some_records"}, output
+      assert_match %r{test.some_records_on_name}, output   # index line
     ensure
       ActiveRecord::Base.connection.drop_table('test.some_records')
     end
