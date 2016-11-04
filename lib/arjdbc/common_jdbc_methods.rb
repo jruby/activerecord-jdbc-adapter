@@ -10,6 +10,12 @@ module ArJdbc
       super(connection, logger, config)
     end
 
+    # Starts a database transaction.
+    # @param isolation the transaction isolation to use
+    def begin_isolated_db_transaction(isolation)
+      @connection.begin(isolation)
+    end
+
     def execute(sql, name = nil)
       # FIXME: Can we kill :skip_logging?
       if name == :skip_logging
