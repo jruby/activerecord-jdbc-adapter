@@ -672,16 +672,6 @@ module ActiveRecord::ConnectionAdapters
       super
     end
 
-    # FIXME: common_jdbc_methods asks db and sqlite says "yes" but I think AR wants us to say no.
-    def supports_transaction_isolation?(level = nil)
-      false
-    end
-
-    # FIXME: A test wants us to raise if this is called.  Curve-fitting
-    def begin_isolated_db_transaction(isolation)
-      raise ActiveRecord::TransactionIsolationError, "adapter does not support setting transaction isolation"
-    end
-
     # We override this because our exec_query returns fixnum instead of results on this pragma
     # Very weirdly, the fixnum it returns is not always 0.  Seems like something is broken?
     def table_structure(table_name)
