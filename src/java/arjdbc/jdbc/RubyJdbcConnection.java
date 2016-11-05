@@ -597,7 +597,9 @@ public class RubyJdbcConnection extends RubyObject {
 
                         return mapToResult(context, context.runtime, connection, resultSet, columns);
                     } else {
-                        return mapGeneratedKeysOrUpdateCount(context, connection, statement);
+                        //return context.runtime.newFixnum( statement.getUpdateCount());
+                        return context.runtime.newEmptyArray();
+                        //return mapGeneratedKeysOrUpdateCount(context, connection, statement);
                     }
                 } catch (final SQLException e) {
                     debugErrorSQL(context, query);
@@ -697,6 +699,14 @@ public class RubyJdbcConnection extends RubyObject {
         else { // we allow prepared statements with empty binds parameters
             return executePreparedUpdate(context, query, (List) binds, false);
         }
+    }
+
+    @JRubyMethod(name = {"execute_prepared_update"}, required = 2)
+    public IRubyObject execute_prepared_update(final ThreadContext context,
+                                               final IRubyObject sql, final IRubyObject binds) throws SQLException {
+
+        final String query = sql.convertToString().getUnicodeValue();
+        return executePreparedUpdate(context, query, (List) binds, false);
     }
 
     /**
@@ -932,6 +942,18 @@ public class RubyJdbcConnection extends RubyObject {
         }
     }
 
+    @JRubyMethod(name = "execute_prepared_query")
+    public IRubyObject execute_prepared_query(final ThreadContext context,
+                                              final IRubyObject sql, final IRubyObject binds) throws SQLException {
+        final String query = sql.convertToString().getUnicodeValue();
+
+        if (binds == null || !(binds instanceof RubyArray)) {
+            throw context.runtime.newArgumentError("binds exptected to an instance of Array");
+        }
+
+        return executePreparedQuery(context, query, (List) binds, 0);
+    }
+
     /**
      * NOTE: This methods behavior changed in AR-JDBC 1.3 the old behavior is
      * achievable using {@link #executeQueryRaw(ThreadContext, String, int, Block)}.
@@ -945,18 +967,21 @@ public class RubyJdbcConnection extends RubyObject {
     protected IRubyObject executeQuery(final ThreadContext context, final String query, final int maxRows) {
         return withConnection(context, new Callable<IRubyObject>() {
             public IRubyObject call(final Connection connection) throws SQLException {
-                Statement statement = null; ResultSet resultSet = null;
+                Statement statement = null;
+                ResultSet resultSet = null;
+
                 try {
                     statement = createStatement(context, connection);
                     statement.setMaxRows(maxRows); // zero means there is no limit
                     resultSet = statement.executeQuery(query);
                     return mapQueryResult(context, connection, resultSet);
-                }
-                catch (final SQLException e) {
+                } catch (final SQLException e) {
                     debugErrorSQL(context, query);
                     throw e;
+                } finally {
+                    close(resultSet);
+                    close(statement);
                 }
-                finally { close(resultSet); close(statement); }
             }
         });
     }
@@ -971,7 +996,7 @@ public class RubyJdbcConnection extends RubyObject {
                 // FIXME: array type check for binds
 
                 try {
-                    statement = connection.prepareStatement(query, Statement.RETURN_GENERATED_KEYS);
+                    statement = connection.prepareStatement(query);
                     setStatementParameters(context, connection, statement, (List) binds);
                     boolean hasResultSet = statement.execute();
 
@@ -981,7 +1006,9 @@ public class RubyJdbcConnection extends RubyObject {
 
                         return mapToResult(context, context.runtime, connection, resultSet, columns);
                     } else {
-                        return mapGeneratedKeysOrUpdateCount(context, connection, statement);
+                        return context.runtime.newEmptyArray();
+                        //return context.runtime.newFixnum( statement.getUpdateCount());
+//                        return mapGeneratedKeysOrUpdateCount(context, connection, statement);
                     }
                 } catch (final SQLException e) {
                     debugErrorSQL(context, query);

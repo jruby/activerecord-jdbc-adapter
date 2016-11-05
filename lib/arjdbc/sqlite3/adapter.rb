@@ -16,7 +16,7 @@ module ArJdbc
     ConnectionAdapters = ::ActiveRecord::ConnectionAdapters
     IndexDefinition = ::ActiveRecord::ConnectionAdapters::IndexDefinition
     Quoting = ::ActiveRecord::ConnectionAdapters::SQLite3::Quoting
-    RecordNodeUnique = ::ActiveRecord::RecordNotUnique
+    RecordNotUnique = ::ActiveRecord::RecordNotUnique
     SchemaCreation = ConnectionAdapters::SQLite3::SchemaCreation
     SQLite3Adapter = ConnectionAdapters::AbstractAdapter
 
@@ -658,30 +658,27 @@ module ActiveRecord::ConnectionAdapters
       end
     end
 
-    alias :exec_delete :exec_query
-    alias :exec_update :exec_query
+    def exec_update(sql, name = nil, binds = [])
+      use_prepared = !without_prepared_statement?(binds)
+
+      if use_prepared
+        type_casted_binds = binds.map { |attr| type_cast(attr.value_for_database) }
+        log(sql, name, binds) { @connection.execute_prepared_update(sql, type_casted_binds) }
+      else
+        log(sql, name) { @connection.execute_update(sql, nil) }
+      end
+    end
+    alias :exec_delete :exec_update
 
     # last two values passed but not used so I cannot alias to exec_query
     def exec_insert(sql, name, binds, pk = nil, sequence_name = nil)
-      exec_query(sql, name, binds)
+      exec_update(sql, name, binds)
     end
 
     def indexes(table_name, name = nil) #:nodoc:
       # on JDBC 3.7 we'll simply do super since it can not handle "PRAGMA index_info"
       return @connection.indexes(table_name, name) if sqlite_version < '3.8' # super
       super
-    end
-
-    # We override this because our exec_query returns fixnum instead of results on this pragma
-    # Very weirdly, the fixnum it returns is not always 0.  Seems like something is broken?
-    def table_structure(table_name)
-      structure = exec_query("PRAGMA table_info(#{quote_table_name(table_name)})", "SCHEMA")
-
-      if structure.kind_of?(Integer) || structure.empty?
-        raise(ActiveRecord::StatementInvalid, "Could not find table '#{table_name}'")
-      end
-
-      table_structure_with_collation(table_name, structure)
     end
 
     def jdbc_column_class
