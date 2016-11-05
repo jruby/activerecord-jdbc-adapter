@@ -19,7 +19,7 @@ class SQLite3SimpleTest < Test::Unit::TestCase
 
     assert_equal 1, Entry.count
     # NOTE: AR actually returns an empty [] (not an ID) !?
-    id = connection.execute "INSERT INTO entries (title, content) VALUES ('Execute Insert', 'This now works with SQLite3')"
+    id = connection.exec_insert "INSERT INTO entries (title, content) VALUES ('Execute Insert', 'This now works with SQLite3')", nil, []
     assert_equal Entry.last.id, id if defined? JRUBY_VERSION # sqlite3 returns []
     assert_equal 2, Entry.count
   end
@@ -28,7 +28,7 @@ class SQLite3SimpleTest < Test::Unit::TestCase
     user = User.create! :login => 'user1'
     Entry.create! :title => 'E1', :user_id => user.id
 
-    affected_rows = connection.execute "UPDATE entries SET title = 'Execute Update' WHERE id = #{Entry.first.id}"
+    affected_rows = connection.exec_update "UPDATE entries SET title = 'Execute Update' WHERE id = #{Entry.first.id}"
     assert_equal 1, affected_rows if defined? JRUBY_VERSION # sqlite3 returns []
     assert_equal 'Execute Update', Entry.first.title
   end
