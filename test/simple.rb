@@ -912,8 +912,7 @@ module SimpleTestMethods
     Entry.create! :title => '43'; Entry.create! :title => '44'
     assert_not_nil result = connection.execute("SELECT * FROM entries")
     if defined? JRUBY_VERSION # e.g. Mysql2::Result with mysql2
-      assert_instance_of Array, result # always return "raw" results
-      assert_equal 2, result.size
+      assert_equal 2, result.length
       assert_instance_of Hash, result.first
     end
   end
