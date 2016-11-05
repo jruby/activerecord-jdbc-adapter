@@ -19,8 +19,7 @@ class SQLite3SimpleTest < Test::Unit::TestCase
 
     assert_equal 1, Entry.count
     # NOTE: AR actually returns an empty [] (not an ID) !?
-    id = connection.exec_insert "INSERT INTO entries (title, content) VALUES ('Execute Insert', 'This now works with SQLite3')", nil, []
-    assert_equal Entry.last.id, id if defined? JRUBY_VERSION # sqlite3 returns []
+    connection.exec_insert "INSERT INTO entries (title, content) VALUES ('Execute Insert', 'This now works with SQLite3')", nil, []
     assert_equal 2, Entry.count
   end
 
