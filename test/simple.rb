@@ -158,36 +158,17 @@ module DirtyAttributeTests
 
   private
 
-  if ActiveRecord::VERSION::MAJOR > 3
-
-    def with_partial_updates(klass, on = true)
-      old = klass.partial_writes?
-      klass.partial_writes = on
-      yield
-    ensure
-      klass.partial_writes = old
-    end
-
-  else
-
-    def with_partial_updates(klass, on = true)
-      old = klass.partial_updates?
-      klass.partial_updates = on
-      yield
-    ensure
-      klass.partial_updates = old
-    end
-
+  def with_partial_updates(klass, on = true)
+    old = klass.partial_writes?
+    klass.partial_writes = on
+    yield
+  ensure
+    klass.partial_writes = old
   end
 
   def do_update_all(model, values, conditions)
-    if ar_version('3.2')
-      model.where(conditions).update_all(values)
-    else # User.update_all values, conditions deprecated on 4.0
-      model.update_all(values, conditions)
-    end
+    model.where(conditions).update_all(values)
   end
-
 end
 
 module SimpleTestMethods
