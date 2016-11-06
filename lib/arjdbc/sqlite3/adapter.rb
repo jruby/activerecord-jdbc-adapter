@@ -651,7 +651,7 @@ module ActiveRecord::ConnectionAdapters
       use_prepared = prepare || !without_prepared_statement?(binds)
 
       if use_prepared
-        type_casted_binds = binds.map { |attr| type_cast(attr.value_for_database) }
+        type_casted_binds = prepare_binds_for_jdbc(binds)
         log(sql, name, binds) { @connection.execute_prepared(sql, type_casted_binds) }
       else
         log(sql, name) { @connection.execute(sql) }
@@ -662,13 +662,23 @@ module ActiveRecord::ConnectionAdapters
       use_prepared = !without_prepared_statement?(binds)
 
       if use_prepared
-        type_casted_binds = binds.map { |attr| type_cast(attr.value_for_database) }
+        type_casted_binds = prepare_binds_for_jdbc(binds)
         log(sql, name, binds) { @connection.execute_prepared_update(sql, type_casted_binds) }
       else
         log(sql, name) { @connection.execute_update(sql, nil) }
       end
     end
     alias :exec_delete :exec_update
+
+    # Sqlite3 JDBC types in prepared statements seem to report blob as varchar (12).
+    # So to work around this we will pass attribute type in with the value so we can
+    # then remap to appropriate type in JDBC without needing to ask JDBC what type
+    # it should be using.  No one likes a stinking liar...
+    def prepare_binds_for_jdbc(binds)
+      binds.map do |attribute|
+        [attribute.type.type, type_cast(attribute.value_for_database)]
+      end
+    end
 
     # last two values passed but not used so I cannot alias to exec_query
     def exec_insert(sql, name, binds, pk = nil, sequence_name = nil)

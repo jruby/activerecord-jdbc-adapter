@@ -2221,22 +2221,26 @@ public class RubyJdbcConnection extends RubyObject {
         }
     }
 
+    // So far we have only examined the needs to Sqlite3 but for that adapter (and it is old JDBC adapter)
+    // we can pass all tests but binary column types with just the supplied value.  So we will leave it
+    // this way until we upgrade Sqlite adapter and get some more databases supported.
+    protected int typeHack(ThreadContext context, IRubyObject column, Object value) throws SQLException {
+        if (column != null) {
+            String columnType = column.asString().toString();
+
+            if (columnType.equals("binary")) return jdbcTypeFor(context, context.runtime, column, value);
+
+            column = null;
+        }
+
+        return jdbcTypeFor(context, context.runtime, column, value);
+    }
+
     protected void setStatementParameter(final ThreadContext context,
             final Ruby runtime, final Connection connection,
             final PreparedStatement statement, final int index,
-            final Object rawValue, final IRubyObject column) throws SQLException {
-        final Object value;
-
-        // FIXME: When all adapters are finished this will never have column passed to it so
-        // we can delete this branch
-        if (column != null) {
-            final IRubyObject castType = column.callMethod(context, "cast_type");
-            value = castType.callMethod(context, "type_cast_for_database", (IRubyObject) rawValue);
-        } else {
-            value = rawValue;
-        }
-
-        final int type = jdbcTypeFor(context, runtime, column, value);
+            final Object value, IRubyObject column) throws SQLException {
+        int type = typeHack(context, column, value);
 
         switch (type) {
             case Types.TINYINT:
@@ -2278,7 +2282,7 @@ public class RubyJdbcConnection extends RubyObject {
                 setXmlParameter(context, connection, statement, index, value, column, type);
                 break;
             case Types.ARRAY:
-                setArrayParameter(context, connection, statement, index, rawValue, column, type);
+                setArrayParameter(context, connection, statement, index, value, column, type);
                 break;
             case Types.JAVA_OBJECT:
             case Types.OTHER:
@@ -2938,10 +2942,11 @@ public class RubyJdbcConnection extends RubyObject {
             }
             else { // should be a RubyString
                 final ByteList blob = value.asString().getByteList();
-                statement.setBinaryStream(index,
-                    new ByteArrayInputStream(blob.unsafeBytes(), blob.getBegin(), blob.getRealSize()),
-                    blob.getRealSize() // length
-                );
+                statement.setBytes(index, blob.bytes());
+                //statement.setBinaryStream(index,
+//                    new ByteArrayInputStream(blob.unsafeBytes(), blob.getBegin(), blob.getRealSize()),
+//                    blob.getRealSize() // length
+//                );
                 // JDBC 4.0 :
                 //statement.setBlob(index,
                 //    new ByteArrayInputStream(bytes.unsafeBytes(), bytes.getBegin(), bytes.getRealSize())
