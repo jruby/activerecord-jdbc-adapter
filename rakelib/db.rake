@@ -8,6 +8,7 @@ namespace :db do
     load 'test/db/mysql_config.rb' # rescue nil
     script = sql_script <<-SQL, 'mysql'
 DROP DATABASE IF EXISTS `#{MYSQL_CONFIG[:database]}`;
+CREATE USER #{MYSQL_CONFIG[:username]}@localhost;
 CREATE DATABASE `#{MYSQL_CONFIG[:database]}` DEFAULT CHARACTER SET `utf8` COLLATE `utf8_general_ci`;
 GRANT ALL PRIVILEGES ON `#{MYSQL_CONFIG[:database]}`.* TO #{MYSQL_CONFIG[:username]}@localhost;
 GRANT ALL PRIVILEGES ON `test\_%`.* TO #{MYSQL_CONFIG[:username]}@localhost;
@@ -20,7 +21,7 @@ SQL
       params['--password'] = password
     end
     puts "Creating MySQL (test) database: #{MYSQL_CONFIG[:database]}"
-    sh "cat #{script.path} | #{mysql} #{params.to_a.join(' ')}", :verbose => $VERBOSE # so password is not echoed
+    sh "cat #{script.path} | #{mysql} -f #{params.to_a.join(' ')}", :verbose => $VERBOSE # so password is not echoed
   end
 
   desc "Creates the test database for PostgreSQL"
