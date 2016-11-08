@@ -31,7 +31,7 @@ ArJdbc::ConnectionMethods.module_eval do
     end
     sslmode = config.key?(:sslmode) ? config[:sslmode] : config[:requiressl]
     # NOTE: makes not much sense since this needs some JVM options :
-    # sslmode = ENV['PGSSLMODE'] || ENV['PGREQUIRESSL'] if sslmode.nil?
+    sslmode = ENV['PGSSLMODE'] || ENV['PGREQUIRESSL'] if sslmode.nil?
     unless sslmode.nil? # PG :sslmode - disable|allow|prefer|require
       # JRuby/JVM needs to be started with :
       #  -Djavax.net.ssl.trustStore=mystore -Djavax.net.ssl.trustStorePassword=...
