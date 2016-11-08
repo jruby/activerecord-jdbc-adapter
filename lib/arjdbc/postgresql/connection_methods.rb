@@ -37,7 +37,10 @@ ArJdbc::ConnectionMethods.module_eval do
       #  -Djavax.net.ssl.trustStore=mystore -Djavax.net.ssl.trustStorePassword=...
       # or a non-validating connection might be used (for testing) :
       #  :sslfactory = 'org.postgresql.ssl.NonValidatingFactory'
-      properties['ssl'] ||= 'true' if sslmode == true || sslmode.to_s == 'require'
+      if sslmode == true || sslmode.to_s == 'require'
+        properties['sslfactory'] ||= 'org.postgresql.ssl.NonValidatingFactory' 
+        properties['ssl'] ||= 'true' 
+      end
     end
     properties['tcpKeepAlive'] ||= config[:keepalives] if config.key?(:keepalives)
     properties['kerberosServerName'] ||= config[:krbsrvname] if config[:krbsrvname]
