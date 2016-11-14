@@ -8,7 +8,6 @@ class SQLite3SimpleTest < Test::Unit::TestCase
   include SimpleTestMethods
   include ActiveRecord3TestMethods
   include ColumnNameQuotingTests
-  include DirtyAttributeTests
   include XmlColumnTestMethods
   include ExplainSupportTestMethods if ar_version("3.1")
   include CustomSelectTestMethods
