@@ -362,23 +362,26 @@ public class RubyJdbcConnection extends RubyObject {
 
     @JRubyMethod(name = "release_savepoint", required = 1)
     public IRubyObject release_savepoint(final ThreadContext context, final IRubyObject name) {
-        if ( name == null || name.isNil() ) {
-            throw context.getRuntime().newArgumentError("nil savepoint name given");
-        }
-        final Connection connection = getConnection(true);
+        Ruby runtime = context.runtime;
+
+        if ( name == null || name.isNil() ) throw runtime.newArgumentError("nil savepoint name given");
+
         try {
             Object savepoint = getSavepoints(context).remove(name);
-            if ( savepoint == null ) {
-                throw context.getRuntime().newRuntimeError("could not release savepoint: '" + name + "' (not set)");
+
+            if (savepoint == null) {
+                RubyClass invalidStatement = ActiveRecord(context).getClass("StatementInvalid");
+                throw runtime.newRaiseException(invalidStatement, "could not release savepoint: '" + name + "' (not set)");
             }
+
             // NOTE: RubyHash.remove does not convert to Java as get does :
-            if ( ! ( savepoint instanceof Savepoint ) ) {
+            if (! ( savepoint instanceof Savepoint )) {
                 savepoint = ((IRubyObject) savepoint).toJava(Savepoint.class);
             }
-            connection.releaseSavepoint((Savepoint) savepoint);
-            return context.getRuntime().getNil();
-        }
-        catch (SQLException e) {
+
+            getConnection(true).releaseSavepoint((Savepoint) savepoint);
+            return runtime.getNil();
+        } catch (SQLException e) {
             return handleException(context, e);
         }
     }

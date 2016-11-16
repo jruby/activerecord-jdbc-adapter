@@ -322,22 +322,24 @@ public class SQLite3RubyJdbcConnection extends RubyJdbcConnection {
         }
     }
 
+    // FIXME: Update our JDBC adapter to later version which basically performs this SQL in
+    // this method.  Then we can use base RubyJdbcConnection version.
     @Override
     @JRubyMethod(name = "release_savepoint", required = 1)
     public IRubyObject release_savepoint(final ThreadContext context, final IRubyObject name) {
-        final Connection connection = getConnection(true);
+        Ruby runtime = context.runtime;
+
         try {
-            if ( getSavepoints(context).remove(name) == null ) {
-                throw context.getRuntime().newRuntimeError("could not release savepoint: '" + name + "' (not set)");
+            if (getSavepoints(context).remove(name) == null) {
+                RubyClass invalidStatement = ActiveRecord(context).getClass("StatementInvalid");
+                throw runtime.newRaiseException(invalidStatement, "could not release savepoint: '" + name + "' (not set)");
             }
             // NOTE: JDBC driver does not implement release(Savepoint) :
-            connection.createStatement().execute("RELEASE SAVEPOINT " + name.toString());
+            getConnection(true).createStatement().execute("RELEASE SAVEPOINT " + name.toString());
 
-            return context.getRuntime().getNil();
-        }
-        catch (SQLException e) {
+            return runtime.getNil();
+        } catch (SQLException e) {
             return handleException(context, e);
         }
     }
-
 }
