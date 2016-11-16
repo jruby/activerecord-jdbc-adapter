@@ -327,9 +327,6 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
             if ( rubyValue.isNil() ) {
                 statement.setNull(index, Types.OTHER); return;
             }
-            if (!isAr42(column)) { // Value has already been cast for AR42
-                value = column.getMetaClass().callMethod(context, "json_to_string", rubyValue);
-            }
         }
         else if ( value == null ) {
             statement.setNull(index, Types.OTHER); return;
@@ -370,9 +367,6 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
             final IRubyObject rubyValue = (IRubyObject) value;
             if ( rubyValue.isNil() ) {
                 statement.setNull(index, Types.OTHER); return;
-            }
-            if (!isAr42(column)) { // Value has already been cast for AR42
-                value = column.getMetaClass().callMethod(context, "cidr_to_string", rubyValue);
             }
         }
         else if ( value == null ) {
@@ -498,12 +492,8 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
         if ( rawDateTime != null && rawDateTime.booleanValue() ) return strValue;
 
         final IRubyObject adapter = callMethod(context, "adapter"); // self.adapter
-        if ( usesType(runtime) ) {
-            return typeCastFromDatabase(context, adapter, runtime.newSymbol("timestamp"), strValue);
-        }
 
-        if ( adapter.isNil() ) return strValue; // NOTE: we warn on init_connection
-        return adapter.callMethod(context, "_string_to_timestamp", strValue);
+        return typeCastFromDatabase(context, adapter, runtime.newSymbol("timestamp"), strValue);
     }
 
     @Override
