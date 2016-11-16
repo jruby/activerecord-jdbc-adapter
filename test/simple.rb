@@ -344,13 +344,7 @@ module SimpleTestMethods
     e = DbType.create!(:sample_string => '', :sample_text => '')
     t = Time.now
     value = Time.local(t.year, t.month, t.day, t.hour, t.min, t.sec, 0)
-    if ActiveRecord::VERSION::MAJOR >= 3
-      # AR-3 adapters override quoted_date which is called always when a
-      # Time like value is passed (... as well for string/text columns) :
-      str = value.utc.to_s(:db) << '.' << sprintf("%06d", value.usec)
-    else # AR-2.x #quoted_date did not do TZ conversions
-      str = value.to_s(:db)
-    end
+    str = value.utc.to_s(:db) << '.' << sprintf("%06d", value.usec)
     e.sample_string = value
     e.sample_text = value
     e.save!; e.reload
@@ -651,23 +645,15 @@ module SimpleTestMethods
     columns = DbType.connection.columns('db_types')
     assert ! columns.detect { |c| c.name.to_s == 'sample_text' }
 
-    if ActiveRecord::VERSION::MAJOR >= 4
-      DbType.connection.remove_column :db_types, :sample_float, nil, {}
-      columns = DbType.connection.columns('db_types')
-      assert ! columns.detect { |c| c.name.to_s == 'sample_float' }
-    end
+    DbType.connection.remove_column :db_types, :sample_float, nil, {}
+    columns = DbType.connection.columns('db_types')
+    assert ! columns.detect { |c| c.name.to_s == 'sample_float' }
   end
 
   def test_remove_columns
     DbType.connection.remove_columns :db_types, :sample_text, :sample_binary
     columns = DbType.connection.columns('db_types')
     assert ! columns.detect { |c| c.name.to_s == 'sample_text' || c.name.to_s == 'sample_binary' }
-
-    if ActiveRecord::VERSION::MAJOR < 4
-      DbType.connection.remove_column :db_types, :sample_float, :sample_decimal
-      columns = DbType.connection.columns('db_types')
-      assert ! columns.detect { |c| c.name.to_s == 'sample_float' || c.name.to_s == 'sample_decimal' }
-    end
   end
 
   def test_validates_uniqueness_of_strings_case_sensitive
