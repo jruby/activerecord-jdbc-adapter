@@ -135,7 +135,7 @@ public class SQLite3RubyJdbcConnection extends RubyJdbcConnection {
                 final Ruby runtime = context.runtime;
                 final RubyClass indexDefinition = getIndexDefinition(runtime);
 
-                final TableName table = extractTableName(connection, schemaName, tableName);
+                final TableName table = extractTableName(connection, null, schemaName, tableName);
 
                 final List<RubyString> primaryKeys = primaryKeys(context, connection, table);
 

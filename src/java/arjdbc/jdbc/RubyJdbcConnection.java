@@ -25,7 +25,6 @@
  ***** END LICENSE BLOCK *****/
 package arjdbc.jdbc;
 
-import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -84,6 +83,7 @@ import org.jruby.javasupport.JavaEmbedUtils;
 import org.jruby.javasupport.JavaUtil;
 import org.jruby.runtime.Arity;
 import org.jruby.runtime.Block;
+import org.jruby.runtime.Helpers;
 import org.jruby.runtime.ObjectAllocator;
 import org.jruby.runtime.ThreadContext;
 import org.jruby.runtime.backtrace.RubyStackTraceElement;
@@ -121,28 +121,16 @@ public class RubyJdbcConnection extends RubyObject {
         return getConnectionAdapters(runtime).getClass("JdbcConnection");
     }
 
+    protected static RubyModule ActiveRecord(ThreadContext context) {
+        return context.runtime.getModule("ActiveRecord");
+    }
+
     /**
      * @param runtime
      * @return <code>ActiveRecord::ConnectionAdapters</code>
      */
     protected static RubyModule getConnectionAdapters(final Ruby runtime) {
         return (RubyModule) runtime.getModule("ActiveRecord").getConstant("ConnectionAdapters");
-    }
-
-    /**
-     * @param runtime
-     * @return <code>ActiveRecord::Result</code>
-     */
-    static RubyClass getResult(final Ruby runtime) {
-        return runtime.getModule("ActiveRecord").getClass("Result");
-    }
-
-    /**
-     * @param runtime
-     * @return <code>ActiveRecord::Base</code>
-     */
-    protected static RubyClass getBase(final Ruby runtime) {
-        return runtime.getModule("ActiveRecord").getClass("Base");
     }
 
     /**
@@ -1106,7 +1094,7 @@ public class RubyJdbcConnection extends RubyObject {
         return withConnection(context, new Callable<List<RubyString>>() {
             public List<RubyString> call(final Connection connection) throws SQLException {
                 final String _tableName = caseConvertIdentifierForJdbc(connection, tableName);
-                final TableName table = extractTableName(connection, null, _tableName);
+                final TableName table = extractTableName(connection, null, null, _tableName);
                 return primaryKeys(context, connection, table);
             }
         });
@@ -1204,7 +1192,7 @@ public class RubyJdbcConnection extends RubyObject {
         final Ruby runtime = context.getRuntime();
         return withConnection(context, new Callable<RubyBoolean>() {
             public RubyBoolean call(final Connection connection) throws SQLException {
-                final TableName components = extractTableName(connection, defaultSchema, tableName);
+                final TableName components = extractTableName(connection, null, defaultSchema, tableName);
                 return runtime.newBoolean( tableExists(runtime, connection, components) );
             }
         });
@@ -1223,12 +1211,7 @@ public class RubyJdbcConnection extends RubyObject {
                     final String defaultSchema = args.length > 2 ? toStringOrNull(args[2]) : null;
 
                     final TableName components;
-                    if ( catalog == null ) { // backwards-compatibility with < 1.3.0
-                        components = extractTableName(connection, defaultSchema, tableName);
-                    }
-                    else {
-                        components = extractTableName(connection, catalog, defaultSchema, tableName);
-                    }
+                    components = extractTableName(connection, catalog, defaultSchema, tableName);
 
                     if ( ! tableExists(context.getRuntime(), connection, components) ) {
                         throw new SQLException("table: " + tableName + " does not exist");
@@ -1277,7 +1260,7 @@ public class RubyJdbcConnection extends RubyObject {
 
                 String _tableName = caseConvertIdentifierForJdbc(connection, tableName);
                 String _schemaName = caseConvertIdentifierForJdbc(connection, schemaName);
-                final TableName table = extractTableName(connection, _schemaName, _tableName);
+                final TableName table = extractTableName(connection, null, _schemaName, _tableName);
 
                 final List<RubyString> primaryKeys = primaryKeys(context, connection, table);
 
@@ -1763,7 +1746,7 @@ public class RubyJdbcConnection extends RubyObject {
             resultRows.append( resultHandler.mapRow(context, runtime, columns, resultSet, this) );
         }
 
-        return resultHandler.newResult(context, runtime, columns, resultRows);
+        return resultHandler.newResult(context, columns, resultRows);
     }
 
     @Deprecated
@@ -1790,12 +1773,7 @@ public class RubyJdbcConnection extends RubyObject {
                 return readerToRuby(context, runtime, resultSet, column);
             case Types.LONGVARCHAR:
             case Types.LONGNVARCHAR: // JDBC 4.0
-                if ( runtime.is1_9() ) {
-                    return readerToRuby(context, runtime, resultSet, column);
-                }
-                else {
-                    return streamToRuby(context, runtime, resultSet, column);
-                }
+                return readerToRuby(context, runtime, resultSet, column);
             case Types.TINYINT:
             case Types.SMALLINT:
             case Types.INTEGER:
@@ -2328,12 +2306,7 @@ public class RubyJdbcConnection extends RubyObject {
             return (RubySymbol) column;
         }
         if ( column instanceof RubyString) { // deprecated behavior
-            if ( runtime.is1_9() ) {
-                return ( (RubyString) column ).intern19();
-            }
-            else {
-                return ( (RubyString) column ).intern();
-            }
+            return ( (RubyString) column ).intern();
         }
 
         if ( column == null || column.isNil() ) {
@@ -2691,8 +2664,8 @@ public class RubyJdbcConnection extends RubyObject {
     }
 
     protected static boolean isDefaultTimeZoneUTC(final ThreadContext context) {
-        final RubyClass base = getBase(context.getRuntime());
-        final String tz = base.callMethod(context, "default_timezone").toString(); // :utc
+        // :utc
+        final String tz = ActiveRecord(context).getClass("Base").callMethod(context, "default_timezone").toString();
         return "utc".equalsIgnoreCase(tz);
     }
 
@@ -3712,8 +3685,6 @@ public class RubyJdbcConnection extends RubyObject {
      */
     protected static class ResultHandler {
 
-        protected static Boolean USE_RESULT;
-
         // AR-3.2 : initialize(columns, rows)
         // AR-4.0 : initialize(columns, rows, column_types = {})
         protected static Boolean INIT_COLUMN_TYPES = Boolean.FALSE;
@@ -3737,28 +3708,20 @@ public class RubyJdbcConnection extends RubyObject {
             ResultHandler.instance = instance;
         }
 
-        protected ResultHandler(final Ruby runtime) {
-            final RubyClass result = getResult(runtime);
-            USE_RESULT = result != null && result != runtime.getNilClass();
-        }
+        protected ResultHandler(final Ruby runtime) {}
 
+        // maps a AR::Result row
         public IRubyObject mapRow(final ThreadContext context, final Ruby runtime,
             final ColumnData[] columns, final ResultSet resultSet,
             final RubyJdbcConnection connection) throws SQLException {
+            final RubyArray row = runtime.newArray(columns.length);
 
-            if ( USE_RESULT ) { // maps a AR::Result row
-                final RubyArray row = runtime.newArray(columns.length);
-
-                for ( int i = 0; i < columns.length; i++ ) {
-                    final ColumnData column = columns[i];
-                    row.append( connection.jdbcToRuby(context, runtime, column.index, column.type, resultSet) );
-                }
-
-                return row;
+            for (int i = 0; i < columns.length; i++) {
+                final ColumnData column = columns[i];
+                row.append(connection.jdbcToRuby(context, runtime, column.index, column.type, resultSet));
             }
-            else {
-                return mapRawRow(context, runtime, columns, resultSet, connection);
-            }
+
+            return row;
         }
 
         IRubyObject mapRawRow(final ThreadContext context, final Ruby runtime,
@@ -3777,35 +3740,20 @@ public class RubyJdbcConnection extends RubyObject {
             return row;
         }
 
-        public IRubyObject newResult(final ThreadContext context, final Ruby runtime,
-            final ColumnData[] columns, final IRubyObject rows) { // rows array
-            if ( USE_RESULT ) { // ActiveRecord::Result.new(columns, rows)
-                final RubyClass result = getResult(runtime);
-                return result.callMethod( context, "new", initArgs(runtime, columns, rows), Block.NULL_BLOCK );
-            }
-            return rows; // contains { 'col1' => 1, ... } Hash-es
+        public IRubyObject newResult(final ThreadContext context, ColumnData[] columns, IRubyObject rows) {
+            RubyClass result = ActiveRecord(context).getClass("Result");
+
+            return Helpers.invoke(context, result, "new", columnsToArray(context, columns), rows);
         }
 
-        private IRubyObject[] initArgs(final Ruby runtime,
-            final ColumnData[] columns, final IRubyObject rows) {
+        private RubyArray columnsToArray(ThreadContext context, ColumnData[] columns) {
+            final RubyArray cols = RubyArray.newArray(context.runtime, columns.length);
 
-            final IRubyObject[] args;
-
-            final RubyArray cols = RubyArray.newArray(runtime, columns.length);
-
-            if ( INIT_COLUMN_TYPES ) { // NOTE: NOT IMPLEMENTED
-                for ( int i = 0; i < columns.length; i++ ) {
-                    cols.append( columns[i].name );
-                }
-                args = new IRubyObject[] { cols, rows };
+            for ( int i = 0; i < columns.length; i++ ) {
+                cols.append( columns[i].name );
             }
-            else {
-                for ( int i = 0; i < columns.length; i++ ) {
-                    cols.append( columns[i].name );
-                }
-                args = new IRubyObject[] { cols, rows };
-            }
-            return args;
+
+            return cols;
         }
 
     }
@@ -3874,16 +3822,6 @@ public class RubyJdbcConnection extends RubyObject {
         if ( catalog == null ) catalog = connection.getCatalog();
 
         return new TableName(catalog, schema, name);
-    }
-
-    /**
-     * @deprecated use {@link #extractTableName(Connection, String, String, String)}
-     */
-    @Deprecated
-    protected TableName extractTableName(
-            final Connection connection, final String schema,
-            final String tableName) throws IllegalArgumentException, SQLException {
-        return extractTableName(connection, null, schema, tableName);
     }
 
     protected static final class ColumnData {
