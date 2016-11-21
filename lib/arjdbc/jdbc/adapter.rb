@@ -381,27 +381,11 @@ module ActiveRecord
         @connection.release_savepoint(name)
       end
 
-      # Due tracking of save-points created in a LIFO manner, always returns
-      # the correct name if any (last) save-point has been marked and not released.
-      # Otherwise when creating a save-point same naming convention as
-      # `ActiveRecord` uses ("active_record_" prefix) will be returned.
-      # @return [String] the current save-point name
-      # @since 1.3.0
-      # @override
-      def current_savepoint_name(compat = true)
-        open_tx = open_transactions
-        return "active_record_#{open_tx}" if compat # by default behave like AR
-
-        sp_names = @connection.marked_savepoint_names
-        sp_names.last || "active_record_#{open_tx}"
-        # should (open_tx- 1) here but we play by AR's rules as it might fail
-      end unless ArJdbc::AR42
-
       # @note Same as AR 4.2 but we're allowing an unused parameter.
       # @private
       def current_savepoint_name(compat = nil)
-        current_transaction.savepoint_name # unlike AR 3.2-4.1 might be nil
-      end if ArJdbc::AR42
+        current_transaction.savepoint_name
+      end
 
       # @override
       def supports_views?

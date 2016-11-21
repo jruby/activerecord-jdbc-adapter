@@ -360,22 +360,6 @@ public class RubyJdbcConnection extends RubyObject {
         }
     }
 
-    // NOTE: this is iternal API - not to be used by user-code !
-    @JRubyMethod(name = "marked_savepoint_names")
-    public IRubyObject marked_savepoint_names(final ThreadContext context) {
-        if ( hasInstanceVariable("@savepoints") ) {
-            Map<IRubyObject, Savepoint> savepoints = getSavepoints(context);
-            final RubyArray names = context.getRuntime().newArray();
-            for ( Map.Entry<IRubyObject, ?> entry : savepoints.entrySet() ) {
-                names.add( entry.getKey() ); // keys are RubyString instances
-            }
-            return names;
-        }
-        else {
-            return context.getRuntime().newEmptyArray();
-        }
-    }
-
     @SuppressWarnings("unchecked")
     protected Map<IRubyObject, Savepoint> getSavepoints(final ThreadContext context) {
         if ( hasInstanceVariable("@savepoints") ) {
@@ -854,8 +838,7 @@ public class RubyJdbcConnection extends RubyObject {
      * @throws SQLException
      */
     @JRubyMethod(name = "execute_query", required = 1)
-    public IRubyObject execute_query(final ThreadContext context,
-        final IRubyObject sql) throws SQLException {
+    public IRubyObject execute_query(final ThreadContext context, final IRubyObject sql) throws SQLException {
         final String query = sql.convertToString().getUnicodeValue();
         return executeQuery(context, query, 0);
     }
@@ -870,8 +853,7 @@ public class RubyJdbcConnection extends RubyObject {
      */
     @JRubyMethod(name = "execute_query", required = 2, optional = 1)
     // @JRubyMethod(name = "execute_query", required = 1, optional = 2)
-    public IRubyObject execute_query(final ThreadContext context,
-        final IRubyObject[] args) throws SQLException {
+    public IRubyObject execute_query(final ThreadContext context, final IRubyObject[] args) throws SQLException {
         // args: (sql), (sql, max_rows), (sql, binds), (sql, max_rows, binds)
         final String query = args[0].convertToString().getUnicodeValue(); // sql
         IRubyObject max_rows = args.length > 1 ? args[1] : null;
@@ -1742,16 +1724,7 @@ public class RubyJdbcConnection extends RubyObject {
         throws SQLException {
         final long value = resultSet.getLong(column);
         if ( value == 0 && resultSet.wasNull() ) return runtime.getNil();
-        return integerToRuby(runtime, resultSet, value);
-    }
-
-    @Deprecated
-    protected IRubyObject integerToRuby(
-        final Ruby runtime, final ResultSet resultSet, final long longValue)
-        throws SQLException {
-        if ( longValue == 0 && resultSet.wasNull() ) return runtime.getNil();
-
-        return runtime.newFixnum(longValue);
+        return runtime.newFixnum(value);
     }
 
     protected IRubyObject doubleToRuby(final ThreadContext context,
@@ -1759,54 +1732,25 @@ public class RubyJdbcConnection extends RubyObject {
         throws SQLException {
         final double value = resultSet.getDouble(column);
         if ( value == 0 && resultSet.wasNull() ) return runtime.getNil();
-        return doubleToRuby(runtime, resultSet, value);
-    }
-
-    @Deprecated
-    protected IRubyObject doubleToRuby(
-        final Ruby runtime, final ResultSet resultSet, double doubleValue)
-        throws SQLException {
-        if ( doubleValue == 0 && resultSet.wasNull() ) return runtime.getNil();
-        return runtime.newFloat(doubleValue);
+        return runtime.newFloat(value);
     }
 
     protected IRubyObject stringToRuby(final ThreadContext context,
-        final Ruby runtime, final ResultSet resultSet, final int column)
-        throws SQLException {
+        final Ruby runtime, final ResultSet resultSet, final int column) throws SQLException {
         final String value = resultSet.getString(column);
         if ( value == null && resultSet.wasNull() ) return runtime.getNil();
-        return stringToRuby(runtime, resultSet, value);
-    }
-
-    @Deprecated
-    protected IRubyObject stringToRuby(
-        final Ruby runtime, final ResultSet resultSet, final String string)
-        throws SQLException {
-        if ( string == null && resultSet.wasNull() ) return runtime.getNil();
-
-        return RubyString.newUnicodeString(runtime, string);
+        return RubyString.newUnicodeString(runtime, value);
     }
 
     protected IRubyObject bigIntegerToRuby(final ThreadContext context,
-        final Ruby runtime, final ResultSet resultSet, final int column)
-        throws SQLException {
+        final Ruby runtime, final ResultSet resultSet, final int column) throws SQLException {
         final String value = resultSet.getString(column);
         if ( value == null && resultSet.wasNull() ) return runtime.getNil();
-        return bigIntegerToRuby(runtime, resultSet, value);
-    }
-
-    @Deprecated
-    protected IRubyObject bigIntegerToRuby(
-        final Ruby runtime, final ResultSet resultSet, final String intValue)
-        throws SQLException {
-        if ( intValue == null && resultSet.wasNull() ) return runtime.getNil();
-
-        return RubyBignum.bignorm(runtime, new BigInteger(intValue));
+        return RubyBignum.bignorm(runtime, new BigInteger(value));
     }
 
     protected IRubyObject decimalToRuby(final ThreadContext context,
-        final Ruby runtime, final ResultSet resultSet, final int column)
-        throws SQLException {
+        final Ruby runtime, final ResultSet resultSet, final int column) throws SQLException {
         final String value = resultSet.getString(column);
         if ( value == null && resultSet.wasNull() ) return runtime.getNil();
         // NOTE: JRuby 1.6 -> 1.7 API change : moved org.jruby.RubyBigDecimal
@@ -1922,14 +1866,6 @@ public class RubyJdbcConnection extends RubyObject {
         return RubyString.newUnicodeString(runtime, value);
     }
 
-    @Deprecated
-    protected IRubyObject timestampToRuby(
-        final Ruby runtime, final ResultSet resultSet, final Timestamp value)
-        throws SQLException {
-        if ( value == null && resultSet.wasNull() ) return runtime.getNil();
-
-        return timestampToRubyString(runtime, value.toString());
-    }
 
     protected static Boolean rawBoolean;
     static {
