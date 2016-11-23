@@ -1,3 +1,11 @@
+== 5.1.40
+
+* http://dev.mysql.com/doc/relnotes/connector-j/5.1/en/news-5-1-40.html
+* http://dev.mysql.com/doc/relnotes/connector-j/5.1/en/news-5-1-39.html
+* http://dev.mysql.com/doc/relnotes/connector-j/5.1/en/news-5-1-38.html
+* http://dev.mysql.com/doc/relnotes/connector-j/5.1/en/news-5-1-37.html
+* http://dev.mysql.com/doc/relnotes/connector-j/5.1/en/news-5-1-36.html
+
 == 5.1.35
 
 Suitable for use with MySQL server versions **5.5**, and **5.6**.
