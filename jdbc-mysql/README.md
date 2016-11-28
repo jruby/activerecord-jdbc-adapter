@@ -21,7 +21,8 @@ For backwards compatibility with older (<= **5.1.13**) versions of the gem use :
 
 ## Copyright
 
-Copyright (c) 2013-2014 [The JRuby Team](https://github.com/jruby).
+=======
+Copyright (c) 2013-2016 [The JRuby Team](https://github.com/jruby).
 
 MySQL open source software is provided under the GPL (2.0) License,
 see *LICENSE.txt* and http://www.gnu.org/licenses/old-licenses/gpl-2.0.html .
