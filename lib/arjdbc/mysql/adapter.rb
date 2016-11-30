@@ -262,6 +262,12 @@ module ArJdbc
       version[0] && version[0] >= 5
     end
 
+    if ArJdbc::AR50
+      def views
+        select_values("SELECT table_name FROM information_schema.TABLES WHERE table_type = 'VIEW'")
+      end
+    end
+
     def supports_rename_index?
       return false if mariadb? || ! version[0]
       (version[0] == 5 && version[1] >= 7) || version[0] >= 6
