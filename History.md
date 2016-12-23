@@ -1,3 +1,22 @@
+## 1.3.22 (12/23/16)
+
+- [postgres] Fix incorrect postgresql_version when running RC (#717)
+- [postgres] fixed insert into partitioned table (#723)
+- [postgres] add ssl support from environment vars (#760)
+- [postgres] Adds citext to AR42 Native database types (#746)
+- [mysql] handle db:create failure compatibly with AR's MySQL tasks
+- [mssql] Changed selects from information schema to uppercase
+  in case SQLServer database has case sensitive collation
+- Added long varchar to type converter for legacy sybase DB (#757)
+- [mysql] Don't read mysql binary column as stream (#742)
+
+## 1.3.21 (08/18/16)
+
+- check for instanceof RubyArray when extracting binds with stmnts
+  (for JRuby 9.1 packed array feature compatibility)
+- default to useSSL=false for MariaDB driver
+- [db2] allow to force zos: true using database config
+
 ## 1.3.20 (03/09/16)
 
 - Retrieve AM::Type::Boolean::FALSE_VALUES for Rails 5 (#705)
