@@ -23,24 +23,43 @@ module ActiveRecord
       #  adapters) would be to mingle with the $LOAD_PATH which seems worse ...
       case path
       when 'active_record/connection_adapters/mysql_adapter'
-        $LOADED_FEATURES << 'active_record/connection_adapters/mysql_adapter.rb'
-        super('arjdbc/mysql')
+        if !$LOADED_FEATURES.include?('active_record/connection_adapters/mysql_adapter.rb')
+          $LOADED_FEATURES << 'active_record/connection_adapters/mysql_adapter.rb'
+          super('arjdbc/mysql')
+        else
+          false
+        end
       when 'active_record/connection_adapters/mysql2_adapter'
-        $LOADED_FEATURES << 'active_record/connection_adapters/mysql2_adapter.rb'
-        super('arjdbc/mysql')
+        if !$LOADED_FEATURES.include?('active_record/connection_adapters/mysql2_adapter.rb')
+          $LOADED_FEATURES << 'active_record/connection_adapters/mysql2_adapter.rb'
+          super('arjdbc/mysql')
+        else
+          false
+        end
       when 'active_record/connection_adapters/postgresql_adapter'
-        $LOADED_FEATURES << 'active_record/connection_adapters/postgresql_adapter.rb'
-        super('arjdbc/postgresql')
+        if !$LOADED_FEATURES.include?('active_record/connection_adapters/postgresql_adapter.rb')
+          $LOADED_FEATURES << 'active_record/connection_adapters/postgresql_adapter.rb'
+          super('arjdbc/postgresql')
+        else
+          false
+        end
       when 'active_record/connection_adapters/sqlite_adapter'
-        $LOADED_FEATURES << 'active_record/connection_adapters/sqlite_adapter.rb'
-        super('arjdbc/sqlite3')
+        if !$LOADED_FEATURES.include?('active_record/connection_adapters/sqlite_adapter.rb')
+          $LOADED_FEATURES << 'active_record/connection_adapters/sqlite_adapter.rb'
+          super('arjdbc/sqlite3')
+        else
+          false
+        end
       when 'active_record/connection_adapters/sqlite3_adapter'
-        $LOADED_FEATURES << 'active_record/connection_adapters/sqlite3_adapter.rb'
-        super('arjdbc/sqlite3')
+        if !$LOADED_FEATURES.include?('active_record/connection_adapters/sqlite3_adapter.rb')
+          $LOADED_FEATURES << 'active_record/connection_adapters/sqlite3_adapter.rb'
+          super('arjdbc/sqlite3')
+        else
+          false
+        end
       else super
       end
     end
-
   end
 
 end
