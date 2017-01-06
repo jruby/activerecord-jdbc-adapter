@@ -1,3 +1,5 @@
+require "set"
+
 module ActiveRecord
 
   if defined? ConnectionAdapters::ConnectionSpecification::Resolver # 4.0
@@ -7,6 +9,7 @@ module ActiveRecord
   else class << Base; self; end # 2.3, 3.0, 3.1 :
     # def self.establish_connection ... on ActiveRecord::Base
   end.class_eval do
+    $__ARJDBC_LOADED_FEATURES = ::Set.new
 
     # @private
     def require(path)
@@ -23,24 +26,48 @@ module ActiveRecord
       #  adapters) would be to mingle with the $LOAD_PATH which seems worse ...
       case path
       when 'active_record/connection_adapters/mysql_adapter'
-        $LOADED_FEATURES << 'active_record/connection_adapters/mysql_adapter.rb'
-        super('arjdbc/mysql')
+        if !$__ARJDBC_LOADED_FEATURES.include?('active_record/connection_adapters/mysql_adapter.rb')
+          $__ARJDBC_LOADED_FEATURES << 'active_record/connection_adapters/mysql_adapter.rb'
+          $LOADED_FEATURES << 'active_record/connection_adapters/mysql_adapter.rb'
+          super('arjdbc/mysql')
+        else
+          false
+        end
       when 'active_record/connection_adapters/mysql2_adapter'
-        $LOADED_FEATURES << 'active_record/connection_adapters/mysql2_adapter.rb'
-        super('arjdbc/mysql')
+        if !$__ARJDBC_LOADED_FEATURES.include?('active_record/connection_adapters/mysql2_adapter.rb')
+          $__ARJDBC_LOADED_FEATURES << 'active_record/connection_adapters/mysql2_adapter.rb'
+          $LOADED_FEATURES << 'active_record/connection_adapters/mysql2_adapter.rb'
+          super('arjdbc/mysql')
+        else
+          false
+        end
       when 'active_record/connection_adapters/postgresql_adapter'
-        $LOADED_FEATURES << 'active_record/connection_adapters/postgresql_adapter.rb'
-        super('arjdbc/postgresql')
+        if !$__ARJDBC_LOADED_FEATURES.include?('active_record/connection_adapters/postgresql_adapter.rb')
+          $__ARJDBC_LOADED_FEATURES << 'active_record/connection_adapters/postgresql_adapter.rb'
+          $LOADED_FEATURES << 'active_record/connection_adapters/postgresql_adapter.rb'
+          super('arjdbc/postgresql')
+        else
+          false
+        end
       when 'active_record/connection_adapters/sqlite_adapter'
-        $LOADED_FEATURES << 'active_record/connection_adapters/sqlite_adapter.rb'
-        super('arjdbc/sqlite3')
+        if !$__ARJDBC_LOADED_FEATURES.include?('active_record/connection_adapters/sqlite_adapter.rb')
+          $__ARJDBC_LOADED_FEATURES << 'active_record/connection_adapters/sqlite_adapter.rb'
+          $LOADED_FEATURES << 'active_record/connection_adapters/sqlite_adapter.rb'
+          super('arjdbc/sqlite3')
+        else
+          false
+        end
       when 'active_record/connection_adapters/sqlite3_adapter'
-        $LOADED_FEATURES << 'active_record/connection_adapters/sqlite3_adapter.rb'
-        super('arjdbc/sqlite3')
+        if !$__ARJDBC_LOADED_FEATURES.include?('active_record/connection_adapters/sqlite3_adapter.rb')
+          $__ARJDBC_LOADED_FEATURES << 'active_record/connection_adapters/sqlite3_adapter.rb'
+          $LOADED_FEATURES << 'active_record/connection_adapters/sqlite3_adapter.rb'
+          super('arjdbc/sqlite3')
+        else
+          false
+        end
       else super
       end
     end
-
   end
 
 end
