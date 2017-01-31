@@ -18,6 +18,8 @@ GEM
     arel (2.2.3)
     bcrypt-ruby (3.0.1-java)
     builder (3.0.4)
+    composite_primary_keys (4.1.2)
+      activerecord (~> 3.1)
     docile (1.1.5)
     i18n (0.6.11)
     metaclass (0.0.4)
@@ -43,6 +45,7 @@ DEPENDENCIES
   activerecord (~> 3.1.12)
   appraisal (~> 0.5.2)
   bcrypt-ruby (~> 3.0.0)
+  composite_primary_keys (~> 4)
   mocha (~> 0.13.1)
   mysql2
   pg
@@ -52,3 +55,6 @@ DEPENDENCIES
   test-unit (~> 2.5.4)
   test-unit-context (>= 0.4.0)
   thread_safe
+
+BUNDLED WITH
+   1.14.3
