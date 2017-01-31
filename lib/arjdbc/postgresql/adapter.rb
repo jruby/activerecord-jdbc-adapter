@@ -571,7 +571,8 @@ module ArJdbc
       end
 
       if pk && use_insert_returning?
-        sql = "#{sql} RETURNING #{quote_column_name(pk)}"
+        returning = Array(pk).map(&method(:quote_table_name)).join(', ')
+        sql = "#{sql} RETURNING (#{returning})"
       end
 
       [ sql, binds ]
