@@ -17,5 +17,5 @@ Gem::Specification.new do |gem|
   gem.require_paths = ["lib"]
 
   gem.summary = %q{JDBC driver for SQL Server and Sybase using the TDS protocol (usable with ActiveRecord-JDBC).}
-  gem.description = %q{Install this gem `require 'jdbc/jtds'` and invoke `Jdbc::JDTS.load_driver` within JRuby to load the driver.}
+  gem.description = %q{Install this gem `require 'jdbc/jtds'` and invoke `Jdbc::JTDS.load_driver` within JRuby to load the driver.}
 end
