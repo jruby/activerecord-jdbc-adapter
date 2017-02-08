@@ -685,6 +685,13 @@ module ActiveRecord
       end
 
       protected
+      if ActiveRecord::VERSION::STRING >= '4.2'
+        # Override the method in ActiveRecord to include support for tinyint(1)
+        def initialize_type_map(m)
+          super
+          register_class_with_limit m, %r(tinyint)i,   Type::Boolean
+        end
+      end
 
       # @override so that we do not have to care having 2 arguments on 3.0
       def log(sql, name = nil, binds = [])
