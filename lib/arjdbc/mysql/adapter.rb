@@ -657,13 +657,18 @@ module ArJdbc
       rename_column_indexes(table_name, column_name, new_column_name) if respond_to?(:rename_column_indexes) # AR-4.0 SchemaStatements
     end
 
+    def add_column_options!(sql, options)
+      super
+      add_column_position!(sql, options[:column])
+    end
+
     def add_column_position!(sql, options)
-      if options[:first]
+      if options.first
         sql << " FIRST"
-      elsif options[:after]
-        sql << " AFTER #{quote_column_name(options[:after])}"
-      end
-    end unless const_defined? :SchemaCreation
+      elsif options.after
+        sql << " AFTER #{quote_column_name(options.after)}"
+      end if options
+    end
 
     # @note Only used with (non-AREL) ActiveRecord **2.3**.
     # @see Arel::Visitors::MySQL
