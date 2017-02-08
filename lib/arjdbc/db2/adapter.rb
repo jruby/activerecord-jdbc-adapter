@@ -673,6 +673,10 @@ module ArJdbc
       columns
     end
 
+    def jdbc_columns(table_name, name = nil)
+      columns(table_name, name)
+    end
+
     def indexes(table_name, name = nil)
       @connection.indexes(table_name, name, schema)
     end
