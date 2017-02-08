@@ -5,11 +5,16 @@ module ActiveRecord
     module PostgreSQL
       module ArrayParser
 
-        DOUBLE_QUOTE = '"'
-        BACKSLASH = "\\"
-        COMMA = ','
-        BRACKET_OPEN = '{'
-        BRACKET_CLOSE = '}'
+        # These are defined in ActiveRecord's built-in postgresql connection_adapter as of Rails 4.1
+        # See: https://github.com/rails/rails/commit/a03cfdedddbfb9566e73335cf730310c99810045
+        unless ::ActiveRecord::VERSION::MAJOR > 4 ||
+            ( ::ActiveRecord::VERSION::MAJOR == 4 && ::ActiveRecord::VERSION::MINOR >= 1 )
+          DOUBLE_QUOTE = '"'
+          BACKSLASH = "\\"
+          COMMA = ','
+          BRACKET_OPEN = '{'
+          BRACKET_CLOSE = '}'
+        end
 
         def parse_pg_array(string)
           local_index = 0
