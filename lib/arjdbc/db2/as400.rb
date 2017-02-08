@@ -4,6 +4,8 @@ module ArJdbc
   module AS400
     include DB2
 
+    # Caution ! OS/400 v5r4 doesn't support the 'schema.table' syntax. Use 'schema/table' instead of it.
+
     # @private
     def self.extended(adapter); DB2.extended(adapter); end
 
@@ -41,7 +43,7 @@ module ArJdbc
     def prefetch_primary_key?(table_name = nil)
       # TRUE if the table has no identity column
       names = table_name.upcase.split(".")
-      sql = "SELECT 1 FROM SYSIBM.SQLPRIMARYKEYS WHERE "
+      sql = "SELECT 1 FROM SYSIBM/SQLPRIMARYKEYS WHERE "
       sql << "TABLE_SCHEM = '#{names.first}' AND " if names.size == 2
       sql << "TABLE_NAME = '#{names.last}'"
       select_one(sql).nil?
@@ -61,8 +63,8 @@ module ArJdbc
     def execute_and_auto_confirm(sql, name = nil)
 
       begin
-        @connection.execute_update "call qsys.qcmdexc('QSYS/CHGJOB INQMSGRPY(*SYSRPYL)',0000000031.00000)"
-        @connection.execute_update "call qsys.qcmdexc('ADDRPYLE SEQNBR(9876) MSGID(CPA32B2) RPY(''I'')',0000000045.00000)"
+        @connection.execute_update "CALL QSYS/QCMDEXC('QSYS/CHGJOB INQMSGRPY(*SYSRPYL)', 0000000031.00000)"
+        @connection.execute_update "CALL QSYS/QCMDEXC('ADDRPYLE SEQNBR(9876) MSGID(CPA32B2) RPY(''I'')', 0000000045.00000)"
       rescue Exception => e
         raise "Could not call CHGJOB INQMSGRPY(*SYSRPYL) and ADDRPYLE SEQNBR(9876) MSGID(CPA32B2) RPY('I').\n" +
               "Do you have authority to do this?\n\n#{e.inspect}"
@@ -79,8 +81,8 @@ module ArJdbc
 
         # Ensure default configuration restoration
         begin
-          @connection.execute_update "call qsys.qcmdexc('QSYS/CHGJOB INQMSGRPY(*DFT)',0000000027.00000)"
-          @connection.execute_update "call qsys.qcmdexc('RMVRPYLE SEQNBR(9876)',0000000021.00000)"
+          @connection.execute_update "CALL QSYS/QCMDEXC('QSYS/CHGJOB INQMSGRPY(*DFT)', 0000000027.00000)"
+          @connection.execute_update "CALL QSYS/QCMDEXC('RMVRPYLE SEQNBR(9876)', 0000000021.00000)"
         rescue Exception => e
           raise "Could not call CHGJOB INQMSGRPY(*DFT) and RMVRPYLE SEQNBR(9876).\n" +
                     "Do you have authority to do this?\n\n#{e.inspect}"
@@ -115,7 +117,7 @@ module ArJdbc
           config[:schema]
         elsif config[:jndi].present?
           # Only found method to set db2_schema from jndi
-          result = select_one("SELECT CURRENT_SCHEMA FROM SYSIBM.SYSDUMMY1")
+          result = select_one("SELECT CURRENT_SCHEMA FROM SYSIBM/SYSDUMMY1")
           schema = result['00001']
           # If the connection uses the library list schema name will be nil
           if schema == '*LIBL'
