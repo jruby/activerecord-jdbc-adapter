@@ -14,5 +14,6 @@ gem "mysql2", "< 0.4", :require=>nil, :platform=>:mri, :group=>:test
 gem "pg", :require=>nil, :platform=>:mri, :group=>:test
 gem "sqlite3", :require=>nil, :platform=>:mri, :group=>:test
 gem "i18n", "< 0.7"
+gem "composite_primary_keys", "~> 5", :require=>false
 gem "activerecord", "~> 3.2.19", :require=>false
 
