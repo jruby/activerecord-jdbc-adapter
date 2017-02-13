@@ -452,7 +452,7 @@ module ActiveRecord
           log(sql, name, binds) { @connection.execute_query(sql, binds) }
         else
           sql = suble_binds(sql, binds) unless to_sql # deprecated behavior
-          log(sql, name) { @connection.execute_query(sql) }
+          log(sql, name) { @connection.execute_query(sql, 0) }
         end
       end
 
