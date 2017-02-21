@@ -47,7 +47,7 @@ branches:
 matrix:
   allow_failures:
     # yet another BC timestamp issue: <Wed, 31 Dec -0001 22:58:59 +0000> expected but was <Fri, 02 Jan 0000 22:58:59 +0000>
-    - rvm: jruby-9.1.6.0
+    - rvm: jruby-9.1.7.0
       gemfile: gemfiles/rails41.gemfile
       env: JRUBY_OPTS="$JRUBY_OPTS" DB=postgresql
       jdk: oraclejdk7
@@ -111,76 +111,76 @@ matrix:
       env: JRUBY_OPTS="$JRUBY_OPTS" DB=hsqldb
       jdk: openjdk6
       # include testing with JRuby 9K (4.2) :
-    - rvm: jruby-9.1.6.0
+    - rvm: jruby-9.1.7.0
       gemfile: gemfiles/rails42.gemfile
       env: JRUBY_OPTS="$JRUBY_OPTS" DB=mysql PREPARED_STATEMENTS=true
       jdk: oraclejdk7
-    - rvm: jruby-9.1.6.0
+    - rvm: jruby-9.1.7.0
       gemfile: gemfiles/rails42.gemfile
       env: JRUBY_OPTS="$JRUBY_OPTS" DB=postgresql PREPARED_STATEMENTS=true
       jdk: oraclejdk7
-    - rvm: jruby-9.1.6.0
+    - rvm: jruby-9.1.7.0
       gemfile: gemfiles/rails42.gemfile
       env: JRUBY_OPTS="$JRUBY_OPTS" DB=sqlite3
       jdk: oraclejdk7
-    - rvm: jruby-9.1.6.0
+    - rvm: jruby-9.1.7.0
       gemfile: gemfiles/rails42.gemfile
       env: JRUBY_OPTS="$JRUBY_OPTS" DB=mysql
       jdk: oraclejdk8
-    - rvm: jruby-9.1.6.0
+    - rvm: jruby-9.1.7.0
       gemfile: gemfiles/rails42.gemfile
       env: JRUBY_OPTS="$JRUBY_OPTS" DB=postgresql
       jdk: oraclejdk8
-    - rvm: jruby-9.1.6.0
+    - rvm: jruby-9.1.7.0
       gemfile: gemfiles/rails42.gemfile
       env: JRUBY_OPTS="$JRUBY_OPTS" DB=sqlite3
       jdk: oraclejdk8
-    - rvm: jruby-9.1.6.0
+    - rvm: jruby-9.1.7.0
       gemfile: gemfiles/rails42.gemfile
       env: JRUBY_OPTS="$JRUBY_OPTS" DB=derby
       jdk: oraclejdk8
-    - rvm: jruby-9.1.6.0
+    - rvm: jruby-9.1.7.0
       gemfile: gemfiles/rails42.gemfile
       env: JRUBY_OPTS="$JRUBY_OPTS" DB=h2
       jdk: oraclejdk8
-    - rvm: jruby-9.1.6.0
+    - rvm: jruby-9.1.7.0
       gemfile: gemfiles/rails42.gemfile
       env: JRUBY_OPTS="$JRUBY_OPTS" DB=hsqldb
       jdk: oraclejdk8
       # include testing with JRuby 9K (4.1) :
-    - rvm: jruby-9.1.6.0
+    - rvm: jruby-9.1.7.0
       gemfile: gemfiles/rails41.gemfile
       env: JRUBY_OPTS="$JRUBY_OPTS" DB=mysql PREPARED_STATEMENTS=true
       jdk: oraclejdk8
-    - rvm: jruby-9.1.6.0
+    - rvm: jruby-9.1.7.0
       gemfile: gemfiles/rails41.gemfile
       env: JRUBY_OPTS="$JRUBY_OPTS" DB=postgresql PREPARED_STATEMENTS=true
       jdk: oraclejdk8
-    - rvm: jruby-9.1.6.0
+    - rvm: jruby-9.1.7.0
       gemfile: gemfiles/rails41.gemfile
       env: JRUBY_OPTS="$JRUBY_OPTS" DB=sqlite3
       jdk: oraclejdk8
-    - rvm: jruby-9.1.6.0
+    - rvm: jruby-9.1.7.0
       gemfile: gemfiles/rails41.gemfile
       env: JRUBY_OPTS="$JRUBY_OPTS" DB=mysql
       jdk: oraclejdk7
-    - rvm: jruby-9.1.6.0
+    - rvm: jruby-9.1.7.0
       gemfile: gemfiles/rails41.gemfile
       env: JRUBY_OPTS="$JRUBY_OPTS" DB=postgresql
       jdk: oraclejdk7
-    - rvm: jruby-9.1.6.0
+    - rvm: jruby-9.1.7.0
       gemfile: gemfiles/rails41.gemfile
       env: JRUBY_OPTS="$JRUBY_OPTS" DB=sqlite3
       jdk: oraclejdk8
-    - rvm: jruby-9.1.6.0
+    - rvm: jruby-9.1.7.0
       gemfile: gemfiles/rails41.gemfile
       env: JRUBY_OPTS="$JRUBY_OPTS" DB=derby
       jdk: oraclejdk7
-    - rvm: jruby-9.1.6.0
+    - rvm: jruby-9.1.7.0
       gemfile: gemfiles/rails41.gemfile
       env: JRUBY_OPTS="$JRUBY_OPTS" DB=h2
       jdk: oraclejdk7
-    - rvm: jruby-9.1.6.0
+    - rvm: jruby-9.1.7.0
       gemfile: gemfiles/rails41.gemfile
       env: JRUBY_OPTS="$JRUBY_OPTS" DB=hsqldb
       jdk: oraclejdk8
