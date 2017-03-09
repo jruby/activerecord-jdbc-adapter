@@ -1,8 +1,15 @@
+DEFAULT_RAILS_DIR = File.join('..', 'rails')
+
 namespace :rails do
   
   task :test do
-    raise "need a DRIVER e.g. DRIVER=mysql" unless driver = ENV['DRIVER'] || ENV['ADAPTER']
-    raise "need location of RAILS source code e.g. RAILS=../rails" unless rails_dir = ENV['RAILS']
+    unless driver = ENV['DRIVER'] || ENV['ADAPTER']
+      raise "need a DRIVER e.g. DRIVER=mysql"
+    end
+    rails_dir = ENV['RAILS'] || DEFAULT_RAILS_DIR
+    unless File.directory? rails_dir
+      raise "can't find RAILS source '#{rails_dir}' (maybe set ENV['RAILS'])"
+    end
     rails_dir = File.join(rails_dir, '..') if rails_dir =~ /activerecord$/
     activerecord_dir = File.join(rails_dir, 'activerecord') # rails/activerecord
 
