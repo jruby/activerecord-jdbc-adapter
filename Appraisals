@@ -29,7 +29,7 @@ appraise "rails42" do
 end
 
 appraise "rails50" do
-  gem "activerecord", "~> 5.0.0.beta4", :require => false
+  gem "activerecord", "~> 5.0.2", :require => false
 end
 
 
