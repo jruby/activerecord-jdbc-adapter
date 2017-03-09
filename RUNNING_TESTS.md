@@ -50,28 +50,36 @@ but one can easily run tests with prepared statements enabled using env vars :
 
 ### ActiveRecord (Rails) Tests
 
-It's very desirable to pass all unit tests from ActiveRecord's own test suite.
-Unfortunately it's been a while since we have accomplished that, luckily a lot
-of failures are artificial (and would require tweaks at the Rails repo itself),
-others simply need quality time spent to get them in shape and address issues.
-
-First make sure you have the ActiveRecord (Rails) sources cloned locally :
+We also have the ability to run our adapters against Rails ActiveRecord
+tests as well.  First, make sure you have the Rails repository cloned locally:
 
     git clone git://github.com/rails/rails.git
 
-To run the AR-JDBC's sources agains AR tests, use the **rails:test** task, be
-sure to specify a **DRIVER** and the **RAILS** sources path on the file system :
+If you clone Rails to the same parent directory this project is cloned to
+then you may do either:
 
-    jruby -S rake rails:test DRIVER=derby RAILS=path/to/rails_source_dir
+   jruby -S rake rails:test:sqlite
+   jruby -S rake rails:test:postgres
+   jruby -S rake rails:test:mysql
 
-There's even tasks for Rails built-in adapters e.g. `rake rails:test_mysql`
+If you have your rails source in another directory then you can pass
+in **RAILS**:
 
-You will likely only be able to run the Rails suite against the latest (stable)
-ActiveRecord ~> version we support (check the *Gemfile.lock*) e.g. for
-**activerecord (3.2.13)** you want to **git checkout 3-2-stable** branch.
+   jruby -S rake rails:test:sqlite RAILS=../../somewhere/rails
 
-We strive to not stub and include native (MRI) test required artefacts into
-(non-test) code e.g. the `Mysql` module, instead put that into **test/rails**.
+If you are working on a more exotic adapter you can also pass in **DRIVER**:
+
+  jruby -S rake rails:test:all DRIVER=derby
+
+Note, that if you want to test against particular version of Rails you need
+to check out the proper branch in Rails source (e.g. v5.0.2).  If you are
+just starting to debug an adapter then running:
+
+   jruby -S rake rails:test:sqlite:basic_test
+   jruby -S rake rails:test:postgres:basic_test
+   jruby -S rake rails:test:mysql:basic_test
+
+is helpful since basic_test in active-record hits that 80% sweet spot.
 
 [![Build Status][0]](http://travis-ci.org/#!/jruby/activerecord-jdbc-adapter)
 
