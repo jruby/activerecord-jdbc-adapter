@@ -262,6 +262,12 @@ module ArJdbc
       version[0] && version[0] >= 5
     end
 
+    if ArJdbc::AR50
+      def views
+        select_values("SELECT table_name FROM information_schema.TABLES WHERE table_type = 'VIEW'")
+      end
+    end
+
     def supports_rename_index?
       return false if mariadb? || ! version[0]
       (version[0] == 5 && version[1] >= 7) || version[0] >= 6
@@ -397,7 +403,7 @@ module ArJdbc
       columns = execute(sql, name || 'SCHEMA')
       strict = strict_mode?
       pass_cast_type = respond_to?(:lookup_cast_type)
-      columns.map! do |field|
+      columns.map do |field|
         sql_type = field['Type']
         null = field['Null'] == "YES"
         if pass_cast_type
@@ -407,7 +413,6 @@ module ArJdbc
           jdbc_column_class.new(field['Field'], field['Default'], sql_type, null, field['Collation'], strict, field['Extra'])
         end
       end
-      columns
     end
 
     if defined? ::ActiveRecord::ConnectionAdapters::AbstractAdapter::SchemaCreation

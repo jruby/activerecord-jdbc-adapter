@@ -86,14 +86,6 @@ public class MySQLRubyJdbcConnection extends RubyJdbcConnection {
     }
 
     @Override
-    protected IRubyObject mapGeneratedKeysOrUpdateCount(final ThreadContext context,
-        final Connection connection, final Statement statement) throws SQLException {
-        final Ruby runtime = context.getRuntime();
-        final IRubyObject key = mapGeneratedKeys(runtime, connection, statement);
-        return ( key == null || key.isNil() ) ? runtime.newFixnum( statement.getUpdateCount() ) : key;
-    }
-
-    @Override
     protected IRubyObject jdbcToRuby(
         final ThreadContext context, final Ruby runtime,
         final int column, final int type, final ResultSet resultSet)

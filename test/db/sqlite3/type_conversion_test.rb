@@ -55,19 +55,11 @@ class SQLite3TypeConversionTest < Test::Unit::TestCase
   end
 
   def test_small_decimal_with_ordering
-    if ar_version('4.0')
-      types = DbType.order("sample_small_decimal DESC").load
-    else
-      types = DbType.all :order => "sample_small_decimal DESC"
-    end
+    types = DbType.order("sample_small_decimal DESC").load
     assert_equal(3.14, types[0].sample_small_decimal)
     assert_equal(1.0, types[1].sample_small_decimal)
 
-    if ar_version('4.0')
-      types = DbType.order("sample_small_decimal ASC").load
-    else
-      types = DbType.all :order => "sample_small_decimal ASC"
-    end
+    types = DbType.order("sample_small_decimal ASC").load
     assert_equal(1.0, types[0].sample_small_decimal)
     assert_equal(3.14, types[1].sample_small_decimal)
   end

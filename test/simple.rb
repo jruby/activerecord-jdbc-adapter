@@ -337,24 +337,14 @@ module SimpleTestMethods
   def test_save_timestamp_with_usec
     timestamp = Time.utc(1942, 11, 30, 01, 53, 59, 123_456)
     e = DbType.create! :sample_timestamp => timestamp
-    if ar_version('3.0')
-      assert_timestamp_equal timestamp, e.reload.sample_timestamp
-    else
-      assert_datetime_equal timestamp, e.reload.sample_timestamp # only sec
-    end
+    assert_timestamp_equal timestamp, e.reload.sample_timestamp
   end
 
   def test_time_usec_formatting_when_saved_into_string_column
     e = DbType.create!(:sample_string => '', :sample_text => '')
     t = Time.now
     value = Time.local(t.year, t.month, t.day, t.hour, t.min, t.sec, 0)
-    if ActiveRecord::VERSION::MAJOR >= 3
-      # AR-3 adapters override quoted_date which is called always when a
-      # Time like value is passed (... as well for string/text columns) :
-      str = value.utc.to_s(:db) << '.' << sprintf("%06d", value.usec)
-    else # AR-2.x #quoted_date did not do TZ conversions
-      str = value.to_s(:db)
-    end
+    str = value.utc.to_s(:db) << '.' << sprintf("%06d", value.usec)
     e.sample_string = value
     e.sample_text = value
     e.save!; e.reload
@@ -437,12 +427,8 @@ module SimpleTestMethods
     assert_equal BigDecimal.new(test_value.to_s), db_type.sample_small_decimal
 
     test_value = BigDecimal('1.23')
-    db_type = DbType.create!(:sample_small_decimal => test_value)
-    if ar_version('3.0')
-      assert_equal 1, DbType.where("sample_small_decimal < ?", 1.5).count
-    else
-      assert_equal 1, DbType.find(:all, :conditions => ["sample_small_decimal < ?", 1.5]).size
-    end
+    DbType.create!(:sample_small_decimal => test_value)
+    assert_equal 1, DbType.where("sample_small_decimal < ?", 1.5).count
   end
 
   def test_decimal # _with_zero_scale
@@ -475,23 +461,13 @@ module SimpleTestMethods
   end
 
   def test_column_default
-    if ar_version('4.2')
-      assert_equal '3.14', DbType.columns_hash['sample_small_decimal'].default
-      assert_equal '-1', DbType.columns_hash['sample_integer_neg_default'].default
-      assert_equal '42', DbType.columns_hash['sample_integer_no_limit'].default
-      assert_equal '', DbType.columns_hash['sample_string'].default
-    else
-      assert_equal 3.14, DbType.columns_hash['sample_small_decimal'].default
-      assert_equal -1, DbType.columns_hash['sample_integer_neg_default'].default
-      assert_equal 42, DbType.columns_hash['sample_integer_no_limit'].default
-      assert_equal '', DbType.columns_hash['sample_string'].default
-    end
+    assert_equal '3.14', DbType.columns_hash['sample_small_decimal'].default
+    assert_equal '-1', DbType.columns_hash['sample_integer_neg_default'].default
+    assert_equal '42', DbType.columns_hash['sample_integer_no_limit'].default
+    assert_equal '', DbType.columns_hash['sample_string'].default
 
-    if ActiveRecord::VERSION::MAJOR > 3
-      assert_equal -1, DbType.column_defaults['sample_integer_neg_default']
-    end
-
-    assert_equal -1, DbType.new.sample_integer_neg_default
+    assert_equal(-1, DbType.column_defaults['sample_integer_neg_default'])
+    assert_equal(-1, DbType.new.sample_integer_neg_default)
   end
 
   def test_created_records_have_different_ids
@@ -559,7 +535,7 @@ module SimpleTestMethods
     connection.remove_foreign_key :entries, :name => :entries_user_id_fk
     fks = connection.foreign_keys(:entries)
     assert_equal 0, fks.size
-  end if Test::Unit::TestCase.ar_version('4.2')
+  end
 
   def test_nil_values
     e = DbType.create! :sample_integer => '', :sample_string => 'sample'
@@ -669,23 +645,15 @@ module SimpleTestMethods
     columns = DbType.connection.columns('db_types')
     assert ! columns.detect { |c| c.name.to_s == 'sample_text' }
 
-    if ActiveRecord::VERSION::MAJOR >= 4
-      DbType.connection.remove_column :db_types, :sample_float, nil, {}
-      columns = DbType.connection.columns('db_types')
-      assert ! columns.detect { |c| c.name.to_s == 'sample_float' }
-    end
+    DbType.connection.remove_column :db_types, :sample_float, nil, {}
+    columns = DbType.connection.columns('db_types')
+    assert ! columns.detect { |c| c.name.to_s == 'sample_float' }
   end
 
   def test_remove_columns
     DbType.connection.remove_columns :db_types, :sample_text, :sample_binary
     columns = DbType.connection.columns('db_types')
     assert ! columns.detect { |c| c.name.to_s == 'sample_text' || c.name.to_s == 'sample_binary' }
-
-    if ActiveRecord::VERSION::MAJOR < 4
-      DbType.connection.remove_column :db_types, :sample_float, :sample_decimal
-      columns = DbType.connection.columns('db_types')
-      assert ! columns.detect { |c| c.name.to_s == 'sample_float' || c.name.to_s == 'sample_decimal' }
-    end
   end
 
   def test_validates_uniqueness_of_strings_case_sensitive
@@ -799,7 +767,7 @@ module SimpleTestMethods
       ChangeEntriesTable.down # rescue nil
       Entry.reset_column_information
     end
-  end # if Test::Unit::TestCase.ar_version('3.0')
+  end
 
   def test_string_id
     f = StringId.new
@@ -834,23 +802,15 @@ module SimpleTestMethods
 
     result = Entry.connection.exec_query 'SELECT * FROM entries'
 
-    if ar_version('3.1')
-      assert_instance_of ActiveRecord::Result, result
-      assert_not_empty result.columns
-      columns = Entry.columns.map { |column| column.name.to_s }
-      assert_equal Set.new(columns), Set.new(result.columns)
+    assert_instance_of ActiveRecord::Result, result
+    assert_not_empty result.columns
+    columns = Entry.columns.map { |column| column.name.to_s }
+    assert_equal Set.new(columns), Set.new(result.columns)
 
-      assert_equal 3, result.rows.size
-      assert_instance_of Array, result.rows[0]
-      assert_equal 'user11', result.rows[0][1]
-      assert_equal 'user12', result.rows[1][1]
-    else
-      assert_instance_of Array, result
-      assert_equal 3, result.size
-      assert_instance_of Hash, result[0]
-      assert_equal 'user11', result[0]['title']
-      assert_equal user1.id, result[0]['user_id']
-    end
+    assert_equal 3, result.rows.size
+    assert_instance_of Array, result.rows[0]
+    assert_equal 'user11', result.rows[0][1]
+    assert_equal 'user12', result.rows[1][1]
   end
 
   def test_exec_query_empty_result
@@ -858,17 +818,12 @@ module SimpleTestMethods
 
     result = User.connection.exec_query 'SELECT * FROM users'
 
-    if ar_version('3.1')
-      assert_instance_of ActiveRecord::Result, result
-      assert_not_empty result.columns
-      columns = User.columns.map { |column| column.name.to_s }
-      assert_equal Set.new(columns), Set.new(result.columns)
+    assert_instance_of ActiveRecord::Result, result
+    assert_not_empty result.columns
+    columns = User.columns.map { |column| column.name.to_s }
+    assert_equal Set.new(columns), Set.new(result.columns)
 
-      assert_equal 0, result.rows.size
-    else
-      assert_instance_of Array, result
-      assert_equal 0, result.size
-    end
+    assert_equal 0, result.rows.size
   end
 
   def test_execute_insert
@@ -909,13 +864,8 @@ module SimpleTestMethods
 
     result = connection.send :select, 'SELECT * FROM entries'
 
-    if ar_version('4.0')
-      assert_instance_of ActiveRecord::Result, result
-      assert_equal 2, result.rows.size
-    else
-      assert_instance_of Array, result
-      assert_equal 2, result.size
-    end
+    assert_instance_of ActiveRecord::Result, result
+    assert_equal 2, result.rows.size
   end
 
   def test_select_rows
@@ -1047,7 +997,7 @@ module SimpleTestMethods
 
     User.connection.truncate 'users'
     assert_equal 0, User.count
-  end #if Test::Unit::TestCase.ar_version('3.2')
+  end
 
   protected
 
@@ -1152,7 +1102,7 @@ end
 module ActiveRecord3TestMethods
 
   def self.included(base)
-    base.send :include, TestMethods if base.ar_version('3.0')
+    base.send :include, TestMethods
   end
 
   module TestMethods

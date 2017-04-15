@@ -100,9 +100,9 @@ public class MySQLModule {
 
         final Ruby runtime = context.getRuntime();
         final RubyString quoted = runtime.newString(quotedBytes);
-        if ( runtime.is1_9() ) { // only due mysql2 compatibility
-            quoted.associateEncoding( UTF8Encoding.INSTANCE );
-        }
+
+        quoted.associateEncoding(UTF8Encoding.INSTANCE);
+
         return quoted;
     }
 

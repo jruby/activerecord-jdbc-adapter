@@ -27,7 +27,11 @@ module ArJdbc
           add_column_options!(sql, column_options(o))
         end
         sql
-      end if AR42
+      end if AR42 && !AR50
+
+      def visit_ColumnDefinition(o)
+        super
+      end if AR50
 
       def add_column_options!(sql, options)
         if options[:array] || options[:column].try(:array)
@@ -37,6 +41,7 @@ module ArJdbc
         column = options.fetch(:column) { return super }
         if column.type == :uuid && options[:default] =~ /\(\)/
           sql << " DEFAULT #{options[:default]}"
+          super(sql, options.except(:default))
         else
           super
         end

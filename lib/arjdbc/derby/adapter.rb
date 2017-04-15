@@ -175,10 +175,15 @@ module ArJdbc
       NATIVE_DATABASE_TYPES
     end
 
+    # UNTESTED
+    def existing_savepoint_name?(name)
+      (@connection.instance_variable_get('@savepoints') || {}).key? name
+    end
+
     # Ensure the savepoint name is unused before creating it.
     # @override
     def create_savepoint(name = current_savepoint_name(true))
-      release_savepoint(name) if @connection.marked_savepoint_names.include?(name)
+      release_savepoint(name) if existing_savepoint_name?(name)
       super(name)
     end
 

@@ -8,9 +8,8 @@ class SQLite3SimpleTest < Test::Unit::TestCase
   include SimpleTestMethods
   include ActiveRecord3TestMethods
   include ColumnNameQuotingTests
-  include DirtyAttributeTests
   include XmlColumnTestMethods
-  include ExplainSupportTestMethods if ar_version("3.1")
+  include ExplainSupportTestMethods
   include CustomSelectTestMethods
 
   def test_execute_insert
@@ -244,11 +243,7 @@ class SQLite3SimpleTest < Test::Unit::TestCase
   # @override SQLite3 returns FLOAT (JDBC type) for DECIMAL columns
   def test_custom_select_decimal
     model = DbType.create! :sample_small_decimal => ( decimal = BigDecimal.new('5.45') )
-    if ActiveRecord::VERSION::MAJOR >= 3
-      model = DbType.where("id = #{model.id}").select('sample_small_decimal AS custom_decimal').first
-    else
-      model = DbType.find(:first, :conditions => "id = #{model.id}", :select => 'sample_small_decimal AS custom_decimal')
-    end
+    model = DbType.where("id = #{model.id}").select('sample_small_decimal AS custom_decimal').first
     assert_equal decimal, model.custom_decimal
     #assert_instance_of BigDecimal, model.custom_decimal
   end
@@ -257,11 +252,7 @@ class SQLite3SimpleTest < Test::Unit::TestCase
   def test_custom_select_datetime
     my_time = Time.utc 2013, 03, 15, 19, 53, 51, 0 # usec
     model = DbType.create! :sample_datetime => my_time
-    if ActiveRecord::VERSION::MAJOR >= 3
-      model = DbType.where("id = #{model.id}").select('sample_datetime AS custom_sample_datetime').first
-    else
-      model = DbType.find(:first, :conditions => "id = #{model.id}", :select => 'sample_datetime AS custom_sample_datetime')
-    end
+    model = DbType.where("id = #{model.id}").select('sample_datetime AS custom_sample_datetime').first
     assert_match my_time.to_s(:db), model.custom_sample_datetime # '2013-03-15 18:53:51.000000'
   end
 
@@ -269,11 +260,7 @@ class SQLite3SimpleTest < Test::Unit::TestCase
   def test_custom_select_date
     my_date = Time.local(2000, 01, 30, 0, 0, 0, 0).to_date
     model = DbType.create! :sample_date => my_date
-    if ActiveRecord::VERSION::MAJOR >= 3
-      model = DbType.where("id = #{model.id}").select('sample_date AS custom_sample_date').first
-    else
-      model = DbType.find(:first, :conditions => "id = #{model.id}", :select => 'sample_date AS custom_sample_date')
-    end
+    model = DbType.where("id = #{model.id}").select('sample_date AS custom_sample_date').first
     assert_equal my_date.to_s(:db), model.custom_sample_date
   end
 
