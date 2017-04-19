@@ -403,6 +403,9 @@ module ActiveRecord
         register_type 'json', OID::Json.new
         register_type 'jsonb', OID::Jsonb.new
         register_type 'ltree', OID::Identity.new
+        
+        register_type 'array', OID::Array.new
+
 
         register_type 'cidr', OID::Cidr.new
         alias_type 'inet', 'cidr'
