@@ -21,11 +21,11 @@ appraise "rails40" do
 end
 
 appraise "rails41" do
-  gem "activerecord", "~> 4.1.8", :require => false
+  gem "activerecord", "~> 4.1.11", :require => false
 end
 
 appraise "rails42" do
-  gem "activerecord", "~> 4.2.0", :require => false
+  gem "activerecord", "~> 4.2.6", :require => false
 end
 
 appraise "railsNG" do

@@ -1,14 +1,14 @@
 GEM
   remote: https://rubygems.org/
   specs:
-    activemodel (4.1.14.2)
-      activesupport (= 4.1.14.2)
+    activemodel (4.1.16)
+      activesupport (= 4.1.16)
       builder (~> 3.1)
-    activerecord (4.1.14.2)
-      activemodel (= 4.1.14.2)
-      activesupport (= 4.1.14.2)
+    activerecord (4.1.16)
+      activemodel (= 4.1.16)
+      activesupport (= 4.1.16)
       arel (~> 5.0.0)
-    activesupport (4.1.14.2)
+    activesupport (4.1.16)
       i18n (~> 0.6, >= 0.6.9)
       json (~> 1.7, >= 1.7.7)
       minitest (~> 5.1)
@@ -20,30 +20,30 @@ GEM
     arel (5.0.1.20140414130214)
     bcrypt-ruby (3.0.1)
     bcrypt-ruby (3.0.1-java)
-    builder (3.2.2)
+    builder (3.2.3)
     docile (1.1.5)
-    i18n (0.7.0)
-    json (1.8.3)
-    json (1.8.3-java)
+    i18n (0.8.1)
+    json (1.8.6)
+    json (1.8.6-java)
     metaclass (0.0.4)
-    minitest (5.8.4)
+    minitest (5.10.1)
     mocha (0.13.3)
       metaclass (~> 0.0.1)
-    mysql2 (0.3.20)
-    pg (0.18.4)
+    mysql2 (0.3.21)
+    pg (0.20.0)
     rake (10.4.2)
-    simplecov (0.11.2)
+    simplecov (0.14.1)
       docile (~> 1.1.0)
-      json (~> 1.8)
+      json (>= 1.8, < 3)
       simplecov-html (~> 0.10.0)
     simplecov-html (0.10.0)
-    sqlite3 (1.3.11)
+    sqlite3 (1.3.13)
     test-unit (2.5.5)
     test-unit-context (0.5.1)
       test-unit (>= 2.4.0)
-    thread_safe (0.3.5)
-    thread_safe (0.3.5-java)
-    tzinfo (1.2.2)
+    thread_safe (0.3.6)
+    thread_safe (0.3.6-java)
+    tzinfo (1.2.3)
       thread_safe (~> 0.1)
 
 PLATFORMS
@@ -51,7 +51,7 @@ PLATFORMS
   ruby
 
 DEPENDENCIES
-  activerecord (~> 4.1.8)
+  activerecord (~> 4.1.11)
   appraisal (~> 0.5.2)
   bcrypt-ruby (~> 3.0.0)
   mocha (~> 0.13.1)
@@ -65,4 +65,4 @@ DEPENDENCIES
   thread_safe
 
 BUNDLED WITH
-   1.11.2
+   1.12.5
