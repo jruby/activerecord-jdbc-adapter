@@ -2,7 +2,9 @@ require 'test_helper'
 require 'db/postgres'
 
 class CompositePrimaryKeysTest < Test::Unit::TestCase
-  if ar_version('4.2')
+  begin
+    require 'composite_primary_keys'
+
     class CreateMemberships < ActiveRecord::Migration
       def self.up
         create_table 'memberships', :id => false do |t|
@@ -35,6 +37,10 @@ class CompositePrimaryKeysTest < Test::Unit::TestCase
       membership = Membership.create!(:record_id => 123, :other_record_id => 456)
       assert_equal membership.id, [123, 456]
     end
-  end
-end
 
+  rescue LoadError
+    def test_create_record_with_composite_primary_key
+      skip 'RUN without composite_primary_keys'
+    end
+  end
+end if Test::Unit::TestCase.ar_version('4.2')
