@@ -62,7 +62,7 @@ matrix:
     - rvm: jruby-1.7.24
       gemfile: gemfiles/rails42.gemfile
       env: JRUBY_OPTS="--1.9 $JRUBY_OPTS" DB=postgresql PREPARED_STATEMENTS=true INSERT_RETURNING=true
-    - rvm: jruby-1.7.24
+    - rvm: jruby-1.7.26 # rake pg_dump spawning issue (works fine on 9K)
       gemfile: gemfiles/rails42.gemfile
       env: JRUBY_OPTS="$JRUBY_OPTS" DB=postgresql
     - env: DB=mariadb
@@ -438,7 +438,3 @@ matrix:
     - rvm: jruby-head
       gemfile: gemfiles/rails42.gemfile
       env: JRUBY_OPTS="--1.8 $JRUBY_OPTS" DB=jdbc
-  allow_failures:
-    - rvm: jruby-1.7.26 # rake pg_dump spawning issue (works fine on 9K)
-      gemfile: gemfiles/rails42.gemfile
-      env: JRUBY_OPTS="$JRUBY_OPTS" DB=postgresql
