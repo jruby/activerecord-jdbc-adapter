@@ -165,7 +165,7 @@ module ArJdbc
           when 1, 2; 'smallint'
           when 3, 4; 'integer'
           when 5..8; 'bigint'
-          else raise(ActiveRecordError, "No integer type has byte size #{limit}. Use a numeric with precision 0 instead.")
+          else raise(ActiveRecordError, "No integer type has byte size #{limit}. Use a numeric with scale 0 instead.")
         end
       when 'datetime'
         return super unless precision
