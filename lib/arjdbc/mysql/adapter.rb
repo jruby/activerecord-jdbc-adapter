@@ -49,7 +49,7 @@ module ArJdbc
       # Increase timeout so the server doesn't disconnect us.
       wait_timeout = config[:wait_timeout]
       wait_timeout = self.class.type_cast_config_to_integer(wait_timeout)
-      variables[:wait_timeout] = wait_timeout.is_a?(Fixnum) ? wait_timeout : 2147483
+      variables[:wait_timeout] = wait_timeout.is_a?(Integer) ? wait_timeout : 2147483
 
       # Make MySQL reject illegal values rather than truncating or blanking them, see
       # http://dev.mysql.com/doc/refman/5.0/en/server-sql-mode.html#sqlmode_strict_all_tables
@@ -850,7 +850,7 @@ module ArJdbc
       case length
       when Hash
         column_names.map { |name| length[name] ? "#{quote_column_name(name)}(#{length[name]})" : quote_column_name(name) }
-      when Fixnum
+      when Integer
         column_names.map { |name| "#{quote_column_name(name)}(#{length})" }
       else
         column_names.map { |name| quote_column_name(name) }
