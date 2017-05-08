@@ -590,7 +590,7 @@ module ArJdbc
         exec_query(sql, name, binds) # due RETURNING clause returns a result set
       else
         result = super
-        if pk
+        if pk && use_insert_returning?
           unless sequence_name
             table_ref = extract_table_ref_from_insert_sql(sql)
             sequence_name = default_sequence_name(table_ref, pk)

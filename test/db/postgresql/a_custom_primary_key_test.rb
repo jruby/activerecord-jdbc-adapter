@@ -54,3 +54,38 @@ class PostgresACustomPrimaryKeyTest < Test::Unit::TestCase
   end
 
 end
+
+
+class PostgresInsertTriggerPrimaryKeyTest < Test::Unit::TestCase
+
+  def setup
+    connection.execute "CREATE TABLE some_foos ( id integer NOT NULL, balance numeric, CONSTRAINT some_foos_pkey PRIMARY KEY (id) )"
+    connection.execute("CREATE OR REPLACE FUNCTION generate_foo_id() RETURNS TRIGGER AS $$
+begin
+    if new.id is NULL then
+        new.id := floor( random() * 1000 + 1 );
+    end if;
+    return new;
+end
+$$ language plpgsql;")
+    connection.execute "CREATE TRIGGER foo_id_trigger BEFORE INSERT ON some_foos FOR EACH ROW EXECUTE PROCEDURE generate_foo_id();"
+  end
+
+  def teardown
+    connection.execute "DROP TRIGGER IF EXISTS foo_id_trigger ON some_foos"
+    connection.drop_table :some_foos
+  end
+
+  class SomeFoo < ActiveRecord::Base
+    # self.primary_key = 'id'
+  end
+
+  def test_create_foo
+    foo = SomeFoo.create!(:balance => 42)
+    puts "connection.use_insert_returning? #{connection.use_insert_returning?}"
+    assert_not_nil foo.id if connection.use_insert_returning?
+    assert_not_nil ( foo = SomeFoo.first ).id
+    assert_equal 42.0, foo.balance
+  end
+
+end
