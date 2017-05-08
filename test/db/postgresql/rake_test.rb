@@ -140,4 +140,19 @@ class PostgresRakeTest < Test::Unit::TestCase
     `#{PSQL_EXE} #{args}`
   end
 
+  if ActiveRecord::VERSION::STRING.start_with?('4.2') && JRUBY_VERSION.start_with?('1.7')
+    warn "NOTE: patching structure_dump due on JRuby #{JRUBY_VERSION}"
+    # NOTE: a hack around structure_dump failing due system(cmd, *args) on 1.7 (not going to get fixed)
+    #   RuntimeError: failed to execute:
+    # pg_dump -s -x -O -f db/structure.sql test_rake_db
+    require 'active_record/tasks/postgresql_database_tasks.rb'
+    ActiveRecord::Tasks::PostgreSQLDatabaseTasks.module_eval do
+      def run_cmd(cmd, args, action)
+        # fail run_cmd_error(cmd, args, action) unless Kernel.system(cmd, *args)
+        cmd_full = "#{cmd} #{args.map { |arg| Shellwords.escape(arg) }.join(' ')}"
+        fail run_cmd_error(cmd, args, action) unless Kernel.system(cmd_full)
+      end
+    end
+  end
+
 end
