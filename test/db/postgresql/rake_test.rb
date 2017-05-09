@@ -140,7 +140,7 @@ class PostgresRakeTest < Test::Unit::TestCase
     `#{PSQL_EXE} #{args}`
   end
 
-  if ActiveRecord::VERSION::STRING.start_with?('4.2') && JRUBY_VERSION.start_with?('1.7')
+  if ActiveRecord::VERSION::STRING.start_with?('4.2') && JRUBY_VERSION.start_with?('1.7') rescue nil
     warn "NOTE: patching structure_dump due on JRuby #{JRUBY_VERSION}"
     # NOTE: a hack around structure_dump failing due system(cmd, *args) on 1.7 (not going to get fixed)
     #   RuntimeError: failed to execute:
