@@ -46,25 +46,6 @@ branches:
     - /^test-.*/
 matrix:
   allow_failures:
-    # yet another BC timestamp issue: <Wed, 31 Dec -0001 22:58:59 +0000> expected but was <Fri, 02 Jan 0000 22:58:59 +0000>
-    - rvm: jruby-9.0.5.0
-      gemfile: gemfiles/rails41.gemfile
-      env: JRUBY_OPTS="$JRUBY_OPTS" DB=postgresql
-      jdk: oraclejdk7
-    # ``/system call symlink regression (since JRuby 1.7.19)
-    # + (postgres) database_tasks got updated on 4.2 : https://github.com/rails/rails/commit/07f8a96aa14b642a86
-    - rvm: jruby-1.7.24
-      gemfile: gemfiles/rails42.gemfile
-      env: JRUBY_OPTS="--1.9 $JRUBY_OPTS" DB=postgresql PREPARED_STATEMENTS=false INSERT_RETURNING=true
-    - rvm: jruby-1.7.24
-      gemfile: gemfiles/rails42.gemfile
-      env: JRUBY_OPTS="--1.9 $JRUBY_OPTS" DB=postgresql PREPARED_STATEMENTS=true
-    - rvm: jruby-1.7.24
-      gemfile: gemfiles/rails42.gemfile
-      env: JRUBY_OPTS="--1.9 $JRUBY_OPTS" DB=postgresql PREPARED_STATEMENTS=true INSERT_RETURNING=true
-    - rvm: jruby-1.7.26 # rake pg_dump spawning issue (works fine on 9K)
-      gemfile: gemfiles/rails42.gemfile
-      env: JRUBY_OPTS="$JRUBY_OPTS" DB=postgresql
     - env: DB=mariadb
     - env: DB=mariadb PREPARED_STATEMENTS=true
   include:
