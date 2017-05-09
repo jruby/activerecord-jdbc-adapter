@@ -57,13 +57,13 @@ matrix:
       env: JRUBY_OPTS="$JRUBY_OPTS" DB=mysql
       jdk: openjdk6
     - addons:
-        mariadb: '10.0'
+        mariadb: '10.1'
       rvm: jruby-1.7.24
       gemfile: gemfiles/rails42.gemfile
       env: DB=mariadb
       jdk: openjdk7
     - addons:
-        mariadb: '10.0'
+        mariadb: '10.1'
       rvm: jruby-1.7.24
       gemfile: gemfiles/rails41.gemfile
       env: DB=mariadb PREPARED_STATEMENTS=true
