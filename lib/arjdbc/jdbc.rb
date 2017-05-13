@@ -3,9 +3,9 @@ require 'active_support/deprecation'
 module ArJdbc
 
   # @private
-  AR40 = ::ActiveRecord::VERSION::MAJOR > 3 && ::ActiveRecord::VERSION::STRING < '4.2'
+  AR40 = ::ActiveRecord::VERSION::MAJOR > 3
   # @private
-  AR42 = ::ActiveRecord::VERSION::STRING >= '4.2' && ::ActiveRecord::VERSION::MAJOR < 5
+  AR42 = ::ActiveRecord::VERSION::STRING >= '4.2'
   # @private
   AR50 = ::ActiveRecord::VERSION::MAJOR > 4
 
