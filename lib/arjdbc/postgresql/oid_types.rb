@@ -6,6 +6,8 @@ module ArJdbc
     if AR42
       require 'active_record/connection_adapters/postgresql/oid'
       require 'arjdbc/postgresql/oid/bytea.rb'
+      require 'arjdbc/postgresql/oid/array.rb'
+
     else
       require 'arjdbc/postgresql/base/oid'
     end
@@ -196,6 +198,8 @@ module ArJdbc
         m.register_type 'macaddr', OID::SpecializedString.new(:macaddr)
         m.register_type 'citext', OID::SpecializedString.new(:citext)
         m.register_type 'ltree', OID::SpecializedString.new(:ltree)
+        
+        m.register_type 'array', Type:Array.new
 
         # FIXME: why are we keeping these types as strings?
         m.alias_type 'interval', 'varchar'
