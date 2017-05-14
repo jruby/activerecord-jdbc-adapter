@@ -1,3 +1,12 @@
+## 1.3.23 (05/14/17)
+
+- specify gem 'activerecord' < 5 since 5.x is not supported in 1.3.x
+- [postgres] get non-seq id inserts working when insert_returning: false (#716)
+- [postgres] previously-deprecated -i switch to pg_dump is no longer supported 
+  (in PostgreSQL 9.5) (#729)
+- [postgres] Assume that primary key can be multiple values (#773)
+- prevent multiple pushes of the adapter file onto $LOADED_FEATURES
+
 ## 1.3.22 (12/23/16)
 
 - [postgres] Fix incorrect postgresql_version when running RC (#717)
