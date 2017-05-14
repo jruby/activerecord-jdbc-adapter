@@ -60,8 +60,11 @@ module ArJdbc
         @connection.execute_update "call qsys.qcmdexc('QSYS/CHGJOB INQMSGRPY(*SYSRPYL)',0000000031.00000)"
         @connection.execute_update "call qsys.qcmdexc('ADDRPYLE SEQNBR(9876) MSGID(CPA32B2) RPY(''I'')',0000000045.00000)"
       rescue Exception => e
-        raise "Could not call CHGJOB INQMSGRPY(*SYSRPYL) and ADDRPYLE SEQNBR(9876) MSGID(CPA32B2) RPY('I').\n" +
-              "Do you have authority to do this?\n\n#{e.inspect}"
+        # Sometimes the exception can be a false-positive when we already ran the second command
+        unless e.message.include? 'Sequence number 9876 already defined in system reply list.'
+          raise "Could not call CHGJOB INQMSGRPY(*SYSRPYL) and ADDRPYLE SEQNBR(9876) MSGID(CPA32B2) RPY('I').\n" +
+                    "Do you have authority to do this?\n\n#{e.inspect}"
+        end
       end
 
       begin
