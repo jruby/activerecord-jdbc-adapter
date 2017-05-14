@@ -492,29 +492,26 @@ module ArJdbc
 
     # @private shared with {Arel::Visitors::DB2}
     def replace_limit_offset!(sql, limit, offset, orders = nil)
-      limit = limit.to_i
+      # Ordering is done somewhere before this method gets called
 
-      if offset # && limit
-        over_order_by = nil # NOTE: orders matching got reverted as it was not complete and there were no case covering it ...
+      # Create the limit and offset sql
+      param_sql = ''
 
-        start_sql = "SELECT B.* FROM (SELECT A.*, row_number() OVER (#{over_order_by}) AS internal$rownum FROM (SELECT"
-        end_sql = ") A ) B WHERE B.internal$rownum > #{offset} AND B.internal$rownum <= #{limit + offset.to_i}"
-
-        if sql.is_a?(String)
-          sql.sub!(/SELECT/i, start_sql)
-          sql << end_sql
-        else # AR 4.2 sql.class ... Arel::Collectors::Bind
-          sql.parts[0] = start_sql # sql.sub! /SELECT/i
-          sql.parts[ sql.parts.length ] = end_sql
-        end
+      if offset.present? && limit.present?
+        param_sql << " LIMIT #{limit} OFFSET #{offset} "
       else
-        limit_sql = limit == 1 ? " FETCH FIRST ROW ONLY" : " FETCH FIRST #{limit} ROWS ONLY"
-        if sql.is_a?(String)
-          sql << limit_sql
-        else # AR 4.2 sql.class ... Arel::Collectors::Bind
-          sql.parts[ sql.parts.length ] = limit_sql
-        end
+        param_sql << " OFFSET #{offset}" if offset.present?
+        param_sql <<  if limit.present?
+                        limit == 1 ? ' FETCH FIRST ROW ONLY' : " FETCH FIRST #{limit} ROWS ONLY"
+                      end
       end
+
+      if sql.is_a?(String)
+        sql << param_sql
+      else # AR 4.2 sql.class ... Arel::Collectors::Bind
+        sql.parts[sql.parts.length] = param_sql
+      end
+
       sql
     end
 
