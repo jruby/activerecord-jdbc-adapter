@@ -165,7 +165,7 @@ module ArJdbc
           when 1, 2; 'smallint'
           when 3, 4; 'integer'
           when 5..8; 'bigint'
-          else raise(ActiveRecordError, "No integer type has byte size #{limit}. Use a numeric with precision 0 instead.")
+          else raise(ActiveRecordError, "No integer type has byte size #{limit}. Use a numeric with scale 0 instead.")
         end
       when 'datetime'
         return super unless precision
@@ -571,7 +571,8 @@ module ArJdbc
       end
 
       if pk && use_insert_returning?
-        sql = "#{sql} RETURNING #{quote_column_name(pk)}"
+        returning = Array(pk).map(&method(:quote_table_name)).join(', ')
+        sql = "#{sql} RETURNING (#{returning})"
       end
 
       [ sql, binds ]
@@ -589,7 +590,7 @@ module ArJdbc
         exec_query(sql, name, binds) # due RETURNING clause returns a result set
       else
         result = super
-        if pk
+        if pk && use_insert_returning?
           unless sequence_name
             table_ref = extract_table_ref_from_insert_sql(sql)
             sequence_name = default_sequence_name(table_ref, pk)

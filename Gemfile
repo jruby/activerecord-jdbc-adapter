@@ -14,6 +14,10 @@ else
   gem 'activerecord', :require => nil
 end
 
+# NOTE: gem overrides AR internals and assumes it can safely patch adapter classes ...
+# thus it is to be used (in tests) as an optional - tests should roll fine without it!
+gem 'composite_primary_keys', :require => nil unless ENV['COMPOSITE_PK'].eql?('false')
+
 gem 'thread_safe', :require => nil # "optional" - we can roll without it
 
 if defined?(JRUBY_VERSION) && JRUBY_VERSION < '1.7.0'

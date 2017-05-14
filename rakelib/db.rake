@@ -7,6 +7,7 @@ namespace :db do
     fail "could not create test database: mysql executable not found" unless mysql = which('mysql')
     load 'test/db/mysql_config.rb' # rescue nil
     puts MYSQL_CONFIG.inspect if $VERBOSE
+    # DROP USER arjdbc@localhost; __ERROR 1396 (HY000): Operation CREATE USER failed__
     script = sql_script <<-SQL, 'mysql'
 DROP DATABASE IF EXISTS `#{MYSQL_CONFIG[:database]}`;
 CREATE USER #{MYSQL_CONFIG[:username]}@localhost;
