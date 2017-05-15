@@ -39,7 +39,7 @@ module ArJdbc
     register_tasks(/(oci|oracle)/, OracleDatabaseTasks)
     register_tasks(/mssql/, MSSQLDatabaseTasks) # (built-in) alias
     # tasks for custom (JDBC) adapters :
-    register_tasks(/db2/, DB2DatabaseTasks)
+    register_tasks(/(db2|as400)/, DB2DatabaseTasks)
     register_tasks(/derby/, DerbyDatabaseTasks)
     register_tasks(/h2/, H2DatabaseTasks)
     register_tasks(/hsqldb/, HSQLDBDatabaseTasks)
