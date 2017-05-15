@@ -100,6 +100,11 @@ module ArJdbc
       true
     end
 
+    # AS400 does not support TRUNCATE command. Deleting everything from the table is should be close enough
+    def truncate(table_name, name = nil)
+      @connection.execute_update "DELETE FROM #{table_name}"
+    end
+
     private
 
     # @override
