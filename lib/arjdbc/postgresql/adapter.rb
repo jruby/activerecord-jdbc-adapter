@@ -55,7 +55,7 @@ module ArJdbc
       @postgresql_version ||=
         begin
           version = select_version
-          if version =~ /PostgreSQL (\d+)\.(\d+)\.(\d+)/
+          if version =~ /PostgreSQL (\d+)\.(\d+)(?:\.(\d+))?/
             ($1.to_i * 10000) + ($2.to_i * 100) + $3.to_i
           else
             0
@@ -153,7 +153,7 @@ module ArJdbc
           when 1, 2; 'smallint'
           when 3, 4; 'integer'
           when 5..8; 'bigint'
-          else raise(ActiveRecordError, "No integer type has byte size #{limit}. Use a numeric with precision 0 instead.")
+          else raise(ActiveRecordError, "No integer type has byte size #{limit}. Use a numeric with scale 0 instead.")
         end
       when 'datetime'
         return super unless precision
@@ -274,7 +274,8 @@ module ArJdbc
       :bigserial => "bigserial",
       :bigint => { :name => "bigint" },
       :bit => { :name => "bit" },
-      :bit_varying => { :name => "bit varying" }
+      :bit_varying => { :name => "bit varying" },
+      :citext => { :name => "citext" }
     ) if AR42
 
     def native_database_types
@@ -553,7 +554,8 @@ module ArJdbc
       end
 
       if pk && use_insert_returning?
-        sql = "#{sql} RETURNING #{quote_column_name(pk)}"
+        returning = Array(pk).map(&method(:quote_table_name)).join(', ')
+        sql = "#{sql} RETURNING (#{returning})"
       end
 
       [ sql, binds ]
@@ -571,7 +573,7 @@ module ArJdbc
         exec_query(sql, name, binds) # due RETURNING clause returns a result set
       else
         result = super
-        if pk
+        if pk && use_insert_returning?
           unless sequence_name
             table_ref = extract_table_ref_from_insert_sql(sql)
             sequence_name = default_sequence_name(table_ref, pk)
@@ -669,7 +671,8 @@ module ArJdbc
       return result if result.is_a? Integer
       # <ActiveRecord::Result @hash_rows=nil, @columns=["id"], @rows=[[3]]>
       # but it will work with [{ 'id' => 1 }] Hash wrapped results as well
-      result.first.first[1] # .first = { "id"=>1 } .first = [ "id", 1 ]
+      row = result.first
+      row && row.first[1] # .first = { "id"=>1 } .first = [ "id", 1 ]
     end
 
     def last_insert_id(table, sequence_name = nil)

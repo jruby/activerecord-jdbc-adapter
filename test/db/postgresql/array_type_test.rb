@@ -158,6 +158,22 @@ class PostgreSQLArrayTypeTest < Test::Unit::TestCase
     assert_cycle(['1',nil,nil])
   end
 
+  OID = ActiveRecord::ConnectionAdapters::PostgreSQL::OID rescue nil
+
+  def test_string_datetime_array_match_pg_behavior
+    date = Date.new(2017, 1, 2)
+    oid = OID::Array.new(ActiveRecord::Type::Date.new)
+
+    date_default = Date::DATE_FORMATS[:default]
+    begin
+      Date::DATE_FORMATS[:default] = '%d.%m.%Y'
+
+      assert_equal "{'2017-01-02'}", oid.type_cast_for_database([date])
+    ensure
+      Date::DATE_FORMATS[:default] = date_default
+    end
+  end if ar_version('4.2')
+
   private
   def assert_cycle array
     # test creation

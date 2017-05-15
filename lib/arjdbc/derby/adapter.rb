@@ -499,7 +499,7 @@ module ArJdbc
     # Returns the value of an identity column of the last *INSERT* statement
     # made over this connection.
     # @note Check the *IDENTITY_VAL_LOCAL* function for documentation.
-    # @return [Fixnum]
+    # @return [Integer]
     def last_insert_id
       @connection.identity_val_local
     end

@@ -1,7 +1,7 @@
 module ActiveRecord::Tasks
 
   DatabaseTasks.module_eval do
-    
+
     # patched to adapt jdbc configuration
     def each_current_configuration(environment)
       environments = [environment]
@@ -31,9 +31,14 @@ module ActiveRecord::Tasks
   MySQLDatabaseTasks.class_eval do
 
     def error_class
-      ActiveRecord::JDBCError
+      @_error_class ||= begin
+        unless ActiveRecord::JDBCError.instance_methods.include?(:error)
+          ActiveRecord::JDBCError.send :alias_method, :error, :sql_exception
+        end
+        ActiveRecord::JDBCError
+      end
     end
 
   end
-  
+
 end

@@ -354,7 +354,7 @@ module ArJdbc
       when NilClass then 'NULL'
       when TrueClass then (type == :integer ? '1' : quoted_true)
       when FalseClass then (type == :integer ? '0' : quoted_false)
-      when Float, Fixnum, Bignum then value.to_s
+      when Float, Integer then value.to_s
       # BigDecimals need to be output in a non-normalized form and quoted.
       when BigDecimal then value.to_s('F')
       when Symbol then "'#{quote_string(value.to_s)}'"

@@ -126,7 +126,7 @@ namespace :db do
         unless search_path.blank?
           search_path = search_path.split(",").map{ |part| "--schema=#{Shellwords.escape(part.strip)}" }.join(" ")
         end
-        sh "pg_dump -i -s -x -O -f #{Shellwords.escape(filename)} #{search_path} #{Shellwords.escape(config['database'])}"
+        sh "pg_dump -s -x -O -f #{Shellwords.escape(filename)} #{search_path} #{Shellwords.escape(config['database'])}"
 
         File.open(filename, 'a') { |f| f << "SET search_path TO #{ActiveRecord::Base.connection.schema_search_path};\n\n" }
       when /sqlite/

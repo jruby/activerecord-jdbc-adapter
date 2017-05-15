@@ -48,7 +48,7 @@ module ArJdbc
 
       # @override
       def type_cast(value)
-        return nil if value.nil? || value == 'NULL' || value =~ /^\s*NULL\s*$/i
+        return nil if value.nil? || value.eql?('NULL') || value =~ /^\s*NULL\s*$/i
         case type
         when :string    then value
         when :integer   then value.respond_to?(:to_i) ? value.to_i : (value ? 1 : 0)

@@ -50,7 +50,7 @@ Gem::Specification.new do |gem|
 
   # NOTE: we're leaving it out as it seems to be confusing to users as
   # gem install activerecord-jdbc-adapter installs latest activerecord!
-  #gem.add_dependency 'activerecord', '>= 2.2'
+  #gem.add_dependency 'activerecord', '>= 2.2', '< 5.0'
 
   gem.add_development_dependency 'rake', '~> 10.4.2'
 
