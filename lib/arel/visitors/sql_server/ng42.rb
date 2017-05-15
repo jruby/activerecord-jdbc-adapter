@@ -252,7 +252,7 @@ module Arel
 
         def value; @delegate.value; end
 
-        #def substitute_binds bvs; @delegate.substitute_binds(bvs); self end
+        def substitute_binds bvs; @delegate.substitute_binds(bvs); self end
 
         def compile(bvs, conn)
           _yield_str @delegate.compile(bvs, conn)
