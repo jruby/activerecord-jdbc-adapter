@@ -62,7 +62,7 @@ matrix:
       rvm: jruby-1.7.26
       gemfile: gemfiles/rails32.gemfile
       env: JRUBY_OPTS="$JRUBY_OPTS" DB=mysql
-      jdk: openjdk6
+      jdk: openjdk7
     - addons:
         mariadb: '10.1'
       rvm: jruby-1.7.26
