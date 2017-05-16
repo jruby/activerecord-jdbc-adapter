@@ -1495,7 +1495,7 @@ public class RubyJdbcConnection extends RubyObject {
 
                             IRubyObject[] args = new IRubyObject[] {
                                 cachedString(context, indexTableName), // table_name
-                                RubyString.newUnicodeString(runtime, indexName), // index_name
+                                cachedString(context, indexName), // index_name
                                 nonUnique ? runtime.getFalse() : runtime.getTrue(), // unique
                                 currentColumns = RubyArray.newArray(runtime, 4) // [] column names
                                 // orders, (since AR 3.2) where, type, using (AR 4.0)
@@ -1505,7 +1505,7 @@ public class RubyJdbcConnection extends RubyObject {
                         }
 
                         // one or more columns can be associated with an index
-                        if ( currentColumns != null ) currentColumns.callMethod(context, "<<", rubyColumnName);
+                        if ( currentColumns != null ) currentColumns.append(rubyColumnName);
                     }
 
                     return indexes;

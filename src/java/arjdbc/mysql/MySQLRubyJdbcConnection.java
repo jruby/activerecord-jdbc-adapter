@@ -271,7 +271,7 @@ public class MySQLRubyJdbcConnection extends RubyJdbcConnection {
 
                             IRubyObject[] args = new IRubyObject[] {
                                 rubyTableName, // table_name
-                                RubyString.newUnicodeString(runtime, keyName), // index_name
+                                cachedString(context, keyName), // index_name
                                 nonUnique ? runtime.getFalse() : runtime.getTrue(), // unique
                                 currentColumns = RubyArray.newArray(runtime, 4), // columns
                                 currentLengths = RubyArray.newArray(runtime, 4) // lengths
@@ -285,8 +285,8 @@ public class MySQLRubyJdbcConnection extends RubyJdbcConnection {
                             final int length = keySet.getInt("sub_part");
                             final boolean nullLength = length == 0 && keySet.wasNull();
 
-                            currentColumns.callMethod(context, "<<", cachedString(context, columnName));
-                            currentLengths.callMethod(context, "<<", nullLength ? context.nil : RubyFixnum.newFixnum(runtime, length));
+                            currentColumns.append( cachedString(context, columnName) );
+                            currentLengths.append( nullLength ? context.nil : RubyFixnum.newFixnum(runtime, length) );
                         }
                     }
 
