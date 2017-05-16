@@ -30,9 +30,7 @@ import arjdbc.jdbc.Callable;
 import arjdbc.jdbc.DriverWrapper;
 import arjdbc.util.DateTimeUtils;
 
-import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Proxy;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
@@ -41,8 +39,6 @@ import java.sql.Statement;
 import java.sql.Time;
 import java.sql.Timestamp;
 import java.sql.Types;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 import org.jruby.Ruby;
 import org.jruby.RubyArray;
@@ -328,7 +324,6 @@ public class MySQLRubyJdbcConnection extends RubyJdbcConnection {
     protected Connection newConnection() throws RaiseException, SQLException {
         final Connection connection = super.newConnection();
         if ( doStopCleanupThread() ) shutdownCleanupThread();
-        if ( doKillCancelTimer(connection) ) killCancelTimer(connection);
         return connection;
     }
 
@@ -368,96 +363,6 @@ public class MySQLRubyJdbcConnection extends RubyJdbcConnection {
             debugMessage( e.toString() );
         }
         finally { cleanupThreadShutdown = true; }
-    }
-
-    private static Boolean killCancelTimer;
-    static {
-        final String killTimer = SafePropertyAccessor.getProperty("arjdbc.mysql.kill_cancel_timer");
-        if ( killTimer != null ) killCancelTimer = Boolean.parseBoolean(killTimer);
-    }
-
-    private static boolean doKillCancelTimer(final Connection connection) throws SQLException {
-        if ( killCancelTimer == null ) {
-            synchronized (MySQLRubyJdbcConnection.class) {
-                final String version = connection.getMetaData().getDriverVersion();
-                if ( killCancelTimer == null ) {
-                    String regex = "mysql\\-connector\\-java-(\\d)\\.(\\d)\\.(\\d+)";
-                    Matcher match = Pattern.compile(regex).matcher(version);
-                    if ( match.find() ) {
-                        final int major = Integer.parseInt( match.group(1) );
-                        final int minor = Integer.parseInt( match.group(2) );
-                        if ( major < 5 || ( major == 5 && minor <= 1 ) ) {
-                            final int patch = Integer.parseInt( match.group(3) );
-                            killCancelTimer = patch < 11;
-                        }
-                    }
-                    else {
-                        killCancelTimer = Boolean.FALSE;
-                    }
-                }
-            }
-        }
-        return killCancelTimer;
-    }
-
-    /**
-     * HACK HACK HACK See http://bugs.mysql.com/bug.php?id=36565
-     * MySQL's statement cancel timer can cause memory leaks, so cancel it
-     * if we loaded MySQL classes from the same class-loader as JRuby
-     *
-     * NOTE: MySQL Connector/J 5.1.11 (2010-01-21) fixed the issue !
-     */
-    private void killCancelTimer(final Connection connection) {
-        final Ruby runtime = getRuntime();
-        if (connection.getClass().getClassLoader() == runtime.getJRubyClassLoader()) {
-            final Field field = cancelTimerField(runtime);
-            if ( field != null ) {
-                java.util.Timer timer = null;
-                try {
-                    Connection unwrap = connection.unwrap(Connection.class);
-                    // when failover is used (LoadBalancedMySQLConnection)
-                    // we'll end up with a proxy returned not the real thing :
-                    if ( Proxy.isProxyClass(unwrap.getClass()) ) return;
-                    // connection likely: com.mysql.jdbc.JDBC4Connection
-                    // or (for 3.0) super class: com.mysql.jdbc.ConnectionImpl
-                    timer = (java.util.Timer) field.get( unwrap );
-                }
-                catch (SQLException e) {
-                    debugMessage( e.toString() );
-                }
-                catch (IllegalAccessException e) {
-                    debugMessage( e.toString() );
-                }
-                if ( timer != null ) timer.cancel();
-            }
-        }
-    }
-
-    private static Field cancelTimer = null;
-    private static boolean cancelTimerChecked = false;
-
-    private Field cancelTimerField(final Ruby runtime) {
-        if ( cancelTimerChecked ) return cancelTimer;
-        final String name = "com.mysql.jdbc.ConnectionImpl";
-        try {
-            Class<?> klass = runtime.getJavaSupport().loadJavaClass(name);
-            Field field = klass.getDeclaredField("cancelTimer");
-            field.setAccessible(true);
-            synchronized (MySQLRubyJdbcConnection.class) {
-                if ( cancelTimer == null ) cancelTimer = field;
-            }
-        }
-        catch (ClassNotFoundException e) {
-            debugMessage("missing MySQL JDBC connection impl: " + e);
-        }
-        catch (NoSuchFieldException e) {
-            debugMessage("MySQL's cancel timer seems to have changed: " + e);
-        }
-        catch (SecurityException e) {
-            debugMessage( e.toString() );
-        }
-        finally { cancelTimerChecked = true; }
-        return cancelTimer;
     }
 
 }
