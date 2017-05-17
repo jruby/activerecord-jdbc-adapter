@@ -313,19 +313,24 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
         final Ruby runtime, final ResultSet resultSet, final int column)
         throws SQLException {
 
-        if ( rawDateTime != null && rawDateTime.booleanValue() ) {
-            final byte[] value = resultSet.getBytes(column);
-            if ( value == null ) {
-                if ( resultSet.wasNull() ) return context.nil;
-                return RubyString.newEmptyString(runtime); // ""
-            }
-            return RubyString.newString(runtime, new ByteList(value, false));
+        if ( rawDateTime != null && rawDateTime ) {
+            return bytesToString(context, resultSet, column);
         }
 
         final String value = resultSet.getString(column);
         if ( value == null ) return context.nil;
 
         return DateTimeUtils.parseDate(context, value);
+    }
+
+    private IRubyObject bytesToString(final ThreadContext context, final ResultSet resultSet, final int column)
+        throws SQLException {
+        final byte[] value = resultSet.getBytes(column);
+        if ( value == null ) {
+            if ( resultSet.wasNull() ) return context.nil;
+            return RubyString.newEmptyString(context.runtime); // ""
+        }
+        return RubyString.newString(context.runtime, new ByteList(value, false));
     }
 
     @Override
@@ -340,13 +345,8 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
         final Ruby runtime, final ResultSet resultSet, final int column)
         throws SQLException {
 
-        if ( rawDateTime != null && rawDateTime.booleanValue() ) {
-            final byte[] value = resultSet.getBytes(column);
-            if ( value == null ) {
-                if ( resultSet.wasNull() ) return context.nil;
-                return RubyString.newEmptyString(runtime); // ""
-            }
-            return RubyString.newString(runtime, new ByteList(value, false));
+        if ( rawDateTime != null && rawDateTime ) {
+            return bytesToString(context, resultSet, column);
         }
 
         // NOTE: using Timestamp we would loose information such as BC :
