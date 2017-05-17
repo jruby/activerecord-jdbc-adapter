@@ -37,6 +37,7 @@ import java.sql.Savepoint;
 import java.sql.Types;
 import java.util.List;
 
+import arjdbc.CallSites;
 import org.jruby.Ruby;
 import org.jruby.RubyArray;
 import org.jruby.RubyClass;

@@ -1,5 +1,6 @@
 /***** BEGIN LICENSE BLOCK *****
- * Copyright (c) 2012-2015 Karol Bucek <self@kares.org>
+ *
+ * Copyright (c) 2012-2017 Karol Bucek <self@kares.org>
  * Copyright (c) 2006-2011 Nick Sieger <nick@nicksieger.com>
  * Copyright (c) 2006-2007 Ola Bini <ola.bini@gmail.com>
  * Copyright (c) 2008-2009 Thomas E Enebo <enebo@acm.org>
@@ -90,20 +91,16 @@ import org.jruby.exceptions.RaiseException;
 import org.jruby.javasupport.JavaEmbedUtils;
 import org.jruby.javasupport.JavaUtil;
 import org.jruby.runtime.Block;
-import org.jruby.runtime.CallSite;
 import org.jruby.runtime.ObjectAllocator;
 import org.jruby.runtime.ThreadContext;
 import org.jruby.runtime.Visibility;
 import org.jruby.runtime.builtin.IRubyObject;
 import org.jruby.runtime.builtin.Variable;
-import org.jruby.runtime.callsite.CacheEntry;
-import org.jruby.runtime.callsite.CachingCallSite;
-import org.jruby.runtime.callsite.FunctionalCachingCallSite;
-import org.jruby.runtime.callsite.RespondToCallSite;
 import org.jruby.runtime.component.VariableEntry;
 import org.jruby.util.ByteList;
 import org.jruby.util.SafePropertyAccessor;
 
+import arjdbc.CallSites;
 import arjdbc.util.DateTimeUtils;
 import arjdbc.util.ObjectSupport;
 import arjdbc.util.StringCache;
@@ -4507,102 +4504,6 @@ public class RubyJdbcConnection extends RubyObject {
                 debugMessage(getRuntime(), "failed to log driver ", e);
             }
         }
-    }
-
-    // Call-Sites
-
-    protected abstract static class CallSites {
-
-        public static final RespondToCallSite adapter_respond_to_init_connection = respondCallSite("init_connection", "adapter.");
-
-        public static final CachingCallSite adapter_configure_connection = new FunctionalCachingCallSite("configure_connection");
-        public static final RespondToCallSite adapter_respond_to_configure_connection = respondCallSite("configure_connection", "adapter.");
-
-        public static final CachingCallSite adapter_jdbc_column_class = monoCallSite("jdbc_column_class", "adapter.");
-
-        public static final CachingCallSite adapter_lookup_cast_type = monoCallSite("lookup_cast_type", "adapter.");
-
-        // column.type_cast_for_database
-        public static final CachingCallSite column_type_cast_for_database = monoCallSite("type_cast_for_database", "column.");
-
-        // column.type
-        public static final CachingCallSite column_type = monoCallSite("type", "column.");
-
-        public static final CachingCallSite column_sql_type = monoCallSite("sql_type", "column.");
-
-        // column.array?
-        public static final CachingCallSite column_array_p = monoCallSite("array?", "column.");
-        public static final RespondToCallSite column_respond_to_array_p = respondCallSite("array?", "column.");
-
-        public static final CachingCallSite time_to_date = monoCallSite("to_date", "time.e");
-
-        public static final CachingCallSite IndexDefinition_new = monoCallSite("new", "IndexDefinition.");
-
-        public static final CachingCallSite indexDefinition_columns = monoCallSite("columns", "index_definition.");
-
-        public static final CachingCallSite ForeignKeyDefinition_new = monoCallSite("new", "FKDefinition.");
-
-        // AR::Column (of some type) new
-        public static final CachingCallSite Column_new = monoCallSite("new", "Column.");
-
-        // AR::Result.new
-        public static final CachingCallSite Result_new = monoCallSite("new", "Result.");
-
-        public static CachingCallSite monoCallSite(final String method, final String debugPrefix) {
-            if ( DEBUG ) return new DebugCachingCallSite(method, debugPrefix + method);
-            return new FunctionalCachingCallSite(method);
-        }
-
-        public static RespondToCallSite respondCallSite(final String method, final String debugPrefix) {
-            if ( DEBUG ) return new DebugRespondToCallSite(debugPrefix + "respond_to?(:" + method + ')');
-            return new RespondToCallSite();
-        }
-
-        private static final boolean DEBUG = false;
-
-    }
-
-    private static class DebugCachingCallSite extends FunctionalCachingCallSite {
-
-        private final String debugId;
-
-        DebugCachingCallSite(String methodName, final String debugId) {
-            super(methodName); this.debugId = debugId;
-        }
-
-        protected void updateCache(CacheEntry newEntry) {
-            debugMessage(debugId + " updateCache: " + newEntry.method);
-            super.updateCache(newEntry);
-        }
-
-    }
-
-    private static class DebugRespondToCallSite extends RespondToCallSite {
-
-        private final String debugId;
-
-        DebugRespondToCallSite(final String debugId) {
-            this.debugId = debugId;
-        }
-
-        /*
-        protected void updateCache(CacheEntry newEntry) {
-            super.updateCache(newEntry);
-            debugMessage(debugId + " updated cache: " + newEntry.method);
-        } */
-
-        @Override
-        protected IRubyObject cacheAndCall(IRubyObject caller, RubyClass selfType, ThreadContext context, IRubyObject self, IRubyObject arg) {
-            debugMessage(debugId + " cacheAndCall: " + self + " arg = " + arg);
-            return super.cacheAndCall(caller, selfType, context, self, arg);
-        }
-
-        @Override
-        protected IRubyObject cacheAndCall(IRubyObject caller, RubyClass selfType, ThreadContext context, IRubyObject self, IRubyObject arg0, IRubyObject arg1) {
-            debugMessage(debugId + " cacheAndCall: " + self + " arg0 = " + arg0 + " arg1 = " + arg1);
-            return super.cacheAndCall(caller, selfType, context, self, arg0, arg1);
-        }
-
     }
 
 }

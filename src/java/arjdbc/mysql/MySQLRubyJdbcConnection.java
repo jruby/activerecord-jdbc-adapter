@@ -25,6 +25,7 @@
  ***** END LICENSE BLOCK *****/
 package arjdbc.mysql;
 
+import arjdbc.CallSites;
 import arjdbc.jdbc.RubyJdbcConnection;
 import arjdbc.jdbc.Callable;
 import arjdbc.jdbc.DriverWrapper;
