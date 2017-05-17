@@ -4117,42 +4117,44 @@ public class RubyJdbcConnection extends RubyObject {
      */
     protected static class ResultHandler {
 
-        //protected static volatile Boolean USE_RESULT;
-
         // AR-3.2 : initialize(columns, rows)
         // AR-4.0 : initialize(columns, rows, column_types = {})
         protected static Boolean INIT_COLUMN_TYPES = Boolean.FALSE;
 
         //protected static Boolean FORCE_HASH_ROWS = Boolean.FALSE;
 
-        private static volatile ResultHandler instance;
+        private static ResultHandler instance;
 
         public static ResultHandler getInstance(final Ruby runtime) {
             ResultHandler instance = ResultHandler.instance;
-            if ( instance == null ) {
-                synchronized(ResultHandler.class) {
-                    if ( ( instance = ResultHandler.instance ) == null ) { // fine to initialize twice
-                        final RubyClass result = getResult(runtime);
-                        if ( result != null ) {
-                            //USE_RESULT = true;
-                            setInstance( instance = new ResultHandler(runtime) );
-                        }
-                        else {
-                            //USE_RESULT = false;
-                            setInstance( instance = new RawResultHandler(runtime) );
-                        }
+            return instance == null ? initInstance(runtime) : instance;
+        }
+
+        @SuppressWarnings("deprecated")
+        private static ResultHandler initInstance(final Ruby runtime) {
+            ResultHandler instance;
+            synchronized(ResultHandler.class) {
+                if ( ( instance = ResultHandler.instance ) == null ) { // fine to initialize twice
+                    if ( getResult(runtime) != null ) {
+                        instance = ResultHandler.instance = new ResultHandler(runtime);
+                    }
+                    else {
+                        instance = ResultHandler.instance = new RawResultHandler(runtime);
                     }
                 }
             }
             return instance;
         }
 
+        @Deprecated // no longer used
         protected static synchronized void setInstance(final ResultHandler instance) {
             ResultHandler.instance = instance;
         }
 
+        private final RubyClass Result; // ActiveRecord::Result (cached - we do not expect it to change)
+
         protected ResultHandler(final Ruby runtime) {
-            // no-op
+            this.Result = getResult(runtime);
         }
 
         public IRubyObject mapRow(final ThreadContext context, final Ruby runtime,
@@ -4172,7 +4174,7 @@ public class RubyJdbcConnection extends RubyObject {
         public IRubyObject newResult(final ThreadContext context, final Ruby runtime,
             final ColumnData[] columns, final IRubyObject rows) { // rows array
             // ActiveRecord::Result.new(columns, rows)
-            final RubyClass Result = getResult(runtime);
+            final RubyClass Result = this.Result;
             return CallSites.Result_new.call(context, Result, Result, initArgs(context, runtime, columns, rows));
         }
 
@@ -4216,10 +4218,13 @@ public class RubyJdbcConnection extends RubyObject {
 
     }
 
+    /**
+     * @deprecated likely to be dropped soon (AR < 3.2)
+     */
     private static class RawResultHandler extends ResultHandler {
 
         protected RawResultHandler(final Ruby runtime) {
-            super(runtime);
+            super(runtime); // Result == null
         }
 
         @Override
