@@ -169,12 +169,16 @@ public class RubyJdbcConnection extends RubyObject {
         return (RubyClass) runtime.getModule("ActiveRecord").getConstantAt("Result");
     }
 
+    private static transient RubyClass Base;
+
     /**
      * @param runtime
      * @return <code>ActiveRecord::Base</code>
      */
     public static RubyClass getBase(final Ruby runtime) {
-        return (RubyClass) runtime.getModule("ActiveRecord").getConstantAt("Base");
+        RubyClass Base = RubyJdbcConnection.Base;
+        return Base != null ? Base : // cached for DateTimeUtils.getDefaultTimeZone
+            ( RubyJdbcConnection.Base = (RubyClass) runtime.getModule("ActiveRecord").getConstantAt("Base") );
     }
 
     /**
