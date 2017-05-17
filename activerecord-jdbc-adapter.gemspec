@@ -47,6 +47,8 @@ Gem::Specification.new do |gem|
     #gem.add_development_dependency 'jdbc-mysql', '~> 5.1.33'
     #gem.add_development_dependency 'jdbc-postgres', '~> 9.4-1200'
   end
+  
+  gem.required_ruby_version = '>= 1.9.3'
 
   # NOTE: we're leaving it out as it seems to be confusing to users as
   # gem install activerecord-jdbc-adapter installs latest activerecord!
