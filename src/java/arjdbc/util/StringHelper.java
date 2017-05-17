@@ -57,7 +57,7 @@ public abstract class StringHelper {
     }
 
     public static RubyString newString(final Ruby runtime, final CharSequence str) {
-        return new RubyString(runtime, runtime.getString(), str, UTF8Encoding.INSTANCE);
+        return new RubyString(runtime, runtime.getString(), str); // UTF8 implicitly
     }
 
     public static RubyString newString(final Ruby runtime, final byte[] bytes) {
@@ -66,8 +66,8 @@ public abstract class StringHelper {
     }
 
     public static RubyString newUTF8String(final Ruby runtime, final byte[] bytes) {
-        final ByteList byteList = new ByteList(bytes, false);
-        return new RubyString(runtime, runtime.getString(), byteList, UTF8Encoding.INSTANCE);
+        final ByteList byteList = new ByteList(bytes, UTF8Encoding.INSTANCE, false);
+        return new RubyString(runtime, runtime.getString(), byteList);
     }
 
     public static RubyString newUTF8String(final Ruby runtime, final CharSequence str) {
