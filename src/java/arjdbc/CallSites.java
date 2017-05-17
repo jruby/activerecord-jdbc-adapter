@@ -74,6 +74,12 @@ public abstract class CallSites {
     // AR::Result.new
     public static final CachingCallSite Result_new = monoCallSite("new", "Result.");
 
+    // AR::Base.default_timezone
+    public static final CachingCallSite Base_default_timezone = new FunctionalCachingCallSite("default_timezone");
+
+    public static final CachingCallSite value_to_time = monoCallSite("to_time", "value.");
+    public static final RespondToCallSite value_respond_to_to_time = respondCallSite("to_time", "value.");
+
     public static CachingCallSite monoCallSite(final String method, final String debugPrefix) {
         if (DEBUG) return new DebugCachingCallSite(method, debugPrefix + method);
         return new FunctionalCachingCallSite(method);

@@ -28,6 +28,7 @@ import java.sql.Time;
 import java.sql.Timestamp;
 import java.util.TimeZone;
 
+import arjdbc.CallSites;
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
 import org.jruby.Ruby;
@@ -238,29 +239,35 @@ public abstract class DateTimeUtils {
     }
 
     public static IRubyObject getTimeInDefaultTimeZone(final ThreadContext context, IRubyObject value) {
-        if ( value.respondsTo("to_time") ) {
-            value = value.callMethod(context, "to_time");
+        final Ruby runtime = context.runtime;
+        if ( CallSites.value_respond_to_to_time.call(context, value, value, runtime.newSymbol("to_time")).isTrue() ) { //  value.respondsTo("to_time")
+            value = CallSites.value_to_time.call(context, value, value); // value = value.callMethod(context, "to_time")
         }
-        final String method = isDefaultTimeZoneUTC(context) ? "getutc" : "getlocal";
-        if ( value.respondsTo(method) ) {
+        String method;
+        if ( value instanceof RubyTime ) {
+            DateTimeZone tz = isDefaultTimeZoneUTC(context) ?
+                DateTimeZone.UTC : RubyTime.getLocalTimeZone(runtime);
+            RubyTime val = (RubyTime) value;
+            value = RubyTime.newTime(runtime, val.getDateTime().withZone(tz), val.getUSec());
+        }
+        else if ( value.respondsTo(method = isDefaultTimeZoneUTC(context) ? "getutc" : "getlocal") ) {
             value = value.callMethod(context, method);
         }
         return value;
     }
 
     public static boolean isDefaultTimeZoneUTC(final ThreadContext context) {
-        final String defaultTimeZone = getDefaultTimeZone(context);
-        if ( defaultTimeZone.length() != 3 ) return false;
-        return "utc".equalsIgnoreCase( defaultTimeZone );
+        return "utc".equalsIgnoreCase( getDefaultTimeZone(context) );
     }
 
-    private static String defaultTimeZone;
+    //private static String defaultTimeZone;
 
     public static String getDefaultTimeZone(final ThreadContext context) {
-        String default_timezone = defaultTimeZone;
+        String default_timezone = null; //defaultTimeZone;
         if ( default_timezone == null ) {
-            final RubyClass base = getBase(context.runtime);
-            default_timezone = base.callMethod(context, "default_timezone").toString(); // :utc
+            final RubyClass Base = getBase(context.runtime);
+            CallSites.Base_default_timezone.call(context, Base, Base);
+            default_timezone = CallSites.Base_default_timezone.call(context, Base, Base).toString(); // :utc
             //synchronized (DateTimeUtils.class) { defaultTimeZone = default_timezone; }
         }
         return default_timezone;
