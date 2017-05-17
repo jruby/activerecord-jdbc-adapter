@@ -311,14 +311,22 @@ public class MySQLRubyJdbcConnection extends RubyJdbcConnection {
         return value;
     }
 
+    // lower_case_table_names server variable (read on connection)
+    private transient Boolean lowerCaseIdentifiers;
+
+    private boolean storesLowerCaseIdentifiers(final Connection connection) throws SQLException {
+        Boolean lowerCaseIdentifiers = this.lowerCaseIdentifiers;
+        if (lowerCaseIdentifiers == null) {
+            lowerCaseIdentifiers = this.lowerCaseIdentifiers = connection.getMetaData().storesLowerCaseIdentifiers();
+        }
+        return lowerCaseIdentifiers.booleanValue();
+    }
+
     @Override
     protected final String caseConvertIdentifierForJdbc(
         final Connection connection, final String value) throws SQLException {
         if ( value == null ) return null;
-        if ( connection.getMetaData().storesLowerCaseIdentifiers() ) {
-            return value.toLowerCase();
-        }
-        return value;
+        return storesLowerCaseIdentifiers(connection) ? value.toLowerCase() : value;
     }
 
     @Override
