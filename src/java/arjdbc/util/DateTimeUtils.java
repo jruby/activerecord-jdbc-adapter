@@ -264,7 +264,7 @@ public abstract class DateTimeUtils {
 
     public static String getDefaultTimeZone(final ThreadContext context) {
         String default_timezone = null; //defaultTimeZone;
-        if ( default_timezone == null ) {
+        if ( default_timezone == null ) { // NOTE: might be better to re-use `JdbcAdapter#get_time`
             final RubyClass Base = getBase(context.runtime);
             CallSites.Base_default_timezone.call(context, Base, Base);
             default_timezone = CallSites.Base_default_timezone.call(context, Base, Base).toString(); // :utc
