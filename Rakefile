@@ -245,6 +245,11 @@ if defined? JRUBY_VERSION
     [ 'java.class.path', 'sun.boot.class.path' ].each do |key|
       classpath += ENV_JAVA[key].split(File::PATH_SEPARATOR).find_all { |jar| jar =~ /jruby/i }
     end
+
+    if JRUBY_VERSION > '1.8'
+      method = ENV['RELEASE'] == 'true' ? :fail : :warn
+      Kernel.send method, "[WARN] compile ext .jar under JRuby 1.7 to avoid potential runtime issues"
+    end
     #classpath += ENV_JAVA['java.class.path'].split(File::PATH_SEPARATOR)
     #classpath += ENV_JAVA['sun.boot.class.path'].split(File::PATH_SEPARATOR)
 
