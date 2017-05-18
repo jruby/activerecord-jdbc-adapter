@@ -718,20 +718,36 @@ module ActiveRecord
         end
         # @private
         WrappingStatementInvalid = ::ActiveRecord::StatementInvalid
+      end; private_constant :WrappingStatementInvalid
+
+      Throwable = java.lang.Throwable; private_constant :Throwable
+
+      def translate_exception(exception, message)
+        return exception if exception.is_a?(JDBCError) ||
+                            exception.is_a?(Throwable) ||
+                            exception.is_a?(NativeException)
+
+        return exception if exception.is_a?(NoMemoryError) ||
+                            exception.is_a?(SystemExit) ||
+                            exception.is_a?(SignalException) ||
+                            exception.is_a?(ScriptError)
+
+        WrappingStatementInvalid.new(message, exception)
       end
 
-      def translate_exception(e, message)
-        return e if e.is_a?(JDBCError)
-        # we shall not translate native "Java" exceptions as they might
-        # swallow an ArJdbc / driver bug into a AR::StatementInvalid ...
-        return e if e.is_a?(NativeException) # JRuby 1.6
-        return e if e.is_a?(Java::JavaLang::Throwable)
+      def translate_exception(exception, message)
+        return exception if exception.is_a?(JDBCError) ||
+                            exception.is_a?(Throwable) ||
+                            exception.is_a?(NativeException)
 
-        case e
-        when SystemExit, SignalException, NoMemoryError then e
-        else WrappingStatementInvalid.new(message, e) # super
-        end
-      end
+        return exception if exception.is_a?(NoMemoryError) ||
+                            exception.is_a?(SystemExit) ||
+                            exception.is_a?(SignalException) ||
+                            exception.is_a?(ScriptError)
+
+        return exception if exception.is_a?(RuntimeError) # @since AR 5.1
+        ::ActiveRecord::StatementInvalid.new(message)
+      end if ArJdbc::AR51
 
       # Take an id from the result of an INSERT query.
       # @return [Integer, NilClass]
