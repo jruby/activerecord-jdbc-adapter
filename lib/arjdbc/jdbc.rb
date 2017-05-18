@@ -8,6 +8,8 @@ module ArJdbc
   AR42 = ::ActiveRecord::VERSION::STRING >= '4.2'
   # @private
   AR50 = ::ActiveRecord::VERSION::MAJOR > 4
+  # @private
+  AR51 = ::ActiveRecord::VERSION::STRING >= '5.1'
 
   class << self
 
