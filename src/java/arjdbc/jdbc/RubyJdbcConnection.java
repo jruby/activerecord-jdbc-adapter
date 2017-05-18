@@ -198,12 +198,16 @@ public class RubyJdbcConnection extends RubyObject {
         return getConnectionAdapters(runtime).getClass("ForeignKeyDefinition");
     }
 
+    private static transient RubyClass JDBCError;
+
     /**
      * @param runtime
      * @return <code>ActiveRecord::JDBCError</code>
      */
     protected static RubyClass getJDBCError(final Ruby runtime) {
-        return runtime.getModule("ActiveRecord").getClass("JDBCError");
+        RubyClass JDBCError = RubyJdbcConnection.JDBCError;
+        return JDBCError != null ? JDBCError :
+                ( RubyJdbcConnection.JDBCError = (RubyClass) runtime.getModule("ActiveRecord").getConstantAt("JDBCError") );
     }
 
     /**
