@@ -1,5 +1,19 @@
 class Topic < ActiveRecord::Base
+  class StoreDateAsInteger
+    def self.dump(value)
+      return value.strftime('%Y%0m%0d').to_i if value.respond_to? :strftime
+      return value.to_i if value.respond_to? :to_i
+      return value.gsub('-', '').gsub('/', '').to_i if value.is_a? String
+      0
+    end
+
+    def self.load(value)
+      Date.strptime(value.to_s, '%Y%m%d') rescue nil
+    end
+  end
+
   serialize :content
+  serialize :created_on, StoreDateAsInteger
 end
 
 class ImportantTopic < Topic
@@ -20,6 +34,7 @@ class TopicMigration < ActiveRecord::Migration
         t.text :content
         t.text :important
       #end
+      t.integer :created_on, limit: 9
       t.string :type
       t.timestamps :null => false
     end
