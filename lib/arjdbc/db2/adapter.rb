@@ -363,6 +363,11 @@ module ArJdbc
         if column.respond_to?(:primary) && column.primary && column.klass != String
           return value.to_i.to_s
         end
+
+        if column.respond_to?(:cast_type) && column.cast_type.is_a?(ActiveRecord::Type::Serialized)
+          return quote(column.cast_type.type_cast_for_database(value))
+        end if ::ActiveRecord::VERSION::MAJOR >= 4
+
         if value && (column.type.to_sym == :decimal || column.type.to_sym == :integer)
           return value.to_s
         end
