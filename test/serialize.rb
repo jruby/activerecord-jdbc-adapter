@@ -35,7 +35,7 @@ module SerializeTestMethods
   MyObject = Struct.new :attribute1, :attribute2
 
   def test_list_of_serialized_attributes
-    assert_equal %w(content), Topic.serialized_attributes.keys
+    assert_equal %w(content created_on), Topic.serialized_attributes.keys
   end if ActiveRecord::VERSION::STRING <= '4.2'
 
   def test_serialized_attribute
