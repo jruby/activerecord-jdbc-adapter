@@ -306,7 +306,7 @@ module SerializeTestMethods
   def test_date_to_integer_serialization
     date  = Date.today
     serialized_date = Topic::StoreDateAsInteger.dump(date)
-    topic = Topic.create(created_on: date)
+    topic = Topic.create(:created_on => date)
     topic.reload
     assert_equal serialized_date, topic.attributes_before_type_cast['created_on'].to_i
     assert_equal date, topic.created_on
