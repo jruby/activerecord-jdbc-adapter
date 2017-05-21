@@ -34,7 +34,7 @@ class TopicMigration < ActiveRecord::Migration
         t.text :content
         t.text :important
       #end
-      t.integer :created_on, limit: 9
+      t.integer :created_on
       t.string :type
       t.timestamps :null => false
     end
