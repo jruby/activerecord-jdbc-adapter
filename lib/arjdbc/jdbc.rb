@@ -22,12 +22,12 @@ module ArJdbc
           warn_prefix = nil
         end
       end
-      warn "#{warn_prefix} adapter: #{adapter} is not (yet) fully supported by AR-JDBC," <<
-      " please consider helping us out." if warn_prefix
+      warn "#{warn_prefix} adapter: #{adapter} is not (yet) fully supported by AR-JDBC," +
+           " please consider helping us out." if warn_prefix
     end
 
     def warn(message, once = nil)
-      super("WARNING: #{message}") || true if warn?(message, once)
+      Kernel.warn("WARN: #{message}") || true if warn?(message, once)
     end
 
     def deprecate(message, once = nil) # adds a "DEPRECATION WARNING: " prefix
