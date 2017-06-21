@@ -4,6 +4,8 @@ require 'db/postgres'
 
 class PostgreSQLJSONBTest < Test::Unit::TestCase
 
+  OID = ActiveRecord::ConnectionAdapters::PostgreSQL::OID
+
   class JsonbDataType < ActiveRecord::Base
     self.table_name = 'jsonb_data_type'
   end
@@ -26,8 +28,7 @@ class PostgreSQLJSONBTest < Test::Unit::TestCase
   end
 
   def test_column
-    column = JsonbDataType.columns.find { |c| c.name == 'payload' }
-    assert_equal :jsonb, column.type
+    assert_instance_of OID::Jsonb, JsonbDataType.type_for_attribute('payload')
   end
 
   def test_change_table_supports_jsonb
@@ -36,27 +37,13 @@ class PostgreSQLJSONBTest < Test::Unit::TestCase
         t.jsonb 'users', :default => '{}'
       end
       JsonbDataType.reset_column_information
-      column = JsonbDataType.columns.find { |c| c.name == 'users' }
-      assert_equal :jsonb, column.type
+      assert_instance_of OID::Jsonb, JsonbDataType.type_for_attribute('users')
 
       raise ActiveRecord::Rollback # reset the schema change
     end
   ensure
     JsonbDataType.reset_column_information
   end
-
-  def test_type_cast_jsonb
-    assert @column = JsonbDataType.columns.find { |c| c.name == 'payload' }
-
-    data = "{\"a_key\":\"a_value\"}"
-    hash = @column.class.string_to_json(data)
-    assert_equal({'a_key' => 'a_value'}, hash)
-    assert_equal({'a_key' => 'a_value'}, @column.type_cast(data))
-
-    assert_equal({}, @column.type_cast("{}"))
-    assert_equal({'key'=>nil}, @column.type_cast('{"key": null}'))
-    assert_equal({'c'=>'}','"a"'=>'b "a b'}, @column.type_cast(%q({"c":"}", "\"a\"":"b \"a b"})))
-  end unless ar_version('4.2')
 
   def test_rewrite
     @connection.execute "insert into jsonb_data_type (payload) VALUES ('{\"k\":\"v\"}')"
@@ -96,4 +83,4 @@ class PostgreSQLJSONBTest < Test::Unit::TestCase
     assert x.save!
   end
 
-end if Test::Unit::TestCase.ar_version('4.2')
+end
