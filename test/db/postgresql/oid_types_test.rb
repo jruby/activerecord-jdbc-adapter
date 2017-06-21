@@ -44,12 +44,6 @@ class PostgresqlOOIDTypesTest < Test::Unit::TestCase
     assert_instance_of ActiveRecord::Type::Integer, column.type
   end
 
-  def test_returns_column_accessor_for_hstore
-    skip unless @supports_extensions
-
-    assert_not_nil SomeSample.type_for_attribute('hst').accessor
-  end
-
   def test_type_cache_works_corectly
     skip unless @supports_extensions
 
