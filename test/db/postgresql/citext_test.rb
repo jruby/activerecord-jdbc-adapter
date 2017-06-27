@@ -9,6 +9,8 @@ class PostgreSQLCitextTest < Test::Unit::TestCase
     self.table_name = 'citexts'
   end
 
+  OID = ActiveRecord::ConnectionAdapters::PostgreSQL::OID
+
   def setup
     @connection = ActiveRecord::Base.connection
 
@@ -29,12 +31,9 @@ class PostgreSQLCitextTest < Test::Unit::TestCase
   end
 
   def test_column
-    column = Citext.columns_hash['cival']
-    assert_equal :citext, column.type
-    assert_equal 'citext', column.sql_type
-    assert_not column.number?
-    assert_not column.binary?
-    assert_not column.array
+    column_type = Citext.type_for_attribute('cival')
+    assert_instance_of OID::SpecializedString, column_type
+    assert_equal :citext, column_type.type
   end
 
   def test_change_table_supports_json
@@ -43,8 +42,9 @@ class PostgreSQLCitextTest < Test::Unit::TestCase
         t.citext 'username'
       end
       Citext.reset_column_information
-      column = Citext.columns_hash['username']
-      assert_equal :citext, column.type
+      column_type = Citext.type_for_attribute('username')
+      assert_instance_of OID::SpecializedString, column_type
+      assert_equal :citext, column_type.type
 
       raise ActiveRecord::Rollback # reset the schema change
     end
@@ -70,4 +70,4 @@ class PostgreSQLCitextTest < Test::Unit::TestCase
     assert_equal 'Cased Text', x.cival
   end
 
-end if Test::Unit::TestCase.ar_version('4.2') && ActiveRecord::Base.connection.supports_extensions?
+end if ActiveRecord::Base.connection.supports_extensions?
