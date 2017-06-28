@@ -2,6 +2,8 @@ require 'db/postgres'
 
 class PostgreSQLNativeTypesTest < Test::Unit::TestCase
 
+  OID = ActiveRecord::ConnectionAdapters::PostgreSQL::OID
+
   begin
     result = ActiveRecord::Base.connection.execute("SHOW server_version_num")
     PG_VERSION = result.first.values[0].to_i
@@ -48,56 +50,52 @@ class PostgreSQLNativeTypesTest < Test::Unit::TestCase
   end
 
   def column_type(column_name)
-    Customer.columns.detect { |c| c.name == column_name }.type
+    Customer.type_for_attribute(column_name)
   end
 
   def test_uuid_column_should_map_to_string
     return unless PG_VERSION >= 80300
-    if ar_version('4.0')
-      assert_equal :uuid, column_type("uuid_should_be_string")
-    else
-      assert_equal :string, column_type("uuid_should_be_string")
-    end
+    assert_instance_of OID::Uuid, column_type("uuid_should_be_string")
   end
 
   def test_interval_should_be_mapped_to_string
-    assert_equal :string, column_type("interval_should_be_string")
+    assert_instance_of ActiveModel::Type::String, column_type("interval_should_be_string")
   end
 
   def test_bigint_serial_should_be_mapped_to_integer
-    assert_equal :integer, column_type("bigint_serial_should_be_integer")
+    assert_instance_of ActiveModel::Type::Integer, column_type("bigint_serial_should_be_integer")
   end
 
   def test_integer_serial_should_be_mapped_to_integer
-    assert_equal :integer, column_type("integer_serial_should_be_integer")
+    assert_instance_of ActiveModel::Type::Integer, column_type("integer_serial_should_be_integer")
   end
 
   def test_varchar_should_be_mapped_to_string
-    assert_equal :string, column_type("varchar_should_be_string")
+    assert_instance_of ActiveModel::Type::String, column_type("varchar_should_be_string")
   end
 
   def test_timestamp_should_be_mapped_to_datetime
-    assert_equal :datetime, column_type("timestamp_should_be_datetime")
+    assert_instance_of OID::DateTime, column_type("timestamp_should_be_datetime")
   end
 
   def test_bytea_should_be_mapped_to_binary
-    assert_equal :binary, column_type("bytea_should_be_binary")
+    assert_instance_of OID::Bytea, column_type("bytea_should_be_binary")
   end
 
   def test_double_precision_should_be_mapped_to_float
-    assert_equal :float, column_type("double_precision_should_be_float")
+    assert_instance_of ActiveModel::Type::Float, column_type("double_precision_should_be_float")
   end
 
   def test_real_should_be_mapped_to_float
-    assert_equal :float, column_type("real_should_be_float")
+    assert_instance_of ActiveModel::Type::Float, column_type("real_should_be_float")
   end
 
   def test_bool_should_be_mapped_to_boolean
-    assert_equal :boolean, column_type("bool_should_be_boolean")
+    assert_instance_of ActiveModel::Type::Boolean, column_type("bool_should_be_boolean")
   end
 
   def test_bigint_should_be_mapped_to_integer
-    assert_equal :integer, column_type("bigint_should_be_integer")
+    assert_instance_of ActiveModel::Type::Integer, column_type("bigint_should_be_integer")
   end
 
 end

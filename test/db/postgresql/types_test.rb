@@ -3,6 +3,8 @@ require 'db/postgres'
 
 class PostgreSQLTypesTest < Test::Unit::TestCase
 
+  OID = ActiveRecord::ConnectionAdapters::PostgreSQL::OID
+
   class PostgresqlArray < ActiveRecord::Base; end
   class PostgresqlUUID < ActiveRecord::Base; end
   class PostgresqlRange < ActiveRecord::Base; end
@@ -257,67 +259,82 @@ _SQL
 
   def test_data_type_of_range_types
     skip "PostgreSQL 9.2 required for range datatypes" unless supports_ranges?
-    assert_equal :daterange, @first_range.column_for_attribute(:date_range).type
-    assert_equal :numrange, @first_range.column_for_attribute(:num_range).type
-    assert_equal :tsrange, @first_range.column_for_attribute(:ts_range).type
-    assert_equal :tstzrange, @first_range.column_for_attribute(:tstz_range).type
-    assert_equal :int4range, @first_range.column_for_attribute(:int4_range).type
-    assert_equal :int8range, @first_range.column_for_attribute(:int8_range).type
-  end if ar_version('4.0')
+
+    date_range = @first_range.column_for_attribute(:date_range).type
+    assert_instance_of OID::Range, date_range
+    assert_equal :daterange, date_range.type
+
+    num_range = @first_range.column_for_attribute(:num_range).type
+    assert_instance_of OID::Range, num_range
+    assert_equal :numrange, num_range.type
+
+    ts_range = @first_range.column_for_attribute(:ts_range).type
+    assert_instance_of OID::Range, ts_range
+    assert_equal :tsrange, ts_range.type
+
+    tstz_range = @first_range.column_for_attribute(:tstz_range).type
+    assert_instance_of OID::Range, tstz_range
+    assert_equal :tstzrange, tstz_range.type
+
+    int4_range = @first_range.column_for_attribute(:int4_range).type
+    assert_instance_of OID::Range, int4_range
+    assert_equal :int4range, int4_range.type
+
+    int8_range = @first_range.column_for_attribute(:int8_range).type
+    assert_instance_of OID::Range, int8_range
+    assert_equal :int8range, int8_range.type
+  end
 
   def test_data_type_of_tsvector_types
-    assert_equal :tsvector, @first_tsvector.column_for_attribute(:text_vector).type
-  end if ar_version('4.0')
+    text_vector = @first_tsvector.column_for_attribute(:text_vector).type
+    assert_instance_of OID::SpecializedString, text_vector
+    assert_equal :tsvector, text_vector.type
+  end
 
   def test_data_type_of_money_types
-    if ar_version('4.2')
-      assert_equal :money, @first_money.column_for_attribute(:wealth).type
-    else
-      assert_equal :decimal, @first_money.column_for_attribute(:wealth).type
-    end
+    assert_instance_of OID::Money, @first_money.column_for_attribute(:wealth).type
   end
 
   def test_data_type_of_number_types
-    assert_equal :float, @first_number.column_for_attribute(:single).type
-    assert_equal :float, @first_number.column_for_attribute(:double).type
+    assert_instance_of ActiveModel::Type::Float, @first_number.column_for_attribute(:single).type
+    assert_instance_of ActiveModel::Type::Float, @first_number.column_for_attribute(:double).type
   end
 
   def test_data_type_of_time_types
-    assert_equal :string, @first_time.column_for_attribute(:time_interval).type
-    assert_equal :string, @first_time.column_for_attribute(:scaled_time_interval).type if ar_version('4.0')
+    assert_instance_of ActiveModel::Type::String, @first_time.column_for_attribute(:time_interval).type
+    assert_instance_of ActiveModel::Type::String, @first_time.column_for_attribute(:scaled_time_interval).type
   end
 
   def test_data_type_of_network_address_types
-    assert_equal :cidr, @first_network_address.column_for_attribute(:cidr_address).type
-    assert_equal :inet, @first_network_address.column_for_attribute(:inet_address).type
-    assert_equal :macaddr, @first_network_address.column_for_attribute(:mac_address).type
-  end if ar_version('4.0')
+    assert_instance_of OID::Cidr, @first_network_address.column_for_attribute(:cidr_address).type
+    assert_instance_of OID::Inet, @first_network_address.column_for_attribute(:inet_address).type
+
+    macaddr_type = @first_network_address.column_for_attribute(:mac_address).type
+    assert_instance_of OID::SpecializedString, macaddr_type
+    assert_equal :macaddr, macaddr_type.type
+  end
 
   def test_data_type_of_bit_string_types
     bit_column = @first_bit_string.column_for_attribute(:bit_string)
     bit_varying_column = @first_bit_string.column_for_attribute(:bit_string_varying)
-    if ar_version('4.2')
-      assert_equal :bit, bit_column.type
-      assert_equal :bit_varying, bit_varying_column.type
-    else
-      assert_equal :string, bit_column.type
-      assert_equal :string, bit_varying_column.type
-    end
+
+    assert_instance_of OID::Bit, bit_column.type
+    assert_instance_of OID::BitVarying, bit_varying_column.type
   end
 
   def test_data_type_of_oid_types
-    assert_equal :integer, @first_oid.column_for_attribute(:obj_id).type
+    assert_instance_of ActiveModel::Type::Integer, @first_oid.column_for_attribute(:obj_id).type
   end
 
   def test_data_type_of_uuid_types
-    assert_equal :uuid, @first_uuid.column_for_attribute(:guid).type
-  end if ar_version('4.0')
+    assert_instance_of OID::Uuid, @first_uuid.column_for_attribute(:guid).type
+  end
 
   def test_array_values
     omit_unless @first_array
     assert_equal [35000,21000,18000,17000], @first_array.commission_by_quarter
     assert_equal ['foo','bar','baz'], @first_array.nicknames
-  end if ar_version('4.0')
+  end
 
   def test_tsvector_values
     assert_equal "'text' 'vector'", @first_tsvector.text_vector
@@ -330,7 +347,7 @@ _SQL
     assert_equal nil, @empty_range.int4_range
     assert_equal 2...Float::INFINITY, @third_range.int4_range
     assert_equal(-Float::INFINITY...Float::INFINITY, @fourth_range.int4_range)
-  end if ar_version('4.0')
+  end
 
   def test_int8range_values
     skip "PostgreSQL 9.2 required for range datatypes" unless supports_ranges?
@@ -339,7 +356,7 @@ _SQL
     assert_equal nil, @empty_range.int8_range
     assert_equal 11...Float::INFINITY, @third_range.int8_range
     assert_equal(-Float::INFINITY...Float::INFINITY, @fourth_range.int8_range)
-  end if ar_version('4.0')
+  end
 
   def test_daterange_values
     skip "PostgreSQL 9.2 required for range datatypes" unless supports_ranges?
@@ -349,7 +366,7 @@ _SQL
 
     assert_equal Date.new(2012, 1, 3)...Float::INFINITY, @third_range.date_range
     assert_equal(-Float::INFINITY...Float::INFINITY, @fourth_range.date_range)
-  end if ar_version('4.0')
+  end
 
   def test_numrange_values
     skip "PostgreSQL 9.2 required for range datatypes" unless supports_ranges?
@@ -358,7 +375,7 @@ _SQL
     assert_equal BigDecimal.new('0.1')...BigDecimal.new('Infinity'), @third_range.num_range
     assert_equal BigDecimal.new('-Infinity')...BigDecimal.new('Infinity'), @fourth_range.num_range
     assert_equal nil, @empty_range.num_range
-  end if ar_version('4.0')
+  end
 
   def test_tsrange_values
     skip "PostgreSQL 9.2 required for range datatypes" unless supports_ranges?
@@ -369,7 +386,7 @@ _SQL
     assert_equal(-Float::INFINITY...Float::INFINITY, @fourth_range.ts_range)
     #omit "JRuby 1.7.4 does not handle Time...Infinity ranges" if defined?(JRUBY_VERSION) && JRUBY_VERSION =~ /1\.7\.4/
     #assert_equal Time.send(tz, 2010, 1, 1, 14, 30, 0)...Float::INFINITY, @third_range.ts_range
-  end if ar_version('4.0')
+  end
 
   def test_tstzrange_values
     skip "PostgreSQL 9.2 required for range datatypes" unless supports_ranges?
@@ -379,7 +396,7 @@ _SQL
     assert_equal(-Float::INFINITY...Float::INFINITY, @fourth_range.tstz_range)
     #omit "JRuby 1.7.4 does not handle Time...Infinity ranges" if defined?(JRUBY_VERSION) && JRUBY_VERSION =~ /1\.7\.4/
     #assert_equal Time.parse('2010-01-01 09:30:00 UTC')...Float::INFINITY, @third_range.tstz_range
-  end if ar_version('4.0')
+  end
 
   def test_money_values
     assert_equal 567.89, @first_money.wealth
@@ -394,7 +411,7 @@ _SQL
     assert range.reload
     assert_equal range.tstz_range, tstzrange
     assert_equal range.tstz_range, Time.parse('2010-01-01 13:30:00 UTC')...Time.parse('2011-02-02 19:30:00 UTC')
-  end if ar_version('4.0')
+  end
 
   def test_update_tstzrange
     skip "PostgreSQL 9.2 required for range datatypes" unless supports_ranges?
@@ -407,7 +424,7 @@ _SQL
     assert @first_range.save
     assert @first_range.reload
     assert_equal @first_range.tstz_range, nil
-  end if ar_version('4.0')
+  end
 
   def test_create_tsrange
     skip "PostgreSQL 9.2 required for range datatypes" unless supports_ranges?
@@ -417,7 +434,7 @@ _SQL
     assert range.save
     assert range.reload
     assert_equal range.ts_range, tsrange
-  end if ar_version('4.0')
+  end
 
   def test_update_tsrange
     skip "PostgreSQL 9.2 required for range datatypes" unless supports_ranges?
@@ -431,7 +448,7 @@ _SQL
     assert @first_range.save
     assert @first_range.reload
     assert_nil @first_range.ts_range
-  end if ar_version('4.0')
+  end
 
   def test_create_numrange
     skip "PostgreSQL 9.2 required for range datatypes" unless supports_ranges?
@@ -440,7 +457,7 @@ _SQL
     assert range.save
     assert range.reload
     assert_equal range.num_range, numrange
-  end if ar_version('4.0')
+  end
 
   def test_update_numrange
     skip "PostgreSQL 9.2 required for range datatypes" unless supports_ranges?
@@ -453,7 +470,7 @@ _SQL
     assert @first_range.save
     assert @first_range.reload
     assert_nil @first_range.num_range
-  end if ar_version('4.0')
+  end
 
   def test_create_daterange
     skip "PostgreSQL 9.2 required for range datatypes" unless supports_ranges?
@@ -462,7 +479,7 @@ _SQL
     assert range.save
     assert range.reload
     assert_equal daterange, range.date_range
-  end if ar_version('4.0')
+  end
 
   def test_update_daterange
     skip "PostgreSQL 9.2 required for range datatypes" unless supports_ranges?
@@ -475,7 +492,7 @@ _SQL
     assert @first_range.save
     assert @first_range.reload
     assert_nil @first_range.date_range
-  end if ar_version('4.0')
+  end
 
   def test_create_int4range
     skip "PostgreSQL 9.2 required for range datatypes" unless supports_ranges?
@@ -484,7 +501,7 @@ _SQL
     assert range.save
     assert range.reload
     assert_equal range.int4_range, int4range
-  end if ar_version('4.0')
+  end
 
   def test_update_int4range
     skip "PostgreSQL 9.2 required for range datatypes" unless supports_ranges?
@@ -497,7 +514,7 @@ _SQL
     assert @first_range.save
     assert @first_range.reload
     assert_nil @first_range.int4_range
-  end if ar_version('4.0')
+  end
 
   def test_create_int8range
     skip "PostgreSQL 9.2 required for range datatypes" unless supports_ranges?
@@ -506,7 +523,7 @@ _SQL
     assert range.save
     assert range.reload
     assert_equal int8range, range.int8_range
-  end if ar_version('4.0')
+  end
 
   def test_update_int8range
     skip "PostgreSQL 9.2 required for range datatypes" unless supports_ranges?
@@ -519,7 +536,7 @@ _SQL
     assert @first_range.save
     assert @first_range.reload
     assert_nil @first_range.int8_range
-  end if ar_version('4.0')
+  end
 
   def test_update_tsvector
     new_text_vector = "'new' 'text' 'vector'"
@@ -530,7 +547,7 @@ _SQL
     assert @first_tsvector.save
     assert @first_tsvector.reload
     assert_equal new_text_vector, @first_tsvector.text_vector
-  end if ar_version('4.0')
+  end
 
   def test_number_values
     # assert_equal 123.456, @first_number.single
@@ -542,7 +559,7 @@ _SQL
   def test_time_values
     # omit_unless ar_version('4.0')
     assert_equal '-1 years -2 days', @first_time.time_interval
-    assert_equal '-21 days', @first_time.scaled_time_interval if ar_version('4.0')
+    assert_equal '-21 days', @first_time.scaled_time_interval
   end
 
   def test_network_address_values_ipaddr
@@ -552,7 +569,7 @@ _SQL
     assert_equal cidr_address, @first_network_address.cidr_address
     assert_equal inet_address, @first_network_address.inet_address
     assert_equal '01:23:45:67:89:0a', @first_network_address.mac_address
-  end if ar_version('4.0')
+  end
 
   def test_uuid_values
     assert_equal 'd96c3da0-96c1-012f-1316-64ce8f32c6d8', @first_uuid.guid
@@ -577,7 +594,7 @@ _SQL
     @first_array.commission_by_quarter = new_value
     assert @first_array.save
     assert_equal new_value, @first_array.reload.commission_by_quarter
-  end if ar_version('4.0')
+  end
 
   def test_update_text_array
     omit_unless @first_array
@@ -590,7 +607,7 @@ _SQL
     @first_array.save!
     @first_array.reload
     assert_equal new_value, @first_array.nicknames
-  end if ar_version('4.0')
+  end
 
   def test_update_money
     new_value = BigDecimal.new('123.45')
@@ -601,18 +618,12 @@ _SQL
   end
 
   def test_money_type_cast
-    column = PostgresqlMoney.columns.find { |c| c.name == 'wealth' }
-    if ar_version('4.2')
-      assert_equal(12345678.12, column.type_cast_from_database("$12,345,678.12"))
-      assert_equal(12345678.12, column.type_cast_from_database("$12.345.678,12"))
-      assert_equal(-1.15, column.type_cast_from_database("-$1.15"))
-      assert_equal(-2.25, column.type_cast_from_database("($2.25)"))
-    else
-      assert_equal(12345678.12, column.type_cast("$12,345,678.12"))
-      assert_equal(12345678.12, column.type_cast("$12.345.678,12"))
-      assert_equal(-1.15, column.type_cast("-$1.15"))
-      assert_equal(-2.25, column.type_cast("($2.25)"))
-    end
+    type = PostgresqlMoney.type_for_attribute('wealth')
+
+    assert_equal(12345678.12, type.deserialize("$12,345,678.12"))
+    assert_equal(12345678.12, type.deserialize("$12.345.678,12"))
+    assert_equal(-1.15, type.deserialize("-$1.15"))
+    assert_equal(-2.25, type.deserialize("($2.25)"))
   end
 
   def test_update_number
@@ -647,7 +658,7 @@ _SQL
     assert_equal '10.0.0.0', @first_network_address.cidr_address.to_s
     assert_equal '10.1.2.3', @first_network_address.inet_address.to_s
     assert_equal new_mac_address, @first_network_address.mac_address
-  end if ar_version('4.0')
+  end
 
   def test_update_bit_string
 
@@ -660,11 +671,9 @@ _SQL
     assert @first_bit_string.save
     assert_equal '11111111', @first_bit_string.reload.bit_string
 
-    if ar_version('4.0')
-      @first_bit_string.bit_string_varying = '0xFF'
-      assert @first_bit_string.save
-      assert_equal '11111111', @first_bit_string.reload.bit_string_varying
-    end
+    @first_bit_string.bit_string_varying = '0xFF'
+    assert @first_bit_string.save
+    assert_equal '11111111', @first_bit_string.reload.bit_string_varying
   end
 
   def test_invalid_hex_bit_string
@@ -683,7 +692,7 @@ _SQL
       @first_bit_string.save
       assert_equal '11111111', @first_bit_string.reload.bit_string
     end
-  end if ar_version('4.2')
+  end
 
   def test_update_oid
     new_value = 567890
@@ -708,7 +717,7 @@ _SQL
     ActiveRecord::Base.default_timezone = old_default_tz
     ActiveRecord::Base.time_zone_aware_attributes = old_tz
     @connection.reconnect!
-  end if ar_version('3.0')
+  end
 
   def test_timestamp_with_zone_values_without_rails_time_zone_support
     old_tz = ActiveRecord::Base.time_zone_aware_attributes
@@ -726,7 +735,7 @@ _SQL
     ActiveRecord::Base.default_timezone = old_default_tz
     ActiveRecord::Base.time_zone_aware_attributes = old_tz
     @connection.reconnect!
-  end if ar_version('3.0')
+  end
 
   def test_marshal_types
     Marshal.dump @first_array
