@@ -111,7 +111,7 @@ class PostgreSQLTypesTest < Test::Unit::TestCase
     @connection.execute("set lc_monetary = 'C'")
 
     @connection.execute("INSERT INTO postgresql_arrays (id, commission_by_quarter, nicknames) VALUES (1, '{35000,21000,18000,17000}', '{foo,bar,baz}')")
-    @first_array = PostgresqlArray.find(1) rescue nil
+    @first_array = PostgresqlArray.find(1)
 
     @connection.execute <<_SQL if supports_ranges?
     INSERT INTO postgresql_ranges (
@@ -247,87 +247,83 @@ _SQL
   end
 
   def test_data_type_of_array_types
-    omit_unless @first_array
-    if ar_version('4.0')
-      assert_equal :integer, @first_array.column_for_attribute(:commission_by_quarter).type
-      assert_equal :text, @first_array.column_for_attribute(:nicknames).type
-    else
-      assert_equal :string, @first_array.column_for_attribute(:commission_by_quarter).type
-      # assert_equal :string, @first_array.column_for_attribute(:nicknames).type
-    end
+    integer_array_type = PostgresqlArray.type_for_attribute('commission_by_quarter')
+    assert_instance_of OID::Array, integer_array_type
+    assert_instance_of ActiveModel::Type::Integer, integer_array_type.subtype
+
+    text_array_type = PostgresqlArray.type_for_attribute('nicknames')
+    assert_instance_of OID::Array, text_array_type
+    assert_instance_of ActiveModel::Type::Text, text_array_type.subtype
   end
 
   def test_data_type_of_range_types
     skip "PostgreSQL 9.2 required for range datatypes" unless supports_ranges?
 
-    date_range = @first_range.column_for_attribute(:date_range).type
+    date_range = PostgresqlRange.type_for_attribute('date_range')
     assert_instance_of OID::Range, date_range
     assert_equal :daterange, date_range.type
 
-    num_range = @first_range.column_for_attribute(:num_range).type
+    num_range = PostgresqlRange.type_for_attribute('num_range')
     assert_instance_of OID::Range, num_range
     assert_equal :numrange, num_range.type
 
-    ts_range = @first_range.column_for_attribute(:ts_range).type
+    ts_range = PostgresqlRange.type_for_attribute('ts_range')
     assert_instance_of OID::Range, ts_range
     assert_equal :tsrange, ts_range.type
 
-    tstz_range = @first_range.column_for_attribute(:tstz_range).type
+    tstz_range = PostgresqlRange.type_for_attribute('tstz_range')
     assert_instance_of OID::Range, tstz_range
     assert_equal :tstzrange, tstz_range.type
 
-    int4_range = @first_range.column_for_attribute(:int4_range).type
+    int4_range = PostgresqlRange.type_for_attribute('int4_range')
     assert_instance_of OID::Range, int4_range
     assert_equal :int4range, int4_range.type
 
-    int8_range = @first_range.column_for_attribute(:int8_range).type
+    int8_range = PostgresqlRange.type_for_attribute('int8_range')
     assert_instance_of OID::Range, int8_range
     assert_equal :int8range, int8_range.type
   end
 
   def test_data_type_of_tsvector_types
-    text_vector = @first_tsvector.column_for_attribute(:text_vector).type
+    text_vector = PostgresqlTsvector.type_for_attribute('text_vector')
     assert_instance_of OID::SpecializedString, text_vector
     assert_equal :tsvector, text_vector.type
   end
 
   def test_data_type_of_money_types
-    assert_instance_of OID::Money, @first_money.column_for_attribute(:wealth).type
+    assert_instance_of OID::Money, PostgresqlMoney.type_for_attribute('wealth')
   end
 
   def test_data_type_of_number_types
-    assert_instance_of ActiveModel::Type::Float, @first_number.column_for_attribute(:single).type
-    assert_instance_of ActiveModel::Type::Float, @first_number.column_for_attribute(:double).type
+    assert_instance_of ActiveModel::Type::Float, PostgresqlNumber.type_for_attribute('single')
+    assert_instance_of ActiveModel::Type::Float, PostgresqlNumber.type_for_attribute('double')
   end
 
   def test_data_type_of_time_types
-    assert_instance_of ActiveModel::Type::String, @first_time.column_for_attribute(:time_interval).type
-    assert_instance_of ActiveModel::Type::String, @first_time.column_for_attribute(:scaled_time_interval).type
+    assert_instance_of ActiveModel::Type::String, PostgresqlTime.type_for_attribute('time_interval')
+    assert_instance_of ActiveModel::Type::String, PostgresqlTime.type_for_attribute('scaled_time_interval')
   end
 
   def test_data_type_of_network_address_types
-    assert_instance_of OID::Cidr, @first_network_address.column_for_attribute(:cidr_address).type
-    assert_instance_of OID::Inet, @first_network_address.column_for_attribute(:inet_address).type
+    assert_instance_of OID::Cidr, PostgresqlNetworkAddress.type_for_attribute('cidr_address')
+    assert_instance_of OID::Inet, PostgresqlNetworkAddress.type_for_attribute('inet_address')
 
-    macaddr_type = @first_network_address.column_for_attribute(:mac_address).type
+    macaddr_type = PostgresqlNetworkAddress.type_for_attribute('mac_address')
     assert_instance_of OID::SpecializedString, macaddr_type
     assert_equal :macaddr, macaddr_type.type
   end
 
   def test_data_type_of_bit_string_types
-    bit_column = @first_bit_string.column_for_attribute(:bit_string)
-    bit_varying_column = @first_bit_string.column_for_attribute(:bit_string_varying)
-
-    assert_instance_of OID::Bit, bit_column.type
-    assert_instance_of OID::BitVarying, bit_varying_column.type
+    assert_instance_of OID::Bit, PostgresqlBitString.type_for_attribute('bit_string')
+    assert_instance_of OID::BitVarying, PostgresqlBitString.type_for_attribute('bit_string_varying')
   end
 
   def test_data_type_of_oid_types
-    assert_instance_of ActiveModel::Type::Integer, @first_oid.column_for_attribute(:obj_id).type
+    assert_instance_of ActiveModel::Type::Integer, PostgresqlOid.type_for_attribute('obj_id')
   end
 
   def test_data_type_of_uuid_types
-    assert_instance_of OID::Uuid, @first_uuid.column_for_attribute(:guid).type
+    assert_instance_of OID::Uuid, PostgresqlUUID.type_for_attribute('guid')
   end
 
   def test_array_values
