@@ -41,7 +41,7 @@ class PostgresqlOOIDTypesTest < Test::Unit::TestCase
     adapter = ActiveRecord::Base.connection
     column = adapter.column_for('some_samples', :int)
     assert_not_nil column
-    assert_instance_of ActiveRecord::Type::Integer, column.type
+    assert_equal :integer, column.type
   end
 
   def test_type_cache_works_corectly
