@@ -508,7 +508,11 @@ module ArJdbc
       log(sql, name) do
         result = []
         @connection.execute_query_raw(sql, nil) do |*values|
-          result << values
+          # We need to use #deep_dup here because it appears that
+          # the java method is reusing an object in some cases
+          # which makes all of the entries in the "result"
+          # array end up with the same values as the last row
+          result << values.deep_dup
         end
         result
       end
@@ -848,9 +852,13 @@ module ArJdbc
     def column_definitions(table_name)
       select_rows(<<-end_sql, 'SCHEMA')
         SELECT a.attname, format_type(a.atttypid, a.atttypmod),
-               pg_get_expr(d.adbin, d.adrelid), a.attnotnull, a.atttypid, a.atttypmod
-          FROM pg_attribute a LEFT JOIN pg_attrdef d
-            ON a.attrelid = d.adrelid AND a.attnum = d.adnum
+               pg_get_expr(d.adbin, d.adrelid), a.attnotnull, a.atttypid, a.atttypmod,
+               (SELECT c.collname FROM pg_collation c, pg_type t
+                 WHERE c.oid = a.attcollation AND t.oid = a.atttypid
+                  AND a.attcollation <> t.typcollation),
+               col_description(a.attrelid, a.attnum) AS comment
+          FROM pg_attribute a
+          LEFT JOIN pg_attrdef d ON a.attrelid = d.adrelid AND a.attnum = d.adnum
          WHERE a.attrelid = '#{quote_table_name(table_name)}'::regclass
            AND a.attnum > 0 AND NOT a.attisdropped
          ORDER BY a.attnum
