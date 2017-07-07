@@ -69,18 +69,19 @@ class PostgresSchemaDumpTest < Test::Unit::TestCase
     lines.each {|line| assert line =~ /(limit => 2)|(limit: 2)/ }
   end
 
-  def test_schema_dump_integer_with_limit_8_should_have_limit_8
+  # This was changed in https://github.com/rails/rails/pull/24087
+  def test_schema_dump_integer_with_limit_8_should_be_bigint
     dump = dump_with_data_types
     lines = dump.lines.grep(/sample_integer_with_limit_8/)
     assert ! lines.empty?
-    lines.each {|line| assert line =~ /(limit => 8)|(limit: 8)/ }
+    lines.each {|line| assert line =~ /t.bigint\s+"sample_integer_with_limit_8"/ }
   end
 
   def test_dumps_partial_indices
-    index_definition = standard_dump.split(/\n/).grep(/add_index.*thing_partial_index/).first.strip
+    index_definition = standard_dump.split(/\n/).grep(/t\.index.*thing_partial_index/).first.strip
 
-    assert_equal 'add_index "things", ["created_at"], name: "thing_partial_index", where: "(name IS NOT NULL)", using: :btree', index_definition
-  end if ar_version('4.0')
+    assert_equal 't.index ["created_at"], name: "thing_partial_index", where: "(name IS NOT NULL)", using: :btree', index_definition
+  end
 
   def test_schema_dump_should_use_false_as_default
     connection.create_table "samples"
@@ -91,7 +92,7 @@ class PostgresSchemaDumpTest < Test::Unit::TestCase
     assert_match %r{t\.boolean\s+"has_fun",.+default: false}, output
   ensure
     connection.drop_table "samples"
-  end if ar_version('4.0')
+  end
 
   def test_dumps_array_with_default
     connection.create_table "samples"
@@ -102,7 +103,7 @@ class PostgresSchemaDumpTest < Test::Unit::TestCase
     assert_match %r{t.integer "int_empty_col", default\: \[\], array\: true}, output
   ensure
     connection.drop_table "samples"
-  end if ar_version('4.0')
+  end
 
   private
 

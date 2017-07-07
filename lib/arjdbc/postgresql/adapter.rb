@@ -4,6 +4,7 @@ ArJdbc.load_java_part :PostgreSQL
 require 'ipaddr'
 require 'active_record/connection_adapters/postgresql/column'
 require 'active_record/connection_adapters/postgresql/quoting'
+require 'active_record/connection_adapters/postgresql/schema_dumper'
 require 'active_record/connection_adapters/postgresql/schema_statements'
 require 'active_record/connection_adapters/postgresql/type_metadata'
 require 'active_record/connection_adapters/postgresql/utils'
@@ -190,21 +191,6 @@ module ArJdbc
     def native_database_types
       NATIVE_DATABASE_TYPES
     end
-
-    # Adds `:array` option to the default set provided by the `AbstractAdapter`.
-    # @override
-    def prepare_column_options(column, types)
-      spec = super
-      spec[:array] = 'true' if column.respond_to?(:array) && column.array
-      spec[:default] = "\"#{column.default_function}\"" if column.default_function
-      spec
-    end if AR40
-
-    # Adds `:array` as a valid migration key.
-    # @override
-    def migration_keys
-      super + [:array]
-    end if AR40
 
     # Enable standard-conforming strings if available.
     def set_standard_conforming_strings
@@ -853,7 +839,7 @@ module ArJdbc
     #  - format_type includes the column size constraint, e.g. varchar(50)
     #  - ::regclass is a function that gives the id for a table name
     def column_definitions(table_name)
-      select_rows(<<-end_sql, 'SCHEMA')
+      rows = select_rows(<<-end_sql, 'SCHEMA')
         SELECT a.attname, format_type(a.atttypid, a.atttypmod),
                pg_get_expr(d.adbin, d.adrelid), a.attnotnull, a.atttypid, a.atttypmod,
                (SELECT c.collname FROM pg_collation c, pg_type t
@@ -866,6 +852,11 @@ module ArJdbc
            AND a.attnum > 0 AND NOT a.attisdropped
          ORDER BY a.attnum
       end_sql
+
+      # Force the notnull attribute to a boolean
+      rows.each do |row|
+        row[3] = row[3] == 't' if row[3].is_a?(String)
+      end
     end
     private :column_definitions
 
@@ -1029,6 +1020,7 @@ module ActiveRecord::ConnectionAdapters
   remove_const(:PostgreSQLAdapter) if const_defined?(:PostgreSQLAdapter)
 
   class PostgreSQLAdapter < JdbcAdapter
+    include ActiveRecord::ConnectionAdapters::PostgreSQL::ColumnDumper
     include ActiveRecord::ConnectionAdapters::PostgreSQL::SchemaStatements
     include ActiveRecord::ConnectionAdapters::PostgreSQL::Quoting
 
