@@ -7,6 +7,9 @@ require 'active_record/connection_adapters/postgresql/quoting'
 require 'active_record/connection_adapters/postgresql/schema_statements'
 require 'active_record/connection_adapters/postgresql/type_metadata'
 require 'active_record/connection_adapters/postgresql/utils'
+require 'arjdbc/postgresql/base/array_decoder'
+require 'arjdbc/postgresql/base/array_encoder'
+require 'arjdbc/postgresql/name'
 
 module ArJdbc
   # Strives to provide Rails built-in PostgreSQL adapter (API) compatibility.
