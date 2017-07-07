@@ -4,6 +4,8 @@ require 'db/postgres'
 
 class PostgreSQLArrayTypeTest < Test::Unit::TestCase
 
+  OID = ActiveRecord::ConnectionAdapters::PostgreSQL::OID
+
   class PgArray < ActiveRecord::Base
     self.table_name = 'pg_arrays'
   end
@@ -29,42 +31,29 @@ class PostgreSQLArrayTypeTest < Test::Unit::TestCase
   end
 
   def test_column
-    column = PgArray.columns.find { |c| c.name == 'tags' }
-    assert_equal :string, column.type
-    assert column.array
+    column_type = PgArray.type_for_attribute('tags')
+    assert_instance_of OID::Array, column_type
+    assert_instance_of ActiveModel::Type::String, column_type.subtype
   end
 
   def test_added_column
-    column = PgArray.columns.find { |c| c.name == 'added_tags' }
-    assert_equal :string, column.type
-    assert column.array
-    assert_match /character varying/, column.sql_type
-    assert_nil column.default
+    column_type = PgArray.type_for_attribute('added_tags')
+    assert_instance_of OID::Array, column_type
+    assert_instance_of ActiveModel::Type::String, column_type.subtype
   end
 
   def test_changed_column
-    column = PgArray.columns.find { |c| c.name == 'changed_tags' }
-    assert_equal :string, column.type
-    assert column.array
+    column_type = PgArray.type_for_attribute('changed_tags')
+    assert_instance_of OID::Array, column_type
+    assert_instance_of ActiveModel::Type::String, column_type.subtype
   end
-
-#  ActiveRecord::ConnectionAdapters::PostgreSQLColumn.class_eval do
-#    alias_method :do_initialize, :initialize
-#    def initialize(name, default, oid_type, sql_type = nil, null = true)
-#      do_initialize(name, default, oid_type, sql_type, null)
-#    end
-#  end
 
   def test_added_column_with_default
     column = PgArray.columns.find { |c| c.name == 'tag_count' }
-    assert_equal :integer, column.type
-    assert column.array
-    assert_equal 'integer', column.sql_type
-    if ar_version('4.2')
-      assert_equal '{}', column.default
-    else
-      assert_equal [], column.default
-    end
+    column_type = PgArray.type_for_attribute('tag_count')
+    assert_instance_of OID::Array, column_type
+    assert_instance_of ActiveModel::Type::Integer, column_type.subtype
+    assert_equal '{}', column.default
   end
 
   def test_change_column_with_array
@@ -75,44 +64,24 @@ class PostgreSQLArrayTypeTest < Test::Unit::TestCase
     column = PgArray.columns.find { |c| c.name == 'snippets' }
 
     assert_equal :text, column.type
-    if ar_version('4.2')
-      assert_equal '{}', column.default
-    else
-      assert_equal [], column.default
-    end
+    assert_equal '{}', column.default
     assert column.array
   end
 
   def test_type_cast_array
-    column = PgArray.columns.find { |c| c.name == 'tags' }
-
     data = '{1,2,3}'
-    #oid_type  = column.instance_variable_get('@oid_type').subtype
-    # we are getting the instance variable in this test, but in the
-    # normal use of string_to_array, it's called from the OID::Array
-    # class and will have the OID instance that will provide the type
-    # casting
-    #array = column.class.string_to_array data, oid_type
-    #assert_equal(['1', '2', '3'], array)
-    if ar_version('4.2')
-      assert_equal(['1', '2', '3'], column.type_cast_from_database(data))
 
-      assert_equal([], column.type_cast_from_database('{}'))
-      assert_equal([nil], column.type_cast_from_database('{NULL}'))
+    column_type = PgArray.type_for_attribute('tags')
 
-      column = PgArray.columns.find { |c| c.name == 'tag_count' }
-      assert_equal([1, 2, 3], column.type_cast_from_database(data))
-      assert_equal([], column.type_cast_from_database("{}"))
-    else
-      assert_equal(['1', '2', '3'], column.type_cast(data))
+    assert_equal(['1', '2', '3'], column_type.deserialize(data))
+    assert_equal([], column_type.deserialize('{}'))
+    assert_equal([nil], column_type.deserialize('{NULL}'))
 
-      assert_equal([], column.type_cast('{}'))
-      assert_equal([nil], column.type_cast('{NULL}'))
+    column_type = PgArray.type_for_attribute('tag_count')
 
-      column = PgArray.columns.find { |c| c.name == 'tag_count' }
-      assert_equal([1, 2, 3], column.type_cast(data))
-      assert_equal([], column.type_cast("{}"))
-    end
+    assert_equal([1, 2, 3], column_type.deserialize(data))
+    assert_equal([], column_type.deserialize("{}"))
+    assert_equal([nil], column_type.deserialize('{NULL}'))
   end
 
   def test_rewrite
@@ -173,4 +142,4 @@ class PostgreSQLArrayTypeTest < Test::Unit::TestCase
     assert_equal(array, x.tags)
   end
 
-end if Test::Unit::TestCase.ar_version('4.0')
+end
