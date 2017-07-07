@@ -20,13 +20,18 @@ module ArJdbc
       end
 
       # Extracts the value from a PostgreSQL column default definition.
-      def extract_value_from_default(oid, default) # :nodoc:
+      def extract_value_from_default(default) # :nodoc:
         case default
           # Quoted types
-          when /\A[\(B]?'(.*)'::/m
-            $1.gsub(/''/, "'")
+          when /\A[\(B]?'(.*)'.*::"?([\w. ]+)"?(?:\[\])?\z/m
+            # The default 'now'::date is CURRENT_DATE
+            if $1 == "now".freeze && $2 == "date".freeze
+              nil
+            else
+              $1.gsub("''".freeze, "'".freeze)
+            end
           # Boolean types
-          when 'true', 'false'
+          when 'true'.freeze, 'false'.freeze
             default
           # Numeric types
           when /\A\(?(-?\d+(\.\d*)?)\)?(::bigint)?\z/
