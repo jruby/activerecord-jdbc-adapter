@@ -5,6 +5,8 @@ require 'db/postgres'
 # Rails 4.x test
 class PostgreSQLHstoreTest < Test::Unit::TestCase
 
+  OID = ActiveRecord::ConnectionAdapters::PostgreSQLAdapter::OID
+
   class Hstore < ActiveRecord::Base
     self.table_name = 'hstores'
   end
@@ -29,7 +31,6 @@ class PostgreSQLHstoreTest < Test::Unit::TestCase
         t.hstore :array, :array => true
       end
     end
-    @column = Hstore.columns.find { |c| c.name == 'tags' }
   end
 
   def teardown
@@ -53,7 +54,7 @@ class PostgreSQLHstoreTest < Test::Unit::TestCase
   end
 
   def test_column
-    assert_equal :hstore, @column.type
+    assert_instance_of OID::Hstore, tags_column_type
   end
 
   def test_change_table_supports_hstore
@@ -62,8 +63,7 @@ class PostgreSQLHstoreTest < Test::Unit::TestCase
         t.hstore 'users', :default => ''
       end
       Hstore.reset_column_information
-      column = Hstore.columns.find { |c| c.name == 'users' }
-      assert_equal :hstore, column.type
+      assert_instance_of OID::Hstore, Hstore.type_for_attribute('users')
 
       raise ActiveRecord::Rollback # reset the schema change
     end
@@ -71,43 +71,39 @@ class PostgreSQLHstoreTest < Test::Unit::TestCase
     Hstore.reset_column_information
   end
 
-  def test_type_cast_hstore
-    assert @column
-
-    data = "\"1\"=>\"2\""
-    hash = string_to_hstore @column, data
-    assert_equal({'1' => '2'}, hash)
-    assert_equal({'1' => '2'}, type_cast(@column, data))
-
-    assert_equal({}, type_cast(@column, ""))
-    assert_equal({'key'=>nil}, type_cast(@column, 'key => NULL'))
-    assert_equal({'c'=>'}','"a"'=>'b "a b'}, type_cast(@column, %q(c=>"}", "\"a\""=>"b \"a b")))
-  end
-
   def test_gen1
-    assert_equal(%q(" "=>""), hstore_to_string(@column, {' '=>''}))
+    column_type = tags_column_type
+    assert_equal(%q(" "=>""), column_type.serialize({ ' ' => '' }))
   end
 
   def test_gen2
-    assert_equal(%q(","=>""), hstore_to_string(@column, {','=>''}))
+    column_type = tags_column_type
+    assert_equal(%q(","=>""), column_type.serialize({ ',' => '' }))
   end
 
   def test_gen3
-    assert_equal(%q("="=>""), hstore_to_string(@column, {'='=>''}))
+    column_type = tags_column_type
+    assert_equal(%q("="=>""), column_type.serialize({ '=' => '' }))
   end
 
   def test_gen4
-    assert_equal(%q(">"=>""), hstore_to_string(@column, {'>'=>''}))
+    column_type = tags_column_type
+    assert_equal(%q(">"=>""), column_type.serialize({ '>' => '' }))
   end
 
   def test_parse
-    assert_equal({'a'=>nil,'b'=>nil,'c'=>'NuLl','null'=>'c'}, type_cast(@column, 'a=>null,b=>NuLl,c=>"NuLl",null=>c'))
-    assert_equal({" " => " "},  type_cast(@column, "\\ =>\\ "))
-    assert_equal({"=" => ">"}, type_cast(@column, "==>>"))
-    assert_equal({"=a"=>"q=w"}, type_cast(@column, '\=a=>q=w'))
-    assert_equal({"=a"=>"q=w"}, type_cast(@column, '"=a"=>q\=w'))
-    assert_equal({"\"a"=>"q>w"}, type_cast(@column, '"\"a"=>q>w'))
-    assert_equal({"\"a"=>"q\"w"}, type_cast(@column, '\"a=>q"w'))
+    column_type = tags_column_type
+    assert_equal({},  column_type.deserialize(''))
+    assert_equal({' ' => ' '},  column_type.deserialize("\\ =>\\ "))
+    assert_equal({'=' => '>'},  column_type.deserialize('==>>'))
+    assert_equal({'1' => '2'},  column_type.deserialize('"1"=>"2"'))
+    assert_equal({'=a'=>'q=w'}, column_type.deserialize('\=a=>q=w'))
+    assert_equal({'=a'=>'q=w'}, column_type.deserialize('"=a"=>q\=w'))
+    assert_equal({'"a'=>'q>w'}, column_type.deserialize('"\"a"=>q>w'))
+    assert_equal({'"a'=>'q"w'}, column_type.deserialize('\"a=>q"w'))
+    assert_equal({'key'=>nil},  column_type.deserialize('key => NULL'))
+    assert_equal({'c'=>'}','"a"'=>'b "a b'}, column_type.deserialize(%q(c=>"}", "\"a\""=>"b \"a b")))
+    assert_equal({'a'=>nil,'b'=>nil,'c'=>'NuLl','null'=>'c'}, column_type.deserialize('a=>null,b=>NuLl,c=>"NuLl",null=>c'))
   end
 
   def test_rewrite
@@ -187,30 +183,6 @@ class PostgreSQLHstoreTest < Test::Unit::TestCase
 
   private
 
-  def type_cast(column, value)
-    if ar_version('4.2')
-      column.type_cast_from_database value
-    else
-      column.type_cast value
-    end
-  end
-
-  def string_to_hstore(column, value)
-    if ar_version('4.2')
-      column.type_cast_from_database value
-    else
-      column.class.string_to_hstore value
-    end
-  end
-
-  def hstore_to_string(column, value)
-    if ar_version('4.2')
-      column.type_cast_for_database value
-    else
-      column.class.hstore_to_string value
-    end
-  end
-
   def assert_cycle hash
     # test creation
     x = Hstore.create!(:tags => hash)
@@ -225,41 +197,8 @@ class PostgreSQLHstoreTest < Test::Unit::TestCase
     assert_equal(hash, x.tags)
   end
 
-end if Test::Unit::TestCase.ar_version('4.0')
-
-# Rails <= 3.2 test
-class PostgreSQLHstoreTest < Test::Unit::TestCase
-
-  class Hstore < ActiveRecord::Base
-    self.table_name = 'hstores'
+  def tags_column_type
+    Hstore.type_for_attribute('tags')
   end
 
-  def setup
-    @connection = ActiveRecord::Base.connection
-
-    unless @connection.supports_extensions?
-      return skip "do not test on PG without hstore"
-    end
-
-    unless @connection.extension_enabled?('hstore')
-      @connection.enable_extension 'hstore'
-      @connection.commit_db_transaction
-    end
-
-    @connection.reconnect!
-
-    @connection.execute 'CREATE TABLE "hstores" ("id" serial primary key, "tags" hstore DEFAULT \'\')'
-  end
-
-  def teardown
-    @connection.execute 'DROP TABLE IF EXISTS "hstores"'
-  end
-
-  test 'returns hstore values as strings by default' do
-    @connection.execute "INSERT INTO hstores (tags) VALUES ('1=>2,2=>3')"
-    x = Hstore.first
-    assert_instance_of String, x.tags
-    assert_equal '"1"=>"2", "2"=>"3"', x.tags
-  end
-
-end unless Test::Unit::TestCase.ar_version('4.0')
+end
