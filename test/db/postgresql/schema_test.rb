@@ -10,7 +10,7 @@ class PostgresSchemaTest < Test::Unit::TestCase
     ensure
       connection.drop_schema "test_schema3"
     end
-  end if ar_version('4.0') # create_schema/drop_schema added in AR 4.0
+  end
 
   def test_raise_create_schema_with_existing_schema
     begin
@@ -24,7 +24,7 @@ class PostgresSchemaTest < Test::Unit::TestCase
       # "DROP SCHEMA #{schema_name} CASCADE"
       connection.drop_schema "test_schema3"
     end
-  end if ar_version('4.0') # create_schema/drop_schema added in AR 4.0
+  end
 
   def test_drop_schema
     begin
@@ -33,11 +33,11 @@ class PostgresSchemaTest < Test::Unit::TestCase
       connection.drop_schema "test_schema3"
     end
     assert ! connection.schema_names.include?("test_schema3")
-  end if ar_version('4.0') # create_schema/drop_schema added in AR 4.0
+  end
 
   def test_collation
     assert_equal 'en_US.UTF-8', connection.collation
-  end if ar_version('4.0') # collation added in AR 4.0
+  end
 
   def test_encoding
     assert_equal 'UTF8', connection.encoding
@@ -45,7 +45,7 @@ class PostgresSchemaTest < Test::Unit::TestCase
 
   def test_ctype
     assert connection.ctype
-  end if ar_version('4.0') # ctype added in AR 4.0
+  end
 
   def test_current_database
     assert_not_nil connection.current_database
@@ -65,10 +65,10 @@ class PostgresSchemaTest < Test::Unit::TestCase
 
   def test_schema_names
     assert_equal [ "public" ], connection.schema_names
-  end if ar_version('4.0') # schema_names added in AR 4.0
+  end
 
   def test_schema_search_path
-    assert_equal "\"$user\",public", connection.schema_search_path
+    assert_equal "\"$user\", public", connection.schema_search_path
   end
 
   context "search path" do
@@ -101,16 +101,6 @@ class PostgresSchemaTest < Test::Unit::TestCase
     def test_columns
       assert_equal(%w{id name}, Person.column_names)
     end
-
-    def test_find_right
-      assert_not_nil Person.find_by_name("Alex")
-    end if ActiveRecord::VERSION::MAJOR < 4
-
-    def test_find_wrong
-      assert_raise NoMethodError do
-        Person.find_by_wrongname("Alex")
-      end
-    end if ActiveRecord::VERSION::MAJOR < 4
 
     def test_column_information
       assert_include Person.columns.map(&:name), "name"

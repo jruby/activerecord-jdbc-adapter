@@ -13,6 +13,15 @@ class PostgresLTreeTest < Test::Unit::TestCase
   def self.startup
     super
     connection = ActiveRecord::Base.connection
+
+    # Make sure the ltree extension is enabled if possible
+    begin
+      connection.execute('create extension ltree')
+      @@ltree_extension_created = true
+    rescue ActiveRecord::ActiveRecordError => e
+      @@ltree_extension_created = false
+    end
+
     connection.transaction do
       disable_logger(connection) do
         connection.create_table('ltrees') do |t|
@@ -22,12 +31,13 @@ class PostgresLTreeTest < Test::Unit::TestCase
     end
     @@ltree_support = true
   rescue ActiveRecord::ActiveRecordError => e
-    puts "skiping ltree tests due: #{e.message}" unless e.message.index('type "ltree" does not exist')
+    puts "skipping ltree tests due: #{e.message}" unless e.message.index('type "ltree" does not exist')
     @@ltree_support = false
   end
 
   def self.shutdown
     ActiveRecord::Base.connection.execute 'drop table if exists ltrees'
+    ActiveRecord::Base.connection.execute 'drop extension if exists ltree' if @@ltree_extension_created
     super
   end
 
@@ -45,9 +55,9 @@ class PostgresLTreeTest < Test::Unit::TestCase
 
   def test_select
     skip unless @@ltree_support
-    @connection.execute "insert into ltrees (path) VALUES ('1.2.3')"
+    ActiveRecord::Base.connection.execute "insert into ltrees (path) VALUES ('1.2.3')"
     ltree = Ltree.first
     assert_equal '1.2.3', ltree.path
   end
 
-end if Test::Unit::TestCase.ar_version('4.0')
+end
