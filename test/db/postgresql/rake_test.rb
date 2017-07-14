@@ -18,13 +18,13 @@ class PostgresRakeTest < Test::Unit::TestCase
     Rake::Task["db:create"].invoke
     if PSQL_EXE
       output = psql("-d template1 -c '\\\l'")
-      assert_match /#{db_name}/m, output
+      assert_match(/#{db_name}/m, output)
     end
 
     Rake::Task["db:drop"].invoke
     if PSQL_EXE
       output = psql("-d template1 -c '\\\l'")
-      assert_no_match /#{db_name}/m, output
+      assert_no_match(/#{db_name}/m, output)
     end
   end
 
@@ -86,7 +86,7 @@ class PostgresRakeTest < Test::Unit::TestCase
       Rake::Task["db:structure:dump"].invoke
 
       assert File.exists?(structure_sql)
-      assert_match /CREATE TABLE users/, File.read(structure_sql)
+      assert_match(/CREATE TABLE users/, File.read(structure_sql))
 
       # db:structure:load
       drop_rake_test_database(:silence)
@@ -112,7 +112,7 @@ class PostgresRakeTest < Test::Unit::TestCase
 
   test 'rake db:collation' do
     create_rake_test_database
-    expect_rake_output /\w*?\.UTF-8/ # en_US.UTF-8
+    expect_rake_output(/\w*?\.UTF-8/) # en_US.UTF-8
     Rake::Task["db:collation"].invoke
   end
 
