@@ -82,9 +82,9 @@ module ArJdbc
           ensure
             pk_rs.close
           end
-          primary_keys.each do |name, cols|
+          primary_keys.each do |constraint_name, cols|
             dump << "ALTER TABLE #{connection.quote_table_name(table_name)}\n"
-            dump << "  ADD CONSTRAINT #{name}\n"
+            dump << "  ADD CONSTRAINT #{constraint_name}\n"
             dump << "    PRIMARY KEY (#{cols.join(', ')});\n\n"
           end
         end
