@@ -23,6 +23,7 @@
  */
 package arjdbc.postgresql;
 
+import java.lang.reflect.InvocationTargetException;
 import java.sql.Array;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -33,6 +34,7 @@ import java.sql.Types;
 import java.util.Map;
 import java.util.UUID;
 
+import org.jruby.Ruby;
 import org.jruby.RubyFloat;
 import org.jruby.RubyHash;
 import org.jruby.RubyString;
@@ -45,7 +47,6 @@ import org.jruby.util.SafePropertyAccessor;
 import org.postgresql.PGConnection;
 import org.postgresql.PGStatement;
 import org.postgresql.core.BaseConnection;
-import org.postgresql.jdbc.PgArray;
 import org.postgresql.util.PGInterval;
 import org.postgresql.util.PGobject;
 
@@ -165,6 +166,28 @@ public final class PGDriverImplementation implements DriverImplementation {
         return str;
     }
 
+    private static Class<?> pgArrayClass;
+    private static Class<?> pgArrayClass(final ThreadContext context) {
+        final Class<?> clazz = pgArrayClass;
+        if (clazz == null) {
+            final Ruby runtime = context.getRuntime();
+            try {
+                // try loading official PgArray Class (since postgresql 9.4)
+                pgArrayClass = runtime.getJavaSupport().loadJavaClass("org.postgresql.jdbc.PgArray");
+                return pgArrayClass;
+            }
+            catch (ClassNotFoundException ex) {
+                try {
+                    // load older (internal) Jdbc4Array Class (9.2 and earlier)
+                    pgArrayClass = runtime.getJavaSupport().loadJavaClass("org.postgresql.jdbc4.Jdbc4Array");
+                    return pgArrayClass;
+                }
+                catch (ClassNotFoundException e) { /* should never be reached */ }
+            }
+        }
+        return clazz;
+    }
+
     public boolean setStringParameter(final ThreadContext context,
         final Connection connection, final PreparedStatement statement,
         final int index, final IRubyObject value,
@@ -191,8 +214,17 @@ public final class PGDriverImplementation implements DriverImplementation {
             if ( sqlType != null ) {
                 if ( PostgreSQLRubyJdbcConnection.rawArrayType == Boolean.TRUE && arrayLike(sqlType) ) {
                     final int oid = PostgreSQLRubyJdbcConnection.oid(context, column);
-                    Array valueArr = new PgArray(connection.unwrap(BaseConnection.class), oid, valueStr);
-                    statement.setArray(index, valueArr); return true;
+                    final Class<?> clazz = pgArrayClass(context);
+                    try {
+                        Array valueArr = (Array) clazz
+                            .getDeclaredConstructor(new Class[]{ Connection.class, Integer.class, String.class })
+                            .newInstance(new Object[]{ connection.unwrap(BaseConnection.class), oid, valueStr });
+                        statement.setArray(index, valueArr); return true;
+                    }
+                    catch (InvocationTargetException e) { /* should never be reached */ }
+                    catch (NoSuchMethodException e) { /* should never be reached */ }
+                    catch (InstantiationException e) { /* should never be reached */ }
+                    catch (IllegalAccessException e) { /* should never be reached */ }
                 }
                 if ( sqlType.getByteList().startsWith( INTERVAL ) ) {
                     statement.setObject( index, new PGInterval( valueStr ) ); return true;
