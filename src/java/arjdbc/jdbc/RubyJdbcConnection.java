@@ -1791,7 +1791,7 @@ public class RubyJdbcConnection extends RubyObject {
     protected static IRubyObject typeCastFromDatabase(final ThreadContext context,
         final IRubyObject adapter, final RubySymbol typeName, final RubyString value) {
         final IRubyObject type = adapter.callMethod(context, "lookup_cast_type", typeName);
-        return type.callMethod(context, "type_cast_from_database", value);
+        return type.callMethod(context, "deserialize", value);
     }
 
     protected IRubyObject dateToRuby(final ThreadContext context,
