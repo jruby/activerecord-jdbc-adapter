@@ -973,9 +973,11 @@ module ArJdbc
     def translate_exception(exception, message)
       case exception.message
       when /duplicate key value violates unique constraint/
-        ::ActiveRecord::RecordNotUnique.new(message, exception)
+        ::ActiveRecord::RecordNotUnique.new(message)
       when /violates foreign key constraint/
-        ::ActiveRecord::InvalidForeignKey.new(message, exception)
+        ::ActiveRecord::InvalidForeignKey.new(message)
+      when /value too long/
+        ::ActiveRecord::ValueTooLong.new(message)
       else
         super
       end
