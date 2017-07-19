@@ -4,7 +4,6 @@ module ArJdbc
   module PostgreSQL
 
     require 'active_record/connection_adapters/postgresql/oid'
-
     require 'arjdbc/postgresql/base/pgconn'
 
     def self.unescape_bytea(escaped)
@@ -16,6 +15,10 @@ module ArJdbc
 
     # @private
     module OIDTypes
+
+      # Support arrays/ranges for defining attributes that don't exist in the db
+      Type.add_modifier({ array: true }, OID::Array, adapter: :postgresql)
+      Type.add_modifier({ range: true }, OID::Range, adapter: :postgresql)
 
       # @override
       def enable_extension(name)
