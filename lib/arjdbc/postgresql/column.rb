@@ -1,11 +1,6 @@
 module ArJdbc
   module PostgreSQL
 
-    # @see ActiveRecord::ConnectionAdapters::JdbcColumn#column_types
-    def self.column_selector
-      [ /postgre/i, lambda { |cfg, column| column.extend(Column) } ]
-    end
-
     # @private these are defined on the Adapter class since 4.2
     module ColumnHelpers
 

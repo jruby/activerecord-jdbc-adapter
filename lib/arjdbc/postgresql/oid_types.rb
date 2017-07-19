@@ -3,13 +3,7 @@ require 'thread'
 module ArJdbc
   module PostgreSQL
 
-    if AR42
-      require 'active_record/connection_adapters/postgresql/oid'
-      require 'arjdbc/postgresql/oid/bytea.rb'
-    else
-      require 'arjdbc/postgresql/base/oid'
-    end
-
+    require 'active_record/connection_adapters/postgresql/oid'
     require 'arjdbc/postgresql/base/pgconn'
 
     def self.unescape_bytea(escaped)
@@ -21,6 +15,10 @@ module ArJdbc
 
     # @private
     module OIDTypes
+
+      # Support arrays/ranges for defining attributes that don't exist in the db
+      Type.add_modifier({ array: true }, OID::Array, adapter: :postgresql)
+      Type.add_modifier({ range: true }, OID::Range, adapter: :postgresql)
 
       # @override
       def enable_extension(name)
@@ -47,14 +45,7 @@ module ArJdbc
       def lookup_cast_type(sql_type)
         oid = execute("SELECT #{quote(sql_type)}::regtype::oid", "SCHEMA")
         super oid.first['oid'].to_i
-      end if AR42
-
-      def get_oid_type(oid, fmod, column_name)
-        type_map.fetch(oid, fmod) {
-          warn "unknown OID #{oid}: failed to recognize type of '#{column_name}'. It will be treated as String."
-          type_map[oid] = OID::Identity.new
-        }
-      end unless AR42
+      end
 
       def get_oid_type(oid, fmod, column_name, sql_type = '')
         if !type_map.key?(oid)
@@ -67,40 +58,10 @@ module ArJdbc
             type_map.register_type(oid, cast_type)
           end
         }
-      end if AR42
-
-      @@type_map_cache = {}
-      @@type_map_cache_lock = Mutex.new
-
-      if AR42
-        TypeMap = ActiveRecord::Type::HashLookupTypeMap
-      else
-        TypeMap = OID::TypeMap
-      end
-
-      # @see #type_map
-      # @private
-      TypeMap.class_eval do
-        def dup
-          dup = super # make sure @mapping is not shared
-          dup.instance_variable_set(:@mapping, @mapping.dup)
-          dup
-        end
       end
 
       def type_map
-        # NOTE: our type_map is lazy (on AR < 4.2)
-        # ... since it's only used for `adapter.accessor`
-        @type_map ||= begin
-          if type_map = @@type_map_cache[ type_cache_key ]
-            type_map.dup
-          else
-            type_map = TypeMap.new
-            initialize_type_map(type_map)
-            cache_type_map(type_map)
-            type_map
-          end
-        end
+        @type_map
       end
 
       def reload_type_map
@@ -111,57 +72,6 @@ module ArJdbc
       end
 
       private
-
-      def cache_type_map(type_map)
-        @@type_map_cache_lock.synchronize do
-          @@type_map_cache[ type_cache_key ] = type_map
-        end
-      end
-
-      def type_cache_key
-        config.hash + ( 7 * extensions.hash )
-      end
-
-      def add_oid(row, records_by_oid, type_map)
-        return type_map if type_map.key? row['type_elem'].to_i
-
-        if OID.registered_type? typname = row['typname']
-          # this composite type is explicitly registered
-          vector = OID::NAMES[ typname ]
-        else
-          # use the default for composite types
-          unless type_map.key? typelem = row['typelem'].to_i
-            add_oid records_by_oid[ row['typelem'] ], records_by_oid, type_map
-          end
-
-          vector = OID::Vector.new row['typdelim'], type_map[typelem]
-        end
-
-        type_map[ row['oid'].to_i ] = vector
-        type_map
-      end
-
-      def initialize_type_map(type_map)
-        result = execute('SELECT oid, typname, typelem, typdelim, typinput FROM pg_type', 'SCHEMA')
-        leaves, nodes = result.partition { |row| row['typelem'].to_s == '0' }
-        # populate the leaf nodes
-        leaves.find_all { |row| OID.registered_type? row['typname'] }.each do |row|
-          type_map[ row['oid'].to_i ] = OID::NAMES[ row['typname'] ]
-        end
-
-        records_by_oid = result.group_by { |row| row['oid'] }
-
-        arrays, nodes = nodes.partition { |row| row['typinput'] == 'array_in' }
-
-        # populate composite types
-        nodes.each { |row| add_oid row, records_by_oid, type_map }
-
-        # populate array types
-        arrays.find_all { |row| type_map.key? row['typelem'].to_i }.each do |row|
-          array = OID::Array.new  type_map[ row['typelem'].to_i ]
-          type_map[ row['oid'].to_i ] = array
-        end
-      end unless AR42
 
       def initialize_type_map(m)
         register_class_with_limit m, 'int2', Type::Integer
@@ -232,7 +142,7 @@ module ArJdbc
         end
 
         load_additional_types(m)
-      end if AR42
+      end
 
       def load_additional_types(type_map, oids = nil)
         if supports_ranges?
@@ -261,7 +171,7 @@ module ArJdbc
 
         records = execute(query, 'SCHEMA')
         initializer.run(records)
-      end if AR42
+      end
 
     end
   end
