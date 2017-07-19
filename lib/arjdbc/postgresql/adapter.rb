@@ -411,19 +411,6 @@ module ArJdbc
       nil
     end
 
-    def primary_key(table)
-      result = select(<<-end_sql, 'SCHEMA').first
-        SELECT attr.attname
-        FROM pg_attribute attr
-        INNER JOIN pg_constraint cons ON attr.attrelid = cons.conrelid AND attr.attnum = any(cons.conkey)
-        WHERE cons.contype = 'p' AND cons.conrelid = '#{quote_table_name(table)}'::regclass
-      end_sql
-
-      result && result['attname']
-      # pk_and_sequence = pk_and_sequence_for(table)
-      # pk_and_sequence && pk_and_sequence.first
-    end
-
     def insert(sql, name = nil, pk = nil, id_value = nil, sequence_name = nil, binds = [])
       sql = to_sql(sql, binds)
       unless pk
