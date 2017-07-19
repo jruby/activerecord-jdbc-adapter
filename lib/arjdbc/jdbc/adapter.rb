@@ -580,11 +580,6 @@ module ActiveRecord
       end
 
       # @override
-      def primary_key(table)
-        primary_keys(table).first
-      end
-
-      # @override
       def primary_keys(table)
         @connection.primary_keys(table)
       end
