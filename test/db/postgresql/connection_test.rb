@@ -57,7 +57,7 @@ class PostgreSQLConnectionTest < Test::Unit::TestCase
     end
 
     def test_query
-      id = connection.insert_sql("INSERT INTO ex (number, data) VALUES (5150, 'some data')")
+      id = connection.insert("INSERT INTO ex (number, data) VALUES (5150, 'some data')")
       result = connection.query('SELECT max(id) FROM ex')
       assert_instance_of Array, result
       assert_instance_of Array, result.first

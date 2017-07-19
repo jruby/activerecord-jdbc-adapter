@@ -424,7 +424,8 @@ module ArJdbc
       # pk_and_sequence && pk_and_sequence.first
     end
 
-    def insert_sql(sql, name = nil, pk = nil, id_value = nil, sequence_name = nil, binds = [])
+    def insert(sql, name = nil, pk = nil, id_value = nil, sequence_name = nil, binds = [])
+      sql = to_sql(sql, binds)
       unless pk
         # Extract the table from the insert sql. Yuck.
         table_ref = extract_table_ref_from_insert_sql(sql)
@@ -432,7 +433,7 @@ module ArJdbc
       end
 
       if pk && use_insert_returning? # && id_value.nil?
-        select_value("#{to_sql(sql, binds)} RETURNING #{quote_column_name(pk)}")
+        select_value("#{sql} RETURNING #{quote_column_name(pk)}")
       else
         execute(sql, name, binds) # super
         unless id_value
@@ -450,6 +451,8 @@ module ArJdbc
         id_value
       end
     end
+    alias insert_sql insert
+    deprecate insert_sql: :insert
 
     # @override
     def sql_for_insert(sql, pk, id_value, sequence_name, binds)
