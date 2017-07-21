@@ -3,6 +3,7 @@ ArJdbc.load_java_part :PostgreSQL
 
 require 'ipaddr'
 require 'active_record/connection_adapters/postgresql/column'
+require 'active_record/connection_adapters/postgresql/database_statements'
 require 'active_record/connection_adapters/postgresql/quoting'
 require 'active_record/connection_adapters/postgresql/schema_dumper'
 require 'active_record/connection_adapters/postgresql/schema_statements'
@@ -16,13 +17,6 @@ module ArJdbc
   # Strives to provide Rails built-in PostgreSQL adapter (API) compatibility.
   module PostgreSQL
 
-    # @deprecated no longer used
-    # @private
-    AR4_COMPAT = AR40
-    # @deprecated no longer used
-    # @private
-    AR42_COMPAT = AR42
-
     require 'arjdbc/postgresql/column'
     require 'arjdbc/postgresql/explain_support'
     require 'arel/visitors/postgresql_jdbc'
@@ -30,7 +24,7 @@ module ArJdbc
     IndexDefinition = ::ActiveRecord::ConnectionAdapters::IndexDefinition
 
     # @private
-    ForeignKeyDefinition = ::ActiveRecord::ConnectionAdapters::ForeignKeyDefinition if ::ActiveRecord::ConnectionAdapters.const_defined? :ForeignKeyDefinition
+    ForeignKeyDefinition = ::ActiveRecord::ConnectionAdapters::ForeignKeyDefinition
 
     # @private
     Type = ::ActiveRecord::Type
@@ -140,7 +134,7 @@ module ArJdbc
 
     NATIVE_DATABASE_TYPES = {
       :primary_key => "serial primary key",
-      :string => { :name => "character varying", :limit => 255 },
+      :string => { :name => "character varying" },
       :text => { :name => "text" },
       :integer => { :name => "integer" },
       :float => { :name => "float" },
@@ -159,9 +153,10 @@ module ArJdbc
       :money => { :name=>"money" },
       :char => { :name => "char" },
       :serial => { :name => "serial" }, # auto-inc integer, bigserial, smallserial
-    }
-
-    NATIVE_DATABASE_TYPES.update({
+      :bigserial => "bigserial",
+      :bigint => { :name => "bigint" },
+      :bit => { :name => "bit" },
+      :bit_varying => { :name => "bit varying" },
       :tsvector => { :name => "tsvector" },
       :hstore => { :name => "hstore" },
       :inet => { :name => "inet" },
@@ -177,16 +172,8 @@ module ArJdbc
       :tsrange => { :name => "tsrange" },
       :tstzrange => { :name => "tstzrange" },
       :int4range => { :name => "int4range" },
-      :int8range => { :name => "int8range" },
-    }) if AR40
-
-    NATIVE_DATABASE_TYPES.update(
-      :string => { :name => "character varying" },
-      :bigserial => "bigserial",
-      :bigint => { :name => "bigint" },
-      :bit => { :name => "bit" },
-      :bit_varying => { :name => "bit varying" }
-    ) if AR42
+      :int8range => { :name => "int8range" }
+    }
 
     def native_database_types
       NATIVE_DATABASE_TYPES
@@ -272,12 +259,6 @@ module ArJdbc
     # @override
     def supports_views?; true end
 
-    if ArJdbc::AR50
-      def views
-        select_values("SELECT table_name FROM INFORMATION_SCHEMA.views WHERE table_schema = ANY (current_schemas(false))")
-      end
-    end
-
     # NOTE: handled by JdbcAdapter we override only to have save-point in logs :
 
     # @override
@@ -346,138 +327,13 @@ module ArJdbc
       )
     end
 
-    def default_sequence_name(table_name, pk = nil)
-      default_pk, default_seq = pk_and_sequence_for(table_name)
-      default_seq || "#{table_name}_#{pk || default_pk || 'id'}_seq"
-    end
-
-    # Resets sequence to the max value of the table's primary key if present.
-    def reset_pk_sequence!(table, pk = nil, sequence = nil)
-      if ! pk || ! sequence
-        default_pk, default_sequence = pk_and_sequence_for(table)
-        pk ||= default_pk; sequence ||= default_sequence
-      end
-      if pk && sequence
-        quoted_sequence = quote_column_name(sequence)
-
-        select_value <<-end_sql, 'Reset Sequence'
-          SELECT setval('#{quoted_sequence}', (SELECT COALESCE(MAX(#{quote_column_name pk})+(SELECT increment_by FROM #{quoted_sequence}), (SELECT min_value FROM #{quoted_sequence})) FROM #{quote_table_name(table)}), false)
-        end_sql
-      end
-    end
-
-    # Find a table's primary key and sequence.
-    def pk_and_sequence_for(table)
-      # try looking for a seq with a dependency on the table's primary key :
-      result = select(<<-end_sql, 'PK and Serial Sequence')[0]
-          SELECT attr.attname, seq.relname
-          FROM pg_class      seq,
-               pg_attribute  attr,
-               pg_depend     dep,
-               pg_constraint cons
-          WHERE seq.oid           = dep.objid
-            AND seq.relkind       = 'S'
-            AND attr.attrelid     = dep.refobjid
-            AND attr.attnum       = dep.refobjsubid
-            AND attr.attrelid     = cons.conrelid
-            AND attr.attnum       = cons.conkey[1]
-            AND cons.contype      = 'p'
-            AND dep.refobjid      = '#{quote_table_name(table)}'::regclass
-        end_sql
-
-      if result.nil? || result.empty?
-        # if that fails, try parsing the primary key's default value :
-        result = select(<<-end_sql, 'PK and Custom Sequence')[0]
-            SELECT attr.attname,
-              CASE
-                WHEN pg_get_expr(def.adbin, def.adrelid) !~* 'nextval' THEN NULL
-                WHEN split_part(pg_get_expr(def.adbin, def.adrelid), '''', 2) ~ '.' THEN
-                  substr(split_part(pg_get_expr(def.adbin, def.adrelid), '''', 2),
-                    strpos(split_part(pg_get_expr(def.adbin, def.adrelid), '''', 2), '.')+1)
-                ELSE split_part(pg_get_expr(def.adbin, def.adrelid), '''', 2)
-              END as relname
-            FROM pg_class       t
-            JOIN pg_attribute   attr ON (t.oid = attrelid)
-            JOIN pg_attrdef     def  ON (adrelid = attrelid AND adnum = attnum)
-            JOIN pg_constraint  cons ON (conrelid = adrelid AND adnum = conkey[1])
-            WHERE t.oid = '#{quote_table_name(table)}'::regclass
-              AND cons.contype = 'p'
-              AND pg_get_expr(def.adbin, def.adrelid) ~* 'nextval|uuid_generate'
-          end_sql
-      end
-
-      [ result['attname'], result['relname'] ]
-    rescue
-      nil
-    end
-
-    def insert(sql, name = nil, pk = nil, id_value = nil, sequence_name = nil, binds = [])
-      sql = to_sql(sql, binds)
-      unless pk
-        # Extract the table from the insert sql. Yuck.
-        table_ref = extract_table_ref_from_insert_sql(sql)
-        pk = primary_key(table_ref) if table_ref
-      end
-
-      if pk && use_insert_returning? # && id_value.nil?
-        select_value("#{sql} RETURNING #{quote_column_name(pk)}")
-      else
-        execute(sql, name, binds) # super
-        unless id_value
-          table_ref ||= extract_table_ref_from_insert_sql(sql)
-          # If neither PK nor sequence name is given, look them up.
-          if table_ref && ! ( pk ||= primary_key(table_ref) ) && ! sequence_name
-            pk, sequence_name = pk_and_sequence_for(table_ref)
-          end
-          # If a PK is given, fallback to default sequence name.
-          # Don't fetch last insert id for a table without a PK.
-          if pk && sequence_name ||= default_sequence_name(table_ref, pk)
-            id_value = last_insert_id(table_ref, sequence_name)
-          end
-        end
-        id_value
-      end
-    end
-    alias insert_sql insert
-    deprecate insert_sql: :insert
-
-    # @override
-    def sql_for_insert(sql, pk, id_value, sequence_name, binds)
-      unless pk
-        # Extract the table from the insert sql. Yuck.
-        table_ref = extract_table_ref_from_insert_sql(sql)
-        pk = primary_key(table_ref) if table_ref
-      end
-
-      if pk && use_insert_returning?
-        sql = "#{sql} RETURNING #{quote_column_name(pk)}"
-      end
-
-      [ sql, binds ]
-    end
-
-    # @override due RETURNING clause
+    # @override due to the super method not being able to handle a missing pk and
+    #           RETURNING not being included in the sql
     def exec_insert(sql, name, binds, pk = nil, sequence_name = nil)
-      # NOTE: 3.2 does not pass the PK on #insert (passed only into #sql_for_insert) :
-      #   sql, binds = sql_for_insert(to_sql(arel, binds), pk, id_value, sequence_name, binds)
-      # 3.2 :
-      #  value = exec_insert(sql, name, binds)
-      # 4.x :
-      #  value = exec_insert(sql, name, binds, pk, sequence_name)
-      if use_insert_returning? && ( pk || (sql.is_a?(String) && sql =~ /RETURNING "?\S+"?$/) )
-        exec_query(sql, name, binds) # due RETURNING clause returns a result set
+      if pk || (sql.is_a?(String) && sql =~ /RETURNING "?\S+"?$/)
+        super
       else
-        result = super
-        if pk
-          unless sequence_name
-            table_ref = extract_table_ref_from_insert_sql(sql)
-            sequence_name = default_sequence_name(table_ref, pk)
-            return result unless sequence_name
-          end
-          last_insert_id_result(sequence_name)
-        else
-          result
-        end
+        jdbc_adapter_exec_insert(sql, name, binds, pk, sequence_name)
       end
     end
 
@@ -495,30 +351,6 @@ module ArJdbc
         end
         result
       end
-    end
-
-    # Returns an array of schema names.
-    def schema_names
-      select_values(
-        "SELECT nspname FROM pg_namespace" <<
-        " WHERE nspname !~ '^pg_.*' AND nspname NOT IN ('information_schema')" <<
-        " ORDER by nspname;",
-      'SCHEMA')
-    end
-
-    # Take an id from the result of an INSERT query.
-    # @return [Integer, NilClass]
-    def last_inserted_id(result)
-      return nil if result.nil?
-      return result if result.is_a? Integer
-      # <ActiveRecord::Result @hash_rows=nil, @columns=["id"], @rows=[[3]]>
-      # but it will work with [{ 'id' => 1 }] Hash wrapped results as well
-      result.first.first[1] # .first = { "id"=>1 } .first = [ "id", 1 ]
-    end
-
-    def last_insert_id(table, sequence_name = nil)
-      sequence_name = table if sequence_name.nil? # AR-4.0 1 argument
-      last_insert_id_result(sequence_name)
     end
 
     def last_insert_id_result(sequence_name)
@@ -576,34 +408,6 @@ module ArJdbc
 
     def all_schemas
       select('SELECT nspname FROM pg_namespace').map { |row| row["nspname"] }
-    end
-
-    # @deprecated no longer used - handled with (AR built-in) Rake tasks
-    def structure_dump
-      database = @config[:database]
-      if database.nil?
-        if @config[:url] =~ /\/([^\/]*)$/
-          database = $1
-        else
-          raise "Could not figure out what database this url is for #{@config["url"]}"
-        end
-      end
-
-      ENV['PGHOST']     = @config[:host] if @config[:host]
-      ENV['PGPORT']     = @config[:port].to_s if @config[:port]
-      ENV['PGPASSWORD'] = @config[:password].to_s if @config[:password]
-      search_path = "--schema=#{@config[:schema_search_path]}" if @config[:schema_search_path]
-
-      @connection.connection.close
-      begin
-        definition = `pg_dump -i -U "#{@config[:username]}" -s -x -O #{search_path} #{database}`
-        raise "Error dumping database" if $?.exitstatus == 1
-
-        # need to patch away any references to SQL_ASCII as it breaks the JDBC driver
-        definition.gsub(/SQL_ASCII/, 'UNICODE')
-      ensure
-        reconnect!
-      end
     end
 
     # Returns the current client message level.
@@ -850,50 +654,8 @@ module ArJdbc
     end
     private :column_definitions
 
-    # @private
-    TABLE_EXISTS_SQL_PREFIX =  'SELECT COUNT(*) as table_count FROM pg_class c'
-    TABLE_EXISTS_SQL_PREFIX << ' LEFT JOIN pg_namespace n ON n.oid = c.relnamespace'
-    if AR42 # -- (r)elation/table, (v)iew, (m)aterialized view
-    TABLE_EXISTS_SQL_PREFIX << " WHERE c.relkind IN ('r','v','m')"
-    else
-    TABLE_EXISTS_SQL_PREFIX << " WHERE c.relkind IN ('r','v')"
-    end
-    TABLE_EXISTS_SQL_PREFIX << " AND c.relname = ?"
-    private_constant :TABLE_EXISTS_SQL_PREFIX rescue nil
-
-    # Returns true if table exists.
-    # If the schema is not specified as part of +name+ then it will only find tables within
-    # the current schema search path (regardless of permissions to access tables in other schemas)
-    def table_exists?(name)
-      schema, table = extract_schema_and_table(name.to_s)
-      return false unless table
-
-      binds = [[nil, table]]
-      binds << [nil, schema] if schema
-
-      sql = "#{TABLE_EXISTS_SQL_PREFIX} AND n.nspname = #{schema ? "?" : 'ANY (current_schemas(false))'}"
-
-      log(sql, 'SCHEMA', binds) do
-        @connection.execute_query_raw(sql, binds).first['table_count'] > 0
-      end
-    end
-    alias data_source_exists? table_exists?
-
     def truncate(table_name, name = nil)
       execute "TRUNCATE TABLE #{quote_table_name(table_name)}", name
-    end
-
-    def index_name_exists?(table_name, index_name, default)
-      exec_query(<<-SQL, 'SCHEMA').rows.first[0].to_i > 0
-        SELECT COUNT(*)
-        FROM pg_class t
-        INNER JOIN pg_index d ON t.oid = d.indrelid
-        INNER JOIN pg_class i ON d.indexrelid = i.oid
-        WHERE i.relkind = 'i'
-          AND i.relname = '#{index_name}'
-          AND t.relname = '#{table_name}'
-          AND i.relnamespace IN (SELECT oid FROM pg_namespace WHERE nspname = ANY (current_schemas(false)) )
-      SQL
     end
 
     # Returns an array of indexes for the given table.
@@ -1012,9 +774,38 @@ module ActiveRecord::ConnectionAdapters
   remove_const(:PostgreSQLAdapter) if const_defined?(:PostgreSQLAdapter)
 
   class PostgreSQLAdapter < JdbcAdapter
+
+    # Store references to these methods so we can use them
+    # to overwrite the versions defined by
+    # ActiveRecord::ConnectionAdapters::PostgreSQL::DatabaseStatements
+    # This makes it so we can use the bulk of the core logic while
+    # keeping the actual database access defined in this adapter
+    # This is hopefully temporary until this is cleaned up enough that we
+    # can extend ActiveRecord's AbstractAdapter or PostgreSQLAdapter instead of the JdbcAdapter
+    SAVED_METHODS = ['execute', 'exec_delete', 'exec_query', 'exec_update',
+                     'select_rows', 'select_value', 'select_values',
+                     'begin_db_transaction', 'commit_db_transaction', 'rollback_db_transaction',
+                     'begin_isolated_db_transaction', 'supports_transaction_isolation?',
+                     'create_savepoint', 'rollback_to_savepoint',
+                     'release_savepoint', 'current_savepoint_name']
+    SAVED_METHOD_PREFIX = 'jdbc_adapter'
+
+    SAVED_METHODS.each do |base_name|
+      alias_method :"#{SAVED_METHOD_PREFIX}_#{base_name}", base_name
+    end
+
+    # Keep this one separate because we don't want it to be automatically redefined
+    alias_method :"#{SAVED_METHOD_PREFIX}_exec_insert", :exec_insert
+
     include ActiveRecord::ConnectionAdapters::PostgreSQL::ColumnDumper
+    include ActiveRecord::ConnectionAdapters::PostgreSQL::DatabaseStatements
     include ActiveRecord::ConnectionAdapters::PostgreSQL::SchemaStatements
     include ActiveRecord::ConnectionAdapters::PostgreSQL::Quoting
+
+    # Restore saved methods
+    SAVED_METHODS.each do |base_name|
+      alias_method base_name, "#{SAVED_METHOD_PREFIX}_#{base_name}".to_sym
+    end
 
     include ::ArJdbc::PostgreSQL
     include ::ArJdbc::PostgreSQL::ExplainSupport
