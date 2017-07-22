@@ -298,13 +298,6 @@ module ActiveRecord
         @connection.disconnect!
       end
 
-      # @note Used on AR 2.3 and 3.0
-      # @override
-      def insert_sql(sql, name = nil, pk = nil, id_value = nil, sequence_name = nil)
-        id = execute(sql, name)
-        id_value || id
-      end
-
       def columns(table_name, name = nil)
         @connection.columns(table_name.to_s)
       end
