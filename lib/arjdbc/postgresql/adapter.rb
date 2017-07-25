@@ -9,6 +9,9 @@ require 'active_record/connection_adapters/postgresql/schema_dumper'
 require 'active_record/connection_adapters/postgresql/schema_statements'
 require 'active_record/connection_adapters/postgresql/type_metadata'
 require 'active_record/connection_adapters/postgresql/utils'
+require 'arjdbc/common_jdbc_methods'
+require 'arjdbc/abstract/database_statements'
+require 'arjdbc/abstract/transaction_support'
 require 'arjdbc/postgresql/base/array_decoder'
 require 'arjdbc/postgresql/base/array_encoder'
 require 'arjdbc/postgresql/name'
@@ -264,21 +267,6 @@ module ArJdbc
     # @override
     def supports_savepoints?; true end
 
-    # @override
-    def create_savepoint(name = current_savepoint_name(true))
-      log("SAVEPOINT #{name}", 'Savepoint') { super }
-    end
-
-    # @override
-    def rollback_to_savepoint(name = current_savepoint_name(true))
-      log("ROLLBACK TO SAVEPOINT #{name}", 'Savepoint') { super }
-    end
-
-    # @override
-    def release_savepoint(name = current_savepoint_name(false))
-      log("RELEASE SAVEPOINT #{name}", 'Savepoint') { super }
-    end
-
     def supports_extensions?
       postgresql_version >= 90200
     end # NOTE: only since AR-4.0 but should not hurt on other versions
@@ -331,9 +319,9 @@ module ArJdbc
     #           RETURNING not being included in the sql
     def exec_insert(sql, name, binds, pk = nil, sequence_name = nil)
       if pk || (sql.is_a?(String) && sql =~ /RETURNING "?\S+"?$/)
-        super
+        ar_postgres_adapter_exec_insert(sql, name, binds, pk, sequence_name)
       else
-        jdbc_adapter_exec_insert(sql, name, binds, pk, sequence_name)
+        super
       end
     end
 
@@ -775,27 +763,18 @@ module ActiveRecord::ConnectionAdapters
 
   class PostgreSQLAdapter < JdbcAdapter
 
-    # Store references to these methods so we can use them
-    # to overwrite the versions defined by
-    # ActiveRecord::ConnectionAdapters::PostgreSQL::DatabaseStatements
     # This makes it so we can use the bulk of the core logic while
     # keeping the actual database access defined in this adapter
-    # This is hopefully temporary until this is cleaned up enough that we
-    # can extend ActiveRecord's AbstractAdapter or PostgreSQLAdapter instead of the JdbcAdapter
-    SAVED_METHODS = ['execute', 'exec_delete', 'exec_query', 'exec_update',
-                     'select_rows', 'select_value', 'select_values',
-                     'begin_db_transaction', 'commit_db_transaction', 'rollback_db_transaction',
-                     'begin_isolated_db_transaction', 'supports_transaction_isolation?',
-                     'create_savepoint', 'rollback_to_savepoint',
-                     'release_savepoint', 'current_savepoint_name']
-    SAVED_METHOD_PREFIX = 'jdbc_adapter'
+    # These methods come from ActiveRecord::Abstract::DatabaseStatements so
+    # we need to hang on to references to them because the versions in
+    # ActiveRecord::ConnectionAdapters::PostgreSQL::DatabaseStatements
+    # have PG gem specific implementations that override the Abstract implementations
+    SAVED_METHODS = ['select_rows', 'select_value', 'select_values']
+    SAVED_METHOD_PREFIX = 'abstract_adapter'
 
     SAVED_METHODS.each do |base_name|
       alias_method :"#{SAVED_METHOD_PREFIX}_#{base_name}", base_name
     end
-
-    # Keep this one separate because we don't want it to be automatically redefined
-    alias_method :"#{SAVED_METHOD_PREFIX}_exec_insert", :exec_insert
 
     include ActiveRecord::ConnectionAdapters::PostgreSQL::ColumnDumper
     include ActiveRecord::ConnectionAdapters::PostgreSQL::DatabaseStatements
@@ -804,8 +783,16 @@ module ActiveRecord::ConnectionAdapters
 
     # Restore saved methods
     SAVED_METHODS.each do |base_name|
-      alias_method base_name, "#{SAVED_METHOD_PREFIX}_#{base_name}".to_sym
+      alias_method base_name, :"#{SAVED_METHOD_PREFIX}_#{base_name}"
     end
+
+    # We need this so we can call arjdbc logic or ActiveRecord postgres adapter logic
+    # to support when a sql statement already has a 'RETURNING' clause
+    alias_method :ar_postgres_adapter_exec_insert, :exec_insert
+
+    include ArJdbc::CommonJdbcMethods
+    include ArJdbc::Abstract::DatabaseStatements
+    include ArJdbc::Abstract::TransactionSupport
 
     include ::ArJdbc::PostgreSQL
     include ::ArJdbc::PostgreSQL::ExplainSupport
