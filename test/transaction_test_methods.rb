@@ -42,7 +42,7 @@ module TransactionTestMethods
     assert ActiveRecord::Base.connection.supports_transaction_isolation?(:read_committed)
     assert ActiveRecord::Base.connection.supports_transaction_isolation?(:repeatable_read)
     assert ActiveRecord::Base.connection.supports_transaction_isolation?(:serializable)
-  end if defined? JRUBY_VERSION
+  end
 
   def test_transaction_isolation_read_uncommitted
     # It is impossible to properly test read uncommitted. The SQL standard only
@@ -54,7 +54,7 @@ module TransactionTestMethods
       Entry2.create
       assert_equal 1, Entry.count
     end
-  end if Test::Unit::TestCase.ar_version('4.0')
+  end
 
   def test_transaction_isolation_read_committed
     unless ActiveRecord::Base.connection.supports_transaction_isolation?
@@ -72,7 +72,7 @@ module TransactionTestMethods
       end
     end
     assert_equal 1, Entry.count
-  end if Test::Unit::TestCase.ar_version('4.0')
+  end
 
   def test_transaction_isolation_repeatable_read
     unless ActiveRecord::Base.connection.supports_transaction_isolation?
@@ -100,7 +100,7 @@ module TransactionTestMethods
     end
     entry.reload
     assert_equal 'my-user', entry.login
-  end if Test::Unit::TestCase.ar_version('4.0')
+  end
 
 #  def test_transaction_isolation_serializable
 #    # We are testing that a non-serializable sequence of statements will raise
@@ -192,34 +192,8 @@ module TransactionTestMethods
     assert_equal %w(one three), all.map(&:title)
   end
 
-  def test_savepoint
-    omit 'savepoins not supported' unless @supports_savepoints
-    # NOTE: create_savepoint always takes an argument since AR 4.1
-
-    Entry.create! :title => '1'
-    assert_equal 1, Entry.count
-
-    connection = ActiveRecord::Base.connection
-    connection.transaction do
-      begin
-        connection.create_savepoint
-        savepoint_created = true
-
-        Entry.create! :title => '2'
-        Entry.create! :title => '3'
-
-        assert_equal 3, Entry.count
-
-        connection.rollback_to_savepoint
-        assert_equal 1, Entry.count
-      ensure
-        connection.release_savepoint if savepoint_created
-      end
-    end
-  end unless Test::Unit::TestCase.ar_version('4.1')
-
   def test_using_named_savepoints
-    omit 'savepoins not supported' unless @supports_savepoints
+    omit 'savepoints not supported' unless @supports_savepoints
 
     first = Entry.create! :title => '1'; first.reload
 
@@ -238,60 +212,30 @@ module TransactionTestMethods
       Entry.connection.release_savepoint("first")
       assert_equal 'f', first.reload.content
     end
-  end if Test::Unit::TestCase.ar_version('4.1')
+  end
 
   def test_current_savepoints_name
     MyUser.transaction do
-      if ar_version('4.2')
-        assert_nil MyUser.connection.current_savepoint_name
-        assert_nil MyUser.connection.current_transaction.savepoint_name
-      else # 3.2
-        assert_equal "active_record_1", MyUser.connection.current_savepoint_name
-      end
+      assert_nil MyUser.connection.current_savepoint_name
+      assert_nil MyUser.connection.current_transaction.savepoint_name
 
       MyUser.transaction(:requires_new => true) do
-        if ar_version('4.2')
-          assert_equal "active_record_1", MyUser.connection.current_savepoint_name
-          assert_equal "active_record_1", MyUser.connection.current_transaction.savepoint_name
-        else # 3.2
-          # on AR < 3.2 we do get 'active_record_1' with AR-JDBC which is not compatible
-          # with MRI but is actually more accurate - maybe 3.2 should be updated as well
-          assert_equal "active_record_2", MyUser.connection.current_savepoint_name
-
-          assert_equal "active_record_2", MyUser.connection.current_savepoint_name(true) if defined? JRUBY_VERSION
-          assert_equal "active_record_1", MyUser.connection.current_savepoint_name(false) if defined? JRUBY_VERSION
-        end
+        assert_equal "active_record_1", MyUser.connection.current_savepoint_name
+        assert_equal "active_record_1", MyUser.connection.current_transaction.savepoint_name
 
         MyUser.transaction(:requires_new => true) do
-          if ar_version('4.2')
-            assert_equal "active_record_2", MyUser.connection.current_savepoint_name
-            assert_equal "active_record_2", MyUser.connection.current_transaction.savepoint_name
-
-            assert_equal "active_record_2", MyUser.connection.current_savepoint_name(true) if defined? JRUBY_VERSION
-            assert_equal "active_record_2", MyUser.connection.current_savepoint_name(false) if defined? JRUBY_VERSION
-          else # 3.2
-            assert_equal "active_record_3", MyUser.connection.current_savepoint_name
-
-            assert_equal "active_record_3", MyUser.connection.current_savepoint_name(true) if defined? JRUBY_VERSION
-            assert_equal "active_record_2", MyUser.connection.current_savepoint_name(false) if defined? JRUBY_VERSION
-          end
-        end
-
-        if ar_version('4.2')
-          assert_equal "active_record_1", MyUser.connection.current_savepoint_name
-          assert_equal "active_record_1", MyUser.connection.current_transaction.savepoint_name
-        else # 3.2
           assert_equal "active_record_2", MyUser.connection.current_savepoint_name
-
-          assert_equal "active_record_2", MyUser.connection.current_savepoint_name(true) if defined? JRUBY_VERSION
-          assert_equal "active_record_1", MyUser.connection.current_savepoint_name(false) if defined? JRUBY_VERSION
+          assert_equal "active_record_2", MyUser.connection.current_transaction.savepoint_name
         end
+
+        assert_equal "active_record_1", MyUser.connection.current_savepoint_name
+        assert_equal "active_record_1", MyUser.connection.current_transaction.savepoint_name
       end
     end
-  end if Test::Unit::TestCase.ar_version('3.2')
+  end
 
   def test_releasing_named_savepoints
-    omit 'savepoins not supported' unless @supports_savepoints
+    omit 'savepoints not supported' unless @supports_savepoints
     Entry.transaction do
       Entry.connection.create_savepoint("another")
       Entry.connection.release_savepoint("another")
@@ -303,10 +247,10 @@ module TransactionTestMethods
         Entry.connection.release_savepoint("another")
       end
     end
-  end if Test::Unit::TestCase.ar_version('4.1')
+  end
 
   def test_release_savepoint
-    omit 'savepoins not supported' unless @supports_savepoints
+    omit 'savepoints not supported' unless @supports_savepoints
     connection = ActiveRecord::Base.connection
     connection.transaction do
       begin
@@ -323,10 +267,10 @@ module TransactionTestMethods
         disable_logger { connection.release_savepoint 'SP' rescue nil }
       end
     end
-  end if defined? JRUBY_VERSION
+  end
 
   def test_named_savepoint
-    omit 'savepoins not supported' unless @supports_savepoints
+    omit 'savepoints not supported' unless @supports_savepoints
     Entry.create! :title => '1'
     assert_equal 1, Entry.count
 
@@ -366,6 +310,6 @@ module TransactionTestMethods
         end
       end
     end
-  end if defined? JRUBY_VERSION
+  end
 
 end

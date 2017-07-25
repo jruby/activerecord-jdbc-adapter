@@ -1,6 +1,8 @@
 ArJdbc.load_java_part :SQLite3
 
 require "arjdbc/common_jdbc_methods"
+require "arjdbc/abstract/database_statements"
+require "arjdbc/abstract/transaction_support"
 require "active_record/connection_adapters/statement_pool"
 require "active_record/connection_adapters/abstract/database_statements"
 require "active_record/connection_adapters/sqlite3/explain_pretty_printer"
@@ -199,20 +201,12 @@ module ArJdbc
       @connection.last_insert_row_id
     end
 
-    def execute(sql, name = nil) #:nodoc:
-      log(sql, name) { @connection.execute(sql) }
-    end
-
     def begin_db_transaction #:nodoc:
       log("begin transaction",nil) { @connection.transaction }
     end
 
-    def commit_db_transaction #:nodoc:
-      log("commit transaction",nil) { @connection.commit }
-    end
-
-    def exec_rollback_db_transaction #:nodoc:
-      log("rollback transaction",nil) { @connection.rollback }
+    def begin_isolated_db_transaction(isolation)
+      raise ActiveRecord::TransactionIsolationError, 'adapter does not support setting transaction isolation'
     end
 
     # SCHEMA STATEMENTS ========================================
@@ -640,6 +634,8 @@ module ActiveRecord::ConnectionAdapters
   # module SQLite3 above and remove a majority of this file.
   class SQLite3Adapter < AbstractAdapter
     include ArJdbc::CommonJdbcMethods
+    include ArJdbc::Abstract::DatabaseStatements
+    include ArJdbc::Abstract::TransactionSupport
     include ArJdbc::SQLite3
 
     # FIXME: Add @connection.encoding then remove this method
