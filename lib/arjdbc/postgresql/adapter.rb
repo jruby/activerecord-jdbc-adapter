@@ -4,6 +4,7 @@ ArJdbc.load_java_part :PostgreSQL
 require 'ipaddr'
 require 'active_record/connection_adapters/postgresql/column'
 require 'active_record/connection_adapters/postgresql/database_statements'
+require 'active_record/connection_adapters/postgresql/explain_pretty_printer'
 require 'active_record/connection_adapters/postgresql/quoting'
 require 'active_record/connection_adapters/postgresql/schema_dumper'
 require 'active_record/connection_adapters/postgresql/schema_statements'
@@ -21,7 +22,6 @@ module ArJdbc
   module PostgreSQL
 
     require 'arjdbc/postgresql/column'
-    require 'arjdbc/postgresql/explain_support'
     require 'arel/visitors/postgresql_jdbc'
     # @private
     IndexDefinition = ::ActiveRecord::ConnectionAdapters::IndexDefinition
@@ -218,15 +218,23 @@ module ArJdbc
       @standard_conforming_strings == true # return false if :unsupported
     end
 
-    # Does PostgreSQL support migrations?
-    def supports_migrations?
-      true
-    end
+    def supports_ddl_transactions?; true end
 
-    # Does PostgreSQL support finding primary key on non-Active Record tables?
-    def supports_primary_key?
-      true
-    end
+    def supports_explain?; true end
+
+    def supports_index_sort_order?; true end
+
+    def supports_migrations?; true end
+
+    def supports_partial_index?; true end
+
+    def supports_primary_key?; true end # Supports finding primary key on non-Active Record tables
+
+    def supports_savepoints?; true end
+
+    def supports_transaction_isolation?(level = nil); true end
+
+    def supports_views?; true end
 
     # Does PostgreSQL support standard conforming strings?
     def supports_standard_conforming_strings?
@@ -242,30 +250,10 @@ module ArJdbc
       postgresql_version >= 80200
     end
 
-    def supports_ddl_transactions?; true end
-
-    def supports_transaction_isolation?; true end
-
-    def supports_index_sort_order?; true end
-
-    def supports_partial_index?; true end
-
     # Range data-types weren't introduced until PostgreSQL 9.2.
     def supports_ranges?
       postgresql_version >= 90200
     end
-
-    def supports_transaction_isolation?(level = nil)
-      true
-    end
-
-    # @override
-    def supports_views?; true end
-
-    # NOTE: handled by JdbcAdapter we override only to have save-point in logs :
-
-    # @override
-    def supports_savepoints?; true end
 
     def supports_extensions?
       postgresql_version >= 90200
@@ -793,9 +781,7 @@ module ActiveRecord::ConnectionAdapters
     include ArJdbc::CommonJdbcMethods
     include ArJdbc::Abstract::DatabaseStatements
     include ArJdbc::Abstract::TransactionSupport
-
-    include ::ArJdbc::PostgreSQL
-    include ::ArJdbc::PostgreSQL::ExplainSupport
+    include ArJdbc::PostgreSQL
 
     require 'arjdbc/postgresql/oid_types'
     include ::ArJdbc::PostgreSQL::OIDTypes
