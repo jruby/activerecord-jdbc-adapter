@@ -296,12 +296,15 @@ module ActiveRecord
 
       # @override
       def reconnect!
+        super # clear_cache! && reset_transaction
         @connection.reconnect! # handles adapter.configure_connection
         @connection
       end
 
       # @override
       def disconnect!
+        super # clear_cache! && reset_transaction
+        return unless @connection
         @connection.disconnect!
       end
 

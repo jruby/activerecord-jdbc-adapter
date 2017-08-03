@@ -57,6 +57,25 @@ module ArJdbc
     # @see ActiveRecord::ConnectionAdapters::JdbcAdapter#jdbc_column_class
     def jdbc_column_class; ::ActiveRecord::ConnectionAdapters::OracleColumn end
 
+    def configure_connection # mostly oracle-enhanced config compatibility
+      jdbc_connection = nil
+      if time_zone = config[:time_zone] # || ENV['TZ']
+        jdbc_connection ||= jdbc_connection(true)
+        jdbc_connection.setSessionTimeZone(time_zone)
+      end
+
+      cursor_sharing = config[:cursor_sharing] # || 'force'
+      execute "ALTER SESSION SET cursor_sharing = #{cursor_sharing}" if cursor_sharing
+
+      schema = config[:schema] && config[:schema].to_s
+      if schema.blank? # default schema owner
+        # @owner = username.upcase unless username.nil?
+      else
+        self.current_schema = schema
+        # @owner = schema
+      end
+    end
+
     # @private
     @@update_lob_values = true
 
@@ -943,10 +962,11 @@ module ActiveRecord::ConnectionAdapters
 
     def initialize(*args)
       ::ArJdbc::Oracle.initialize!
-      super # configure_connection happens in super
 
       @use_insert_returning = config.key?(:insert_returning) ?
         self.class.type_cast_config_to_boolean(config[:insert_returning]) : nil
+
+      super # configure_connection happens in super
     end
 
   end
