@@ -35,7 +35,7 @@ module SerializeTestMethods
   MyObject = Struct.new :attribute1, :attribute2
 
   def test_list_of_serialized_attributes
-    assert_equal %w(content created_on), Topic.serialized_attributes.keys
+    assert_equal %w(content), Topic.serialized_attributes.keys
   end if ActiveRecord::VERSION::STRING <= '4.2'
 
   def test_serialized_attribute
@@ -302,15 +302,6 @@ module SerializeTestMethods
   ensure
     ActiveRecord::Base.time_zone_aware_attributes = false
   end if Test::Unit::TestCase.ar_version('3.2')
-
-  def test_date_to_integer_serialization
-    date  = Date.today
-    serialized_date = Topic::StoreDateAsInteger.dump(date)
-    topic = Topic.create(:created_on => date)
-    topic.reload
-    assert_equal serialized_date, topic.attributes_before_type_cast['created_on'].to_i
-    assert_equal date, topic.created_on
-  end if Test::Unit::TestCase.ar_version('4.2')
 
 #  def test_serialize_attribute_can_be_serialized_in_an_integer_column
 #    insures = ['life']
