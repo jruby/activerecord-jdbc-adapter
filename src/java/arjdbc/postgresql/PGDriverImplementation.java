@@ -49,6 +49,7 @@ import org.postgresql.PGStatement;
 import org.postgresql.core.BaseConnection;
 import org.postgresql.util.PGInterval;
 import org.postgresql.util.PGobject;
+import org.postgresql.jdbc.PgArray;
 
 import arjdbc.util.NumberUtils;
 import static arjdbc.jdbc.RubyJdbcConnection.isAr42;
@@ -61,9 +62,12 @@ import static arjdbc.jdbc.RubyJdbcConnection.isAr42;
 public final class PGDriverImplementation implements DriverImplementation {
 
     private static final boolean initConnection;
+    private static final boolean useLegacyArrayClass; // legacy support for older (< postgres 9.2) drivers
     static {
         String initConn = SafePropertyAccessor.getProperty("arjdbc.postgresql.connection.init", "true");
         initConnection = Boolean.parseBoolean(initConn);
+
+        useLegacyArrayClass = shouldUseInternalPGArrayClass();
     }
 
     public static void initConnection(final Connection connection) throws SQLException {
@@ -166,26 +170,30 @@ public final class PGDriverImplementation implements DriverImplementation {
         return str;
     }
 
-    private static Class<?> pgArrayClass;
-    private static Class<?> pgArrayClass(final ThreadContext context) {
-        final Class<?> clazz = pgArrayClass;
+    private static Class<?> internalPGArrayClass;
+    private static Class<?> internalPGArrayClass(final ThreadContext context) {
+        final Class<?> clazz = internalPGArrayClass;
         if (clazz == null) {
             final Ruby runtime = context.getRuntime();
             try {
-                // try loading official PgArray Class (since postgresql 9.4)
-                pgArrayClass = runtime.getJavaSupport().loadJavaClass("org.postgresql.jdbc.PgArray");
-                return pgArrayClass;
+                // load older (internal) Jdbc4Array Class (9.2 and earlier)
+                internalPGArrayClass = runtime.getJavaSupport().loadJavaClass("org.postgresql.jdbc4.Jdbc4Array");
+                return internalPGArrayClass;
             }
-            catch (ClassNotFoundException ex) {
-                try {
-                    // load older (internal) Jdbc4Array Class (9.2 and earlier)
-                    pgArrayClass = runtime.getJavaSupport().loadJavaClass("org.postgresql.jdbc4.Jdbc4Array");
-                    return pgArrayClass;
-                }
-                catch (ClassNotFoundException e) { /* should never be reached */ }
-            }
+            catch (ClassNotFoundException e) { /* should never be reached */ }
         }
         return clazz;
+    }
+
+    private static boolean shouldUseInternalPGArrayClass() {
+        try {
+            // try loading official PgArray Class (since postgresql 9.4)
+            Class.forName("org.postgresql.jdbc.PgArray");
+            return false;
+        } catch (ClassNotFoundException e) {
+            // fallback to older (internal) Jdbc4Array Class (9.2 and earlier)
+            return true;
+        }
     }
 
     public boolean setStringParameter(final ThreadContext context,
@@ -214,17 +222,24 @@ public final class PGDriverImplementation implements DriverImplementation {
             if ( sqlType != null ) {
                 if ( PostgreSQLRubyJdbcConnection.rawArrayType == Boolean.TRUE && arrayLike(sqlType) ) {
                     final int oid = PostgreSQLRubyJdbcConnection.oid(context, column);
-                    final Class<?> clazz = pgArrayClass(context);
-                    try {
-                        Array valueArr = (Array) clazz
-                            .getDeclaredConstructor(new Class[]{ Connection.class, Integer.class, String.class })
-                            .newInstance(new Object[]{ connection.unwrap(BaseConnection.class), oid, valueStr });
+                    if (useLegacyArrayClass) {
+                        // use older (internal) Jdbc4Array Class
+                        try {
+                            final Class<?> arrayClazz = internalPGArrayClass(context);
+                            final Array valueArr = (Array) arrayClazz
+                                .getDeclaredConstructor(new Class[]{ Connection.class, Integer.class, String.class })
+                                .newInstance(new Object[]{ connection.unwrap(BaseConnection.class), oid, valueStr });
+                            statement.setArray(index, valueArr); return true;
+                        }
+                        catch (InvocationTargetException e) { /* should never be reached */ }
+                        catch (NoSuchMethodException e) { /* should never be reached */ }
+                        catch (InstantiationException e) { /* should never be reached */ }
+                        catch (IllegalAccessException e) { /* should never be reached */ }
+                    } else {
+                        // use official PgArray Class
+                        final Array valueArr = new PgArray(connection.unwrap(BaseConnection.class), oid, valueStr);
                         statement.setArray(index, valueArr); return true;
                     }
-                    catch (InvocationTargetException e) { /* should never be reached */ }
-                    catch (NoSuchMethodException e) { /* should never be reached */ }
-                    catch (InstantiationException e) { /* should never be reached */ }
-                    catch (IllegalAccessException e) { /* should never be reached */ }
                 }
                 if ( sqlType.getByteList().startsWith( INTERVAL ) ) {
                     statement.setObject( index, new PGInterval( valueStr ) ); return true;
