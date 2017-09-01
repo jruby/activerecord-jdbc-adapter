@@ -24,7 +24,6 @@ class PostgreSQLNativeTypesTest < Test::Unit::TestCase
         "double_precision_should_be_float double precision",
         "real_should_be_float real",
         "bool_should_be_boolean bool",
-        "interval_should_be_string interval",
         "bigint_should_be_integer bigint"
       ]
       columns << "uuid_should_be_string uuid" if PG_VERSION >= 80300
@@ -56,10 +55,6 @@ class PostgreSQLNativeTypesTest < Test::Unit::TestCase
   def test_uuid_column_should_map_to_string
     return unless PG_VERSION >= 80300
     assert_instance_of OID::Uuid, column_type("uuid_should_be_string")
-  end
-
-  def test_interval_should_be_mapped_to_string
-    assert_instance_of ActiveModel::Type::String, column_type("interval_should_be_string")
   end
 
   def test_bigint_serial_should_be_mapped_to_integer

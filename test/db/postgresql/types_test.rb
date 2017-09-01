@@ -300,8 +300,8 @@ _SQL
   end
 
   def test_data_type_of_time_types
-    assert_instance_of ActiveModel::Type::String, PostgresqlTime.type_for_attribute('time_interval')
-    assert_instance_of ActiveModel::Type::String, PostgresqlTime.type_for_attribute('scaled_time_interval')
+    assert_instance_of OID::SpecializedString, PostgresqlTime.type_for_attribute('time_interval')
+    assert_instance_of OID::SpecializedString, PostgresqlTime.type_for_attribute('scaled_time_interval')
   end
 
   def test_data_type_of_network_address_types

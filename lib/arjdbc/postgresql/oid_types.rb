@@ -102,19 +102,25 @@ module ArJdbc
         m.register_type 'inet', OID::Inet.new
         m.register_type 'uuid', OID::Uuid.new
         m.register_type 'xml', OID::Xml.new
-        m.register_type 'tsvector', OID::SpecializedString.new(:tsvector)
-        m.register_type 'macaddr', OID::SpecializedString.new(:macaddr)
+        m.register_type 'box', OID::SpecializedString.new(:box)
+        m.register_type 'circle', OID::SpecializedString.new(:circle)
         m.register_type 'citext', OID::SpecializedString.new(:citext)
+        m.register_type 'line', OID::SpecializedString.new(:line)
+        m.register_type 'lseg', OID::SpecializedString.new(:lseg)
         m.register_type 'ltree', OID::SpecializedString.new(:ltree)
+        m.register_type 'macaddr', OID::SpecializedString.new(:macaddr)
+        m.register_type 'path', OID::SpecializedString.new(:path)
+        m.register_type 'polygon', OID::SpecializedString.new(:polygon)
+        m.register_type 'tsvector', OID::SpecializedString.new(:tsvector)
 
-        # FIXME: why are we keeping these types as strings?
-        m.alias_type 'interval', 'varchar'
-        m.alias_type 'path', 'varchar'
-        m.alias_type 'line', 'varchar'
-        m.alias_type 'polygon', 'varchar'
-        m.alias_type 'circle', 'varchar'
-        m.alias_type 'lseg', 'varchar'
-        m.alias_type 'box', 'varchar'
+        # This is how Rails 5.1 handles it. In 5.0 SpecializedString doesn't take a precision option
+        # 5.0 actually leaves it as a regular String but we need it specialized
+        # to support prepared statements
+        # m.register_type 'interval' do |_, _, sql_type|
+        #   precision = extract_precision(sql_type)
+        #   OID::SpecializedString.new(:interval, precision: precision)
+        # end
+        m.register_type 'interval', OID::SpecializedString.new(:interval)
 
         m.register_type 'timestamp' do |_, _, sql_type|
           precision = extract_precision(sql_type)
