@@ -23,6 +23,8 @@
  */
 package arjdbc.postgresql;
 
+import java.lang.reflect.InvocationTargetException;
+import java.sql.Array;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -32,6 +34,7 @@ import java.sql.Types;
 import java.util.Map;
 import java.util.UUID;
 
+import org.jruby.Ruby;
 import org.jruby.RubyFloat;
 import org.jruby.RubyHash;
 import org.jruby.RubyString;
@@ -44,9 +47,9 @@ import org.jruby.util.SafePropertyAccessor;
 import org.postgresql.PGConnection;
 import org.postgresql.PGStatement;
 import org.postgresql.core.BaseConnection;
-import org.postgresql.jdbc4.Jdbc4Array;
 import org.postgresql.util.PGInterval;
 import org.postgresql.util.PGobject;
+import org.postgresql.jdbc.PgArray;
 
 import arjdbc.util.NumberUtils;
 import static arjdbc.jdbc.RubyJdbcConnection.isAr42;
@@ -59,9 +62,12 @@ import static arjdbc.jdbc.RubyJdbcConnection.isAr42;
 public final class PGDriverImplementation implements DriverImplementation {
 
     private static final boolean initConnection;
+    private static final boolean useLegacyArrayClass; // legacy support for older (< postgres 9.2) drivers
     static {
         String initConn = SafePropertyAccessor.getProperty("arjdbc.postgresql.connection.init", "true");
         initConnection = Boolean.parseBoolean(initConn);
+
+        useLegacyArrayClass = shouldUseInternalPGArrayClass();
     }
 
     public static void initConnection(final Connection connection) throws SQLException {
@@ -164,6 +170,32 @@ public final class PGDriverImplementation implements DriverImplementation {
         return str;
     }
 
+    private static Class<?> internalPGArrayClass;
+    private static Class<?> internalPGArrayClass(final ThreadContext context) {
+        final Class<?> clazz = internalPGArrayClass;
+        if (clazz == null) {
+            final Ruby runtime = context.getRuntime();
+            try {
+                // load older (internal) Jdbc4Array Class (9.2 and earlier)
+                internalPGArrayClass = runtime.getJavaSupport().loadJavaClass("org.postgresql.jdbc4.Jdbc4Array");
+                return internalPGArrayClass;
+            }
+            catch (ClassNotFoundException e) { /* should never be reached */ }
+        }
+        return clazz;
+    }
+
+    private static boolean shouldUseInternalPGArrayClass() {
+        try {
+            // try loading official PgArray Class (since postgresql 9.4)
+            Class.forName("org.postgresql.jdbc.PgArray");
+            return false;
+        } catch (ClassNotFoundException e) {
+            // fallback to older (internal) Jdbc4Array Class (9.2 and earlier)
+            return true;
+        }
+    }
+
     public boolean setStringParameter(final ThreadContext context,
         final Connection connection, final PreparedStatement statement,
         final int index, final IRubyObject value,
@@ -190,8 +222,24 @@ public final class PGDriverImplementation implements DriverImplementation {
             if ( sqlType != null ) {
                 if ( PostgreSQLRubyJdbcConnection.rawArrayType == Boolean.TRUE && arrayLike(sqlType) ) {
                     final int oid = PostgreSQLRubyJdbcConnection.oid(context, column);
-                    Jdbc4Array valueArr = new Jdbc4Array(connection.unwrap(BaseConnection.class), oid, valueStr);
-                    statement.setArray(index, valueArr); return true;
+                    if (useLegacyArrayClass) {
+                        // use older (internal) Jdbc4Array Class
+                        try {
+                            final Class<?> arrayClazz = internalPGArrayClass(context);
+                            final Array valueArr = (Array) arrayClazz
+                                .getDeclaredConstructor(new Class[]{ Connection.class, Integer.class, String.class })
+                                .newInstance(new Object[]{ connection.unwrap(BaseConnection.class), oid, valueStr });
+                            statement.setArray(index, valueArr); return true;
+                        }
+                        catch (InvocationTargetException e) { /* should never be reached */ }
+                        catch (NoSuchMethodException e) { /* should never be reached */ }
+                        catch (InstantiationException e) { /* should never be reached */ }
+                        catch (IllegalAccessException e) { /* should never be reached */ }
+                    } else {
+                        // use official PgArray Class
+                        final Array valueArr = new PgArray(connection.unwrap(BaseConnection.class), oid, valueStr);
+                        statement.setArray(index, valueArr); return true;
+                    }
                 }
                 if ( sqlType.getByteList().startsWith( INTERVAL ) ) {
                     statement.setObject( index, new PGInterval( valueStr ) ); return true;

@@ -115,6 +115,18 @@ class PostgreSQLArrayTypeTest < Test::Unit::TestCase
     end
   end
 
+  def test_raw_string_value
+    x = PgArray.create!(:tag_count => '{1,2,3}')
+    x.reload
+    assert_equal([1, 2, 3], x.tag_count)
+
+    x = PgArray.create!(:tag_count => [])
+    x.tag_count = '{1,2,3}'
+    x.save!
+    x.reload
+    assert_equal([1, 2, 3], x.tag_count)
+  end
+
   def test_rewrite
     @connection.execute "INSERT INTO pg_arrays (tags) VALUES ('{1,2,3}')"
     x = PgArray.first

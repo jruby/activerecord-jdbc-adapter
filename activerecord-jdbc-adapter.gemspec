@@ -38,7 +38,7 @@ Gem::Specification.new do |gem|
     gem.add_development_dependency 'ruby-maven', '~> 3.1.1.0.11'
 
     gem.requirements << "jar mysql:mysql-connector-java, 5.1.33, :scope => :compile"
-    gem.requirements << "jar org.postgresql:postgresql, 9.4-1200-jdbc4, :scope => :compile"
+    gem.requirements << "jar org.postgresql:postgresql, 9.4.1212.jre6, :scope => :compile"
     # TODO Bundler won't copy, since the extension is supposed to live elsewhere ?!
     #gem.files << 'lib/arjdbc/jdbc/adapter_java.jar'
 

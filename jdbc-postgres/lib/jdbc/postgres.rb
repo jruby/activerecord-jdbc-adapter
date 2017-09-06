@@ -29,13 +29,15 @@ module Jdbc
 
     def self.jdbc_version
       version = ENV_JAVA[ 'java.specification.version' ]
-      version = version.split('.').last.to_i # '1.7' => 7
+      version = version.split('.').last.to_i # '1.8' => 8
       if version < 6
         3 # not supported
       elsif version == 6
         4
-      else # JDBC >= 4.1
+      elsif version == 7
         4.1
+      else # JDBC >= 4.2
+        4.2
       end
     end
 
