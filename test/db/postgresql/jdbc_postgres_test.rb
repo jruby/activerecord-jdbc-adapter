@@ -23,12 +23,14 @@ module Jdbc
       assert_equal 4, Jdbc::Postgres.send(:jdbc_version)
     end
 
-    test 'returns jdbc version 4.1 on java 7/8' do
+    test 'returns jdbc version 4.1 on java 7' do
       ENV_JAVA[ 'java.specification.version' ] = '1.7'
       assert_equal 4.1, Jdbc::Postgres.send(:jdbc_version)
+    end
 
+    test 'returns jdbc version 4.2 on java 8' do
       ENV_JAVA[ 'java.specification.version' ] = '1.8'
-      assert_equal 4.1, Jdbc::Postgres.send(:jdbc_version)
+      assert_equal 4.2, Jdbc::Postgres.send(:jdbc_version)
     end
 
     context 'load-driver' do
