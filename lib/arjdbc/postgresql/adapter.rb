@@ -309,7 +309,7 @@ module ArJdbc
       if pk || (sql.is_a?(String) && sql =~ /RETURNING "?\S+"?$/)
         ar_postgres_adapter_exec_insert(sql, name, binds, pk, sequence_name)
       else
-        super
+        exec_update(sql, name, binds)
       end
     end
 
