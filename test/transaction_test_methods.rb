@@ -368,4 +368,24 @@ module TransactionTestMethods
     end
   end if defined? JRUBY_VERSION
 
+  def test_transaction_state_is_reset_after_reconnect
+    connection = Entry.connection
+    connection.begin_transaction
+    assert connection.transaction_open?
+    connection.reconnect!
+    assert ! connection.transaction_open?
+  ensure
+    Entry.connection_pool.release_connection
+  end if Test::Unit::TestCase.ar_version('4.0')
+
+  def test_transaction_state_is_reset_after_disconnect
+    connection = Entry.connection
+    connection.begin_transaction
+    assert connection.transaction_open?
+    connection.disconnect!
+    assert ! connection.transaction_open?
+  ensure
+    Entry.connection_pool.release_connection
+  end if Test::Unit::TestCase.ar_version('4.0')
+
 end
