@@ -365,7 +365,7 @@ module ArJdbc
         end
 
         if column.respond_to?(:cast_type) && column.cast_type.is_a?(ActiveRecord::Type::Serialized)
-          return quote(column.cast_type.type_cast_for_database(value))
+          return quote(column.cast_type.coder.dump(value))
         end if ::ActiveRecord::VERSION::MAJOR >= 4
 
         if value && (column.type.to_sym == :decimal || column.type.to_sym == :integer)
