@@ -189,6 +189,9 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
         final Connection connection, final PreparedStatement statement,
         final int index, final IRubyObject value,
         final IRubyObject attribute, final int type) throws SQLException {
+
+        // TODO: Somewhere in the process of storing binary data, we lose about 50 bytes in one of the tests
+        
         if ( value.isNil() ) {
             statement.setNull(index, Types.BINARY);
         }
@@ -226,15 +229,6 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
         }
 
         super.setTimestampParameter(context, connection, statement, index, value, column, type);
-    }
-
-    private static int oid(final ThreadContext context, final IRubyObject column) {
-        // our column convention :
-        IRubyObject oid = column.getInstanceVariables().getInstanceVariable("@oid");
-        if ( oid == null || oid.isNil() ) { // only for user instantiated Column
-            throw new IllegalStateException("missing @oid for column: " + column.inspect());
-        }
-        return RubyFixnum.fix2int(oid);
     }
 
     @Override

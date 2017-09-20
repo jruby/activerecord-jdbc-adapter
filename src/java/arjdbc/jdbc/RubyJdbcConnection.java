@@ -2434,7 +2434,8 @@ public class RubyJdbcConnection extends RubyObject {
         final IRubyObject attribute, final int type) throws SQLException {
 
         final String typeName = resolveArrayBaseTypeName(context, value, attribute);
-        Array array = connection.createArrayOf(typeName, ((RubyArray) value).toArray());
+        final IRubyObject valueForDB = valueForDatabase(context, attribute).callMethod(context, "values");
+        Array array = connection.createArrayOf(typeName, ((RubyArray) valueForDB).toArray());
         statement.setArray(index, array);
     }
 
