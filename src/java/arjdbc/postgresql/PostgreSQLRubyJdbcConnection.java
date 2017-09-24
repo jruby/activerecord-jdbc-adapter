@@ -117,7 +117,15 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
         return context.nil;
     }
 
-    final DriverImplementation driverImplementation = new PGDriverImplementation(); // currently no other supported
+    final DriverImplementation driverImplementation;
+    {
+        if (PGOldDriverImplementation.JDBC4_ARRAY_CLASS == null) {
+            driverImplementation = new PGDriverImplementation();
+        }
+        else {
+            driverImplementation = new PGOldDriverImplementation();
+        }
+    }
 
     DriverImplementation driverImplementation() { return driverImplementation; }
 

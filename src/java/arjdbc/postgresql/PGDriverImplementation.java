@@ -44,7 +44,7 @@ import org.jruby.util.SafePropertyAccessor;
 import org.postgresql.PGConnection;
 import org.postgresql.PGStatement;
 import org.postgresql.core.BaseConnection;
-import org.postgresql.jdbc4.Jdbc4Array;
+import org.postgresql.jdbc.PgArray;
 import org.postgresql.util.PGInterval;
 import org.postgresql.util.PGobject;
 
@@ -56,7 +56,7 @@ import static arjdbc.jdbc.RubyJdbcConnection.isAr42;
  *
  * @author kares
  */
-public final class PGDriverImplementation implements DriverImplementation {
+public class PGDriverImplementation implements DriverImplementation {
 
     private static final boolean initConnection;
     static {
@@ -190,8 +190,7 @@ public final class PGDriverImplementation implements DriverImplementation {
             if ( sqlType != null ) {
                 if ( PostgreSQLRubyJdbcConnection.rawArrayType == Boolean.TRUE && arrayLike(sqlType) ) {
                     final int oid = PostgreSQLRubyJdbcConnection.oid(context, column);
-                    Jdbc4Array valueArr = new Jdbc4Array(connection.unwrap(BaseConnection.class), oid, valueStr);
-                    statement.setArray(index, valueArr); return true;
+                    setArrayImpl(connection, oid, statement, index, valueStr); return true;
                 }
                 if ( sqlType.getByteList().startsWith( INTERVAL ) ) {
                     statement.setObject( index, new PGInterval( valueStr ) ); return true;
@@ -201,6 +200,11 @@ public final class PGDriverImplementation implements DriverImplementation {
         }
 
         return true;
+    }
+
+    void setArrayImpl(final Connection connection, final int oid,
+        final PreparedStatement statement, final int index, final String valueStr) throws SQLException {
+        statement.setArray(index, new PgArray(connection.unwrap(BaseConnection.class), oid, valueStr));
     }
 
     private static final ByteList INTERVAL =

@@ -15,20 +15,20 @@ module Jdbc
 
     test 'returns jdbc version 3 on java 5 (only for compatibility)' do
       ENV_JAVA[ 'java.specification.version' ] = '1.5'
-      assert_equal 3, Jdbc::Postgres.send(:jdbc_version)
+      assert_equal 5, Jdbc::Postgres.send(:jre_version)
     end
 
     test 'returns jdbc version 4 on java 6' do
       ENV_JAVA[ 'java.specification.version' ] = '1.6'
-      assert_equal 4, Jdbc::Postgres.send(:jdbc_version)
+      assert_equal 6, Jdbc::Postgres.send(:jre_version)
     end
 
     test 'returns jdbc version 4.1 on java 7/8' do
       ENV_JAVA[ 'java.specification.version' ] = '1.7'
-      assert_equal 4.1, Jdbc::Postgres.send(:jdbc_version)
+      assert_equal 7, Jdbc::Postgres.send(:jre_version)
 
       ENV_JAVA[ 'java.specification.version' ] = '1.8'
-      assert_equal 4.1, Jdbc::Postgres.send(:jdbc_version)
+      assert_equal 7, Jdbc::Postgres.send(:jre_version)
     end
 
     context 'load-driver' do
@@ -40,7 +40,7 @@ module Jdbc
       test 'on java 6' do
         ENV_JAVA[ 'java.specification.version' ] = '1.6'
         Jdbc::Postgres.expects(:load).with do |driver_jar|
-          assert_match(/.jdbc4.jar$/, driver_jar)
+          assert_match(/.jre6.jar$/, driver_jar)
           full_path = File.join(@@driver_dir, driver_jar)
           assert File.exist?(full_path), "#{driver_jar.inspect} not found in: #{@@driver_dir.inspect}"
           true
@@ -51,7 +51,7 @@ module Jdbc
       test 'on java 7' do
         ENV_JAVA[ 'java.specification.version' ] = '1.7'
         Jdbc::Postgres.expects(:load).with do |driver_jar|
-          assert_match(/.jdbc41.jar$/, driver_jar)
+          assert_match(/.jre7.jar$/, driver_jar)
           full_path = File.join(@@driver_dir, driver_jar)
           assert File.exist?(full_path), "#{driver_jar.inspect} not found in: #{@@driver_dir.inspect}"
           true
