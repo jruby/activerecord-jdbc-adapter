@@ -23,7 +23,6 @@
  */
 package arjdbc.postgresql;
 
-import java.lang.reflect.InvocationTargetException;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
@@ -46,11 +45,11 @@ class PGOldDriverImplementation extends PGDriverImplementation {
 
         final java.sql.Array valueArr;
         try {
-            valueArr = newJdbc4Array.newInstance(connection.unwrap(BaseConnection.class), oid, valueStr);
+            valueArr = Jdbc4Array.newInstance(connection.unwrap(BaseConnection.class), oid, valueStr);
         }
         catch (InstantiationException ex) { throw new AssertionError(ex); }
         catch (IllegalAccessException ex) { throw new AssertionError(ex); }
-        catch (Exception ex) { throw new AssertionError(ex); }
+        catch (Exception ex) { throw new AssertionError(ex.getCause() != null ? ex.getCause() : ex); }
         statement.setArray(index, valueArr);
     }
 
@@ -68,16 +67,16 @@ class PGOldDriverImplementation extends PGDriverImplementation {
         java.lang.reflect.Constructor constructor;
         if (JDBC4_ARRAY_CLASS != null) {
             try {
-                constructor = JDBC4_ARRAY_CLASS.getConstructor(BaseConnection.class, Integer.class, String.class);
+                constructor = JDBC4_ARRAY_CLASS.getConstructor(BaseConnection.class, Integer.TYPE, String.class);
             }
             catch (NoSuchMethodException ex) { throw new AssertionError(ex); }
         }
         else {
             constructor = null;
         }
-        newJdbc4Array = constructor;
+        Jdbc4Array = constructor;
     }
 
-    private static final java.lang.reflect.Constructor<java.sql.Array> newJdbc4Array;
+    private static final java.lang.reflect.Constructor<java.sql.Array> Jdbc4Array;
 
 }
