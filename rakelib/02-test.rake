@@ -76,7 +76,7 @@ test_task_for :H2, :desc => 'Run tests against H2 database engine'
 test_task_for :HSQLDB, :desc => 'Run tests against HyperSQL (Java) database'
 test_task_for :MSSQL, :driver => :jtds, :database_name => 'MS-SQL (SQLServer)'
 test_task_for :MySQL #, :prereqs => 'db:mysql'
-test_task_for :PostgreSQL, :driver => 'postgres' #, :prereqs => 'db:postgresql'
+test_task_for :PostgreSQL, :driver => ENV['JDBC_POSTGRES_VERSION'] || 'postgres' #, :prereqs => 'db:postgresql'
 task :test_postgres => :test_postgresql # alias
 test_task_for :SQLite3, :driver => ENV['JDBC_SQLITE_VERSION']
 task :test_sqlite => :test_sqlite3 # alias
@@ -144,7 +144,7 @@ test_task_for :PostgreSQL, :name => 'test_jdbc_postgresql', :driver => 'postgres
   test_task.ruby_opts << '-rdb/jdbc_postgres' # replaces require 'db/postgres'
 end
 
-# TODO Sybase testing is currently broken, please fix it if you're on Sybase :
+# NOTE: Sybase testing is currently broken, please fix it if you're on Sybase :
 #test_task_for :Sybase, :desc => "Run tests against Sybase (using jTDS driver)"
 #task :test_sybase_jtds => :test_sybase # alias
 #test_task_for :Sybase, :name => 'sybase_jconnect',

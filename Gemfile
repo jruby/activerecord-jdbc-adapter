@@ -63,6 +63,10 @@ if sqlite_version = ENV['JDBC_SQLITE_VERSION'] # for testing against different v
   gem 'jdbc-sqlite3', sqlite_version, :require => nil, :platform => :jruby, :group => :test
 end
 
+if postgres_version = ENV['JDBC_POSTGRES_VERSION'] # for testing against different version(s)
+  gem 'jdbc-postgres', postgres_version, :require => nil, :platform => :jruby, :group => :test
+end
+
 gem 'mysql2', '< 0.4', :require => nil, :platform => :mri, :group => :test
 gem 'pg', :require => nil, :platform => :mri, :group => :test
 gem 'sqlite3', :require => nil, :platform => :mri, :group => :test

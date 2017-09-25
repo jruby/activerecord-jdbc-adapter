@@ -59,7 +59,7 @@ task :install => :build do
 end
 
 task 'release:do' => 'build:adapters' do
-  ENV['RELEASE'] == 'true' # so that .gemspec is built with adapter_java.jar
+  ENV['RELEASE'] = 'true' # so that .gemspec is built with adapter_java.jar
   Rake::Task['build'].invoke
 
   noop = ENV.key?('NOOP') && (ENV['NOOP'] != 'false' && ENV['NOOP'] != '')
@@ -167,7 +167,6 @@ if defined? JRUBY_VERSION
 
   file jar_file => FileList[ 'src/java/**/*.java' ] do
     source = target = '1.6'; debug = true
-    args = [ '-Xlint:unchecked' ]
 
     get_driver_jars_local = lambda do |*args|
       driver_deps = args.empty? ? [ :Postgres, :MySQL ] : args
@@ -265,6 +264,8 @@ if defined? JRUBY_VERSION
           exts.map { |ext| File.join(path, "#{cmd}#{ext}") }
         end.flatten.select{|f| File.executable? f}.first
       end
+
+      args = [ '-Xlint:unchecked' ]
 
       unless javac = which.call('javac')
         warn "could not find javac, please make sure it's on the PATH"
