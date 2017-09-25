@@ -57,12 +57,12 @@ module ArJdbc
         end
         variable_assignments.compact!
       end
-
+      
       # NAMES does not have an equals sign, see
       # http://dev.mysql.com/doc/refman/5.0/en/set-statement.html#id944430
       # (trailing comma because variable_assignments will always have content)
-      if encoding = config[:encoding]
-        ( variable_assignments ||= [] ).unshift("NAMES #{encoding}")
+      if encoding = config[:encoding]; collation = @config[:collation]
+        ( variable_assignments ||= [] ).unshift("NAMES #{encoding} #{collation ? "COLLATE #{collation}" : nil}")
       end
 
       # ...and send them all in one query

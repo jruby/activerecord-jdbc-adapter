@@ -15,6 +15,10 @@ ArJdbc::ConnectionMethods.module_eval do
     unless config.key?(:statement_escape_processing)
       config[:statement_escape_processing] = true
     end
+    properties = ( config[:properties] ||= {} )
+    if prefetch_rows = config[:prefetch_rows] # || 100 (oracle-enhanced)
+      properties['defaultRowPrefetch'] = prefetch_rows
+    end
     jdbc_connection(config)
   end
   alias_method :jdbcoracle_connection, :oracle_connection
