@@ -20,5 +20,5 @@ Gem::Specification.new do |gem|
   gem.files = `git ls-files`.split("\n") # assuming . working directory
 
   gem.add_dependency 'activerecord-jdbc-adapter', "~>#{version}"
-  gem.add_dependency 'jdbc-mysql', '>= 5.1.24'
+  gem.add_dependency 'jdbc-mysql', '>= 5.1.30'
 end
