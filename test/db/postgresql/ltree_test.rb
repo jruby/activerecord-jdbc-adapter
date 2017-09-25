@@ -45,7 +45,7 @@ class PostgreSQLLTreeTest < Test::Unit::TestCase
 
   def test_select
     skip unless @@ltree_support
-    @connection.execute "insert into ltrees (path) VALUES ('1.2.3')"
+    connection.execute "insert into ltrees (path) VALUES ('1.2.3')"
     ltree = Ltree.first
     assert_equal '1.2.3', ltree.path
   end
