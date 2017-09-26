@@ -46,33 +46,7 @@ class PostgresRakeTest < Test::Unit::TestCase
     ActiveRecord::Base.connection.disconnect!
   end
 
-  test 'rake db:test:load_structure' do
-    # Rake::Task["db:create"].invoke
-    create_rake_test_database do |connection|
-      create_schema_migrations_table(connection)
-      connection.create_table('testers') { |t| t.string :test }
-    end
-
-    structure_sql = File.join('db', structure_sql_filename)
-    begin
-      Dir.mkdir 'db' # db/structure.sql
-      Rake::Task["db:structure:dump"].invoke
-
-      drop_rake_test_database(:silence)
-      create_rake_test_database
-
-      Rake::Task["db:test:load_structure"].invoke
-
-      with_connection db_config.merge :database => db_name do |connection|
-        assert connection.table_exists?('testers')
-      end
-    ensure
-      File.delete(structure_sql) if File.exists?(structure_sql)
-      Dir.rmdir 'db'
-    end
-  end
-
-  test 'rake db:structure:dump (and db:structure:load)' do
+  test 'rake db:structure:dump and db:structure:load' do
     omit('pg_dump not available') unless self.class.which('pg_dump')
     # Rake::Task["db:create"].invoke
     create_rake_test_database do |connection|
@@ -91,9 +65,15 @@ class PostgresRakeTest < Test::Unit::TestCase
       # db:structure:load
       drop_rake_test_database(:silence)
       create_rake_test_database
-      Rake::Task["db:structure:load"].invoke
 
-      with_connection db_config.merge :database => db_name do |connection|
+      # Need to establish a connection manually here because the
+      # environment and load_config tasks don't run to set up the
+      # connection because they were already ran when dumping the structure
+      with_connection db_config.merge(database: db_name) do |_connection|
+        Rake::Task["db:structure:load"].invoke
+      end
+
+      with_connection db_config.merge(database: db_name) do |connection|
         assert connection.table_exists?('users')
       end
     ensure

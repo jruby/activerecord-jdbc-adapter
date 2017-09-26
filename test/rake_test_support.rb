@@ -58,14 +58,8 @@ module RakeTestSupport
   def do_setup
   end
 
-  RAILS_4x = ActiveRecord::VERSION::MAJOR >= 4
-
   def load_tasks
-    if ActiveRecord::VERSION::MAJOR >= 3
-      load "active_record/railties/databases.rake"
-    else # we still support AR-2.3
-      load "tasks/databases.rake" # from rails/railties
-    end
+    load "active_record/railties/databases.rake"
     load 'arjdbc/tasks.rb' if defined?(JRUBY_VERSION)
 
     namespace :db do
@@ -88,14 +82,10 @@ module RakeTestSupport
       @full_env_loaded = true
     end
 
-    if RAILS_4x
-      ActiveRecord::Tasks::DatabaseTasks.env = @rails_env
-      ActiveRecord::Tasks::DatabaseTasks.db_dir = 'db'
-      if ActiveRecord::Tasks::DatabaseTasks.respond_to? :root=
-        ActiveRecord::Tasks::DatabaseTasks.root = Rails.root # since 4.0.1
-      end
-    else
-      task(:rails_env) { @rails_env_set = true }
+    ActiveRecord::Tasks::DatabaseTasks.env = @rails_env
+    ActiveRecord::Tasks::DatabaseTasks.db_dir = 'db'
+    if ActiveRecord::Tasks::DatabaseTasks.respond_to? :root=
+      ActiveRecord::Tasks::DatabaseTasks.root = Rails.root # since 4.0.1
     end
   end
 

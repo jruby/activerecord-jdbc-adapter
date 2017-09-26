@@ -678,6 +678,27 @@ module ArJdbc
 
     private
 
+    # Pulled from ActiveRecord's Postgres adapter and modified to use execute
+    def can_perform_case_insensitive_comparison_for?(column)
+      @case_insensitive_cache ||= {}
+      @case_insensitive_cache[column.sql_type] ||= begin
+        sql = <<-end_sql
+              SELECT exists(
+                SELECT * FROM pg_proc
+                WHERE proname = 'lower'
+                  AND proargtypes = ARRAY[#{quote column.sql_type}::regtype]::oidvector
+              ) OR exists(
+                SELECT * FROM pg_proc
+                INNER JOIN pg_cast
+                  ON ARRAY[casttarget]::oidvector = proargtypes
+                WHERE proname = 'lower'
+                  AND castsource = #{quote column.sql_type}::regtype
+              )
+        end_sql
+        select_rows(sql, 'SCHEMA').first.first == 't'
+      end
+    end
+
     def translate_exception(exception, message)
       case exception.message
       when /duplicate key value violates unique constraint/
