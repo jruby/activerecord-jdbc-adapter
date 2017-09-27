@@ -10,7 +10,7 @@ require 'active_record/connection_adapters/postgresql/schema_dumper'
 require 'active_record/connection_adapters/postgresql/schema_statements'
 require 'active_record/connection_adapters/postgresql/type_metadata'
 require 'active_record/connection_adapters/postgresql/utils'
-require 'arjdbc/common_jdbc_methods'
+require 'arjdbc/abstract/core'
 require 'arjdbc/abstract/database_statements'
 require 'arjdbc/abstract/transaction_support'
 require 'arjdbc/postgresql/base/array_decoder'
@@ -779,7 +779,7 @@ module ActiveRecord::ConnectionAdapters
     # to support when a sql statement already has a 'RETURNING' clause
     alias_method :ar_postgres_adapter_exec_insert, :exec_insert
 
-    include ArJdbc::CommonJdbcMethods
+    include ArJdbc::Abstract::Core
     include ArJdbc::Abstract::DatabaseStatements
     include ArJdbc::Abstract::TransactionSupport
     include ArJdbc::PostgreSQL
