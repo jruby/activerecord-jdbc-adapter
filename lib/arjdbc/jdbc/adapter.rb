@@ -12,6 +12,7 @@ require 'arjdbc/jdbc/callbacks'
 require 'arjdbc/jdbc/extension'
 require 'arjdbc/jdbc/type_converter'
 require 'arjdbc/abstract/core'
+require 'arjdbc/abstract/connection_management'
 require 'arjdbc/abstract/database_statements'
 require 'arjdbc/abstract/transaction_support'
 
@@ -38,6 +39,7 @@ module ActiveRecord
       include Jdbc::ConnectionPoolCallbacks
 
       include ArJdbc::Abstract::Core
+      include ArJdbc::Abstract::ConnectionManagement
       # These are commented out because they conflict with the postgres adapter
       # once the work is completed to make it so the postgres adapter no longer
       # extends this adapter they can be uncommented out
@@ -260,24 +262,6 @@ module ActiveRecord
           return :string, 255
         end
         return nil, nil
-      end
-
-      # @override
-      def active?
-        @connection.active?
-      end
-
-      # @override
-      def reconnect!
-        super
-        @connection.reconnect! # handles adapter.configure_connection
-        @connection
-      end
-
-      # @override
-      def disconnect!
-        super
-        @connection.disconnect!
       end
 
       def columns(table_name, name = nil)

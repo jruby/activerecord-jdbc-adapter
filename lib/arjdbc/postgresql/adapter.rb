@@ -11,6 +11,7 @@ require 'active_record/connection_adapters/postgresql/schema_statements'
 require 'active_record/connection_adapters/postgresql/type_metadata'
 require 'active_record/connection_adapters/postgresql/utils'
 require 'arjdbc/abstract/core'
+require 'arjdbc/abstract/connection_management'
 require 'arjdbc/abstract/database_statements'
 require 'arjdbc/abstract/transaction_support'
 require 'arjdbc/postgresql/base/array_decoder'
@@ -780,6 +781,7 @@ module ActiveRecord::ConnectionAdapters
     alias_method :ar_postgres_adapter_exec_insert, :exec_insert
 
     include ArJdbc::Abstract::Core
+    include ArJdbc::Abstract::ConnectionManagement
     include ArJdbc::Abstract::DatabaseStatements
     include ArJdbc::Abstract::TransactionSupport
     include ArJdbc::PostgreSQL
