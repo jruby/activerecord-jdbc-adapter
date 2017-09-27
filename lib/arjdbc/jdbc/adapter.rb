@@ -40,11 +40,8 @@ module ActiveRecord
 
       include ArJdbc::Abstract::Core
       include ArJdbc::Abstract::ConnectionManagement
-      # These are commented out because they conflict with the postgres adapter
-      # once the work is completed to make it so the postgres adapter no longer
-      # extends this adapter they can be uncommented out
-      #include ArJdbc::Abstract::DatabaseStatements
-      #include ArJdbc::Abstract::TransactionSupport
+      include ArJdbc::Abstract::DatabaseStatements
+      include ArJdbc::Abstract::TransactionSupport
 
       attr_reader :prepared_statements
 

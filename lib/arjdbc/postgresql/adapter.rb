@@ -2,6 +2,7 @@
 ArJdbc.load_java_part :PostgreSQL
 
 require 'ipaddr'
+require 'active_record/connection_adapters/abstract_adapter'
 require 'active_record/connection_adapters/postgresql/column'
 require 'active_record/connection_adapters/postgresql/database_statements'
 require 'active_record/connection_adapters/postgresql/explain_pretty_printer'
@@ -183,6 +184,10 @@ module ArJdbc
       NATIVE_DATABASE_TYPES
     end
 
+    def valid_type?(type)
+      !native_database_types[type].nil?
+    end
+
     # Enable standard-conforming strings if available.
     def set_standard_conforming_strings
       self.standard_conforming_strings=(true)
@@ -304,6 +309,39 @@ module ArJdbc
       )
     end
 
+    def exec_insert(sql, name, binds, pk = nil, sequence_name = nil)
+      val = exec_query(sql, name, binds)
+      if !use_insert_returning? && pk
+        unless sequence_name
+          table_ref = extract_table_ref_from_insert_sql(sql)
+          sequence_name = default_sequence_name(table_ref, pk)
+          return val unless sequence_name
+        end
+        last_insert_id_result(sequence_name)
+      else
+        val
+      end
+    end
+
+    def explain(arel, binds = [])
+      sql = "EXPLAIN #{to_sql(arel, binds)}"
+      ActiveRecord::ConnectionAdapters::PostgreSQL::ExplainPrettyPrinter.new.pp(exec_query(sql, 'EXPLAIN', binds))
+    end
+
+    def sql_for_insert(sql, pk, id_value, sequence_name, binds) # :nodoc:
+      if pk.nil?
+        # Extract the table from the insert sql. Yuck.
+        table_ref = extract_table_ref_from_insert_sql(sql)
+        pk = primary_key(table_ref) if table_ref
+      end
+
+      pk = nil if pk.is_a?(Array)
+
+      if pk && use_insert_returning?
+        sql = "#{sql} RETURNING #{quote_column_name(pk)}"
+      end
+
+      super
     end
 
     # @note Only for "better" AR 4.0 compatibility.
@@ -751,34 +789,13 @@ module ActiveRecord::ConnectionAdapters
   # assumes: class PostgreSQLAdapter < AbstractAdapter
   remove_const(:PostgreSQLAdapter) if const_defined?(:PostgreSQLAdapter)
 
-  class PostgreSQLAdapter < JdbcAdapter
+  class PostgreSQLAdapter < AbstractAdapter
 
-    # This makes it so we can use the bulk of the core logic while
-    # keeping the actual database access defined in this adapter
-    # These methods come from ActiveRecord::Abstract::DatabaseStatements so
-    # we need to hang on to references to them because the versions in
-    # ActiveRecord::ConnectionAdapters::PostgreSQL::DatabaseStatements
-    # have PG gem specific implementations that override the Abstract implementations
-    SAVED_METHODS = ['select_rows', 'select_value', 'select_values']
-    SAVED_METHOD_PREFIX = 'abstract_adapter'
-
-    SAVED_METHODS.each do |base_name|
-      alias_method :"#{SAVED_METHOD_PREFIX}_#{base_name}", base_name
-    end
-
+    # Try to use as much of the built in postgres logic as possible
+    # maybe someday we can extend the actual adapter
     include ActiveRecord::ConnectionAdapters::PostgreSQL::ColumnDumper
-    include ActiveRecord::ConnectionAdapters::PostgreSQL::DatabaseStatements
     include ActiveRecord::ConnectionAdapters::PostgreSQL::SchemaStatements
     include ActiveRecord::ConnectionAdapters::PostgreSQL::Quoting
-
-    # Restore saved methods
-    SAVED_METHODS.each do |base_name|
-      alias_method base_name, :"#{SAVED_METHOD_PREFIX}_#{base_name}"
-    end
-
-    # We need this so we can call arjdbc logic or ActiveRecord postgres adapter logic
-    # to support when a sql statement already has a 'RETURNING' clause
-    alias_method :ar_postgres_adapter_exec_insert, :exec_insert
 
     include ArJdbc::Abstract::Core
     include ArJdbc::Abstract::ConnectionManagement
@@ -820,12 +837,12 @@ module ActiveRecord::ConnectionAdapters
     TableDefinition = ActiveRecord::ConnectionAdapters::PostgreSQL::TableDefinition
     Table = ActiveRecord::ConnectionAdapters::PostgreSQL::Table
 
-    def schema_creation # :nodoc:
-      PostgreSQL::SchemaCreation.new self
+    def create_table_definition(*args) # :nodoc:
+      TableDefinition.new(*args)
     end
 
-    def table_definition(*args)
-      new_table_definition(TableDefinition, *args)
+    def schema_creation # :nodoc:
+      PostgreSQL::SchemaCreation.new self
     end
 
     def update_table_definition(table_name, base)
