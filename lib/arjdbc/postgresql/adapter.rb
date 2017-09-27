@@ -430,42 +430,6 @@ module ArJdbc
       execute("SET client_min_messages TO '#{level}'", 'SCHEMA')
     end
 
-    # Gets the maximum number columns postgres has, default 32
-    def multi_column_index_limit
-      defined?(@multi_column_index_limit) && @multi_column_index_limit || 32
-    end
-
-    # Sets the maximum number columns postgres has, default 32
-    def multi_column_index_limit=(limit)
-      @multi_column_index_limit = limit
-    end
-
-    # @override
-    def distinct(columns, orders)
-      "DISTINCT #{columns_for_distinct(columns, orders)}"
-    end
-
-    # PostgreSQL requires the ORDER BY columns in the select list for distinct
-    # queries, and requires that the ORDER BY include the distinct column.
-    # @override Since AR 4.0 (on 4.1 {#distinct} is gone and won't be called).
-    def columns_for_distinct(columns, orders)
-      if orders.is_a?(String)
-        orders = orders.split(','); orders.each(&:strip!)
-      end
-
-      order_columns = orders.reject(&:blank?).map! do |column|
-        column = column.is_a?(String) ? column.dup : column.to_sql # AREL node
-        column.gsub!(/\s+(?:ASC|DESC)\s*/i, '') # remove any ASC/DESC modifiers
-        column.gsub!(/\s*NULLS\s+(?:FIRST|LAST)?\s*/i, '')
-        column
-      end
-      order_columns.reject!(&:empty?)
-      i = -1; order_columns.map! { |column| "#{column} AS alias_#{i += 1}" }
-
-      columns = [ columns ]; columns.flatten!
-      columns.push( *order_columns ).join(', ')
-    end
-
     # ORDER BY clause for the passed order option.
     #
     # PostgreSQL does not allow arbitrary ordering when using DISTINCT ON,
@@ -490,10 +454,6 @@ module ArJdbc
         quoted.gsub!(/\\/, '\&\&')
       end
       quoted
-    end
-
-    def quote_bit(value)
-      "B'#{value}'"
     end
 
     def escape_bytea(string)
