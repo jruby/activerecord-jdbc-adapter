@@ -351,6 +351,15 @@ public class SQLite3RubyJdbcConnection extends RubyJdbcConnection {
         }
     }
 
+    @Override
+    protected void setBooleanParameter(final ThreadContext context,
+        final Connection connection, final PreparedStatement statement,
+        final int index, final IRubyObject value,
+        final IRubyObject attribute, final int type) throws SQLException {
+        // Apparently active record stores booleans in sqlite as 't' and 'f' instead of the built in 1/0
+        statement.setString(index, value.isTrue() ? "t" : "f");
+    }
+
     // Treat dates as strings, this can potentially be removed if we update
     // the driver to the latest and tell it to store dates/times as text
     @Override
@@ -359,7 +368,7 @@ public class SQLite3RubyJdbcConnection extends RubyJdbcConnection {
         final int index, IRubyObject value,
         final IRubyObject attribute, final int type) throws SQLException {
 
-        setStringParameter(context, connection, statement, index, valueForDatabase(context, attribute), attribute, type);
+        setStringParameter(context, connection, statement, index, value, attribute, type);
     }
 
     // The current driver doesn't support dealing with BigDecimal values, so force everything to doubles
@@ -379,7 +388,7 @@ public class SQLite3RubyJdbcConnection extends RubyJdbcConnection {
         final int index, IRubyObject value,
         final IRubyObject attribute, final int type) throws SQLException {
 
-        setStringParameter(context, connection, statement, index, valueForDatabase(context, attribute), attribute, type);
+        setStringParameter(context, connection, statement, index, value, attribute, type);
     }
 
     // Treat timestamps as strings
@@ -389,7 +398,7 @@ public class SQLite3RubyJdbcConnection extends RubyJdbcConnection {
         final int index, IRubyObject value,
         final IRubyObject attribute, final int type) throws SQLException {
 
-        IRubyObject valueForDB = valueForDatabase(context, attribute);
+        IRubyObject valueForDB = value;
 
         if ( valueForDB instanceof RubyTime ) {
             // Make sure we handle usec values

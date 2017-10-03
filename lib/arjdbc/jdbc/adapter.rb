@@ -35,7 +35,7 @@ module ActiveRecord
     # the adapter and override some of its API methods.
     class JdbcAdapter < AbstractAdapter
       include Jdbc::ConnectionPoolCallbacks
-      
+
       # These are commented out because they conflict with the postgres adapter
       # once the work is completed to make it so the postgres adapter no longer
       # extends this adapter they can be uncommented out
@@ -345,22 +345,6 @@ module ActiveRecord
         exec_query_raw(sql, name, binds).map!(&:values)
       end
 
-      if ActiveRecord::VERSION::MAJOR > 3 # expects AR::Result e.g. from select_all
-
-      # @private
-      def select(sql, name = nil, binds = [])
-        exec_query(to_sql(sql, binds), name, binds)
-      end
-
-      else
-
-      # @private
-      def select(sql, name = nil, binds = []) # NOTE: only (sql, name) on AR < 3.1
-        exec_query_raw(to_sql(sql, binds), name, binds)
-      end
-
-      end
-
       # Executes the SQL statement in the context of this connection.
       # The return value from this method depends on the SQL type (whether
       # it's a SELECT, INSERT etc.). For INSERTs a generated id might get
@@ -503,7 +487,7 @@ module ActiveRecord
         return e if e.is_a?(Java::JavaLang::Throwable)
 
         case e
-        when SystemExit, SignalException, NoMemoryError then e
+        when ActiveModel::RangeError, SystemExit, SignalException, NoMemoryError then e
         # NOTE: wraps AR::JDBCError into AR::StatementInvalid, desired ?!
         else super
         end

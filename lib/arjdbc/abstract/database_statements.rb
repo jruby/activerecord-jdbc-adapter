@@ -11,6 +11,7 @@ module ArJdbc
         if without_prepared_statement?(binds)
           execute(sql, name)
         else
+          binds = convert_legacy_binds_to_attributes(binds) if binds.first.is_a?(Array)
           log(sql, name, binds) { @connection.execute_prepared(sql, binds) }
         end
       end
@@ -35,6 +36,14 @@ module ArJdbc
           result.first.first[1] # .first = { "id"=>1 } .first = [ "id", 1 ]
         else
           result
+        end
+      end
+
+      private
+
+      def convert_legacy_binds_to_attributes(binds)
+        binds.map do |column, value|
+          ActiveRecord::Relation::QueryAttribute.new(nil, type_cast(value, column), ActiveModel::Type::Value.new)
         end
       end
 

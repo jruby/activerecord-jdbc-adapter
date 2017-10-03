@@ -38,6 +38,7 @@ import java.sql.Types;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
+import java.util.regex.Pattern;
 
 import org.jruby.Ruby;
 import org.jruby.RubyArray;
@@ -70,6 +71,7 @@ import org.postgresql.util.PGobject;
 public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection {
     private static final long serialVersionUID = 7235537759545717760L;
     private static final int HSTORE_TYPE = 100000 + 1111;
+    private static final Pattern uuidPattern = Pattern.compile("^\\p{XDigit}{8}-(?:\\p{XDigit}{4}-){3}\\p{XDigit}{12}$");
 
     private static final Map<String, Integer> POSTGRES_JDBC_TYPE_FOR = new HashMap<String, Integer>(32, 1);
     static {
@@ -88,6 +90,7 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
         POSTGRES_JDBC_TYPE_FOR.put("tsvector", Types.OTHER);
         POSTGRES_JDBC_TYPE_FOR.put("uuid", Types.OTHER);
     }
+
 
     protected PostgreSQLRubyJdbcConnection(Ruby runtime, RubyClass metaClass) {
         super(runtime, metaClass);
@@ -150,18 +153,17 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
     }
 
     @Override
-    protected String internedTypeFor(final ThreadContext context,
-        final IRubyObject attribute, final IRubyObject value) throws SQLException {
+    protected String internedTypeFor(final ThreadContext context, final IRubyObject attribute) throws SQLException {
 
         final RubyModule postgreSQL = (RubyModule) getConnectionAdapters(context.runtime).getConstant("PostgreSQL");
         final RubyModule oid = (RubyModule) postgreSQL.getConstant("OID");
         final RubyClass arrayClass = oid.getClass("Array");
 
-        if ( arrayClass.isInstance(attribute.callMethod(context, "type"))) {
+        if ( arrayClass.isInstance(attributeType(context, attribute)) ) {
             return "array";
         }
 
-        return super.internedTypeFor(context, attribute, value);
+        return super.internedTypeFor(context, attribute);
     }
 
     @Override
@@ -191,7 +193,7 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
         final IRubyObject attribute, final int type) throws SQLException {
 
         // TODO: Somewhere in the process of storing binary data, we lose about 50 bytes in one of the tests
-        
+
         if ( value.isNil() ) {
             statement.setNull(index, Types.BINARY);
         }
@@ -241,14 +243,13 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
 
         switch ( columnType ) {
             case "cidr":
-            case "inet":
-            case "macaddr":
-                setAddressParameter(context, statement, index, value, attribute, columnType);
-                break;
-
             case "citext":
-                // If we don't specify it this way, it does a case sensitive comparison
-                statement.setObject(index, value.toString(), Types.OTHER);
+            case "hstore":
+            case "inet":
+            case "ltree":
+            case "macaddr":
+            case "tsvector":
+                setPGobjectParameter(statement, index, value, columnType);
                 break;
 
             case "interval":
@@ -260,16 +261,8 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
                 setJsonParameter(context, statement, index, attribute, columnType);
                 break;
 
-            case "ltree":
-                statement.setObject(index, value.toString(), Types.OTHER);
-                break;
-
-            case "tsvector":
-                setTsVectorParameter(statement, index, value);
-                break;
-
             case "uuid":
-                statement.setObject(index, UUID.fromString(value.toString()));
+                setUUIDParameter(statement, index, (IRubyObject) value);
                 break;
 
             default:
@@ -292,25 +285,13 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
         statement.setObject(index, pgJson);
     }
 
-    private void setTsVectorParameter(
-        final PreparedStatement statement, final int index,
-        Object value) throws SQLException {
+    private void setPGobjectParameter(final PreparedStatement statement, final int index,
+        final Object value, final String columnType) throws SQLException {
 
-        final PGobject pgTsVector = new PGobject();
-        pgTsVector.setType("tsvector");
-        pgTsVector.setValue(value.toString());
-        statement.setObject(index, pgTsVector);
-    }
-
-    private void setAddressParameter(final ThreadContext context,
-        final PreparedStatement statement, final int index,
-        Object value, final IRubyObject column,
-        final String columnType) throws SQLException {
-
-        final PGobject pgAddress = new PGobject();
-        pgAddress.setType(columnType);
-        pgAddress.setValue(value.toString());
-        statement.setObject(index, pgAddress);
+        final PGobject param = new PGobject();
+        param.setType(columnType);
+        param.setValue(value.toString());
+        statement.setObject(index, param);
     }
 
     private void setRangeParameter(final ThreadContext context,
@@ -341,6 +322,37 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
         }
 
         statement.setObject(index, pgRange);
+    }
+
+    @Override
+    protected void setStringParameter(final ThreadContext context,
+        final Connection connection, final PreparedStatement statement,
+        final int index, final IRubyObject value,
+        final IRubyObject attribute, final int type) throws SQLException {
+
+        if ( attributeSQLType(context, attribute).isNil() ) {
+            /*
+                We have to check for a uuid here because in some cases
+                (for example,  when doing "exists?" checks, or with legacy binds)
+                ActiveRecord doesn't send us the actual type of the attribute
+                and Postgres won't compare a uuid column with a string
+            */
+            final String uuid = value.toString();
+
+            // Checking the length so we don't have the overhead of the regex unless it "looks" like a UUID
+            if ( uuid.length() == 36 && uuidPattern.matcher(uuid).matches() ) {
+                setUUIDParameter(statement, index, value);
+                return;
+            }
+        }
+
+        super.setStringParameter(context, connection, statement, index, value, attribute, type);
+    }
+
+    private void setUUIDParameter(final PreparedStatement statement,
+        final int index, final IRubyObject value) throws SQLException {
+
+        statement.setObject(index, UUID.fromString(value.toString()));
     }
 
     @Override

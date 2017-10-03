@@ -934,8 +934,6 @@ public class RubyJdbcConnection extends RubyObject {
                 PreparedStatement statement = null;
                 final String query = sql.convertToString().getUnicodeValue();
 
-                // FIXME: array type check for binds
-
                 try {
                     statement = connection.prepareStatement(query);
                     setStatementParameters(context, connection, statement, (List) binds);
@@ -2032,20 +2030,13 @@ public class RubyJdbcConnection extends RubyObject {
             final int index, IRubyObject attribute) throws SQLException {
 
         //debugMessage(context, attribute);
-        IRubyObject value = attribute.callMethod(context, "value");
-        int type = jdbcTypeForAttribute(context, attribute, value);
+        int type = jdbcTypeForAttribute(context, attribute);
+        IRubyObject value = valueForDatabase(context, attribute);
 
         // All the set methods were calling this first so save a method call in the nil case
         if ( value.isNil() ) {
             statement.setNull(index, type);
             return;
-        }
-
-        // Check to see if we need to serialize the value before processing
-        final RubyModule Type = (RubyModule) ActiveRecord(context).getConstant("Type");
-        final RubyClass Serialized = Type.getClass("Serialized");
-        if (Serialized.isInstance(attributeType(context, attribute))) {
-            value = valueForDatabase(context, attribute);
         }
 
         switch (type) {
@@ -2120,7 +2111,6 @@ public class RubyJdbcConnection extends RubyObject {
         JDBC_TYPE_FOR.put("time", Types.TIME);
         JDBC_TYPE_FOR.put("datetime", Types.TIMESTAMP);
         JDBC_TYPE_FOR.put("timestamp", Types.TIMESTAMP);
-        JDBC_TYPE_FOR.put("binary", Types.BLOB);
         JDBC_TYPE_FOR.put("boolean", Types.BOOLEAN);
         JDBC_TYPE_FOR.put("array", Types.ARRAY);
         JDBC_TYPE_FOR.put("xml", Types.SQLXML);
@@ -2146,9 +2136,9 @@ public class RubyJdbcConnection extends RubyObject {
     }
 
     protected int jdbcTypeForAttribute(final ThreadContext context,
-        final IRubyObject attribute, final IRubyObject value) throws SQLException {
+        final IRubyObject attribute) throws SQLException {
 
-        final String internedType = internedTypeFor(context, attribute, value);
+        final String internedType = internedTypeFor(context, attribute);
         final Integer sqlType = jdbcTypeFor(internedType);
         if ( sqlType != null ) {
             return sqlType.intValue();
@@ -2169,14 +2159,15 @@ public class RubyJdbcConnection extends RubyObject {
         return attributeType(context, attribute).callMethod(context, "type");
     }
 
-    protected String internedTypeFor(final ThreadContext context,
-        final IRubyObject attribute, final IRubyObject value) throws SQLException {
+    protected String internedTypeFor(final ThreadContext context, final IRubyObject attribute) throws SQLException {
 
         final IRubyObject type = attributeSQLType(context, attribute);
 
         if ( !type.isNil() ) {
             return type.asJavaString();
         }
+
+        final IRubyObject value = attribute.callMethod(context, "value");
 
         if ( value instanceof RubyInteger ) {
             return "integer";
@@ -2433,14 +2424,13 @@ public class RubyJdbcConnection extends RubyObject {
         final int index, final IRubyObject value,
         final IRubyObject attribute, final int type) throws SQLException {
 
-        final String typeName = resolveArrayBaseTypeName(context, value, attribute);
-        final IRubyObject valueForDB = valueForDatabase(context, attribute).callMethod(context, "values");
+        final String typeName = resolveArrayBaseTypeName(context, attribute);
+        final IRubyObject valueForDB = value.callMethod(context, "values");
         Array array = connection.createArrayOf(typeName, ((RubyArray) valueForDB).toArray());
         statement.setArray(index, array);
     }
 
-    protected String resolveArrayBaseTypeName(final ThreadContext context,
-        final IRubyObject value, final IRubyObject attribute) throws SQLException {
+    protected String resolveArrayBaseTypeName(final ThreadContext context, final IRubyObject attribute) throws SQLException {
 
         // This shouldn't return nil at this point because we know we have an array typed attribute
         final RubySymbol type = (RubySymbol) attributeSQLType(context, attribute);
