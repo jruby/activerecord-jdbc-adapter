@@ -109,14 +109,14 @@ public class OracleRubyJdbcConnection extends RubyJdbcConnection {
         final String query = sql.convertToString().getUnicodeValue();
         final int outType = Types.VARCHAR;
         if ( binds == null || binds.isNil() ) { // no prepared statements
-            return executePreparedCall(context, query, Collections.EMPTY_LIST, outType);
+            return executePreparedCall(context, query, context.runtime.newArray(), outType);
         }
         // allow prepared statements with empty binds parameters
-        return executePreparedCall(context, query, (List) binds, outType);
+        return executePreparedCall(context, query, (RubyArray) binds, outType);
     }
 
     private IRubyObject executePreparedCall(final ThreadContext context, final String query,
-        final List<?> binds, final int outType) {
+        final RubyArray binds, final int outType) {
         return withConnection(context, new Callable<IRubyObject>() {
             public IRubyObject call(final Connection connection) throws SQLException {
                 CallableStatement statement = null;

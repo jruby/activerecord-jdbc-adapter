@@ -604,7 +604,7 @@ public class RubyJdbcConnection extends RubyObject {
             return executeUpdate(context, query, true);
         }
         else { // we allow prepared statements with empty binds parameters
-            return executePreparedUpdate(context, query, (List) binds, true);
+            return executePreparedUpdate(context, query, (RubyArray) binds, true);
         }
     }
 
@@ -640,16 +640,16 @@ public class RubyJdbcConnection extends RubyObject {
             return executeUpdate(context, query, false);
         }
         else { // we allow prepared statements with empty binds parameters
-            return executePreparedUpdate(context, query, (List) binds, false);
+            return executePreparedUpdate(context, query, (RubyArray) binds, false);
         }
     }
 
     @JRubyMethod(name = {"execute_prepared_update"}, required = 2)
     public IRubyObject execute_prepared_update(final ThreadContext context,
-                                               final IRubyObject sql, final IRubyObject binds) throws SQLException {
+        final IRubyObject sql, final IRubyObject binds) throws SQLException {
 
         final String query = sql.convertToString().getUnicodeValue();
-        return executePreparedUpdate(context, query, (List) binds, false);
+        return executePreparedUpdate(context, query, (RubyArray) binds, false);
     }
 
     /**
@@ -688,7 +688,7 @@ public class RubyJdbcConnection extends RubyObject {
     }
 
     private IRubyObject executePreparedUpdate(final ThreadContext context, final String query,
-        final List<?> binds, final boolean returnGeneratedKeys) {
+        final RubyArray binds, final boolean returnGeneratedKeys) {
         return withConnection(context, new Callable<IRubyObject>() {
             public IRubyObject call(final Connection connection) throws SQLException {
                 PreparedStatement statement = null;
@@ -769,7 +769,7 @@ public class RubyJdbcConnection extends RubyObject {
             return executeQueryRaw(context, query, maxRows, block);
         }
         else { // we allow prepared statements with empty binds parameters
-            return executePreparedQueryRaw(context, query, (List) binds, maxRows, block);
+            return executePreparedQueryRaw(context, query, (RubyArray) binds, maxRows, block);
         }
     }
 
@@ -788,12 +788,12 @@ public class RubyJdbcConnection extends RubyObject {
     }
 
     protected IRubyObject executePreparedQueryRaw(final ThreadContext context,
-        final String query, final List<?> binds, final int maxRows, final Block block) {
+        final String query, final RubyArray binds, final int maxRows, final Block block) {
         return doExecuteQueryRaw(context, query, maxRows, block, binds);
     }
 
     private IRubyObject doExecuteQueryRaw(final ThreadContext context,
-        final String query, final int maxRows, final Block block, final List<?> binds) {
+        final String query, final int maxRows, final Block block, final RubyArray binds) {
         return withConnection(context, new Callable<IRubyObject>() {
             public IRubyObject call(final Connection connection) throws SQLException {
                 final Ruby runtime = context.getRuntime();
@@ -879,7 +879,7 @@ public class RubyJdbcConnection extends RubyObject {
             return executeQuery(context, query, maxRows);
         }
         else { // we allow prepared statements with empty binds parameters
-            return executePreparedQuery(context, query, (List) binds, maxRows);
+            return executePreparedQuery(context, query, (RubyArray) binds, maxRows);
         }
     }
 
@@ -892,7 +892,7 @@ public class RubyJdbcConnection extends RubyObject {
             throw context.runtime.newArgumentError("binds exptected to an instance of Array");
         }
 
-        return executePreparedQuery(context, query, (List) binds, 0);
+        return executePreparedQuery(context, query, (RubyArray) binds, 0);
     }
 
     /**
@@ -936,7 +936,7 @@ public class RubyJdbcConnection extends RubyObject {
 
                 try {
                     statement = connection.prepareStatement(query);
-                    setStatementParameters(context, connection, statement, (List) binds);
+                    setStatementParameters(context, connection, statement, (RubyArray) binds);
                     boolean hasResultSet = statement.execute();
 
                     if (hasResultSet) {
@@ -958,7 +958,7 @@ public class RubyJdbcConnection extends RubyObject {
     }
 
     protected IRubyObject executePreparedQuery(final ThreadContext context, final String query,
-        final List<?> binds, final int maxRows) {
+        final RubyArray binds, final int maxRows) {
         return withConnection(context, new Callable<IRubyObject>() {
             public IRubyObject call(final Connection connection) throws SQLException {
                 PreparedStatement statement = null; ResultSet resultSet = null;
@@ -2017,10 +2017,10 @@ public class RubyJdbcConnection extends RubyObject {
 
     protected void setStatementParameters(final ThreadContext context,
         final Connection connection, final PreparedStatement statement,
-        final List<?> binds) throws SQLException {
+        final RubyArray binds) throws SQLException {
 
-        for ( int i = 0; i < binds.size(); i++ ) {
-            setStatementParameter(context, connection, statement, i + 1, (IRubyObject) binds.get(i));
+        for ( int i = 0; i < binds.getLength(); i++ ) {
+            setStatementParameter(context, connection, statement, i + 1, binds.eltInternal(i));
         }
     }
 
