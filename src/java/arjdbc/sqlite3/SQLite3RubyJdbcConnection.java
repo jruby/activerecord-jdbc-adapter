@@ -36,6 +36,7 @@ import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.DatabaseMetaData;
+import java.sql.PreparedStatement;
 import java.sql.Savepoint;
 import java.sql.Types;
 import java.util.ArrayList;
@@ -45,6 +46,7 @@ import org.jruby.Ruby;
 import org.jruby.RubyArray;
 import org.jruby.RubyClass;
 import org.jruby.RubyString;
+import org.jruby.RubyTime;
 import org.jruby.anno.JRubyMethod;
 import org.jruby.runtime.ObjectAllocator;
 import org.jruby.runtime.ThreadContext;
@@ -347,5 +349,62 @@ public class SQLite3RubyJdbcConnection extends RubyJdbcConnection {
         } catch (SQLException e) {
             return handleException(context, e);
         }
+    }
+
+    @Override
+    protected void setBooleanParameter(final ThreadContext context,
+        final Connection connection, final PreparedStatement statement,
+        final int index, final IRubyObject value,
+        final IRubyObject attribute, final int type) throws SQLException {
+        // Apparently active record stores booleans in sqlite as 't' and 'f' instead of the built in 1/0
+        statement.setString(index, value.isTrue() ? "t" : "f");
+    }
+
+    // Treat dates as strings, this can potentially be removed if we update
+    // the driver to the latest and tell it to store dates/times as text
+    @Override
+    protected void setDateParameter(final ThreadContext context,
+        final Connection connection, final PreparedStatement statement,
+        final int index, IRubyObject value,
+        final IRubyObject attribute, final int type) throws SQLException {
+
+        setStringParameter(context, connection, statement, index, value, attribute, type);
+    }
+
+    // The current driver doesn't support dealing with BigDecimal values, so force everything to doubles
+    @Override
+    protected void setDecimalParameter(final ThreadContext context,
+        final Connection connection, final PreparedStatement statement,
+        final int index, final IRubyObject value,
+        final IRubyObject attribute, final int type) throws SQLException {
+
+        setDoubleParameter(context, connection, statement, index, value, attribute, type);
+    }
+
+    // Treat times as strings
+    @Override
+    protected void setTimeParameter(final ThreadContext context,
+        final Connection connection, final PreparedStatement statement,
+        final int index, IRubyObject value,
+        final IRubyObject attribute, final int type) throws SQLException {
+
+        setStringParameter(context, connection, statement, index, value, attribute, type);
+    }
+
+    // Treat timestamps as strings
+    @Override
+    protected void setTimestampParameter(final ThreadContext context,
+        final Connection connection, final PreparedStatement statement,
+        final int index, IRubyObject value,
+        final IRubyObject attribute, final int type) throws SQLException {
+
+        IRubyObject valueForDB = value;
+
+        if ( valueForDB instanceof RubyTime ) {
+            // Make sure we handle usec values
+            valueForDB = ((RubyTime) valueForDB).strftime(context.runtime.newString("%F %T.%N%:z"));
+        }
+
+        setStringParameter(context, connection, statement, index, valueForDB, attribute, type);
     }
 }

@@ -35,8 +35,10 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Timestamp;
 import java.sql.Types;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
+import java.util.regex.Pattern;
 
 import org.jruby.Ruby;
 import org.jruby.RubyArray;
@@ -46,6 +48,7 @@ import org.jruby.RubyFixnum;
 import org.jruby.RubyFloat;
 import org.jruby.RubyHash;
 import org.jruby.RubyIO;
+import org.jruby.RubyModule;
 import org.jruby.RubyString;
 import org.jruby.anno.JRubyMethod;
 import org.jruby.javasupport.JavaUtil;
@@ -67,6 +70,27 @@ import org.postgresql.util.PGobject;
  */
 public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection {
     private static final long serialVersionUID = 7235537759545717760L;
+    private static final int HSTORE_TYPE = 100000 + 1111;
+    private static final Pattern uuidPattern = Pattern.compile("^\\p{XDigit}{8}-(?:\\p{XDigit}{4}-){3}\\p{XDigit}{12}$");
+
+    private static final Map<String, Integer> POSTGRES_JDBC_TYPE_FOR = new HashMap<String, Integer>(32, 1);
+    static {
+        POSTGRES_JDBC_TYPE_FOR.put("citext", Types.OTHER);
+        POSTGRES_JDBC_TYPE_FOR.put("daterange", Types.OTHER);
+        POSTGRES_JDBC_TYPE_FOR.put("hstore", Types.OTHER);
+        POSTGRES_JDBC_TYPE_FOR.put("int4range", Types.OTHER);
+        POSTGRES_JDBC_TYPE_FOR.put("int8range", Types.OTHER);
+        POSTGRES_JDBC_TYPE_FOR.put("interval", Types.OTHER);
+        POSTGRES_JDBC_TYPE_FOR.put("json", Types.OTHER);
+        POSTGRES_JDBC_TYPE_FOR.put("jsonb", Types.OTHER);
+        POSTGRES_JDBC_TYPE_FOR.put("ltree", Types.OTHER);
+        POSTGRES_JDBC_TYPE_FOR.put("numrange", Types.OTHER);
+        POSTGRES_JDBC_TYPE_FOR.put("tsrange", Types.OTHER);
+        POSTGRES_JDBC_TYPE_FOR.put("tstzrange", Types.OTHER);
+        POSTGRES_JDBC_TYPE_FOR.put("tsvector", Types.OTHER);
+        POSTGRES_JDBC_TYPE_FOR.put("uuid", Types.OTHER);
+    }
+
 
     protected PostgreSQLRubyJdbcConnection(Ruby runtime, RubyClass metaClass) {
         super(runtime, metaClass);
@@ -129,6 +153,20 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
     }
 
     @Override
+    protected String internedTypeFor(final ThreadContext context, final IRubyObject attribute) throws SQLException {
+
+        final RubyModule postgreSQL = (RubyModule) getConnectionAdapters(context.runtime).getConstant("PostgreSQL");
+        final RubyModule oid = (RubyModule) postgreSQL.getConstant("OID");
+        final RubyClass arrayClass = oid.getClass("Array");
+
+        if ( arrayClass.isInstance(attributeType(context, attribute)) ) {
+            return "array";
+        }
+
+        return super.internedTypeFor(context, attribute);
+    }
+
+    @Override
     protected Connection newConnection() throws SQLException {
         final Connection connection = getConnectionFactory().newConnection();
         final PGConnection pgConnection;
@@ -151,39 +189,23 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
     // org.postgresql.util.PSQLException: ERROR: column "sample_binary" is of type bytea but expression is of type oid
     protected void setBlobParameter(final ThreadContext context,
         final Connection connection, final PreparedStatement statement,
-        final int index, final Object value,
-        final IRubyObject column, final int type) throws SQLException {
-        if ( value instanceof IRubyObject ) {
-            setBlobParameter(context, connection, statement, index, (IRubyObject) value, column, type);
-        }
-        else {
-            if ( value == null ) statement.setNull(index, Types.BINARY);
-            else {
-                statement.setBinaryStream(index, (InputStream) value);
-            }
-        }
-    }
-
-    @Override // due statement.setNull(index, Types.BLOB) not working :
-    // org.postgresql.util.PSQLException: ERROR: column "sample_binary" is of type bytea but expression is of type oid
-    protected void setBlobParameter(final ThreadContext context,
-        final Connection connection, final PreparedStatement statement,
         final int index, final IRubyObject value,
-        final IRubyObject column, final int type) throws SQLException {
+        final IRubyObject attribute, final int type) throws SQLException {
+
+        // TODO: Somewhere in the process of storing binary data, we lose about 50 bytes in one of the tests
+
         if ( value.isNil() ) {
             statement.setNull(index, Types.BINARY);
         }
-        else {
-            if ( value instanceof RubyIO ) { // IO/File
-                statement.setBinaryStream(index, ((RubyIO) value).getInStream());
-            }
-            else { // should be a RubyString
-                final ByteList blob = value.asString().getByteList();
-                statement.setBinaryStream(index,
-                    new ByteArrayInputStream(blob.unsafeBytes(), blob.getBegin(), blob.getRealSize()),
-                    blob.getRealSize() // length
-                );
-            }
+        else if ( value instanceof RubyIO ) { // IO/File
+            statement.setBinaryStream(index, ((RubyIO) value).getInStream());
+        }
+        else { // should be a RubyString
+            final ByteList blob = value.asString().getByteList();
+            statement.setBinaryStream(index,
+                new ByteArrayInputStream(blob.unsafeBytes(), blob.getBegin(), blob.getRealSize()),
+                blob.getRealSize() // length
+            );
         }
     }
 
@@ -211,244 +233,138 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
         super.setTimestampParameter(context, connection, statement, index, value, column, type);
     }
 
-    private static final ByteList INTERVAL =
-        new ByteList( new byte[] { 'i','n','t','e','r','v','a','l' }, false );
+    @Override
+    protected void setObjectParameter(final ThreadContext context,
+        final Connection connection, final PreparedStatement statement,
+        final int index, Object value,
+        final IRubyObject attribute, final int type) throws SQLException {
 
-    private static final ByteList ARRAY_END = new ByteList( new byte[] { '[',']' }, false );
+        final String columnType = attributeSQLType(context, attribute).asJavaString();
+
+        switch ( columnType ) {
+            case "cidr":
+            case "citext":
+            case "hstore":
+            case "inet":
+            case "ltree":
+            case "macaddr":
+            case "tsvector":
+                setPGobjectParameter(statement, index, value, columnType);
+                break;
+
+            case "interval":
+                statement.setObject(index, new PGInterval(value.toString()));
+                break;
+
+            case "json":
+            case "jsonb":
+                setJsonParameter(context, statement, index, attribute, columnType);
+                break;
+
+            case "uuid":
+                setUUIDParameter(statement, index, (IRubyObject) value);
+                break;
+
+            default:
+                if ( columnType.endsWith("range") ) {
+                    setRangeParameter(context, statement, index, attribute, columnType);
+                }
+                else {
+                    super.setObjectParameter(context, connection, statement, index, value, attribute, type);
+                }
+        }
+    }
+
+    private void setJsonParameter(final ThreadContext context,
+        final PreparedStatement statement, final int index,
+        final IRubyObject attribute, final String columnType) throws SQLException {
+
+        final PGobject pgJson = new PGobject();
+        pgJson.setType(columnType);
+        pgJson.setValue(valueForDatabase(context, attribute).toString());
+        statement.setObject(index, pgJson);
+    }
+
+    private void setPGobjectParameter(final PreparedStatement statement, final int index,
+        final Object value, final String columnType) throws SQLException {
+
+        final PGobject param = new PGobject();
+        param.setType(columnType);
+        param.setValue(value.toString());
+        statement.setObject(index, param);
+    }
+
+    private void setRangeParameter(final ThreadContext context,
+        final PreparedStatement statement, final int index,
+        final IRubyObject attribute, final String columnType) throws SQLException {
+
+        final String rangeValue = valueForDatabase(context, attribute).toString();
+        final Object pgRange;
+
+        switch ( columnType ) {
+            case "daterange":
+                pgRange = new DateRangeType(rangeValue);
+                break;
+            case "tsrange":
+                pgRange = new TsRangeType(rangeValue);
+                break;
+            case "tstzrange":
+                pgRange = new TstzRangeType(rangeValue);
+                break;
+            case "int4range":
+                pgRange = new Int4RangeType(rangeValue);
+                break;
+            case "int8range":
+                pgRange = new Int8RangeType(rangeValue);
+                break;
+            default:
+                pgRange = new NumRangeType(rangeValue);
+        }
+
+        statement.setObject(index, pgRange);
+    }
 
     @Override
     protected void setStringParameter(final ThreadContext context,
         final Connection connection, final PreparedStatement statement,
         final int index, final IRubyObject value,
-        final IRubyObject column, final int type) throws SQLException {
-        final RubyString sqlType;
-        if ( column != null && ! column.isNil() ) {
-            sqlType = (RubyString) column.callMethod(context, "sql_type");
-        }
-        else {
-            sqlType = null;
+        final IRubyObject attribute, final int type) throws SQLException {
+
+        if ( attributeSQLType(context, attribute).isNil() ) {
+            /*
+                We have to check for a uuid here because in some cases
+                (for example,  when doing "exists?" checks, or with legacy binds)
+                ActiveRecord doesn't send us the actual type of the attribute
+                and Postgres won't compare a uuid column with a string
+            */
+            final String uuid = value.toString();
+
+            // Checking the length so we don't have the overhead of the regex unless it "looks" like a UUID
+            if ( uuid.length() == 36 && uuidPattern.matcher(uuid).matches() ) {
+                setUUIDParameter(statement, index, value);
+                return;
+            }
         }
 
-        if ( value.isNil() ) {
-            if ( rawArrayType == Boolean.TRUE ) { // array's type is :string
-                if ( sqlType != null && sqlType.getByteList().endsWith( ARRAY_END ) ) {
-                    statement.setNull(index, Types.ARRAY); return;
-                }
-                statement.setNull(index, type); return;
-            }
-            statement.setNull(index, Types.VARCHAR);
-        }
-        else {
-            final String valueStr = value.asString().toString();
-            if ( sqlType != null ) {
-                if ( rawArrayType == Boolean.TRUE && sqlType.getByteList().endsWith( ARRAY_END ) ) {
-                    final int oid = oid(context, column);
-                    final Array valueArr = new Jdbc4Array(connection.unwrap(BaseConnection.class), oid, valueStr);
-                    statement.setArray(index, valueArr); return;
-                }
-                if ( sqlType.getByteList().startsWith( INTERVAL ) ) {
-                    statement.setObject( index, new PGInterval( valueStr ) ); return;
-                }
-            }
-            statement.setString( index, valueStr );
-        }
+        super.setStringParameter(context, connection, statement, index, value, attribute, type);
     }
 
-    private static int oid(final ThreadContext context, final IRubyObject column) {
-        // our column convention :
-        IRubyObject oid = column.getInstanceVariables().getInstanceVariable("@oid");
-        if ( oid == null || oid.isNil() ) { // only for user instantiated Column
-            throw new IllegalStateException("missing @oid for column: " + column.inspect());
-        }
-        return RubyFixnum.fix2int(oid);
+    private void setUUIDParameter(final PreparedStatement statement,
+        final int index, final IRubyObject value) throws SQLException {
+
+        statement.setObject(index, UUID.fromString(value.toString()));
     }
 
     @Override
-    protected void setObjectParameter(final ThreadContext context,
-        final Connection connection, final PreparedStatement statement,
-        final int index, Object value,
-        final IRubyObject column, final int type) throws SQLException {
+    protected Integer jdbcTypeFor(final String type) {
 
-        final String columnType = column.callMethod(context, "type").asJavaString();
+        Integer typeValue = POSTGRES_JDBC_TYPE_FOR.get(type);
 
-        if ( columnType == (Object) "uuid" ) {
-            setUUIDParameter(statement, index, value);
-            return;
+        if ( typeValue != null ) {
+            return typeValue;
         }
 
-        if ( columnType == (Object) "json" ) {
-            setJsonParameter(context, statement, index, value, column);
-            return;
-        }
-
-        if ( columnType == (Object) "tsvector" ) {
-            setTsVectorParameter(statement, index, value);
-            return;
-        }
-
-        if ( columnType == (Object) "cidr" || columnType == (Object) "inet"
-                || columnType == (Object) "macaddr" ) {
-            setAddressParameter(context, statement, index, value, column, columnType);
-            return;
-        }
-
-        if ( columnType != null && columnType.endsWith("range") ) {
-            setRangeParameter(context, statement, index, value, column, columnType);
-            return;
-        }
-
-        super.setObjectParameter(context, connection, statement, index, value, column, type);
-    }
-
-    private void setUUIDParameter(
-        final PreparedStatement statement, final int index,
-        Object value) throws SQLException {
-
-        if ( value instanceof IRubyObject ) {
-            final IRubyObject rubyValue = (IRubyObject) value;
-            if ( rubyValue.isNil() ) {
-                statement.setNull(index, Types.OTHER); return;
-            }
-        }
-        else if ( value == null ) {
-            statement.setNull(index, Types.OTHER); return;
-        }
-
-        final Object uuid = UUID.fromString( value.toString() );
-        statement.setObject(index, uuid);
-    }
-
-    private void setJsonParameter(final ThreadContext context,
-        final PreparedStatement statement, final int index,
-        Object value, final IRubyObject column) throws SQLException {
-
-        if ( value instanceof IRubyObject ) {
-            final IRubyObject rubyValue = (IRubyObject) value;
-            if ( rubyValue.isNil() ) {
-                statement.setNull(index, Types.OTHER); return;
-            }
-        }
-        else if ( value == null ) {
-            statement.setNull(index, Types.OTHER); return;
-        }
-
-        final PGobject pgJson = new PGobject();
-        pgJson.setType("json");
-        pgJson.setValue(value.toString());
-        statement.setObject(index, pgJson);
-    }
-
-    private void setTsVectorParameter(
-        final PreparedStatement statement, final int index,
-        Object value) throws SQLException {
-
-        if ( value instanceof IRubyObject ) {
-            final IRubyObject rubyValue = (IRubyObject) value;
-            if ( rubyValue.isNil() ) {
-                statement.setNull(index, Types.OTHER); return;
-            }
-        }
-        else if ( value == null ) {
-            statement.setNull(index, Types.OTHER); return;
-        }
-
-        final PGobject pgTsVector = new PGobject();
-        pgTsVector.setType("tsvector");
-        pgTsVector.setValue(value.toString());
-        statement.setObject(index, pgTsVector);
-    }
-
-    private void setAddressParameter(final ThreadContext context,
-        final PreparedStatement statement, final int index,
-        Object value, final IRubyObject column,
-        final String columnType) throws SQLException {
-
-        if ( value instanceof IRubyObject ) {
-            final IRubyObject rubyValue = (IRubyObject) value;
-            if ( rubyValue.isNil() ) {
-                statement.setNull(index, Types.OTHER); return;
-            }
-        }
-        else if ( value == null ) {
-            statement.setNull(index, Types.OTHER); return;
-        }
-
-        final PGobject pgAddress = new PGobject();
-        pgAddress.setType(columnType);
-        pgAddress.setValue(value.toString());
-        statement.setObject(index, pgAddress);
-    }
-
-    private void setRangeParameter(final ThreadContext context,
-        final PreparedStatement statement, final int index,
-        final Object value, final IRubyObject column,
-        final String columnType) throws SQLException {
-
-        final String rangeValue;
-
-        if ( value instanceof IRubyObject ) {
-            final IRubyObject rubyValue = (IRubyObject) value;
-            if ( rubyValue.isNil() ) {
-                statement.setNull(index, Types.OTHER); return;
-            }
-            rangeValue = column.getMetaClass().callMethod(context, "range_to_string", rubyValue).toString();
-        }
-        else {
-            if ( value == null ) {
-                statement.setNull(index, Types.OTHER); return;
-            }
-            rangeValue = value.toString();
-        }
-
-        final Object pgRange;
-        if ( columnType == (Object) "daterange" ) {
-            pgRange = new DateRangeType(rangeValue);
-        }
-        else if ( columnType == (Object) "tsrange" ) {
-            pgRange = new TsRangeType(rangeValue);
-        }
-        else if ( columnType == (Object) "tstzrange" ) {
-            pgRange = new TstzRangeType(rangeValue);
-        }
-        else if ( columnType == (Object) "int4range" ) {
-            pgRange = new Int4RangeType(rangeValue);
-        }
-        else if ( columnType == (Object) "int8range" ) {
-            pgRange = new Int8RangeType(rangeValue);
-        }
-        else { // if ( columnType == (Object) "numrange" )
-            pgRange = new NumRangeType(rangeValue);
-        }
-        statement.setObject(index, pgRange);
-    }
-
-    @Override
-    protected String resolveArrayBaseTypeName(final ThreadContext context,
-        final Object value, final IRubyObject column, final int type) {
-        String sqlType = column.callMethod(context, "sql_type").toString();
-        if ( sqlType.startsWith("character varying") ) return "text";
-        final int index = sqlType.indexOf('('); // e.g. "character varying(255)"
-        if ( index > 0 ) sqlType = sqlType.substring(0, index);
-        return sqlType;
-    }
-
-    private static final int HSTORE_TYPE = 100000 + 1111;
-
-    @Override
-    protected int jdbcTypeFor(final ThreadContext context, final Ruby runtime,
-        final IRubyObject column, final Object value) throws SQLException {
-        // NOTE: likely wrong but native adapters handles this thus we should
-        // too - used from #table_exists? `binds << [ nil, schema ] if schema`
-        if ( column == null || column.isNil() ) return Types.VARCHAR; // assume type == :string
-        final int type = super.jdbcTypeFor(context, runtime, column, value);
-        /*
-        if ( type == Types.OTHER ) {
-            final IRubyObject columnType = column.callMethod(context, "type");
-            if ( "hstore" == (Object) columnType.asJavaString() ) {
-                return HSTORE_TYPE;
-            }
-        } */
-        return type;
+        return super.jdbcTypeFor(type);
     }
 
     /**

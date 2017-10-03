@@ -160,43 +160,6 @@ module ArJdbc
       ::ActiveRecord::ConnectionAdapters::SQLite3::ExplainPrettyPrinter.new.pp(exec_query(sql, "EXPLAIN", []))
     end
 
-    def exec_query(sql, name = nil, binds = [], prepare: false)
-      type_casted_binds = binds.map { |attr| type_cast(attr.value_for_database) }
-
-      log(sql, name, binds) do
-        # Don't cache statements if they are not prepared
-        unless prepare
-          stmt    = @connection.prepare(sql)
-          begin
-            cols    = stmt.columns
-            unless without_prepared_statement?(binds)
-              stmt.bind_params(type_casted_binds)
-            end
-            records = stmt.to_a
-          ensure
-            stmt.close
-          end
-          stmt = records
-        else
-          cache = @statements[sql] ||= {
-              :stmt => @connection.prepare(sql)
-          }
-          stmt = cache[:stmt]
-          cols = cache[:cols] ||= stmt.columns
-          stmt.reset!
-          stmt.bind_params(type_casted_binds)
-        end
-
-        ActiveRecord::Result.new(cols, stmt.to_a)
-      end
-    end
-
-    def exec_delete(sql, name = 'SQL', binds = [])
-      exec_query(sql, name, binds)
-      @connection.changes
-    end
-    alias :exec_update :exec_delete
-
     def last_inserted_id(result)
       @connection.last_insert_row_id
     end
@@ -641,44 +604,6 @@ module ActiveRecord::ConnectionAdapters
     # FIXME: Add @connection.encoding then remove this method
     def encoding
       select_value 'PRAGMA encoding'
-    end
-
-    def exec_query(sql, name = nil, binds = [], prepare: false)
-      use_prepared = prepare || !without_prepared_statement?(binds)
-
-      if use_prepared
-        type_casted_binds = prepare_binds_for_jdbc(binds)
-        log(sql, name, binds) { @connection.execute_prepared(sql, type_casted_binds) }
-      else
-        log(sql, name) { @connection.execute(sql) }
-      end
-    end
-
-    def exec_update(sql, name = nil, binds = [])
-      use_prepared = !without_prepared_statement?(binds)
-
-      if use_prepared
-        type_casted_binds = prepare_binds_for_jdbc(binds)
-        log(sql, name, binds) { @connection.execute_prepared_update(sql, type_casted_binds) }
-      else
-        log(sql, name) { @connection.execute_update(sql, nil) }
-      end
-    end
-    alias :exec_delete :exec_update
-
-    # Sqlite3 JDBC types in prepared statements seem to report blob as varchar (12).
-    # So to work around this we will pass attribute type in with the value so we can
-    # then remap to appropriate type in JDBC without needing to ask JDBC what type
-    # it should be using.  No one likes a stinking liar...
-    def prepare_binds_for_jdbc(binds)
-      binds.map do |attribute|
-        [attribute.type.type, type_cast(attribute.value_for_database)]
-      end
-    end
-
-    # last two values passed but not used so I cannot alias to exec_query
-    def exec_insert(sql, name, binds, pk = nil, sequence_name = nil)
-      exec_update(sql, name, binds)
     end
 
     def indexes(table_name, name = nil) #:nodoc:

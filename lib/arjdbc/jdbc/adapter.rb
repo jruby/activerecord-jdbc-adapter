@@ -11,6 +11,8 @@ require 'arjdbc/jdbc/connection'
 require 'arjdbc/jdbc/callbacks'
 require 'arjdbc/jdbc/extension'
 require 'arjdbc/jdbc/type_converter'
+require 'arjdbc/abstract/database_statements'
+require 'arjdbc/abstract/transaction_support'
 
 module ActiveRecord
   module ConnectionAdapters
@@ -33,6 +35,12 @@ module ActiveRecord
     # the adapter and override some of its API methods.
     class JdbcAdapter < AbstractAdapter
       include Jdbc::ConnectionPoolCallbacks
+
+      # These are commented out because they conflict with the postgres adapter
+      # once the work is completed to make it so the postgres adapter no longer
+      # extends this adapter they can be uncommented out
+      #include ArJdbc::Abstract::DatabaseStatements
+      #include ArJdbc::Abstract::TransactionSupport
 
       attr_reader :config, :prepared_statements
 
@@ -304,157 +312,9 @@ module ActiveRecord
         @connection.columns(table_name.to_s)
       end
 
-      # Starts a database transaction.
-      # @override
-      def begin_db_transaction
-        @connection.begin
-      end
-
-      # Commits the current database transaction.
-      # @override
-      def commit_db_transaction
-        @connection.commit
-      end
-
-      # Rolls back the current database transaction.
-      # @override
-      def rollback_db_transaction
-        @connection.rollback
-      end
-
-      # Starts a database transaction.
-      # @param isolation the transaction isolation to use
-      # @since 1.3.0
-      # @override on **AR-4.0**
-      def begin_isolated_db_transaction(isolation)
-        @connection.begin(isolation)
-      end
-
-      # Does this adapter support setting the isolation level for a transaction?
-      # Unlike 'plain' `ActiveRecord` we allow checking for concrete transaction
-      # isolation level support by the database.
-      # @param level optional to check if we support a specific isolation level
-      # @since 1.3.0
-      # @extension added optional level parameter
-      def supports_transaction_isolation?(level = nil)
-        @connection.supports_transaction_isolation?(level)
-      end
-
-      # Does our database (+ its JDBC driver) support save-points?
-      # @since 1.3.0
-      # @override
-      def supports_savepoints?
-        @connection.supports_savepoints?
-      end
-
-      # Creates a (transactional) save-point one can rollback to.
-      # Unlike 'plain' `ActiveRecord` it is allowed to pass a save-point name.
-      # @param name the save-point name
-      # @return save-point name (even if nil passed will be generated)
-      # @since 1.3.0
-      # @extension added optional name parameter
-      def create_savepoint(name = current_savepoint_name(true))
-        @connection.create_savepoint(name)
-      end
-
-      # Transaction rollback to a given (previously created) save-point.
-      # If no save-point name given rollback to the last created one.
-      # @param name the save-point name
-      # @since 1.3.0
-      # @extension added optional name parameter
-      def rollback_to_savepoint(name = current_savepoint_name(true))
-        @connection.rollback_savepoint(name)
-      end
-
-      # Release a previously created save-point.
-      # @note Save-points are auto-released with the transaction they're created
-      # in (on transaction commit or roll-back).
-      # @param name the save-point name
-      # @since 1.3.0
-      # @extension added optional name parameter
-      def release_savepoint(name = current_savepoint_name(false))
-        @connection.release_savepoint(name)
-      end
-
-      # @note Same as AR 4.2 but we're allowing an unused parameter.
-      # @private
-      def current_savepoint_name(compat = nil)
-        current_transaction.savepoint_name
-      end
-
       # @override
       def supports_views?
         @connection.supports_views?
-      end
-
-      # Executes a SQL query in the context of this connection using the bind
-      # substitutes.
-      # @param sql the query string (or AREL object)
-      # @param name logging marker for the executed SQL statement log entry
-      # @param binds the bind parameters
-      # @return [ActiveRecord::Result] or [Array] on **AR-2.3**
-      # @override available since **AR-3.1**
-      def exec_query(sql, name = 'SQL', binds = [])
-        if sql.respond_to?(:to_sql)
-          sql = to_sql(sql, binds); to_sql = true
-        end
-        if prepared_statements?
-          log(sql, name, binds) { @connection.execute_query(sql, binds) }
-        else
-          sql = suble_binds(sql, binds) unless to_sql # deprecated behavior
-          log(sql, name) { @connection.execute_query(sql) }
-        end
-      end
-
-      # Executes an insert statement in the context of this connection.
-      # @param sql the query string (or AREL object)
-      # @param name logging marker for the executed SQL statement log entry
-      # @param binds the bind parameters
-      # @override available since **AR-3.1**
-      def exec_insert(sql, name, binds, pk = nil, sequence_name = nil)
-        if sql.respond_to?(:to_sql)
-          sql = to_sql(sql, binds); to_sql = true
-        end
-        if prepared_statements?
-          log(sql, name || 'SQL', binds) { @connection.execute_insert(sql, binds) }
-        else
-          sql = suble_binds(sql, binds) unless to_sql # deprecated behavior
-          log(sql, name || 'SQL') { @connection.execute_insert(sql) }
-        end
-      end
-
-      # Executes a delete statement in the context of this connection.
-      # @param sql the query string (or AREL object)
-      # @param name logging marker for the executed SQL statement log entry
-      # @param binds the bind parameters
-      # @override available since **AR-3.1**
-      def exec_delete(sql, name, binds)
-        if sql.respond_to?(:to_sql)
-          sql = to_sql(sql, binds); to_sql = true
-        end
-        if prepared_statements?
-          log(sql, name || 'SQL', binds) { @connection.execute_delete(sql, binds) }
-        else
-          sql = suble_binds(sql, binds) unless to_sql # deprecated behavior
-          log(sql, name || 'SQL') { @connection.execute_delete(sql) }
-        end
-      end
-
-      # # Executes an update statement in the context of this connection.
-      # @param sql the query string (or AREL object)
-      # @param name logging marker for the executed SQL statement log entry
-      # @param binds the bind parameters
-      # @override available since **AR-3.1**
-      def exec_update(sql, name, binds)
-        if sql.respond_to?(:to_sql)
-          sql = to_sql(sql, binds); to_sql = true
-        end
-        if prepared_statements?
-          log(sql, name || 'SQL', binds) { @connection.execute_update(sql, binds) }
-        else
-          sql = suble_binds(sql, binds) unless to_sql # deprecated behavior
-          log(sql, name || 'SQL') { @connection.execute_update(sql) }
-        end
       end
 
       # Similar to {#exec_query} except it returns "raw" results in an array
@@ -483,22 +343,6 @@ module ActiveRecord
       # @override
       def select_rows(sql, name = nil, binds = [])
         exec_query_raw(sql, name, binds).map!(&:values)
-      end
-
-      if ActiveRecord::VERSION::MAJOR > 3 # expects AR::Result e.g. from select_all
-
-      # @private
-      def select(sql, name = nil, binds = [])
-        exec_query(to_sql(sql, binds), name, binds)
-      end
-
-      else
-
-      # @private
-      def select(sql, name = nil, binds = []) # NOTE: only (sql, name) on AR < 3.1
-        exec_query_raw(to_sql(sql, binds), name, binds)
-      end
-
       end
 
       # Executes the SQL statement in the context of this connection.
@@ -643,7 +487,7 @@ module ActiveRecord
         return e if e.is_a?(Java::JavaLang::Throwable)
 
         case e
-        when SystemExit, SignalException, NoMemoryError then e
+        when ActiveModel::RangeError, SystemExit, SignalException, NoMemoryError then e
         # NOTE: wraps AR::JDBCError into AR::StatementInvalid, desired ?!
         else super
         end

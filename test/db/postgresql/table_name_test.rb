@@ -42,13 +42,12 @@ class PostgreSQLTableNameTest < Test::Unit::TestCase
   class SerialNumber < ActiveRecord::Base; end
 
   test 'serial number' do
-    skip('fails with prepared statements') if ar_version('3.1') && prepared_statements?
     sn = SerialNumber.new; sn.serial = 1234567890; sn.serial_patch = 11
     sn.save!
     assert sn.reload
 
     SerialNumber.columns
-  end if ar_version('3.2')
+  end
 
   class SerialMigration < ActiveRecord::Migration
     def self.up
@@ -78,7 +77,6 @@ class PostgreSQLTableNameTest < Test::Unit::TestCase
     end
 
     def self.down
-      # execute "DROP TRIGGER serials_trigger"
       execute "DROP TABLE serials"
     end
   end
@@ -89,11 +87,10 @@ class PostgreSQLTableNameTest < Test::Unit::TestCase
   end
 
   test 'serial with trigger' do
-    skip('fails with prepared statements') if prepared_statements?
     sn = SerialWithTrigger.create! :value => 1234567890.to_s
     assert sn.reload
 
     SerialWithTrigger.columns
-  end if ar_version('3.1')
+  end
 
 end

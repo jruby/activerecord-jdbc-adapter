@@ -5,63 +5,25 @@ module ArJdbc
     # database for JDBC based adapters
     module DatabaseStatements
 
-      # Executes a delete statement in the context of this connection.
-      # @param sql the query string (or AREL object)
-      # @param name logging marker for the executed SQL statement log entry
-      # @param binds the bind parameters
-      # @override available since **AR-3.1**
-      def exec_delete(sql, name, binds)
-        if prepared_statements?
-          log(sql, name || 'SQL', binds) { @connection.execute_delete(sql, binds) }
+      # It appears that at this point (AR 5.0) "prepare" should only ever be true
+      # if prepared statements are enabled
+      def exec_query(sql, name = nil, binds = [], prepare: false)
+        if without_prepared_statement?(binds)
+          execute(sql, name)
         else
-          sql = to_sql(sql, binds) if sql.respond_to?(:to_sql)
-          log(sql, name || 'SQL') { @connection.execute_delete(sql) }
+          binds = convert_legacy_binds_to_attributes(binds) if binds.first.is_a?(Array)
+          log(sql, name, binds) { @connection.execute_prepared(sql, binds) }
         end
       end
 
-      # Executes an insert statement in the context of this connection.
-      # @param sql the query string (or AREL object)
-      # @param name logging marker for the executed SQL statement log entry
-      # @param binds the bind parameters
-      # @override available since **AR-3.1**
-      def exec_insert(sql, name, binds, pk = nil, sequence_name = nil)
-        if prepared_statements?
-          log(sql, name || 'SQL', binds) { @connection.execute_insert(sql, binds) }
+      def exec_update(sql, name = nil, binds = [])
+        if without_prepared_statement?(binds)
+          log(sql, name) { @connection.execute_update(sql, nil) }
         else
-          sql = to_sql(sql, binds) if sql.respond_to?(:to_sql)
-          log(sql, name || 'SQL') { @connection.execute_insert(sql) }
+          log(sql, name, binds) { @connection.execute_prepared_update(sql, binds) }
         end
       end
-
-      # Executes a SQL query in the context of this connection using the bind
-      # substitutes.
-      # @param sql the query string (or AREL object)
-      # @param name logging marker for the executed SQL statement log entry
-      # @param binds the bind parameters
-      # @return [ActiveRecord::Result] or [Array] on **AR-2.3**
-      # @override available since **AR-3.1**
-      def exec_query(sql, name = 'SQL', binds = [])
-        if prepared_statements?
-          log(sql, name, binds) { @connection.execute_query(sql, binds) }
-        else
-          sql = to_sql(sql, binds) if sql.respond_to?(:to_sql)
-          log(sql, name) { @connection.execute_query(sql) }
-        end
-      end
-
-      # # Executes an update statement in the context of this connection.
-      # @param sql the query string (or AREL object)
-      # @param name logging marker for the executed SQL statement log entry
-      # @param binds the bind parameters
-      # @override available since **AR-3.1**
-      def exec_update(sql, name, binds)
-        if prepared_statements?
-          log(sql, name || 'SQL', binds) { @connection.execute_update(sql, binds) }
-        else
-          sql = to_sql(sql, binds) if sql.respond_to?(:to_sql)
-          log(sql, name || 'SQL') { @connection.execute_update(sql) }
-        end
-      end
+      alias :exec_delete :exec_update
 
       def execute(sql, name = nil)
         log(sql, name) { @connection.execute(sql) }
@@ -77,14 +39,12 @@ module ArJdbc
         end
       end
 
-      # @return whether `:prepared_statements` are to be used
-      def prepared_statements?
-        return @prepared_statements unless (@prepared_statements ||= nil).nil?
-        @prepared_statements = if config.key?(:prepared_statements)
-                                 self.class.type_cast_config_to_boolean(config.fetch(:prepared_statements))
-                               else
-                                 false
-                               end
+      private
+
+      def convert_legacy_binds_to_attributes(binds)
+        binds.map do |column, value|
+          ActiveRecord::Relation::QueryAttribute.new(nil, type_cast(value, column), ActiveModel::Type::Value.new)
+        end
       end
 
     end

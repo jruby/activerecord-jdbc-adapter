@@ -604,7 +604,7 @@ public class RubyJdbcConnection extends RubyObject {
             return executeUpdate(context, query, true);
         }
         else { // we allow prepared statements with empty binds parameters
-            return executePreparedUpdate(context, query, (List) binds, true);
+            return executePreparedUpdate(context, query, (RubyArray) binds, true);
         }
     }
 
@@ -640,16 +640,16 @@ public class RubyJdbcConnection extends RubyObject {
             return executeUpdate(context, query, false);
         }
         else { // we allow prepared statements with empty binds parameters
-            return executePreparedUpdate(context, query, (List) binds, false);
+            return executePreparedUpdate(context, query, (RubyArray) binds, false);
         }
     }
 
     @JRubyMethod(name = {"execute_prepared_update"}, required = 2)
     public IRubyObject execute_prepared_update(final ThreadContext context,
-                                               final IRubyObject sql, final IRubyObject binds) throws SQLException {
+        final IRubyObject sql, final IRubyObject binds) throws SQLException {
 
         final String query = sql.convertToString().getUnicodeValue();
-        return executePreparedUpdate(context, query, (List) binds, false);
+        return executePreparedUpdate(context, query, (RubyArray) binds, false);
     }
 
     /**
@@ -688,7 +688,7 @@ public class RubyJdbcConnection extends RubyObject {
     }
 
     private IRubyObject executePreparedUpdate(final ThreadContext context, final String query,
-        final List<?> binds, final boolean returnGeneratedKeys) {
+        final RubyArray binds, final boolean returnGeneratedKeys) {
         return withConnection(context, new Callable<IRubyObject>() {
             public IRubyObject call(final Connection connection) throws SQLException {
                 PreparedStatement statement = null;
@@ -769,7 +769,7 @@ public class RubyJdbcConnection extends RubyObject {
             return executeQueryRaw(context, query, maxRows, block);
         }
         else { // we allow prepared statements with empty binds parameters
-            return executePreparedQueryRaw(context, query, (List) binds, maxRows, block);
+            return executePreparedQueryRaw(context, query, (RubyArray) binds, maxRows, block);
         }
     }
 
@@ -788,12 +788,12 @@ public class RubyJdbcConnection extends RubyObject {
     }
 
     protected IRubyObject executePreparedQueryRaw(final ThreadContext context,
-        final String query, final List<?> binds, final int maxRows, final Block block) {
+        final String query, final RubyArray binds, final int maxRows, final Block block) {
         return doExecuteQueryRaw(context, query, maxRows, block, binds);
     }
 
     private IRubyObject doExecuteQueryRaw(final ThreadContext context,
-        final String query, final int maxRows, final Block block, final List<?> binds) {
+        final String query, final int maxRows, final Block block, final RubyArray binds) {
         return withConnection(context, new Callable<IRubyObject>() {
             public IRubyObject call(final Connection connection) throws SQLException {
                 final Ruby runtime = context.getRuntime();
@@ -879,7 +879,7 @@ public class RubyJdbcConnection extends RubyObject {
             return executeQuery(context, query, maxRows);
         }
         else { // we allow prepared statements with empty binds parameters
-            return executePreparedQuery(context, query, (List) binds, maxRows);
+            return executePreparedQuery(context, query, (RubyArray) binds, maxRows);
         }
     }
 
@@ -892,7 +892,7 @@ public class RubyJdbcConnection extends RubyObject {
             throw context.runtime.newArgumentError("binds exptected to an instance of Array");
         }
 
-        return executePreparedQuery(context, query, (List) binds, 0);
+        return executePreparedQuery(context, query, (RubyArray) binds, 0);
     }
 
     /**
@@ -934,11 +934,9 @@ public class RubyJdbcConnection extends RubyObject {
                 PreparedStatement statement = null;
                 final String query = sql.convertToString().getUnicodeValue();
 
-                // FIXME: array type check for binds
-
                 try {
                     statement = connection.prepareStatement(query);
-                    setStatementParameters(context, connection, statement, (List) binds);
+                    setStatementParameters(context, connection, statement, (RubyArray) binds);
                     boolean hasResultSet = statement.execute();
 
                     if (hasResultSet) {
@@ -960,7 +958,7 @@ public class RubyJdbcConnection extends RubyObject {
     }
 
     protected IRubyObject executePreparedQuery(final ThreadContext context, final String query,
-        final List<?> binds, final int maxRows) {
+        final RubyArray binds, final int maxRows) {
         return withConnection(context, new Callable<IRubyObject>() {
             public IRubyObject call(final Connection connection) throws SQLException {
                 PreparedStatement statement = null; ResultSet resultSet = null;
@@ -1449,11 +1447,15 @@ public class RubyJdbcConnection extends RubyObject {
 
         final String sql = "UPDATE "+ tableName +" SET "+ columnName +" = ? WHERE "+ idKey +" = ?" ;
 
+        // TODO: Fix this, the columns don't have the info needed to handle this anymore
+        //       currently commented out so that it will compile
+
         return withConnection(context, new Callable<Integer>() {
             public Integer call(final Connection connection) throws SQLException {
                 PreparedStatement statement = null;
                 try {
                     statement = connection.prepareStatement(sql);
+                    /*
                     if ( binary ) { // blob
                         setBlobParameter(context, connection, statement, 1, value, column, Types.BLOB);
                     }
@@ -1461,6 +1463,7 @@ public class RubyJdbcConnection extends RubyObject {
                         setClobParameter(context, connection, statement, 1, value, column, Types.CLOB);
                     }
                     setStatementParameter(context, context.getRuntime(), connection, statement, 2, idValue, idColumn);
+                    */
                     return statement.executeUpdate();
                 }
                 finally { close(statement); }
@@ -2014,134 +2017,86 @@ public class RubyJdbcConnection extends RubyObject {
 
     protected void setStatementParameters(final ThreadContext context,
         final Connection connection, final PreparedStatement statement,
-        final List<?> binds) throws SQLException {
+        final RubyArray binds) throws SQLException {
 
-        final Ruby runtime = context.getRuntime();
-
-        for ( int i = 0; i < binds.size(); i++ ) {
-            // [ [ column1, param1 ], [ column2, param2 ], ... ]
-            Object param = binds.get(i); IRubyObject column = null;
-            if ( param instanceof RubyArray ) {
-                final RubyArray _param = (RubyArray) param;
-                column = _param.eltInternal(0); param = _param.eltInternal(1);
-            }
-            else if ( param instanceof List ) {
-                final List<?> _param = (List<?>) param;
-                column = (IRubyObject) _param.get(0); param = _param.get(1);
-            }
-            else if ( param instanceof Object[] ) {
-                final Object[] _param = (Object[]) param;
-                column = (IRubyObject) _param[0]; param = _param[1];
-            }
-
-            setStatementParameter(context, runtime, connection, statement, i + 1, param, column);
+        for ( int i = 0; i < binds.getLength(); i++ ) {
+            setStatementParameter(context, connection, statement, i + 1, binds.eltInternal(i));
         }
     }
 
-    // So far we have only examined the needs to Sqlite3 but for that adapter (and it is old JDBC adapter)
-    // we can pass all tests but binary column types with just the supplied value.  So we will leave it
-    // this way until we upgrade Sqlite adapter and get some more databases supported.
-    protected int typeHack(ThreadContext context, IRubyObject column, Object value) throws SQLException {
-        if (column != null) {
-            String columnType = column.asString().toString();
-
-            if (columnType.equals("binary")) return jdbcTypeFor(context, context.runtime, column, value);
-
-            column = null;
-        }
-
-        return jdbcTypeFor(context, context.runtime, column, value);
-    }
-
+    // Set the prepared statement attributes based on the passed in Attribute object
     protected void setStatementParameter(final ThreadContext context,
-            final Ruby runtime, final Connection connection,
-            final PreparedStatement statement, final int index,
-            final Object value, IRubyObject column) throws SQLException {
-        int type = typeHack(context, column, value);
+            final Connection connection, final PreparedStatement statement,
+            final int index, IRubyObject attribute) throws SQLException {
+
+        //debugMessage(context, attribute);
+        int type = jdbcTypeForAttribute(context, attribute);
+        IRubyObject value = valueForDatabase(context, attribute);
+
+        // All the set methods were calling this first so save a method call in the nil case
+        if ( value.isNil() ) {
+            statement.setNull(index, type);
+            return;
+        }
 
         switch (type) {
             case Types.TINYINT:
             case Types.SMALLINT:
             case Types.INTEGER:
-                if ( value instanceof RubyBignum ) { // e.g. HSQLDB / H2 report JDBC type 4
-                    setBigIntegerParameter(context, connection, statement, index, (RubyBignum) value, column, type);
-                }
-                else {
-                    setIntegerParameter(context, connection, statement, index, value, column, type);
-                }
+                setIntegerParameter(context, connection, statement, index, value, attribute, type);
                 break;
             case Types.BIGINT:
-                setBigIntegerParameter(context, connection, statement, index, value, column, type);
+                setBigIntegerParameter(context, connection, statement, index, value, attribute, type);
                 break;
             case Types.REAL:
             case Types.FLOAT:
             case Types.DOUBLE:
-                setDoubleParameter(context, connection, statement, index, value, column, type);
+                setDoubleParameter(context, connection, statement, index, value, attribute, type);
                 break;
             case Types.NUMERIC:
             case Types.DECIMAL:
-                setDecimalParameter(context, connection, statement, index, value, column, type);
+                setDecimalParameter(context, connection, statement, index, value, attribute, type);
                 break;
             case Types.DATE:
-                setDateParameter(context, connection, statement, index, value, column, type);
+                setDateParameter(context, connection, statement, index, value, attribute, type);
                 break;
             case Types.TIME:
-                setTimeParameter(context, connection, statement, index, value, column, type);
+                setTimeParameter(context, connection, statement, index, value, attribute, type);
                 break;
             case Types.TIMESTAMP:
-                setTimestampParameter(context, connection, statement, index, value, column, type);
+                setTimestampParameter(context, connection, statement, index, value, attribute, type);
                 break;
             case Types.BIT:
             case Types.BOOLEAN:
-                setBooleanParameter(context, connection, statement, index, value, column, type);
+                setBooleanParameter(context, connection, statement, index, value, attribute, type);
                 break;
             case Types.SQLXML:
-                setXmlParameter(context, connection, statement, index, value, column, type);
+                setXmlParameter(context, connection, statement, index, value, attribute, type);
                 break;
             case Types.ARRAY:
-                setArrayParameter(context, connection, statement, index, value, column, type);
+                setArrayParameter(context, connection, statement, index, value, attribute, type);
                 break;
             case Types.JAVA_OBJECT:
             case Types.OTHER:
-                setObjectParameter(context, connection, statement, index, value, column, type);
+                setObjectParameter(context, connection, statement, index, value, attribute, type);
                 break;
             case Types.BINARY:
             case Types.VARBINARY:
             case Types.LONGVARBINARY:
             case Types.BLOB:
-                setBlobParameter(context, connection, statement, index, value, column, type);
+                setBlobParameter(context, connection, statement, index, value, attribute, type);
                 break;
             case Types.CLOB:
             case Types.NCLOB: // JDBC 4.0
-                setClobParameter(context, connection, statement, index, value, column, type);
+                setClobParameter(context, connection, statement, index, value, attribute, type);
                 break;
             case Types.CHAR:
             case Types.VARCHAR:
             case Types.NCHAR: // JDBC 4.0
             case Types.NVARCHAR: // JDBC 4.0
             default:
-                setStringParameter(context, connection, statement, index, value, column, type);
+                setStringParameter(context, connection, statement, index, value, attribute, type);
         }
-    }
-
-    private RubySymbol resolveColumnType(final ThreadContext context, final Ruby runtime,
-        final IRubyObject column) {
-        if ( column instanceof RubySymbol ) { // deprecated behavior
-            return (RubySymbol) column;
-        }
-        if ( column instanceof RubyString) { // deprecated behavior
-            return ( (RubyString) column ).intern();
-        }
-
-        if ( column == null || column.isNil() ) {
-            throw runtime.newArgumentError("nil column passed");
-        }
-
-        final IRubyObject type = column.callMethod(context, "type");
-        if ( type.isNil() || ! (type instanceof RubySymbol) ) {
-            throw new IllegalStateException("unexpected type = " + type.inspect() + " for " + column.inspect());
-        }
-        return (RubySymbol) type;
     }
 
     protected static final Map<String, Integer> JDBC_TYPE_FOR = new HashMap<String, Integer>(32, 1);
@@ -2156,7 +2111,6 @@ public class RubyJdbcConnection extends RubyObject {
         JDBC_TYPE_FOR.put("time", Types.TIME);
         JDBC_TYPE_FOR.put("datetime", Types.TIMESTAMP);
         JDBC_TYPE_FOR.put("timestamp", Types.TIMESTAMP);
-        JDBC_TYPE_FOR.put("binary", Types.BLOB);
         JDBC_TYPE_FOR.put("boolean", Types.BOOLEAN);
         JDBC_TYPE_FOR.put("array", Types.ARRAY);
         JDBC_TYPE_FOR.put("xml", Types.SQLXML);
@@ -2181,107 +2135,89 @@ public class RubyJdbcConnection extends RubyObject {
         JDBC_TYPE_FOR.put("nclob", Types.NCLOB);
     }
 
-    protected int jdbcTypeFor(final ThreadContext context, final Ruby runtime,
-        final IRubyObject column, final Object value) throws SQLException {
+    protected int jdbcTypeForAttribute(final ThreadContext context,
+        final IRubyObject attribute) throws SQLException {
 
-        final String internedType;
-        if ( column != null && ! column.isNil() ) {
-            // NOTE: there's no ActiveRecord "convention" really for this ...
-            // this is based on Postgre's initial support for arrays :
-            // `column.type` contains the base type while there's `column.array?`
-            if ( column.respondsTo("array?") && column.callMethod(context, "array?").isTrue() ) {
-                internedType = "array";
-            }
-            else {
-                internedType = resolveColumnType(context, runtime, column).asJavaString();
-            }
+        final String internedType = internedTypeFor(context, attribute);
+        final Integer sqlType = jdbcTypeFor(internedType);
+        if ( sqlType != null ) {
+            return sqlType.intValue();
         }
-        else {
-            if ( value instanceof RubyInteger ) internedType = "integer";
-            else if ( value instanceof RubyNumeric ) internedType = "float";
-            else if ( value instanceof RubyTime ) internedType = "timestamp";
-            else internedType = "string";
-        }
-
-        final Integer sqlType = JDBC_TYPE_FOR.get(internedType);
-        if ( sqlType != null ) return sqlType.intValue();
 
         return Types.OTHER; // -1 as well as 0 are used in Types
     }
 
-    protected void setIntegerParameter(final ThreadContext context,
-        final Connection connection, final PreparedStatement statement,
-        final int index, final Object value,
-        final IRubyObject column, final int type) throws SQLException {
-        if ( value instanceof IRubyObject ) {
-            setIntegerParameter(context, connection, statement, index, (IRubyObject) value, column, type);
+    protected Integer jdbcTypeFor(final String type) {
+        return JDBC_TYPE_FOR.get(type);
+    }
+
+    protected IRubyObject attributeType(final ThreadContext context, final IRubyObject attribute) {
+        return attribute.callMethod(context, "type");
+    }
+
+    protected IRubyObject attributeSQLType(final ThreadContext context, final IRubyObject attribute) {
+        return attributeType(context, attribute).callMethod(context, "type");
+    }
+
+    protected String internedTypeFor(final ThreadContext context, final IRubyObject attribute) throws SQLException {
+
+        final IRubyObject type = attributeSQLType(context, attribute);
+
+        if ( !type.isNil() ) {
+            return type.asJavaString();
         }
-        else {
-            if ( value == null ) statement.setNull(index, Types.INTEGER);
-            else {
-                statement.setLong(index, ((Number) value).longValue());
-            }
+
+        final IRubyObject value = attribute.callMethod(context, "value");
+
+        if ( value instanceof RubyInteger ) {
+            return "integer";
         }
+
+        if ( value instanceof RubyNumeric ) {
+            return "float";
+        }
+
+        if ( value instanceof RubyTime ) {
+            return "timestamp";
+        }
+
+        return "string";
     }
 
     protected void setIntegerParameter(final ThreadContext context,
         final Connection connection, final PreparedStatement statement,
         final int index, final IRubyObject value,
-        final IRubyObject column, final int type) throws SQLException {
-        if ( value.isNil() ) statement.setNull(index, Types.INTEGER);
-        else {
-            if ( value instanceof RubyFixnum ) {
-                statement.setLong(index, ((RubyFixnum) value).getLongValue());
-            }
-            else if ( value instanceof RubyNumeric ) {
-                // NOTE: fix2int will call value.convertToIngeter for non-numeric
-                // types which won't work for Strings since it uses `to_int` ...
-                statement.setInt(index, RubyNumeric.fix2int(value));
-            }
-            else {
-                statement.setLong(index, value.convertToInteger("to_i").getLongValue());
-            }
-        }
-    }
+        final IRubyObject attribute, final int type) throws SQLException {
 
-    protected void setBigIntegerParameter(final ThreadContext context,
-        final Connection connection, final PreparedStatement statement,
-        final int index, final Object value,
-        final IRubyObject column, final int type) throws SQLException {
-        if ( value instanceof IRubyObject ) {
-            setBigIntegerParameter(context, connection, statement, index, (IRubyObject) value, column, type);
+        if ( value instanceof RubyBignum ) { // e.g. HSQLDB / H2 report JDBC type 4
+            setBigIntegerParameter(context, connection, statement, index, (RubyBignum) value, attribute, type);
+        }
+        else if ( value instanceof RubyFixnum ) {
+            statement.setLong(index, ((RubyFixnum) value).getLongValue());
+        }
+        else if ( value instanceof RubyNumeric ) {
+            // NOTE: fix2int will call value.convertToInteger for non-numeric
+            // types which won't work for Strings since it uses `to_int` ...
+            statement.setInt(index, RubyNumeric.fix2int(value));
         }
         else {
-            if ( value == null ) statement.setNull(index, Types.BIGINT);
-            else {
-                if ( value instanceof BigDecimal ) {
-                    statement.setBigDecimal(index, (BigDecimal) value);
-                }
-                else if ( value instanceof BigInteger ) {
-                    setLongOrDecimalParameter(statement, index, (BigInteger) value);
-                }
-                else {
-                    statement.setLong(index, ((Number) value).longValue());
-                }
-            }
+            statement.setLong(index, value.convertToInteger("to_i").getLongValue());
         }
     }
 
     protected void setBigIntegerParameter(final ThreadContext context,
         final Connection connection, final PreparedStatement statement,
         final int index, final IRubyObject value,
-        final IRubyObject column, final int type) throws SQLException {
-        if ( value.isNil() ) statement.setNull(index, Types.INTEGER);
+        final IRubyObject attribute, final int type) throws SQLException {
+
+        if ( value instanceof RubyBignum ) {
+            setLongOrDecimalParameter(statement, index, ((RubyBignum) value).getValue());
+        }
+        else if ( value instanceof RubyInteger ) {
+            statement.setLong(index, ((RubyInteger) value).getLongValue());
+        }
         else {
-            if ( value instanceof RubyBignum ) {
-                setLongOrDecimalParameter(statement, index, ((RubyBignum) value).getValue());
-            }
-            else if ( value instanceof RubyInteger ) {
-                statement.setLong(index, ((RubyInteger) value).getLongValue());
-            }
-            else {
-                setLongOrDecimalParameter(statement, index, value.convertToInteger("to_i").getBigIntegerValue());
-            }
+            setLongOrDecimalParameter(statement, index, value.convertToInteger("to_i").getBigIntegerValue());
         }
     }
 
@@ -2301,77 +2237,35 @@ public class RubyJdbcConnection extends RubyObject {
 
     protected void setDoubleParameter(final ThreadContext context,
         final Connection connection, final PreparedStatement statement,
-        final int index, final Object value,
-        final IRubyObject column, final int type) throws SQLException {
-        if ( value instanceof IRubyObject ) {
-            setDoubleParameter(context, connection, statement, index, (IRubyObject) value, column, type);
-        }
-        else {
-            if ( value == null ) statement.setNull(index, Types.DOUBLE);
-            else {
-                statement.setDouble(index, ((Number) value).doubleValue());
-            }
-        }
-    }
-
-    protected void setDoubleParameter(final ThreadContext context,
-        final Connection connection, final PreparedStatement statement,
         final int index, final IRubyObject value,
-        final IRubyObject column, final int type) throws SQLException {
-        if ( value.isNil() ) statement.setNull(index, Types.DOUBLE);
-        else {
-            if ( value instanceof RubyNumeric ) {
-                statement.setDouble(index, ((RubyNumeric) value).getDoubleValue());
-            }
-            else {
-                statement.setDouble(index, value.convertToFloat().getDoubleValue());
-            }
-        }
-    }
+        final IRubyObject attribute, final int type) throws SQLException {
 
-    protected void setDecimalParameter(final ThreadContext context,
-        final Connection connection, final PreparedStatement statement,
-        final int index, final Object value,
-        final IRubyObject column, final int type) throws SQLException {
-        if ( value instanceof IRubyObject ) {
-            setDecimalParameter(context, connection, statement, index, (IRubyObject) value, column, type);
+        if ( value instanceof RubyNumeric ) {
+            statement.setDouble(index, ((RubyNumeric) value).getDoubleValue());
         }
         else {
-            if ( value == null ) statement.setNull(index, Types.DECIMAL);
-            else {
-                if ( value instanceof BigDecimal ) {
-                    statement.setBigDecimal(index, (BigDecimal) value);
-                }
-                else if ( value instanceof BigInteger ) {
-                    setLongOrDecimalParameter(statement, index, (BigInteger) value);
-                }
-                else {
-                    statement.setDouble(index, ((Number) value).doubleValue());
-                }
-            }
+            statement.setDouble(index, value.convertToFloat().getDoubleValue());
         }
     }
 
     protected void setDecimalParameter(final ThreadContext context,
         final Connection connection, final PreparedStatement statement,
         final int index, final IRubyObject value,
-        final IRubyObject column, final int type) throws SQLException {
-        if ( value.isNil() ) statement.setNull(index, Types.DECIMAL);
-        else {
-            // NOTE: RubyBigDecimal moved into org.jruby.ext.bigdecimal (1.6 -> 1.7)
-            if ( value.getMetaClass().getName().indexOf("BigDecimal") != -1 ) {
-                statement.setBigDecimal(index, getBigDecimalValue(value));
-            }
-            else if ( value instanceof RubyInteger ) {
-                statement.setBigDecimal(index, new BigDecimal(((RubyInteger) value).getBigIntegerValue()));
-            }
-            else if ( value instanceof RubyNumeric ) {
-                statement.setDouble(index, ((RubyNumeric) value).getDoubleValue());
-            }
-            else { // e.g. `BigDecimal '42.00000000000000000001'`
-                IRubyObject v = callMethod(context, "BigDecimal", value);
-                statement.setBigDecimal(index, getBigDecimalValue(v));
-            }
+        final IRubyObject attribute, final int type) throws SQLException {
+
+        // NOTE: RubyBigDecimal moved into org.jruby.ext.bigdecimal (1.6 -> 1.7)
+        if ( value.getMetaClass().getName().indexOf("BigDecimal") != -1 ) {
+            statement.setBigDecimal(index, getBigDecimalValue(value));
+        }
+        else if ( value instanceof RubyInteger ) {
+            statement.setBigDecimal(index, new BigDecimal(((RubyInteger) value).getBigIntegerValue()));
+        }
+        else if ( value instanceof RubyNumeric ) {
+            statement.setDouble(index, ((RubyNumeric) value).getDoubleValue());
+        }
+        else { // e.g. `BigDecimal '42.00000000000000000001'`
+            IRubyObject v = callMethod(context, "BigDecimal", value);
+            statement.setBigDecimal(index, getBigDecimalValue(v));
         }
     }
 
@@ -2394,58 +2288,34 @@ public class RubyJdbcConnection extends RubyObject {
 
     protected void setTimestampParameter(final ThreadContext context,
         final Connection connection, final PreparedStatement statement,
-        final int index, final Object value,
-        final IRubyObject column, final int type) throws SQLException {
-        if ( value instanceof IRubyObject ) {
-            setTimestampParameter(context, connection, statement, index, (IRubyObject) value, column, type);
-        }
-        else {
-            if ( value == null ) statement.setNull(index, Types.TIMESTAMP);
-            else {
-                if ( value instanceof Timestamp ) {
-                    statement.setTimestamp(index, (Timestamp) value);
-                }
-                else if ( value instanceof java.util.Date ) {
-                    statement.setTimestamp(index, new Timestamp(((java.util.Date) value).getTime()));
-                }
-                else {
-                    statement.setTimestamp(index, Timestamp.valueOf(value.toString()));
-                }
-            }
-        }
-    }
-
-    protected void setTimestampParameter(final ThreadContext context,
-        final Connection connection, final PreparedStatement statement,
         final int index, IRubyObject value,
-        final IRubyObject column, final int type) throws SQLException {
-        if ( value.isNil() ) statement.setNull(index, Types.TIMESTAMP);
-        else {
-            value = getTimeInDefaultTimeZone(context, value);
-            if ( value instanceof RubyTime ) {
-                final RubyTime timeValue = (RubyTime) value;
-                final DateTime dateTime = timeValue.getDateTime();
+        final IRubyObject attribute, final int type) throws SQLException {
 
-                final Timestamp timestamp = new Timestamp( dateTime.getMillis() );
-                if ( type != Types.DATE ) { // 1942-11-30T01:02:03.123_456
-                    // getMillis already set nanos to: 123_000_000
-                    final int usec = (int) timeValue.getUSec(); // 456 on JRuby
-                    if ( usec >= 0 ) {
-                        timestamp.setNanos( timestamp.getNanos() + usec * 1000 );
-                    }
+        value = getTimeInDefaultTimeZone(context, value);
+
+        if ( value instanceof RubyTime ) {
+            final RubyTime timeValue = (RubyTime) value;
+            final DateTime dateTime = timeValue.getDateTime();
+            final Timestamp timestamp = new Timestamp(dateTime.getMillis());
+
+            if ( type != Types.DATE ) { // 1942-11-30T01:02:03.123_456
+                // getMillis already set nanos to: 123_000_000
+                final int usec = (int) timeValue.getUSec(); // 456 on JRuby
+                if ( usec >= 0 ) {
+                    timestamp.setNanos(timestamp.getNanos() + usec * 1000);
                 }
-                statement.setTimestamp( index, timestamp, getTimeZoneCalendar(dateTime.getZone().getID()) );
             }
-            else if ( value instanceof RubyString ) { // yyyy-[m]m-[d]d hh:mm:ss[.f...]
-                final Timestamp timestamp = Timestamp.valueOf( value.toString() );
-                statement.setTimestamp( index, timestamp ); // assume local time-zone
-            }
-            else { // DateTime ( ActiveSupport::TimeWithZone.to_time )
-                final RubyFloat timeValue = value.convertToFloat(); // to_f
-                final Timestamp timestamp = convertToTimestamp(timeValue);
+            statement.setTimestamp( index, timestamp, getTimeZoneCalendar(dateTime.getZone().getID()) );
+        }
+        else if ( value instanceof RubyString ) { // yyyy-[m]m-[d]d hh:mm:ss[.f...]
+            final Timestamp timestamp = Timestamp.valueOf(value.toString());
+            statement.setTimestamp(index, timestamp); // assume local time-zone
+        }
+        else { // DateTime ( ActiveSupport::TimeWithZone.to_time )
+            final RubyFloat timeValue = value.convertToFloat(); // to_f
+            final Timestamp timestamp = convertToTimestamp(timeValue);
 
-                statement.setTimestamp( index, timestamp, getTimeZoneCalendar("GMT") );
-            }
+            statement.setTimestamp( index, timestamp, getTimeZoneCalendar("GMT") );
         }
     }
 
@@ -2499,278 +2369,118 @@ public class RubyJdbcConnection extends RubyObject {
 
     protected void setTimeParameter(final ThreadContext context,
         final Connection connection, final PreparedStatement statement,
-        final int index, final Object value,
-        final IRubyObject column, final int type) throws SQLException {
-        if ( value instanceof IRubyObject ) {
-            setTimeParameter(context, connection, statement, index, (IRubyObject) value, column, type);
-        }
-        else {
-            if ( value == null ) statement.setNull(index, Types.TIME);
-            else {
-                if ( value instanceof Time ) {
-                    statement.setTime(index, (Time) value);
-                }
-                else if ( value instanceof java.util.Date ) {
-                    statement.setTime(index, new Time(((java.util.Date) value).getTime()));
-                }
-                else { // hh:mm:ss
-                    statement.setTime(index, Time.valueOf(value.toString()));
-                    // statement.setString(index, value.toString());
-                }
-            }
-        }
-    }
-
-    protected void setTimeParameter(final ThreadContext context,
-        final Connection connection, final PreparedStatement statement,
         final int index, IRubyObject value,
-        final IRubyObject column, final int type) throws SQLException {
-        if ( value.isNil() ) statement.setNull(index, Types.TIME);
-        else {
-            value = getTimeInDefaultTimeZone(context, value);
-            if ( value instanceof RubyTime ) {
-                final RubyTime timeValue = (RubyTime) value;
-                final DateTime dateTime = timeValue.getDateTime();
+        final IRubyObject attribute, final int type) throws SQLException {
 
-                final Time time = new Time( dateTime.getMillis() );
-                statement.setTime( index, time, getTimeZoneCalendar(dateTime.getZone().getID()) );
-            }
-            else if ( value instanceof RubyString ) {
-                final Time time = Time.valueOf( value.toString() );
-                statement.setTime( index, time ); // assume local time-zone
-            }
-            else { // DateTime ( ActiveSupport::TimeWithZone.to_time )
-                final RubyFloat timeValue = value.convertToFloat(); // to_f
-                final Time time = new Time(timeValue.getLongValue() * 1000); // millis
-                // java.sql.Time is expected to be only up to second precision
-                statement.setTime( index, time, getTimeZoneCalendar("GMT") );
-            }
-        }
-    }
+        value = getTimeInDefaultTimeZone(context, value);
 
-    protected void setDateParameter(final ThreadContext context,
-        final Connection connection, final PreparedStatement statement,
-        final int index, final Object value,
-        final IRubyObject column, final int type) throws SQLException {
-        if ( value instanceof IRubyObject ) {
-            setDateParameter(context, connection, statement, index, (IRubyObject) value, column, type);
+        if ( value instanceof RubyTime ) {
+            final DateTime dateTime = ((RubyTime) value).getDateTime();
+            final Time time = new Time(dateTime.getMillis());
+
+            statement.setTime(index, time, getTimeZoneCalendar(dateTime.getZone().getID()));
         }
-        else {
-            if ( value == null ) statement.setNull(index, Types.DATE);
-            else {
-                if ( value instanceof Date ) {
-                    statement.setDate(index, (Date) value);
-                }
-                else if ( value instanceof java.util.Date ) {
-                    statement.setDate(index, new Date(((java.util.Date) value).getTime()));
-                }
-                else { // yyyy-[m]m-[d]d
-                    statement.setDate(index, Date.valueOf(value.toString()));
-                    // statement.setString(index, value.toString());
-                }
-            }
+        else if ( value instanceof RubyString ) {
+            final Time time = Time.valueOf(value.toString());
+            statement.setTime(index, time); // assume local time-zone
+        }
+        else { // DateTime ( ActiveSupport::TimeWithZone.to_time )
+            final RubyFloat timeValue = value.convertToFloat(); // to_f
+            final Time time = new Time(timeValue.getLongValue() * 1000); // millis
+            // java.sql.Time is expected to be only up to second precision
+            statement.setTime(index, time, getTimeZoneCalendar("GMT"));
         }
     }
 
     protected void setDateParameter(final ThreadContext context,
         final Connection connection, final PreparedStatement statement,
         final int index, IRubyObject value,
-        final IRubyObject column, final int type) throws SQLException {
-        if ( value.isNil() ) statement.setNull(index, Types.DATE);
-        else {
-            //if ( value instanceof RubyString ) {
-            //    final Date date = Date.valueOf( value.toString() );
-            //    statement.setDate( index, date ); // assume local time-zone
-            //    return;
-            //}
-            if ( ! "Date".equals( value.getMetaClass().getName() ) ) {
-                if ( value.respondsTo("to_date") ) {
-                    value = value.callMethod(context, "to_date");
-                }
-            }
-            final Date date = Date.valueOf( value.asString().toString() ); // to_s
-            statement.setDate( index, date /*, getTimeZoneCalendar("GMT") */ );
-        }
-    }
+        final IRubyObject attribute, final int type) throws SQLException {
 
-    protected void setBooleanParameter(final ThreadContext context,
-        final Connection connection, final PreparedStatement statement,
-        final int index, final Object value,
-        final IRubyObject column, final int type) throws SQLException {
-        if ( value instanceof IRubyObject ) {
-            setBooleanParameter(context, connection, statement, index, (IRubyObject) value, column, type);
+        if ( ! "Date".equals(value.getMetaClass().getName()) && value.respondsTo("to_date") ) {
+            value = value.callMethod(context, "to_date");
         }
-        else {
-            if ( value == null ) statement.setNull(index, Types.BOOLEAN);
-            else {
-                statement.setBoolean(index, ((Boolean) value).booleanValue());
-            }
-        }
+        final Date date = Date.valueOf(value.asString().toString()); // to_s
+        statement.setDate(index, date);
     }
 
     protected void setBooleanParameter(final ThreadContext context,
         final Connection connection, final PreparedStatement statement,
         final int index, final IRubyObject value,
-        final IRubyObject column, final int type) throws SQLException {
-        if ( value.isNil() ) statement.setNull(index, Types.BOOLEAN);
-        else {
-            statement.setBoolean(index, value.isTrue());
-        }
-    }
-
-    protected void setStringParameter(final ThreadContext context,
-        final Connection connection, final PreparedStatement statement,
-        final int index, final Object value,
-        final IRubyObject column, final int type) throws SQLException {
-        if ( value instanceof IRubyObject ) {
-            setStringParameter(context, connection, statement, index, (IRubyObject) value, column, type);
-        }
-        else {
-            if ( value == null ) statement.setNull(index, Types.VARCHAR);
-            else {
-                statement.setString(index, value.toString());
-            }
-        }
+        final IRubyObject attribute, final int type) throws SQLException {
+        statement.setBoolean(index, value.isTrue());
     }
 
     protected void setStringParameter(final ThreadContext context,
         final Connection connection, final PreparedStatement statement,
         final int index, final IRubyObject value,
-        final IRubyObject column, final int type) throws SQLException {
-        if ( value.isNil() ) statement.setNull(index, Types.VARCHAR);
-        else {
-            statement.setString(index, value.asString().toString());
-        }
-    }
+        final IRubyObject attribute, final int type) throws SQLException {
 
-    protected void setArrayParameter(final ThreadContext context,
-            final Connection connection, final PreparedStatement statement,
-            final int index, final Object value,
-            final IRubyObject column, final int type) throws SQLException {
-        if ( value instanceof IRubyObject ) {
-            setArrayParameter(context, connection, statement, index, (IRubyObject) value, column, type);
-        } else {
-            if ( value == null ) {
-                statement.setNull(index, Types.ARRAY);
-            } else {
-                String typeName = resolveArrayBaseTypeName(context, value, column, type);
-                Array array = connection.createArrayOf(typeName, (Object[]) value);
-                statement.setArray(index, array);
-            }
-        }
+        statement.setString(index, value.asString().toString());
     }
 
     protected void setArrayParameter(final ThreadContext context,
         final Connection connection, final PreparedStatement statement,
         final int index, final IRubyObject value,
-        final IRubyObject column, final int type) throws SQLException {
-        if ( value.isNil() ) {
-            statement.setNull(index, Types.ARRAY);
-        } else {
-            String typeName = resolveArrayBaseTypeName(context, value, column, type);
-            Array array = connection.createArrayOf(typeName, ((RubyArray) value).toArray());
-            statement.setArray(index, array);
-        }
+        final IRubyObject attribute, final int type) throws SQLException {
+
+        final String typeName = resolveArrayBaseTypeName(context, attribute);
+        final IRubyObject valueForDB = value.callMethod(context, "values");
+        Array array = connection.createArrayOf(typeName, ((RubyArray) valueForDB).toArray());
+        statement.setArray(index, array);
     }
 
-    protected String resolveArrayBaseTypeName(final ThreadContext context,
-        final Object value, final IRubyObject column, final int type) {
-        // return column.callMethod(context, "sql_type").toString();
-        String sqlType = column.callMethod(context, "sql_type").toString();
-        final int index = sqlType.indexOf('('); // e.g. "character varying(255)"
-        if ( index > 0 ) sqlType = sqlType.substring(0, index);
-        return sqlType;
-    }
+    protected String resolveArrayBaseTypeName(final ThreadContext context, final IRubyObject attribute) throws SQLException {
 
-    protected void setXmlParameter(final ThreadContext context,
-        final Connection connection, final PreparedStatement statement,
-        final int index, final Object value,
-        final IRubyObject column, final int type) throws SQLException {
-        if ( value instanceof IRubyObject ) {
-            setXmlParameter(context, connection, statement, index, (IRubyObject) value, column, type);
+        // This shouldn't return nil at this point because we know we have an array typed attribute
+        final RubySymbol type = (RubySymbol) attributeSQLType(context, attribute);
+
+        // For some reason the driver doesn't like "character varying" as a type
+        if ( type.eql(context.runtime.newSymbol("string")) ){
+            return "text";
         }
-        else {
-            if ( value == null ) statement.setNull(index, Types.SQLXML);
-            else {
-                SQLXML xml = connection.createSQLXML();
-                xml.setString(value.toString());
-                statement.setSQLXML(index, xml);
-            }
-        }
+
+        final IRubyObject adapter = callMethod("adapter");
+        final RubyHash nativeTypes = (RubyHash) adapter.callMethod(context, "native_database_types");
+        final RubyHash typeInfo = (RubyHash) nativeTypes.op_aref(context, type);
+
+        return typeInfo.op_aref(context, context.runtime.newSymbol("name")).asString().toString();
     }
 
     protected void setXmlParameter(final ThreadContext context,
         final Connection connection, final PreparedStatement statement,
         final int index, final IRubyObject value,
-        final IRubyObject column, final int type) throws SQLException {
-        if ( value.isNil() ) statement.setNull(index, Types.SQLXML);
-        else {
-            SQLXML xml = connection.createSQLXML();
-            xml.setString(value.asString().toString());
-            statement.setSQLXML(index, xml);
-        }
-    }
+        final IRubyObject attribute, final int type) throws SQLException {
 
-    protected void setBlobParameter(final ThreadContext context,
-        final Connection connection, final PreparedStatement statement,
-        final int index, final Object value,
-        final IRubyObject column, final int type) throws SQLException {
-        if ( value instanceof IRubyObject ) {
-            setBlobParameter(context, connection, statement, index, (IRubyObject) value, column, type);
-        }
-        else {
-            if ( value == null ) statement.setNull(index, Types.BLOB);
-            else {
-                //statement.setBlob(index, (InputStream) value);
-                statement.setBinaryStream(index, (InputStream) value);
-            }
-        }
+        SQLXML xml = connection.createSQLXML();
+        xml.setString(value.asString().toString());
+        statement.setSQLXML(index, xml);
     }
 
     protected void setBlobParameter(final ThreadContext context,
         final Connection connection, final PreparedStatement statement,
         final int index, final IRubyObject value,
-        final IRubyObject column, final int type) throws SQLException {
-        if ( value.isNil() ) statement.setNull(index, Types.BLOB);
-        else {
-            if ( value instanceof RubyIO ) { // IO/File
-                //statement.setBlob(index, ((RubyIO) value).getInStream());
-                statement.setBinaryStream(index, ((RubyIO) value).getInStream());
-            }
-            else { // should be a RubyString
-                final ByteList blob = value.asString().getByteList();
-                statement.setBytes(index, blob.bytes());
-                //statement.setBinaryStream(index,
-//                    new ByteArrayInputStream(blob.unsafeBytes(), blob.getBegin(), blob.getRealSize()),
-//                    blob.getRealSize() // length
-//                );
-                // JDBC 4.0 :
-                //statement.setBlob(index,
-                //    new ByteArrayInputStream(bytes.unsafeBytes(), bytes.getBegin(), bytes.getRealSize())
-                //);
-            }
-        }
-    }
+        final IRubyObject attribute, final int type) throws SQLException {
 
-    protected void setClobParameter(final ThreadContext context,
-        final Connection connection, final PreparedStatement statement,
-        final int index, final Object value,
-        final IRubyObject column, final int type) throws SQLException {
-        if ( value instanceof IRubyObject ) {
-            setClobParameter(context, connection, statement, index, (IRubyObject) value, column, type);
+        if ( value instanceof RubyIO ) { // IO/File
+            // JDBC 4.0: statement.setBlob(index, ((RubyIO) value).getInStream());
+            statement.setBinaryStream(index, ((RubyIO) value).getInStream());
         }
-        else {
-            if ( value == null ) statement.setNull(index, Types.CLOB);
-            else {
-                statement.setClob(index, (Reader) value);
-            }
+        else { // should be a RubyString
+            final ByteList blob = value.asString().getByteList();
+            statement.setBytes(index, blob.bytes());
+
+            // JDBC 4.0 :
+            //statement.setBlob(index,
+            //    new ByteArrayInputStream(bytes.unsafeBytes(), bytes.getBegin(), bytes.getRealSize())
+            //);
         }
     }
 
     protected void setClobParameter(final ThreadContext context,
         final Connection connection, final PreparedStatement statement,
         final int index, final IRubyObject value,
-        final IRubyObject column, final int type) throws SQLException {
+        final IRubyObject attribute, final int type) throws SQLException {
         if ( value.isNil() ) statement.setNull(index, Types.CLOB);
         else {
             if ( value instanceof RubyIO ) { // IO/File
@@ -2788,11 +2498,10 @@ public class RubyJdbcConnection extends RubyObject {
     protected void setObjectParameter(final ThreadContext context,
         final Connection connection, final PreparedStatement statement,
         final int index, Object value,
-        final IRubyObject column, final int type) throws SQLException {
+        final IRubyObject attribute, final int type) throws SQLException {
         if (value instanceof IRubyObject) {
             value = ((IRubyObject) value).toJava(Object.class);
         }
-        if ( value == null ) statement.setNull(index, Types.JAVA_OBJECT);
         statement.setObject(index, value);
     }
 
@@ -3464,6 +3173,10 @@ public class RubyJdbcConnection extends RubyObject {
         return new TableName(catalog, schema, name);
     }
 
+    protected IRubyObject valueForDatabase(final ThreadContext context, final IRubyObject attribute) {
+        return attribute.callMethod(context, "value_for_database");
+    }
+
     protected static final class ColumnData {
 
         public final RubyString name;
@@ -3499,6 +3212,7 @@ public class RubyJdbcConnection extends RubyObject {
             } else {
                 name = caseConvertIdentifierForRails(connection, name);
             }
+
             final RubyString columnName = RubyString.newUnicodeString(runtime, name);
             final int columnType = resultMetaData.getColumnType(i);
             columns[i - 1] = new ColumnData(columnName, columnType, i);
@@ -3549,6 +3263,10 @@ public class RubyJdbcConnection extends RubyObject {
             final PrintStream out = context != null ? context.runtime.getOut() : System.out;
             out.println(msg);
         }
+    }
+
+    public static void debugMessage(final ThreadContext context, final IRubyObject item) {
+        debugMessage(context, item.callMethod(context, "inspect").asString().toString());
     }
 
     protected static void debugErrorSQL(final ThreadContext context, final String sql) {

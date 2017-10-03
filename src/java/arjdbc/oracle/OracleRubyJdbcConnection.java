@@ -109,14 +109,14 @@ public class OracleRubyJdbcConnection extends RubyJdbcConnection {
         final String query = sql.convertToString().getUnicodeValue();
         final int outType = Types.VARCHAR;
         if ( binds == null || binds.isNil() ) { // no prepared statements
-            return executePreparedCall(context, query, Collections.EMPTY_LIST, outType);
+            return executePreparedCall(context, query, context.runtime.newArray(), outType);
         }
         // allow prepared statements with empty binds parameters
-        return executePreparedCall(context, query, (List) binds, outType);
+        return executePreparedCall(context, query, (RubyArray) binds, outType);
     }
 
     private IRubyObject executePreparedCall(final ThreadContext context, final String query,
-        final List<?> binds, final int outType) {
+        final RubyArray binds, final int outType) {
         return withConnection(context, new Callable<IRubyObject>() {
             public IRubyObject call(final Connection connection) throws SQLException {
                 CallableStatement statement = null;
@@ -211,22 +211,6 @@ public class OracleRubyJdbcConnection extends RubyJdbcConnection {
             return RubyString.newUnicodeString(runtime, string.toString());
         }
         finally { if ( reader != null ) reader.close(); }
-    }
-
-    @Override // booleans are emulated can not setNull(index, Types.BOOLEAN)
-    protected void setBooleanParameter(final ThreadContext context,
-        final Connection connection, final PreparedStatement statement,
-        final int index, final Object value,
-        final IRubyObject column, final int type) throws SQLException {
-        if ( value instanceof IRubyObject ) {
-            setBooleanParameter(context, connection, statement, index, (IRubyObject) value, column, type);
-        }
-        else {
-            if ( value == null ) statement.setNull(index, Types.TINYINT);
-            else {
-                statement.setBoolean(index, ((Boolean) value).booleanValue());
-            }
-        }
     }
 
     @Override // booleans are emulated can not setNull(index, Types.BOOLEAN)

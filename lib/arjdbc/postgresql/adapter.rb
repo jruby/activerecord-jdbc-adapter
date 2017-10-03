@@ -303,14 +303,6 @@ module ArJdbc
       )
     end
 
-    # @override due to the super method not being able to handle a missing pk and
-    #           RETURNING not being included in the sql
-    def exec_insert(sql, name, binds, pk = nil, sequence_name = nil)
-      if pk || (sql.is_a?(String) && sql =~ /RETURNING "?\S+"?$/)
-        ar_postgres_adapter_exec_insert(sql, name, binds, pk, sequence_name)
-      else
-        super
-      end
     end
 
     # @note Only for "better" AR 4.0 compatibility.

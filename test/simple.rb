@@ -757,11 +757,7 @@ module SimpleTestMethods
     Entry.reset_column_information
     begin
       Entry.create! attributes
-      if Entry.respond_to?(:where)
-        e = Entry.where :author => 'kares'
-      else # 2.3
-        e = Entry.all :conditions => { :author => 'kares' }
-      end
+      e = Entry.where author: 'kares'
       assert e.first
     ensure
       ChangeEntriesTable.down # rescue nil
@@ -827,20 +823,15 @@ module SimpleTestMethods
   end
 
   def test_execute_insert
-    id = connection.execute("INSERT INTO entries (title) VALUES ('inserted-title')")
-    if defined? JRUBY_VERSION
-      assert_not_nil id
-    else
-      id = Entry.first.id
-    end
-    assert_equal 'inserted-title', Entry.find(id).title
+    connection.execute("INSERT INTO entries (title) VALUES ('inserted-title')")
+    assert_not_nil Entry.find_by(title: 'inserted-title')
   end
 
   def test_execute_update
-    e = Entry.create! :title => '42'
-    Entry.create! :title => '43'; Entry.create! :title => '44'
-    count = connection.execute("UPDATE entries SET title = 'updated-title' WHERE id = #{e.id}")
-    assert_equal 1, count if defined? JRUBY_VERSION # e.g. nil with mysql2
+    e = Entry.create! title: '42'
+    Entry.create! title: '43'
+    Entry.create! title: '44'
+    connection.execute("UPDATE entries SET title = 'updated-title' WHERE id = #{e.id}")
     assert_equal 'updated-title', e.reload.title
   end
 
