@@ -97,15 +97,15 @@ matrix:
     - rvm: jruby-9.1.8.0
       gemfile: gemfiles/rails42.gemfile
       env: JRUBY_OPTS="$JRUBY_OPTS" DB=mysql PREPARED_STATEMENTS=true
-      jdk: oraclejdk7
+      jdk: openjdk7
     - rvm: jruby-9.1.6.0
       gemfile: gemfiles/rails42.gemfile
       env: JRUBY_OPTS="$JRUBY_OPTS" DB=postgresql PREPARED_STATEMENTS=true
-      jdk: oraclejdk7
+      jdk: openjdk7
     - rvm: jruby-9.1.8.0
       gemfile: gemfiles/rails42.gemfile
       env: JRUBY_OPTS="$JRUBY_OPTS" DB=sqlite3
-      jdk: oraclejdk7
+      jdk: openjdk7
     - rvm: jruby-9.1.6.0
       gemfile: gemfiles/rails42.gemfile
       env: JRUBY_OPTS="$JRUBY_OPTS" DB=mysql
@@ -146,11 +146,11 @@ matrix:
     - rvm: jruby-9.1.8.0
       gemfile: gemfiles/rails41.gemfile
       env: JRUBY_OPTS="$JRUBY_OPTS" DB=mysql
-      jdk: oraclejdk7
+      jdk: openjdk7
     - rvm: jruby-9.1.8.0
       gemfile: gemfiles/rails41.gemfile
       env: JRUBY_OPTS="$JRUBY_OPTS" DB=postgresql
-      jdk: oraclejdk7
+      jdk: openjdk7
     - rvm: jruby-9.1.8.0
       gemfile: gemfiles/rails41.gemfile
       env: JRUBY_OPTS="$JRUBY_OPTS" DB=sqlite3
@@ -158,11 +158,11 @@ matrix:
     - rvm: jruby-9.1.8.0
       gemfile: gemfiles/rails41.gemfile
       env: JRUBY_OPTS="$JRUBY_OPTS" DB=derby
-      jdk: oraclejdk7
+      jdk: openjdk7
     - rvm: jruby-9.1.8.0
       gemfile: gemfiles/rails41.gemfile
       env: JRUBY_OPTS="$JRUBY_OPTS" DB=h2
-      jdk: oraclejdk7
+      jdk: openjdk7
     - rvm: jruby-9.1.8.0
       gemfile: gemfiles/rails41.gemfile
       env: JRUBY_OPTS="$JRUBY_OPTS" DB=hsqldb
