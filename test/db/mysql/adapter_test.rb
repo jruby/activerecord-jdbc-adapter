@@ -65,7 +65,7 @@ class MySQLAdapterTest < Test::Unit::TestCase
       unless mariadb_driver?
         assert_match /com.mysql.jdbc.exceptions.jdbc4.MySQLSyntaxErrorException: Table '.*?bogus' doesn't exist/, error.message
       else
-        assert_match /java.sql.SQLSyntaxErrorException: Table '.*?bogus' doesn't exist/, error.message
+        assert_match /java.sql.SQLSyntaxErrorException:.*? Table '.*?bogus' doesn't exist/, error.message
       end
       assert_match /ActiveRecord::JDBCError: .*?Exception: /, error.inspect
 
