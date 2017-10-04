@@ -1,6 +1,6 @@
 # ActiveRecord JDBC Adapter
 
-[![Gem Version](https://badge.fury.io/rb/activerecord-jdbc-adapter.png)][7]
+[![Gem Version](https://badge.fury.io/rb/activerecord-jdbc-adapter.svg)][7]
 
 ActiveRecord-JDBC-Adapter (AR-JDBC) is a database adapter for Rails'
 *ActiveRecord* component that can be used with [JRuby][0]. It allows use of
