@@ -4,7 +4,6 @@ ArJdbc.load_java_part :PostgreSQL
 require 'ipaddr'
 require 'active_record/connection_adapters/abstract_adapter'
 require 'active_record/connection_adapters/postgresql/column'
-require 'active_record/connection_adapters/postgresql/database_statements'
 require 'active_record/connection_adapters/postgresql/explain_pretty_printer'
 require 'active_record/connection_adapters/postgresql/quoting'
 require 'active_record/connection_adapters/postgresql/schema_dumper'
