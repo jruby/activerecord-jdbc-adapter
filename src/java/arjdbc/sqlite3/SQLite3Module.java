@@ -30,7 +30,6 @@ import org.jruby.RubyString;
 import org.jruby.anno.JRubyMethod;
 import org.jruby.runtime.ThreadContext;
 import org.jruby.runtime.builtin.IRubyObject;
-import org.jruby.util.ByteList;
 
 /**
  * ArJdbc::SQLite3
@@ -56,23 +55,4 @@ public class SQLite3Module {
         );
         return quoted;
     }
-
-    private static final ByteList Q_TRUE = new ByteList(new byte[] { '\'', 't', '\'' }, false);
-    
-    @JRubyMethod(name = "quoted_true", required = 0, frame = false)
-    public static IRubyObject quoted_true(
-            final ThreadContext context, 
-            final IRubyObject self) {
-        return RubyString.newString(context.getRuntime(), Q_TRUE);
-    }
-
-    private static final ByteList Q_FALSE = new ByteList(new byte[] { '\'', 'f', '\'' }, false);
-    
-    @JRubyMethod(name = "quoted_false", required = 0, frame = false)
-    public static IRubyObject quoted_false(
-            final ThreadContext context, 
-            final IRubyObject self) {
-        return RubyString.newString(context.getRuntime(), Q_FALSE);
-    }
-    
 }
