@@ -14,7 +14,6 @@ module ArJdbc
       def reconnect!
         super
         @connection.reconnect! # handles adapter.configure_connection
-        @connection
       end
 
     end
