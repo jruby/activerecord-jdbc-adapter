@@ -12,6 +12,7 @@ before_script:
   - mysql --version # to see if we're using MySQL or MariaDB
 before_install:
   - ((jruby -v | grep 1.8.7) && jruby --1.9 -S gem update --system 2.1.11) || true
+  - ((jruby -S gem list -i bundler) || (jruby -S gem install bundler -v 1.14.6)) || true
 rvm:
   - jruby-1.7.24
 jdk:
