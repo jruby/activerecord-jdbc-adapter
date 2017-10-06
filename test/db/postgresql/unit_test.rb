@@ -16,51 +16,6 @@ class PostgresUnitTest < Test::Unit::TestCase
     connection.create_database 'mega_development'
   end
 
-  context 'distinct' do
-
-    setup { @connection = connection_stub }
-
-    test 'distinct_zero_orders' do
-      assert_equal "DISTINCT posts.id", @connection.distinct("posts.id", [])
-      assert_equal "DISTINCT posts.id", @connection.distinct("posts.id", "")
-    end
-
-    test 'distinct_one_order' do
-      assert_equal "DISTINCT posts.id, posts.created_at AS alias_0",
-        @connection.distinct("posts.id", ["posts.created_at desc"])
-    end
-
-    test 'distinct_few_orders' do
-      assert_equal "DISTINCT posts.id, posts.created_at AS alias_0, posts.position AS alias_1",
-        @connection.distinct("posts.id", ["posts.created_at desc", "posts.position asc"])
-      assert_equal "DISTINCT posts.id, posts.created_at AS alias_0, posts.position AS alias_1",
-        @connection.distinct("posts.id", "posts.created_at DESC, posts.position ASC")
-    end
-
-    test 'distinct_blank_not_nil_orders' do
-      assert_equal "DISTINCT posts.id, posts.created_at AS alias_0",
-        @connection.distinct("posts.id", ["posts.created_at desc", "", "   "])
-    end
-
-    test 'distinct_with_arel_order' do
-      order = Object.new
-      def order.to_sql
-        "posts.created_at desc"
-      end
-      assert_equal "DISTINCT posts.id, posts.created_at AS alias_0",
-        @connection.distinct("posts.id", [order])
-    end
-
-  def test_columns_for_distinct_with_case
-    assert_equal(
-      'posts.id, CASE WHEN author.is_active THEN UPPER(author.name) ELSE UPPER(author.email) END AS alias_0',
-      @connection.columns_for_distinct( 'posts.id',
-      ["CASE WHEN author.is_active THEN UPPER(author.name) ELSE UPPER(author.email) END"])
-    )
-  end
-
-  end
-
   context 'connection' do
 
     test 'jndi configuration' do
@@ -112,11 +67,17 @@ class PostgresActiveSchemaUnitTest < Test::Unit::TestCase
   end
 
   def test_add_index
+    # add_index calls data_source_exists? which can't work since execute is stubbed
+    ActiveRecord::ConnectionAdapters::PostgreSQLAdapter.send(:define_method, :data_source_exists?) do |_name|
+      true
+    end
+    redefined_data_source_check = true
+
     # add_index calls index_name_exists? which can't work since execute is stubbed
     ActiveRecord::ConnectionAdapters::PostgreSQLAdapter.send(:define_method, :index_name_exists?) do |*|
       false
     end
-    redefined = true
+    redefined_index_check = true
 
     expected = %(CREATE UNIQUE INDEX  "index_people_on_last_name" ON "people"  ("last_name") WHERE state = 'active')
     assert_equal expected, add_index(:people, :last_name, :unique => true, :where => "state = 'active'")
@@ -142,13 +103,14 @@ class PostgresActiveSchemaUnitTest < Test::Unit::TestCase
     assert_equal expected, add_index(:people, :last_name, :unique => true, :where => "state = 'active'", :using => :gist)
 
   ensure
-    ActiveRecord::ConnectionAdapters::PostgreSQLAdapter.send(:remove_method, :index_name_exists?) if redefined
-  end if ar_version('4.0')
+    ActiveRecord::ConnectionAdapters::PostgreSQLAdapter.send(:remove_method, :data_source_exists?) if redefined_data_source_check
+    ActiveRecord::ConnectionAdapters::PostgreSQLAdapter.send(:remove_method, :index_name_exists?) if redefined_index_check
+  end
 
   def test_rename_index
     expected = "ALTER INDEX \"last_name_index\" RENAME TO \"name_index\""
     assert_equal expected, rename_index(:people, :last_name_index, :name_index)
-  end # if ar_version('4.0')
+  end
 
   private
 

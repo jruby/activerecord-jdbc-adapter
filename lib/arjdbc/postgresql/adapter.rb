@@ -2,15 +2,16 @@
 ArJdbc.load_java_part :PostgreSQL
 
 require 'ipaddr'
+require 'active_record/connection_adapters/abstract_adapter'
 require 'active_record/connection_adapters/postgresql/column'
-require 'active_record/connection_adapters/postgresql/database_statements'
 require 'active_record/connection_adapters/postgresql/explain_pretty_printer'
 require 'active_record/connection_adapters/postgresql/quoting'
 require 'active_record/connection_adapters/postgresql/schema_dumper'
 require 'active_record/connection_adapters/postgresql/schema_statements'
 require 'active_record/connection_adapters/postgresql/type_metadata'
 require 'active_record/connection_adapters/postgresql/utils'
-require 'arjdbc/common_jdbc_methods'
+require 'arjdbc/abstract/core'
+require 'arjdbc/abstract/connection_management'
 require 'arjdbc/abstract/database_statements'
 require 'arjdbc/abstract/transaction_support'
 require 'arjdbc/postgresql/base/array_decoder'
@@ -182,6 +183,10 @@ module ArJdbc
       NATIVE_DATABASE_TYPES
     end
 
+    def valid_type?(type)
+      !native_database_types[type].nil?
+    end
+
     # Enable standard-conforming strings if available.
     def set_standard_conforming_strings
       self.standard_conforming_strings=(true)
@@ -303,6 +308,39 @@ module ArJdbc
       )
     end
 
+    def exec_insert(sql, name, binds, pk = nil, sequence_name = nil)
+      val = exec_query(sql, name, binds)
+      if !use_insert_returning? && pk
+        unless sequence_name
+          table_ref = extract_table_ref_from_insert_sql(sql)
+          sequence_name = default_sequence_name(table_ref, pk)
+          return val unless sequence_name
+        end
+        last_insert_id_result(sequence_name)
+      else
+        val
+      end
+    end
+
+    def explain(arel, binds = [])
+      sql = "EXPLAIN #{to_sql(arel, binds)}"
+      ActiveRecord::ConnectionAdapters::PostgreSQL::ExplainPrettyPrinter.new.pp(exec_query(sql, 'EXPLAIN', binds))
+    end
+
+    def sql_for_insert(sql, pk, id_value, sequence_name, binds) # :nodoc:
+      if pk.nil?
+        # Extract the table from the insert sql. Yuck.
+        table_ref = extract_table_ref_from_insert_sql(sql)
+        pk = primary_key(table_ref) if table_ref
+      end
+
+      pk = nil if pk.is_a?(Array)
+
+      if pk && use_insert_returning?
+        sql = "#{sql} RETURNING #{quote_column_name(pk)}"
+      end
+
+      super
     end
 
     # @note Only for "better" AR 4.0 compatibility.
@@ -392,42 +430,6 @@ module ArJdbc
       execute("SET client_min_messages TO '#{level}'", 'SCHEMA')
     end
 
-    # Gets the maximum number columns postgres has, default 32
-    def multi_column_index_limit
-      defined?(@multi_column_index_limit) && @multi_column_index_limit || 32
-    end
-
-    # Sets the maximum number columns postgres has, default 32
-    def multi_column_index_limit=(limit)
-      @multi_column_index_limit = limit
-    end
-
-    # @override
-    def distinct(columns, orders)
-      "DISTINCT #{columns_for_distinct(columns, orders)}"
-    end
-
-    # PostgreSQL requires the ORDER BY columns in the select list for distinct
-    # queries, and requires that the ORDER BY include the distinct column.
-    # @override Since AR 4.0 (on 4.1 {#distinct} is gone and won't be called).
-    def columns_for_distinct(columns, orders)
-      if orders.is_a?(String)
-        orders = orders.split(','); orders.each(&:strip!)
-      end
-
-      order_columns = orders.reject(&:blank?).map! do |column|
-        column = column.is_a?(String) ? column.dup : column.to_sql # AREL node
-        column.gsub!(/\s+(?:ASC|DESC)\s*/i, '') # remove any ASC/DESC modifiers
-        column.gsub!(/\s*NULLS\s+(?:FIRST|LAST)?\s*/i, '')
-        column
-      end
-      order_columns.reject!(&:empty?)
-      i = -1; order_columns.map! { |column| "#{column} AS alias_#{i += 1}" }
-
-      columns = [ columns ]; columns.flatten!
-      columns.push( *order_columns ).join(', ')
-    end
-
     # ORDER BY clause for the passed order option.
     #
     # PostgreSQL does not allow arbitrary ordering when using DISTINCT ON,
@@ -452,10 +454,6 @@ module ArJdbc
         quoted.gsub!(/\\/, '\&\&')
       end
       quoted
-    end
-
-    def quote_bit(value)
-      "B'#{value}'"
     end
 
     def escape_bytea(string)
@@ -678,6 +676,27 @@ module ArJdbc
 
     private
 
+    # Pulled from ActiveRecord's Postgres adapter and modified to use execute
+    def can_perform_case_insensitive_comparison_for?(column)
+      @case_insensitive_cache ||= {}
+      @case_insensitive_cache[column.sql_type] ||= begin
+        sql = <<-end_sql
+              SELECT exists(
+                SELECT * FROM pg_proc
+                WHERE proname = 'lower'
+                  AND proargtypes = ARRAY[#{quote column.sql_type}::regtype]::oidvector
+              ) OR exists(
+                SELECT * FROM pg_proc
+                INNER JOIN pg_cast
+                  ON ARRAY[casttarget]::oidvector = proargtypes
+                WHERE proname = 'lower'
+                  AND castsource = #{quote column.sql_type}::regtype
+              )
+        end_sql
+        select_rows(sql, 'SCHEMA').first.first == 't'
+      end
+    end
+
     def translate_exception(exception, message)
       case exception.message
       when /duplicate key value violates unique constraint/
@@ -729,36 +748,16 @@ module ActiveRecord::ConnectionAdapters
   # assumes: class PostgreSQLAdapter < AbstractAdapter
   remove_const(:PostgreSQLAdapter) if const_defined?(:PostgreSQLAdapter)
 
-  class PostgreSQLAdapter < JdbcAdapter
+  class PostgreSQLAdapter < AbstractAdapter
 
-    # This makes it so we can use the bulk of the core logic while
-    # keeping the actual database access defined in this adapter
-    # These methods come from ActiveRecord::Abstract::DatabaseStatements so
-    # we need to hang on to references to them because the versions in
-    # ActiveRecord::ConnectionAdapters::PostgreSQL::DatabaseStatements
-    # have PG gem specific implementations that override the Abstract implementations
-    SAVED_METHODS = ['select_rows', 'select_value', 'select_values']
-    SAVED_METHOD_PREFIX = 'abstract_adapter'
-
-    SAVED_METHODS.each do |base_name|
-      alias_method :"#{SAVED_METHOD_PREFIX}_#{base_name}", base_name
-    end
-
+    # Try to use as much of the built in postgres logic as possible
+    # maybe someday we can extend the actual adapter
     include ActiveRecord::ConnectionAdapters::PostgreSQL::ColumnDumper
-    include ActiveRecord::ConnectionAdapters::PostgreSQL::DatabaseStatements
     include ActiveRecord::ConnectionAdapters::PostgreSQL::SchemaStatements
     include ActiveRecord::ConnectionAdapters::PostgreSQL::Quoting
 
-    # Restore saved methods
-    SAVED_METHODS.each do |base_name|
-      alias_method base_name, :"#{SAVED_METHOD_PREFIX}_#{base_name}"
-    end
-
-    # We need this so we can call arjdbc logic or ActiveRecord postgres adapter logic
-    # to support when a sql statement already has a 'RETURNING' clause
-    alias_method :ar_postgres_adapter_exec_insert, :exec_insert
-
-    include ArJdbc::CommonJdbcMethods
+    include ArJdbc::Abstract::Core
+    include ArJdbc::Abstract::ConnectionManagement
     include ArJdbc::Abstract::DatabaseStatements
     include ArJdbc::Abstract::TransactionSupport
     include ArJdbc::PostgreSQL
@@ -797,12 +796,12 @@ module ActiveRecord::ConnectionAdapters
     TableDefinition = ActiveRecord::ConnectionAdapters::PostgreSQL::TableDefinition
     Table = ActiveRecord::ConnectionAdapters::PostgreSQL::Table
 
-    def schema_creation # :nodoc:
-      PostgreSQL::SchemaCreation.new self
+    def create_table_definition(*args) # :nodoc:
+      TableDefinition.new(*args)
     end
 
-    def table_definition(*args)
-      new_table_definition(TableDefinition, *args)
+    def schema_creation # :nodoc:
+      PostgreSQL::SchemaCreation.new self
     end
 
     def update_table_definition(table_name, base)

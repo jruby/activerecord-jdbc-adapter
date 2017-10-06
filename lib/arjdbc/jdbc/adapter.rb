@@ -11,6 +11,8 @@ require 'arjdbc/jdbc/connection'
 require 'arjdbc/jdbc/callbacks'
 require 'arjdbc/jdbc/extension'
 require 'arjdbc/jdbc/type_converter'
+require 'arjdbc/abstract/core'
+require 'arjdbc/abstract/connection_management'
 require 'arjdbc/abstract/database_statements'
 require 'arjdbc/abstract/transaction_support'
 
@@ -36,13 +38,12 @@ module ActiveRecord
     class JdbcAdapter < AbstractAdapter
       include Jdbc::ConnectionPoolCallbacks
 
-      # These are commented out because they conflict with the postgres adapter
-      # once the work is completed to make it so the postgres adapter no longer
-      # extends this adapter they can be uncommented out
-      #include ArJdbc::Abstract::DatabaseStatements
-      #include ArJdbc::Abstract::TransactionSupport
+      include ArJdbc::Abstract::Core
+      include ArJdbc::Abstract::ConnectionManagement
+      include ArJdbc::Abstract::DatabaseStatements
+      include ArJdbc::Abstract::TransactionSupport
 
-      attr_reader :config, :prepared_statements
+      attr_reader :prepared_statements
 
       def self.new(connection, logger = nil, pool = nil)
         adapter = super
@@ -75,17 +76,11 @@ module ActiveRecord
         @config[:adapter_spec] = adapter_spec(@config) unless @config.key?(:adapter_spec)
         spec = @config[:adapter_spec]
 
-        # NOTE: adapter spec's init_connection only called if instantiated here :
-        connection ||= jdbc_connection_class(spec).new(@config, self)
-
         super(connection, logger, @config)
 
         # kind of like `extend ArJdbc::MyDB if self.class == JdbcAdapter` :
         klass = @config[:adapter_class]
         extend spec if spec && ( ! klass || klass == JdbcAdapter)
-
-        # NOTE: should not be necessary for JNDI due reconnect! on checkout :
-        configure_connection if respond_to?(:configure_connection)
       end
 
       # Returns the (JDBC) connection class to be used for this adapter.
@@ -102,30 +97,6 @@ module ActiveRecord
       # @see ActiveRecord::ConnectionAdapters::JdbcColumn
       def jdbc_column_class
         ::ActiveRecord::ConnectionAdapters::JdbcColumn
-      end
-
-      # Retrieve the raw `java.sql.Connection` object.
-      # The unwrap parameter is useful if an attempt to unwrap a pooled (JNDI)
-      # connection should be made - to really return the 'native' JDBC object.
-      # @param unwrap [true, false] whether to unwrap the connection object
-      # @return [Java::JavaSql::Connection] the JDBC connection
-      def jdbc_connection(unwrap = nil)
-        java_connection = raw_connection.connection
-        return java_connection unless unwrap
-        connection_class = java.sql.Connection.java_class
-        begin
-          if java_connection.wrapper_for?(connection_class)
-            return java_connection.unwrap(connection_class) # java.sql.Wrapper.unwrap
-          end
-        rescue Java::JavaLang::AbstractMethodError => e
-          ArJdbc.warn("driver/pool connection impl does not support unwrapping (#{e})")
-        end
-        if java_connection.respond_to?(:connection)
-          # e.g. org.apache.tomcat.jdbc.pool.PooledConnection
-          java_connection.connection # getConnection
-        else
-          java_connection
-        end
       end
 
       # Locate the specialized (database specific) adapter specification module
@@ -288,24 +259,6 @@ module ActiveRecord
           return :string, 255
         end
         return nil, nil
-      end
-
-      # @override
-      def active?
-        @connection.active?
-      end
-
-      # @override
-      def reconnect!
-        super
-        @connection.reconnect! # handles adapter.configure_connection
-        @connection
-      end
-
-      # @override
-      def disconnect!
-        super
-        @connection.disconnect!
       end
 
       def columns(table_name, name = nil)
@@ -479,19 +432,6 @@ module ActiveRecord
         super(sql, name || 'SQL') # `log(sql, name)` on AR <= 3.0
       end if ActiveRecord::VERSION::MAJOR < 3 ||
         ( ActiveRecord::VERSION::MAJOR == 3 && ActiveRecord::VERSION::MINOR < 1 )
-
-      def translate_exception(e, message)
-        # we shall not translate native "Java" exceptions as they might
-        # swallow an ArJdbc / driver bug into a AR::StatementInvalid ...
-        return e if e.is_a?(NativeException) # JRuby 1.6
-        return e if e.is_a?(Java::JavaLang::Throwable)
-
-        case e
-        when ActiveModel::RangeError, SystemExit, SignalException, NoMemoryError then e
-        # NOTE: wraps AR::JDBCError into AR::StatementInvalid, desired ?!
-        else super
-        end
-      end
 
       # Take an id from the result of an INSERT query.
       # @return [Integer, NilClass]

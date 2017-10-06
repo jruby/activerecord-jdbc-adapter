@@ -1,6 +1,6 @@
 ArJdbc.load_java_part :SQLite3
 
-require "arjdbc/common_jdbc_methods"
+require "arjdbc/abstract/core"
 require "arjdbc/abstract/database_statements"
 require "arjdbc/abstract/transaction_support"
 require "active_record/connection_adapters/statement_pool"
@@ -596,7 +596,7 @@ module ActiveRecord::ConnectionAdapters
   # ActiveRecord::ConnectionAdapters::SQLite3Adapter.  Once we can do that we can remove the
   # module SQLite3 above and remove a majority of this file.
   class SQLite3Adapter < AbstractAdapter
-    include ArJdbc::CommonJdbcMethods
+    include ArJdbc::Abstract::Core
     include ArJdbc::Abstract::DatabaseStatements
     include ArJdbc::Abstract::TransactionSupport
     include ArJdbc::SQLite3
