@@ -1,3 +1,8 @@
+addons:
+  apt:
+    packages:
+      - openjdk-6-jdk
+
 language: ruby
 sudo: false
 bundler_args: --without development
@@ -51,7 +56,7 @@ matrix:
   include:
     # testing against MariaDB
     - addons:
-        mariadb: '5.5'
+        mariadb: '10.0'
       rvm: jruby-1.7.24
       gemfile: gemfiles/rails32.gemfile
       env: JRUBY_OPTS="$JRUBY_OPTS" DB=mysql
@@ -63,7 +68,7 @@ matrix:
       env: DB=mariadb
       jdk: openjdk7
     - addons:
-        mariadb: '10.1'
+        mariadb: '10.2'
       rvm: jruby-1.7.24
       gemfile: gemfiles/rails41.gemfile
       env: DB=mariadb PREPARED_STATEMENTS=true
