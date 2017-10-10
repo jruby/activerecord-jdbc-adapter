@@ -79,6 +79,7 @@ import org.jruby.RubySymbol;
 import org.jruby.RubyTime;
 import org.jruby.anno.JRubyMethod;
 import org.jruby.exceptions.RaiseException;
+import org.jruby.ext.bigdecimal.RubyBigDecimal;
 import org.jruby.javasupport.JavaEmbedUtils;
 import org.jruby.javasupport.JavaUtil;
 import org.jruby.runtime.Arity;
@@ -1756,8 +1757,8 @@ public class RubyJdbcConnection extends RubyObject {
         final Ruby runtime, final ResultSet resultSet, final int column) throws SQLException {
         final String value = resultSet.getString(column);
         if ( value == null && resultSet.wasNull() ) return runtime.getNil();
-        // NOTE: JRuby 1.6 -> 1.7 API change : moved org.jruby.RubyBigDecimal
-        return runtime.getKernel().callMethod("BigDecimal", runtime.newString(value));
+
+        return RubyBigDecimal.newInstance(context, runtime.getModule("BigDecimal"), runtime.newString(value));
     }
 
     protected static Boolean rawDateTime;
@@ -2253,9 +2254,8 @@ public class RubyJdbcConnection extends RubyObject {
         final int index, final IRubyObject value,
         final IRubyObject attribute, final int type) throws SQLException {
 
-        // NOTE: RubyBigDecimal moved into org.jruby.ext.bigdecimal (1.6 -> 1.7)
-        if ( value.getMetaClass().getName().indexOf("BigDecimal") != -1 ) {
-            statement.setBigDecimal(index, getBigDecimalValue(value));
+        if (value instanceof RubyBigDecimal) {
+            statement.setBigDecimal(index, ((RubyBigDecimal) value).getValue());
         }
         else if ( value instanceof RubyInteger ) {
             statement.setBigDecimal(index, new BigDecimal(((RubyInteger) value).getBigIntegerValue()));
@@ -2264,25 +2264,8 @@ public class RubyJdbcConnection extends RubyObject {
             statement.setDouble(index, ((RubyNumeric) value).getDoubleValue());
         }
         else { // e.g. `BigDecimal '42.00000000000000000001'`
-            IRubyObject v = callMethod(context, "BigDecimal", value);
-            statement.setBigDecimal(index, getBigDecimalValue(v));
-        }
-    }
-
-    private static BigDecimal getBigDecimalValue(final IRubyObject value) {
-        try { // reflect ((RubyBigDecimal) value).getValue() :
-            return (BigDecimal) value.getClass().
-                getMethod("getValue", (Class<?>[]) null).
-                invoke(value, (Object[]) null);
-        }
-        catch (NoSuchMethodException e) {
-            throw new RuntimeException(e);
-        }
-        catch (IllegalAccessException e) {
-            throw new RuntimeException(e);
-        }
-        catch (InvocationTargetException e) {
-            throw new RuntimeException(e.getCause() != null ? e.getCause() : e);
+            statement.setBigDecimal(index,
+                    RubyBigDecimal.newInstance(context, context.runtime.getModule("BigDecimal"), value).getValue());
         }
     }
 
