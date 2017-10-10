@@ -60,8 +60,12 @@ import org.jruby.util.ByteList;
 public class SQLite3RubyJdbcConnection extends RubyJdbcConnection {
     private static final long serialVersionUID = -5783855018818472773L;
 
+    private final RubyString TIMESTAMP_FORMAT;
+
     protected SQLite3RubyJdbcConnection(Ruby runtime, RubyClass metaClass) {
         super(runtime, metaClass);
+
+        TIMESTAMP_FORMAT = runtime.newString("%F %T.%6N");
     }
 
     public static RubyClass createSQLite3JdbcConnectionClass(Ruby runtime, RubyClass jdbcConnection) {
@@ -398,13 +402,8 @@ public class SQLite3RubyJdbcConnection extends RubyJdbcConnection {
         final int index, IRubyObject value,
         final IRubyObject attribute, final int type) throws SQLException {
 
-        IRubyObject valueForDB = value;
+        if (value instanceof RubyTime) value = ((RubyTime) value).strftime(TIMESTAMP_FORMAT);
 
-        if ( valueForDB instanceof RubyTime ) {
-            // Make sure we handle usec values
-            valueForDB = ((RubyTime) valueForDB).strftime(context.runtime.newString("%F %T.%N%:z"));
-        }
-
-        setStringParameter(context, connection, statement, index, valueForDB, attribute, type);
+        setStringParameter(context, connection, statement, index, value, attribute, type);
     }
 }
