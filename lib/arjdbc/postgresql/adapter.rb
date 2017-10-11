@@ -164,6 +164,7 @@ module ArJdbc
       :tsvector => { :name => "tsvector" },
       :hstore => { :name => "hstore" },
       :inet => { :name => "inet" },
+      :interval => { :name => "interval"}, # This doesn't get added to AR's postgres adapter until 5.1 but it fixes broken tests in 5.0 ...
       :cidr => { :name => "cidr" },
       :macaddr => { :name => "macaddr" },
       :uuid => { :name => "uuid" },
@@ -226,6 +227,8 @@ module ArJdbc
     def supports_ddl_transactions?; true end
 
     def supports_explain?; true end
+
+    def supports_expression_index?; true end
 
     def supports_index_sort_order?; true end
 
@@ -614,54 +617,57 @@ module ArJdbc
 
     # Returns an array of indexes for the given table.
     def indexes(table_name, name = nil)
-      # NOTE: maybe it's better to leave things of to the JDBC API ?!
-      result = select_rows(<<-SQL, 'SCHEMA')
-        SELECT distinct i.relname, d.indisunique, d.indkey, pg_get_indexdef(d.indexrelid), t.oid
-        FROM pg_class t
-        INNER JOIN pg_index d ON t.oid = d.indrelid
-        INNER JOIN pg_class i ON d.indexrelid = i.oid
-        WHERE i.relkind = 'i'
-          AND d.indisprimary = 'f'
-          AND t.relname = '#{table_name}'
-          AND i.relnamespace IN (SELECT oid FROM pg_namespace WHERE nspname = ANY (current_schemas(false)) )
-        ORDER BY i.relname
+      # FIXME: AR version => table = Utils.extract_schema_qualified_name(table_name.to_s)
+      schema, table = extract_schema_and_table(table_name.to_s)
+
+      result = query(<<-SQL, 'SCHEMA')
+            SELECT distinct i.relname, d.indisunique, d.indkey, pg_get_indexdef(d.indexrelid), t.oid,
+                            pg_catalog.obj_description(i.oid, 'pg_class') AS comment,
+            (SELECT COUNT(*) FROM pg_opclass o
+               JOIN (SELECT unnest(string_to_array(d.indclass::text, ' '))::int oid) c
+                 ON o.oid = c.oid WHERE o.opcdefault = 'f')
+            FROM pg_class t
+            INNER JOIN pg_index d ON t.oid = d.indrelid
+            INNER JOIN pg_class i ON d.indexrelid = i.oid
+            LEFT JOIN pg_namespace n ON n.oid = i.relnamespace
+            WHERE i.relkind = 'i'
+              AND d.indisprimary = 'f'
+              AND t.relname = '#{table}'
+              AND n.nspname = #{schema ? "'#{schema}'" : 'ANY (current_schemas(false))'}
+            ORDER BY i.relname
       SQL
 
-      result.map! do |row|
+      result.map do |row|
         index_name = row[0]
+        # FIXME: These values [1,2] are returned in a different format than AR expects, maybe we could update it on the Java side to be more accurate
         unique = row[1].is_a?(String) ? row[1] == 't' : row[1] # JDBC gets us a boolean
         indkey = row[2].is_a?(Java::OrgPostgresqlUtil::PGobject) ? row[2].value : row[2]
-        indkey = indkey.split(" ")
+        indkey = indkey.split(" ").map(&:to_i)
         inddef = row[3]
         oid = row[4]
+        comment = row[5]
+        opclass = row[6]
 
-        columns = select_rows(<<-SQL, "SCHEMA")
-          SELECT a.attnum, a.attname
-          FROM pg_attribute a
-          WHERE a.attrelid = #{oid}
-          AND a.attnum IN (#{indkey.join(",")})
-        SQL
+        using, expressions, where = inddef.scan(/ USING (\w+?) \((.+?)\)(?: WHERE (.+))?\z/).flatten
 
-        columns = Hash[ columns.each { |column| column[0] = column[0].to_s } ]
-        column_names = columns.values_at(*indkey).compact
+        if indkey.include?(0) || opclass > 0
+          columns = expressions
+        else
+          columns = Hash[query(<<-SQL.strip_heredoc, "SCHEMA")].values_at(*indkey).compact
+                SELECT a.attnum, a.attname
+                FROM pg_attribute a
+                WHERE a.attrelid = #{oid}
+                AND a.attnum IN (#{indkey.join(",")})
+          SQL
 
-        unless column_names.empty?
           # add info on sort order for columns (only desc order is explicitly specified, asc is the default)
-          desc_order_columns = inddef.scan(/(\w+) DESC/).flatten
-          orders = desc_order_columns.any? ? Hash[ desc_order_columns.map { |column| [column, :desc] } ] : {}
-
-          if ::ActiveRecord::VERSION::MAJOR > 3 # AR4 supports `where` and `using` index options
-            where = inddef.scan(/WHERE (.+)$/).flatten[0]
-            using = inddef.scan(/USING (.+?) /).flatten[0].to_sym
-
-            IndexDefinition.new(table_name, index_name, unique, column_names, [], orders, where, nil, using)
-          else
-            new_index_definition(table_name, index_name, unique, column_names, [], orders)
-          end
+          orders = Hash[
+              expressions.scan(/(\w+) DESC/).flatten.map { |order_column| [order_column, :desc] }
+          ]
         end
-      end
-      result.compact!
-      result
+
+        IndexDefinition.new(table_name, index_name, unique, columns, [], orders, where, nil, using.to_sym, comment.presence)
+      end.compact
     end
 
     # @private
