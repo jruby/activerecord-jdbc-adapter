@@ -617,6 +617,7 @@ module ArJdbc
 
     # Returns an array of indexes for the given table.
     def indexes(table_name, name = nil)
+      # FIXME: AR version => table = Utils.extract_schema_qualified_name(table_name.to_s)
       schema, table = extract_schema_and_table(table_name.to_s)
 
       result = query(<<-SQL, 'SCHEMA')
@@ -638,6 +639,7 @@ module ArJdbc
 
       result.map do |row|
         index_name = row[0]
+        # FIXME: These values [1,2] are returned in a different format than AR expects, maybe we could update it on the Java side to be more accurate
         unique = row[1].is_a?(String) ? row[1] == 't' : row[1] # JDBC gets us a boolean
         indkey = row[2].is_a?(Java::OrgPostgresqlUtil::PGobject) ? row[2].value : row[2]
         indkey = indkey.split(" ").map(&:to_i)
