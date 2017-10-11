@@ -42,7 +42,7 @@ module ArJdbc
       end
 
       def extract_default_function(default_value, default) # :nodoc:
-        default if ! default_value && ( %r{\w+\(.*\)} === default )
+        default if ! default_value && ( %r{\w+\(.*\)|\(.*\)::\w+} === default )
       end
 
     end
