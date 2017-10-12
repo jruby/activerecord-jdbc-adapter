@@ -90,6 +90,7 @@ import org.jruby.runtime.ThreadContext;
 import org.jruby.runtime.backtrace.RubyStackTraceElement;
 import org.jruby.runtime.builtin.IRubyObject;
 import org.jruby.util.ByteList;
+import org.jruby.util.TypeConverter;
 
 /**
  * Most of our ActiveRecord::ConnectionAdapters::JdbcConnection implementation.
@@ -718,59 +719,47 @@ public class RubyJdbcConnection extends RubyObject {
     }
 
     /**
-     * NOTE: since 1.3 this behaves like <code>execute_query</code> in AR-JDBC 1.2
-     * @param context
-     * @param sql
-     * @param block (optional) block to yield row values
-     * @return raw query result as a name => value Hash (unless block given)
-     * @throws SQLException
-     * @see #execute_query_raw(ThreadContext, IRubyObject[], Block)
+     * This is the same as execute_query but it will return a list of hashes.
+     * 
+     * @see RubyJdbcConnection#execute_query(ThreadContext, IRubyObject[])
+     * @param context which context this method is executing on.
+     * @param args arguments being supplied to this method.
+     * @param block (optional) block to yield row values (Hash(name: value))
+     * @return List of Hash(name: value) unless block is given.
+     * @throws SQLException when a database error occurs
      */
-    @JRubyMethod(name = "execute_query_raw", required = 1) // optional block
-    public IRubyObject execute_query_raw(final ThreadContext context,
-        final IRubyObject sql, final Block block) throws SQLException {
-        final String query = sql.convertToString().getUnicodeValue();
-        return executeQueryRaw(context, query, 0, block);
-    }
-
-    /**
-     * NOTE: since 1.3 this behaves like <code>execute_query</code> in AR-JDBC 1.2
-     * @param context
-     * @param args
-     * @param block (optional) block to yield row values
-     * @return raw query result as a name => value Hash (unless block given)
-     * @throws SQLException
-     */
-    @JRubyMethod(name = "execute_query_raw", required = 2, optional = 1)
-    // @JRubyMethod(name = "execute_query_raw", required = 1, optional = 2)
+    @JRubyMethod(required = 1, optional = 2)
     public IRubyObject execute_query_raw(final ThreadContext context,
         final IRubyObject[] args, final Block block) throws SQLException {
-        // args: (sql), (sql, max_rows), (sql, binds), (sql, max_rows, binds)
         final String query = args[0].convertToString().getUnicodeValue(); // sql
-        IRubyObject max_rows = args.length > 1 ? args[1] : null;
-        IRubyObject binds = args.length > 2 ? args[2] : null;
+        final RubyArray binds;
         final int maxRows;
-        if ( max_rows == null || max_rows.isNil() ) maxRows = 0;
-        else {
-            if ( binds instanceof RubyNumeric ) { // (sql, max_rows)
-                maxRows = RubyNumeric.fix2int(binds); binds = null;
-            }
-            else {
-                if ( max_rows instanceof RubyNumeric ) {
-                    maxRows = RubyNumeric.fix2int(max_rows);
-                }
-                else {
-                    if ( binds == null ) binds = max_rows; // (sql, binds)
+
+        // args: (sql), (sql, max_rows), (sql, binds), (sql, max_rows, binds)
+        switch (args.length) {
+            case 2:
+                if (args[1] instanceof RubyNumeric) { // (sql, max_rows)
+                    maxRows = RubyNumeric.fix2int(args[1]);
+                    binds = null;
+                } else {                              // (sql, binds)
                     maxRows = 0;
+                    binds = (RubyArray) TypeConverter.checkArrayType(args[1]);
                 }
-            }
+                break;
+            case 3:                                   // (sql, max_rows, binds)
+                maxRows = RubyNumeric.fix2int(args[1]);
+                binds = (RubyArray) TypeConverter.checkArrayType(args[2]);
+                break;
+            default:                                  // (sql) 1-arg
+                maxRows = 0;
+                binds = null;
+                break;
         }
 
-        if ( binds == null || binds.isNil() ) { // no prepared statements
+        if (binds != null) { // prepared statement
+            return executePreparedQueryRaw(context, query, binds, maxRows, block);
+        } else {
             return executeQueryRaw(context, query, maxRows, block);
-        }
-        else { // we allow prepared statements with empty binds parameters
-            return executePreparedQueryRaw(context, query, (RubyArray) binds, maxRows, block);
         }
     }
 
@@ -832,55 +821,54 @@ public class RubyJdbcConnection extends RubyObject {
     }
 
     /**
-     * Executes a query and returns the (AR) result.
-     * @param context
-     * @param sql
-     * @return raw query result as a name => value Hash (unless block given)
-     * @throws SQLException
-     */
-    @JRubyMethod(name = "execute_query", required = 1)
-    public IRubyObject execute_query(final ThreadContext context, final IRubyObject sql) throws SQLException {
-        final String query = sql.convertToString().getUnicodeValue();
-        return executeQuery(context, query, 0);
-    }
-
-    /**
-     * Executes a query and returns the (AR) result.
-     * @param context
-     * @param args
-     * @return and <code>ActiveRecord::Result</code>
-     * @throws SQLException
+     * Executes a query and returns the (AR) result.  There are three parameters:
+     * <ul>
+     *     <li>sql - String of sql</li>
+     *     <li>max_rows - Integer of how many rows to return</li>
+     *     <li>binds - Array of bindings for a prepared statement</li>
+     * </ul>
+     *
+     * In true Ruby fashion if there are only two arguments then the last argument
+     * may be either max_rows or binds.  Note: If you want to force the query to be
+     * done using a prepared statement then you must provide an empty array to binds.
+     *
+     * @param context which context this method is executing on.
+     * @param args arguments being supplied to this method.
+     * @return a Ruby <code>ActiveRecord::Result</code> instance
+     * @throws SQLException when a database error occurs
      *
      */
-    @JRubyMethod(name = "execute_query", required = 2, optional = 1)
-    // @JRubyMethod(name = "execute_query", required = 1, optional = 2)
+    @JRubyMethod(required = 1, optional = 2)
     public IRubyObject execute_query(final ThreadContext context, final IRubyObject[] args) throws SQLException {
-        // args: (sql), (sql, max_rows), (sql, binds), (sql, max_rows, binds)
         final String query = args[0].convertToString().getUnicodeValue(); // sql
-        IRubyObject max_rows = args.length > 1 ? args[1] : null;
-        IRubyObject binds = args.length > 2 ? args[2] : null;
+        final RubyArray binds;
         final int maxRows;
-        if ( max_rows == null || max_rows.isNil() ) maxRows = 0;
-        else {
-            if ( binds instanceof RubyNumeric ) { // (sql, max_rows)
-                maxRows = RubyNumeric.fix2int(binds); binds = null;
-            }
-            else {
-                if ( max_rows instanceof RubyNumeric ) {
-                    maxRows = RubyNumeric.fix2int(max_rows);
-                }
-                else {
-                    if ( binds == null ) binds = max_rows; // (sql, binds)
+
+        // args: (sql), (sql, max_rows), (sql, binds), (sql, max_rows, binds)
+        switch (args.length) {
+            case 2:
+                if (args[1] instanceof RubyNumeric) { // (sql, max_rows)
+                    maxRows = RubyNumeric.fix2int(args[1]);
+                    binds = null;
+                } else {                              // (sql, binds)
                     maxRows = 0;
+                    binds = (RubyArray) TypeConverter.checkArrayType(args[1]);
                 }
-            }
+                break;
+            case 3:                                   // (sql, max_rows, binds)
+                maxRows = RubyNumeric.fix2int(args[1]);
+                binds = (RubyArray) TypeConverter.checkArrayType(args[2]);
+                break;
+            default:                                  // (sql) 1-arg
+                maxRows = 0;
+                binds = null;
+                break;
         }
 
-        if ( binds == null || binds.isNil() ) { // no prepared statements
+        if (binds != null) { // prepared statement
+            return executePreparedQuery(context, query, binds, maxRows);
+        } else {
             return executeQuery(context, query, maxRows);
-        }
-        else { // we allow prepared statements with empty binds parameters
-            return executePreparedQuery(context, query, (RubyArray) binds, maxRows);
         }
     }
 

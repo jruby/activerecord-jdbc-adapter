@@ -351,7 +351,7 @@ module ArJdbc
     def query(sql, name = nil)
       log(sql, name) do
         result = []
-        @connection.execute_query_raw(sql, nil) do |*values|
+        @connection.execute_query_raw(sql, []) do |*values|
           # We need to use #deep_dup here because it appears that
           # the java method is reusing an object in some cases
           # which makes all of the entries in the "result"
