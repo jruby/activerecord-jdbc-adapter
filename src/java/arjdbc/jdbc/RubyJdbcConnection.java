@@ -82,7 +82,6 @@ import org.jruby.exceptions.RaiseException;
 import org.jruby.ext.bigdecimal.RubyBigDecimal;
 import org.jruby.javasupport.JavaEmbedUtils;
 import org.jruby.javasupport.JavaUtil;
-import org.jruby.runtime.Arity;
 import org.jruby.runtime.Block;
 import org.jruby.runtime.Helpers;
 import org.jruby.runtime.ObjectAllocator;
@@ -803,13 +802,13 @@ public class RubyJdbcConnection extends RubyObject {
                         resultSet = prepStatement.executeQuery();
                     }
 
-                    if ( block != null && block.isGiven() ) {
+                    if (block.isGiven()) {
                         // yield(id1, name1) ... row 1 result data
                         // yield(id2, name2) ... row 2 result data
                         return yieldResultRows(context, runtime, connection, resultSet, block);
+                    } else {
+                        return mapToRawResult(context, runtime, connection, resultSet, false);
                     }
-
-                    return mapToRawResult(context, runtime, connection, resultSet, false);
                 }
                 catch (final SQLException e) {
                     debugErrorSQL(context, query);
