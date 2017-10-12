@@ -29,16 +29,6 @@ module ArJdbc
         log(sql, name) { @connection.execute(sql) }
       end
 
-      # Take an id from the result of an INSERT query.
-      # @return [Integer, NilClass]
-      def last_inserted_id(result)
-        if result.is_a?(Hash) || result.is_a?(ActiveRecord::Result)
-          result.first.first[1] # .first = { "id"=>1 } .first = [ "id", 1 ]
-        else
-          result
-        end
-      end
-
       private
 
       def convert_legacy_binds_to_attributes(binds)

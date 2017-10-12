@@ -355,6 +355,14 @@ public class SQLite3RubyJdbcConnection extends RubyJdbcConnection {
         }
     }
 
+    // Note: transaction_support.rb overrides sqlite3 adapters version which just returns true.
+    // Rather than re-define it in SQLite3Adapter I will just define it here so we appear to have
+    // a consistent JDBC layer.
+    @JRubyMethod(name = "supports_savepoints?")
+    public IRubyObject supports_savepoints_p(final ThreadContext context) throws SQLException {
+        return context.getRuntime().getTrue();
+    }
+
     @Override
     protected void setBooleanParameter(final ThreadContext context,
         final Connection connection, final PreparedStatement statement,

@@ -12,7 +12,10 @@ require "active_record/connection_adapters/sqlite3/schema_creation"
 module ArJdbc
   # All the code in this module is a copy of ConnectionAdapters::SQLite3Adapter from active_record 5.
   # The constants at the front of this file are to allow the rest of the file to remain with no modifications
-  # from its original source.
+  # from its original source.  If you hack on this file try not to modify this module and instead try and
+  # put those overrides in SQL3Adapter below.  We try and keep a copy of the Rails this adapter supports
+  # with the current goal of being able to diff changes easily over time and to also eventually remove
+  # this module from ARJDBC altogether.
   module SQLite3
     # DIFFERENCE: Some common constant names to reduce differences in rest of this module from AR5 version
     ConnectionAdapters = ::ActiveRecord::ConnectionAdapters
@@ -160,16 +163,61 @@ module ArJdbc
       ::ActiveRecord::ConnectionAdapters::SQLite3::ExplainPrettyPrinter.new.pp(exec_query(sql, "EXPLAIN", []))
     end
 
+    def exec_query(sql, name = nil, binds = [], prepare: false)
+      type_casted_binds = binds.map { |attr| type_cast(attr.value_for_database) }
+
+      log(sql, name, binds) do
+        # Don't cache statements if they are not prepared
+        unless prepare
+          stmt    = @connection.prepare(sql)
+          begin
+            cols    = stmt.columns
+            unless without_prepared_statement?(binds)
+              stmt.bind_params(type_casted_binds)
+            end
+            records = stmt.to_a
+          ensure
+            stmt.close
+          end
+          stmt = records
+        else
+          cache = @statements[sql] ||= {
+              :stmt => @connection.prepare(sql)
+          }
+          stmt = cache[:stmt]
+          cols = cache[:cols] ||= stmt.columns
+          stmt.reset!
+          stmt.bind_params(type_casted_binds)
+        end
+
+        ActiveRecord::Result.new(cols, stmt.to_a)
+      end
+    end
+
+    def exec_delete(sql, name = 'SQL', binds = [])
+      exec_query(sql, name, binds)
+      @connection.changes
+    end
+    alias :exec_update :exec_delete
+
     def last_inserted_id(result)
       @connection.last_insert_row_id
+    end
+
+    def execute(sql, name = nil) #:nodoc:
+      log(sql, name) { @connection.execute(sql) }
     end
 
     def begin_db_transaction #:nodoc:
       log("begin transaction",nil) { @connection.transaction }
     end
 
-    def begin_isolated_db_transaction(isolation)
-      raise ActiveRecord::TransactionIsolationError, 'adapter does not support setting transaction isolation'
+    def commit_db_transaction #:nodoc:
+      log("commit transaction",nil) { @connection.commit }
+    end
+
+    def exec_rollback_db_transaction #:nodoc:
+      log("rollback transaction",nil) { @connection.rollback }
     end
 
     # SCHEMA STATEMENTS ========================================
@@ -597,9 +645,13 @@ module ActiveRecord::ConnectionAdapters
   # module SQLite3 above and remove a majority of this file.
   class SQLite3Adapter < AbstractAdapter
     include ArJdbc::Abstract::Core
+    include ArJdbc::SQLite3
     include ArJdbc::Abstract::DatabaseStatements
     include ArJdbc::Abstract::TransactionSupport
-    include ArJdbc::SQLite3
+
+    def begin_isolated_db_transaction(isolation)
+      raise ActiveRecord::TransactionIsolationError, 'adapter does not support setting transaction isolation'
+    end
 
     # FIXME: Add @connection.encoding then remove this method
     def encoding
