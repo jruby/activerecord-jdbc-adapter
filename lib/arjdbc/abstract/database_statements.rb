@@ -12,7 +12,7 @@ module ArJdbc
           execute(sql, name)
         else
           binds = convert_legacy_binds_to_attributes(binds) if binds.first.is_a?(Array)
-          log(sql, name, binds) { @connection.execute_prepared(sql, binds) }
+          log(sql, name, binds) { @connection.execute_prepared(sql, binds, prepare) }
         end
       end
 

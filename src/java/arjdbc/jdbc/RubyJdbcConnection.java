@@ -916,14 +916,34 @@ public class RubyJdbcConnection extends RubyObject {
     }
 
     @JRubyMethod
-    public IRubyObject execute_prepared(final ThreadContext context, final IRubyObject sql, final IRubyObject binds) {
+    public IRubyObject execute_prepared(final ThreadContext context, final IRubyObject sql,
+        final IRubyObject binds, final IRubyObject shouldCacheStatement) {
         return withConnection(context, new Callable<IRubyObject>() {
             public IRubyObject call(final Connection connection) throws SQLException {
                 PreparedStatement statement = null;
+                final boolean useCache = shouldCacheStatement.isTrue();
                 final String query = sql.convertToString().getUnicodeValue();
+                IRubyObject adapter = null;
+
+                if ( useCache ) {
+                    adapter = callMethod(context, "adapter");
+                    IRubyObject cachedStatement = adapter.callMethod(context, "fetch_cached_statement", sql);
+
+                    if ( !cachedStatement.isNil() ) {
+                        statement = (PreparedStatement) JavaEmbedUtils.rubyToJava(cachedStatement);
+                    }
+                }
 
                 try {
-                    statement = connection.prepareStatement(query);
+                    if ( statement == null ) {
+                        statement = connection.prepareStatement(query);
+
+                        if ( useCache ) {
+                            IRubyObject[] args = { sql, JavaEmbedUtils.javaToRuby(context.getRuntime(), statement) };
+                            adapter.callMethod(context, "store_cached_statement", args);
+                        }
+                    }
+
                     setStatementParameters(context, connection, statement, (RubyArray) binds);
                     boolean hasResultSet = statement.execute();
 
@@ -931,7 +951,15 @@ public class RubyJdbcConnection extends RubyObject {
                         ResultSet resultSet = statement.getResultSet();
                         ColumnData[] columns = extractColumns(context.runtime, connection, resultSet, false);
 
-                        return mapToResult(context, context.runtime, connection, resultSet, columns);
+                        IRubyObject results = mapToResult(context, context.runtime, connection, resultSet, columns);
+
+                        if ( useCache ) {
+                            // Make sure we free the result set if we are caching the statement
+                            // It gets closed automatically when the statement is closed if we aren't caching
+                            resultSet.close();
+                        }
+
+                        return results;
                     } else {
                         return context.runtime.newEmptyArray();
                     }
@@ -939,7 +967,12 @@ public class RubyJdbcConnection extends RubyObject {
                     debugErrorSQL(context, query);
                     throw e;
                 } finally {
-                    close(statement);
+                    if ( useCache ) {
+                        statement.clearParameters();
+                    }
+                    else {
+                        close(statement);
+                    }
                 }
             }
         });
