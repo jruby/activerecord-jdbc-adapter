@@ -755,29 +755,6 @@ public class RubyJdbcConnection extends RubyObject {
                 break;
         }
 
-        if (binds != null) { // prepared statement
-            return executePreparedQueryRaw(context, query, binds, maxRows, block);
-        } else {
-            return executeQueryRaw(context, query, maxRows, block);
-        }
-    }
-
-    /**
-     * @param context
-     * @param query
-     * @param maxRows
-     * @param block
-     * @return raw query result (in case no block was given)
-     *
-     * @see #execute_query_raw(ThreadContext, IRubyObject[], Block)
-     */
-    protected IRubyObject executeQueryRaw(final ThreadContext context,
-        final String query, final int maxRows, final Block block) {
-        return doExecuteQueryRaw(context, query, maxRows, block, null); // binds == null
-    }
-
-    protected IRubyObject executePreparedQueryRaw(final ThreadContext context,
-        final String query, final RubyArray binds, final int maxRows, final Block block) {
         return doExecuteQueryRaw(context, query, maxRows, block, binds);
     }
 
