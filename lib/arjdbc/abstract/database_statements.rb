@@ -12,7 +12,8 @@ module ArJdbc
           execute(sql, name)
         else
           binds = convert_legacy_binds_to_attributes(binds) if binds.first.is_a?(Array)
-          log(sql, name, binds) { @connection.execute_prepared(sql, binds, prepare) }
+          # It seems that #supports_statement_cache? is defined but isn't checked before passing "prepare" into here
+          log(sql, name, binds) { @connection.execute_prepared(sql, binds, prepare && supports_statement_cache?) }
         end
       end
 
