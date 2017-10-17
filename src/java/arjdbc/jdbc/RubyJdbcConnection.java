@@ -544,15 +544,49 @@ public class RubyJdbcConnection extends RubyObject {
 
                 try {
                     statement = createStatement(context, connection);
+                    boolean hasResult = doExecute(statement, query);
+                    int updateCount = statement.getUpdateCount();
 
-                    if (doExecute(statement, query)) {
-                        ResultSet resultSet = statement.getResultSet();
-                        ColumnData[] columns = extractColumns(context.runtime, connection, resultSet, false);
-
-                        return mapToResult(context, context.runtime, connection, resultSet, columns);
-                    } else {
+                    if (!hasResult && updateCount == -1) {
+                        // Didn't return any results so just return an empty array
                         return context.runtime.newEmptyArray();
                     }
+
+                    ColumnData[] columns = null;
+                    IRubyObject result = null;
+                    ResultSet resultSet = null;
+                    RubyArray results = null;
+
+                    while (hasResult || updateCount != -1) {
+
+                        if (hasResult) {
+
+                            resultSet = statement.getResultSet();
+                            columns = extractColumns(context.runtime, connection, resultSet, false);
+
+                            result = mapToResult(context, context.runtime, connection, resultSet, columns);
+
+                        } else {
+                            // Must have an update count
+                            result = context.runtime.newFixnum(updateCount);
+                        }
+
+                        hasResult = statement.getMoreResults();
+                        updateCount = statement.getUpdateCount();
+
+                        if (results == null) {
+                            // Short circuit if we have no more results (which is likely most of the time)
+                            // and just return the result so we can skip creating a new array object
+                            if (!hasResult && updateCount == -1) return result;
+
+                            results = context.runtime.newArray();
+                        }
+
+                        results.append(result);
+                    }
+
+                    return results;
+
                 } catch (final SQLException e) {
                     debugErrorSQL(context, query);
                     throw e;

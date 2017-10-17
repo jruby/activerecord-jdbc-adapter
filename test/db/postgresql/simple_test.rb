@@ -71,7 +71,7 @@ class PostgresSimpleTest < Test::Unit::TestCase
   # @override
   def test_insert_returns_id
     super
-    
+
 #    begin
 #      connection.create_table 'payments', :force => true do |t|
 #        t.integer  "amount"
@@ -92,8 +92,8 @@ class PostgresSimpleTest < Test::Unit::TestCase
   end
 
   def test_multi_statement_support
-    user = User.create! :login => 'jozko'
-    Entry.create! :title => 'eee', :user_id => user.id
+    user = User.create! login: 'jozko'
+    Entry.create! title: 'eee', user_id: user.id
 
     results = connection.execute "SELECT title FROM entries; SELECT login FROM users"
 
@@ -185,7 +185,7 @@ class PostgresSimpleTest < Test::Unit::TestCase
       assert_false name.array? if defined? JRUBY_VERSION
     else
       assert_equal :string, tags.type
-      assert_match /char/, tags.sql_type # character varying (255)
+      assert_match(/char/, tags.sql_type) # character varying (255)
     end
   ensure
     connection.drop_table :my_posts rescue nil
@@ -344,18 +344,11 @@ class PostgresTimestampTest < Test::Unit::TestCase
     d.sample_datetime = 1.0 / 0.0
     d.save!
 
-    #if ar_version('3.0')
-    assert_equal 1.0 / 0.0, d.reload.sample_datetime # sample_timestamp
-    #else # 2.3
-    #  assert_equal nil, d.reload.sample_datetime # d.sample_timestamp
-    #end
+    assert_equal(1.0 / 0.0, d.reload.sample_datetime) # sample_timestamp
 
     d = DbType.create!(:sample_timestamp => -1.0 / 0.0)
-    #if ar_version('3.0')
-    assert_equal -1.0 / 0.0, d.sample_timestamp
-    #else # 2.3
-    #  assert_equal nil, d.sample_timestamp
-    #end
+
+    assert_equal(-1.0 / 0.0, d.sample_timestamp)
   end
   private :do_test_save_infinity
 
