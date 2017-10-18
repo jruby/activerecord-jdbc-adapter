@@ -555,14 +555,17 @@ public class RubyJdbcConnection extends RubyObject {
                     ResultSet resultSet = null;
 
                     while (hasResultSet || updateCount != -1) {
-                        resultSet = statement.getResultSet();
 
-                        if (resultSet != null) {
+                        if (hasResultSet) {
+                            resultSet = statement.getResultSet();
+
                             // Unfortunately the result set gets closed when getMoreResults()
                             // is called, so we have to process the result sets as we get them
                             // this shouldn't be an issue in most cases since we're only getting 1 result set anyways
                             columns = extractColumns(context.runtime, connection, resultSet, false);
                             result = mapToResult(context, context.runtime, connection, resultSet, columns);
+                        } else {
+                            resultSet = null;
                         }
 
                         // Check to see if there is another result set
