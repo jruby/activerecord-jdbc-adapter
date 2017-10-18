@@ -544,49 +544,39 @@ public class RubyJdbcConnection extends RubyObject {
 
                 try {
                     statement = createStatement(context, connection);
-                    boolean hasResult = doExecute(statement, query);
-                    int updateCount = statement.getUpdateCount();
 
-                    if (!hasResult && updateCount == -1) {
-                        // Didn't return any results so just return an empty array
-                        return context.runtime.newEmptyArray();
-                    }
+                    // For DBs that do support multiple statements, lets return the last result set
+                    // to be consistent with AR
+                    boolean hasResultSet = doExecute(statement, query);
+                    int updateCount = statement.getUpdateCount();
 
                     ColumnData[] columns = null;
                     IRubyObject result = null;
                     ResultSet resultSet = null;
-                    RubyArray results = null;
 
-                    while (hasResult || updateCount != -1) {
+                    while (hasResultSet || updateCount != -1) {
+                        resultSet = statement.getResultSet();
 
-                        if (hasResult) {
-
-                            resultSet = statement.getResultSet();
+                        if (resultSet != null) {
+                            // Unfortunately the result set gets closed when getMoreResults()
+                            // is called, so we have to process the result sets as we get them
+                            // this shouldn't be an issue in most cases since we're only getting 1 result set anyways
                             columns = extractColumns(context.runtime, connection, resultSet, false);
-
                             result = mapToResult(context, context.runtime, connection, resultSet, columns);
-
-                        } else {
-                            // Must have an update count
-                            result = context.runtime.newFixnum(updateCount);
                         }
 
-                        hasResult = statement.getMoreResults();
+                        // Check to see if there is another result set
+                        hasResultSet = statement.getMoreResults();
                         updateCount = statement.getUpdateCount();
-
-                        if (results == null) {
-                            // Short circuit if we have no more results (which is likely most of the time)
-                            // and just return the result so we can skip creating a new array object
-                            if (!hasResult && updateCount == -1) return result;
-
-                            results = context.runtime.newArray();
-                        }
-
-                        results.append(result);
                     }
 
-                    return results;
-
+                    // Need to check resultSet instead of result because result
+                    // may have been populated in a previous iteration of the loop
+                    if (resultSet == null) {
+                        return context.runtime.newEmptyArray();
+                    } else {
+                        return result;
+                    }
                 } catch (final SQLException e) {
                     debugErrorSQL(context, query);
                     throw e;
@@ -753,7 +743,7 @@ public class RubyJdbcConnection extends RubyObject {
 
     /**
      * This is the same as execute_query but it will return a list of hashes.
-     * 
+     *
      * @see RubyJdbcConnection#execute_query(ThreadContext, IRubyObject[])
      * @param context which context this method is executing on.
      * @param args arguments being supplied to this method.
