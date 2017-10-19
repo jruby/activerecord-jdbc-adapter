@@ -545,13 +545,40 @@ public class RubyJdbcConnection extends RubyObject {
                 try {
                     statement = createStatement(context, connection);
 
-                    if (doExecute(statement, query)) {
-                        ResultSet resultSet = statement.getResultSet();
-                        ColumnData[] columns = extractColumns(context.runtime, connection, resultSet, false);
+                    // For DBs that do support multiple statements, lets return the last result set
+                    // to be consistent with AR
+                    boolean hasResultSet = doExecute(statement, query);
+                    int updateCount = statement.getUpdateCount();
 
-                        return mapToResult(context, context.runtime, connection, resultSet, columns);
-                    } else {
+                    ColumnData[] columns = null;
+                    IRubyObject result = null;
+                    ResultSet resultSet = null;
+
+                    while (hasResultSet || updateCount != -1) {
+
+                        if (hasResultSet) {
+                            resultSet = statement.getResultSet();
+
+                            // Unfortunately the result set gets closed when getMoreResults()
+                            // is called, so we have to process the result sets as we get them
+                            // this shouldn't be an issue in most cases since we're only getting 1 result set anyways
+                            columns = extractColumns(context.runtime, connection, resultSet, false);
+                            result = mapToResult(context, context.runtime, connection, resultSet, columns);
+                        } else {
+                            resultSet = null;
+                        }
+
+                        // Check to see if there is another result set
+                        hasResultSet = statement.getMoreResults();
+                        updateCount = statement.getUpdateCount();
+                    }
+
+                    // Need to check resultSet instead of result because result
+                    // may have been populated in a previous iteration of the loop
+                    if (resultSet == null) {
                         return context.runtime.newEmptyArray();
+                    } else {
+                        return result;
                     }
                 } catch (final SQLException e) {
                     debugErrorSQL(context, query);
@@ -719,7 +746,7 @@ public class RubyJdbcConnection extends RubyObject {
 
     /**
      * This is the same as execute_query but it will return a list of hashes.
-     * 
+     *
      * @see RubyJdbcConnection#execute_query(ThreadContext, IRubyObject[])
      * @param context which context this method is executing on.
      * @param args arguments being supplied to this method.
