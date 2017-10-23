@@ -197,21 +197,12 @@ public class RubyJdbcConnection extends RubyObject {
         });
     }
 
-    @JRubyMethod(name = {"begin", "transaction"}) // optional isolation argument for AR-4.0
+    @JRubyMethod(name = {"begin", "transaction"}, required = 1) // optional isolation argument for AR-4.0
     public IRubyObject begin(final ThreadContext context, final IRubyObject isolation) {
         try { // handleException == false so we can handle setTXIsolation
             return withConnection(context, false, new Callable<IRubyObject>() {
                 public IRubyObject call(final Connection connection) throws SQLException {
-                    try {
-                        if (!isolation.isNil()) {
-                            connection.setTransactionIsolation(mapTransactionIsolationLevel(isolation));
-                        }
-                        return context.getRuntime().getNil();
-                    } catch (SQLException e) {
-                        RubyClass txError = ActiveRecord(context).getClass("TransactionIsolationError");
-                        if (txError != null) throw wrapException(context, txError, e);
-                        throw e; // let it roll - will be wrapped into a JDBCError (non 4.0)
-                    }
+                    return beginTransaction(context, connection, isolation.isNil() ? null : isolation);
                 }
             });
         } catch (SQLException e) {
@@ -224,13 +215,33 @@ public class RubyJdbcConnection extends RubyObject {
         try { // handleException == false so we can handle setTXIsolation
             return withConnection(context, false, new Callable<IRubyObject>() {
                 public IRubyObject call(final Connection connection) throws SQLException {
-                    connection.setAutoCommit(false);
-
-                    return context.getRuntime().getNil();
+                    return beginTransaction(context, connection, null);
                 }
             });
         } catch (SQLException e) {
             return handleException(context, e);
+        }
+    }
+
+    protected IRubyObject beginTransaction(final ThreadContext context, final Connection connection,
+        final IRubyObject isolation) throws SQLException {
+        if ( isolation != null ) {
+            setTransactionIsolation(context, connection, isolation);
+        }
+        if ( connection.getAutoCommit() ) connection.setAutoCommit(false);
+        return context.nil;
+    }
+
+    protected final void setTransactionIsolation(final ThreadContext context, final Connection connection,
+        final IRubyObject isolation) throws SQLException {
+        final int level = mapTransactionIsolationLevel(isolation);
+        try {
+            connection.setTransactionIsolation(level);
+        }
+        catch (SQLException e) {
+            RubyClass txError = ActiveRecord(context).getClass("TransactionIsolationError");
+            if ( txError != null ) throw wrapException(context, txError, e);
+            throw e; // let it roll - will be wrapped into a JDBCError (non 4.0)
         }
     }
 
@@ -263,7 +274,7 @@ public class RubyJdbcConnection extends RubyObject {
                 try {
                     connection.rollback();
                     resetSavepoints(context); // if any
-                    return context.getRuntime().newBoolean(true);
+                    return context.runtime.getTrue();
                 } finally {
                     connection.setAutoCommit(true);
                 }
@@ -545,13 +556,40 @@ public class RubyJdbcConnection extends RubyObject {
                 try {
                     statement = createStatement(context, connection);
 
-                    if (doExecute(statement, query)) {
-                        ResultSet resultSet = statement.getResultSet();
-                        ColumnData[] columns = extractColumns(context.runtime, connection, resultSet, false);
+                    // For DBs that do support multiple statements, lets return the last result set
+                    // to be consistent with AR
+                    boolean hasResultSet = doExecute(statement, query);
+                    int updateCount = statement.getUpdateCount();
 
-                        return mapToResult(context, context.runtime, connection, resultSet, columns);
-                    } else {
+                    ColumnData[] columns = null;
+                    IRubyObject result = null;
+                    ResultSet resultSet = null;
+
+                    while (hasResultSet || updateCount != -1) {
+
+                        if (hasResultSet) {
+                            resultSet = statement.getResultSet();
+
+                            // Unfortunately the result set gets closed when getMoreResults()
+                            // is called, so we have to process the result sets as we get them
+                            // this shouldn't be an issue in most cases since we're only getting 1 result set anyways
+                            columns = extractColumns(context.runtime, connection, resultSet, false);
+                            result = mapToResult(context, context.runtime, connection, resultSet, columns);
+                        } else {
+                            resultSet = null;
+                        }
+
+                        // Check to see if there is another result set
+                        hasResultSet = statement.getMoreResults();
+                        updateCount = statement.getUpdateCount();
+                    }
+
+                    // Need to check resultSet instead of result because result
+                    // may have been populated in a previous iteration of the loop
+                    if (resultSet == null) {
                         return context.runtime.newEmptyArray();
+                    } else {
+                        return result;
                     }
                 } catch (final SQLException e) {
                     debugErrorSQL(context, query);
@@ -719,7 +757,7 @@ public class RubyJdbcConnection extends RubyObject {
 
     /**
      * This is the same as execute_query but it will return a list of hashes.
-     * 
+     *
      * @see RubyJdbcConnection#execute_query(ThreadContext, IRubyObject[])
      * @param context which context this method is executing on.
      * @param args arguments being supplied to this method.
@@ -755,29 +793,6 @@ public class RubyJdbcConnection extends RubyObject {
                 break;
         }
 
-        if (binds != null) { // prepared statement
-            return executePreparedQueryRaw(context, query, binds, maxRows, block);
-        } else {
-            return executeQueryRaw(context, query, maxRows, block);
-        }
-    }
-
-    /**
-     * @param context
-     * @param query
-     * @param maxRows
-     * @param block
-     * @return raw query result (in case no block was given)
-     *
-     * @see #execute_query_raw(ThreadContext, IRubyObject[], Block)
-     */
-    protected IRubyObject executeQueryRaw(final ThreadContext context,
-        final String query, final int maxRows, final Block block) {
-        return doExecuteQueryRaw(context, query, maxRows, block, null); // binds == null
-    }
-
-    protected IRubyObject executePreparedQueryRaw(final ThreadContext context,
-        final String query, final RubyArray binds, final int maxRows, final Block block) {
         return doExecuteQueryRaw(context, query, maxRows, block, binds);
     }
 

@@ -71,7 +71,7 @@ class PostgresSimpleTest < Test::Unit::TestCase
   # @override
   def test_insert_returns_id
     super
-    
+
 #    begin
 #      connection.create_table 'payments', :force => true do |t|
 #        t.integer  "amount"
@@ -89,19 +89,6 @@ class PostgresSimpleTest < Test::Unit::TestCase
 
   def test_encoding
     assert_not_nil connection.encoding
-  end
-
-  def test_multi_statement_support
-    user = User.create! :login => 'jozko'
-    Entry.create! :title => 'eee', :user_id => user.id
-
-    results = connection.execute "SELECT title FROM entries; SELECT login FROM users"
-
-    if defined? JRUBY_VERSION
-      assert_equal 2, results.length
-      assert_equal ["title"], results[0].first.keys
-      assert_equal ["login"], results[1].first.keys
-    end
   end
 
   test 'find_by_sql WITH statement' do
@@ -124,7 +111,7 @@ class PostgresSimpleTest < Test::Unit::TestCase
   def test_create_xml_column
     return if connection.send(:postgresql_version) < 80300
     super
-  end if ar_version('3.1')
+  end
 
   def test_use_xml_column
     return if connection.send(:postgresql_version) < 80300
@@ -138,7 +125,7 @@ class PostgresSimpleTest < Test::Unit::TestCase
       XmlModel.update_all(:xml_col => "<bar>baz</bar>")
       assert_equal "<bar>baz</bar>", data.reload.xml_col
     end
-  end if ar_version('3.1')
+  end
 
   def xml_sql_type; 'xml'; end
 
@@ -185,7 +172,7 @@ class PostgresSimpleTest < Test::Unit::TestCase
       assert_false name.array? if defined? JRUBY_VERSION
     else
       assert_equal :string, tags.type
-      assert_match /char/, tags.sql_type # character varying (255)
+      assert_match(/char/, tags.sql_type) # character varying (255)
     end
   ensure
     connection.drop_table :my_posts rescue nil
@@ -226,7 +213,7 @@ class PostgresSimpleTest < Test::Unit::TestCase
     assert_not_nil visitor = connection.instance_variable_get(:@visitor)
     assert defined? Arel::Visitors::PostgreSQL
     assert_kind_of Arel::Visitors::PostgreSQL, visitor
-  end if ar_version('3.0')
+  end
 
   include ExplainSupportTestMethods if ar_version("3.1")
 
@@ -284,7 +271,7 @@ class PostgresSimpleTest < Test::Unit::TestCase
   test 'type cast (without column)' do
     assert_equal 1, connection.type_cast(1, false)
     assert_equal 'some', connection.type_cast(:some, nil)
-  end if ar_version('3.1')
+  end
 
 end
 
@@ -344,18 +331,11 @@ class PostgresTimestampTest < Test::Unit::TestCase
     d.sample_datetime = 1.0 / 0.0
     d.save!
 
-    #if ar_version('3.0')
-    assert_equal 1.0 / 0.0, d.reload.sample_datetime # sample_timestamp
-    #else # 2.3
-    #  assert_equal nil, d.reload.sample_datetime # d.sample_timestamp
-    #end
+    assert_equal(1.0 / 0.0, d.reload.sample_datetime) # sample_timestamp
 
     d = DbType.create!(:sample_timestamp => -1.0 / 0.0)
-    #if ar_version('3.0')
-    assert_equal -1.0 / 0.0, d.sample_timestamp
-    #else # 2.3
-    #  assert_equal nil, d.sample_timestamp
-    #end
+
+    assert_equal(-1.0 / 0.0, d.sample_timestamp)
   end
   private :do_test_save_infinity
 

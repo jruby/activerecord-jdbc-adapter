@@ -9,7 +9,6 @@ module ArJdbc
     require 'arjdbc/mysql/column'
     require 'arjdbc/mysql/bulk_change_table'
     require 'arjdbc/mysql/explain_support'
-    require 'arjdbc/mysql/schema_creation' # AR 4.x
 
     include BulkChangeTable if const_defined? :BulkChangeTable
 
@@ -137,22 +136,13 @@ module ArJdbc
       "= BINARY"
     end
 
-    def case_sensitive_modifier(node)
-      Arel::Nodes::Bin.new(node)
-    end unless AR42
-
-    def case_sensitive_modifier(node, table_attribute)
-      node = Arel::Nodes.build_quoted node, table_attribute
-      Arel::Nodes::Bin.new(node)
-    end if AR42
-
     def case_sensitive_comparison(table, attribute, column, value)
       if column.case_sensitive?
         table[attribute].eq(value)
       else
         super
       end
-    end if AR42
+    end
 
     def case_insensitive_comparison(table, attribute, column, value)
       if column.case_sensitive?
@@ -160,7 +150,7 @@ module ArJdbc
       else
         table[attribute].eq(value)
       end
-    end if AR42
+    end
 
     def limited_update_conditions(where_sql, quoted_table_name, quoted_primary_key)
       where_sql
@@ -172,19 +162,14 @@ module ArJdbc
       else
         ActiveRecord::SchemaMigration.create_table
       end
-    end if AR40
+    end
 
     # HELPER METHODS ===========================================
 
     # @private Only for Rails core compatibility.
-    def new_column(field, default, type, null, collation, extra = "")
-      jdbc_column_class.new(field, default, type, null, collation, strict_mode?, extra)
-    end unless AR42
-
-    # @private Only for Rails core compatibility.
     def new_column(field, default, cast_type, sql_type = nil, null = true, collation = "", extra = "")
       jdbc_column_class.new(field, default, cast_type, sql_type, null, collation, strict_mode?, extra)
-    end if AR42
+    end
 
     # @private Only for Rails core compatibility.
     def error_number(exception)
@@ -193,21 +178,6 @@ module ArJdbc
 
     # QUOTING ==================================================
 
-    # @override
-    def quote(value, column = nil)
-      return value.quoted_id if value.respond_to?(:quoted_id)
-      return value if sql_literal?(value)
-      return value.to_s if column && column.type == :primary_key
-
-      if value.kind_of?(String) && column && column.type == :binary
-        "x'#{value.unpack("H*")[0]}'"
-      elsif value.kind_of?(BigDecimal)
-        value.to_s("F")
-      else
-        super
-      end
-    end unless AR42
-
     # @private since AR 4.2
     def _quote(value)
       if value.is_a?(Type::Binary::Data)
@@ -215,7 +185,7 @@ module ArJdbc
       else
         super
       end
-    end if AR42
+    end
 
     # @override
     def quote_column_name(name)
@@ -262,10 +232,8 @@ module ArJdbc
       version[0] && version[0] >= 5
     end
 
-    if ArJdbc::AR50
-      def views
-        select_values("SELECT table_name FROM information_schema.TABLES WHERE table_type = 'VIEW'")
-      end
+    def views
+      select_values("SELECT table_name FROM information_schema.TABLES WHERE table_type = 'VIEW'")
     end
 
     def supports_rename_index?
@@ -275,7 +243,7 @@ module ArJdbc
 
     def index_algorithms
       { :default => 'ALGORITHM = DEFAULT', :copy => 'ALGORITHM = COPY', :inplace => 'ALGORITHM = INPLACE' }
-    end if AR42
+    end
 
     # @override
     def supports_transaction_isolation?(level = nil)
@@ -451,7 +419,7 @@ module ArJdbc
         create_sql << "#{o.options}"
         create_sql << " AS #{@conn.to_sql(o.as)}" if o.as
         create_sql
-      end if AR42
+      end
 
       private
 
@@ -573,7 +541,7 @@ module ArJdbc
 
         ForeignKeyDefinition.new(table_name, row['to_table'], options)
       end
-    end if defined? ForeignKeyDefinition
+    end
 
     def extract_foreign_key_action(structure, name, action)
       if structure =~ /CONSTRAINT #{quote_column_name(name)} FOREIGN KEY .* REFERENCES .* ON #{action} (CASCADE|SET NULL|RESTRICT)/
@@ -585,18 +553,10 @@ module ArJdbc
     end
     private :extract_foreign_key_action
 
-    # @override
-    def add_column(table_name, column_name, type, options = {})
-      add_column_sql = "ALTER TABLE #{quote_table_name(table_name)} ADD #{quote_column_name(column_name)} #{type_to_sql(type, options[:limit], options[:precision], options[:scale])}"
-      add_column_options!(add_column_sql, options)
-      add_column_position!(add_column_sql, options)
-      execute(add_column_sql)
-    end unless const_defined? :SchemaCreation
-
     def change_column_default(table_name, column_name, default)
       column = column_for(table_name, column_name)
       change_column table_name, column_name, column.sql_type, :default => default
-    end # unless const_defined? :SchemaCreation
+    end
 
     def change_column_null(table_name, column_name, null, default = nil)
       column = column_for(table_name, column_name)
@@ -606,7 +566,7 @@ module ArJdbc
       end
 
       change_column table_name, column_name, column.sql_type, :null => null
-    end # unless const_defined? :SchemaCreation
+    end
 
     # @override
     def change_column(table_name, column_name, type, options = {})
@@ -630,7 +590,7 @@ module ArJdbc
     # @private
     def change_column(table_name, column_name, type, options = {})
       execute("ALTER TABLE #{quote_table_name(table_name)} #{change_column_sql(table_name, column_name, type, options)}")
-    end if AR42
+    end
 
     # @override
     def rename_column(table_name, column_name, new_column_name)
@@ -658,21 +618,7 @@ module ArJdbc
       elsif options[:after]
         sql << " AFTER #{quote_column_name(options[:after])}"
       end
-    end unless const_defined? :SchemaCreation
-
-    # @note Only used with (non-AREL) ActiveRecord **2.3**.
-    # @see Arel::Visitors::MySQL
-    def add_limit_offset!(sql, options)
-      limit, offset = options[:limit], options[:offset]
-      if limit && offset
-        sql << " LIMIT #{offset.to_i}, #{sanitize_limit(limit)}"
-      elsif limit
-        sql << " LIMIT #{sanitize_limit(limit)}"
-      elsif offset
-        sql << " OFFSET #{offset.to_i}"
-      end
-      sql
-    end if ::ActiveRecord::VERSION::MAJOR < 3
+    end
 
     # In the simple case, MySQL allows us to place JOINs directly into the UPDATE
     # query. However, this does not allow for LIMIT, OFFSET and ORDER. To support
@@ -762,17 +708,17 @@ module ArJdbc
     def clear_cache!
       super
       reload_type_map
-    end if AR42
+    end
 
     # @private since AR 4.2
     def prepare_column_options(column, types)
       spec = super
       spec.delete(:limit) if column.type == :boolean
       spec
-    end if AR42
+    end
 
     # @private
-    Type = ActiveRecord::Type if AR42
+    Type = ActiveRecord::Type
 
     protected
 
@@ -814,7 +760,7 @@ module ArJdbc
             map{|enum| enum.strip.length - 2}.max
         MysqlString.new(:limit => limit)
       end
-    end if AR42
+    end
 
     # @private
     def register_integer_type(mapping, key, options)
@@ -825,7 +771,7 @@ module ArJdbc
           Type::Integer.new(options)
         end
       end
-    end if AR42
+    end
 
     # MySQL is too stupid to create a temporary table for use subquery, so we have
     # to give it some prompting in the form of a subsubquery. Ugh!
@@ -837,7 +783,7 @@ module ArJdbc
       subselect = Arel::SelectManager.new(select.engine)
       subselect.project Arel.sql(key.name)
       subselect.from subsubselect.as('__active_record_temp')
-    end if AR42
+    end
 
     def quoted_columns_for_index(column_names, options = {})
       length = options[:length] if options.is_a?(Hash)
@@ -914,7 +860,7 @@ module ArJdbc
       def has_precision?
         precision || 0
       end
-    end if AR42
+    end
 
     # @private
     class MysqlString < Type::String
@@ -935,7 +881,7 @@ module ArJdbc
         else super
         end
       end
-    end if AR42
+    end
 
   end
 end
