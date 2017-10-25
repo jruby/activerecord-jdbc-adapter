@@ -19,7 +19,13 @@ module ArJdbc
 
       def initialize(connection, logger, config)
         super
-        @statements = StatementPool.new(self.class.type_cast_config_to_integer(config[:statement_limit]))
+
+        # Only say we support the statement cache if we are using prepared statements
+        # and have a max number of statements defined
+        statement_limit = self.class.type_cast_config_to_integer(config[:statement_limit])
+        @jdbc_statement_cache_enabled = config[:prepared_statements] && (statement_limit.nil? || statement_limit > 0)
+
+        @statements = StatementPool.new(statement_limit) # AR (5.0) expects this to be stored as @statements
       end
 
       # Clears the prepared statements cache.
@@ -32,16 +38,11 @@ module ArJdbc
       end
 
       def fetch_cached_statement(sql)
-        @statements[cached_statement_key(sql)]
+        @statements[cached_statement_key(sql)] ||= @connection.connection.prepare_statement(sql)
       end
 
-      def store_cached_statement(sql, statement)
-        @statements[cached_statement_key(sql)] = statement
-      end
-
-      # If this module is included, assume the adapter supports prepared statement caching
       def supports_statement_cache?
-        true
+        @jdbc_statement_cache_enabled
       end
 
       private

@@ -42,10 +42,6 @@ ArJdbc::ConnectionMethods.module_eval do
     properties['tcpKeepAlive'] ||= config[:keepalives] if config.key?(:keepalives)
     properties['kerberosServerName'] ||= config[:krbsrvname] if config[:krbsrvname]
 
-    # Need to force the prepareThreshold to 1 for AR unit tests otherwise
-    # we won't receive an error for the tests that check on the statement cache being invalidated
-    properties['prepareThreshold'] = 1 if database.start_with?('activerecord_unittest')
-
     jdbc_connection(config)
   rescue ActiveRecord::JDBCError => e
     if e.message.include?('does not exist')

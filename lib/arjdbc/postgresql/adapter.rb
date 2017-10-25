@@ -789,7 +789,7 @@ module ActiveRecord::ConnectionAdapters
 
     include ::ArJdbc::Util::QuotedCache
 
-    def initialize(*args)
+    def initialize(connection, logger = nil, config = {})
       # @local_tz is initialized as nil to avoid warnings when connect tries to use it
       @local_tz = nil
 

@@ -7,6 +7,7 @@ namespace :rails do
       driver = ENV['DRIVER'] || ENV['ADAPTER']
       raise "need a DRIVER (DRIVER=mysql)" unless driver
       rails_dir = _rails_dir
+      ENV['ARCONFIG'] = File.join(_ar_jdbc_dir, 'test', 'rails', 'config.yml')
 
       Dir.chdir(File.join(rails_dir, 'activerecord')) do
         sh FileUtils::RUBY, '-S', 'rake',
@@ -14,7 +15,7 @@ namespace :rails do
            _target(driver)
       end
     end
-  
+
     DEFAULT_ADAPTERS.each do |adapter|
       desc "Run Rails ActiveRecord tests with #{adapter} (JDBC)"
       task adapter.downcase do
@@ -22,7 +23,7 @@ namespace :rails do
         Rake::Task['rails:test:all'].invoke
       end
 
-      namespace adapter.downcase do 
+      namespace adapter.downcase do
         desc "Runs Rails ActiveRecord base_test.rb with #{adapter}"
         task "base_test" do
           ENV['TEST'] = "test/cases/base_test.rb"
@@ -31,8 +32,12 @@ namespace :rails do
         end
       end
     end
-  
+
     private
+
+    def _ar_jdbc_dir
+      @ar_jdbc_dir ||= File.expand_path('..', File.dirname(__FILE__))
+    end
 
     def _rails_dir
       rails_dir = ENV['RAILS'] || DEFAULT_RAILS_DIR
@@ -44,7 +49,7 @@ namespace :rails do
     end
 
     def _ruby_lib(rails_dir, driver)
-      ar_jdbc_dir = File.expand_path('..', File.dirname(__FILE__))
+      ar_jdbc_dir = _ar_jdbc_dir
 
       if driver =~ /postgres/i
         adapter, driver = 'postgresql', 'postgres'
@@ -62,7 +67,7 @@ namespace :rails do
        File.expand_path('activerecord/lib', rails_dir)
       ].join(':')
     end
-  
+
     def _target(name)
       case name
       when /postgres/i
