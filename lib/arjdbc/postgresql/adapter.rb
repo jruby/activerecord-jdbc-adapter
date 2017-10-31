@@ -13,6 +13,7 @@ require 'active_record/connection_adapters/postgresql/utils'
 require 'arjdbc/abstract/core'
 require 'arjdbc/abstract/connection_management'
 require 'arjdbc/abstract/database_statements'
+require 'arjdbc/abstract/statement_cache'
 require 'arjdbc/abstract/transaction_support'
 require 'arjdbc/postgresql/base/array_decoder'
 require 'arjdbc/postgresql/base/array_encoder'
@@ -775,6 +776,7 @@ module ActiveRecord::ConnectionAdapters
     include ArJdbc::Abstract::Core
     include ArJdbc::Abstract::ConnectionManagement
     include ArJdbc::Abstract::DatabaseStatements
+    include ArJdbc::Abstract::StatementCache
     include ArJdbc::Abstract::TransactionSupport
     include ArJdbc::PostgreSQL
 
@@ -787,7 +789,7 @@ module ActiveRecord::ConnectionAdapters
 
     include ::ArJdbc::Util::QuotedCache
 
-    def initialize(*args)
+    def initialize(connection, logger = nil, config = {})
       # @local_tz is initialized as nil to avoid warnings when connect tries to use it
       @local_tz = nil
 
@@ -816,6 +818,21 @@ module ActiveRecord::ConnectionAdapters
       TableDefinition.new(*args)
     end
 
+    def exec_query(sql, name = nil, binds = [], prepare: false)
+      super
+    rescue ActiveRecord::StatementInvalid => e
+      raise unless e.cause.message.include?('cached plan must not change result type'.freeze)
+
+      if open_transactions > 0
+        # In a transaction, have to fail it - See AR code for details
+        raise ActiveRecord::PreparedStatementCacheExpired.new(e.cause.message)
+      else
+        # Not in a transaction, clear the prepared statement and try again
+        delete_cached_statement(sql)
+        retry
+      end
+    end
+
     def schema_creation # :nodoc:
       PostgreSQL::SchemaCreation.new self
     end
@@ -826,6 +843,14 @@ module ActiveRecord::ConnectionAdapters
 
     def jdbc_connection_class(spec)
       ::ArJdbc::PostgreSQL.jdbc_connection_class
+    end
+
+    private
+
+    # Prepared statements aren't schema aware so we need to make sure we
+    # store different PreparedStatement objects for different schemas
+    def cached_statement_key(sql)
+      "#{schema_search_path}-#{sql}"
     end
 
   end

@@ -930,15 +930,23 @@ public class RubyJdbcConnection extends RubyObject {
         });
     }
 
-    @JRubyMethod
-    public IRubyObject execute_prepared(final ThreadContext context, final IRubyObject sql, final IRubyObject binds) {
+    // Called from exec_query in abstract/database_statements
+    @JRubyMethod(required = 3)
+    public IRubyObject execute_prepared(final ThreadContext context, final IRubyObject sql,
+        final IRubyObject binds, final IRubyObject cachedStatement) {
         return withConnection(context, new Callable<IRubyObject>() {
             public IRubyObject call(final Connection connection) throws SQLException {
-                PreparedStatement statement = null;
+                final boolean cached = !(cachedStatement == null || cachedStatement.isNil());
                 final String query = sql.convertToString().getUnicodeValue();
+                PreparedStatement statement = null;
 
                 try {
-                    statement = connection.prepareStatement(query);
+                    if (cached) {
+                        statement = (PreparedStatement) JavaEmbedUtils.rubyToJava(cachedStatement);
+                    } else {
+                        statement = connection.prepareStatement(query);
+                    }
+
                     setStatementParameters(context, connection, statement, (RubyArray) binds);
                     boolean hasResultSet = statement.execute();
 
@@ -946,7 +954,15 @@ public class RubyJdbcConnection extends RubyObject {
                         ResultSet resultSet = statement.getResultSet();
                         ColumnData[] columns = extractColumns(context.runtime, connection, resultSet, false);
 
-                        return mapToResult(context, context.runtime, connection, resultSet, columns);
+                        IRubyObject results = mapToResult(context, context.runtime, connection, resultSet, columns);
+
+                        if (cached) {
+                            // Make sure we free the result set if we are caching the statement
+                            // It gets closed automatically when the statement is closed if we aren't caching
+                            resultSet.close();
+                        }
+
+                        return results;
                     } else {
                         return context.runtime.newEmptyArray();
                     }
@@ -954,7 +970,11 @@ public class RubyJdbcConnection extends RubyObject {
                     debugErrorSQL(context, query);
                     throw e;
                 } finally {
-                    close(statement);
+                    if ( cached ) {
+                        statement.clearParameters();
+                    } else {
+                        close(statement);
+                    }
                 }
             }
         });
