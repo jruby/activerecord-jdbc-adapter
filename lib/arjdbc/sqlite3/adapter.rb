@@ -2,6 +2,7 @@ ArJdbc.load_java_part :SQLite3
 
 require "arjdbc/abstract/core"
 require "arjdbc/abstract/database_statements"
+require 'arjdbc/abstract/statement_cache'
 require "arjdbc/abstract/transaction_support"
 require "active_record/connection_adapters/statement_pool"
 require "active_record/connection_adapters/abstract/database_statements"
@@ -59,7 +60,8 @@ module ArJdbc
       Arel::Visitors::SQLite.new(self)
     end
 
-    def initialize(connection, logger, connection_options, config)
+    # Difference we remove connection_options because we are not using it.
+    def initialize(connection, logger, config)
       super(connection, logger, config)
 
       @active     = nil
@@ -647,6 +649,7 @@ module ActiveRecord::ConnectionAdapters
     include ArJdbc::Abstract::Core
     include ArJdbc::SQLite3
     include ArJdbc::Abstract::DatabaseStatements
+    include ArJdbc::Abstract::StatementCache
     include ArJdbc::Abstract::TransactionSupport
 
     def begin_isolated_db_transaction(isolation)
