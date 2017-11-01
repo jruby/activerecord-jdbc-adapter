@@ -2335,7 +2335,7 @@ public class RubyJdbcConnection extends RubyObject {
         final int len = strValue.getRealSize() - strValue.getBegin();
         if ( dot1 > 0 && dot4 < len ) { // skip .123 but handle .1234
             final int end = Math.min( len - dot4, 3 );
-            CharSequence usecSeq = strValue.subSequence(dot4, end);
+            CharSequence usecSeq = strValue.subSequence(dot4, dot4 + end);
             final int usec = Integer.parseInt( usecSeq.toString() );
             if ( usec < 10 ) { // 0.1234 ~> 4
                 timestamp.setNanos( timestamp.getNanos() + usec * 100 );
