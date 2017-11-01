@@ -891,6 +891,10 @@ module ActiveRecord
 
       def initialize(connection, logger, connection_options, config)
         super(connection, logger, config)
+
+        @prepared_statements = false unless config.key?(:prepared_statements)
+
+        configure_connection
       end
 
       def supports_json?
@@ -932,6 +936,11 @@ module ActiveRecord
         exception.error_number if exception.respond_to?(:error_number)
       end
 
+      # FIXME: This is wrong...it should not always pass utf8 and native adapter never does...
+      def create_table(table_name, **options) #:nodoc:
+        super(table_name, options: 'ENGINE=InnoDB CHARSET=utf8 COLLATE=utf8_general_ci', **options)
+      end
+
       #--
       # QUOTING ==================================================
       #++
@@ -941,16 +950,6 @@ module ActiveRecord
       end
 
       private
-
-      def connect
-        @connection = Mysql2::Client.new(@config)
-        configure_connection
-      end
-
-      def configure_connection
-        @connection.query_options.merge!(:as => :array)
-        super
-      end
 
       def full_version
         @full_version ||= begin
@@ -971,19 +970,6 @@ module ActiveRecord
       end
       alias insert_sql exec_insert
 
-      def arel_visitor # :nodoc:
-        Arel::Visitors::MySQL.new(self)
-      end
-
-      # By default, the MysqlAdapter will consider all columns of type
-      # __tinyint(1)__ as boolean. If you wish to disable this :
-      # ```
-      #   ActiveRecord::ConnectionAdapters::Mysql[2]Adapter.emulate_booleans = false
-      # ```
-      def self.emulate_booleans?; ::ArJdbc::MySQL.emulate_booleans?; end
-      def self.emulate_booleans;  ::ArJdbc::MySQL.emulate_booleans?; end # native adapter
-      def self.emulate_booleans=(emulate); ::ArJdbc::MySQL.emulate_booleans = emulate; end
-
       def jdbc_connection_class(spec)
         ::ArJdbc::MySQL.jdbc_connection_class
       end
@@ -993,9 +979,6 @@ module ActiveRecord
       end
 
     end
-
-#    remove_const(:Mysql2Column) if const_defined?(:Mysql2Column)
-#    Mysql2Column = Mysql2Adapter::Column
   end
 
   # FIXME: Not sure how this is scoped or whether we should use it or just alias it to our

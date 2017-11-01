@@ -50,7 +50,9 @@ import org.jruby.RubyFloat;
 import org.jruby.RubyInteger;
 import org.jruby.RubyModule;
 import org.jruby.RubyString;
+import org.jruby.anno.JRubyMethod;
 import org.jruby.exceptions.RaiseException;
+import org.jruby.runtime.Block;
 import org.jruby.runtime.ObjectAllocator;
 import org.jruby.runtime.ThreadContext;
 import org.jruby.runtime.builtin.IRubyObject;
@@ -77,6 +79,13 @@ public class MySQLRubyJdbcConnection extends RubyJdbcConnection {
             defineClassUnder("MySQLJdbcConnection", jdbcConnection, MYSQL_JDBCCONNECTION_ALLOCATOR);
         clazz.defineAnnotatedMethods(MySQLRubyJdbcConnection.class);
         return clazz;
+    }
+
+    @JRubyMethod
+    public IRubyObject query(final ThreadContext context,
+                             final IRubyObject sql) throws SQLException {
+        final String query = sql.convertToString().getUnicodeValue(); // sql
+        return executeUpdate(context, query, false);
     }
 
     @Override

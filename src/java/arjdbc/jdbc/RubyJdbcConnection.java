@@ -763,7 +763,7 @@ public class RubyJdbcConnection extends RubyObject {
      * @param args arguments being supplied to this method.
      * @param block (optional) block to yield row values (Hash(name: value))
      * @return List of Hash(name: value) unless block is given.
-     * @throws SQLException when a database error occurs
+     * @throws SQLException when a database error occurs<
      */
     @JRubyMethod(required = 1, optional = 2)
     public IRubyObject execute_query_raw(final ThreadContext context,
@@ -899,8 +899,6 @@ public class RubyJdbcConnection extends RubyObject {
     }
 
     /**
-     * NOTE: This methods behavior changed in AR-JDBC 1.3 the old behavior is
-     * achievable using {@link #executeQueryRaw(ThreadContext, String, int, Block)}.
      *
      * @param context
      * @param query
