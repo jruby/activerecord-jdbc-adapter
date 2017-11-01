@@ -29,26 +29,26 @@ module ArJdbc
       # Starts a database transaction.
       # @override
       def begin_db_transaction
-        log('BEGIN TRANSACTION', nil) { @connection.begin }
+        log('BEGIN TRANSACTION'.freeze, nil) { @connection.begin }
       end
 
       # Starts a database transaction.
       # @param isolation the transaction isolation to use
       def begin_isolated_db_transaction(isolation)
-        log('BEGIN ISOLATED TRANSACTION', nil) { @connection.begin(isolation) }
+        log("BEGIN ISOLATED TRANSACTION - #{isolation}", nil) { @connection.begin(isolation) }
       end
 
       # Commits the current database transaction.
       # @override
       def commit_db_transaction
-        log('COMMIT TRANSACTION', nil) { @connection.commit }
+        log('COMMIT TRANSACTION'.freeze, nil) { @connection.commit }
       end
 
       # Rolls back the current database transaction.
       # Called from 'rollback_db_transaction' in the AbstractAdapter
       # @override
       def exec_rollback_db_transaction
-        log('ROLLBACK TRANSACTION', nil) { @connection.rollback }
+        log('ROLLBACK TRANSACTION'.freeze, nil) { @connection.rollback }
       end
 
       ########################## Savepoint Interface ############################
