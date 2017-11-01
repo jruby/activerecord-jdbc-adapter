@@ -26,7 +26,7 @@ namespace :rails do
       namespace adapter.downcase do
         desc "Runs Rails ActiveRecord base_test.rb with #{adapter}"
         task "base_test" do
-          ENV['TEST'] = "test/cases/base_test.rb"
+          ENV['TEST'] ||= "test/cases/base_test.rb"
           ENV['ADAPTER'] = adapter
           Rake::Task['rails:test:all'].invoke
         end
