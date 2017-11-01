@@ -12,16 +12,6 @@ module ArJdbc
 
       attr_reader :collation, :strict, :extra
 
-      def initialize(name, default, sql_type = nil, null = true, collation = nil, strict = false, extra = '')
-        if name.is_a?(Hash)
-          super # first arg: config
-        else
-          @strict = strict; @collation = collation; @extra = extra
-          super(name, default, sql_type, null)
-          # base 4.1: (name, default, sql_type = nil, null = true)
-        end
-      end unless AR42
-
       def initialize(name, default, cast_type, sql_type = nil, null = true, collation = nil, strict = false, extra = '')
         if name.is_a?(Hash)
           super # first arg: config
@@ -32,7 +22,7 @@ module ArJdbc
           #assert_valid_default(default) done with #extract_default
           #@default = null || ( strict ? nil : '' ) if blob_or_text_column?
         end
-      end if AR42
+      end
 
       def extract_default(default)
         if blob_or_text_column?
@@ -63,8 +53,11 @@ module ArJdbc
         strict == other.strict &&
         extra == other.extra &&
         super
-      end if AR42
+      end
 
+      def type
+
+      end
       def simplified_type(field_type)
         if adapter && adapter.emulate_booleans?
           return :boolean if field_type.downcase.index('tinyint(1)')
@@ -109,33 +102,8 @@ module ArJdbc
         end
       end
 
-      def extract_limit(sql_type)
-        case sql_type
-        when /blob|text/i
-          case sql_type
-          when /tiny/i
-            255
-          when /medium/i
-            16777215
-          when /long/i
-            2147483647 # mysql only allows 2^31-1, not 2^32-1, somewhat inconsistently with the tiny/medium/normal cases
-          else
-            super # we could return 65535 here, but we leave it undecorated by default
-          end
-        when /^bigint/i;    8
-        when /^int/i;       4
-        when /^mediumint/i; 3
-        when /^smallint/i;  2
-        when /^tinyint/i;   1
-        when /^enum\((.+)\)/i # 255
-          $1.split(',').map{ |enum| enum.strip.length - 2 }.max
-        when /^(bool|date|float|int|time)/i
-          nil
-        else
-          super
-        end
-      end unless AR42 # on AR 4.2 limit is delegated to cast_type.limit
-
+      def attributes_for_hash; super + [collation, strict, extra] end
+      
       private
 
       # MySQL misreports NOT NULL column default when none is given.
@@ -149,8 +117,7 @@ module ArJdbc
         type != :string && ! null && default == ''
       end
 
-      def attributes_for_hash; super + [collation, strict, extra] end
-
+   
       def adapter; end
 
     end

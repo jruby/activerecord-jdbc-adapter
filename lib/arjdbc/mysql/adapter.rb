@@ -1,12 +1,18 @@
 ArJdbc.load_java_part :MySQL
 
 require 'bigdecimal'
+require 'active_record/connection_adapters/abstract_mysql_adapter'
 require 'active_record/connection_adapters/abstract/schema_definitions'
+require 'arjdbc/abstract/core'
+require 'arjdbc/abstract/connection_management'
+require 'arjdbc/abstract/database_statements'
+require 'arjdbc/abstract/statement_cache'
+require 'arjdbc/abstract/transaction_support'
 
 module ArJdbc
   module MySQL
 
-    require 'arjdbc/mysql/column'
+#    require 'arjdbc/mysql/column'
     require 'arjdbc/mysql/bulk_change_table'
     require 'arjdbc/mysql/explain_support'
 
@@ -364,24 +370,7 @@ module ArJdbc
       indexes
     end
 
-    # Returns an array of `Column` objects for the table specified.
-    # @override
-    def columns(table_name, name = nil)
-      sql = "SHOW FULL #{AR40 ? 'FIELDS' : 'COLUMNS'} FROM #{quote_table_name(table_name)}"
-      columns = execute(sql, name || 'SCHEMA')
-      strict = strict_mode?
-      pass_cast_type = respond_to?(:lookup_cast_type)
-      columns.map do |field|
-        sql_type = field['Type']
-        null = field['Null'] == "YES"
-        if pass_cast_type
-          cast_type = lookup_cast_type(sql_type)
-          jdbc_column_class.new(field['Field'], field['Default'], cast_type, sql_type, null, field['Collation'], strict, field['Extra'])
-        else
-          jdbc_column_class.new(field['Field'], field['Default'], sql_type, null, field['Collation'], strict, field['Extra'])
-        end
-      end
-    end
+
 
     if defined? ::ActiveRecord::ConnectionAdapters::AbstractAdapter::SchemaCreation
 
@@ -842,13 +831,6 @@ module ArJdbc
       end
     end
 
-    def full_version
-      @full_version ||= begin
-        result = execute 'SELECT VERSION()', 'SCHEMA'
-        result.first.values.first # [{"VERSION()"=>"5.5.37-0ubuntu..."}]
-      end
-    end
-
     # @private
     def emulate_booleans; ::ArJdbc::MySQL.emulate_booleans?; end # due AR 4.2
     public :emulate_booleans
@@ -887,13 +869,107 @@ module ArJdbc
 end
 
 module ActiveRecord
+  class ConnectionAdapters::AbstractMysqlAdapter
+    # FIXME: this is to work around abstract mysql having 4 arity but core wants to pass 3
+    # FIXME: Missing the logic from original module.
+    def initialize(connection, logger, config)
+      super(connection, logger, config)
+    end
+  end
   module ConnectionAdapters
     # Remove any vestiges of core/Ruby MySQL adapter
-    remove_const(:MysqlAdapter) if const_defined?(:MysqlAdapter)
+    remove_const(:Mysql2Adapter) if const_defined?(:Mysql2Adapter)
 
-    class MysqlAdapter < JdbcAdapter
-      include ::ArJdbc::MySQL
-      include ::ArJdbc::MySQL::ExplainSupport
+    class Mysql2Adapter < AbstractMysqlAdapter
+      ADAPTER_NAME = 'Mysql2'.freeze
+
+      include ArJdbc::Abstract::Core
+      include ArJdbc::Abstract::ConnectionManagement
+      include ArJdbc::Abstract::DatabaseStatements
+      include ArJdbc::Abstract::StatementCache
+      include ArJdbc::Abstract::TransactionSupport
+
+      def initialize(connection, logger, connection_options, config)
+        super(connection, logger, config)
+      end
+
+      def supports_json?
+        !mariadb? && version >= '5.7.8'
+      end
+
+      def supports_comments?
+        true
+      end
+
+      def supports_comments_in_create?
+        true
+      end
+
+      def supports_savepoints?
+        true
+      end
+
+      # HELPER METHODS ===========================================
+
+      def each_hash(result) # :nodoc:
+        if block_given?
+          # FIXME: This is C in mysql2 gem and I just made simplest Ruby
+          result.each do |row|
+            new_hash = {}
+            row.each { |k, v| new_hash[k.to_sym] = v }
+            yield new_hash
+          end
+        else
+          to_enum(:each_hash, result)
+        end
+      end
+
+      def clear_cache!
+        # FIXME: local cache of statements missing
+      end
+
+      def error_number(exception)
+        exception.error_number if exception.respond_to?(:error_number)
+      end
+
+      #--
+      # QUOTING ==================================================
+      #++
+
+      def quote_string(string)
+        string.gsub(/[\x00\n\r\\\'\"]/, '\\\\\0')
+      end
+
+      private
+
+      def connect
+        @connection = Mysql2::Client.new(@config)
+        configure_connection
+      end
+
+      def configure_connection
+        @connection.query_options.merge!(:as => :array)
+        super
+      end
+
+      def full_version
+        @full_version ||= begin
+          result = execute 'SELECT VERSION()', 'SCHEMA'
+          result.first.values.first # [{"VERSION()"=>"5.5.37-0ubuntu..."}]
+        end
+      end
+
+      def exec_insert(sql, name = nil, binds = [], pk = nil, sequence_name = nil)
+        last_id = if without_prepared_statement?(binds)
+                    log(sql, name) { @connection.execute_insert(sql) }
+                  else
+                    log(sql, name, binds) { @connection.execute_insert(sql, binds) }
+                  end
+        # FIXME: execute_insert and executeUpdate mapping key results is very varied and I am wondering
+        # if AR is now much more consistent.  I worked around by manually making a result here.
+        ::ActiveRecord::Result.new(nil, [[last_id]])
+      end
+      alias insert_sql exec_insert
 
       def arel_visitor # :nodoc:
         Arel::Visitors::MySQL.new(self)
@@ -908,45 +984,27 @@ module ActiveRecord
       def self.emulate_booleans;  ::ArJdbc::MySQL.emulate_booleans?; end # native adapter
       def self.emulate_booleans=(emulate); ::ArJdbc::MySQL.emulate_booleans = emulate; end
 
-      class Column < JdbcColumn
-        include ::ArJdbc::MySQL::Column
-
-        # @note {#ArJdbc::MySQL::Column} uses this to check for boolean emulation
-        def adapter
-          MysqlAdapter
-        end
-
-      end
-
-      #def initialize(*args)
-      #  super # configure_connection happens in super
-      #end
-
       def jdbc_connection_class(spec)
         ::ArJdbc::MySQL.jdbc_connection_class
       end
 
       def jdbc_column_class
-        Column
+        ::ActiveRecord::ConnectionAdapters::MySQL::Column
       end
 
     end
 
-    if ActiveRecord::VERSION::MAJOR < 3 ||
-        ( ActiveRecord::VERSION::MAJOR == 3 && ActiveRecord::VERSION::MINOR <= 1 )
-      remove_const(:MysqlColumn) if const_defined?(:MysqlColumn)
-      MysqlColumn = MysqlAdapter::Column
-    end
+#    remove_const(:Mysql2Column) if const_defined?(:Mysql2Column)
+#    Mysql2Column = Mysql2Adapter::Column
+  end
 
-    if ActiveRecord::VERSION::MAJOR > 3 ||
-        ( ActiveRecord::VERSION::MAJOR == 3 && ActiveRecord::VERSION::MINOR >= 1 )
-      remove_const(:Mysql2Adapter) if const_defined?(:Mysql2Adapter)
-      Mysql2Adapter = MysqlAdapter
-      if ActiveRecord::VERSION::MAJOR == 3 && ActiveRecord::VERSION::MINOR == 1
-        remove_const(:Mysql2Column) if const_defined?(:Mysql2Column)
-        Mysql2Column = MysqlAdapter::Column
+  # FIXME: Not sure how this is scoped or whether we should use it or just alias it to our
+  # JDBCError.
+  class ::Mysql2
+    class Error < Exception
+      def initialize(*)
+        super("error")
       end
     end
-
   end
 end

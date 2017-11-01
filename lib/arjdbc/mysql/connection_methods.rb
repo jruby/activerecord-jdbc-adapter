@@ -1,7 +1,7 @@
 ArJdbc::ConnectionMethods.module_eval do
   def mysql_connection(config)
     config[:adapter_spec] ||= ::ArJdbc::MySQL
-    config[:adapter_class] = ActiveRecord::ConnectionAdapters::MysqlAdapter unless config.key?(:adapter_class)
+    config[:adapter_class] = ActiveRecord::ConnectionAdapters::Mysql2Adapter unless config.key?(:adapter_class)
 
     return jndi_connection(config) if jndi_config?(config)
 
@@ -78,7 +78,7 @@ ArJdbc::ConnectionMethods.module_eval do
 
   def mariadb_connection(config)
     config[:adapter_spec] ||= ::ArJdbc::MySQL
-    config[:adapter_class] = ActiveRecord::ConnectionAdapters::MysqlAdapter unless config.key?(:adapter_class)
+    config[:adapter_class] = ActiveRecord::ConnectionAdapters::Mysql2Adapter unless config.key?(:adapter_class)
 
     return jndi_connection(config) if jndi_config?(config)
 
