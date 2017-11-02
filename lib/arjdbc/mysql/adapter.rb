@@ -90,15 +90,6 @@ module ActiveRecord
         string.gsub(/[\x00\n\r\\\'\"]/, '\\\\\0')
       end
 
-      private
-
-      def full_version
-        @full_version ||= begin
-          result = execute 'SELECT VERSION()', 'SCHEMA'
-          result.first.values.first # [{"VERSION()"=>"5.5.37-0ubuntu..."}]
-        end
-      end
-
       def exec_insert(sql, name = nil, binds = [], pk = nil, sequence_name = nil)
         last_id = if without_prepared_statement?(binds)
                     log(sql, name) { @connection.execute_insert(sql) }
@@ -110,6 +101,16 @@ module ActiveRecord
         ::ActiveRecord::Result.new(nil, [[last_id]])
       end
       alias insert_sql exec_insert
+      deprecate insert_sql: :insert
+
+      private
+
+      def full_version
+        @full_version ||= begin
+          result = execute 'SELECT VERSION()', 'SCHEMA'
+          result.first.values.first # [{"VERSION()"=>"5.5.37-0ubuntu..."}]
+        end
+      end
 
       def jdbc_connection_class(spec)
         ::ActiveRecord::ConnectionAdapters::MySQLJdbcConnection
