@@ -30,6 +30,7 @@ module ArJdbc
 
       # Clears the prepared statements cache.
       def clear_cache!
+        reload_type_map
         @statements.clear
       end
 

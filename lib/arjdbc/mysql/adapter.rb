@@ -69,10 +69,6 @@ module ActiveRecord
         end
       end
 
-      def clear_cache!
-        # FIXME: local cache of statements missing
-      end
-
       def error_number(exception)
         exception.errno if exception.respond_to? :errno
       end
