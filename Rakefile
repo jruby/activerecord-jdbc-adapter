@@ -8,7 +8,6 @@ require 'bundler/gem_helper'
 Bundler::GemHelper.install_tasks
 
 require 'bundler/setup'
-require 'appraisal'
 
 task :default => [:jar, :test]
 

@@ -17,15 +17,6 @@ task 'test_postgresql_with_hint' do
   end
 end
 
-task 'test_appraisal_hint' do
-  next if File.exists?('.disable-appraisal-hint')
-  unless (ENV['BUNDLE_GEMFILE'] || '') =~ /gemfiles\/.*?\.gemfile/
-    appraisals = []; Appraisal::File.each { |file| appraisals << file.name }
-    puts "HINT: specify AR version with `rake appraisal:{version} test_{adapter}'" +
-         " where version=(#{appraisals.join('|')}) (`touch .disable-appraisal-hint' to disable)"
-  end
-end
-
 Rake::TestTask.class_eval { attr_reader :test_files }
 
 def test_task_for(adapter, options = {})
@@ -34,9 +25,6 @@ def test_task_for(adapter, options = {})
   adapter = adapter.to_s.downcase
   driver = adapter if ( driver = options[:driver] ).nil?
   prereqs = options[:prereqs] || []
-  unless prereqs.frozen?
-    prereqs = [ prereqs ].flatten; prereqs << 'test_appraisal_hint'
-  end
   name = options[:name] || "test_#{adapter}"
   test_task = Rake::TestTask.new(name => prereqs) do |test_task|
     files = options[:files] || begin
