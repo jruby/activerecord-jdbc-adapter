@@ -29,23 +29,20 @@ export ORACLE_PASS=sample
 export ORACLE_SID=MAIN
 ```
 
-Tests are by default run against the "current" ActiveRecord version locked down
-by Bundler, however since we usually do support more versions from a single code
-base run those with the (appraisal) provided task e.g. for MySQL :
+Tests are run by calling the rake task corresponding the database adapter being
+tested, e.g. for MySQL :
 
-    rake appraisal:rails31 test_mysql TEST=test/db/mysql/rake_test.rb
+    rake test_mysql TEST=test/db/mysql/rake_test.rb
 
 Observe the **TEST** variable used to specify a single file to be used to resolve
 test cases, you pick tests by matching their names as well using **TESTOPTS** :
 
-    rake appraisal:rails40 test_postgres TESTOPTS="--name=/integer/"
+    rake test_postgres TESTOPTS="--name=/integer/"
 
-This of course also works when running the "plain" test (no appraisal:xxx) task.
+Since 1.3.0 we also support prepared statements, these are enabled by default (AR)
+but one can easily run tests with prepared statements disabled using env vars :
 
-Since 1.3.0 we also support prepared statements, these are off by default (AR)
-but one can easily run tests with prepared statements enabled using env vars :
-
-    rake test_derby PS=true # or PREPARED_STATEMENTS=true
+    rake test_derby PREPARED_STATEMENTS=false
 
 
 ### ActiveRecord (Rails) Tests
@@ -58,26 +55,26 @@ tests as well.  First, make sure you have the Rails repository cloned locally:
 If you clone Rails to the same parent directory this project is cloned to
 then you may do either:
 
-   jruby -S rake rails:test:sqlite
-   jruby -S rake rails:test:postgres
-   jruby -S rake rails:test:mysql
+    jruby -S rake rails:test:sqlite
+    jruby -S rake rails:test:postgres
+    jruby -S rake rails:test:mysql
 
 If you have your rails source in another directory then you can pass
 in **RAILS**:
 
-   jruby -S rake rails:test:sqlite RAILS=../../somewhere/rails
+    jruby -S rake rails:test:sqlite RAILS=../../somewhere/rails
 
 If you are working on a more exotic adapter you can also pass in **DRIVER**:
 
-  jruby -S rake rails:test:all DRIVER=derby
+    jruby -S rake rails:test:all DRIVER=derby
 
 Note, that if you want to test against particular version of Rails you need
 to check out the proper branch in Rails source (e.g. v5.0.2).  If you are
 just starting to debug an adapter then running:
 
-   jruby -S rake rails:test:sqlite:basic_test
-   jruby -S rake rails:test:postgres:basic_test
-   jruby -S rake rails:test:mysql:basic_test
+    jruby -S rake rails:test:sqlite:basic_test
+    jruby -S rake rails:test:postgres:basic_test
+    jruby -S rake rails:test:mysql:basic_test
 
 is helpful since basic_test in active-record hits that 80% sweet spot.
 

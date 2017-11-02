@@ -25,11 +25,13 @@ connections:
 
   jdbcpostgresql:
     arunit:
+      insert_returning: <%= ENV['INSERT_RETURNING'] %>
       prepared_statements: <%= ENV['PREPARED_STATEMENTS'] %>
       username: <%= ENV['user'] || 'rails' %>
       properties:
         prepareThreshold: <%= ENV['PREPARE_THRESHOLD'] || 1 %>
     arunit2:
+      insert_returning: <%= ENV['INSERT_RETURNING'] %>
       prepared_statements: <%= ENV['PREPARED_STATEMENTS'] %>
       username: <%= ENV['user'] || 'rails' %>
       properties:

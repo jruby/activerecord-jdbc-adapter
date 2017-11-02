@@ -11,28 +11,22 @@ if version = ENV['AR_VERSION']
     gem 'activerecord', version, :require => nil
   end
 else
-  gem 'activerecord', :require => nil
+  gem 'activerecord', '~> 5.0.6', :require => false
 end
 
 gem 'thread_safe', :require => nil # "optional" - we can roll without it
-
-if defined?(JRUBY_VERSION) && JRUBY_VERSION < '1.7.0'
-gem 'jruby-openssl', :platform => :jruby
-end
-
 gem 'rake', :require => nil
-gem 'appraisal', '~> 0.5.2', :require => nil
 
-# appraisal ignores group block declarations :
+group :test do
+  gem 'minitest', '< 5.3.4'
+  gem 'test-unit', '~> 2.5.4'
+  gem 'test-unit-context', '>= 0.4.0'
+  gem 'mocha', '~> 1.2', :require => nil
 
-gem 'minitest', '< 5.3.4'
-gem 'test-unit', '~> 2.5.4', :group => :test
-gem 'test-unit-context', '>= 0.4.0', :group => :test
-gem 'mocha', '~> 1.2', :require => nil, :group => :test
-
-gem 'simplecov', :require => nil, :group => :test
-gem 'bcrypt-ruby', '~> 3.0.0', :require => nil, :group => :test
-#gem 'trinidad_dbpool', :require => nil, :group => :test
+  gem 'simplecov', :require => nil
+  gem 'bcrypt-ruby', '~> 3.0.0', :require => nil
+  #gem 'trinidad_dbpool', :require => nil
+end
 
 group :development do
   gem 'ruby-debug', :require => nil # if ENV['DEBUG']
@@ -45,7 +39,7 @@ end
 
 group :rails do
   gem 'erubis', :require => nil
-  # NOTE: due rails/activerecord/test/cases/session_store/session_test.rb
+  # NOTE: due rails/activerecord/test/cases/connection_management_test.rb (AR 5.0)
   gem 'actionpack', :require => nil
 end
 
