@@ -933,7 +933,7 @@ module ActiveRecord
       end
 
       def error_number(exception)
-        exception.error_number if exception.respond_to?(:error_number)
+        exception.errno if exception.respond_to? :errno
       end
 
       # FIXME: This is wrong...it should not always pass utf8 and native adapter never does...
