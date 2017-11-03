@@ -313,7 +313,7 @@ module ArJdbc
     end
 
     def exec_insert(sql, name, binds, pk = nil, sequence_name = nil)
-      val = exec_query(sql, name, binds)
+      val = super
       if !use_insert_returning? && pk
         unless sequence_name
           table_ref = extract_table_ref_from_insert_sql(sql)
