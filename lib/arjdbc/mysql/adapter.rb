@@ -56,6 +56,12 @@ module ActiveRecord
 
       # HELPER METHODS ===========================================
 
+      # Reloading the type map in abstract/statement_cache.rb blows up postgres
+      def clear_cache!
+        reload_type_map
+        super
+      end
+
       def each_hash(result) # :nodoc:
         if block_given?
           # FIXME: This is C in mysql2 gem and I just made simplest Ruby
