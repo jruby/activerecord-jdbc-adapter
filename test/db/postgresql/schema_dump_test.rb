@@ -77,23 +77,6 @@ class PostgresSchemaDumpTest < Test::Unit::TestCase
     lines.each {|line| assert line =~ /t.bigint\s+"sample_integer_with_limit_8"/ }
   end
 
-  def test_dumps_partial_indices
-    index_definition = standard_dump.split(/\n/).grep(/t\.index.*thing_partial_index/).first.strip
-
-    assert_equal 't.index ["created_at"], name: "thing_partial_index", where: "(name IS NOT NULL)", using: :btree', index_definition
-  end
-
-  def test_schema_dump_should_use_false_as_default
-    connection.create_table "samples"
-    connection.add_column :samples, :has_fun, :boolean, :null => false, :default => false
-
-    output = standard_dump
-    assert_match %r{create_table "samples"}, output
-    assert_match %r{t\.boolean\s+"has_fun",.+default: false}, output
-  ensure
-    connection.drop_table "samples"
-  end
-
   def test_dumps_array_with_default
     connection.create_table "samples"
     connection.add_column :samples, :int_empty_col, :integer, :array => true, :default => []

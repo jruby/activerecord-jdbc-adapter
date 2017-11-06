@@ -61,4 +61,4 @@ class PostgreSQLColumnDefaultTest < Test::Unit::TestCase
     assert_equal [], p.some_ids
   end
 
-end if Test::Unit::TestCase.ar_version('4.0')
+end

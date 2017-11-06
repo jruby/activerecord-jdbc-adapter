@@ -30,12 +30,6 @@ class PostgreSQLArrayTypeTest < Test::Unit::TestCase
     @connection.execute 'DROP TABLE IF EXISTS pg_arrays'
   end
 
-  def test_column
-    column_type = PgArray.type_for_attribute('tags')
-    assert_instance_of OID::Array, column_type
-    assert_instance_of ActiveModel::Type::String, column_type.subtype
-  end
-
   def test_added_column
     column_type = PgArray.type_for_attribute('added_tags')
     assert_instance_of OID::Array, column_type
@@ -68,36 +62,6 @@ class PostgreSQLArrayTypeTest < Test::Unit::TestCase
     assert column.array
   end
 
-  def test_type_cast_array
-    data = '{1,2,3}'
-
-    column_type = PgArray.type_for_attribute('tags')
-
-    assert_equal(['1', '2', '3'], column_type.deserialize(data))
-    assert_equal([], column_type.deserialize('{}'))
-    assert_equal([nil], column_type.deserialize('{NULL}'))
-
-    column_type = PgArray.type_for_attribute('tag_count')
-
-    assert_equal([1, 2, 3], column_type.deserialize(data))
-    assert_equal([], column_type.deserialize("{}"))
-    assert_equal([nil], column_type.deserialize('{NULL}'))
-  end
-
-  def test_rewrite
-    @connection.execute "INSERT INTO pg_arrays (tags) VALUES ('{1,2,3}')"
-    x = PgArray.first
-    x.tags = ['1','2','3','4']
-    assert x.save!
-    assert_equal(['1','2','3','4'], x.reload.tags)
-  end
-
-  def test_select
-    @connection.execute "INSERT INTO pg_arrays (tags) VALUES ('{1,2,3}')"
-    x = PgArray.first
-    assert_equal(['1','2','3'], x.tags)
-  end
-
   def test_multi_dimensional
     pend
     assert_cycle([['1','2'],['2','3']])
@@ -105,26 +69,6 @@ class PostgreSQLArrayTypeTest < Test::Unit::TestCase
 
   def test_strings_with_quotes
     assert_cycle(['this has','some "s that need to be escaped"', "some 's that need to be escaped too"])
-  end
-
-  def test_strings_with_quotes_and_backslashes
-    assert_cycle(['this has','some \\"s that need to be escaped"'])
-  end
-
-  def test_strings_with_commas
-    assert_cycle(['this,has','many,values'])
-  end
-
-  def test_strings_with_array_delimiters
-    assert_cycle(['{','}'])
-  end
-
-  def test_strings_with_null_strings
-    assert_cycle(['NULL','NULL'])
-  end
-
-  def test_contains_nils
-    assert_cycle(['1',nil,nil])
   end
 
   private
