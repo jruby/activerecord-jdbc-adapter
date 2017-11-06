@@ -54,20 +54,12 @@ module HasManyThroughTestMethods
     connection = ActiveRecord::Base.connection
     groups = role.reload.permission_groups.select('right_id')
 
-    if ar_version('4.0') && ! ar_version('4.2')
-      pend 'seems to fail with MRI the same way as with JRuby!'
-    end
-
-    if ar_version('3.1')
-      assert_equal [ r1.id, r2.id ], connection.select_values(groups)
-    else # 3.0 does not do `to_sql` in select_values(sql)
-      assert_equal [ r1.id, r2.id ], connection.select_values(groups.to_sql)
-    end
+    assert_equal [ r1.id, r2.id ], connection.select_values(groups.to_sql)
 
     result = connection.send :select, groups.to_sql # protected on MRI
     assert_equal [ r1.id, r2.id ], result.map { |row| row.values.first }
 
-  end if Test::Unit::TestCase.ar_version('3.0')
+  end
 
 end
 

@@ -41,19 +41,9 @@ class PostgreSQLColumnDefaultTest < Test::Unit::TestCase
     Project.create!(:name => 'p1', :some_ids => ['1'])
     p = Project.new(:name => 'p2'); p.some_ids << '2'; p.save!
 
-    if ar_version('4.2')
-      assert_equal '{}', Project.columns_hash['some_ids'].default
-    else
-      assert_equal [], Project.columns_hash['some_ids'].default
-    end
-
+    assert_equal '{}', Project.columns_hash['some_ids'].default
     assert_equal ['2'], p.some_ids
-    if ar_version('4.2')
-      assert_equal ['2'], p.reload.some_ids
-    else
-      # MRI under AR 4.1 gets messed up the same :
-      assert_equal [], p.reload.some_ids
-    end
+    assert_equal ['2'], p.reload.some_ids
 
     p = Project.new(:name => 'p3')
     assert_equal [], p.some_ids

@@ -19,72 +19,19 @@ class PostgresSimpleTest < Test::Unit::TestCase
   end
 
   # @override
-  def test_truncate
-    unless defined? JRUBY_VERSION
-      return skip 'only since AR 4.2' unless ar_version('4.2')
-    end
-    super
-  end
-
-  # @override
   def test_custom_select_float
     model = DbType.create! :sample_float => 1.42
-    if ActiveRecord::VERSION::MAJOR >= 3
-      model = DbType.where("id = #{model.id}").select('sample_float AS custom_sample_float').first
-    else
-      model = DbType.find(:first, :conditions => "id = #{model.id}", :select => 'sample_float AS custom_sample_float')
-    end
-    if defined? JRUBY_VERSION
-      assert_equal 1.42, model.custom_sample_float
-      assert_instance_of Float, model.custom_sample_float
-    else
-      if ar_version('4.0')
-        assert_equal 1.42, model.custom_sample_float
-      else
-        assert_equal '1.42', model.custom_sample_float
-      end
-    end
+    model = DbType.where("id = #{model.id}").select('sample_float AS custom_sample_float').first
+    assert_equal 1.42, model.custom_sample_float
+    assert_instance_of Float, model.custom_sample_float
   end
 
   # @override
   def test_custom_select_decimal
     model = DbType.create! :sample_small_decimal => ( decimal = BigDecimal.new('5.45') )
-    if ActiveRecord::VERSION::MAJOR >= 3
-      model = DbType.where("id = #{model.id}").select('sample_small_decimal AS custom_decimal').first
-    else
-      model = DbType.find(:first, :conditions => "id = #{model.id}", :select => 'sample_small_decimal AS custom_decimal')
-    end
-    if defined? JRUBY_VERSION
-      assert_equal decimal, model.custom_decimal
-      assert_instance_of BigDecimal, model.custom_decimal
-    else
-      if ar_version('4.0')
-        assert_equal decimal, model.custom_decimal
-      else
-        assert_equal '5.45', model.custom_decimal
-      end
-    end
-  end
-
-  class Payment < ActiveRecord::Base; end
-
-  # @override
-  def test_insert_returns_id
-    super
-
-#    begin
-#      connection.create_table 'payments', :force => true do |t|
-#        t.integer  "amount"
-#        t.text     "notes"
-#        t.datetime "created_at", :null => false
-#        t.datetime "updated_at", :null => false
-#      end
-#
-#      p = Payment.create!
-#      assert p.id
-#    ensure
-#      connection.drop_table 'payments' rescue nil
-#    end
+    model = DbType.where("id = #{model.id}").select('sample_small_decimal AS custom_decimal').first
+    assert_equal decimal, model.custom_decimal
+    assert_instance_of BigDecimal, model.custom_decimal
   end
 
   def test_encoding
@@ -130,26 +77,14 @@ class PostgresSimpleTest < Test::Unit::TestCase
   def xml_sql_type; 'xml'; end
 
   def test_create_table_with_limits
-    if ar_version('4.0')
-      # No integer type has byte size 11. Use a numeric with precision 0 instead.
-      connection.create_table :testings do |t|
-        t.column :an_int, :integer, :limit => 8
-      end
-
-      columns = connection.columns(:testings)
-      an_int = columns.detect { |c| c.name == "an_int" }
-      assert_equal "bigint", an_int.sql_type
-    else
-      assert_nothing_raised do
-        connection.create_table :testings do |t|
-          t.column :an_int, :integer, :limit => 11
-        end
-      end
-
-      columns = connection.columns(:testings)
-      an_int = columns.detect { |c| c.name == "an_int" }
-      assert_equal "integer", an_int.sql_type
+    # No integer type has byte size 11. Use a numeric with precision 0 instead.
+    connection.create_table :testings do |t|
+      t.column :an_int, :integer, :limit => 8
     end
+
+    columns = connection.columns(:testings)
+    an_int = columns.detect { |c| c.name == "an_int" }
+    assert_equal "bigint", an_int.sql_type
   ensure
     connection.drop_table :testings rescue nil
   end
@@ -164,28 +99,23 @@ class PostgresSimpleTest < Test::Unit::TestCase
     columns = connection.columns(:my_posts)
     tags = columns.detect { |c| c.name == "tags" }
 
-    if ar_version('4.0')
-      assert_equal :string, tags.type
-      assert_true tags.array? if defined? JRUBY_VERSION
+    assert_equal :string, tags.type
+    assert_true tags.array? if defined? JRUBY_VERSION
 
-      name = columns.detect { |c| c.name == "name" }
-      assert_false name.array? if defined? JRUBY_VERSION
-    else
-      assert_equal :string, tags.type
-      assert_match(/char/, tags.sql_type) # character varying (255)
-    end
+    name = columns.detect { |c| c.name == "name" }
+    assert_false name.array? if defined? JRUBY_VERSION
   ensure
     connection.drop_table :my_posts rescue nil
   end
 
   def test_supports_standard_conforming_string
     assert([true, false].include?(connection.supports_standard_conforming_strings?))
-  end if defined? JRUBY_VERSION
+  end
 
   def test_standard_conforming_string_default_set_on_new_connections
     c = ActiveRecord::Base.postgresql_connection(POSTGRES_CONFIG)
     assert_equal true, c.instance_variable_get("@standard_conforming_strings")
-  end if defined? JRUBY_VERSION
+  end
 
   def test_default_standard_conforming_string
     if connection.supports_standard_conforming_strings?
@@ -193,21 +123,21 @@ class PostgresSimpleTest < Test::Unit::TestCase
     else
       assert_equal false, connection.standard_conforming_strings?
     end
-  end if defined? JRUBY_VERSION
+  end
 
   def test_string_quoting_with_standard_conforming_strings
     if connection.supports_standard_conforming_strings?
       s = "\\m it's \\M"
       assert_equal "'\\m it''s \\M'", connection.quote(s)
     end
-  end if defined? JRUBY_VERSION
+  end
 
   def test_string_quoting_without_standard_conforming_strings
     connection.standard_conforming_strings = false
     s = "\\m it's \\M"
     assert_equal "'\\\\m it''s \\\\M'", connection.quote(s)
     connection.standard_conforming_strings = true
-  end if defined? JRUBY_VERSION
+  end
 
   test 'returns correct visitor type' do
     assert_not_nil visitor = connection.instance_variable_get(:@visitor)
@@ -215,7 +145,7 @@ class PostgresSimpleTest < Test::Unit::TestCase
     assert_kind_of Arel::Visitors::PostgreSQL, visitor
   end
 
-  include ExplainSupportTestMethods if ar_version("3.1")
+  include ExplainSupportTestMethods
 
   def test_primary_key
     assert_equal 'id', connection.primary_key('entries')
@@ -231,9 +161,6 @@ class PostgresSimpleTest < Test::Unit::TestCase
   end
 
   def test_extensions
-    unless defined? JRUBY_VERSION
-      skip 'supports_extensions? not available' unless connection.respond_to? :supports_extensions?
-    end
     if connection.supports_extensions?
       assert_include connection.extensions, 'plpgsql'
       assert connection.extension_enabled?('plpgsql')
@@ -256,7 +183,7 @@ class PostgresSimpleTest < Test::Unit::TestCase
     if connect_timeout = current_connection_config[:connect_timeout]
       assert_equal connect_timeout.to_i * 1000, timeout
     end
-  end if defined? JRUBY_VERSION
+  end
 
   test "config :insert_returning" do
     if current_connection_config.key?(:insert_returning)

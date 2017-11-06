@@ -96,17 +96,6 @@ class PostgresRakeTest < Test::Unit::TestCase
     Rake::Task["db:collation"].invoke
   end
 
-  test 'rake db:create does not load full environment' do
-    begin
-      Rake::Task["db:create"].invoke
-      assert @rails_env_set
-      assert ! ( @full_environment_loaded ||= nil )
-    ensure
-      # Rake::Task["db:drop"].invoke rescue nil
-      drop_rake_test_database(:silence)
-    end
-  end if ActiveRecord::VERSION::MAJOR < 4
-
   private
 
   def psql(args)

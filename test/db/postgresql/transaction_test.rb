@@ -20,6 +20,6 @@ class PostgresTransactionTest < Test::Unit::TestCase
         Entry.connection.release_savepoint("another")
       end
     end
-  end if Test::Unit::TestCase.ar_version('4.1')
+  end
 
 end
