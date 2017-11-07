@@ -2731,9 +2731,9 @@ public class RubyJdbcConnection extends RubyObject {
         final IRubyObject config = getConfig(context);
         while ( results.next() ) {
             final String colName = results.getString(COLUMN_NAME);
-            final RubyString railsColumnName = RubyString.newUnicodeString(runtime, caseConvertIdentifierForRails(metaData, colName));
+            final RubyString railsColumnName = RubyString.newInternalFromJavaExternal(runtime, caseConvertIdentifierForRails(metaData, colName));
             final IRubyObject defaultValue = defaultValueFromResultSet( runtime, results );
-            final RubyString sqlType = RubyString.newUnicodeString( runtime, typeFromResultSet(results) );
+            final RubyString sqlType = RubyString.newInternalFromJavaExternal( runtime, typeFromResultSet(results) );
             final RubyBoolean nullable = runtime.newBoolean( ! results.getString(IS_NULLABLE).trim().equals("NO") );
             final IRubyObject[] args;
             if ( lookupCastType ) {
@@ -3216,7 +3216,7 @@ public class RubyJdbcConnection extends RubyObject {
                 name = caseConvertIdentifierForRails(connection, name);
             }
 
-            final RubyString columnName = RubyString.newUnicodeString(runtime, name);
+            final RubyString columnName = RubyString.newInternalFromJavaExternal(runtime, name);
             final int columnType = resultMetaData.getColumnType(i);
             columns[i - 1] = new ColumnData(columnName, columnType, i);
         }
