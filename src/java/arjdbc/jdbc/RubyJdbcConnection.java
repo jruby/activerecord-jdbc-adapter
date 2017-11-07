@@ -1850,6 +1850,9 @@ public class RubyJdbcConnection extends RubyObject {
 
         String strValue = value.toString();
 
+        // If time is column type but that time had a precision which included
+        // nanoseconds we used timestamp to save the data.  Since this is conditional
+        // we grab data a second time as a timestamp to look for nsecs.
         Timestamp nsecTimeHack = resultSet.getTimestamp(column);
         if (nsecTimeHack.getNanos() != 0) {
             strValue = String.format("%s.%09d", strValue, nsecTimeHack.getNanos());

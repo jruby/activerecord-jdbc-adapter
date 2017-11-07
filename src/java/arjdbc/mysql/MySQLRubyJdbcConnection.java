@@ -154,6 +154,7 @@ public class MySQLRubyJdbcConnection extends RubyJdbcConnection {
         }
     }
 
+    // FIXME: we should detect adapter and not do this timezone offset calculation is it is jdbc version 6+.
     private void setTimestamp(PreparedStatement statement, int index, RubyTime value, int type) throws SQLException {
         DateTime dateTime = value.getDateTime();
         // Mysql pre-6 ignores time zone info so we manually correct for this.
