@@ -2306,8 +2306,13 @@ public class RubyJdbcConnection extends RubyObject {
             final DateTime dateTime = timeValue.getDateTime();
             final Timestamp timestamp = new Timestamp(dateTime.getMillis());
 
-            // 1942-11-30T01:02:03.123_456
-            if (type != Types.DATE && timeValue.getNSec() >= 0) timestamp.setNanos((int) timeValue.getNSec());
+            if ( type != Types.DATE ) { // 1942-11-30T01:02:03.123_456
+                // getMillis already set nanos to: 123_000_000
+                final int usec = (int) timeValue.getUSec(); // 456 on JRuby
+                if ( usec >= 0 ) {
+                    timestamp.setNanos(timestamp.getNanos() + usec * 1000);
+                }
+            }
 
             statement.setTimestamp(index, timestamp, getTimeZoneCalendar(dateTime.getZone().getID()));
         } else if ( value instanceof RubyString ) { // yyyy-[m]m-[d]d hh:mm:ss[.f...]
