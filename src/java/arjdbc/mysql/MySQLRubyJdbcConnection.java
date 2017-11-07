@@ -43,6 +43,7 @@ import java.util.TimeZone;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import org.joda.time.DateTime;
 import org.jruby.Ruby;
 import org.jruby.RubyArray;
 import org.jruby.RubyClass;
@@ -50,9 +51,9 @@ import org.jruby.RubyFloat;
 import org.jruby.RubyInteger;
 import org.jruby.RubyModule;
 import org.jruby.RubyString;
+import org.jruby.RubyTime;
 import org.jruby.anno.JRubyMethod;
 import org.jruby.exceptions.RaiseException;
-import org.jruby.runtime.Block;
 import org.jruby.runtime.ObjectAllocator;
 import org.jruby.runtime.ThreadContext;
 import org.jruby.runtime.builtin.IRubyObject;
@@ -117,8 +118,9 @@ public class MySQLRubyJdbcConnection extends RubyJdbcConnection {
             if ( value instanceof RubyString ) { // yyyy-[m]m-[d]d hh:mm:ss[.f...]
                 final Timestamp timestamp = Timestamp.valueOf( value.toString() );
                 statement.setTimestamp( index, timestamp ); // assume local time-zone
-            }
-            else { // Time or DateTime ( ActiveSupport::TimeWithZone.to_time )
+            } else if (value instanceof RubyTime) {
+                setTimestamp(statement, index, (RubyTime) value, type);
+            } else { // Time or DateTime ( ActiveSupport::TimeWithZone.to_time )
                 final double time = adjustTimeFromDefaultZone(value);
                 final RubyFloat timeValue = context.getRuntime().newFloat( time );
                 statement.setTimestamp( index, convertToTimestamp(timeValue) );
@@ -131,20 +133,37 @@ public class MySQLRubyJdbcConnection extends RubyJdbcConnection {
         final Connection connection, final PreparedStatement statement,
         final int index, IRubyObject value,
         final IRubyObject column, final int type) throws SQLException {
-        if ( value.isNil() ) statement.setNull(index, Types.TIME);
-        else {
+
+        if (value.isNil()) {
+            statement.setNull(index, Types.TIME);
+        } else {
             value = callMethod(context, "time_in_default_timezone", value);
-            if ( value instanceof RubyString ) {
-                final Time time = Time.valueOf( value.toString() );
-                statement.setTime( index, time ); // assume local time-zone
-            }
-            else { // Time or DateTime ( ActiveSupport::TimeWithZone.to_time )
+
+            if (value instanceof RubyString) {
+                final Time time = Time.valueOf(value.toString());
+                statement.setTime(index, time); // assume local time-zone
+            } else if (value instanceof RubyTime) {
+                // We set as timestamp so we can capture nanosecond resolution in the saved time.
+                setTimestamp(statement, index, (RubyTime) value, type);
+            } else { // Time or DateTime ( ActiveSupport::TimeWithZone.to_time )
                 final double timeValue = adjustTimeFromDefaultZone(value);
                 final Time time = new Time(( (long) timeValue ) * 1000); // millis
                 // java.sql.Time is expected to be only up to second precision
                 statement.setTime( index, time );
             }
         }
+    }
+
+    private void setTimestamp(PreparedStatement statement, int index, RubyTime value, int type) throws SQLException {
+        DateTime dateTime = value.getDateTime();
+        // Mysql pre-6 ignores time zone info so we manually correct for this.
+        int offset = TimeZone.getDefault().getOffset(dateTime.getMillis());
+        Timestamp timestamp = new Timestamp(dateTime.getMillis() - offset);
+
+        // 1942-11-30T01:02:03.123_456
+        if (type != Types.DATE && value.getNSec() >= 0) timestamp.setNanos((int) value.getNSec());
+
+        statement.setTimestamp(index, timestamp);
     }
 
     private static double adjustTimeFromDefaultZone(final IRubyObject value) {

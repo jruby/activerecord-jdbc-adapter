@@ -2298,25 +2298,19 @@ public class RubyJdbcConnection extends RubyObject {
 
         value = callMethod(context, "time_in_default_timezone", value);
 
-        if ( value instanceof RubyTime ) {
+        if (value instanceof RubyTime) {
             final RubyTime timeValue = (RubyTime) value;
             final DateTime dateTime = timeValue.getDateTime();
             final Timestamp timestamp = new Timestamp(dateTime.getMillis());
 
-            if ( type != Types.DATE ) { // 1942-11-30T01:02:03.123_456
-                // getMillis already set nanos to: 123_000_000
-                final int usec = (int) timeValue.getUSec(); // 456 on JRuby
-                if ( usec >= 0 ) {
-                    timestamp.setNanos(timestamp.getNanos() + usec * 1000);
-                }
-            }
-            statement.setTimestamp( index, timestamp, getTimeZoneCalendar(dateTime.getZone().getID()) );
-        }
-        else if ( value instanceof RubyString ) { // yyyy-[m]m-[d]d hh:mm:ss[.f...]
+            // 1942-11-30T01:02:03.123_456
+            if (type != Types.DATE && timeValue.getNSec() >= 0) timestamp.setNanos((int) timeValue.getNSec());
+
+            statement.setTimestamp(index, timestamp, getTimeZoneCalendar(dateTime.getZone().getID()));
+        } else if ( value instanceof RubyString ) { // yyyy-[m]m-[d]d hh:mm:ss[.f...]
             final Timestamp timestamp = Timestamp.valueOf(value.toString());
             statement.setTimestamp(index, timestamp); // assume local time-zone
-        }
-        else { // DateTime ( ActiveSupport::TimeWithZone.to_time )
+        } else { // DateTime ( ActiveSupport::TimeWithZone.to_time )
             final RubyFloat timeValue = value.convertToFloat(); // to_f
             final Timestamp timestamp = convertToTimestamp(timeValue);
 
