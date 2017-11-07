@@ -2296,7 +2296,7 @@ public class RubyJdbcConnection extends RubyObject {
         final int index, IRubyObject value,
         final IRubyObject attribute, final int type) throws SQLException {
 
-        value = getTimeInDefaultTimeZone(context, value);
+        value = callMethod(context, "time_in_default_timezone", value);
 
         if ( value instanceof RubyTime ) {
             final RubyTime timeValue = (RubyTime) value;
