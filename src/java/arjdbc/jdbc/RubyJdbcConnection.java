@@ -1842,20 +1842,22 @@ public class RubyJdbcConnection extends RubyObject {
         final Ruby runtime, final ResultSet resultSet, final int column)
         throws SQLException {
 
-        final Time value = resultSet.getTime(column);
+        Time value = resultSet.getTime(column);
         if ( value == null ) {
             if ( resultSet.wasNull() ) return runtime.getNil();
             return runtime.newString(); // ""
         }
 
-        final RubyString strValue = RubyString.newUnicodeString(runtime, value.toString());
-        if ( rawDateTime != null && rawDateTime.booleanValue() ) return strValue;
+        String strValue = value.toString();
 
-        final IRubyObject adapter = callMethod(context, "adapter"); // self.adapter
-        if ( adapter.isNil() ) return strValue; // NOTE: we warn on init_connection
+        Timestamp nsecTimeHack = resultSet.getTimestamp(column);
+        if (nsecTimeHack.getNanos() != 0) {
+            strValue = String.format("%s.%09d", strValue, nsecTimeHack.getNanos());
+        }
 
         // NOTE: this CAN NOT be 100% correct - as :time is just a type guess!
-        return typeCastFromDatabase(context, adapter, runtime.newSymbol("time"), strValue);
+        return typeCastFromDatabase(context, callMethod(context, "adapter"),
+                runtime.newSymbol("time"), RubyString.newUnicodeString(runtime,strValue));
     }
 
     protected IRubyObject timestampToRuby(final ThreadContext context, // TODO
@@ -2349,23 +2351,6 @@ public class RubyJdbcConnection extends RubyObject {
         return timestamp;
     }
 
-    protected static IRubyObject getTimeInDefaultTimeZone(final ThreadContext context, IRubyObject value) {
-        if ( value.respondsTo("to_time") ) {
-            value = value.callMethod(context, "to_time");
-        }
-        final String method = isDefaultTimeZoneUTC(context) ? "getutc" : "getlocal";
-        if ( value.respondsTo(method) ) {
-            value = value.callMethod(context, method);
-        }
-        return value;
-    }
-
-    protected static boolean isDefaultTimeZoneUTC(final ThreadContext context) {
-        // :utc
-        final String tz = ActiveRecord(context).getClass("Base").callMethod(context, "default_timezone").toString();
-        return "utc".equalsIgnoreCase(tz);
-    }
-
     private static Calendar getTimeZoneCalendar(final String ID) {
         return Calendar.getInstance( TimeZone.getTimeZone(ID) );
     }
@@ -2375,7 +2360,7 @@ public class RubyJdbcConnection extends RubyObject {
         final int index, IRubyObject value,
         final IRubyObject attribute, final int type) throws SQLException {
 
-        value = getTimeInDefaultTimeZone(context, value);
+        value = callMethod(context, "time_in_default_timezone", value);
 
         if ( value instanceof RubyTime ) {
             final DateTime dateTime = ((RubyTime) value).getDateTime();

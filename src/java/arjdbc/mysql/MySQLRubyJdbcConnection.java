@@ -113,7 +113,7 @@ public class MySQLRubyJdbcConnection extends RubyJdbcConnection {
         final IRubyObject column, final int type) throws SQLException {
         if ( value.isNil() ) statement.setNull(index, Types.TIMESTAMP);
         else {
-            value = getTimeInDefaultTimeZone(context, value);
+            value = callMethod(context, "time_in_default_timezone", value);
             if ( value instanceof RubyString ) { // yyyy-[m]m-[d]d hh:mm:ss[.f...]
                 final Timestamp timestamp = Timestamp.valueOf( value.toString() );
                 statement.setTimestamp( index, timestamp ); // assume local time-zone

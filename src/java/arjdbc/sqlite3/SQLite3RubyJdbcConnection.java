@@ -401,7 +401,7 @@ public class SQLite3RubyJdbcConnection extends RubyJdbcConnection {
         final IRubyObject attribute, final int type) throws SQLException {
 
         setTimestampParameter(context, connection, statement, index,
-                getTimeInDefaultTimeZone(context, value), attribute, type);
+                callMethod(context, "time_in_default_timezone", value), attribute, type);
     }
 
     // Treat timestamps as strings
