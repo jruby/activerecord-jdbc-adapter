@@ -26,7 +26,6 @@
 package arjdbc.mysql;
 
 import arjdbc.jdbc.RubyJdbcConnection;
-import arjdbc.jdbc.Callable;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
@@ -44,10 +43,8 @@ import java.util.regex.Pattern;
 
 import org.joda.time.DateTime;
 import org.jruby.Ruby;
-import org.jruby.RubyArray;
 import org.jruby.RubyClass;
 import org.jruby.RubyInteger;
-import org.jruby.RubyModule;
 import org.jruby.RubyString;
 import org.jruby.RubyTime;
 import org.jruby.anno.JRubyMethod;
@@ -165,80 +162,7 @@ public class MySQLRubyJdbcConnection extends RubyJdbcConnection {
     }
 
     @Override
-    protected IRubyObject indexes(final ThreadContext context, final String tableName, final String name, final String schemaName) {
-        return withConnection(context, new Callable<IRubyObject>() {
-            public IRubyObject call(final Connection connection) throws SQLException {
-                final Ruby runtime = context.getRuntime();
-                final RubyModule indexDefinition = getIndexDefinition(runtime);
-                final String jdbcTableName = caseConvertIdentifierForJdbc(connection, tableName);
-                final String jdbcSchemaName = caseConvertIdentifierForJdbc(connection, schemaName);
-                final IRubyObject rubyTableName = RubyString.newUnicodeString(
-                    runtime, caseConvertIdentifierForJdbc(connection, tableName)
-                );
-
-                StringBuilder query = new StringBuilder("SHOW KEYS FROM ");
-                if (jdbcSchemaName != null) {
-                    query.append(jdbcSchemaName).append(".");
-                }
-                query.append(jdbcTableName);
-                query.append(" WHERE key_name != 'PRIMARY'");
-
-                final RubyArray indexes = runtime.newArray(8);
-                PreparedStatement statement = null;
-                ResultSet keySet = null;
-
-                try {
-                    statement = connection.prepareStatement(query.toString());
-                    keySet = statement.executeQuery();
-
-                    String currentKeyName = null;
-
-                    while ( keySet.next() ) {
-                        final String keyName = caseConvertIdentifierForRails(connection, keySet.getString("key_name"));
-
-                        if ( ! keyName.equals(currentKeyName) ) {
-                            currentKeyName = keyName;
-
-                            final boolean nonUnique = keySet.getBoolean("non_unique");
-
-                            IRubyObject[] args = new IRubyObject[] {
-                                rubyTableName, // table_name
-                                RubyString.newUnicodeString(runtime, keyName), // index_name
-                                runtime.newBoolean( ! nonUnique ), // unique
-                                runtime.newArray(), // [] for column names, we'll add to that in just a bit
-                                runtime.newArray() // lengths
-                            };
-
-                            indexes.append( indexDefinition.callMethod(context, "new", args) ); // IndexDefinition.new
-                        }
-
-                        IRubyObject lastIndexDef = indexes.isEmpty() ? null : indexes.entry(-1);
-                        if ( lastIndexDef != null ) {
-                            final String columnName = caseConvertIdentifierForRails(connection, keySet.getString("column_name"));
-                            final int length = keySet.getInt("sub_part");
-                            final boolean nullLength = keySet.wasNull();
-
-                            lastIndexDef.callMethod(context, "columns").callMethod(context,
-                                    "<<", RubyString.newUnicodeString(runtime, columnName));
-                            lastIndexDef.callMethod(context, "lengths").callMethod(context,
-                                    "<<", nullLength ? runtime.getNil() : runtime.newFixnum(length));
-                        }
-                    }
-
-                    return indexes;
-                }
-                finally {
-                    close(keySet);
-                    close(statement);
-                }
-            }
-        });
-    }
-
-    @Override
-    protected String caseConvertIdentifierForRails(final Connection connection, final String value)
-        throws SQLException {
-        if ( value == null ) return null;
+    protected String caseConvertIdentifierForRails(Connection connection, String value) throws SQLException {
         return value; // MySQL does not storesUpperCaseIdentifiers() :
     }
 
