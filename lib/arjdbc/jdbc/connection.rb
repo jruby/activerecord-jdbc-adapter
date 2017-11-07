@@ -33,6 +33,12 @@ module ActiveRecord
         JdbcTypeConverter.new(supported_data_types).choose_best_types
       end
 
+      def time_in_default_timezone(value)
+        value = value.to_time if value.respond_to? :to_time
+
+        ActiveRecord::Base::default_timezone == :utc ? value.utc : value.getlocal
+      end
+
       # @deprecated no longer used - only kept for compatibility
       def set_native_database_types
         ArJdbc.deprecate "set_native_database_types is no longer used and does nothing override native_database_types instead"
