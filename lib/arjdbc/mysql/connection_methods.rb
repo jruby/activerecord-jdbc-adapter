@@ -29,6 +29,8 @@ ArJdbc::ConnectionMethods.module_eval do
 
     mariadb_driver = ! mysql_driver && driver[0, 12] == 'org.mariadb.' # org.mariadb.jdbc.Driver
 
+    config[:prepared_statements] ||= true if ENV['PREPARED_STATEMENTS'] == 'true'
+
     properties = ( config[:properties] ||= {} )
     if mysql_driver
       properties['zeroDateTimeBehavior'] ||= 'convertToNull'
