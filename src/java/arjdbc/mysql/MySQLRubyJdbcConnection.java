@@ -36,7 +36,6 @@ import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.sql.ResultSet;
 import java.sql.Statement;
-import java.sql.Time;
 import java.sql.Timestamp;
 import java.sql.Types;
 import java.util.TimeZone;
@@ -47,7 +46,6 @@ import org.joda.time.DateTime;
 import org.jruby.Ruby;
 import org.jruby.RubyArray;
 import org.jruby.RubyClass;
-import org.jruby.RubyFloat;
 import org.jruby.RubyInteger;
 import org.jruby.RubyModule;
 import org.jruby.RubyString;
@@ -57,6 +55,7 @@ import org.jruby.exceptions.RaiseException;
 import org.jruby.runtime.ObjectAllocator;
 import org.jruby.runtime.ThreadContext;
 import org.jruby.runtime.builtin.IRubyObject;
+import org.jruby.util.TypeConverter;
 
 /**
  *
@@ -83,23 +82,19 @@ public class MySQLRubyJdbcConnection extends RubyJdbcConnection {
     }
 
     @JRubyMethod
-    public IRubyObject query(final ThreadContext context,
-                             final IRubyObject sql) throws SQLException {
+    public IRubyObject query(final ThreadContext context, final IRubyObject sql) throws SQLException {
         final String query = sql.convertToString().getUnicodeValue(); // sql
         return executeUpdate(context, query, false);
     }
 
     @Override
-    protected boolean doExecute(final Statement statement, final String query)
-        throws SQLException {
+    protected boolean doExecute(final Statement statement, final String query) throws SQLException {
         return statement.execute(query, Statement.RETURN_GENERATED_KEYS);
     }
 
     @Override
-    protected IRubyObject jdbcToRuby(
-        final ThreadContext context, final Ruby runtime,
-        final int column, final int type, final ResultSet resultSet)
-        throws SQLException {
+    protected IRubyObject jdbcToRuby(final ThreadContext context, final Ruby runtime,
+        final int column, final int type, final ResultSet resultSet) throws SQLException {
         if ( type == Types.BIT ) {
             final int value = resultSet.getInt(column);
             return resultSet.wasNull() ? runtime.getNil() : runtime.newFixnum(value);
@@ -108,72 +103,29 @@ public class MySQLRubyJdbcConnection extends RubyJdbcConnection {
     }
 
     @Override // can not use statement.setTimestamp( int, Timestamp, Calendar )
-    protected void setTimestampParameter(final ThreadContext context,
-        final Connection connection, final PreparedStatement statement,
-        final int index, IRubyObject value,
-        final IRubyObject column, final int type) throws SQLException {
-        if ( value.isNil() ) statement.setNull(index, Types.TIMESTAMP);
-        else {
-            value = callMethod(context, "time_in_default_timezone", value);
-            if ( value instanceof RubyString ) { // yyyy-[m]m-[d]d hh:mm:ss[.f...]
-                final Timestamp timestamp = Timestamp.valueOf( value.toString() );
-                statement.setTimestamp( index, timestamp ); // assume local time-zone
-            } else if (value instanceof RubyTime) {
-                setTimestamp(statement, index, (RubyTime) value, type);
-            } else { // Time or DateTime ( ActiveSupport::TimeWithZone.to_time )
-                final double time = adjustTimeFromDefaultZone(value);
-                final RubyFloat timeValue = context.getRuntime().newFloat( time );
-                statement.setTimestamp( index, convertToTimestamp(timeValue) );
-            }
-        }
+    protected void setTimestampParameter(ThreadContext context, Connection connection, PreparedStatement statement,
+        int index, IRubyObject value, IRubyObject column, int type) throws SQLException {
+        value = callMethod(context, "time_in_default_timezone", value);
+        TypeConverter.checkType(context, value, context.runtime.getTime());
+        setTimestamp(statement, index, (RubyTime) value, type);
     }
 
-    @Override // can not use statement.setTime( int, Time, Calendar )
-    protected void setTimeParameter(final ThreadContext context,
-        final Connection connection, final PreparedStatement statement,
-        final int index, IRubyObject value,
-        final IRubyObject column, final int type) throws SQLException {
-
-        if (value.isNil()) {
-            statement.setNull(index, Types.TIME);
-        } else {
-            value = callMethod(context, "time_in_default_timezone", value);
-
-            if (value instanceof RubyString) {
-                final Time time = Time.valueOf(value.toString());
-                statement.setTime(index, time); // assume local time-zone
-            } else if (value instanceof RubyTime) {
-                // We set as timestamp so we can capture nanosecond resolution in the saved time.
-                setTimestamp(statement, index, (RubyTime) value, type);
-            } else { // Time or DateTime ( ActiveSupport::TimeWithZone.to_time )
-                final double timeValue = adjustTimeFromDefaultZone(value);
-                final Time time = new Time(( (long) timeValue ) * 1000); // millis
-                // java.sql.Time is expected to be only up to second precision
-                statement.setTime( index, time );
-            }
-        }
+    @Override
+    protected void setTimeParameter(ThreadContext context, Connection connection, PreparedStatement statement,
+        int index, IRubyObject value, IRubyObject column, int type) throws SQLException {
+        setTimestampParameter(context, connection, statement, index, value, column, type);
     }
 
     // FIXME: we should detect adapter and not do this timezone offset calculation is it is jdbc version 6+.
     private void setTimestamp(PreparedStatement statement, int index, RubyTime value, int type) throws SQLException {
         DateTime dateTime = value.getDateTime();
-        // Mysql pre-6 ignores time zone info so we manually correct for this.
-        int offset = TimeZone.getDefault().getOffset(dateTime.getMillis());
+        int offset = TimeZone.getDefault().getOffset(dateTime.getMillis()); // JDBC <6.x ignores time zone info (we adjust manually).
         Timestamp timestamp = new Timestamp(dateTime.getMillis() - offset);
 
         // 1942-11-30T01:02:03.123_456
         if (type != Types.DATE && value.getNSec() >= 0) timestamp.setNanos((int) (timestamp.getNanos() + value.getNSec()));
 
         statement.setTimestamp(index, timestamp);
-    }
-
-    private static double adjustTimeFromDefaultZone(final IRubyObject value) {
-        // Time's to_f is : ( millis * 1000 + usec ) / 1_000_000.0
-        final double time = value.convertToFloat().getDoubleValue(); // to_f
-        // NOTE: MySQL assumes default TZ thus need to adjust to match :
-        final int offset = TimeZone.getDefault().getOffset((long) time * 1000);
-        // Time's to_f is : ( millis * 1000 + usec ) / 1_000_000.0
-        return time - ( offset / 1000.0 );
     }
 
     @Override
