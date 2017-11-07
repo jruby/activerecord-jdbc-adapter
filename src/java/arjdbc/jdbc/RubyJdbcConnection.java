@@ -1763,7 +1763,7 @@ public class RubyJdbcConnection extends RubyObject {
         final Ruby runtime, final ResultSet resultSet, final int column) throws SQLException {
         final String value = resultSet.getString(column);
         if ( value == null && resultSet.wasNull() ) return runtime.getNil();
-        return RubyString.newUnicodeString(runtime, value);
+        return RubyString.newInternalFromJavaExternal(runtime, value);
     }
 
     protected IRubyObject bigIntegerToRuby(final ThreadContext context,
@@ -1992,7 +1992,7 @@ public class RubyJdbcConnection extends RubyObject {
             string.append(buf, 0, len);
         }
 
-        return RubyString.newUnicodeString(runtime, string.toString());
+        return RubyString.newInternalFromJavaExternal(runtime, string.toString());
     }
 
     protected IRubyObject objectToRuby(final ThreadContext context,
@@ -2031,7 +2031,7 @@ public class RubyJdbcConnection extends RubyObject {
         try {
             if ( xml == null || resultSet.wasNull() ) return runtime.getNil();
 
-            return RubyString.newUnicodeString(runtime, xml.getString());
+            return RubyString.newInternalFromJavaExternal(runtime, xml.getString());
         }
         finally { if ( xml != null ) xml.free(); }
     }
@@ -2702,7 +2702,7 @@ public class RubyJdbcConnection extends RubyObject {
     private static IRubyObject defaultValueFromResultSet(final Ruby runtime, final ResultSet resultSet)
         throws SQLException {
         final String defaultValue = resultSet.getString(COLUMN_DEF);
-        return defaultValue == null ? runtime.getNil() : RubyString.newUnicodeString(runtime, defaultValue);
+        return defaultValue == null ? runtime.getNil() : RubyString.newInternalFromJavaExternal(runtime, defaultValue);
     }
 
     protected RubyArray mapColumnsResult(final ThreadContext context,
