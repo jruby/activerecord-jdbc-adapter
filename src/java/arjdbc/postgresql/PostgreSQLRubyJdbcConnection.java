@@ -27,6 +27,7 @@ package arjdbc.postgresql;
 
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
+import java.lang.StringBuilder;
 import java.sql.Array;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -71,10 +72,32 @@ import org.postgresql.util.PGobject;
 public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection {
     private static final long serialVersionUID = 7235537759545717760L;
     private static final int HSTORE_TYPE = 100000 + 1111;
+    private static final Pattern binaryStringPattern = Pattern.compile("^[01]+$");
     private static final Pattern uuidPattern = Pattern.compile("^\\p{XDigit}{8}-(?:\\p{XDigit}{4}-){3}\\p{XDigit}{12}$");
+
+    private static final String[] binaryStrings = {
+        "0000",
+        "0001",
+        "0010",
+        "0011",
+        "0100",
+        "0101",
+        "0110",
+        "0111",
+        "1000",
+        "1001",
+        "1010",
+        "1011",
+        "1100",
+        "1101",
+        "1110",
+        "1111"
+    };
 
     private static final Map<String, Integer> POSTGRES_JDBC_TYPE_FOR = new HashMap<String, Integer>(32, 1);
     static {
+        POSTGRES_JDBC_TYPE_FOR.put("bit", Types.OTHER);
+        POSTGRES_JDBC_TYPE_FOR.put("bit_varying", Types.OTHER);
         POSTGRES_JDBC_TYPE_FOR.put("citext", Types.OTHER);
         POSTGRES_JDBC_TYPE_FOR.put("daterange", Types.OTHER);
         POSTGRES_JDBC_TYPE_FOR.put("hstore", Types.OTHER);
@@ -242,6 +265,11 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
         final String columnType = attributeSQLType(context, attribute).asJavaString();
 
         switch ( columnType ) {
+            case "bit":
+            case "bit_varying":
+                setBitStringParameter(statement, index, value);
+                break;
+
             case "cidr":
             case "citext":
             case "hstore":
@@ -273,6 +301,28 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
                     super.setObjectParameter(context, connection, statement, index, value, attribute, type);
                 }
         }
+    }
+
+    // value should be a ActiveRecord::ConnectionAdapters::PostgreSQL::OID::Bit::Data
+    private void setBitStringParameter(final PreparedStatement statement, final int index, final Object value) throws SQLException {
+
+        String valueForDB = value.toString();
+        int length = valueForDB.length();
+
+        /*
+            This means that if somebody sets their binary string to be "111" it
+            will always be assumed to be in binary. This matches the AR (5.0) functionality.
+            If it is meant to be a hex string they should use "0x111".
+        */
+        if (length > 0 && !binaryStringPattern.matcher(valueForDB).matches()) {
+            StringBuilder builder = new StringBuilder(length * 4);
+            for (int i = 0; i < length; i++) {
+                builder.append(binaryStrings[Character.digit(valueForDB.charAt(i), 16)]);
+            }
+            valueForDB = builder.toString();
+        }
+
+        setPGobjectParameter(statement, index, valueForDB, "bit");
     }
 
     private void setJsonParameter(final ThreadContext context,
