@@ -412,20 +412,6 @@ module ArJdbc
       execute "CREATE DATABASE #{quote_table_name(name)}#{option_string}"
     end
 
-    # Creates a schema for the given schema name.
-    def create_schema(schema_name, pg_username = nil)
-      if pg_username.nil? # AR 4.0 compatibility - accepts only single argument
-        execute "CREATE SCHEMA #{schema_name}"
-      else
-        execute("CREATE SCHEMA \"#{schema_name}\" AUTHORIZATION \"#{pg_username}\"")
-      end
-    end
-
-    # Drops the schema for the given schema name.
-    def drop_schema schema_name
-      execute "DROP SCHEMA #{schema_name} CASCADE"
-    end
-
     def all_schemas
       select('SELECT nspname FROM pg_namespace').map { |row| row["nspname"] }
     end
@@ -497,6 +483,7 @@ module ArJdbc
     def quote_column_name(name)
       %("#{name.to_s.gsub("\"", "\"\"")}")
     end
+    alias_method :quote_schema_name, :quote_column_name
 
     # Quote date/time values for use in SQL input.
     # Includes microseconds if the value is a Time responding to `usec`.
