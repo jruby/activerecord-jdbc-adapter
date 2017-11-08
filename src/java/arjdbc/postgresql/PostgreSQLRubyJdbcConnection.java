@@ -259,7 +259,7 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
     @Override
     protected void setObjectParameter(final ThreadContext context,
         final Connection connection, final PreparedStatement statement,
-        final int index, Object value,
+        final int index, IRubyObject value,
         final IRubyObject attribute, final int type) throws SQLException {
 
         final String columnType = attributeSQLType(context, attribute).asJavaString();
@@ -286,16 +286,16 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
 
             case "json":
             case "jsonb":
-                setJsonParameter(context, statement, index, attribute, columnType);
+                setJsonParameter(context, statement, index, value, columnType);
                 break;
 
             case "uuid":
-                setUUIDParameter(statement, index, (IRubyObject) value);
+                setUUIDParameter(statement, index, value);
                 break;
 
             default:
                 if ( columnType.endsWith("range") ) {
-                    setRangeParameter(context, statement, index, attribute, columnType);
+                    setRangeParameter(context, statement, index, value, columnType);
                 }
                 else {
                     super.setObjectParameter(context, connection, statement, index, value, attribute, type);
@@ -304,7 +304,8 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
     }
 
     // value should be a ActiveRecord::ConnectionAdapters::PostgreSQL::OID::Bit::Data
-    private void setBitStringParameter(final PreparedStatement statement, final int index, final Object value) throws SQLException {
+    private void setBitStringParameter(final PreparedStatement statement, final int index,
+        final IRubyObject value) throws SQLException {
 
         String valueForDB = value.toString();
         int length = valueForDB.length();
@@ -327,11 +328,11 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
 
     private void setJsonParameter(final ThreadContext context,
         final PreparedStatement statement, final int index,
-        final IRubyObject attribute, final String columnType) throws SQLException {
+        final IRubyObject value, final String columnType) throws SQLException {
 
         final PGobject pgJson = new PGobject();
         pgJson.setType(columnType);
-        pgJson.setValue(valueForDatabase(context, attribute).toString());
+        pgJson.setValue(value.toString());
         statement.setObject(index, pgJson);
     }
 
@@ -346,9 +347,9 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
 
     private void setRangeParameter(final ThreadContext context,
         final PreparedStatement statement, final int index,
-        final IRubyObject attribute, final String columnType) throws SQLException {
+        final IRubyObject value, final String columnType) throws SQLException {
 
-        final String rangeValue = valueForDatabase(context, attribute).toString();
+        final String rangeValue = value.toString();
         final Object pgRange;
 
         switch ( columnType ) {

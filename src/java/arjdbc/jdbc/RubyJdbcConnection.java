@@ -2482,12 +2482,10 @@ public class RubyJdbcConnection extends RubyObject {
 
     protected void setObjectParameter(final ThreadContext context,
         final Connection connection, final PreparedStatement statement,
-        final int index, Object value,
+        final int index, IRubyObject value,
         final IRubyObject attribute, final int type) throws SQLException {
-        if (value instanceof IRubyObject) {
-            value = ((IRubyObject) value).toJava(Object.class);
-        }
-        statement.setObject(index, value);
+
+        statement.setObject(index, value.toJava(Object.class));
     }
 
     protected Connection getConnection(ThreadContext context, boolean reportMissingConnection) {
