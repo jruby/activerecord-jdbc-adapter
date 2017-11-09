@@ -84,9 +84,19 @@ connections:
 
   postgresql:
     arunit:
-      min_messages: warning
+      adapter: jdbcpostgresql
+      insert_returning: <%= ENV['INSERT_RETURNING'] %>
+      prepared_statements: <%= ENV['PREPARED_STATEMENTS'] %>
+      username: <%= ENV['user'] || 'rails' %>
+      properties:
+        prepareThreshold: <%= ENV['PREPARE_THRESHOLD'] || 1 %>
     arunit2:
-      min_messages: warning
+      adapter: jdbcpostgresql
+      insert_returning: <%= ENV['INSERT_RETURNING'] %>
+      prepared_statements: <%= ENV['PREPARED_STATEMENTS'] %>
+      username: <%= ENV['user'] || 'rails' %>
+      properties:
+        prepareThreshold: <%= ENV['PREPARE_THRESHOLD'] || 1 %>
 
   sqlite3:
     arunit:

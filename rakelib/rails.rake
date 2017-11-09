@@ -71,7 +71,7 @@ namespace :rails do
     def _target(name)
       case name
       when /postgres/i
-        'test_jdbcpostgresql'
+        'test_postgresql'
       else
         "test_jdbc#{name.downcase}"
       end
