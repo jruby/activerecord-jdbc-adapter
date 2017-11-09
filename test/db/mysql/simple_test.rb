@@ -12,14 +12,6 @@ class MySQLSimpleTest < Test::Unit::TestCase
   include XmlColumnTestMethods
   include CustomSelectTestMethods
 
-  # @override
-  def test_execute_update
-    e = Entry.create! :title => '42'; Entry.create! :title => '43'
-    count = connection.execute("UPDATE entries SET title = 'updated-title' WHERE id = #{e.id}")
-    assert_equal 1, count if ! mariadb_driver? && defined?(JRUBY_VERSION) # nil with mysql2
-    assert_equal 'updated-title', e.reload.title
-  end
-
   # MySQL does not support precision beyond seconds :
   # DATETIME or TIMESTAMP value can include a trailing fractional seconds part
   # in up to microseconds (6 digits) precision. Although this fractional part
@@ -153,18 +145,6 @@ class MySQLSimpleTest < Test::Unit::TestCase
       Entry.table_name = old_entries_table_name
       User.table_name  = old_users_table_name
     end
-  end
-
-  def test_update_sql_public_and_returns_rows_affected
-    ActiveRecord::Base.connection.update_sql "UPDATE entries SET title = NULL"
-
-    e1 = Entry.create! :title => 'a some', :content => 'brrrr', :rating => 10.8
-    e2 = Entry.create! :title => 'another', :content => 'meee', :rating => 40.2
-    rows_affected = ActiveRecord::Base.connection.update_sql "UPDATE entries " +
-      "SET content='updated content' WHERE rating > 10 AND title IS NOT NULL"
-    assert_equal 2, rows_affected if ! mariadb_driver? && defined?(JRUBY_VERSION)
-    assert_equal 'updated content', e1.reload.content
-    assert_equal 'updated content', e2.reload.content
   end
 
   # NOTE: expected escape processing to be disabled by default for non-prepared statements
