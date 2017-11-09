@@ -49,13 +49,6 @@ class MySQLSimpleTest < Test::Unit::TestCase
 
   column_quote_char "`"
 
-  def test_column_class_instantiation
-    assert_nothing_raised do
-      text_column = mysql_adapter_class::Column.new("title", nil, "text")
-      assert text_column.is_a?(ActiveRecord::ConnectionAdapters::Column)
-    end unless ar_version('4.2')
-  end
-
   def test_string_quoting_oddity
     s = "0123456789a'a"
     assert_equal "'0123456789a\\'a'", ActiveRecord::Base.connection.quote(s)
@@ -73,11 +66,7 @@ class MySQLSimpleTest < Test::Unit::TestCase
   def test_update_all_with_limit
     Entry.create! :title => 'test', :content => 'test 1'
     Entry.create! :title => 'test', :content => 'test 2'
-    if ar_version('4.0') # update_all(hash, hash, hash) deprecated
-      Entry.where(:title => "test").limit(1).update_all(:content => 'some test')
-    else # assert_nothing_raised
-      Entry.update_all({:title => "test"}, { :content => 'some test' }, {:limit => 1})
-    end
+    Entry.where(:title => "test").limit(1).update_all(:content => 'some test')
   end
 
   # from rails active record tests, only meant to work in AR 3.2 and higher
@@ -97,7 +86,7 @@ class MySQLSimpleTest < Test::Unit::TestCase
 
     assert_equal count - 1, entries.update_all(:user_id => user_2.id)
     assert_equal user_2, Entry.find_by_title('title_2').user
-  end if ar_version("3.2")
+  end
 
   # from rails active record tests
   def test_caching_of_columns
@@ -145,7 +134,7 @@ class MySQLSimpleTest < Test::Unit::TestCase
 
     connection.drop_table :bs
     connection.drop_table :as
-  end if ar_version("4.2")
+  end
 
   def test_find_in_other_schema_with_include
     user_1 = User.create :login => 'user1'
@@ -159,18 +148,12 @@ class MySQLSimpleTest < Test::Unit::TestCase
     begin
       User.table_name  = "#{database}.users"
       Entry.table_name = "#{database}.entries"
-      if ar_version('4.0')
-        assert_not_empty Entry.includes(:user).references(:users).to_a
-      else
-        assert_not_empty Entry.all(:include => :user)
-      end
+      assert_not_empty Entry.includes(:user).references(:users).to_a
     ensure
       Entry.table_name = old_entries_table_name
       User.table_name  = old_users_table_name
     end
   end
-
-  include ExplainSupportTestMethods if ar_version("3.1")
 
   def test_reports_server_version
     assert_instance_of Array, ActiveRecord::Base.connection.send(:version)
@@ -207,7 +190,7 @@ class MySQLSimpleTest < Test::Unit::TestCase
     assert connection.class.emulate_booleans
     assert_true ArJdbc::MySQL.emulate_booleans if defined? ArJdbc::MySQL
     assert_true mysql_adapter_class.emulate_booleans
-  end if ar_version('3.0')
+  end
 
   def test_boolean_emulation_can_be_disabled
     db_type = DbType.create! :sample_boolean => true
@@ -229,23 +212,21 @@ class MySQLSimpleTest < Test::Unit::TestCase
   ensure
     mysql_adapter_class.emulate_booleans = true
     DbType.reset_column_information
-  end if ar_version('3.0')
+  end
 
   def test_pk_and_sequence_for
     assert_equal [ 'id', nil ], connection.pk_and_sequence_for('entries')
   end
 
   def test_mysql_indexes
-    if ar_version('4.0')
-      assert connection.class.const_defined?(:INDEX_TYPES)
-    end
+    assert connection.class.const_defined?(:INDEX_TYPES)
   end
 
   test 'returns correct visitor type' do
     assert_not_nil visitor = connection.instance_variable_get(:@visitor)
     assert defined? Arel::Visitors::MySQL
     assert_kind_of Arel::Visitors::MySQL, visitor
-  end if ar_version('3.0')
+  end
 
   test 'sets default connection properties' do
     connection = ActiveRecord::Base.connection.jdbc_connection(true)
@@ -302,11 +283,7 @@ class MySQLSimpleTest < Test::Unit::TestCase
 
       assert_queries(1) do
         with_bulk_change_table('bulks') do |t|
-          if ar_version('4.0')
-            t.remove :qualification, :experience
-          else
-            t.remove :qualification; t.remove :experience
-          end
+          t.remove :qualification, :experience
           t.string :qualification_experience
         end
       end
@@ -348,12 +325,8 @@ class MySQLSimpleTest < Test::Unit::TestCase
       #  ALTER TABLE `bulks` ADD UNIQUE INDEX awesome_username_index (`username`), ADD  INDEX index_bulks_on_name_and_age (`name`, `age`)
 
       # Adding an index fires a query every time to check if an index already exists or not
-      expected_query_count = 3
-      if ar_version('4.2')
-        expected_query_count = 5 # MRI
-        # no SHOW TABLES LIKE 'bulks' in JRuby since we do table_exists? with JDBC APIs
-        expected_query_count -= 2 if defined? JRUBY_VERSION
-      end
+      expected_query_count = defined? JRUBY_VERSION ? 3 : 5 # JRuby/MRI
+      # no SHOW TABLES LIKE 'bulks' in JRuby since we do table_exists? with JDBC APIs
       assert_queries( expected_query_count ) do
         with_bulk_change_table(:bulks) do |t|
           t.index :username, :unique => true, :name => :awesome_username_index
@@ -381,12 +354,8 @@ class MySQLSimpleTest < Test::Unit::TestCase
       #  SHOW TABLES LIKE 'bulks'
       #  SHOW KEYS FROM `bulks`
       #  ALTER TABLE `bulks` DROP INDEX index_bulks_on_name2, ADD UNIQUE INDEX new_name2_index (`name2`)
-      expected_query_count = 3
-      if ar_version('4.2')
-        expected_query_count = 4 # MRI
-        # no SHOW TABLES LIKE 'bulks' in JRuby since we do table_exists? with JDBC APIs
-        expected_query_count -= 1 if defined? JRUBY_VERSION
-      end
+      expected_query_count = defined? JRUBY_VERSION ? 4 : 3 # JRuby/MRI
+      # no SHOW TABLES LIKE 'bulks' in JRuby since we do table_exists? with JDBC APIs
       assert_queries( expected_query_count ) do
         with_bulk_change_table('bulks') do |t|
           t.remove_index :name2
@@ -402,7 +371,7 @@ class MySQLSimpleTest < Test::Unit::TestCase
     ensure
       connection.drop_table(:bulks) rescue nil
     end
-  end if ar_version('3.2')
+  end
 
   protected
 
@@ -441,6 +410,6 @@ class MySQLForeignKeyTest < Test::Unit::TestCase
     assert_equal 1, connection.foreign_keys('db_posts').size
     assert_equal 'db_posts', connection.foreign_keys('db_posts')[0].from_table
     assert_equal 'db_types', connection.foreign_keys('db_posts')[0].to_table
-  end if ar_version('4.2')
+  end
 
 end

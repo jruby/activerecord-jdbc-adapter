@@ -34,13 +34,7 @@ class MysqlSchemaDumpTest < Test::Unit::TestCase
     match = output.match(%r{create_table "string_ids"(.*)do.*\n(.*)\n})
     assert_not_nil(match, "string_ids table not found")
     assert_match %r((:id => false)|(id: false)), match[1], "no table id not preserved"
-    if ar_version('4.2')
-      assert_match %r{t.string[[:space:]]+"id",[[:space:]]+limit:[[:space:]]+255,[[:space:]]+null:[[:space:]]+false$}, match[2], "non-primary key id column not preserved"
-    elsif ar_version('4.0')
-      assert_match %r{t.string[[:space:]]+"id",[[:space:]]+null: false$}, match[2], "non-primary key id column not preserved"
-    else
-      assert_match %r{t.string[[:space:]]+"id",[[:space:]]+:null => false$}, match[2], "non-primary key id column not preserved"
-    end
+    assert_match %r{t.string[[:space:]]+"id",[[:space:]]+limit:[[:space:]]+255,[[:space:]]+null:[[:space:]]+false$}, match[2], "non-primary key id column not preserved"
   end
 
   ActiveRecord::Schema.define do
@@ -64,35 +58,17 @@ class MysqlSchemaDumpTest < Test::Unit::TestCase
 
   test 'should_not_add_default_value_for_mysql_text_field' do
     output = standard_dump
-    if ar_version('4.2')
-      assert_match %r{t.text\s+"just_text",[\s|:]+limit[\s\:\=\>]+65535,[\s|:]+null[\s\:\=\>]+false$}, output
-    else
-      assert_match %r{t.text\s+"just_text",[\s|:]+null[\s\:\=\>]+false$}, output
-    end
+    assert_match %r{t.text\s+"just_text",[\s|:]+limit[\s\:\=\>]+65535,[\s|:]+null[\s\:\=\>]+false$}, output
   end
 
   test 'includes_length_for_mysql_blob_and_text_fields' do
     output = standard_dump
     assert_match %r{t.binary\s+"tiny_blob",[\s|:]+limit[\s\:\=\>]+255$}, output
-    if ar_version('4.2')
-      assert_match %r{t.binary\s+"normal_blob",[\s|:]+limit[\s\:\=\>]+65535$}, output
-    else
-      assert_match %r{t.binary\s+"normal_blob"$}, output
-    end
+    assert_match %r{t.binary\s+"normal_blob",[\s|:]+limit[\s\:\=\>]+65535$}, output
     assert_match %r{t.binary\s+"medium_blob",[\s|:]+limit[\s\:\=\>]+16777215$}, output
-    unless ar_version('4.2') # t.binary "long_blob", limit: 4294967295 !?!
-      assert_match %r{t.binary\s+"long_blob",[\s|:]+limit[\s\:\=\>]+2147483647$}, output
-    end
     assert_match %r{t.text\s+"tiny_text",[\s|:]+limit[\s\:\=\>]+255$}, output
-    if ar_version('4.2')
-      assert_match %r{t.text\s+"normal_text",[\s|:]+limit[\s\:\=\>]+65535$}, output
-    else
-      assert_match %r{t.text\s+"normal_text"$}, output
-    end
+    assert_match %r{t.text\s+"normal_text",[\s|:]+limit[\s\:\=\>]+65535$}, output
     assert_match %r{t.text\s+"medium_text",[\s|:]+limit[\s\:\=\>]+16777215$}, output
-    unless ar_version('4.2') # t.text "long_text", limit: 4294967295 ?!?
-      assert_match %r{t.text\s+"long_text",[\s|:]+limit[\s\:\=\>]+2147483647$}, output
-    end
   end
 
   test 'includes_length_for_mysql_binary_fields' do
@@ -100,12 +76,6 @@ class MysqlSchemaDumpTest < Test::Unit::TestCase
     assert_match %r{t.binary\s+"var_binary",[\s|:]+limit[\s\:\=\>]+255$}, output
     assert_match %r{t.binary\s+"var_binary_large",[\s|:]+limit[\s\:\=\>]+4095$}, output
   end
-
-  test 'does not include views' do
-    output = standard_dump
-    assert_not_match /CREATE VIEW/im, output
-  end unless ar_version('4.0')
-
 end
 
 class MysqlInfoTest < Test::Unit::TestCase
@@ -177,7 +147,7 @@ class MysqlInfoTest < Test::Unit::TestCase
     strio = StringIO.new
     ActiveRecord::SchemaDumper::dump(connection, strio)
     dump = strio.string
-    limit = ar_version('4.2') ? 4294967295 : 2147483647
+    limit = 4294967295
     assert_match %r{t.text\s+"text",[\s|:]+limit[\s\:\=\>]+#{limit}$}, dump
   end
 
@@ -194,11 +164,7 @@ class MysqlInfoTest < Test::Unit::TestCase
 
   def test_should_include_limit
     text_column = connection.columns('memos').find { |c| c.name == 'text' }
-    if ar_version('4.2')
-      assert_equal 4294967295, text_column.limit
-    else
-      assert_equal 2147483647, text_column.limit
-    end
+    assert_equal 4294967295, text_column.limit
   end
 
   def test_should_set_sqltype_to_longtext
@@ -259,11 +225,7 @@ class MysqlInfoTest < Test::Unit::TestCase
     #  end
     #
     dump = schema_dump
-    if ar_version('3.0')
-      assert_nil dump.lines.detect {|l| l =~ /\.(float|date|datetime|integer|time|timestamp) .* :limit/ && l !~ /sample_integer/ }, dump
-    else
-      puts "test_no_limits_for_some_data_types assertion skipped on #{ActiveRecord::VERSION::STRING}"
-    end
+    puts "test_no_limits_for_some_data_types assertion skipped on #{ActiveRecord::VERSION::STRING}"
   ensure
     DbTypeMigration.down
   end
