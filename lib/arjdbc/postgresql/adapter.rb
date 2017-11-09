@@ -6,6 +6,7 @@ require 'active_record/connection_adapters/abstract_adapter'
 require 'active_record/connection_adapters/postgresql/column'
 require 'active_record/connection_adapters/postgresql/explain_pretty_printer'
 require 'active_record/connection_adapters/postgresql/quoting'
+require 'active_record/connection_adapters/postgresql/referential_integrity'
 require 'active_record/connection_adapters/postgresql/schema_dumper'
 require 'active_record/connection_adapters/postgresql/schema_statements'
 require 'active_record/connection_adapters/postgresql/type_metadata'
@@ -167,6 +168,7 @@ module ArJdbc
       :inet => { :name => "inet" },
       :interval => { :name => "interval"}, # This doesn't get added to AR's postgres adapter until 5.1 but it fixes broken tests in 5.0 ...
       :cidr => { :name => "cidr" },
+      :citext => { :name => "citext" },
       :macaddr => { :name => "macaddr" },
       :uuid => { :name => "uuid" },
       :json => { :name => "json" },
@@ -497,31 +499,6 @@ module ArJdbc
       result
     end if ::ActiveRecord::VERSION::MAJOR >= 3
 
-    # @override
-    def supports_disable_referential_integrity?
-      true
-    end
-
-    def disable_referential_integrity
-      if supports_disable_referential_integrity?
-        begin
-          execute(tables.collect { |name| "ALTER TABLE #{quote_table_name(name)} DISABLE TRIGGER ALL" }.join(";"))
-        rescue
-          execute(tables.collect { |name| "ALTER TABLE #{quote_table_name(name)} DISABLE TRIGGER USER" }.join(";"))
-        end
-      end
-      yield
-    ensure
-      if supports_disable_referential_integrity?
-        begin
-          execute(tables.collect { |name| "ALTER TABLE #{quote_table_name(name)} ENABLE TRIGGER ALL" }.join(";"))
-        rescue
-          execute(tables.collect { |name| "ALTER TABLE #{quote_table_name(name)} ENABLE TRIGGER USER" }.join(";"))
-        end
-      end
-    end
-
-
     # Changes the column of a table.
     def change_column(table_name, column_name, type, options = {})
       quoted_table_name = quote_table_name(table_name)
@@ -757,6 +734,7 @@ module ActiveRecord::ConnectionAdapters
     # Try to use as much of the built in postgres logic as possible
     # maybe someday we can extend the actual adapter
     include ActiveRecord::ConnectionAdapters::PostgreSQL::ColumnDumper
+    include ActiveRecord::ConnectionAdapters::PostgreSQL::ReferentialIntegrity
     include ActiveRecord::ConnectionAdapters::PostgreSQL::SchemaStatements
     include ActiveRecord::ConnectionAdapters::PostgreSQL::Quoting
 
