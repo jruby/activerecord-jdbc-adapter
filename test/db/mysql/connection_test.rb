@@ -2,10 +2,6 @@ require File.expand_path('test_helper', File.dirname(__FILE__))
 
 class MySQLConnectionTest < Test::Unit::TestCase
 
-  def test_mysql_default_in_strict_mode
-    assert_equal [["STRICT_ALL_TABLES"]], select_rows("SELECT @@SESSION.sql_mode")
-  end
-
   def test_mysql_strict_mode_disabled
     run_without_connection do |orig_connection|
       ActiveRecord::Base.establish_connection(orig_connection.merge(:strict => false))
