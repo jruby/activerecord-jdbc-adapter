@@ -155,11 +155,6 @@ class MySQLSimpleTest < Test::Unit::TestCase
     end
   end
 
-  def test_reports_server_version
-    assert_instance_of Array, ActiveRecord::Base.connection.send(:version)
-    assert_equal 3, ActiveRecord::Base.connection.send(:version).size
-  end
-
   def test_update_sql_public_and_returns_rows_affected
     ActiveRecord::Base.connection.update_sql "UPDATE entries SET title = NULL"
 
