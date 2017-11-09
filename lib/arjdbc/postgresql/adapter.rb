@@ -776,6 +776,9 @@ module ActiveRecord::ConnectionAdapters
 
     include ::ArJdbc::Util::QuotedCache
 
+    # AR expects OID to be available on the adapter
+    OID = ActiveRecord::ConnectionAdapters::PostgreSQL::OID
+
     def initialize(connection, logger = nil, config = {})
       # @local_tz is initialized as nil to avoid warnings when connect tries to use it
       @local_tz = nil
