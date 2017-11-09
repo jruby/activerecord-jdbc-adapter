@@ -4,14 +4,14 @@ class MySQLConnectionTest < Test::Unit::TestCase
 
   def test_mysql_default_in_strict_mode
     assert_equal [["STRICT_ALL_TABLES"]], select_rows("SELECT @@SESSION.sql_mode")
-  end if ar_version('4.0')
+  end
 
   def test_mysql_strict_mode_disabled
     run_without_connection do |orig_connection|
       ActiveRecord::Base.establish_connection(orig_connection.merge(:strict => false))
       sql_mode = select_rows("SELECT @@SESSION.sql_mode")
-      version = ActiveRecord::Base.connection.send(:version)
-      if version[0] > 6 || ( version[0] == 5 && version[1] >= 6 )
+      jdbc_version = ActiveRecord::Base.connection.send(:version)
+      if jdbc_version > "5.6"
         assert ! sql_mode.flatten.include?("STRICT_ALL_TABLES")
       else
         assert_equal [['']], sql_mode unless mariadb_driver?
