@@ -161,34 +161,6 @@ class MySQLSimpleTest < Test::Unit::TestCase
     assert_equal "}{\"'}  '", e.reload.title
   end
 
-  def test_emulates_booleans_by_default
-    assert connection.class.emulate_booleans
-    assert_true ArJdbc::MySQL.emulate_booleans if defined? ArJdbc::MySQL
-    assert_true mysql_adapter_class.emulate_booleans
-  end
-
-  def test_boolean_emulation_can_be_disabled
-    db_type = DbType.create! :sample_boolean => true
-    column = DbType.columns.find { |col| col.name.to_s == 'sample_boolean' }
-    assert_equal :boolean, column.type
-    mysql_adapter_class.emulate_booleans = false
-
-    DbType.reset_column_information
-    column = DbType.columns.find { |col| col.name.to_s == 'sample_boolean' }
-    assert_equal :integer, column.type
-
-    assert_equal 1, db_type.reload.sample_boolean
-
-    db_type = DbType.create! :sample_boolean => 0
-    assert_equal 0, db_type.reload.sample_boolean
-
-    db_type = DbType.create! :sample_boolean => 2
-    assert_equal 2, db_type.reload.sample_boolean
-  ensure
-    mysql_adapter_class.emulate_booleans = true
-    DbType.reset_column_information
-  end
-
   def test_mysql_indexes
     assert connection.class.const_defined?(:INDEX_TYPES)
   end
