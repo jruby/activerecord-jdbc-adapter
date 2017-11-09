@@ -35,6 +35,7 @@ import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.sql.ResultSet;
 import java.sql.Statement;
+import java.sql.Time;
 import java.sql.Timestamp;
 import java.sql.Types;
 import java.util.TimeZone;
@@ -123,6 +124,27 @@ public class MySQLRubyJdbcConnection extends RubyJdbcConnection {
         if (type != Types.DATE && value.getNSec() >= 0) timestamp.setNanos((int) (timestamp.getNanos() + value.getNSec()));
 
         statement.setTimestamp(index, timestamp);
+    }
+
+    @Override
+    protected IRubyObject timeToRuby(ThreadContext context, Ruby runtime, ResultSet resultSet, int column) throws SQLException {
+        Time value = resultSet.getTime(column);
+
+        if (value == null) return resultSet.wasNull() ? runtime.getNil() : runtime.newString();
+
+        String strValue = value.toString();
+
+        // If time is column type but that time had a precision which included
+        // nanoseconds we used timestamp to save the data.  Since this is conditional
+        // we grab data a second time as a timestamp to look for nsecs.
+        Timestamp nsecTimeHack = resultSet.getTimestamp(column);
+        if (nsecTimeHack.getNanos() != 0) {
+            strValue = String.format("%s.%09d", strValue, nsecTimeHack.getNanos());
+        }
+
+        // NOTE: this CAN NOT be 100% correct - as :time is just a type guess!
+        return typeCastFromDatabase(context, callMethod(context, "adapter"),
+                runtime.newSymbol("time"), RubyString.newUnicodeString(runtime,strValue));
     }
 
     @Override
