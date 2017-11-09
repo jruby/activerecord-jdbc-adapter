@@ -189,10 +189,6 @@ class MySQLSimpleTest < Test::Unit::TestCase
     DbType.reset_column_information
   end
 
-  def test_pk_and_sequence_for
-    assert_equal [ 'id', nil ], connection.pk_and_sequence_for('entries')
-  end
-
   def test_mysql_indexes
     assert connection.class.const_defined?(:INDEX_TYPES)
   end
@@ -300,9 +296,7 @@ class MySQLSimpleTest < Test::Unit::TestCase
       #  ALTER TABLE `bulks` ADD UNIQUE INDEX awesome_username_index (`username`), ADD  INDEX index_bulks_on_name_and_age (`name`, `age`)
 
       # Adding an index fires a query every time to check if an index already exists or not
-      expected_query_count = defined? JRUBY_VERSION ? 3 : 5 # JRuby/MRI
-      # no SHOW TABLES LIKE 'bulks' in JRuby since we do table_exists? with JDBC APIs
-      assert_queries( expected_query_count ) do
+      assert_queries(5) do
         with_bulk_change_table(:bulks) do |t|
           t.index :username, :unique => true, :name => :awesome_username_index
           t.index [:name, :age]
@@ -329,9 +323,9 @@ class MySQLSimpleTest < Test::Unit::TestCase
       #  SHOW TABLES LIKE 'bulks'
       #  SHOW KEYS FROM `bulks`
       #  ALTER TABLE `bulks` DROP INDEX index_bulks_on_name2, ADD UNIQUE INDEX new_name2_index (`name2`)
-      expected_query_count = defined? JRUBY_VERSION ? 4 : 3 # JRuby/MRI
+      expected_query_count = defined?(JRUBY_VERSION) ? 4 : 3 # JRuby/MRI
       # no SHOW TABLES LIKE 'bulks' in JRuby since we do table_exists? with JDBC APIs
-      assert_queries( expected_query_count ) do
+      assert_queries(expected_query_count) do
         with_bulk_change_table('bulks') do |t|
           t.remove_index :name2
           t.index :name2, :name => :new_name2_index, :unique => true
