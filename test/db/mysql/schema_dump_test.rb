@@ -34,7 +34,7 @@ class MysqlSchemaDumpTest < Test::Unit::TestCase
     match = output.match(%r{create_table "string_ids"(.*)do.*\n(.*)\n})
     assert_not_nil(match, "string_ids table not found")
     assert_match %r((:id => false)|(id: false)), match[1], "no table id not preserved"
-    assert_match %r{t.string[[:space:]]+"id",[[:space:]]+limit:[[:space:]]+255,[[:space:]]+null:[[:space:]]+false$}, match[2], "non-primary key id column not preserved"
+    assert_match %r{t.string[[:space:]]+"id",[[:space:]]+null:[[:space:]]+false$}, match[2], "non-primary key id column not preserved"
   end
 
   ActiveRecord::Schema.define do
@@ -133,15 +133,6 @@ class MysqlInfoTest < Test::Unit::TestCase
   def test_should_return_nil_for_a_table_without_a_primary_key
     assert_nil connection.primary_key('cats')
   end
-
-  ## structure_dump
-  def test_should_include_the_tables_in_a_structure_dump
-    dump = connection.structure_dump
-    assert dump.include?('CREATE TABLE `books`')
-    assert dump.include?('CREATE TABLE `cars`')
-    assert dump.include?('CREATE TABLE `cats`')
-    assert dump.include?('CREATE TABLE `memos`')
-  end if defined? JRUBY_VERSION
 
   def test_should_include_longtext_in_schema_dump
     strio = StringIO.new
