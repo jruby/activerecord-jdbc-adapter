@@ -126,6 +126,8 @@ public class MySQLRubyJdbcConnection extends RubyJdbcConnection {
         statement.setTimestamp(index, timestamp);
     }
 
+    // FIXME: I think we can unify this back to main adapter code since previous conflict involved not using
+    // the raw string return type and not the extra formatting logic.
     @Override
     protected IRubyObject timeToRuby(ThreadContext context, Ruby runtime, ResultSet resultSet, int column) throws SQLException {
         Time value = resultSet.getTime(column);
@@ -142,9 +144,7 @@ public class MySQLRubyJdbcConnection extends RubyJdbcConnection {
             strValue = String.format("%s.%09d", strValue, nsecTimeHack.getNanos());
         }
 
-        // NOTE: this CAN NOT be 100% correct - as :time is just a type guess!
-        return typeCastFromDatabase(context, callMethod(context, "adapter"),
-                runtime.newSymbol("time"), RubyString.newUnicodeString(runtime,strValue));
+        return RubyString.newUnicodeString(runtime,strValue);
     }
 
     @Override
