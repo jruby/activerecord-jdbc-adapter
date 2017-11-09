@@ -1842,25 +1842,20 @@ public class RubyJdbcConnection extends RubyObject {
         final Ruby runtime, final ResultSet resultSet, final int column)
         throws SQLException {
 
-        Time value = resultSet.getTime(column);
+        final Time value = resultSet.getTime(column);
         if ( value == null ) {
             if ( resultSet.wasNull() ) return runtime.getNil();
             return runtime.newString(); // ""
         }
 
-        String strValue = value.toString();
+        final RubyString strValue = RubyString.newUnicodeString(runtime, value.toString());
+        if ( rawDateTime != null && rawDateTime.booleanValue() ) return strValue;
 
-        // If time is column type but that time had a precision which included
-        // nanoseconds we used timestamp to save the data.  Since this is conditional
-        // we grab data a second time as a timestamp to look for nsecs.
-        Timestamp nsecTimeHack = resultSet.getTimestamp(column);
-        if (nsecTimeHack.getNanos() != 0) {
-            strValue = String.format("%s.%09d", strValue, nsecTimeHack.getNanos());
-        }
+        final IRubyObject adapter = callMethod(context, "adapter"); // self.adapter
+        if ( adapter.isNil() ) return strValue; // NOTE: we warn on init_connection
 
         // NOTE: this CAN NOT be 100% correct - as :time is just a type guess!
-        return typeCastFromDatabase(context, callMethod(context, "adapter"),
-                runtime.newSymbol("time"), RubyString.newUnicodeString(runtime,strValue));
+        return typeCastFromDatabase(context, adapter, runtime.newSymbol("time"), strValue);
     }
 
     protected IRubyObject timestampToRuby(final ThreadContext context, // TODO
