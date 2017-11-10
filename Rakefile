@@ -14,8 +14,8 @@ task :default => [:jar, :test]
 task :build => :jar
 task :install => :jar
 
-ADAPTERS = %w[derby h2 hsqldb mssql mysql postgresql sqlite3].map { |a| "activerecord-jdbc#{a}-adapter" }
-DRIVERS  = %w[derby h2 hsqldb jtds mysql postgres sqlite3].map { |a| "jdbc-#{a}" }
+ADAPTERS = %w[mysql postgresql sqlite3].map { |a| "activerecord-jdbc#{a}-adapter" }
+DRIVERS  = %w[mysql postgres sqlite3].map { |a| "jdbc-#{a}" }
 TARGETS = ( ADAPTERS + DRIVERS )
 
 rake = lambda { |task| ruby "-S", "rake", task }
