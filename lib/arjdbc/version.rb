@@ -1,5 +1,5 @@
 module ArJdbc
-  VERSION = "5.0.pre1"
+  VERSION = "50.0"
   # @deprecated
   module Version
     # @private 1.2.x compatibility
