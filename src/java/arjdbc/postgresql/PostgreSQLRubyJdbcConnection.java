@@ -61,6 +61,9 @@ import org.jruby.util.ByteList;
 import org.postgresql.PGConnection;
 import org.postgresql.PGStatement;
 import org.postgresql.core.BaseConnection;
+import org.postgresql.geometric.PGline;
+import org.postgresql.geometric.PGlseg;
+import org.postgresql.geometric.PGpoint;
 import org.postgresql.jdbc4.Jdbc4Array;
 import org.postgresql.util.PGInterval;
 import org.postgresql.util.PGobject;
@@ -106,8 +109,11 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
         POSTGRES_JDBC_TYPE_FOR.put("interval", Types.OTHER);
         POSTGRES_JDBC_TYPE_FOR.put("json", Types.OTHER);
         POSTGRES_JDBC_TYPE_FOR.put("jsonb", Types.OTHER);
+        POSTGRES_JDBC_TYPE_FOR.put("line", Types.OTHER);
+        POSTGRES_JDBC_TYPE_FOR.put("lseg", Types.OTHER);
         POSTGRES_JDBC_TYPE_FOR.put("ltree", Types.OTHER);
         POSTGRES_JDBC_TYPE_FOR.put("numrange", Types.OTHER);
+        POSTGRES_JDBC_TYPE_FOR.put("point", Types.OTHER);
         POSTGRES_JDBC_TYPE_FOR.put("tsrange", Types.OTHER);
         POSTGRES_JDBC_TYPE_FOR.put("tstzrange", Types.OTHER);
         POSTGRES_JDBC_TYPE_FOR.put("tsvector", Types.OTHER);
@@ -287,6 +293,18 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
             case "json":
             case "jsonb":
                 setJsonParameter(context, statement, index, value, columnType);
+                break;
+
+            case "line":
+                statement.setObject(index, new PGline(value.toString()));
+                break;
+
+            case "lseg":
+                statement.setObject(index, new PGlseg(value.toString()));
+                break;
+
+            case "point":
+                statement.setObject(index, new PGpoint(value.toString()));
                 break;
 
             case "uuid":
