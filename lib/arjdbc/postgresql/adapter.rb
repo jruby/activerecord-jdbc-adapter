@@ -307,12 +307,28 @@ module ArJdbc
       execute "SET SESSION AUTHORIZATION #{user}"
     end
 
+    # Came from postgres_adapter
+    def get_advisory_lock(lock_id) # :nodoc:
+      unless lock_id.is_a?(Integer) && lock_id.bit_length <= 63
+        raise(ArgumentError, "Postgres requires advisory lock ids to be a signed 64 bit integer")
+      end
+      select_value("SELECT pg_try_advisory_lock(#{lock_id});")
+    end
+
+    # Came from postgres_adapter
+    def release_advisory_lock(lock_id) # :nodoc:
+      unless lock_id.is_a?(Integer) && lock_id.bit_length <= 63
+        raise(ArgumentError, "Postgres requires advisory lock ids to be a signed 64 bit integer")
+      end
+      select_value("SELECT pg_advisory_unlock(#{lock_id})") == 't'.freeze
+    end
+
     # Returns the configured supported identifier length supported by PostgreSQL,
     # or report the default of 63 on PostgreSQL 7.x.
     def table_alias_length
       @table_alias_length ||= (
         postgresql_version >= 80000 ?
-          select_one('SHOW max_identifier_length')['max_identifier_length'].to_i :
+          select_one('SHOW max_identifier_length', 'SCHEMA'.freeze)['max_identifier_length'].to_i :
             63
       )
     end
@@ -376,6 +392,14 @@ module ArJdbc
         end
         result
       end
+    end
+
+    def reset!
+      clear_cache!
+      reset_transaction
+      @connection.rollback # Have to deal with rollbacks differently than the AR adapter
+      @connection.execute 'DISCARD ALL'
+      configure_connection
     end
 
     def last_insert_id_result(sequence_name)
