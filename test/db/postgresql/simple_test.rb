@@ -170,21 +170,6 @@ class PostgresSimpleTest < Test::Unit::TestCase
     end
   end
 
-  test "config :timeout is set as socket timeout" do
-    jdbc_connection = ActiveRecord::Base.connection.jdbc_connection
-    unless jdbc_connection.is_a?(Java::OrgPostgresqlCore::BaseConnection)
-      jdbc_connection = jdbc_connection.unwrap(Java::JavaSql::Connection.java_class)
-    end
-
-    jdbc_connection.class.class_eval { field_reader :protoConnection }
-    jdbc_connection.protoConnection.class.class_eval { field_reader :pgStream }
-
-    timeout = jdbc_connection.protoConnection.pgStream.getSocket.getSoTimeout
-    if connect_timeout = current_connection_config[:connect_timeout]
-      assert_equal connect_timeout.to_i * 1000, timeout
-    end
-  end
-
   test "config :insert_returning" do
     if current_connection_config.key?(:insert_returning)
       insert_returning = current_connection_config[:insert_returning]
