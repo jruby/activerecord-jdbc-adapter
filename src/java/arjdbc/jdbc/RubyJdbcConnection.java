@@ -802,34 +802,43 @@ public class RubyJdbcConnection extends RubyObject {
             public IRubyObject call(final Connection connection) throws SQLException {
                 final Ruby runtime = context.getRuntime();
 
-                Statement statement = null; ResultSet resultSet = null;
+                Statement statement = null;
+                boolean hasResult = false;
                 try {
-                    if ( binds == null ) { // plain statement
+                    if ( binds == null || binds.isEmpty()) { // plain statement
                         statement = createStatement(context, connection);
                         statement.setMaxRows(maxRows); // zero means there is no limit
-                        resultSet = statement.executeQuery(query);
+                        hasResult = statement.execute(query);
                     }
                     else {
                         final PreparedStatement prepStatement;
                         statement = prepStatement = connection.prepareStatement(query);
                         statement.setMaxRows(maxRows); // zero means there is no limit
                         setStatementParameters(context, connection, prepStatement, binds);
-                        resultSet = prepStatement.executeQuery();
+                        hasResult = prepStatement.execute();
                     }
 
                     if (block.isGiven()) {
-                        // yield(id1, name1) ... row 1 result data
-                        // yield(id2, name2) ... row 2 result data
-                        return yieldResultRows(context, runtime, connection, resultSet, block);
+                        if (hasResult) {
+                            // yield(id1, name1) ... row 1 result data
+                            // yield(id2, name2) ... row 2 result data
+                            return yieldResultRows(context, runtime, connection, statement.getResultSet(), block);
+                        } else {
+                            return runtime.getNil();
+                        }
+                    } else if (hasResult) {
+                        return mapToRawResult(context, runtime, connection, statement.getResultSet(), false);
                     } else {
-                        return mapToRawResult(context, runtime, connection, resultSet, false);
+                        return runtime.newEmptyArray();
                     }
                 }
                 catch (final SQLException e) {
                     debugErrorSQL(context, query);
                     throw e;
                 }
-                finally { close(resultSet); close(statement); }
+                finally {
+                    close(statement);
+                }
             }
         });
     }
