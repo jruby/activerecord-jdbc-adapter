@@ -13,13 +13,30 @@ module Jdbc
       ENV_JAVA.clear; ENV_JAVA.update SYSTEM_ENV
     end
 
-    test 'returns jdbc version 4.1 on java 7/8' do
-      ENV_JAVA[ 'java.specification.version' ] = '1.7'
-      assert_equal 4.1, Jdbc::Postgres.send(:jdbc_version)
+    test('some') { assert Jdbc::Postgres }
 
+    test 'returns jdbc version 3 on java 5 (only for compatibility)' do
+      ENV_JAVA[ 'java.specification.version' ] = '1.5'
+      assert_equal 5, Jdbc::Postgres.send(:jre_version)
+    end unless SKIP_TESTS
+
+    test 'returns jdbc version 4 on java 6' do
+      ENV_JAVA[ 'java.specification.version' ] = '1.6'
+      assert_equal 6, Jdbc::Postgres.send(:jre_version)
+    end unless SKIP_TESTS
+
+    test 'returns jdbc version 4.1 on java 7' do
+      ENV_JAVA[ 'java.specification.version' ] = '1.7'
+      assert_equal 7, Jdbc::Postgres.send(:jre_version)
+    end unless SKIP_TESTS
+
+    test 'returns jdbc version default (4.2) on java 8/9' do
       ENV_JAVA[ 'java.specification.version' ] = '1.8'
-      assert_equal 4.1, Jdbc::Postgres.send(:jdbc_version)
-    end
+      assert_nil Jdbc::Postgres.send(:jre_version)
+
+      ENV_JAVA[ 'java.specification.version' ] = '9'
+      assert_nil Jdbc::Postgres.send(:jre_version)
+    end unless SKIP_TESTS
 
     context 'load-driver' do
 
