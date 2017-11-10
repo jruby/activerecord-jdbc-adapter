@@ -42,6 +42,9 @@ ArJdbc::ConnectionMethods.module_eval do
     properties['tcpKeepAlive'] ||= config[:keepalives] if config.key?(:keepalives)
     properties['kerberosServerName'] ||= config[:krbsrvname] if config[:krbsrvname]
 
+    # If prepared statements are off, lets make sure they are really *off*
+    properties['prepareThreshold'] = 0 unless config[:prepared_statements]
+
     jdbc_connection(config)
   rescue ActiveRecord::JDBCError => e
     if e.message.include?('does not exist')

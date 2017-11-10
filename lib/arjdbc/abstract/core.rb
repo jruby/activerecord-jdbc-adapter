@@ -51,7 +51,7 @@ module ArJdbc
         return e if e.is_a?(Java::JavaLang::Throwable)
 
         case e
-          when ActiveModel::RangeError, SystemExit, SignalException, NoMemoryError then e
+          when ActiveModel::RangeError, TypeError, SystemExit, SignalException, NoMemoryError then e
           # NOTE: wraps AR::JDBCError into AR::StatementInvalid, desired ?!
           else super
         end

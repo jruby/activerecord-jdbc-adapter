@@ -31,7 +31,7 @@ module ArJdbc
     end
 
     def deprecate(message, once = nil) # adds a "DEPRECATION WARNING: " prefix
-      ::ActiveSupport::Deprecation.warn(message, caller) || true if warn?(message, once)
+      ::ActiveSupport::Deprecation.warn(message, caller_locations) || true if warn?(message, once)
     end
 
     private
