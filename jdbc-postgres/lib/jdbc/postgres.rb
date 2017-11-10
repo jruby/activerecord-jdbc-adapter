@@ -1,4 +1,3 @@
-warn "Jdbc-Postgres is only for use with JRuby" if (JRUBY_VERSION.nil? rescue true)
 require 'jdbc/postgres/version'
 
 module Jdbc
@@ -27,13 +26,15 @@ module Jdbc
 
     def self.jre_version
       version = ENV_JAVA[ 'java.specification.version' ]
-      version = version.split('.').last.to_i # '1.7' => 7
+      version = version.split('.').last.to_i # '1.7' => 7, '9' => 9
       if version < 6
         5 # not supported
       elsif version == 6
         6
+      elsif version == 7
+        7
       else
-        7 # NOTE: for 9.4 we only include 6/7 jars
+        nil # non-tagged X.Y.Z.jar
       end
     end
 
