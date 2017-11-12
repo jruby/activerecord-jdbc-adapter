@@ -2972,7 +2972,7 @@ public class RubyJdbcConnection extends RubyObject {
             }
             else { // DateTime ( ActiveSupport::TimeWithZone.to_time )
                 final RubyFloat timeValue = value.convertToFloat(); // to_f
-                final Timestamp timestamp = convertToTimestamp(timeValue);
+                final Timestamp timestamp = DateTimeUtils.convertToTimestamp(timeValue);
 
                 statement.setTimestamp( index, timestamp, getTimeZoneCalendar("GMT") );
             }
@@ -3022,7 +3022,7 @@ public class RubyJdbcConnection extends RubyObject {
         final IRubyObject column, final int type) throws SQLException {
         if ( value.isNil() ) statement.setNull(index, Types.TIME);
         else {
-            value = getTimeInDefaultTimeZone(context, value);
+            value = DateTimeUtils.getTimeInDefaultTimeZone(context, value);
             if ( value instanceof RubyTime ) {
                 final RubyTime timeValue = (RubyTime) value;
                 final DateTime dateTime = timeValue.getDateTime();
