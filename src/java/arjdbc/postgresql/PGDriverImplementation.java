@@ -176,7 +176,7 @@ public class PGDriverImplementation implements DriverImplementation {
             sqlType = null;
         }
 
-        if ( value.isNil() ) {
+        if ( value == context.nil ) {
             if ( PostgreSQLRubyJdbcConnection.rawArrayType == Boolean.TRUE ) { // array's type is :string
                 if ( sqlType != null && arrayLike(sqlType) ) {
                     statement.setNull(index, Types.ARRAY); return true;
@@ -248,51 +248,54 @@ public class PGDriverImplementation implements DriverImplementation {
 
         final String columnType = column.callMethod(context, "type").asJavaString();
 
-        if ( columnType == (Object) "uuid" ) {
-            setUUIDParameter(statement, index, value);
-            return true;
-        }
-
-        if ( columnType == (Object) "json" ) {
-            setJsonParameter(context, statement, index, value, column, false);
-            return true;
-        }
-        if ( columnType == (Object) "jsonb" ) {
-            setJsonParameter(context, statement, index, value, column, true);
-            return true;
-        }
-
-        if ( columnType == (Object) "tsvector" ) {
-            setTsVectorParameter(statement, index, value);
-            return true;
-        }
-
-        if ( columnType == (Object) "hstore" ) {
-            setHstoreParameter(context, statement, index, value, column);
-            return true;
-        }
-
-        if ( columnType == (Object) "cidr" || columnType == (Object) "inet"
-                || columnType == (Object) "macaddr" ) {
-            setAddressParameter(context, statement, index, value, column, columnType);
-            return true;
-        }
-
-        if ( columnType != null && columnType.endsWith("range") ) {
-            setRangeParameter(context, statement, index, value, column, columnType);
-            return true;
+        switch ( columnType ) {
+            case "cidr":
+            case "inet":
+            case "macaddr":
+                setAddressParameter(context, statement, index, value, column, columnType);
+                return true;
+            case "citext":
+                // If we don't specify it this way, it does a case sensitive comparison
+                statement.setObject(index, value.toString(), Types.OTHER);
+                return true;
+            case "interval":
+                statement.setObject(index, new PGInterval(value.toString()));
+                return true; // break;
+            case "json":
+                setJsonParameter(context, statement, index, value, column, false);
+                return true;
+            case "jsonb":
+                setJsonParameter(context, statement, index, value, column, true);
+                return true;
+            case "ltree":
+                statement.setObject(index, value.toString(), Types.OTHER);
+                return true; // break;
+            case "tsvector":
+                setTsVectorParameter(context, statement, index, value);
+                return true;
+            case "uuid":
+                setUUIDParameter(context, statement, index, value);
+                return true;
+            case "hstore":
+                setHstoreParameter(context, statement, index, value, column);
+                return true;
+            default:
+                if (columnType.endsWith("range")) { // columnType != null ?
+                    setRangeParameter(context, statement, index, value, column, columnType);
+                    return true;
+                }
         }
 
         return false;
     }
 
-    static void setUUIDParameter(
+    static void setUUIDParameter(final ThreadContext context,
         final PreparedStatement statement, final int index,
         Object value) throws SQLException {
 
         if ( value instanceof IRubyObject ) {
             final IRubyObject rubyValue = (IRubyObject) value;
-            if ( rubyValue.isNil() ) {
+            if ( rubyValue == context.nil ) {
                 statement.setNull(index, Types.OTHER); return;
             }
         }
@@ -311,7 +314,7 @@ public class PGDriverImplementation implements DriverImplementation {
 
         if ( value instanceof IRubyObject ) {
             final IRubyObject rubyValue = (IRubyObject) value;
-            if ( rubyValue.isNil() ) {
+            if ( rubyValue == context.nil ) {
                 statement.setNull(index, Types.OTHER); return;
             }
             if ( ! isAr42(column) ) { // Value has already been cast for AR42
@@ -334,7 +337,7 @@ public class PGDriverImplementation implements DriverImplementation {
 
         if ( value instanceof IRubyObject ) {
             final IRubyObject rubyValue = (IRubyObject) value;
-            if ( rubyValue.isNil() ) {
+            if ( rubyValue == context.nil ) {
                 statement.setNull(index, Types.OTHER); return;
             }
             if ( ! isAr42(column) ) {
@@ -358,7 +361,7 @@ public class PGDriverImplementation implements DriverImplementation {
 
         if ( value instanceof IRubyObject ) {
             final IRubyObject rubyValue = (IRubyObject) value;
-            if ( rubyValue.isNil() ) {
+            if ( rubyValue == context.nil ) {
                 statement.setNull(index, Types.OTHER); return;
             }
             if ( ! isAr42(column) ) {
@@ -375,13 +378,13 @@ public class PGDriverImplementation implements DriverImplementation {
         statement.setObject(index, hstore);
     }
 
-    static void setTsVectorParameter(
+    static void setTsVectorParameter(final ThreadContext context,
         final PreparedStatement statement, final int index,
         Object value) throws SQLException {
 
         if ( value instanceof IRubyObject ) {
             final IRubyObject rubyValue = (IRubyObject) value;
-            if ( rubyValue.isNil() ) {
+            if ( rubyValue == context.nil ) {
                 statement.setNull(index, Types.OTHER); return;
             }
         }
@@ -404,7 +407,7 @@ public class PGDriverImplementation implements DriverImplementation {
 
         if ( value instanceof IRubyObject ) {
             final IRubyObject rubyValue = (IRubyObject) value;
-            if ( rubyValue.isNil() ) {
+            if ( rubyValue == context.nil ) {
                 statement.setNull(index, Types.OTHER); return;
             }
             if ( isAr42(column) ) {
@@ -422,23 +425,24 @@ public class PGDriverImplementation implements DriverImplementation {
         }
 
         final Object pgRange;
-        if ( columnType == (Object) "daterange" ) {
-            pgRange = new DateRangeType(rangeValue);
-        }
-        else if ( columnType == (Object) "tsrange" ) {
-            pgRange = new TsRangeType(rangeValue);
-        }
-        else if ( columnType == (Object) "tstzrange" ) {
-            pgRange = new TstzRangeType(rangeValue);
-        }
-        else if ( columnType == (Object) "int4range" ) {
-            pgRange = new Int4RangeType(rangeValue);
-        }
-        else if ( columnType == (Object) "int8range" ) {
-            pgRange = new Int8RangeType(rangeValue);
-        }
-        else { // if ( columnType == (Object) "numrange" )
-            pgRange = new NumRangeType(rangeValue);
+        switch ( columnType ) {
+            case "daterange":
+                pgRange = new DateRangeType(rangeValue);
+                break;
+            case "tsrange":
+                pgRange = new TsRangeType(rangeValue);
+                break;
+            case "tstzrange":
+                pgRange = new TstzRangeType(rangeValue);
+                break;
+            case "int4range":
+                pgRange = new Int4RangeType(rangeValue);
+                break;
+            case "int8range":
+                pgRange = new Int8RangeType(rangeValue);
+                break;
+            default: // "numrange"
+                pgRange = new NumRangeType(rangeValue);
         }
         statement.setObject(index, pgRange);
     }
