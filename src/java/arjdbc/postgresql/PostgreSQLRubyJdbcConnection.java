@@ -241,7 +241,7 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
     static int oid(final ThreadContext context, final IRubyObject column) {
         // our column convention :
         IRubyObject oid = column.getInstanceVariables().getInstanceVariable("@oid");
-        if ( oid == null || oid.isNil() ) { // only for user instantiated Column
+        if ( oid == null || oid == context.nil ) { // only for user instantiated Column
             throw new IllegalStateException("missing @oid for column: " + column.inspect());
         }
         return RubyFixnum.fix2int(oid);

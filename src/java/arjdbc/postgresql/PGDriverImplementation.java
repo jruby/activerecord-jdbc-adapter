@@ -23,15 +23,11 @@
  */
 package arjdbc.postgresql;
 
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Timestamp;
-import java.sql.Types;
+import java.sql.*;
 import java.util.Map;
 import java.util.UUID;
 
+import org.jruby.RubyArray;
 import org.jruby.RubyFloat;
 import org.jruby.RubyHash;
 import org.jruby.RubyString;
@@ -57,6 +53,8 @@ import static arjdbc.jdbc.RubyJdbcConnection.isAr42;
  * @author kares
  */
 public class PGDriverImplementation implements DriverImplementation {
+
+    private static final int HSTORE_TYPE = 100000 + 1111;
 
     private static final boolean initConnection;
     static {
@@ -293,13 +291,7 @@ public class PGDriverImplementation implements DriverImplementation {
         final PreparedStatement statement, final int index,
         Object value) throws SQLException {
 
-        if ( value instanceof IRubyObject ) {
-            final IRubyObject rubyValue = (IRubyObject) value;
-            if ( rubyValue == context.nil ) {
-                statement.setNull(index, Types.OTHER); return;
-            }
-        }
-        else if ( value == null ) {
+        if ( value == null || value == context.nil ) {
             statement.setNull(index, Types.OTHER); return;
         }
 
@@ -312,17 +304,15 @@ public class PGDriverImplementation implements DriverImplementation {
         Object value, final IRubyObject column,
         final String columnType) throws SQLException {
 
+        if ( value == null || value == context.nil ) {
+            statement.setNull(index, Types.OTHER); return;
+        }
+
         if ( value instanceof IRubyObject ) {
             final IRubyObject rubyValue = (IRubyObject) value;
-            if ( rubyValue == context.nil ) {
-                statement.setNull(index, Types.OTHER); return;
-            }
             if ( ! isAr42(column) ) { // Value has already been cast for AR42
                 value = column.getMetaClass().callMethod(context, "cidr_to_string", rubyValue);
             }
-        }
-        else if ( value == null ) {
-            statement.setNull(index, Types.OTHER); return;
         }
 
         final PGobject pgAddress = new PGobject();
@@ -335,18 +325,16 @@ public class PGDriverImplementation implements DriverImplementation {
         final PreparedStatement statement, final int index,
         Object value, final IRubyObject column, final boolean jsonb) throws SQLException {
 
+        if ( value == null || value == context.nil ) {
+            statement.setNull(index, Types.OTHER); return;
+        }
+
         if ( value instanceof IRubyObject ) {
             final IRubyObject rubyValue = (IRubyObject) value;
-            if ( rubyValue == context.nil ) {
-                statement.setNull(index, Types.OTHER); return;
-            }
             if ( ! isAr42(column) ) {
                 final String method = jsonb ? "jsonb_to_string" : "json_to_string";
                 value = column.getMetaClass().callMethod(context, method, rubyValue);
             }
-        }
-        else if ( value == null ) {
-            statement.setNull(index, Types.OTHER); return;
         }
 
         final PGobject pgJson = new PGobject();
@@ -359,18 +347,18 @@ public class PGDriverImplementation implements DriverImplementation {
         final PreparedStatement statement, final int index,
         Object value, final IRubyObject column) throws SQLException {
 
+        if ( value == null || value == context.nil ) {
+            statement.setNull(index, Types.OTHER); return;
+        }
+
         if ( value instanceof IRubyObject ) {
             final IRubyObject rubyValue = (IRubyObject) value;
-            if ( rubyValue == context.nil ) {
-                statement.setNull(index, Types.OTHER); return;
-            }
             if ( ! isAr42(column) ) {
                 value = column.getMetaClass().callMethod(context, "hstore_to_string", rubyValue);
             }
         }
-        else if ( value == null ) {
-            statement.setNull(index, Types.OTHER); return;
-        }
+
+        // statement.setObject(index, value, HSTORE_TYPE); // since RubyHash implements java.util.Map
 
         final PGobject hstore = new PGobject();
         hstore.setType("hstore");
@@ -382,13 +370,7 @@ public class PGDriverImplementation implements DriverImplementation {
         final PreparedStatement statement, final int index,
         Object value) throws SQLException {
 
-        if ( value instanceof IRubyObject ) {
-            final IRubyObject rubyValue = (IRubyObject) value;
-            if ( rubyValue == context.nil ) {
-                statement.setNull(index, Types.OTHER); return;
-            }
-        }
-        else if ( value == null ) {
+        if ( value == null || value == context.nil ) {
             statement.setNull(index, Types.OTHER); return;
         }
 
@@ -403,13 +385,14 @@ public class PGDriverImplementation implements DriverImplementation {
         final Object value, final IRubyObject column,
         final String columnType) throws SQLException {
 
+        if ( value == null || value == context.nil ) {
+            statement.setNull(index, Types.OTHER); return;
+        }
+
         final String rangeValue;
 
         if ( value instanceof IRubyObject ) {
             final IRubyObject rubyValue = (IRubyObject) value;
-            if ( rubyValue == context.nil ) {
-                statement.setNull(index, Types.OTHER); return;
-            }
             if ( isAr42(column) ) {
                 rangeValue = rubyValue.toString(); // expect a type_casted RubyString
             }
@@ -418,9 +401,6 @@ public class PGDriverImplementation implements DriverImplementation {
             }
         }
         else {
-            if ( value == null ) {
-                statement.setNull(index, Types.OTHER); return;
-            }
             rangeValue = value.toString();
         }
 
