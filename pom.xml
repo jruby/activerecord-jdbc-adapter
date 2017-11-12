@@ -48,8 +48,8 @@
     <jruby.version>1.7.25</jruby.version>
     <jruby.plugins.version>1.0.6</jruby.plugins.version>
     <invoker.skip>${maven.test.skip}</invoker.skip>
-    <compiler.source>1.6</compiler.source>
-    <compiler.target>1.6</compiler.target>
+    <compiler.source>1.7</compiler.source>
+    <compiler.target>1.7</compiler.target>
     <gen.sources>${basedir}/target/generated-sources</gen.sources>
   </properties>
 
@@ -82,14 +82,14 @@
     <dependency>
       <groupId>org.postgresql</groupId>
       <artifactId>postgresql</artifactId>
-      <version>9.4.1210.jre6</version>
+      <version>42.1.4.jre7</version>
       <scope>provided</scope>
     </dependency>
 
     <dependency>
       <groupId>mysql</groupId>
       <artifactId>mysql-connector-java</artifactId>
-      <version>5.1.32</version>
+      <version>5.1.44</version>
       <scope>provided</scope>
     </dependency>
 

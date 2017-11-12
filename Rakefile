@@ -166,7 +166,7 @@ if defined? JRUBY_VERSION
   #directory classes = 'pkg/classes'; CLEAN << classes
 
   file jar_file => FileList[ 'src/java/**/*.java' ] do
-    source = target = '1.6'; debug = true
+    source = target = '1.7'; debug = true
 
     get_driver_jars_local = lambda do |*args|
       driver_deps = args.empty? ? [ :Postgres, :MySQL ] : args
