@@ -321,7 +321,7 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
         throws SQLException {
 
         if ( rawDateTime != null && rawDateTime ) {
-            return bytesToString(context, resultSet, column);
+            return rawDateTimeBytes(context, resultSet, column);
         }
 
         final String value = resultSet.getString(column);
@@ -330,14 +330,29 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
         return DateTimeUtils.parseDate(context, value);
     }
 
-    private IRubyObject bytesToString(final ThreadContext context, final ResultSet resultSet, final int column)
+    private static IRubyObject rawDateTimeBytes(final ThreadContext context, final ResultSet resultSet, final int column)
         throws SQLException {
-        final byte[] value = resultSet.getBytes(column);
+
+        // TODO: for whatever reason extracting bytes on out own gets PS test runs failing
+
+        //final byte[] value = resultSet.getBytes(column);
+        //if ( value == null ) {
+        //    if ( resultSet.wasNull() ) return context.nil;
+        //    return RubyString.newEmptyString(context.runtime); // ""
+        //}
+        //
+        //return RubyString.newString(context.runtime, new ByteList(value, false));
+
+        final String value = resultSet.getString(column); // ^^^ would avoid PG's encoder.encode(byte[])
         if ( value == null ) {
             if ( resultSet.wasNull() ) return context.nil;
             return RubyString.newEmptyString(context.runtime); // ""
         }
-        return RubyString.newString(context.runtime, new ByteList(value, false));
+
+        // ByteList.plain() SLOW-PATH since we only have short strings :
+        final byte[] bytes = new byte[value.length()];
+        for (int i = 0; i < bytes.length; i++) bytes[i] = (byte) value.charAt(i);
+        return RubyString.newString(context.runtime, new ByteList(bytes, false));
     }
 
     @Override
@@ -353,7 +368,7 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
         throws SQLException {
 
         if ( rawDateTime != null && rawDateTime ) {
-            return bytesToString(context, resultSet, column);
+            return rawDateTimeBytes(context, resultSet, column);
         }
 
         // NOTE: using Timestamp we would loose information such as BC :
