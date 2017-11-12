@@ -313,7 +313,7 @@ public class RubyJdbcConnection extends RubyObject {
         try { // handleException == false so we can handle setTXIsolation
             return withConnection(context, false, new Callable<IRubyObject>() {
                 public IRubyObject call(final Connection connection) throws SQLException {
-                    return beginTransaction(context, connection, isolation.isNil() ? null : isolation);
+                    return beginTransaction(context, connection, isolation == context.nil ? null : isolation);
                 }
             });
         } catch (SQLException e) {
@@ -458,6 +458,7 @@ public class RubyJdbcConnection extends RubyObject {
     public IRubyObject release_savepoint(final ThreadContext context, final IRubyObject name) {
         if (name == context.nil) throw context.runtime.newArgumentError("nil savepoint name given");
 
+        final Connection connection = getConnection(true);
         try {
             Object savepoint = getSavepoints(context).remove(name);
 
@@ -468,7 +469,7 @@ public class RubyJdbcConnection extends RubyObject {
                 savepoint = ((IRubyObject) savepoint).toJava(Savepoint.class);
             }
 
-            getConnection(true).releaseSavepoint((Savepoint) savepoint);
+            connection.releaseSavepoint((Savepoint) savepoint);
             return context.nil;
         }
         catch (SQLException e) {
@@ -630,7 +631,7 @@ public class RubyJdbcConnection extends RubyObject {
 
     @JRubyMethod(name = "jdbc_connection", alias = "connection", required = 1)
     public final IRubyObject connection(final ThreadContext context, final IRubyObject unwrap) {
-        if ( unwrap.isNil() || unwrap == context.runtime.getFalse() ) {
+        if ( unwrap == context.nil || unwrap == context.runtime.getFalse() ) {
             return connection(context);
         }
         Connection connection = connectionImpl(context);
@@ -1909,13 +1910,13 @@ public class RubyJdbcConnection extends RubyObject {
 
     private String buildURL(final ThreadContext context, final IRubyObject url) {
         IRubyObject options = getConfigValue(context, "options");
-        if ( options != null && options == context.nil ) options = null;
+        if ( options == context.nil ) options = null;
         return DriverWrapper.buildURL(url, (Map) options);
     }
 
     private Properties resolveDriverProperties(final ThreadContext context) {
         IRubyObject properties = getConfigValue(context, "properties");
-        if ( properties == null || properties == context.nil ) return null;
+        if ( properties == context.nil ) return null;
         Map<?, ?> propertiesJava = (Map) properties.toJava(Map.class);
         if ( propertiesJava instanceof Properties ) {
             return (Properties) propertiesJava;
@@ -2529,11 +2530,11 @@ public class RubyJdbcConnection extends RubyObject {
             final int index, IRubyObject attribute) throws SQLException {
 
         //debugMessage(context, attribute);
-        int type = jdbcTypeForAttribute(context, attribute);
+        final int type = jdbcTypeForAttribute(context, attribute);
         IRubyObject value = valueForDatabase(context, attribute);
 
         // All the set methods were calling this first so save a method call in the nil case
-        if ( value.isNil() ) {
+        if ( value == context.nil ) {
             statement.setNull(index, type);
             return;
         }
@@ -2597,7 +2598,7 @@ public class RubyJdbcConnection extends RubyObject {
                 setStringParameter(context, connection, statement, index, value, attribute, type);
         }
     }
-    
+
     protected static final Map<String, Integer> JDBC_TYPE_FOR = new HashMap<String, Integer>(32, 1);
     static {
         JDBC_TYPE_FOR.put("string", Types.VARCHAR);
@@ -2919,17 +2920,14 @@ public class RubyJdbcConnection extends RubyObject {
         final Connection connection, final PreparedStatement statement,
         final int index, final IRubyObject value,
         final IRubyObject attribute, final int type) throws SQLException {
-        if ( value.isNil() ) statement.setNull(index, Types.CLOB);
-        else {
-            if ( value instanceof RubyIO ) { // IO/File
-                statement.setClob(index, new InputStreamReader(((RubyIO) value).getInStream()));
-            }
-            else { // should be a RubyString
-                final String clob = value.asString().decodeString();
-                statement.setCharacterStream(index, new StringReader(clob), clob.length());
-                // JDBC 4.0 :
-                //statement.setClob(index, new StringReader(clob));
-            }
+        if ( value instanceof RubyIO ) { // IO/File
+            statement.setClob(index, new InputStreamReader(((RubyIO) value).getInStream()));
+        }
+        else { // should be a RubyString
+            final String clob = value.asString().decodeString();
+            statement.setCharacterStream(index, new StringReader(clob), clob.length());
+            // JDBC 4.0 :
+            //statement.setClob(index, new StringReader(clob));
         }
     }
 
