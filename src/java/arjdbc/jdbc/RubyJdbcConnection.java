@@ -333,7 +333,7 @@ public class RubyJdbcConnection extends RubyObject {
         try { // handleException == false so we can handle setTXIsolation
             return withConnection(context, false, new Callable<IRubyObject>() {
                 public IRubyObject call(final Connection connection) throws SQLException {
-                    return beginTransaction(context, connection, isolation.isNil() ? null : isolation);
+                    return beginTransaction(context, connection, isolation == context.nil ? null : isolation);
                 }
             });
         }
@@ -445,7 +445,7 @@ public class RubyJdbcConnection extends RubyObject {
 
     @JRubyMethod(name = "rollback_savepoint", required = 1)
     public IRubyObject rollback_savepoint(final ThreadContext context, final IRubyObject name) {
-        if ( name == null || name.isNil() ) {
+        if ( name == null || name == context.nil ) {
             throw context.runtime.newArgumentError("nil savepoint name given");
         }
         final Connection connection = getConnection(true);
@@ -464,7 +464,7 @@ public class RubyJdbcConnection extends RubyObject {
 
     @JRubyMethod(name = "release_savepoint", required = 1)
     public IRubyObject release_savepoint(final ThreadContext context, final IRubyObject name) {
-        if ( name == null || name.isNil() ) {
+        if ( name == null || name == context.nil ) {
             throw context.runtime.newArgumentError("nil savepoint name given");
         }
         final Connection connection = getConnection(true);
@@ -557,7 +557,7 @@ public class RubyJdbcConnection extends RubyObject {
         }
 
         IRubyObject value = getConfigValue(context, "configure_connection");
-        if ( value == null || value.isNil() ) this.configureConnection = true;
+        if ( value == context.nil ) this.configureConnection = true;
         else {
             this.configureConnection = value != context.runtime.getFalse();
         }
@@ -617,7 +617,7 @@ public class RubyJdbcConnection extends RubyObject {
 
     private IRubyObject initConnection(final ThreadContext context) throws SQLException {
         final IRubyObject adapter = getAdapter(); // self.adapter
-        if ( adapter == null || adapter.isNil() ) {
+        if ( adapter == null || adapter == context.nil ) {
             warn(context, "adapter not set, please pass adapter on JdbcConnection#initialize(config, adapter)");
         }
 
@@ -658,7 +658,7 @@ public class RubyJdbcConnection extends RubyObject {
 
     @JRubyMethod(name = "jdbc_connection", alias = "connection", required = 1)
     public IRubyObject connection(final ThreadContext context, final IRubyObject unwrap) {
-        if ( unwrap.isNil() || unwrap == context.runtime.getFalse() ) {
+        if ( unwrap == context.nil || unwrap == context.runtime.getFalse() ) {
             return connection(context);
         }
         final Connection connection = getConnection();
@@ -844,7 +844,7 @@ public class RubyJdbcConnection extends RubyObject {
         IRubyObject escapeProcessing = getConfigValue(context, "statement_escape_processing");
         // NOTE: disable (driver) escape processing by default, it's not really
         // needed for AR statements ... if users need it they might configure :
-        if ( escapeProcessing == null || escapeProcessing.isNil() ) {
+        if ( escapeProcessing == context.nil ) {
             statement.setEscapeProcessing(false);
         }
         else {
@@ -1933,13 +1933,13 @@ public class RubyJdbcConnection extends RubyObject {
 
     private String buildURL(final ThreadContext context, final IRubyObject url) {
         IRubyObject options = getConfigValue(context, "options");
-        if ( options != null && options.isNil() ) options = null;
+        if ( options == context.nil ) options = null;
         return DriverWrapper.buildURL(url, (Map) options);
     }
 
     private Properties resolveDriverProperties(final ThreadContext context) {
         IRubyObject properties = getConfigValue(context, "properties");
-        if ( properties == null || properties.isNil() ) return null;
+        if ( properties == context.nil ) return null;
         Map<?, ?> propertiesJava = (Map) properties.toJava(Map.class);
         if ( propertiesJava instanceof Properties ) {
             return (Properties) propertiesJava;
@@ -1961,7 +1961,7 @@ public class RubyJdbcConnection extends RubyObject {
     private ConnectionFactory setDataSourceFactory(final ThreadContext context) {
         final javax.sql.DataSource dataSource; final String lookupName;
         IRubyObject value = getConfigValue(context, "data_source");
-        if ( value == null || value.isNil() ) {
+        if ( value == context.nil ) {
             value = getConfigValue(context, "jndi");
             lookupName = value.toString();
             dataSource = lookupDataSource(context, lookupName);
@@ -2075,7 +2075,7 @@ public class RubyJdbcConnection extends RubyObject {
         }
 
         final IRubyObject setValue = config.callMethod(context, "[]", keySym);
-        if ( ! setValue.isNil() ) return setValue;
+        if ( setValue != context.nil ) return setValue;
         return config.callMethod(context, "[]=", new IRubyObject[] { keySym, value });
     }
 
@@ -2663,12 +2663,12 @@ public class RubyJdbcConnection extends RubyObject {
             }
         }
 
-        if ( column == null || column.isNil() ) {
+        if ( column == null || column == context.nil ) {
             throw runtime.newArgumentError("nil column passed");
         }
 
         final IRubyObject type = column.callMethod(context, "type");
-        if ( type.isNil() || ! (type instanceof RubySymbol) ) {
+        if ( type == context.nil || ! (type instanceof RubySymbol) ) {
             throw new IllegalStateException("unexpected type = " + type.inspect() + " for " + column.inspect());
         }
         return (RubySymbol) type;
@@ -2715,7 +2715,7 @@ public class RubyJdbcConnection extends RubyObject {
         final IRubyObject column, final Object value) throws SQLException {
 
         final String internedType;
-        if ( column != null && ! column.isNil() ) {
+        if ( column != null && column != context.nil ) {
             // NOTE: there's no ActiveRecord "convention" really for this ...
             // this is based on Postgre's initial support for arrays :
             // `column.type` contains the base type while there's `column.array?`
@@ -2758,7 +2758,7 @@ public class RubyJdbcConnection extends RubyObject {
         final Connection connection, final PreparedStatement statement,
         final int index, final IRubyObject value,
         final IRubyObject column, final int type) throws SQLException {
-        if ( value.isNil() ) statement.setNull(index, Types.INTEGER);
+        if ( value == context.nil ) statement.setNull(index, Types.INTEGER);
         else {
             if ( value instanceof RubyFixnum ) {
                 statement.setLong(index, ((RubyFixnum) value).getLongValue());
@@ -2801,7 +2801,7 @@ public class RubyJdbcConnection extends RubyObject {
         final Connection connection, final PreparedStatement statement,
         final int index, final IRubyObject value,
         final IRubyObject column, final int type) throws SQLException {
-        if ( value.isNil() ) statement.setNull(index, Types.INTEGER);
+        if ( value == context.nil ) statement.setNull(index, Types.INTEGER);
         else {
             if ( value instanceof RubyBignum ) {
                 setLongOrDecimalParameter(statement, index, ((RubyBignum) value).getValue());
@@ -2848,7 +2848,7 @@ public class RubyJdbcConnection extends RubyObject {
         final Connection connection, final PreparedStatement statement,
         final int index, final IRubyObject value,
         final IRubyObject column, final int type) throws SQLException {
-        if ( value.isNil() ) statement.setNull(index, Types.DOUBLE);
+        if ( value == context.nil ) statement.setNull(index, Types.DOUBLE);
         else {
             if ( value instanceof RubyNumeric ) {
                 statement.setDouble(index, ((RubyNumeric) value).getDoubleValue());
@@ -2886,7 +2886,7 @@ public class RubyJdbcConnection extends RubyObject {
         final Connection connection, final PreparedStatement statement,
         final int index, final IRubyObject value,
         final IRubyObject column, final int type) throws SQLException {
-        if ( value.isNil() ) statement.setNull(index, Types.DECIMAL);
+        if ( value == context.nil ) statement.setNull(index, Types.DECIMAL);
         else {
             // NOTE: RubyBigDecimal moved into org.jruby.ext.bigdecimal (1.6 -> 1.7)
             if ( value.getMetaClass().getName().indexOf("BigDecimal") != -1 ) {
@@ -2949,7 +2949,7 @@ public class RubyJdbcConnection extends RubyObject {
         final Connection connection, final PreparedStatement statement,
         final int index, IRubyObject value,
         final IRubyObject column, final int type) throws SQLException {
-        if ( value.isNil() ) statement.setNull(index, Types.TIMESTAMP);
+        if ( value == context.nil ) statement.setNull(index, Types.TIMESTAMP);
         else {
             value = DateTimeUtils.getTimeInDefaultTimeZone(context, value);
             if ( value instanceof RubyTime ) {
@@ -3020,7 +3020,7 @@ public class RubyJdbcConnection extends RubyObject {
         final Connection connection, final PreparedStatement statement,
         final int index, IRubyObject value,
         final IRubyObject column, final int type) throws SQLException {
-        if ( value.isNil() ) statement.setNull(index, Types.TIME);
+        if ( value == context.nil ) statement.setNull(index, Types.TIME);
         else {
             value = DateTimeUtils.getTimeInDefaultTimeZone(context, value);
             if ( value instanceof RubyTime ) {
@@ -3070,7 +3070,7 @@ public class RubyJdbcConnection extends RubyObject {
         final Connection connection, final PreparedStatement statement,
         final int index, IRubyObject value,
         final IRubyObject column, final int type) throws SQLException {
-        if ( value.isNil() ) statement.setNull(index, Types.DATE);
+        if ( value == context.nil ) statement.setNull(index, Types.DATE);
         else {
             //if ( value instanceof RubyString ) {
             //    final Date date = Date.valueOf( value.toString() );
@@ -3106,7 +3106,7 @@ public class RubyJdbcConnection extends RubyObject {
         final Connection connection, final PreparedStatement statement,
         final int index, final IRubyObject value,
         final IRubyObject column, final int type) throws SQLException {
-        if ( value.isNil() ) statement.setNull(index, Types.BOOLEAN);
+        if ( value == context.nil ) statement.setNull(index, Types.BOOLEAN);
         else {
             statement.setBoolean(index, value.isTrue());
         }
@@ -3131,7 +3131,7 @@ public class RubyJdbcConnection extends RubyObject {
         final Connection connection, final PreparedStatement statement,
         final int index, final IRubyObject value,
         final IRubyObject column, final int type) throws SQLException {
-        if ( value.isNil() ) statement.setNull(index, Types.VARCHAR);
+        if ( value == context.nil ) statement.setNull(index, Types.VARCHAR);
         else {
             statement.setString(index, value.asString().toString());
         }
@@ -3158,7 +3158,7 @@ public class RubyJdbcConnection extends RubyObject {
         final Connection connection, final PreparedStatement statement,
         final int index, final IRubyObject value,
         final IRubyObject column, final int type) throws SQLException {
-        if ( value.isNil() ) {
+        if ( value == context.nil ) {
             statement.setNull(index, Types.ARRAY);
         } else {
             String typeName = resolveArrayBaseTypeName(context, value, column, type);
@@ -3197,7 +3197,7 @@ public class RubyJdbcConnection extends RubyObject {
         final Connection connection, final PreparedStatement statement,
         final int index, final IRubyObject value,
         final IRubyObject column, final int type) throws SQLException {
-        if ( value.isNil() ) statement.setNull(index, Types.SQLXML);
+        if ( value == context.nil ) statement.setNull(index, Types.SQLXML);
         else {
             SQLXML xml = connection.createSQLXML();
             xml.setString(value.asString().toString());
@@ -3225,7 +3225,7 @@ public class RubyJdbcConnection extends RubyObject {
         final Connection connection, final PreparedStatement statement,
         final int index, final IRubyObject value,
         final IRubyObject column, final int type) throws SQLException {
-        if ( value.isNil() ) statement.setNull(index, Types.BLOB);
+        if ( value == context.nil ) statement.setNull(index, Types.BLOB);
         else {
             if ( value instanceof RubyIO ) { // IO/File
                 //statement.setBlob(index, ((RubyIO) value).getInStream());
@@ -3264,7 +3264,7 @@ public class RubyJdbcConnection extends RubyObject {
         final Connection connection, final PreparedStatement statement,
         final int index, final IRubyObject value,
         final IRubyObject column, final int type) throws SQLException {
-        if ( value.isNil() ) statement.setNull(index, Types.CLOB);
+        if ( value == context.nil ) statement.setNull(index, Types.CLOB);
         else {
             if ( value instanceof RubyIO ) { // IO/File
                 statement.setClob(index, new InputStreamReader(((RubyIO) value).getInStream()));
@@ -3395,9 +3395,9 @@ public class RubyJdbcConnection extends RubyObject {
         IRubyObject aliveSQL = this.aliveSQL;
         if ( aliveSQL == null ) {
             final IRubyObject alive_sql = getConfigValue(context, "connection_alive_sql");
-            aliveSQL = this.aliveSQL = alive_sql.isNil() ? context.nil : alive_sql.convertToString();
+            aliveSQL = this.aliveSQL = alive_sql == context.nil ? context.nil : alive_sql.convertToString();
         }
-        return aliveSQL.isNil() ? null : (RubyString) aliveSQL;
+        return aliveSQL == context.nil ? null : (RubyString) aliveSQL;
     }
 
     private transient IRubyObject aliveTimeout = null;
@@ -3409,9 +3409,9 @@ public class RubyJdbcConnection extends RubyObject {
         IRubyObject aliveTimeout = this.aliveTimeout;
         if ( aliveTimeout == null ) {
             final IRubyObject timeout = getConfigValue(context, "connection_alive_timeout");
-            aliveTimeout = this.aliveTimeout = timeout.isNil() ? context.nil : timeout.convertToInteger("to_i");
+            aliveTimeout = this.aliveTimeout = timeout == context.nil ? context.nil : timeout.convertToInteger("to_i");
         }
-        return aliveTimeout.isNil() ? null : (RubyInteger) aliveTimeout;
+        return aliveTimeout == context.nil ? null : (RubyInteger) aliveTimeout;
     }
 
     private boolean tableExists(final ThreadContext context,
@@ -3729,7 +3729,7 @@ public class RubyJdbcConnection extends RubyObject {
         final Connection connection, final Statement statement) throws SQLException {
         final Ruby runtime = context.runtime;
         final IRubyObject key = mapGeneratedKeys(runtime, connection, statement);
-        return ( key == null || key.isNil() ) ? runtime.newFixnum( statement.getUpdateCount() ) : key;
+        return ( key == null || key == context.nil ) ? runtime.newFixnum( statement.getUpdateCount() ) : key;
     }
 
     @Deprecated
@@ -3854,7 +3854,7 @@ public class RubyJdbcConnection extends RubyObject {
     private int getRetryCount(final ThreadContext context) {
         if ( retryCount == -1 ) {
             IRubyObject retry_count = getConfigValue(context, "retry_count");
-            if ( retry_count == null || retry_count.isNil() ) return retryCount = 0;
+            if ( retry_count == context.nil ) return retryCount = 0;
             else retryCount = (int) retry_count.convertToInteger().getLongValue();
         }
         return retryCount;
