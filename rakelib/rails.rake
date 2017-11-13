@@ -9,11 +9,7 @@ namespace :rails do
       rails_dir = _rails_dir
       ENV['ARCONFIG'] = File.join(_ar_jdbc_dir, 'test', 'rails', 'config.yml')
 
-      Dir.chdir(File.join(rails_dir, 'activerecord')) do
-        sh FileUtils::RUBY, '-S', 'rake',
-           "RUBYLIB=#{_ruby_lib(rails_dir, driver)}",
-           _target(driver)
-      end
+      sh "cd #{File.join(rails_dir, 'activerecord')}; #{FileUtils::RUBY} -S rake RUBYLIB=#{_ruby_lib(rails_dir, driver)} #{_target(driver)}"
     end
 
     DEFAULT_ADAPTERS.each do |adapter|
