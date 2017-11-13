@@ -86,7 +86,14 @@ module ActiveRecord
 
       #--
       # QUOTING ==================================================
-      #++
+      #+
+
+      # FIXME: 5.1 crashes without this.  I think this is Arel hitting a fallback path in to_sql.rb.
+      # So maybe an untested code path in their source.  Still means we are doing something wrong to
+      # even hit it.
+      def quote(value, comment=nil)
+        super(value)
+      end
 
       def quote_string(string)
         string.gsub(/[\x00\n\r\\\'\"]/, '\\\\\0')
