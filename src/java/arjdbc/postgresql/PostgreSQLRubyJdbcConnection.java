@@ -64,7 +64,6 @@ import org.postgresql.core.BaseConnection;
 import org.postgresql.geometric.PGline;
 import org.postgresql.geometric.PGlseg;
 import org.postgresql.geometric.PGpoint;
-import org.postgresql.jdbc4.Jdbc4Array;
 import org.postgresql.util.PGInterval;
 import org.postgresql.util.PGobject;
 
