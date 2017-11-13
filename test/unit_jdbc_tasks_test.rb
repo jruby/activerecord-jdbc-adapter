@@ -25,29 +25,6 @@ class JdbcTasksTest < Test::Unit::TestCase
       assert_equal 'database1', db
     end
 
-    test 'resolves Oracle URLs' do
-      db = resolve_database_from_url 'jdbc:oracle:thin:@:1521:XE1'
-      assert_equal 'XE1', db
-
-      db = resolve_database_from_url 'jdbc:oracle:thin:@196.168.1.1:1521:XE2'
-      assert_equal 'XE2', db
-
-      db = resolve_database_from_url 'jdbc:oracle:thin:Herong/TopSecret@localhost:1521:XE'
-      assert_equal 'XE', db
-
-      db = resolve_database_from_url 'jdbc:oracle:thin:Herong/TopSecret@:1521:XE'
-      assert_equal 'XE', db
-
-      db = resolve_database_from_url 'jdbc:oracle:thin:Herong/TopSecret@//:1521/XE'
-      assert_equal 'XE', db
-
-      db = resolve_database_from_url 'jdbc:oracle:thin:Herong/TopSecret@//127.0.0.1/XXL'
-      assert_equal 'XXL', db
-
-      db = resolve_database_from_url 'jdbc:oracle:thin:Herong/TopSecret@///XL'
-      assert_equal 'XL', db
-    end
-
     test 'resolves Derby URLs' do
       db = resolve_database_from_url 'jdbc:derby:memory:MyDB;create=true'
       assert_equal 'MyDB', db

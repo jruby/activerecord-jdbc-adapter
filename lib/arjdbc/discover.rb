@@ -75,13 +75,6 @@ module ArJdbc
     end
   end
 
-  extension :Oracle do |name|
-    if name =~ /oracle/i
-      require 'arjdbc/oracle'
-      true
-    end
-  end
-  
   # NOTE: following ones are likely getting deprecated :
   
   extension :FireBird do |name|
