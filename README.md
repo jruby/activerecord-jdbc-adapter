@@ -2,24 +2,23 @@
 
 [![Gem Version](https://badge.fury.io/rb/activerecord-jdbc-adapter.svg)][7]
 
-ActiveRecord-JDBC-Adapter (AR-JDBC) is a database adapter for Rails'
-*ActiveRecord* component that can be used with [JRuby][0]. It allows use of
-virtually any JDBC-compliant database with your JRuby on Rails application.
-
-Version 50.x supports Rails version 5.0.x.  The minimum version of JRuby
-supported is JRuby 9.1.x.  The minimum version of Java to run JRuby 9.1.x is
-Java 7.
-
-## Databases
-
+ActiveRecord-JDBC-Adapter (AR-JDBC) is the main database adapter for Rails'
+*ActiveRecord* component that can be used with [JRuby][0].
 ActiveRecord-JDBC-Adapter provides full or nearly full support for:
-**MySQL**, **PostgreSQL**, **SQLite3**.
+**MySQL**, **PostgreSQL**, **SQLite3**.  In the near future there are plans to
+add support **MSSQL**. Unless we get more contributions we will not be going
+beyond these four adapters.  Note that the amount of work needed to get
+another adapter is not huge but the amount of testing required to make sure
+that adapter continues to work is not something we can do with the resources
+we currently have.
 
-In the somewhat near future there is plans to support **MSSQL** but unless
-we get more contributions we will not be going beyond these four adapters.
-Note that the amount of work needed to get another adapter is not huge but
-the amount of testing required to make sure that adapter continues to work
-is not something we can do with the resources we currently have.
+For Oracle database users you are encouraged to use
+https://github.com/rsim/oracle-enhanced.
+
+Version 50.x supports Rails version 5.0.x and it lives on branch 50-stable.
+Version 51.x supports Rails version 5.1.x and is currently on master until
+its first release. The minimum version of JRuby for 50+ is JRuby 9.1.x and
+JRuby 9.1+ requires Java 7 or newer.
 
 ## Using ActiveRecord JDBC
 
