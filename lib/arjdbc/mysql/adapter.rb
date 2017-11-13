@@ -79,7 +79,7 @@ module ActiveRecord
         exception.errno if exception.respond_to? :errno
       end
 
-      # FIXME: This is wrong...it should not always pass utf8 and native adapter never does...
+      # FIXME: #833 This is wrong...it should not always pass utf8 and native adapter never does...
       def create_table(table_name, **options) #:nodoc:
         super(table_name, options: 'ENGINE=InnoDB CHARSET=utf8 COLLATE=utf8_general_ci', **options)
       end
@@ -125,7 +125,7 @@ module ActiveRecord
     end
   end
 
-  # FIXME: Not sure how this is scoped or whether we should use it or just alias it to our
+  # FIXME: #834 Not sure how this is scoped or whether we should use it or just alias it to our
   # JDBCError.
   class ::Mysql2
     class Error < Exception
