@@ -3,6 +3,7 @@ require 'test_helper'
 module Jdbc
   class PostgresTest < Test::Unit::TestCase
 
+    SKIP_TESTS = false
     SYSTEM_ENV = ENV_JAVA.dup
 
     setup do
@@ -14,16 +15,6 @@ module Jdbc
     end
 
     test('some') { assert Jdbc::Postgres }
-
-    test 'returns jdbc version 3 on java 5 (only for compatibility)' do
-      ENV_JAVA[ 'java.specification.version' ] = '1.5'
-      assert_equal 5, Jdbc::Postgres.send(:jre_version)
-    end unless SKIP_TESTS
-
-    test 'returns jdbc version 4 on java 6' do
-      ENV_JAVA[ 'java.specification.version' ] = '1.6'
-      assert_equal 6, Jdbc::Postgres.send(:jre_version)
-    end unless SKIP_TESTS
 
     test 'returns jdbc version 4.1 on java 7' do
       ENV_JAVA[ 'java.specification.version' ] = '1.7'
@@ -47,7 +38,7 @@ module Jdbc
       test 'on java 7' do
         ENV_JAVA[ 'java.specification.version' ] = '1.7'
         Jdbc::Postgres.expects(:load).with do |driver_jar|
-          assert_match(/.jdbc41.jar$/, driver_jar)
+          assert_match(/.jre7.jar$/, driver_jar)
           full_path = File.join(@@driver_dir, driver_jar)
           assert File.exist?(full_path), "#{driver_jar.inspect} not found in: #{@@driver_dir.inspect}"
           true
