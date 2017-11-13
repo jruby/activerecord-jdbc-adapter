@@ -413,7 +413,7 @@ module ActiveRecord::ConnectionAdapters
     #   ActiveRecord::ConnectionAdapters::FirebirdAdapter.emulate_booleans = false
     #
     def self.emulate_booleans?; ::ArJdbc::Firebird.emulate_booleans?; end
-    def self.emulate_booleans;  ::ArJdbc::Firebird.emulate_booleans?; end # oracle-enhanced
+    def self.emulate_booleans;  ::ArJdbc::Firebird.emulate_booleans?; end
     def self.emulate_booleans=(emulate); ::ArJdbc::Firebird.emulate_booleans = emulate; end
 
     def initialize(*args)
