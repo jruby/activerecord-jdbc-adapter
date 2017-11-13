@@ -3,7 +3,6 @@ sudo: false
 bundler_args: --without development
 script:
   - bundle exec rake test_$DB
-  - bundle exec rake rails:test:$DB
 before_script:
   - export JRUBY_OPTS="--server $JRUBY_OPTS" # -Xcompile.invokedynamic=false
   - mysql --version # to see if we're using MySQL or MariaDB
