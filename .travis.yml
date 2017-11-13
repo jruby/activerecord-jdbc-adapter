@@ -19,16 +19,8 @@ env:
   - DB=postgresql PREPARED_STATEMENTS=true INSERT_RETURNING=true
   - DB=sqlite3 PREPARED_STATEMENTS=false
   - DB=sqlite3 PREPARED_STATEMENTS=true
-  #- DB=derby PREPARED_STATEMENTS=false
-  #- DB=derby PREPARED_STATEMENTS=true
-  #- DB=h2
-  #- DB=h2 PREPARED_STATEMENTS=true
-  #- DB=hsqldb
-  #- DB=hsqldb PREPARED_STATEMENTS=true
-  - DB=jndi PREPARED_STATEMENTS=false
-  - DB=jndi PREPARED_STATEMENTS=true
-  #- DB=jdbc
-  #- DB=jdbc PREPARED_STATEMENTS=true
+  #- DB=jndi PREPARED_STATEMENTS=false
+  #- DB=jndi PREPARED_STATEMENTS=true
 branches:
   only:
     - master
