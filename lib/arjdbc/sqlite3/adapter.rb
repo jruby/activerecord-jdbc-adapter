@@ -4,11 +4,14 @@ require "arjdbc/abstract/core"
 require "arjdbc/abstract/database_statements"
 require 'arjdbc/abstract/statement_cache'
 require "arjdbc/abstract/transaction_support"
+require "active_record/connection_adapters/abstract_adapter"
 require "active_record/connection_adapters/statement_pool"
-require "active_record/connection_adapters/abstract/database_statements"
 require "active_record/connection_adapters/sqlite3/explain_pretty_printer"
 require "active_record/connection_adapters/sqlite3/quoting"
 require "active_record/connection_adapters/sqlite3/schema_creation"
+require "active_record/connection_adapters/sqlite3/schema_definitions"
+require "active_record/connection_adapters/sqlite3/schema_dumper"
+require "active_record/connection_adapters/sqlite3/schema_statements"
 
 module ArJdbc
   # All the code in this module is a copy of ConnectionAdapters::SQLite3Adapter from active_record 5.
@@ -28,7 +31,10 @@ module ArJdbc
 
     ADAPTER_NAME = 'SQLite'.freeze
 
-    include Quoting
+    # DIFFERENCE: FQN
+    include ::ActiveRecord::ConnectionAdapters::SQLite3::Quoting
+    include ::ActiveRecord::ConnectionAdapters::SQLite3::ColumnDumper
+    include ::ActiveRecord::ConnectionAdapters::SQLite3::SchemaStatements
 
     NATIVE_DATABASE_TYPES = {
         primary_key:  "INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL",
@@ -52,8 +58,14 @@ module ArJdbc
       end
     end
 
+    def update_table_definition(table_name, base) # :nodoc:
+      # DIFFERENCE: FQN
+      ::ActiveRecord::ConnectionAdapters::SQLite3::Table.new(table_name, base)
+    end
+
     def schema_creation # :nodoc:
-      SQLite3::SchemaCreation.new self
+      # DIFFERENCE: FQN
+      ::ActiveRecord::ConnectionAdapters::SQLite3::SchemaCreation.new self
     end
 
     def arel_visitor # :nodoc:
@@ -86,17 +98,12 @@ module ArJdbc
       true
     end
 
-    # Returns true, since this connection adapter supports migrations.
-    def supports_migrations? #:nodoc:
-      true
-    end
-
-    def supports_primary_key? #:nodoc:
-      true
-    end
-
     def requires_reloading?
       true
+    end
+
+    def supports_foreign_keys_in_create?
+      sqlite_version >= "3.6.19"
     end
 
     def supports_views?
@@ -132,10 +139,6 @@ module ArJdbc
       true
     end
 
-    def valid_type?(type)
-      true
-    end
-
     # Returns 62. SQLite supports index names up to 64
     # characters. The rest is used by Rails internally to perform
     # temporary rename operations
@@ -156,45 +159,61 @@ module ArJdbc
       true
     end
 
+    # REFERENTIAL INTEGRITY ====================================
+
+    def disable_referential_integrity # :nodoc:
+      old = query_value("PRAGMA foreign_keys")
+
+      begin
+        execute("PRAGMA foreign_keys = OFF")
+        yield
+      ensure
+        execute("PRAGMA foreign_keys = #{old}")
+      end
+    end
+    
     #--
     # DATABASE STATEMENTS ======================================
     #++
 
     def explain(arel, binds = [])
       sql = "EXPLAIN QUERY PLAN #{to_sql(arel, binds)}"
+      # DIFFERENCE: FQN
       ::ActiveRecord::ConnectionAdapters::SQLite3::ExplainPrettyPrinter.new.pp(exec_query(sql, "EXPLAIN", []))
     end
 
     def exec_query(sql, name = nil, binds = [], prepare: false)
-      type_casted_binds = binds.map { |attr| type_cast(attr.value_for_database) }
+      type_casted_binds = type_casted_binds(binds)
 
-      log(sql, name, binds) do
-        # Don't cache statements if they are not prepared
-        unless prepare
-          stmt    = @connection.prepare(sql)
-          begin
-            cols    = stmt.columns
-            unless without_prepared_statement?(binds)
-              stmt.bind_params(type_casted_binds)
+      log(sql, name, binds, type_casted_binds) do
+        ActiveSupport::Dependencies.interlock.permit_concurrent_loads do
+          # Don't cache statements if they are not prepared
+          unless prepare
+            stmt = @connection.prepare(sql)
+            begin
+              cols = stmt.columns
+              unless without_prepared_statement?(binds)
+                stmt.bind_params(type_casted_binds)
+              end
+              records = stmt.to_a
+            ensure
+              stmt.close
             end
+          else
+            cache = @statements[sql] ||= {
+              stmt: @connection.prepare(sql)
+            }
+            stmt = cache[:stmt]
+            cols = cache[:cols] ||= stmt.columns
+            stmt.reset!
+            stmt.bind_params(type_casted_binds)
             records = stmt.to_a
-          ensure
-            stmt.close
           end
-          stmt = records
-        else
-          cache = @statements[sql] ||= {
-              :stmt => @connection.prepare(sql)
-          }
-          stmt = cache[:stmt]
-          cols = cache[:cols] ||= stmt.columns
-          stmt.reset!
-          stmt.bind_params(type_casted_binds)
-        end
 
-        ActiveRecord::Result.new(cols, stmt.to_a)
+          ActiveRecord::Result.new(cols, records)
+        end
       end
-    end
+    end    
 
     def exec_delete(sql, name = 'SQL', binds = [])
       exec_query(sql, name, binds)
@@ -207,7 +226,11 @@ module ArJdbc
     end
 
     def execute(sql, name = nil) #:nodoc:
-      log(sql, name) { @connection.execute(sql) }
+      log(sql, name) do
+        ActiveSupport::Dependencies.interlock.permit_concurrent_loads do
+          @connection.execute(sql)
+        end
+      end
     end
 
     def begin_db_transaction #:nodoc:
@@ -224,80 +247,30 @@ module ArJdbc
 
     # SCHEMA STATEMENTS ========================================
 
-    def tables(name = nil) # :nodoc:
-      ActiveSupport::Deprecation.warn(<<-MSG.squish)
-          #tables currently returns both tables and views.
-          This behavior is deprecated and will be changed with Rails 5.1 to only return tables.
-          Use #data_sources instead.
-      MSG
-
-      if name
-        ActiveSupport::Deprecation.warn(<<-MSG.squish)
-            Passing arguments to #tables is deprecated without replacement.
-        MSG
+    def new_column_from_field(table_name, field) # :nondoc:
+      case field["dflt_value"]
+      when /^null$/i
+        field["dflt_value"] = nil
+      when /^'(.*)'$/m
+        field["dflt_value"] = $1.gsub("''", "'")
+      when /^"(.*)"$/m
+        field["dflt_value"] = $1.gsub('""', '"')
       end
 
-      data_sources
-    end
-
-    def data_sources
-      select_values("SELECT name FROM sqlite_master WHERE type IN ('table','view') AND name <> 'sqlite_sequence'", "SCHEMA")
-    end
-
-    def table_exists?(table_name)
-      ActiveSupport::Deprecation.warn(<<-MSG.squish)
-          #table_exists? currently checks both tables and views.
-          This behavior is deprecated and will be changed with Rails 5.1 to only check tables.
-          Use #data_source_exists? instead.
-      MSG
-
-      data_source_exists?(table_name)
-    end
-
-    def data_source_exists?(table_name)
-      return false unless table_name.present?
-
-      sql = "SELECT name FROM sqlite_master WHERE type IN ('table','view') AND name <> 'sqlite_sequence'"
-      sql << " AND name = #{quote(table_name)}"
-
-      select_values(sql, "SCHEMA").any?
-    end
-
-    def views # :nodoc:
-      select_values("SELECT name FROM sqlite_master WHERE type = 'view' AND name <> 'sqlite_sequence'", "SCHEMA")
-    end
-
-    def view_exists?(view_name) # :nodoc:
-      return false unless view_name.present?
-
-      sql = "SELECT name FROM sqlite_master WHERE type = 'view' AND name <> 'sqlite_sequence'"
-      sql << " AND name = #{quote(view_name)}"
-
-      select_values(sql, "SCHEMA").any?
-    end
-
-    # Returns an array of +Column+ objects for the table specified by +table_name+.
-    def columns(table_name) # :nodoc:
-      table_name = table_name.to_s
-      table_structure(table_name).map do |field|
-        case field["dflt_value"]
-          when /^null$/i
-            field["dflt_value"] = nil
-          when /^'(.*)'$/m
-            field["dflt_value"] = $1.gsub("''", "'")
-          when /^"(.*)"$/m
-            field["dflt_value"] = $1.gsub('""', '"')
-        end
-
-        collation = field["collation"]
-        sql_type = field["type"]
-        type_metadata = fetch_type_metadata(sql_type)
-        new_column(field["name"], field["dflt_value"], type_metadata, field["notnull"].to_i == 0, table_name, nil, collation)
-      end
+      collation = field["collation"]
+      sql_type = field["type"]
+      type_metadata = fetch_type_metadata(sql_type)
+      new_column(field["name"], field["dflt_value"], type_metadata, field["notnull"].to_i == 0, table_name, nil, collation)
     end
 
     # Returns an array of indexes for the given table.
     def indexes(table_name, name = nil) #:nodoc:
+      if name
+        ActiveSupport::Deprecation.warn(<<-MSG.squish)
+            Passing name to #indexes is deprecated without replacement.
+          MSG
+      end
+
       exec_query("PRAGMA index_list(#{quote_table_name(table_name)})", "SCHEMA").map do |row|
         sql = <<-SQL
             SELECT sql
@@ -307,17 +280,17 @@ module ArJdbc
             SELECT sql
             FROM sqlite_temp_master
             WHERE name=#{quote(row['name'])} AND type='index'
-        SQL
+          SQL
         index_sql = exec_query(sql).first["sql"]
         match = /\sWHERE\s+(.+)$/i.match(index_sql)
         where = match[1] if match
         IndexDefinition.new(
-            table_name,
-            row["name"],
-            row["unique"] != 0,
-            exec_query("PRAGMA index_info('#{row['name']}')", "SCHEMA").map { |col|
-              col["name"]
-            }, nil, nil, where)
+          table_name,
+          row["name"],
+          row["unique"] != 0,
+          exec_query("PRAGMA index_info('#{row['name']}')", "SCHEMA").map { |col|
+            col["name"]
+          }, nil, nil, where)
       end
     end
 
@@ -400,14 +373,34 @@ module ArJdbc
       rename_column_indexes(table_name, column.name, new_column_name)
     end
 
-    protected
+    def add_reference(table_name, ref_name, **options) # :nodoc:
+      super(table_name, ref_name, type: :integer, **options)
+    end
+    alias :add_belongs_to :add_reference
+
+    def foreign_keys(table_name)
+      fk_info = exec_query("PRAGMA foreign_key_list(#{quote(table_name)})", "SCHEMA")
+      fk_info.map do |row|
+        options = {
+          column: row["from"],
+          primary_key: row["to"],
+          on_delete: extract_foreign_key_action(row["on_delete"]),
+          on_update: extract_foreign_key_action(row["on_update"])
+        }
+        # DIFFERENCE: FQN
+        ::ActiveRecord::ConnectionAdapters::ForeignKeyDefinition.new(table_name, row["table"], options)
+      end
+    end
+    
+    private
 
     def table_structure(table_name)
       structure = exec_query("PRAGMA table_info(#{quote_table_name(table_name)})", "SCHEMA")
       raise(ActiveRecord::StatementInvalid, "Could not find table '#{table_name}'") if structure.empty?
       table_structure_with_collation(table_name, structure)
     end
-
+    alias column_definitions table_structure
+    
     def alter_table(table_name, options = {}) #:nodoc:
       altered_table_name = "a#{table_name}"
       caller = lambda { |definition| yield definition if block_given? }
@@ -497,43 +490,51 @@ module ArJdbc
         # Older versions of SQLite return:
         #   column *column_name* is not unique
         when /column(s)? .* (is|are) not unique/, /UNIQUE constraint failed: .*/
-          RecordNotUnique.new(message)
+          # DIFFERENCE: FQN
+          ::ActiveRecord::RecordNotUnique.new(message)
+        when /.* may not be NULL/, /NOT NULL constraint failed: .*/
+          # DIFFERENCE: FQN
+          ::ActiveRecord::NotNullViolation.new(message)
+        when /FOREIGN KEY constraint failed/i
+          # DIFFERENCE: FQN
+          ::ActiveRecord::InvalidForeignKey.new(message)
         else
           super
       end
     end
 
-    private
     COLLATE_REGEX = /.*\"(\w+)\".*collate\s+\"(\w+)\".*/i.freeze
 
     def table_structure_with_collation(table_name, basic_structure)
       collation_hash = {}
-      sql            = "SELECT sql FROM
-                              (SELECT * FROM sqlite_master UNION ALL
-                               SELECT * FROM sqlite_temp_master)
-                            WHERE type='table' and name='#{ table_name }' \;"
+      sql = <<-SQL
+            SELECT sql FROM
+              (SELECT * FROM sqlite_master UNION ALL
+               SELECT * FROM sqlite_temp_master)
+            WHERE type = 'table' AND name = #{quote(table_name)}
+          SQL
 
       # Result will have following sample string
       # CREATE TABLE "users" ("id" INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
       #                       "password_digest" varchar COLLATE "NOCASE");
-      result = exec_query(sql, 'SCHEMA').first
+      result = exec_query(sql, "SCHEMA").first
 
       if result
         # Splitting with left parentheses and picking up last will return all
         # columns separated with comma(,).
-        columns_string = result["sql"].split('(').last
+        columns_string = result["sql"].split("(").last
 
-        columns_string.split(',').each do |column_string|
+        columns_string.split(",").each do |column_string|
           # This regex will match the column name and collation type and will save
           # the value in $1 and $2 respectively.
-          collation_hash[$1] = $2 if (COLLATE_REGEX =~ column_string)
+          collation_hash[$1] = $2 if COLLATE_REGEX =~ column_string
         end
 
         basic_structure.map! do |column|
-          column_name = column['name']
+          column_name = column["name"]
 
           if collation_hash.has_key? column_name
-            column['collation'] = collation_hash[column_name]
+            column["collation"] = collation_hash[column_name]
           end
 
           column
@@ -541,6 +542,23 @@ module ArJdbc
       else
         basic_structure.to_hash
       end
+    end
+
+    def create_table_definition(*args)
+      # DIFFERENCE: FQN
+      ::ActiveRecord::ConnectionAdapters::SQLite3::TableDefinition.new(*args)
+    end
+
+    def extract_foreign_key_action(specifier)
+      case specifier
+      when "CASCADE"; :cascade
+      when "SET NULL"; :nullify
+      when "RESTRICT"; :restrict
+      end
+    end
+
+    def configure_connection
+      execute("PRAGMA foreign_keys = ON", "SCHEMA")
     end
   end
 end
@@ -654,6 +672,13 @@ module ActiveRecord::ConnectionAdapters
 
     def begin_isolated_db_transaction(isolation)
       raise ActiveRecord::TransactionIsolationError, 'adapter does not support setting transaction isolation'
+    end
+
+    # FIXME: 5.1 crashes without this.  I think this is Arel hitting a fallback path in to_sql.rb.
+    # So maybe an untested code path in their source.  Still means we are doing something wrong to
+    # even hit it.
+    def quote(value, comment=nil)
+      super(value)
     end
 
     # FIXME: Add @connection.encoding then remove this method
