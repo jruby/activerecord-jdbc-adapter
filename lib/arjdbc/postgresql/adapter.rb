@@ -274,6 +274,11 @@ module ArJdbc
       postgresql_version >= 90200
     end # NOTE: only since AR-4.0 but should not hurt on other versions
 
+    # From AR 5.1 postgres_adapter.rb
+    def default_index_type?(index) # :nodoc:
+      index.using == :btree || super
+    end
+
     def enable_extension(name)
       execute("CREATE EXTENSION IF NOT EXISTS \"#{name}\"")
     end
