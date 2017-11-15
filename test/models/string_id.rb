@@ -1,4 +1,4 @@
-class CreateStringIds < ActiveRecord::Migration
+class CreateStringIds < ActiveRecord::Migration[4.2]
   def self.up
     create_table "string_ids", :force => true, :id => false do |t|
       t.string :id, :null => false

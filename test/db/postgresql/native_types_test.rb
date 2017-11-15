@@ -11,7 +11,7 @@ class PostgreSQLNativeTypesTest < Test::Unit::TestCase
     PG_VERSION = 0
   end
 
-  class CustomersMigration < ActiveRecord::Migration
+  class CustomersMigration < ActiveRecord::Migration[4.2]
     def self.up
       execute "DROP SEQUENCE IF EXISTS seq_pk_customers"
       execute "CREATE SEQUENCE seq_pk_customers"

@@ -6,7 +6,7 @@ class ImportantTopic < Topic
   serialize :important, Hash
 end
 
-class TopicMigration < ActiveRecord::Migration
+class TopicMigration < ActiveRecord::Migration[4.2]
 
   def self.up
     create_table :topics, :force => true do |t|

@@ -3,7 +3,7 @@ require 'db/postgres'
 
 class PostgreSQLInformationSchemaLeakTest < Test::Unit::TestCase
 
-  class CreateISLSchema < ActiveRecord::Migration
+  class CreateISLSchema < ActiveRecord::Migration[4.2]
     def self.up
       execute "CREATE TABLE domains (id int, name varchar(16))"
     end

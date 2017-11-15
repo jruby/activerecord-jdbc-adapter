@@ -1,4 +1,4 @@
-class CreateRightsAndRoles < ActiveRecord::Migration
+class CreateRightsAndRoles < ActiveRecord::Migration[4.2]
   def self.up
     create_table :role_assignments do |t| 
       t.column :role_id, :integer

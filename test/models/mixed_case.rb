@@ -1,5 +1,5 @@
 module Migration
-  class MixedCase < ActiveRecord::Migration
+  class MixedCase < ActiveRecord::Migration[4.2]
 
     def self.up
       create_table "mixed_cases" do |t|

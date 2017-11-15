@@ -4,7 +4,7 @@ module ChangeColumnTestMethods
 
   class Person < ActiveRecord::Base; end
 
-  class CreatePeopleTable < ActiveRecord::Migration
+  class CreatePeopleTable < ActiveRecord::Migration[4.2]
     def self.up
       create_table(:people) { |t| t.string :name; t.integer :phone }
     end
