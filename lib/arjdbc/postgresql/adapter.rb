@@ -333,6 +333,7 @@ module ArJdbc
             63
       )
     end
+    alias index_name_length table_alias_length
 
     def exec_insert(sql, name, binds, pk = nil, sequence_name = nil)
       val = super
@@ -514,47 +515,6 @@ module ArJdbc
       %("#{name.to_s.gsub("\"", "\"\"")}")
     end
     alias_method :quote_schema_name, :quote_column_name
-
-    # Changes the column of a table.
-    def change_column(table_name, column_name, type, options = {})
-      quoted_table_name = quote_table_name(table_name)
-      quoted_column_name = quote_table_name(column_name)
-
-      sql_type = type_to_sql(type, options[:limit], options[:precision], options[:scale])
-      sql_type << "[]" if options[:array]
-
-      sql = "ALTER TABLE #{quoted_table_name} ALTER COLUMN #{quoted_column_name} TYPE #{sql_type}"
-      sql << " USING #{options[:using]}" if options[:using]
-      if options[:cast_as]
-        sql << " USING CAST(#{quoted_column_name} AS #{type_to_sql(options[:cast_as], options[:limit], options[:precision], options[:scale])})"
-      end
-      begin
-        execute sql
-      rescue ActiveRecord::StatementInvalid => e
-        raise e if postgresql_version > 80000
-        change_column_pg7(table_name, column_name, type, options)
-      end
-
-      change_column_default(table_name, column_name, options[:default]) if options_include_default?(options)
-      change_column_null(table_name, column_name, options[:null], options[:default]) if options.key?(:null)
-    end # unless const_defined? :SchemaCreation
-
-    def change_column_pg7(table_name, column_name, type, options)
-      quoted_table_name = quote_table_name(table_name)
-      # This is PostgreSQL 7.x, so we have to use a more arcane way of doing it.
-      begin
-        begin_db_transaction
-        tmp_column_name = "#{column_name}_ar_tmp"
-        add_column(table_name, tmp_column_name, type, options)
-        execute "UPDATE #{quoted_table_name} SET #{quote_column_name(tmp_column_name)} = CAST(#{quote_column_name(column_name)} AS #{sql_type})"
-        remove_column(table_name, column_name)
-        rename_column(table_name, tmp_column_name, column_name)
-        commit_db_transaction
-      rescue
-        rollback_db_transaction
-      end
-    end
-    private :change_column_pg7
 
     def remove_index!(table_name, index_name)
       execute "DROP INDEX #{quote_table_name(index_name)}"
