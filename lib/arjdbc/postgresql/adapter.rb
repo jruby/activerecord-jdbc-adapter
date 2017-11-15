@@ -7,6 +7,7 @@ require 'active_record/connection_adapters/postgresql/column'
 require 'active_record/connection_adapters/postgresql/explain_pretty_printer'
 require 'active_record/connection_adapters/postgresql/quoting'
 require 'active_record/connection_adapters/postgresql/referential_integrity'
+require 'active_record/connection_adapters/postgresql/schema_creation'
 require 'active_record/connection_adapters/postgresql/schema_dumper'
 require 'active_record/connection_adapters/postgresql/schema_statements'
 require 'active_record/connection_adapters/postgresql/type_metadata'
@@ -262,6 +263,10 @@ module ArJdbc
 
     def supports_insert_with_returning?
       postgresql_version >= 80200
+    end
+
+    def supports_pgcrypto_uuid?
+      postgresql_version >= 90400
     end
 
     # Range data-types weren't introduced until PostgreSQL 9.2.
@@ -709,10 +714,14 @@ module ArJdbc
       case exception.message
       when /duplicate key value violates unique constraint/
         ::ActiveRecord::RecordNotUnique.new(message)
+      when /violates not-null constraint/
+        ::ActiveRecord::NotNullViolation.new(message)
       when /violates foreign key constraint/
         ::ActiveRecord::InvalidForeignKey.new(message)
       when /value too long/
         ::ActiveRecord::ValueTooLong.new(message)
+      when /out of range/
+        ::ActiveRecord::RangeError.new(message)
       else
         super
       end
@@ -804,7 +813,6 @@ module ActiveRecord::ConnectionAdapters
 
     require 'active_record/connection_adapters/postgresql/schema_definitions'
 
-    ColumnDefinition = ActiveRecord::ConnectionAdapters::PostgreSQL::ColumnDefinition
     ColumnMethods = ActiveRecord::ConnectionAdapters::PostgreSQL::ColumnMethods
     TableDefinition = ActiveRecord::ConnectionAdapters::PostgreSQL::TableDefinition
     Table = ActiveRecord::ConnectionAdapters::PostgreSQL::Table

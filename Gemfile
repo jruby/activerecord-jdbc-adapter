@@ -11,7 +11,7 @@ if version = ENV['AR_VERSION']
     gem 'activerecord', version, require: nil
   end
 else
-  gem 'activerecord', '~> 5.0.6', require: false
+  gem 'activerecord', '~> 5.1.4', require: false
 end
 
 #gem 'thread_safe', require: nil # "optional" - we can roll without it

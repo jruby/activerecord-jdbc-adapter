@@ -20,8 +20,8 @@ module ArJdbc
       Type.add_modifier({ array: true }, OID::Array, adapter: :postgresql)
       Type.add_modifier({ range: true }, OID::Range, adapter: :postgresql)
       Type.register(:enum, OID::Enum, adapter: :postgresql)
-      Type.register(:point, OID::Rails51Point, adapter: :postgresql)
-      Type.register(:legacy_point, OID::Point, adapter: :postgresql)
+      Type.register(:point, OID::Point, adapter: :postgresql)
+      Type.register(:legacy_point, OID::LegacyPoint, adapter: :postgresql)
 
       # @override
       def enable_extension(name)
