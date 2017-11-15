@@ -239,11 +239,7 @@ module ArJdbc
 
     def supports_index_sort_order?; true end
 
-    def supports_migrations?; true end
-
     def supports_partial_index?; true end
-
-    def supports_primary_key?; true end # Supports finding primary key on non-Active Record tables
 
     def supports_savepoints?; true end
 
@@ -624,6 +620,12 @@ module ArJdbc
 
     # Returns an array of indexes for the given table.
     def indexes(table_name, name = nil)
+      if name
+        ActiveSupport::Deprecation.warn(<<-MSG.squish)
+              Passing name to #indexes is deprecated without replacement.
+        MSG
+      end
+      
       # FIXME: AR version => table = Utils.extract_schema_qualified_name(table_name.to_s)
       schema, table = extract_schema_and_table(table_name.to_s)
 
