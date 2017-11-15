@@ -23,7 +23,7 @@ class PostgreSQLTableNameTest < Test::Unit::TestCase
     SerialMigration.down
   end
 
-  class SerialNumberMigration < ActiveRecord::Migration
+  class SerialNumberMigration < ActiveRecord::Migration[4.2]
     def self.up
       columns = [
         "serial BIGINT PRIMARY KEY",
@@ -49,7 +49,7 @@ class PostgreSQLTableNameTest < Test::Unit::TestCase
     SerialNumber.columns
   end
 
-  class SerialMigration < ActiveRecord::Migration
+  class SerialMigration < ActiveRecord::Migration[4.2]
     def self.up
       columns = [
         "sid INTEGER", # PRIMARY KEY

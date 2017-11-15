@@ -1,4 +1,4 @@
-class DbTypeMigration < ActiveRecord::Migration
+class DbTypeMigration < ActiveRecord::Migration[4.2]
   
   # Oracle/SQLServer supports precision up to 38
   @@big_decimal_precision = 38

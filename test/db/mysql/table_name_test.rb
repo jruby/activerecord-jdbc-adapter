@@ -22,7 +22,7 @@ class MySQLTableNameTest < Test::Unit::TestCase
     SerialMigration.down
   end
 
-  class SerialNumberMigration < ActiveRecord::Migration
+  class SerialNumberMigration < ActiveRecord::Migration[4.2]
     def self.up
       columns = [
         "serial BIGINT PRIMARY KEY",
@@ -49,7 +49,7 @@ class MySQLTableNameTest < Test::Unit::TestCase
     SerialNumber.columns
   end if ar_version('3.2')
 
-  class SerialMigration < ActiveRecord::Migration
+  class SerialMigration < ActiveRecord::Migration[4.2]
     def self.up
       columns = [
         "sid CHAR(36)", # PRIMARY KEY

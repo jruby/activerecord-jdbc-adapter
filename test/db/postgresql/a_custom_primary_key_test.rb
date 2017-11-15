@@ -14,7 +14,7 @@ require 'db/postgres'
 #
 class PostgresACustomPrimaryKeyTest < Test::Unit::TestCase
 
-  class CreateUrls < ActiveRecord::Migration
+  class CreateUrls < ActiveRecord::Migration[4.2]
     def self.up
       create_table 'some_urls', :id => false do |t|
         t.string :uhash, :null => false

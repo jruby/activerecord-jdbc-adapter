@@ -1,4 +1,4 @@
-class CreateValidatesUniquenessOf < ActiveRecord::Migration
+class CreateValidatesUniquenessOf < ActiveRecord::Migration[4.2]
   def self.up
     create_table "validates_uniqueness_of", :force => true do |t|
       t.column :cs_string, :string

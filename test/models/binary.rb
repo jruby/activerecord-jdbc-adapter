@@ -1,7 +1,7 @@
 class Binary < ActiveRecord::Base
 end
 
-class BinaryMigration < ActiveRecord::Migration
+class BinaryMigration < ActiveRecord::Migration[4.2]
 
   def self.up
     create_table :binaries, :force => true do |t|

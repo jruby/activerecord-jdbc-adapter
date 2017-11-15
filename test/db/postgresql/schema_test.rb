@@ -37,7 +37,7 @@ class PostgresSchemaTest < Test::Unit::TestCase
 
   context "search path" do
 
-    class CreateSchema < ActiveRecord::Migration
+    class CreateSchema < ActiveRecord::Migration[4.2]
       def self.up
         execute "CREATE SCHEMA test"
         execute "CREATE TABLE test.people (id serial, name text)"

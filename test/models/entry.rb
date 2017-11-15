@@ -1,4 +1,4 @@
-class CreateEntries < ActiveRecord::Migration
+class CreateEntries < ActiveRecord::Migration[4.2]
   def self.up
     create_table "entries", :force => true do |t|
       t.column :title, :string, :limit => 100
@@ -23,7 +23,7 @@ class Entry < ActiveRecord::Base
   end
 end
 
-class CreateUsers < ActiveRecord::Migration
+class CreateUsers < ActiveRecord::Migration[4.2]
   def self.up
     create_table "users", :force => true do |t|
       t.column :login, :string, :limit => 100, :null => false

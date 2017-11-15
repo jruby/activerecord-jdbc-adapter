@@ -730,7 +730,7 @@ module SimpleTestMethods
     assert_equal 'bar?', entry.content
   end
 
-  class ChangeEntriesTable < ActiveRecord::Migration
+  class ChangeEntriesTable < ActiveRecord::Migration[4.2]
     def self.up
       change_table :entries do |t|
         t.string :author

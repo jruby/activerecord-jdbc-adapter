@@ -1,4 +1,4 @@
-class CreateThings < ActiveRecord::Migration
+class CreateThings < ActiveRecord::Migration[4.2]
   def self.up
     create_table :things, :id => false do |t|
       t.string :name

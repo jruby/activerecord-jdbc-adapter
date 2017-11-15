@@ -3,7 +3,7 @@ require 'db/mysql'
 
 class MysqlNonstandardPrimaryKeyTest < Test::Unit::TestCase
 
-  class Project < ActiveRecord::Migration
+  class Project < ActiveRecord::Migration[4.2]
     def self.up
       create_table :project, :primary_key => "project_id" do |t|
         t.string      :projectType, :limit => 31
