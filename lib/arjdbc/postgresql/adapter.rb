@@ -515,18 +515,6 @@ module ArJdbc
     end
     alias_method :quote_schema_name, :quote_column_name
 
-    # Quote date/time values for use in SQL input.
-    # Includes microseconds if the value is a Time responding to `usec`.
-    # @override
-    def quoted_date(value)
-      result = super
-      if value.acts_like?(:time) && value.respond_to?(:usec) && !AR50
-        result = "#{result}.#{sprintf("%06d", value.usec)}"
-      end
-      result = "#{result.sub(/^-/, '')} BC" if value.year < 0
-      result
-    end if ::ActiveRecord::VERSION::MAJOR >= 3
-
     # Changes the column of a table.
     def change_column(table_name, column_name, type, options = {})
       quoted_table_name = quote_table_name(table_name)
