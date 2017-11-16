@@ -140,8 +140,7 @@ module ArJdbc
     ActiveRecordError = ::ActiveRecord::ActiveRecordError
 
     NATIVE_DATABASE_TYPES = {
-      bigserial:    'bigserial',
-      primary_key:  'serial primary key',
+      primary_key:  'bigserial primary key',
       bigint:       { name: 'bigint' },
       binary:       { name: 'bytea' },
       bit:          { name: 'bit' },
@@ -175,7 +174,6 @@ module ArJdbc
       path:         { name: 'path' },
       point:        { name: 'point' },
       polygon:      { name: 'polygon' },
-      serial:       { name: 'serial' }, # auto-inc integer, bigserial, smallserial
       string:       { name: 'character varying' },
       text:         { name: 'text' },
       time:         { name: 'time' },
