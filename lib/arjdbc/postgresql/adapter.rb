@@ -739,8 +739,6 @@ module ActiveRecord::ConnectionAdapters
     require 'arjdbc/postgresql/oid_types'
     include ::ArJdbc::PostgreSQL::OIDTypes
 
-    load 'arjdbc/postgresql/_bc_time_cast_patch.rb'
-
     include ::ArJdbc::PostgreSQL::ColumnHelpers
 
     include ::ArJdbc::Util::QuotedCache
