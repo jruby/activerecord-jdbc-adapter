@@ -171,6 +171,7 @@ module ArJdbc
       money:        { name: 'money' },
       numeric:      { name: 'numeric' },
       numrange:     { name: 'numrange' },
+      oid:          { name: 'oid' },
       path:         { name: 'path' },
       point:        { name: 'point' },
       polygon:      { name: 'polygon' },

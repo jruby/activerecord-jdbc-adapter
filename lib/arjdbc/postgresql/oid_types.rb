@@ -80,7 +80,7 @@ module ArJdbc
         register_class_with_limit m, 'int2', Type::Integer
         register_class_with_limit m, 'int4', Type::Integer
         register_class_with_limit m, 'int8', Type::Integer
-        m.alias_type 'oid', 'int2'
+        m.register_type 'oid', OID::Oid.new
         m.register_type 'float4', Type::Float.new
         m.alias_type 'float8', 'float4'
         m.register_type 'text', Type::Text.new
@@ -116,14 +116,10 @@ module ArJdbc
         m.register_type 'polygon', OID::SpecializedString.new(:polygon)
         m.register_type 'tsvector', OID::SpecializedString.new(:tsvector)
 
-        # This is how Rails 5.1 handles it. In 5.0 SpecializedString doesn't take a precision option
-        # 5.0 actually leaves it as a regular String but we need it specialized
-        # to support prepared statements
-        # m.register_type 'interval' do |_, _, sql_type|
-        #   precision = extract_precision(sql_type)
-        #   OID::SpecializedString.new(:interval, precision: precision)
-        # end
-        m.register_type 'interval', OID::SpecializedString.new(:interval)
+        m.register_type 'interval' do |_, _, sql_type|
+          precision = extract_precision(sql_type)
+          OID::SpecializedString.new(:interval, precision: precision)
+        end
 
         m.register_type 'timestamp' do |_, _, sql_type|
           precision = extract_precision(sql_type)
