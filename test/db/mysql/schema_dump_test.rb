@@ -56,21 +56,6 @@ class MysqlSchemaDumpTest < Test::Unit::TestCase
     end
   end
 
-  test 'should_not_add_default_value_for_mysql_text_field' do
-    output = standard_dump
-    assert_match %r{t.text\s+"just_text",[\s|:]+limit[\s\:\=\>]+65535,[\s|:]+null[\s\:\=\>]+false$}, output
-  end
-
-  test 'includes_length_for_mysql_blob_and_text_fields' do
-    output = standard_dump
-    assert_match %r{t.binary\s+"tiny_blob",[\s|:]+limit[\s\:\=\>]+255$}, output
-    assert_match %r{t.binary\s+"normal_blob",[\s|:]+limit[\s\:\=\>]+65535$}, output
-    assert_match %r{t.binary\s+"medium_blob",[\s|:]+limit[\s\:\=\>]+16777215$}, output
-    assert_match %r{t.text\s+"tiny_text",[\s|:]+limit[\s\:\=\>]+255$}, output
-    assert_match %r{t.text\s+"normal_text",[\s|:]+limit[\s\:\=\>]+65535$}, output
-    assert_match %r{t.text\s+"medium_text",[\s|:]+limit[\s\:\=\>]+16777215$}, output
-  end
-
   test 'includes_length_for_mysql_binary_fields' do
     output = standard_dump
     assert_match %r{t.binary\s+"var_binary",[\s|:]+limit[\s\:\=\>]+255$}, output

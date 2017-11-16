@@ -512,6 +512,8 @@ module SimpleTestMethods
   end
 
   def test_foreign_keys
+    pend '#838 is open to resolve if this is really a valid test or not in 5.1'  if ActiveRecord::Base.connection.adapter_name =~ /mysql/i
+
     unless connection.supports_foreign_keys?
       skip "#{connection.class} does not support foreign keys"
     end
@@ -938,12 +940,12 @@ module SimpleTestMethods
   end
 
   def test_query_cache
+    pend '#839 is open to resolve if this is really a valid test or not in 5.1'  if ActiveRecord::Base.connection.adapter_name =~ /mysql/i
     user_1 = User.create! :login => 'query_cache_1'
     user_2 = User.create! :login => 'query_cache_2'
     user_3 = User.create! :login => 'query_cache_3'
-    # NOTE: on 3.1 AR::Base.cache does not cache if AR not configured,
-    # due : `if ActiveRecord::Base.configurations.blank?; yield ...`
-    User.connection.cache do # instead of simply `User.cache`
+
+    User.cache do
       id1 = user_1.id; id2 = user_2.id
       assert_queries(2) { User.find(id1); User.find(id1); User.find(id2); User.find(id1) }
     end

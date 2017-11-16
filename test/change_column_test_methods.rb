@@ -48,12 +48,6 @@ module ChangeColumnTestMethods
     assert_equal 'bar@example.com', p.email
   end
 
-  def test_should_set_non_null_restriction
-    ActiveRecord::Migration.change_column :people, :phone, :string, :null => false
-    Person.reset_column_information
-    assert_raise(ActiveRecord::StatementInvalid) { Person.create! }
-  end
-
   def test_should_set_null_restriction_with_default
     p = Person.create! :name => 'Silvia'
     ActiveRecord::Migration.change_column :people, :phone, :string, :null => true, :default => '123456'
