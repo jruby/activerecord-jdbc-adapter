@@ -665,6 +665,7 @@ module ArJdbc
     end
 
     def translate_exception(exception, message)
+      # TODO: Can we base these on an error code of some kind?
       case exception.message
       when /duplicate key value violates unique constraint/
         ::ActiveRecord::RecordNotUnique.new(message)
@@ -676,6 +677,10 @@ module ArJdbc
         ::ActiveRecord::ValueTooLong.new(message)
       when /out of range/
         ::ActiveRecord::RangeError.new(message)
+      when /could not serialize/
+        ::ActiveRecord::SerializationFailure.new(message)
+      when /deadlock detected/
+        ::ActiveRecord::Deadlocked.new(message)
       else
         super
       end
