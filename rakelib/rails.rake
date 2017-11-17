@@ -85,6 +85,52 @@ namespace :rails do
 
   end
 
+  namespace :db do
+    namespace :mysql do
+      desc 'Build the MySQL test databases'
+      task :build do
+        config = ARTest.config['connections']['mysql2']
+        %x( mysql --user=#{config['arunit']['username']} --password=#{config['arunit']['password']} -e "create DATABASE #{config['arunit']['database']} DEFAULT CHARACTER SET utf8 DEFAULT COLLATE utf8_unicode_ci ")
+        %x( mysql --user=#{config['arunit2']['username']} --password=#{config['arunit2']['password']} -e "create DATABASE #{config['arunit2']['database']} DEFAULT CHARACTER SET utf8 DEFAULT COLLATE utf8_unicode_ci ")
+      end
+
+      desc 'Drop the MySQL test databases'
+      task :drop do
+        config = ARTest.config['connections']['mysql2']
+        %x( mysqladmin --user=#{config['arunit']['username']} --password=#{config['arunit']['password']} -f drop #{config['arunit']['database']} )
+        %x( mysqladmin --user=#{config['arunit2']['username']} --password=#{config['arunit2']['password']} -f drop #{config['arunit2']['database']} )
+      end
+
+      desc 'Rebuild the MySQL test databases'
+      task :rebuild => [:drop, :build]
+    end
+
+    namespace :postgresql do
+      desc 'Build the PostgreSQL test databases'
+      task :build do
+        config = ARTest.config['connections']['postgresql']
+        %x( createdb -E UTF8 -T template0 #{config['arunit']['database']} )
+        %x( createdb -E UTF8 -T template0 #{config['arunit2']['database']} )
+
+        # prepare hstore
+        if %x( createdb --version ).strip.gsub(/(.*)(\d\.\d\.\d)$/, "\\2") < "9.1.0"
+          puts "Please prepare hstore data type. See http://www.postgresql.org/docs/current/static/hstore.html"
+        end
+      end
+
+      desc 'Drop the PostgreSQL test databases'
+      task :drop do
+        config = ARTest.config['connections']['postgresql']
+        %x( dropdb #{config['arunit']['database']} )
+        %x( dropdb #{config['arunit2']['database']} )
+      end
+
+      desc 'Rebuild the PostgreSQL test databases'
+      task :rebuild => [:drop, :build]
+    end
+  end
+
+  # NOTE: we expect to, hopefully, not be using these anymore - delete at WILL!
   namespace :test do
     task :all do
       driver = ENV['DRIVER'] || ENV['ADAPTER']
