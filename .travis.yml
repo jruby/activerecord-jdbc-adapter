@@ -1,11 +1,17 @@
 language: ruby
 sudo: false
 bundler_args: --without development
-script:
-  - bundle exec rake test_$DB
+script: bundle exec rake test_$DB
 before_script:
   - export JRUBY_OPTS="--server $JRUBY_OPTS" # -Xcompile.invokedynamic=false
-  - mysql --version # to see if we're using MySQL or MariaDB
+  #- mvn prepare-package # compiles ext generates: lib/arjdbc/jdbc/adapter_java.jar
+  - mysql --version || true # to see if we're using MySQL or MariaDB
+  - '[ "$DB" == "postgresql" ] && rake db:postgresql || true'
+  - '[ "$DB" == "mysql" ] && rake db:mysql || true'
+  - '[ "$DB" == "mariadb" ] && rake db:mysql || true'
+  - '[ "$DB" == "jdbc" ] && rake db:mysql || true'
+  - '[ "$DB" == "jndi" ] && rake db:mysql || true'
+
 rvm:
   - jruby-9.1.14.0
 jdk:
@@ -26,12 +32,14 @@ branches:
     - master
     - /.*-stable$/
     - /^test-.*/
+    - /maintenance|support/
+    - /.*dev$/
 matrix:
   include:
     # testing against MariaDB
     - addons:
         mariadb: '10.0'
-      env: JRUBY_OPTS="$JRUBY_OPTS" DB=mariadb PREPARED_STATEMENTS=false
+      env: DB=mariadb PREPARED_STATEMENTS=false
     - addons:
-        mariadb: '10.0'
-      env: JRUBY_OPTS="$JRUBY_OPTS" DB=mariadb PREPARED_STATEMENTS=true
+        mariadb: '10.1'
+      env: DB=mariadb PREPARED_STATEMENTS=true
