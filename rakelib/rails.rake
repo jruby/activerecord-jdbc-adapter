@@ -12,13 +12,14 @@ namespace :rails do
               " try setting a local repository path e.g. export RAILS=`pwd`/../rails && bundle install"
       end
 
+      driver = "jdbc-#{adapter =~ /postgres/i ? 'postgres' : adapter}"
+      adapter = 'mysql2' if adapter.eql?('mysql')
+
       root_dir = File.expand_path('..', File.dirname(__FILE__))
       env = {}
       env['ARCONFIG'] = File.join(root_dir, 'test/rails', 'config.yml')
+      env['ARCONN'] = adapter
       env['BUNDLE_GEMFILE'] = ENV['BUNDLE_GEMFILE'] || File.join(root_dir, 'Gemfile') # use AR-JDBC's with Rails tests
-
-      driver = "jdbc-#{adapter =~ /postgres/i ? 'postgres' : adapter}"
-      adapter = 'mysql2' if adapter.eql?('mysql')
 
       libs = [
           File.join(root_dir, 'lib'),
