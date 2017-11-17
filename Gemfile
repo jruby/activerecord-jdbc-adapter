@@ -33,8 +33,8 @@ end
 gem 'rake', '>= 11.1', require: nil
 
 group :test do
-  gem 'test-unit', '~> 2.5.4'
-  gem 'test-unit-context', '>= 0.4.0'
+  gem 'test-unit', '~> 2.5.4', require: nil
+  gem 'test-unit-context', '>= 0.4.0', require: nil
   gem 'mocha', '~> 1.2', require: false # Rails has '~> 0.14'
 
   gem 'bcrypt', '~> 3.1.11', require: false
@@ -44,14 +44,14 @@ group :rails do
   group :test do
     # FIX: Our test suite isn't ready to run in random order yet.
     gem 'minitest', '< 5.3.4', require: nil
-    gem 'minitest-colorize', require: nil
+    gem 'minitest-rg', require: nil
 
     gem 'benchmark-ips', require: nil
   end
 
   gem 'erubis', require: nil # "~> 2.7.0"
-  # NOTE: due rails/activerecord/test/cases/connection_management_test.rb (AR 5.0)
-  #gem 'actionpack', require: nil
+  # NOTE: due rails/activerecord/test/cases/connection_management_test.rb
+  gem 'rack', require: nil
 end
 
 group :development do
