@@ -11,36 +11,38 @@ if version = ENV['AR_VERSION']
     gem 'activerecord', version, require: nil
   end
 else
-  gem 'activerecord', '~> 5.0.6', require: false
+  gemspec name: 'activerecord-jdbc-adapter' # gem 'activerecord' declared in .gemspec
 end
 
-#gem 'thread_safe', require: nil # "optional" - we can roll without it
-gem 'rake', require: nil
+gem 'rake', '>= 11.1', require: nil
 
 group :test do
-  gem 'minitest', '< 5.3.4'
   gem 'test-unit', '~> 2.5.4'
   gem 'test-unit-context', '>= 0.4.0'
-  gem 'mocha', '~> 1.2', require: nil
+  gem 'mocha', '~> 1.2', require: false # Rails has '~> 0.14'
 
-  gem 'simplecov', require: nil
-  gem 'bcrypt-ruby', '~> 3.0.0', require: nil
-  #gem 'trinidad_dbpool', require: nil
+  gem 'bcrypt', '~> 3.1.11', require: false
+end
+
+group :rails do
+  group :test do
+    # FIX: Our test suite isn't ready to run in random order yet.
+    gem 'minitest', '< 5.3.4'
+
+    gem 'benchmark-ips'
+  end
+
+  #gem 'erubis', require: nil
+  # NOTE: due rails/activerecord/test/cases/connection_management_test.rb (AR 5.0)
+  #gem 'actionpack', require: nil
 end
 
 group :development do
   gem 'ruby-debug', require: nil # if ENV['DEBUG']
   group :doc do
     gem 'yard', require: nil
-    gem 'yard-method-overrides', git: 'https://github.com/kares/yard-method-overrides.git', require: nil
     gem 'kramdown', require: nil
   end
-end
-
-group :rails do
-  gem 'erubis', require: nil
-  # NOTE: due rails/activerecord/test/cases/connection_management_test.rb (AR 5.0)
-  gem 'actionpack', require: nil
 end
 
 group :test do
@@ -49,11 +51,12 @@ group :test do
     gem 'jdbc-sqlite3', sqlite_version, require: nil, platform: :jruby
   end
 
-  gem 'mysql2', '< 0.4', require: nil, platform: :mri
-  gem 'pg', require: nil, platform: :mri
-  gem 'sqlite3', require: nil, platform: :mri
-  group :mssql do
-    gem 'tiny_tds', require: nil, platform: :mri
-    gem 'activerecord-sqlserver-adapter', require: nil, platform: :mri
-  end
+  gem 'mysql2', '>= 0.4.4', require: nil, platform: :mri
+  gem 'pg', '>= 0.18.0', require: nil, platform: :mri
+  gem 'sqlite3', '~> 1.3.6', require: nil, platform: :mri
+
+  # group :mssql do
+  #   gem 'tiny_tds', require: nil, platform: :mri
+  #   gem 'activerecord-sqlserver-adapter', require: nil, platform: :mri
+  # end
 end
