@@ -1,12 +1,28 @@
 source "https://rubygems.org"
 
-if version = ENV['AR_VERSION']
-  if version.index('/') && ::File.exist?(version)
-    gem 'activerecord', path: version
+if version = ( ENV['AR_VERSION'] || ENV['RAILS'] )
+  if version.eql?('false')
+    # NO gem declaration (Rails test -> manipulating LOAD_PATH)
+  elsif version.index('/') && ::File.exist?(version)
+    if Dir.entries(version).include?('activerecord') # Rails directory
+      gem 'activerecord', require: false, path: ::File.join(version, 'activerecord')
+      gem 'activemodel', require: false, path: ::File.join(version, 'activemodel')
+      gem 'activesupport', require: false, path: ::File.join(version, 'activesupport')
+    else
+      gem 'activerecord', path: version
+    end
   elsif version =~ /^[0-9abcdef]+$/
-    gem 'activerecord', github: 'rails/rails', ref: version
+    git 'https://github.com/rails/rails.git', ref: version do
+      gem 'activerecord', require: false
+      gem 'activemodel', require: false
+      gem 'activesupport', require: false
+    end
   elsif version.index('.').nil?
-    gem 'activerecord', github: 'rails/rails', branch: version
+    git 'https://github.com/rails/rails.git', branch: version do
+      gem 'activerecord', require: false
+      gem 'activemodel', require: false
+      gem 'activesupport', require: false
+    end
   else
     gem 'activerecord', version, require: nil
   end
