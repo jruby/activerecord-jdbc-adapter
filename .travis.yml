@@ -1,19 +1,33 @@
 language: ruby
 sudo: false
 bundler_args: --without development
-script: bundle exec rake $TEST_PREFIXtest_$DB
+script: bundle exec rake ${TEST_PREFIX}test_$DB
 before_install:
   - unset _JAVA_OPTIONS
 before_script:
   - export JRUBY_OPTS="--server -Xms64M -Xmx1024M $JRUBY_OPTS" # -Xcompile.invokedynamic=false
   #- mvn prepare-package # compiles ext generates: lib/arjdbc/jdbc/adapter_java.jar
   - mysql --version || true # to see if we're using MySQL or MariaDB
-  - '[ "$DB" == "postgresql" ] && rake db:postgresql || true'
-  - '[ "$DB" == "mysql2" ] && rake db:mysql || true'
-  - '[ "$DB" == "mariadb" ] && rake db:mysql || true'
+  - '[ "$DB" == "postgresql" ] && [ "$TEST_PREFIX" == "" ] && rake db:postgresql || true'
+  - '[ "$DB" == "mysql2" ] && [ "$TEST_PREFIX" == "" ] && rake db:mysql || true'
+  - '[ "$DB" == "mariadb" ] && [ "$TEST_PREFIX" == "" ] && rake db:mysql || true'
   - '[ "$DB" == "jdbc" ] && rake db:mysql || true'
   - '[ "$DB" == "jndi" ] && rake db:mysql || true'
-
+  # rails:test setups :
+  - |
+    [ "$DB" == "mysql2" ] && [ "$TEST_PREFIX" == "rails:" ] && \
+    mysql -e "CREATE USER rails@localhost;" && \
+    mysql -e "grant all privileges on activerecord_unittest.* to rails@localhost;" && \
+    mysql -e "grant all privileges on activerecord_unittest2.* to rails@localhost;" && \
+    mysql -e "grant all privileges on inexistent_activerecord_unittest.* to rails@localhost;" && \
+    mysql -e "CREATE DATABASE activerecord_unittest;" && \
+    mysql -e "CREATE DATABASE activerecord_unittest2;" \
+    || true
+  - |
+    [ "$DB" == "postgresql" ] && [ "$TEST_PREFIX" == "rails:" ] && \
+    psql  -c "create database activerecord_unittest;" -U postgres && \
+    psql  -c "create database activerecord_unittest2;" -U postgres \
+    || true
 rvm:
   - jruby-9.1.14.0
 jdk:
@@ -46,6 +60,6 @@ matrix:
         mariadb: '10.1'
       env: DB=mariadb PREPARED_STATEMENTS=true
     # Rails test-suite :
-    - env: DB=mysql2     TEST_PREFIX=rails: AR_VERSION=5-0-stable
-    - env: DB=postgresql TEST_PREFIX=rails: AR_VERSION=5-0-stable
-    - env: DB=sqlite3    TEST_PREFIX=rails: AR_VERSION=5-0-stable
+    - env: DB=mysql2     TEST_PREFIX="rails:" AR_VERSION="5-0-stable"
+    - env: DB=postgresql TEST_PREFIX="rails:" AR_VERSION="5-0-stable"
+    - env: DB=sqlite3    TEST_PREFIX="rails:" AR_VERSION="5-0-stable"
