@@ -1,13 +1,13 @@
 language: ruby
 sudo: false
 bundler_args: --without development
-script: bundle exec rake test_$DB
+script: bundle exec rake $TEST_PREFIXtest_$DB
 before_script:
   - export JRUBY_OPTS="--server $JRUBY_OPTS" # -Xcompile.invokedynamic=false
   #- mvn prepare-package # compiles ext generates: lib/arjdbc/jdbc/adapter_java.jar
   - mysql --version || true # to see if we're using MySQL or MariaDB
   - '[ "$DB" == "postgresql" ] && rake db:postgresql || true'
-  - '[ "$DB" == "mysql" ] && rake db:mysql || true'
+  - '[ "$DB" == "mysql2" ] && rake db:mysql || true'
   - '[ "$DB" == "mariadb" ] && rake db:mysql || true'
   - '[ "$DB" == "jdbc" ] && rake db:mysql || true'
   - '[ "$DB" == "jndi" ] && rake db:mysql || true'
@@ -17,8 +17,8 @@ rvm:
 jdk:
   - openjdk8
 env:
-  - DB=mysql PREPARED_STATEMENTS=false
-  - DB=mysql PREPARED_STATEMENTS=true
+  - DB=mysql2 PREPARED_STATEMENTS=false
+  - DB=mysql2 PREPARED_STATEMENTS=true
   - DB=postgresql PREPARED_STATEMENTS=false INSERT_RETURNING=false
   - DB=postgresql PREPARED_STATEMENTS=false INSERT_RETURNING=true
   - DB=postgresql PREPARED_STATEMENTS=true
@@ -43,3 +43,7 @@ matrix:
     - addons:
         mariadb: '10.1'
       env: DB=mariadb PREPARED_STATEMENTS=true
+    # Rails test-suite :
+    - env: DB=mysql2     TEST_PREFIX=rails: AR_VERSION=5-0-stable
+    - env: DB=postgresql TEST_PREFIX=rails: AR_VERSION=5-0-stable
+    - env: DB=sqlite3    TEST_PREFIX=rails: AR_VERSION=5-0-stable
