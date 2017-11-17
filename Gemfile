@@ -27,9 +27,10 @@ end
 group :rails do
   group :test do
     # FIX: Our test suite isn't ready to run in random order yet.
-    gem 'minitest', '< 5.3.4'
+    gem 'minitest', '< 5.3.4', require: nil
+    gem 'minitest-colorize', require: nil
 
-    gem 'benchmark-ips'
+    gem 'benchmark-ips', require: nil
   end
 
   #gem 'erubis', require: nil
