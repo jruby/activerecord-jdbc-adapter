@@ -1,4 +1,4 @@
-default_connection: jdbcsqlite3
+default_connection: sqlite3
 
 with_manual_interventions: false
 
@@ -61,11 +61,11 @@ connections:
 
   mysql2:
     arunit:
-      username: rails
+      username: <%= ENV['MY_USER'] || 'rails' %>
       encoding: utf8
       collation: utf8_unicode_ci
     arunit2:
-      username: rails
+      username: <%= ENV['MY_USER'] || 'rails' %>
       encoding: utf8
 
   oracle:
@@ -84,17 +84,15 @@ connections:
 
   postgresql:
     arunit:
-      adapter: jdbcpostgresql
       insert_returning: <%= ENV['INSERT_RETURNING'] %>
       prepared_statements: <%= ENV['PREPARED_STATEMENTS'] %>
-      username: <%= ENV['user'] || 'rails' %>
+      username: <%= ENV['PGUSER'] || ENV['user'] || 'rails' %>
       properties:
         prepareThreshold: <%= ENV['PREPARE_THRESHOLD'] || 1 %>
     arunit2:
-      adapter: jdbcpostgresql
       insert_returning: <%= ENV['INSERT_RETURNING'] %>
       prepared_statements: <%= ENV['PREPARED_STATEMENTS'] %>
-      username: <%= ENV['user'] || 'rails' %>
+      username: <%= ENV['PGUSER'] || ENV['user'] || 'rails' %>
       properties:
         prepareThreshold: <%= ENV['PREPARE_THRESHOLD'] || 1 %>
 
