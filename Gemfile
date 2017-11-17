@@ -49,7 +49,7 @@ group :rails do
     gem 'benchmark-ips', require: nil
   end
 
-  #gem 'erubis', require: nil
+  gem 'erubis', require: nil # "~> 2.7.0"
   # NOTE: due rails/activerecord/test/cases/connection_management_test.rb (AR 5.0)
   #gem 'actionpack', require: nil
 end
