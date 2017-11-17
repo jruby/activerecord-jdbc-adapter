@@ -18,6 +18,7 @@ namespace :rails do
       env['BUNDLE_GEMFILE'] = ENV['BUNDLE_GEMFILE'] || File.join(root_dir, 'Gemfile') # use AR-JDBC's with Rails tests
 
       driver = "jdbc-#{adapter =~ /postgres/i ? 'postgres' : adapter}"
+      adapter = 'mysql2' if adapter.eql?('mysql')
 
       libs = [
           File.join(root_dir, 'lib'),
@@ -53,6 +54,7 @@ namespace :rails do
         end
       end
     end
+    task :test_mysql2 => :test_mysql
 
     FileUtils.module_eval do
 
