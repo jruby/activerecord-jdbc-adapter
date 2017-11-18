@@ -64,9 +64,15 @@ connections:
       username: <%= ENV['MY_USER'] || 'rails' %>
       encoding: utf8
       collation: utf8_unicode_ci
+      <%- if ENV['PREPARED_STATEMENTS'] -%>
+      prepared_statements: <%= ENV['PREPARED_STATEMENTS'] %> # false by default for Mysql2Adapter
+      <%- end -%>
     arunit2:
       username: <%= ENV['MY_USER'] || 'rails' %>
       encoding: utf8
+      <%- if ENV['PREPARED_STATEMENTS'] -%>
+      prepared_statements: <%= ENV['PREPARED_STATEMENTS'] %> # false by default for Mysql2Adapter
+      <%- end -%>
 
   oracle:
      arunit:
