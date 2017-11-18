@@ -67,6 +67,7 @@ test_task_for :H2, :desc => 'Run tests against H2 database engine'
 test_task_for :HSQLDB, :desc => 'Run tests against HyperSQL (Java) database'
 test_task_for :MSSQL, :driver => :jtds, :database_name => 'MS-SQL (SQLServer)'
 test_task_for :MySQL #, :prereqs => 'db:mysql'
+task :test_mysql2 => :test_mysql
 test_task_for :PostgreSQL, :driver => ENV['JDBC_POSTGRES_VERSION'] || 'postgres' #, :prereqs => 'db:postgresql'
 task :test_postgres => :test_postgresql # alias
 test_task_for :SQLite3, :driver => ENV['JDBC_SQLITE_VERSION']
