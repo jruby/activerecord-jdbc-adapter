@@ -154,6 +154,14 @@ public class RubyJdbcConnection extends RubyObject {
 
     /**
      * @param runtime
+     * @return <code>ActiveRecord::Result</code>
+     */
+    protected static RubyClass getResult(final Ruby runtime) {
+        return (RubyClass) runtime.getModule("ActiveRecord").getConstantAt("Result");
+    }
+
+    /**
+     * @param runtime
      * @return <code>ActiveRecord::ConnectionAdapters</code>
      */
     protected static RubyModule getConnectionAdapters(final Ruby runtime) {
@@ -705,7 +713,7 @@ public class RubyJdbcConnection extends RubyObject {
     }
 
     @JRubyMethod(name = "database_name")
-    public IRubyObject database_name(final ThreadContext context) throws SQLException {
+    public IRubyObject database_name(final ThreadContext context) {
         return withConnection(context, new Callable<IRubyObject>() {
             public IRubyObject call(final Connection connection) throws SQLException {
                 String name = connection.getCatalog();
@@ -1235,7 +1243,7 @@ public class RubyJdbcConnection extends RubyObject {
     protected static final int PRIMARY_KEYS_COLUMN_NAME = 4;
 
     @Deprecated // NOTE: this should go private
-    protected List<RubyString> primaryKeys(final ThreadContext context, final String tableName) {
+    protected final List<RubyString> primaryKeys(final ThreadContext context, final String tableName) {
         return withConnection(context, new Callable<List<RubyString>>() {
             public List<RubyString> call(final Connection connection) throws SQLException {
                 final String _tableName = caseConvertIdentifierForJdbc(connection, tableName);
@@ -2066,7 +2074,7 @@ public class RubyJdbcConnection extends RubyObject {
     }
 
     @Deprecated
-    protected IRubyObject jdbcToRuby(final Ruby runtime,
+    protected final IRubyObject jdbcToRuby(final Ruby runtime,
         final int column, final int type, final ResultSet resultSet)
         throws SQLException {
         return jdbcToRuby(runtime.getCurrentContext(), runtime, column, type, resultSet);
@@ -3471,10 +3479,10 @@ public class RubyJdbcConnection extends RubyObject {
 
     private static boolean isSelect(final RubyString sql) {
         final ByteList sqlBytes = sql.getByteList();
-        return startsWithIgnoreCase(sqlBytes, SELECT) ||
-               startsWithIgnoreCase(sqlBytes, WITH) ||
-               startsWithIgnoreCase(sqlBytes, SHOW) ||
-               startsWithIgnoreCase(sqlBytes, CALL);
+        return StringHelper.startsWithIgnoreCase(sqlBytes, SELECT) ||
+               StringHelper.startsWithIgnoreCase(sqlBytes, WITH) ||
+               StringHelper.startsWithIgnoreCase(sqlBytes, SHOW) ||
+               StringHelper.startsWithIgnoreCase(sqlBytes, CALL);
     }
 
     private static final byte[] INSERT = new byte[] { 'i','n','s','e','r','t' };
@@ -3483,7 +3491,7 @@ public class RubyJdbcConnection extends RubyObject {
     public static IRubyObject insert_p(final ThreadContext context,
         final IRubyObject self, final IRubyObject sql) {
         final ByteList sqlBytes = sql.convertToString().getByteList();
-        return context.runtime.newBoolean( startsWithIgnoreCase(sqlBytes, INSERT) );
+        return context.runtime.newBoolean( StringHelper.startsWithIgnoreCase(sqlBytes, INSERT) );
     }
 
     protected static boolean startsWithIgnoreCase(final ByteList bytes, final byte[] start) {
@@ -3491,28 +3499,30 @@ public class RubyJdbcConnection extends RubyObject {
     }
 
     // maps a AR::Result row
-    protected IRubyObject mapRow(final ThreadContext context, final Ruby runtime,
-                              final ColumnData[] columns, final ResultSet resultSet,
-                              final RubyJdbcConnection connection) throws SQLException {
-        final RubyArray row = runtime.newArray(columns.length);
-
-        for (int i = 0; i < columns.length; i++) {
-            final ColumnData column = columns[i];
-            row.append(connection.jdbcToRuby(context, runtime, column.index, column.type, resultSet));
-        }
-
-        return row;
-    }
-
-    private IRubyObject mapRawRow(final ThreadContext context, final Ruby runtime,
+    protected static IRubyObject mapRow(final ThreadContext context, final Ruby runtime,
         final ColumnData[] columns, final ResultSet resultSet,
         final RubyJdbcConnection connection) throws SQLException {
 
-        final RubyHash row = RubyHash.newHash(runtime);
+        final IRubyObject[] row = new IRubyObject[columns.length];
+
+        for (int i = 0; i < columns.length; i++) {
+            final ColumnData column = columns[i];
+            row[i] = connection.jdbcToRuby(context, runtime, column.index, column.type, resultSet);
+        }
+
+        return RubyArray.newArrayNoCopy(context.runtime, row);
+    }
+
+    private static IRubyObject mapRawRow(final ThreadContext context, final Ruby runtime,
+        final ColumnData[] columns, final ResultSet resultSet,
+        final RubyJdbcConnection connection) throws SQLException {
+
+        final RubyHash row = new RubyHash(runtime, columns.length);
 
         for ( int i = 0; i < columns.length; i++ ) {
             final ColumnData column = columns[i];
-            row.op_aset( context, column.getName(context),
+            // NOTE: we know keys are always String so maybe we could take it even further ?!
+            row.fastASetCheckString(runtime, column.getName(context),
                 connection.jdbcToRuby(context, runtime, column.index, column.type, resultSet)
             );
         }
@@ -3520,20 +3530,17 @@ public class RubyJdbcConnection extends RubyObject {
         return row;
     }
 
-    protected IRubyObject newResult(final ThreadContext context, ColumnData[] columns, IRubyObject rows) {
-        RubyClass result = ActiveRecord(context).getClass("Result");
-
-        return Helpers.invoke(context, result, "new", columnsToArray(context, columns), rows);
+    protected static IRubyObject newResult(final ThreadContext context, ColumnData[] columns, IRubyObject rows) {
+        final RubyClass Result = getResult(context.runtime);
+        return Result.newInstance(context, columnsToArray(context, columns), rows, Block.NULL_BLOCK); // Result.new
     }
 
-    private RubyArray columnsToArray(ThreadContext context, ColumnData[] columns) {
-        final RubyArray cols = RubyArray.newArray(context.runtime, columns.length);
+    private static RubyArray columnsToArray(ThreadContext context, ColumnData[] columns) {
+        final IRubyObject[] cols = new IRubyObject[columns.length];
 
-        for ( int i = 0; i < columns.length; i++ ) {
-            cols.append( columns[i].name );
-        }
+        for ( int i = 0; i < columns.length; i++ ) cols[i] = columns[i].getName(context);
 
-        return cols;
+        return RubyArray.newArrayNoCopy(context.runtime, cols);
     }
 
     protected static final class TableName {
@@ -3548,8 +3555,7 @@ public class RubyJdbcConnection extends RubyObject {
 
         @Override
         public String toString() {
-            return getClass().getName() +
-            "{catalog=" + catalog + ",schema=" + schema + ",name=" + name + "}";
+            return getClass().getName() + "{catalog=" + catalog + ",schema=" + schema + ",name=" + name + "}";
         }
 
     }
