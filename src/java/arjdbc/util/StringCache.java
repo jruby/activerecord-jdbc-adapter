@@ -23,7 +23,8 @@
  */
 package arjdbc.util;
 
-import java.util.HashMap;
+import java.lang.ref.SoftReference;
+import java.util.concurrent.ConcurrentHashMap;
 
 import org.jruby.Ruby;
 import org.jruby.RubyString;
@@ -37,18 +38,21 @@ import org.jruby.util.ByteList;
  */
 public final class StringCache {
 
-    final HashMap<String, ByteList> cache = new HashMap<String, ByteList>(64);
+    final ConcurrentHashMap<String, SoftReference<ByteList>> cache = new ConcurrentHashMap<>(64);
 
     public RubyString get(final ThreadContext context, final String key) {
-        final ByteList bytes = cache.get(key);
-        if ( bytes == null ) return store(context, key);
-        return (RubyString) context.runtime.newString(bytes).freeze(context);
+        final ByteList bytes;
+        final SoftReference<ByteList> ref = cache.get(key);
+        if ( ref == null || (bytes = ref.get()) == null ) return store(context, key);
+        return (RubyString) RubyString.newUnicodeString(context.runtime, bytes).freeze(context);
     }
 
     private RubyString store(final ThreadContext context, final String key) {
         final Ruby runtime = context.runtime;
         final RubyString str = RubyString.newUnicodeString(runtime, key);
-        synchronized (cache) { cache.put(key, str.getByteList()); }
+        cache.putIfAbsent(key, new SoftReference<>(str.getByteList()));
+        // not clearing up orphans - but since its to be used for column/table names ...
+        // should be fine - DB drivers tend do also cache some meta-data information
         return (RubyString) str.freeze(context);
     }
 
