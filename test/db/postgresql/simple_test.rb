@@ -186,6 +186,29 @@ class PostgresSimpleTest < Test::Unit::TestCase
     assert_equal 'some', connection.type_cast(:some, nil)
   end
 
+  # def test_jdbc_error
+  #   begin
+  #     disable_logger { connection.exec_query('SELECT * FROM bogus') }
+  #   rescue ActiveRecord::ActiveRecordError => e
+  #     error = extract_jdbc_error(e)
+  #
+  #     assert error.cause
+  #     assert_equal error.cause, error.jdbc_exception
+  #     assert error.jdbc_exception.is_a?(Java::JavaSql::SQLException)
+  #
+  #     assert error.error_code
+  #     assert error.error_code.is_a?(Fixnum)
+  #     assert error.sql_state
+  #
+  #     # #<ActiveRecord::JDBCError: org.postgresql.util.PSQLException: ERROR: relation "bogus" does not exist \n Position: 15>
+  #     if true
+  #       assert_match /org.postgresql.util.PSQLException: ERROR: relation "bogus" does not exist/, error.message
+  #     end
+  #     assert_match /ActiveRecord::JDBCError: .*?Exception: /, error.inspect
+  #
+  #   end
+  # end if defined? JRUBY_VERSION
+
 end
 
 class PostgresTimestampTest < Test::Unit::TestCase
