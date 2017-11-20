@@ -3128,7 +3128,7 @@ public class RubyJdbcConnection extends RubyObject {
 
             name = caseConvertIdentifierForRails(metaData, name);
 
-            tables.add(RubyString.newUnicodeString(runtime, name));
+            tables.append(RubyString.newUnicodeString(runtime, name));
         }
         return tables;
     }
