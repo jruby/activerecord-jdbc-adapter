@@ -1420,11 +1420,12 @@ public class RubyJdbcConnection extends RubyObject {
                 final List<RubyString> primaryKeys = primaryKeys(context, connection, table);
 
                 ResultSet indexInfoSet = null;
-                final List<IRubyObject> indexes = new ArrayList<IRubyObject>();
+                final RubyArray indexes = RubyArray.newArray(runtime, 8);
                 try {
                     final DatabaseMetaData metaData = connection.getMetaData();
                     indexInfoSet = metaData.getIndexInfo(table.catalog, table.schema, table.name, false, true);
                     String currentIndex = null;
+                    RubyArray currentColumns = null;
 
                     while ( indexInfoSet.next() ) {
                         String indexName = indexInfoSet.getString(INDEX_INFO_NAME);
@@ -1432,8 +1433,8 @@ public class RubyJdbcConnection extends RubyObject {
                         indexName = caseConvertIdentifierForRails(metaData, indexName);
 
                         final String columnName = indexInfoSet.getString(INDEX_INFO_COLUMN_NAME);
-                        final RubyString rubyColumnName = RubyString.newUnicodeString(
-                                runtime, caseConvertIdentifierForRails(metaData, columnName)
+                        final RubyString rubyColumnName = cachedString(
+                                context, caseConvertIdentifierForRails(metaData, columnName)
                         );
                         if ( primaryKeys.contains(rubyColumnName) ) continue;
 
@@ -1447,24 +1448,21 @@ public class RubyJdbcConnection extends RubyObject {
                             final boolean nonUnique = indexInfoSet.getBoolean(INDEX_INFO_NON_UNIQUE);
 
                             IRubyObject[] args = new IRubyObject[] {
-                                RubyString.newUnicodeString(runtime, indexTableName), // table_name
-                                RubyString.newUnicodeString(runtime, indexName), // index_name
-                                runtime.newBoolean( ! nonUnique ), // unique
-                                runtime.newArray() // [] for column names, we'll add to that in just a bit
+                                cachedString(context, indexTableName), // table_name
+                                cachedString(context, indexName), // index_name
+                                nonUnique ? runtime.getFalse() : runtime.getTrue(), // unique
+                                currentColumns = RubyArray.newArray(runtime, 4) // [] column names
                                 // orders, (since AR 3.2) where, type, using (AR 4.0)
                             };
 
-                            indexes.add( IndexDefinition.callMethod(context, "new", args) ); // IndexDefinition.new
+                            indexes.append( IndexDefinition.newInstance(context, args, Block.NULL_BLOCK) ); // IndexDefinition.new
                         }
 
-                        // One or more columns can be associated with an index
-                        IRubyObject lastIndexDef = indexes.isEmpty() ? null : indexes.get(indexes.size() - 1);
-                        if (lastIndexDef != null) {
-                            lastIndexDef.callMethod(context, "columns").callMethod(context, "<<", rubyColumnName);
-                        }
+                        // one or more columns can be associated with an index
+                        if ( currentColumns != null ) currentColumns.append(rubyColumnName);
                     }
 
-                    return runtime.newArray(indexes);
+                    return indexes;
 
                 } finally { close(indexInfoSet); }
             }
