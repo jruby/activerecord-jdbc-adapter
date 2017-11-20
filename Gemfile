@@ -11,7 +11,7 @@ if version = ( ENV['AR_VERSION'] || ENV['RAILS'] )
     else
       gem 'activerecord', path: version
     end
-  elsif version =~ /^[0-9abcdef]+$/
+  elsif version =~ /^[0-9abcdef]+$/ || version.start_with?('v')
     git 'https://github.com/rails/rails.git', ref: version do
       gem 'activerecord', require: false
       gem 'activemodel', require: false
