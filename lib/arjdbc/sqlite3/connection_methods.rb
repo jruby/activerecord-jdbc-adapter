@@ -1,3 +1,4 @@
+# frozen_string_literal: true
 ArJdbc::ConnectionMethods.module_eval do
   def sqlite3_connection(config)
     config[:adapter_spec] ||= ::ArJdbc::SQLite3
@@ -10,11 +11,11 @@ ArJdbc::ConnectionMethods.module_eval do
       ::Jdbc::SQLite3.load_driver(:require) if defined?(::Jdbc::SQLite3.load_driver)
     rescue LoadError # assuming driver.jar is on the class-path
     end
+    config[:driver] ||= 'org.sqlite.JDBC'
 
     parse_sqlite3_config!(config)
     database = config[:database] # NOTE: "jdbc:sqlite::memory:" syntax is supported
     config[:url] ||= "jdbc:sqlite:#{database == ':memory:' ? '' : database}"
-    config[:driver] ||= defined?(::Jdbc::SQLite3.driver_name) ? ::Jdbc::SQLite3.driver_name : 'org.sqlite.JDBC'
     config[:connection_alive_sql] ||= 'SELECT 1'
 
     options = ( config[:properties] ||= {} )
@@ -29,9 +30,8 @@ ArJdbc::ConnectionMethods.module_eval do
 
   def parse_sqlite3_config!(config)
     database = ( config[:database] ||= config[:dbfile] ) # allow Rails relative path :
-    if database != ':memory:' && defined?(Rails.root) || Object.const_defined?(:RAILS_ROOT)
-      rails_root = defined?(Rails.root) ? Rails.root : RAILS_ROOT
-      config[:database] = File.expand_path(database, rails_root.to_s)
+    if database != ':memory:' && defined?(Rails.root)
+      config[:database] = File.expand_path(database, Rails.root.to_s)
       dirname = File.dirname(config[:database])
       Dir.mkdir(dirname) unless File.directory?(dirname)
     end
