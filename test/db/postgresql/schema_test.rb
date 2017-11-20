@@ -32,7 +32,7 @@ class PostgresSchemaTest < Test::Unit::TestCase
   end
 
   def test_schema_search_path
-    assert_equal "\"$user\", public", connection.schema_search_path
+    assert_equal "\"$user\",public", connection.schema_search_path
   end
 
   context "search path" do
