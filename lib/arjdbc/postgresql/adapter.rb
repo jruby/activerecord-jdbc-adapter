@@ -303,6 +303,12 @@ module ArJdbc
       end
     end
 
+    def max_identifier_length
+      @max_identifier_length ||= query_value("SHOW max_identifier_length", "SCHEMA").to_i
+    end
+    alias table_alias_length max_identifier_length
+    alias index_name_length max_identifier_length
+
     def index_algorithms
       { :concurrently => 'CONCURRENTLY' }
     end
@@ -327,17 +333,6 @@ module ArJdbc
       end
       select_value("SELECT pg_advisory_unlock(#{lock_id})") == 't'.freeze
     end
-
-    # Returns the configured supported identifier length supported by PostgreSQL,
-    # or report the default of 63 on PostgreSQL 7.x.
-    def table_alias_length
-      @table_alias_length ||= (
-        postgresql_version >= 80000 ?
-          select_one('SHOW max_identifier_length', 'SCHEMA'.freeze)['max_identifier_length'].to_i :
-            63
-      )
-    end
-    alias index_name_length table_alias_length
 
     def exec_insert(sql, name, binds, pk = nil, sequence_name = nil)
       val = super
@@ -753,10 +748,9 @@ module ActiveRecord::ConnectionAdapters
     def initialize(connection, logger = nil, config = {})
       # @local_tz is initialized as nil to avoid warnings when connect tries to use it
       @local_tz = nil
+      @max_identifier_length = nil
 
       super # configure_connection happens in super
-
-      @table_alias_length = nil
 
       initialize_type_map(@type_map = Type::HashLookupTypeMap.new)
 
