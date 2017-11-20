@@ -1,4 +1,3 @@
-require File.expand_path('../../test/shared_helper', __FILE__)
 
 test_tasks = [ 'test_mysql', 'test_sqlite3', 'test_postgresql_with_hint' ]
 if defined?(JRUBY_VERSION)
@@ -10,6 +9,7 @@ desc "Run \"most\" available test_xxx tasks"
 task :test => test_tasks
 
 task 'test_postgresql_with_hint' do
+  require File.expand_path('../../test/shared_helper', __FILE__)
   if PostgresHelper.have_postgres?(false)
     Rake::Task['test_postgresql'].invoke
   else
@@ -21,15 +21,18 @@ Rake::TestTask.class_eval { attr_reader :test_files }
 
 def test_task_for(adapter, options = {})
   desc = options[:desc] || options[:comment] ||
-    "Run tests against #{options[:database_name] || adapter}"
+      "Run tests against #{options[:database_name] || adapter}"
   adapter = adapter.to_s.downcase
   driver = adapter if ( driver = options[:driver] ).nil?
   prereqs = options[:prereqs] || []
+  unless prereqs.frozen?
+    prereqs = [ prereqs ].flatten; # prereqs << 'test_appraisal_hint'
+  end
   name = options[:name] || "test_#{adapter}"
   test_task = Rake::TestTask.new(name => prereqs) do |test_task|
     files = options[:files] || begin
       FileList["test/#{adapter}*_test.rb"] +
-        FileList["test/db/#{adapter}/**/*_test.rb"]
+          FileList["test/db/#{adapter}/**/*_test.rb"]
     end
     test_task.test_files = files
     test_task.libs = []
@@ -63,14 +66,15 @@ test_task_for :Derby, :desc => 'Run tests against (embedded) DerbyDB'
 test_task_for :H2, :desc => 'Run tests against H2 database engine'
 test_task_for :HSQLDB, :desc => 'Run tests against HyperSQL (Java) database'
 test_task_for :MSSQL, :driver => :jtds, :database_name => 'MS-SQL (SQLServer)'
-test_task_for :MySQL, :prereqs => 'db:mysql'
-test_task_for :PostgreSQL, :driver => 'postgres', :prereqs => 'db:postgresql'
+test_task_for :MySQL #, :prereqs => 'db:mysql'
+task :test_mysql2 => :test_mysql
+test_task_for :PostgreSQL, :driver => ENV['JDBC_POSTGRES_VERSION'] || 'postgres' #, :prereqs => 'db:postgresql'
 task :test_postgres => :test_postgresql # alias
 test_task_for :SQLite3, :driver => ENV['JDBC_SQLITE_VERSION']
 task :test_sqlite => :test_sqlite3 # alias
 test_task_for :Firebird
 
-test_task_for :MariaDB, :prereqs => 'db:mysql', :files => FileList["test/db/mysql/*_test.rb"]
+test_task_for :MariaDB, :files => FileList["test/db/mysql/*_test.rb"] #, :prereqs => 'db:mysql'
 
 # ensure driver for these DBs is on your class-path
 [ :Oracle, :DB2, :Informix, :CacheDB ].each do |adapter|
@@ -80,29 +84,59 @@ end
 #test_task_for :MSSQL, :name => 'test_sqlserver', :driver => nil, :database_name => 'MS-SQL using SQLJDBC'
 
 test_task_for :AS400, :desc => "Run tests against AS400 (DB2) (ensure driver is on class-path)",
-  :files => FileList["test/db2*_test.rb"] + FileList["test/db/db2/*_test.rb"]
+              :files => FileList["test/db2*_test.rb"] + FileList["test/db/db2/*_test.rb"]
+
+#task :test_jdbc => [ :test_jdbc_mysql, :test_jdbc_derby ] if defined?(JRUBY_VERSION)
 
 test_task_for 'JDBC', :desc => 'Run tests against plain JDBC adapter (uses MySQL and Derby)',
-  :prereqs => 'db:mysql', :files => FileList['test/*jdbc_*test.rb'] do |test_task|
+              :prereqs => [ 'db:mysql' ], :files => FileList['test/*jdbc_*test.rb'] do |test_task|
   test_task.libs << 'jdbc-mysql/lib' << 'jdbc-derby/lib'
 end
 
-test_task_for 'JNDI', :desc => 'Run tests against a JNDI connection (uses Derby)',
-  :prereqs => 'tomcat-jndi:check',
-  :files => FileList['test/*jndi_*test.rb'] do |test_task|
+task :test_jndi => [ :test_jndi_mysql, :test_jndi_derby ] if defined?(JRUBY_VERSION)
+
+jndi_classpath = []
+jndi_classpath << 'test/jars/tomcat-juli.jar'
+jndi_classpath << 'test/jars/tomcat-catalina.jar'
+
+jndi_classpath.each do |jar_path|
+  file(jar_path) { Rake::Task['tomcat-jndi:download'].invoke }
+end
+
+get_jndi_classpath_opt = lambda do
+  cp = jndi_classpath.map do |jar_path|
+    File.expand_path("../#{jar_path}", File.dirname(__FILE__))
+  end
+  "-J-cp \"#{cp.join(windows? ? ';' : ':')}\""
+end
+
+def windows?; require 'rbconfig'; RbConfig::CONFIG['host_os'] =~ /mswin|msys|mingw/ end
+
+test_task_for 'JNDI_Derby', :desc => 'Run tests against a Derby JNDI connection',
+              :prereqs => jndi_classpath,
+              :files => FileList['test/*jndi_derby*test.rb'] do |test_task|
   test_task.libs << 'jdbc-derby/lib'
+  test_task.ruby_opts << get_jndi_classpath_opt.call
+  #test_task.verbose = true
+end
+
+test_task_for 'JNDI_MySQL', :desc => 'Run tests against a MySQL JNDI connection',
+              :prereqs => [ 'db:mysql' ] + jndi_classpath,
+              :files => FileList['test/*jndi_mysql*test.rb'] do |test_task|
+  test_task.libs << 'jdbc-mysql/lib'
+  test_task.ruby_opts << get_jndi_classpath_opt.call
 end
 
 test_task_for :MySQL, :name => 'test_jdbc_mysql',
-  :prereqs => 'db:mysql', :database_name => 'MySQL (using adapter: jdbc)' do |test_task|
+              :prereqs => 'db:mysql', :database_name => 'MySQL (using adapter: jdbc)' do |test_task|
   test_task.ruby_opts << '-rdb/jdbc_mysql' # replaces require 'db/mysql'
 end
 test_task_for :PostgreSQL, :name => 'test_jdbc_postgresql', :driver => 'postgres',
-  :prereqs => 'db:postgresql', :database_name => 'PostgreSQL (using adapter: jdbc)' do |test_task|
+              :prereqs => 'db:postgresql', :database_name => 'PostgreSQL (using adapter: jdbc)' do |test_task|
   test_task.ruby_opts << '-rdb/jdbc_postgres' # replaces require 'db/postgres'
 end
 
-# TODO Sybase testing is currently broken, please fix it if you're on Sybase :
+# NOTE: Sybase testing is currently broken, please fix it if you're on Sybase :
 #test_task_for :Sybase, :desc => "Run tests against Sybase (using jTDS driver)"
 #task :test_sybase_jtds => :test_sybase # alias
 #test_task_for :Sybase, :name => 'sybase_jconnect',
