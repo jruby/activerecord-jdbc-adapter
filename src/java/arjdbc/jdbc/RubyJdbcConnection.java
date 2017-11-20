@@ -2994,19 +2994,14 @@ public class RubyJdbcConnection extends RubyObject {
         Statement statement = null;
         try {
             final String aliveSQL = getAliveSQL(context);
-            final RubyInteger aliveTimeout = getAliveTimeout(context);
+            final int aliveTimeout = getAliveTimeout(context);
             if ( aliveSQL != null ) { // expect a SELECT/CALL SQL statement
                 statement = createStatement(context, connection);
-                if (aliveTimeout != null) {
-                    statement.setQueryTimeout((int) aliveTimeout.getLongValue()); // 0 - no timeout
-                }
-                statement.execute( aliveSQL.toString() );
+                statement.setQueryTimeout(aliveTimeout); // 0 - no timeout
+                statement.execute(aliveSQL);
                 return true; // connection alive
             }
-            else { // alive_sql nil (or not a statement we can execute)
-                return connection.isValid(aliveTimeout == null ? 0 : (int) aliveTimeout.getLongValue()); // since JDBC 4.0
-                // ... isValid(0) (default) means no timeout applied
-            }
+            return connection.isValid(aliveTimeout); // isValid(0) (default) means no timeout applied
         }
         catch (Exception e) {
             debugMessage(context.runtime, "connection considered not valid due: ", e);
@@ -3035,12 +3030,17 @@ public class RubyJdbcConnection extends RubyObject {
         return aliveSQL == NIL_ALIVE_SQL ? null : aliveSQL;
     }
 
+    private transient int aliveTimeout = Integer.MIN_VALUE;
+
     /**
      * internal API do not depend on it
      */
-    protected final RubyInteger getAliveTimeout(final ThreadContext context) {
-        final IRubyObject timeout = getConfigValue(context, "connection_alive_timeout");
-        return timeout.isNil() ? null : timeout.convertToInteger("to_i");
+    protected final int getAliveTimeout(final ThreadContext context) {
+        if ( aliveTimeout == Integer.MIN_VALUE ) {
+            final IRubyObject timeout = getConfigValue(context, "connection_alive_timeout");
+            return aliveTimeout = timeout == context.nil ? 0 : RubyInteger.fix2int(timeout);
+        }
+        return aliveTimeout;
     }
 
     private boolean tableExists(final Ruby runtime,
