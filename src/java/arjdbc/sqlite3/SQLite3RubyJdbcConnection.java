@@ -222,13 +222,10 @@ public class SQLite3RubyJdbcConnection extends RubyJdbcConnection {
         String name = tableName;
 
         if ( nameParts.length == 2 ) {
-            schema = nameParts[0];
-            name = nameParts[1];
+            schema = nameParts[0]; name = nameParts[1];
         }
         else if ( nameParts.length == 3 ) {
-            catalog = nameParts[0];
-            schema = nameParts[1];
-            name = nameParts[2];
+            catalog = nameParts[0]; schema = nameParts[1]; name = nameParts[2];
         }
 
         if ( schema != null ) {
@@ -287,6 +284,16 @@ public class SQLite3RubyJdbcConnection extends RubyJdbcConnection {
             tables.append( RubyString.newUnicodeString(runtime, name) );
         }
         return tables;
+    }
+
+    @Override
+    protected String caseConvertIdentifierForRails(final Connection connection, final String value) {
+        return value;
+    }
+
+    @Override
+    protected String caseConvertIdentifierForJdbc(final Connection connection, final String value) {
+        return value;
     }
 
     private static class SavepointStub implements Savepoint {

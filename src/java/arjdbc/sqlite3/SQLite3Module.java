@@ -23,6 +23,7 @@
  */
 package arjdbc.sqlite3;
 
+import static arjdbc.util.QuotingUtils.quoteCharAndDecorateWith;
 import static arjdbc.util.QuotingUtils.quoteCharWith;
 
 import org.jruby.Ruby;
@@ -60,4 +61,13 @@ public class SQLite3Module {
         );
         return quoted;
     }
+
+    @JRubyMethod(name = "quote_column_name", required = 1)
+    public static IRubyObject quote_column_name(
+            final ThreadContext context,
+            final IRubyObject self,
+            final IRubyObject string) { // "#{name.to_s.gsub('"', '""')}"
+        return quoteCharAndDecorateWith(context, string.asString(), '"', '"', (byte) '"', (byte) '"');
+    }
+
 }
