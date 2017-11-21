@@ -78,6 +78,8 @@ module ArJdbc
 
       @active     = nil
       @statements = StatementPool.new(self.class.type_cast_config_to_integer(config[:statement_limit]))
+
+      configure_connection
     end
 
     def supports_ddl_transactions?
