@@ -10,7 +10,7 @@ url = POSTGRES_CONFIG[:url] || begin
   "jdbc:postgresql://#{url_part}/#{POSTGRES_CONFIG[:database]}"
 end
 
-ActiveRecord::Base.establish_connection({
+Test::Unit::TestCase.establish_connection({
   :adapter => 'jdbc', :url => url, :driver => 'org.postgresql.Driver',
   :username => POSTGRES_CONFIG[:username],
   :password => POSTGRES_CONFIG[:password],

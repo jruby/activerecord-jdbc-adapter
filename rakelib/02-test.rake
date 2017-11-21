@@ -20,8 +20,7 @@ end
 Rake::TestTask.class_eval { attr_reader :test_files }
 
 def test_task_for(adapter, options = {})
-  desc = options[:desc] || options[:comment] ||
-      "Run tests against #{options[:database_name] || adapter}"
+  desc = options[:desc] || options[:comment] || "Run tests against #{options[:database_name] || adapter}"
   adapter = adapter.to_s.downcase
   driver = adapter if ( driver = options[:driver] ).nil?
   prereqs = options[:prereqs] || []
@@ -31,8 +30,7 @@ def test_task_for(adapter, options = {})
   name = options[:name] || "test_#{adapter}"
   test_task = Rake::TestTask.new(name => prereqs) do |test_task|
     files = options[:files] || begin
-      FileList["test/#{adapter}*_test.rb"] +
-          FileList["test/db/#{adapter}/**/*_test.rb"]
+      FileList["test/#{adapter}*_test.rb"] + FileList["test/db/#{adapter}/**/*_test.rb"]
     end
     test_task.test_files = files
     test_task.libs = []
@@ -42,11 +40,6 @@ def test_task_for(adapter, options = {})
       test_task.libs.push *FileList["activerecord-jdbc#{adapter}*/lib"]
     end
     test_task.libs << 'test'
-    test_task.ruby_opts << '-v' if RUBY_VERSION.index('1.8') == 0
-    # set current Ruby compatibility version on JRuby <= 1.7 :
-    if defined?(JRUBY_VERSION) && JRUBY_VERSION.index('1.7') == 0
-      test_task.ruby_opts << "--#{RUBY_VERSION[/^(\d+\.\d+)/, 1]}"
-    end
     test_task.options = '--use-color=t'
     test_task.verbose = true if $VERBOSE
     yield(test_task) if block_given?
@@ -128,11 +121,11 @@ test_task_for 'JNDI_MySQL', :desc => 'Run tests against a MySQL JNDI connection'
 end
 
 test_task_for :MySQL, :name => 'test_jdbc_mysql',
-              :prereqs => 'db:mysql', :database_name => 'MySQL (using adapter: jdbc)' do |test_task|
+  :prereqs => 'db:mysql', :database_name => 'MySQL (using adapter: jdbc)' do |test_task|
   test_task.ruby_opts << '-rdb/jdbc_mysql' # replaces require 'db/mysql'
 end
 test_task_for :PostgreSQL, :name => 'test_jdbc_postgresql', :driver => 'postgres',
-              :prereqs => 'db:postgresql', :database_name => 'PostgreSQL (using adapter: jdbc)' do |test_task|
+  :prereqs => 'db:postgresql', :database_name => 'PostgreSQL (using adapter: jdbc)' do |test_task|
   test_task.ruby_opts << '-rdb/jdbc_postgres' # replaces require 'db/postgres'
 end
 

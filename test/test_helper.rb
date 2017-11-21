@@ -18,7 +18,7 @@ require 'shared_helper'
 if ENV['COVERAGE']
   require 'simplecov'
   SimpleCov.start
-  puts 'started simplecov'
+  puts 'started SimpleCov'
 end
 
 if defined?(JRUBY_VERSION)
@@ -70,6 +70,12 @@ class Test::Unit::TestCase
 
   alias skip omit
 
+  def self.establish_connection(config)
+    ActiveRecord::Base.establish_connection(config).tap do
+      puts "Established connection using #{config.inspect}"
+    end
+  end
+
   def self.ar_version(version)
     match = version.match(/(\d+)\.(\d+)(?:\.(\d+))?/)
     ActiveRecord::VERSION::MAJOR > match[1].to_i ||
@@ -81,18 +87,6 @@ class Test::Unit::TestCase
 
   def self.jruby?; !! defined?(JRUBY_VERSION) end
   def jruby?; self.class.jruby? end
-
-  def with_java_connection(config = nil)
-    config ||= ActiveRecord::Base.connection.config
-    jdbc_driver = ActiveRecord::ConnectionAdapters::JdbcDriver.new(config[:driver])
-    begin
-      java_connection = jdbc_driver.connection(config[:url], config[:username], config[:password])
-      java_connection.setAutoCommit(true)
-      yield(java_connection)
-    ensure
-      java_connection.close rescue nil
-    end
-  end
 
   def connection
     @connection ||= ActiveRecord::Base.connection
@@ -400,27 +394,6 @@ module ActiveRecord
       @@enabled = false
     end
 
-  end
-end
-
-# less (2.3) warnings otherwise the test console output is hard to read :
-if ActiveRecord::VERSION::MAJOR == 2 && ActiveRecord::VERSION::MINOR == 3
-  ActiveRecord::Migration.class_eval do
-    class << self # warning: instance variable @version not initialized
-      alias_method :_announce, :announce
-      def announce(message)
-        @version = nil unless defined?(@version)
-        _announce(message)
-      end
-    end
-  end
-  ActiveRecord::Base.class_eval do
-    def destroyed? # warning: instance variable @destroyed not initialized
-      defined?(@destroyed) && @destroyed # @destroyed
-    end
-    def new_record? # warning: instance variable @new_record not initialized
-      @new_record ||= false # @new_record || false
-    end
   end
 end
 
