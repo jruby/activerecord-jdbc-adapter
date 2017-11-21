@@ -50,17 +50,13 @@ ArJdbc::ConnectionMethods.module_eval do
     end
     if config[:sslkey] || sslcert = config[:sslcert] # || config[:use_ssl]
       properties['useSSL'] ||= true # supported by MariaDB as well
+      properties['requireSSL'] ||= true if mysql_driver
       if mysql_driver
-        properties['requireSSL'] ||= true if mysql_driver
-        properties['clientCertificateKeyStoreUrl'] ||= begin
-          java.io.File.new(sslcert).to_url.to_s
-        end if sslcert
+        properties['clientCertificateKeyStoreUrl'] ||= java.io.File.new(sslcert).to_url.to_s if sslcert
         if sslca = config[:sslca]
-          properties['trustCertificateKeyStoreUrl'] ||= begin
-            java.io.File.new(sslca).to_url.to_s
-          end
+          properties['trustCertificateKeyStoreUrl'] ||= java.io.File.new(sslca).to_url.to_s
         else
-          properties['verifyServerCertificate'] ||= false if mysql_driver
+          properties['verifyServerCertificate'] ||= false
         end
       end
       properties['verifyServerCertificate'] ||= false if mariadb_driver
