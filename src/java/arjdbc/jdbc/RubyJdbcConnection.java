@@ -3314,15 +3314,12 @@ public class RubyJdbcConnection extends RubyObject {
         return runtime.newFixnum(genKeys.getLong(1));
     }
 
-    private Boolean supportsGeneratedKeys;
+    private transient Boolean supportsGeneratedKeys;
 
     protected boolean supportsGeneratedKeys(final Connection connection) throws SQLException {
+        Boolean supportsGeneratedKeys = this.supportsGeneratedKeys;
         if (supportsGeneratedKeys == null) {
-            synchronized(this) {
-                if (supportsGeneratedKeys == null) {
-                    supportsGeneratedKeys = connection.getMetaData().supportsGetGeneratedKeys();
-                }
-            }
+            supportsGeneratedKeys = this.supportsGeneratedKeys = connection.getMetaData().supportsGetGeneratedKeys();
         }
         return supportsGeneratedKeys.booleanValue();
     }
