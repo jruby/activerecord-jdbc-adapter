@@ -1,19 +1,40 @@
-require 'jdbc_common'
+require 'test_helper'
 require 'db/jdbc'
 
 class JdbcConnectionTest < Test::Unit::TestCase
 
-  def test_connection_available_through_jdbc_adapter
-     ActiveRecord::Base.connection.execute("show databases") # MySQL
-     assert ActiveRecord::Base.connected?
+  def self.startup
+    ArJdbc.disable_warn "use 'adapter: mysql' instead of 'adapter: jdbc' configuration"
+
+    clean_visitor_type!
+    super
+  end
+
+  def self.shutdown
+    ArJdbc.enable_warn "use 'adapter: mysql' instead of 'adapter: jdbc' configuration"
+
+    clean_visitor_type!
+    super
+  end
+
+  test 'reports connected?' do
+    #assert_false ActiveRecord::Base.connected?
+    ActiveRecord::Base.connection.execute("SELECT 42") # MySQL
+    assert_true ActiveRecord::Base.connected?
+  end
+
+  test 'reports connected? (nothing executed)' do
+    #assert_false ActiveRecord::Base.connected?
+    ActiveRecord::Base.connection
+    assert_true ActiveRecord::Base.connected?
   end
 
   test 'configures driver/connection properties' do
     config = JDBC_CONFIG.dup
     config[:properties] = {
-      'autoDeserialize' => true,
-      'maxAllowedPacket' => 128,
-      :metadataCacheSize => '5',
+        'autoDeserialize' => true,
+        'maxAllowedPacket' => 128,
+        :metadataCacheSize => '5',
     }
     ActiveRecord::Base.remove_connection
     begin
@@ -113,12 +134,12 @@ class JdbcConnectionTest < Test::Unit::TestCase
       fail "jdbc error not thrown"
     rescue ActiveRecord::JDBCError => e
       assert_match /connect with {"user"=>"arjdbc", "password"=>"arjdbc"} failed/, e.to_s
-      assert_equal 1042, e.errno
+      assert_equal 1042, e.error_code
       assert_kind_of Java::JavaSql::SQLException, e.sql_exception
     ensure
       ActiveRecord::Base.establish_connection JDBC_CONFIG
     end
-  end
+  end #if ar_version('3.0')
 
   test 'driver sql exceptions without message and sql state' do
     config = JDBC_CONFIG.dup
@@ -130,12 +151,12 @@ class JdbcConnectionTest < Test::Unit::TestCase
       ActiveRecord::Base.connection.jdbc_connection
       fail "jdbc error not thrown"
     rescue ActiveRecord::JDBCError => e
-      assert_match /java.sql.SQLInvalidAuthorizationSpecException/, e.to_s
-      assert_kind_of Java::JavaSql::SQLNonTransientException, e.sql_exception
+      assert_kind_of Java::JavaSql::SQLNonTransientException, e.jdbc_exception
+      assert_false e.transient?
     ensure
       ActiveRecord::Base.establish_connection JDBC_CONFIG
     end
-  end
+  end #if ar_version('3.0')
 
   context 'configuration' do
 
@@ -145,11 +166,11 @@ class JdbcConnectionTest < Test::Unit::TestCase
       original_config = connection.config.dup
       begin
         connection.config.replace :url => "jdbc://somehost",
-          :options => { :hoge => "true", :fuya => "false" }
+                                  :options => { :hoge => "true", :fuya => "false" }
         assert_equal "jdbc://somehost?hoge=true&fuya=false", connection.send(:jdbc_url)
 
         connection.config.replace :url => "jdbc://somehost?param=0",
-          :options => { :hoge => "true", :fuya => false }
+                                  :options => { :hoge => "true", :fuya => false }
         assert_equal "jdbc://somehost?param=0&hoge=true&fuya=false", connection.send(:jdbc_url)
       ensure
         connection.config.replace original_config
@@ -162,6 +183,7 @@ class JdbcConnectionTest < Test::Unit::TestCase
         assert_raise ActiveRecord::ConnectionNotEstablished do
           ActiveRecord::Base.connection
         end
+        assert ! ActiveRecord::Base.connected?
       end
     end
 
@@ -179,11 +201,10 @@ class JdbcConnectionTest < Test::Unit::TestCase
       with_connection_removed do
         driver_instance = ActiveRecord::ConnectionAdapters::JdbcDriver.new('org.apache.derby.jdbc.EmbeddedDriver')
         ActiveRecord::Base.establish_connection :adapter => 'jdbc',
-          :url => 'jdbc:derby:memory:TestDB;create=true', :driver_instance => driver_instance
-        assert_nothing_raised do
-          ActiveRecord::Base.connection
-        end
-
+                                                :url => 'jdbc:derby:memory:TestDB;create=true', :driver_instance => driver_instance
+        #assert_nothing_raised do
+        ActiveRecord::Base.connection
+        #end
         assert ActiveRecord::Base.connected?
         assert_nothing_raised do
           connection = ActiveRecord::Base.connection
@@ -198,7 +219,7 @@ class JdbcConnectionTest < Test::Unit::TestCase
       load_derby_driver
       with_connection_removed do
         ActiveRecord::Base.establish_connection :adapter => 'jdbc',
-          :url => 'jdbc:derby:memory:TestDB;create=true', :driver => 'org.apache.derby.jdbc.EmbeddedDriver'
+                                                :url => 'jdbc:derby:memory:TestDB;create=true', :driver => 'org.apache.derby.jdbc.EmbeddedDriver'
         assert_nothing_raised { ActiveRecord::Base.connection }
         jdbc_connection = ActiveRecord::Base.connection.raw_connection
         assert connection_factory = jdbc_connection.connection_factory
@@ -266,6 +287,121 @@ class JdbcConnectionTest < Test::Unit::TestCase
     private
 
     def jdbc_connection; ActiveRecord::Base.connection.raw_connection end
+
+  end
+
+  context 'connection-retry' do
+
+    class ConnectionFactory
+      include Java::arjdbc.jdbc.ConnectionFactory
+
+      def initialize(real_factory); @real_factory = real_factory end
+      def newConnection; @real_factory.newConnection end
+
+    end
+
+    Java::arjdbc.jdbc.RubyJdbcConnection.class_eval do
+      field_writer :connected
+    end
+
+    def startup; clear_cached_jdbc_connection_factory end
+
+    def setup
+      config = JDBC_CONFIG.merge :retry_count => 1, :configure_connection => false
+      ActiveRecord::Base.establish_connection config
+
+      @real_connection_factory = get_jdbc_connection_factory
+      @connection_factory = ConnectionFactory.new @real_connection_factory
+      set_jdbc_connection_factory(@connection_factory)
+      # HACK to force the underlying JDBC connection to lazy initialize :
+      ActiveRecord::Base.connection.raw_connection.disconnect!
+      ActiveRecord::Base.connection.raw_connection.to_java.connected = true
+    end
+
+    def teardown
+      ActiveRecord::Base.connection_pool.disconnect!
+      self.class.clear_cached_jdbc_connection_factory
+    end
+
+    test 'getConnection() works' do
+      ActiveRecord::Base.connection.execute 'SELECT 42' # MySQL
+    end
+
+    test 'getConnection() fails' do
+      @connection_factory.stubs(:newConnection).
+          raises( java.sql.SQLException.new('failing twice 1') ).then.
+          raises( java.sql.SQLException.new('failing twice 2') ).then.
+          returns( @real_connection_factory.newConnection )
+
+      begin
+        ActiveRecord::Base.connection.execute 'SELECT 1'
+        fail('connection unexpectedly retrieved')
+      rescue ActiveRecord::JDBCError => e
+        assert e.cause
+        assert_match /failing twice/, e.sql_exception.message
+      end
+    end if ar_version('3.0') # NOTE: for some reason fails on 2.3
+
+    test 'getConnection() works due retry count' do
+      @connection_factory.stubs(:newConnection).
+          raises( java.sql.SQLException.new('failing once') ).then.
+          returns( @real_connection_factory.newConnection )
+
+      ActiveRecord::Base.connection.execute 'SELECT 1'
+    end
+
+    class ConnectionDelegate
+      include java.sql.Connection
+
+      def initialize(connection) @connection = connection end
+
+      def method_missing(name, *args); @connection.send(name, *args) end
+
+    end
+
+    test 'execute retried for transient failure' do
+      real_connection = @real_connection_factory.newConnection
+      connection = ConnectionDelegate.new(real_connection)
+      connection.stubs(:createStatement).
+          raises( java.sql.SQLTransientException.new('transient') ).then.
+          returns( real_connection.createStatement )
+
+      @connection_factory.expects(:newConnection).returns(connection)
+
+      ActiveRecord::Base.connection.execute 'SELECT 1'
+    end
+
+    test 'execute fails for too many transient retries (using same connection)' do
+      real_connection = @real_connection_factory.newConnection
+      connection = ConnectionDelegate.new(real_connection)
+      connection.stubs(:createStatement).
+          raises( java.sql.SQLTransientException.new('transient 1') ).then.
+          raises( java.sql.SQLTransientException.new('transient 2') ).then.
+          raises( java.sql.SQLTransientException.new('transient 3') )
+
+      @connection_factory.expects(:newConnection).once.returns(connection)
+
+      begin
+        ActiveRecord::Base.connection.execute 'SELECT 1'
+        fail('connection.execute did not fail as expected')
+      rescue ActiveRecord::JDBCError => e
+        assert_match /transient.2/, e.sql_exception.message
+      end
+    end if ar_version('3.0') # NOTE: for some reason fails on 2.3
+
+    test 'execute retried for recoverable failure (using new connection)' do
+      failing_connection = ConnectionDelegate.new(@real_connection_factory.newConnection)
+      failing_connection.expects(:createStatement).
+          raises( java.sql.SQLRecoverableException.new('recoverable') )
+      failing_connection.expects(:isValid).returns(false)
+
+      valid_connection = ConnectionDelegate.new(@real_connection_factory.newConnection)
+
+      @connection_factory.stubs(:newConnection).
+          returns(failing_connection).then.returns(valid_connection)
+
+      ActiveRecord::Base.connection.execute 'SELECT 1'
+    end
 
   end
 
