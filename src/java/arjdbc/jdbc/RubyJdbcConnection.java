@@ -705,6 +705,28 @@ public class RubyJdbcConnection extends RubyObject {
         if ( forceConnection ) configureConnection();
     }
 
+    @JRubyMethod(name = "read_only?")
+    public IRubyObject is_read_only(final ThreadContext context) {
+        final Connection connection = getConnection(false);
+        if ( connection != null ) {
+            try {
+                return context.runtime.newBoolean( connection.isReadOnly() );
+            }
+            catch (SQLException e) { return handleException(context, e); }
+        }
+        return context.nil;
+    }
+
+    @JRubyMethod(name = "read_only=")
+    public IRubyObject set_read_only(final ThreadContext context, final IRubyObject flag) {
+        final Connection connection = getConnection(true);
+        try {
+            connection.setReadOnly( flag.isTrue() );
+            return context.runtime.newBoolean( connection.isReadOnly() );
+        }
+        catch (SQLException e) { return handleException(context, e); }
+    }
+
     @JRubyMethod(name = { "open?" /* "conn?" */ })
     public IRubyObject open_p(final ThreadContext context) {
         final Connection connection = getConnection(false);
