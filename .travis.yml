@@ -5,7 +5,7 @@ script: bundle exec rake ${TEST_PREFIX}test_$DB
 before_install:
   - unset _JAVA_OPTIONS
 before_script:
-  - export JRUBY_OPTS="--server -Xms64M -Xmx1024M $JRUBY_OPTS" # -Xcompile.invokedynamic=false
+  - export JRUBY_OPTS="-J-Xms64M -J-Xmx1024M"
   #- mvn prepare-package # compiles ext generates: lib/arjdbc/jdbc/adapter_java.jar
   - mysql --version || true # to see if we're using MySQL or MariaDB
   - '[ "$DB" == "postgresql" ] && [ "$TEST_PREFIX" == "" ] && rake db:postgresql || true'
