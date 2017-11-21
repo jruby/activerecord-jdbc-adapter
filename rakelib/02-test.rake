@@ -67,7 +67,9 @@ test_task_for :SQLite3, :driver => ENV['JDBC_SQLITE_VERSION']
 task :test_sqlite => :test_sqlite3 # alias
 test_task_for :Firebird
 
-test_task_for :MariaDB, :files => FileList["test/db/mysql/*_test.rb"] #, :prereqs => 'db:mysql'
+test_task_for :MariaDB, :files => FileList["test/db/mysql/*_test.rb"] do |test_task| #, :prereqs => 'db:mysql'
+  test_task.ruby_opts << '-rdb/mariadb_config'
+end
 
 # ensure driver for these DBs is on your class-path
 [ :Oracle, :DB2, :Informix, :CacheDB ].each do |adapter|
