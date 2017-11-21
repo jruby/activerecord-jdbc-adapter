@@ -72,13 +72,15 @@ module ArJdbc
       Arel::Visitors::SQLite.new(self)
     end
 
-    # Difference we remove connection_options because we are not using it.
+    # DIFFERENCE: we remove connection_options because we are not using it.
     def initialize(connection, logger, config)
       super(connection, logger, config)
 
       @active     = nil
       @statements = StatementPool.new(self.class.type_cast_config_to_integer(config[:statement_limit]))
 
+      # DIFFERENCE: This line is not in original line
+      # FIXME: possibly add initialize to SQLiteAdapter below can put this there
       configure_connection
     end
 
