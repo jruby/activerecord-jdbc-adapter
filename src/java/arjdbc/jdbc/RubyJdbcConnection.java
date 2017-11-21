@@ -779,8 +779,7 @@ public class RubyJdbcConnection extends RubyObject {
         return withConnection(context, new Callable<IRubyObject>() {
             public IRubyObject call(final Connection connection) throws SQLException {
                 Statement statement = null;
-                final String query = sql.convertToString().getUnicodeValue();
-
+                final String query = sqlString(sql);
                 try {
                     statement = createStatement(context, connection);
 
@@ -859,19 +858,17 @@ public class RubyJdbcConnection extends RubyObject {
     @JRubyMethod(name = "execute_insert", required = 1)
     public IRubyObject execute_insert(final ThreadContext context, final IRubyObject sql)
         throws SQLException {
-        final String query = sql.convertToString().getUnicodeValue();
-        return executeUpdate(context, query, true);
+        return executeUpdate(context, sqlString(sql), true);
     }
 
     @JRubyMethod(name = "execute_insert", required = 2)
     public IRubyObject execute_insert(final ThreadContext context,
         final IRubyObject sql, final IRubyObject binds) throws SQLException {
-        final String query = sql.convertToString().getUnicodeValue();
         if ( binds == null || binds.isNil() ) { // no prepared statements
-            return executeUpdate(context, query, true);
+            return executeUpdate(context, sqlString(sql), true);
         }
         else { // we allow prepared statements with empty binds parameters
-            return executePreparedUpdate(context, query, (RubyArray) binds, true);
+            return executePreparedUpdate(context, sqlString(sql), (RubyArray) binds, true);
         }
     }
 
@@ -885,8 +882,7 @@ public class RubyJdbcConnection extends RubyObject {
     @JRubyMethod(name = {"execute_update", "execute_delete"}, required = 1)
     public IRubyObject execute_update(final ThreadContext context, final IRubyObject sql)
         throws SQLException {
-        final String query = sql.convertToString().getUnicodeValue();
-        return executeUpdate(context, query, false);
+        return executeUpdate(context, sqlString(sql), false);
     }
 
     /**
@@ -901,13 +897,11 @@ public class RubyJdbcConnection extends RubyObject {
     @JRubyMethod(name = {"execute_update", "execute_delete"}, required = 2)
     public IRubyObject execute_update(final ThreadContext context,
         final IRubyObject sql, final IRubyObject binds) throws SQLException {
-
-        final String query = sql.convertToString().getUnicodeValue();
         if ( binds == null || binds.isNil() ) { // no prepared statements
-            return executeUpdate(context, query, false);
+            return executeUpdate(context, sqlString(sql), false);
         }
         else { // we allow prepared statements with empty binds parameters
-            return executePreparedUpdate(context, query, (RubyArray) binds, false);
+            return executePreparedUpdate(context, sqlString(sql), (RubyArray) binds, false);
         }
     }
 
@@ -996,7 +990,7 @@ public class RubyJdbcConnection extends RubyObject {
     @JRubyMethod(required = 1, optional = 2)
     public IRubyObject execute_query_raw(final ThreadContext context,
         final IRubyObject[] args, final Block block) throws SQLException {
-        final String query = args[0].convertToString().getUnicodeValue(); // sql
+        final String query = sqlString( args[0] ); // sql
         final RubyArray binds;
         final int maxRows;
 
@@ -1067,6 +1061,10 @@ public class RubyJdbcConnection extends RubyObject {
         });
     }
 
+    protected static String sqlString(final IRubyObject sql) {
+        return ( sql instanceof RubyString ) ? ((RubyString) sql).decodeString() : sql.asString().decodeString();
+    }
+
     /**
      * Executes a query and returns the (AR) result.  There are three parameters:
      * <ul>
@@ -1087,7 +1085,7 @@ public class RubyJdbcConnection extends RubyObject {
      */
     @JRubyMethod(required = 1, optional = 2)
     public IRubyObject execute_query(final ThreadContext context, final IRubyObject[] args) throws SQLException {
-        final String query = args[0].convertToString().getUnicodeValue(); // sql
+        final String query = sqlString( args[0] ); // sql
         final RubyArray binds;
         final int maxRows;
 
@@ -3603,9 +3601,9 @@ public class RubyJdbcConnection extends RubyObject {
     private static final byte[] CALL = new byte[]{ 'c','a','l','l' };
 
     @JRubyMethod(name = "select?", required = 1, meta = true, frame = false)
-    public static IRubyObject select_p(final ThreadContext context,
+    public static RubyBoolean select_p(final ThreadContext context,
         final IRubyObject self, final IRubyObject sql) {
-        return context.runtime.newBoolean( isSelect(sql.convertToString()) );
+        return context.runtime.newBoolean( isSelect(sql.asString()) );
     }
 
     private static boolean isSelect(final RubyString sql) {
@@ -3619,10 +3617,10 @@ public class RubyJdbcConnection extends RubyObject {
     private static final byte[] INSERT = new byte[] { 'i','n','s','e','r','t' };
 
     @JRubyMethod(name = "insert?", required = 1, meta = true, frame = false)
-    public static IRubyObject insert_p(final ThreadContext context,
+    public static RubyBoolean insert_p(final ThreadContext context,
         final IRubyObject self, final IRubyObject sql) {
-        final ByteList sqlBytes = sql.convertToString().getByteList();
-        return context.runtime.newBoolean( StringHelper.startsWithIgnoreCase(sqlBytes, INSERT) );
+        final ByteList sqlBytes = sql.asString().getByteList();
+        return context.runtime.newBoolean( startsWithIgnoreCase(sqlBytes, INSERT) );
     }
 
     protected static boolean startsWithIgnoreCase(final ByteList bytes, final byte[] start) {

@@ -33,6 +33,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 
 import org.jruby.Ruby;
+import org.jruby.RubyBoolean;
 import org.jruby.RubyClass;
 import org.jruby.RubyString;
 import org.jruby.anno.JRubyMethod;
@@ -96,16 +97,15 @@ public class DerbyRubyJdbcConnection extends RubyJdbcConnection {
     }
 
     @JRubyMethod(name = "select?", required = 1, meta = true, frame = false)
-    public static IRubyObject select_p(final ThreadContext context,
+    public static RubyBoolean select_p(final ThreadContext context,
         final IRubyObject self, final IRubyObject sql) {
-        if ( isValues(sql.convertToString()) ) {
-            return context.getRuntime().newBoolean( true );
-        }
-        return arjdbc.jdbc.RubyJdbcConnection.select_p(context, self, sql);
+        final RubyString sqlStr = sql.asString();
+        if ( isValues(sqlStr) ) return context.runtime.getTrue();
+        return arjdbc.jdbc.RubyJdbcConnection.select_p(context, self, sqlStr);
     }
 
     // Derby supports 'stand-alone' VALUES expressions
-    private static final byte[] VALUES = new byte[]{ 'v','a','l','u', 'e', 's' };
+    private static final byte[] VALUES = new byte[]{ 'v','a','l','u','e','s' };
 
     private static boolean isValues(final RubyString sql) {
         final ByteList sqlBytes = sql.getByteList();

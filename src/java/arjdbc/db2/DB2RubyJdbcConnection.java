@@ -35,6 +35,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 
 import org.jruby.Ruby;
+import org.jruby.RubyBoolean;
 import org.jruby.RubyClass;
 import org.jruby.RubyString;
 import org.jruby.anno.JRubyMethod;
@@ -73,12 +74,11 @@ public class DB2RubyJdbcConnection extends RubyJdbcConnection {
     };
 
     @JRubyMethod(name = "select?", required = 1, meta = true, frame = false)
-    public static IRubyObject select_p(final ThreadContext context,
+    public static RubyBoolean select_p(final ThreadContext context,
         final IRubyObject self, final IRubyObject sql) {
-        if ( isValues(sql.convertToString()) ) {
-            return context.getRuntime().newBoolean( true );
-        }
-        return arjdbc.jdbc.RubyJdbcConnection.select_p(context, self, sql);
+        final RubyString sqlStr = sql.asString();
+        if ( isValues(sqlStr) ) return context.runtime.getTrue();
+        return arjdbc.jdbc.RubyJdbcConnection.select_p(context, self, sqlStr);
     }
 
     // DB2 supports 'stand-alone' VALUES expressions
@@ -112,7 +112,7 @@ public class DB2RubyJdbcConnection extends RubyJdbcConnection {
                 try {
                     statement = connection.prepareStatement("VALUES IDENTITY_VAL_LOCAL()");
                     genKeys = statement.executeQuery();
-                    return doMapGeneratedKeys(context.getRuntime(), genKeys, true);
+                    return doMapGeneratedKeys(context.runtime, genKeys, true);
                 }
                 catch (final SQLException e) {
                     debugMessage(context.runtime, "failed to get generated keys: ", e);
