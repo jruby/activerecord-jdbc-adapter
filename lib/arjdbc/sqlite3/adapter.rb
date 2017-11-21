@@ -79,8 +79,6 @@ module ArJdbc
       @active     = nil
       @statements = StatementPool.new(self.class.type_cast_config_to_integer(config[:statement_limit]))
 
-      # DIFFERENCE: This line is not in original line
-      # FIXME: possibly add initialize to SQLiteAdapter below can put this there
       configure_connection
     end
 
