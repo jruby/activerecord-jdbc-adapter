@@ -1543,13 +1543,9 @@ public class RubyJdbcConnection extends RubyObject {
                         final String onUpdate = extractForeignKeyRule( fkInfoSet.getInt("UPDATE_RULE") );
                         if ( onUpdate != null ) options.op_aset(context, runtime.newSymbol("on_update"), runtime.newSymbol(onUpdate));
 
-                        IRubyObject[] args = new IRubyObject[] {
-                            RubyString.newUnicodeString(runtime, fkTableName), // from_table
-                            RubyString.newUnicodeString(runtime, pkTableName), // to_table
-                            options
-                        };
-
-                        fKeys.add( FKDefinition.callMethod(context, "new", args) ); // ForeignKeyDefinition.new
+                        IRubyObject from_table = cachedString(context, fkTableName);
+                        IRubyObject to_table = cachedString(context, pkTableName);
+                        fKeys.add( FKDefinition.newInstance(context, from_table, to_table, options, Block.NULL_BLOCK) ); // ForeignKeyDefinition.new
                     }
 
                     return runtime.newArray(fKeys);
@@ -3224,12 +3220,12 @@ public class RubyJdbcConnection extends RubyObject {
             final IRubyObject[] args;
             if ( lookupCastType ) {
                 final IRubyObject castType = getAdapter().callMethod(context, "lookup_cast_type", sqlType);
-                args = new IRubyObject[] {config, railsColumnName, defaultValue, castType, sqlType, nullable};
+                args = new IRubyObject[] { config, railsColumnName, defaultValue, castType, sqlType, nullable };
             } else {
-                args = new IRubyObject[] {config, railsColumnName, defaultValue, sqlType, nullable};
+                args = new IRubyObject[] { config, railsColumnName, defaultValue, sqlType, nullable };
             }
 
-            IRubyObject column = Column.callMethod(context, "new", args);
+            IRubyObject column = Column.newInstance(context, args, Block.NULL_BLOCK);
             columns.append(column);
 
             if ( primaryKeyNames != null ) {
