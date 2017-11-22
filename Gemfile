@@ -38,6 +38,7 @@ group :test do
   gem 'mocha', '~> 1.2', require: false # Rails has '~> 0.14'
 
   gem 'bcrypt', '~> 3.1.11', require: false
+  gem 'builder', require: false
 end
 
 group :rails do
