@@ -395,6 +395,12 @@ module ArJdbc
       end
     end
 
+    def clear_cache!
+      super
+      # Make sure all query plans are *really* gone
+      @connection.execute 'DEALLOCATE ALL' if active?
+    end
+
     def reset!
       clear_cache!
       reset_transaction
