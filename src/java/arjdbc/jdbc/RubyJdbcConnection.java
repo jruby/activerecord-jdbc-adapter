@@ -2193,22 +2193,26 @@ public class RubyJdbcConnection extends RubyObject {
 
         final IRubyObject type = attributeSQLType(context, attribute);
 
-        if ( !type.isNil() ) {
+        if (!type.isNil()) {
             return type.asJavaString();
         }
 
         final IRubyObject value = attribute.callMethod(context, "value");
 
-        if ( value instanceof RubyInteger ) {
+        if (value instanceof RubyInteger) {
             return "integer";
         }
 
-        if ( value instanceof RubyNumeric ) {
+        if (value instanceof RubyNumeric) {
             return "float";
         }
 
-        if ( value instanceof RubyTime ) {
+        if (value instanceof RubyTime) {
             return "timestamp";
+        }
+
+        if (value instanceof RubyBoolean) {
+            return "boolean";
         }
 
         return "string";
