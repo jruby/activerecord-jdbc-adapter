@@ -3871,16 +3871,12 @@ public class RubyJdbcConnection extends RubyObject {
         RubyJdbcConnection.debug = debug;
     }
 
-    public static void debugMessage(final String msg) {
-        if ( isDebug() ) System.out.println(msg);
-    }
-
-    public static void debugMessage(final ThreadContext context, final String msg) {
-        if ( debug || ( context != null && context.runtime.isDebug() ) ) {
-            final PrintStream out = context != null ? context.runtime.getOut() : System.out;
-            out.println(msg);
-        }
-    }
+    //public static void debugMessage(final ThreadContext context, final String msg) {
+    //    if ( debug || ( context != null && context.runtime.isDebug() ) ) {
+    //        final PrintStream out = context != null ? context.runtime.getOut() : System.out;
+    //        out.println(msg);
+    //    }
+    //}
 
     public static void debugMessage(final Ruby runtime, final Object msg) {
         if ( isDebug(runtime) ) {

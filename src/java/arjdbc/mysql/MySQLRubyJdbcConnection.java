@@ -273,19 +273,19 @@ public class MySQLRubyJdbcConnection extends RubyJdbcConnection {
             threadClass.getMethod("shutdown").invoke(null);
         }
         catch (ClassNotFoundException e) {
-            debugMessage("missing MySQL JDBC cleanup thread: " + e);
+            debugMessage(null, "missing MySQL JDBC cleanup thread ", e);
         }
         catch (NoSuchMethodException e) {
-            debugMessage( e.toString() );
+            debugMessage(null, e);
         }
         catch (IllegalAccessException e) {
-            debugMessage( e.toString() );
+            debugMessage(null, e);
         }
         catch (InvocationTargetException e) {
-            debugMessage( e.getTargetException().toString() );
+            debugMessage(null, e.getTargetException());
         }
         catch (SecurityException e) {
-            debugMessage( e.toString() );
+            debugMessage(null, e);
         }
         finally { cleanupThreadShutdown = true; }
     }
