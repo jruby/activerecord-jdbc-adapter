@@ -35,6 +35,7 @@ jdk:
 env:
   - DB=mysql2 PREPARED_STATEMENTS=false
   - DB=mysql2 PREPARED_STATEMENTS=true
+  - DB=mysql2 DRIVER=MariaDB
   - DB=postgresql PREPARED_STATEMENTS=false INSERT_RETURNING=false
   - DB=postgresql PREPARED_STATEMENTS=false INSERT_RETURNING=true
   - DB=postgresql PREPARED_STATEMENTS=true
