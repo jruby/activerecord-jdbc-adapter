@@ -30,7 +30,7 @@ ArJdbc::ConnectionMethods.module_eval do
     properties = ( config[:properties] ||= {} )
     if mysql_driver
       properties['zeroDateTimeBehavior'] ||= 'convertToNull'
-      properties['jdbcCompliantTruncation'] ||= 'false'
+      properties['jdbcCompliantTruncation'] ||= false
       # NOTE: this is "better" than passing what users are used to set on MRI
       # e.g. 'utf8mb4' will fail cause the driver will check for a Java charset
       # ... it's smart enough to detect utf8mb4 from server variables :
@@ -63,7 +63,7 @@ ArJdbc::ConnectionMethods.module_eval do
     else
       # According to MySQL 5.5.45+, 5.6.26+ and 5.7.6+ requirements SSL connection
       # must be established by default if explicit option isn't set :
-      properties['useSSL'] ||= false
+      properties[mariadb_driver ? 'useSsl' : 'useSSL'] ||= false
     end
     if socket = config[:socket]
       properties['localSocket'] ||= socket if mariadb_driver
