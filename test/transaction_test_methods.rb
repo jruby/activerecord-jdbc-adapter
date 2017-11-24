@@ -38,6 +38,9 @@ module TransactionTestMethods
     unless ActiveRecord::Base.connection.supports_transaction_isolation?
       omit("transaction isolation not supported")
     end
+    unless defined? JRUBY_VERSION
+      omit("transaction isolation(:type_arg) not supported by Rails")
+    end
     assert ActiveRecord::Base.connection.supports_transaction_isolation?(:read_uncommitted)
     assert ActiveRecord::Base.connection.supports_transaction_isolation?(:read_committed)
     assert ActiveRecord::Base.connection.supports_transaction_isolation?(:repeatable_read)
