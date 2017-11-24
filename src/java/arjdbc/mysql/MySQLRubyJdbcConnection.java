@@ -27,7 +27,6 @@ package arjdbc.mysql;
 
 import arjdbc.jdbc.DriverWrapper;
 import arjdbc.jdbc.RubyJdbcConnection;
-import arjdbc.util.DateTimeUtils;
 
 import java.lang.reflect.InvocationTargetException;
 import java.sql.Connection;
@@ -39,14 +38,9 @@ import java.sql.Time;
 import java.sql.Timestamp;
 import java.sql.Types;
 import java.util.TimeZone;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 import org.joda.time.DateTime;
-import org.jruby.Ruby;
-import org.jruby.RubyClass;
-import org.jruby.RubyString;
-import org.jruby.RubyTime;
+import org.jruby.*;
 import org.jruby.anno.JRubyMethod;
 import org.jruby.exceptions.RaiseException;
 import org.jruby.runtime.ObjectAllocator;
@@ -126,7 +120,7 @@ public class MySQLRubyJdbcConnection extends RubyJdbcConnection {
             final int value = resultSet.getInt(column);
             return resultSet.wasNull() ? context.nil : runtime.newFixnum(value);
         }
-        else if ( type == Types.BINARY || type == Types.VARBINARY) {
+        else if ( type == Types.BINARY || type == Types.VARBINARY ) {
             final byte[] bytes = resultSet.getBytes(column);
             if ( bytes == null || resultSet.wasNull() ) return context.nil;
             final ByteList byteList = new ByteList(bytes, false);
@@ -136,71 +130,36 @@ public class MySQLRubyJdbcConnection extends RubyJdbcConnection {
     }
 
     @Override // can not use statement.setTimestamp( int, Timestamp, Calendar )
-    protected void setTimestampParameter(ThreadContext context, Connection connection, PreparedStatement statement,
-        int index, IRubyObject value, IRubyObject column, int type) throws SQLException {
-        value = callMethod(context, "time_in_default_timezone", value);
+    protected void setTimestampParameter(final ThreadContext context,
+        final Connection connection, final PreparedStatement statement,
+        final int index, IRubyObject value,
+        final IRubyObject attribute, final int type) throws SQLException {
+        // Time or DateTime ( ActiveSupport::TimeWithZone.to_time )
+        value = timeInDefaultTimeZone(context, value);
         TypeConverter.checkType(context, value, context.runtime.getTime());
-        setTimestamp(statement, index, (RubyTime) value, type);
+
+        final RubyTime timeValue = (RubyTime) value;
+        final Timestamp timestamp = new Timestamp(dateTimeMillisFromDefaultZone(timeValue));
+        // 1942-11-30T01:02:03.123_456
+        if (timeValue.getNSec() >= 0) timestamp.setNanos((int) (timestamp.getNanos() + timeValue.getNSec()));
+
+        statement.setTimestamp(index, timestamp);
+    }
+
+    // FIXME: we should detect adapter and not do this timezone offset calculation is it is jdbc version 6+.
+    private long dateTimeMillisFromDefaultZone(final RubyTime value) {
+        final DateTime dateTime = value.getDateTime();
+        int offset = TimeZone.getDefault().getOffset(dateTime.getMillis()); // JDBC <6.x ignores time zone info (we adjust manually).
+        return dateTime.getMillis() - offset;
     }
 
     @Override
-    protected void setTimeParameter(ThreadContext context, Connection connection, PreparedStatement statement,
-        int index, IRubyObject value, IRubyObject column, int type) throws SQLException {
-        setTimestampParameter(context, connection, statement, index, value, column, type);
-    }
-
-//    @Override
-//    protected void setTimestampParameter(final ThreadContext context,
-//        final Connection connection, final PreparedStatement statement,
-//        final int index, IRubyObject value,
-//        final IRubyObject column, final int type) throws SQLException {
-//        if ( value.isNil() ) statement.setNull(index, Types.TIMESTAMP);
-//        else {
-//            value = DateTimeUtils.getTimeInDefaultTimeZone(context, value);
-//            if ( value instanceof RubyString ) { // yyyy-[m]m-[d]d hh:mm:ss[.f...]
-//                final Timestamp timestamp = Timestamp.valueOf( value.toString() );
-//                statement.setTimestamp( index, timestamp ); // assume local time-zone
-//            }
-//            else { // Time or DateTime ( ActiveSupport::TimeWithZone.to_time )
-//                final double time = DateTimeUtils.adjustTimeFromDefaultZone(value);
-//                final RubyFloat timeValue = context.runtime.newFloat( time );
-//                statement.setTimestamp( index, DateTimeUtils.convertToTimestamp(timeValue) );
-//            }
-//        }
-//    }
-//
-//    @Override // can not use statement.setTime( int, Time, Calendar )
-//    protected void setTimeParameter(final ThreadContext context,
-//        final Connection connection, final PreparedStatement statement,
-//        final int index, IRubyObject value,
-//        final IRubyObject column, final int type) throws SQLException {
-//        if ( value.isNil() ) statement.setNull(index, Types.TIME);
-//        else {
-//            value = DateTimeUtils.getTimeInDefaultTimeZone(context, value);
-//            if ( value instanceof RubyString ) {
-//                final Time time = Time.valueOf( value.toString() );
-//                statement.setTime( index, time ); // assume local time-zone
-//            }
-//            else { // Time or DateTime ( ActiveSupport::TimeWithZone.to_time )
-//                final double timeValue = DateTimeUtils.adjustTimeFromDefaultZone(value);
-//                final Time time = new Time(( (long) timeValue ) * 1000); // millis
-//                // java.sql.Time is expected to be only up to second precision
-//                statement.setTime( index, time );
-//            }
-//        }
-//    }
-
-
-    // FIXME: we should detect adapter and not do this timezone offset calculation is it is jdbc version 6+.
-    private void setTimestamp(PreparedStatement statement, int index, RubyTime value, int type) throws SQLException {
-        DateTime dateTime = value.getDateTime();
-        int offset = TimeZone.getDefault().getOffset(dateTime.getMillis()); // JDBC <6.x ignores time zone info (we adjust manually).
-        Timestamp timestamp = new Timestamp(dateTime.getMillis() - offset);
-
-        // 1942-11-30T01:02:03.123_456
-        if (type != Types.DATE && value.getNSec() >= 0) timestamp.setNanos((int) (timestamp.getNanos() + value.getNSec()));
-
-        statement.setTimestamp(index, timestamp);
+    protected void setTimeParameter(final ThreadContext context,
+        final Connection connection, final PreparedStatement statement,
+        final int index, IRubyObject value,
+        final IRubyObject attribute, final int type) throws SQLException {
+        // MySQL's TIME supports fractional seconds up-to nano precision: .000000
+        setTimestampParameter(context, connection, statement, index, value, attribute, type);
     }
 
     // FIXME: I think we can unify this back to main adapter code since previous conflict involved not using
@@ -221,7 +180,7 @@ public class MySQLRubyJdbcConnection extends RubyJdbcConnection {
             strValue = String.format("%s.%09d", strValue, nsecTimeHack.getNanos());
         }
 
-        return RubyString.newUnicodeString(runtime,strValue);
+        return RubyString.newUnicodeString(runtime, strValue);
     }
 
     // MySQL does never storesUpperCaseIdentifiers() :

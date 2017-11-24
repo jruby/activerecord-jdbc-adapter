@@ -2706,6 +2706,14 @@ public class RubyJdbcConnection extends RubyObject {
         return "string";
     }
 
+    protected final IRubyObject timeInDefaultTimeZone(final ThreadContext context, final IRubyObject value) {
+        return callMethod(context, "time_in_default_timezone", value);
+    }
+
+    protected final boolean isDefaultTimeZoneUTC(final ThreadContext context) {
+        return DateTimeUtils.isDefaultTimeZoneUTC(context); // TODO refactor to caching the default_timezone
+    }
+
     protected void setIntegerParameter(final ThreadContext context,
         final Connection connection, final PreparedStatement statement,
         final int index, final IRubyObject value,
@@ -2795,7 +2803,7 @@ public class RubyJdbcConnection extends RubyObject {
         final int index, IRubyObject value,
         final IRubyObject attribute, final int type) throws SQLException {
 
-        value = callMethod(context, "time_in_default_timezone", value);
+        value = timeInDefaultTimeZone(context, value);
 
         if (value instanceof RubyTime) {
             final RubyTime timeValue = (RubyTime) value;
@@ -2821,11 +2829,6 @@ public class RubyJdbcConnection extends RubyObject {
         return DateTimeUtils.convertToTimestamp(value);
     }
 
-    @Deprecated
-    protected static IRubyObject getTimeInDefaultTimeZone(final ThreadContext context, IRubyObject value) {
-        return DateTimeUtils.getTimeInDefaultTimeZone(context, value);
-    }
-
     private static Calendar getTimeZoneCalendar(final String ID) {
         return Calendar.getInstance( TimeZone.getTimeZone(ID) );
     }
@@ -2835,7 +2838,7 @@ public class RubyJdbcConnection extends RubyObject {
         final int index, IRubyObject value,
         final IRubyObject attribute, final int type) throws SQLException {
 
-        value = callMethod(context, "time_in_default_timezone", value);
+        value = timeInDefaultTimeZone(context, value);
 
         if ( value instanceof RubyTime ) {
             final DateTime dateTime = ((RubyTime) value).getDateTime();
