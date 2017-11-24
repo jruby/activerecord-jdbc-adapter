@@ -44,6 +44,7 @@ import org.jruby.RubyClass;
 import org.jruby.RubyString;
 import org.jruby.RubyTime;
 import org.jruby.anno.JRubyMethod;
+import org.jruby.runtime.Block;
 import org.jruby.runtime.ObjectAllocator;
 import org.jruby.runtime.ThreadContext;
 import org.jruby.runtime.builtin.IRubyObject;
@@ -146,14 +147,14 @@ public class SQLite3RubyJdbcConnection extends RubyJdbcConnection {
         return withConnection(context, new Callable<IRubyObject>() {
             public RubyArray call(final Connection connection) throws SQLException {
                 final Ruby runtime = context.runtime;
-                final RubyClass indexDefinition = getIndexDefinition(runtime);
+                final RubyClass IndexDefinition = getIndexDefinition(runtime);
 
                 final TableName table = extractTableName(connection, null, schemaName, tableName);
 
                 final List<RubyString> primaryKeys = primaryKeys(context, connection, table);
 
                 final DatabaseMetaData metaData = connection.getMetaData();
-                ResultSet indexInfoSet = null;
+                ResultSet indexInfoSet;
                 try {
                     indexInfoSet = metaData.getIndexInfo(table.catalog, table.schema, table.name, false, true);
                 }
@@ -171,9 +172,10 @@ public class SQLite3RubyJdbcConnection extends RubyJdbcConnection {
                     while ( indexInfoSet.next() ) {
                         String indexName = indexInfoSet.getString(INDEX_INFO_NAME);
                         if ( indexName == null ) continue;
+                        RubyArray currentColumns = null;
 
                         final String columnName = indexInfoSet.getString(INDEX_INFO_COLUMN_NAME);
-                        final RubyString rubyColumnName = RubyString.newUnicodeString(runtime, columnName);
+                        final RubyString rubyColumnName = cachedString(context, columnName);
                         if ( primaryKeys.contains(rubyColumnName) ) continue;
 
                         // We are working on a new index
@@ -185,21 +187,17 @@ public class SQLite3RubyJdbcConnection extends RubyJdbcConnection {
                             final boolean nonUnique = indexInfoSet.getBoolean(INDEX_INFO_NON_UNIQUE);
 
                             IRubyObject[] args = new IRubyObject[] {
-                                RubyString.newUnicodeString(runtime, indexTableName), // table_name
-                                RubyString.newUnicodeString(runtime, indexName), // index_name
-                                runtime.newBoolean( ! nonUnique ), // unique
-                                runtime.newArray() // [] for column names, we'll add to that in just a bit
-                                // orders, (since AR 3.2) where, type, using (AR 4.0)
+                                cachedString(context, indexTableName), // table_name
+                                cachedString(context, indexName), // index_name
+                                nonUnique ? runtime.getFalse() : runtime.getTrue(), // unique
+                                currentColumns = RubyArray.newArray(runtime, 4) // [] column names
                             };
 
-                            indexes.append( indexDefinition.callMethod(context, "new", args) ); // IndexDefinition.new
+                            indexes.append( IndexDefinition.newInstance(context, args, Block.NULL_BLOCK) ); // IndexDefinition.new
                         }
 
-                        // One or more columns can be associated with an index
-                        IRubyObject lastIndexDef = indexes.isEmpty() ? null : indexes.entry(-1);
-                        if ( lastIndexDef != null ) {
-                            ( (RubyArray) lastIndexDef.callMethod(context, "columns") ).append(rubyColumnName);
-                        }
+                        // one or more columns can be associated with an index
+                        if ( currentColumns != null ) currentColumns.append(rubyColumnName);
                     }
 
                     return indexes;
