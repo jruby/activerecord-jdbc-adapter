@@ -1356,7 +1356,7 @@ public class RubyJdbcConnection extends RubyObject {
         final String catalog, final String schemaPattern, final String tablePattern, final String[] types) {
         return withConnection(context, new Callable<IRubyObject>() {
             public IRubyObject call(final Connection connection) throws SQLException {
-                return matchTables(context.runtime, connection, catalog, schemaPattern, tablePattern, types, false);
+                return matchTables(context, connection, catalog, schemaPattern, tablePattern, types, false);
             }
         });
     }
@@ -1388,17 +1388,16 @@ public class RubyJdbcConnection extends RubyObject {
 
     protected IRubyObject tableExists(final ThreadContext context,
         final String defaultSchema, final String tableName) {
-        final Ruby runtime = context.runtime;
         return withConnection(context, new Callable<RubyBoolean>() {
             public RubyBoolean call(final Connection connection) throws SQLException {
-                final TableName components = extractTableName(connection, null, defaultSchema, tableName);
-                return runtime.newBoolean( tableExists(runtime, connection, components) );
+                final TableName components = extractTableName(connection, defaultSchema, tableName);
+                return context.runtime.newBoolean( tableExists(context, connection, components) );
             }
         });
     }
 
     @JRubyMethod(name = {"columns", "columns_internal"}, required = 1, optional = 2)
-    public IRubyObject columns_internal(final ThreadContext context, final IRubyObject[] args)
+    public RubyArray columns_internal(final ThreadContext context, final IRubyObject[] args)
         throws SQLException {
         return withConnection(context, new Callable<RubyArray>() {
             public RubyArray call(final Connection connection) throws SQLException {
@@ -1412,7 +1411,7 @@ public class RubyJdbcConnection extends RubyObject {
                     final TableName components;
                     components = extractTableName(connection, catalog, defaultSchema, tableName);
 
-                    if ( ! tableExists(context.runtime, connection, components) ) {
+                    if ( ! tableExists(context, connection, components) ) {
                         throw new SQLException("table: " + tableName + " does not exist");
                     }
 
@@ -3074,10 +3073,10 @@ public class RubyJdbcConnection extends RubyObject {
         return aliveTimeout;
     }
 
-    private boolean tableExists(final Ruby runtime,
+    private boolean tableExists(final ThreadContext context,
         final Connection connection, final TableName tableName) throws SQLException {
         final IRubyObject matchedTables =
-            matchTables(runtime, connection, tableName.catalog, tableName.schema, tableName.name, getTableTypes(), true);
+            matchTables(context, connection, tableName.catalog, tableName.schema, tableName.name, getTableTypes(), true);
         // NOTE: allow implementers to ignore checkExistsOnly paramater - empty array means does not exists
         return matchedTables != null && ! matchedTables.isNil() &&
             ( ! (matchedTables instanceof RubyArray) || ! ((RubyArray) matchedTables).isEmpty() );
@@ -3110,7 +3109,7 @@ public class RubyJdbcConnection extends RubyObject {
      * @see #mapTables(Ruby, DatabaseMetaData, String, String, String, ResultSet)
      * @throws SQLException
      */
-    protected IRubyObject matchTables(final Ruby runtime,
+    protected IRubyObject matchTables(final ThreadContext context,
             final Connection connection,
             final String catalog, final String schemaPattern,
             final String tablePattern, final String[] types,
@@ -3124,13 +3123,22 @@ public class RubyJdbcConnection extends RubyObject {
         try {
             tablesSet = metaData.getTables(catalog, _schemaPattern, _tablePattern, types);
             if ( checkExistsOnly ) { // only check if given table exists
-                return tablesSet.next() ? runtime.getTrue() : null;
+                return tablesSet.next() ? context.runtime.getTrue() : null;
             }
             else {
-                return mapTables(runtime, metaData, catalog, _schemaPattern, _tablePattern, tablesSet);
+                return mapTables(context, connection, catalog, _schemaPattern, _tablePattern, tablesSet);
             }
         }
         finally { close(tablesSet); }
+    }
+
+    @Deprecated
+    protected IRubyObject matchTables(final Ruby runtime,
+          final Connection connection,
+          final String catalog, final String schemaPattern,
+          final String tablePattern, final String[] types,
+          final boolean checkExistsOnly) throws SQLException {
+        return matchTables(runtime.getCurrentContext(), connection, catalog, schemaPattern, tablePattern, types, checkExistsOnly);
     }
 
     // NOTE java.sql.DatabaseMetaData.getTables :
@@ -3149,17 +3157,32 @@ public class RubyJdbcConnection extends RubyObject {
      * @return List<RubyString>
      * @throws SQLException
      */
-    // NOTE: change to accept a connection instead of meta-data
+    @Deprecated
     protected RubyArray mapTables(final Ruby runtime, final DatabaseMetaData metaData,
             final String catalog, final String schemaPattern, final String tablePattern,
             final ResultSet tablesSet) throws SQLException {
-        final RubyArray tables = runtime.newArray();
+        final ThreadContext context = runtime.getCurrentContext();
+        return mapTables(context, metaData, catalog, schemaPattern, tablePattern, tablesSet);
+    }
+
+    private RubyArray mapTables(final ThreadContext context, final DatabaseMetaData metaData,
+            final String catalog, final String schemaPattern, final String tablePattern,
+            final ResultSet tablesSet) throws SQLException {
+        final RubyArray tables = RubyArray.newArray(context.runtime);
         while ( tablesSet.next() ) {
             String name = tablesSet.getString(TABLES_TABLE_NAME);
+            tables.append( cachedString(context, caseConvertIdentifierForRails(metaData, name)) );
+        }
+        return tables;
+    }
 
-            name = caseConvertIdentifierForRails(metaData, name);
-
-            tables.append(RubyString.newUnicodeString(runtime, name));
+    protected RubyArray mapTables(final ThreadContext context, final Connection connection,
+            final String catalog, final String schemaPattern, final String tablePattern,
+            final ResultSet tablesSet) throws SQLException {
+        final RubyArray tables = RubyArray.newArray(context.runtime);
+        while ( tablesSet.next() ) {
+            String name = tablesSet.getString(TABLES_TABLE_NAME);
+            tables.append( cachedString(context, caseConvertIdentifierForRails(connection, name)) );
         }
         return tables;
     }
@@ -3230,13 +3253,13 @@ public class RubyJdbcConnection extends RubyObject {
         final Collection<String> primaryKeyNames =
             setPrimary ? getPrimaryKeyNames(metaData, components) : null;
 
-        final RubyArray columns = runtime.newArray();
+        final RubyArray columns = RubyArray.newArray(runtime);
         final IRubyObject config = getConfig();
         while ( results.next() ) {
             final String colName = results.getString(COLUMN_NAME);
-            final RubyString railsColumnName = RubyString.newInternalFromJavaExternal(runtime, caseConvertIdentifierForRails(metaData, colName));
+            final RubyString railsColumnName = cachedString(context, caseConvertIdentifierForRails(metaData, colName));
             final IRubyObject defaultValue = defaultValueFromResultSet( runtime, results );
-            final RubyString sqlType = RubyString.newInternalFromJavaExternal( runtime, typeFromResultSet(results) );
+            final RubyString sqlType = cachedString(context, typeFromResultSet(results));
             final RubyBoolean nullable = runtime.newBoolean( ! results.getString(IS_NULLABLE).trim().equals("NO") );
             final IRubyObject[] args;
             if ( lookupCastType ) {

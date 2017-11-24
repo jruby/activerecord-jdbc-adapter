@@ -138,7 +138,7 @@ public class DerbyRubyJdbcConnection extends RubyJdbcConnection {
     }
 
     @Override
-    protected IRubyObject matchTables(final Ruby runtime,
+    protected IRubyObject matchTables(final ThreadContext context,
             final Connection connection,
             final String catalog, String schemaPattern,
             final String tablePattern, final String[] types,
@@ -146,7 +146,7 @@ public class DerbyRubyJdbcConnection extends RubyJdbcConnection {
         if (schemaPattern != null && schemaPattern.equals("")) {
             schemaPattern = null; // Derby doesn't like empty-string schema name
         }
-        return super.matchTables(runtime, connection, catalog, schemaPattern, tablePattern, types, checkExistsOnly);
+        return super.matchTables(context, connection, catalog, schemaPattern, tablePattern, types, checkExistsOnly);
     }
 
 }

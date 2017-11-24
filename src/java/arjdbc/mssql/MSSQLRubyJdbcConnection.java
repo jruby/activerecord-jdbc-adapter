@@ -84,11 +84,11 @@ public class MSSQLRubyJdbcConnection extends RubyJdbcConnection {
     }
 
     @Override
-    protected RubyArray mapTables(final Ruby runtime, final DatabaseMetaData metaData,
+    protected RubyArray mapTables(final ThreadContext context, final Connection connection,
             final String catalog, final String schemaPattern, final String tablePattern,
             final ResultSet tablesSet) throws SQLException, IllegalStateException {
 
-        final RubyArray tables = runtime.newArray();
+        final RubyArray tables = context.runtime.newArray();
 
         while ( tablesSet.next() ) {
             String schema = tablesSet.getString(TABLES_TABLE_SCHEM);
@@ -109,8 +109,7 @@ public class MSSQLRubyJdbcConnection extends RubyJdbcConnection {
                     "turning it off using the system property 'arjdbc.mssql.explain_support.disabled=true' " +
                     "or programatically by changing: `ArJdbc::MSSQL::ExplainSupport::DISABLED`");
             }
-            name = caseConvertIdentifierForRails(metaData, name);
-            tables.add(RubyString.newUnicodeString(runtime, name));
+            tables.add( cachedString(context, caseConvertIdentifierForRails(connection, name)) );
         }
         return tables;
     }
