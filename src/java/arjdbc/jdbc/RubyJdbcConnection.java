@@ -2325,19 +2325,14 @@ public class RubyJdbcConnection extends RubyObject {
 
         final Date value = resultSet.getDate(column);
         if ( value == null ) {
-            if ( resultSet.wasNull() ) return context.nil;
-            return RubyString.newEmptyString(runtime); // ""
+            return resultSet.wasNull() ? context.nil : RubyString.newEmptyString(runtime);
         }
-        // if ( value == null ) return context.nil; TODO should be enough right?
 
-        final RubyString strValue = RubyString.newString(runtime, DateTimeUtils.dateToString(value));
-        if ( rawDateTime != null && rawDateTime.booleanValue() ) return strValue;
+        if ( rawDateTime != null && ! rawDateTime.booleanValue() ) {
+            return DateTimeUtils.newTime(context, value).callMethod(context, "to_date");
+        }
 
-        final IRubyObject adapter = callMethod(context, "adapter"); // self.adapter
-        if ( adapter.isNil() ) return strValue; // NOTE: we warn on init_connection
-
-        // NOTE: this CAN NOT be 100% correct - as :date is just a type guess!
-        return typeCastFromDatabase(context, adapter, runtime.newSymbol("date"), strValue);
+        return RubyString.newString(runtime, DateTimeUtils.dateToString(value));
     }
 
     protected IRubyObject timeToRuby(final ThreadContext context,
@@ -2346,34 +2341,30 @@ public class RubyJdbcConnection extends RubyObject {
 
         final Time value = resultSet.getTime(column);
         if ( value == null ) {
-            if ( resultSet.wasNull() ) return context.nil;
-            return RubyString.newEmptyString(runtime); // ""
-        }
-        // if ( value == null ) return context.nil; TODO should be enough right?
-
-        if ( rawDateTime != null && rawDateTime.booleanValue() ) {
-            return RubyString.newString(runtime, DateTimeUtils.timeToString(value));
+            return resultSet.wasNull() ? context.nil : RubyString.newEmptyString(runtime);
         }
 
-        return DateTimeUtils.newTime(context, value);
+        if ( rawDateTime != null && ! rawDateTime.booleanValue() ) {
+            return DateTimeUtils.newTime(context, value);
+        }
+
+        return RubyString.newString(runtime, DateTimeUtils.timeToString(value));
     }
 
-    protected IRubyObject timestampToRuby(final ThreadContext context, // TODO
+    protected IRubyObject timestampToRuby(final ThreadContext context,
         final Ruby runtime, final ResultSet resultSet, final int column)
         throws SQLException {
 
         final Timestamp value = resultSet.getTimestamp(column);
         if ( value == null ) {
-            if ( resultSet.wasNull() ) return context.nil;
-            return RubyString.newEmptyString(runtime); // ""
-        }
-        // if ( value == null ) return context.nil; TODO should be enough right?
-
-        if ( rawDateTime != null && rawDateTime.booleanValue() ) {
-            return RubyString.newString(runtime, DateTimeUtils.timestampToString(value));
+            return resultSet.wasNull() ? context.nil : RubyString.newEmptyString(runtime);
         }
 
-        return DateTimeUtils.newTime(context, value);
+        if ( rawDateTime != null && ! rawDateTime.booleanValue() ) {
+            return DateTimeUtils.newTime(context, value);
+        }
+
+        return RubyString.newString(runtime, DateTimeUtils.timestampToString(value));
     }
 
     @Deprecated
@@ -2424,14 +2415,6 @@ public class RubyJdbcConnection extends RubyObject {
         }
         final boolean value = resultSet.getBoolean(column);
         if ( value == false && resultSet.wasNull() ) return context.nil;
-        return runtime.newBoolean(value);
-    }
-    
-    @Deprecated
-    protected IRubyObject booleanToRuby(
-        final Ruby runtime, final ResultSet resultSet, final boolean value)
-        throws SQLException {
-        if ( value == false && resultSet.wasNull() ) return runtime.getNil();
         return runtime.newBoolean(value);
     }
 

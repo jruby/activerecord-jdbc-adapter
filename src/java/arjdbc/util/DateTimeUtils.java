@@ -26,9 +26,11 @@ package arjdbc.util;
 import java.sql.Date;
 import java.sql.Time;
 import java.sql.Timestamp;
+import java.util.TimeZone;
 
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
+import org.joda.time.chrono.ISOChronology;
 import org.jruby.Ruby;
 import org.jruby.RubyClass;
 import org.jruby.RubyFixnum;
@@ -165,7 +167,7 @@ public abstract class DateTimeUtils {
         final int seconds = time.getSeconds();
         //final int offset = time.getTimezoneOffset();
 
-        DateTime dateTime = new DateTime(2000, 1, 1, hours, minutes, seconds, DateTimeZone.UTC);
+        DateTime dateTime = new DateTime(2000, 1, 1, hours, minutes, seconds, ISOChronology.getInstanceUTC());
         return RubyTime.newTime(context.runtime, dateTime);
     }
 
@@ -181,7 +183,7 @@ public abstract class DateTimeUtils {
         final int seconds = timestamp.getSeconds();
         final int nanos = timestamp.getNanos(); // max 999-999-999
 
-        DateTime dateTime = new DateTime(year, month, day, hours, minutes, seconds, 0);
+        DateTime dateTime = new DateTime(year, month, day, hours, minutes, seconds, 0, ISOChronology.getInstanceUTC());
         return RubyTime.newTime(context.runtime, dateTime, nanos);
     }
 
@@ -197,6 +199,7 @@ public abstract class DateTimeUtils {
         return RubyTime.newTime(context.runtime, dateTime);
     }
 
+    // @Deprecated
     public static Timestamp convertToTimestamp(final RubyFloat value) {
         final Timestamp timestamp = new Timestamp(value.getLongValue() * 1000); // millis
 
@@ -224,6 +227,9 @@ public abstract class DateTimeUtils {
         return timestamp;
     }
 
+    /**
+     * @deprecated to be replaced by {@link arjdbc.jdbc.RubyJdbcConnection#timeInDefaultTimeZone(ThreadContext, IRubyObject)}
+     */
     public static IRubyObject getTimeInDefaultTimeZone(final ThreadContext context, IRubyObject value) {
         if ( value.respondsTo("to_time") ) {
             value = value.callMethod(context, "to_time");
