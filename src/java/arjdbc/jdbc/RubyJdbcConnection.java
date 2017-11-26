@@ -2284,7 +2284,7 @@ public class RubyJdbcConnection extends RubyObject {
 
     protected static Boolean rawDateTime;
     static {
-        final String dateTimeRaw = System.getProperty("arjdbc.datetime.raw");
+        final String dateTimeRaw = SafePropertyAccessor.getProperty("arjdbc.datetime.raw");
         if ( dateTimeRaw != null ) {
             rawDateTime = Boolean.parseBoolean(dateTimeRaw);
         }
@@ -2382,7 +2382,7 @@ public class RubyJdbcConnection extends RubyObject {
 
     protected static Boolean rawBoolean;
     static {
-        final String booleanRaw = System.getProperty("arjdbc.boolean.raw");
+        final String booleanRaw = SafePropertyAccessor.getProperty("arjdbc.boolean.raw");
         if ( booleanRaw != null ) {
             rawBoolean = Boolean.parseBoolean(booleanRaw);
         }
