@@ -33,10 +33,11 @@ import org.joda.time.DateTimeZone;
 import org.joda.time.chrono.ISOChronology;
 import org.jruby.Ruby;
 import org.jruby.RubyClass;
-import org.jruby.RubyFixnum;
 import org.jruby.RubyFloat;
 import org.jruby.RubyString;
 import org.jruby.RubyTime;
+import org.jruby.javasupport.Java;
+import org.jruby.runtime.Block;
 import org.jruby.runtime.ThreadContext;
 import org.jruby.runtime.builtin.IRubyObject;
 import org.jruby.util.ByteList;
@@ -70,6 +71,26 @@ public abstract class DateTimeUtils {
 
         str.append( decByte( seconds / 10 ) );
         str.append( decByte( seconds % 10 ) );
+
+        return str;
+    }
+
+    private static final byte[] DUMMY_TIME_PREFIX = { '2','0','0','0','-','0','1','-','0','1' };
+
+    @SuppressWarnings("deprecation")
+    public static ByteList dummyTimeToString(final Timestamp time) {
+        final ByteList str = new ByteList(29); // yyyy-mm-dd hh:mm:ss.fffffffff
+
+        int hours = time.getHours();
+        int minutes = time.getMinutes();
+        int seconds = time.getSeconds();
+        int nanos = time.getNanos();
+
+        str.append( DUMMY_TIME_PREFIX );
+
+        str.append( ' ' );
+
+        formatTime(str, hours, minutes, seconds, nanos);
 
         return str;
     }
@@ -128,52 +149,71 @@ public abstract class DateTimeUtils {
         str.append( decByte( day % 10 ) );
 
         if ( hours != 0 || minutes != 0 || seconds != 0 || nanos != 0 ) {
-            str.append(' ');
+            str.append( ' ' );
 
-            str.append( decByte( hours / 10 ) );
-            str.append( decByte( hours % 10 ) );
-
-            str.append( ':' );
-
-            str.append( decByte( minutes / 10 ) );
-            str.append( decByte( minutes % 10 ) );
-
-            str.append( ':' );
-
-            str.append( decByte( seconds / 10 ) );
-            str.append( decByte( seconds % 10 ) );
-
-            if ( nanos != 0 ) {
-                str.append( '.' );
-
-                int pow = 100000000; // nanos <= 999999999
-                for ( int i = 0; i < 8; i++ ) {
-                    final int b = nanos / pow;
-                    if ( b == 0 ) break; // done (no trailing zeros)
-                    str.append( decByte( b % 10 ) );
-                    pow = pow / 10;
-                }
-            }
+            formatTime(str, hours, minutes, seconds, nanos);
         }
 
         return str;
     }
 
+    private static final int NANO_DIGITS_RAILS_CAN_MANAGE = 6; // 'normally' would have been 8
+
+    private static void formatTime(final ByteList str,
+        final int hours, final int minutes, final int seconds, final int nanos) {
+
+        str.append( decByte( hours / 10 ) );
+        str.append( decByte( hours % 10 ) );
+
+        str.append( ':' );
+
+        str.append( decByte( minutes / 10 ) );
+        str.append( decByte( minutes % 10 ) );
+
+        str.append( ':' );
+
+        str.append( decByte( seconds / 10 ) );
+        str.append( decByte( seconds % 10 ) );
+
+        if ( nanos != 0 ) {
+            str.append( '.' );
+            // NOTE: Rails (still) terrible at handling full nanos precision: '12:30:00.99990000'
+            int pow = 100000000; // nanos <= 999999999
+            for ( int i = 0; i < NANO_DIGITS_RAILS_CAN_MANAGE; i++ ) {
+                final int b = nanos / pow;
+                if ( b == 0 ) break; // done (no trailing zeros)
+                str.append( decByte( b % 10 ) );
+                pow = pow / 10;
+            }
+        }
+    }
+
     @SuppressWarnings("deprecation")
-    public static IRubyObject newTime(final ThreadContext context, final Time time) {
-        //if ( time == null ) return context.nil;
+    public static RubyTime newDummyTime(final ThreadContext context, final Time time) {
+
         final int hours = time.getHours();
         final int minutes = time.getMinutes();
         final int seconds = time.getSeconds();
         //final int offset = time.getTimezoneOffset();
 
         DateTime dateTime = new DateTime(2000, 1, 1, hours, minutes, seconds, ISOChronology.getInstanceUTC());
-        return RubyTime.newTime(context.runtime, dateTime);
+        return RubyTime.newTime(context.runtime, dateTime, 0);
     }
 
     @SuppressWarnings("deprecation")
-    public static IRubyObject newTime(final ThreadContext context, final Timestamp timestamp) {
-        //if ( time == null ) return context.nil;
+    public static RubyTime newDummyTime(final ThreadContext context, final Timestamp time) {
+
+        final int hours = time.getHours();
+        final int minutes = time.getMinutes();
+        final int seconds = time.getSeconds();
+        final int nanos = time.getNanos(); // max 999-999-999
+
+        DateTime dateTime = new DateTime(2000, 1, 1, hours, minutes, seconds, ISOChronology.getInstanceUTC());
+        return RubyTime.newTime(context.runtime, dateTime, nanos);
+    }
+
+    @SuppressWarnings("deprecation")
+    public static RubyTime newTime(final ThreadContext context, final Timestamp timestamp) {
 
         final int year = timestamp.getYear() + 1900;
         final int month = timestamp.getMonth() + 1;
@@ -188,15 +228,24 @@ public abstract class DateTimeUtils {
     }
 
     @SuppressWarnings("deprecation")
-    public static IRubyObject newTime(final ThreadContext context, final Date date) {
-        //if ( time == null ) return context.nil;
+    public static RubyTime newDateAsTime(final ThreadContext context, final Date date) {
 
         final int year = date.getYear() + 1900;
         final int month = date.getMonth() + 1;
         final int day = date.getDate();
 
-        DateTime dateTime = new DateTime(year, month, day, 0, 0, 0, 0);
-        return RubyTime.newTime(context.runtime, dateTime);
+        DateTime dateTime = new DateTime(year, month, day, 0, 0, 0, 0, ISOChronology.getInstanceUTC());
+        return RubyTime.newTime(context.runtime, dateTime, 0);
+    }
+
+    @SuppressWarnings("deprecation")
+    public static IRubyObject newDate(final ThreadContext context, final Date date) {
+
+        final int year = date.getYear() + 1900;
+        final int month = date.getMonth() + 1;
+        final int day = date.getDate();
+
+        return newDate(context, year, month, day);
     }
 
     // @Deprecated
@@ -282,13 +331,7 @@ public abstract class DateTimeUtils {
         end = nonDigitIndex(str, start, len);
         day = extractIntValue(str, start, end);
 
-        final Ruby runtime = context.runtime;
-        return runtime.getClass("Date").
-            callMethod(context, "new", new IRubyObject[] {
-                RubyFixnum.newFixnum(runtime, year),
-                RubyFixnum.newFixnum(runtime, month),
-                RubyFixnum.newFixnum(runtime, day)
-        });
+        return newDate(context, year, month, day);
     }
 
     public static RubyTime parseDateTime(final ThreadContext context, final CharSequence str)
@@ -464,6 +507,20 @@ public abstract class DateTimeUtils {
 
         DateTime dateTime = new DateTime(year, month, day, hour, minute, second, millis, zone);
         return RubyTime.newTime(context.runtime, dateTime, nanos);
+    }
+
+    private static IRubyObject newDate(final ThreadContext context, final int year, final int month, final int day) {
+        // NOTE: JRuby really needs a native date.rb until than its a bit costly going from ...
+        // java.sql.Date -> allocating a DateTime proxy, help a bit by shooting at the internals
+        //
+        //  def initialize(dt_or_ajd=0, of=0, sg=ITALY, sub_millis=0)
+        //    if JODA::DateTime === dt_or_ajd
+        //      @dt = dt_or_ajd
+
+        DateTime dateTime = new DateTime(year, month, day, 0, 0, 0, 0, ISOChronology.getInstanceUTC());
+
+        final Ruby runtime = context.runtime;
+        return runtime.getClass("Date").newInstance(context, Java.getInstance(runtime, dateTime), Block.NULL_BLOCK);
     }
 
     @SuppressWarnings("deprecation")

@@ -2329,7 +2329,7 @@ public class RubyJdbcConnection extends RubyObject {
         }
 
         if ( rawDateTime != null && ! rawDateTime.booleanValue() ) {
-            return DateTimeUtils.newTime(context, value).callMethod(context, "to_date");
+            return DateTimeUtils.newDateAsTime(context, value).callMethod(context, "to_date");
         }
 
         return RubyString.newString(runtime, DateTimeUtils.dateToString(value));
@@ -2345,7 +2345,7 @@ public class RubyJdbcConnection extends RubyObject {
         }
 
         if ( rawDateTime != null && ! rawDateTime.booleanValue() ) {
-            return DateTimeUtils.newTime(context, value);
+            return DateTimeUtils.newDummyTime(context, value);
         }
 
         return RubyString.newString(runtime, DateTimeUtils.timeToString(value));

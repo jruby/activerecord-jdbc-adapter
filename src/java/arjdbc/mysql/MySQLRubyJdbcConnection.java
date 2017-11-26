@@ -27,14 +27,15 @@ package arjdbc.mysql;
 
 import arjdbc.jdbc.DriverWrapper;
 import arjdbc.jdbc.RubyJdbcConnection;
+import arjdbc.util.DateTimeUtils;
 
 import java.lang.reflect.InvocationTargetException;
 import java.sql.Connection;
+import java.sql.Date;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.sql.ResultSet;
 import java.sql.Statement;
-import java.sql.Time;
 import java.sql.Timestamp;
 import java.sql.Types;
 import java.util.TimeZone;
@@ -162,25 +163,57 @@ public class MySQLRubyJdbcConnection extends RubyJdbcConnection {
         setTimestampParameter(context, connection, statement, index, value, attribute, type);
     }
 
-    // FIXME: I think we can unify this back to main adapter code since previous conflict involved not using
-    // the raw string return type and not the extra formatting logic.
+    // NOTE: MySQL adapter under MRI using mysql2 gem returns UTC-d Date/Time values
+
     @Override
-    protected IRubyObject timeToRuby(ThreadContext context, Ruby runtime, ResultSet resultSet, int column) throws SQLException {
-        Time value = resultSet.getTime(column);
+    protected IRubyObject dateToRuby(final ThreadContext context,
+        final Ruby runtime, final ResultSet resultSet, final int column)
+        throws SQLException {
 
-        if (value == null) return resultSet.wasNull() ? context.nil : runtime.newString();
-
-        String strValue = value.toString();
-
-        // If time is column type but that time had a precision which included
-        // nanoseconds we used timestamp to save the data.  Since this is conditional
-        // we grab data a second time as a timestamp to look for nsecs.
-        Timestamp nsecTimeHack = resultSet.getTimestamp(column);
-        if (nsecTimeHack.getNanos() != 0) {
-            strValue = String.format("%s.%09d", strValue, nsecTimeHack.getNanos());
+        final Date value = resultSet.getDate(column);
+        if ( value == null ) {
+            return resultSet.wasNull() ? context.nil : RubyString.newEmptyString(runtime);
         }
 
-        return RubyString.newUnicodeString(runtime, strValue);
+        if ( rawDateTime != null && rawDateTime.booleanValue() ) {
+            return RubyString.newString(runtime, DateTimeUtils.dateToString(value));
+        }
+
+        return DateTimeUtils.newDate(context, value);
+    }
+
+    @Override
+    protected IRubyObject timeToRuby(final ThreadContext context,
+        final Ruby runtime, final ResultSet resultSet, final int column)
+        throws SQLException { // due MySQL's TIME precision (up to nanos)
+
+        final Timestamp value = resultSet.getTimestamp(column);
+        if ( value == null ) {
+            return resultSet.wasNull() ? context.nil : RubyString.newEmptyString(runtime);
+        }
+
+        if ( rawDateTime != null && rawDateTime.booleanValue() ) {
+            return RubyString.newString(runtime, DateTimeUtils.dummyTimeToString(value));
+        }
+
+        return DateTimeUtils.newDummyTime(context, value);
+    }
+
+    @Override
+    protected IRubyObject timestampToRuby(final ThreadContext context,
+        final Ruby runtime, final ResultSet resultSet, final int column)
+        throws SQLException {
+
+        final Timestamp value = resultSet.getTimestamp(column);
+        if ( value == null ) {
+            return resultSet.wasNull() ? context.nil : RubyString.newEmptyString(runtime);
+        }
+
+        if ( rawDateTime != null && rawDateTime.booleanValue() ) {
+            return RubyString.newString(runtime, DateTimeUtils.timestampToString(value));
+        }
+
+        return DateTimeUtils.newTime(context, value);
     }
 
     // MySQL does never storesUpperCaseIdentifiers() :

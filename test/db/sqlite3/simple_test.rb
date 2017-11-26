@@ -264,6 +264,31 @@ class SQLite3SimpleTest < Test::Unit::TestCase
     assert_equal my_date.to_s(:db), model.custom_sample_date
   end
 
+  # @override
+  def test_time_according_to_precision
+    @connection = ActiveRecord::Base.connection
+    @connection.create_table(:some_foos, force: true) do |t|
+      t.time :start,  precision: 0
+      t.time :finish, precision: 4
+      t.date :a_date, precision: 0
+    end
+    foo_class = Class.new(ActiveRecord::Base)
+    foo_class.table_name = 'some_foos'
+    time = ::Time.utc(2007, 1, 1, 12, 30, 0, 999999)
+    foo_class.create!(start: time, finish: time, a_date: time.to_date)
+
+    assert foo = foo_class.find_by(start: time)
+    assert_equal 1, foo_class.where(finish: time).count
+
+    assert_equal time.to_s.sub('2007', '2000'), foo.start.to_s
+    assert_equal time.to_s.sub('2007', '2000'), foo.finish.to_s
+    assert_equal time.to_date.to_s, foo.a_date.to_s
+    assert_equal 0, foo.start.usec # no nanos precision support
+    assert_equal 0, foo.finish.usec # no nanos precision support
+  ensure
+    @connection.drop_table :some_foos, if_exists: true
+  end
+
   test 'returns correct visitor type' do
     assert_not_nil visitor = connection.instance_variable_get(:@visitor)
     assert defined? Arel::Visitors::SQLite

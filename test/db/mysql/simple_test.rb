@@ -39,6 +39,31 @@ class MySQLSimpleTest < Test::Unit::TestCase
     assert_match str[0, 19], e.sample_text
   end
 
+  # @override
+  def test_time_according_to_precision
+    super
+
+    @connection = ActiveRecord::Base.connection
+    @connection.create_table(:some_foos, force: true) do |t|
+      t.time :start,  precision: 0
+      t.time :finish, precision: 4
+      t.date :a_date, precision: 0
+    end
+
+    foo_class = Class.new(ActiveRecord::Base)
+    foo_class.table_name = 'some_foos'
+    time = Time.utc(2007, 1, 1, 12, 30, 0, 999999)
+    foo_class.create!(start: time, finish: time, a_date: time.to_date)
+
+    assert foo = foo_class.find_by(start: time)
+    raw_attrs = foo.attributes_before_type_cast
+
+    assert_equal Time.utc(2000, 1, 1, 12, 30, 0), raw_attrs['start'] # core AR + mysql2 compat
+    assert_equal Date.new(2007, 1, 1), raw_attrs['a_date'] # core AR + mysql2 compat
+  ensure
+    @connection.drop_table :some_foos, if_exists: true
+  end
+
   column_quote_char "`"
 
   def test_string_quoting_oddity
