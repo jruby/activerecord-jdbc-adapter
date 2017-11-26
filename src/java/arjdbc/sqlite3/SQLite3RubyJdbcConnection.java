@@ -37,6 +37,7 @@ import java.sql.PreparedStatement;
 import java.sql.Savepoint;
 import java.sql.Types;
 import java.util.List;
+import java.util.Locale;
 
 import org.jruby.Ruby;
 import org.jruby.RubyArray;
@@ -282,7 +283,7 @@ public class SQLite3RubyJdbcConnection extends RubyJdbcConnection {
         final RubyArray tables = runtime.newArray(24);
         while ( tablesSet.next() ) {
             String name = tablesSet.getString(TABLES_TABLE_NAME);
-            name = name.toLowerCase(); // simply lower-case for SQLite3
+            name = name.toLowerCase(Locale.ENGLISH); // simply lower-case for SQLite3
             tables.append( RubyString.newUnicodeString(runtime, name) );
         }
         return tables;
