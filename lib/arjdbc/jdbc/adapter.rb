@@ -592,10 +592,6 @@ module ActiveRecord
         end
       end
 
-      # AR::Type should do the conversion - for better accuracy
-      JdbcConnection.raw_date_time = true if JdbcConnection.raw_date_time?.nil?
-      JdbcConnection.raw_boolean = true if JdbcConnection.raw_boolean?.nil?
-
     end
   end
 end
