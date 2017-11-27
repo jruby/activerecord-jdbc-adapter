@@ -54,6 +54,10 @@ module ActiveRecord
         true
       end
 
+      def supports_transaction_isolation?
+        true
+      end
+
       # HELPER METHODS ===========================================
 
       # Reloading the type map in abstract/statement_cache.rb blows up postgres

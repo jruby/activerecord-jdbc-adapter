@@ -34,16 +34,6 @@ module TransactionTestMethods
 
   def setup_failed?; @setup_failed ||= false end
 
-  def test_supports_transaction_isolation
-    unless ActiveRecord::Base.connection.supports_transaction_isolation?
-      omit("transaction isolation not supported")
-    end
-    assert ActiveRecord::Base.connection.supports_transaction_isolation?(:read_uncommitted)
-    assert ActiveRecord::Base.connection.supports_transaction_isolation?(:read_committed)
-    assert ActiveRecord::Base.connection.supports_transaction_isolation?(:repeatable_read)
-    assert ActiveRecord::Base.connection.supports_transaction_isolation?(:serializable)
-  end
-
   def test_transaction_isolation_read_uncommitted
     # It is impossible to properly test read uncommitted. The SQL standard only
     # specifies what must not happen at a certain level, not what must happen. At

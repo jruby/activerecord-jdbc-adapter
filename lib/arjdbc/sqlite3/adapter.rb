@@ -671,6 +671,10 @@ module ActiveRecord::ConnectionAdapters
     include ArJdbc::Abstract::StatementCache
     include ArJdbc::Abstract::TransactionSupport
 
+    def supports_transaction_isolation?
+      false
+    end
+
     def begin_isolated_db_transaction(isolation)
       raise ActiveRecord::TransactionIsolationError, 'adapter does not support setting transaction isolation'
     end

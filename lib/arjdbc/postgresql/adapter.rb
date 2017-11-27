@@ -242,7 +242,7 @@ module ArJdbc
 
     def supports_savepoints?; true end
 
-    def supports_transaction_isolation?(level = nil); true end
+    def supports_transaction_isolation?; true end
 
     def supports_views?; true end
 
