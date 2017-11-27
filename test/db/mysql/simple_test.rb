@@ -188,7 +188,7 @@ class MySQLSimpleTest < Test::Unit::TestCase
       config[:password] = MYSQL_CONFIG[:password]
       config[:database] = MYSQL_CONFIG[:database]
       with_connection(config) do |connection|
-        assert_match /^jdbc:mysql:\/\/:\d*\//, connection.config[:url]
+        assert_match(/^jdbc:mysql:\/\/:\d*\//, connection.config[:url])
       end
 #      # ActiveRecord::Base.connection.disconnect!
 #      host = [ MYSQL_CONFIG[:host] || 'localhost', '127.0.0.1' ] # fail-over
