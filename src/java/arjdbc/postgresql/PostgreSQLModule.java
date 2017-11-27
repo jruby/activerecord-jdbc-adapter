@@ -24,6 +24,7 @@
 package arjdbc.postgresql;
 
 import static arjdbc.util.QuotingUtils.quoteCharAndDecorateWith;
+import static arjdbc.util.QuotingUtils.quoteCharWith;
 
 import org.jruby.Ruby;
 import org.jruby.RubyModule;
@@ -50,12 +51,21 @@ public class PostgreSQLModule {
         return load( arjdbc.ArJdbcModule.get(runtime) );
     }
 
-    @JRubyMethod(name = "quote_column_name", required = 1, frame = false)
+    @JRubyMethod(name = "quote_column_name", required = 1)
     public static IRubyObject quote_column_name(
             final ThreadContext context,
             final IRubyObject self,
             final IRubyObject string) { // %("#{name.to_s.gsub("\"", "\"\"")}")
         return quoteCharAndDecorateWith(context, string.asString(), '"', '"', (byte) '"', (byte) '"');
+    }
+
+    @JRubyMethod(name = "quote_string", required = 1)
+    public static IRubyObject quote_string(
+            final ThreadContext context,
+            final IRubyObject self,
+            final IRubyObject string) {
+        // NOTE: since AR 5.0 standard_conforming_strings are always set - no need for extra quoting
+        return quoteCharWith(context, string.asString(), '\'', '\''); // string.gsub("'", "''")
     }
 
     @JRubyMethod(name = "unescape_bytea", meta = true)

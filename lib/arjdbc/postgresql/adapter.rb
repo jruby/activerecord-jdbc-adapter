@@ -463,16 +463,7 @@ module ArJdbc
       sql.replace "SELECT * FROM (#{sql}) AS id_list ORDER BY #{order}"
     end
 
-    # Quotes a string, escaping any ' (single quote) and \ (backslash) chars.
-    # @return [String]
-    # @override
-    def quote_string(string)
-      quoted = string.gsub("'", "''")
-      unless standard_conforming_strings?
-        quoted.gsub!(/\\/, '\&\&')
-      end
-      quoted
-    end
+    # @note #quote_string implemented as native
 
     def escape_bytea(string)
       return unless string
