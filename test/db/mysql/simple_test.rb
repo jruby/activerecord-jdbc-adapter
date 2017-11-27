@@ -64,6 +64,31 @@ class MySQLSimpleTest < Test::Unit::TestCase
     @connection.drop_table :some_foos, if_exists: true
   end
 
+  # @override
+  def test_custom_select_datetime
+    my_time = Time.local 2013, 03, 15, 19, 53, 51, 0 # usec
+    model = DbType.create! :sample_datetime => my_time
+    model = DbType.where("id = #{model.id}").select('sample_datetime AS custom_sample_datetime').first
+    assert_equal my_time, model.custom_sample_datetime
+    sample_datetime = model.custom_sample_datetime
+    assert sample_datetime.acts_like?(:time), "expected Time-like instance but got: #{sample_datetime.class}"
+
+    assert_equal 'UTC', sample_datetime.zone
+    assert_equal my_time.getutc, sample_datetime
+  end
+
+  # @override
+  def test_custom_select_date
+    my_date = Time.local(2000, 01, 30, 0, 0, 0, 0).to_date
+    model = DbType.create! :sample_date => my_date
+    model = DbType.where("id = #{model.id}").select('sample_date AS custom_sample_date').first
+    assert_equal my_date, model.custom_sample_date
+    sample_date = model.custom_sample_date
+
+    assert_equal Date, sample_date.class
+    assert_equal my_date, sample_date
+  end
+
   column_quote_char "`"
 
   def test_string_quoting_oddity
