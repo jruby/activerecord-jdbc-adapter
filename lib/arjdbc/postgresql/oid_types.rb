@@ -12,13 +12,6 @@ module ArJdbc
     # @private
     module OIDTypes
 
-      # Support arrays/ranges for defining attributes that don't exist in the db
-      Type.add_modifier({ array: true }, OID::Array, adapter: :postgresql)
-      Type.add_modifier({ range: true }, OID::Range, adapter: :postgresql)
-      Type.register(:enum, OID::Enum, adapter: :postgresql)
-      Type.register(:point, OID::Rails51Point, adapter: :postgresql)
-      Type.register(:legacy_point, OID::Point, adapter: :postgresql)
-
       # @override
       def enable_extension(name)
         result = super(name)
@@ -46,7 +39,7 @@ module ArJdbc
         super oid.first['oid'].to_i
       end
 
-      def get_oid_type(oid, fmod, column_name, sql_type = '')
+      def get_oid_type(oid, fmod, column_name, sql_type = '') # :nodoc:
         if !type_map.key?(oid)
           load_additional_types(type_map, [oid])
         end
@@ -89,7 +82,6 @@ module ArJdbc
         register_class_with_limit m, 'varbit', OID::BitVarying
         m.alias_type 'timestamptz', 'timestamp'
         m.register_type 'date', Type::Date.new
-        m.register_type 'time', Type::Time.new
 
         m.register_type 'money', OID::Money.new
         m.register_type 'bytea', OID::Bytea.new
@@ -101,30 +93,29 @@ module ArJdbc
         m.register_type 'inet', OID::Inet.new
         m.register_type 'uuid', OID::Uuid.new
         m.register_type 'xml', OID::Xml.new
-        m.register_type 'box', OID::SpecializedString.new(:box)
-        m.register_type 'circle', OID::SpecializedString.new(:circle)
+        m.register_type 'tsvector', OID::SpecializedString.new(:tsvector)
+        m.register_type 'macaddr', OID::SpecializedString.new(:macaddr)
         m.register_type 'citext', OID::SpecializedString.new(:citext)
+        m.register_type 'ltree', OID::SpecializedString.new(:ltree)
         m.register_type 'line', OID::SpecializedString.new(:line)
         m.register_type 'lseg', OID::SpecializedString.new(:lseg)
-        m.register_type 'ltree', OID::SpecializedString.new(:ltree)
-        m.register_type 'macaddr', OID::SpecializedString.new(:macaddr)
+        m.register_type 'box', OID::SpecializedString.new(:box)
         m.register_type 'path', OID::SpecializedString.new(:path)
         m.register_type 'polygon', OID::SpecializedString.new(:polygon)
-        m.register_type 'tsvector', OID::SpecializedString.new(:tsvector)
+        m.register_type 'circle', OID::SpecializedString.new(:circle)
 
-        # This is how Rails 5.1 handles it. In 5.0 SpecializedString doesn't take a precision option
-        # 5.0 actually leaves it as a regular String but we need it specialized
-        # to support prepared statements
+        #m.alias_type 'interval', 'varchar' # in Rails 5.0
+        # This is how Rails 5.1 handles it.
+        # In 5.0 SpecializedString doesn't take a precision option  5.0 actually leaves it as a regular String
+        # but we need it specialized to support prepared statements
         # m.register_type 'interval' do |_, _, sql_type|
         #   precision = extract_precision(sql_type)
         #   OID::SpecializedString.new(:interval, precision: precision)
         # end
         m.register_type 'interval', OID::SpecializedString.new(:interval)
 
-        m.register_type 'timestamp' do |_, _, sql_type|
-          precision = extract_precision(sql_type)
-          OID::DateTime.new(precision: precision)
-        end
+        register_class_with_precision m, 'time', Type::Time
+        register_class_with_precision m, 'timestamp', OID::DateTime
 
         m.register_type 'numeric' do |_, fmod, sql_type|
           precision = extract_precision(sql_type)
@@ -149,34 +140,52 @@ module ArJdbc
         load_additional_types(m)
       end
 
-      def load_additional_types(type_map, oids = nil)
+      def load_additional_types(type_map, oids = nil) # :nodoc:
+        initializer = OID::TypeMapInitializer.new(type_map)
+
         if supports_ranges?
           query = <<-SQL
-            SELECT t.oid, t.typname, t.typelem, t.typdelim, t.typinput, r.rngsubtype, t.typtype, t.typbasetype
-            FROM pg_type as t
-            LEFT JOIN pg_range as r ON oid = rngtypid
+              SELECT t.oid, t.typname, t.typelem, t.typdelim, t.typinput, r.rngsubtype, t.typtype, t.typbasetype
+              FROM pg_type as t
+              LEFT JOIN pg_range as r ON oid = rngtypid
           SQL
         else
           query = <<-SQL
-            SELECT t.oid, t.typname, t.typelem, t.typdelim, t.typinput, t.typtype, t.typbasetype
-            FROM pg_type as t
+              SELECT t.oid, t.typname, t.typelem, t.typdelim, t.typinput, t.typtype, t.typbasetype
+              FROM pg_type as t
           SQL
         end
 
-        initializer = OID::TypeMapInitializer.new(type_map)
-
         if oids
-          query << ( "WHERE t.oid::integer IN (%s)" % oids.join(", ") )
+          query += "WHERE t.oid::integer IN (%s)" % oids.join(", ")
         else
-          # query_conditions_for_initial_load only available since AR > 4.2.1
-          if initializer.respond_to?(:query_conditions_for_initial_load)
-            query << initializer.query_conditions_for_initial_load(type_map)
-          end
+          query += initializer.query_conditions_for_initial_load(type_map)
         end
 
         records = execute(query, 'SCHEMA')
         initializer.run(records)
       end
+
+      # Support arrays/ranges for defining attributes that don't exist in the db
+      ActiveRecord::Type.add_modifier({ array: true }, OID::Array, adapter: :postgresql)
+      ActiveRecord::Type.add_modifier({ range: true }, OID::Range, adapter: :postgresql)
+      ActiveRecord::Type.register(:bit, OID::Bit, adapter: :postgresql)
+      ActiveRecord::Type.register(:bit_varying, OID::BitVarying, adapter: :postgresql)
+      ActiveRecord::Type.register(:binary, OID::Bytea, adapter: :postgresql)
+      ActiveRecord::Type.register(:cidr, OID::Cidr, adapter: :postgresql)
+      ActiveRecord::Type.register(:datetime, OID::DateTime, adapter: :postgresql)
+      ActiveRecord::Type.register(:decimal, OID::Decimal, adapter: :postgresql)
+      ActiveRecord::Type.register(:enum, OID::Enum, adapter: :postgresql)
+      ActiveRecord::Type.register(:hstore, OID::Hstore, adapter: :postgresql)
+      ActiveRecord::Type.register(:inet, OID::Inet, adapter: :postgresql)
+      ActiveRecord::Type.register(:json, OID::Json, adapter: :postgresql)
+      ActiveRecord::Type.register(:jsonb, OID::Jsonb, adapter: :postgresql)
+      ActiveRecord::Type.register(:money, OID::Money, adapter: :postgresql)
+      ActiveRecord::Type.register(:point, OID::Rails51Point, adapter: :postgresql)
+      ActiveRecord::Type.register(:legacy_point, OID::Point, adapter: :postgresql)
+      ActiveRecord::Type.register(:uuid, OID::Uuid, adapter: :postgresql)
+      ActiveRecord::Type.register(:vector, OID::Vector, adapter: :postgresql)
+      ActiveRecord::Type.register(:xml, OID::Xml, adapter: :postgresql)
 
     end
   end
