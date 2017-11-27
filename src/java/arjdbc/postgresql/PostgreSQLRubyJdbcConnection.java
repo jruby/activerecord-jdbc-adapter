@@ -496,6 +496,43 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
         return super.jdbcToRuby(context, runtime, column, type, resultSet);
     }
 
+    // NOTE: PostgreSQL adapter under MRI using pg gem returns UTC-d Date/Time values
+
+    @Override
+    protected IRubyObject dateToRuby(final ThreadContext context,
+        final Ruby runtime, final ResultSet resultSet, final int column)
+        throws SQLException {
+
+        final String value = resultSet.getString(column); // not getDate -> we're do the parsing
+        if ( value == null ) {
+            return resultSet.wasNull() ? context.nil : RubyString.newEmptyString(runtime);
+        }
+
+        if ( rawDateTime != null && rawDateTime.booleanValue() ) {
+            return RubyString.newString(runtime, value);
+        }
+
+        return DateTimeUtils.parseDate(context, value);
+    }
+
+    @Override
+    protected IRubyObject timeToRuby(final ThreadContext context,
+        final Ruby runtime, final ResultSet resultSet, final int column)
+        throws SQLException { // due TIME precision e.g. TIME(4)
+
+        final String value = resultSet.getString(column);
+        // extracting with resultSet.getTimestamp(column) only gets .999 (3) precision
+        if ( value == null ) {
+            return resultSet.wasNull() ? context.nil : RubyString.newEmptyString(runtime);
+        }
+
+        if ( rawDateTime != null && rawDateTime.booleanValue() ) {
+            return RubyString.newString(runtime, value); // without "2000-01-01 " prefix
+        }
+
+        return DateTimeUtils.parseTime(context, value);
+    }
+
     @Override
     protected IRubyObject timestampToRuby(final ThreadContext context,
         final Ruby runtime, final ResultSet resultSet, final int column)
@@ -504,16 +541,26 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
         // Timestamp: '0001-12-31 22:59:59.0' String: '0001-12-31 22:59:59 BC'
         final String value = resultSet.getString(column);
         if ( value == null ) {
-            if ( resultSet.wasNull() ) return context.nil;
-            return RubyString.newEmptyString(runtime); // ""
+            return resultSet.wasNull() ? context.nil : RubyString.newEmptyString(runtime);
         }
 
-        final RubyString strValue = timestampToRubyString(runtime, value);
-        if ( rawDateTime != null && rawDateTime.booleanValue() ) return strValue;
+        if ( rawDateTime != null && rawDateTime.booleanValue() ) {
+            return timestampToRubyString(runtime, value); // TODO is this necessary?
+        }
 
-        final IRubyObject adapter = callMethod(context, "adapter"); // self.adapter
+        final int len = value.length();
+        if ( len < 10 && value.charAt(len - 1) == 'y' ) { // infinity / -infinity
+            IRubyObject infinity;
+            if ( (infinity = parseInfinity(runtime, value)) != null ) return infinity;
+        }
 
-        return typeCastFromDatabase(context, adapter, runtime.newSymbol("timestamp"), strValue);
+        return DateTimeUtils.parseDateTime(context, value);
+    }
+
+    private static IRubyObject parseInfinity(final Ruby runtime, final String value) {
+        if (  "infinity".equals(value) ) return RubyFloat.newFloat(runtime,  RubyFloat.INFINITY);
+        if ( "-infinity".equals(value) ) return RubyFloat.newFloat(runtime, -RubyFloat.INFINITY);
+        return null;
     }
 
     @Override // optimized String -> byte[]

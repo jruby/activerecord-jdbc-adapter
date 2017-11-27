@@ -294,9 +294,19 @@ public abstract class DateTimeUtils {
         return "utc".equalsIgnoreCase( getDefaultTimeZone(context) );
     }
 
+    @Deprecated
     public static String getDefaultTimeZone(final ThreadContext context) {
         final RubyClass base = getBase(context.runtime);
         return base.callMethod(context, "default_timezone").toString(); // :utc
+    }
+
+    public static double adjustTimeFromDefaultZone(final IRubyObject value) {
+        // Time's to_f is : ( millis * 1000 + usec ) / 1_000_000.0
+        final double time = value.convertToFloat().getDoubleValue(); // to_f
+        // NOTE: MySQL assumes default TZ thus need to adjust to match :
+        final int offset = TimeZone.getDefault().getOffset((long) time * 1000);
+        // Time's to_f is : ( millis * 1000 + usec ) / 1_000_000.0
+        return time - ( offset / 1000.0 );
     }
 
     public static IRubyObject parseDate(final ThreadContext context, final CharSequence str)
@@ -332,6 +342,53 @@ public abstract class DateTimeUtils {
         day = extractIntValue(str, start, end);
 
         return newDate(context, year, month, day);
+    }
+
+    public static IRubyObject parseTime(final ThreadContext context, final CharSequence str)
+        throws IllegalArgumentException {
+        final int len = str.length();
+
+        int hour; int minute; int second;
+        int millis = 0; long nanos = 0;
+
+        int start = nonSpaceIndex(str, 0, len); // Skip leading whitespace
+        int end = nonDigitIndex(str, start, len);
+
+        if ( end >= len ) {
+            throw new IllegalArgumentException("unexpected date value: '" + str + "'");
+        }
+
+        // hours
+        hour = extractIntValue(str, start, end);
+        start = end + 1; // Skip ':'
+
+        end = nonDigitIndex(str, start, len);
+        // minutes
+        minute = extractIntValue(str, start, end);
+        start = end + 1; // Skip ':'
+
+        end = nonDigitIndex(str, start, len);
+        // seconds
+        second = extractIntValue(str, start, end);
+        start = end;
+
+        // Fractional seconds.
+        if ( start < len && str.charAt(start) == '.' ) {
+            end = nonDigitIndex(str, start + 1, len); // Skip '.'
+            int numlen = end - (start + 1);
+            if (numlen <= 3) {
+                millis = extractIntValue(str, start + 1, end);
+                for ( ; numlen < 3; ++numlen ) millis *= 10;
+            }
+            else {
+                nanos = extractIntValue(str, start + 1, end);
+                for ( ; numlen < 9; ++numlen ) nanos *= 10;
+            }
+            //start = end;
+        }
+
+        DateTime dateTime = new DateTime(2000, 1, 1, hour, minute, second, millis, ISOChronology.getInstanceUTC());
+        return RubyTime.newTime(context.runtime, dateTime, nanos);
     }
 
     public static RubyTime parseDateTime(final ThreadContext context, final CharSequence str)
