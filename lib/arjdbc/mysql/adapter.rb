@@ -83,9 +83,8 @@ module ActiveRecord
         exception.errno if exception.respond_to? :errno
       end
 
-      # FIXME: #833 This is wrong...it should not always pass utf8 and native adapter never does...
       def create_table(table_name, **options) #:nodoc:
-        super(table_name, options: 'ENGINE=InnoDB CHARSET=utf8 COLLATE=utf8_general_ci', **options)
+        super(table_name, options: "ENGINE=InnoDB", **options)
       end
 
       #--
