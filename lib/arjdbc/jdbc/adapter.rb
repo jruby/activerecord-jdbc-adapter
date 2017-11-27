@@ -241,13 +241,11 @@ module ActiveRecord
       # instead of returning mapped query results in an array.
       # @return [Array] unless a block is given
       def exec_query_raw(sql, name = 'SQL', binds = [], &block)
-        if sql.respond_to?(:to_sql)
-          sql = to_sql(sql, binds); to_sql = true
-        end
+        sql = to_sql(sql, binds) if sql.respond_to?(:to_sql)
+
         if prepared_statements?
           log(sql, name, binds) { @connection.execute_query_raw(sql, binds, &block) }
         else
-          sql = suble_binds(sql, binds) unless to_sql # deprecated behavior
           log(sql, name) { @connection.execute_query_raw(sql, &block) }
         end
       end
@@ -271,7 +269,7 @@ module ActiveRecord
       # @see #exec_insert
       # @see #exec_update
       def execute(sql, name = nil, binds = nil)
-        sql = suble_binds to_sql(sql, binds), binds if binds
+        sql = to_sql(sql, binds) if binds
         if name == :skip_logging
           _execute(sql, name)
         else
@@ -314,12 +312,12 @@ module ActiveRecord
       # @override
       def data_sources
         tables
-      end if ArJdbc::AR42
+      end
 
       # @override
       def data_source_exists?(name)
         table_exists?(name)
-      end if ArJdbc::AR42
+      end
 
       # @override
       def indexes(table_name, name = nil, schema_name = nil)
@@ -339,14 +337,14 @@ module ActiveRecord
       # @override
       def foreign_keys(table_name)
         @connection.foreign_keys(table_name)
-      end if ArJdbc::AR42
+      end
 
       # Does our database (+ its JDBC driver) support foreign-keys?
       # @since 1.3.18
       # @override
       def supports_foreign_keys?
         @connection.supports_foreign_keys?
-      end if ArJdbc::AR42
+      end
 
       # @deprecated Rather use {#update_lob_value} instead.
       def write_large_object(*args)
@@ -360,21 +358,7 @@ module ActiveRecord
         @connection.update_lob_value(record, column, value)
       end
 
-
-
       protected
-
-      # @override so that we do not have to care having 2 arguments on 3.0
-      def log(sql, name = nil, binds = [])
-        unless binds.blank?
-          binds = binds.map do |column, value|
-            column ? [column.name, value] : [nil, value]
-          end
-          sql = "#{sql} #{binds.inspect}"
-        end
-        super(sql, name || 'SQL') # `log(sql, name)` on AR <= 3.0
-      end if ActiveRecord::VERSION::MAJOR < 3 ||
-        ( ActiveRecord::VERSION::MAJOR == 3 && ActiveRecord::VERSION::MINOR < 1 )
 
       # Take an id from the result of an INSERT query.
       # @return [Integer, NilClass]
@@ -385,19 +369,6 @@ module ActiveRecord
           result
         end
       end
-
-      # @private
-      def last_inserted_id(result)
-        if result.is_a?(Hash)
-          result.first.first[1] # .first = { "id"=>1 } .first = [ "id", 1 ]
-        else
-          result
-        end
-      end unless defined? ActiveRecord::Result
-
-      # NOTE: make sure if adapter overrides #table_definition that it will
-      # work on AR 3.x as well as 4.0
-      if ActiveRecord::VERSION::MAJOR > 3
 
       # aliasing #create_table_definition as #table_definition :
       alias table_definition create_table_definition
@@ -414,11 +385,7 @@ module ActiveRecord
       # @note AR-4x arguments expected: `(name, temporary, options)`
       # @private documented bellow
       def new_table_definition(table_definition, *args)
-        if ActiveRecord::VERSION::MAJOR > 4
-          table_definition.new(*args)
-        else
-          table_definition.new native_database_types, *args
-        end
+        table_definition.new(*args)
       end
       private :new_table_definition
 
@@ -443,33 +410,6 @@ module ActiveRecord
       end
       public :add_column_options!
 
-      else # AR < 4.0
-
-      # Helper to easily override #table_definition (on AR 3.x/4.0) as :
-      # ```
-      #   def table_definition(*args)
-      #     new_table_definition(TableDefinition, *args)
-      #   end
-      # ```
-      def new_table_definition(table_definition, *args)
-        table_definition.new(self) # args ignored only used for 4.0
-      end
-      private :new_table_definition
-
-      # @private (:table, :name, :unique, :columns, :lengths, :orders)
-      def new_index_definition(table, name, unique, columns, lengths,
-          orders = nil, where = nil, type = nil, using = nil)
-        IndexDefinition.new(table, name, unique, columns, lengths, orders)
-      end
-      # @private (:table, :name, :unique, :columns, :lengths)
-      def new_index_definition(table, name, unique, columns, lengths,
-          orders = nil, where = nil, type = nil, using = nil)
-        IndexDefinition.new(table, name, unique, columns, lengths)
-      end if ActiveRecord::VERSION::STRING < '3.2'
-      private :new_index_definition
-
-      end
-
       # @return whether `:prepared_statements` are to be used
       def prepared_statements?
         return @prepared_statements unless (@prepared_statements ||= nil).nil?
@@ -488,24 +428,10 @@ module ActiveRecord
             false # off by default - NOTE: on AR 4.x it's on by default !?
       end
 
-      if @@suble_binds = Java::JavaLang::System.getProperty('arjdbc.adapter.suble_binds')
-        @@suble_binds = Java::JavaLang::Boolean.parseBoolean(@@suble_binds)
-      else
-        @@suble_binds = ActiveRecord::VERSION::MAJOR < 4 # due compatibility
-      end
-      def self.suble_binds?; @@suble_binds; end
-      def self.suble_binds=(flag); @@suble_binds = flag; end
-
       private
 
-      # @private Supporting "string-subling" on AR 4.0 would require {#to_sql}
-      # to consume binds parameters otherwise it happens twice e.g. for a record
-      # insert it is called during {#insert} as well as on {#exec_insert} ...
-      # but that than leads to other issues with libraries that save the binds
-      # array and run a query again since it's the very same instance on 4.0 !
-      def suble_binds(sql, binds)
-        sql
-      end
+      # @deprecated no longer used
+      def suble_binds(sql, binds); sql end
 
       # @deprecated No longer used, kept for 1.2 API compatibility.
       def extract_sql(arel)
