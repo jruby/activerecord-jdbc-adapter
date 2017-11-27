@@ -68,6 +68,7 @@ ArJdbc::ConnectionMethods.module_eval do
       # According to MySQL 5.5.45+, 5.6.26+ and 5.7.6+ requirements SSL connection
       # must be established by default if explicit option isn't set :
       properties['useSSL'] ||= false
+      properties['trustServerCertificate'] ||= true
     end
     if socket = config[:socket]
       properties['localSocket'] ||= socket if mariadb_driver
