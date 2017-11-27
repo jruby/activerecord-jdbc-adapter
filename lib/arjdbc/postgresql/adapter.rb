@@ -388,7 +388,7 @@ module ArJdbc
       reset_transaction
       @connection.rollback # Have to deal with rollbacks differently than the AR adapter
       @connection.execute 'DISCARD ALL'
-      configure_connection
+      @connection.configure_connection
     end
 
     def last_insert_id_result(sequence_name)
