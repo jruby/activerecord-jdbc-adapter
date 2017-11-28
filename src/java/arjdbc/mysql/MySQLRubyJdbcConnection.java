@@ -142,7 +142,7 @@ public class MySQLRubyJdbcConnection extends RubyJdbcConnection {
         final RubyTime timeValue = (RubyTime) value;
         final Timestamp timestamp = new Timestamp(dateTimeMillisFromDefaultZone(timeValue));
         // 1942-11-30T01:02:03.123_456
-        if (timeValue.getNSec() >= 0) timestamp.setNanos((int) (timestamp.getNanos() + timeValue.getNSec()));
+        if (timeValue.getNSec() > 0) timestamp.setNanos((int) (timestamp.getNanos() + timeValue.getNSec()));
 
         statement.setTimestamp(index, timestamp);
     }

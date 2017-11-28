@@ -2329,11 +2329,11 @@ public class RubyJdbcConnection extends RubyObject {
             return resultSet.wasNull() ? context.nil : RubyString.newEmptyString(runtime);
         }
 
-        if ( rawDateTime != null && ! rawDateTime.booleanValue() ) {
-            return DateTimeUtils.newDateAsTime(context, value).callMethod(context, "to_date");
+        if ( rawDateTime != null && rawDateTime.booleanValue() ) {
+            return RubyString.newString(runtime, DateTimeUtils.dateToString(value));
         }
 
-        return RubyString.newString(runtime, DateTimeUtils.dateToString(value));
+        return DateTimeUtils.newDateAsTime(context, value).callMethod(context, "to_date");
     }
 
     protected IRubyObject timeToRuby(final ThreadContext context,
@@ -2345,11 +2345,11 @@ public class RubyJdbcConnection extends RubyObject {
             return resultSet.wasNull() ? context.nil : RubyString.newEmptyString(runtime);
         }
 
-        if ( rawDateTime != null && ! rawDateTime.booleanValue() ) {
-            return DateTimeUtils.newDummyTime(context, value);
+        if ( rawDateTime != null && rawDateTime.booleanValue() ) {
+            return RubyString.newString(runtime, DateTimeUtils.timeToString(value));
         }
 
-        return RubyString.newString(runtime, DateTimeUtils.timeToString(value));
+        return DateTimeUtils.newDummyTime(context, value);
     }
 
     protected IRubyObject timestampToRuby(final ThreadContext context,
@@ -2361,11 +2361,11 @@ public class RubyJdbcConnection extends RubyObject {
             return resultSet.wasNull() ? context.nil : RubyString.newEmptyString(runtime);
         }
 
-        if ( rawDateTime != null && ! rawDateTime.booleanValue() ) {
-            return DateTimeUtils.newTime(context, value);
+        if ( rawDateTime != null && rawDateTime.booleanValue() ) {
+            return RubyString.newString(runtime, DateTimeUtils.timestampToString(value));
         }
 
-        return RubyString.newString(runtime, DateTimeUtils.timestampToString(value));
+        return DateTimeUtils.newTime(context, value);
     }
 
     @Deprecated
@@ -2793,9 +2793,8 @@ public class RubyJdbcConnection extends RubyObject {
             final RubyTime timeValue = (RubyTime) value;
             final DateTime dateTime = timeValue.getDateTime();
             final Timestamp timestamp = new Timestamp(dateTime.getMillis());
-
             // 1942-11-30T01:02:03.123_456
-            if (type != Types.DATE && timeValue.getNSec() >= 0) timestamp.setNanos((int) (timestamp.getNanos() + timeValue.getNSec()));
+            if (timeValue.getNSec() > 0) timestamp.setNanos((int) (timestamp.getNanos() + timeValue.getNSec()));
 
             statement.setTimestamp(index, timestamp, getTimeZoneCalendar(dateTime.getZone().getID()));
         } else if ( value instanceof RubyString ) { // yyyy-[m]m-[d]d hh:mm:ss[.f...]
@@ -2826,7 +2825,7 @@ public class RubyJdbcConnection extends RubyObject {
 
         if ( value instanceof RubyTime ) {
             final DateTime dateTime = ((RubyTime) value).getDateTime();
-            final Time time = new Time(dateTime.getMillis());
+            final Time time = new Time(dateTime.getMillis()); // has millis precision
 
             statement.setTime(index, time, getTimeZoneCalendar(dateTime.getZone().getID()));
         }
@@ -2835,8 +2834,8 @@ public class RubyJdbcConnection extends RubyObject {
         }
         else { // DateTime ( ActiveSupport::TimeWithZone.to_time )
             final RubyFloat timeValue = value.convertToFloat(); // to_f
-            final Time time = new Time(timeValue.getLongValue() * 1000); // millis
-            // java.sql.Time is expected to be only up to second precision
+            final Time time = new Time((long) timeValue.getDoubleValue() * 1000);
+            // java.sql.Time is expected to be only up to (milli) second precision
             statement.setTime(index, time, getTimeZoneCalendar("GMT"));
         }
     }
