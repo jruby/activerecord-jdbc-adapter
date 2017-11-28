@@ -61,6 +61,7 @@ import org.jruby.runtime.ThreadContext;
 import org.jruby.runtime.builtin.IRubyObject;
 import org.jruby.util.ByteList;
 
+import org.jruby.util.SafePropertyAccessor;
 import org.postgresql.PGConnection;
 import org.postgresql.PGStatement;
 import org.postgresql.geometric.PGline;
@@ -70,6 +71,7 @@ import org.postgresql.util.PGInterval;
 import org.postgresql.util.PGobject;
 
 import static arjdbc.util.StringHelper.newDefaultInternalString;
+import static arjdbc.util.StringHelper.newString;
 import static arjdbc.util.StringHelper.newUTF8String;
 
 /**
@@ -184,9 +186,9 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
     // using `rake test_postgresql JRUBY_OPTS="-J-Darjdbc.postgresql.generated_keys=true"`
     protected static final boolean generatedKeys;
     static {
-        String genKeys = System.getProperty("arjdbc.postgresql.generated_keys");
+        String genKeys = SafePropertyAccessor.getProperty("arjdbc.postgresql.generated_keys");
         if ( genKeys == null ) { // @deprecated system property name :
-            genKeys = System.getProperty("arjdbc.postgresql.generated.keys");
+            genKeys = SafePropertyAccessor.getProperty("arjdbc.postgresql.generated.keys");
         }
         generatedKeys = Boolean.parseBoolean(genKeys);
     }
@@ -259,8 +261,16 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
         return connection;
     }
 
-    @Override // due statement.setNull(index, Types.BLOB) not working :
-    // org.postgresql.util.PSQLException: ERROR: column "sample_binary" is of type bytea but expression is of type oid
+    @Override
+    protected IRubyObject streamToRuby(final ThreadContext context,
+        final Ruby runtime, final ResultSet resultSet, final int column)
+        throws SQLException {
+        final byte[] bytes = resultSet.getBytes(column);
+        if ( bytes == null /* || resultSet.wasNull() */ ) return context.nil;
+        return newString(runtime, bytes);
+    }
+
+    @Override
     protected void setBlobParameter(final ThreadContext context,
         final Connection connection, final PreparedStatement statement,
         final int index, final IRubyObject value,
