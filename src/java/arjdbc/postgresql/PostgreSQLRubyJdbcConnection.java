@@ -224,17 +224,21 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
 
     @Override
     protected String internedTypeFor(final ThreadContext context, final IRubyObject attribute) throws SQLException {
-
-        final RubyModule postgreSQL = (RubyModule) getConnectionAdapters(context.runtime).getConstant("PostgreSQL");
-        final RubyModule oid = (RubyModule) postgreSQL.getConstant("OID");
-        final RubyClass arrayClass = oid.getClass("Array");
-
-        if ( arrayClass.isInstance(attributeType(context, attribute)) ) {
+        if ( oidArray(context).isInstance(attributeType(context, attribute)) ) {
             return "array";
         }
 
         return super.internedTypeFor(context, attribute);
     }
+
+    private transient RubyClass oidArray; // PostgreSQL::OID::Array
+
+    private RubyClass oidArray(final ThreadContext context) {
+        if (oidArray != null) return oidArray;
+        final RubyModule PostgreSQL = (RubyModule) getConnectionAdapters(context.runtime).getConstant("PostgreSQL");
+        return oidArray = ((RubyModule) PostgreSQL.getConstantAt("OID")).getClass("Array");
+    }
+
 
     @Override
     protected Connection newConnection() throws SQLException {
@@ -278,7 +282,7 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
     protected void setTimestampParameter(final ThreadContext context,
         final Connection connection, final PreparedStatement statement,
         final int index, IRubyObject value,
-        final IRubyObject column, final int type) throws SQLException {
+        final IRubyObject attribute, final int type) throws SQLException {
 
         if ( value instanceof RubyFloat ) {
             final double doubleValue = ( (RubyFloat) value ).getValue();
@@ -295,7 +299,16 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
             }
         }
 
-        super.setTimestampParameter(context, connection, statement, index, value, column, type);
+        super.setTimestampParameter(context, connection, statement, index, value, attribute, type);
+    }
+
+    @Override
+    protected void setTimeParameter(final ThreadContext context,
+        final Connection connection, final PreparedStatement statement,
+        final int index, IRubyObject value,
+        final IRubyObject attribute, final int type) throws SQLException {
+        // to handle more fractional second precision than (default) 59.123 only
+        super.setTimestampParameter(context, connection, statement, index, value, attribute, type);
     }
 
     @Override
