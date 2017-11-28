@@ -51,6 +51,8 @@ import org.jruby.util.SafePropertyAccessor;
 import org.jruby.util.TypeConverter;
 import org.jruby.util.ByteList;
 
+import static arjdbc.util.StringHelper.newString;
+
 /**
  *
  * @author nicksieger
@@ -120,12 +122,6 @@ public class MySQLRubyJdbcConnection extends RubyJdbcConnection {
         if ( type == Types.BIT ) {
             final int value = resultSet.getInt(column);
             return resultSet.wasNull() ? context.nil : runtime.newFixnum(value);
-        }
-        else if ( type == Types.BINARY || type == Types.VARBINARY ) {
-            final byte[] bytes = resultSet.getBytes(column);
-            if ( bytes == null || resultSet.wasNull() ) return context.nil;
-            final ByteList byteList = new ByteList(bytes, false);
-            return new RubyString(runtime, runtime.getString(), byteList);
         }
         return super.jdbcToRuby(context, runtime, column, type, resultSet);
     }
@@ -214,6 +210,15 @@ public class MySQLRubyJdbcConnection extends RubyJdbcConnection {
         }
 
         return DateTimeUtils.newTime(context, value);
+    }
+
+    @Override
+    protected IRubyObject streamToRuby(final ThreadContext context,
+        final Ruby runtime, final ResultSet resultSet, final int column)
+        throws SQLException {
+        final byte[] bytes = resultSet.getBytes(column);
+        if ( bytes == null /* || resultSet.wasNull() */ ) return context.nil;
+        return newString(runtime, bytes);
     }
 
     // MySQL does never storesUpperCaseIdentifiers() :
