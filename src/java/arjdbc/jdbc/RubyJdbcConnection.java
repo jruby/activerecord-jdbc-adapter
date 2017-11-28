@@ -2848,7 +2848,9 @@ public class RubyJdbcConnection extends RubyObject {
         if ( ! "Date".equals(value.getMetaClass().getName()) && value.respondsTo("to_date") ) {
             value = value.callMethod(context, "to_date");
         }
-        statement.setString(index, value.asString().toString());
+
+        // NOTE: assuming Date#to_s does right ...
+        statement.setDate(index, Date.valueOf(value.asString().toString()), getTimeZoneCalendar("GMT"));
     }
 
     protected void setBooleanParameter(final ThreadContext context,
