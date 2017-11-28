@@ -42,9 +42,13 @@ import java.util.Locale;
 import org.jruby.Ruby;
 import org.jruby.RubyArray;
 import org.jruby.RubyClass;
+import org.jruby.RubyFixnum;
+import org.jruby.RubyInteger;
+import org.jruby.RubyNumeric;
 import org.jruby.RubyString;
 import org.jruby.RubyTime;
 import org.jruby.anno.JRubyMethod;
+import org.jruby.ext.bigdecimal.RubyBigDecimal;
 import org.jruby.runtime.Block;
 import org.jruby.runtime.ObjectAllocator;
 import org.jruby.runtime.ThreadContext;
@@ -427,6 +431,30 @@ public class SQLite3RubyJdbcConnection extends RubyJdbcConnection {
         statement.setString(index, value.isTrue() ? "t" : "f");
     }
 
+
+    @Override
+    protected void setDecimalParameter(final ThreadContext context,
+        final Connection connection, final PreparedStatement statement,
+        final int index, final IRubyObject value,
+        final IRubyObject attribute, final int type) throws SQLException {
+        if (value instanceof RubyBigDecimal) {
+            statement.setString(index, ((RubyBigDecimal) value).getValue().toString());
+        }
+        else if ( value instanceof RubyFixnum) {
+            statement.setLong(index, ((RubyFixnum) value).getLongValue());
+        }
+        else if ( value instanceof RubyInteger) { // Bignum
+            statement.setString(index, ((RubyInteger) value).getBigIntegerValue().toString());
+        }
+        else if ( value instanceof RubyNumeric ) {
+            statement.setDouble(index, ((RubyNumeric) value).getDoubleValue());
+        }
+        else { // e.g. `BigDecimal '42.00000000000000000001'`
+            RubyBigDecimal val = RubyBigDecimal.newInstance(context, context.runtime.getModule("BigDecimal"), value);
+            statement.setString(index, val.getValue().toString());
+        }
+    }
+
     // Treat dates as strings, this can potentially be removed if we update
     // the driver to the latest and tell it to store dates/times as text
     @Override
@@ -438,15 +466,6 @@ public class SQLite3RubyJdbcConnection extends RubyJdbcConnection {
         setStringParameter(context, connection, statement, index, value, attribute, type);
     }
 
-    // The current driver doesn't support dealing with BigDecimal values, so force everything to doubles
-    @Override
-    protected void setDecimalParameter(final ThreadContext context,
-        final Connection connection, final PreparedStatement statement,
-        final int index, final IRubyObject value,
-        final IRubyObject attribute, final int type) throws SQLException {
-
-        setDoubleParameter(context, connection, statement, index, value, attribute, type);
-    }
 
     // Treat times as strings
     @Override
