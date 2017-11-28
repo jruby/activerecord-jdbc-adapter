@@ -1468,11 +1468,12 @@ public class RubyJdbcConnection extends RubyObject {
                     final DatabaseMetaData metaData = connection.getMetaData();
                     indexInfoSet = metaData.getIndexInfo(table.catalog, table.schema, table.name, false, true);
                     String currentIndex = null;
-                    RubyArray currentColumns = null;
 
                     while ( indexInfoSet.next() ) {
                         String indexName = indexInfoSet.getString(INDEX_INFO_NAME);
                         if ( indexName == null ) continue;
+                        RubyArray currentColumns = null;
+
                         indexName = caseConvertIdentifierForRails(metaData, indexName);
 
                         final String columnName = indexInfoSet.getString(INDEX_INFO_COLUMN_NAME);
