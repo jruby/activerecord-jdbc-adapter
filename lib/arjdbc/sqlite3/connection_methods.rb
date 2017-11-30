@@ -13,6 +13,10 @@ ArJdbc::ConnectionMethods.module_eval do
     end
     config[:driver] ||= 'org.sqlite.JDBC'
 
+    if config[:timeout] && config[:timeout].to_s !~ /\A\d+\Z/
+      raise TypeError.new "Timeout must be nil or a number (got: #{config[:timeout]})."
+    end
+
     parse_sqlite3_config!(config)
     database = config[:database] # NOTE: "jdbc:sqlite::memory:" syntax is supported
     config[:url] ||= "jdbc:sqlite:#{database == ':memory:' ? '' : database}"
