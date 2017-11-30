@@ -1,3 +1,6 @@
 gem 'minitest'
-require 'minitest'
+$stderr.puts "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+require 'minitest/test'
+$stderr.puts "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA.2"
 require 'minitest/excludes'
+$stderr.puts "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA.3"
