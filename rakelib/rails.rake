@@ -42,10 +42,9 @@ namespace :rails do
       ruby_opts_string = "-I\"#{libs.join(File::PATH_SEPARATOR)}\""
       ruby_opts_string += " -C \"#{ar_path}\""
       ruby_opts_string += " -rbundler/setup"
-      ruby_opts_string += " -rminitest"
-      ruby_opts_string += " -rminitest/excludes"
-      file_list_string = ENV["TEST"] ? FileList[ ENV["TEST"] ] : test_files_finder.call
-      file_list_string = file_list_string.map { |fn| "\"#{fn}\"" }.join(' ')
+      file_list = [File.join(root_dir, 'test', 'rails', 'bootstrap.rb')]
+      file_list.concat ENV["TEST"] ? FileList[ ENV["TEST"] ] : test_files_finder.call
+      file_list_string = file_list.map { |fn| "\"#{fn}\"" }.join(' ')
       # test_loader_code = "-e \"ARGV.each{|f| require f}\"" # :direct
       option_list = ( ENV["TESTOPTS"] || ENV["TESTOPT"] || ENV["TEST_OPTS"] || '' )
 
