@@ -64,29 +64,11 @@ connections:
       username: <%= ENV['MY_USER'] || 'rails' %>
       encoding: utf8
       collation: utf8_unicode_ci
-      <%- if ENV['PREPARED_STATEMENTS'] -%>
-      prepared_statements: <%= ENV['PREPARED_STATEMENTS'] %> # false by default for Mysql2Adapter
-      <%- end -%>
+      prepared_statements: <%= ENV['PREPARED_STATEMENTS'] || 'false' %>
     arunit2:
       username: <%= ENV['MY_USER'] || 'rails' %>
       encoding: utf8
-      <%- if ENV['PREPARED_STATEMENTS'] -%>
-      prepared_statements: <%= ENV['PREPARED_STATEMENTS'] %> # false by default for Mysql2Adapter
-      <%- end -%>
-
-  oracle:
-     arunit:
-       adapter: oracle_enhanced
-       database: <%= ENV['ARUNIT_DB_NAME'] || 'orcl' %>
-       username: <%= ENV['ARUNIT_USER_NAME'] || 'arunit' %>
-       password: <%= ENV['ARUNIT_PASSWORD'] || 'arunit' %>
-       emulate_oracle_adapter: true
-     arunit2:
-       adapter: oracle_enhanced
-       database: <%= ENV['ARUNIT_DB_NAME'] || 'orcl' %>
-       username: <%= ENV['ARUNIT2_USER_NAME'] || 'arunit2' %>
-       password: <%= ENV['ARUNIT2_PASSWORD'] || 'arunit2' %>
-       emulate_oracle_adapter: true
+      prepared_statements: <%= ENV['PREPARED_STATEMENTS'] || 'false' %>
 
   postgresql:
     arunit:
