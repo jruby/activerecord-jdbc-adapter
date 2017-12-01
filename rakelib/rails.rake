@@ -42,8 +42,9 @@ namespace :rails do
       ruby_opts_string = "-I\"#{libs.join(File::PATH_SEPARATOR)}\""
       ruby_opts_string += " -C \"#{ar_path}\""
       ruby_opts_string += " -rbundler/setup"
-      file_list_string = ENV["TEST"] ? FileList[ ENV["TEST"] ] : test_files_finder.call
-      file_list_string = file_list_string.map { |fn| "\"#{fn}\"" }.join(' ')
+      file_list = [File.join(root_dir, 'test', 'rails', 'bootstrap.rb')]
+      file_list.concat ENV["TEST"] ? FileList[ ENV["TEST"] ] : test_files_finder.call
+      file_list_string = file_list.map { |fn| "\"#{fn}\"" }.join(' ')
       # test_loader_code = "-e \"ARGV.each{|f| require f}\"" # :direct
       option_list = ( ENV["TESTOPTS"] || ENV["TESTOPT"] || ENV["TEST_OPTS"] || '' )
 
@@ -139,7 +140,11 @@ namespace :rails do
       rails_dir = _rails_dir
       ENV['ARCONFIG'] = File.join(_ar_jdbc_dir, 'test', 'rails', 'config.yml')
 
-      sh "cd #{File.join(rails_dir, 'activerecord')}; #{FileUtils::RUBY} -S rake RUBYLIB=#{_ruby_lib(rails_dir, driver)} #{_target(driver)}"
+      Dir.chdir(File.join(rails_dir, 'activerecord')) do
+        sh FileUtils::RUBY, '-S', 'rake',
+           "RUBYLIB=#{_ruby_lib(rails_dir, driver)}",
+           _target(driver)
+      end
     end
 
     %w(MySQL SQLite3 Postgres).each do |adapter|
