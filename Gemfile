@@ -43,9 +43,9 @@ end
 group :rails do
   group :test do
     # FIX: Our test suite isn't ready to run in random order yet.
-    gem 'minitest', '< 5.3.4'
+    gem 'minitest', '< 5.3.4', require: false
     # FIX: Update to 2.0.1 or higher once this gem is released
-    gem 'minitest-excludes', git: 'https://github.com/enebo/minitest-excludes'
+    gem 'minitest-excludes', git: 'https://github.com/enebo/minitest-excludes', require: false
     gem 'minitest-rg', require: nil
 
     gem 'benchmark-ips', require: nil
