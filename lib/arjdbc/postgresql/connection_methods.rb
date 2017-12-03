@@ -6,6 +6,11 @@ ArJdbc::ConnectionMethods.module_eval do
 
     return jndi_connection(config) if jndi_config?(config)
 
+    # NOTE: this isn't "really" necessary but Rails (in tests) assumes being able to :
+    #   ActiveRecord::Base.postgresql_connection ActiveRecord::Base.configurations['arunit'].merge(:insert_returning => false)
+    # ... while using symbols by default but than configurations returning string keys ;(
+    config = config.symbolize_keys
+
     begin
       require 'jdbc/postgres'
       ::Jdbc::Postgres.load_driver(:require) if defined?(::Jdbc::Postgres.load_driver)
