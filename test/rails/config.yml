@@ -77,12 +77,17 @@ connections:
       username: <%= ENV['PGUSER'] || ENV['user'] || 'rails' %>
       properties:
         prepareThreshold: <%= ENV['PREPARE_THRESHOLD'] || 1 %>
+        # to not print (lengthy) traces from driver such as :
+        #   SEVERE: Connection error: org.postgresql.util.PSQLException: FATAL: database "xxx" does not exist
+        #loggerLevel: OFF # Broken in 42.1.4 thus let's do it manually :
+        <% java.util.logging.Logger.getLogger("org.postgresql").setLevel(java.util.logging.Level::OFF) %>
     arunit2:
       insert_returning: <%= ENV['INSERT_RETURNING'] %>
       prepared_statements: <%= ENV['PREPARED_STATEMENTS'] %>
       username: <%= ENV['PGUSER'] || ENV['user'] || 'rails' %>
       properties:
         prepareThreshold: <%= ENV['PREPARE_THRESHOLD'] || 1 %>
+        #loggerLevel: OFF # Broken in 42.1.4
 
   sqlite3:
     arunit:
