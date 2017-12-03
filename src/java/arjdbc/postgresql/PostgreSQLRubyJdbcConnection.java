@@ -201,19 +201,14 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
         final int index, final IRubyObject value,
         final IRubyObject attribute, final int type) throws SQLException {
 
-        // TODO: Somewhere in the process of storing binary data, we lose about 50 bytes in one of the tests
-
-        if ( value.isNil() ) {
-            statement.setNull(index, Types.BINARY);
-        }
-        else if ( value instanceof RubyIO ) { // IO/File
+        if ( value instanceof RubyIO ) { // IO/File
             statement.setBinaryStream(index, ((RubyIO) value).getInStream());
         }
         else { // should be a RubyString
-            final ByteList blob = value.asString().getByteList();
+            final ByteList bytes = value.asString().getByteList();
             statement.setBinaryStream(index,
-                new ByteArrayInputStream(blob.unsafeBytes(), blob.getBegin(), blob.getRealSize()),
-                blob.getRealSize() // length
+                    new ByteArrayInputStream(bytes.unsafeBytes(), bytes.getBegin(), bytes.getRealSize()),
+                    bytes.getRealSize() // length
             );
         }
     }
