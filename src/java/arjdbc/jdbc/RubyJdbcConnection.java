@@ -2314,6 +2314,7 @@ public class RubyJdbcConnection extends RubyObject {
      * @return AR::Type-casted value
      * @since 1.3.18
      */
+    @Deprecated
     protected static IRubyObject typeCastFromDatabase(final ThreadContext context,
         final IRubyObject adapter, final RubySymbol typeName, final RubyString value) {
         final IRubyObject type = adapter.callMethod(context, "lookup_cast_type", typeName);
@@ -3175,6 +3176,7 @@ public class RubyJdbcConnection extends RubyObject {
         return tables;
     }
 
+    protected static final int TABLE_NAME = 3;
     protected static final int COLUMN_NAME = 4;
     protected static final int DATA_TYPE = 5;
     protected static final int TYPE_NAME = 6;
@@ -3223,49 +3225,44 @@ public class RubyJdbcConnection extends RubyObject {
         final DatabaseMetaData metaData, final TableName components, final ResultSet results)
         throws SQLException {
 
-        final RubyClass Column = getJdbcColumnClass(context);
-        final boolean lookupCastType = Column.isMethodBound("cast_type", false);
-        // NOTE: primary/primary= methods were removed from Column in AR 4.2
-        // setPrimary = ! lookupCastType by default ... it's better than checking
-        // whether primary= is bound since it might be a left over in AR-JDBC ext
-        return mapColumnsResult(context, metaData, components, results, Column, lookupCastType, ! lookupCastType);
+        return mapColumnsResult(context, metaData, components, results, getJdbcColumnClass(context));
     }
 
     protected final RubyArray mapColumnsResult(final ThreadContext context,
         final DatabaseMetaData metaData, final TableName components, final ResultSet results,
-        final RubyClass Column, final boolean lookupCastType, final boolean setPrimary)
+        final RubyClass Column)
         throws SQLException {
 
         final Ruby runtime = context.runtime;
 
-        final Collection<String> primaryKeyNames =
-            setPrimary ? getPrimaryKeyNames(metaData, components) : null;
-
         final RubyArray columns = RubyArray.newArray(runtime);
-        final IRubyObject config = getConfig();
         while ( results.next() ) {
             final String colName = results.getString(COLUMN_NAME);
-            final RubyString railsColumnName = cachedString(context, caseConvertIdentifierForRails(metaData, colName));
+            final RubyString columnName = cachedString(context, caseConvertIdentifierForRails(metaData, colName));
             final IRubyObject defaultValue = defaultValueFromResultSet( runtime, results );
             final RubyString sqlType = cachedString(context, typeFromResultSet(results));
             final RubyBoolean nullable = runtime.newBoolean( ! results.getString(IS_NULLABLE).trim().equals("NO") );
-            final IRubyObject[] args;
-            if ( lookupCastType ) {
-                final IRubyObject castType = getAdapter().callMethod(context, "lookup_cast_type", sqlType);
-                args = new IRubyObject[] { config, railsColumnName, defaultValue, castType, sqlType, nullable };
-            } else {
-                args = new IRubyObject[] { config, railsColumnName, defaultValue, sqlType, nullable };
-            }
 
-            IRubyObject column = Column.newInstance(context, args, Block.NULL_BLOCK);
-            columns.append(column);
+            final String tabName = results.getString(TABLE_NAME);
+            final RubyString tableName = cachedString(context, caseConvertIdentifierForRails(metaData, tabName));
 
-            if ( primaryKeyNames != null ) {
-                final RubyBoolean primary = runtime.newBoolean( primaryKeyNames.contains(colName) );
-                column.getInstanceVariables().setInstanceVariable("@primary", primary);
-            }
+            final IRubyObject type_metadata = getAdapter().callMethod(context, "fetch_type_metadata", sqlType);
+
+            // (name, default, sql_type_metadata = nil, null = true, table_name = nil, default_function = nil, collation = nil, comment: nil)
+            final IRubyObject[] args = new IRubyObject[] {
+                columnName, defaultValue, type_metadata, nullable, tableName
+            };
+            columns.append( Column.newInstance(context, args, Block.NULL_BLOCK) );
         }
         return columns;
+    }
+
+    @Deprecated
+    protected final RubyArray mapColumnsResult(final ThreadContext context,
+        final DatabaseMetaData metaData, final TableName components, final ResultSet results,
+        final RubyClass Column, final boolean lookupCastType, final boolean setPrimary)
+        throws SQLException {
+        return mapColumnsResult(context, metaData, components, results, Column);
     }
 
     private static Collection<String> getPrimaryKeyNames(final DatabaseMetaData metaData,
