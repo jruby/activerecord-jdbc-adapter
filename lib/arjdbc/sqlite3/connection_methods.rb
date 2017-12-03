@@ -27,6 +27,12 @@ ArJdbc::ConnectionMethods.module_eval do
     options['busy_timeout'] ||= timeout unless timeout.nil?
 
     jdbc_connection(config)
+  rescue ActiveRecord::JDBCError => error
+    if error.message =~ /path to .*? does not exist/ # path to '/foo/xxx/bar.db': '/foo/xxx' does not exist
+      raise ActiveRecord::NoDatabaseError
+    else
+      raise
+    end
   end
   alias_method :jdbcsqlite3_connection, :sqlite3_connection
 
