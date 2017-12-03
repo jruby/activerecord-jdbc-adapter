@@ -3364,9 +3364,13 @@ public class RubyJdbcConnection extends RubyObject {
 
         final ColumnData[] columns = extractColumns(context, connection, resultSet, downCase);
 
-        final RubyArray results = context.runtime.newArray();
+        final Ruby runtime = context.runtime;
+        final RubyArray results = runtime.newArray();
         // [ { 'col1': 1, 'col2': 2 }, { 'col1': 3, 'col2': 4 } ]
-        populateFromResultSet(context, context.runtime, (List<IRubyObject>) results, resultSet, columns);
+
+        while ( resultSet.next() ) {
+            results.append(mapRawRow(context, runtime, columns, resultSet, this));
+        }
         return results;
     }
 
