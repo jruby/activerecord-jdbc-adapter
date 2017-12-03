@@ -2890,8 +2890,7 @@ public class RubyJdbcConnection extends RubyObject {
             return "text";
         }
 
-        final IRubyObject adapter = callMethod("adapter");
-        final RubyHash nativeTypes = (RubyHash) adapter.callMethod(context, "native_database_types");
+        final RubyHash nativeTypes = (RubyHash) getAdapter().callMethod(context, "native_database_types");
         final RubyHash typeInfo = (RubyHash) nativeTypes.op_aref(context, type);
 
         return typeInfo.op_aref(context, context.runtime.newSymbol("name")).asString().toString();
