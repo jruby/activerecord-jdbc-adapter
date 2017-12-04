@@ -2247,7 +2247,7 @@ public class RubyJdbcConnection extends RubyObject {
         return runtime.newFloat(value);
     }
 
-    protected static boolean useBytesForString = true;
+    private /* protected */ static final boolean useBytesForString = false; // TODO to be continued ...
 
     protected IRubyObject stringToRuby(final ThreadContext context,
         final Ruby runtime, final ResultSet resultSet, final int column) throws SQLException {
