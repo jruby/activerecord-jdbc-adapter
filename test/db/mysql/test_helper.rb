@@ -17,6 +17,7 @@ module MySQLTestHelper
     jdbc_conn = connection.jdbc_connection(true)
     jdbc_conn.java_class.name.start_with?('org.mariadb.jdbc.')
   end
+  def mariadb_driver?; end unless defined? JRUBY_VERSION
 
   def mariadb_server?; connection.send(:mariadb?) end
   alias mariadb? mariadb_server?
