@@ -41,6 +41,7 @@ import java.sql.Types;
 import java.util.TimeZone;
 
 import org.joda.time.DateTime;
+import org.joda.time.DateTimeZone;
 import org.jruby.*;
 import org.jruby.anno.JRubyMethod;
 import org.jruby.exceptions.RaiseException;
@@ -146,7 +147,8 @@ public class MySQLRubyJdbcConnection extends RubyJdbcConnection {
     // FIXME: we should detect adapter and not do this timezone offset calculation is it is jdbc version 6+.
     private long dateTimeMillisFromDefaultZone(final RubyTime value) {
         final DateTime dateTime = value.getDateTime();
-        int offset = TimeZone.getDefault().getOffset(dateTime.getMillis()); // JDBC <6.x ignores time zone info (we adjust manually).
+        // MySQL Connector/J <6.x ignores time zone info (we adjust manually) :
+        int offset = DateTimeZone.getDefault().getOffset(dateTime.getMillis());
         return dateTime.getMillis() - offset;
     }
 
