@@ -91,7 +91,7 @@ public class DriverWrapper {
         return getDriverInstance().connect(url, properties);
     }
 
-    static String buildURL(final Object url, final Map<?, ?> options) {
+    public static String buildURL(final Object url, final Map<?, ?> options) {
         if ( options == null || options.isEmpty() ) {
             return url.toString();
         }

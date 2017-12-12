@@ -39,6 +39,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Timestamp;
 import java.sql.Types;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
@@ -149,6 +150,14 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
             return new PostgreSQLRubyJdbcConnection(runtime, klass);
         }
     };
+
+    @Override
+    protected String buildURL(final ThreadContext context, final IRubyObject url) {
+        // (deprecated AR-JDBC specific url) options: disabled with adapter: postgresql
+        // since it collides with AR as it likes to use the key for its own purposes :
+        // e.g. config[:options] = "-c geqo=off"
+        return DriverWrapper.buildURL(url, Collections.EMPTY_MAP);
+    }
 
     @Override
     protected DriverWrapper newDriverWrapper(final ThreadContext context, final String driver) {

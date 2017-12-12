@@ -1932,9 +1932,10 @@ public class RubyJdbcConnection extends RubyObject {
         return context.runtime.newString( buildURL(context, url) );
     }
 
-    private String buildURL(final ThreadContext context, final IRubyObject url) {
+    protected String buildURL(final ThreadContext context, final IRubyObject url) {
         IRubyObject options = getConfigValue(context, "options");
         if ( options == context.nil ) options = null;
+        // NOTE: else should print a deprecation warning - should use properties: instead
         return DriverWrapper.buildURL(url, (Map) options);
     }
 
