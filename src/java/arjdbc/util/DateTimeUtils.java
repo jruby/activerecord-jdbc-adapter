@@ -32,7 +32,6 @@ import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
 import org.joda.time.chrono.ISOChronology;
 import org.jruby.Ruby;
-import org.jruby.RubyClass;
 import org.jruby.RubyFloat;
 import org.jruby.RubyString;
 import org.jruby.RubyTime;
@@ -42,7 +41,6 @@ import org.jruby.runtime.ThreadContext;
 import org.jruby.runtime.builtin.IRubyObject;
 import org.jruby.util.ByteList;
 
-import static arjdbc.jdbc.RubyJdbcConnection.getBase;
 import static arjdbc.util.StringHelper.decByte;
 
 /**
@@ -276,30 +274,6 @@ public abstract class DateTimeUtils {
         return timestamp;
     }
 
-    /**
-     * @deprecated to be replaced by {@link arjdbc.jdbc.RubyJdbcConnection#timeInDefaultTimeZone(ThreadContext, IRubyObject)}
-     */
-    public static IRubyObject getTimeInDefaultTimeZone(final ThreadContext context, IRubyObject value) {
-        if ( value.respondsTo("to_time") ) {
-            value = value.callMethod(context, "to_time");
-        }
-        final String method = isDefaultTimeZoneUTC(context) ? "getutc" : "getlocal";
-        if ( value.respondsTo(method) ) {
-            value = value.callMethod(context, method);
-        }
-        return value;
-    }
-
-    public static boolean isDefaultTimeZoneUTC(final ThreadContext context) {
-        return "utc".equalsIgnoreCase( getDefaultTimeZone(context) );
-    }
-
-    @Deprecated
-    public static String getDefaultTimeZone(final ThreadContext context) {
-        final RubyClass base = getBase(context.runtime);
-        return base.callMethod(context, "default_timezone").toString(); // :utc
-    }
-
     public static double adjustTimeFromDefaultZone(final IRubyObject value) {
         // Time's to_f is : ( millis * 1000 + usec ) / 1_000_000.0
         final double time = value.convertToFloat().getDoubleValue(); // to_f
@@ -391,7 +365,7 @@ public abstract class DateTimeUtils {
         return RubyTime.newTime(context.runtime, dateTime, nanos);
     }
 
-    public static RubyTime parseDateTime(final ThreadContext context, final CharSequence str)
+    public static RubyTime parseDateTime(final ThreadContext context, final CharSequence str, final DateTimeZone defaultZone)
         throws IllegalArgumentException {
 
         boolean hasDate = false;
@@ -400,7 +374,7 @@ public abstract class DateTimeUtils {
         int minute = 0; int hour = 0; int second = 0;
         int millis = 0; long nanos = 0;
 
-        DateTimeZone zone = null; boolean bcEra = false;
+        DateTimeZone zone = defaultZone; boolean bcEra = false;
 
         // We try to parse these fields in order; all are optional
         // (but some combinations don't make sense, e.g. if you have
@@ -557,10 +531,6 @@ public abstract class DateTimeUtils {
         }
 
         if ( bcEra ) year = -1 * year;
-
-        if ( zone == null ) {
-            zone = isDefaultTimeZoneUTC(context) ? DateTimeZone.UTC : DateTimeZone.getDefault();
-        }
 
         DateTime dateTime = new DateTime(year, month, day, hour, minute, second, millis, zone);
         return RubyTime.newTime(context.runtime, dateTime, nanos);

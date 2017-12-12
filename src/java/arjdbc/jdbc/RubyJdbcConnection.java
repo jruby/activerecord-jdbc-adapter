@@ -63,6 +63,7 @@ import java.util.TimeZone;
 
 import arjdbc.util.StringHelper;
 import org.joda.time.DateTime;
+import org.joda.time.DateTimeZone;
 import org.jruby.Ruby;
 import org.jruby.RubyArray;
 import org.jruby.RubyBignum;
@@ -2696,7 +2697,16 @@ public class RubyJdbcConnection extends RubyObject {
     }
 
     protected final boolean isDefaultTimeZoneUTC(final ThreadContext context) {
-        return DateTimeUtils.isDefaultTimeZoneUTC(context); // TODO refactor to caching the default_timezone
+        return "utc".equalsIgnoreCase( default_timezone(context) );
+    }
+
+    protected final DateTimeZone getDefaultTimeZone(final ThreadContext context) {
+        return isDefaultTimeZoneUTC(context) ? DateTimeZone.UTC : DateTimeZone.getDefault();
+    }
+
+    private static String default_timezone(final ThreadContext context) {
+        final RubyClass base = getBase(context.runtime); // TODO refactor to caching the default_timezone
+        return base.callMethod(context, "default_timezone").toString(); // :utc
     }
 
     protected void setIntegerParameter(final ThreadContext context,
