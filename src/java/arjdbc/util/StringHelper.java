@@ -25,6 +25,7 @@ package arjdbc.util;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.charset.Charset;
 
 import org.jcodings.Encoding;
 import org.jcodings.specific.UTF8Encoding;
@@ -57,6 +58,13 @@ public abstract class StringHelper {
 
     public static RubyString newString(final Ruby runtime, final byte[] bytes) {
         return RubyString.newString(runtime, new ByteList(bytes, false));
+    }
+
+    private static final Charset ASCII_CHARSET = Charset.forName("ISO-8859-1");
+
+    public static RubyString newASCIIString(final Ruby runtime, final String str) {
+        final ByteList byteList = new ByteList(str.getBytes(ASCII_CHARSET), false);
+        return RubyString.newString(runtime, byteList);
     }
 
     public static RubyString newUTF8String(final Ruby runtime, final byte[] bytes) {

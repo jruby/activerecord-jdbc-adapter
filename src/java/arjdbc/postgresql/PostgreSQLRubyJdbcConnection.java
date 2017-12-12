@@ -71,9 +71,7 @@ import org.postgresql.geometric.PGpoint;
 import org.postgresql.util.PGInterval;
 import org.postgresql.util.PGobject;
 
-import static arjdbc.util.StringHelper.newDefaultInternalString;
-import static arjdbc.util.StringHelper.newString;
-import static arjdbc.util.StringHelper.newUTF8String;
+import static arjdbc.util.StringHelper.*;
 
 /**
  *
@@ -556,7 +554,7 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
         }
 
         if ( rawDateTime != null && rawDateTime.booleanValue() ) {
-            return RubyString.newString(runtime, value);
+            return newASCIIString(runtime, value);
         }
 
         return DateTimeUtils.parseDate(context, value);
@@ -574,7 +572,7 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
         }
 
         if ( rawDateTime != null && rawDateTime.booleanValue() ) {
-            return RubyString.newString(runtime, value); // without "2000-01-01 " prefix
+            return newASCIIString(runtime, value); // without "2000-01-01 " prefix
         }
 
         return DateTimeUtils.parseTime(context, value);
@@ -592,7 +590,7 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
         }
 
         if ( rawDateTime != null && rawDateTime.booleanValue() ) {
-            return RubyString.newString(runtime, value);
+            return newASCIIString(runtime, value);
         }
 
         final int len = value.length();
