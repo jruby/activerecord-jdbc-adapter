@@ -19,4 +19,18 @@ class Test::Unit::TestCase
     connection.reconnect!
   end
 
+  def with_disabled_jdbc_driver_logging
+    driver_logger = java.util.logging.Logger.getLogger('org.postgresql')
+    return yield unless driver_logger
+
+    original_level = driver_logger.getLevel
+    begin
+      driver_logger.setLevel(java.util.logging.Level::OFF)
+      yield
+    ensure
+      driver_logger.setLevel(original_level)
+    end
+  end
+  def with_disabled_jdbc_driver_logging; yield end unless defined? JRUBY_VERSION
+
 end
