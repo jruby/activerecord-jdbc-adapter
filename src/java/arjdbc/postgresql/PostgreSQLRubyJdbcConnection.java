@@ -583,7 +583,7 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
         }
 
         if ( rawDateTime != null && rawDateTime.booleanValue() ) {
-            return timestampToRubyString(runtime, value); // TODO is this necessary?
+            return RubyString.newString(runtime, value);
         }
 
         final int len = value.length();
