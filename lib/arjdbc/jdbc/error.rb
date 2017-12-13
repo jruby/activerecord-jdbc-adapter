@@ -1,6 +1,6 @@
 module ActiveRecord
   # Represents exceptions that have propagated up through the JDBC API.
-  class JDBCError < const_defined?(:WrappedDatabaseException) ? WrappedDatabaseException : StatementInvalid
+  class JDBCError < WrappedDatabaseException
 
     def initialize(message = nil, cause = $!)
       super( ( message.nil? && cause ) ? cause.message : message, nil )
@@ -24,9 +24,6 @@ module ActiveRecord
     # @deprecated
     # @see #error_code
     def errno; error_code end
-    # @deprecated
-    # @private
-    def errno=(code); @error_code = code end
 
     # SQL code as standardized by ISO/ANSI and Open Group (X/Open), although
     # some codes have been reserved for DB vendors to define for themselves.
@@ -38,11 +35,6 @@ module ActiveRecord
     # @note Navigate through chained exceptions using `jdbc_exception.next_exception`.
     def jdbc_exception; @jdbc_exception end
     alias_method :sql_exception, :jdbc_exception
-
-    def set_jdbc_exception(exception); @jdbc_exception = exception end
-    # @deprecated
-    # @private
-    alias_method :sql_exception=, :set_jdbc_exception
 
     # true if the current error might be recovered e.g. by re-trying the transaction
     def recoverable?; jdbc_exception.is_a?(Java::JavaSql::SQLRecoverableException) end
@@ -58,7 +50,7 @@ module ActiveRecord
     # @override
     def set_backtrace(backtrace)
       @raw_backtrace = backtrace
-      if ( nested = cause ) && nested != self
+      if ( nested = cause ) && ! nested.equal?(self)
         backtrace = backtrace - ( nested.respond_to?(:raw_backtrace) ? nested.raw_backtrace : nested.backtrace )
         backtrace << "#{nested.backtrace.first}: #{nested.message} (#{nested.class.name})"
         backtrace.concat nested.backtrace[1..-1] || []
