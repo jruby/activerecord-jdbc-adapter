@@ -46,6 +46,7 @@ import java.util.UUID;
 import java.util.regex.Pattern;
 
 import arjdbc.util.DateTimeUtils;
+import org.joda.time.DateTimeZone;
 import org.jruby.Ruby;
 import org.jruby.RubyArray;
 import org.jruby.RubyBoolean;
@@ -557,7 +558,7 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
             return newASCIIString(runtime, value);
         }
 
-        return DateTimeUtils.parseDate(context, value);
+        return DateTimeUtils.parseDate(context, value, getDefaultTimeZone(context));
     }
 
     @Override
@@ -575,7 +576,7 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
             return newASCIIString(runtime, value); // without "2000-01-01 " prefix
         }
 
-        return DateTimeUtils.parseTime(context, value);
+        return DateTimeUtils.parseTime(context, value, getDefaultTimeZone(context));
     }
 
     @Override

@@ -126,23 +126,23 @@ public class MySQLRubyJdbcConnection extends RubyJdbcConnection {
         }
         return super.jdbcToRuby(context, runtime, column, type, resultSet);
     }
-
-    @Override // can not use statement.setTimestamp( int, Timestamp, Calendar )
-    protected void setTimestampParameter(final ThreadContext context,
-        final Connection connection, final PreparedStatement statement,
-        final int index, IRubyObject value,
-        final IRubyObject attribute, final int type) throws SQLException {
-        // Time or DateTime ( ActiveSupport::TimeWithZone.to_time )
-        value = timeInDefaultTimeZone(context, value);
-        TypeConverter.checkType(context, value, context.runtime.getTime());
-
-        final RubyTime timeValue = (RubyTime) value;
-        final Timestamp timestamp = new Timestamp(dateTimeMillisFromDefaultZone(timeValue));
-        // 1942-11-30T01:02:03.123_456
-        if (timeValue.getNSec() > 0) timestamp.setNanos((int) (timestamp.getNanos() + timeValue.getNSec()));
-
-        statement.setTimestamp(index, timestamp);
-    }
+    
+//    @Override // can not use statement.setTimestamp( int, Timestamp, Calendar )
+//    protected void setTimestampParameter(final ThreadContext context,
+//        final Connection connection, final PreparedStatement statement,
+//        final int index, IRubyObject value,
+//        final IRubyObject attribute, final int type) throws SQLException {
+//        // Time or DateTime ( ActiveSupport::TimeWithZone.to_time )
+//        value = timeInDefaultTimeZone(context, value);
+//        TypeConverter.checkType(context, value, context.runtime.getTime());
+//
+//        final RubyTime timeValue = (RubyTime) value;
+//        final Timestamp timestamp = new Timestamp(dateTimeMillisFromDefaultZone(timeValue));
+//        // 1942-11-30T01:02:03.123_456
+//        if (timeValue.getNSec() > 0) timestamp.setNanos((int) (timestamp.getNanos() + timeValue.getNSec()));
+//
+//        statement.setTimestamp(index, timestamp);
+//    }
 
     // FIXME: we should detect adapter and not do this timezone offset calculation is it is jdbc version 6+.
     private long dateTimeMillisFromDefaultZone(final RubyTime value) {
@@ -161,24 +161,22 @@ public class MySQLRubyJdbcConnection extends RubyJdbcConnection {
         setTimestampParameter(context, connection, statement, index, value, attribute, type);
     }
 
-    // NOTE: MySQL adapter under MRI using mysql2 gem returns UTC-d Date/Time values
-
-    @Override
-    protected IRubyObject dateToRuby(final ThreadContext context,
-        final Ruby runtime, final ResultSet resultSet, final int column)
-        throws SQLException {
-
-        final Date value = resultSet.getDate(column);
-        if ( value == null ) {
-            return resultSet.wasNull() ? context.nil : RubyString.newEmptyString(runtime);
-        }
-
-        if ( rawDateTime != null && rawDateTime.booleanValue() ) {
-            return RubyString.newString(runtime, DateTimeUtils.dateToString(value));
-        }
-
-        return DateTimeUtils.newDate(context, value);
-    }
+//    @Override
+//    protected IRubyObject dateToRuby(final ThreadContext context,
+//        final Ruby runtime, final ResultSet resultSet, final int column)
+//        throws SQLException {
+//
+//        final Date value = resultSet.getDate(column);
+//        if ( value == null ) {
+//            return resultSet.wasNull() ? context.nil : RubyString.newEmptyString(runtime);
+//        }
+//
+//        if ( rawDateTime != null && rawDateTime.booleanValue() ) {
+//            return RubyString.newString(runtime, DateTimeUtils.dateToString(value));
+//        }
+//
+//        return DateTimeUtils.newDate(context, value, getDefaultTimeZone(context));
+//    }
 
     @Override
     protected IRubyObject timeToRuby(final ThreadContext context,
@@ -194,25 +192,25 @@ public class MySQLRubyJdbcConnection extends RubyJdbcConnection {
             return RubyString.newString(runtime, DateTimeUtils.dummyTimeToString(value));
         }
 
-        return DateTimeUtils.newDummyTime(context, value);
+        return DateTimeUtils.newDummyTime(context, value, getDefaultTimeZone(context));
     }
 
-    @Override
-    protected IRubyObject timestampToRuby(final ThreadContext context,
-        final Ruby runtime, final ResultSet resultSet, final int column)
-        throws SQLException {
-
-        final Timestamp value = resultSet.getTimestamp(column);
-        if ( value == null ) {
-            return resultSet.wasNull() ? context.nil : RubyString.newEmptyString(runtime);
-        }
-
-        if ( rawDateTime != null && rawDateTime.booleanValue() ) {
-            return RubyString.newString(runtime, DateTimeUtils.timestampToString(value));
-        }
-
-        return DateTimeUtils.newTime(context, value);
-    }
+//    @Override
+//    protected IRubyObject timestampToRuby(final ThreadContext context,
+//        final Ruby runtime, final ResultSet resultSet, final int column)
+//        throws SQLException {
+//
+//        final Timestamp value = resultSet.getTimestamp(column);
+//        if ( value == null ) {
+//            return resultSet.wasNull() ? context.nil : RubyString.newEmptyString(runtime);
+//        }
+//
+//        if ( rawDateTime != null && rawDateTime.booleanValue() ) {
+//            return RubyString.newString(runtime, DateTimeUtils.timestampToString(value));
+//        }
+//
+//        return DateTimeUtils.newTime(context, value);
+//    }
 
     @Override
     protected IRubyObject streamToRuby(final ThreadContext context,

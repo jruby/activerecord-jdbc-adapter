@@ -1,8 +1,6 @@
 # -*- encoding : utf-8 -*-
 require 'test_helper'
 
-require 'set'
-
 require 'models/data_types'
 require 'models/entry'
 require 'models/auto_id'
@@ -13,7 +11,7 @@ require 'models/validates_uniqueness_of_string'
 require 'models/add_not_null_column_to_table'
 
 ActiveRecord::Schema.verbose = false
-ActiveRecord::Base.time_zone_aware_attributes = true if ActiveRecord::Base.respond_to?(:time_zone_aware_attributes)
+
 ActiveRecord::Base.default_timezone = :utc
 
 module MigrationSetup
@@ -282,17 +280,84 @@ module SimpleTestMethods
 
   if Time.respond_to?(:zone)
 
+    def test_time_with_default_timezone_utc
+      with_timezone_config default: :utc do
+        time = Time.local(2000, 1, 2, 10)
+        record = DbType.create!('sample_datetime' => time, 'sample_time' => time)
+
+        saved_time = record.class.find(record.id).reload.sample_datetime
+        assert_equal time, saved_time
+        assert_equal 'UTC', saved_time.zone
+
+        saved_time = record.class.find(record.id).reload.sample_time
+        assert_equal time.change(day: 1), saved_time
+        assert_equal 'UTC', saved_time.zone
+      end
+    end
+
+    def test_time_with_default_timezone_local
+      with_timezone_config default: :local do
+        time = Time.local(1999, 12, 21)
+        record = DbType.create!('sample_datetime' => time, 'sample_time' => time)
+
+        saved_time = record.class.find(record.id).reload.sample_datetime
+        assert_equal time, saved_time
+        assert_not_equal 'UTC', saved_time.zone
+
+        saved_time = record.class.find(record.id).reload.sample_time
+        assert_equal time.change(day: 1, month: 1, year: 2000), saved_time
+        assert_not_equal 'UTC', saved_time.zone
+      end
+    end
+
+    #
+
+    def test_preserving_time_objects_with_utc_time_conversion_to_default_timezone_local
+      with_system_tz 'America/New_York' do # with_env_tz in Rails' tests
+        with_timezone_config default: :local do
+          time = Time.utc(2000)
+          #assert_equal [0, 0, 0, 1, 1, 2000, 6, 1, false, 'UTC'], time.to_a
+          record = DbType.create!('sample_datetime' => time)
+          saved_time = record.class.find(record.id).reload.sample_datetime
+
+          assert_equal time, saved_time
+          assert_equal [0, 0, 19, 31, 12, 1999, 5, 365, false, 'EST'], saved_time.to_a
+
+          assert_not_equal 'UTC', saved_time.zone
+        end
+      end
+    end
+
+    def test_preserving_time_objects_with_time_with_zone_conversion_to_default_timezone_local
+      with_system_tz 'America/New_York' do # with_env_tz in Rails' tests
+        with_timezone_config default: :local do
+          Time.use_zone 'Central Time (US & Canada)' do
+            time = Time.zone.local(2000)
+            #assert_equal [0, 0, 0, 1, 1, 2000, 6, 1, false, 'CST'], time.to_a
+            record = DbType.create!('sample_datetime' => time)
+            saved_time = record.class.find(record.id).reload.sample_datetime
+
+            assert_equal time, saved_time
+            # since we're leaking Time.zone - do not start with nil (utc) default :
+            #assert_equal [0, 0, 0, 1, 1, 2000, 6, 1, false, 'CST'], saved_time.to_a
+            assert_equal [0, 0, 1, 1, 1, 2000, 6, 1, false, 'EST'], saved_time.to_a
+
+            assert_not_equal 'UTC', saved_time.zone
+            #assert ['CST', 'EST'].include?(saved_time.zone)
+          end
+        end
+      end
+    end
+
     def test_save_time_with_utc
-      current_zone = Time.zone
-      default_zone = ActiveRecord::Base.default_timezone
-      ActiveRecord::Base.default_timezone = Time.zone = :utc
-      now = Time.now
-      my_time = Time.local now.year, now.month, now.day, now.hour, now.min, now.sec
-      e = DbType.create! :sample_datetime => my_time
-      assert_equal my_time, e.reload.sample_datetime
-    rescue
-      Time.zone = current_zone
-      ActiveRecord::Base.default_timezone = default_zone
+      with_time_zone('UTC') do
+        with_default_timezone(:utc) do
+          now = Time.now
+          my_time = Time.local now.year, now.month, now.day, now.hour, now.min, now.sec
+          e = DbType.create! :sample_datetime => my_time
+          assert_equal my_time, e.reload.sample_datetime
+        end
+      end
     end
 
     def test_save_time_with_zone
@@ -589,28 +654,26 @@ module SimpleTestMethods
     assert_equal 1, DbType.count
   end
 
-  if defined?(JRUBY_VERSION)
-    def test_connection_valid
-      assert_raise(ActiveRecord::JDBCError) do
-        connection = ActiveRecord::Base.connection
-        connection.raw_connection.with_connection_retry_guard do |c|
-          begin
-            stmt = c.createStatement
-            stmt.execute "bogus sql"
-          ensure
-            stmt.close rescue nil
-          end
+  def test_connection_valid
+    assert_raise(ActiveRecord::JDBCError) do
+      connection = ActiveRecord::Base.connection
+      connection.raw_connection.with_connection_retry_guard do |c|
+        begin
+          stmt = c.createStatement
+          stmt.execute "bogus sql"
+        ensure
+          stmt.close rescue nil
         end
       end
     end
+  end if defined?(JRUBY_VERSION)
 
-    class Animal < ActiveRecord::Base; end
+  class Animal < ActiveRecord::Base; end
 
-    def test_fetching_columns_for_nonexistent_table
-      disable_logger(Animal.connection) do
-        assert_raise(ActiveRecord::StatementInvalid, ActiveRecord::JDBCError) do
-          Animal.columns
-        end
+  def test_fetching_columns_for_nonexistent_table
+    disable_logger(Animal.connection) do
+      assert_raise(ActiveRecord::StatementInvalid) do # ActiveRecord::JDBCError
+        Animal.columns
       end
     end
   end
@@ -808,7 +871,7 @@ module SimpleTestMethods
     assert_equal content_json, post.reload.content
   end
 
-  def test_exec_query_result
+  def test_exec_query_result; require 'set'
     Entry.delete_all
     user1 = User.create! :login => 'user1'
     user2 = User.create! :login => 'user2'
@@ -829,7 +892,7 @@ module SimpleTestMethods
     assert_equal 'user12', result.rows[1][1]
   end
 
-  def test_exec_query_empty_result
+  def test_exec_query_empty_result; require 'set'
     Entry.delete_all; User.delete_all
 
     result = User.connection.exec_query 'SELECT * FROM users'

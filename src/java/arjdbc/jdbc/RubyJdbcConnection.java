@@ -53,6 +53,7 @@ import java.sql.Types;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collection;
+import java.util.GregorianCalendar;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -2336,7 +2337,7 @@ public class RubyJdbcConnection extends RubyObject {
             return RubyString.newString(runtime, DateTimeUtils.dateToString(value));
         }
 
-        return DateTimeUtils.newDateAsTime(context, value).callMethod(context, "to_date");
+        return DateTimeUtils.newDateAsTime(context, value, null).callMethod(context, "to_date");
     }
 
     protected IRubyObject timeToRuby(final ThreadContext context,
@@ -2352,7 +2353,7 @@ public class RubyJdbcConnection extends RubyObject {
             return RubyString.newString(runtime, DateTimeUtils.timeToString(value));
         }
 
-        return DateTimeUtils.newDummyTime(context, value);
+        return DateTimeUtils.newDummyTime(context, value, getDefaultTimeZone(context));
     }
 
     protected IRubyObject timestampToRuby(final ThreadContext context,
@@ -2368,7 +2369,12 @@ public class RubyJdbcConnection extends RubyObject {
             return RubyString.newString(runtime, DateTimeUtils.timestampToString(value));
         }
 
-        return DateTimeUtils.newTime(context, value);
+        // NOTE: with 'raw' String AR's Type::DateTime does put the time in proper time-zone
+        // while when returning a Time object it just adjusts usec (apply_seconds_precision)
+        // yet for custom SELECTs to work (SELECT created_at ... ) and for compatibility we
+        // should be returning Time (by default) - AR does this by adjusting mysql2/pg returns
+
+        return DateTimeUtils.newTime(context, value, getDefaultTimeZone(context));
     }
 
     @Deprecated
@@ -2808,14 +2814,14 @@ public class RubyJdbcConnection extends RubyObject {
             // 1942-11-30T01:02:03.123_456
             if (timeValue.getNSec() > 0) timestamp.setNanos((int) (timestamp.getNanos() + timeValue.getNSec()));
 
-            statement.setTimestamp(index, timestamp, getTimeZoneCalendar(dateTime.getZone().getID()));
+            statement.setTimestamp(index, timestamp, getCalendar(dateTime.getZone()));
         } else if ( value instanceof RubyString ) { // yyyy-[m]m-[d]d hh:mm:ss[.f...]
             statement.setString(index, value.toString()); // assume local time-zone
         } else { // DateTime ( ActiveSupport::TimeWithZone.to_time )
             final RubyFloat timeValue = value.convertToFloat(); // to_f
             final Timestamp timestamp = convertToTimestamp(timeValue);
 
-            statement.setTimestamp( index, timestamp, getTimeZoneCalendar("GMT") );
+            statement.setTimestamp( index, timestamp, getCalendarUTC() );
         }
     }
 
@@ -2824,8 +2830,18 @@ public class RubyJdbcConnection extends RubyObject {
         return DateTimeUtils.convertToTimestamp(value);
     }
 
-    private static Calendar getTimeZoneCalendar(final String ID) {
+    protected static Calendar getCalendar(final DateTimeZone zone) { // final java.util.Date hint
+        if (DateTimeZone.UTC == zone) return getCalendarUTC();
+        if (DateTimeZone.getDefault() == zone) return new GregorianCalendar();
+        return getCalendarInstance( zone.getID() );
+    }
+
+    private static Calendar getCalendarInstance(final String ID) {
         return Calendar.getInstance( TimeZone.getTimeZone(ID) );
+    }
+
+    private static Calendar getCalendarUTC() {
+        return getCalendarInstance("GMT");
     }
 
     protected void setTimeParameter(final ThreadContext context,
@@ -2839,7 +2855,7 @@ public class RubyJdbcConnection extends RubyObject {
             final DateTime dateTime = ((RubyTime) value).getDateTime();
             final Time time = new Time(dateTime.getMillis()); // has millis precision
 
-            statement.setTime(index, time, getTimeZoneCalendar(dateTime.getZone().getID()));
+            statement.setTime(index, time, getCalendar(dateTime.getZone()));
         }
         else if ( value instanceof RubyString ) {
             statement.setString(index, value.toString()); // assume local time-zone
@@ -2848,7 +2864,7 @@ public class RubyJdbcConnection extends RubyObject {
             final RubyFloat timeValue = value.convertToFloat(); // to_f
             final Time time = new Time((long) timeValue.getDoubleValue() * 1000);
             // java.sql.Time is expected to be only up to (milli) second precision
-            statement.setTime(index, time, getTimeZoneCalendar("GMT"));
+            statement.setTime(index, time, getCalendarUTC());
         }
     }
 
@@ -2862,7 +2878,7 @@ public class RubyJdbcConnection extends RubyObject {
         }
 
         // NOTE: assuming Date#to_s does right ...
-        statement.setDate(index, Date.valueOf(value.asString().toString()), getTimeZoneCalendar("GMT"));
+        statement.setDate(index, Date.valueOf(value.asString().toString()));
     }
 
     protected void setBooleanParameter(final ThreadContext context,
@@ -2963,7 +2979,7 @@ public class RubyJdbcConnection extends RubyObject {
     /**
      * Always returns a connection (might cause a reconnect if there's none).
      * @return connection
-     * @throws ActiveRecord::ConnectionNotEstablished, ActiveRecord::JDBCError
+     * @throws <code>ActiveRecord::ConnectionNotEstablished</code>, <code>ActiveRecord::JDBCError</code>
      */
     protected final Connection getConnection() throws RaiseException {
         return getConnection(false);
@@ -2973,8 +2989,8 @@ public class RubyJdbcConnection extends RubyObject {
      * @see #getConnection()
      * @param required set to true if a connection is required to exists (e.g. on commit)
      * @return connection
-     * @throws ActiveRecord::ConnectionNotEstablished if disconnected
-     * @throws ActiveRecord::JDBCError if not connected and connecting fails with a SQL exception
+     * @throws <code>ActiveRecord::ConnectionNotEstablished</code> if disconnected
+     * @throws <code>ActiveRecord::JDBCError</code> if not connected and connecting fails with a SQL exception
      */
     protected final Connection getConnection(final boolean required) throws RaiseException {
         try {
@@ -3094,7 +3110,7 @@ public class RubyJdbcConnection extends RubyObject {
 
     /**
      * Match table names for given table name (pattern).
-     * @param runtime
+     * @param context
      * @param connection
      * @param catalog
      * @param schemaPattern
@@ -3406,7 +3422,7 @@ public class RubyJdbcConnection extends RubyObject {
 
     /**
      * Extract columns from result set.
-     * @param runtime
+     * @param context
      * @param connection
      * @param resultSet
      * @param downCase

@@ -314,6 +314,100 @@ class Test::Unit::TestCase
     with_default_timezone(:utc) { with_time_zone('UTC', &block) }
   end
 
+  # @note borrowed from Rails' (test) helper
+  def with_env_tz(new_tz) # 'US/Eastern'
+    old_tz, ENV['TZ'] = ENV['TZ'], new_tz
+    yield
+  ensure
+    old_tz ? ENV['TZ'] = old_tz : ENV.delete('TZ')
+  end
+
+  def with_system_tz(new_tz, &block)
+    if defined? JRUBY_VERSION
+      with_java_tz(new_tz) { with_env_tz(new_tz, &block) }
+    else
+      with_env_tz(new_tz, &block)
+    end
+  end
+
+  def with_java_tz(new_tz)
+    old_tz = java.util.TimeZone.getDefault
+    new_tz = java.util.TimeZone.getTimeZone(new_tz)
+    old_user_tz = java.lang.System.getProperty('user.timezone')
+    old_jd = org.joda.time.DateTimeZone.getDefault # cached ref
+
+    begin
+      java.util.TimeZone.setDefault new_tz
+      org.joda.time.DateTimeZone.setDefault org.joda.time.DateTimeZone.forTimeZone(new_tz)
+      java.lang.System.setProperty 'user.timezone', new_tz.getID
+      yield
+    ensure
+      java.util.TimeZone.setDefault old_tz
+      org.joda.time.DateTimeZone.setDefault old_jd
+      old_user_tz ? java.lang.System.setProperty('user.timezone', old_user_tz) : java.lang.System.clearProperty('user.timezone')
+    end
+  end
+
+  # @note borrowed from Rails' (test) helper
+  def with_timezone_config(cfg)
+    verify_default_timezone_config
+
+    old_default_zone = ActiveRecord::Base.default_timezone
+    old_awareness = ActiveRecord::Base.time_zone_aware_attributes
+    old_zone = Time.zone
+
+    begin
+      if cfg.has_key?(:default)
+        ActiveRecord::Base.default_timezone = cfg[:default]
+      end
+      if cfg.has_key?(:aware_attributes)
+        ActiveRecord::Base.time_zone_aware_attributes = cfg[:aware_attributes]
+      end
+      if cfg.has_key?(:zone)
+        Time.zone = cfg[:zone]
+      end
+
+      yield
+    ensure
+      ActiveRecord::Base.default_timezone = old_default_zone
+      ActiveRecord::Base.time_zone_aware_attributes = old_awareness
+      Time.zone = old_zone
+    end
+  end
+
+
+  # This method makes sure that tests don't leak global state related to time zones.
+  EXPECTED_ZONE = nil
+  EXPECTED_DEFAULT_TIMEZONE = :utc
+  EXPECTED_TIME_ZONE_AWARE_ATTRIBUTES = false
+
+  def verify_default_timezone_config
+    if Time.zone != EXPECTED_ZONE
+      $stderr.puts <<-MSG
+\n#{self}
+    Global state `Time.zone` was leaked.
+      Expected: #{EXPECTED_ZONE.inspect}
+      Got: #{Time.zone.inspect}
+      MSG
+    end
+    if ActiveRecord::Base.default_timezone != EXPECTED_DEFAULT_TIMEZONE
+      $stderr.puts <<-MSG
+\n#{self}
+    Global state `ActiveRecord::Base.default_timezone` was leaked.
+      Expected: #{EXPECTED_DEFAULT_TIMEZONE.inspect}
+      Got: #{ActiveRecord::Base.default_timezone.inspect}
+      MSG
+    end
+    if ActiveRecord::Base.time_zone_aware_attributes != EXPECTED_TIME_ZONE_AWARE_ATTRIBUTES
+      $stderr.puts <<-MSG
+\n#{self}
+    Global state `ActiveRecord::Base.time_zone_aware_attributes` was leaked.
+      Expected: #{EXPECTED_TIME_ZONE_AWARE_ATTRIBUTES}
+      Got: #{ActiveRecord::Base.time_zone_aware_attributes}
+      MSG
+    end
+  end
+
   private
 
   def new_bind_param

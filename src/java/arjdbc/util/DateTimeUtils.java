@@ -187,31 +187,31 @@ public abstract class DateTimeUtils {
     }
 
     @SuppressWarnings("deprecation")
-    public static RubyTime newDummyTime(final ThreadContext context, final Time time) {
+    public static RubyTime newDummyTime(final ThreadContext context, final Time time, final DateTimeZone defaultZone) {
 
         final int hours = time.getHours();
         final int minutes = time.getMinutes();
         final int seconds = time.getSeconds();
         //final int offset = time.getTimezoneOffset();
 
-        DateTime dateTime = new DateTime(2000, 1, 1, hours, minutes, seconds, ISOChronology.getInstanceUTC());
+        DateTime dateTime = new DateTime(2000, 1, 1, hours, minutes, seconds, defaultZone);
         return RubyTime.newTime(context.runtime, dateTime, 0);
     }
 
     @SuppressWarnings("deprecation")
-    public static RubyTime newDummyTime(final ThreadContext context, final Timestamp time) {
+    public static RubyTime newDummyTime(final ThreadContext context, final Timestamp time, final DateTimeZone defaultZone) {
 
         final int hours = time.getHours();
         final int minutes = time.getMinutes();
         final int seconds = time.getSeconds();
         final int nanos = time.getNanos(); // max 999-999-999
 
-        DateTime dateTime = new DateTime(2000, 1, 1, hours, minutes, seconds, ISOChronology.getInstanceUTC());
+        DateTime dateTime = new DateTime(2000, 1, 1, hours, minutes, seconds, defaultZone);
         return RubyTime.newTime(context.runtime, dateTime, nanos);
     }
 
     @SuppressWarnings("deprecation")
-    public static RubyTime newTime(final ThreadContext context, final Timestamp timestamp) {
+    public static RubyTime newTime(final ThreadContext context, final Timestamp timestamp, final DateTimeZone defaultZone) {
 
         final int year = timestamp.getYear() + 1900;
         final int month = timestamp.getMonth() + 1;
@@ -221,29 +221,29 @@ public abstract class DateTimeUtils {
         final int seconds = timestamp.getSeconds();
         final int nanos = timestamp.getNanos(); // max 999-999-999
 
-        DateTime dateTime = new DateTime(year, month, day, hours, minutes, seconds, 0, ISOChronology.getInstanceUTC());
+        DateTime dateTime = new DateTime(year, month, day, hours, minutes, seconds, 0, defaultZone);
         return RubyTime.newTime(context.runtime, dateTime, nanos);
     }
 
     @SuppressWarnings("deprecation")
-    public static RubyTime newDateAsTime(final ThreadContext context, final Date date) {
+    public static RubyTime newDateAsTime(final ThreadContext context, final Date date, final DateTimeZone zone) {
 
         final int year = date.getYear() + 1900;
         final int month = date.getMonth() + 1;
         final int day = date.getDate();
 
-        DateTime dateTime = new DateTime(year, month, day, 0, 0, 0, 0, ISOChronology.getInstanceUTC());
+        DateTime dateTime = new DateTime(year, month, day, 0, 0, 0, 0, zone);
         return RubyTime.newTime(context.runtime, dateTime, 0);
     }
 
     @SuppressWarnings("deprecation")
-    public static IRubyObject newDate(final ThreadContext context, final Date date) {
+    public static IRubyObject newDate(final ThreadContext context, final Date date, final DateTimeZone zone) {
 
         final int year = date.getYear() + 1900;
         final int month = date.getMonth() + 1;
         final int day = date.getDate();
 
-        return newDate(context, year, month, day);
+        return newDate(context, year, month, day, ISOChronology.getInstance(zone));
     }
 
     // @Deprecated
@@ -283,7 +283,7 @@ public abstract class DateTimeUtils {
         return time - ( offset / 1000.0 );
     }
 
-    public static IRubyObject parseDate(final ThreadContext context, final CharSequence str)
+    public static IRubyObject parseDate(final ThreadContext context, final CharSequence str, final DateTimeZone defaultZone)
         throws IllegalArgumentException {
         final int len = str.length();
 
@@ -315,10 +315,10 @@ public abstract class DateTimeUtils {
         end = nonDigitIndex(str, start, len);
         day = extractIntValue(str, start, end);
 
-        return newDate(context, year, month, day);
+        return newDate(context, year, month, day, ISOChronology.getInstance(defaultZone));
     }
 
-    public static IRubyObject parseTime(final ThreadContext context, final CharSequence str)
+    public static IRubyObject parseTime(final ThreadContext context, final CharSequence str, final DateTimeZone defaultZone)
         throws IllegalArgumentException {
         final int len = str.length();
 
@@ -361,7 +361,7 @@ public abstract class DateTimeUtils {
             //start = end;
         }
 
-        DateTime dateTime = new DateTime(2000, 1, 1, hour, minute, second, millis, ISOChronology.getInstanceUTC());
+        DateTime dateTime = new DateTime(2000, 1, 1, hour, minute, second, millis, defaultZone);
         return RubyTime.newTime(context.runtime, dateTime, nanos);
     }
 
@@ -536,7 +536,8 @@ public abstract class DateTimeUtils {
         return RubyTime.newTime(context.runtime, dateTime, nanos);
     }
 
-    private static IRubyObject newDate(final ThreadContext context, final int year, final int month, final int day) {
+    private static IRubyObject newDate(final ThreadContext context, final int year, final int month, final int day,
+                                       final ISOChronology chronology) {
         // NOTE: JRuby really needs a native date.rb until than its a bit costly going from ...
         // java.sql.Date -> allocating a DateTime proxy, help a bit by shooting at the internals
         //
@@ -544,7 +545,7 @@ public abstract class DateTimeUtils {
         //    if JODA::DateTime === dt_or_ajd
         //      @dt = dt_or_ajd
 
-        DateTime dateTime = new DateTime(year, month, day, 0, 0, 0, 0, ISOChronology.getInstanceUTC());
+        DateTime dateTime = new DateTime(year, month, day, 0, 0, 0, 0, chronology);
 
         final Ruby runtime = context.runtime;
         return runtime.getClass("Date").newInstance(context, Java.getInstance(runtime, dateTime), Block.NULL_BLOCK);
