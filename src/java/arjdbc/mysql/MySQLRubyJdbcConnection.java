@@ -142,6 +142,7 @@ public class MySQLRubyJdbcConnection extends RubyJdbcConnection {
 
     private transient DriverAdapter driverAdapter;
 
+    // NOTE: currently un-used but we'll need it if we attempt to handle fast string extraction
     private DriverAdapter getDriverAdapter() {
         if (driverAdapter == null) {
             driverAdapter = usingMySQLDriver() ? new MySQLDriverAdapter() : new DriverAdapter();
@@ -150,92 +151,11 @@ public class MySQLRubyJdbcConnection extends RubyJdbcConnection {
     }
 
     private class DriverAdapter { // sensible driver without quirks (MariaDB)
-
-        IRubyObject timeToRuby(final ThreadContext context,
-            final Ruby runtime, final ResultSet resultSet, final int column)
-            throws SQLException { // due MySQL's TIME precision (up to nanos)
-
-            // NOTE: can't use getTS(..., Calendar) with MariaDB driver
-
-            final Timestamp value = resultSet.getTimestamp(column);
-            if ( value == null ) {
-                return resultSet.wasNull() ? context.nil : RubyString.newEmptyString(runtime);
-            }
-
-            if ( rawDateTime != null && rawDateTime.booleanValue() ) {
-                return RubyString.newString(runtime, DateTimeUtils.dummyTimeToString(value));
-            }
-
-            return DateTimeUtils.newDummyTime(context, value, getDefaultTimeZone(context));
-        }
-
-        IRubyObject timestampToRuby(final ThreadContext context,
-            final Ruby runtime, final ResultSet resultSet, final int column) throws SQLException {
-            return MySQLRubyJdbcConnection.super.timestampToRuby(context, runtime, resultSet, column);
-        }
-
-        void setTimestampParameter(final ThreadContext context,
-            final Connection connection, final PreparedStatement statement,
-            final int index, IRubyObject value,
-            final IRubyObject attribute, final int type) throws SQLException {
-            MySQLRubyJdbcConnection.super.setTimestampParameter(context, connection, statement, index, value, attribute, type);
-        }
-
+        // left in for encoding specific extraction from driver - would allow us 'fast' string byte[] extraction
     }
 
-    private class MySQLDriverAdapter extends DriverAdapter {
-
-        @Override
-        IRubyObject timeToRuby(final ThreadContext context,
-            final Ruby runtime, final ResultSet resultSet, final int column)
-            throws SQLException { // due MySQL's TIME precision (up to nanos)
-
-            final DateTimeZone defaultZone = getDefaultTimeZone(context);
-
-            final Timestamp value = resultSet.getTimestamp(column, getCalendar(defaultZone));
-            if ( value == null ) {
-                return resultSet.wasNull() ? context.nil : RubyString.newEmptyString(runtime);
-            }
-
-            if ( rawDateTime != null && rawDateTime.booleanValue() ) {
-                return RubyString.newString(runtime, DateTimeUtils.dummyTimeToString(value));
-            }
-
-            return DateTimeUtils.newDummyTime(context, value, defaultZone);
-        }
-
-        @Override
-        IRubyObject timestampToRuby(final ThreadContext context,
-            final Ruby runtime, final ResultSet resultSet, final int column) throws SQLException {
-
-            final DateTimeZone defaultZone = getDefaultTimeZone(context);
-
-            final Timestamp value = resultSet.getTimestamp(column, getCalendar(defaultZone));
-            if ( value == null ) {
-                return resultSet.wasNull() ? context.nil : RubyString.newEmptyString(runtime);
-            }
-
-            if ( rawDateTime != null && rawDateTime.booleanValue() ) {
-                return RubyString.newString(runtime, DateTimeUtils.timestampToString(value));
-            }
-
-            return DateTimeUtils.newTime(context, value, defaultZone);
-        }
-
-        @Override // can not use statement.setTimestamp( int, Timestamp, Calendar )
-        void setTimestampParameter(final ThreadContext context,
-            final Connection connection, final PreparedStatement statement,
-            final int index, IRubyObject value,
-            final IRubyObject attribute, final int type) throws SQLException {
-
-            final RubyTime timeValue = (RubyTime) timeInDefaultTimeZone(context, value);
-            final Timestamp timestamp = new Timestamp(dateTimeMillisFromDefaultZone(timeValue));
-            // 1942-11-30T01:02:03.123_456
-            if (timeValue.getNSec() > 0) timestamp.setNanos((int) (timestamp.getNanos() + timeValue.getNSec()));
-
-            statement.setTimestamp(index, timestamp);
-        }
-
+    private class MySQLDriverAdapter extends DriverAdapter { // Connector/J (bloated) 5.x version
+        // left in for encoding specific extraction from driver - would allow us 'fast' string byte[] extraction
     }
 
     @Override
@@ -252,22 +172,6 @@ public class MySQLRubyJdbcConnection extends RubyJdbcConnection {
         }
         return super.jdbcToRuby(context, runtime, column, type, resultSet);
     }
-    
-    @Override
-    protected void setTimestampParameter(final ThreadContext context,
-        final Connection connection, final PreparedStatement statement,
-        final int index, IRubyObject value,
-        final IRubyObject attribute, final int type) throws SQLException {
-        getDriverAdapter().setTimestampParameter(context, connection, statement, index, value, attribute, type);
-    }
-
-    // FIXME: we should detect adapter and not do this timezone offset calculation is it is jdbc version 6+.
-    private static long dateTimeMillisFromDefaultZone(final RubyTime value) {
-        final DateTime dateTime = value.getDateTime();
-        // MySQL Connector/J <6.x ignores time zone info (we adjust manually) :
-        int offset = DateTimeZone.getDefault().getOffset(dateTime.getMillis());
-        return dateTime.getMillis() - offset;
-    }
 
     @Override
     protected void setTimeParameter(final ThreadContext context,
@@ -281,15 +185,18 @@ public class MySQLRubyJdbcConnection extends RubyJdbcConnection {
     @Override
     protected IRubyObject timeToRuby(final ThreadContext context,
         final Ruby runtime, final ResultSet resultSet, final int column)
-        throws SQLException {
-        return getDriverAdapter().timeToRuby(context, runtime, resultSet, column);
-    }
+        throws SQLException { // due MySQL's TIME precision (up to nanos)
 
-    @Override
-    protected IRubyObject timestampToRuby(final ThreadContext context,
-        final Ruby runtime, final ResultSet resultSet, final int column)
-        throws SQLException {
-        return getDriverAdapter().timestampToRuby(context, runtime, resultSet, column);
+        final Timestamp value = resultSet.getTimestamp(column);
+        if ( value == null ) {
+            return resultSet.wasNull() ? context.nil : RubyString.newEmptyString(runtime);
+        }
+
+        if ( rawDateTime != null && rawDateTime.booleanValue() ) {
+            return RubyString.newString(runtime, DateTimeUtils.dummyTimeToString(value));
+        }
+
+        return DateTimeUtils.newDummyTime(context, value, getDefaultTimeZone(context));
     }
 
     @Override

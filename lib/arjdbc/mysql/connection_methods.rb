@@ -69,6 +69,12 @@ ArJdbc::ConnectionMethods.module_eval do
       properties['localSocket'] ||= socket if mariadb_driver
     end
 
+    # for the Connector/J 5.1 line this is true by default - but it requires some really nasty
+    # quirks to get casted Time values extracted properly according for AR's default_timezone
+    # - thus we're turning it off (should be off in newer driver versions >= 6 anyway)
+    # + also MariaDB driver is compilant and we would need to branch out based on driver
+    properties['useLegacyDatetimeCode'] = false
+
     jdbc_connection(config)
   end
   alias_method :jdbcmysql_connection, :mysql_connection
