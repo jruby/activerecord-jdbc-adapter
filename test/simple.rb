@@ -67,19 +67,26 @@ end
 module FixtureSetup
   include MigrationSetup
 
-  @@_time_zone = Time.respond_to?(:zone) ? Time.zone : nil
+  @@default_time_zone = Time.respond_to?(:zone) ? Time.zone : nil
+  @@set_time_zone_name = 'Moscow' # just a random zone, unlikely to be local, and not UTC
 
   def setup
     super
-    #
-    # just a random zone, unlikely to be local, and not UTC
-    Time.zone = 'Moscow' if Time.respond_to?(:zone)
+
+    Time.zone = @@set_time_zone_name if Time.respond_to?(:zone)
   end
 
   def teardown
     super
-    #
-    Time.zone = @@_time_zone if Time.respond_to?(:zone)
+
+    Time.zone = @@default_time_zone if Time.respond_to?(:zone)
+  end
+
+  private
+
+  # @override
+  def verify_expected_time_zone
+    ActiveSupport::TimeZone[@@set_time_zone_name]
   end
 
 end
@@ -296,18 +303,23 @@ module SimpleTestMethods
     end
 
     def test_time_with_default_timezone_local
-      with_timezone_config default: :local do
-        time = Time.local(1999, 12, 21)
-        record = DbType.create!('sample_datetime' => time, 'sample_time' => time)
+      with_system_tz 'Europe/Prague' do
+        Time.use_zone 'Europe/Prague' do
+          with_timezone_config default: :local do
+            time = Time.local(1999, 12, 21)
+            record = DbType.create!('sample_datetime' => time, 'sample_time' => time)
 
-        saved_time = record.class.find(record.id).reload.sample_datetime
-        assert_equal time, saved_time
-        assert_not_equal 'UTC', saved_time.zone
+            saved_time = record.class.find(record.id).reload.sample_datetime
+            assert_equal time, saved_time
+            assert_not_equal 'UTC', saved_time.zone
 
-        saved_time = record.class.find(record.id).reload.sample_time
-        assert_equal time.change(day: 1, month: 1, year: 2000), saved_time
-        assert_not_equal 'UTC', saved_time.zone
+            saved_time = record.class.find(record.id).reload.sample_time
+            assert_equal time.change(day: 1, month: 1, year: 2000), saved_time
+            assert_not_equal 'UTC', saved_time.zone
+          end
+        end
       end
+
     end
 
     #

@@ -377,24 +377,22 @@ class Test::Unit::TestCase
 
 
   # This method makes sure that tests don't leak global state related to time zones.
-  EXPECTED_ZONE = nil
-  EXPECTED_DEFAULT_TIMEZONE = :utc
   EXPECTED_TIME_ZONE_AWARE_ATTRIBUTES = false
 
-  def verify_default_timezone_config
-    if Time.zone != EXPECTED_ZONE
+  def verify_default_timezone_config(expected_time_zone: verify_expected_time_zone, expected_default_timezone: :utc)
+    if Time.zone != expected_time_zone
       $stderr.puts <<-MSG
 \n#{self}
     Global state `Time.zone` was leaked.
-      Expected: #{EXPECTED_ZONE.inspect}
+      Expected: #{expected_time_zone.inspect}
       Got: #{Time.zone.inspect}
       MSG
     end
-    if ActiveRecord::Base.default_timezone != EXPECTED_DEFAULT_TIMEZONE
+    if ActiveRecord::Base.default_timezone != expected_default_timezone
       $stderr.puts <<-MSG
 \n#{self}
     Global state `ActiveRecord::Base.default_timezone` was leaked.
-      Expected: #{EXPECTED_DEFAULT_TIMEZONE.inspect}
+      Expected: #{expected_default_timezone.inspect}
       Got: #{ActiveRecord::Base.default_timezone.inspect}
       MSG
     end
@@ -406,6 +404,10 @@ class Test::Unit::TestCase
       Got: #{ActiveRecord::Base.time_zone_aware_attributes}
       MSG
     end
+  end
+
+  def verify_expected_time_zone
+    nil
   end
 
   private
@@ -520,5 +522,3 @@ module ActiveRecord
 
   end
 end
-
-#Java::JavaUtil::TimeZone.setDefault Java::JavaUtil::TimeZone.getTimeZone('Pacific/Galapagos')
