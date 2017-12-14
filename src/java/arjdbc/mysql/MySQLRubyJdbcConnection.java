@@ -31,14 +31,12 @@ import arjdbc.util.DateTimeUtils;
 
 import java.lang.reflect.InvocationTargetException;
 import java.sql.Connection;
-import java.sql.Date;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.sql.ResultSet;
 import java.sql.Statement;
 import java.sql.Timestamp;
 import java.sql.Types;
-import java.util.TimeZone;
 
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
@@ -49,8 +47,6 @@ import org.jruby.runtime.ObjectAllocator;
 import org.jruby.runtime.ThreadContext;
 import org.jruby.runtime.builtin.IRubyObject;
 import org.jruby.util.SafePropertyAccessor;
-import org.jruby.util.TypeConverter;
-import org.jruby.util.ByteList;
 
 import static arjdbc.util.StringHelper.newString;
 
@@ -107,9 +103,139 @@ public class MySQLRubyJdbcConnection extends RubyJdbcConnection {
                 // lightweight validation query: "/* ping */ SELECT 1"
                 setConfigValueIfNotSet(context, "connection_alive_sql", context.runtime.newString("/* ping */ SELECT 1"));
             }
+            driverAdapter = new MySQLDriverAdapter(); // short-circuit
+        }
+        else {
+            driverAdapter = new DriverAdapter(); // short-circuit (MariaDB)
         }
 
         return driverWrapper;
+    }
+
+    private static transient Class MYSQL_CONNECTION;
+    private static transient Boolean MYSQL_CONNECTION_FOUND;
+
+    private static boolean checkMySQLConnection(final Connection connection) {
+        Class mysqlDriverIface = MYSQL_CONNECTION;
+        if (mysqlDriverIface == null && MYSQL_CONNECTION_FOUND == null) {
+            try {
+                MYSQL_CONNECTION = Class.forName("com.mysql.jdbc.MySQLConnection", false, MySQLRubyJdbcConnection.class.getClassLoader());
+                MYSQL_CONNECTION_FOUND = Boolean.TRUE;
+            }
+            catch (ClassNotFoundException ex) {
+                MYSQL_CONNECTION_FOUND = Boolean.FALSE;
+            }
+            mysqlDriverIface = MYSQL_CONNECTION;
+        }
+        if (mysqlDriverIface == null) return false;
+        try {
+            return connection.isWrapperFor(mysqlDriverIface);
+        }
+        catch (SQLException ex) {
+            return false;
+        }
+    }
+
+    private boolean usingMySQLDriver() {
+        return checkMySQLConnection(getConnection(true));
+    }
+
+    private transient DriverAdapter driverAdapter;
+
+    private DriverAdapter getDriverAdapter() {
+        if (driverAdapter == null) {
+            driverAdapter = usingMySQLDriver() ? new MySQLDriverAdapter() : new DriverAdapter();
+        }
+        return driverAdapter;
+    }
+
+    private class DriverAdapter { // sensible driver without quirks (MariaDB)
+
+        IRubyObject timeToRuby(final ThreadContext context,
+            final Ruby runtime, final ResultSet resultSet, final int column)
+            throws SQLException { // due MySQL's TIME precision (up to nanos)
+
+            // NOTE: can't use getTS(..., Calendar) with MariaDB driver
+
+            final Timestamp value = resultSet.getTimestamp(column);
+            if ( value == null ) {
+                return resultSet.wasNull() ? context.nil : RubyString.newEmptyString(runtime);
+            }
+
+            if ( rawDateTime != null && rawDateTime.booleanValue() ) {
+                return RubyString.newString(runtime, DateTimeUtils.dummyTimeToString(value));
+            }
+
+            return DateTimeUtils.newDummyTime(context, value, getDefaultTimeZone(context));
+        }
+
+        IRubyObject timestampToRuby(final ThreadContext context,
+            final Ruby runtime, final ResultSet resultSet, final int column) throws SQLException {
+            return MySQLRubyJdbcConnection.super.timestampToRuby(context, runtime, resultSet, column);
+        }
+
+        void setTimestampParameter(final ThreadContext context,
+            final Connection connection, final PreparedStatement statement,
+            final int index, IRubyObject value,
+            final IRubyObject attribute, final int type) throws SQLException {
+            MySQLRubyJdbcConnection.super.setTimestampParameter(context, connection, statement, index, value, attribute, type);
+        }
+
+    }
+
+    private class MySQLDriverAdapter extends DriverAdapter {
+
+        @Override
+        IRubyObject timeToRuby(final ThreadContext context,
+            final Ruby runtime, final ResultSet resultSet, final int column)
+            throws SQLException { // due MySQL's TIME precision (up to nanos)
+
+            final DateTimeZone defaultZone = getDefaultTimeZone(context);
+
+            final Timestamp value = resultSet.getTimestamp(column, getCalendar(defaultZone));
+            if ( value == null ) {
+                return resultSet.wasNull() ? context.nil : RubyString.newEmptyString(runtime);
+            }
+
+            if ( rawDateTime != null && rawDateTime.booleanValue() ) {
+                return RubyString.newString(runtime, DateTimeUtils.dummyTimeToString(value));
+            }
+
+            return DateTimeUtils.newDummyTime(context, value, defaultZone);
+        }
+
+        @Override
+        IRubyObject timestampToRuby(final ThreadContext context,
+            final Ruby runtime, final ResultSet resultSet, final int column) throws SQLException {
+
+            final DateTimeZone defaultZone = getDefaultTimeZone(context);
+
+            final Timestamp value = resultSet.getTimestamp(column, getCalendar(defaultZone));
+            if ( value == null ) {
+                return resultSet.wasNull() ? context.nil : RubyString.newEmptyString(runtime);
+            }
+
+            if ( rawDateTime != null && rawDateTime.booleanValue() ) {
+                return RubyString.newString(runtime, DateTimeUtils.timestampToString(value));
+            }
+
+            return DateTimeUtils.newTime(context, value, defaultZone);
+        }
+
+        @Override // can not use statement.setTimestamp( int, Timestamp, Calendar )
+        void setTimestampParameter(final ThreadContext context,
+            final Connection connection, final PreparedStatement statement,
+            final int index, IRubyObject value,
+            final IRubyObject attribute, final int type) throws SQLException {
+
+            final RubyTime timeValue = (RubyTime) timeInDefaultTimeZone(context, value);
+            final Timestamp timestamp = new Timestamp(dateTimeMillisFromDefaultZone(timeValue));
+            // 1942-11-30T01:02:03.123_456
+            if (timeValue.getNSec() > 0) timestamp.setNanos((int) (timestamp.getNanos() + timeValue.getNSec()));
+
+            statement.setTimestamp(index, timestamp);
+        }
+
     }
 
     @Override
@@ -127,25 +253,16 @@ public class MySQLRubyJdbcConnection extends RubyJdbcConnection {
         return super.jdbcToRuby(context, runtime, column, type, resultSet);
     }
     
-//    @Override // can not use statement.setTimestamp( int, Timestamp, Calendar )
-//    protected void setTimestampParameter(final ThreadContext context,
-//        final Connection connection, final PreparedStatement statement,
-//        final int index, IRubyObject value,
-//        final IRubyObject attribute, final int type) throws SQLException {
-//        // Time or DateTime ( ActiveSupport::TimeWithZone.to_time )
-//        value = timeInDefaultTimeZone(context, value);
-//        TypeConverter.checkType(context, value, context.runtime.getTime());
-//
-//        final RubyTime timeValue = (RubyTime) value;
-//        final Timestamp timestamp = new Timestamp(dateTimeMillisFromDefaultZone(timeValue));
-//        // 1942-11-30T01:02:03.123_456
-//        if (timeValue.getNSec() > 0) timestamp.setNanos((int) (timestamp.getNanos() + timeValue.getNSec()));
-//
-//        statement.setTimestamp(index, timestamp);
-//    }
+    @Override
+    protected void setTimestampParameter(final ThreadContext context,
+        final Connection connection, final PreparedStatement statement,
+        final int index, IRubyObject value,
+        final IRubyObject attribute, final int type) throws SQLException {
+        getDriverAdapter().setTimestampParameter(context, connection, statement, index, value, attribute, type);
+    }
 
     // FIXME: we should detect adapter and not do this timezone offset calculation is it is jdbc version 6+.
-    private long dateTimeMillisFromDefaultZone(final RubyTime value) {
+    private static long dateTimeMillisFromDefaultZone(final RubyTime value) {
         final DateTime dateTime = value.getDateTime();
         // MySQL Connector/J <6.x ignores time zone info (we adjust manually) :
         int offset = DateTimeZone.getDefault().getOffset(dateTime.getMillis());
@@ -161,56 +278,19 @@ public class MySQLRubyJdbcConnection extends RubyJdbcConnection {
         setTimestampParameter(context, connection, statement, index, value, attribute, type);
     }
 
-//    @Override
-//    protected IRubyObject dateToRuby(final ThreadContext context,
-//        final Ruby runtime, final ResultSet resultSet, final int column)
-//        throws SQLException {
-//
-//        final Date value = resultSet.getDate(column);
-//        if ( value == null ) {
-//            return resultSet.wasNull() ? context.nil : RubyString.newEmptyString(runtime);
-//        }
-//
-//        if ( rawDateTime != null && rawDateTime.booleanValue() ) {
-//            return RubyString.newString(runtime, DateTimeUtils.dateToString(value));
-//        }
-//
-//        return DateTimeUtils.newDate(context, value, getDefaultTimeZone(context));
-//    }
-
     @Override
     protected IRubyObject timeToRuby(final ThreadContext context,
         final Ruby runtime, final ResultSet resultSet, final int column)
-        throws SQLException { // due MySQL's TIME precision (up to nanos)
-
-        final Timestamp value = resultSet.getTimestamp(column);
-        if ( value == null ) {
-            return resultSet.wasNull() ? context.nil : RubyString.newEmptyString(runtime);
-        }
-
-        if ( rawDateTime != null && rawDateTime.booleanValue() ) {
-            return RubyString.newString(runtime, DateTimeUtils.dummyTimeToString(value));
-        }
-
-        return DateTimeUtils.newDummyTime(context, value, getDefaultTimeZone(context));
+        throws SQLException {
+        return getDriverAdapter().timeToRuby(context, runtime, resultSet, column);
     }
 
-//    @Override
-//    protected IRubyObject timestampToRuby(final ThreadContext context,
-//        final Ruby runtime, final ResultSet resultSet, final int column)
-//        throws SQLException {
-//
-//        final Timestamp value = resultSet.getTimestamp(column);
-//        if ( value == null ) {
-//            return resultSet.wasNull() ? context.nil : RubyString.newEmptyString(runtime);
-//        }
-//
-//        if ( rawDateTime != null && rawDateTime.booleanValue() ) {
-//            return RubyString.newString(runtime, DateTimeUtils.timestampToString(value));
-//        }
-//
-//        return DateTimeUtils.newTime(context, value);
-//    }
+    @Override
+    protected IRubyObject timestampToRuby(final ThreadContext context,
+        final Ruby runtime, final ResultSet resultSet, final int column)
+        throws SQLException {
+        return getDriverAdapter().timestampToRuby(context, runtime, resultSet, column);
+    }
 
     @Override
     protected IRubyObject streamToRuby(final ThreadContext context,
