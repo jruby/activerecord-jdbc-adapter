@@ -93,6 +93,8 @@ import org.jruby.runtime.ThreadContext;
 import org.jruby.runtime.Visibility;
 import org.jruby.runtime.builtin.IRubyObject;
 import org.jruby.runtime.builtin.Variable;
+import org.jruby.runtime.callsite.CachingCallSite;
+import org.jruby.runtime.callsite.FunctionalCachingCallSite;
 import org.jruby.runtime.component.VariableEntry;
 import org.jruby.util.ByteList;
 import org.jruby.util.SafePropertyAccessor;
@@ -2699,8 +2701,19 @@ public class RubyJdbcConnection extends RubyObject {
         return "string";
     }
 
-    protected final IRubyObject timeInDefaultTimeZone(final ThreadContext context, final IRubyObject value) {
-        return callMethod(context, "time_in_default_timezone", value);
+    protected final IRubyObject timeInDefaultTimeZone(final ThreadContext context, IRubyObject value) {
+        final RubyTime time = toTime(context, value);
+        final DateTime adjustedDateTime = time.getDateTime().withZone(getDefaultTimeZone(context));
+        final RubyTime timeInDefaultTZ = new RubyTime(context.runtime, context.runtime.getTime(), adjustedDateTime);
+        timeInDefaultTZ.setNSec(time.getNSec());
+        return timeInDefaultTZ;
+    }
+
+    private static RubyTime toTime(final ThreadContext context, final IRubyObject value) {
+        if ( ! ( value instanceof RubyTime ) ) { // unlikely
+            return (RubyTime) TypeConverter.convertToTypeWithCheck(value, context.runtime.getTime(), "to_time");
+        }
+        return (RubyTime) value;
     }
 
     protected final boolean isDefaultTimeZoneUTC(final ThreadContext context) {
@@ -2712,9 +2725,12 @@ public class RubyJdbcConnection extends RubyObject {
     }
 
     private static String default_timezone(final ThreadContext context) {
-        final RubyClass base = getBase(context.runtime); // TODO refactor to caching the default_timezone
-        return base.callMethod(context, "default_timezone").toString(); // :utc
+        final RubyClass base = getBase(context.runtime);
+        return default_timezone.call(context, base, base).toString(); // :utc (or :local)
     }
+
+    // ActiveRecord::Base.default_timezone
+    private static final CachingCallSite default_timezone = new FunctionalCachingCallSite("default_timezone");
 
     protected void setIntegerParameter(final ThreadContext context,
         final Connection connection, final PreparedStatement statement,

@@ -9,12 +9,6 @@ module ActiveRecord
         JdbcTypeConverter.new(supported_data_types).choose_best_types
       end
 
-      def time_in_default_timezone(value)
-        value = value.to_time if value.respond_to? :to_time
-
-        ActiveRecord::Base::default_timezone == :utc ? value.utc : value.getlocal
-      end
-
     end
   end
 end
