@@ -72,7 +72,7 @@ module ActiveRecord
       end
 
       def error_number(exception)
-        exception.errno if exception.respond_to? :errno
+        exception.error_code if exception.is_a?(JDBCError)
       end
 
       def create_table(table_name, **options) #:nodoc:
