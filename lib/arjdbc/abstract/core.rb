@@ -32,16 +32,43 @@ module ArJdbc
         raw_connection.jdbc_connection(unwrap)
       end
 
+      protected
+
+      def translate_exception_class(e, sql)
+        begin
+          message = "#{e.class.name}: #{e.message}: #{sql}"
+        rescue Encoding::CompatibilityError
+          message = "#{e.class.name}: #{e.message.force_encoding sql.encoding}: #{sql}"
+        end
+
+        exception = translate_exception(e, message)
+        exception.set_backtrace e.backtrace unless e.equal?(exception)
+        exception
+      end
+
       def translate_exception(e, message)
         # we shall not translate native "Java" exceptions as they might
-        # swallow an ArJdbc / driver bug into a AR::StatementInvalid ...
+        # swallow an ArJdbc / driver bug into an AR::StatementInvalid !
         return e if e.is_a?(Java::JavaLang::Throwable)
 
         case e
-          when ActiveModel::RangeError, TypeError, SystemExit, SignalException, NoMemoryError then e
-          # NOTE: wraps AR::JDBCError into AR::StatementInvalid, desired ?!
-          else super
+          when SystemExit, SignalException, NoMemoryError then e
+          when ActiveModel::RangeError, TypeError then e
+          else ActiveRecord::StatementInvalid.new(message)
         end
+      end
+
+      def log(sql, name = "SQL", binds = [], type_casted_binds = nil, statement_name = nil)
+        @instrumenter.instrument(
+            "sql.active_record",
+            sql:               sql,
+            name:              name,
+            binds:             binds,
+            type_casted_binds: type_casted_binds,
+            statement_name:    statement_name,
+            connection_id:     object_id) { yield }
+      rescue => e
+        raise translate_exception_class(e, sql)
       end
 
     end
