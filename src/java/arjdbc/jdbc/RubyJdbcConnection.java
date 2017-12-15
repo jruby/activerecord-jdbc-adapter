@@ -790,7 +790,7 @@ public class RubyJdbcConnection extends RubyObject {
                     boolean hasResultSet = doExecute(statement, query);
                     int updateCount = statement.getUpdateCount();
 
-                    ColumnData[] columns = null;
+                    ColumnData[] columns;
                     IRubyObject result = null;
                     ResultSet resultSet = null;
 
@@ -802,7 +802,7 @@ public class RubyJdbcConnection extends RubyObject {
                             // Unfortunately the result set gets closed when getMoreResults()
                             // is called, so we have to process the result sets as we get them
                             // this shouldn't be an issue in most cases since we're only getting 1 result set anyways
-                            columns = extractColumns(context.runtime, connection, resultSet, false);
+                            columns = extractColumns(context, connection, resultSet, false);
                             result = mapToResult(context, context.runtime, connection, resultSet, columns);
                         } else {
                             resultSet = null;
@@ -1125,7 +1125,7 @@ public class RubyJdbcConnection extends RubyObject {
         final String query = sql.convertToString().getUnicodeValue();
 
         if (binds == null || !(binds instanceof RubyArray)) {
-            throw context.runtime.newArgumentError("binds exptected to an instance of Array");
+            throw context.runtime.newArgumentError("binds expected to be an instance of Array");
         }
 
         return executePreparedQuery(context, query, (RubyArray) binds, 0);
