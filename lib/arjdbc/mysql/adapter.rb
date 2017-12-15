@@ -25,8 +25,11 @@ module ActiveRecord
 
       include ArJdbc::Abstract::ConnectionManagement
       include ArJdbc::Abstract::DatabaseStatements
+      # NOTE: do not include MySQL::DatabaseStatements
       include ArJdbc::Abstract::StatementCache
       include ArJdbc::Abstract::TransactionSupport
+
+      include ArJdbc::MySQL
 
       def initialize(connection, logger, config)
         super(connection, logger, nil, config)
@@ -83,9 +86,19 @@ module ActiveRecord
       # QUOTING ==================================================
       #++
 
-      def quote_string(string)
-        string.gsub(/[\x00\n\r\\\'\"]/, '\\\\\0')
-      end
+      # @note provided by ArJdbc::MySQL (native code),
+      # this piece is also native (mysql2) under MRI: `@connection.escape(string)`
+      # def quote_string(string)
+      #   string.gsub(/[\x00\n\r\\\'\"]/, '\\\\\0')
+      # end
+
+      #--
+      # CONNECTION MANAGEMENT ====================================
+      #++
+
+      alias :reset! :reconnect!
+
+      #
 
       def exec_insert(sql, name = nil, binds = [], pk = nil, sequence_name = nil)
         last_id = if without_prepared_statement?(binds)
