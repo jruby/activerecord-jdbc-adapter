@@ -347,7 +347,7 @@ public class RubyJdbcConnection extends RubyObject {
         return context.nil;
     }
 
-    protected final void setTransactionIsolation(final ThreadContext context, final Connection connection,
+    protected void setTransactionIsolation(final ThreadContext context, final Connection connection,
         final IRubyObject isolation) throws SQLException {
         final int level = mapTransactionIsolationLevel(isolation);
         try {
@@ -504,7 +504,7 @@ public class RubyJdbcConnection extends RubyObject {
         return context.runtime.newEmptyArray();
     }
 
-    protected final Map<IRubyObject, Savepoint> getSavepoints(final ThreadContext context) {
+    protected Map<IRubyObject, Savepoint> getSavepoints(final ThreadContext context) {
         return getSavepoints(true);
     }
 
@@ -521,7 +521,7 @@ public class RubyJdbcConnection extends RubyObject {
         return null;
     }
 
-    protected final boolean resetSavepoints(final ThreadContext context) {
+    protected boolean resetSavepoints(final ThreadContext context) {
         if ( hasInternalVariable("savepoints") ) {
             removeInternalVariable("savepoints");
             return true;
@@ -1292,8 +1292,7 @@ public class RubyJdbcConnection extends RubyObject {
 
     protected static final int PRIMARY_KEYS_COLUMN_NAME = 4;
 
-    @Deprecated // NOTE: this should go private
-    protected final List<RubyString> primaryKeys(final ThreadContext context, final String tableName) {
+    private List<RubyString> primaryKeys(final ThreadContext context, final String tableName) {
         return withConnection(context, new Callable<List<RubyString>>() {
             public List<RubyString> call(final Connection connection) throws SQLException {
                 final String _tableName = caseConvertIdentifierForJdbc(connection, tableName);
@@ -2039,12 +2038,12 @@ public class RubyJdbcConnection extends RubyObject {
         return context.runtime.newBoolean( isJndi() );
     }
 
-    protected final boolean isJndi() { return this.jndi; }
+    protected boolean isJndi() { return this.jndi; }
 
     @JRubyMethod(name = "config")
-    public final IRubyObject config() { return getConfig(); }
+    public IRubyObject config() { return getConfig(); }
 
-    public final IRubyObject getConfig() { return this.config; }
+    public IRubyObject getConfig() { return this.config; }
 
     protected final IRubyObject getConfigValue(final ThreadContext context, final String key) {
         final IRubyObject config = getConfig();
@@ -2087,11 +2086,11 @@ public class RubyJdbcConnection extends RubyObject {
 
     protected final IRubyObject getAdapter() { return this.adapter; }
 
-    protected final RubyClass getJdbcColumnClass(final ThreadContext context) {
+    protected RubyClass getJdbcColumnClass(final ThreadContext context) {
         return (RubyClass) getAdapter().callMethod(context, "jdbc_column_class");
     }
 
-    protected final ConnectionFactory getConnectionFactory() throws RaiseException {
+    protected ConnectionFactory getConnectionFactory() throws RaiseException {
         if ( connectionFactory == null ) {
             // NOTE: only for (backwards) compatibility (to be deleted) :
             IRubyObject connection_factory = getInstanceVariable("@connection_factory");
@@ -2158,13 +2157,6 @@ public class RubyJdbcConnection extends RubyObject {
         }
 
         return newResult(context, columns, resultRows);
-    }
-
-    @Deprecated
-    protected final IRubyObject jdbcToRuby(final Ruby runtime,
-        final int column, final int type, final ResultSet resultSet)
-        throws SQLException {
-        return jdbcToRuby(runtime.getCurrentContext(), runtime, column, type, resultSet);
     }
 
     protected IRubyObject jdbcToRuby(
@@ -2716,11 +2708,11 @@ public class RubyJdbcConnection extends RubyObject {
         return (RubyTime) value;
     }
 
-    protected final boolean isDefaultTimeZoneUTC(final ThreadContext context) {
+    protected boolean isDefaultTimeZoneUTC(final ThreadContext context) {
         return "utc".equalsIgnoreCase( default_timezone(context) );
     }
 
-    protected final DateTimeZone getDefaultTimeZone(final ThreadContext context) {
+    protected DateTimeZone getDefaultTimeZone(final ThreadContext context) {
         return isDefaultTimeZoneUTC(context) ? DateTimeZone.UTC : DateTimeZone.getDefault();
     }
 
@@ -2997,7 +2989,7 @@ public class RubyJdbcConnection extends RubyObject {
      * @return connection
      * @throws <code>ActiveRecord::ConnectionNotEstablished</code>, <code>ActiveRecord::JDBCError</code>
      */
-    protected final Connection getConnection() throws RaiseException {
+    protected Connection getConnection() throws RaiseException {
         return getConnection(false);
     }
 
@@ -3008,7 +3000,7 @@ public class RubyJdbcConnection extends RubyObject {
      * @throws <code>ActiveRecord::ConnectionNotEstablished</code> if disconnected
      * @throws <code>ActiveRecord::JDBCError</code> if not connected and connecting fails with a SQL exception
      */
-    protected final Connection getConnection(final boolean required) throws RaiseException {
+    protected Connection getConnection(final boolean required) throws RaiseException {
         try {
             return getConnectionInternal(required);
         }
@@ -3096,7 +3088,7 @@ public class RubyJdbcConnection extends RubyObject {
     /**
      * internal API do not depend on it
      */
-    protected final int getAliveTimeout(final ThreadContext context) {
+    protected int getAliveTimeout(final ThreadContext context) {
         if ( aliveTimeout == Integer.MIN_VALUE ) {
             final IRubyObject timeout = getConfigValue(context, "connection_alive_timeout");
             return aliveTimeout = timeout == context.nil ? 0 : RubyInteger.fix2int(timeout);
@@ -3178,35 +3170,6 @@ public class RubyJdbcConnection extends RubyObject {
     protected final static int TABLES_TABLE_NAME = 3;
     protected final static int TABLES_TABLE_TYPE = 4;
 
-    /**
-     * @param runtime
-     * @param metaData
-     * @param catalog
-     * @param schemaPattern
-     * @param tablePattern
-     * @param tablesSet
-     * @return List<RubyString>
-     * @throws SQLException
-     */
-    @Deprecated
-    protected RubyArray mapTables(final Ruby runtime, final DatabaseMetaData metaData,
-            final String catalog, final String schemaPattern, final String tablePattern,
-            final ResultSet tablesSet) throws SQLException {
-        final ThreadContext context = runtime.getCurrentContext();
-        return mapTables(context, metaData, catalog, schemaPattern, tablePattern, tablesSet);
-    }
-
-    private RubyArray mapTables(final ThreadContext context, final DatabaseMetaData metaData,
-            final String catalog, final String schemaPattern, final String tablePattern,
-            final ResultSet tablesSet) throws SQLException {
-        final RubyArray tables = RubyArray.newArray(context.runtime);
-        while ( tablesSet.next() ) {
-            String name = tablesSet.getString(TABLES_TABLE_NAME);
-            tables.append( cachedString(context, caseConvertIdentifierForRails(metaData, name)) );
-        }
-        return tables;
-    }
-
     protected RubyArray mapTables(final ThreadContext context, final Connection connection,
             final String catalog, final String schemaPattern, final String tablePattern,
             final ResultSet tablesSet) throws SQLException {
@@ -3270,7 +3233,7 @@ public class RubyJdbcConnection extends RubyObject {
         return mapColumnsResult(context, metaData, components, results, getJdbcColumnClass(context));
     }
 
-    protected final RubyArray mapColumnsResult(final ThreadContext context,
+    protected RubyArray mapColumnsResult(final ThreadContext context,
         final DatabaseMetaData metaData, final TableName components, final ResultSet results,
         final RubyClass Column)
         throws SQLException {
@@ -3297,14 +3260,6 @@ public class RubyJdbcConnection extends RubyObject {
             columns.append( Column.newInstance(context, args, Block.NULL_BLOCK) );
         }
         return columns;
-    }
-
-    @Deprecated
-    protected final RubyArray mapColumnsResult(final ThreadContext context,
-        final DatabaseMetaData metaData, final TableName components, final ResultSet results,
-        final RubyClass Column, final boolean lookupCastType, final boolean setPrimary)
-        throws SQLException {
-        return mapColumnsResult(context, metaData, components, results, Column);
     }
 
     private static Collection<String> getPrimaryKeyNames(final DatabaseMetaData metaData,

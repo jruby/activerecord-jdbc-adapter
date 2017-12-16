@@ -251,16 +251,16 @@ public class OracleRubyJdbcConnection extends RubyJdbcConnection {
     }
 
     @Override
-    protected RubyArray mapTables(final Ruby runtime, final DatabaseMetaData metaData,
-      final String catalog, final String schemaPattern, final String tablePattern,
-      final ResultSet tablesSet) throws SQLException {
-        final RubyArray tables = runtime.newArray(32);
+    protected RubyArray mapTables(final ThreadContext context, final Connection connection,
+        final String catalog, final String schemaPattern, final String tablePattern,
+        final ResultSet tablesSet) throws SQLException {
+        final RubyArray tables = context.runtime.newArray(32);
         while ( tablesSet.next() ) {
             String name = tablesSet.getString(TABLES_TABLE_NAME);
-            name = caseConvertIdentifierForRails(metaData, name);
+            name = caseConvertIdentifierForRails(connection, name);
             // Handle stupid Oracle 10g RecycleBin feature
             if ( name.startsWith("bin$") ) continue;
-            tables.append(RubyString.newUnicodeString(runtime, name));
+            tables.append(RubyString.newUnicodeString(context.runtime, name));
         }
         return tables;
     }
