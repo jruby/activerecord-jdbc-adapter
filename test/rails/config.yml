@@ -71,23 +71,25 @@ connections:
       prepared_statements: <%= ENV['PREPARED_STATEMENTS'] || 'false' %>
 
   postgresql:
-    arunit:
-      insert_returning: <%= ENV['INSERT_RETURNING'] %>
-      prepared_statements: <%= ENV['PREPARED_STATEMENTS'] %>
+    _setup: &_setup
+      <% if ENV.key?('INSERT_RETURNING') -%>
+      insert_returning: <%= ENV['INSERT_RETURNING'] %> # really should leave it off to no key if not set
+      <% end -%>
+      <% if ENV.key?('PREPARED_STATEMENTS') -%>
+      insert_returning: <%= ENV['PREPARED_STATEMENTS'] %> # should leave it off to its default if not set
+      <% end -%>
       username: <%= ENV['PGUSER'] || ENV['user'] || 'rails' %>
       properties:
+        # Postgres' JDBC driver does not prepare statements until executed 5 times by default, let's lower:
         prepareThreshold: <%= ENV['PREPARE_THRESHOLD'] || 1 %>
         # to not print (lengthy) traces from driver such as :
         #   SEVERE: Connection error: org.postgresql.util.PSQLException: FATAL: database "xxx" does not exist
         #loggerLevel: OFF # Broken in 42.1.4 thus let's do it manually :
         <% java.util.logging.Logger.getLogger("org.postgresql").setLevel(java.util.logging.Level::OFF) %>
+    arunit:
+      <<: *_setup
     arunit2:
-      insert_returning: <%= ENV['INSERT_RETURNING'] %>
-      prepared_statements: <%= ENV['PREPARED_STATEMENTS'] %>
-      username: <%= ENV['PGUSER'] || ENV['user'] || 'rails' %>
-      properties:
-        prepareThreshold: <%= ENV['PREPARE_THRESHOLD'] || 1 %>
-        #loggerLevel: OFF # Broken in 42.1.4
+      <<: *_setup
 
   sqlite3:
     arunit:
