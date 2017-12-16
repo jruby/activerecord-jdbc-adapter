@@ -430,14 +430,6 @@ module ActiveRecord
 
       private
 
-      # @deprecated no longer used
-      def suble_binds(sql, binds); sql end
-
-      # @deprecated No longer used, kept for 1.2 API compatibility.
-      def extract_sql(arel)
-        arel.respond_to?(:to_sql) ? arel.send(:to_sql) : arel
-      end
-
       # Helper useful during {#quote} since AREL might pass in it's literals
       # to be quoted, fixed since AREL 4.0.0.beta1 : http://git.io/7gyTig
       def sql_literal?(value); ::Arel::Nodes::SqlLiteral === value; end
@@ -447,8 +439,6 @@ module ActiveRecord
         get = ::ActiveRecord::Base.default_timezone == :utc ? :getutc : :getlocal
         value.respond_to?(get) ? value.send(get) : value
       end
-
-      protected
 
       # @return whether the given SQL string is a 'SELECT' like
       # query (returning a result set)
@@ -478,44 +468,6 @@ module ActiveRecord
       # @private
       def self.type_cast_config_to_boolean(config)
         config == 'false' ? false : (config == 'true' ? true : config)
-      end
-
-      public
-
-      # @private
-      @@_date = nil
-
-      # @private @deprecated no longer used
-      def _string_to_date(value)
-        if jdbc_column_class.respond_to?(:string_to_date)
-          jdbc_column_class.string_to_date(value)
-        else
-          (@@_date ||= ActiveRecord::Type::Date.new).send(:cast_value, value)
-        end
-      end
-
-      # @private
-      @@_time = nil
-
-      # @private @deprecated no longer used
-      def _string_to_time(value)
-        if jdbc_column_class.respond_to?(:string_to_dummy_time)
-          jdbc_column_class.string_to_dummy_time(value)
-        else
-          (@@_time ||= ActiveRecord::Type::Time.new).send(:cast_value, value)
-        end
-      end
-
-      # @private @deprecated no longer used
-      @@_date_time = nil
-
-      # @private
-      def _string_to_timestamp(value)
-        if jdbc_column_class.respond_to?(:string_to_time)
-          jdbc_column_class.string_to_time(value)
-        else
-          (@@_date_time ||= ActiveRecord::Type::DateTime.new).send(:cast_value, value)
-        end
       end
 
     end
