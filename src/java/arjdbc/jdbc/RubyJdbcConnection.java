@@ -2247,7 +2247,7 @@ public class RubyJdbcConnection extends RubyObject {
     protected IRubyObject stringToRuby(final ThreadContext context,
         final Ruby runtime, final ResultSet resultSet, final int column) throws SQLException {
         final String value = resultSet.getString(column);
-        if ( value == null /* || resultSet.wasNull() */ ) return context.nil;
+        if ( value == null ) return context.nil;
         return RubyString.newInternalFromJavaExternal(runtime, value);
     }
 
@@ -2255,21 +2255,21 @@ public class RubyJdbcConnection extends RubyObject {
         final Ruby runtime, final ResultSet resultSet, final int column)
         throws SQLException { // optimized String -> byte[]
         final byte[] value = resultSet.getBytes(column);
-        if ( value == null /* || resultSet.wasNull() */ ) return context.nil;
+        if ( value == null ) return context.nil;
         return newDefaultInternalString(runtime, value);
     }
 
     protected IRubyObject bigIntegerToRuby(final ThreadContext context,
         final Ruby runtime, final ResultSet resultSet, final int column) throws SQLException {
         final String value = resultSet.getString(column);
-        if ( value == null /* || resultSet.wasNull() */ ) return context.nil;
+        if ( value == null ) return context.nil;
         return RubyBignum.bignorm(runtime, new BigInteger(value));
     }
 
     protected IRubyObject decimalToRuby(final ThreadContext context,
         final Ruby runtime, final ResultSet resultSet, final int column) throws SQLException {
         final BigDecimal value = resultSet.getBigDecimal(column);
-        if ( value == null /* || resultSet.wasNull() */ ) return context.nil;
+        if ( value == null ) return context.nil;
         return new org.jruby.ext.bigdecimal.RubyBigDecimal(runtime, value);
     }
 
@@ -2434,29 +2434,12 @@ public class RubyJdbcConnection extends RubyObject {
         finally { if ( stream != null ) stream.close(); }
     }
 
-    @Deprecated
-    protected IRubyObject streamToRuby(
-        final Ruby runtime, final ResultSet resultSet, final InputStream stream)
-        throws SQLException, IOException {
-        if ( stream == null && resultSet.wasNull() ) return runtime.getNil();
-
-        final int bufSize = streamBufferSize;
-        final ByteList string = new ByteList(bufSize);
-
-        final byte[] buf = new byte[bufSize];
-        for (int len = stream.read(buf); len != -1; len = stream.read(buf)) {
-            string.append(buf, 0, len);
-        }
-
-        return runtime.newString(string);
-    }
-
     protected IRubyObject readerToRuby(final ThreadContext context,
         final Ruby runtime, final ResultSet resultSet, final int column)
         throws SQLException, IOException {
         final Reader reader = resultSet.getCharacterStream(column);
         try {
-            if ( reader == null /* || resultSet.wasNull() */ ) return context.nil;
+            if ( reader == null ) return context.nil;
 
             final int bufSize = streamBufferSize;
             final StringBuilder string = new StringBuilder(bufSize);
@@ -2476,7 +2459,7 @@ public class RubyJdbcConnection extends RubyObject {
         throws SQLException {
         final Object value = resultSet.getObject(column);
 
-        if ( value == null /* || resultSet.wasNull() */ ) return context.nil;
+        if ( value == null ) return context.nil;
 
         return JavaUtil.convertJavaToRuby(runtime, value);
     }
@@ -2486,7 +2469,7 @@ public class RubyJdbcConnection extends RubyObject {
         throws SQLException {
         final Array value = resultSet.getArray(column);
         try {
-            if ( value == null /* || resultSet.wasNull() */ ) return context.nil;
+            if ( value == null ) return context.nil;
 
             final RubyArray array = runtime.newArray();
 
@@ -2505,7 +2488,7 @@ public class RubyJdbcConnection extends RubyObject {
         throws SQLException {
         final SQLXML xml = resultSet.getSQLXML(column);
         try {
-            if ( xml == null /* || resultSet.wasNull() */ ) return context.nil;
+            if ( xml == null ) return context.nil;
 
             return RubyString.newInternalFromJavaExternal(runtime, xml.getString());
         }
