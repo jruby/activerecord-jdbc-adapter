@@ -2244,18 +2244,11 @@ public class RubyJdbcConnection extends RubyObject {
         return runtime.newFloat(value);
     }
 
-    private /* protected */ static final boolean useBytesForString = false; // TODO to be continued ...
-
     protected IRubyObject stringToRuby(final ThreadContext context,
         final Ruby runtime, final ResultSet resultSet, final int column) throws SQLException {
-        if ( useBytesForString ) { // optimized String -> byte[]
-            return bytesToRubyString(context, runtime, resultSet, column);
-        }
-        else {
-            final String value = resultSet.getString(column);
-            if ( value == null /* || resultSet.wasNull() */ ) return context.nil;
-            return RubyString.newInternalFromJavaExternal(runtime, value);
-        }
+        final String value = resultSet.getString(column);
+        if ( value == null /* || resultSet.wasNull() */ ) return context.nil;
+        return RubyString.newInternalFromJavaExternal(runtime, value);
     }
 
     protected static IRubyObject bytesToRubyString(final ThreadContext context,
@@ -2461,26 +2454,21 @@ public class RubyJdbcConnection extends RubyObject {
     protected IRubyObject readerToRuby(final ThreadContext context,
         final Ruby runtime, final ResultSet resultSet, final int column)
         throws SQLException, IOException {
-        if ( useBytesForString ) { // optimized CLOBs
-            return bytesToRubyString(context, runtime, resultSet, column);
-        }
-        else {
-            final Reader reader = resultSet.getCharacterStream(column);
-            try {
-                if ( reader == null /* || resultSet.wasNull() */ ) return context.nil;
+        final Reader reader = resultSet.getCharacterStream(column);
+        try {
+            if ( reader == null /* || resultSet.wasNull() */ ) return context.nil;
 
-                final int bufSize = streamBufferSize;
-                final StringBuilder string = new StringBuilder(bufSize);
+            final int bufSize = streamBufferSize;
+            final StringBuilder string = new StringBuilder(bufSize);
 
-                final char[] buf = new char[bufSize];
-                for (int len = reader.read(buf); len != -1; len = reader.read(buf)) {
-                    string.append(buf, 0, len);
-                }
-
-                return RubyString.newInternalFromJavaExternal(runtime, string.toString());
+            final char[] buf = new char[bufSize];
+            for (int len = reader.read(buf); len != -1; len = reader.read(buf)) {
+                string.append(buf, 0, len);
             }
-            finally { if ( reader != null ) reader.close(); }
+
+            return RubyString.newInternalFromJavaExternal(runtime, string.toString());
         }
+        finally { if ( reader != null ) reader.close(); }
     }
 
     protected IRubyObject objectToRuby(final ThreadContext context,
