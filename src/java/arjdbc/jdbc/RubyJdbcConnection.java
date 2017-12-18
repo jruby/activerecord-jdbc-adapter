@@ -2248,7 +2248,7 @@ public class RubyJdbcConnection extends RubyObject {
         final Ruby runtime, final ResultSet resultSet, final int column) throws SQLException {
         final String value = resultSet.getString(column);
         if ( value == null ) return context.nil;
-        return RubyString.newInternalFromJavaExternal(runtime, value);
+        return newDefaultInternalString(runtime, value);
     }
 
     protected static IRubyObject bytesToRubyString(final ThreadContext context,
@@ -2449,7 +2449,7 @@ public class RubyJdbcConnection extends RubyObject {
                 string.append(buf, 0, len);
             }
 
-            return RubyString.newInternalFromJavaExternal(runtime, string.toString());
+            return newDefaultInternalString(runtime, string);
         }
         finally { if ( reader != null ) reader.close(); }
     }
