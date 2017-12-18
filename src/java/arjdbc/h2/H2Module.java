@@ -25,6 +25,7 @@
 
 package arjdbc.h2;
 
+import org.jruby.Ruby;
 import org.jruby.RubyModule;
 
 /**
@@ -32,6 +33,7 @@ import org.jruby.RubyModule;
  *
  * @author kares
  */
+//@org.jruby.anno.JRubyModule(name = "ArJdbc::H2")
 public class H2Module {
 
     public static RubyModule load(final RubyModule arJdbc) {
@@ -39,6 +41,10 @@ public class H2Module {
         // NOTE: currently no Java implemented Ruby methods
         // h2.defineAnnotatedMethods( H2Module.class );
         return h2;
+    }
+
+    public static RubyModule load(final Ruby runtime) {
+        return load( arjdbc.ArJdbcModule.get(runtime) );
     }
 
 }

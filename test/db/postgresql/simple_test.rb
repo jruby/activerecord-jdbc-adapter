@@ -34,6 +34,30 @@ class PostgresSimpleTest < Test::Unit::TestCase
     assert_instance_of BigDecimal, model.custom_decimal
   end
 
+  # @override
+  def test_custom_select_datetime
+    my_time = Time.local 2013, 03, 15, 19, 53, 51, 0 # usec
+    model = DbType.create! :sample_datetime => my_time
+    model = DbType.where("id = #{model.id}").select('sample_datetime AS custom_sample_datetime').first
+    assert_equal my_time, model.custom_sample_datetime
+    sample_datetime = model.custom_sample_datetime
+    assert sample_datetime.acts_like?(:time), "expected Time-like instance but got: #{sample_datetime.class}"
+
+    assert_equal 'UTC', sample_datetime.zone
+    assert_equal my_time.getutc, sample_datetime
+  end
+
+  # @override
+  def test_custom_select_date
+    my_date = Time.local(2000, 01, 30, 0, 0, 0, 0).to_date
+    model = DbType.create! :sample_date => my_date
+    model = DbType.where("id = #{model.id}").select('sample_date AS custom_sample_date').first
+    assert_equal my_date, model.custom_sample_date
+    sample_date = model.custom_sample_date
+    assert_equal Date, sample_date.class
+    assert_equal my_date, sample_date
+  end
+
   def test_encoding
     assert_not_nil connection.encoding
   end
@@ -186,6 +210,29 @@ class PostgresSimpleTest < Test::Unit::TestCase
     assert_equal 'some', connection.type_cast(:some, nil)
   end
 
+  # def test_jdbc_error
+  #   begin
+  #     disable_logger { connection.exec_query('SELECT * FROM bogus') }
+  #   rescue ActiveRecord::ActiveRecordError => e
+  #     error = extract_jdbc_error(e)
+  #
+  #     assert error.cause
+  #     assert_equal error.cause, error.jdbc_exception
+  #     assert error.jdbc_exception.is_a?(Java::JavaSql::SQLException)
+  #
+  #     assert error.error_code
+  #     assert error.error_code.is_a?(Fixnum)
+  #     assert error.sql_state
+  #
+  #     # #<ActiveRecord::JDBCError: org.postgresql.util.PSQLException: ERROR: relation "bogus" does not exist \n Position: 15>
+  #     if true
+  #       assert_match /org.postgresql.util.PSQLException: ERROR: relation "bogus" does not exist/, error.message
+  #     end
+  #     assert_match /ActiveRecord::JDBCError: .*?Exception: /, error.inspect
+  #
+  #   end
+  # end if defined? JRUBY_VERSION
+
 end
 
 class PostgresTimestampTest < Test::Unit::TestCase
@@ -253,21 +300,16 @@ class PostgresTimestampTest < Test::Unit::TestCase
   private :do_test_save_infinity
 
   def test_bc_timestamp
-    #if RUBY_VERSION == '1.9.3' && defined?(JRUBY_VERSION) && JRUBY_VERSION =~ /1\.7\.3|4/
-    #  omit "Date.new(0) issue on JRuby 1.7.3/4"
-    #end
-    # JRuby 1.7.3 (--1.9) bug: `Date.new(0) + 1.seconds` "1753-08-29 22:43:42 +0057"
-    date = Date.new(0) - 1.second
     date = DateTime.parse('0000-01-01T00:00:00+00:00') - 1.hour - 1.minute - 1.second
     db_type = DbType.create!(:sample_timestamp => date)
     if current_connection_config[:prepared_statements].to_s == 'true'
       pend "Likely a JRuby/Java thing - this test is failing bad: check #516"
     end
-    if current_connection_config[:insert_returning].to_s == 'true'
-      pend "BC timestamps not-handled right with INSERT RETURNIG ..."
-    end unless ar_version('4.2')
+    # if current_connection_config[:insert_returning].to_s == 'true'
+    #   pend "BC timestamps not-handled right with INSERT RETURNIG ..."
+    # end unless ar_version('4.2')
     assert_equal date, db_type.reload.sample_timestamp.to_datetime
-  end if ar_version('3.0')
+  end
 
 end
 

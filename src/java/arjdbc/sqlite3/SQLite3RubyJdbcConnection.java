@@ -26,9 +26,6 @@
 
 package arjdbc.sqlite3;
 
-import arjdbc.jdbc.Callable;
-import arjdbc.jdbc.RubyJdbcConnection;
-
 import java.io.IOException;
 import java.sql.Connection;
 import java.sql.ResultSet;
@@ -39,19 +36,30 @@ import java.sql.DatabaseMetaData;
 import java.sql.PreparedStatement;
 import java.sql.Savepoint;
 import java.sql.Types;
-import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 import org.jruby.Ruby;
 import org.jruby.RubyArray;
 import org.jruby.RubyClass;
+import org.jruby.RubyFixnum;
+import org.jruby.RubyInteger;
+import org.jruby.RubyNumeric;
 import org.jruby.RubyString;
 import org.jruby.RubyTime;
 import org.jruby.anno.JRubyMethod;
+import org.jruby.ext.bigdecimal.RubyBigDecimal;
+import org.jruby.runtime.Block;
 import org.jruby.runtime.ObjectAllocator;
 import org.jruby.runtime.ThreadContext;
 import org.jruby.runtime.builtin.IRubyObject;
-import org.jruby.util.ByteList;
+import org.jruby.util.SafePropertyAccessor;
+
+import arjdbc.jdbc.Callable;
+import arjdbc.jdbc.RubyJdbcConnection;
+
+import static arjdbc.util.StringHelper.newDefaultInternalString;
+import static arjdbc.util.StringHelper.newString;
 
 /**
  *
@@ -62,7 +70,7 @@ public class SQLite3RubyJdbcConnection extends RubyJdbcConnection {
 
     private final RubyString TIMESTAMP_FORMAT;
 
-    protected SQLite3RubyJdbcConnection(Ruby runtime, RubyClass metaClass) {
+    public SQLite3RubyJdbcConnection(Ruby runtime, RubyClass metaClass) {
         super(runtime, metaClass);
 
         TIMESTAMP_FORMAT = runtime.newString("%F %T.%6N");
@@ -70,13 +78,18 @@ public class SQLite3RubyJdbcConnection extends RubyJdbcConnection {
 
     public static RubyClass createSQLite3JdbcConnectionClass(Ruby runtime, RubyClass jdbcConnection) {
         final RubyClass clazz = getConnectionAdapters(runtime). // ActiveRecord::ConnectionAdapters
-            defineClassUnder("SQLite3JdbcConnection", jdbcConnection, SQLITE3_JDBCCONNECTION_ALLOCATOR);
+            defineClassUnder("SQLite3JdbcConnection", jdbcConnection, ALLOCATOR);
         clazz.defineAnnotatedMethods( SQLite3RubyJdbcConnection.class );
         getConnectionAdapters(runtime).setConstant("Sqlite3JdbcConnection", clazz); // backwards-compat
         return clazz;
     }
 
-    private static ObjectAllocator SQLITE3_JDBCCONNECTION_ALLOCATOR = new ObjectAllocator() {
+    public static RubyClass load(final Ruby runtime) {
+        RubyClass jdbcConnection = getJdbcConnection(runtime);
+        return createSQLite3JdbcConnectionClass(runtime, jdbcConnection);
+    }
+
+    protected static final ObjectAllocator ALLOCATOR = new ObjectAllocator() {
         public IRubyObject allocate(Ruby runtime, RubyClass klass) {
             return new SQLite3RubyJdbcConnection(runtime, klass);
         }
@@ -94,10 +107,10 @@ public class SQLite3RubyJdbcConnection extends RubyJdbcConnection {
                     //return mapGeneratedKeys(context.getRuntime(), connection, statement, true);
                     // but we should assume SQLite JDBC will prefer sane API usage eventually :
                     genKeys = statement.executeQuery("SELECT last_insert_rowid()");
-                    return doMapGeneratedKeys(context.getRuntime(), genKeys, true);
+                    return doMapGeneratedKeys(context.runtime, genKeys, true);
                 }
                 catch (final SQLException e) {
-                    debugMessage(context, "failed to get generated keys: " + e.getMessage());
+                    debugMessage(context.runtime, "failed to get generated keys: ", e);
                     throw e;
                 }
                 finally { close(genKeys); close(statement); }
@@ -116,9 +129,9 @@ public class SQLite3RubyJdbcConnection extends RubyJdbcConnection {
     protected Statement createStatement(final ThreadContext context, final Connection connection)
         throws SQLException {
         final Statement statement = connection.createStatement();
-        IRubyObject statementEscapeProcessing = getConfigValue(context, "statement_escape_processing");
-        if ( ! statementEscapeProcessing.isNil() ) {
-            statement.setEscapeProcessing(statementEscapeProcessing.isTrue());
+        IRubyObject escapeProcessing = getConfigValue(context, "statement_escape_processing");
+        if ( escapeProcessing != null && ! escapeProcessing.isNil() ) {
+            statement.setEscapeProcessing( escapeProcessing.isTrue() );
         }
         // else leave as is by default
         return statement;
@@ -139,14 +152,14 @@ public class SQLite3RubyJdbcConnection extends RubyJdbcConnection {
         return withConnection(context, new Callable<IRubyObject>() {
             public RubyArray call(final Connection connection) throws SQLException {
                 final Ruby runtime = context.runtime;
-                final RubyClass indexDefinition = getIndexDefinition(runtime);
+                final RubyClass IndexDefinition = getIndexDefinition(runtime);
 
                 final TableName table = extractTableName(connection, null, schemaName, tableName);
 
                 final List<RubyString> primaryKeys = primaryKeys(context, connection, table);
 
                 final DatabaseMetaData metaData = connection.getMetaData();
-                ResultSet indexInfoSet = null;
+                ResultSet indexInfoSet;
                 try {
                     indexInfoSet = metaData.getIndexInfo(table.catalog, table.schema, table.name, false, true);
                 }
@@ -164,9 +177,10 @@ public class SQLite3RubyJdbcConnection extends RubyJdbcConnection {
                     while ( indexInfoSet.next() ) {
                         String indexName = indexInfoSet.getString(INDEX_INFO_NAME);
                         if ( indexName == null ) continue;
+                        RubyArray currentColumns = null;
 
                         final String columnName = indexInfoSet.getString(INDEX_INFO_COLUMN_NAME);
-                        final RubyString rubyColumnName = RubyString.newUnicodeString(runtime, columnName);
+                        final RubyString rubyColumnName = cachedString(context, columnName);
                         if ( primaryKeys.contains(rubyColumnName) ) continue;
 
                         // We are working on a new index
@@ -178,21 +192,17 @@ public class SQLite3RubyJdbcConnection extends RubyJdbcConnection {
                             final boolean nonUnique = indexInfoSet.getBoolean(INDEX_INFO_NON_UNIQUE);
 
                             IRubyObject[] args = new IRubyObject[] {
-                                RubyString.newUnicodeString(runtime, indexTableName), // table_name
-                                RubyString.newUnicodeString(runtime, indexName), // index_name
-                                runtime.newBoolean( ! nonUnique ), // unique
-                                runtime.newArray() // [] for column names, we'll add to that in just a bit
-                                // orders, (since AR 3.2) where, type, using (AR 4.0)
+                                cachedString(context, indexTableName), // table_name
+                                cachedString(context, indexName), // index_name
+                                nonUnique ? runtime.getFalse() : runtime.getTrue(), // unique
+                                currentColumns = RubyArray.newArray(runtime, 4) // [] column names
                             };
 
-                            indexes.append( indexDefinition.callMethod(context, "new", args) ); // IndexDefinition.new
+                            indexes.append( IndexDefinition.newInstance(context, args, Block.NULL_BLOCK) ); // IndexDefinition.new
                         }
 
-                        // One or more columns can be associated with an index
-                        IRubyObject lastIndexDef = indexes.isEmpty() ? null : indexes.entry(-1);
-                        if ( lastIndexDef != null ) {
-                            ( (RubyArray) lastIndexDef.callMethod(context, "columns") ).append(rubyColumnName);
-                        }
+                        // one or more columns can be associated with an index
+                        if ( currentColumns != null ) currentColumns.append(rubyColumnName);
                     }
 
                     return indexes;
@@ -207,21 +217,22 @@ public class SQLite3RubyJdbcConnection extends RubyJdbcConnection {
             final Connection connection, String catalog, String schema,
             final String tableName) throws IllegalArgumentException, SQLException {
 
-        final String[] nameParts = tableName.split("\\.");
-        if ( nameParts.length > 3 ) {
+        final List<String> nameParts = split(tableName, '.');
+        final int len = nameParts.size();
+        if ( len > 3 ) {
             throw new IllegalArgumentException("table name: " + tableName + " should not contain more than 2 '.'");
         }
 
         String name = tableName;
 
-        if ( nameParts.length == 2 ) {
-            schema = nameParts[0];
-            name = nameParts[1];
+        if ( len == 2 ) {
+            schema = nameParts.get(0);
+            name = nameParts.get(1);
         }
-        else if ( nameParts.length == 3 ) {
-            catalog = nameParts[0];
-            schema = nameParts[1];
-            name = nameParts[2];
+        else if ( len == 3 ) {
+            catalog = nameParts.get(0);
+            schema = nameParts.get(1);
+            name = nameParts.get(2);
         }
 
         if ( schema != null ) {
@@ -243,7 +254,7 @@ public class SQLite3RubyJdbcConnection extends RubyJdbcConnection {
             type = ((ResultSetMetaData) resultSet).getColumnType(column);
         }
         // since JDBC 3.8 there seems to be more cleverness built-in that
-        // seems (<= 3.8.7) to get things wrong ... reports DATE SQL type
+        // causes (<= 3.8.7) to get things wrong ... reports DATE SQL type
         // for "datetime" columns :
         if ( type == Types.DATE ) {
             // return timestampToRuby(context, runtime, resultSet, column);
@@ -253,28 +264,48 @@ public class SQLite3RubyJdbcConnection extends RubyJdbcConnection {
     }
 
     @Override
+    protected IRubyObject stringToRuby(final ThreadContext context,
+        final Ruby runtime, final ResultSet resultSet, final int column) throws SQLException {
+        final byte[] value = resultSet.getBytes(column);
+        if ( value == null ) return context.nil; // resultSet.wasNull()
+        return newDefaultInternalString(runtime, value);
+    }
+
+    @Override
     protected IRubyObject streamToRuby(final ThreadContext context,
         final Ruby runtime, final ResultSet resultSet, final int column)
         throws SQLException, IOException {
         final byte[] bytes = resultSet.getBytes(column);
-        if ( resultSet.wasNull() ) return runtime.getNil();
-        return runtime.newString( new ByteList(bytes, false) );
+        if ( bytes == null ) return context.nil; // resultSet.wasNull()
+        return newString(runtime, bytes);
     }
 
     @Override
-    protected RubyArray mapTables(final Ruby runtime, final DatabaseMetaData metaData,
-            final String catalog, final String schemaPattern, final String tablePattern,
-            final ResultSet tablesSet) throws SQLException {
-        final List<IRubyObject> tables = new ArrayList<IRubyObject>(32);
+    protected RubyArray mapTables(final ThreadContext context, final Connection connection,
+        final String catalog, final String schemaPattern, final String tablePattern,
+        final ResultSet tablesSet) throws SQLException {
+        final RubyArray tables = context.runtime.newArray(24);
         while ( tablesSet.next() ) {
             String name = tablesSet.getString(TABLES_TABLE_NAME);
-            name = name.toLowerCase(); // simply lower-case for SQLite3
-            tables.add( RubyString.newUnicodeString(runtime, name) );
+            name = name.toLowerCase(Locale.ENGLISH); // simply lower-case for SQLite3
+            tables.append( RubyString.newUnicodeString(context.runtime, name) );
         }
-        return runtime.newArray(tables);
+        return tables;
+    }
+
+    @Override
+    protected String caseConvertIdentifierForRails(final Connection connection, final String value) {
+        return value;
+    }
+
+    @Override
+    protected String caseConvertIdentifierForJdbc(final Connection connection, final String value) {
+        return value;
     }
 
     private static class SavepointStub implements Savepoint {
+
+        static final SavepointStub INSTANCE = new SavepointStub();
 
         @Override
         public int getSavepointId() throws SQLException {
@@ -288,50 +319,78 @@ public class SQLite3RubyJdbcConnection extends RubyJdbcConnection {
 
     }
 
-    @Override
-    public IRubyObject begin(ThreadContext context, IRubyObject level) {
-        throw context.runtime.newRaiseException(ActiveRecord(context).getClass("TransactionIsolationError"),
-                "SQLite3 does not support isolation levels");
+    private static Boolean useSavepointAPI;
+    static {
+        final String savepoints = SafePropertyAccessor.getProperty("arjdbc.sqlite.savepoints");
+        if ( savepoints != null ) useSavepointAPI = Boolean.parseBoolean(savepoints);
+    }
+
+    private static boolean useSavepointAPI(final ThreadContext context) {
+        final Boolean working = useSavepointAPI;
+        if ( working == null ) {
+            try { // available since JDBC-SQLite 3.8.9
+                context.runtime.getJavaSupport().loadJavaClass("org.sqlite.jdbc3.JDBC3Savepoint");
+                return useSavepointAPI = Boolean.TRUE;
+            }
+            catch (ClassNotFoundException ex) { /* < 3.8.9 */ }
+            // catch (RuntimeException ex) { }
+            return useSavepointAPI = Boolean.FALSE;
+        }
+        return working;
     }
 
     @Override
-    @JRubyMethod(name = "create_savepoint", optional = 1)
-    public IRubyObject create_savepoint(final ThreadContext context, final IRubyObject[] args) {
-        final IRubyObject name = args.length > 0 ? args[0] : null;
-        if ( name == null || name.isNil() ) {
-            throw new IllegalArgumentException("create_savepoint (without name) not implemented!");
+    public IRubyObject begin(ThreadContext context, IRubyObject level) {
+        throw context.runtime.newRaiseException(getTransactionIsolationError(context.runtime),
+                "SQLite3 does not support isolation levels"
+        );
+    }
+
+    @Override
+    @JRubyMethod(name = "create_savepoint", required = 1)
+    public IRubyObject create_savepoint(final ThreadContext context, final IRubyObject name) {
+        if ( useSavepointAPI(context) ) return super.create_savepoint(context, name);
+        
+        if ( name == context.nil ) {
+            throw context.runtime.newRaiseException(context.runtime.getNotImplementedError(),
+                    "create_savepoint (without name) not implemented!"
+            );
         }
-        final Connection connection = getConnection(context, true);
+        final Connection connection = getConnection(true); Statement statement = null;
         try {
             connection.setAutoCommit(false);
             // NOTE: JDBC driver does not support setSavepoint(String) :
-            connection.createStatement().execute("SAVEPOINT " + name.toString());
+            ( statement = connection.createStatement() ).execute("SAVEPOINT " + name.toString());
 
-            getSavepoints(context).put(name, new SavepointStub());
+            getSavepoints(context).put(name, SavepointStub.INSTANCE);
 
             return name;
         }
         catch (SQLException e) {
             return handleException(context, e);
         }
+        finally { close(statement); }
     }
 
     @Override
     @JRubyMethod(name = "rollback_savepoint", required = 1)
     public IRubyObject rollback_savepoint(final ThreadContext context, final IRubyObject name) {
-        final Connection connection = getConnection(context, true);
+        if ( useSavepointAPI(context) ) return super.rollback_savepoint(context, name);
+
+        final Connection connection = getConnection(true); Statement statement = null;
         try {
             if ( getSavepoints(context).get(name) == null ) {
-                throw context.getRuntime().newRuntimeError("could not rollback savepoint: '" + name + "' (not set)");
+                throw newSavepointNotSetError(context, name, "rollback");
             }
             // NOTE: JDBC driver does not implement rollback(Savepoint) :
-            connection.createStatement().execute("ROLLBACK TO SAVEPOINT " + name.toString());
+            ( statement = connection.createStatement() ).execute("ROLLBACK TO SAVEPOINT " + name.toString());
 
-            return context.getRuntime().getNil();
+            return context.nil;
         }
         catch (SQLException e) {
             return handleException(context, e);
         }
+        finally { close(statement); }
     }
 
     // FIXME: Update our JDBC adapter to later version which basically performs this SQL in
@@ -339,20 +398,20 @@ public class SQLite3RubyJdbcConnection extends RubyJdbcConnection {
     @Override
     @JRubyMethod(name = "release_savepoint", required = 1)
     public IRubyObject release_savepoint(final ThreadContext context, final IRubyObject name) {
-        Ruby runtime = context.runtime;
+        if ( useSavepointAPI(context) ) return super.release_savepoint(context, name);
 
+        final Connection connection = getConnection(true); Statement statement = null;
         try {
-            if (getSavepoints(context).remove(name) == null) {
-                RubyClass invalidStatement = ActiveRecord(context).getClass("StatementInvalid");
-                throw runtime.newRaiseException(invalidStatement, "could not release savepoint: '" + name + "' (not set)");
+            if ( getSavepoints(context).remove(name) == null ) {
+                throw newSavepointNotSetError(context, name, "release");
             }
             // NOTE: JDBC driver does not implement release(Savepoint) :
-            getConnection(context, true).createStatement().execute("RELEASE SAVEPOINT " + name.toString());
-
-            return runtime.getNil();
+            ( statement = connection.createStatement() ).execute("RELEASE SAVEPOINT " + name.toString());
+            return context.nil;
         } catch (SQLException e) {
             return handleException(context, e);
         }
+        finally { close(statement); }
     }
 
     // Note: transaction_support.rb overrides sqlite3 adapters version which just returns true.
@@ -360,7 +419,7 @@ public class SQLite3RubyJdbcConnection extends RubyJdbcConnection {
     // a consistent JDBC layer.
     @JRubyMethod(name = "supports_savepoints?")
     public IRubyObject supports_savepoints_p(final ThreadContext context) throws SQLException {
-        return context.getRuntime().getTrue();
+        return context.runtime.getTrue();
     }
 
     @Override
@@ -370,6 +429,30 @@ public class SQLite3RubyJdbcConnection extends RubyJdbcConnection {
         final IRubyObject attribute, final int type) throws SQLException {
         // Apparently active record stores booleans in sqlite as 't' and 'f' instead of the built in 1/0
         statement.setString(index, value.isTrue() ? "t" : "f");
+    }
+
+
+    @Override
+    protected void setDecimalParameter(final ThreadContext context,
+        final Connection connection, final PreparedStatement statement,
+        final int index, final IRubyObject value,
+        final IRubyObject attribute, final int type) throws SQLException {
+        if (value instanceof RubyBigDecimal) {
+            statement.setString(index, ((RubyBigDecimal) value).getValue().toString());
+        }
+        else if ( value instanceof RubyFixnum) {
+            statement.setLong(index, ((RubyFixnum) value).getLongValue());
+        }
+        else if ( value instanceof RubyInteger) { // Bignum
+            statement.setString(index, ((RubyInteger) value).getBigIntegerValue().toString());
+        }
+        else if ( value instanceof RubyNumeric ) {
+            statement.setDouble(index, ((RubyNumeric) value).getDoubleValue());
+        }
+        else { // e.g. `BigDecimal '42.00000000000000000001'`
+            RubyBigDecimal val = RubyBigDecimal.newInstance(context, context.runtime.getModule("BigDecimal"), value);
+            statement.setString(index, val.getValue().toString());
+        }
     }
 
     // Treat dates as strings, this can potentially be removed if we update
@@ -383,15 +466,6 @@ public class SQLite3RubyJdbcConnection extends RubyJdbcConnection {
         setStringParameter(context, connection, statement, index, value, attribute, type);
     }
 
-    // The current driver doesn't support dealing with BigDecimal values, so force everything to doubles
-    @Override
-    protected void setDecimalParameter(final ThreadContext context,
-        final Connection connection, final PreparedStatement statement,
-        final int index, final IRubyObject value,
-        final IRubyObject attribute, final int type) throws SQLException {
-
-        setDoubleParameter(context, connection, statement, index, value, attribute, type);
-    }
 
     // Treat times as strings
     @Override
@@ -400,8 +474,7 @@ public class SQLite3RubyJdbcConnection extends RubyJdbcConnection {
         final int index, IRubyObject value,
         final IRubyObject attribute, final int type) throws SQLException {
 
-        setTimestampParameter(context, connection, statement, index,
-                callMethod(context, "time_in_default_timezone", value), attribute, type);
+        setTimestampParameter(context, connection, statement, index, timeInDefaultTimeZone(context, value), attribute, type);
     }
 
     // Treat timestamps as strings

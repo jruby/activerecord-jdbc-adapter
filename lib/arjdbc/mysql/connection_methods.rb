@@ -30,7 +30,7 @@ ArJdbc::ConnectionMethods.module_eval do
     properties = ( config[:properties] ||= {} )
     if mysql_driver
       properties['zeroDateTimeBehavior'] ||= 'convertToNull'
-      properties['jdbcCompliantTruncation'] ||= 'false'
+      properties['jdbcCompliantTruncation'] ||= false
       # NOTE: this is "better" than passing what users are used to set on MRI
       # e.g. 'utf8mb4' will fail cause the driver will check for a Java charset
       # ... it's smart enough to detect utf8mb4 from server variables :
@@ -50,28 +50,30 @@ ArJdbc::ConnectionMethods.module_eval do
     end
     if config[:sslkey] || sslcert = config[:sslcert] # || config[:use_ssl]
       properties['useSSL'] ||= true # supported by MariaDB as well
+      properties['requireSSL'] ||= true if mysql_driver
       if mysql_driver
-        properties['requireSSL'] ||= true if mysql_driver
-        properties['clientCertificateKeyStoreUrl'] ||= begin
-          java.io.File.new(sslcert).to_url.to_s
-        end if sslcert
+        properties['clientCertificateKeyStoreUrl'] ||= java.io.File.new(sslcert).to_url.to_s if sslcert
         if sslca = config[:sslca]
-          properties['trustCertificateKeyStoreUrl'] ||= begin
-            java.io.File.new(sslca).to_url.to_s
-          end
+          properties['trustCertificateKeyStoreUrl'] ||= java.io.File.new(sslca).to_url.to_s
         else
-          properties['verifyServerCertificate'] ||= false if mysql_driver
+          properties['verifyServerCertificate'] ||= false
         end
       end
       properties['verifyServerCertificate'] ||= false if mariadb_driver
     else
       # According to MySQL 5.5.45+, 5.6.26+ and 5.7.6+ requirements SSL connection
       # must be established by default if explicit option isn't set :
-      properties['useSSL'] ||= false
+      properties[mariadb_driver ? 'useSsl' : 'useSSL'] ||= false
     end
     if socket = config[:socket]
       properties['localSocket'] ||= socket if mariadb_driver
     end
+
+    # for the Connector/J 5.1 line this is true by default - but it requires some really nasty
+    # quirks to get casted Time values extracted properly according for AR's default_timezone
+    # - thus we're turning it off (should be off in newer driver versions >= 6 anyway)
+    # + also MariaDB driver is compilant and we would need to branch out based on driver
+    properties['useLegacyDatetimeCode'] = false
 
     jdbc_connection(config)
   end

@@ -84,40 +84,34 @@ test_task_for :AS400, :desc => "Run tests against AS400 (DB2) (ensure driver is 
 #task :test_jdbc => [ :test_jdbc_mysql, :test_jdbc_derby ] if defined?(JRUBY_VERSION)
 
 test_task_for 'JDBC', :desc => 'Run tests against plain JDBC adapter (uses MySQL and Derby)',
-              :prereqs => [ 'db:mysql' ], :files => FileList['test/*jdbc_*test.rb'] do |test_task|
+  :prereqs => [ 'db:mysql' ], :files => FileList['test/*jdbc_*test.rb'] do |test_task|
   test_task.libs << 'jdbc-mysql/lib' << 'jdbc-derby/lib'
 end
 
-task :test_jndi => [ :test_jndi_mysql, :test_jndi_derby ] if defined?(JRUBY_VERSION)
+# TODO since Derby AR 5.x support is not implemented we only run JNDI with MySQL :
+#task :test_jndi => [ :test_jndi_mysql, :test_jndi_derby ] if defined?(JRUBY_VERSION)
+task :test_jndi => [ :test_jndi_mysql ] if defined?(JRUBY_VERSION)
 
-jndi_classpath = []
-jndi_classpath << 'test/jars/tomcat-juli.jar'
-jndi_classpath << 'test/jars/tomcat-catalina.jar'
+jndi_classpath = [ 'test/jars/tomcat-juli.jar', 'test/jars/tomcat-catalina.jar' ]
 
 jndi_classpath.each do |jar_path|
   file(jar_path) { Rake::Task['tomcat-jndi:download'].invoke }
 end
 
 get_jndi_classpath_opt = lambda do
-  cp = jndi_classpath.map do |jar_path|
-    File.expand_path("../#{jar_path}", File.dirname(__FILE__))
-  end
-  "-J-cp \"#{cp.join(windows? ? ';' : ':')}\""
+  cp = jndi_classpath.map { |jar_path| File.expand_path("../#{jar_path}", File.dirname(__FILE__)) }
+  "-J-cp \"#{cp.join(File::PATH_SEPARATOR)}\""
 end
 
-def windows?; require 'rbconfig'; RbConfig::CONFIG['host_os'] =~ /mswin|msys|mingw/ end
-
 test_task_for 'JNDI_Derby', :desc => 'Run tests against a Derby JNDI connection',
-              :prereqs => jndi_classpath,
-              :files => FileList['test/*jndi_derby*test.rb'] do |test_task|
+  :prereqs => jndi_classpath, :files => FileList['test/*jndi_derby*test.rb'] do |test_task|
   test_task.libs << 'jdbc-derby/lib'
   test_task.ruby_opts << get_jndi_classpath_opt.call
   #test_task.verbose = true
 end
 
 test_task_for 'JNDI_MySQL', :desc => 'Run tests against a MySQL JNDI connection',
-              :prereqs => [ 'db:mysql' ] + jndi_classpath,
-              :files => FileList['test/*jndi_mysql*test.rb'] do |test_task|
+  :prereqs => [ 'db:mysql' ] + jndi_classpath, :files => FileList['test/*jndi_mysql*test.rb'] do |test_task|
   test_task.libs << 'jdbc-mysql/lib'
   test_task.ruby_opts << get_jndi_classpath_opt.call
 end

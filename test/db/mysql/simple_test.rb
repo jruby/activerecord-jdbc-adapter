@@ -39,6 +39,92 @@ class MySQLSimpleTest < Test::Unit::TestCase
     assert_match str[0, 19], e.sample_text
   end
 
+  # @override
+  def test_time_according_to_precision
+    @connection = ActiveRecord::Base.connection
+    @connection.create_table(:some_foos, force: true) do |t|
+      t.time :start,  precision: 0
+      t.time :finish, precision: 4
+      t.date :a_date, precision: 0
+    end
+    foo_class = Class.new(ActiveRecord::Base)
+    foo_class.table_name = 'some_foos'
+    time = ::Time.utc(2007, 1, 1, 12, 30, 0, 999999)
+    foo_class.create!(start: time, finish: time, a_date: time.to_date)
+
+    assert foo = foo_class.find_by(start: time)
+    assert_equal 1, foo_class.where(finish: time).count
+
+    assert_equal time.to_s.sub('2007', '2000'), foo.start.to_s
+    assert_equal time.to_s.sub('2007', '2000'), foo.finish.to_s
+    assert_equal time.to_date.to_s, foo.a_date.to_s
+    assert_equal 000000, foo.start.usec
+    if mariadb_driver? # NOTE: this is a mariadb driver bug, works in latest 2.2
+      warn "#{__method__} assert skipped on MariaDB driver, remove when driver upgraded to 2.x"
+    else
+      assert_equal 999900, foo.finish.usec
+    end
+
+    # more asserts :
+
+    assert foo = foo_class.find_by(start: time)
+    raw_attrs = foo.attributes_before_type_cast
+
+    assert_equal Time.utc(2000, 1, 1, 12, 30, 0), raw_attrs['start'] # core AR + mysql2 compat
+    assert_equal Date.new(2007, 1, 1), raw_attrs['a_date'] # core AR + mysql2 compat
+
+  ensure
+    @connection.drop_table :some_foos, if_exists: true
+  end
+
+  # @override
+  def test_custom_select_datetime
+    my_time = Time.local 2013, 03, 15, 19, 53, 51, 0 # usec
+    model = DbType.create! :sample_datetime => my_time
+    model = DbType.where("id = #{model.id}").select('sample_datetime AS custom_sample_datetime').first
+    assert_equal my_time, model.custom_sample_datetime
+    sample_datetime = model.custom_sample_datetime
+    assert sample_datetime.acts_like?(:time), "expected Time-like instance but got: #{sample_datetime.class}"
+
+    assert_equal 'UTC', sample_datetime.zone
+    assert_equal my_time.getutc, sample_datetime
+  end
+
+  # @override
+  def test_custom_select_date
+    my_date = Time.local(2000, 01, 30, 0, 0, 0, 0).to_date
+    model = DbType.create! :sample_date => my_date
+    model = DbType.where("id = #{model.id}").select('sample_date AS custom_sample_date').first
+    assert_equal my_date, model.custom_sample_date
+    sample_date = model.custom_sample_date
+
+    assert_equal Date, sample_date.class
+    assert_equal my_date, sample_date
+  end
+
+  # @override
+  def test_preserving_time_objects_with_utc_time_conversion_to_default_timezone_local
+    pend 'TODO: only working when useLegacyDatetimeCode: false but that has other issues (e.g. with PS)' unless mariadb_driver?
+    super
+  end
+
+  # @override
+  def test_preserving_time_objects_with_time_with_zone_conversion_to_default_timezone_local
+    pend 'TODO: only working when useLegacyDatetimeCode: false but that has other issues (e.g. with PS)' unless mariadb_driver?
+    super
+  end
+
+  # @override
+  def test_time_with_default_timezone_local
+    if ENV['CI'] && ! mariadb_driver?
+      pend 'TODO: CI: when we start off with UTC the MySQL driver does not handle the time-zone switch right'
+    end
+    super
+  end
+
+  # NOTE: all of the above pends are not crucial
+  # we're really pushing the limits with switching TZ in the system ... esp. for the MySQL driver
+
   column_quote_char "`"
 
   def test_string_quoting_oddity
@@ -313,6 +399,54 @@ class MySQLSimpleTest < Test::Unit::TestCase
       connection.drop_table(:bulks) rescue nil
     end
   end
+
+  # def test_jdbc_error
+  #   begin
+  #     disable_logger { connection.exec_query('SELECT * FROM bogus') }
+  #   rescue ActiveRecord::ActiveRecordError => e
+  #     error = extract_jdbc_error(e)
+  #
+  #     assert error.cause
+  #     assert_equal error.cause, error.jdbc_exception
+  #     assert error.jdbc_exception.is_a?(Java::JavaSql::SQLException)
+  #
+  #     assert error.error_code
+  #     assert error.error_code.is_a?(Fixnum)
+  #     assert error.sql_state
+  #
+  #     # #<ActiveRecord::JDBCError: com.mysql.jdbc.exceptions.jdbc4.MySQLSyntaxErrorException: Table 'arjdbc_test.bogus' doesn't exist>
+  #     unless mariadb_driver?
+  #       assert_match /com.mysql.jdbc.exceptions.jdbc4.MySQLSyntaxErrorException: Table '.*?bogus' doesn't exist/, error.message
+  #     else
+  #       assert_match /java.sql.SQLSyntaxErrorException: Table '.*?bogus' doesn't exist/, error.message
+  #     end
+  #     assert_match /ActiveRecord::JDBCError: .*?Exception: /, error.inspect
+  #
+  #     # sample error.cause.backtrace :
+  #     #
+  #     #  sun.reflect.NativeConstructorAccessorImpl.newInstance0(Native Method)
+  #     #  sun.reflect.NativeConstructorAccessorImpl.newInstance(NativeConstructorAccessorImpl.java:57)
+  #     #  sun.reflect.DelegatingConstructorAccessorImpl.newInstance(DelegatingConstructorAccessorImpl.java:45)
+  #     #  java.lang.reflect.Constructor.newInstance(Constructor.java:526)
+  #     #  com.mysql.jdbc.Util.handleNewInstance(Util.java:377)
+  #     #  com.mysql.jdbc.Util.getInstance(Util.java:360)
+  #     #  com.mysql.jdbc.SQLError.createSQLException(SQLError.java:978)
+  #     #  com.mysql.jdbc.MysqlIO.checkErrorPacket(MysqlIO.java:3887)
+  #     #  com.mysql.jdbc.MysqlIO.checkErrorPacket(MysqlIO.java:3823)
+  #     #  com.mysql.jdbc.MysqlIO.sendCommand(MysqlIO.java:2435)
+  #     #  com.mysql.jdbc.MysqlIO.sqlQueryDirect(MysqlIO.java:2582)
+  #     #  com.mysql.jdbc.ConnectionImpl.execSQL(ConnectionImpl.java:2526)
+  #     #  com.mysql.jdbc.ConnectionImpl.execSQL(ConnectionImpl.java:2484)
+  #     #  com.mysql.jdbc.StatementImpl.executeQuery(StatementImpl.java:1446)
+  #     #  arjdbc.jdbc.RubyJdbcConnection$14.call(RubyJdbcConnection.java:1120)
+  #     #  arjdbc.jdbc.RubyJdbcConnection$14.call(RubyJdbcConnection.java:1114)
+  #     #  arjdbc.jdbc.RubyJdbcConnection.withConnection(RubyJdbcConnection.java:3518)
+  #     #  arjdbc.jdbc.RubyJdbcConnection.withConnection(RubyJdbcConnection.java:3496)
+  #     #  arjdbc.jdbc.RubyJdbcConnection.executeQuery(RubyJdbcConnection.java:1114)
+  #     #  arjdbc.jdbc.RubyJdbcConnection.execute_query(RubyJdbcConnection.java:1015)
+  #     #  arjdbc.jdbc.RubyJdbcConnection$INVOKER$i$execute_query.call(RubyJdbcConnection$INVOKER$i$execute_query.gen)
+  #   end
+  # end if defined? JRUBY_VERSION
 
   protected
 

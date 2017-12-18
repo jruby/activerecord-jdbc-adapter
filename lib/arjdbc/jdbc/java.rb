@@ -9,7 +9,5 @@ module ActiveRecord
       # @private
       Types = ::Java::JavaSql::Types
     end
-    # @private JdbcConnectionFactory
-    java_import "arjdbc.jdbc.JdbcConnectionFactory"
   end
 end

@@ -10,32 +10,28 @@ require 'arjdbc/abstract/statement_cache'
 require 'arjdbc/abstract/transaction_support'
 
 module ActiveRecord
-  class ConnectionAdapters::AbstractMysqlAdapter
-    # FIXME: this is to work around abstract mysql having 4 arity but core wants to pass 3
-    # FIXME: Missing the logic from original module.
-    def initialize(connection, logger, config)
-      super(connection, logger, config)
-    end
-  end
   module ConnectionAdapters
+    AbstractMysqlAdapter.class_eval do
+      include ArJdbc::Abstract::Core # to have correct initialize() super
+    end
+
     # Remove any vestiges of core/Ruby MySQL adapter
     remove_const(:Mysql2Adapter) if const_defined?(:Mysql2Adapter)
 
     class Mysql2Adapter < AbstractMysqlAdapter
       ADAPTER_NAME = 'Mysql2'.freeze
 
-      include ArJdbc::Abstract::Core
+      include Jdbc::ConnectionPoolCallbacks
+
       include ArJdbc::Abstract::ConnectionManagement
       include ArJdbc::Abstract::DatabaseStatements
       include ArJdbc::Abstract::StatementCache
       include ArJdbc::Abstract::TransactionSupport
 
-      def initialize(connection, logger, connection_options, config)
-        super(connection, logger, config)
-
+      def initialize(connection, logger, config)
+        super(connection, logger, nil, config)
         @prepared_statements = false unless config.key?(:prepared_statements)
-
-        configure_connection
+        # configure_connection taken care of at ArJdbc::Abstract::Core
       end
 
       def supports_json?

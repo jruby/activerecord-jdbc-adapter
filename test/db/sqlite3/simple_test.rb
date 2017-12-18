@@ -229,14 +229,21 @@ class SQLite3SimpleTest < Test::Unit::TestCase
     db_type = DbType.find(db_type.id)
     assert_equal test_value, db_type.big_decimal
 
-    pend 'TODO: compare and revisit how native adapter behaves'
-    # NOTE: this is getting f*cked up in the native adapter as well although
-    # differently and only when inserted manually - works with PSs (3.1+) :
-    test_value = 1234567890_1234567890.0
+    test_value = BigDecimal('1234567890_1234567890.0')
     db_type = DbType.create!(:big_decimal => test_value)
     db_type = DbType.find(db_type.id)
+    #assert_equal 12345678901234567168, db_type.big_decimal # SQLite3/MRI way
+    #assert_equal 12345678901234600000, db_type.big_decimal # the JDBC way
+
+    # NOTE: this is getting f*cked up in the native adapter as well although
+    # differently and only when inserted manually - works with PSs (3.1+) :
+    test_value = 1234567890_1234567890.0 # (Float)
+    db_type = DbType.create!(:big_decimal => test_value)
+    db_type = DbType.find(db_type.id)
+    pend 'TODO: compare and revisit how native adapter behaves'
     # TODO native gets us 12345678901234567000.0 JDBC gets us 1
-    #assert_equal test_value, db_type.big_decimal
+    # <1.23456789012346e+19> expected but was <12345678901234600000>
+    assert_equal test_value, db_type.big_decimal
     #super
   end
 
@@ -262,6 +269,41 @@ class SQLite3SimpleTest < Test::Unit::TestCase
     model = DbType.create! :sample_date => my_date
     model = DbType.where("id = #{model.id}").select('sample_date AS custom_sample_date').first
     assert_equal my_date.to_s(:db), model.custom_sample_date
+  end
+
+  # @override
+  def test_custom_select_datetime__non_raw_date_time
+    skip 'not-relevant on SQLite3'
+  end if defined? JRUBY_VERSION
+
+  def test_custom_select_date__non_raw_date_time
+    skip 'not-relevant on SQLite3'
+  end if defined? JRUBY_VERSION
+
+  # @override
+  def test_time_according_to_precision
+    @connection = ActiveRecord::Base.connection
+    @connection.create_table(:some_foos, force: true) do |t|
+      t.time :start,  precision: 0
+      t.time :finish, precision: 4
+      t.date :a_date, precision: 0
+    end
+    foo_class = Class.new(ActiveRecord::Base)
+    foo_class.table_name = 'some_foos'
+    time = ::Time.utc(2007, 1, 1, 12, 30, 0, 999999)
+    foo_class.create!(start: time, finish: time, a_date: time.to_date)
+
+    assert foo = foo_class.find_by(start: time)
+    assert_equal 1, foo_class.where(finish: time).count
+
+    assert_equal time.to_s.sub('2007', '2000'), foo.start.to_s
+    assert_equal time.to_s.sub('2007', '2000'), foo.finish.to_s
+    assert_equal time.to_date.to_s, foo.a_date.to_s
+    assert_equal 0, foo.start.usec # seemingly no nanos precision support (since 5.0) ?!?
+    pend "JRuby bug: https://github.com/jruby/jruby/issues/4866" if defined? JRUBY_VERSION
+    assert_equal 0, foo.finish.usec # seemingly no nanos precision support (since 5.0) ?!?
+  ensure
+    @connection.drop_table :some_foos, if_exists: true
   end
 
   test 'returns correct visitor type' do

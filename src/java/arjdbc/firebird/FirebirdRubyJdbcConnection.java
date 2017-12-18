@@ -121,7 +121,7 @@ public class FirebirdRubyJdbcConnection extends RubyJdbcConnection {
     private final static int SMALL_CHAR_2 = 31431002;
 
     @Override
-    protected ColumnData[] extractColumns(final Ruby runtime,
+    protected ColumnData[] extractColumns(final ThreadContext context,
         final Connection connection, final ResultSet resultSet,
         final boolean downCase) throws SQLException {
 
@@ -137,7 +137,7 @@ public class FirebirdRubyJdbcConnection extends RubyJdbcConnection {
             } else {
                 name = caseConvertIdentifierForRails(connection, name);
             }
-            final RubyString columnName = RubyString.newUnicodeString(runtime, name);
+            final RubyString columnName = RubyString.newUnicodeString(context.runtime, name);
 
             int columnType = resultMetaData.getColumnType(i);
             if (columnType == Types.CHAR) {

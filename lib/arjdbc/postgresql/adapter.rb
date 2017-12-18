@@ -39,20 +39,9 @@ module ArJdbc
     def self.jdbc_connection_class
       ::ActiveRecord::ConnectionAdapters::PostgreSQLJdbcConnection
     end
-
+    
     # @see ActiveRecord::ConnectionAdapters::JdbcAdapter#jdbc_column_class
     def jdbc_column_class; ::ActiveRecord::ConnectionAdapters::PostgreSQLColumn end
-
-    # @private
-    def init_connection(jdbc_connection)
-      meta = jdbc_connection.meta_data
-      if meta.driver_version.index('JDBC3') # e.g. 'PostgreSQL 9.2 JDBC4 (build 1002)'
-        config[:connection_alive_sql] ||= 'SELECT 1'
-      else
-        # NOTE: since the loaded Java driver class can't change :
-        PostgreSQL.send(:remove_method, :init_connection) rescue nil
-      end
-    end
 
     ADAPTER_NAME = 'PostgreSQL'.freeze
 
@@ -399,7 +388,7 @@ module ArJdbc
       reset_transaction
       @connection.rollback # Have to deal with rollbacks differently than the AR adapter
       @connection.execute 'DISCARD ALL'
-      configure_connection
+      @connection.configure_connection
     end
 
     def last_insert_id_result(sequence_name)
@@ -474,16 +463,7 @@ module ArJdbc
       sql.replace "SELECT * FROM (#{sql}) AS id_list ORDER BY #{order}"
     end
 
-    # Quotes a string, escaping any ' (single quote) and \ (backslash) chars.
-    # @return [String]
-    # @override
-    def quote_string(string)
-      quoted = string.gsub("'", "''")
-      unless standard_conforming_strings?
-        quoted.gsub!(/\\/, '\&\&')
-      end
-      quoted
-    end
+    # @note #quote_string implemented as native
 
     def escape_bytea(string)
       return unless string
@@ -508,23 +488,8 @@ module ArJdbc
       end
     end
 
-    # @override
-    def quote_column_name(name)
-      %("#{name.to_s.gsub("\"", "\"\"")}")
-    end
+    # @note #quote_column_name implemented as native
     alias_method :quote_schema_name, :quote_column_name
-
-    # Quote date/time values for use in SQL input.
-    # Includes microseconds if the value is a Time responding to `usec`.
-    # @override
-    def quoted_date(value)
-      result = super
-      if value.acts_like?(:time) && value.respond_to?(:usec) && !AR50
-        result = "#{result}.#{sprintf("%06d", value.usec)}"
-      end
-      result = "#{result.sub(/^-/, '')} BC" if value.year < 0
-      result
-    end if ::ActiveRecord::VERSION::MAJOR >= 3
 
     # Changes the column of a table.
     def change_column(table_name, column_name, type, options = {})
@@ -764,6 +729,8 @@ module ActiveRecord::ConnectionAdapters
     include ActiveRecord::ConnectionAdapters::PostgreSQL::ReferentialIntegrity
     include ActiveRecord::ConnectionAdapters::PostgreSQL::SchemaStatements
     include ActiveRecord::ConnectionAdapters::PostgreSQL::Quoting
+
+    include Jdbc::ConnectionPoolCallbacks
 
     include ArJdbc::Abstract::Core
     include ArJdbc::Abstract::ConnectionManagement

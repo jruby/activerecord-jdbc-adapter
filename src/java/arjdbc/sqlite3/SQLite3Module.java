@@ -23,8 +23,10 @@
  */
 package arjdbc.sqlite3;
 
+import static arjdbc.util.QuotingUtils.quoteCharAndDecorateWith;
 import static arjdbc.util.QuotingUtils.quoteCharWith;
 
+import org.jruby.Ruby;
 import org.jruby.RubyModule;
 import org.jruby.RubyString;
 import org.jruby.anno.JRubyMethod;
@@ -43,7 +45,11 @@ public class SQLite3Module {
         sqlite3.defineAnnotatedMethods( SQLite3Module.class );
         return sqlite3;
     }
-    
+
+    public static RubyModule load(final Ruby runtime) {
+        return load( arjdbc.ArJdbcModule.get(runtime) );
+    }
+
     @JRubyMethod(name = "quote_string", required = 1, frame = false)
     public static IRubyObject quote_string(
             final ThreadContext context, 
@@ -55,4 +61,13 @@ public class SQLite3Module {
         );
         return quoted;
     }
+
+    @JRubyMethod(name = "quote_column_name", required = 1)
+    public static IRubyObject quote_column_name(
+            final ThreadContext context,
+            final IRubyObject self,
+            final IRubyObject string) { // "#{name.to_s.gsub('"', '""')}"
+        return quoteCharAndDecorateWith(context, string.asString(), '"', '"', (byte) '"', (byte) '"');
+    }
+
 }
