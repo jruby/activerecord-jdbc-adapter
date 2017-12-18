@@ -108,36 +108,37 @@ class PostgresSimpleTest < Test::Unit::TestCase
     connection.drop_table :my_posts rescue nil
   end
 
-  def test_supports_standard_conforming_string
-    assert([true, false].include?(connection.supports_standard_conforming_strings?))
-  end
+  # def test_supports_standard_conforming_string
+  #   assert([true, false].include?(connection.supports_standard_conforming_strings?))
+  # end
 
-  def test_standard_conforming_string_default_set_on_new_connections
-    c = ActiveRecord::Base.postgresql_connection(POSTGRES_CONFIG)
-    assert_equal true, c.instance_variable_get("@standard_conforming_strings")
-  end
+  # def test_standard_conforming_string_default_set_on_new_connections
+  #   c = ActiveRecord::Base.postgresql_connection(POSTGRES_CONFIG)
+  #   assert_equal true, c.instance_variable_get("@standard_conforming_strings")
+  # end
 
-  def test_default_standard_conforming_string
-    if connection.supports_standard_conforming_strings?
-      assert_equal true, connection.standard_conforming_strings?
-    else
-      assert_equal false, connection.standard_conforming_strings?
-    end
-  end
+  # def test_default_standard_conforming_string
+  #   if connection.supports_standard_conforming_strings?
+  #     assert_equal true, connection.standard_conforming_strings?
+  #   else
+  #     assert_equal false, connection.standard_conforming_strings?
+  #   end
+  # end
 
+  # AR core has not set_standard_conforming_strings always 'on'
   def test_string_quoting_with_standard_conforming_strings
-    if connection.supports_standard_conforming_strings?
+    # if connection.supports_standard_conforming_strings?
       s = "\\m it's \\M"
       assert_equal "'\\m it''s \\M'", connection.quote(s)
-    end
+    # end
   end
 
-  def test_string_quoting_without_standard_conforming_strings
-    connection.standard_conforming_strings = false
-    s = "\\m it's \\M"
-    assert_equal "'\\\\m it''s \\\\M'", connection.quote(s)
-    connection.standard_conforming_strings = true
-  end
+  # def test_string_quoting_without_standard_conforming_strings
+  #   connection.standard_conforming_strings = false
+  #   s = "\\m it's \\M"
+  #   assert_equal "'\\\\m it''s \\\\M'", connection.quote(s)
+  #   connection.standard_conforming_strings = true
+  # end
 
   test 'returns correct visitor type' do
     assert_not_nil visitor = connection.instance_variable_get(:@visitor)
@@ -150,7 +151,7 @@ class PostgresSimpleTest < Test::Unit::TestCase
   def test_primary_key
     assert_equal 'id', connection.primary_key('entries')
     assert_equal 'custom_id', connection.primary_key('custom_pk_names')
-    # assert_equal 'id', connection.primary_key('auto_ids')
+    assert_equal 'id', connection.primary_key('auto_ids')
   end
 
   def test_primary_key_without_sequence

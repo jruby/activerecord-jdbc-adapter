@@ -43,7 +43,7 @@ class PostgresqlOOIDTypesTest < Test::Unit::TestCase
 
   def test_returns_column_and_resolves_oid_type
     adapter = ActiveRecord::Base.connection
-    column = adapter.column_for('some_samples', :int)
+    column = adapter.send :column_for, 'some_samples', :int
     assert_not_nil column
     assert_equal :integer, column.type
   end

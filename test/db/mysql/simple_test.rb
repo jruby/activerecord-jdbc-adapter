@@ -290,12 +290,12 @@ class MySQLSimpleTest < Test::Unit::TestCase
 
       assert index.call(:index_bulks_on_name2)
 
-      # AR 4.2 :
-      #  SHOW KEYS FROM `bulks`
-      #  SHOW TABLES LIKE 'bulks'
-      #  SHOW KEYS FROM `bulks`
-      #  ALTER TABLE `bulks` DROP INDEX index_bulks_on_name2, ADD UNIQUE INDEX new_name2_index (`name2`)
-      expected_query_count = defined?(JRUBY_VERSION) ? 4 : 3 # JRuby/MRI
+      # AR 5.0 :
+      # SHOW KEYS FROM `bulks`
+      # SELECT table_name FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'bulks'
+      # SHOW KEYS FROM `bulks`
+      # ALTER TABLE `bulks` DROP INDEX index_bulks_on_name2, ADD UNIQUE INDEX `new_name2_index`  (`name2`)
+      expected_query_count = 4 # defined?(JRUBY_VERSION) ? 4 : 3 # MRI
       # no SHOW TABLES LIKE 'bulks' in JRuby since we do table_exists? with JDBC APIs
       assert_queries(expected_query_count) do
         with_bulk_change_table('bulks') do |t|

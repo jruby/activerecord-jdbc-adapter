@@ -15,14 +15,14 @@ module RakeTestSupport
     def startup
       super
       load 'rails_stub.rb'
-      if defined? ArJdbc
+      if defined? JRUBY_VERSION
         __file__ = File.expand_path('../../lib/arjdbc/tasks/databases.rake', __FILE__)
         ArJdbc.disable_warn "double loading #{__file__} please delete lib/tasks/jdbc.rake if present!"
       end
     end
 
     def shutdown
-      if defined? ArJdbc
+      if defined? JRUBY_VERSION
         __file__ = File.expand_path('../../lib/arjdbc/tasks/databases.rake', __FILE__)
         ArJdbc.enable_warn "double loading #{__file__} please delete lib/tasks/jdbc.rake if present!"
       end

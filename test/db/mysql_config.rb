@@ -17,10 +17,4 @@ if driver = ENV['DRIVER']
     require 'jdbc/mariadb'; Jdbc::MariaDB.load_driver
   end
   MYSQL_CONFIG[:driver] = driver if driver.index('.')
-else
-  # detect rake test_mariadb when "jdbc-mariadb/lib" is on the load-path :
-  if $LOAD_PATH.find { |path| path =~ /jdbc\-mariadb\/lib$/ }
-    MYSQL_CONFIG[:adapter] = 'mariadb'
-    #MYSQL_CONFIG[:driver] = 'org.mariadb.jdbc.Driver'
-  end
 end

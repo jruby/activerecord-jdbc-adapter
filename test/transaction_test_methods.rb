@@ -33,7 +33,7 @@ module TransactionTestMethods
   end
 
   def setup_failed?; @setup_failed ||= false end
-
+  
   def test_transaction_isolation_read_uncommitted
     # It is impossible to properly test read uncommitted. The SQL standard only
     # specifies what must not happen at a certain level, not what must happen. At

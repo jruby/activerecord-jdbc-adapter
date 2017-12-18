@@ -10,7 +10,7 @@ url = MYSQL_CONFIG[:url] || begin
   "jdbc:mysql://#{url_part}/#{MYSQL_CONFIG[:database]}"
 end
 
-ActiveRecord::Base.establish_connection({
+Test::Unit::TestCase.establish_connection({
   :adapter => 'jdbc', :url => url, :driver => 'com.mysql.jdbc.Driver',
   :username => MYSQL_CONFIG[:username],
   :password => MYSQL_CONFIG[:password],

@@ -48,5 +48,5 @@ module Jdbc
 
     end
 
-  end
+  end if defined? JRUBY_VERSION
 end

@@ -14,4 +14,4 @@ JDBC_CONFIG = {
 JDBC_CONFIG[:url] = "jdbc:mysql://" <<
   "#{MYSQL_CONFIG[:host]}:#{MYSQL_CONFIG[:port] || 3306}/#{MYSQL_CONFIG[:database]}"
 
-ActiveRecord::Base.establish_connection(JDBC_CONFIG)
+Test::Unit::TestCase.establish_connection(JDBC_CONFIG)

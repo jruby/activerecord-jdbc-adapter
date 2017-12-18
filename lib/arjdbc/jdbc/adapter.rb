@@ -400,24 +400,7 @@ module ActiveRecord
         @connection.update_lob_value(record, column, value)
       end
 
-      if ActiveRecord::VERSION::MAJOR == 3 && ActiveRecord::VERSION::MINOR == 0
 
-        #attr_reader :visitor unless method_defined?(:visitor) # not in 3.0
-
-        # @private
-        def to_sql(arel, binds = nil)
-          # NOTE: can not handle `visitor.accept(arel.ast)` right
-          arel.respond_to?(:to_sql) ? arel.send(:to_sql) : arel
-        end
-
-      elsif ActiveRecord::VERSION::MAJOR < 3 # AR-2.3 'fake' #to_sql method
-
-        # @private
-        def to_sql(sql, binds = nil)
-          sql
-        end
-
-      end
 
       protected
 
@@ -569,14 +552,9 @@ module ActiveRecord
         arel.respond_to?(:to_sql) ? arel.send(:to_sql) : arel
       end
 
-      if ActiveRecord::VERSION::MAJOR > 2
-        # Helper useful during {#quote} since AREL might pass in it's literals
-        # to be quoted, fixed since AREL 4.0.0.beta1 : http://git.io/7gyTig
-        def sql_literal?(value); ::Arel::Nodes::SqlLiteral === value; end
-      else
-        # @private
-        def sql_literal?(value); false; end
-      end
+      # Helper useful during {#quote} since AREL might pass in it's literals
+      # to be quoted, fixed since AREL 4.0.0.beta1 : http://git.io/7gyTig
+      def sql_literal?(value); ::Arel::Nodes::SqlLiteral === value; end
 
       # Helper to get local/UTC time (based on `ActiveRecord::Base.default_timezone`).
       def get_time(value)
@@ -618,65 +596,45 @@ module ActiveRecord
 
       public
 
-      # @note Used by Java API to convert dates from (custom) SELECTs (might get refactored).
       # @private
-      def _string_to_date(value); jdbc_column_class.string_to_date(value) end
+      @@_date = nil
 
-      # @note Used by Java API to convert times from (custom) SELECTs (might get refactored).
-      # @private
-      def _string_to_time(value); jdbc_column_class.string_to_dummy_time(value) end
-
-      # @note Used by Java API to convert times from (custom) SELECTs (might get refactored).
-      # @private
-      def _string_to_timestamp(value); jdbc_column_class.string_to_time(value) end
-
-      if ActiveRecord::VERSION::STRING > '4.2'
-
-        # @private
-        @@_date = nil
-
-        # @private
-        def _string_to_date(value)
-          if jdbc_column_class.respond_to?(:string_to_date)
-            jdbc_column_class.string_to_date(value)
-          else
-            (@@_date ||= ActiveRecord::Type::Date.new).send(:cast_value, value)
-          end
+      # @private @deprecated no longer used
+      def _string_to_date(value)
+        if jdbc_column_class.respond_to?(:string_to_date)
+          jdbc_column_class.string_to_date(value)
+        else
+          (@@_date ||= ActiveRecord::Type::Date.new).send(:cast_value, value)
         end
-
-        # @private
-        @@_time = nil
-
-        # @private
-        def _string_to_time(value)
-          if jdbc_column_class.respond_to?(:string_to_dummy_time)
-            jdbc_column_class.string_to_dummy_time(value)
-          else
-            (@@_time ||= ActiveRecord::Type::Time.new).send(:cast_value, value)
-          end
-        end
-
-        # @private
-        @@_date_time = nil
-
-        # @private
-        def _string_to_timestamp(value)
-          if jdbc_column_class.respond_to?(:string_to_time)
-            jdbc_column_class.string_to_time(value)
-          else
-            (@@_date_time ||= ActiveRecord::Type::DateTime.new).send(:cast_value, value)
-          end
-        end
-
       end
 
-      if ActiveRecord::VERSION::MAJOR < 4 # emulating Rails 3.x compatibility
-        JdbcConnection.raw_date_time = true if JdbcConnection.raw_date_time?.nil?
-        JdbcConnection.raw_boolean = true if JdbcConnection.raw_boolean?.nil?
-      elsif ArJdbc::AR42 # AR::Type should do the conversion - for better accuracy
-        JdbcConnection.raw_date_time = true if JdbcConnection.raw_date_time?.nil?
-        JdbcConnection.raw_boolean = true if JdbcConnection.raw_boolean?.nil?
+      # @private
+      @@_time = nil
+
+      # @private @deprecated no longer used
+      def _string_to_time(value)
+        if jdbc_column_class.respond_to?(:string_to_dummy_time)
+          jdbc_column_class.string_to_dummy_time(value)
+        else
+          (@@_time ||= ActiveRecord::Type::Time.new).send(:cast_value, value)
+        end
       end
+
+      # @private @deprecated no longer used
+      @@_date_time = nil
+
+      # @private
+      def _string_to_timestamp(value)
+        if jdbc_column_class.respond_to?(:string_to_time)
+          jdbc_column_class.string_to_time(value)
+        else
+          (@@_date_time ||= ActiveRecord::Type::DateTime.new).send(:cast_value, value)
+        end
+      end
+
+      # AR::Type should do the conversion - for better accuracy
+      JdbcConnection.raw_date_time = true if JdbcConnection.raw_date_time?.nil?
+      JdbcConnection.raw_boolean = true if JdbcConnection.raw_boolean?.nil?
 
     end
   end
