@@ -3,7 +3,7 @@ module ActiveRecord
   class JDBCError < WrappedDatabaseException
 
     def initialize(message = nil, cause = $!)
-      super( ( message.nil? && cause ) ? cause.message : message, nil )
+      super( ( message.nil? && cause ) ? cause.message : message )
       if cause.is_a? Java::JavaSql::SQLException
         @jdbc_exception, @cause = cause, nil
       else
