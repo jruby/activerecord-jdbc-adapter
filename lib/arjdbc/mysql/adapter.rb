@@ -86,11 +86,25 @@ module ActiveRecord
       # QUOTING ==================================================
       #++
 
-      # @note provided by ArJdbc::MySQL (native code),
+      # NOTE: quote_string(string) provided by ArJdbc::MySQL (native code),
       # this piece is also native (mysql2) under MRI: `@connection.escape(string)`
-      # def quote_string(string)
-      #   string.gsub(/[\x00\n\r\\\'\"]/, '\\\\\0')
-      # end
+
+      def quoted_date(value)
+        if supports_datetime_with_precision?
+          super
+        else
+          super.sub(/\.\d{6}\z/, '')
+        end
+      end
+
+      def _quote(value)
+        if value.is_a?(Type::Binary::Data)
+          "x'#{value.hex}'"
+        else
+          super
+        end
+      end
+      private :_quote
 
       #--
       # CONNECTION MANAGEMENT ====================================
