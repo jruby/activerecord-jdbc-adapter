@@ -115,12 +115,8 @@ module ActiveRecord
 
       private
 
-      def full_version
-        @full_version ||= begin
-          result = execute 'SELECT VERSION()', 'SCHEMA'
-          result.first.values.first # [{"VERSION()"=>"5.5.37-0ubuntu..."}]
-        end
-      end
+      # e.g. "5.7.20-0ubuntu0.16.04.1"
+      def full_version; @full_version ||= @connection.full_version end
 
       def jdbc_connection_class(spec)
         ::ActiveRecord::ConnectionAdapters::MySQLJdbcConnection

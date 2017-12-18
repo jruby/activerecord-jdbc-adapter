@@ -25,12 +25,14 @@
  ***** END LICENSE BLOCK *****/
 package arjdbc.mysql;
 
+import arjdbc.jdbc.Callable;
 import arjdbc.jdbc.DriverWrapper;
 import arjdbc.jdbc.RubyJdbcConnection;
 import arjdbc.util.DateTimeUtils;
 
 import java.lang.reflect.InvocationTargetException;
 import java.sql.Connection;
+import java.sql.DatabaseMetaData;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.sql.ResultSet;
@@ -84,6 +86,16 @@ public class MySQLRubyJdbcConnection extends RubyJdbcConnection {
     public IRubyObject query(final ThreadContext context, final IRubyObject sql) throws SQLException {
         final String query = sql.convertToString().getUnicodeValue(); // sql
         return executeUpdate(context, query, false);
+    }
+
+    @JRubyMethod(name = { "full_version" })
+    public IRubyObject db_version(final ThreadContext context) {
+        return withConnection(context, new Callable<IRubyObject>() {
+            public IRubyObject call(final Connection connection) throws SQLException {
+                final DatabaseMetaData metaData = connection.getMetaData();
+                return context.runtime.newString(metaData.getDatabaseProductVersion());
+            }
+        });
     }
 
     @Override
@@ -243,7 +255,6 @@ public class MySQLRubyJdbcConnection extends RubyJdbcConnection {
     }
 
     private static boolean doStopCleanupThread() throws SQLException {
-        // TODO when refactoring default behavior to "stop" consider not doing so for JNDI
         return stopCleanupThread != null && stopCleanupThread.booleanValue();
     }
 
