@@ -27,14 +27,15 @@ package arjdbc.db2;
 
 import arjdbc.jdbc.Callable;
 import arjdbc.jdbc.RubyJdbcConnection;
+import arjdbc.util.StringHelper;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Statement;
 
 import org.jruby.Ruby;
+import org.jruby.RubyBoolean;
 import org.jruby.RubyClass;
 import org.jruby.RubyString;
 import org.jruby.anno.JRubyMethod;
@@ -49,31 +50,35 @@ import org.jruby.util.ByteList;
  */
 public class DB2RubyJdbcConnection extends RubyJdbcConnection {
 
-    protected DB2RubyJdbcConnection(Ruby runtime, RubyClass metaClass) {
+    public DB2RubyJdbcConnection(Ruby runtime, RubyClass metaClass) {
         super(runtime, metaClass);
     }
 
     public static RubyClass createDB2JdbcConnectionClass(Ruby runtime, RubyClass jdbcConnection) {
-        RubyClass clazz = RubyJdbcConnection.getConnectionAdapters(runtime).defineClassUnder("DB2JdbcConnection",
-                jdbcConnection, DB2_JDBCCONNECTION_ALLOCATOR);
+        RubyClass clazz = getConnectionAdapters(runtime).
+            defineClassUnder("DB2JdbcConnection", jdbcConnection, ALLOCATOR);
         clazz.defineAnnotatedMethods(DB2RubyJdbcConnection.class);
 
         return clazz;
     }
 
-    private static ObjectAllocator DB2_JDBCCONNECTION_ALLOCATOR = new ObjectAllocator() {
+    public static RubyClass load(final Ruby runtime) {
+        RubyClass jdbcConnection = getJdbcConnection(runtime);
+        return createDB2JdbcConnectionClass(runtime, jdbcConnection);
+    }
+
+    protected static ObjectAllocator ALLOCATOR = new ObjectAllocator() {
         public IRubyObject allocate(Ruby runtime, RubyClass klass) {
             return new DB2RubyJdbcConnection(runtime, klass);
         }
     };
 
     @JRubyMethod(name = "select?", required = 1, meta = true, frame = false)
-    public static IRubyObject select_p(final ThreadContext context,
+    public static RubyBoolean select_p(final ThreadContext context,
         final IRubyObject self, final IRubyObject sql) {
-        if ( isValues(sql.convertToString()) ) {
-            return context.getRuntime().newBoolean( true );
-        }
-        return arjdbc.jdbc.RubyJdbcConnection.select_p(context, self, sql);
+        final RubyString sqlStr = sql.asString();
+        if ( isValues(sqlStr) ) return context.runtime.getTrue();
+        return arjdbc.jdbc.RubyJdbcConnection.select_p(context, self, sqlStr);
     }
 
     // DB2 supports 'stand-alone' VALUES expressions
@@ -81,7 +86,7 @@ public class DB2RubyJdbcConnection extends RubyJdbcConnection {
 
     private static boolean isValues(final RubyString sql) {
         final ByteList sqlBytes = sql.getByteList();
-        return startsWithIgnoreCase(sqlBytes, VALUES);
+        return StringHelper.startsWithIgnoreCase(sqlBytes, VALUES);
     }
 
     private static final String[] TABLE_TYPES = new String[] {
@@ -107,31 +112,10 @@ public class DB2RubyJdbcConnection extends RubyJdbcConnection {
                 try {
                     statement = connection.prepareStatement("VALUES IDENTITY_VAL_LOCAL()");
                     genKeys = statement.executeQuery();
-                    return doMapGeneratedKeys(context.getRuntime(), genKeys, true);
+                    return doMapGeneratedKeys(context.runtime, genKeys, true);
                 }
                 catch (final SQLException e) {
-                    debugMessage(context, "failed to get generated keys: " + e.getMessage());
-                    throw e;
-                }
-                finally { close(genKeys); close(statement); }
-            }
-        });
-    }
-
-    // NOTE: this is non-sense or DB2 - but it has been originally implemented this way !
-    //@JRubyMethod(name = {"identity_val_local", "last_insert_id"}, required = 1)
-    private IRubyObject identity_val_local(final ThreadContext context, final IRubyObject table)
-        throws SQLException {
-        return withConnection(context, new Callable<IRubyObject>() {
-            public IRubyObject call(final Connection connection) throws SQLException {
-                Statement statement = null; ResultSet genKeys = null;
-                try {
-                    statement = connection.createStatement();
-                    genKeys = statement.executeQuery("SELECT IDENTITY_VAL_LOCAL() FROM " + table);
-                    return doMapGeneratedKeys(context.getRuntime(), genKeys, true);
-                }
-                catch (final SQLException e) {
-                    debugMessage(context, "failed to get generated keys: " + e.getMessage());
+                    debugMessage(context.runtime, "failed to get generated keys: ", e);
                     throw e;
                 }
                 finally { close(genKeys); close(statement); }

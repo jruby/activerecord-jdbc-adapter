@@ -1,5 +1,6 @@
 require 'rake_test_support'
 require 'db/postgres'
+require 'db/postgresql/test_helper'
 
 class PostgresRakeTest < Test::Unit::TestCase
   include RakeTestSupport
@@ -30,7 +31,9 @@ class PostgresRakeTest < Test::Unit::TestCase
 
   test 'rake db:drop (non-existing database)' do
     drop_rake_test_database(:silence)
-    Rake::Task["db:drop"].invoke
+    with_disabled_jdbc_driver_logging do
+      Rake::Task["db:drop"].invoke
+    end
   end
 
   test 'rake db:test:purge' do

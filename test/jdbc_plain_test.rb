@@ -5,14 +5,17 @@ class JdbcPlainTest < Test::Unit::TestCase
 
   def self.startup
     super
-    @connection = ActiveRecord::Base.remove_connection
+    disconnect_if_connected
+    clean_visitor_type!
+    @_prev_ = ActiveRecord::Base.remove_connection
     ActiveRecord::Base.establish_connection JDBC_DERBY_CONFIG
     define_schema
   end
 
   def self.shutdown
     drop_schema
-    @connection && ActiveRecord::Base.establish_connection(@connection)
+    @_prev_ && ActiveRecord::Base.establish_connection(@_prev_)
+    clean_visitor_type!
     super
   end
 
@@ -37,9 +40,7 @@ class JdbcPlainTest < Test::Unit::TestCase
     connection.drop_table :tracks
   end
 
-  def self.prev_connection?
-    !! @connection
-  end
+  def self.prev_connection?; !! @_prev_ end
 
   class Album < ActiveRecord::Base
     has_many :tracks
@@ -71,16 +72,11 @@ class JdbcPlainTest < Test::Unit::TestCase
     # Works standalone when run as test_jdbc_derby.
     skip 'JdbcAdapter with 2 dialects ~ AREL collision' if self.class.prev_connection?
     # && ! prev_connection.is_a?(ArJdbc::Derby)
-    
+
     assert_equal 8, Album.find(album.id).tracks.length
 
-    if ar_version('3.1')
-      assert_equal "Black and Blue", Album.where(:title => 'Black and Blue').first.title
-      assert Track.where(:title => 'Hot Stuff').first.album_id
-    else
-      assert_equal "Sticky Fingers", Album.find_by_title('Black and Blue').title
-      assert Track.find_by_title('Hot Stuff').album_id
-    end
+    assert_equal "Black and Blue", Album.where(:title => 'Black and Blue').first.title
+    assert Track.where(:title => 'Hot Stuff').first.album_id
   end
 
 end

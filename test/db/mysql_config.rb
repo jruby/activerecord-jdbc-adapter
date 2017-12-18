@@ -18,3 +18,6 @@ if driver = ENV['DRIVER']
   end
   MYSQL_CONFIG[:driver] = driver if driver.index('.')
 end
+
+MYSQL_CONFIG[:properties] ||= {}
+MYSQL_CONFIG[:properties]['cacheDefaultTimezone'] = false

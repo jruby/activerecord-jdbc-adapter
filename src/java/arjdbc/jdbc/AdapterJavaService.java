@@ -1,5 +1,5 @@
 /***** BEGIN LICENSE BLOCK *****
- * Copyright (c) 2012-2013 Karol Bucek <self@kares.org>
+ * Copyright (c) 2012-2014 Karol Bucek <self@kares.org>
  * Copyright (c) 2006-2010 Nick Sieger <nick@nicksieger.com>
  * Copyright (c) 2006-2007 Ola Bini <ola.bini@gmail.com>
  * Copyright (c) 2008-2009 Thomas E Enebo <enebo@acm.org>
@@ -28,17 +28,15 @@ package arjdbc.jdbc;
 
 import java.io.IOException;
 
-import arjdbc.ArJdbcModule;
-
 import org.jruby.Ruby;
 import org.jruby.runtime.load.BasicLibraryService;
 
+@Deprecated
 public class AdapterJavaService implements BasicLibraryService {
 
     public boolean basicLoad(final Ruby runtime) throws IOException {
-        // ActiveRecord::ConnectionAdapter-s :
         RubyJdbcConnection.createJdbcConnectionClass(runtime);
-        ArJdbcModule.load(runtime);
+        arjdbc.ArJdbcModule.load(runtime);
         return true;
     }
 

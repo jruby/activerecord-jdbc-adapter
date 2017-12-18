@@ -25,7 +25,8 @@
 
 package arjdbc.h2;
 
-import arjdbc.jdbc.RubyJdbcConnection;
+import java.sql.Connection;
+import java.sql.SQLException;
 
 import org.jruby.Ruby;
 import org.jruby.RubyClass;
@@ -36,22 +37,27 @@ import org.jruby.runtime.builtin.IRubyObject;
  *
  * @author nicksieger
  */
-public class H2RubyJdbcConnection extends RubyJdbcConnection {
+@org.jruby.anno.JRubyClass(name = "ActiveRecord::ConnectionAdapters::H2JdbcConnection")
+public class H2RubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection {
     private static final long serialVersionUID = -2652911264521657428L;
-    
-    protected H2RubyJdbcConnection(Ruby runtime, RubyClass metaClass) {
+
+    public H2RubyJdbcConnection(Ruby runtime, RubyClass metaClass) {
         super(runtime, metaClass);
     }
 
     public static RubyClass createH2JdbcConnectionClass(Ruby runtime, RubyClass jdbcConnection) {
-        RubyClass clazz = RubyJdbcConnection.getConnectionAdapters(runtime).defineClassUnder("H2JdbcConnection",
-                jdbcConnection, H2_JDBCCONNECTION_ALLOCATOR);
+        RubyClass clazz = getConnectionAdapters(runtime).
+            defineClassUnder("H2JdbcConnection", jdbcConnection, ALLOCATOR);
         clazz.defineAnnotatedMethods(H2RubyJdbcConnection.class);
-
         return clazz;
     }
 
-    private static ObjectAllocator H2_JDBCCONNECTION_ALLOCATOR = new ObjectAllocator() {
+    public static RubyClass load(final Ruby runtime) {
+        RubyClass jdbcConnection = getJdbcConnection(runtime);
+        return createH2JdbcConnectionClass(runtime, jdbcConnection);
+    }
+
+    protected static ObjectAllocator ALLOCATOR = new ObjectAllocator() {
         public IRubyObject allocate(Ruby runtime, RubyClass klass) {
             return new H2RubyJdbcConnection(runtime, klass);
         }
@@ -64,4 +70,16 @@ public class H2RubyJdbcConnection extends RubyJdbcConnection {
     protected boolean databaseSupportsSchemas() {
         return true;
     }
+
+    @Override
+    protected String caseConvertIdentifierForJdbc(final Connection connection, final String value) {
+        if ( value == null ) return null;
+        return value.toUpperCase();
+    }
+
+    // NOTE: not supported
+    // org.h2.jdbc.JdbcSQLException: Hexadecimal string contains non-hex character: "PUBLIC" [90004-178]
+    //@Override
+    //protected boolean useByteStrings() { return false; }
+
 }
