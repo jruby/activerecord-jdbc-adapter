@@ -28,12 +28,7 @@ module ArJdbc
     # @private
     def init_connection(jdbc_connection)
       meta = jdbc_connection.meta_data
-      if meta.driver_major_version == 1 # TODO check in driver code
-        # assumes MariaDB 1.x currently
-      elsif meta.driver_major_version < 5
-        raise ::ActiveRecord::ConnectionNotEstablished,
-          "MySQL adapter requires driver >= 5.0 got: '#{meta.driver_version}'"
-      elsif meta.driver_major_version == 5 && meta.driver_minor_version < 1
+      if meta.driver_major_version == 5 && meta.driver_minor_version < 1
         config[:connection_alive_sql] ||= 'SELECT 1' # need 5.1 for JDBC 4.0
       else
         # NOTE: since the loaded Java driver class can't change :
