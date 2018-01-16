@@ -39,7 +39,7 @@ module ArJdbc
     def self.jdbc_connection_class
       ::ActiveRecord::ConnectionAdapters::PostgreSQLJdbcConnection
     end
-    
+
     # @see ActiveRecord::ConnectionAdapters::JdbcAdapter#jdbc_column_class
     def jdbc_column_class; ::ActiveRecord::ConnectionAdapters::PostgreSQLColumn end
 
@@ -309,7 +309,7 @@ module ArJdbc
       unless lock_id.is_a?(Integer) && lock_id.bit_length <= 63
         raise(ArgumentError, "Postgres requires advisory lock ids to be a signed 64 bit integer")
       end
-      select_value("SELECT pg_advisory_unlock(#{lock_id})") == 't'.freeze
+      select_value("SELECT pg_advisory_unlock(#{lock_id})")
     end
 
     # Returns the configured supported identifier length supported by PostgreSQL,
@@ -557,7 +557,7 @@ module ArJdbc
     #  - format_type includes the column size constraint, e.g. varchar(50)
     #  - ::regclass is a function that gives the id for a table name
     def column_definitions(table_name)
-      rows = select_rows(<<-end_sql, 'SCHEMA')
+      select_rows(<<-end_sql, 'SCHEMA')
         SELECT a.attname, format_type(a.atttypid, a.atttypmod),
                pg_get_expr(d.adbin, d.adrelid), a.attnotnull, a.atttypid, a.atttypmod,
                (SELECT c.collname FROM pg_collation c, pg_type t
@@ -570,11 +570,6 @@ module ArJdbc
            AND a.attnum > 0 AND NOT a.attisdropped
          ORDER BY a.attnum
       end_sql
-
-      # Force the notnull attribute to a boolean
-      rows.each do |row|
-        row[3] = row[3] == 't' if row[3].is_a?(String)
-      end
     end
     private :column_definitions
 
@@ -666,7 +661,7 @@ module ArJdbc
                   AND castsource = #{quote column.sql_type}::regtype
               )
         end_sql
-        select_rows(sql, 'SCHEMA').first.first == 't'
+        select_value(sql, 'SCHEMA')
       end
     end
 
