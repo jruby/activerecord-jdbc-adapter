@@ -61,6 +61,9 @@ matrix:
         mariadb: '10.1'
       env: DB=mariadb PREPARED_STATEMENTS=true
     # Rails test-suite :
-    - env: DB=mysql2     TEST_PREFIX="rails:" AR_VERSION="v5.0.6"
-    - env: DB=postgresql TEST_PREFIX="rails:" AR_VERSION="v5.0.6"
+    - env: DB=mysql2     TEST_PREFIX="rails:" AR_VERSION="v5.0.6" # PS off by default
+    - env: DB=mysql2     TEST_PREFIX="rails:" AR_VERSION="v5.0.6" PREPARED_STATEMENTS=true
+    - env: DB=postgresql TEST_PREFIX="rails:" AR_VERSION="v5.0.6" # PS on by default
+    - env: DB=postgresql TEST_PREFIX="rails:" AR_VERSION="v5.0.6" PREPARED_STATEMENTS=false
+    - env: DB=postgresql TEST_PREFIX="rails:" AR_VERSION="v5.0.6" INSERT_RETURNIG=false
     - env: DB=sqlite3    TEST_PREFIX="rails:" AR_VERSION="v5.0.6"
