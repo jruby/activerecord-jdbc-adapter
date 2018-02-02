@@ -76,7 +76,7 @@ connections:
       insert_returning: <%= ENV['INSERT_RETURNING'] %> # really should leave it off to no key if not set
       <% end -%>
       <% if ENV.key?('PREPARED_STATEMENTS') -%>
-      insert_returning: <%= ENV['PREPARED_STATEMENTS'] %> # should leave it off to its default if not set
+      prepared_statements: <%= ENV['PREPARED_STATEMENTS'] %> # should leave it off to its default if not set
       <% end -%>
       username: <%= ENV['PGUSER'] || ENV['user'] || 'rails' %>
       properties:
