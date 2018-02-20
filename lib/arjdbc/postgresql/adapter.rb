@@ -402,41 +402,6 @@ module ArJdbc
       select_value("SELECT currval('#{sequence_name}')", 'SQL')
     end
 
-    # Create a new PostgreSQL database. Options include <tt>:owner</tt>, <tt>:template</tt>,
-    # <tt>:encoding</tt>, <tt>:collation</tt>, <tt>:ctype</tt>,
-    # <tt>:tablespace</tt>, and <tt>:connection_limit</tt> (note that MySQL uses
-    # <tt>:charset</tt> while PostgreSQL uses <tt>:encoding</tt>).
-    #
-    # Example:
-    # create_database config[:database], config
-    # create_database 'foo_development', encoding: 'unicode'
-    def create_database(name, options = {})
-      options = { :encoding => 'utf8' }.merge!(options.symbolize_keys)
-
-      option_string = options.sum do |key, value|
-        case key
-        when :owner
-          " OWNER = \"#{value}\""
-        when :template
-          " TEMPLATE = \"#{value}\""
-        when :encoding
-          " ENCODING = '#{value}'"
-        when :collation
-          " LC_COLLATE = '#{value}'"
-        when :ctype
-          " LC_CTYPE = '#{value}'"
-        when :tablespace
-          " TABLESPACE = \"#{value}\""
-        when :connection_limit
-          " CONNECTION LIMIT = #{value}"
-        else
-          ""
-        end
-      end
-
-      execute "CREATE DATABASE #{quote_table_name(name)}#{option_string}"
-    end
-
     def all_schemas
       select('SELECT nspname FROM pg_namespace').map { |row| row["nspname"] }
     end
