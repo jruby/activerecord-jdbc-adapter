@@ -106,7 +106,7 @@ module ActiveRecord
                   end
         # FIXME: execute_insert and executeUpdate mapping key results is very varied and I am wondering
         # if AR is now much more consistent.  I worked around by manually making a result here.
-        ::ActiveRecord::Result.new(nil, [[last_id]])
+        ::ActiveRecord::Result.new(['last_id'], [[last_id]])
       end
       alias insert_sql exec_insert
       deprecate insert_sql: :insert
