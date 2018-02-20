@@ -399,7 +399,7 @@ module ArJdbc
     end
 
     def last_insert_id_result(sequence_name)
-      select_value("SELECT currval('#{sequence_name}')", 'SQL')
+      exec_query("SELECT currval('#{sequence_name}')", 'SQL')
     end
 
     def all_schemas
@@ -648,7 +648,7 @@ module ArJdbc
     end
 
     def extract_table_ref_from_insert_sql(sql)
-      sql[/into\s+([^\(]*).*values\s*\(/i]
+      sql[/into\s("[A-Za-z0-9_."\[\]\s]+"|[A-Za-z0-9_."\[\]]+)\s*/im]
       $1.strip if $1
     end
 
