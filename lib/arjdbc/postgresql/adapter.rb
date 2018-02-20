@@ -457,18 +457,25 @@ module ArJdbc
     alias_method :quote_schema_name, :quote_column_name
 
     # Changes the column of a table.
+    # TODO: We can get rid of this if we stop supporting postgres 7.x
     def change_column(table_name, column_name, type, options = {})
+      clear_cache!
       quoted_table_name = quote_table_name(table_name)
       quoted_column_name = quote_table_name(column_name)
 
-      sql_type = type_to_sql(type, options[:limit], options[:precision], options[:scale])
-      sql_type << "[]" if options[:array]
+      sql_type = type_to_sql(type, options[:limit], options[:precision], options[:scale], options[:array])
 
       sql = "ALTER TABLE #{quoted_table_name} ALTER COLUMN #{quoted_column_name} TYPE #{sql_type}"
-      sql << " USING #{options[:using]}" if options[:using]
-      if options[:cast_as]
-        sql << " USING CAST(#{quoted_column_name} AS #{type_to_sql(options[:cast_as], options[:limit], options[:precision], options[:scale])})"
+      if options[:collation]
+        sql << " COLLATE \"#{options[:collation]}\""
       end
+      if options[:using]
+        sql << " USING #{options[:using]}"
+      elsif options[:cast_as]
+        cast_as_type = type_to_sql(options[:cast_as], options[:limit], options[:precision], options[:scale], options[:array])
+        sql << " USING CAST(#{quoted_column_name} AS #{cast_as_type})"
+      end
+
       begin
         execute sql
       rescue ActiveRecord::StatementInvalid => e
@@ -478,7 +485,8 @@ module ArJdbc
 
       change_column_default(table_name, column_name, options[:default]) if options_include_default?(options)
       change_column_null(table_name, column_name, options[:null], options[:default]) if options.key?(:null)
-    end # unless const_defined? :SchemaCreation
+      change_column_comment(table_name, column_name, options[:comment]) if options.key?(:comment)
+    end
 
     def change_column_pg7(table_name, column_name, type, options)
       quoted_table_name = quote_table_name(table_name)
