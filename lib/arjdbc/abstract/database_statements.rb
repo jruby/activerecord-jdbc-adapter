@@ -9,7 +9,9 @@ module ArJdbc
       # if prepared statements are enabled
       def exec_query(sql, name = nil, binds = [], prepare: false)
         if without_prepared_statement?(binds)
-          execute(sql, name)
+          # Calling #execute here instead of this blows up a bunch of
+          # AR tests because they stub out #execute
+          log(sql, name) { @connection.execute(sql) }
         else
           binds = convert_legacy_binds_to_attributes(binds) if binds.first.is_a?(Array)
           log(sql, name, binds) do
