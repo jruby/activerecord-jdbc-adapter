@@ -13,7 +13,9 @@ module ArJdbc
       # if prepared statements are enabled
       def exec_query(sql, name = nil, binds = NO_BINDS, prepare: false)
         if without_prepared_statement?(binds)
-          execute(sql, name)
+          # Calling #execute here instead of this blows up a bunch of
+          # AR tests because they stub out #execute
+          log(sql, name) { @connection.execute(sql) }
         else
           log(sql, name, binds) do
             # It seems that #supports_statement_cache? is defined but isn't checked before setting "prepare" (AR 5.0)
