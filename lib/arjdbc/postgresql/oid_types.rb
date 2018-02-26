@@ -40,6 +40,11 @@ module ArJdbc
       end
 
       def get_oid_type(oid, fmod, column_name, sql_type = '') # :nodoc:
+        # This can be called before the type map is created
+        # For example, when querying the database version to find out what
+        # should be in the type map
+        return unless type_map
+
         if !type_map.key?(oid)
           load_additional_types(type_map, [oid])
         end
@@ -162,7 +167,12 @@ module ArJdbc
           query += initializer.query_conditions_for_initial_load(type_map)
         end
 
+        # Make it so the type map isn't available to prevent
+        # loops with get_oid_type
+        saved_type_map = @type_map
+        @type_map = nil
         records = execute(query, 'SCHEMA')
+        @type_map = saved_type_map
         initializer.run(records)
       end
 

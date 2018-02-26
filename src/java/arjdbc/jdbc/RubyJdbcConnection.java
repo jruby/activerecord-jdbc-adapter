@@ -3644,7 +3644,7 @@ public class RubyJdbcConnection extends RubyObject {
         return Result.newInstance(context, columnsToArray(context, columns), rows, Block.NULL_BLOCK); // Result.new
     }
 
-    private static RubyArray columnsToArray(ThreadContext context, ColumnData[] columns) {
+    protected static RubyArray columnsToArray(ThreadContext context, ColumnData[] columns) {
         final IRubyObject[] cols = new IRubyObject[columns.length];
 
         for ( int i = 0; i < columns.length; i++ ) cols[i] = columns[i].getName(context);
@@ -3752,6 +3752,7 @@ public class RubyJdbcConnection extends RubyObject {
         public final int type;
 
         private final String label;
+        private IRubyObject rubyType = null;
 
         @Deprecated
         public ColumnData(RubyString name, int type, int idx) {
@@ -3768,6 +3769,11 @@ public class RubyJdbcConnection extends RubyObject {
             this.index = idx;
         }
 
+        public ColumnData(String label, int type, int idx, IRubyObject rubyType) {
+            this(label, type, idx);
+            this.rubyType = rubyType;
+        }
+
         // NOTE: meant temporary for others to update from accesing name
         ColumnData(ThreadContext context, String label, int type, int idx) {
             this(label, type, idx);
@@ -3778,9 +3784,13 @@ public class RubyJdbcConnection extends RubyObject {
             return label;
         }
 
-        RubyString getName(final ThreadContext context) {
+        public RubyString getName(final ThreadContext context) {
             if ( name != null ) return name;
             return name = cachedString(context, label);
+        }
+
+        public IRubyObject getRubyType() {
+            return rubyType;
         }
 
         @Override
@@ -3790,7 +3800,7 @@ public class RubyJdbcConnection extends RubyObject {
 
     }
 
-    private ColumnData[] setupColumns(
+    protected ColumnData[] setupColumns(
             final ThreadContext context,
             final Connection connection,
             final ResultSetMetaData resultMetaData,
