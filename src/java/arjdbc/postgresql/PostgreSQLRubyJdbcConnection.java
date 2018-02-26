@@ -35,6 +35,7 @@ import java.sql.Connection;
 import java.sql.Date;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Timestamp;
@@ -60,6 +61,7 @@ import org.jruby.RubyModule;
 import org.jruby.RubyString;
 import org.jruby.anno.JRubyMethod;
 import org.jruby.javasupport.JavaUtil;
+import org.jruby.runtime.Block;
 import org.jruby.runtime.ObjectAllocator;
 import org.jruby.runtime.ThreadContext;
 import org.jruby.runtime.builtin.IRubyObject;
@@ -68,6 +70,8 @@ import org.jruby.util.ByteList;
 import org.jruby.util.SafePropertyAccessor;
 import org.postgresql.PGConnection;
 import org.postgresql.PGStatement;
+import org.postgresql.core.BaseConnection;
+import org.postgresql.core.Field;
 import org.postgresql.geometric.PGbox;
 import org.postgresql.geometric.PGcircle;
 import org.postgresql.geometric.PGline;
@@ -75,6 +79,8 @@ import org.postgresql.geometric.PGlseg;
 import org.postgresql.geometric.PGpath;
 import org.postgresql.geometric.PGpoint;
 import org.postgresql.geometric.PGpolygon;
+import org.postgresql.jdbc.PgResultSetMetaData;
+import org.postgresql.jdbc.PgResultSetMetaDataWrapper; // This is a hack unfortunately to get around method scoping
 import org.postgresql.util.PGInterval;
 import org.postgresql.util.PGobject;
 
@@ -278,6 +284,56 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
         pgConnection.addDataType("int8range", Int8RangeType.class);
         pgConnection.addDataType("numrange",  NumRangeType.class);
         return connection;
+    }
+
+    // From what I can tell downCase isn't used for postgres but leaving it here to mimic the overridden method
+    @Override
+    protected ColumnData[] setupColumns(
+            final ThreadContext context,
+            final Connection connection,
+            final ResultSetMetaData resultMetaData,
+            final boolean downCase) throws SQLException {
+
+        final int columnCount = resultMetaData.getColumnCount();
+        final ColumnData[] columns = new ColumnData[columnCount];
+        final IRubyObject adapter = getAdapter();
+        final PgResultSetMetaDataWrapper mdWrapper = new PgResultSetMetaDataWrapper((PgResultSetMetaData) resultMetaData);
+
+        for ( int i = 1; i <= columnCount; i++ ) { // metadata is one-based
+            String name = resultMetaData.getColumnLabel(i);
+            if ( downCase ) {
+                name = name.toLowerCase();
+            } else {
+                name = caseConvertIdentifierForRails(connection, name);
+            }
+
+            final int columnType = resultMetaData.getColumnType(i);
+            final Field field = mdWrapper.getField(i);
+            final IRubyObject[] args = { context.runtime.newFixnum(field.getOID()), context.runtime.newFixnum(field.getMod()), cachedString(context, name) };
+            columns[i - 1] = new ColumnData(name, columnType, i, adapter.callMethod(context, "get_oid_type", args));
+        }
+
+        return columns;
+    }
+
+    // This should probably apply to all adapters but didn't want to affect them for now
+    protected static IRubyObject newResult(final ThreadContext context, ColumnData[] columns, IRubyObject rows) {
+        final RubyClass Result = getResult(context.runtime);
+        return Result.newInstance(context, columnsToArray(context, columns), rows, columnTypes(context, columns), Block.NULL_BLOCK); // Result.new
+    }
+
+    private static RubyHash columnTypes(ThreadContext context, ColumnData[] columns) {
+        RubyHash types = RubyHash.newHash(context.runtime);
+
+        for ( int i = 0; i < columns.length; i++ ) {
+            IRubyObject type = columns[i].getRubyType();
+
+            if ( type != null ) {
+                types.fastASet(columns[i].getName(context), type);
+            }
+        }
+
+        return types;
     }
 
     @Override
@@ -693,6 +749,7 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
         if ( rawArrayType == Boolean.TRUE ) { // pre AR 4.0 compatibility
             return stringToRuby(context, runtime, resultSet, column);
         }
+
         // NOTE: avoid `finally { array.free(); }` on PostgreSQL due :
         // java.sql.SQLFeatureNotSupportedException:
         // Method org.postgresql.jdbc4.Jdbc4Array.free() is not yet implemented.
@@ -705,6 +762,7 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
         final ResultSet arrayResult = value.getResultSet(); // 1: index, 2: value
         final int baseType = value.getBaseType();
         while ( arrayResult.next() ) {
+
             array.append( jdbcToRuby(context, runtime, 2, baseType, arrayResult) );
         }
         return array;
