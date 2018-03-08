@@ -98,19 +98,6 @@ module ActiveRecord
         string.gsub(/[\x00\n\r\\\'\"]/, '\\\\\0')
       end
 
-      def exec_insert(sql, name = nil, binds = [], pk = nil, sequence_name = nil)
-        last_id = if without_prepared_statement?(binds)
-                    log(sql, name) { @connection.execute_insert(sql) }
-                  else
-                    log(sql, name, binds) { @connection.execute_insert(sql, binds) }
-                  end
-        # FIXME: execute_insert and executeUpdate mapping key results is very varied and I am wondering
-        # if AR is now much more consistent.  I worked around by manually making a result here.
-        ::ActiveRecord::Result.new(['last_id'], [[last_id]])
-      end
-      alias insert_sql exec_insert
-      deprecate insert_sql: :insert
-
       private
 
       def full_version

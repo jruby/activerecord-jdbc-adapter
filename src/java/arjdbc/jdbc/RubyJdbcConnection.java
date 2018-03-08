@@ -859,25 +859,69 @@ public class RubyJdbcConnection extends RubyObject {
         return statement.execute(query);
     }
 
+    /**
+     * Executes an INSERT SQL statement
+     * @param context
+     * @param sql
+     * @return ActiveRecord::Result
+     * @throws SQLException
+     */
     @JRubyMethod(name = "execute_insert", required = 1)
-    public IRubyObject execute_insert(final ThreadContext context, final IRubyObject sql)
-        throws SQLException {
-        return executeUpdate(context, sqlString(sql), true);
-    }
+    public IRubyObject execute_insert(final ThreadContext context, final IRubyObject sql) throws SQLException {
+        return withConnection(context, new Callable<IRubyObject>() {
+            public IRubyObject call(final Connection connection) throws SQLException {
+                Statement statement = null;
+                final String query = sqlString(sql);
+                try {
 
-    @JRubyMethod(name = "execute_insert", required = 2)
-    public IRubyObject execute_insert(final ThreadContext context,
-        final IRubyObject sql, final IRubyObject binds) throws SQLException {
-        if ( binds == null || binds.isNil() ) { // no prepared statements
-            return executeUpdate(context, sqlString(sql), true);
-        }
-        else { // we allow prepared statements with empty binds parameters
-            return executePreparedUpdate(context, sqlString(sql), (RubyArray) binds, true);
-        }
+                    statement = createStatement(context, connection);
+                    statement.executeUpdate(query, Statement.RETURN_GENERATED_KEYS);
+                    return mapGeneratedKeys(context, connection, statement);
+
+                } catch (final SQLException e) {
+                    debugErrorSQL(context, query);
+                    throw e;
+                } finally {
+                    close(statement);
+                }
+            }
+        });
     }
 
     /**
-     * Executes an UPDATE (DELETE) SQL statement.
+     * Executes an INSERT SQL statement using a prepared statement
+     * @param context
+     * @param sql
+     * @param binds RubyArray of values to be bound to the query
+     * @return ActiveRecord::Result
+     * @throws SQLException
+     */
+    @JRubyMethod(name = "execute_insert", required = 2)
+    public IRubyObject execute_insert(final ThreadContext context,
+            final IRubyObject sql, final IRubyObject binds) throws SQLException {
+        return withConnection(context, new Callable<IRubyObject>() {
+            public IRubyObject call(final Connection connection) throws SQLException {
+                PreparedStatement statement = null;
+                final String query = sqlString(sql);
+                try {
+
+                    statement = connection.prepareStatement(query, Statement.RETURN_GENERATED_KEYS);
+                    setStatementParameters(context, connection, statement, (RubyArray) binds);
+                    statement.executeUpdate();
+                    return mapGeneratedKeys(context, connection, statement);
+
+                } catch (final SQLException e) {
+                    debugErrorSQL(context, query);
+                    throw e;
+                } finally {
+                    close(statement);
+                }
+            }
+        });
+    }
+
+    /**
+     * Executes an UPDATE (DELETE) SQL statement
      * @param context
      * @param sql
      * @return affected row count
@@ -886,11 +930,28 @@ public class RubyJdbcConnection extends RubyObject {
     @JRubyMethod(name = {"execute_update", "execute_delete"}, required = 1)
     public IRubyObject execute_update(final ThreadContext context, final IRubyObject sql)
         throws SQLException {
-        return executeUpdate(context, sqlString(sql), false);
+        return withConnection(context, new Callable<IRubyObject>() {
+            public IRubyObject call(final Connection connection) throws SQLException {
+                Statement statement = null;
+                final String query = sqlString(sql);
+
+                try {
+                    statement = createStatement(context, connection);
+
+                    final int rowCount = statement.executeUpdate(query);
+                    return context.runtime.newFixnum(rowCount);
+                } catch (final SQLException e) {
+                    debugErrorSQL(context, query);
+                    throw e;
+                } finally {
+                    close(statement);
+                }
+            }
+        });
     }
 
     /**
-     * Executes an UPDATE (DELETE) SQL (prepared - if binds provided) statement.
+     * Executes an UPDATE (DELETE) SQL using a prepared statement
      * @param context
      * @param sql
      * @return affected row count
@@ -898,85 +959,24 @@ public class RubyJdbcConnection extends RubyObject {
      *
      * @see #execute_update(ThreadContext, IRubyObject)
      */
-    @JRubyMethod(name = {"execute_update", "execute_delete"}, required = 2)
-    public IRubyObject execute_update(final ThreadContext context,
-        final IRubyObject sql, final IRubyObject binds) throws SQLException {
-        if ( binds == null || binds.isNil() ) { // no prepared statements
-            return executeUpdate(context, sqlString(sql), false);
-        }
-        else { // we allow prepared statements with empty binds parameters
-            return executePreparedUpdate(context, sqlString(sql), (RubyArray) binds, false);
-        }
-    }
-
-    @JRubyMethod(name = {"execute_prepared_update"}, required = 2)
+    @JRubyMethod(name = {"execute_prepared_update", "execute_prepared_delete"}, required = 2)
     public IRubyObject execute_prepared_update(final ThreadContext context,
-        final IRubyObject sql, final IRubyObject binds) throws SQLException {
-
-        final String query = sql.convertToString().getUnicodeValue();
-        return executePreparedUpdate(context, query, (RubyArray) binds, false);
-    }
-
-    /**
-     * @param context
-     * @param query
-     * @param returnGeneratedKeys
-     * @return row count or generated keys
-     *
-     * @see #execute_insert(ThreadContext, IRubyObject)
-     * @see #execute_update(ThreadContext, IRubyObject)
-     */
-    protected IRubyObject executeUpdate(final ThreadContext context, final String query,
-        final boolean returnGeneratedKeys) {
-        return withConnection(context, new Callable<IRubyObject>() {
-            public IRubyObject call(final Connection connection) throws SQLException {
-                Statement statement = null;
-                try {
-                    statement = createStatement(context, connection);
-                    if ( returnGeneratedKeys ) {
-                        statement.executeUpdate(query, Statement.RETURN_GENERATED_KEYS);
-                        IRubyObject keys = mapGeneratedKeys(context.runtime, connection, statement);
-                        return keys == null ? context.nil : keys;
-                    }
-                    else {
-                        final int rowCount = statement.executeUpdate(query);
-                        return context.runtime.newFixnum(rowCount);
-                    }
-                }
-                catch (final SQLException e) {
-                    debugErrorSQL(context, query);
-                    throw e;
-                }
-                finally { close(statement); }
-            }
-        });
-    }
-
-    private IRubyObject executePreparedUpdate(final ThreadContext context, final String query,
-        final RubyArray binds, final boolean returnGeneratedKeys) {
+            final IRubyObject sql, final IRubyObject binds) throws SQLException {
         return withConnection(context, new Callable<IRubyObject>() {
             public IRubyObject call(final Connection connection) throws SQLException {
                 PreparedStatement statement = null;
+                final String query = sqlString(sql);
                 try {
-                    if ( returnGeneratedKeys ) {
-                        statement = connection.prepareStatement(query, Statement.RETURN_GENERATED_KEYS);
-                        setStatementParameters(context, connection, statement, binds);
-                        statement.executeUpdate();
-                        IRubyObject keys = mapGeneratedKeys(context.runtime, connection, statement);
-                        return keys == null ? context.nil : keys;
-                    }
-                    else {
-                        statement = connection.prepareStatement(query);
-                        setStatementParameters(context, connection, statement, binds);
-                        final int rowCount = statement.executeUpdate();
-                        return context.runtime.newFixnum(rowCount);
-                    }
-                }
-                catch (final SQLException e) {
+                    statement = connection.prepareStatement(query);
+                    setStatementParameters(context, connection, statement, (RubyArray) binds);
+                    final int rowCount = statement.executeUpdate();
+                    return context.runtime.newFixnum(rowCount);
+                } catch (final SQLException e) {
                     debugErrorSQL(context, query);
                     throw e;
+                } finally {
+                    close(statement);
                 }
-                finally { close(statement); }
             }
         });
     }
@@ -1070,93 +1070,33 @@ public class RubyJdbcConnection extends RubyObject {
     }
 
     /**
-     * Executes a query and returns the (AR) result.  There are three parameters:
-     * <ul>
-     *     <li>sql - String of sql</li>
-     *     <li>max_rows - Integer of how many rows to return</li>
-     *     <li>binds - Array of bindings for a prepared statement</li>
-     * </ul>
+     * Executes a query and returns the (AR) result
      *
-     * In true Ruby fashion if there are only two arguments then the last argument
-     * may be either max_rows or binds.  Note: If you want to force the query to be
-     * done using a prepared statement then you must provide an empty array to binds.
-     *
-     * @param context which context this method is executing on.
-     * @param args arguments being supplied to this method.
+     * @param context which context this method is executing on
+     * @param sql the query to execute
      * @return a Ruby <code>ActiveRecord::Result</code> instance
      * @throws SQLException when a database error occurs
-     *
      */
-    @JRubyMethod(required = 1, optional = 2)
-    public IRubyObject execute_query(final ThreadContext context, final IRubyObject[] args) throws SQLException {
-        final String query = sqlString( args[0] ); // sql
-        final RubyArray binds;
-        final int maxRows;
-
-        // args: (sql), (sql, max_rows), (sql, binds), (sql, max_rows, binds)
-        switch (args.length) {
-            case 2:
-                if (args[1] instanceof RubyNumeric) { // (sql, max_rows)
-                    maxRows = RubyNumeric.fix2int(args[1]);
-                    binds = null;
-                } else {                              // (sql, binds)
-                    maxRows = 0;
-                    binds = (RubyArray) TypeConverter.checkArrayType(args[1]);
-                }
-                break;
-            case 3:                                   // (sql, max_rows, binds)
-                maxRows = RubyNumeric.fix2int(args[1]);
-                binds = (RubyArray) TypeConverter.checkArrayType(args[2]);
-                break;
-            default:                                  // (sql) 1-arg
-                maxRows = 0;
-                binds = null;
-                break;
-        }
-
-        if (binds != null) { // prepared statement
-            return executePreparedQuery(context, query, binds, maxRows);
-        } else {
-            return executeQuery(context, query, maxRows);
-        }
-    }
-
-    @JRubyMethod(name = "execute_prepared_query")
-    public IRubyObject execute_prepared_query(final ThreadContext context,
-                                              final IRubyObject sql, final IRubyObject binds) throws SQLException {
-        final String query = sql.convertToString().getUnicodeValue();
-
-        if (binds == null || !(binds instanceof RubyArray)) {
-            throw context.runtime.newArgumentError("binds expected to be an instance of Array");
-        }
-
-        return executePreparedQuery(context, query, (RubyArray) binds, 0);
-    }
-
-    /**
-     *
-     * @param context
-     * @param query
-     * @param maxRows
-     * @return AR (mapped) query result
-     *
-     */
-    protected IRubyObject executeQuery(final ThreadContext context, final String query, final int maxRows) {
+    @JRubyMethod(required = 1)
+    public IRubyObject execute_query(final ThreadContext context, final IRubyObject sql) throws SQLException {
         return withConnection(context, new Callable<IRubyObject>() {
             public IRubyObject call(final Connection connection) throws SQLException {
                 Statement statement = null;
-                ResultSet resultSet = null;
-
+                final String query = sqlString(sql);
                 try {
                     statement = createStatement(context, connection);
-                    statement.setMaxRows(maxRows); // zero means there is no limit
-                    resultSet = statement.executeQuery(query);
-                    return mapQueryResult(context, connection, resultSet);
+
+                    // At least until AR 5.1 #exec_query still gets called for things that don't return results in some cases :(
+                    if (statement.execute(query)) {
+                        return mapQueryResult(context, connection, statement.getResultSet());
+                    }
+
+                    return context.nil;
+
                 } catch (final SQLException e) {
                     debugErrorSQL(context, query);
                     throw e;
                 } finally {
-                    close(resultSet);
                     close(statement);
                 }
             }
@@ -1164,8 +1104,23 @@ public class RubyJdbcConnection extends RubyObject {
     }
 
     // Called from exec_query in abstract/database_statements
+    /**
+     * Executes a query and returns the (AR) result.  There are three parameters:
+     * <ul>
+     *     <li>sql - String of sql</li>
+     *     <li>binds - Array of bindings for a prepared statement</li>
+     *     <li>cached_statement - A prepared statement object that should be used instead of creating a new statement</li>
+     * </ul>
+     *
+     * @param context which context this method is executing on.
+     * @param sql the query to execute.
+     * @param binds an array of values to be set as parameters
+     * @param cachedStatement a wrapped <code>PreparedStatement</code> to use instead of creating a new <code>Statement</code>
+     * @return a Ruby <code>ActiveRecord::Result</code> instance
+     * @throws SQLException when a database error occurs
+     */
     @JRubyMethod(required = 3)
-    public IRubyObject execute_prepared(final ThreadContext context, final IRubyObject sql,
+    public IRubyObject execute_prepared_query(final ThreadContext context, final IRubyObject sql,
         final IRubyObject binds, final IRubyObject cachedStatement) {
         return withConnection(context, new Callable<IRubyObject>() {
             public IRubyObject call(final Connection connection) throws SQLException {
@@ -1181,13 +1136,10 @@ public class RubyJdbcConnection extends RubyObject {
                     }
 
                     setStatementParameters(context, connection, statement, (RubyArray) binds);
-                    boolean hasResultSet = statement.execute();
 
-                    if (hasResultSet) {
+                    if (statement.execute()) {
                         ResultSet resultSet = statement.getResultSet();
-                        ColumnData[] columns = extractColumns(context.runtime, connection, resultSet, false);
-
-                        IRubyObject results = mapToResult(context, context.runtime, connection, resultSet, columns);
+                        IRubyObject results = mapQueryResult(context, connection, resultSet);
 
                         if (cached) {
                             // Make sure we free the result set if we are caching the statement
@@ -1197,7 +1149,7 @@ public class RubyJdbcConnection extends RubyObject {
 
                         return results;
                     } else {
-                        return context.runtime.newEmptyArray();
+                        return context.nil;
                     }
                 } catch (final SQLException e) {
                     debugErrorSQL(context, query);
@@ -1209,27 +1161,6 @@ public class RubyJdbcConnection extends RubyObject {
                         close(statement);
                     }
                 }
-            }
-        });
-    }
-
-    protected IRubyObject executePreparedQuery(final ThreadContext context, final String query,
-        final RubyArray binds, final int maxRows) {
-        return withConnection(context, new Callable<IRubyObject>() {
-            public IRubyObject call(final Connection connection) throws SQLException {
-                PreparedStatement statement = null; ResultSet resultSet = null;
-                try {
-                    statement = connection.prepareStatement(query);
-                    statement.setMaxRows(maxRows); // zero means there is no limit
-                    setStatementParameters(context, connection, statement, binds);
-                    resultSet = statement.executeQuery();
-                    return mapQueryResult(context, connection, resultSet);
-                }
-                catch (final SQLException e) {
-                    debugErrorSQL(context, query);
-                    throw e;
-                }
-                finally { close(resultSet); close(statement); }
             }
         });
     }
@@ -3270,10 +3201,12 @@ public class RubyJdbcConnection extends RubyObject {
         }
     }
 
-    protected IRubyObject mapGeneratedKeys(
-        final Ruby runtime, final Connection connection,
-        final Statement statement) throws SQLException {
-        return mapGeneratedKeys(runtime, connection, statement, null);
+    protected IRubyObject mapGeneratedKeys(final ThreadContext context,
+            final Connection connection, final Statement statement) throws SQLException {
+        if (supportsGeneratedKeys(connection)) {
+            return mapQueryResult(context, connection, statement.getGeneratedKeys());
+        }
+        return context.nil; // Adapters should know they don't support it and override this or Adapter#last_inserted_id
     }
 
     protected IRubyObject mapGeneratedKeys(

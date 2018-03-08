@@ -343,32 +343,6 @@ module ArJdbc
       ActiveRecord::ConnectionAdapters::PostgreSQL::ExplainPrettyPrinter.new.pp(exec_query(sql, 'EXPLAIN', binds))
     end
 
-    # Take an id from the result of an INSERT query.
-    # @return [Integer, NilClass]
-    def last_inserted_id(result)
-      if result.is_a?(Hash) || result.is_a?(ActiveRecord::Result)
-        result.first.first[1] # .first = { "id"=>1 } .first = [ "id", 1 ]
-      else
-        result
-      end
-    end
-
-    def sql_for_insert(sql, pk, id_value, sequence_name, binds) # :nodoc:
-      if pk.nil?
-        # Extract the table from the insert sql. Yuck.
-        table_ref = extract_table_ref_from_insert_sql(sql)
-        pk = primary_key(table_ref) if table_ref
-      end
-
-      pk = nil if pk.is_a?(Array)
-
-      if pk && use_insert_returning?
-        sql = "#{sql} RETURNING #{quote_column_name(pk)}"
-      end
-
-      super
-    end
-
     # @note Only for "better" AR 4.0 compatibility.
     # @private
     def query(sql, name = nil)
@@ -516,7 +490,7 @@ module ArJdbc
               Passing name to #indexes is deprecated without replacement.
         MSG
       end
-      
+
       # FIXME: AR version => table = Utils.extract_schema_qualified_name(table_name.to_s)
       schema, table = extract_schema_and_table(table_name.to_s)
 
