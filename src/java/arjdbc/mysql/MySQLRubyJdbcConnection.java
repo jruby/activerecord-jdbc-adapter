@@ -82,8 +82,7 @@ public class MySQLRubyJdbcConnection extends RubyJdbcConnection {
 
     @JRubyMethod
     public IRubyObject query(final ThreadContext context, final IRubyObject sql) throws SQLException {
-        final String query = sql.convertToString().getUnicodeValue(); // sql
-        return executeUpdate(context, query, false);
+        return execute_update(context, sql);
     }
 
     @Override

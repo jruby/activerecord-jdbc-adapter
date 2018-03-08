@@ -29,7 +29,7 @@ before_script:
     psql  -c "create database activerecord_unittest2;" -U postgres \
     || true
 rvm:
-  - jruby-9.1.14.0
+  - jruby-9.1.16.0
 jdk:
   - openjdk8
 env:
@@ -61,6 +61,8 @@ matrix:
         mariadb: '10.1'
       env: DB=mariadb PREPARED_STATEMENTS=true
     # Rails test-suite :
-    - env: DB=mysql2     TEST_PREFIX="rails:" AR_VERSION="v5.1.4"
-    - env: DB=postgresql TEST_PREFIX="rails:" AR_VERSION="v5.1.4"
-    - env: DB=sqlite3    TEST_PREFIX="rails:" AR_VERSION="v5.1.4"
+    - env: DB=mysql2     TEST_PREFIX="rails:" AR_VERSION="v5.1.5" # PS off by default
+    - env: DB=mysql2     TEST_PREFIX="rails:" AR_VERSION="v5.1.5" PREPARED_STATEMENTS=true
+    - env: DB=postgresql TEST_PREFIX="rails:" AR_VERSION="v5.1.5" # PS on by default
+    - env: DB=postgresql TEST_PREFIX="rails:" AR_VERSION="v5.1.5" PREPARED_STATEMENTS=false
+    - env: DB=sqlite3    TEST_PREFIX="rails:" AR_VERSION="v5.1.5"
