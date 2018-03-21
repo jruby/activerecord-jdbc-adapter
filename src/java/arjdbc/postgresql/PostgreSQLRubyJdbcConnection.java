@@ -661,7 +661,7 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
             if ( (infinity = parseInfinity(runtime, value)) != null ) return infinity;
         }
 
-        return DateTimeUtils.parseDateTime(context, value, getDefaultTimeZone(context));
+        return DateTimeUtils.parseDateTime(context, value, getDefaultTimeZone(context)); // handles '0001-01-01 23:59:59 BC'
     }
 
     private static IRubyObject parseInfinity(final Ruby runtime, final String value) {
