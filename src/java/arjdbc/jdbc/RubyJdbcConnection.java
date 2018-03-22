@@ -2664,9 +2664,11 @@ public class RubyJdbcConnection extends RubyObject {
         return "string";
     }
 
-    protected final IRubyObject timeInDefaultTimeZone(final ThreadContext context, IRubyObject value) {
+    protected final RubyTime timeInDefaultTimeZone(final ThreadContext context, IRubyObject value) {
         final RubyTime time = toTime(context, value);
-        final DateTime adjustedDateTime = time.getDateTime().withZone(getDefaultTimeZone(context));
+        final DateTimeZone defaultZone = getDefaultTimeZone(context);
+        if (defaultZone == time.getDateTime().getZone()) return time;
+        final DateTime adjustedDateTime = time.getDateTime().withZone(defaultZone);
         final RubyTime timeInDefaultTZ = new RubyTime(context.runtime, context.runtime.getTime(), adjustedDateTime);
         timeInDefaultTZ.setNSec(time.getNSec());
         return timeInDefaultTZ;
