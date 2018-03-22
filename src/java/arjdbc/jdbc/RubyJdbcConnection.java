@@ -2778,24 +2778,22 @@ public class RubyJdbcConnection extends RubyObject {
         final int index, IRubyObject value,
         final IRubyObject attribute, final int type) throws SQLException {
 
-        value = timeInDefaultTimeZone(context, value);
+        final RubyTime timeValue = timeInDefaultTimeZone(context, value);
+        final DateTime dateTime = timeValue.getDateTime();
+        final Timestamp timestamp = new Timestamp(dateTime.getMillis());
+        // 1942-11-30T01:02:03.123_456
+        if (timeValue.getNSec() > 0) timestamp.setNanos((int) (timestamp.getNanos() + timeValue.getNSec()));
 
-        if (value instanceof RubyTime) {
-            final RubyTime timeValue = (RubyTime) value;
-            final DateTime dateTime = timeValue.getDateTime();
-            final Timestamp timestamp = new Timestamp(dateTime.getMillis());
-            // 1942-11-30T01:02:03.123_456
-            if (timeValue.getNSec() > 0) timestamp.setNanos((int) (timestamp.getNanos() + timeValue.getNSec()));
+        statement.setTimestamp(index, timestamp, getCalendar(dateTime.getZone()));
 
-            statement.setTimestamp(index, timestamp, getCalendar(dateTime.getZone()));
-        } else if ( value instanceof RubyString ) { // yyyy-[m]m-[d]d hh:mm:ss[.f...]
-            statement.setString(index, value.toString()); // assume local time-zone
-        } else { // DateTime ( ActiveSupport::TimeWithZone.to_time )
-            final RubyFloat timeValue = value.convertToFloat(); // to_f
-            final Timestamp timestamp = convertToTimestamp(timeValue);
-
-            statement.setTimestamp( index, timestamp, getCalendarUTC() );
-        }
+        //if ( value instanceof RubyString ) { // yyyy-[m]m-[d]d hh:mm:ss[.f...]
+        //    statement.setString(index, value.toString()); // assume local time-zone
+        //} else { // DateTime ( ActiveSupport::TimeWithZone.to_time )
+        //    final RubyFloat timeValue = value.convertToFloat(); // to_f
+        //    final Timestamp timestamp = convertToTimestamp(timeValue);
+        //
+        //    statement.setTimestamp( index, timestamp, getCalendarUTC() );
+        //}
     }
 
     @Deprecated
@@ -2822,23 +2820,21 @@ public class RubyJdbcConnection extends RubyObject {
         final int index, IRubyObject value,
         final IRubyObject attribute, final int type) throws SQLException {
 
-        value = timeInDefaultTimeZone(context, value);
+        final RubyTime timeValue = timeInDefaultTimeZone(context, value);
+        final DateTime dateTime = timeValue.getDateTime();
+        final Time time = new Time(dateTime.getMillis()); // has millis precision
 
-        if ( value instanceof RubyTime ) {
-            final DateTime dateTime = ((RubyTime) value).getDateTime();
-            final Time time = new Time(dateTime.getMillis()); // has millis precision
+        statement.setTime(index, time, getCalendar(dateTime.getZone()));
 
-            statement.setTime(index, time, getCalendar(dateTime.getZone()));
-        }
-        else if ( value instanceof RubyString ) {
-            statement.setString(index, value.toString()); // assume local time-zone
-        }
-        else { // DateTime ( ActiveSupport::TimeWithZone.to_time )
-            final RubyFloat timeValue = value.convertToFloat(); // to_f
-            final Time time = new Time((long) timeValue.getDoubleValue() * 1000);
-            // java.sql.Time is expected to be only up to (milli) second precision
-            statement.setTime(index, time, getCalendarUTC());
-        }
+        //if ( value instanceof RubyString ) {
+        //    statement.setString(index, value.toString()); // assume local time-zone
+        //}
+        //else { // DateTime ( ActiveSupport::TimeWithZone.to_time )
+        //    final RubyFloat timeValue = value.convertToFloat(); // to_f
+        //    final Time time = new Time((long) timeValue.getDoubleValue() * 1000);
+        //    // java.sql.Time is expected to be only up to (milli) second precision
+        //    statement.setTime(index, time, getCalendarUTC());
+        //}
     }
 
     protected void setDateParameter(final ThreadContext context,
