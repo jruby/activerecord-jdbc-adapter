@@ -267,21 +267,7 @@ class PostgresTimestampTest < Test::Unit::TestCase
   end
 
   def test_save_infinity
-    #if ar_version('4.0')
-      # NOTE: likely an AR issue - it only works when time_zone_aware_attributes
-      # are disabled otherwise TimeZoneConversion's define_method_attribute=(attr_name)
-      # does the following code ("infinite" time instance ending as nil):
-      # time_with_zone = time.respond_to?(:in_time_zone) ? time.in_time_zone : nil
-      #tz_aware_attributes = ActiveRecord::Base.time_zone_aware_attributes
-      #begin
-      #  ActiveRecord::Base.time_zone_aware_attributes = false
-      #  do_test_save_infinity
-      #ensure
-      #  ActiveRecord::Base.time_zone_aware_attributes = tz_aware_attributes
-      #end
-    #else
     do_test_save_infinity
-    #end
   end
 
   DbType.time_zone_aware_attributes = false
@@ -300,20 +286,11 @@ class PostgresTimestampTest < Test::Unit::TestCase
   private :do_test_save_infinity
 
   def test_bc_timestamp
-    pend 'this has issues because of converting DateTime to Time objects'
-    #if RUBY_VERSION == '1.9.3' && defined?(JRUBY_VERSION) && JRUBY_VERSION =~ /1\.7\.3|4/
-    #  omit "Date.new(0) issue on JRuby 1.7.3/4"
-    #end
-    # JRuby 1.7.3 (--1.9) bug: `Date.new(0) + 1.seconds` "1753-08-29 22:43:42 +0057"
-    date = Date.new(0) - 1.second
     date = DateTime.parse('0000-01-01T00:00:00+00:00') - 1.hour - 1.minute - 1.second
     db_type = DbType.create!(:sample_timestamp => date)
     if current_connection_config[:prepared_statements].to_s == 'true'
       pend "Likely a JRuby/Java thing - this test is failing bad: check #516"
     end
-    # if current_connection_config[:insert_returning].to_s == 'true'
-    #   pend "BC timestamps not-handled right with INSERT RETURNIG ..."
-    # end
     assert_equal date, db_type.reload.sample_timestamp.to_datetime
   end
 

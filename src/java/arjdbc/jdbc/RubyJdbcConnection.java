@@ -793,7 +793,7 @@ public class RubyJdbcConnection extends RubyObject {
                     int updateCount = statement.getUpdateCount();
 
                     ColumnData[] columns;
-                    IRubyObject result = null;
+                    IRubyObject result = context.nil; // If no results, return nil
                     ResultSet resultSet = null;
 
                     while (hasResultSet || updateCount != -1) {
@@ -804,10 +804,9 @@ public class RubyJdbcConnection extends RubyObject {
                             // Unfortunately the result set gets closed when getMoreResults()
                             // is called, so we have to process the result sets as we get them
                             // this shouldn't be an issue in most cases since we're only getting 1 result set anyways
-                            columns = extractColumns(context, connection, resultSet, false);
-                            result = mapToResult(context, context.runtime, connection, resultSet, columns);
+                            result = mapExecuteResult(context, connection, resultSet);
                         } else {
-                            resultSet = null;
+                            result = context.runtime.newFixnum(updateCount);
                         }
 
                         // Check to see if there is another result set
@@ -815,13 +814,8 @@ public class RubyJdbcConnection extends RubyObject {
                         updateCount = statement.getUpdateCount();
                     }
 
-                    // Need to check resultSet instead of result because result
-                    // may have been populated in a previous iteration of the loop
-                    if (resultSet == null) {
-                        return context.runtime.newEmptyArray();
-                    } else {
-                        return result;
-                    }
+                    return result;
+
                 } catch (final SQLException e) {
                     debugErrorSQL(context, query);
                     throw e;
@@ -857,6 +851,12 @@ public class RubyJdbcConnection extends RubyObject {
      */
     protected boolean doExecute(final Statement statement, final String query) throws SQLException {
         return statement.execute(query);
+    }
+
+    protected IRubyObject mapExecuteResult(final ThreadContext context,
+            final Connection connection, final ResultSet resultSet) throws SQLException{
+
+        return mapQueryResult(context, connection, resultSet);
     }
 
     /**
@@ -1165,7 +1165,7 @@ public class RubyJdbcConnection extends RubyObject {
         });
     }
 
-    private IRubyObject mapQueryResult(final ThreadContext context,
+    protected IRubyObject mapQueryResult(final ThreadContext context,
         final Connection connection, final ResultSet resultSet) throws SQLException {
         final ColumnData[] columns = extractColumns(context, connection, resultSet, false);
         return mapToResult(context, context.runtime, connection, resultSet, columns);
@@ -2051,20 +2051,6 @@ public class RubyJdbcConnection extends RubyObject {
             return types;
         }
         return new String[] { typeArg.toString() }; // expect a RubyString
-    }
-
-    /**
-     * @deprecated this method is no longer used, instead consider overriding
-     * {@link #mapToResult(ThreadContext, Ruby, Connection, ResultSet, RubyJdbcConnection.ColumnData[])}
-     */
-    @Deprecated
-    protected void populateFromResultSet(
-            final ThreadContext context, final Ruby runtime,
-            final List<IRubyObject> results, final ResultSet resultSet,
-            final ColumnData[] columns) throws SQLException {
-        while ( resultSet.next() ) {
-            results.add(mapRawRow(context, runtime, columns, resultSet, this));
-        }
     }
 
     /**
