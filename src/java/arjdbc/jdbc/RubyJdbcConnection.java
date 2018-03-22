@@ -2705,13 +2705,8 @@ public class RubyJdbcConnection extends RubyObject {
         if ( value instanceof RubyBignum ) { // e.g. HSQLDB / H2 report JDBC type 4
             setBigIntegerParameter(context, connection, statement, index, (RubyBignum) value, attribute, type);
         }
-        else if ( value instanceof RubyFixnum ) {
-            statement.setLong(index, ((RubyFixnum) value).getLongValue());
-        }
         else if ( value instanceof RubyNumeric ) {
-            // NOTE: fix2int will call value.convertToInteger for non-numeric
-            // types which won't work for Strings since it uses `to_int` ...
-            statement.setInt(index, RubyNumeric.fix2int(value));
+            statement.setLong(index, RubyNumeric.num2long(value));
         }
         else {
             statement.setLong(index, value.convertToInteger("to_i").getLongValue());
