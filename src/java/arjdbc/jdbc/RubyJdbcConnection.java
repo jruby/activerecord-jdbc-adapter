@@ -2721,8 +2721,8 @@ public class RubyJdbcConnection extends RubyObject {
         if ( value instanceof RubyBignum ) {
             setLongOrDecimalParameter(statement, index, ((RubyBignum) value).getValue());
         }
-        else if ( value instanceof RubyInteger ) {
-            statement.setLong(index, ((RubyInteger) value).getLongValue());
+        else if ( value instanceof RubyFixnum ) {
+            statement.setLong(index, ((RubyFixnum) value).getLongValue());
         }
         else {
             setLongOrDecimalParameter(statement, index, value.convertToInteger("to_i").getBigIntegerValue());
