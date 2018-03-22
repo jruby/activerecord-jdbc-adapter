@@ -2729,13 +2729,10 @@ public class RubyJdbcConnection extends RubyObject {
         }
     }
 
-    private static final BigInteger MAX_LONG = BigInteger.valueOf(Long.MAX_VALUE);
-    private static final BigInteger MIN_LONG = BigInteger.valueOf(Long.MIN_VALUE);
-
     protected static void setLongOrDecimalParameter(final PreparedStatement statement,
         final int index, final BigInteger value) throws SQLException {
-        if ( value.compareTo(MAX_LONG) <= 0 // -1 intValue < MAX_VALUE
-                && value.compareTo(MIN_LONG) >= 0 ) {
+
+        if ( value.bitLength() <= 63 ) {
             statement.setLong(index, value.longValue());
         }
         else {
