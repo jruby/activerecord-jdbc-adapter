@@ -30,3 +30,4 @@ Gemfile.lock
 .idea
 .settings
 activerecord-jdbc.iml
+lib/arjdbc/jdbc/adapter_java.jar
