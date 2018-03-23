@@ -9,7 +9,7 @@ Gem::Specification.new do |gem|
   gem.authors = ['Nick Sieger, Ola Bini, Karol Bucek and JRuby contributors']
   gem.email = ['nick@nicksieger.com', 'ola.bini@gmail.com', 'self@kares.org']
   gem.homepage = 'https://github.com/jruby/activerecord-jdbc-adapter'
-  gem.license = "BSD"
+  gem.license = 'BSD-2-Clause'
   gem.summary = 'JDBC adapter for ActiveRecord, for use within JRuby on Rails.'
   gem.description = "" <<
     "AR-JDBC is a database adapter for Rails' ActiveRecord component designed " <<
@@ -26,6 +26,8 @@ Gem::Specification.new do |gem|
     reject { |f| f =~ /^(activerecord-jdbc[^-]|jdbc-)/ }. # gem directories
     reject { |f| f =~ /^(bench|test)/ }. # not sure if including tests is useful
     reject { |f| f =~ /^(gemfiles)/ } # no tests - no Gemfile_s appraised ...
+  gem.files += ['lib/arjdbc/jdbc/adapter_java.jar'] #if ENV['RELEASE'].eql?('true')
+
   gem.executables = gem.files.grep(%r{^bin/}).map { |f| File.basename(f) }
   gem.test_files = gem.files.grep(%r{^test/})
 
@@ -36,6 +38,5 @@ Gem::Specification.new do |gem|
   #gem.add_development_dependency 'mocha', '~> 0.13.1'
 
   gem.rdoc_options = ["--main", "README.md", "-SHN", "-f", "darkfish"]
-  gem.rubyforge_project = %q{jruby-extras}
 end
 

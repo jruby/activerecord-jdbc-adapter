@@ -68,9 +68,6 @@ task 'release:do' => 'build:adapters' do
   sh("git diff --no-patch --exit-code", :noop => noop) { |ok| fail "git working dir is not clean" unless ok }
   sh("git diff-index --quiet --cached HEAD", :noop => noop) { |ok| fail "git index is not clean" unless ok }
 
-  sh "git add -f lib/arjdbc/jdbc/adapter_java.jar", :noop => noop
-  sh "git commit -m 'extension .jar build for #{version_tag}'", :noop => noop
-
   sh "git tag -a -m \"AR-JDBC #{version}\" #{version_tag}", :noop => noop
   branch = `git rev-parse --abbrev-ref HEAD`.strip
   puts "releasing from (current) branch #{branch.inspect}"
