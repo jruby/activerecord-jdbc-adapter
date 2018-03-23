@@ -300,20 +300,25 @@ class PostgresTimestampTest < Test::Unit::TestCase
   private :do_test_save_infinity
 
   def test_bc_timestamp
-    pend 'this has issues because of converting DateTime to Time objects'
-    #if RUBY_VERSION == '1.9.3' && defined?(JRUBY_VERSION) && JRUBY_VERSION =~ /1\.7\.3|4/
-    #  omit "Date.new(0) issue on JRuby 1.7.3/4"
-    #end
-    # JRuby 1.7.3 (--1.9) bug: `Date.new(0) + 1.seconds` "1753-08-29 22:43:42 +0057"
-    date = Date.new(0) - 1.second
-    date = DateTime.parse('0000-01-01T00:00:00+00:00') - 1.hour - 1.minute - 1.second
-    db_type = DbType.create!(:sample_timestamp => date)
+    time = Time.utc('0000-01-01') - 1.hour - 1.minute - 1.second
+    db_type = DbType.create!(:sample_timestamp => time)
+
     if current_connection_config[:prepared_statements].to_s == 'true'
       pend "Likely a JRuby/Java thing - this test is failing bad: check #516"
     end
     # if current_connection_config[:insert_returning].to_s == 'true'
     #   pend "BC timestamps not-handled right with INSERT RETURNIG ..."
-    # end
+    # end unless ar_version('4.2')
+    # 
+    if defined?(JRUBY_VERSION) && JRUBY_VERSION < '9.2'
+      pend "BC timestamp handling isn't working properly through JRuby 9.1 (its to be fixed in 9.2)"
+    end
+
+    assert_equal time, db_type.reload.sample_timestamp
+
+    date = DateTime.parse('0000-01-01T00:00:00+00:00') - 1.hour - 1.minute - 1.second
+    db_type = DbType.create!(:sample_timestamp => date)
+
     assert_equal date, db_type.reload.sample_timestamp.to_datetime
   end
 

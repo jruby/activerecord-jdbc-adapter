@@ -30,6 +30,7 @@ import java.nio.charset.Charset;
 import org.jcodings.Encoding;
 import org.jcodings.specific.UTF8Encoding;
 import org.jruby.Ruby;
+import org.jruby.RubyEncoding;
 import org.jruby.RubyString;
 import org.jruby.util.ByteList;
 
@@ -77,6 +78,16 @@ public abstract class StringHelper {
         Encoding enc = runtime.getDefaultInternalEncoding();
         if (enc == null) enc = runtime.getEncodingService().getJavaDefault();
         return RubyString.newString(runtime, byteList, enc);
+    }
+
+    public static RubyString newDefaultInternalString(final Ruby runtime, final CharSequence str) {
+        Encoding enc = runtime.getDefaultInternalEncoding();
+        if (enc == null) enc = runtime.getEncodingService().getJavaDefault();
+        return RubyString.newString(runtime, new ByteList(RubyEncoding.encode(str, enc.getCharset()), enc));
+    }
+
+    public static RubyString newDefaultInternalString(final Ruby runtime, final String str) {
+        return RubyString.newInternalFromJavaExternal(runtime, str);
     }
 
     public static int readBytes(final ByteList output, final InputStream input)

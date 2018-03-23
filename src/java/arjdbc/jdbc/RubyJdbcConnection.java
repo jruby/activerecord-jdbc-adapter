@@ -2247,29 +2247,29 @@ public class RubyJdbcConnection extends RubyObject {
     protected IRubyObject stringToRuby(final ThreadContext context,
         final Ruby runtime, final ResultSet resultSet, final int column) throws SQLException {
         final String value = resultSet.getString(column);
-        if ( value == null /* || resultSet.wasNull() */ ) return context.nil;
-        return RubyString.newInternalFromJavaExternal(runtime, value);
+        if ( value == null ) return context.nil;
+        return newDefaultInternalString(runtime, value);
     }
 
     protected static IRubyObject bytesToRubyString(final ThreadContext context,
         final Ruby runtime, final ResultSet resultSet, final int column)
         throws SQLException { // optimized String -> byte[]
         final byte[] value = resultSet.getBytes(column);
-        if ( value == null /* || resultSet.wasNull() */ ) return context.nil;
+        if ( value == null ) return context.nil;
         return newDefaultInternalString(runtime, value);
     }
 
     protected IRubyObject bigIntegerToRuby(final ThreadContext context,
         final Ruby runtime, final ResultSet resultSet, final int column) throws SQLException {
         final String value = resultSet.getString(column);
-        if ( value == null /* || resultSet.wasNull() */ ) return context.nil;
+        if ( value == null ) return context.nil;
         return RubyBignum.bignorm(runtime, new BigInteger(value));
     }
 
     protected IRubyObject decimalToRuby(final ThreadContext context,
         final Ruby runtime, final ResultSet resultSet, final int column) throws SQLException {
         final BigDecimal value = resultSet.getBigDecimal(column);
-        if ( value == null /* || resultSet.wasNull() */ ) return context.nil;
+        if ( value == null ) return context.nil;
         return new org.jruby.ext.bigdecimal.RubyBigDecimal(runtime, value);
     }
 
@@ -2434,29 +2434,12 @@ public class RubyJdbcConnection extends RubyObject {
         finally { if ( stream != null ) stream.close(); }
     }
 
-    @Deprecated
-    protected IRubyObject streamToRuby(
-        final Ruby runtime, final ResultSet resultSet, final InputStream stream)
-        throws SQLException, IOException {
-        if ( stream == null && resultSet.wasNull() ) return runtime.getNil();
-
-        final int bufSize = streamBufferSize;
-        final ByteList string = new ByteList(bufSize);
-
-        final byte[] buf = new byte[bufSize];
-        for (int len = stream.read(buf); len != -1; len = stream.read(buf)) {
-            string.append(buf, 0, len);
-        }
-
-        return runtime.newString(string);
-    }
-
     protected IRubyObject readerToRuby(final ThreadContext context,
         final Ruby runtime, final ResultSet resultSet, final int column)
         throws SQLException, IOException {
         final Reader reader = resultSet.getCharacterStream(column);
         try {
-            if ( reader == null /* || resultSet.wasNull() */ ) return context.nil;
+            if ( reader == null ) return context.nil;
 
             final int bufSize = streamBufferSize;
             final StringBuilder string = new StringBuilder(bufSize);
@@ -2466,7 +2449,7 @@ public class RubyJdbcConnection extends RubyObject {
                 string.append(buf, 0, len);
             }
 
-            return RubyString.newInternalFromJavaExternal(runtime, string.toString());
+            return newDefaultInternalString(runtime, string);
         }
         finally { if ( reader != null ) reader.close(); }
     }
@@ -2476,7 +2459,7 @@ public class RubyJdbcConnection extends RubyObject {
         throws SQLException {
         final Object value = resultSet.getObject(column);
 
-        if ( value == null /* || resultSet.wasNull() */ ) return context.nil;
+        if ( value == null ) return context.nil;
 
         return JavaUtil.convertJavaToRuby(runtime, value);
     }
@@ -2486,7 +2469,7 @@ public class RubyJdbcConnection extends RubyObject {
         throws SQLException {
         final Array value = resultSet.getArray(column);
         try {
-            if ( value == null /* || resultSet.wasNull() */ ) return context.nil;
+            if ( value == null ) return context.nil;
 
             final RubyArray array = runtime.newArray();
 
@@ -2505,7 +2488,7 @@ public class RubyJdbcConnection extends RubyObject {
         throws SQLException {
         final SQLXML xml = resultSet.getSQLXML(column);
         try {
-            if ( xml == null /* || resultSet.wasNull() */ ) return context.nil;
+            if ( xml == null ) return context.nil;
 
             return RubyString.newInternalFromJavaExternal(runtime, xml.getString());
         }
@@ -2685,9 +2668,11 @@ public class RubyJdbcConnection extends RubyObject {
         return "string";
     }
 
-    protected final IRubyObject timeInDefaultTimeZone(final ThreadContext context, IRubyObject value) {
+    protected final RubyTime timeInDefaultTimeZone(final ThreadContext context, IRubyObject value) {
         final RubyTime time = toTime(context, value);
-        final DateTime adjustedDateTime = time.getDateTime().withZone(getDefaultTimeZone(context));
+        final DateTimeZone defaultZone = getDefaultTimeZone(context);
+        if (defaultZone == time.getDateTime().getZone()) return time;
+        final DateTime adjustedDateTime = time.getDateTime().withZone(defaultZone);
         final RubyTime timeInDefaultTZ = new RubyTime(context.runtime, context.runtime.getTime(), adjustedDateTime);
         timeInDefaultTZ.setNSec(time.getNSec());
         return timeInDefaultTZ;
@@ -2724,13 +2709,8 @@ public class RubyJdbcConnection extends RubyObject {
         if ( value instanceof RubyBignum ) { // e.g. HSQLDB / H2 report JDBC type 4
             setBigIntegerParameter(context, connection, statement, index, (RubyBignum) value, attribute, type);
         }
-        else if ( value instanceof RubyFixnum ) {
-            statement.setLong(index, ((RubyFixnum) value).getLongValue());
-        }
         else if ( value instanceof RubyNumeric ) {
-            // NOTE: fix2int will call value.convertToInteger for non-numeric
-            // types which won't work for Strings since it uses `to_int` ...
-            statement.setInt(index, RubyNumeric.fix2int(value));
+            statement.setLong(index, RubyNumeric.num2long(value));
         }
         else {
             statement.setLong(index, value.convertToInteger("to_i").getLongValue());
@@ -2745,21 +2725,18 @@ public class RubyJdbcConnection extends RubyObject {
         if ( value instanceof RubyBignum ) {
             setLongOrDecimalParameter(statement, index, ((RubyBignum) value).getValue());
         }
-        else if ( value instanceof RubyInteger ) {
-            statement.setLong(index, ((RubyInteger) value).getLongValue());
+        else if ( value instanceof RubyFixnum ) {
+            statement.setLong(index, ((RubyFixnum) value).getLongValue());
         }
         else {
             setLongOrDecimalParameter(statement, index, value.convertToInteger("to_i").getBigIntegerValue());
         }
     }
 
-    private static final BigInteger MAX_LONG = BigInteger.valueOf(Long.MAX_VALUE);
-    private static final BigInteger MIN_LONG = BigInteger.valueOf(Long.MIN_VALUE);
-
     protected static void setLongOrDecimalParameter(final PreparedStatement statement,
         final int index, final BigInteger value) throws SQLException {
-        if ( value.compareTo(MAX_LONG) <= 0 // -1 intValue < MAX_VALUE
-                && value.compareTo(MIN_LONG) >= 0 ) {
+
+        if ( value.bitLength() <= 63 ) {
             statement.setLong(index, value.longValue());
         }
         else {
@@ -2805,24 +2782,22 @@ public class RubyJdbcConnection extends RubyObject {
         final int index, IRubyObject value,
         final IRubyObject attribute, final int type) throws SQLException {
 
-        value = timeInDefaultTimeZone(context, value);
+        final RubyTime timeValue = timeInDefaultTimeZone(context, value);
+        final DateTime dateTime = timeValue.getDateTime();
+        final Timestamp timestamp = new Timestamp(dateTime.getMillis());
+        // 1942-11-30T01:02:03.123_456
+        if (timeValue.getNSec() > 0) timestamp.setNanos((int) (timestamp.getNanos() + timeValue.getNSec()));
 
-        if (value instanceof RubyTime) {
-            final RubyTime timeValue = (RubyTime) value;
-            final DateTime dateTime = timeValue.getDateTime();
-            final Timestamp timestamp = new Timestamp(dateTime.getMillis());
-            // 1942-11-30T01:02:03.123_456
-            if (timeValue.getNSec() > 0) timestamp.setNanos((int) (timestamp.getNanos() + timeValue.getNSec()));
+        statement.setTimestamp(index, timestamp, getCalendar(dateTime.getZone()));
 
-            statement.setTimestamp(index, timestamp, getCalendar(dateTime.getZone()));
-        } else if ( value instanceof RubyString ) { // yyyy-[m]m-[d]d hh:mm:ss[.f...]
-            statement.setString(index, value.toString()); // assume local time-zone
-        } else { // DateTime ( ActiveSupport::TimeWithZone.to_time )
-            final RubyFloat timeValue = value.convertToFloat(); // to_f
-            final Timestamp timestamp = convertToTimestamp(timeValue);
-
-            statement.setTimestamp( index, timestamp, getCalendarUTC() );
-        }
+        //if ( value instanceof RubyString ) { // yyyy-[m]m-[d]d hh:mm:ss[.f...]
+        //    statement.setString(index, value.toString()); // assume local time-zone
+        //} else { // DateTime ( ActiveSupport::TimeWithZone.to_time )
+        //    final RubyFloat timeValue = value.convertToFloat(); // to_f
+        //    final Timestamp timestamp = convertToTimestamp(timeValue);
+        //
+        //    statement.setTimestamp( index, timestamp, getCalendarUTC() );
+        //}
     }
 
     @Deprecated
@@ -2849,23 +2824,21 @@ public class RubyJdbcConnection extends RubyObject {
         final int index, IRubyObject value,
         final IRubyObject attribute, final int type) throws SQLException {
 
-        value = timeInDefaultTimeZone(context, value);
+        final RubyTime timeValue = timeInDefaultTimeZone(context, value);
+        final DateTime dateTime = timeValue.getDateTime();
+        final Time time = new Time(dateTime.getMillis()); // has millis precision
 
-        if ( value instanceof RubyTime ) {
-            final DateTime dateTime = ((RubyTime) value).getDateTime();
-            final Time time = new Time(dateTime.getMillis()); // has millis precision
+        statement.setTime(index, time, getCalendar(dateTime.getZone()));
 
-            statement.setTime(index, time, getCalendar(dateTime.getZone()));
-        }
-        else if ( value instanceof RubyString ) {
-            statement.setString(index, value.toString()); // assume local time-zone
-        }
-        else { // DateTime ( ActiveSupport::TimeWithZone.to_time )
-            final RubyFloat timeValue = value.convertToFloat(); // to_f
-            final Time time = new Time((long) timeValue.getDoubleValue() * 1000);
-            // java.sql.Time is expected to be only up to (milli) second precision
-            statement.setTime(index, time, getCalendarUTC());
-        }
+        //if ( value instanceof RubyString ) {
+        //    statement.setString(index, value.toString()); // assume local time-zone
+        //}
+        //else { // DateTime ( ActiveSupport::TimeWithZone.to_time )
+        //    final RubyFloat timeValue = value.convertToFloat(); // to_f
+        //    final Time time = new Time((long) timeValue.getDoubleValue() * 1000);
+        //    // java.sql.Time is expected to be only up to (milli) second precision
+        //    statement.setTime(index, time, getCalendarUTC());
+        //}
     }
 
     protected void setDateParameter(final ThreadContext context,

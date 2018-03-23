@@ -18,8 +18,16 @@ begin
     ant.tstamp do |ts|
       ts.format(:property => 'TODAY', :pattern => 'yyyy-MM-dd HH:mm:ss')
     end
-    
-    require 'arjdbc/version'
+
+    begin
+      require 'arjdbc/version'
+    rescue LoadError
+      path = File.expand_path('../lib', File.dirname(__FILE__))
+      unless $LOAD_PATH.include?(path)
+        $LOAD_PATH << path; retry
+      end
+    end
+
     gem_version = Gem::Version.create(ArJdbc::VERSION)
     if gem_version.segments.last == 'DEV'
       version = gem_version.segments[0...-1] # 1.3.0.DEV -> 1.3.0

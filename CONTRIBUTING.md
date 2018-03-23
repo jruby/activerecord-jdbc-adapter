@@ -2,8 +2,13 @@
 ## Contributing to ActiveRecord JDBC Adapter
 
 AR-JDBC is (currently) a volunteer effort, it is not backed by any company ...
-You can contribute and make a difference for all the JRuby on Rails deployments
-out there.
+You can contribute and make a difference for all JRuby on Rails sites out there.
+
+### Building
+
+Part of AR-JDBC is a native JRuby extension written in .java, compiling (or even 
+using) the project requires that you have `javac` on your path for building the gem.
+This means a JRE isn't sufficient and you will be forced to install a JDK.
 
 ### Reporting Issues
 
@@ -12,7 +17,8 @@ We encourage you to try looking into reported issues, esp. if the new issue is a
 
 Please consider testing against **master**, if you're in doubt whether it might
 have been [fixed](History.md) already, change the following in your *Gemfile* :
-`gem 'activerecord-jdbc-adapter', :github => 'jruby/activerecord-jdbc-adapter'`
+
+    gem 'activerecord-jdbc-adapter', :github => 'jruby/activerecord-jdbc-adapter'
 
 Do not forget to **include the following with your bug report** :
 

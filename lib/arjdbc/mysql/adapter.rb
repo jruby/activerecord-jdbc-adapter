@@ -25,8 +25,11 @@ module ActiveRecord
 
       include ArJdbc::Abstract::ConnectionManagement
       include ArJdbc::Abstract::DatabaseStatements
+      # NOTE: do not include MySQL::DatabaseStatements
       include ArJdbc::Abstract::StatementCache
       include ArJdbc::Abstract::TransactionSupport
+
+      include ArJdbc::MySQL
 
       def initialize(connection, logger, config)
         super(connection, logger, nil, config)
@@ -76,7 +79,7 @@ module ActiveRecord
       end
 
       def error_number(exception)
-        exception.errno if exception.respond_to? :errno
+        exception.error_code if exception.is_a?(JDBCError)
       end
 
       def create_table(table_name, **options) #:nodoc:
@@ -94,9 +97,33 @@ module ActiveRecord
         super(value)
       end
 
-      def quote_string(string)
-        string.gsub(/[\x00\n\r\\\'\"]/, '\\\\\0')
+      # NOTE: quote_string(string) provided by ArJdbc::MySQL (native code),
+      # this piece is also native (mysql2) under MRI: `@connection.escape(string)`
+
+      def quoted_date(value)
+        if supports_datetime_with_precision?
+          super
+        else
+          super.sub(/\.\d{6}\z/, '')
+        end
       end
+
+      def _quote(value)
+        if value.is_a?(Type::Binary::Data)
+          "x'#{value.hex}'"
+        else
+          super
+        end
+      end
+      private :_quote
+
+      #--
+      # CONNECTION MANAGEMENT ====================================
+      #++
+
+      alias :reset! :reconnect!
+
+      #
 
       def exec_insert(sql, name = nil, binds = [], pk = nil, sequence_name = nil)
         last_id = if without_prepared_statement?(binds)
@@ -106,19 +133,15 @@ module ActiveRecord
                   end
         # FIXME: execute_insert and executeUpdate mapping key results is very varied and I am wondering
         # if AR is now much more consistent.  I worked around by manually making a result here.
-        ::ActiveRecord::Result.new(nil, [[last_id]])
+        ::ActiveRecord::Result.new(['last_id'], [[last_id]])
       end
       alias insert_sql exec_insert
       deprecate insert_sql: :insert
 
       private
 
-      def full_version
-        @full_version ||= begin
-          result = execute 'SELECT VERSION()', 'SCHEMA'
-          result.first.values.first # [{"VERSION()"=>"5.5.37-0ubuntu..."}]
-        end
-      end
+      # e.g. "5.7.20-0ubuntu0.16.04.1"
+      def full_version; @full_version ||= @connection.full_version end
 
       def jdbc_connection_class(spec)
         ::ActiveRecord::ConnectionAdapters::MySQLJdbcConnection

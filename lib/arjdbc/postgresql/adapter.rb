@@ -40,7 +40,7 @@ module ArJdbc
     def self.jdbc_connection_class
       ::ActiveRecord::ConnectionAdapters::PostgreSQLJdbcConnection
     end
-    
+
     # @see ActiveRecord::ConnectionAdapters::JdbcAdapter#jdbc_column_class
     def jdbc_column_class; ::ActiveRecord::ConnectionAdapters::PostgreSQLColumn end
 
@@ -320,7 +320,7 @@ module ArJdbc
       unless lock_id.is_a?(Integer) && lock_id.bit_length <= 63
         raise(ArgumentError, "Postgres requires advisory lock ids to be a signed 64 bit integer")
       end
-      select_value("SELECT pg_advisory_unlock(#{lock_id})") == 't'.freeze
+      select_value("SELECT pg_advisory_unlock(#{lock_id})")
     end
 
     def exec_insert(sql, name, binds, pk = nil, sequence_name = nil)
@@ -399,42 +399,7 @@ module ArJdbc
     end
 
     def last_insert_id_result(sequence_name)
-      select_value("SELECT currval('#{sequence_name}')", 'SQL')
-    end
-
-    # Create a new PostgreSQL database. Options include <tt>:owner</tt>, <tt>:template</tt>,
-    # <tt>:encoding</tt>, <tt>:collation</tt>, <tt>:ctype</tt>,
-    # <tt>:tablespace</tt>, and <tt>:connection_limit</tt> (note that MySQL uses
-    # <tt>:charset</tt> while PostgreSQL uses <tt>:encoding</tt>).
-    #
-    # Example:
-    # create_database config[:database], config
-    # create_database 'foo_development', encoding: 'unicode'
-    def create_database(name, options = {})
-      options = { :encoding => 'utf8' }.merge!(options.symbolize_keys)
-
-      option_string = options.sum do |key, value|
-        case key
-        when :owner
-          " OWNER = \"#{value}\""
-        when :template
-          " TEMPLATE = \"#{value}\""
-        when :encoding
-          " ENCODING = '#{value}'"
-        when :collation
-          " LC_COLLATE = '#{value}'"
-        when :ctype
-          " LC_CTYPE = '#{value}'"
-        when :tablespace
-          " TABLESPACE = \"#{value}\""
-        when :connection_limit
-          " CONNECTION LIMIT = #{value}"
-        else
-          ""
-        end
-      end
-
-      execute "CREATE DATABASE #{quote_table_name(name)}#{option_string}"
+      exec_query("SELECT currval('#{sequence_name}')", 'SQL')
     end
 
     def all_schemas
@@ -523,7 +488,7 @@ module ArJdbc
     #  - format_type includes the column size constraint, e.g. varchar(50)
     #  - ::regclass is a function that gives the id for a table name
     def column_definitions(table_name)
-      rows = select_rows(<<-end_sql, 'SCHEMA')
+      select_rows(<<-end_sql, 'SCHEMA')
         SELECT a.attname, format_type(a.atttypid, a.atttypmod),
                pg_get_expr(d.adbin, d.adrelid), a.attnotnull, a.atttypid, a.atttypmod,
                (SELECT c.collname FROM pg_collation c, pg_type t
@@ -536,11 +501,6 @@ module ArJdbc
            AND a.attnum > 0 AND NOT a.attisdropped
          ORDER BY a.attnum
       end_sql
-
-      # Force the notnull attribute to a boolean
-      rows.each do |row|
-        row[3] = row[3] == 't' if row[3].is_a?(String)
-      end
     end
     private :column_definitions
 
@@ -638,7 +598,7 @@ module ArJdbc
                   AND castsource = #{quote column.sql_type}::regtype
               )
         end_sql
-        select_rows(sql, 'SCHEMA').first.first == 't'
+        select_value(sql, 'SCHEMA')
       end
     end
 
@@ -683,7 +643,7 @@ module ArJdbc
     end
 
     def extract_table_ref_from_insert_sql(sql)
-      sql[/into\s+([^\(]*).*values\s*\(/i]
+      sql[/into\s("[A-Za-z0-9_."\[\]\s]+"|[A-Za-z0-9_."\[\]]+)\s*/im]
       $1.strip if $1
     end
 

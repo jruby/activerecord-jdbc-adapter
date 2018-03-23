@@ -6,7 +6,7 @@ before_install:
   - unset _JAVA_OPTIONS
 before_script:
   - export JRUBY_OPTS="-J-Xms64M -J-Xmx1024M"
-  #- mvn prepare-package # compiles ext generates: lib/arjdbc/jdbc/adapter_java.jar
+  - rake jar # compiles ext generates: lib/arjdbc/jdbc/adapter_java.jar
   - mysql --version || true # to see if we're using MySQL or MariaDB
   - '[ "$DB" == "postgresql" ] && [ "$TEST_PREFIX" == "" ] && rake db:postgresql || true'
   - '[ "$DB" == "mysql2" ] && [ "$TEST_PREFIX" == "" ] && rake db:mysql || true'
@@ -61,6 +61,8 @@ matrix:
         mariadb: '10.1'
       env: DB=mariadb PREPARED_STATEMENTS=true
     # Rails test-suite :
-    - env: DB=mysql2     TEST_PREFIX="rails:" AR_VERSION="v5.1.4"
-    - env: DB=postgresql TEST_PREFIX="rails:" AR_VERSION="v5.1.4"
+    - env: DB=mysql2     TEST_PREFIX="rails:" AR_VERSION="v5.1.4" # PS off by default
+    - env: DB=mysql2     TEST_PREFIX="rails:" AR_VERSION="v5.1.4" PREPARED_STATEMENTS=true
+    - env: DB=postgresql TEST_PREFIX="rails:" AR_VERSION="v5.1.4" # PS on by default
+    - env: DB=postgresql TEST_PREFIX="rails:" AR_VERSION="v5.1.4" PREPARED_STATEMENTS=false
     - env: DB=sqlite3    TEST_PREFIX="rails:" AR_VERSION="v5.1.4"

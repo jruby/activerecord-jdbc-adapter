@@ -39,11 +39,13 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Timestamp;
 import java.sql.Types;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 import java.util.regex.Pattern;
+import java.util.regex.Matcher;
 
 import arjdbc.util.DateTimeUtils;
 import org.joda.time.DateTimeZone;
@@ -66,9 +68,13 @@ import org.jruby.util.ByteList;
 import org.jruby.util.SafePropertyAccessor;
 import org.postgresql.PGConnection;
 import org.postgresql.PGStatement;
+import org.postgresql.geometric.PGbox;
+import org.postgresql.geometric.PGcircle;
 import org.postgresql.geometric.PGline;
 import org.postgresql.geometric.PGlseg;
+import org.postgresql.geometric.PGpath;
 import org.postgresql.geometric.PGpoint;
+import org.postgresql.geometric.PGpolygon;
 import org.postgresql.util.PGInterval;
 import org.postgresql.util.PGobject;
 
@@ -82,12 +88,16 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
     private static final long serialVersionUID = 7235537759545717760L;
     private static final int HSTORE_TYPE = 100000 + 1111;
     private static final Pattern binaryStringPattern = Pattern.compile("^[01]+$");
+    private static final Pattern doubleValuePattern = Pattern.compile("(-?\\d+(?:\\.\\d+)?)");
+    private static final Pattern pointCleanerPattern = Pattern.compile("\\.0\\b");
     private static final Pattern uuidPattern = Pattern.compile("^\\p{XDigit}{8}-(?:\\p{XDigit}{4}-){3}\\p{XDigit}{12}$");
 
     private static final Map<String, Integer> POSTGRES_JDBC_TYPE_FOR = new HashMap<String, Integer>(32, 1);
     static {
         POSTGRES_JDBC_TYPE_FOR.put("bit", Types.OTHER);
         POSTGRES_JDBC_TYPE_FOR.put("bit_varying", Types.OTHER);
+        POSTGRES_JDBC_TYPE_FOR.put("box", Types.OTHER);
+        POSTGRES_JDBC_TYPE_FOR.put("circle", Types.OTHER);
         POSTGRES_JDBC_TYPE_FOR.put("citext", Types.OTHER);
         POSTGRES_JDBC_TYPE_FOR.put("daterange", Types.OTHER);
         POSTGRES_JDBC_TYPE_FOR.put("hstore", Types.OTHER);
@@ -100,13 +110,14 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
         POSTGRES_JDBC_TYPE_FOR.put("lseg", Types.OTHER);
         POSTGRES_JDBC_TYPE_FOR.put("ltree", Types.OTHER);
         POSTGRES_JDBC_TYPE_FOR.put("numrange", Types.OTHER);
+        POSTGRES_JDBC_TYPE_FOR.put("path", Types.OTHER);
         POSTGRES_JDBC_TYPE_FOR.put("point", Types.OTHER);
+        POSTGRES_JDBC_TYPE_FOR.put("polygon", Types.OTHER);
         POSTGRES_JDBC_TYPE_FOR.put("tsrange", Types.OTHER);
         POSTGRES_JDBC_TYPE_FOR.put("tstzrange", Types.OTHER);
         POSTGRES_JDBC_TYPE_FOR.put("tsvector", Types.OTHER);
         POSTGRES_JDBC_TYPE_FOR.put("uuid", Types.OTHER);
     }
-
 
     public PostgreSQLRubyJdbcConnection(Ruby runtime, RubyClass metaClass) {
         super(runtime, metaClass);
@@ -331,11 +342,22 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
         final IRubyObject attribute, final int type) throws SQLException {
 
         final String columnType = attributeSQLType(context, attribute).asJavaString();
+        Double[] pointValues;
 
         switch ( columnType ) {
             case "bit":
             case "bit_varying":
                 setPGobjectParameter(statement, index, value.toString(), "bit");
+                break;
+
+            case "box":
+                pointValues = parseDoubles(value);
+                statement.setObject(index, new PGbox(pointValues[0], pointValues[1], pointValues[2], pointValues[3]));
+                break;
+
+            case "circle":
+                pointValues = parseDoubles(value);
+                statement.setObject(index, new PGcircle(pointValues[0], pointValues[1], pointValues[2]));
                 break;
 
             case "cidr":
@@ -358,15 +380,31 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
                 break;
 
             case "line":
-                statement.setObject(index, new PGline(value.toString()));
+                pointValues = parseDoubles(value);
+                if ( pointValues.length == 3 ) {
+                    statement.setObject(index, new PGline(pointValues[0], pointValues[1], pointValues[2]));
+                } else {
+                    statement.setObject(index, new PGline(pointValues[0], pointValues[1], pointValues[2], pointValues[3]));
+                }
                 break;
 
             case "lseg":
-                statement.setObject(index, new PGlseg(value.toString()));
+                pointValues = parseDoubles(value);
+                statement.setObject(index, new PGlseg(pointValues[0], pointValues[1], pointValues[2], pointValues[3]));
+                break;
+
+            case "path":
+                // If the value starts with "[" it is open, otherwise postgres treats it as a closed path
+                statement.setObject(index, new PGpath((PGpoint[]) convertToPoints(parseDoubles(value)), value.toString().startsWith("[")));
                 break;
 
             case "point":
-                statement.setObject(index, new PGpoint(value.toString()));
+                pointValues = parseDoubles(value);
+                statement.setObject(index, new PGpoint(pointValues[0], pointValues[1]));
+                break;
+
+            case "polygon":
+                statement.setObject(index, new PGpolygon((PGpoint[]) convertToPoints(parseDoubles(value))));
                 break;
 
             case "uuid":
@@ -381,6 +419,29 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
                     super.setObjectParameter(context, connection, statement, index, value, attribute, type);
                 }
         }
+    }
+
+    // The tests won't start if this returns PGpoint[]
+    // it fails with a runtime error: "NativeException: java.lang.reflect.InvocationTargetException: [Lorg/postgresql/geometric/PGpoint"
+    private Object[] convertToPoints(Double[] values) throws SQLException {
+        PGpoint[] points = new PGpoint[values.length / 2];
+
+        for ( int i = 0; i < values.length; i += 2 ) {
+            points[i / 2] = new PGpoint(values[i], values[i + 1]);
+        }
+
+        return points;
+    }
+
+    private Double[] parseDoubles(IRubyObject value) {
+        Matcher matches = doubleValuePattern.matcher(value.toString());
+        ArrayList<Double> doubles = new ArrayList(4); // Paths and polygons may be larger but this covers points/circles/boxes/line segments
+
+        while ( matches.find() ) {
+            doubles.add(new Double(matches.group()));
+        }
+
+        return doubles.toArray(new Double[doubles.size()]);
     }
 
     private void setJsonParameter(final ThreadContext context,
@@ -558,7 +619,7 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
             if ( (infinity = parseInfinity(runtime, value)) != null ) return infinity;
         }
 
-        return DateTimeUtils.parseDateTime(context, value, getDefaultTimeZone(context));
+        return DateTimeUtils.parseDateTime(context, value, getDefaultTimeZone(context)); // handles '0001-01-01 23:59:59 BC'
     }
 
     private static IRubyObject parseInfinity(final Ruby runtime, final String value) {
@@ -618,21 +679,30 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
 
         final Class<?> objectClass = object.getClass();
         if ( objectClass == UUID.class ) {
-            return runtime.newString( object.toString() );
-        }
-
-        if ( objectClass == PGInterval.class ) {
-            return runtime.newString( formatInterval(object) );
+            return runtime.newString(object.toString());
         }
 
         if ( object instanceof PGobject ) {
+
+            if ( objectClass == PGInterval.class ) {
+                return runtime.newString(formatInterval(object));
+            }
+
+            if ( objectClass == PGbox.class || objectClass == PGcircle.class ||
+                 objectClass == PGline.class || objectClass == PGlseg.class ||
+                 objectClass == PGpath.class || objectClass == PGpoint.class ||
+                 objectClass == PGpolygon.class ) {
+                // AR 5.0+ expects that points don't have the '.0' if it is an integer
+                return runtime.newString(pointCleanerPattern.matcher(object.toString()).replaceAll(""));
+            }
+
             // PG 9.2 JSON type will be returned here as well
-            return runtime.newString( object.toString() );
+            return runtime.newString(object.toString());
         }
 
         if ( object instanceof Map ) { // hstore
             if ( rawHstoreType == Boolean.TRUE ) {
-                return runtime.newString( resultSet.getString(column) );
+                return runtime.newString(resultSet.getString(column));
             }
             // by default we avoid double parsing by driver and than column :
             final RubyHash rubyObject = RubyHash.newHash(runtime);

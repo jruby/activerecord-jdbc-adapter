@@ -27,6 +27,7 @@ package arjdbc.mysql;
 
 import org.jcodings.specific.UTF8Encoding;
 import org.jruby.Ruby;
+import org.jruby.RubyFixnum;
 import org.jruby.RubyModule;
 import org.jruby.RubyString;
 import org.jruby.anno.JRubyMethod;
@@ -50,6 +51,9 @@ public class MySQLModule {
         return load( arjdbc.ArJdbcModule.get(runtime) );
     }
 
+    // ActiveRecord::ConnectionAdapters::MySQL::Quoting (almost all of)
+    // without the column/table name 'caches' replicated across threads
+
     //private final static byte[] ZERO = new byte[] {'\\','0'};
     //private final static byte[] NEWLINE = new byte[] {'\\','n'};
     //private final static byte[] CARRIAGE = new byte[] {'\\','r'};
@@ -60,7 +64,7 @@ public class MySQLModule {
 
     private static final int STRING_QUOTES_OPTIMISTIC_QUESS = 24;
 
-    @JRubyMethod(name = "quote_string", required = 1, frame = false)
+    @JRubyMethod(name = "quote_string", required = 1)
     public static IRubyObject quote_string(final ThreadContext context,
         final IRubyObject recv, final IRubyObject string) {
 
@@ -109,21 +113,35 @@ public class MySQLModule {
         return quoted;
     }
 
-    @JRubyMethod(name = "quoted_true", required = 0, frame = false)
+    @JRubyMethod(name = "quoted_true")
     public static IRubyObject quoted_true(
             final ThreadContext context,
             final IRubyObject self) {
-        return RubyString.newString(context.runtime, BYTES_1);
+        return RubyString.newString(context.runtime, BYTES_1).freeze(context);
     }
 
-    @JRubyMethod(name = "quoted_false", required = 0, frame = false)
+    @JRubyMethod(name = "quoted_false")
     public static IRubyObject quoted_false(
             final ThreadContext context,
             final IRubyObject self) {
-        return RubyString.newString(context.runtime, BYTES_0);
+        return RubyString.newString(context.runtime, BYTES_0).freeze(context);
     }
 
-    @JRubyMethod(name = "quote_column_name", required = 1, frame = false)
+    @JRubyMethod(name = "unquoted_true")
+    public static IRubyObject unquoted_true(
+            final ThreadContext context,
+            final IRubyObject self) {
+        return RubyFixnum.one(context.runtime);
+    }
+
+    @JRubyMethod(name = "unquoted_false")
+    public static IRubyObject unquoted_false(
+            final ThreadContext context,
+            final IRubyObject self) {
+        return RubyFixnum.zero(context.runtime);
+    }
+
+    @JRubyMethod(name = "quote_column_name", required = 1)
     public static IRubyObject quote_column_name(
             final ThreadContext context,
             final IRubyObject self,
