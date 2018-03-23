@@ -2,20 +2,6 @@ require 'test_helper'
 
 class PostgresUnitTest < Test::Unit::TestCase
 
-  test 'create_database (with options)' do
-    connection = connection_stub
-    connection.expects(:execute).with '' +
-      "CREATE DATABASE \"mega_development\" ENCODING = 'utf8' TABLESPACE = \"TS1\" OWNER = \"kimcom\""
-    connection.create_database 'mega_development',
-      :tablespace => :'TS1', 'owner' => 'kimcom', :invalid => 'ignored'
-  end
-
-  test 'create_database (no options)' do
-    connection = connection_stub
-    connection.expects(:execute).with "CREATE DATABASE \"mega_development\" ENCODING = 'utf8'"
-    connection.create_database 'mega_development'
-  end
-
   context 'connection' do
 
     test 'jndi configuration' do
@@ -54,16 +40,6 @@ class PostgresActiveSchemaUnitTest < Test::Unit::TestCase
     connection = ActiveRecord::Base.connection
     meta_class = class << connection; self; end
     meta_class.send :remove_method, :execute
-  end
-
-  def test_create_database_with_encoding
-    assert_equal %(CREATE DATABASE "matt" ENCODING = 'utf8'), create_database(:matt)
-    assert_equal %(CREATE DATABASE "aimonetti" ENCODING = 'latin1'), create_database(:aimonetti, :encoding => :latin1)
-    assert_equal %(CREATE DATABASE "aimonetti" ENCODING = 'latin1'), create_database(:aimonetti, 'encoding' => :latin1)
-  end
-
-  def test_create_database_with_collation_and_ctype
-    assert_equal %(CREATE DATABASE "aimonetti" ENCODING = 'UTF8' LC_COLLATE = 'ja_JP.UTF8' LC_CTYPE = 'ja_JP.UTF8'), create_database(:aimonetti, :encoding => :"UTF8", :collation => :"ja_JP.UTF8", :ctype => :"ja_JP.UTF8")
   end
 
   def test_add_index

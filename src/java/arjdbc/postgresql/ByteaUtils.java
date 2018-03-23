@@ -89,6 +89,7 @@ abstract class ByteaUtils {
                     }
                     else {
                         correctSize -= 3;
+                        i += 2;
                     }
                 }
             }
