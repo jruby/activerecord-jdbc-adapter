@@ -37,5 +37,7 @@ Gem::Specification.new do |gem|
   #gem.add_development_dependency 'mocha', '~> 0.13.1'
 
   gem.rdoc_options = ["--main", "README.md", "-SHN", "-f", "darkfish"]
+
+  gem.extensions << 'Rakefile' if File.exist?('.git')
 end
 
