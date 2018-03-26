@@ -227,7 +227,7 @@ if defined? JRUBY_VERSION
       driver_jars
     end
 
-    if ENV['RUBYARCHDIR'] || ENV['BUILD_EXT_MAVEN'] == 'true'
+    if ENV['BUILD_EXT_MAVEN'] == 'true'
       driver_jars = get_driver_jars_maven.call
     else
       driver_jars = get_driver_jars_local.call
