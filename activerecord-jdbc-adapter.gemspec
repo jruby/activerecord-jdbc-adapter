@@ -30,15 +30,15 @@ Gem::Specification.new do |gem|
   if ENV['RELEASE'] != 'true' # @see Rakefile
     gem.extensions << 'Rakefile' # to support auto-building .jar with :git paths
 
-    gem.add_runtime_dependency 'jar-dependencies', '~> 0.1.13' # development not enough!
-    gem.add_development_dependency 'ruby-maven', '~> 3.1'
-
-    gem.requirements << "jar mysql:mysql-connector-java, 5.1.44, :scope => :compile"
-    gem.requirements << "jar org.postgresql:postgresql, 42.1.4.jre6, :scope => :compile"
+    #gem.add_runtime_dependency 'jar-dependencies', '~> 0.1.13' # development not enough!
+    #gem.add_development_dependency 'ruby-maven', '~> 3.1'
+    #
+    #gem.requirements << "jar mysql:mysql-connector-java, 5.1.44, :scope => :compile"
+    #gem.requirements << "jar org.postgresql:postgresql, 42.1.4.jre6, :scope => :compile"
 
     # compilation .jar dependencies for extension (at least until `mvn') :
-    #gem.add_development_dependency 'jdbc-mysql', '~> 5.1'
-    #gem.add_development_dependency 'jdbc-postgres', '~> 42.1'
+    gem.add_development_dependency 'jdbc-mysql', '~> 5.1.44'
+    gem.add_development_dependency 'jdbc-postgres', '~> 42.1'
   end
 
   gem.executables = gem.files.grep(%r{^bin/}).map { |f| File.basename(f) }
