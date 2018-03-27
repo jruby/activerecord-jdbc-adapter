@@ -149,12 +149,13 @@ public class PostgreSQLResult extends JdbcResult {
     }
 
     /**
-     * Gives the number of rows to be returned
+     * Gives the number of rows to be returned.
+     * currently defined so we match existing returned results
      * @param context current thread contect
      * @return <code>Fixnum</code>
      */
     @JRubyMethod
-    public IRubyObject size(final ThreadContext context) {
+    public IRubyObject length(final ThreadContext context) {
         return values.length();
     }
 
