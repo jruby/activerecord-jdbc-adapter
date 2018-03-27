@@ -936,7 +936,8 @@ module SimpleTestMethods
     Entry.create! :title => '43'; Entry.create! :title => '44'
     assert_not_nil result = connection.execute("SELECT * FROM entries")
     if defined? JRUBY_VERSION # e.g. Mysql2::Result with mysql2
-      assert_equal 2, result.length
+      # New postgres result object defines "size" for now since mysql2's result object also uses that
+      assert_equal 2, result.respond_to?(:length) ? result.length : result.size
       assert_instance_of Hash, result.first
     end
   end

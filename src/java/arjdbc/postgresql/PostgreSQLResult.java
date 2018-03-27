@@ -149,6 +149,16 @@ public class PostgreSQLResult extends JdbcResult {
     }
 
     /**
+     * Gives the number of rows to be returned
+     * @param context current thread contect
+     * @return <code>Fixnum</code>
+     */
+    @JRubyMethod
+    public IRubyObject size(final ThreadContext context) {
+        return values.length();
+    }
+
+    /**
      * Returns an array of arrays of the values in the result.
      * This is defined in PG::Result and is used by some Rails tests
      * @return IRubyObject RubyArray of RubyArray of values
