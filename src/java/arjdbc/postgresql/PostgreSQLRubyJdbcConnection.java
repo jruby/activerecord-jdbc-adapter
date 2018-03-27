@@ -32,7 +32,6 @@ import arjdbc.postgresql.PostgreSQLResult;
 import java.io.ByteArrayInputStream;
 import java.lang.StringBuilder;
 import java.lang.reflect.InvocationTargetException;
-import java.sql.Array;
 import java.sql.Connection;
 import java.sql.Date;
 import java.sql.PreparedStatement;
@@ -237,9 +236,8 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
     }
 
     @Override
-    protected IRubyObject mapExecuteResult(final ThreadContext context,
-            final Connection connection, final ResultSet resultSet) throws SQLException{
-
+    protected IRubyObject mapExecuteResult(final ThreadContext context, final Connection connection,
+                                           final ResultSet resultSet) throws SQLException{
         return PostgreSQLResult.newResult(context, resultSet, getAdapter());
     }
 
@@ -251,11 +249,9 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
      * @return <code>ActiveRecord::Result</code>
      * @throws SQLException
      */
-    protected IRubyObject mapQueryResult(final ThreadContext context,
-                                       final Connection connection, final ResultSet resultSet) throws SQLException {
-
-        final PostgreSQLResult result = (PostgreSQLResult) mapExecuteResult(context, connection, resultSet);
-        return result.toARResult(context);
+    protected IRubyObject mapQueryResult(final ThreadContext context, final Connection connection,
+                                         final ResultSet resultSet) throws SQLException {
+        return ((PostgreSQLResult) mapExecuteResult(context, connection, resultSet)).toARResult(context);
     }
 
     @Override
@@ -524,99 +520,6 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
         return super.jdbcTypeFor(type);
     }
 
-
-    // NOTE: PostgreSQL adapter under MRI using pg gem returns UTC-d Date/Time values
-
-    @Override
-    protected IRubyObject dateToRuby(final ThreadContext context,
-        final Ruby runtime, final ResultSet resultSet, final int column)
-        throws SQLException {
-
-        final String value = resultSet.getString(column); // not getDate -> we're do the parsing
-        if ( value == null ) {
-            return resultSet.wasNull() ? context.nil : RubyString.newEmptyString(runtime);
-        }
-
-        if ( rawDateTime != null && rawDateTime.booleanValue() ) {
-            return newASCIIString(runtime, value);
-        }
-
-        return DateTimeUtils.parseDate(context, value, getDefaultTimeZone(context));
-    }
-
-    @Override
-    protected IRubyObject timeToRuby(final ThreadContext context,
-        final Ruby runtime, final ResultSet resultSet, final int column)
-        throws SQLException { // due TIME precision e.g. TIME(4)
-
-        final String value = resultSet.getString(column);
-        // extracting with resultSet.getTimestamp(column) only gets .999 (3) precision
-        if ( value == null ) {
-            return resultSet.wasNull() ? context.nil : RubyString.newEmptyString(runtime);
-        }
-
-        if ( rawDateTime != null && rawDateTime.booleanValue() ) {
-            return newASCIIString(runtime, value); // without "2000-01-01 " prefix
-        }
-
-        return DateTimeUtils.parseTime(context, value, getDefaultTimeZone(context));
-    }
-
-    @Override
-    protected IRubyObject timestampToRuby(final ThreadContext context,
-        final Ruby runtime, final ResultSet resultSet, final int column)
-        throws SQLException {
-        // NOTE: using Timestamp we loose information such as BC :
-        // Timestamp: '0001-12-31 22:59:59.0' String: '0001-12-31 22:59:59 BC'
-        final String value = resultSet.getString(column);
-        if ( value == null ) {
-            return resultSet.wasNull() ? context.nil : RubyString.newEmptyString(runtime);
-        }
-
-        if ( rawDateTime != null && rawDateTime.booleanValue() ) {
-            return newASCIIString(runtime, value);
-        }
-
-        final int len = value.length();
-        if ( len < 10 && value.charAt(len - 1) == 'y' ) { // infinity / -infinity
-            IRubyObject infinity;
-            if ( (infinity = parseInfinity(runtime, value)) != null ) return infinity;
-        }
-
-        return DateTimeUtils.parseDateTime(context, value, getDefaultTimeZone(context));
-    }
-
-    private static IRubyObject parseInfinity(final Ruby runtime, final String value) {
-        if (  "infinity".equals(value) ) return RubyFloat.newFloat(runtime,  RubyFloat.INFINITY);
-        if ( "-infinity".equals(value) ) return RubyFloat.newFloat(runtime, -RubyFloat.INFINITY);
-        return null;
-    }
-
-
-    @Override
-    protected IRubyObject arrayToRuby(final ThreadContext context,
-        final Ruby runtime, final ResultSet resultSet, final int column)
-        throws SQLException {
-        if ( rawArrayType == Boolean.TRUE ) { // pre AR 4.0 compatibility
-            return stringToRuby(context, runtime, resultSet, column);
-        }
-        // NOTE: avoid `finally { array.free(); }` on PostgreSQL due :
-        // java.sql.SQLFeatureNotSupportedException:
-        // Method org.postgresql.jdbc4.Jdbc4Array.free() is not yet implemented.
-        final Array value = resultSet.getArray(column);
-
-        if ( value == null /* && resultSet.wasNull() */ ) return context.nil;
-
-        final RubyArray array = runtime.newArray();
-
-        final ResultSet arrayResult = value.getResultSet(); // 1: index, 2: value
-        final int baseType = value.getBaseType();
-        while ( arrayResult.next() ) {
-            array.append( jdbcToRuby(context, runtime, 2, baseType, arrayResult) );
-        }
-        return array;
-    }
-
     @Override
     protected TableName extractTableName(
         final Connection connection, String catalog, String schema,
@@ -625,29 +528,6 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
         // schema search path is given.  Default to the 'public' schema instead:
         if ( schema == null ) schema = "public";
         return super.extractTableName(connection, catalog, schema, tableName);
-    }
-
-    protected static Boolean rawArrayType;
-    static {
-        final String arrayRaw = System.getProperty("arjdbc.postgresql.array.raw");
-        if ( arrayRaw != null ) rawArrayType = Boolean.parseBoolean(arrayRaw);
-    }
-
-    @JRubyMethod(name = "raw_array_type?", meta = true)
-    public static IRubyObject useRawArrayType(final ThreadContext context, final IRubyObject self) {
-        if ( rawArrayType == null ) return context.nil;
-        return context.runtime.newBoolean(rawArrayType);
-    }
-
-    @JRubyMethod(name = "raw_array_type=", meta = true)
-    public static IRubyObject setRawArrayType(final IRubyObject self, final IRubyObject value) {
-        if ( value instanceof RubyBoolean ) {
-            rawArrayType = ((RubyBoolean) value).isTrue() ? Boolean.TRUE : Boolean.FALSE;
-        }
-        else {
-            rawArrayType = value.isNil() ? null : Boolean.TRUE;
-        }
-        return value;
     }
 
     // NOTE: without these custom registered Postgre (driver) types
