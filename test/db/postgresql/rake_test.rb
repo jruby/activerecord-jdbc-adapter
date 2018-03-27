@@ -63,7 +63,7 @@ class PostgresRakeTest < Test::Unit::TestCase
       Rake::Task["db:structure:dump"].invoke
 
       assert File.exists?(structure_sql)
-      assert_match(/CREATE TABLE users/, File.read(structure_sql))
+      assert_match(/CREATE TABLE .*?.?users/, File.read(structure_sql))
 
       # db:structure:load
       drop_rake_test_database(:silence)
