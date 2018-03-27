@@ -1,6 +1,5 @@
 package arjdbc.jdbc;
 
-import arjdbc.util.ActiveRecord;
 import arjdbc.util.DateTimeUtils;
 import arjdbc.util.StringCache;
 import arjdbc.util.StringHelper;
@@ -172,6 +171,22 @@ public class JdbcResult extends RubyObject {
     }
 
     /**
+     * @param runtime
+     * @return <code>ActiveRecord::Base</code>
+     */
+    public static RubyClass getActiveRecordBaseClass(final Ruby runtime) {
+        return (RubyClass) runtime.getModule("ActiveRecord").getConstantAt("Base");
+    }
+
+    /**
+     * @param runtime
+     * @return <code>ActiveRecord::Result</code>
+     */
+    private RubyClass getActiveRecordResultClass(final Ruby runtime) {
+        return (RubyClass) runtime.getModule("ActiveRecord").getConstantAt("Result");
+    }
+
+    /**
      * @param context the current thread context
      * @return an array with the column names as Ruby strings
      */
@@ -233,7 +248,7 @@ public class JdbcResult extends RubyObject {
      * @throws SQLException can be caused by postgres generating its type map
      */
     public IRubyObject toARResult(final ThreadContext context) throws SQLException {
-        final RubyClass Result = ActiveRecord.Result(context);
+        final RubyClass Result = getActiveRecordResultClass(context.runtime);
         final RubyArray rubyColumnNames = RubyArray.newArrayNoCopy(context.runtime, getColumnNames(context));
         return Result.newInstance(context, rubyColumnNames, values, columnTypeMap(context), Block.NULL_BLOCK);
     }
@@ -644,7 +659,7 @@ public class JdbcResult extends RubyObject {
     private static final CachingCallSite default_timezone = new FunctionalCachingCallSite("default_timezone");
 
     private static String default_timezone(final ThreadContext context) {
-        final RubyClass base = ActiveRecord.Base(context);
+        final RubyClass base = getActiveRecordBaseClass(context.runtime);
         return default_timezone.call(context, base, base).toString(); // :utc (or :local)
     }
 

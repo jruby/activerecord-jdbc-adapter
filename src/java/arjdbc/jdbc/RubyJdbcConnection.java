@@ -100,7 +100,6 @@ import org.jruby.util.ByteList;
 import org.jruby.util.SafePropertyAccessor;
 import org.jruby.util.TypeConverter;
 
-import arjdbc.util.ActiveRecord;
 import arjdbc.util.DateTimeUtils;
 import arjdbc.util.ObjectSupport;
 import arjdbc.util.StringCache;
@@ -154,9 +153,8 @@ public class RubyJdbcConnection extends RubyObject {
         return (RubyClass) getConnectionAdapters(runtime).getConstantAt("JdbcConnection");
     }
 
-    @Deprecated // Use ActiveRecord util
     protected static RubyModule ActiveRecord(ThreadContext context) {
-        return ActiveRecord.Module(context);
+        return context.runtime.getModule("ActiveRecord");
     }
 
     public static RubyClass getBase(final Ruby runtime) {
@@ -356,7 +354,7 @@ public class RubyJdbcConnection extends RubyObject {
             connection.setTransactionIsolation(level);
         }
         catch (SQLException e) {
-            RubyClass txError = ActiveRecord.Module(context).getClass("TransactionIsolationError");
+            RubyClass txError = ActiveRecord(context).getClass("TransactionIsolationError");
             if ( txError != null ) throw wrapException(context, txError, e);
             throw e; // let it roll - will be wrapped into a JDBCError (non 4.0)
         }
@@ -487,7 +485,7 @@ public class RubyJdbcConnection extends RubyObject {
     }
 
     protected static RuntimeException newSavepointNotSetError(final ThreadContext context, final IRubyObject name, final String op) {
-        RubyClass StatementInvalid = ActiveRecord.Module(context).getClass("StatementInvalid");
+        RubyClass StatementInvalid = ActiveRecord(context).getClass("StatementInvalid");
         return context.runtime.newRaiseException(StatementInvalid, "could not " + op + " savepoint: '" + name + "' (not set)");
     }
 
