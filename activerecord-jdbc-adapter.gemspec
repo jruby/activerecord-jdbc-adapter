@@ -1,15 +1,14 @@
 # -*- encoding: utf-8 -*-
-$:.push File.expand_path("../lib", __FILE__)
-require 'arjdbc/version'
 
 Gem::Specification.new do |gem|
   gem.name = 'activerecord-jdbc-adapter'
-  gem.version = ArJdbc::VERSION
-  gem.platform = Gem::Platform::RUBY
+  path = File.expand_path('lib/arjdbc/version.rb', File.dirname(__FILE__))
+  gem.version = File.read(path).match( /.*VERSION\s*=\s*['"](.*)['"]/m )[1]
+  gem.platform = 'java' # due jar-dependencies to resolve requirements for ext
   gem.authors = ['Nick Sieger, Ola Bini, Karol Bucek and JRuby contributors']
   gem.email = ['nick@nicksieger.com', 'ola.bini@gmail.com', 'self@kares.org']
   gem.homepage = 'https://github.com/jruby/activerecord-jdbc-adapter'
-  gem.license = "BSD"
+  gem.license = 'BSD-2-Clause'
   gem.summary = 'JDBC adapter for ActiveRecord, for use within JRuby on Rails.'
   gem.description = "" <<
     "AR-JDBC is a database adapter for Rails' ActiveRecord component designed " <<
@@ -26,6 +25,22 @@ Gem::Specification.new do |gem|
     reject { |f| f =~ /^(activerecord-jdbc[^-]|jdbc-)/ }. # gem directories
     reject { |f| f =~ /^(bench|test)/ }. # not sure if including tests is useful
     reject { |f| f =~ /^(gemfiles)/ } # no tests - no Gemfile_s appraised ...
+  gem.files += ['lib/arjdbc/jdbc/adapter_java.jar'] #if ENV['RELEASE'].eql?('true')
+
+  if ENV['RELEASE'] != 'true' # @see Rakefile
+    gem.extensions << 'Rakefile' # to support auto-building .jar with :git paths
+
+    #gem.add_runtime_dependency 'jar-dependencies', '~> 0.1.13' # development not enough!
+    #gem.add_development_dependency 'ruby-maven', '~> 3.1'
+    #
+    #gem.requirements << "jar mysql:mysql-connector-java, 5.1.44, :scope => :compile"
+    #gem.requirements << "jar org.postgresql:postgresql, 42.1.4.jre6, :scope => :compile"
+
+    # compilation .jar dependencies for extension (at least until `mvn') :
+    gem.add_development_dependency 'jdbc-mysql', '~> 5.1.44'
+    gem.add_development_dependency 'jdbc-postgres', '~> 42.1'
+  end
+
   gem.executables = gem.files.grep(%r{^bin/}).map { |f| File.basename(f) }
   gem.test_files = gem.files.grep(%r{^test/})
 
@@ -36,6 +51,5 @@ Gem::Specification.new do |gem|
   #gem.add_development_dependency 'mocha', '~> 0.13.1'
 
   gem.rdoc_options = ["--main", "README.md", "-SHN", "-f", "darkfish"]
-  gem.rubyforge_project = %q{jruby-extras}
 end
 

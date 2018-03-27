@@ -557,7 +557,7 @@ public class JdbcResult extends RubyObject {
                     len = reader.read(buffer);
                 }
 
-                return RubyString.newInternalFromJavaExternal(context.runtime, string.toString());
+                return StringHelper.newDefaultInternalString(context.runtime, string);
             } finally {
                 reader.close();
             }

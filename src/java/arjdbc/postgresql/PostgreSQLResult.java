@@ -264,6 +264,20 @@ public class PostgreSQLResult extends JdbcResult {
     }
 
     /**
+     * Override character stream handling to be read as bytes
+     * @param context current thread context
+     * @param resultSet the jdbc result set to pull the value from
+     * @param index the index of the column to convert
+     * @return RubyNil if NULL or RubyString if there is a value
+     * @throws SQLException if it failes to retrieve the value from the result set
+     */
+    @Override
+    protected IRubyObject readerToRuby(final ThreadContext context, final ResultSet resultSet,
+                                       final int index) throws SQLException {
+        return stringToRuby(context, resultSet, index);
+    }
+
+    /**
      * Converts a string column into a Ruby string by pulling the raw bytes from the column and
      * turning them into a string using the default encoding
      * @param context current thread context
@@ -332,6 +346,7 @@ public class PostgreSQLResult extends JdbcResult {
             }
         }
 
+        // handles '0001-01-01 23:59:59 BC'
         return DateTimeUtils.parseDateTime(context, value, getDefaultTimeZone(context));
     }
 

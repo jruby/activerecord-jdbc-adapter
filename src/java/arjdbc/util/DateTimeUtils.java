@@ -530,7 +530,7 @@ public abstract class DateTimeUtils {
             throw new IllegalArgumentException("'"+ str +"' has neither date nor time");
         }
 
-        if ( bcEra ) year = -1 * year;
+        if ( bcEra ) year = -1 * year + 1; // since JODA is treating year 0 as non-existent
 
         DateTime dateTime = new DateTime(year, month, day, hour, minute, second, millis, zone);
         return RubyTime.newTime(context.runtime, dateTime, nanos);

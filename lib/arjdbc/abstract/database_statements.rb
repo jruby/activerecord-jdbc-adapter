@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module ArJdbc
   module Abstract
 
@@ -5,9 +7,9 @@ module ArJdbc
     # database for JDBC based adapters
     module DatabaseStatements
 
-      EMPTY_BINDS = [].freeze
+      NO_BINDS = [].freeze
 
-      def exec_insert(sql, name = nil, binds = EMPTY_BINDS, pk = nil, sequence_name = nil)
+      def exec_insert(sql, name = nil, binds = NO_BINDS, pk = nil, sequence_name = nil)
         if without_prepared_statement?(binds)
           log(sql, name) { @connection.execute_insert(sql) }
         else
@@ -19,11 +21,10 @@ module ArJdbc
 
       # It appears that at this point (AR 5.0) "prepare" should only ever be true
       # if prepared statements are enabled
-      def exec_query(sql, name = nil, binds = EMPTY_BINDS, prepare: false)
+      def exec_query(sql, name = nil, binds = NO_BINDS, prepare: false)
         if without_prepared_statement?(binds)
           log(sql, name) { @connection.execute_query(sql) }
         else
-          binds = convert_legacy_binds_to_attributes(binds) if binds.first.is_a?(Array)
           log(sql, name, binds) do
             # It seems that #supports_statement_cache? is defined but isn't checked before setting "prepare" (AR 5.0)
             cached_statement = fetch_cached_statement(sql) if prepare && supports_statement_cache?
@@ -32,7 +33,7 @@ module ArJdbc
         end
       end
 
-      def exec_update(sql, name = nil, binds = EMPTY_BINDS)
+      def exec_update(sql, name = nil, binds = NO_BINDS)
         if without_prepared_statement?(binds)
           log(sql, name) { @connection.execute_update(sql) }
         else
@@ -43,14 +44,6 @@ module ArJdbc
 
       def execute(sql, name = nil)
         log(sql, name) { @connection.execute(sql) }
-      end
-
-      private
-
-      def convert_legacy_binds_to_attributes(binds)
-        binds.map do |column, value|
-          ActiveRecord::Relation::QueryAttribute.new(nil, type_cast(value, column), ActiveModel::Type::Value.new)
-        end
       end
 
     end
