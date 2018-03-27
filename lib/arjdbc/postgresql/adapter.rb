@@ -50,6 +50,7 @@ module ArJdbc
       ADAPTER_NAME
     end
 
+    # TODO: Update this to pull info from the DatabaseMetaData object?
     def postgresql_version
       @postgresql_version ||=
         begin
@@ -63,7 +64,8 @@ module ArJdbc
     end
 
     def select_version
-      @_version ||= select_value('SELECT version()')
+      # Need to use #execute so we don't try to access the type map before it is initialized
+      @_version ||= execute('SELECT version()').values.first.first
     end
     private :select_version
 
@@ -384,7 +386,8 @@ module ArJdbc
     # Returns the current client message level.
     def client_min_messages
       return nil if redshift? # not supported on Redshift
-      select_value('SHOW client_min_messages', 'SCHEMA')
+      # Need to use #execute so we don't try to access the type map before it is initialized
+      execute('SHOW client_min_messages', 'SCHEMA').values.first.first
     end
 
     # Set the client message level.
