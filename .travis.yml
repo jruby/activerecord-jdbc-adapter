@@ -29,7 +29,7 @@ before_script:
     psql  -c "create database activerecord_unittest2;" -U postgres \
     || true
 rvm:
-  - jruby-9.1.14.0
+  - jruby-9.1.16.0
 jdk:
   - openjdk8
 env:
