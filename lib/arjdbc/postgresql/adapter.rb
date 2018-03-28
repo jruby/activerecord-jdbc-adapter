@@ -54,7 +54,7 @@ module ArJdbc
     def postgresql_version
       @postgresql_version ||=
         begin
-          version = select_version
+          version = @connection.database_product
           if version =~ /PostgreSQL (\d+)\.(\d+)\.(\d+)/
             ($1.to_i * 10000) + ($2.to_i * 100) + $3.to_i
           else
@@ -63,17 +63,11 @@ module ArJdbc
         end
     end
 
-    def select_version
-      # Need to use #execute so we don't try to access the type map before it is initialized
-      @_version ||= execute('SELECT version()').values.first.first
-    end
-    private :select_version
-
     def redshift?
       # SELECT version() :
       #  PostgreSQL 8.0.2 on i686-pc-linux-gnu, compiled by GCC gcc (GCC) 3.4.2 20041017 (Red Hat 3.4.2-6.fc3), Redshift 1.0.647
       if ( redshift = config[:redshift] ).nil?
-        redshift = !! (select_version || '').index('Redshift')
+        redshift = !! (@connection.database_product || '').index('Redshift')
       end
       redshift
     end

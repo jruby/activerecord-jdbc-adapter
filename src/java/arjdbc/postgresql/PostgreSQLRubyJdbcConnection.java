@@ -25,21 +25,14 @@
  ***** END LICENSE BLOCK *****/
 package arjdbc.postgresql;
 
-import arjdbc.util.DateTimeUtils;
+import arjdbc.jdbc.Callable;
 import arjdbc.jdbc.DriverWrapper;
 import arjdbc.postgresql.PostgreSQLResult;
 
 import java.io.ByteArrayInputStream;
 import java.lang.StringBuilder;
 import java.lang.reflect.InvocationTargetException;
-import java.sql.Connection;
-import java.sql.Date;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
-import java.sql.Timestamp;
-import java.sql.Types;
+import java.sql.*;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -205,6 +198,16 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
         }
 
         return super.internedTypeFor(context, attribute);
+    }
+
+    @JRubyMethod(name = "database_product")
+    public IRubyObject database_product(final ThreadContext context) {
+        return withConnection(context, new Callable<IRubyObject>() {
+            public IRubyObject call(final Connection connection) throws SQLException {
+                final DatabaseMetaData metaData = connection.getMetaData();
+                return RubyString.newString(context.runtime, metaData.getDatabaseProductName() + ' ' + metaData.getDatabaseProductVersion());
+            }
+        });
     }
 
     private transient RubyClass oidArray; // PostgreSQL::OID::Array

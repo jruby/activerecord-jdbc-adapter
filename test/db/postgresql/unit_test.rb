@@ -24,7 +24,12 @@ class PostgresUnitTest < Test::Unit::TestCase
   private
 
   def connection_stub
-    super ArJdbc::PostgreSQL
+    connection = mock('connection')
+    def connection.jndi?; end
+    def connection.configure_connection; end
+    def connection.database_product; "PostgreSQL 9.6.8" end
+    ActiveRecord::ConnectionAdapters::PostgreSQLAdapter.any_instance.stubs(:initialize_type_map)
+    ActiveRecord::ConnectionAdapters::PostgreSQLAdapter.new(connection, nil, {})
   end
 
 end if defined? JRUBY_VERSION

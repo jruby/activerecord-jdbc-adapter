@@ -52,7 +52,16 @@ branches:
     - /maintenance|support/
     - /.*dev$/
 matrix:
+  allow_failures:
+    - rvm: jruby-head
   include:
+    # jruby-head
+    - rvm: jruby-head
+      env: DB=mysql2
+    - rvm: jruby-head
+      env: DB=postgresql
+    - rvm: jruby-head
+      env: DB=sqlite3
     # testing against MariaDB
     - addons:
         mariadb: '10.0'
