@@ -90,6 +90,16 @@ module BenchTestHelper
     outcome
   end
 
+  if defined? JRUBY_VERSION
+
+    def gc; JRuby.gc end
+
+  else
+
+    def gc; GC.start end
+
+  end
+
 end
 
 def do_profile_data(&block)

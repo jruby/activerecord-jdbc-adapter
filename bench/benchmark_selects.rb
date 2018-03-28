@@ -20,12 +20,19 @@ selects = [
 Benchmark.bmbm do |x|
 
   total = BenchRecord.count
+  an_id = BenchRecord.last.id
 
   selects.each do |select|
     x.report("BenchRecord.select('#{select}').where(:id => i).first [#{TIMES}x]") do
       TIMES.times do |i|
         BenchRecord.select(select).where(:id => i % total).first
       end
+    end
+  end
+
+  x.report("BenchRecord.select('#{select}').where( an-id ).first [#{TIMES}x]") do
+    TIMES.times do
+      BenchRecord.select(select).where(:id => an_id).first
     end
   end
 
