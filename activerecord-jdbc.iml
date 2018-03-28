@@ -12,7 +12,7 @@
     </content>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
-    <orderEntry type="library" name="Maven: org.jruby:jruby-complete:9.1.6.0" level="project" />
-    <orderEntry type="library" name="Maven: org.postgresql:postgresql:9.2-1003-jdbc4" level="project" />
+    <orderEntry type="library" name="Maven: org.jruby:jruby-complete:9.1.16.0" level="project" />
+    <orderEntry type="library" name="Maven: org.postgresql:postgresql:42.1.4.jre7" level="project" />
   </component>
 </module>
