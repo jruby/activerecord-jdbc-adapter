@@ -267,21 +267,7 @@ class PostgresTimestampTest < Test::Unit::TestCase
   end
 
   def test_save_infinity
-    #if ar_version('4.0')
-      # NOTE: likely an AR issue - it only works when time_zone_aware_attributes
-      # are disabled otherwise TimeZoneConversion's define_method_attribute=(attr_name)
-      # does the following code ("infinite" time instance ending as nil):
-      # time_with_zone = time.respond_to?(:in_time_zone) ? time.in_time_zone : nil
-      #tz_aware_attributes = ActiveRecord::Base.time_zone_aware_attributes
-      #begin
-      #  ActiveRecord::Base.time_zone_aware_attributes = false
-      #  do_test_save_infinity
-      #ensure
-      #  ActiveRecord::Base.time_zone_aware_attributes = tz_aware_attributes
-      #end
-    #else
     do_test_save_infinity
-    #end
   end
 
   DbType.time_zone_aware_attributes = false
