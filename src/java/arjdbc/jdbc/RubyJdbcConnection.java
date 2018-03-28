@@ -2890,20 +2890,24 @@ public class RubyJdbcConnection extends RubyObject {
     private Connection getConnectionInternal(final boolean required) throws SQLException {
         Connection connection = getConnectionImpl();
         if ( connection == null ) {
-            if ( required && ! connected ) {
-                final Ruby runtime = getRuntime();
-                final RubyClass errorClass = getConnectionNotEstablished( runtime );
-                throw new RaiseException(runtime, errorClass, "no connection available", false);
-            }
-            synchronized (this) {
-                connection = getConnectionImpl();
-                if ( connection == null ) {
-                    connectImpl( true ); // throws SQLException
+            if ( required ) {
+                if ( ! connected ) handleNotConnected(); // raise ConnectionNotEstablished
+                synchronized (this) {
                     connection = getConnectionImpl();
+                    if ( connection == null ) {
+                        connectImpl( true ); // throws SQLException
+                        connection = getConnectionImpl();
+                    }
                 }
             }
         }
         return connection;
+    }
+
+    private void handleNotConnected() {
+        final Ruby runtime = getRuntime();
+        final RubyClass errorClass = getConnectionNotEstablished( runtime );
+        throw new RaiseException(runtime, errorClass, "no connection available", false);
     }
 
     /**
@@ -3296,17 +3300,6 @@ public class RubyJdbcConnection extends RubyObject {
         return extractColumns(runtime.getCurrentContext(), connection, resultSet, downCase);
     }
 
-    private int retryCount = -1;
-
-    private int getRetryCount(final ThreadContext context) {
-        if ( retryCount == -1 ) {
-            IRubyObject retry_count = getConfigValue(context, "retry_count");
-            if ( retry_count == context.nil ) return retryCount = 0;
-            else retryCount = RubyInteger.fix2int(retry_count);
-        }
-        return retryCount;
-    }
-
     protected <T> T withConnection(final ThreadContext context, final Callable<T> block)
             throws RaiseException {
         try {
@@ -3338,6 +3331,10 @@ public class RubyJdbcConnection extends RubyObject {
                 }
 
                 final Connection connection = getConnectionInternal(false); // getConnection()
+                if ( connection == null ) {
+                    if ( ! connected ) handleNotConnected(); // raise ConnectionNotEstablished
+                    throw new NoConnectionException();
+                }
                 gotConnection = true;
                 autoCommit = connection.getAutoCommit();
                 return block.call(connection);
@@ -3345,10 +3342,10 @@ public class RubyJdbcConnection extends RubyObject {
             catch (final Exception e) { // SQLException or RuntimeException
                 exception = e;
 
-                if ( i == 0 ) retry = getRetryCount(context);
+                if ( i == 0 ) retry = 1;
 
                 if ( ! gotConnection ) { // SQLException from driver/data-source
-                    reconnectOnRetry = true;
+                    reconnectOnRetry = connected;
                 }
                 else if ( isTransient(exception) ) {
                     reconnectOnRetry = false; // continue;
@@ -3369,6 +3366,14 @@ public class RubyJdbcConnection extends RubyObject {
 
         // (retry) loop ended and we did not return ... exception != null
         return withConnectionError(context, exception, handleException, gotConnection);
+    }
+
+    // NOTE: this is meant to be internal - seeing this from the outside is a sign smt is not right!
+    private static class NoConnectionException extends RuntimeException {
+
+        @Override
+        public Throwable fillInStackTrace() { return this; }
+
     }
 
     private <T> T withConnectionError(final ThreadContext context, final Exception exception,
