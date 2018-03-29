@@ -15,13 +15,13 @@ connections:
     arunit:  activerecord_unittest
     arunit2: activerecord_unittest2
 
-  jdbcmysql:
-    arunit:
-      username: rails
-      encoding: utf8
-    arunit2:
-      username: rails
-      encoding: utf8
+#  jdbcmysql:
+#    arunit:
+#      username: rails
+#      encoding: utf8
+#    arunit2:
+#      username: rails
+#      encoding: utf8
 
   jdbcpostgresql:
     arunit:
