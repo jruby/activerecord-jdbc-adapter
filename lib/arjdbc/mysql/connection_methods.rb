@@ -36,7 +36,12 @@ ArJdbc::ConnectionMethods.module_eval do
       # ... it's smart enough to detect utf8mb4 from server variables :
       # "character_set_client" && "character_set_connection" (thus UTF-8)
       if encoding = config.key?(:encoding) ? config[:encoding] : 'utf8'
-        properties['characterEncoding'] = convert_mysql_encoding(encoding) || encoding
+        charset_name = convert_mysql_encoding(encoding)
+        if charset_name.eql?(false) # do not set characterEncoding
+          properties['character_set_server'] = encoding
+        else
+          properties['characterEncoding'] = charset_name || encoding
+        end
         # driver also executes: "SET NAMES " + (useutf8mb4 ? "utf8mb4" : "utf8")
         config[:encoding] = nil # thus no need to do it on configure_connection
       end
@@ -102,47 +107,48 @@ ArJdbc::ConnectionMethods.module_eval do
 
   @@mysql_encodings = nil
 
-  def convert_mysql_encoding(encoding) # from mysql2's ruby_enc_to_mysql
+  # @see https://dev.mysql.com/doc/connector-j/5.1/en/connector-j-reference-charsets.html
+  def convert_mysql_encoding(encoding) # to charset-name (characterEncoding=...)
     ( @@mysql_encodings ||= {
       "big5" => "Big5",
       "dec8" => nil,
-      "cp850" => "CP850",
+      #"cp850" => "Cp850",
       "hp8" => nil,
-      "koi8r" => "KOI8-R",
-      "latin1" => "ISO-8859-1",
-      "latin2" => "ISO-8859-2",
+      #"koi8r" => "KOI8-R",
+      "latin1" => "Cp1252",
+      "latin2" => "ISO8859_2",
       "swe7" => nil,
       "ascii" => "US-ASCII",
-      #"ujis" => "eucJP-ms",
-      #"sjis" => "Shift_JIS",
-      "hebrew" => "ISO-8859-8",
-      #"tis620" => "TIS-620",
-      #"euckr" => "EUC-KR",
+      "ujis" => "EUC_JP",
+      "sjis" => "SJIS",
+      "hebrew" => "ISO8859_8",
+      "tis620" => "TIS620",
+      "euckr" => "EUC_KR",
       #"koi8u" => "KOI8-R",
-      #"gb2312" => "GB2312",
-      "greek" => "ISO-8859-7",
-      "cp1250" => "Windows-1250",
-      #"gbk" => "GBK",
-      "latin5" => "ISO-8859-9",
+      "gb2312" => "EUC_CN",
+      "greek" => "ISO8859_7",
+      "cp1250" => "Cp1250",
+      "gbk" => "GBK",
+      #"latin5" => "ISO-8859-9",
       "armscii8" => nil,
-      "utf8" => "UTF-8",
-      "ucs2" => "UTF-16BE",
-      "cp866" => "IBM866",
+      "ucs2" => "UnicodeBig",
+      "cp866" => "Cp866",
       "keybcs2" => nil,
-      #"macce" => "macCentEuro",
-      #"macroman" => "macRoman",
-      "cp852" => "CP852",
-      "latin7" => "ISO-8859-13",
-      "utf8mb4" => "UTF-8",
-      "cp1251" => "Windows-1251",
-      "utf16" => "UTF-16",
-      "cp1256" => "Windows-1256",
-      "cp1257" => "Windows-1257",
-      "utf32" => "UTF-32",
-      "binary" => "ASCII-8BIT",
+      "macce" => "MacCentralEurope",
+      "macroman" => "MacRoman",
+      #"cp852" => "CP852",
+      #"latin7" => "ISO-8859-13",
+      "cp1251" => "Cp1251",
+      "cp1256" => "Cp1256",
+      "cp1257" => "Cp1257",
+      "binary" => false,
       "geostd8" => nil,
-      #"cp932" => "Windows-31J",
+      "cp932" => "Cp932",
       #"eucjpms" => "eucJP-ms"
+      "utf8" => "UTF-8",
+      "utf8mb4" => false,
+      "utf16" => false,
+      "utf32" => false,
     } )[ encoding ]
   end
 
