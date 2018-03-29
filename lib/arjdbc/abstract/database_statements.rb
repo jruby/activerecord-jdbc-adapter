@@ -46,6 +46,19 @@ module ArJdbc
         log(sql, name) { @connection.execute(sql) }
       end
 
+      def select_all(arel, name = nil, binds = NO_BINDS, preparable: nil)
+        binds = convert_legacy_binds_to_attributes(binds) if binds.first.is_a?(Array)
+        super
+      end
+
+      private
+
+      def convert_legacy_binds_to_attributes(binds)
+        binds.map do |column, value|
+          ActiveRecord::Relation::QueryAttribute.new(nil, type_cast(value, column), ActiveModel::Type::Value.new)
+        end
+      end
+
     end
   end
 end
