@@ -9,7 +9,7 @@ module ArJdbc
 
       NO_BINDS = [].freeze
 
-      def exec_insert(sql, name = nil, binds = EMPTY_BINDS, pk = nil, sequence_name = nil)
+      def exec_insert(sql, name = nil, binds = NO_BINDS, pk = nil, sequence_name = nil)
         if without_prepared_statement?(binds)
           log(sql, name) { @connection.execute_insert(sql) }
         else
