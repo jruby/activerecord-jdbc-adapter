@@ -62,6 +62,8 @@ connections:
       <% if ENV['DRIVER'] =~ /MariaDB/i; _load_jdbc_driver(:MariaDB) -%>
       driver: <%= 'org.mariadb.jdbc.Driver' %>
       <% end -%>
+      properties:
+        serverTimezone: <%= java.util.TimeZone.getDefault.getID %>
     arunit2:
       username: <%= ENV['MY_USER'] || 'rails' %>
       encoding: utf8
@@ -69,6 +71,8 @@ connections:
       <% if ENV['DRIVER'] =~ /MariaDB/i; _load_jdbc_driver(:MariaDB) -%>
       driver: <%= 'org.mariadb.jdbc.Driver' %>
       <% end -%>
+      properties:
+        serverTimezone: <%= java.util.TimeZone.getDefault.getID %>
 
   postgresql:
     _setup: &_setup

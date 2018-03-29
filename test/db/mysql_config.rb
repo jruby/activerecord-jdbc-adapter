@@ -19,5 +19,9 @@ if driver = ENV['DRIVER']
   MYSQL_CONFIG[:driver] = driver if driver.index('.')
 end
 
-MYSQL_CONFIG[:properties] ||= {}
-MYSQL_CONFIG[:properties]['cacheDefaultTimezone'] = false
+if defined? JRUBY_VERSION
+  MYSQL_CONFIG[:properties] ||= {}
+  MYSQL_CONFIG[:properties]['cacheDefaultTimezone'] = false
+  MYSQL_CONFIG[:properties]['serverTimezone'] = java.util.TimeZone.getDefault.getID
+end
+
