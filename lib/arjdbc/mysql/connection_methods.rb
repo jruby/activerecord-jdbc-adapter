@@ -43,9 +43,13 @@ ArJdbc::ConnectionMethods.module_eval do
           properties['characterEncoding'] = charset_name || encoding
         end
         # driver also executes: "SET NAMES " + (useutf8mb4 ? "utf8mb4" : "utf8")
-        config[:encoding] = nil # thus no need to do it on configure_connection
+        # thus no need to do it on configure_connection :
+        config[:encoding] = nil if config.key?(:encoding)
       end
       # properties['useUnicode'] is true by default
+      if collation = config[:collation]
+        properties['connectionCollation'] = collation
+      end
       if ! ( reconnect = config[:reconnect] ).nil?
         properties['autoReconnect'] ||= reconnect.to_s
         # properties['maxReconnects'] ||= '3'
