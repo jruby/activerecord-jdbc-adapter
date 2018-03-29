@@ -133,7 +133,6 @@ ArJdbc::ConnectionMethods.module_eval do
       #"macroman" => "macRoman",
       "cp852" => "CP852",
       "latin7" => "ISO-8859-13",
-      "utf8" => "UTF-8",
       "utf8mb4" => "UTF-8",
       "cp1251" => "Windows-1251",
       "utf16" => "UTF-16",
