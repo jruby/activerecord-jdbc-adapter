@@ -867,7 +867,7 @@ public class RubyJdbcConnection extends RubyObject {
      * @throws SQLException
      */
     @JRubyMethod(name = "execute_insert", required = 1)
-    public IRubyObject execute_insert(final ThreadContext context, final IRubyObject sql) throws SQLException {
+    public IRubyObject execute_insert(final ThreadContext context, final IRubyObject sql) {
         return withConnection(context, new Callable<IRubyObject>() {
             public IRubyObject call(final Connection connection) throws SQLException {
                 Statement statement = null;
@@ -897,8 +897,7 @@ public class RubyJdbcConnection extends RubyObject {
      * @throws SQLException
      */
     @JRubyMethod(name = "execute_insert", required = 2)
-    public IRubyObject execute_insert(final ThreadContext context,
-            final IRubyObject sql, final IRubyObject binds) throws SQLException {
+    public IRubyObject execute_insert(final ThreadContext context, final IRubyObject sql, final IRubyObject binds) {
         return withConnection(context, new Callable<IRubyObject>() {
             public IRubyObject call(final Connection connection) throws SQLException {
                 PreparedStatement statement = null;
@@ -928,8 +927,7 @@ public class RubyJdbcConnection extends RubyObject {
      * @throws SQLException
      */
     @JRubyMethod(name = {"execute_update", "execute_delete"}, required = 1)
-    public IRubyObject execute_update(final ThreadContext context, final IRubyObject sql)
-        throws SQLException {
+    public IRubyObject execute_update(final ThreadContext context, final IRubyObject sql) {
         return withConnection(context, new Callable<IRubyObject>() {
             public IRubyObject call(final Connection connection) throws SQLException {
                 Statement statement = null;
@@ -960,8 +958,7 @@ public class RubyJdbcConnection extends RubyObject {
      * @see #execute_update(ThreadContext, IRubyObject)
      */
     @JRubyMethod(name = {"execute_prepared_update", "execute_prepared_delete"}, required = 2)
-    public IRubyObject execute_prepared_update(final ThreadContext context,
-            final IRubyObject sql, final IRubyObject binds) throws SQLException {
+    public IRubyObject execute_prepared_update(final ThreadContext context, final IRubyObject sql, final IRubyObject binds) {
         return withConnection(context, new Callable<IRubyObject>() {
             public IRubyObject call(final Connection connection) throws SQLException {
                 PreparedStatement statement = null;
@@ -992,8 +989,7 @@ public class RubyJdbcConnection extends RubyObject {
      * @throws SQLException when a database error occurs<
      */
     @JRubyMethod(required = 1, optional = 2)
-    public IRubyObject execute_query_raw(final ThreadContext context,
-        final IRubyObject[] args, final Block block) throws SQLException {
+    public IRubyObject execute_query_raw(final ThreadContext context, final IRubyObject[] args, final Block block) {
         final String query = sqlString( args[0] ); // sql
         final RubyArray binds;
         final int maxRows;
@@ -1078,7 +1074,7 @@ public class RubyJdbcConnection extends RubyObject {
      * @throws SQLException when a database error occurs
      */
     @JRubyMethod(required = 1)
-    public IRubyObject execute_query(final ThreadContext context, final IRubyObject sql) throws SQLException {
+    public IRubyObject execute_query(final ThreadContext context, final IRubyObject sql) {
         return withConnection(context, new Callable<IRubyObject>() {
             public IRubyObject call(final Connection connection) throws SQLException {
                 Statement statement = null;
@@ -1176,8 +1172,7 @@ public class RubyJdbcConnection extends RubyObject {
      */
     @Deprecated // only used by Oracle adapter - also it's really a bad idea
     @JRubyMethod(name = "execute_id_insert", required = 2)
-    public IRubyObject execute_id_insert(final ThreadContext context,
-        final IRubyObject sql, final IRubyObject id) throws SQLException {
+    public IRubyObject execute_id_insert(final ThreadContext context, final IRubyObject sql, final IRubyObject id) {
         final Ruby runtime = context.runtime;
 
         callMethod("warn", RubyString.newUnicodeString(runtime, "DEPRECATED: execute_id_insert(sql, id) will be removed"));
