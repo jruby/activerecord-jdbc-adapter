@@ -400,6 +400,23 @@ class MySQLSimpleTest < Test::Unit::TestCase
     end
   end
 
+  class Weird < ActiveRecord::Base; end
+
+  def test_weird_unicode_column_name
+    connection.create_table :weirds, force: true do |t|
+      t.string 'a$b'
+      t.string 'なまえ'
+      t.string 'from'
+    end
+
+    Weird.reset_column_information
+    weird = Weird.create(:なまえ => 'たこ焼き仮面')
+    assert_equal 'たこ焼き仮面', weird.なまえ
+
+  ensure
+    connection.drop_table(:weirds) rescue nil
+  end
+
   def test_jdbc_error
     begin
       disable_logger { connection.exec_query('SELECT * FROM bogus') }
