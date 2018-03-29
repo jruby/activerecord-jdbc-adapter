@@ -129,14 +129,4 @@ module ActiveRecord
 
     end
   end
-
-  # FIXME: #834 Not sure how this is scoped or whether we should use it or just alias it to our
-  # JDBCError.
-  class ::Mysql2
-    class Error < Exception
-      def initialize(*)
-        super("error")
-      end
-    end
-  end
 end
