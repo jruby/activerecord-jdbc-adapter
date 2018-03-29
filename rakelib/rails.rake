@@ -12,7 +12,7 @@ namespace :rails do
               " try setting a local repository path e.g. export RAILS=`pwd`/../rails && bundle install"
       end
 
-      driver = "jdbc-#{adapter =~ /postgres/i ? 'postgres' : adapter}"
+      driver = "jdbc-#{ENV['DRIVER'] ? ENV['DRIVER'].downcase : (adapter =~ /postgres/i ? 'postgres' : adapter)}"
       adapter = 'mysql2' if adapter.eql?('mysql')
 
       root_dir = File.expand_path('..', File.dirname(__FILE__))

@@ -1,3 +1,5 @@
+<% def _load_jdbc_driver(name); require "jdbc/#{name.downcase}"; ::Jdbc.const_get(name).load_driver(:require) end %>
+
 default_connection: sqlite3
 
 with_manual_interventions: false
@@ -14,14 +16,6 @@ connections:
   jdbchsqldb:
     arunit:  activerecord_unittest
     arunit2: activerecord_unittest2
-
-#  jdbcmysql:
-#    arunit:
-#      username: rails
-#      encoding: utf8
-#    arunit2:
-#      username: rails
-#      encoding: utf8
 
   jdbcpostgresql:
     arunit:
@@ -65,10 +59,16 @@ connections:
       encoding: utf8
       collation: utf8_unicode_ci
       prepared_statements: <%= ENV['PREPARED_STATEMENTS'] || 'false' %>
+      <% if ENV['DRIVER'] =~ /MariaDB/i; _load_jdbc_driver(:MariaDB) -%>
+      driver: <%= 'org.mariadb.jdbc.Driver' %>
+      <% end -%>
     arunit2:
       username: <%= ENV['MY_USER'] || 'rails' %>
       encoding: utf8
       prepared_statements: <%= ENV['PREPARED_STATEMENTS'] || 'false' %>
+      <% if ENV['DRIVER'] =~ /MariaDB/i; _load_jdbc_driver(:MariaDB) -%>
+      driver: <%= 'org.mariadb.jdbc.Driver' %>
+      <% end -%>
 
   postgresql:
     _setup: &_setup
