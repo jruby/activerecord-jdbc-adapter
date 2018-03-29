@@ -91,7 +91,7 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
     private static final int HSTORE_TYPE = 100000 + 1111;
     private static final Pattern binaryStringPattern = Pattern.compile("^[01]+$");
     private static final Pattern doubleValuePattern = Pattern.compile("(-?\\d+(?:\\.\\d+)?)");
-    private static final Pattern uuidPattern = Pattern.compile("^\\p{XDigit}{8}-(?:\\p{XDigit}{4}-){3}\\p{XDigit}{12}$");
+    private static final Pattern uuidPattern = Pattern.compile("\\{?\\p{XDigit}{4}(?:-?(\\p{XDigit}{4})){7}\\}?"); // Fuzzy match postgres's allowed formats
 
     private static final String[] binaryStrings = {
         "0000",
@@ -546,9 +546,10 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
                 and Postgres won't compare a uuid column with a string
             */
             final String uuid = value.toString();
+            int length = uuid.length();
 
             // Checking the length so we don't have the overhead of the regex unless it "looks" like a UUID
-            if ( uuid.length() == 36 && uuidPattern.matcher(uuid).matches() ) {
+            if (length >= 32 && length < 40 && uuidPattern.matcher(uuid).matches()) {
                 setUUIDParameter(statement, index, value);
                 return;
             }
@@ -560,7 +561,60 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
     private void setUUIDParameter(final PreparedStatement statement,
         final int index, final IRubyObject value) throws SQLException {
 
-        statement.setObject(index, UUID.fromString(value.toString()));
+        String uuid = value.toString();
+
+        if (uuid.length() != 36) { // Assume its a non-standard format
+
+            /*
+             * Postgres supports a bunch of formats that aren't valid uuids, so we do too...
+             * A0EEBC99-9C0B-4EF8-BB6D-6BB9BD380A11
+             * {a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11}
+             * a0eebc999c0b4ef8bb6d6bb9bd380a11
+             * a0ee-bc99-9c0b-4ef8-bb6d-6bb9-bd38-0a11
+             * {a0eebc99-9c0b4ef8-bb6d6bb9-bd380a11}
+             */
+
+            if (uuid.length() == 38 && uuid.charAt(0) == '{') {
+
+                // We got the {a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11} version so save some processing
+                uuid = uuid.substring(1, 37);
+
+            } else {
+
+                int valueIndex = 0;
+                int newUUIDIndex = 0;
+                char[] newUUIDChars = new char[36];
+
+                if (uuid.charAt(0) == '{') {
+                    // Skip '{'
+                    valueIndex++;
+                }
+
+                while (newUUIDIndex < 36) { // If we don't hit this before running out of characters it is an invalid UUID
+
+                    char currentChar = uuid.charAt(valueIndex);
+
+                    // Copy anything other than dashes
+                    if (currentChar != '-') {
+                        newUUIDChars[newUUIDIndex] = currentChar;
+                        newUUIDIndex++;
+
+                        // Insert dashes where appropriate
+                        if(newUUIDIndex == 8 || newUUIDIndex == 13 || newUUIDIndex == 18 || newUUIDIndex == 23) {
+                            newUUIDChars[newUUIDIndex] = '-';
+                            newUUIDIndex++;
+                        }
+                    }
+
+                    valueIndex++;
+                }
+
+                uuid = new String(newUUIDChars);
+
+            }
+        }
+
+        statement.setObject(index, UUID.fromString(uuid));
     }
 
     @Override
