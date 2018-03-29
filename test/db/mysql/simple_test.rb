@@ -400,53 +400,66 @@ class MySQLSimpleTest < Test::Unit::TestCase
     end
   end
 
-  # def test_jdbc_error
-  #   begin
-  #     disable_logger { connection.exec_query('SELECT * FROM bogus') }
-  #   rescue ActiveRecord::ActiveRecordError => e
-  #     error = extract_jdbc_error(e)
-  #
-  #     assert error.cause
-  #     assert_equal error.cause, error.jdbc_exception
-  #     assert error.jdbc_exception.is_a?(Java::JavaSql::SQLException)
-  #
-  #     assert error.error_code
-  #     assert error.error_code.is_a?(Fixnum)
-  #     assert error.sql_state
-  #
-  #     # #<ActiveRecord::JDBCError: com.mysql.jdbc.exceptions.jdbc4.MySQLSyntaxErrorException: Table 'arjdbc_test.bogus' doesn't exist>
-  #     unless mariadb_driver?
-  #       assert_match /com.mysql.jdbc.exceptions.jdbc4.MySQLSyntaxErrorException: Table '.*?bogus' doesn't exist/, error.message
-  #     else
-  #       assert_match /java.sql.SQLSyntaxErrorException: Table '.*?bogus' doesn't exist/, error.message
-  #     end
-  #     assert_match /ActiveRecord::JDBCError: .*?Exception: /, error.inspect
-  #
-  #     # sample error.cause.backtrace :
-  #     #
-  #     #  sun.reflect.NativeConstructorAccessorImpl.newInstance0(Native Method)
-  #     #  sun.reflect.NativeConstructorAccessorImpl.newInstance(NativeConstructorAccessorImpl.java:57)
-  #     #  sun.reflect.DelegatingConstructorAccessorImpl.newInstance(DelegatingConstructorAccessorImpl.java:45)
-  #     #  java.lang.reflect.Constructor.newInstance(Constructor.java:526)
-  #     #  com.mysql.jdbc.Util.handleNewInstance(Util.java:377)
-  #     #  com.mysql.jdbc.Util.getInstance(Util.java:360)
-  #     #  com.mysql.jdbc.SQLError.createSQLException(SQLError.java:978)
-  #     #  com.mysql.jdbc.MysqlIO.checkErrorPacket(MysqlIO.java:3887)
-  #     #  com.mysql.jdbc.MysqlIO.checkErrorPacket(MysqlIO.java:3823)
-  #     #  com.mysql.jdbc.MysqlIO.sendCommand(MysqlIO.java:2435)
-  #     #  com.mysql.jdbc.MysqlIO.sqlQueryDirect(MysqlIO.java:2582)
-  #     #  com.mysql.jdbc.ConnectionImpl.execSQL(ConnectionImpl.java:2526)
-  #     #  com.mysql.jdbc.ConnectionImpl.execSQL(ConnectionImpl.java:2484)
-  #     #  com.mysql.jdbc.StatementImpl.executeQuery(StatementImpl.java:1446)
-  #     #  arjdbc.jdbc.RubyJdbcConnection$14.call(RubyJdbcConnection.java:1120)
-  #     #  arjdbc.jdbc.RubyJdbcConnection$14.call(RubyJdbcConnection.java:1114)
-  #     #  arjdbc.jdbc.RubyJdbcConnection.withConnection(RubyJdbcConnection.java:3518)
-  #     #  arjdbc.jdbc.RubyJdbcConnection.withConnection(RubyJdbcConnection.java:3496)
-  #     #  arjdbc.jdbc.RubyJdbcConnection.executeQuery(RubyJdbcConnection.java:1114)
-  #     #  arjdbc.jdbc.RubyJdbcConnection.execute_query(RubyJdbcConnection.java:1015)
-  #     #  arjdbc.jdbc.RubyJdbcConnection$INVOKER$i$execute_query.call(RubyJdbcConnection$INVOKER$i$execute_query.gen)
-  #   end
-  # end if defined? JRUBY_VERSION
+  def test_jdbc_error
+    begin
+      disable_logger { connection.exec_query('SELECT * FROM bogus') }
+    rescue ActiveRecord::StatementInvalid => e
+      error = e.cause
+
+      assert error.is_a?(ActiveRecord::JDBCError)
+
+      assert error.cause
+      assert_equal error.cause, error.jdbc_exception
+      assert error.jdbc_exception.is_a?(Java::JavaSql::SQLException)
+
+      assert error.error_code
+      assert error.error_code.is_a?(Fixnum)
+      assert error.sql_state
+
+      # #<ActiveRecord::JDBCError: com.mysql.jdbc.exceptions.jdbc4.MySQLSyntaxErrorException: Table 'arjdbc_test.bogus' doesn't exist>
+      unless mariadb_driver?
+        assert_match /com.mysql.jdbc.exceptions.jdbc4.MySQLSyntaxErrorException: Table '.*?bogus' doesn't exist/, error.message
+      else
+        assert_match /java.sql.SQLSyntaxErrorException: Table '.*?bogus' doesn't exist/, error.message
+      end
+      assert_match /ActiveRecord::JDBCError: .*?Exception: /, error.inspect
+
+      # sample error.cause.backtrace :
+      #
+      #  sun.reflect.NativeConstructorAccessorImpl.newInstance0(Native Method)
+      #  sun.reflect.NativeConstructorAccessorImpl.newInstance(NativeConstructorAccessorImpl.java:57)
+      #  sun.reflect.DelegatingConstructorAccessorImpl.newInstance(DelegatingConstructorAccessorImpl.java:45)
+      #  java.lang.reflect.Constructor.newInstance(Constructor.java:526)
+      #  com.mysql.jdbc.Util.handleNewInstance(Util.java:377)
+      #  com.mysql.jdbc.Util.getInstance(Util.java:360)
+      #  com.mysql.jdbc.SQLError.createSQLException(SQLError.java:978)
+      #  com.mysql.jdbc.MysqlIO.checkErrorPacket(MysqlIO.java:3887)
+      #  com.mysql.jdbc.MysqlIO.checkErrorPacket(MysqlIO.java:3823)
+      #  com.mysql.jdbc.MysqlIO.sendCommand(MysqlIO.java:2435)
+      #  com.mysql.jdbc.MysqlIO.sqlQueryDirect(MysqlIO.java:2582)
+      #  com.mysql.jdbc.ConnectionImpl.execSQL(ConnectionImpl.java:2526)
+      #  com.mysql.jdbc.ConnectionImpl.execSQL(ConnectionImpl.java:2484)
+      #  com.mysql.jdbc.StatementImpl.executeQuery(StatementImpl.java:1446)
+      #  arjdbc.jdbc.RubyJdbcConnection$14.call(RubyJdbcConnection.java:1120)
+      #  arjdbc.jdbc.RubyJdbcConnection$14.call(RubyJdbcConnection.java:1114)
+      #  arjdbc.jdbc.RubyJdbcConnection.withConnection(RubyJdbcConnection.java:3518)
+      #  arjdbc.jdbc.RubyJdbcConnection.withConnection(RubyJdbcConnection.java:3496)
+      #  arjdbc.jdbc.RubyJdbcConnection.executeQuery(RubyJdbcConnection.java:1114)
+      #  arjdbc.jdbc.RubyJdbcConnection.execute_query(RubyJdbcConnection.java:1015)
+      #  arjdbc.jdbc.RubyJdbcConnection$INVOKER$i$execute_query.call(RubyJdbcConnection$INVOKER$i$execute_query.gen)
+    end
+  end if defined? JRUBY_VERSION
+
+  def test_execute_after_disconnect
+    connection.disconnect!
+
+    assert_raise(ActiveRecord::StatementInvalid) do
+      connection.execute('SELECT 1')
+    end
+
+  ensure
+    connection.reconnect!
+  end
 
   protected
 
