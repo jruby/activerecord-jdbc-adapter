@@ -212,6 +212,14 @@ public class RubyJdbcConnection extends RubyObject {
 
     /**
      * @param runtime
+     * @return <code>ActiveRecord::NoDatabaseError</code>
+     */
+    protected static RubyClass getNoDatabaseError(final Ruby runtime) {
+        return runtime.getModule("ActiveRecord").getClass("NoDatabaseError");
+    }
+
+    /**
+     * @param runtime
      * @return <code>ActiveRecord::TransactionIsolationError</code>
      */
     protected static RubyClass getTransactionIsolationError(final Ruby runtime) {
@@ -1719,7 +1727,7 @@ public class RubyJdbcConnection extends RubyObject {
             return block.call(context, JavaUtil.convertJavaToRuby(context.runtime, metaData));
         }
         catch (SQLException e) {
-            throw wrapSQLException(context, e, null);
+            throw wrapSQLException(context, getJDBCError(context.runtime), e, null);
         }
         finally { close(connection); }
     }
@@ -3456,17 +3464,21 @@ public class RubyJdbcConnection extends RubyObject {
     }
 
     protected RaiseException wrapException(final ThreadContext context, final SQLException exception, String message) {
-        return wrapSQLException(context, exception, message);
+        return wrapSQLException(context, getJDBCError(context.runtime), exception, message);
     }
 
-    private static RaiseException wrapSQLException(final ThreadContext context,
+    protected RaiseException wrapException(final ThreadContext context, final RubyClass errorClass, final SQLException exception) {
+        return wrapSQLException(context, errorClass, exception, null);
+    }
+
+    private static RaiseException wrapSQLException(final ThreadContext context, final RubyClass errorClass,
                                                    final SQLException exception, String message) {
         final Ruby runtime = context.runtime;
         if ( message == null ) {
             message = SQLException.class == exception.getClass() ?
                     exception.getMessage() : exception.toString(); // useful to easily see type on Ruby side
         }
-        final RaiseException raise = wrapException(context, getJDBCError(runtime), exception, message);
+        final RaiseException raise = wrapException(context, errorClass, exception, message);
         final RubyException error = raise.getException(); // assuming JDBCError internals :
         error.setInstanceVariable("@jdbc_exception", JavaEmbedUtils.javaToRuby(runtime, exception));
         return raise;
