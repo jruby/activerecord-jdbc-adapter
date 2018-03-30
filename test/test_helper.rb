@@ -224,6 +224,11 @@ class Test::Unit::TestCase
     end
   end
 
+  def assert_no_queries(options = {}, &block)
+    options.reverse_merge! ignore_none: true
+    assert_queries(0, options, &block)
+  end
+
   # re-defined by Oracle
   def assert_empty_string value
     assert_equal '', value
