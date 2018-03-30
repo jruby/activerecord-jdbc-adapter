@@ -54,25 +54,20 @@ connections:
       database: arunit2
 
   mysql2:
+    _setup: &_setup
+      username: <%= ENV['MY_USER'] || 'rails' %>
+      encoding: utf8
+      prepared_statements: <%= ENV['PREPARED_STATEMENTS'] || 'false' %>
+      <% if ENV['DRIVER'] =~ /MariaDB/i; _load_jdbc_driver(:MariaDB) -%>
+      driver: <%= 'org.mariadb.jdbc.Driver' %>
+      <% end -%>
+      properties:
+        serverTimezone: <%= java.util.TimeZone.getDefault.getID %>
     arunit:
-      username: <%= ENV['MY_USER'] || 'rails' %>
-      encoding: utf8
+      <<: *_setup
       collation: utf8_unicode_ci
-      prepared_statements: <%= ENV['PREPARED_STATEMENTS'] || 'false' %>
-      <% if ENV['DRIVER'] =~ /MariaDB/i; _load_jdbc_driver(:MariaDB) -%>
-      driver: <%= 'org.mariadb.jdbc.Driver' %>
-      <% end -%>
-      properties:
-        serverTimezone: <%= java.util.TimeZone.getDefault.getID %>
     arunit2:
-      username: <%= ENV['MY_USER'] || 'rails' %>
-      encoding: utf8
-      prepared_statements: <%= ENV['PREPARED_STATEMENTS'] || 'false' %>
-      <% if ENV['DRIVER'] =~ /MariaDB/i; _load_jdbc_driver(:MariaDB) -%>
-      driver: <%= 'org.mariadb.jdbc.Driver' %>
-      <% end -%>
-      properties:
-        serverTimezone: <%= java.util.TimeZone.getDefault.getID %>
+      <<: *_setup
 
   postgresql:
     _setup: &_setup
