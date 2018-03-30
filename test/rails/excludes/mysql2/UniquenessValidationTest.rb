@@ -1,0 +1,1 @@
+exclude :test_validate_case_insensitive_uniqueness, 'CI issues with UTF-8 GH-979' if ENV['TEST_GH_879'] != 'true'
