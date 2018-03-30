@@ -5,6 +5,7 @@ script: bundle exec rake ${TEST_PREFIX}test_$DB
 before_install:
   - unset _JAVA_OPTIONS
 before_script:
+  - echo "JAVA_OPTS=$JAVA_OPTS"
   - export JRUBY_OPTS="-J-Xms64M -J-Xmx1024M"
   - rake jar # compiles ext generates: lib/arjdbc/jdbc/adapter_java.jar
   - mysql --version || true # to see if we're using MySQL or MariaDB
