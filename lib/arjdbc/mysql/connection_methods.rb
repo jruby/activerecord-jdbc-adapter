@@ -1,6 +1,10 @@
 # frozen_string_literal: true
 ArJdbc::ConnectionMethods.module_eval do
   def mysql_connection(config)
+    # NOTE: this isn't "really" necessary but Rails (in tests) assumes being able to :
+    #   ActiveRecord::Base.mysql2_connection ActiveRecord::Base.configurations['arunit'].merge(database: ...)
+    config = symbolize_keys_if_necessary(config)
+
     config[:adapter_spec] ||= ::ArJdbc::MySQL
     config[:adapter_class] = ActiveRecord::ConnectionAdapters::Mysql2Adapter unless config.key?(:adapter_class)
 
