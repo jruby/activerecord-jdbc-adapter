@@ -259,6 +259,28 @@ class MySQLRailsTest < Test::Unit::TestCase
   end
 
 
+  class Event < ActiveRecord::Base
+    validates_uniqueness_of :title
+  end
+
+  test 'UniquenessValidationTest#test_validate_uniqueness_with_limit_and_utf8' do
+    begin
+
+      create_table :events, force: true do |t|
+        t.string :title, limit: 5
+      end
+
+      # test_validate_uniqueness_with_limit_and_utf8
+      assert_raise(ActiveRecord::ValueTooLong) do
+        Event.create(title: "一二三四五六七八")
+      end
+
+    ensure
+      [ :events ].each { |table| drop_table(table) rescue nil }
+    end
+  end
+
+
   private
 
   delegate :create_table, :drop_table, to: :connection
