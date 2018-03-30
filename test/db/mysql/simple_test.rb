@@ -406,7 +406,7 @@ class MySQLSimpleTest < Test::Unit::TestCase
     rescue ActiveRecord::StatementInvalid => e
       error = e.cause
 
-      assert error.is_a?(ActiveRecord::JDBCError)
+      assert error.is_a?(ActiveRecord::JDBCError), "not a wrapped JDBCError: #{error.inspect} (#{error.class}) - #{e.inspect}"
 
       assert error.cause
       assert_equal error.cause, error.jdbc_exception
