@@ -242,9 +242,21 @@ public class MySQLRubyJdbcConnection extends RubyJdbcConnection {
 
     @Override
     protected Connection newConnection() throws RaiseException, SQLException {
-        final Connection connection = super.newConnection();
+        final Connection connection;
+        try {
+            connection = super.newConnection();
+        }
+        catch (SQLException ex) {
+            if (ex.getErrorCode() == 1049) throw newNoDatabaseError(ex);
+            throw ex;
+        }
         if ( doStopCleanupThread() ) shutdownCleanupThread();
         return connection;
+    }
+
+    private RaiseException newNoDatabaseError(final SQLException ex) {
+        final Ruby runtime = getRuntime();
+        return wrapException(runtime.getCurrentContext(), getNoDatabaseError(runtime), ex);
     }
 
     private static Boolean stopCleanupThread;

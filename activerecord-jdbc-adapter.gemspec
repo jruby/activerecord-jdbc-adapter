@@ -30,7 +30,7 @@ Gem::Specification.new do |gem|
   if ENV['RELEASE'] != 'true' # @see Rakefile
     gem.extensions << 'Rakefile' # to support auto-building .jar with :git paths
 
-    #gem.add_runtime_dependency 'jar-dependencies', '~> 0.1.13' # development not enough!
+    #gem.add_runtime_dependency 'jar-dependencies', '~> 0.1' # development not enough!
     #gem.add_development_dependency 'ruby-maven', '~> 3.1'
     #
     #gem.requirements << "jar mysql:mysql-connector-java, 5.1.44, :scope => :compile"

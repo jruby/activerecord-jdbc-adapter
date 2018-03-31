@@ -1,9 +1,6 @@
 module ArJdbc
-  if ActiveRecord.const_defined? :ConnectionHandling # 4.0
-    ConnectionMethods = ActiveRecord::ConnectionHandling
-  else # 3.x
-    ConnectionMethods = (class << ActiveRecord::Base; self; end)
-  end
+  ConnectionMethods = ::ActiveRecord::ConnectionHandling
+
   ConnectionMethods.module_eval do
 
     def jdbc_connection(config)
@@ -30,6 +27,17 @@ module ArJdbc
 
     def jndi_config?(config)
       ::ActiveRecord::ConnectionAdapters::JdbcConnection.jndi_config?(config)
+    end
+
+    # @note keeps the same Hash when possible - helps caching on native side
+    def symbolize_keys_if_necessary(hash)
+      symbolize = false
+      hash.each_key do |key|
+        if ! key.is_a?(Symbol) && key.respond_to?(:to_sym)
+          symbolize = true; break
+        end
+      end
+      symbolize ? hash.symbolize_keys : hash
     end
 
   end

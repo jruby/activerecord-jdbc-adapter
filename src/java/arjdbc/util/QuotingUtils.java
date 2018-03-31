@@ -24,6 +24,7 @@
 package arjdbc.util;
 
 import org.jruby.RubyString;
+import org.jruby.runtime.Helpers;
 import org.jruby.runtime.ThreadContext;
 import org.jruby.runtime.builtin.IRubyObject;
 import org.jruby.util.ByteList;
@@ -87,6 +88,7 @@ public abstract class QuotingUtils {
         return context.runtime.newString(quotedBytes);
     }
 
+    @SuppressWarnings("deprecation")
     public static RubyString quoteCharAndDecorateWith(
         final ThreadContext context, final RubyString string,
         final char value, final char quote,
@@ -126,11 +128,9 @@ public abstract class QuotingUtils {
             return quoteCharWith(context, (RubyString) string, single, single);
         }
         else { // ActiveSupport::Multibyte::Chars
-            return string.callMethod(context, "gsub",
-                new IRubyObject[] {
+            return Helpers.invoke(context, string, "gsub",
                     context.runtime.newString(BYTES_SINGLE_Q),
                     context.runtime.newString(BYTES_SINGLE_Q_x2)
-                }
             );
         }
     }

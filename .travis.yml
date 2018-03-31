@@ -5,6 +5,7 @@ script: bundle exec rake ${TEST_PREFIX}test_$DB
 before_install:
   - unset _JAVA_OPTIONS
 before_script:
+  - echo "JAVA_OPTS=$JAVA_OPTS"
   - export JRUBY_OPTS="-J-Xms64M -J-Xmx1024M"
   - rake jar # compiles ext generates: lib/arjdbc/jdbc/adapter_java.jar
   - mysql --version || true # to see if we're using MySQL or MariaDB
@@ -72,6 +73,7 @@ matrix:
     # Rails test-suite :
     - env: DB=mysql2     TEST_PREFIX="rails:" AR_VERSION="v5.1.5" # PS off by default
     - env: DB=mysql2     TEST_PREFIX="rails:" AR_VERSION="v5.1.5" PREPARED_STATEMENTS=true
+    - env: DB=mysql2     TEST_PREFIX="rails:" AR_VERSION="v5.1.5" DRIVER=MariaDB
     - env: DB=postgresql TEST_PREFIX="rails:" AR_VERSION="v5.1.5" # PS on by default
     - env: DB=postgresql TEST_PREFIX="rails:" AR_VERSION="v5.1.5" PREPARED_STATEMENTS=false
     - env: DB=sqlite3    TEST_PREFIX="rails:" AR_VERSION="v5.1.5"
