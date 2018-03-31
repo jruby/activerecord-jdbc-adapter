@@ -106,6 +106,7 @@ import arjdbc.util.StringCache;
 
 import static arjdbc.jdbc.DataSourceConnectionFactory.*;
 import static arjdbc.util.StringHelper.*;
+import static org.jruby.RubyTime.getLocalTimeZone;
 
 
 /**
@@ -2606,7 +2607,7 @@ public class RubyJdbcConnection extends RubyObject {
     }
 
     protected DateTimeZone getDefaultTimeZone(final ThreadContext context) {
-        return isDefaultTimeZoneUTC(context) ? DateTimeZone.UTC : DateTimeZone.getDefault();
+        return isDefaultTimeZoneUTC(context) ? DateTimeZone.UTC : getLocalTimeZone(context.runtime); // handles ENV['TZ']
     }
 
     private static String default_timezone(final ThreadContext context) {
