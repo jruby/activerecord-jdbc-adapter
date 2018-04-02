@@ -2771,7 +2771,7 @@ public class RubyJdbcConnection extends RubyObject {
         }
 
         // NOTE: assuming Date#to_s does right ...
-        statement.setDate(index, Date.valueOf(value.asString().toString()));
+        statement.setDate(index, Date.valueOf(value.toString()));
     }
 
     protected void setBooleanParameter(final ThreadContext context,

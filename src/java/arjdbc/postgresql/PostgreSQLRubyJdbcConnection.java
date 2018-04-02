@@ -27,8 +27,6 @@ package arjdbc.postgresql;
 
 import arjdbc.jdbc.Callable;
 import arjdbc.jdbc.DriverWrapper;
-import arjdbc.postgresql.PostgreSQLResult;
-import arjdbc.util.DateTimeUtils;
 
 import java.io.ByteArrayInputStream;
 import java.lang.StringBuilder;
@@ -50,7 +48,6 @@ import java.util.UUID;
 import java.util.regex.Pattern;
 import java.util.regex.Matcher;
 
-import org.joda.time.DateTimeZone;
 import org.jruby.Ruby;
 import org.jruby.RubyArray;
 import org.jruby.RubyBoolean;
@@ -67,7 +64,6 @@ import org.jruby.runtime.ThreadContext;
 import org.jruby.runtime.builtin.IRubyObject;
 import org.jruby.util.ByteList;
 
-import org.jruby.util.SafePropertyAccessor;
 import org.postgresql.PGConnection;
 import org.postgresql.PGStatement;
 import org.postgresql.geometric.PGbox;
@@ -79,8 +75,6 @@ import org.postgresql.geometric.PGpoint;
 import org.postgresql.geometric.PGpolygon;
 import org.postgresql.util.PGInterval;
 import org.postgresql.util.PGobject;
-
-import static arjdbc.util.StringHelper.*;
 
 /**
  *
@@ -348,7 +342,7 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
         }
 
         // NOTE: assuming Date#to_s does right ...
-        statement.setDate(index, Date.valueOf(value.asString().toString()));
+        statement.setDate(index, Date.valueOf(value.toString()));
     }
 
     @Override
