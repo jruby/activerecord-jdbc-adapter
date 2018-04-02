@@ -58,6 +58,7 @@ import org.jruby.RubyIO;
 import org.jruby.RubyModule;
 import org.jruby.RubyString;
 import org.jruby.anno.JRubyMethod;
+import org.jruby.exceptions.RaiseException;
 import org.jruby.javasupport.JavaUtil;
 import org.jruby.runtime.ObjectAllocator;
 import org.jruby.runtime.ThreadContext;
@@ -243,8 +244,18 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
 
 
     @Override
-    protected Connection newConnection() throws SQLException {
-        final Connection connection = getConnectionFactory().newConnection();
+    protected Connection newConnection() throws RaiseException, SQLException {
+        final Connection connection;
+        try {
+            connection = super.newConnection();
+        }
+        catch (SQLException ex) {
+            if ("3D000".equals(ex.getSQLState())) { // invalid_catalog_name
+                //  org.postgresql.util.PSQLException: FATAL: database "xxx" does not exist
+                throw newNoDatabaseError(ex);
+            }
+            throw ex;
+        }
         final PGConnection pgConnection;
         if ( connection instanceof PGConnection ) {
             pgConnection = (PGConnection) connection;

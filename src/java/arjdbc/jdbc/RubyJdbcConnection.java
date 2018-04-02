@@ -3488,6 +3488,11 @@ public class RubyJdbcConnection extends RubyObject {
         return raise;
     }
 
+    protected final RaiseException newNoDatabaseError(final SQLException ex) {
+        final Ruby runtime = getRuntime();
+        return wrapException(runtime.getCurrentContext(), getNoDatabaseError(runtime), ex);
+    }
+
     private IRubyObject convertJavaToRuby(final Object object) {
         return JavaUtil.convertJavaToRuby( getRuntime(), object );
     }
