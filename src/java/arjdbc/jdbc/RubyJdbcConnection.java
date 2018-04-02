@@ -991,7 +991,7 @@ public class RubyJdbcConnection extends RubyObject {
     /**
      * This is the same as execute_query but it will return a list of hashes.
      *
-     * @see RubyJdbcConnection#execute_query(ThreadContext, IRubyObject[])
+     * @see RubyJdbcConnection#execute_query(ThreadContext, IRubyObject)
      * @param context which context this method is executing on.
      * @param args arguments being supplied to this method.
      * @param block (optional) block to yield row values (Hash(name: value))
@@ -3018,7 +3018,7 @@ public class RubyJdbcConnection extends RubyObject {
      * value is sufficient (except for an empty array which is considered that the table
      * did not exists).
      * @return matched (and Ruby mapped) table names
-     * @see #mapTables(Ruby, DatabaseMetaData, String, String, String, ResultSet)
+     * @see #mapTables(ThreadContext, Connection, String, String, String, ResultSet)
      * @throws SQLException
      */
     protected IRubyObject matchTables(final ThreadContext context,
