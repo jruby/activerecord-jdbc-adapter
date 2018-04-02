@@ -254,11 +254,6 @@ public class MySQLRubyJdbcConnection extends RubyJdbcConnection {
         return connection;
     }
 
-    private RaiseException newNoDatabaseError(final SQLException ex) {
-        final Ruby runtime = getRuntime();
-        return wrapException(runtime.getCurrentContext(), getNoDatabaseError(runtime), ex);
-    }
-
     private static Boolean stopCleanupThread;
     static {
         final String stopThread = SafePropertyAccessor.getProperty("arjdbc.mysql.stop_cleanup_thread");

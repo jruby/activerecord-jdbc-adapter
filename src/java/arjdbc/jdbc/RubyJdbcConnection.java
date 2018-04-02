@@ -67,6 +67,7 @@ import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
 import org.jruby.Ruby;
 import org.jruby.RubyArray;
+import org.jruby.RubyBasicObject;
 import org.jruby.RubyBignum;
 import org.jruby.RubyBoolean;
 import org.jruby.RubyClass;
@@ -2552,23 +2553,25 @@ public class RubyJdbcConnection extends RubyObject {
         return JDBC_TYPE_FOR.get(type);
     }
 
-    protected IRubyObject attributeType(final ThreadContext context, final IRubyObject attribute) {
-        return attribute.callMethod(context, "type");
+    // ActiveRecord::Attribute#type (mostly sub-classes e.g. ActiveRecord::Attribute::WithCastValue)
+    protected static IRubyObject attributeType(final ThreadContext context, final IRubyObject attribute) {
+        // NOTE: a piece of (premature) optimalization - cause we can and AR 5.x does not mind
+        return ((RubyBasicObject) attribute).getInstanceVariable("@type"); // attribute.callMethod(context, "type");
     }
 
-    protected IRubyObject attributeSQLType(final ThreadContext context, final IRubyObject attribute) {
+    protected static IRubyObject attributeSQLType(final ThreadContext context, final IRubyObject attribute) {
         return attributeType(context, attribute).callMethod(context, "type");
     }
+
+    private static final CachingCallSite value_site = new FunctionalCachingCallSite("value"); // AR::Attribute#value
 
     protected String internedTypeFor(final ThreadContext context, final IRubyObject attribute) throws SQLException {
 
         final IRubyObject type = attributeSQLType(context, attribute);
 
-        if (!type.isNil()) {
-            return type.asJavaString();
-        }
+        if ( type != context.nil ) return type.asJavaString();
 
-        final IRubyObject value = attribute.callMethod(context, "value");
+        final IRubyObject value = value_site.call(context, attribute, attribute);
 
         if (value instanceof RubyInteger) {
             return "integer";
@@ -2772,7 +2775,7 @@ public class RubyJdbcConnection extends RubyObject {
         }
 
         // NOTE: assuming Date#to_s does right ...
-        statement.setDate(index, Date.valueOf(value.asString().toString()));
+        statement.setDate(index, Date.valueOf(value.toString()));
     }
 
     protected void setBooleanParameter(final ThreadContext context,
@@ -3487,6 +3490,11 @@ public class RubyJdbcConnection extends RubyObject {
         final RubyException error = raise.getException(); // assuming JDBCError internals :
         error.setInstanceVariable("@jdbc_exception", JavaEmbedUtils.javaToRuby(runtime, exception));
         return raise;
+    }
+
+    protected final RaiseException newNoDatabaseError(final SQLException ex) {
+        final Ruby runtime = getRuntime();
+        return wrapException(runtime.getCurrentContext(), getNoDatabaseError(runtime), ex);
     }
 
     private IRubyObject convertJavaToRuby(final Object object) {

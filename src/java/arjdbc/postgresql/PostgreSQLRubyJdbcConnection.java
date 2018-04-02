@@ -49,7 +49,6 @@ import java.util.UUID;
 import java.util.regex.Pattern;
 import java.util.regex.Matcher;
 
-import org.joda.time.DateTimeZone;
 import org.jruby.Ruby;
 import org.jruby.RubyArray;
 import org.jruby.RubyBoolean;
@@ -60,13 +59,13 @@ import org.jruby.RubyIO;
 import org.jruby.RubyModule;
 import org.jruby.RubyString;
 import org.jruby.anno.JRubyMethod;
+import org.jruby.exceptions.RaiseException;
 import org.jruby.javasupport.JavaUtil;
 import org.jruby.runtime.ObjectAllocator;
 import org.jruby.runtime.ThreadContext;
 import org.jruby.runtime.builtin.IRubyObject;
 import org.jruby.util.ByteList;
 
-import org.jruby.util.SafePropertyAccessor;
 import org.postgresql.PGConnection;
 import org.postgresql.PGStatement;
 import org.postgresql.geometric.PGbox;
@@ -78,8 +77,6 @@ import org.postgresql.geometric.PGpoint;
 import org.postgresql.geometric.PGpolygon;
 import org.postgresql.util.PGInterval;
 import org.postgresql.util.PGobject;
-
-import static arjdbc.util.StringHelper.*;
 
 /**
  *
@@ -228,8 +225,18 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
 
 
     @Override
-    protected Connection newConnection() throws SQLException {
-        final Connection connection = getConnectionFactory().newConnection();
+    protected Connection newConnection() throws RaiseException, SQLException {
+        final Connection connection;
+        try {
+            connection = super.newConnection();
+        }
+        catch (SQLException ex) {
+            if ("3D000".equals(ex.getSQLState())) { // invalid_catalog_name
+                //  org.postgresql.util.PSQLException: FATAL: database "xxx" does not exist
+                throw newNoDatabaseError(ex);
+            }
+            throw ex;
+        }
         final PGConnection pgConnection;
         if ( connection instanceof PGConnection ) {
             pgConnection = (PGConnection) connection;
@@ -327,7 +334,7 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
         }
 
         // NOTE: assuming Date#to_s does right ...
-        statement.setDate(index, Date.valueOf(value.asString().toString()));
+        statement.setDate(index, Date.valueOf(value.toString()));
     }
 
     @Override
@@ -433,7 +440,7 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
         ArrayList<Double> doubles = new ArrayList<Double>(4); // Paths and polygons may be larger but this covers points/circles/boxes/line segments
 
         while ( matches.find() ) {
-            doubles.add(new Double(matches.group()));
+            doubles.add(Double.parseDouble(matches.group()));
         }
 
         return doubles.toArray(new Double[doubles.size()]);
@@ -494,7 +501,7 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
         final int index, final IRubyObject value,
         final IRubyObject attribute, final int type) throws SQLException {
 
-        if ( attributeSQLType(context, attribute).isNil() ) {
+        if ( attributeSQLType(context, attribute) == context.nil ) {
             /*
                 We have to check for a uuid here because in some cases
                 (for example,  when doing "exists?" checks, or with legacy binds)
@@ -506,7 +513,7 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
 
             // Checking the length so we don't have the overhead of the regex unless it "looks" like a UUID
             if (length >= 32 && length < 40 && uuidPattern.matcher(uuid).matches()) {
-                setUUIDParameter(statement, index, value);
+                setUUIDParameter(statement, index, uuid);
                 return;
             }
         }
@@ -514,10 +521,13 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
         super.setStringParameter(context, connection, statement, index, value, attribute, type);
     }
 
-    private void setUUIDParameter(final PreparedStatement statement,
-        final int index, final IRubyObject value) throws SQLException {
 
-        String uuid = value.toString();
+    private void setUUIDParameter(final PreparedStatement statement,
+                                  final int index, final IRubyObject value) throws SQLException {
+        setUUIDParameter(statement, index, value.toString());
+    }
+
+    private void setUUIDParameter(final PreparedStatement statement, final int index, String uuid) throws SQLException {
 
         if (uuid.length() != 36) { // Assume its a non-standard format
 

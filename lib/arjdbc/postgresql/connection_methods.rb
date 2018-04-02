@@ -55,12 +55,6 @@ ArJdbc::ConnectionMethods.module_eval do
     properties['prepareThreshold'] ||= 0 unless config[:prepared_statements]
 
     jdbc_connection(config)
-  rescue ActiveRecord::JDBCError => e
-    if e.message.include?('does not exist')
-      raise ActiveRecord::NoDatabaseError, e.message
-    else
-      raise
-    end
   end
   alias_method :jdbcpostgresql_connection, :postgresql_connection
 end
