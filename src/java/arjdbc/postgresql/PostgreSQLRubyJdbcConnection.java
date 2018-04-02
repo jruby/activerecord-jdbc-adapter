@@ -448,7 +448,7 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
         ArrayList<Double> doubles = new ArrayList<Double>(4); // Paths and polygons may be larger but this covers points/circles/boxes/line segments
 
         while ( matches.find() ) {
-            doubles.add(new Double(matches.group()));
+            doubles.add(Double.parseDouble(matches.group()));
         }
 
         return doubles.toArray(new Double[doubles.size()]);
@@ -532,7 +532,7 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
         final int index, final IRubyObject value,
         final IRubyObject attribute, final int type) throws SQLException {
 
-        if ( attributeSQLType(context, attribute).isNil() ) {
+        if ( attributeSQLType(context, attribute) == context.nil ) {
             /*
                 We have to check for a uuid here because in some cases
                 (for example,  when doing "exists?" checks, or with legacy binds)
@@ -544,7 +544,7 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
 
             // Checking the length so we don't have the overhead of the regex unless it "looks" like a UUID
             if (length >= 32 && length < 40 && uuidPattern.matcher(uuid).matches()) {
-                setUUIDParameter(statement, index, value);
+                setUUIDParameter(statement, index, uuid);
                 return;
             }
         }
@@ -552,10 +552,13 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
         super.setStringParameter(context, connection, statement, index, value, attribute, type);
     }
 
-    private void setUUIDParameter(final PreparedStatement statement,
-        final int index, final IRubyObject value) throws SQLException {
 
-        String uuid = value.toString();
+    private void setUUIDParameter(final PreparedStatement statement,
+                                  final int index, final IRubyObject value) throws SQLException {
+        setUUIDParameter(statement, index, value.toString());
+    }
+
+    private void setUUIDParameter(final PreparedStatement statement, final int index, String uuid) throws SQLException {
 
         if (uuid.length() != 36) { // Assume its a non-standard format
 
