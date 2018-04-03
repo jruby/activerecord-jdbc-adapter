@@ -111,7 +111,6 @@ public class JdbcResult extends RubyObject {
                 row[i] = connection.jdbcToRuby(context, runtime, i + 1, columnTypes[i], resultSet); // Result Set is 1 based
             }
 
-            // FIXME: This seems broken if AR result array can be modified by Rails consumers?
             values.append(RubyArray.newArrayNoCopy(context.runtime, row));
         }
     }
