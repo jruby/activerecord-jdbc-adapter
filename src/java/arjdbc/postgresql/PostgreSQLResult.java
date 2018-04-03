@@ -41,22 +41,22 @@ public class PostgreSQLResult extends JdbcResult {
     /**
      * Generates a new PostgreSQLResult object for the given result set
      * @param context current thread context
+     * @param clazz metaclass for this result object
      * @param resultSet the set of results that should be returned
      * @param adapter a reference to the current adapter, this is needed for generating an AR::Result object
      * @return an instantiated result object
      * @throws SQLException throws!
      */
-    static PostgreSQLResult newResult(ThreadContext context, RubyJdbcConnection connection,
+    static PostgreSQLResult newResult(ThreadContext context,  RubyClass clazz, RubyJdbcConnection connection,
                                              ResultSet resultSet, IRubyObject adapter) throws SQLException {
-        return new PostgreSQLResult(context, connection, resultSet, adapter);
+        return new PostgreSQLResult(context, clazz, connection, resultSet, adapter);
     }
 
     /********* End JRuby compat methods ***********/
 
-    private PostgreSQLResult(ThreadContext context, RubyJdbcConnection connection,
+    private PostgreSQLResult(ThreadContext context, RubyClass clazz, RubyJdbcConnection connection,
                              ResultSet resultSet, final IRubyObject adapter) throws SQLException {
-        // FIXME: Should not need to table look up this over and over.
-        super(context, connection.getMetaClass().getClass("Result"), connection, resultSet);
+        super(context, clazz, connection, resultSet);
 
         this.adapter = adapter;
         resultSetMetaData = (PgResultSetMetaData) resultSet.getMetaData();

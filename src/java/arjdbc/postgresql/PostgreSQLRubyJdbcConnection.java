@@ -135,8 +135,12 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
     // Used to wipe trailing 0's from points (3.0, 5.6) -> (3, 5.6)
     private static final Pattern pointCleanerPattern = Pattern.compile("\\.0\\b");
 
+    private RubyClass resultClass;
+
     public PostgreSQLRubyJdbcConnection(Ruby runtime, RubyClass metaClass) {
         super(runtime, metaClass);
+
+        resultClass = getMetaClass().getClass("Result");
     }
 
     public static RubyClass createPostgreSQLJdbcConnectionClass(Ruby runtime, RubyClass jdbcConnection) {
@@ -266,7 +270,7 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
     @Override
     protected IRubyObject mapExecuteResult(final ThreadContext context, final Connection connection,
                                            final ResultSet resultSet) throws SQLException{
-        return PostgreSQLResult.newResult(context, this, resultSet, getAdapter());
+        return PostgreSQLResult.newResult(context, resultClass, this, resultSet, getAdapter());
     }
 
     /**
