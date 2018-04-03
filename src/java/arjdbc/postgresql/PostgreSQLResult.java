@@ -12,6 +12,7 @@ import org.jruby.RubyHash;
 import org.jruby.RubyString;
 import org.jruby.anno.JRubyMethod;
 import org.jruby.runtime.Block;
+import org.jruby.runtime.Helpers;
 import org.jruby.runtime.ObjectAllocator;
 import org.jruby.runtime.ThreadContext;
 import org.jruby.runtime.builtin.IRubyObject;
@@ -70,24 +71,20 @@ public class PostgreSQLResult extends JdbcResult {
      */
     @Override
     protected IRubyObject columnTypeMap(final ThreadContext context) throws SQLException{
-        final RubyString[] rubyColumnNames = getColumnNames(context);
-        RubyHash types = RubyHash.newHash(context.runtime);
+        Ruby runtime = context.runtime;
+        RubyHash types = RubyHash.newHash(runtime);
         PgResultSetMetaDataWrapper mdWrapper = new PgResultSetMetaDataWrapper(resultSetMetaData);
+        int columnCount = columnNames.length;
 
-        for (int i = 0; i < rubyColumnNames.length; i++) {
+        for (int i = 0; i < columnCount; i++) {
             final Field field = mdWrapper.getField(i + 1);
-            final RubyString name = rubyColumnNames[i];
+            final RubyString name = columnNames[i];
+            final IRubyObject type = Helpers.invoke(context, adapter, "get_oid_type",
+                    runtime.newFixnum(field.getOID()),
+                    runtime.newFixnum(field.getMod()),
+                    name);
 
-            final IRubyObject[] args = {
-                context.runtime.newFixnum(field.getOID()),
-                context.runtime.newFixnum(field.getMod()),
-                name
-            };
-            final IRubyObject type = adapter.callMethod(context, "get_oid_type", args);
-
-            if (!type.isNil()) {
-                types.fastASet(name, type);
-            }
+            if (!type.isNil()) types.fastASet(name, type);
         }
 
         return types;

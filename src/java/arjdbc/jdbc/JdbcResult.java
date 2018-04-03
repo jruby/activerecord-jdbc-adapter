@@ -24,9 +24,8 @@ public class JdbcResult extends RubyObject {
     protected final RubyArray values;
     protected RubyHash[] tuples;
 
-    private final String[] columnNames;
     private final int[] columnTypes;
-    private RubyString[] rubyColumnNames;
+    protected RubyString[] columnNames;
     private final RubyJdbcConnection connection;
 
     protected JdbcResult(ThreadContext context, RubyClass clazz, RubyJdbcConnection connection, ResultSet resultSet) throws SQLException {
@@ -37,9 +36,10 @@ public class JdbcResult extends RubyObject {
 
         final ResultSetMetaData resultMetaData = resultSet.getMetaData();
         final int columnCount = resultMetaData.getColumnCount();
-        columnNames = new String[columnCount];
+        // FIXME: if we support MSSQL we may need to change how we deal with omitting elements
+        columnNames = new RubyString[columnCount];
         columnTypes = new int[columnCount];
-        extractColumnInfo(resultMetaData);
+        extractColumnInfo(context, resultMetaData);
         processResultSet(context, resultSet);
     }
 
@@ -58,39 +58,22 @@ public class JdbcResult extends RubyObject {
      * @param resultMetaData metadata from a ResultSet to determine column information from
      * @throws SQLException throws error!
      */
-    private void extractColumnInfo(ResultSetMetaData resultMetaData) throws SQLException {
+    private void extractColumnInfo(ThreadContext context, ResultSetMetaData resultMetaData) throws SQLException {
         final int columnCount = resultMetaData.getColumnCount();
 
         for (int i = 1; i <= columnCount; i++) { // metadata is one-based
             // This appears to not be used by Postgres, MySQL, or SQLite so leaving it off for now
             //name = caseConvertIdentifierForRails(connection, name);
-            columnNames[i - 1] = resultMetaData.getColumnLabel(i);
+            columnNames[i - 1] = RubyJdbcConnection.STRING_CACHE.get(context, resultMetaData.getColumnLabel(i));
             columnTypes[i - 1] = resultMetaData.getColumnType(i);
         }
     }
 
     /**
-     * @param runtime the ruby runtime
-     * @return <code>ActiveRecord::Result</code>
-     */
-    private RubyClass getActiveRecordResultClass(final Ruby runtime) {
-        return (RubyClass) runtime.getModule("ActiveRecord").getConstantAt("Result");
-    }
-
-    /**
-     * @param context the current thread context
      * @return an array with the column names as Ruby strings
      */
-    protected RubyString[] getColumnNames(final ThreadContext context) {
-        if (rubyColumnNames == null) {
-            rubyColumnNames = new RubyString[columnNames.length];
-
-            for (int i = 0; i < columnNames.length; i++) {
-                rubyColumnNames[i] = RubyJdbcConnection.STRING_CACHE.get(context, columnNames[i]);
-            }
-        }
-
-        return rubyColumnNames;
+    protected RubyString[] getColumnNames() {
+        return columnNames;
     }
 
     /**
@@ -98,15 +81,14 @@ public class JdbcResult extends RubyObject {
      * @param context current thread context
      */
     protected void populateTuples(final ThreadContext context) {
-        final RubyString[] rubyColumnNames = getColumnNames(context);
-        int columnCount = rubyColumnNames.length;
+        int columnCount = columnNames.length;
         tuples = new RubyHash[values.size()];
 
         for (int i = 0; i < tuples.length; i++) {
             RubyArray currentRow = (RubyArray) values.eltInternal(i);
             RubyHash hash = RubyHash.newHash(context.runtime);
             for (int columnIndex = 0; columnIndex < columnCount; columnIndex++) {
-                hash.fastASet(rubyColumnNames[columnIndex], currentRow.eltInternal(columnIndex));
+                hash.fastASet(columnNames[columnIndex], currentRow.eltInternal(columnIndex));
             }
             tuples[i] = hash;
         }
@@ -129,6 +111,7 @@ public class JdbcResult extends RubyObject {
                 row[i] = connection.jdbcToRuby(context, runtime, i + 1, columnTypes[i], resultSet); // Result Set is 1 based
             }
 
+            // FIXME: This seems broken if AR result array can be modified by Rails consumers?
             values.append(RubyArray.newArrayNoCopy(context.runtime, row));
         }
     }
@@ -140,8 +123,9 @@ public class JdbcResult extends RubyObject {
      * @throws SQLException can be caused by postgres generating its type map
      */
     public IRubyObject toARResult(final ThreadContext context) throws SQLException {
-        final RubyClass Result = getActiveRecordResultClass(context.runtime);
-        final RubyArray rubyColumnNames = RubyArray.newArrayNoCopy(context.runtime, getColumnNames(context));
+        final RubyClass Result = RubyJdbcConnection.getResult(context.runtime);
+        // FIXME: Is this broken?  no copy of an array AR::Result can modify?  or should it be frozen?
+        final RubyArray rubyColumnNames = RubyArray.newArrayNoCopy(context.runtime, getColumnNames());
         return Result.newInstance(context, rubyColumnNames, values, columnTypeMap(context), Block.NULL_BLOCK);
     }
 }

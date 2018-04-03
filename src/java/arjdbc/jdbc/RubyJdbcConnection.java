@@ -167,7 +167,7 @@ public class RubyJdbcConnection extends RubyObject {
      * @param runtime
      * @return <code>ActiveRecord::Result</code>
      */
-    protected static RubyClass getResult(final Ruby runtime) {
+    public static RubyClass getResult(final Ruby runtime) {
         return (RubyClass) runtime.getModule("ActiveRecord").getConstantAt("Result");
     }
 
