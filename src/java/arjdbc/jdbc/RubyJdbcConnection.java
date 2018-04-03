@@ -802,9 +802,8 @@ public class RubyJdbcConnection extends RubyObject {
                     boolean hasResultSet = doExecute(statement, query);
                     int updateCount = statement.getUpdateCount();
 
-                    ColumnData[] columns;
                     IRubyObject result = context.nil; // If no results, return nil
-                    ResultSet resultSet = null;
+                    ResultSet resultSet;
 
                     while (hasResultSet || updateCount != -1) {
 
