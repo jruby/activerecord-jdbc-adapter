@@ -406,7 +406,7 @@ module ArJdbc
     def escape_bytea(string)
       return unless string
       if supports_hex_escaped_bytea?
-        "\\\\x#{string.unpack("H*")[0]}"
+        "\\x#{string.unpack("H*")[0]}"
       else
         result = ''
         string.each_byte { |c| result << sprintf('\\\\%03o', c) }
