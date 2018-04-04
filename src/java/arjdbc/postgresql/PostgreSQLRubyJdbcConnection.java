@@ -50,13 +50,9 @@ import java.util.UUID;
 import java.util.regex.Pattern;
 import java.util.regex.Matcher;
 
-import org.jruby.Ruby;
-import org.jruby.RubyClass;
-import org.jruby.RubyFloat;
-import org.jruby.RubyHash;
-import org.jruby.RubyIO;
-import org.jruby.RubyModule;
-import org.jruby.RubyString;
+import org.joda.time.DateTime;
+import org.joda.time.DateTimeZone;
+import org.jruby.*;
 import org.jruby.anno.JRubyMethod;
 import org.jruby.exceptions.RaiseException;
 import org.jruby.javasupport.JavaUtil;
@@ -306,19 +302,56 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
         if ( value instanceof RubyFloat ) {
             final double doubleValue = ( (RubyFloat) value ).getValue();
             if ( Double.isInfinite(doubleValue) ) {
-                final Timestamp timestamp;
-                if ( doubleValue < 0 ) {
-                    timestamp = new Timestamp(PGStatement.DATE_NEGATIVE_INFINITY);
-                }
-                else {
-                    timestamp = new Timestamp(PGStatement.DATE_POSITIVE_INFINITY);
-                }
-                statement.setTimestamp( index, timestamp );
+                setTimestampInfinity(statement, index, doubleValue);
                 return;
             }
         }
 
-        super.setTimestampParameter(context, connection, statement, index, value, attribute, type);
+        RubyTime timeValue = toTime(context, value);
+
+        final Timestamp timestamp;
+
+        if (timeValue.getDateTime().getYear() > 0) {
+            timeValue = timeInDefaultTimeZone(context, timeValue);
+            DateTime dateTime = timeValue.getDateTime();
+            timestamp = new Timestamp(dateTime.getMillis());
+
+            if (timeValue.getNSec() > 0) timestamp.setNanos((int) (timestamp.getNanos() + timeValue.getNSec()));
+
+            statement.setTimestamp(index, timestamp, getCalendar(dateTime.getZone()));
+        }
+        else {
+            setTimestampBC(statement, index, timeValue);
+        }
+    }
+
+    private static void setTimestampBC(final PreparedStatement statement,
+                                       final int index, final RubyTime timeValue) throws SQLException {
+        DateTime dateTime = timeValue.getDateTime();
+        @SuppressWarnings("deprecated")
+        Timestamp timestamp = new Timestamp(dateTime.getYear() - 1900,
+                dateTime.getMonthOfYear() - 1,
+                dateTime.getDayOfMonth(),
+                dateTime.getHourOfDay(),
+                dateTime.getMinuteOfHour(),
+                dateTime.getSecondOfMinute(),
+                dateTime.getMillisOfSecond() * 1_000_000 + (int) timeValue.getNSec()
+        );
+
+        statement.setObject(index, timestamp);
+    }
+
+    private static void setTimestampInfinity(final PreparedStatement statement,
+                                             final int index, final double value) throws SQLException {
+        final Timestamp timestamp;
+        if ( value < 0 ) {
+            timestamp = new Timestamp(PGStatement.DATE_NEGATIVE_INFINITY);
+        }
+        else {
+            timestamp = new Timestamp(PGStatement.DATE_POSITIVE_INFINITY);
+        }
+
+        statement.setTimestamp( index, timestamp );
     }
 
     @Override

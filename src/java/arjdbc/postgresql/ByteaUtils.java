@@ -23,16 +23,14 @@
  */
 package arjdbc.postgresql;
 
+import org.jruby.util.ByteList;
+
 /**
  * Based on JDBC PostgreSQL driver's <code>org.postgresql.util.PGbytea</code>.
  *
  * @author kares
  */
 abstract class ByteaUtils {
-
-    //static byte[] toBytes(final byte[] s) {
-    //    return toBytes(s, 0, s.length);
-    //}
 
     /*
      * Converts a PG bytea raw value (i.e. the raw binary representation
@@ -55,7 +53,9 @@ abstract class ByteaUtils {
             final int j = off + (2 + i * 2);
             byte b1 = hexByte( s[j] );
             byte b2 = hexByte( s[j + 1] );
-            out[i] = (byte) ((b1 << 4) | b2);
+            // squid:S3034
+            // Raw byte values should not be used in bitwise operations in combination with shifts
+            out[i] = (byte) ((b1 << 4) | (b2 & 0xff));
         }
         return out;
     }
@@ -82,9 +82,8 @@ abstract class ByteaUtils {
             // backslashes or an octal escape \\ or \003
             //
             for ( int i = off; i < end; ++i ) {
-                if ( s[i] == '\\' ) {
-                    byte next = s[ ++i ];
-                    if (next == '\\') {
+                if ( s[i] == (byte) '\\' ) {
+                    if (s[ ++i ] == (byte) '\\') {
                         --correctSize;
                     }
                     else {
@@ -129,44 +128,35 @@ abstract class ByteaUtils {
      * Converts a java byte[] into a PG bytea string (i.e. the text
      * representation of the bytea data type)
      */
-    /*
-    public static String toPGString(byte[] p_buf)  {
-        if (p_buf == null)
-            return null;
-        StringBuffer l_strbuf = new StringBuffer(2 * p_buf.length);
-        for (int i = 0; i < p_buf.length; i++)
-        {
+    static ByteList toStr(final byte[] p_buf, final int off, final int len)  {
+        ByteList l_strbuf = new ByteList(2 * p_buf.length);
+        for (int i = off; i < off + len; i++) {
             int l_int = (int)p_buf[i];
-            if (l_int < 0)
-            {
+            if (l_int < 0) {
                 l_int = 256 + l_int;
             }
             //we escape the same non-printable characters as the backend
             //we must escape all 8bit characters otherwise when convering
             //from java unicode to the db character set we may end up with
             //question marks if the character set is SQL_ASCII
-            if (l_int < 040 || l_int > 0176)
-            {
-                //escape charcter with the form \000, but need two \\ because of
-                //the Java parser
-                l_strbuf.append("\\");
-                l_strbuf.append((char)(((l_int >> 6) & 0x3) + 48));
-                l_strbuf.append((char)(((l_int >> 3) & 0x7) + 48));
-                l_strbuf.append((char)((l_int & 0x07) + 48));
+            if (l_int < 040 || l_int > 0176) {
+                //escape character with the form \000
+                l_strbuf.append((byte)'\\');
+                l_strbuf.append((((l_int >> 6) & 0x3) + 48));
+                l_strbuf.append((((l_int >> 3) & 0x7) + 48));
+                l_strbuf.append(((l_int & 0x07) + 48));
             }
-            else if (p_buf[i] == (byte)'\\')
-            {
+            else if (p_buf[i] == (byte)'\\') {
                 //escape the backslash character as \\, but need four \\\\ because
                 //of the Java parser
-                l_strbuf.append("\\\\");
+                l_strbuf.append((byte)'\\').append((byte)'\\');
             }
-            else
-            {
+            else {
                 //other characters are left alone
-                l_strbuf.append((char)p_buf[i]);
+                l_strbuf.append(p_buf[i]);
             }
         }
-        return l_strbuf.toString();
-    } */
+        return l_strbuf;
+    }
 
 }

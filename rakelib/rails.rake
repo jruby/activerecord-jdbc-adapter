@@ -6,10 +6,11 @@ namespace :rails do
     task "test_#{adapter = adapter.downcase}" do
       puts "Use TESTOPTS=\"--verbose\" to pass --verbose to runners." if ARGV.include? '--verbose'
 
-      require 'active_record/version'; ar_path = Gem.loaded_specs['activerecord'].full_gem_path
+
+      ar_path = File.join(ENV['RAILS'], 'activerecord')
       unless File.exist? ar_test_dir = File.join(ar_path, 'test')
         raise "can not directly load Rails tests;" +
-              " try setting a local repository path e.g. export RAILS=`pwd`/../rails && bundle install"
+              " try setting a local repository path e.g. export RAILS=`pwd`/../rails"
       end
 
       driver = "jdbc-#{ENV['DRIVER'] ? ENV['DRIVER'].downcase : (adapter =~ /postgres/i ? 'postgres' : adapter)}"

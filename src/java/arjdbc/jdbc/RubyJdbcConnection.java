@@ -790,10 +790,10 @@ public class RubyJdbcConnection extends RubyObject {
 
     @JRubyMethod(name = "execute", required = 1)
     public IRubyObject execute(final ThreadContext context, final IRubyObject sql) {
+        final String query = sqlString(sql);
         return withConnection(context, new Callable<IRubyObject>() {
             public IRubyObject call(final Connection connection) throws SQLException {
                 Statement statement = null;
-                final String query = sqlString(sql);
                 try {
                     statement = createStatement(context, connection);
 
@@ -1071,7 +1071,7 @@ public class RubyJdbcConnection extends RubyObject {
     }
 
     protected static String sqlString(final IRubyObject sql) {
-        return ( sql instanceof RubyString ) ? ((RubyString) sql).decodeString() : sql.asString().decodeString();
+        return sql instanceof RubyString ? ((RubyString) sql).decodeString() : sql.convertToString().decodeString();
     }
 
     /**
@@ -2662,8 +2662,11 @@ public class RubyJdbcConnection extends RubyObject {
         return "string";
     }
 
-    protected final RubyTime timeInDefaultTimeZone(final ThreadContext context, IRubyObject value) {
-        final RubyTime time = toTime(context, value);
+    protected final RubyTime timeInDefaultTimeZone(final ThreadContext context, final IRubyObject value) {
+        return timeInDefaultTimeZone(context, toTime(context, value));
+    }
+
+    protected final RubyTime timeInDefaultTimeZone(final ThreadContext context, final RubyTime time) {
         final DateTimeZone defaultZone = getDefaultTimeZone(context);
         if (defaultZone == time.getDateTime().getZone()) return time;
         final DateTime adjustedDateTime = time.getDateTime().withZone(defaultZone);
@@ -2672,7 +2675,7 @@ public class RubyJdbcConnection extends RubyObject {
         return timeInDefaultTZ;
     }
 
-    private static RubyTime toTime(final ThreadContext context, final IRubyObject value) {
+    public static RubyTime toTime(final ThreadContext context, final IRubyObject value) {
         if ( ! ( value instanceof RubyTime ) ) { // unlikely
             return (RubyTime) TypeConverter.convertToTypeWithCheck(value, context.runtime.getTime(), "to_time");
         }
@@ -2783,15 +2786,6 @@ public class RubyJdbcConnection extends RubyObject {
         if (timeValue.getNSec() > 0) timestamp.setNanos((int) (timestamp.getNanos() + timeValue.getNSec()));
 
         statement.setTimestamp(index, timestamp, getCalendar(dateTime.getZone()));
-
-        //if ( value instanceof RubyString ) { // yyyy-[m]m-[d]d hh:mm:ss[.f...]
-        //    statement.setString(index, value.toString()); // assume local time-zone
-        //} else { // DateTime ( ActiveSupport::TimeWithZone.to_time )
-        //    final RubyFloat timeValue = value.convertToFloat(); // to_f
-        //    final Timestamp timestamp = convertToTimestamp(timeValue);
-        //
-        //    statement.setTimestamp( index, timestamp, getCalendarUTC() );
-        //}
     }
 
     @Deprecated
