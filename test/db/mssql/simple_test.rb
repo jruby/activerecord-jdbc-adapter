@@ -197,25 +197,9 @@ class MSSQLSimpleTest < Test::Unit::TestCase
     # readonly_attribute? and not pk_attribute?(name) as well ...
     # other adapters such as MySQL simply accept/ignore similar UPDATE as valid
     #
-    return super unless ar_version('4.0')
-    begin
-      ro_attrs = User.readonly_attributes.dup
-      User.readonly_attributes << 'id'
-      super
-    ensure
-      User.readonly_attributes.replace(ro_attrs)
-    end
   end
 
   def test_partial_update_with_updated_on
-    return super unless ar_version('4.0')
-    begin
-      ro_attrs = User.readonly_attributes.dup
-      User.readonly_attributes << 'id'
-      super
-    ensure
-      User.readonly_attributes.replace(ro_attrs)
-    end
   end
 
 
