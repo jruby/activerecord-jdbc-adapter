@@ -790,10 +790,10 @@ public class RubyJdbcConnection extends RubyObject {
 
     @JRubyMethod(name = "execute", required = 1)
     public IRubyObject execute(final ThreadContext context, final IRubyObject sql) {
+        final String query = sqlString(sql);
         return withConnection(context, new Callable<IRubyObject>() {
             public IRubyObject call(final Connection connection) throws SQLException {
                 Statement statement = null;
-                final String query = sqlString(sql);
                 try {
                     statement = createStatement(context, connection);
 
@@ -1071,7 +1071,7 @@ public class RubyJdbcConnection extends RubyObject {
     }
 
     protected static String sqlString(final IRubyObject sql) {
-        return ( sql instanceof RubyString ) ? ((RubyString) sql).decodeString() : sql.asString().decodeString();
+        return sql instanceof RubyString ? ((RubyString) sql).decodeString() : sql.convertToString().decodeString();
     }
 
     /**
