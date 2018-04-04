@@ -1,6 +1,15 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <module org.jetbrains.idea.maven.project.MavenProjectsManager.isMavenModule="true" type="JAVA_MODULE" version="4">
-  <component name="NewModuleRootManager" LANGUAGE_LEVEL="JDK_1_7">
+  <component name="FacetManager">
+    <facet type="JRUBY" name="JRuby">
+      <configuration>
+        <JRUBY_FACET_CONFIG_ID NAME="JRUBY_SDK_NAME" VALUE="RVM: jruby-1.7.20" />
+        <LOAD_PATH number="0" />
+        <I18N_FOLDERS number="0" />
+      </configuration>
+    </facet>
+  </component>
+  <component name="NewModuleRootManager" LANGUAGE_LEVEL="JDK_1_7" inherit-compiler-output="false">
     <output url="file://$MODULE_DIR$/pkg/classes" />
     <output-test url="file://$MODULE_DIR$/target/test-classes" />
     <content url="file://$MODULE_DIR$">
@@ -13,6 +22,9 @@
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
     <orderEntry type="library" name="Maven: org.jruby:jruby-complete:9.1.16.0" level="project" />
+    <orderEntry type="library" name="Maven: org.postgresql:postgresql:42.1.4.jre7" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="RVM: jruby-1.7.20 facet library" level="application" />
+    <orderEntry type="library" name="Maven: org.jruby:jruby-complete:9.1.6.0" level="project" />
     <orderEntry type="library" name="Maven: org.postgresql:postgresql:42.1.4.jre7" level="project" />
   </component>
 </module>

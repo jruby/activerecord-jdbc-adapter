@@ -167,7 +167,7 @@ public class RubyJdbcConnection extends RubyObject {
      * @param runtime
      * @return <code>ActiveRecord::Result</code>
      */
-    protected static RubyClass getResult(final Ruby runtime) {
+    public static RubyClass getResult(final Ruby runtime) {
         return (RubyClass) runtime.getModule("ActiveRecord").getConstantAt("Result");
     }
 
@@ -175,7 +175,7 @@ public class RubyJdbcConnection extends RubyObject {
      * @param runtime
      * @return <code>ActiveRecord::ConnectionAdapters</code>
      */
-    protected static RubyModule getConnectionAdapters(final Ruby runtime) {
+    public static RubyModule getConnectionAdapters(final Ruby runtime) {
         return (RubyModule) runtime.getModule("ActiveRecord").getConstantAt("ConnectionAdapters");
     }
 
@@ -802,9 +802,8 @@ public class RubyJdbcConnection extends RubyObject {
                     boolean hasResultSet = doExecute(statement, query);
                     int updateCount = statement.getUpdateCount();
 
-                    ColumnData[] columns;
                     IRubyObject result = context.nil; // If no results, return nil
-                    ResultSet resultSet = null;
+                    ResultSet resultSet;
 
                     while (hasResultSet || updateCount != -1) {
 
@@ -991,7 +990,7 @@ public class RubyJdbcConnection extends RubyObject {
     /**
      * This is the same as execute_query but it will return a list of hashes.
      *
-     * @see RubyJdbcConnection#execute_query(ThreadContext, IRubyObject[])
+     * @see RubyJdbcConnection#execute_query(ThreadContext, IRubyObject)
      * @param context which context this method is executing on.
      * @param args arguments being supplied to this method.
      * @param block (optional) block to yield row values (Hash(name: value))
@@ -1174,7 +1173,7 @@ public class RubyJdbcConnection extends RubyObject {
     protected IRubyObject mapQueryResult(final ThreadContext context,
         final Connection connection, final ResultSet resultSet) throws SQLException {
         final ColumnData[] columns = extractColumns(context, connection, resultSet, false);
-        return mapToResult(context, context.runtime, connection, resultSet, columns);
+        return mapToResult(context, connection, resultSet, columns);
     }
 
     /**
@@ -2061,16 +2060,15 @@ public class RubyJdbcConnection extends RubyObject {
     /**
      * Maps a query result into a <code>ActiveRecord</code> result.
      * @param context
-     * @param runtime
      * @param connection
      * @param resultSet
      * @param columns
-     * @return since 3.1 expected to return a <code>ActiveRecord::Result</code>
+     * @return expected to return a <code>ActiveRecord::Result</code>
      * @throws SQLException
      */
-    protected IRubyObject mapToResult(final ThreadContext context, final Ruby runtime,
-            final Connection connection, final ResultSet resultSet,
-            final ColumnData[] columns) throws SQLException {
+    protected IRubyObject mapToResult(final ThreadContext context, final Connection connection,
+                                      final ResultSet resultSet, final ColumnData[] columns) throws SQLException {
+        final Ruby runtime = context.runtime;
 
         final RubyArray resultRows = runtime.newArray();
 
@@ -2119,6 +2117,7 @@ public class RubyJdbcConnection extends RubyObject {
             case Types.TIMESTAMP:
                 return timestampToRuby(context, runtime, resultSet, column);
             case Types.BIT:
+                return bitToRuby(context, runtime, resultSet, column);
             case Types.BOOLEAN:
                 return booleanToRuby(context, runtime, resultSet, column);
             case Types.SQLXML: // JDBC 4.0
@@ -2150,6 +2149,15 @@ public class RubyJdbcConnection extends RubyObject {
         }
     }
 
+    /**
+     * Converts an integer column into a Ruby integer.
+     * @param context current thread context
+     * @param runtime current thread context
+     * @param resultSet the jdbc result set to pull the value from
+     * @param column the index of the column to convert
+     * @return RubyNil if NULL or RubyInteger if there is a value
+     * @throws SQLException if it failes to retrieve the value from the result set
+     */
     protected IRubyObject integerToRuby(final ThreadContext context,
         final Ruby runtime, final ResultSet resultSet, final int column)
         throws SQLException {
@@ -2158,6 +2166,15 @@ public class RubyJdbcConnection extends RubyObject {
         return runtime.newFixnum(value);
     }
 
+    /**
+     * Converts an double column into a Ruby integer.
+     * @param context current thread context
+     * @param runtime the ruby runtime
+     * @param resultSet the jdbc result set to pull the value from
+     * @param column the index of the column to convert
+     * @return RubyNil if NULL or RubyInteger if there is a value
+     * @throws SQLException if it failes to retrieve the value from the result set
+     */
     protected IRubyObject doubleToRuby(final ThreadContext context,
         final Ruby runtime, final ResultSet resultSet, final int column)
         throws SQLException {
@@ -2166,6 +2183,15 @@ public class RubyJdbcConnection extends RubyObject {
         return runtime.newFloat(value);
     }
 
+    /**
+     * Converts a string column into a Ruby string
+     * @param context current thread context
+     * @param runtime the ruby runtime
+     * @param resultSet the jdbc result set to pull the value from
+     * @param column the index of the column to convert
+     * @return RubyNil if NULL or RubyString if there is a value
+     * @throws SQLException if it failes to retrieve the value from the result set
+     */
     protected IRubyObject stringToRuby(final ThreadContext context,
         final Ruby runtime, final ResultSet resultSet, final int column) throws SQLException {
         final String value = resultSet.getString(column);
@@ -2239,6 +2265,7 @@ public class RubyJdbcConnection extends RubyObject {
 
         final Date value = resultSet.getDate(column);
         if ( value == null ) {
+            // FIXME: Do we really need this wasNull check here?
             return resultSet.wasNull() ? context.nil : RubyString.newEmptyString(runtime);
         }
 
@@ -2324,6 +2351,21 @@ public class RubyJdbcConnection extends RubyObject {
         return value;
     }
 
+    /**
+     * Converts a bit column to its Ruby equivalent.
+     * Defaults to treating it as a boolean value.
+     * @param context current thread context
+     * @param runtime current instance of Ruby.
+     * @param resultSet the jdbc result set to pull the value from
+     * @param column the index of the column to convert
+     * @return RubyNil if NULL or RubyBoolean if there is a value
+     * @throws SQLException if it failes to retrieve the value from the result set
+     */
+    protected IRubyObject bitToRuby(final ThreadContext context, final Ruby runtime, final ResultSet resultSet,
+                                    int column) throws SQLException {
+        return booleanToRuby(context, runtime, resultSet, column);
+    }
+
     protected IRubyObject booleanToRuby(final ThreadContext context,
         final Ruby runtime, final ResultSet resultSet, final int column)
         throws SQLException {
@@ -2356,6 +2398,15 @@ public class RubyJdbcConnection extends RubyObject {
         finally { if ( stream != null ) stream.close(); }
     }
 
+    /**
+     * Converts a column that is handled as a Reader object into a Ruby string
+     * @param context current thread context
+     * @param runtime the ruby runtime
+     * @param resultSet the jdbc result set to pull the value from
+     * @param column the index of the column to convert
+     * @return RubyNil if NULL or RubyString if there is a value
+     * @throws SQLException if it failes to retrieve the value from the result set
+     */
     protected IRubyObject readerToRuby(final ThreadContext context,
         final Ruby runtime, final ResultSet resultSet, final int column)
         throws SQLException, IOException {
@@ -2376,6 +2427,16 @@ public class RubyJdbcConnection extends RubyObject {
         finally { if ( reader != null ) reader.close(); }
     }
 
+
+    /**
+     * Converts the column into a RubyObject
+     * @param context current thread context
+     * @param runtime the ruby runtime
+     * @param resultSet the jdbc result set to pull the value from
+     * @param column the index of the column to convert
+     * @return RubyNil if NULL or RubyObject if there is a value
+     * @throws SQLException if it failes to retrieve the value from the result set
+     */
     protected IRubyObject objectToRuby(final ThreadContext context,
         final Ruby runtime, final ResultSet resultSet, final int column)
         throws SQLException {
@@ -2405,6 +2466,15 @@ public class RubyJdbcConnection extends RubyObject {
         finally { if ( value != null ) value.free(); }
     }
 
+    /**
+     * Converts an XML column into a Ruby string
+     * @param context current thread context
+     * @param runtime the ruby runtime
+     * @param resultSet the jdbc result set to pull the value from
+     * @param column the index of the column to convert
+     * @return RubyNil if NULL or RubyString if there is a value
+     * @throws SQLException if it failes to retrieve the value from the result set
+     */
     protected IRubyObject xmlToRuby(final ThreadContext context,
         final Ruby runtime, final ResultSet resultSet, final int column)
         throws SQLException {
@@ -3022,7 +3092,7 @@ public class RubyJdbcConnection extends RubyObject {
      * value is sufficient (except for an empty array which is considered that the table
      * did not exists).
      * @return matched (and Ruby mapped) table names
-     * @see #mapTables(Ruby, DatabaseMetaData, String, String, String, ResultSet)
+     * @see #mapTables(ThreadContext, Connection, String, String, String, ResultSet)
      * @throws SQLException
      */
     protected IRubyObject matchTables(final ThreadContext context,
@@ -3672,7 +3742,8 @@ public class RubyJdbcConnection extends RubyObject {
         return attribute.callMethod(context, "value_for_database");
     }
 
-    private static final StringCache STRING_CACHE = new StringCache();
+    // FIXME: This should not be static and will be exposed via api in connection as instance method.
+    public static final StringCache STRING_CACHE = new StringCache();
 
     protected static RubyString cachedString(final ThreadContext context, final String str) {
         return STRING_CACHE.get(context, str);

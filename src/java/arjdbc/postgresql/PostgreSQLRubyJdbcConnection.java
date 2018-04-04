@@ -28,6 +28,8 @@ package arjdbc.postgresql;
 import arjdbc.jdbc.Callable;
 import arjdbc.jdbc.DriverWrapper;
 import arjdbc.postgresql.PostgreSQLResult;
+import arjdbc.util.DateTimeUtils;
+import arjdbc.util.StringHelper;
 
 import java.io.ByteArrayInputStream;
 import java.lang.StringBuilder;
@@ -38,7 +40,6 @@ import java.sql.Date;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Statement;
 import java.sql.Timestamp;
 import java.sql.Types;
 import java.util.ArrayList;
@@ -50,8 +51,6 @@ import java.util.regex.Pattern;
 import java.util.regex.Matcher;
 
 import org.jruby.Ruby;
-import org.jruby.RubyArray;
-import org.jruby.RubyBoolean;
 import org.jruby.RubyClass;
 import org.jruby.RubyFloat;
 import org.jruby.RubyHash;
@@ -115,8 +114,15 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
         POSTGRES_JDBC_TYPE_FOR.put("uuid", Types.OTHER);
     }
 
+    // Used to wipe trailing 0's from points (3.0, 5.6) -> (3, 5.6)
+    private static final Pattern pointCleanerPattern = Pattern.compile("\\.0\\b");
+
+    private RubyClass resultClass;
+
     public PostgreSQLRubyJdbcConnection(Ruby runtime, RubyClass metaClass) {
         super(runtime, metaClass);
+
+        resultClass = getMetaClass().getClass("Result");
     }
 
     public static RubyClass createPostgreSQLJdbcConnectionClass(Ruby runtime, RubyClass jdbcConnection) {
@@ -254,9 +260,9 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
     }
 
     @Override
-    protected IRubyObject mapExecuteResult(final ThreadContext context, final Connection connection,
-                                           final ResultSet resultSet) throws SQLException{
-        return PostgreSQLResult.newResult(context, resultSet, getAdapter());
+    protected PostgreSQLResult mapExecuteResult(final ThreadContext context, final Connection connection,
+                                                final ResultSet resultSet) throws SQLException {
+        return PostgreSQLResult.newResult(context, resultClass, this, resultSet);
     }
 
     /**
@@ -267,9 +273,10 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
      * @return <code>ActiveRecord::Result</code>
      * @throws SQLException
      */
+    @Override
     protected IRubyObject mapQueryResult(final ThreadContext context, final Connection connection,
                                          final ResultSet resultSet) throws SQLException {
-        return ((PostgreSQLResult) mapExecuteResult(context, connection, resultSet)).toARResult(context);
+        return mapExecuteResult(context, connection, resultSet).toARResult(context);
     }
 
     @Override
@@ -603,6 +610,208 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
         // schema search path is given.  Default to the 'public' schema instead:
         if ( schema == null ) schema = "public";
         return super.extractTableName(connection, catalog, schema, tableName);
+    }
+
+    /**
+     * Determines if this field is multiple bits or a single bit (or t/f),
+     * if there are multiple bits they are turned into a string, if there
+     * is only one it is assumed to be a boolean value
+     * @param context current thread context
+     * @param resultSet the jdbc result set to pull the value from
+     * @param index the index of the column to convert
+     * @return RubyNil if NULL or RubyString of bits or RubyBoolean for a boolean value
+     * @throws SQLException if it failes to retrieve the value from the result set
+     */
+    @Override
+    protected IRubyObject bitToRuby(ThreadContext context, Ruby runtime, ResultSet resultSet, int index) throws SQLException {
+        String bits = resultSet.getString(index);
+
+        if (bits == null) return context.nil;
+        if (bits.length() > 1) return RubyString.newUnicodeString(context.runtime, bits);
+
+        // We assume it is a boolean value if it doesn't have a length
+        return booleanToRuby(context, runtime, resultSet, index);
+    }
+
+    /**
+     * Converts a JDBC date object to a Ruby date by parsing the string so we can handle edge cases
+     * @param context current thread context
+     * @param resultSet the jdbc result set to pull the value from
+     * @param index the index of the column to convert
+     * @return RubyNil if NULL or RubyDate if there is a value
+     * @throws SQLException if it failes to retrieve the value from the result set
+     */
+    @Override
+    protected IRubyObject dateToRuby(ThreadContext context, Ruby runtime, ResultSet resultSet, int index) throws SQLException {
+        // NOTE: PostgreSQL adapter under MRI using pg gem returns UTC-d Date/Time values
+        final String value = resultSet.getString(index);
+
+        return value == null ? context.nil : DateTimeUtils.parseDate(context, value, getDefaultTimeZone(context));
+    }
+
+
+    /**
+     * Detects PG specific types and converts them to their Ruby equivalents
+     * @param context current thread context
+     * @param resultSet the jdbc result set to pull the value from
+     * @param index the index of the column to convert
+     * @return RubyNil if NULL or RubyHash/RubyString/RubyObject
+     * @throws SQLException if it failes to retrieve the value from the result set
+     */
+    @Override
+    protected IRubyObject objectToRuby(ThreadContext context, Ruby runtime, ResultSet resultSet, int index) throws SQLException {
+        final Object object = resultSet.getObject(index);
+
+        if (object == null) return context.nil;
+
+        final Class<?> objectClass = object.getClass();
+
+        if (objectClass == UUID.class) return runtime.newString(object.toString());
+
+        if (object instanceof PGobject) {
+            if (objectClass == PGInterval.class) return runtime.newString(formatInterval(object));
+
+            if (objectClass == PGbox.class || objectClass == PGcircle.class ||
+                    objectClass == PGline.class || objectClass == PGlseg.class ||
+                    objectClass == PGpath.class || objectClass == PGpoint.class ||
+                    objectClass == PGpolygon.class ) {
+                // AR 5.0+ expects that points don't have the '.0' if it is an integer
+                return runtime.newString(pointCleanerPattern.matcher(object.toString()).replaceAll(""));
+            }
+
+            // PG 9.2 JSON type will be returned here as well
+            return runtime.newString(object.toString());
+        }
+
+        if (object instanceof Map) { // hstore
+            // by default we avoid double parsing by driver and then column :
+            final RubyHash rubyObject = RubyHash.newHash(context.runtime);
+            rubyObject.putAll((Map) object); // converts keys/values to ruby
+            return rubyObject;
+        }
+
+        return JavaUtil.convertJavaToRuby(runtime, object);
+    }
+
+    /**
+     * Override character stream handling to be read as bytes
+     * @param context current thread context
+     * @param runtime the Ruby runtime
+     * @param resultSet the jdbc result set to pull the value from
+     * @param index the index of the column to convert
+     * @return RubyNil if NULL or RubyString if there is a value
+     * @throws SQLException if it failes to retrieve the value from the result set
+     */
+    @Override
+    protected IRubyObject readerToRuby(ThreadContext context, Ruby runtime,
+                                       ResultSet resultSet, int index) throws SQLException {
+        return stringToRuby(context, runtime, resultSet, index);
+    }
+
+    /**
+     * Converts a string column into a Ruby string by pulling the raw bytes from the column and
+     * turning them into a string using the default encoding
+     * @param context current thread context
+     * @param runtime the Ruby runtime
+     * @param resultSet the jdbc result set to pull the value from
+     * @param index the index of the column to convert
+     * @return RubyNil if NULL or RubyString if there is a value
+     * @throws SQLException if it failes to retrieve the value from the result set
+     */
+    @Override
+    protected IRubyObject stringToRuby(ThreadContext context, Ruby runtime, ResultSet resultSet, int index) throws SQLException {
+        final byte[] value = resultSet.getBytes(index);
+
+        return value == null ? context.nil : StringHelper.newDefaultInternalString(context.runtime, value);
+    }
+
+    /**
+     * Converts a JDBC time object to a Ruby time by parsing it as a string
+     * @param context current thread context
+     * @param runtime the Ruby runtime
+     * @param resultSet the jdbc result set to pull the value from
+     * @param column the index of the column to convert
+     * @return RubyNil if NULL or RubyDate if there is a value
+     * @throws SQLException if it failes to retrieve the value from the result set
+     */
+    @Override
+    protected IRubyObject timeToRuby(ThreadContext context, Ruby runtime, ResultSet resultSet, int column) throws SQLException {
+        final String value = resultSet.getString(column); // Using resultSet.getTimestamp(column) only gets .999 (3) precision
+
+        return value == null ? context.nil : DateTimeUtils.parseTime(context, value, getDefaultTimeZone(context));
+    }
+
+    /**
+     * Converts a JDBC timestamp object to a Ruby time by parsing it as a string
+     * @param context current thread context
+     * @param runtime the Ruby runtime
+     * @param resultSet the jdbc result set to pull the value from
+     * @param column the index of the column to convert
+     * @return RubyNil if NULL or RubyDate if there is a value
+     * @throws SQLException if it failes to retrieve the value from the result set
+     */
+    @Override
+    protected IRubyObject timestampToRuby(ThreadContext context, Ruby runtime, ResultSet resultSet,
+                                          int column) throws SQLException {
+        // NOTE: using Timestamp we loose information such as BC :
+        // Timestamp: '0001-12-31 22:59:59.0' String: '0001-12-31 22:59:59 BC'
+        final String value = resultSet.getString(column);
+
+        if (value == null) return context.nil;
+
+        final int len = value.length();
+        if (len < 10 && value.charAt(len - 1) == 'y') { // infinity / -infinity
+            IRubyObject infinity = parseInfinity(context.runtime, value);
+
+            if (infinity != null) return infinity;
+        }
+
+        // handles '0001-01-01 23:59:59 BC'
+        return DateTimeUtils.parseDateTime(context, value, getDefaultTimeZone(context));
+    }
+
+    private IRubyObject parseInfinity(final Ruby runtime, final String value) {
+        if ("infinity".equals(value)) return RubyFloat.newFloat(runtime,  RubyFloat.INFINITY);
+        if ("-infinity".equals(value)) return RubyFloat.newFloat(runtime, -RubyFloat.INFINITY);
+
+        return null;
+    }
+
+    // NOTE: do not use PG classes in the API so that loading is delayed !
+    private static String formatInterval(final Object object) {
+        final PGInterval interval = (PGInterval) object;
+        final StringBuilder str = new StringBuilder(32);
+
+        final int years = interval.getYears();
+        if (years != 0) str.append(years).append(" years ");
+
+        final int months = interval.getMonths();
+        if (months != 0) str.append(months).append(" months ");
+
+        final int days = interval.getDays();
+        if (days != 0) str.append(days).append(" days ");
+
+        final int hours = interval.getHours();
+        final int mins = interval.getMinutes();
+        final int secs = (int) interval.getSeconds();
+        if (hours != 0 || mins != 0 || secs != 0) { // xx:yy:zz if not all 00
+            if (hours < 10) str.append('0');
+
+            str.append(hours).append(':');
+
+            if (mins < 10) str.append('0');
+
+            str.append(mins).append(':');
+
+            if (secs < 10) str.append('0');
+
+            str.append(secs);
+
+        } else if (str.length() > 1) {
+            str.deleteCharAt(str.length() - 1); // " " at the end
+        }
+
+        return str.toString();
     }
 
     // NOTE: without these custom registered Postgre (driver) types
