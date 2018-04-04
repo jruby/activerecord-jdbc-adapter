@@ -736,6 +736,8 @@ module ActiveRecord::ConnectionAdapters
       end
     end
 
+    public :sql_for_insert
+
     def schema_creation # :nodoc:
       PostgreSQL::SchemaCreation.new self
     end
