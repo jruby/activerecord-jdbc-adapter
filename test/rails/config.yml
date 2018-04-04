@@ -64,7 +64,7 @@ connections:
       <% if defined? JRUBY_VERSION %>
       properties:
         serverTimezone: <%= java.util.TimeZone.getDefault.getID %>
-      <% end -%>
+      <% end %>
     arunit:
       <<: *_setup
       collation: utf8_unicode_ci
