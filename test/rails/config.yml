@@ -58,10 +58,10 @@ connections:
       username: <%= ENV['MY_USER'] || 'rails' %>
       encoding: utf8
       prepared_statements: <%= ENV['PREPARED_STATEMENTS'] || 'false' %>
-      <% if ENV['DRIVER'] =~ /MariaDB/i; _load_jdbc_driver(:MariaDB) -%>
+      <% if ENV['DRIVER'] =~ /MariaDB/i; _load_jdbc_driver(:MariaDB) %>
       driver: <%= 'org.mariadb.jdbc.Driver' %>
-      <% end -%>
-      <% if defined? JRUBY_VERSION -%>
+      <% end %>
+      <% if defined? JRUBY_VERSION %>
       properties:
         serverTimezone: <%= java.util.TimeZone.getDefault.getID %>
       <% end -%>
@@ -73,12 +73,12 @@ connections:
 
   postgresql:
     _setup: &_setup
-      <% if ENV.key?('INSERT_RETURNING') -%>
+      <% if ENV.key?('INSERT_RETURNING') %>
       insert_returning: <%= ENV['INSERT_RETURNING'] %> # really should leave it off to no key if not set
-      <% end -%>
-      <% if ENV.key?('PREPARED_STATEMENTS') || ENV.key?('PS') -%>
+      <% end %>
+      <% if ENV.key?('PREPARED_STATEMENTS') || ENV.key?('PS') %>
       prepared_statements: <%= ENV['PREPARED_STATEMENTS'] || ENV['PS'] %> # should leave it off to its default if not set
-      <% end -%>
+      <% end %>
       username: <%= ENV['PGUSER'] || ENV['user'] || 'rails' %>
       properties:
         # Postgres' JDBC driver does not prepare statements until executed 5 times by default, let's lower:
