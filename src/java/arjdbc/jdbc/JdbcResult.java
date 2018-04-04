@@ -26,7 +26,7 @@ public class JdbcResult extends RubyObject {
 
     private final int[] columnTypes;
     protected RubyString[] columnNames;
-    private final RubyJdbcConnection connection;
+    protected final RubyJdbcConnection connection;
 
     protected JdbcResult(ThreadContext context, RubyClass clazz, RubyJdbcConnection connection, ResultSet resultSet) throws SQLException {
         super(context.runtime, clazz);

@@ -279,9 +279,9 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
     }
 
     @Override
-    protected IRubyObject mapExecuteResult(final ThreadContext context, final Connection connection,
-                                           final ResultSet resultSet) throws SQLException{
-        return PostgreSQLResult.newResult(context, resultClass, this, resultSet, getAdapter());
+    protected PostgreSQLResult mapExecuteResult(final ThreadContext context, final Connection connection,
+                                                final ResultSet resultSet) throws SQLException {
+        return PostgreSQLResult.newResult(context, resultClass, this, resultSet);
     }
 
     /**
@@ -292,9 +292,10 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
      * @return <code>ActiveRecord::Result</code>
      * @throws SQLException
      */
+    @Override
     protected IRubyObject mapQueryResult(final ThreadContext context, final Connection connection,
                                          final ResultSet resultSet) throws SQLException {
-        return ((PostgreSQLResult) mapExecuteResult(context, connection, resultSet)).toARResult(context);
+        return mapExecuteResult(context, connection, resultSet).toARResult(context);
     }
 
     @Override

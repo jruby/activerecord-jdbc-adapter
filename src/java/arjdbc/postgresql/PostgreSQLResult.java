@@ -27,8 +27,7 @@ import org.postgresql.jdbc.PgResultSetMetaDataWrapper; // This is a hack unfortu
 public class PostgreSQLResult extends JdbcResult {
 
     // These are needed when generating an AR::Result
-    private IRubyObject adapter;
-    private PgResultSetMetaData resultSetMetaData;
+    private final PgResultSetMetaData resultSetMetaData;
 
     /********* JRuby compat methods ***********/
 
@@ -44,22 +43,20 @@ public class PostgreSQLResult extends JdbcResult {
      * @param context current thread context
      * @param clazz metaclass for this result object
      * @param resultSet the set of results that should be returned
-     * @param adapter a reference to the current adapter, this is needed for generating an AR::Result object
      * @return an instantiated result object
      * @throws SQLException throws!
      */
-    static PostgreSQLResult newResult(ThreadContext context,  RubyClass clazz, RubyJdbcConnection connection,
-                                             ResultSet resultSet, IRubyObject adapter) throws SQLException {
-        return new PostgreSQLResult(context, clazz, connection, resultSet, adapter);
+    static PostgreSQLResult newResult(ThreadContext context,  RubyClass clazz, PostgreSQLRubyJdbcConnection connection,
+                                      ResultSet resultSet) throws SQLException {
+        return new PostgreSQLResult(context, clazz, connection, resultSet);
     }
 
     /********* End JRuby compat methods ***********/
 
     private PostgreSQLResult(ThreadContext context, RubyClass clazz, RubyJdbcConnection connection,
-                             ResultSet resultSet, final IRubyObject adapter) throws SQLException {
+                             ResultSet resultSet) throws SQLException {
         super(context, clazz, connection, resultSet);
 
-        this.adapter = adapter;
         resultSetMetaData = (PgResultSetMetaData) resultSet.getMetaData();
     }
 
@@ -70,12 +67,13 @@ public class PostgreSQLResult extends JdbcResult {
      * @throws SQLException if it fails to get the field
      */
     @Override
-    protected IRubyObject columnTypeMap(final ThreadContext context) throws SQLException{
+    protected IRubyObject columnTypeMap(final ThreadContext context) throws SQLException {
         Ruby runtime = context.runtime;
         RubyHash types = RubyHash.newHash(runtime);
         PgResultSetMetaDataWrapper mdWrapper = new PgResultSetMetaDataWrapper(resultSetMetaData);
         int columnCount = columnNames.length;
 
+        IRubyObject adapter = connection.adapter(context);
         for (int i = 0; i < columnCount; i++) {
             final Field field = mdWrapper.getField(i + 1);
             final RubyString name = columnNames[i];

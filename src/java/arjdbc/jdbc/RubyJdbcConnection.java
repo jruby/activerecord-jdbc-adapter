@@ -1173,7 +1173,7 @@ public class RubyJdbcConnection extends RubyObject {
     protected IRubyObject mapQueryResult(final ThreadContext context,
         final Connection connection, final ResultSet resultSet) throws SQLException {
         final ColumnData[] columns = extractColumns(context, connection, resultSet, false);
-        return mapToResult(context, context.runtime, connection, resultSet, columns);
+        return mapToResult(context, connection, resultSet, columns);
     }
 
     /**
@@ -2060,16 +2060,15 @@ public class RubyJdbcConnection extends RubyObject {
     /**
      * Maps a query result into a <code>ActiveRecord</code> result.
      * @param context
-     * @param runtime
      * @param connection
      * @param resultSet
      * @param columns
-     * @return since 3.1 expected to return a <code>ActiveRecord::Result</code>
+     * @return expected to return a <code>ActiveRecord::Result</code>
      * @throws SQLException
      */
-    protected IRubyObject mapToResult(final ThreadContext context, final Ruby runtime,
-            final Connection connection, final ResultSet resultSet,
-            final ColumnData[] columns) throws SQLException {
+    protected IRubyObject mapToResult(final ThreadContext context, final Connection connection,
+                                      final ResultSet resultSet, final ColumnData[] columns) throws SQLException {
+        final Ruby runtime = context.runtime;
 
         final RubyArray resultRows = runtime.newArray();
 
