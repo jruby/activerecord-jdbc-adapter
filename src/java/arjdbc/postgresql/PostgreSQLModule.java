@@ -71,8 +71,7 @@ public class PostgreSQLModule {
     @JRubyMethod(name = "unescape_bytea", meta = true)
     public static RubyString unescape_bytea(final ThreadContext context, final IRubyObject self, final IRubyObject escaped) {
         final ByteList bytes = ((RubyString) escaped).getByteList();
-        final byte[] rawBytes = ByteaUtils.toBytes(bytes.unsafeBytes(), bytes.getBegin(), bytes.getRealSize());
-        return RubyString.newString(context.runtime, new ByteList(rawBytes, false));
+        return RubyString.newString(context.runtime, ByteaUtils.toBytes(bytes.unsafeBytes(), bytes.getBegin(), bytes.getRealSize()));
     }
 
 }
