@@ -668,12 +668,6 @@ module ActiveRecord::ConnectionAdapters
       exec_query(sql, name, binds)
     end
 
-    def indexes(table_name, name = nil) #:nodoc:
-      # on JDBC 3.7 we'll simply do super since it can not handle "PRAGMA index_info"
-      return @connection.indexes(table_name, name) if sqlite_version < '3.8' # super
-      super
-    end
-
     def jdbc_column_class
       ::ActiveRecord::ConnectionAdapters::SQLite3Column
     end
