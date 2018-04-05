@@ -686,22 +686,11 @@ module ActiveRecord::ConnectionAdapters
       super(value)
     end
 
-    # FIXME: Add @connection.encoding then remove this method
-    def encoding
-      select_value 'PRAGMA encoding'
-    end
-
     # SQLite driver doesn't support all types of insert statements with executeUpdate so
     # make it act like a regular query and the ids will be returned from #last_inserted_id
     # example: INSERT INTO "aircraft" DEFAULT VALUES
     def exec_insert(sql, name = nil, binds = [], pk = nil, sequence_name = nil)
       exec_query(sql, name, binds)
-    end
-
-    def indexes(table_name, name = nil) #:nodoc:
-      # on JDBC 3.7 we'll simply do super since it can not handle "PRAGMA index_info"
-      return @connection.indexes(table_name, name) if sqlite_version < '3.8' # super
-      super
     end
 
     def jdbc_column_class
