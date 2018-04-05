@@ -656,11 +656,6 @@ module ActiveRecord::ConnectionAdapters
       raise ActiveRecord::TransactionIsolationError, 'adapter does not support setting transaction isolation'
     end
 
-    # FIXME: Add @connection.encoding then remove this method
-    def encoding
-      select_value 'PRAGMA encoding'
-    end
-
     # SQLite driver doesn't support all types of insert statements with executeUpdate so
     # make it act like a regular query and the ids will be returned from #last_inserted_id
     # example: INSERT INTO "aircraft" DEFAULT VALUES

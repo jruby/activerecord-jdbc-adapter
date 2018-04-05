@@ -69,6 +69,7 @@ public class SQLite3RubyJdbcConnection extends RubyJdbcConnection {
     private static final long serialVersionUID = -5783855018818472773L;
 
     private final RubyString TIMESTAMP_FORMAT;
+    private IRubyObject encoding;
 
     public SQLite3RubyJdbcConnection(Ruby runtime, RubyClass metaClass) {
         super(runtime, metaClass);
@@ -94,6 +95,39 @@ public class SQLite3RubyJdbcConnection extends RubyJdbcConnection {
             return new SQLite3RubyJdbcConnection(runtime, klass);
         }
     };
+
+    @JRubyMethod
+    public IRubyObject encoding(final ThreadContext context) throws SQLException {
+        if (encoding != null) return encoding;
+
+        return withConnection(context, new Callable<IRubyObject>() {
+            // FIXME: How many single result queries do we have in Java?
+            public IRubyObject call(final Connection connection) throws SQLException {
+                String query = "PRAGMA encoding";
+                Statement statement = null;
+                ResultSet resultSet = null;
+                try {
+                    statement = createStatement(context, connection);
+                    if (statement.execute(query)) {
+                        // Enebo: I do not think we need to worry about failure here?
+                        String encodingString = statement.getResultSet().getString(1);
+
+                        encoding = cachedString(context, encodingString);
+
+                        return encoding;
+                    }
+                } catch (final SQLException e) {
+                    debugErrorSQL(context, query);
+                    throw e;
+                } finally {
+                    close(resultSet);
+                    close(statement);
+                }
+
+                return context.nil;
+            }
+        });
+    }
 
     @JRubyMethod(name = {"last_insert_rowid", "last_insert_id"}, alias = "last_insert_row_id")
     public IRubyObject last_insert_rowid(final ThreadContext context)
