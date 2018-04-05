@@ -1,33 +1,43 @@
 source "https://rubygems.org"
 
-if version = ( ENV['AR_VERSION'] || ENV['RAILS'] )
-  if version.eql?('false')
-    # NO gem declaration (Rails test -> manipulating LOAD_PATH)
-  elsif version.index('/') && ::File.exist?(version)
-    if Dir.entries(version).include?('activerecord') # Rails directory
-      gem 'activerecord', require: false, path: ::File.join(version, 'activerecord')
-      gem 'activemodel', require: false, path: ::File.join(version, 'activemodel')
-      gem 'activesupport', require: false, path: ::File.join(version, 'activesupport')
-    else
-      gem 'activerecord', path: version
+if ENV['RAILS']  # Use local clone of Rails
+  rails_dir = ENV['RAILS']    
+  activerecord_dir = ::File.join(rails_dir, 'activerecord')
+  
+  if !::File.exist?(rails_dir) && !::File.exist(activerecord_dir)
+    raise "ENV['RAILS'] set but does not point at a valid rails clone"
+  end
+
+  activemodel_dir =  ::File.join(rails_dir, 'activemodel')
+  activesupport_dir =  ::File.join(rails_dir, 'activesupport')
+  
+  gem 'activerecord', require: false, path: activerecord_dir
+  gem 'activemodel', require: false, path: activemodel_dir
+  gem 'activesupport', require: false, path: activesupport_dir
+elsif ENV['AR_VERSION'] # Use specific version of AR and not .gemspec version
+  version = ENV['AR_VERSION']
+  
+  if !version.eql?('false') # Don't bundle any versions of AR; use LOAD_PATH
+    # Specified as raw number. Use normal gem require.
+    if version =~ /^([0-9.])+(_)?(rc|RC|beta|BETA|PR|pre)*([0-9.])*$/
+      gem 'activerecord', version, require: nil
+    else # Asking for git clone specific version
+      if version =~ /^[0-9abcdef]+$/ ||                                 # SHA
+         version =~ /^v([0-9.])+(_)?(rc|RC|beta|BETA|PR|pre)*([0-9.])*$/# tag
+        opts = {ref: version}
+      else                                                              # branch
+        opts = {branch: version}
+      end
+    
+      git 'https://github.com/rails/rails.git', **opts do
+        gem 'activerecord', require: false
+        gem 'activemodel', require: false
+        gem 'activesupport', require: false
+      end
     end
-  elsif version =~ /^[0-9abcdef]+$/ || version.start_with?('v')
-    git 'https://github.com/rails/rails.git', ref: version do
-      gem 'activerecord', require: false
-      gem 'activemodel', require: false
-      gem 'activesupport', require: false
-    end
-  elsif version.index('.').nil?
-    git 'https://github.com/rails/rails.git', branch: version do
-      gem 'activerecord', require: false
-      gem 'activemodel', require: false
-      gem 'activesupport', require: false
-    end
-  else
-    gem 'activerecord', version, require: nil
   end
 else
-  gemspec name: 'activerecord-jdbc-adapter' # gem 'activerecord' declared in .gemspec
+  gemspec name: 'activerecord-jdbc-adapter' # Use versiom from .gemspec
 end
 
 gem 'rake', '>= 11.1', require: nil

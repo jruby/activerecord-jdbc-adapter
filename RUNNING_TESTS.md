@@ -1,3 +1,7 @@
+There are two sets of tests which we run in CI.  Local (AR-JDBC) test and
+Rails activerecord tests.  The next two sections details how to run each
+and customize behavior.
+
 
 ## Running AR-JDBC's Tests
 
@@ -47,36 +51,74 @@ but one can easily run tests with prepared statements disabled using env vars :
 
 ### ActiveRecord (Rails) Tests
 
-We also have the ability to run our adapters against Rails ActiveRecord
-tests as well.  First, make sure you have the Rails repository cloned locally:
+We also can run our adapters against Rails ActiveRecord tests.  There are two
+ways you can do this:
 
-    git clone git://github.com/rails/rails.git
+ - Run against local clone (by setting RAILS environment variable). This is helpful when you are adding puts or hacking on activerecord code directly.
 
-If you clone Rails to the same parent directory this project is cloned to
-then you may do either:
+ - Run against bundler provided clone (by setting AR_VERSION environment variable). This is useful when you want to submit to travis and want all the adapters to run against your code.
 
-    jruby -S rake rails:test:sqlite
-    jruby -S rake rails:test:postgres
-    jruby -S rake rails:test:mysql
+Note: RAILS will trump AR_VERSION and setting neither will assume version as
+set in the gemspec.
 
-If you have your rails source in another directory then you can pass
-in **RAILS**:
+### Run against local clone
 
-    jruby -S rake rails:test:sqlite RAILS=../../somewhere/rails
+Make sure you have rails cloned somewhere:
 
-If you are working on a more exotic adapter you can also pass in **DRIVER**:
+```text
+git clone git://github.com/rails/rails.git
+```
 
-    jruby -S rake rails:test:all DRIVER=derby
+Set up a fully qualified RAILS environment variable. For example, if you were
+in activerecord direction you can just do something like:
 
-Note, that if you want to test against particular version of Rails you need
-to check out the proper branch in Rails source (e.g. v5.0.2).  If you are
-just starting to debug an adapter then running:
+```ext
+export RAILS=`pwd`/../rails
+```
 
-    jruby -S rake rails:test:sqlite:basic_test
-    jruby -S rake rails:test:postgres:basic_test
-    jruby -S rake rails:test:mysql:basic_test
+Now that is this set up we may have changed the gems we need so we have
+to run bundler:
 
-is helpful since basic_test in active-record hits that 80% sweet spot.
+```text
+bundle install
+```
+
+Before you run tests you need to be aware that each support branch we have is
+written to run with a single significant release of rails (50-stable will only
+work well with rails 5.0.x).  So you need to make sure you local copy of rails
+is checked out to match whatever you are testing (e.g. git checkout v5.0.6).
+Now you can run rails tests:
+
+```text
+jruby -S rake rails:test_sqlite3
+jruby -S rake rails:test_postgres
+jruby -S rake rails:test_mysql
+```
+
+### Run against bundler provided clone
+
+AR_VERSION is a very flexible variable.  You can:
+
+ - specify tag (export AR_VERSION=v5.0.6)
+ - specify version (export AR_VERSION=5.0.6)
+ - specify SHA hash (export AR_VERSION=875bb788f56311ac4628402667187f755c1a331c)
+ - specify branch (export AR_VERSION=verify-release)
+ - specify nothing to assume LOADPATH has loaded it (export AR_VERSION=false)
+
+Now that is this set up we may have changed the gems we need so we have
+to run bundler:
+
+```text
+bundle install
+```
+
+Once you have picked what you want to test you can run:
+
+```text
+jruby -S rake rails:test_sqlite3
+jruby -S rake rails:test_postgres
+jruby -S rake rails:test_mysql
+```
 
 [![Build Status][0]](http://travis-ci.org/#!/jruby/activerecord-jdbc-adapter)
 

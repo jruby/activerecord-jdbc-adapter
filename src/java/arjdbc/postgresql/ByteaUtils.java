@@ -36,7 +36,7 @@ abstract class ByteaUtils {
      * Converts a PG bytea raw value (i.e. the raw binary representation
      * of the bytea data type) into a java byte[]
      */
-    static byte[] toBytes(final byte[] s, final int off, final int len) {
+    static ByteList toBytes(final byte[] s, final int off, final int len) {
         // Starting with PG 9.0, a new hex format is supported
         // that starts with "\x".  Figure out which format we're
         // dealing with here.
@@ -44,7 +44,7 @@ abstract class ByteaUtils {
         if ( s.length < 2 || s[0] != '\\' || s[1] != 'x' ) {
             return toBytesOctalEscaped(s, off, len);
         }
-        return toBytesHexEscaped(s, off, len);
+        return new ByteList(toBytesHexEscaped(s, off, len), false);
     }
 
     private static byte[] toBytesHexEscaped(final byte[] s, final int off, final int len) {
@@ -73,7 +73,7 @@ abstract class ByteaUtils {
 
     private static final int MAX_3_BUFF_SIZE = 2 * 1024 * 1024;
 
-    private static byte[] toBytesOctalEscaped(final byte[] s, final int off, final int len) {
+    private static ByteList toBytesOctalEscaped(final byte[] s, final int off, final int len) {
         final byte[] out;
         final int end = off + len;
         int correctSize = len;
@@ -117,11 +117,7 @@ abstract class ByteaUtils {
             }
         }
 
-        if ( pos == correctSize ) return out;
-
-        final byte[] out2 = new byte[pos];
-        System.arraycopy(out, 0, out2, 0, pos);
-        return out2;
+        return new ByteList(out, 0, pos, false);
     }
 
     /*
