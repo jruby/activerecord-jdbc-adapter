@@ -771,6 +771,10 @@ public class RubyJdbcConnection extends RubyObject {
             return context.nil;
         }
 
+        // ActiveRecord expects a closed connection to not try and re-open a connection
+        // whereas JNDI expects that.
+        if (!isJndi()) disconnect(context);
+
         return context.runtime.getTrue();
     }
 
