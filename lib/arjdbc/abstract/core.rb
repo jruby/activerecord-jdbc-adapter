@@ -58,18 +58,6 @@ module ArJdbc
         end
       end
 
-      def log(sql, name = "SQL", binds = [], type_casted_binds = nil, statement_name = nil)
-        @instrumenter.instrument(
-            "sql.active_record",
-            sql:               sql,
-            name:              name,
-            binds:             binds,
-            type_casted_binds: type_casted_binds || -> { type_casted_binds(binds) }, # works since AR 5.0.6
-            statement_name:    statement_name,
-            connection_id:     object_id) { yield }
-      rescue => e
-        raise translate_exception_class(e, sql)
-      end
 
     end
   end
