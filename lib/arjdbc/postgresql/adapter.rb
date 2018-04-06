@@ -256,7 +256,7 @@ module ArJdbc
 
     def supports_extensions?
       postgresql_version >= 90200
-    end # NOTE: only since AR-4.0 but should not hurt on other versions
+    end
 
     def enable_extension(name)
       execute("CREATE EXTENSION IF NOT EXISTS \"#{name}\"")
@@ -308,14 +308,9 @@ module ArJdbc
       select_value("SELECT pg_advisory_unlock(#{lock_id})")
     end
 
-    # Returns the configured supported identifier length supported by PostgreSQL,
-    # or report the default of 63 on PostgreSQL 7.x.
+    # Returns the configured supported identifier length supported by PostgreSQL
     def max_identifier_length
-      @max_identifier_length ||= (
-        postgresql_version >= 80000 ?
-          select_one('SHOW max_identifier_length', 'SCHEMA'.freeze)['max_identifier_length'].to_i :
-          63
-      )
+      @max_identifier_length ||= select_one('SHOW max_identifier_length', 'SCHEMA'.freeze)['max_identifier_length'].to_i
     end
     alias table_alias_length max_identifier_length
     alias index_name_length max_identifier_length
@@ -428,55 +423,6 @@ module ArJdbc
 
     # @note #quote_column_name implemented as native
     alias_method :quote_schema_name, :quote_column_name
-
-    # Changes the column of a table.
-    # TODO: We can get rid of this if we stop supporting postgres 7.x
-    def change_column(table_name, column_name, type, options = {})
-      clear_cache!
-      quoted_table_name = quote_table_name(table_name)
-      quoted_column_name = quote_table_name(column_name)
-
-      sql_type = type_to_sql(type, options[:limit], options[:precision], options[:scale], options[:array])
-
-      sql = "ALTER TABLE #{quoted_table_name} ALTER COLUMN #{quoted_column_name} TYPE #{sql_type}"
-      if options[:collation]
-        sql << " COLLATE \"#{options[:collation]}\""
-      end
-      if options[:using]
-        sql << " USING #{options[:using]}"
-      elsif options[:cast_as]
-        cast_as_type = type_to_sql(options[:cast_as], options[:limit], options[:precision], options[:scale], options[:array])
-        sql << " USING CAST(#{quoted_column_name} AS #{cast_as_type})"
-      end
-
-      begin
-        execute sql
-      rescue ActiveRecord::StatementInvalid => e
-        raise e if postgresql_version > 80000
-        change_column_pg7(table_name, column_name, type, options)
-      end
-
-      change_column_default(table_name, column_name, options[:default]) if options_include_default?(options)
-      change_column_null(table_name, column_name, options[:null], options[:default]) if options.key?(:null)
-      change_column_comment(table_name, column_name, options[:comment]) if options.key?(:comment)
-    end
-
-    def change_column_pg7(table_name, column_name, type, options)
-      quoted_table_name = quote_table_name(table_name)
-      # This is PostgreSQL 7.x, so we have to use a more arcane way of doing it.
-      begin
-        begin_db_transaction
-        tmp_column_name = "#{column_name}_ar_tmp"
-        add_column(table_name, tmp_column_name, type, options)
-        execute "UPDATE #{quoted_table_name} SET #{quote_column_name(tmp_column_name)} = CAST(#{quote_column_name(column_name)} AS #{sql_type})"
-        remove_column(table_name, column_name)
-        rename_column(table_name, tmp_column_name, column_name)
-        commit_db_transaction
-      rescue
-        rollback_db_transaction
-      end
-    end
-    private :change_column_pg7
 
     def remove_index!(table_name, index_name)
       execute "DROP INDEX #{quote_table_name(index_name)}"
