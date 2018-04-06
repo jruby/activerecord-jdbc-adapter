@@ -698,8 +698,6 @@ module ActiveRecord::ConnectionAdapters
 
       super # configure_connection happens in super
 
-      @table_alias_length = nil
-
       initialize_type_map(@type_map = Type::HashLookupTypeMap.new)
 
       @use_insert_returning = @config.key?(:insert_returning) ?
