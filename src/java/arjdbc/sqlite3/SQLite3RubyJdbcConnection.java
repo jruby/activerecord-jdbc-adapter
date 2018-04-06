@@ -152,13 +152,6 @@ public class SQLite3RubyJdbcConnection extends RubyJdbcConnection {
         });
     }
 
-    @JRubyMethod(name = "close")
-    public IRubyObject close(final ThreadContext context) {
-        IRubyObject returnValue = super.close(context);
-        disconnect(context);
-        return returnValue;
-    }
-
     // NOTE: interestingly it supports getGeneratedKeys but not executeUpdate
     // + the driver does not report it supports it via the meta-data yet does
     @Override
