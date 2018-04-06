@@ -2458,6 +2458,22 @@ public class RubyJdbcConnection extends RubyObject {
 
             final ResultSet arrayResult = value.getResultSet(); // 1: index, 2: value
             final int baseType = value.getBaseType();
+
+            if (baseType == Types.OTHER) {
+                /*
+                 * If the base type is other, we may not have enough
+                 * information to correctly convert it so return it
+                 * as a string so it can be parsed on the Ruby side.
+                 * If we send it back as an array, AR assumes it has already
+                 * been parsed and doesn't try to cast the values inside the array.
+                 * This is primarly due to not being able to recognize json
+                 * strings in postgres but would apply to any custom type that couldn't be converted.
+                 * This won't work for multi-dimensional arrays of type other, but since
+                 * we currently don't support them that shouldn't be a problem.
+                 */
+                return stringToRuby(context, runtime, resultSet, column);
+            }
+
             while ( arrayResult.next() ) {
                 array.append( jdbcToRuby(context, runtime, 2, baseType, arrayResult) );
             }
