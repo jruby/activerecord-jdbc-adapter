@@ -221,6 +221,8 @@ module ArJdbc
 
     def supports_expression_index?; true end
 
+    def supports_foreign_keys?; true end
+
     def supports_index_sort_order?; true end
 
     def supports_migrations?; true end
@@ -439,13 +441,6 @@ module ArJdbc
       super
       clear_cache!
     end
-
-    def remove_index!(table_name, index_name)
-      execute "DROP INDEX #{quote_table_name(index_name)}"
-    end
-
-    # @override
-    def supports_foreign_keys?; true end
 
     # @private
     def column_for(table_name, column_name)
