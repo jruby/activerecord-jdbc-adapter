@@ -289,6 +289,7 @@ module ArJdbc
 
     # Set the authorized user for this session.
     def session_auth=(user)
+      clear_cache!
       execute "SET SESSION AUTHORIZATION #{user}"
     end
 
@@ -348,6 +349,15 @@ module ArJdbc
         end
         result
       end
+    end
+
+    # We need to make sure to deallocate all the prepared statements
+    # since apparently calling close on the statement object
+    # doesn't always free the server resources and calling
+    # 'DISCARD ALL' fails if we are inside a transaction
+    def clear_cache!
+      super
+      @connection.execute 'DEALLOCATE ALL' if supports_statement_cache? && @connection.active?
     end
 
     def reset!
@@ -423,6 +433,12 @@ module ArJdbc
 
     # @note #quote_column_name implemented as native
     alias_method :quote_schema_name, :quote_column_name
+
+    # Need to clear the cache even though the AR adapter doesn't for some reason
+    def remove_column(table_name, column_name, type = nil, options = {})
+      super
+      clear_cache!
+    end
 
     def remove_index!(table_name, index_name)
       execute "DROP INDEX #{quote_table_name(index_name)}"
