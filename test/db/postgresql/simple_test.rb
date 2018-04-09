@@ -197,8 +197,11 @@ class PostgresSimpleTest < Test::Unit::TestCase
 
   test "config :insert_returning" do
     if current_connection_config.key?(:insert_returning)
+      # Match AR functionality in that if the value is
+      # the string "false" we set it to false otherwise it is whatever
+      # is passed in, which effectively evaluates to true
       insert_returning = current_connection_config[:insert_returning]
-      insert_returning = insert_returning.to_s == 'true'
+      insert_returning = false if insert_returning.to_s == 'false'
       assert_equal insert_returning, connection.use_insert_returning?
     else
       assert_equal true, connection.use_insert_returning? # assuming PG >= 9.0
@@ -295,7 +298,7 @@ class PostgresTimestampTest < Test::Unit::TestCase
     # if current_connection_config[:insert_returning].to_s == 'true'
     #   pend "BC timestamps not-handled right with INSERT RETURNIG ..."
     # end unless ar_version('4.2')
-    # 
+    #
     if defined?(JRUBY_VERSION) && JRUBY_VERSION < '9.2'
       pend "BC timestamp handling isn't working properly through JRuby 9.1 (its to be fixed in 9.2)"
     end

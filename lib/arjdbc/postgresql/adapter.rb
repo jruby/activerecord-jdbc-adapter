@@ -221,6 +221,8 @@ module ArJdbc
 
     def supports_expression_index?; true end
 
+    def supports_foreign_keys?; true end
+
     def supports_index_sort_order?; true end
 
     def supports_partial_index?; true end
@@ -256,7 +258,7 @@ module ArJdbc
 
     def supports_extensions?
       postgresql_version >= 90200
-    end # NOTE: only since AR-4.0 but should not hurt on other versions
+    end
 
     # From AR 5.1 postgres_adapter.rb
     def default_index_type?(index) # :nodoc:
@@ -319,15 +321,10 @@ module ArJdbc
       end
       select_value("SELECT pg_advisory_unlock(#{lock_id})")
     end
-    
-    # Returns the configured supported identifier length supported by PostgreSQL,
-    # or report the default of 63 on PostgreSQL 7.x.
+
+    # Returns the max identifier length supported by PostgreSQL
     def max_identifier_length
-      @max_identifier_length ||= (
-        postgresql_version >= 80000 ?
-          select_one('SHOW max_identifier_length', 'SCHEMA'.freeze)['max_identifier_length'].to_i :
-          63
-      )
+      @max_identifier_length ||= select_one('SHOW max_identifier_length', 'SCHEMA'.freeze)['max_identifier_length'].to_i
     end
     alias table_alias_length max_identifier_length
     alias index_name_length max_identifier_length
@@ -367,6 +364,10 @@ module ArJdbc
       end
     end
 
+    # We need to make sure to deallocate all the prepared statements
+    # since apparently calling close on the statement object
+    # doesn't always free the server resources and calling
+    # 'DISCARD ALL' fails if we are inside a transaction
     def clear_cache!
       super
       # Make sure all query plans are *really* gone
@@ -447,12 +448,11 @@ module ArJdbc
     # @note #quote_column_name implemented as native
     alias_method :quote_schema_name, :quote_column_name
 
-    def remove_index!(table_name, index_name)
-      execute "DROP INDEX #{quote_table_name(index_name)}"
+    # Need to clear the cache even though the AR adapter doesn't for some reason
+    def remove_column(table_name, column_name, type = nil, options = {})
+      super
+      clear_cache!
     end
-
-    # @override
-    def supports_foreign_keys?; true end
 
     # @private
     def column_for(table_name, column_name)
