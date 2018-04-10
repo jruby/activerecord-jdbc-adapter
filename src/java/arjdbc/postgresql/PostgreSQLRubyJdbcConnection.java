@@ -431,6 +431,11 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
                 setPGobjectParameter(statement, index, value, columnType);
                 break;
 
+            case "enum":
+                // FIXME: This doesn't work but it gives a better error message than letting it be treated as a PGobject
+                statement.setObject(index, value.toString());
+                break;
+
             case "interval":
                 statement.setObject(index, new PGInterval(value.toString()));
                 break;
@@ -473,11 +478,10 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
                 break;
 
             default:
-                if ( columnType.endsWith("range") ) {
+                if (columnType.endsWith("range")) {
                     setRangeParameter(context, statement, index, value, columnType);
-                }
-                else {
-                    super.setObjectParameter(context, connection, statement, index, value, attribute, type);
+                } else {
+                    setPGobjectParameter(statement, index, value, columnType);
                 }
         }
     }
