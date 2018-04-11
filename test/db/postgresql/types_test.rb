@@ -666,14 +666,6 @@ _SQL
     assert_equal '11111111', @first_bit_string.reload.bit_string_varying
   end
 
-  def test_hex_to_bit_string
-    @first_bit_string.bit_string = 'FF'
-    disable_logger do
-      @first_bit_string.save
-      assert_equal '11111111', @first_bit_string.reload.bit_string
-    end
-  end
-
   def test_update_oid
     new_value = 567890
     @first_oid.obj_id = new_value
