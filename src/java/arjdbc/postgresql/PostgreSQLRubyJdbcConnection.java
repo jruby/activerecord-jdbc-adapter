@@ -389,6 +389,7 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
         switch ( columnType ) {
             case "bit":
             case "bit_varying":
+                // value should be a ActiveRecord::ConnectionAdapters::PostgreSQL::OID::Bit::Data
                 setPGobjectParameter(statement, index, value.toString(), "bit");
                 break;
 
