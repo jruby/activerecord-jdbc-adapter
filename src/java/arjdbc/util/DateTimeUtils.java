@@ -462,7 +462,10 @@ public abstract class DateTimeUtils {
                     for ( ; numlen < 3; ++numlen ) millis *= 10;
                 }
                 else {
-                    nanos = extractIntValue(str, start + 1, end);
+                    // Make sure we always define millis to work around bug in
+                    // strftime('%6N') in older version of JRuby (discovered in 9.1.16.0)
+                    millis = extractIntValue(str, start + 1, start + 4);
+                    nanos = extractIntValue(str, start + 4, end);
                     for ( ; numlen < 9; ++numlen ) nanos *= 10;
                 }
 
