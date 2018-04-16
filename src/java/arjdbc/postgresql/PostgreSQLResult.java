@@ -5,10 +5,14 @@ import arjdbc.jdbc.RubyJdbcConnection;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Types;
 
 import org.jruby.Ruby;
+import org.jruby.RubyArray;
 import org.jruby.RubyClass;
 import org.jruby.RubyHash;
+import org.jruby.RubyMethod;
+import org.jruby.RubyModule;
 import org.jruby.RubyString;
 import org.jruby.anno.JRubyMethod;
 import org.jruby.runtime.Block;
@@ -113,6 +117,14 @@ public class PostgreSQLResult extends JdbcResult {
         }
     }
 
+    private RubyClass getBinaryDataClass(final ThreadContext context) {
+        return ((RubyModule) context.runtime.getModule("ActiveModel").getConstantAt("Type")).getClass("Binary").getClass("Data");
+    }
+
+    private boolean isBinaryType(final int type) {
+        return type == Types.BLOB || type == Types.BINARY || type == Types.VARBINARY || type == Types.LONGVARBINARY;
+    }
+
     /**
      * Gives the number of rows to be returned.
      * currently defined so we match existing returned results
@@ -122,6 +134,42 @@ public class PostgreSQLResult extends JdbcResult {
     @JRubyMethod
     public IRubyObject length(final ThreadContext context) {
         return values.length();
+    }
+
+    /**
+     * Creates an <code>ActiveRecord::Result</code> with the data from this result.
+     * Overriding the base method so we can modify binary data columns first to mark them
+     * as already unencoded
+     * @param context current thread context
+     * @return ActiveRecord::Result object with the data from this result set
+     * @throws SQLException can be caused by postgres generating its type map
+     */
+    @Override
+    public IRubyObject toARResult(final ThreadContext context) throws SQLException {
+        RubyClass BinaryDataClass = null;
+        int rowCount = 0;
+
+        // This is destructive, but since this is typically the final
+        // use of the rows I'm going to leave it this way unless it becomes an issue
+        for (int columnIndex = 0; columnIndex < columnTypes.length; columnIndex++) {
+            if (isBinaryType(columnTypes[columnIndex])) {
+                // Convert the values in this column to ActiveModel::Type::Binary::Data instances
+                // so AR knows it has already been unescaped
+                if (BinaryDataClass == null) {
+                    BinaryDataClass = getBinaryDataClass(context);
+                    rowCount = values.getLength();
+                }
+                for (int rowIndex = 0; rowIndex < rowCount; rowIndex++) {
+                    RubyArray row = (RubyArray) values.eltInternal(rowIndex);
+                    IRubyObject value = row.eltInternal(columnIndex);
+                    if (value != context.nil) {
+                        row.eltInternalSet(columnIndex, (IRubyObject) BinaryDataClass.newInstance(context, value, Block.NULL_BLOCK));
+                    }
+                }
+            }
+        }
+
+        return super.toARResult(context);
     }
 
     /**
