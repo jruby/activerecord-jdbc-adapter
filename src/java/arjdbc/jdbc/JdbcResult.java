@@ -24,7 +24,7 @@ public class JdbcResult extends RubyObject {
     protected final RubyArray values;
     protected RubyHash[] tuples;
 
-    private final int[] columnTypes;
+    protected final int[] columnTypes;
     protected RubyString[] columnNames;
     protected final RubyJdbcConnection connection;
 

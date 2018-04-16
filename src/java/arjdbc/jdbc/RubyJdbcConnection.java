@@ -2389,8 +2389,10 @@ public class RubyJdbcConnection extends RubyObject {
         final Ruby runtime, final ResultSet resultSet, final int column)
         throws SQLException, IOException {
         final InputStream stream = resultSet.getBinaryStream(column);
+
+        if (stream == null) return context.nil;
+
         try {
-            if ( stream == null /* || resultSet.wasNull() */ ) return context.nil;
 
             final int buffSize = streamBufferSize;
             final ByteList bytes = new ByteList(buffSize);
@@ -2398,8 +2400,10 @@ public class RubyJdbcConnection extends RubyObject {
             readBytes(bytes, stream, buffSize);
 
             return runtime.newString(bytes);
+
+        } finally {
+            stream.close();
         }
-        finally { if ( stream != null ) stream.close(); }
     }
 
     /**
