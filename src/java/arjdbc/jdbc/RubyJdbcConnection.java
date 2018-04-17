@@ -2657,7 +2657,7 @@ public class RubyJdbcConnection extends RubyObject {
         return attributeType(context, attribute).callMethod(context, "type");
     }
 
-    private static final CachingCallSite value_site = new FunctionalCachingCallSite("value"); // AR::Attribute#value
+    private final CachingCallSite value_site = new FunctionalCachingCallSite("value"); // AR::Attribute#value
 
     protected String internedTypeFor(final ThreadContext context, final IRubyObject attribute) throws SQLException {
 
@@ -2710,13 +2710,13 @@ public class RubyJdbcConnection extends RubyObject {
         return isDefaultTimeZoneUTC(context) ? DateTimeZone.UTC : getLocalTimeZone(context.runtime); // handles ENV['TZ']
     }
 
-    private static String default_timezone(final ThreadContext context) {
+    private String default_timezone(final ThreadContext context) {
         final RubyClass base = getBase(context.runtime);
         return default_timezone.call(context, base, base).toString(); // :utc (or :local)
     }
 
     // ActiveRecord::Base.default_timezone
-    private static final CachingCallSite default_timezone = new FunctionalCachingCallSite("default_timezone");
+    private final CachingCallSite default_timezone = new FunctionalCachingCallSite("default_timezone");
 
     protected void setIntegerParameter(final ThreadContext context,
         final Connection connection, final PreparedStatement statement,
