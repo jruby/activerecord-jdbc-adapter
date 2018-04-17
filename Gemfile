@@ -4,7 +4,7 @@ if ENV['RAILS']  # Use local clone of Rails
   rails_dir = ENV['RAILS']    
   activerecord_dir = ::File.join(rails_dir, 'activerecord')
   
-  if !::File.exist?(rails_dir) && !::File.exist(activerecord_dir)
+  if !::File.exist?(rails_dir) && !::File.exist?(activerecord_dir)
     raise "ENV['RAILS'] set but does not point at a valid rails clone"
   end
 
