@@ -119,6 +119,7 @@ public class RubyJdbcConnection extends RubyObject {
 
     private static final String[] TABLE_TYPE = new String[] { "TABLE" };
     private static final String[] TABLE_TYPES = new String[] { "TABLE", "VIEW", "SYNONYM" };
+    private static final String ARJDBC_STRING_CACHE = "arjdbc_string_cache";
 
     private ConnectionFactory connectionFactory;
     private IRubyObject config;
@@ -3760,11 +3761,14 @@ public class RubyJdbcConnection extends RubyObject {
         return attribute.callMethod(context, "value_for_database");
     }
 
-    // FIXME: This should not be static and will be exposed via api in connection as instance method.
-    public static final StringCache STRING_CACHE = new StringCache();
-
     protected static RubyString cachedString(final ThreadContext context, final String str) {
-        return STRING_CACHE.get(context, str);
+        RubyModule arJdbc = context.runtime.getModule("ArJdbc");
+        StringCache stringCache = (StringCache) arJdbc.getInternalVariable(ARJDBC_STRING_CACHE);
+        if (stringCache == null) {
+            stringCache = new StringCache();
+            arJdbc.setInternalVariable(ARJDBC_STRING_CACHE, stringCache);
+        }
+        return stringCache.get(context, str);
     }
 
     protected static final class ColumnData {

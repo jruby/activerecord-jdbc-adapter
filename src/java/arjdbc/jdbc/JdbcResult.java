@@ -64,7 +64,7 @@ public class JdbcResult extends RubyObject {
         for (int i = 1; i <= columnCount; i++) { // metadata is one-based
             // This appears to not be used by Postgres, MySQL, or SQLite so leaving it off for now
             //name = caseConvertIdentifierForRails(connection, name);
-            columnNames[i - 1] = RubyJdbcConnection.STRING_CACHE.get(context, resultMetaData.getColumnLabel(i));
+            columnNames[i - 1] = RubyJdbcConnection.cachedString(context, resultMetaData.getColumnLabel(i));
             columnTypes[i - 1] = resultMetaData.getColumnType(i);
         }
     }
