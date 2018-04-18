@@ -53,7 +53,7 @@ module ArJdbc
 
         case e
           when SystemExit, SignalException, NoMemoryError then e
-          when ActiveModel::RangeError, TypeError then e
+          when ActiveModel::RangeError, TypeError, RuntimeError then e
           else ActiveRecord::StatementInvalid.new(message)
         end
       end
