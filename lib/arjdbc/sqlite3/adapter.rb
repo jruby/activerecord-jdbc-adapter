@@ -203,7 +203,7 @@ module ArJdbc
             end
           else
             cache = @statements[sql] ||= {
-              stmt: @connection.prepare(sql)
+                stmt: @connection.prepare(sql)
             }
             stmt = cache[:stmt]
             cols = cache[:cols] ||= stmt.columns
@@ -215,7 +215,7 @@ module ArJdbc
           ActiveRecord::Result.new(cols, records)
         end
       end
-    end    
+    end
 
     def exec_delete(sql, name = 'SQL', binds = [])
       exec_query(sql, name, binds)
@@ -322,7 +322,7 @@ module ArJdbc
     end
 
     def add_column(table_name, column_name, type, options = {}) #:nodoc:
-      if valid_alter_table_type?(type)
+      if valid_alter_table_type?(type) && !options[:primary_key]
         super(table_name, column_name, type, options)
       else
         alter_table(table_name) do |definition|
@@ -413,28 +413,31 @@ module ArJdbc
       end
     end
 
-    def move_table(from, to, options = {}, &block) #:nodoc:
+    def move_table(from, to, options = {}, &block)
       copy_table(from, to, options, &block)
       drop_table(from)
     end
 
-    def copy_table(from, to, options = {}) #:nodoc:
+    def copy_table(from, to, options = {})
       from_primary_key = primary_key(from)
       options[:id] = false
       create_table(to, options) do |definition|
         @definition = definition
-        @definition.primary_key(from_primary_key) if from_primary_key.present?
+        if from_primary_key.is_a?(Array)
+          @definition.primary_keys from_primary_key
+        end
         columns(from).each do |column|
           column_name = options[:rename] ?
               (options[:rename][column.name] ||
                   options[:rename][column.name.to_sym] ||
                   column.name) : column.name
-          next if column_name == from_primary_key
 
           @definition.column(column_name, column.type,
                              limit: column.limit, default: column.default,
                              precision: column.precision, scale: column.scale,
-                             null: column.null, collation: column.collation)
+                             null: column.null, collation: column.collation,
+                             primary_key: column_name == from_primary_key
+          )
         end
         yield @definition if block_given?
       end
@@ -444,9 +447,12 @@ module ArJdbc
                           options[:rename] || {})
     end
 
-    def copy_table_indexes(from, to, rename = {}) #:nodoc:
+    def copy_table_indexes(from, to, rename = {})
       indexes(from).each do |index|
         name = index.name
+        # indexes sqlite creates for internal use start with `sqlite_` and
+        # don't need to be copied
+        next if name.starts_with?("sqlite_")
         if to == "a#{from}"
           name = "t#{name}"
         elsif from == "a#{to}"
@@ -462,12 +468,13 @@ module ArJdbc
           # index name can't be the same
           opts = { name: name.gsub(/(^|_)(#{from})_/, "\\1#{to}_"), internal: true }
           opts[:unique] = true if index.unique
+          opts[:where] = index.where if index.where
           add_index(to, columns, opts)
         end
       end
     end
 
-    def copy_table_contents(from, to, columns, rename = {}) #:nodoc:
+    def copy_table_contents(from, to, columns, rename = {})
       column_mappings = Hash[columns.map { |name| [name, name] }]
       rename.each { |a| column_mappings[a.last] = a.first }
       from_columns = columns(from).collect(&:name)
@@ -513,7 +520,7 @@ module ArJdbc
               (SELECT * FROM sqlite_master UNION ALL
                SELECT * FROM sqlite_temp_master)
             WHERE type = 'table' AND name = #{quote(table_name)}
-          SQL
+      SQL
 
       # Result will have following sample string
       # CREATE TABLE "users" ("id" INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
