@@ -685,14 +685,7 @@ module ActiveRecord::ConnectionAdapters
     def begin_isolated_db_transaction(isolation)
       raise ActiveRecord::TransactionIsolationError, 'adapter does not support setting transaction isolation'
     end
-
-    # FIXME: 5.1 crashes without this.  I think this is Arel hitting a fallback path in to_sql.rb.
-    # So maybe an untested code path in their source.  Still means we are doing something wrong to
-    # even hit it.
-    def quote(value, comment=nil)
-      super(value)
-    end
-
+    
     # SQLite driver doesn't support all types of insert statements with executeUpdate so
     # make it act like a regular query and the ids will be returned from #last_inserted_id
     # example: INSERT INTO "aircraft" DEFAULT VALUES
