@@ -79,7 +79,7 @@ connections:
       <% if ENV.key?('PREPARED_STATEMENTS') || ENV.key?('PS') %>
       prepared_statements: <%= ENV['PREPARED_STATEMENTS'] || ENV['PS'] %> # should leave it off to its default if not set
       <% end %>
-      username: <%= ENV['PGUSER'] || ENV['user'] || 'rails' %>
+      username: <%= ENV['PGUSER'] || ENV['user'] || 'postgres' %>
       properties:
         # Postgres' JDBC driver does not prepare statements until executed 5 times by default, let's lower:
         prepareThreshold: <%= ENV['PREPARE_THRESHOLD'] || 1 %>
