@@ -921,9 +921,13 @@ module ArJdbc
     # default schema owner
     def schema_owner(force = true)
       unless defined? @schema_owner
-        username = config[:username] ? config[:username].to_s : nil
-        username = jdbc_connection.meta_data.user_name if force && username.nil?
-        @schema_owner = username.nil? ? nil : username.upcase
+        if !config[:schema].nil?
+          @schema_owner = config[:schema].upcase
+        else
+          username = config[:username] ? config[:username].to_s : nil
+          username = jdbc_connection.meta_data.user_name if force && username.nil?
+          @schema_owner = username.nil? ? nil : username.upcase
+        end
       end
       @schema_owner
     end

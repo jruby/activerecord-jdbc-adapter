@@ -35,6 +35,7 @@ module ArJdbc
     require 'arjdbc/mssql/column'
     require 'arjdbc/mssql/explain_support'
     require 'arjdbc/mssql/types' if AR42
+    require 'arjdbc/mssql/attributes_for_update'
 
     include LimitHelpers
     include Utils
