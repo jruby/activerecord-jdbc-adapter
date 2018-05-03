@@ -290,12 +290,6 @@ module ArJdbc
       end
     end
 
-    def max_identifier_length
-      @max_identifier_length ||= query_value("SHOW max_identifier_length", "SCHEMA").to_i
-    end
-    alias table_alias_length max_identifier_length
-    alias index_name_length max_identifier_length
-
     def index_algorithms
       { :concurrently => 'CONCURRENTLY' }
     end
