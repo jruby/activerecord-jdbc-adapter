@@ -53,7 +53,11 @@ module ArJdbc
         # swallow an ArJdbc / driver bug into an AR::StatementInvalid !
         return e if e.is_a?(Java::JavaLang::Throwable)
 
-        super
+        case e
+          when SystemExit, SignalException, NoMemoryError then e
+          when ActiveModel::RangeError, TypeError, RuntimeError then e
+          else ActiveRecord::StatementInvalid.new(message)
+        end
       end
 
 
