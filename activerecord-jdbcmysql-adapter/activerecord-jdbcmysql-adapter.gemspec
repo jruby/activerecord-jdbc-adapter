@@ -6,7 +6,7 @@ require 'arjdbc/version'
 Gem::Specification.new do |gem|
   gem.name        = "activerecord-jdbcmysql-adapter"
   gem.version     = version = ArJdbc::VERSION
-  gem.platform    = Gem::Platform::RUBY
+  gem.platform    = 'java' # since base gem is tagged
 
   gem.authors = ['Nick Sieger, Ola Bini, Karol Bucek and JRuby contributors']
   gem.email = ['nick@nicksieger.com', 'ola.bini@gmail.com', 'self@kares.org']
