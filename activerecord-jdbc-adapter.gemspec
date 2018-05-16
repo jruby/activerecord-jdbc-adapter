@@ -44,7 +44,7 @@ Gem::Specification.new do |gem|
   gem.executables = gem.files.grep(%r{^bin/}).map { |f| File.basename(f) }
   gem.test_files = gem.files.grep(%r{^test/})
 
-  gem.add_dependency 'activerecord', '~> 5.1.0'
+  gem.add_dependency 'activerecord', '~> 5.2.0'
 
   #gem.add_development_dependency 'test-unit', '2.5.4'
   #gem.add_development_dependency 'test-unit-context', '>= 0.3.0'

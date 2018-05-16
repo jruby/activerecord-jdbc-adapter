@@ -12,6 +12,7 @@ require "active_record/connection_adapters/sqlite3/schema_creation"
 require "active_record/connection_adapters/sqlite3/schema_definitions"
 require "active_record/connection_adapters/sqlite3/schema_dumper"
 require "active_record/connection_adapters/sqlite3/schema_statements"
+require "active_support/core_ext/class/attribute"
 
 module ArJdbc
   # All the code in this module is a copy of ConnectionAdapters::SQLite3Adapter from active_record 5.
@@ -33,7 +34,6 @@ module ArJdbc
 
     # DIFFERENCE: FQN
     include ::ActiveRecord::ConnectionAdapters::SQLite3::Quoting
-    include ::ActiveRecord::ConnectionAdapters::SQLite3::ColumnDumper
     include ::ActiveRecord::ConnectionAdapters::SQLite3::SchemaStatements
 
     NATIVE_DATABASE_TYPES = {
@@ -47,8 +47,12 @@ module ArJdbc
         time:         { name: "time" },
         date:         { name: "date" },
         binary:       { name: "blob" },
-        boolean:      { name: "boolean" }
+        boolean:      { name: "boolean" },
+        json:         { name: "json" },
     }
+
+    # DIFFERENCE: class_attribute in original adapter is moved down to our section which is a class
+    #  since we cannot define it here in the module (original source this is a class).
 
     class StatementPool < ConnectionAdapters::StatementPool
       private
@@ -56,20 +60,6 @@ module ArJdbc
       def dealloc(stmt)
         stmt[:stmt].close unless stmt[:stmt].closed?
       end
-    end
-
-    def update_table_definition(table_name, base) # :nodoc:
-      # DIFFERENCE: FQN
-      ::ActiveRecord::ConnectionAdapters::SQLite3::Table.new(table_name, base)
-    end
-
-    def schema_creation # :nodoc:
-      # DIFFERENCE: FQN
-      ::ActiveRecord::ConnectionAdapters::SQLite3::SchemaCreation.new self
-    end
-
-    def arel_visitor # :nodoc:
-      Arel::Visitors::SQLite.new(self)
     end
 
     # DIFFERENCE: we remove connection_options because we are not using it.
@@ -94,12 +84,6 @@ module ArJdbc
       sqlite_version >= "3.8.0"
     end
 
-    # Returns true, since this connection adapter supports prepared statement
-    # caching.
-    def supports_statement_cache?
-      true
-    end
-
     def requires_reloading?
       true
     end
@@ -121,7 +105,7 @@ module ArJdbc
     end
 
     def active?
-      @active != false
+      @active
     end
 
     # Disconnects from the database if already connected. Otherwise, this
@@ -249,53 +233,6 @@ module ArJdbc
 
     # SCHEMA STATEMENTS ========================================
 
-    def new_column_from_field(table_name, field) # :nondoc:
-      case field["dflt_value"]
-      when /^null$/i
-        field["dflt_value"] = nil
-      when /^'(.*)'$/m
-        field["dflt_value"] = $1.gsub("''", "'")
-      when /^"(.*)"$/m
-        field["dflt_value"] = $1.gsub('""', '"')
-      end
-
-      collation = field["collation"]
-      sql_type = field["type"]
-      type_metadata = fetch_type_metadata(sql_type)
-      new_column(field["name"], field["dflt_value"], type_metadata, field["notnull"].to_i == 0, table_name, nil, collation)
-    end
-
-    # Returns an array of indexes for the given table.
-    def indexes(table_name, name = nil) #:nodoc:
-      if name
-        ActiveSupport::Deprecation.warn(<<-MSG.squish)
-            Passing name to #indexes is deprecated without replacement.
-          MSG
-      end
-
-      exec_query("PRAGMA index_list(#{quote_table_name(table_name)})", "SCHEMA").map do |row|
-        sql = <<-SQL
-            SELECT sql
-            FROM sqlite_master
-            WHERE name=#{quote(row['name'])} AND type='index'
-            UNION ALL
-            SELECT sql
-            FROM sqlite_temp_master
-            WHERE name=#{quote(row['name'])} AND type='index'
-          SQL
-        index_sql = exec_query(sql).first["sql"]
-        match = /\sWHERE\s+(.+)$/i.match(index_sql)
-        where = match[1] if match
-        IndexDefinition.new(
-          table_name,
-          row["name"],
-          row["unique"] != 0,
-          exec_query("PRAGMA index_info('#{row['name']}')", "SCHEMA").map { |col|
-            col["name"]
-          }, nil, nil, where)
-      end
-    end
-
     def primary_keys(table_name) # :nodoc:
       pks = table_structure(table_name).select { |f| f["pk"] > 0 }
       pks.sort_by { |f| f["pk"] }.map { |f| f["name"] }
@@ -315,19 +252,18 @@ module ArJdbc
       rename_table_indexes(table_name, new_name)
     end
 
-    # See: http://www.sqlite.org/lang_altertable.html
-    # SQLite has an additional restriction on the ALTER TABLE statement
-    def valid_alter_table_type?(type)
-      type.to_sym != :primary_key
+    def valid_alter_table_type?(type, options = {})
+      !invalid_alter_table_type?(type, options)
     end
+    deprecate :valid_alter_table_type?
 
     def add_column(table_name, column_name, type, options = {}) #:nodoc:
-      if valid_alter_table_type?(type) && !options[:primary_key]
-        super(table_name, column_name, type, options)
-      else
+      if invalid_alter_table_type?(type, options)
         alter_table(table_name) do |definition|
           definition.column(column_name, type, options)
         end
+      else
+        super
       end
     end
 
@@ -392,8 +328,32 @@ module ArJdbc
         ::ActiveRecord::ConnectionAdapters::ForeignKeyDefinition.new(table_name, row["table"], options)
       end
     end
+
+    def insert_fixtures(rows, table_name)
+      ActiveSupport::Deprecation.warn(<<-MSG.squish)
+          `insert_fixtures` is deprecated and will be removed in the next version of Rails.
+          Consider using `insert_fixtures_set` for performance improvement.
+      MSG
+      insert_fixtures_set(table_name => rows)
+    end
+
+    def insert_fixtures_set(fixture_set, tables_to_delete = [])
+      disable_referential_integrity do
+        transaction(requires_new: true) do
+          tables_to_delete.each { |table| delete "DELETE FROM #{quote_table_name(table)}", "Fixture Delete" }
+
+          fixture_set.each do |table_name, rows|
+            rows.each { |row| insert_fixture(row, table_name) }
+          end
+        end
+      end
+    end
     
     private
+    def initialize_type_map(m = type_map)
+      super
+      register_class_with_limit m, %r(int)i, SQLite3Integer
+    end
 
     def table_structure(table_name)
       structure = exec_query("PRAGMA table_info(#{quote_table_name(table_name)})", "SCHEMA")
@@ -401,7 +361,13 @@ module ArJdbc
       table_structure_with_collation(table_name, structure)
     end
     alias column_definitions table_structure
-    
+
+    # See: https://www.sqlite.org/lang_altertable.html
+    # SQLite has an additional restriction on the ALTER TABLE statement
+    def invalid_alter_table_type?(type, options)
+      type.to_sym == :primary_key || options[:primary_key]
+    end
+
     def alter_table(table_name, options = {}) #:nodoc:
       altered_table_name = "a#{table_name}"
       caller = lambda { |definition| yield definition if block_given? }
@@ -552,23 +518,28 @@ module ArJdbc
       end
     end
 
-    def create_table_definition(*args)
-      # DIFFERENCE: FQN
-      ::ActiveRecord::ConnectionAdapters::SQLite3::TableDefinition.new(*args)
-    end
-
-    def extract_foreign_key_action(specifier)
-      case specifier
-      when "CASCADE"; :cascade
-      when "SET NULL"; :nullify
-      when "RESTRICT"; :restrict
-      end
+    def arel_visitor
+      Arel::Visitors::SQLite.new(self)
     end
 
     def configure_connection
       execute("PRAGMA foreign_keys = ON", "SCHEMA")
     end
+
+    # DIFFERENCE: FQN
+    class SQLite3Integer < ::ActiveRecord::Type::Integer # :nodoc:
+      private
+      def _limit
+        # INTEGER storage class can be stored 8 bytes value.
+        # See https://www.sqlite.org/datatype3.html#storage_classes_and_datatypes
+        limit || 8
+      end
+    end
+
+    # DIFFERENCE: FQN
+    ::ActiveRecord::Type.register(:integer, SQLite3Integer, adapter: :sqlite3)
   end
+  # DIFFERENCE: A registration here is moved down to concrete class so we are not registering part of an adapter.
 end
 
 module ActiveRecord::ConnectionAdapters
@@ -678,6 +649,25 @@ module ActiveRecord::ConnectionAdapters
     include ArJdbc::Abstract::StatementCache
     include ArJdbc::Abstract::TransactionSupport
 
+    # Note: This is part of original AR sqlite3_adapter.rb and not an override by us.  This is to just
+    # work around our copy of Sqlite3Adapter being a module above and not a class.
+    ##
+    # :singleton-method:
+    # Indicates whether boolean values are stored in sqlite3 databases as 1
+    # and 0 or 't' and 'f'. Leaving <tt>ActiveRecord::ConnectionAdapters::SQLite3Adapter.represent_boolean_as_integer</tt>
+    # set to false is deprecated. SQLite databases have used 't' and 'f' to
+    # serialize boolean values and must have old data converted to 1 and 0
+    # (its native boolean serialization) before setting this flag to true.
+    # Conversion can be accomplished by setting up a rake task which runs
+    #
+    #   ExampleModel.where("boolean_column = 't'").update_all(boolean_column: 1)
+    #   ExampleModel.where("boolean_column = 'f'").update_all(boolean_column: 0)
+    # for all models and all boolean columns, after which the flag must be set
+    # to true by adding the following to your <tt>application.rb</tt> file:
+    #
+    #   Rails.application.config.active_record.sqlite3.represent_boolean_as_integer = true
+    class_attribute :represent_boolean_as_integer, default: false
+
     def supports_transaction_isolation?
       false
     end
@@ -705,5 +695,8 @@ module ActiveRecord::ConnectionAdapters
     def self.jdbc_connection_class
       ::ActiveRecord::ConnectionAdapters::SQLite3JdbcConnection
     end
+
+    # Note: This is not an override of ours but a moved line from AR Sqlite3Adapter to register ours vs our copied module (which would be their class).
+#    ActiveSupport.run_load_hooks(:active_record_sqlite3adapter, SQLite3Adapter)
   end
 end
