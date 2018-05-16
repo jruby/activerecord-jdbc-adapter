@@ -10,11 +10,11 @@ end
 
 version = gem_helper.send(:version)
 version_tag = gem_helper.version_tag
-desc "Build #{name}-#{version}.gem into the pkg directory"
+desc "Build #{name}-#{version} gem into the pkg directory"
 task('build') { gem_helper.build_gem }
 
-desc "Build and install #{name}-#{version}.gem into system gems"
+desc "Build and install #{name}-#{version} gem into system gems"
 task('install') { gem_helper.install_gem }
 
-desc "Create tag #{version_tag} build and push #{name}-#{version}.gem to Rubygems"
+desc "Create tag #{version_tag} build and push #{name}-#{version} gem to Rubygems"
 task('release') { gem_helper.release_gem }

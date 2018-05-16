@@ -38,7 +38,7 @@ rake = lambda { |task| ruby "-S", "rake", task }
 
 desc "Build #{gem_name} gem into the pkg directory."
 task :build => :jar do
-  sh("gem build -V '#{gemspec_path}'") do
+  sh("RELEASE=#{ENV['RELEASE']} gem build -V '#{gemspec_path}'") do
     gem_path = built_gem_path.call
     file_name = File.basename(gem_path)
     FileUtils.mkdir_p(File.join(base_dir, 'pkg'))
@@ -57,9 +57,10 @@ task :install => :build do
 end
 
 desc "Releasing AR-JDBC gems (use NOOP=true to disable gem pushing)"
-task 'release:do' => 'build:adapters' do
+task 'release:do' do
   ENV['RELEASE'] = 'true' # so that .gemspec is built with adapter_java.jar
   Rake::Task['build'].invoke
+  Rake::Task['build:adapters'].invoke
 
   noop = ENV.key?('NOOP') && (ENV['NOOP'] != 'false' && ENV['NOOP'] != '')
 
@@ -71,13 +72,13 @@ task 'release:do' => 'build:adapters' do
   sh "git tag -a -m \"AR-JDBC #{version}\" #{version_tag}", :noop => noop
   branch = `git rev-parse --abbrev-ref HEAD`.strip
   puts "releasing from (current) branch #{branch.inspect}"
-  sh "for gem in `ls pkg/*-#{version}.gem`; do gem push $gem; done", :noop => noop do |ok|
+  sh "for gem in `ls pkg/*-#{version}-java.gem`; do gem push $gem; done", :noop => noop do |ok|
     sh "git push origin #{branch} --tags", :noop => noop if ok
   end
 end
 
 task 'release:push' do
-  sh "for gem in `ls pkg/*-#{current_version.call}.gem`; do gem push $gem; done"
+  sh "for gem in `ls pkg/*-#{current_version.call}-java.gem`; do gem push $gem; done"
 end
 
 ADAPTERS = %w[mysql postgresql sqlite3].map { |a| "activerecord-jdbc#{a}-adapter" }
@@ -89,7 +90,7 @@ ADAPTERS.each do |target|
     task :build do
       version = current_version.call
       Dir.chdir(target) { rake.call "build" }
-      cp FileList["#{target}/pkg/#{target}-#{version}.gem"], "pkg"
+      cp FileList["#{target}/pkg/#{target}-#{version}-java.gem"], "pkg"
     end
   end
 end
