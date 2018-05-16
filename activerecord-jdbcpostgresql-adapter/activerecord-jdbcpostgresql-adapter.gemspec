@@ -19,7 +19,6 @@ Gem::Specification.new do |gem|
   gem.require_paths = ["lib"]
   gem.files = `git ls-files`.split("\n") # assuming . working directory
 
-  gem.add_dependency 'activerecord-jdbc-adapter', "~>#{version}"
+  gem.add_dependency 'activerecord-jdbc-adapter', "#{version}"
   gem.add_dependency 'jdbc-postgres', '>= 9.4', '< 43'
 end
-
