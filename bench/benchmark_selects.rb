@@ -30,11 +30,11 @@ Benchmark.bmbm do |x|
     end
   end
 
-  x.report("BenchRecord.select('#{select}').where( an-id ).first [#{TIMES}x]") do
-    TIMES.times do
-      BenchRecord.select(select).where(:id => an_id).first
-    end
-  end
+#  x.report("BenchRecord.select('#{select}').where( an-id ).first [#{TIMES}x]") do
+#    TIMES.times do
+#      BenchRecord.select(select).where(:id => an_id).first
+#    end
+#  end
 
 end
 
