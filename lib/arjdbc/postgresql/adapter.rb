@@ -644,7 +644,6 @@ module ActiveRecord::ConnectionAdapters
 
     # Try to use as much of the built in postgres logic as possible
     # maybe someday we can extend the actual adapter
-    include ActiveRecord::ConnectionAdapters::PostgreSQL::ColumnDumper
     include ActiveRecord::ConnectionAdapters::PostgreSQL::ReferentialIntegrity
     include ActiveRecord::ConnectionAdapters::PostgreSQL::SchemaStatements
     include ActiveRecord::ConnectionAdapters::PostgreSQL::Quoting
@@ -675,7 +674,8 @@ module ActiveRecord::ConnectionAdapters
 
       super # configure_connection happens in super
 
-      initialize_type_map(@type_map = Type::HashLookupTypeMap.new)
+      @type_map = Type::HashLookupTypeMap.new
+      initialize_type_map
 
       @use_insert_returning = @config.key?(:insert_returning) ?
         self.class.type_cast_config_to_boolean(@config[:insert_returning]) : nil
