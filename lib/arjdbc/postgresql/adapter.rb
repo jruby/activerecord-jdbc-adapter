@@ -487,12 +487,7 @@ module ArJdbc
     end
 
     # Returns an array of indexes for the given table.
-    def indexes(table_name, name = nil)
-      if name
-        ActiveSupport::Deprecation.warn(<<-MSG.squish)
-              Passing name to #indexes is deprecated without replacement.
-        MSG
-      end
+    def indexes(table_name)
 
       # FIXME: AR version => table = Utils.extract_schema_qualified_name(table_name.to_s)
       schema, table = extract_schema_and_table(table_name.to_s)
