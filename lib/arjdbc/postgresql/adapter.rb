@@ -499,10 +499,7 @@ module ArJdbc
 
       result = query(<<-SQL, 'SCHEMA')
             SELECT distinct i.relname, d.indisunique, d.indkey, pg_get_indexdef(d.indexrelid), t.oid,
-                            pg_catalog.obj_description(i.oid, 'pg_class') AS comment,
-            (SELECT COUNT(*) FROM pg_opclass o
-               JOIN (SELECT unnest(string_to_array(d.indclass::text, ' '))::int oid) c
-                 ON o.oid = c.oid WHERE o.opcdefault = 'f')
+                            pg_catalog.obj_description(i.oid, 'pg_class') AS comment
             FROM pg_class t
             INNER JOIN pg_index d ON t.oid = d.indrelid
             INNER JOIN pg_class i ON d.indexrelid = i.oid
@@ -523,11 +520,13 @@ module ArJdbc
         inddef = row[3]
         oid = row[4]
         comment = row[5]
-        opclass = row[6]
 
         using, expressions, where = inddef.scan(/ USING (\w+?) \((.+?)\)(?: WHERE (.+))?\z/m).flatten
 
-        if indkey.include?(0) || opclass > 0
+        orders = {}
+        opclasses = {}
+
+        if indkey.include?(0)
           columns = expressions
         else
           columns = Hash[query(<<-SQL.strip_heredoc, "SCHEMA")].values_at(*indkey).compact
@@ -537,14 +536,30 @@ module ArJdbc
                 AND a.attnum IN (#{indkey.join(",")})
           SQL
 
-          # add info on sort order for columns (only desc order is explicitly specified, asc is the default)
-          orders = Hash[
-              expressions.scan(/(\w+) DESC/).flatten.map { |order_column| [order_column, :desc] }
-          ]
+          # add info on sort order (only desc order is explicitly specified, asc is the default)
+          # and non-default opclasses
+          expressions.scan(/(?<column>\w+)\s?(?<opclass>\w+_ops)?\s?(?<desc>DESC)?\s?(?<nulls>NULLS (?:FIRST|LAST))?/).each do |column, opclass, desc, nulls|
+            opclasses[column] = opclass.to_sym if opclass
+            if nulls
+              orders[column] = [desc, nulls].compact.join(' ')
+            elsif desc
+              orders[column] = :desc
+            end
+          end
         end
 
-        IndexDefinition.new(table_name, index_name, unique, columns, [], orders, where, nil, using.to_sym, comment.presence)
-      end.compact
+        IndexDefinition.new(
+            table_name,
+            index_name,
+            unique,
+            columns,
+            orders: orders,
+            opclasses: opclasses,
+            where: where,
+            using: using.to_sym,
+            comment: comment.presence
+        )
+      end
     end
 
     # @private
