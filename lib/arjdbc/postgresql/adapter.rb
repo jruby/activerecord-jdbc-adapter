@@ -607,6 +607,10 @@ module ArJdbc
         ::ActiveRecord::SerializationFailure.new(message)
       when /deadlock detected/
         ::ActiveRecord::Deadlocked.new(message)
+      when /lock timeout/
+        ::ActiveRecord::LockWaitTimeout.new(message)
+      when /canceling statement/ # This needs to come after lock timeout because the lock timeout message also contains "canceling statement"
+        ::ActiveRecord::QueryCanceled.new(message)
       else
         super
       end
