@@ -519,7 +519,9 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
         final PreparedStatement statement, final int index,
         final IRubyObject value, final String columnType) throws SQLException {
 
-        final String rangeValue = value.toString();
+        // As of AR 5.2 this is a Range object, I defer to the adapter for encoding because of the edge cases
+        // of dealing with the specific types in the range
+        final String rangeValue = adapter(context).callMethod(context, "encode_range", value).toString();
         final Object pgRange;
 
         switch ( columnType ) {
@@ -539,7 +541,7 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
                 pgRange = new Int8RangeType(rangeValue);
                 break;
             default:
-                pgRange = new NumRangeType(rangeValue);
+                pgRange = new NumRangeType(rangeValue, columnType);
         }
 
         statement.setObject(index, pgRange);
@@ -943,8 +945,8 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
             setType("numrange");
         }
 
-        public NumRangeType(final String value) throws SQLException {
-            this();
+        public NumRangeType(final String value, final String type) throws SQLException {
+            setType(type);
             setValue(value);
         }
 
