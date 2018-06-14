@@ -236,6 +236,10 @@ module ArJdbc
       @standard_conforming_strings != :unsupported
     end
 
+    def supports_foreign_tables? # we don't really support this yet, its a reminder :)
+      postgresql_version >= 90300
+    end
+
     def supports_hex_escaped_bytea?
       postgresql_version >= 90000
     end
