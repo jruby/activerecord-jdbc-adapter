@@ -8,6 +8,7 @@ require 'active_record/connection_adapters/postgresql/explain_pretty_printer'
 require 'active_record/connection_adapters/postgresql/quoting'
 require 'active_record/connection_adapters/postgresql/referential_integrity'
 require 'active_record/connection_adapters/postgresql/schema_creation'
+require 'active_record/connection_adapters/postgresql/schema_definitions'
 require 'active_record/connection_adapters/postgresql/schema_dumper'
 require 'active_record/connection_adapters/postgresql/schema_statements'
 require 'active_record/connection_adapters/postgresql/type_metadata'
@@ -31,9 +32,6 @@ module ArJdbc
     IndexDefinition = ::ActiveRecord::ConnectionAdapters::IndexDefinition
 
     # @private
-    ForeignKeyDefinition = ::ActiveRecord::ConnectionAdapters::ForeignKeyDefinition
-
-    # @private
     Type = ::ActiveRecord::Type
 
     # @see ActiveRecord::ConnectionAdapters::JdbcAdapter#jdbc_connection_class
@@ -50,7 +48,6 @@ module ArJdbc
       ADAPTER_NAME
     end
 
-    # TODO: Update this to pull info from the DatabaseMetaData object?
     def postgresql_version
       @postgresql_version ||=
         begin
@@ -393,10 +390,8 @@ module ArJdbc
 
     # Set the client message level.
     def client_min_messages=(level)
-      # NOTE: for now simply ignore the writer (no warn on Redshift) so that
-      # the AR copy-pasted PpstgreSQL parts stay the same as much as possible
-      return nil if redshift? # not supported on Redshift
-      execute("SET client_min_messages TO '#{level}'", 'SCHEMA')
+      # Not supported on Redshift
+      redshift? ? nil : super
     end
 
     # ORDER BY clause for the passed order option.
@@ -699,16 +694,6 @@ module ActiveRecord::ConnectionAdapters
       Arel::Visitors::PostgreSQL.new(self)
     end
 
-    require 'active_record/connection_adapters/postgresql/schema_definitions'
-
-    ColumnMethods = ActiveRecord::ConnectionAdapters::PostgreSQL::ColumnMethods
-    TableDefinition = ActiveRecord::ConnectionAdapters::PostgreSQL::TableDefinition
-    Table = ActiveRecord::ConnectionAdapters::PostgreSQL::Table
-
-    def create_table_definition(*args) # :nodoc:
-      TableDefinition.new(*args)
-    end
-
     def exec_query(sql, name = nil, binds = [], prepare: false)
       super
     rescue ActiveRecord::StatementInvalid => e
@@ -725,14 +710,6 @@ module ActiveRecord::ConnectionAdapters
     end
 
     public :sql_for_insert
-
-    def schema_creation # :nodoc:
-      PostgreSQL::SchemaCreation.new self
-    end
-
-    def update_table_definition(table_name, base)
-      Table.new(table_name, base)
-    end
 
     def jdbc_connection_class(spec)
       ::ArJdbc::PostgreSQL.jdbc_connection_class
