@@ -1,7 +1,11 @@
+# frozen_string_literal: false
+
 require 'rubygems' unless defined? Gem
+
 gem 'activerecord', ENV['AR_VERSION'] if ENV['AR_VERSION']
 require 'active_record'
 require 'active_record/version'
+
 if defined? JRUBY_VERSION
   AR_JDBC_VERSION = if ENV['ARJDBC_VERSION']
                       gem 'activerecord-jdbc-adapter', ENV['ARJDBC_VERSION']
@@ -69,7 +73,7 @@ module BenchTestHelper
                                 :a_boolean => true,
                                 :a_date => Date.today,
                                 :a_datetime => now = Time.now,
-                                :a_decimal => BigDecimal.new('10000000000.1'),
+                                :a_decimal => BigDecimal('10000000000.1'),
                                 :a_float => 100.001,
                                 :a_integer => 1000,
                                 :a_string => 'Glorious Nation of Kazakhstan',
