@@ -25,12 +25,9 @@ package arjdbc.util;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.nio.charset.Charset;
 
 import org.jcodings.Encoding;
-import org.jcodings.specific.UTF8Encoding;
 import org.jruby.Ruby;
-import org.jruby.RubyEncoding;
 import org.jruby.RubyString;
 import org.jruby.util.ByteList;
 
@@ -61,18 +58,6 @@ public abstract class StringHelper {
         return RubyString.newString(runtime, new ByteList(bytes, false));
     }
 
-    private static final Charset ASCII_CHARSET = Charset.forName("ISO-8859-1");
-
-    public static RubyString newASCIIString(final Ruby runtime, final String str) {
-        final ByteList byteList = new ByteList(str.getBytes(ASCII_CHARSET), false);
-        return RubyString.newString(runtime, byteList);
-    }
-
-    public static RubyString newUTF8String(final Ruby runtime, final byte[] bytes) {
-        final ByteList byteList = new ByteList(bytes, false);
-        return RubyString.newString(runtime, byteList, UTF8Encoding.INSTANCE);
-    }
-
     public static RubyString newDefaultInternalString(final Ruby runtime, final byte[] bytes) {
         final ByteList byteList = new ByteList(bytes, false);
         Encoding enc = runtime.getDefaultInternalEncoding();
@@ -83,18 +68,19 @@ public abstract class StringHelper {
     public static RubyString newDefaultInternalString(final Ruby runtime, final CharSequence str) {
         Encoding enc = runtime.getDefaultInternalEncoding();
         if (enc == null) enc = runtime.getEncodingService().getJavaDefault();
-        return RubyString.newString(runtime, new ByteList(RubyEncoding.encode(str, enc.getCharset()), enc));
+        return new RubyString(runtime, runtime.getString(), str, enc);
     }
 
+    // NOTE: a 'better' RubyString.newInternalFromJavaExternal - to be back-ported in JRuby 9.2
     public static RubyString newDefaultInternalString(final Ruby runtime, final String str) {
-        return RubyString.newInternalFromJavaExternal(runtime, str);
+        Encoding enc = runtime.getDefaultInternalEncoding();
+        if (enc == null) enc = runtime.getEncodingService().getJavaDefault();
+        return RubyString.newString(runtime, str, enc);
     }
 
     public static int readBytes(final ByteList output, final InputStream input)
         throws IOException {
-        @SuppressWarnings("deprecation") // capacity :
-        final int buffSize = output.bytes.length - output.begin;
-        return readBytes(output, input, buffSize);
+        return readBytes(output, input, output.unsafeBytes().length - output.getBegin());
     }
 
     public static int readBytes(final ByteList output, final InputStream input, int buffSize)
