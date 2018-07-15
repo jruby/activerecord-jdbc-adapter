@@ -521,7 +521,7 @@ module SimpleTestMethods
     db_type.save!
     db_type = DbType.find(db_type.id)
     assert_kind_of BigDecimal, db_type.sample_small_decimal
-    assert_equal BigDecimal.new(test_value.to_s), db_type.sample_small_decimal
+    assert_equal BigDecimal(test_value.to_s), db_type.sample_small_decimal
 
     test_value = BigDecimal('1.23')
     DbType.create!(:sample_small_decimal => test_value)

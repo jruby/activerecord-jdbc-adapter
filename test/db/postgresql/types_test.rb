@@ -366,10 +366,10 @@ _SQL
 
   def test_numrange_values
     skip "PostgreSQL 9.2 required for range datatypes" unless supports_ranges?
-    assert_equal BigDecimal.new('0.1')..BigDecimal.new('0.2'), @first_range.num_range
-    assert_equal BigDecimal.new('0.1')...BigDecimal.new('0.2'), @second_range.num_range
-    assert_equal BigDecimal.new('0.1')...BigDecimal.new('Infinity'), @third_range.num_range
-    assert_equal BigDecimal.new('-Infinity')...BigDecimal.new('Infinity'), @fourth_range.num_range
+    assert_equal BigDecimal('0.1')..BigDecimal('0.2'), @first_range.num_range
+    assert_equal BigDecimal('0.1')...BigDecimal('0.2'), @second_range.num_range
+    assert_equal BigDecimal('0.1')...BigDecimal('Infinity'), @third_range.num_range
+    assert_equal BigDecimal('-Infinity')...BigDecimal('Infinity'), @fourth_range.num_range
     assert_equal nil, @empty_range.num_range
   end
 
@@ -448,7 +448,7 @@ _SQL
 
   def test_create_numrange
     skip "PostgreSQL 9.2 required for range datatypes" unless supports_ranges?
-    numrange = BigDecimal.new('0.5')...BigDecimal.new('1')
+    numrange = BigDecimal('0.5')...BigDecimal('1')
     range = PostgresqlRange.new(:num_range => numrange)
     assert range.save
     assert range.reload
@@ -457,12 +457,12 @@ _SQL
 
   def test_update_numrange
     skip "PostgreSQL 9.2 required for range datatypes" unless supports_ranges?
-    new_numrange = BigDecimal.new('0.5')...BigDecimal.new('1')
+    new_numrange = BigDecimal('0.5')...BigDecimal('1')
     assert @first_range.num_range = new_numrange
     assert @first_range.save
     assert @first_range.reload
     assert_equal new_numrange, @first_range.num_range
-    assert @first_range.num_range = BigDecimal.new('0.5')...BigDecimal.new('0.5')
+    assert @first_range.num_range = BigDecimal('0.5')...BigDecimal('0.5')
     assert @first_range.save
     assert @first_range.reload
     assert_nil @first_range.num_range
@@ -606,7 +606,7 @@ _SQL
   end
 
   def test_update_money
-    new_value = BigDecimal.new('123.45')
+    new_value = BigDecimal('123.45')
     @first_money.wealth = new_value
     @first_money.save!
     @first_money.reload
