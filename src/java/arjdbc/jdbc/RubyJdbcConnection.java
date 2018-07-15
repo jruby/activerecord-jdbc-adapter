@@ -284,7 +284,7 @@ public class RubyJdbcConnection extends RubyObject {
     public static int mapTransactionIsolationLevel(final IRubyObject isolation) {
         final Object isolationString;
         if ( isolation instanceof RubySymbol ) {
-            isolationString = isolation.toString(); // RubySymbol.toString (interned)
+            isolationString = isolation.asJavaString(); // RubySymbol.asJavaString (interned)
         }
         else {
             isolationString = isolation.asString().toString().toLowerCase(Locale.ENGLISH).intern();
