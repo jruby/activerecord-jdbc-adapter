@@ -521,7 +521,7 @@ module SimpleTestMethods
     db_type.save!
     db_type = DbType.find(db_type.id)
     assert_kind_of BigDecimal, db_type.sample_small_decimal
-    assert_equal BigDecimal.new(test_value.to_s), db_type.sample_small_decimal
+    assert_equal BigDecimal(test_value.to_s), db_type.sample_small_decimal
 
     test_value = BigDecimal('1.23')
     DbType.create!(:sample_small_decimal => test_value)
@@ -1058,7 +1058,7 @@ module SimpleTestMethods
       :sample_float => 10.5,
       :sample_boolean => true,
       :sample_decimal => 0.12345678,
-      :sample_time => Time.now.change(sec: 36, usec: 12000000),
+      :sample_time => Time.now.change(sec: 36, usec: 120000),
       :sample_binary => '01' * 512
     )
     expected.reload

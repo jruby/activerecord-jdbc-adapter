@@ -104,7 +104,7 @@ class DerbySimpleTest < Test::Unit::TestCase
       assert_equal value.to_s, db.sample_text
     end
 
-    value = BigDecimal.new("0")
+    value = BigDecimal("0")
     db.sample_string = value
     db.sample_text = value
     db.save!
@@ -112,7 +112,7 @@ class DerbySimpleTest < Test::Unit::TestCase
     assert_equal '0.0', db.sample_string
     assert_equal '0.0', db.sample_text
 
-    value = BigDecimal.new("123456.789")
+    value = BigDecimal("123456.789")
     db.sample_string = value
     db.sample_text = value
     db.save!

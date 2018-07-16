@@ -249,7 +249,7 @@ class SQLite3SimpleTest < Test::Unit::TestCase
 
   # @override SQLite3 returns FLOAT (JDBC type) for DECIMAL columns
   def test_custom_select_decimal
-    model = DbType.create! :sample_small_decimal => ( decimal = BigDecimal.new('5.45') )
+    model = DbType.create! :sample_small_decimal => ( decimal = BigDecimal('5.45') )
     model = DbType.where("id = #{model.id}").select('sample_small_decimal AS custom_decimal').first
     assert_equal decimal, model.custom_decimal
     #assert_instance_of BigDecimal, model.custom_decimal
