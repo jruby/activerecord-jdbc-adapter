@@ -1,7 +1,11 @@
+# frozen_string_literal: false
+
 require 'rubygems' unless defined? Gem
+
 gem 'activerecord', ENV['AR_VERSION'] if ENV['AR_VERSION']
 require 'active_record'
 require 'active_record/version'
+
 if defined? JRUBY_VERSION
   AR_JDBC_VERSION = if ENV['ARJDBC_VERSION']
                       gem 'activerecord-jdbc-adapter', ENV['ARJDBC_VERSION']

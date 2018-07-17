@@ -1,3 +1,5 @@
+# frozen_string_literal: false
+
 require File.expand_path('record', File.dirname(__FILE__))
 
 fields = {

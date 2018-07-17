@@ -284,7 +284,7 @@ public class RubyJdbcConnection extends RubyObject {
     public static int mapTransactionIsolationLevel(final IRubyObject isolation) {
         final Object isolationString;
         if ( isolation instanceof RubySymbol ) {
-            isolationString = isolation.asJavaString(); // RubySymbol.asJavaString (interned)
+            isolationString = ((RubySymbol) isolation).asJavaString(); // RubySymbol (interned)
         }
         else {
             isolationString = isolation.asString().toString().toLowerCase(Locale.ENGLISH).intern();
@@ -2716,7 +2716,7 @@ public class RubyJdbcConnection extends RubyObject {
 
     private String default_timezone(final ThreadContext context) {
         final RubyClass base = getBase(context.runtime);
-        return default_timezone.call(context, base, base).toString(); // :utc (or :local)
+        return default_timezone.call(context, base, base).asJavaString(); // :utc (or :local)
     }
 
     // ActiveRecord::Base.default_timezone
@@ -2898,14 +2898,13 @@ public class RubyJdbcConnection extends RubyObject {
         final RubySymbol type = (RubySymbol) attributeSQLType(context, attribute);
 
         // For some reason the driver doesn't like "character varying" as a type
-        if ( type.eql(context.runtime.newSymbol("string")) ){
-            return "text";
-        }
+        if ( type.eql(context.runtime.newSymbol("string")) ) return "text";
 
         final RubyHash nativeTypes = (RubyHash) getAdapter().callMethod(context, "native_database_types");
+        // e.g. `integer: { name: 'integer' }`
         final RubyHash typeInfo = (RubyHash) nativeTypes.op_aref(context, type);
 
-        return typeInfo.op_aref(context, context.runtime.newSymbol("name")).asString().toString();
+        return typeInfo.op_aref(context, context.runtime.newSymbol("name")).toString();
     }
 
     protected void setXmlParameter(final ThreadContext context,

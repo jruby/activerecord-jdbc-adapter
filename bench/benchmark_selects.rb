@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require File.expand_path('record', File.dirname(__FILE__))
 
 BenchTestHelper.generate_records
@@ -23,18 +25,20 @@ Benchmark.bmbm do |x|
   an_id = BenchRecord.last.id
 
   selects.each do |select|
-    x.report("BenchRecord.select('#{select}').where(:id => i).first [#{TIMES}x]") do
+    x.report("BenchRecord.select('#{select}').where(id: i).first [#{TIMES}x]") do
       TIMES.times do |i|
-        BenchRecord.select(select).where(:id => i % total).first
+        BenchRecord.select(select).where(id: i % total).first
       end
     end
   end
 
-#  x.report("BenchRecord.select('#{select}').where( an-id ).first [#{TIMES}x]") do
-#    TIMES.times do
-#      BenchRecord.select(select).where(:id => an_id).first
-#    end
-#  end
+  selects.each do |select|
+    x.report("BenchRecord.select('#{select}').where(['id = ?', an_id]).first [#{TIMES}x]") do
+      TIMES.times do
+        BenchRecord.select(select).where(['id = ?', an_id]).first
+      end
+    end
+  end
 
 end
 

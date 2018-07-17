@@ -1,3 +1,5 @@
+# frozen_string_literal: false
+
 require File.expand_path('record', File.dirname(__FILE__))
 
 fields = {
@@ -8,7 +10,7 @@ fields = {
     'a_decimal' => BigDecimal('1234567890.55555'),
     'a_float' => 999.99,
     'a_integer' => 4242,
-    'a_string' => 'BORAT Ipsum!',
+    'a_string' => 'BORAT Ipsum!' * 2,
     'a_text' => 'Kazakhstan is the greatest country in the world. ' <<
         'All other countries are run by little girls. ' <<
         'Kazakhstan is number one exporter of potassium. ' <<
