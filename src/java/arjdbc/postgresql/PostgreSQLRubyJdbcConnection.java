@@ -484,7 +484,7 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
         return points;
     }
 
-    private Double[] parseDoubles(IRubyObject value) {
+    private static Double[] parseDoubles(IRubyObject value) {
         Matcher matches = doubleValuePattern.matcher(value.toString());
         ArrayList<Double> doubles = new ArrayList<Double>(4); // Paths and polygons may be larger but this covers points/circles/boxes/line segments
 
