@@ -494,7 +494,7 @@ module ArJdbc
       else
         param_sql << " OFFSET #{offset}" if offset.present?
         if limit.present?
-          param_sql << limit == 1 ? ' FETCH FIRST ROW ONLY' : " FETCH FIRST #{limit} ROWS ONLY"
+          param_sql << (limit == 1 ? ' FETCH FIRST ROW ONLY' : " FETCH FIRST #{limit} ROWS ONLY")
         end
       end
 
