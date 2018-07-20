@@ -66,7 +66,7 @@ module ArJdbc
     def initialize(connection, logger, config)
       super(connection, logger, config)
 
-      @active     = nil
+      @active     = true
       @statements = StatementPool.new(self.class.type_cast_config_to_integer(config[:statement_limit]))
 
       configure_connection
