@@ -339,8 +339,8 @@ module ArJdbc
     end
 
     def explain(arel, binds = [])
-      sql = "EXPLAIN #{to_sql(arel, binds)}"
-      ActiveRecord::ConnectionAdapters::PostgreSQL::ExplainPrettyPrinter.new.pp(exec_query(sql, 'EXPLAIN', binds))
+      sql, binds = to_sql_and_binds(arel, binds)
+      ActiveRecord::ConnectionAdapters::PostgreSQL::ExplainPrettyPrinter.new.pp(exec_query("EXPLAIN #{sql}", 'EXPLAIN', binds))
     end
 
     # @note Only for "better" AR 4.0 compatibility.
