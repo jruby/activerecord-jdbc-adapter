@@ -42,10 +42,30 @@ module ArJdbc
       end
       alias :exec_delete :exec_update
 
+      # overridden to support legacy binds
+      def insert(arel, name = nil, pk = nil, id_value = nil, sequence_name = nil, binds = [])
+        binds = convert_legacy_binds_to_attributes(binds) if binds.first.is_a?(Array)
+        super
+      end
+      alias create insert
+
+      # overridden to support legacy binds
+      def update(arel, name = nil, binds = [])
+        binds = convert_legacy_binds_to_attributes(binds) if binds.first.is_a?(Array)
+        super
+      end
+
+      # overridden to support legacy binds
+      def delete(arel, name = nil, binds = [])
+        binds = convert_legacy_binds_to_attributes(binds) if binds.first.is_a?(Array)
+        super
+      end
+
       def execute(sql, name = nil)
         log(sql, name) { @connection.execute(sql) }
       end
 
+      # overridden to support legacy binds
       def select_all(arel, name = nil, binds = NO_BINDS, preparable: nil)
         binds = convert_legacy_binds_to_attributes(binds) if binds.first.is_a?(Array)
         super
