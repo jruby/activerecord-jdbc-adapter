@@ -613,6 +613,14 @@ _SQL
     assert_equal new_value, @first_money.wealth
   end
 
+  def test_update_money_num
+    new_value = 123.45
+    @first_money.wealth = new_value
+    @first_money.save!
+    @first_money.reload
+    assert_equal new_value, @first_money.wealth
+  end
+
   def test_money_type_cast
     type = PostgresqlMoney.type_for_attribute('wealth')
 
