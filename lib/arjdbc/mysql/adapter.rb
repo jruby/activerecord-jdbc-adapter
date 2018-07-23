@@ -57,6 +57,19 @@ module ActiveRecord
         true
       end
 
+      # FIXME: optimize by implementing with_multi_statements() instead of this
+      def insert_fixtures_set(fixture_set, tables_to_delete = [])
+        disable_referential_integrity do
+          transaction(requires_new: true) do
+            tables_to_delete.each { |table| delete "DELETE FROM #{quote_table_name(table)}", "Fixture Delete" }
+
+            fixture_set.each do |table_name, rows|
+              rows.each { |row| insert_fixture(row, table_name) }
+            end
+          end
+        end
+      end
+
       # HELPER METHODS ===========================================
 
       # Reloading the type map in abstract/statement_cache.rb blows up postgres
