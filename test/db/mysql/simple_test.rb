@@ -247,10 +247,6 @@ class MySQLSimpleTest < Test::Unit::TestCase
     assert_equal "}{\"'}  '", e.reload.title
   end
 
-  def test_mysql_indexes
-    assert connection.class.const_defined?(:INDEX_TYPES)
-  end
-
   test 'returns correct visitor type' do
     assert_not_nil visitor = connection.instance_variable_get(:@visitor)
     assert defined? Arel::Visitors::MySQL
