@@ -325,7 +325,8 @@ module ArJdbc
     alias index_name_length max_identifier_length
 
     def exec_insert(sql, name, binds, pk = nil, sequence_name = nil)
-      val = super
+      binds = convert_legacy_binds_to_attributes(binds) if binds.first.is_a?(Array)
+      val = super(sql, name, binds, pk, sequence_name)
       if !use_insert_returning? && pk
         unless sequence_name
           table_ref = extract_table_ref_from_insert_sql(sql)
@@ -337,6 +338,12 @@ module ArJdbc
         val
       end
     end
+
+    def exec_update(sql, name = nil, binds = NO_BINDS)
+      binds = convert_legacy_binds_to_attributes(binds) if binds.first.is_a?(Array)
+      super(sql, name, binds)
+    end
+    alias :exec_delete :exec_update
 
     def explain(arel, binds = [])
       sql = "EXPLAIN #{to_sql(arel, binds)}"
@@ -699,7 +706,8 @@ module ActiveRecord::ConnectionAdapters
     end
 
     def exec_query(sql, name = nil, binds = [], prepare: false)
-      super
+      binds = convert_legacy_binds_to_attributes(binds) if binds.first.is_a?(Array)
+      super(sql, name, binds, prepare: prepare)
     rescue ActiveRecord::StatementInvalid => e
       raise unless e.cause.message.include?('cached plan must not change result type'.freeze)
 

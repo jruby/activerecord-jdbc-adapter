@@ -2654,7 +2654,8 @@ public class RubyJdbcConnection extends RubyObject {
     }
 
     protected static IRubyObject attributeSQLType(final ThreadContext context, final IRubyObject attribute) {
-        return attributeType(context, attribute).callMethod(context, "type");
+        IRubyObject type = attributeType(context, attribute);
+        return type != null ? type.callMethod(context, "type") : context.nil;
     }
 
     private final CachingCallSite value_site = new FunctionalCachingCallSite("value"); // AR::Attribute#value
