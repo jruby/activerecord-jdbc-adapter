@@ -27,6 +27,8 @@ module ExplainSupportTestMethods
   end
 
   def test_explain_with_binds
+    skip unless ActiveRecord::Base.connection.prepared_statements
+
     arel, binds = create_explain_arel
 
     pp = ActiveRecord::Base.connection.explain(arel.to_sql, binds)
