@@ -30,6 +30,7 @@ import java.util.TimeZone;
 
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
+import org.joda.time.chrono.GJChronology;
 import org.joda.time.chrono.ISOChronology;
 import org.jruby.Ruby;
 import org.jruby.RubyFloat;
@@ -303,19 +304,24 @@ public abstract class DateTimeUtils {
         // month
         end = nonDigitIndex(str, start, len);
         month = extractIntValue(str, start, end);
-
-        //sep = str.charAt(end);
-        //if ( sep != '-' ) {
-        //    throw new NumberFormatException("expected date to be dash-separated, got '" + sep + "'");
-        //}
-
         start = end + 1; // Skip '-'
 
         // day of month
         end = nonDigitIndex(str, start, len);
         day = extractIntValue(str, start, end);
 
-        return newDate(context, year, month, day, ISOChronology.getInstance(defaultZone));
+        start = end + 1; // Skip possible space
+        boolean bcEra = false;
+        if ( start + 1 < len ) {
+            final char e1 = str.charAt(start);
+            if ( e1 == 'B' && str.charAt(start + 1) == 'C' ) bcEra = true;
+        }
+
+        if ( bcEra ) year = -1 * year; // no + 1 since we use GJChronology
+
+        DateTime dateTime = new DateTime(year, month, day, 0, 0, 0, GJChronology.getInstance(defaultZone));
+        final Ruby runtime = context.runtime;
+        return runtime.getClass("Date").newInstance(context, Java.getInstance(runtime, dateTime), Block.NULL_BLOCK);
     }
 
     public static IRubyObject parseTime(final ThreadContext context, final CharSequence str, final DateTimeZone defaultZone)
