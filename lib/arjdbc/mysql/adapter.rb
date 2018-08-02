@@ -86,10 +86,6 @@ module ActiveRecord
         exception.error_code if exception.is_a?(JDBCError)
       end
 
-      def create_table(table_name, **options) #:nodoc:
-        super(table_name, options: "ENGINE=InnoDB", **options)
-      end
-
       #--
       # QUOTING ==================================================
       #+
