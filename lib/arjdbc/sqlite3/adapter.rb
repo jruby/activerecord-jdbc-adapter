@@ -255,7 +255,8 @@ module ArJdbc
     def valid_alter_table_type?(type, options = {})
       !invalid_alter_table_type?(type, options)
     end
-    deprecate :valid_alter_table_type?
+    # DIFFERENCE: deprecated causes a JRuby 9.1 bug where "super" calls itself
+    #deprecate :valid_alter_table_type?
 
     def add_column(table_name, column_name, type, options = {}) #:nodoc:
       if invalid_alter_table_type?(type, options)
