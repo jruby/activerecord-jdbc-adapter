@@ -37,7 +37,7 @@ module ArJdbc
     include ::ActiveRecord::ConnectionAdapters::SQLite3::SchemaStatements
 
     NATIVE_DATABASE_TYPES = {
-        primary_key:  "INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL",
+        primary_key:  "integer PRIMARY KEY AUTOINCREMENT NOT NULL",
         string:       { name: "varchar" },
         text:         { name: "text" },
         integer:      { name: "integer" },
