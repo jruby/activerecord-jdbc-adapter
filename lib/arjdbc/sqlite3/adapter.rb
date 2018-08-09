@@ -252,10 +252,11 @@ module ArJdbc
       rename_table_indexes(table_name, new_name)
     end
 
+    # DIFFERENCE: deprecated causes a JRuby 9.1 bug where "super" calls itself -> do inline
     def valid_alter_table_type?(type, options = {})
+      ActiveSupport::Deprecation.deprecation_warning(__method__)
       !invalid_alter_table_type?(type, options)
     end
-    # DIFFERENCE: deprecated causes a JRuby 9.1 bug where "super" calls itself
     #deprecate :valid_alter_table_type?
 
     def add_column(table_name, column_name, type, options = {}) #:nodoc:
