@@ -236,13 +236,21 @@ if defined? JRUBY_VERSION
     end
 
     classpath = []
-    [ 'java.class.path', 'sun.boot.class.path' ].each do |key|
-      classpath += ENV_JAVA[key].split(File::PATH_SEPARATOR).find_all { |jar| jar =~ /jruby/i }
+    ENV_PATHS = [ 'java.class.path', 'sun.boot.class.path' ]
+    ENV_PATHS.map { |key| ENV_JAVA[key] }.compact.each do |v|
+      classpath += v.split(File::PATH_SEPARATOR).find_all { |jar| jar =~ /jruby/i }
     end
 
-    #classpath += ENV_JAVA['java.class.path'].split(File::PATH_SEPARATOR)
-    #classpath += ENV_JAVA['sun.boot.class.path'].split(File::PATH_SEPARATOR)
-
+    # Using Java 9+.  Let's try and infer jruby jar location from rbconfig
+    if classpath.empty?
+      require 'rbconfig'
+      libdir = RbConfig::CONFIG["libdir"]
+      if libdir.start_with? "classpath:"
+        error "Cannot build activerecord-jdbc with jruby-complete"
+      end
+      classpath << File.join(libdir, "jruby.jar")
+    end
+    
     classpath += driver_jars
     classpath = classpath.compact.join(File::PATH_SEPARATOR)
 
