@@ -237,7 +237,14 @@ if defined? JRUBY_VERSION
 
     classpath = []
     [ 'java.class.path', 'sun.boot.class.path' ].each do |key|
+      next if ENV_JAVA[key].empty?
       classpath += ENV_JAVA[key].split(File::PATH_SEPARATOR).find_all { |jar| jar =~ /jruby/i }
+    end
+
+    # Set default classpath from default ruby directory if exist
+    if classpath.empty?
+      path = "#{ENV['MY_RUBY_HOME']}/lib/jruby.jar"
+      classpath << path if File.exist?(path)
     end
 
     #classpath += ENV_JAVA['java.class.path'].split(File::PATH_SEPARATOR)
