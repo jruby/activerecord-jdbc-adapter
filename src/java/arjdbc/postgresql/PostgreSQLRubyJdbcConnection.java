@@ -374,12 +374,26 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
         final int index, IRubyObject value,
         final IRubyObject attribute, final int type) throws SQLException {
 
+        if ( value instanceof RubyFloat ) {
+            final double doubleValue = ( (RubyFloat) value ).getValue();
+            if ( Double.isInfinite(doubleValue) ) {
+                setTimestampInfinity(statement, index, doubleValue);
+                return;
+            }
+        }
+
         if ( ! "Date".equals(value.getMetaClass().getName()) && value.respondsTo("to_date") ) {
             value = value.callMethod(context, "to_date");
         }
 
-        // NOTE: assuming Date#to_s does right ...
-        statement.setDate(index, Date.valueOf(value.toString()));
+        int year = RubyNumeric.num2int(value.callMethod(context, "year"));
+        int month = RubyNumeric.num2int(value.callMethod(context, "month"));
+        int day = RubyNumeric.num2int(value.callMethod(context, "day"));
+
+        @SuppressWarnings("deprecated")
+        Date date = new Date(year - 1900, month - 1, day);
+
+        statement.setDate(index, date);
     }
 
     @Override
@@ -690,8 +704,16 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
     protected IRubyObject dateToRuby(ThreadContext context, Ruby runtime, ResultSet resultSet, int index) throws SQLException {
         // NOTE: PostgreSQL adapter under MRI using pg gem returns UTC-d Date/Time values
         final String value = resultSet.getString(index);
+        if (value == null) return context.nil;
 
-        return value == null ? context.nil : DateTimeUtils.parseDate(context, value, getDefaultTimeZone(context));
+        final int len = value.length();
+        if (len < 10 && value.charAt(len - 1) == 'y') { // infinity / -infinity
+            IRubyObject infinity = parseInfinity(context.runtime, value);
+
+            if (infinity != null) return infinity;
+        }
+
+        return DateTimeUtils.parseDate(context, value, getDefaultTimeZone(context));
     }
 
 
