@@ -40,6 +40,7 @@ import org.jruby.exceptions.RaiseException;
 import org.jruby.runtime.Block;
 import org.jruby.runtime.ThreadContext;
 import org.jruby.runtime.builtin.IRubyObject;
+import org.jruby.runtime.builtin.InternalVariables;
 import org.jruby.util.ByteList;
 
 import arjdbc.jdbc.RubyJdbcConnection;
@@ -51,6 +52,8 @@ import static arjdbc.jdbc.RubyJdbcConnection.getJdbcConnection;
  * @author kares
  */
 public class ArJdbcModule {
+
+    private static final String ARJDBC_LOADED_DRIVERS = "arjdbc_loaded_drivers";
 
     public static RubyModule load(final Ruby runtime) {
         final RubyModule arJdbc = runtime.getOrCreateModule("ArJdbc");
@@ -197,20 +200,18 @@ public class ArJdbcModule {
         return loaded == null ? context.nil : loaded;
     }
 
-    // NOTE: probably useless - only to be useful for the pooled runtime mode when jar at WEB-INF/lib
-    static final Map<Ruby, Map<String, Boolean>> loadedDrivers = new WeakHashMap<Ruby, Map<String, Boolean>>(8);
-
     private static IRubyObject loadDriver(final ThreadContext context, final IRubyObject self,
         final String constName) {
         final Ruby runtime = context.runtime;
         // look for "cached" loading result :
-        Map<String, Boolean> loadedMap = loadedDrivers.get(runtime);
+        InternalVariables internalVariables = self.getInternalVariables();
+        Map<String, Boolean> loadedMap = (Map<String, Boolean>) internalVariables.getInternalVariable(ARJDBC_LOADED_DRIVERS);
         if ( loadedMap == null ) {
             synchronized (ArJdbcModule.class) {
-                loadedMap = loadedDrivers.get(runtime);
+                loadedMap = (Map<String, Boolean>) internalVariables.getInternalVariable(ARJDBC_LOADED_DRIVERS);
                 if ( loadedMap == null ) {
                     loadedMap = new HashMap<String, Boolean>(4);
-                    loadedDrivers.put(runtime, loadedMap);
+                    internalVariables.setInternalVariable(ARJDBC_LOADED_DRIVERS, loadedMap);
                 }
             }
         }
