@@ -2898,7 +2898,7 @@ public class RubyJdbcConnection extends RubyObject {
         final RubySymbol type = (RubySymbol) attributeSQLType(context, attribute);
 
         // For some reason the driver doesn't like "character varying" as a type
-        if ( type.eql(context.runtime.newSymbol("string")) ) return "text";
+        if ( type.eql(context.runtime.newSymbol("string")) ) return "varchar";
 
         final RubyHash nativeTypes = (RubyHash) getAdapter().callMethod(context, "native_database_types");
         // e.g. `integer: { name: 'integer' }`
