@@ -42,6 +42,7 @@ module ArJdbc
       end
 
       def supports_statement_cache?
+        ActiveSupport::Deprecation.deprecation_warning(__method__)
         @jdbc_statement_cache_enabled
       end
 
