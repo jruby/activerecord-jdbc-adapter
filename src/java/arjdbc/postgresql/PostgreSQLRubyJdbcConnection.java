@@ -55,6 +55,7 @@ import org.joda.time.DateTimeZone;
 import org.jruby.*;
 import org.jruby.anno.JRubyMethod;
 import org.jruby.exceptions.RaiseException;
+import org.jruby.ext.bigdecimal.RubyBigDecimal;
 import org.jruby.javasupport.JavaUtil;
 import org.jruby.runtime.ObjectAllocator;
 import org.jruby.runtime.ThreadContext;
@@ -100,6 +101,7 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
         POSTGRES_JDBC_TYPE_FOR.put("line", Types.OTHER);
         POSTGRES_JDBC_TYPE_FOR.put("lseg", Types.OTHER);
         POSTGRES_JDBC_TYPE_FOR.put("ltree", Types.OTHER);
+        POSTGRES_JDBC_TYPE_FOR.put("money", Types.OTHER);
         POSTGRES_JDBC_TYPE_FOR.put("numrange", Types.OTHER);
         POSTGRES_JDBC_TYPE_FOR.put("path", Types.OTHER);
         POSTGRES_JDBC_TYPE_FOR.put("point", Types.OTHER);
@@ -452,6 +454,14 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
                     statement.setObject(index, new PGline(pointValues[0], pointValues[1], pointValues[2]));
                 } else {
                     statement.setObject(index, new PGline(pointValues[0], pointValues[1], pointValues[2], pointValues[3]));
+                }
+                break;
+
+            case "money":
+                if (value instanceof RubyBigDecimal) {
+                    statement.setBigDecimal(index, ((RubyBigDecimal) value).getValue());
+                } else {
+                    setPGobjectParameter(statement, index, value, columnType);
                 }
                 break;
 
