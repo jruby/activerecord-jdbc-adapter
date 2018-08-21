@@ -4,15 +4,8 @@ module ArJdbc
   ConnectionMethods.module_eval do
 
     def jdbc_connection(config)
-      adapter_class = config[:adapter_class]
-      adapter_class ||= ::ActiveRecord::ConnectionAdapters::JdbcAdapter
-
-      # Once all adapters converted to AR5 then this rescue can be removed
-      begin
-        adapter_class.new(nil, logger, nil, config)
-      rescue ArgumentError
-        adapter_class.new(nil, logger, config)
-      end
+      adapter_class = config[:adapter_class] || ::ActiveRecord::ConnectionAdapters::JdbcAdapter
+      adapter_class.new(nil, logger, config)
     end
 
     def jndi_connection(config); jdbc_connection(config) end
