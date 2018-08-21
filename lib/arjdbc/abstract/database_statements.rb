@@ -27,7 +27,7 @@ module ArJdbc
         else
           log(sql, name, binds) do
             # It seems that #supports_statement_cache? is defined but isn't checked before setting "prepare" (AR 5.0)
-            cached_statement = fetch_cached_statement(sql) if prepare && supports_statement_cache?
+            cached_statement = fetch_cached_statement(sql) if prepare && @jdbc_statement_cache_enabled
             @connection.execute_prepared_query(sql, binds, cached_statement)
           end
         end
