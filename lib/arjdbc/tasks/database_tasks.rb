@@ -32,6 +32,7 @@ module ArJdbc
     require 'arjdbc/tasks/h2_database_tasks'
     require 'arjdbc/tasks/hsqldb_database_tasks'
     require 'arjdbc/tasks/mssql_database_tasks'
+    require 'arjdbc/tasks/sqlite_database_tasks_patch'
 
     # re-invent built-in (but deprecated on 4.0) tasks :
     register_tasks(/sqlserver/, MSSQLDatabaseTasks)
