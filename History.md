@@ -1,3 +1,12 @@
+## 1.3.25 (08/22/18)
+
+- [mysql] get rid of official driver < 5 checking on conn initialization 
+- [oracle] fix Oracle adapter not suing schema config properly (#869) 
+- [db2] refactor db2 quote (to avoid SQL injection) (#861) 
+- [db2] Fix a TypeError that happens when offset is used without limit (#873)
+- [mssql] automatically remove identity columns from AR generated UPDATE (#872)
+- [db2] Errors when dealing with blobs in jruby 9.2k (#902)
+
 ## 1.3.24 (09/24/17)
 
 - [as400] Fixed ordering when limit and offset present (#789)
