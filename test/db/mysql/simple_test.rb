@@ -104,19 +104,19 @@ class MySQLSimpleTest < Test::Unit::TestCase
 
   # @override
   def test_preserving_time_objects_with_utc_time_conversion_to_default_timezone_local
-    pend 'TODO: only working when useLegacyDatetimeCode: false but that has other issues (e.g. with PS)' unless mariadb_driver?
+    pend 'TODO: only working when useLegacyDatetimeCode: false but that has other issues (e.g. with PS)'
     super
   end
 
   # @override
   def test_preserving_time_objects_with_time_with_zone_conversion_to_default_timezone_local
-    pend 'TODO: only working when useLegacyDatetimeCode: false but that has other issues (e.g. with PS)' unless mariadb_driver?
+    pend 'TODO: only working when useLegacyDatetimeCode: false but that has other issues (e.g. with PS)'
     super
   end
 
   # @override
   def test_time_with_default_timezone_local
-    if ENV['CI'] && ! mariadb_driver?
+    if ENV['CI']
       pend 'TODO: CI: when we start off with UTC the MySQL driver does not handle the time-zone switch right'
     end
     super
@@ -420,7 +420,7 @@ class MySQLSimpleTest < Test::Unit::TestCase
       unless mariadb_driver?
         assert_match /com.mysql.jdbc.exceptions.jdbc4.MySQLSyntaxErrorException: Table '.*?bogus' doesn't exist/, error.message
       else
-        assert_match /java.sql.SQLSyntaxErrorException: Table '.*?bogus' doesn't exist/, error.message
+        assert_match /java.sql.SQLSyntaxErrorException: .*Table '.*?bogus' doesn't exist/, error.message
       end
       assert_match /ActiveRecord::JDBCError: .*?Exception: /, error.inspect
 
