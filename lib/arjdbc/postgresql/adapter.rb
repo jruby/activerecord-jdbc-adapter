@@ -54,8 +54,15 @@ module ArJdbc
       @postgresql_version ||=
         begin
           version = @connection.database_product
-          if version =~ /PostgreSQL (\d+)\.(\d+)\.(\d+)/
-            ($1.to_i * 10000) + ($2.to_i * 100) + $3.to_i
+          if version.match /PostgreSQL (\d+.*)/
+            version_numbers = $1.split('.').map(&:to_i)
+            # PostgreSQL version representation does not have more than 4 digits
+            return 0 if version_numbers.length > 4
+            # From version 10 onwards, PG has changed its versioning policy to
+            # limit it to only 2 digits. i.e. in 10.x, 10 being the major
+            # version and x representing the minor release
+            # Refer https://www.postgresql.org/support/versioning/ for more info
+            version_numbers.zip([10000, 100, 1, 0]).map { |e| e.reduce(:*) }.sum
           else
             0
           end
