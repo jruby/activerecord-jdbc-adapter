@@ -13,11 +13,14 @@ ArJdbc::ConnectionMethods.module_eval do
     driver = config[:driver] ||=
       defined?(::Jdbc::MySQL.driver_name) ? ::Jdbc::MySQL.driver_name : 'com.mysql.jdbc.Driver'
 
+    mysql_driver = driver.start_with?('com.mysql.')
+    mariadb_driver = ! mysql_driver && driver.start_with?('org.mariadb.')
+
     begin
       require 'jdbc/mysql'
       ::Jdbc::MySQL.load_driver(:require) if defined?(::Jdbc::MySQL.load_driver)
     rescue LoadError # assuming driver.jar is on the class-path
-    end if mysql_driver = driver[0, 10] == 'com.mysql.'
+    end if mysql_driver
 
     config[:username] = 'root' unless config.key?(:username)
     # jdbc:mysql://[host][,failoverhost...][:port]/[database]
@@ -25,11 +28,11 @@ ArJdbc::ConnectionMethods.module_eval do
     # - if the port is not specified, it defaults to 3306
     # - alternate fail-over syntax: [host:port],[host:port]/[database]
     unless config[:url]
-      host = config[:host]; host = host.join(',') if host.respond_to?(:join)
+      host = config[:host]
+      host ||= 'localhost' if mariadb_driver
+      host = host.join(',') if host.respond_to?(:join)
       config[:url] = "jdbc:mysql://#{host}#{ config[:port] ? ":#{config[:port]}" : nil }/#{config[:database]}"
     end
-
-    mariadb_driver = ! mysql_driver && driver.start_with?('org.mariadb.')
 
     properties = ( config[:properties] ||= {} )
     if mysql_driver
@@ -63,8 +66,8 @@ ArJdbc::ConnectionMethods.module_eval do
     end
     if config[:sslkey] || sslcert = config[:sslcert] # || config[:use_ssl]
       properties['useSSL'] ||= true # supported by MariaDB as well
-      properties['requireSSL'] ||= true if mysql_driver
       if mysql_driver
+        properties['requireSSL'] ||= true
         properties['clientCertificateKeyStoreUrl'] ||= java.io.File.new(sslcert).to_url.to_s if sslcert
         if sslca = config[:sslca]
           properties['trustCertificateKeyStoreUrl'] ||= java.io.File.new(sslca).to_url.to_s
