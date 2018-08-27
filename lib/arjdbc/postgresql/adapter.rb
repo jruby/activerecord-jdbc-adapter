@@ -377,6 +377,12 @@ module ArJdbc
       @connection.configure_connection
     end
 
+    def default_sequence_name(table_name, pk = "id") #:nodoc:
+      serial_sequence(table_name, pk)
+    rescue ActiveRecord::StatementInvalid
+      %Q("#{table_name}_#{pk}_seq")
+    end
+
     def last_insert_id_result(sequence_name)
       exec_query("SELECT currval('#{sequence_name}')", 'SQL')
     end
