@@ -1,4 +1,2 @@
-unless ActiveRecord::Base.connection.prepared_statements
-  exclude :test_cleans_up_after_prepared_statement_failure_in_nested_transactions, 'expects prepared statements even though they are disabled'
-  exclude :test_cleans_up_after_prepared_statement_failure_in_a_transaction, 'expects prepared statements even though they are disabled'
-end
+exclude :test_cleans_up_after_prepared_statement_failure_in_nested_transactions, 'relies on statement cache internals, different in ARJDBC'
+exclude :test_cleans_up_after_prepared_statement_failure_in_a_transaction, 'relies on statement cache internals, different in ARJDBC'
