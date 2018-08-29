@@ -594,6 +594,8 @@ module ArJdbc
     end
 
     def translate_exception(exception, message)
+      return super unless exception.is_a?(ActiveRecord::JDBCError)
+
       # TODO: Can we base these on an error code of some kind?
       case exception.message
       when /duplicate key value violates unique constraint/
