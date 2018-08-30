@@ -1,1 +1,0 @@
-exclude :test_eager_load_multiple_associations_with_references, 'CI issues with UTF-8 GH-979' if ENV['TEST_GH_879'] != 'true'
