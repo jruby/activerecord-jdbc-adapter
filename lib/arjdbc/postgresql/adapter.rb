@@ -227,6 +227,8 @@ module ArJdbc
 
     def supports_foreign_keys?; true end
 
+    def supports_validate_constraints?; true end
+
     def supports_index_sort_order?; true end
 
     def supports_partial_index?; true end
