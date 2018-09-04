@@ -1,6 +1,7 @@
 jar_file = File.join(*%w(lib arjdbc jdbc adapter_java.jar))
 begin
   require 'ant'
+  require 'rbconfig'
   directory classes = "pkg/classes"
   CLEAN << classes
 
@@ -12,7 +13,7 @@ begin
     rm_rf FileList["#{classes}/**/*"]
     ant.javac :srcdir => "src/java", :destdir => "pkg/classes",
       :source => "7", :target => "7", :debug => true, :deprecation => true,
-      :classpath => "${java.class.path}:${sun.boot.class.path}:#{driver_jars.join(':')}",
+      :classpath => "${java.class.path}:${sun.boot.class.path}:#{RbConfig::CONFIG['libdir']}/jruby.jar:#{driver_jars.join(':')}",
       :includeantRuntime => false
 
     ant.tstamp do |ts|
