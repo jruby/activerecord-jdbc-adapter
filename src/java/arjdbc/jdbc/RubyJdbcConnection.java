@@ -3445,12 +3445,14 @@ public class RubyJdbcConnection extends RubyObject {
                 if ( ! gotConnection ) { // SQLException from driver/data-source
                     reconnectOnRetry = connected;
                 }
+                else if (!autoCommit) {
+                    // never retry inside a transaction
+                    break;
+                }
                 else if ( isTransient(exception) ) {
                     reconnectOnRetry = false; // continue;
                 }
                 else {
-                    if ( ! autoCommit ) break; // do not retry if (inside) transactions
-
                     if ( isConnectionValid(context, getConnectionImpl()) ) {
                         break; // connection not broken yet failed (do not retry)
                     }

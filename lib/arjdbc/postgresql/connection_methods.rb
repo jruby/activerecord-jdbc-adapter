@@ -51,8 +51,15 @@ ArJdbc::ConnectionMethods.module_eval do
     properties['tcpKeepAlive'] ||= config[:keepalives] if config.key?(:keepalives)
     properties['kerberosServerName'] ||= config[:krbsrvname] if config[:krbsrvname]
 
-    # If prepared statements are off, lets make sure they are really *off*
-    properties['prepareThreshold'] ||= 0 unless config[:prepared_statements]
+    prepared_statements = config.fetch(:prepared_statements) { true }
+    prepared_statements = false if prepared_statements == 'false'
+    if prepared_statements
+      # this makes the pgjdbc driver handle hot compatibility internally
+      properties['autosave'] ||= 'conservative'
+    else
+      # If prepared statements are off, lets make sure they are really *off*
+      properties['prepareThreshold'] = 0
+    end
 
     jdbc_connection(config)
   end

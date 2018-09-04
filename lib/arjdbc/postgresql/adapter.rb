@@ -710,21 +710,6 @@ module ActiveRecord::ConnectionAdapters
       TableDefinition.new(*args)
     end
 
-    def exec_query(sql, name = nil, binds = [], prepare: false)
-      super
-    rescue ActiveRecord::StatementInvalid => e
-      raise unless e.cause.message.include?('cached plan must not change result type'.freeze)
-
-      if open_transactions > 0
-        # In a transaction, have to fail it - See AR code for details
-        raise ActiveRecord::PreparedStatementCacheExpired.new(e.cause.message)
-      else
-        # Not in a transaction, clear the prepared statement and try again
-        delete_cached_statement(sql)
-        retry
-      end
-    end
-
     public :sql_for_insert
 
     def schema_creation # :nodoc:
