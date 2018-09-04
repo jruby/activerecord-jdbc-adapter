@@ -89,6 +89,9 @@ connections:
         <% java.util.logging.Logger.getLogger("org.postgresql").setLevel(java.util.logging.Level::OFF) rescue nil %>
     arunit:
       <<: *_setup
+    arunit_without_prepared_statements:
+      <<: *_setup
+      prepared_statements: false
     arunit2:
       <<: *_setup
 

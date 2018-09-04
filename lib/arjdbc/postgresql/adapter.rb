@@ -715,19 +715,14 @@ module ActiveRecord::ConnectionAdapters
       Arel::Visitors::PostgreSQL.new(self)
     end
 
-    def exec_query(sql, name = nil, binds = [], prepare: false)
-      super
-    rescue ActiveRecord::StatementInvalid => e
-      raise unless e.cause.message.include?('cached plan must not change result type'.freeze)
+    require 'active_record/connection_adapters/postgresql/schema_definitions'
 
-      if open_transactions > 0
-        # In a transaction, have to fail it - See AR code for details
-        raise ActiveRecord::PreparedStatementCacheExpired.new(e.cause.message)
-      else
-        # Not in a transaction, clear the prepared statement and try again
-        delete_cached_statement(sql)
-        retry
-      end
+    ColumnMethods = ActiveRecord::ConnectionAdapters::PostgreSQL::ColumnMethods
+    TableDefinition = ActiveRecord::ConnectionAdapters::PostgreSQL::TableDefinition
+    Table = ActiveRecord::ConnectionAdapters::PostgreSQL::Table
+
+    def create_table_definition(*args) # :nodoc:
+      TableDefinition.new(*args)
     end
 
     public :sql_for_insert
