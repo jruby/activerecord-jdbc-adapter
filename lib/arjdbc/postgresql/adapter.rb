@@ -242,8 +242,6 @@ module ArJdbc
 
     def supports_views?; true end
 
-    def supports_bulk_alter?; true end
-
     def supports_datetime_with_precision?; true end
 
     def supports_comments?; true end
