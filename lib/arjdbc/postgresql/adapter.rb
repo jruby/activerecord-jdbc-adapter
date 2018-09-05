@@ -224,6 +224,8 @@ module ArJdbc
 
     def supports_ddl_transactions?; true end
 
+    def supports_advisory_locks?; true end
+
     def supports_explain?; true end
 
     def supports_expression_index?; true end
@@ -240,6 +242,12 @@ module ArJdbc
 
     def supports_views?; true end
 
+    def supports_bulk_alter?; true end
+
+    def supports_datetime_with_precision?; true end
+
+    def supports_comments?; true end
+
     # Does PostgreSQL support standard conforming strings?
     def supports_standard_conforming_strings?
       standard_conforming_strings?
@@ -248,6 +256,14 @@ module ArJdbc
 
     def supports_hex_escaped_bytea?
       postgresql_version >= 90000
+    end
+
+    def supports_materialized_views?
+      postgresql_version >= 90300
+    end
+
+    def supports_json?
+      postgresql_version >= 90200
     end
 
     def supports_insert_with_returning?
