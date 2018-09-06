@@ -62,8 +62,7 @@ module ArJdbc
       end
     end
 
-    # DIFFERENCE: we remove connection_options because we are not using it.
-    def initialize(connection, logger, config)
+    def initialize(connection, logger, connection_options, config)
       super(connection, logger, config)
 
       @active     = true
