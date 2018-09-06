@@ -676,11 +676,11 @@ module ActiveRecord::ConnectionAdapters
     # AR expects OID to be available on the adapter
     OID = ActiveRecord::ConnectionAdapters::PostgreSQL::OID
 
-    def initialize(connection, logger = nil, config = {})
+    def initialize(connection, logger = nil, connection_parameters = nil, config = {})
       # @local_tz is initialized as nil to avoid warnings when connect tries to use it
       @local_tz = nil
 
-      super # configure_connection happens in super
+      super(connection, logger, config) # configure_connection happens in super
 
       initialize_type_map(@type_map = Type::HashLookupTypeMap.new)
 

@@ -60,8 +60,7 @@ module ArJdbc
       Arel::Visitors::SQLite.new(self)
     end
 
-    # Difference we remove connection_options because we are not using it.
-    def initialize(connection, logger, config)
+    def initialize(connection, logger, connection_options, config)
       super(connection, logger, config)
 
       @active     = nil

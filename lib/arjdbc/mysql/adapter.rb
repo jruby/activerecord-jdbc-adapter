@@ -31,8 +31,8 @@ module ActiveRecord
 
       include ArJdbc::MySQL
 
-      def initialize(connection, logger, config)
-        super(connection, logger, nil, config)
+      def initialize(connection, logger, connection_parameters, config)
+        super
         @prepared_statements = false unless config.key?(:prepared_statements)
         # configure_connection taken care of at ArJdbc::Abstract::Core
       end
