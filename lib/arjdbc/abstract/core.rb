@@ -67,7 +67,7 @@ module ArJdbc
         if binds.any? && (type_casted_binds.nil? || type_casted_binds.empty?)
           type_casted_binds = ->{ extract_raw_bind_values(binds) }
         end
-        super
+        super(sql, name, binds, statement_name)
       end
     end
   end
