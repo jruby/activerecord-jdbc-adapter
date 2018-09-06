@@ -236,19 +236,16 @@ if defined? JRUBY_VERSION
     end
 
     classpath = []
-    ENV_PATHS = [ 'java.class.path', 'sun.boot.class.path' ]
-    ENV_PATHS.map { |key| ENV_JAVA[key] }.compact.each do |v|
-      classpath += v.split(File::PATH_SEPARATOR).find_all { |jar| jar =~ /jruby/i }
+    [ 'java.class.path', 'sun.boot.class.path' ].map { |key| ENV_JAVA[key] }.each do |v|
+      classpath += v.split(File::PATH_SEPARATOR).find_all { |jar| jar =~ /jruby/i } if v
     end
-
-    # Using Java 9+.  Let's try and infer jruby jar location from rbconfig
-    if classpath.empty?
-      require 'rbconfig'
-      libdir = RbConfig::CONFIG["libdir"]
-      if libdir.start_with? "classpath:"
+    # Using Java 9+.  Let's try and infer jruby.jar location from rbconfig
+    if classpath.empty?; require 'rbconfig'
+      libdir = RbConfig::CONFIG['libdir']
+      if libdir.start_with? 'classpath:'
         error "Cannot build activerecord-jdbc with jruby-complete"
       end
-      classpath << File.join(libdir, "jruby.jar")
+      classpath << File.join(libdir, 'jruby.jar')
     end
     
     classpath += driver_jars
@@ -256,11 +253,26 @@ if defined? JRUBY_VERSION
 
     source_files = FileList[ 'src/java/**/*.java' ]
 
-    require 'tmpdir'
+    version = lambda do
+      begin
+        require 'arjdbc/version'
+      rescue LoadError
+        path = File.expand_path('../lib', File.dirname(__FILE__))
+        unless $LOAD_PATH.include?(path)
+          $LOAD_PATH << path; retry
+        end
+      end
 
-    Dir.mktmpdir do |classes_dir|
-      # Cross-platform way of finding an executable in the $PATH.
-      # Thanks to @mislav
+      gem_version = Gem::Version.create(ArJdbc::VERSION)
+      if gem_version.segments.last == 'DEV'
+        gem_version.segments[0...-1] # 50.0.DEV -> 50.0
+      else
+        gem_version.segments.dup
+      end
+    end
+
+    require 'tmpdir'; Dir.mktmpdir do |classes_dir|
+      # Cross-platform way of finding an executable in the $PATH. Thanks to @mislav
       which = lambda do |cmd|
         exts = ENV['PATHEXT'] ? ENV['PATHEXT'].split(';') : ['']
         ENV['PATH'].split(File::PATH_SEPARATOR).map do |path|
@@ -284,7 +296,24 @@ if defined? JRUBY_VERSION
       # avoid environment variable expansion using backslash
       # class_files.gsub!('$', '\$') unless windows?
       # args = class_files.map { |path| [ "-C #{classes_dir}", path ] }.flatten
-      args = [ '-C', "#{classes_dir}/ ." ] # args = class_files
+
+      if ENV['RELEASE'] == 'true'; require 'tempfile'
+        manifest  = "Built-Time: #{Time.now.utc.strftime('%Y-%m-%d %H:%M:%S')}\n"
+        manifest += "Built-JRuby: #{JRUBY_VERSION}\n"
+        manifest += "Specification-Title: ActiveRecord-JDBC\n"
+        manifest += "Specification-Vendor: JRuby\n"
+        manifest += "Specification-Version: #{version.call[0].to_s.split('').join('.')}\n" # AR VERSION (52 -> 5.2)
+        manifest += "Implementation-Vendor: The JRuby Team\n"
+        manifest += "Implementation-Version: #{version.call.join('.')}\n"
+        manifest  = Tempfile.new('MANIFEST').tap { |f| f << manifest; f.close }.path
+      end
+
+      args = []; opts = '-cf'
+      if manifest
+        opts = "#{opts}m"
+        args = [ "#{manifest}" ]
+      end
+      args += [ '-C', "#{classes_dir}/ ." ]
 
       jar_path = jar_file
       if ext_lib_dir = ENV['RUBYLIBDIR']
@@ -294,7 +323,7 @@ if defined? JRUBY_VERSION
       unless jar = which.call('jar')
         warn "could not find jar tool, please make sure it's on the PATH"
       end
-      sh("#{jar} cf #{jar_path} #{args.join(' ')}") do |ok|
+      sh("#{jar} #{opts} #{jar_path} #{args.join(' ')}") do |ok|
         raise 'could not build .jar extension - packaging failure' unless ok
       end
       cp jar_path, jar_file if ext_lib_dir # NOTE: hopefully RG won't mind?!
@@ -302,6 +331,6 @@ if defined? JRUBY_VERSION
   end
 else
   task :jar do
-    puts "please run `rake jar' under JRuby to re-compile the native (Java) extension"
+    warn "please run `rake jar' under JRuby to re-compile the native (Java) extension"
   end
 end
