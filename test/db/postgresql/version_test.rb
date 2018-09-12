@@ -23,6 +23,10 @@ class VersionTest < Test::Unit::TestCase
     assert_equal connection_stub('9'), 90000
   end
 
+  def test_pg_version_with_os_version
+    assert_equal connection_stub('10.4 (Ubuntu 10.4-2.pgdg16.04+1)'), 100400
+  end
+
   private
 
   def connection_stub(version_string)
