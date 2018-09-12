@@ -38,7 +38,7 @@ end
 namespace :db do
 
   def rails_env
-    defined?(Rails.env) ? Rails.env : ( RAILS_ENV || 'development' )
+    Rails.env.to_s
   end
 
   if defined? adapt_jdbc_config
@@ -50,42 +50,51 @@ namespace :db do
     config.merge 'adapter' => config['adapter'].sub(/^jdbc/, '')
   end
 
-  if defined? ActiveRecord::Tasks::DatabaseTasks # 4.0
-
-    def current_config(options = {})
-      ActiveRecord::Tasks::DatabaseTasks.current_config(options)
-    end
-
-  else # 3.x / 2.3
-
-    def current_config(options = {}) # not on 2.3
-      options = { :env => rails_env }.merge! options
-      if options[:config]
-        @current_config = options[:config]
-      else
-        @current_config ||= ENV['DATABASE_URL'] ?
-          database_url_config : ActiveRecord::Base.configurations[options[:env]]
-      end
-    end
-
-    def database_url_config(url = ENV['DATABASE_URL'])
-      # NOTE: ActiveRecord::ConnectionAdapters::ConnectionSpecification::Resolver
-      # since AR 4.0 that is handled by DatabaseTasks - only care about 2.3/3.x :
-      unless defined? ActiveRecord::Base::ConnectionSpecification::Resolver
-        raise "DATABASE_URL not supported on ActiveRecord #{ActiveRecord::VERSION::STRING}"
-      end
-      resolver = ActiveRecord::Base::ConnectionSpecification::Resolver.new(url, {})
-      resolver.spec.config.stringify_keys
-    end
-
+  def current_config(options = {})
+    ActiveRecord::Tasks::DatabaseTasks.current_config(options)
   end
 
 end
 
+
 require 'arjdbc/tasks/database_tasks'
 
-if defined? ActiveRecord::Tasks::DatabaseTasks # 4.0
-  load File.expand_path('databases4.rake', File.dirname(__FILE__))
-else # 3.x / 2.3
-  load File.expand_path('databases3.rake', File.dirname(__FILE__))
+module ActiveRecord::Tasks
+
+  DatabaseTasks.module_eval do
+
+    # @override patched to adapt jdbc configuration
+    def each_current_configuration(environment)
+      environments = [environment]
+      environments << 'test' if environment == 'development'
+
+      configurations = ActiveRecord::Base.configurations.values_at(*environments)
+      configurations.compact.each do |config|
+        yield adapt_jdbc_config(config) unless config['database'].blank?
+      end
+    end
+
+    # @override patched to adapt jdbc configuration
+    def each_local_configuration
+      ActiveRecord::Base.configurations.each_value do |config|
+        next unless config['database']
+
+        if local_database?(config)
+          yield adapt_jdbc_config(config)
+        else
+          $stderr.puts "This task only modifies local databases. #{config['database']} is on a remote host."
+        end
+      end
+    end
+
+  end
+
+  MySQLDatabaseTasks.class_eval do
+
+    def error_class
+      ActiveRecord::JDBCError
+    end
+
+  end if const_defined?(:MySQLDatabaseTasks)
+
 end
