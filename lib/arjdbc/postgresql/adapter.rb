@@ -52,7 +52,7 @@ module ArJdbc
       @postgresql_version ||=
         begin
           version = @connection.database_product
-          if version.match /PostgreSQL (\d+.*)/
+          if version.match /PostgreSQL\s*([\d\.]*\d).*/
             version_numbers = $1.split('.').map(&:to_i)
             # PostgreSQL version representation does not have more than 4 digits
             return 0 if version_numbers.length > 4
