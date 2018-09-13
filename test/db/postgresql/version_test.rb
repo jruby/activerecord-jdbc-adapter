@@ -5,10 +5,11 @@ require 'db/postgresql/test_helper'
 class VersionTest < Test::Unit::TestCase
   def test_pg_9_version
     assert_equal 90608, connection_stub('9.6.8')
+    assert_equal 90600, connection_stub('9.6devel')
   end
 
   def test_pg_10_version
-    assert_equal 100400, connection_stub('10.4')
+    assert_equal 100004, connection_stub('10.4')
   end
 
   def test_pg_4part_version
@@ -32,7 +33,7 @@ class VersionTest < Test::Unit::TestCase
   end
 
   def test_pg_version_with_os_version
-    assert_equal 100400, connection_stub('10.4 (Ubuntu 10.4-2.pgdg16.04+1)')
+    assert_equal 100004, connection_stub('10.4 (Ubuntu 10.4-2.pgdg16.04+1)')
   end
 
   def test_custom_version
