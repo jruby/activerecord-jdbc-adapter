@@ -11,7 +11,6 @@ import org.jruby.Ruby;
 import org.jruby.RubyArray;
 import org.jruby.RubyClass;
 import org.jruby.RubyHash;
-import org.jruby.RubyMethod;
 import org.jruby.RubyModule;
 import org.jruby.RubyString;
 import org.jruby.anno.JRubyMethod;
@@ -144,7 +143,7 @@ public class PostgreSQLResult extends JdbcResult {
      * @return ActiveRecord::Result object with the data from this result set
      * @throws SQLException can be caused by postgres generating its type map
      */
-    @Override
+    @Override @SuppressWarnings("unchecked")
     public IRubyObject toARResult(final ThreadContext context) throws SQLException {
         RubyClass BinaryDataClass = null;
         int rowCount = 0;
@@ -163,7 +162,7 @@ public class PostgreSQLResult extends JdbcResult {
                     RubyArray row = (RubyArray) values.eltInternal(rowIndex);
                     IRubyObject value = row.eltInternal(columnIndex);
                     if (value != context.nil) {
-                        row.eltInternalSet(columnIndex, (IRubyObject) BinaryDataClass.newInstance(context, value, Block.NULL_BLOCK));
+                        row.eltInternalSet(columnIndex, BinaryDataClass.newInstance(context, value, Block.NULL_BLOCK));
                     }
                 }
             }
