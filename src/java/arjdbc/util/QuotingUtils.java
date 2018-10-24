@@ -52,7 +52,6 @@ public abstract class QuotingUtils {
         return quoteCharWith(context, string, value, quote, 0, 8);
     }
 
-    @SuppressWarnings("deprecation")
     public static RubyString quoteCharWith(
             final ThreadContext context,
             final RubyString string,
@@ -72,8 +71,8 @@ public abstract class QuotingUtils {
                         new byte[realSize + newOffset + newSizeDiff],
                         stringBytes.getEncoding(), false
                     );
-                    quotedBytes.begin = newOffset;
-                    quotedBytes.realSize = 0;
+                    quotedBytes.setBegin(newOffset);
+                    quotedBytes.setRealSize(0);
                 }
                 quotedBytes.append(bytes, appendFrom, i - appendFrom);
                 quotedBytes.append(quote).append(value); // e.g. "'" => "''"
@@ -88,7 +87,6 @@ public abstract class QuotingUtils {
         return context.runtime.newString(quotedBytes);
     }
 
-    @SuppressWarnings("deprecation")
     public static RubyString quoteCharAndDecorateWith(
         final ThreadContext context, final RubyString string,
         final char value, final char quote,
@@ -102,7 +100,7 @@ public abstract class QuotingUtils {
             final ByteList quoted = new ByteList(
                 new byte[realSize + 2], string.getEncoding(), false
             );
-            quoted.begin = 0; quoted.realSize = 0;
+            quoted.setRealSize(0);
             quoted.append(prefix);
             quoted.append(str.unsafeBytes(), str.getBegin(), realSize);
             quoted.append(suffix);
@@ -110,8 +108,9 @@ public abstract class QuotingUtils {
         }
         // we got a new string with a reserve of 1 byte front and back :
         final ByteList quoted = quotedString.getByteList();
-        quoted.begin = 0; // setBegin invalidates
-        quoted.bytes[0] = prefix; quoted.realSize++;
+        quoted.setBegin(0);
+        quoted.unsafeBytes()[0] = prefix;
+        quoted.setRealSize(quoted.getRealSize() + 1);
         quoted.append(suffix);
         return quotedString;
     }

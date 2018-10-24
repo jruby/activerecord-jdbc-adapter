@@ -1,5 +1,12 @@
 language: ruby
 sudo: false
+branches:
+  only:
+  - master
+  - /.*-stable$/
+  - /^test-.*/
+  - /maintenance|support/
+  - /.*dev$/
 bundler_args: --without development
 script: bundle exec rake ${TEST_PREFIX}test_$DB
 before_install:
@@ -47,17 +54,27 @@ env:
   - DB=sqlite3 PREPARED_STATEMENTS=true
   #- DB=jndi PREPARED_STATEMENTS=false
   #- DB=jndi PREPARED_STATEMENTS=true
-branches:
-  only:
-    - master
-    - /.*-stable$/
-    - /^test-.*/
-    - /maintenance|support/
-    - /.*dev$/
 matrix:
   allow_failures:
     - rvm: jruby-head
   include:
+    # jruby-9.2
+    - rvm: jruby-9.2
+      env: DB=mysql2
+    - rvm: jruby-9.2
+      env: DB=postgresql
+    - rvm: jruby-9.2
+      env: DB=sqlite3
+    # jruby-9.2 + Java 11
+    - rvm: jruby-9.2
+      env: DB=mysql2
+      jdk: openjdk11
+    - rvm: jruby-9.2
+      env: DB=postgresql
+      jdk: openjdk11
+    - rvm: jruby-9.2
+      env: DB=sqlite3
+      jdk: openjdk11
     # jruby-head
     - rvm: jruby-head
       env: DB=mysql2

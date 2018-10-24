@@ -15,9 +15,16 @@ we currently have.
 For Oracle database users you are encouraged to use
 https://github.com/rsim/oracle-enhanced.
 
-Version **50.x** supports Rails version 5.0.x and it lives on branch 50-stable.
-Version **51.x** supports Rails version 5.1.x and is currently on master until
-its first release. The minimum version of JRuby for 50+ is JRuby **9.1.x** and
+Versions are targeted at certain versions of Rails and live on their own branches.
+
+| Gem Version | Rails Version | Branch |
+| ----------- | ------------- | ------ |
+| 50.x        | 5.0.x         | 50-stable |
+| 51.x        | 5.1.x         | 51-stable |
+| 52.x        | 5.2.x         | 52-stable |
+| future      | latest        | master    |
+
+The minimum version of JRuby for 50+ is JRuby **9.1.x** and
 JRuby 9.1+ requires Java 7 or newer (we recommend Java 8 at minimum).
 
 ## Using ActiveRecord JDBC
