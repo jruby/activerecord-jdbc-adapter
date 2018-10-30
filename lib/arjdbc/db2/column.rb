@@ -47,6 +47,9 @@ module ArJdbc
 
       # @override
       def type_cast(value)
+        # AR5.2
+        return super unless respond_to?(:type)
+
         return nil if value.nil? || value == 'NULL' || value =~ /^\s*NULL\s*$/i
         case type
         when :string    then value
