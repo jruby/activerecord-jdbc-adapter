@@ -250,12 +250,6 @@ module ActiveRecord
         end
       end
 
-      # @private
-      # @override
-      def select_rows(sql, name = nil, binds = [])
-        exec_query_raw(sql, name, binds).map!(&:values)
-      end
-
       # Executes the SQL statement in the context of this connection.
       # The return value from this method depends on the SQL type (whether
       # it's a SELECT, INSERT etc.). For INSERTs a generated id might get
