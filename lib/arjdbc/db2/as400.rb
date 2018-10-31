@@ -4,6 +4,18 @@ module ArJdbc
   module AS400
     include DB2
 
+    module ActiveRecord::ConnectionAdapters
+      remove_const(:AS400Adapter) if const_defined?(:AS400Adapter)
+      class AS400Adapter < DB2Adapter
+
+        include ::ArJdbc::AS400
+
+        def jdbc_connection_class(spec)
+          ArJdbc::AS400.jdbc_connection_class
+        end
+      end
+    end
+
     # @private
     def self.extended(adapter); DB2.extended(adapter); end
 
