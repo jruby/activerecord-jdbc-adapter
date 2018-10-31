@@ -22,7 +22,7 @@ module ArJdbc
 
         connection.configure_connection # will call us (maybe)
       end
-      
+
       # Retrieve the raw `java.sql.Connection` object.
       # The unwrap parameter is useful if an attempt to unwrap a pooled (JNDI)
       # connection should be made - to really return the 'native' JDBC object.
@@ -71,6 +71,21 @@ module ArJdbc
         end
         super
       end
+    end
+  end
+end
+
+
+module ActiveRecord
+  class LogSubscriber
+
+    JDBC_GEM_ROOT = File.expand_path("../../../..", __FILE__) + "/"
+
+    # Remove this gem from log trace so that query shows where it was called in application
+    def ignored_callstack(path)
+      path.start_with?(JDBC_GEM_ROOT) ||
+      path.start_with?(RAILS_GEM_ROOT) ||
+      path.start_with?(RbConfig::CONFIG["rubylibdir"])
     end
   end
 end
