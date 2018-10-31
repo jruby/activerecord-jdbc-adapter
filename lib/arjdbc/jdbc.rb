@@ -9,6 +9,9 @@ module ArJdbc
   # @private
   AR50 = ::ActiveRecord::VERSION::MAJOR > 4
 
+  # @private
+  AR52 = ::ActiveRecord::VERSION::STRING >= '5.2'
+
   class << self
 
     # @private Internal API

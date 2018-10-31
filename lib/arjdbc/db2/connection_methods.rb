@@ -15,6 +15,8 @@ ArJdbc::ConnectionMethods.module_eval do
     end
     config[:driver] ||= ::ArJdbc::DB2::DRIVER_NAME
     config[:connection_alive_sql] ||= 'SELECT 1 FROM syscat.tables FETCH FIRST 1 ROWS ONLY'
+    config[:adapter_class] = ActiveRecord::ConnectionAdapters::DB2Adapter unless config.key?(:adapter_class)
+
     jdbc_connection(config)
   end
   alias_method :jdbcdb2_connection, :db2_connection
@@ -38,6 +40,8 @@ ArJdbc::ConnectionMethods.module_eval do
     require 'arjdbc/db2/as400'
     config[:driver] ||= ::ArJdbc::AS400::DRIVER_NAME
     config[:connection_alive_sql] ||= 'SELECT 1 FROM sysibm.tables FETCH FIRST 1 ROWS ONLY'
+    config[:adapter_class] = ActiveRecord::ConnectionAdapters::AS400Adapter unless config.key?(:adapter_class)
+
     jdbc_connection(config)
   end
   alias_method :jdbcas400_connection, :as400_connection
