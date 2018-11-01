@@ -9,14 +9,15 @@ namespace :rails do
       if ENV['RAILS']
         ar_path = File.join(ENV['RAILS'], 'activerecord')
       end
-      
+
       unless ar_path && File.exist?(ar_path)
-        ar_path = `bundle info --path activerecord`.chomp
+        ar_path = `bundle info --path activerecord`.lines.last.chomp
       end
 
       unless File.exist? ar_test_dir = File.join(ar_path, 'test')
         raise "can not directly load Rails tests;" +
-              " try setting a local repository path e.g. export RAILS=`pwd`/../rails"
+              " try setting a local repository path e.g. export RAILS=`pwd`/../rails;" +
+              " failed guess: #{ar_path}"
       end
 
       driver = "jdbc-#{ENV['DRIVER'] ? ENV['DRIVER'].downcase : (adapter =~ /postgres/i ? 'postgres' : adapter)}"
