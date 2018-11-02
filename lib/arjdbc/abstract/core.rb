@@ -73,19 +73,14 @@ module ArJdbc
       end
     end
   end
-end
 
-
-module ActiveRecord
-  class LogSubscriber
-
+  module LogSubscriber
     JDBC_GEM_ROOT = File.expand_path("../../../..", __FILE__) + "/"
 
     # Remove this gem from log trace so that query shows where it was called in application
     def ignored_callstack(path)
-      path.start_with?(JDBC_GEM_ROOT) ||
-      path.start_with?(RAILS_GEM_ROOT) ||
-      path.start_with?(RbConfig::CONFIG["rubylibdir"])
+      super || path.start_with?(JDBC_GEM_ROOT)
     end
   end
+  ActiveRecord::LogSubscriber.prepend(ArJdbc::LogSubscriber)
 end
