@@ -2695,6 +2695,12 @@ public class RubyJdbcConnection extends RubyObject {
         return timeInDefaultTZ;
     }
 
+    protected final DateTime dateTimeInDefaultTimeZone(final ThreadContext context, final DateTime dateTime) {
+        final DateTimeZone defaultZone = getDefaultTimeZone(context);
+        if (defaultZone == dateTime.getZone()) return dateTime;
+        return dateTime.withZone(defaultZone);
+    }
+
     public static RubyTime toTime(final ThreadContext context, final IRubyObject value) {
         if ( ! ( value instanceof RubyTime ) ) { // unlikely
             return (RubyTime) TypeConverter.convertToTypeWithCheck(value, context.runtime.getTime(), "to_time");
@@ -2799,8 +2805,8 @@ public class RubyJdbcConnection extends RubyObject {
         final int index, IRubyObject value,
         final IRubyObject attribute, final int type) throws SQLException {
 
-        final RubyTime timeValue = timeInDefaultTimeZone(context, value);
-        final DateTime dateTime = timeValue.getDateTime();
+        final RubyTime timeValue = toTime(context, value);
+        final DateTime dateTime = dateTimeInDefaultTimeZone(context, timeValue.getDateTime());
         final Timestamp timestamp = new Timestamp(dateTime.getMillis());
         // 1942-11-30T01:02:03.123_456
         if (timeValue.getNSec() > 0) timestamp.setNanos((int) (timestamp.getNanos() + timeValue.getNSec()));
