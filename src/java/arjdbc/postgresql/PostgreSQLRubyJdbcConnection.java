@@ -435,8 +435,7 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
                 break;
 
             case "enum":
-                // FIXME: This doesn't work but it gives a better error message than letting it be treated as a PGobject
-                statement.setObject(index, value.toString());
+                statement.setObject(index, value.toString(), Types.OTHER);
                 break;
 
             case "interval":
