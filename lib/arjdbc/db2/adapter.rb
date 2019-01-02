@@ -487,9 +487,9 @@ module ArJdbc
       types
     end
 
-    def type_to_sql(type, limit = nil, precision = nil, scale = nil)
+    def type_to_sql(type, limit: nil, precision: nil, scale: nil, **)
       limit = nil if type.to_sym == :integer
-      super(type, limit, precision, scale)
+      super
     end
 
     # @private
@@ -502,7 +502,7 @@ module ArJdbc
 
     def add_column(table_name, column_name, type, options = {})
       # The keyword COLUMN allows to use reserved names for columns (ex: date)
-      add_column_sql = "ALTER TABLE #{quote_table_name(table_name)} ADD COLUMN #{quote_column_name(column_name)} #{type_to_sql(type, options[:limit], options[:precision], options[:scale])}"
+      add_column_sql = "ALTER TABLE #{quote_table_name(table_name)} ADD COLUMN #{quote_column_name(column_name)} #{type_to_sql(type, options)}"
       add_column_options!(add_column_sql, options)
       execute(add_column_sql)
     end
@@ -645,7 +645,7 @@ module ArJdbc
     end
 
     def change_column(table_name, column_name, type, options = {})
-      data_type = type_to_sql(type, options[:limit], options[:precision], options[:scale])
+      data_type = type_to_sql(type, options)
       sql = "ALTER TABLE #{table_name} ALTER COLUMN #{column_name} SET DATA TYPE #{data_type}"
       execute_table_change(sql, table_name, 'Change Column')
 
