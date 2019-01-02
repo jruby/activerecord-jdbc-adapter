@@ -282,6 +282,30 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
     }
 
     @Override
+    protected void setArrayParameter(final ThreadContext context,
+                                     final Connection connection, final PreparedStatement statement,
+                                     final int index, final IRubyObject value,
+                                     final IRubyObject attribute, final int type) throws SQLException {
+
+        final String typeName = resolveArrayBaseTypeName(context, attribute);
+        final RubyArray valueForDB = (RubyArray) value.callMethod(context, "values");
+
+        Object[] values;
+        switch (typeName) {
+        case "datetime":
+        case "timestamp": {
+            values = PgDateTimeUtils.timestampStringArray(context, valueForDB);
+            break;
+        }
+        default:
+            values = valueForDB.toArray();
+            break;
+        }
+
+        statement.setArray(index, connection.createArrayOf(typeName, values));
+    }
+
+    @Override
     protected void setBlobParameter(final ThreadContext context,
         final Connection connection, final PreparedStatement statement,
         final int index, final IRubyObject value,
