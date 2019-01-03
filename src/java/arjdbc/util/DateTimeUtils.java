@@ -644,6 +644,25 @@ public abstract class DateTimeUtils {
         return sb.toString();
     }
 
+    /**
+     * Converts a ruby time to a java string, optionally with timezone and timezone adjustment
+     * @param context
+     * @param value the ruby value, typically a Time
+     * @param zone DateTimeZone to adjust to, optional
+     * @param withZone include timezone in the string?
+     * @return time as string
+     */
+    public static String timeString(final ThreadContext context,
+                                    final IRubyObject value, DateTimeZone zone, boolean withZone) {
+        StringBuilder sb = new StringBuilder(21);
+        RubyTime timeValue = toTime(context, value);
+        DateTime dt = timeValue.getDateTime();
+        if (zone != null) dt = dateTimeInZone(dt, zone);
+
+        appendTime(sb, dt.getChronology(), dt.getMillis(), (int) timeValue.getUSec(), withZone);
+        return sb.toString();
+    }
+
     private static void appendTime(StringBuilder sb, Chronology chrono,
                                    long millis, int usec, boolean withZone) {
         sb.append(NUMBERS[chrono.hourOfDay().get(millis)]);
