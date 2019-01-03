@@ -352,7 +352,7 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
         final int index, IRubyObject value,
         final IRubyObject attribute, final int type) throws SQLException {
         // to handle more fractional second precision than (default) 59.123 only
-        String timeStr = DateTimeUtils.timeString(context, value, DateTimeZone.UTC, true);
+        String timeStr = DateTimeUtils.timeString(context, value, getDefaultTimeZone(context), true);
         statement.setObject(index, timeStr, Types.OTHER);
     }
 
