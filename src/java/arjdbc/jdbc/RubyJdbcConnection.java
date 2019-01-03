@@ -2683,7 +2683,7 @@ public class RubyJdbcConnection extends RubyObject {
     }
 
     protected final RubyTime timeInDefaultTimeZone(final ThreadContext context, final IRubyObject value) {
-        return timeInDefaultTimeZone(context, toTime(context, value));
+        return timeInDefaultTimeZone(context, DateTimeUtils.toTime(context, value));
     }
 
     protected final RubyTime timeInDefaultTimeZone(final ThreadContext context, final RubyTime time) {
@@ -2702,10 +2702,7 @@ public class RubyJdbcConnection extends RubyObject {
     }
 
     public static RubyTime toTime(final ThreadContext context, final IRubyObject value) {
-        if ( ! ( value instanceof RubyTime ) ) { // unlikely
-            return (RubyTime) TypeConverter.convertToTypeWithCheck(value, context.runtime.getTime(), "to_time");
-        }
-        return (RubyTime) value;
+        return DateTimeUtils.toTime(context, value);
     }
 
     protected boolean isDefaultTimeZoneUTC(final ThreadContext context) {
@@ -2805,7 +2802,7 @@ public class RubyJdbcConnection extends RubyObject {
         final int index, IRubyObject value,
         final IRubyObject attribute, final int type) throws SQLException {
 
-        final RubyTime timeValue = toTime(context, value);
+        final RubyTime timeValue = DateTimeUtils.toTime(context, value);
         final DateTime dateTime = dateTimeInDefaultTimeZone(context, timeValue.getDateTime());
         final Timestamp timestamp = new Timestamp(dateTime.getMillis());
         // 1942-11-30T01:02:03.123_456

@@ -282,6 +282,30 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
     }
 
     @Override
+    protected void setArrayParameter(final ThreadContext context,
+                                     final Connection connection, final PreparedStatement statement,
+                                     final int index, final IRubyObject value,
+                                     final IRubyObject attribute, final int type) throws SQLException {
+
+        final String typeName = resolveArrayBaseTypeName(context, attribute);
+        final RubyArray valueForDB = (RubyArray) value.callMethod(context, "values");
+
+        Object[] values;
+        switch (typeName) {
+        case "datetime":
+        case "timestamp": {
+            values = PgDateTimeUtils.timestampStringArray(context, valueForDB);
+            break;
+        }
+        default:
+            values = valueForDB.toArray();
+            break;
+        }
+
+        statement.setArray(index, connection.createArrayOf(typeName, values));
+    }
+
+    @Override
     protected void setBlobParameter(final ThreadContext context,
         final Connection connection, final PreparedStatement statement,
         final int index, final IRubyObject value,
@@ -304,47 +328,9 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
         final Connection connection, final PreparedStatement statement,
         final int index, IRubyObject value,
         final IRubyObject attribute, final int type) throws SQLException {
-
-        if ( value instanceof RubyFloat ) {
-            final double doubleValue = ( (RubyFloat) value ).getValue();
-            if ( Double.isInfinite(doubleValue) ) {
-                setTimestampInfinity(statement, index, doubleValue);
-                return;
-            }
-        }
-
-        RubyTime timeValue = toTime(context, value);
-
-        final Timestamp timestamp;
-
-        if (timeValue.getDateTime().getYear() > 0) {
-            timeValue = timeInDefaultTimeZone(context, timeValue);
-            DateTime dateTime = timeValue.getDateTime();
-            timestamp = new Timestamp(dateTime.getMillis());
-
-            if (timeValue.getNSec() > 0) timestamp.setNanos((int) (timestamp.getNanos() + timeValue.getNSec()));
-
-            statement.setTimestamp(index, timestamp, getCalendar(dateTime.getZone()));
-        }
-        else {
-            setTimestampBC(statement, index, timeValue);
-        }
-    }
-
-    private static void setTimestampBC(final PreparedStatement statement,
-                                       final int index, final RubyTime timeValue) throws SQLException {
-        DateTime dateTime = timeValue.getDateTime();
-        @SuppressWarnings("deprecated")
-        Timestamp timestamp = new Timestamp(dateTime.getYear() - 1900,
-                dateTime.getMonthOfYear() - 1,
-                dateTime.getDayOfMonth(),
-                dateTime.getHourOfDay(),
-                dateTime.getMinuteOfHour(),
-                dateTime.getSecondOfMinute(),
-                dateTime.getMillisOfSecond() * 1_000_000 + (int) timeValue.getNSec()
-        );
-
-        statement.setObject(index, timestamp);
+        // PGJDBC uses strings internally anyway, so using Timestamp doesn't do any good
+        String tsString = PgDateTimeUtils.timestampValueToString(context, value, null, true);
+        statement.setObject(index, tsString, Types.OTHER);
     }
 
     private static void setTimestampInfinity(final PreparedStatement statement,
@@ -366,7 +352,8 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
         final int index, IRubyObject value,
         final IRubyObject attribute, final int type) throws SQLException {
         // to handle more fractional second precision than (default) 59.123 only
-        super.setTimestampParameter(context, connection, statement, index, value, attribute, type);
+        String timeStr = DateTimeUtils.timeString(context, value, DateTimeZone.UTC, true);
+        statement.setObject(index, timeStr, Types.OTHER);
     }
 
     @Override
