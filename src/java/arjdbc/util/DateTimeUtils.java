@@ -28,6 +28,7 @@ import java.sql.Time;
 import java.sql.Timestamp;
 import java.util.TimeZone;
 
+import org.joda.time.Chronology;
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
 import org.joda.time.chrono.ISOChronology;
@@ -40,6 +41,7 @@ import org.jruby.runtime.Block;
 import org.jruby.runtime.ThreadContext;
 import org.jruby.runtime.builtin.IRubyObject;
 import org.jruby.util.ByteList;
+import org.jruby.util.TypeConverter;
 
 import static arjdbc.util.StringHelper.decByte;
 
@@ -48,6 +50,17 @@ import static arjdbc.util.StringHelper.decByte;
  * @author kares
  */
 public abstract class DateTimeUtils {
+    public static RubyTime toTime(final ThreadContext context, final IRubyObject value) {
+        if (!(value instanceof RubyTime)) { // unlikely
+            return (RubyTime) TypeConverter.convertToTypeWithCheck(value, context.runtime.getTime(), "to_time");
+        }
+        return (RubyTime) value;
+    }
+
+    public static DateTime dateTimeInZone(final DateTime dateTime, final DateTimeZone zone) {
+        if (zone == dateTime.getZone()) return dateTime;
+        return dateTime.withZone(zone);
+    }
 
     @SuppressWarnings("deprecation")
     public static ByteList timeToString(final Time time) {
@@ -577,4 +590,110 @@ public abstract class DateTimeUtils {
         return n;
     }
 
+
+    private static final char[] ZEROS = {'0', '0', '0', '0', '0', '0'};
+    private static final char[][] NUMBERS;
+
+    static {
+        // maximum value is 60 (seconds)
+        NUMBERS = new char[60][];
+        for (int i = 0; i < NUMBERS.length; i++) {
+            NUMBERS[i] = ((i < 10 ? "0" : "") + Integer.toString(i)).toCharArray();
+        }
+    }
+
+    /**
+     * Converts a ruby timestamp to a java string, optionally with timezone and timezone adjustment
+     * @param context
+     * @param value the ruby value, typically a Time
+     * @param zone DateTimeZone to adjust to, optional
+     * @param withZone include timezone in the string?
+     * @return timestamp as string
+     */
+    public static String timestampTimeToString(final ThreadContext context,
+                                               final IRubyObject value, DateTimeZone zone, boolean withZone) {
+        RubyTime timeValue = toTime(context, value);
+        DateTime dt = timeValue.getDateTime();
+
+        StringBuilder sb = new StringBuilder(36);
+
+        int year = dt.getYear();
+        if (year <= 0) {
+            year--;
+        } else if (zone != null) {
+            dt = dateTimeInZone(dt, zone);
+            year = dt.getYear();
+        }
+
+        Chronology chrono = dt.getChronology();
+        long millis = dt.getMillis();
+
+        // always use 4 digits for year to avoid short dates being misinterpreted
+        sb.append(Math.abs(year));
+        int lead = 4 - sb.length();
+        if (lead > 0) sb.insert(0, ZEROS, 0, lead);
+        sb.append('-');
+        sb.append(NUMBERS[chrono.monthOfYear().get(millis)]);
+        sb.append('-');
+        sb.append(NUMBERS[chrono.dayOfMonth().get(millis)]);
+        if (year < 0) sb.append(" BC");
+        sb.append(' ');
+
+        appendTime(sb, chrono, millis, (int) timeValue.getUSec(), withZone);
+
+        return sb.toString();
+    }
+
+    /**
+     * Converts a ruby time to a java string, optionally with timezone and timezone adjustment
+     * @param context
+     * @param value the ruby value, typically a Time
+     * @param zone DateTimeZone to adjust to, optional
+     * @param withZone include timezone in the string?
+     * @return time as string
+     */
+    public static String timeString(final ThreadContext context,
+                                    final IRubyObject value, DateTimeZone zone, boolean withZone) {
+        StringBuilder sb = new StringBuilder(21);
+        RubyTime timeValue = toTime(context, value);
+        DateTime dt = timeValue.getDateTime();
+        if (zone != null) dt = dateTimeInZone(dt, zone);
+
+        appendTime(sb, dt.getChronology(), dt.getMillis(), (int) timeValue.getUSec(), withZone);
+        return sb.toString();
+    }
+
+    private static void appendTime(StringBuilder sb, Chronology chrono,
+                                   long millis, int usec, boolean withZone) {
+        sb.append(NUMBERS[chrono.hourOfDay().get(millis)]);
+        sb.append(':');
+        sb.append(NUMBERS[chrono.minuteOfHour().get(millis)]);
+        sb.append(':');
+        sb.append(NUMBERS[chrono.secondOfMinute().get(millis)]);
+
+        // PG has microsecond resolution. Change when nanos are required
+        int micros = chrono.millisOfSecond().get(millis) * 1000 + usec;
+        if (micros > 0) {
+            sb.append('.');
+
+            int len = sb.length();
+            sb.append(micros);
+            int lead = 6 - (sb.length() - len);
+            if (lead > 0) sb.insert(len, ZEROS, 0, lead);
+
+            for (int end = sb.length() - 1; sb.charAt(end) == '0'; end--) {
+                sb.setLength(end);
+            }
+        }
+
+        if (withZone) {
+            int offset = chrono.getZone().getOffset(millis) / 1000;
+            int absoff = Math.abs(offset);
+            int hours = absoff / 3600;
+            int mins = (absoff - hours * 3600) / 60;
+
+            sb.append(offset < 0 ? '-' : '+');
+            sb.append(NUMBERS[hours]).append(':').append(NUMBERS[mins]);
+        }
+    }
 }
