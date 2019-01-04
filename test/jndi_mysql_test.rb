@@ -26,7 +26,7 @@ class MySQLJndiTest < Test::Unit::TestCase
 
     test "configures once" do
       pool = ActiveRecord::Base.connection_pool
-      assert_false pool.active_connection? if pool.respond_to?(:active_connection?)
+      assert_nil pool.active_connection? if pool.respond_to?(:active_connection?)
 
       adapter_class.any_instance.expects(:configure_connection).once
       ActiveRecord::Base.connection.exec_query "SELECT VERSION()"
@@ -43,7 +43,7 @@ class MySQLJndiTest < Test::Unit::TestCase
       assert pool.active_connection? if pool.respond_to?(:active_connection?)
 
       pool.release_connection
-      assert_false pool.active_connection? if pool.respond_to?(:active_connection?)
+      assert_nil pool.active_connection? if pool.respond_to?(:active_connection?)
 
       conn.expects(:configure_connection).once
       assert_equal conn, ActiveRecord::Base.connection
@@ -59,7 +59,7 @@ class MySQLJndiTest < Test::Unit::TestCase
 
       test "does not configure on creation" do
         pool = ActiveRecord::Base.connection_pool
-        assert_false pool.active_connection? if pool.respond_to?(:active_connection?)
+        assert_nil pool.active_connection? if pool.respond_to?(:active_connection?)
 
         adapter_class.any_instance.expects(:configure_connection).never
         ActiveRecord::Base.connection.exec_query "SELECT VERSION()"
@@ -71,7 +71,7 @@ class MySQLJndiTest < Test::Unit::TestCase
         assert pool.active_connection? if pool.respond_to?(:active_connection?)
 
         pool.release_connection
-        assert_false pool.active_connection? if pool.respond_to?(:active_connection?)
+        assert_nil pool.active_connection? if pool.respond_to?(:active_connection?)
 
         conn.expects(:configure_connection).never
         ActiveRecord::Base.connection.execute "SELECT 42"
@@ -88,7 +88,7 @@ class MySQLJndiTest < Test::Unit::TestCase
 
       ActiveRecord::Base.establish_connection JNDI_MYSQL_CONFIG.dup
       pool = ActiveRecord::Base.connection_pool # active_connection? since 3.1
-      assert_false pool.active_connection? if pool.respond_to?(:active_connection?)
+      assert_nil pool.active_connection? if pool.respond_to?(:active_connection?)
     end
 
     def teardown; ActiveRecord::Base.connection_pool.disconnect! end
@@ -137,7 +137,7 @@ class MySQLJndiTest < Test::Unit::TestCase
       assert_false is_connected?(connection)
 
       pool = Dummy.connection_pool
-      assert_false pool.active_connection? if pool.respond_to?(:active_connection?)
+      assert_nil pool.active_connection? if pool.respond_to?(:active_connection?)
       assert_true pool.connection.active? # checks out
       assert pool.active_connection? if pool.respond_to?(:active_connection?)
       assert_true connection.active?
