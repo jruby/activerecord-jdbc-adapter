@@ -704,11 +704,10 @@ module ArJdbc
 
     # alias_method :execute_and_auto_confirm, :execute
 
-    # Returns the value of an identity column of the last *INSERT* statement
-    # made over this connection.
+    # Returns the value of an identity column of the last *INSERT* statement made over this connection.
     # @note Check the *IDENTITY_VAL_LOCAL* function for documentation.
-    # @return [Fixnum]
-    def last_insert_id
+    # @return [Integer, NilClass]
+    def last_inserted_id(result)
       @connection.identity_val_local
     end
 
