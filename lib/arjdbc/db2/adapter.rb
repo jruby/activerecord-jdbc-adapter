@@ -342,60 +342,10 @@ module ArJdbc
 
     # Properly quotes the various data types.
     # @param value contains the data
-    # @param column (optional) contains info on the field
     # @override
-    def quote(value, column = nil)
-      return value.quoted_id if value.respond_to?(:quoted_id)
+    def quote(value)
       return value if sql_literal?(value)
-
-      if column
-        if column.respond_to?(:primary) && column.primary && column.klass != String
-          return value.to_i.to_s
-        end
-        if value && (column.type.to_sym == :decimal || column.type.to_sym == :integer)
-          return value.to_s
-        end
-      end
-
-      column_type = column && column.type.to_sym
-
-      case value
-      when nil then 'NULL'
-      when Numeric # IBM_DB doesn't accept quotes on numeric types
-        # if the column type is text or string, return the quote value
-        if column_type == :text || column_type == :string
-          "'#{value}'"
-        else
-          value.to_s
-        end
-      when String, ActiveSupport::Multibyte::Chars
-        if column_type == :binary && column.sql_type !~ /for bit data/i
-          if update_lob_value?(value, column)
-            value.nil? ? 'NULL' : BLOB_VALUE_MARKER # '@@@IBMBINARY@@@'"
-          else
-            "BLOB('#{quote_string(value)}')"
-          end
-        elsif column && column.sql_type =~ /clob/ # :text
-          if update_lob_value?(value, column)
-            value.nil? ? 'NULL' : CLOB_VALUE_MARKER # "'@@@IBMTEXT@@@'"
-          else
-            "'#{quote_string(value)}'"
-          end
-        elsif column_type == :xml
-          value.nil? ? 'NULL' : "'#{quote_string(value)}'" # "'<ibm>@@@IBMXML@@@</ibm>'"
-        else
-          "'#{quote_string(value)}'"
-        end
-      when Symbol then "'#{quote_string(value.to_s)}'"
-      when Time
-        # AS400 doesn't support date in time column
-        if column_type == :time
-          quote_time(value)
-        else
-          super
-        end
-      else super
-      end
+      super
     end
 
     # @override
