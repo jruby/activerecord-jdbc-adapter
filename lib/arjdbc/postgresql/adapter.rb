@@ -690,6 +690,10 @@ module ArJdbc
       @local_tz ||= execute('SHOW TIME ZONE', 'SCHEMA').first["TimeZone"]
     end
 
+    def bind_params_length
+      32767
+    end
+
   end
 end
 
