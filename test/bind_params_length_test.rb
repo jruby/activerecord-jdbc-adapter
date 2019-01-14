@@ -12,6 +12,6 @@ class BindParamsLengthTest < Test::Unit::TestCase
   end
 
   def test_bind_param_length
-    assert Topic.where(id: [1] * 75000).first
+    assert Topic.where(id: [1] * 35000).first
   end
 end
