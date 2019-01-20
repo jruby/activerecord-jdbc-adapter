@@ -635,29 +635,29 @@ module ArJdbc
       end
     end
 
-    def translate_exception(exception, message)
+    def translate_exception(exception, message:, sql:, binds:)
       return super unless exception.is_a?(ActiveRecord::JDBCError)
 
       # TODO: Can we base these on an error code of some kind?
       case exception.message
       when /duplicate key value violates unique constraint/
-        ::ActiveRecord::RecordNotUnique.new(message)
+        ::ActiveRecord::RecordNotUnique.new(message, sql: sql, binds: binds)
       when /violates not-null constraint/
-        ::ActiveRecord::NotNullViolation.new(message)
+        ::ActiveRecord::NotNullViolation.new(message, sql: sql, binds: binds)
       when /violates foreign key constraint/
-        ::ActiveRecord::InvalidForeignKey.new(message)
+        ::ActiveRecord::InvalidForeignKey.new(message, sql: sql, binds: binds)
       when /value too long/
-        ::ActiveRecord::ValueTooLong.new(message)
+        ::ActiveRecord::ValueTooLong.new(message, sql: sql, binds: binds)
       when /out of range/
-        ::ActiveRecord::RangeError.new(message)
+        ::ActiveRecord::RangeError.new(message, sql: sql, binds: binds)
       when /could not serialize/
-        ::ActiveRecord::SerializationFailure.new(message)
+        ::ActiveRecord::SerializationFailure.new(message, sql: sql, binds: binds)
       when /deadlock detected/
-        ::ActiveRecord::Deadlocked.new(message)
+        ::ActiveRecord::Deadlocked.new(message, sql: sql, binds: binds)
       when /lock timeout/
-        ::ActiveRecord::LockWaitTimeout.new(message)
+        ::ActiveRecord::LockWaitTimeout.new(message, sql: sql, binds: binds)
       when /canceling statement/ # This needs to come after lock timeout because the lock timeout message also contains "canceling statement"
-        ::ActiveRecord::QueryCanceled.new(message)
+        ::ActiveRecord::QueryCanceled.new(message, sql: sql, binds: binds)
       else
         super
       end

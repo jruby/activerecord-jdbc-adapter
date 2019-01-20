@@ -34,29 +34,27 @@ module ArJdbc
 
       protected
 
-      def translate_exception_class(e, sql)
-        begin
-          message = "#{e.class.name}: #{e.message}: #{sql}"
-        rescue Encoding::CompatibilityError
-          message = "#{e.class.name}: #{e.message.force_encoding sql.encoding}: #{sql}"
-        end
+      def translate_exception_class(e, sql, binds)
+        message = "#{e.class.name}: #{e.message}"
 
-        exception = translate_exception(e, message)
-        exception.set_backtrace e.backtrace unless e.equal?(exception)
+        exception = translate_exception(
+          e, message: message, sql: sql, binds: binds
+        )
+        exception.set_backtrace e.backtrace
         exception
       end
 
-      def translate_exception(e, message)
+      def translate_exception(exception, message:, sql:, binds:)
         # override in derived class
 
         # we shall not translate native "Java" exceptions as they might
         # swallow an ArJdbc / driver bug into an AR::StatementInvalid !
-        return e if e.is_a?(Java::JavaLang::Throwable)
+        return exception if exception.is_a?(Java::JavaLang::Throwable)
 
-        case e
-          when SystemExit, SignalException, NoMemoryError then e
-          when ActiveModel::RangeError, TypeError, RuntimeError then e
-          else ActiveRecord::StatementInvalid.new(message)
+        case exception
+          when SystemExit, SignalException, NoMemoryError then exception
+          when ActiveModel::RangeError, TypeError, RuntimeError then exception
+          else ActiveRecord::StatementInvalid.new(message, sql: sql, binds: binds)
         end
       end
 
