@@ -54,11 +54,10 @@ module ArJdbc
     # DIFFERENCE: class_attribute in original adapter is moved down to our section which is a class
     #  since we cannot define it here in the module (original source this is a class).
 
-    class StatementPool < ConnectionAdapters::StatementPool
+    class StatementPool < ConnectionAdapters::StatementPool # :nodoc:
       private
-
       def dealloc(stmt)
-        stmt[:stmt].close unless stmt[:stmt].closed?
+        stmt.close unless stmt.closed?
       end
     end
 
@@ -67,7 +66,6 @@ module ArJdbc
 
       @active     = true
       @statements = StatementPool.new(self.class.type_cast_config_to_integer(config[:statement_limit]))
-
       configure_connection
     end
 
@@ -80,7 +78,11 @@ module ArJdbc
     end
 
     def supports_partial_index?
-      sqlite_version >= "3.8.0"
+      sqlite_version >= "3.9.0"
+    end
+
+    def supports_expression_index?
+      sqlite_version >= "3.9.0"
     end
 
     def requires_reloading?
@@ -88,7 +90,7 @@ module ArJdbc
     end
 
     def supports_foreign_keys_in_create?
-      sqlite_version >= "3.6.19"
+      true
     end
 
     def supports_views?
@@ -99,8 +101,8 @@ module ArJdbc
       true
     end
 
-    def supports_multi_insert?
-      sqlite_version >= "3.7.11"
+    def supports_json?
+      true
     end
 
     def active?
@@ -144,22 +146,36 @@ module ArJdbc
       true
     end
 
+    def supports_lazy_transactions?
+      true
+    end
+
     # REFERENTIAL INTEGRITY ====================================
 
     def disable_referential_integrity # :nodoc:
-      old = query_value("PRAGMA foreign_keys")
+      old_foreign_keys = query_value("PRAGMA foreign_keys")
+      old_defer_foreign_keys = query_value("PRAGMA defer_foreign_keys")
 
       begin
+        execute("PRAGMA defer_foreign_keys = ON")
         execute("PRAGMA foreign_keys = OFF")
         yield
       ensure
-        execute("PRAGMA foreign_keys = #{old}")
+        execute("PRAGMA defer_foreign_keys = #{old_defer_foreign_keys}")
+        execute("PRAGMA foreign_keys = #{old_foreign_keys}")
       end
     end
-    
+
     #--
     # DATABASE STATEMENTS ======================================
     #++
+
+    READ_QUERY = ActiveRecord::ConnectionAdapters::AbstractAdapter.build_read_query_regexp(:begin, :commit, :explain, :select, :pragma, :release, :savepoint, :rollback) # :nodoc:
+    private_constant :READ_QUERY
+
+    def write_query?(sql) # :nodoc:
+      !READ_QUERY.match?(sql)
+    end
 
     def explain(arel, binds = [])
       sql = "EXPLAIN QUERY PLAN #{to_sql(arel, binds)}"
@@ -168,6 +184,12 @@ module ArJdbc
     end
 
     def exec_query(sql, name = nil, binds = [], prepare: false)
+      if preventing_writes? && write_query?(sql)
+        raise ActiveRecord::ReadOnlyError, "Write query attempted while in readonly mode: #{sql}"
+      end
+
+      materialize_transactions
+
       type_casted_binds = type_casted_binds(binds)
 
       log(sql, name, binds, type_casted_binds) do
@@ -185,11 +207,8 @@ module ArJdbc
               stmt.close
             end
           else
-            cache = @statements[sql] ||= {
-                stmt: @connection.prepare(sql)
-            }
-            stmt = cache[:stmt]
-            cols = cache[:cols] ||= stmt.columns
+            stmt = @statements[sql] ||= @connection.prepare(sql)
+            cols = stmt.columns
             stmt.reset!
             stmt.bind_params(type_casted_binds)
             records = stmt.to_a
@@ -200,7 +219,7 @@ module ArJdbc
       end
     end
 
-    def exec_delete(sql, name = 'SQL', binds = [])
+    def exec_delete(sql, name = "SQL", binds = [])
       exec_query(sql, name, binds)
       @connection.changes
     end
@@ -211,6 +230,12 @@ module ArJdbc
     end
 
     def execute(sql, name = nil) #:nodoc:
+      if preventing_writes? && write_query?(sql)
+        raise ActiveRecord::ReadOnlyError, "Write query attempted while in readonly mode: #{sql}"
+      end
+
+      materialize_transactions
+
       log(sql, name) do
         ActiveSupport::Dependencies.interlock.permit_concurrent_loads do
           @connection.execute(sql)
@@ -219,15 +244,15 @@ module ArJdbc
     end
 
     def begin_db_transaction #:nodoc:
-      log("begin transaction",nil) { @connection.transaction }
+      log("begin transaction", nil) { @connection.transaction }
     end
 
     def commit_db_transaction #:nodoc:
-      log("commit transaction",nil) { @connection.commit }
+      log("commit transaction", nil) { @connection.commit }
     end
 
     def exec_rollback_db_transaction #:nodoc:
-      log("rollback transaction",nil) { @connection.rollback }
+      log("rollback transaction", nil) { @connection.rollback }
     end
 
     # SCHEMA STATEMENTS ========================================
@@ -250,13 +275,6 @@ module ArJdbc
       exec_query "ALTER TABLE #{quote_table_name(table_name)} RENAME TO #{quote_table_name(new_name)}"
       rename_table_indexes(table_name, new_name)
     end
-
-    # DIFFERENCE: deprecated causes a JRuby 9.1 bug where "super" calls itself -> do inline
-    def valid_alter_table_type?(type, options = {})
-      ActiveSupport::Deprecation.deprecation_warning(__method__)
-      !invalid_alter_table_type?(type, options)
-    end
-    #deprecate :valid_alter_table_type?
 
     def add_column(table_name, column_name, type, options = {}) #:nodoc:
       if invalid_alter_table_type?(type, options)
@@ -330,14 +348,6 @@ module ArJdbc
       end
     end
 
-    def insert_fixtures(rows, table_name)
-      ActiveSupport::Deprecation.warn(<<-MSG.squish)
-          `insert_fixtures` is deprecated and will be removed in the next version of Rails.
-          Consider using `insert_fixtures_set` for performance improvement.
-      MSG
-      insert_fixtures_set(table_name => rows)
-    end
-
     def insert_fixtures_set(fixture_set, tables_to_delete = [])
       disable_referential_integrity do
         transaction(requires_new: true) do
@@ -349,8 +359,20 @@ module ArJdbc
         end
       end
     end
-    
+
     private
+    # See https://www.sqlite.org/limits.html,
+    # the default value is 999 when not configured.
+    def bind_params_length
+      999
+    end
+
+    def check_version
+      if sqlite_version < "3.8.0"
+        raise "Your version of SQLite (#{sqlite_version}) is too old. Active Record supports SQLite >= 3.8."
+      end
+    end
+
     def initialize_type_map(m = type_map)
       super
       register_class_with_limit m, %r(int)i, SQLite3Integer
@@ -369,14 +391,27 @@ module ArJdbc
       type.to_sym == :primary_key || options[:primary_key]
     end
 
-    def alter_table(table_name, options = {}) #:nodoc:
+    def alter_table(table_name, options = {})
       altered_table_name = "a#{table_name}"
-      caller = lambda { |definition| yield definition if block_given? }
+      foreign_keys = foreign_keys(table_name)
+
+      caller = lambda do |definition|
+        rename = options[:rename] || {}
+        foreign_keys.each do |fk|
+          if column = rename[fk.options[:column]]
+            fk.options[:column] = column
+          end
+          definition.foreign_key(fk.to_table, fk.options)
+        end
+
+        yield definition if block_given?
+      end
 
       transaction do
-        move_table(table_name, altered_table_name,
-                   options.merge(temporary: true))
-        move_table(altered_table_name, table_name, &caller)
+        disable_referential_integrity do
+          move_table(table_name, altered_table_name, options.merge(temporary: true))
+          move_table(altered_table_name, table_name, &caller)
+        end
       end
     end
 
@@ -395,23 +430,24 @@ module ArJdbc
         end
         columns(from).each do |column|
           column_name = options[:rename] ?
-              (options[:rename][column.name] ||
-                  options[:rename][column.name.to_sym] ||
-                  column.name) : column.name
+            (options[:rename][column.name] ||
+             options[:rename][column.name.to_sym] ||
+             column.name) : column.name
 
           @definition.column(column_name, column.type,
-                             limit: column.limit, default: column.default,
-                             precision: column.precision, scale: column.scale,
-                             null: column.null, collation: column.collation,
-                             primary_key: column_name == from_primary_key
+            limit: column.limit, default: column.default,
+            precision: column.precision, scale: column.scale,
+            null: column.null, collation: column.collation,
+            primary_key: column_name == from_primary_key
           )
         end
+
         yield @definition if block_given?
       end
       copy_table_indexes(from, to, options[:rename] || {})
       copy_table_contents(from, to,
-                          @definition.columns.map(&:name),
-                          options[:rename] || {})
+        @definition.columns.map(&:name),
+        options[:rename] || {})
     end
 
     def copy_table_indexes(from, to, rename = {})
@@ -426,9 +462,12 @@ module ArJdbc
           name = name[1..-1]
         end
 
-        to_column_names = columns(to).map(&:name)
-        columns = index.columns.map { |c| rename[c] || c }.select do |column|
-          to_column_names.include?(column)
+        columns = index.columns
+        if columns.is_a?(Array)
+          to_column_names = columns(to).map(&:name)
+          columns = columns.map { |c| rename[c] || c }.select do |column|
+            to_column_names.include?(column)
+          end
         end
 
         unless columns.empty?
@@ -455,26 +494,26 @@ module ArJdbc
     end
 
     def sqlite_version
-      @sqlite_version ||= SQLite3Adapter::Version.new(select_value("select sqlite_version(*)"))
+      @sqlite_version ||= SQLite3Adapter::Version.new(query_value("SELECT sqlite_version(*)"))
     end
 
     def translate_exception(exception, message:, sql:, binds:)
       case exception.message
-        # SQLite 3.8.2 returns a newly formatted error message:
-        #   UNIQUE constraint failed: *table_name*.*column_name*
-        # Older versions of SQLite return:
-        #   column *column_name* is not unique
-        when /column(s)? .* (is|are) not unique/, /UNIQUE constraint failed: .*/
-          # DIFFERENCE: FQN
-          ::ActiveRecord::RecordNotUnique.new(message, sql: sql, binds: binds)
-        when /.* may not be NULL/, /NOT NULL constraint failed: .*/
-          # DIFFERENCE: FQN
-          ::ActiveRecord::NotNullViolation.new(message, sql: sql, binds: binds)
-        when /FOREIGN KEY constraint failed/i
-          # DIFFERENCE: FQN
-          ::ActiveRecord::InvalidForeignKey.new(message, sql: sql, binds: binds)
-        else
-          super
+      # SQLite 3.8.2 returns a newly formatted error message:
+      #   UNIQUE constraint failed: *table_name*.*column_name*
+      # Older versions of SQLite return:
+      #   column *column_name* is not unique
+      when /column(s)? .* (is|are) not unique/, /UNIQUE constraint failed: .*/
+        # DIFFERENCE: FQN
+        ::ActiveRecord::RecordNotUnique.new(message, sql: sql, binds: binds)
+      when /.* may not be NULL/, /NOT NULL constraint failed: .*/
+        # DIFFERENCE: FQN
+        ::ActiveRecord::NotNullViolation.new(message, sql: sql, binds: binds)
+      when /FOREIGN KEY constraint failed/i
+        # DIFFERENCE: FQN
+        ::ActiveRecord::InvalidForeignKey.new(message, sql: sql, binds: binds)
+      else
+        super
       end
     end
 
@@ -482,11 +521,11 @@ module ArJdbc
 
     def table_structure_with_collation(table_name, basic_structure)
       collation_hash = {}
-      sql = <<-SQL
-            SELECT sql FROM
-              (SELECT * FROM sqlite_master UNION ALL
-               SELECT * FROM sqlite_temp_master)
-            WHERE type = 'table' AND name = #{quote(table_name)}
+      sql = <<~SQL
+        SELECT sql FROM
+          (SELECT * FROM sqlite_master UNION ALL
+           SELECT * FROM sqlite_temp_master)
+        WHERE type = 'table' AND name = #{quote(table_name)}
       SQL
 
       # Result will have following sample string
@@ -515,7 +554,7 @@ module ArJdbc
           column
         end
       else
-        basic_structure.to_hash
+        basic_structure.to_a
       end
     end
 
@@ -652,22 +691,7 @@ module ActiveRecord::ConnectionAdapters
 
     # Note: This is part of original AR sqlite3_adapter.rb and not an override by us.  This is to just
     # work around our copy of Sqlite3Adapter being a module above and not a class.
-    ##
-    # :singleton-method:
-    # Indicates whether boolean values are stored in sqlite3 databases as 1
-    # and 0 or 't' and 'f'. Leaving <tt>ActiveRecord::ConnectionAdapters::SQLite3Adapter.represent_boolean_as_integer</tt>
-    # set to false is deprecated. SQLite databases have used 't' and 'f' to
-    # serialize boolean values and must have old data converted to 1 and 0
-    # (its native boolean serialization) before setting this flag to true.
-    # Conversion can be accomplished by setting up a rake task which runs
-    #
-    #   ExampleModel.where("boolean_column = 't'").update_all(boolean_column: 1)
-    #   ExampleModel.where("boolean_column = 'f'").update_all(boolean_column: 0)
-    # for all models and all boolean columns, after which the flag must be set
-    # to true by adding the following to your <tt>application.rb</tt> file:
-    #
-    #   Rails.application.config.active_record.sqlite3.represent_boolean_as_integer = true
-    class_attribute :represent_boolean_as_integer, default: false
+    class_attribute :represent_boolean_as_integer, default: true
 
     def supports_transaction_isolation?
       false
