@@ -54,7 +54,7 @@ connections:
       database: arunit2
 
   mysql2:
-    _setup: &_setup
+    arunit: &arunit
       username: <%= ENV['MY_USER'] || 'rails' %>
       encoding: utf8
       prepared_statements: <%= ENV['PREPARED_STATEMENTS'] || 'false' %>
@@ -65,14 +65,12 @@ connections:
       properties:
         serverTimezone: <%= java.util.TimeZone.getDefault.getID %>
       <% end %>
-    arunit:
-      <<: *_setup
       collation: utf8_unicode_ci
     arunit2:
-      <<: *_setup
+      <<: *arunit
 
   postgresql:
-    _setup: &_setup
+    arunit: &arunit
       <% if ENV.key?('INSERT_RETURNING') %>
       insert_returning: <%= ENV['INSERT_RETURNING'] %> # really should leave it off to no key if not set
       <% end %>
@@ -87,13 +85,11 @@ connections:
         #   SEVERE: Connection error: org.postgresql.util.PSQLException: FATAL: database "xxx" does not exist
         #loggerLevel: OFF # Broken in 42.1.4 thus let's do it manually :
         <% java.util.logging.Logger.getLogger("org.postgresql").setLevel(java.util.logging.Level::OFF) rescue nil %>
-    arunit:
-      <<: *_setup
     arunit_without_prepared_statements:
-      <<: *_setup
+      <<: *arunit
       prepared_statements: false
     arunit2:
-      <<: *_setup
+      <<: *arunit
 
   sqlite3:
     arunit:
