@@ -706,6 +706,7 @@ module ActiveRecord::ConnectionAdapters
   remove_const(:PostgreSQLAdapter) if const_defined?(:PostgreSQLAdapter)
 
   class PostgreSQLAdapter < AbstractAdapter
+    class_attribute :create_unlogged_tables, default: false
 
     # Try to use as much of the built in postgres logic as possible
     # maybe someday we can extend the actual adapter
