@@ -290,4 +290,5 @@ module Arel
   end
 end
 
-Arel::Visitors::VISITORS['mssql'] = Arel::Visitors::VISITORS['sqlserver'] = Arel::Visitors::SQLServerNG
+# FIXME: Arel::Visitors::VISITORS is not defined anymore
+# Arel::Visitors::VISITORS['mssql'] = Arel::Visitors::VISITORS['sqlserver'] = Arel::Visitors::SQLServerNG

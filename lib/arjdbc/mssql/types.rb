@@ -316,7 +316,8 @@ module ArJdbc
     class UUIDType < ActiveRecord::Type::String
       def type; :uuid end
 
-      alias_method :type_cast_for_database, :type_cast_from_database
+      # FIXME: type_cast_from_database is not defined anymore
+      # alias_method :type_cast_for_database, :type_cast_from_database
 
       ACCEPTABLE_UUID = %r{\A\{?([a-fA-F0-9]{4}-?){8}\}?\z}x
       def type_cast(value); value.to_s[ACCEPTABLE_UUID, 0] end
