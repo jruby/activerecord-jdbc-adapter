@@ -3,6 +3,9 @@ ArJdbc.load_java_part :MSSQL
 
 require 'strscan'
 
+require 'arel'
+require 'arel/visitors/bind_visitor'
+require 'arel/visitors/sqlserver'
 require 'active_record/connection_adapters/abstract_adapter'
 
 require 'arjdbc/abstract/core'
@@ -25,7 +28,6 @@ module ArJdbc
     require 'arjdbc/mssql/column'
     require 'arjdbc/mssql/explain_support'
     require 'arjdbc/mssql/types' if AR42
-    require 'arel/visitors/sql_server'
 
     include LimitHelpers
     include Utils
