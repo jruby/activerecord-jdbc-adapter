@@ -76,11 +76,6 @@ module ArJdbc
       m.register_type              'xml',               XmlType.new
     end
 
-    def clear_cache!
-      super
-      reload_type_map
-    end
-
     # @private
     class BigIntegerType < ActiveRecord::Type::BigInteger
       def type; :bigint end

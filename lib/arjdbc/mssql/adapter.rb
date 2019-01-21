@@ -70,6 +70,12 @@ module ActiveRecord::ConnectionAdapters
       ::ActiveRecord::ConnectionAdapters::MSSQLColumn
     end
 
+    # FIXME: to be reviewed.
+    def clear_cache!
+      reload_type_map
+      super
+    end
+
     # Overrides the method in abstract adapter to set the limit and offset
     # in the right order. (SQLServer specific)
     # Called by bound_attributes
