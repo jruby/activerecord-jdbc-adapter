@@ -70,6 +70,24 @@ module ActiveRecord::ConnectionAdapters
       ::ActiveRecord::ConnectionAdapters::MSSQLColumn
     end
 
+    # Overrides the method in abstract adapter to set the limit and offset
+    # in the right order. (SQLServer specific)
+    # Called by bound_attributes
+    def combine_bind_parameters(
+      from_clause: [],
+      join_clause: [],
+      where_clause: [],
+      having_clause: [],
+      limit: nil,
+      offset: nil
+    )
+
+      result = from_clause + join_clause + where_clause + having_clause
+      result << offset if offset
+      result << limit if limit
+      result
+    end
+
     def arel_visitor # :nodoc:
       ::Arel::Visitors::SQLServer.new(self)
     end
