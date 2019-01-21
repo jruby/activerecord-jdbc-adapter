@@ -11,6 +11,8 @@ require 'arjdbc/abstract/database_statements'
 require 'arjdbc/abstract/statement_cache'
 require 'arjdbc/abstract/transaction_support'
 
+require 'arjdbc/mssql/schema_statements'
+require 'arjdbc/mssql/database_statements'
 
 # require 'arjdbc/util/quoted_cache'
 
@@ -32,11 +34,12 @@ module ArJdbc
 end
 
 module ActiveRecord::ConnectionAdapters
-  class MSSQLColumn # < JdbcColumn
+  class MSSQLColumn < Column
     # include ::ArJdbc::MSSQL::Column
   end
 
   class MSSQLAdapter < AbstractAdapter
+    ADAPTER_NAME = 'MSSQL'.freeze
 
     include ArJdbc::Abstract::Core
     include ArJdbc::Abstract::ConnectionManagement
@@ -46,6 +49,9 @@ module ActiveRecord::ConnectionAdapters
 
     #include ::ArJdbc::MSSQL
     #include ::ArJdbc::Util::QuotedCache
+
+    include MSSQL::SchemaStatements
+    include MSSQL::DatabaseStatements
 
     def initialize(connection, logger = nil, connection_parameters = nil, config = {})
       # configure_connection happens in super
