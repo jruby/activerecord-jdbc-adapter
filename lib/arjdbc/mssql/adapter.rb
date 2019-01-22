@@ -16,6 +16,7 @@ require 'arjdbc/abstract/transaction_support'
 
 
 require 'arjdbc/mssql/types'
+require 'arjdbc/mssql/quoting'
 require 'arjdbc/mssql/schema_statements'
 require 'arjdbc/mssql/database_statements'
 
@@ -53,6 +54,7 @@ module ActiveRecord::ConnectionAdapters
     #include ::ArJdbc::MSSQL
     #include ::ArJdbc::Util::QuotedCache
 
+    include MSSQL::Quoting
     include MSSQL::SchemaStatements
     include MSSQL::DatabaseStatements
 
