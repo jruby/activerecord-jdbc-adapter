@@ -1,81 +1,6 @@
-module ArJdbc
-  module MSSQL
-
-    def initialize_type_map(m)
-      #m.register_type              %r{.*},             UnicodeStringType.new
-      # Exact Numerics
-      register_class_with_limit m, /^bigint./,          BigIntegerType
-      m.alias_type                 'bigint',            'bigint(8)'
-      register_class_with_limit m, /^int\(|\s/,         ActiveRecord::Type::Integer
-      m.alias_type                 /^integer/,          'int(4)'
-      m.alias_type                 'int',               'int(4)'
-      register_class_with_limit m, /^smallint./,        SmallIntegerType
-      m.alias_type                 'smallint',          'smallint(2)'
-      register_class_with_limit m, /^tinyint./,         TinyIntegerType
-      m.alias_type                 'tinyint',           'tinyint(1)'
-      m.register_type              /^bit/,              ActiveRecord::Type::Boolean.new
-      m.register_type              %r{\Adecimal} do |sql_type|
-        scale = extract_scale(sql_type)
-        precision = extract_precision(sql_type)
-        DecimalType.new :precision => precision, :scale => scale
-        #if scale == 0
-        #  ActiveRecord::Type::Integer.new(:precision => precision)
-        #else
-        #  DecimalType.new(:precision => precision, :scale => scale)
-        #end
-      end
-      m.alias_type                 %r{\Anumeric},       'decimal'
-      m.register_type              /^money/,            MoneyType.new
-      m.register_type              /^smallmoney/,       SmallMoneyType.new
-      # Approximate Numerics
-      m.register_type              /^float/,            ActiveRecord::Type::Float.new
-      m.register_type              /^real/,             RealType.new
-      # Date and Time
-      m.register_type              /^date\(?/,          ActiveRecord::Type::Date.new
-      m.register_type              /^datetime\(?/,      DateTimeType.new
-      m.register_type              /smalldatetime/,     SmallDateTimeType.new
-      m.register_type              %r{\Atime} do |sql_type|
-        TimeType.new :precision => extract_precision(sql_type)
-      end
-      # Character Strings
-      register_class_with_limit m, %r{\Achar}i,         CharType
-      #register_class_with_limit m, %r{\Avarchar}i,      VarcharType
-      m.register_type              %r{\Anvarchar}i do |sql_type|
-        limit = extract_limit(sql_type)
-        if limit == 2_147_483_647 # varchar(max)
-          VarcharMaxType.new
-        else
-          VarcharType.new :limit => limit
-        end
-      end
-      #m.register_type              'varchar(max)',      VarcharMaxType.new
-      m.register_type              /^text/,             TextType.new
-      # Unicode Character Strings
-      register_class_with_limit m, %r{\Anchar}i,        UnicodeCharType
-      #register_class_with_limit m, %r{\Anvarchar}i,     UnicodeVarcharType
-      m.register_type              %r{\Anvarchar}i do |sql_type|
-        limit = extract_limit(sql_type)
-        if limit == 1_073_741_823 # nvarchar(max)
-          UnicodeVarcharMaxType.new
-        else
-          UnicodeVarcharType.new :limit => limit
-        end
-      end
-      #m.register_type              'nvarchar(max)',     UnicodeVarcharMaxType.new
-      m.alias_type                 'string',            'nvarchar(4000)'
-      m.register_type              /^ntext/,            UnicodeTextType.new
-      # Binary Strings
-      register_class_with_limit m, %r{\Aimage}i,        ImageType
-      register_class_with_limit m, %r{\Abinary}i,       BinaryType
-      register_class_with_limit m, %r{\Avarbinary}i,    VarbinaryType
-      #m.register_type              'varbinary(max)',    VarbinaryMaxType.new
-      # Other Data Types
-      m.register_type              'uniqueidentifier',  UUIDType.new
-      # TODO
-      #m.register_type              'timestamp',         SQLServer::Type::Timestamp.new
-      m.register_type              'xml',               XmlType.new
-    end
-
+# MSSQL type definitions
+module ActiveRecord
+  module ConnectionAdapters
     # @private
     class BigIntegerType < ActiveRecord::Type::BigInteger
       def type; :bigint end
@@ -199,9 +124,11 @@ module ArJdbc
       private
 
       def cast_value(value)
-        value = value.respond_to?(:usec) ?
-          value.change(year: 2000, month: 01, day: 01) :
-            cast_value_like_super(value)
+        value = if value.respond_to?(:usec)
+                  value.change(year: 2000, month: 1, day: 1)
+                else
+                  cast_value_like_super(value)
+                end
 
         return if value.blank?
         value.change usec: cast_usec(value)

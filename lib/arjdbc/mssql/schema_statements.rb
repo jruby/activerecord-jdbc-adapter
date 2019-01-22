@@ -9,6 +9,8 @@ module ActiveRecord
 
         # Returns an array of Column objects for the table specified by +table_name+.
         # See the concrete implementation for details on the expected parameter values.
+        # NOTE: This is ready, all implemented in the java part of adapter,
+        # it uses MSSQLColumn, SqlTypeMetadata, etc.
         def columns(table_name)
           @connection.columns(table_name)
         end
