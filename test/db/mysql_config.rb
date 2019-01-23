@@ -1,9 +1,11 @@
 MYSQL_CONFIG = {
-  :username => 'arjdbc',
-  :password => 'arjdbc',
-  :adapter  => 'mysql2',
-  :database => 'arjdbc_test',
-  :host     => 'localhost'
+  username:  'arjdbc',
+  password:  'arjdbc',
+  adapter:   'mysql2',
+  database:  'arjdbc_test',
+  host:      'localhost',
+  encoding:  'utf8',
+  collation: 'utf8_general_ci'
 }
 
 unless ( ps = ENV['PREPARED_STATEMENTS'] || ENV['PS'] ).nil?

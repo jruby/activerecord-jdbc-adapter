@@ -283,7 +283,7 @@ class MySQLSimpleTest < Test::Unit::TestCase
 
       host = [ MYSQL_CONFIG[:host] || 'localhost', '127.0.0.1' ] # fail-over
       with_connection(config.merge :host => host, :port => nil) do |connection|
-        assert_match /^jdbc:mysql:\/\/.*?127.0.0.1\//, connection.config[:url]
+        assert_match(/^jdbc:mysql:\/\/.*?127.0.0.1\//, connection.config[:url])
       end
     ensure
       ActiveRecord::Base.establish_connection(MYSQL_CONFIG)
@@ -417,16 +417,16 @@ class MySQLSimpleTest < Test::Unit::TestCase
       assert error.jdbc_exception.is_a?(Java::JavaSql::SQLException)
 
       assert error.error_code
-      assert error.error_code.is_a?(Fixnum)
+      assert error.error_code.is_a?(Integer)
       assert error.sql_state
 
       # #<ActiveRecord::JDBCError: com.mysql.jdbc.exceptions.jdbc4.MySQLSyntaxErrorException: Table 'arjdbc_test.bogus' doesn't exist>
       unless mariadb_driver?
-        assert_match /com.mysql.jdbc.exceptions.jdbc4.MySQLSyntaxErrorException: Table '.*?bogus' doesn't exist/, error.message
+        assert_match(/com.mysql.jdbc.exceptions.jdbc4.MySQLSyntaxErrorException: Table '.*?bogus' doesn't exist/, error.message)
       else
-        assert_match /java.sql.SQLSyntaxErrorException: .*Table '.*?bogus' doesn't exist/, error.message
+        assert_match(/java.sql.SQLSyntaxErrorException: .*Table '.*?bogus' doesn't exist/, error.message)
       end
-      assert_match /ActiveRecord::JDBCError: .*?Exception: /, error.inspect
+      assert_match(/ActiveRecord::JDBCError: .*?Exception: /, error.inspect)
 
       # sample error.cause.backtrace :
       #

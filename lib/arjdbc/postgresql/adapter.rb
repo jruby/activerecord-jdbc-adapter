@@ -531,77 +531,6 @@ module ArJdbc
       execute "TRUNCATE TABLE #{quote_table_name(table_name)}", name
     end
 
-    # Returns an array of indexes for the given table.
-    def indexes(table_name)
-
-      # FIXME: AR version => table = Utils.extract_schema_qualified_name(table_name.to_s)
-      schema, table = extract_schema_and_table(table_name.to_s)
-
-      result = query(<<-SQL, 'SCHEMA')
-            SELECT distinct i.relname, d.indisunique, d.indkey, pg_get_indexdef(d.indexrelid), t.oid,
-                            pg_catalog.obj_description(i.oid, 'pg_class') AS comment
-            FROM pg_class t
-            INNER JOIN pg_index d ON t.oid = d.indrelid
-            INNER JOIN pg_class i ON d.indexrelid = i.oid
-            LEFT JOIN pg_namespace n ON n.oid = i.relnamespace
-            WHERE i.relkind = 'i'
-              AND d.indisprimary = 'f'
-              AND t.relname = '#{table}'
-              AND n.nspname = #{schema ? "'#{schema}'" : 'ANY (current_schemas(false))'}
-            ORDER BY i.relname
-      SQL
-
-      result.map do |row|
-        index_name = row[0]
-        # FIXME: These values [1,2] are returned in a different format than AR expects, maybe we could update it on the Java side to be more accurate
-        unique = row[1].is_a?(String) ? row[1] == 't' : row[1] # JDBC gets us a boolean
-        indkey = row[2].is_a?(Java::OrgPostgresqlUtil::PGobject) ? row[2].value : row[2]
-        indkey = indkey.split(" ").map(&:to_i)
-        inddef = row[3]
-        oid = row[4]
-        comment = row[5]
-
-        using, expressions, where = inddef.scan(/ USING (\w+?) \((.+?)\)(?: WHERE (.+))?\z/m).flatten
-
-        orders = {}
-        opclasses = {}
-
-        if indkey.include?(0)
-          columns = expressions
-        else
-          columns = Hash[query(<<-SQL.strip_heredoc, "SCHEMA")].values_at(*indkey).compact
-                SELECT a.attnum, a.attname
-                FROM pg_attribute a
-                WHERE a.attrelid = #{oid}
-                AND a.attnum IN (#{indkey.join(",")})
-          SQL
-
-          # add info on sort order (only desc order is explicitly specified, asc is the default)
-          # and non-default opclasses
-          expressions.scan(/(?<column>\w+)\s?(?<opclass>\w+_ops)?\s?(?<desc>DESC)?\s?(?<nulls>NULLS (?:FIRST|LAST))?/).each do |column, opclass, desc, nulls|
-            opclasses[column] = opclass.to_sym if opclass
-            if nulls
-              orders[column] = [desc, nulls].compact.join(' ')
-            elsif desc
-              orders[column] = :desc
-            end
-          end
-        end
-
-        IndexDefinition.new(
-            table_name,
-            index_name,
-            unique,
-            columns,
-            orders: orders,
-            opclasses: opclasses,
-            where: where,
-            using: using.to_sym,
-            comment: comment.presence
-        )
-      end
-    end
-
     # @private
     def column_name_for_operation(operation, node)
       case operation
@@ -635,29 +564,29 @@ module ArJdbc
       end
     end
 
-    def translate_exception(exception, message)
+    def translate_exception(exception, message:, sql:, binds:)
       return super unless exception.is_a?(ActiveRecord::JDBCError)
 
       # TODO: Can we base these on an error code of some kind?
       case exception.message
       when /duplicate key value violates unique constraint/
-        ::ActiveRecord::RecordNotUnique.new(message)
+        ::ActiveRecord::RecordNotUnique.new(message, sql: sql, binds: binds)
       when /violates not-null constraint/
-        ::ActiveRecord::NotNullViolation.new(message)
+        ::ActiveRecord::NotNullViolation.new(message, sql: sql, binds: binds)
       when /violates foreign key constraint/
-        ::ActiveRecord::InvalidForeignKey.new(message)
+        ::ActiveRecord::InvalidForeignKey.new(message, sql: sql, binds: binds)
       when /value too long/
-        ::ActiveRecord::ValueTooLong.new(message)
+        ::ActiveRecord::ValueTooLong.new(message, sql: sql, binds: binds)
       when /out of range/
-        ::ActiveRecord::RangeError.new(message)
+        ::ActiveRecord::RangeError.new(message, sql: sql, binds: binds)
       when /could not serialize/
-        ::ActiveRecord::SerializationFailure.new(message)
+        ::ActiveRecord::SerializationFailure.new(message, sql: sql, binds: binds)
       when /deadlock detected/
-        ::ActiveRecord::Deadlocked.new(message)
+        ::ActiveRecord::Deadlocked.new(message, sql: sql, binds: binds)
       when /lock timeout/
-        ::ActiveRecord::LockWaitTimeout.new(message)
+        ::ActiveRecord::LockWaitTimeout.new(message, sql: sql, binds: binds)
       when /canceling statement/ # This needs to come after lock timeout because the lock timeout message also contains "canceling statement"
-        ::ActiveRecord::QueryCanceled.new(message)
+        ::ActiveRecord::QueryCanceled.new(message, sql: sql, binds: binds)
       else
         super
       end
@@ -706,6 +635,7 @@ module ActiveRecord::ConnectionAdapters
   remove_const(:PostgreSQLAdapter) if const_defined?(:PostgreSQLAdapter)
 
   class PostgreSQLAdapter < AbstractAdapter
+    class_attribute :create_unlogged_tables, default: false
 
     # Try to use as much of the built in postgres logic as possible
     # maybe someday we can extend the actual adapter
