@@ -10,6 +10,8 @@ module ArJdbc
       NO_BINDS = [].freeze
 
       def exec_insert(sql, name = nil, binds = NO_BINDS, pk = nil, sequence_name = nil)
+        materialize_transactions
+
         if without_prepared_statement?(binds)
           log(sql, name) { @connection.execute_insert(sql) }
         else
@@ -22,6 +24,8 @@ module ArJdbc
       # It appears that at this point (AR 5.0) "prepare" should only ever be true
       # if prepared statements are enabled
       def exec_query(sql, name = nil, binds = NO_BINDS, prepare: false)
+        materialize_transactions
+
         if without_prepared_statement?(binds)
           log(sql, name) { @connection.execute_query(sql) }
         else
@@ -34,6 +38,8 @@ module ArJdbc
       end
 
       def exec_update(sql, name = nil, binds = NO_BINDS)
+        materialize_transactions
+
         if without_prepared_statement?(binds)
           log(sql, name) { @connection.execute_update(sql) }
         else
@@ -62,6 +68,8 @@ module ArJdbc
       end
 
       def execute(sql, name = nil)
+        materialize_transactions
+
         log(sql, name) { @connection.execute(sql) }
       end
 
