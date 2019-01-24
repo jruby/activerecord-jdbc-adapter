@@ -53,6 +53,10 @@ module ActiveRecord
         true
       end
 
+      def supports_lazy_transactions?
+        true
+      end
+
       def supports_transaction_isolation?
         true
       end
