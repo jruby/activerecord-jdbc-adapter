@@ -93,9 +93,6 @@ module ArJdbc
     private :redshift?
 
     def use_insert_returning?
-      if @use_insert_returning.nil?
-        @use_insert_returning = supports_insert_with_returning?
-      end
       @use_insert_returning
     end
 
@@ -165,7 +162,7 @@ module ArJdbc
       int4range:    { name: 'int4range' },
       int8range:    { name: 'int8range' },
       integer:      { name: 'integer' },
-      interval:     { name: 'interval' }, # This doesn't get added to AR's postgres adapter until 5.1 but it fixes broken tests in 5.0 ...
+      interval:     { name: 'interval' },
       json:         { name: 'json' },
       jsonb:        { name: 'jsonb' },
       line:         { name: 'line' },
@@ -198,94 +195,84 @@ module ArJdbc
       !native_database_types[type].nil?
     end
 
-    # Enable standard-conforming strings if available.
     def set_standard_conforming_strings
-      self.standard_conforming_strings=(true)
+      execute("SET standard_conforming_strings = on", "SCHEMA")
     end
 
-    # Enable standard-conforming strings if available.
-    def standard_conforming_strings=(enable)
-      client_min_messages = self.client_min_messages
-      begin
-        self.client_min_messages = 'panic'
-        value = enable ? "on" : "off"
-        execute("SET standard_conforming_strings = #{value}", 'SCHEMA')
-        @standard_conforming_strings = ( value == "on" )
-      rescue
-        @standard_conforming_strings = :unsupported
-      ensure
-        self.client_min_messages = client_min_messages
-      end
+    def supports_bulk_alter?
+      true
     end
 
-    def standard_conforming_strings?
-      if @standard_conforming_strings.nil?
-        client_min_messages = self.client_min_messages
-        begin
-          self.client_min_messages = 'panic'
-          value = select_one('SHOW standard_conforming_strings', 'SCHEMA')['standard_conforming_strings']
-          @standard_conforming_strings = ( value == "on" )
-        rescue
-          @standard_conforming_strings = :unsupported
-        ensure
-          self.client_min_messages = client_min_messages
-        end
-      end
-      @standard_conforming_strings == true # return false if :unsupported
+    def supports_index_sort_order?
+      true
     end
 
-    def supports_ddl_transactions?; true end
-
-    def supports_advisory_locks?; true end
-
-    def supports_explain?; true end
-
-    def supports_expression_index?; true end
-
-    def supports_foreign_keys?; true end
-
-    def supports_validate_constraints?; true end
-
-    def supports_index_sort_order?; true end
-
-    def supports_partial_index?; true end
-
-    def supports_savepoints?; true end
-
-    def supports_transaction_isolation?; true end
-
-    def supports_views?; true end
-
-    def supports_bulk_alter?; true end    
-
-    def supports_datetime_with_precision?; true end
-
-    def supports_comments?; true end
-
-    # Does PostgreSQL support standard conforming strings?
-    def supports_standard_conforming_strings?
-      standard_conforming_strings?
-      @standard_conforming_strings != :unsupported
+    def supports_partial_index?
+      true
     end
 
-    def supports_foreign_tables? # we don't really support this yet, its a reminder :)
-      postgresql_version >= 90300
+    def supports_expression_index?
+      true
     end
 
-    def supports_hex_escaped_bytea?
-      postgresql_version >= 90000
+    def supports_transaction_isolation?
+      true
     end
 
-    def supports_materialized_views?
-      postgresql_version >= 90300
+    def supports_foreign_keys?
+      true
+    end
+
+    def supports_validate_constraints?
+      true
+    end
+
+    def supports_views?
+      true
+    end
+
+    def supports_datetime_with_precision?
+      true
     end
 
     def supports_json?
       postgresql_version >= 90200
     end
 
-    def supports_insert_with_returning?
-      postgresql_version >= 80200
+    def supports_comments?
+      true
+    end
+
+    def supports_savepoints?
+      true
+    end
+
+    def supports_ddl_transactions?
+      true
+    end
+
+    def supports_advisory_locks?
+      true
+    end
+
+    def supports_explain?
+      true
+    end
+
+    def supports_extensions?
+      postgresql_version >= 90200
+    end
+
+    def supports_ranges?
+      postgresql_version >= 90200
+    end
+
+    def supports_materialized_views?
+      postgresql_version >= 90300
+    end
+
+    def supports_foreign_tables? # we don't really support this yet, its a reminder :)
+      postgresql_version >= 90300
     end
 
     def supports_pgcrypto_uuid?
@@ -294,15 +281,6 @@ module ArJdbc
 
     def supports_lazy_transactions?
       true
-    end
-
-    # Range data-types weren't introduced until PostgreSQL 9.2.
-    def supports_ranges?
-      postgresql_version >= 90200
-    end
-
-    def supports_extensions?
-      postgresql_version >= 90200
     end
 
     # From AR 5.1 postgres_adapter.rb
@@ -477,13 +455,7 @@ module ArJdbc
 
     def escape_bytea(string)
       return unless string
-      if supports_hex_escaped_bytea?
-        "\\x#{string.unpack("H*")[0]}"
-      else
-        result = ''
-        string.each_byte { |c| result << sprintf('\\\\%03o', c) }
-        result
-      end
+      "\\x#{string.unpack("H*")[0]}"
     end
 
     # @override
@@ -687,7 +659,7 @@ module ActiveRecord::ConnectionAdapters
       initialize_type_map
 
       @use_insert_returning = @config.key?(:insert_returning) ?
-        self.class.type_cast_config_to_boolean(@config[:insert_returning]) : nil
+        self.class.type_cast_config_to_boolean(@config[:insert_returning]) : true
     end
 
     def arel_visitor # :nodoc:
