@@ -292,6 +292,10 @@ module ArJdbc
       postgresql_version >= 90400
     end
 
+    def supports_lazy_transactions?
+      true
+    end
+
     # Range data-types weren't introduced until PostgreSQL 9.2.
     def supports_ranges?
       postgresql_version >= 90200
@@ -386,6 +390,8 @@ module ArJdbc
     # @note Only for "better" AR 4.0 compatibility.
     # @private
     def query(sql, name = nil)
+      materialize_transactions
+
       log(sql, name) do
         result = []
         @connection.execute_query_raw(sql, []) do |*values|
