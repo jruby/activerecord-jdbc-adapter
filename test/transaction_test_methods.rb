@@ -87,7 +87,7 @@ module TransactionTestMethods
 
     User.transaction(:isolation => :repeatable_read) do
       entry.reload
-      MyUser.find(entry.id).update_attributes(:login => 'my-user')
+      MyUser.find(entry.id).update(:login => 'my-user')
 
       entry.reload
       assert_equal 'user111', entry.login
