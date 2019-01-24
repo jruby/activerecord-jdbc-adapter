@@ -405,6 +405,14 @@ module ArJdbc
       end
     end
 
+    # from ActiveRecord::ConnectionAdapters::PostgreSQL::DatabaseStatements
+    READ_QUERY = ActiveRecord::ConnectionAdapters::AbstractAdapter.build_read_query_regexp(:begin, :commit, :explain, :select, :set, :show, :release, :savepoint, :rollback) # :nodoc:
+    private_constant :READ_QUERY
+
+    def write_query?(sql) # :nodoc:
+      !READ_QUERY.match?(sql)
+    end
+
     # We need to make sure to deallocate all the prepared statements
     # since apparently calling close on the statement object
     # doesn't always free the server resources and calling
