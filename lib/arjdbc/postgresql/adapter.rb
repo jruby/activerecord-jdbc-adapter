@@ -288,31 +288,6 @@ module ArJdbc
       index.using == :btree || super
     end
 
-    def enable_extension(name)
-      execute("CREATE EXTENSION IF NOT EXISTS \"#{name}\"")
-    end
-
-    def disable_extension(name)
-      execute("DROP EXTENSION IF EXISTS \"#{name}\" CASCADE")
-    end
-
-    def extension_enabled?(name)
-      if supports_extensions?
-        rows = select_rows("SELECT EXISTS(SELECT * FROM pg_available_extensions WHERE name = '#{name}' AND installed_version IS NOT NULL)", 'SCHEMA')
-        available = rows.first.first # true/false or 't'/'f'
-        available == true || available == 't'
-      end
-    end
-
-    def extensions
-      if supports_extensions?
-        rows = select_rows "SELECT extname from pg_extension", "SCHEMA"
-        rows.map { |row| row.first }
-      else
-        []
-      end
-    end
-
     def index_algorithms
       { :concurrently => 'CONCURRENTLY' }
     end
@@ -337,6 +312,34 @@ module ArJdbc
         raise(ArgumentError, "Postgres requires advisory lock ids to be a signed 64 bit integer")
       end
       select_value("SELECT pg_advisory_unlock(#{lock_id})")
+    end
+
+    def release_advisory_lock(lock_id) # :nodoc:
+      unless lock_id.is_a?(Integer) && lock_id.bit_length <= 63
+        raise(ArgumentError, "PostgreSQL requires advisory lock ids to be a signed 64 bit integer")
+      end
+      query_value("SELECT pg_advisory_unlock(#{lock_id})")
+    end
+
+    def enable_extension(name)
+      exec_query("CREATE EXTENSION IF NOT EXISTS \"#{name}\"").tap {
+        reload_type_map
+      }
+    end
+
+    def disable_extension(name)
+      exec_query("DROP EXTENSION IF EXISTS \"#{name}\" CASCADE").tap {
+        reload_type_map
+      }
+    end
+
+    def extension_enabled?(name)
+      res = exec_query("SELECT EXISTS(SELECT * FROM pg_available_extensions WHERE name = '#{name}' AND installed_version IS NOT NULL) as enabled", "SCHEMA")
+      res.cast_values.first
+    end
+
+    def extensions
+      exec_query("SELECT extname FROM pg_extension", "SCHEMA").cast_values
     end
 
     # Returns the max identifier length supported by PostgreSQL
@@ -488,30 +491,6 @@ module ArJdbc
       nil
     end
 
-    # Returns the list of a table's column names, data types, and default values.
-    #
-    # If the table name is not prefixed with a schema, the database will
-    # take the first match from the schema search path.
-    #
-    # Query implementation notes:
-    #  - format_type includes the column size constraint, e.g. varchar(50)
-    #  - ::regclass is a function that gives the id for a table name
-    def column_definitions(table_name)
-      select_rows(<<-end_sql, 'SCHEMA')
-        SELECT a.attname, format_type(a.atttypid, a.atttypmod),
-               pg_get_expr(d.adbin, d.adrelid), a.attnotnull, a.atttypid, a.atttypmod,
-               (SELECT c.collname FROM pg_collation c, pg_type t
-                 WHERE c.oid = a.attcollation AND t.oid = a.atttypid
-                  AND a.attcollation <> t.typcollation),
-               col_description(a.attrelid, a.attnum) AS comment
-          FROM pg_attribute a
-          LEFT JOIN pg_attrdef d ON a.attrelid = d.adrelid AND a.attnum = d.adnum
-         WHERE a.attrelid = #{quote(quote_table_name(table_name))}::regclass
-           AND a.attnum > 0 AND NOT a.attisdropped
-         ORDER BY a.attnum
-      end_sql
-    end
-    private :column_definitions
 
     def truncate(table_name, name = nil)
       execute "TRUNCATE TABLE #{quote_table_name(table_name)}", name
@@ -529,23 +508,55 @@ module ArJdbc
 
     private
 
+    # Returns the list of a table's column names, data types, and default values.
+    #
+    # If the table name is not prefixed with a schema, the database will
+    # take the first match from the schema search path.
+    #
+    # Query implementation notes:
+    #  - format_type includes the column size constraint, e.g. varchar(50)
+    #  - ::regclass is a function that gives the id for a table name
+    def column_definitions(table_name)
+      select_rows(<<~SQL, 'SCHEMA')
+        SELECT a.attname, format_type(a.atttypid, a.atttypmod),
+               pg_get_expr(d.adbin, d.adrelid), a.attnotnull, a.atttypid, a.atttypmod,
+               c.collname, col_description(a.attrelid, a.attnum) AS comment
+          FROM pg_attribute a
+          LEFT JOIN pg_attrdef d ON a.attrelid = d.adrelid AND a.attnum = d.adnum
+          LEFT JOIN pg_type t ON a.atttypid = t.oid
+          LEFT JOIN pg_collation c ON a.attcollation = c.oid AND a.attcollation <> t.typcollation
+         WHERE a.attrelid = #{quote(quote_table_name(table_name))}::regclass
+           AND a.attnum > 0 AND NOT a.attisdropped
+         ORDER BY a.attnum
+      SQL
+    end
+
+    def extract_table_ref_from_insert_sql(sql)
+      sql[/into\s("[A-Za-z0-9_."\[\]\s]+"|[A-Za-z0-9_."\[\]]+)\s*/im]
+      $1.strip if $1
+    end
+
+    def arel_visitor # :nodoc:
+      Arel::Visitors::PostgreSQL.new(self)
+    end
+
     # Pulled from ActiveRecord's Postgres adapter and modified to use execute
     def can_perform_case_insensitive_comparison_for?(column)
       @case_insensitive_cache ||= {}
       @case_insensitive_cache[column.sql_type] ||= begin
-        sql = <<-end_sql
-              SELECT exists(
-                SELECT * FROM pg_proc
-                WHERE proname = 'lower'
-                  AND proargtypes = ARRAY[#{quote column.sql_type}::regtype]::oidvector
-              ) OR exists(
-                SELECT * FROM pg_proc
-                INNER JOIN pg_cast
-                  ON ARRAY[casttarget]::oidvector = proargtypes
-                WHERE proname = 'lower'
-                  AND castsource = #{quote column.sql_type}::regtype
-              )
-        end_sql
+        sql = <<~SQL
+          SELECT exists(
+            SELECT * FROM pg_proc
+            WHERE proname = 'lower'
+              AND proargtypes = ARRAY[#{quote column.sql_type}::regtype]::oidvector
+          ) OR exists(
+            SELECT * FROM pg_proc
+            INNER JOIN pg_cast
+              ON ARRAY[casttarget]::oidvector = proargtypes
+            WHERE proname = 'lower'
+              AND castsource = #{quote column.sql_type}::regtype
+          )
+        SQL
         select_value(sql, 'SCHEMA')
       end
     end
@@ -594,11 +605,6 @@ module ArJdbc
         rest = rest[1..-1] if rest[0, 1] == "."
         [match_data[1], (rest.length > 0 ? rest : nil)]
       end
-    end
-
-    def extract_table_ref_from_insert_sql(sql)
-      sql[/into\s("[A-Za-z0-9_."\[\]\s]+"|[A-Za-z0-9_."\[\]]+)\s*/im]
-      $1.strip if $1
     end
 
     def local_tz
@@ -660,10 +666,6 @@ module ActiveRecord::ConnectionAdapters
 
       @use_insert_returning = @config.key?(:insert_returning) ?
         self.class.type_cast_config_to_boolean(@config[:insert_returning]) : true
-    end
-
-    def arel_visitor # :nodoc:
-      Arel::Visitors::PostgreSQL.new(self)
     end
 
     require 'active_record/connection_adapters/postgresql/schema_definitions'
