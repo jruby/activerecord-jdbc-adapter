@@ -73,6 +73,11 @@ module ActiveRecord::ConnectionAdapters
       ::ActiveRecord::ConnectionAdapters::MSSQLColumn
     end
 
+    # Does this adapter support migrations?
+    def supports_migrations?
+      true
+    end
+
     # FIXME: to be reviewed.
     def clear_cache!
       reload_type_map
