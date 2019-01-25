@@ -110,7 +110,9 @@ public class SQLite3RubyJdbcConnection extends RubyJdbcConnection {
                     statement = createStatement(context, connection);
                     if (statement.execute(query)) {
                         // Enebo: I do not think we need to worry about failure here?
-                        String encodingString = statement.getResultSet().getString(1);
+                        resultSet = statement.getResultSet();
+                        if (!resultSet.next()) return context.nil;
+                        String encodingString = resultSet.getString(1);
 
                         encoding = cachedString(context, encodingString);
 
