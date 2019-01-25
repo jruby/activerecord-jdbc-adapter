@@ -60,8 +60,9 @@ ArJdbc::ConnectionMethods.module_eval do
   def parse_sqlite3_config!(config)
     database = ( config[:database] ||= config[:dbfile] )
     if ':memory:' != database
-      config[:database] = File.expand_path(database, Rails.root) if defined?(Rails.root)
-      dirname = File.dirname(database)
+      # make sure to have an absolute path. Ruby and Java don't agree on working directory
+      config[:database] = File.expand_path(database, defined?(Rails.root) ? Rails.root : nil)
+      dirname = File.dirname(config[:database])
       Dir.mkdir(dirname) unless File.directory?(dirname)
     end
   end
