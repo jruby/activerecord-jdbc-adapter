@@ -33,7 +33,7 @@ Benchmark.bmbm do |x|
 
   x.report("BenchRecord#update() [#{TIMES}x]") do
     TIMES.times do |i|
-      records[i].update_attributes empty
+      records[i].update empty
     end
   end
 
@@ -44,7 +44,7 @@ Benchmark.bmbm do |x|
     x.report("BenchRecord#update('#{field}' => #{label.inspect}) [#{TIMES}x]") do
       # attrs = Hash.new; attrs[field] = value
       TIMES.times do |i|
-        records[i].update_attributes(attrs)
+        records[i].update(attrs)
       end
     end
   end
@@ -53,7 +53,7 @@ Benchmark.bmbm do |x|
   x.report("BenchRecord#update(...) [#{TIMES}x]") do
     # attrs = fields.dup
     TIMES.times do |i|
-      records[i].update_attributes(attrs)
+      records[i].update(attrs)
     end
   end
 

@@ -471,7 +471,7 @@ module SimpleTestMethods
     e = DbType.create! :sample_float => 0
     assert_nil e.reload.sample_boolean # unset boolean should default to nil
 
-    e.update_attributes :sample_boolean => false
+    e.update :sample_boolean => false
     assert_equal false, e.reload.sample_boolean
 
     e.sample_boolean = true

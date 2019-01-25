@@ -53,6 +53,10 @@ module ActiveRecord
         true
       end
 
+      def supports_lazy_transactions?
+        true
+      end
+
       def supports_transaction_isolation?
         true
       end
@@ -62,6 +66,14 @@ module ActiveRecord
       end
 
       # HELPER METHODS ===========================================
+
+      # from MySQL::DatabaseStatements
+      READ_QUERY = ActiveRecord::ConnectionAdapters::AbstractAdapter.build_read_query_regexp(:begin, :commit, :explain, :select, :set, :show, :release, :savepoint, :rollback) # :nodoc:
+      private_constant :READ_QUERY
+
+      def write_query?(sql) # :nodoc:
+        !READ_QUERY.match?(sql)
+      end
 
       # Reloading the type map in abstract/statement_cache.rb blows up postgres
       def clear_cache!

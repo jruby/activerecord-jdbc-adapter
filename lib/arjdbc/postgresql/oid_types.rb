@@ -33,12 +33,6 @@ module ArJdbc
         @extensions ||= super
       end
 
-      # @override
-      def lookup_cast_type(sql_type)
-        oid = execute("SELECT #{quote(sql_type)}::regtype::oid", "SCHEMA")
-        super oid.first['oid'].to_i
-      end
-
       def get_oid_type(oid, fmod, column_name, sql_type = '') # :nodoc:
         if !type_map.key?(oid)
           load_additional_types([oid])
