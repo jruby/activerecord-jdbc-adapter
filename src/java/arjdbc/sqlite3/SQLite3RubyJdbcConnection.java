@@ -456,6 +456,12 @@ public class SQLite3RubyJdbcConnection extends RubyJdbcConnection {
         return context.runtime.getTrue();
     }
 
+    @JRubyMethod(name = "readonly?")
+    public IRubyObject readonly_p(final ThreadContext context) throws SQLException {
+        final Connection connection = getConnection(true);
+        return context.runtime.newBoolean(connection.isReadOnly());
+    }
+
     @Override
     protected void setDecimalParameter(final ThreadContext context,
         final Connection connection, final PreparedStatement statement,

@@ -22,17 +22,27 @@ ArJdbc::ConnectionMethods.module_eval do
         raise
       end
     end
-    
+
+    config[:properties] ||= {}
+
     database = config[:database] # NOTE: "jdbc:sqlite::memory:" syntax is supported
     config[:url] ||= "jdbc:sqlite:#{database == ':memory:' ? '' : database}"
     config[:connection_alive_sql] ||= 'SELECT 1'
+
+    if config[:readonly]
+      # See
+      # * http://sqlite.org/c3ref/open.html
+      # * http://sqlite.org/c3ref/c_open_autoproxy.html
+      # => 0x01 = readonly, 0x40 = uri (default in JDBC)
+      config[:properties][:open_mode] = 0x01 | 0x40
+    end
 
     timeout = config[:timeout]
     if timeout && timeout.to_s !~ /\A\d+\Z/
       raise TypeError.new "Timeout must be nil or a number (got: #{timeout})."
     end
 
-    options = ( config[:properties] ||= {} )
+    options = config[:properties]
     options['busy_timeout'] ||= timeout unless timeout.nil?
 
     jdbc_connection(config)
