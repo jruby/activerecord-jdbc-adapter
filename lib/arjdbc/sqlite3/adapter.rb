@@ -183,65 +183,18 @@ module ArJdbc
       ::ActiveRecord::ConnectionAdapters::SQLite3::ExplainPrettyPrinter.new.pp(exec_query(sql, "EXPLAIN", []))
     end
 
-    def exec_query(sql, name = nil, binds = [], prepare: false)
-      if preventing_writes? && write_query?(sql)
-        raise ActiveRecord::ReadOnlyError, "Write query attempted while in readonly mode: #{sql}"
-      end
+    # DIFFERENCE: implemented in ArJdbc::Abstract::DatabaseStatements
+    #def exec_query(sql, name = nil, binds = [], prepare: false)
 
-      materialize_transactions
-
-      type_casted_binds = type_casted_binds(binds)
-
-      log(sql, name, binds, type_casted_binds) do
-        ActiveSupport::Dependencies.interlock.permit_concurrent_loads do
-          # Don't cache statements if they are not prepared
-          unless prepare
-            stmt = @connection.prepare(sql)
-            begin
-              cols = stmt.columns
-              unless without_prepared_statement?(binds)
-                stmt.bind_params(type_casted_binds)
-              end
-              records = stmt.to_a
-            ensure
-              stmt.close
-            end
-          else
-            stmt = @statements[sql] ||= @connection.prepare(sql)
-            cols = stmt.columns
-            stmt.reset!
-            stmt.bind_params(type_casted_binds)
-            records = stmt.to_a
-          end
-
-          ActiveRecord::Result.new(cols, records)
-        end
-      end
-    end
-
-    def exec_delete(sql, name = "SQL", binds = [])
-      exec_query(sql, name, binds)
-      @connection.changes
-    end
-    alias :exec_update :exec_delete
+    # DIFFERENCE: implemented in ArJdbc::Abstract::DatabaseStatements
+    #def exec_delete(sql, name = "SQL", binds = [])
 
     def last_inserted_id(result)
       @connection.last_insert_row_id
     end
 
-    def execute(sql, name = nil) #:nodoc:
-      if preventing_writes? && write_query?(sql)
-        raise ActiveRecord::ReadOnlyError, "Write query attempted while in readonly mode: #{sql}"
-      end
-
-      materialize_transactions
-
-      log(sql, name) do
-        ActiveSupport::Dependencies.interlock.permit_concurrent_loads do
-          @connection.execute(sql)
-        end
-      end
-    end
+    # DIFFERENCE: implemented in ArJdbc::Abstract::DatabaseStatements
+    #def execute(sql, name = nil) #:nodoc:
 
     def begin_db_transaction #:nodoc:
       log("begin transaction", nil) { @connection.transaction }
