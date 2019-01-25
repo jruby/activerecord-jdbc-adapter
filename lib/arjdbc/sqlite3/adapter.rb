@@ -689,9 +689,15 @@ module ActiveRecord::ConnectionAdapters
     include ArJdbc::Abstract::StatementCache
     include ArJdbc::Abstract::TransactionSupport
 
-    # Note: This is part of original AR sqlite3_adapter.rb and not an override by us.  This is to just
-    # work around our copy of Sqlite3Adapter being a module above and not a class.
-    class_attribute :represent_boolean_as_integer, default: true
+    def self.represent_boolean_as_integer=(value) # :nodoc:
+      if value == false
+        raise "`.represent_boolean_as_integer=` is now always true, so make sure your application can work with it and remove this settings."
+      end
+
+      ActiveSupport::Deprecation.warn(
+        "`.represent_boolean_as_integer=` is now always true, so setting this is deprecated and will be removed in Rails 6.1."
+      )
+    end
 
     def supports_transaction_isolation?
       false

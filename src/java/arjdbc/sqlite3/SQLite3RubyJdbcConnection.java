@@ -457,16 +457,6 @@ public class SQLite3RubyJdbcConnection extends RubyJdbcConnection {
     }
 
     @Override
-    protected void setBooleanParameter(final ThreadContext context,
-        final Connection connection, final PreparedStatement statement,
-        final int index, final IRubyObject value,
-        final IRubyObject attribute, final int type) throws SQLException {
-        // Apparently active record stores booleans in sqlite as 't' and 'f' instead of the built in 1/0
-        statement.setString(index, value.isTrue() ? "t" : "f");
-    }
-
-
-    @Override
     protected void setDecimalParameter(final ThreadContext context,
         final Connection connection, final PreparedStatement statement,
         final int index, final IRubyObject value,
