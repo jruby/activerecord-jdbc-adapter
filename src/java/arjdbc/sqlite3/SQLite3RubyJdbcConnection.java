@@ -110,7 +110,9 @@ public class SQLite3RubyJdbcConnection extends RubyJdbcConnection {
                     statement = createStatement(context, connection);
                     if (statement.execute(query)) {
                         // Enebo: I do not think we need to worry about failure here?
-                        String encodingString = statement.getResultSet().getString(1);
+                        resultSet = statement.getResultSet();
+                        if (!resultSet.next()) return context.nil;
+                        String encodingString = resultSet.getString(1);
 
                         encoding = cachedString(context, encodingString);
 
@@ -456,15 +458,11 @@ public class SQLite3RubyJdbcConnection extends RubyJdbcConnection {
         return context.runtime.getTrue();
     }
 
-    @Override
-    protected void setBooleanParameter(final ThreadContext context,
-        final Connection connection, final PreparedStatement statement,
-        final int index, final IRubyObject value,
-        final IRubyObject attribute, final int type) throws SQLException {
-        // Apparently active record stores booleans in sqlite as 't' and 'f' instead of the built in 1/0
-        statement.setString(index, value.isTrue() ? "t" : "f");
+    @JRubyMethod(name = "readonly?")
+    public IRubyObject readonly_p(final ThreadContext context) throws SQLException {
+        final Connection connection = getConnection(true);
+        return context.runtime.newBoolean(connection.isReadOnly());
     }
-
 
     @Override
     protected void setDecimalParameter(final ThreadContext context,

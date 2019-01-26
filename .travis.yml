@@ -91,5 +91,4 @@ matrix:
     - env: DB=mysql2     TEST_PREFIX="rails:" AR_VERSION="v6.0.0.beta1" DRIVER=MariaDB
     - env: DB=postgresql TEST_PREFIX="rails:" AR_VERSION="v6.0.0.beta1" # PS on by default
     - env: DB=postgresql TEST_PREFIX="rails:" AR_VERSION="v6.0.0.beta1" PREPARED_STATEMENTS=false
-    # FIXME: this is still bad
-    #- env: DB=sqlite3    TEST_PREFIX="rails:" AR_VERSION="v6.0.0.beta1"
+    - env: DB=sqlite3    TEST_PREFIX="rails:" AR_VERSION="v6.0.0.beta1"

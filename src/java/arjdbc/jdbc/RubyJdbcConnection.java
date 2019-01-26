@@ -1100,7 +1100,7 @@ public class RubyJdbcConnection extends RubyObject {
                         return mapQueryResult(context, connection, statement.getResultSet());
                     }
 
-                    return context.nil;
+                    return newEmptyResult(context);
 
                 } catch (final SQLException e) {
                     debugErrorSQL(context, query);
@@ -1158,7 +1158,7 @@ public class RubyJdbcConnection extends RubyObject {
 
                         return results;
                     } else {
-                        return context.nil;
+                        return newEmptyResult(context);
                     }
                 } catch (final SQLException e) {
                     debugErrorSQL(context, query);
@@ -3668,6 +3668,11 @@ public class RubyJdbcConnection extends RubyObject {
     protected static IRubyObject newResult(final ThreadContext context, ColumnData[] columns, IRubyObject rows) {
         final RubyClass Result = getResult(context.runtime);
         return Result.newInstance(context, columnsToArray(context, columns), rows, Block.NULL_BLOCK); // Result.new
+    }
+
+    protected static IRubyObject newEmptyResult(final ThreadContext context) {
+        final RubyClass Result = getResult(context.runtime);
+        return Result.newInstance(context, RubyArray.newEmptyArray(context.runtime), RubyArray.newEmptyArray(context.runtime), Block.NULL_BLOCK); // Result.new
     }
 
     private static RubyArray columnsToArray(ThreadContext context, ColumnData[] columns) {

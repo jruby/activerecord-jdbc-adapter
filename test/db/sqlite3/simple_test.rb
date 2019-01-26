@@ -300,8 +300,7 @@ class SQLite3SimpleTest < Test::Unit::TestCase
     assert_equal time.to_s.sub('2007', '2000'), foo.finish.to_s
     assert_equal time.to_date.to_s, foo.a_date.to_s
     assert_equal 0, foo.start.usec # seemingly no nanos precision support (since 5.0) ?!?
-    pend "JRuby bug: https://github.com/jruby/jruby/issues/4866" if defined? JRUBY_VERSION
-    assert_equal 0, foo.finish.usec # seemingly no nanos precision support (since 5.0) ?!?
+    assert_equal 999900, foo.finish.usec # seemingly no nanos precision support (since 5.0) ?!?
   ensure
     @connection.drop_table :some_foos, if_exists: true
   end
