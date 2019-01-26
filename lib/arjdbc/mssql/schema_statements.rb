@@ -80,12 +80,25 @@ module ActiveRecord
           create_database(name, options)
         end
 
-        private
+        # This is the same as the abstract method
+        def quote_table_name(name)
+          quote_column_name(name)
+        end
+
+        # This overrides the abstract method to be specific to SQL Server.
+        def quote_column_name(name)
+          name = name.to_s.split('.')
+          name.map! { |n| quote_name_part(n) } # "[#{name}]"
+          name.join('.')
+        end
 
         def quote_database_name(name)
           quote_name_part(name.to_s)
         end
 
+        private
+
+        # Implements the quoting style for SQL Server
         def quote_name_part(part)
           part =~ /^\[.*\]$/ ? part : "[#{part.gsub(']', ']]')}]"
         end
