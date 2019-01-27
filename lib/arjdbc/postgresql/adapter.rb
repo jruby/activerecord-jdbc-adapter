@@ -674,10 +674,6 @@ module ActiveRecord::ConnectionAdapters
     TableDefinition = ActiveRecord::ConnectionAdapters::PostgreSQL::TableDefinition
     Table = ActiveRecord::ConnectionAdapters::PostgreSQL::Table
 
-    def create_table_definition(*args) # :nodoc:
-      TableDefinition.new(*args)
-    end
-
     public :sql_for_insert
 
     def jdbc_connection_class(spec)
