@@ -247,7 +247,9 @@ public class MySQLRubyJdbcConnection extends RubyJdbcConnection {
             connection = super.newConnection();
         }
         catch (SQLException ex) {
-            if (ex.getErrorCode() == 1049) throw newNoDatabaseError(ex);
+            int errorCode = ex.getErrorCode();
+            // access denied, no database
+            if (errorCode == 1044 || errorCode == 1049) throw newNoDatabaseError(ex);
             throw ex;
         }
         if ( doStopCleanupThread() ) shutdownCleanupThread();
