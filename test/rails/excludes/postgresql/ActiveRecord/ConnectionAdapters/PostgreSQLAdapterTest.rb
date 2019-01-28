@@ -4,3 +4,4 @@ if ActiveRecord::Base.connection.prepared_statements
 end
 
 exclude :test_default_sequence_name_bad_table, "ARJDBC does more quoting (which is not wrong)"
+exclude :test_doesnt_error_when_a_set_query_is_called_while_preventing_writes, 'different return value for execute() in ARJCBC'

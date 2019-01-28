@@ -34,6 +34,7 @@ import arjdbc.util.StringHelper;
 import java.io.ByteArrayInputStream;
 import java.lang.StringBuilder;
 import java.lang.reflect.InvocationTargetException;
+import java.math.BigDecimal;
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.Date;
@@ -304,6 +305,24 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
         }
 
         statement.setArray(index, connection.createArrayOf(typeName, values));
+    }
+
+    protected void setDecimalParameter(final ThreadContext context,
+                                       final Connection connection, final PreparedStatement statement,
+                                       final int index, final IRubyObject value,
+                                       final IRubyObject attribute, final int type) throws SQLException {
+        if (value instanceof RubyBigDecimal) {
+            RubyBigDecimal bigDecimal = (RubyBigDecimal) value;
+
+            // too bad RubyBigDecimal.isNaN() isn't public
+            if (bigDecimal.nan_p(context) == context.runtime.getTrue()) {
+                statement.setDouble(index, Double.NaN);
+            } else {
+                statement.setBigDecimal(index, bigDecimal.getValue());
+            }
+        } else {
+            super.setDecimalParameter(context, connection, statement, index, value, attribute, type);
+        }
     }
 
     @Override
@@ -712,6 +731,11 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
         return DateTimeUtils.parseDate(context, value, getDefaultTimeZone(context));
     }
 
+    protected IRubyObject decimalToRuby(final ThreadContext context,
+                                        final Ruby runtime, final ResultSet resultSet, final int column) throws SQLException {
+        if ("NaN".equals(resultSet.getString(column)))  return new RubyBigDecimal(runtime, BigDecimal.ZERO, true);
+        return super.decimalToRuby(context, runtime, resultSet, column);
+    }
 
     /**
      * Detects PG specific types and converts them to their Ruby equivalents
