@@ -12,7 +12,7 @@
   <url>http://github.com/jruby/activerecord-jdbc-adapter/wiki</url>
 
   <properties>
-    <jruby.version>9.1.6.0</jruby.version>
+    <jruby.version>9.2.5.0</jruby.version>
   </properties>
 
   <issueManagement>
@@ -75,7 +75,7 @@
     <dependency>
       <groupId>org.postgresql</groupId>
       <artifactId>postgresql</artifactId>
-      <version>42.1.4.jre7</version>
+      <version>42.1.4</version>
     </dependency>
   </dependencies>
 
@@ -103,8 +103,8 @@
         <artifactId>maven-compiler-plugin</artifactId>
         <version>2.5.1</version>
         <configuration>
-          <source>1.7</source>
-          <target>1.7</target>
+          <source>1.8</source>
+          <target>1.8</target>
         </configuration>
       </plugin>
     </plugins>
