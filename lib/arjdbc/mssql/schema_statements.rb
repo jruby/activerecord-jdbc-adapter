@@ -52,6 +52,11 @@ module ActiveRecord
           []
         end
 
+        # Returns an array of indexes for the given table.
+        def indexes(table_name, name = nil)
+          @connection.indexes(table_name, name)
+        end
+
         def primary_keys(table_name)
           @connection.primary_keys(table_name)
         end
