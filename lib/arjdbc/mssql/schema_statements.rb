@@ -112,10 +112,9 @@ module ActiveRecord
           # It does not accept NVARCHAR(1073741823) here, so we have to change it
           # to NVARCHAR(MAX), even though they are logically equivalent.
           #
-          # MSSQL Server 2000 is skipped here because I don't know how it will behave.
-          #
           # See: http://msdn.microsoft.com/en-us/library/ms186939.aspx
-          if type_s == 'string' && limit == 1073741823 && ! sqlserver_2000?
+          #
+          if type_s == 'string' && limit == 1073741823
             'NVARCHAR(MAX)'
           elsif NO_LIMIT_TYPES.include?(type_s)
             super(type)
