@@ -14,7 +14,6 @@ require 'arjdbc/abstract/database_statements'
 require 'arjdbc/abstract/statement_cache'
 require 'arjdbc/abstract/transaction_support'
 
-
 require 'arjdbc/mssql/types'
 require 'arjdbc/mssql/quoting'
 require 'arjdbc/mssql/schema_statements'
@@ -39,7 +38,11 @@ end
 
 module ActiveRecord::ConnectionAdapters
   class MSSQLColumn < Column
-    # include ::ArJdbc::MSSQL::Column
+    # including in MSSQL::Column just the methods
+    # that I need as Im fixing the tests to 
+    # hopefully see what we really need.
+    # have left pre Rails 5 code in old_column.rb
+    include ::ArJdbc::MSSQL::Column
   end
 
   class MSSQLAdapter < AbstractAdapter
