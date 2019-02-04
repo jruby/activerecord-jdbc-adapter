@@ -46,6 +46,10 @@ module ActiveRecord
           @connection.columns(table_name)
         end
 
+        def indexes(table_name, name = nil)
+          @connection.indexes(table_name, name)
+        end
+
         # Returns an array of view names defined in the database.
         # (to be implemented)
         def views
@@ -83,6 +87,14 @@ module ActiveRecord
         def recreate_database(name, options = {})
           drop_database(name)
           create_database(name, options)
+        end
+
+        def remove_column(table_name, column_name, type = nil, options = {})
+          raise ArgumentError.new('You must specify at least one column name.  Example: remove_column(:people, :first_name)') if column_name.is_a? Array
+          remove_check_constraints(table_name, column_name)
+          remove_default_constraint(table_name, column_name)
+          remove_indexes(table_name, column_name)
+          execute "ALTER TABLE #{quote_table_name(table_name)} DROP COLUMN #{quote_column_name(column_name)}"
         end
 
         # This is the same as the abstract method
@@ -142,6 +154,29 @@ module ActiveRecord
         def quote_name_part(part)
           part =~ /^\[.*\]$/ ? part : "[#{part.gsub(']', ']]')}]"
         end
+
+        def remove_check_constraints(table_name, column_name)
+          constraints = select_values "SELECT CONSTRAINT_NAME FROM INFORMATION_SCHEMA.CONSTRAINT_COLUMN_USAGE where TABLE_NAME = '#{quote_string(table_name)}' and COLUMN_NAME = '#{quote_string(column_name)}'", 'SCHEMA'
+          constraints.each do |constraint|
+            execute "ALTER TABLE #{quote_table_name(table_name)} DROP CONSTRAINT #{quote_column_name(constraint)}"
+          end
+        end
+
+        def remove_default_constraint(table_name, column_name)
+          # If their are foreign keys in this table, we could still get back a 2D array, so flatten just in case.
+          execute_procedure(:sp_helpconstraint, table_name, 'nomsg').flatten.select do |row|
+            row['constraint_type'] == "DEFAULT on column #{column_name}"
+          end.each do |row|
+            execute "ALTER TABLE #{quote_table_name(table_name)} DROP CONSTRAINT #{row['constraint_name']}"
+          end
+        end
+
+        def remove_indexes(table_name, column_name)
+          indexes(table_name).select { |index| index.columns.include?(column_name.to_s) }.each do |index|
+            remove_index(table_name, name: index.name)
+          end
+        end
+
       end
     end
   end
