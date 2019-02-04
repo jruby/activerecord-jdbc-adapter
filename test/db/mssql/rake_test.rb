@@ -132,11 +132,8 @@ class MSSQLRakeDbCreateTest < Test::Unit::TestCase
   private
 
   def databases
-    if ActiveRecord::Base.connection.send(:sqlserver_2000?)
-      select = "SELECT name FROM master..sysdatabases ORDER BY name"
-    else
-      select = "SELECT name FROM sys.sysdatabases"
-    end
+    select = "SELECT name FROM sys.sysdatabases"
+
     ActiveRecord::Base.connection.select_rows(select).flatten
   end
 
