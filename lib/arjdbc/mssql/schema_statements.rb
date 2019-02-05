@@ -61,6 +61,14 @@ module ActiveRecord
           @connection.primary_keys(table_name)
         end
 
+        def charset
+          select_value "SELECT SqlCharSetName = CAST(SERVERPROPERTY('SqlCharSetName') AS NVARCHAR(128))"
+        end
+
+        def collation
+          select_value "SELECT Collation = CAST(SERVERPROPERTY('Collation') AS NVARCHAR(128))"
+        end
+
         def current_database
           select_value 'SELECT DB_NAME()'
         end
@@ -73,7 +81,9 @@ module ActiveRecord
         def drop_database(name)
           current_db = current_database
           use_database('master') if current_db.to_s == name
-          execute "DROP DATABASE #{quote_database_name(name)}"
+          # Only SQL Server 2016 onwards:
+          # execute "DROP DATABASE IF EXISTS #{quote_database_name(name)}"
+          execute "IF EXISTS(SELECT name FROM sys.databases WHERE name='#{name}') DROP DATABASE #{quote_database_name(name)}"
         end
 
         def create_database(name, options = {})

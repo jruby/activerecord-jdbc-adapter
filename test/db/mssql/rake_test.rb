@@ -101,10 +101,8 @@ class MSSQLRakeDbCreateTest < Test::Unit::TestCase
   def create_rake_test_database(db_name = self.db_name)
     ActiveRecord::Base.establish_connection db_config
     connection = ActiveRecord::Base.connection
-    unless connection.database_exists?(db_name)
-      # connection.use_database('master')
-      connection.create_database(db_name, db_config)
-    end
+
+    connection.recreate_database(db_name)
 
     if block_given?
       ActiveRecord::Base.establish_connection db_config.merge :database => db_name
