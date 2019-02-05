@@ -46,10 +46,6 @@ module ActiveRecord
           @connection.columns(table_name)
         end
 
-        def indexes(table_name, name = nil)
-          @connection.indexes(table_name, name)
-        end
-
         # Returns an array of view names defined in the database.
         # (to be implemented)
         def views
