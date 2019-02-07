@@ -33,7 +33,12 @@ class MSSQLRakeDbCreateTest < Test::Unit::TestCase
 
   test 'rake db:drop (non-existing database)' do
     drop_rake_test_database(:silence)
-    Rake::Task["db:drop"].invoke
+
+    # Im assuming this test is here to check that we
+    # blow up when droping non-existent db
+    assert_raises ActiveRecord::JDBCError do
+      Rake::Task["db:drop"].invoke
+    end
   end
 
   test 'rake db:test:purge' do
@@ -132,11 +137,7 @@ class MSSQLRakeDbCreateTest < Test::Unit::TestCase
   private
 
   def databases
-    if ActiveRecord::Base.connection.send(:sqlserver_2000?)
-      select = "SELECT name FROM master..sysdatabases ORDER BY name"
-    else
-      select = "SELECT name FROM sys.sysdatabases"
-    end
+    select = "SELECT name FROM sys.sysdatabases"
     ActiveRecord::Base.connection.select_rows(select).flatten
   end
 
