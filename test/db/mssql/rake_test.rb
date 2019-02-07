@@ -33,7 +33,11 @@ class MSSQLRakeDbCreateTest < Test::Unit::TestCase
 
   test 'rake db:drop (non-existing database)' do
     drop_rake_test_database(:silence)
-    Rake::Task["db:drop"].invoke
+    begin
+      Rake::Task["db:drop"].invoke
+    rescue => e
+      raise e unless e.message =~ /Cannot open database "#{Regexp.quote(db_name)}" requested by the login/
+    end
   end
 
   test 'rake db:test:purge' do
