@@ -76,8 +76,10 @@ matrix:
     #  env: DB=mysql2
     #- rvm: jruby-head
     #  env: DB=postgresql
-    #- rvm: jruby-head
-    #  env: DB=sqlite3
+    - rvm: jruby-head
+      env: DB=sqlite3
+    - rvm: jruby-head
+      env: DB=sqlite3    TEST_PREFIX="rails:" AR_VERSION="v6.0.0.beta1"
     # testing against MariaDB
     - addons:
         mariadb: '10.0'
