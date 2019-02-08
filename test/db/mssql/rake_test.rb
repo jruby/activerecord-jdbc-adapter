@@ -33,6 +33,9 @@ class MSSQLRakeDbCreateTest < Test::Unit::TestCase
 
   test 'rake db:drop (non-existing database)' do
     drop_rake_test_database(:silence)
+
+    # Im assuming this test is here to check that we
+    # blow up when droping non-existent db
     begin
       Rake::Task["db:drop"].invoke
     rescue => e
