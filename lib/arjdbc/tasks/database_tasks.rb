@@ -16,7 +16,6 @@ module ArJdbc
     #require 'arjdbc/tasks/hsqldb_database_tasks'
 
     # re-invent built-in (but deprecated on 4.0) tasks :
-    register_tasks(/mssql/, MSSQLDatabaseTasks) # (built-in) alias
     # tasks for custom (JDBC) adapters :
     #register_tasks(/db2/, DB2DatabaseTasks)
     #register_tasks(/derby/, DerbyDatabaseTasks)
@@ -24,7 +23,7 @@ module ArJdbc
     #register_tasks(/hsqldb/, HSQLDBDatabaseTasks)
     # (default) generic JDBC task :
     register_tasks(/^jdbc$/, JdbcDatabaseTasks)
-    #register_tasks(/sqlserver/, MSSQLDatabaseTasks)
+    register_tasks(/sqlserver/, MSSQLDatabaseTasks)
 
     # NOTE: no need to register "built-in" adapters such as MySQL
 

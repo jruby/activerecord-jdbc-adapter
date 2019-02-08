@@ -95,28 +95,6 @@ module ActiveRecord
           create_database(name, options)
         end
 
-        def recreate_database!(database = nil)
-          current_db = current_database
-          database ||= current_db
-          use_database('master') if this_db = ( database.to_s == current_db )
-          drop_database(database)
-          create_database(database)
-        ensure
-          use_database(current_db) if this_db
-        end
-
-        def database_exists?(name)
-          select_value "SELECT name FROM sys.databases WHERE name = '#{name}'"
-        end
-
-        def charset
-          select_value "SELECT SERVERPROPERTY('SqlCharSetName')"
-        end
-
-        def collation
-          select_value "SELECT SERVERPROPERTY('Collation')"
-        end
-
         def remove_column(table_name, column_name, type = nil, options = {})
           raise ArgumentError.new('You must specify at least one column name.  Example: remove_column(:people, :first_name)') if column_name.is_a? Array
           remove_check_constraints(table_name, column_name)
