@@ -81,6 +81,11 @@ module ActiveRecord::ConnectionAdapters
       true
     end
 
+    # Overrides abstract method which always returns false
+    def valid_type?(type)
+      !native_database_types[type].nil?
+    end
+
     # FIXME: to be reviewed.
     def clear_cache!
       reload_type_map

@@ -36,8 +36,10 @@ class MSSQLRakeDbCreateTest < Test::Unit::TestCase
 
     # Im assuming this test is here to check that we
     # blow up when droping non-existent db
-    assert_raises ActiveRecord::JDBCError do
+    begin
       Rake::Task["db:drop"].invoke
+    rescue => e
+      raise e unless e.message =~ /Cannot open database "#{Regexp.quote(db_name)}" requested by the login/
     end
   end
 
@@ -106,10 +108,8 @@ class MSSQLRakeDbCreateTest < Test::Unit::TestCase
   def create_rake_test_database(db_name = self.db_name)
     ActiveRecord::Base.establish_connection db_config
     connection = ActiveRecord::Base.connection
-    unless connection.database_exists?(db_name)
-      # connection.use_database('master')
-      connection.create_database(db_name, db_config)
-    end
+
+    connection.recreate_database(db_name)
 
     if block_given?
       ActiveRecord::Base.establish_connection db_config.merge :database => db_name
@@ -138,6 +138,7 @@ class MSSQLRakeDbCreateTest < Test::Unit::TestCase
 
   def databases
     select = "SELECT name FROM sys.sysdatabases"
+
     ActiveRecord::Base.connection.select_rows(select).flatten
   end
 

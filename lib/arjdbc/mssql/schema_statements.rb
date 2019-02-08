@@ -46,18 +46,27 @@ module ActiveRecord
           @connection.columns(table_name)
         end
 
-        def indexes(table_name, name = nil)
-          @connection.indexes(table_name, name)
-        end
-
         # Returns an array of view names defined in the database.
         # (to be implemented)
         def views
           []
         end
 
+        # Returns an array of indexes for the given table.
+        def indexes(table_name, name = nil)
+          @connection.indexes(table_name, name)
+        end
+
         def primary_keys(table_name)
           @connection.primary_keys(table_name)
+        end
+
+        def charset
+          select_value "SELECT SqlCharSetName = CAST(SERVERPROPERTY('SqlCharSetName') AS NVARCHAR(128))"
+        end
+
+        def collation
+          select_value "SELECT Collation = CAST(SERVERPROPERTY('Collation') AS NVARCHAR(128))"
         end
 
         def current_database
@@ -72,7 +81,9 @@ module ActiveRecord
         def drop_database(name)
           current_db = current_database
           use_database('master') if current_db.to_s == name
-          execute "DROP DATABASE #{quote_database_name(name)}"
+          # Only SQL Server 2016 onwards:
+          # execute "DROP DATABASE IF EXISTS #{quote_database_name(name)}"
+          execute "IF EXISTS(SELECT name FROM sys.databases WHERE name='#{name}') DROP DATABASE #{quote_database_name(name)}"
         end
 
         def create_database(name, options = {})
@@ -141,10 +152,9 @@ module ActiveRecord
           # It does not accept NVARCHAR(1073741823) here, so we have to change it
           # to NVARCHAR(MAX), even though they are logically equivalent.
           #
-          # MSSQL Server 2000 is skipped here because I don't know how it will behave.
-          #
           # See: http://msdn.microsoft.com/en-us/library/ms186939.aspx
-          if type_s == 'string' && limit == 1073741823 && ! sqlserver_2000?
+          #
+          if type_s == 'string' && limit == 1073741823
             'NVARCHAR(MAX)'
           elsif NO_LIMIT_TYPES.include?(type_s)
             super(type)
