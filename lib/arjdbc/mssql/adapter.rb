@@ -1,4 +1,5 @@
 # frozen_string_literal: false
+
 ArJdbc.load_java_part :MSSQL
 
 require 'strscan'

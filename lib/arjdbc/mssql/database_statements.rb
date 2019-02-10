@@ -38,7 +38,6 @@ module ActiveRecord
           end
         end
 
-
         private
 
         def insert_sql?(sql)

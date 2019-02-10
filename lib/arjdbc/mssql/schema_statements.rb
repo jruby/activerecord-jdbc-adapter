@@ -103,6 +103,11 @@ module ActiveRecord
           execute "ALTER TABLE #{quote_table_name(table_name)} DROP COLUMN #{quote_column_name(column_name)}"
         end
 
+        def rename_table(table_name, new_table_name)
+          execute "EXEC sp_rename '#{table_name}', '#{new_table_name}'"
+          rename_table_indexes(table_name, new_table_name)
+        end
+
         # This is the same as the abstract method
         def quote_table_name(name)
           quote_column_name(name)
