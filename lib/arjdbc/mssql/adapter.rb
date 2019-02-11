@@ -19,6 +19,7 @@ require 'arjdbc/mssql/types'
 require 'arjdbc/mssql/quoting'
 require 'arjdbc/mssql/schema_statements'
 require 'arjdbc/mssql/database_statements'
+require 'arjdbc/mssql/explain_support'
 
 # require 'arjdbc/util/quoted_cache'
 
@@ -29,11 +30,9 @@ module ArJdbc
     require 'arjdbc/mssql/limit_helpers'
     require 'arjdbc/mssql/lock_methods'
     require 'arjdbc/mssql/column'
-    require 'arjdbc/mssql/explain_support'
 
     include LimitHelpers
     include Utils
-    include ExplainSupport
   end
 end
 
@@ -61,6 +60,7 @@ module ActiveRecord::ConnectionAdapters
     include MSSQL::Quoting
     include MSSQL::SchemaStatements
     include MSSQL::DatabaseStatements
+    include MSSQL::ExplainSupport
 
     def initialize(connection, logger = nil, connection_parameters = nil, config = {})
       # configure_connection happens in super
