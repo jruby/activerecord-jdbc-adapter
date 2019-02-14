@@ -26,6 +26,11 @@ module ActiveRecord
           end
         end
 
+        # Quotes strings for use in SQL input.
+        def quote_string(s)
+          s.to_s.gsub /\'/, "''"
+        end
+
         # @override
         def quoted_time(value)
           if value.acts_like?(:time)
