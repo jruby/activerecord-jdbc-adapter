@@ -55,17 +55,19 @@ module ActiveRecord
       include MSSQL::DatabaseStatements
       include MSSQL::ExplainSupport
 
-      def initialize(connection, logger = nil, connection_parameters = nil, config = {})
+      def initialize(connection, logger, _connection_parameters, config = {})
         # configure_connection happens in super
         super(connection, logger, config)
       end
 
-      # @see ActiveRecord::ConnectionAdapters::JdbcAdapter#jdbc_connection_class
-      def jdbc_connection_class(spec)
+      # Returns the (JDBC) connection class to be used for this adapter.
+      # The class is defined in the java part
+      def jdbc_connection_class(_spec)
         ::ActiveRecord::ConnectionAdapters::MSSQLJdbcConnection
       end
 
-      # @see ActiveRecord::ConnectionAdapters::JdbcAdapter#jdbc_column_class
+      # Returns the (JDBC) `ActiveRecord` column class for this adapter.
+      # Used in the java part.
       def jdbc_column_class
         ::ActiveRecord::ConnectionAdapters::MSSQLColumn
       end
@@ -111,7 +113,8 @@ module ActiveRecord
       private
 
       # This method is called indirectly by the abstract method
-      # 'fetch_type_metadata' which then it is called by the java part.
+      # 'fetch_type_metadata' which then it is called by the java part when
+      # calculation the array of columns of a table
       def initialize_type_map(m)
         # m.register_type              %r{.*},             UnicodeStringType.new
         # Exact Numerics
