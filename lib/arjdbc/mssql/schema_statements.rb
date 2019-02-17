@@ -44,6 +44,8 @@ module ActiveRecord
         # it uses MSSQLColumn, SqlTypeMetadata, etc.
         def columns(table_name)
           @connection.columns(table_name)
+        rescue => e
+          raise translate_exception_class(e, nil)
         end
 
         # Returns an array of view names defined in the database.
