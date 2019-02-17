@@ -15,6 +15,7 @@ require 'arjdbc/abstract/database_statements'
 require 'arjdbc/abstract/statement_cache'
 require 'arjdbc/abstract/transaction_support'
 
+require 'arjdbc/mssql/column'
 require 'arjdbc/mssql/types'
 require 'arjdbc/mssql/quoting'
 require 'arjdbc/mssql/schema_statements'
@@ -29,7 +30,6 @@ module ArJdbc
     require 'arjdbc/mssql/utils'
     require 'arjdbc/mssql/limit_helpers'
     require 'arjdbc/mssql/lock_methods'
-    require 'arjdbc/mssql/column'
 
     include LimitHelpers
     include Utils
@@ -37,14 +37,7 @@ module ArJdbc
 end
 
 module ActiveRecord::ConnectionAdapters
-  class MSSQLColumn < Column
-    # including in MSSQL::Column just the methods
-    # that I need as Im fixing the tests to 
-    # hopefully see what we really need.
-    # have left pre Rails 5 code in old_column.rb
-    include ::ArJdbc::MSSQL::Column
-  end
-
+  # MSSQL (SQLServer) adapter class definition
   class MSSQLAdapter < AbstractAdapter
     ADAPTER_NAME = 'MSSQL'.freeze
 

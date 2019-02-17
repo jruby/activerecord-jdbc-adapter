@@ -1,8 +1,7 @@
-module ArJdbc
-  module MSSQL
-
-    # @see ActiveRecord::ConnectionAdapters::JdbcColumn
-    module Column
+module ActiveRecord
+  module ConnectionAdapters
+    # MSSQL specific extensions to column definitions in a table.
+    class MSSQLColumn < Column
 
       def identity?
         !! sql_type.downcase.index('identity')
