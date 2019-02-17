@@ -38,6 +38,11 @@ module ActiveRecord
           end
         end
 
+        # Implements the truncate method.
+        def truncate(table_name, name = nil)
+          execute "TRUNCATE TABLE #{quote_table_name(table_name)}", name
+        end
+
         private
 
         def insert_sql?(sql)
