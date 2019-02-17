@@ -31,6 +31,16 @@ module ActiveRecord
           s.to_s.gsub /\'/, "''"
         end
 
+        # Does not quote function default values for UUID columns
+        def quote_default_expression(value, column)
+          cast_type = lookup_cast_type(column.sql_type)
+          if cast_type.type == :uuid && value =~ /\(\)/
+            value
+          else
+            super
+          end
+        end
+
         # @override
         def quoted_time(value)
           if value.acts_like?(:time)

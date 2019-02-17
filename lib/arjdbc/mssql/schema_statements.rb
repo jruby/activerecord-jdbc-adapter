@@ -158,8 +158,47 @@ module ActiveRecord
           end
         end
 
+        def change_column(table_name, column_name, type, options = {})
+          column = columns(table_name).find { |c| c.name.to_s == column_name.to_s }
+
+          indexes = []
+          if options_include_default?(options) || (column && column.type != type.to_sym)
+            remove_default_constraint(table_name, column_name)
+            indexes = indexes(table_name).select{ |index| index.columns.include?(column_name.to_s) }
+            remove_indexes(table_name, column_name)
+          end
+
+          if !options[:null].nil? && options[:null] == false && !options[:default].nil?
+            execute "UPDATE #{quote_table_name(table_name)} SET #{quote_column_name(column_name)}=#{quote_default_expression(options[:default], column)} WHERE #{quote_column_name(column_name)} IS NULL"
+          end
+
+          change_column_type(table_name, column_name, type, options)
+          change_column_default(table_name, column_name, options[:default]) if options_include_default?(options)
+
+          # add any removed indexes back
+          indexes.each do |index|
+            index_columns = index.columns.map { |c| quote_column_name(c) }.join(', ')
+            execute "CREATE INDEX #{quote_table_name(index.name)} ON #{quote_table_name(table_name)} (#{index_columns})"
+          end
+        end
 
         private
+
+        def change_column_type(table_name, column_name, type, options = {})
+          sql = "ALTER TABLE #{quote_table_name(table_name)} ALTER COLUMN #{quote_column_name(column_name)} #{type_to_sql(type, options[:limit], options[:precision], options[:scale])}"
+          sql << (options[:null] ? " NULL" : " NOT NULL") if options.has_key?(:null)
+          result = execute(sql)
+          result
+        end
+
+        def change_column_default(table_name, column_name, default)
+          remove_default_constraint(table_name, column_name)
+          unless default.nil?
+            column = columns(table_name).find { |c| c.name.to_s == column_name.to_s }
+            result = execute "ALTER TABLE #{quote_table_name(table_name)} ADD CONSTRAINT DF_#{table_name}_#{column_name} DEFAULT #{quote_default_expression(default, column)} FOR #{quote_column_name(column_name)}"
+            result
+          end
+        end
 
         # Implements the quoting style for SQL Server
         def quote_name_part(part)
