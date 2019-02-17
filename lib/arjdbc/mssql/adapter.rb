@@ -110,6 +110,28 @@ module ActiveRecord
         ::Arel::Visitors::SQLServer.new(self)
       end
 
+      # Returns the name of the current security context
+      def current_user
+        @current_user ||= select_value('SELECT CURRENT_USER')
+      end
+
+      # Returns the default schema (to be used for table resolution)
+      # used for the {#current_user}.
+      def default_schema
+        @default_schema ||= select_value('SELECT default_schema_name FROM sys.database_principals WHERE name = CURRENT_USER')
+      end
+
+      alias current_schema default_schema
+
+      # Allows for changing of the default schema.
+      # (to be used during unqualified table name resolution).
+      def default_schema=(default_schema)
+        execute("ALTER #{current_user} WITH DEFAULT_SCHEMA=#{default_schema}")
+        @default_schema = nil if defined?(@default_schema)
+      end
+
+      alias current_schema= default_schema=
+
       private
 
       # This method is called indirectly by the abstract method
