@@ -105,16 +105,31 @@ class MSSQLDateTimeTypesTest < Test::Unit::TestCase
       end
     end
 
-    def test_time
+    def test_time_usec_in_database
       # 00:00:00.0000000 through 23:59:59.9999999
 
-      id = DateAndTime.connection.insert 'INSERT INTO date_and_times ([time])' +
-        " VALUES ('22:05:59.123456')"
+      sql = "INSERT INTO date_and_times ([time]) VALUES ('22:05:59.123456')"
+      id = DateAndTime.connection.insert(sql)
+
       model = DateAndTime.find(id)
       assert_not_nil model.time
       time = Time.local(2000, 1, 01, 22, 05, 59, 123456)
       assert_time_equal time, model.time
       assert_equal time.usec, model.time.usec
+    end
+
+    def test_time_usec_in_ruby
+      # 00:00:00.0000000 through 23:59:59.9999999
+
+      time = Time.local(1970, 1, 01, 23, 59, 58, 987543)
+      model = DateAndTime.create! :time => time
+      assert_not_nil model.time
+      assert_time_equal time, model.reload.time
+      assert_equal 987543, model.time.usec
+    end
+
+    def test_time_usec_in_ruby_edge_case
+      # 00:00:00.0000000 through 23:59:59.9999999
 
       time = Time.local(0000, 1, 01, 23, 59, 58, 987000)
       model = DateAndTime.create! :time => time
@@ -124,8 +139,9 @@ class MSSQLDateTimeTypesTest < Test::Unit::TestCase
       # ... same mess on MRI :
       # 1.9.3-p551 :004 > Time.local(0000, 1, 01, 23, 59, 0).inspect
       # => "0000-01-01 23:59:00 +0057"
-      pend 'TODO: ' + time.inspect if ar_version('4.2')
-      assert_time_equal time, model.reload.time
+      model.reload
+      pend "TODO:  #{time.inspect} equal #{model.time.inspect}"
+      assert_time_equal time, model.time
       assert_equal 987000, model.time.usec
     end
 
