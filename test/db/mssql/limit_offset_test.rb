@@ -254,8 +254,8 @@ class MSSQLLimitOffsetTest < Test::Unit::TestCase
     Viking.create! :name => '22', :long_ship_id => giga_ship.id
 
     result = Viking.select('DISTINCT *').limit(10).
-      joins(:long_ship).where(:long_ship_id => mega_ship.id).
-      order('name')
+      joins(:long_ship).where(long_ship_id: mega_ship.id).order(:name)
+
     assert_equal [ '11', '12' ], result.map { |viking| viking.name }
   end if ar_version('3.0')
 
