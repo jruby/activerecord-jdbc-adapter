@@ -50,7 +50,7 @@ module ActiveRecord
         end
 
         def identity_insert_table_name(sql)
-          table_name = ArJdbc::MSSQL::Utils.get_table_name(sql)
+          table_name = get_table_name(sql)
           id_column = identity_column_name(table_name)
           if id_column && sql.strip =~ /INSERT INTO [^ ]+ ?\((.+?)\)/i
             insert_columns = $1.split(/, */).map{|w| ArJdbc::MSSQL::Utils.unquote_column_name(w)}
@@ -82,6 +82,20 @@ module ActiveRecord
                 " #{enable ? 'ON' : 'OFF'} for table #{table_name} due : #{e.inspect}"
         end
 
+        def get_table_name(sql, qualified = nil)
+          if sql =~ TABLE_NAME_INSERT_UPDATE
+            tn = $2 || $3
+            qualified ? tn : ArJdbc::MSSQL::Utils.unqualify_table_name(tn)
+          elsif sql =~ TABLE_NAME_FROM
+            qualified ? $1 : ArJdbc::MSSQL::Utils.unqualify_table_name($1)
+          else
+            nil
+          end
+        end
+
+        TABLE_NAME_INSERT_UPDATE = /^\s*(INSERT|EXEC sp_executesql N'INSERT)(?:\s+INTO)?\s+([^\(\s]+)\s*|^\s*update\s+([^\(\s]+)\s*/i
+
+        TABLE_NAME_FROM = /\bFROM\s+([^\(\)\s,]+)\s*/i
       end
     end
   end

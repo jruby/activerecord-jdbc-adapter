@@ -28,22 +28,6 @@ module ArJdbc
 
       module_function
 
-      GET_TABLE_NAME_INSERT_UPDATE_RE =
-        /^\s*(INSERT|EXEC sp_executesql N'INSERT)(?:\s+INTO)?\s+([^\(\s]+)\s*|^\s*update\s+([^\(\s]+)\s*/i
-
-      GET_TABLE_NAME_FROM_RE = /\bFROM\s+([^\(\)\s,]+)\s*/i
-
-      def get_table_name(sql, qualified = nil)
-        if sql =~ GET_TABLE_NAME_INSERT_UPDATE_RE
-          tn = $2 || $3
-          qualified ? tn : unqualify_table_name(tn)
-        elsif sql =~ GET_TABLE_NAME_FROM_RE
-          qualified ? $1 : unqualify_table_name($1)
-        else
-          nil
-        end
-      end
-
       def unquote_table_name(table_name)
         remove_identifier_delimiters(table_name)
       end
