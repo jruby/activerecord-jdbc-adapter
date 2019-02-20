@@ -27,12 +27,15 @@ package arjdbc.mssql;
 
 import arjdbc.jdbc.Callable;
 import arjdbc.jdbc.RubyJdbcConnection;
+import arjdbc.util.DateTimeUtils;
 
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Types;
+import java.sql.Timestamp;
 
 import org.jruby.Ruby;
 import org.jruby.RubyArray;
@@ -112,6 +115,25 @@ public class MSSQLRubyJdbcConnection extends RubyJdbcConnection {
             tables.add( cachedString(context, caseConvertIdentifierForRails(connection, name)) );
         }
         return tables;
+    }
+
+    // Using resultSet.getTimestamp(column) only gets .999 (3) precision with
+    // this we gain more precision.
+    @Override
+    protected IRubyObject timeToRuby(ThreadContext context, Ruby runtime, ResultSet resultSet, int column) throws SQLException {
+        final String value = resultSet.getString(column);
+
+        return value == null ? context.nil : DateTimeUtils.parseTime(context, value, getDefaultTimeZone(context));
+    }
+
+    // Handle more fractional second precision than (default) 59.123 only
+    @Override
+    protected void setTimeParameter(final ThreadContext context,
+        final Connection connection, final PreparedStatement statement,
+        final int index, IRubyObject value,
+        final IRubyObject attribute, final int type) throws SQLException {
+        String timeStr = DateTimeUtils.timeString(context, value, getDefaultTimeZone(context), true);
+        statement.setObject(index, timeStr, Types.NVARCHAR);
     }
 
     /**
