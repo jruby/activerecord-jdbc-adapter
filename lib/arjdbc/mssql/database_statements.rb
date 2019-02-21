@@ -43,6 +43,12 @@ module ActiveRecord
           execute "TRUNCATE TABLE #{quote_table_name(table_name)}", name
         end
 
+        # Not a rails method, own method to test different isolation
+        # levels supported by the mssql adapter.
+        def supports_transaction_isolation_level?(level)
+          @connection.supports_transaction_isolation?(level)
+        end
+
         private
 
         def insert_sql?(sql)

@@ -33,6 +33,7 @@ import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.sql.Savepoint;
 import java.sql.SQLException;
 import java.sql.Types;
 import java.sql.Timestamp;
@@ -134,6 +135,29 @@ public class MSSQLRubyJdbcConnection extends RubyJdbcConnection {
         final IRubyObject attribute, final int type) throws SQLException {
         String timeStr = DateTimeUtils.timeString(context, value, getDefaultTimeZone(context), true);
         statement.setObject(index, timeStr, Types.NVARCHAR);
+    }
+
+    // Overrides the method in parent, we only remove the savepoint
+    // from the getSavepoints Map
+    @JRubyMethod(name = "release_savepoint", required = 1)
+    public IRubyObject release_savepoint(final ThreadContext context, final IRubyObject name) {
+      if (name == context.nil) throw context.runtime.newArgumentError("nil savepoint name given");
+
+      final Connection connection = getConnection(true);
+
+      Object savepoint = getSavepoints(context).remove(name);
+
+      if (savepoint == null) throw newSavepointNotSetError(context, name, "release");
+
+      // NOTE: RubyHash.remove does not convert to Java as get does :
+      if (!(savepoint instanceof Savepoint)) {
+        savepoint = ((IRubyObject) savepoint).toJava(Savepoint.class);
+      }
+
+      // The 'releaseSavepoint' method is not currently supported
+      // by the Microsoft SQL Server JDBC Driver
+      // connection.releaseSavepoint((Savepoint) savepoint);
+      return context.nil;
     }
 
     /**

@@ -77,6 +77,11 @@ module ActiveRecord
         true
       end
 
+      # Does this adapter support setting the isolation level for a transaction?
+      def supports_transaction_isolation?(level = nil)
+        true
+      end
+
       # Overrides abstract method which always returns false
       def valid_type?(type)
         !native_database_types[type].nil?
