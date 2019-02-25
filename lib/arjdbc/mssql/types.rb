@@ -1,6 +1,36 @@
 # MSSQL type definitions
 module ActiveRecord
   module ConnectionAdapters
+    module MSSQL
+      module Type
+
+        class Integer < ActiveRecord::Type::Integer
+        end
+
+        class TinyInteger < ActiveRecord::Type::Integer
+          def max_value
+            256
+          end
+
+          def min_value
+            0
+          end
+        end
+
+        class SmallInteger < ActiveRecord::Type::Integer
+        end
+
+        class BigInteger < ActiveRecord::Type::Integer
+          def type
+            :bigint
+          end
+        end
+
+      end
+    end
+
+
+
     # @private
     class BigIntegerType < ActiveRecord::Type::BigInteger
       def type; :bigint end

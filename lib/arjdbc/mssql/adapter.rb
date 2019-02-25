@@ -143,17 +143,24 @@ module ActiveRecord
       # 'fetch_type_metadata' which then it is called by the java part when
       # calculating a table's columns.
       def initialize_type_map(map)
+        # Build the type mapping from SQL Server to ActiveRecord
+        map.register_type 'int(4)',          MSSQL::Type::Integer.new(limit: 4)
+        map.register_type 'int identity(4)', MSSQL::Type::Integer.new(limit: 4)
+        map.register_type 'tinyint(1)',      MSSQL::Type::TinyInteger.new(limit: 1)
+        map.register_type 'smallint(2)',     MSSQL::Type::SmallInteger.new(limit: 2)
+        map.register_type 'bigint(8)',       MSSQL::Type::BigInteger.new(limit: 8)
+
+        # aliases
+        map.alias_type 'int',             'int(4)'
+        map.alias_type 'int identity',    'int(4)'
+        map.alias_type 'integer',         'int(4)'
+        map.alias_type 'tinyint',         'tinyint(1)'
+        map.alias_type 'smallint',        'smallint(2)'
+        map.alias_type 'bigint',          'bigint(8)'
+
+
         # map.register_type              %r{.*},             UnicodeStringType.new
         # Exact Numerics
-        register_class_with_limit map, /^bigint./,          BigIntegerType
-        map.alias_type                 'bigint',            'bigint(8)'
-        register_class_with_limit map, /^int\(|\s/,         ActiveRecord::Type::Integer
-        map.alias_type                 /^integer/,          'int(4)'
-        map.alias_type                 'int',               'int(4)'
-        register_class_with_limit map, /^smallint./,        SmallIntegerType
-        map.alias_type                 'smallint',          'smallint(2)'
-        register_class_with_limit map, /^tinyint./,         TinyIntegerType
-        map.alias_type                 'tinyint',           'tinyint(1)'
         map.register_type              /^bit/,              ActiveRecord::Type::Boolean.new
         map.register_type              %r{\Adecimal} do |sql_type|
           scale = extract_scale(sql_type)

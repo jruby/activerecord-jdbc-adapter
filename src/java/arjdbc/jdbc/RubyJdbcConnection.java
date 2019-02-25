@@ -3168,6 +3168,7 @@ public class RubyJdbcConnection extends RubyObject {
     protected static final int DECIMAL_DIGITS = 9;
     protected static final int COLUMN_DEF = 13;
     protected static final int IS_NULLABLE = 18;
+    protected static final int BUFFER_LENGTH = 8;
 
     /**
      * Create a string which represents a SQL type usable by Rails from the
