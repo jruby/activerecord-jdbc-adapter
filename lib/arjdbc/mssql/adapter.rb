@@ -141,21 +141,21 @@ module ActiveRecord
 
       # This method is called indirectly by the abstract method
       # 'fetch_type_metadata' which then it is called by the java part when
-      # calculation the array of columns of a table
-      def initialize_type_map(m)
-        # m.register_type              %r{.*},             UnicodeStringType.new
+      # calculating a table's columns.
+      def initialize_type_map(map)
+        # map.register_type              %r{.*},             UnicodeStringType.new
         # Exact Numerics
-        register_class_with_limit m, /^bigint./,          BigIntegerType
-        m.alias_type                 'bigint',            'bigint(8)'
-        register_class_with_limit m, /^int\(|\s/,         ActiveRecord::Type::Integer
-        m.alias_type                 /^integer/,          'int(4)'
-        m.alias_type                 'int',               'int(4)'
-        register_class_with_limit m, /^smallint./,        SmallIntegerType
-        m.alias_type                 'smallint',          'smallint(2)'
-        register_class_with_limit m, /^tinyint./,         TinyIntegerType
-        m.alias_type                 'tinyint',           'tinyint(1)'
-        m.register_type              /^bit/,              ActiveRecord::Type::Boolean.new
-        m.register_type              %r{\Adecimal} do |sql_type|
+        register_class_with_limit map, /^bigint./,          BigIntegerType
+        map.alias_type                 'bigint',            'bigint(8)'
+        register_class_with_limit map, /^int\(|\s/,         ActiveRecord::Type::Integer
+        map.alias_type                 /^integer/,          'int(4)'
+        map.alias_type                 'int',               'int(4)'
+        register_class_with_limit map, /^smallint./,        SmallIntegerType
+        map.alias_type                 'smallint',          'smallint(2)'
+        register_class_with_limit map, /^tinyint./,         TinyIntegerType
+        map.alias_type                 'tinyint',           'tinyint(1)'
+        map.register_type              /^bit/,              ActiveRecord::Type::Boolean.new
+        map.register_type              %r{\Adecimal} do |sql_type|
           scale = extract_scale(sql_type)
           precision = extract_precision(sql_type)
           DecimalType.new :precision => precision, :scale => scale
@@ -165,23 +165,23 @@ module ActiveRecord
           #   DecimalType.new(:precision => precision, :scale => scale)
           # end
         end
-        m.alias_type                 %r{\Anumeric},       'decimal'
-        m.register_type              /^money/,            MoneyType.new
-        m.register_type              /^smallmoney/,       SmallMoneyType.new
+        map.alias_type                 %r{\Anumeric},       'decimal'
+        map.register_type              /^money/,            MoneyType.new
+        map.register_type              /^smallmoney/,       SmallMoneyType.new
         # Approximate Numerics
-        m.register_type              /^float/,            ActiveRecord::Type::Float.new
-        m.register_type              /^real/,             RealType.new
+        map.register_type              /^float/,            ActiveRecord::Type::Float.new
+        map.register_type              /^real/,             RealType.new
         # Date and Time
-        m.register_type              /^date\(?/,          ActiveRecord::Type::Date.new
-        m.register_type              /^datetime\(?/,      DateTimeType.new
-        m.register_type              /smalldatetime/,     SmallDateTimeType.new
-        m.register_type              %r{\Atime} do |sql_type|
+        map.register_type              /^date\(?/,          ActiveRecord::Type::Date.new
+        map.register_type              /^datetime\(?/,      DateTimeType.new
+        map.register_type              /smalldatetime/,     SmallDateTimeType.new
+        map.register_type              %r{\Atime} do |sql_type|
           TimeType.new :precision => extract_precision(sql_type)
         end
         # Character Strings
-        register_class_with_limit m, %r{\Achar}i,         CharType
-        # register_class_with_limit m, %r{\Avarchar}i,      VarcharType
-        m.register_type              %r{\Anvarchar}i do |sql_type|
+        register_class_with_limit map, %r{\Achar}i,         CharType
+        # register_class_with_limit map, %r{\Avarchar}i,      VarcharType
+        map.register_type              %r{\Anvarchar}i do |sql_type|
           limit = extract_limit(sql_type)
           if limit == 2_147_483_647 # varchar(max)
             VarcharMaxType.new
@@ -189,12 +189,12 @@ module ActiveRecord
             VarcharType.new :limit => limit
           end
         end
-        # m.register_type              'varchar(max)',      VarcharMaxType.new
-        m.register_type              /^text/,             TextType.new
+        # map.register_type              'varchar(max)',      VarcharMaxType.new
+        map.register_type              /^text/,             TextType.new
         # Unicode Character Strings
-        register_class_with_limit m, %r{\Anchar}i,        UnicodeCharType
-        # register_class_with_limit m, %r{\Anvarchar}i,     UnicodeVarcharType
-        m.register_type              %r{\Anvarchar}i do |sql_type|
+        register_class_with_limit map, %r{\Anchar}i,        UnicodeCharType
+        # register_class_with_limit map, %r{\Anvarchar}i,     UnicodeVarcharType
+        map.register_type              %r{\Anvarchar}i do |sql_type|
           limit = extract_limit(sql_type)
           if limit == 1_073_741_823 # nvarchar(max)
             UnicodeVarcharMaxType.new
@@ -202,19 +202,19 @@ module ActiveRecord
             UnicodeVarcharType.new :limit => limit
           end
         end
-        # m.register_type              'nvarchar(max)',     UnicodeVarcharMaxType.new
-        m.alias_type                 'string',            'nvarchar(4000)'
-        m.register_type              /^ntext/,            UnicodeTextType.new
+        # map.register_type              'nvarchar(max)',     UnicodeVarcharMaxType.new
+        map.alias_type                 'string',            'nvarchar(4000)'
+        map.register_type              /^ntext/,            UnicodeTextType.new
         # Binary Strings
-        register_class_with_limit m, %r{\Aimage}i,        ImageType
-        register_class_with_limit m, %r{\Abinary}i,       BinaryType
-        register_class_with_limit m, %r{\Avarbinary}i,    VarbinaryType
-        # m.register_type              'varbinary(max)',    VarbinaryMaxType.new
+        register_class_with_limit map, %r{\Aimage}i,        ImageType
+        register_class_with_limit map, %r{\Abinary}i,       BinaryType
+        register_class_with_limit map, %r{\Avarbinary}i,    VarbinaryType
+        # map.register_type              'varbinary(max)',    VarbinaryMaxType.new
         # Other Data Types
-        m.register_type              'uniqueidentifier',  UUIDType.new
+        map.register_type              'uniqueidentifier',  UUIDType.new
         # TODO
-        # m.register_type              'timestamp',         SQLServer::Type::Timestamp.new
-        m.register_type              'xml',               XmlType.new
+        # map.register_type              'timestamp',         SQLServer::Type::Timestamp.new
+        map.register_type              'xml',               XmlType.new
       end
     end
   end
