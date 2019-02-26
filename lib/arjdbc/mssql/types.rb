@@ -26,6 +26,9 @@ module ActiveRecord
           end
         end
 
+        class Boolean < ActiveRecord::Type::Boolean
+        end
+
       end
     end
 

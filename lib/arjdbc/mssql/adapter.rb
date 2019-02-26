@@ -149,6 +149,7 @@ module ActiveRecord
         map.register_type 'tinyint(1)',      MSSQL::Type::TinyInteger.new(limit: 1)
         map.register_type 'smallint(2)',     MSSQL::Type::SmallInteger.new(limit: 2)
         map.register_type 'bigint(8)',       MSSQL::Type::BigInteger.new(limit: 8)
+        map.register_type 'bit',             MSSQL::Type::Boolean.new
 
         # aliases
         map.alias_type 'int',             'int(4)'
@@ -161,7 +162,6 @@ module ActiveRecord
 
         # map.register_type              %r{.*},             UnicodeStringType.new
         # Exact Numerics
-        map.register_type              /^bit/,              ActiveRecord::Type::Boolean.new
         map.register_type              %r{\Adecimal} do |sql_type|
           scale = extract_scale(sql_type)
           precision = extract_precision(sql_type)

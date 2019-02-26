@@ -137,6 +137,8 @@ public class MSSQLRubyJdbcConnection extends RubyJdbcConnection {
             return formatTypeWithLimit(typeName, length);
         case Types.BIGINT:
             return formatTypeWithLimit(typeName, length);
+        case Types.BIT:
+            return typeName;
         default:
             return formatTypeWithPrecisionAndScale(typeName, precision, scale);
       }
