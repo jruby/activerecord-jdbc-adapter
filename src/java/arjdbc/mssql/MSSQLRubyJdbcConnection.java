@@ -130,15 +130,17 @@ public class MSSQLRubyJdbcConnection extends RubyJdbcConnection {
 
       switch (dataType) {
         case Types.INTEGER:
-            return formatTypeWithLimit(typeName, length);
         case Types.TINYINT:
-            return formatTypeWithLimit(typeName, length);
         case Types.SMALLINT:
-            return formatTypeWithLimit(typeName, length);
         case Types.BIGINT:
             return formatTypeWithLimit(typeName, length);
         case Types.BIT:
             return typeName;
+        case Types.NUMERIC:
+        case Types.DECIMAL:
+            // money and smallmoney are considered decimals with specific
+            // precision, money(19,4) and smallmoney(10, 4)
+            return formatTypeWithPrecisionAndScale(typeName, precision, scale);
         default:
             return formatTypeWithPrecisionAndScale(typeName, precision, scale);
       }
@@ -154,6 +156,17 @@ public class MSSQLRubyJdbcConnection extends RubyJdbcConnection {
         typeStr.append(type).append('(').append(limit).append(')');
 
         return typeStr.toString();
+    }
+
+    protected static String formatTypeWithPrecisionAndScale(
+        final String type, final int precision, final int scale) {
+
+        if ( precision <= 0 ) return type;
+
+        final StringBuilder typeStr = new StringBuilder().append(type);
+        typeStr.append('(').append(precision);
+        if ( scale >= 0 ) typeStr.append(',').append(scale);
+        return typeStr.append(')').toString();
     }
 
     // Using resultSet.getTimestamp(column) only gets .999 (3) precision with

@@ -144,12 +144,25 @@ module ActiveRecord
       # calculating a table's columns.
       def initialize_type_map(map)
         # Build the type mapping from SQL Server to ActiveRecord
+        # Integer types.
         map.register_type 'int(4)',          MSSQL::Type::Integer.new(limit: 4)
         map.register_type 'int identity(4)', MSSQL::Type::Integer.new(limit: 4)
         map.register_type 'tinyint(1)',      MSSQL::Type::TinyInteger.new(limit: 1)
         map.register_type 'smallint(2)',     MSSQL::Type::SmallInteger.new(limit: 2)
         map.register_type 'bigint(8)',       MSSQL::Type::BigInteger.new(limit: 8)
+        # Boolean type.
         map.register_type 'bit',             MSSQL::Type::Boolean.new
+        # Exact Numeric types.
+        map.register_type %r{\Adecimal} do |sql_type|
+          scale = extract_scale(sql_type)
+          precision = extract_precision(sql_type)
+          MSSQL::Type::Decimal.new(precision: precision, scale: scale)
+        end
+        map.register_type %r{\Amoney},      MSSQL::Type::Money.new
+        map.register_type %r{\Asmallmoney}, MSSQL::Type::SmallMoney.new
+        # Approximate Numeric types.
+        map.register_type %r{\Afloat},      ActiveRecord::Type::Float.new
+        map.register_type %r{\Areal},       RealType.new
 
         # aliases
         map.alias_type 'int',             'int(4)'
@@ -158,26 +171,10 @@ module ActiveRecord
         map.alias_type 'tinyint',         'tinyint(1)'
         map.alias_type 'smallint',        'smallint(2)'
         map.alias_type 'bigint',          'bigint(8)'
+        map.alias_type %r{\Anumeric},     'decimal'
 
 
         # map.register_type              %r{.*},             UnicodeStringType.new
-        # Exact Numerics
-        map.register_type              %r{\Adecimal} do |sql_type|
-          scale = extract_scale(sql_type)
-          precision = extract_precision(sql_type)
-          DecimalType.new :precision => precision, :scale => scale
-          # if scale == 0
-          #   ActiveRecord::Type::Integer.new(:precision => precision)
-          # else
-          #   DecimalType.new(:precision => precision, :scale => scale)
-          # end
-        end
-        map.alias_type                 %r{\Anumeric},       'decimal'
-        map.register_type              /^money/,            MoneyType.new
-        map.register_type              /^smallmoney/,       SmallMoneyType.new
-        # Approximate Numerics
-        map.register_type              /^float/,            ActiveRecord::Type::Float.new
-        map.register_type              /^real/,             RealType.new
         # Date and Time
         map.register_type              /^date\(?/,          ActiveRecord::Type::Date.new
         map.register_type              /^datetime\(?/,      DateTimeType.new

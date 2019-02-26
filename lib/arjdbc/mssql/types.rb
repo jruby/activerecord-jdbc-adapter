@@ -29,6 +29,32 @@ module ActiveRecord
         class Boolean < ActiveRecord::Type::Boolean
         end
 
+        class Decimal < ActiveRecord::Type::Decimal
+        end
+
+        class Money < Decimal
+          def initialize(options = {})
+            super
+            @precision = 19
+            @scale = 4
+          end
+          def type
+            :money
+          end
+        end
+
+        class SmallMoney < Decimal
+          def initialize(options = {})
+            super
+            @precision = 10
+            @scale = 4
+          end
+
+          def type
+            :smallmoney
+          end
+        end
+
       end
     end
 
