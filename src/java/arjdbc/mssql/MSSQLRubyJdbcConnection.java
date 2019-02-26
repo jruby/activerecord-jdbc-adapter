@@ -128,6 +128,10 @@ public class MSSQLRubyJdbcConnection extends RubyJdbcConnection {
       final int dataType = intFromResultSet(resultSet, DATA_TYPE);
       final String typeName = resultSet.getString(TYPE_NAME);
 
+      final String money = "money";
+      final String smallmoney = "smallmoney";
+
+
       switch (dataType) {
         case Types.INTEGER:
         case Types.TINYINT:
@@ -140,6 +144,10 @@ public class MSSQLRubyJdbcConnection extends RubyJdbcConnection {
         case Types.DECIMAL:
             // money and smallmoney are considered decimals with specific
             // precision, money(19,4) and smallmoney(10, 4)
+            if ( typeName.equals(money) || typeName.equals(smallmoney) ) {
+              return typeName;
+            }
+
             return formatTypeWithPrecisionAndScale(typeName, precision, scale);
         default:
             return formatTypeWithPrecisionAndScale(typeName, precision, scale);

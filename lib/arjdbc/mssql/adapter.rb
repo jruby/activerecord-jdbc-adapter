@@ -158,8 +158,8 @@ module ActiveRecord
           precision = extract_precision(sql_type)
           MSSQL::Type::Decimal.new(precision: precision, scale: scale)
         end
-        map.register_type %r{\Amoney},      MSSQL::Type::Money.new
-        map.register_type %r{\Asmallmoney}, MSSQL::Type::SmallMoney.new
+        map.register_type 'money',      MSSQL::Type::Money.new
+        map.register_type 'smallmoney', MSSQL::Type::SmallMoney.new
         # Approximate Numeric types.
         map.register_type %r{\Afloat},      ActiveRecord::Type::Float.new
         map.register_type %r{\Areal},       RealType.new

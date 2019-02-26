@@ -97,7 +97,7 @@ class MSSQLColumnExactNumericTypesTest < Test::Unit::TestCase
     assert_equal :money,        column.type
     assert_equal false,         column.null
     assert_equal '54534.67899', column.default
-    assert_equal 'money(19,4)', column.sql_type
+    assert_equal 'money',       column.sql_type
     assert_equal 19,            column.precision
     assert_equal 4,             column.scale
 
@@ -108,12 +108,12 @@ class MSSQLColumnExactNumericTypesTest < Test::Unit::TestCase
   def test_smallmoney
     column = ExactNumericTypes.columns_hash['my_smallmoney']
 
-    assert_equal :smallmoney,        column.type
-    assert_equal false,              column.null
-    assert_equal '54534.67899',      column.default
-    assert_equal 'smallmoney(10,4)', column.sql_type
-    assert_equal 10,                 column.precision
-    assert_equal 4,                  column.scale
+    assert_equal :smallmoney,   column.type
+    assert_equal false,         column.null
+    assert_equal '54534.67899', column.default
+    assert_equal 'smallmoney',  column.sql_type
+    assert_equal 10,            column.precision
+    assert_equal 4,             column.scale
 
     type = ExactNumericTypes.connection.lookup_cast_type(column.sql_type)
     assert_instance_of Type::SmallMoney, type
