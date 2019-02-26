@@ -139,6 +139,9 @@ public class MSSQLRubyJdbcConnection extends RubyJdbcConnection {
         case Types.BIGINT:
             return formatTypeWithLimit(typeName, length);
         case Types.BIT:
+        case Types.REAL:
+        case Types.DOUBLE:
+            // SQL server FLOAT type is double in jdbc
             return typeName;
         case Types.NUMERIC:
         case Types.DECIMAL:

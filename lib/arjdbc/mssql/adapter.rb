@@ -161,8 +161,8 @@ module ActiveRecord
         map.register_type 'money',      MSSQL::Type::Money.new
         map.register_type 'smallmoney', MSSQL::Type::SmallMoney.new
         # Approximate Numeric types.
-        map.register_type %r{\Afloat},      ActiveRecord::Type::Float.new
-        map.register_type %r{\Areal},       RealType.new
+        map.register_type 'float',      MSSQL::Type::Float.new
+        map.register_type 'real',       MSSQL::Type::Real.new
 
         # aliases
         map.alias_type 'int',             'int(4)'

@@ -55,6 +55,15 @@ module ActiveRecord
           end
         end
 
+        class Float < ActiveRecord::Type::Float
+        end
+
+        class Real < ActiveRecord::Type::Float
+          def type
+            :real
+          end
+        end
+
       end
     end
 
