@@ -10,10 +10,12 @@ if ENV['RAILS']  # Use local clone of Rails
 
   activemodel_dir =  ::File.join(rails_dir, 'activemodel')
   activesupport_dir =  ::File.join(rails_dir, 'activesupport')
-  
+  actionpack_dir =  ::File.join(rails_dir, 'actionpack')
+
   gem 'activerecord', require: false, path: activerecord_dir
   gem 'activemodel', require: false, path: activemodel_dir
   gem 'activesupport', require: false, path: activesupport_dir
+  gem 'actionpack', require: false, path: actionpack_dir
 elsif ENV['AR_VERSION'] # Use specific version of AR and not .gemspec version
   version = ENV['AR_VERSION']
   
@@ -28,11 +30,12 @@ elsif ENV['AR_VERSION'] # Use specific version of AR and not .gemspec version
       else                                                              # branch
         opts = {branch: version}
       end
-    
+
       git 'https://github.com/rails/rails.git', **opts do
         gem 'activerecord', require: false
         gem 'activemodel', require: false
         gem 'activesupport', require: false
+        gem 'actionpack', require: false
       end
     end
   end

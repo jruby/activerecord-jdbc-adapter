@@ -1112,6 +1112,22 @@ public class RubyJdbcConnection extends RubyObject {
         });
     }
 
+    /**
+     * Prepares a query, returns a wrapped PreparedStatement. This takes care of exception wrapping
+     * @param context which context this method is executing on.
+     * @param sql the query to prepare-
+     * @return a Ruby <code>PreparedStatement</code>
+     */
+    @JRubyMethod(required = 1)
+    public IRubyObject prepare_statement(final ThreadContext context, final IRubyObject sql) {
+        return withConnection(context, new Callable<IRubyObject>() {
+            public IRubyObject call(Connection connection) throws SQLException {
+                final String query = sql.convertToString().getUnicodeValue();
+                return JavaUtil.convertJavaToRuby(context.runtime, connection.prepareStatement(query));
+            }
+        });
+    }
+
     // Called from exec_query in abstract/database_statements
     /**
      * Executes a query and returns the (AR) result.  There are three parameters:

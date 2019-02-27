@@ -631,7 +631,13 @@ module SimpleTestMethods
     assert_equal 'user_id', fks[0].options[:column]
     assert_equal 'id', fks[0].options[:primary_key]
 
-    connection.remove_foreign_key :entries, :name => :entries_user_id_fk
+    if ActiveRecord::Base.connection.adapter_name =~ /sqlite/i
+      # SQLite doesn't support named foreign keys
+      connection.remove_foreign_key :entries, :users
+    else
+      connection.remove_foreign_key :entries, name: :entries_user_id_fk
+    end
+
     fks = connection.foreign_keys(:entries)
     assert_equal 0, fks.size
   end

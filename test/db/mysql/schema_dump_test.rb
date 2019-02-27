@@ -119,14 +119,6 @@ class MysqlInfoTest < Test::Unit::TestCase
     assert_nil connection.primary_key('cats')
   end
 
-  def test_should_include_longtext_in_schema_dump
-    strio = StringIO.new
-    ActiveRecord::SchemaDumper::dump(connection, strio)
-    dump = strio.string
-    limit = 4294967295
-    assert_match %r{t.text\s+"text",[\s|:]+limit[\s\:\=\>]+#{limit}$}, dump
-  end
-
   # JRUBY-5040
   def test_schema_dump_should_not_have_limits_on_datetime
     dump = schema_dump
