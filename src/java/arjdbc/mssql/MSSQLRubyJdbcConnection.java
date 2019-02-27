@@ -162,6 +162,13 @@ public class MSSQLRubyJdbcConnection extends RubyJdbcConnection {
             }
 
             return formatTypeWithPrecisionAndScale(typeName, precision, scale);
+        case Types.BINARY:
+        case Types.VARBINARY:
+            if ( precision == 2147483647 ) {
+              return formatTypeWithPrecisionMax(typeName, "max");
+            }
+
+            return formatTypeWithPrecisionAndScale(typeName, precision, scale);
         default:
             return formatTypeWithPrecisionAndScale(typeName, precision, scale);
       }

@@ -27,7 +27,8 @@ module ActiveRecord
           varchar:      { name: 'varchar', limit: 8000 },
           varchar_max:  { name: 'varchar(max)' },
           uuid:         { name: 'uniqueidentifier' },
-          binary_basic: { name: 'binary', limit: 8000 },
+          binary_basic: { name: 'binary' },
+          varbinary:    { name: 'varbinary', limit: 8000 },
           # Deprecated SQL Server types
           image:        { name: 'image' },
           ntext:        { name: 'ntext' },

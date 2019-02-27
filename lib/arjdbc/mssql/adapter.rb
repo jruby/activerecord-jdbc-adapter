@@ -190,6 +190,11 @@ module ActiveRecord
           MSSQL::Type::Nchar.new(limit: limit)
         end
 
+        # Binary data types.
+        map.register_type              'varbinary(max)',      MSSQL::Type::VarbinaryMax.new
+        register_class_with_limit map, %r{\Abinary\(\d+\)},   MSSQL::Type::BinaryBasic
+        register_class_with_limit map, %r{\Avarbinary\(\d+\)},MSSQL::Type::Varbinary
+
         # aliases
         map.alias_type 'int',             'int(4)'
         map.alias_type 'int identity',    'int(4)'
@@ -213,9 +218,6 @@ module ActiveRecord
         #map.register_type              /^ntext/,            UnicodeTextType.new
         # Binary Strings
         register_class_with_limit map, %r{\Aimage}i,        ImageType
-        register_class_with_limit map, %r{\Abinary}i,       BinaryType
-        register_class_with_limit map, %r{\Avarbinary}i,    VarbinaryType
-        # map.register_type              'varbinary(max)',    VarbinaryMaxType.new
         # Other Data Types
         map.register_type              'uniqueidentifier',  UUIDType.new
         # TODO
