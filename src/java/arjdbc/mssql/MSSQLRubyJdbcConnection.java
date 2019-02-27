@@ -152,6 +152,16 @@ public class MSSQLRubyJdbcConnection extends RubyJdbcConnection {
             }
 
             return formatTypeWithPrecisionAndScale(typeName, precision, scale);
+        case Types.CHAR:
+        case Types.NCHAR:
+            return formatTypeWithPrecisionAndScale(typeName, precision, scale);
+        case Types.VARCHAR:
+        case Types.NVARCHAR:
+            if ( precision == 2147483647 ) {
+              return formatTypeWithPrecisionMax(typeName, "max");
+            }
+
+            return formatTypeWithPrecisionAndScale(typeName, precision, scale);
         default:
             return formatTypeWithPrecisionAndScale(typeName, precision, scale);
       }
@@ -165,6 +175,14 @@ public class MSSQLRubyJdbcConnection extends RubyJdbcConnection {
         final StringBuilder typeStr = new StringBuilder();
 
         typeStr.append(type).append('(').append(limit).append(')');
+
+        return typeStr.toString();
+    }
+
+    protected static String formatTypeWithPrecisionMax(final String type, final String precision) {
+
+        final StringBuilder typeStr = new StringBuilder().append(type);
+        typeStr.append('(').append(precision).append(')');
 
         return typeStr.toString();
     }

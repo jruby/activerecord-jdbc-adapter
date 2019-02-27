@@ -1,4 +1,5 @@
 require 'arjdbc/mssql/types/numeric_types'
+require 'arjdbc/mssql/types/string_types'
 
 # MSSQL type definitions
 module ActiveRecord

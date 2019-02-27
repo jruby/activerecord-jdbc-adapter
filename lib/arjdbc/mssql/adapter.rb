@@ -144,14 +144,17 @@ module ActiveRecord
       # calculating a table's columns.
       def initialize_type_map(map)
         # Build the type mapping from SQL Server to ActiveRecord
+
         # Integer types.
         map.register_type 'int(4)',          MSSQL::Type::Integer.new(limit: 4)
         map.register_type 'int identity(4)', MSSQL::Type::Integer.new(limit: 4)
         map.register_type 'tinyint(1)',      MSSQL::Type::TinyInteger.new(limit: 1)
         map.register_type 'smallint(2)',     MSSQL::Type::SmallInteger.new(limit: 2)
         map.register_type 'bigint(8)',       MSSQL::Type::BigInteger.new(limit: 8)
+
         # Boolean type.
         map.register_type 'bit',             MSSQL::Type::Boolean.new
+
         # Exact Numeric types.
         map.register_type %r{\Adecimal} do |sql_type|
           scale = extract_scale(sql_type)
@@ -160,9 +163,32 @@ module ActiveRecord
         end
         map.register_type 'money',      MSSQL::Type::Money.new
         map.register_type 'smallmoney', MSSQL::Type::SmallMoney.new
+
         # Approximate Numeric types.
         map.register_type 'float',      MSSQL::Type::Float.new
         map.register_type 'real',       MSSQL::Type::Real.new
+
+        # Character strings CHAR and VARCHAR (it can become Unicode UTF-8)
+        map.register_type 'varchar(max)', MSSQL::Type::VarcharMax.new
+        map.register_type %r{\Avarchar\(\d+\)} do |sql_type|
+          limit = extract_limit(sql_type)
+          MSSQL::Type::Varchar.new(limit: limit)
+        end
+        map.register_type %r{\Achar\(\d+\)} do |sql_type|
+          limit = extract_limit(sql_type)
+          MSSQL::Type::Char.new(limit: limit)
+        end
+
+        # Character strings NCHAR and NVARCHAR (by default Unicode UTF-16)
+        map.register_type 'nvarchar(max)', MSSQL::Type::NvarcharMax.new
+        map.register_type %r{\Anvarchar\(\d+\)} do |sql_type|
+          limit = extract_limit(sql_type)
+          MSSQL::Type::Nvarchar.new(limit: limit)
+        end
+        map.register_type %r{\Anchar\(\d+\)} do |sql_type|
+          limit = extract_limit(sql_type)
+          MSSQL::Type::Nchar.new(limit: limit)
+        end
 
         # aliases
         map.alias_type 'int',             'int(4)'
@@ -172,6 +198,7 @@ module ActiveRecord
         map.alias_type 'smallint',        'smallint(2)'
         map.alias_type 'bigint',          'bigint(8)'
         map.alias_type %r{\Anumeric},     'decimal'
+        map.alias_type 'string',          'nvarchar(4000)'
 
 
         # map.register_type              %r{.*},             UnicodeStringType.new
@@ -182,33 +209,8 @@ module ActiveRecord
         map.register_type              %r{\Atime} do |sql_type|
           TimeType.new :precision => extract_precision(sql_type)
         end
-        # Character Strings
-        register_class_with_limit map, %r{\Achar}i,         CharType
-        # register_class_with_limit map, %r{\Avarchar}i,      VarcharType
-        map.register_type              %r{\Anvarchar}i do |sql_type|
-          limit = extract_limit(sql_type)
-          if limit == 2_147_483_647 # varchar(max)
-            VarcharMaxType.new
-          else
-            VarcharType.new :limit => limit
-          end
-        end
-        # map.register_type              'varchar(max)',      VarcharMaxType.new
-        map.register_type              /^text/,             TextType.new
-        # Unicode Character Strings
-        register_class_with_limit map, %r{\Anchar}i,        UnicodeCharType
-        # register_class_with_limit map, %r{\Anvarchar}i,     UnicodeVarcharType
-        map.register_type              %r{\Anvarchar}i do |sql_type|
-          limit = extract_limit(sql_type)
-          if limit == 1_073_741_823 # nvarchar(max)
-            UnicodeVarcharMaxType.new
-          else
-            UnicodeVarcharType.new :limit => limit
-          end
-        end
-        # map.register_type              'nvarchar(max)',     UnicodeVarcharMaxType.new
-        map.alias_type                 'string',            'nvarchar(4000)'
-        map.register_type              /^ntext/,            UnicodeTextType.new
+        #map.register_type              /^text/,             TextType.new
+        #map.register_type              /^ntext/,            UnicodeTextType.new
         # Binary Strings
         register_class_with_limit map, %r{\Aimage}i,        ImageType
         register_class_with_limit map, %r{\Abinary}i,       BinaryType
