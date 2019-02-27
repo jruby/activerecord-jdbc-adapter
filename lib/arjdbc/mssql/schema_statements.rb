@@ -4,29 +4,34 @@ module ActiveRecord
       module SchemaStatements
 
         NATIVE_DATABASE_TYPES = {
+          # Logical Rails types to SQL Server types
           primary_key:  'int NOT NULL IDENTITY(1,1) PRIMARY KEY',
-          integer:      { name: 'int' }, # :limit => 4
+          integer:      { name: 'int', limit: 4 },
           boolean:      { name: 'bit' },
           decimal:      { name: 'decimal' },
           float:        { name: 'float' },
-          bigint:       { name: 'bigint' },
-          real:         { name: 'real' },
           date:         { name: 'date' },
           time:         { name: 'time' },
           datetime:     { name: 'datetime' },
-          timestamp:    { name: 'datetime' },
           string:       { name: 'nvarchar', limit: 4000 },
-          # varchar:      { name: 'varchar' }, # limit: 8000
           text:         { name: 'nvarchar(max)' },
-          text_basic:   { name: 'text' },
-          # ntext:        { name: 'ntext' },
-          char:         { name: 'char' },
-          # nchar:        { name: 'nchar' },
-          binary:       { name: 'image' }, # NOTE: :name => 'varbinary(max)'
-          binary_basic: { name: 'binary' },
-          uuid:         { name: 'uniqueidentifier' },
+          binary:       { name: 'varbinary(max)' },
+          # Other types or SQL Server specific
+          bigint:       { name: 'bigint' },
+          timestamp:    { name: 'datetime' },
+          real:         { name: 'real' },
           money:        { name: 'money' },
-          # :smallmoney => { :name => 'smallmoney' },
+          smallmoney:   { name: 'smallmoney' },
+          char:         { name: 'char' },
+          nchar:        { name: 'nchar' },
+          varchar:      { name: 'varchar', limit: 8000 },
+          varchar_max:  { name: 'varchar(max)' },
+          uuid:         { name: 'uniqueidentifier' },
+          binary_basic: { name: 'binary', limit: 8000 },
+          # Deprecated SQL Server types
+          image:        { name: 'image' },
+          ntext:        { name: 'ntext' },
+          text_basic:   { name: 'text' }
         }.freeze
 
         def native_database_types
