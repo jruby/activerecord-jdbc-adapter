@@ -152,9 +152,6 @@ module ActiveRecord
         map.register_type 'smallint(2)',     MSSQL::Type::SmallInteger.new(limit: 2)
         map.register_type 'bigint(8)',       MSSQL::Type::BigInteger.new(limit: 8)
 
-        # Boolean type.
-        map.register_type 'bit',             MSSQL::Type::Boolean.new
-
         # Exact Numeric types.
         map.register_type %r{\Adecimal} do |sql_type|
           scale = extract_scale(sql_type)
@@ -195,6 +192,12 @@ module ActiveRecord
         register_class_with_limit map, %r{\Abinary\(\d+\)},   MSSQL::Type::BinaryBasic
         register_class_with_limit map, %r{\Avarbinary\(\d+\)},MSSQL::Type::Varbinary
 
+        # Miscellaneous types, Boolean, XML, UUID
+        # FIXME The xml data needs to be reviewed and fixed
+        map.register_type 'bit',              MSSQL::Type::Boolean.new
+        map.register_type 'uniqueidentifier', MSSQL::Type::UUID.new
+        map.register_type 'xml',              MSSQL::Type::XML.new
+
         # aliases
         map.alias_type 'int',             'int(4)'
         map.alias_type 'int identity',    'int(4)'
@@ -219,10 +222,8 @@ module ActiveRecord
         # Binary Strings
         register_class_with_limit map, %r{\Aimage}i,        ImageType
         # Other Data Types
-        map.register_type              'uniqueidentifier',  UUIDType.new
         # TODO
         # map.register_type              'timestamp',         SQLServer::Type::Timestamp.new
-        map.register_type              'xml',               XmlType.new
       end
     end
   end

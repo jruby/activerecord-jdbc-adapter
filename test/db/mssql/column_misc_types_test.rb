@@ -8,6 +8,10 @@ class MSSQLColumnMiscTypesTest < Test::Unit::TestCase
         t.column :boolean, :boolean
         t.column :boolean_one, :boolean, default: true,  null: false
         t.column :boolean_two, :boolean, default: false, null: true
+        t.column :my_xml, :xml
+        t.column :my_other_xml, :xml, null: false, default: 'hello'
+        t.column :my_uuid, :uuid
+        t.column :my_other_uuid, :uuid, null: false, default: 'hi'
       end
     end
 
@@ -65,5 +69,54 @@ class MSSQLColumnMiscTypesTest < Test::Unit::TestCase
 
     type = MiscTypes.connection.lookup_cast_type(column.sql_type)
     assert_instance_of Type::Boolean, type
+  end
+
+
+  def test_xml_with_defaults
+    column = MiscTypes.columns_hash['my_xml']
+
+    assert_equal :xml,  column.type
+    assert_equal true,  column.null
+    assert_equal 'xml', column.sql_type
+    assert_equal nil,   column.default
+
+    type = MiscTypes.connection.lookup_cast_type(column.sql_type)
+    assert_instance_of Type::XML, type
+  end
+
+  def test_xml_custom
+    column = MiscTypes.columns_hash['my_other_xml']
+
+    assert_equal :xml,    column.type
+    assert_equal false,   column.null
+    assert_equal 'xml',   column.sql_type
+    assert_equal 'hello', column.default
+
+    type = MiscTypes.connection.lookup_cast_type(column.sql_type)
+    assert_instance_of Type::XML, type
+  end
+
+  def test_uuid_with_defaults
+    column = MiscTypes.columns_hash['my_uuid']
+
+    assert_equal :uuid,              column.type
+    assert_equal true,               column.null
+    assert_equal 'uniqueidentifier', column.sql_type
+    assert_equal nil,                column.default
+
+    type = MiscTypes.connection.lookup_cast_type(column.sql_type)
+    assert_instance_of Type::UUID, type
+  end
+
+  def test_uuid_custom
+    column = MiscTypes.columns_hash['my_other_uuid']
+
+    assert_equal :uuid,              column.type
+    assert_equal false,              column.null
+    assert_equal 'uniqueidentifier', column.sql_type
+    assert_equal 'hi',               column.default
+
+    type = MiscTypes.connection.lookup_cast_type(column.sql_type)
+    assert_instance_of Type::UUID, type
   end
 end

@@ -128,9 +128,9 @@ public class MSSQLRubyJdbcConnection extends RubyJdbcConnection {
       final int dataType = intFromResultSet(resultSet, DATA_TYPE);
       final String typeName = resultSet.getString(TYPE_NAME);
 
+      final String uuid = "uniqueidentifier";
       final String money = "money";
       final String smallmoney = "smallmoney";
-
 
       switch (dataType) {
         case Types.INTEGER:
@@ -143,6 +143,10 @@ public class MSSQLRubyJdbcConnection extends RubyJdbcConnection {
         case Types.DOUBLE:
             // SQL server FLOAT type is double in jdbc
             return typeName;
+        case -16:
+            // It seems the XML type has a code -16
+            // FIXME: this needs to reviewed
+            return typeName;
         case Types.NUMERIC:
         case Types.DECIMAL:
             // money and smallmoney are considered decimals with specific
@@ -153,6 +157,12 @@ public class MSSQLRubyJdbcConnection extends RubyJdbcConnection {
 
             return formatTypeWithPrecisionAndScale(typeName, precision, scale);
         case Types.CHAR:
+            // The uuid is char type
+            if ( typeName.equals(uuid) ) {
+              return typeName;
+            }
+
+            return formatTypeWithPrecisionAndScale(typeName, precision, scale);
         case Types.NCHAR:
             return formatTypeWithPrecisionAndScale(typeName, precision, scale);
         case Types.VARCHAR:
