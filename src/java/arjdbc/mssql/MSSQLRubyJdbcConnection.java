@@ -143,6 +143,10 @@ public class MSSQLRubyJdbcConnection extends RubyJdbcConnection {
         case Types.DOUBLE:
             // SQL server FLOAT type is double in jdbc
             return typeName;
+        case Types.DATE:
+        case Types.TIME:
+        case Types.TIMESTAMP:
+            return typeName;
         case Types.NUMERIC:
         case Types.DECIMAL:
             // money and smallmoney are considered decimals with specific

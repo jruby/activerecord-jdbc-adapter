@@ -198,6 +198,15 @@ module ActiveRecord
         map.register_type 'uniqueidentifier', MSSQL::Type::UUID.new
         map.register_type 'xml',              MSSQL::Type::XML.new
 
+        # Date and time types
+        map.register_type %r{^date\(?},      MSSQL::Type::Date.new
+        map.register_type %r{^datetime\(?},  MSSQL::Type::DateTime.new
+        map.register_type %r{smalldatetime}, MSSQL::Type::SmallDateTime.new
+        map.register_type %r{\Atime} do |sql_type|
+          precision = extract_precision(sql_type)
+          TimeType.new(precision: precision)
+        end
+
         # aliases
         map.alias_type 'int',             'int(4)'
         map.alias_type 'int identity',    'int(4)'
@@ -209,14 +218,6 @@ module ActiveRecord
         map.alias_type 'string',          'nvarchar(4000)'
 
 
-        # map.register_type              %r{.*},             UnicodeStringType.new
-        # Date and Time
-        map.register_type              /^date\(?/,          ActiveRecord::Type::Date.new
-        map.register_type              /^datetime\(?/,      DateTimeType.new
-        map.register_type              /smalldatetime/,     SmallDateTimeType.new
-        map.register_type              %r{\Atime} do |sql_type|
-          TimeType.new :precision => extract_precision(sql_type)
-        end
 
         # Deprecated SQL Server types.
         map.register_type 'text',  MSSQL::Type::Text.new

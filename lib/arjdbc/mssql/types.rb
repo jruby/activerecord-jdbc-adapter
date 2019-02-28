@@ -1,6 +1,7 @@
 require 'arjdbc/mssql/types/numeric_types'
 require 'arjdbc/mssql/types/string_types'
 require 'arjdbc/mssql/types/binary_types'
+require 'arjdbc/mssql/types/date_and_time_types'
 require 'arjdbc/mssql/types/deprecated_types'
 
 # MSSQL type definitions
