@@ -143,10 +143,6 @@ public class MSSQLRubyJdbcConnection extends RubyJdbcConnection {
         case Types.DOUBLE:
             // SQL server FLOAT type is double in jdbc
             return typeName;
-        case -16:
-            // It seems the XML type has a code -16
-            // FIXME: this needs to reviewed
-            return typeName;
         case Types.NUMERIC:
         case Types.DECIMAL:
             // money and smallmoney are considered decimals with specific
@@ -179,6 +175,16 @@ public class MSSQLRubyJdbcConnection extends RubyJdbcConnection {
             }
 
             return formatTypeWithPrecisionAndScale(typeName, precision, scale);
+        case Types.LONGVARBINARY:
+            // This maps to IMAGE type
+            return typeName;
+        case Types.LONGVARCHAR:
+            // This maps to TEXT type
+            return typeName;
+        case Types.LONGNVARCHAR:
+            // This maps to XML and NTEXT types
+            // FIXME: The XML type needs to be reviewed.
+            return typeName;
         default:
             return formatTypeWithPrecisionAndScale(typeName, precision, scale);
       }

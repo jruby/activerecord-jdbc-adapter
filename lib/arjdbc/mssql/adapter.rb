@@ -217,13 +217,11 @@ module ActiveRecord
         map.register_type              %r{\Atime} do |sql_type|
           TimeType.new :precision => extract_precision(sql_type)
         end
-        #map.register_type              /^text/,             TextType.new
-        #map.register_type              /^ntext/,            UnicodeTextType.new
-        # Binary Strings
-        register_class_with_limit map, %r{\Aimage}i,        ImageType
-        # Other Data Types
-        # TODO
-        # map.register_type              'timestamp',         SQLServer::Type::Timestamp.new
+
+        # Deprecated SQL Server types.
+        map.register_type 'text',  MSSQL::Type::Text.new
+        map.register_type 'ntext', MSSQL::Type::Ntext.new
+        map.register_type 'image', MSSQL::Type::Image.new
       end
     end
   end
