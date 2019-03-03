@@ -15,7 +15,7 @@ class MSSQLColumnDateAndTimeTypesTest < Test::Unit::TestCase
         t.column :my_smalldatetime_one, :smalldatetime,  null: false, default: '2019-02-28 05:59:06'
 
         t.column :my_time, :time
-        t.column :my_time_one, :time,  null: false, default: '2019-02-28 05:59:06.456789'
+        t.column :my_time_one, :time, precision: 3,  null: false, default: '15:59:06.456789'
       end
     end
 
@@ -81,7 +81,7 @@ class MSSQLColumnDateAndTimeTypesTest < Test::Unit::TestCase
     assert_equal :datetime,                    column.type
     assert_equal false,                        column.null
     assert_equal 'datetime',                   column.sql_type
-    assert_equal '2019-02-28 05:59:06.456789', column.default
+    assert_equal '2019-02-28 05:59:06.789', column.default
 
     type = DateAndTimeTypes.connection.lookup_cast_type(column.sql_type)
     assert_instance_of Type::DateTime, type
@@ -105,9 +105,59 @@ class MSSQLColumnDateAndTimeTypesTest < Test::Unit::TestCase
     assert_equal :smalldatetime,               column.type
     assert_equal false,                        column.null
     assert_equal 'smalldatetime',              column.sql_type
-    assert_equal '2019-02-28 05:59:06.456789', column.default
+    assert_equal '2019-02-28 05:59:06', column.default
 
     type = DateAndTimeTypes.connection.lookup_cast_type(column.sql_type)
     assert_instance_of Type::SmallDateTime, type
+  end
+
+  def test_time_with_defaults
+    column = DateAndTimeTypes.columns_hash['my_time']
+
+    assert_equal :time,     column.type
+    assert_equal true,      column.null
+    assert_equal 'time(7)', column.sql_type
+    assert_equal 7,         column.precision
+    assert_equal nil,       column.default
+
+    type = DateAndTimeTypes.connection.lookup_cast_type(column.sql_type)
+    assert_instance_of Type::Time, type
+  end
+
+  def test_time_custom
+    column = DateAndTimeTypes.columns_hash['my_time_one']
+
+    assert_equal :time,             column.type
+    assert_equal false,             column.null
+    assert_equal 'time(3)',         column.sql_type
+    assert_equal 3,                 column.precision
+    assert_equal '15:59:06.456789', column.default
+
+    type = DateAndTimeTypes.connection.lookup_cast_type(column.sql_type)
+    assert_instance_of Type::Time, type
+  end
+
+  def test_lookup_date_aliases
+    assert_cast_type :date, 'DATE'
+  end
+
+  def test_lookup_datetime_aliases
+    assert_cast_type :datetime, 'DATETIME'
+  end
+
+  def test_lookup_smalldatetime_aliases
+    assert_cast_type :smalldatetime, 'SMALLDATETIME'
+  end
+
+  def test_lookup_time_aliases
+    assert_cast_type :time, 'time'
+    assert_cast_type :time, 'TIME'
+  end
+
+  private
+
+  def assert_cast_type(type, sql_type)
+    cast_type = DateAndTimeTypes.connection.lookup_cast_type(sql_type)
+    assert_equal type, cast_type.type
   end
 end

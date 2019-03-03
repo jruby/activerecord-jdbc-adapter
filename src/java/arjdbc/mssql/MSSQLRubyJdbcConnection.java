@@ -144,9 +144,11 @@ public class MSSQLRubyJdbcConnection extends RubyJdbcConnection {
             // SQL server FLOAT type is double in jdbc
             return typeName;
         case Types.DATE:
-        case Types.TIME:
         case Types.TIMESTAMP:
             return typeName;
+        case Types.TIME:
+            // For time the Rails precision comes in the scale
+            return formatTypeWithPrecision(typeName, scale);
         case Types.NUMERIC:
         case Types.DECIMAL:
             // money and smallmoney are considered decimals with specific
@@ -162,23 +164,23 @@ public class MSSQLRubyJdbcConnection extends RubyJdbcConnection {
               return typeName;
             }
 
-            return formatTypeWithPrecisionAndScale(typeName, precision, scale);
+            return formatTypeWithPrecision(typeName, precision);
         case Types.NCHAR:
-            return formatTypeWithPrecisionAndScale(typeName, precision, scale);
+            return formatTypeWithPrecision(typeName, precision);
         case Types.VARCHAR:
         case Types.NVARCHAR:
             if ( precision == 2147483647 ) {
               return formatTypeWithPrecisionMax(typeName, "max");
             }
 
-            return formatTypeWithPrecisionAndScale(typeName, precision, scale);
+            return formatTypeWithPrecision(typeName, precision);
         case Types.BINARY:
         case Types.VARBINARY:
             if ( precision == 2147483647 ) {
               return formatTypeWithPrecisionMax(typeName, "max");
             }
 
-            return formatTypeWithPrecisionAndScale(typeName, precision, scale);
+            return formatTypeWithPrecision(typeName, precision);
         case Types.LONGVARBINARY:
             // This maps to IMAGE type
             return typeName;
@@ -206,6 +208,16 @@ public class MSSQLRubyJdbcConnection extends RubyJdbcConnection {
         return typeStr.toString();
     }
 
+    protected static String formatTypeWithPrecision(final String type, final int precision) {
+
+        if ( precision < 0 ) return type;
+
+        final StringBuilder typeStr = new StringBuilder().append(type);
+        typeStr.append('(').append(precision).append(')');
+
+        return typeStr.toString();
+    }
+
     protected static String formatTypeWithPrecisionMax(final String type, final String precision) {
 
         final StringBuilder typeStr = new StringBuilder().append(type);
@@ -214,6 +226,7 @@ public class MSSQLRubyJdbcConnection extends RubyJdbcConnection {
         return typeStr.toString();
     }
 
+    // differs from  method in parent class because this appends scale 0
     protected static String formatTypeWithPrecisionAndScale(
         final String type, final int precision, final int scale) {
 
@@ -224,6 +237,7 @@ public class MSSQLRubyJdbcConnection extends RubyJdbcConnection {
         if ( scale >= 0 ) typeStr.append(',').append(scale);
         return typeStr.append(')').toString();
     }
+
 
     // Using resultSet.getTimestamp(column) only gets .999 (3) precision with
     // this we gain more precision.

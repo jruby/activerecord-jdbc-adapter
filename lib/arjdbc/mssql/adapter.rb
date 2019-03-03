@@ -199,13 +199,10 @@ module ActiveRecord
         map.register_type 'xml',              MSSQL::Type::XML.new
 
         # Date and time types
-        map.register_type %r{^date\(?},      MSSQL::Type::Date.new
-        map.register_type %r{^datetime\(?},  MSSQL::Type::DateTime.new
-        map.register_type %r{smalldatetime}, MSSQL::Type::SmallDateTime.new
-        map.register_type %r{\Atime} do |sql_type|
-          precision = extract_precision(sql_type)
-          TimeType.new(precision: precision)
-        end
+        map.register_type 'date',          MSSQL::Type::Date.new
+        map.register_type 'datetime',      MSSQL::Type::DateTime.new
+        map.register_type 'smalldatetime', MSSQL::Type::SmallDateTime.new
+        register_class_with_precision map, %r{\Atime\(\d+\)}i, MSSQL::Type::Time
 
         # aliases
         map.alias_type 'int',             'int(4)'
@@ -216,6 +213,10 @@ module ActiveRecord
         map.alias_type 'bigint',          'bigint(8)'
         map.alias_type %r{\Anumeric},     'decimal'
         map.alias_type 'string',          'nvarchar(4000)'
+        map.alias_type 'DATE',            'date'
+        map.alias_type 'DATETIME',        'datetime'
+        map.alias_type 'SMALLDATETIME',   'smalldatetime'
+        map.alias_type %r{\Atime\z}i,     'time(7)'
 
 
 
