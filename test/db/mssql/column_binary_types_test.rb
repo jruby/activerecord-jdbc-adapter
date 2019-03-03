@@ -116,4 +116,17 @@ class MSSQLColumnBinaryTypeTest < Test::Unit::TestCase
     assert_instance_of Type::Varbinary, type
   end
 
+  def test_lookup_binary_aliases
+    assert_cast_type :binary, 'binary'
+    assert_cast_type :binary, 'BINARY'
+    assert_cast_type :binary, 'blob'
+    assert_cast_type :binary, 'BLOB'
+  end
+
+  private
+
+  def assert_cast_type(type, sql_type)
+    cast_type = TestBinary.connection.lookup_cast_type(sql_type)
+    assert_equal type, cast_type.type
+  end
 end

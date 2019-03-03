@@ -187,9 +187,9 @@ module ActiveRecord
         end
 
         # Binary data types.
-        map.register_type              'varbinary(max)',      MSSQL::Type::VarbinaryMax.new
-        register_class_with_limit map, %r{\Abinary\(\d+\)},   MSSQL::Type::BinaryBasic
-        register_class_with_limit map, %r{\Avarbinary\(\d+\)},MSSQL::Type::Varbinary
+        map.register_type              'varbinary(max)',       MSSQL::Type::VarbinaryMax.new
+        register_class_with_limit map, %r{\Abinary\(\d+\)},    MSSQL::Type::BinaryBasic
+        register_class_with_limit map, %r{\Avarbinary\(\d+\)}, MSSQL::Type::Varbinary
 
         # Miscellaneous types, Boolean, XML, UUID
         # FIXME The xml data needs to be reviewed and fixed
@@ -218,6 +218,8 @@ module ActiveRecord
         map.alias_type 'DATETIME',        'datetime'
         map.alias_type 'SMALLDATETIME',   'smalldatetime'
         map.alias_type %r{\Atime\z}i,     'time(7)'
+        map.alias_type %r{\Abinary\z}i,   'varbinary(max)'
+        map.alias_type %r{\Ablob\z}i,     'varbinary(max)'
 
 
 
