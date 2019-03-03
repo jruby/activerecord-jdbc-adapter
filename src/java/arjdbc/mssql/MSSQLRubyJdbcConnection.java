@@ -134,20 +134,18 @@ public class MSSQLRubyJdbcConnection extends RubyJdbcConnection {
 
       switch (dataType) {
         // For integers the Rails limit option is the JDBC BUFFER_LENGTH.
-        // Also the JDBC shows "int identity" if integer is primary key and
-        // there is not need to send to the ruby part.
         case Types.INTEGER:
             // limit is 4
-            return "int";
+            return typeName;
         case Types.TINYINT:
             // limit is 1
-            return "tinyint";
+            return typeName;
         case Types.SMALLINT:
             // limit is 2
-            return "smallint";
+            return typeName;
         case Types.BIGINT:
             // limit is 8
-            return "bigint";
+            return typeName;
         case Types.BIT:
         case Types.REAL:
         case Types.DOUBLE:

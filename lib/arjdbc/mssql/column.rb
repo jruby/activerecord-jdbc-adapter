@@ -14,11 +14,8 @@ module ActiveRecord
       end
 
       def identity?
-        !! sql_type.downcase.index('identity')
+        sql_type.downcase.include? 'identity'
       end
-      # @deprecated
-      alias_method :identity, :identity?
-      alias_method :is_identity, :identity?
 
     end
   end

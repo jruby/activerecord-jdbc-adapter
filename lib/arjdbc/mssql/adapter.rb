@@ -204,6 +204,9 @@ module ActiveRecord
         register_class_with_precision map, %r{\Atime\(\d+\)}i, MSSQL::Type::Time
 
         # aliases
+        map.alias_type 'int identity',    'int'
+        map.alias_type 'bigint identity', 'bigint'
+        map.alias_type 'integer',         'int'
         map.alias_type 'integer',         'int'
         map.alias_type 'INTEGER',         'int'
         map.alias_type 'TINYINT',         'tinyint'

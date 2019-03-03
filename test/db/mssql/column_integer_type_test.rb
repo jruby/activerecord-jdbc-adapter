@@ -11,7 +11,7 @@ class MSSQLColumnIntegerTypeTest < Test::Unit::TestCase
       end
 
       create_table 'testing_big_integers', id: false do |t|
-        t.column :id, :integer, limit: 8, primary_key: true
+        t.column :id, 'bigint NOT NULL IDENTITY(1,1) PRIMARY KEY'
         t.column :my_bigint, :bigint
         t.column :my_bigint_alt, :integer, limit: 8
       end
@@ -45,10 +45,10 @@ class MSSQLColumnIntegerTypeTest < Test::Unit::TestCase
   def test_integer_primary_key
     column = TestInt.columns_hash['id']
 
-    assert_equal :integer, column.type
-    assert_equal false,    column.null
-    assert_equal 'int',    column.sql_type
-    assert_equal 4,        column.limit
+    assert_equal :integer,       column.type
+    assert_equal false,          column.null
+    assert_equal 'int identity', column.sql_type
+    assert_equal 4,              column.limit
 
     type = TestInt.connection.lookup_cast_type(column.sql_type)
     assert_instance_of Type::Integer, type
@@ -96,10 +96,10 @@ class MSSQLColumnIntegerTypeTest < Test::Unit::TestCase
   def test_bigint_primary_key
     column = TestBigint.columns_hash['id']
 
-    assert_equal :integer, column.type
-    assert_equal false,    column.null
-    assert_equal 'bigint', column.sql_type
-    assert_equal 8,        column.limit
+    assert_equal :integer,          column.type
+    assert_equal false,             column.null
+    assert_equal 'bigint identity', column.sql_type
+    assert_equal 8,                 column.limit
 
     type = TestInt.connection.lookup_cast_type(column.sql_type)
     assert_instance_of Type::BigInteger, type

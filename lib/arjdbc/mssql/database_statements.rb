@@ -66,7 +66,7 @@ module ActiveRecord
 
         def identity_column_name(table_name)
           for column in columns(table_name)
-            return column.name if column.identity
+            return column.name if column.identity?
           end
           nil
         end
