@@ -161,8 +161,8 @@ module ActiveRecord
         map.register_type %r{\Asmallmoney\z}i, MSSQL::Type::SmallMoney.new
 
         # Approximate Numeric types.
-        map.register_type 'float',      MSSQL::Type::Float.new
-        map.register_type 'real',       MSSQL::Type::Real.new
+        map.register_type %r{\Afloat\z}i,    MSSQL::Type::Float.new
+        map.register_type %r{\Areal\z}i,     MSSQL::Type::Real.new
 
         # Character strings CHAR and VARCHAR (it can become Unicode UTF-8)
         map.register_type 'varchar(max)', MSSQL::Type::VarcharMax.new
@@ -193,9 +193,9 @@ module ActiveRecord
 
         # Miscellaneous types, Boolean, XML, UUID
         # FIXME The xml data needs to be reviewed and fixed
-        map.register_type 'bit',              MSSQL::Type::Boolean.new
-        map.register_type 'uniqueidentifier', MSSQL::Type::UUID.new
-        map.register_type 'xml',              MSSQL::Type::XML.new
+        map.register_type 'bit',                     MSSQL::Type::Boolean.new
+        map.register_type %r{\Auniqueidentifier\z}i, MSSQL::Type::UUID.new
+        map.register_type %r{\Axml\z}i,              MSSQL::Type::XML.new
 
         # Date and time types
         map.register_type 'date',          MSSQL::Type::Date.new
@@ -211,7 +211,9 @@ module ActiveRecord
         map.alias_type 'BIGINT',          'bigint'
         map.alias_type %r{\Anumeric}i,    'decimal'
         map.alias_type %r{\Anumber}i,     'decimal'
+        map.alias_type %r{\Adouble\z}i,   'float'
         map.alias_type 'string',          'nvarchar(4000)'
+        map.alias_type %r{\Aboolean\z}i,  'bit'
         map.alias_type 'DATE',            'date'
         map.alias_type 'DATETIME',        'datetime'
         map.alias_type 'SMALLDATETIME',   'smalldatetime'

@@ -121,4 +121,19 @@ class MSSQLColumnApproxNumericTypesTest < Test::Unit::TestCase
     type = ApproxNumericTypes.connection.lookup_cast_type(column.sql_type)
     assert_instance_of Type::Float, type
   end
+
+  def test_float_and_real_aliases
+    assert_cast_type :real,  'REAL'
+    assert_cast_type :float, 'FLOAT'
+    assert_cast_type :float, 'DOUBLE'
+    assert_cast_type :float, 'double'
+  end
+
+  private
+
+  def assert_cast_type(type, sql_type)
+    cast_type = ApproxNumericTypes.connection.lookup_cast_type(sql_type)
+    assert_equal type, cast_type.type
+  end
+
 end

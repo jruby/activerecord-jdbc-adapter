@@ -119,4 +119,18 @@ class MSSQLColumnMiscTypesTest < Test::Unit::TestCase
     type = MiscTypes.connection.lookup_cast_type(column.sql_type)
     assert_instance_of Type::UUID, type
   end
+
+  def test_misc_types_aliases
+    assert_cast_type :boolean, 'boolean'
+    assert_cast_type :boolean, 'BOOLEAN'
+    assert_cast_type :xml,     'XML'
+    assert_cast_type :uuid,    'UNIQUEIDENTIFIER'
+  end
+
+  private
+
+  def assert_cast_type(type, sql_type)
+    cast_type = MiscTypes.connection.lookup_cast_type(sql_type)
+    assert_equal type, cast_type.type
+  end
 end
