@@ -10,7 +10,8 @@ class MSSQLColumnIntegerTypeTest < Test::Unit::TestCase
         t.column :my_smallint, :integer, limit: 2
       end
 
-      create_table 'testing_big_integers', force: true do |t|
+      create_table 'testing_big_integers', id: false do |t|
+        t.column :id, :integer, limit: 8, primary_key: true
         t.column :my_bigint, :bigint
         t.column :my_bigint_alt, :integer, limit: 8
       end
@@ -44,10 +45,10 @@ class MSSQLColumnIntegerTypeTest < Test::Unit::TestCase
   def test_integer_primary_key
     column = TestInt.columns_hash['id']
 
-    assert_equal :integer,          column.type
-    assert_equal false,             column.null
-    assert_equal 'int identity(4)', column.sql_type
-    assert_equal 4,                 column.limit
+    assert_equal :integer, column.type
+    assert_equal false,    column.null
+    assert_equal 'int',    column.sql_type
+    assert_equal 4,        column.limit
 
     type = TestInt.connection.lookup_cast_type(column.sql_type)
     assert_instance_of Type::Integer, type
@@ -58,7 +59,7 @@ class MSSQLColumnIntegerTypeTest < Test::Unit::TestCase
 
     assert_equal :integer, column.type
     assert_equal true,     column.null
-    assert_equal 'int(4)', column.sql_type
+    assert_equal 'int',    column.sql_type
     assert_equal 4,        column.limit
     assert_equal nil,      column.default
 
@@ -69,11 +70,11 @@ class MSSQLColumnIntegerTypeTest < Test::Unit::TestCase
   def test_tinyint_1_byte
     column = TestInt.columns_hash['my_tinyint']
 
-    assert_equal :integer,     column.type
-    assert_equal true,         column.null
-    assert_equal 'tinyint(1)', column.sql_type
-    assert_equal 1,            column.limit
-    assert_equal nil ,         column.default
+    assert_equal :integer,  column.type
+    assert_equal true,      column.null
+    assert_equal 'tinyint', column.sql_type
+    assert_equal 1,         column.limit
+    assert_equal nil ,      column.default
 
     type = TestInt.connection.lookup_cast_type(column.sql_type)
     assert_instance_of Type::TinyInteger, type
@@ -82,24 +83,36 @@ class MSSQLColumnIntegerTypeTest < Test::Unit::TestCase
   def test_smallint_2_bytes
     column = TestInt.columns_hash['my_smallint']
 
-    assert_equal :integer,     column.type
-    assert_equal true,         column.null
-    assert_equal 'smallint(2)', column.sql_type
-    assert_equal 2,            column.limit
-    assert_equal nil ,         column.default
+    assert_equal :integer,   column.type
+    assert_equal true,       column.null
+    assert_equal 'smallint', column.sql_type
+    assert_equal 2,          column.limit
+    assert_equal nil ,       column.default
 
     type = TestInt.connection.lookup_cast_type(column.sql_type)
     assert_instance_of Type::SmallInteger, type
   end
 
+  def test_bigint_primary_key
+    column = TestBigint.columns_hash['id']
+
+    assert_equal :integer, column.type
+    assert_equal false,    column.null
+    assert_equal 'bigint', column.sql_type
+    assert_equal 8,        column.limit
+
+    type = TestInt.connection.lookup_cast_type(column.sql_type)
+    assert_instance_of Type::BigInteger, type
+  end
+
   def test_bitint
     column = TestBigint.columns_hash['my_bigint']
 
-    assert_equal :bigint,     column.type
-    assert_equal true,         column.null
-    assert_equal 'bigint(8)', column.sql_type
-    assert_equal 8,            column.limit
-    assert_equal nil ,         column.default
+    assert_equal :integer, column.type
+    assert_equal true,     column.null
+    assert_equal 'bigint', column.sql_type
+    assert_equal 8,        column.limit
+    assert_equal nil ,     column.default
 
     type = TestInt.connection.lookup_cast_type(column.sql_type)
     assert_instance_of Type::BigInteger, type
@@ -108,14 +121,28 @@ class MSSQLColumnIntegerTypeTest < Test::Unit::TestCase
   def test_bitint_alt
     column = TestBigint.columns_hash['my_bigint_alt']
 
-    assert_equal :bigint,     column.type
-    assert_equal true,         column.null
-    assert_equal 'bigint(8)', column.sql_type
-    assert_equal 8,            column.limit
-    assert_equal nil,         column.default
+    assert_equal :integer, column.type
+    assert_equal true,     column.null
+    assert_equal 'bigint', column.sql_type
+    assert_equal 8,        column.limit
+    assert_equal nil,      column.default
 
     type = TestInt.connection.lookup_cast_type(column.sql_type)
     assert_instance_of Type::BigInteger, type
   end
 
+  def test_int_aliases
+    assert_cast_type :integer, 'integer'
+    assert_cast_type :integer, 'INTEGER'
+    assert_cast_type :integer, 'TINYINT'
+    assert_cast_type :integer, 'SMALLINT'
+    assert_cast_type :integer, 'BIGINT'
+  end
+
+  private
+
+  def assert_cast_type(type, sql_type)
+    cast_type = TestInt.connection.lookup_cast_type(sql_type)
+    assert_equal type, cast_type.type
+  end
 end

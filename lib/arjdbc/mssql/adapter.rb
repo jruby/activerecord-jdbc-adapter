@@ -146,11 +146,10 @@ module ActiveRecord
         # Build the type mapping from SQL Server to ActiveRecord
 
         # Integer types.
-        map.register_type 'int(4)',          MSSQL::Type::Integer.new(limit: 4)
-        map.register_type 'int identity(4)', MSSQL::Type::Integer.new(limit: 4)
-        map.register_type 'tinyint(1)',      MSSQL::Type::TinyInteger.new(limit: 1)
-        map.register_type 'smallint(2)',     MSSQL::Type::SmallInteger.new(limit: 2)
-        map.register_type 'bigint(8)',       MSSQL::Type::BigInteger.new(limit: 8)
+        map.register_type 'int',      MSSQL::Type::Integer.new(limit: 4)
+        map.register_type 'tinyint',  MSSQL::Type::TinyInteger.new(limit: 1)
+        map.register_type 'smallint', MSSQL::Type::SmallInteger.new(limit: 2)
+        map.register_type 'bigint',   MSSQL::Type::BigInteger.new(limit: 8)
 
         # Exact Numeric types.
         map.register_type %r{\Adecimal} do |sql_type|
@@ -205,12 +204,11 @@ module ActiveRecord
         register_class_with_precision map, %r{\Atime\(\d+\)}i, MSSQL::Type::Time
 
         # aliases
-        map.alias_type 'int',             'int(4)'
-        map.alias_type 'int identity',    'int(4)'
-        map.alias_type 'integer',         'int(4)'
-        map.alias_type 'tinyint',         'tinyint(1)'
-        map.alias_type 'smallint',        'smallint(2)'
-        map.alias_type 'bigint',          'bigint(8)'
+        map.alias_type 'integer',         'int'
+        map.alias_type 'INTEGER',         'int'
+        map.alias_type 'TINYINT',         'tinyint'
+        map.alias_type 'SMALLINT',        'smallint'
+        map.alias_type 'BIGINT',          'bigint'
         map.alias_type %r{\Anumeric},     'decimal'
         map.alias_type 'string',          'nvarchar(4000)'
         map.alias_type 'DATE',            'date'

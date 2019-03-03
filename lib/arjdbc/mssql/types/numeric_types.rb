@@ -22,9 +22,6 @@ module ActiveRecord
         end
 
         class BigInteger < ActiveRecord::Type::Integer
-          def type
-            :bigint
-          end
         end
 
         class Decimal < ActiveRecord::Type::Decimal
