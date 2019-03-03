@@ -152,13 +152,13 @@ module ActiveRecord
         map.register_type 'bigint',   MSSQL::Type::BigInteger.new(limit: 8)
 
         # Exact Numeric types.
-        map.register_type %r{\Adecimal} do |sql_type|
+        map.register_type %r{\Adecimal}i do |sql_type|
           scale = extract_scale(sql_type)
           precision = extract_precision(sql_type)
           MSSQL::Type::Decimal.new(precision: precision, scale: scale)
         end
-        map.register_type 'money',      MSSQL::Type::Money.new
-        map.register_type 'smallmoney', MSSQL::Type::SmallMoney.new
+        map.register_type %r{\Amoney\z}i,      MSSQL::Type::Money.new
+        map.register_type %r{\Asmallmoney\z}i, MSSQL::Type::SmallMoney.new
 
         # Approximate Numeric types.
         map.register_type 'float',      MSSQL::Type::Float.new
@@ -209,7 +209,8 @@ module ActiveRecord
         map.alias_type 'TINYINT',         'tinyint'
         map.alias_type 'SMALLINT',        'smallint'
         map.alias_type 'BIGINT',          'bigint'
-        map.alias_type %r{\Anumeric},     'decimal'
+        map.alias_type %r{\Anumeric}i,    'decimal'
+        map.alias_type %r{\Anumber}i,     'decimal'
         map.alias_type 'string',          'nvarchar(4000)'
         map.alias_type 'DATE',            'date'
         map.alias_type 'DATETIME',        'datetime'

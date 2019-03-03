@@ -118,4 +118,20 @@ class MSSQLColumnExactNumericTypesTest < Test::Unit::TestCase
     type = ExactNumericTypes.connection.lookup_cast_type(column.sql_type)
     assert_instance_of Type::SmallMoney, type
   end
+
+  def test_decimal_aliases
+    assert_cast_type :decimal, 'DECIMAL'
+    assert_cast_type :decimal, 'NUMERIC'
+    assert_cast_type :decimal, 'number'
+    assert_cast_type :decimal, 'NUMBER'
+    assert_cast_type :money,   'MONEY'
+    assert_cast_type :smallmoney, 'SMALLMONEY'
+  end
+
+  private
+
+  def assert_cast_type(type, sql_type)
+    cast_type = ExactNumericTypes.connection.lookup_cast_type(sql_type)
+    assert_equal type, cast_type.type
+  end
 end
