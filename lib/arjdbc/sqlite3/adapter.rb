@@ -122,6 +122,12 @@ module ArJdbc
       @statements.clear
     end
 
+    def truncate(table_name, name = nil)
+      # `DELETE` without `WHERE` uses "The Truncate Optimization", see:
+      # https://www.sqlite.org/lang_delete.html
+      execute "DELETE FROM #{quote_table_name(table_name)}", name
+    end
+
     def supports_index_sort_order?
       true
     end
