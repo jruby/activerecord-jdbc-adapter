@@ -247,6 +247,17 @@ module ArJdbc
       true
     end
 
+    def supports_insert_returning?
+      true
+    end
+
+    def supports_insert_on_conflict?
+      postgresql_version >= 90500
+    end
+    alias supports_insert_on_duplicate_skip? supports_insert_on_conflict?
+    alias supports_insert_on_duplicate_update? supports_insert_on_conflict?
+    alias supports_insert_conflict_target? supports_insert_on_conflict?
+
     def supports_ddl_transactions?
       true
     end
@@ -420,6 +431,20 @@ module ArJdbc
 
     def last_insert_id_result(sequence_name)
       exec_query("SELECT currval('#{sequence_name}')", 'SQL')
+    end
+
+    def build_insert_sql(insert) # :nodoc:
+      sql = +"INSERT #{insert.into} #{insert.values_list}"
+
+      if insert.skip_duplicates?
+        sql << " ON CONFLICT #{insert.conflict_target} DO NOTHING"
+      elsif insert.update_duplicates?
+        sql << " ON CONFLICT #{insert.conflict_target} DO UPDATE SET "
+        sql << insert.updatable_columns.map { |column| "#{column}=excluded.#{column}" }.join(",")
+      end
+
+      sql << " RETURNING #{insert.returning}" if insert.returning
+      sql
     end
 
     def all_schemas
