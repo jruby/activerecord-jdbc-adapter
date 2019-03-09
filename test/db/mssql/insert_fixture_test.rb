@@ -33,20 +33,20 @@ class MSSQLInsertFixturesTest < Test::Unit::TestCase
   class FixtureEntry < ActiveRecord::Base
   end
 
-  def setup
+  def self.startup
     CreateFixtureEntries.up
   end
 
-  def teardown
+  def self.shutdown
     CreateFixtureEntries.down
     ActiveRecord::Base.clear_active_connections!
   end
 
-  def test_insert_binary
+  def test_insert_binary_assets
     assets_root = File.expand_path('../../assets', File.dirname(__FILE__))
     assets = %w(flowers.jpg example.log test.txt)
 
-    assets.each.with_index(100) do |filename, index|
+    assets.each.with_index(1) do |filename, index|
       data = File.read("#{assets_root}/#{filename}")
       data.force_encoding('ASCII-8BIT') if data.respond_to?(:force_encoding)
       data.freeze
@@ -60,9 +60,19 @@ class MSSQLInsertFixturesTest < Test::Unit::TestCase
     end
 
 
-    fixture = { binary_data: 2 }
+  end
 
-    FixtureEntry.connection.insert_fixture(fixture, :fixture_entries)
+  def test_insert_binary_other_types
+    other_types = [12, 3.1415, true, false, Time.current, Date.today, 'qwerty']
+
+    other_types.each.with_index(10) do |item, index|
+      fixture = { id: index, binary_data: item }
+      FixtureEntry.connection.insert_fixture(fixture, :fixture_entries)
+
+      record = FixtureEntry.find(index)
+
+      assert_equal item.to_s, record.binary_data, 'Newly assigned data differs from original'
+    end
   end
 
 

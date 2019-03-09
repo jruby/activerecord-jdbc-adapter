@@ -7,15 +7,7 @@ module ActiveRecord
         # The JDBC drivers does not work with 6 digits microseconds
         def quoted_date(value)
           if value.acts_like?(:time)
-            zone_conv_method = if ActiveRecord::Base.default_timezone == :utc
-                                 :getutc
-                               else
-                                 :getlocal
-                               end
-
-            if value.respond_to?(zone_conv_method)
-              value = value.send(zone_conv_method)
-            end
+            value = time_with_db_timezone(value)
           end
 
           result = value.to_s(:db)
@@ -44,7 +36,7 @@ module ActiveRecord
         # @override
         def quoted_time(value)
           if value.acts_like?(:time)
-            tz_value = get_time(value)
+            tz_value = time_with_db_timezone(value)
             usec = value.respond_to?(:usec) ? (value.usec / 1000) : 0
             sprintf('%02d:%02d:%02d.%03d', tz_value.hour, tz_value.min, tz_value.sec, usec)
           else
@@ -58,12 +50,27 @@ module ActiveRecord
 
         private
 
+        def time_with_db_timezone(value)
+          zone_conv_method = if ActiveRecord::Base.default_timezone == :utc
+                               :getutc
+                             else
+                               :getlocal
+                             end
+
+          if value.respond_to?(zone_conv_method)
+            value = value.send(zone_conv_method)
+          else
+            value
+          end
+        end
+
         # @override
         # FIXME: it need to be improved to handle other custom types.
         # Also check if it's possible insert integer into a NVARCHAR
         def _quote(value)
           case value
-          # when SomeBinaryData then "xxx"
+          when ActiveRecord::Type::Binary::Data then
+            "0x#{value.hex}"
           # when SomeOtherBinaryData then BLOB_VALUE_MARKER
           # when SomeOtherData then "yyy"
           when String, ActiveSupport::Multibyte::Chars then
