@@ -79,7 +79,7 @@ module ActiveRecord
 
       # Does this adapter support setting the isolation level for a transaction?
       def supports_transaction_isolation?(level = nil)
-        true
+        false
       end
 
       # Overrides abstract method which always returns false
