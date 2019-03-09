@@ -26,11 +26,25 @@ module ActiveRecord
         def execute(sql, name = nil)
           # with identity insert on block
           if insert_sql?(sql)
-            if id_insert_table_name = identity_insert_table_name(sql)
-              with_identity_insert_enabled(id_insert_table_name) do
+            table_name_for_identity_insert = identity_insert_table_name(sql)
+
+            if table_name_for_identity_insert
+              with_identity_insert_enabled(table_name_for_identity_insert) do
                 super
               end
             else
+              super
+            end
+          else
+            super
+          end
+        end
+
+        def exec_insert(sql, name = nil, binds = [], pk = nil, sequence_name = nil)
+          table_name_for_identity_insert = identity_insert_table_name(sql)
+
+          if table_name_for_identity_insert
+            with_identity_insert_enabled(table_name_for_identity_insert) do
               super
             end
           else

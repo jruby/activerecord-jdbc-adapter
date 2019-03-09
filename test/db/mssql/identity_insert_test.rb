@@ -34,20 +34,20 @@ class MSSQLIdentityInsertTest < Test::Unit::TestCase
   class InsertEntry < ActiveRecord::Base
   end
 
-  def setup
+  def self.startup
     CreateIdentityInsertEntries.up
   end
 
-  def teardown
+  def self.shutdown
     CreateIdentityInsertEntries.down
     ActiveRecord::Base.clear_active_connections!
   end
 
-  def test_set_identity_insert_table_name_keyword
+  def test_table_name_is_keyword
     InsertEntry.connection.execute("INSERT INTO [references]([id], [title]) VALUES (333, 'Title')")
   end
 
-  def test_set_identity_insert_table_name_with_dash
+  def test_table_name_contains_dash
     InsertEntry.connection.execute("INSERT INTO [my-references]([title], [id]) VALUES ('Title', 344)")
   end
 
@@ -63,5 +63,11 @@ class MSSQLIdentityInsertTest < Test::Unit::TestCase
   def test_dont_enable_identity_insert_when_unnecessary
     InsertEntry.connection.execute("INSERT INTO insert_entries([title]) VALUES ('[id]')")
     InsertEntry.connection.execute(%Q(INSERT INTO insert_entries("title") VALUES ('"a memorable quote"')))
+  end
+
+  def test_insert_with_exec_insert
+    InsertEntry.connection.exec_insert("INSERT INTO insert_entries([id], [title]) VALUES (711, 'Title')")
+    InsertEntry.connection.exec_insert("INSERT INTO [my-references]([title], [id]) VALUES ('Title', 711)")
+    InsertEntry.connection.exec_insert("INSERT INTO [references]([id], [title]) VALUES (711, 'Title')")
   end
 end
