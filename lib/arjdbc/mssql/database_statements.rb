@@ -82,7 +82,11 @@ module ActiveRecord
         end
 
         def set_identity_insert(table_name, enable = true)
-          execute "SET IDENTITY_INSERT #{table_name} #{enable ? 'ON' : 'OFF'}"
+          if enable
+            execute("SET IDENTITY_INSERT #{quote_table_name(table_name)} ON")
+          else
+            execute("SET IDENTITY_INSERT #{quote_table_name(table_name)} OFF")
+          end
         rescue Exception => e
           raise ActiveRecord::ActiveRecordError, "IDENTITY_INSERT could not be turned" +
                 " #{enable ? 'ON' : 'OFF'} for table #{table_name} due : #{e.inspect}"
