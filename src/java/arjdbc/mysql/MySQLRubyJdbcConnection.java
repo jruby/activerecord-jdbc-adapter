@@ -107,8 +107,8 @@ public class MySQLRubyJdbcConnection extends RubyJdbcConnection {
             final int minor = jdbcDriver.getMinorVersion();
             if ( major < 5 ) {
                 final RubyClass errorClass = getConnectionNotEstablished(context.runtime);
-                throw new RaiseException(context.runtime, errorClass,
-                    "MySQL adapter requires driver >= 5.0 got: " + major + "." + minor + "", false);
+                throw context.runtime.newRaiseException(errorClass,
+                    "MySQL adapter requires driver >= 5.0 got: " + major + "." + minor + "");
             }
             if ( major == 5 && minor < 1 ) { // need 5.1 for JDBC 4.0
                 // lightweight validation query: "/* ping */ SELECT 1"
