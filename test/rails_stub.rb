@@ -6,6 +6,9 @@ module Rails
     def root
       defined?(RAILS_ROOT) ? Pathname.new(RAILS_ROOT).realpath : raise("Rails.root not set")
     end
+    def load_database_yaml
+      database_configuration
+    end
   end
   class Application
     def self.config
