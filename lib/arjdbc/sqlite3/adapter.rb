@@ -64,7 +64,6 @@ module ArJdbc
     def initialize(connection, logger, connection_options, config)
       super(connection, logger, config)
 
-      @active     = true
       @statements = StatementPool.new(self.class.type_cast_config_to_integer(config[:statement_limit]))
       configure_connection
     end
@@ -111,18 +110,6 @@ module ArJdbc
     alias supports_insert_on_duplicate_skip? supports_insert_on_conflict?
     alias supports_insert_on_duplicate_update? supports_insert_on_conflict?
     alias supports_insert_conflict_target? supports_insert_on_conflict?
-
-    def active?
-      @active
-    end
-
-    # Disconnects from the database if already connected. Otherwise, this
-    # method does nothing.
-    def disconnect!
-      super
-      @active = false
-      @connection.close rescue nil
-    end
 
     # Clears the prepared statements cache.
     def clear_cache!
@@ -667,6 +654,7 @@ module ActiveRecord::ConnectionAdapters
   class SQLite3Adapter < AbstractAdapter
     include ArJdbc::Abstract::Core
     include ArJdbc::SQLite3
+    include ArJdbc::Abstract::ConnectionManagement
     include ArJdbc::Abstract::DatabaseStatements
     include ArJdbc::Abstract::StatementCache
     include ArJdbc::Abstract::TransactionSupport
