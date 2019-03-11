@@ -107,3 +107,21 @@ connections:
     arunit2:
       adapter: sqlite3
       database: ':memory:'
+
+  # db settings for the jdbc mssql adapter
+  sqlserver:
+    _common: &_common
+      host: localhost
+      # NOTE: we need to drop the driver jar file in the lib folder
+      # of this adapter. (we can change later the way we load this driver)
+      <% require 'sqljdbc4.jar' if ENV['DRIVER'] =~ /sqlserver/i %>
+      adapter:  sqlserver
+      password: arjdbc
+      username: arjdbc
+      encoding: utf8
+    arunit:
+      <<: *_common
+      database: jdbc_arunit
+    arunit2:
+      <<: *_common
+      database: jdbc_arunit2
