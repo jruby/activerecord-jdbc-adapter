@@ -166,6 +166,15 @@ module ActiveRecord
           end
         end
 
+        def change_column_default(table_name, column_name, default)
+          remove_default_constraint(table_name, column_name)
+          unless default.nil?
+            column = columns(table_name).find { |c| c.name.to_s == column_name.to_s }
+            result = execute "ALTER TABLE #{quote_table_name(table_name)} ADD CONSTRAINT DF_#{table_name}_#{column_name} DEFAULT #{quote_default_expression(default, column)} FOR #{quote_column_name(column_name)}"
+            result
+          end
+        end
+
         def change_column(table_name, column_name, type, options = {})
           column = columns(table_name).find { |c| c.name.to_s == column_name.to_s }
 
@@ -197,15 +206,6 @@ module ActiveRecord
           sql << (options[:null] ? " NULL" : " NOT NULL") if options.has_key?(:null)
           result = execute(sql)
           result
-        end
-
-        def change_column_default(table_name, column_name, default)
-          remove_default_constraint(table_name, column_name)
-          unless default.nil?
-            column = columns(table_name).find { |c| c.name.to_s == column_name.to_s }
-            result = execute "ALTER TABLE #{quote_table_name(table_name)} ADD CONSTRAINT DF_#{table_name}_#{column_name} DEFAULT #{quote_default_expression(default, column)} FOR #{quote_column_name(column_name)}"
-            result
-          end
         end
 
         # Implements the quoting style for SQL Server
