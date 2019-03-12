@@ -166,6 +166,11 @@ module ActiveRecord
           end
         end
 
+        def rename_column(table_name, column_name, new_column_name)
+          execute "EXEC sp_rename '#{table_name}.#{column_name}', '#{new_column_name}', 'COLUMN'"
+          rename_column_indexes(table_name, column_name, new_column_name)
+        end
+
         def change_column_default(table_name, column_name, default)
           remove_default_constraint(table_name, column_name)
           unless default.nil?
