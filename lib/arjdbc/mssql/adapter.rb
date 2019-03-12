@@ -9,6 +9,7 @@ require 'arel/visitors/bind_visitor'
 require 'arel/visitors/sqlserver'
 require 'active_record/connection_adapters/abstract_adapter'
 
+
 require 'arjdbc/abstract/core'
 require 'arjdbc/abstract/connection_management'
 require 'arjdbc/abstract/database_statements'
@@ -21,6 +22,7 @@ require 'arjdbc/mssql/quoting'
 require 'arjdbc/mssql/schema_statements'
 require 'arjdbc/mssql/database_statements'
 require 'arjdbc/mssql/explain_support'
+require 'arjdbc/mssql/extensions'
 
 # require 'arjdbc/util/quoted_cache'
 
