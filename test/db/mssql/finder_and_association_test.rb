@@ -91,4 +91,10 @@ class MSSQLFinderAndAssociationTest < Test::Unit::TestCase
     assert_equal [], dataset
   end
 
+  def test_exists_with_distinct
+    assert_equal false, Writer.distinct.order(:email).exists?
+    assert_equal false, Writer.distinct.order(:email).limit(1).exists?
+    assert_equal false, Writer.distinct.order(:email).limit(2).exists?
+  end
+
 end

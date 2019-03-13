@@ -176,7 +176,12 @@ module Arel
         oneasone = core.projections.all? { |x| x == ActiveRecord::FinderMethods::ONE_AS_ONE }
         limitone = [nil, 0, 1].include? node_value(o.limit)
         if distinct && oneasone && limitone && !o.offset
-          core.projections = [Arel.sql("TOP(1) 1 AS [one]")]
+          # NOTE: part clears the limit part of the query but the bind parameter
+          # is still hanging around in active record, this issue makes
+          # the prepared statement to fails with "index i is out of range"
+          # As a quick fix is just add the bind marker as parameter of TOP
+          # which always be one.
+          core.projections = [Arel.sql("TOP(?) 1 AS [one]")]
           o.limit = nil
         end
       end
