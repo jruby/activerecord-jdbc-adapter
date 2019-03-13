@@ -166,6 +166,21 @@ module ActiveRecord
           end
         end
 
+        # SQL Server requires the ORDER BY columns in the select
+        # list for distinct queries, and requires that the ORDER BY
+        # include the distinct column.
+        def columns_for_distinct(columns, orders) #:nodoc:
+          order_columns = orders.reject(&:blank?).map{ |s|
+              # Convert Arel node to string
+              s = s.to_sql unless s.is_a?(String)
+              # Remove any ASC/DESC modifiers
+              s.gsub(/\s+(?:ASC|DESC)\b/i, '')
+               .gsub(/\s+NULLS\s+(?:FIRST|LAST)\b/i, '')
+            }.reject(&:blank?).map.with_index { |column, i| "#{column} AS alias_#{i}" }
+
+          [super, *order_columns].join(', ')
+        end
+
         def rename_column(table_name, column_name, new_column_name)
           execute "EXEC sp_rename '#{table_name}.#{column_name}', '#{new_column_name}', 'COLUMN'"
           rename_column_indexes(table_name, column_name, new_column_name)
