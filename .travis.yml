@@ -86,9 +86,9 @@ matrix:
         mariadb: '10.1'
       env: DB=mariadb PREPARED_STATEMENTS=true
     # Rails test-suite :
-    - env: DB=mysql2     TEST_PREFIX="rails:" AR_VERSION="v6.0.0.beta2" # PS off by default
-    - env: DB=mysql2     TEST_PREFIX="rails:" AR_VERSION="v6.0.0.beta2" PREPARED_STATEMENTS=true
-    - env: DB=mysql2     TEST_PREFIX="rails:" AR_VERSION="v6.0.0.beta2" DRIVER=MariaDB
-    - env: DB=postgresql TEST_PREFIX="rails:" AR_VERSION="v6.0.0.beta2" # PS on by default
-    - env: DB=postgresql TEST_PREFIX="rails:" AR_VERSION="v6.0.0.beta2" PREPARED_STATEMENTS=false
-    - env: DB=sqlite3    TEST_PREFIX="rails:" AR_VERSION="v6.0.0.beta2"
+    - env: DB=mysql2     TEST_PREFIX="rails:" AR_VERSION="v6.0.0.beta3" # PS off by default
+    - env: DB=mysql2     TEST_PREFIX="rails:" AR_VERSION="v6.0.0.beta3" PREPARED_STATEMENTS=true
+    - env: DB=mysql2     TEST_PREFIX="rails:" AR_VERSION="v6.0.0.beta3" DRIVER=MariaDB
+    - env: DB=postgresql TEST_PREFIX="rails:" AR_VERSION="v6.0.0.beta3" # PS on by default
+    - env: DB=postgresql TEST_PREFIX="rails:" AR_VERSION="v6.0.0.beta3" PREPARED_STATEMENTS=false
+    - env: DB=sqlite3    TEST_PREFIX="rails:" AR_VERSION="v6.0.0.beta3"

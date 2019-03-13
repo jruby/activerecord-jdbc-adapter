@@ -64,7 +64,6 @@ module ArJdbc
     def initialize(connection, logger, connection_options, config)
       super(connection, logger, config)
 
-      @active     = true
       @statements = StatementPool.new(self.class.type_cast_config_to_integer(config[:statement_limit]))
       configure_connection
     end
@@ -105,21 +104,22 @@ module ArJdbc
       true
     end
 
-    def active?
-      @active
+    def supports_insert_on_conflict?
+      sqlite_version >= "3.24.0"
     end
-
-    # Disconnects from the database if already connected. Otherwise, this
-    # method does nothing.
-    def disconnect!
-      super
-      @active = false
-      @connection.close rescue nil
-    end
+    alias supports_insert_on_duplicate_skip? supports_insert_on_conflict?
+    alias supports_insert_on_duplicate_update? supports_insert_on_conflict?
+    alias supports_insert_conflict_target? supports_insert_on_conflict?
 
     # Clears the prepared statements cache.
     def clear_cache!
       @statements.clear
+    end
+
+    def truncate(table_name, name = nil)
+      # `DELETE` without `WHERE` uses "The Truncate Optimization", see:
+      # https://www.sqlite.org/lang_delete.html
+      execute "DELETE FROM #{quote_table_name(table_name)}", name
     end
 
     def supports_index_sort_order?
@@ -314,6 +314,19 @@ module ArJdbc
           end
         end
       end
+    end
+
+    def build_insert_sql(insert) # :nodoc:
+      sql = +"INSERT #{insert.into} #{insert.values_list}"
+
+      if insert.skip_duplicates?
+        sql << " ON CONFLICT #{insert.conflict_target} DO NOTHING"
+      elsif insert.update_duplicates?
+        sql << " ON CONFLICT #{insert.conflict_target} DO UPDATE SET "
+        sql << insert.updatable_columns.map { |column| "#{column}=excluded.#{column}" }.join(",")
+      end
+
+      sql
     end
 
     private
@@ -641,6 +654,7 @@ module ActiveRecord::ConnectionAdapters
   class SQLite3Adapter < AbstractAdapter
     include ArJdbc::Abstract::Core
     include ArJdbc::SQLite3
+    include ArJdbc::Abstract::ConnectionManagement
     include ArJdbc::Abstract::DatabaseStatements
     include ArJdbc::Abstract::StatementCache
     include ArJdbc::Abstract::TransactionSupport
