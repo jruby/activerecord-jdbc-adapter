@@ -20,7 +20,7 @@ module ActiveRecord
 
         # Quotes strings for use in SQL input.
         def quote_string(s)
-          s.to_s.gsub /\'/, "''"
+          s.to_s.gsub(/\'/, "''")
         end
 
         # Does not quote function default values for UUID columns
