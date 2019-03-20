@@ -63,5 +63,35 @@ module MSSQLMigration
       assert column = columns.find{ |c| c.name == 'test_change_column_default' }
       assert_equal column.default, 'changed'
     end
+
+    def test_change_column_null
+      assert_nothing_raised do
+        add_column :entries, :test_change_column_null_one, :string, null: false
+        add_column :entries, :test_change_column_null_two, :string
+      end
+
+      Entry.reset_column_information
+      sample = Entry.create!(
+        test_change_column_null_one: 'something',
+        test_change_column_null_two: nil
+      )
+
+      assert_nothing_raised do
+        change_column_null :entries, :test_change_column_null_one, true
+      end
+
+      assert_nothing_raised do
+        change_column_null :entries, :test_change_column_null_two, false, 'used to be null'
+      end
+
+      Entry.reset_column_information
+      columns = Entry.columns
+      assert column_one = columns.find{ |c| c.name == 'test_change_column_null_one' }
+      assert column_two = columns.find{ |c| c.name == 'test_change_column_null_two' }
+      assert_equal column_one.null, true
+      assert_equal column_two.null, false
+      sample.reload
+      assert_equal sample.test_change_column_null_two, 'used to be null'
+    end
   end
 end

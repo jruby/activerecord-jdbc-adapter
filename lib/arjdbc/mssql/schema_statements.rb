@@ -219,6 +219,23 @@ module ActiveRecord
           end
         end
 
+        def change_column_null(table_name, column_name, null, default = nil)
+          column = column_for(table_name, column_name)
+          quoted_table = quote_table_name(table_name)
+          quoted_column = quote_column_name(column_name)
+          quoted_default = quote(default)
+          unless null || default.nil?
+            execute("UPDATE #{quoted_table} SET #{quoted_column}=#{quoted_default} WHERE #{quoted_column} IS NULL")
+          end
+          sql_alter = [
+            "ALTER TABLE #{quoted_table}",
+            "ALTER COLUMN #{quoted_column} #{type_to_sql column.type, column.limit, column.precision, column.scale}",
+            (' NOT NULL' unless null)
+          ]
+
+          execute(sql_alter.join(' '))
+        end
+
         private
 
         def change_column_type(table_name, column_name, type, options = {})

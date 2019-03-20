@@ -5,6 +5,7 @@ module MSSQLMigration
 
     MIGRATION_METHODS = %w[
       change_column_default
+      change_column_null
       add_column
       remove_column
       rename_column
