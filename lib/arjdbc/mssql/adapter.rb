@@ -74,13 +74,24 @@ module ActiveRecord
         ::ActiveRecord::ConnectionAdapters::MSSQLColumn
       end
 
+      # Can this adapter determine the primary key for tables not attached
+      # to an Active Record class, such as join tables?
+      def supports_primary_key?
+        true
+      end
+
+      # Does this adapter support creating foreign key constraints?
+      def supports_foreign_keys?
+        false
+      end
+
       # Does this adapter support migrations?
       def supports_migrations?
         true
       end
 
       # Does this adapter support setting the isolation level for a transaction?
-      def supports_transaction_isolation?(level = nil)
+      def supports_transaction_isolation?
         false
       end
 
