@@ -65,6 +65,19 @@ module MSSQLMigration
       assert_equal column.default, 'changed'
     end
 
+    def test_change_column_default_with_from_and_to
+      assert_nothing_raised do
+        add_column :entries, :test_change_column_default_from_to, :string
+      end
+
+      assert_nothing_raised do
+        change_column_default :entries, :test_change_column_default_from_to, from: nil, to: "Tester"
+      end
+
+      Entry.reset_column_information
+      assert_equal "Tester", Entry.new.test_change_column_default_from_to
+    end
+
     def test_change_column_null
       assert_nothing_raised do
         add_column :entries, :test_change_column_null_one, :string, null: false
