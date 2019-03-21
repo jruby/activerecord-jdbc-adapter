@@ -50,6 +50,7 @@ module MSSQLMigration
         add_column :entries, :test_change_column_default, :string, default: 'unchanged'
       end
 
+      Entry.reset_column_information
       columns = Entry.columns
       assert column = columns.find{ |c| c.name == 'test_change_column_default' }
       assert_equal column.default, 'unchanged'

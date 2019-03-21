@@ -178,7 +178,6 @@ module ActiveRecord
         end
 
         # Character strings NCHAR and NVARCHAR (by default Unicode UTF-16)
-        map.register_type 'nvarchar(max)', MSSQL::Type::NvarcharMax.new
         map.register_type %r{\Anvarchar\(\d+\)} do |sql_type|
           limit = extract_limit(sql_type)
           MSSQL::Type::Nvarchar.new(limit: limit)
@@ -187,6 +186,8 @@ module ActiveRecord
           limit = extract_limit(sql_type)
           MSSQL::Type::Nchar.new(limit: limit)
         end
+        map.register_type 'nvarchar(max)', MSSQL::Type::NvarcharMax.new
+        map.register_type 'nvarchar(4000)', MSSQL::Type::Nvarchar.new
 
         # Binary data types.
         map.register_type              'varbinary(max)',       MSSQL::Type::VarbinaryMax.new
