@@ -139,7 +139,7 @@ module ActiveRecord
         @default_schema ||= select_value('SELECT default_schema_name FROM sys.database_principals WHERE name = CURRENT_USER')
       end
 
-      alias current_schema default_schema
+      alias_method :current_schema, :default_schema
 
       # Allows for changing of the default schema.
       # (to be used during unqualified table name resolution).
@@ -148,9 +148,20 @@ module ActiveRecord
         @default_schema = nil if defined?(@default_schema)
       end
 
-      alias current_schema= default_schema=
+      alias_method :current_schema=, :default_schema=
 
-      private
+      protected
+
+      def translate_exception(e, message)
+        case message
+        when /(cannot insert duplicate key .* with unique index) | (violation of unique key constraint)/i
+          RecordNotUnique.new(message)
+        # when /(String or binary data would be truncated)/i
+        #   ValueTooLong.new(message)
+        else
+          super
+        end
+      end
 
       # This method is called indirectly by the abstract method
       # 'fetch_type_metadata' which then it is called by the java part when
