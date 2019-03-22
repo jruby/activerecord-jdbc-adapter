@@ -23,6 +23,14 @@ module MSSQLMigration
       assert_equal ['hola'], Entry.all.map(&:greetings)
     end
 
+    def test_rename_nonexistent_column
+      exception = ActiveRecord::ActiveRecordError
+
+      assert_raise(exception) do
+        rename_column :entries, :nonexistent, :should_fail
+      end
+    end
+
     def test_rename_column_with_an_index
       add_column 'entries', :hat_name, :string
       add_index :entries, :hat_name

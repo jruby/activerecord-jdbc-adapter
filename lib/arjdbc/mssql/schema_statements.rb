@@ -182,6 +182,10 @@ module ActiveRecord
         end
 
         def rename_column(table_name, column_name, new_column_name)
+          # The below line checks if column exists otherwise raise activerecord
+          # default exception for this case.
+          _column = column_for(table_name, column_name)
+
           execute "EXEC sp_rename '#{table_name}.#{column_name}', '#{new_column_name}', 'COLUMN'"
           rename_column_indexes(table_name, column_name, new_column_name)
         end
