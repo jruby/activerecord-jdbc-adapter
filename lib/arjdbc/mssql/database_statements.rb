@@ -63,6 +63,15 @@ module ActiveRecord
           @connection.supports_transaction_isolation?(level)
         end
 
+        # Begins the transaction with the isolation level set.
+        # Raises an error by default.
+        # FIXME: This method is implemented in ArJdbc::Abstract module but
+        # isolation levels support is broken causing deadlocks.
+        # For the meantime we will have the default behaviour.
+        def begin_isolated_db_transaction(isolation)
+          raise ActiveRecord::TransactionIsolationError, "adapter does not support setting transaction isolation"
+        end
+
         private
 
         def insert_sql?(sql)
