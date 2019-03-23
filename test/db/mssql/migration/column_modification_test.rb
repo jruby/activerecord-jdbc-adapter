@@ -53,6 +53,19 @@ module MSSQLMigration
       assert_equal ['index_entries_on_style_and_size'], connection.indexes('entries').map(&:name)
     end
 
+    def test_remove_column_with_multi_column_index
+      # NOTE: This test is specific to this adapter, the PostgreSQL adapter
+      # behaves similarly but the MySQL adapter does not, it removes the index.
+      add_column 'entries', :hat_size, :integer
+      add_column 'entries', :hat_style, :string, limit: 100
+      add_index 'entries', ['hat_style', 'hat_size'], unique: true
+
+      assert_equal 1, connection.indexes(:entries).size
+      remove_column(:entries, :hat_size)
+
+      assert_equal [], connection.indexes(:entries).map(&:name)
+    end
+
     def test_change_column_default
       assert_nothing_raised do
         add_column :entries, :test_change_column_default, :string, default: 'unchanged'
