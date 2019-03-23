@@ -92,10 +92,6 @@ module ArJdbc
     end
     private :redshift?
 
-    def use_insert_returning?
-      @use_insert_returning
-    end
-
     def set_client_encoding(encoding)
       ActiveRecord::Base.logger.warn "client_encoding is set by the driver and should not be altered, ('#{encoding}' ignored)"
       ActiveRecord::Base.logger.debug "Set the 'allowEncodingChanges' driver property (e.g. using config[:properties]) if you need to override the client encoding when doing a copy."
@@ -258,6 +254,10 @@ module ArJdbc
     alias supports_insert_on_duplicate_update? supports_insert_on_conflict?
     alias supports_insert_conflict_target? supports_insert_on_conflict?
 
+    def index_algorithms
+      { concurrently: 'CONCURRENTLY' }
+    end
+
     def supports_ddl_transactions?
       true
     end
@@ -290,6 +290,13 @@ module ArJdbc
       postgresql_version >= 90400
     end
 
+    def supports_optimizer_hints?
+      unless defined?(@has_pg_hint_plan)
+        @has_pg_hint_plan = extension_available?("pg_hint_plan")
+      end
+      @has_pg_hint_plan
+    end
+
     def supports_lazy_transactions?
       true
     end
@@ -299,30 +306,11 @@ module ArJdbc
       index.using == :btree || super
     end
 
-    def index_algorithms
-      { :concurrently => 'CONCURRENTLY' }
-    end
-
-    # Set the authorized user for this session.
-    def session_auth=(user)
-      clear_cache!
-      execute "SET SESSION AUTHORIZATION #{user}"
-    end
-
-    # Came from postgres_adapter
     def get_advisory_lock(lock_id) # :nodoc:
       unless lock_id.is_a?(Integer) && lock_id.bit_length <= 63
-        raise(ArgumentError, "Postgres requires advisory lock ids to be a signed 64 bit integer")
+        raise(ArgumentError, "PostgreSQL requires advisory lock ids to be a signed 64 bit integer")
       end
-      select_value("SELECT pg_try_advisory_lock(#{lock_id});")
-    end
-
-    # Came from postgres_adapter
-    def release_advisory_lock(lock_id) # :nodoc:
-      unless lock_id.is_a?(Integer) && lock_id.bit_length <= 63
-        raise(ArgumentError, "Postgres requires advisory lock ids to be a signed 64 bit integer")
-      end
-      select_value("SELECT pg_advisory_unlock(#{lock_id})")
+      query_value("SELECT pg_try_advisory_lock(#{lock_id})")
     end
 
     def release_advisory_lock(lock_id) # :nodoc:
@@ -344,21 +332,34 @@ module ArJdbc
       }
     end
 
+    def extension_available?(name)
+      query_value("SELECT true FROM pg_available_extensions WHERE name = #{quote(name)}", "SCHEMA")
+    end
+
     def extension_enabled?(name)
-      res = exec_query("SELECT EXISTS(SELECT * FROM pg_available_extensions WHERE name = '#{name}' AND installed_version IS NOT NULL) as enabled", "SCHEMA")
-      res.cast_values.first
+      query_value("SELECT installed_version IS NOT NULL FROM pg_available_extensions WHERE name = #{quote(name)}", "SCHEMA")
     end
 
     def extensions
       exec_query("SELECT extname FROM pg_extension", "SCHEMA").cast_values
     end
 
-    # Returns the max identifier length supported by PostgreSQL
+    # Returns the configured supported identifier length supported by PostgreSQL
     def max_identifier_length
-      @max_identifier_length ||= select_one('SHOW max_identifier_length', 'SCHEMA'.freeze)['max_identifier_length'].to_i
+      @max_identifier_length ||= query_value("SHOW max_identifier_length", "SCHEMA").to_i
     end
     alias table_alias_length max_identifier_length
     alias index_name_length max_identifier_length
+
+    # Set the authorized user for this session
+    def session_auth=(user)
+      clear_cache!
+      execute("SET SESSION AUTHORIZATION #{user}")
+    end
+
+    def use_insert_returning?
+      @use_insert_returning
+    end
 
     def exec_insert(sql, name, binds, pk = nil, sequence_name = nil)
       val = super
@@ -447,6 +448,10 @@ module ArJdbc
       sql
     end
 
+    def build_truncate_statements(*table_names)
+      "TRUNCATE TABLE #{table_names.map(&method(:quote_table_name)).join(", ")}"
+    end
+
     def all_schemas
       select('SELECT nspname FROM pg_namespace').map { |row| row["nspname"] }
     end
@@ -517,10 +522,6 @@ module ArJdbc
     end
 
 
-    def truncate(table_name, name = nil)
-      execute "TRUNCATE TABLE #{quote_table_name(table_name)}", name
-    end
-
     # @private
     def column_name_for_operation(operation, node)
       case operation
@@ -561,7 +562,7 @@ module ArJdbc
       $1.strip if $1
     end
 
-    def arel_visitor # :nodoc:
+    def arel_visitor
       Arel::Visitors::PostgreSQL.new(self)
     end
 
