@@ -164,15 +164,13 @@ module ActiveRecord
       end
 
       # FIXME: optimize insert_fixtures_set by using JDBC Statement.addBatch()/executeBatch()
+
       def combine_multi_statements(total_sql)
-        total_sql
-      end
-
-      def with_multi_statements
-        yield
-      end
-
-      def discard_remaining_results
+        if total_sql.length == 1
+          total_sql.first
+        else
+          total_sql
+        end
       end
     end
   end
