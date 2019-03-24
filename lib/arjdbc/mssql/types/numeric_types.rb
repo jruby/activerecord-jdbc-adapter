@@ -27,6 +27,11 @@ module ActiveRecord
         class Decimal < ActiveRecord::Type::Decimal
         end
 
+        # This type is used when scale is 0 and the default value in
+        # SQL Server when it is not provided
+        class DecimalWithoutScale < ActiveRecord::Type::DecimalWithoutScale
+        end
+
         class Money < Decimal
           def initialize(options = {})
             super

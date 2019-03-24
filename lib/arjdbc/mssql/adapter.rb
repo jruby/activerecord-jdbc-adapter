@@ -196,7 +196,11 @@ module ActiveRecord
         map.register_type %r{\Adecimal}i do |sql_type|
           scale = extract_scale(sql_type)
           precision = extract_precision(sql_type)
-          MSSQL::Type::Decimal.new(precision: precision, scale: scale)
+          if scale == 0
+            MSSQL::Type::DecimalWithoutScale.new(precision: precision)
+          else
+            MSSQL::Type::Decimal.new(precision: precision, scale: scale)
+          end
         end
         map.register_type %r{\Amoney\z}i,      MSSQL::Type::Money.new
         map.register_type %r{\Asmallmoney\z}i, MSSQL::Type::SmallMoney.new

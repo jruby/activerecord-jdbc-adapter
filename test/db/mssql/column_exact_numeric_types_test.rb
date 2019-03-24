@@ -36,6 +36,11 @@ class MSSQLColumnExactNumericTypesTest < Test::Unit::TestCase
   Type = ActiveRecord::ConnectionAdapters::MSSQL::Type
 
   def test_decimal_with_defaults
+    # When precision  and scale are not provided SQL Server will use
+    # its own defaults:
+    #   precision: 18
+    #   scale: 0
+    #
     column = ExactNumericTypes.columns_hash['my_decimal']
 
     assert_equal :decimal,        column.type
@@ -43,24 +48,27 @@ class MSSQLColumnExactNumericTypesTest < Test::Unit::TestCase
     assert_equal nil,             column.default
     assert_equal 'decimal(18,0)', column.sql_type
     assert_equal 18,              column.precision
-    assert_equal 0,               column.scale
+    assert_equal nil,             column.scale
 
     type = ExactNumericTypes.connection.lookup_cast_type(column.sql_type)
-    assert_instance_of Type::Decimal, type
+    assert_instance_of Type::DecimalWithoutScale, type
   end
 
   def test_decimal_with_precison_and_default
+    # default value is casted according the column type in this case
+    # DecimalWithoutScale which is an Integer
+    #
     column = ExactNumericTypes.columns_hash['decimal_one']
 
     assert_equal :decimal,        column.type
     assert_equal true,            column.null
-    assert_equal '9.11',          column.default
+    assert_equal '9',             column.default
     assert_equal 'decimal(15,0)', column.sql_type
     assert_equal 15,              column.precision
-    assert_equal 0,               column.scale
+    assert_equal nil,             column.scale
 
     type = ExactNumericTypes.connection.lookup_cast_type(column.sql_type)
-    assert_instance_of Type::Decimal, type
+    assert_instance_of Type::DecimalWithoutScale, type
   end
 
   def test_decimal_with_precison_scale_default_and_not_null
