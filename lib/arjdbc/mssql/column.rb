@@ -9,8 +9,15 @@ module ActiveRecord
       end
 
       def extract_default(value)
-        return $1 if value =~ /^\(N?'(.*)'\)$/ || value =~ /^\(\(?(.*?)\)?\)$/
-        value
+        # return nil if default does not match the patterns to avoid
+        # any unexpected errors.
+        return unless value =~ /^\(N?'(.*)'\)$/ || value =~ /^\(\(?(.*?)\)?\)$/
+
+        unquote_string(Regexp.last_match[1])
+      end
+
+      def unquote_string(string)
+        string.to_s.gsub("''", "'")
       end
 
       def identity?

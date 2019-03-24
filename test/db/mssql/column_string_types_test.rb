@@ -9,6 +9,7 @@ class MSSQLColumnStringTypeTest < Test::Unit::TestCase
         t.column :my_string_custom, :string, limit: 34, null: false, default: 'active'
         t.column :my_text, :text
         t.column :my_text_custom, :text, null: false, default: 'Hello there'
+        t.column :my_special_string, :string, default: "Hi O'Connor"
 
         # other  not standard rails data types
         t.column :my_nchar, :nchar
@@ -220,7 +221,6 @@ class MSSQLColumnStringTypeTest < Test::Unit::TestCase
     assert_instance_of Type::Varchar, type
   end
 
-
   def test_varchar_max
     column = TestString.columns_hash['my_varchar_max']
 
@@ -245,5 +245,11 @@ class MSSQLColumnStringTypeTest < Test::Unit::TestCase
 
     type = TestString.connection.lookup_cast_type(column.sql_type)
     assert_instance_of Type::VarcharMax, type
+  end
+
+  def test_special_strings
+    record = TestString.new
+
+    assert_equal "Hi O'Connor", record.my_special_string
   end
 end
