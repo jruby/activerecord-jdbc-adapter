@@ -23,7 +23,7 @@ module Arel
 
       def visit_Arel_Nodes_Bin o, collector
         visit o.expr, collector
-        collector << " #{ActiveRecord::ConnectionAdapters::SQLServerAdapter.cs_equality_operator} "
+        collector << " #{ActiveRecord::ConnectionAdapters::MSSQLAdapter.cs_equality_operator} "
       end
 
       def visit_Arel_Nodes_UpdateStatement(o, a)

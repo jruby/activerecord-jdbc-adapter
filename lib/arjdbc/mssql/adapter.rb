@@ -57,6 +57,12 @@ module ActiveRecord
       include MSSQL::DatabaseStatements
       include MSSQL::ExplainSupport
 
+      @cs_equality_operator = 'COLLATE Latin1_General_CS_AS_WS'
+
+      class << self
+        attr_accessor :cs_equality_operator
+      end
+
       def initialize(connection, logger, _connection_parameters, config = {})
         # configure_connection happens in super
         super(connection, logger, config)
@@ -149,6 +155,17 @@ module ActiveRecord
       end
 
       alias_method :current_schema=, :default_schema=
+
+      # Overrides method in abstract adapter
+      def case_sensitive_comparison(table, attribute, column, value)
+        if value.nil?
+          table[attribute].eq(value)
+        elsif value.acts_like?(:string)
+          table[attribute].eq(Arel::Nodes::Bin.new(Arel::Nodes::BindParam.new))
+        else
+          table[attribute].eq(Arel::Nodes::BindParam.new)
+        end
+      end
 
       protected
 
