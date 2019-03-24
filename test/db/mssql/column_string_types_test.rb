@@ -52,10 +52,12 @@ class MSSQLColumnStringTypeTest < Test::Unit::TestCase
   def test_string_with_defaults
     column = TestString.columns_hash['my_string']
 
+    # the default limit is 4000 and that is assumed the limit is nil or not
+    # present (this is according active record specs)
     assert_equal :string,          column.type
     assert_equal true,             column.null
     assert_equal 'nvarchar(4000)', column.sql_type
-    assert_equal 4000,             column.limit
+    assert_equal nil,              column.limit
     assert_equal nil,              column.default
 
     type = TestString.connection.lookup_cast_type(column.sql_type)
