@@ -16,7 +16,12 @@ module ActiveRecord
         # it rejects primary key but it doesn't (maybe a rails bug?)
         def attributes_for_update(attribute_names)
           attribute_names.reject do |name|
-            readonly_attribute?(name) || pk_attribute?(name)
+            # It seems is only required to check if column in identity or not.
+            # This allows to update rails custom primary keys
+            next true if readonly_attribute?(name)
+
+            column = self.class.columns_hash[name]
+            column && column.identity?
           end
         end
       end
