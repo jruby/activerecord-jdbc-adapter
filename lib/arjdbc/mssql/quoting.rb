@@ -33,6 +33,14 @@ module ActiveRecord
           end
         end
 
+        def quoted_true
+          1
+        end
+
+        def quoted_false
+          0
+        end
+
         # @override
         def quoted_time(value)
           if value.acts_like?(:time)
@@ -69,16 +77,19 @@ module ActiveRecord
         # Also check if it's possible insert integer into a NVARCHAR
         def _quote(value)
           case value
-          when ActiveRecord::Type::Binary::Data then
+          when ActiveRecord::Type::Binary::Data
             "0x#{value.hex}"
           # when SomeOtherBinaryData then BLOB_VALUE_MARKER
           # when SomeOtherData then "yyy"
-          when String, ActiveSupport::Multibyte::Chars then
+          when String, ActiveSupport::Multibyte::Chars
             "N'#{quote_string(value)}'"
           # when OnlyTimeType then "'#{quoted_time(value)}'"
-          when Date, Time then "'#{quoted_date(value)}'"
-          when TrueClass then '1'
-          when FalseClass then '0'
+          when Date, Time
+            "'#{quoted_date(value)}'"
+          when TrueClass
+            quoted_true
+          when FalseClass
+            quoted_false
           else
             super
           end
