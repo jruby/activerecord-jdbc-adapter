@@ -11,7 +11,7 @@ module ActiveRecord
       def extract_default(value)
         # return nil if default does not match the patterns to avoid
         # any unexpected errors.
-        return unless value =~ /^\(N?'(.*)'\)$/ || value =~ /^\(\(?(.*?)\)?\)$/
+        return unless value =~ /^\(N?'(.*)'\)$/m || value =~ /^\(\(?(.*?)\)?\)$/
 
         unquote_string(Regexp.last_match[1])
       end

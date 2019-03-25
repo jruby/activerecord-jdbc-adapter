@@ -6,7 +6,7 @@ class MSSQLColumnStringTypeTest < Test::Unit::TestCase
     def self.up
       create_table 'testing_strings', force: true do |t|
         t.column :my_string, :string
-        t.column :my_string_custom, :string, limit: 34, null: false, default: 'active'
+        t.column :my_string_custom, :string, limit: 34, null: false, default: "in\nand\n\nout"
         t.column :my_text, :text
         t.column :my_text_custom, :text, null: false, default: 'Hello there'
         t.column :my_special_string, :string, default: "Hi O'Connor"
@@ -68,11 +68,11 @@ class MSSQLColumnStringTypeTest < Test::Unit::TestCase
   def test_string_custom
     column = TestString.columns_hash['my_string_custom']
 
-    assert_equal :string,        column.type
-    assert_equal false,          column.null
-    assert_equal 'nvarchar(34)', column.sql_type
-    assert_equal 34,             column.limit
-    assert_equal 'active',       column.default
+    assert_equal :string,          column.type
+    assert_equal false,            column.null
+    assert_equal 'nvarchar(34)',   column.sql_type
+    assert_equal 34,               column.limit
+    assert_equal "in\nand\n\nout", column.default
 
     type = TestString.connection.lookup_cast_type(column.sql_type)
     assert_instance_of Type::Nvarchar, type
