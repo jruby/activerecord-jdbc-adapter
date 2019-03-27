@@ -52,8 +52,8 @@ env:
   - DB=postgresql PREPARED_STATEMENTS=true INSERT_RETURNING=true
   - DB=sqlite3 PREPARED_STATEMENTS=false
   - DB=sqlite3 PREPARED_STATEMENTS=true
-  #- DB=jndi PREPARED_STATEMENTS=false
-  #- DB=jndi PREPARED_STATEMENTS=true
+  - DB=jndi PREPARED_STATEMENTS=false
+  - DB=jndi PREPARED_STATEMENTS=true
 matrix:
   allow_failures:
     - rvm: jruby-head
