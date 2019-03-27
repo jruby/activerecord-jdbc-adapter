@@ -1807,7 +1807,7 @@ public class RubyJdbcConnection extends RubyObject {
         if ( url.isNil() || ( driver.isNil() && driver_instance.isNil() ) ) {
             final Ruby runtime = context.runtime;
             final RubyClass errorClass = getConnectionNotEstablished( runtime );
-            throw new RaiseException(runtime, errorClass, "adapter requires :driver class and jdbc :url", false);
+            throw runtime.newRaiseException(errorClass, "adapter requires :driver class and jdbc :url");
         }
 
         final String jdbcURL = buildURL(context, url);
@@ -3008,7 +3008,7 @@ public class RubyJdbcConnection extends RubyObject {
     private void handleNotConnected() {
         final Ruby runtime = getRuntime();
         final RubyClass errorClass = getConnectionNotEstablished( runtime );
-        throw new RaiseException(runtime, errorClass, "no connection available", false);
+        throw runtime.newRaiseException(errorClass, "no connection available");
     }
 
     /**
@@ -3545,7 +3545,7 @@ public class RubyJdbcConnection extends RubyObject {
             return (RaiseException) exception;
         }
         if ( exception instanceof RuntimeException ) {
-            return RaiseException.createNativeRaiseException(runtime, exception);
+            return wrapException(context, context.runtime.getRuntimeError(), exception);
         }
         // NOTE: compat - maybe makes sense or maybe not (e.g. IOException) :
         return wrapException(context, getJDBCError(runtime), exception);
@@ -3558,7 +3558,7 @@ public class RubyJdbcConnection extends RubyObject {
 
     public static RaiseException wrapException(final ThreadContext context,
                                                final RubyClass errorClass, final Throwable exception, final String message) {
-        final RaiseException error = new RaiseException(context.runtime, errorClass, message, true);
+        final RaiseException error = context.runtime.newRaiseException(errorClass, message);
         error.initCause(exception);
         return error;
     }
