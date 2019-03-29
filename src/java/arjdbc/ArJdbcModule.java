@@ -29,7 +29,6 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.WeakHashMap;
 
-import org.jruby.NativeException;
 import org.jruby.Ruby;
 import org.jruby.RubyArray;
 import org.jruby.RubyClass;
@@ -148,13 +147,7 @@ public class ArJdbcModule {
             }
         }
         catch (ClassNotFoundException e) { /* ignored */ }
-        catch (NoSuchMethodException e) {
-            throw newNativeException(runtime, e);
-        }
-        catch (IllegalAccessException e) {
-            throw newNativeException(runtime, e);
-        }
-        catch (InvocationTargetException e) {
+        catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException e) {
             throw newNativeException(runtime, e);
         }
 
@@ -263,18 +256,15 @@ public class ArJdbcModule {
         try {
             return klass.getMethod(name, argType).invoke(null, arg);
         }
-        catch (IllegalAccessException e) {
-            throw newNativeException(runtime, e);
-        }
-        catch (InvocationTargetException e) {
+        catch (IllegalAccessException | InvocationTargetException e) {
             throw newNativeException(runtime, e);
         }
     }
 
     private static RaiseException newNativeException(final Ruby runtime, final Throwable cause) {
-        RubyClass nativeClass = runtime.getClass(NativeException.CLASS_NAME);
-        NativeException nativeException = new NativeException(runtime, nativeClass, cause);
-        return new RaiseException(cause, nativeException);
+        final RaiseException error = runtime.newRuntimeError(cause.toString());
+        error.initCause(cause);
+        return error;
     }
 
     @JRubyMethod(meta = true)

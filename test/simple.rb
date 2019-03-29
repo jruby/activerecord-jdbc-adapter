@@ -1035,7 +1035,6 @@ module SimpleTestMethods
   end
 
   def test_query_cache
-    pend '#839 is open to resolve if this is really a valid test or not in 5.1'  if ActiveRecord::Base.connection.adapter_name =~ /mysql|sqlite|postgres/i
     user_1 = User.create! :login => 'query_cache_1'
     user_2 = User.create! :login => 'query_cache_2'
     user_3 = User.create! :login => 'query_cache_3'

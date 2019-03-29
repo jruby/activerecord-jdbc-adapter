@@ -500,7 +500,7 @@ module ActiveRecord
     end
 
     def call(name, start, finish, message_id, values)
-      return if 'CACHE' == values[:name]
+      return if values[:cached]
 
       sql = values[:sql]
       sql = sql.to_sql unless sql.is_a?(String)

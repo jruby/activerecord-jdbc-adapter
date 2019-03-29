@@ -404,7 +404,6 @@ module ArJdbc
     # @override
     def quote(value)
       return value if sql_literal?(value)
-
       super
     end
 

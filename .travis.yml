@@ -61,20 +61,20 @@ matrix:
     - rvm: jruby-head
   include:
     # jruby-9.2
-    - rvm: jruby-9.2.4.0
+    - rvm: jruby-9.2.5.0
       env: DB=mysql2
-    - rvm: jruby-9.2.4.0
+    - rvm: jruby-9.2.5.0
       env: DB=postgresql
-    - rvm: jruby-9.2.4.0
+    - rvm: jruby-9.2.5.0
       env: DB=sqlite3
     # jruby-9.2 + Java 11
-    - rvm: jruby-9.2.4.0
+    - rvm: jruby-9.2.5.0
       env: DB=mysql2
       jdk: openjdk11
-    - rvm: jruby-9.2.4.0
+    - rvm: jruby-9.2.5.0
       env: DB=postgresql
       jdk: openjdk11
-    - rvm: jruby-9.2.4.0
+    - rvm: jruby-9.2.5.0
       env: DB=sqlite3
       jdk: openjdk11
     # jruby-head
@@ -92,9 +92,9 @@ matrix:
         mariadb: '10.1'
       env: DB=mariadb PREPARED_STATEMENTS=true
     # Rails test-suite :
-    - env: DB=mysql2     TEST_PREFIX="rails:" AR_VERSION="v5.2.0" # PS off by default
-    - env: DB=mysql2     TEST_PREFIX="rails:" AR_VERSION="v5.2.0" PREPARED_STATEMENTS=true
-    - env: DB=mysql2     TEST_PREFIX="rails:" AR_VERSION="v5.2.0" DRIVER=MariaDB
-    - env: DB=postgresql TEST_PREFIX="rails:" AR_VERSION="v5.2.0" # PS on by default
-    - env: DB=postgresql TEST_PREFIX="rails:" AR_VERSION="v5.2.0" PREPARED_STATEMENTS=false
-    - env: DB=sqlite3    TEST_PREFIX="rails:" AR_VERSION="v5.2.0"
+    - env: DB=mysql2     TEST_PREFIX="rails:" AR_VERSION="v5.2.2" # PS off by default
+    - env: DB=mysql2     TEST_PREFIX="rails:" AR_VERSION="v5.2.2" PREPARED_STATEMENTS=true
+    - env: DB=mysql2     TEST_PREFIX="rails:" AR_VERSION="v5.2.2" DRIVER=MariaDB
+    - env: DB=postgresql TEST_PREFIX="rails:" AR_VERSION="v5.2.2" # PS on by default
+    - env: DB=postgresql TEST_PREFIX="rails:" AR_VERSION="v5.2.2" PREPARED_STATEMENTS=false
+    - env: DB=sqlite3    TEST_PREFIX="rails:" AR_VERSION="v5.2.2"
