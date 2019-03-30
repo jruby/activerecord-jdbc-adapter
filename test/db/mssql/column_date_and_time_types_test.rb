@@ -117,7 +117,7 @@ class MSSQLColumnDateAndTimeTypesTest < Test::Unit::TestCase
     assert_equal :time,     column.type
     assert_equal true,      column.null
     assert_equal 'time(7)', column.sql_type
-    assert_equal 7,         column.precision
+    assert_equal nil,       column.precision
     assert_equal nil,       column.default
 
     type = DateAndTimeTypes.connection.lookup_cast_type(column.sql_type)

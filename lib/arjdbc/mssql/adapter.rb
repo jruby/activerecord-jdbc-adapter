@@ -248,6 +248,7 @@ module ActiveRecord
         map.register_type 'datetime',      MSSQL::Type::DateTime.new
         map.register_type 'smalldatetime', MSSQL::Type::SmallDateTime.new
         register_class_with_precision map, %r{\Atime\(\d+\)}i, MSSQL::Type::Time
+        map.register_type 'time(7)',       MSSQL::Type::Time.new
 
         # aliases
         map.alias_type 'int identity',    'int'
