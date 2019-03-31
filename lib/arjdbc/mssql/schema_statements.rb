@@ -41,6 +41,12 @@ module ActiveRecord
 
         # Returns an array of table names defined in the database.
         def tables(name = nil)
+          if name
+            ActiveSupport::Deprecation.warn(<<-MSG.squish)
+              Passing arguments to #tables is deprecated without replacement.
+            MSG
+          end
+
           @connection.tables(nil, name)
         end
 
@@ -58,6 +64,16 @@ module ActiveRecord
         # (to be implemented)
         def views
           []
+        end
+
+        def table_exists?(table_name)
+          ActiveSupport::Deprecation.warn(<<-MSG.squish)
+            #table_exists? currently checks both tables and views.
+            This behavior is deprecated and will be changed with Rails 5.1 to only check tables.
+            Use #data_source_exists? instead.
+          MSG
+
+          tables.include?(table_name.to_s)
         end
 
         # Returns an array of indexes for the given table.
