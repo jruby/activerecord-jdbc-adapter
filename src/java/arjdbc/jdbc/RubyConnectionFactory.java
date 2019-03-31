@@ -28,18 +28,34 @@ package arjdbc.jdbc;
 import java.sql.Connection;
 import java.sql.SQLException;
 
-/**
- * Interface to be implemented in Ruby for retrieving a new connection.
- *
- * @author nicksieger
- */
-public interface ConnectionFactory {
+import org.jruby.RubyObject;
+import org.jruby.RubyString;
+import org.jruby.runtime.ThreadContext;
+import org.jruby.runtime.builtin.IRubyObject;
 
-    /**
-     * Retrieve a (new) connection from the factory.
-     * @return a connection
-     * @throws SQLException
-     */
-    Connection newConnection() throws SQLException;
+// @legacy ActiveRecord::ConnectionAdapters::JdbcDriver
+class RubyConnectionFactory implements ConnectionFactory {
+
+    private final IRubyObject driver;
+    final RubyString url;
+    final IRubyObject username, password; // null allowed
+
+    private final RubyObject contextProvider;
+
+    public RubyConnectionFactory(final IRubyObject driver, final RubyString url,
+                                 final IRubyObject username, final IRubyObject password) {
+        this.driver = driver; this.url = url;
+        this.username = username; this.password = password;
+        contextProvider = (RubyObject) driver;
+    }
+
+    @Override
+    public Connection newConnection() throws SQLException {
+        final ThreadContext context = contextProvider.getRuntime().getCurrentContext();
+        final IRubyObject connection = driver.callMethod(context, "connection", new IRubyObject[] { url, username, password });
+        return (Connection) connection.toJava(Connection.class);
+    }
+
+    IRubyObject getDriver() { return driver; } /* for tests */
 
 }
