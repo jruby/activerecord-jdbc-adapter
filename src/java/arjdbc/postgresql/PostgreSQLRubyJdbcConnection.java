@@ -1,4 +1,5 @@
-/***** BEGIN LICENSE BLOCK *****
+/*
+ ***** BEGIN LICENSE BLOCK *****
  * Copyright (c) 2012-2015 Karol Bucek <self@kares.org>
  * Copyright (c) 2006-2010 Nick Sieger <nick@nicksieger.com>
  * Copyright (c) 2006-2007 Ola Bini <ola.bini@gmail.com>
@@ -27,8 +28,8 @@ package arjdbc.postgresql;
 
 import arjdbc.jdbc.Callable;
 import arjdbc.jdbc.DriverWrapper;
-import arjdbc.postgresql.PostgreSQLResult;
 import arjdbc.util.DateTimeUtils;
+import arjdbc.util.PG;
 import arjdbc.util.StringHelper;
 
 import java.io.ByteArrayInputStream;
@@ -39,6 +40,7 @@ import java.sql.DatabaseMetaData;
 import java.sql.Date;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.sql.Types;
@@ -50,8 +52,6 @@ import java.util.UUID;
 import java.util.regex.Pattern;
 import java.util.regex.Matcher;
 
-import org.joda.time.DateTime;
-import org.joda.time.DateTimeZone;
 import org.jruby.*;
 import org.jruby.anno.JRubyMethod;
 import org.jruby.exceptions.RaiseException;
@@ -62,6 +62,7 @@ import org.jruby.runtime.ThreadContext;
 import org.jruby.runtime.builtin.IRubyObject;
 import org.jruby.util.ByteList;
 
+import org.jruby.util.TypeConverter;
 import org.postgresql.PGConnection;
 import org.postgresql.PGStatement;
 import org.postgresql.geometric.PGbox;
@@ -84,7 +85,7 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
     private static final Pattern doubleValuePattern = Pattern.compile("(-?\\d+(?:\\.\\d+)?)");
     private static final Pattern uuidPattern = Pattern.compile("\\{?\\p{XDigit}{4}(?:-?(\\p{XDigit}{4})){7}\\}?"); // Fuzzy match postgres's allowed formats
 
-    private static final Map<String, Integer> POSTGRES_JDBC_TYPE_FOR = new HashMap<String, Integer>(32, 1);
+    private static final Map<String, Integer> POSTGRES_JDBC_TYPE_FOR = new HashMap<>(32, 1);
     static {
         POSTGRES_JDBC_TYPE_FOR.put("bit", Types.OTHER);
         POSTGRES_JDBC_TYPE_FOR.put("bit_varying", Types.OTHER);
@@ -116,6 +117,7 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
     private static final Pattern pointCleanerPattern = Pattern.compile("\\.0\\b");
 
     private RubyClass resultClass;
+    private RubyHash typeMap = null;
 
     public PostgreSQLRubyJdbcConnection(Ruby runtime, RubyClass metaClass) {
         super(runtime, metaClass);
@@ -481,6 +483,21 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
                     setPGobjectParameter(statement, index, value, columnType);
                 }
         }
+    }
+
+    protected IRubyObject jdbcToRuby(ThreadContext context, Ruby runtime, int column, int type, ResultSet resultSet) throws SQLException {
+        return typeMap != null ?
+                convertWithTypeMap(context, runtime, column, type, resultSet) :
+                super.jdbcToRuby(context, runtime, column, type, resultSet);
+    }
+
+    private IRubyObject convertWithTypeMap(ThreadContext context, Ruby runtime, int column, int type, ResultSet resultSet) throws SQLException {
+        ResultSetMetaData metaData = resultSet.getMetaData();
+        IRubyObject decoder = typeMap.op_aref(context, STRING_CACHE.get(context, metaData.getColumnTypeName(column)));
+
+        if (decoder.isNil()) return super.jdbcToRuby(context, runtime, column, type, resultSet);
+
+        return decoder.callMethod(context, "decode", StringHelper.newDefaultInternalString(runtime, resultSet.getString(column)));
     }
 
     // The tests won't start if this returns PGpoint[]
@@ -970,4 +987,20 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
 
     }
 
+    @PG @JRubyMethod
+    public IRubyObject escape_string(ThreadContext context, IRubyObject string) {
+        return PostgreSQLModule.quote_string(context, this, string);
+    }
+
+    @PG @JRubyMethod(name = "typemap=")
+    public IRubyObject typemap_set(ThreadContext context, IRubyObject mapArg) {
+        if (mapArg.isNil()) {
+            typeMap = null;
+            return context.nil;
+        }
+
+        TypeConverter.checkHashType(context.runtime, mapArg);
+        this.typeMap = (RubyHash) mapArg;
+        return mapArg;
+    }
 }
