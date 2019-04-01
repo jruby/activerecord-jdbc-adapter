@@ -19,4 +19,11 @@ data_source.port = MYSQL_CONFIG[:port] if MYSQL_CONFIG[:port]
 data_source.user = MYSQL_CONFIG[:username] if MYSQL_CONFIG[:username]
 data_source.password = MYSQL_CONFIG[:password] if MYSQL_CONFIG[:password]
 
+# must set these to match non-jndi setup
+data_source.cache_default_timezone = false
+data_source.server_timezone = java.util.TimeZone.getDefault.getID
+data_source.use_legacy_datetime_code = false
+data_source.zero_date_time_behavior = 'convertToNull'
+data_source.jdbc_compliant_truncation = false
+
 javax.naming.InitialContext.new.bind JNDI_MYSQL_CONFIG[:jndi], data_source
