@@ -126,16 +126,14 @@ class Test::Unit::TestCase
 
   def with_connection(config)
     ActiveRecord::Base.establish_connection config
-    yield ActiveRecord::Base.connection
+    conn = ActiveRecord::Base.connection
+    yield conn
   ensure
-    ActiveRecord::Base.connection.disconnect!
+    conn&.disconnect!
   end
 
   def self.disconnect_if_connected
-    if ActiveRecord::Base.connected?
-      ActiveRecord::Base.connection.disconnect!
-      ActiveRecord::Base.remove_connection
-    end
+    ActiveRecord::Base.clear_all_connections!
   end
 
   def disconnect_if_connected; self.class.disconnect_if_connected end

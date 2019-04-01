@@ -307,7 +307,7 @@ class JdbcConnectionTest < Test::Unit::TestCase
     def startup; clear_cached_jdbc_connection_factory end
 
     def setup
-      config = JDBC_CONFIG.merge :retry_count => 1, :configure_connection => false
+      config = JDBC_CONFIG.merge :configure_connection => false
       ActiveRecord::Base.establish_connection config
 
       @real_connection_factory = get_jdbc_connection_factory
@@ -321,33 +321,6 @@ class JdbcConnectionTest < Test::Unit::TestCase
     def teardown
       ActiveRecord::Base.connection_pool.disconnect!
       self.class.clear_cached_jdbc_connection_factory
-    end
-
-    test 'getConnection() works' do
-      ActiveRecord::Base.connection.execute 'SELECT 42' # MySQL
-    end
-
-    test 'getConnection() fails' do
-      @connection_factory.stubs(:newConnection).
-          raises( java.sql.SQLException.new('failing twice 1') ).then.
-          raises( java.sql.SQLException.new('failing twice 2') ).then.
-          returns( @real_connection_factory.newConnection )
-
-      begin
-        ActiveRecord::Base.connection.execute 'SELECT 1'
-        fail('connection unexpectedly retrieved')
-      rescue ActiveRecord::JDBCError => e
-        assert e.cause
-        assert_match /failing twice/, e.sql_exception.message
-      end
-    end if ar_version('3.0') # NOTE: for some reason fails on 2.3
-
-    test 'getConnection() works due retry count' do
-      @connection_factory.stubs(:newConnection).
-          raises( java.sql.SQLException.new('failing once') ).then.
-          returns( @real_connection_factory.newConnection )
-
-      ActiveRecord::Base.connection.execute 'SELECT 1'
     end
 
     class ConnectionDelegate
