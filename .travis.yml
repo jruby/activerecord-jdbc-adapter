@@ -42,6 +42,8 @@ rvm:
   - jruby-9.1.16.0
 jdk:
   - openjdk8
+addons:
+  postgresql: "9.4"
 env:
   - DB=mysql2 PREPARED_STATEMENTS=false
   - DB=mysql2 PREPARED_STATEMENTS=true
