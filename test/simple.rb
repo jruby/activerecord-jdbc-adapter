@@ -303,6 +303,8 @@ module SimpleTestMethods
     end
 
     def test_time_with_default_timezone_local
+      skip "with_system_tz not working in tomcat" if ActiveRecord::Base.connection.raw_connection.jndi?
+
       with_system_tz 'Europe/Prague' do
         Time.use_zone 'Europe/Prague' do
           with_timezone_config default: :local do
@@ -325,6 +327,8 @@ module SimpleTestMethods
     #
 
     def test_preserving_time_objects_with_utc_time_conversion_to_default_timezone_local
+      skip "with_system_tz not working in tomcat" if ActiveRecord::Base.connection.raw_connection.jndi?
+
       with_system_tz 'America/New_York' do # with_env_tz in Rails' tests
         with_timezone_config default: :local do
           time = Time.utc(2000)
@@ -341,6 +345,8 @@ module SimpleTestMethods
     end
 
     def test_preserving_time_objects_with_time_with_zone_conversion_to_default_timezone_local
+      skip "with_system_tz not working in tomcat" if ActiveRecord::Base.connection.raw_connection.jndi?
+
       with_system_tz 'America/New_York' do # with_env_tz in Rails' tests
         with_timezone_config default: :local do
           Time.use_zone 'Central Time (US & Canada)' do

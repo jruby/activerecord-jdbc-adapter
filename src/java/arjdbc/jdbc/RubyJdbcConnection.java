@@ -1840,7 +1840,7 @@ public class RubyJdbcConnection extends RubyObject {
                 return factory;
             }
             else {
-                setConnectionFactory(factory = new RubyConnectionFactoryImpl(
+                setConnectionFactory(factory = new RubyConnectionFactory(
                         driver_instance, context.runtime.newString(jdbcURL),
                         ( username.isNil() ? username : username.asString() ),
                         ( password.isNil() ? password : password.asString() )
