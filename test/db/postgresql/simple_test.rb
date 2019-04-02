@@ -292,17 +292,6 @@ class PostgresTimestampTest < Test::Unit::TestCase
     time = Time.utc('0000-01-01') - 1.hour - 1.minute - 1.second
     db_type = DbType.create!(:sample_timestamp => time)
 
-    if current_connection_config[:prepared_statements].to_s == 'true'
-      pend "Likely a JRuby/Java thing - this test is failing bad: check #516"
-    end
-    # if current_connection_config[:insert_returning].to_s == 'true'
-    #   pend "BC timestamps not-handled right with INSERT RETURNIG ..."
-    # end unless ar_version('4.2')
-    #
-    if defined?(JRUBY_VERSION) && JRUBY_VERSION < '9.2'
-      pend "BC timestamp handling isn't working properly through JRuby 9.1 (its to be fixed in 9.2)"
-    end
-
     assert_equal time, db_type.reload.sample_timestamp
 
     date = DateTime.parse('0000-01-01T00:00:00+00:00') - 1.hour - 1.minute - 1.second
