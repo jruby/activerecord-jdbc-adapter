@@ -481,12 +481,12 @@ module ActiveRecord
       @@ignored_sql = value || []
     end
 
-    # FIXME: this needs to be refactored so specific database can add their own
-    # ignored SQL.  This ignored SQL is for Oracle.
+    # FIXME: this needs to be refactored so specific database can add their own ignored SQL.
     ignored_sql.concat [/^select .*nextval/i,
       /^SAVEPOINT/,
       /^ROLLBACK TO/,
-      /^\s*select .* from all_triggers/im
+      /^\s*select .* from all_triggers/im,
+      /^\s*SELECT sql\b.*\bFROM sqlite_master/im
     ]
 
     @@log = []
