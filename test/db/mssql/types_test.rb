@@ -219,22 +219,4 @@ class MSSQLLegacyTypesTest < Test::Unit::TestCase
     assert_equal ['text', 'ntext', 'image'], special_column_names
   end
 
-  test "repairs select equlity comparison for special columns" do
-    sql = "SELECT * FROM articles WHERE text = '1' ORDER BY text"
-    r_sql = Article.connection.send(:repair_special_columns, sql)
-    assert_equal "SELECT * FROM articles WHERE [text] LIKE '1' ", r_sql
-
-    sql = "SELECT * FROM articles WHERE text_as_varchar = '1' ORDER BY text_as_varchar"
-    r_sql = Article.connection.send(:repair_special_columns, sql)
-    assert_equal "SELECT * FROM articles WHERE text_as_varchar = '1' ORDER BY text_as_varchar", r_sql
-
-    sql = "SELECT * FROM [articles] WHERE [text]='1' AND [ntext]= '2' ORDER BY [ntext]"
-    r_sql = Article.connection.send(:repair_special_columns, sql)
-    assert_equal "SELECT * FROM [articles] WHERE [text] LIKE '1' AND [ntext] LIKE '2' ", r_sql
-
-    sql = "SELECT * FROM [articles] WHERE [text] = 'text' AND [title] = 't' ORDER BY title"
-    r_sql = Article.connection.send(:repair_special_columns, sql)
-    assert_equal "SELECT * FROM [articles] WHERE [text] LIKE 'text' AND [title] = 't' ORDER BY title", r_sql
-  end
-
 end
