@@ -10,6 +10,8 @@ class SQLite3SchemaDumpTest < Test::Unit::TestCase
   end
 
   def test_dumping_with_dot_in_table_name
+    pend 'in recent Rails version, a.b means database table "b" in database "a". Delete test?'
+
     connection.create_table('test.some_records') { |t| t.string :name }
     connection.add_index('test.some_records', :name, :unique => true)
     assert_equal 2, connection.columns('test.some_records').size
