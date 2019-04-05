@@ -77,13 +77,12 @@ matrix:
     #  env: DB=sqlite3
     #  jdk: openjdk11
     # jruby-head
-    # FIXME: first fix the others :)
-    #- rvm: jruby-head
-    #  env: DB=mysql2
-    #- rvm: jruby-head
-    #  env: DB=postgresql
-    #- rvm: jruby-head
-    #  env: DB=sqlite3
+    - rvm: jruby-head
+      env: DB=mysql2
+    - rvm: jruby-head
+      env: DB=postgresql
+    - rvm: jruby-head
+      env: DB=sqlite3
     # testing against MariaDB
     - addons:
         mariadb: '10.0'
