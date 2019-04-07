@@ -48,39 +48,45 @@ module ArJdbc
       ADAPTER_NAME
     end
 
-    def postgresql_version
-      @postgresql_version ||=
-        begin
-          version = @connection.database_product
-          if match = version.match(/([\d\.]*\d).*?/)
-            version = match[1].split('.').map(&:to_i)
-            # PostgreSQL version representation does not have more than 4 digits
-            # From version 10 onwards, PG has changed its versioning policy to
-            # limit it to only 2 digits. i.e. in 10.x, 10 being the major
-            # version and x representing the patch release
-            # Refer to:
-            #   https://www.postgresql.org/support/versioning/
-            #   https://www.postgresql.org/docs/10/static/libpq-status.html -> PQserverVersion()
-            # for more info
+    def get_database_version # :nodoc:
+      begin
+        version = @connection.database_product
+        if match = version.match(/([\d\.]*\d).*?/)
+          version = match[1].split('.').map(&:to_i)
+          # PostgreSQL version representation does not have more than 4 digits
+          # From version 10 onwards, PG has changed its versioning policy to
+          # limit it to only 2 digits. i.e. in 10.x, 10 being the major
+          # version and x representing the patch release
+          # Refer to:
+          #   https://www.postgresql.org/support/versioning/
+          #   https://www.postgresql.org/docs/10/static/libpq-status.html -> PQserverVersion()
+          # for more info
 
-            if version.size >= 3
-              (version[0] * 100 + version[1]) * 100 + version[2]
-            elsif version.size == 2
-              if version[0] >= 10
-                version[0] * 100 * 100 + version[1]
-              else
-                (version[0] * 100 + version[1]) * 100
-              end
-            elsif version.size == 1
-              version[0] * 100 * 100
+          if version.size >= 3
+            (version[0] * 100 + version[1]) * 100 + version[2]
+          elsif version.size == 2
+            if version[0] >= 10
+              version[0] * 100 * 100 + version[1]
             else
-              0
+              (version[0] * 100 + version[1]) * 100
             end
+          elsif version.size == 1
+            version[0] * 100 * 100
           else
             0
           end
+        else
+          0
         end
+      end
     end
+
+    def check_version # :nodoc:
+      if database_version < 90300
+        raise "Your version of PostgreSQL (#{database_version}) is too old. Active Record supports PostgreSQL >= 9.3."
+      end
+    end
+
 
     def redshift?
       # SELECT version() :
@@ -232,7 +238,7 @@ module ArJdbc
     end
 
     def supports_json?
-      postgresql_version >= 90200
+      database_version >= 90200
     end
 
     def supports_comments?
@@ -248,7 +254,7 @@ module ArJdbc
     end
 
     def supports_insert_on_conflict?
-      postgresql_version >= 90500
+      database_version >= 90500
     end
     alias supports_insert_on_duplicate_skip? supports_insert_on_conflict?
     alias supports_insert_on_duplicate_update? supports_insert_on_conflict?
@@ -271,23 +277,23 @@ module ArJdbc
     end
 
     def supports_extensions?
-      postgresql_version >= 90200
+      database_version >= 90200
     end
 
     def supports_ranges?
-      postgresql_version >= 90200
+      database_version >= 90200
     end
 
     def supports_materialized_views?
-      postgresql_version >= 90300
+      database_version >= 90300
     end
 
     def supports_foreign_tables? # we don't really support this yet, its a reminder :)
-      postgresql_version >= 90300
+      database_version >= 90300
     end
 
     def supports_pgcrypto_uuid?
-      postgresql_version >= 90400
+      database_version >= 90400
     end
 
     def supports_optimizer_hints?
