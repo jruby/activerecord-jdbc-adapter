@@ -32,21 +32,21 @@ module ActiveRecord
       include ArJdbc::MySQL
 
       def initialize(connection, logger, connection_parameters, config)
-        # workaround to skip version check on JNDI to be lazy, dummy version is high enough for Rails 5.0 - 6.0
-        is_jndi = ::ActiveRecord::ConnectionAdapters::JdbcConnection.jndi_config?(config)
-        @version = '8.1.5' if is_jndi
-
         super
-
-        # set to nil to have it lazy-load the real value when required
-        @version = nil if is_jndi
 
         @prepared_statements = false unless config.key?(:prepared_statements)
         # configure_connection taken care of at ArJdbc::Abstract::Core
       end
 
+      def check_version
+        # for JNDI, don't check version as the whole connection should be lazy
+        return if ::ActiveRecord::ConnectionAdapters::JdbcConnection.jndi_config?(config)
+
+        super
+      end
+
       def supports_json?
-        !mariadb? && version >= '5.7.8'
+        !mariadb? && database_version >= '5.7.8'
       end
 
       def supports_comments?
@@ -148,7 +148,9 @@ module ActiveRecord
       private
 
       # e.g. "5.7.20-0ubuntu0.16.04.1"
-      def full_version; @full_version ||= @connection.full_version end
+      def full_version
+        @full_version ||= @connection.full_version
+      end
 
       def jdbc_connection_class(spec)
         ::ActiveRecord::ConnectionAdapters::MySQLJdbcConnection
