@@ -62,6 +62,7 @@ connections:
       driver: <%= 'org.mariadb.jdbc.Driver' %>
       <% end %>
       <% if defined? JRUBY_VERSION %>
+      jdbc_fetch_size: 100
       properties:
         serverTimezone: <%= java.util.TimeZone.getDefault.getID %>
       <% end %>
@@ -80,6 +81,7 @@ connections:
       prepared_statements: <%= ENV['PREPARED_STATEMENTS'] || ENV['PS'] %> # should leave it off to its default if not set
       <% end %>
       username: <%= ENV['PGUSER'] || ENV['user'] || 'rails' %>
+      jdbc_fetch_size: 100
       properties:
         # Postgres' JDBC driver does not prepare statements until executed 5 times by default, let's lower:
         prepareThreshold: <%= ENV['PREPARE_THRESHOLD'] || 1 %>
@@ -99,9 +101,11 @@ connections:
     arunit:
       database: <%= FIXTURES_ROOT %>/fixture_database.sqlite3
       timeout:  5000
+      jdbc_fetch_size: 100
     arunit2:
       database: <%= FIXTURES_ROOT %>/fixture_database_2.sqlite3
       timeout:  5000
+      jdbc_fetch_size: 100
 
   sqlite3_mem:
     arunit:
