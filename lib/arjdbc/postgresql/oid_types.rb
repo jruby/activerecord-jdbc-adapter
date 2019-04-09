@@ -9,6 +9,61 @@ module ArJdbc
     # @private
     OID = ::ActiveRecord::ConnectionAdapters::PostgreSQL::OID
 
+    # this version makes sure to register the types by name as well
+    # we still need to version with OID since it's used from SchemaStatements as well
+    class ArjdbcTypeMapInitializer < OID::TypeMapInitializer
+      private
+
+      def name_with_ns(row)
+        if row['in_ns']
+          row['typname']
+        else
+          %Q("#{row['nspname']}"."#{row['typname']}")
+        end
+      end
+
+      def register_enum_type(row)
+        super
+        register name_with_ns(row), OID::Enum.new
+      end
+
+      def register_array_type(row)
+        super
+        register_with_subtype(name_with_ns(row), row['typelem'].to_i) do |subtype|
+          OID::Array.new(subtype, row['typdelim'])
+        end
+      end
+
+      def register_range_type(row)
+        super
+        name = name_with_ns(row)
+        register_with_subtype(name, row['rngsubtype'].to_i) do |subtype|
+          OID::Range.new(subtype, name.to_sym)
+        end
+      end
+
+      def register_domain_type(row)
+        if base_type = @store.lookup(row['typbasetype'].to_i)
+          register row['oid'], base_type
+          register name_with_ns(row), base_type
+        else
+          warn "unknown base type (OID: #{row['typbasetype']}) for domain #{row['typname']}."
+        end
+      end
+
+      def register_composite_type(row)
+        if subtype = @store.lookup(row['typelem'].to_i)
+          register row['oid'], OID::Vector.new(row['typdelim'], subtype)
+          register name_with_ns(row), OID::Vector.new(row['typdelim'], subtype)
+        end
+      end
+
+      def assert_valid_registration(oid, oid_type)
+        ret = super
+        ret == 0 ? oid : ret
+      end
+    end
+
     # @private
     module OIDTypes
 
@@ -41,7 +96,7 @@ module ArJdbc
 
       def get_oid_type(oid, fmod, column_name, sql_type = '') # :nodoc:
         if !type_map.key?(oid)
-          load_additional_types(type_map, [oid])
+          load_additional_types(type_map, oid)
         end
 
         type_map.fetch(oid, fmod, sql_type) {
@@ -133,26 +188,45 @@ module ArJdbc
         end
 
         load_additional_types(m)
+
+        # pgjdbc returns these if the column is auto-incrmenting
+        m.alias_type 'serial', 'int4'
+        m.alias_type 'bigserial', 'int8'
       end
 
-      def load_additional_types(type_map, oids = nil) # :nodoc:
-        initializer = OID::TypeMapInitializer.new(type_map)
+      def load_additional_types(type_map, oid = nil) # :nodoc:
+        initializer = ArjdbcTypeMapInitializer.new(type_map)
 
         if supports_ranges?
           query = <<-SQL
-              SELECT t.oid, t.typname, t.typelem, t.typdelim, t.typinput, r.rngsubtype, t.typtype, t.typbasetype
+              SELECT t.oid, t.typname, t.typelem, t.typdelim, t.typinput, r.rngsubtype, t.typtype, t.typbasetype,
+                ns.nspname, ns.nspname = ANY(current_schemas(true)) in_ns
               FROM pg_type as t
               LEFT JOIN pg_range as r ON oid = rngtypid
+              JOIN pg_namespace AS ns ON t.typnamespace = ns.oid
           SQL
         else
           query = <<-SQL
-              SELECT t.oid, t.typname, t.typelem, t.typdelim, t.typinput, t.typtype, t.typbasetype
+              SELECT t.oid, t.typname, t.typelem, t.typdelim, t.typinput, t.typtype, t.typbasetype,
+                ns.nspname, ns.nspname = ANY(current_schemas(true)) in_ns
               FROM pg_type as t
+              JOIN pg_namespace AS ns ON t.typnamespace = ns.oid
           SQL
         end
 
-        if oids
-          query += "WHERE t.oid::integer IN (%s)" % oids.join(", ")
+        if oid
+          if oid.is_a? Numeric || oid.match(/^\d+$/)
+            # numeric OID
+            query += "WHERE t.oid::integer = %s" % oid
+
+          elsif m = oid.match(/"?(\w+)"?\."?(\w+)"?/)
+            # namespace and type name
+            query += "WHERE ns.nspname = '%s' AND t.typname = '%s'" % [m[1], m[2]]
+
+          else
+            # only type name
+            query += "WHERE t.typname = '%s' AND ns.nspname = ANY(current_schemas(true))" % oid
+          end
         else
           query += initializer.query_conditions_for_initial_load(type_map)
         end

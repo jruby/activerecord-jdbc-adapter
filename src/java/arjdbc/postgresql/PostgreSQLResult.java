@@ -4,6 +4,7 @@ import arjdbc.jdbc.JdbcResult;
 import arjdbc.jdbc.RubyJdbcConnection;
 
 import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Types;
 
@@ -20,17 +21,13 @@ import org.jruby.runtime.ObjectAllocator;
 import org.jruby.runtime.ThreadContext;
 import org.jruby.runtime.builtin.IRubyObject;
 
-import org.postgresql.core.Field;
-import org.postgresql.jdbc.PgResultSetMetaData;
-import org.postgresql.jdbc.PgResultSetMetaDataWrapper; // This is a hack unfortunately to get around method scoping
-
 /*
  * This class mimics the PG:Result class enough to get by
  */
 public class PostgreSQLResult extends JdbcResult {
 
     // These are needed when generating an AR::Result
-    private final PgResultSetMetaData resultSetMetaData;
+    private final ResultSetMetaData resultSetMetaData;
 
     /********* JRuby compat methods ***********/
 
@@ -60,7 +57,7 @@ public class PostgreSQLResult extends JdbcResult {
                              ResultSet resultSet) throws SQLException {
         super(context, clazz, connection, resultSet);
 
-        resultSetMetaData = (PgResultSetMetaData) resultSet.getMetaData();
+        resultSetMetaData = resultSet.getMetaData();
     }
 
     /**
@@ -73,16 +70,28 @@ public class PostgreSQLResult extends JdbcResult {
     protected IRubyObject columnTypeMap(final ThreadContext context) throws SQLException {
         Ruby runtime = context.runtime;
         RubyHash types = RubyHash.newHash(runtime);
-        PgResultSetMetaDataWrapper mdWrapper = new PgResultSetMetaDataWrapper(resultSetMetaData);
         int columnCount = columnNames.length;
 
         IRubyObject adapter = connection.adapter(context);
         for (int i = 0; i < columnCount; i++) {
-            final Field field = mdWrapper.getField(i + 1);
+            int col = i + 1;
+            String typeName = resultSetMetaData.getColumnTypeName(col);
+
+            int mod = 0;
+            if  ("numeric".equals(typeName)) {
+                // this field is only relevant for "numeric" type in AR
+                // AR checks (fmod - 4 & 0xffff).zero?
+                // pgjdbc:
+                //  - for typmod == -1, getScale() and getPrecision() return 0
+                //  - for typmod != -1, getScale() returns "(typmod - 4) & 0xFFFF;"
+                mod = resultSetMetaData.getScale(col);
+                mod = mod == 0 && resultSetMetaData.getPrecision(col) == 0 ? -1 : mod + 4;
+            }
+
             final RubyString name = columnNames[i];
             final IRubyObject type = Helpers.invoke(context, adapter, "get_oid_type",
-                    runtime.newFixnum(field.getOID()),
-                    runtime.newFixnum(field.getMod()),
+                    runtime.newString(typeName),
+                    runtime.newFixnum(mod),
                     name);
 
             if (!type.isNil()) types.fastASet(name, type);
