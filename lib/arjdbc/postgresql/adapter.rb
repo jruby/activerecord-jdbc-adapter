@@ -705,6 +705,7 @@ module ActiveRecord::ConnectionAdapters
     Table = ActiveRecord::ConnectionAdapters::PostgreSQL::Table
 
     public :sql_for_insert
+    alias :postgresql_version :database_version
 
     def jdbc_connection_class(spec)
       ::ArJdbc::PostgreSQL.jdbc_connection_class
