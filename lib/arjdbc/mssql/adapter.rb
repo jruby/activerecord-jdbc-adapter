@@ -23,6 +23,7 @@ require 'arjdbc/mssql/schema_statements'
 require 'arjdbc/mssql/database_statements'
 require 'arjdbc/mssql/explain_support'
 require 'arjdbc/mssql/extensions'
+require 'arjdbc/mssql/errors'
 
 # require 'arjdbc/util/quoted_cache'
 
@@ -98,7 +99,7 @@ module ActiveRecord
 
       # Does this adapter support setting the isolation level for a transaction?
       def supports_transaction_isolation?
-        false
+        true
       end
 
       # Overrides abstract method which always returns false
@@ -167,12 +168,28 @@ module ActiveRecord
         end
       end
 
+      def configure_connection
+        execute("SET LOCK_TIMEOUT #{lock_timeout}")
+      end
+
+      def lock_timeout
+        timeout = config[:lock_timeout].to_i
+
+        if timeout.positive?
+          timeout
+        else
+          5_000
+        end
+      end
+
       protected
 
       def translate_exception(e, message)
         case message
         when /(cannot insert duplicate key .* with unique index) | (violation of unique key constraint)/i
           RecordNotUnique.new(message)
+        when /Lock request time out period exceeded/i
+          LockTimeout.new(message)
         # when /(String or binary data would be truncated)/i
         #   ValueTooLong.new(message)
         else
