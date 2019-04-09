@@ -90,7 +90,7 @@ module ArJdbc
 
       def get_oid_type(oid, fmod, column_name, sql_type = '') # :nodoc:
         if !type_map.key?(oid)
-          load_additional_types(oid)
+          load_additional_types(type_map, oid)
         end
 
         type_map.fetch(oid, fmod, sql_type) {
