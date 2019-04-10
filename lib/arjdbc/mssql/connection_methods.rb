@@ -27,18 +27,18 @@ ArJdbc::ConnectionMethods.module_eval do
 
     config[:host] ||= 'localhost'
     config[:port] ||= 1433
-    config[:driver] ||= defined?(::Jdbc::JTDS.driver_name) ? ::Jdbc::JTDS.driver_name : 'net.sourceforge.jtds.jdbc.Driver'
+    config[:driver] ||= 'com.microsoft.sqlserver.jdbc.SQLServerDriver' #defined?(::Jdbc::JTDS.driver_name) ? ::Jdbc::JTDS.driver_name : 'net.sourceforge.jtds.jdbc.Driver'
     config[:connection_alive_sql] ||= 'SELECT 1'
 
     config[:url] ||= begin
-      url = "jdbc:jtds:sqlserver://#{config[:host]}:#{config[:port]}/#{config[:database]}"
-      # Instance is often a preferrable alternative to port when dynamic ports are used.
-      # If instance is specified then port is essentially ignored.
-      url << ";instance=#{config[:instance]}" if config[:instance]
-      # This will enable windows domain-based authentication and will require the JTDS native libraries be available.
-      url << ";domain=#{config[:domain]}" if config[:domain]
-      # AppName is shown in sql server as additional information against the connection.
-      url << ";appname=#{config[:appname]}" if config[:appname]
+      url = "jdbc:sqlserver://#{config[:host]}"
+      url << ( config[:port] ? ":#{config[:port]};" : ';' )
+      url << "databaseName=#{config[:database]};" if config[:database]
+      url << "instanceName=#{config[:instance]};" if config[:instance]
+      app = config[:appname] || config[:application]
+      url << "applicationName=#{app};" if app
+      isc = config[:integrated_security] # Win only - needs sqljdbc_auth.dll
+      url << "integratedSecurity=#{isc};" unless isc.nil?
       url
     end
 

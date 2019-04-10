@@ -52,6 +52,18 @@ import org.jruby.util.ByteList;
 public class MSSQLRubyJdbcConnection extends RubyJdbcConnection {
     private static final long serialVersionUID = -745716565005219263L;
 
+    private static final Map<String, Integer> MSSQL_JDBC_TYPE_FOR = new HashMap<String, Integer>(32, 1);
+    static {
+        MSSQL_JDBC_TYPE_FOR.put("binary_basic", Types.BINARY);
+        MSSQL_JDBC_TYPE_FOR.put("money", Types.DECIMAL);
+        MSSQL_JDBC_TYPE_FOR.put("smalldatetime", Types.TIMESTAMP);
+        MSSQL_JDBC_TYPE_FOR.put("smallmoney", Types.DECIMAL);
+        MSSQL_JDBC_TYPE_FOR.put("ss_timestamp", Types.BINARY);
+        MSSQL_JDBC_TYPE_FOR.put("text_basic", Types.LONGVARCHAR);
+        MSSQL_JDBC_TYPE_FOR.put("uuid", Types.CHAR);
+        MSSQL_JDBC_TYPE_FOR.put("varchar_max", Types.VARCHAR);
+    }
+
     public MSSQLRubyJdbcConnection(Ruby runtime, RubyClass metaClass) {
         super(runtime, metaClass);
     }
@@ -81,6 +93,18 @@ public class MSSQLRubyJdbcConnection extends RubyJdbcConnection {
     public static RubyBoolean exec_p(ThreadContext context, IRubyObject self, IRubyObject sql) {
         final ByteList sqlBytes = sql.asString().getByteList();
         return context.runtime.newBoolean( startsWithIgnoreCase(sqlBytes, EXEC) );
+    }
+
+    @Override
+    protected Integer jdbcTypeFor(final String type) {
+
+        Integer typeValue = MSSQL_JDBC_TYPE_FOR.get(type);
+
+        if ( typeValue != null ) {
+            return typeValue;
+        }
+
+        return super.jdbcTypeFor(type);
     }
 
     @Override
@@ -176,6 +200,11 @@ public class MSSQLRubyJdbcConnection extends RubyJdbcConnection {
                 return context.getRuntime().newBoolean( driver.indexOf("jTDS") >= 0 );
             }
         });
+    }
+
+    @Override
+    protected void releaseSavepoint(final Connection connection, final Savepoint savepoint) throws SQLException {
+        // MSSQL doesn't support releasing savepoints
     }
 
 }
