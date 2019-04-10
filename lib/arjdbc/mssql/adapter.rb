@@ -23,6 +23,7 @@ require 'arjdbc/mssql/schema_statements'
 require 'arjdbc/mssql/database_statements'
 require 'arjdbc/mssql/explain_support'
 require 'arjdbc/mssql/extensions'
+require 'arjdbc/mssql/transaction'
 require 'arjdbc/mssql/errors'
 
 # require 'arjdbc/util/quoted_cache'
@@ -188,6 +189,10 @@ module ActiveRecord
         isolation_level = config[:transaction_isolation]
 
         self.transaction_isolation = isolation_level if isolation_level
+      end
+
+      def mssql?
+        true
       end
 
       protected
