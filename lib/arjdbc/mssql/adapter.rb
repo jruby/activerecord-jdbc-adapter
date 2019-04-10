@@ -170,6 +170,8 @@ module ActiveRecord
 
       def configure_connection
         execute("SET LOCK_TIMEOUT #{lock_timeout}")
+
+        set_session_transaction_isolation
       end
 
       def lock_timeout
@@ -180,6 +182,12 @@ module ActiveRecord
         else
           5_000
         end
+      end
+
+      def set_session_transaction_isolation
+        isolation_level = config[:transaction_isolation]
+
+        self.transaction_isolation = isolation_level if isolation_level
       end
 
       protected

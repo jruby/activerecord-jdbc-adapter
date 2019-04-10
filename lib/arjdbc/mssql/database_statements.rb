@@ -63,6 +63,14 @@ module ActiveRecord
           @connection.supports_transaction_isolation?(level)
         end
 
+        def transaction_isolation=(value)
+          @connection.set_transaction_isolation(value)
+        end
+
+        def transaction_isolation
+          @connection.get_transaction_isolation
+        end
+
         private
 
         def insert_sql?(sql)
