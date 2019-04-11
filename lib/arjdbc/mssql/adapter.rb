@@ -84,6 +84,11 @@ module ActiveRecord
         true
       end
 
+      # The MSSQL datetime type doe have precision.
+      def supports_datetime_with_precision?
+        false
+      end
+
       # Overrides abstract method which always returns false
       def valid_type?(type)
         !native_database_types[type].nil?

@@ -90,10 +90,10 @@ class MSSQLColumnDateAndTimeTypesTest < Test::Unit::TestCase
   def test_smalldatetime_with_defaults
     column = DateAndTimeTypes.columns_hash['my_smalldatetime']
 
-    assert_equal :smalldatetime,    column.type
-    assert_equal true,              column.null
-    assert_equal 'smalldatetime',   column.sql_type
-    assert_equal nil,               column.default
+    assert_equal :datetime,       column.type
+    assert_equal true,            column.null
+    assert_equal 'smalldatetime', column.sql_type
+    assert_equal nil,             column.default
 
     type = DateAndTimeTypes.connection.lookup_cast_type(column.sql_type)
     assert_instance_of Type::SmallDateTime, type
@@ -102,9 +102,9 @@ class MSSQLColumnDateAndTimeTypesTest < Test::Unit::TestCase
   def test_smalldatetime_custom
     column = DateAndTimeTypes.columns_hash['my_smalldatetime_one']
 
-    assert_equal :smalldatetime,               column.type
-    assert_equal false,                        column.null
-    assert_equal 'smalldatetime',              column.sql_type
+    assert_equal :datetime,             column.type
+    assert_equal false,                 column.null
+    assert_equal 'smalldatetime',       column.sql_type
     assert_equal '2019-02-28 05:59:06', column.default
 
     type = DateAndTimeTypes.connection.lookup_cast_type(column.sql_type)
@@ -146,12 +146,73 @@ class MSSQLColumnDateAndTimeTypesTest < Test::Unit::TestCase
   end
 
   def test_lookup_smalldatetime_aliases
-    assert_cast_type :smalldatetime, 'SMALLDATETIME'
+    assert_cast_type :datetime, 'SMALLDATETIME'
   end
 
   def test_lookup_time_aliases
     assert_cast_type :time, 'time'
     assert_cast_type :time, 'TIME'
+  end
+
+  def test_smalldatetime_rounding_usec_to_zero_on_assigment
+    # dt = DateTime.parse('2018-12-31T23:59:21.34343766')
+    tt = Time.parse('2018-12-31T23:59:21.34343766')
+    record = DateAndTimeTypes.new(my_smalldatetime: tt)
+    # NOTE: rounding minutes and seconds is handled by MSSQL
+
+    assert_equal 0,  record.my_smalldatetime.usec
+  end
+
+  # NOTE: The key here is to get usec in a format like ABC000 to get minimal
+  # rounding issues. MSSQL has its own rounding strategy
+  # (Rounded to increments of .000, .003, or .007 seconds)
+
+  # rounding tries to converge to AB000
+  def test_datetime_rounding_usec_on_assigment_case_one
+    # dt = DateTime.parse('2018-12-31T23:59:21.343437')
+    tt = Time.parse('2018-12-31T23:59:21.341167')
+    record = DateAndTimeTypes.new(my_datetime: tt)
+
+    assert_equal 23,     record.my_datetime.hour
+    assert_equal 59,     record.my_datetime.min
+    assert_equal 21,     record.my_datetime.sec
+    assert_equal 340000, record.my_datetime.usec
+  end
+
+  # rounding tries to converge to AB300
+  def test_datetime_rounding_usec_on_assigment_case_two
+    # dt = DateTime.parse('2018-12-31T23:59:21.343537')
+    tt = Time.parse('2018-12-31T23:59:21.342167')
+    record = DateAndTimeTypes.new(my_datetime: tt)
+
+    assert_equal 23,     record.my_datetime.hour
+    assert_equal 59,     record.my_datetime.min
+    assert_equal 21,     record.my_datetime.sec
+    assert_equal 343000,  record.my_datetime.usec
+  end
+
+  # rounding tries to converge to AB600 or maybe AB700
+  def test_datetime_rounding_usec_on_assigment_case_three
+    # dt = DateTime.parse('2018-12-31T23:59:21.343537')
+    tt = Time.parse('2018-12-31T23:59:21.345167')
+    record = DateAndTimeTypes.new(my_datetime: tt)
+
+    assert_equal 23,     record.my_datetime.hour
+    assert_equal 59,     record.my_datetime.min
+    assert_equal 21,     record.my_datetime.sec
+    assert_equal 346000, record.my_datetime.usec
+  end
+
+  # rounding tries to converge to A(B+1)000
+  def test_datetime_rounding_usec_on_assigment_case_four
+    # dt = DateTime.parse('2018-12-31T23:59:21.344637').to_time
+    tt = Time.parse('2018-12-31T23:59:21.348167')
+    record = DateAndTimeTypes.new(my_datetime: tt)
+
+    assert_equal 23,     record.my_datetime.hour
+    assert_equal 59,     record.my_datetime.min
+    assert_equal 21,     record.my_datetime.sec
+    assert_equal 350000, record.my_datetime.usec
   end
 
   private
