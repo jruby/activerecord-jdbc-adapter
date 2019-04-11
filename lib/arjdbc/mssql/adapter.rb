@@ -2,13 +2,10 @@
 
 ArJdbc.load_java_part :MSSQL
 
-require 'strscan'
-
 require 'arel'
 require 'arel/visitors/bind_visitor'
 require 'arel/visitors/sqlserver'
 require 'active_record/connection_adapters/abstract_adapter'
-
 
 require 'arjdbc/abstract/core'
 require 'arjdbc/abstract/connection_management'
@@ -26,19 +23,6 @@ require 'arjdbc/mssql/extensions'
 require 'arjdbc/mssql/transaction'
 require 'arjdbc/mssql/errors'
 
-# require 'arjdbc/util/quoted_cache'
-
-module ArJdbc
-  module MSSQL
-    require 'arjdbc/mssql/utils'
-    require 'arjdbc/mssql/limit_helpers'
-    require 'arjdbc/mssql/lock_methods'
-
-    include LimitHelpers
-    include Utils
-  end
-end
-
 module ActiveRecord
   module ConnectionAdapters
     # MSSQL (SQLServer) adapter class definition
@@ -50,9 +34,6 @@ module ActiveRecord
       include ArJdbc::Abstract::DatabaseStatements
       include ArJdbc::Abstract::StatementCache
       include ArJdbc::Abstract::TransactionSupport
-
-      # include ::ArJdbc::MSSQL
-      # include ::ArJdbc::Util::QuotedCache
 
       include MSSQL::Quoting
       include MSSQL::SchemaStatements
@@ -301,13 +282,24 @@ module ActiveRecord
         map.alias_type %r{\Abinary\z}i,   'varbinary(max)'
         map.alias_type %r{\Ablob\z}i,     'varbinary(max)'
 
-
-
         # Deprecated SQL Server types.
         map.register_type 'text',  MSSQL::Type::Text.new
         map.register_type 'ntext', MSSQL::Type::Ntext.new
         map.register_type 'image', MSSQL::Type::Image.new
       end
     end
+  end
+end
+
+# FIXME: this is not used by the adapter anymore, it is here because
+# it is a dependency of old tests that needs to be reviewed
+module ArJdbc
+  module MSSQL
+    require 'arjdbc/mssql/utils'
+    require 'arjdbc/mssql/limit_helpers'
+    require 'arjdbc/mssql/lock_methods'
+
+    include LimitHelpers
+    include Utils
   end
 end
