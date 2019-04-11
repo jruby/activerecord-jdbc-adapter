@@ -24,7 +24,6 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ArJdbc.load_java_part :MSSQL
 
-require 'strscan'
 require 'arjdbc/abstract/core'
 require 'arjdbc/abstract/database_statements'
 require 'arjdbc/abstract/statement_cache'
@@ -124,6 +123,7 @@ module ArJdbc
 
     module AROverrides
 
+      # Override
       def select(sql, name = nil, binds = [])
         exec_query(sql, name, binds, prepare: false) || [] # sqlserver gem expects a response instead of nil
       end
@@ -132,6 +132,7 @@ module ArJdbc
 
     module SQLServerOverrides
 
+      # @Override
       def disconnect!
         super
         # The gem expects these to disappear on disconnect
@@ -140,8 +141,9 @@ module ArJdbc
         @collation = nil
       end
 
+      # Needed to reapply this since the jdbc abstract versions don't do the check and
+      # end up overriding the sqlserver gem's version
       def exec_insert(sql, name, binds, pk = nil, _sequence_name = nil)
-        #STDOUT.puts sql, binds.inspect
         if id_insert_table_name = exec_insert_requires_identity?(sql, pk, binds)
           with_identity_insert_enabled(id_insert_table_name) { super }
         else
@@ -149,8 +151,9 @@ module ArJdbc
         end
       end
 
+      # Needed to reapply this since the jdbc abstract versions don't do the check and
+      # end up overriding the sqlserver gem's version
       def execute(sql, name = nil)
-        #binding.pry unless ENV['SKIPEXECUTE'] == 'true'
         if id_insert_table_name = query_requires_identity_insert?(sql)
           with_identity_insert_enabled(id_insert_table_name) { super }
         else
@@ -177,7 +180,9 @@ module ArJdbc
         end
       end
 
-      # MSSQL does not return query plans for prepared statements, so we have to unprepare them (might make sense to override exec_explain like the sqlserver gem does)
+      # @Override
+      # MSSQL does not return query plans for prepared statements, so we have to unprepare them
+      # SQLServer gem handles this by overridding exec_explain but that doesn't correctly unprepare them for our needs
       def explain(arel, binds = [])
         arel = ActiveRecord::Base.send(:replace_bind_variables, arel, binds.map(&:value_for_database))
         super(arel, [])
@@ -190,203 +195,23 @@ module ArJdbc
         super.to_s
       end
 
+      # Override
+      # Make sure we set up the connection again
       def reconnect!
         super
         connect
       end
 
-      def reset!
-        clear_cache!
-        reset_transaction
-        @connection.rollback # Have to deal with rollbacks differently than the SQLServer gem
-        @connection.configure_connection
-      end
-
-      def select_rows(sql, name = nil, binds = [])
-
-        # In some cases the limit is converted to a `TOP(1)` but the bind parameter is still in the array
-        if !binds.empty? && sql.include?('TOP(1)')
-          binds = binds.delete_if {|b| b.name == 'LIMIT' }
-        end
-
-        exec_query(sql, name, binds).rows
-      end
-
       protected
 
-      # The only reason we have to override this is because if we are using
-      # prepared statements, it forces params to @n format...
-      def column_definitions(table_name)
-        identifier = if database_prefix_remote_server?
-                       ActiveRecord::ConnectionAdapters::SQLServer::Utils.extract_identifiers("#{database_prefix}#{table_name}")
-                     else
-                       ActiveRecord::ConnectionAdapters::SQLServer::Utils.extract_identifiers(table_name)
-                     end
-        database    = identifier.fully_qualified_database_quoted
-        view_exists = view_exists?(table_name)
-        view_tblnm  = view_table_name(table_name) if view_exists
-        sql = %{
-            SELECT DISTINCT
-            #{lowercase_schema_reflection_sql('columns.TABLE_NAME')} AS table_name,
-            #{lowercase_schema_reflection_sql('columns.COLUMN_NAME')} AS name,
-            columns.DATA_TYPE AS type,
-            columns.COLUMN_DEFAULT AS default_value,
-            columns.NUMERIC_SCALE AS numeric_scale,
-            columns.NUMERIC_PRECISION AS numeric_precision,
-            columns.DATETIME_PRECISION AS datetime_precision,
-            columns.COLLATION_NAME AS [collation],
-            columns.ordinal_position,
-            CASE
-              WHEN columns.DATA_TYPE IN ('nchar','nvarchar','char','varchar') THEN columns.CHARACTER_MAXIMUM_LENGTH
-              ELSE COL_LENGTH('#{database}.'+columns.TABLE_SCHEMA+'.'+columns.TABLE_NAME, columns.COLUMN_NAME)
-            END AS [length],
-            CASE
-              WHEN columns.IS_NULLABLE = 'YES' THEN 1
-              ELSE NULL
-            END AS [is_nullable],
-            CASE
-              WHEN KCU.COLUMN_NAME IS NOT NULL AND TC.CONSTRAINT_TYPE = N'PRIMARY KEY' THEN 1
-              ELSE NULL
-            END AS [is_primary],
-            c.is_identity AS [is_identity]
-            FROM #{database}.INFORMATION_SCHEMA.COLUMNS columns
-            LEFT OUTER JOIN #{database}.INFORMATION_SCHEMA.TABLE_CONSTRAINTS AS TC
-              ON TC.TABLE_NAME = columns.TABLE_NAME
-              AND TC.TABLE_SCHEMA = columns.TABLE_SCHEMA
-              AND TC.CONSTRAINT_TYPE = N'PRIMARY KEY'
-            LEFT OUTER JOIN #{database}.INFORMATION_SCHEMA.KEY_COLUMN_USAGE AS KCU
-              ON KCU.COLUMN_NAME = columns.COLUMN_NAME
-              AND KCU.CONSTRAINT_NAME = TC.CONSTRAINT_NAME
-              AND KCU.CONSTRAINT_CATALOG = TC.CONSTRAINT_CATALOG
-              AND KCU.CONSTRAINT_SCHEMA = TC.CONSTRAINT_SCHEMA
-            INNER JOIN #{database}.sys.schemas AS s
-              ON s.name = columns.TABLE_SCHEMA
-              AND s.schema_id = s.schema_id
-            INNER JOIN #{database}.sys.objects AS o
-              ON s.schema_id = o.schema_id
-              AND o.is_ms_shipped = 0
-              AND o.type IN ('U', 'V')
-              AND o.name = columns.TABLE_NAME
-            INNER JOIN #{database}.sys.columns AS c
-              ON o.object_id = c.object_id
-              AND c.name = columns.COLUMN_NAME
-            WHERE columns.TABLE_NAME = #{prepared_statements ? '?' : quote(identifier.object)}
-              AND columns.TABLE_SCHEMA = #{identifier.schema.blank? ? 'schema_name()' : (prepared_statements ? '?' : quote(identifier.schema))}
-            ORDER BY columns.ordinal_position
-          }.gsub(/[ \t\r\n]+/, ' ').strip
-        binds = []
-        nv128 = ActiveRecord::ConnectionAdapters::SQLServer::Type::UnicodeVarchar.new limit: 128
-        binds << ActiveRecord::Relation::QueryAttribute.new('TABLE_NAME', identifier.object, nv128)
-        binds << ActiveRecord::Relation::QueryAttribute.new('TABLE_SCHEMA', identifier.schema, nv128) unless identifier.schema.blank?
-        results = exec_query(sql, 'SCHEMA', binds)
-        results.map do |ci|
-          ci = ci.symbolize_keys
-          #binding.pry if table_name == 'admin_users'
-          ci[:_type] = ci[:type]
-          ci[:table_name] = view_tblnm || table_name
-          ci[:type] = case ci[:type]
-                      when /^bit|image|text|ntext|datetime$/
-                        ci[:type]
-                      when /^datetime2|datetimeoffset$/i
-                        "#{ci[:type]}(#{ci[:datetime_precision]})"
-                      when /^time$/i
-                        "#{ci[:type]}(#{ci[:datetime_precision]})"
-                      when /^numeric|decimal$/i
-                        "#{ci[:type]}(#{ci[:numeric_precision]},#{ci[:numeric_scale]})"
-                      when /^float|real$/i
-                        "#{ci[:type]}"
-                      when /^char|nchar|varchar|nvarchar|binary|varbinary|bigint|int|smallint$/
-                        ci[:length].to_i == -1 ? "#{ci[:type]}(max)" : "#{ci[:type]}(#{ci[:length]})"
-                      else
-                        ci[:type]
-                      end
-          ci[:default_value],
-          ci[:default_function] = begin
-            default = ci[:default_value]
-            if default.nil? && view_exists
-              default = select_value "
-                  SELECT c.COLUMN_DEFAULT
-                  FROM #{database}.INFORMATION_SCHEMA.COLUMNS c
-                  WHERE c.TABLE_NAME = '#{view_tblnm}'
-                  AND c.COLUMN_NAME = '#{views_real_column_name(table_name, ci[:name])}'".squish, 'SCHEMA'
-            end
-            case default
-            when nil
-              [nil, nil]
-            when /\A\((\w+\(\))\)\Z/
-              default_function = Regexp.last_match[1]
-              [nil, default_function]
-            when /\A\(N'(.*)'\)\Z/m
-              string_literal = ActiveRecord::ConnectionAdapters::SQLServer::Utils.unquote_string(Regexp.last_match[1])
-              [string_literal, nil]
-            when /CREATE DEFAULT/mi
-              [nil, nil]
-            else
-              type = case ci[:type]
-                     when /smallint|int|bigint/ then ci[:_type]
-                     else ci[:type]
-                     end
-              value = default.match(/\A\((.*)\)\Z/m)[1]
-              binding.pry if ENV['stophere'] == 'true'
-              value = select_value "SELECT CAST(#{value} AS #{type}) AS value", 'SCHEMA'
-              [value, nil]
-            end
-          end
-          ci[:null] = ci[:is_nullable].to_i == 1
-          ci.delete(:is_nullable)
-          ci[:is_primary] = ci[:is_primary].to_i == 1
-          ci[:is_identity] = ci[:is_identity].to_i == 1 unless [TrueClass, FalseClass].include?(ci[:is_identity].class)
-          ci
-        end
-      end
-
-      # Overrides connect to actually make a connection before configuring it
-      # @connection actually gets defined and then the connect method in the sqlserver gem overrides it
-      # This can probably be fixed with a patch to the main gem
-      def connect
-        @spid = @connection.execute('SELECT @@SPID').first.values.first
-        @version_year = version_year # Not sure if this is necessary but kept it this way because the gem has it this way
-        configure_connection
-      end
-
-      # This ends up as a no-op without the override
-      def do_execute(sql, name = 'SQL')
-        execute(sql, name)
-      end
-
-      # Overriding this in case it gets used in places that we don't override by default
-      def raw_connection_do(sql)
-        @connection.execute(sql)
-      ensure
-        @update_sql = false
-      end
-
-      # This is not used in most cases, but override it for the handful of places that are still left
-      def sp_executesql(sql, name, binds, _options = {})
-        exec_query(sql, name, binds)
-      end
-
-      # Prevents turning an insert statement into a query with results
-      # Slightly adjusted since we know there should always be a table name in the sql
-      def sql_for_insert(sql, pk, id_value, sequence_name, binds)
-        pk = primary_key(get_table_name(sql)) if pk.nil?
-        [sql, binds, pk, sequence_name]
-      end
-
-      # @Override
-      # Made it so we don't use the internal calls from the gem
-      def version_year
-        return @version_year if defined?(@version_year)
-        @version_year = begin
-          vstring = select_value('SELECT @@version').to_s
-          return 2016 if vstring =~ /vNext/
-          /SQL Server (\d+)/.match(vstring).to_a.last.to_s.to_i
-        rescue Exception => e
-          2016
-        end
+      def translate_exception(exception, message)
+        return ActiveRecord::ValueTooLong.new(message) if exception.message.include?('java.sql.DataTruncation')
+        super
       end
 
     end
+
+
 
     # @private
     def self.extended(adapter)
@@ -1125,38 +950,223 @@ module ActiveRecord::ConnectionAdapters
 
   class SQLServerAdapter
 
-    # The gem's disconnect actually removes the reference to the connection, so define our own
-    remove_method(:reconnect!)
+    # The sqlserver gem's version of these needs to be taken out of the lookup chain
     remove_method(:disconnect!)
+    remove_method(:reconnect!)
 
-  end
+    prepend ArJdbc::Abstract::ConnectionManagement
+    prepend ArJdbc::Abstract::Core
+    prepend ArJdbc::Abstract::DatabaseStatements
+    prepend ArJdbc::Abstract::StatementCache
+    prepend ArJdbc::Abstract::TransactionSupport
+    prepend ArJdbc::MSSQL::AROverrides
+    prepend ArJdbc::MSSQL::SQLServerOverrides
 
-  class MSSQLAdapter < SQLServerAdapter
-
-
-    include ArJdbc::Abstract::ConnectionManagement
-    include ArJdbc::Abstract::Core
-    include ArJdbc::Abstract::DatabaseStatements
-    include ArJdbc::Abstract::StatementCache
-    include ArJdbc::Abstract::TransactionSupport
-    include ArJdbc::MSSQL::AROverrides
-    include ArJdbc::MSSQL::SQLServerOverrides
-
-    #include ::ArJdbc::MSSQL
     include ::ArJdbc::Util::QuotedCache
-
-    def initialize(connection, logger = nil, connection_parameters = nil, config = {})
-      super(connection, logger, config) # configure_connection happens in super
-    end
 
     # @see ActiveRecord::ConnectionAdapters::JdbcAdapter#jdbc_connection_class
     def jdbc_connection_class(spec)
       ::ActiveRecord::ConnectionAdapters::MSSQLJdbcConnection
     end
 
-    def translate_exception(exception, message)
-      return ActiveRecord::ValueTooLong.new(message) if exception.message.include?('java.sql.DataTruncation')
-      super
+    # @Overwrite
+    def reset!
+      clear_cache!
+      reset_transaction
+      @connection.rollback # Have to deal with rollbacks differently than the SQLServer gem
+      @connection.configure_connection
+    end
+
+    # @Overwrite
+    # Had some special logic and skipped using gem's internal query methods
+    def select_rows(sql, name = nil, binds = [])
+
+      # In some cases the limit is converted to a `TOP(1)` but the bind parameter is still in the array
+      if !binds.empty? && sql.include?('TOP(1)')
+        binds = binds.delete_if {|b| b.name == 'LIMIT' }
+      end
+
+      exec_query(sql, name, binds).rows
+    end
+
+    protected
+
+
+    # @Overwrite
+    # The only reason we have to override this is because if we are using
+    # prepared statements, it forces params to @n format...
+    def column_definitions(table_name)
+      identifier = if database_prefix_remote_server?
+                     SQLServer::Utils.extract_identifiers("#{database_prefix}#{table_name}")
+                   else
+                     SQLServer::Utils.extract_identifiers(table_name)
+                   end
+      database    = identifier.fully_qualified_database_quoted
+      view_exists = view_exists?(table_name)
+      view_tblnm  = view_table_name(table_name) if view_exists
+      sql = %{
+            SELECT DISTINCT
+            #{lowercase_schema_reflection_sql('columns.TABLE_NAME')} AS table_name,
+            #{lowercase_schema_reflection_sql('columns.COLUMN_NAME')} AS name,
+            columns.DATA_TYPE AS type,
+            columns.COLUMN_DEFAULT AS default_value,
+            columns.NUMERIC_SCALE AS numeric_scale,
+            columns.NUMERIC_PRECISION AS numeric_precision,
+            columns.DATETIME_PRECISION AS datetime_precision,
+            columns.COLLATION_NAME AS [collation],
+            columns.ordinal_position,
+            CASE
+              WHEN columns.DATA_TYPE IN ('nchar','nvarchar','char','varchar') THEN columns.CHARACTER_MAXIMUM_LENGTH
+              ELSE COL_LENGTH('#{database}.'+columns.TABLE_SCHEMA+'.'+columns.TABLE_NAME, columns.COLUMN_NAME)
+            END AS [length],
+            CASE
+              WHEN columns.IS_NULLABLE = 'YES' THEN 1
+              ELSE NULL
+            END AS [is_nullable],
+            CASE
+              WHEN KCU.COLUMN_NAME IS NOT NULL AND TC.CONSTRAINT_TYPE = N'PRIMARY KEY' THEN 1
+              ELSE NULL
+            END AS [is_primary],
+            c.is_identity AS [is_identity]
+            FROM #{database}.INFORMATION_SCHEMA.COLUMNS columns
+            LEFT OUTER JOIN #{database}.INFORMATION_SCHEMA.TABLE_CONSTRAINTS AS TC
+              ON TC.TABLE_NAME = columns.TABLE_NAME
+              AND TC.TABLE_SCHEMA = columns.TABLE_SCHEMA
+              AND TC.CONSTRAINT_TYPE = N'PRIMARY KEY'
+            LEFT OUTER JOIN #{database}.INFORMATION_SCHEMA.KEY_COLUMN_USAGE AS KCU
+              ON KCU.COLUMN_NAME = columns.COLUMN_NAME
+              AND KCU.CONSTRAINT_NAME = TC.CONSTRAINT_NAME
+              AND KCU.CONSTRAINT_CATALOG = TC.CONSTRAINT_CATALOG
+              AND KCU.CONSTRAINT_SCHEMA = TC.CONSTRAINT_SCHEMA
+            INNER JOIN #{database}.sys.schemas AS s
+              ON s.name = columns.TABLE_SCHEMA
+              AND s.schema_id = s.schema_id
+            INNER JOIN #{database}.sys.objects AS o
+              ON s.schema_id = o.schema_id
+              AND o.is_ms_shipped = 0
+              AND o.type IN ('U', 'V')
+              AND o.name = columns.TABLE_NAME
+            INNER JOIN #{database}.sys.columns AS c
+              ON o.object_id = c.object_id
+              AND c.name = columns.COLUMN_NAME
+            WHERE columns.TABLE_NAME = #{prepared_statements ? '?' : quote(identifier.object)}
+              AND columns.TABLE_SCHEMA = #{identifier.schema.blank? ? 'schema_name()' : (prepared_statements ? '?' : quote(identifier.schema))}
+            ORDER BY columns.ordinal_position
+          }.gsub(/[ \t\r\n]+/, ' ').strip
+      binds = []
+      nv128 = SQLServer::Type::UnicodeVarchar.new limit: 128
+      binds << ActiveRecord::Relation::QueryAttribute.new('TABLE_NAME', identifier.object, nv128)
+      binds << ActiveRecord::Relation::QueryAttribute.new('TABLE_SCHEMA', identifier.schema, nv128) unless identifier.schema.blank?
+      results = exec_query(sql, 'SCHEMA', binds)
+      results.map do |ci|
+        ci = ci.symbolize_keys
+        #binding.pry if table_name == 'admin_users'
+        ci[:_type] = ci[:type]
+        ci[:table_name] = view_tblnm || table_name
+        ci[:type] = case ci[:type]
+                    when /^bit|image|text|ntext|datetime$/
+                      ci[:type]
+                    when /^datetime2|datetimeoffset$/i
+                      "#{ci[:type]}(#{ci[:datetime_precision]})"
+                    when /^time$/i
+                      "#{ci[:type]}(#{ci[:datetime_precision]})"
+                    when /^numeric|decimal$/i
+                      "#{ci[:type]}(#{ci[:numeric_precision]},#{ci[:numeric_scale]})"
+                    when /^float|real$/i
+                      "#{ci[:type]}"
+                    when /^char|nchar|varchar|nvarchar|binary|varbinary|bigint|int|smallint$/
+                      ci[:length].to_i == -1 ? "#{ci[:type]}(max)" : "#{ci[:type]}(#{ci[:length]})"
+                    else
+                      ci[:type]
+                    end
+        ci[:default_value], ci[:default_function] = begin
+          default = ci[:default_value]
+          if default.nil? && view_exists
+            default = select_value "
+                  SELECT c.COLUMN_DEFAULT
+                  FROM #{database}.INFORMATION_SCHEMA.COLUMNS c
+                  WHERE c.TABLE_NAME = '#{view_tblnm}'
+                  AND c.COLUMN_NAME = '#{views_real_column_name(table_name, ci[:name])}'".squish, 'SCHEMA'
+          end
+          case default
+          when nil
+            [nil, nil]
+          when /\A\((\w+\(\))\)\Z/
+            default_function = Regexp.last_match[1]
+            [nil, default_function]
+          when /\A\(N'(.*)'\)\Z/m
+            string_literal = SQLServer::Utils.unquote_string(Regexp.last_match[1])
+            [string_literal, nil]
+          when /CREATE DEFAULT/mi
+            [nil, nil]
+          else
+            type = case ci[:type]
+                   when /smallint|int|bigint/ then ci[:_type]
+                   else ci[:type]
+                   end
+            value = default.match(/\A\((.*)\)\Z/m)[1]
+            binding.pry if ENV['stophere'] == 'true'
+            value = select_value "SELECT CAST(#{value} AS #{type}) AS value", 'SCHEMA'
+            [value, nil]
+          end
+        end
+        ci[:null] = ci[:is_nullable].to_i == 1
+        ci.delete(:is_nullable)
+        ci[:is_primary] = ci[:is_primary].to_i == 1
+        ci[:is_identity] = ci[:is_identity].to_i == 1 unless [TrueClass, FalseClass].include?(ci[:is_identity].class)
+        ci
+      end
+    end
+
+    # @Overwrite
+    # Makes a connection before configuring it
+    # @connection actually gets defined and then the connect method in the sqlserver gem overrides it
+    # This can probably be fixed with a patch to the main gem
+    def connect
+      @spid = @connection.execute('SELECT @@SPID').first.values.first
+      @version_year = version_year # Not sure if this is necessary but kept it this way because the gem has it this way
+      configure_connection
+    end
+
+    # @Overwrite
+    # This ends up as a no-op without the override
+    def do_execute(sql, name = 'SQL')
+      execute(sql, name)
+    end
+
+    # @Overwrite
+    # Overriding this in case it gets used in places that we don't override by default
+    def raw_connection_do(sql)
+      @connection.execute(sql)
+    ensure
+      @update_sql = false
+    end
+
+    # @Overwrite
+    # This is not used in most cases, but override it for the handful of places that are still left
+    def sp_executesql(sql, name, binds, _options = {})
+      exec_query(sql, name, binds)
+    end
+
+    # @Overwrite
+    # Prevents turning an insert statement into a query with results
+    # Slightly adjusted since we know there should always be a table name in the sql
+    def sql_for_insert(sql, pk, id_value, sequence_name, binds)
+      pk = primary_key(get_table_name(sql)) if pk.nil?
+      [sql, binds, pk, sequence_name]
+    end
+
+    # @Overwrite
+    # Made it so we don't use the internal calls from the gem
+    def version_year
+      return @version_year if defined?(@version_year)
+      @version_year = begin
+        vstring = select_value('SELECT @@version').to_s
+        return 2016 if vstring =~ /vNext/
+        /SQL Server (\d+)/.match(vstring).to_a.last.to_s.to_i
+      rescue Exception => e
+        2016
+      end
     end
 
   end
