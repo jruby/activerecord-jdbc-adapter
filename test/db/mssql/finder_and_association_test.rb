@@ -33,9 +33,10 @@ class MSSQLFinderAndAssociationTest < Test::Unit::TestCase
         t.boolean :online
         t.integer :likes
         t.integer :dislikes
+        t.datetime :written_on
         t.text :content
 
-        t.timestamps
+        t.timestamps null: true
       end
 
       create_table :reviews do |t|
@@ -77,6 +78,11 @@ class MSSQLFinderAndAssociationTest < Test::Unit::TestCase
 
   def self.startup
     CreateSimpleSchema.up
+    author1 = Writer.create(email: 'jesse@melbourne')
+    category1 = Category.create(name: 'scifi')
+    author2 = Writer.create(email: 'jesse@sydney')
+    category2 = Category.create(name: 'drama')
+
   end
 
   def self.shutdown
@@ -85,16 +91,44 @@ class MSSQLFinderAndAssociationTest < Test::Unit::TestCase
   end
 
   def test_select_with_order_in_different_table
-    # Under the hood this uses distinct in the select.
-    dataset = Writer.includes(:categories).order('categories.name').limit(2)
+    dataset = Writer.distinct.includes(:categories).order('categories.name').limit(2)
 
-    assert_equal [], dataset
+    assert_equal Writer.all.count, dataset.size
   end
 
   def test_exists_with_distinct
-    assert_equal false, Writer.distinct.order(:email).exists?
-    assert_equal false, Writer.distinct.order(:email).limit(1).exists?
-    assert_equal false, Writer.distinct.order(:email).limit(2).exists?
+    assert_equal true, Writer.distinct.order(:email).exists?
+    assert_equal true, Writer.distinct.order(:email).limit(1).exists?
+    assert_equal true, Writer.distinct.order(:email).limit(2).exists?
   end
 
+  def test_find_by_datetime_field_hash_in_where
+    author = Writer.find_by(email: 'jesse@melbourne')
+    category = Category.find_by(name: 'scifi')
+
+    sql_insert = %(
+      INSERT INTO [stories]([title], [writer_id], [category_id], [written_on])
+      VALUES('Star Wars 10',#{author.id}, #{category.id}, '2019-04-12T11:28:11.223')
+    )
+
+    Story.connection.execute(sql_insert)
+    written_on = Time.parse('2019-04-12T11:28:11.223 +0000')
+
+    assert_equal 1, Story.where(written_on: written_on).count
+  end
+
+  def test_find_by_datetime_field_array_in_where
+    author = Writer.find_by(email: 'jesse@melbourne')
+    category = Category.find_by(name: 'drama')
+
+    sql_insert = %(
+      INSERT INTO [stories]([title], [writer_id], [category_id], [written_on])
+      VALUES('Star Wars 11',#{author.id}, #{category.id}, '2018-04-12T11:28:11.223')
+    )
+
+    Story.connection.execute(sql_insert)
+    written_on = Time.parse('2018-04-12T11:28:11.223 +0000')
+
+    assert_equal 1, Story.where(['written_on = ?', written_on]).count
+  end
 end

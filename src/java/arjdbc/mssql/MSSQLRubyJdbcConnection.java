@@ -256,6 +256,21 @@ public class MSSQLRubyJdbcConnection extends RubyJdbcConnection {
         return value == null ? context.nil : DateTimeUtils.parseTime(context, value, getDefaultTimeZone(context));
     }
 
+    // This overrides method in parent because of the issue in prepared
+    // statements when setting datatime data types, the mssql-jdbc
+    // uses datetime2 to cast datetime.
+    //
+    // More at:  https://github.com/Microsoft/mssql-jdbc/issues/443
+    @Override
+    protected void setTimestampParameter(final ThreadContext context,
+        final Connection connection, final PreparedStatement statement,
+        final int index, IRubyObject value,
+        final IRubyObject attribute, final int type) throws SQLException {
+      String tsString = DateTimeUtils.timestampTimeToString(context, value, getDefaultTimeZone(context), false);
+
+      statement.setObject(index, tsString, Types.NVARCHAR);
+    }
+
     // Handle more fractional second precision than (default) 59.123 only
     @Override
     protected void setTimeParameter(final ThreadContext context,
