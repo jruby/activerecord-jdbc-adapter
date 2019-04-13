@@ -54,17 +54,8 @@ module ArJdbc
     # DIFFERENCE: class_attribute in original adapter is moved down to our section which is a class
     #  since we cannot define it here in the module (original source this is a class).
 
-    class StatementPool < ConnectionAdapters::StatementPool # :nodoc:
-      private
-      def dealloc(stmt)
-        stmt.close unless stmt.closed?
-      end
-    end
-
     def initialize(connection, logger, connection_options, config)
       super(connection, logger, config)
-
-      @statements = StatementPool.new(self.class.type_cast_config_to_integer(config[:statement_limit]))
       configure_connection
     end
 
@@ -77,11 +68,11 @@ module ArJdbc
     end
 
     def supports_partial_index?
-      sqlite_version >= "3.9.0"
+      database_version >= "3.9.0"
     end
 
     def supports_expression_index?
-      sqlite_version >= "3.9.0"
+      database_version >= "3.9.0"
     end
 
     def requires_reloading?
@@ -105,22 +96,13 @@ module ArJdbc
     end
 
     def supports_insert_on_conflict?
-      sqlite_version >= "3.24.0"
+      database_version >= "3.24.0"
     end
     alias supports_insert_on_duplicate_skip? supports_insert_on_conflict?
     alias supports_insert_on_duplicate_update? supports_insert_on_conflict?
     alias supports_insert_conflict_target? supports_insert_on_conflict?
 
-    # Clears the prepared statements cache.
-    def clear_cache!
-      @statements.clear
-    end
-
-    def truncate(table_name, name = nil)
-      # `DELETE` without `WHERE` uses "The Truncate Optimization", see:
-      # https://www.sqlite.org/lang_delete.html
-      execute "DELETE FROM #{quote_table_name(table_name)}", name
-    end
+    # DIFFERENCE: active?, reconnect!, disconnect! handles by arjdbc core
 
     def supports_index_sort_order?
       true
@@ -329,9 +311,20 @@ module ArJdbc
       sql
     end
 
-    def check_version # :nodoc:
-      if sqlite_version < "3.8.0"
-        raise "Your version of SQLite (#{sqlite_version}) is too old. Active Record supports SQLite >= 3.8."
+    def get_database_version # :nodoc:
+      SQLite3Adapter::Version.new(query_value("SELECT sqlite_version(*)"))
+    end
+
+    def build_truncate_statements(*table_names)
+      truncate_tables = table_names.map do |table_name|
+        "DELETE FROM #{quote_table_name(table_name)}"
+      end
+      combine_multi_statements(truncate_tables)
+    end
+
+    def check_version
+      if database_version < "3.8.0"
+        raise "Your version of SQLite (#{database_version}) is too old. Active Record supports SQLite >= 3.8."
       end
     end
 
@@ -460,10 +453,6 @@ module ArJdbc
 
       exec_query("INSERT INTO #{quote_table_name(to)} (#{quoted_columns})
                      SELECT #{quoted_from_columns} FROM #{quote_table_name(from)}")
-    end
-
-    def sqlite_version
-      @sqlite_version ||= SQLite3Adapter::Version.new(query_value("SELECT sqlite_version(*)"))
     end
 
     def translate_exception(exception, message:, sql:, binds:)
@@ -699,5 +688,16 @@ module ActiveRecord::ConnectionAdapters
 
     # Note: This is not an override of ours but a moved line from AR Sqlite3Adapter to register ours vs our copied module (which would be their class).
 #    ActiveSupport.run_load_hooks(:active_record_sqlite3adapter, SQLite3Adapter)
+
+    private
+
+    # because the JDBC driver doesn't like multiple SQL statements in one JDBC statement
+    def combine_multi_statements(total_sql)
+      if total_sql.length == 1
+        total_sql.first
+      else
+        total_sql
+      end
+    end
   end
 end

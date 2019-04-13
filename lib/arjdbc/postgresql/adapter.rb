@@ -48,39 +48,45 @@ module ArJdbc
       ADAPTER_NAME
     end
 
-    def postgresql_version
-      @postgresql_version ||=
-        begin
-          version = @connection.database_product
-          if match = version.match(/([\d\.]*\d).*?/)
-            version = match[1].split('.').map(&:to_i)
-            # PostgreSQL version representation does not have more than 4 digits
-            # From version 10 onwards, PG has changed its versioning policy to
-            # limit it to only 2 digits. i.e. in 10.x, 10 being the major
-            # version and x representing the patch release
-            # Refer to:
-            #   https://www.postgresql.org/support/versioning/
-            #   https://www.postgresql.org/docs/10/static/libpq-status.html -> PQserverVersion()
-            # for more info
+    def get_database_version # :nodoc:
+      begin
+        version = @connection.database_product
+        if match = version.match(/([\d\.]*\d).*?/)
+          version = match[1].split('.').map(&:to_i)
+          # PostgreSQL version representation does not have more than 4 digits
+          # From version 10 onwards, PG has changed its versioning policy to
+          # limit it to only 2 digits. i.e. in 10.x, 10 being the major
+          # version and x representing the patch release
+          # Refer to:
+          #   https://www.postgresql.org/support/versioning/
+          #   https://www.postgresql.org/docs/10/static/libpq-status.html -> PQserverVersion()
+          # for more info
 
-            if version.size >= 3
-              (version[0] * 100 + version[1]) * 100 + version[2]
-            elsif version.size == 2
-              if version[0] >= 10
-                version[0] * 100 * 100 + version[1]
-              else
-                (version[0] * 100 + version[1]) * 100
-              end
-            elsif version.size == 1
-              version[0] * 100 * 100
+          if version.size >= 3
+            (version[0] * 100 + version[1]) * 100 + version[2]
+          elsif version.size == 2
+            if version[0] >= 10
+              version[0] * 100 * 100 + version[1]
             else
-              0
+              (version[0] * 100 + version[1]) * 100
             end
+          elsif version.size == 1
+            version[0] * 100 * 100
           else
             0
           end
+        else
+          0
         end
+      end
     end
+
+    def check_version # :nodoc:
+      if database_version < 90300
+        raise "Your version of PostgreSQL (#{database_version}) is too old. Active Record supports PostgreSQL >= 9.3."
+      end
+    end
+
 
     def redshift?
       # SELECT version() :
@@ -91,10 +97,6 @@ module ArJdbc
       redshift
     end
     private :redshift?
-
-    def use_insert_returning?
-      @use_insert_returning
-    end
 
     def set_client_encoding(encoding)
       ActiveRecord::Base.logger.warn "client_encoding is set by the driver and should not be altered, ('#{encoding}' ignored)"
@@ -236,7 +238,7 @@ module ArJdbc
     end
 
     def supports_json?
-      postgresql_version >= 90200
+      database_version >= 90200
     end
 
     def supports_comments?
@@ -252,11 +254,15 @@ module ArJdbc
     end
 
     def supports_insert_on_conflict?
-      postgresql_version >= 90500
+      database_version >= 90500
     end
     alias supports_insert_on_duplicate_skip? supports_insert_on_conflict?
     alias supports_insert_on_duplicate_update? supports_insert_on_conflict?
     alias supports_insert_conflict_target? supports_insert_on_conflict?
+
+    def index_algorithms
+      { concurrently: 'CONCURRENTLY' }
+    end
 
     def supports_ddl_transactions?
       true
@@ -271,23 +277,30 @@ module ArJdbc
     end
 
     def supports_extensions?
-      postgresql_version >= 90200
+      database_version >= 90200
     end
 
     def supports_ranges?
-      postgresql_version >= 90200
+      database_version >= 90200
     end
 
     def supports_materialized_views?
-      postgresql_version >= 90300
+      database_version >= 90300
     end
 
     def supports_foreign_tables? # we don't really support this yet, its a reminder :)
-      postgresql_version >= 90300
+      database_version >= 90300
     end
 
     def supports_pgcrypto_uuid?
-      postgresql_version >= 90400
+      database_version >= 90400
+    end
+
+    def supports_optimizer_hints?
+      unless defined?(@has_pg_hint_plan)
+        @has_pg_hint_plan = extension_available?("pg_hint_plan")
+      end
+      @has_pg_hint_plan
     end
 
     def supports_lazy_transactions?
@@ -299,30 +312,11 @@ module ArJdbc
       index.using == :btree || super
     end
 
-    def index_algorithms
-      { :concurrently => 'CONCURRENTLY' }
-    end
-
-    # Set the authorized user for this session.
-    def session_auth=(user)
-      clear_cache!
-      execute "SET SESSION AUTHORIZATION #{user}"
-    end
-
-    # Came from postgres_adapter
     def get_advisory_lock(lock_id) # :nodoc:
       unless lock_id.is_a?(Integer) && lock_id.bit_length <= 63
-        raise(ArgumentError, "Postgres requires advisory lock ids to be a signed 64 bit integer")
+        raise(ArgumentError, "PostgreSQL requires advisory lock ids to be a signed 64 bit integer")
       end
-      select_value("SELECT pg_try_advisory_lock(#{lock_id});")
-    end
-
-    # Came from postgres_adapter
-    def release_advisory_lock(lock_id) # :nodoc:
-      unless lock_id.is_a?(Integer) && lock_id.bit_length <= 63
-        raise(ArgumentError, "Postgres requires advisory lock ids to be a signed 64 bit integer")
-      end
-      select_value("SELECT pg_advisory_unlock(#{lock_id})")
+      query_value("SELECT pg_try_advisory_lock(#{lock_id})")
     end
 
     def release_advisory_lock(lock_id) # :nodoc:
@@ -344,21 +338,32 @@ module ArJdbc
       }
     end
 
+    def extension_available?(name)
+      query_value("SELECT true FROM pg_available_extensions WHERE name = #{quote(name)}", "SCHEMA")
+    end
+
     def extension_enabled?(name)
-      res = exec_query("SELECT EXISTS(SELECT * FROM pg_available_extensions WHERE name = '#{name}' AND installed_version IS NOT NULL) as enabled", "SCHEMA")
-      res.cast_values.first
+      query_value("SELECT installed_version IS NOT NULL FROM pg_available_extensions WHERE name = #{quote(name)}", "SCHEMA")
     end
 
     def extensions
       exec_query("SELECT extname FROM pg_extension", "SCHEMA").cast_values
     end
 
-    # Returns the max identifier length supported by PostgreSQL
+    # Returns the configured supported identifier length supported by PostgreSQL
     def max_identifier_length
-      @max_identifier_length ||= select_one('SHOW max_identifier_length', 'SCHEMA'.freeze)['max_identifier_length'].to_i
+      @max_identifier_length ||= query_value("SHOW max_identifier_length", "SCHEMA").to_i
     end
-    alias table_alias_length max_identifier_length
-    alias index_name_length max_identifier_length
+
+    # Set the authorized user for this session
+    def session_auth=(user)
+      clear_cache!
+      execute("SET SESSION AUTHORIZATION #{user}")
+    end
+
+    def use_insert_returning?
+      @use_insert_returning
+    end
 
     def exec_insert(sql, name, binds, pk = nil, sequence_name = nil)
       val = super
@@ -447,6 +452,10 @@ module ArJdbc
       sql
     end
 
+    def build_truncate_statements(*table_names)
+      "TRUNCATE TABLE #{table_names.map(&method(:quote_table_name)).join(", ")}"
+    end
+
     def all_schemas
       select('SELECT nspname FROM pg_namespace').map { |row| row["nspname"] }
     end
@@ -517,10 +526,6 @@ module ArJdbc
     end
 
 
-    def truncate(table_name, name = nil)
-      execute "TRUNCATE TABLE #{quote_table_name(table_name)}", name
-    end
-
     # @private
     def column_name_for_operation(operation, node)
       case operation
@@ -561,7 +566,7 @@ module ArJdbc
       $1.strip if $1
     end
 
-    def arel_visitor # :nodoc:
+    def arel_visitor
       Arel::Visitors::PostgreSQL.new(self)
     end
 
@@ -700,6 +705,7 @@ module ActiveRecord::ConnectionAdapters
     Table = ActiveRecord::ConnectionAdapters::PostgreSQL::Table
 
     public :sql_for_insert
+    alias :postgresql_version :database_version
 
     def jdbc_connection_class(spec)
       ::ArJdbc::PostgreSQL.jdbc_connection_class

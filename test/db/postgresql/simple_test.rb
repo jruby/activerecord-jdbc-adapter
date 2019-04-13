@@ -80,12 +80,12 @@ class PostgresSimpleTest < Test::Unit::TestCase
   end
 
   def test_create_xml_column
-    return if connection.send(:postgresql_version) < 80300
+    return if connection.database_version < 80300
     super
   end
 
   def test_use_xml_column
-    return if connection.send(:postgresql_version) < 80300
+    return if connection.database_version < 80300
 
     super() do
       data = XmlModel.new(:xml_col => "<foo>bar</foo>")

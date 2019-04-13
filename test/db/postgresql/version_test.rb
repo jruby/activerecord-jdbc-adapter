@@ -56,6 +56,6 @@ class VersionTest < Test::Unit::TestCase
     connection.expects(:database_product).returns full_version ? version.to_s : "PostgreSQL #{version}"
     ActiveRecord::ConnectionAdapters::PostgreSQLAdapter.any_instance.stubs(:initialize_type_map)
     pg_connection = ActiveRecord::ConnectionAdapters::PostgreSQLAdapter.new(connection, nil, {})
-    pg_connection.postgresql_version
+    pg_connection.database_version
   end
 end
