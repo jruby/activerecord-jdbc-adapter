@@ -71,7 +71,7 @@ module ActiveRecord
 
       # Does this adapter support creating foreign key constraints?
       def supports_foreign_keys?
-        false
+        true
       end
 
       # Does this adapter support migrations?
@@ -98,6 +98,13 @@ module ActiveRecord
       def clear_cache!
         reload_type_map
         super
+      end
+
+      def disable_referential_integrity
+        execute "EXEC sp_MSforeachtable 'ALTER TABLE ? NOCHECK CONSTRAINT ALL'"
+        yield
+      ensure
+        execute "EXEC sp_MSforeachtable 'ALTER TABLE ? CHECK CONSTRAINT ALL'"
       end
 
       # Overrides the method in abstract adapter to set the limit and offset

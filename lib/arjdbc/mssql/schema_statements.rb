@@ -86,6 +86,10 @@ module ActiveRecord
           @connection.primary_keys(table_name)
         end
 
+        def foreign_keys(table_name)
+          @connection.foreign_keys(table_name)
+        end
+
         def charset
           select_value "SELECT SqlCharSetName = CAST(SERVERPROPERTY('SqlCharSetName') AS NVARCHAR(128))"
         end
