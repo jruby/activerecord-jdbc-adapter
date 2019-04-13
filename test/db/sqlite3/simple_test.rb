@@ -310,7 +310,4 @@ class SQLite3SimpleTest < Test::Unit::TestCase
     assert defined? Arel::Visitors::SQLite
     assert_kind_of Arel::Visitors::SQLite, visitor
   end
-
-  undef :test_truncate # not supported natively by SQLite
-
 end
