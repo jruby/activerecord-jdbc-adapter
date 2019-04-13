@@ -27,9 +27,16 @@ module MSSQLMigration
 
           t.timestamps
         end
+
+        create_table :reviews do |t|
+          t.references :entry
+
+          t.timestamps
+        end
       end
 
       def self.down
+        drop_table :reviews
         drop_table :entries
       end
     end
