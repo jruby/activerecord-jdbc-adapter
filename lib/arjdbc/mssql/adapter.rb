@@ -196,8 +196,10 @@ module ActiveRecord
           RecordNotUnique.new(message)
         when /Lock request time out period exceeded/i
           LockTimeout.new(message)
-        # when /(String or binary data would be truncated)/i
-        #   ValueTooLong.new(message)
+        when /The .* statement conflicted with the FOREIGN KEY constraint/
+          ActiveRecord::InvalidForeignKey.new(message)
+        when /(String or binary data would be truncated)/i
+          ActiveRecord::ValueTooLong.new(message)
         else
           super
         end

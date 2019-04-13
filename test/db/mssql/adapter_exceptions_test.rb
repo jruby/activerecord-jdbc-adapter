@@ -52,4 +52,30 @@ class MSSQLExceptionsTest < Test::Unit::TestCase
 
     assert_not_nil error.cause
   end
+
+  def test_foreign_key_violations_are_translated_to_specific_exception
+    exception = SystemException.create!(name: 'foreign_key_violation')
+    the_id = exception.id
+    exception.destroy
+
+    error = assert_raises(ActiveRecord::InvalidForeignKey) do
+      ExceptionSource.create!(
+        system_exception_id: the_id, source_name: 'accounting_system'
+      )
+    end
+
+    assert_not_nil error.cause
+  end
+
+  def test_value_too_long_violations_are_translated_to_specific_exception
+    exception = SystemException.create!(name: 'value_too_long_violation')
+
+    error = assert_raises(ActiveRecord::ValueTooLong) do
+      ExceptionSource.create!(
+        system_exception_id: exception.id, source_name: 'portal_' * 5
+      )
+    end
+
+    assert_not_nil error.cause
+  end
 end
