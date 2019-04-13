@@ -101,10 +101,16 @@ module ActiveRecord
       end
 
       def disable_referential_integrity
-        execute "EXEC sp_MSforeachtable 'ALTER TABLE ? NOCHECK CONSTRAINT ALL'"
+        tables = tables_with_referential_integrity
+
+        tables.each do |table_name|
+          execute "ALTER TABLE #{table_name} NOCHECK CONSTRAINT ALL"
+        end
         yield
       ensure
-        execute "EXEC sp_MSforeachtable 'ALTER TABLE ? CHECK CONSTRAINT ALL'"
+        tables.each do |table_name|
+          execute "ALTER TABLE #{table_name} CHECK CONSTRAINT ALL"
+        end
       end
 
       # Overrides the method in abstract adapter to set the limit and offset
@@ -186,6 +192,22 @@ module ActiveRecord
 
       def mssql?
         true
+      end
+
+      def tables_with_referential_integrity
+        schema_and_tables_sql = %(
+          SELECT s.name, o.name
+          FROM sys.foreign_keys i
+          INNER JOIN sys.objects o ON i.parent_object_id = o.OBJECT_ID
+          INNER JOIN sys.schemas s ON o.schema_id = s.schema_id
+        ).squish
+
+        schemas_and_tables = select_rows(schema_and_tables_sql)
+
+        schemas_and_tables.map do |schema_table|
+          schema, table = schema_table
+          "#{quote_name_part(schema)}.#{quote_name_part(table)}"
+        end
       end
 
       protected
