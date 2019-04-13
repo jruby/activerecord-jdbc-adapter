@@ -56,7 +56,6 @@ module ArJdbc
 
     def initialize(connection, logger, connection_options, config)
       super(connection, logger, config)
-
       configure_connection
     end
 
@@ -69,11 +68,11 @@ module ArJdbc
     end
 
     def supports_partial_index?
-      sqlite_version >= "3.9.0"
+      database_version >= "3.9.0"
     end
 
     def supports_expression_index?
-      sqlite_version >= "3.9.0"
+      database_version >= "3.9.0"
     end
 
     def requires_reloading?
@@ -97,7 +96,7 @@ module ArJdbc
     end
 
     def supports_insert_on_conflict?
-      sqlite_version >= "3.24.0"
+      database_version >= "3.24.0"
     end
     alias supports_insert_on_duplicate_skip? supports_insert_on_conflict?
     alias supports_insert_on_duplicate_update? supports_insert_on_conflict?
@@ -312,6 +311,10 @@ module ArJdbc
       sql
     end
 
+    def get_database_version # :nodoc:
+      SQLite3Adapter::Version.new(query_value("SELECT sqlite_version(*)"))
+    end
+
     def build_truncate_statements(*table_names)
       truncate_tables = table_names.map do |table_name|
         "DELETE FROM #{quote_table_name(table_name)}"
@@ -320,8 +323,8 @@ module ArJdbc
     end
 
     def check_version
-      if sqlite_version < "3.8.0"
-        raise "Your version of SQLite (#{sqlite_version}) is too old. Active Record supports SQLite >= 3.8."
+      if database_version < "3.8.0"
+        raise "Your version of SQLite (#{database_version}) is too old. Active Record supports SQLite >= 3.8."
       end
     end
 
@@ -450,10 +453,6 @@ module ArJdbc
 
       exec_query("INSERT INTO #{quote_table_name(to)} (#{quoted_columns})
                      SELECT #{quoted_from_columns} FROM #{quote_table_name(from)}")
-    end
-
-    def sqlite_version
-      @sqlite_version ||= SQLite3Adapter::Version.new(query_value("SELECT sqlite_version(*)"))
     end
 
     def translate_exception(exception, message:, sql:, binds:)
