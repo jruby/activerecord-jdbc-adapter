@@ -114,7 +114,7 @@ connections:
       host: localhost
       # NOTE: we need to drop the driver jar file in the lib folder
       # of this adapter. (we can change later the way we load this driver)
-      <% require 'sqljdbc4.jar' if ENV['DRIVER'] =~ /sqlserver/i %>
+      <% require 'jdbc/mssql' if ENV['DRIVER'] =~ /sqlserver/i %>
       adapter:  sqlserver
       password: arjdbc
       username: arjdbc

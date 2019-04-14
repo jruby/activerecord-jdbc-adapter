@@ -22,6 +22,7 @@ require 'arjdbc/mssql/explain_support'
 require 'arjdbc/mssql/extensions'
 require 'arjdbc/mssql/transaction'
 require 'arjdbc/mssql/errors'
+require 'arjdbc/mssql/schema_creation'
 
 module ActiveRecord
   module ConnectionAdapters
@@ -133,6 +134,10 @@ module ActiveRecord
 
       def arel_visitor # :nodoc:
         ::Arel::Visitors::SQLServer.new(self)
+      end
+
+      def schema_creation # :nodoc:
+        MSSQL::SchemaCreation.new(self)
       end
 
       # Returns the name of the current security context

@@ -27,8 +27,9 @@ else
     begin
       Jdbc::SQLServer.load_driver
     rescue LoadError => e
-      warn "Please setup the sqljdbc4.jar driver to run the MS-SQL tests !"
-      raise e
+      warn "If you want to use a specific version please setup the mssql driver to run the MS-SQL tests!"
+      require 'jdbc/mssql'
+      warn "using the jdbc-mssql gem to run test."
     end
   end
 end
