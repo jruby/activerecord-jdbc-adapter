@@ -71,7 +71,7 @@ class MSSQLRakeDbCreateTest < Test::Unit::TestCase
 
       assert File.exists?(structure_sql)
       # CREATE TABLE [dbo].[users]( ... )
-      assert_match /CREATE TABLE .*?\[users\]/i, File.read(structure_sql)
+      assert_match(/CREATE TABLE .*?\[users\]/i, File.read(structure_sql))
 
       # db:structure:load
       drop_rake_test_database(:silence)
@@ -93,14 +93,14 @@ class MSSQLRakeDbCreateTest < Test::Unit::TestCase
     create_rake_test_database
     # using the default character set, the character_set_name should be
     # iso_1 (ISO 8859-1) for the char and varchar data types
-    expect_rake_output /iso_1|UCS/i
+    expect_rake_output(/iso_1|UCS/i)
     Rake::Task["db:charset"].invoke
   end
 
   test 'rake db:collation' do
     create_rake_test_database
     # default (for iso_1) : 'SQL_Latin1_General_CP1_CI_AS'
-    expect_rake_output /SQL_.*/
+    expect_rake_output(/SQL_.*/)
     Rake::Task["db:collation"].invoke
   end
 

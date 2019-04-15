@@ -140,7 +140,7 @@ class MSSQLDateTimeTypesTest < Test::Unit::TestCase
       # 1.9.3-p551 :004 > Time.local(0000, 1, 01, 23, 59, 0).inspect
       # => "0000-01-01 23:59:00 +0057"
       model.reload
-      pend "TODO:  #{time.inspect} equal #{model.time.inspect}"
+      #pend "TODO:  #{time.inspect} equal #{model.time.inspect}"
       assert_time_equal time, model.time
       assert_equal 987000, model.time.usec
     end
