@@ -328,6 +328,17 @@ module ArJdbc
       select_one(sql).nil?
     end
 
+    # @override
+    def primary_keys(table)
+      # If no schema in table name is given but present in URL parameter. Use the URL parameter one
+      # This avoids issues if the table is present in multiple schemas
+      if table.split(".").size == 1 && schema
+        table = "#{schema}.#{table}"
+      end
+
+      super
+    end
+
     def next_sequence_value(sequence_name)
       select_value("SELECT NEXT VALUE FOR #{sequence_name} FROM sysibm.sysdummy1")
     end
