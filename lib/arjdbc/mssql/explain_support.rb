@@ -3,6 +3,11 @@ require 'active_support/core_ext/string'
 module ActiveRecord
   module ConnectionAdapters
     module MSSQL
+      # NOTE: the execution plan (explain) is a estimated only for prepared
+      # statements similar the jTDS used to provide. The mssql-jdbc driver
+      # does not supports explain from prepared statements.
+      # more in: https://github.com/Microsoft/mssql-jdbc/issues/778
+      #
       module ExplainSupport
         DISABLED = Java::JavaLang::Boolean.getBoolean('arjdbc.mssql.explain_support.disabled')
 
@@ -13,12 +18,34 @@ module ActiveRecord
         def explain(arel, binds = [])
           return if DISABLED
 
-          sql = to_sql(arel, binds)
-          result = with_showplan_on { exec_query(sql, 'EXPLAIN', binds) }
+          # sql = to_sql(arel, binds)
+          # result = with_showplan_on { exec_query(sql, 'EXPLAIN', binds) }
+           sql = interpolate_sql_statement(arel, binds)
+           result = with_showplan_on do
+             exec_query(sql, 'EXPLAIN', [])
+           end
           PrinterTable.new(result).pp
         end
 
         protected
+
+        # converting the prepared statements to sql
+        def interpolate_sql_statement(arel, binds)
+          return arel if binds.empty?
+
+          sql = if arel.respond_to?(:to_sql)
+                  arel.to_sql
+                else
+                  arel
+                end
+
+          binds.each do |bind|
+            value = quote(bind.value_for_database)
+            sql.sub!('?', value)
+          end
+
+          sql
+        end
 
         def with_showplan_on
           set_showplan_option(true)
@@ -28,7 +55,7 @@ module ActiveRecord
         end
 
         def set_showplan_option(enable = true)
-          option = 'SHOWPLAN_TEXT'
+          option = 'SHOWPLAN_ALL'
           execute "SET #{option} #{enable ? 'ON' : 'OFF'}"
         rescue Exception => e
           raise ActiveRecord::ActiveRecordError, "#{option} could not be turned" +
