@@ -112,13 +112,16 @@ connections:
   sqlserver:
     _common: &_common
       host: localhost
-      # NOTE: we need to drop the driver jar file in the lib folder
-      # of this adapter. (we can change later the way we load this driver)
+      # NOTE: we use the mssql-gem to load the driver version 7.0, old versions
+      # have several bugs that affects foreign keys
+      # https://github.com/Microsoft/mssql-jdbc/issues/467
+      # and https://github.com/Microsoft/mssql-jdbc/issues/665
       <% require 'jdbc/mssql' if ENV['DRIVER'] =~ /sqlserver/i %>
       adapter:  sqlserver
       password: arjdbc
       username: arjdbc
-      encoding: utf8
+      # at the moment adapter works best with prepared statements true
+      prepared_statements: true
     arunit:
       <<: *_common
       database: jdbc_arunit
