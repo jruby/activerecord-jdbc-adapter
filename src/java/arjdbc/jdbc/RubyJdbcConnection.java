@@ -1161,13 +1161,14 @@ public class RubyJdbcConnection extends RubyObject {
         return withConnection(context, new Callable<IRubyObject>() {
             public IRubyObject call(final Connection connection) throws SQLException {
                 final boolean cached = !(cachedStatement == null || cachedStatement.isNil());
-                final String query = sql.convertToString().getUnicodeValue();
+                String query = null;
                 PreparedStatement statement = null;
 
                 try {
                     if (cached) {
                         statement = (PreparedStatement) JavaEmbedUtils.rubyToJava(cachedStatement);
                     } else {
+                        query = sql.convertToString().getUnicodeValue();
                         statement = connection.prepareStatement(query);
                         if (fetchSize != 0) statement.setFetchSize(fetchSize);
                     }
@@ -1184,6 +1185,7 @@ public class RubyJdbcConnection extends RubyObject {
                         return newEmptyResult(context);
                     }
                 } catch (final SQLException e) {
+                    if (query == null) query = sql.convertToString().getUnicodeValue();
                     debugErrorSQL(context, query);
                     throw e;
                 } finally {
