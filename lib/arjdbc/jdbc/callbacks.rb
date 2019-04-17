@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module ActiveRecord::ConnectionAdapters
   module Jdbc
     # ActiveRecord connection pool callbacks for JDBC.

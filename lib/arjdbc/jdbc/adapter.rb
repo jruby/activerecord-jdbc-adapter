@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require 'active_record/version'
 require 'active_record/connection_adapters/abstract_adapter'
 
@@ -94,7 +96,7 @@ module ActiveRecord
         nil
       end
 
-      ADAPTER_NAME = 'JDBC'.freeze
+      ADAPTER_NAME = 'JDBC'
 
       # @return [String] the 'JDBC' adapter name.
       def adapter_name

@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module ActiveRecord
   # Represents exceptions that have propagated up through the JDBC API.
   class JDBCError < WrappedDatabaseException

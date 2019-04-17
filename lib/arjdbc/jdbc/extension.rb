@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module ArJdbc
 
   # Defines an AR-JDBC extension. An extension consists of a declaration using

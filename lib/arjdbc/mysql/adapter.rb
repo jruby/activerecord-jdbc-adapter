@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 ArJdbc.load_java_part :MySQL
 
 require 'bigdecimal'
@@ -19,7 +21,7 @@ module ActiveRecord
     remove_const(:Mysql2Adapter) if const_defined?(:Mysql2Adapter)
 
     class Mysql2Adapter < AbstractMysqlAdapter
-      ADAPTER_NAME = 'Mysql2'.freeze
+      ADAPTER_NAME = 'Mysql2'
 
       include Jdbc::ConnectionPoolCallbacks
 

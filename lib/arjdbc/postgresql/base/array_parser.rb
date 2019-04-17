@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 # based on active_record/connection_adapters/postgresql/array_parser.rb
 # until it's some day shareable with Rails ... this is not public API !
 module ActiveRecord
@@ -33,7 +35,7 @@ module ActiveRecord
             is_escaping  = false
             is_quoted    = false
             was_quoted   = false
-            current_item = ''
+            current_item = ''.dup
 
             local_index = index
             while local_index
@@ -58,7 +60,7 @@ module ActiveRecord
                     is_escaping = true
                   when COMMA
                     add_item_to_array(array, current_item, was_quoted)
-                    current_item = ''
+                    current_item = ''.dup
                     was_quoted = false
                   when DOUBLE_QUOTE
                     is_quoted = true

@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require 'java'
 require 'arjdbc/jdbc/adapter_java'
 

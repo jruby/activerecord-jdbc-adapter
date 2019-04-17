@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module ActiveRecord::ConnectionAdapters::PostgreSQL::OID
   class Bytea < ActiveModel::Type::Binary
     module PG

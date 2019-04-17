@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module ArJdbc
   module Util
     # Gets included into `ActiveRecord::Base` to support sending LOB values
