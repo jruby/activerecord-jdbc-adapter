@@ -1044,7 +1044,7 @@ public class RubyJdbcConnection extends RubyObject {
     }
 
     protected static String sqlString(final IRubyObject sql) {
-        return sql instanceof RubyString ? ((RubyString) sql).decodeString() : sql.convertToString().decodeString();
+        return sql.convertToString().decodeString();
     }
 
     /**
