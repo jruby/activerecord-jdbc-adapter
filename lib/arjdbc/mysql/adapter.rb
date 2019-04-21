@@ -149,6 +149,10 @@ module ActiveRecord
 
       # e.g. "5.7.20-0ubuntu0.16.04.1"
       def full_version
+        schema_cache.database_version.full_version_string
+      end
+
+      def get_full_version
         @full_version ||= @connection.full_version
       end
 

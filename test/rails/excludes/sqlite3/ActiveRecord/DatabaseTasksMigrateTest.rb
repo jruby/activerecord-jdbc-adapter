@@ -1,3 +1,3 @@
 exclude :test_migrate_set_and_unset_empty_values_for_verbose_and_version_env_vars, "uses sqlite3-ruby API"
 exclude :test_migrate_set_and_unset_nonsense_values_for_verbose_and_version_env_vars, "uses sqlite3-ruby API"
-exclude :test_migrate_set_and_unset_verbose_and_version_env_vars, "uses sqlite3-ruby API"
+exclude :test_can_migrate_from_pending_migration_error_action_dispatch, "uses sqlite3-ruby API"
