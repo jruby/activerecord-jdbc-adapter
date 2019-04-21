@@ -516,7 +516,7 @@ public class SQLite3RubyJdbcConnection extends RubyJdbcConnection {
         final int index, IRubyObject value,
         final IRubyObject attribute, final int type) throws SQLException {
 
-        if (value instanceof RubyTime) value = ((RubyTime) value).strftime(TIMESTAMP_FORMAT);
+        if (value instanceof RubyTime) value = ((RubyTime) value).strftime(context, TIMESTAMP_FORMAT);
 
         setStringParameter(context, connection, statement, index, value, attribute, type);
     }

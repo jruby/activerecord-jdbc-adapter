@@ -147,11 +147,6 @@ public class RubyJdbcConnection extends RubyObject {
         return JdbcConnection;
     }
 
-    @Deprecated
-    public static RubyClass getJdbcConnectionClass(final Ruby runtime) {
-        return getConnectionAdapters(runtime).getClass("JdbcConnection");
-    }
-
     public static RubyClass getJdbcConnection(final Ruby runtime) {
         return (RubyClass) getConnectionAdapters(runtime).getConstantAt("JdbcConnection");
     }
@@ -540,13 +535,6 @@ public class RubyJdbcConnection extends RubyObject {
         return false;
     }
 
-    @Deprecated // second argument is now mandatory - only kept for compatibility
-    @JRubyMethod(required = 1)
-    public final IRubyObject initialize(final ThreadContext context, final IRubyObject config) {
-        doInitialize(context, config, context.nil);
-        return this;
-    }
-
     @JRubyMethod(required = 2)
     public final IRubyObject initialize(final ThreadContext context, final IRubyObject config, final IRubyObject adapter) {
         doInitialize(context, config, adapter);
@@ -554,12 +542,17 @@ public class RubyJdbcConnection extends RubyObject {
     }
 
     protected void doInitialize(final ThreadContext context, final IRubyObject config, final IRubyObject adapter) {
-        this.config = config; this.adapter = adapter;
+        this.config = config;
+        this.adapter = adapter;
 
         this.jndi = setupConnectionFactory(context);
         this.lazy = jndi; // JNDIs are lazy by default otherwise eager
         try {
-            initConnection(context);
+            if (adapter == null || adapter == context.nil) {
+                warn(context, "adapter not set, please pass adapter on JdbcConnection#initialize(config, adapter)");
+            }
+
+            if (!lazy) setConnection(newConnection());
         }
         catch (SQLException e) {
             String message = e.getMessage();
@@ -594,39 +587,6 @@ public class RubyJdbcConnection extends RubyObject {
     public IRubyObject set_connection_factory(final IRubyObject factory) {
         setConnectionFactory( (ConnectionFactory) factory.toJava(ConnectionFactory.class) );
         return factory;
-    }
-
-    /**
-     * Called during <code>initialize</code> after the connection factory
-     * has been set to check if we can connect and/or perform any initialization
-     * necessary.
-     * <br/>
-     * NOTE: connection has not been configured at this point,
-     * nor should we retry - we're creating a brand new JDBC connection
-     *
-     * @param context
-     * @return connection
-     */
-    @Deprecated
-    @JRubyMethod(name = "init_connection")
-    public synchronized IRubyObject init_connection(final ThreadContext context) {
-        try {
-            return initConnection(context);
-        }
-        catch (SQLException e) {
-            return handleException(context, e); // throws
-        }
-    }
-
-    private IRubyObject initConnection(final ThreadContext context) throws SQLException {
-        final IRubyObject adapter = getAdapter(); // self.adapter
-        if ( adapter == null || adapter == context.nil ) {
-            warn(context, "adapter not set, please pass adapter on JdbcConnection#initialize(config, adapter)");
-        }
-
-        if ( ! lazy ) setConnection( newConnection() );
-
-        return context.nil;
     }
 
     private void configureConnection() {
@@ -1205,35 +1165,6 @@ public class RubyJdbcConnection extends RubyObject {
         return mapToResult(context, connection, resultSet, columns);
     }
 
-    /**
-     * @deprecated please do not use this method
-     */
-    @Deprecated // only used by Oracle adapter - also it's really a bad idea
-    @JRubyMethod(name = "execute_id_insert", required = 2)
-    public IRubyObject execute_id_insert(final ThreadContext context, final IRubyObject sql, final IRubyObject id) {
-        final Ruby runtime = context.runtime;
-
-        callMethod("warn", RubyString.newUnicodeString(runtime, "DEPRECATED: execute_id_insert(sql, id) will be removed"));
-
-        return withConnection(context, new Callable<IRubyObject>() {
-            public IRubyObject call(final Connection connection) throws SQLException {
-                PreparedStatement statement = null;
-                final String insertSQL = sql.convertToString().getUnicodeValue();
-                try {
-                    statement = connection.prepareStatement(insertSQL);
-                    statement.setLong(1, RubyNumeric.fix2long(id));
-                    statement.executeUpdate();
-                }
-                catch (final SQLException e) {
-                    debugErrorSQL(context, insertSQL);
-                    throw e;
-                }
-                finally { close(statement); }
-                return id;
-            }
-        });
-    }
-
     @JRubyMethod(name = "supported_data_types")
     public IRubyObject supported_data_types(final ThreadContext context) throws SQLException {
         final Connection connection = getConnection(true);
@@ -1282,26 +1213,6 @@ public class RubyJdbcConnection extends RubyObject {
         }
         finally { close(resultSet); }
         return keyNames;
-    }
-
-    @Deprecated //@JRubyMethod(name = "tables")
-    public IRubyObject tables(ThreadContext context) {
-        return tables(context, null, null, null, TABLE_TYPE);
-    }
-
-    @Deprecated //@JRubyMethod(name = "tables")
-    public IRubyObject tables(ThreadContext context, IRubyObject catalog) {
-        return tables(context, toStringOrNull(catalog), null, null, TABLE_TYPE);
-    }
-
-    @Deprecated //@JRubyMethod(name = "tables")
-    public IRubyObject tables(ThreadContext context, IRubyObject catalog, IRubyObject schemaPattern) {
-        return tables(context, toStringOrNull(catalog), toStringOrNull(schemaPattern), null, TABLE_TYPE);
-    }
-
-    @Deprecated //@JRubyMethod(name = "tables")
-    public IRubyObject tables(ThreadContext context, IRubyObject catalog, IRubyObject schemaPattern, IRubyObject tablePattern) {
-        return tables(context, toStringOrNull(catalog), toStringOrNull(schemaPattern), toStringOrNull(tablePattern), TABLE_TYPE);
     }
 
     @JRubyMethod(name = "tables", required = 0, optional = 4)
@@ -1813,13 +1724,6 @@ public class RubyJdbcConnection extends RubyObject {
         }
     }
 
-    @Deprecated
-    @JRubyMethod(name = "setup_jdbc_factory", visibility = Visibility.PROTECTED)
-    public IRubyObject set_driver_factory(final ThreadContext context) {
-        setDriverFactory(context);
-        return get_connection_factory(context.runtime);
-    }
-
     private ConnectionFactory setDriverFactory(final ThreadContext context) {
 
         final IRubyObject url = getConfigValue(context, "url");
@@ -1919,12 +1823,6 @@ public class RubyJdbcConnection extends RubyObject {
         return props;
     }
 
-    @JRubyMethod(name = "setup_jndi_factory", visibility = Visibility.PROTECTED)
-    public IRubyObject set_data_source_factory(final ThreadContext context) {
-        setDataSourceFactory(context);
-        return get_connection_factory(context.runtime);
-    }
-
     private ConnectionFactory setDataSourceFactory(final ThreadContext context) {
         final javax.sql.DataSource dataSource; final String lookupName;
         IRubyObject value = getConfigValue(context, "data_source");
@@ -1945,22 +1843,6 @@ public class RubyJdbcConnection extends RubyObject {
     private static transient IRubyObject defaultConfig;
     private static volatile boolean defaultConfigJndi;
     private static transient ConnectionFactory defaultConnectionFactory;
-
-    /**
-     * Sets the connection factory from the available configuration.
-     * @param context
-     * @see #initialize
-     */
-    @Deprecated
-    @JRubyMethod(name = "setup_connection_factory", visibility = Visibility.PROTECTED)
-    public IRubyObject setup_connection_factory(final ThreadContext context) {
-        setupConnectionFactory(context);
-        return get_connection_factory(context.runtime);
-    }
-
-    private IRubyObject get_connection_factory(final Ruby runtime) {
-        return JavaUtil.convertJavaToRuby(runtime, connectionFactory);
-    }
 
     /**
      * @return whether the connection factory is JNDI based
@@ -2277,17 +2159,6 @@ public class RubyJdbcConnection extends RubyObject {
         return value;
     }
 
-    /**
-     * @return AR::Type-casted value
-     * @since 1.3.18
-     */
-    @Deprecated
-    protected static IRubyObject typeCastFromDatabase(final ThreadContext context,
-        final IRubyObject adapter, final RubySymbol typeName, final RubyString value) {
-        final IRubyObject type = adapter.callMethod(context, "lookup_cast_type", typeName);
-        return type.callMethod(context, "deserialize", value);
-    }
-
     protected IRubyObject dateToRuby(final ThreadContext context,
         final Ruby runtime, final ResultSet resultSet, final int column)
         throws SQLException {
@@ -2340,19 +2211,6 @@ public class RubyJdbcConnection extends RubyObject {
         // should be returning Time (by default) - AR does this by adjusting mysql2/pg returns
 
         return DateTimeUtils.newTime(context, value, getDefaultTimeZone(context));
-    }
-
-    @Deprecated
-    protected static RubyString timestampToRubyString(final Ruby runtime, String value) {
-        // Timestamp's format: yyyy-mm-dd hh:mm:ss.fffffffff
-        String suffix; // assumes java.sql.Timestamp internals :
-        if ( value.endsWith( suffix = " 00:00:00.0" ) ) {
-            value = value.substring( 0, value.length() - suffix.length() );
-        }
-        else if ( value.endsWith( suffix = ".0" ) ) {
-            value = value.substring( 0, value.length() - suffix.length() );
-        }
-        return RubyString.newUnicodeString(runtime, value);
     }
 
     protected static Boolean rawBoolean;
@@ -2842,11 +2700,6 @@ public class RubyJdbcConnection extends RubyObject {
         statement.setTimestamp(index, timestamp, getCalendar(dateTime.getZone()));
     }
 
-    @Deprecated
-    protected static Timestamp convertToTimestamp(final RubyFloat value) {
-        return DateTimeUtils.convertToTimestamp(value);
-    }
-
     protected static Calendar getCalendar(final DateTimeZone zone) { // final java.util.Date hint
         if (DateTimeZone.UTC == zone) return getCalendarUTC();
         if (DateTimeZone.getDefault() == zone) return new GregorianCalendar();
@@ -3165,15 +3018,6 @@ public class RubyJdbcConnection extends RubyObject {
         finally { close(tablesSet); }
     }
 
-    @Deprecated
-    protected IRubyObject matchTables(final Ruby runtime,
-          final Connection connection,
-          final String catalog, final String schemaPattern,
-          final String tablePattern, final String[] types,
-          final boolean checkExistsOnly) throws SQLException {
-        return matchTables(runtime.getCurrentContext(), connection, catalog, schemaPattern, tablePattern, types, checkExistsOnly);
-    }
-
     // NOTE java.sql.DatabaseMetaData.getTables :
     protected final static int TABLES_TABLE_CAT = 1;
     protected final static int TABLES_TABLE_SCHEM = 2;
@@ -3416,16 +3260,6 @@ public class RubyJdbcConnection extends RubyObject {
         final Connection connection, final ResultSet resultSet,
         final boolean downCase) throws SQLException {
         return setupColumns(context, connection, resultSet.getMetaData(), downCase);
-    }
-
-    /**
-     * @deprecated use {@link #extractColumns(ThreadContext, Connection, ResultSet, boolean)}
-     */
-    @Deprecated
-    protected ColumnData[] extractColumns(final Ruby runtime,
-        final Connection connection, final ResultSet resultSet,
-        final boolean downCase) throws SQLException {
-        return extractColumns(runtime.getCurrentContext(), connection, resultSet, downCase);
     }
 
     protected <T> T withConnection(final ThreadContext context, final Callable<T> block)
