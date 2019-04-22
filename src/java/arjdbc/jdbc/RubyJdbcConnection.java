@@ -1163,7 +1163,7 @@ public class RubyJdbcConnection extends RubyObject {
         final Connection connection, final TableName table) throws SQLException {
         final DatabaseMetaData metaData = connection.getMetaData();
         ResultSet resultSet = null;
-        final List<RubyString> keyNames = new ArrayList<RubyString>();
+        final List<RubyString> keyNames = new ArrayList<>();
         try {
             resultSet = metaData.getPrimaryKeys(table.catalog, table.schema, table.name);
             final Ruby runtime = context.runtime;
@@ -1364,7 +1364,7 @@ public class RubyJdbcConnection extends RubyObject {
             final TableName table = extractTableName(connection, catalog, _schemaName, _tableName);
 
             ResultSet fkInfoSet = null;
-            final List<IRubyObject> fKeys = new ArrayList<IRubyObject>(8);
+            final List<IRubyObject> fKeys = new ArrayList<>(8);
             try {
                 final DatabaseMetaData metaData = connection.getMetaData();
                 fkInfoSet = metaData.getImportedKeys(table.catalog, table.schema, table.name);
@@ -2420,7 +2420,7 @@ public class RubyJdbcConnection extends RubyObject {
         }
     }
 
-    protected static final Map<String, Integer> JDBC_TYPE_FOR = new HashMap<String, Integer>(32, 1);
+    protected static final Map<String, Integer> JDBC_TYPE_FOR = new HashMap<>(32, 1);
     static {
         JDBC_TYPE_FOR.put("string", Types.VARCHAR);
         JDBC_TYPE_FOR.put("text", Types.CLOB);
@@ -3061,7 +3061,7 @@ public class RubyJdbcConnection extends RubyObject {
         ResultSet primaryKeys = null;
         try {
             primaryKeys = metaData.getPrimaryKeys(components.catalog, components.schema, components.name);
-            final List<String> primaryKeyNames = new ArrayList<String>(4);
+            final List<String> primaryKeyNames = new ArrayList<>(4);
             while ( primaryKeys.next() ) {
                 primaryKeyNames.add( primaryKeys.getString(COLUMN_NAME) );
             }
