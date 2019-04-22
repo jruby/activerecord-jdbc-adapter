@@ -386,8 +386,9 @@ public class SQLite3RubyJdbcConnection extends RubyJdbcConnection {
                     "create_savepoint (without name) not implemented!"
             );
         }
-        final Connection connection = getConnection(true); Statement statement = null;
+        Statement statement = null;
         try {
+            final Connection connection = getConnectionInternal(true);
             connection.setAutoCommit(false);
             // NOTE: JDBC driver does not support setSavepoint(String) :
             ( statement = connection.createStatement() ).execute("SAVEPOINT " + name.toString());
@@ -407,12 +408,13 @@ public class SQLite3RubyJdbcConnection extends RubyJdbcConnection {
     public IRubyObject rollback_savepoint(final ThreadContext context, final IRubyObject name) {
         if ( useSavepointAPI(context) ) return super.rollback_savepoint(context, name);
 
-        final Connection connection = getConnection(true); Statement statement = null;
+        Statement statement = null;
         try {
             if ( getSavepoints(context).get(name) == null ) {
                 throw newSavepointNotSetError(context, name, "rollback");
             }
             // NOTE: JDBC driver does not implement rollback(Savepoint) :
+            final Connection connection = getConnectionInternal(true);
             ( statement = connection.createStatement() ).execute("ROLLBACK TO SAVEPOINT " + name.toString());
 
             return context.nil;
@@ -430,12 +432,13 @@ public class SQLite3RubyJdbcConnection extends RubyJdbcConnection {
     public IRubyObject release_savepoint(final ThreadContext context, final IRubyObject name) {
         if ( useSavepointAPI(context) ) return super.release_savepoint(context, name);
 
-        final Connection connection = getConnection(true); Statement statement = null;
+        Statement statement = null;
         try {
             if ( getSavepoints(context).remove(name) == null ) {
                 throw newSavepointNotSetError(context, name, "release");
             }
             // NOTE: JDBC driver does not implement release(Savepoint) :
+            final Connection connection = getConnectionInternal(true);
             ( statement = connection.createStatement() ).execute("RELEASE SAVEPOINT " + name.toString());
             return context.nil;
         } catch (SQLException e) {

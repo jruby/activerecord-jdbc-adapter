@@ -353,8 +353,8 @@ public class RubyJdbcConnection extends RubyObject {
 
     @JRubyMethod(name = "commit")
     public IRubyObject commit(final ThreadContext context) {
-        final Connection connection = getConnection(true);
         try {
+            final Connection connection = getConnectionInternal(true);
             if ( ! connection.getAutoCommit() ) {
                 try {
                     connection.commit();
@@ -374,8 +374,8 @@ public class RubyJdbcConnection extends RubyObject {
 
     @JRubyMethod(name = "rollback")
     public IRubyObject rollback(final ThreadContext context) {
-        final Connection connection = getConnection(true);
         try {
+            final Connection connection = getConnectionInternal(true);
             if ( ! connection.getAutoCommit() ) {
                 try {
                     connection.rollback();
@@ -407,8 +407,8 @@ public class RubyJdbcConnection extends RubyObject {
 
     @JRubyMethod(name = "create_savepoint", required = 1)
     public IRubyObject create_savepoint(final ThreadContext context, IRubyObject name) {
-        final Connection connection = getConnection(true);
         try {
+            final Connection connection = getConnectionInternal(true);
             connection.setAutoCommit(false);
 
             final Savepoint savepoint ;
@@ -436,8 +436,8 @@ public class RubyJdbcConnection extends RubyObject {
     public IRubyObject rollback_savepoint(final ThreadContext context, final IRubyObject name) {
         if (name == context.nil) throw context.runtime.newArgumentError("nil savepoint name given");
 
-        final Connection connection = getConnection(true);
         try {
+            final Connection connection = getConnectionInternal(true);
             Savepoint savepoint = getSavepoints(context).get(name);
             if ( savepoint == null ) {
                 throw context.runtime.newRuntimeError("could not rollback savepoint: '" + name + "' (not set)");
@@ -454,7 +454,6 @@ public class RubyJdbcConnection extends RubyObject {
     public IRubyObject release_savepoint(final ThreadContext context, final IRubyObject name) {
         if (name == context.nil) throw context.runtime.newArgumentError("nil savepoint name given");
 
-        final Connection connection = getConnection(true);
         try {
             Object savepoint = getSavepoints(context).remove(name);
 
@@ -465,6 +464,7 @@ public class RubyJdbcConnection extends RubyObject {
                 savepoint = ((IRubyObject) savepoint).toJava(Savepoint.class);
             }
 
+            final Connection connection = getConnectionInternal(true);
             connection.releaseSavepoint((Savepoint) savepoint);
             return context.nil;
         }
@@ -640,7 +640,7 @@ public class RubyJdbcConnection extends RubyObject {
             boolean active = getConnectionFactory() != null;
             return context.runtime.newBoolean( active );
         }
-        final Connection connection = getConnection();
+        final Connection connection = getConnection(false);
         if ( connection == null ) return context.fals; // unlikely
         return context.runtime.newBoolean( isConnectionValid(context, connection) );
     }
@@ -670,33 +670,35 @@ public class RubyJdbcConnection extends RubyObject {
 
     @JRubyMethod(name = "read_only?")
     public IRubyObject is_read_only(final ThreadContext context) {
-        final Connection connection = getConnection(false);
-        if ( connection != null ) {
-            try {
-                return context.runtime.newBoolean( connection.isReadOnly() );
+        try {
+        final Connection connection = getConnectionInternal(false);
+            if (connection != null) {
+                return context.runtime.newBoolean(connection.isReadOnly());
             }
-            catch (SQLException e) { return handleException(context, e); }
+        } catch (SQLException e) {
+            return handleException(context, e);
         }
         return context.nil;
     }
 
     @JRubyMethod(name = "read_only=")
     public IRubyObject set_read_only(final ThreadContext context, final IRubyObject flag) {
-        final Connection connection = getConnection(true);
         try {
+            final Connection connection = getConnectionInternal(true);
             connection.setReadOnly( flag.isTrue() );
             return context.runtime.newBoolean( connection.isReadOnly() );
+        } catch (SQLException e) {
+            return handleException(context, e);
         }
-        catch (SQLException e) { return handleException(context, e); }
     }
 
     @JRubyMethod(name = { "open?" /* "conn?" */ })
     public IRubyObject open_p(final ThreadContext context) {
-        final Connection connection = getConnection(false);
-
-        if (connection == null) return context.fals;
-
         try {
+            final Connection connection = getConnectionInternal(false);
+
+            if (connection == null) return context.fals;
+
             // NOTE: isClosed method generally cannot be called to determine
             // whether a connection to a database is valid or invalid ...
             return context.runtime.newBoolean(!connection.isClosed());
@@ -2783,16 +2785,7 @@ public class RubyJdbcConnection extends RubyObject {
     }
 
     /**
-     * Always returns a connection (might cause a reconnect if there's none).
-     * @return connection
-     * @throws <code>ActiveRecord::ConnectionNotEstablished</code>, <code>ActiveRecord::JDBCError</code>
-     */
-    protected Connection getConnection() throws RaiseException {
-        return getConnection(false);
-    }
-
-    /**
-     * @see #getConnection()
+     * Returns a connection (might cause a reconnect if there's none).
      * @param required set to true if a connection is required to exists (e.g. on commit)
      * @return connection
      * @throws <code>ActiveRecord::ConnectionNotEstablished</code> if disconnected
@@ -2807,17 +2800,15 @@ public class RubyJdbcConnection extends RubyObject {
         }
     }
 
-    private Connection getConnectionInternal(final boolean required) throws SQLException {
+    protected Connection getConnectionInternal(final boolean required) throws SQLException {
         Connection connection = getConnectionImpl();
-        if ( connection == null ) {
-            if ( required ) {
-                if ( ! connected ) handleNotConnected(); // raise ConnectionNotEstablished
-                synchronized (this) {
+        if (connection == null && required) {
+            if (!connected) handleNotConnected(); // raise ConnectionNotEstablished
+            synchronized (this) {
+                connection = getConnectionImpl();
+                if ( connection == null ) {
+                    connectImpl(true); // throws SQLException
                     connection = getConnectionImpl();
-                    if ( connection == null ) {
-                        connectImpl( true ); // throws SQLException
-                        connection = getConnectionImpl();
-                    }
                 }
             }
         }
