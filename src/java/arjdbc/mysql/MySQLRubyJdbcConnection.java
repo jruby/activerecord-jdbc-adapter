@@ -40,8 +40,6 @@ import java.sql.Statement;
 import java.sql.Timestamp;
 import java.sql.Types;
 
-import org.joda.time.DateTime;
-import org.joda.time.DateTimeZone;
 import org.jruby.*;
 import org.jruby.anno.JRubyMethod;
 import org.jruby.exceptions.RaiseException;
@@ -106,7 +104,7 @@ public class MySQLRubyJdbcConnection extends RubyJdbcConnection {
             if ( major < 5 ) {
                 final RubyClass errorClass = getConnectionNotEstablished(context.runtime);
                 throw context.runtime.newRaiseException(errorClass,
-                    "MySQL adapter requires driver >= 5.0 got: " + major + "." + minor + "");
+                        "MySQL adapter requires driver >= 5.0 got: " + major + "." + minor);
             }
             if ( major == 5 && minor < 1 ) { // need 5.1 for JDBC 4.0
                 // lightweight validation query: "/* ping */ SELECT 1"
@@ -276,19 +274,11 @@ public class MySQLRubyJdbcConnection extends RubyJdbcConnection {
         catch (ClassNotFoundException e) {
             debugMessage(null, "missing MySQL JDBC cleanup thread ", e);
         }
-        catch (NoSuchMethodException e) {
+        catch (NoSuchMethodException | SecurityException | IllegalAccessException e) {
             debugMessage(null, e);
-        }
-        catch (IllegalAccessException e) {
-            debugMessage(null, e);
-        }
-        catch (InvocationTargetException e) {
+        } catch (InvocationTargetException e) {
             debugMessage(null, e.getTargetException());
-        }
-        catch (SecurityException e) {
-            debugMessage(null, e);
-        }
-        finally { cleanupThreadShutdown = true; }
+        } finally { cleanupThreadShutdown = true; }
     }
 
 }

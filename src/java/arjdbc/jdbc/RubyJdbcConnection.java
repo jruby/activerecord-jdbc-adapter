@@ -73,7 +73,6 @@ import org.jruby.RubyBoolean;
 import org.jruby.RubyClass;
 import org.jruby.RubyException;
 import org.jruby.RubyFixnum;
-import org.jruby.RubyFloat;
 import org.jruby.RubyHash;
 import org.jruby.RubyIO;
 import org.jruby.RubyInteger;
@@ -499,7 +498,7 @@ public class RubyJdbcConnection extends RubyObject {
     }
 
     @SuppressWarnings("unchecked")
-    private final Map<IRubyObject, Savepoint> getSavepoints(final boolean init) {
+    private Map<IRubyObject, Savepoint> getSavepoints(final boolean init) {
         if ( hasInternalVariable("savepoints") ) {
             return (Map<IRubyObject, Savepoint>) getInternalVariable("savepoints");
         }
@@ -2202,7 +2201,7 @@ public class RubyJdbcConnection extends RubyObject {
             return RubyString.newUnicodeString(runtime, value);
         }
         final boolean value = resultSet.getBoolean(column);
-        if ( value == false && resultSet.wasNull() ) return context.nil;
+        if (!value && resultSet.wasNull()) return context.nil;
         return runtime.newBoolean(value);
     }
 
@@ -3307,13 +3306,12 @@ public class RubyJdbcConnection extends RubyObject {
     }
 
     protected boolean isTransient(final Exception exception) {
-        if ( exception instanceof SQLTransientException ) return true;
-        return false;
+        return exception instanceof SQLTransientException;
     }
 
     protected boolean isRecoverable(final Exception exception) {
-        if ( exception instanceof SQLRecoverableException) return true;
-        return false; // exception instanceof SQLException; // pre JDBC 4.0 drivers?
+        return exception instanceof SQLRecoverableException;
+        // exception instanceof SQLException; // pre JDBC 4.0 drivers?
     }
 
     private static Throwable getCause(Throwable exception) {

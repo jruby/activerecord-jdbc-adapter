@@ -164,15 +164,12 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
             try { // public static String getVersion()
                 final String version = (String) // "PostgreSQL 9.2 JDBC4 (build 1002)"
                     jdbcDriver.getClass().getMethod("getVersion").invoke(null);
-                if ( version != null && version.indexOf("JDBC3") >= 0 ) {
+                if ( version != null && version.contains("JDBC3")) {
                     // config[:connection_alive_sql] ||= 'SELECT 1'
                     setConfigValueIfNotSet(context, "connection_alive_sql", context.runtime.newString("SELECT 1"));
                 }
             }
-            catch (NoSuchMethodException e) { }
-            catch (SecurityException e) { }
-            catch (IllegalAccessException e) { }
-            catch (InvocationTargetException e) { }
+            catch (NoSuchMethodException | SecurityException | InvocationTargetException | IllegalAccessException ignored) { }
         }
 
         return driverWrapper;
@@ -398,7 +395,7 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
         int month = RubyNumeric.num2int(value.callMethod(context, "month"));
         int day = RubyNumeric.num2int(value.callMethod(context, "day"));
 
-        @SuppressWarnings("deprecated")
+        @SuppressWarnings("deprecation")
         Date date = new Date(year - 1900, month - 1, day);
 
         statement.setDate(index, date);
