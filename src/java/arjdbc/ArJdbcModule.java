@@ -151,7 +151,7 @@ public class ArJdbcModule {
             throw newNativeException(runtime, e);
         }
 
-        return runtime.getTrue();
+        return context.tru;
     }
 
     /**
@@ -210,8 +210,8 @@ public class ArJdbcModule {
 
         final Boolean driverLoaded = loadedMap.get(constName);
         if ( driverLoaded != null ) {
-            if (driverLoaded) return runtime.getFalse();
-            return runtime.getNil();
+            if (driverLoaded) return context.fals;
+            return context.nil;
         }
 
         try { // require 'jdbc/mysql'

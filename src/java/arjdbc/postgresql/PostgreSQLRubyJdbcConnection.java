@@ -312,7 +312,7 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
             RubyBigDecimal bigDecimal = (RubyBigDecimal) value;
 
             // too bad RubyBigDecimal.isNaN() isn't public
-            if (bigDecimal.nan_p(context) == context.runtime.getTrue()) {
+            if (bigDecimal.nan_p(context) == context.tru) {
                 statement.setDouble(index, Double.NaN);
             } else {
                 statement.setBigDecimal(index, bigDecimal.getValue());

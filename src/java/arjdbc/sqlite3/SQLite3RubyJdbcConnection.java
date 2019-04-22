@@ -225,7 +225,7 @@ public class SQLite3RubyJdbcConnection extends RubyJdbcConnection {
                         IRubyObject[] args = new IRubyObject[] {
                             cachedString(context, indexTableName), // table_name
                             cachedString(context, indexName), // index_name
-                            nonUnique ? runtime.getFalse() : runtime.getTrue(), // unique
+                            nonUnique ? context.fals : context.tru, // unique
                             currentColumns = RubyArray.newArray(runtime, 4) // [] column names
                         };
 
@@ -449,7 +449,7 @@ public class SQLite3RubyJdbcConnection extends RubyJdbcConnection {
     // a consistent JDBC layer.
     @JRubyMethod(name = "supports_savepoints?")
     public IRubyObject supports_savepoints_p(final ThreadContext context) throws SQLException {
-        return context.runtime.getTrue();
+        return context.tru;
     }
 
     @JRubyMethod(name = "readonly?")

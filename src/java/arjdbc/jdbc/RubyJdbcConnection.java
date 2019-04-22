@@ -380,7 +380,7 @@ public class RubyJdbcConnection extends RubyObject {
                 try {
                     connection.rollback();
                     resetSavepoints(context); // if any
-                    return context.runtime.getTrue();
+                    return context.tru;
                 } finally {
                     connection.setAutoCommit(true);
                 }
@@ -546,7 +546,7 @@ public class RubyJdbcConnection extends RubyObject {
         IRubyObject value = getConfigValue(context, "configure_connection");
         if ( value == context.nil ) this.configureConnection = true;
         else {
-            this.configureConnection = value != context.runtime.getFalse();
+            this.configureConnection = value != context.fals;
         }
 
         IRubyObject jdbcFetchSize = getConfigValue(context, "jdbc_fetch_size");
@@ -597,7 +597,7 @@ public class RubyJdbcConnection extends RubyObject {
 
     @JRubyMethod(name = "jdbc_connection", alias = "connection", required = 1)
     public final IRubyObject connection(final ThreadContext context, final IRubyObject unwrap) {
-        if ( unwrap == context.nil || unwrap == context.runtime.getFalse() ) {
+        if ( unwrap == context.nil || unwrap == context.fals ) {
             return connection(context);
         }
         Connection connection = connectionImpl(context);
@@ -633,7 +633,7 @@ public class RubyJdbcConnection extends RubyObject {
 
     @JRubyMethod(name = "active?", alias = "valid?")
     public RubyBoolean active_p(final ThreadContext context) {
-        if ( ! connected ) return context.runtime.getFalse();
+        if ( ! connected ) return context.fals;
         if ( isJndi() ) {
             // for JNDI the data-source / pool is supposed to
             // manage connections for us thus no valid check!
@@ -641,7 +641,7 @@ public class RubyJdbcConnection extends RubyObject {
             return context.runtime.newBoolean( active );
         }
         final Connection connection = getConnection();
-        if ( connection == null ) return context.runtime.getFalse(); // unlikely
+        if ( connection == null ) return context.fals; // unlikely
         return context.runtime.newBoolean( isConnectionValid(context, connection) );
     }
 
@@ -694,7 +694,7 @@ public class RubyJdbcConnection extends RubyObject {
     public IRubyObject open_p(final ThreadContext context) {
         final Connection connection = getConnection(false);
 
-        if (connection == null) return context.runtime.getFalse();
+        if (connection == null) return context.fals;
 
         try {
             // NOTE: isClosed method generally cannot be called to determine
@@ -709,10 +709,10 @@ public class RubyJdbcConnection extends RubyObject {
     public IRubyObject close(final ThreadContext context) {
         final Connection connection = getConnection(false);
 
-        if (connection == null) return context.runtime.getFalse();
+        if (connection == null) return context.fals;
 
         try {
-            if (connection.isClosed()) return context.runtime.getFalse();
+            if (connection.isClosed()) return context.fals;
 
             setConnection(null); // does connection.close();
         } catch (Exception e) {
@@ -724,7 +724,7 @@ public class RubyJdbcConnection extends RubyObject {
         // whereas JNDI expects that.
         if (!isJndi()) disconnect(context);
 
-        return context.runtime.getTrue();
+        return context.tru;
     }
 
     @JRubyMethod(name = "database_name")
@@ -1324,7 +1324,7 @@ public class RubyJdbcConnection extends RubyObject {
                         IRubyObject[] args = new IRubyObject[] {
                             cachedString(context, indexTableName), // table_name
                             cachedString(context, indexName), // index_name
-                            nonUnique ? runtime.getFalse() : runtime.getTrue(), // unique
+                            nonUnique ? context.fals : context.tru, // unique
                             currentColumns = RubyArray.newArray(runtime, 4) // [] column names
                             // orders, (since AR 3.2) where, type, using (AR 4.0)
                         };
@@ -1584,7 +1584,7 @@ public class RubyJdbcConnection extends RubyObject {
         final IRubyObject self, final IRubyObject config, final Block block) {
         final IRubyObject ds_or_name = rawDataSourceOrName(context, config);
 
-        if ( ds_or_name == null ) return context.runtime.getFalse();
+        if ( ds_or_name == null ) return context.fals;
 
         final javax.sql.DataSource dataSource;
         final Object dsOrName = ds_or_name.toJava(Object.class);
@@ -1640,7 +1640,7 @@ public class RubyJdbcConnection extends RubyObject {
             }
         }
 
-        if ( configValue == null || configValue == context.nil || configValue == runtime.getFalse() ) {
+        if ( configValue == null || configValue == context.nil || configValue == context.fals ) {
             return null;
         }
         return configValue;
@@ -2948,7 +2948,7 @@ public class RubyJdbcConnection extends RubyObject {
         try {
             tablesSet = metaData.getTables(catalog, _schemaPattern, _tablePattern, types);
             if ( checkExistsOnly ) { // only check if given table exists
-                return tablesSet.next() ? context.runtime.getTrue() : null;
+                return tablesSet.next() ? context.tru : null;
             }
             else {
                 return mapTables(context, connection, catalog, _schemaPattern, _tablePattern, tablesSet);
