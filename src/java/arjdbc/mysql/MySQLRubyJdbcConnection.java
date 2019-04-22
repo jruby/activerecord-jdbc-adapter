@@ -89,11 +89,9 @@ public class MySQLRubyJdbcConnection extends RubyJdbcConnection {
 
     @JRubyMethod(name = { "full_version" })
     public IRubyObject db_version(final ThreadContext context) {
-        return withConnection(context, new Callable<IRubyObject>() {
-            public IRubyObject call(final Connection connection) throws SQLException {
-                final DatabaseMetaData metaData = connection.getMetaData();
-                return context.runtime.newString(metaData.getDatabaseProductVersion());
-            }
+        return withConnection(context, (Callable<IRubyObject>) connection -> {
+            final DatabaseMetaData metaData = connection.getMetaData();
+            return context.runtime.newString(metaData.getDatabaseProductVersion());
         });
     }
 

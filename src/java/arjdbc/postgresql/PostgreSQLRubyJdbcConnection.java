@@ -219,11 +219,9 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
 
     @JRubyMethod(name = "database_product")
     public IRubyObject database_product(final ThreadContext context) {
-        return withConnection(context, new Callable<IRubyObject>() {
-            public IRubyObject call(final Connection connection) throws SQLException {
-                final DatabaseMetaData metaData = connection.getMetaData();
-                return RubyString.newString(context.runtime, metaData.getDatabaseProductName() + ' ' + metaData.getDatabaseProductVersion());
-            }
+        return withConnection(context, (Callable<IRubyObject>) connection -> {
+            final DatabaseMetaData metaData = connection.getMetaData();
+            return RubyString.newString(context.runtime, metaData.getDatabaseProductName() + ' ' + metaData.getDatabaseProductVersion());
         });
     }
 
