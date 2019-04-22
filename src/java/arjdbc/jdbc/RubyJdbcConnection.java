@@ -557,7 +557,6 @@ public class RubyJdbcConnection extends RubyObject {
 
     @JRubyMethod(name = "adapter")
     public IRubyObject adapter(final ThreadContext context) {
-        final IRubyObject adapter = getAdapter();
         return adapter == null ? context.nil : adapter;
     }
 
@@ -575,7 +574,6 @@ public class RubyJdbcConnection extends RubyObject {
     private void configureConnection() {
         if ( ! configureConnection ) return; // return false;
 
-        final IRubyObject adapter = getAdapter(); // self.adapter
         if ( adapter != null && ! adapter.isNil() ) {
             if ( adapter.respondsTo("configure_connection") ) {
                 final ThreadContext context = getRuntime().getCurrentContext();
@@ -634,7 +632,7 @@ public class RubyJdbcConnection extends RubyObject {
     @JRubyMethod(name = "active?", alias = "valid?")
     public RubyBoolean active_p(final ThreadContext context) {
         if ( ! connected ) return context.fals;
-        if ( isJndi() ) {
+        if (jndi) {
             // for JNDI the data-source / pool is supposed to
             // manage connections for us thus no valid check!
             boolean active = getConnectionFactory() != null;
@@ -724,7 +722,7 @@ public class RubyJdbcConnection extends RubyObject {
 
         // ActiveRecord expects a closed connection to not try and re-open a connection
         // whereas JNDI expects that.
-        if (!isJndi()) disconnect(context);
+        if (!jndi) disconnect(context);
 
         return context.tru;
     }
@@ -1345,7 +1343,7 @@ public class RubyJdbcConnection extends RubyObject {
     }
 
     protected RubyClass getIndexDefinition(final ThreadContext context) {
-        final RubyClass adapterClass = getAdapter().getMetaClass();
+        final RubyClass adapterClass = adapter.getMetaClass();
         IRubyObject IDef = adapterClass.getConstantAt("IndexDefinition");
         return IDef != null ? (RubyClass) IDef : getIndexDefinition(context.runtime);
     }
@@ -1419,7 +1417,7 @@ public class RubyJdbcConnection extends RubyObject {
     }
 
     protected RubyClass getForeignKeyDefinition(final ThreadContext context) {
-        final RubyClass adapterClass = getAdapter().getMetaClass();
+        final RubyClass adapterClass = adapter.getMetaClass();
         IRubyObject FKDef = adapterClass.getConstantAt("ForeignKeyDefinition");
         return FKDef != null ? (RubyClass) FKDef : getForeignKeyDefinition(context.runtime);
     }
@@ -1789,8 +1787,6 @@ public class RubyJdbcConnection extends RubyObject {
      * @return whether the connection factory is JNDI based
      */
     private boolean setupConnectionFactory(final ThreadContext context) {
-        final IRubyObject config = getConfig();
-
         if ( defaultConfig == null ) {
             synchronized(RubyJdbcConnection.class) {
                 if ( defaultConfig == null ) {
@@ -1822,18 +1818,17 @@ public class RubyJdbcConnection extends RubyObject {
 
     @JRubyMethod(name = "jndi?", alias = "jndi_connection?")
     public RubyBoolean jndi_p(final ThreadContext context) {
-        return context.runtime.newBoolean( isJndi() );
+        return context.runtime.newBoolean(jndi);
     }
 
     protected boolean isJndi() { return this.jndi; }
 
     @JRubyMethod(name = "config")
-    public IRubyObject config() { return getConfig(); }
+    public IRubyObject config() { return config; }
 
     public IRubyObject getConfig() { return this.config; }
 
     protected final IRubyObject getConfigValue(final ThreadContext context, final String key) {
-        final IRubyObject config = getConfig();
         final RubySymbol keySym = context.runtime.newSymbol(key);
         if ( config instanceof RubyHash ) {
             final IRubyObject value = ((RubyHash) config).fastARef(keySym);
@@ -1844,7 +1839,6 @@ public class RubyJdbcConnection extends RubyObject {
 
     protected final IRubyObject setConfigValue(final ThreadContext context,
                                                final String key, final IRubyObject value) {
-        final IRubyObject config = getConfig();
         final RubySymbol keySym = context.runtime.newSymbol(key);
         if ( config instanceof RubyHash ) {
             return ((RubyHash) config).op_aset(context, keySym, value);
@@ -1854,7 +1848,6 @@ public class RubyJdbcConnection extends RubyObject {
 
     protected final IRubyObject setConfigValueIfNotSet(final ThreadContext context,
                                                        final String key, final IRubyObject value) {
-        final IRubyObject config = getConfig();
         final RubySymbol keySym = context.runtime.newSymbol(key);
         if ( config instanceof RubyHash ) {
             final IRubyObject setValue = ((RubyHash) config).fastARef(keySym);
@@ -1874,7 +1867,7 @@ public class RubyJdbcConnection extends RubyObject {
     protected final IRubyObject getAdapter() { return this.adapter; }
 
     protected RubyClass getJdbcColumnClass(final ThreadContext context) {
-        return (RubyClass) getAdapter().callMethod(context, "jdbc_column_class");
+        return (RubyClass) adapter.callMethod(context, "jdbc_column_class");
     }
 
     protected ConnectionFactory getConnectionFactory() throws RaiseException {
@@ -2724,7 +2717,7 @@ public class RubyJdbcConnection extends RubyObject {
         // For some reason the driver doesn't like "character varying" as a type
         if ( type.eql(context.runtime.newSymbol("string")) ) return "varchar";
 
-        final RubyHash nativeTypes = (RubyHash) getAdapter().callMethod(context, "native_database_types");
+        final RubyHash nativeTypes = (RubyHash) adapter.callMethod(context, "native_database_types");
         // e.g. `integer: { name: 'integer' }`
         final RubyHash typeInfo = (RubyHash) nativeTypes.op_aref(context, type);
 
@@ -3035,7 +3028,7 @@ public class RubyJdbcConnection extends RubyObject {
             final String tabName = results.getString(TABLE_NAME);
             final RubyString tableName = cachedString(context, caseConvertIdentifierForRails(metaData, tabName));
 
-            final IRubyObject type_metadata = getAdapter().callMethod(context, "fetch_type_metadata", sqlType);
+            final IRubyObject type_metadata = adapter.callMethod(context, "fetch_type_metadata", sqlType);
 
             // (name, default, sql_type_metadata = nil, null = true, table_name = nil, default_function = nil, collation = nil, comment: nil)
             final IRubyObject[] args = new IRubyObject[] {
@@ -3727,8 +3720,7 @@ public class RubyJdbcConnection extends RubyObject {
     private static boolean driverUsedLogged;
 
     private void logDriverUsed(final Connection connection) {
-        if ( isDebug() ) {
-            if ( driverUsedLogged ) return;
+        if (debug && !driverUsedLogged) {
             driverUsedLogged = true;
             try {
                 final DatabaseMetaData meta = connection.getMetaData();
