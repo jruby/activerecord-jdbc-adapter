@@ -210,7 +210,7 @@ public class ArJdbcModule {
 
         final Boolean driverLoaded = loadedMap.get(constName);
         if ( driverLoaded != null ) {
-            if ( driverLoaded.booleanValue() ) return runtime.getFalse();
+            if (driverLoaded) return runtime.getFalse();
             return runtime.getNil();
         }
 

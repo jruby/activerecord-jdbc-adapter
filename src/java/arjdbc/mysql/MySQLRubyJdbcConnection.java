@@ -201,7 +201,7 @@ public class MySQLRubyJdbcConnection extends RubyJdbcConnection {
             return resultSet.wasNull() ? context.nil : RubyString.newEmptyString(runtime);
         }
 
-        if ( rawDateTime != null && rawDateTime.booleanValue() ) {
+        if ( rawDateTime != null && rawDateTime) {
             return RubyString.newString(runtime, DateTimeUtils.dummyTimeToString(value));
         }
 
@@ -235,7 +235,7 @@ public class MySQLRubyJdbcConnection extends RubyJdbcConnection {
         if (lowerCase == null) {
             lowerCase = lowerCaseIdentifiers = connection.getMetaData().storesLowerCaseIdentifiers();
         }
-        return lowerCase.booleanValue() ? value.toLowerCase() : value;
+        return lowerCase ? value.toLowerCase() : value;
     }
 
     @Override
@@ -261,7 +261,7 @@ public class MySQLRubyJdbcConnection extends RubyJdbcConnection {
     }
 
     private static boolean doStopCleanupThread() throws SQLException {
-        return stopCleanupThread != null && stopCleanupThread.booleanValue();
+        return stopCleanupThread != null && stopCleanupThread;
     }
 
     private static boolean cleanupThreadShutdown;

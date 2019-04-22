@@ -2085,7 +2085,7 @@ public class RubyJdbcConnection extends RubyObject {
     @JRubyMethod(name = "raw_date_time?", meta = true)
     public static IRubyObject useRawDateTime(final ThreadContext context, final IRubyObject self) {
         if ( rawDateTime == null ) return context.nil;
-        return context.runtime.newBoolean( rawDateTime.booleanValue() );
+        return context.runtime.newBoolean(rawDateTime);
     }
 
     @JRubyMethod(name = "raw_date_time=", meta = true)
@@ -2109,7 +2109,7 @@ public class RubyJdbcConnection extends RubyObject {
             return resultSet.wasNull() ? context.nil : RubyString.newEmptyString(runtime);
         }
 
-        if ( rawDateTime != null && rawDateTime.booleanValue() ) {
+        if ( rawDateTime != null && rawDateTime) {
             return RubyString.newString(runtime, DateTimeUtils.dateToString(value));
         }
 
@@ -2125,7 +2125,7 @@ public class RubyJdbcConnection extends RubyObject {
             return resultSet.wasNull() ? context.nil : RubyString.newEmptyString(runtime);
         }
 
-        if ( rawDateTime != null && rawDateTime.booleanValue() ) {
+        if ( rawDateTime != null && rawDateTime) {
             return RubyString.newString(runtime, DateTimeUtils.timeToString(value));
         }
 
@@ -2141,7 +2141,7 @@ public class RubyJdbcConnection extends RubyObject {
             return resultSet.wasNull() ? context.nil : RubyString.newEmptyString(runtime);
         }
 
-        if ( rawDateTime != null && rawDateTime.booleanValue() ) {
+        if ( rawDateTime != null && rawDateTime) {
             return RubyString.newString(runtime, DateTimeUtils.timestampToString(value));
         }
 
@@ -2164,7 +2164,7 @@ public class RubyJdbcConnection extends RubyObject {
     @JRubyMethod(name = "raw_boolean?", meta = true)
     public static IRubyObject useRawBoolean(final ThreadContext context, final IRubyObject self) {
         if ( rawBoolean == null ) return context.nil;
-        return context.runtime.newBoolean( rawBoolean.booleanValue() );
+        return context.runtime.newBoolean(rawBoolean);
     }
 
     @JRubyMethod(name = "raw_boolean=", meta = true)
@@ -2196,7 +2196,7 @@ public class RubyJdbcConnection extends RubyObject {
     protected IRubyObject booleanToRuby(final ThreadContext context,
         final Ruby runtime, final ResultSet resultSet, final int column)
         throws SQLException {
-        if ( rawBoolean != null && rawBoolean.booleanValue() ) {
+        if ( rawBoolean != null && rawBoolean) {
             final String value = resultSet.getString(column);
             if ( value == null /* && resultSet.wasNull() */ ) return context.nil;
             return RubyString.newUnicodeString(runtime, value);
@@ -2462,7 +2462,7 @@ public class RubyJdbcConnection extends RubyObject {
         final String internedType = internedTypeFor(context, attribute);
         final Integer sqlType = jdbcTypeFor(internedType);
         if ( sqlType != null ) {
-            return sqlType.intValue();
+            return sqlType;
         }
 
         return Types.OTHER; // -1 as well as 0 are used in Types
@@ -3110,7 +3110,7 @@ public class RubyJdbcConnection extends RubyObject {
         // not have and auto-generated ID column :
         boolean next = genKeys.next() && genKeys.getMetaData().getColumnCount() > 0;
         // singleResult == null - guess if only single key returned
-        if ( singleResult == null || singleResult.booleanValue() ) {
+        if ( singleResult == null || singleResult) {
             if ( next ) {
                 firstKey = mapGeneratedKey(runtime, genKeys);
                 if ( singleResult != null || ! genKeys.next() ) {
@@ -3143,7 +3143,7 @@ public class RubyJdbcConnection extends RubyObject {
         if (supportsGeneratedKeys == null) {
             supportsGeneratedKeys = this.supportsGeneratedKeys = connection.getMetaData().supportsGetGeneratedKeys();
         }
-        return supportsGeneratedKeys.booleanValue();
+        return supportsGeneratedKeys;
     }
 
     /**
@@ -3722,7 +3722,7 @@ public class RubyJdbcConnection extends RubyObject {
     public static void debugStackTrace(final ThreadContext context, final Throwable e) {
         if ( debug || ( context != null && context.runtime.isDebug() ) ) {
             final PrintStream out = context != null ? context.runtime.getOut() : System.out;
-            if ( debugStackTrace == null || debugStackTrace.booleanValue() ) {
+            if ( debugStackTrace == null || debugStackTrace) {
                 e.printStackTrace(out);
             }
             else {
