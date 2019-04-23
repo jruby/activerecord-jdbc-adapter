@@ -30,6 +30,17 @@ module ActiveRecord
     class MSSQLAdapter < AbstractAdapter
       ADAPTER_NAME = 'MSSQL'.freeze
 
+      MSSQL_VERSION_YEAR = {
+        8 => '2000',
+        9 => '2005',
+        10 => '2008',
+        11 => '2012',
+        12 => '2014',
+        13 => '2016',
+        14 => '2017',
+        15 => '2019'
+      }.freeze
+
       include ArJdbc::Abstract::Core
       include ArJdbc::Abstract::ConnectionManagement
       include ArJdbc::Abstract::DatabaseStatements
@@ -50,6 +61,10 @@ module ActiveRecord
       def initialize(connection, logger, _connection_parameters, config = {})
         # configure_connection happens in super
         super(connection, logger, config)
+
+        unless mssql_major_version >= 11
+          raise "Your MSSQL #{mssql_version_year} is too old. This adapter supports MSSQL >= 2012."
+        end
       end
 
       # Returns the (JDBC) connection class to be used for this adapter.
@@ -197,6 +212,16 @@ module ActiveRecord
 
       def mssql?
         true
+      end
+
+      def mssql_major_version
+        return @mssql_major_version if defined? @mssql_major_version
+
+        @mssql_major_version = @connection.database_major_version
+      end
+
+      def mssql_version_year
+        MSSQL_VERSION_YEAR[mssql_major_version.to_i]
       end
 
       def tables_with_referential_integrity

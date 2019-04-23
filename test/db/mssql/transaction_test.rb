@@ -24,11 +24,6 @@ class MSSQLTransactionTest < Test::Unit::TestCase
     assert_true ActiveRecord::Base.connection.supports_savepoints?
   end
 
-  def test_mssql_is_implemented_and_returns_true
-    assert_respond_to Entry.connection, :mssql?
-    assert_equal true, Entry.connection.mssql?
-  end
-
   def test_read_transaction_isolation
     assert_respond_to Entry.connection, :transaction_isolation
     assert_includes ISOLATION_LEVELS, Entry.connection.transaction_isolation

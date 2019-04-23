@@ -165,8 +165,10 @@ class MSSQLUnitTest < Test::Unit::TestCase
 
   def new_adapter_stub(config = {})
     config = config.merge :adapter => 'mssql', :sqlserver_version => 2008
-    connection = stub('connection'); logger = nil
+    logger = nil
+    connection = stub('connection', database_major_version: 11)
     connection.stub_everything
+
     adapter = ActiveRecord::ConnectionAdapters::MSSQLAdapter.new connection, logger, config
     yield(adapter) if block_given?
     adapter

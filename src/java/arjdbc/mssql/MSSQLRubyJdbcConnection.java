@@ -304,6 +304,18 @@ public class MSSQLRubyJdbcConnection extends RubyJdbcConnection {
       return context.nil;
     }
 
+    // Get MSSQL major version, 8, 9, 10, 11, 12, etc.
+    @JRubyMethod
+    public IRubyObject database_major_version(final ThreadContext context) throws SQLException {
+      return withConnection(context, new Callable<IRubyObject>() {
+        public IRubyObject call(final Connection connection) throws SQLException {
+          final DatabaseMetaData metaData = connection.getMetaData();
+
+          return context.runtime.newFixnum( metaData.getDatabaseMajorVersion() );
+        }
+      });
+    }
+
     /**
      * Microsoft SQL 2000+ support schemas
      */
