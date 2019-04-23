@@ -163,4 +163,73 @@ class MSSQLTransactionTest < Test::Unit::TestCase
     entry.reload
     assert_equal 'my-user', entry.login
   end
+
+  def test_transaction_isolation_snapshot_case_one
+    db_name = Entry.connection.config[:database]
+    Entry.connection.execute "ALTER DATABASE [#{db_name}] SET ALLOW_SNAPSHOT_ISOLATION ON"
+    entry = User.create!(login: 'user007')
+
+    User.transaction(isolation: :snapshot) do
+      # transaction isolation snapshot can see it own updates
+      an_entry = User.find(entry.id)
+
+      an_entry.update_attributes(login: 'agent555')
+
+      an_entry.reload
+      assert_equal 'agent555', an_entry.login
+    end
+    entry.reload
+    assert_equal 'agent555', entry.login
+    Entry.connection.execute "ALTER DATABASE [#{db_name}] SET ALLOW_SNAPSHOT_ISOLATION OFF"
+  end
+
+  def test_transaction_isolation_snapshot_case_two
+    db_name = Entry.connection.config[:database]
+    Entry.connection.execute "ALTER DATABASE [#{db_name}] SET ALLOW_SNAPSHOT_ISOLATION ON"
+    entry = User.create!(login: 'user007')
+
+    User.transaction(isolation: :snapshot) do
+      # Isolation snapshot cannot see updates made by other transactions
+      an_entry = User.find(entry.id)
+      MyUser.transaction(isolation: :read_uncommitted) do
+        my_entry = MyUser.find(entry.id)
+        # other transaction updates entry
+        my_entry.update_attributes(login: 'agent007')
+
+        an_entry.reload
+        my_entry.reload
+        assert_not_equal my_entry.login, an_entry.login
+      end
+
+    end
+    entry.reload
+    assert_equal 'agent007', entry.login
+    Entry.connection.execute "ALTER DATABASE [#{db_name}] SET ALLOW_SNAPSHOT_ISOLATION OFF"
+  end
+
+  def test_transaction_isolation_snapshot_case_three
+    db_name = Entry.connection.config[:database]
+    Entry.connection.execute "ALTER DATABASE [#{db_name}] SET ALLOW_SNAPSHOT_ISOLATION ON"
+    entry = User.create!(login: 'user007')
+
+    User.transaction(isolation: :snapshot) do
+      an_entry = User.find(entry.id)
+      MyUser.transaction(isolation: :read_uncommitted) do
+        my_entry = MyUser.find(entry.id)
+        # other transaction updates entry
+        assert my_entry.update_attributes(login: 'agent007')
+      end
+
+      # Cannot update record updated by other transaction.
+      error = assert_raises(ActiveRecord::StatementInvalid) do
+        an_entry.update_attributes(login: 'agent000')
+      end
+
+      assert_match(/SQLServerException: Snapshot isolation transaction aborted due to update conflict./, error.message)
+    end
+
+    entry.reload
+    assert_equal 'agent007', entry.login
+    Entry.connection.execute "ALTER DATABASE [#{db_name}] SET ALLOW_SNAPSHOT_ISOLATION OFF"
+  end
 end

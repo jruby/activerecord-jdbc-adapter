@@ -37,12 +37,14 @@ import java.sql.Savepoint;
 import java.sql.SQLException;
 import java.sql.Types;
 import java.sql.Timestamp;
+import java.util.Locale;
 
 import org.jruby.Ruby;
 import org.jruby.RubyArray;
 import org.jruby.RubyBoolean;
 import org.jruby.RubyClass;
 import org.jruby.RubyString;
+import org.jruby.RubySymbol;
 import org.jruby.anno.JRubyMethod;
 import org.jruby.runtime.ObjectAllocator;
 import org.jruby.runtime.ThreadContext;
@@ -302,6 +304,98 @@ public class MSSQLRubyJdbcConnection extends RubyJdbcConnection {
       // by the Microsoft SQL Server JDBC Driver
       // connection.releaseSavepoint((Savepoint) savepoint);
       return context.nil;
+    }
+
+    //----------------------------------------------------------------
+    // read_uncommitted: "READ UNCOMMITTED",
+    // read_committed:   "READ COMMITTED",
+    // repeatable_read:  "REPEATABLE READ",
+    // serializable:     "SERIALIZABLE"
+    // snapshot:         "SNAPSHOT"
+    //
+
+    // Overrides method in parent only because it needs to call static method of child class
+    protected void setTransactionIsolation(final ThreadContext context, final Connection connection,
+        final IRubyObject isolation) throws SQLException {
+      final int level = mapTransactionIsolationLevel(isolation);
+      try {
+        connection.setTransactionIsolation(level);
+      }
+      catch (SQLException e) {
+        RubyClass txError = ActiveRecord(context).getClass("TransactionIsolationError");
+        if ( txError != null ) throw wrapException(context, txError, e);
+        throw e; // let it roll - will be wrapped into a JDBCError (non 4.0)
+      }
+    }
+
+    // Overrides method in parent only because it needs to call static method of child class
+    @JRubyMethod(name = "transaction_isolation", alias = "get_transaction_isolation")
+    public IRubyObject get_transaction_isolation(final ThreadContext context) {
+      return withConnection(context, new Callable<IRubyObject>() {
+        public IRubyObject call(final Connection connection) throws SQLException {
+          final int level = connection.getTransactionIsolation();
+          final String isolationSymbol = formatTransactionIsolationLevel(level);
+          if ( isolationSymbol == null ) return context.nil;
+          return context.runtime.newSymbol(isolationSymbol);
+        }
+      });
+    }
+
+    // Overrides method in parent only because it needs to call static method of child class
+    @JRubyMethod(name = "transaction_isolation=", alias = "set_transaction_isolation")
+    public IRubyObject set_transaction_isolation(final ThreadContext context, final IRubyObject isolation) {
+      return withConnection(context, new Callable<IRubyObject>() {
+        public IRubyObject call(final Connection connection) throws SQLException {
+          final int level;
+
+          if ( isolation.isNil() ) {
+            level = connection.getMetaData().getDefaultTransactionIsolation();
+          } else {
+            level = mapTransactionIsolationLevel(isolation);
+          }
+
+          connection.setTransactionIsolation(level);
+
+          final String isolationSymbol = formatTransactionIsolationLevel(level);
+          if ( isolationSymbol == null ) return context.nil;
+          return context.runtime.newSymbol(isolationSymbol);
+        }
+      });
+    }
+
+    // hide parent method to support mssql specific transaction isolation level
+    public static String formatTransactionIsolationLevel(final int level) {
+      if ( level == Connection.TRANSACTION_READ_UNCOMMITTED ) return "read_uncommitted"; // 1
+      if ( level == Connection.TRANSACTION_READ_COMMITTED ) return "read_committed"; // 2
+      if ( level == Connection.TRANSACTION_REPEATABLE_READ ) return "repeatable_read"; // 4
+      if ( level == Connection.TRANSACTION_SERIALIZABLE ) return "serializable"; // 8
+      // this is alternative to SQLServerConnection.TRANSACTION_SNAPSHOT
+      if ( level == Connection.TRANSACTION_READ_COMMITTED + 4094) return "snapshot";
+      if ( level == 0 ) return null;
+      throw new IllegalArgumentException("unexpected transaction isolation level: " + level);
+    }
+
+
+    // hide parent method to support mssql specific transaction isolation level
+    public static int mapTransactionIsolationLevel(final IRubyObject isolation) {
+      final Object isolationString;
+
+      if ( isolation instanceof RubySymbol ) {
+        isolationString = ((RubySymbol) isolation).asJavaString(); // RubySymbol (interned)
+      } else {
+        isolationString = isolation.asString().toString().toLowerCase(Locale.ENGLISH).intern();
+      }
+
+      if ( isolationString == "read_uncommitted" ) return Connection.TRANSACTION_READ_UNCOMMITTED; // 1
+      if ( isolationString == "read_committed" ) return Connection.TRANSACTION_READ_COMMITTED; // 2
+      if ( isolationString == "repeatable_read" ) return Connection.TRANSACTION_REPEATABLE_READ; // 4
+      if ( isolationString == "serializable" ) return Connection.TRANSACTION_SERIALIZABLE; // 8
+      // this is alternative to SQLServerConnection.TRANSACTION_SNAPSHOT
+      if ( isolationString == "snapshot" ) return Connection.TRANSACTION_READ_COMMITTED + 4094;
+
+      throw new IllegalArgumentException(
+          "unexpected isolation level: " + isolation + " (" + isolationString + ")"
+          );
     }
 
     // Get MSSQL major version, 8, 9, 10, 11, 12, etc.
