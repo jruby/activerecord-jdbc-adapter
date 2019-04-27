@@ -6,7 +6,7 @@ class MSSQLColumnDateTimeTypesTest < Test::Unit::TestCase
     def self.up
       create_table 'datetime_types', force: true do |t|
         t.column :my_datetime, :datetime
-        t.column :my_datetime_one, :datetime, null: false, default: '2019-02-28 05:59:06.789'
+        t.column :my_datetime_one, :datetime, null: false, default: '2017-02-28 01:59:19.789'
 
         t.column :my_smalldatetime, :smalldatetime
         t.column :my_smalldatetime_one, :smalldatetime, null: false, default: '2019-02-28 05:59:06'
@@ -48,10 +48,10 @@ class MSSQLColumnDateTimeTypesTest < Test::Unit::TestCase
   def test_datetime_custom
     column = DateTimeTypes.columns_hash['my_datetime_one']
 
-    assert_equal :datetime,                    column.type
-    assert_equal false,                        column.null
-    assert_equal 'datetime',                   column.sql_type
-    assert_equal '2019-02-28 05:59:06.789', column.default
+    assert_equal :datetime,                 column.type
+    assert_equal false,                     column.null
+    assert_equal 'datetime',                column.sql_type
+    assert_equal '2017-02-28 01:59:19.789', column.default
 
     type = DateTimeTypes.connection.lookup_cast_type(column.sql_type)
     assert_instance_of Type::DateTime, type
@@ -60,7 +60,7 @@ class MSSQLColumnDateTimeTypesTest < Test::Unit::TestCase
   def test_smalldatetime_with_defaults
     column = DateTimeTypes.columns_hash['my_smalldatetime']
 
-    assert_equal :datetime,       column.type
+    assert_equal :smalldatetime,  column.type
     assert_equal true,            column.null
     assert_equal 'smalldatetime', column.sql_type
     assert_equal nil,             column.default
@@ -72,7 +72,7 @@ class MSSQLColumnDateTimeTypesTest < Test::Unit::TestCase
   def test_smalldatetime_custom
     column = DateTimeTypes.columns_hash['my_smalldatetime_one']
 
-    assert_equal :datetime,             column.type
+    assert_equal :smalldatetime,        column.type
     assert_equal false,                 column.null
     assert_equal 'smalldatetime',       column.sql_type
     assert_equal '2019-02-28 05:59:06', column.default
@@ -86,7 +86,7 @@ class MSSQLColumnDateTimeTypesTest < Test::Unit::TestCase
   end
 
   def test_lookup_smalldatetime_aliases
-    assert_cast_type :datetime, 'SMALLDATETIME'
+    assert_cast_type :smalldatetime, 'SMALLDATETIME'
   end
 
   def test_smalldatetime_rounding_usec_to_zero_on_assigment
@@ -150,10 +150,27 @@ class MSSQLColumnDateTimeTypesTest < Test::Unit::TestCase
     assert_equal 350_000, record.my_datetime.usec
   end
 
+  def test_schema_dump_includes_datetime_types
+    output = dump_table_schema('datetime_types')
+
+    assert_match %r{t\.datetime\s+"my_datetime"$}, output
+    assert_match %r{t\.datetime\s+"my_datetime_one",\s+default: '2017-02-28 01:59:19.789',\s+null: false$}, output
+    assert_match %r{t\.smalldatetime\s+"my_smalldatetime"$}, output
+    assert_match %r{t\.smalldatetime\s+"my_smalldatetime_one",\s+default: '2019-02-28 05:59:06',\s+null: false$}, output
+  end
+
   private
 
   def assert_cast_type(type, sql_type)
     cast_type = DateTimeTypes.connection.lookup_cast_type(sql_type)
     assert_equal type, cast_type.type
+  end
+
+  def dump_table_schema(table)
+    all_tables = ActiveRecord::Base.connection.tables
+    ActiveRecord::SchemaDumper.ignore_tables = all_tables - [table]
+    stream = StringIO.new
+    ActiveRecord::SchemaDumper.dump(ActiveRecord::Base.connection, stream)
+    stream.string
   end
 end

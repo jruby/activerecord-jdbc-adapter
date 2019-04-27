@@ -11,6 +11,16 @@ module ActiveRecord
         # minimal rounding issues. MSSQL has its own rounding strategy
         # (Rounded to increments of .000, .003, or .007 seconds)
         class DateTime < ActiveRecord::Type::DateTime
+          def type_cast_for_schema(value)
+            return "'#{value}'" if value.acts_like?(:string)
+
+            if value.usec > 0
+              "'#{value.to_s(:db)}.#{value.usec.to_s.remove(/0+$/)}'"
+            else
+              "'#{value.to_s(:db)}'"
+            end
+          end
+
           private
 
           def cast_value(value)
@@ -34,10 +44,9 @@ module ActiveRecord
 
         class SmallDateTime < DateTime
 
-          # this type is still and logical rails datetime even though is
-          # smalldatetime in MSSQL
+          # To be mapped properly in schema.rb it needs to be smalldatetime.
           def type
-            :datetime
+            :smalldatetime
           end
 
           private

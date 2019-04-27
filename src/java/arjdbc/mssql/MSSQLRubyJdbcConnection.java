@@ -398,6 +398,15 @@ public class MSSQLRubyJdbcConnection extends RubyJdbcConnection {
           );
     }
 
+    // overrides method in parent for database specific types
+    protected String mapTypeToString(final IRubyObject type) {
+      final String typeStr = type.asJavaString();
+
+      if (typeStr == "smalldatetime") return "datetime";
+
+      return typeStr;
+    }
+
     // Get MSSQL major version, 8, 9, 10, 11, 12, etc.
     @JRubyMethod
     public IRubyObject database_major_version(final ThreadContext context) throws SQLException {

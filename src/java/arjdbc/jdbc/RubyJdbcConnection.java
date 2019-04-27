@@ -2663,7 +2663,9 @@ public class RubyJdbcConnection extends RubyObject {
 
         final IRubyObject type = attributeSQLType(context, attribute);
 
-        if ( type != context.nil ) return type.asJavaString();
+        if ( type != context.nil ) {
+            return mapTypeToString(type);
+        }
 
         final IRubyObject value = value_site.call(context, attribute, attribute);
 
@@ -2680,6 +2682,13 @@ public class RubyJdbcConnection extends RubyObject {
         }
 
         return "string";
+    }
+
+    // to be overriden in child class for database specific types
+    protected String mapTypeToString(final IRubyObject type) {
+      final String typeStr = type.asJavaString();
+
+      return typeStr;
     }
 
     protected final RubyTime timeInDefaultTimeZone(final ThreadContext context, final IRubyObject value) {
