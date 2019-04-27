@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 # This patches the Name class so that it doesn't use pg gem specific quoting
 module ActiveRecord
   module ConnectionAdapters

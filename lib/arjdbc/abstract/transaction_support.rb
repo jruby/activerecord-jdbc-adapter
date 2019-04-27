@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module ArJdbc
   module Abstract
 
@@ -22,7 +24,7 @@ module ArJdbc
       # Starts a database transaction.
       # @override
       def begin_db_transaction
-        log('BEGIN TRANSACTION'.freeze, nil) { @connection.begin }
+        log('BEGIN TRANSACTION', nil) { @connection.begin }
       end
 
       # Starts a database transaction.
@@ -34,14 +36,14 @@ module ArJdbc
       # Commits the current database transaction.
       # @override
       def commit_db_transaction
-        log('COMMIT TRANSACTION'.freeze, nil) { @connection.commit }
+        log('COMMIT TRANSACTION', nil) { @connection.commit }
       end
 
       # Rolls back the current database transaction.
       # Called from 'rollback_db_transaction' in the AbstractAdapter
       # @override
       def exec_rollback_db_transaction
-        log('ROLLBACK TRANSACTION'.freeze, nil) { @connection.rollback }
+        log('ROLLBACK TRANSACTION', nil) { @connection.rollback }
       end
 
       ########################## Savepoint Interface ############################

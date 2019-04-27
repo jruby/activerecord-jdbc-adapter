@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module ActiveRecord
   module ConnectionAdapters
     # JDBC (connection) base class, custom adapters we support likely extend

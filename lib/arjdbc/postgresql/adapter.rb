@@ -1,4 +1,4 @@
-# frozen_string_literal: false
+# frozen_string_literal: true
 ArJdbc.load_java_part :PostgreSQL
 
 require 'ipaddr'
@@ -42,7 +42,7 @@ module ArJdbc
     # @see ActiveRecord::ConnectionAdapters::JdbcAdapter#jdbc_column_class
     def jdbc_column_class; ::ActiveRecord::ConnectionAdapters::PostgreSQLColumn end
 
-    ADAPTER_NAME = 'PostgreSQL'.freeze
+    ADAPTER_NAME = 'PostgreSQL'
 
     def adapter_name
       ADAPTER_NAME

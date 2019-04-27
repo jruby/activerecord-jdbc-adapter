@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module ActiveRecord
 
   if defined? ConnectionAdapters::ConnectionSpecification::Resolver # 4.0

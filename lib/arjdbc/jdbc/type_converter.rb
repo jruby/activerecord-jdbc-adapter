@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module ActiveRecord
   module ConnectionAdapters
     # I want to use JDBC's DatabaseMetaData#getTypeInfo to choose the best native types to

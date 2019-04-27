@@ -60,15 +60,7 @@ public class DriverWrapper {
 
     private Driver allocateDriver(final Class<? extends Driver> driverClass)
         throws InstantiationException, IllegalAccessException {
-        try {
-            return driverClass.newInstance();
-        }
-        catch (InstantiationException e) {
-            throw e;
-        }
-        catch (IllegalAccessException e) {
-            throw e;
-        }
+        return driverClass.newInstance();
     }
 
     protected static Class<? extends Driver> loadDriver(final Ruby runtime, final String name)

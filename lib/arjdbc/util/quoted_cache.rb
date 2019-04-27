@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module ArJdbc
   module Util
     # Caches table and column name (quoted) outcomes.

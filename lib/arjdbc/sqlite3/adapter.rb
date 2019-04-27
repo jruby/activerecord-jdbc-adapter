@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 ArJdbc.load_java_part :SQLite3
 
 require "arjdbc/abstract/core"
@@ -30,7 +32,7 @@ module ArJdbc
     SchemaCreation = ConnectionAdapters::SQLite3::SchemaCreation
     SQLite3Adapter = ConnectionAdapters::AbstractAdapter
 
-    ADAPTER_NAME = 'SQLite'.freeze
+    ADAPTER_NAME = 'SQLite'
 
     # DIFFERENCE: FQN
     include ::ActiveRecord::ConnectionAdapters::SQLite3::Quoting

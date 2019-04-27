@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 # This implements a basic encoder to work around ActiveRecord's dependence on the pg gem
 module ActiveRecord::ConnectionAdapters::PostgreSQL::OID
   class Array < ActiveModel::Type::Value
@@ -6,10 +8,10 @@ module ActiveRecord::ConnectionAdapters::PostgreSQL::OID
         class Array
 
           def initialize(name:, delimiter:)
-            @type = if name == 'string[]'.freeze
+            @type = if name == 'string[]'
                       'text'.freeze
                     else
-                      base_type = name.chomp('[]'.freeze).to_sym
+                      base_type = name.chomp('[]').to_sym
                       ActiveRecord::Base.connection.native_database_types[base_type][:name]
                     end
           end

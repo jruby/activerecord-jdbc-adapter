@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 # This implements a basic decoder to work around ActiveRecord's dependence on the pg gem
 module ActiveRecord::ConnectionAdapters::PostgreSQL::OID
   class Array < ActiveModel::Type::Value

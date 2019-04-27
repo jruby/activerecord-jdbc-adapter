@@ -151,7 +151,7 @@ public class ArJdbcModule {
             throw newNativeException(runtime, e);
         }
 
-        return runtime.getTrue();
+        return context.tru;
     }
 
     /**
@@ -191,7 +191,7 @@ public class ArJdbcModule {
     }
 
     // NOTE: probably useless - only to be useful for the pooled runtime mode when jar at WEB-INF/lib
-    static final Map<Ruby, Map<String, Boolean>> loadedDrivers = new WeakHashMap<Ruby, Map<String, Boolean>>(8);
+    static final Map<Ruby, Map<String, Boolean>> loadedDrivers = new WeakHashMap<>(8);
 
     private static IRubyObject loadDriver(final ThreadContext context, final IRubyObject self,
         final String constName) {
@@ -202,7 +202,7 @@ public class ArJdbcModule {
             synchronized (ArJdbcModule.class) {
                 loadedMap = loadedDrivers.get(runtime);
                 if ( loadedMap == null ) {
-                    loadedMap = new HashMap<String, Boolean>(4);
+                    loadedMap = new HashMap<>(4);
                     loadedDrivers.put(runtime, loadedMap);
                 }
             }
@@ -210,8 +210,8 @@ public class ArJdbcModule {
 
         final Boolean driverLoaded = loadedMap.get(constName);
         if ( driverLoaded != null ) {
-            if ( driverLoaded.booleanValue() ) return runtime.getFalse();
-            return runtime.getNil();
+            if (driverLoaded) return context.fals;
+            return context.nil;
         }
 
         try { // require 'jdbc/mysql'

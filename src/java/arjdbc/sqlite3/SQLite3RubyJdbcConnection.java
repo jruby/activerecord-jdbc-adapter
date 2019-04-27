@@ -100,57 +100,53 @@ public class SQLite3RubyJdbcConnection extends RubyJdbcConnection {
     public IRubyObject encoding(final ThreadContext context) throws SQLException {
         if (encoding != null) return encoding;
 
-        return withConnection(context, new Callable<IRubyObject>() {
-            // FIXME: How many single result queries do we have in Java?
-            public IRubyObject call(final Connection connection) throws SQLException {
-                String query = "PRAGMA encoding";
-                Statement statement = null;
-                ResultSet resultSet = null;
-                try {
-                    statement = createStatement(context, connection);
-                    if (statement.execute(query)) {
-                        // Enebo: I do not think we need to worry about failure here?
-                        resultSet = statement.getResultSet();
-                        if (!resultSet.next()) return context.nil;
-                        String encodingString = resultSet.getString(1);
+        // FIXME: How many single result queries do we have in Java?
+        return withConnection(context, connection -> {
+            String query = "PRAGMA encoding";
+            Statement statement = null;
+            ResultSet resultSet = null;
+            try {
+                statement = createStatement(context, connection);
+                if (statement.execute(query)) {
+                    // Enebo: I do not think we need to worry about failure here?
+                    resultSet = statement.getResultSet();
+                    if (!resultSet.next()) return context.nil;
+                    String encodingString = resultSet.getString(1);
 
-                        encoding = cachedString(context, encodingString);
+                    encoding = cachedString(context, encodingString);
 
-                        return encoding;
-                    }
-                } catch (final SQLException e) {
-                    debugErrorSQL(context, query);
-                    throw e;
-                } finally {
-                    close(resultSet);
-                    close(statement);
+                    return encoding;
                 }
-
-                return context.nil;
+            } catch (final SQLException e) {
+                debugErrorSQL(context, query);
+                throw e;
+            } finally {
+                close(resultSet);
+                close(statement);
             }
+
+            return context.nil;
         });
     }
 
     @JRubyMethod(name = {"last_insert_rowid", "last_insert_id"}, alias = "last_insert_row_id")
     public IRubyObject last_insert_rowid(final ThreadContext context)
         throws SQLException {
-        return withConnection(context, new Callable<IRubyObject>() {
-            public IRubyObject call(final Connection connection) throws SQLException {
-                Statement statement = null; ResultSet genKeys = null;
-                try {
-                    statement = connection.createStatement();
-                    // NOTE: strangely this will work and has been used for quite some time :
-                    //return mapGeneratedKeys(context.getRuntime(), connection, statement, true);
-                    // but we should assume SQLite JDBC will prefer sane API usage eventually :
-                    genKeys = statement.executeQuery("SELECT last_insert_rowid()");
-                    return doMapGeneratedKeys(context.runtime, genKeys, true);
-                }
-                catch (final SQLException e) {
-                    debugMessage(context.runtime, "failed to get generated keys: ", e);
-                    throw e;
-                }
-                finally { close(genKeys); close(statement); }
+        return withConnection(context, connection -> {
+            Statement statement = null; ResultSet genKeys = null;
+            try {
+                statement = connection.createStatement();
+                // NOTE: strangely this will work and has been used for quite some time :
+                //return mapGeneratedKeys(context.getRuntime(), connection, statement, true);
+                // but we should assume SQLite JDBC will prefer sane API usage eventually :
+                genKeys = statement.executeQuery("SELECT last_insert_rowid()");
+                return doMapGeneratedKeys(context.runtime, genKeys, true);
             }
+            catch (final SQLException e) {
+                debugMessage(context.runtime, "failed to get generated keys: ", e);
+                throw e;
+            }
+            finally { close(genKeys); close(statement); }
         });
     }
 
@@ -185,66 +181,64 @@ public class SQLite3RubyJdbcConnection extends RubyJdbcConnection {
         final String tableName = table;
         final String schemaName = schema;
         // return super.indexes(context, tableName, name, schemaName);
-        return withConnection(context, new Callable<IRubyObject>() {
-            public RubyArray call(final Connection connection) throws SQLException {
-                final Ruby runtime = context.runtime;
-                final RubyClass IndexDefinition = getIndexDefinition(runtime);
+        return withConnection(context, (Callable<IRubyObject>) connection -> {
+            final Ruby runtime = context.runtime;
+            final RubyClass IndexDefinition = getIndexDefinition(runtime);
 
-                final TableName table = extractTableName(connection, null, schemaName, tableName);
+            final TableName table1 = extractTableName(connection, null, schemaName, tableName);
 
-                final List<RubyString> primaryKeys = primaryKeys(context, connection, table);
+            final List<RubyString> primaryKeys = primaryKeys(context, connection, table1);
 
-                final DatabaseMetaData metaData = connection.getMetaData();
-                ResultSet indexInfoSet;
-                try {
-                    indexInfoSet = metaData.getIndexInfo(table.catalog, table.schema, table.name, false, true);
-                }
-                catch (SQLException e) {
-                    final String msg = e.getMessage();
-                    if ( msg != null && msg.startsWith("[SQLITE_ERROR] SQL error or missing database") ) {
-                        return RubyArray.newEmptyArray(runtime); // on 3.8.7 getIndexInfo fails if table has no indexes
-                    }
-                    throw e;
-                }
-                final RubyArray indexes = RubyArray.newArray(runtime, 8);
-                try {
-                    String currentIndex = null;
-
-                    while ( indexInfoSet.next() ) {
-                        String indexName = indexInfoSet.getString(INDEX_INFO_NAME);
-                        if ( indexName == null ) continue;
-                        RubyArray currentColumns = null;
-
-                        final String columnName = indexInfoSet.getString(INDEX_INFO_COLUMN_NAME);
-                        final RubyString rubyColumnName = cachedString(context, columnName);
-                        if ( primaryKeys.contains(rubyColumnName) ) continue;
-
-                        // We are working on a new index
-                        if ( ! indexName.equals(currentIndex) ) {
-                            currentIndex = indexName;
-
-                            String indexTableName = indexInfoSet.getString(INDEX_INFO_TABLE_NAME);
-
-                            final boolean nonUnique = indexInfoSet.getBoolean(INDEX_INFO_NON_UNIQUE);
-
-                            IRubyObject[] args = new IRubyObject[] {
-                                cachedString(context, indexTableName), // table_name
-                                cachedString(context, indexName), // index_name
-                                nonUnique ? runtime.getFalse() : runtime.getTrue(), // unique
-                                currentColumns = RubyArray.newArray(runtime, 4) // [] column names
-                            };
-
-                            indexes.append( IndexDefinition.newInstance(context, args, Block.NULL_BLOCK) ); // IndexDefinition.new
-                        }
-
-                        // one or more columns can be associated with an index
-                        if ( currentColumns != null ) currentColumns.append(rubyColumnName);
-                    }
-
-                    return indexes;
-
-                } finally { close(indexInfoSet); }
+            final DatabaseMetaData metaData = connection.getMetaData();
+            ResultSet indexInfoSet;
+            try {
+                indexInfoSet = metaData.getIndexInfo(table1.catalog, table1.schema, table1.name, false, true);
             }
+            catch (SQLException e) {
+                final String msg = e.getMessage();
+                if ( msg != null && msg.startsWith("[SQLITE_ERROR] SQL error or missing database") ) {
+                    return RubyArray.newEmptyArray(runtime); // on 3.8.7 getIndexInfo fails if table has no indexes
+                }
+                throw e;
+            }
+            final RubyArray indexes = RubyArray.newArray(runtime, 8);
+            try {
+                String currentIndex = null;
+
+                while ( indexInfoSet.next() ) {
+                    String indexName = indexInfoSet.getString(INDEX_INFO_NAME);
+                    if ( indexName == null ) continue;
+                    RubyArray currentColumns = null;
+
+                    final String columnName = indexInfoSet.getString(INDEX_INFO_COLUMN_NAME);
+                    final RubyString rubyColumnName = cachedString(context, columnName);
+                    if ( primaryKeys.contains(rubyColumnName) ) continue;
+
+                    // We are working on a new index
+                    if ( ! indexName.equals(currentIndex) ) {
+                        currentIndex = indexName;
+
+                        String indexTableName = indexInfoSet.getString(INDEX_INFO_TABLE_NAME);
+
+                        final boolean nonUnique = indexInfoSet.getBoolean(INDEX_INFO_NON_UNIQUE);
+
+                        IRubyObject[] args = new IRubyObject[] {
+                            cachedString(context, indexTableName), // table_name
+                            cachedString(context, indexName), // index_name
+                            nonUnique ? context.fals : context.tru, // unique
+                            currentColumns = RubyArray.newArray(runtime, 4) // [] column names
+                        };
+
+                        indexes.append( IndexDefinition.newInstance(context, args, Block.NULL_BLOCK) ); // IndexDefinition.new
+                    }
+
+                    // one or more columns can be associated with an index
+                    if ( currentColumns != null ) currentColumns.append(rubyColumnName);
+                }
+
+                return indexes;
+
+            } finally { close(indexInfoSet); }
         });
     }
 
@@ -392,8 +386,9 @@ public class SQLite3RubyJdbcConnection extends RubyJdbcConnection {
                     "create_savepoint (without name) not implemented!"
             );
         }
-        final Connection connection = getConnection(true); Statement statement = null;
+        Statement statement = null;
         try {
+            final Connection connection = getConnectionInternal(true);
             connection.setAutoCommit(false);
             // NOTE: JDBC driver does not support setSavepoint(String) :
             ( statement = connection.createStatement() ).execute("SAVEPOINT " + name.toString());
@@ -413,12 +408,13 @@ public class SQLite3RubyJdbcConnection extends RubyJdbcConnection {
     public IRubyObject rollback_savepoint(final ThreadContext context, final IRubyObject name) {
         if ( useSavepointAPI(context) ) return super.rollback_savepoint(context, name);
 
-        final Connection connection = getConnection(true); Statement statement = null;
+        Statement statement = null;
         try {
             if ( getSavepoints(context).get(name) == null ) {
                 throw newSavepointNotSetError(context, name, "rollback");
             }
             // NOTE: JDBC driver does not implement rollback(Savepoint) :
+            final Connection connection = getConnectionInternal(true);
             ( statement = connection.createStatement() ).execute("ROLLBACK TO SAVEPOINT " + name.toString());
 
             return context.nil;
@@ -436,12 +432,13 @@ public class SQLite3RubyJdbcConnection extends RubyJdbcConnection {
     public IRubyObject release_savepoint(final ThreadContext context, final IRubyObject name) {
         if ( useSavepointAPI(context) ) return super.release_savepoint(context, name);
 
-        final Connection connection = getConnection(true); Statement statement = null;
+        Statement statement = null;
         try {
             if ( getSavepoints(context).remove(name) == null ) {
                 throw newSavepointNotSetError(context, name, "release");
             }
             // NOTE: JDBC driver does not implement release(Savepoint) :
+            final Connection connection = getConnectionInternal(true);
             ( statement = connection.createStatement() ).execute("RELEASE SAVEPOINT " + name.toString());
             return context.nil;
         } catch (SQLException e) {
@@ -455,7 +452,7 @@ public class SQLite3RubyJdbcConnection extends RubyJdbcConnection {
     // a consistent JDBC layer.
     @JRubyMethod(name = "supports_savepoints?")
     public IRubyObject supports_savepoints_p(final ThreadContext context) throws SQLException {
-        return context.runtime.getTrue();
+        return context.tru;
     }
 
     @JRubyMethod(name = "readonly?")
@@ -516,7 +513,7 @@ public class SQLite3RubyJdbcConnection extends RubyJdbcConnection {
         final int index, IRubyObject value,
         final IRubyObject attribute, final int type) throws SQLException {
 
-        if (value instanceof RubyTime) value = ((RubyTime) value).strftime(TIMESTAMP_FORMAT);
+        if (value instanceof RubyTime) value = ((RubyTime) value).strftime(context, TIMESTAMP_FORMAT);
 
         setStringParameter(context, connection, statement, index, value, attribute, type);
     }
