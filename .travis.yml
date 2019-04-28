@@ -72,13 +72,13 @@ matrix:
 
     # Java 11
     - env: DB=mysql2
-      jdk: openjdk11
+      jdk: oraclejdk11
     - env: DB=postgresql
-      jdk: openjdk11
+      jdk: oraclejdk11
       addons:
         postgresql: "9.4"
     - env: DB=sqlite3
-      jdk: openjdk11
+      jdk: oraclejdk11
 
     # jruby-head
     - rvm: jruby-head
