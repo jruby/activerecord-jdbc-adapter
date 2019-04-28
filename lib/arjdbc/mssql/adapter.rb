@@ -16,6 +16,7 @@ require 'arjdbc/abstract/transaction_support'
 require 'arjdbc/mssql/column'
 require 'arjdbc/mssql/types'
 require 'arjdbc/mssql/quoting'
+require 'arjdbc/mssql/schema_definitions'
 require 'arjdbc/mssql/schema_statements'
 require 'arjdbc/mssql/database_statements'
 require 'arjdbc/mssql/explain_support'
@@ -153,6 +154,14 @@ module ActiveRecord
 
       def schema_creation # :nodoc:
         MSSQL::SchemaCreation.new(self)
+      end
+
+      def create_table_definition(*args) # :nodoc:
+        MSSQL::TableDefinition.new(*args)
+      end
+
+      def update_table_definition(table_name, base) #:nodoc:
+        MSSQL::Table.new(table_name, base)
       end
 
       # Returns the name of the current security context
