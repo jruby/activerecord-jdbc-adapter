@@ -132,6 +132,29 @@ module ActiveRecord
           execute "ALTER TABLE #{quote_table_name(table_name)} DROP COLUMN #{quote_column_name(column_name)}"
         end
 
+        def drop_table(table_name, options = {})
+          # mssql cannot recreate referenced table with force: :cascade
+          # https://docs.microsoft.com/en-us/sql/t-sql/statements/drop-table-transact-sql?view=sql-server-2017
+          if options[:force] == :cascade
+            execute_procedure(:sp_fkeys, pktable_name: table_name).each do |fkdata|
+              fktable = fkdata['FKTABLE_NAME']
+              fkcolmn = fkdata['FKCOLUMN_NAME']
+              pktable = fkdata['PKTABLE_NAME']
+              pkcolmn = fkdata['PKCOLUMN_NAME']
+              remove_foreign_key(fktable, name: fkdata['FK_NAME'])
+              execute("DELETE FROM #{quote_table_name(fktable)} WHERE #{quote_column_name(fkcolmn)} IN ( SELECT #{quote_column_name(pkcolmn)} FROM #{quote_table_name(pktable)} )")
+            end
+          end
+
+          if options[:if_exists] && @mssql_major_version < 13
+            # this is for sql server 2012 and 2014
+            execute "IF EXISTS(SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = #{quote(table_name)}) DROP TABLE #{quote_table_name(table_name)}"
+          else
+            # For sql server 2016 onwards
+            super
+          end
+        end
+
         def rename_table(table_name, new_table_name)
           execute "EXEC sp_rename '#{table_name}', '#{new_table_name}'"
           rename_table_indexes(table_name, new_table_name)
