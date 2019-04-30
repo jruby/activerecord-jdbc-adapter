@@ -91,6 +91,21 @@ class MSSQLColumnDateTimeTypesTest < Test::Unit::TestCase
     assert_cast_type :smalldatetime, 'SMALLDATETIME'
   end
 
+  def test_marshal
+    expected = DateTimeTypes.create!(
+      my_datetime: Time.now.change(sec: 26, usec: 123_000),
+      my_datetime_one: Time.now.change(sec: 48, usec: 128_789),
+      my_smalldatetime: Time.now
+    )
+
+    expected.reload
+
+    marshalled = Marshal.dump(expected)
+    actual = Marshal.load(marshalled)
+
+    assert_equal expected.attributes, actual.attributes
+  end
+
   def test_yaml
     expected = DateTimeTypes.create!(
       my_datetime: Time.now.change(sec: 36, usec: 120_000),

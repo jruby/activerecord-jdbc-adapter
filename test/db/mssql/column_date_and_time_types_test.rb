@@ -108,6 +108,20 @@ class MSSQLColumnDateAndTimeTypesTest < Test::Unit::TestCase
     assert_equal expected.attributes, actual.attributes
   end
 
+  def test_yaml
+    expected = DateAndTimeTypes.create!(
+      my_date: Date.today,
+      my_time: Time.now.change(sec: 24, usec: 124_987)
+    )
+
+    expected.reload
+
+    yamled = YAML.dump(expected)
+    actual = YAML.load(yamled)
+
+    assert_equal expected.attributes, actual.attributes
+  end
+
   # the usec is truncated by using the precision
   def test_time_truncate_usec_on_assigment_precision_3
     time = Time.parse('2018-12-31T23:59:21.341867')

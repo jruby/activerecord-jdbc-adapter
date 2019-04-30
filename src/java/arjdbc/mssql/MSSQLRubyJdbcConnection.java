@@ -254,14 +254,30 @@ public class MSSQLRubyJdbcConnection extends RubyJdbcConnection {
         return typeStr.append(')').toString();
     }
 
+    // Overrides method in parent, for some reason the method in parent
+    // converts fractional seconds with padded zeros (e.g. 000xxxyyy)
+    // maybe a bug in Jruby strftime('%6N') ?
+    @Override
+    protected IRubyObject timestampToRuby(ThreadContext context, Ruby runtime, ResultSet resultSet, int column) throws SQLException {
 
-    // Using resultSet.getTimestamp(column) only gets .999 (3) precision with
-    // this we gain more precision.
+      final String value = resultSet.getString(column);
+
+      if (value == null) return context.nil;
+
+      return DateTimeUtils.parseDateTime(context, value, getDefaultTimeZone(context));
+    }
+
+    // For some reason DateTimeUtils.parseTime does not work, similar issue
+    // seen in timestampToRuby, fractional seconds padded with zeros.
     @Override
     protected IRubyObject timeToRuby(ThreadContext context, Ruby runtime, ResultSet resultSet, int column) throws SQLException {
-        final String value = resultSet.getString(column);
+      final String value = resultSet.getString(column);
 
-        return value == null ? context.nil : DateTimeUtils.parseTime(context, value, getDefaultTimeZone(context));
+      if ( value == null ) return context.nil;
+
+      final String datetime_value = "2000-01-01 " + value;
+
+      return DateTimeUtils.parseDateTime(context, datetime_value, getDefaultTimeZone(context));
     }
 
     // This overrides method in parent because of the issue in prepared
