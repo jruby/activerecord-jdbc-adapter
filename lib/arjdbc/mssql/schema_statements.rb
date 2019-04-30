@@ -12,13 +12,14 @@ module ActiveRecord
           float:         { name: 'float' },
           date:          { name: 'date' },
           time:          { name: 'time' },
-          datetime:      { name: 'datetime' },
+          datetime:      { name: 'datetime2' },
           string:        { name: 'nvarchar', limit: 4000 },
           text:          { name: 'nvarchar(max)' },
           binary:        { name: 'varbinary(max)' },
           # Other types or SQL Server specific
           bigint:        { name: 'bigint' },
           smalldatetime: { name: 'smalldatetime' },
+          datetime_basic: { name: 'datetime' },
           timestamp:     { name: 'datetime' },
           real:          { name: 'real' },
           money:         { name: 'money' },
@@ -177,7 +178,7 @@ module ActiveRecord
         end
 
         # @private these cannot specify a limit
-        NO_LIMIT_TYPES = %w( text binary boolean date datetime )
+        NO_LIMIT_TYPES = %w(text binary boolean date)
 
         def type_to_sql(type, limit = nil, precision = nil, scale = nil)
           type_s = type.to_s

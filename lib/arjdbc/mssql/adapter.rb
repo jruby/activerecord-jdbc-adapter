@@ -103,7 +103,7 @@ module ActiveRecord
 
       # The MSSQL datetime type doe have precision.
       def supports_datetime_with_precision?
-        false
+        true
       end
 
       # Overrides abstract method which always returns false
@@ -335,6 +335,8 @@ module ActiveRecord
         map.register_type 'smalldatetime', MSSQL::Type::SmallDateTime.new
         register_class_with_precision map, %r{\Atime\(\d+\)}i, MSSQL::Type::Time
         map.register_type 'time(7)',       MSSQL::Type::Time.new
+        register_class_with_precision map, %r{\Adatetime2\(\d+\)}i, MSSQL::Type::DateTime2
+        map.register_type 'datetime2(7)',  MSSQL::Type::DateTime2.new
 
         # aliases
         map.alias_type 'int identity',    'int'
@@ -356,6 +358,7 @@ module ActiveRecord
         map.alias_type %r{\Atime\z}i,     'time(7)'
         map.alias_type %r{\Abinary\z}i,   'varbinary(max)'
         map.alias_type %r{\Ablob\z}i,     'varbinary(max)'
+        map.alias_type %r{\Adatetime2\z}i, 'datetime2(7)'
 
         # Deprecated SQL Server types.
         map.register_type 'text',  MSSQL::Type::Text.new

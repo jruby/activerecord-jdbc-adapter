@@ -133,6 +133,7 @@ public class MSSQLRubyJdbcConnection extends RubyJdbcConnection {
       final String uuid = "uniqueidentifier";
       final String money = "money";
       final String smallmoney = "smallmoney";
+      final String datetime2 = "datetime2";
 
       switch (dataType) {
         // For integers the Rails limit option is the JDBC BUFFER_LENGTH.
@@ -155,6 +156,11 @@ public class MSSQLRubyJdbcConnection extends RubyJdbcConnection {
             return typeName;
         case Types.DATE:
         case Types.TIMESTAMP:
+            // For datetime2 sql type, Rails precision comes in the scale
+            if (typeName.equals(datetime2)) {
+              return formatTypeWithPrecision(typeName, scale);
+            }
+
             return typeName;
         case Types.TIME:
             // For time the Rails precision comes in the scale
