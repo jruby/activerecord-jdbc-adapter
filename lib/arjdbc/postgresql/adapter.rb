@@ -522,61 +522,6 @@ module ArJdbc
       execute "TRUNCATE TABLE #{quote_table_name(table_name)}", name
     end
 
-    # Returns an array of indexes for the given table.
-    def indexes(table_name, name = nil)
-      # FIXME: AR version => table = Utils.extract_schema_qualified_name(table_name.to_s)
-      schema, table = extract_schema_and_table(table_name.to_s)
-
-      result = query(<<-SQL, 'SCHEMA')
-            SELECT distinct i.relname, d.indisunique, d.indkey, pg_get_indexdef(d.indexrelid), t.oid,
-                            pg_catalog.obj_description(i.oid, 'pg_class') AS comment,
-            (SELECT COUNT(*) FROM pg_opclass o
-               JOIN (SELECT unnest(string_to_array(d.indclass::text, ' '))::int oid) c
-                 ON o.oid = c.oid WHERE o.opcdefault = 'f')
-            FROM pg_class t
-            INNER JOIN pg_index d ON t.oid = d.indrelid
-            INNER JOIN pg_class i ON d.indexrelid = i.oid
-            LEFT JOIN pg_namespace n ON n.oid = i.relnamespace
-            WHERE i.relkind = 'i'
-              AND d.indisprimary = 'f'
-              AND t.relname = '#{table}'
-              AND n.nspname = #{schema ? "'#{schema}'" : 'ANY (current_schemas(false))'}
-            ORDER BY i.relname
-      SQL
-
-      result.map do |row|
-        index_name = row[0]
-        # FIXME: These values [1,2] are returned in a different format than AR expects, maybe we could update it on the Java side to be more accurate
-        unique = row[1].is_a?(String) ? row[1] == 't' : row[1] # JDBC gets us a boolean
-        indkey = row[2].is_a?(Java::OrgPostgresqlUtil::PGobject) ? row[2].value : row[2]
-        indkey = indkey.split(" ").map(&:to_i)
-        inddef = row[3]
-        oid = row[4]
-        comment = row[5]
-        opclass = row[6]
-
-        using, expressions, where = inddef.scan(/ USING (\w+?) \((.+?)\)(?: WHERE (.+))?\z/).flatten
-
-        if indkey.include?(0) || opclass > 0
-          columns = expressions
-        else
-          columns = Hash[query(<<-SQL.strip_heredoc, "SCHEMA")].values_at(*indkey).compact
-                SELECT a.attnum, a.attname
-                FROM pg_attribute a
-                WHERE a.attrelid = #{oid}
-                AND a.attnum IN (#{indkey.join(",")})
-          SQL
-
-          # add info on sort order for columns (only desc order is explicitly specified, asc is the default)
-          orders = Hash[
-              expressions.scan(/(\w+) DESC/).flatten.map { |order_column| [order_column, :desc] }
-          ]
-        end
-
-        IndexDefinition.new(table_name, index_name, unique, columns, [], orders, where, nil, using.to_sym, comment.presence)
-      end.compact
-    end
-
     # @private
     def column_name_for_operation(operation, node)
       case operation
@@ -682,8 +627,6 @@ module ActiveRecord::ConnectionAdapters
     require 'arjdbc/postgresql/oid_types'
     include ::ArJdbc::PostgreSQL::OIDTypes
 
-    load 'arjdbc/postgresql/_bc_time_cast_patch.rb'
-
     include ::ArJdbc::PostgreSQL::ColumnHelpers
 
     include ::ArJdbc::Util::QuotedCache
@@ -736,7 +679,7 @@ module ActiveRecord::ConnectionAdapters
 
     # Prepared statements aren't schema aware so we need to make sure we
     # store different PreparedStatement objects for different schemas
-    def cached_statement_key(sql)
+    def sql_key(sql)
       "#{schema_search_path}-#{sql}"
     end
 

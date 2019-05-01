@@ -68,7 +68,6 @@ final class DataSourceConnectionFactory implements ConnectionFactory {
 
     @Override
     public Connection newConnection() throws SQLException {
-        DataSource dataSource = this.dataSource;
         // in case DS failed previously look it up again from JNDI :
         if (dataSource == null) {
             lookupDataSource();
