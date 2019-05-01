@@ -6,6 +6,12 @@ module ActiveRecord
         def smalldatetime(*args, **options)
           args.each { |name| column(name, :smalldatetime, options) }
         end
+
+        # this is the old sql server datetime type, the precision is as follow
+        # xx1, xx3, and xx7
+        def datetime_basic(*args, **options)
+          args.each { |name| column(name, :datetime_basic, options) }
+        end
       end
 
       class TableDefinition < ActiveRecord::ConnectionAdapters::TableDefinition
