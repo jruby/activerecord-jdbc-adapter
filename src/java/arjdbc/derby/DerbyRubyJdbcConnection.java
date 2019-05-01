@@ -83,8 +83,8 @@ public class DerbyRubyJdbcConnection extends RubyJdbcConnection {
             final int minor = jdbcDriver.getMinorVersion();
             if ( major < 10 || ( major == 10 && minor < 5 ) ) {
                 final RubyClass errorClass = getConnectionNotEstablished(context.runtime);
-                throw new RaiseException(context.runtime, errorClass,
-                    "adapter requires Derby >= 10.5 got: " + major + "." + minor + "", false);
+                throw context.runtime.newRaiseException(errorClass,
+                    "adapter requires Derby >= 10.5 got: " + major + "." + minor + "");
             }
             if ( major == 10 && minor < 8 ) { // 10.8 ~ supports JDBC 4.1
                 // config[:connection_alive_sql] ||= 'SELECT 1 FROM SYS.SYSSCHEMAS FETCH FIRST 1 ROWS ONLY'
