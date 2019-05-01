@@ -98,9 +98,9 @@ module ActiveRecord
             return "'#{value}'" if value.acts_like?(:string)
 
             if value.usec > 0
-              "'#{value.strftime('%H:%M:%S')}.#{value.usec.to_s.remove(/0+$/)}'"
+              "'#{value.to_s(:db)}.#{value.usec.to_s.remove(/0+$/)}'"
             else
-              "'#{value.strftime('%H:%M:%S')}'"
+              "'#{value.to_s(:db)}'"
             end
           end
 

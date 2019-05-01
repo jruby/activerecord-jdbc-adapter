@@ -188,9 +188,9 @@ class MSSQLColumnDateAndTimeTypesTest < Test::Unit::TestCase
     assert_match %r{t\.date\s+"my_date"$}, output
     assert_match %r{t\.date\s+"my_date_one",\s+default: '1912-06-23',\s+null: false$}, output
     assert_match %r{t\.time\s+"my_time"$}, output
-    assert_match %r{t\.time\s+"my_time_one",\s+precision: 3,\s+default: '15:59:06.456',\s+null: false$}, output
-    assert_match %r{t\.time\s+"my_time_two",\s+precision: 6,\s+default: '15:59:11.456789',\s+null: false$}, output
-    assert_match %r{t\.time\s+"my_time_three",\s+precision: 0,\s+default: '09:39:07'$}, output
+    assert_match %r{t\.time\s+"my_time_one",\s+precision: 3,\s+default: '2000-01-01 15:59:06.456',\s+null: false$}, output
+    assert_match %r{t\.time\s+"my_time_two",\s+precision: 6,\s+default: '2000-01-01 15:59:11.456789',\s+null: false$}, output
+    assert_match %r{t\.time\s+"my_time_three",\s+precision: 0,\s+default: '2000-01-01 09:39:07'$}, output
   end
 
   private
