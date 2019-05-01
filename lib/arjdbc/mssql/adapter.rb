@@ -42,6 +42,7 @@ module ActiveRecord
         15 => '2019'
       }.freeze
 
+      include Jdbc::ConnectionPoolCallbacks
       include ArJdbc::Abstract::Core
       include ArJdbc::Abstract::ConnectionManagement
       include ArJdbc::Abstract::DatabaseStatements

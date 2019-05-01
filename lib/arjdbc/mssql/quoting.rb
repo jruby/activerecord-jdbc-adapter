@@ -11,8 +11,9 @@ module ActiveRecord
           end
 
           result = value.to_s(:db)
+
           if value.respond_to?(:usec) && value.usec > 0
-            "#{result}.#{sprintf("%03d", value.usec / 1000)}"
+            "#{result}.#{sprintf("%06d", value.usec)}"
           else
             result
           end
@@ -45,8 +46,8 @@ module ActiveRecord
         def quoted_time(value)
           if value.acts_like?(:time)
             tz_value = time_with_db_timezone(value)
-            usec = value.respond_to?(:usec) ? (value.usec / 1000) : 0
-            sprintf('%02d:%02d:%02d.%03d', tz_value.hour, tz_value.min, tz_value.sec, usec)
+            usec = value.respond_to?(:usec) ? value.usec : 0
+            sprintf('%02d:%02d:%02d.%06d', tz_value.hour, tz_value.min, tz_value.sec, usec)
           else
             quoted_date(value)
           end

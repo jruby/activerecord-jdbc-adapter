@@ -1,5 +1,6 @@
 require 'test_helper'
 require 'db/mssql'
+require 'active_record/fixtures'
 
 class MSSQLInsertFixturesTest < Test::Unit::TestCase
   class CreateFixtureEntries < ActiveRecord::Migration
@@ -23,10 +24,24 @@ class MSSQLInsertFixturesTest < Test::Unit::TestCase
         t.column :created_on, :datetime
         t.column :updated_on, :datetime
       end
+
+      create_table :modern_timestamps do |t|
+        t.column :name, :string
+        t.column :created_on, :datetime, null: false
+        t.column :updated_on, :datetime, null: false
+      end
+
+      create_table :legacy_timestamps do |t|
+        t.column :name, :string
+        t.column :created_on, :datetime_basic, null: false
+        t.column :updated_on, :datetime_basic, null: false
+      end
     end
 
     def self.down
       drop_table :fixture_entries
+      drop_table :modern_timestamps
+      drop_table :legacy_timestamps
     end
   end
 
@@ -75,12 +90,23 @@ class MSSQLInsertFixturesTest < Test::Unit::TestCase
     end
   end
 
-
   def test_insert_time
     fixture_one = { start_at: '11:00' }
     fixture_two = { start_at: Time.current }
 
     FixtureEntry.connection.insert_fixture(fixture_one, :fixture_entries)
     FixtureEntry.connection.insert_fixture(fixture_two, :fixture_entries)
+  end
+
+  def test_fixture_modern_timestamps
+    fixtures_path = File.expand_path('fixtures', File.dirname(__FILE__))
+
+    ActiveRecord::FixtureSet.create_fixtures(fixtures_path, 'modern_timestamps')
+  end
+
+  def test_fixture_legacy_timestamps
+    fixtures_path = File.expand_path('fixtures', File.dirname(__FILE__))
+
+    ActiveRecord::FixtureSet.create_fixtures(fixtures_path, 'legacy_timestamps')
   end
 end
