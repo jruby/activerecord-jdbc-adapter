@@ -31,3 +31,5 @@ Gemfile.lock
 .settings
 activerecord-jdbc.iml
 lib/arjdbc/jdbc/adapter_java.jar
+.jrubyrc
+tags
