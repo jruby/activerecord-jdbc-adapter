@@ -43,7 +43,7 @@ module MSSQLMigration
 
     def test_schema_dump_includes_datetime2_types
       output = dump_table_schema('mssql_specific_columms')
-      binding.pry
+
       assert_match %r{t\.smalldatetime\s+"my_smalldatetime"$}, output
       assert_match %r{t\.datetime_basic\s+"my_datetime_basic"$}, output
       assert_match %r{t\.real\s+"my_real"$}, output
