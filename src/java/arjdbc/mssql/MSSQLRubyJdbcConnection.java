@@ -424,6 +424,8 @@ public class MSSQLRubyJdbcConnection extends RubyJdbcConnection {
     protected String mapTypeToString(final IRubyObject type) {
       final String typeStr = type.asJavaString();
 
+      if (typeStr == "datetime_basic") return "datetime";
+
       if (typeStr == "smalldatetime") return "datetime";
 
       return typeStr;
