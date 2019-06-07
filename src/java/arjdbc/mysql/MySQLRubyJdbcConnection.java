@@ -337,9 +337,13 @@ public class MySQLRubyJdbcConnection extends RubyJdbcConnection {
                     if ( match.find() ) {
                         final int major = Integer.parseInt( match.group(1) );
                         final int minor = Integer.parseInt( match.group(2) );
-                        if ( major < 5 || ( major == 5 && minor <= 1 ) ) {
+                        if ( major < 5 || ( major == 5 && minor < 1) ) {
+                            killCancelTimer = Boolean.TRUE;
+                        } else if ( major == 5 && minor == 1 ) {
                             final int patch = Integer.parseInt( match.group(3) );
                             killCancelTimer = patch < 11;
+                        } else {
+                            killCancelTimer = Boolean.FALSE;
                         }
                     }
                     else {
