@@ -47,21 +47,6 @@ module ArJdbc
         limit
       end
 
-      def simplified_type(field_type)
-        case field_type
-        when /^bit|bool/i         then :boolean
-        when /^signed|year/i      then :integer
-        when /^real|double/i      then :float
-        when /^varchar/i          then :string
-        when /^longvarchar/i      then :text
-        when /^binary|raw|bytea/i then :binary
-        when /varbinary/i         then :binary # longvarbinary, varbinary
-        when /^blob|image|oid/i   then :binary
-        else
-          super
-        end
-      end
-
       # Post process default value from JDBC into a Rails-friendly format (columns{-internal})
       def default_value(value)
         # H2 auto-generated key default value

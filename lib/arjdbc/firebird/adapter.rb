@@ -38,27 +38,6 @@ module ArJdbc
           return $1 unless $1.upcase == 'NULL'
         end
       end
-
-      private
-
-      def simplified_type(field_type)
-        case field_type
-        when /timestamp/i    then :datetime
-        when /^smallint/i    then :integer
-        when /^bigint|int/i  then :integer
-        when /^double/i      then :float # double precision
-        when /^decimal/i     then
-          extract_scale(field_type) == 0 ? :integer : :decimal
-        when /^char\(1\)$/i  then Firebird.emulate_booleans? ? :boolean : :string
-        when /^char/i        then :string
-        when /^blob\ssub_type\s(\d)/i
-          return :binary if $1 == '0'
-          return :text   if $1 == '1'
-        else
-          super
-        end
-      end
-
     end
 
     # @see ActiveRecord::ConnectionAdapters::JdbcAdapter#jdbc_column_class

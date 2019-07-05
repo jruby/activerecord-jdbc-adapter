@@ -596,24 +596,6 @@ module ActiveRecord::ConnectionAdapters
 
     private
 
-    # @override {ActiveRecord::ConnectionAdapters::Column#simplified_type}
-    def simplified_type(field_type)
-      case field_type
-        when /boolean/i       then :boolean
-        when /text/i          then :text
-        when /varchar/i       then :string
-        when /int/i           then :integer
-        when /float/i         then :float
-        when /real|decimal/i  then
-          extract_scale(field_type) == 0 ? :integer : :decimal
-        when /datetime/i      then :datetime
-        when /date/i          then :date
-        when /time/i          then :time
-        when /blob/i          then :binary
-        else super
-      end
-    end
-
     # @override {ActiveRecord::ConnectionAdapters::Column#extract_limit}
     def extract_limit(sql_type)
       return nil if sql_type =~ /^(real)\(\d+/i
@@ -667,7 +649,7 @@ module ActiveRecord::ConnectionAdapters
     def begin_isolated_db_transaction(isolation)
       raise ActiveRecord::TransactionIsolationError, 'adapter does not support setting transaction isolation'
     end
-    
+
     # SQLite driver doesn't support all types of insert statements with executeUpdate so
     # make it act like a regular query and the ids will be returned from #last_inserted_id
     # example: INSERT INTO "aircraft" DEFAULT VALUES
