@@ -42,20 +42,6 @@ module ArJdbc
         limit
       end
 
-      def simplified_type(field_type)
-        case field_type
-        when /^nvarchar/i    then :string
-        when /^character/i   then :string
-        when /^longvarchar/i then :text
-        when /int/i          then :integer # TINYINT, SMALLINT, BIGINT, INT
-        when /real|double/i  then :float
-        when /^bit/i         then :boolean
-        when /binary/i       then :binary # VARBINARY, LONGVARBINARY
-        else
-          super
-        end
-      end
-
       # Post process default value from JDBC into a Rails-friendly format (columns{-internal})
       def default_value(value)
         # JDBC returns column default strings with actual single quotes around the value.

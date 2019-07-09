@@ -45,20 +45,6 @@ module ArJdbc
       ::ActiveRecord::ConnectionAdapters::InformixColumn
     end
 
-    module ColumnMethods
-
-      private
-      # TODO: Test all Informix column types.
-      def simplified_type(field_type)
-        if field_type =~ /serial/i
-          :primary_key
-        else
-          super
-        end
-      end
-
-    end
-
     def modify_types(types)
       super(types)
       types[:primary_key] = "SERIAL PRIMARY KEY"

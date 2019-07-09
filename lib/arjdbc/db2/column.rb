@@ -77,45 +77,6 @@ module ArJdbc
 
       private
 
-      def simplified_type(field_type)
-        case field_type
-        when /^decimal\(1\)$/i   then DB2.emulate_booleans? ? :boolean : :integer
-        when /smallint/i         then DB2.emulate_booleans? ? :boolean : :integer
-        when /boolean/i          then :boolean
-        when /^real|double/i     then :float
-        when /int|serial/i       then :integer
-        # if a numeric column has no scale, lets treat it as an integer.
-        # The AS400 rpg guys do this ALOT since they have no integer datatype ...
-        when /decimal|numeric|decfloat/i
-          extract_scale(field_type) == 0 ? :integer : :decimal
-        when /timestamp/i        then :timestamp
-        when /datetime/i         then :datetime
-        when /time/i             then :time
-        when /date/i             then :date
-        # DB2 provides three data types to store these data objects as strings of up to 2 GB in size:
-        #  Character large objects (CLOBs)
-        #    Use the CLOB data type to store SBCS or mixed data, such as documents that contain
-        #    single character set. Use this data type if your data is larger (or might grow larger)
-        #    than the VARCHAR data type permits.
-        #  Double-byte character large objects (DBCLOBs)
-        #    Use the DBCLOB data type to store large amounts of DBCS data, such as documents that
-        #    use a DBCS character set.
-        #  Binary large objects (BLOBs)
-        #    Use the BLOB data type to store large amounts of noncharacter data, such as pictures,
-        #    voice, and mixed media.
-        when /clob|text/i        then :text # handles DBCLOB
-        when /^long varchar/i    then :text # :limit => 32700
-        when /blob|binary/i      then :binary
-        # varchar () for bit data, char () for bit data, long varchar for bit data
-        when /for bit data/i     then :binary
-        when /xml/i              then :xml
-        when /graphic/i          then :graphic # vargraphic, long vargraphic
-        when /rowid/i            then :rowid # rowid is a supported datatype on z/OS and i/5
-        else
-          super
-        end
-      end
-
       # Post process default value from JDBC into a Rails-friendly format (columns{-internal})
       def default_value(value)
         # IBM i (AS400) will return an empty string instead of null for no default
