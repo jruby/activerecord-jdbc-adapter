@@ -13,7 +13,6 @@ Gem::Specification.new do |gem|
   gem.homepage = 'https://github.com/jruby/activerecord-jdbc-adapter'
   gem.license = "BSD"
 
-  gem.rubyforge_project = %q{jruby-extras}
   gem.summary = %q{Postgres JDBC adapter for JRuby on Rails.}
 
   gem.require_paths = ["lib"]
