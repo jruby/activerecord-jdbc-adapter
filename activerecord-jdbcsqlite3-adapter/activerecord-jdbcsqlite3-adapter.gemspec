@@ -14,7 +14,6 @@ Gem::Specification.new do |gem|
   gem.license = "BSD"
 
   gem.homepage = %q{https://github.com/jruby/activerecord-jdbc-adapter}
-  gem.rubyforge_project = %q{jruby-extras}
   gem.summary = %q{Sqlite3 JDBC adapter for JRuby on Rails.}
 
   gem.require_paths = ["lib"]
