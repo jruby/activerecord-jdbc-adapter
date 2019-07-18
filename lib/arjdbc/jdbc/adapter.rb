@@ -360,6 +360,10 @@ module ActiveRecord
       # @return [Integer, NilClass]
       def last_inserted_id(result)
         if result.is_a?(Hash) || result.is_a?(ActiveRecord::Result)
+          # If table does not have primary key defined
+          return nil if result.first.blank?
+
+
           result.first.first[1] # .first = { "id"=>1 } .first = [ "id", 1 ]
         else
           result
