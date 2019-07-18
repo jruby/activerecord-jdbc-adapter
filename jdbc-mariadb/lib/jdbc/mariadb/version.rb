@@ -1,6 +1,6 @@
 module Jdbc
   module MariaDB
-    DRIVER_VERSION = '2.2.0'
+    DRIVER_VERSION = '2.2.6'
     VERSION = DRIVER_VERSION
   end
 end
