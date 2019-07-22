@@ -40,6 +40,15 @@ module ActiveRecord
         # configure_connection taken care of at ArJdbc::Abstract::Core
       end
 
+      def self.database_exists?(config)
+        conn = ActiveRecord::Base.mysql2_connection(config)
+        conn && conn.really_valid?
+      rescue ActiveRecord::NoDatabaseError
+        false
+      ensure
+        conn.disconnect! if conn
+      end
+
       def check_version
         # for JNDI, don't check version as the whole connection should be lazy
         return if ::ActiveRecord::ConnectionAdapters::JdbcConnection.jndi_config?(config)

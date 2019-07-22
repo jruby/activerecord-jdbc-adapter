@@ -494,9 +494,9 @@ module ArJdbc
       result = exec_query(sql, "SCHEMA").first
 
       if result
-        # Splitting with left parentheses and picking up last will return all
+        # Splitting with left parentheses and discarding the first part will return all
         # columns separated with comma(,).
-        columns_string = result["sql"].split("(").last
+        columns_string = result["sql"].split("(", 2).last
 
         columns_string.split(",").each do |column_string|
           # This regex will match the column name and collation type and will save
@@ -659,6 +659,17 @@ module ActiveRecord::ConnectionAdapters
         "`.represent_boolean_as_integer=` is now always true, so setting this is deprecated and will be removed in Rails 6.1."
       )
     end
+
+    def self.database_exists?(config)
+      config = config.symbolize_keys
+      if config[:database] == ":memory:"
+        return true
+      else
+        database_file = defined?(Rails.root) ? File.expand_path(config[:database], Rails.root) : config[:database]
+        File.exist?(database_file)
+      end
+    end
+
 
     def supports_transaction_isolation?
       false

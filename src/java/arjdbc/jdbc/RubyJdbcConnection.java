@@ -643,6 +643,13 @@ public class RubyJdbcConnection extends RubyObject {
         return context.runtime.newBoolean( isConnectionValid(context, connection) );
     }
 
+    @JRubyMethod(name = "really_valid?")
+    public RubyBoolean really_valid_p(final ThreadContext context) {
+        final Connection connection = getConnection(true);
+        if (connection == null) return context.fals;
+        return context.runtime.newBoolean(isConnectionValid(context, connection));
+    }
+
     @JRubyMethod(name = "disconnect!")
     public synchronized IRubyObject disconnect(final ThreadContext context) {
         setConnection(null); connected = false;

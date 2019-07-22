@@ -10,6 +10,11 @@ module ArJdbc
         @connection.active?
       end
 
+      def really_valid?
+        return unless @connection
+        @connection.really_valid?
+      end
+
       # @override
       def reconnect!
         super # clear_cache! && reset_transaction
