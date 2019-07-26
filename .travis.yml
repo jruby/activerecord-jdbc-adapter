@@ -90,7 +90,7 @@ matrix:
       env: DB=sqlite3
     # testing against MariaDB
     - addons:
-        mariadb: 10.1
+        mariadb: 10.2
       env: DB=mariadb PREPARED_STATEMENTS=false
     - addons:
         mariadb: 10.3
