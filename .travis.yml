@@ -1,16 +1,11 @@
 language: ruby
 sudo: false
+
 services:
   - mysql
 addons:
-  postgresql: 9.6
-branches:
-  only:
-  - master
-  - /.*-stable$/
-  - /^test-.*/
-  - /maintenance|support/
-  - /.*dev$/
+  postgresql: 9.4
+
 bundler_args: --without development
 script: bundle exec rake ${TEST_PREFIX}test_$DB
 before_install:
@@ -46,8 +41,6 @@ rvm:
   - jruby-9.1.16.0
 jdk:
   - openjdk8
-addons:
-  postgresql: "9.4"
 env:
   - DB=mysql2 PREPARED_STATEMENTS=false
   - DB=mysql2 PREPARED_STATEMENTS=true
