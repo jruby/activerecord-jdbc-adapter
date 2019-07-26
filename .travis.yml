@@ -1,10 +1,14 @@
+language: ruby
+sudo: false
+
+services:
+  - mysql
 addons:
+  postgresql: 9.6
   apt:
     packages:
       - openjdk-6-jdk
 
-language: ruby
-sudo: false
 bundler_args: --without development
 script: bundle exec rake test_$DB
 before_script:
