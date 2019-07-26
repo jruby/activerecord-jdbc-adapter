@@ -1,5 +1,6 @@
 language: ruby
 sudo: false
+dist: bionic
 
 services:
   - mysql
