@@ -62,13 +62,13 @@ matrix:
   include:
     # testing against MariaDB
     - addons:
-        mariadb: '10.0'
+        mariadb: '10.2'
       rvm: jruby-1.7.24
       gemfile: gemfiles/rails32.gemfile
       env: JRUBY_OPTS="$JRUBY_OPTS" DB=mysql
       jdk: openjdk8 # MariaDB 2.x assumes JDK 8
     - addons:
-        mariadb: '10.1'
+        mariadb: '10.3'
       rvm: jruby-1.7.24
       gemfile: gemfiles/rails42.gemfile
       env: DB=mariadb
