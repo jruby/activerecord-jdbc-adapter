@@ -6,9 +6,14 @@ services:
 addons:
   postgresql: 9.4
 
+before_install:
+  - unset _JAVA_OPTIONS
+  - rvm @default,@global do gem uninstall bundler -a -x -I || true
+  - gem install bundler -v "~>1.17.3"
 install:
+- bundle install --retry 3 --without development
 # to fix this issue: https://travis-ci.community/t/mariadb-10-1-fails-to-install-on-xenial/3151/3
-- mysql -u root -e 'CREATE USER IF NOT EXISTS travis@localhost; GRANT ALL ON *.* TO travis@localhost;'
+- mysql -u root -e 'CREATE USER IF NOT EXISTS travis@localhost; GRANT ALL ON *.* TO travis@localhost;' || true
 
 language: ruby
 rvm:
@@ -16,12 +21,7 @@ rvm:
 jdk:
   - openjdk8
 
-bundler_args: --without development
 script: bundle exec rake ${TEST_PREFIX}test_$DB
-before_install:
-  - unset _JAVA_OPTIONS
-  - rvm @default,@global do gem uninstall bundler -a -x -I || true
-  - gem install bundler -v "~>1.17.3"
 before_script:
   - echo "JAVA_OPTS=$JAVA_OPTS"
   - export JRUBY_OPTS="-J-Xms64M -J-Xmx1024M"
