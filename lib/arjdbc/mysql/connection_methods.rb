@@ -5,14 +5,20 @@ ArJdbc::ConnectionMethods.module_eval do
 
     return jndi_connection(config) if jndi_config?(config)
 
-    driver = config[:driver] ||=
-      defined?(::Jdbc::MySQL.driver_name) ? ::Jdbc::MySQL.driver_name : 'com.mysql.jdbc.Driver'
+    driver = config[:driver]
+    mysql_driver = driver.nil? || driver.to_s[0, 10] == 'com.mysql.'
+    mariadb_driver = ! mysql_driver && driver.to_s[0, 12] == 'org.mariadb.' # org.mariadb.jdbc.Driver
 
     begin
       require 'jdbc/mysql'
       ::Jdbc::MySQL.load_driver(:require) if defined?(::Jdbc::MySQL.load_driver)
     rescue LoadError # assuming driver.jar is on the class-path
-    end if mysql_driver = driver[0, 10] == 'com.mysql.'
+    end if mysql_driver
+
+    if driver.nil?
+      config[:driver] ||=
+        defined?(::Jdbc::MySQL.driver_name) ? ::Jdbc::MySQL.driver_name : 'com.mysql.jdbc.Driver'
+    end
 
     config[:username] = 'root' unless config.key?(:username)
     # jdbc:mysql://[host][,failoverhost...][:port]/[database]
@@ -26,8 +32,6 @@ ArJdbc::ConnectionMethods.module_eval do
       url << "/#{config[:database]}"
       config[:url] = url
     end
-
-    mariadb_driver = ! mysql_driver && driver[0, 12] == 'org.mariadb.' # org.mariadb.jdbc.Driver
 
     properties = ( config[:properties] ||= {} )
     if mysql_driver
@@ -90,7 +94,8 @@ ArJdbc::ConnectionMethods.module_eval do
     rescue LoadError # assuming driver.jar is on the class-path
     end
 
-    config[:driver] ||= 'org.mariadb.jdbc.Driver'
+    config[:driver] ||=
+      defined?(::Jdbc::MariaDB.driver_name) ? ::Jdbc::MariaDB.driver_name : 'org.mariadb.jdbc.Driver'
 
     mysql_connection(config)
   end
