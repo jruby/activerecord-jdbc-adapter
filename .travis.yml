@@ -1,5 +1,9 @@
 language: ruby
 sudo: false
+services:
+  - mysql
+addons:
+  postgresql: 9.6
 branches:
   only:
   - master
