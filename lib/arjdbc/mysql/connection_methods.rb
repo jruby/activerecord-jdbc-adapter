@@ -35,7 +35,8 @@ ArJdbc::ConnectionMethods.module_eval do
 
     properties = ( config[:properties] ||= {} )
     if mysql_driver
-      properties['zeroDateTimeBehavior'] ||= 'convertToNull'
+      properties['zeroDateTimeBehavior'] ||=
+        config[:driver].to_s.start_with?('com.mysql.cj.') ? 'CONVERT_TO_NULL' : 'convertToNull'
       properties['jdbcCompliantTruncation'] ||= 'false'
       properties['useUnicode'] = 'true' unless properties.key?('useUnicode') # otherwise platform default
       # NOTE: this is "better" than passing what users are used to set on MRI
