@@ -39,7 +39,8 @@ ArJdbc::ConnectionMethods.module_eval do
 
     properties = ( config[:properties] ||= {} )
     if mysql_driver
-      properties['zeroDateTimeBehavior'] ||= 'convertToNull'
+      properties['zeroDateTimeBehavior'] ||=
+        config[:driver].to_s.start_with?('com.mysql.cj.') ? 'CONVERT_TO_NULL' : 'convertToNull'
       properties['jdbcCompliantTruncation'] ||= false
       # NOTE: this is "better" than passing what users are used to set on MRI
       # e.g. 'utf8mb4' will fail cause the driver will check for a Java charset
