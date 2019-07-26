@@ -1,12 +1,6 @@
 language: ruby
 sudo: false
-branches:
-  only:
-  - master
-  - /.*-stable$/
-  - /^test-.*/
-  - /maintenance|support/
-  - /.*dev$/
+
 bundler_args: --without development
 script: bundle exec rake ${TEST_PREFIX}test_$DB
 before_install:
