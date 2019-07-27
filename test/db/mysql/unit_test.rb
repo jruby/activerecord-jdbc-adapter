@@ -110,7 +110,7 @@ class MySQLUnitTest < Test::Unit::TestCase
     end
 
     test 'configuration attempts to load MySQL driver by default' do
-      load_jdbc_mysql
+      skip 'jdbc/mysql not available' if load_jdbc_mysql.nil?
 
       connection_handler = connection_handler_stub
 
@@ -121,7 +121,7 @@ class MySQLUnitTest < Test::Unit::TestCase
     end
 
     test 'configuration uses driver_name from Jdbc::MySQL' do
-      load_jdbc_mysql
+      skip 'jdbc/mysql not available' if load_jdbc_mysql.nil?
 
       connection_handler = connection_handler_stub
 
@@ -133,7 +133,7 @@ class MySQLUnitTest < Test::Unit::TestCase
     end
 
     test 'configuration sets up properties according to connector/j driver (>= 8.0)' do
-      load_jdbc_mysql
+      skip 'jdbc/mysql not available' if load_jdbc_mysql.nil?
 
       connection_handler = connection_handler_stub
 
@@ -150,6 +150,8 @@ class MySQLUnitTest < Test::Unit::TestCase
 
     def load_jdbc_mysql
       require 'jdbc/mysql'
+    rescue LoadError
+      return nil
     end
 
   end
