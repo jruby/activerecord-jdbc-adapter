@@ -60,9 +60,11 @@ matrix:
     - env: DB=mysql2 DRIVER=MariaDB
 
     - env: DB=postgresql PREPARED_STATEMENTS=false INSERT_RETURNING=false
+    - env: DB=postgresql PREPARED_STATEMENTS=false INSERT_RETURNING=true
     - addons:
         postgresql: "9.4"
       env: DB=postgresql PREPARED_STATEMENTS=false INSERT_RETURNING=true
+    - env: DB=postgresql PREPARED_STATEMENTS=true
     - addons:
         postgresql: "9.6"
       env: DB=postgresql PREPARED_STATEMENTS=true
