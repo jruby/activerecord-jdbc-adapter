@@ -52,10 +52,6 @@ class MySQLSimpleTest < Test::Unit::TestCase
     time = ::Time.utc(2007, 1, 1, 12, 30, 0, 999999)
     foo_class.create!(start: time, finish: time, a_date: time.to_date)
 
-    if mariadb_driver?
-      pend 'TODO: MariaDB driver failing HERE, revisit when updated!'
-    end
-
     assert foo = foo_class.find_by(start: time)
     assert_equal 1, foo_class.where(finish: time).count
 
@@ -63,11 +59,7 @@ class MySQLSimpleTest < Test::Unit::TestCase
     assert_equal time.to_s.sub('2007', '2000'), foo.finish.to_s
     assert_equal time.to_date.to_s, foo.a_date.to_s
     assert_equal 000000, foo.start.usec
-    if mariadb_driver? # NOTE: this is a mariadb driver bug, works in latest 2.2
-      warn "#{__method__} assert skipped on MariaDB driver, remove when driver upgraded to 2.x"
-    else
-      assert_equal 999900, foo.finish.usec
-    end
+    assert_equal 999900, foo.finish.usec
 
     # more asserts :
 
