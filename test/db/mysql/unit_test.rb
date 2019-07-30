@@ -114,7 +114,7 @@ class MySQLUnitTest < Test::Unit::TestCase
 
       connection_handler = connection_handler_stub
 
-      config = { database: 'MyDB' }
+      config = { :database => 'MyDB' }
       connection_handler.expects(:jdbc_connection)
       ::Jdbc::MySQL.expects(:load_driver).with(:require)
       connection_handler.mysql_connection config
@@ -125,7 +125,7 @@ class MySQLUnitTest < Test::Unit::TestCase
 
       connection_handler = connection_handler_stub
 
-      config = { database: 'MyDB' }
+      config = { :database => 'MyDB' }
       connection_handler.expects(:jdbc_connection)
       ::Jdbc::MySQL.expects(:driver_name).returns('com.mysql.CustomDriver')
       connection_handler.mysql_connection config
@@ -137,7 +137,7 @@ class MySQLUnitTest < Test::Unit::TestCase
 
       connection_handler = connection_handler_stub
 
-      config = { database: 'MyDB' }
+      config = { :database => 'MyDB' }
       connection_handler.expects(:jdbc_connection)
       ::Jdbc::MySQL.expects(:driver_name).returns('com.mysql.cj.jdbc.Driver')
       connection_handler.mysql_connection config
@@ -173,7 +173,7 @@ class MySQLUnitTest < Test::Unit::TestCase
     test 'configuration sets url and properties assuming mysql driver (<= 5.1)' do
       connection_handler = connection_handler_stub
 
-      config = { host: '127.0.0.1', database: 'MyDB' }
+      config = { :host => '127.0.0.1', :database => 'MyDB' }
       connection_handler.expects(:jdbc_connection)
       connection_handler.mysql_connection config
 
@@ -191,7 +191,7 @@ class MySQLUnitTest < Test::Unit::TestCase
     test 'configuration attempts to load MySQL driver by default' do
       connection_handler = connection_handler_stub
 
-      config = { database: 'MyDB' }
+      config = { :database => 'MyDB' }
       connection_handler.expects(:jdbc_connection)
       connection_handler.expects(:require).with('jdbc/mysql')
       connection_handler.mysql_connection config
@@ -200,7 +200,7 @@ class MySQLUnitTest < Test::Unit::TestCase
     test 'configuration allows to skip driver loading' do
       connection_handler = connection_handler_stub
 
-      config = { database: 'MyDB', driver: false }
+      config = { :database => 'MyDB', :driver => false }
       connection_handler.expects(:jdbc_connection)
       connection_handler.expects(:require).never
       connection_handler.mysql_connection config
@@ -210,7 +210,7 @@ class MySQLUnitTest < Test::Unit::TestCase
     test 'configuration works with MariaDB driver specified' do
       connection_handler = connection_handler_stub
 
-      config = { database: 'MyDB', driver: 'org.mariadb.jdbc.Driver' }
+      config = { :database => 'MyDB', :driver => 'org.mariadb.jdbc.Driver' }
       connection_handler.expects(:jdbc_connection)
       connection_handler.mysql_connection config
 
