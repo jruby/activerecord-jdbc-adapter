@@ -257,7 +257,7 @@ if defined? JRUBY_VERSION
       begin
         require 'arjdbc/version'
       rescue LoadError
-        path = File.expand_path('../lib', File.dirname(__FILE__))
+        path = File.expand_path('lib', File.dirname(__FILE__))
         unless $LOAD_PATH.include?(path)
           $LOAD_PATH << path; retry
         end
