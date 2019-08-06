@@ -366,8 +366,9 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
             value = value.callMethod(context, "to_date");
         }
 
-        // NOTE: assuming Date#to_s does right ...
-        statement.setDate(index, Date.valueOf(value.toString()));
+        // NOTE: Here we rely in ActiveRecord (ActiveSupport) to get
+        // the date as a string in the database format.
+        statement.setDate(index, Date.valueOf(value.callMethod(context, "to_s", context.runtime.newSymbol("db")).toString()));
     }
 
     @Override
