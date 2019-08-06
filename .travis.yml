@@ -1,18 +1,27 @@
-language: ruby
 sudo: false
-branches:
-  only:
-  - master
-  - /.*-stable$/
-  - /^test-.*/
-  - /maintenance|support/
-  - /.*dev$/
-bundler_args: --without development
-script: bundle exec rake ${TEST_PREFIX}test_$DB
+dist: xenial
+
+services:
+  - mysql
+addons:
+  postgresql: 9.4
+
 before_install:
   - unset _JAVA_OPTIONS
   - rvm @default,@global do gem uninstall bundler -a -x -I || true
   - gem install bundler -v "~>1.17.3"
+install:
+- bundle install --retry 3 --without development
+# to fix this issue: https://travis-ci.community/t/mariadb-10-1-fails-to-install-on-xenial/3151/3
+- mysql -u root -e 'CREATE USER IF NOT EXISTS travis@localhost; GRANT ALL ON *.* TO travis@localhost;' || true
+
+language: ruby
+rvm:
+  - jruby-9.1.16.0
+jdk:
+  - openjdk8
+
+script: bundle exec rake ${TEST_PREFIX}test_$DB
 before_script:
   - echo "JAVA_OPTS=$JAVA_OPTS"
   - export JRUBY_OPTS="-J-Xms64M -J-Xmx1024M"
@@ -38,12 +47,7 @@ before_script:
     psql  -c "create database activerecord_unittest;" -U postgres && \
     psql  -c "create database activerecord_unittest2;" -U postgres \
     || true
-rvm:
-  - jruby-9.1.16.0
-jdk:
-  - openjdk8
-addons:
-  postgresql: "9.4"
+
 env:
   - DB=mysql2 PREPARED_STATEMENTS=false
   - DB=mysql2 PREPARED_STATEMENTS=true
@@ -86,10 +90,10 @@ matrix:
       env: DB=sqlite3
     # testing against MariaDB
     - addons:
-        mariadb: '10.0'
+        mariadb: 10.2
       env: DB=mariadb PREPARED_STATEMENTS=false
     - addons:
-        mariadb: '10.1'
+        mariadb: 10.3
       env: DB=mariadb PREPARED_STATEMENTS=true
     # Rails test-suite :
     - env: DB=mysql2     TEST_PREFIX="rails:" AR_VERSION="v5.0.7.1" # PS off by default

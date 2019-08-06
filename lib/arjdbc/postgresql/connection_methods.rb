@@ -16,7 +16,8 @@ ArJdbc::ConnectionMethods.module_eval do
       ::Jdbc::Postgres.load_driver(:require) if defined?(::Jdbc::Postgres.load_driver)
     rescue LoadError # assuming driver.jar is on the class-path
     end
-    driver = config[:driver] ||= 'org.postgresql.Driver'
+    driver = (config[:driver] ||=
+      defined?(::Jdbc::Postgres.driver_name) ? ::Jdbc::Postgres.driver_name : 'org.postgresql.Driver')
 
     host = config[:host] ||= ( config[:hostaddr] || ENV['PGHOST'] || 'localhost' )
     port = config[:port] ||= ( ENV['PGPORT'] || 5432 )
