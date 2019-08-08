@@ -27,7 +27,7 @@ Gem::Specification.new do |gem|
     reject { |f| f =~ /^(gemfiles)/ } # no tests - no Gemfile_s appraised ...
   gem.files += ['lib/arjdbc/jdbc/adapter_java.jar'] #if ENV['RELEASE'].eql?('true')
 
-  if ENV['RELEASE'] != 'true' # @see Rakefile
+  if ENV['INCLUDE_JAR_IN_GEM'] != 'true' # @see Rakefile
     gem.extensions << 'Rakefile' # to support auto-building .jar with :git paths
 
     #gem.add_runtime_dependency 'jar-dependencies', '~> 0.1' # development not enough!
