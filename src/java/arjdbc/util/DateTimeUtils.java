@@ -217,9 +217,11 @@ public abstract class DateTimeUtils {
         final int hours = time.getHours();
         final int minutes = time.getMinutes();
         final int seconds = time.getSeconds();
-        final int nanos = time.getNanos(); // max 999-999-999
+        int nanos = time.getNanos(); // max 999-999-999
+        final int millis = nanos / 1000000;
+        nanos = nanos % 1000000;
 
-        DateTime dateTime = new DateTime(2000, 1, 1, hours, minutes, seconds, defaultZone);
+        DateTime dateTime = new DateTime(2000, 1, 1, hours, minutes, seconds, millis, defaultZone);
         return RubyTime.newTime(context.runtime, dateTime, nanos);
     }
 

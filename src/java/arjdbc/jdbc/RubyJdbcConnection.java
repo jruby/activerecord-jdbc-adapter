@@ -128,6 +128,7 @@ public class RubyJdbcConnection extends RubyObject {
     private boolean lazy = false; // final once set on initialize
     private boolean jndi; // final once set on initialize
     private boolean configureConnection = true; // final once initialized
+    private int fetchSize = 0; // 0 = JDBC default
 
     protected RubyJdbcConnection(Ruby runtime, RubyClass metaClass) {
         super(runtime, metaClass);
@@ -576,6 +577,11 @@ public class RubyJdbcConnection extends RubyObject {
         else {
             this.configureConnection = value != context.runtime.getFalse();
         }
+
+        IRubyObject jdbcFetchSize = getConfigValue(context, "jdbc_fetch_size");
+        if (jdbcFetchSize != context.nil) {
+            this.fetchSize = RubyNumeric.fix2int(jdbcFetchSize);
+        }
     }
 
     @JRubyMethod(name = "adapter")
@@ -823,6 +829,7 @@ public class RubyJdbcConnection extends RubyObject {
                             // is called, so we have to process the result sets as we get them
                             // this shouldn't be an issue in most cases since we're only getting 1 result set anyways
                             result = mapExecuteResult(context, connection, resultSet);
+                            resultSet.close();
                         } else {
                             result = context.runtime.newFixnum(updateCount);
                         }
@@ -856,6 +863,7 @@ public class RubyJdbcConnection extends RubyObject {
         else {
             statement.setEscapeProcessing(escapeProcessing.isTrue());
         }
+        if (fetchSize != 0) statement.setFetchSize(fetchSize);
         return statement;
     }
 
@@ -1050,6 +1058,7 @@ public class RubyJdbcConnection extends RubyObject {
                     else {
                         final PreparedStatement prepStatement;
                         statement = prepStatement = connection.prepareStatement(query);
+                        if (fetchSize != 0) statement.setFetchSize(fetchSize);
                         statement.setMaxRows(maxRows); // zero means there is no limit
                         setStatementParameters(context, connection, prepStatement, binds);
                         hasResult = prepStatement.execute();
@@ -1117,6 +1126,24 @@ public class RubyJdbcConnection extends RubyObject {
         });
     }
 
+    /**
+     * Prepares a query, returns a wrapped PreparedStatement. This takes care of exception wrapping
+     * @param context which context this method is executing on.
+     * @param sql the query to prepare-
+     * @return a Ruby <code>PreparedStatement</code>
+     */
+    @JRubyMethod(required = 1)
+    public IRubyObject prepare_statement(final ThreadContext context, final IRubyObject sql) {
+        return withConnection(context, new Callable<IRubyObject>() {
+            public IRubyObject call(Connection connection) throws SQLException {
+                final String query = sql.convertToString().getUnicodeValue();
+                PreparedStatement statement = connection.prepareStatement(query);
+                if (fetchSize != 0) statement.setFetchSize(fetchSize);
+                return JavaUtil.convertJavaToRuby(context.runtime, statement);
+            }
+        });
+    }
+
     // Called from exec_query in abstract/database_statements
     /**
      * Executes a query and returns the (AR) result.  There are three parameters:
@@ -1147,6 +1174,7 @@ public class RubyJdbcConnection extends RubyObject {
                         statement = (PreparedStatement) JavaEmbedUtils.rubyToJava(cachedStatement);
                     } else {
                         statement = connection.prepareStatement(query);
+                        if (fetchSize != 0) statement.setFetchSize(fetchSize);
                     }
 
                     setStatementParameters(context, connection, statement, (RubyArray) binds);
@@ -1154,12 +1182,7 @@ public class RubyJdbcConnection extends RubyObject {
                     if (statement.execute()) {
                         ResultSet resultSet = statement.getResultSet();
                         IRubyObject results = mapQueryResult(context, connection, resultSet);
-
-                        if (cached) {
-                            // Make sure we free the result set if we are caching the statement
-                            // It gets closed automatically when the statement is closed if we aren't caching
-                            resultSet.close();
-                        }
+                        resultSet.close();
 
                         return results;
                     } else {
@@ -1829,7 +1852,7 @@ public class RubyJdbcConnection extends RubyObject {
                 return factory;
             }
             else {
-                setConnectionFactory(factory = new RubyConnectionFactoryImpl(
+                setConnectionFactory(factory = new RubyConnectionFactory(
                         driver_instance, context.runtime.newString(jdbcURL),
                         ( username.isNil() ? username : username.asString() ),
                         ( password.isNil() ? password : password.asString() )
@@ -2490,6 +2513,8 @@ public class RubyJdbcConnection extends RubyObject {
             while ( arrayResult.next() ) {
                 array.append( jdbcToRuby(context, runtime, 2, baseType, arrayResult) );
             }
+            arrayResult.close();
+
             return array;
         }
         finally { if ( value != null ) value.free(); }

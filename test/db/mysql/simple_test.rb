@@ -424,9 +424,10 @@ class MySQLSimpleTest < Test::Unit::TestCase
       assert error.error_code.is_a?(Fixnum)
       assert error.sql_state
 
+      # MySQL driver 5.1 :
       # #<ActiveRecord::JDBCError: com.mysql.jdbc.exceptions.jdbc4.MySQLSyntaxErrorException: Table 'arjdbc_test.bogus' doesn't exist>
       unless mariadb_driver?
-        assert_match /com.mysql.jdbc.exceptions.jdbc4.MySQLSyntaxErrorException: Table '.*?bogus' doesn't exist/, error.message
+        assert_match(/SQLSyntaxErrorException: Table '.*?bogus' doesn't exist/, error.message)
       else
         assert_match /java.sql.SQLSyntaxErrorException: .*Table '.*?bogus' doesn't exist/, error.message
       end
