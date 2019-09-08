@@ -384,20 +384,6 @@ module ArJdbc
       ActiveRecord::ConnectionAdapters::PostgreSQL::ExplainPrettyPrinter.new.pp(exec_query("EXPLAIN #{sql}", 'EXPLAIN', binds))
     end
 
-    # @note Only for "better" AR 4.0 compatibility.
-    # @private
-    def query(sql, name = nil)
-      materialize_transactions
-
-      log(sql, name) do
-        result = []
-        @connection.execute_query_raw(sql, []) do |*values|
-          result << values
-        end
-        result
-      end
-    end
-
     # from ActiveRecord::ConnectionAdapters::PostgreSQL::DatabaseStatements
     READ_QUERY = ActiveRecord::ConnectionAdapters::AbstractAdapter.build_read_query_regexp(:begin, :commit, :explain, :select, :set, :show, :release, :savepoint, :rollback) # :nodoc:
     private_constant :READ_QUERY
