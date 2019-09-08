@@ -392,11 +392,7 @@ module ArJdbc
       log(sql, name) do
         result = []
         @connection.execute_query_raw(sql, []) do |*values|
-          # We need to use #deep_dup here because it appears that
-          # the java method is reusing an object in some cases
-          # which makes all of the entries in the "result"
-          # array end up with the same values as the last row
-          result << values.deep_dup
+          result << values
         end
         result
       end
