@@ -365,7 +365,7 @@ module ArJdbc
       @use_insert_returning
     end
 
-    def exec_insert(sql, name, binds, pk = nil, sequence_name = nil)
+    def exec_insert(sql, name = nil, binds = [], pk = nil, sequence_name = nil)
       val = super
       if !use_insert_returning? && pk
         unless sequence_name
