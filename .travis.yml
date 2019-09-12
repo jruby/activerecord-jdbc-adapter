@@ -70,7 +70,7 @@ matrix:
         postgresql: "10"
       env: DB=postgresql PREPARED_STATEMENTS=true INSERT_RETURNING=true
     - addons:
-        postgresql: "9.5"
+        postgresql: "9.4"
       env: DB=postgresql PREPARED_STATEMENTS=true
 
     - env: DB=sqlite3 PREPARED_STATEMENTS=false
@@ -119,7 +119,7 @@ matrix:
         postgresql: "10"
       env: DB=postgresql TEST_PREFIX="rails:" AR_VERSION="6-0-stable" PREPARED_STATEMENTS=false
     - addons:
-        postgresql: "9.5"
+        postgresql: "9.4"
       env: DB=postgresql TEST_PREFIX="rails:" AR_VERSION="6-0-stable" # PS on by default
 
     - env: DB=sqlite3    TEST_PREFIX="rails:" AR_VERSION="6-0-stable"
