@@ -63,7 +63,7 @@ ArJdbc::ConnectionMethods.module_eval do
       # make sure to have an absolute path. Ruby and Java don't agree on working directory
       config[:database] = File.expand_path(database, defined?(Rails.root) ? Rails.root : nil)
       dirname = File.dirname(config[:database])
-      Dir.mkdir(dirname) unless File.directory?(dirname)
+      Dir.mkdir(dirname) rescue Errno::EEXIST
     end
   end
 
