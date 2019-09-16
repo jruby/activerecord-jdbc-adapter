@@ -3165,8 +3165,8 @@ public class RubyJdbcConnection extends RubyObject {
         final ColumnData[] columns = extractColumns(context, connection, resultSet, false);
 
         final Ruby runtime = context.runtime;
-        final IRubyObject[] blockArgs = new IRubyObject[columns.length];
         while ( resultSet.next() ) {
+            final IRubyObject[] blockArgs = new IRubyObject[columns.length];
             for ( int i = 0; i < columns.length; i++ ) {
                 final ColumnData column = columns[i];
                 blockArgs[i] = jdbcToRuby(context, runtime, column.index, column.type, resultSet);
