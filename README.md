@@ -5,9 +5,8 @@
 ActiveRecord-JDBC-Adapter (AR-JDBC) is the main database adapter for Rails'
 *ActiveRecord* component that can be used with [JRuby][0].
 ActiveRecord-JDBC-Adapter provides full or nearly full support for:
-**MySQL**, **PostgreSQL**, **SQLite3**.  In the near future there are plans to
-add support **MSSQL**. Unless we get more contributions we will not be going
-beyond these four adapters.  Note that the amount of work needed to get
+**MSSQL**, **MySQL**, **PostgreSQL**, **SQLite3**. Unless we get more contributions
+we will not be going beyond these four adapters.  Note that the amount of work needed to get
 another adapter is not huge but the amount of testing required to make sure
 that adapter continues to work is not something we can do with the resources
 we currently have.
@@ -29,6 +28,7 @@ To use AR-JDBC with JRuby on Rails:
 1. Choose the adapter you wish to gem install. The following pre-packaged
 adapters are available:
 
+  - MSSQL (`activerecord-jdbcsqlserver-adapter`)
   - MySQL (`activerecord-jdbcmysql-adapter`)
   - PostgreSQL (`activerecord-jdbcpostgresql-adapter`)
   - SQLite3 (`activerecord-jdbcsqlite3-adapter`)
