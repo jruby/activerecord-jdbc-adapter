@@ -10,6 +10,8 @@ module ArJdbc
       NO_BINDS = [].freeze
 
       def exec_insert(sql, name = nil, binds = NO_BINDS, pk = nil, sequence_name = nil)
+        binds = convert_legacy_binds_to_attributes(binds) if binds.first.is_a?(Array)
+
         if without_prepared_statement?(binds)
           log(sql, name) { @connection.execute_insert(sql) }
         else
@@ -22,6 +24,8 @@ module ArJdbc
       # It appears that at this point (AR 5.0) "prepare" should only ever be true
       # if prepared statements are enabled
       def exec_query(sql, name = nil, binds = NO_BINDS, prepare: false)
+        binds = convert_legacy_binds_to_attributes(binds) if binds.first.is_a?(Array)
+
         if without_prepared_statement?(binds)
           log(sql, name) { @connection.execute_query(sql) }
         else
@@ -34,6 +38,8 @@ module ArJdbc
       end
 
       def exec_update(sql, name = nil, binds = NO_BINDS)
+        binds = convert_legacy_binds_to_attributes(binds) if binds.first.is_a?(Array)
+
         if without_prepared_statement?(binds)
           log(sql, name) { @connection.execute_update(sql) }
         else
@@ -41,25 +47,6 @@ module ArJdbc
         end
       end
       alias :exec_delete :exec_update
-
-      # overridden to support legacy binds
-      def insert(arel, name = nil, pk = nil, id_value = nil, sequence_name = nil, binds = [])
-        binds = convert_legacy_binds_to_attributes(binds) if binds.first.is_a?(Array)
-        super
-      end
-      alias create insert
-
-      # overridden to support legacy binds
-      def update(arel, name = nil, binds = [])
-        binds = convert_legacy_binds_to_attributes(binds) if binds.first.is_a?(Array)
-        super
-      end
-
-      # overridden to support legacy binds
-      def delete(arel, name = nil, binds = [])
-        binds = convert_legacy_binds_to_attributes(binds) if binds.first.is_a?(Array)
-        super
-      end
 
       def execute(sql, name = nil)
         log(sql, name) { @connection.execute(sql) }
