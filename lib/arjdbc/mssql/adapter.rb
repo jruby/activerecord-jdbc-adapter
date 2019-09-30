@@ -81,6 +81,12 @@ module ActiveRecord
         ::ActiveRecord::ConnectionAdapters::MSSQLColumn
       end
 
+      # Does this adapter support DDL rollbacks in transactions? That is, would
+      # CREATE TABLE or ALTER TABLE get rolled back by a transaction?
+      def supports_ddl_transactions?
+        true
+      end
+
       # Can this adapter determine the primary key for tables not attached
       # to an Active Record class, such as join tables?
       def supports_primary_key?
@@ -89,6 +95,16 @@ module ActiveRecord
 
       # Does this adapter support creating foreign key constraints?
       def supports_foreign_keys?
+        true
+      end
+
+      # Does this adapter support index sort order?
+      def supports_index_sort_order?
+        true
+      end
+
+      # Also known as filtered index
+      def supports_partial_index?
         true
       end
 
