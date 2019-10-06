@@ -85,6 +85,7 @@ import org.jruby.RubyTime;
 import org.jruby.anno.JRubyMethod;
 import org.jruby.exceptions.RaiseException;
 import org.jruby.ext.bigdecimal.RubyBigDecimal;
+import org.jruby.ext.date.RubyDate;
 import org.jruby.javasupport.JavaEmbedUtils;
 import org.jruby.javasupport.JavaUtil;
 import org.jruby.runtime.Block;
@@ -2689,6 +2690,12 @@ public class RubyJdbcConnection extends RubyObject {
 
         if ( ! "Date".equals(value.getMetaClass().getName()) && value.respondsTo("to_date") ) {
             value = value.callMethod(context, "to_date");
+        }
+
+        if (value instanceof RubyDate) {
+            RubyDate rubyDate = (RubyDate) value;
+            statement.setDate(index, rubyDate.toJava(Date.class));
+            return;
         }
 
         // NOTE: assuming Date#to_s does right ...
