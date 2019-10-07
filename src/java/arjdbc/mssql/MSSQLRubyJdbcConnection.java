@@ -45,6 +45,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import arjdbc.util.DateTimeUtils;
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
 import org.jruby.Ruby;
@@ -370,14 +371,7 @@ public class MSSQLRubyJdbcConnection extends RubyJdbcConnection {
 
         if (value == null) return context.nil;
 
-        // Using Date.civil(year, month, day) so calendars get set correctly
-        final IRubyObject[] args = {
-            runtime.newFixnum(value.getYear() + 1900),
-            runtime.newFixnum(value.getMonth() + 1),
-            runtime.newFixnum(value.getDate())
-        };
-
-        return runtime.getClass("Date").callMethod(context, "civil", args);
+        return DateTimeUtils.newDate(context, value);
     }
 
     /**
