@@ -16,6 +16,8 @@ module ArJdbc
 
         materialize_transactions
 
+        binds = convert_legacy_binds_to_attributes(binds) if binds.first.is_a?(Array)
+
         if without_prepared_statement?(binds)
           log(sql, name) { @connection.execute_insert(sql) }
         else
@@ -33,6 +35,8 @@ module ArJdbc
         end
 
         materialize_transactions
+
+        binds = convert_legacy_binds_to_attributes(binds) if binds.first.is_a?(Array)
 
         if without_prepared_statement?(binds)
           log(sql, name) { @connection.execute_query(sql) }
@@ -52,6 +56,8 @@ module ArJdbc
 
         materialize_transactions
 
+        binds = convert_legacy_binds_to_attributes(binds) if binds.first.is_a?(Array)
+
         if without_prepared_statement?(binds)
           log(sql, name) { @connection.execute_update(sql) }
         else
@@ -59,25 +65,6 @@ module ArJdbc
         end
       end
       alias :exec_delete :exec_update
-
-      # overridden to support legacy binds
-      def insert(arel, name = nil, pk = nil, id_value = nil, sequence_name = nil, binds = [])
-        binds = convert_legacy_binds_to_attributes(binds) if binds.first.is_a?(Array)
-        super
-      end
-      alias create insert
-
-      # overridden to support legacy binds
-      def update(arel, name = nil, binds = [])
-        binds = convert_legacy_binds_to_attributes(binds) if binds.first.is_a?(Array)
-        super
-      end
-
-      # overridden to support legacy binds
-      def delete(arel, name = nil, binds = [])
-        binds = convert_legacy_binds_to_attributes(binds) if binds.first.is_a?(Array)
-        super
-      end
 
       def execute(sql, name = nil)
         if preventing_writes? && write_query?(sql)
