@@ -31,6 +31,7 @@ import java.util.TimeZone;
 import org.joda.time.Chronology;
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
+import org.joda.time.chrono.GJChronology;
 import org.joda.time.chrono.ISOChronology;
 import org.jruby.Ruby;
 import org.jruby.RubyFloat;
@@ -50,6 +51,9 @@ import static arjdbc.util.StringHelper.decByte;
  * @author kares
  */
 public abstract class DateTimeUtils {
+
+    private static final GJChronology CHRONO_ITALY_UTC = GJChronology.getInstance(DateTimeZone.UTC);
+
     public static RubyTime toTime(final ThreadContext context, final IRubyObject value) {
         if (!(value instanceof RubyTime)) { // unlikely
             return (RubyTime) TypeConverter.convertToTypeWithCheck(value, context.runtime.getTime(), "to_time");
@@ -261,6 +265,15 @@ public abstract class DateTimeUtils {
         final int day = date.getDate();
 
         return newDate(context, year, month, day, ISOChronology.getInstance(zone));
+    }
+
+    @SuppressWarnings("deprecation")
+    public static IRubyObject newDate(final ThreadContext context, final Date date) {
+        final int year = date.getYear() + 1900;
+        final int month = date.getMonth() + 1;
+        final int day = date.getDate();
+
+        return newDate(context, year, month, day, CHRONO_ITALY_UTC);
     }
 
     // @Deprecated
@@ -557,7 +570,7 @@ public abstract class DateTimeUtils {
     }
 
     private static IRubyObject newDate(final ThreadContext context, final int year, final int month, final int day,
-                                       final ISOChronology chronology) {
+                                       final Chronology chronology) {
         // NOTE: JRuby really needs a native date.rb until than its a bit costly going from ...
         // java.sql.Date -> allocating a DateTime proxy, help a bit by shooting at the internals
         //

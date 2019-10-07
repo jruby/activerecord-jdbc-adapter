@@ -58,7 +58,6 @@ end
 test_task_for :Derby, :desc => 'Run tests against (embedded) DerbyDB'
 test_task_for :H2, :desc => 'Run tests against H2 database engine'
 test_task_for :HSQLDB, :desc => 'Run tests against HyperSQL (Java) database'
-test_task_for :MSSQL, :driver => :jtds, :database_name => 'MS-SQL (SQLServer)'
 test_task_for :MySQL #, :prereqs => 'db:mysql'
 task :test_mysql2 => :test_mysql
 test_task_for :PostgreSQL, :driver => ENV['JDBC_POSTGRES_VERSION'] || 'postgres' #, :prereqs => 'db:postgresql'
@@ -75,8 +74,6 @@ end
 [ :Oracle, :DB2, :Informix, :CacheDB ].each do |adapter|
   test_task_for adapter, :desc => "Run tests against #{adapter} (ensure driver is on class-path)"
 end
-
-#test_task_for :MSSQL, :name => 'test_sqlserver', :driver => nil, :database_name => 'MS-SQL using SQLJDBC'
 
 test_task_for :AS400, :desc => "Run tests against AS400 (DB2) (ensure driver is on class-path)",
               :files => FileList["test/db2*_test.rb"] + FileList["test/db/db2/*_test.rb"]

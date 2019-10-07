@@ -33,7 +33,7 @@ class MSSQLExecProcTest < Test::Unit::TestCase
   end
 
   test 'takes named parameter arguments' do
-    tables = connection.exec_proc :sp_tables, :table_name => 'tables', :table_owner => 'sys'
+    tables = connection.execute_procedure :sp_tables, :table_name => 'tables', :table_owner => 'sys'
     table_info = tables.first
     assert_equal 1, tables.size
     assert_equal 'VIEW', table_info['TABLE_TYPE'], "Table Info: #{table_info.inspect}"
