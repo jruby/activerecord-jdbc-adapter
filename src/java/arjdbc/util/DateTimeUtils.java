@@ -51,6 +51,9 @@ import static arjdbc.util.StringHelper.decByte;
  * @author kares
  */
 public abstract class DateTimeUtils {
+
+    private static final GJChronology CHRONO_ITALY_UTC = GJChronology.getInstance(DateTimeZone.UTC);
+
     public static RubyTime toTime(final ThreadContext context, final IRubyObject value) {
         if (!(value instanceof RubyTime)) { // unlikely
             return (RubyTime) TypeConverter.convertToTypeWithCheck(value, context.runtime.getTime(), "to_time");
@@ -270,10 +273,7 @@ public abstract class DateTimeUtils {
         final int month = date.getMonth() + 1;
         final int day = date.getDate();
 
-        // TODO update to using fast-path without dynamic call (after >= 9.2)
-        final Ruby runtime = context.runtime;
-        final IRubyObject[] args = { runtime.newFixnum(year), runtime.newFixnum(month), runtime.newFixnum(day) };
-        return runtime.getClass("Date").callMethod(context, "civil", args);
+        return newDate(context, year, month, day, CHRONO_ITALY_UTC);
     }
 
     // @Deprecated
