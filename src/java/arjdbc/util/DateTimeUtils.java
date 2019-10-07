@@ -31,6 +31,7 @@ import java.util.TimeZone;
 import org.joda.time.Chronology;
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
+import org.joda.time.chrono.GJChronology;
 import org.joda.time.chrono.ISOChronology;
 import org.jruby.Ruby;
 import org.jruby.RubyFloat;
@@ -261,6 +262,18 @@ public abstract class DateTimeUtils {
         final int day = date.getDate();
 
         return newDate(context, year, month, day, ISOChronology.getInstance(zone));
+    }
+
+    @SuppressWarnings("deprecation")
+    public static IRubyObject newDate(final ThreadContext context, final Date date) {
+        final int year = date.getYear() + 1900;
+        final int month = date.getMonth() + 1;
+        final int day = date.getDate();
+
+        // TODO update to using fast-path without dynamic call (after >= 9.2)
+        final Ruby runtime = context.runtime;
+        final IRubyObject[] args = { runtime.newFixnum(year), runtime.newFixnum(month), runtime.newFixnum(day) };
+        return runtime.getClass("Date").callMethod(context, "civil", args);
     }
 
     // @Deprecated
@@ -557,7 +570,7 @@ public abstract class DateTimeUtils {
     }
 
     private static IRubyObject newDate(final ThreadContext context, final int year, final int month, final int day,
-                                       final ISOChronology chronology) {
+                                       final Chronology chronology) {
         // NOTE: JRuby really needs a native date.rb until than its a bit costly going from ...
         // java.sql.Date -> allocating a DateTime proxy, help a bit by shooting at the internals
         //
