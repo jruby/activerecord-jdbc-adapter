@@ -28,17 +28,32 @@ package arjdbc.mssql;
 import arjdbc.jdbc.Callable;
 import arjdbc.jdbc.RubyJdbcConnection;
 
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
+import java.sql.Date;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.sql.Savepoint;
+import java.sql.Statement;
 import java.sql.SQLException;
+import java.sql.Timestamp;
 import java.sql.Types;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
+import arjdbc.util.DateTimeUtils;
+import org.joda.time.DateTime;
+import org.joda.time.DateTimeZone;
 import org.jruby.Ruby;
 import org.jruby.RubyArray;
 import org.jruby.RubyBoolean;
 import org.jruby.RubyClass;
 import org.jruby.RubyString;
+import org.jruby.RubyTime;
 import org.jruby.anno.JRubyMethod;
 import org.jruby.runtime.ObjectAllocator;
 import org.jruby.runtime.ThreadContext;
@@ -51,6 +66,53 @@ import org.jruby.util.ByteList;
  */
 public class MSSQLRubyJdbcConnection extends RubyJdbcConnection {
     private static final long serialVersionUID = -745716565005219263L;
+
+    private static final int DATETIMEOFFSET_TYPE;
+    private static final Method DateTimeOffsetGetMinutesOffsetMethod;
+    private static final Method DateTimeOffsetGetTimestampMethod;
+    private static final Method DateTimeOffsetValueOfMethod;
+    private static final Method PreparedStatementSetDateTimeOffsetMethod;
+
+    private static final Map<String, Integer> MSSQL_JDBC_TYPE_FOR = new HashMap<String, Integer>(32, 1);
+    static {
+
+        Class<?> DateTimeOffset;
+        Class<?> MssqlPreparedStatement;
+        Class<?> MssqlTypes;
+        try {
+            DateTimeOffset = Class.forName("microsoft.sql.DateTimeOffset");
+            MssqlPreparedStatement = Class.forName("com.microsoft.sqlserver.jdbc.SQLServerPreparedStatement");
+            MssqlTypes = Class.forName("microsoft.sql.Types");
+        } catch (ClassNotFoundException e) {
+            System.err.println("You must require the Microsoft JDBC driver to use this gem"); // The exception doesn't bubble when ruby is initializing
+            throw new RuntimeException("You must require the Microsoft JDBC driver to use this gem");
+        }
+
+        try {
+            DATETIMEOFFSET_TYPE = MssqlTypes.getField("DATETIMEOFFSET").getInt(null);
+            DateTimeOffsetGetMinutesOffsetMethod = DateTimeOffset.getDeclaredMethod("getMinutesOffset");
+            DateTimeOffsetGetTimestampMethod = DateTimeOffset.getDeclaredMethod("getTimestamp");
+
+            Class<?>[] valueOfArgTypes = { Timestamp.class, int.class };
+            DateTimeOffsetValueOfMethod = DateTimeOffset.getDeclaredMethod("valueOf", valueOfArgTypes);
+
+            Class<?>[] setOffsetArgTypes = { int.class, DateTimeOffset };
+            PreparedStatementSetDateTimeOffsetMethod = MssqlPreparedStatement.getDeclaredMethod("setDateTimeOffset", setOffsetArgTypes);
+        } catch (Exception e) {
+            System.err.println("You must require the Microsoft JDBC driver to use this gem"); // The exception doesn't bubble when ruby is initializing
+            throw new RuntimeException("Please make sure you are using the latest version of the Microsoft JDBC driver");
+        }
+
+        MSSQL_JDBC_TYPE_FOR.put("binary_basic", Types.BINARY);
+        MSSQL_JDBC_TYPE_FOR.put("datetimeoffset", DATETIMEOFFSET_TYPE);
+        MSSQL_JDBC_TYPE_FOR.put("money", Types.DECIMAL);
+        MSSQL_JDBC_TYPE_FOR.put("smalldatetime", Types.TIMESTAMP);
+        MSSQL_JDBC_TYPE_FOR.put("smallmoney", Types.DECIMAL);
+        MSSQL_JDBC_TYPE_FOR.put("ss_timestamp", Types.BINARY);
+        MSSQL_JDBC_TYPE_FOR.put("text_basic", Types.LONGVARCHAR);
+        MSSQL_JDBC_TYPE_FOR.put("uuid", Types.CHAR);
+        MSSQL_JDBC_TYPE_FOR.put("varchar_max", Types.VARCHAR);
+    }
 
     public MSSQLRubyJdbcConnection(Ruby runtime, RubyClass metaClass) {
         super(runtime, metaClass);
@@ -82,6 +144,136 @@ public class MSSQLRubyJdbcConnection extends RubyJdbcConnection {
         final ByteList sqlBytes = sql.asString().getByteList();
         return context.runtime.newBoolean( startsWithIgnoreCase(sqlBytes, EXEC) );
     }
+
+    // Support multiple result sets for mssql
+    @Override
+    @JRubyMethod(name = "execute", required = 1)
+    public IRubyObject execute(final ThreadContext context, final IRubyObject sql) {
+        final String query = sqlString(sql);
+        return withConnection(context, new Callable<IRubyObject>() {
+            public IRubyObject call(final Connection connection) throws SQLException {
+                Statement statement = null;
+                try {
+                    statement = createStatement(context, connection);
+
+                    // For DBs that do support multiple statements, lets return the last result set
+                    // to be consistent with AR
+                    boolean hasResultSet = doExecute(statement, query);
+                    int updateCount = statement.getUpdateCount();
+
+                    final List<IRubyObject> results = new ArrayList<IRubyObject>();
+                    ResultSet resultSet;
+
+                    while (hasResultSet || updateCount != -1) {
+
+                        if (hasResultSet) {
+                            resultSet = statement.getResultSet();
+
+                            // Unfortunately the result set gets closed when getMoreResults()
+                            // is called, so we have to process the result sets as we get them
+                            // this shouldn't be an issue in most cases since we're only getting 1 result set anyways
+                            results.add(mapExecuteResult(context, connection, resultSet));
+                        } else {
+                            results.add(context.runtime.newFixnum(updateCount));
+                        }
+
+                        // Check to see if there is another result set
+                        hasResultSet = statement.getMoreResults();
+                        updateCount = statement.getUpdateCount();
+                    }
+
+                    if (results.size() == 0) {
+                        return context.nil; // If no results, return nil
+                    } else if (results.size() == 1) {
+                        return results.get(0);
+                    } else {
+                        return context.runtime.newArray(results);
+                    }
+
+                } catch (final SQLException e) {
+                    debugErrorSQL(context, query);
+                    throw e;
+                } finally {
+                    close(statement);
+                }
+            }
+        });
+    }
+
+    @Override
+    protected Integer jdbcTypeFor(final String type) {
+
+        Integer typeValue = MSSQL_JDBC_TYPE_FOR.get(type);
+
+        if ( typeValue != null ) {
+            return typeValue;
+        }
+
+        return super.jdbcTypeFor(type);
+    }
+
+    // Datetimeoffset values also make it into here
+    @Override
+    protected void setStringParameter(final ThreadContext context, final Connection connection,
+            final PreparedStatement statement, final int index, final IRubyObject value,
+            final IRubyObject attribute, final int type) throws SQLException {
+
+        // datetimeoffset values also make it in here
+        if (type == DATETIMEOFFSET_TYPE) {
+
+            Object dto = convertToDateTimeOffset(context, value);
+
+            try {
+
+                Object[] setStatementArgs = { index, dto };
+                PreparedStatementSetDateTimeOffsetMethod.invoke(statement, setStatementArgs);
+
+            } catch (IllegalAccessException e) {
+                debugMessage(context.runtime, e.getMessage());
+                throw new RuntimeException("Please make sure you are using the latest version of the Microsoft JDBC driver");
+            } catch (InvocationTargetException e) {
+                debugMessage(context.runtime, e.getMessage());
+                throw new RuntimeException("Please make sure you are using the latest version of the Microsoft JDBC driver");
+            }
+
+            return;
+        }
+        super.setStringParameter(context, connection, statement, index, value, attribute, type);
+    }
+
+    // We need higher precision than the default for Time objects (which is milliseconds) so we use a DateTimeOffset object
+    @Override
+    protected void setTimeParameter(final ThreadContext context,
+        final Connection connection, final PreparedStatement statement,
+        final int index, IRubyObject value,
+        final IRubyObject attribute, final int type) throws SQLException {
+
+        statement.setObject(index, convertToDateTimeOffset(context, value), Types.TIME);
+
+    }
+
+    private Object convertToDateTimeOffset(final ThreadContext context, final IRubyObject value) {
+
+        RubyTime time = (RubyTime) value;
+        DateTime dt = time.getDateTime();
+        Timestamp timestamp = new Timestamp(dt.getMillis());
+        timestamp.setNanos(timestamp.getNanos() + (int) time.getNSec());
+        int offsetMinutes = dt.getZone().getOffset(dt.getMillis()) / 60000;
+
+        try {
+
+            Object[] dtoArgs = { timestamp, offsetMinutes };
+            return DateTimeOffsetValueOfMethod.invoke(null, dtoArgs);
+
+        } catch (IllegalAccessException e) {
+            debugMessage(context.runtime, e.getMessage());
+            throw new RuntimeException("Please make sure you are using the latest version of the Microsoft JDBC driver");
+        } catch (InvocationTargetException e) {
+            debugMessage(context.runtime, e.getMessage());
+            throw new RuntimeException("Please make sure you are using the latest version of the Microsoft JDBC driver");
+        }
+    }
+
 
     @Override
     protected RubyArray mapTables(final ThreadContext context, final Connection connection,
@@ -124,14 +316,77 @@ public class MSSQLRubyJdbcConnection extends RubyJdbcConnection {
 
     /**
      * Treat LONGVARCHAR as CLOB on MSSQL for purposes of converting a JDBC value to Ruby.
+     * Also handle datetimeoffset values here
      */
     @Override
     protected IRubyObject jdbcToRuby(
         final ThreadContext context, final Ruby runtime,
         final int column, int type, final ResultSet resultSet)
         throws SQLException {
-        if ( type == Types.LONGVARCHAR || type == Types.LONGNVARCHAR ) type = Types.CLOB;
+
+        if (type == DATETIMEOFFSET_TYPE) {
+
+            Object dto = resultSet.getObject(column); // Returns a microsoft.sql.DateTimeOffset
+
+            if (dto == null) return context.nil;
+
+            try {
+
+                int minutes = (int) DateTimeOffsetGetMinutesOffsetMethod.invoke(dto);
+                DateTimeZone zone = DateTimeZone.forOffsetHoursMinutes(minutes / 60, minutes % 60);
+                Timestamp ts = (Timestamp) DateTimeOffsetGetTimestampMethod.invoke(dto);
+
+                int nanos = ts.getNanos(); // max 999-999-999
+                nanos = nanos % 1000000;
+
+                // We have to do this differently than the newTime helper because the Timestamp loses its zone information when passed around
+                DateTime dateTime = new DateTime(ts.getTime(), zone);
+                return RubyTime.newTime(context.runtime, dateTime, nanos);
+
+            } catch (IllegalAccessException e) {
+                debugMessage(runtime, e.getMessage());
+                return context.nil;
+            } catch (InvocationTargetException e) {
+                debugMessage(runtime, e.getMessage());
+                return context.nil;
+            }
+        }
+
+        if (type == Types.LONGVARCHAR || type == Types.LONGNVARCHAR) type = Types.CLOB;
         return super.jdbcToRuby(context, runtime, column, type, resultSet);
+    }
+
+    /**
+     * Converts a JDBC date object to a Ruby date by referencing Date#civil
+     * @param context current thread context
+     * @param resultSet the jdbc result set to pull the value from
+     * @param index the index of the column to convert
+     * @return RubyNil if NULL or RubyDate if there is a value
+     * @throws SQLException if it fails to retrieve the value from the result set
+     */
+    @Override
+    protected IRubyObject dateToRuby(ThreadContext context, Ruby runtime, ResultSet resultSet, int index) throws SQLException {
+
+        final Date value = resultSet.getDate(index);
+
+        if (value == null) return context.nil;
+
+        return DateTimeUtils.newDate(context, value);
+    }
+
+    /**
+     * Converts a JDBC time to a Ruby time. We use timestamp because java.sql.Time doesn't support sub-millisecond values
+     * @param context current thread context
+     * @param resultSet the jdbc result set to pull the value from
+     * @param index the index of the column to convert
+     * @return RubyNil if NULL or RubyTime if there is a value
+     * @throws SQLException if it fails to retrieve the value from the result set
+     */
+    @Override
+    protected IRubyObject timeToRuby(final ThreadContext context,final Ruby runtime,
+            final ResultSet resultSet, final int column) throws SQLException {
+
+        return timestampToRuby(context, runtime, resultSet, column);
     }
 
     @Override
@@ -163,19 +418,9 @@ public class MSSQLRubyJdbcConnection extends RubyJdbcConnection {
         return columns;
     }
 
-    // internal helper not meant as a "public" API - used in one place thus every
-    @JRubyMethod(name = "jtds_driver?")
-    public RubyBoolean jtds_driver_p(final ThreadContext context) throws SQLException {
-        // "jTDS Type 4 JDBC Driver for MS SQL Server and Sybase"
-        // SQLJDBC: "Microsoft JDBC Driver 4.0 for SQL Server"
-        return withConnection(context, new Callable<RubyBoolean>() {
-            // NOTE: only used in one place for now (on release_savepoint) ...
-            // might get optimized to only happen once since driver won't change
-            public RubyBoolean call(final Connection connection) throws SQLException {
-                final String driver = connection.getMetaData().getDriverName();
-                return context.getRuntime().newBoolean( driver.indexOf("jTDS") >= 0 );
-            }
-        });
+    @Override
+    protected void releaseSavepoint(final Connection connection, final Savepoint savepoint) throws SQLException {
+        // MSSQL doesn't support releasing savepoints
     }
 
 }

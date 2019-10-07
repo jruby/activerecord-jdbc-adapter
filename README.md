@@ -5,15 +5,16 @@
 ActiveRecord-JDBC-Adapter (AR-JDBC) is the main database adapter for Rails'
 *ActiveRecord* component that can be used with [JRuby][0].
 ActiveRecord-JDBC-Adapter provides full or nearly full support for:
-**MySQL**, **PostgreSQL**, **SQLite3**.  In the near future there are plans to
-add support **MSSQL**. Unless we get more contributions we will not be going
-beyond these four adapters.  Note that the amount of work needed to get
-another adapter is not huge but the amount of testing required to make sure
-that adapter continues to work is not something we can do with the resources
-we currently have.
+**MySQL**, **PostgreSQL**, **SQLite3** and **MSSQL*** (SQLServer).
 
-For Oracle database users you are encouraged to use
-https://github.com/rsim/oracle-enhanced.
+Unless we get more contributions we will not be supporting more adapters.
+Note that the amount of work needed to get another adapter is not huge but
+the amount of testing required to make sure that adapter continues to work
+is not something we can do with the resources we currently have.
+
+- for **Oracle** database users you are encouraged to use
+  https://github.com/rsim/oracle-enhanced
+- **MSSQL** adapter's gem parts reside in a [separate repository][8]
 
 Versions are targeted at certain versions of Rails and live on their own branches.
 
@@ -39,6 +40,7 @@ adapters are available:
   - MySQL (`activerecord-jdbcmysql-adapter`)
   - PostgreSQL (`activerecord-jdbcpostgresql-adapter`)
   - SQLite3 (`activerecord-jdbcsqlite3-adapter`)
+  - MSSQL (`activerecord-jdbcsqlserver-adapter`)
 
 2. If you're generating a new Rails application, use the following command:
 
@@ -173,4 +175,4 @@ license the database's drivers are licensed. See each driver gem's LICENSE.txt.
 [5]: https://github.com/jruby/activerecord-jdbc-adapter/wiki
 [6]: https://webchat.freenode.net/?channels=#jruby
 [7]: http://badge.fury.io/rb/activerecord-jdbc-adapter
-[8]: https://github.com/jruby/activerecord-jdbc-adapter/wiki/Migrating-from-1.2.x-to-1.3.0
+[8]: https://github.com/jruby/activerecord-jdbcsqlserver-adapter

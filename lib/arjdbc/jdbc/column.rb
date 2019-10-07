@@ -28,17 +28,13 @@ module ActiveRecord
 
         if ArJdbc::AR52
           # undefined method `cast' for #<ActiveRecord::ConnectionAdapters::SqlTypeMetadata> on AR52
-        elsif ArJdbc::AR50
+        else
           default = args[0].cast(default)
 
           sql_type = args.delete_at(1)
           type = args.delete_at(0)
 
           args.unshift(SqlTypeMetadata.new(:sql_type => sql_type, :type => type))
-        elsif ArJdbc::AR42
-          default = args[0].type_cast_from_database(default)
-        else
-          default = default_value(default)
         end
 
         # super <= 4.1: (name, default, sql_type = nil, null = true)
