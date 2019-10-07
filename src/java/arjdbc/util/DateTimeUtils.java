@@ -348,9 +348,7 @@ public abstract class DateTimeUtils {
 
         if ( bcEra ) year = -1 * year; // no + 1 since we use GJChronology
 
-        DateTime dateTime = new DateTime(year, month, day, 0, 0, 0, GJChronology.getInstance(defaultZone));
-        final Ruby runtime = context.runtime;
-        return runtime.getClass("Date").newInstance(context, Java.getInstance(runtime, dateTime), Block.NULL_BLOCK);
+        return newDate(context, year, month, day, GJChronology.getInstance(defaultZone));
     }
 
     public static IRubyObject parseTime(final ThreadContext context, final CharSequence str, final DateTimeZone defaultZone)
