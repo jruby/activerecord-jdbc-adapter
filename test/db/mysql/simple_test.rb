@@ -173,11 +173,11 @@ class MySQLSimpleTest < Test::Unit::TestCase
     user.entries.reset_column_information
 
     show_columns = /SHOW (FULL )?FIELDS|COLUMNS/
-    assert_queries(1, show_columns) { user.entries.columns; user.entries.columns }
+    assert_queries(1, show_columns, true) { user.entries.columns; user.entries.columns }
 
     ## and again to verify that reset_column_information clears the cache correctly
     user.entries.reset_column_information
-    assert_queries(1, show_columns) { user.entries.columns; user.entries.columns }
+    assert_queries(1, show_columns, true) { user.entries.columns; user.entries.columns }
   end
 
   # from rails active record tests
@@ -345,15 +345,10 @@ class MySQLSimpleTest < Test::Unit::TestCase
         indexes.detect { |i| i.name == name.to_s }
       end
 
-      # AR 4.2 :
-      #  SHOW TABLES LIKE 'bulks'
-      #  SHOW KEYS FROM `bulks`
-      #  SHOW TABLES LIKE 'bulks'
-      #  SHOW KEYS FROM `bulks`
-      #  ALTER TABLE `bulks` ADD UNIQUE INDEX awesome_username_index (`username`), ADD  INDEX index_bulks_on_name_and_age (`name`, `age`)
+      # AR 6.1:
+      #  ALTER TABLE `bulks` ADD UNIQUE INDEX `awesome_username_index`  (`username`), ADD  INDEX `index_bulks_on_name_and_age`  (`name`, `age`)
 
-      # Adding an index fires a query every time to check if an index already exists or not
-      assert_queries(5) do
+      assert_queries(1) do
         with_bulk_change_table(:bulks) do |t|
           t.index :username, :unique => true, :name => :awesome_username_index
           t.index [:name, :age]
@@ -375,14 +370,11 @@ class MySQLSimpleTest < Test::Unit::TestCase
 
       assert index.call(:index_bulks_on_name2)
 
-      # AR 5.0 :
+      # AR 6.1
       # SHOW KEYS FROM `bulks`
-      # SELECT table_name FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'bulks'
-      # SHOW KEYS FROM `bulks`
-      # ALTER TABLE `bulks` DROP INDEX index_bulks_on_name2, ADD UNIQUE INDEX `new_name2_index`  (`name2`)
-      expected_query_count = 4 # defined?(JRUBY_VERSION) ? 4 : 3 # MRI
+      # ALTER TABLE `bulks` DROP INDEX `index_bulks_on_name2`, ADD UNIQUE INDEX `new_name2_index`  (`name2`)
       # no SHOW TABLES LIKE 'bulks' in JRuby since we do table_exists? with JDBC APIs
-      assert_queries(expected_query_count) do
+      assert_queries(2, nil, true) do
         with_bulk_change_table('bulks') do |t|
           t.remove_index :name2
           t.index :name2, :name => :new_name2_index, :unique => true
