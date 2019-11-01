@@ -59,7 +59,7 @@ end
 
 group :rails do
   group :test do
-    gem 'minitest', '~> 5.11.3', require: nil
+    gem 'minitest', '~> 5.12.2', require: nil
     gem 'minitest-excludes', '~> 2.0.1', require: nil
     gem 'minitest-rg', require: nil
 
