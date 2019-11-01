@@ -97,6 +97,10 @@ module ArJdbc
       true
     end
 
+    def supports_common_table_expressions?
+      database_version >= "3.8.3"
+    end
+
     def supports_insert_on_conflict?
       database_version >= "3.24.0"
     end
@@ -154,7 +158,9 @@ module ArJdbc
     # DATABASE STATEMENTS ======================================
     #++
 
-    READ_QUERY = ActiveRecord::ConnectionAdapters::AbstractAdapter.build_read_query_regexp(:begin, :commit, :explain, :select, :pragma, :release, :savepoint, :rollback) # :nodoc:
+    READ_QUERY = ActiveRecord::ConnectionAdapters::AbstractAdapter.build_read_query_regexp(
+      :begin, :commit, :explain, :select, :pragma, :release, :savepoint, :rollback, :with
+    ) # :nodoc:
     private_constant :READ_QUERY
 
     def write_query?(sql) # :nodoc:
@@ -199,8 +205,8 @@ module ArJdbc
       pks.sort_by { |f| f["pk"] }.map { |f| f["name"] }
     end
 
-    def remove_index(table_name, options = {}) #:nodoc:
-      index_name = index_name_for_remove(table_name, options)
+    def remove_index(table_name, column_name, options = {}) #:nodoc:
+      index_name = index_name_for_remove(table_name, column_name, options)
       exec_query "DROP INDEX #{quote_column_name(index_name)}"
     end
 
@@ -209,14 +215,16 @@ module ArJdbc
     # Example:
     #   rename_table('octopuses', 'octopi')
     def rename_table(table_name, new_name)
+      schema_cache.clear_data_source_cache!(table_name.to_s)
+      schema_cache.clear_data_source_cache!(new_name.to_s)
       exec_query "ALTER TABLE #{quote_table_name(table_name)} RENAME TO #{quote_table_name(new_name)}"
       rename_table_indexes(table_name, new_name)
     end
 
-    def add_column(table_name, column_name, type, options = {}) #:nodoc:
+    def add_column(table_name, column_name, type, **options) #:nodoc:
       if invalid_alter_table_type?(type, options)
         alter_table(table_name) do |definition|
-          definition.column(column_name, type, options)
+          definition.column(column_name, type, **options)
         end
       else
         super
@@ -317,11 +325,8 @@ module ArJdbc
       SQLite3Adapter::Version.new(query_value("SELECT sqlite_version(*)"))
     end
 
-    def build_truncate_statements(*table_names)
-      truncate_tables = table_names.map do |table_name|
-        "DELETE FROM #{quote_table_name(table_name)}"
-      end
-      combine_multi_statements(truncate_tables)
+    def build_truncate_statement(table_name)
+      "DELETE FROM #{quote_table_name(table_name)}"
     end
 
     def check_version
@@ -365,7 +370,7 @@ module ArJdbc
             fk.options[:column] = column
           end
           to_table = strip_table_name_prefix_and_suffix(fk.to_table)
-          definition.foreign_key(to_table, fk.options)
+          definition.foreign_key(to_table, **fk.options)
         end
 
         yield definition if block_given?
@@ -387,11 +392,12 @@ module ArJdbc
     def copy_table(from, to, options = {})
       from_primary_key = primary_key(from)
       options[:id] = false
-      create_table(to, options) do |definition|
+      create_table(to, **options) do |definition|
         @definition = definition
         if from_primary_key.is_a?(Array)
           @definition.primary_keys from_primary_key
         end
+
         columns(from).each do |column|
           column_name = options[:rename] ?
             (options[:rename][column.name] ||
