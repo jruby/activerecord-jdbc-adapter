@@ -11,13 +11,10 @@ Gem::Specification.new do |gem|
   gem.license = 'BSD-2-Clause'
   gem.summary = 'JDBC adapter for ActiveRecord, for use within JRuby on Rails.'
   gem.description = "" <<
-    "AR-JDBC is a database adapter for Rails' ActiveRecord component designed " <<
-    "to be used with JRuby built upon Java's JDBC API for database access. " <<
-    "Provides (ActiveRecord) built-in adapters: MySQL, PostgreSQL and SQLite3 " <<
-    "as well as adapters for popular databases such as Oracle, SQLServer, " <<
-    "DB2, FireBird and even Java (embed) databases: Derby, HSQLDB and H2. " <<
-    "It allows to connect to virtually any JDBC-compliant database with your " <<
-    "JRuby on Rails application."
+    "AR-JDBC is a database adapter for Rails' ActiveRecord component " <<
+    "designed to be used with JRuby built upon Java's JDBC API for " <<
+    "database access. Provides (ActiveRecord) built-in adapters: MySQL,  " <<
+    "PostgreSQL, SQLite3, and SQLServer."
 
   gem.require_paths = ["lib"]
 
