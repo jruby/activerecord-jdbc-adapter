@@ -4,9 +4,8 @@
 # path so this fails.
 #
 # FIXME: add SQLite3 JARs to search path, but for now don't so we're actually
-#        sure we're testing with PostgreSQL
+#        sure we're testing with MySQL
 #
-exclude :test_establish_connection_uses_spec_name, 'tries to load SQLite3 driver'
 exclude :test_establish_connection_using_3_levels_config, 'tries to load SQLite3 driver'
 exclude :test_establish_connection_using_3_level_config_defaults_to_default_env_primary_db, 'tries to load SQLite3 driver'
 exclude :test_establish_connection_using_2_level_config_defaults_to_default_env_primary_db, 'tries to load SQLite3 driver'
