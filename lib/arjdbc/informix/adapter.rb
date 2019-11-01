@@ -28,11 +28,6 @@ module ArJdbc
       end
     end
 
-    # @see ActiveRecord::ConnectionAdapters::JdbcColumn#column_types
-    def self.column_selector
-      [ /informix/i, lambda { |cfg, column| column.extend(ColumnMethods) } ]
-    end
-
     JdbcConnection = ::ActiveRecord::ConnectionAdapters::InformixJdbcConnection
 
     # @see ActiveRecord::ConnectionAdapters::JdbcAdapter#jdbc_connection_class
@@ -43,20 +38,6 @@ module ArJdbc
     # @see ActiveRecord::ConnectionAdapters::JdbcAdapter#jdbc_column_class
     def jdbc_column_class
       ::ActiveRecord::ConnectionAdapters::InformixColumn
-    end
-
-    module ColumnMethods
-
-      private
-      # TODO: Test all Informix column types.
-      def simplified_type(field_type)
-        if field_type =~ /serial/i
-          :primary_key
-        else
-          super
-        end
-      end
-
     end
 
     def modify_types(types)
@@ -152,10 +133,6 @@ module ArJdbc
 end # module ::ArJdbc
 
 module ActiveRecord::ConnectionAdapters
-  class InformixColumn < JdbcColumn
-    include ::ArJdbc::Informix::ColumnMethods
-  end
-
   class InformixAdapter < JdbcAdapter
     include ::ArJdbc::Informix
   end

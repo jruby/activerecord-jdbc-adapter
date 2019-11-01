@@ -65,25 +65,6 @@ module ArJdbc
         limit
       end
 
-      def simplified_type(field_type)
-        case field_type
-        when /^smallint/i    then Derby.emulate_booleans? ? :boolean : :integer
-        when /^bigint|int/i  then :integer
-        when /^real|double/i then :float
-        when /^dec/i         then # DEC is a DECIMAL alias
-          extract_scale(field_type) == 0 ? :integer : :decimal
-        when /^timestamp/i   then :datetime
-        when /^xml/i         then :xml
-        when 'long varchar'  then :text
-        when /for bit data/i then :binary
-        # :name=>"long varchar for bit data", :limit=>32700
-        # :name=>"varchar() for bit data", :limit=>32672
-        # :name=>"char() for bit data", :limit=>254}
-        else
-          super
-        end
-      end
-
       # Post process default value from JDBC into a Rails-friendly format (columns{-internal})
       def default_value(value)
         # JDBC returns column default strings with actual single quotes around the value.
@@ -420,7 +401,7 @@ module ArJdbc
 
     # @override
     def supports_ddl_transactions?; true end
- 
+
     # @override
     def supports_foreign_keys?; true end
 
