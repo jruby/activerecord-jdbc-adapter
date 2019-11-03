@@ -727,7 +727,10 @@ public class RubyJdbcConnection extends RubyObject {
 
     private void connectImpl(final boolean forceConnection) throws SQLException {
         setConnection( forceConnection ? newConnection() : null );
-        if ( forceConnection ) configureConnection();
+        if (forceConnection) {
+            if (getConnectionImpl() == null) throw new SQLException("Didn't get a connection. Wrong URL?");
+            configureConnection();
+        }
     }
 
     @JRubyMethod(name = "read_only?")
