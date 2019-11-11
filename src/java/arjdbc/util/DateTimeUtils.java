@@ -37,6 +37,7 @@ import org.jruby.Ruby;
 import org.jruby.RubyFloat;
 import org.jruby.RubyString;
 import org.jruby.RubyTime;
+import org.jruby.ext.date.RubyDateTime;
 import org.jruby.javasupport.Java;
 import org.jruby.runtime.Block;
 import org.jruby.runtime.ThreadContext;
@@ -632,14 +633,21 @@ public abstract class DateTimeUtils {
      */
     public static String timestampTimeToString(final ThreadContext context,
                                                final IRubyObject value, DateTimeZone zone, boolean withZone) {
-        RubyTime timeValue = toTime(context, value);
-        DateTime dt = timeValue.getDateTime();
+        DateTime dt;
+        int usec = 0;
+        if (value instanceof RubyDateTime) {
+            dt = ((RubyDateTime) value).getDateTime();
+        } else {
+            RubyTime timeValue = toTime(context, value);
+            dt = timeValue.getDateTime();
+            usec = (int) timeValue.getUSec();
+        }
 
         StringBuilder sb = new StringBuilder(36);
 
         int year = dt.getYear();
         if (year <= 0) {
-            year--;
+            if (!(value instanceof RubyDateTime)) year--;
         } else if (zone != null) {
             dt = dateTimeInZone(dt, zone);
             year = dt.getYear();
@@ -659,7 +667,7 @@ public abstract class DateTimeUtils {
         if (year < 0) sb.append(" BC");
         sb.append(' ');
 
-        appendTime(sb, chrono, millis, (int) timeValue.getUSec(), withZone);
+        appendTime(sb, chrono, millis, usec, withZone);
 
         return sb.toString();
     }
