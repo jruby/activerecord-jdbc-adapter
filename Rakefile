@@ -1,3 +1,29 @@
+# Common usage
+#
+#   rake build:adapters - to build all specific adapter gems and the base gem
+#   rake release:do - build:adapters + git tag + push gems
+#
+# Environment variables used by this Rakefile:
+#
+# INCLUDE_JAR_IN_GEM [default task - false, other taks - true]:
+#   Note: This is something you should not normally have to set.
+#   For local development we always will end up including the jar file
+#   in any task which generates our main gem.  The wrinkle to this
+#   is when we do a custom github link in bundler:
+#
+#      gem 'ar-jdbc', github: '...'
+#
+#   Because we stopped committing a .jar file for every change and so when
+#   we  include a gem like this it clones the repository and does a default
+#   build in rake.  This in turn will end up forcing a compile to generate
+#   that jar (similar to how c-extensions compile at the time of install).
+#   For shipped gems we do include the jar so that people do not require
+#   this compile step.
+#
+# NOOP [release:do - false]
+#
+#   No commands or gem pushing during a release.
+
 require 'rake/clean'
 
 CLEAN.include 'derby*', 'test.db.*', '*test.sqlite3', 'test/reports'
@@ -38,7 +64,8 @@ rake = lambda { |task| ruby "-S", "rake", task }
 
 desc "Build #{gem_name} gem into the pkg directory."
 task :build => :jar do
-  sh("RELEASE=#{ENV['RELEASE']} gem build -V '#{gemspec_path}'") do
+  include_jar = ENV['INCLUDE_JAR_IN_GEM'] || 'true'
+  sh("INCLUDE_JAR_IN_GEM=#{include_jar} gem build -V '#{gemspec_path}'") do
     gem_path = built_gem_path.call
     file_name = File.basename(gem_path)
     FileUtils.mkdir_p(File.join(base_dir, 'pkg'))
@@ -58,7 +85,6 @@ end
 
 desc "Releasing AR-JDBC gems (use NOOP=true to disable gem pushing)"
 task 'release:do' do
-  ENV['RELEASE'] = 'true' # so that .gemspec is built with adapter_java.jar
   Rake::Task['build'].invoke
   Rake::Task['build:adapters'].invoke
 
@@ -297,7 +323,7 @@ if defined? JRUBY_VERSION
       # class_files.gsub!('$', '\$') unless windows?
       # args = class_files.map { |path| [ "-C #{classes_dir}", path ] }.flatten
 
-      if ENV['RELEASE'] == 'true'; require 'tempfile'
+      if ENV['INCLUDE_JAR_IN_GEM'] == 'true'; require 'tempfile'
         manifest  = "Built-Time: #{Time.now.utc.strftime('%Y-%m-%d %H:%M:%S')}\n"
         manifest += "Built-JRuby: #{JRUBY_VERSION}\n"
         manifest += "Specification-Title: ActiveRecord-JDBC\n"
