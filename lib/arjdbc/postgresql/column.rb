@@ -15,7 +15,7 @@ module ArJdbc
       end
 
       # Extracts the value from a PostgreSQL column default definition.
-      def extract_value_from_default(default) # :nodoc:
+      def extract_value_from_default(default)
         case default
           # Quoted types
           when /\A[\(B]?'(.*)'.*::"?([\w. ]+)"?(?:\[\])?\z/m
@@ -41,10 +41,13 @@ module ArJdbc
         end
       end
 
-      def extract_default_function(default_value, default) # :nodoc:
-        default if ! default_value && ( %r{\w+\(.*\)|\(.*\)::\w+} === default )
+      def extract_default_function(default_value, default)
+        default if has_default_function?(default_value, default)
       end
 
+      def has_default_function?(default_value, default)
+        !default_value && %r{\w+\(.*\)|\(.*\)::\w+|CURRENT_DATE|CURRENT_TIMESTAMP} === default
+      end
     end
 
   end

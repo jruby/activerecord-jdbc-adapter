@@ -22,6 +22,11 @@ module MySQLTestHelper
   def mariadb_server?; connection.send(:mariadb?) end
   alias mariadb? mariadb_server?
 
+  def database_version
+    ActiveRecord::Base.connection.raw_connection.full_version
+  end
+  alias db_version database_version
+
 end
 
 class Test::Unit::TestCase

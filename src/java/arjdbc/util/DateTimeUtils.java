@@ -31,6 +31,7 @@ import java.util.TimeZone;
 import org.joda.time.Chronology;
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
+import org.joda.time.chrono.GJChronology;
 import org.joda.time.chrono.ISOChronology;
 import org.jruby.Ruby;
 import org.jruby.RubyFloat;
@@ -50,6 +51,9 @@ import static arjdbc.util.StringHelper.decByte;
  * @author kares
  */
 public abstract class DateTimeUtils {
+
+    private static final GJChronology CHRONO_ITALY_UTC = GJChronology.getInstance(DateTimeZone.UTC);
+
     public static RubyTime toTime(final ThreadContext context, final IRubyObject value) {
         if (!(value instanceof RubyTime)) { // unlikely
             return (RubyTime) TypeConverter.convertToTypeWithCheck(value, context.runtime.getTime(), "to_time");
@@ -217,9 +221,11 @@ public abstract class DateTimeUtils {
         final int hours = time.getHours();
         final int minutes = time.getMinutes();
         final int seconds = time.getSeconds();
-        final int nanos = time.getNanos(); // max 999-999-999
+        int nanos = time.getNanos(); // max 999-999-999
+        final int millis = nanos / 1000000;
+        nanos = nanos % 1000000;
 
-        DateTime dateTime = new DateTime(2000, 1, 1, hours, minutes, seconds, defaultZone);
+        DateTime dateTime = new DateTime(2000, 1, 1, hours, minutes, seconds, millis, defaultZone);
         return RubyTime.newTime(context.runtime, dateTime, nanos);
     }
 
@@ -232,9 +238,11 @@ public abstract class DateTimeUtils {
         final int hours = timestamp.getHours();
         final int minutes = timestamp.getMinutes();
         final int seconds = timestamp.getSeconds();
-        final int nanos = timestamp.getNanos(); // max 999-999-999
+        int nanos = timestamp.getNanos(); // max 999-999-999
+        final int millis = nanos / 1000000;
+        nanos = nanos % 1000000;
 
-        DateTime dateTime = new DateTime(year, month, day, hours, minutes, seconds, 0, defaultZone);
+        DateTime dateTime = new DateTime(year, month, day, hours, minutes, seconds, millis, defaultZone);
         return RubyTime.newTime(context.runtime, dateTime, nanos);
     }
 
@@ -257,6 +265,15 @@ public abstract class DateTimeUtils {
         final int day = date.getDate();
 
         return newDate(context, year, month, day, ISOChronology.getInstance(zone));
+    }
+
+    @SuppressWarnings("deprecation")
+    public static IRubyObject newDate(final ThreadContext context, final Date date) {
+        final int year = date.getYear() + 1900;
+        final int month = date.getMonth() + 1;
+        final int day = date.getDate();
+
+        return newDate(context, year, month, day, CHRONO_ITALY_UTC);
     }
 
     // @Deprecated
@@ -553,7 +570,7 @@ public abstract class DateTimeUtils {
     }
 
     private static IRubyObject newDate(final ThreadContext context, final int year, final int month, final int day,
-                                       final ISOChronology chronology) {
+                                       final Chronology chronology) {
         // NOTE: JRuby really needs a native date.rb until than its a bit costly going from ...
         // java.sql.Date -> allocating a DateTime proxy, help a bit by shooting at the internals
         //

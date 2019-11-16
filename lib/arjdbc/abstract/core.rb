@@ -22,7 +22,7 @@ module ArJdbc
 
         connection.configure_connection # will call us (maybe)
       end
-      
+
       # Retrieve the raw `java.sql.Connection` object.
       # The unwrap parameter is useful if an attempt to unwrap a pooled (JNDI)
       # connection should be made - to really return the 'native' JDBC object.
@@ -54,7 +54,7 @@ module ArJdbc
         case e
           when SystemExit, SignalException, NoMemoryError then e
           when ActiveModel::RangeError, TypeError, RuntimeError then e
-          else ActiveRecord::StatementInvalid.new(message)
+          else super
         end
       end
 

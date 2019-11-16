@@ -487,12 +487,17 @@ public class RubyJdbcConnection extends RubyObject {
                 savepoint = ((IRubyObject) savepoint).toJava(Savepoint.class);
             }
 
-            connection.releaseSavepoint((Savepoint) savepoint);
+            releaseSavepoint(connection, (Savepoint) savepoint);
             return context.nil;
         }
         catch (SQLException e) {
             return handleException(context, e);
         }
+    }
+
+    // MSSQL doesn't support releasing savepoints so we make it possible to override the actual release action
+    protected void releaseSavepoint(final Connection connection, final Savepoint savepoint) throws SQLException {
+        connection.releaseSavepoint(savepoint);
     }
 
     protected static RuntimeException newSavepointNotSetError(final ThreadContext context, final IRubyObject name, final String op) {
@@ -3921,6 +3926,12 @@ public class RubyJdbcConnection extends RubyObject {
         if ( isDebug(runtime) ) {
             final PrintStream out = runtime != null ? runtime.getOut() : System.out;
             out.print("ArJdbc: "); out.println(msg);
+        }
+    }
+
+    public static void debugMessage(final ThreadContext context, final IRubyObject obj) {
+        if ( isDebug(context.runtime) ) {
+            debugMessage(context.runtime, obj.callMethod(context, "inspect"));
         }
     }
 
