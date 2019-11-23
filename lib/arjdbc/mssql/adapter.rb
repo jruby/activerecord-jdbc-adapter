@@ -215,19 +215,9 @@ module ActiveRecord
       end
 
       def configure_connection
-        execute("SET LOCK_TIMEOUT #{lock_timeout}")
+        # Here goes initial settings per connection
 
         set_session_transaction_isolation
-      end
-
-      def lock_timeout
-        timeout = config[:lock_timeout].to_i
-
-        if timeout.positive?
-          timeout
-        else
-          5_000
-        end
       end
 
       def set_session_transaction_isolation
