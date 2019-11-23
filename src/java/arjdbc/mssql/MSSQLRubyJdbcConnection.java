@@ -243,17 +243,6 @@ public class MSSQLRubyJdbcConnection extends RubyJdbcConnection {
         super.setStringParameter(context, connection, statement, index, value, attribute, type);
     }
 
-    // We need higher precision than the default for Time objects (which is milliseconds) so we use a DateTimeOffset object
-    @Override
-    protected void setTimeParameter(final ThreadContext context,
-        final Connection connection, final PreparedStatement statement,
-        final int index, IRubyObject value,
-        final IRubyObject attribute, final int type) throws SQLException {
-
-        statement.setObject(index, convertToDateTimeOffset(context, value), Types.TIME);
-
-    }
-
     private Object convertToDateTimeOffset(final ThreadContext context, final IRubyObject value) {
 
         RubyTime time = (RubyTime) value;
@@ -493,29 +482,6 @@ public class MSSQLRubyJdbcConnection extends RubyJdbcConnection {
         statement.setObject(index, timeStr, Types.NVARCHAR);
     }
 
-    // Overrides the method in parent, we only remove the savepoint
-    // from the getSavepoints Map
-    @JRubyMethod(name = "release_savepoint", required = 1)
-    public IRubyObject release_savepoint(final ThreadContext context, final IRubyObject name) {
-      if (name == context.nil) throw context.runtime.newArgumentError("nil savepoint name given");
-
-      final Connection connection = getConnection(true);
-
-      Object savepoint = getSavepoints(context).remove(name);
-
-      if (savepoint == null) throw newSavepointNotSetError(context, name, "release");
-
-      // NOTE: RubyHash.remove does not convert to Java as get does :
-      if (!(savepoint instanceof Savepoint)) {
-        savepoint = ((IRubyObject) savepoint).toJava(Savepoint.class);
-      }
-
-      // The 'releaseSavepoint' method is not currently supported
-      // by the Microsoft SQL Server JDBC Driver
-      // connection.releaseSavepoint((Savepoint) savepoint);
-      return context.nil;
-    }
-
     //----------------------------------------------------------------
     // read_uncommitted: "READ UNCOMMITTED",
     // read_committed:   "READ COMMITTED",
@@ -697,21 +663,6 @@ public class MSSQLRubyJdbcConnection extends RubyJdbcConnection {
         if (value == null) return context.nil;
 
         return DateTimeUtils.newDate(context, value);
-    }
-
-    /**
-     * Converts a JDBC time to a Ruby time. We use timestamp because java.sql.Time doesn't support sub-millisecond values
-     * @param context current thread context
-     * @param resultSet the jdbc result set to pull the value from
-     * @param index the index of the column to convert
-     * @return RubyNil if NULL or RubyTime if there is a value
-     * @throws SQLException if it fails to retrieve the value from the result set
-     */
-    @Override
-    protected IRubyObject timeToRuby(final ThreadContext context,final Ruby runtime,
-            final ResultSet resultSet, final int column) throws SQLException {
-
-        return timestampToRuby(context, runtime, resultSet, column);
     }
 
     @Override
