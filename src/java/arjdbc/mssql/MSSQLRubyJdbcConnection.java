@@ -106,6 +106,7 @@ public class MSSQLRubyJdbcConnection extends RubyJdbcConnection {
         }
 
         MSSQL_JDBC_TYPE_FOR.put("binary_basic", Types.BINARY);
+        MSSQL_JDBC_TYPE_FOR.put("image", Types.BINARY);
         MSSQL_JDBC_TYPE_FOR.put("datetimeoffset", DATETIMEOFFSET_TYPE);
         MSSQL_JDBC_TYPE_FOR.put("money", Types.DECIMAL);
         MSSQL_JDBC_TYPE_FOR.put("smalldatetime", Types.TIMESTAMP);
