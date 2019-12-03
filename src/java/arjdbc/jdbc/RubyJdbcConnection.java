@@ -911,8 +911,8 @@ public class RubyJdbcConnection extends RubyObject {
      * @return ActiveRecord::Result
      * @throws SQLException
      */
-    @JRubyMethod(name = "execute_insert", required = 2)
-    public IRubyObject execute_insert(final ThreadContext context, final IRubyObject sql, final IRubyObject pk) {
+    @JRubyMethod(name = "execute_insert_pk", required = 2)
+    public IRubyObject execute_insert_pk(final ThreadContext context, final IRubyObject sql, final IRubyObject pk) {
         return withConnection(context, new Callable<IRubyObject>() {
             public IRubyObject call(final Connection connection) throws SQLException {
                 Statement statement = null;
@@ -939,6 +939,12 @@ public class RubyJdbcConnection extends RubyObject {
         });
     }
 
+    @Deprecated
+    @JRubyMethod(name = "execute_insert", required = 1)
+    public IRubyObject execute_insert(final ThreadContext context, final IRubyObject sql) {
+        return execute_insert_pk(context, sql, context.nil);
+    }
+
     /**
      * Executes an INSERT SQL statement using a prepared statement
      * @param context
@@ -948,9 +954,9 @@ public class RubyJdbcConnection extends RubyObject {
      * @return ActiveRecord::Result
      * @throws SQLException
      */
-    @JRubyMethod(name = "execute_insert", required = 3)
-    public IRubyObject execute_insert(final ThreadContext context, final IRubyObject sql, final IRubyObject binds,
-                                      final IRubyObject pk) {
+    @JRubyMethod(name = "execute_insert_pk", required = 3)
+    public IRubyObject execute_insert_pk(final ThreadContext context, final IRubyObject sql, final IRubyObject binds,
+                                         final IRubyObject pk) {
         return withConnection(context, new Callable<IRubyObject>() {
             public IRubyObject call(final Connection connection) throws SQLException {
                 PreparedStatement statement = null;
@@ -974,6 +980,12 @@ public class RubyJdbcConnection extends RubyObject {
                 }
             }
         });
+    }
+
+    @Deprecated
+    @JRubyMethod(name = "execute_insert", required = 2)
+    public IRubyObject execute_insert(final ThreadContext context, final IRubyObject binds, final IRubyObject sql) {
+        return execute_insert_pk(context, sql, binds, context.nil);
     }
 
     /**
