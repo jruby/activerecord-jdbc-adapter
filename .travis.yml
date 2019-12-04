@@ -48,7 +48,7 @@ before_script:
 
 env:
   global:
-    - AR_VERSION="6-0-stable"
+    - AR_VERSION="master"
 matrix:
   allow_failures:
     - rvm: jruby-head
