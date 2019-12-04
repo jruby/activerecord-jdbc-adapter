@@ -96,7 +96,7 @@ class MySQLUnitTest < Test::Unit::TestCase
       connection_handler = connection_handler_stub
 
       config = { :jndi => 'jdbc/TestDS' }
-      connection_handler.expects(:jndi_connection)
+      connection_handler.expects(:jndi_connection).with() { |c| config = c }
       connection_handler.mysql_connection config
 
       # we do not complete username/database etc :
@@ -126,7 +126,7 @@ class MySQLUnitTest < Test::Unit::TestCase
       connection_handler = connection_handler_stub
 
       config = { database: 'MyDB' }
-      connection_handler.expects(:jdbc_connection)
+      connection_handler.expects(:jdbc_connection).with() { |c| config = c }
       ::Jdbc::MySQL.expects(:driver_name).returns('com.mysql.CustomDriver')
       connection_handler.mysql_connection config
       assert_equal 'com.mysql.CustomDriver', config[:driver]
@@ -138,7 +138,7 @@ class MySQLUnitTest < Test::Unit::TestCase
       connection_handler = connection_handler_stub
 
       config = { database: 'MyDB' }
-      connection_handler.expects(:jdbc_connection)
+      connection_handler.expects(:jdbc_connection).with() { |c| config = c }
       ::Jdbc::MySQL.expects(:driver_name).returns('com.mysql.cj.jdbc.Driver')
       connection_handler.mysql_connection config
       assert_equal 'com.mysql.cj.jdbc.Driver', config[:driver]
@@ -174,7 +174,7 @@ class MySQLUnitTest < Test::Unit::TestCase
       connection_handler = connection_handler_stub
 
       config = { host: '127.0.0.1', database: 'MyDB' }
-      connection_handler.expects(:jdbc_connection)
+      connection_handler.expects(:jdbc_connection).with() { |c| config = c }
       connection_handler.mysql_connection config
 
       # we do not complete username/database etc :
@@ -201,7 +201,7 @@ class MySQLUnitTest < Test::Unit::TestCase
       connection_handler = connection_handler_stub
 
       config = { database: 'MyDB', driver: false }
-      connection_handler.expects(:jdbc_connection)
+      connection_handler.expects(:jdbc_connection).with() { |c| config = c }
       connection_handler.expects(:require).never
       connection_handler.mysql_connection config
       assert_not config[:driver] # allow Java's service discovery mechanism (with connector/j 8.0)
@@ -211,7 +211,7 @@ class MySQLUnitTest < Test::Unit::TestCase
       connection_handler = connection_handler_stub
 
       config = { database: 'MyDB', driver: 'org.mariadb.jdbc.Driver' }
-      connection_handler.expects(:jdbc_connection)
+      connection_handler.expects(:jdbc_connection).with() { |c| config = c }
       connection_handler.mysql_connection config
 
       # we do not complete username/database etc :

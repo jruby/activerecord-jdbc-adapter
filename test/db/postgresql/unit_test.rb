@@ -8,7 +8,7 @@ class PostgresUnitTest < Test::Unit::TestCase
       connection_handler = connection_handler_stub
 
       config = { :jndi => 'jdbc/TestDS' }
-      connection_handler.expects(:jndi_connection)
+      connection_handler.expects(:jndi_connection).with() { |c| config = c }
       connection_handler.postgresql_connection config
 
       # we do not complete username/database etc :

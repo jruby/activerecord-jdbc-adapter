@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 ArJdbc::ConnectionMethods.module_eval do
   def sqlite3_connection(config)
+    config = config.deep_dup
     config[:adapter_spec] ||= ::ArJdbc::SQLite3
     config[:adapter_class] = ActiveRecord::ConnectionAdapters::SQLite3Adapter unless config.key?(:adapter_class)
 
