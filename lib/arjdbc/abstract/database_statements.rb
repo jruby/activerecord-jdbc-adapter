@@ -13,10 +13,10 @@ module ArJdbc
         binds = convert_legacy_binds_to_attributes(binds) if binds.first.is_a?(Array)
 
         if without_prepared_statement?(binds)
-          log(sql, name) { @connection.execute_insert(sql) }
+          log(sql, name) { @connection.execute_insert_pk(sql, pk) }
         else
           log(sql, name, binds) do
-            @connection.execute_insert(sql, binds)
+            @connection.execute_insert_pk(sql, binds, pk)
           end
         end
       end
