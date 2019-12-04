@@ -676,7 +676,10 @@ public class RubyJdbcConnection extends RubyObject {
 
     private void connectImpl(final boolean forceConnection) throws SQLException {
         setConnection( forceConnection ? newConnection() : null );
-        if ( forceConnection ) configureConnection();
+        if (forceConnection) {
+            if (getConnectionImpl() == null) throw new SQLException("Didn't get a connection. Wrong URL?");
+            configureConnection();
+        }
     }
 
     @JRubyMethod(name = "read_only?")
@@ -832,31 +835,60 @@ public class RubyJdbcConnection extends RubyObject {
         return mapQueryResult(context, connection, resultSet);
     }
 
+    private static String[] createStatementPk(IRubyObject pk) {
+        String[] statementPk;
+        if (pk instanceof RubyArray) {
+            RubyArray ary = (RubyArray) pk;
+            int size = ary.size();
+            statementPk = new String[size];
+            for (int i = 0; i < size; i++) {
+                statementPk[i] = sqlString(ary.eltInternal(i));
+            }
+        } else {
+            statementPk = new String[] { sqlString(pk) };
+        }
+        return statementPk;
+    }
+
     /**
      * Executes an INSERT SQL statement
      * @param context
      * @param sql
+     * @param pk Rails PK
      * @return ActiveRecord::Result
      * @throws SQLException
      */
-    @JRubyMethod(name = "execute_insert", required = 1)
-    public IRubyObject execute_insert(final ThreadContext context, final IRubyObject sql) {
-        return withConnection(context, connection -> {
-            Statement statement = null;
-            final String query = sqlString(sql);
-            try {
+    @JRubyMethod(name = "execute_insert_pk", required = 2)
+    public IRubyObject execute_insert_pk(final ThreadContext context, final IRubyObject sql, final IRubyObject pk) {
+        return withConnection(context, new Callable<IRubyObject>() {
+            public IRubyObject call(final Connection connection) throws SQLException {
+                Statement statement = null;
+                final String query = sqlString(sql);
+                try {
 
-                statement = createStatement(context, connection);
-                statement.executeUpdate(query, Statement.RETURN_GENERATED_KEYS);
-                return mapGeneratedKeys(context, connection, statement);
+                    statement = createStatement(context, connection);
 
-            } catch (final SQLException e) {
-                debugErrorSQL(context, query);
-                throw e;
-            } finally {
-                close(statement);
+                    if (pk == context.nil || pk == context.fals || !supportsGeneratedKeys(connection)) {
+                        statement.executeUpdate(query, Statement.RETURN_GENERATED_KEYS);
+                    } else {
+                        statement.executeUpdate(query, createStatementPk(pk));
+                    }
+
+                    return mapGeneratedKeys(context, connection, statement);
+                } catch (final SQLException e) {
+                    debugErrorSQL(context, query);
+                    throw e;
+                } finally {
+                    close(statement);
+                }
             }
         });
+    }
+
+    @Deprecated
+    @JRubyMethod(name = "execute_insert", required = 1)
+    public IRubyObject execute_insert(final ThreadContext context, final IRubyObject sql) {
+        return execute_insert_pk(context, sql, context.nil);
     }
 
     /**
@@ -864,28 +896,41 @@ public class RubyJdbcConnection extends RubyObject {
      * @param context
      * @param sql
      * @param binds RubyArray of values to be bound to the query
+     * @param pk Rails PK
      * @return ActiveRecord::Result
      * @throws SQLException
      */
-    @JRubyMethod(name = "execute_insert", required = 2)
-    public IRubyObject execute_insert(final ThreadContext context, final IRubyObject sql, final IRubyObject binds) {
-        return withConnection(context, connection -> {
-            PreparedStatement statement = null;
-            final String query = sqlString(sql);
-            try {
+    @JRubyMethod(name = "execute_insert_pk", required = 3)
+    public IRubyObject execute_insert_pk(final ThreadContext context, final IRubyObject sql, final IRubyObject binds,
+                                         final IRubyObject pk) {
+        return withConnection(context, new Callable<IRubyObject>() {
+            public IRubyObject call(final Connection connection) throws SQLException {
+                PreparedStatement statement = null;
+                final String query = sqlString(sql);
+                try {
+                    if (pk == context.nil || pk == context.fals || !supportsGeneratedKeys(connection)) {
+                        statement = connection.prepareStatement(query, Statement.RETURN_GENERATED_KEYS);
+                    } else {
+                        statement = connection.prepareStatement(query, createStatementPk(pk));
+                    }
 
-                statement = connection.prepareStatement(query, Statement.RETURN_GENERATED_KEYS);
-                setStatementParameters(context, connection, statement, (RubyArray) binds);
-                statement.executeUpdate();
-                return mapGeneratedKeys(context, connection, statement);
-
-            } catch (final SQLException e) {
-                debugErrorSQL(context, query);
-                throw e;
-            } finally {
-                close(statement);
+                    setStatementParameters(context, connection, statement, (RubyArray) binds);
+                    statement.executeUpdate();
+                    return mapGeneratedKeys(context, connection, statement);
+                } catch (final SQLException e) {
+                    debugErrorSQL(context, query);
+                    throw e;
+                } finally {
+                    close(statement);
+                }
             }
         });
+    }
+
+    @Deprecated
+    @JRubyMethod(name = "execute_insert", required = 2)
+    public IRubyObject execute_insert(final ThreadContext context, final IRubyObject binds, final IRubyObject sql) {
+        return execute_insert_pk(context, sql, binds, context.nil);
     }
 
     /**
