@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 ArJdbc::ConnectionMethods.module_eval do
   def postgresql_connection(config)
+    config = config.deep_dup
     # NOTE: this isn't "really" necessary but Rails (in tests) assumes being able to :
     #   ActiveRecord::Base.postgresql_connection ActiveRecord::Base.configurations['arunit'].merge(:insert_returning => false)
     # ... while using symbols by default but than configurations returning string keys ;(
