@@ -260,7 +260,7 @@ class MySQLRailsTest < Test::Unit::TestCase
 
 
   class Event < ActiveRecord::Base
-    validates_uniqueness_of :title
+    validates_uniqueness_of :title, case_sensitive: true
   end
 
   test 'UniquenessValidationTest#test_validate_uniqueness_with_limit_and_utf8' do

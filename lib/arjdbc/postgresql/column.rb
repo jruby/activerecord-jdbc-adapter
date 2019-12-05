@@ -48,7 +48,7 @@ module ArJdbc
       end
 
       def has_default_function?(default_value, default)
-        !default_value && %r{\w+\(.*\)|\(.*\)::\w+|CURRENT_DATE|CURRENT_TIMESTAMP}.match?(default)
+        !default_value && default && %r{\w+\(.*\)|\(.*\)::\w+|CURRENT_DATE|CURRENT_TIMESTAMP}.match?(default)
       end
     end
 

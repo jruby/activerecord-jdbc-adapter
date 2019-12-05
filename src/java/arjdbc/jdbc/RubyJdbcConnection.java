@@ -610,11 +610,7 @@ public class RubyJdbcConnection extends RubyObject {
                 return convertJavaToRuby( connection.unwrap(Connection.class) );
             }
         }
-        catch (AbstractMethodError e) {
-            debugStackTrace(context, e);
-            warn(context, "driver/pool connection does not support unwrapping: " + e);
-        }
-        catch (SQLException e) {
+        catch (AbstractMethodError | SQLException e) {
             debugStackTrace(context, e);
             warn(context, "driver/pool connection does not support unwrapping: " + e);
         }
@@ -860,27 +856,25 @@ public class RubyJdbcConnection extends RubyObject {
      */
     @JRubyMethod(name = "execute_insert_pk", required = 2)
     public IRubyObject execute_insert_pk(final ThreadContext context, final IRubyObject sql, final IRubyObject pk) {
-        return withConnection(context, new Callable<IRubyObject>() {
-            public IRubyObject call(final Connection connection) throws SQLException {
-                Statement statement = null;
-                final String query = sqlString(sql);
-                try {
+        return withConnection(context, connection -> {
+            Statement statement = null;
+            final String query = sqlString(sql);
+            try {
 
-                    statement = createStatement(context, connection);
+                statement = createStatement(context, connection);
 
-                    if (pk == context.nil || pk == context.fals || !supportsGeneratedKeys(connection)) {
-                        statement.executeUpdate(query, Statement.RETURN_GENERATED_KEYS);
-                    } else {
-                        statement.executeUpdate(query, createStatementPk(pk));
-                    }
-
-                    return mapGeneratedKeys(context, connection, statement);
-                } catch (final SQLException e) {
-                    debugErrorSQL(context, query);
-                    throw e;
-                } finally {
-                    close(statement);
+                if (pk == context.nil || pk == context.fals || !supportsGeneratedKeys(connection)) {
+                    statement.executeUpdate(query, Statement.RETURN_GENERATED_KEYS);
+                } else {
+                    statement.executeUpdate(query, createStatementPk(pk));
                 }
+
+                return mapGeneratedKeys(context, connection, statement);
+            } catch (final SQLException e) {
+                debugErrorSQL(context, query);
+                throw e;
+            } finally {
+                close(statement);
             }
         });
     }
@@ -903,26 +897,24 @@ public class RubyJdbcConnection extends RubyObject {
     @JRubyMethod(name = "execute_insert_pk", required = 3)
     public IRubyObject execute_insert_pk(final ThreadContext context, final IRubyObject sql, final IRubyObject binds,
                                          final IRubyObject pk) {
-        return withConnection(context, new Callable<IRubyObject>() {
-            public IRubyObject call(final Connection connection) throws SQLException {
-                PreparedStatement statement = null;
-                final String query = sqlString(sql);
-                try {
-                    if (pk == context.nil || pk == context.fals || !supportsGeneratedKeys(connection)) {
-                        statement = connection.prepareStatement(query, Statement.RETURN_GENERATED_KEYS);
-                    } else {
-                        statement = connection.prepareStatement(query, createStatementPk(pk));
-                    }
-
-                    setStatementParameters(context, connection, statement, (RubyArray) binds);
-                    statement.executeUpdate();
-                    return mapGeneratedKeys(context, connection, statement);
-                } catch (final SQLException e) {
-                    debugErrorSQL(context, query);
-                    throw e;
-                } finally {
-                    close(statement);
+        return withConnection(context, connection -> {
+            PreparedStatement statement = null;
+            final String query = sqlString(sql);
+            try {
+                if (pk == context.nil || pk == context.fals || !supportsGeneratedKeys(connection)) {
+                    statement = connection.prepareStatement(query, Statement.RETURN_GENERATED_KEYS);
+                } else {
+                    statement = connection.prepareStatement(query, createStatementPk(pk));
                 }
+
+                setStatementParameters(context, connection, statement, (RubyArray) binds);
+                statement.executeUpdate();
+                return mapGeneratedKeys(context, connection, statement);
+            } catch (final SQLException e) {
+                debugErrorSQL(context, query);
+                throw e;
+            } finally {
+                close(statement);
             }
         });
     }
@@ -1012,12 +1004,12 @@ public class RubyJdbcConnection extends RubyObject {
                     binds = null;
                 } else {                              // (sql, binds)
                     maxRows = 0;
-                    binds = (RubyArray) TypeConverter.checkArrayType(args[1]);
+                    binds = (RubyArray) TypeConverter.checkArrayType(context, args[1]);
                 }
                 break;
             case 3:                                   // (sql, max_rows, binds)
                 maxRows = RubyNumeric.fix2int(args[1]);
-                binds = (RubyArray) TypeConverter.checkArrayType(args[2]);
+                binds = (RubyArray) TypeConverter.checkArrayType(context, args[2]);
                 break;
             default:                                  // (sql) 1-arg
                 maxRows = 0;

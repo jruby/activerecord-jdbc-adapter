@@ -2,7 +2,22 @@
 
 require 'rubygems' unless defined? Gem
 
-gem 'activerecord', ENV['AR_VERSION'] if ENV['AR_VERSION']
+if ENV['RAILS']  # Use local clone of Rails
+  rails_dir = ENV['RAILS']
+
+  activerecord_dir = ::File.join(rails_dir, 'activerecord', 'lib')
+  if !::File.exist?(rails_dir) && !::File.exist?(activerecord_dir)
+    raise "ENV['RAILS'] set but does not point at a valid rails clone"
+  end
+  puts "--- Using AR from #{activerecord_dir}"
+
+  $LOAD_PATH << ::File.join(rails_dir, 'activesupport', 'lib')
+  $LOAD_PATH << ::File.join(rails_dir, 'activemodel', 'lib')
+  $LOAD_PATH << activerecord_dir
+elsif ENV['AR_VERSION']
+  gem 'activerecord', ENV['AR_VERSION']
+end
+
 require 'active_record'
 require 'active_record/version'
 
@@ -12,7 +27,7 @@ if defined? JRUBY_VERSION
                       require 'arjdbc'
                       ArJdbc::VERSION
                     else
-                      $LOAD_PATH << File.expand_path('../lib', File.dirname(__FILE__))
+                      $LOAD_PATH.unshift File.expand_path('../lib', File.dirname(__FILE__))
                       require 'arjdbc'
                       "#{ArJdbc::VERSION} #{`git rev-parse HEAD`[0, 8]}"
                     end
