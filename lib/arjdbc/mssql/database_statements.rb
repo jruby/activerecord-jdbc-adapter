@@ -87,7 +87,7 @@ module ActiveRecord
         end
 
         def identity_column_name(table_name)
-          for column in columns(table_name)
+          for column in schema_cache.columns(table_name)
             return column.name if column.identity?
           end
           nil
