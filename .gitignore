@@ -2,6 +2,7 @@
 *.tgz
 *~
 *.log
+/log/
 patches*
 *#
 TAGS
