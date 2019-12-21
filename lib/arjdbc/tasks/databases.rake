@@ -36,7 +36,10 @@ module ActiveRecord::Tasks
     private
 
     def adapt_jdbc_config(db_config)
-      db_config.configuration_hash[:adapter] = db_config.adapter.sub(/^jdbc/, '') if db_config.adapter
+      if db_config.adapter.start_with? 'jdbc'
+        config = db_config.configuration_hash.merge(adapter: db_config.adapter.sub(/^jdbc/, ''))
+        db_config = ActiveRecord::DatabaseConfigurations::HashConfig.new(db_config.env_name, db_config.spec_name, config)
+      end
       db_config
     end
 
