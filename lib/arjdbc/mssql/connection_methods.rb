@@ -52,6 +52,8 @@ ArJdbc::ConnectionMethods.module_eval do
 
   # @note Assumes SQLServer SQL-JDBC driver on the class-path.
   def sqlserver_connection(config)
+    config = config.deep_dup
+
     config[:adapter_spec] ||= ::ArJdbc::MSSQL
     config[:adapter_class] = ActiveRecord::ConnectionAdapters::MSSQLAdapter unless config.key?(:adapter_class)
 

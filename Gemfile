@@ -49,7 +49,7 @@ group :test do
 
   gem 'bcrypt', '~> 3.1.11', require: false
   gem 'builder', require: false
-  gem 'jdbc-mssql', '~> 0.6.0', require: nil
+  gem 'jdbc-mssql', '~> 0.7.0', require: nil
 end
 
 group :rails do
