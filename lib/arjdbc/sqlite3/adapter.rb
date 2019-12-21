@@ -159,7 +159,7 @@ module ArJdbc
     #++
 
     READ_QUERY = ActiveRecord::ConnectionAdapters::AbstractAdapter.build_read_query_regexp(
-      :begin, :commit, :explain, :select, :pragma, :release, :savepoint, :rollback, :with
+      :pragma
     ) # :nodoc:
     private_constant :READ_QUERY
 
