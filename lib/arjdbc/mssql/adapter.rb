@@ -135,8 +135,10 @@ module ActiveRecord
       end
 
       def reset!
-        execute 'IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION'
-        @connection.reconnect!
+        # execute 'IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION'
+        # NOTE: it seems the above line interferes with the jdbc driver
+        # and ending up in connection closed, issue seen in rails 5.2 and 6.0
+        reconnect!
       end
 
       def disable_referential_integrity
