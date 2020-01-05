@@ -359,7 +359,7 @@ public class RubyJdbcConnection extends RubyObject {
             if ( ! connection.getAutoCommit() ) {
                 try {
                     connection.commit();
-                    resetSavepoints(context); // if any
+                    resetSavepoints(context, connection); // if any
                     return context.runtime.newBoolean(true);
                 }
                 finally {
@@ -380,7 +380,7 @@ public class RubyJdbcConnection extends RubyObject {
             if ( ! connection.getAutoCommit() ) {
                 try {
                     connection.rollback();
-                    resetSavepoints(context); // if any
+                    resetSavepoints(context, connection); // if any
                     return context.tru;
                 } finally {
                     connection.setAutoCommit(true);
@@ -516,7 +516,7 @@ public class RubyJdbcConnection extends RubyObject {
         return null;
     }
 
-    protected boolean resetSavepoints(final ThreadContext context) {
+    protected boolean resetSavepoints(final ThreadContext context, final Connection connection) throws SQLException {
         if ( hasInternalVariable("savepoints") ) {
             removeInternalVariable("savepoints");
             return true;
@@ -1088,6 +1088,28 @@ public class RubyJdbcConnection extends RubyObject {
                 }
 
                 return newEmptyResult(context);
+
+            } catch (final SQLException e) {
+                debugErrorSQL(context, query);
+                throw e;
+            } finally {
+                close(statement);
+            }
+        });
+    }
+
+    @JRubyMethod(required = 1)
+    public IRubyObject get_first_value(final ThreadContext context, final IRubyObject sql) {
+        return withConnection(context, connection -> {
+            Statement statement = null;
+            final String query = sqlString(sql);
+            try {
+                statement = createStatement(context, connection);
+                statement.execute(query);
+                ResultSet rs = statement.getResultSet();
+                if (rs == null || !rs.next()) return context.nil;
+
+                return jdbcToRuby(context, context.getRuntime(), 1, rs.getMetaData().getColumnType(1), rs);
 
             } catch (final SQLException e) {
                 debugErrorSQL(context, query);

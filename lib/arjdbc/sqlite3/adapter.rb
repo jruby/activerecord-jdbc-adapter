@@ -16,6 +16,33 @@ require "active_record/connection_adapters/sqlite3/schema_dumper"
 require "active_record/connection_adapters/sqlite3/schema_statements"
 require "active_support/core_ext/class/attribute"
 
+module SQLite3
+  module Constants
+    module Open
+      READONLY       = 0x00000001
+      READWRITE      = 0x00000002
+      CREATE         = 0x00000004
+      DELETEONCLOSE  = 0x00000008
+      EXCLUSIVE      = 0x00000010
+      AUTOPROXY      = 0x00000020
+      URI            = 0x00000040
+      MEMORY         = 0x00000080
+      MAIN_DB        = 0x00000100
+      TEMP_DB        = 0x00000200
+      TRANSIENT_DB   = 0x00000400
+      MAIN_JOURNAL   = 0x00000800
+      TEMP_JOURNAL   = 0x00001000
+      SUBJOURNAL     = 0x00002000
+      MASTER_JOURNAL = 0x00004000
+      NOMUTEX        = 0x00008000
+      FULLMUTEX      = 0x00010000
+      SHAREDCACHE    = 0x00020000
+      PRIVATECACHE   = 0x00040000
+      WAL            = 0x00080000
+    end
+  end
+end
+
 module ArJdbc
   # All the code in this module is a copy of ConnectionAdapters::SQLite3Adapter from active_record 5.
   # The constants at the front of this file are to allow the rest of the file to remain with no modifications
@@ -66,6 +93,10 @@ module ArJdbc
     end
 
     def supports_savepoints?
+      true
+    end
+
+    def supports_transaction_isolation?
       true
     end
 
@@ -319,6 +350,10 @@ module ArJdbc
       end
 
       sql
+    end
+
+    def shared_cache?
+      config[:properties] && config[:properties][:shared_cache] == true
     end
 
     def get_database_version # :nodoc:
@@ -665,7 +700,9 @@ module ActiveRecord::ConnectionAdapters
     end
 
     def begin_isolated_db_transaction(isolation)
-      raise ActiveRecord::TransactionIsolationError, 'adapter does not support setting transaction isolation'
+      raise ActiveRecord::TransactionIsolationError, "SQLite3 only supports the `read_uncommitted` transaction isolation level" if isolation != :read_uncommitted
+      raise StandardError, "You need to enable the shared-cache mode in SQLite mode before attempting to change the transaction isolation level" unless shared_cache?
+      super
     end
 
     # SQLite driver doesn't support all types of insert statements with executeUpdate so

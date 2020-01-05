@@ -370,10 +370,9 @@ public class SQLite3RubyJdbcConnection extends RubyJdbcConnection {
     }
 
     @Override
-    public IRubyObject begin(ThreadContext context, IRubyObject level) {
-        throw context.runtime.newRaiseException(getTransactionIsolationError(context.runtime),
-                "SQLite3 does not support isolation levels"
-        );
+    protected boolean resetSavepoints(final ThreadContext context, final Connection connection) throws SQLException {
+        connection.setTransactionIsolation(Connection.TRANSACTION_SERIALIZABLE);
+        return super.resetSavepoints(context, connection);
     }
 
     @Override

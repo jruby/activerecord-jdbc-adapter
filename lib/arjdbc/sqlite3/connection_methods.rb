@@ -35,7 +35,17 @@ ArJdbc::ConnectionMethods.module_eval do
       # * http://sqlite.org/c3ref/open.html
       # * http://sqlite.org/c3ref/c_open_autoproxy.html
       # => 0x01 = readonly, 0x40 = uri (default in JDBC)
-      config[:properties][:open_mode] = 0x01 | 0x40
+      config[:properties][:open_mode] = ::SQLite3::Constants::Open::READONLY | ::SQLite3::Constants::Open::URI
+    end
+
+    if config[:flags]
+      config[:properties][:open_mode] ||= 0
+      config[:properties][:open_mode] |= config[:flags]
+
+      # JDBC driver has an extra flag for it
+      if config[:flags] & ::SQLite3::Constants::Open::SHAREDCACHE != 0
+        config[:properties][:shared_cache] = true
+      end
     end
 
     timeout = config[:timeout]
