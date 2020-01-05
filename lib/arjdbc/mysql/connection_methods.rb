@@ -102,6 +102,8 @@ ArJdbc::ConnectionMethods.module_eval do
   alias_method :mysql2_connection, :mysql_connection
 
   def mariadb_connection(config)
+    config = config.deep_dup
+
     config[:adapter_spec] ||= ::ArJdbc::MySQL
     config[:adapter_class] = ActiveRecord::ConnectionAdapters::Mysql2Adapter unless config.key?(:adapter_class)
 
