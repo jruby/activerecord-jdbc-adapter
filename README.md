@@ -23,7 +23,8 @@ Versions are targeted at certain versions of Rails and live on their own branche
 | 50.x        | 5.0.x         | 50-stable | 9.1.x     | 7        |
 | 51.x        | 5.1.x         | 51-stable | 9.1.x     | 7        |
 | 52.x        | 5.2.x         | 52-stable | 9.1.x     | 7        |
-| 60.x        | 6.0.x         | master    | 9.2.7     | 8        |
+| 60.x        | 6.0.x         | 60-stable | 9.2.7     | 8        |
+| 61.x        | 6.1.x         | master    | 9.2.7     | 8        |
 
 Note that JRuby 9.1.x is end-of-life. We recommend Java 8 at a minimum for all
 versions.
