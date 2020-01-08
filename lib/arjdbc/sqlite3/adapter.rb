@@ -327,6 +327,15 @@ module ArJdbc
       "DELETE FROM #{quote_table_name(table_name)}"
     end
 
+    def build_truncate_statements(*table_names)
+      table_names.flatten.map { |table_name| build_truncate_statement table_name }
+    end
+
+    def truncate(table_name, name = nil)
+      ActiveRecord::Base.clear_query_caches_for_current_thread if @query_cache_enabled
+      execute(build_truncate_statement(table_name), name)
+    end
+
     def check_version
       if database_version < "3.8.0"
         raise "Your version of SQLite (#{database_version}) is too old. Active Record supports SQLite >= 3.8."

@@ -384,7 +384,11 @@ module ArJdbc
     end
 
     def execute_batch(statements, name = nil)
-      execute(combine_multi_statements(statements), name)
+      if statements.is_a? Array
+        execute(combine_multi_statements(statements), name)
+      else
+        execute(statements, name)
+      end
     end
 
     def explain(arel, binds = [])
@@ -444,8 +448,13 @@ module ArJdbc
       sql
     end
 
-    def build_truncate_statements(table_names)
-      ["TRUNCATE TABLE #{table_names.map(&method(:quote_table_name)).join(", ")}"]
+    def build_truncate_statements(*table_names)
+      ["TRUNCATE TABLE #{table_names.flatten.map(&method(:quote_table_name)).join(", ")}"]
+    end
+
+    def truncate(table_name, name = nil)
+      ActiveRecord::Base.clear_query_caches_for_current_thread if @query_cache_enabled
+      execute("TRUNCATE TABLE #{quote_table_name(table_name)}", name)
     end
 
     def all_schemas
