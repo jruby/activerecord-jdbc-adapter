@@ -97,6 +97,10 @@ module ArJdbc
       true
     end
 
+    def supports_common_table_expressions?
+      database_version >= "3.8.3"
+    end
+
     def supports_insert_on_conflict?
       database_version >= "3.24.0"
     end
@@ -154,7 +158,9 @@ module ArJdbc
     # DATABASE STATEMENTS ======================================
     #++
 
-    READ_QUERY = ActiveRecord::ConnectionAdapters::AbstractAdapter.build_read_query_regexp(:begin, :commit, :explain, :select, :pragma, :release, :savepoint, :rollback) # :nodoc:
+    READ_QUERY = ActiveRecord::ConnectionAdapters::AbstractAdapter.build_read_query_regexp(
+      :begin, :commit, :explain, :select, :pragma, :release, :savepoint, :rollback, :with
+    ) # :nodoc:
     private_constant :READ_QUERY
 
     def write_query?(sql) # :nodoc:
@@ -317,11 +323,17 @@ module ArJdbc
       SQLite3Adapter::Version.new(query_value("SELECT sqlite_version(*)"))
     end
 
+    def build_truncate_statement(table_name)
+      "DELETE FROM #{quote_table_name(table_name)}"
+    end
+
     def build_truncate_statements(*table_names)
-      truncate_tables = table_names.map do |table_name|
-        "DELETE FROM #{quote_table_name(table_name)}"
-      end
-      combine_multi_statements(truncate_tables)
+      table_names.flatten.map { |table_name| build_truncate_statement table_name }
+    end
+
+    def truncate(table_name, name = nil)
+      ActiveRecord::Base.clear_query_caches_for_current_thread if @query_cache_enabled
+      execute(build_truncate_statement(table_name), name)
     end
 
     def check_version
@@ -352,7 +364,8 @@ module ArJdbc
     # See: https://www.sqlite.org/lang_altertable.html
     # SQLite has an additional restriction on the ALTER TABLE statement
     def invalid_alter_table_type?(type, options)
-      type.to_sym == :primary_key || options[:primary_key]
+      type.to_sym == :primary_key || options[:primary_key] ||
+        options[:null] == false && options[:default].nil?
     end
 
     def alter_table(table_name, foreign_keys = foreign_keys(table_name), **options)

@@ -303,6 +303,10 @@ module ArJdbc
       @has_pg_hint_plan
     end
 
+    def supports_common_table_expressions?
+      true
+    end
+
     def supports_lazy_transactions?
       true
     end
@@ -379,13 +383,23 @@ module ArJdbc
       end
     end
 
+    def execute_batch(statements, name = nil)
+      if statements.is_a? Array
+        execute(combine_multi_statements(statements), name)
+      else
+        execute(statements, name)
+      end
+    end
+
     def explain(arel, binds = [])
       sql, binds = to_sql_and_binds(arel, binds)
       ActiveRecord::ConnectionAdapters::PostgreSQL::ExplainPrettyPrinter.new.pp(exec_query("EXPLAIN #{sql}", 'EXPLAIN', binds))
     end
 
     # from ActiveRecord::ConnectionAdapters::PostgreSQL::DatabaseStatements
-    READ_QUERY = ActiveRecord::ConnectionAdapters::AbstractAdapter.build_read_query_regexp(:begin, :commit, :explain, :select, :set, :show, :release, :savepoint, :rollback) # :nodoc:
+    READ_QUERY = ActiveRecord::ConnectionAdapters::AbstractAdapter.build_read_query_regexp(
+      :begin, :commit, :explain, :select, :set, :show, :release, :savepoint, :rollback, :with
+    ) # :nodoc:
     private_constant :READ_QUERY
 
     def write_query?(sql) # :nodoc:
@@ -435,7 +449,12 @@ module ArJdbc
     end
 
     def build_truncate_statements(*table_names)
-      "TRUNCATE TABLE #{table_names.map(&method(:quote_table_name)).join(", ")}"
+      ["TRUNCATE TABLE #{table_names.flatten.map(&method(:quote_table_name)).join(", ")}"]
+    end
+
+    def truncate(table_name, name = nil)
+      ActiveRecord::Base.clear_query_caches_for_current_thread if @query_cache_enabled
+      execute("TRUNCATE TABLE #{quote_table_name(table_name)}", name)
     end
 
     def all_schemas
