@@ -12,3 +12,4 @@ exclude :test_establish_connection_using_2_level_config_defaults_to_default_env_
 exclude :test_establish_connection_using_two_level_configurations, 'tries to load SQLite3 driver'
 exclude :test_establish_connection_using_top_level_key_in_two_level_config, 'tries to load SQLite3 driver'
 exclude :test_symbolized_configurations_assignment, 'tries to load SQLite3 driver'
+exclude :test_establish_connection_with_primary_works_without_deprecation, 'tries to load SQLite3 driver'
