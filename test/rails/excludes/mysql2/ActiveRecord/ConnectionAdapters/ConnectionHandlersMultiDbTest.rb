@@ -13,4 +13,5 @@ exclude :test_switching_connections_with_database_config_hash, 'tries to load SQ
 exclude :test_connects_to_with_single_configuration, 'tries to load SQLite3 driver'
 exclude :test_connects_to_using_top_level_key_in_two_level_config, 'tries to load SQLite3 driver'
 exclude :test_connects_to_returns_array_of_established_connections, 'tries to load SQLite3 driver'
+exclude :test_loading_relations_with_multi_db_connection_handlers, 'tries to load SQLite3 driver'
 exclude :test_connection_handlers_swapping_connections_in_fiber, 'fibers are threads in JRuby'
