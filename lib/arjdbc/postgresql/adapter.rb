@@ -512,7 +512,7 @@ module ArJdbc
     alias_method :quote_schema_name, :quote_column_name
 
     # Need to clear the cache even though the AR adapter doesn't for some reason
-    def remove_column(table_name, column_name, type = nil, options = {})
+    def remove_column(table_name, column_name, type = nil, **options)
       super
       clear_cache!
     end
