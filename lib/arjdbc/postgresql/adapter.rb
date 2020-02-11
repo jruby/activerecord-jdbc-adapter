@@ -213,6 +213,10 @@ module ArJdbc
       true
     end
 
+    def supports_partitioned_indexes?
+      database_version >= 110_000
+    end
+
     def supports_expression_index?
       true
     end
