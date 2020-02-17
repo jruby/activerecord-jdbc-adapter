@@ -11,13 +11,10 @@ Gem::Specification.new do |gem|
   gem.license = 'BSD-2-Clause'
   gem.summary = 'JDBC adapter for ActiveRecord, for use within JRuby on Rails.'
   gem.description = "" <<
-    "AR-JDBC is a database adapter for Rails' ActiveRecord component designed " <<
-    "to be used with JRuby built upon Java's JDBC API for database access. " <<
-    "Provides (ActiveRecord) built-in adapters: MySQL, PostgreSQL and SQLite3 " <<
-    "as well as adapters for popular databases such as Oracle, SQLServer, " <<
-    "DB2, FireBird and even Java (embed) databases: Derby, HSQLDB and H2. " <<
-    "It allows to connect to virtually any JDBC-compliant database with your " <<
-    "JRuby on Rails application."
+    "AR-JDBC is a database adapter for Rails' ActiveRecord component " <<
+    "designed to be used with JRuby built upon Java's JDBC API for " <<
+    "database access. Provides (ActiveRecord) built-in adapters: MySQL,  " <<
+    "PostgreSQL, SQLite3, and SQLServer."
 
   gem.require_paths = ["lib"]
 
@@ -27,7 +24,7 @@ Gem::Specification.new do |gem|
     reject { |f| f =~ /^(gemfiles)/ } # no tests - no Gemfile_s appraised ...
   gem.files += ['lib/arjdbc/jdbc/adapter_java.jar'] #if ENV['RELEASE'].eql?('true')
 
-  if ENV['RELEASE'] != 'true' # @see Rakefile
+  if ENV['INCLUDE_JAR_IN_GEM'] != 'true' # @see Rakefile
     gem.extensions << 'Rakefile' # to support auto-building .jar with :git paths
 
     #gem.add_runtime_dependency 'jar-dependencies', '~> 0.1' # development not enough!
@@ -44,7 +41,7 @@ Gem::Specification.new do |gem|
   gem.executables = gem.files.grep(%r{^bin/}).map { |f| File.basename(f) }
   gem.test_files = gem.files.grep(%r{^test/})
 
-  gem.add_dependency 'activerecord', '~> 6.0.0.rc1'
+  gem.add_dependency 'activerecord', '~> 6.0.0'
 
   #gem.add_development_dependency 'test-unit', '2.5.4'
   #gem.add_development_dependency 'test-unit-context', '>= 0.3.0'

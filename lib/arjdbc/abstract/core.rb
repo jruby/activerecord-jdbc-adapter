@@ -56,7 +56,7 @@ module ArJdbc
         case exception
           when SystemExit, SignalException, NoMemoryError then exception
           when ActiveModel::RangeError, TypeError, RuntimeError then exception
-          else ActiveRecord::StatementInvalid.new(message, sql: sql, binds: binds)
+          else super
         end
       end
 

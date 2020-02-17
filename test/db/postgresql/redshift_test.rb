@@ -42,7 +42,7 @@ class PostgresSQLRedshiftTest < Test::Unit::TestCase
   def run_with_connection_removed
     config = ActiveRecord::Base.remove_connection
     begin
-      yield config
+      yield config.configuration_hash
     ensure
       ActiveRecord::Base.establish_connection(config)
     end

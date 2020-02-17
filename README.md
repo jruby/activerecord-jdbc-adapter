@@ -5,27 +5,29 @@
 ActiveRecord-JDBC-Adapter (AR-JDBC) is the main database adapter for Rails'
 *ActiveRecord* component that can be used with [JRuby][0].
 ActiveRecord-JDBC-Adapter provides full or nearly full support for:
-**MySQL**, **PostgreSQL**, **SQLite3**.  In the near future there are plans to
-add support **MSSQL**. Unless we get more contributions we will not be going
-beyond these four adapters.  Note that the amount of work needed to get
-another adapter is not huge but the amount of testing required to make sure
-that adapter continues to work is not something we can do with the resources
-we currently have.
+**MySQL**, **PostgreSQL**, **SQLite3** and **MSSQL*** (SQLServer).
 
-For Oracle database users you are encouraged to use
-https://github.com/rsim/oracle-enhanced.
+Unless we get more contributions we will not be supporting more adapters.
+Note that the amount of work needed to get another adapter is not huge but
+the amount of testing required to make sure that adapter continues to work
+is not something we can do with the resources we currently have.
+
+- for **Oracle** database users you are encouraged to use
+  https://github.com/rsim/oracle-enhanced
+- **MSSQL** adapter's gem parts reside in a [separate repository][8]
 
 Versions are targeted at certain versions of Rails and live on their own branches.
 
-| Gem Version | Rails Version | Branch |
-| ----------- | ------------- | ------ |
-| 50.x        | 5.0.x         | 50-stable |
-| 51.x        | 5.1.x         | 51-stable |
-| 52.x        | 5.2.x         | 52-stable |
-| future      | latest        | master    |
+| Gem Version | Rails Version | Branch    | min JRuby | min Java |
+| ----------- | ------------- | --------- | --------- | -------- |
+| 50.x        | 5.0.x         | 50-stable | 9.1.x     | 7        |
+| 51.x        | 5.1.x         | 51-stable | 9.1.x     | 7        |
+| 52.x        | 5.2.x         | 52-stable | 9.1.x     | 7        |
+| 60.x        | 6.0.x         | 60-stable | 9.2.7     | 8        |
+| 61.x        | 6.1.x         | master    | 9.2.7     | 8        |
 
-The minimum version of JRuby for 50+ is JRuby **9.1.x** and
-JRuby 9.1+ requires Java 7 or newer (we recommend Java 8 at minimum).
+Note that JRuby 9.1.x is end-of-life. We recommend Java 8 at a minimum for all
+versions.
 
 ## Using ActiveRecord JDBC
 
@@ -39,6 +41,7 @@ adapters are available:
   - MySQL (`activerecord-jdbcmysql-adapter`)
   - PostgreSQL (`activerecord-jdbcpostgresql-adapter`)
   - SQLite3 (`activerecord-jdbcsqlite3-adapter`)
+  - MSSQL (`activerecord-jdbcsqlserver-adapter`)
 
 2. If you're generating a new Rails application, use the following command:
 
@@ -80,6 +83,21 @@ production:
     socketTimeout:  60000
     connectTimeout: 60000
 ```
+
+#### MySQL specific notes
+
+Depending on the MySQL server configuration, it might be required to set
+additional connection properties for date/time support to work correctly. If you
+encounter problems, try adding this to your database configuration:
+
+```yml
+  properties:
+    serverTimezone: <%= java.util.TimeZone.getDefault.getID %>
+```
+
+The correct timezone depends on the system setup, but the one shown is a good
+place to start and is actually the correct setting for many systems.
+
 
 ### Standalone with ActiveRecord
 
@@ -155,7 +173,8 @@ ask on the #JRuby IRC channel on http://freenode.net/ (try [web-chat][6]).
 This project was originally written by [Nick Sieger](http://github.com/nicksieger)
 and [Ola Bini](http://github.com/olabini) with lots of help from the JRuby community.
 Polished 3.x compatibility and 4.x support (for AR-JDBC >= 1.3.0) was managed by
-[Karol Bucek](http://github.com/kares) among others.
+[Karol Bucek](http://github.com/kares) among others. Support for Rails 6 was
+contributed by [shellyBits GmbH](https://shellybits.ch/)
 
 ## License
 
@@ -173,4 +192,4 @@ license the database's drivers are licensed. See each driver gem's LICENSE.txt.
 [5]: https://github.com/jruby/activerecord-jdbc-adapter/wiki
 [6]: https://webchat.freenode.net/?channels=#jruby
 [7]: http://badge.fury.io/rb/activerecord-jdbc-adapter
-[8]: https://github.com/jruby/activerecord-jdbc-adapter/wiki/Migrating-from-1.2.x-to-1.3.0
+[8]: https://github.com/jruby/activerecord-jdbcsqlserver-adapter

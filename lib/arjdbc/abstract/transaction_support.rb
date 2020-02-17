@@ -24,26 +24,26 @@ module ArJdbc
       # Starts a database transaction.
       # @override
       def begin_db_transaction
-        log('BEGIN TRANSACTION', nil) { @connection.begin }
+        log('BEGIN', 'TRANSACTION') { @connection.begin }
       end
 
       # Starts a database transaction.
       # @param isolation the transaction isolation to use
       def begin_isolated_db_transaction(isolation)
-        log("BEGIN ISOLATED TRANSACTION - #{isolation}", nil) { @connection.begin(isolation) }
+        log("BEGIN ISOLATED - #{isolation}", 'TRANSACTION') { @connection.begin(isolation) }
       end
 
       # Commits the current database transaction.
       # @override
       def commit_db_transaction
-        log('COMMIT TRANSACTION', nil) { @connection.commit }
+        log('COMMIT', 'TRANSACTION') { @connection.commit }
       end
 
       # Rolls back the current database transaction.
       # Called from 'rollback_db_transaction' in the AbstractAdapter
       # @override
       def exec_rollback_db_transaction
-        log('ROLLBACK TRANSACTION', nil) { @connection.rollback }
+        log('ROLLBACK', 'TRANSACTION') { @connection.rollback }
       end
 
       ########################## Savepoint Interface ############################
@@ -55,7 +55,7 @@ module ArJdbc
       # @since 1.3.0
       # @extension added optional name parameter
       def create_savepoint(name = current_savepoint_name)
-        log("SAVEPOINT #{name}", 'Savepoint') { @connection.create_savepoint(name) }
+        log("SAVEPOINT #{name}", 'TRANSACTION') { @connection.create_savepoint(name) }
       end
 
       # Transaction rollback to a given (previously created) save-point.
@@ -64,7 +64,7 @@ module ArJdbc
       # @param name the save-point name
       # @extension added optional name parameter
       def exec_rollback_to_savepoint(name = current_savepoint_name)
-        log("ROLLBACK TO SAVEPOINT #{name}", 'Savepoint') { @connection.rollback_savepoint(name) }
+        log("ROLLBACK TO SAVEPOINT #{name}", 'TRANSACTION') { @connection.rollback_savepoint(name) }
       end
 
       # Release a previously created save-point.
@@ -73,7 +73,7 @@ module ArJdbc
       # @param name the save-point name
       # @extension added optional name parameter
       def release_savepoint(name = current_savepoint_name)
-        log("RELEASE SAVEPOINT #{name}", 'Savepoint') { @connection.release_savepoint(name) }
+        log("RELEASE SAVEPOINT #{name}", 'TRANSACTION') { @connection.release_savepoint(name) }
       end
 
     end

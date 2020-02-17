@@ -303,6 +303,10 @@ module ArJdbc
       @has_pg_hint_plan
     end
 
+    def supports_common_table_expressions?
+      true
+    end
+
     def supports_lazy_transactions?
       true
     end
@@ -365,7 +369,7 @@ module ArJdbc
       @use_insert_returning
     end
 
-    def exec_insert(sql, name, binds, pk = nil, sequence_name = nil)
+    def exec_insert(sql, name = nil, binds = [], pk = nil, sequence_name = nil)
       val = super
       if !use_insert_returning? && pk
         unless sequence_name
@@ -379,31 +383,19 @@ module ArJdbc
       end
     end
 
+    def execute_batch(statements, name = nil)
+      execute(combine_multi_statements(statements), name)
+    end
+
     def explain(arel, binds = [])
       sql, binds = to_sql_and_binds(arel, binds)
       ActiveRecord::ConnectionAdapters::PostgreSQL::ExplainPrettyPrinter.new.pp(exec_query("EXPLAIN #{sql}", 'EXPLAIN', binds))
     end
 
-    # @note Only for "better" AR 4.0 compatibility.
-    # @private
-    def query(sql, name = nil)
-      materialize_transactions
-
-      log(sql, name) do
-        result = []
-        @connection.execute_query_raw(sql, []) do |*values|
-          # We need to use #deep_dup here because it appears that
-          # the java method is reusing an object in some cases
-          # which makes all of the entries in the "result"
-          # array end up with the same values as the last row
-          result << values.deep_dup
-        end
-        result
-      end
-    end
-
     # from ActiveRecord::ConnectionAdapters::PostgreSQL::DatabaseStatements
-    READ_QUERY = ActiveRecord::ConnectionAdapters::AbstractAdapter.build_read_query_regexp(:begin, :commit, :explain, :select, :set, :show, :release, :savepoint, :rollback) # :nodoc:
+    READ_QUERY = ActiveRecord::ConnectionAdapters::AbstractAdapter.build_read_query_regexp(
+      :close, :declare, :fetch, :move, :set, :show
+    ) # :nodoc:
     private_constant :READ_QUERY
 
     def write_query?(sql) # :nodoc:
@@ -452,8 +444,8 @@ module ArJdbc
       sql
     end
 
-    def build_truncate_statements(*table_names)
-      "TRUNCATE TABLE #{table_names.map(&method(:quote_table_name)).join(", ")}"
+    def build_truncate_statements(table_names)
+      ["TRUNCATE TABLE #{table_names.map(&method(:quote_table_name)).join(", ")}"]
     end
 
     def all_schemas
@@ -511,7 +503,7 @@ module ArJdbc
     alias_method :quote_schema_name, :quote_column_name
 
     # Need to clear the cache even though the AR adapter doesn't for some reason
-    def remove_column(table_name, column_name, type = nil, options = {})
+    def remove_column(table_name, column_name, type = nil, **options)
       super
       clear_cache!
     end

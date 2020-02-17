@@ -3,8 +3,6 @@ dist: xenial
 
 services:
   - mysql
-addons:
-  postgresql: 9.4
 
 before_install:
   - unset _JAVA_OPTIONS
@@ -17,7 +15,7 @@ install:
 
 language: ruby
 rvm:
-  - jruby-9.2.7.0
+  - jruby-9.2.9.0
 jdk:
   - openjdk8
 
@@ -50,7 +48,7 @@ before_script:
 
 env:
   global:
-    - AR_VERSION="6-0-stable"
+    - AR_VERSION="master"
 matrix:
   allow_failures:
     - rvm: jruby-head
@@ -60,17 +58,20 @@ matrix:
     - env: DB=mysql2 DRIVER=MariaDB
 
     - addons:
-        postgresql: "9.4"
+        postgresql: "10"
       env: DB=postgresql PREPARED_STATEMENTS=false INSERT_RETURNING=false
     - addons:
-        postgresql: "9.4"
+        postgresql: "10"
       env: DB=postgresql PREPARED_STATEMENTS=false INSERT_RETURNING=true
+    - addons:
+        postgresql: "10"
+      env: DB=postgresql PREPARED_STATEMENTS=true
+    - addons:
+        postgresql: "10"
+      env: DB=postgresql PREPARED_STATEMENTS=true INSERT_RETURNING=true
     - addons:
         postgresql: "9.4"
       env: DB=postgresql PREPARED_STATEMENTS=true
-    - addons:
-        postgresql: "9.4"
-      env: DB=postgresql PREPARED_STATEMENTS=true INSERT_RETURNING=true
 
     - env: DB=sqlite3 PREPARED_STATEMENTS=false
     - env: DB=sqlite3 PREPARED_STATEMENTS=true
@@ -84,7 +85,7 @@ matrix:
     - env: DB=postgresql
       jdk: oraclejdk11
       addons:
-        postgresql: "9.4"
+        postgresql: "10"
     - env: DB=sqlite3
       jdk: oraclejdk11
 
@@ -94,7 +95,7 @@ matrix:
     - rvm: jruby-head
       env: DB=postgresql
       addons:
-        postgresql: "9.4"
+        postgresql: "10"
     - rvm: jruby-head
       env: DB=sqlite3
 
@@ -107,15 +108,18 @@ matrix:
       env: DB=mariadb PREPARED_STATEMENTS=true
 
     # Rails test-suite :
-    - env: DB=mysql2     TEST_PREFIX="rails:" AR_VERSION="6-0-stable" # PS off by default
-    - env: DB=mysql2     TEST_PREFIX="rails:" AR_VERSION="6-0-stable" PREPARED_STATEMENTS=true
-    - env: DB=mysql2     TEST_PREFIX="rails:" AR_VERSION="6-0-stable" DRIVER=MariaDB
+    - env: DB=mysql2     TEST_PREFIX="rails:" AR_VERSION="master" # PS off by default
+    - env: DB=mysql2     TEST_PREFIX="rails:" AR_VERSION="master" PREPARED_STATEMENTS=true
+    - env: DB=mysql2     TEST_PREFIX="rails:" AR_VERSION="master" DRIVER=MariaDB
 
     - addons:
-        postgresql: "9.4"
-      env: DB=postgresql TEST_PREFIX="rails:" AR_VERSION="6-0-stable" # PS on by default
+        postgresql: "10"
+      env: DB=postgresql TEST_PREFIX="rails:" AR_VERSION="master" # PS on by default
+    - addons:
+        postgresql: "10"
+      env: DB=postgresql TEST_PREFIX="rails:" AR_VERSION="master" PREPARED_STATEMENTS=false
     - addons:
         postgresql: "9.4"
-      env: DB=postgresql TEST_PREFIX="rails:" AR_VERSION="6-0-stable" PREPARED_STATEMENTS=false
+      env: DB=postgresql TEST_PREFIX="rails:" AR_VERSION="master" # PS on by default
 
-    - env: DB=sqlite3    TEST_PREFIX="rails:" AR_VERSION="6-0-stable"
+    - env: DB=sqlite3    TEST_PREFIX="rails:" AR_VERSION="master"

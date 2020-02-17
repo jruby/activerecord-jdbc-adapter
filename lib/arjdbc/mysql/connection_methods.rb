@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 ArJdbc::ConnectionMethods.module_eval do
   def mysql_connection(config)
+    config = config.deep_dup
     # NOTE: this isn't "really" necessary but Rails (in tests) assumes being able to :
     #   ActiveRecord::Base.mysql2_connection ActiveRecord::Base.configurations['arunit'].merge(database: ...)
     config = symbolize_keys_if_necessary(config)
@@ -103,6 +104,8 @@ ArJdbc::ConnectionMethods.module_eval do
   alias_method :mysql2_connection, :mysql_connection
 
   def mariadb_connection(config)
+    config = config.deep_dup
+
     config[:adapter_spec] ||= ::ArJdbc::MySQL
     config[:adapter_class] = ActiveRecord::ConnectionAdapters::Mysql2Adapter unless config.key?(:adapter_class)
 

@@ -37,6 +37,7 @@ import org.jruby.Ruby;
 import org.jruby.RubyFloat;
 import org.jruby.RubyString;
 import org.jruby.RubyTime;
+import org.jruby.ext.date.RubyDateTime;
 import org.jruby.javasupport.Java;
 import org.jruby.runtime.Block;
 import org.jruby.runtime.ThreadContext;
@@ -51,6 +52,9 @@ import static arjdbc.util.StringHelper.decByte;
  * @author kares
  */
 public abstract class DateTimeUtils {
+
+    private static final GJChronology CHRONO_ITALY_UTC = GJChronology.getInstance(DateTimeZone.UTC);
+
     public static RubyTime toTime(final ThreadContext context, final IRubyObject value) {
         if (!(value instanceof RubyTime)) { // unlikely
             return (RubyTime) TypeConverter.convertToTypeWithCheck(value, context.runtime.getTime(), "to_time");
@@ -264,6 +268,15 @@ public abstract class DateTimeUtils {
         return newDate(context, year, month, day, ISOChronology.getInstance(zone));
     }
 
+    @SuppressWarnings("deprecation")
+    public static IRubyObject newDate(final ThreadContext context, final Date date) {
+        final int year = date.getYear() + 1900;
+        final int month = date.getMonth() + 1;
+        final int day = date.getDate();
+
+        return newDate(context, year, month, day, CHRONO_ITALY_UTC);
+    }
+
     // @Deprecated
     public static Timestamp convertToTimestamp(final RubyFloat value) {
         final Timestamp timestamp = new Timestamp(value.getLongValue() * 1000); // millis
@@ -336,9 +349,7 @@ public abstract class DateTimeUtils {
 
         if ( bcEra ) year = -1 * year; // no + 1 since we use GJChronology
 
-        DateTime dateTime = new DateTime(year, month, day, 0, 0, 0, GJChronology.getInstance(defaultZone));
-        final Ruby runtime = context.runtime;
-        return runtime.getClass("Date").newInstance(context, Java.getInstance(runtime, dateTime), Block.NULL_BLOCK);
+        return newDate(context, year, month, day, GJChronology.getInstance(defaultZone));
     }
 
     public static IRubyObject parseTime(final ThreadContext context, final CharSequence str, final DateTimeZone defaultZone)
@@ -563,7 +574,7 @@ public abstract class DateTimeUtils {
     }
 
     private static IRubyObject newDate(final ThreadContext context, final int year, final int month, final int day,
-                                       final ISOChronology chronology) {
+                                       final Chronology chronology) {
         // NOTE: JRuby really needs a native date.rb until than its a bit costly going from ...
         // java.sql.Date -> allocating a DateTime proxy, help a bit by shooting at the internals
         //
@@ -622,14 +633,21 @@ public abstract class DateTimeUtils {
      */
     public static String timestampTimeToString(final ThreadContext context,
                                                final IRubyObject value, DateTimeZone zone, boolean withZone) {
-        RubyTime timeValue = toTime(context, value);
-        DateTime dt = timeValue.getDateTime();
+        DateTime dt;
+        int usec = 0;
+        if (value instanceof RubyDateTime) {
+            dt = ((RubyDateTime) value).getDateTime();
+        } else {
+            RubyTime timeValue = toTime(context, value);
+            dt = timeValue.getDateTime();
+            usec = (int) timeValue.getUSec();
+        }
 
         StringBuilder sb = new StringBuilder(36);
 
         int year = dt.getYear();
         if (year <= 0) {
-            year--;
+            if (!(value instanceof RubyDateTime)) year--;
         } else if (zone != null) {
             dt = dateTimeInZone(dt, zone);
             year = dt.getYear();
@@ -649,7 +667,7 @@ public abstract class DateTimeUtils {
         if (year < 0) sb.append(" BC");
         sb.append(' ');
 
-        appendTime(sb, chrono, millis, (int) timeValue.getUSec(), withZone);
+        appendTime(sb, chrono, millis, usec, withZone);
 
         return sb.toString();
     }

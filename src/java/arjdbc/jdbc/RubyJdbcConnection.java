@@ -85,6 +85,7 @@ import org.jruby.RubyTime;
 import org.jruby.anno.JRubyMethod;
 import org.jruby.exceptions.RaiseException;
 import org.jruby.ext.bigdecimal.RubyBigDecimal;
+import org.jruby.ext.date.RubyDate;
 import org.jruby.javasupport.JavaEmbedUtils;
 import org.jruby.javasupport.JavaUtil;
 import org.jruby.runtime.Block;
@@ -358,7 +359,7 @@ public class RubyJdbcConnection extends RubyObject {
             if ( ! connection.getAutoCommit() ) {
                 try {
                     connection.commit();
-                    resetSavepoints(context); // if any
+                    resetSavepoints(context, connection); // if any
                     return context.runtime.newBoolean(true);
                 }
                 finally {
@@ -379,7 +380,7 @@ public class RubyJdbcConnection extends RubyObject {
             if ( ! connection.getAutoCommit() ) {
                 try {
                     connection.rollback();
-                    resetSavepoints(context); // if any
+                    resetSavepoints(context, connection); // if any
                     return context.tru;
                 } finally {
                     connection.setAutoCommit(true);
@@ -465,12 +466,17 @@ public class RubyJdbcConnection extends RubyObject {
             }
 
             final Connection connection = getConnectionInternal(true);
-            connection.releaseSavepoint((Savepoint) savepoint);
+            releaseSavepoint(connection, (Savepoint) savepoint);
             return context.nil;
         }
         catch (SQLException e) {
             return handleException(context, e);
         }
+    }
+
+    // MSSQL doesn't support releasing savepoints so we make it possible to override the actual release action
+    protected void releaseSavepoint(final Connection connection, final Savepoint savepoint) throws SQLException {
+        connection.releaseSavepoint(savepoint);
     }
 
     protected static RuntimeException newSavepointNotSetError(final ThreadContext context, final IRubyObject name, final String op) {
@@ -510,7 +516,7 @@ public class RubyJdbcConnection extends RubyObject {
         return null;
     }
 
-    protected boolean resetSavepoints(final ThreadContext context) {
+    protected boolean resetSavepoints(final ThreadContext context, final Connection connection) throws SQLException {
         if ( hasInternalVariable("savepoints") ) {
             removeInternalVariable("savepoints");
             return true;
@@ -604,11 +610,7 @@ public class RubyJdbcConnection extends RubyObject {
                 return convertJavaToRuby( connection.unwrap(Connection.class) );
             }
         }
-        catch (AbstractMethodError e) {
-            debugStackTrace(context, e);
-            warn(context, "driver/pool connection does not support unwrapping: " + e);
-        }
-        catch (SQLException e) {
+        catch (AbstractMethodError | SQLException e) {
             debugStackTrace(context, e);
             warn(context, "driver/pool connection does not support unwrapping: " + e);
         }
@@ -670,7 +672,10 @@ public class RubyJdbcConnection extends RubyObject {
 
     private void connectImpl(final boolean forceConnection) throws SQLException {
         setConnection( forceConnection ? newConnection() : null );
-        if ( forceConnection ) configureConnection();
+        if (forceConnection) {
+            if (getConnectionImpl() == null) throw new SQLException("Didn't get a connection. Wrong URL?");
+            configureConnection();
+        }
     }
 
     @JRubyMethod(name = "read_only?")
@@ -826,24 +831,45 @@ public class RubyJdbcConnection extends RubyObject {
         return mapQueryResult(context, connection, resultSet);
     }
 
+    private static String[] createStatementPk(IRubyObject pk) {
+        String[] statementPk;
+        if (pk instanceof RubyArray) {
+            RubyArray ary = (RubyArray) pk;
+            int size = ary.size();
+            statementPk = new String[size];
+            for (int i = 0; i < size; i++) {
+                statementPk[i] = sqlString(ary.eltInternal(i));
+            }
+        } else {
+            statementPk = new String[] { sqlString(pk) };
+        }
+        return statementPk;
+    }
+
     /**
      * Executes an INSERT SQL statement
      * @param context
      * @param sql
+     * @param pk Rails PK
      * @return ActiveRecord::Result
      * @throws SQLException
      */
-    @JRubyMethod(name = "execute_insert", required = 1)
-    public IRubyObject execute_insert(final ThreadContext context, final IRubyObject sql) {
+    @JRubyMethod(name = "execute_insert_pk", required = 2)
+    public IRubyObject execute_insert_pk(final ThreadContext context, final IRubyObject sql, final IRubyObject pk) {
         return withConnection(context, connection -> {
             Statement statement = null;
             final String query = sqlString(sql);
             try {
 
                 statement = createStatement(context, connection);
-                statement.executeUpdate(query, Statement.RETURN_GENERATED_KEYS);
-                return mapGeneratedKeys(context, connection, statement);
 
+                if (pk == context.nil || pk == context.fals || !supportsGeneratedKeys(connection)) {
+                    statement.executeUpdate(query, Statement.RETURN_GENERATED_KEYS);
+                } else {
+                    statement.executeUpdate(query, createStatementPk(pk));
+                }
+
+                return mapGeneratedKeys(context, connection, statement);
             } catch (final SQLException e) {
                 debugErrorSQL(context, query);
                 throw e;
@@ -853,26 +879,37 @@ public class RubyJdbcConnection extends RubyObject {
         });
     }
 
+    @Deprecated
+    @JRubyMethod(name = "execute_insert", required = 1)
+    public IRubyObject execute_insert(final ThreadContext context, final IRubyObject sql) {
+        return execute_insert_pk(context, sql, context.nil);
+    }
+
     /**
      * Executes an INSERT SQL statement using a prepared statement
      * @param context
      * @param sql
      * @param binds RubyArray of values to be bound to the query
+     * @param pk Rails PK
      * @return ActiveRecord::Result
      * @throws SQLException
      */
-    @JRubyMethod(name = "execute_insert", required = 2)
-    public IRubyObject execute_insert(final ThreadContext context, final IRubyObject sql, final IRubyObject binds) {
+    @JRubyMethod(name = "execute_insert_pk", required = 3)
+    public IRubyObject execute_insert_pk(final ThreadContext context, final IRubyObject sql, final IRubyObject binds,
+                                         final IRubyObject pk) {
         return withConnection(context, connection -> {
             PreparedStatement statement = null;
             final String query = sqlString(sql);
             try {
+                if (pk == context.nil || pk == context.fals || !supportsGeneratedKeys(connection)) {
+                    statement = connection.prepareStatement(query, Statement.RETURN_GENERATED_KEYS);
+                } else {
+                    statement = connection.prepareStatement(query, createStatementPk(pk));
+                }
 
-                statement = connection.prepareStatement(query, Statement.RETURN_GENERATED_KEYS);
                 setStatementParameters(context, connection, statement, (RubyArray) binds);
                 statement.executeUpdate();
                 return mapGeneratedKeys(context, connection, statement);
-
             } catch (final SQLException e) {
                 debugErrorSQL(context, query);
                 throw e;
@@ -880,6 +917,12 @@ public class RubyJdbcConnection extends RubyObject {
                 close(statement);
             }
         });
+    }
+
+    @Deprecated
+    @JRubyMethod(name = "execute_insert", required = 2)
+    public IRubyObject execute_insert(final ThreadContext context, final IRubyObject binds, final IRubyObject sql) {
+        return execute_insert_pk(context, sql, binds, context.nil);
     }
 
     /**
@@ -961,12 +1004,12 @@ public class RubyJdbcConnection extends RubyObject {
                     binds = null;
                 } else {                              // (sql, binds)
                     maxRows = 0;
-                    binds = (RubyArray) TypeConverter.checkArrayType(args[1]);
+                    binds = (RubyArray) TypeConverter.checkArrayType(context, args[1]);
                 }
                 break;
             case 3:                                   // (sql, max_rows, binds)
                 maxRows = RubyNumeric.fix2int(args[1]);
-                binds = (RubyArray) TypeConverter.checkArrayType(args[2]);
+                binds = (RubyArray) TypeConverter.checkArrayType(context, args[2]);
                 break;
             default:                                  // (sql) 1-arg
                 maxRows = 0;
@@ -1045,6 +1088,28 @@ public class RubyJdbcConnection extends RubyObject {
                 }
 
                 return newEmptyResult(context);
+
+            } catch (final SQLException e) {
+                debugErrorSQL(context, query);
+                throw e;
+            } finally {
+                close(statement);
+            }
+        });
+    }
+
+    @JRubyMethod(required = 1)
+    public IRubyObject get_first_value(final ThreadContext context, final IRubyObject sql) {
+        return withConnection(context, connection -> {
+            Statement statement = null;
+            final String query = sqlString(sql);
+            try {
+                statement = createStatement(context, connection);
+                statement.execute(query);
+                ResultSet rs = statement.getResultSet();
+                if (rs == null || !rs.next()) return context.nil;
+
+                return jdbcToRuby(context, context.getRuntime(), 1, rs.getMetaData().getColumnType(1), rs);
 
             } catch (final SQLException e) {
                 debugErrorSQL(context, query);
@@ -2686,6 +2751,12 @@ public class RubyJdbcConnection extends RubyObject {
             value = value.callMethod(context, "to_date");
         }
 
+        if (value instanceof RubyDate) {
+            RubyDate rubyDate = (RubyDate) value;
+            statement.setDate(index, rubyDate.toJava(Date.class));
+            return;
+        }
+
         // NOTE: assuming Date#to_s does right ...
         statement.setDate(index, Date.valueOf(value.toString()));
     }
@@ -3165,8 +3236,8 @@ public class RubyJdbcConnection extends RubyObject {
         final ColumnData[] columns = extractColumns(context, connection, resultSet, false);
 
         final Ruby runtime = context.runtime;
-        final IRubyObject[] blockArgs = new IRubyObject[columns.length];
         while ( resultSet.next() ) {
+            final IRubyObject[] blockArgs = new IRubyObject[columns.length];
             for ( int i = 0; i < columns.length; i++ ) {
                 final ColumnData column = columns[i];
                 blockArgs[i] = jdbcToRuby(context, runtime, column.index, column.type, resultSet);
@@ -3684,6 +3755,12 @@ public class RubyJdbcConnection extends RubyObject {
         if ( isDebug(runtime) ) {
             final PrintStream out = runtime != null ? runtime.getOut() : System.out;
             out.print("ArJdbc: "); out.println(msg);
+        }
+    }
+
+    public static void debugMessage(final ThreadContext context, final IRubyObject obj) {
+        if ( isDebug(context.runtime) ) {
+            debugMessage(context.runtime, obj.callMethod(context, "inspect"));
         }
     }
 

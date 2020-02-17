@@ -80,6 +80,7 @@ connections:
       <% end %>
       username: <%= ENV['PGUSER'] || ENV['user'] || 'rails' %>
       jdbc_fetch_size: 100
+      statement_limit: 100
       properties:
         # Postgres' JDBC driver does not prepare statements until executed 5 times by default, let's lower:
         prepareThreshold: <%= ENV['PREPARE_THRESHOLD'] || 1 %>

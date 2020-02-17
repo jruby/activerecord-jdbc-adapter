@@ -38,7 +38,6 @@ import java.lang.reflect.InvocationTargetException;
 import java.math.BigDecimal;
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
-import java.sql.Date;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
@@ -387,18 +386,7 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
             }
         }
 
-        if ( ! "Date".equals(value.getMetaClass().getName()) && value.respondsTo("to_date") ) {
-            value = value.callMethod(context, "to_date");
-        }
-
-        int year = RubyNumeric.num2int(value.callMethod(context, "year"));
-        int month = RubyNumeric.num2int(value.callMethod(context, "month"));
-        int day = RubyNumeric.num2int(value.callMethod(context, "day"));
-
-        @SuppressWarnings("deprecation")
-        Date date = new Date(year - 1900, month - 1, day);
-
-        statement.setDate(index, date);
+        super.setDateParameter(context, connection, statement, index, value, attribute, type);
     }
 
     @Override

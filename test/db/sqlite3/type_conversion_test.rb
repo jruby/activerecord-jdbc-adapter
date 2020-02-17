@@ -76,7 +76,7 @@ class SQLite3TypeConversionTest < Test::Unit::TestCase
     DualEncoding.connection.execute(<<-eosql)
       CREATE TABLE dual_encodings (
         id integer PRIMARY KEY AUTOINCREMENT,
-        name string,
+        name varchar,
         data binary
       )
     eosql

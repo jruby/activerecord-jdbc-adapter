@@ -172,7 +172,7 @@ class Test::Unit::TestCase
 
   def self.current_connection_config
     if ActiveRecord::Base.respond_to?(:connection_config)
-      ActiveRecord::Base.connection_config
+      ActiveRecord::Base.connection_db_config.configuration_hash
     else
       ActiveRecord::Base.connection_pool.spec.config
     end
@@ -204,13 +204,13 @@ class Test::Unit::TestCase
 
   protected
 
-  def assert_queries(count, matching = nil)
+  def assert_queries(count, matching = nil, all = false)
     if ActiveRecord::SQLCounter.enabled?
       ActiveRecord::SQLCounter.clear_log
       begin
         yield
       ensure
-        log = ActiveRecord::SQLCounter.log
+        log = all ? ActiveRecord::SQLCounter.log_all : ActiveRecord::SQLCounter.log
         queries = ( matching ? log.select { |s| s =~ matching } : log )
         assert_equal count, queries.size,
           "#{ queries.size } instead of #{ count } queries were executed." +
@@ -455,57 +455,19 @@ end
 
 module ActiveRecord
   class SQLCounter
-
     class << self
       attr_accessor :ignored_sql, :log, :log_all
       def clear_log; self.log = []; self.log_all = []; end
     end
 
-    self.clear_log
-
-    @@ignored_sql = [
-      /^PRAGMA/,
-      /^SELECT currval/,
-      /^SELECT CAST/,
-      /^SELECT @@IDENTITY/,
-      /^SELECT @@ROWCOUNT/,
-      /^SAVEPOINT/,
-      /^ROLLBACK TO SAVEPOINT/,
-      /^RELEASE SAVEPOINT/,
-      /^SHOW max_identifier_length/,
-      /^BEGIN/,
-      /^COMMIT/
-    ]
-    def self.ignored_sql; @@ignored_sql; end
-    def self.ignored_sql=(value)
-      @@ignored_sql = value || []
-    end
-
-    # FIXME: this needs to be refactored so specific database can add their own ignored SQL.
-    ignored_sql.concat [/^select .*nextval/i,
-      /^SAVEPOINT/,
-      /^ROLLBACK TO/,
-      /^\s*select .* from all_triggers/im,
-      /^\s*SELECT sql\b.*\bFROM sqlite_master/im
-    ]
-
-    @@log = []
-    def self.log; @@log; end
-    def self.log=(log); @@log = log;; end
-
-    def initialize(ignored_sql = self.class.ignored_sql)
-      @ignored_sql = ignored_sql
-    end
+    clear_log
 
     def call(name, start, finish, message_id, values)
       return if values[:cached]
 
       sql = values[:sql]
-      sql = sql.to_sql unless sql.is_a?(String)
-
-      return if @ignored_sql.any? { |x| x =~ sql }
-
-      self.class.log << sql
+      self.class.log_all << sql
+      self.class.log << sql unless ["SCHEMA", "TRANSACTION"].include? values[:name]
     end
 
     @@enabled = true

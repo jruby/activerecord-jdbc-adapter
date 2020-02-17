@@ -33,10 +33,10 @@ module ActiveRecord
 
       include ArJdbc::MySQL
 
-      def initialize(connection, logger, connection_parameters, config)
-        super
+      def initialize(connection, logger, connection_options, config)
+        superclass_config = config.reverse_merge(prepared_statements: false)
+        super(connection, logger, connection_options, superclass_config)
 
-        @prepared_statements = false unless config.key?(:prepared_statements)
         # configure_connection taken care of at ArJdbc::Abstract::Core
       end
 
@@ -87,11 +87,22 @@ module ActiveRecord
       # HELPER METHODS ===========================================
 
       # from MySQL::DatabaseStatements
-      READ_QUERY = ActiveRecord::ConnectionAdapters::AbstractAdapter.build_read_query_regexp(:begin, :commit, :explain, :select, :set, :show, :release, :savepoint, :rollback) # :nodoc:
+      READ_QUERY = ActiveRecord::ConnectionAdapters::AbstractAdapter.build_read_query_regexp(
+        :desc, :describe, :set, :show, :use
+      ) # :nodoc:
       private_constant :READ_QUERY
 
       def write_query?(sql) # :nodoc:
         !READ_QUERY.match?(sql)
+      end
+
+      def explain(arel, binds = [])
+        sql     = "EXPLAIN #{to_sql(arel, binds)}"
+        start   = Concurrent.monotonic_time
+        result  = exec_query(sql, "EXPLAIN", binds)
+        elapsed = Concurrent.monotonic_time - start
+
+        MySQL::ExplainPrettyPrinter.new.pp(result, elapsed)
       end
 
       # Reloading the type map in abstract/statement_cache.rb blows up postgres
@@ -177,7 +188,7 @@ module ActiveRecord
 
       # defined in MySQL::DatabaseStatements which is not included
       def default_insert_value(column)
-        Arel.sql("DEFAULT") unless column.auto_increment?
+        super unless column.auto_increment?
       end
 
       # FIXME: optimize insert_fixtures_set by using JDBC Statement.addBatch()/executeBatch()

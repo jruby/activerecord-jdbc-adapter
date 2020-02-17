@@ -13,7 +13,7 @@ class MySQLChangeColumnTest < Test::Unit::TestCase
       ActiveRecord::Migration.add_column :people, :about, :string, :default => 'x'
       # NOTE: even in non strict mode MySQL does not allow us add or change
       # text/binary with a default ...
-      if mariadb_server? && ActiveRecord::Base.connection.database_version >= '10.2'
+      if mariadb_server? && db_version >= '10.2'
         ActiveRecord::Migration.change_column :people, :about, :text
       else
         assert_raises ActiveRecord::StatementInvalid do
@@ -38,7 +38,7 @@ class MySQLChangeColumnTest < Test::Unit::TestCase
   def run_without_connection
     original_connection = ActiveRecord::Base.remove_connection
     begin
-      yield original_connection
+      yield original_connection.configuration_hash
     ensure
       ActiveRecord::Base.establish_connection(original_connection)
     end
