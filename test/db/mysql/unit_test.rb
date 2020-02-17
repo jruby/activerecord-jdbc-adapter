@@ -148,21 +148,16 @@ class MySQLUnitTest < Test::Unit::TestCase
       assert_equal false, config[:properties]['useSSL']
     end
 
-    def load_jdbc_mysql
-      require 'jdbc/mysql'
-    rescue LoadError
-      return nil
-    end
-
   end
 
   context 'connection (Jdbc::MySQL missing)' do
 
     module ::Jdbc; end
 
-    @@jdbc_mysql = ::Jdbc::MySQL rescue nil
-
+    @@jdbc_mysql = false
     def setup
+      load_jdbc_mysql
+      @@jdbc_mysql = ::Jdbc::MySQL rescue nil
       ::Jdbc.send :remove_const, :MySQL if @@jdbc_mysql
     end
 
@@ -222,6 +217,12 @@ class MySQLUnitTest < Test::Unit::TestCase
       assert_equal false, config[:properties]['useSsl']
     end
 
+  end
+
+  def load_jdbc_mysql
+    require 'jdbc/mysql'
+  rescue LoadError
+    return nil
   end
 
 end if defined? JRUBY_VERSION
