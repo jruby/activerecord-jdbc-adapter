@@ -5,16 +5,16 @@ module ActiveRecord::Tasks
   DatabaseTasks.module_eval do
 
     # @override patched to adapt jdbc configuration
-    def each_current_configuration(environment, spec_name = nil)
+    def each_current_configuration(environment, name = nil)
       environments = [environment]
       environments << 'test' if environment == 'development'
 
       environments.each do |env|
         ActiveRecord::Base.configurations.configs_for(env_name: env).each do |db_config|
-          next if spec_name && spec_name != db_config.spec_name
+          next if name && name != db_config.name
 
           if db_config.database
-            yield adapt_jdbc_config(db_config), db_config.spec_name, env
+            yield adapt_jdbc_config(db_config), db_config.name, env
           end
         end
       end
@@ -38,7 +38,7 @@ module ActiveRecord::Tasks
     def adapt_jdbc_config(db_config)
       if db_config.adapter.start_with? 'jdbc'
         config = db_config.configuration_hash.merge(adapter: db_config.adapter.sub(/^jdbc/, ''))
-        db_config = ActiveRecord::DatabaseConfigurations::HashConfig.new(db_config.env_name, db_config.spec_name, config)
+        db_config = ActiveRecord::DatabaseConfigurations::HashConfig.new(db_config.env_name, db_config.name, config)
       end
       db_config
     end
