@@ -1,0 +1,1 @@
+exclude :test_raises_SerializationFailure_when_a_serialization_failure_occurs, 'hangs sometimes'
