@@ -213,7 +213,7 @@ module ArJdbc
         if oid
           if oid.is_a? Numeric || oid.match(/^\d+$/)
             # numeric OID
-            query += "WHERE t.oid::integer = %s" % oid
+            query += "WHERE t.oid = %s" % oid
 
           elsif m = oid.match(/"?(\w+)"?\."?(\w+)"?/)
             # namespace and type name
