@@ -36,26 +36,18 @@ import java.io.ByteArrayInputStream;
 import java.lang.StringBuilder;
 import java.lang.reflect.InvocationTargetException;
 import java.math.BigDecimal;
-import java.sql.Connection;
-import java.sql.DatabaseMetaData;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.ResultSetMetaData;
-import java.sql.SQLException;
-import java.sql.Timestamp;
-import java.sql.Types;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.UUID;
+import java.sql.*;
+import java.sql.Date;
+import java.util.*;
 import java.util.regex.Pattern;
 import java.util.regex.Matcher;
 
+import org.joda.time.DateTime;
 import org.jruby.*;
 import org.jruby.anno.JRubyMethod;
 import org.jruby.exceptions.RaiseException;
 import org.jruby.ext.bigdecimal.RubyBigDecimal;
+import org.jruby.ext.date.RubyDate;
 import org.jruby.javasupport.JavaUtil;
 import org.jruby.runtime.ObjectAllocator;
 import org.jruby.runtime.ThreadContext;
@@ -115,6 +107,7 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
 
     // Used to wipe trailing 0's from points (3.0, 5.6) -> (3, 5.6)
     private static final Pattern pointCleanerPattern = Pattern.compile("\\.0\\b");
+    private static final TimeZone TZ_DEFAULT = TimeZone.getDefault();
 
     private RubyClass resultClass;
     private RubyHash typeMap = null;
@@ -386,7 +379,20 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
             }
         }
 
-        super.setDateParameter(context, connection, statement, index, value, attribute, type);
+        if ( ! "Date".equals(value.getMetaClass().getName()) && value.respondsTo("to_date") ) {
+            value = value.callMethod(context, "to_date");
+        }
+
+        if (value instanceof RubyDate) {
+            RubyDate rubyDate = (RubyDate) value;
+            DateTime dt = rubyDate.getDateTime();
+            // pgjdbc needs adjustment for default JVM timezone
+            statement.setDate(index, new Date(dt.getMillis() - TZ_DEFAULT.getOffset(dt.getMillis())));
+            return;
+        }
+
+        // NOTE: assuming Date#to_s does right ...
+        statement.setDate(index, Date.valueOf(value.toString()));
     }
 
     @Override
