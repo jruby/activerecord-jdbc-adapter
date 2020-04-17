@@ -237,6 +237,8 @@ module ArJdbc
     end
 
     def remove_index(table_name, column_name, options = {}) #:nodoc:
+      return if options[:if_exists] && !index_exists?(table_name, column_name, options)
+
       index_name = index_name_for_remove(table_name, column_name, options)
       exec_query "DROP INDEX #{quote_column_name(index_name)}"
     end
