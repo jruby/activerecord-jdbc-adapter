@@ -213,6 +213,10 @@ module ArJdbc
       true
     end
 
+    def supports_partitioned_indexes?
+      database_version >= 110_000
+    end
+
     def supports_expression_index?
       true
     end
@@ -437,6 +441,7 @@ module ArJdbc
         sql << " ON CONFLICT #{insert.conflict_target} DO NOTHING"
       elsif insert.update_duplicates?
         sql << " ON CONFLICT #{insert.conflict_target} DO UPDATE SET "
+        sql << insert.touch_model_timestamps_unless { |column| "#{insert.model.quoted_table_name}.#{column} IS NOT DISTINCT FROM excluded.#{column}" }
         sql << insert.updatable_columns.map { |column| "#{column}=excluded.#{column}" }.join(",")
       end
 
