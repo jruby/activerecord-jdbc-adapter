@@ -1,3 +1,3 @@
 module ArJdbc
-  VERSION = '52.5'
+  VERSION = '52.6'
 end
