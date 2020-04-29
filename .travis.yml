@@ -70,6 +70,9 @@ matrix:
         postgresql: "10"
       env: DB=postgresql PREPARED_STATEMENTS=true INSERT_RETURNING=true
     - addons:
+        postgresql: "10"
+      env: DB=postgresql PREPARED_STATEMENTS=true JRUBY_OPTS=-J-Duser.timezone=America/Detroit
+    - addons:
         postgresql: "9.4"
       env: DB=postgresql PREPARED_STATEMENTS=true
 
