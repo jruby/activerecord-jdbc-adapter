@@ -457,7 +457,7 @@ module ArJdbc
         name = index.name
         # indexes sqlite creates for internal use start with `sqlite_` and
         # don't need to be copied
-        next if name.starts_with?("sqlite_")
+        next if name.start_with?("sqlite_")
         if to == "a#{from}"
           name = "t#{name}"
         elsif from == "a#{to}"
