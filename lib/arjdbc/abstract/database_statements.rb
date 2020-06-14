@@ -15,6 +15,7 @@ module ArJdbc
         end
 
         materialize_transactions
+        mark_transaction_written_if_write(sql)
 
         binds = convert_legacy_binds_to_attributes(binds) if binds.first.is_a?(Array)
 
@@ -35,6 +36,7 @@ module ArJdbc
         end
 
         materialize_transactions
+        mark_transaction_written_if_write(sql)
 
         binds = convert_legacy_binds_to_attributes(binds) if binds.first.is_a?(Array)
 
@@ -55,6 +57,7 @@ module ArJdbc
         end
 
         materialize_transactions
+        mark_transaction_written_if_write(sql)
 
         binds = convert_legacy_binds_to_attributes(binds) if binds.first.is_a?(Array)
 
@@ -72,6 +75,7 @@ module ArJdbc
         end
 
         materialize_transactions
+        mark_transaction_written_if_write(sql)
 
         log(sql, name) { @connection.execute(sql) }
       end
