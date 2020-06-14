@@ -86,6 +86,7 @@ import org.jruby.anno.JRubyMethod;
 import org.jruby.exceptions.RaiseException;
 import org.jruby.ext.bigdecimal.RubyBigDecimal;
 import org.jruby.ext.date.RubyDate;
+import org.jruby.ext.date.RubyDateTime;
 import org.jruby.javasupport.JavaEmbedUtils;
 import org.jruby.javasupport.JavaUtil;
 import org.jruby.runtime.Block;
@@ -2416,9 +2417,18 @@ public class RubyJdbcConnection extends RubyObject {
             final Connection connection, final PreparedStatement statement,
             final int index, IRubyObject attribute) throws SQLException {
 
-        //debugMessage(context, attribute);
-        final int type = jdbcTypeForAttribute(context, attribute);
-        IRubyObject value = valueForDatabase(context, attribute);
+        final IRubyObject value;
+        final int type;
+
+        final Integer primitiveType = jdbcTypeForPrimitiveAttribute(context, attribute);
+        if (primitiveType != null) {
+            type = primitiveType;
+            value = attribute;
+        } else {
+            //debugMessage(context, attribute);
+            type = jdbcTypeForAttribute(context, attribute);
+            value = valueForDatabase(context, attribute);
+        }
 
         // All the set methods were calling this first so save a method call in the nil case
         if ( value == context.nil ) {
@@ -2534,6 +2544,37 @@ public class RubyJdbcConnection extends RubyObject {
         return Types.OTHER; // -1 as well as 0 are used in Types
     }
 
+    protected String internedTypeForPrimitive(final ThreadContext context, final IRubyObject value) throws SQLException {
+        if (value instanceof RubyString) {
+            return "string";
+        }
+        if (value instanceof RubyInteger) {
+            return "integer";
+        }
+        if (value instanceof RubyNumeric) {
+            return "float";
+        }
+        if (value instanceof RubyTime || value instanceof RubyDateTime) {
+            return "timestamp";
+        }
+        if (value instanceof RubyDate) {
+            return "date";
+        }
+        if (value instanceof RubyBoolean) {
+            return "boolean";
+        }
+        return null;
+    }
+
+    protected Integer jdbcTypeForPrimitiveAttribute(final ThreadContext context,
+                                                    final IRubyObject attribute) throws SQLException {
+        final String internedType = internedTypeForPrimitive(context, attribute);
+        if (internedType != null) {
+            return jdbcTypeFor(internedType);
+        }
+        return null;
+    }
+
     protected Integer jdbcTypeFor(final String type) {
         return JDBC_TYPE_FOR.get(type);
     }
@@ -2545,7 +2586,9 @@ public class RubyJdbcConnection extends RubyObject {
     }
 
     protected static IRubyObject attributeSQLType(final ThreadContext context, final IRubyObject attribute) {
-        return attributeType(context, attribute).callMethod(context, "type");
+        final IRubyObject type = attributeType(context, attribute);
+        if (type != null) return type.callMethod(context, "type");
+        return context.nil;
     }
 
     private final CachingCallSite value_site = new FunctionalCachingCallSite("value"); // AR::Attribute#value
@@ -2558,21 +2601,8 @@ public class RubyJdbcConnection extends RubyObject {
 
         final IRubyObject value = value_site.call(context, attribute, attribute);
 
-        if (value instanceof RubyInteger) {
-            return "integer";
-        }
-
-        if (value instanceof RubyNumeric) {
-            return "float";
-        }
-
-        if (value instanceof RubyTime) {
-            return "timestamp";
-        }
-
-        if (value instanceof RubyBoolean) {
-            return "boolean";
-        }
+        String primitveType = internedTypeForPrimitive(context, value);
+        if (primitveType != null) return primitveType;
 
         return "string";
     }

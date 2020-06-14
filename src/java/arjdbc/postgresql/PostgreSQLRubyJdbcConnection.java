@@ -197,9 +197,9 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
         RubyClass arrayClass = oidArray(context);
         RubyBasicObject attributeType = (RubyBasicObject) attributeType(context, attribute);
         // The type or its delegate is an OID::Array
-        if (arrayClass.isInstance(attributeType) ||
+        if (attributeType != null && (arrayClass.isInstance(attributeType) ||
                 (attributeType.hasInstanceVariable("@delegate_dc_obj") &&
-                        arrayClass.isInstance(attributeType.getInstanceVariable("@delegate_dc_obj")))) {
+                        arrayClass.isInstance(attributeType.getInstanceVariable("@delegate_dc_obj"))))) {
             return "array";
         }
 
