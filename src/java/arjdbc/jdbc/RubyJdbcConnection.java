@@ -125,6 +125,7 @@ public class RubyJdbcConnection extends RubyObject {
     private IRubyObject config;
     private IRubyObject adapter; // the AbstractAdapter instance we belong to
     private volatile boolean connected = true;
+    private RubyClass attributeClass;
 
     private boolean lazy = false; // final once set on initialize
     private boolean jndi; // final once set on initialize
@@ -133,6 +134,7 @@ public class RubyJdbcConnection extends RubyObject {
 
     protected RubyJdbcConnection(Ruby runtime, RubyClass metaClass) {
         super(runtime, metaClass);
+        attributeClass = runtime.getModule("ActiveModel").getClass("Attribute");
     }
 
     private static final ObjectAllocator ALLOCATOR = new ObjectAllocator() {
@@ -2420,14 +2422,12 @@ public class RubyJdbcConnection extends RubyObject {
         final IRubyObject value;
         final int type;
 
-        final Integer primitiveType = jdbcTypeForPrimitiveAttribute(context, attribute);
-        if (primitiveType != null) {
-            type = primitiveType;
-            value = attribute;
-        } else {
-            //debugMessage(context, attribute);
+        if (attributeClass.isInstance(attribute)) {
             type = jdbcTypeForAttribute(context, attribute);
             value = valueForDatabase(context, attribute);
+        } else {
+            type = jdbcTypeForPrimitiveAttribute(context, attribute);
+            value = attribute;
         }
 
         // All the set methods were calling this first so save a method call in the nil case
@@ -2563,16 +2563,13 @@ public class RubyJdbcConnection extends RubyObject {
         if (value instanceof RubyBoolean) {
             return "boolean";
         }
-        return null;
+        return "string";
     }
 
     protected Integer jdbcTypeForPrimitiveAttribute(final ThreadContext context,
                                                     final IRubyObject attribute) throws SQLException {
         final String internedType = internedTypeForPrimitive(context, attribute);
-        if (internedType != null) {
-            return jdbcTypeFor(internedType);
-        }
-        return null;
+        return jdbcTypeFor(internedType);
     }
 
     protected Integer jdbcTypeFor(final String type) {
@@ -2601,10 +2598,7 @@ public class RubyJdbcConnection extends RubyObject {
 
         final IRubyObject value = value_site.call(context, attribute, attribute);
 
-        String primitveType = internedTypeForPrimitive(context, value);
-        if (primitveType != null) return primitveType;
-
-        return "string";
+        return internedTypeForPrimitive(context, value);
     }
 
     protected final RubyTime timeInDefaultTimeZone(final ThreadContext context, final IRubyObject value) {
