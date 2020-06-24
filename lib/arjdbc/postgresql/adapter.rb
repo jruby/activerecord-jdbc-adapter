@@ -48,46 +48,6 @@ module ArJdbc
       ADAPTER_NAME
     end
 
-    def get_database_version # :nodoc:
-      begin
-        version = @connection.database_product
-        if match = version.match(/([\d\.]*\d).*?/)
-          version = match[1].split('.').map(&:to_i)
-          # PostgreSQL version representation does not have more than 4 digits
-          # From version 10 onwards, PG has changed its versioning policy to
-          # limit it to only 2 digits. i.e. in 10.x, 10 being the major
-          # version and x representing the patch release
-          # Refer to:
-          #   https://www.postgresql.org/support/versioning/
-          #   https://www.postgresql.org/docs/10/static/libpq-status.html -> PQserverVersion()
-          # for more info
-
-          if version.size >= 3
-            (version[0] * 100 + version[1]) * 100 + version[2]
-          elsif version.size == 2
-            if version[0] >= 10
-              version[0] * 100 * 100 + version[1]
-            else
-              (version[0] * 100 + version[1]) * 100
-            end
-          elsif version.size == 1
-            version[0] * 100 * 100
-          else
-            0
-          end
-        else
-          0
-        end
-      end
-    end
-
-    def check_version # :nodoc:
-      if database_version < 90300
-        raise "Your version of PostgreSQL (#{database_version}) is too old. Active Record supports PostgreSQL >= 9.3."
-      end
-    end
-
-
     def redshift?
       # SELECT version() :
       #  PostgreSQL 8.0.2 on i686-pc-linux-gnu, compiled by GCC gcc (GCC) 3.4.2 20041017 (Red Hat 3.4.2-6.fc3), Redshift 1.0.647
@@ -209,12 +169,12 @@ module ArJdbc
       true
     end
 
-    def supports_partial_index?
-      true
-    end
-
     def supports_partitioned_indexes?
       database_version >= 110_000
+    end
+
+    def supports_partial_index?
+      true
     end
 
     def supports_expression_index?
@@ -226,6 +186,10 @@ module ArJdbc
     end
 
     def supports_foreign_keys?
+      true
+    end
+
+    def supports_check_constraints?
       true
     end
 
@@ -292,7 +256,7 @@ module ArJdbc
       database_version >= 90300
     end
 
-    def supports_foreign_tables? # we don't really support this yet, its a reminder :)
+    def supports_foreign_tables?
       database_version >= 90300
     end
 
@@ -313,11 +277,6 @@ module ArJdbc
 
     def supports_lazy_transactions?
       true
-    end
-
-    # From AR 5.1 postgres_adapter.rb
-    def default_index_type?(index) # :nodoc:
-      index.using == :btree || super
     end
 
     def get_advisory_lock(lock_id) # :nodoc:
@@ -372,6 +331,65 @@ module ArJdbc
     def use_insert_returning?
       @use_insert_returning
     end
+
+    def get_database_version # :nodoc:
+      begin
+        version = @connection.database_product
+        if match = version.match(/([\d\.]*\d).*?/)
+          version = match[1].split('.').map(&:to_i)
+          # PostgreSQL version representation does not have more than 4 digits
+          # From version 10 onwards, PG has changed its versioning policy to
+          # limit it to only 2 digits. i.e. in 10.x, 10 being the major
+          # version and x representing the patch release
+          # Refer to:
+          #   https://www.postgresql.org/support/versioning/
+          #   https://www.postgresql.org/docs/10/static/libpq-status.html -> PQserverVersion()
+          # for more info
+
+          if version.size >= 3
+            (version[0] * 100 + version[1]) * 100 + version[2]
+          elsif version.size == 2
+            if version[0] >= 10
+              version[0] * 100 * 100 + version[1]
+            else
+              (version[0] * 100 + version[1]) * 100
+            end
+          elsif version.size == 1
+            version[0] * 100 * 100
+          else
+            0
+          end
+        else
+          0
+        end
+      end
+    end
+
+    def default_index_type?(index) # :nodoc:
+      index.using == :btree || super
+    end
+
+    def build_insert_sql(insert) # :nodoc:
+      sql = +"INSERT #{insert.into} #{insert.values_list}"
+
+      if insert.skip_duplicates?
+        sql << " ON CONFLICT #{insert.conflict_target} DO NOTHING"
+      elsif insert.update_duplicates?
+        sql << " ON CONFLICT #{insert.conflict_target} DO UPDATE SET "
+        sql << insert.touch_model_timestamps_unless { |column| "#{insert.model.quoted_table_name}.#{column} IS NOT DISTINCT FROM excluded.#{column}" }
+        sql << insert.updatable_columns.map { |column| "#{column}=excluded.#{column}" }.join(",")
+      end
+
+      sql << " RETURNING #{insert.returning}" if insert.returning
+      sql
+    end
+
+    def check_version # :nodoc:
+      if database_version < 90300
+        raise "Your version of PostgreSQL (#{database_version}) is too old. Active Record supports PostgreSQL >= 9.3."
+      end
+    end
+
 
     def exec_insert(sql, name = nil, binds = [], pk = nil, sequence_name = nil)
       val = super
@@ -432,21 +450,6 @@ module ArJdbc
 
     def last_insert_id_result(sequence_name)
       exec_query("SELECT currval('#{sequence_name}')", 'SQL')
-    end
-
-    def build_insert_sql(insert) # :nodoc:
-      sql = +"INSERT #{insert.into} #{insert.values_list}"
-
-      if insert.skip_duplicates?
-        sql << " ON CONFLICT #{insert.conflict_target} DO NOTHING"
-      elsif insert.update_duplicates?
-        sql << " ON CONFLICT #{insert.conflict_target} DO UPDATE SET "
-        sql << insert.touch_model_timestamps_unless { |column| "#{insert.model.quoted_table_name}.#{column} IS NOT DISTINCT FROM excluded.#{column}" }
-        sql << insert.updatable_columns.map { |column| "#{column}=excluded.#{column}" }.join(",")
-      end
-
-      sql << " RETURNING #{insert.returning}" if insert.returning
-      sql
     end
 
     def build_truncate_statements(table_names)
@@ -536,6 +539,16 @@ module ArJdbc
     private
 
     # Returns the list of a table's column names, data types, and default values.
+    #
+    # The underlying query is roughly:
+    #  SELECT column.name, column.type, default.value, column.comment
+    #    FROM column LEFT JOIN default
+    #      ON column.table_id = default.table_id
+    #     AND column.num = default.column_num
+    #   WHERE column.table_id = get_table_id('table_name')
+    #     AND column.num > 0
+    #     AND NOT column.is_dropped
+    #   ORDER BY column.num
     #
     # If the table name is not prefixed with a schema, the database will
     # take the first match from the schema search path.

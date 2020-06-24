@@ -309,7 +309,7 @@ _SQL
     assert_instance_of OID::Inet, PostgresqlNetworkAddress.type_for_attribute('inet_address')
 
     macaddr_type = PostgresqlNetworkAddress.type_for_attribute('mac_address')
-    assert_instance_of OID::SpecializedString, macaddr_type
+    assert_instance_of OID::Macaddr, macaddr_type
     assert_equal :macaddr, macaddr_type.type
   end
 

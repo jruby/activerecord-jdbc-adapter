@@ -37,8 +37,8 @@ before_script:
     mysql -e "grant all privileges on activerecord_unittest.* to rails@localhost;" && \
     mysql -e "grant all privileges on activerecord_unittest2.* to rails@localhost;" && \
     mysql -e "grant all privileges on inexistent_activerecord_unittest.* to rails@localhost;" && \
-    mysql -e "CREATE DATABASE activerecord_unittest DEFAULT CHARACTER SET utf8 COLLATE utf8_general_ci;" && \
-    mysql -e "CREATE DATABASE activerecord_unittest2 DEFAULT CHARACTER SET utf8 COLLATE utf8_general_ci;" \
+    mysql -e "CREATE DATABASE activerecord_unittest DEFAULT CHARACTER SET utf8mb4;" && \
+    mysql -e "CREATE DATABASE activerecord_unittest2 DEFAULT CHARACTER SET utf8mb4;" \
     || true
   - |
     [ "$DB" == "postgresql" ] && [ "$TEST_PREFIX" == "rails:" ] && \

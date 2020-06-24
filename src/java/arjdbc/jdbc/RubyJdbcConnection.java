@@ -86,6 +86,7 @@ import org.jruby.anno.JRubyMethod;
 import org.jruby.exceptions.RaiseException;
 import org.jruby.ext.bigdecimal.RubyBigDecimal;
 import org.jruby.ext.date.RubyDate;
+import org.jruby.ext.date.RubyDateTime;
 import org.jruby.javasupport.JavaEmbedUtils;
 import org.jruby.javasupport.JavaUtil;
 import org.jruby.runtime.Block;
@@ -124,6 +125,7 @@ public class RubyJdbcConnection extends RubyObject {
     private IRubyObject config;
     private IRubyObject adapter; // the AbstractAdapter instance we belong to
     private volatile boolean connected = true;
+    private RubyClass attributeClass;
 
     private boolean lazy = false; // final once set on initialize
     private boolean jndi; // final once set on initialize
@@ -132,6 +134,7 @@ public class RubyJdbcConnection extends RubyObject {
 
     protected RubyJdbcConnection(Ruby runtime, RubyClass metaClass) {
         super(runtime, metaClass);
+        attributeClass = runtime.getModule("ActiveModel").getClass("Attribute");
     }
 
     private static final ObjectAllocator ALLOCATOR = new ObjectAllocator() {
@@ -2416,9 +2419,16 @@ public class RubyJdbcConnection extends RubyObject {
             final Connection connection, final PreparedStatement statement,
             final int index, IRubyObject attribute) throws SQLException {
 
-        //debugMessage(context, attribute);
-        final int type = jdbcTypeForAttribute(context, attribute);
-        IRubyObject value = valueForDatabase(context, attribute);
+        final IRubyObject value;
+        final int type;
+
+        if (attributeClass.isInstance(attribute)) {
+            type = jdbcTypeForAttribute(context, attribute);
+            value = valueForDatabase(context, attribute);
+        } else {
+            type = jdbcTypeForPrimitiveAttribute(context, attribute);
+            value = attribute;
+        }
 
         // All the set methods were calling this first so save a method call in the nil case
         if ( value == context.nil ) {
@@ -2534,6 +2544,34 @@ public class RubyJdbcConnection extends RubyObject {
         return Types.OTHER; // -1 as well as 0 are used in Types
     }
 
+    protected String internedTypeForPrimitive(final ThreadContext context, final IRubyObject value) throws SQLException {
+        if (value instanceof RubyString) {
+            return "string";
+        }
+        if (value instanceof RubyInteger) {
+            return "integer";
+        }
+        if (value instanceof RubyNumeric) {
+            return "float";
+        }
+        if (value instanceof RubyTime || value instanceof RubyDateTime) {
+            return "timestamp";
+        }
+        if (value instanceof RubyDate) {
+            return "date";
+        }
+        if (value instanceof RubyBoolean) {
+            return "boolean";
+        }
+        return "string";
+    }
+
+    protected Integer jdbcTypeForPrimitiveAttribute(final ThreadContext context,
+                                                    final IRubyObject attribute) throws SQLException {
+        final String internedType = internedTypeForPrimitive(context, attribute);
+        return jdbcTypeFor(internedType);
+    }
+
     protected Integer jdbcTypeFor(final String type) {
         return JDBC_TYPE_FOR.get(type);
     }
@@ -2545,7 +2583,9 @@ public class RubyJdbcConnection extends RubyObject {
     }
 
     protected static IRubyObject attributeSQLType(final ThreadContext context, final IRubyObject attribute) {
-        return attributeType(context, attribute).callMethod(context, "type");
+        final IRubyObject type = attributeType(context, attribute);
+        if (type != null) return type.callMethod(context, "type");
+        return context.nil;
     }
 
     private final CachingCallSite value_site = new FunctionalCachingCallSite("value"); // AR::Attribute#value
@@ -2558,23 +2598,7 @@ public class RubyJdbcConnection extends RubyObject {
 
         final IRubyObject value = value_site.call(context, attribute, attribute);
 
-        if (value instanceof RubyInteger) {
-            return "integer";
-        }
-
-        if (value instanceof RubyNumeric) {
-            return "float";
-        }
-
-        if (value instanceof RubyTime) {
-            return "timestamp";
-        }
-
-        if (value instanceof RubyBoolean) {
-            return "boolean";
-        }
-
-        return "string";
+        return internedTypeForPrimitive(context, value);
     }
 
     protected final RubyTime timeInDefaultTimeZone(final ThreadContext context, final IRubyObject value) {

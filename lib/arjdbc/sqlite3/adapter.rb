@@ -116,6 +116,10 @@ module ArJdbc
       true
     end
 
+    def supports_check_constraints?
+      true
+    end
+
     def supports_views?
       true
     end
@@ -143,13 +147,6 @@ module ArJdbc
 
     def supports_index_sort_order?
       true
-    end
-
-    # Returns 62. SQLite supports index names up to 64
-    # characters. The rest is used by Rails internally to perform
-    # temporary rename operations
-    def allowed_index_name_length
-      index_name_length - 2
     end
 
     def native_database_types #:nodoc:
@@ -236,8 +233,11 @@ module ArJdbc
       pks.sort_by { |f| f["pk"] }.map { |f| f["name"] }
     end
 
-    def remove_index(table_name, column_name, options = {}) #:nodoc:
+      def remove_index(table_name, column_name = nil, **options) # :nodoc:
+        return if options[:if_exists] && !index_exists?(table_name, column_name, **options)
+
       index_name = index_name_for_remove(table_name, column_name, options)
+
       exec_query "DROP INDEX #{quote_column_name(index_name)}"
     end
 
@@ -288,16 +288,11 @@ module ArJdbc
       end
     end
 
-    def change_column(table_name, column_name, type, options = {}) #:nodoc:
+    def change_column(table_name, column_name, type, **options) #:nodoc:
       alter_table(table_name) do |definition|
         definition[column_name].instance_eval do
           self.type    = type
-          self.limit   = options[:limit] if options.include?(:limit)
-          self.default = options[:default] if options.include?(:default)
-          self.null    = options[:null] if options.include?(:null)
-          self.precision = options[:precision] if options.include?(:precision)
-          self.scale   = options[:scale] if options.include?(:scale)
-          self.collation = options[:collation] if options.include?(:collation)
+            self.options.merge!(options)
         end
       end
     end
@@ -397,7 +392,12 @@ module ArJdbc
         options[:null] == false && options[:default].nil?
     end
 
-    def alter_table(table_name, foreign_keys = foreign_keys(table_name), **options)
+    def alter_table(
+      table_name,
+      foreign_keys = foreign_keys(table_name),
+      check_constraints = check_constraints(table_name),
+      **options
+    )
       altered_table_name = "a#{table_name}"
 
       caller = lambda do |definition|
@@ -408,6 +408,10 @@ module ArJdbc
           end
           to_table = strip_table_name_prefix_and_suffix(fk.to_table)
           definition.foreign_key(to_table, **fk.options)
+        end
+
+        check_constraints.each do |chk|
+          definition.check_constraint(chk.expression, **chk.options)
         end
 
         yield definition if block_given?
@@ -462,7 +466,7 @@ module ArJdbc
         name = index.name
         # indexes sqlite creates for internal use start with `sqlite_` and
         # don't need to be copied
-        next if name.starts_with?("sqlite_")
+        next if name.start_with?("sqlite_")
         if to == "a#{from}"
           name = "t#{name}"
         elsif from == "a#{to}"
@@ -479,10 +483,10 @@ module ArJdbc
 
         unless columns.empty?
           # index name can't be the same
-          opts = { name: name.gsub(/(^|_)(#{from})_/, "\\1#{to}_"), internal: true }
-          opts[:unique] = true if index.unique
-          opts[:where] = index.where if index.where
-          add_index(to, columns, opts)
+          options = { name: name.gsub(/(^|_)(#{from})_/, "\\1#{to}_"), internal: true }
+          options[:unique] = true if index.unique
+          options[:where] = index.where if index.where
+          add_index(to, columns, **options)
         end
       end
     end
@@ -547,7 +551,7 @@ module ArJdbc
           collation_hash[$1] = $2 if COLLATE_REGEX =~ column_string
         end
 
-        basic_structure.map! do |column|
+        basic_structure.map do |column|
           column_name = column["name"]
 
           if collation_hash.has_key? column_name
