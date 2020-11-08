@@ -51,6 +51,9 @@ class PostgresRakeTest < Test::Unit::TestCase
 
   test 'rake db:structure:dump and db:structure:load' do
     omit('pg_dump not available') unless self.class.which('pg_dump')
+
+    initial_format = ActiveRecord::Base.schema_format
+    ActiveRecord::Base.schema_format = :sql
     # Rake::Task["db:create"].invoke
     create_rake_test_database do |connection|
       create_schema_migrations_table(connection)
@@ -60,7 +63,7 @@ class PostgresRakeTest < Test::Unit::TestCase
     structure_sql = File.join('db', structure_sql_filename)
     begin
       Dir.mkdir 'db' # db/structure.sql
-      Rake::Task["db:structure:dump"].invoke
+      Rake::Task["db:schema:dump"].invoke
 
       assert File.exists?(structure_sql)
       assert_match(/CREATE TABLE .*?.?users/, File.read(structure_sql))
@@ -73,7 +76,7 @@ class PostgresRakeTest < Test::Unit::TestCase
       # environment and load_config tasks don't run to set up the
       # connection because they were already ran when dumping the structure
       with_connection db_config.merge(database: db_name) do |_connection|
-        Rake::Task["db:structure:load"].invoke
+        Rake::Task["db:schema:load"].invoke
       end
 
       with_connection db_config.merge(database: db_name) do |connection|
@@ -82,6 +85,7 @@ class PostgresRakeTest < Test::Unit::TestCase
     ensure
       File.delete(structure_sql) if File.exists?(structure_sql)
       Dir.rmdir 'db'
+      ActiveRecord::Base.schema_format = initial_format
     end
   end
 
