@@ -373,11 +373,6 @@ module ArJdbc
       999
     end
 
-    def initialize_type_map(m = type_map)
-      super
-      register_class_with_limit m, %r(int)i, SQLite3Integer
-    end
-
     def table_structure(table_name)
       structure = exec_query("PRAGMA table_info(#{quote_table_name(table_name)})", "SCHEMA")
       raise(ActiveRecord::StatementInvalid, "Could not find table '#{table_name}'") if structure.empty?
@@ -573,18 +568,6 @@ module ArJdbc
       execute("PRAGMA foreign_keys = ON", "SCHEMA")
     end
 
-    # DIFFERENCE: FQN
-    class SQLite3Integer < ::ActiveRecord::Type::Integer # :nodoc:
-      private
-      def _limit
-        # INTEGER storage class can be stored 8 bytes value.
-        # See https://www.sqlite.org/datatype3.html#storage_classes_and_datatypes
-        limit || 8
-      end
-    end
-
-    # DIFFERENCE: FQN
-    ::ActiveRecord::Type.register(:integer, SQLite3Integer, adapter: :sqlite3)
   end
   # DIFFERENCE: A registration here is moved down to concrete class so we are not registering part of an adapter.
 end
@@ -743,5 +726,23 @@ module ActiveRecord::ConnectionAdapters
         total_sql
       end
     end
+
+    def initialize_type_map(m = type_map)
+      super
+      register_class_with_limit m, %r(int)i, SQLite3Integer
+    end
+
+    # DIFFERENCE: FQN
+    class SQLite3Integer < ::ActiveRecord::Type::Integer # :nodoc:
+      private
+      def _limit
+        # INTEGER storage class can be stored 8 bytes value.
+        # See https://www.sqlite.org/datatype3.html#storage_classes_and_datatypes
+        limit || 8
+      end
+    end
+
+    # DIFFERENCE: FQN
+    ::ActiveRecord::Type.register(:integer, SQLite3Integer, adapter: :sqlite3)
   end
 end
