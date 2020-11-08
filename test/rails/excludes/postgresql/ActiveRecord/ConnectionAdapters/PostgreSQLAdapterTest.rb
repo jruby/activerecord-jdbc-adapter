@@ -6,3 +6,4 @@ end
 exclude :test_only_warn_on_first_encounter_of_unrecognized_oid, 'expects warning with OID, ARJBC has name instead'
 exclude :test_default_sequence_name_bad_table, "ARJDBC does more quoting (which is not wrong)"
 exclude :test_reconnection_error, 'different internals'
+exclude :test_connection_error, 'expects ConnectionNotEstablished, but gets NoDatabaseError'
