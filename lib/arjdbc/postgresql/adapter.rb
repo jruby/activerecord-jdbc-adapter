@@ -87,6 +87,9 @@ module ArJdbc
         execute("SET time zone '#{tz}'", 'SCHEMA')
       end unless redshift?
 
+      # Set interval output format to ISO 8601 for ease of parsing by ActiveSupport::Duration.parse
+      execute("SET intervalstyle = iso_8601", "SCHEMA")
+
       # SET statements from :variables config hash
       # http://www.postgresql.org/docs/8.3/static/sql-set.html
       (config[:variables] || {}).map do |k, v|

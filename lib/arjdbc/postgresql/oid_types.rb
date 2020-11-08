@@ -155,9 +155,9 @@ module ArJdbc
         m.register_type 'polygon', OID::SpecializedString.new(:polygon)
         m.register_type 'circle', OID::SpecializedString.new(:circle)
 
-        m.register_type 'interval' do |_, _, sql_type|
+        m.register_type 'interval' do |*args, sql_type|
           precision = extract_precision(sql_type)
-          OID::SpecializedString.new(:interval, precision: precision)
+          OID::Interval.new(precision: precision)
         end
 
         register_class_with_precision m, 'time', Type::Time
@@ -244,6 +244,7 @@ module ArJdbc
       ActiveRecord::Type.register(:enum, OID::Enum, adapter: :postgresql)
       ActiveRecord::Type.register(:hstore, OID::Hstore, adapter: :postgresql)
       ActiveRecord::Type.register(:inet, OID::Inet, adapter: :postgresql)
+      ActiveRecord::Type.register(:interval, OID::Interval, adapter: :postgresql)
       ActiveRecord::Type.register(:json, Type::Json, adapter: :postgresql)
       ActiveRecord::Type.register(:jsonb, OID::Jsonb, adapter: :postgresql)
       ActiveRecord::Type.register(:money, OID::Money, adapter: :postgresql)

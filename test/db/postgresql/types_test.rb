@@ -300,8 +300,8 @@ _SQL
   end
 
   def test_data_type_of_time_types
-    assert_instance_of OID::SpecializedString, PostgresqlTime.type_for_attribute('time_interval')
-    assert_instance_of OID::SpecializedString, PostgresqlTime.type_for_attribute('scaled_time_interval')
+    assert_instance_of OID::Interval, PostgresqlTime.type_for_attribute('time_interval')
+    assert_instance_of OID::Interval, PostgresqlTime.type_for_attribute('scaled_time_interval')
   end
 
   def test_data_type_of_network_address_types
@@ -554,8 +554,8 @@ _SQL
 
   def test_time_values
     # omit_unless ar_version('4.0')
-    assert_equal '-1 years -2 days', @first_time.time_interval
-    assert_equal '-21 days', @first_time.scaled_time_interval
+    assert_equal '-1 years and -2 days', @first_time.time_interval.inspect
+    assert_equal '-21 days', @first_time.scaled_time_interval.inspect
   end
 
   def test_network_address_values_ipaddr
@@ -644,10 +644,10 @@ _SQL
   end
 
   def test_update_time
-    @first_time.time_interval = '2 years 3 minutes'
+    @first_time.time_interval = 'P2YT3M'
     @first_time.save!
     @first_time.reload
-    assert_equal '2 years 00:03:00', @first_time.time_interval
+    assert_equal '2 years and 3 minutes', @first_time.time_interval.inspect
   end
 
   def test_update_network_address
