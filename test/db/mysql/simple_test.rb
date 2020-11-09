@@ -445,7 +445,7 @@ class MySQLSimpleTest < Test::Unit::TestCase
   def test_execute_after_disconnect
     connection.disconnect!
 
-    assert_raise(ActiveRecord::StatementInvalid) do
+    assert_raise(ActiveRecord::ConnectionNotEstablished) do
       connection.execute('SELECT 1')
     end
 

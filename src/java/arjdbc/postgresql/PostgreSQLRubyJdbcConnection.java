@@ -436,7 +436,7 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
                 break;
 
             case "interval":
-                statement.setObject(index, new PGInterval(value.toString()));
+                statement.setObject(index, stringToPGInterval(value.toString()));
                 break;
 
             case "json":
@@ -491,6 +491,74 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
                     setPGobjectParameter(statement, index, value, columnType);
                 }
         }
+    }
+
+    private int lookAhead(String value, int position, String find) {
+        char [] tokens = find.toCharArray();
+        int found = -1;
+
+        for ( int i = 0; i < tokens.length; i++ ) {
+            found = value.indexOf(tokens[i], position);
+            if ( found > 0 ) {
+                return found;
+            }
+        }
+        return found;
+    }
+
+    private Object stringToPGInterval(String value) throws SQLException {
+        if (!value.startsWith("P")) return new PGInterval(value);
+
+        PGInterval interval = new PGInterval();
+
+        /* this is copied from pgjdbc with fixes for Rails */
+        int number = 0;
+        String dateValue;
+        String timeValue = null;
+
+        int hasTime = value.indexOf('T');
+        if ( hasTime > 0 ) {
+          /* skip over the P */
+          dateValue = value.substring(1,hasTime);
+          timeValue = value.substring(hasTime + 1);
+        } else {
+          /* skip over the P */
+          dateValue = value.substring(1);
+        }
+
+        for ( int i = 0; i < dateValue.length(); i++ ) {
+          int lookAhead = lookAhead(dateValue, i, "YMD");
+          if (lookAhead > 0) {
+            char type = dateValue.charAt(lookAhead);
+            number = Integer.parseInt(dateValue.substring(i, lookAhead));
+            if (type == 'Y') {
+              interval.setYears(number);
+            } else if (type == 'M') {
+              interval.setMonths(number);
+            } else if (type == 'D') {
+              interval.setDays(number);
+            }
+            i = lookAhead;
+          }
+        }
+        if ( timeValue != null ) {
+          for (int i = 0; i < timeValue.length(); i++) {
+            int lookAhead = lookAhead(timeValue, i, "HMS");
+            if (lookAhead > 0) {
+              char type = timeValue.charAt(lookAhead);
+              String part = timeValue.substring(i, lookAhead);
+              if (timeValue.charAt(lookAhead) == 'H') {
+                interval.setHours(Integer.parseInt(part));
+              } else if (timeValue.charAt(lookAhead) == 'M') {
+                interval.setMinutes(Integer.parseInt(part));
+              } else if (timeValue.charAt(lookAhead) == 'S') {
+                interval.setSeconds(Double.parseDouble(part));
+              }
+              i = lookAhead;
+            }
+          }
+        }
+        return interval;
     }
 
     protected IRubyObject jdbcToRuby(ThreadContext context, Ruby runtime, int column, int type, ResultSet resultSet) throws SQLException {
@@ -874,34 +942,25 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
     private static String formatInterval(final Object object) {
         final PGInterval interval = (PGInterval) object;
         final StringBuilder str = new StringBuilder(32);
+        str.append("P");
 
         final int years = interval.getYears();
-        if (years != 0) str.append(years).append(" years ");
+        if (years != 0) str.append(years).append("Y");
 
         final int months = interval.getMonths();
-        if (months != 0) str.append(months).append(" months ");
+        if (months != 0) str.append(months).append("M");
 
         final int days = interval.getDays();
-        if (days != 0) str.append(days).append(" days ");
+        if (days != 0) str.append(days).append("D");
 
         final int hours = interval.getHours();
         final int mins = interval.getMinutes();
-        final int secs = (int) interval.getSeconds();
-        if (hours != 0 || mins != 0 || secs != 0) { // xx:yy:zz if not all 00
-            if (hours < 10) str.append('0');
-
-            str.append(hours).append(':');
-
-            if (mins < 10) str.append('0');
-
-            str.append(mins).append(':');
-
-            if (secs < 10) str.append('0');
-
-            str.append(secs);
-
-        } else if (str.length() > 1) {
-            str.deleteCharAt(str.length() - 1); // " " at the end
+        final double secs = interval.getSeconds();
+        if (hours != 0 || mins != 0 || secs != 0) {
+            str.append("T");
+            if (hours != 0) str.append(hours).append("H");
+            if (mins != 0) str.append(mins).append("M");
+            if (secs != 0) str.append(secs).append("S");
         }
 
         return str.toString();

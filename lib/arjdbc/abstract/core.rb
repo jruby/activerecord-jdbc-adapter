@@ -56,6 +56,7 @@ module ArJdbc
         case exception
           when SystemExit, SignalException, NoMemoryError then exception
           when ActiveModel::RangeError, TypeError, RuntimeError then exception
+          when ActiveRecord::ConnectionNotEstablished then exception
           else super
         end
       end

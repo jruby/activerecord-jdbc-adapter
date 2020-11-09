@@ -13,3 +13,4 @@ exclude :test_establish_connection_using_two_level_configurations, 'tries to loa
 exclude :test_establish_connection_using_top_level_key_in_two_level_config, 'tries to load SQLite3 driver'
 exclude :test_symbolized_configurations_assignment, 'tries to load SQLite3 driver'
 exclude :test_establish_connection_with_primary_works_without_deprecation, 'tries to load SQLite3 driver'
+exclude :test_retrieve_connection_shows_primary_deprecation_warning_when_established_on_active_record_base, 'tries to load SQLite3 driver'
