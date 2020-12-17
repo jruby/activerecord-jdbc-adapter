@@ -200,6 +200,57 @@ public class MSSQLRubyJdbcConnection extends RubyJdbcConnection {
         });
     }
 
+    /**
+     * Executes an INSERT SQL statement
+     * @param context
+     * @param sql
+     * @param pk Rails PK
+     * @return ActiveRecord::Result
+     * @throws SQLException
+     */
+    @Override
+    @JRubyMethod(name = "execute_insert_pk", required = 2)
+    public IRubyObject execute_insert_pk(final ThreadContext context, final IRubyObject sql, final IRubyObject pk) {
+
+        // MSSQL does not like composite primary keys here so chop it if there is more than one column
+        IRubyObject modifiedPk = pk;
+
+        if (pk instanceof RubyArray) {
+            RubyArray ary = (RubyArray) pk;
+            if (ary.size() > 0) {
+                modifiedPk = ary.eltInternal(0);
+            }
+        }
+
+        return super.execute_insert_pk(context, sql, modifiedPk);
+    }
+
+    /**
+     * Executes an INSERT SQL statement using a prepared statement
+     * @param context
+     * @param sql
+     * @param binds RubyArray of values to be bound to the query
+     * @param pk Rails PK
+     * @return ActiveRecord::Result
+     * @throws SQLException
+     */
+    @Override
+    @JRubyMethod(name = "execute_insert_pk", required = 3)
+    public IRubyObject execute_insert_pk(final ThreadContext context, final IRubyObject sql, final IRubyObject binds,
+                                         final IRubyObject pk) {
+        // MSSQL does not like composite primary keys here so chop it if there is more than one column
+        IRubyObject modifiedPk = pk;
+
+        if (pk instanceof RubyArray) {
+            RubyArray ary = (RubyArray) pk;
+            if (ary.size() > 0) {
+                modifiedPk = ary.eltInternal(0);
+            }
+        }
+
+        return super.execute_insert_pk(context, sql, binds, modifiedPk);
+    }
+
     @Override
     protected Integer jdbcTypeFor(final String type) {
 
