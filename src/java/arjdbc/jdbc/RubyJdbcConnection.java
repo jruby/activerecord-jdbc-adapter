@@ -2348,7 +2348,7 @@ public class RubyJdbcConnection extends RubyObject {
             return RubyString.newString(runtime, DateTimeUtils.dateToString(value));
         }
 
-        return DateTimeUtils.newDateAsTime(context, value, null).callMethod(context, "to_date");
+        return DateTimeUtils.newDateAsTime(context, value, DateTimeZone.UTC).callMethod(context, "to_date");
     }
 
     protected IRubyObject timeToRuby(final ThreadContext context,
