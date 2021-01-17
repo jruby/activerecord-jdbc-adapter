@@ -9,7 +9,7 @@ module ArJdbc
         test_database = resolve_database(test)
         test['database'] = 'master'
         establish_connection(test)
-        connection.recreate_database!(test_database)
+        connection.recreate_database(test_database)
       end
 
       def structure_dump(filename)

@@ -33,7 +33,14 @@ class MSSQLRakeDbCreateTest < Test::Unit::TestCase
 
   test 'rake db:drop (non-existing database)' do
     drop_rake_test_database(:silence)
-    Rake::Task["db:drop"].invoke
+
+    # Im assuming this test is here to check that we
+    # blow up when droping non-existent db
+    begin
+      Rake::Task["db:drop"].invoke
+    rescue => e
+      raise e unless e.message =~ /Cannot open database "#{Regexp.quote(db_name)}" requested by the login/
+    end
   end
 
   test 'rake db:test:purge' do
@@ -64,7 +71,7 @@ class MSSQLRakeDbCreateTest < Test::Unit::TestCase
 
       assert File.exists?(structure_sql)
       # CREATE TABLE [dbo].[users]( ... )
-      assert_match /CREATE TABLE .*?\[users\]/i, File.read(structure_sql)
+      assert_match(/CREATE TABLE .*?\[users\]/i, File.read(structure_sql))
 
       # db:structure:load
       drop_rake_test_database(:silence)
@@ -86,14 +93,14 @@ class MSSQLRakeDbCreateTest < Test::Unit::TestCase
     create_rake_test_database
     # using the default character set, the character_set_name should be
     # iso_1 (ISO 8859-1) for the char and varchar data types
-    expect_rake_output /iso_1|UCS/i
+    expect_rake_output(/iso_1|UCS/i)
     Rake::Task["db:charset"].invoke
   end
 
   test 'rake db:collation' do
     create_rake_test_database
     # default (for iso_1) : 'SQL_Latin1_General_CP1_CI_AS'
-    expect_rake_output /SQL_.*/
+    expect_rake_output(/SQL_.*/)
     Rake::Task["db:collation"].invoke
   end
 
@@ -101,10 +108,8 @@ class MSSQLRakeDbCreateTest < Test::Unit::TestCase
   def create_rake_test_database(db_name = self.db_name)
     ActiveRecord::Base.establish_connection db_config
     connection = ActiveRecord::Base.connection
-    unless connection.database_exists?(db_name)
-      # connection.use_database('master')
-      connection.create_database(db_name, db_config)
-    end
+
+    connection.recreate_database(db_name)
 
     if block_given?
       ActiveRecord::Base.establish_connection db_config.merge :database => db_name
@@ -132,7 +137,9 @@ class MSSQLRakeDbCreateTest < Test::Unit::TestCase
   private
 
   def databases
-    ActiveRecord::Base.connection.select_rows('SELECT name FROM sys.sysdatabases').flatten
+    select = "SELECT name FROM sys.sysdatabases"
+
+    ActiveRecord::Base.connection.select_rows(select).flatten
   end
 
 end

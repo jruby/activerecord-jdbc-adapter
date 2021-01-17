@@ -1,6 +1,6 @@
 namespace :rails do
 
-  %w(MySQL SQLite3 PostgreSQL).each do |adapter|
+  %w(MySQL SQLite3 PostgreSQL MSSQL).each do |adapter|
 
     desc "Run Rails ActiveRecord tests with #{adapter} (JDBC)"
     task "test_#{adapter = adapter.downcase}" do
@@ -22,6 +22,12 @@ namespace :rails do
 
       driver = "jdbc-#{ENV['DRIVER'] ? ENV['DRIVER'].downcase : (adapter =~ /postgres/i ? 'postgres' : adapter)}"
       adapter = 'mysql2' if adapter.eql?('mysql')
+
+      # Overriding adapter and driver (maybe we can change later only to mssql)
+      if adapter.eql? 'mssql'
+        adapter = 'sqlserver'
+        ENV['DRIVER'] = 'sqlserver'
+      end
 
       root_dir = File.expand_path('..', File.dirname(__FILE__))
       env = {}

@@ -1,0 +1,11 @@
+one:
+  id: 1
+  name: awesome
+  created_on: <%= 2.days.ago.strftime("%Y-%m-%d %H:%M:%S.%9N Z") %>
+  updated_on: <%= 2.days.ago.strftime("%Y-%m-%d %H:%M:%S.%9N Z") %>
+
+two:
+  id: 2
+  name: cool
+  created_on: <%= 2.days.ago.strftime("%Y-%m-%d %H:%M:%S.%9N Z") %>
+  updated_on: <%= 2.days.ago.strftime("%Y-%m-%d %H:%M:%S.%9N Z") %>

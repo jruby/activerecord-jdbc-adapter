@@ -105,16 +105,31 @@ class MSSQLDateTimeTypesTest < Test::Unit::TestCase
       end
     end
 
-    def test_time
+    def test_time_usec_in_database
       # 00:00:00.0000000 through 23:59:59.9999999
 
-      id = DateAndTime.connection.insert 'INSERT INTO date_and_times ([time])' +
-        " VALUES ('22:05:59.123456')"
+      sql = "INSERT INTO date_and_times ([time]) VALUES ('22:05:59.123456')"
+      id = DateAndTime.connection.insert(sql)
+
       model = DateAndTime.find(id)
       assert_not_nil model.time
       time = Time.local(2000, 1, 01, 22, 05, 59, 123456)
       assert_time_equal time, model.time
       assert_equal time.usec, model.time.usec
+    end
+
+    def test_time_usec_in_ruby
+      # 00:00:00.0000000 through 23:59:59.9999999
+
+      time = Time.local(1970, 1, 01, 23, 59, 58, 987543)
+      model = DateAndTime.create! :time => time
+      assert_not_nil model.time
+      assert_time_equal time, model.reload.time
+      assert_equal 987543, model.time.usec
+    end
+
+    def test_time_usec_in_ruby_edge_case
+      # 00:00:00.0000000 through 23:59:59.9999999
 
       time = Time.local(0000, 1, 01, 23, 59, 58, 987000)
       model = DateAndTime.create! :time => time
@@ -124,8 +139,9 @@ class MSSQLDateTimeTypesTest < Test::Unit::TestCase
       # ... same mess on MRI :
       # 1.9.3-p551 :004 > Time.local(0000, 1, 01, 23, 59, 0).inspect
       # => "0000-01-01 23:59:00 +0057"
-      pend 'TODO: ' + time.inspect if ar_version('4.2')
-      assert_time_equal time, model.reload.time
+      model.reload
+      #pend "TODO:  #{time.inspect} equal #{model.time.inspect}"
+      assert_time_equal time, model.time
       assert_equal 987000, model.time.usec
     end
 
@@ -133,92 +149,3 @@ class MSSQLDateTimeTypesTest < Test::Unit::TestCase
 
 end
 
-class MSSQLLegacyTypesTest < Test::Unit::TestCase
-
-  class CreateArticles < ActiveRecord::Migration
-
-    def self.up
-      execute <<-SQL
-        CREATE TABLE articles (
-          [id] int NOT NULL IDENTITY(1, 1) PRIMARY KEY,
-          [title] VARCHAR(100),
-          [author] VARCHAR(60) DEFAULT 'anonymous',
-          [text] TEXT,
-          [text_as_varchar] VARCHAR(100),
-          [ntext] NTEXT,
-          [image] IMAGE
-        )
-      SQL
-    end
-
-    def self.down
-      drop_table "articles"
-    end
-
-  end
-
-  class Article < ActiveRecord::Base; end
-
-  def self.startup; CreateArticles.up; end
-
-  def self.shutdown; CreateArticles.down; end
-
-  def teardown
-    ActiveRecord::Base.clear_active_connections!
-  end
-
-  def test_varchar_column
-    article = Article.create! :title => "Blah blah"
-    assert_equal("Blah blah", article.reload.title)
-  end
-
-  def test_varchar_default_value
-    assert_equal("anonymous", Article.new.author)
-  end
-
-  def test_text_column
-    sample_text = "Lorem ipsum dolor sit amet ..."
-    article = Article.create! :text => sample_text.dup
-    assert_equal(sample_text, article.reload.text)
-  end
-
-  def test_ntext_column
-    sample_text = "Lorem ipsum dolor sit amet ..."
-    article = Article.create! :ntext => sample_text.dup
-    assert_equal(sample_text, article.reload.ntext)
-  end
-
-  test "text, ntext and image are treated as special" do
-    assert_not_empty columns = Article.columns
-    assert_true columns.find { |column| column.name == 'text' }.special
-    assert_true columns.find { |column| column.name == 'ntext' }.special
-    assert_true columns.find { |column| column.name == 'image' }.special
-    assert ! Article.columns.find { |column| column.name == 'id' }.special
-    assert ! Article.columns.find { |column| column.name == 'title' }.special
-    assert ! Article.columns.find { |column| column.name == 'author' }.special
-
-    special_column_names = Article.connection.send(:special_column_names, 'articles')
-    assert_equal ['text', 'ntext', 'image'], special_column_names
-    special_column_names = Article.connection.send(:special_column_names, '[articles]')
-    assert_equal ['text', 'ntext', 'image'], special_column_names
-  end
-
-  test "repairs select equlity comparison for special columns" do
-    sql = "SELECT * FROM articles WHERE text = '1' ORDER BY text"
-    r_sql = Article.connection.send(:repair_special_columns, sql)
-    assert_equal "SELECT * FROM articles WHERE [text] LIKE '1' ", r_sql
-
-    sql = "SELECT * FROM articles WHERE text_as_varchar = '1' ORDER BY text_as_varchar"
-    r_sql = Article.connection.send(:repair_special_columns, sql)
-    assert_equal "SELECT * FROM articles WHERE text_as_varchar = '1' ORDER BY text_as_varchar", r_sql
-
-    sql = "SELECT * FROM [articles] WHERE [text]='1' AND [ntext]= '2' ORDER BY [ntext]"
-    r_sql = Article.connection.send(:repair_special_columns, sql)
-    assert_equal "SELECT * FROM [articles] WHERE [text] LIKE '1' AND [ntext] LIKE '2' ", r_sql
-
-    sql = "SELECT * FROM [articles] WHERE [text] = 'text' AND [title] = 't' ORDER BY title"
-    r_sql = Article.connection.send(:repair_special_columns, sql)
-    assert_equal "SELECT * FROM [articles] WHERE [text] LIKE 'text' AND [title] = 't' ORDER BY title", r_sql
-  end
-
-end

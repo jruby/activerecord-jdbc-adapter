@@ -1,0 +1,11 @@
+one:
+  id: 1
+  name: never awesome
+  created_on: <%= 2.days.ago.to_s(:db) %>
+  updated_on: <%= 2.days.ago.to_s(:db) %>
+
+two:
+  id: 2
+  name: never cool
+  created_on: <%= 2.days.ago.to_s(:db) %>
+  updated_on: <%= 2.days.ago.to_s(:db) %>

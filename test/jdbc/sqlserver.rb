@@ -4,7 +4,9 @@ module Jdbc
       if const_defined?(:VERSION)
         "sqljdbc-#{VERSION}.jar"
       else
-        "sqljdbc4.jar"
+        # NOTE: This is the oldest that supports the JDBC 4.2 API
+        # downloadable from MS site, it is called Sqljdbc42.jar
+        'sqljdbc4.jar'
       end
     end
 
