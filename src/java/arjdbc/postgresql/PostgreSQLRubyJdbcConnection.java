@@ -366,8 +366,14 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
             value = value.callMethod(context, "to_date");
         }
 
-        // NOTE: assuming Date#to_s does right ...
-        statement.setDate(index, Date.valueOf(value.toString()));
+        int year = RubyNumeric.num2int(value.callMethod(context, "year"));
+        int month = RubyNumeric.num2int(value.callMethod(context, "month"));
+        int day = RubyNumeric.num2int(value.callMethod(context, "day"));
+
+        @SuppressWarnings("deprecated")
+        Date date = new Date(year - 1900, month - 1, day);
+
+        statement.setDate(index, date);
     }
 
     @Override
