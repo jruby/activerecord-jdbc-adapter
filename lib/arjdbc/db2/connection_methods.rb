@@ -2,6 +2,7 @@ ArJdbc::ConnectionMethods.module_eval do
   # @note Assumes DB2 driver (*db2jcc.jar*) is on class-path.
   def db2_connection(config)
     config[:adapter_spec] ||= ::ArJdbc::DB2
+    config = config.clone
 
     return jndi_connection(config) if jndi_config?(config)
 
