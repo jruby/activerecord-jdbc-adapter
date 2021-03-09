@@ -62,7 +62,7 @@ module ArJdbc
       end
 
       def extract_raw_bind_values(binds)
-        binds.map(&:value_for_database)
+        binds.map { |b| b.respond_to?(:value_for_database) ? b.value_for_database : b.to_s }
       end
 
       # this version of log() automatically fills type_casted_binds from binds if necessary

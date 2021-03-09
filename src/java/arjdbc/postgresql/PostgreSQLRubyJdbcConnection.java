@@ -75,7 +75,6 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
     private static final long serialVersionUID = 7235537759545717760L;
     private static final int HSTORE_TYPE = 100000 + 1111;
     private static final Pattern doubleValuePattern = Pattern.compile("(-?\\d+(?:\\.\\d+)?)");
-    private static final Pattern uuidPattern = Pattern.compile("\\{?\\p{XDigit}{4}(?:-?(\\p{XDigit}{4})){7}\\}?"); // Fuzzy match postgres's allowed formats
 
     private static final Map<String, Integer> POSTGRES_JDBC_TYPE_FOR = new HashMap<>(32, 1);
     static {
@@ -649,33 +648,6 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
 
         statement.setObject(index, pgRange);
     }
-
-    @Override
-    protected void setStringParameter(final ThreadContext context,
-        final Connection connection, final PreparedStatement statement,
-        final int index, final IRubyObject value,
-        final IRubyObject attribute, final int type) throws SQLException {
-
-        if ( attributeSQLType(context, attribute) == context.nil ) {
-            /*
-                We have to check for a uuid here because in some cases
-                (for example,  when doing "exists?" checks, or with legacy binds)
-                ActiveRecord doesn't send us the actual type of the attribute
-                and Postgres won't compare a uuid column with a string
-            */
-            final String uuid = value.toString();
-            int length = uuid.length();
-
-            // Checking the length so we don't have the overhead of the regex unless it "looks" like a UUID
-            if (length >= 32 && length < 40 && uuidPattern.matcher(uuid).matches()) {
-                setUUIDParameter(statement, index, uuid);
-                return;
-            }
-        }
-
-        super.setStringParameter(context, connection, statement, index, value, attribute, type);
-    }
-
 
     private void setUUIDParameter(final PreparedStatement statement,
                                   final int index, final IRubyObject value) throws SQLException {

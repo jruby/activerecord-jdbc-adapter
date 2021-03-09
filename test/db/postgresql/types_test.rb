@@ -31,7 +31,8 @@ class PostgreSQLTypesTest < Test::Unit::TestCase
     execute "CREATE TABLE postgresql_uuids (" <<
               " id SERIAL PRIMARY KEY," <<
               " guid uuid," <<
-              " compact_guid uuid" <<
+              " compact_guid uuid," <<
+              " string varchar(50)" <<
             ");"
 
     execute("CREATE TABLE postgresql_ranges (" <<
@@ -237,7 +238,7 @@ _SQL
 
     @connection.execute("INSERT INTO postgresql_timestamp_with_zones (id, time) VALUES (1, '2010-01-01 10:00:00-1')")
 
-    @connection.execute("INSERT INTO postgresql_uuids (id, guid, compact_guid) VALUES(1, 'd96c3da0-96c1-012f-1316-64ce8f32c6d8', 'f06c715096c1012f131764ce8f32c6d8')")
+    @connection.execute("INSERT INTO postgresql_uuids (id, guid, compact_guid, string) VALUES(1, 'd96c3da0-96c1-012f-1316-64ce8f32c6d8', 'f06c715096c1012f131764ce8f32c6d8', '3a66d5d3-c18e-4437-889a-a7c1037bf4ad')")
     @first_uuid = PostgresqlUUID.find(1)
   end
 
@@ -570,6 +571,19 @@ _SQL
   def test_uuid_values
     assert_equal 'd96c3da0-96c1-012f-1316-64ce8f32c6d8', @first_uuid.guid
     assert_equal 'f06c7150-96c1-012f-1317-64ce8f32c6d8', @first_uuid.compact_guid
+    assert_equal '3a66d5d3-c18e-4437-889a-a7c1037bf4ad', @first_uuid.string
+  end
+
+  def test_query_string_like_uuid_where_in
+    assert_equal 1, PostgresqlUUID.where(:string => [
+      '3a66d5d3-c18e-4437-889a-a7c1037bf4ad', 'not uuid'
+    ]).first.id
+  end
+
+  def test_query_uuid_where_in
+    assert_equal 1, PostgresqlUUID.where(:guid => [
+      'd96c3da0-96c1-012f-1316-64ce8f32c6d8', 'a2170479-a3a2-42df-b80f-ae78f99cdca7'
+    ]).first.id
   end
 
   def test_bit_string_values
