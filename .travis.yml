@@ -9,7 +9,8 @@ before_install:
   - rvm @default,@global do gem uninstall bundler -a -x -I || true
   - gem install bundler -v "~>1.17.3"
 install:
-- bundle install --retry 3 --without development
+- bundle config set --local without 'development'
+- bundle install
 # to fix this issue: https://travis-ci.community/t/mariadb-10-1-fails-to-install-on-xenial/3151/3
 - mysql -u root -e 'CREATE USER IF NOT EXISTS travis@localhost; GRANT ALL ON *.* TO travis@localhost;' || true
 
@@ -48,7 +49,7 @@ before_script:
 
 env:
   global:
-    - AR_VERSION="master"
+    - AR_VERSION="6-1-stable"
 matrix:
   allow_failures:
     - rvm: jruby-head
