@@ -16,7 +16,7 @@ install:
 
 language: ruby
 rvm:
-  - jruby-9.2.14.0
+  - jruby-9.2.19.0
 jdk:
   - openjdk8
 
