@@ -30,7 +30,7 @@ ArJdbc::ConnectionMethods.module_eval do
     config[:username] ||= ( config[:user] || ENV['PGUSER'] || ENV_JAVA['user.name'] )
     config[:password] ||= ENV['PGPASSWORD'] unless config.key?(:password)
     properties = ( config[:properties] ||= {} )
-    properties['stringtype'] = 'unspecified' # for simple strings looking like UUIDs
+    properties['stringtype'] ||= 'unspecified' # for simple strings looking like UUIDs
     # PG :connect_timeout - maximum time to wait for connection to succeed
     if connect_timeout = ( config[:connect_timeout] || ENV['PGCONNECT_TIMEOUT'] )
       properties['socketTimeout'] ||= connect_timeout
