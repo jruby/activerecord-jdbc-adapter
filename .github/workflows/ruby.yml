@@ -1,0 +1,46 @@
+# This workflow uses actions that are not certified by GitHub.
+# They are provided by a third-party and are governed by
+# separate terms of service, privacy policy, and support
+# documentation.
+# This workflow will download a prebuilt Ruby version, install dependencies and run tests with Rake
+# For more information see: https://github.com/marketplace/actions/setup-ruby-jruby-and-truffleruby
+
+name: Ruby
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        ruby-version: ['jruby-9.3.4.0']
+
+    steps:
+    - uses: actions/checkout@v3
+    - name: Set up Ruby
+      uses: ruby/setup-ruby@v1
+      with:
+        ruby-version: ${{ matrix.ruby-version }}
+        bundler-cache: true # runs 'bundle install' and caches installed gems automatically
+    - name: Run tests
+      run:
+      - echo "JAVA_OPTS=$JAVA_OPTS"
+      - export JRUBY_OPTS="-J-Xms64M -J-Xmx1024M"
+      - rake jar # compiles ext generates: lib/arjdbc/jdbc/adapter_java.jar
+      - mysql --version || true # to see if we're using MySQL or MariaDB
+      - rake db:mysql
+      - "mysql -e "CREATE USER rails@localhost;"
+      - mysql -e "grant all privileges on activerecord_unittest.* to rails@localhost;"
+      - mysql -e "grant all privileges on activerecord_unittest2.* to rails@localhost;"
+      - mysql -e "grant all privileges on inexistent_activerecord_unittest.* to rails@localhost;"
+      - mysql -e "CREATE DATABASE activerecord_unittest DEFAULT CHARACTER SET utf8mb4;"
+      - mysql -e "CREATE DATABASE activerecord_unittest2 DEFAULT CHARACTER SET utf8mb4;"
