@@ -1,0 +1,1 @@
+exclude :test_unicode_characters_for_enum_names, "encoding error"
