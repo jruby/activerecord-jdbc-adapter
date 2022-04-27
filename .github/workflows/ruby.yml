@@ -17,9 +17,9 @@ permissions:
   contents: read
 
 jobs:
-  test-rails:
+  test-rails-mysql:
 
-    name: Rails Tests
+    name: Rails Tests (MySQL)
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -28,20 +28,17 @@ jobs:
         db: ['mysql2']
         test_targets: ["rails:test_mysql2"]
         ar_version: ["6-1-stable"]
-        prepared_statements: ['false']
+        prepared_statements: ['false', 'true']
         driver: ['MySQL']
 
     services:
       mysql:
         image: mysql:5.7
-        env:
-          MYSQL_ALLOW_EMPTY_PASSWORD: yes
         ports:
           - 3306
 
     env:
       DB: ${{ matrix.db }}
-      TEST_PREFIX: ${{ matrix.test_prefix }}
       AR_VERSION: ${{ matrix.ar_version }}
       PREPARED_STATEMENTS: ${{ matrix.prepared_statements }}
       DRIVER: ${{ matrix.driver }}
@@ -72,9 +69,41 @@ jobs:
         run: |
           bundle exec rake ${{ matrix.test_targets }}
 
+  test-rails-sqlite:
+
+    name: Rails Tests (SQLite)
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        ruby-version: ['jruby-9.2.20.1']
+        db: ['sqlite3']
+        test_targets: ["rails:test_sqlite3"]
+        ar_version: ["6-1-stable"]
+
+    env:
+      DB: ${{ matrix.db }}
+      AR_VERSION: ${{ matrix.ar_version }}
+      JRUBY_OPTS: "-J-Xms64M -J-Xmx1024M"
+
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: ${{ matrix.ruby-version }}
+          bundler-cache: true # runs 'bundle install' and caches installed gems automatically
+      - name: Build
+        run: |
+          echo "JAVA_OPTS=$JAVA_OPTS"
+          rake jar # compiles ext generates: lib/arjdbc/jdbc/adapter_java.jar
+      - name: Run tests
+        run: |
+          bundle exec rake ${{ matrix.test_targets }}
+
   test-arjdbc-mysql:
 
-    name: ARJDBC Tests
+    name: ARJDBC Tests (MySQL)
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -82,6 +111,7 @@ jobs:
         ruby-version: ['jruby-9.2.20.1']
         db: ['mysql2']
         test_targets: ["db:mysql test_mysql2"]
+        prepared_statements: ['false', 'true']
         driver: ['MySQL']
 
     services:
@@ -96,6 +126,7 @@ jobs:
       JRUBY_OPTS: "-J-Xms64M -J-Xmx1024M"
       MY_USER: root
       MY_PASSWORD: root
+      PREPARED_STATEMENTS: ${{ matrix.prepared_statements }}
 
     steps:
       - uses: actions/checkout@v3
@@ -117,7 +148,7 @@ jobs:
 
   test-arjdbc-sqlite:
 
-    name: ARJDBC Tests
+    name: ARJDBC Tests (SQLite)
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
