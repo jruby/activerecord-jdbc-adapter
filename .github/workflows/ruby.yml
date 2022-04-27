@@ -26,10 +26,8 @@ jobs:
         db: ['mysql2']
         test_prefix: ["rails:"]
         ar_version: ["6-1-stable"]
-        prepared_statements: ['false']
-#        prepared_statements: ['false', 'true']
-        driver: ['MySQL']
-#        driver: ['', 'MariaDB']
+        prepared_statements: ['false', 'true']
+        driver: ['MySQL', 'MariaDB']
 
     services:
       mysql:
