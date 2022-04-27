@@ -72,7 +72,7 @@ jobs:
         run: |
           bundle exec rake ${{ matrix.test_targets }}
 
-  test-arjdbc:
+  test-arjdbc-mysql:
 
     name: ARJDBC Tests
     runs-on: ubuntu-latest
@@ -82,7 +82,6 @@ jobs:
         ruby-version: ['jruby-9.2.20.1']
         db: ['mysql2']
         test_targets: ["db:mysql test_mysql2"]
-        ar_version: ["6-1-stable"]
         driver: ['MySQL']
 
     services:
@@ -109,6 +108,35 @@ jobs:
         run: |
           sudo service mysql start
           mysql --version || true # to see if we're using MySQL or MariaDB
+      - name: Build
+        run: |
+          rake jar
+      - name: Run tests
+        run: |
+          bundle exec rake ${{ matrix.test_targets }}
+
+  test-arjdbc-sqlite:
+
+    name: ARJDBC Tests
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        ruby-version: ['jruby-9.2.20.1']
+        db: ['sqlite3']
+        test_targets: ['test_sqlite3']
+
+    env:
+      DB: ${{ matrix.db }}
+      JRUBY_OPTS: "-J-Xms64M -J-Xmx1024M"
+
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: ${{ matrix.ruby-version }}
+          bundler-cache: true # runs 'bundle install' and caches installed gems automatically
       - name: Build
         run: |
           rake jar
