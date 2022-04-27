@@ -1,0 +1,1 @@
+exclude :test_doesnt_error_when_a_select_query_has_encoding_errors, "encoding error"
