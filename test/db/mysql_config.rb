@@ -25,5 +25,6 @@ if defined? JRUBY_VERSION
   MYSQL_CONFIG[:properties] ||= {}
   MYSQL_CONFIG[:properties]['cacheDefaultTimezone'] = false
   MYSQL_CONFIG[:properties]['serverTimezone'] = java.util.TimeZone.getDefault.getID
+  MYSQL_CONFIG[:properties]['allowPublicKeyRetrieval'] = true
 end
 
