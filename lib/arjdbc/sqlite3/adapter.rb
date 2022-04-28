@@ -79,9 +79,15 @@ module ArJdbc
         boolean:      { name: "boolean" },
         json:         { name: "json" },
     }
+    
+    class StatementPool < ConnectionAdapters::StatementPool # :nodoc:
+      alias reset clear
 
-    # DIFFERENCE: class_attribute in original adapter is moved down to our section which is a class
-    #  since we cannot define it here in the module (original source this is a class).
+      private
+      def dealloc(stmt)
+        stmt.close unless stmt.closed?
+      end
+    end
 
     def initialize(connection, logger, connection_options, config)
       super(connection, logger, config)
@@ -101,7 +107,7 @@ module ArJdbc
     end
 
     def supports_partial_index?
-      database_version >= "3.9.0"
+      true
     end
 
     def supports_expression_index?
@@ -144,6 +150,34 @@ module ArJdbc
     alias supports_insert_conflict_target? supports_insert_on_conflict?
 
     # DIFFERENCE: active?, reconnect!, disconnect! handles by arjdbc core
+    def supports_concurrent_connections?
+      !@memory_database
+    end
+
+    def active?
+      !@raw_connection.closed?
+    end
+
+    def reconnect!(restore_transactions: false)
+      @lock.synchronize do
+        if active?
+          @connection.rollback rescue nil
+        else
+          connect
+        end
+
+        super
+      end
+    end
+    alias :reset! :reconnect!
+
+    # Disconnects from the database if already connected. Otherwise, this
+    # method does nothing.
+    def disconnect!
+      super
+      @connection.close rescue nil
+    end
+
 
     def supports_index_sort_order?
       true
@@ -233,8 +267,8 @@ module ArJdbc
       pks.sort_by { |f| f["pk"] }.map { |f| f["name"] }
     end
 
-      def remove_index(table_name, column_name = nil, **options) # :nodoc:
-        return if options[:if_exists] && !index_exists?(table_name, column_name, **options)
+    def remove_index(table_name, column_name = nil, **options) # :nodoc:
+      return if options[:if_exists] && !index_exists?(table_name, column_name, **options)
 
       index_name = index_name_for_remove(table_name, column_name, options)
 
@@ -268,6 +302,16 @@ module ArJdbc
         definition.foreign_keys.delete_if do |_, fk_options|
           fk_options[:column] == column_name.to_s
         end
+      end
+    end
+
+    def remove_columns(table_name, *column_names, type: nil, **options) # :nodoc:
+      alter_table(table_name) do |definition|
+        column_names.each do |column_name|
+          definition.remove_column column_name
+        end
+        column_names = column_names.map(&:to_s)
+        definition.foreign_keys.delete_if { |fk| column_names.include?(fk.column) }
       end
     end
 
@@ -379,6 +423,34 @@ module ArJdbc
       table_structure_with_collation(table_name, structure)
     end
     alias column_definitions table_structure
+
+    def extract_value_from_default(default)
+      case default
+      when /^null$/i
+        nil
+        # Quoted types
+      when /^'(.*)'$/m
+        $1.gsub("''", "'")
+        # Quoted types
+      when /^"(.*)"$/m
+        $1.gsub('""', '"')
+        # Numeric types
+      when /\A-?\d+(\.\d*)?\z/
+        $&
+      else
+        # Anything else is blank or some function
+        # and we can't know the value of that, so return nil.
+        nil
+      end
+    end
+
+    def extract_default_function(default_value, default)
+      default if has_default_function?(default_value, default)
+    end
+
+    def has_default_function?(default_value, default)
+      !default_value && %r{\w+\(.*\)|CURRENT_TIME|CURRENT_DATE|CURRENT_TIMESTAMP}.match?(default)
+    end
 
     # See: https://www.sqlite.org/lang_altertable.html
     # SQLite has an additional restriction on the ALTER TABLE statement
@@ -562,6 +634,17 @@ module ArJdbc
 
     def arel_visitor
       Arel::Visitors::SQLite.new(self)
+    end
+
+    def build_statement_pool
+      StatementPool.new(self.class.type_cast_config_to_integer(@config[:statement_limit]))
+    end
+
+    def connect
+      @connection = ::SQLite3::Database.new(
+        @config[:database].to_s,
+        @config.merge(results_as_hash: true)
+      )
     end
 
     def configure_connection
