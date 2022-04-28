@@ -47,11 +47,11 @@ else
   gemspec name: 'activerecord-jdbc-adapter' # Use versiom from .gemspec
 end
 
-gem 'rake', '>= 11.1', require: nil
+gem 'rake', require: nil
 
 group :test do
-  gem 'test-unit', '~> 2.5.4', require: nil
-  gem 'test-unit-context', '>= 0.4.0', require: nil
+  gem 'test-unit', require: nil
+  gem 'test-unit-context', require: nil
   gem 'mocha', '~> 1.2', require: false # Rails has '~> 0.14'
 
   gem 'bcrypt', '~> 3.1.11', require: false
