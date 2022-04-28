@@ -1,0 +1,273 @@
+# This workflow uses actions that are not certified by GitHub.
+# They are provided by a third-party and are governed by
+# separate terms of service, privacy policy, and support
+# documentation.
+# This workflow will download a prebuilt Ruby version, install dependencies and run tests with Rake
+# For more information see: https://github.com/marketplace/actions/setup-ruby-jruby-and-truffleruby
+
+name: Ruby
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+permissions:
+  contents: read
+
+jobs:
+  test-rails-mysql:
+
+    name: Rails Tests (MySQL)
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        ruby-version: ['jruby-9.2.20.1']
+        db: ['mysql2']
+        test_targets: ["rails:test_mysql2"]
+        ar_version: ["6-1-stable"]
+        prepared_statements: ['false', 'true']
+        driver: ['MySQL']
+
+    services:
+      mysql:
+        image: mysql:5.7
+        ports:
+          - 3306
+
+    env:
+      DB: ${{ matrix.db }}
+      AR_VERSION: ${{ matrix.ar_version }}
+      PREPARED_STATEMENTS: ${{ matrix.prepared_statements }}
+      DRIVER: ${{ matrix.driver }}
+      JRUBY_OPTS: "-J-Xms64M -J-Xmx1024M"
+
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: ${{ matrix.ruby-version }}
+          bundler-cache: true # runs 'bundle install' and caches installed gems automatically
+      - name: Setup database
+        run: |
+          sudo service mysql start
+          mysql --version || true # to see if we're using MySQL or MariaDB
+          mysql -u root -proot -e "CREATE USER rails@localhost;"
+          mysql -u root -proot -e "grant all privileges on activerecord_unittest.* to rails@localhost;"
+          mysql -u root -proot -e "grant all privileges on activerecord_unittest2.* to rails@localhost;"
+          mysql -u root -proot -e "grant all privileges on inexistent_activerecord_unittest.* to rails@localhost;"
+          mysql -u root -proot -e "CREATE DATABASE activerecord_unittest DEFAULT CHARACTER SET utf8mb4;"
+          mysql -u root -proot -e "CREATE DATABASE activerecord_unittest2 DEFAULT CHARACTER SET utf8mb4;"
+      - name: Build
+        run: |
+          echo "JAVA_OPTS=$JAVA_OPTS"
+          rake jar # compiles ext generates: lib/arjdbc/jdbc/adapter_java.jar
+      - name: Run tests
+        run: |
+          bundle exec rake ${{ matrix.test_targets }}
+
+  test-rails-pgsql:
+
+    name: Rails Tests (Postgres)
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        ruby-version: [ 'jruby-9.2.20.1' ]
+        db: [ 'postgresql' ]
+        test_targets: [ "rails:test_postgresql" ]
+        ar_version: ["6-1-stable"]
+        prepared_statements: [ 'false', 'true' ]
+
+    services:
+      postgres:
+        image: postgres:10
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports:
+          - 5432:5432
+        options: --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
+
+    env:
+      DB: ${{ matrix.db }}
+      AR_VERSION: ${{ matrix.ar_version }}
+      JRUBY_OPTS: "-J-Xms64M -J-Xmx1024M"
+      PREPARED_STATEMENTS: ${{ matrix.prepared_statements }}
+      PGHOST: localhost
+      PGPORT: 5432
+      PGUSER: postgres
+
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: ${{ matrix.ruby-version }}
+          bundler-cache: true # runs 'bundle install' and caches installed gems automatically
+      - name: Setup database
+        run: |
+          psql -c "create database activerecord_unittest;" -U postgres
+          psql -c "create database activerecord_unittest2;" -U postgres
+      - name: Build
+        run: |
+          rake jar # compiles ext generates: lib/arjdbc/jdbc/adapter_java.jar
+      - name: Run tests
+        run: |
+          bundle exec rake ${{ matrix.test_targets }}
+
+  test-rails-sqlite:
+
+    name: Rails Tests (SQLite)
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        ruby-version: ['jruby-9.2.20.1']
+        db: ['sqlite3']
+        test_targets: ["rails:test_sqlite3"]
+        ar_version: ["6-1-stable"]
+
+    env:
+      DB: ${{ matrix.db }}
+      AR_VERSION: ${{ matrix.ar_version }}
+      JRUBY_OPTS: "-J-Xms64M -J-Xmx1024M"
+
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: ${{ matrix.ruby-version }}
+          bundler-cache: true # runs 'bundle install' and caches installed gems automatically
+      - name: Build
+        run: |
+          echo "JAVA_OPTS=$JAVA_OPTS"
+          rake jar # compiles ext generates: lib/arjdbc/jdbc/adapter_java.jar
+      - name: Run tests
+        run: |
+          bundle exec rake ${{ matrix.test_targets }}
+
+  test-arjdbc-mysql:
+
+    name: ARJDBC Tests (MySQL)
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        ruby-version: ['jruby-9.2.20.1']
+        db: ['mysql2']
+        test_targets: ["db:mysql test_mysql2"]
+        prepared_statements: ['false', 'true']
+        driver: ['MySQL']
+
+    services:
+      mysql:
+        image: mysql:5.7
+        ports:
+          - 3306
+
+    env:
+      DB: ${{ matrix.db }}
+      DRIVER: ${{ matrix.driver }}
+      JRUBY_OPTS: "-J-Xms64M -J-Xmx1024M"
+      MY_USER: root
+      MY_PASSWORD: root
+      PREPARED_STATEMENTS: ${{ matrix.prepared_statements }}
+
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: ${{ matrix.ruby-version }}
+          bundler-cache: true # runs 'bundle install' and caches installed gems automatically
+      - name: Setup database
+        run: |
+          sudo service mysql start
+          mysql --version || true # to see if we're using MySQL or MariaDB
+      - name: Build
+        run: |
+          rake jar
+      - name: Run tests
+        run: |
+          bundle exec rake ${{ matrix.test_targets }}
+
+  test-arjdbc-pgsql:
+
+    name: ARJDBC Tests (Postgres)
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        ruby-version: ['jruby-9.2.20.1']
+        db: ['postgresql']
+        test_targets: ["db:postgresql test_postgresql"]
+        prepared_statements: ['false', 'true']
+        insert_returning: ['false', 'true']
+
+    services:
+      postgres:
+        image: postgres:10
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports:
+          - 5432:5432
+        options: --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
+
+    env:
+      DB: ${{ matrix.db }}
+      DRIVER: ${{ matrix.driver }}
+      JRUBY_OPTS: "-J-Xms64M -J-Xmx1024M"
+      PREPARED_STATEMENTS: ${{ matrix.prepared_statements }}
+      INSERT_RETURNING: ${{ matrix.insert_returning }}
+      PGHOST: localhost
+      PGPORT: 5432
+      PGUSER: postgres
+
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: ${{ matrix.ruby-version }}
+          bundler-cache: true # runs 'bundle install' and caches installed gems automatically
+      - name: Build
+        run: |
+          rake jar
+      - name: Run tests
+        run: |
+          bundle exec rake ${{ matrix.test_targets }}
+
+  test-arjdbc-sqlite:
+
+    name: ARJDBC Tests (SQLite)
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        ruby-version: ['jruby-9.2.20.1']
+        db: ['sqlite3']
+        test_targets: ['test_sqlite3']
+
+    env:
+      DB: ${{ matrix.db }}
+      JRUBY_OPTS: "-J-Xms64M -J-Xmx1024M"
+
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: ${{ matrix.ruby-version }}
+          bundler-cache: true # runs 'bundle install' and caches installed gems automatically
+      - name: Build
+        run: |
+          rake jar
+      - name: Run tests
+        run: |
+          bundle exec rake ${{ matrix.test_targets }}
