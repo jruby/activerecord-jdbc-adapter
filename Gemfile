@@ -59,8 +59,8 @@ end
 
 group :rails do
   group :test do
-    gem 'minitest', '~> 5.12.2', require: nil
-    gem 'minitest-excludes', '~> 2.0.1', require: nil
+    gem 'minitest', require: nil
+    gem 'minitest-excludes', require: nil
     gem 'minitest-rg', require: nil
 
     gem 'benchmark-ips', require: nil
