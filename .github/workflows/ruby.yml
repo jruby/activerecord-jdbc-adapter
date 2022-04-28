@@ -24,10 +24,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        ruby-version: ['jruby-9.2.20.1']
+        ruby-version: ['jruby-head']
         db: ['mysql2']
         test_targets: ["rails:test_mysql2"]
-        ar_version: ["6-1-stable"]
+        ar_version: ["7-0-stable"]
         prepared_statements: ['false', 'true']
         driver: ['MySQL']
 
@@ -76,10 +76,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        ruby-version: [ 'jruby-9.2.20.1' ]
+        ruby-version: [ 'jruby-head' ]
         db: [ 'postgresql' ]
         test_targets: [ "rails:test_postgresql" ]
-        ar_version: ["6-1-stable"]
+        ar_version: ["7-0-stable"]
         prepared_statements: [ 'false', 'true' ]
 
     services:
@@ -126,10 +126,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        ruby-version: ['jruby-9.2.20.1']
+        ruby-version: ['jruby-head']
         db: ['sqlite3']
         test_targets: ["rails:test_sqlite3"]
-        ar_version: ["6-1-stable"]
+        ar_version: ["7-0-stable"]
 
     env:
       DB: ${{ matrix.db }}
@@ -158,7 +158,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        ruby-version: ['jruby-9.2.20.1']
+        ruby-version: ['jruby-head']
         db: ['mysql2']
         test_targets: ["db:mysql test_mysql2"]
         prepared_statements: ['false', 'true']
@@ -203,7 +203,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        ruby-version: ['jruby-9.2.20.1']
+        ruby-version: ['jruby-head']
         db: ['postgresql']
         test_targets: ["db:postgresql test_postgresql"]
         prepared_statements: ['false', 'true']
@@ -250,7 +250,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        ruby-version: ['jruby-9.2.20.1']
+        ruby-version: ['jruby-head']
         db: ['sqlite3']
         test_targets: ['test_sqlite3']
 
