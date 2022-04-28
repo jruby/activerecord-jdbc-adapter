@@ -4,7 +4,8 @@ module ArJdbc
   module Util
     module TableCopier
 
-      # taken from SQLite adapter, code loosely based on http://git.io/P7tFQA
+      # taken from SQLite adapter, code loosely based on
+      # https://github.com/rails/rails/blob/d3e5118/activerecord/lib/active_record/connection_adapters/sqlite3_adapter.rb
 
       # Performs changes for table by first copying (and preserving contents)
       # into another (temporary) table, than alters and copies all data back.
