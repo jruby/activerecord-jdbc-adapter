@@ -1,0 +1,1 @@
+exclude :test_deadlock_raises_Deadlocked_inside_nested_SavepointTransaction, "needs investigation"
