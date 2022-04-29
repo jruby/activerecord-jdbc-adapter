@@ -2,7 +2,9 @@
 
 module ActiveRecord
 
-  if defined? ConnectionAdapters::ConnectionSpecification::Resolver # 4.0
+  if defined? ConnectionAdapters::ConnectionHandler # 6.1
+    ConnectionAdapters::ConnectionHandler
+  elsif defined? ConnectionAdapters::ConnectionSpecification::Resolver # 4.0, # 5.x, # 6.0
     ConnectionAdapters::ConnectionSpecification::Resolver
   elsif defined? Base::ConnectionSpecification::Resolver # 3.2
     Base::ConnectionSpecification::Resolver
