@@ -72,6 +72,8 @@ group :rails do
   gem 'erubis', require: nil # "~> 2.7.0"
   # NOTE: due rails/activerecord/test/cases/connection_management_test.rb
   gem 'rack', require: nil
+
+  gem 'zeitwerk'
 end
 
 group :development do
