@@ -422,7 +422,7 @@ module ArJdbc
     def quoted_date(value)
       if value.acts_like?(:time) && value.respond_to?(:usec)
         usec = sprintf("%06d", value.usec)
-        value = ::ActiveRecord::Base.default_timezone == :utc ? value.getutc : value.getlocal
+        value = ::ActiveRecord.default_timezone == :utc ? value.getutc : value.getlocal
         "#{value.strftime("%Y-%m-%d %H:%M:%S")}.#{usec}"
       else
         super
@@ -430,7 +430,7 @@ module ArJdbc
     end if ::ActiveRecord::VERSION::MAJOR >= 3
 
     def quote_time(value)
-      value = ::ActiveRecord::Base.default_timezone == :utc ? value.getutc : value.getlocal
+      value = ::ActiveRecord.default_timezone == :utc ? value.getutc : value.getlocal
       # AS400 doesn't support date in time column
       "'#{value.strftime("%H:%M:%S")}'"
     end

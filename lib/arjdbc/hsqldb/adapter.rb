@@ -111,7 +111,7 @@ module ArJdbc
         if column_type == :time
           "'#{value.strftime("%H:%M:%S")}'"
         #elsif column_type == :timestamp # || column_type == :datetime
-          #value = ::ActiveRecord::Base.default_timezone == :utc ? value.getutc : value.getlocal
+          #value = ::ActiveRecord.default_timezone == :utc ? value.getutc : value.getlocal
           #"'#{value.strftime("%Y-%m-%d %H:%M:%S")}.#{sprintf("%06d", value.usec)}'"
         else
           super
@@ -127,7 +127,7 @@ module ArJdbc
     def quoted_date(value)
       if value.acts_like?(:time) && value.respond_to?(:usec)
         usec = sprintf("%06d", value.usec)
-        value = ::ActiveRecord::Base.default_timezone == :utc ? value.getutc : value.getlocal
+        value = ::ActiveRecord.default_timezone == :utc ? value.getutc : value.getlocal
         "#{value.strftime("%Y-%m-%d %H:%M:%S")}.#{usec}"
       else
         super

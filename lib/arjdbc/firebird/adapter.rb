@@ -339,7 +339,7 @@ module ArJdbc
     def quoted_date(value)
       if value.acts_like?(:time) && value.respond_to?(:usec)
         usec = sprintf "%04d", (value.usec / 100.0).round
-        value = ::ActiveRecord::Base.default_timezone == :utc ? value.getutc : value.getlocal
+        value = ::ActiveRecord.default_timezone == :utc ? value.getutc : value.getlocal
         "#{value.strftime("%Y-%m-%d %H:%M:%S")}.#{usec}"
       else
         super

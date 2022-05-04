@@ -34,7 +34,7 @@ module ArJdbc
         return nil unless time
         time_array = [time.year, time.month, time.day, time.hour, time.min, time.sec]
         time_array[0] ||= 2000; time_array[1] ||= 1; time_array[2] ||= 1;
-        Time.send(ActiveRecord::Base.default_timezone, *time_array) rescue nil
+        Time.send(ActiveRecord.default_timezone, *time_array) rescue nil
       end
 
       # @deprecated

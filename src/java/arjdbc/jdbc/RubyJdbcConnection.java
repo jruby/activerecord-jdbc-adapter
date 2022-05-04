@@ -2633,8 +2633,8 @@ public class RubyJdbcConnection extends RubyObject {
     }
 
     private String default_timezone(final ThreadContext context) {
-        final RubyClass base = getBase(context.runtime);
-        return default_timezone.call(context, base, base).asJavaString(); // :utc (or :local)
+        final RubyModule activeRecord = ActiveRecord(context);
+        return default_timezone.call(context, activeRecord, activeRecord).asJavaString(); // :utc (or :local)
     }
 
     // ActiveRecord::Base.default_timezone

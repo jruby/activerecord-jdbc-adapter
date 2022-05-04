@@ -130,9 +130,9 @@ module ActiveRecord::ConnectionAdapters
             return nil unless time
 
             time -= offset
-            ActiveRecord::Base.default_timezone == :utc ? time : time.getlocal
+            ActiveRecord.default_timezone == :utc ? time : time.getlocal
           else
-            timezone = ActiveRecord::Base.default_timezone
+            timezone = ActiveRecord.default_timezone
             Time.public_send(timezone, year, mon, mday, hour, min, sec, microsec) rescue nil
           end
         end
