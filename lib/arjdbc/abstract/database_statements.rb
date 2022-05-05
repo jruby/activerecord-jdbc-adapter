@@ -30,7 +30,7 @@ module ArJdbc
 
       # It appears that at this point (AR 5.0) "prepare" should only ever be true
       # if prepared statements are enabled
-      def exec_query(sql, name = nil, binds = NO_BINDS, prepare: false)
+      def exec_query(sql, name = nil, binds = NO_BINDS, prepare: false, async: false)
         if preventing_writes? && write_query?(sql)
           raise ActiveRecord::ReadOnlyError, "Write query attempted while in readonly mode: #{sql}"
         end

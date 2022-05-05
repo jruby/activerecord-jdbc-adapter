@@ -10,6 +10,7 @@ require "active_record/connection_adapters/abstract_adapter"
 require "active_record/connection_adapters/statement_pool"
 require "active_record/connection_adapters/sqlite3/explain_pretty_printer"
 require "active_record/connection_adapters/sqlite3/quoting"
+require "active_record/connection_adapters/sqlite3/database_statements"
 require "active_record/connection_adapters/sqlite3/schema_creation"
 require "active_record/connection_adapters/sqlite3/schema_definitions"
 require "active_record/connection_adapters/sqlite3/schema_dumper"
@@ -64,6 +65,7 @@ module ArJdbc
     # DIFFERENCE: FQN
     include ::ActiveRecord::ConnectionAdapters::SQLite3::Quoting
     include ::ActiveRecord::ConnectionAdapters::SQLite3::SchemaStatements
+    include ::ActiveRecord::ConnectionAdapters::SQLite3::DatabaseStatements
 
     NATIVE_DATABASE_TYPES = {
         primary_key:  "integer PRIMARY KEY AUTOINCREMENT NOT NULL",
@@ -81,8 +83,6 @@ module ArJdbc
     }
     
     class StatementPool < ConnectionAdapters::StatementPool # :nodoc:
-      alias reset clear
-
       private
       def dealloc(stmt)
         stmt.close unless stmt.closed?
@@ -90,8 +90,19 @@ module ArJdbc
     end
 
     def initialize(connection, logger, connection_options, config)
+      @memory_database = config[:database] == ":memory:"
       super(connection, logger, config)
       configure_connection
+    end
+
+    def self.database_exists?(config)
+      config = config.symbolize_keys
+      if config[:database] == ":memory:"
+        true
+      else
+        database_file = defined?(Rails.root) ? File.expand_path(config[:database], Rails.root) : config[:database]
+        File.exist?(database_file)
+      end
     end
 
     def supports_ddl_transactions?
@@ -158,18 +169,10 @@ module ArJdbc
       !@raw_connection.closed?
     end
 
-    def reconnect!(restore_transactions: false)
-      @lock.synchronize do
-        if active?
-          @connection.rollback rescue nil
-        else
-          connect
-        end
-
-        super
-      end
+    def reconnect!
+      super
+      connect if @connection.closed?
     end
-    alias :reset! :reconnect!
 
     # Disconnects from the database if already connected. Otherwise, this
     # method does nothing.
@@ -177,7 +180,6 @@ module ArJdbc
       super
       @connection.close rescue nil
     end
-
 
     def supports_index_sort_order?
       true
@@ -216,48 +218,8 @@ module ArJdbc
       end
     end
 
-    #--
-    # DATABASE STATEMENTS ======================================
-    #++
-
-    READ_QUERY = ActiveRecord::ConnectionAdapters::AbstractAdapter.build_read_query_regexp(
-      :pragma
-    ) # :nodoc:
-    private_constant :READ_QUERY
-
-    def write_query?(sql) # :nodoc:
-      !READ_QUERY.match?(sql)
-    end
-
-    def explain(arel, binds = [])
-      sql = "EXPLAIN QUERY PLAN #{to_sql(arel, binds)}"
-      # DIFFERENCE: FQN
-      ::ActiveRecord::ConnectionAdapters::SQLite3::ExplainPrettyPrinter.new.pp(exec_query(sql, "EXPLAIN", []))
-    end
-
-    # DIFFERENCE: implemented in ArJdbc::Abstract::DatabaseStatements
-    #def exec_query(sql, name = nil, binds = [], prepare: false)
-
-    # DIFFERENCE: implemented in ArJdbc::Abstract::DatabaseStatements
-    #def exec_delete(sql, name = "SQL", binds = [])
-
-    def last_inserted_id(result)
-      @connection.last_insert_row_id
-    end
-
-    # DIFFERENCE: implemented in ArJdbc::Abstract::DatabaseStatements
-    #def execute(sql, name = nil) #:nodoc:
-
-    def begin_db_transaction #:nodoc:
-      log("begin transaction", 'TRANSACTION') { @connection.transaction }
-    end
-
-    def commit_db_transaction #:nodoc:
-      log("commit transaction", 'TRANSACTION') { @connection.commit }
-    end
-
-    def exec_rollback_db_transaction #:nodoc:
-      log("rollback transaction", 'TRANSACTION') { @connection.rollback }
+    def all_foreign_keys_valid? # :nodoc:
+      execute("PRAGMA foreign_key_check").blank?
     end
 
     # SCHEMA STATEMENTS ========================================
@@ -275,6 +237,7 @@ module ArJdbc
       exec_query "DROP INDEX #{quote_column_name(index_name)}"
     end
 
+    
     # Renames a table.
     #
     # Example:
@@ -366,18 +329,6 @@ module ArJdbc
       end
     end
 
-    def insert_fixtures_set(fixture_set, tables_to_delete = [])
-      disable_referential_integrity do
-        transaction(requires_new: true) do
-          tables_to_delete.each { |table| delete "DELETE FROM #{quote_table_name(table)}", "Fixture Delete" }
-
-          fixture_set.each do |table_name, rows|
-            rows.each { |row| insert_fixture(row, table_name) }
-          end
-        end
-      end
-    end
-
     def build_insert_sql(insert) # :nodoc:
       sql = +"INSERT #{insert.into} #{insert.values_list}"
 
@@ -392,16 +343,12 @@ module ArJdbc
       sql
     end
 
-    def shared_cache?
-      config[:properties] && config[:properties][:shared_cache] == true
+    def shared_cache? # :nodoc:
+      @config.fetch(:flags, 0).anybits?(::SQLite3::Constants::Open::SHAREDCACHE)
     end
 
     def get_database_version # :nodoc:
       SQLite3Adapter::Version.new(query_value("SELECT sqlite_version(*)"))
-    end
-
-    def build_truncate_statement(table_name)
-      "DELETE FROM #{quote_table_name(table_name)}"
     end
 
     def check_version
@@ -553,6 +500,7 @@ module ArJdbc
           options = { name: name.gsub(/(^|_)(#{from})_/, "\\1#{to}_"), internal: true }
           options[:unique] = true if index.unique
           options[:where] = index.where if index.where
+          options[:order] = index.orders if index.orders
           add_index(to, columns, **options)
         end
       end
@@ -803,11 +751,15 @@ module ActiveRecord::ConnectionAdapters
 
     # because the JDBC driver doesn't like multiple SQL statements in one JDBC statement
     def combine_multi_statements(total_sql)
-      if total_sql.length == 1
-        total_sql.first
-      else
-        total_sql
-      end
+      total_sql
+    end
+
+    # combine
+    def write_query?(sql) # :nodoc:
+      return sql.any? { |stmt| super(stmt) } if sql.kind_of? Array
+      !READ_QUERY.match?(sql)
+    rescue ArgumentError # Invalid encoding
+      !READ_QUERY.match?(sql.b)
     end
 
     def initialize_type_map(m = type_map)
