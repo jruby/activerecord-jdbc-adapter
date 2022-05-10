@@ -12,7 +12,7 @@ require 'models/add_not_null_column_to_table'
 
 ActiveRecord::Schema.verbose = false
 
-ActiveRecord::Base.default_timezone = :utc
+ActiveRecord.default_timezone = :utc
 
 module MigrationSetup
 
