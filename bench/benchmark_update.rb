@@ -27,34 +27,25 @@ fields = {
 
 empty = {}
 
-records = []; TIMES.times { records << BenchRecord.create.reload }
+Benchmark.ips do |x|
+  x.config(:suite => BenchTestHelper::Suite::INSTANCE)
 
-Benchmark.bmbm do |x|
-
-  x.report("BenchRecord#update() [#{TIMES}x]") do
-    TIMES.times do |i|
-      records[i].update empty
-    end
+  record = BenchRecord.create.reload
+  x.report("BenchRecord#update()") do
+    record.update empty
   end
 
   fields.each do |field, value|
     label = value
     label = "#{value[0,16]}...(#{value.size})" if value.is_a?(String) && value.size > 16
-    attrs = Hash.new; attrs[field] = value
-    x.report("BenchRecord#update('#{field}' => #{label.inspect}) [#{TIMES}x]") do
-      # attrs = Hash.new; attrs[field] = value
-      TIMES.times do |i|
-        records[i].update(attrs)
-      end
+    record = BenchRecord.create.reload
+    x.report("BenchRecord#update('#{field}' => #{label.inspect})") do
+      record.update(field => value)
     end
   end
 
-  attrs = fields
-  x.report("BenchRecord#update(...) [#{TIMES}x]") do
-    # attrs = fields.dup
-    TIMES.times do |i|
-      records[i].update(attrs)
-    end
+  x.report("BenchRecord#update(...)") do
+    record.update(fields)
   end
 
 end

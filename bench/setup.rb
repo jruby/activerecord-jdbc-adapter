@@ -1,6 +1,6 @@
 # frozen_string_literal: false
 
-require 'rubygems' unless defined? Gem
+require 'benchmark/ips'
 
 if ENV['RAILS']  # Use local clone of Rails
   rails_dir = ENV['RAILS']
@@ -117,6 +117,26 @@ module BenchTestHelper
   else
 
     def gc; GC.start end
+
+  end
+
+  class Suite # for Benchmar.ips
+
+    def warming(*)
+      BenchTestHelper.gc
+    end
+
+    def running(*)
+      BenchTestHelper.gc
+    end
+
+    def warmup_stats(*)
+    end
+
+    def add_report(*)
+    end
+
+    INSTANCE = self.new
 
   end
 
