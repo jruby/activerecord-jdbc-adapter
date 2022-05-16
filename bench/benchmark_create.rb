@@ -25,30 +25,23 @@ fields = {
     'a_timestamp' => Time.now
 }
 
-Benchmark.bmbm do |x|
+Benchmark.ips do |x|
+  x.config(:suite => BenchTestHelper::Suite::INSTANCE)
 
-  x.report("BenchRecord.create() [#{TIMES}x]") do
-    TIMES.times do
-      BenchRecord.create()
-    end
+  x.report("BenchRecord.create()") do
+    BenchRecord.create()
   end
 
   fields.each do |field, value|
     label = value
     label = "#{value[0,16]}...(#{value.size})" if value.is_a?(String) && value.size > 16
-    x.report("BenchRecord.create('#{field}' => #{label.inspect}) [#{TIMES}x]") do
-      attrs = Hash.new; attrs[field] = value
-      TIMES.times do
-        BenchRecord.create(attrs)
-      end
+    x.report("BenchRecord.create('#{field}' => #{label.inspect})") do
+      BenchRecord.create(field => value)
     end
   end
 
-  x.report("BenchRecord.create(...) [#{TIMES}x]") do
-    attrs = fields.dup
-    TIMES.times do
-      BenchRecord.create(attrs)
-    end
+  x.report("BenchRecord.create(...)") do
+    BenchRecord.create(fields.dup)
   end
 
 end

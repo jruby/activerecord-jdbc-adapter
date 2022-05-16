@@ -19,24 +19,21 @@ selects = [
     '*'
 ]
 
-Benchmark.bmbm do |x|
+Benchmark.ips do |x|
+  x.config(:suite => BenchTestHelper::Suite::INSTANCE)
 
   total = BenchRecord.count
   an_id = BenchRecord.last.id
 
   selects.each do |select|
-    x.report("BenchRecord.select('#{select}').where(id: i).first [#{TIMES}x]") do
-      TIMES.times do |i|
-        BenchRecord.select(select).where(id: i % total).first
-      end
+    x.report("BenchRecord.select('#{select}').where(id: i).first") do
+      BenchRecord.select(select).where(id: i % total).first
     end
   end
 
   selects.each do |select|
-    x.report("BenchRecord.select('#{select}').where(['id = ?', an_id]).first [#{TIMES}x]") do
-      TIMES.times do
-        BenchRecord.select(select).where(['id = ?', an_id]).first
-      end
+    x.report("BenchRecord.select('#{select}').where(['id = ?', an_id]).first") do
+      BenchRecord.select(select).where(['id = ?', an_id]).first
     end
   end
 

@@ -4,26 +4,21 @@ BenchTestHelper.generate_records
 
 BenchTestHelper.gc
 
-Benchmark.bmbm do |x|
+Benchmark.ips do |x|
+  x.config(:suite => BenchTestHelper::Suite::INSTANCE)
 
   total = BenchRecord.count
 
-  x.report("BenchRecord.first(10) [#{TIMES}x]") do
-    TIMES.times do
-      BenchRecord.first(10)
-    end
+  x.report("BenchRecord.first(10)") do
+    BenchRecord.first(10)
   end
 
-  x.report("BenchRecord.last(100) [#{TIMES}x]") do
-    TIMES.times do
-      BenchRecord.last(100)
-    end
+  x.report("BenchRecord.last(100)") do
+    BenchRecord.last(100)
   end
 
-  x.report("BenchRecord.limit(100).load [#{TIMES}x]") do
-    TIMES.times do
-      BenchRecord.limit(100).load
-    end
+  x.report("BenchRecord.limit(100).load") do
+    BenchRecord.limit(100).load
   end
 
 end
