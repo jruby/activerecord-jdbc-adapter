@@ -25,7 +25,7 @@ fields = {
     'a_timestamp' => Time.now
 }
 
-Benchmark.bmbm do |x|
+Benchmark.ips do |x|
 
   x.report("BenchRecord.create() [#{TIMES}x]") do
     TIMES.times do

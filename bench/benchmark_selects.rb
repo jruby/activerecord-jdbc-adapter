@@ -19,7 +19,7 @@ selects = [
     '*'
 ]
 
-Benchmark.bmbm do |x|
+Benchmark.ips do |x|
 
   total = BenchRecord.count
   an_id = BenchRecord.last.id

@@ -4,7 +4,7 @@ BenchTestHelper.generate_records
 
 BenchTestHelper.gc
 
-Benchmark.bmbm do |x|
+Benchmark.ips do |x|
 
   an_id = BenchRecord.last.id
 

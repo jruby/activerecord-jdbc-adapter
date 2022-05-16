@@ -29,7 +29,7 @@ empty = {}
 
 records = []; TIMES.times { records << BenchRecord.create.reload }
 
-Benchmark.bmbm do |x|
+Benchmark.ips do |x|
 
   x.report("BenchRecord#update() [#{TIMES}x]") do
     TIMES.times do |i|
@@ -58,5 +58,3 @@ Benchmark.bmbm do |x|
   end
 
 end
-
-puts "\n"

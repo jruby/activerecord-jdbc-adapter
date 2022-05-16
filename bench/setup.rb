@@ -1,6 +1,7 @@
 # frozen_string_literal: false
 
 require 'rubygems' unless defined? Gem
+require 'benchmark/ips'
 
 if ENV['RAILS']  # Use local clone of Rails
   rails_dir = ENV['RAILS']
