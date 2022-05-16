@@ -107,7 +107,8 @@ module ActiveRecord
 
       # Reloading the type map in abstract/statement_cache.rb blows up postgres
       def clear_cache!
-        reload_type_map
+        # FIXME: This seems to have disappeared in Rails 7?
+        # reload_type_map
         super
       end
 
