@@ -83,7 +83,7 @@ group :rails do
 end
 
 group :development do
-  gem 'ruby-debug', require: nil # if ENV['DEBUG']
+  #gem 'ruby-debug', require: nil # if ENV['DEBUG']
   group :doc do
     gem 'yard', require: nil
     gem 'kramdown', require: nil
