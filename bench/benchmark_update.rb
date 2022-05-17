@@ -27,25 +27,29 @@ fields = {
 
 empty = {}
 
+record_1 = BenchRecord.create.reload
+record_2 = BenchRecord.create.reload
+record_3 = BenchRecord.create.reload
+def record_3.changed_attribute_names_to_save; attribute_names end # will always update all attributes
+
 Benchmark.ips do |x|
   x.config(:suite => BenchTestHelper::Suite::INSTANCE)
 
-  record = BenchRecord.create.reload
-  x.report("BenchRecord#update()") do
-    record.update empty
+  x.report("BenchRecord#update() [NOOP]") do
+    record_1.update! empty # base-line expected to be a no-op
   end
 
   fields.each do |field, value|
     label = value
     label = "#{value[0,16]}...(#{value.size})" if value.is_a?(String) && value.size > 16
-    record = BenchRecord.create.reload
     x.report("BenchRecord#update('#{field}' => #{label.inspect})") do
-      record.update(field => value)
+      record_2.send "#{field}_will_change!" # forces the change even if the value did not change
+      record_2.update!(field => value)
     end
   end
 
   x.report("BenchRecord#update(...)") do
-    record.update(fields)
+    record_3.update!(fields)
   end
 
 end
