@@ -431,7 +431,7 @@ module ActiveRecord
       private
 
       # Helper useful during {#quote} since AREL might pass in it's literals
-      # to be quoted, fixed since AREL 4.0.0.beta1 : http://git.io/7gyTig
+      # to be quoted, fixed since AREL 4.0.0.beta1 : https://github.com/rails/arel/commit/9c514f3
       def sql_literal?(value); ::Arel::Nodes::SqlLiteral === value; end
 
       # Helper to get local/UTC time (based on `ActiveRecord::default_timezone`).
