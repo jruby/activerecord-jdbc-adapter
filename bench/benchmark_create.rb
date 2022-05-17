@@ -36,12 +36,12 @@ Benchmark.ips do |x|
     label = value
     label = "#{value[0,16]}...(#{value.size})" if value.is_a?(String) && value.size > 16
     x.report("BenchRecord.create('#{field}' => #{label.inspect})") do
-      BenchRecord.create(field => value)
+      BenchRecord.create!(field => value)
     end
   end
 
   x.report("BenchRecord.create(...)") do
-    BenchRecord.create(fields.dup)
+    BenchRecord.create!(fields.dup)
   end
 
 end
