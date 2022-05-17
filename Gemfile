@@ -98,7 +98,7 @@ group :test do
 
   gem 'mysql2', '>= 0.4.4', require: nil, platform: :mri
   gem 'pg', '>= 0.18.0', require: nil, platform: :mri
-  gem 'sqlite3', '~> 1.3.6', require: nil, platform: :mri
+  gem 'sqlite3', '~> 1.4', require: nil, platform: :mri
 
   # group :mssql do
   #   gem 'tiny_tds', require: nil, platform: :mri
