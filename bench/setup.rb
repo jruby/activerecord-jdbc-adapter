@@ -62,7 +62,7 @@ ActiveRecord::Base.establish_connection(config)
 
 unless ( level = ENV['AR_LOGGER'] || '' ).empty?; require 'logger'
 logger = Logger.new File.expand_path('../active_record.log', __FILE__)
-level = %(DEBUG INFO WARN ERROR FATAL).detect { |s| level.upcase.index(s) }
+level = %w(DEBUG INFO WARN ERROR FATAL).detect { |s| level.upcase.index(s) }
 logger.level = Logger.const_get(level) if level
 logger.silencer = false if logger.respond_to?(:silencer)
 ActiveRecord::Base.logger = logger
