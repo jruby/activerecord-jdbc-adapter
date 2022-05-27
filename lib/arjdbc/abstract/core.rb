@@ -34,7 +34,7 @@ module ArJdbc
         raw_connection.jdbc_connection(unwrap)
       end
 
-      protected
+      private
 
       def translate_exception_class(e, sql, binds)
         message = "#{e.class.name}: #{e.message}"
@@ -61,14 +61,10 @@ module ArJdbc
         end
       end
 
-      def extract_raw_bind_values(binds)
-        binds.map(&:value_for_database)
-      end
-
       # this version of log() automatically fills type_casted_binds from binds if necessary
       def log(sql, name = "SQL", binds = [], type_casted_binds = [], statement_name = nil, async: false)
         if binds.any? && (type_casted_binds.nil? || type_casted_binds.empty?)
-          type_casted_binds = ->{ extract_raw_bind_values(binds) }
+          type_casted_binds = ->{ binds.map(&:value_for_database) } # extract_raw_bind_values
         end
         super
       end
