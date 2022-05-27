@@ -42,16 +42,19 @@ module ArJdbc
         exception = translate_exception(
           e, message: message, sql: sql, binds: binds
         )
-        exception.set_backtrace e.backtrace
+        exception.set_backtrace e.backtrace unless exception.equal?(e)
         exception
       end
+
+      Throwable = java.lang.Throwable
+      private_constant :Throwable
 
       def translate_exception(exception, message:, sql:, binds:)
         # override in derived class
 
         # we shall not translate native "Java" exceptions as they might
         # swallow an ArJdbc / driver bug into an AR::StatementInvalid !
-        return exception if exception.is_a?(Java::JavaLang::Throwable)
+        return exception if exception.is_a?(Throwable)
 
         case exception
           when SystemExit, SignalException, NoMemoryError then exception
