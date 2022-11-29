@@ -402,6 +402,11 @@ public class SQLite3RubyJdbcConnection extends RubyJdbcConnection {
         finally { close(statement); }
     }
 
+    @JRubyMethod
+    public IRubyObject filename(ThreadContext context) {
+        return getConfigValue(context, "database");
+    }
+
     @Override
     @JRubyMethod(name = "rollback_savepoint", required = 1)
     public IRubyObject rollback_savepoint(final ThreadContext context, final IRubyObject name) {
