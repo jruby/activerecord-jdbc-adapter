@@ -100,7 +100,7 @@ module ArJdbc
       return if @@_initialized; @@_initialized = true
 
       require 'arjdbc/util/serialized_attributes'
-      Util::SerializedAttributes.setup /blob|clob/i, 'after_save_with_db2_lob'
+      Util::SerializedAttributes.setup %r{blob|clob}i, 'after_save_with_db2_lob'
     end
 
     # @see ActiveRecord::ConnectionAdapters::JdbcAdapter#jdbc_connection_class

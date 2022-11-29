@@ -16,7 +16,7 @@ module ArJdbc
       return if @@_initialized; @@_initialized = true
 
       require 'arjdbc/util/serialized_attributes'
-      Util::SerializedAttributes.setup /blob/i
+      Util::SerializedAttributes.setup %r{blob}i
     end
 
     # @see ActiveRecord::ConnectionAdapters::JdbcAdapter#jdbc_connection_class

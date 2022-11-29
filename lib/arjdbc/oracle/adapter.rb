@@ -40,7 +40,7 @@ module ArJdbc
       return if @@_initialized; @@_initialized = true
 
       require 'arjdbc/util/serialized_attributes'
-      Util::SerializedAttributes.setup /LOB\(|LOB$/i, 'after_save_with_oracle_lob'
+      Util::SerializedAttributes.setup %r{LOB\(|LOB$}i, 'after_save_with_oracle_lob'
 
       unless ActiveRecord::ConnectionAdapters::AbstractAdapter.
           instance_methods(false).detect { |m| m.to_s == "prefetch_primary_key?" }
