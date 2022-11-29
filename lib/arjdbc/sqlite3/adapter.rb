@@ -262,9 +262,7 @@ module ArJdbc
     def remove_column(table_name, column_name, type = nil, **options) #:nodoc:
       alter_table(table_name) do |definition|
         definition.remove_column column_name
-        definition.foreign_keys.delete_if do |_, fk_options|
-          fk_options[:column] == column_name.to_s
-        end
+        definition.foreign_keys.delete_if { |fk| fk.column == column_name.to_s }
       end
     end
 
@@ -298,8 +296,8 @@ module ArJdbc
     def change_column(table_name, column_name, type, **options) #:nodoc:
       alter_table(table_name) do |definition|
         definition[column_name].instance_eval do
-          self.type    = type
-            self.options.merge!(options)
+          self.type = aliased_types(type.to_s, type)
+          self.options.merge!(options)
         end
       end
     end
@@ -336,8 +334,12 @@ module ArJdbc
         sql << " ON CONFLICT #{insert.conflict_target} DO NOTHING"
       elsif insert.update_duplicates?
         sql << " ON CONFLICT #{insert.conflict_target} DO UPDATE SET "
-        sql << insert.touch_model_timestamps_unless { |column| "#{column} IS excluded.#{column}" }
-        sql << insert.updatable_columns.map { |column| "#{column}=excluded.#{column}" }.join(",")
+        if insert.raw_update_sql?
+          sql << insert.raw_update_sql
+        else
+          sql << insert.touch_model_timestamps_unless { |column| "#{column} IS excluded.#{column}" }
+          sql << insert.updatable_columns.map { |column| "#{column}=excluded.#{column}" }.join(",")
+        end
       end
 
       sql
@@ -348,7 +350,7 @@ module ArJdbc
     end
 
     def get_database_version # :nodoc:
-      SQLite3Adapter::Version.new(query_value("SELECT sqlite_version(*)"))
+      SQLite3Adapter::Version.new(query_value("SELECT sqlite_version(*)", "SCHEMA"))
     end
 
     def check_version
@@ -459,8 +461,13 @@ module ArJdbc
              options[:rename][column.name.to_sym] ||
              column.name) : column.name
 
+          if column.has_default?
+            type = lookup_cast_type_from_column(column)
+            default = type.deserialize(column.default)
+          end
+
           @definition.column(column_name, column.type,
-            limit: column.limit, default: column.default,
+            limit: column.limit, default: default,
             precision: column.precision, scale: column.scale,
             null: column.null, collation: column.collation,
             primary_key: column_name == from_primary_key
@@ -478,9 +485,6 @@ module ArJdbc
     def copy_table_indexes(from, to, rename = {})
       indexes(from).each do |index|
         name = index.name
-        # indexes sqlite creates for internal use start with `sqlite_` and
-        # don't need to be copied
-        next if name.start_with?("sqlite_")
         if to == "a#{from}"
           name = "t#{name}"
         elsif from == "a#{to}"
@@ -520,20 +524,22 @@ module ArJdbc
     end
 
     def translate_exception(exception, message:, sql:, binds:)
-      case exception.message
       # SQLite 3.8.2 returns a newly formatted error message:
       #   UNIQUE constraint failed: *table_name*.*column_name*
       # Older versions of SQLite return:
       #   column *column_name* is not unique
-      when /column(s)? .* (is|are) not unique/, /UNIQUE constraint failed: .*/
+      if exception.message.match?(/(column(s)? .* (is|are) not unique|UNIQUE constraint failed: .*)/i)
         # DIFFERENCE: FQN
         ::ActiveRecord::RecordNotUnique.new(message, sql: sql, binds: binds)
-      when /.* may not be NULL/, /NOT NULL constraint failed: .*/
+      elsif exception.message.match?(/(.* may not be NULL|NOT NULL constraint failed: .*)/i)
         # DIFFERENCE: FQN
         ::ActiveRecord::NotNullViolation.new(message, sql: sql, binds: binds)
-      when /FOREIGN KEY constraint failed/i
+      elsif exception.message.match?(/FOREIGN KEY constraint failed/i)
         # DIFFERENCE: FQN
         ::ActiveRecord::InvalidForeignKey.new(message, sql: sql, binds: binds)
+      elsif exception.message.match?(/called on a closed database/i)
+        # DIFFERENCE: FQN
+        ::ActiveRecord::ConnectionNotEstablished.new(exception)
       else
         super
       end
@@ -553,12 +559,12 @@ module ArJdbc
       # Result will have following sample string
       # CREATE TABLE "users" ("id" INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
       #                       "password_digest" varchar COLLATE "NOCASE");
-      result = exec_query(sql, "SCHEMA").first
+      result = query_value(sql, "SCHEMA")
 
       if result
         # Splitting with left parentheses and discarding the first part will return all
         # columns separated with comma(,).
-        columns_string = result["sql"].split("(", 2).last
+        columns_string = result.split("(", 2).last
 
         columns_string.split(",").each do |column_string|
           # This regex will match the column name and collation type and will save
@@ -596,6 +602,9 @@ module ArJdbc
     end
 
     def configure_connection
+      # FIXME: missing from adapter
+#      @connection.busy_timeout(self.class.type_cast_config_to_integer(@config[:timeout])) if @config[:timeout]
+
       execute("PRAGMA foreign_keys = ON", "SCHEMA")
     end
 
