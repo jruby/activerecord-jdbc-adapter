@@ -171,11 +171,7 @@ class Test::Unit::TestCase
   end
 
   def self.current_connection_config
-    if ActiveRecord::Base.respond_to?(:connection_config)
-      ActiveRecord::Base.connection_db_config.configuration_hash
-    else
-      ActiveRecord::Base.connection_pool.spec.config
-    end
+    ActiveRecord::Base.connection.pool.db_config.configuration_hash
   end
 
   def current_connection_config; self.class.current_connection_config; end
