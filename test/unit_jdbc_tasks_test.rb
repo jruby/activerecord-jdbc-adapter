@@ -25,20 +25,6 @@ class JdbcTasksTest < Test::Unit::TestCase
       assert_equal 'database1', db
     end
 
-    test 'resolves Derby URLs' do
-      db = resolve_database_from_url 'jdbc:derby:memory:MyDB;create=true'
-      assert_equal 'MyDB', db
-
-      db = resolve_database_from_url 'jdbc:derby:SampleDB', false
-      assert_equal 'SampleDB', db
-
-      db = resolve_database_from_url 'jdbc:derby:SampleDB', true
-      assert_equal 'SampleDB', db
-
-      db = resolve_database 'jdbc:derby:directory:/home/kares/DerbyDB', true
-      assert_equal '/home/kares/DerbyDB', db
-    end
-
     test 'resolves HSQLDB URLs' do
       db = resolve_database_from_url 'jdbc:hsqldb:mem:'
       assert_nil db

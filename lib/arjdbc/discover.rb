@@ -23,26 +23,6 @@ module ArJdbc
     require('arjdbc/sqlite3') || true if name =~ /sqlite/i
   end
   
-  # Other supported adapters :
-
-  extension :Derby do |name, config|
-    if name =~ /derby/i
-      require 'arjdbc/derby'
-
-      if config && config[:username].nil? # set the database schema name (:username) :
-        begin
-          ArJdbc.with_meta_data_from_data_source_if_any(config) do
-            |meta_data| config[:username] = meta_data.getUserName
-          end
-        rescue => e
-          ArJdbc.warn("failed to set :username from (Derby) database meda-data: #{e.inspect}")
-        end
-      end
-
-      true
-    end
-  end
-
   extension :H2 do |name|
     require('arjdbc/h2') || true if name =~ /\.h2\./i
   end
@@ -54,51 +34,4 @@ module ArJdbc
   extension :MSSQL do |name|
     require('arjdbc/mssql') || true if name =~ /sqlserver|tds|Microsoft SQL/i
   end
-
-  extension :DB2 do |name, config|
-    if name =~ /db2/i && name !~ /as\/?400/i && config[:url] !~ /^jdbc:derby:net:/
-      require 'arjdbc/db2'
-      true
-    end
-  end
-  
-  extension :AS400 do |name, config|
-    # The native JDBC driver always returns "DB2 UDB for AS/400"
-    if name =~ /as\/?400/i
-      require 'arjdbc/db2'
-      require 'arjdbc/db2/as400'
-      true
-    end
-  end
-
-  # NOTE: following ones are likely getting deprecated :
-  
-  extension :FireBird do |name|
-    if name =~ /firebird/i
-      require 'arjdbc/firebird'
-      true
-    end
-  end
-
-  extension :Sybase do |name|
-    if name =~ /sybase|tds/i
-      require 'arjdbc/sybase'
-      true
-    end
-  end
-  
-  extension :Informix do |name|
-    if name =~ /informix/i
-      require 'arjdbc/informix'
-      true
-    end
-  end
-
-  extension :Mimer do |name|
-    if name =~ /mimer/i
-      require 'arjdbc/mimer'
-      true
-    end
-  end
-  
 end

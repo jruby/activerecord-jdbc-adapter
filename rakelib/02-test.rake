@@ -1,7 +1,7 @@
 
 test_tasks = [ 'test_mysql', 'test_sqlite3', 'test_postgresql_with_hint' ]
 if defined?(JRUBY_VERSION)
-  test_tasks.push :test_derby, :test_hsqldb, :test_h2
+  test_tasks.push :test_hsqldb, :test_h2
   test_tasks.push :test_jndi, :test_jdbc
 end
 
@@ -55,7 +55,6 @@ def test_task_for(adapter, options = {})
   test_task
 end
 
-test_task_for :Derby, :desc => 'Run tests against (embedded) DerbyDB'
 test_task_for :H2, :desc => 'Run tests against H2 database engine'
 test_task_for :HSQLDB, :desc => 'Run tests against HyperSQL (Java) database'
 test_task_for :MySQL #, :prereqs => 'db:mysql'
@@ -64,29 +63,22 @@ test_task_for :PostgreSQL, :driver => ENV['JDBC_POSTGRES_VERSION'] || 'postgres'
 task :test_postgres => :test_postgresql # alias
 test_task_for :SQLite3, :driver => ENV['JDBC_SQLITE_VERSION']
 task :test_sqlite => :test_sqlite3 # alias
-test_task_for :Firebird
 
 test_task_for :MariaDB, :files => FileList["test/db/mysql/*_test.rb"] do |test_task| #, :prereqs => 'db:mysql'
   test_task.ruby_opts << '-rdb/mariadb_config'
 end
 
 # ensure driver for these DBs is on your class-path
-[ :Oracle, :DB2, :Informix, :CacheDB ].each do |adapter|
+[ :Oracle ].each do |adapter|
   test_task_for adapter, :desc => "Run tests against #{adapter} (ensure driver is on class-path)"
 end
 
-test_task_for :AS400, :desc => "Run tests against AS400 (DB2) (ensure driver is on class-path)",
-              :files => FileList["test/db2*_test.rb"] + FileList["test/db/db2/*_test.rb"]
-
-#task :test_jdbc => [ :test_jdbc_mysql, :test_jdbc_derby ] if defined?(JRUBY_VERSION)
-
 test_task_for 'JDBC', :desc => 'Run tests against plain JDBC adapter (uses MySQL and Derby)',
   :prereqs => [ 'db:mysql' ], :files => FileList['test/*jdbc_*test.rb'] do |test_task|
-  test_task.libs << 'jdbc-mysql/lib' << 'jdbc-derby/lib'
+  test_task.libs << 'jdbc-mysql/lib'
 end
 
 # TODO since Derby AR 5.x support is not implemented we only run JNDI with MySQL :
-#task :test_jndi => [ :test_jndi_mysql, :test_jndi_derby ] if defined?(JRUBY_VERSION)
 task :test_jndi => [ :test_jndi_mysql ] if defined?(JRUBY_VERSION)
 
 jndi_classpath = [ 'test/jars/tomcat-juli.jar', 'test/jars/tomcat-catalina.jar' ]
@@ -98,13 +90,6 @@ end
 get_jndi_classpath_opt = lambda do
   cp = jndi_classpath.map { |jar_path| File.expand_path("../#{jar_path}", File.dirname(__FILE__)) }
   "-J-cp \"#{cp.join(File::PATH_SEPARATOR)}\""
-end
-
-test_task_for 'JNDI_Derby', :desc => 'Run tests against a Derby JNDI connection',
-  :prereqs => jndi_classpath, :files => FileList['test/*jndi_derby*test.rb'] do |test_task|
-  test_task.libs << 'jdbc-derby/lib'
-  test_task.ruby_opts << get_jndi_classpath_opt.call
-  #test_task.verbose = true
 end
 
 test_task_for 'JNDI_MySQL', :desc => 'Run tests against a MySQL JNDI connection',

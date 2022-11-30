@@ -26,7 +26,7 @@
 
 require 'rake/clean'
 
-CLEAN.include 'derby*', 'test.db.*', '*test.sqlite3', 'test/reports'
+CLEAN.include 'test.db.*', '*test.sqlite3', 'test/reports'
 CLEAN.include 'lib/**/*.jar', 'MANIFEST.MF', '*.log', 'target/*'
 
 task :default => :jar # RubyGems extention will do a bare `rake' e.g. :
