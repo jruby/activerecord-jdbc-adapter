@@ -1,6 +1,10 @@
 require 'rake_test_support'
 require 'db/sqlite3'
 
+# FIXME: This seems to have worked in past versions of Rails but it seems like
+# it is nowhere I can find in Rails 5+.  Why was this working before this?
+RAILS_ROOT = "."
+
 class SQLite3RakeTest < Test::Unit::TestCase
   include RakeTestSupport
 
