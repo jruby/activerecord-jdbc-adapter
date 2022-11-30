@@ -100,8 +100,11 @@ module RakeTestSupport
     end
     Rake.application = @_prev_application
     restore_rails
-    ActiveRecord::Base.configurations = @_prev_configurations
-    ActiveRecord::Base.establish_connection @_prev_connection_config
+    if @_prev_connection_config
+      ActiveRecord::Base.configurations = @_prev_configurations
+      ActiveRecord::Base.establish_connection @_prev_connection_config
+    end
+
     @rails_env_set = nil
     @full_env_loaded = nil
     raise error if error
