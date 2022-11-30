@@ -47,6 +47,6 @@ Gem::Specification.new do |gem|
   #gem.add_development_dependency 'test-unit-context', '>= 0.3.0'
   #gem.add_development_dependency 'mocha', '~> 0.13.1'
 
-  gem.rdoc_options = ["--main", "README.md", "-SHN", "-f", "darkfish"]
+  gem.rdoc_options = ["--main", "README.md"]
 end
 
