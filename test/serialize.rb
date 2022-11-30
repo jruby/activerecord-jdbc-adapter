@@ -25,6 +25,7 @@ module SerializeTestMethods
 
   def setup
     super
+    ActiveRecord.use_yaml_unsafe_load = true
   end
 
   def teardown
