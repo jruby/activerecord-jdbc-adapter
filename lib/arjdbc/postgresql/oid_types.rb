@@ -125,53 +125,48 @@ module ArJdbc
       end
 
       def initialize_type_map(m = type_map)
-        register_class_with_limit m, 'int2', Type::Integer
-        register_class_with_limit m, 'int4', Type::Integer
-        register_class_with_limit m, 'int8', Type::Integer
-        m.register_type 'oid', OID::Oid.new
-        m.register_type 'float4', Type::Float.new
-        m.alias_type 'float8', 'float4'
-        m.register_type 'text', Type::Text.new
-        register_class_with_limit m, 'varchar', Type::String
-        m.alias_type 'char', 'varchar'
-        m.alias_type 'name', 'varchar'
-        m.alias_type 'bpchar', 'varchar'
-        m.register_type 'bool', Type::Boolean.new
-        register_class_with_limit m, 'bit', OID::Bit
-        register_class_with_limit m, 'varbit', OID::BitVarying
-        m.alias_type 'timestamptz', 'timestamp'
-        m.register_type 'date', OID::Date.new
+        m.register_type "int2", Type::Integer.new(limit: 2)
+        m.register_type "int4", Type::Integer.new(limit: 4)
+        m.register_type "int8", Type::Integer.new(limit: 8)
+        m.register_type "oid", OID::Oid.new
+        m.register_type "float4", Type::Float.new
+        m.alias_type "float8", "float4"
+        m.register_type "text", Type::Text.new
+        register_class_with_limit m, "varchar", Type::String
+        m.alias_type "char", "varchar"
+        m.alias_type "name", "varchar"
+        m.alias_type "bpchar", "varchar"
+        m.register_type "bool", Type::Boolean.new
+        register_class_with_limit m, "bit", OID::Bit
+        register_class_with_limit m, "varbit", OID::BitVarying
+        m.register_type "date", OID::Date.new
 
-        m.register_type 'money', OID::Money.new
-        m.register_type 'bytea', OID::Bytea.new
-        m.register_type 'point', OID::Point.new
-        m.register_type 'hstore', OID::Hstore.new
-        m.register_type 'json', Type::Json.new
-        m.register_type 'jsonb', OID::Jsonb.new
-        m.register_type 'cidr', OID::Cidr.new
-        m.register_type 'inet', OID::Inet.new
-        m.register_type 'uuid', OID::Uuid.new
-        m.register_type 'xml', OID::Xml.new
-        m.register_type 'tsvector', OID::SpecializedString.new(:tsvector)
-        m.register_type 'macaddr', OID::Macaddr.new
-        m.register_type 'citext', OID::SpecializedString.new(:citext)
-        m.register_type 'ltree', OID::SpecializedString.new(:ltree)
-        m.register_type 'line', OID::SpecializedString.new(:line)
-        m.register_type 'lseg', OID::SpecializedString.new(:lseg)
-        m.register_type 'box', OID::SpecializedString.new(:box)
-        m.register_type 'path', OID::SpecializedString.new(:path)
-        m.register_type 'polygon', OID::SpecializedString.new(:polygon)
-        m.register_type 'circle', OID::SpecializedString.new(:circle)
+        m.register_type "money", OID::Money.new
+        m.register_type "bytea", OID::Bytea.new
+        m.register_type "point", OID::Point.new
+        m.register_type "hstore", OID::Hstore.new
+        m.register_type "json", Type::Json.new
+        m.register_type "jsonb", OID::Jsonb.new
+        m.register_type "cidr", OID::Cidr.new
+        m.register_type "inet", OID::Inet.new
+        m.register_type "uuid", OID::Uuid.new
+        m.register_type "xml", OID::Xml.new
+        m.register_type "tsvector", OID::SpecializedString.new(:tsvector)
+        m.register_type "macaddr", OID::Macaddr.new
+        m.register_type "citext", OID::SpecializedString.new(:citext)
+        m.register_type "ltree", OID::SpecializedString.new(:ltree)
+        m.register_type "line", OID::SpecializedString.new(:line)
+        m.register_type "lseg", OID::SpecializedString.new(:lseg)
+        m.register_type "box", OID::SpecializedString.new(:box)
+        m.register_type "path", OID::SpecializedString.new(:path)
+        m.register_type "polygon", OID::SpecializedString.new(:polygon)
+        m.register_type "circle", OID::SpecializedString.new(:circle)
 
-        m.register_type 'interval' do |*args, sql_type|
-          precision = extract_precision(sql_type)
-          OID::Interval.new(precision: precision)
-        end
+        register_class_with_precision m, "time", Type::Time
+        register_class_with_precision m, "timestamp", OID::Timestamp
+        register_class_with_precision m, "timestamptz", OID::TimestampWithTimeZone
 
-        register_class_with_precision m, 'time', Type::Time
-        register_class_with_precision m, 'timestamp', OID::DateTime
-
-        m.register_type 'numeric' do |_, fmod, sql_type|
+        m.register_type "numeric" do |_, fmod, sql_type|
           precision = extract_precision(sql_type)
           scale = extract_scale(sql_type)
 
@@ -191,7 +186,10 @@ module ArJdbc
           end
         end
 
-        load_additional_types(m)
+        m.register_type "interval" do |*args, sql_type|
+          precision = extract_precision(sql_type)
+          OID::Interval.new(precision: precision)
+        end
 
         # pgjdbc returns these if the column is auto-incrmenting
         m.alias_type 'serial', 'int4'
