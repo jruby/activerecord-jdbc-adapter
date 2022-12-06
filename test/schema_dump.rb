@@ -91,7 +91,7 @@ module SchemaDumpTestMethods
     output = standard_dump
     precision = DbTypeMigration.big_decimal_precision
     assert_match %r{t.decimal\s+"big_decimal",\s+precision: #{precision}}, output
-  end if Test::Unit::TestCase.ar_version('3.0') # does not work in 2.3 :
+  end
   # t.integer  "big_decimal", :limit => 38, :precision => 38, :scale => 0
 
   def test_schema_dump_keeps_id_column_when_id_is_false_and_id_column_added
@@ -133,6 +133,6 @@ module SchemaDumpTestMethods
     migration.migrate(:down)
 
     ActiveRecord::Base.table_name_suffix = ActiveRecord::Base.table_name_prefix = ''
-  end if Test::Unit::TestCase.ar_version('3.2')
+  end
 
 end

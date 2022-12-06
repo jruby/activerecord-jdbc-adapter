@@ -23,7 +23,7 @@ class HSQLDBTransactionTest < Test::Unit::TestCase
       end
     end
     assert_equal 1, Entry.count
-  end if Test::Unit::TestCase.ar_version('4.0')
+  end
 
   # @override whole table gets locked!
   def test_transaction_isolation_repeatable_read
@@ -43,34 +43,7 @@ class HSQLDBTransactionTest < Test::Unit::TestCase
     end
     #entry.reload
     #assert_equal '567', entry.title
-  end if Test::Unit::TestCase.ar_version('4.0')
-
-  # @override
-  def test_savepoint
-    #omit 'savepoins not supported' unless @supports_savepoints
-    Entry.create! :title => '1'
-    assert_equal 1, Entry.count
-
-    connection = ActiveRecord::Base.connection
-    connection.transaction do
-      begin
-        connection.create_savepoint
-        savepoint_created = true
-
-        Entry.create! :title => '2'
-        Entry.create! :title => '3'
-
-        assert_equal 3, Entry.count
-
-        connection.rollback_to_savepoint
-        assert_equal 1, Entry.count
-      ensure
-        # NOTE: HSQLDB seems to not support release after rollback :
-        # Invalid argument in JDBC call: 3B001 savepoint exception: invalid specification
-        #connection.release_savepoint if savepoint_created
-      end
-    end
-  end unless Test::Unit::TestCase.ar_version('4.1')
+  end
 
   # @override
   def test_using_named_savepoints
@@ -93,6 +66,6 @@ class HSQLDBTransactionTest < Test::Unit::TestCase
       #Entry.connection.release_savepoint("first")
       #assert_equal 'f', first.reload.content
     end
-  end if Test::Unit::TestCase.ar_version('4.1')
+  end
 
 end

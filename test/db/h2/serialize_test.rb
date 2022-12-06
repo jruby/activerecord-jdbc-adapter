@@ -15,6 +15,6 @@ class H2SerializeTest < Test::Unit::TestCase
     rescue ActiveRecord::JDBCError => e
       e.sql_exception.printStackTrace if e.sql_exception
     end
-  end if Test::Unit::TestCase.ar_version('3.2')
+  end
 
 end

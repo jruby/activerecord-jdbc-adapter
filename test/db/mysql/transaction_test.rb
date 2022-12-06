@@ -20,7 +20,7 @@ class MySQLTransactionTest < Test::Unit::TestCase
         Entry.connection.release_savepoint("another")
       end
     end
-  end if Test::Unit::TestCase.ar_version('4.1')
+  end
 
   # @override
   def test_transaction_isolation_read_uncommitted
@@ -35,7 +35,7 @@ class MySQLTransactionTest < Test::Unit::TestCase
       MyUser.create :login => 'my'
       assert_equal 1, User.count
     end
-  end if Test::Unit::TestCase.ar_version('4.0')
+  end
 
   # @override
   def test_transaction_isolation_repeatable_read
@@ -45,7 +45,7 @@ class MySQLTransactionTest < Test::Unit::TestCase
     # limited to row-based logging. InnoDB is limited to row-logging when
     # transaction isolation level is READ COMMITTED or READ UNCOMMITTED.
     super
-  end if ar_version('4.0')
+  end
 
   # @override
   def test_transaction_nesting

@@ -553,7 +553,6 @@ _SQL
   end
 
   def test_time_values
-    # omit_unless ar_version('4.0')
     assert_equal '-1 years and -2 days', @first_time.time_interval.inspect
     assert_equal '-21 days', @first_time.scaled_time_interval.inspect
   end

@@ -1,7 +1,7 @@
 module XmlColumnTestMethods
 
   def self.included(base)
-    base.send :include, TestMethods if base.ar_version('3.1')
+    base.send :include, TestMethods
   end
 
   class XmlModel < ActiveRecord::Base; end

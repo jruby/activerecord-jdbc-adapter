@@ -76,15 +76,6 @@ class Test::Unit::TestCase
     end
   end
 
-  def self.ar_version(version)
-    match = version.match(/(\d+)\.(\d+)(?:\.(\d+))?/)
-    ActiveRecord::VERSION::MAJOR > match[1].to_i ||
-      (ActiveRecord::VERSION::MAJOR == match[1].to_i &&
-       ActiveRecord::VERSION::MINOR >= match[2].to_i)
-  end
-
-  def ar_version(version); self.class.ar_version(version); end
-
   def self.jruby?; !! defined?(JRUBY_VERSION) end
   def jruby?; self.class.jruby? end
 

@@ -3,7 +3,7 @@ require 'jdbc_common'
 
 class H2SimpleTest < Test::Unit::TestCase
   include SimpleTestMethods
-  include ExplainSupportTestMethods if ar_version("3.1")
+  include ExplainSupportTestMethods
   include ActiveRecord3TestMethods
   include CustomSelectTestMethods
 
@@ -11,7 +11,7 @@ class H2SimpleTest < Test::Unit::TestCase
     assert_not_nil visitor = connection.instance_variable_get(:@visitor)
     assert defined? Arel::Visitors::HSQLDB
     assert_kind_of Arel::Visitors::HSQLDB, visitor
-  end if ar_version('3.0')
+  end
 
 end
 
@@ -56,13 +56,8 @@ class H2SchemaTest < Test::Unit::TestCase
   end
 
   def test_find_in_other_schema
-    if ar_version('4.0')
-      all = Entry.includes(:user).references(:user)
-      assert ! all.empty?, "expected `Entry.includes(:user)` to not be empty but was"
-    else
-      all = Entry.all(:include => :user)
-      assert ! all.empty?, "expected `Entry.all(:include => :user)` to not be empty but was"
-    end
+    all = Entry.includes(:user).references(:user)
+    assert ! all.empty?, "expected `Entry.includes(:user)` to not be empty but was"
   end
 
 end

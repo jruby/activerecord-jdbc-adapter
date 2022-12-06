@@ -29,7 +29,7 @@ class MSSQLDateTimeTypesTest < Test::Unit::TestCase
     datetime = DateTime.parse('2012-12-21T21:11:01').to_time
     model = DateAndTime.create! :datetime => datetime
     assert_datetime_equal datetime, model.reload.datetime
-  end if ar_version('3.0')
+  end
 
   def test_datetime_with_zone
     time_zone = false
@@ -44,7 +44,7 @@ class MSSQLDateTimeTypesTest < Test::Unit::TestCase
   ensure
     ActiveRecord::Base.default_timezone = default_timezone
     Time.zone = time_zone unless time_zone == false
-  end if ar_version('3.0')
+  end
 
   if defined? JRUBY_VERSION && ActiveRecord::Base.connection.sqlserver_version >= '2008'
 
@@ -79,14 +79,14 @@ class MSSQLDateTimeTypesTest < Test::Unit::TestCase
         model = DateAndTime.create! :datetime2 => datetime
         assert_datetime_equal datetime, model.reload.datetime2
       end
-    end if ar_version('3.0')
+    end
 
     def test_datetime25
       datetime = Time.local(1982, 7, 13, 02, 24, 56, 123000)
       model = DateAndTime.create! :datetime25 => datetime
       assert_not_nil model.datetime25
       assert_datetime_equal datetime, model.reload.datetime25
-      assert_equal datetime.usec, model.datetime25.usec if ar_version('3.2')
+      assert_equal datetime.usec, model.datetime25.usec
     end
 
     def test_smalldatetime
@@ -124,7 +124,7 @@ class MSSQLDateTimeTypesTest < Test::Unit::TestCase
       # ... same mess on MRI :
       # 1.9.3-p551 :004 > Time.local(0000, 1, 01, 23, 59, 0).inspect
       # => "0000-01-01 23:59:00 +0057"
-      pend 'TODO: ' + time.inspect if ar_version('4.2')
+      pend 'TODO: ' + time.inspect
       assert_time_equal time, model.reload.time
       assert_equal 987000, model.time.usec
     end

@@ -29,11 +29,7 @@ class MysqlNonstandardPrimaryKeyTest < Test::Unit::TestCase
 
   def test_nonstandard_primary_key
     output = schema_dump
-    if ar_version('4.0')
-      assert_match %r(primary_key: "project_id"), output, "non-standard primary key not preserved"
-    else
-      assert_match %r(:primary_key => "project_id"), output, "non-standard primary key not preserved"
-    end
+    assert_match %r(primary_key: "project_id"), output, "non-standard primary key not preserved"
   end
 
 end

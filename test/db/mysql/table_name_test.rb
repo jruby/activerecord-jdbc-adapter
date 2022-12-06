@@ -38,7 +38,6 @@ class MySQLTableNameTest < Test::Unit::TestCase
   end
 
   class SerialNumber < ActiveRecord::Base
-    #self.primary_key = 'serial' unless MySQLTableNameTest.ar_version('3.0')
   end
 
   test 'serial number' do
@@ -47,7 +46,7 @@ class MySQLTableNameTest < Test::Unit::TestCase
     assert sn.reload
 
     SerialNumber.columns
-  end if ar_version('3.2')
+  end
 
   class SerialMigration < ActiveRecord::Migration[4.2]
     def self.up
@@ -84,6 +83,6 @@ class MySQLTableNameTest < Test::Unit::TestCase
     assert_not_nil sn.sid
 
     SerialWithTrigger.columns
-  end if ar_version('3.1')
+  end
 
 end

@@ -5,8 +5,7 @@ class MSSQLSimpleTest < Test::Unit::TestCase
   include SimpleTestMethods
   include ActiveRecord3TestMethods
   include DirtyAttributeTests
-
-  include ExplainSupportTestMethods if ar_version("3.1")
+  include ExplainSupportTestMethods
 
   # MS SQL 2005 doesn't have a DATE class, only TIMESTAMP
 
@@ -17,11 +16,7 @@ class MSSQLSimpleTest < Test::Unit::TestCase
   def test_save_timestamp_with_usec
     timestamp = Time.utc(1942, 11, 30, 01, 53, 59, 123_000)
     e = DbType.create! :sample_timestamp => timestamp
-    if ar_version('3.0')
-      assert_timestamp_equal timestamp, e.reload.sample_timestamp
-    else
-      assert_datetime_equal timestamp, e.reload.sample_timestamp # only sec
-    end
+    assert_timestamp_equal timestamp, e.reload.sample_timestamp
   end
 
   # @override
@@ -29,15 +24,7 @@ class MSSQLSimpleTest < Test::Unit::TestCase
     e = DbType.create!(:sample_string => '', :sample_text => '')
     t = Time.now
     value = Time.local(t.year, t.month, t.day, t.hour, t.min, t.sec, 0)
-    if ar_version('4.2')
-      str = value.to_s
-    elsif ActiveRecord::VERSION::MAJOR >= 3
-      # AR-3 adapters override quoted_date which is called always when a
-      # Time like value is passed (... as well for string/text columns) :
-      str = value.utc.to_s(:db) << '.' << sprintf("%03d", value.usec)
-    else # AR-2.x #quoted_date did not do TZ conversions
-      str = value.to_s(:db)
-    end
+    str = value.to_s
     e.sample_string = value
     e.sample_text = value
     e.save!; e.reload
@@ -180,7 +167,6 @@ class MSSQLSimpleTest < Test::Unit::TestCase
     # readonly_attribute? and not pk_attribute?(name) as well ...
     # other adapters such as MySQL simply accept/ignore similar UPDATE as valid
     #
-    return super unless ar_version('4.0')
     begin
       ro_attrs = User.readonly_attributes.dup
       User.readonly_attributes << 'id'
@@ -191,7 +177,6 @@ class MSSQLSimpleTest < Test::Unit::TestCase
   end
 
   def test_partial_update_with_updated_on
-    return super unless ar_version('4.0')
     begin
       ro_attrs = User.readonly_attributes.dup
       User.readonly_attributes << 'id'
@@ -244,7 +229,7 @@ class MSSQLSimpleTest < Test::Unit::TestCase
     assert_not_nil visitor = connection.instance_variable_get(:@visitor)
     assert defined? Arel::Visitors::SQLServer
     assert_kind_of Arel::Visitors::SQLServer, visitor
-  end if ar_version('3.0')
+  end
 
 end
 

@@ -139,7 +139,7 @@ class JdbcConnectionTest < Test::Unit::TestCase
     ensure
       ActiveRecord::Base.establish_connection JDBC_CONFIG
     end
-  end #if ar_version('3.0')
+  end
 
   test 'driver sql exceptions without message and sql state' do
     config = JDBC_CONFIG.dup
@@ -156,7 +156,7 @@ class JdbcConnectionTest < Test::Unit::TestCase
     ensure
       ActiveRecord::Base.establish_connection JDBC_CONFIG
     end
-  end #if ar_version('3.0')
+  end
 
   context 'configuration' do
 
@@ -203,8 +203,8 @@ class JdbcConnectionTest < Test::Unit::TestCase
     pool = ActiveRecord::Base.connection_pool
     adapter = ActiveRecord::ConnectionAdapters::JdbcAdapter.new(connection, logger, pool)
     assert_equal connection, adapter.raw_connection
-    assert adapter.pool if ar_version('4.0')
-  end if ar_version('3.2') && defined? JRUBY_VERSION
+    assert adapter.pool
+  end if defined? JRUBY_VERSION
 
   test 'instantiate adapter ActiveRecord style (< 3.2)' do
     connection = ActiveRecord::Base.connection.raw_connection
@@ -313,7 +313,7 @@ class JdbcConnectionTest < Test::Unit::TestCase
       rescue ActiveRecord::JDBCError => e
         assert_match /transient.2/, e.sql_exception.message
       end
-    end if ar_version('3.0') # NOTE: for some reason fails on 2.3
+    end
 
     test 'execute retried for recoverable failure (using new connection)' do
       failing_connection = ConnectionDelegate.new(@real_connection_factory.newConnection)

@@ -23,7 +23,7 @@ class H2TransactionTest < Test::Unit::TestCase
       end
     end
     assert_equal 1, Entry.count
-  end if Test::Unit::TestCase.ar_version('4.0')
+  end
 
   # @override whole table gets locked!
   def test_transaction_isolation_repeatable_read
@@ -43,6 +43,6 @@ class H2TransactionTest < Test::Unit::TestCase
     end
     #entry.reload
     #assert_equal '567', entry.title
-  end if Test::Unit::TestCase.ar_version('4.0')
+  end
 
 end

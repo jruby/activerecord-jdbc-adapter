@@ -117,7 +117,7 @@ module TransactionTestMethods
 #        Entry.count
 #      end
 #    end
-#  end if Test::Unit::TestCase.ar_version('4.0')
+#  end
 
   def test_transaction_nesting
     @first = Entry.create
@@ -178,11 +178,7 @@ module TransactionTestMethods
         Entry.create! :title => 'three'
       end
     end
-    if ar_version('4.0')
-      all = Entry.order(:title).to_a
-    else
-      all = Entry.all(:order => :title)
-    end
+    all = Entry.order(:title).to_a
     assert_equal %w(one three), all.map(&:title)
   end
 

@@ -154,7 +154,7 @@ module RakeTestSupport
   end
 
   def structure_sql_filename
-    ar_version('3.2') ? 'structure.sql' : "#{@rails_env}_structure.sql"
+    'structure.sql'
   end
 
   def with_connection(config = db_config)

@@ -108,17 +108,13 @@ class MSSQLLimitOffsetTest < Test::Unit::TestCase
     end
     ships = LegacyShip.limit(3)
     assert_equal(3, ships.size)
-  end if ar_version('3.0')
+  end
 
   def test_limit_and_offset
     %w(one two three four five six seven eight).each do |name|
       LongShip.create!(:name => name)
     end
-    if ar_version('4.0')
-      ship_names = LongShip.offset(2).limit(3).to_a.map(&:name)
-    else
-      ship_names = LongShip.find(:all, :offset => 2, :limit => 3).map(&:name)
-    end
+    ship_names = LongShip.offset(2).limit(3).to_a.map(&:name)
     assert_equal(%w(three four five), ship_names)
   end
 
@@ -126,18 +122,10 @@ class MSSQLLimitOffsetTest < Test::Unit::TestCase
     names = %w(one two three four five six seven eight).each do |name|
       LongShip.create!(:name => name)
     end
-    if ar_version('4.0')
-      ship_names = LongShip.order("name").offset(4).limit(2).to_a.map(&:name)
-    else
-      ship_names = LongShip.find(:all, :order => "name", :offset => 4, :limit => 2).map(&:name)
-    end
+    ship_names = LongShip.order("name").offset(4).limit(2).to_a.map(&:name)
     assert_equal(names.sort[4, 2], ship_names)
 
-    if ar_version('4.0')
-      ship_names = LongShip.order("id").offset(4).limit(2).to_a.map(&:name)
-    else
-      ship_names = LongShip.find(:all, :order => "id", :offset => 4, :limit => 2).map(&:name)
-    end
+    ship_names = LongShip.order("id").offset(4).limit(2).to_a.map(&:name)
     assert_equal(%w(five six), ship_names)
   end
 
@@ -146,11 +134,7 @@ class MSSQLLimitOffsetTest < Test::Unit::TestCase
     skei.vikings.create!(:name => "Bob")
     skei.vikings.create!(:name => "Ben")
     skei.vikings.create!(:name => "Basil")
-    if ar_version('4.0')
-      ships = Viking.includes(:long_ship).offset(1).limit(2) #.all
-    else
-      ships = Viking.find(:all, :include => :long_ship, :offset => 1, :limit => 2)
-    end
+    ships = Viking.includes(:long_ship).offset(1).limit(2) #.all
     assert_equal(2, ships.size)
   end
 
@@ -163,11 +147,7 @@ class MSSQLLimitOffsetTest < Test::Unit::TestCase
     boat1.vikings.create!(:name => "Carl")
     boat2.vikings.create!(:name => "Donald")
 
-    if ar_version('4.0')
-      vikings = Viking.includes(:long_ship).order('long_ships.name, vikings.name').references(:long_ship).offset(0).limit(3)
-    else
-      vikings = Viking.find(:all, :include => :long_ship, :order => "long_ships.name, vikings.name", :offset => 0, :limit => 3)
-    end
+    vikings = Viking.includes(:long_ship).order('long_ships.name, vikings.name').references(:long_ship).offset(0).limit(3)
     assert_equal ["Adam", "Carl", "Ben"], vikings.map(&:name)
   end
 
@@ -175,13 +155,7 @@ class MSSQLLimitOffsetTest < Test::Unit::TestCase
     %w( egy keto harom negy ot hat het nyolc ).each do |name|
       LongShip.create!(:name => name)
     end
-    if ar_version('4.0')
-      ships = LongShip.select(:name).offset(3).to_a
-    elsif ar_version('3.0')
-      ships = LongShip.select(:name).offset(3).all
-    else
-      ships = LongShip.find(:all, :select => 'name', :offset => 3)
-    end
+    ships = LongShip.select(:name).offset(3).to_a
     assert_equal ['negy', 'ot', 'hat', 'het', 'nyolc'], ships.map(&:name)
   end
 
@@ -195,7 +169,7 @@ class MSSQLLimitOffsetTest < Test::Unit::TestCase
 
     ships = LongShip.select(:name).group(:name).limit(2).offset(2)
     assert_equal ['three', 'four'], ships.map(&:name)
-  end if ar_version('3.0')
+  end
 
   # NOTE: can not work due how MS-SQL "rulezzz"
   # Column 'long_ships.id' is invalid in the select list because it is not
@@ -213,7 +187,7 @@ class MSSQLLimitOffsetTest < Test::Unit::TestCase
 #
 #    ships = LongShip.select(:name).group(:name).limit(2).offset(2)
 #    assert_equal ['three', 'four'], ships.map(&:name)
-#  end if ar_version('3.0')
+#  end
 
   def test_limit_with_group_by_and_aggregate_in_order_clause
     %w( one two three four five six seven eight ).each_with_index do |name, i|
@@ -231,17 +205,13 @@ class MSSQLLimitOffsetTest < Test::Unit::TestCase
 
     ships = LongShip.select(:name).group(:name).limit(2).order('MAX(width) DESC').all
     assert_equal ['eight', 'seven'], ships.map(&:name)
-  end if ar_version('3.0')
+  end
 
   def test_select_distinct_with_limit
     %w(c a b a b a c d c d).each do |name|
       LongShip.create!(:name => name)
     end
-    if ar_version('3.0')
-      result = LongShip.select("DISTINCT name").order("name").limit(2)
-    else
-      result = LongShip.find(:all, :select => "DISTINCT name", :order => "name", :limit => 2)
-    end
+    result = LongShip.select("DISTINCT name").order("name").limit(2)
     assert_equal %w(a b), result.map(&:name)
   end
 
@@ -257,7 +227,7 @@ class MSSQLLimitOffsetTest < Test::Unit::TestCase
       joins(:long_ship).where(:long_ship_id => mega_ship.id).
       order('name')
     assert_equal [ '11', '12' ], result.map { |viking| viking.name }
-  end if ar_version('3.0')
+  end
 
   class Viewking < ActiveRecord::Base
     belongs_to :long_ship
@@ -278,7 +248,7 @@ class MSSQLLimitOffsetTest < Test::Unit::TestCase
 
     arel = Viewking.includes(:long_ship).limit(3)
     assert_equal 2, arel.to_a.size
-  end if ar_version('3.0')
+  end
 
   test 'ordering_on_aggregate GH-532' do
     5.times { |i| LongShip.create! :name => "ship_#{i}", :length => 1000 + i }

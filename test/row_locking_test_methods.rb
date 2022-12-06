@@ -17,14 +17,9 @@ module RowLockingTestMethods
   # Simple SELECT ... FOR UPDATE test
   def test_select_all_for_update
     @row1_id = Entry.create!(:title => "row1").id
-    all_locked = Entry.lock(true)
-    all_locked_ids = if ar_version('4.0')
-        all_locked.load # all is deprecated
-      else
-        all_locked.all
-      end.map(&:id)
+    all_locked = Entry.lock(true).load.map(&:id)
     assert all_locked_ids.include?(@row1_id)
-  end if Test::Unit::TestCase.ar_version('3.0')
+  end
 
   def test_row_locking
     do_test_row_locking
@@ -96,16 +91,10 @@ module RowLockingTestMethods
   end
 
   def find_entry(id, lock = true, limit = nil)
-    if ar_version('4.0')
-      arel = Entry
-      arel = arel.lock(true) if lock
-      arel = arel.limit(limit) if limit
-      arel.find(id)
-    else
-      options = { :lock => lock }
-      options[:limit] = limit if limit
-      Entry.find(id, options)
-    end
+    arel = Entry
+    arel = arel.lock(true) if lock
+    arel = arel.limit(limit) if limit
+    arel.find(id)
   end
 
   def thread_helper

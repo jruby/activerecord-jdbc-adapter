@@ -19,13 +19,8 @@ class MSSQLCustomTest < Test::Unit::TestCase
     entry.reload
     assert_equal 'Hello!', entry['My Name']
     
-    if ar_version('3.1')
-      LegacyEntry.where('[My Name] IS NOT NULL').limit(1).to_a
-      LegacyEntry.order(:'My Name').limit(1).to_a
-    else
-      LegacyEntry.all(:limit => 1)
-      LegacyEntry.all(:order => :'My Name', :limit => 1)
-    end
+    LegacyEntry.where('[My Name] IS NOT NULL').limit(1).to_a
+    LegacyEntry.order(:'My Name').limit(1).to_a
   end
 
 end
