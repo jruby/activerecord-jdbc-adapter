@@ -116,8 +116,16 @@ module ArJdbc
 
       private
 
+      def register_class_with_limit(...)
+        ::ActiveRecord::ConnectionAdapters::AbstractAdapter.send(:register_class_with_limit, ...)
+      end
+
+      def register_class_with_precision(...)
+        ::ActiveRecord::ConnectionAdapters::AbstractAdapter.send(:register_class_with_precision, ...)
+      end
+
       def initialize_type_map(m = type_map)
-        ::ActiveRecord::ConnectionAdapters::AbstractAdapter.send :register_class_with_limit, m, 'int2', Type::Integer
+        register_class_with_limit m, 'int2', Type::Integer
         register_class_with_limit m, 'int4', Type::Integer
         register_class_with_limit m, 'int8', Type::Integer
         m.register_type 'oid', OID::Oid.new
