@@ -285,7 +285,7 @@ module ArJdbc
           execute "ALTER TABLE #{quote_table_name(table_name)} ADD CONSTRAINT #{quote_column_name(index_name)} #{index_type} (#{quoted_column_names})"
         end
       end
-    end if AR42
+    end
 
     # @private
     def add_index_options(table_name, column_name, options = {})
@@ -309,7 +309,7 @@ module ArJdbc
 
       quoted_column_names = column_names.map { |e| quote_column_name_or_expression(e) }.join(", ")
       [ index_name, index_type, quoted_column_names, tablespace, index_options ]
-    end if AR42
+    end
 
     # @override
     def remove_index(table_name, options = {})
@@ -327,12 +327,7 @@ module ArJdbc
       end
       execute "ALTER TABLE #{quote_table_name(table_name)} DROP CONSTRAINT #{quote_column_name(index_name)}" rescue nil
       execute "DROP INDEX #{quote_column_name(index_name)}"
-    end if AR42
-
-    # @private
-    def remove_index(table_name, options = {})
-      execute "DROP INDEX #{index_name(table_name, options)}"
-    end unless AR42
+    end
 
     def change_column_default(table_name, column_name, default)
       execute "ALTER TABLE #{quote_table_name(table_name)} MODIFY #{quote_column_name(column_name)} DEFAULT #{quote(default)}"
@@ -361,23 +356,9 @@ module ArJdbc
         "RENAME COLUMN #{quote_column_name(column_name)} TO #{quote_column_name(new_column_name)}"
     end
 
-    if ActiveRecord::VERSION::MAJOR >= 4
-
     # @override
     def remove_column(table_name, column_name, type = nil, options = {})
       do_remove_column(table_name, column_name)
-    end
-
-    else
-
-    # @override
-    def remove_column(table_name, *column_names)
-      for column_name in column_names.flatten
-        do_remove_column(table_name, column_name)
-      end
-    end
-    alias remove_columns remove_column
-
     end
 
     def do_remove_column(table_name, column_name)

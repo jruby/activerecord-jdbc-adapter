@@ -28,21 +28,6 @@ module ActiveRecord
           end
         end
 
-        if ArJdbc::AR52
-          # undefined method `cast' for #<ActiveRecord::ConnectionAdapters::SqlTypeMetadata> on AR52
-        else
-          default = args[0].cast(default)
-
-          sql_type = args.delete_at(1)
-          type = args.delete_at(0)
-
-          args.unshift(SqlTypeMetadata.new(:sql_type => sql_type, :type => type))
-        end
-
-        # super <= 4.1: (name, default, sql_type = nil, null = true)
-        # super >= 4.2: (name, default, cast_type, sql_type = nil, null = true)
-        # super >= 5.0: (name, default, sql_type_metadata = nil, null = true)
-
         super(name, default, *args)
         init_column(name, default, *args)
       end
@@ -80,18 +65,8 @@ module ActiveRecord
       end
 
       class << self
-
-        include Jdbc::TypeCast if ::ActiveRecord::VERSION::STRING >= '4.2'
-
-        if ActiveRecord::VERSION::MAJOR > 3 && ActiveRecord::VERSION::STRING < '4.2'
-
-          # @private provides compatibility between AR 3.x/4.0 API
-          def string_to_date(value); value_to_date(value) end
-
-        end
-
+        include Jdbc::TypeCast
       end
-
     end
   end
 end

@@ -31,31 +31,9 @@ module ArJdbc
         SerializedAttributes.dump_column_value(self, column)
       end
 
-      if defined? ActiveRecord::Type::Serialized # ArJdbc::AR42
-
       def self.dump_column_value(record, column)
         value = record[ column.name.to_s ]
         column.cast_type.type_cast_for_database(value)
-      end
-
-      else
-
-      def self.dump_column_value(record, column)
-        value = record[ name = column.name.to_s ]
-        if record.class.respond_to?(:serialized_attributes)
-          if coder = record.class.serialized_attributes[name]
-            value = coder.respond_to?(:dump) ? coder.dump(value) : value.to_yaml
-          end
-        else
-          if record.respond_to?(:unserializable_attribute?)
-            value = value.to_yaml if record.unserializable_attribute?(name, column)
-          else
-            value = value.to_yaml if value.is_a?(Hash)
-          end
-        end
-        value
-      end
-
       end
 
       def self.setup(lob_type = nil, after_save_alias = nil)
