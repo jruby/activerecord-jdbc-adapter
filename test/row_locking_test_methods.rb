@@ -17,7 +17,7 @@ module RowLockingTestMethods
   # Simple SELECT ... FOR UPDATE test
   def test_select_all_for_update
     @row1_id = Entry.create!(:title => "row1").id
-    all_locked = Entry.lock(true).load.map(&:id)
+    all_locked_ids = Entry.lock(true).load.map(&:id)
     assert all_locked_ids.include?(@row1_id)
   end
 
