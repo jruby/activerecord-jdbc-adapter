@@ -754,7 +754,7 @@ module SimpleTestMethods
     columns = DbType.connection.columns('db_types')
     assert ! columns.detect { |c| c.name.to_s == 'sample_text' }
 
-    DbType.connection.remove_column :db_types, :sample_float, nil, {}
+    DbType.connection.remove_column :db_types, :sample_float, nil
     columns = DbType.connection.columns('db_types')
     assert ! columns.detect { |c| c.name.to_s == 'sample_float' }
   end
