@@ -209,8 +209,8 @@ class PostgresSimpleTest < Test::Unit::TestCase
   end
 
   test 'type cast (without column)' do
-    assert_equal 1, connection.type_cast(1, false)
-    assert_equal 'some', connection.type_cast(:some, nil)
+    assert_equal 1, connection.type_cast(1)
+    assert_equal 'some', connection.type_cast(:some)
   end
 
   # def test_jdbc_error

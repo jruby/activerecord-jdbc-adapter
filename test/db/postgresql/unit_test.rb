@@ -95,8 +95,8 @@ class PostgresActiveSchemaUnitTest < Test::Unit::TestCase
 
   private
 
-  def method_missing(method_symbol, *arguments)
-    ActiveRecord::Base.connection.send(method_symbol, *arguments)
+  def method_missing(method_symbol, ...)
+    ActiveRecord::Base.connection.send(method_symbol, ...)
   end
 
 end

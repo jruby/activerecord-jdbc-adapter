@@ -320,6 +320,38 @@ module ArJdbc
       exec_query("SELECT extname FROM pg_extension", "SCHEMA").cast_values
     end
 
+    # Returns a list of defined enum types, and their values.
+    def enum_types
+      query = <<~SQL
+          SELECT
+            type.typname AS name,
+            string_agg(enum.enumlabel, ',' ORDER BY enum.enumsortorder) AS value
+          FROM pg_enum AS enum
+          JOIN pg_type AS type
+            ON (type.oid = enum.enumtypid)
+          GROUP BY type.typname;
+      SQL
+      exec_query(query, "SCHEMA").cast_values
+    end
+
+    # Given a name and an array of values, creates an enum type.
+    def create_enum(name, values)
+      sql_values = values.map { |s| "'#{s}'" }.join(", ")
+      query = <<~SQL
+          DO $$
+          BEGIN
+              IF NOT EXISTS (
+                SELECT 1 FROM pg_type t
+                WHERE t.typname = '#{name}'
+              ) THEN
+                  CREATE TYPE \"#{name}\" AS ENUM (#{sql_values});
+              END IF;
+          END
+          $$;
+      SQL
+      exec_query(query)
+    end
+
     # Returns the configured supported identifier length supported by PostgreSQL
     def max_identifier_length
       @max_identifier_length ||= query_value("SHOW max_identifier_length", "SCHEMA").to_i
@@ -671,6 +703,37 @@ module ActiveRecord::ConnectionAdapters
 
   class PostgreSQLAdapter < AbstractAdapter
     class_attribute :create_unlogged_tables, default: false
+
+    ##
+    # :singleton-method:
+    # PostgreSQL allows the creation of "unlogged" tables, which do not record
+    # data in the PostgreSQL Write-Ahead Log. This can make the tables faster,
+    # but significantly increases the risk of data loss if the database
+    # crashes. As a result, this should not be used in production
+    # environments. If you would like all created tables to be unlogged in
+    # the test environment you can add the following line to your test.rb
+    # file:
+    #
+    #   ActiveRecord::ConnectionAdapters::PostgreSQLAdapter.create_unlogged_tables = true
+    class_attribute :create_unlogged_tables, default: false
+
+    ##
+    # :singleton-method:
+    # PostgreSQL supports multiple types for DateTimes. By default, if you use +datetime+
+    # in migrations, Rails will translate this to a PostgreSQL "timestamp without time zone".
+    # Change this in an initializer to use another NATIVE_DATABASE_TYPES. For example, to
+    # store DateTimes as "timestamp with time zone":
+    #
+    #   ActiveRecord::ConnectionAdapters::PostgreSQLAdapter.datetime_type = :timestamptz
+    #
+    # Or if you are adding a custom type:
+    #
+    #   ActiveRecord::ConnectionAdapters::PostgreSQLAdapter::NATIVE_DATABASE_TYPES[:my_custom_type] = { name: "my_custom_type_name" }
+    #   ActiveRecord::ConnectionAdapters::PostgreSQLAdapter.datetime_type = :my_custom_type
+    #
+    # If you're using +:ruby+ as your +config.active_record.schema_format+ and you change this
+    # setting, you should immediately run <tt>bin/rails db:migrate</tt> to update the types in your schema.rb.
+    class_attribute :datetime_type, default: :timestamp
 
     # Try to use as much of the built in postgres logic as possible
     # maybe someday we can extend the actual adapter
