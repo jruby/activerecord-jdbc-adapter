@@ -91,9 +91,10 @@ module ArJdbc
       end
 
       def get_oid_type(oid, fmod, column_name, sql_type = '') # :nodoc:
-        if !type_map.key?(oid)
-          load_additional_types(type_map, oid)
-        end
+        # This is unhappy with oid of regproc
+        #if !type_map.key?(oid)
+        #  load_additional_types([oid])
+        #end
 
         type_map.fetch(oid, fmod, sql_type) {
           warn "unknown OID #{oid}: failed to recognize type of '#{column_name}'. It will be treated as String."
@@ -103,15 +104,92 @@ module ArJdbc
         }
       end
 
+      def reload_type_map
+          type_map.clear
+          initialize_type_map
+      end
+
+        def initialize_type_map_inner(m)
+          m.register_type "int2", Type::Integer.new(limit: 2)
+          m.register_type "int4", Type::Integer.new(limit: 4)
+          m.register_type "int8", Type::Integer.new(limit: 8)
+          m.register_type "oid", OID::Oid.new
+          m.register_type "float4", Type::Float.new
+          m.alias_type "float8", "float4"
+          m.register_type "text", Type::Text.new
+          register_class_with_limit m, "varchar", Type::String
+          m.alias_type "char", "varchar"
+          m.alias_type "name", "varchar"
+          m.alias_type "bpchar", "varchar"
+          m.register_type "bool", Type::Boolean.new
+          register_class_with_limit m, "bit", OID::Bit
+          register_class_with_limit m, "varbit", OID::BitVarying
+          m.register_type "date", OID::Date.new
+
+          m.register_type "money", OID::Money.new
+          m.register_type "bytea", OID::Bytea.new
+          m.register_type "point", OID::Point.new
+          m.register_type "hstore", OID::Hstore.new
+          m.register_type "json", Type::Json.new
+          m.register_type "jsonb", OID::Jsonb.new
+          m.register_type "cidr", OID::Cidr.new
+          m.register_type "inet", OID::Inet.new
+          m.register_type "uuid", OID::Uuid.new
+          m.register_type "xml", OID::Xml.new
+          m.register_type "tsvector", OID::SpecializedString.new(:tsvector)
+          m.register_type "macaddr", OID::Macaddr.new
+          m.register_type "citext", OID::SpecializedString.new(:citext)
+          m.register_type "ltree", OID::SpecializedString.new(:ltree)
+          m.register_type "line", OID::SpecializedString.new(:line)
+          m.register_type "lseg", OID::SpecializedString.new(:lseg)
+          m.register_type "box", OID::SpecializedString.new(:box)
+          m.register_type "path", OID::SpecializedString.new(:path)
+          m.register_type "polygon", OID::SpecializedString.new(:polygon)
+          m.register_type "circle", OID::SpecializedString.new(:circle)
+
+          register_class_with_precision m, "time", Type::Time
+          register_class_with_precision m, "timestamp", OID::Timestamp
+          register_class_with_precision m, "timestamptz", OID::TimestampWithTimeZone
+
+          m.register_type "numeric" do |_, fmod, sql_type|
+            precision = extract_precision(sql_type)
+            scale = extract_scale(sql_type)
+
+            # The type for the numeric depends on the width of the field,
+            # so we'll do something special here.
+            #
+            # When dealing with decimal columns:
+            #
+            # places after decimal  = fmod - 4 & 0xffff
+            # places before decimal = (fmod - 4) >> 16 & 0xffff
+            if fmod && (fmod - 4 & 0xffff).zero?
+              # FIXME: Remove this class, and the second argument to
+              # lookups on PG
+              Type::DecimalWithoutScale.new(precision: precision)
+            else
+              OID::Decimal.new(precision: precision, scale: scale)
+            end
+          end
+
+          m.register_type "interval" do |*args, sql_type|
+            precision = extract_precision(sql_type)
+            OID::Interval.new(precision: precision)
+          end
+
+          # pgjdbc returns these if the column is auto-incrmenting
+          m.alias_type 'serial', 'int4'
+          m.alias_type 'bigserial', 'int8'
+        end
+
+
+      # We differ from AR here because we will initialize type_map when adapter initializes
       def type_map
         @type_map
       end
 
-      def reload_type_map
-        if ( @type_map ||= nil )
-          @type_map.clear
-          initialize_type_map(@type_map)
-        end
+      def initialize_type_map(m = type_map)
+        initialize_type_map_inner(m)
+        load_additional_types
       end
 
       private
@@ -124,117 +202,45 @@ module ArJdbc
         ::ActiveRecord::ConnectionAdapters::AbstractAdapter.send(:register_class_with_precision, ...)
       end
 
-      def initialize_type_map(m = type_map)
-        m.register_type "int2", Type::Integer.new(limit: 2)
-        m.register_type "int4", Type::Integer.new(limit: 4)
-        m.register_type "int8", Type::Integer.new(limit: 8)
-        m.register_type "oid", OID::Oid.new
-        m.register_type "float4", Type::Float.new
-        m.alias_type "float8", "float4"
-        m.register_type "text", Type::Text.new
-        register_class_with_limit m, "varchar", Type::String
-        m.alias_type "char", "varchar"
-        m.alias_type "name", "varchar"
-        m.alias_type "bpchar", "varchar"
-        m.register_type "bool", Type::Boolean.new
-        register_class_with_limit m, "bit", OID::Bit
-        register_class_with_limit m, "varbit", OID::BitVarying
-        m.register_type "date", OID::Date.new
-
-        m.register_type "money", OID::Money.new
-        m.register_type "bytea", OID::Bytea.new
-        m.register_type "point", OID::Point.new
-        m.register_type "hstore", OID::Hstore.new
-        m.register_type "json", Type::Json.new
-        m.register_type "jsonb", OID::Jsonb.new
-        m.register_type "cidr", OID::Cidr.new
-        m.register_type "inet", OID::Inet.new
-        m.register_type "uuid", OID::Uuid.new
-        m.register_type "xml", OID::Xml.new
-        m.register_type "tsvector", OID::SpecializedString.new(:tsvector)
-        m.register_type "macaddr", OID::Macaddr.new
-        m.register_type "citext", OID::SpecializedString.new(:citext)
-        m.register_type "ltree", OID::SpecializedString.new(:ltree)
-        m.register_type "line", OID::SpecializedString.new(:line)
-        m.register_type "lseg", OID::SpecializedString.new(:lseg)
-        m.register_type "box", OID::SpecializedString.new(:box)
-        m.register_type "path", OID::SpecializedString.new(:path)
-        m.register_type "polygon", OID::SpecializedString.new(:polygon)
-        m.register_type "circle", OID::SpecializedString.new(:circle)
-
-        register_class_with_precision m, "time", Type::Time
-        register_class_with_precision m, "timestamp", OID::Timestamp
-        register_class_with_precision m, "timestamptz", OID::TimestampWithTimeZone
-
-        m.register_type "numeric" do |_, fmod, sql_type|
-          precision = extract_precision(sql_type)
-          scale = extract_scale(sql_type)
-
-          # The type for the numeric depends on the width of the field,
-          # so we'll do something special here.
-          #
-          # When dealing with decimal columns:
-          #
-          # places after decimal  = fmod - 4 & 0xffff
-          # places before decimal = (fmod - 4) >> 16 & 0xffff
-          if fmod && (fmod - 4 & 0xffff).zero?
-            # FIXME: Remove this class, and the second argument to
-            # lookups on PG
-            Type::DecimalWithoutScale.new(precision: precision)
-          else
-            OID::Decimal.new(precision: precision, scale: scale)
+      def load_additional_types(oids = nil) # :nodoc:
+        initializer = ArjdbcTypeMapInitializer.new(type_map)
+        load_types_queries(initializer, oids) do |query|
+          execute_and_clear(query, "SCHEMA", []) do |records|
+            initializer.run(records)
           end
         end
-
-        m.register_type "interval" do |*args, sql_type|
-          precision = extract_precision(sql_type)
-          OID::Interval.new(precision: precision)
-        end
-
-        # pgjdbc returns these if the column is auto-incrmenting
-        m.alias_type 'serial', 'int4'
-        m.alias_type 'bigserial', 'int8'
       end
 
-      def load_additional_types(type_map, oid = nil) # :nodoc:
-        initializer = ArjdbcTypeMapInitializer.new(type_map)
-
-        if supports_ranges?
-          query = <<-SQL
-              SELECT t.oid, t.typname, t.typelem, t.typdelim, t.typinput, r.rngsubtype, t.typtype, t.typbasetype,
-                ns.nspname, ns.nspname = ANY(current_schemas(true)) in_ns
-              FROM pg_type as t
-              LEFT JOIN pg_range as r ON oid = rngtypid
-              JOIN pg_namespace AS ns ON t.typnamespace = ns.oid
-          SQL
+      def load_types_queries(initializer, oids)
+        query = <<~SQL
+            SELECT t.oid, t.typname, t.typelem, t.typdelim, t.typinput, r.rngsubtype, t.typtype, t.typbasetype
+            FROM pg_type as t
+            LEFT JOIN pg_range as r ON oid = rngtypid
+        SQL
+        if oids
+          yield query + "WHERE t.oid IN (%s)" % oids.join(", ")
         else
-          query = <<-SQL
-              SELECT t.oid, t.typname, t.typelem, t.typdelim, t.typinput, t.typtype, t.typbasetype,
-                ns.nspname, ns.nspname = ANY(current_schemas(true)) in_ns
-              FROM pg_type as t
-              JOIN pg_namespace AS ns ON t.typnamespace = ns.oid
-          SQL
+          yield query + initializer.query_conditions_for_known_type_names
+          yield query + initializer.query_conditions_for_known_type_types
+          yield query + initializer.query_conditions_for_array_types
         end
+      end
 
-        if oid
-          if oid.is_a? Numeric || oid.match(/^\d+$/)
-            # numeric OID
-            query += "WHERE t.oid = %s" % oid
+      def update_typemap_for_default_timezone
+        if @default_timezone != ActiveRecord.default_timezone && @timestamp_decoder
+          decoder_class = ActiveRecord.default_timezone == :utc ?
+                            PG::TextDecoder::TimestampUtc :
+                            PG::TextDecoder::TimestampWithoutTimeZone
 
-          elsif m = oid.match(/"?(\w+)"?\."?(\w+)"?/)
-            # namespace and type name
-            query += "WHERE ns.nspname = '%s' AND t.typname = '%s'" % [m[1], m[2]]
+          @timestamp_decoder = decoder_class.new(@timestamp_decoder.to_h)
+          @connection.type_map_for_results.add_coder(@timestamp_decoder)
 
-          else
-            # only type name
-            query += "WHERE t.typname = '%s' AND ns.nspname = ANY(current_schemas(true))" % oid
-          end
-        else
-          query += initializer.query_conditions_for_initial_load
+          @default_timezone = ActiveRecord.default_timezone
+
+          # if default timezone has changed, we need to reconfigure the connection
+          # (specifically, the session time zone)
+          configure_connection
         end
-
-        records = execute(query, 'SCHEMA')
-        initializer.run(records)
       end
 
       def extract_scale(sql_type)

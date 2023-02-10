@@ -214,6 +214,11 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
         });
     }
 
+    @JRubyMethod
+    public IRubyObject exec_params(ThreadContext context, IRubyObject sql, IRubyObject binds) {
+        return execute_prepared_query(context, sql, binds, null);
+    }
+
     private transient RubyClass oidArray; // PostgreSQL::OID::Array
 
     private RubyClass oidArray(final ThreadContext context) {
