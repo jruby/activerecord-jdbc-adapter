@@ -798,11 +798,96 @@ module ActiveRecord::ConnectionAdapters
 
     private
 
-    # Prepared statements aren't schema aware so we need to make sure we
-    # store different PreparedStatement objects for different schemas
+    FEATURE_NOT_SUPPORTED = "0A000" # :nodoc:
+
+    def execute_and_clear(sql, name, binds, prepare: false, async: false)
+      sql = transform_query(sql)
+      check_if_write_query(sql)
+
+      if !prepare || without_prepared_statement?(binds)
+        result = exec_no_cache(sql, name, binds, async: async)
+      else
+        result = exec_cache(sql, name, binds, async: async)
+      end
+      begin
+        ret = yield result
+      ensure
+        # Is this really result in AR PG?
+#        result.clear
+      end
+      ret
+    end
+
+    def exec_no_cache(sql, name, binds, async: false)
+      materialize_transactions
+      mark_transaction_written_if_write(sql)
+
+      # make sure we carry over any changes to ActiveRecord.default_timezone that have been
+      # made since we established the connection
+      update_typemap_for_default_timezone
+
+      type_casted_binds = type_casted_binds(binds)
+      log(sql, name, binds, type_casted_binds, async: async) do
+        ActiveSupport::Dependencies.interlock.permit_concurrent_loads do
+          @connection.exec_params(sql, type_casted_binds)
+        end
+      end
+    end
+
+    def exec_cache(sql, name, binds, async: false)
+      materialize_transactions
+      mark_transaction_written_if_write(sql)
+      update_typemap_for_default_timezone
+
+      stmt_key = prepare_statement(sql, binds)
+      type_casted_binds = type_casted_binds(binds)
+
+      log(sql, name, binds, type_casted_binds, stmt_key, async: async) do
+        ActiveSupport::Dependencies.interlock.permit_concurrent_loads do
+          @connection.exec_prepared(stmt_key, type_casted_binds)
+        end
+      end
+    rescue ActiveRecord::StatementInvalid => e
+      raise unless is_cached_plan_failure?(e)
+
+      # Nothing we can do if we are in a transaction because all commands
+      # will raise InFailedSQLTransaction
+      if in_transaction?
+        raise ActiveRecord::PreparedStatementCacheExpired.new(e.cause.message)
+      else
+        @lock.synchronize do
+          # outside of transactions we can simply flush this query and retry
+          @statements.delete sql_key(sql)
+        end
+        retry
+      end
+    end
+
+    # Annoyingly, the code for prepared statements whose return value may
+    # have changed is FEATURE_NOT_SUPPORTED.
+    #
+    # This covers various different error types so we need to do additional
+    # work to classify the exception definitively as a
+    # ActiveRecord::PreparedStatementCacheExpired
+    #
+    # Check here for more details:
+    # https://git.postgresql.org/gitweb/?p=postgresql.git;a=blob;f=src/backend/utils/cache/plancache.c#l573
+    def is_cached_plan_failure?(e)
+      pgerror = e.cause
+      pgerror.result.result_error_field(PG::PG_DIAG_SQLSTATE) == FEATURE_NOT_SUPPORTED &&
+        pgerror.result.result_error_field(PG::PG_DIAG_SOURCE_FUNCTION) == "RevalidateCachedQuery"
+    rescue
+      false
+    end
+
+    def in_transaction?
+      open_transactions > 0
+    end
+
+    # Returns the statement identifier for the client side cache
+    # of statements
     def sql_key(sql)
       "#{schema_search_path}-#{sql}"
     end
-
   end
 end
