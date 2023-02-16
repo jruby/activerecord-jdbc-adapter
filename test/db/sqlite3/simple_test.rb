@@ -260,7 +260,7 @@ class SQLite3SimpleTest < Test::Unit::TestCase
     my_time = Time.utc 2013, 03, 15, 19, 53, 51, 0 # usec
     model = DbType.create! :sample_datetime => my_time
     model = DbType.where("id = #{model.id}").select('sample_datetime AS custom_sample_datetime').first
-    assert_match my_time.to_s(:db), model.custom_sample_datetime # '2013-03-15 18:53:51.000000'
+    assert_match my_time.to_fs(:db), model.custom_sample_datetime # '2013-03-15 18:53:51.000000'
   end
 
   # @override SQLite3 JDBC returns VARCHAR type for column
@@ -268,7 +268,7 @@ class SQLite3SimpleTest < Test::Unit::TestCase
     my_date = Time.local(2000, 01, 30, 0, 0, 0, 0).to_date
     model = DbType.create! :sample_date => my_date
     model = DbType.where("id = #{model.id}").select('sample_date AS custom_sample_date').first
-    assert_equal my_date.to_s(:db), model.custom_sample_date
+    assert_equal my_date.to_fs(:db), model.custom_sample_date
   end
 
   # @override

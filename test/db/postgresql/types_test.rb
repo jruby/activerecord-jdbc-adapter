@@ -375,7 +375,7 @@ _SQL
 
   def test_tsrange_values
     skip "PostgreSQL 9.2 required for range datatypes" unless supports_ranges?
-    tz = ::ActiveRecord::Base.default_timezone
+    tz = ::ActiveRecord.default_timezone
     assert_equal Time.send(tz, 2010, 1, 1, 14, 30, 0)..Time.send(tz, 2011, 1, 1, 14, 30, 0), @first_range.ts_range
     assert_equal Time.send(tz, 2010, 1, 1, 14, 30, 0)...Time.send(tz, 2011, 1, 1, 14, 30, 0), @second_range.ts_range
     assert_equal nil, @empty_range.ts_range
@@ -424,7 +424,7 @@ _SQL
 
   def test_create_tsrange
     skip "PostgreSQL 9.2 required for range datatypes" unless supports_ranges?
-    tz = ::ActiveRecord::Base.default_timezone
+    tz = ::ActiveRecord.default_timezone
     tsrange = Time.send(tz, 2010, 1, 1, 14, 30, 0)...Time.send(tz, 2011, 2, 2, 14, 30, 0)
     range = PostgresqlRange.new(:ts_range => tsrange)
     assert range.save
@@ -434,7 +434,7 @@ _SQL
 
   def test_update_tsrange
     skip "PostgreSQL 9.2 required for range datatypes" unless supports_ranges?
-    tz = ::ActiveRecord::Base.default_timezone
+    tz = ::ActiveRecord.default_timezone
     new_tsrange = Time.send(tz, 2010, 1, 1, 14, 30, 0)...Time.send(tz, 2011, 2, 2, 14, 30, 0)
     assert @first_range.ts_range = new_tsrange
     assert @first_range.save
@@ -682,10 +682,10 @@ _SQL
 
   def test_timestamp_with_zone_values_with_rails_time_zone_support
     old_tz = ActiveRecord::Base.time_zone_aware_attributes
-    old_default_tz = ActiveRecord::Base.default_timezone
+    old_default_tz = ActiveRecord.default_timezone
 
     ActiveRecord::Base.time_zone_aware_attributes = true
-    ActiveRecord::Base.default_timezone = :utc
+    ActiveRecord.default_timezone = :utc
 
     @connection.reconnect!
 
@@ -693,17 +693,17 @@ _SQL
     assert_equal Time.utc(2010,1,1, 11,0,0), @first_timestamp_with_zone.time
     assert_instance_of Time, @first_timestamp_with_zone.time
   ensure
-    ActiveRecord::Base.default_timezone = old_default_tz
+    ActiveRecord.default_timezone = old_default_tz
     ActiveRecord::Base.time_zone_aware_attributes = old_tz
     @connection.reconnect!
   end
 
   def test_timestamp_with_zone_values_without_rails_time_zone_support
     old_tz = ActiveRecord::Base.time_zone_aware_attributes
-    old_default_tz = ActiveRecord::Base.default_timezone
+    old_default_tz = ActiveRecord.default_timezone
 
     ActiveRecord::Base.time_zone_aware_attributes = false
-    ActiveRecord::Base.default_timezone = :local
+    ActiveRecord.default_timezone = :local
 
     @connection.reconnect!
 
@@ -711,7 +711,7 @@ _SQL
     assert_equal Time.utc(2010,1,1, 11,0,0), @first_timestamp_with_zone.time
     assert_instance_of Time, @first_timestamp_with_zone.time
   ensure
-    ActiveRecord::Base.default_timezone = old_default_tz
+    ActiveRecord.default_timezone = old_default_tz
     ActiveRecord::Base.time_zone_aware_attributes = old_tz
     @connection.reconnect!
   end

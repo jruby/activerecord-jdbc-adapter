@@ -52,8 +52,8 @@ class PostgresRakeTest < Test::Unit::TestCase
   test 'rake db:structure:dump and db:structure:load' do
     omit('pg_dump not available') unless self.class.which('pg_dump')
 
-    initial_format = ActiveRecord::Base.schema_format
-    ActiveRecord::Base.schema_format = :sql
+    initial_format = ActiveRecord.schema_format
+    ActiveRecord.schema_format = :sql
     # Rake::Task["db:create"].invoke
     create_rake_test_database do |connection|
       create_schema_migrations_table(connection)
@@ -85,7 +85,7 @@ class PostgresRakeTest < Test::Unit::TestCase
     ensure
       File.delete(structure_sql) if File.exists?(structure_sql)
       Dir.rmdir 'db'
-      ActiveRecord::Base.schema_format = initial_format
+      ActiveRecord.schema_format = initial_format
     end
   end
 
