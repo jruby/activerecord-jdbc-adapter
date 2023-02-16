@@ -19,7 +19,7 @@ module ExplainSupportTestMethods
   end
 
   def test_explain_with_arel
-    arel, binds = create_explain_arel
+    arel, _ = create_explain_arel
 
     pp = ActiveRecord::Base.connection.explain(arel, [])
     puts "\n", pp if PRINT_EXPLAIN_OUTPUT
