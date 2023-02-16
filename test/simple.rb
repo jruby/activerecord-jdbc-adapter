@@ -164,11 +164,11 @@ module DirtyAttributeTests
   private
 
   def with_partial_updates(klass, on = true)
-    old = klass.partial_writes?
-    klass.partial_writes = on
+    old = klass.partial_updates?
+    klass.partial_updates = on
     yield
   ensure
-    klass.partial_writes = old
+    klass.partial_updates = old
   end
 
   def do_update_all(model, values, conditions)
@@ -423,7 +423,7 @@ module SimpleTestMethods
     e = DbType.create!(:sample_string => '', :sample_text => '')
     t = Time.now
     value = Time.local(t.year, t.month, t.day, t.hour, t.min, t.sec, 0)
-    str = value.utc.to_s(:db) << '.' << sprintf("%06d", value.usec)
+    str = value.utc.to_fs(:db) << '.' << sprintf("%06d", value.usec)
     e.sample_string = value
     e.sample_text = value
     e.save!; e.reload
