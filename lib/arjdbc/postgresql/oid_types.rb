@@ -91,10 +91,9 @@ module ArJdbc
       end
 
       def get_oid_type(oid, fmod, column_name, sql_type = '') # :nodoc:
-        # This is unhappy with oid of regproc
-        #if !type_map.key?(oid)
-        #  load_additional_types([oid])
-        #end
+        if !type_map.key?(oid)
+          load_additional_types([oid])
+        end
 
         type_map.fetch(oid, fmod, sql_type) {
           warn "unknown OID #{oid}: failed to recognize type of '#{column_name}'. It will be treated as String."
@@ -146,7 +145,9 @@ module ArJdbc
           m.register_type "path", OID::SpecializedString.new(:path)
           m.register_type "polygon", OID::SpecializedString.new(:polygon)
           m.register_type "circle", OID::SpecializedString.new(:circle)
-
+          m.register_type "regproc", OID::Enum.new
+          # FIXME: adding this vector type leads to quoting not handlign Array data in quoting.
+          #m.register_type "_int4", OID::Vector.new(",", m.lookup("int4"))
           register_class_with_precision m, "time", Type::Time
           register_class_with_precision m, "timestamp", OID::Timestamp
           register_class_with_precision m, "timestamptz", OID::TimestampWithTimeZone
@@ -206,6 +207,7 @@ module ArJdbc
         initializer = ArjdbcTypeMapInitializer.new(type_map)
         load_types_queries(initializer, oids) do |query|
           execute_and_clear(query, "SCHEMA", []) do |records|
+            #puts "RECORDS: #{records.to_a}"
             initializer.run(records)
           end
         end
@@ -218,7 +220,14 @@ module ArJdbc
             LEFT JOIN pg_range as r ON oid = rngtypid
         SQL
         if oids
-          yield query + "WHERE t.oid IN (%s)" % oids.join(", ")
+          if oids.all? { |e| e.kind_of? Numeric }
+            yield query + "WHERE t.oid IN (%s)" % oids.join(", ")
+          else
+            in_list = oids.map { |e| %Q{'#{e}'} }.join(", ")
+            #puts caller[0..40]
+            puts "IN_LIST = #{in_list}"
+            yield query + "WHERE t.typname IN (%s)" % in_list
+          end
         else
           yield query + initializer.query_conditions_for_known_type_names
           yield query + initializer.query_conditions_for_known_type_types
