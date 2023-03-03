@@ -224,8 +224,6 @@ module ArJdbc
             yield query + "WHERE t.oid IN (%s)" % oids.join(", ")
           else
             in_list = oids.map { |e| %Q{'#{e}'} }.join(", ")
-            #puts caller[0..40]
-            puts "IN_LIST = #{in_list}"
             yield query + "WHERE t.typname IN (%s)" % in_list
           end
         else
