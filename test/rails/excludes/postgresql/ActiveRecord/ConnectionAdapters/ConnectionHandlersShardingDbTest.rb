@@ -13,3 +13,8 @@ exclude :test_swapping_granular_shards_and_roles_in_a_multi_threaded_environment
 exclude :test_swapping_shards_and_roles_in_a_multi_threaded_environment, 'tries to load SQLite3 driver'
 exclude :test_swapping_shards_globally_in_a_multi_threaded_environment, 'tries to load SQLite3 driver'
 exclude :test_switching_connections_via_handler, 'tries to load SQLite3 driver'
+exclude :test_retrieve_connection_pool_with_invalid_shard, 'tries to load SQLite3 driver'
+exclude :test_calling_connected_to_on_a_non_existent_shard_raises, 'tries to load SQLite3 driver'
+exclude :test_cannot_swap_shards_while_prohibited, 'tries to load SQLite3 driver'
+exclude :test_can_swap_roles_while_shard_swapping_is_prohibited, 'tries to load SQLite3 driver'
+
