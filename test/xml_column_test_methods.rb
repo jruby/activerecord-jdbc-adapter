@@ -30,9 +30,7 @@ module XmlColumnTestMethods
         assert xml_model = XmlModel.first
 
         unless xml_sql_type =~ /text/i
-          require 'rexml/document'
-          doc = REXML::Document.new xml_model.xml_col
-          assert_equal "Rubyist's <3 XML!", doc.root.elements.first.text
+          assert_equal "<xml><LoVE><![CDATA[Rubyist's <3 XML!]]></LoVE></xml>", xml_model.xml_col
         end
 
         xml_model.xml_col = nil
