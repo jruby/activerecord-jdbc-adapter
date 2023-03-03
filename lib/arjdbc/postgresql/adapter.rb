@@ -21,6 +21,7 @@ require 'arjdbc/abstract/transaction_support'
 require 'arjdbc/postgresql/base/array_decoder'
 require 'arjdbc/postgresql/base/array_encoder'
 require 'arjdbc/postgresql/name'
+require 'active_model'
 
 module ArJdbc
   # Strives to provide Rails built-in PostgreSQL adapter (API) compatibility.
