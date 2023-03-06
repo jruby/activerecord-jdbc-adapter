@@ -756,26 +756,6 @@ module ActiveRecord::ConnectionAdapters
     # Note: This is not an override of ours but a moved line from AR Sqlite3Adapter to register ours vs our copied module (which would be their class).
 #    ActiveSupport.run_load_hooks(:active_record_sqlite3adapter, SQLite3Adapter)
 
-    private
-
-    # because the JDBC driver doesn't like multiple SQL statements in one JDBC statement
-    def combine_multi_statements(total_sql)
-      total_sql
-    end
-
-    # combine
-    def write_query?(sql) # :nodoc:
-      return sql.any? { |stmt| super(stmt) } if sql.kind_of? Array
-      !READ_QUERY.match?(sql)
-    rescue ArgumentError # Invalid encoding
-      !READ_QUERY.match?(sql.b)
-    end
-
-    def initialize_type_map(m = type_map)
-      super
-      register_class_with_limit m, %r(int)i, SQLite3Integer
-    end
-
     # DIFFERENCE: FQN
     class SQLite3Integer < ::ActiveRecord::Type::Integer # :nodoc:
       private
@@ -788,5 +768,34 @@ module ActiveRecord::ConnectionAdapters
 
     # DIFFERENCE: FQN
     ::ActiveRecord::Type.register(:integer, SQLite3Integer, adapter: :sqlite3)
+
+    class << self
+      private
+        def initialize_type_map(m)
+          super
+          register_class_with_limit m, %r(int)i, SQLite3Integer
+        end
+    end
+
+    TYPE_MAP = ActiveRecord::Type::TypeMap.new.tap { |m| initialize_type_map(m) }
+
+    private
+
+    # because the JDBC driver doesn't like multiple SQL statements in one JDBC statement
+    def combine_multi_statements(total_sql)
+      total_sql
+    end
+
+    def type_map
+      TYPE_MAP
+    end
+
+    # combine
+    def write_query?(sql) # :nodoc:
+      return sql.any? { |stmt| super(stmt) } if sql.kind_of? Array
+      !READ_QUERY.match?(sql)
+    rescue ArgumentError # Invalid encoding
+      !READ_QUERY.match?(sql.b)
+    end
   end
 end

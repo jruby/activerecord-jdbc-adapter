@@ -10,6 +10,8 @@ module ArJdbc
       NO_BINDS = [].freeze
 
       def exec_insert(sql, name = nil, binds = NO_BINDS, pk = nil, sequence_name = nil)
+        sql = transform_query(sql)
+
         if preventing_writes?
           raise ActiveRecord::ReadOnlyError, "Write query attempted while in readonly mode: #{sql}"
         end
@@ -31,6 +33,8 @@ module ArJdbc
       # It appears that at this point (AR 5.0) "prepare" should only ever be true
       # if prepared statements are enabled
       def exec_query(sql, name = nil, binds = NO_BINDS, prepare: false, async: false)
+        sql = transform_query(sql)
+
         if preventing_writes? && write_query?(sql)
           raise ActiveRecord::ReadOnlyError, "Write query attempted while in readonly mode: #{sql}"
         end
@@ -52,6 +56,8 @@ module ArJdbc
       end
 
       def exec_update(sql, name = nil, binds = NO_BINDS)
+        sql = transform_query(sql)
+
         if preventing_writes?
           raise ActiveRecord::ReadOnlyError, "Write query attempted while in readonly mode: #{sql}"
         end
@@ -70,6 +76,8 @@ module ArJdbc
       alias :exec_delete :exec_update
 
       def execute(sql, name = nil, async: false)
+        sql = transform_query(sql)
+        
         if preventing_writes? && write_query?(sql)
           raise ActiveRecord::ReadOnlyError, "Write query attempted while in readonly mode: #{sql}"
         end
