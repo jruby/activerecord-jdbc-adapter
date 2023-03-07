@@ -43,6 +43,7 @@ jobs:
       PREPARED_STATEMENTS: ${{ matrix.prepared_statements }}
       DRIVER: ${{ matrix.driver }}
       JRUBY_OPTS: "-J-Xms64M -J-Xmx1024M"
+      MT_KWARGS_HACK: 1
 
     steps:
       - uses: actions/checkout@v3
@@ -100,6 +101,8 @@ jobs:
       PGHOST: localhost
       PGPORT: 5432
       PGUSER: postgres
+      MT_KWARGS_HACK: 1
+
 
     steps:
       - uses: actions/checkout@v3
@@ -135,6 +138,7 @@ jobs:
       DB: ${{ matrix.db }}
       AR_VERSION: ${{ matrix.ar_version }}
       JRUBY_OPTS: "-J-Xms64M -J-Xmx1024M"
+      MT_KWARGS_HACK: 1
 
     steps:
       - uses: actions/checkout@v3
@@ -177,6 +181,7 @@ jobs:
       MY_USER: root
       MY_PASSWORD: root
       PREPARED_STATEMENTS: ${{ matrix.prepared_statements }}
+      MT_KWARGS_HACK: 1
 
     steps:
       - uses: actions/checkout@v3
@@ -228,6 +233,7 @@ jobs:
       PGHOST: localhost
       PGPORT: 5432
       PGUSER: postgres
+      MT_KWARGS_HACK: 1
 
     steps:
       - uses: actions/checkout@v3
@@ -257,6 +263,7 @@ jobs:
     env:
       DB: ${{ matrix.db }}
       JRUBY_OPTS: "-J-Xms64M -J-Xmx1024M"
+      MT_KWARGS_HACK: 1
 
     steps:
       - uses: actions/checkout@v3
