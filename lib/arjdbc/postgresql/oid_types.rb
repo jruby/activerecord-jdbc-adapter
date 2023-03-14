@@ -1,5 +1,4 @@
 # frozen_string_literal: true
-
 require 'thread'
 
 module ArJdbc
@@ -91,8 +90,23 @@ module ArJdbc
       end
 
       def get_oid_type(oid, fmod, column_name, sql_type = '') # :nodoc:
-        if !type_map.key?(oid)
-          load_additional_types([oid])
+        # Note: type_map is storing a bunch of oid type prefixed with a namespace even
+        # if they are not namespaced (e.g. ""."oidvector").  builtin types which are
+        # common seem to not be prefixed (e.g. "varchar").  OID numbers are also keys
+        # but JDBC never returns those.  So the current scheme is to check with
+        # what we got and that covers number and plain strings and otherwise we will
+        # wrap with the namespace form.
+        found = type_map.key?(oid)
+
+        if !found
+          key = oid.kind_of?(String) && oid != "oid" ? "\"\".\"#{oid}\"" : oid
+          found = type_map.key?(key)
+
+          if !found
+            load_additional_types([oid])
+          else
+            oid = key
+          end
         end
 
         type_map.fetch(oid, fmod, sql_type) {
@@ -207,7 +221,6 @@ module ArJdbc
         initializer = ArjdbcTypeMapInitializer.new(type_map)
         load_types_queries(initializer, oids) do |query|
           execute_and_clear(query, "SCHEMA", []) do |records|
-            #puts "RECORDS: #{records.to_a}"
             initializer.run(records)
           end
         end
