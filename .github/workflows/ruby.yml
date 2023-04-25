@@ -129,7 +129,7 @@ jobs:
         ruby-version: ['jruby-head']
         db: ['sqlite3']
         test_targets: ["rails:test_sqlite3"]
-        ar_version: ["7-0-stable"]
+        ar_version: ["7-0-stable", "main"]
 
     env:
       DB: ${{ matrix.db }}

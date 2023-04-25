@@ -219,7 +219,22 @@ module ArJdbc
     end
 
     def all_foreign_keys_valid? # :nodoc:
-      execute("PRAGMA foreign_key_check").blank?
+      # Rails 7
+      check_all_foreign_keys_valid!
+      true
+    rescue ActiveRecord::StatementInvalid
+      false
+    end
+
+    def check_all_foreign_keys_valid! # :nodoc:
+      # Rails 7.1
+      sql = "PRAGMA foreign_key_check"
+      result = execute(sql)
+
+      unless result.blank?
+        tables = result.map { |row| row["table"] }
+        raise ActiveRecord::StatementInvalid.new("Foreign key violations found: #{tables.join(", ")}", sql: sql)
+      end
     end
 
     # SCHEMA STATEMENTS ========================================
