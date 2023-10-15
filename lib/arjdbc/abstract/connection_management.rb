@@ -6,29 +6,28 @@ module ArJdbc
 
       # @override
       def active?
-        return unless @connection
-        @connection.active?
+        @raw_connection&.active?
       end
 
       def really_valid?
-        return unless @connection
-        @connection.really_valid?
+        @raw_connection&.really_valid?
       end
 
       # @override
-      def reconnect!
-        super # clear_cache! && reset_transaction
-        @connection.reconnect! # handles adapter.configure_connection
-      end
+      # Removed to fix sqlite adapter, may be needed for others
+      # def reconnect!
+      #   super # clear_cache! && reset_transaction
+      #   @connection.reconnect! # handles adapter.configure_connection
+      # end
 
       # @override
       def disconnect!
         super # clear_cache! && reset_transaction
-        return unless @connection
-        @connection.disconnect!
+        @raw_connection&.disconnect!
       end
 
       # @override
+      # Removed to fix sqlite adapter, may be needed for others
       # def verify!(*ignored)
       #  if @connection && @connection.jndi?
       #    # checkout call-back does #reconnect!
