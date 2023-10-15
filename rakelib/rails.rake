@@ -29,6 +29,7 @@ namespace :rails do
       env['ARCONN'] = adapter
       env['BUNDLE_GEMFILE'] = ENV['BUNDLE_GEMFILE'] || File.join(root_dir, 'Gemfile') # use AR-JDBC's with Rails tests
       env['EXCLUDE_DIR'] = File.join(root_dir, 'test/rails/excludes', adapter) # minitest-excludes
+      env['CI'] = false # Rails strict warnings blows up otherwise
 
       libs = [
           File.join(root_dir, 'lib'),
