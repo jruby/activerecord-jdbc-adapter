@@ -30,17 +30,12 @@ module ArJdbc
         @statements = StatementPool.new(statement_limit) # AR (5.0) expects this to be stored as @statements
       end
 
-      # Clears the prepared statements cache.
-      def clear_cache!
-        @statements.clear
-      end
-
       def delete_cached_statement(sql)
         @statements.delete(sql_key(sql))
       end
 
       def fetch_cached_statement(sql)
-        @statements[sql_key(sql)] ||= @connection.prepare_statement(sql)
+        @statements[sql_key(sql)] ||= @raw_connection.prepare_statement(sql)
       end
 
       private

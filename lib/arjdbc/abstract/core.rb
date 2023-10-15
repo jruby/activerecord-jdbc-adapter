@@ -9,7 +9,7 @@ module ArJdbc
 
       attr_reader :config
 
-      def initialize(connection, logger = nil, config = {})
+      def initialize(config)
         @config = config
 
         if self.class.equal? ActiveRecord::ConnectionAdapters::JdbcAdapter
@@ -18,11 +18,7 @@ module ArJdbc
           extend spec if spec
         end
 
-        connection ||= jdbc_connection_class(config[:adapter_spec]).new(config, self)
-
-        super(connection, logger, config) # AbstractAdapter
-
-        connection.configure_connection # will call us (maybe)
+        super(config) # AbstractAdapter
       end
 
       # Retrieve the raw `java.sql.Connection` object.

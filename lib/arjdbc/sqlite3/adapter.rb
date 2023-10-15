@@ -89,9 +89,9 @@ module ArJdbc
       end
     end
 
-    def initialize(connection, logger, connection_options, config)
+    def initialize(config)
       @memory_database = config[:database] == ":memory:"
-      super(connection, logger, config)
+      super
       configure_connection
     end
 
@@ -166,19 +166,22 @@ module ArJdbc
     end
 
     def active?
-      !@raw_connection.closed?
+      @raw_connection && !@raw_connection.closed?
     end
 
-    def reconnect!
-      super
-      connect if @connection.closed?
+    def reconnect
+      if active?
+        @raw_connection.rollback rescue nil
+      else
+        connect
+      end
     end
 
     # Disconnects from the database if already connected. Otherwise, this
     # method does nothing.
     def disconnect!
       super
-      @connection.close rescue nil
+      @raw_connection.close rescue nil
     end
 
     def supports_index_sort_order?
@@ -610,10 +613,8 @@ module ArJdbc
     end
 
     def connect
-      @connection = ::SQLite3::Database.new(
-        @config[:database].to_s,
-        @config.merge(results_as_hash: true)
-      )
+      @raw_connection = jdbc_connection_class(@config[:adapter_spec]).new(@config, self)
+      @raw_connection.configure_connection
     end
 
     def configure_connection
@@ -751,8 +752,9 @@ module ActiveRecord::ConnectionAdapters
     # SQLite driver doesn't support all types of insert statements with executeUpdate so
     # make it act like a regular query and the ids will be returned from #last_inserted_id
     # example: INSERT INTO "aircraft" DEFAULT VALUES
-    def exec_insert(sql, name = nil, binds = [], pk = nil, sequence_name = nil)
-      exec_query(sql, name, binds)
+    def exec_insert(sql, name = nil, binds = [], pk = nil, sequence_name = nil, returning: nil)
+      sql, binds = sql_for_insert(sql, pk, binds, returning)
+      internal_exec_query(sql, name, binds)
     end
 
     def jdbc_column_class
