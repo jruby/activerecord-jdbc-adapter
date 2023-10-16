@@ -286,7 +286,23 @@ public class MySQLRubyJdbcConnection extends RubyJdbcConnection {
         final Ruby runtime, final ResultSet resultSet, final int column)
         throws SQLException {
 
-        final Timestamp value = resultSet.getTimestamp(column);
+        // PATCH: Catch and try to fix HOUR_OF_DAY error that occurs while casting DB value to Java Date object.
+        // Occurs when app/DB timezone is not UTC and date is retrieved from updated_at_utc field that doesn't exist in server TZ.
+        // final Timestamp value = resultSet.getTimestamp(column);
+
+        final Timestamp value;
+        try {
+            value = resultSet.getTimestamp(column);
+        }
+        catch (SQLException e) {
+            if (e.getMessage().contains("HOUR_OF_DAY")) {
+                return stringToRuby(context, runtime, resultSet, column);
+            }
+            else {
+                throw e;
+            }
+        }
+
         if ( value == null ) {
             return resultSet.wasNull() ? context.nil : RubyString.newEmptyString(runtime);
         }
