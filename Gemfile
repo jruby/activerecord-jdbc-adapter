@@ -41,6 +41,7 @@ elsif ENV['AR_VERSION'] # Use specific version of AR and not .gemspec version
         gem 'actionpack', require: false
         gem 'actionview', require: false
       end
+      
     end
   end
 else
@@ -70,6 +71,10 @@ group :rails do
   gem 'builder', require: nil
 
   gem 'erubis', require: nil # "~> 2.7.0"
+
+  # Due to rails/activesupport/lib/active_support/message_pack.rb
+  gem 'msgpack', '>= 1.7.0', require: false
+
   # NOTE: due rails/activerecord/test/cases/connection_management_test.rb
   gem 'rack', require: nil
 
@@ -99,3 +104,5 @@ group :test do
   #   gem 'activerecord-sqlserver-adapter', require: nil, platform: :mri
   # end
 end
+
+gem 'pry-nav'
