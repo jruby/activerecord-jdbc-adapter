@@ -107,7 +107,8 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
 
     // Used to wipe trailing 0's from points (3.0, 5.6) -> (3, 5.6)
     private static final Pattern pointCleanerPattern = Pattern.compile("\\.0\\b");
-    private static final TimeZone TZ_DEFAULT = TimeZone.getDefault();
+    // PATCH: A constant usage is replaced by a method call because the default time zone can be changed.
+    // private static final TimeZone TZ_DEFAULT = TimeZone.getDefault();
 
     private RubyClass resultClass;
     private RubyHash typeMap = null;
@@ -392,7 +393,9 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
             RubyDate rubyDate = (RubyDate) value;
             DateTime dt = rubyDate.getDateTime();
             // pgjdbc needs adjustment for default JVM timezone
-            statement.setDate(index, new Date(dt.getMillis() - TZ_DEFAULT.getOffset(dt.getMillis())));
+            // PATCH: Get the default time zone dynamically, taking into account any time zone changes.
+            // statement.setDate(index, new Date(dt.getMillis() - TZ_DEFAULT.getOffset(dt.getMillis())));
+            statement.setDate(index, new Date(dt.getMillis() - TimeZone.getDefault().getOffset(dt.getMillis())));
             return;
         }
 
