@@ -153,6 +153,10 @@ module ArJdbc
       database_version >= "3.8.3"
     end
 
+    def supports_insert_returning?
+      database_version >= "3.35.0"
+    end
+
     def supports_insert_on_conflict?
       database_version >= "3.24.0"
     end
@@ -167,6 +171,10 @@ module ArJdbc
 
     def active?
       @raw_connection && !@raw_connection.closed?
+    end
+
+    def return_value_after_insert?(column) # :nodoc:
+      column.auto_populated?
     end
 
     def reconnect
@@ -194,7 +202,7 @@ module ArJdbc
 
     # Returns the current database encoding format as a string, eg: 'UTF-8'
     def encoding
-      @connection.encoding.to_s
+      any_raw_connection.encoding.to_s
     end
 
     def supports_explain?
@@ -304,7 +312,7 @@ module ArJdbc
 
     def change_column_null(table_name, column_name, null, default = nil) #:nodoc:
       unless null || default.nil?
-        exec_query("UPDATE #{quote_table_name(table_name)} SET #{quote_column_name(column_name)}=#{quote(default)} WHERE #{quote_column_name(column_name)} IS NULL")
+        internal_exec_query("UPDATE #{quote_table_name(table_name)} SET #{quote_column_name(column_name)}=#{quote(default)} WHERE #{quote_column_name(column_name)} IS NULL")
       end
       alter_table(table_name) do |definition|
         definition[column_name].null = null
@@ -326,13 +334,26 @@ module ArJdbc
       rename_column_indexes(table_name, column.name, new_column_name)
     end
 
+    def add_timestamps(table_name, **options)
+      options[:null] = false if options[:null].nil?
+
+      if !options.key?(:precision)
+        options[:precision] = 6
+      end
+
+      alter_table(table_name) do |definition|
+        definition.column :created_at, :datetime, **options
+        definition.column :updated_at, :datetime, **options
+      end
+    end
+
     def add_reference(table_name, ref_name, **options) # :nodoc:
       super(table_name, ref_name, type: :integer, **options)
     end
     alias :add_belongs_to :add_reference
 
     def foreign_keys(table_name)
-      fk_info = exec_query("PRAGMA foreign_key_list(#{quote(table_name)})", "SCHEMA")
+      fk_info = internal_exec_query("PRAGMA foreign_key_list(#{quote(table_name)})", "SCHEMA")
       fk_info.map do |row|
         options = {
           column: row["from"],
@@ -360,11 +381,16 @@ module ArJdbc
         end
       end
 
+      sql << " RETURNING #{insert.returning}" if insert.returning
       sql
     end
 
     def shared_cache? # :nodoc:
       @config.fetch(:flags, 0).anybits?(::SQLite3::Constants::Open::SHAREDCACHE)
+    end
+
+    def use_insert_returning?
+      @use_insert_returning
     end
 
     def get_database_version # :nodoc:
@@ -395,15 +421,18 @@ module ArJdbc
       case default
       when /^null$/i
         nil
-        # Quoted types
-      when /^'(.*)'$/m
+      # Quoted types
+      when /^'([^|]*)'$/m
         $1.gsub("''", "'")
-        # Quoted types
-      when /^"(.*)"$/m
+      # Quoted types
+      when /^"([^|]*)"$/m
         $1.gsub('""', '"')
-        # Numeric types
+      # Numeric types
       when /\A-?\d+(\.\d*)?\z/
         $&
+      # Binary columns
+      when /x'(.*)'/
+        [ $1 ].pack("H*")
       else
         # Anything else is blank or some function
         # and we can't know the value of that, so return nil.
@@ -482,14 +511,25 @@ module ArJdbc
           if column.has_default?
             type = lookup_cast_type_from_column(column)
             default = type.deserialize(column.default)
+            default = -> { column.default_function } if default.nil?
           end
 
-          @definition.column(column_name, column.type,
-            limit: column.limit, default: default,
-            precision: column.precision, scale: column.scale,
-            null: column.null, collation: column.collation,
+          column_options = {
+            limit: column.limit,
+            precision: column.precision,
+            scale: column.scale,
+            null: column.null,
+            collation: column.collation,
             primary_key: column_name == from_primary_key
-          )
+          }
+
+          # FIXME: This requires changes to the Column class
+          # unless column.auto_increment?
+          #   column_options[:default] = default
+          # end
+
+          column_type = column.bigint? ? :bigint : column.type
+          @definition.column(column_name, column_type, **column_options)
         end
 
         yield @definition if block_given?
@@ -537,8 +577,8 @@ module ArJdbc
       quoted_columns = columns.map { |col| quote_column_name(col) } * ","
       quoted_from_columns = from_columns_to_copy.map { |col| quote_column_name(col) } * ","
 
-      exec_query("INSERT INTO #{quote_table_name(to)} (#{quoted_columns})
-                     SELECT #{quoted_from_columns} FROM #{quote_table_name(from)}")
+      internal_exec_query("INSERT INTO #{quote_table_name(to)} (#{quoted_columns})
+                            SELECT #{quoted_from_columns} FROM #{quote_table_name(from)}")
     end
 
     def translate_exception(exception, message:, sql:, binds:)
@@ -548,25 +588,27 @@ module ArJdbc
       #   column *column_name* is not unique
       if exception.message.match?(/(column(s)? .* (is|are) not unique|UNIQUE constraint failed: .*)/i)
         # DIFFERENCE: FQN
-        ::ActiveRecord::RecordNotUnique.new(message, sql: sql, binds: binds)
+        ::ActiveRecord::RecordNotUnique.new(message, sql: sql, binds: binds, connection_pool: @pool)
       elsif exception.message.match?(/(.* may not be NULL|NOT NULL constraint failed: .*)/i)
         # DIFFERENCE: FQN
-        ::ActiveRecord::NotNullViolation.new(message, sql: sql, binds: binds)
+        ::ActiveRecord::NotNullViolation.new(message, sql: sql, binds: binds, connection_pool: @pool)
       elsif exception.message.match?(/FOREIGN KEY constraint failed/i)
         # DIFFERENCE: FQN
-        ::ActiveRecord::InvalidForeignKey.new(message, sql: sql, binds: binds)
+        ::ActiveRecord::InvalidForeignKey.new(message, sql: sql, binds: binds, connection_pool: @pool)
       elsif exception.message.match?(/called on a closed database/i)
         # DIFFERENCE: FQN
-        ::ActiveRecord::ConnectionNotEstablished.new(exception)
+        ::ActiveRecord::ConnectionNotEstablished.new(exception, connection_pool: @pool)
       else
         super
       end
     end
 
     COLLATE_REGEX = /.*\"(\w+)\".*collate\s+\"(\w+)\".*/i.freeze
+    PRIMARY_KEY_AUTOINCREMENT_REGEX = /.*\"(\w+)\".+PRIMARY KEY AUTOINCREMENT/i
 
     def table_structure_with_collation(table_name, basic_structure)
       collation_hash = {}
+      auto_increments = {}
       sql = <<~SQL
         SELECT sql FROM
           (SELECT * FROM sqlite_master UNION ALL
@@ -588,6 +630,7 @@ module ArJdbc
           # This regex will match the column name and collation type and will save
           # the value in $1 and $2 respectively.
           collation_hash[$1] = $2 if COLLATE_REGEX =~ column_string
+          auto_increments[$1] = true if PRIMARY_KEY_AUTOINCREMENT_REGEX =~ column_string
         end
 
         basic_structure.map do |column|
@@ -595,6 +638,10 @@ module ArJdbc
 
           if collation_hash.has_key? column_name
             column["collation"] = collation_hash[column_name]
+          end
+
+          if auto_increments.has_key?(column_name)
+            column["auto_increment"] = true
           end
 
           column
