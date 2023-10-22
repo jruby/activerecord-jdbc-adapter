@@ -15,6 +15,7 @@ coverage
 build.xml
 nbproject
 .classpath
+.ruby-version
 .project
 *.sqlite
 *.sqlite3
