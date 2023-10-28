@@ -16,6 +16,7 @@ require "active_record/connection_adapters/sqlite3/schema_definitions"
 require "active_record/connection_adapters/sqlite3/schema_dumper"
 require "active_record/connection_adapters/sqlite3/schema_statements"
 require "active_support/core_ext/class/attribute"
+require "arjdbc/sqlite3/column"
 
 module SQLite3
   module Constants
@@ -403,6 +404,26 @@ module ArJdbc
       end
     end
 
+    def new_column_from_field(table_name, field, definitions)
+      default = field["dflt_value"]
+
+      type_metadata = fetch_type_metadata(field["type"])
+      default_value = extract_value_from_default(default)
+      default_function = extract_default_function(default_value, default)
+      rowid = is_column_the_rowid?(field, definitions)
+
+      ActiveRecord::ConnectionAdapters::SQLite3Column.new(
+        field["name"],
+        default_value,
+        type_metadata,
+        field["notnull"].to_i == 0,
+        default_function,
+        collation: field["collation"],
+        auto_increment: field["auto_increment"],
+        rowid: rowid
+      )
+    end
+
     private
     # See https://www.sqlite.org/limits.html,
     # the default value is 999 when not configured.
@@ -523,10 +544,9 @@ module ArJdbc
             primary_key: column_name == from_primary_key
           }
 
-          # FIXME: This requires changes to the Column class
-          # unless column.auto_increment?
-          #   column_options[:default] = default
-          # end
+          unless column.auto_increment?
+            column_options[:default] = default
+          end
 
           column_type = column.bigint? ? :bigint : column.type
           @definition.column(column_name, column_type, **column_options)
@@ -676,80 +696,6 @@ module ArJdbc
 end
 
 module ActiveRecord::ConnectionAdapters
-  class SQLite3Column < JdbcColumn
-    def initialize(name, *args)
-      if Hash === name
-        super
-      else
-        super(nil, name, *args)
-      end
-    end
-
-    def self.string_to_binary(value)
-      value
-    end
-
-    def self.binary_to_string(value)
-      if value.respond_to?(:encoding) && value.encoding != Encoding::ASCII_8BIT
-        value = value.force_encoding(Encoding::ASCII_8BIT)
-      end
-      value
-    end
-
-    # @override {ActiveRecord::ConnectionAdapters::JdbcColumn#init_column}
-    def init_column(name, default, *args)
-      if default =~ /NULL/
-        @default = nil
-      else
-        super
-      end
-    end
-
-    # @override {ActiveRecord::ConnectionAdapters::JdbcColumn#default_value}
-    def default_value(value)
-      # JDBC returns column default strings with actual single quotes :
-      return $1 if value =~ /^'(.*)'$/
-
-      value
-    end
-
-    # @override {ActiveRecord::ConnectionAdapters::Column#type_cast}
-    def type_cast(value)
-      return nil if value.nil?
-      case type
-        when :string then value
-        when :primary_key
-          value.respond_to?(:to_i) ? value.to_i : ( value ? 1 : 0 )
-        when :float    then value.to_f
-        when :decimal  then self.class.value_to_decimal(value)
-        when :boolean  then self.class.value_to_boolean(value)
-        else super
-      end
-    end
-
-    private
-
-    # @override {ActiveRecord::ConnectionAdapters::Column#extract_limit}
-    def extract_limit(sql_type)
-      return nil if sql_type =~ /^(real)\(\d+/i
-      super
-    end
-
-    def extract_precision(sql_type)
-      case sql_type
-        when /^(real)\((\d+)(,\d+)?\)/i then $2.to_i
-        else super
-      end
-    end
-
-    def extract_scale(sql_type)
-      case sql_type
-        when /^(real)\((\d+)\)/i then 0
-        when /^(real)\((\d+)(,(\d+))\)/i then $4.to_i
-        else super
-      end
-    end
-  end
 
   remove_const(:SQLite3Adapter) if const_defined?(:SQLite3Adapter)
 
