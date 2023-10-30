@@ -28,8 +28,8 @@ Versions are targeted at certain versions of Rails and live on their own branche
 | 70.x        | 7.0.x         | 70-stable | 9.3.0     | 8        |
 | 71.x        | 7.1.x         | master    | 9.4.3     | 8        |
 
-Note that JRuby 9.1.x is end-of-life. We recommend Java 8 at a minimum for all
-versions.
+Note that JRuby 9.1.x and JRuby 9.2.x are at end-of-life. We recommend Java 8
+at a minimum for all versions.
 
 ## Using ActiveRecord JDBC
 
