@@ -261,7 +261,7 @@ module ArJdbc
 
       index_name = index_name_for_remove(table_name, column_name, options)
 
-      exec_query "DROP INDEX #{quote_column_name(index_name)}"
+      internal_exec_query "DROP INDEX #{quote_column_name(index_name)}"
     end
 
     
@@ -272,7 +272,7 @@ module ArJdbc
     def rename_table(table_name, new_name)
       schema_cache.clear_data_source_cache!(table_name.to_s)
       schema_cache.clear_data_source_cache!(new_name.to_s)
-      exec_query "ALTER TABLE #{quote_table_name(table_name)} RENAME TO #{quote_table_name(new_name)}"
+      internal_exec_query "ALTER TABLE #{quote_table_name(table_name)} RENAME TO #{quote_table_name(new_name)}"
       rename_table_indexes(table_name, new_name)
     end
 
@@ -432,7 +432,7 @@ module ArJdbc
     end
 
     def table_structure(table_name)
-      structure = exec_query("PRAGMA table_info(#{quote_table_name(table_name)})", "SCHEMA")
+      structure = internal_exec_query("PRAGMA table_info(#{quote_table_name(table_name)})", "SCHEMA")
       raise(ActiveRecord::StatementInvalid, "Could not find table '#{table_name}'") if structure.empty?
       table_structure_with_collation(table_name, structure)
     end
