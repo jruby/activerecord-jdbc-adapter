@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 ArJdbc::ConnectionMethods.module_eval do
   def sqlite3_connection(config)
+    raise ArgumentError, 'Configuration must not be empty' if config.blank?
+    
     config = config.deep_dup
     config[:adapter_spec] ||= ::ArJdbc::SQLite3
     config[:adapter_class] = ActiveRecord::ConnectionAdapters::SQLite3Adapter unless config.key?(:adapter_class)
@@ -18,7 +20,7 @@ ArJdbc::ConnectionMethods.module_eval do
       parse_sqlite3_config!(config)
     rescue Errno::ENOENT => error
       if error.message.include?('No such file or directory')
-        raise ActiveRecord::NoDatabaseError
+        raise ActiveRecord::NoDatabaseError.new(connection_pool: ActiveRecord::ConnectionAdapters::NullPool.new)
       else
         raise
       end
@@ -50,7 +52,10 @@ ArJdbc::ConnectionMethods.module_eval do
 
     timeout = config[:timeout]
     if timeout && timeout.to_s !~ /\A\d+\Z/
-      raise TypeError.new "Timeout must be nil or a number (got: #{timeout})."
+      raise ActiveRecord::StatementInvalid.new(
+        "TypeError: Timeout must be nil or a number (got: #{timeout}).",
+        connection_pool: ActiveRecord::ConnectionAdapters::NullPool.new
+      )
     end
 
     options = config[:properties]
