@@ -780,6 +780,16 @@ module ActiveRecord::ConnectionAdapters
     ::ActiveRecord::Type.register(:integer, SQLite3Integer, adapter: :sqlite3)
 
     class << self
+      def dbconsole(config, options = {})
+        args = []
+
+        args << "-#{options[:mode]}" if options[:mode]
+        args << "-header" if options[:header]
+        args << File.expand_path(config.database, const_defined?(:Rails) && Rails.respond_to?(:root) ? Rails.root : nil)
+
+        find_cmd_and_exec("sqlite3", *args)
+      end
+
       private
         def initialize_type_map(m)
           super
