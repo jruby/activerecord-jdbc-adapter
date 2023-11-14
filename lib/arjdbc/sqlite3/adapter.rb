@@ -90,20 +90,40 @@ module ArJdbc
       end
     end
 
-    def initialize(config)
-      @memory_database = config[:database] == ":memory:"
+    def initialize(...)
       super
-      configure_connection
+
+      @memory_database = false
+      case @config[:database].to_s
+      when ""
+        raise ArgumentError, "No database file specified. Missing argument: database"
+      when ":memory:"
+        @memory_database = true
+      when /\Afile:/
+      else
+        # Otherwise we have a path relative to Rails.root
+        @config[:database] = File.expand_path(@config[:database], Rails.root) if defined?(Rails.root)
+        dirname = File.dirname(@config[:database])
+        unless File.directory?(dirname)
+          begin
+            Dir.mkdir(dirname)
+          rescue Errno::ENOENT => error
+            if error.message.include?("No such file or directory")
+              raise ActiveRecord::NoDatabaseError.new(connection_pool: @pool)
+            else
+              raise
+            end
+          end
+        end
+      end
+
+      @config[:strict] = ConnectionAdapters::SQLite3Adapter.strict_strings_by_default unless @config.key?(:strict)
+      @connection_parameters = @config.merge(database: @config[:database].to_s, results_as_hash: true)
+      @use_insert_returning = @config.key?(:insert_returning) ? self.class.type_cast_config_to_boolean(@config[:insert_returning]) : true
     end
 
     def self.database_exists?(config)
-      config = config.symbolize_keys
-      if config[:database] == ":memory:"
-        true
-      else
-        database_file = defined?(Rails.root) ? File.expand_path(config[:database], Rails.root) : config[:database]
-        File.exist?(database_file)
-      end
+      @config[:database] == ":memory:" || File.exist?(@config[:database].to_s)
     end
 
     def supports_ddl_transactions?
@@ -178,19 +198,15 @@ module ArJdbc
       column.auto_populated?
     end
 
-    def reconnect
-      if active?
-        @raw_connection.rollback rescue nil
-      else
-        connect
-      end
-    end
+    # MISSING:       alias :reset! :reconnect!
 
     # Disconnects from the database if already connected. Otherwise, this
     # method does nothing.
     def disconnect!
       super
-      @raw_connection.close rescue nil
+
+      @raw_connection&.close rescue nil
+      @raw_connection = nil
     end
 
     def supports_index_sort_order?
@@ -230,16 +246,7 @@ module ArJdbc
       end
     end
 
-    def all_foreign_keys_valid? # :nodoc:
-      # Rails 7
-      check_all_foreign_keys_valid!
-      true
-    rescue ActiveRecord::StatementInvalid
-      false
-    end
-
     def check_all_foreign_keys_valid! # :nodoc:
-      # Rails 7.1
       sql = "PRAGMA foreign_key_check"
       result = execute(sql)
 
@@ -269,7 +276,8 @@ module ArJdbc
     #
     # Example:
     #   rename_table('octopuses', 'octopi')
-    def rename_table(table_name, new_name)
+    def rename_table(table_name, new_name, **options)
+      validate_table_length!(new_name) unless options[:_uses_legacy_table_name]      
       schema_cache.clear_data_source_cache!(table_name.to_s)
       schema_cache.clear_data_source_cache!(new_name.to_s)
       internal_exec_query "ALTER TABLE #{quote_table_name(table_name)} RENAME TO #{quote_table_name(new_name)}"
@@ -312,6 +320,8 @@ module ArJdbc
     end
 
     def change_column_null(table_name, column_name, null, default = nil) #:nodoc:
+      validate_change_column_null_argument!(null)
+      
       unless null || default.nil?
         internal_exec_query("UPDATE #{quote_table_name(table_name)} SET #{quote_column_name(column_name)}=#{quote(default)} WHERE #{quote_column_name(column_name)} IS NULL")
       end
@@ -322,10 +332,7 @@ module ArJdbc
 
     def change_column(table_name, column_name, type, **options) #:nodoc:
       alter_table(table_name) do |definition|
-        definition[column_name].instance_eval do
-          self.type = aliased_types(type.to_s, type)
-          self.options.merge!(options)
-        end
+        definition.change_column(column_name, type, **options)
       end
     end
 
@@ -413,6 +420,7 @@ module ArJdbc
       end
     end
 
+    # DIFFERENCE: here to 
     def new_column_from_field(table_name, field, definitions)
       default = field["dflt_value"]
 
@@ -475,7 +483,7 @@ module ArJdbc
     end
 
     def has_default_function?(default_value, default)
-      !default_value && %r{\w+\(.*\)|CURRENT_TIME|CURRENT_DATE|CURRENT_TIMESTAMP}.match?(default)
+      !default_value && %r{\w+\(.*\)|CURRENT_TIME|CURRENT_DATE|CURRENT_TIMESTAMP|\|\|}.match?(default)
     end
 
     # See: https://www.sqlite.org/lang_altertable.html
@@ -688,18 +696,57 @@ module ArJdbc
       StatementPool.new(self.class.type_cast_config_to_integer(@config[:statement_limit]))
     end
 
+    # DIFFERENCE: we delve into jdbc shared code and this does self.class.new_client.
     def connect
       @raw_connection = jdbc_connection_class(@config[:adapter_spec]).new(@config, self)
       @raw_connection.configure_connection
     end
 
-    def configure_connection
-      # FIXME: missing from adapter
-#      @connection.busy_timeout(self.class.type_cast_config_to_integer(@config[:timeout])) if @config[:timeout]
-
-      execute("PRAGMA foreign_keys = ON", "SCHEMA")
+    def reconnect
+      if active?
+        @raw_connection.rollback rescue nil
+      else
+        connect
+      end
     end
 
+    def configure_connection
+      if @config[:timeout] && @config[:retries]
+        raise ArgumentError, "Cannot specify both timeout and retries arguments"
+      elsif @config[:timeout]
+        # FIXME:
+#        @raw_connection.busy_timeout(self.class.type_cast_config_to_integer(@config[:timeout]))
+      elsif @config[:retries]
+        retries = self.class.type_cast_config_to_integer(@config[:retries])
+        raw_connection.busy_handler do |count|
+          count <= retries
+        end
+      end
+
+      # Enforce foreign key constraints
+      # https://www.sqlite.org/pragma.html#pragma_foreign_keys
+      # https://www.sqlite.org/foreignkeys.html
+      raw_execute("PRAGMA foreign_keys = ON", "SCHEMA")
+      unless @memory_database
+        # Journal mode WAL allows for greater concurrency (many readers + one writer)
+        # https://www.sqlite.org/pragma.html#pragma_journal_mode
+        raw_execute("PRAGMA journal_mode = WAL", "SCHEMA")
+        # Set more relaxed level of database durability
+        # 2 = "FULL" (sync on every write), 1 = "NORMAL" (sync every 1000 written pages) and 0 = "NONE"
+        # https://www.sqlite.org/pragma.html#pragma_synchronous
+        raw_execute("PRAGMA synchronous = NORMAL", "SCHEMA")
+        # Set the global memory map so all processes can share some data
+        # https://www.sqlite.org/pragma.html#pragma_mmap_size
+        # https://www.sqlite.org/mmap.html
+        raw_execute("PRAGMA mmap_size = #{128.megabytes}", "SCHEMA")
+      end
+      # Impose a limit on the WAL file to prevent unlimited growth
+      # https://www.sqlite.org/pragma.html#pragma_journal_size_limit
+      raw_execute("PRAGMA journal_size_limit = #{64.megabytes}", "SCHEMA")
+      # Set the local connection cache to 2000 pages
+      # https://www.sqlite.org/pragma.html#pragma_cache_size
+      raw_execute("PRAGMA cache_size = 2000", "SCHEMA")      
+    end
   end
   # DIFFERENCE: A registration here is moved down to concrete class so we are not registering part of an adapter.
 end
@@ -719,6 +766,18 @@ module ActiveRecord::ConnectionAdapters
     include ArJdbc::Abstract::DatabaseStatements
     include ArJdbc::Abstract::StatementCache
     include ArJdbc::Abstract::TransactionSupport
+
+    ##
+    # :singleton-method:
+    # Configure the SQLite3Adapter to be used in a strict strings mode.
+    # This will disable double-quoted string literals, because otherwise typos can silently go unnoticed.
+    # For example, it is possible to create an index for a non existing column.
+    # If you wish to enable this mode you can add the following line to your application.rb file:
+    #
+    #   config.active_record.sqlite3_adapter_strict_strings_by_default = true
+    class_attribute :strict_strings_by_default, default: false
+
+
 
     def self.represent_boolean_as_integer=(value) # :nodoc:
       if value == false
