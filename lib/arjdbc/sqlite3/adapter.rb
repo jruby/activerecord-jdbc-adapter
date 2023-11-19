@@ -230,14 +230,6 @@ module ArJdbc
       end
     end
 
-    def all_foreign_keys_valid? # :nodoc:
-      # Rails 7
-      check_all_foreign_keys_valid!
-      true
-    rescue ActiveRecord::StatementInvalid
-      false
-    end
-
     def check_all_foreign_keys_valid! # :nodoc:
       # Rails 7.1
       sql = "PRAGMA foreign_key_check"
@@ -269,7 +261,8 @@ module ArJdbc
     #
     # Example:
     #   rename_table('octopuses', 'octopi')
-    def rename_table(table_name, new_name)
+    def rename_table(table_name, new_name, **options)
+      validate_table_length!(new_name) unless options[:_uses_legacy_table_name]
       schema_cache.clear_data_source_cache!(table_name.to_s)
       schema_cache.clear_data_source_cache!(new_name.to_s)
       internal_exec_query "ALTER TABLE #{quote_table_name(table_name)} RENAME TO #{quote_table_name(new_name)}"
@@ -312,6 +305,8 @@ module ArJdbc
     end
 
     def change_column_null(table_name, column_name, null, default = nil) #:nodoc:
+      validate_change_column_null_argument!(null)
+
       unless null || default.nil?
         internal_exec_query("UPDATE #{quote_table_name(table_name)} SET #{quote_column_name(column_name)}=#{quote(default)} WHERE #{quote_column_name(column_name)} IS NULL")
       end
@@ -719,6 +714,16 @@ module ActiveRecord::ConnectionAdapters
     include ArJdbc::Abstract::DatabaseStatements
     include ArJdbc::Abstract::StatementCache
     include ArJdbc::Abstract::TransactionSupport
+
+    ##
+    # :singleton-method:
+    # Configure the SQLite3Adapter to be used in a strict strings mode.
+    # This will disable double-quoted string literals, because otherwise typos can silently go unnoticed.
+    # For example, it is possible to create an index for a non existing column.
+    # If you wish to enable this mode you can add the following line to your application.rb file:
+    #
+    #   config.active_record.sqlite3_adapter_strict_strings_by_default = true
+    class_attribute :strict_strings_by_default, default: false # Does not actually do anything right now
 
     def self.represent_boolean_as_integer=(value) # :nodoc:
       if value == false
