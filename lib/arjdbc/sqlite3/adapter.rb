@@ -93,7 +93,6 @@ module ArJdbc
     def initialize(config)
       @memory_database = config[:database] == ":memory:"
       super
-      configure_connection
     end
 
     def self.database_exists?(config)
