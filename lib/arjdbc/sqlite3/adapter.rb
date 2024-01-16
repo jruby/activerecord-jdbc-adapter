@@ -621,6 +621,11 @@ module ArJdbc
       elsif exception.message.match?(/called on a closed database/i)
         # DIFFERENCE: FQN
         ::ActiveRecord::ConnectionNotEstablished.new(exception, connection_pool: @pool)
+      elsif exception.message.match?(/sql error/i)
+        ::ActiveRecord::StatementInvalid.new(message, sql: sql, binds: binds, connection_pool: @pool)
+      elsif exception.message.match?(/write a readonly database/i)
+        message = message.sub('org.sqlite.SQLiteException', 'SQLite3::ReadOnlyException')
+        ::ActiveRecord::StatementInvalid.new(message, sql: sql, binds: binds, connection_pool: @pool)
       else
         super
       end
