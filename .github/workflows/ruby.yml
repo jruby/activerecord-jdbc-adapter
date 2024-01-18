@@ -45,7 +45,7 @@ jobs:
       JRUBY_OPTS: "-J-Xms64M -J-Xmx1024M"
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
         with:
@@ -102,7 +102,7 @@ jobs:
       PGUSER: postgres
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
         with:
@@ -137,7 +137,7 @@ jobs:
       JRUBY_OPTS: "-J-Xms64M -J-Xmx1024M"
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
         with:
@@ -179,7 +179,7 @@ jobs:
       PREPARED_STATEMENTS: ${{ matrix.prepared_statements }}
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
         with:
@@ -230,7 +230,7 @@ jobs:
       PGUSER: postgres
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
         with:
@@ -259,7 +259,7 @@ jobs:
       JRUBY_OPTS: "-J-Xms64M -J-Xmx1024M"
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
         with:
