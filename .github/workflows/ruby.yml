@@ -256,7 +256,7 @@ jobs:
 
     env:
       DB: ${{ matrix.db }}
-      JRUBY_OPTS: "-J-Xms64M -J-Xmx1024M"
+      JRUBY_OPTS: "-J-Xms64M -J-Xmx1024M --dev"
 
     steps:
       - uses: actions/checkout@v4
