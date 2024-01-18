@@ -90,38 +90,6 @@ module ArJdbc
       end
     end
 
-    def initialize(...)
-      super
-
-      @memory_database = false
-      case @config[:database].to_s
-      when ""
-        raise ArgumentError, "No database file specified. Missing argument: database"
-      when ":memory:"
-        @memory_database = true
-      when /\Afile:/
-      else
-        # Otherwise we have a path relative to Rails.root
-        @config[:database] = File.expand_path(@config[:database], Rails.root) if defined?(Rails.root)
-        dirname = File.dirname(@config[:database])
-        unless File.directory?(dirname)
-          begin
-            Dir.mkdir(dirname)
-          rescue Errno::ENOENT => error
-            if error.message.include?("No such file or directory")
-              raise ActiveRecord::NoDatabaseError.new(connection_pool: @pool)
-            else
-              raise
-            end
-          end
-        end
-      end
-
-      @config[:strict] = ConnectionAdapters::SQLite3Adapter.strict_strings_by_default unless @config.key?(:strict)
-      @connection_parameters = @config.merge(database: @config[:database].to_s, results_as_hash: true)
-      @use_insert_returning = @config.key?(:insert_returning) ? self.class.type_cast_config_to_boolean(@config[:insert_returning]) : true
-    end
-
     def self.database_exists?(config)
       @config[:database] == ":memory:" || File.exist?(@config[:database].to_s)
     end
@@ -321,7 +289,7 @@ module ArJdbc
 
     def change_column_null(table_name, column_name, null, default = nil) #:nodoc:
       validate_change_column_null_argument!(null)
-      
+
       unless null || default.nil?
         internal_exec_query("UPDATE #{quote_table_name(table_name)} SET #{quote_column_name(column_name)}=#{quote(default)} WHERE #{quote_column_name(column_name)} IS NULL")
       end
@@ -635,6 +603,11 @@ module ArJdbc
       elsif exception.message.match?(/called on a closed database/i)
         # DIFFERENCE: FQN
         ::ActiveRecord::ConnectionNotEstablished.new(exception, connection_pool: @pool)
+      elsif exception.message.match?(/sql error/i)
+        ::ActiveRecord::StatementInvalid.new(message, sql: sql, binds: binds, connection_pool: @pool)
+      elsif exception.message.match?(/write a readonly database/i)
+        message = message.sub('org.sqlite.SQLiteException', 'SQLite3::ReadOnlyException')
+        ::ActiveRecord::StatementInvalid.new(message, sql: sql, binds: binds, connection_pool: @pool)
       else
         super
       end
@@ -714,6 +687,44 @@ module ArJdbc
       if @config[:timeout] && @config[:retries]
         raise ArgumentError, "Cannot specify both timeout and retries arguments"
       elsif @config[:timeout]
+        # FIXME: missing from adapter
+        # @raw_connection.busy_timeout(self.class.type_cast_config_to_integer(@config[:timeout]))
+      elsif @config[:retries]
+        retries = self.class.type_cast_config_to_integer(@config[:retries])
+        raw_connection.busy_handler do |count|
+          count <= retries
+        end
+      end
+
+      # Enforce foreign key constraints
+      # https://www.sqlite.org/pragma.html#pragma_foreign_keys
+      # https://www.sqlite.org/foreignkeys.html
+      raw_execute("PRAGMA foreign_keys = ON", "SCHEMA")
+      unless @memory_database
+        # Journal mode WAL allows for greater concurrency (many readers + one writer)
+        # https://www.sqlite.org/pragma.html#pragma_journal_mode
+        raw_execute("PRAGMA journal_mode = WAL", "SCHEMA")
+        # Set more relaxed level of database durability
+        # 2 = "FULL" (sync on every write), 1 = "NORMAL" (sync every 1000 written pages) and 0 = "NONE"
+        # https://www.sqlite.org/pragma.html#pragma_synchronous
+        raw_execute("PRAGMA synchronous = NORMAL", "SCHEMA")
+        # Set the global memory map so all processes can share some data
+        # https://www.sqlite.org/pragma.html#pragma_mmap_size
+        # https://www.sqlite.org/mmap.html
+        raw_execute("PRAGMA mmap_size = #{128.megabytes}", "SCHEMA")
+      end
+      # Impose a limit on the WAL file to prevent unlimited growth
+      # https://www.sqlite.org/pragma.html#pragma_journal_size_limit
+      raw_execute("PRAGMA journal_size_limit = #{64.megabytes}", "SCHEMA")
+      # Set the local connection cache to 2000 pages
+      # https://www.sqlite.org/pragma.html#pragma_cache_size
+      raw_execute("PRAGMA cache_size = 2000", "SCHEMA")
+    end
+
+    def configure_connection
+      if @config[:timeout] && @config[:retries]
+        raise ArgumentError, "Cannot specify both timeout and retries arguments"
+      elsif @config[:timeout]
         # FIXME:
 #        @raw_connection.busy_timeout(self.class.type_cast_config_to_integer(@config[:timeout]))
       elsif @config[:retries]
@@ -775,9 +786,7 @@ module ActiveRecord::ConnectionAdapters
     # If you wish to enable this mode you can add the following line to your application.rb file:
     #
     #   config.active_record.sqlite3_adapter_strict_strings_by_default = true
-    class_attribute :strict_strings_by_default, default: false
-
-
+    class_attribute :strict_strings_by_default, default: false # Does not actually do anything right now
 
     def self.represent_boolean_as_integer=(value) # :nodoc:
       if value == false

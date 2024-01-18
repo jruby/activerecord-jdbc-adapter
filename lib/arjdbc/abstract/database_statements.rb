@@ -87,11 +87,7 @@ module ArJdbc
 
         mark_transaction_written_if_write(sql)
 
-        log(sql, name, async: async) do
-          with_raw_connection(allow_retry: allow_retry, materialize_transactions: materialize_transactions) do |conn|
-            conn.execute(sql)
-          end
-        end
+        raw_execute(sql, name, async: async, allow_retry: allow_retry, materialize_transactions: materialize_transactions)
       end
 
       # overridden to support legacy binds
@@ -105,6 +101,16 @@ module ArJdbc
       def convert_legacy_binds_to_attributes(binds)
         binds.map do |column, value|
           ActiveRecord::Relation::QueryAttribute.new(nil, type_cast(value, column), ActiveModel::Type::Value.new)
+        end
+      end
+
+      def raw_execute(sql, name, async: false, allow_retry: false, materialize_transactions: false)
+        log(sql, name, async: async) do
+          with_raw_connection(allow_retry: allow_retry, materialize_transactions: materialize_transactions) do |conn|
+            # We sometimes return an ActiveRecord::Result and sometimes a raw, so force to raw
+            result = conn.execute(sql)
+            result.is_a?(ActiveRecord::Result) ? result.to_a : result
+          end
         end
       end
 
