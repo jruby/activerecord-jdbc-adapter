@@ -107,9 +107,7 @@ module ArJdbc
       def raw_execute(sql, name, async: false, allow_retry: false, materialize_transactions: false)
         log(sql, name, async: async) do
           with_raw_connection(allow_retry: allow_retry, materialize_transactions: materialize_transactions) do |conn|
-            # We sometimes return an ActiveRecord::Result and sometimes a raw, so force to raw
-            result = conn.execute(sql)
-            result.is_a?(ActiveRecord::Result) ? result.to_a : result
+            conn.execute(sql)
           end
         end
       end

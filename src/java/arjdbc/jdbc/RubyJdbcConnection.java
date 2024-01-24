@@ -793,7 +793,8 @@ public class RubyJdbcConnection extends RubyObject {
                         // Unfortunately the result set gets closed when getMoreResults()
                         // is called, so we have to process the result sets as we get them
                         // this shouldn't be an issue in most cases since we're only getting 1 result set anyways
-                        result = mapExecuteResult(context, connection, resultSet);
+                        //result = mapExecuteResult(context, connection, resultSet);
+                        result = mapToRawResult(context, connection, resultSet, false);
                         resultSet.close();
                     } else {
                         result = context.runtime.newFixnum(updateCount);
