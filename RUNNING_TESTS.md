@@ -73,13 +73,15 @@ The `mysql` client can be run through Docker as well:
 docker run -it --link mysql:mysql --rm mysql sh -c 'exec mysql -h"$MYSQL_PORT_3306_TCP_ADDR" -P"$MYSQL_PORT_3306_TCP_PORT" -uroot -p"$MYSQL_ENV_MYSQL_ROOT_PASSWORD"'
 ```
 
-Set up the database for the unit tests:
+Set up the database for the unit tests (you may need to replace 'localhost' with your container's IP):
 
 ```sql
 CREATE USER 'rails'@'localhost' IDENTIFIED BY 'testtest9';
-CREATE DATABASE activerecord_unittest2;
-GRANT Create,Drop,Select,Insert,Update,Delete,Lock Tables ON activerecord_unittest2.* TO 'rails'@'localhost';
+CREATE DATABASE activerecord_unittest;
+GRANT Create,Drop,Select,Insert,Update,Delete,Lock Tables,Alter,Alter Routine,Create Routine,References ON activerecord_unittest.* TO 'rails'@'localhost';
 ```
+
+Then edit test/rails/config.yml for the appropriate configuration credentials.
 
 ### ActiveRecord (Rails) Tests
 
