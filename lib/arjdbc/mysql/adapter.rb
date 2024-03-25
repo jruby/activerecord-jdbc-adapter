@@ -33,11 +33,19 @@ module ActiveRecord
 
       include ArJdbc::MySQL
 
-      def initialize(connection, logger, connection_options, config)
-        superclass_config = config.reverse_merge(prepared_statements: false)
-        super(connection, logger, connection_options, superclass_config)
+      def initialize(...)
+        super
 
-        # configure_connection taken care of at ArJdbc::Abstract::Core
+        @config[:flags] ||= 0
+
+        # JDBC mysql appears to use found rows by default: https://dev.mysql.com/doc/connector-j/en/connector-j-connp-props-connection.html
+        # if @config[:flags].kind_of? Array
+        #   @config[:flags].push "FOUND_ROWS"
+        # else
+        #   @config[:flags] |= ::Mysql2::Client::FOUND_ROWS
+        # end
+
+        @connection_parameters ||= @config
       end
 
       def self.database_exists?(config)
@@ -47,13 +55,6 @@ module ActiveRecord
         false
       ensure
         conn.disconnect! if conn
-      end
-
-      def check_version
-        # for JNDI, don't check version as the whole connection should be lazy
-        return if ::ActiveRecord::ConnectionAdapters::JdbcConnection.jndi_config?(config)
-
-        super
       end
 
       def supports_json?
@@ -103,13 +104,6 @@ module ActiveRecord
         elapsed = Concurrent.monotonic_time - start
 
         MySQL::ExplainPrettyPrinter.new.pp(result, elapsed)
-      end
-
-      # Reloading the type map in abstract/statement_cache.rb blows up postgres
-      def clear_cache!
-        # FIXME: This seems to have disappeared in Rails 7?
-        # reload_type_map
-        super
       end
 
       def each_hash(result) # :nodoc:
@@ -164,11 +158,42 @@ module ActiveRecord
       # CONNECTION MANAGEMENT ====================================
       #++
 
+      def active?
+        !(@raw_connection.nil? || @raw_connection.closed?)  && @lock.synchronize { @raw_connection&.execute_query("/* ping */ SELECT 1") } || false
+      end
+
       alias :reset! :reconnect!
+
+      # Disconnects from the database if already connected.
+      # Otherwise, this method does nothing.
+      def disconnect!
+        @lock.synchronize do
+          super
+          @raw_connection&.close
+          @raw_connection = nil
+        end
+      end
+
+      def discard! # :nodoc:
+        @lock.synchronize do
+          super
+          @raw_connection&.automatic_close = false
+          @raw_connection = nil
+        end
+      end
 
       #
 
       private
+      def text_type?(type)
+        TYPE_MAP.lookup(type).is_a?(Type::String) || TYPE_MAP.lookup(type).is_a?(Type::Text)
+      end
+
+      def configure_connection
+        # @raw_connection.query_options[:as] = :array
+        # @raw_connection.query_options[:database_timezone] = default_timezone
+        super
+      end
 
       # e.g. "5.7.20-0ubuntu0.16.04.1"
       def full_version
@@ -176,7 +201,7 @@ module ActiveRecord
       end
 
       def get_full_version
-        @full_version ||= @connection.full_version
+        @full_version ||= any_raw_connection.full_version
       end
 
       def jdbc_connection_class(spec)
