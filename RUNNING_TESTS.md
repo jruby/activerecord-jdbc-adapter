@@ -76,11 +76,9 @@ docker run -it --link mysql:mysql --rm mysql sh -c 'exec mysql -h"$MYSQL_PORT_33
 Set up the database for the unit tests:
 
 ```sql
-GRANT ALL PRIVILEGES ON *.* TO 'rails'@'localhost' IDENTIFIED BY 'XXXXXXXXX';
-
 CREATE USER 'rails'@'localhost' IDENTIFIED BY 'testtest9';
-create database activerecord_unittest2;
-GRANT Create,Drop,Select,Insert,Update,Delete,Lock Tables ON activerecord_unittest2.* TO 'rails'@'172.17.0.1';
+CREATE DATABASE activerecord_unittest2;
+GRANT Create,Drop,Select,Insert,Update,Delete,Lock Tables ON activerecord_unittest2.* TO 'rails'@'localhost';
 ```
 
 ### ActiveRecord (Rails) Tests
