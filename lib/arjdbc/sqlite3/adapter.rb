@@ -669,20 +669,6 @@ module ArJdbc
       StatementPool.new(self.class.type_cast_config_to_integer(@config[:statement_limit]))
     end
 
-    # DIFFERENCE: we delve into jdbc shared code and this does self.class.new_client.
-    def connect
-      @raw_connection = jdbc_connection_class(@config[:adapter_spec]).new(@config, self)
-      @raw_connection.configure_connection
-    end
-
-    def reconnect
-      if active?
-        @raw_connection.rollback rescue nil
-      else
-        connect
-      end
-    end
-
     def configure_connection
       if @config[:timeout] && @config[:retries]
         raise ArgumentError, "Cannot specify both timeout and retries arguments"
