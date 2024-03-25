@@ -126,51 +126,52 @@ ArJdbc::ConnectionMethods.module_eval do
 
   private
 
-  @@mysql_encodings = nil
+  MYSQL_ENCODINGS = {
+    "big5" => "Big5",
+    "dec8" => nil,
+    #"cp850" => "Cp850",
+    "hp8" => nil,
+    #"koi8r" => "KOI8-R",
+    "latin1" => "Cp1252",
+    "latin2" => "ISO8859_2",
+    "swe7" => nil,
+    "ascii" => "US-ASCII",
+    "ujis" => "EUC_JP",
+    "sjis" => "SJIS",
+    "hebrew" => "ISO8859_8",
+    "tis620" => "TIS620",
+    "euckr" => "EUC_KR",
+    #"koi8u" => "KOI8-R",
+    "gb2312" => "EUC_CN",
+    "greek" => "ISO8859_7",
+    "cp1250" => "Cp1250",
+    "gbk" => "GBK",
+    #"latin5" => "ISO-8859-9",
+    "armscii8" => nil,
+    "ucs2" => "UnicodeBig",
+    "cp866" => "Cp866",
+    "keybcs2" => nil,
+    "macce" => "MacCentralEurope",
+    "macroman" => "MacRoman",
+    #"cp852" => "CP852",
+    #"latin7" => "ISO-8859-13",
+    "cp1251" => "Cp1251",
+    "cp1256" => "Cp1256",
+    "cp1257" => "Cp1257",
+    "binary" => false,
+    "geostd8" => nil,
+    "cp932" => "Cp932",
+    #"eucjpms" => "eucJP-ms"
+    "utf8" => "UTF-8",
+    "utf8mb4" => false,
+    "utf16" => false,
+    "utf32" => false,
+  }
+
 
   # @see https://dev.mysql.com/doc/connector-j/5.1/en/connector-j-reference-charsets.html
   def convert_mysql_encoding(encoding) # to charset-name (characterEncoding=...)
-    ( @@mysql_encodings ||= {
-      "big5" => "Big5",
-      "dec8" => nil,
-      #"cp850" => "Cp850",
-      "hp8" => nil,
-      #"koi8r" => "KOI8-R",
-      "latin1" => "Cp1252",
-      "latin2" => "ISO8859_2",
-      "swe7" => nil,
-      "ascii" => "US-ASCII",
-      "ujis" => "EUC_JP",
-      "sjis" => "SJIS",
-      "hebrew" => "ISO8859_8",
-      "tis620" => "TIS620",
-      "euckr" => "EUC_KR",
-      #"koi8u" => "KOI8-R",
-      "gb2312" => "EUC_CN",
-      "greek" => "ISO8859_7",
-      "cp1250" => "Cp1250",
-      "gbk" => "GBK",
-      #"latin5" => "ISO-8859-9",
-      "armscii8" => nil,
-      "ucs2" => "UnicodeBig",
-      "cp866" => "Cp866",
-      "keybcs2" => nil,
-      "macce" => "MacCentralEurope",
-      "macroman" => "MacRoman",
-      #"cp852" => "CP852",
-      #"latin7" => "ISO-8859-13",
-      "cp1251" => "Cp1251",
-      "cp1256" => "Cp1256",
-      "cp1257" => "Cp1257",
-      "binary" => false,
-      "geostd8" => nil,
-      "cp932" => "Cp932",
-      #"eucjpms" => "eucJP-ms"
-      "utf8" => "UTF-8",
-      "utf8mb4" => false,
-      "utf16" => false,
-      "utf32" => false,
-    } )[ encoding ]
+    MYSQL_ENCODINGS[ encoding ]
   end
 
 end
