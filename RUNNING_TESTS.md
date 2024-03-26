@@ -61,7 +61,7 @@ Pull the image:
 sudo docker pull mysql
 ```
 
-Start up the database with a root password:
+Start up the database with a root password (we show a simple one here but pick one no one else knows):
 
 ```
 docker run -p 3306:3306 --name mysql -e MYSQL_ROOT_PASSWORD=testtest9 -d mysql
@@ -78,7 +78,9 @@ Set up the database for the unit tests (you may need to replace 'localhost' with
 ```sql
 CREATE USER 'rails'@'localhost' IDENTIFIED BY 'testtest9';
 CREATE DATABASE activerecord_unittest;
-GRANT Create,Drop,Select,Insert,Update,Delete,Lock Tables,Alter,Alter Routine,Create Routine,References ON activerecord_unittest.* TO 'rails'@'localhost';
+GRANT ALL PRIVILEGES ON activerecord_unittest.* TO 'rails'@'localhost';
+CREATE DATABASE activerecord_unittest2;
+GRANT ALL PRIVILEGES ON activerecord_unittest2.* TO 'rails'@'localhost';
 ```
 
 Then edit test/rails/config.yml for the appropriate configuration credentials.
