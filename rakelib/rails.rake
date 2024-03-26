@@ -34,6 +34,7 @@ namespace :rails do
           File.join(root_dir, 'lib'),
           File.join(root_dir, driver, 'lib'),
           File.join(root_dir, 'test/rails'),
+          File.join(root_dir, 'jdbc-sqlite3', 'lib'),  # Added for connection management tests which hardcode sqlite3
           ar_test_dir
       ]
 
