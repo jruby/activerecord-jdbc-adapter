@@ -97,13 +97,25 @@ module ActiveRecord
         !READ_QUERY.match?(sql)
       end
 
-      def explain(arel, binds = [])
-        sql     = "EXPLAIN #{to_sql(arel, binds)}"
-        start   = Concurrent.monotonic_time
-        result  = exec_query(sql, "EXPLAIN", binds)
-        elapsed = Concurrent.monotonic_time - start
+      def explain(arel, binds = [], options = [])
+        sql     = build_explain_clause(options) + " " + to_sql(arel, binds)
+        start   = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+        result  = internal_exec_query(sql, "EXPLAIN", binds)
+        elapsed = Process.clock_gettime(Process::CLOCK_MONOTONIC) - start
 
         MySQL::ExplainPrettyPrinter.new.pp(result, elapsed)
+      end
+
+      def build_explain_clause(options = [])
+        return "EXPLAIN" if options.empty?
+
+        explain_clause = "EXPLAIN #{options.join(" ").upcase}"
+        
+        if analyze_without_explain? && explain_clause.include?("ANALYZE")
+          explain_clause.sub("EXPLAIN ", "")
+        else
+          explain_clause
+        end
       end
 
       def each_hash(result) # :nodoc:
@@ -185,6 +197,11 @@ module ActiveRecord
       #
 
       private
+      # https://mariadb.com/kb/en/analyze-statement/
+      def analyze_without_explain?
+        mariadb? && database_version >= "10.1.0"
+      end
+
       def text_type?(type)
         TYPE_MAP.lookup(type).is_a?(Type::String) || TYPE_MAP.lookup(type).is_a?(Type::Text)
       end
