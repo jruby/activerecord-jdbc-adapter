@@ -52,6 +52,9 @@ module ArJdbc
         # swallow an ArJdbc / driver bug into an AR::StatementInvalid !
         return exception if exception.is_a?(Throwable)
 
+        # We create this exception in Java where we do not have access to the pool
+        exception.instance_variable_set(:@connection_pool, @pool) if exception.kind_of?(::ActiveRecord::JDBCError)
+
         case exception
           when SystemExit, SignalException, NoMemoryError then exception
           when ActiveModel::RangeError, TypeError, RuntimeError then exception
