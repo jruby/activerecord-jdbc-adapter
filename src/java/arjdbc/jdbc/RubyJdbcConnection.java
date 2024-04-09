@@ -2727,7 +2727,7 @@ public class RubyJdbcConnection extends RubyObject {
         }
         else { // e.g. `BigDecimal '42.00000000000000000001'`
             statement.setBigDecimal(index,
-                    RubyBigDecimal.newInstance(context, context.runtime.getModule("BigDecimal"), value).getValue());
+                    RubyBigDecimal.newInstance(context, context.runtime.getModule("BigDecimal"), value, RubyFixnum.newFixnum(context.runtime, Integer.MAX_VALUE)).getValue());
         }
     }
 

@@ -511,7 +511,7 @@ public class SQLite3RubyJdbcConnection extends RubyJdbcConnection {
             statement.setDouble(index, ((RubyNumeric) value).getDoubleValue());
         }
         else { // e.g. `BigDecimal '42.00000000000000000001'`
-            RubyBigDecimal val = RubyBigDecimal.newInstance(context, context.runtime.getModule("BigDecimal"), value);
+            RubyBigDecimal val = RubyBigDecimal.newInstance(context, context.runtime.getModule("BigDecimal"), value, RubyFixnum.newFixnum(context.runtime, Integer.MAX_VALUE));
             statement.setString(index, val.getValue().toString());
         }
     }
