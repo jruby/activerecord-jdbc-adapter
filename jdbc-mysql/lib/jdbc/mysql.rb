@@ -5,7 +5,7 @@ module Jdbc
   module MySQL
 
     def self.driver_jar
-      "mysql-connector-java-#{DRIVER_VERSION}.jar"
+      "mysql-connector-j-#{DRIVER_VERSION}.jar"
     end
 
     def self.load_driver(method = :load)
