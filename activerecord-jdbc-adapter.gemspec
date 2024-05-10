@@ -35,7 +35,7 @@ Gem::Specification.new do |gem|
     #gem.requirements << "jar org.postgresql:postgresql, 42.1.4.jre6, :scope => :compile"
 
     # compilation .jar dependencies for extension (at least until `mvn') :
-    gem.add_development_dependency 'jdbc-mysql', '~> 5.1.44'
+    gem.add_development_dependency 'jdbc-mysql', '~> 8.1.0'
     gem.add_development_dependency 'jdbc-postgres', '~> 42.1'
   end
 
