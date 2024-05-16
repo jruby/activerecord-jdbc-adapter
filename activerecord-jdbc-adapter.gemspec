@@ -14,7 +14,8 @@ Gem::Specification.new do |gem|
     "AR-JDBC is a database adapter for Rails' ActiveRecord component " <<
     "designed to be used with JRuby built upon Java's JDBC API for " <<
     "database access. Provides (ActiveRecord) built-in adapters: MySQL,  " <<
-    "PostgreSQL, SQLite3, and SQLServer."
+    "PostgreSQL, SQLite3, and SQLServer.  " <<
+    "This branch replaces mysql-connector-java-8.0.27 with mysql-connector-j-8.4.0.jar"
 
   gem.require_paths = ["lib"]
 
@@ -34,7 +35,7 @@ Gem::Specification.new do |gem|
     #gem.requirements << "jar org.postgresql:postgresql, 42.1.4.jre6, :scope => :compile"
 
     # compilation .jar dependencies for extension (at least until `mvn') :
-    gem.add_development_dependency 'jdbc-mysql', '~> 5.1.44'
+    gem.add_development_dependency 'jdbc-mysql', '~> 8.1.0'
     gem.add_development_dependency 'jdbc-postgres', '~> 42.1'
   end
 
