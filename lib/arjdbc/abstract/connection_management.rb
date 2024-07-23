@@ -36,10 +36,13 @@ module ArJdbc
       #  end
       # end
 
+      private
+
       # DIFFERENCE: we delve into jdbc shared code and this does self.class.new_client.
       def connect
-        @raw_connection = jdbc_connection_class(@config[:adapter_spec]).new(@config, self)
-        @raw_connection.configure_connection
+        @raw_connection = jdbc_connection_class.new(@connection_parameters, self)
+      rescue ConnectionNotEstablished => ex
+        raise ex.set_pool(@pool)
       end
 
       def reconnect
