@@ -464,11 +464,11 @@ module ArJdbc
     # since apparently calling close on the statement object
     # doesn't always free the server resources and calling
     # 'DISCARD ALL' fails if we are inside a transaction
-    def clear_cache!
-      super
-      # Make sure all query plans are *really* gone
-      @connection.execute 'DEALLOCATE ALL' if active?
-    end
+    # def clear_cache!
+    #   super
+    #   # Make sure all query plans are *really* gone
+    #   @connection.execute 'DEALLOCATE ALL' if active?
+    # end
 
     def reset!
       clear_cache!
@@ -747,7 +747,7 @@ module ActiveRecord::ConnectionAdapters
     include ArJdbc::Abstract::Core
     include ArJdbc::Abstract::ConnectionManagement
     include ArJdbc::Abstract::DatabaseStatements
-    include ArJdbc::Abstract::StatementCache
+    # include ArJdbc::Abstract::StatementCache
     include ArJdbc::Abstract::TransactionSupport
     include ArJdbc::PostgreSQL
 
