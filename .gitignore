@@ -33,3 +33,7 @@ Gemfile.lock
 .settings
 activerecord-jdbc.iml
 lib/arjdbc/jdbc/adapter_java.jar
+.jrubyrc
+.rubocop.yml
+.solargraph.yml
+pik.sh
