@@ -742,7 +742,7 @@ module ActiveRecord::ConnectionAdapters
     include ActiveRecord::ConnectionAdapters::PostgreSQL::SchemaStatements
     include ActiveRecord::ConnectionAdapters::PostgreSQL::Quoting
 
-    include Jdbc::ConnectionPoolCallbacks
+    # include Jdbc::ConnectionPoolCallbacks
 
     include ArJdbc::Abstract::Core
     include ArJdbc::Abstract::ConnectionManagement
