@@ -23,12 +23,12 @@ module ActiveRecord
     class Mysql2Adapter < AbstractMysqlAdapter
       ADAPTER_NAME = 'Mysql2'
 
-      include Jdbc::ConnectionPoolCallbacks
+      # include Jdbc::ConnectionPoolCallbacks
 
       include ArJdbc::Abstract::ConnectionManagement
       include ArJdbc::Abstract::DatabaseStatements
       # NOTE: do not include MySQL::DatabaseStatements
-      include ArJdbc::Abstract::StatementCache
+      # include ArJdbc::Abstract::StatementCache
       include ArJdbc::Abstract::TransactionSupport
 
       include ArJdbc::MySQL
