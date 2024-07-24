@@ -749,7 +749,7 @@ module ActiveRecord::ConnectionAdapters
     include ArJdbc::Abstract::Core
     include ArJdbc::Abstract::ConnectionManagement
     include ArJdbc::Abstract::DatabaseStatements
-    # include ArJdbc::Abstract::StatementCache
+    include ArJdbc::Abstract::StatementCache
     include ArJdbc::Abstract::TransactionSupport
     include ArJdbc::PostgreSQL
 
