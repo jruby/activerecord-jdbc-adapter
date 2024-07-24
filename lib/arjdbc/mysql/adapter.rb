@@ -221,7 +221,7 @@ module ActiveRecord
         @full_version ||= any_raw_connection.full_version
       end
 
-      def jdbc_connection_class(spec)
+      def jdbc_connection_class
         ::ActiveRecord::ConnectionAdapters::MySQLJdbcConnection
       end
 
