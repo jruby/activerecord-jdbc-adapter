@@ -40,7 +40,7 @@ def test_task_for(adapter, options = {})
       test_task.libs.push *FileList["activerecord-jdbc#{adapter}*/lib"]
     end
     test_task.libs << 'test'
-    test_task.options = '--use-color=t'
+    test_task.options = '--use-color=t --progress-style=mark'
     test_task.verbose = true if $VERBOSE
     yield(test_task) if block_given?
   end
