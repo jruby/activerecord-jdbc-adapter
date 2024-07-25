@@ -33,6 +33,16 @@ module ActiveRecord
 
       include ArJdbc::MySQL
 
+      class << self
+        def jdbc_connection_class
+          ::ActiveRecord::ConnectionAdapters::MySQLJdbcConnection
+        end
+
+        def new_client(conn_params, adapter_instance)
+          jdbc_connection_class.new(conn_params, adapter_instance)
+        end
+      end
+
       def initialize(...)
         super
 
@@ -219,10 +229,6 @@ module ActiveRecord
 
       def get_full_version
         @full_version ||= any_raw_connection.full_version
-      end
-
-      def jdbc_connection_class
-        ::ActiveRecord::ConnectionAdapters::MySQLJdbcConnection
       end
 
       def jdbc_column_class

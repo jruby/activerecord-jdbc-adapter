@@ -825,15 +825,6 @@ module ActiveRecord::ConnectionAdapters
       ::ActiveRecord::ConnectionAdapters::SQLite3Column
     end
 
-    def jdbc_connection_class
-      self.class.jdbc_connection_class
-    end
-
-    # @see ActiveRecord::ConnectionAdapters::JdbcAdapter#jdbc_connection_class
-    def self.jdbc_connection_class
-      ::ActiveRecord::ConnectionAdapters::SQLite3JdbcConnection
-    end
-
     # Note: This is not an override of ours but a moved line from AR Sqlite3Adapter to register ours vs our copied module (which would be their class).
 #    ActiveSupport.run_load_hooks(:active_record_sqlite3adapter, SQLite3Adapter)
 
@@ -851,6 +842,14 @@ module ActiveRecord::ConnectionAdapters
     ::ActiveRecord::Type.register(:integer, SQLite3Integer, adapter: :sqlite3)
 
     class << self
+      def jdbc_connection_class
+        ::ActiveRecord::ConnectionAdapters::SQLite3JdbcConnection
+      end
+
+      def new_client(conn_params, adapter_instance)
+        jdbc_connection_class.new(conn_params, adapter_instance)
+      end
+
       def dbconsole(config, options = {})
         args = []
 

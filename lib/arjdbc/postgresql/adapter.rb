@@ -35,11 +35,6 @@ module ArJdbc
     # @private
     Type = ::ActiveRecord::Type
 
-    # @see ActiveRecord::ConnectionAdapters::JdbcAdapter#jdbc_connection_class
-    def self.jdbc_connection_class
-      ::ActiveRecord::ConnectionAdapters::PostgreSQLJdbcConnection
-    end
-
     # @see ActiveRecord::ConnectionAdapters::JdbcAdapter#jdbc_column_class
     def jdbc_column_class; ::ActiveRecord::ConnectionAdapters::PostgreSQLColumn end
 
@@ -763,6 +758,16 @@ module ActiveRecord::ConnectionAdapters
     # AR expects OID to be available on the adapter
     OID = ActiveRecord::ConnectionAdapters::PostgreSQL::OID
 
+    class << self
+      def jdbc_connection_class
+        ::ActiveRecord::ConnectionAdapters::PostgreSQLJdbcConnection
+      end
+
+      def new_client(conn_params, adapter_instance)
+        jdbc_connection_class.new(conn_params, adapter_instance)
+      end
+    end
+
     def initialize(...)
       super
 
@@ -795,10 +800,6 @@ module ActiveRecord::ConnectionAdapters
 
     public :sql_for_insert
     alias :postgresql_version :database_version
-
-    def jdbc_connection_class
-      ::ArJdbc::PostgreSQL.jdbc_connection_class
-    end
 
     private
 
