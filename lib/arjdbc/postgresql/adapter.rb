@@ -657,6 +657,8 @@ module ArJdbc
         ::ActiveRecord::LockWaitTimeout.new(message, sql: sql, binds: binds)
       when /canceling statement/ # This needs to come after lock timeout because the lock timeout message also contains "canceling statement"
         ::ActiveRecord::QueryCanceled.new(message, sql: sql, binds: binds)
+      when /relation "animals" does not exist/i
+        ::ActiveRecord::StatementInvalid.new(message, sql: sql, binds: binds, connection_pool: @pool)
       else
         super
       end
