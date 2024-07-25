@@ -447,10 +447,12 @@ class MySQLSimpleTest < Test::Unit::TestCase
   def test_execute_after_disconnect
     connection.disconnect!
 
-    assert_raise(ActiveRecord::ConnectionNotEstablished) do
-      connection.execute('SELECT 1')
+    # active record change of behaviour 7.1, reconnects on query execution.
+    result = assert_nothing_raised do
+      connection.execute('SELECT 1 + 2')
     end
 
+    assert_equal 3, result.rows.flatten.first
   ensure
     connection.reconnect!
   end
