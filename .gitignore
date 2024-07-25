@@ -39,3 +39,4 @@ lib/arjdbc/jdbc/adapter_java.jar
 .rubocop.yml
 .solargraph.yml
 pik.sh
+.tool-versions
