@@ -24,7 +24,9 @@ class MySQLSimpleTest < Test::Unit::TestCase
     e = DbType.create!(:sample_string => '', :sample_text => '')
     t = Time.now
     value = Time.local(t.year, t.month, t.day, t.hour, t.min, t.sec, 0)
-    if ActiveRecord::VERSION::MAJOR >= 3
+    if ActiveRecord::VERSION::MAJOR >= 7
+      str = value.utc.to_fs(:db)
+    elsif ActiveRecord::VERSION::MAJOR >= 3
       str = value.utc.to_s(:db)
     else # AR-2.x #quoted_date did not do TZ conversions
       str = value.to_s(:db)
