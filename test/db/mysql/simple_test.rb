@@ -271,14 +271,16 @@ class MySQLSimpleTest < Test::Unit::TestCase
       config[:database] = MYSQL_CONFIG[:database]
       config[:properties] = MYSQL_CONFIG[:properties].dup
       with_connection(config) do |connection|
-        assert_match(/^jdbc:mysql:\/\/:\d*\//, connection.config[:url])
+        conf = connection.instance_variable_get('@config')
+        assert_match(/^jdbc:mysql:\/\/:\d*\//, conf[:url])
       end
 
       ActiveRecord::Base.connection.disconnect!
 
       host = [ MYSQL_CONFIG[:host] || 'localhost', '127.0.0.1' ] # fail-over
       with_connection(config.merge :host => host, :port => nil) do |connection|
-        assert_match(/^jdbc:mysql:\/\/.*?127.0.0.1\//, connection.config[:url])
+        conf = connection.instance_variable_get('@config')
+        assert_match(/^jdbc:mysql:\/\/.*?127.0.0.1\//, conf[:url])
       end
     ensure
       ActiveRecord::Base.establish_connection(MYSQL_CONFIG)
