@@ -235,6 +235,15 @@ module ActiveRecord
         ::ActiveRecord::ConnectionAdapters::MySQL::Column
       end
 
+      def translate_exception(exception, message:, sql:, binds:)
+        case message
+        when /Table .* doesn't exist/i
+          StatementInvalid.new(message, sql: sql, binds: binds, connection_pool: @pool)
+        else
+          super
+        end
+      end
+
       # defined in MySQL::DatabaseStatements which is not included
       def default_insert_value(column)
         super unless column.auto_increment?
