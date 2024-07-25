@@ -206,10 +206,14 @@ module TransactionTestMethods
 
   def test_current_savepoints_name
     MyUser.transaction do
+      MyUser.delete_all # Dirty the transaction to force a savepoint below
+
       assert_nil MyUser.connection.current_savepoint_name
       assert_nil MyUser.connection.current_transaction.savepoint_name
 
       MyUser.transaction(:requires_new => true) do
+        MyUser.delete_all # Dirty the transaction to force a savepoint below
+
         assert_equal "active_record_1", MyUser.connection.current_savepoint_name
         assert_equal "active_record_1", MyUser.connection.current_transaction.savepoint_name
 

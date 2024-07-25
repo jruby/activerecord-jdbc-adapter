@@ -24,7 +24,9 @@ class MySQLSimpleTest < Test::Unit::TestCase
     e = DbType.create!(:sample_string => '', :sample_text => '')
     t = Time.now
     value = Time.local(t.year, t.month, t.day, t.hour, t.min, t.sec, 0)
-    if ActiveRecord::VERSION::MAJOR >= 3
+    if ActiveRecord::VERSION::MAJOR >= 7
+      str = value.utc.to_fs(:db)
+    elsif ActiveRecord::VERSION::MAJOR >= 3
       str = value.utc.to_s(:db)
     else # AR-2.x #quoted_date did not do TZ conversions
       str = value.to_s(:db)
@@ -271,14 +273,16 @@ class MySQLSimpleTest < Test::Unit::TestCase
       config[:database] = MYSQL_CONFIG[:database]
       config[:properties] = MYSQL_CONFIG[:properties].dup
       with_connection(config) do |connection|
-        assert_match(/^jdbc:mysql:\/\/:\d*\//, connection.config[:url])
+        conf = connection.instance_variable_get('@config')
+        assert_match(/^jdbc:mysql:\/\/:\d*\//, conf[:url])
       end
 
       ActiveRecord::Base.connection.disconnect!
 
       host = [ MYSQL_CONFIG[:host] || 'localhost', '127.0.0.1' ] # fail-over
       with_connection(config.merge :host => host, :port => nil) do |connection|
-        assert_match(/^jdbc:mysql:\/\/.*?127.0.0.1\//, connection.config[:url])
+        conf = connection.instance_variable_get('@config')
+        assert_match(/^jdbc:mysql:\/\/.*?127.0.0.1\//, conf[:url])
       end
     ensure
       ActiveRecord::Base.establish_connection(MYSQL_CONFIG)
@@ -445,10 +449,12 @@ class MySQLSimpleTest < Test::Unit::TestCase
   def test_execute_after_disconnect
     connection.disconnect!
 
-    assert_raise(ActiveRecord::ConnectionNotEstablished) do
-      connection.execute('SELECT 1')
+    # active record change of behaviour 7.1, reconnects on query execution.
+    result = assert_nothing_raised do
+      connection.execute('SELECT 1 + 2')
     end
 
+    assert_equal 3, result.rows.flatten.first
   ensure
     connection.reconnect!
   end

@@ -774,6 +774,14 @@ module ActiveRecord::ConnectionAdapters
     #   config.active_record.sqlite3_adapter_strict_strings_by_default = true
     class_attribute :strict_strings_by_default, default: false # Does not actually do anything right now
 
+    def initialize(...)
+      super
+
+      conn_params = @config.compact
+
+      @connection_parameters = conn_params
+    end
+
     def self.represent_boolean_as_integer=(value) # :nodoc:
       if value == false
         raise "`.represent_boolean_as_integer=` is now always true, so make sure your application can work with it and remove this settings."
@@ -817,15 +825,6 @@ module ActiveRecord::ConnectionAdapters
       ::ActiveRecord::ConnectionAdapters::SQLite3Column
     end
 
-    def jdbc_connection_class(spec)
-      self.class.jdbc_connection_class
-    end
-
-    # @see ActiveRecord::ConnectionAdapters::JdbcAdapter#jdbc_connection_class
-    def self.jdbc_connection_class
-      ::ActiveRecord::ConnectionAdapters::SQLite3JdbcConnection
-    end
-
     # Note: This is not an override of ours but a moved line from AR Sqlite3Adapter to register ours vs our copied module (which would be their class).
 #    ActiveSupport.run_load_hooks(:active_record_sqlite3adapter, SQLite3Adapter)
 
@@ -843,6 +842,14 @@ module ActiveRecord::ConnectionAdapters
     ::ActiveRecord::Type.register(:integer, SQLite3Integer, adapter: :sqlite3)
 
     class << self
+      def jdbc_connection_class
+        ::ActiveRecord::ConnectionAdapters::SQLite3JdbcConnection
+      end
+
+      def new_client(conn_params, adapter_instance)
+        jdbc_connection_class.new(conn_params, adapter_instance)
+      end
+
       def dbconsole(config, options = {})
         args = []
 

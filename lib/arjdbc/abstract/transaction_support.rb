@@ -107,16 +107,3 @@ module ArJdbc
     end
   end
 end
-
-# patch to avoid the usage of WeakMap
-require 'active_record/connection_adapters/abstract/transaction'
-module ActiveRecord
-  module ConnectionAdapters
-    class Transaction
-      def add_record(record, ensure_finalize = true)
-        @records ||= []
-        @records << record
-      end
-    end
-  end
-end

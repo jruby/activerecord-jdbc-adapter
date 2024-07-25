@@ -19,6 +19,8 @@ nbproject
 .project
 *.sqlite
 *.sqlite3
+*.sqlite3-shm
+*.sqlite3-wal
 *.derby
 derby.log
 test.hsqldb*
@@ -33,3 +35,7 @@ Gemfile.lock
 .settings
 activerecord-jdbc.iml
 lib/arjdbc/jdbc/adapter_java.jar
+.jrubyrc
+.rubocop.yml
+.solargraph.yml
+pik.sh

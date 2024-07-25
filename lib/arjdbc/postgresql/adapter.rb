@@ -35,11 +35,6 @@ module ArJdbc
     # @private
     Type = ::ActiveRecord::Type
 
-    # @see ActiveRecord::ConnectionAdapters::JdbcAdapter#jdbc_connection_class
-    def self.jdbc_connection_class
-      ::ActiveRecord::ConnectionAdapters::PostgreSQLJdbcConnection
-    end
-
     # @see ActiveRecord::ConnectionAdapters::JdbcAdapter#jdbc_column_class
     def jdbc_column_class; ::ActiveRecord::ConnectionAdapters::PostgreSQLColumn end
 
@@ -52,8 +47,8 @@ module ArJdbc
     def redshift?
       # SELECT version() :
       #  PostgreSQL 8.0.2 on i686-pc-linux-gnu, compiled by GCC gcc (GCC) 3.4.2 20041017 (Red Hat 3.4.2-6.fc3), Redshift 1.0.647
-      if ( redshift = config[:redshift] ).nil?
-        redshift = !! (@connection.database_product || '').index('Redshift')
+      if (redshift = @config[:redshift]).nil?
+        redshift = !! (valid_raw_connection.database_product || '').index('Redshift')
       end
       redshift
     end
@@ -73,8 +68,8 @@ module ArJdbc
         # see http://jdbc.postgresql.org/documentation/91/connect.html
         # self.set_client_encoding(encoding)
       #end
-      self.client_min_messages = config[:min_messages] || 'warning'
-      self.schema_search_path = config[:schema_search_path] || config[:schema_order]
+      self.client_min_messages = @config[:min_messages] || 'warning'
+      self.schema_search_path = @config[:schema_search_path] || @config[:schema_order]
 
       # Use standard-conforming strings if available so we don't have to do the E'...' dance.
       set_standard_conforming_strings
@@ -93,7 +88,7 @@ module ArJdbc
 
       # SET statements from :variables config hash
       # http://www.postgresql.org/docs/8.3/static/sql-set.html
-      (config[:variables] || {}).map do |k, v|
+      (@config[:variables] || {}).map do |k, v|
         if v == ':default' || v == :default
           # Sets the value to the global or compile default
           execute("SET SESSION #{k} TO DEFAULT", 'SCHEMA')
@@ -101,6 +96,9 @@ module ArJdbc
           execute("SET SESSION #{k} TO #{quote(v)}", 'SCHEMA')
         end
       end
+
+      @type_map = Type::HashLookupTypeMap.new
+      initialize_type_map
     end
 
     # @private
@@ -370,7 +368,7 @@ module ArJdbc
 
     def get_database_version # :nodoc:
       begin
-        version = @connection.database_product
+        version = valid_raw_connection.database_product
         if match = version.match(/([\d\.]*\d).*?/)
           version = match[1].split('.').map(&:to_i)
           # PostgreSQL version representation does not have more than 4 digits
@@ -426,8 +424,7 @@ module ArJdbc
       end
     end
 
-
-    def exec_insert(sql, name = nil, binds = [], pk = nil, sequence_name = nil)
+    def exec_insert(sql, name = nil, binds = [], pk = nil, sequence_name = nil, returning: nil) # :nodoc:
       val = super
       if !use_insert_returning? && pk
         unless sequence_name
@@ -464,11 +461,11 @@ module ArJdbc
     # since apparently calling close on the statement object
     # doesn't always free the server resources and calling
     # 'DISCARD ALL' fails if we are inside a transaction
-    def clear_cache!
-      super
-      # Make sure all query plans are *really* gone
-      @connection.execute 'DEALLOCATE ALL' if active?
-    end
+    # def clear_cache!
+    #   super
+    #   # Make sure all query plans are *really* gone
+    #   @connection.execute 'DEALLOCATE ALL' if active?
+    # end
 
     def reset!
       clear_cache!
@@ -660,6 +657,8 @@ module ArJdbc
         ::ActiveRecord::LockWaitTimeout.new(message, sql: sql, binds: binds)
       when /canceling statement/ # This needs to come after lock timeout because the lock timeout message also contains "canceling statement"
         ::ActiveRecord::QueryCanceled.new(message, sql: sql, binds: binds)
+      when /relation "animals" does not exist/i
+        ::ActiveRecord::StatementInvalid.new(message, sql: sql, binds: binds, connection_pool: @pool)
       else
         super
       end
@@ -742,7 +741,7 @@ module ActiveRecord::ConnectionAdapters
     include ActiveRecord::ConnectionAdapters::PostgreSQL::SchemaStatements
     include ActiveRecord::ConnectionAdapters::PostgreSQL::Quoting
 
-    include Jdbc::ConnectionPoolCallbacks
+    # include Jdbc::ConnectionPoolCallbacks
 
     include ArJdbc::Abstract::Core
     include ArJdbc::Abstract::ConnectionManagement
@@ -761,15 +760,26 @@ module ActiveRecord::ConnectionAdapters
     # AR expects OID to be available on the adapter
     OID = ActiveRecord::ConnectionAdapters::PostgreSQL::OID
 
-    def initialize(connection, logger = nil, connection_parameters = nil, config = {})
+    class << self
+      def jdbc_connection_class
+        ::ActiveRecord::ConnectionAdapters::PostgreSQLJdbcConnection
+      end
+
+      def new_client(conn_params, adapter_instance)
+        jdbc_connection_class.new(conn_params, adapter_instance)
+      end
+    end
+
+    def initialize(...)
+      super
+
+      conn_params = @config.compact
+
+      @connection_parameters = conn_params
+
       # @local_tz is initialized as nil to avoid warnings when connect tries to use it
       @local_tz = nil
       @max_identifier_length = nil
-
-      super(connection, logger, config) # configure_connection happens in super
-
-      @type_map = Type::HashLookupTypeMap.new
-      initialize_type_map
 
       @use_insert_returning = @config.key?(:insert_returning) ?
         self.class.type_cast_config_to_boolean(@config[:insert_returning]) : true
@@ -792,10 +802,6 @@ module ActiveRecord::ConnectionAdapters
 
     public :sql_for_insert
     alias :postgresql_version :database_version
-
-    def jdbc_connection_class(spec)
-      ::ArJdbc::PostgreSQL.jdbc_connection_class
-    end
 
     private
 
@@ -829,8 +835,10 @@ module ActiveRecord::ConnectionAdapters
 
       type_casted_binds = type_casted_binds(binds)
       log(sql, name, binds, type_casted_binds, async: async) do
-        ActiveSupport::Dependencies.interlock.permit_concurrent_loads do
-          @connection.exec_params(sql, type_casted_binds)
+        with_raw_connection do |conn|
+          result = conn.exec_params(sql, type_casted_binds)
+          verified!
+          result
         end
       end
     end

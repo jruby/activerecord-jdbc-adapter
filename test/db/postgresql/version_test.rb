@@ -50,12 +50,15 @@ class VersionTest < Test::Unit::TestCase
   private
 
   def connection_stub(version, full_version = false)
-    connection = mock('connection')
-    connection.stubs(:jndi?)
-    connection.stubs(:configure_connection)
-    connection.expects(:database_product).returns full_version ? version.to_s : "PostgreSQL #{version}"
+    raw_connection = mock('raw_connection')
+    raw_connection.stubs(:execute)
+    raw_connection.stubs(:exec_params)
+
+    ActiveRecord::ConnectionAdapters::PostgreSQLAdapter.stubs(:new_client).returns(raw_connection)
     ActiveRecord::ConnectionAdapters::PostgreSQLAdapter.any_instance.stubs(:initialize_type_map)
-    pg_connection = ActiveRecord::ConnectionAdapters::PostgreSQLAdapter.new(connection, nil, {})
+
+    raw_connection.expects(:database_product).returns(full_version ? version.to_s : "PostgreSQL #{version}").at_least_once
+    pg_connection = ActiveRecord::ConnectionAdapters::PostgreSQLAdapter.new({})
     pg_connection.database_version
   end
 end

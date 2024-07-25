@@ -24,7 +24,7 @@ module ArJdbc
 
         # Only say we support the statement cache if we are using prepared statements
         # and have a max number of statements defined
-        statement_limit = self.class.type_cast_config_to_integer(config[:statement_limit])
+        statement_limit = self.class.type_cast_config_to_integer(@config[:statement_limit])
         @jdbc_statement_cache_enabled = prepared_statements && (statement_limit.nil? || statement_limit > 0)
 
         @statements = StatementPool.new(statement_limit) # AR (5.0) expects this to be stored as @statements

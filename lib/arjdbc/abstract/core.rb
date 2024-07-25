@@ -2,23 +2,17 @@
 
 module ArJdbc
   module Abstract
-
     # This is minimum amount of code needed from base JDBC Adapter class to make common adapters
     # work.  This replaces using jdbc/adapter as a base class for all adapters.
     module Core
-
-      attr_reader :config
-
-      def initialize(config)
-        @config = config
+      def initialize(...)
+        super
 
         if self.class.equal? ActiveRecord::ConnectionAdapters::JdbcAdapter
           spec = @config.key?(:adapter_spec) ? @config[:adapter_spec] :
                      ( @config[:adapter_spec] = adapter_spec(@config) ) # due resolving visitor
           extend spec if spec
         end
-
-        super(config) # AbstractAdapter
       end
 
       # Retrieve the raw `java.sql.Connection` object.
