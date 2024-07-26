@@ -451,10 +451,10 @@ class MySQLSimpleTest < Test::Unit::TestCase
 
     # active record change of behaviour 7.1, reconnects on query execution.
     result = assert_nothing_raised do
-      connection.execute('SELECT 1 + 2')
+      connection.execute('SELECT 1 + 2 as total')
     end
 
-    assert_equal 3, result.rows.flatten.first
+    assert_equal 3, result.first['total']
   ensure
     connection.reconnect!
   end
