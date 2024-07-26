@@ -132,7 +132,8 @@ class MysqlInfoTest < Test::Unit::TestCase
 
   def test_should_include_limit
     text_column = connection.columns('memos').find { |c| c.name == 'text' }
-    assert_equal 4294967295, text_column.limit
+
+    assert_equal 4_294_967_295, text_column.limit
   end
 
   def test_should_set_sqltype_to_longtext

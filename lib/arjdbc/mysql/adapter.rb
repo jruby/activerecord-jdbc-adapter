@@ -58,6 +58,11 @@ module ActiveRecord
         @connection_parameters ||= @config
       end
 
+      # NOTE: redefines constant defined in abstract class however this time
+      # will use methods defined in the mysql abstract class and map properly
+      # mysql types.
+      TYPE_MAP = Type::TypeMap.new.tap { |m| initialize_type_map(m) }
+
       def self.database_exists?(config)
         conn = ActiveRecord::Base.mysql2_connection(config)
         conn && conn.really_valid?
