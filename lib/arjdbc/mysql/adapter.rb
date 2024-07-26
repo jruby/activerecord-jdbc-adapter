@@ -239,6 +239,8 @@ module ActiveRecord
         case message
         when /Table .* doesn't exist/i
           StatementInvalid.new(message, sql: sql, binds: binds, connection_pool: @pool)
+        when /BLOB, TEXT, GEOMETRY or JSON column .* can't have a default value/i
+          StatementInvalid.new(message, sql: sql, binds: binds, connection_pool: @pool)
         else
           super
         end

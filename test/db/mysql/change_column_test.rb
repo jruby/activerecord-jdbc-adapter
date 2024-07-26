@@ -13,6 +13,7 @@ class MySQLChangeColumnTest < Test::Unit::TestCase
       ActiveRecord::Migration.add_column :people, :about, :string, :default => 'x'
       # NOTE: even in non strict mode MySQL does not allow us add or change
       # text/binary with a default ...
+      #  Message: BLOB, TEXT, GEOMETRY or JSON column '%s' can't have a default value
       if mariadb_server? && db_version >= '10.2'
         ActiveRecord::Migration.change_column :people, :about, :text
       else
