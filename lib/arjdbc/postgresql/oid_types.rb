@@ -118,8 +118,15 @@ module ArJdbc
       end
 
       def reload_type_map
-          type_map.clear
+        @lock.synchronize do
+          if @type_map
+            type_map.clear
+          else
+            @type_map = Type::HashLookupTypeMap.new
+          end
+
           initialize_type_map
+        end
       end
 
         def initialize_type_map_inner(m)
@@ -272,10 +279,6 @@ module ArJdbc
 
       def extract_precision(sql_type)
         $1.to_i if sql_type =~ /\((\d+)(,\d+)?\)/
-      end
-
-      def extract_limit(sql_type)
-        $1.to_i if sql_type =~ /\((.*)\)/
       end
 
       # Support arrays/ranges for defining attributes that don't exist in the db

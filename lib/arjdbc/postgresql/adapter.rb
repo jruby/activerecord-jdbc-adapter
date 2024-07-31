@@ -97,8 +97,7 @@ module ArJdbc
         end
       end
 
-      @type_map = Type::HashLookupTypeMap.new
-      initialize_type_map
+      reload_type_map
     end
 
     # @private
@@ -125,7 +124,7 @@ module ArJdbc
       inet:         { name: 'inet' },
       int4range:    { name: 'int4range' },
       int8range:    { name: 'int8range' },
-      integer:      { name: 'integer' },
+      integer:      { name: 'integer', limit: 4 },
       interval:     { name: 'interval' },
       json:         { name: 'json' },
       jsonb:        { name: 'jsonb' },
