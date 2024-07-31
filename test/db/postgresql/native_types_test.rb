@@ -19,7 +19,8 @@ class PostgreSQLNativeTypesTest < Test::Unit::TestCase
         "bigint_serial_should_be_integer bigint default nextval('seq_pk_customers')",
         "integer_serial_should_be_integer integer default nextval('seq_pk_customers')",
         "varchar_should_be_string varchar(2)",
-        "timestamp_should_be_datetime timestamp",
+        "timestamp_should_be_timestamp timestamp",
+        "timestamptz_should_be_timestamptz timestamptz",
         "bytea_should_be_binary bytea",
         "double_precision_should_be_float double precision",
         "real_should_be_float real",
@@ -69,8 +70,14 @@ class PostgreSQLNativeTypesTest < Test::Unit::TestCase
     assert_instance_of ActiveModel::Type::String, column_type("varchar_should_be_string")
   end
 
-  def test_timestamp_should_be_mapped_to_datetime
-    assert_instance_of OID::DateTime, column_type("timestamp_should_be_datetime")
+  def test_timestamp_should_be_mapped_to_timestamp
+    assert_kind_of OID::DateTime, column_type("timestamp_should_be_timestamp")
+    assert_instance_of OID::Timestamp, column_type("timestamp_should_be_timestamp")
+  end
+
+  def test_timestamptz_should_be_mapped_to_timestamptz
+    assert_kind_of OID::DateTime, column_type("timestamptz_should_be_timestamptz")
+    assert_instance_of OID::TimestampWithTimeZone, column_type("timestamptz_should_be_timestamptz")
   end
 
   def test_bytea_should_be_mapped_to_binary
