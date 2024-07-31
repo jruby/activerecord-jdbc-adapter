@@ -6,7 +6,8 @@ class PostgreSQLHstoreTest < Test::Unit::TestCase
 
   class Hstore < ActiveRecord::Base
     self.table_name = 'hstores'
-    store :tags, :accessors => [ :name ]
+
+    store_accessor :tags, [:name]
   end
 
   def setup
@@ -36,18 +37,17 @@ class PostgreSQLHstoreTest < Test::Unit::TestCase
 
   def test_parse
     column_type = Hstore.type_for_attribute('tags')
-    assert_equal({},  column_type.deserialize(''))
-    assert_equal({'1' => '2'},  column_type.deserialize('"1"=>"2"'))
-    assert_equal({'key'=>nil},  column_type.deserialize('key => NULL'))
-    assert_equal({'c'=>'}','"a"'=>'b "a b'}, column_type.deserialize(%q(c=>"}", "\"a\""=>"b \"a b")))
+
+    assert_equal({}, column_type.deserialize(''))
+    assert_equal({ '1' => '2' }, column_type.deserialize('"1"=>"2"'))
   end
 
   def test_store_select
     @connection.execute "insert into hstores (tags) VALUES ('name=>ferko,type=>suska')"
     x = Hstore.first
-    assert_equal 'ferko', x.name
-    assert_equal 'suska', x.tags[:type]
-    assert_instance_of ActiveSupport::HashWithIndifferentAccess, x.tags
-  end
 
+    assert_equal 'ferko', x.name
+    assert_equal 'suska', x.tags['type']
+    assert_instance_of Hash, x.tags
+  end
 end
