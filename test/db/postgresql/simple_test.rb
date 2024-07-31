@@ -344,6 +344,7 @@ class PostgresForeignKeyTest < Test::Unit::TestCase
       t.string :title
       t.references :db_type, :index => true, :foreign_key => true
     end
+
     assert_equal 1, connection.foreign_keys('db_posts').size
     assert_equal 'db_posts', connection.foreign_keys('db_posts')[0].from_table
     assert_equal 'db_types', connection.foreign_keys('db_posts')[0].to_table

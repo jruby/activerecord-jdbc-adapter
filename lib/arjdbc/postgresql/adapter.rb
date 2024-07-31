@@ -13,6 +13,7 @@ require 'active_record/connection_adapters/postgresql/schema_dumper'
 require 'active_record/connection_adapters/postgresql/schema_statements'
 require 'active_record/connection_adapters/postgresql/type_metadata'
 require 'active_record/connection_adapters/postgresql/utils'
+
 require 'arjdbc/abstract/core'
 require 'arjdbc/abstract/connection_management'
 require 'arjdbc/abstract/database_statements'
@@ -21,6 +22,8 @@ require 'arjdbc/abstract/transaction_support'
 require 'arjdbc/postgresql/base/array_decoder'
 require 'arjdbc/postgresql/base/array_encoder'
 require 'arjdbc/postgresql/name'
+require 'arjdbc/postgresql/schema_statements'
+
 require 'active_model'
 
 module ArJdbc
@@ -751,6 +754,7 @@ module ActiveRecord::ConnectionAdapters
 
     require 'arjdbc/postgresql/oid_types'
     include ::ArJdbc::PostgreSQL::OIDTypes
+    include ::ArJdbc::PostgreSQL::SchemaStatements
 
     include ::ArJdbc::PostgreSQL::ColumnHelpers
 
