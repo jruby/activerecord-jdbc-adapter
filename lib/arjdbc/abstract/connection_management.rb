@@ -41,7 +41,7 @@ module ArJdbc
       # DIFFERENCE: we delve into jdbc shared code and this does self.class.new_client.
       def connect
         @raw_connection = self.class.new_client(@connection_parameters, self)
-      rescue ConnectionNotEstablished => ex
+      rescue ActiveRecord::ConnectionNotEstablished => ex
         raise ex.set_pool(@pool)
       end
 
