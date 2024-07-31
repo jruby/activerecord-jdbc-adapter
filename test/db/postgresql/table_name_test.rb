@@ -88,8 +88,8 @@ class PostgreSQLTableNameTest < Test::Unit::TestCase
 
   test 'serial with trigger' do
     sn = SerialWithTrigger.create! :value => 1234567890.to_s
-    assert sn.reload
 
+    assert sn.reload
     SerialWithTrigger.columns
   end
 

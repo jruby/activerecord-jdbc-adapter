@@ -58,6 +58,27 @@ class PostgresSimpleTest < Test::Unit::TestCase
     assert_equal my_date, sample_date
   end
 
+  # @override
+  def test_big_decimal
+    test_value = BigDecimal('9876543210_9876543210_9876543210.0')
+
+    conn = DbType.connection
+
+    if conn.prepared_statements?
+      db_type = DbType.create!(big_decimal: test_value)
+      db_type = DbType.find(db_type.id)
+      assert_kind_of Integer, db_type.big_decimal
+      assert_equal test_value, db_type.big_decimal
+    else
+      # it seems the patch applies when prepared statements is disabled
+      # https://discuss.rubyonrails.org/t/cve-2022-44566-possible-denial-of-service-vulnerability-in-activerecords-postgresql-adapter/82119
+      # https://github.com/rails/rails/commit/4f44aa9d514e701ada92b5cf08beccf566eeaebf
+      assert_raise ActiveRecord::ConnectionAdapters::PostgreSQL::Quoting::IntegerOutOf64BitRange do
+        DbType.create!(big_decimal: test_value)
+      end
+    end
+  end
+
   def test_encoding
     assert_not_nil connection.encoding
   end
@@ -344,6 +365,7 @@ class PostgresForeignKeyTest < Test::Unit::TestCase
       t.string :title
       t.references :db_type, :index => true, :foreign_key => true
     end
+
     assert_equal 1, connection.foreign_keys('db_posts').size
     assert_equal 'db_posts', connection.foreign_keys('db_posts')[0].from_table
     assert_equal 'db_types', connection.foreign_keys('db_posts')[0].to_table

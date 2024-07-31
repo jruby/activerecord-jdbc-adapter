@@ -58,6 +58,7 @@ class PostgresSchemaDumpTest < Test::Unit::TestCase
   def test_schema_dump_integer_with_no_limit_should_have_no_limit
     dump = dump_with_data_types
     lines = dump.lines.grep(/sample_integer_no_limit/)
+
     assert ! lines.empty?
     lines.each { |line| assert line !~ /:limit|limit:/ }
   end
