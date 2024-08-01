@@ -81,16 +81,18 @@ class PostgreSQLTableNameTest < Test::Unit::TestCase
     end
   end
 
-  class SerialWithTrigger < ActiveRecord::Base;
+  class SerialWithTrigger < ActiveRecord::Base
     self.table_name = 'serials'
     self.primary_key = :sid
   end
 
-  test 'serial with trigger' do
-    sn = SerialWithTrigger.create! :value => 1234567890.to_s
+  def test_serial_with_trigger
+    pend "Issue happens in active record 7.1 internals, issue wass logged in rails repo"
+    # issue link: https://github.com/rails/rails/issues/52485
+
+    sn = SerialWithTrigger.create!(value: 1_234_567_890.to_s)
 
     assert sn.reload
     SerialWithTrigger.columns
   end
-
 end
