@@ -232,6 +232,10 @@ module ArJdbc
     alias supports_insert_on_duplicate_update? supports_insert_on_conflict?
     alias supports_insert_conflict_target? supports_insert_on_conflict?
 
+    def supports_identity_columns? # :nodoc:
+      database_version >= 10_00_00 # >= 10.0
+    end
+
     def index_algorithms
       { concurrently: 'CONCURRENTLY' }
     end
