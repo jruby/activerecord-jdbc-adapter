@@ -741,6 +741,12 @@ module ActiveRecord::ConnectionAdapters
 
       conn_params = @config.compact
 
+      # NOTE: strict strings is not supported by the jdbc driver yet,
+      # hope it will supported soon, I open a issue in their repository.
+      #   https://github.com/xerial/sqlite-jdbc/issues/1153
+      #
+      # @config[:strict] = ConnectionAdapters::SQLite3Adapter.strict_strings_by_default unless @config.key?(:strict)
+
       @connection_parameters = conn_params
     end
 
