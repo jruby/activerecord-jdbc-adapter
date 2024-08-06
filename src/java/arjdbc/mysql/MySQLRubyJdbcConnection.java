@@ -119,6 +119,17 @@ public class MySQLRubyJdbcConnection extends RubyJdbcConnection {
         return driverWrapper;
     }
 
+    @JRubyMethod(name = "ping")
+    public RubyBoolean db_ping(final ThreadContext context) {
+        final Connection connection = getConnection(true);
+        if (connection == null) return context.fals;
+
+        // NOTE: It seems only `connection.isValid(aliveTimeout)` is needed
+        // for JDBC 4.0 and up. https://jira.mariadb.org/browse/CONJ-51
+
+        return context.runtime.newBoolean(isConnectionValid(context, connection));
+    }
+
     private static transient Class MYSQL_CONNECTION;
     private static transient Boolean MYSQL_CONNECTION_FOUND;
 

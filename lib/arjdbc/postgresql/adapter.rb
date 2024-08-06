@@ -301,14 +301,21 @@ module ArJdbc
       query_value("SELECT pg_advisory_unlock(#{lock_id})")
     end
 
-    def enable_extension(name)
-      exec_query("CREATE EXTENSION IF NOT EXISTS \"#{name}\"").tap {
-        reload_type_map
-      }
+    def enable_extension(name, **)
+      schema, name = name.to_s.split(".").values_at(-2, -1)
+      sql = +"CREATE EXTENSION IF NOT EXISTS \"#{name}\""
+      sql << " SCHEMA #{schema}" if schema
+
+      internal_exec_query(sql).tap { reload_type_map }
     end
 
-    def disable_extension(name)
-      exec_query("DROP EXTENSION IF EXISTS \"#{name}\" CASCADE").tap {
+    # Removes an extension from the database.
+    #
+    # [<tt>:force</tt>]
+    #   Set to +:cascade+ to drop dependent objects as well.
+    #   Defaults to false.
+    def disable_extension(name, force: false)
+      internal_exec_query("DROP EXTENSION IF EXISTS \"#{name}\"#{' CASCADE' if force == :cascade}").tap {
         reload_type_map
       }
     end
@@ -322,7 +329,7 @@ module ArJdbc
     end
 
     def extensions
-      exec_query("SELECT extname FROM pg_extension", "SCHEMA").cast_values
+      internal_exec_query("SELECT extname FROM pg_extension", "SCHEMA", allow_retry: true, materialize_transactions: false).cast_values
     end
 
     # Returns a list of defined enum types, and their values.
@@ -474,11 +481,16 @@ module ArJdbc
     # end
 
     def reset!
-      clear_cache!
-      reset_transaction
-      @connection.rollback # Have to deal with rollbacks differently than the AR adapter
-      @connection.execute 'DISCARD ALL'
-      @connection.configure_connection
+      @lock.synchronize do
+        return connect! unless @raw_connection
+
+        # Have to deal with rollbacks differently than the AR adapter
+        @raw_connection.rollback
+
+        @raw_connection.execute("DISCARD ALL")
+
+        super
+      end
     end
 
     def default_sequence_name(table_name, pk = "id") #:nodoc:

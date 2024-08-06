@@ -67,28 +67,6 @@ module ArJdbc
 
     # @private
     module OIDTypes
-
-      # @override
-      def enable_extension(name)
-        result = super(name)
-        @extensions = nil
-        reload_type_map
-        result
-      end
-
-      # @override
-      def disable_extension(name)
-        result = super(name)
-        @extensions = nil
-        reload_type_map
-        result
-      end
-
-      # @override
-      def extensions
-        @extensions ||= super
-      end
-
       def get_oid_type(oid, fmod, column_name, sql_type = '') # :nodoc:
         # Note: type_map is storing a bunch of oid type prefixed with a namespace even
         # if they are not namespaced (e.g. ""."oidvector").  builtin types which are

@@ -41,7 +41,25 @@ module ActiveRecord
         def new_client(conn_params, adapter_instance)
           jdbc_connection_class.new(conn_params, adapter_instance)
         end
+
+        private
+          def initialize_type_map(m)
+            super
+
+            m.register_type(%r(char)i) do |sql_type|
+              limit = extract_limit(sql_type)
+              Type.lookup(:string, adapter: :mysql2, limit: limit)
+            end
+
+            m.register_type %r(^enum)i, Type.lookup(:string, adapter: :mysql2)
+            m.register_type %r(^set)i,  Type.lookup(:string, adapter: :mysql2)
+          end
       end
+
+      # NOTE: redefines constant defined in abstract class however this time
+      # will use methods defined in the mysql abstract class and map properly
+      # mysql types.
+      TYPE_MAP = Type::TypeMap.new.tap { |m| initialize_type_map(m) }
 
       def initialize(...)
         super
@@ -57,11 +75,6 @@ module ActiveRecord
 
         @connection_parameters ||= @config
       end
-
-      # NOTE: redefines constant defined in abstract class however this time
-      # will use methods defined in the mysql abstract class and map properly
-      # mysql types.
-      TYPE_MAP = Type::TypeMap.new.tap { |m| initialize_type_map(m) }
 
       def self.database_exists?(config)
         conn = ActiveRecord::Base.mysql2_connection(config)
@@ -186,7 +199,7 @@ module ActiveRecord
       #++
 
       def active?
-        !(@raw_connection.nil? || @raw_connection.closed?)  && @lock.synchronize { @raw_connection&.execute_query("/* ping */ SELECT 1") } || false
+        !(@raw_connection.nil? || @raw_connection.closed?) && @lock.synchronize { @raw_connection&.ping } || false
       end
 
       alias :reset! :reconnect!
