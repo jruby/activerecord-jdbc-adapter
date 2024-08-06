@@ -199,7 +199,7 @@ module ActiveRecord
       #++
 
       def active?
-        !(@raw_connection.nil? || @raw_connection.closed?)  && @lock.synchronize { @raw_connection&.execute_query("/* ping */ SELECT 1") } || false
+        !(@raw_connection.nil? || @raw_connection.closed?) && @lock.synchronize { @raw_connection&.ping } || false
       end
 
       alias :reset! :reconnect!
