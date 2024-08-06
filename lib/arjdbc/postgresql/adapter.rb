@@ -481,11 +481,16 @@ module ArJdbc
     # end
 
     def reset!
-      clear_cache!
-      reset_transaction
-      @connection.rollback # Have to deal with rollbacks differently than the AR adapter
-      @connection.execute 'DISCARD ALL'
-      @connection.configure_connection
+      @lock.synchronize do
+        return connect! unless @raw_connection
+
+        # Have to deal with rollbacks differently than the AR adapter
+        @raw_connection.rollback
+
+        @raw_connection.execute("DISCARD ALL")
+
+        super
+      end
     end
 
     def default_sequence_name(table_name, pk = "id") #:nodoc:
