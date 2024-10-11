@@ -87,9 +87,6 @@ class PostgreSQLTableNameTest < Test::Unit::TestCase
   end
 
   def test_serial_with_trigger
-    pend "Issue happens in active record 7.1 internals, issue wass logged in rails repo"
-    # issue link: https://github.com/rails/rails/issues/52485
-
     sn = SerialWithTrigger.create!(value: 1_234_567_890.to_s)
 
     assert sn.reload
