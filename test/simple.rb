@@ -324,6 +324,8 @@ module SimpleTestMethods
     end
 
     def test_time_in_dst_change_hour_utc
+      skip "with_system_tz not working in tomcat" if ActiveRecord::Base.connection.raw_connection.jndi?
+
       with_system_tz 'Europe/Prague' do
         Time.use_zone 'Europe/Prague' do
           with_timezone_config default: :utc do
