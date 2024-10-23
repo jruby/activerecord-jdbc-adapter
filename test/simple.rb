@@ -329,11 +329,11 @@ module SimpleTestMethods
           with_timezone_config default: :utc do
             id = DbType.connection.insert(
               "INSERT INTO db_types (sample_datetime)
-              values ('2024-03-31 03:30:00')"
+              values ('2024-03-31 02:30:00')"
             )
             saved_time = DbType.find(id).sample_datetime
 
-            assert_equal Time.utc(2024, 3, 31, 3, 30), saved_time
+            assert_equal Time.utc(2024, 3, 31, 2, 30), saved_time
             assert_equal 'UTC', saved_time.zone
           end
         end
@@ -352,7 +352,7 @@ module SimpleTestMethods
             )
             saved_time = DbType.find(id).sample_datetime
 
-            assert_equal Time.local(2024, 3, 31, 1, 30), saved_time
+            assert_equal Time.local(2024, 3, 31, 3, 30), saved_time
             assert_not_equal 'UTC', saved_time.zone
           end
         end

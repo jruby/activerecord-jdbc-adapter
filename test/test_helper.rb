@@ -330,11 +330,18 @@ class Test::Unit::TestCase
       java.util.TimeZone.setDefault new_tz
       org.joda.time.DateTimeZone.setDefault org.joda.time.DateTimeZone.forTimeZone(new_tz)
       java.lang.System.setProperty 'user.timezone', new_tz.getID
+      connection_properties = ActiveRecord::Base.remove_connection
+      prev_config = connection_properties.configuration_hash
+      new_config = prev_config.deep_dup
+      new_config[:properties] ||= {}
+      new_config[:properties]['serverTimezone'] = new_tz.getID
+      ActiveRecord::Base.establish_connection new_config
       yield
     ensure
       java.util.TimeZone.setDefault old_tz
       org.joda.time.DateTimeZone.setDefault old_jd
       old_user_tz ? java.lang.System.setProperty('user.timezone', old_user_tz) : java.lang.System.clearProperty('user.timezone')
+      ActiveRecord::Base.establish_connection prev_config
     end
   end
 
