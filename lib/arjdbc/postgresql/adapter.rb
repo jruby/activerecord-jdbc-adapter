@@ -787,6 +787,25 @@ module ActiveRecord::ConnectionAdapters
       def new_client(conn_params, adapter_instance)
         jdbc_connection_class.new(conn_params, adapter_instance)
       end
+
+      def dbconsole(config, options = {})
+        pg_config = config.configuration_hash
+
+        ENV["PGUSER"]         = pg_config[:username] if pg_config[:username]
+        ENV["PGHOST"]         = pg_config[:host] if pg_config[:host]
+        ENV["PGPORT"]         = pg_config[:port].to_s if pg_config[:port]
+        ENV["PGPASSWORD"]     = pg_config[:password].to_s if pg_config[:password] && options[:include_password]
+        ENV["PGSSLMODE"]      = pg_config[:sslmode].to_s if pg_config[:sslmode]
+        ENV["PGSSLCERT"]      = pg_config[:sslcert].to_s if pg_config[:sslcert]
+        ENV["PGSSLKEY"]       = pg_config[:sslkey].to_s if pg_config[:sslkey]
+        ENV["PGSSLROOTCERT"]  = pg_config[:sslrootcert].to_s if pg_config[:sslrootcert]
+        if pg_config[:variables]
+          ENV["PGOPTIONS"] = pg_config[:variables].filter_map do |name, value|
+            "-c #{name}=#{value.to_s.gsub(/[ \\]/, '\\\\\0')}" unless value == ":default" || value == :default
+          end.join(" ")
+        end
+        find_cmd_and_exec("psql", config.database)
+      end
     end
 
     def initialize(...)
