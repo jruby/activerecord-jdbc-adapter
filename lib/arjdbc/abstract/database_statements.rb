@@ -78,18 +78,6 @@ module ArJdbc
       end
       alias :exec_delete :exec_update
 
-      def execute(sql, name = nil, async: false, allow_retry: false, materialize_transactions: true)
-        sql = transform_query(sql)
-        
-        if preventing_writes? && write_query?(sql)
-          raise ActiveRecord::ReadOnlyError, "Write query attempted while in readonly mode: #{sql}"
-        end
-
-        mark_transaction_written_if_write(sql)
-
-        raw_execute(sql, name, async: async, allow_retry: allow_retry, materialize_transactions: materialize_transactions)
-      end
-
       # overridden to support legacy binds
       def select_all(arel, name = nil, binds = NO_BINDS, preparable: nil, async: false)
         binds = convert_legacy_binds_to_attributes(binds) if binds.first.is_a?(Array)
@@ -107,7 +95,9 @@ module ArJdbc
       def raw_execute(sql, name, async: false, allow_retry: false, materialize_transactions: true)
         log(sql, name, async: async) do
           with_raw_connection(allow_retry: allow_retry, materialize_transactions: materialize_transactions) do |conn|
-            conn.execute(sql)
+            result = conn.execute(sql)
+            verified!
+            result
           end
         end
       end
