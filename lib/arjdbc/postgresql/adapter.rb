@@ -667,22 +667,27 @@ module ArJdbc
 
     # Pulled from ActiveRecord's Postgres adapter and modified to use execute
     def can_perform_case_insensitive_comparison_for?(column)
-      @case_insensitive_cache ||= {}
-      @case_insensitive_cache[column.sql_type] ||= begin
-        sql = <<~SQL
-          SELECT exists(
-            SELECT * FROM pg_proc
-            WHERE proname = 'lower'
-              AND proargtypes = ARRAY[#{quote column.sql_type}::regtype]::oidvector
-          ) OR exists(
-            SELECT * FROM pg_proc
-            INNER JOIN pg_cast
-              ON ARRAY[casttarget]::oidvector = proargtypes
-            WHERE proname = 'lower'
-              AND castsource = #{quote column.sql_type}::regtype
-          )
-        SQL
-        select_value(sql, 'SCHEMA')
+      # NOTE: citext is an exception. It is possible to perform a
+      #       case-insensitive comparison using `LOWER()`, but it is
+      #       unnecessary, as `citext` is case-insensitive by definition.
+      @case_insensitive_cache ||= { "citext" => false }
+      @case_insensitive_cache.fetch(column.sql_type) do
+        @case_insensitive_cache[column.sql_type] = begin
+          sql = <<~SQL
+            SELECT exists(
+              SELECT * FROM pg_proc
+              WHERE proname = 'lower'
+                AND proargtypes = ARRAY[#{quote column.sql_type}::regtype]::oidvector
+            ) OR exists(
+              SELECT * FROM pg_proc
+              INNER JOIN pg_cast
+                ON ARRAY[casttarget]::oidvector = proargtypes
+              WHERE proname = 'lower'
+                AND castsource = #{quote column.sql_type}::regtype
+            )
+          SQL
+          select_value(sql, 'SCHEMA')
+        end
       end
     end
 
