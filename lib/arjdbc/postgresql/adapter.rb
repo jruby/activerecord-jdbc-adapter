@@ -493,6 +493,16 @@ module ArJdbc
       end
     end
 
+    # Disconnects from the database if already connected. Otherwise, this
+    # method does nothing.
+    def disconnect!
+      @lock.synchronize do
+        super
+        @raw_connection&.close
+        @raw_connection = nil
+      end
+    end
+
     def default_sequence_name(table_name, pk = "id") #:nodoc:
       serial_sequence(table_name, pk)
     rescue ActiveRecord::StatementInvalid

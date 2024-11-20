@@ -46,13 +46,12 @@ module ArJdbc
       end
 
       def reconnect
-        if active?
-          @raw_connection.rollback rescue nil
-        else
-          connect
-        end
-      end
+        @raw_connection&.close
 
+        @raw_connection = nil
+
+        connect
+      end
     end
   end
 end

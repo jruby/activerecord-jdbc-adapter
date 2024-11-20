@@ -669,6 +669,14 @@ module ArJdbc
       StatementPool.new(self.class.type_cast_config_to_integer(@config[:statement_limit]))
     end
 
+    def reconnect
+      if active?
+        @raw_connection.rollback rescue nil
+      else
+        connect
+      end
+    end
+
     def configure_connection
       if @config[:timeout] && @config[:retries]
         raise ArgumentError, "Cannot specify both timeout and retries arguments"
