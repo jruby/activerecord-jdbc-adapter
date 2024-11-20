@@ -335,33 +335,47 @@ module ArJdbc
     # Returns a list of defined enum types, and their values.
     def enum_types
       query = <<~SQL
-          SELECT
-            type.typname AS name,
-            string_agg(enum.enumlabel, ',' ORDER BY enum.enumsortorder) AS value
-          FROM pg_enum AS enum
-          JOIN pg_type AS type
-            ON (type.oid = enum.enumtypid)
-          GROUP BY type.typname;
+        SELECT
+          type.typname AS name,
+          type.OID AS oid,
+          n.nspname AS schema,
+          string_agg(enum.enumlabel, ',' ORDER BY enum.enumsortorder) AS value
+        FROM pg_enum AS enum
+        JOIN pg_type AS type ON (type.oid = enum.enumtypid)
+        JOIN pg_namespace n ON type.typnamespace = n.oid
+        WHERE n.nspname = ANY (current_schemas(false))
+        GROUP BY type.OID, n.nspname, type.typname;
       SQL
-      exec_query(query, "SCHEMA").cast_values
+
+      internal_exec_query(query, "SCHEMA", allow_retry: true, materialize_transactions: false).cast_values.each_with_object({}) do |row, memo|
+        name, schema = row[0], row[2]
+        schema = nil if schema == current_schema
+        full_name = [schema, name].compact.join(".")
+        memo[full_name] = row.last
+      end.to_a
     end
 
     # Given a name and an array of values, creates an enum type.
-    def create_enum(name, values)
-      sql_values = values.map { |s| "'#{s}'" }.join(", ")
+    def create_enum(name, values, **options)
+      sql_values = values.map { |s| quote(s) }.join(", ")
+      scope = quoted_scope(name)
       query = <<~SQL
-          DO $$
-          BEGIN
-              IF NOT EXISTS (
-                SELECT 1 FROM pg_type t
-                WHERE t.typname = '#{name}'
-              ) THEN
-                  CREATE TYPE \"#{name}\" AS ENUM (#{sql_values});
-              END IF;
-          END
-          $$;
+        DO $$
+        BEGIN
+            IF NOT EXISTS (
+              SELECT 1
+              FROM pg_type t
+              JOIN pg_namespace n ON t.typnamespace = n.oid
+              WHERE t.typname = #{scope[:name]}
+                AND n.nspname = #{scope[:schema]}
+            ) THEN
+                CREATE TYPE #{quote_table_name(name)} AS ENUM (#{sql_values});
+            END IF;
+        END
+        $$;
       SQL
-      exec_query(query)
+
+      internal_exec_query(query).tap { reload_type_map }
     end
 
     # Returns the configured supported identifier length supported by PostgreSQL
