@@ -232,8 +232,16 @@ module ArJdbc
     alias supports_insert_on_duplicate_update? supports_insert_on_conflict?
     alias supports_insert_conflict_target? supports_insert_on_conflict?
 
+    def supports_virtual_columns?
+      database_version >= 12_00_00 # >= 12.0
+    end
+
     def supports_identity_columns? # :nodoc:
       database_version >= 10_00_00 # >= 10.0
+    end
+
+    def supports_nulls_not_distinct?
+      database_version >= 15_00_00 # >= 15.0
     end
 
     def index_algorithms
@@ -632,17 +640,19 @@ module ArJdbc
     #  - format_type includes the column size constraint, e.g. varchar(50)
     #  - ::regclass is a function that gives the id for a table name
     def column_definitions(table_name)
-      select_rows(<<~SQL, 'SCHEMA')
-        SELECT a.attname, format_type(a.atttypid, a.atttypmod),
-               pg_get_expr(d.adbin, d.adrelid), a.attnotnull, a.atttypid, a.atttypmod,
-               c.collname, col_description(a.attrelid, a.attnum) AS comment
-          FROM pg_attribute a
-          LEFT JOIN pg_attrdef d ON a.attrelid = d.adrelid AND a.attnum = d.adnum
-          LEFT JOIN pg_type t ON a.atttypid = t.oid
-          LEFT JOIN pg_collation c ON a.attcollation = c.oid AND a.attcollation <> t.typcollation
-         WHERE a.attrelid = #{quote(quote_table_name(table_name))}::regclass
-           AND a.attnum > 0 AND NOT a.attisdropped
-         ORDER BY a.attnum
+      query(<<~SQL, "SCHEMA")
+          SELECT a.attname, format_type(a.atttypid, a.atttypmod),
+                 pg_get_expr(d.adbin, d.adrelid), a.attnotnull, a.atttypid, a.atttypmod,
+                 c.collname, col_description(a.attrelid, a.attnum) AS comment,
+                 #{supports_identity_columns? ? 'attidentity' : quote('')} AS identity,
+                 #{supports_virtual_columns? ? 'attgenerated' : quote('')} as attgenerated
+            FROM pg_attribute a
+            LEFT JOIN pg_attrdef d ON a.attrelid = d.adrelid AND a.attnum = d.adnum
+            LEFT JOIN pg_type t ON a.atttypid = t.oid
+            LEFT JOIN pg_collation c ON a.attcollation = c.oid AND a.attcollation <> t.typcollation
+           WHERE a.attrelid = #{quote(quote_table_name(table_name))}::regclass
+             AND a.attnum > 0 AND NOT a.attisdropped
+           ORDER BY a.attnum
       SQL
     end
 
