@@ -122,6 +122,7 @@ module ArJdbc
       date:         { name: 'date' },
       daterange:    { name: 'daterange' },
       datetime:     { name: 'timestamp' },
+      timestamptz:  { name: 'timestamptz' },
       decimal:      { name: 'decimal' }, # :limit => 1000
       float:        { name: 'float' },
       hstore:       { name: 'hstore' },
