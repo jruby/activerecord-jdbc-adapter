@@ -152,7 +152,8 @@ module ArJdbc
       tstzrange:    { name: 'tstzrange' },
       tsvector:     { name: 'tsvector' },
       uuid:         { name: 'uuid' },
-      xml:          { name: 'xml' }
+      xml:          { name: 'xml' },
+      enum:         {} # special type https://www.postgresql.org/docs/current/datatype-enum.html
     }
 
     def set_standard_conforming_strings
@@ -378,6 +379,59 @@ module ArJdbc
       SQL
 
       internal_exec_query(query).tap { reload_type_map }
+    end
+
+    # Drops an enum type.
+    #
+    # If the <tt>if_exists: true</tt> option is provided, the enum is dropped
+    # only if it exists. Otherwise, if the enum doesn't exist, an error is
+    # raised.
+    #
+    # The +values+ parameter will be ignored if present. It can be helpful
+    # to provide this in a migration's +change+ method so it can be reverted.
+    # In that case, +values+ will be used by #create_enum.
+    def drop_enum(name, values = nil, **options)
+      query = <<~SQL
+        DROP TYPE#{' IF EXISTS' if options[:if_exists]} #{quote_table_name(name)};
+      SQL
+      internal_exec_query(query).tap { reload_type_map }
+    end
+
+    # Rename an existing enum type to something else.
+    def rename_enum(name, options = {})
+      to = options.fetch(:to) { raise ArgumentError, ":to is required" }
+
+      exec_query("ALTER TYPE #{quote_table_name(name)} RENAME TO #{to}").tap { reload_type_map }
+    end
+
+    # Add enum value to an existing enum type.
+    def add_enum_value(type_name, value, options = {})
+      before, after = options.values_at(:before, :after)
+      sql = +"ALTER TYPE #{quote_table_name(type_name)} ADD VALUE '#{value}'"
+
+      if before && after
+        raise ArgumentError, "Cannot have both :before and :after at the same time"
+      elsif before
+        sql << " BEFORE '#{before}'"
+      elsif after
+        sql << " AFTER '#{after}'"
+      end
+
+      execute(sql).tap { reload_type_map }
+    end
+
+    # Rename enum value on an existing enum type.
+    def rename_enum_value(type_name, options = {})
+      unless database_version >= 10_00_00 # >= 10.0
+        raise ArgumentError, "Renaming enum values is only supported in PostgreSQL 10 or later"
+      end
+
+      from = options.fetch(:from) { raise ArgumentError, ":from is required" }
+      to = options.fetch(:to) { raise ArgumentError, ":to is required" }
+
+      execute("ALTER TYPE #{quote_table_name(type_name)} RENAME VALUE '#{from}' TO '#{to}'").tap {
+        reload_type_map
+      }
     end
 
     # Returns the configured supported identifier length supported by PostgreSQL
