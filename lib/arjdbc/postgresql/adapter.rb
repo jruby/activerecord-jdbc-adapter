@@ -121,7 +121,7 @@ module ArJdbc
       citext:       { name: 'citext' },
       date:         { name: 'date' },
       daterange:    { name: 'daterange' },
-      datetime:     { name: 'timestamp' },
+      datetime:     {}, # set dynamically based on datetime_type
       timestamptz:  { name: 'timestamptz' },
       decimal:      { name: 'decimal' }, # :limit => 1000
       float:        { name: 'float' },
@@ -154,14 +154,6 @@ module ArJdbc
       uuid:         { name: 'uuid' },
       xml:          { name: 'xml' }
     }
-
-    def native_database_types
-      NATIVE_DATABASE_TYPES
-    end
-
-    def valid_type?(type)
-      !native_database_types[type].nil?
-    end
 
     def set_standard_conforming_strings
       execute("SET standard_conforming_strings = on", "SCHEMA")
@@ -877,6 +869,18 @@ module ActiveRecord::ConnectionAdapters
 
     public :sql_for_insert
     alias :postgresql_version :database_version
+
+    def native_database_types # :nodoc:
+      self.class.native_database_types
+    end
+
+    def self.native_database_types # :nodoc:
+      @native_database_types ||= begin
+        types = NATIVE_DATABASE_TYPES.dup
+        types[:datetime] = types[datetime_type]
+        types
+      end
+    end
 
     private
 
