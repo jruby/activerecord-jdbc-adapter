@@ -22,6 +22,7 @@ require 'arjdbc/abstract/transaction_support'
 require 'arjdbc/postgresql/base/array_decoder'
 require 'arjdbc/postgresql/base/array_encoder'
 require 'arjdbc/postgresql/name'
+require 'arjdbc/postgresql/database_statements'
 require 'arjdbc/postgresql/schema_statements'
 
 require 'active_model'
@@ -120,7 +121,8 @@ module ArJdbc
       citext:       { name: 'citext' },
       date:         { name: 'date' },
       daterange:    { name: 'daterange' },
-      datetime:     { name: 'timestamp' },
+      datetime:     {}, # set dynamically based on datetime_type
+      timestamptz:  { name: 'timestamptz' },
       decimal:      { name: 'decimal' }, # :limit => 1000
       float:        { name: 'float' },
       hstore:       { name: 'hstore' },
@@ -150,16 +152,9 @@ module ArJdbc
       tstzrange:    { name: 'tstzrange' },
       tsvector:     { name: 'tsvector' },
       uuid:         { name: 'uuid' },
-      xml:          { name: 'xml' }
+      xml:          { name: 'xml' },
+      enum:         {} # special type https://www.postgresql.org/docs/current/datatype-enum.html
     }
-
-    def native_database_types
-      NATIVE_DATABASE_TYPES
-    end
-
-    def valid_type?(type)
-      !native_database_types[type].nil?
-    end
 
     def set_standard_conforming_strings
       execute("SET standard_conforming_strings = on", "SCHEMA")
@@ -232,8 +227,16 @@ module ArJdbc
     alias supports_insert_on_duplicate_update? supports_insert_on_conflict?
     alias supports_insert_conflict_target? supports_insert_on_conflict?
 
+    def supports_virtual_columns?
+      database_version >= 12_00_00 # >= 12.0
+    end
+
     def supports_identity_columns? # :nodoc:
       database_version >= 10_00_00 # >= 10.0
+    end
+
+    def supports_nulls_not_distinct?
+      database_version >= 15_00_00 # >= 15.0
     end
 
     def index_algorithms
@@ -335,33 +338,100 @@ module ArJdbc
     # Returns a list of defined enum types, and their values.
     def enum_types
       query = <<~SQL
-          SELECT
-            type.typname AS name,
-            string_agg(enum.enumlabel, ',' ORDER BY enum.enumsortorder) AS value
-          FROM pg_enum AS enum
-          JOIN pg_type AS type
-            ON (type.oid = enum.enumtypid)
-          GROUP BY type.typname;
+        SELECT
+          type.typname AS name,
+          type.OID AS oid,
+          n.nspname AS schema,
+          string_agg(enum.enumlabel, ',' ORDER BY enum.enumsortorder) AS value
+        FROM pg_enum AS enum
+        JOIN pg_type AS type ON (type.oid = enum.enumtypid)
+        JOIN pg_namespace n ON type.typnamespace = n.oid
+        WHERE n.nspname = ANY (current_schemas(false))
+        GROUP BY type.OID, n.nspname, type.typname;
       SQL
-      exec_query(query, "SCHEMA").cast_values
+
+      internal_exec_query(query, "SCHEMA", allow_retry: true, materialize_transactions: false).cast_values.each_with_object({}) do |row, memo|
+        name, schema = row[0], row[2]
+        schema = nil if schema == current_schema
+        full_name = [schema, name].compact.join(".")
+        memo[full_name] = row.last
+      end.to_a
     end
 
     # Given a name and an array of values, creates an enum type.
-    def create_enum(name, values)
-      sql_values = values.map { |s| "'#{s}'" }.join(", ")
+    def create_enum(name, values, **options)
+      sql_values = values.map { |s| quote(s) }.join(", ")
+      scope = quoted_scope(name)
       query = <<~SQL
-          DO $$
-          BEGIN
-              IF NOT EXISTS (
-                SELECT 1 FROM pg_type t
-                WHERE t.typname = '#{name}'
-              ) THEN
-                  CREATE TYPE \"#{name}\" AS ENUM (#{sql_values});
-              END IF;
-          END
-          $$;
+        DO $$
+        BEGIN
+            IF NOT EXISTS (
+              SELECT 1
+              FROM pg_type t
+              JOIN pg_namespace n ON t.typnamespace = n.oid
+              WHERE t.typname = #{scope[:name]}
+                AND n.nspname = #{scope[:schema]}
+            ) THEN
+                CREATE TYPE #{quote_table_name(name)} AS ENUM (#{sql_values});
+            END IF;
+        END
+        $$;
       SQL
-      exec_query(query)
+
+      internal_exec_query(query).tap { reload_type_map }
+    end
+
+    # Drops an enum type.
+    #
+    # If the <tt>if_exists: true</tt> option is provided, the enum is dropped
+    # only if it exists. Otherwise, if the enum doesn't exist, an error is
+    # raised.
+    #
+    # The +values+ parameter will be ignored if present. It can be helpful
+    # to provide this in a migration's +change+ method so it can be reverted.
+    # In that case, +values+ will be used by #create_enum.
+    def drop_enum(name, values = nil, **options)
+      query = <<~SQL
+        DROP TYPE#{' IF EXISTS' if options[:if_exists]} #{quote_table_name(name)};
+      SQL
+      internal_exec_query(query).tap { reload_type_map }
+    end
+
+    # Rename an existing enum type to something else.
+    def rename_enum(name, options = {})
+      to = options.fetch(:to) { raise ArgumentError, ":to is required" }
+
+      exec_query("ALTER TYPE #{quote_table_name(name)} RENAME TO #{to}").tap { reload_type_map }
+    end
+
+    # Add enum value to an existing enum type.
+    def add_enum_value(type_name, value, options = {})
+      before, after = options.values_at(:before, :after)
+      sql = +"ALTER TYPE #{quote_table_name(type_name)} ADD VALUE '#{value}'"
+
+      if before && after
+        raise ArgumentError, "Cannot have both :before and :after at the same time"
+      elsif before
+        sql << " BEFORE '#{before}'"
+      elsif after
+        sql << " AFTER '#{after}'"
+      end
+
+      execute(sql).tap { reload_type_map }
+    end
+
+    # Rename enum value on an existing enum type.
+    def rename_enum_value(type_name, options = {})
+      unless database_version >= 10_00_00 # >= 10.0
+        raise ArgumentError, "Renaming enum values is only supported in PostgreSQL 10 or later"
+      end
+
+      from = options.fetch(:from) { raise ArgumentError, ":from is required" }
+      to = options.fetch(:to) { raise ArgumentError, ":to is required" }
+
+      execute("ALTER TYPE #{quote_table_name(type_name)} RENAME VALUE '#{from}' TO '#{to}'").tap {
+        reload_type_map
+      }
     end
 
     # Returns the configured supported identifier length supported by PostgreSQL
@@ -455,11 +525,6 @@ module ArJdbc
       execute(combine_multi_statements(statements), name)
     end
 
-    def explain(arel, binds = [])
-      sql, binds = to_sql_and_binds(arel, binds)
-      ActiveRecord::ConnectionAdapters::PostgreSQL::ExplainPrettyPrinter.new.pp(exec_query("EXPLAIN #{sql}", 'EXPLAIN', binds))
-    end
-
     # from ActiveRecord::ConnectionAdapters::PostgreSQL::DatabaseStatements
     READ_QUERY = ActiveRecord::ConnectionAdapters::AbstractAdapter.build_read_query_regexp(
       :close, :declare, :fetch, :move, :set, :show
@@ -490,6 +555,16 @@ module ArJdbc
         @raw_connection.execute("DISCARD ALL")
 
         super
+      end
+    end
+
+    # Disconnects from the database if already connected. Otherwise, this
+    # method does nothing.
+    def disconnect!
+      @lock.synchronize do
+        super
+        @raw_connection&.close
+        @raw_connection = nil
       end
     end
 
@@ -608,17 +683,19 @@ module ArJdbc
     #  - format_type includes the column size constraint, e.g. varchar(50)
     #  - ::regclass is a function that gives the id for a table name
     def column_definitions(table_name)
-      select_rows(<<~SQL, 'SCHEMA')
-        SELECT a.attname, format_type(a.atttypid, a.atttypmod),
-               pg_get_expr(d.adbin, d.adrelid), a.attnotnull, a.atttypid, a.atttypmod,
-               c.collname, col_description(a.attrelid, a.attnum) AS comment
-          FROM pg_attribute a
-          LEFT JOIN pg_attrdef d ON a.attrelid = d.adrelid AND a.attnum = d.adnum
-          LEFT JOIN pg_type t ON a.atttypid = t.oid
-          LEFT JOIN pg_collation c ON a.attcollation = c.oid AND a.attcollation <> t.typcollation
-         WHERE a.attrelid = #{quote(quote_table_name(table_name))}::regclass
-           AND a.attnum > 0 AND NOT a.attisdropped
-         ORDER BY a.attnum
+      query(<<~SQL, "SCHEMA")
+          SELECT a.attname, format_type(a.atttypid, a.atttypmod),
+                 pg_get_expr(d.adbin, d.adrelid), a.attnotnull, a.atttypid, a.atttypmod,
+                 c.collname, col_description(a.attrelid, a.attnum) AS comment,
+                 #{supports_identity_columns? ? 'attidentity' : quote('')} AS identity,
+                 #{supports_virtual_columns? ? 'attgenerated' : quote('')} as attgenerated
+            FROM pg_attribute a
+            LEFT JOIN pg_attrdef d ON a.attrelid = d.adrelid AND a.attnum = d.adnum
+            LEFT JOIN pg_type t ON a.atttypid = t.oid
+            LEFT JOIN pg_collation c ON a.attcollation = c.oid AND a.attcollation <> t.typcollation
+           WHERE a.attrelid = #{quote(quote_table_name(table_name))}::regclass
+             AND a.attnum > 0 AND NOT a.attisdropped
+           ORDER BY a.attnum
       SQL
     end
 
@@ -633,22 +710,27 @@ module ArJdbc
 
     # Pulled from ActiveRecord's Postgres adapter and modified to use execute
     def can_perform_case_insensitive_comparison_for?(column)
-      @case_insensitive_cache ||= {}
-      @case_insensitive_cache[column.sql_type] ||= begin
-        sql = <<~SQL
-          SELECT exists(
-            SELECT * FROM pg_proc
-            WHERE proname = 'lower'
-              AND proargtypes = ARRAY[#{quote column.sql_type}::regtype]::oidvector
-          ) OR exists(
-            SELECT * FROM pg_proc
-            INNER JOIN pg_cast
-              ON ARRAY[casttarget]::oidvector = proargtypes
-            WHERE proname = 'lower'
-              AND castsource = #{quote column.sql_type}::regtype
-          )
-        SQL
-        select_value(sql, 'SCHEMA')
+      # NOTE: citext is an exception. It is possible to perform a
+      #       case-insensitive comparison using `LOWER()`, but it is
+      #       unnecessary, as `citext` is case-insensitive by definition.
+      @case_insensitive_cache ||= { "citext" => false }
+      @case_insensitive_cache.fetch(column.sql_type) do
+        @case_insensitive_cache[column.sql_type] = begin
+          sql = <<~SQL
+            SELECT exists(
+              SELECT * FROM pg_proc
+              WHERE proname = 'lower'
+                AND proargtypes = ARRAY[#{quote column.sql_type}::regtype]::oidvector
+            ) OR exists(
+              SELECT * FROM pg_proc
+              INNER JOIN pg_cast
+                ON ARRAY[casttarget]::oidvector = proargtypes
+              WHERE proname = 'lower'
+                AND castsource = #{quote column.sql_type}::regtype
+            )
+          SQL
+          select_value(sql, 'SCHEMA')
+        end
       end
     end
 
@@ -770,6 +852,7 @@ module ActiveRecord::ConnectionAdapters
 
     require 'arjdbc/postgresql/oid_types'
     include ::ArJdbc::PostgreSQL::OIDTypes
+    include ::ArJdbc::PostgreSQL::DatabaseStatements
     include ::ArJdbc::PostgreSQL::SchemaStatements
 
     include ::ArJdbc::PostgreSQL::ColumnHelpers
@@ -840,6 +923,18 @@ module ActiveRecord::ConnectionAdapters
 
     public :sql_for_insert
     alias :postgresql_version :database_version
+
+    def native_database_types # :nodoc:
+      self.class.native_database_types
+    end
+
+    def self.native_database_types # :nodoc:
+      @native_database_types ||= begin
+        types = NATIVE_DATABASE_TYPES.dup
+        types[:datetime] = types[datetime_type]
+        types
+      end
+    end
 
     private
 
