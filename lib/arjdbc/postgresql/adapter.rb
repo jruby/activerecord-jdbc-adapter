@@ -22,6 +22,7 @@ require 'arjdbc/abstract/transaction_support'
 require 'arjdbc/postgresql/base/array_decoder'
 require 'arjdbc/postgresql/base/array_encoder'
 require 'arjdbc/postgresql/name'
+require 'arjdbc/postgresql/database_statements'
 require 'arjdbc/postgresql/schema_statements'
 
 require 'active_model'
@@ -477,11 +478,6 @@ module ArJdbc
       execute(combine_multi_statements(statements), name)
     end
 
-    def explain(arel, binds = [])
-      sql, binds = to_sql_and_binds(arel, binds)
-      ActiveRecord::ConnectionAdapters::PostgreSQL::ExplainPrettyPrinter.new.pp(exec_query("EXPLAIN #{sql}", 'EXPLAIN', binds))
-    end
-
     # from ActiveRecord::ConnectionAdapters::PostgreSQL::DatabaseStatements
     READ_QUERY = ActiveRecord::ConnectionAdapters::AbstractAdapter.build_read_query_regexp(
       :close, :declare, :fetch, :move, :set, :show
@@ -809,6 +805,7 @@ module ActiveRecord::ConnectionAdapters
 
     require 'arjdbc/postgresql/oid_types'
     include ::ArJdbc::PostgreSQL::OIDTypes
+    include ::ArJdbc::PostgreSQL::DatabaseStatements
     include ::ArJdbc::PostgreSQL::SchemaStatements
 
     include ::ArJdbc::PostgreSQL::ColumnHelpers
