@@ -27,6 +27,8 @@ require 'arjdbc/postgresql/schema_statements'
 
 require 'active_model'
 
+require "arjdbc/abstract/relation_query_attribute_monkey_patch"
+
 module ArJdbc
   # Strives to provide Rails built-in PostgreSQL adapter (API) compatibility.
   module PostgreSQL
