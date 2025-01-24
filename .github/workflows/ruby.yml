@@ -42,7 +42,7 @@ jobs:
       AR_VERSION: ${{ matrix.ar_version }}
       PREPARED_STATEMENTS: ${{ matrix.prepared_statements }}
       DRIVER: ${{ matrix.driver }}
-      JRUBY_OPTS: "-J-Xms64M -J-Xmx2048M"
+      JRUBY_OPTS: "-J-Xms64M -J-Xmx1024M --dev"
 
     steps:
       - uses: actions/checkout@v4
@@ -95,7 +95,7 @@ jobs:
     env:
       DB: ${{ matrix.db }}
       AR_VERSION: ${{ matrix.ar_version }}
-      JRUBY_OPTS: "-J-Xms64M -J-Xmx2048M"
+      JRUBY_OPTS: "-J-Xms64M -J-Xmx1024M --dev"
       PREPARED_STATEMENTS: ${{ matrix.prepared_statements }}
       PGHOST: localhost
       PGPORT: 5432
@@ -134,7 +134,7 @@ jobs:
     env:
       DB: ${{ matrix.db }}
       AR_VERSION: ${{ matrix.ar_version }}
-      JRUBY_OPTS: "-J-Xms64M -J-Xmx2048M"
+      JRUBY_OPTS: "-J-Xms64M -J-Xmx1024M --dev"
 
     steps:
       - uses: actions/checkout@v4
@@ -173,7 +173,7 @@ jobs:
     env:
       DB: ${{ matrix.db }}
       DRIVER: ${{ matrix.driver }}
-      JRUBY_OPTS: "-J-Xms64M -J-Xmx2048M"
+      JRUBY_OPTS: "-J-Xms64M -J-Xmx1024M --dev"
       MY_USER: root
       MY_PASSWORD: root
       PREPARED_STATEMENTS: ${{ matrix.prepared_statements }}
@@ -222,7 +222,7 @@ jobs:
     env:
       DB: ${{ matrix.db }}
       DRIVER: ${{ matrix.driver }}
-      JRUBY_OPTS: "-J-Xms64M -J-Xmx2048M"
+      JRUBY_OPTS: "-J-Xms64M -J-Xmx1024M --dev"
       PREPARED_STATEMENTS: ${{ matrix.prepared_statements }}
       INSERT_RETURNING: ${{ matrix.insert_returning }}
       PGHOST: localhost
@@ -256,7 +256,7 @@ jobs:
 
     env:
       DB: ${{ matrix.db }}
-      JRUBY_OPTS: "-J-Xms64M -J-Xmx2048M --dev"
+      JRUBY_OPTS: "-J-Xms64M -J-Xmx1024M --dev"
 
     steps:
       - uses: actions/checkout@v4
