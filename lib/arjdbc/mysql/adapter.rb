@@ -11,6 +11,8 @@ require 'arjdbc/abstract/database_statements'
 require 'arjdbc/abstract/statement_cache'
 require 'arjdbc/abstract/transaction_support'
 
+require "arjdbc/abstract/relation_query_attribute_monkey_patch"
+
 module ActiveRecord
   module ConnectionAdapters
     AbstractMysqlAdapter.class_eval do

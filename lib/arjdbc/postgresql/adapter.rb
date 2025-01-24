@@ -27,6 +27,8 @@ require 'arjdbc/postgresql/schema_statements'
 
 require 'active_model'
 
+require "arjdbc/abstract/relation_query_attribute_monkey_patch"
+
 module ArJdbc
   # Strives to provide Rails built-in PostgreSQL adapter (API) compatibility.
   module PostgreSQL
@@ -739,6 +741,8 @@ module ArJdbc
 
       # TODO: Can we base these on an error code of some kind?
       case exception.message
+      when /could not create unique index/
+        ::ActiveRecord::RecordNotUnique.new(message, sql: sql, binds: binds, connection_pool: @pool)
       when /duplicate key value violates unique constraint/
         ::ActiveRecord::RecordNotUnique.new(message, sql: sql, binds: binds)
       when /violates not-null constraint/
@@ -757,7 +761,9 @@ module ArJdbc
         ::ActiveRecord::LockWaitTimeout.new(message, sql: sql, binds: binds)
       when /canceling statement/ # This needs to come after lock timeout because the lock timeout message also contains "canceling statement"
         ::ActiveRecord::QueryCanceled.new(message, sql: sql, binds: binds)
-      when /relation "animals" does not exist/i
+      when /relation .* does not exist/i
+        ::ActiveRecord::StatementInvalid.new(message, sql: sql, binds: binds, connection_pool: @pool)
+      when /syntax error at or near/i
         ::ActiveRecord::StatementInvalid.new(message, sql: sql, binds: binds, connection_pool: @pool)
       else
         super

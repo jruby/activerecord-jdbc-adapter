@@ -5,6 +5,7 @@ module ArJdbc
     module DatabaseStatements
       def explain(arel, binds = [], options = [])
         sql    = build_explain_clause(options) + " " + to_sql(arel, binds)
+
         result = internal_exec_query(sql, "EXPLAIN", binds)
         ActiveRecord::ConnectionAdapters::PostgreSQL::ExplainPrettyPrinter.new.pp(result)
       end

@@ -18,6 +18,8 @@ require "active_record/connection_adapters/sqlite3/schema_statements"
 require "active_support/core_ext/class/attribute"
 require "arjdbc/sqlite3/column"
 
+require "arjdbc/abstract/relation_query_attribute_monkey_patch"
+
 module SQLite3
   module Constants
     module Open
