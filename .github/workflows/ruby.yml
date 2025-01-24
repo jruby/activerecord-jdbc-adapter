@@ -135,6 +135,7 @@ jobs:
       DB: ${{ matrix.db }}
       AR_VERSION: ${{ matrix.ar_version }}
       JRUBY_OPTS: "-J-Xms64M -J-Xmx1024M --dev"
+      TESTOPTS: "--seed=18952"
 
     steps:
       - uses: actions/checkout@v4
