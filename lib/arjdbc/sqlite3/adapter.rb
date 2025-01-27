@@ -63,13 +63,6 @@ module ArJdbc
     SchemaCreation = ConnectionAdapters::SQLite3::SchemaCreation
     SQLite3Adapter = ConnectionAdapters::AbstractAdapter
 
-    ADAPTER_NAME = 'SQLite'
-
-    # DIFFERENCE: FQN
-    include ::ActiveRecord::ConnectionAdapters::SQLite3::Quoting
-    include ::ActiveRecord::ConnectionAdapters::SQLite3::SchemaStatements
-    include ::ActiveRecord::ConnectionAdapters::SQLite3::DatabaseStatements
-
     NATIVE_DATABASE_TYPES = {
         primary_key:  "integer PRIMARY KEY AUTOINCREMENT NOT NULL",
         string:       { name: "varchar" },
@@ -84,7 +77,7 @@ module ArJdbc
         boolean:      { name: "boolean" },
         json:         { name: "json" },
     }
-    
+
     class StatementPool < ConnectionAdapters::StatementPool # :nodoc:
       private
       def dealloc(stmt)
@@ -729,12 +722,18 @@ module ActiveRecord::ConnectionAdapters
   # ActiveRecord::ConnectionAdapters::SQLite3Adapter.  Once we can do that we can remove the
   # module SQLite3 above and remove a majority of this file.
   class SQLite3Adapter < AbstractAdapter
+    ADAPTER_NAME = "SQLite"
+
     include ArJdbc::Abstract::Core
     include ArJdbc::SQLite3
     include ArJdbc::Abstract::ConnectionManagement
     include ArJdbc::Abstract::DatabaseStatements
     include ArJdbc::Abstract::StatementCache
     include ArJdbc::Abstract::TransactionSupport
+
+    include ::ActiveRecord::ConnectionAdapters::SQLite3::Quoting
+    include ::ActiveRecord::ConnectionAdapters::SQLite3::SchemaStatements
+    include ::ActiveRecord::ConnectionAdapters::SQLite3::DatabaseStatements
 
     ##
     # :singleton-method:
