@@ -915,15 +915,6 @@ module ActiveRecord::ConnectionAdapters
         self.class.type_cast_config_to_boolean(@config[:insert_returning]) : true
     end
 
-    def self.database_exists?(config)
-      conn = ActiveRecord::Base.postgresql_connection(config)
-      conn && conn.really_valid?
-    rescue ActiveRecord::NoDatabaseError
-      false
-    ensure
-      conn.disconnect! if conn
-    end
-
     require 'active_record/connection_adapters/postgresql/schema_definitions'
 
     ColumnMethods = ActiveRecord::ConnectionAdapters::PostgreSQL::ColumnMethods
