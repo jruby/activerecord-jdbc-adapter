@@ -17,6 +17,7 @@ require "active_record/connection_adapters/sqlite3/schema_dumper"
 require "active_record/connection_adapters/sqlite3/schema_statements"
 require "active_support/core_ext/class/attribute"
 require "arjdbc/sqlite3/column"
+require "arjdbc/sqlite3/adapter_hash_config"
 
 require "arjdbc/abstract/relation_query_attribute_monkey_patch"
 
@@ -746,6 +747,8 @@ module ActiveRecord::ConnectionAdapters
 
     include ArJdbc::Abstract::Core
     include ArJdbc::SQLite3
+    include ArJdbc::SQLite3Config
+
     include ArJdbc::Abstract::ConnectionManagement
     include ArJdbc::Abstract::DatabaseStatements
     include ArJdbc::Abstract::StatementCache
@@ -768,7 +771,8 @@ module ActiveRecord::ConnectionAdapters
     def initialize(...)
       super
 
-      conn_params = @config.compact
+      # assign arjdbc extra connection params
+      conn_params = build_connection_config(@config.compact)
 
       # NOTE: strict strings is not supported by the jdbc driver yet,
       # hope it will supported soon, I open a issue in their repository.
