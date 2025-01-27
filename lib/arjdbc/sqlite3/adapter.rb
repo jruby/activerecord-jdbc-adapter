@@ -724,6 +724,26 @@ module ActiveRecord::ConnectionAdapters
   class SQLite3Adapter < AbstractAdapter
     ADAPTER_NAME = "SQLite"
 
+    class << self
+      def new_client(conn_params, adapter_instance)
+        jdbc_connection_class.new(conn_params, adapter_instance)
+      end
+
+      def dbconsole(config, options = {})
+        args = []
+
+        args << "-#{options[:mode]}" if options[:mode]
+        args << "-header" if options[:header]
+        args << File.expand_path(config.database, const_defined?(:Rails) && Rails.respond_to?(:root) ? Rails.root : nil)
+
+        find_cmd_and_exec("sqlite3", *args)
+      end
+
+      def jdbc_connection_class
+        ::ActiveRecord::ConnectionAdapters::SQLite3JdbcConnection
+      end
+    end
+
     include ArJdbc::Abstract::Core
     include ArJdbc::SQLite3
     include ArJdbc::Abstract::ConnectionManagement
@@ -819,24 +839,6 @@ module ActiveRecord::ConnectionAdapters
     ::ActiveRecord::Type.register(:integer, SQLite3Integer, adapter: :sqlite3)
 
     class << self
-      def jdbc_connection_class
-        ::ActiveRecord::ConnectionAdapters::SQLite3JdbcConnection
-      end
-
-      def new_client(conn_params, adapter_instance)
-        jdbc_connection_class.new(conn_params, adapter_instance)
-      end
-
-      def dbconsole(config, options = {})
-        args = []
-
-        args << "-#{options[:mode]}" if options[:mode]
-        args << "-header" if options[:header]
-        args << File.expand_path(config.database, const_defined?(:Rails) && Rails.respond_to?(:root) ? Rails.root : nil)
-
-        find_cmd_and_exec("sqlite3", *args)
-      end
-
       private
         def initialize_type_map(m)
           super
