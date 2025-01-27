@@ -1,6 +1,3 @@
-if ActiveRecord::Base.connection.prepared_statements
-end
-
 # moved from above because they appear to be running even when prepared statements are not enabled
 exclude :test_exec_with_binds, 'it uses $1 for parameter mapping which is not currently supported'
 exclude :test_exec_typecasts_bind_vals, 'it uses $1 for parameter mapping which is not currently supported'
