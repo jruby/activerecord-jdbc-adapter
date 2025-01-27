@@ -3,7 +3,7 @@ class Topic < ActiveRecord::Base
 end
 
 class ImportantTopic < Topic
-  serialize :important, Hash
+  serialize :important
 end
 
 class TopicMigration < ActiveRecord::Migration[4.2]

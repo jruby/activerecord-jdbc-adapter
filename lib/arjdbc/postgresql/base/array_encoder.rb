@@ -12,7 +12,9 @@ module ActiveRecord::ConnectionAdapters::PostgreSQL::OID
                       'text'.freeze
                     else
                       base_type = name.chomp('[]').to_sym
-                      ActiveRecord::Base.connection.native_database_types[base_type][:name]
+                      ActiveRecord::Base.with_connection do |connection|
+                        connection.native_database_types[base_type][:name]
+                      end
                     end
           end
 

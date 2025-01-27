@@ -17,6 +17,7 @@ require "active_record/connection_adapters/sqlite3/schema_dumper"
 require "active_record/connection_adapters/sqlite3/schema_statements"
 require "active_support/core_ext/class/attribute"
 require "arjdbc/sqlite3/column"
+require "arjdbc/sqlite3/adapter_hash_config"
 
 require "arjdbc/abstract/relation_query_attribute_monkey_patch"
 
@@ -63,13 +64,6 @@ module ArJdbc
     SchemaCreation = ConnectionAdapters::SQLite3::SchemaCreation
     SQLite3Adapter = ConnectionAdapters::AbstractAdapter
 
-    ADAPTER_NAME = 'SQLite'
-
-    # DIFFERENCE: FQN
-    include ::ActiveRecord::ConnectionAdapters::SQLite3::Quoting
-    include ::ActiveRecord::ConnectionAdapters::SQLite3::SchemaStatements
-    include ::ActiveRecord::ConnectionAdapters::SQLite3::DatabaseStatements
-
     NATIVE_DATABASE_TYPES = {
         primary_key:  "integer PRIMARY KEY AUTOINCREMENT NOT NULL",
         string:       { name: "varchar" },
@@ -84,7 +78,7 @@ module ArJdbc
         boolean:      { name: "boolean" },
         json:         { name: "json" },
     }
-    
+
     class StatementPool < ConnectionAdapters::StatementPool # :nodoc:
       private
       def dealloc(stmt)
@@ -729,12 +723,40 @@ module ActiveRecord::ConnectionAdapters
   # ActiveRecord::ConnectionAdapters::SQLite3Adapter.  Once we can do that we can remove the
   # module SQLite3 above and remove a majority of this file.
   class SQLite3Adapter < AbstractAdapter
+    ADAPTER_NAME = "SQLite"
+
+    class << self
+      def new_client(conn_params, adapter_instance)
+        jdbc_connection_class.new(conn_params, adapter_instance)
+      end
+
+      def dbconsole(config, options = {})
+        args = []
+
+        args << "-#{options[:mode]}" if options[:mode]
+        args << "-header" if options[:header]
+        args << File.expand_path(config.database, const_defined?(:Rails) && Rails.respond_to?(:root) ? Rails.root : nil)
+
+        find_cmd_and_exec("sqlite3", *args)
+      end
+
+      def jdbc_connection_class
+        ::ActiveRecord::ConnectionAdapters::SQLite3JdbcConnection
+      end
+    end
+
     include ArJdbc::Abstract::Core
     include ArJdbc::SQLite3
+    include ArJdbc::SQLite3Config
+
     include ArJdbc::Abstract::ConnectionManagement
     include ArJdbc::Abstract::DatabaseStatements
     include ArJdbc::Abstract::StatementCache
     include ArJdbc::Abstract::TransactionSupport
+
+    include ::ActiveRecord::ConnectionAdapters::SQLite3::Quoting
+    include ::ActiveRecord::ConnectionAdapters::SQLite3::SchemaStatements
+    include ::ActiveRecord::ConnectionAdapters::SQLite3::DatabaseStatements
 
     ##
     # :singleton-method:
@@ -749,7 +771,8 @@ module ActiveRecord::ConnectionAdapters
     def initialize(...)
       super
 
-      conn_params = @config.compact
+      # assign arjdbc extra connection params
+      conn_params = build_connection_config(@config.compact)
 
       # NOTE: strict strings is not supported by the jdbc driver yet,
       # hope it will supported soon, I open a issue in their repository.
@@ -820,24 +843,6 @@ module ActiveRecord::ConnectionAdapters
     ::ActiveRecord::Type.register(:integer, SQLite3Integer, adapter: :sqlite3)
 
     class << self
-      def jdbc_connection_class
-        ::ActiveRecord::ConnectionAdapters::SQLite3JdbcConnection
-      end
-
-      def new_client(conn_params, adapter_instance)
-        jdbc_connection_class.new(conn_params, adapter_instance)
-      end
-
-      def dbconsole(config, options = {})
-        args = []
-
-        args << "-#{options[:mode]}" if options[:mode]
-        args << "-header" if options[:header]
-        args << File.expand_path(config.database, const_defined?(:Rails) && Rails.respond_to?(:root) ? Rails.root : nil)
-
-        find_cmd_and_exec("sqlite3", *args)
-      end
-
       private
         def initialize_type_map(m)
           super

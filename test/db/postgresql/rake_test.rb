@@ -56,7 +56,7 @@ class PostgresRakeTest < Test::Unit::TestCase
     ActiveRecord.schema_format = :sql
     # Rake::Task["db:create"].invoke
     create_rake_test_database do |connection|
-      create_schema_migrations_table(connection)
+      create_schema_migrations_table
       connection.create_table('users') { |t| t.string :name; t.timestamps }
     end
 
@@ -113,6 +113,9 @@ class PostgresRakeTest < Test::Unit::TestCase
     if username = ENV['PSQL_USERNAME']
       args = "--username=#{username} #{args}"
     end
+
+    puts "psql args: #{args}"
+
     `#{PSQL_EXE} #{args}`
   end
 

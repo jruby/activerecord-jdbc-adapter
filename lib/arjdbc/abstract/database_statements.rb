@@ -79,7 +79,7 @@ module ArJdbc
       alias :exec_delete :exec_update
 
       # overridden to support legacy binds
-      def select_all(arel, name = nil, binds = NO_BINDS, preparable: nil, async: false)
+      def select_all(arel, name = nil, binds = NO_BINDS, preparable: nil, async: false, allow_retry: false)
         binds = convert_legacy_binds_to_attributes(binds) if binds.first.is_a?(Array)
         super
       end
