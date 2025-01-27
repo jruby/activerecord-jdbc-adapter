@@ -707,7 +707,7 @@ module SimpleTestMethods
   def test_disconnect
     DbType.create! :sample_string => 'sample'
     assert_equal 1, DbType.count
-    ActiveRecord::Base.clear_active_connections!
+    ActiveRecord::Base.connection_handler.clear_active_connections!
     ActiveRecord::Base.connection_pool.disconnect! if ActiveRecord::Base.respond_to?(:connection_pool)
     assert !ActiveRecord::Base.connected?
     assert_equal 1, DbType.count
