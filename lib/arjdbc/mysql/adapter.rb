@@ -11,6 +11,8 @@ require 'arjdbc/abstract/database_statements'
 require 'arjdbc/abstract/statement_cache'
 require 'arjdbc/abstract/transaction_support'
 
+require "arjdbc/mysql/adapter_hash_config"
+
 require "arjdbc/abstract/relation_query_attribute_monkey_patch"
 
 module ActiveRecord
@@ -34,6 +36,7 @@ module ActiveRecord
       include ArJdbc::Abstract::TransactionSupport
 
       include ArJdbc::MySQL
+      include ArJdbc::MysqlConfig
 
       class << self
         def jdbc_connection_class
@@ -68,6 +71,9 @@ module ActiveRecord
 
         @config[:flags] ||= 0
 
+        # assign arjdbc extra connection params
+        conn_params = build_connection_config(@config.compact)
+
         # JDBC mysql appears to use found rows by default: https://dev.mysql.com/doc/connector-j/en/connector-j-connp-props-connection.html
         # if @config[:flags].kind_of? Array
         #   @config[:flags].push "FOUND_ROWS"
@@ -75,7 +81,7 @@ module ActiveRecord
         #   @config[:flags] |= ::Mysql2::Client::FOUND_ROWS
         # end
 
-        @connection_parameters ||= @config
+        @connection_parameters = conn_params
       end
 
       def self.database_exists?(config)
