@@ -92,8 +92,9 @@ class PostgresSchemaDumpTest < Test::Unit::TestCase
   private
 
   def dump_with_data_types(io = StringIO.new)
+    pool = ActiveRecord::Base.connection_pool
     ActiveRecord::SchemaDumper.ignore_tables = [/^[^d]/] # keep data_types
-    ActiveRecord::SchemaDumper.dump(ActiveRecord::Base.connection, io)
+    ActiveRecord::SchemaDumper.dump(pool, io)
     io.string
   end
 

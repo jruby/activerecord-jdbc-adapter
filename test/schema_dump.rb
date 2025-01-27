@@ -10,20 +10,12 @@ module SchemaDumpTestMethods
     connection = ActiveRecord::Base.connection
     connection.add_index :entries, :title
     StringIO.open do |io|
-      ActiveRecord::SchemaDumper.dump(connection, io)
+      ActiveRecord::SchemaDumper.dump(db_pool, io)
       assert_match(/"index_entries_on_title"/, io.string)
     end
   ensure
     connection.remove_index :entries, :title
   end
-
-  def standard_dump(io = StringIO.new, ignore_tables = [])
-    io = StringIO.new
-    ActiveRecord::SchemaDumper.ignore_tables = ignore_tables
-    ActiveRecord::SchemaDumper.dump(ActiveRecord::Base.connection, io)
-    io.string
-  end
-  private :standard_dump
 
   def test_magic_comment
     standard_dump(strio = StringIO.new)
@@ -60,7 +52,7 @@ module SchemaDumpTestMethods
     stream = StringIO.new
 
     ActiveRecord::SchemaDumper.ignore_tables = ['users']
-    ActiveRecord::SchemaDumper.dump(ActiveRecord::Base.connection, stream)
+    ActiveRecord::SchemaDumper.dump(db_pool, stream)
     output = stream.string
     assert_no_match %r{create_table "users"}, output
     assert_match %r{create_table "entries"}, output
@@ -135,4 +127,16 @@ module SchemaDumpTestMethods
     ActiveRecord::Base.table_name_suffix = ActiveRecord::Base.table_name_prefix = ''
   end
 
+  private
+
+  def standard_dump(io = StringIO.new, ignore_tables = [])
+    pool = ActiveRecord::Base.connection_pool
+    ActiveRecord::SchemaDumper.ignore_tables = ignore_tables
+    ActiveRecord::SchemaDumper.dump(pool, io)
+    io.string
+  end
+
+  def db_pool
+    ActiveRecord::Base.connection_pool
+  end
 end
