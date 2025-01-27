@@ -121,8 +121,9 @@ module RakeTestSupport
 
   # (Test) Helpers :
 
-  def create_schema_migrations_table(connection = ActiveRecord::Base.connection)
-    schema_migration = connection.schema_migration
+  def create_schema_migrations_table
+    pool = ActiveRecord::Base.connection_pool
+    schema_migration = pool.schema_migration
 
     return if schema_migration.table_exists?
 
@@ -133,26 +134,26 @@ module RakeTestSupport
 
   def create_rake_test_database
     ActiveRecord::Base.establish_connection db_config
-    connection = ActiveRecord::Base.connection
+    connection = ActiveRecord::Base.lease_connection
     connection.create_database(db_name, db_config) if connection.respond_to?(:create_database)
     if block_given?
       if db_name
         config = db_config.merge :database => db_name
         ActiveRecord::Base.establish_connection config
       end
-      yield ActiveRecord::Base.connection
+      yield ActiveRecord::Base.lease_connection
     end
-    ActiveRecord::Base.connection.disconnect!
+    ActiveRecord::Base.lease_connection.disconnect!
   end
 
   def drop_rake_test_database(silence = false)
     ActiveRecord::Base.establish_connection db_config
     begin
-      ActiveRecord::Base.connection.drop_database(db_name)
+      ActiveRecord::Base.lease_connection.drop_database(db_name)
     rescue => e
       raise e unless silence
     end
-    ActiveRecord::Base.connection.disconnect!
+    ActiveRecord::Base.lease_connection.disconnect!
   end
 
   def structure_sql_filename
