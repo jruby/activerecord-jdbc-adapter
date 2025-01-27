@@ -24,6 +24,7 @@ require 'arjdbc/postgresql/base/array_encoder'
 require 'arjdbc/postgresql/name'
 require 'arjdbc/postgresql/database_statements'
 require 'arjdbc/postgresql/schema_statements'
+require "arjdbc/postgresql/adapter_hash_config"
 
 require 'active_model'
 
@@ -855,6 +856,7 @@ module ActiveRecord::ConnectionAdapters
     include ArJdbc::Abstract::StatementCache
     include ArJdbc::Abstract::TransactionSupport
     include ArJdbc::PostgreSQL
+    include ArJdbc::PostgreSQLConfig
 
     require 'arjdbc/postgresql/oid_types'
     include ::ArJdbc::PostgreSQL::OIDTypes
@@ -900,7 +902,8 @@ module ActiveRecord::ConnectionAdapters
     def initialize(...)
       super
 
-      conn_params = @config.compact
+      # assign arjdbc extra connection params
+      conn_params = build_connection_config(@config.compact)
 
       @connection_parameters = conn_params
 
