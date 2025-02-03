@@ -6,12 +6,12 @@ class StatementEscapingTest < Test::Unit::TestCase
 
   def setup
     super
-    ActiveRecord::Base.clear_active_connections!
+    ActiveRecord::Base.connection_handler.clear_active_connections!
     @config = current_connection_config.dup
   end
 
   def teardown
-    ActiveRecord::Base.clear_active_connections!
+    ActiveRecord::Base.connection_handler.clear_active_connections!
     ActiveRecord::Base.establish_connection @config
     super
   end

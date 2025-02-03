@@ -165,7 +165,9 @@ class Test::Unit::TestCase
     ActiveRecord::Base.connection.pool.db_config.configuration_hash
   end
 
-  def current_connection_config; self.class.current_connection_config; end
+  def current_connection_config
+    self.class.current_connection_config
+  end
 
   def deprecation_silence(&block)
     ActiveSupport::Deprecation.silence(&block)
