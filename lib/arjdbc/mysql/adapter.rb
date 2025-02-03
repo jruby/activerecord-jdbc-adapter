@@ -84,15 +84,6 @@ module ActiveRecord
         @connection_parameters = conn_params
       end
 
-      def self.database_exists?(config)
-        conn = ActiveRecord::Base.mysql2_connection(config)
-        conn && conn.really_valid?
-      rescue ActiveRecord::NoDatabaseError
-        false
-      ensure
-        conn.disconnect! if conn
-      end
-
       def supports_json?
         !mariadb? && database_version >= '5.7.8'
       end
