@@ -473,7 +473,10 @@ public class SQLite3RubyJdbcConnection extends RubyJdbcConnection {
         // Assume we will only call this with an array.
         final RubyArray statements = (RubyArray) statementsArg;
         return withConnection(context, connection -> {
+            final Ruby runtime = context.runtime;
+
             Statement statement = null;
+
             try {
                 statement = createStatement(context, connection);
 
@@ -481,8 +484,15 @@ public class SQLite3RubyJdbcConnection extends RubyJdbcConnection {
                 for (int i = 0; i < length; i++) {
                     statement.addBatch(sqlString(statements.eltOk(i)));
                 }
-                statement.executeBatch();
-                return context.nil;
+
+                int[] rows = statement.executeBatch();
+
+                RubyArray rowsAffected = runtime.newArray();
+
+                for (int i = 0; i < rows.length; i++) {
+                    rowsAffected.append(runtime.newFixnum(rows[i]));
+                }
+                return rowsAffected;
             } catch (final SQLException e) {
                 // Generate list semicolon list of statements which should match AR error formatting more.
                 debugErrorSQL(context, sqlString(statements.join(context, context.runtime.newString(";\n"))));
