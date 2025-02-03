@@ -84,8 +84,9 @@ class Test::Unit::TestCase
   end
 
   def schema_dump
+    pool = ActiveRecord::Base.connection_pool
     strio = StringIO.new
-    ActiveRecord::SchemaDumper::dump(connection, strio)
+    ActiveRecord::SchemaDumper.dump(pool, strio)
     strio.string
   end
 
