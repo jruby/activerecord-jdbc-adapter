@@ -5,7 +5,6 @@ require 'active_record/connection_adapters/abstract_adapter'
 
 require 'arjdbc/version'
 require 'arjdbc/jdbc/java'
-require 'arjdbc/jdbc/base_ext'
 require 'arjdbc/jdbc/error'
 require 'arjdbc/jdbc/connection_methods'
 require 'arjdbc/jdbc/column'
