@@ -745,6 +745,12 @@ module ActiveRecord::ConnectionAdapters
       end
     end
 
+    # NOTE: include these modules before all then override some methods with the
+    # ones defined in ArJdbc::SQLite3 java part and ArJdbc::Abstract
+    include ::ActiveRecord::ConnectionAdapters::SQLite3::Quoting
+    include ::ActiveRecord::ConnectionAdapters::SQLite3::SchemaStatements
+    include ::ActiveRecord::ConnectionAdapters::SQLite3::DatabaseStatements
+
     include ArJdbc::Abstract::Core
     include ArJdbc::SQLite3
     include ArJdbc::SQLite3Config
@@ -754,9 +760,6 @@ module ActiveRecord::ConnectionAdapters
     include ArJdbc::Abstract::StatementCache
     include ArJdbc::Abstract::TransactionSupport
 
-    include ::ActiveRecord::ConnectionAdapters::SQLite3::Quoting
-    include ::ActiveRecord::ConnectionAdapters::SQLite3::SchemaStatements
-    include ::ActiveRecord::ConnectionAdapters::SQLite3::DatabaseStatements
 
     ##
     # :singleton-method:

@@ -84,8 +84,9 @@ class Test::Unit::TestCase
   end
 
   def schema_dump
+    pool = ActiveRecord::Base.connection_pool
     strio = StringIO.new
-    ActiveRecord::SchemaDumper::dump(connection, strio)
+    ActiveRecord::SchemaDumper.dump(pool, strio)
     strio.string
   end
 
@@ -165,7 +166,9 @@ class Test::Unit::TestCase
     ActiveRecord::Base.connection.pool.db_config.configuration_hash
   end
 
-  def current_connection_config; self.class.current_connection_config; end
+  def current_connection_config
+    self.class.current_connection_config
+  end
 
   def deprecation_silence(&block)
     ActiveSupport::Deprecation.silence(&block)

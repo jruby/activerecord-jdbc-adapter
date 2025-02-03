@@ -36,7 +36,7 @@ module SerializeTestMethods
   MyObject = Struct.new :attribute1, :attribute2
 
   def test_serialized_attribute
-    Topic.serialize("content", MyObject)
+    Topic.serialize("content", type: MyObject)
 
     myobj = MyObject.new('value1', 'value2')
     topic = Topic.create("content" => myobj)
@@ -47,7 +47,7 @@ module SerializeTestMethods
   end
 
   def test_serialized_attribute_in_base_class
-    Topic.serialize("content", Hash)
+    Topic.serialize("content", type: Hash)
 
     hash = { 'content1' => 'value1', 'content2' => 'value2' }
     important_topic = ImportantTopic.create("content" => hash)
@@ -81,7 +81,7 @@ module SerializeTestMethods
 #  end
 
   def test_serialized_ostruct
-    Topic.serialize :content, OpenStruct
+    Topic.serialize(:content, type: OpenStruct)
 
     t = Topic.new
     t.content.foo = 'bar'
@@ -142,7 +142,7 @@ module SerializeTestMethods
   end
 
   def test_serialized_attribute_should_raise_exception_on_new_with_wrong_type
-    Topic.serialize(:content, Hash)
+    Topic.serialize(:content, type: Hash)
     assert_raise(ActiveRecord::SerializationTypeMismatch) { Topic.new(:content => "string") }
   end
 
@@ -150,20 +150,20 @@ module SerializeTestMethods
     myobj = MyObject.new('value1', 'value2')
     topic = Topic.new(:content => myobj)
     assert topic.save
-    Topic.serialize(:content, Hash)
+    Topic.serialize(:content, type: Hash)
     assert_raise(ActiveRecord::SerializationTypeMismatch) { Topic.find(topic.id).content }
   end
 
   def test_serialized_attribute_with_class_constraint
     settings = { "color" => "blue" }
-    Topic.serialize(:content, Hash)
+    Topic.serialize(:content, type: Hash)
     topic = Topic.new(:content => settings)
     assert topic.save
     assert_equal(settings, Topic.find(topic.id).content)
   end
 
   def test_serialized_default_class
-    Topic.serialize(:content, Hash)
+    Topic.serialize(:content, type: Hash)
     topic = Topic.new
     assert_equal Hash, topic.content.class
     assert_equal Hash, topic.read_attribute(:content).class
@@ -206,7 +206,7 @@ module SerializeTestMethods
       end
     end
 
-    Topic.serialize(:content, some_class)
+    Topic.serialize(:content, coder: some_class)
     topic = Topic.new(:content => some_class.new('my value'))
     topic.save!
     topic.reload
@@ -216,7 +216,7 @@ module SerializeTestMethods
 
   def test_serialize_attribute_via_select_method_when_time_zone_available
     ActiveRecord::Base.time_zone_aware_attributes = true
-    Topic.serialize(:content, MyObject)
+    Topic.serialize(:content, type: MyObject)
 
     myobj = MyObject.new('value1', 'value2')
     topic = Topic.create(:content => myobj)
