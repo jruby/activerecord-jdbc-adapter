@@ -56,7 +56,7 @@ adapters are available:
 
 ```yml
 development:
-  adapter: mysql2 # or mysql
+  adapter: mysql2
   database: blog_development
   username: blog
   password: 1234
@@ -80,7 +80,7 @@ or preferably using the *properties:* syntax:
 
 ```yml
 production:
-  adapter: mysql
+  adapter: mysql2
   username: blog
   password: blog
   url: "jdbc:mysql://localhost:3306/blog?profileSQL=true"
