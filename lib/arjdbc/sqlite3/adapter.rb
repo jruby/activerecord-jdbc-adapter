@@ -164,8 +164,19 @@ module ArJdbc
       !@memory_database
     end
 
+    def connected?
+      !(@raw_connection.nil? || @raw_connection.closed?)
+    end
+
     def active?
-      @raw_connection && !@raw_connection.closed?
+      if connected?
+        @lock.synchronize do
+          if @raw_connection&.active?
+            verified!
+            true
+          end
+        end
+      end || false
     end
 
     def return_value_after_insert?(column) # :nodoc:
@@ -177,10 +188,11 @@ module ArJdbc
     # Disconnects from the database if already connected. Otherwise, this
     # method does nothing.
     def disconnect!
-      super
-
-      @raw_connection&.close rescue nil
-      @raw_connection = nil
+      @lock.synchronize do
+        super
+        @raw_connection&.close rescue nil
+        @raw_connection = nil
+      end
     end
 
     def supports_index_sort_order?
