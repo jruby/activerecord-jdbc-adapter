@@ -60,6 +60,7 @@ module ArJdbc
     # DIFFERENCE: Some common constant names to reduce differences in rest of this module from AR5 version
     ConnectionAdapters = ::ActiveRecord::ConnectionAdapters
     IndexDefinition = ::ActiveRecord::ConnectionAdapters::IndexDefinition
+    ForeignKeyDefinition = ::ActiveRecord::ConnectionAdapters::ForeignKeyDefinition
     Quoting = ::ActiveRecord::ConnectionAdapters::SQLite3::Quoting
     RecordNotUnique = ::ActiveRecord::RecordNotUnique
     SchemaCreation = ConnectionAdapters::SQLite3::SchemaCreation
@@ -164,6 +165,10 @@ module ArJdbc
       !@memory_database
     end
 
+    def supports_virtual_columns?
+      database_version >= "3.31.0"
+    end
+
     def connected?
       !(@raw_connection.nil? || @raw_connection.closed?)
     end
@@ -257,7 +262,6 @@ module ArJdbc
       internal_exec_query "DROP INDEX #{quote_column_name(index_name)}"
     end
 
-    
     # Renames a table.
     #
     # Example:
@@ -346,15 +350,31 @@ module ArJdbc
     end
     alias :add_belongs_to :add_reference
 
+    FK_REGEX = /.*FOREIGN KEY\s+\("([^"]+)"\)\s+REFERENCES\s+"(\w+)"\s+\("(\w+)"\)/
+    DEFERRABLE_REGEX = /DEFERRABLE INITIALLY (\w+)/
     def foreign_keys(table_name)
       # SQLite returns 1 row for each column of composite foreign keys.
       fk_info = internal_exec_query("PRAGMA foreign_key_list(#{quote(table_name)})", "SCHEMA")
+      # Deferred or immediate foreign keys can only be seen in the CREATE TABLE sql
+      fk_defs = table_structure_sql(table_name)
+                  .select do |column_string|
+                    column_string.start_with?("CONSTRAINT") &&
+                    column_string.include?("FOREIGN KEY")
+                  end
+                  .to_h do |fk_string|
+                    _, from, table, to = fk_string.match(FK_REGEX).to_a
+                    _, mode = fk_string.match(DEFERRABLE_REGEX).to_a
+                    deferred = mode&.downcase&.to_sym || false
+                    [[table, from, to], deferred]
+                  end
+
       grouped_fk = fk_info.group_by { |row| row["id"] }.values.each { |group| group.sort_by! { |row| row["seq"] } }
       grouped_fk.map do |group|
         row = group.first
         options = {
           on_delete: extract_foreign_key_action(row["on_delete"]),
-          on_update: extract_foreign_key_action(row["on_update"])
+          on_update: extract_foreign_key_action(row["on_update"]),
+          deferrable: fk_defs[[row["table"], row["from"], row["to"]]]
         }
 
         if group.one?
@@ -364,8 +384,7 @@ module ArJdbc
           options[:column] = group.map { |row| row["from"] }
           options[:primary_key] = group.map { |row| row["to"] }
         end
-        # DIFFERENCE: FQN
-        ::ActiveRecord::ConnectionAdapters::ForeignKeyDefinition.new(table_name, row["table"], options)
+        ForeignKeyDefinition.new(table_name, row["table"], options)
       end
     end
 
@@ -412,7 +431,14 @@ module ArJdbc
 
       type_metadata = fetch_type_metadata(field["type"])
       default_value = extract_value_from_default(default)
-      default_function = extract_default_function(default_value, default)
+      generated_type = extract_generated_type(field)
+
+      if generated_type.present?
+        default_function = default
+      else
+        default_function = extract_default_function(default_value, default)
+      end
+
       rowid = is_column_the_rowid?(field, definitions)
 
       ActiveRecord::ConnectionAdapters::SQLite3Column.new(
@@ -423,7 +449,8 @@ module ArJdbc
         default_function,
         collation: field["collation"],
         auto_increment: field["auto_increment"],
-        rowid: rowid
+        rowid: rowid,
+        generated_type: generated_type
       )
     end
 
@@ -435,7 +462,12 @@ module ArJdbc
     end
 
     def table_structure(table_name)
-      structure = internal_exec_query("PRAGMA table_info(#{quote_table_name(table_name)})", "SCHEMA")
+      structure = if supports_virtual_columns?
+        internal_exec_query("PRAGMA table_xinfo(#{quote_table_name(table_name)})", "SCHEMA")
+      else
+        internal_exec_query("PRAGMA table_info(#{quote_table_name(table_name)})", "SCHEMA")
+      end
+
       raise(ActiveRecord::StatementInvalid, "Could not find table '#{table_name}'") if structure.empty?
       table_structure_with_collation(table_name, structure)
     end
@@ -475,8 +507,9 @@ module ArJdbc
     # See: https://www.sqlite.org/lang_altertable.html
     # SQLite has an additional restriction on the ALTER TABLE statement
     def invalid_alter_table_type?(type, options)
-      type.to_sym == :primary_key || options[:primary_key] ||
-        options[:null] == false && options[:default].nil?
+      type == :primary_key || options[:primary_key] ||
+        options[:null] == false && options[:default].nil? ||
+        (type == :virtual && options[:stored])
     end
 
     def alter_table(
@@ -532,12 +565,6 @@ module ArJdbc
              options[:rename][column.name.to_sym] ||
              column.name) : column.name
 
-          if column.has_default?
-            type = lookup_cast_type_from_column(column)
-            default = type.deserialize(column.default)
-            default = -> { column.default_function } if default.nil?
-          end
-
           column_options = {
             limit: column.limit,
             precision: column.precision,
@@ -547,19 +574,31 @@ module ArJdbc
             primary_key: column_name == from_primary_key
           }
 
-          unless column.auto_increment?
-            column_options[:default] = default
+          if column.virtual?
+            column_options[:as] = column.default_function
+            column_options[:stored] = column.virtual_stored?
+            column_options[:type] = column.type
+          elsif column.has_default?
+            type = lookup_cast_type_from_column(column)
+            default = type.deserialize(column.default)
+            default = -> { column.default_function } if default.nil?
+
+            unless column.auto_increment?
+              column_options[:default] = default
+            end
           end
 
-          column_type = column.bigint? ? :bigint : column.type
+          column_type = column.virtual? ? :virtual : (column.bigint? ? :bigint : column.type)
           @definition.column(column_name, column_type, **column_options)
         end
 
         yield @definition if block_given?
       end
       copy_table_indexes(from, to, options[:rename] || {})
+
+      columns_to_copy = @definition.columns.reject { |col| col.options.key?(:as) }.map(&:name)
       copy_table_contents(from, to,
-        @definition.columns.map(&:name),
+        columns_to_copy,
         options[:rename] || {})
     end
 
@@ -633,32 +672,22 @@ module ArJdbc
 
     COLLATE_REGEX = /.*\"(\w+)\".*collate\s+\"(\w+)\".*/i.freeze
     PRIMARY_KEY_AUTOINCREMENT_REGEX = /.*\"(\w+)\".+PRIMARY KEY AUTOINCREMENT/i
+    GENERATED_ALWAYS_AS_REGEX = /.*"(\w+)".+GENERATED ALWAYS AS \((.+)\) (?:STORED|VIRTUAL)/i
 
     def table_structure_with_collation(table_name, basic_structure)
       collation_hash = {}
       auto_increments = {}
-      sql = <<~SQL
-        SELECT sql FROM
-          (SELECT * FROM sqlite_master UNION ALL
-           SELECT * FROM sqlite_temp_master)
-        WHERE type = 'table' AND name = #{quote(table_name)}
-      SQL
+      generated_columns = {}
 
-      # Result will have following sample string
-      # CREATE TABLE "users" ("id" INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-      #                       "password_digest" varchar COLLATE "NOCASE");
-      result = query_value(sql, "SCHEMA")
+      column_strings = table_structure_sql(table_name, basic_structure.map { |column| column["name"] })
 
-      if result
-        # Splitting with left parentheses and discarding the first part will return all
-        # columns separated with comma(,).
-        columns_string = result.split("(", 2).last
-
-        columns_string.split(",").each do |column_string|
+      if column_strings.any?
+        column_strings.each do |column_string|
           # This regex will match the column name and collation type and will save
           # the value in $1 and $2 respectively.
           collation_hash[$1] = $2 if COLLATE_REGEX =~ column_string
           auto_increments[$1] = true if PRIMARY_KEY_AUTOINCREMENT_REGEX =~ column_string
+          generated_columns[$1] = $2 if GENERATED_ALWAYS_AS_REGEX =~ column_string
         end
 
         basic_structure.map do |column|
@@ -672,10 +701,58 @@ module ArJdbc
             column["auto_increment"] = true
           end
 
+          if generated_columns.has_key?(column_name)
+            column["dflt_value"] = generated_columns[column_name]
+          end
+
           column
         end
       else
         basic_structure.to_a
+      end
+    end
+
+    UNQUOTED_OPEN_PARENS_REGEX = /\((?![^'"]*['"][^'"]*$)/
+    FINAL_CLOSE_PARENS_REGEX = /\);*\z/
+
+    def table_structure_sql(table_name, column_names = nil)
+      unless column_names
+        column_info = table_info(table_name)
+        column_names = column_info.map { |column| column["name"] }
+      end
+
+      sql = <<~SQL
+        SELECT sql FROM
+          (SELECT * FROM sqlite_master UNION ALL
+           SELECT * FROM sqlite_temp_master)
+        WHERE type = 'table' AND name = #{quote(table_name)}
+      SQL
+
+      # Result will have following sample string
+      # CREATE TABLE "users" ("id" INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+      #                       "password_digest" varchar COLLATE "NOCASE",
+      #                       "o_id" integer,
+      #                       CONSTRAINT "fk_rails_78146ddd2e" FOREIGN KEY ("o_id") REFERENCES "os" ("id"));
+      result = query_value(sql, "SCHEMA")
+
+      return [] unless result
+
+      # Splitting with left parentheses and discarding the first part will return all
+      # columns separated with comma(,).
+      result.partition(UNQUOTED_OPEN_PARENS_REGEX)
+            .last
+            .sub(FINAL_CLOSE_PARENS_REGEX, "")
+            # column definitions can have a comma in them, so split on commas followed
+            # by a space and a column name in quotes or followed by the keyword CONSTRAINT
+            .split(/,(?=\s(?:CONSTRAINT|"(?:#{Regexp.union(column_names).source})"))/i)
+            .map(&:strip)
+    end
+
+    def table_info(table_name)
+      if supports_virtual_columns?
+        internal_exec_query("PRAGMA table_xinfo(#{quote_table_name(table_name)})", "SCHEMA")
+      else
+        internal_exec_query("PRAGMA table_info(#{quote_table_name(table_name)})", "SCHEMA")
       end
     end
 
