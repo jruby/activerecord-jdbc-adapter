@@ -861,6 +861,14 @@ module ActiveRecord::ConnectionAdapters
     def initialize(...)
       super
 
+      @memory_database = false
+      case @config[:database].to_s
+      when ""
+        raise ArgumentError, "No database file specified. Missing argument: database"
+      when ":memory:"
+        @memory_database = true
+      end
+
       # assign arjdbc extra connection params
       conn_params = build_connection_config(@config.compact)
 
