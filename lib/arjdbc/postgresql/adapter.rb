@@ -866,8 +866,11 @@ module ActiveRecord::ConnectionAdapters
     include ArJdbc::Abstract::DatabaseStatements
     include ArJdbc::Abstract::StatementCache
     include ArJdbc::Abstract::TransactionSupport
-    include ArJdbc::PostgreSQL
     include ArJdbc::PostgreSQLConfig
+
+    # NOTE: after AR refactor quote_column_name became class and instance method
+    include ArJdbc::PostgreSQL
+    extend ArJdbc::PostgreSQL
 
     require 'arjdbc/postgresql/oid_types'
     include ::ArJdbc::PostgreSQL::OIDTypes
