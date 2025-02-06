@@ -69,8 +69,6 @@ module ArJdbc
     # Configures the encoding, verbosity, schema search path, and time zone of the connection.
     # This is called on `connection.connect` and should not be called manually.
     def configure_connection
-      super
-
       #if encoding = config[:encoding]
         # The client_encoding setting is set by the driver and should not be altered.
         # If the driver detects a change it will abort the connection.
