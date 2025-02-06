@@ -842,6 +842,15 @@ module ActiveRecord::ConnectionAdapters
     # setting, you should immediately run <tt>bin/rails db:migrate</tt> to update the types in your schema.rb.
     class_attribute :datetime_type, default: :timestamp
 
+    ##
+    # :singleton-method:
+    # Toggles automatic decoding of date columns.
+    #
+    #   ActiveRecord::ConnectionAdapters::PostgreSQLAdapter.select_value("select '2024-01-01'::date").class #=> String
+    #   ActiveRecord::ConnectionAdapters::PostgreSQLAdapter.decode_dates = true
+    #   ActiveRecord::ConnectionAdapters::PostgreSQLAdapter.select_value("select '2024-01-01'::date").class #=> Date
+    class_attribute :decode_dates, default: false
+
     # Try to use as much of the built in postgres logic as possible
     # maybe someday we can extend the actual adapter
     include ActiveRecord::ConnectionAdapters::PostgreSQL::ReferentialIntegrity
