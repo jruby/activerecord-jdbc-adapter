@@ -26,7 +26,9 @@ module ArJdbc
       def begin_db_transaction
         log('BEGIN', 'TRANSACTION') do
           with_raw_connection(allow_retry: true, materialize_transactions: false) do |conn|
-            conn.begin
+            result = conn.begin
+            verified!
+            result
           end
         end
       end
