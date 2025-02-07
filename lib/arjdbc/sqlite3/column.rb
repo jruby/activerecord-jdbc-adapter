@@ -4,12 +4,14 @@ module ActiveRecord::ConnectionAdapters
   class SQLite3Column < JdbcColumn
 
     attr_reader :rowid
-    
-    def initialize(name, default, sql_type_metadata = nil, null = true, default_function = nil, collation: nil, comment: nil, auto_increment: nil, rowid: false, **)
+
+    def initialize(*, auto_increment: nil, rowid: false, generated_type: nil, **)
       super
+
       @auto_increment = auto_increment
       @default = nil if default =~ /NULL/
       @rowid = rowid
+      @generated_type = generated_type
     end
 
     def self.string_to_binary(value)
@@ -37,6 +39,18 @@ module ActiveRecord::ConnectionAdapters
 
     def auto_incremented_by_db?
       auto_increment? || rowid
+    end
+
+    def virtual?
+      !@generated_type.nil?
+    end
+
+    def virtual_stored?
+      virtual? && @generated_type == :stored
+    end
+
+    def has_default?
+      super && !virtual?
     end
 
     def init_with(coder)

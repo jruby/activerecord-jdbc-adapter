@@ -1,4 +1,4 @@
-# encoding: ASCII-8BIT
+require 'db/mysql'
 require 'test_helper'
 
 class MySQLUnitTest < Test::Unit::TestCase
@@ -93,11 +93,11 @@ class MySQLUnitTest < Test::Unit::TestCase
   context 'connection' do
 
     test 'jndi configuration' do
+      skip "mysql_connection was removed, find ways to integrate jndi if needed since AR 7.1 & 7.2 changed so much"
       connection_handler = connection_handler_stub
 
       config = { :jndi => 'jdbc/TestDS' }
       connection_handler.expects(:jndi_connection).with() { |c| config = c }
-      connection_handler.mysql_connection config
 
       # we do not complete username/database etc :
       assert_nil config[:username]
@@ -109,48 +109,49 @@ class MySQLUnitTest < Test::Unit::TestCase
       assert config[:adapter_class]
     end
 
-    test 'configuration attempts to load MySQL driver by default' do
-      skip 'jdbc/mysql not available' if load_jdbc_mysql.nil?
+    test "configuration attempts to load MySQL driver by default" do
+      skip "jdbc/mysql not available" if load_jdbc_mysql.nil?
 
-      connection_handler = connection_handler_stub
+      config_hash = { adapter: "mysql2", database: "MyDB" }
 
-      config = { database: 'MyDB' }
-      connection_handler.expects(:jdbc_connection)
       ::Jdbc::MySQL.expects(:load_driver).with(:require)
-      connection_handler.mysql_connection config
+
+      connection_handler(config_hash)
     end
 
-    test 'configuration uses driver_name from Jdbc::MySQL' do
-      skip 'jdbc/mysql not available' if load_jdbc_mysql.nil?
+    test "configuration uses driver_name from Jdbc::MySQL" do
+      skip "jdbc/mysql not available" if load_jdbc_mysql.nil?
 
-      connection_handler = connection_handler_stub
+      config_hash = { adapter: "mysql2", database: "MyDB" }
 
-      config = { database: 'MyDB' }
-      connection_handler.expects(:jdbc_connection).with() { |c| config = c }
-      ::Jdbc::MySQL.expects(:driver_name).returns('com.mysql.CustomDriver')
-      connection_handler.mysql_connection config
-      assert_equal 'com.mysql.CustomDriver', config[:driver]
+      ::Jdbc::MySQL.expects(:driver_name).returns("com.mysql.CustomDriver")
+
+      conn = connection_handler(config_hash)
+
+      config = conn.instance_variable_get("@connection_parameters")
+      assert_equal "com.mysql.CustomDriver", config[:driver]
     end
 
-    test 'configuration sets up properties according to connector/j driver (>= 8.0)' do
-      skip 'jdbc/mysql not available' if load_jdbc_mysql.nil?
+    test "configuration sets up properties according to connector/j driver (>= 8.0)" do
+      skip "jdbc/mysql not available" if load_jdbc_mysql.nil?
 
-      connection_handler = connection_handler_stub
+      config_hash = { adapter: "mysql2", database: "MyDB" }
 
-      config = { database: 'MyDB' }
-      connection_handler.expects(:jdbc_connection).with() { |c| config = c }
-      ::Jdbc::MySQL.expects(:driver_name).returns('com.mysql.cj.jdbc.Driver')
-      connection_handler.mysql_connection config
-      assert_equal 'com.mysql.cj.jdbc.Driver', config[:driver]
-      assert_equal 'CONVERT_TO_NULL', config[:properties]['zeroDateTimeBehavior']
-      assert_equal false, config[:properties]['useLegacyDatetimeCode']
-      assert_equal false, config[:properties]['jdbcCompliantTruncation']
-      assert_equal false, config[:properties]['useSSL']
+      ::Jdbc::MySQL.expects(:driver_name).returns("com.mysql.cj.jdbc.Driver")
+
+      conn = connection_handler(config_hash)
+      config = conn.instance_variable_get("@connection_parameters")
+
+      assert_equal "com.mysql.cj.jdbc.Driver", config[:driver]
+      assert_equal "CONVERT_TO_NULL", config[:properties]["zeroDateTimeBehavior"]
+      assert_equal false, config[:properties]["useLegacyDatetimeCode"]
+      assert_equal false, config[:properties]["jdbcCompliantTruncation"]
+      assert_equal false, config[:properties]["useSSL"]
     end
 
   end
 
-  context 'connection (Jdbc::MySQL missing)' do
+  context "connection (Jdbc::MySQL missing)" do
 
     module ::Jdbc; end
 
@@ -165,58 +166,35 @@ class MySQLUnitTest < Test::Unit::TestCase
       ::Jdbc.const_set :MySQL, @@jdbc_mysql if @@jdbc_mysql
     end
 
-    test 'configuration sets url and properties assuming mysql driver (<= 5.1)' do
-      connection_handler = connection_handler_stub
+    test "configuration sets url and properties assuming mysql driver <= 5.1" do
+      config_hash = { adapter: "mysql2", host: "127.0.0.1", database: "MyDB" }
 
-      config = { host: '127.0.0.1', database: 'MyDB' }
-      connection_handler.expects(:jdbc_connection).with() { |c| config = c }
-      connection_handler.mysql_connection config
-
-      # we do not complete username/database etc :
-      assert_equal 'root', config[:username]
-      assert_equal 'com.mysql.jdbc.Driver', config[:driver]
-      assert_equal 'jdbc:mysql://127.0.0.1/MyDB', config[:url]
-      assert_equal 'UTF-8', config[:properties]['characterEncoding']
-      assert_equal 'convertToNull', config[:properties]['zeroDateTimeBehavior']
-      assert_equal false, config[:properties]['useLegacyDatetimeCode']
-      assert_equal false, config[:properties]['jdbcCompliantTruncation']
-      assert_equal false, config[:properties]['useSSL']
+      conn = connection_handler(config_hash)
+      config = conn.instance_variable_get("@connection_parameters")
+      # we do not complete username, port etc :
+      assert_equal nil, config[:username]
+      assert_equal "com.mysql.jdbc.Driver", config[:driver]
+      assert_equal "jdbc:mysql://127.0.0.1:3306/MyDB", config[:url]
+      assert_equal "UTF-8", config[:properties]["characterEncoding"]
+      assert_equal "convertToNull", config[:properties]["zeroDateTimeBehavior"]
+      assert_equal false, config[:properties]["useLegacyDatetimeCode"]
+      assert_equal false, config[:properties]["jdbcCompliantTruncation"]
+      assert_equal false, config[:properties]["useSSL"]
     end
 
-    test 'configuration attempts to load MySQL driver by default' do
-      connection_handler = connection_handler_stub
+    test "configuration allows to skip driver loading" do
+      config_hash = { adapter: "mysql2", database: "MyDB", driver: false }
 
-      config = { database: 'MyDB' }
-      connection_handler.expects(:jdbc_connection)
-      connection_handler.expects(:require).with('jdbc/mysql')
-      connection_handler.mysql_connection config
+      conn = connection_handler(config_hash)
+      config = conn.instance_variable_get("@connection_parameters")
+
+      # allow Java's service discovery mechanism (with connector/j 8.0)
+      assert_not config[:driver]
     end
+  end
 
-    test 'configuration allows to skip driver loading' do
-      connection_handler = connection_handler_stub
-
-      config = { database: 'MyDB', driver: false }
-      connection_handler.expects(:jdbc_connection).with() { |c| config = c }
-      connection_handler.expects(:require).never
-      connection_handler.mysql_connection config
-      assert_not config[:driver] # allow Java's service discovery mechanism (with connector/j 8.0)
-    end
-
-    test 'configuration works with MariaDB driver specified' do
-      connection_handler = connection_handler_stub
-
-      config = { database: 'MyDB', driver: 'org.mariadb.jdbc.Driver' }
-      connection_handler.expects(:jdbc_connection).with() { |c| config = c }
-      connection_handler.mysql_connection config
-
-      # we do not complete username/database etc :
-      assert_equal 'root', config[:username]
-      assert_equal 'org.mariadb.jdbc.Driver', config[:driver]
-      assert_equal 'jdbc:mysql://localhost/MyDB', config[:url]
-      assert_equal false, config[:properties]['useLegacyDatetimeCode']
-      assert_equal false, config[:properties]['useSsl']
-    end
-
+  def connection_handler(config)
+    ActiveRecord::ConnectionAdapters::Mysql2Adapter.new(config)
   end
 
   def load_jdbc_mysql

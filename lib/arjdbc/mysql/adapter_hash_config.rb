@@ -7,7 +7,9 @@ module ArJdbc
 
       load_jdbc_driver
 
-      config[:driver] ||= database_driver_name
+      # don't set driver if it's explicitly set to false
+      # allow Java's service discovery mechanism (with connector/j 8.0)
+      config[:driver] ||= database_driver_name if config[:driver] != false
 
       host = (config[:host] ||= "localhost")
       port = (config[:port] ||= 3306)
@@ -40,7 +42,7 @@ module ArJdbc
     def build_properties(config)
       properties = config[:properties] || {}
 
-      properties["zeroDateTimeBehavior"] ||= "CONVERT_TO_NULL"
+      properties["zeroDateTimeBehavior"] ||= default_zero_date_time_behavior(config[:driver])
 
       properties["jdbcCompliantTruncation"] ||= false
 
@@ -86,6 +88,14 @@ module ArJdbc
       properties["useLegacyDatetimeCode"] = false
 
       properties
+    end
+
+    def default_zero_date_time_behavior(driver)
+      return "CONVERT_TO_NULL" if driver == false
+
+      return "CONVERT_TO_NULL" if driver.start_with?("com.mysql.cj.")
+
+      "convertToNull"
     end
 
     # See https://dev.mysql.com/doc/connector-j/5.1/en/connector-j-reference-charsets.html
