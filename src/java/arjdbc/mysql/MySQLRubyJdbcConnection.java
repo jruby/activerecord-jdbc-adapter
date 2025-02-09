@@ -218,6 +218,39 @@ public class MySQLRubyJdbcConnection extends RubyJdbcConnection {
     }
 
     @Override
+    protected IRubyObject timestampToRuby(final ThreadContext context,
+        final Ruby runtime, final ResultSet resultSet, final int column)
+        throws SQLException {
+
+        final Timestamp value;
+        try {
+            value = resultSet.getTimestamp(column);
+        }
+        catch (SQLException e) {
+            if (e.getMessage().contains("HOUR_OF_DAY")) {
+                return stringToRuby(context, runtime, resultSet, column);
+            }
+            else {
+                throw e;
+            }
+        }
+        if ( value == null ) {
+            return resultSet.wasNull() ? context.nil : RubyString.newEmptyString(runtime);
+        }
+
+        if ( rawDateTime != null && rawDateTime) {
+            return RubyString.newString(runtime, DateTimeUtils.timestampToString(value));
+        }
+
+        // NOTE: with 'raw' String AR's Type::DateTime does put the time in proper time-zone
+        // while when returning a Time object it just adjusts usec (apply_seconds_precision)
+        // yet for custom SELECTs to work (SELECT created_at ... ) and for compatibility we
+        // should be returning Time (by default) - AR does this by adjusting mysql2/pg returns
+
+        return DateTimeUtils.newTime(context, value, getDefaultTimeZone(context));
+    }
+
+    @Override
     protected IRubyObject streamToRuby(final ThreadContext context,
         final Ruby runtime, final ResultSet resultSet, final int column)
         throws SQLException {
