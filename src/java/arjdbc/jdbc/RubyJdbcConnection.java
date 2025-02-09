@@ -126,6 +126,7 @@ public class RubyJdbcConnection extends RubyObject {
     private IRubyObject adapter; // the AbstractAdapter instance we belong to
     private volatile boolean connected = true;
     private RubyClass attributeClass;
+    private RubyClass timeZoneClass;
 
     private boolean lazy = false; // final once set on initialize
     private boolean jndi; // final once set on initialize
@@ -135,6 +136,7 @@ public class RubyJdbcConnection extends RubyObject {
     protected RubyJdbcConnection(Ruby runtime, RubyClass metaClass) {
         super(runtime, metaClass);
         attributeClass = runtime.getModule("ActiveModel").getClass("Attribute");
+        timeZoneClass = runtime.getModule("ActiveSupport").getClass("TimeWithZone");
     }
 
     private static final ObjectAllocator ALLOCATOR = new ObjectAllocator() {
@@ -2441,6 +2443,9 @@ public class RubyJdbcConnection extends RubyObject {
         if (attributeClass.isInstance(attribute)) {
             type = jdbcTypeForAttribute(context, attribute);
             value = valueForDatabase(context, attribute);
+        } else if (timeZoneClass.isInstance(attribute)) {
+            type = jdbcTypeFor("timestamp");
+            value = attribute;
         } else {
             type = jdbcTypeForPrimitiveAttribute(context, attribute);
             value = attribute;
