@@ -243,6 +243,15 @@ module SimpleTestMethods
     Entry.create(:title => "Bloh")
   end
 
+  def test_find_time_with_raw_prepared_statement
+    user = User.new(login: "jessec")
+
+    assert_equal true, user.save
+
+    right_now = Time.current
+    assert_equal 1, User.where("created_at <= ?", right_now).to_a.size
+  end
+
   def test_find_and_update_entry
     title = "First post!"
     content = "Hello from JRuby on Rails!"
