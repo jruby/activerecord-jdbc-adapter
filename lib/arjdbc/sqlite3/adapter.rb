@@ -388,6 +388,24 @@ module ArJdbc
       end
     end
 
+    # Returns a list of defined virtual tables (for Rails 8 compatibility)
+    VIRTUAL_TABLE_REGEX = /USING\s+(\w+)(?:\s*\((.*)\))?/im
+    def virtual_tables
+      query = <<~SQL
+        SELECT name, sql FROM sqlite_master
+        WHERE type = 'table' AND sql LIKE 'CREATE VIRTUAL TABLE%';
+      SQL
+
+      exec_query(query, "SCHEMA").cast_values.each_with_object({}) do |(name, sql), memo|
+        match = sql.match(VIRTUAL_TABLE_REGEX)
+        next unless match
+
+        module_name = match[1]
+        arguments = match[2] || ""
+        memo[name] = [module_name, arguments.strip]
+      end.to_a
+    end
+
     def build_insert_sql(insert) # :nodoc:
       sql = +"INSERT #{insert.into} #{insert.values_list}"
 
