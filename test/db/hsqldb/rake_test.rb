@@ -13,18 +13,18 @@ class HSQLDBRakeTest < Test::Unit::TestCase
   test 'rake db:create (and db:drop)' do
     @db_name = 'rake-create-test.hsqldb'
     Rake::Task["db:create"].invoke
-    assert_true File.exists?("#{@db_name}.lck")
+    assert_true File.exist?("#{@db_name}.lck")
 
     Rake::Task["db:drop"].invoke
-    assert_false File.exists?("#{@db_name}.lck")
+    assert_false File.exist?("#{@db_name}.lck")
   end
 
   test 'rake db:create (and db:drop) in memory db' do
     Rake::Task["db:create"].invoke
-    # assert_true File.exists?("#{db_name}.lck")
+    # assert_true File.exist?("#{db_name}.lck")
 
     Rake::Task["db:drop"].invoke
-    # assert_false File.exists?("#{db_name}.lck")
+    # assert_false File.exist?("#{db_name}.lck")
   end
 
   test 'rake db:test:purge' do
@@ -52,7 +52,7 @@ class HSQLDBRakeTest < Test::Unit::TestCase
       Dir.mkdir 'db' # db/structure.sql
       Rake::Task["db:structure:dump"].invoke
 
-      assert File.exists?(structure_sql)
+      assert File.exist?(structure_sql)
       # CREATE MEMORY TABLE PUBLIC.LOOSERS
       assert_match(/CREATE .*? TABLE PUBLIC.LOOSERS/i, File.read(structure_sql))
 
@@ -64,7 +64,7 @@ class HSQLDBRakeTest < Test::Unit::TestCase
       assert ActiveRecord::Base.connection.table_exists?('loosers')
       ActiveRecord::Base.connection.disconnect!
     ensure
-      File.delete(structure_sql) if File.exists?(structure_sql)
+      File.delete(structure_sql) if File.exist?(structure_sql)
       Dir.rmdir 'db'
     end
   end
@@ -90,7 +90,7 @@ class HSQLDBRakeTest < Test::Unit::TestCase
 
     Dir.glob("#{@db_name}*").each do |f|
       if silence
-        FileUtils.rm_rf(f) if File.exists?(f)
+        FileUtils.rm_rf(f) if File.exist?(f)
       else
         FileUtils.rm_rf(f)
       end

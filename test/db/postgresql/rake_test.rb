@@ -65,7 +65,7 @@ class PostgresRakeTest < Test::Unit::TestCase
       Dir.mkdir 'db' # db/structure.sql
       Rake::Task["db:schema:dump"].invoke
 
-      assert File.exists?(structure_sql)
+      assert File.exist?(structure_sql)
       assert_match(/CREATE TABLE .*?.?users/, File.read(structure_sql))
 
       # db:structure:load
@@ -83,7 +83,7 @@ class PostgresRakeTest < Test::Unit::TestCase
         assert connection.table_exists?('users')
       end
     ensure
-      File.delete(structure_sql) if File.exists?(structure_sql)
+      File.delete(structure_sql) if File.exist?(structure_sql)
       Dir.rmdir 'db'
       ActiveRecord.schema_format = initial_format
     end
@@ -107,16 +107,24 @@ class PostgresRakeTest < Test::Unit::TestCase
 
   def psql(args)
     args = args.join(' ') unless args.is_a?(String)
-    if db_config[:host] != 'localhost'
-      args = "--host=#{db_config[:host]} #{args}"
+    
+    # Always include host and port for Docker PostgreSQL
+    args = "--host=#{db_config[:host] || 'localhost'} #{args}"
+    if db_config[:port]
+      args = "--port=#{db_config[:port]} #{args}"
     end
-    if username = ENV['PSQL_USERNAME']
-      args = "--username=#{username} #{args}"
-    end
+    
+    # Use the test database user or fallback to ENV
+    username = db_config[:username] || ENV['PSQL_USERNAME'] || 'postgres'
+    args = "--username=#{username} #{args}"
 
     puts "psql args: #{args}"
 
-    `#{PSQL_EXE} #{args}`
+    # Set PGPASSWORD for authentication
+    env = {}
+    env['PGPASSWORD'] = db_config[:password] || 'postgres'
+    
+    IO.popen(env, "#{PSQL_EXE} #{args}") { |io| io.read }
   end
 
 end

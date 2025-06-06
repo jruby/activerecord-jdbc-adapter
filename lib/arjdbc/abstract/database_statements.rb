@@ -10,8 +10,6 @@ module ArJdbc
       NO_BINDS = [].freeze
 
       def exec_insert(sql, name = nil, binds = NO_BINDS, pk = nil, sequence_name = nil, returning: nil)
-        sql = transform_query(sql)
-
         if preventing_writes?
           raise ActiveRecord::ReadOnlyError, "Write query attempted while in readonly mode: #{sql}"
         end
@@ -34,8 +32,6 @@ module ArJdbc
       # It appears that at this point (AR 5.0) "prepare" should only ever be true
       # if prepared statements are enabled
       def internal_exec_query(sql, name = nil, binds = NO_BINDS, prepare: false, async: false, allow_retry: false, materialize_transactions: true)
-        sql = transform_query(sql)
-
         if preventing_writes? && write_query?(sql)
           raise ActiveRecord::ReadOnlyError, "Write query attempted while in readonly mode: #{sql}"
         end
@@ -58,8 +54,6 @@ module ArJdbc
       end
 
       def exec_update(sql, name = 'SQL', binds = NO_BINDS)
-        sql = transform_query(sql)
-
         if preventing_writes?
           raise ActiveRecord::ReadOnlyError, "Write query attempted while in readonly mode: #{sql}"
         end
@@ -86,13 +80,23 @@ module ArJdbc
 
       private
 
+      def without_prepared_statement?(binds)
+        !prepared_statements || binds.empty?
+      end
+
       def convert_legacy_binds_to_attributes(binds)
         binds.map do |column, value|
           ActiveRecord::Relation::QueryAttribute.new(nil, type_cast(value, column), ActiveModel::Type::Value.new)
         end
       end
 
-      def raw_execute(sql, name, async: false, allow_retry: false, materialize_transactions: true)
+      def preprocess_query(sql)
+        check_if_write_query(sql) if respond_to?(:check_if_write_query, true)
+        mark_transaction_written_if_write(sql) if respond_to?(:mark_transaction_written_if_write, true)
+        sql
+      end
+
+      def raw_execute(sql, name, binds = [], prepare: false, async: false, allow_retry: false, materialize_transactions: true)
         log(sql, name, async: async) do
           with_raw_connection(allow_retry: allow_retry, materialize_transactions: materialize_transactions) do |conn|
             result = conn.execute(sql)

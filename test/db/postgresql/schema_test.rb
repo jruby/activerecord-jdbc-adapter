@@ -4,7 +4,8 @@ require 'db/postgres'
 class PostgresSchemaTest < Test::Unit::TestCase
 
   def test_collation
-    assert_equal 'en_US.UTF-8', connection.collation
+    # Docker PostgreSQL often uses C.UTF-8 instead of en_US.UTF-8
+    assert_match /\A(en_US|C)\.UTF-8\z/, connection.collation
   end
 
   def test_encoding

@@ -62,7 +62,7 @@ class MSSQLRakeDbCreateTest < Test::Unit::TestCase
       Dir.mkdir 'db' # db/structure.sql
       Rake::Task["db:structure:dump"].invoke
 
-      assert File.exists?(structure_sql)
+      assert File.exist?(structure_sql)
       # CREATE TABLE [dbo].[users]( ... )
       assert_match /CREATE TABLE .*?\[users\]/i, File.read(structure_sql)
 
@@ -75,7 +75,7 @@ class MSSQLRakeDbCreateTest < Test::Unit::TestCase
       assert ActiveRecord::Base.connection.table_exists?('users')
       ActiveRecord::Base.connection.disconnect!
     ensure
-      File.delete(structure_sql) if File.exists?(structure_sql)
+      File.delete(structure_sql) if File.exist?(structure_sql)
       Dir.rmdir 'db'
     end
   end

@@ -219,6 +219,10 @@ module ArJdbc
       true
     end
 
+    def supports_native_partitioning?
+      database_version >= 100_000
+    end
+
     def supports_insert_returning?
       true
     end
@@ -953,7 +957,6 @@ module ActiveRecord::ConnectionAdapters
     FEATURE_NOT_SUPPORTED = "0A000" # :nodoc:
 
     def execute_and_clear(sql, name, binds, prepare: false, async: false)
-      sql = transform_query(sql)
       check_if_write_query(sql)
 
       if !prepare || without_prepared_statement?(binds)
