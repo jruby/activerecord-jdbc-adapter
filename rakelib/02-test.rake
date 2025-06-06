@@ -36,7 +36,7 @@ def test_task_for(adapter, options = {})
     test_task.libs = []
     if defined?(JRUBY_VERSION)
       test_task.libs << 'lib'
-      test_task.libs << "jdbc-#{driver}/lib" if driver && File.exists?("jdbc-#{driver}/lib")
+      test_task.libs << "jdbc-#{driver}/lib" if driver && File.exist?("jdbc-#{driver}/lib")
       test_task.libs.push *FileList["activerecord-jdbc#{adapter}*/lib"]
     end
     test_task.libs << 'test'
