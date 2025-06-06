@@ -484,29 +484,25 @@ public class SQLite3RubyJdbcConnection extends RubyJdbcConnection {
                 boolean hasResultSet = doExecute(statement, query);
                 int updateCount = statement.getUpdateCount();
 
-                IRubyObject result = newEmptyResult(context); // Default to empty result
-                ResultSet resultSet;
-
                 while (hasResultSet || updateCount != -1) {
-
                     if (hasResultSet) {
-                        resultSet = statement.getResultSet();
-                        // For SELECT queries, return propr Result object
-                        result = mapQueryResult(context, connection, resultSet);
-                        resultSet.close();
-                    } else {
-                        // For INSERT/UPDATE/DELETE, return empty Result
-                        // Rails 8 SQLite3 adapter will convert this to [] via to_a
-                        result = newEmptyResult(context);
+                        ResultSet resultSet = statement.getResultSet();
+
+                        // Check to see if there is another result set
+                        hasResultSet = statement.getMoreResults();
+                        // No next result so process what we have and return
+                        if (!hasResultSet) {
+                            // For SELECT queries, return propr Result object
+                            IRubyObject result = mapQueryResult(context, connection, resultSet);
+                            resultSet.close();
+                            return result;
+                        }
                     }
 
-                    // Check to see if there is another result set
-                    hasResultSet = statement.getMoreResults();
                     updateCount = statement.getUpdateCount();
                 }
 
-                return result;
-
+                return newEmptyResult(context);
             } catch (final SQLException e) {
                 debugErrorSQL(context, query);
                 throw e;
