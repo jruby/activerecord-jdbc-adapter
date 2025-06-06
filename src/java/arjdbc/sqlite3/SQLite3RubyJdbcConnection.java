@@ -485,19 +485,19 @@ public class SQLite3RubyJdbcConnection extends RubyJdbcConnection {
                 int updateCount = statement.getUpdateCount();
                 IRubyObject result = null;
 
-                while (hasResultSet || updateCount != -1) {
+                do {
                     // Query has results to process (insert/update/delete) we move on to next
                     if (hasResultSet) {
-                        ResultSet resultSet = statement.getResultSet();
                         // For SELECT queries, return propr Result object
-                        result = mapQueryResult(context, connection, resultSet);
-                        resultSet.close();
+                        try (ResultSet rs = statement.getResultSet()) {
+                            result = mapQueryResult(context, connection, rs);
+                        }
                     }
 
                     // Check to see if there is another result set
                     hasResultSet = statement.getMoreResults();
                     updateCount = statement.getUpdateCount();
-                }
+                } while (hasResultSet || updateCount != -1);
 
                 return result == null ?
                         newEmptyResult(context) :
