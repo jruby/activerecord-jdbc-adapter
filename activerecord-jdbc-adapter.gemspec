@@ -10,7 +10,7 @@ Gem::Specification.new do |gem|
   gem.homepage = 'https://github.com/jruby/activerecord-jdbc-adapter'
   gem.license = 'BSD-2-Clause'
   gem.summary = 'JDBC adapter for ActiveRecord, for use within JRuby on Rails.'
-  gem.description = "" <<
+  gem.description = +"" <<
     "AR-JDBC is a database adapter for Rails' ActiveRecord component " <<
     "designed to be used with JRuby built upon Java's JDBC API for " <<
     "database access. Provides (ActiveRecord) built-in adapters: MySQL,  " <<
