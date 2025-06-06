@@ -483,21 +483,15 @@ public class SQLite3RubyJdbcConnection extends RubyJdbcConnection {
                 // Process all results but return the last one for Rails compatibility
                 boolean hasResultSet = doExecute(statement, query);
                 int updateCount = statement.getUpdateCount();
-
-                IRubyObject result = newEmptyResult(context); // Default to empty result
-                ResultSet resultSet;
+                IRubyObject result = null;
 
                 while (hasResultSet || updateCount != -1) {
-
+                    // Query has results to process (insert/update/delete) we move on to next
                     if (hasResultSet) {
-                        resultSet = statement.getResultSet();
+                        ResultSet resultSet = statement.getResultSet();
                         // For SELECT queries, return propr Result object
                         result = mapQueryResult(context, connection, resultSet);
                         resultSet.close();
-                    } else {
-                        // For INSERT/UPDATE/DELETE, return empty Result
-                        // Rails 8 SQLite3 adapter will convert this to [] via to_a
-                        result = newEmptyResult(context);
                     }
 
                     // Check to see if there is another result set
@@ -505,7 +499,9 @@ public class SQLite3RubyJdbcConnection extends RubyJdbcConnection {
                     updateCount = statement.getUpdateCount();
                 }
 
-                return result;
+                return result == null ?
+                        newEmptyResult(context) :
+                        result;
 
             } catch (final SQLException e) {
                 debugErrorSQL(context, query);
