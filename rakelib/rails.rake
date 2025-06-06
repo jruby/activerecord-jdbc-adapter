@@ -52,7 +52,6 @@ namespace :rails do
       ruby_opts_string += " -C \"#{ar_path}\""
       ruby_opts_string += " -rbundler/setup"
       ruby_opts_string += " -rminitest -rminitest/excludes" unless ENV['NO_EXCLUDES'].eql?('true')
-      ruby_opts_string += " -rmonkey_patches"
       file_list = ENV["TEST"] ? FileList[ ENV["TEST"].split(',') ] : test_files_finder.call
       file_list_string = file_list.map { |fn| "\"#{fn}\"" }.join(' ')
       # test_loader_code = "-e \"ARGV.each{|f| require f}\"" # :direct
