@@ -468,6 +468,54 @@ public class SQLite3RubyJdbcConnection extends RubyJdbcConnection {
     // note: sqlite3 cext uses this same method but we do not combine all our statements
     // into a single ; delimited string but leave it as an array of statements.  This is
     // because the JDBC way of handling batches is to use addBatch().
+    // Override execute to ensure Rails 8 compatibility
+    // Rails 8 SQLite3 adapter expects execute to always return something that responds to to_a
+    @Override
+    @JRubyMethod(name = "execute", required = 1)
+    public IRubyObject execute(final ThreadContext context, final IRubyObject sql) {
+        final String query = sqlString(sql);
+        return withConnection(context, connection -> {
+            Statement statement = null;
+            try {
+                statement = createStatement(context, connection);
+
+                // SQLite3 can support multiple statements in one query
+                // Process all results but return the last one for Rails compatibility
+                boolean hasResultSet = doExecute(statement, query);
+                int updateCount = statement.getUpdateCount();
+
+                IRubyObject result = newEmptyResult(context); // Default to empty result
+                ResultSet resultSet;
+
+                while (hasResultSet || updateCount != -1) {
+
+                    if (hasResultSet) {
+                        resultSet = statement.getResultSet();
+                        // For SELECT queries, return propr Result object
+                        result = mapQueryResult(context, connection, resultSet);
+                        resultSet.close();
+                    } else {
+                        // For INSERT/UPDATE/DELETE, return empty Result
+                        // Rails 8 SQLite3 adapter will convert this to [] via to_a
+                        result = newEmptyResult(context);
+                    }
+
+                    // Check to see if there is another result set
+                    hasResultSet = statement.getMoreResults();
+                    updateCount = statement.getUpdateCount();
+                }
+
+                return result;
+
+            } catch (final SQLException e) {
+                debugErrorSQL(context, query);
+                throw e;
+            } finally {
+                close(statement);
+            }
+        });
+    }
+
     @JRubyMethod(name = "execute_batch2")
     public IRubyObject execute_batch2(ThreadContext context, IRubyObject statementsArg) {
         // Assume we will only call this with an array.
