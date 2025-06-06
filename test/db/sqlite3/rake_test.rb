@@ -11,19 +11,19 @@ class SQLite3RakeTest < Test::Unit::TestCase
   def db_name; 'rake_test.sqlite3'; end
 
   def do_setup
-    File.delete('rake_test.sqlite3') if File.exists?('rake_test.sqlite3')
+    File.delete('rake_test.sqlite3') if File.exist?('rake_test.sqlite3')
   end
 
   def do_teardown
-    File.delete('rake_test.sqlite3') if File.exists?('rake_test.sqlite3')
+    File.delete('rake_test.sqlite3') if File.exist?('rake_test.sqlite3')
   end
 
   test 'rake db:create (and db:drop)' do
     Rake::Task["db:create"].invoke
-    assert_true File.exists?('rake_test.sqlite3')
+    assert_true File.exist?('rake_test.sqlite3')
 
     Rake::Task["db:drop"].invoke
-    assert_false File.exists?('rake_test.sqlite3')
+    assert_false File.exist?('rake_test.sqlite3')
   end
 
   test 'rake db:test:purge' do
@@ -57,7 +57,7 @@ class SQLite3RakeTest < Test::Unit::TestCase
       Dir.mkdir 'db' # db/structure.sql
       Rake::Task["db:structure:dump"].invoke
 
-      assert File.exists?(structure_sql)
+      assert File.exist?(structure_sql)
       assert_match(/CREATE TABLE .*?users/, File.read(structure_sql))
 
       # db:structure:load
@@ -68,7 +68,7 @@ class SQLite3RakeTest < Test::Unit::TestCase
       assert ActiveRecord::Base.connection.data_source_exists?('users')
       ActiveRecord::Base.connection.disconnect!
     ensure
-      File.delete(structure_sql) if File.exists?(structure_sql)
+      File.delete(structure_sql) if File.exist?(structure_sql)
       Dir.rmdir 'db'
     end
   end

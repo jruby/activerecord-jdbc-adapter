@@ -1,0 +1,3 @@
+[tools]
+java = "temurin-21"
+ruby = "jruby-10.0.0.1"

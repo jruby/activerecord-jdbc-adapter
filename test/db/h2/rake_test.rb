@@ -14,19 +14,19 @@ class H2RakeTest < Test::Unit::TestCase
     @db_name = 'rake-create-test'
     Rake::Task["db:create"].invoke
     db_path = ActiveRecord::Base.connection.database_path
-    #assert_true File.exists?(db_path(@db_name)), "db file: #{db_path(@db_name)} is missing"
-    assert_true File.exists?(db_path), "db file: #{db_path} is missing"
+    #assert_true File.exist?(db_path(@db_name)), "db file: #{db_path(@db_name)} is missing"
+    assert_true File.exist?(db_path), "db file: #{db_path} is missing"
 
     Rake::Task["db:drop"].invoke
-    assert_false File.exists?(db_path), "db file: #{db_path} not deleted"
+    assert_false File.exist?(db_path), "db file: #{db_path} not deleted"
   end
 
   test 'rake db:create (and db:drop) in memory db' do
     Rake::Task["db:create"].invoke
-    # assert_true File.exists?("#{db_name}.lck")
+    # assert_true File.exist?("#{db_name}.lck")
 
     Rake::Task["db:drop"].invoke
-    # assert_false File.exists?("#{db_name}.lck")
+    # assert_false File.exist?("#{db_name}.lck")
   end
 
   test 'rake db:test:purge' do
@@ -54,7 +54,7 @@ class H2RakeTest < Test::Unit::TestCase
       Dir.mkdir 'db' # db/structure.sql
       Rake::Task["db:structure:dump"].invoke
 
-      assert File.exists?(structure_sql)
+      assert File.exist?(structure_sql)
       # CREATE CACHED TABLE PUBLIC.LOOSERS
       assert_match(/CREATE .*? TABLE PUBLIC.LOOSERS/i, File.read(structure_sql))
 
@@ -66,7 +66,7 @@ class H2RakeTest < Test::Unit::TestCase
       assert ActiveRecord::Base.connection.table_exists?('loosers')
       ActiveRecord::Base.connection.disconnect!
     ensure
-      File.delete(structure_sql) if File.exists?(structure_sql)
+      File.delete(structure_sql) if File.exist?(structure_sql)
       Dir.rmdir 'db'
     end
   end
