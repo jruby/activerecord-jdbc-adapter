@@ -1,5 +1,6 @@
 source "https://rubygems.org"
 
+# Rails Dependencies Configuration
 if ENV['RAILS']  # Use local clone of Rails
   rails_dir = ENV['RAILS']    
   activerecord_dir = ::File.join(rails_dir, 'activerecord')
@@ -41,74 +42,66 @@ elsif ENV['AR_VERSION'] # Use specific version of AR and not .gemspec version
         gem 'actionpack', require: false
         gem 'actionview', require: false
       end
-      
     end
   end
 else
   if defined? JRUBY_VERSION
-    gemspec name: 'activerecord-jdbc-adapter' # Use versiom from .gemspec
-  else # read add_dependency 'activerecord', '~> 7.0' and use the same requirement on MRI
+    gemspec name: 'activerecord-jdbc-adapter' # Use version from .gemspec
+  else # read add_dependency 'activerecord', '~> 8.0' and use the same requirement on MRI
     ar_req = File.read('activerecord-jdbc-adapter.gemspec').match(/add_dependency.*?activerecord.*['"](.*?)['"]/)[1]
     raise "add_dependency 'activerecord', ... line not detected in gemspec" unless ar_req
     gem 'activerecord', ar_req
   end
 end
 
+# Core Dependencies
 gem 'rake', require: nil
 
-group :test do
-  gem 'test-unit', require: nil
-  gem 'test-unit-context', require: nil
-  gem 'mocha', '~> 1.2', require: false # Rails has '~> 0.14'
-
-  gem 'bcrypt', '~> 3.1.11', require: false
-end
-
-group :rails do
-  group :test do
-    gem 'minitest', '~> 5.24.0', require: nil
-    gem 'minitest-excludes', require: nil
-    gem 'minitest-rg', require: nil
-
-    gem 'benchmark-ips', require: nil
-  end
-
-  # AR expects this for testing xml in postgres (maybe others?)
-  gem 'builder', require: nil
-
-  gem 'erubis', require: nil # "~> 2.7.0"
-
-  # Due to rails/activesupport/lib/active_support/message_pack.rb
-  gem 'msgpack', '>= 1.7.0', require: false
-
-  # NOTE: due rails/activerecord/test/cases/connection_management_test.rb
-  gem 'rack', require: nil
-
-  gem 'zeitwerk'
-end
-
+# Development Dependencies
 group :development do
-  #gem 'ruby-debug', require: nil # if ENV['DEBUG']
+  gem 'pry-nav'
+  
   group :doc do
     gem 'yard', require: nil
     gem 'kramdown', require: nil
   end
 end
 
+# Test Dependencies
 group :test do
-  # for testing against different version(s)
-  if sqlite_version = ENV['JDBC_SQLITE_VERSION'] 
-    gem 'jdbc-sqlite3', sqlite_version, require: nil, platform: :jruby
+  # Core testing gems
+  gem 'test-unit', require: nil
+  gem 'test-unit-context', require: nil
+  gem 'mocha', '~> 2.0', require: false
+  gem 'bcrypt', '~> 3.1', require: false
+  
+  # Database adapters for MRI
+  platform :mri do
+    gem 'mysql2', '~> 0.5', require: nil
+    gem 'pg', '~> 1.5', require: nil
+    gem 'sqlite3', '~> 2.0', require: nil
   end
-
-  gem 'mysql2', '>= 0.4.4', require: nil, platform: :mri
-  gem 'pg', '>= 0.18.0', require: nil, platform: :mri
-  gem 'sqlite3', '~> 1.4', require: nil, platform: :mri
-
-  # group :mssql do
-  #   gem 'tiny_tds', require: nil, platform: :mri
-  #   gem 'activerecord-sqlserver-adapter', require: nil, platform: :mri
-  # end
+  
+  # JDBC SQLite version override
+  platform :jruby do
+    if sqlite_version = ENV['JDBC_SQLITE_VERSION']
+      gem 'jdbc-sqlite3', sqlite_version, require: nil
+    end
+  end
 end
 
-gem 'pry-nav'
+# Rails-specific test dependencies
+group :rails do
+  # Rails testing and support gems
+  gem 'builder', require: nil
+  gem 'erubis', require: nil
+  gem 'msgpack', '~> 1.7', require: false
+  gem 'rack', require: nil
+  gem 'zeitwerk'
+
+  group :test do
+    gem 'minitest-excludes', require: nil
+    gem 'minitest-rg', require: nil
+    gem 'benchmark-ips', require: nil
+  end
+end
