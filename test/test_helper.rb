@@ -11,7 +11,7 @@ Bundler.require(:default, :test)
 
 require 'test/unit'
 require 'test/unit/context'
-begin; require 'mocha/setup'; rescue LoadError; require 'mocha'; end
+require 'mocha/test_unit'
 
 require 'shared_helper'
 
