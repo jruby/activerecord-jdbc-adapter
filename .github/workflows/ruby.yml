@@ -106,6 +106,7 @@ jobs:
       PGHOST: localhost
       PGPORT: 5432
       PGUSER: jruby
+      PGPASSWORD: jruby
 
     steps:
       - uses: actions/checkout@v4
@@ -121,8 +122,8 @@ jobs:
           bundler-cache: true # runs 'bundle install' and caches installed gems automatically
       - name: Setup database
         run: |
-          psql -c "create database activerecord_unittest;" -U jruby
-          psql -c "create database activerecord_unittest2;" -U jruby
+          PGPASSWORD=jruby psql -c "create database activerecord_unittest;" -U jruby
+          PGPASSWORD=jruby psql -c "create database activerecord_unittest2;" -U jruby
       - name: Build
         run: |
           rake jar # compiles ext generates: lib/arjdbc/jdbc/adapter_java.jar
@@ -250,6 +251,7 @@ jobs:
       PGHOST: localhost
       PGPORT: 5432
       PGUSER: jruby
+      PGPASSWORD: jruby
 
     steps:
       - uses: actions/checkout@v4
