@@ -56,6 +56,9 @@ jobs:
         with:
           ruby-version: ${{ matrix.ruby-version }}
           bundler-cache: true # runs 'bundle install' and caches installed gems automatically
+      - name: Setup gdiff
+        run: |
+          sudo ln -s /usr/bin/diff /usr/bin/gdiff || true
       - name: Setup database
         run: |
           sudo service mysql start
@@ -91,9 +94,8 @@ jobs:
       postgres:
         image: postgres:17
         env:
-          POSTGRES_USER: jruby
-          POSTGRES_PASSWORD: jruby
-          POSTGRES_HOST_AUTH_METHOD: trust
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
         ports:
           - 5432:5432
         options: --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
@@ -120,10 +122,14 @@ jobs:
         with:
           ruby-version: ${{ matrix.ruby-version }}
           bundler-cache: true # runs 'bundle install' and caches installed gems automatically
+      - name: Setup gdiff
+        run: |
+          sudo ln -s /usr/bin/diff /usr/bin/gdiff || true
       - name: Setup database
         run: |
-          PGPASSWORD=jruby psql -c "create database activerecord_unittest;" -U jruby
-          PGPASSWORD=jruby psql -c "create database activerecord_unittest2;" -U jruby
+          PGPASSWORD=postgres psql -h localhost -U postgres -c "CREATE USER jruby WITH SUPERUSER CREATEDB LOGIN PASSWORD 'jruby';"
+          PGPASSWORD=jruby psql -h localhost -d postgres -c "create database activerecord_unittest;" -U jruby
+          PGPASSWORD=jruby psql -h localhost -d postgres -c "create database activerecord_unittest2;" -U jruby
       - name: Build
         run: |
           rake jar # compiles ext generates: lib/arjdbc/jdbc/adapter_java.jar
@@ -160,6 +166,9 @@ jobs:
         with:
           ruby-version: ${{ matrix.ruby-version }}
           bundler-cache: true # runs 'bundle install' and caches installed gems automatically
+      - name: Setup gdiff
+        run: |
+          sudo ln -s /usr/bin/diff /usr/bin/gdiff || true
       - name: Build
         run: |
           echo "JAVA_OPTS=$JAVA_OPTS"
@@ -235,9 +244,8 @@ jobs:
       postgres:
         image: postgres:17
         env:
-          POSTGRES_USER: jruby
-          POSTGRES_PASSWORD: jruby
-          POSTGRES_HOST_AUTH_METHOD: trust
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
         ports:
           - 5432:5432
         options: --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
@@ -265,6 +273,9 @@ jobs:
         with:
           ruby-version: ${{ matrix.ruby-version }}
           bundler-cache: true # runs 'bundle install' and caches installed gems automatically
+      - name: Setup PostgreSQL user
+        run: |
+          PGPASSWORD=postgres psql -h localhost -U postgres -c "CREATE USER jruby WITH SUPERUSER CREATEDB LOGIN PASSWORD 'jruby';"
       - name: Build
         run: |
           rake jar

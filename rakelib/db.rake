@@ -39,7 +39,7 @@ GRANT ALL PRIVILEGES ON `test\_%`.* TO #{MYSQL_CONFIG[:username]}@localhost;
   task :postgresql do
     require File.expand_path('../../test/shared_helper', __FILE__)
     fail 'could not create test database: psql executable not found' unless psql = which('psql')
-    fail 'could not create test database: missing "postgres" role' unless PostgresHelper.postgres_role?
+    fail 'could not create test database: missing "jruby" role' unless PostgresHelper.postgres_role?
 
     load 'test/db/postgres_config.rb' # rescue nil
     puts POSTGRES_CONFIG.inspect if $VERBOSE

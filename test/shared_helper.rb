@@ -25,12 +25,15 @@ module PostgresHelper
   class << self
     def postgres_role?(warn = nil)
       if psql = which('psql')
-        if `#{psql} -c '\\l' -U jruby #{psql_params}2>&1` && $?.exitstatus == 0
+        user = ENV['PSQL_USER'] || 'jruby'
+        password = ENV['PGPASSWORD'] || (user == 'jruby' ? 'jruby' : '')
+        cmd = "PGPASSWORD=#{password} #{psql} -d postgres -c '\\l' -U #{user} #{psql_params} 2>&1"
+        if `#{cmd}` && $?.exitstatus == 0
           true
         else
           if warn.nil?
-            warn =  "No \"jruby\" role ? Make sure service postgresql is running, "
-            warn << "than you might need to execute `createuser jruby -drs' first."
+            warn =  "No \"#{user}\" role ? Make sure service postgresql is running, "
+            warn << "than you might need to execute `createuser #{user} -drs' first."
           end
           send(:warn, warn) if warn # warn == false disables warnings
           false
