@@ -91,8 +91,8 @@ jobs:
       postgres:
         image: postgres:17
         env:
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
+          POSTGRES_USER: jruby
+          POSTGRES_PASSWORD: jruby
           POSTGRES_HOST_AUTH_METHOD: trust
         ports:
           - 5432:5432
@@ -105,7 +105,7 @@ jobs:
       PREPARED_STATEMENTS: ${{ matrix.prepared_statements }}
       PGHOST: localhost
       PGPORT: 5432
-      PGUSER: postgres
+      PGUSER: jruby
 
     steps:
       - uses: actions/checkout@v4
@@ -121,8 +121,8 @@ jobs:
           bundler-cache: true # runs 'bundle install' and caches installed gems automatically
       - name: Setup database
         run: |
-          psql -c "create database activerecord_unittest;" -U postgres
-          psql -c "create database activerecord_unittest2;" -U postgres
+          psql -c "create database activerecord_unittest;" -U jruby
+          psql -c "create database activerecord_unittest2;" -U jruby
       - name: Build
         run: |
           rake jar # compiles ext generates: lib/arjdbc/jdbc/adapter_java.jar
@@ -234,8 +234,8 @@ jobs:
       postgres:
         image: postgres:17
         env:
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
+          POSTGRES_USER: jruby
+          POSTGRES_PASSWORD: jruby
           POSTGRES_HOST_AUTH_METHOD: trust
         ports:
           - 5432:5432
@@ -249,7 +249,7 @@ jobs:
       INSERT_RETURNING: ${{ matrix.insert_returning }}
       PGHOST: localhost
       PGPORT: 5432
-      PGUSER: postgres
+      PGUSER: jruby
 
     steps:
       - uses: actions/checkout@v4

@@ -53,7 +53,7 @@ CREATE DATABASE #{POSTGRES_CONFIG[:database]} OWNER #{POSTGRES_CONFIG[:username]
        ENCODING '#{POSTGRES_CONFIG[:encoding]}' LC_COLLATE '#{POSTGRES_CONFIG[:collate]}' LC_CTYPE '#{POSTGRES_CONFIG[:collate]}';
     SQL
 
-    params = { '-U' => ENV['PSQL_USER'] || 'postgres' }
+    params = { '-U' => ENV['PSQL_USER'] || 'jruby' }
     params['-q'] = nil unless $VERBOSE
 
     puts "Creating PostgreSQL (test) database: #{POSTGRES_CONFIG[:database]}"
