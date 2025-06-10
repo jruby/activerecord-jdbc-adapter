@@ -25,8 +25,8 @@ module PostgresHelper
   class << self
     def postgres_role?(warn = nil)
       if psql = which('psql')
-        user = ENV['PSQL_USER'] || 'jruby'
-        password = ENV['PGPASSWORD'] || (user == 'jruby' ? 'jruby' : '')
+        user = ENV['PGUSER'] || 'arjdbc'
+        password = ENV['PGPASSWORD'] || 'arjdbc'
         cmd = "PGPASSWORD=#{password} #{psql} -d postgres -c '\\l' -U #{user} #{psql_params} 2>&1"
         if `#{cmd}` && $?.exitstatus == 0
           true

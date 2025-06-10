@@ -1,9 +1,9 @@
 POSTGRES_CONFIG = {
   :adapter => 'postgresql',
-  :database => 'arjdbc_test',
+  :database => ENV['PGDATABASE'] || 'arjdbc_test',
   :host => 'localhost',
-  :username => 'arjdbc',
-  :password => 'arjdbc',
+  :username => ENV['PGUSER'] || 'arjdbc',
+  :password => ENV['PGPASSWORD'] || 'arjdbc',
   :connect_timeout => 10, # seconds
   :encoding => 'utf8',
   :collate => 'en_US.UTF-8',

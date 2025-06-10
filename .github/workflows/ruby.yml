@@ -107,8 +107,8 @@ jobs:
       PREPARED_STATEMENTS: ${{ matrix.prepared_statements }}
       PGHOST: localhost
       PGPORT: 5432
-      PGUSER: jruby
-      PGPASSWORD: jruby
+      PGUSER: arjdbc
+      PGPASSWORD: arjdbc
 
     steps:
       - uses: actions/checkout@v4
@@ -127,9 +127,9 @@ jobs:
           sudo ln -s /usr/bin/diff /usr/bin/gdiff || true
       - name: Setup database
         run: |
-          PGPASSWORD=postgres psql -h localhost -U postgres -c "CREATE USER jruby WITH SUPERUSER CREATEDB LOGIN PASSWORD 'jruby';"
-          PGPASSWORD=jruby psql -h localhost -d postgres -c "create database activerecord_unittest;" -U jruby
-          PGPASSWORD=jruby psql -h localhost -d postgres -c "create database activerecord_unittest2;" -U jruby
+          PGPASSWORD=postgres psql -h localhost -U postgres -c "CREATE USER arjdbc WITH SUPERUSER CREATEDB LOGIN PASSWORD 'arjdbc';"
+          PGPASSWORD=arjdbc psql -h localhost -d postgres -c "create database activerecord_unittest;" -U arjdbc
+          PGPASSWORD=arjdbc psql -h localhost -d postgres -c "create database activerecord_unittest2;" -U arjdbc
       - name: Build
         run: |
           rake jar # compiles ext generates: lib/arjdbc/jdbc/adapter_java.jar
@@ -258,8 +258,8 @@ jobs:
       INSERT_RETURNING: ${{ matrix.insert_returning }}
       PGHOST: localhost
       PGPORT: 5432
-      PGUSER: jruby
-      PGPASSWORD: jruby
+      PGUSER: arjdbc
+      PGPASSWORD: arjdbc
 
     steps:
       - uses: actions/checkout@v4
@@ -275,7 +275,7 @@ jobs:
           bundler-cache: true # runs 'bundle install' and caches installed gems automatically
       - name: Setup PostgreSQL user
         run: |
-          PGPASSWORD=postgres psql -h localhost -U postgres -c "CREATE USER jruby WITH SUPERUSER CREATEDB LOGIN PASSWORD 'jruby';"
+          PGPASSWORD=postgres psql -h localhost -U postgres -c "CREATE USER arjdbc WITH SUPERUSER CREATEDB LOGIN PASSWORD 'arjdbc';"
       - name: Build
         run: |
           rake jar
