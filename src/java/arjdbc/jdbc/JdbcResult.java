@@ -31,7 +31,7 @@ public class JdbcResult extends RubyObject {
     protected JdbcResult(ThreadContext context, RubyClass clazz, RubyJdbcConnection connection, ResultSet resultSet) throws SQLException {
         super(context.runtime, clazz);
 
-        values = context.runtime.newArray();
+        values = RubyArray.newArray(context.runtime);
         this.connection = connection;
 
         final ResultSetMetaData resultMetaData = resultSet.getMetaData();
@@ -111,7 +111,7 @@ public class JdbcResult extends RubyObject {
                 row[i] = connection.jdbcToRuby(context, runtime, i + 1, columnTypes[i], resultSet); // Result Set is 1 based
             }
 
-            values.append(RubyArray.newArrayNoCopy(context.runtime, row));
+            values.push(RubyArray.newArrayNoCopy(context.runtime, row));
         }
     }
 

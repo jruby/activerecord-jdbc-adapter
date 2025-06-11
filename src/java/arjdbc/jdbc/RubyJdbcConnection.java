@@ -495,13 +495,13 @@ public class RubyJdbcConnection extends RubyObject {
         @SuppressWarnings("unchecked")
         final Map<IRubyObject, Savepoint> savepoints = getSavepoints(false);
         if ( savepoints != null ) {
-            final RubyArray names = context.runtime.newArray(savepoints.size());
+            final RubyArray names = RubyArray.newArray(context.runtime, savepoints.size());
             for ( Map.Entry<IRubyObject, ?> entry : savepoints.entrySet() ) {
-                names.append( entry.getKey() ); // keys are RubyString instances
+                names.push( entry.getKey() ); // keys are RubyString instances
             }
             return names;
         }
-        return context.runtime.newEmptyArray();
+        return RubyArray.newEmptyArray(context.runtime);
     }
 
     protected Map<IRubyObject, Savepoint> getSavepoints(final ThreadContext context) {
@@ -1071,7 +1071,7 @@ public class RubyJdbcConnection extends RubyObject {
                 if (hasResult) {
                     return mapToRawResult(context, connection, statement.getResultSet(), false);
                 }
-                return context.runtime.newEmptyArray();
+                return RubyArray.newEmptyArray(context.runtime);
             }
             catch (final SQLException e) {
                 debugErrorSQL(context, query);
@@ -1238,7 +1238,7 @@ public class RubyJdbcConnection extends RubyObject {
     public IRubyObject primary_keys(ThreadContext context, IRubyObject tableName) throws SQLException {
         @SuppressWarnings("unchecked")
         List<IRubyObject> primaryKeys = (List) primaryKeys(context, tableName.toString());
-        return context.runtime.newArray(primaryKeys);
+        return RubyArray.newArray(context.runtime, primaryKeys);
     }
 
     protected static final int PRIMARY_KEYS_COLUMN_NAME = 4;
@@ -1422,11 +1422,11 @@ public class RubyJdbcConnection extends RubyObject {
                             // orders, (since AR 3.2) where, type, using (AR 4.0)
                         };
 
-                        indexes.append( IndexDefinition.newInstance(context, args, Block.NULL_BLOCK) ); // IndexDefinition.new
+                        indexes.push( IndexDefinition.newInstance(context, args, Block.NULL_BLOCK) ); // IndexDefinition.new
                     }
 
                     // one or more columns can be associated with an index
-                    if ( currentColumns != null ) currentColumns.append(rubyColumnName);
+                    if ( currentColumns != null ) currentColumns.push(rubyColumnName);
                 }
 
                 return indexes;
@@ -1493,7 +1493,7 @@ public class RubyJdbcConnection extends RubyObject {
                     fKeys.add( FKDefinition.newInstance(context, from_table, to_table, options, Block.NULL_BLOCK) ); // ForeignKeyDefinition.new
                 }
 
-                return runtime.newArray(fKeys);
+                return RubyArray.newArray(runtime, fKeys);
 
             } finally { close(fkInfoSet); }
         });
@@ -2008,10 +2008,10 @@ public class RubyJdbcConnection extends RubyObject {
                                       final ResultSet resultSet, final ColumnData[] columns) throws SQLException {
         final Ruby runtime = context.runtime;
 
-        final RubyArray resultRows = runtime.newArray();
+        final RubyArray resultRows = RubyArray.newArray(runtime);
 
         while (resultSet.next()) {
-            resultRows.append(mapRow(context, runtime, columns, resultSet, this));
+            resultRows.push(mapRow(context, runtime, columns, resultSet, this));
         }
 
         return newResult(context, columns, resultRows);
@@ -2372,7 +2372,7 @@ public class RubyJdbcConnection extends RubyObject {
         try {
             if ( value == null ) return context.nil;
 
-            final RubyArray array = runtime.newArray();
+            final RubyArray array = RubyArray.newArray(runtime);
 
             final ResultSet arrayResult = value.getResultSet(); // 1: index, 2: value
             final int baseType = value.getBaseType();
@@ -2393,7 +2393,7 @@ public class RubyJdbcConnection extends RubyObject {
             }
 
             while ( arrayResult.next() ) {
-                array.append( jdbcToRuby(context, runtime, 2, baseType, arrayResult) );
+                array.push( jdbcToRuby(context, runtime, 2, baseType, arrayResult) );
             }
             arrayResult.close();
 
@@ -3077,7 +3077,7 @@ public class RubyJdbcConnection extends RubyObject {
         final RubyArray tables = RubyArray.newArray(context.runtime);
         while ( tablesSet.next() ) {
             String name = tablesSet.getString(TABLES_TABLE_NAME);
-            tables.append( cachedString(context, caseConvertIdentifierForRails(connection, name)) );
+            tables.push( cachedString(context, caseConvertIdentifierForRails(connection, name)) );
         }
         return tables;
     }
@@ -3158,7 +3158,7 @@ public class RubyJdbcConnection extends RubyObject {
             final IRubyObject[] args = new IRubyObject[] {
                 columnName, defaultValue, type_metadata, nullable, tableName
             };
-            columns.append( Column.newInstance(context, args, Block.NULL_BLOCK) );
+            columns.push( Column.newInstance(context, args, Block.NULL_BLOCK) );
         }
         return columns;
     }
@@ -3230,10 +3230,10 @@ public class RubyJdbcConnection extends RubyObject {
             }
         }
 
-        final RubyArray keys = runtime.newArray();
-        if ( firstKey != null ) keys.append(firstKey); // singleResult == null
+        final RubyArray keys = RubyArray.newArray(runtime);
+        if ( firstKey != null ) keys.push(firstKey); // singleResult == null
         while ( next ) {
-            keys.append( mapGeneratedKey(runtime, genKeys) );
+            keys.push( mapGeneratedKey(runtime, genKeys) );
             next = genKeys.next();
         }
         return keys;
@@ -3266,11 +3266,11 @@ public class RubyJdbcConnection extends RubyObject {
         final ColumnData[] columns = extractColumns(context, connection, resultSet, downCase);
 
         final Ruby runtime = context.runtime;
-        final RubyArray results = runtime.newArray();
+        final RubyArray results = RubyArray.newArray(runtime);
         // [ { 'col1': 1, 'col2': 2 }, { 'col1': 3, 'col2': 4 } ]
 
         while ( resultSet.next() ) {
-            results.append(mapRawRow(context, runtime, columns, resultSet, this));
+            results.push(mapRawRow(context, runtime, columns, resultSet, this));
         }
         return results;
     }
