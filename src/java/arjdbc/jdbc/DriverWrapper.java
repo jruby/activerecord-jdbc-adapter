@@ -23,6 +23,7 @@
  */
 package arjdbc.jdbc;
 
+import java.lang.reflect.InvocationTargetException;
 import java.sql.Connection;
 import java.sql.Driver;
 import java.sql.SQLException;
@@ -61,7 +62,17 @@ public class DriverWrapper {
     private Driver allocateDriver(final Class<? extends Driver> driverClass) {
         try {
             return driverClass.getDeclaredConstructor().newInstance();
-        } catch (ReflectiveOperationException e) {
+        } catch (InvocationTargetException e) {
+            // emulate Class.newInstance() behavior: unwrap and rethrow the real cause
+            Throwable cause = e.getCause();
+            if (cause instanceof RuntimeException) {
+                throw (RuntimeException) cause;
+            } else if (cause instanceof Error) {
+                throw (Error) cause;
+            } else {
+                throw new RuntimeException("Constructor threw checked exception", cause);
+            }
+        } catch (IllegalAccessException | InstantiationException | NoSuchMethodException e) {
             throw new IllegalStateException("Failed to instantiate driver: " + driverClass.getName(), e);
         }
     }
