@@ -33,7 +33,7 @@ jobs:
 
     services:
       mysql:
-        image: mysql:5.7
+        image: mysql:8
         ports:
           - 3306
 
@@ -56,6 +56,9 @@ jobs:
         with:
           ruby-version: ${{ matrix.ruby-version }}
           bundler-cache: true # runs 'bundle install' and caches installed gems automatically
+      - name: Setup gdiff
+        run: |
+          sudo ln -s /usr/bin/diff /usr/bin/gdiff || true
       - name: Setup database
         run: |
           sudo service mysql start
@@ -89,10 +92,10 @@ jobs:
 
     services:
       postgres:
-        image: postgres:11
+        image: postgres:17
         env:
           POSTGRES_PASSWORD: postgres
-          POSTGRES_HOST_AUTH_METHOD: trust
+          POSTGRES_DB: postgres
         ports:
           - 5432:5432
         options: --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
@@ -104,7 +107,8 @@ jobs:
       PREPARED_STATEMENTS: ${{ matrix.prepared_statements }}
       PGHOST: localhost
       PGPORT: 5432
-      PGUSER: postgres
+      PGUSER: arjdbc
+      PGPASSWORD: arjdbc
 
     steps:
       - uses: actions/checkout@v4
@@ -118,10 +122,23 @@ jobs:
         with:
           ruby-version: ${{ matrix.ruby-version }}
           bundler-cache: true # runs 'bundle install' and caches installed gems automatically
+      - name: Install PostgreSQL 17 client
+        run: |
+          sudo sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
+          wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add -
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client-17
+      - name: Setup gdiff
+        run: |
+          sudo ln -s /usr/bin/diff /usr/bin/gdiff || true
       - name: Setup database
         run: |
-          psql -c "create database activerecord_unittest;" -U postgres
-          psql -c "create database activerecord_unittest2;" -U postgres
+          PGPASSWORD=postgres psql -h localhost -U postgres -c "CREATE USER arjdbc WITH SUPERUSER CREATEDB LOGIN PASSWORD 'arjdbc';"
+          echo "Testing connection as arjdbc user..."
+          PGPASSWORD=arjdbc psql -h localhost -d postgres -U arjdbc -c '\l'
+          echo "Exit status: $?"
+          PGPASSWORD=arjdbc psql -h localhost -d postgres -c "create database activerecord_unittest;" -U arjdbc
+          PGPASSWORD=arjdbc psql -h localhost -d postgres -c "create database activerecord_unittest2;" -U arjdbc
       - name: Build
         run: |
           rake jar # compiles ext generates: lib/arjdbc/jdbc/adapter_java.jar
@@ -158,6 +175,9 @@ jobs:
         with:
           ruby-version: ${{ matrix.ruby-version }}
           bundler-cache: true # runs 'bundle install' and caches installed gems automatically
+      - name: Setup gdiff
+        run: |
+          sudo ln -s /usr/bin/diff /usr/bin/gdiff || true
       - name: Build
         run: |
           echo "JAVA_OPTS=$JAVA_OPTS"
@@ -181,7 +201,7 @@ jobs:
 
     services:
       mysql:
-        image: mysql:5.7
+        image: mysql:8
         ports:
           - 3306
 
@@ -231,10 +251,10 @@ jobs:
 
     services:
       postgres:
-        image: postgres:11
+        image: postgres:17
         env:
           POSTGRES_PASSWORD: postgres
-          POSTGRES_HOST_AUTH_METHOD: trust
+          POSTGRES_DB: postgres
         ports:
           - 5432:5432
         options: --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
@@ -247,7 +267,8 @@ jobs:
       INSERT_RETURNING: ${{ matrix.insert_returning }}
       PGHOST: localhost
       PGPORT: 5432
-      PGUSER: postgres
+      PGUSER: arjdbc
+      PGPASSWORD: arjdbc
 
     steps:
       - uses: actions/checkout@v4
@@ -261,6 +282,20 @@ jobs:
         with:
           ruby-version: ${{ matrix.ruby-version }}
           bundler-cache: true # runs 'bundle install' and caches installed gems automatically
+      - name: Install PostgreSQL 17 client
+        run: |
+          sudo sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
+          wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add -
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client-17
+      - name: Setup PostgreSQL user
+        run: |
+          PGPASSWORD=postgres psql -h localhost -U postgres -c "CREATE USER arjdbc WITH SUPERUSER CREATEDB LOGIN PASSWORD 'arjdbc';"
+      - name: Test PostgreSQL connection
+        run: |
+          echo "Testing connection as arjdbc user..."
+          PGPASSWORD=arjdbc psql -h localhost -d postgres -U arjdbc -c '\l'
+          echo "Exit status: $?"
       - name: Build
         run: |
           rake jar

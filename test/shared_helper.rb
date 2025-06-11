@@ -25,12 +25,20 @@ module PostgresHelper
   class << self
     def postgres_role?(warn = nil)
       if psql = which('psql')
-        if `#{psql} -c '\\l' -U postgres #{psql_params}2>&1` && $?.exitstatus == 0
+        user = ENV['PGUSER'] || 'arjdbc'
+        password = ENV['PGPASSWORD'] || 'arjdbc'
+        host = ENV['PGHOST'] || 'localhost'
+        port = ENV['PGPORT'] || '5432'
+        
+        # Use simpler command with explicit parameters
+        cmd = "PGPASSWORD=#{password} #{psql} -h #{host} -p #{port} -d postgres -U #{user} -c '\\q' 2>&1"
+        
+        if `#{cmd}` && $?.exitstatus == 0
           true
         else
           if warn.nil?
-            warn =  "No \"postgres\" role ? Make sure service postgresql is running, "
-            warn << "than you might need to execute `createuser postgres -drs' first."
+            warn =  "No \"#{user}\" role ? Make sure service postgresql is running, "
+            warn << "than you might need to execute `createuser #{user} -drs' first."
           end
           send(:warn, warn) if warn # warn == false disables warnings
           false

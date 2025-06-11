@@ -115,14 +115,14 @@ class PostgresRakeTest < Test::Unit::TestCase
     end
     
     # Use the test database user or fallback to ENV
-    username = db_config[:username] || ENV['PSQL_USERNAME'] || 'postgres'
+    username = db_config[:username] || ENV['PGUSER'] || 'arjdbc'
     args = "--username=#{username} #{args}"
 
     puts "psql args: #{args}"
 
     # Set PGPASSWORD for authentication
     env = {}
-    env['PGPASSWORD'] = db_config[:password] || 'postgres'
+    env['PGPASSWORD'] = db_config[:password] || 'arjdbc'
     
     IO.popen(env, "#{PSQL_EXE} #{args}") { |io| io.read }
   end

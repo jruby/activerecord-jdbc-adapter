@@ -39,7 +39,7 @@ GRANT ALL PRIVILEGES ON `test\_%`.* TO #{MYSQL_CONFIG[:username]}@localhost;
   task :postgresql do
     require File.expand_path('../../test/shared_helper', __FILE__)
     fail 'could not create test database: psql executable not found' unless psql = which('psql')
-    fail 'could not create test database: missing "postgres" role' unless PostgresHelper.postgres_role?
+    fail 'could not create test database: missing "arjdbc" role' unless PostgresHelper.postgres_role?
 
     load 'test/db/postgres_config.rb' # rescue nil
     puts POSTGRES_CONFIG.inspect if $VERBOSE
@@ -53,11 +53,13 @@ CREATE DATABASE #{POSTGRES_CONFIG[:database]} OWNER #{POSTGRES_CONFIG[:username]
        ENCODING '#{POSTGRES_CONFIG[:encoding]}' LC_COLLATE '#{POSTGRES_CONFIG[:collate]}' LC_CTYPE '#{POSTGRES_CONFIG[:collate]}';
     SQL
 
-    params = { '-U' => ENV['PSQL_USER'] || 'postgres' }
+    params = { '-U' => ENV['PGUSER'] || 'arjdbc', '-d' => 'postgres' }
+    params['-h'] = ENV['PGHOST'] if ENV['PGHOST']
+    params['-p'] = ENV['PGPORT'] if ENV['PGPORT']
     params['-q'] = nil unless $VERBOSE
 
     puts "Creating PostgreSQL (test) database: #{POSTGRES_CONFIG[:database]}"
-    sh "cat #{script.path} | #{psql} #{params.to_a.join(' ')}", verbose: $VERBOSE
+    sh "PGPASSWORD=#{ENV['PGPASSWORD'] || 'arjdbc'} cat #{script.path} | #{psql} #{params.to_a.join(' ')}", verbose: $VERBOSE
   end
   task postgres: :postgresql
 
