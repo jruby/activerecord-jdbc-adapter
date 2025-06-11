@@ -562,7 +562,7 @@ public class RubyJdbcConnection extends RubyObject {
 
         IRubyObject jdbcFetchSize = getConfigValue(context, "jdbc_fetch_size");
         if (jdbcFetchSize != context.nil) {
-            this.fetchSize = RubyNumeric.fix2int(jdbcFetchSize);
+            this.fetchSize = RubyNumeric.num2int(jdbcFetchSize);
         }
     }
 
@@ -1021,7 +1021,7 @@ public class RubyJdbcConnection extends RubyObject {
         switch (args.length) {
             case 2:
                 if (args[1] instanceof RubyNumeric) { // (sql, max_rows)
-                    maxRows = RubyNumeric.fix2int(args[1]);
+                    maxRows = RubyNumeric.num2int(args[1]);
                     binds = null;
                 } else {                              // (sql, binds)
                     maxRows = 0;
@@ -1029,7 +1029,7 @@ public class RubyJdbcConnection extends RubyObject {
                 }
                 break;
             case 3:                                   // (sql, max_rows, binds)
-                maxRows = RubyNumeric.fix2int(args[1]);
+                maxRows = RubyNumeric.num2int(args[1]);
                 binds = (RubyArray) TypeConverter.checkArrayType(context, args[2]);
                 break;
             default:                                  // (sql) 1-arg
@@ -2673,7 +2673,7 @@ public class RubyJdbcConnection extends RubyObject {
             statement.setLong(index, RubyNumeric.num2long(value));
         }
         else {
-            statement.setLong(index, value.convertToInteger("to_i").getLongValue());
+            statement.setLong(index, RubyNumeric.num2long(value.convertToInteger("to_i")));
         }
     }
 
@@ -2686,10 +2686,15 @@ public class RubyJdbcConnection extends RubyObject {
             setLongOrDecimalParameter(statement, index, ((RubyBignum) value).getValue());
         }
         else if ( value instanceof RubyFixnum ) {
-            statement.setLong(index, ((RubyFixnum) value).getLongValue());
+            statement.setLong(index, RubyNumeric.num2long(value));
         }
         else {
-            setLongOrDecimalParameter(statement, index, value.convertToInteger("to_i").getBigIntegerValue());
+            RubyInteger intValue = (RubyInteger) value.convertToInteger("to_i");
+            if (intValue instanceof RubyBignum) {
+                setLongOrDecimalParameter(statement, index, ((RubyBignum) intValue).getValue());
+            } else {
+                statement.setLong(index, RubyNumeric.num2long(intValue));
+            }
         }
     }
 
@@ -2710,10 +2715,10 @@ public class RubyJdbcConnection extends RubyObject {
         final IRubyObject attribute, final int type) throws SQLException {
 
         if ( value instanceof RubyNumeric ) {
-            statement.setDouble(index, ((RubyNumeric) value).getDoubleValue());
+            statement.setDouble(index, RubyNumeric.num2dbl(value));
         }
         else {
-            statement.setDouble(index, value.convertToFloat().getDoubleValue());
+            statement.setDouble(index, RubyNumeric.num2dbl(value.convertToFloat()));
         }
     }
 
@@ -2726,10 +2731,14 @@ public class RubyJdbcConnection extends RubyObject {
             statement.setBigDecimal(index, ((RubyBigDecimal) value).getValue());
         }
         else if ( value instanceof RubyInteger ) {
-            statement.setBigDecimal(index, new BigDecimal(((RubyInteger) value).getBigIntegerValue()));
+            if (value instanceof RubyBignum) {
+                statement.setBigDecimal(index, new BigDecimal(((RubyBignum) value).getValue()));
+            } else {
+                statement.setBigDecimal(index, new BigDecimal(RubyNumeric.num2long(value)));
+            }
         }
         else if ( value instanceof RubyNumeric ) {
-            statement.setDouble(index, ((RubyNumeric) value).getDoubleValue());
+            statement.setDouble(index, RubyNumeric.num2dbl(value));
         }
         else { // e.g. `BigDecimal '42.00000000000000000001'`
             Ruby runtime = context.runtime;
@@ -3001,7 +3010,7 @@ public class RubyJdbcConnection extends RubyObject {
     protected int getAliveTimeout(final ThreadContext context) {
         if ( aliveTimeout == Integer.MIN_VALUE ) {
             final IRubyObject timeout = getConfigValue(context, "connection_alive_timeout");
-            return aliveTimeout = timeout == context.nil ? 0 : RubyInteger.fix2int(timeout);
+            return aliveTimeout = timeout == context.nil ? 0 : RubyNumeric.num2int(timeout);
         }
         return aliveTimeout;
     }
