@@ -135,8 +135,8 @@ public class RubyJdbcConnection extends RubyObject {
 
     protected RubyJdbcConnection(Ruby runtime, RubyClass metaClass) {
         super(runtime, metaClass);
-        attributeClass = runtime.getModule("ActiveModel").getClass("Attribute");
-        timeZoneClass = runtime.getModule("ActiveSupport").getClass("TimeWithZone");
+        attributeClass = (RubyClass) ((RubyModule) runtime.getObject().getConstantAt("ActiveModel")).getConstant("Attribute");
+        timeZoneClass = (RubyClass) ((RubyModule) runtime.getObject().getConstantAt("ActiveSupport")).getConstant("TimeWithZone");
     }
 
     private static final ObjectAllocator ALLOCATOR = new ObjectAllocator() {
@@ -157,11 +157,11 @@ public class RubyJdbcConnection extends RubyObject {
     }
 
     protected static RubyModule ActiveRecord(ThreadContext context) {
-        return context.runtime.getModule("ActiveRecord");
+        return (RubyModule) context.runtime.getObject().getConstantAt("ActiveRecord");
     }
 
     public static RubyClass getBase(final Ruby runtime) {
-        return (RubyClass) runtime.getModule("ActiveRecord").getConstantAt("Base");
+        return (RubyClass) ((RubyModule) runtime.getObject().getConstantAt("ActiveRecord")).getConstantAt("Base");
     }
 
     /**
@@ -169,7 +169,7 @@ public class RubyJdbcConnection extends RubyObject {
      * @return <code>ActiveRecord::Result</code>
      */
     public static RubyClass getResult(final Ruby runtime) {
-        return (RubyClass) runtime.getModule("ActiveRecord").getConstantAt("Result");
+        return (RubyClass) ((RubyModule) runtime.getObject().getConstantAt("ActiveRecord")).getConstantAt("Result");
     }
 
     /**
@@ -177,7 +177,7 @@ public class RubyJdbcConnection extends RubyObject {
      * @return <code>ActiveRecord::ConnectionAdapters</code>
      */
     public static RubyModule getConnectionAdapters(final Ruby runtime) {
-        return (RubyModule) runtime.getModule("ActiveRecord").getConstantAt("ConnectionAdapters");
+        return (RubyModule) ((RubyModule) runtime.getObject().getConstantAt("ActiveRecord")).getConstantAt("ConnectionAdapters");
     }
 
     /**
@@ -202,7 +202,7 @@ public class RubyJdbcConnection extends RubyObject {
      * @return <code>ActiveRecord::JDBCError</code>
      */
     protected static RubyClass getJDBCError(final Ruby runtime) {
-        return runtime.getModule("ActiveRecord").getClass("JDBCError");
+        return ((RubyModule) runtime.getObject().getConstantAt("ActiveRecord")).getClass("JDBCError");
     }
 
     /**
@@ -210,7 +210,7 @@ public class RubyJdbcConnection extends RubyObject {
      * @return <code>ActiveRecord::ConnectionNotEstablished</code>
      */
     protected static RubyClass getConnectionNotEstablished(final Ruby runtime) {
-        return runtime.getModule("ActiveRecord").getClass("ConnectionNotEstablished");
+        return ((RubyModule) runtime.getObject().getConstantAt("ActiveRecord")).getClass("ConnectionNotEstablished");
     }
 
     /**
@@ -218,7 +218,7 @@ public class RubyJdbcConnection extends RubyObject {
      * @return <code>ActiveRecord::NoDatabaseError</code>
      */
     protected static RubyClass getNoDatabaseError(final Ruby runtime) {
-        return runtime.getModule("ActiveRecord").getClass("NoDatabaseError");
+        return ((RubyModule) runtime.getObject().getConstantAt("ActiveRecord")).getClass("NoDatabaseError");
     }
 
     /**
@@ -226,7 +226,7 @@ public class RubyJdbcConnection extends RubyObject {
      * @return <code>ActiveRecord::TransactionIsolationError</code>
      */
     protected static RubyClass getTransactionIsolationError(final Ruby runtime) {
-        return (RubyClass) runtime.getModule("ActiveRecord").getConstant("TransactionIsolationError");
+        return (RubyClass) ((RubyModule) runtime.getObject().getConstantAt("ActiveRecord")).getConstant("TransactionIsolationError");
     }
 
     @JRubyMethod(name = "transaction_isolation", alias = "get_transaction_isolation")
@@ -2734,7 +2734,7 @@ public class RubyJdbcConnection extends RubyObject {
         else { // e.g. `BigDecimal '42.00000000000000000001'`
             Ruby runtime = context.runtime;
             statement.setBigDecimal(index,
-                    RubyBigDecimal.newInstance(context, runtime.getModule("BigDecimal"), value, RubyFixnum.zero(runtime)).getValue());
+                    RubyBigDecimal.newInstance(context, (RubyModule) runtime.getObject().getConstantAt("BigDecimal"), value, RubyFixnum.zero(runtime)).getValue());
         }
     }
 

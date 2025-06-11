@@ -58,7 +58,7 @@ public class ArJdbcModule {
     }
 
     public static RubyModule get(final Ruby runtime) {
-        return runtime.getModule("ArJdbc");
+        return (RubyModule) runtime.getObject().getConstantAt("ArJdbc");
     }
 
     public static void warn(final ThreadContext context, final String message) {
@@ -230,7 +230,7 @@ public class ArJdbcModule {
             return null;
         }
 
-        final RubyModule jdbc = runtime.getModule("Jdbc");
+        final RubyModule jdbc = (RubyModule) runtime.getObject().getConstantAt("Jdbc");
         if ( jdbc != null ) { // Jdbc::MySQL
             final RubyModule constant = (RubyModule) jdbc.getConstantAt(constName);
             if ( constant != null ) { // ::Jdbc::MySQL.load_driver :
