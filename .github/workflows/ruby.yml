@@ -122,12 +122,21 @@ jobs:
         with:
           ruby-version: ${{ matrix.ruby-version }}
           bundler-cache: true # runs 'bundle install' and caches installed gems automatically
+      - name: Install PostgreSQL 17 client
+        run: |
+          sudo sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
+          wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add -
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client-17
       - name: Setup gdiff
         run: |
           sudo ln -s /usr/bin/diff /usr/bin/gdiff || true
       - name: Setup database
         run: |
           PGPASSWORD=postgres psql -h localhost -U postgres -c "CREATE USER arjdbc WITH SUPERUSER CREATEDB LOGIN PASSWORD 'arjdbc';"
+          echo "Testing connection as arjdbc user..."
+          PGPASSWORD=arjdbc psql -h localhost -d postgres -U arjdbc -c '\l'
+          echo "Exit status: $?"
           PGPASSWORD=arjdbc psql -h localhost -d postgres -c "create database activerecord_unittest;" -U arjdbc
           PGPASSWORD=arjdbc psql -h localhost -d postgres -c "create database activerecord_unittest2;" -U arjdbc
       - name: Build
@@ -273,9 +282,20 @@ jobs:
         with:
           ruby-version: ${{ matrix.ruby-version }}
           bundler-cache: true # runs 'bundle install' and caches installed gems automatically
+      - name: Install PostgreSQL 17 client
+        run: |
+          sudo sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
+          wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add -
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client-17
       - name: Setup PostgreSQL user
         run: |
           PGPASSWORD=postgres psql -h localhost -U postgres -c "CREATE USER arjdbc WITH SUPERUSER CREATEDB LOGIN PASSWORD 'arjdbc';"
+      - name: Test PostgreSQL connection
+        run: |
+          echo "Testing connection as arjdbc user..."
+          PGPASSWORD=arjdbc psql -h localhost -d postgres -U arjdbc -c '\l'
+          echo "Exit status: $?"
       - name: Build
         run: |
           rake jar

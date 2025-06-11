@@ -27,7 +27,12 @@ module PostgresHelper
       if psql = which('psql')
         user = ENV['PGUSER'] || 'arjdbc'
         password = ENV['PGPASSWORD'] || 'arjdbc'
-        cmd = "PGPASSWORD=#{password} #{psql} -d postgres -c '\\l' -U #{user} #{psql_params} 2>&1"
+        host = ENV['PGHOST'] || 'localhost'
+        port = ENV['PGPORT'] || '5432'
+        
+        # Use simpler command with explicit parameters
+        cmd = "PGPASSWORD=#{password} #{psql} -h #{host} -p #{port} -d postgres -U #{user} -c '\\q' 2>&1"
+        
         if `#{cmd}` && $?.exitstatus == 0
           true
         else
