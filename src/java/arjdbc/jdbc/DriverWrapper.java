@@ -45,7 +45,7 @@ public class DriverWrapper {
     private final Properties properties;
 
     DriverWrapper(final Ruby runtime, final String name, final Properties properties)
-        throws ClassCastException, InstantiationException, IllegalAccessException {
+        throws ClassCastException {
         this.driver = allocateDriver( loadDriver(runtime, name) );
         this.properties = properties == null ? new Properties() : properties;
     }
@@ -58,9 +58,12 @@ public class DriverWrapper {
         return driver;
     }
 
-    private Driver allocateDriver(final Class<? extends Driver> driverClass)
-        throws InstantiationException, IllegalAccessException {
-        return driverClass.newInstance();
+    private Driver allocateDriver(final Class<? extends Driver> driverClass) {
+        try {
+            return driverClass.getDeclaredConstructor().newInstance();
+        } catch (ReflectiveOperationException e) {
+            throw new IllegalStateException("Failed to instantiate driver: " + driverClass.getName(), e);
+        }
     }
 
     protected static Class<? extends Driver> loadDriver(final Ruby runtime, final String name)

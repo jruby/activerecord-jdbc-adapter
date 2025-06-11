@@ -1818,10 +1818,6 @@ public class RubyJdbcConnection extends RubyObject {
         catch (ClassCastException e) {
             throw wrapException(context, context.runtime.getNameError(), e);
         }
-        catch (IllegalAccessException e) { throw wrapException(context, e); }
-        catch (InstantiationException e) {
-            throw wrapException(context, e.getCause() != null ? e.getCause() : e);
-        }
         catch (SecurityException e) {
             throw wrapException(context, context.runtime.getSecurityError(), e);
         }
