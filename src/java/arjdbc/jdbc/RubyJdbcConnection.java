@@ -135,8 +135,8 @@ public class RubyJdbcConnection extends RubyObject {
 
     protected RubyJdbcConnection(Ruby runtime, RubyClass metaClass) {
         super(runtime, metaClass);
-        attributeClass = runtime.getModule("ActiveModel").getClass("Attribute");
-        timeZoneClass = runtime.getModule("ActiveSupport").getClass("TimeWithZone");
+        attributeClass = (RubyClass) runtime.getModule("ActiveModel").getConstant("Attribute");
+        timeZoneClass = (RubyClass) runtime.getModule("ActiveSupport").getConstant("TimeWithZone");
     }
 
     private static final ObjectAllocator ALLOCATOR = new ObjectAllocator() {
@@ -153,7 +153,7 @@ public class RubyJdbcConnection extends RubyObject {
     }
 
     public static RubyClass getJdbcConnection(final Ruby runtime) {
-        return (RubyClass) getConnectionAdapters(runtime).getConstantAt("JdbcConnection");
+        return (RubyClass) getConnectionAdapters(runtime).getConstant("JdbcConnection");
     }
 
     protected static RubyModule ActiveRecord(ThreadContext context) {
@@ -161,7 +161,7 @@ public class RubyJdbcConnection extends RubyObject {
     }
 
     public static RubyClass getBase(final Ruby runtime) {
-        return (RubyClass) runtime.getModule("ActiveRecord").getConstantAt("Base");
+        return (RubyClass) runtime.getModule("ActiveRecord").getConstant("Base");
     }
 
     /**
@@ -169,7 +169,7 @@ public class RubyJdbcConnection extends RubyObject {
      * @return <code>ActiveRecord::Result</code>
      */
     public static RubyClass getResult(final Ruby runtime) {
-        return (RubyClass) runtime.getModule("ActiveRecord").getConstantAt("Result");
+        return (RubyClass) runtime.getModule("ActiveRecord").getConstant("Result");
     }
 
     /**
@@ -177,7 +177,7 @@ public class RubyJdbcConnection extends RubyObject {
      * @return <code>ActiveRecord::ConnectionAdapters</code>
      */
     public static RubyModule getConnectionAdapters(final Ruby runtime) {
-        return (RubyModule) runtime.getModule("ActiveRecord").getConstantAt("ConnectionAdapters");
+        return (RubyModule) runtime.getModule("ActiveRecord").getConstant("ConnectionAdapters");
     }
 
     /**
@@ -185,7 +185,7 @@ public class RubyJdbcConnection extends RubyObject {
      * @return <code>ActiveRecord::ConnectionAdapters::IndexDefinition</code>
      */
     protected static RubyClass getIndexDefinition(final Ruby runtime) {
-        return getConnectionAdapters(runtime).getClass("IndexDefinition");
+        return (RubyClass) getConnectionAdapters(runtime).getConstant("IndexDefinition");
     }
 
     /**
@@ -194,7 +194,7 @@ public class RubyJdbcConnection extends RubyObject {
      * @note only since AR 4.2
      */
     protected static RubyClass getForeignKeyDefinition(final Ruby runtime) {
-        return getConnectionAdapters(runtime).getClass("ForeignKeyDefinition");
+        return (RubyClass) getConnectionAdapters(runtime).getConstant("ForeignKeyDefinition");
     }
 
     /**
@@ -202,7 +202,7 @@ public class RubyJdbcConnection extends RubyObject {
      * @return <code>ActiveRecord::JDBCError</code>
      */
     protected static RubyClass getJDBCError(final Ruby runtime) {
-        return runtime.getModule("ActiveRecord").getClass("JDBCError");
+        return (RubyClass) runtime.getModule("ActiveRecord").getConstant("JDBCError");
     }
 
     /**
@@ -210,7 +210,7 @@ public class RubyJdbcConnection extends RubyObject {
      * @return <code>ActiveRecord::ConnectionNotEstablished</code>
      */
     protected static RubyClass getConnectionNotEstablished(final Ruby runtime) {
-        return runtime.getModule("ActiveRecord").getClass("ConnectionNotEstablished");
+        return (RubyClass) runtime.getModule("ActiveRecord").getConstant("ConnectionNotEstablished");
     }
 
     /**
@@ -218,7 +218,7 @@ public class RubyJdbcConnection extends RubyObject {
      * @return <code>ActiveRecord::NoDatabaseError</code>
      */
     protected static RubyClass getNoDatabaseError(final Ruby runtime) {
-        return runtime.getModule("ActiveRecord").getClass("NoDatabaseError");
+        return (RubyClass) runtime.getModule("ActiveRecord").getConstant("NoDatabaseError");
     }
 
     /**
@@ -351,7 +351,7 @@ public class RubyJdbcConnection extends RubyObject {
             connection.setTransactionIsolation(level);
         }
         catch (SQLException e) {
-            RubyClass txError = ActiveRecord(context).getClass("TransactionIsolationError");
+            RubyClass txError = (RubyClass) ActiveRecord(context).getConstant("TransactionIsolationError");
             if ( txError != null ) throw wrapException(context, txError, e);
             throw e; // let it roll - will be wrapped into a JDBCError (non 4.0)
         }
@@ -485,7 +485,7 @@ public class RubyJdbcConnection extends RubyObject {
     }
 
     protected static RuntimeException newSavepointNotSetError(final ThreadContext context, final IRubyObject name, final String op) {
-        RubyClass StatementInvalid = ActiveRecord(context).getClass("StatementInvalid");
+        RubyClass StatementInvalid = (RubyClass) ActiveRecord(context).getConstant("StatementInvalid");
         return context.runtime.newRaiseException(StatementInvalid, "could not " + op + " savepoint: '" + name + "' (not set)");
     }
 
@@ -1437,7 +1437,7 @@ public class RubyJdbcConnection extends RubyObject {
 
     protected RubyClass getIndexDefinition(final ThreadContext context) {
         final RubyClass adapterClass = adapter.getMetaClass();
-        IRubyObject IDef = adapterClass.getConstantAt("IndexDefinition");
+        IRubyObject IDef = adapterClass.getConstant("IndexDefinition");
         return IDef != null ? (RubyClass) IDef : getIndexDefinition(context.runtime);
     }
 
@@ -1511,7 +1511,7 @@ public class RubyJdbcConnection extends RubyObject {
 
     protected RubyClass getForeignKeyDefinition(final ThreadContext context) {
         final RubyClass adapterClass = adapter.getMetaClass();
-        IRubyObject FKDef = adapterClass.getConstantAt("ForeignKeyDefinition");
+        IRubyObject FKDef = adapterClass.getConstant("ForeignKeyDefinition");
         return FKDef != null ? (RubyClass) FKDef : getForeignKeyDefinition(context.runtime);
     }
 
