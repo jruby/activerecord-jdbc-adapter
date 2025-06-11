@@ -65,12 +65,16 @@ public class DriverWrapper {
 
     protected static Class<? extends Driver> loadDriver(final Ruby runtime, final String name)
         throws ClassCastException {
-        @SuppressWarnings("unchecked")
-        Class<? extends Driver> klass = runtime.getJavaSupport().loadJavaClassVerbose(name);
-        if ( ! Driver.class.isAssignableFrom(klass) ) {
-            throw new ClassCastException(klass + " is not assignable from " + Driver.class);
+        try {
+            @SuppressWarnings("unchecked")
+            Class<? extends Driver> klass = (Class<? extends Driver>) runtime.getJavaSupport().loadJavaClass(name);
+            if ( ! Driver.class.isAssignableFrom(klass) ) {
+                throw new ClassCastException(klass + " is not assignable from " + Driver.class);
+            }
+            return klass;
+        } catch (ClassNotFoundException e) {
+            throw new RuntimeException("Cannot load driver class: " + name, e);
         }
-        return klass;
     }
 
     public Connection connect(final String url, final String user, final String pass)
