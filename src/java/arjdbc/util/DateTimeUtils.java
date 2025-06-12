@@ -46,6 +46,7 @@ import org.jruby.util.ByteList;
 import org.jruby.util.TypeConverter;
 
 import static arjdbc.util.StringHelper.decByte;
+import static org.jruby.api.Access.objectClass;
 
 /**
  * Utilities for handling/converting dates and times.
@@ -279,12 +280,13 @@ public abstract class DateTimeUtils {
 
     // @Deprecated
     public static Timestamp convertToTimestamp(final RubyFloat value) {
-        final Timestamp timestamp = new Timestamp(value.getLongValue() * 1000); // millis
+        var context = value.getRuntime().getCurrentContext();
+        final Timestamp timestamp = new Timestamp(value.asLong(context) * 1000); // millis
 
         // for usec we shall not use: ((long) floatValue * 1000000) % 1000
         // if ( usec >= 0 ) timestamp.setNanos( timestamp.getNanos() + usec * 1000 );
         // due doubles inaccurate precision it's better to parse to_s :
-        final ByteList strValue = ((RubyString) value.to_s()).getByteList();
+        final ByteList strValue = ((RubyString) value.to_s(context)).getByteList();
         final int dot1 = strValue.lastIndexOf('.') + 1, dot4 = dot1 + 3;
         final int len = strValue.getRealSize() - strValue.getBegin();
         if ( dot1 > 0 && dot4 < len ) { // skip .123 but handle .1234
@@ -307,7 +309,7 @@ public abstract class DateTimeUtils {
 
     public static double adjustTimeFromDefaultZone(final IRubyObject value) {
         // Time's to_f is : ( millis * 1000 + usec ) / 1_000_000.0
-        final double time = value.convertToFloat().getDoubleValue(); // to_f
+        final double time = value.convertToFloat().getValue(); // to_f
         // NOTE: MySQL assumes default TZ thus need to adjust to match :
         final int offset = TimeZone.getDefault().getOffset((long) time * 1000);
         // Time's to_f is : ( millis * 1000 + usec ) / 1_000_000.0
@@ -584,8 +586,8 @@ public abstract class DateTimeUtils {
 
         DateTime dateTime = new DateTime(year, month, day, 0, 0, 0, 0, chronology);
 
-        final Ruby runtime = context.runtime;
-        return runtime.getClass("Date").newInstance(context, Java.getInstance(runtime, dateTime), Block.NULL_BLOCK);
+        return objectClass(context).getClass(context, "Date").
+                newInstance(context, Java.getInstance(context.runtime, dateTime), Block.NULL_BLOCK);
     }
 
     @SuppressWarnings("deprecation")

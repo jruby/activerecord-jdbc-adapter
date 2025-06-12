@@ -54,17 +54,16 @@ public class DB2RubyJdbcConnection extends RubyJdbcConnection {
         super(runtime, metaClass);
     }
 
-    public static RubyClass createDB2JdbcConnectionClass(Ruby runtime, RubyClass jdbcConnection) {
-        RubyClass clazz = getConnectionAdapters(runtime).
-            defineClassUnder("DB2JdbcConnection", jdbcConnection, ALLOCATOR);
-        clazz.defineAnnotatedMethods(DB2RubyJdbcConnection.class);
-
-        return clazz;
+    public static RubyClass createDB2JdbcConnectionClass(ThreadContext context, RubyClass jdbcConnection) {
+        return getConnectionAdapters(context).
+                defineClassUnder(context, "DB2JdbcConnection", jdbcConnection, ALLOCATOR).
+                defineMethods(context, DB2RubyJdbcConnection.class);
     }
 
     public static RubyClass load(final Ruby runtime) {
-        RubyClass jdbcConnection = getJdbcConnection(runtime);
-        return createDB2JdbcConnectionClass(runtime, jdbcConnection);
+        var context = runtime.getCurrentContext();
+        RubyClass jdbcConnection = getJdbcConnection(context);
+        return createDB2JdbcConnectionClass(context, jdbcConnection);
     }
 
     protected static ObjectAllocator ALLOCATOR = new ObjectAllocator() {
@@ -112,7 +111,7 @@ public class DB2RubyJdbcConnection extends RubyJdbcConnection {
                 try {
                     statement = connection.prepareStatement("VALUES IDENTITY_VAL_LOCAL()");
                     genKeys = statement.executeQuery();
-                    return doMapGeneratedKeys(context.runtime, genKeys, true);
+                    return doMapGeneratedKeys(context, genKeys, true);
                 }
                 catch (final SQLException e) {
                     debugMessage(context.runtime, "failed to get generated keys: ", e);

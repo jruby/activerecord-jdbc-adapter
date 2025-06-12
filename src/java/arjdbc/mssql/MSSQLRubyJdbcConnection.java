@@ -60,6 +60,8 @@ import org.jruby.runtime.ThreadContext;
 import org.jruby.runtime.builtin.IRubyObject;
 import org.jruby.util.ByteList;
 
+import static org.jruby.api.Create.newArray;
+
 /**
  *
  * @author nicksieger
@@ -118,17 +120,19 @@ public class MSSQLRubyJdbcConnection extends RubyJdbcConnection {
         super(runtime, metaClass);
     }
 
-    public static RubyClass createMSSQLJdbcConnectionClass(Ruby runtime, RubyClass jdbcConnection) {
-        final RubyClass clazz = getConnectionAdapters(runtime). // ActiveRecord::ConnectionAdapters
-            defineClassUnder("MSSQLJdbcConnection", jdbcConnection, ALLOCATOR);
-        clazz.defineAnnotatedMethods(MSSQLRubyJdbcConnection.class);
-        getConnectionAdapters(runtime).setConstant("MssqlJdbcConnection", clazz); // backwards-compat
+    public static RubyClass createMSSQLJdbcConnectionClass(ThreadContext context, RubyClass jdbcConnection) {
+        RubyClass clazz = getConnectionAdapters(context). // ActiveRecord::ConnectionAdapters
+                defineClassUnder(context, "MSSQLJdbcConnection", jdbcConnection, ALLOCATOR).
+                defineMethods(context, MSSQLRubyJdbcConnection.class);
+        getConnectionAdapters(context).setConstant(context, "MssqlJdbcConnection", clazz);
+
         return clazz;
     }
 
     public static RubyClass load(final Ruby runtime) {
-        RubyClass jdbcConnection = getJdbcConnection(runtime);
-        return createMSSQLJdbcConnectionClass(runtime, jdbcConnection);
+        var context = runtime.getCurrentContext();
+        RubyClass jdbcConnection = getJdbcConnection(context);
+        return createMSSQLJdbcConnectionClass(context, jdbcConnection);
     }
 
     protected static final ObjectAllocator ALLOCATOR = new ObjectAllocator() {
@@ -187,7 +191,7 @@ public class MSSQLRubyJdbcConnection extends RubyJdbcConnection {
                     } else if (results.size() == 1) {
                         return results.get(0);
                     } else {
-                        return context.runtime.newArray(results);
+                        return newArray(context, results);
                     }
 
                 } catch (final SQLException e) {
@@ -331,7 +335,7 @@ public class MSSQLRubyJdbcConnection extends RubyJdbcConnection {
             final String catalog, final String schemaPattern, final String tablePattern,
             final ResultSet tablesSet) throws SQLException, IllegalStateException {
 
-        final RubyArray tables = context.runtime.newArray();
+        final RubyArray tables = newArray(context);
 
         while ( tablesSet.next() ) {
             String schema = tablesSet.getString(TABLES_TABLE_SCHEM);

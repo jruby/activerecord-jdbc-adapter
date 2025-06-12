@@ -26,6 +26,7 @@ package arjdbc.db2;
 import static arjdbc.util.QuotingUtils.BYTES_0;
 import static arjdbc.util.QuotingUtils.BYTES_1;
 import static arjdbc.util.QuotingUtils.quoteSingleQuotesWithFallback;
+import static org.jruby.api.Create.newString;
 
 import org.jruby.Ruby;
 import org.jruby.RubyModule;
@@ -42,9 +43,8 @@ import org.jruby.runtime.builtin.IRubyObject;
 public class DB2Module {
 
     public static RubyModule load(final RubyModule arJdbc) {
-        RubyModule db2 = arJdbc.defineModuleUnder("DB2");
-        db2.defineAnnotatedMethods( DB2Module.class );
-        return db2;
+        var context = arJdbc.getRuntime().getCurrentContext();
+        return arJdbc.defineModuleUnder(context, "DB2").defineMethods(context, DB2Module.class);
     }
 
     public static RubyModule load(final Ruby runtime) {
@@ -63,7 +63,7 @@ public class DB2Module {
     public static IRubyObject quoted_true(
             final ThreadContext context,
             final IRubyObject self) {
-        return RubyString.newString(context.runtime, BYTES_1);
+        return newString(context, BYTES_1);
     }
 
     @JRubyMethod(name = "quoted_false", required = 0, frame = false)

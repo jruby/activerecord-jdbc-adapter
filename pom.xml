@@ -12,7 +12,7 @@
   <url>http://github.com/jruby/activerecord-jdbc-adapter/wiki</url>
 
   <properties>
-    <jruby.version>9.2.6.0</jruby.version>
+    <jruby.version>10.0.0.1</jruby.version>
   </properties>
 
   <issueManagement>

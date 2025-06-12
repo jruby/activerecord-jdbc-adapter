@@ -42,9 +42,9 @@ import static arjdbc.util.QuotingUtils.quoteCharAndDecorateWith;
 public class MySQLModule {
 
     public static RubyModule load(final RubyModule arJdbc) {
-        RubyModule mysql = arJdbc.defineModuleUnder("MySQL");
-        mysql.defineAnnotatedMethods(MySQLModule.class);
-        return mysql;
+        var context = arJdbc.getRuntime().getCurrentContext();
+        return arJdbc.defineModuleUnder(context, "MySQL").
+                defineMethods(context, MySQLModule.class);
     }
 
     public static RubyModule load(final Ruby runtime) {

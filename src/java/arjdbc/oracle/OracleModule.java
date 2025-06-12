@@ -42,9 +42,8 @@ import org.jruby.runtime.builtin.IRubyObject;
 public class OracleModule {
 
     public static RubyModule load(final RubyModule arJdbc) {
-        RubyModule oracle = arJdbc.defineModuleUnder("Oracle");
-        oracle.defineAnnotatedMethods( OracleModule.class );
-        return oracle;
+        var context = arJdbc.getRuntime().getCurrentContext();
+        return arJdbc.defineModuleUnder(context, "Oracle").defineMethods(context, OracleModule.class);
     }
 
     public static RubyModule load(final Ruby runtime) {
