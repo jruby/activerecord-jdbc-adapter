@@ -23,8 +23,9 @@ public abstract class ObjectSupport {
 
     private static StringBuilder inspect(final Ruby runtime, final RubyBasicObject self,
         final List<Variable> variableList) {
+        var context = runtime.getCurrentContext();
         final StringBuilder part = new StringBuilder();
-        String cname = self.getMetaClass().getRealClass().getName();
+        String cname = self.getMetaClass().getRealClass().getName(context);
         part.append("#<").append(cname).append(":0x");
         part.append(Integer.toHexString(System.identityHashCode(self)));
 
@@ -35,7 +36,6 @@ public abstract class ObjectSupport {
         }
         try {
             runtime.registerInspecting(self);
-            final ThreadContext context = runtime.getCurrentContext();
             return inspectObj(context, variableList, part);
         } finally {
             runtime.unregisterInspecting(self);

@@ -23,6 +23,7 @@
  */
 package arjdbc.jdbc;
 
+import java.lang.reflect.InvocationTargetException;
 import java.sql.Connection;
 import java.sql.Driver;
 import java.sql.SQLException;
@@ -45,7 +46,7 @@ public class DriverWrapper {
     private final Properties properties;
 
     DriverWrapper(final Ruby runtime, final String name, final Properties properties)
-        throws ClassCastException, InstantiationException, IllegalAccessException {
+            throws ClassCastException, InstantiationException, IllegalAccessException, InvocationTargetException, NoSuchMethodException {
         this.driver = allocateDriver( loadDriver(runtime, name) );
         this.properties = properties == null ? new Properties() : properties;
     }
@@ -59,8 +60,8 @@ public class DriverWrapper {
     }
 
     private Driver allocateDriver(final Class<? extends Driver> driverClass)
-        throws InstantiationException, IllegalAccessException {
-        return driverClass.newInstance();
+            throws InstantiationException, IllegalAccessException, NoSuchMethodException, InvocationTargetException {
+        return driverClass.getDeclaredConstructor().newInstance();
     }
 
     protected static Class<? extends Driver> loadDriver(final Ruby runtime, final String name)

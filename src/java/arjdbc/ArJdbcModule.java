@@ -43,6 +43,9 @@ import org.jruby.util.ByteList;
 
 import arjdbc.jdbc.RubyJdbcConnection;
 import static arjdbc.jdbc.RubyJdbcConnection.getJdbcConnection;
+import static org.jruby.api.Access.getModule;
+import static org.jruby.api.Access.objectClass;
+import static org.jruby.api.Create.allocArray;
 
 /**
  * ::ArJdbc
@@ -52,9 +55,10 @@ import static arjdbc.jdbc.RubyJdbcConnection.getJdbcConnection;
 public class ArJdbcModule {
 
     public static RubyModule load(final Ruby runtime) {
-        final RubyModule arJdbc = runtime.getOrCreateModule("ArJdbc");
-        arJdbc.defineAnnotatedMethods( ArJdbcModule.class );
-        return arJdbc;
+        var context = runtime.getCurrentContext();
+        return objectClass(context).
+                defineModuleUnder(context, "ArJdbc").
+                defineMethods(context, ArJdbcModule.class);
     }
 
     public static RubyModule get(final Ruby runtime) {
@@ -142,7 +146,7 @@ public class ArJdbcModule {
                 catch (NoSuchMethodException e) {
                     // "old" e.g. MySQLRubyJdbcConnection.createMySQLJdbcConnectionClass(runtime, jdbcConnection)
                     connection.getMethod("create" + moduleName + "JdbcConnectionClass", Ruby.class, RubyClass.class).
-                        invoke(null, runtime, getJdbcConnection(runtime));
+                        invoke(null, runtime, getJdbcConnection(context));
                 }
             }
         }
@@ -162,20 +166,19 @@ public class ArJdbcModule {
      */
     @JRubyMethod(name = "modules", meta = true)
     public static IRubyObject modules(final ThreadContext context, final IRubyObject self) {
-        final Ruby runtime = context.getRuntime();
         final RubyModule arJdbc = (RubyModule) self;
 
         final Collection<String> constants = arJdbc.getConstantNames();
-        final RubyArray modules = runtime.newArray( constants.size() );
+        final RubyArray modules = allocArray(context, constants.size());
 
         for ( final String name : constants ) {
-           final IRubyObject constant = arJdbc.getConstant(name, false);
+           final IRubyObject constant = arJdbc.getConstant(context, name, false);
            // isModule: return false for Ruby Classes
            if ( constant != null && constant.isModule() ) {
                if ( "Util".equals(name) ) continue;
                if ( "SerializedAttributesHelper".equals(name) ) continue; // deprecated
                if ( "Version".equals(name) ) continue; // deprecated
-               modules.append( constant );
+               modules.append(context, constant);
            }
         }
         return modules;
@@ -230,9 +233,9 @@ public class ArJdbcModule {
             return null;
         }
 
-        final RubyModule jdbc = runtime.getModule("Jdbc");
+        final RubyModule jdbc = getModule(context, "Jdbc");
         if ( jdbc != null ) { // Jdbc::MySQL
-            final RubyModule constant = (RubyModule) jdbc.getConstantAt(constName);
+            final RubyModule constant = jdbc.getModule(context, constName);
             if ( constant != null ) { // ::Jdbc::MySQL.load_driver :
                 if ( constant.respondsTo("load_driver") ) {
                     IRubyObject result = constant.callMethod("load_driver");

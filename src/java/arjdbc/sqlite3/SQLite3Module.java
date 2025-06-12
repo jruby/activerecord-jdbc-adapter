@@ -41,9 +41,8 @@ import org.jruby.runtime.builtin.IRubyObject;
 public class SQLite3Module {
     
     public static RubyModule load(final RubyModule arJdbc) {
-        RubyModule sqlite3 = arJdbc.defineModuleUnder("SQLite3");
-        sqlite3.defineAnnotatedMethods( SQLite3Module.class );
-        return sqlite3;
+        var context = arJdbc.getRuntime().getCurrentContext();
+        return arJdbc.defineModuleUnder(context, "SQLite3").defineMethods(context, SQLite3Module.class);
     }
 
     public static RubyModule load(final Ruby runtime) {

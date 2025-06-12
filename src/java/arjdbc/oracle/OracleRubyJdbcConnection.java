@@ -60,6 +60,10 @@ import org.jruby.runtime.ObjectAllocator;
 import org.jruby.runtime.ThreadContext;
 import org.jruby.runtime.builtin.IRubyObject;
 
+import static org.jruby.api.Convert.asFixnum;
+import static org.jruby.api.Create.allocArray;
+import static org.jruby.api.Create.newString;
+
 /**
  *
  * @author nicksieger
@@ -71,16 +75,16 @@ public class OracleRubyJdbcConnection extends RubyJdbcConnection {
         super(runtime, metaClass);
     }
 
-    public static RubyClass createOracleJdbcConnectionClass(Ruby runtime, RubyClass jdbcConnection) {
-        final RubyClass clazz = getConnectionAdapters(runtime).
-            defineClassUnder("OracleJdbcConnection", jdbcConnection, ALLOCATOR);
-        clazz.defineAnnotatedMethods(OracleRubyJdbcConnection.class);
-        return clazz;
+    public static RubyClass createOracleJdbcConnectionClass(ThreadContext context, RubyClass jdbcConnection) {
+        return getConnectionAdapters(context).
+                defineClassUnder(context, "OracleJdbcConnection", jdbcConnection, ALLOCATOR).
+                defineMethods(context, OracleRubyJdbcConnection.class);
     }
 
     public static RubyClass load(final Ruby runtime) {
-        RubyClass jdbcConnection = getJdbcConnection(runtime);
-        return createOracleJdbcConnectionClass(runtime, jdbcConnection);
+        var context = runtime.getCurrentContext();
+        RubyClass jdbcConnection = getJdbcConnection(context);
+        return createOracleJdbcConnectionClass(context, jdbcConnection);
     }
 
     protected static final ObjectAllocator ALLOCATOR = new ObjectAllocator() {
@@ -158,11 +162,11 @@ public class OracleRubyJdbcConnection extends RubyJdbcConnection {
 
     @Override
     protected IRubyObject mapGeneratedKeys(
-        final Ruby runtime, final Connection connection,
+        ThreadContext context, final Connection connection,
         final Statement statement, final Boolean singleResult)
         throws SQLException {
         if ( generatedKeys ) {
-            return super.mapGeneratedKeys(runtime, connection, statement, singleResult);
+            return super.mapGeneratedKeys(context, connection, statement, singleResult);
         }
         return null; // disabled using -Darjdbc.oracle.generated_keys=false
     }
@@ -171,14 +175,14 @@ public class OracleRubyJdbcConnection extends RubyJdbcConnection {
 
     @Override // NOTE: Invalid column type:
     // getLong not implemented for class oracle.jdbc.driver.T4CRowidAccessor
-    protected IRubyObject mapGeneratedKey(final Ruby runtime, final ResultSet genKeys)
+    protected IRubyObject mapGeneratedKey(ThreadContext context, final ResultSet genKeys)
         throws SQLException {
         // NOTE: it's likely a ROWID which we do not care about :
         final String value = genKeys.getString(1); // "AAAsOjAAFAAABUlAAA"
         if ( isPositiveInteger(value) ) {
-            return runtime.newFixnum( Long.parseLong(value) );
+            return asFixnum(context, Long.parseLong(value));
         }
-        return returnRowID ? RubyString.newString(runtime, value) : runtime.getNil();
+        return returnRowID ? newString(context, value) : context.nil;
     }
 
     private static boolean isPositiveInteger(final String value) {
@@ -254,13 +258,13 @@ public class OracleRubyJdbcConnection extends RubyJdbcConnection {
     protected RubyArray mapTables(final ThreadContext context, final Connection connection,
         final String catalog, final String schemaPattern, final String tablePattern,
         final ResultSet tablesSet) throws SQLException {
-        final RubyArray tables = context.runtime.newArray(32);
+        final RubyArray tables = allocArray(context, 32);
         while ( tablesSet.next() ) {
             String name = tablesSet.getString(TABLES_TABLE_NAME);
             name = caseConvertIdentifierForRails(connection, name);
             // Handle stupid Oracle 10g RecycleBin feature
             if ( name.startsWith("bin$") ) continue;
-            tables.append(RubyString.newUnicodeString(context.runtime, name));
+            tables.append(context, RubyString.newUnicodeString(context.runtime, name));
         }
         return tables;
     }
@@ -396,10 +400,10 @@ public class OracleRubyJdbcConnection extends RubyJdbcConnection {
                         return describe(context, name.toString(), owner);
                     }
 
-                    final RubyArray arr = RubyArray.newArray(context.runtime, 3);
-                    arr.append( context.runtime.newString(owner) );
-                    arr.append( context.runtime.newString(table_name) );
-                    if ( dbLink != null ) arr.append( context.runtime.newString(dbLink) );
+                    final RubyArray arr = allocArray(context, 3);
+                    arr.append(context, newString(context, owner));
+                    arr.append(context, newString(context, table_name));
+                    if ( dbLink != null ) arr.append(context, newString(context, dbLink));
                     return arr;
                 }
                 catch (final SQLException e) {

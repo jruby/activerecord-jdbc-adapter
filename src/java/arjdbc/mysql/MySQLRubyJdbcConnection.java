@@ -29,18 +29,9 @@ import arjdbc.jdbc.Callable;
 import arjdbc.jdbc.DriverWrapper;
 import arjdbc.jdbc.RubyJdbcConnection;
 import arjdbc.util.DateTimeUtils;
-
-import java.lang.reflect.InvocationTargetException;
-import java.sql.Connection;
-import java.sql.DatabaseMetaData;
-import java.sql.PreparedStatement;
-import java.sql.SQLException;
-import java.sql.ResultSet;
-import java.sql.Statement;
-import java.sql.Timestamp;
-import java.sql.Types;
-
-import org.jruby.*;
+import org.jruby.Ruby;
+import org.jruby.RubyBoolean;
+import org.jruby.RubyClass;
 import org.jruby.anno.JRubyMethod;
 import org.jruby.exceptions.RaiseException;
 import org.jruby.runtime.ObjectAllocator;
@@ -48,7 +39,18 @@ import org.jruby.runtime.ThreadContext;
 import org.jruby.runtime.builtin.IRubyObject;
 import org.jruby.util.SafePropertyAccessor;
 
-import static arjdbc.util.StringHelper.newString;
+import java.lang.reflect.InvocationTargetException;
+import java.sql.Connection;
+import java.sql.DatabaseMetaData;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.sql.Timestamp;
+import java.sql.Types;
+
+import static org.jruby.api.Create.newEmptyString;
+import static org.jruby.api.Create.newString;
 
 /**
  *
@@ -62,16 +64,16 @@ public class MySQLRubyJdbcConnection extends RubyJdbcConnection {
         super(runtime, metaClass);
     }
 
-    public static RubyClass createMySQLJdbcConnectionClass(Ruby runtime, RubyClass jdbcConnection) {
-        RubyClass clazz = getConnectionAdapters(runtime).
-            defineClassUnder("MySQLJdbcConnection", jdbcConnection, ALLOCATOR);
-        clazz.defineAnnotatedMethods(MySQLRubyJdbcConnection.class);
-        return clazz;
+    public static RubyClass createMySQLJdbcConnectionClass(ThreadContext context, RubyClass jdbcConnection) {
+        return getConnectionAdapters(context).
+                defineClassUnder(context, "MySQLJdbcConnection", jdbcConnection, ALLOCATOR).
+                defineMethods(context, MySQLRubyJdbcConnection.class);
     }
 
     public static RubyClass load(final Ruby runtime) {
-        RubyClass jdbcConnection = getJdbcConnection(runtime);
-        return createMySQLJdbcConnectionClass(runtime, jdbcConnection);
+        var context = runtime.getCurrentContext();
+        RubyClass jdbcConnection = getJdbcConnection(context);
+        return createMySQLJdbcConnectionClass(context, jdbcConnection);
     }
 
     protected static final ObjectAllocator ALLOCATOR = new ObjectAllocator() {
@@ -89,7 +91,7 @@ public class MySQLRubyJdbcConnection extends RubyJdbcConnection {
     public IRubyObject db_version(final ThreadContext context) {
         return withConnection(context, (Callable<IRubyObject>) connection -> {
             final DatabaseMetaData metaData = connection.getMetaData();
-            return context.runtime.newString(metaData.getDatabaseProductVersion());
+            return newString(context, metaData.getDatabaseProductVersion());
         });
     }
 
@@ -102,13 +104,13 @@ public class MySQLRubyJdbcConnection extends RubyJdbcConnection {
             final int major = jdbcDriver.getMajorVersion();
             final int minor = jdbcDriver.getMinorVersion();
             if ( major < 5 ) {
-                final RubyClass errorClass = getConnectionNotEstablished(context.runtime);
+                final RubyClass errorClass = getConnectionNotEstablished(context);
                 throw context.runtime.newRaiseException(errorClass,
                         "MySQL adapter requires driver >= 5.0 got: " + major + "." + minor);
             }
             if ( major == 5 && minor < 1 ) { // need 5.1 for JDBC 4.0
                 // lightweight validation query: "/* ping */ SELECT 1"
-                setConfigValueIfNotSet(context, "connection_alive_sql", context.runtime.newString("/* ping */ SELECT 1"));
+                setConfigValueIfNotSet(context, "connection_alive_sql", newString(context, "/* ping */ SELECT 1"));
             }
             driverAdapter = new MySQLDriverAdapter(); // short-circuit
         }
@@ -207,11 +209,11 @@ public class MySQLRubyJdbcConnection extends RubyJdbcConnection {
 
         final Timestamp value = resultSet.getTimestamp(column);
         if ( value == null ) {
-            return resultSet.wasNull() ? context.nil : RubyString.newEmptyString(runtime);
+            return resultSet.wasNull() ? context.nil : newEmptyString(context);
         }
 
         if ( rawDateTime != null && rawDateTime) {
-            return RubyString.newString(runtime, DateTimeUtils.dummyTimeToString(value));
+            return newString(context, DateTimeUtils.dummyTimeToString(value));
         }
 
         return DateTimeUtils.newDummyTime(context, value, getDefaultTimeZone(context));
@@ -223,7 +225,7 @@ public class MySQLRubyJdbcConnection extends RubyJdbcConnection {
         throws SQLException {
         final byte[] bytes = resultSet.getBytes(column);
         if ( bytes == null /* || resultSet.wasNull() */ ) return context.nil;
-        return newString(runtime, bytes);
+        return newString(context, bytes);
     }
 
     // MySQL does never storesUpperCaseIdentifiers() :

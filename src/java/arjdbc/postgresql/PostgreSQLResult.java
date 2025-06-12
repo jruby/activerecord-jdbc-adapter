@@ -23,6 +23,12 @@ import org.jruby.runtime.ObjectAllocator;
 import org.jruby.runtime.ThreadContext;
 import org.jruby.runtime.builtin.IRubyObject;
 
+import static org.jruby.api.Access.enumerableModule;
+import static org.jruby.api.Access.getModule;
+import static org.jruby.api.Access.objectClass;
+import static org.jruby.api.Convert.toInt;
+import static org.jruby.api.Error.argumentError;
+
 /*
  * This class mimics the PG::Result class enough to get by.  It also adorns common methods useful for
  * gems like mini_sql to consume it similarly to PG::Result
@@ -35,10 +41,13 @@ public class PostgreSQLResult extends JdbcResult {
 
     /********* JRuby compat methods ***********/
 
-    static RubyClass createPostgreSQLResultClass(Ruby runtime, RubyClass postgreSQLConnection) {
-        RubyClass rubyClass = postgreSQLConnection.defineClassUnder("Result", runtime.getObject(), ObjectAllocator.NOT_ALLOCATABLE_ALLOCATOR);
-        rubyClass.defineAnnotatedMethods(PostgreSQLResult.class);
-        rubyClass.includeModule(runtime.getEnumerable());
+    static RubyClass createPostgreSQLResultClass(ThreadContext context, RubyClass postgreSQLConnection) {
+        RubyClass rubyClass = postgreSQLConnection.
+                defineClassUnder(context, "Result", objectClass(context), ObjectAllocator.NOT_ALLOCATABLE_ALLOCATOR).
+                defineMethods(context, PostgreSQLResult.class);
+
+        rubyClass.includeModule(context, enumerableModule(context));
+
         return rubyClass;
     }
 
@@ -130,7 +139,10 @@ public class PostgreSQLResult extends JdbcResult {
     }
 
     private RubyClass getBinaryDataClass(final ThreadContext context) {
-        return ((RubyModule) context.runtime.getModule("ActiveModel").getConstantAt("Type")).getClass("Binary").getClass("Data");
+        return getModule(context, "ActiveModel").
+                getModule(context, "Type").
+                getClass(context, "Binary").
+                getClass(context, "Data");
     }
 
     private boolean isBinaryType(final int type) {
@@ -145,7 +157,7 @@ public class PostgreSQLResult extends JdbcResult {
      */
     @PG @JRubyMethod(name = {"length", "ntuples", "num_tuples"})
     public IRubyObject length(final ThreadContext context) {
-        return values.length();
+        return values.length(context);
     }
 
     /**
@@ -219,21 +231,21 @@ public class PostgreSQLResult extends JdbcResult {
     @PG @JRubyMethod
     public IRubyObject getvalue(ThreadContext context, IRubyObject rowArg, IRubyObject columnArg) {
         int rows = values.size();
-        int row = RubyNumeric.fix2int(rowArg);
-        int column = RubyNumeric.fix2int(columnArg);
+        int row = toInt(context, rowArg);
+        int column = toInt(context, columnArg);
 
-        if (row < 0 || row >= rows) throw context.runtime.newArgumentError("invalid tuple number " + row);
-        if (column < 0 || column >= getColumnNames().length) throw context.runtime.newArgumentError("invalid field number " + row);
+        if (row < 0 || row >= rows) throw argumentError(context, "invalid tuple number " + row);
+        if (column < 0 || column >= getColumnNames().length) throw argumentError(context, "invalid field number " + row);
 
         return ((RubyArray) values.eltInternal(row)).eltInternal(column);
     }
 
     @PG @JRubyMethod(name = "[]")
     public IRubyObject aref(ThreadContext context, IRubyObject rowArg) {
-        int row = RubyNumeric.fix2int(rowArg);
+        int row = toInt(context, rowArg);
         int rows = values.size();
 
-        if (row < 0 || row >= rows) throw context.runtime.newArgumentError("Index " + row + " is out of range");
+        if (row < 0 || row >= rows) throw argumentError(context, "Index " + row + " is out of range");
 
         RubyArray rowValues = (RubyArray) values.eltOk(row);
         RubyHash resultHash = RubyHash.newSmallHash(context.runtime);

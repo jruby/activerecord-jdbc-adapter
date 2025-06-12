@@ -60,6 +60,11 @@ import arjdbc.jdbc.RubyJdbcConnection;
 
 import static arjdbc.util.StringHelper.newDefaultInternalString;
 import static arjdbc.util.StringHelper.newString;
+import static org.jruby.api.Access.getModule;
+import static org.jruby.api.Convert.asFixnum;
+import static org.jruby.api.Create.allocArray;
+import static org.jruby.api.Create.newArray;
+import static org.jruby.api.Create.newEmptyArray;
 
 /**
  *
@@ -77,17 +82,19 @@ public class SQLite3RubyJdbcConnection extends RubyJdbcConnection {
         TIMESTAMP_FORMAT = runtime.newString("%F %T.%6N");
     }
 
-    public static RubyClass createSQLite3JdbcConnectionClass(Ruby runtime, RubyClass jdbcConnection) {
-        final RubyClass clazz = getConnectionAdapters(runtime). // ActiveRecord::ConnectionAdapters
-            defineClassUnder("SQLite3JdbcConnection", jdbcConnection, ALLOCATOR);
-        clazz.defineAnnotatedMethods( SQLite3RubyJdbcConnection.class );
-        getConnectionAdapters(runtime).setConstant("Sqlite3JdbcConnection", clazz); // backwards-compat
+    public static RubyClass createSQLite3JdbcConnectionClass(ThreadContext context, RubyClass jdbcConnection) {
+        var connectionAdapters = getConnectionAdapters(context); // ActiveRecord::ConnectionAdapters
+        final RubyClass clazz = connectionAdapters.
+                defineClassUnder(context, "SQLite3JdbcConnection", jdbcConnection, ALLOCATOR).
+                defineMethods(context, SQLite3RubyJdbcConnection.class);
+        connectionAdapters.setConstant(context, "Sqlite3JdbcConnection", clazz); // backwards-compat
         return clazz;
     }
 
     public static RubyClass load(final Ruby runtime) {
-        RubyClass jdbcConnection = getJdbcConnection(runtime);
-        return createSQLite3JdbcConnectionClass(runtime, jdbcConnection);
+        var context = runtime.getCurrentContext();
+        RubyClass jdbcConnection = getJdbcConnection(context);
+        return createSQLite3JdbcConnectionClass(context, jdbcConnection);
     }
 
     protected static final ObjectAllocator ALLOCATOR = new ObjectAllocator() {
@@ -140,7 +147,7 @@ public class SQLite3RubyJdbcConnection extends RubyJdbcConnection {
                 //return mapGeneratedKeys(context.getRuntime(), connection, statement, true);
                 // but we should assume SQLite JDBC will prefer sane API usage eventually :
                 genKeys = statement.executeQuery("SELECT last_insert_rowid()");
-                return doMapGeneratedKeys(context.runtime, genKeys, true);
+                return doMapGeneratedKeys(context, genKeys, (Boolean) true);
             }
             catch (final SQLException e) {
                 debugMessage(context.runtime, "failed to get generated keys: ", e);
@@ -182,8 +189,7 @@ public class SQLite3RubyJdbcConnection extends RubyJdbcConnection {
         final String schemaName = schema;
         // return super.indexes(context, tableName, name, schemaName);
         return withConnection(context, (Callable<IRubyObject>) connection -> {
-            final Ruby runtime = context.runtime;
-            final RubyClass IndexDefinition = getIndexDefinition(runtime);
+            final RubyClass IndexDefinition = getIndexDefinition(context);
 
             final TableName table1 = extractTableName(connection, null, schemaName, tableName);
 
@@ -197,11 +203,11 @@ public class SQLite3RubyJdbcConnection extends RubyJdbcConnection {
             catch (SQLException e) {
                 final String msg = e.getMessage();
                 if ( msg != null && msg.startsWith("[SQLITE_ERROR] SQL error or missing database") ) {
-                    return RubyArray.newEmptyArray(runtime); // on 3.8.7 getIndexInfo fails if table has no indexes
+                    return newEmptyArray(context); // on 3.8.7 getIndexInfo fails if table has no indexes
                 }
                 throw e;
             }
-            final RubyArray indexes = RubyArray.newArray(runtime, 8);
+            final RubyArray indexes = allocArray(context, 8);
             try {
                 String currentIndex = null;
 
@@ -226,14 +232,14 @@ public class SQLite3RubyJdbcConnection extends RubyJdbcConnection {
                             cachedString(context, indexTableName), // table_name
                             cachedString(context, indexName), // index_name
                             nonUnique ? context.fals : context.tru, // unique
-                            currentColumns = RubyArray.newArray(runtime, 4) // [] column names
+                            currentColumns = allocArray(context, 4) // [] column names
                         };
 
-                        indexes.append( IndexDefinition.newInstance(context, args, Block.NULL_BLOCK) ); // IndexDefinition.new
+                        indexes.append(context, IndexDefinition.newInstance(context, args, Block.NULL_BLOCK)); // IndexDefinition.new
                     }
 
                     // one or more columns can be associated with an index
-                    if ( currentColumns != null ) currentColumns.append(rubyColumnName);
+                    if ( currentColumns != null ) currentColumns.append(context, rubyColumnName);
                 }
 
                 return indexes;
@@ -314,11 +320,11 @@ public class SQLite3RubyJdbcConnection extends RubyJdbcConnection {
     protected RubyArray mapTables(final ThreadContext context, final Connection connection,
         final String catalog, final String schemaPattern, final String tablePattern,
         final ResultSet tablesSet) throws SQLException {
-        final RubyArray tables = context.runtime.newArray(24);
+        final RubyArray tables = allocArray(context, 24);
         while ( tablesSet.next() ) {
             String name = tablesSet.getString(TABLES_TABLE_NAME);
             name = name.toLowerCase(Locale.ENGLISH); // simply lower-case for SQLite3
-            tables.append( RubyString.newUnicodeString(context.runtime, name) );
+            tables.append(context, RubyString.newUnicodeString(context.runtime, name));
         }
         return tables;
     }
@@ -531,10 +537,10 @@ public class SQLite3RubyJdbcConnection extends RubyJdbcConnection {
 
                 int[] rows = statement.executeBatch();
 
-                RubyArray rowsAffected = runtime.newArray();
+                RubyArray rowsAffected = newArray(context);
 
                 for (int i = 0; i < rows.length; i++) {
-                    rowsAffected.append(runtime.newFixnum(rows[i]));
+                    rowsAffected.append(context, asFixnum(context, rows[i]));
                 }
                 return rowsAffected;
             } catch (final SQLException e) {
@@ -552,21 +558,20 @@ public class SQLite3RubyJdbcConnection extends RubyJdbcConnection {
         final Connection connection, final PreparedStatement statement,
         final int index, final IRubyObject value,
         final IRubyObject attribute, final int type) throws SQLException {
-        if (value instanceof RubyBigDecimal) {
-            statement.setString(index, ((RubyBigDecimal) value).getValue().toString());
+        if (value instanceof RubyBigDecimal bigDecimal) {
+            statement.setString(index, bigDecimal.getValue().toString());
         }
-        else if ( value instanceof RubyFixnum) {
-            statement.setLong(index, ((RubyFixnum) value).getLongValue());
+        else if ( value instanceof RubyFixnum fixnum) {
+            statement.setLong(index, fixnum.getValue());
         }
-        else if ( value instanceof RubyInteger) { // Bignum
-            statement.setString(index, ((RubyInteger) value).getBigIntegerValue().toString());
+        else if ( value instanceof RubyInteger integer) { // Bignum
+            statement.setString(index, integer.asBigInteger(context).toString());
         }
-        else if ( value instanceof RubyNumeric ) {
-            statement.setDouble(index, ((RubyNumeric) value).getDoubleValue());
+        else if ( value instanceof RubyNumeric numeric) {
+            statement.setDouble(index, numeric.asDouble(context));
         }
         else { // e.g. `BigDecimal '42.00000000000000000001'`
-            Ruby runtime = context.runtime;
-            RubyBigDecimal val = RubyBigDecimal.newInstance(context, runtime.getModule("BigDecimal"), value, RubyFixnum.zero(runtime));
+            RubyBigDecimal val = RubyBigDecimal.newInstance(context, getModule(context, "BigDecimal"), value, asFixnum(context, 0));
             statement.setString(index, val.getValue().toString());
         }
     }

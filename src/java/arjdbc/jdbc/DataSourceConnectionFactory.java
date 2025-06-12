@@ -36,6 +36,7 @@ import org.jruby.util.SafePropertyAccessor;
 
 import static arjdbc.jdbc.RubyJdbcConnection.getConnectionNotEstablished;
 import static arjdbc.jdbc.RubyJdbcConnection.wrapException;
+import static org.jruby.api.Access.runtimeErrorClass;
 
 /**
  *
@@ -103,7 +104,7 @@ final class DataSourceConnectionFactory implements ConnectionFactory {
             if ( ! ( bound instanceof DataSource ) ) {
                 if ( bound == null ) throw new NameNotFoundException(); // unlikely to happen
                 final String msg = "bound object at '" + name + "' is not a " + DataSource.class.getName() + " but a " + bound.getClass().getName() + "\n" + bound;
-                throw wrapException(context, getConnectionNotEstablished(context.runtime), new ClassCastException(msg), msg);
+                throw wrapException(context, getConnectionNotEstablished(context), new ClassCastException(msg), msg);
             }
             return (DataSource) bound;
         }
@@ -124,10 +125,10 @@ final class DataSourceConnectionFactory implements ConnectionFactory {
             else {
                 message = "unable to lookup data source - name: '" + name + "' not found";
             }
-            throw wrapException(context, getConnectionNotEstablished(context.runtime), e, message);
+            throw wrapException(context, getConnectionNotEstablished(context), e, message);
         }
         catch (NamingException e) {
-            throw wrapException(context, context.runtime.getRuntimeError(), e);
+            throw wrapException(context, runtimeErrorClass(context), e);
         }
     }
 

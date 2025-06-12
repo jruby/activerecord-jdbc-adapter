@@ -28,9 +28,11 @@ package arjdbc.h2;
 import java.sql.Connection;
 import java.sql.SQLException;
 
+import arjdbc.db2.DB2RubyJdbcConnection;
 import org.jruby.Ruby;
 import org.jruby.RubyClass;
 import org.jruby.runtime.ObjectAllocator;
+import org.jruby.runtime.ThreadContext;
 import org.jruby.runtime.builtin.IRubyObject;
 
 /**
@@ -45,16 +47,15 @@ public class H2RubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection {
         super(runtime, metaClass);
     }
 
-    public static RubyClass createH2JdbcConnectionClass(Ruby runtime, RubyClass jdbcConnection) {
-        RubyClass clazz = getConnectionAdapters(runtime).
-            defineClassUnder("H2JdbcConnection", jdbcConnection, ALLOCATOR);
-        clazz.defineAnnotatedMethods(H2RubyJdbcConnection.class);
-        return clazz;
+    public static RubyClass createH2JdbcConnectionClass(ThreadContext context, RubyClass jdbcConnection) {
+        return getConnectionAdapters(context).
+                defineClassUnder(context, "H2JdbcConnection", jdbcConnection, ALLOCATOR).
+                defineMethods(context, H2RubyJdbcConnection.class);
     }
 
     public static RubyClass load(final Ruby runtime) {
-        RubyClass jdbcConnection = getJdbcConnection(runtime);
-        return createH2JdbcConnectionClass(runtime, jdbcConnection);
+        var context = runtime.getCurrentContext();
+        return createH2JdbcConnectionClass(context, getJdbcConnection(context));
     }
 
     protected static ObjectAllocator ALLOCATOR = new ObjectAllocator() {

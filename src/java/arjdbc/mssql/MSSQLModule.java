@@ -45,9 +45,9 @@ import org.jruby.util.ByteList;
 public class MSSQLModule {
 
     public static RubyModule load(final RubyModule arJdbc) {
-        RubyModule mssql = arJdbc.defineModuleUnder("MSSQL");
-        mssql.defineAnnotatedMethods( MSSQLModule.class );
-        return mssql;
+        var context = arJdbc.getRuntime().getCurrentContext();
+        return arJdbc.defineModuleUnder(context, "MSSQL").
+                defineMethods(context, MSSQLModule.class);
     }
 
     public static RubyModule load(final Ruby runtime) {

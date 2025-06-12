@@ -42,9 +42,8 @@ import org.jruby.util.ByteList;
 public class PostgreSQLModule {
 
     public static RubyModule load(final RubyModule arJdbc) {
-        RubyModule postgreSQL = arJdbc.defineModuleUnder("PostgreSQL");
-        postgreSQL.defineAnnotatedMethods( PostgreSQLModule.class );
-        return postgreSQL;
+        var context = arJdbc.getRuntime().getCurrentContext();
+        return arJdbc.defineModuleUnder(context, "PostgreSQL").defineMethods(context, PostgreSQLModule.class);
     }
 
     public static RubyModule load(final Ruby runtime) {

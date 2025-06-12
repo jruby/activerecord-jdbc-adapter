@@ -115,21 +115,22 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
     public PostgreSQLRubyJdbcConnection(Ruby runtime, RubyClass metaClass) {
         super(runtime, metaClass);
 
-        resultClass = getMetaClass().getClass("Result");
+        resultClass = getMetaClass().getClass(runtime.getCurrentContext(), "Result");
     }
 
-    public static RubyClass createPostgreSQLJdbcConnectionClass(Ruby runtime, RubyClass jdbcConnection) {
-        final RubyClass clazz = getConnectionAdapters(runtime).
-            defineClassUnder("PostgreSQLJdbcConnection", jdbcConnection, ALLOCATOR);
-        clazz.defineAnnotatedMethods(PostgreSQLRubyJdbcConnection.class);
-        getConnectionAdapters(runtime).setConstant("PostgresJdbcConnection", clazz); // backwards-compat
+    public static RubyClass createPostgreSQLJdbcConnectionClass(ThreadContext context, RubyClass jdbcConnection) {
+        final RubyClass clazz = getConnectionAdapters(context).
+                defineClassUnder(context, "PostgreSQLJdbcConnection", jdbcConnection, ALLOCATOR).
+                defineMethods(context, PostgreSQLRubyJdbcConnection.class);
+        getConnectionAdapters(context).setConstant(context, "PostgresJdbcConnection", clazz); // backwards-compat
         return clazz;
     }
 
     public static RubyClass load(final Ruby runtime) {
-        RubyClass jdbcConnection = getJdbcConnection(runtime);
-        RubyClass postgreSQLConnection = createPostgreSQLJdbcConnectionClass(runtime, jdbcConnection);
-        PostgreSQLResult.createPostgreSQLResultClass(runtime, postgreSQLConnection);
+        var context = runtime.getCurrentContext();
+        RubyClass jdbcConnection = getJdbcConnection(context);
+        RubyClass postgreSQLConnection = createPostgreSQLJdbcConnectionClass(context, jdbcConnection);
+        PostgreSQLResult.createPostgreSQLResultClass(context, postgreSQLConnection);
         return postgreSQLConnection;
     }
 
@@ -223,8 +224,11 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
 
     private RubyClass oidArray(final ThreadContext context) {
         if (oidArray != null) return oidArray;
-        final RubyModule PostgreSQL = (RubyModule) getConnectionAdapters(context.runtime).getConstant("PostgreSQL");
-        return oidArray = ((RubyModule) PostgreSQL.getConstantAt("OID")).getClass("Array");
+
+        return getConnectionAdapters(context).
+                getModule(context, "PostgreSQL").
+                getModule(context, "OID").
+                getClass(context, "Array");
     }
 
 
@@ -384,7 +388,7 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
             }
         }
 
-        if ( ! "Date".equals(value.getMetaClass().getName()) && value.respondsTo("to_date") ) {
+        if ( ! "Date".equals(value.getMetaClass().getName(context)) && value.respondsTo("to_date") ) {
             value = value.callMethod(context, "to_date");
         }
 

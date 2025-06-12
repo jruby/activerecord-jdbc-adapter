@@ -14,6 +14,10 @@ import org.jruby.runtime.Block;
 import org.jruby.runtime.ThreadContext;
 import org.jruby.runtime.builtin.IRubyObject;
 
+import static org.jruby.api.Create.newArray;
+import static org.jruby.api.Create.newArrayNoCopy;
+import static org.jruby.api.Create.newHash;
+
 /**
  * This is a base Result class to be returned as the "raw" result.
  * It should be overridden for specific adapters to manage type maps
@@ -31,7 +35,7 @@ public class JdbcResult extends RubyObject {
     protected JdbcResult(ThreadContext context, RubyClass clazz, RubyJdbcConnection connection, ResultSet resultSet) throws SQLException {
         super(context.runtime, clazz);
 
-        values = context.runtime.newArray();
+        values = newArray(context);
         this.connection = connection;
 
         final ResultSetMetaData resultMetaData = resultSet.getMetaData();
@@ -86,7 +90,7 @@ public class JdbcResult extends RubyObject {
 
         for (int i = 0; i < tuples.length; i++) {
             RubyArray currentRow = (RubyArray) values.eltInternal(i);
-            RubyHash hash = RubyHash.newHash(context.runtime);
+            RubyHash hash = newHash(context);
             for (int columnIndex = 0; columnIndex < columnCount; columnIndex++) {
                 hash.fastASet(columnNames[columnIndex], currentRow.eltInternal(columnIndex));
             }
@@ -101,17 +105,16 @@ public class JdbcResult extends RubyObject {
      * @throws SQLException throws!
      */
     private void processResultSet(final ThreadContext context, final ResultSet resultSet) throws SQLException {
-        Ruby runtime = context.runtime;
         int columnCount = columnNames.length;
 
         while (resultSet.next()) {
             final IRubyObject[] row = new IRubyObject[columnCount];
 
             for (int i = 0; i < columnCount; i++) {
-                row[i] = connection.jdbcToRuby(context, runtime, i + 1, columnTypes[i], resultSet); // Result Set is 1 based
+                row[i] = connection.jdbcToRuby(context, context.runtime, i + 1, columnTypes[i], resultSet); // Result Set is 1 based
             }
 
-            values.append(RubyArray.newArrayNoCopy(context.runtime, row));
+            values.append(context, newArrayNoCopy(context, row));
         }
     }
 
@@ -122,9 +125,9 @@ public class JdbcResult extends RubyObject {
      * @throws SQLException can be caused by postgres generating its type map
      */
     public IRubyObject toARResult(final ThreadContext context) throws SQLException {
-        final RubyClass Result = RubyJdbcConnection.getResult(context.runtime);
+        final RubyClass Result = RubyJdbcConnection.getResult(context);
         // FIXME: Is this broken?  no copy of an array AR::Result can modify?  or should it be frozen?
-        final RubyArray rubyColumnNames = RubyArray.newArrayNoCopy(context.runtime, getColumnNames());
+        final RubyArray rubyColumnNames = newArrayNoCopy(context, getColumnNames());
         return Result.newInstance(context, rubyColumnNames, values, columnTypeMap(context), Block.NULL_BLOCK);
     }
 }

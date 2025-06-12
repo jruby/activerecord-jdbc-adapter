@@ -37,7 +37,8 @@ import org.jruby.RubyModule;
 public class H2Module {
 
     public static RubyModule load(final RubyModule arJdbc) {
-        RubyModule h2 = arJdbc.defineModuleUnder("H2");
+        var context = arJdbc.getRuntime().getCurrentContext();
+        RubyModule h2 = arJdbc.defineModuleUnder(context, "H2");
         // NOTE: currently no Java implemented Ruby methods
         // h2.defineAnnotatedMethods( H2Module.class );
         return h2;
