@@ -96,7 +96,7 @@ module ArJdbc
         sql
       end
 
-      def raw_execute(sql, name, binds = [], prepare: false, async: false, allow_retry: false, materialize_transactions: true)
+      def raw_execute(sql, name, binds = [], prepare: false, async: false, allow_retry: false, materialize_transactions: true, batch: false)
         log(sql, name, async: async) do
           with_raw_connection(allow_retry: allow_retry, materialize_transactions: materialize_transactions) do |conn|
             result = conn.execute(sql)
