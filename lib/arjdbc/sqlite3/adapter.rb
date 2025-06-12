@@ -223,17 +223,29 @@ module ArJdbc
 
     # REFERENTIAL INTEGRITY ====================================
 
+    def execute_batch(statements, name = nil, **kwargs)
+      if statements.is_a?(Array)
+        # SQLite JDBC doesn't support multiple statements in one execute
+        # Execute each statement separately
+        statements.each do |sql|
+          raw_execute(sql, name, **kwargs.merge(batch: true))
+        end
+      else
+        raw_execute(statements, name, batch: true, **kwargs)
+      end
+    end
+
     def disable_referential_integrity # :nodoc:
       old_foreign_keys = query_value("PRAGMA foreign_keys")
       old_defer_foreign_keys = query_value("PRAGMA defer_foreign_keys")
 
       begin
-        execute("PRAGMA defer_foreign_keys = ON")
-        execute("PRAGMA foreign_keys = OFF")
+        raw_execute("PRAGMA defer_foreign_keys = ON", "SCHEMA", allow_retry: false, materialize_transactions: false)
+        raw_execute("PRAGMA foreign_keys = OFF", "SCHEMA", allow_retry: false, materialize_transactions: false)
         yield
       ensure
-        execute("PRAGMA defer_foreign_keys = #{old_defer_foreign_keys}")
-        execute("PRAGMA foreign_keys = #{old_foreign_keys}")
+        raw_execute("PRAGMA defer_foreign_keys = #{old_defer_foreign_keys}", "SCHEMA", allow_retry: false, materialize_transactions: false)
+        raw_execute("PRAGMA foreign_keys = #{old_foreign_keys}", "SCHEMA", allow_retry: false, materialize_transactions: false)
       end
     end
 
@@ -809,7 +821,17 @@ module ArJdbc
       DEFAULT_PRAGMAS.merge(pragmas).each do |pragma, value|
         if ::SQLite3::Pragmas.respond_to?(pragma)
           stmt = ::SQLite3::Pragmas.public_send(pragma, value)
-          raw_execute(stmt, "SCHEMA")
+          # Skip pragma execution if we're inside a transaction and it's not allowed
+          begin
+            raw_execute(stmt, "SCHEMA")
+          rescue => e
+            if e.message.include?("Safety level may not be changed inside a transaction")
+              # Log warning and skip this pragma
+              warn "Cannot set pragma '#{pragma}' inside a transaction, skipping"
+            else
+              raise
+            end
+          end
         else
           warn "Unknown SQLite pragma: #{pragma}"
         end
@@ -863,7 +885,7 @@ module ActiveRecord::ConnectionAdapters
     include ArJdbc::Abstract::ConnectionManagement
     include ArJdbc::Abstract::DatabaseStatements
     include ArJdbc::Abstract::StatementCache
-    include ArJdbc::Abstract::TransactionSupport
+    # Don't include TransactionSupport - use Rails' SQLite3::DatabaseStatements instead
 
 
     ##
@@ -972,7 +994,8 @@ module ActiveRecord::ConnectionAdapters
 
     # because the JDBC driver doesn't like multiple SQL statements in one JDBC statement
     def combine_multi_statements(total_sql)
-      total_sql
+      # For Rails 8 compatibility - join multiple statements with semicolon
+      total_sql.is_a?(Array) ? total_sql.join(";\n") : total_sql
     end
 
     def type_map
