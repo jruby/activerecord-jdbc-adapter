@@ -74,11 +74,7 @@ public class MySQLRubyJdbcConnection extends RubyJdbcConnection {
         return createMySQLJdbcConnectionClass(runtime, jdbcConnection);
     }
 
-    protected static final ObjectAllocator ALLOCATOR = new ObjectAllocator() {
-        public IRubyObject allocate(Ruby runtime, RubyClass klass) {
-            return new MySQLRubyJdbcConnection(runtime, klass);
-        }
-    };
+    protected static final ObjectAllocator ALLOCATOR = MySQLRubyJdbcConnection::new;
 
     @JRubyMethod
     public IRubyObject query(final ThreadContext context, final IRubyObject sql) throws SQLException {
