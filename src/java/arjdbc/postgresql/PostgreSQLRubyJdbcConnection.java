@@ -678,7 +678,7 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
             }
         }
 
-        super.setStringParameter(context, connection, statement, index, value, attribute, type);
+        statement.setObject(index, value.asString().toString(), Types.OTHER);
     }
 
 

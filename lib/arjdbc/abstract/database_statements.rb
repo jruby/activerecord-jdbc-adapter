@@ -44,14 +44,17 @@ module ArJdbc
 
         binds = convert_legacy_binds_to_attributes(binds) if binds.first.is_a?(Array)
 
+        # puts "internal----->sql: #{sql}, binds: #{binds}"
+        type_casted_binds = type_casted_binds(binds)
+
         with_raw_connection do |conn|
           if without_prepared_statement?(binds)
             log(sql, name, async: async) { conn.execute_query(sql) }
           else
-            log(sql, name, binds, async: async) do
+            log(sql, name, type_casted_binds, async: async) do
               # this is different from normal AR that always caches
               cached_statement = fetch_cached_statement(sql) if prepare && @jdbc_statement_cache_enabled
-              conn.execute_prepared_query(sql, binds, cached_statement)
+              conn.execute_prepared_query(sql, type_casted_binds, cached_statement)
             end
           end
         end
