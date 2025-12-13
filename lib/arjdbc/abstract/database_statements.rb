@@ -44,8 +44,9 @@ module ArJdbc
 
         binds = convert_legacy_binds_to_attributes(binds) if binds.first.is_a?(Array)
 
-        # puts "internal----->sql: #{sql}, binds: #{binds}"
+        # puts "[1]internal----->sql: #{sql}, binds: #{binds}"
         type_casted_binds = type_casted_binds(binds)
+        # puts "[2]internal----->sql: #{type_casted_binds.size}, binds: #{type_casted_binds}"
 
         with_raw_connection do |conn|
           if without_prepared_statement?(binds)

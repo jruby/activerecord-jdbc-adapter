@@ -2453,7 +2453,8 @@ public class RubyJdbcConnection extends RubyObject {
 
         // All the set methods were calling this first so save a method call in the nil case
         if ( value == context.nil ) {
-            statement.setNull(index, type);
+            // statement.setNull(index, type);
+            statement.setObject(index, null);
             return;
         }
 
