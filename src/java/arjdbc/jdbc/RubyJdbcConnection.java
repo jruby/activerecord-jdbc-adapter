@@ -3573,7 +3573,7 @@ public class RubyJdbcConnection extends RubyObject {
         final ColumnData[] columns, final ResultSet resultSet,
         final RubyJdbcConnection connection) throws SQLException {
 
-        final RubyHash row = new RubyHash(runtime, columns.length);
+        final RubyHash row = RubyHash.newHash(runtime);
 
         for ( int i = 0; i < columns.length; i++ ) {
             final ColumnData column = columns[i];

@@ -74,6 +74,7 @@ group :test do
   gem 'test-unit-context', require: nil
   gem 'mocha', '~> 2.0', require: false
   gem 'bcrypt', '~> 3.1', require: false
+  gem 'ostruct', require: false
   
   # Database adapters for MRI
   platform :mri do
