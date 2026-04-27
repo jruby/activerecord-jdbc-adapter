@@ -68,7 +68,7 @@ public abstract class StringHelper {
     public static RubyString newDefaultInternalString(final Ruby runtime, final CharSequence str) {
         Encoding enc = runtime.getDefaultInternalEncoding();
         if (enc == null) enc = runtime.getEncodingService().getJavaDefault();
-        return new RubyString(runtime, runtime.getString(), str, enc);
+        return RubyString.newString(runtime, str, enc);
     }
 
     // NOTE: a 'better' RubyString.newInternalFromJavaExternal - to be back-ported in JRuby 9.2
