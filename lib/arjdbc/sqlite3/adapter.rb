@@ -236,8 +236,12 @@ module ArJdbc
     end
 
     def disable_referential_integrity # :nodoc:
-      old_foreign_keys = query_value("PRAGMA foreign_keys")
-      old_defer_foreign_keys = query_value("PRAGMA defer_foreign_keys")
+      # Use internal_execute to avoid materializing transactions when reading PRAGMA values
+      result = internal_execute("PRAGMA foreign_keys", "SCHEMA", allow_retry: false, materialize_transactions: false)
+      old_foreign_keys = result.rows.first&.first || 0
+      
+      result = internal_execute("PRAGMA defer_foreign_keys", "SCHEMA", allow_retry: false, materialize_transactions: false)
+      old_defer_foreign_keys = result.rows.first&.first || 0
 
       begin
         raw_execute("PRAGMA defer_foreign_keys = ON", "SCHEMA", allow_retry: false, materialize_transactions: false)
