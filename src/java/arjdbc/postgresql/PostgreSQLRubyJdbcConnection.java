@@ -149,6 +149,15 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
     }
 
     @Override
+    protected Integer jdbcTypeForPrimitiveAttribute(final ThreadContext context,
+                                                    final IRubyObject attribute) throws SQLException {
+        if (attribute instanceof RubyNumeric || attribute instanceof RubyBoolean) {
+            return Types.VARCHAR;
+        }
+        return super.jdbcTypeForPrimitiveAttribute(context, attribute);
+    }
+
+    @Override
     protected DriverWrapper newDriverWrapper(final ThreadContext context, final String driver) {
         DriverWrapper driverWrapper = super.newDriverWrapper(context, driver);
 
