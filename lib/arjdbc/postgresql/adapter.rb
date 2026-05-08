@@ -104,6 +104,8 @@ module ArJdbc
         end
       end
 
+      @raw_connection.decode_dates = decode_dates # Copy to java land for performance
+
       reload_type_map
     end
 

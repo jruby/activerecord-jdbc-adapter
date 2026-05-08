@@ -111,6 +111,7 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
 
     private RubyClass resultClass;
     private RubyHash typeMap = null;
+    private boolean decodeDates = false;
 
     public PostgreSQLRubyJdbcConnection(Ruby runtime, RubyClass metaClass) {
         super(runtime, metaClass);
@@ -813,6 +814,10 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
         final String value = resultSet.getString(index);
         if (value == null) return context.nil;
 
+        if (!decodeDates) {
+            return RubyString.newUnicodeString(runtime, value);
+        }
+
         final int len = value.length();
         if (len < 10 && value.charAt(len - 1) == 'y') { // infinity / -infinity
             IRubyObject infinity = parseInfinity(context.runtime, value);
@@ -1092,5 +1097,11 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
         TypeConverter.checkHashType(context.runtime, mapArg);
         this.typeMap = (RubyHash) mapArg;
         return mapArg;
+    }
+
+    @PG @JRubyMethod(name = "decode_dates=")
+    public IRubyObject setDecodeDates(ThreadContext context, IRubyObject value) {
+        this.decodeDates = value.isTrue();
+        return value;
     }
 }
