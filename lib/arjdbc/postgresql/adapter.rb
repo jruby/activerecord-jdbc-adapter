@@ -596,8 +596,7 @@ module ArJdbc
     # Returns the current client message level.
     def client_min_messages
       return nil if redshift? # not supported on Redshift
-      # Need to use #execute so we don't try to access the type map before it is initialized
-      execute('SHOW client_min_messages', 'SCHEMA').values.first.first
+      query_value("SHOW client_min_messages", "SCHEMA")
     end
 
     # Set the client message level.
