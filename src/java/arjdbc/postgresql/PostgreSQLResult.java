@@ -107,7 +107,10 @@ public class PostgreSQLResult extends JdbcResult {
                     runtime.newFixnum(mod),
                     name);
 
-            if (!type.isNil()) types.fastASet(name, type);
+            if (!type.isNil()) {
+                types.fastASet(name, type);
+                types.fastASet(runtime.newFixnum(i), type);
+            }
         }
 
         return types;
