@@ -277,6 +277,22 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
         return PostgreSQLResult.newResult(context, resultClass, this, resultSet);
     }
 
+    @Override
+    protected IRubyObject mapEmptyExecuteResult(final ThreadContext context, final long updateCount) {
+        return PostgreSQLResult.newEmptyResult(context, resultClass, this, updateCount);
+    }
+
+    @Override
+    protected IRubyObject mapToRawResult(final ThreadContext context,
+            final Connection connection, final ResultSet resultSet,
+            final boolean downCase) throws SQLException {
+        if (downCase) {
+            return super.mapToRawResult(context, connection, resultSet, true);
+        } else {
+            return mapExecuteResult(context, connection, resultSet);
+        }
+    }
+
     /**
      * Maps a query result set into a <code>ActiveRecord</code> result.
      * @param context
