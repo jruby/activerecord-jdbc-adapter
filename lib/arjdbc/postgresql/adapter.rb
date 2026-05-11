@@ -29,6 +29,7 @@ require "arjdbc/postgresql/adapter_hash_config"
 require 'active_model'
 
 require "arjdbc/abstract/relation_query_attribute_monkey_patch"
+require "arjdbc/abstract/time_value_jruby_compat_monkey_patch"
 
 module ArJdbc
   # Strives to provide Rails built-in PostgreSQL adapter (API) compatibility.
