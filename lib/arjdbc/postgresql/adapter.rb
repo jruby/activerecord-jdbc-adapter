@@ -409,10 +409,12 @@ module ArJdbc
     end
 
     # Rename an existing enum type to something else.
-    def rename_enum(name, options = {})
-      to = options.fetch(:to) { raise ArgumentError, ":to is required" }
+    def rename_enum(name, new_name = nil, **options)
+      new_name ||= options.fetch(:to) do
+        raise ArgumentError, "rename_enum requires two from/to name positional arguments."
+      end
 
-      exec_query("ALTER TYPE #{quote_table_name(name)} RENAME TO #{to}").tap { reload_type_map }
+      exec_query("ALTER TYPE #{quote_table_name(name)} RENAME TO #{quote_table_name(new_name)}").tap { reload_type_map }
     end
 
     # Add enum value to an existing enum type.
