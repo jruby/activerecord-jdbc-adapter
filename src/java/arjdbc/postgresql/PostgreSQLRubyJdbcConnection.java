@@ -52,6 +52,8 @@ import org.jruby.javasupport.JavaUtil;
 import org.jruby.runtime.ObjectAllocator;
 import org.jruby.runtime.ThreadContext;
 import org.jruby.runtime.builtin.IRubyObject;
+import org.jruby.runtime.callsite.CachingCallSite;
+import org.jruby.runtime.callsite.FunctionalCachingCallSite;
 import org.jruby.util.ByteList;
 
 import org.jruby.util.TypeConverter;
@@ -324,11 +326,30 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
             break;
         }
         default:
-            values = valueForDB.toArray();
+            final IRubyObject adapter = ActiveRecord(context).getClass(context, "Base").callMethod(context, "connection");
+            values = typeCastArrayValues(context, adapter, valueForDB);
             break;
         }
 
         statement.setArray(index, connection.createArrayOf(typeName, values));
+    }
+
+    private final CachingCallSite type_cast_site = new FunctionalCachingCallSite("type_cast");
+
+    private Object[] typeCastArrayValues(final ThreadContext context, final IRubyObject adapter, final RubyArray<?> values) {
+        final int size = values.size();
+        final Object[] result = new Object[size];
+        for (int i = 0; i < size; i++) {
+            final IRubyObject elem = values.eltInternal(i);
+            if (elem instanceof RubyArray<?> arrayElem) {
+                result[i] = typeCastArrayValues(context, adapter, arrayElem);
+            } else {
+                // This could be a performance bottleneck, but it ensures that behaviour aligns with PG gem. Might want to revisit this later.
+                final IRubyObject cast = type_cast_site.call(context, adapter, adapter, elem);
+                result[i] = cast.isNil() ? null : cast.toJava(Object.class);
+            }
+        }
+        return result;
     }
 
     protected void setDecimalParameter(final ThreadContext context,
