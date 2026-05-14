@@ -905,10 +905,9 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
         }
 
         if (object instanceof Map) { // hstore
-            // by default we avoid double parsing by driver and then column :
-            final RubyHash rubyObject = RubyHash.newHash(context.runtime);
-            rubyObject.putAll((Map) object); // converts keys/values to ruby
-            return rubyObject;
+            // This will be parsed by OID::HStore#deserialize
+            // Can't use hash as before due to hash breaking dirty tracking
+            return runtime.newString(resultSet.getString(index));
         }
 
         return JavaUtil.convertJavaToRuby(runtime, object);
