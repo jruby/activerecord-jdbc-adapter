@@ -103,6 +103,7 @@ group :rails do
   group :test do
     gem 'minitest-excludes', require: nil
     gem 'minitest-rg', require: nil
+    gem 'minitest-rails', require: nil
     gem 'benchmark-ips', require: nil
   end
 end
