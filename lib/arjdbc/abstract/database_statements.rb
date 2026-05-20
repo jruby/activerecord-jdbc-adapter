@@ -38,16 +38,24 @@ module ArJdbc
 
         mark_transaction_written_if_write(sql)
 
+        raw_exec_query(sql, name, binds, prepare: prepare, async: async, allow_retry: allow_retry, materialize_transactions: materialize_transactions)
+      end
+
+      def raw_exec_query(sql, name = nil, binds = NO_BINDS, prepare: false, async: false, allow_retry: false, materialize_transactions: true)
         binds = convert_legacy_binds_to_attributes(binds) if binds.first.is_a?(Array)
 
-        with_raw_connection do |conn|
-          if without_prepared_statement?(binds)
-            log(sql, name, async: async) { conn.execute_query(sql) }
-          else
-            log(sql, name, binds, async: async) do
+        # puts "[1]internal----->sql: #{sql}, binds: #{binds}"
+        type_casted_binds = type_casted_binds(binds)
+        # puts "[2]internal----->sql: #{type_casted_binds.size}, binds: #{type_casted_binds}"
+
+        log(sql, name, binds, type_casted_binds, async: async) do
+          with_raw_connection(allow_retry: allow_retry, materialize_transactions: materialize_transactions) do |conn|
+            if without_prepared_statement?(binds)
+                conn.execute_query(sql)
+            else
               # this is different from normal AR that always caches
               cached_statement = fetch_cached_statement(sql) if prepare && @jdbc_statement_cache_enabled
-              conn.execute_prepared_query(sql, binds, cached_statement)
+              conn.execute_prepared_query(sql, type_casted_binds, cached_statement)
             end
           end
         end
