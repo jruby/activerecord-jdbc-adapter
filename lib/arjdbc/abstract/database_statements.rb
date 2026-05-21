@@ -22,8 +22,9 @@ module ArJdbc
           if without_prepared_statement?(binds)
             log(sql, name) { conn.execute_insert_pk(sql, pk) }
           else
-            log(sql, name, binds) do
-              conn.execute_insert_pk(sql, binds, pk)
+            type_casted_binds = type_casted_binds(binds)
+            log(sql, name, binds, type_casted_binds) do
+              conn.execute_insert_pk(sql, type_casted_binds, pk)
             end
           end
         end
@@ -74,7 +75,8 @@ module ArJdbc
           if without_prepared_statement?(binds)
             log(sql, name) { conn.execute_update(sql) }
           else
-            log(sql, name, binds) { conn.execute_prepared_update(sql, binds) }
+            type_casted_binds = type_casted_binds(binds)
+            log(sql, name, binds, type_casted_binds) { conn.execute_prepared_update(sql, type_casted_binds) }
           end
         end
       end
