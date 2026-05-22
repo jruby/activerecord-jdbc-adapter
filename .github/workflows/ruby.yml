@@ -7,11 +7,7 @@
 
 name: Ruby
 
-on:
-  push:
-    branches: [ master, 72-stable ]
-  pull_request:
-    branches: [ master, 72-stable ]
+on: [push, pull_request]
 
 permissions:
   contents: read
@@ -336,3 +332,47 @@ jobs:
       - name: Run tests
         run: |
           bundle exec rake ${{ matrix.test_targets }}
+
+  build-gems:
+
+    name: Build ActiveRecord-JDBC gems
+    runs-on: ubuntu-latest
+
+    env:
+      JRUBY_OPTS: "-J-Xms64M -J-Xmx1024M --dev"
+
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: jruby-10.1
+          bundler-cache: true # runs 'bundle install' and caches installed gems automatically
+      - name: Build
+        run: |
+          rake build:adapters
+      - name: cache main adapter gem
+        uses: actions/upload-artifact@v7
+        with:
+          path: pkg/activerecord-jdbc-adapter*.gem
+          archive: false
+      - name: cache sqlite3 adapter gem
+        uses: actions/upload-artifact@v7
+        with:
+          path: pkg/activerecord-jdbcsqlite3-adapter*.gem
+          archive: false
+      - name: cache mysql adapter gem
+        uses: actions/upload-artifact@v7
+        with:
+          path: pkg/activerecord-jdbcmysql-adapter*.gem
+          archive: false
+      - name: cache postgresql adapter gem
+        uses: actions/upload-artifact@v7
+        with:
+          path: pkg/activerecord-jdbcpostgresql-adapter*.gem
+          archive: false
