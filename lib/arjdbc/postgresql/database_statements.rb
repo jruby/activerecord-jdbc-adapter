@@ -36,6 +36,12 @@ module ArJdbc
         end
         execute("SET CONSTRAINTS #{constraints} #{deferred.to_s.upcase}")
       end
+
+      private
+
+      def returning_column_values(result)
+        result.rows.first
+      end
     end
   end
 end

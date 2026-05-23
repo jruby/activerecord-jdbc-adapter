@@ -523,16 +523,20 @@ module ArJdbc
     end
 
     def exec_insert(sql, name = nil, binds = [], pk = nil, sequence_name = nil, returning: nil) # :nodoc:
-      val = super
-      if !use_insert_returning? && pk
+      if use_insert_returning? || pk == false
+        sql, binds = sql_for_insert(sql, pk, binds, returning)
+        internal_exec_query(sql, name, binds)
+      else
+        result = internal_exec_query(sql, name, binds)
         unless sequence_name
           table_ref = extract_table_ref_from_insert_sql(sql)
-          sequence_name = default_sequence_name(table_ref, pk)
-          return val unless sequence_name
+          if table_ref
+            pk = primary_key(table_ref) if pk.nil?
+            sequence_name = default_sequence_name(table_ref, pk)
+          end
+          return result unless sequence_name
         end
         last_insert_id_result(sequence_name)
-      else
-        val
       end
     end
 
