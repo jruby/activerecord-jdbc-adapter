@@ -330,7 +330,44 @@ module SimpleTestMethods
           end
         end
       end
+    end
 
+    def test_time_in_dst_change_hour_utc
+      skip "with_system_tz not working in tomcat" if ActiveRecord::Base.connection.raw_connection.jndi?
+
+      with_system_tz 'Europe/Prague' do
+        Time.use_zone 'Europe/Prague' do
+          with_timezone_config default: :utc do
+            id = DbType.connection.insert(
+              "INSERT INTO db_types (sample_datetime)
+              values ('2024-03-31 02:30:00')"
+            )
+            saved_time = DbType.find(id).sample_datetime
+
+            assert_equal Time.utc(2024, 3, 31, 2, 30), saved_time
+            assert_equal 'UTC', saved_time.zone
+          end
+        end
+      end
+    end
+
+    def test_time_in_dst_change_hour_local
+      skip "with_system_tz not working in tomcat" if ActiveRecord::Base.connection.raw_connection.jndi?
+
+      with_system_tz 'Europe/Prague' do
+        Time.use_zone 'Europe/Prague' do
+          with_timezone_config default: :local do
+            id = DbType.connection.insert(
+              "INSERT INTO db_types (sample_datetime)
+              values ('2024-03-31 02:30:00')"
+            )
+            saved_time = DbType.find(id).sample_datetime
+
+            assert_equal Time.local(2024, 3, 31, 3, 30), saved_time
+            assert_not_equal 'UTC', saved_time.zone
+          end
+        end
+      end
     end
 
     #
