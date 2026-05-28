@@ -83,7 +83,15 @@ CREATE DATABASE activerecord_unittest2;
 GRANT ALL PRIVILEGES ON activerecord_unittest2.* TO 'rails'@'localhost';
 ```
 
-Then edit test/rails/config.yml for the appropriate configuration credentials.
+Then edit test/rails/config.yml for the appropriate configuration credentials. You may need to add a "password: testtest9" entry to authenticate.
+
+Additionally, you may need to add the following to the config.yml file to disable SSL and allow public key retrieval:
+
+```yaml
+      properties:
+        useSSL: false
+        allowPublicKeyRetrieval: true
+```
 
 ### ActiveRecord (Rails) Tests
 
