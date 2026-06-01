@@ -4,6 +4,7 @@ import arjdbc.util.DateTimeUtils;
 import org.joda.time.DateTimeZone;
 import org.jruby.RubyArray;
 import org.jruby.RubyNumeric;
+import org.jruby.RubyInteger;
 import org.jruby.RubyFixnum;
 import org.jruby.runtime.ThreadContext;
 import org.jruby.runtime.builtin.IRubyObject;
@@ -31,6 +32,10 @@ public abstract class PgDateTimeUtils extends DateTimeUtils {
                 } else {
                     return "-infinity";
                 }
+            }
+            // Rails 8.0 removed Numeric#toTime, so we have to handle this here
+            if (valueNumeric instanceof RubyInteger) {
+                return valueNumeric.asString().toString();
             }
         }
         return timestampTimeToString(context, value, zone, withZone);
