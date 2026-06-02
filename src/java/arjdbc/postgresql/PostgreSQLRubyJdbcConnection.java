@@ -659,10 +659,7 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
         final PreparedStatement statement, final int index,
         final IRubyObject value, final String columnType) throws SQLException {
 
-        final PGobject pgJson = new PGobject();
-        pgJson.setType(columnType);
-        pgJson.setValue(value.toString());
-        statement.setObject(index, pgJson);
+        statement.setObject(index, value.toString(), Types.OTHER);
     }
 
     private void setPGobjectParameter(final PreparedStatement statement, final int index,
