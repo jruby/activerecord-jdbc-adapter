@@ -394,7 +394,7 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
         final int index, IRubyObject value,
         final IRubyObject attribute, final int type) throws SQLException {
         // PGJDBC uses strings internally anyway, so using Timestamp doesn't do any good
-        String tsString = PgDateTimeUtils.timestampValueToString(context, value, null, true);
+        String tsString = PgDateTimeUtils.timestampValueToString(context, value, getDefaultTimeZone(context), true);
         statement.setObject(index, tsString, Types.OTHER);
     }
 
