@@ -6,6 +6,23 @@ module ArJdbc
       ForeignKeyDefinition = ActiveRecord::ConnectionAdapters::ForeignKeyDefinition
       Utils = ActiveRecord::ConnectionAdapters::PostgreSQL::Utils
 
+      def decode_string_array(value)
+        return value if value.is_a?(Array)
+        _arjdbc_array_parser.parse_pg_array(value)
+      end
+
+      private
+
+      def _arjdbc_array_parser
+        @_arjdbc_array_parser ||= begin
+          obj = Object.new
+          obj.extend(ActiveRecord::ConnectionAdapters::PostgreSQL::ArrayParser)
+          obj
+        end
+      end
+
+      public
+
       def foreign_keys(table_name)
         scope = quoted_scope(table_name)
         fk_info = internal_exec_query(<<~SQL, "SCHEMA", allow_retry: true, materialize_transactions: false)

@@ -9,6 +9,21 @@ module ArJdbc
 
       NO_BINDS = [].freeze
 
+      unless method_defined?(:mark_transaction_written_if_write)
+        def mark_transaction_written_if_write(sql)
+          if write_query?(sql)
+            ensure_writes_are_allowed(sql)
+            mark_transaction_written
+          end
+        end
+      end
+
+      unless method_defined?(:check_if_write_query)
+        def check_if_write_query(sql)
+          ensure_writes_are_allowed(sql) if write_query?(sql)
+        end
+      end
+
       def exec_insert(sql, name = nil, binds = NO_BINDS, pk = nil, sequence_name = nil, returning: nil)
         if preventing_writes?
           raise ActiveRecord::ReadOnlyError, "Write query attempted while in readonly mode: #{sql}"
