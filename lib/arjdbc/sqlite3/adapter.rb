@@ -21,6 +21,7 @@ require "arjdbc/sqlite3/adapter_hash_config"
 require "arjdbc/sqlite3/pragmas"
 
 require "arjdbc/abstract/relation_query_attribute_monkey_patch"
+require "arjdbc/abstract/mock_logger_jruby_compat_monkey_patch"
 
 module SQLite3
   module Constants
