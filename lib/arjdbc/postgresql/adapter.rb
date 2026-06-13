@@ -737,8 +737,36 @@ module ArJdbc
       end
     end
 
+    # See https://www.postgresql.org/docs/current/errcodes-appendix.html
+    # Class 08 - Connection Exception, plus the 57P0x operator-intervention
+    # codes that signal the backend is going away.
+    CONNECTION_FAILURE_SQL_STATES = %w[
+      08000
+      08001
+      08003
+      08004
+      08006
+      08007
+      08P01
+      57P01
+      57P02
+      57P03
+    ].freeze
+    CONNECTION_FAILURE_MESSAGES = /
+      I\/O\ error\ occurred\ while\ sending\ to\ the\ backend |
+      This\ connection\ has\ been\ closed |
+      Connection\ to\ .*\ refused |
+      Connection\ is\ closed |
+      terminating\ connection\ due\ to
+    /x.freeze
+    private_constant :CONNECTION_FAILURE_SQL_STATES, :CONNECTION_FAILURE_MESSAGES
+
     def translate_exception(exception, message:, sql:, binds:)
       return super unless exception.is_a?(ActiveRecord::JDBCError)
+
+      if connection_lost?(exception)
+        return ::ActiveRecord::ConnectionFailed.new(message, sql: sql, binds: binds, connection_pool: @pool)
+      end
 
       # TODO: Can we base these on an error code of some kind?
       case exception.message
@@ -769,6 +797,18 @@ module ArJdbc
       else
         super
       end
+    end
+
+    def connection_lost?(exception)
+      state = exception.sql_state if exception.respond_to?(:sql_state)
+      return true if state && CONNECTION_FAILURE_SQL_STATES.include?(state)
+
+      message = exception.message
+      return true if message && CONNECTION_FAILURE_MESSAGES.match?(message)
+
+      cause = exception.cause if exception.respond_to?(:cause)
+      cause.is_a?(Java::JavaSql::SQLRecoverableException) ||
+        cause.is_a?(Java::JavaSql::SQLNonTransientConnectionException)
     end
 
     # @private `Utils.extract_schema_and_table` from AR
