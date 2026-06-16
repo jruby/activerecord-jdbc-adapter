@@ -661,24 +661,24 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
         final int index, final IRubyObject value,
         final IRubyObject attribute, final int type) throws SQLException {
 
-        if ( attributeSQLType(context, attribute) == context.nil ) {
-            /*
-                We have to check for a uuid here because in some cases
-                (for example,  when doing "exists?" checks, or with legacy binds)
-                ActiveRecord doesn't send us the actual type of the attribute
-                and Postgres won't compare a uuid column with a string
-            */
-            final String uuid = value.toString();
-            int length = uuid.length();
+        // if ( attributeSQLType(context, attribute) == context.nil ) {
+        //     /*
+        //         We have to check for a uuid here because in some cases
+        //         (for example,  when doing "exists?" checks, or with legacy binds)
+        //         ActiveRecord doesn't send us the actual type of the attribute
+        //         and Postgres won't compare a uuid column with a string
+        //     */
+        //     final String uuid = value.toString();
+        //     int length = uuid.length();
 
-            // Checking the length so we don't have the overhead of the regex unless it "looks" like a UUID
-            if (length >= 32 && length < 40 && uuidPattern.matcher(uuid).matches()) {
-                setUUIDParameter(statement, index, uuid);
-                return;
-            }
-        }
+        //     // Checking the length so we don't have the overhead of the regex unless it "looks" like a UUID
+        //     if (length >= 32 && length < 40 && uuidPattern.matcher(uuid).matches()) {
+        //         setUUIDParameter(statement, index, uuid);
+        //         return;
+        //     }
+        // }
 
-        super.setStringParameter(context, connection, statement, index, value, attribute, type);
+        statement.setObject(index, value.asString().toString(), Types.OTHER);
     }
 
 

@@ -891,6 +891,16 @@ module SimpleTestMethods
     assert_equal "some_string", f.id
   end
 
+  def test_time_bind_param
+    with_timezone_config default: :utc, zone: 'Australia/Melbourne' do
+      time = Time.zone.local(2000, 1, 1, 16)
+      entry = Entry.create!(updated_on: time + 1.hour)
+      sql = 'updated_on >= ?'
+      entries = Entry.where(sql, time)
+      assert_equal 1, entries.size
+    end
+  end
+
   def test_handles_quotes_inside_of_strings
     content_json = {
       "comments" => [
