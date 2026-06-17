@@ -156,6 +156,8 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
                                                     final IRubyObject attribute) throws SQLException {
         if (attribute instanceof RubyNumeric || attribute instanceof RubyBoolean) {
             return Types.VARCHAR;
+        } else if (attribute instanceof RubyHash) { // Should be a pg-style bind-param hash
+            return Types.BINARY;
         }
         return super.jdbcTypeForPrimitiveAttribute(context, attribute);
     }
@@ -379,8 +381,11 @@ public class PostgreSQLRubyJdbcConnection extends arjdbc.jdbc.RubyJdbcConnection
         if ( value instanceof RubyIO ) { // IO/File
             statement.setBinaryStream(index, ((RubyIO) value).getInStream());
         }
-        else { // should be a RubyString
-            final ByteList bytes = value.asString().getByteList();
+        else { // should be a RubyString, or pg-style bind-param hash
+            final IRubyObject binary = value instanceof RubyHash hashValue
+                    ? hashValue.op_aref(context, context.runtime.newSymbol("value"))
+                    : value;
+            final ByteList bytes = binary.asString().getByteList();
             statement.setBinaryStream(index,
                     new ByteArrayInputStream(bytes.unsafeBytes(), bytes.getBegin(), bytes.getRealSize()),
                     bytes.getRealSize() // length
