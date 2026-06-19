@@ -40,6 +40,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
+import java.sql.SQLWarning;
 import java.sql.SQLXML;
 import java.sql.Statement;
 import java.sql.Date;
@@ -132,6 +133,10 @@ public class RubyJdbcConnection extends RubyObject {
     private boolean jndi; // final once set on initialize
     private boolean configureConnection = true; // final once initialized
     private int fetchSize = 0; // 0 = JDBC default
+
+    // SQL warnings collected by the most recent #execute call, exposed to the
+    // adapter via #last_warnings so it can honour ActiveRecord.db_warnings_action.
+    private transient IRubyObject lastWarnings;
 
     protected RubyJdbcConnection(Ruby runtime, RubyClass metaClass) {
         super(runtime, metaClass);
@@ -807,6 +812,10 @@ public class RubyJdbcConnection extends RubyObject {
                     updateCount = statement.getUpdateCount();
                 }
 
+                // Capture any SQL warnings (e.g. PostgreSQL RAISE WARNING / NOTICE)
+                // raised while executing, before the statement is closed below.
+                lastWarnings = mapWarnings(context, statement.getWarnings());
+
                 return result;
 
             } catch (final SQLException e) {
@@ -816,6 +825,42 @@ public class RubyJdbcConnection extends RubyObject {
                 close(statement);
             }
         });
+    }
+
+    /**
+     * @return the SQL warnings collected by the most recent {@link #execute}
+     *         as an Array of <code>[message, sql_state, level]</code> arrays.
+     */
+    @JRubyMethod(name = "last_warnings")
+    public IRubyObject last_warnings(final ThreadContext context) {
+        return lastWarnings == null ? context.runtime.newEmptyArray() : lastWarnings;
+    }
+
+    /**
+     * Maps a chain of {@link SQLWarning}s to a Ruby Array of warning tuples.
+     * @param warning the head of the warning chain (may be null)
+     * @return a (possibly empty) Ruby Array of <code>[message, sql_state, level]</code>
+     */
+    protected IRubyObject mapWarnings(final ThreadContext context, SQLWarning warning) {
+        final RubyArray warnings = context.runtime.newArray();
+        while (warning != null) {
+            warnings.append(newWarning(context, warning));
+            warning = warning.getNextWarning();
+        }
+        return warnings;
+    }
+
+    /**
+     * Builds a single warning tuple <code>[message, sql_state, level]</code>.
+     * The generic JDBC API does not expose a severity level, so it is left nil;
+     * adapters with richer driver support (e.g. PostgreSQL) may override this.
+     */
+    protected IRubyObject newWarning(final ThreadContext context, final SQLWarning warning) {
+        final Ruby runtime = context.runtime;
+        final IRubyObject message = RubyString.newUnicodeString(runtime, warning.getMessage());
+        final String sqlState = warning.getSQLState();
+        final IRubyObject code = sqlState == null ? context.nil : RubyString.newUnicodeString(runtime, sqlState);
+        return runtime.newArray(message, code, context.nil);
     }
 
     protected Statement createStatement(final ThreadContext context, final Connection connection)
