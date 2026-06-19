@@ -624,7 +624,12 @@ module ArJdbc
     def client_min_messages
       return nil if redshift? # not supported on Redshift
       # Need to use #execute so we don't try to access the type map before it is initialized
-      execute('SHOW client_min_messages', 'SCHEMA').values.first.first
+      # NOTE: #execute returns an Array of row Hashes here (e.g.
+      # [{"client_min_messages"=>"warning"}]), unlike MRI's pg result object,
+      # so we read the single value out of the first row.
+      result = execute('SHOW client_min_messages', 'SCHEMA')
+      row = result.first
+      row && row.values.first
     end
 
     # Set the client message level.

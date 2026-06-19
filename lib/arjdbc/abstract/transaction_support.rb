@@ -66,6 +66,16 @@ module ArJdbc
 
       ########################## Savepoint Interface ############################
 
+      # Save-point operations must NOT be retried on a connection failure. They
+      # only ever run inside an already-open transaction, so a dropped backend
+      # means the transaction's prior writes are gone. Retrying via
+      # `with_raw_connection(allow_retry: true)` would reconnect, replay an
+      # *empty* transaction (the original writes died with the backend), run the
+      # save-point statement against it, and report success - silently losing
+      # data. ActiveRecord's native adapters route these through
+      # `internal_execute` (allow_retry: false, materialize_transactions: true);
+      # we mirror that here. See the COMMIT/ROLLBACK overrides above.
+
       # Creates a (transactional) save-point one can rollback to.
       # Unlike 'plain' `ActiveRecord` it is allowed to pass a save-point name.
       # @param name the save-point name
@@ -74,7 +84,7 @@ module ArJdbc
       # @extension added optional name parameter
       def create_savepoint(name = current_savepoint_name)
         log("SAVEPOINT #{name}", 'TRANSACTION') do
-          with_raw_connection(allow_retry: true, materialize_transactions: false) do |conn|
+          with_raw_connection(allow_retry: false, materialize_transactions: true) do |conn|
             conn.create_savepoint(name)
           end
         end
@@ -87,7 +97,7 @@ module ArJdbc
       # @extension added optional name parameter
       def exec_rollback_to_savepoint(name = current_savepoint_name)
         log("ROLLBACK TO SAVEPOINT #{name}", 'TRANSACTION') do
-          with_raw_connection(allow_retry: true, materialize_transactions: false) do |conn|
+          with_raw_connection(allow_retry: false, materialize_transactions: true) do |conn|
             conn.rollback_savepoint(name)
           end
         end
@@ -100,7 +110,7 @@ module ArJdbc
       # @extension added optional name parameter
       def release_savepoint(name = current_savepoint_name)
         log("RELEASE SAVEPOINT #{name}", 'TRANSACTION') do
-          with_raw_connection(allow_retry: true, materialize_transactions: false) do |conn|
+          with_raw_connection(allow_retry: false, materialize_transactions: true) do |conn|
             conn.release_savepoint(name)
           end
         end

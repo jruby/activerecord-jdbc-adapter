@@ -205,6 +205,44 @@ class PostgresConnectionLostTest < Test::Unit::TestCase
     @adapter.execute('DROP TABLE IF EXISTS commit_retry_loss') rescue nil
   end
 
+  # Regression test for the savepoint-retry data-loss footgun (#1, sibling of
+  # the COMMIT case above).
+  #
+  # create_savepoint / exec_rollback_to_savepoint / release_savepoint must go
+  # through with_raw_connection(allow_retry: false), matching ActiveRecord's
+  # native adapters (which route save-points through internal_execute, whose
+  # default is allow_retry: false). Save-points only ever run inside an open
+  # transaction, so a backend drop means the transaction's prior writes are
+  # gone. If the save-point op were retryable, AR would reconnect, replay an
+  # *empty* transaction, run the SAVEPOINT against it, and report success -
+  # silently losing the transaction's writes. With retry disabled the failure
+  # surfaces to the caller instead.
+  def test_create_savepoint_after_dropped_socket_does_not_silently_retry
+    @adapter.execute('SELECT 1')
+    @adapter.begin_db_transaction
+    # non-empty transaction; also keeps the connection verified/active.
+    @adapter.execute('SELECT 1')
+
+    original = @adapter.instance_variable_get(:@raw_connection).jdbc_connection
+
+    # pgbouncer reaps the backend right before the SAVEPOINT.
+    original.close
+    assert original.isClosed, 'precondition: jdbc connection should be closed'
+
+    # With allow_retry: false the dropped SAVEPOINT must raise rather than
+    # reconnecting and running against a fresh, empty transaction.
+    assert_raise(ActiveRecord::ConnectionFailed) do
+      @adapter.create_savepoint('sp_retry_loss')
+    end
+
+    # And it must NOT have silently swapped onto a fresh connection.
+    current = @adapter.instance_variable_get(:@raw_connection)
+    assert(current.nil? || current.jdbc_connection.equal?(original),
+           'savepoint must not reconnect-and-retry on a fresh connection')
+  ensure
+    @adapter.send(:reconnect!) rescue nil
+  end
+
   private
 
   def translate(jdbc_error)
