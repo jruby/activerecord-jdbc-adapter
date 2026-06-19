@@ -315,8 +315,12 @@ module SimpleTestMethods
       skip "with_system_tz not working in tomcat" if ActiveRecord::Base.connection.raw_connection.jndi?
 
       with_system_tz 'Europe/Prague' do
-        Time.use_zone 'Europe/Prague' do
-          with_timezone_config default: :local do
+        # NOTE: with_timezone_config must wrap Time.use_zone (not the reverse):
+        # it verifies Time.zone against the per-test baseline on entry, which
+        # would trip the global-state leak guard if Time.zone were already
+        # changed. See test_preserving_time_objects_*_default_timezone_local.
+        with_timezone_config default: :local do
+          Time.use_zone 'Europe/Prague' do
             time = Time.local(1999, 12, 21)
             record = DbType.create!('sample_datetime' => time, 'sample_time' => time)
 

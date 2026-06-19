@@ -203,6 +203,35 @@ module ActiveRecord
 
       alias :reset! :reconnect!
 
+      # Commits the current database transaction.
+      #
+      # Overrides ArJdbc::Abstract::TransactionSupport to disable connection
+      # retries for COMMIT, matching ActiveRecord's native MySQL adapter
+      # (which uses `allow_retry: false`). Retrying a COMMIT after a connection
+      # failure is unsafe on a networked database: `with_raw_connection` would
+      # reconnect, replay an *empty* transaction (the original writes died with
+      # the dropped backend), COMMIT it successfully, and report success -
+      # silently losing the transaction's writes.
+      def commit_db_transaction
+        log('COMMIT', 'TRANSACTION') do
+          with_raw_connection(allow_retry: false, materialize_transactions: true) do |conn|
+            conn.commit
+          end
+        end
+      end
+
+      # Rolls back the current database transaction.
+      #
+      # Overrides ArJdbc::Abstract::TransactionSupport to match ActiveRecord's
+      # native MySQL adapter (`allow_retry: false`).
+      def exec_rollback_db_transaction
+        log('ROLLBACK', 'TRANSACTION') do
+          with_raw_connection(allow_retry: false, materialize_transactions: true) do |conn|
+            conn.rollback
+          end
+        end
+      end
+
       # Disconnects from the database if already connected.
       # Otherwise, this method does nothing.
       def disconnect!
@@ -252,7 +281,42 @@ module ActiveRecord
         ::ActiveRecord::ConnectionAdapters::MySQL::Column
       end
 
+      # MySQL / MariaDB surface a dropped server connection as a JDBC error in
+      # SQLState class 08 (connection exception) - most commonly 08S01
+      # "Communications link failure" - or with one of the "server gone" vendor
+      # error codes. The driver may also wrap it in a recoverable / non-transient
+      # connection exception. None of these are caught by the message- and
+      # error-code-based cases below (which fall through to a plain JDBCError /
+      # StatementInvalid), so AR's with_raw_connection reconnect/retry machinery
+      # never kicks in. See https://dev.mysql.com/doc/connector-j/en/connector-j-reference-error-sqlstates.html
+      CONNECTION_FAILURE_SQL_STATES = %w[
+        08000
+        08001
+        08003
+        08004
+        08006
+        08007
+        08S01
+      ].freeze
+      # CR_SERVER_GONE_ERROR (2006), CR_SERVER_LOST (2013),
+      # ER_SERVER_SHUTDOWN (1053), ER_CONNECTION_KILLED (1927),
+      # ER_CLIENT_INTERACTION_TIMEOUT (4031).
+      CONNECTION_FAILURE_ERROR_CODES = [2006, 2013, 1053, 1927, 4031].freeze
+      CONNECTION_FAILURE_MESSAGES = /
+        Communications?\ link\ failure |
+        No\ operations\ allowed\ after\ connection\ closed |
+        Connection\.*\ refused |
+        Could\ not\ connect\ to |
+        Server\ shutdown\ in\ progress |
+        Connection\ is\ closed
+      /x.freeze
+      private_constant :CONNECTION_FAILURE_SQL_STATES, :CONNECTION_FAILURE_ERROR_CODES, :CONNECTION_FAILURE_MESSAGES
+
       def translate_exception(exception, message:, sql:, binds:)
+        if exception.is_a?(::ActiveRecord::JDBCError) && connection_lost?(exception)
+          return ::ActiveRecord::ConnectionFailed.new(message, sql: sql, binds: binds, connection_pool: @pool)
+        end
+
         case message
         when /Table .* doesn't exist/i
           StatementInvalid.new(message, sql: sql, binds: binds, connection_pool: @pool)
@@ -261,6 +325,25 @@ module ActiveRecord
         else
           super
         end
+      end
+
+      # Detects a lost server connection from a JDBC error so it can be
+      # translated to ActiveRecord::ConnectionFailed (retryable). Mirrors the
+      # PostgreSQL adapter's handling of backend disconnects (e.g. a proxy such
+      # as ProxySQL dropping an idle connection).
+      def connection_lost?(exception)
+        state = exception.sql_state if exception.respond_to?(:sql_state)
+        return true if state && CONNECTION_FAILURE_SQL_STATES.include?(state)
+
+        code = exception.error_code if exception.respond_to?(:error_code)
+        return true if code && CONNECTION_FAILURE_ERROR_CODES.include?(code)
+
+        message = exception.message
+        return true if message && CONNECTION_FAILURE_MESSAGES.match?(message)
+
+        cause = exception.cause if exception.respond_to?(:cause)
+        cause.is_a?(Java::JavaSql::SQLRecoverableException) ||
+          cause.is_a?(Java::JavaSql::SQLNonTransientConnectionException)
       end
 
       # defined in MySQL::DatabaseStatements which is not included

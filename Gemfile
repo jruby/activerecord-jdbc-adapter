@@ -54,6 +54,10 @@ else
   end
 end
 
+# Cap i18n below 1.15.0: that release requires Ruby 3.2+, which we can't assume
+# across the JRuby versions we support.
+gem 'i18n', '< 1.15.0', require: nil
+
 gem 'rake', require: nil
 
 group :test do
